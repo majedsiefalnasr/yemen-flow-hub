@@ -1,0 +1,80 @@
+@import "tailwindcss";
+@import "./fonts.css";
+
+@theme {
+  /* Design tokens — DESIGN.md exact values */
+  --color-background: #f5f5f7;
+  --color-surface: #ffffff;
+  --color-text-primary: #1d1d1f;
+  --color-text-secondary: #6e6e73;
+  --color-border: #d2d2d7;
+  --color-primary: #0071e3;
+  --color-primary-hover: #0077ed;
+  --color-approved: #34c759;
+  --color-rejected: #ff3b30;
+  --color-pending: #ff9f0a;
+  --color-voting: #5856d6;
+  --color-swift: #32ade6;
+  --color-locked: #8e8e93;
+
+  /* Typography */
+  --font-arabic: 'IBM Plex Sans Arabic', sans-serif;
+  --font-latin: 'Inter', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  /* Spacing */
+  --spacing-grid: 8px;
+
+  /* Radius */
+  --radius-card: 12px;
+  --radius-button: 12px;
+  --radius-input: 12px;
+  --radius-badge: 9999px;
+}
+
+/* Global base */
+html {
+  direction: rtl;
+  font-family: var(--font-arabic);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: var(--color-background);
+  color: var(--color-text-primary);
+}
+
+body {
+  font-size: 16px;
+  line-height: 24px;
+}
+
+/* Latin text uses Inter */
+:lang(en),
+[dir="ltr"],
+.font-latin {
+  font-family: var(--font-latin);
+  letter-spacing: 0;
+}
+
+/* Reference numbers — monospace */
+.font-mono {
+  font-family: var(--font-mono);
+}
+
+/* Focus ring */
+*:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}

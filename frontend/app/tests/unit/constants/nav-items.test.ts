@@ -1,0 +1,90 @@
+import { describe, it, expect } from 'vitest'
+import { NAV_ITEMS } from '../../../constants/workflow'
+import { UserRole } from '../../../types/enums'
+
+function navItemsForRole(role: UserRole) {
+  return NAV_ITEMS.filter(item => item.roles.includes(role))
+}
+
+describe('NAV_ITEMS role filtering', () => {
+  it('all roles see dashboard and requests', () => {
+    for (const role of Object.values(UserRole)) {
+      const routes = navItemsForRole(role).map(i => i.route)
+      expect(routes).toContain('/')
+      expect(routes).toContain('/requests')
+    }
+  })
+
+  it('DATA_ENTRY sees new request form', () => {
+    const routes = navItemsForRole(UserRole.DATA_ENTRY).map(i => i.route)
+    expect(routes).toContain('/requests/new')
+  })
+
+  it('BANK_REVIEWER does not see new request form', () => {
+    const routes = navItemsForRole(UserRole.BANK_REVIEWER).map(i => i.route)
+    expect(routes).not.toContain('/requests/new')
+  })
+
+  it('COMMITTEE_DIRECTOR sees customs', () => {
+    const routes = navItemsForRole(UserRole.COMMITTEE_DIRECTOR).map(i => i.route)
+    expect(routes).toContain('/customs')
+  })
+
+  it('DATA_ENTRY does not see customs', () => {
+    const routes = navItemsForRole(UserRole.DATA_ENTRY).map(i => i.route)
+    expect(routes).not.toContain('/customs')
+  })
+
+  it('CBY_ADMIN sees all admin routes', () => {
+    const routes = navItemsForRole(UserRole.CBY_ADMIN).map(i => i.route)
+    expect(routes).toContain('/admin/entities')
+    expect(routes).toContain('/admin/cby-staff')
+    expect(routes).toContain('/admin/workflow-docs')
+    expect(routes).toContain('/audit')
+    expect(routes).toContain('/settings')
+    expect(routes).toContain('/merchants')
+  })
+
+  it('DATA_ENTRY does not see admin routes', () => {
+    const routes = navItemsForRole(UserRole.DATA_ENTRY).map(i => i.route)
+    expect(routes).not.toContain('/admin/entities')
+    expect(routes).not.toContain('/admin/cby-staff')
+    expect(routes).not.toContain('/audit')
+    expect(routes).not.toContain('/settings')
+    expect(routes).not.toContain('/merchants')
+  })
+
+  it('SUPPORT_COMMITTEE does not see admin routes', () => {
+    const routes = navItemsForRole(UserRole.SUPPORT_COMMITTEE).map(i => i.route)
+    expect(routes).not.toContain('/admin/entities')
+    expect(routes).not.toContain('/audit')
+    expect(routes).not.toContain('/settings')
+  })
+
+  it('BANK_REVIEWER sees bank users management', () => {
+    const routes = navItemsForRole(UserRole.BANK_REVIEWER).map(i => i.route)
+    expect(routes).toContain('/bank/users')
+  })
+
+  it('DATA_ENTRY does not see bank users management', () => {
+    const routes = navItemsForRole(UserRole.DATA_ENTRY).map(i => i.route)
+    expect(routes).not.toContain('/bank/users')
+  })
+
+  it('EXECUTIVE_MEMBER sees reports', () => {
+    const routes = navItemsForRole(UserRole.EXECUTIVE_MEMBER).map(i => i.route)
+    expect(routes).toContain('/reports')
+  })
+
+  it('DATA_ENTRY does not see reports', () => {
+    const routes = navItemsForRole(UserRole.DATA_ENTRY).map(i => i.route)
+    expect(routes).not.toContain('/reports')
+  })
+
+  it('all roles see notifications', () => {
+    for (const role of Object.values(UserRole)) {
+      const routes = navItemsForRole(role).map(i => i.route)
+      expect(routes).toContain('/notifications')
+    }
+  })
+})
