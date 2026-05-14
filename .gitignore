@@ -1,0 +1,18 @@
+# Lovable prototype — reference only, not committed to root
+lovable/
+
+# BMad output (generated, not committed)
+_bmad-output/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+*.swp
+*.swo
+
+# Env files
+.env
+.env.local

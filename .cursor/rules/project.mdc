@@ -1,0 +1,34 @@
+---
+description: Yemen Flow Hub root repo rules — applies to docs, config, and root-level files
+globs: ["*.md", "docs/**", "AGENTS.md", "DESIGN.md", "AI-*.md"]
+alwaysApply: true
+---
+
+# Yemen Flow Hub — Root Rules
+
+Read `AGENTS.md` at the root before taking any action. It is the single file of truth.
+
+## This Repo Scope
+- Tracks: `docs/`, `DESIGN.md`, `AI-ENGINEERING-PROMPT.md`, `AGENTS.md`, root configs
+- Does NOT contain runnable app code
+- `lovable/` is a read-only reference prototype — never modify it
+
+## Git
+Root monorepo remote: `git@github.com:majedsiefalnasr/yemen-flow-hub.git`
+Tracks everything: docs, backend, frontend.
+
+- Docs/root changes → commit from root only
+- Backend changes → commit from `backend/` (team repo) then from root (monorepo)
+- Frontend changes → commit from `frontend/` (team repo) then from root (monorepo)
+- Commit format: `type(scope): description`
+
+## Docs Are Law
+Documentation in `docs/` overrides all AI assumptions.
+If a library doc conflicts with `docs/`, the project docs win.
+
+## Context7
+Always fetch current library docs via:
+```bash
+npx ctx7@latest library "<name>" "<question>"
+npx ctx7@latest docs <id> "<question>"
+```
