@@ -1,8 +1,9 @@
 # Lovable prototype — reference only, not committed to root
 lovable/
 
-# BMad output (generated, not committed)
-_bmad-output/
+# BMad output — exclude only truly transient artifacts
+_bmad-output/implementation-artifacts/
+_bmad-output/test-artifacts/
 
 # OS
 .DS_Store
