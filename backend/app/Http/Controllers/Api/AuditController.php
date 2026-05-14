@@ -14,7 +14,7 @@ class AuditController extends Controller
     public function index()
     {
         $user = request()->user();
-        if (!$user->hasRole(UserRole::CBY_ADMIN) && !$user->hasRole(UserRole::EXECUTIVE_DIRECTOR)) {
+        if (!$user->hasRole(UserRole::CBY_ADMIN)) {
             return ApiResponse::forbidden();
         }
 

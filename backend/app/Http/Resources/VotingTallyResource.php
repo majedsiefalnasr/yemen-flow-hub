@@ -17,6 +17,7 @@ class VotingTallyResource extends JsonResource
             'approve_count' => $this->resource->approveCount,
             'reject_count' => $this->resource->rejectCount,
             'abstain_count' => $this->resource->abstainCount,
+            'auto_abstain_count' => $this->resource->autoAbstainCount,
             'total_cast' => $this->resource->totalCast,
             'is_decided' => $this->resource->isDecided,
             'result' => $this->resource->result,

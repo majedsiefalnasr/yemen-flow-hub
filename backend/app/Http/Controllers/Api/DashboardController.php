@@ -49,11 +49,10 @@ class DashboardController extends Controller
             RequestStatus::BANK_APPROVED->value,
             RequestStatus::SUPPORT_APPROVED->value,
             RequestStatus::EXECUTIVE_APPROVED->value,
-            RequestStatus::CUSTOMS_ISSUED->value,
+            RequestStatus::CUSTOMS_DECLARATION_ISSUED->value,
             RequestStatus::COMPLETED->value,
         ])->whereBetween('updated_at', [$monthStart, $monthEnd])->count();
         $rejectedThisMonth = (clone $base)->whereIn('status', [
-            RequestStatus::BANK_REJECTED->value,
             RequestStatus::SUPPORT_REJECTED->value,
             RequestStatus::EXECUTIVE_REJECTED->value,
         ])->whereBetween('updated_at', [$monthStart, $monthEnd])->count();
@@ -62,11 +61,14 @@ class DashboardController extends Controller
 
         $openForMe = 0;
         $tiesPendingDirector = 0;
-        if ($user->hasRole(UserRole::EXECUTIVE_MEMBER) || $user->hasRole(UserRole::EXECUTIVE_DIRECTOR)) {
-            $votingQuery = ImportRequest::query()->where('status', RequestStatus::EXECUTIVE_VOTING->value);
+        if ($user->hasRole(UserRole::EXECUTIVE_MEMBER) || $user->hasRole(UserRole::COMMITTEE_DIRECTOR)) {
+            $votingQuery = ImportRequest::query()->whereIn('status', [
+                RequestStatus::EXECUTIVE_VOTING_OPEN->value,
+                RequestStatus::EXECUTIVE_VOTING_CLOSED->value,
+            ]);
             $openForMe = $votingQuery->count();
 
-            if ($user->hasRole(UserRole::EXECUTIVE_DIRECTOR)) {
+            if ($user->hasRole(UserRole::COMMITTEE_DIRECTOR)) {
                 $candidateIds = $votingQuery->pluck('id');
                 foreach ($candidateIds as $requestId) {
                     $counts = RequestVote::query()
@@ -77,7 +79,8 @@ class DashboardController extends Controller
                     $approve = (int) ($counts['APPROVE'] ?? 0);
                     $reject = (int) ($counts['REJECT'] ?? 0);
                     $abstain = (int) ($counts['ABSTAIN'] ?? 0);
-                    if (($approve + $reject + $abstain) === 6 && $approve < 4 && $reject < 4) {
+                    $autoAbstain = (int) ($counts['AUTO_ABSTAIN_TIMEOUT'] ?? 0);
+                    if (($approve + $reject + $abstain + $autoAbstain) === 6 && $approve < 4 && $reject < 4) {
                         $tiesPendingDirector++;
                     }
                 }

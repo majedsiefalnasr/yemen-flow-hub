@@ -36,22 +36,22 @@ class PermissionSeeder extends Seeder
         }
 
         $map = [
-            'request.create' => [UserRole::BANK_MANAGER, UserRole::DATA_ENTRY],
-            'request.review' => [UserRole::BANK_MANAGER, UserRole::BANK_REVIEWER],
+            'request.create' => [UserRole::DATA_ENTRY],
+            'request.review' => [UserRole::BANK_REVIEWER],
             'request.approve' => [UserRole::SUPPORT_COMMITTEE],
             'request.reject' => [UserRole::SUPPORT_COMMITTEE],
             'request.claim' => [UserRole::SUPPORT_COMMITTEE],
-            'swift.upload' => [UserRole::BANK_MANAGER, UserRole::SWIFT_OFFICER],
-            'voting.cast' => [UserRole::EXECUTIVE_MEMBER, UserRole::EXECUTIVE_DIRECTOR],
-            'voting.finalize' => [UserRole::EXECUTIVE_DIRECTOR],
-            'customs.issue' => [UserRole::EXECUTIVE_DIRECTOR],
-            'reports.view' => [UserRole::CBY_ADMIN, UserRole::BANK_MANAGER, UserRole::EXECUTIVE_MEMBER, UserRole::EXECUTIVE_DIRECTOR],
-            'audit.view' => [UserRole::CBY_ADMIN, UserRole::BANK_MANAGER, UserRole::SUPPORT_COMMITTEE, UserRole::EXECUTIVE_MEMBER, UserRole::EXECUTIVE_DIRECTOR],
-            'merchants.manage' => [UserRole::CBY_ADMIN, UserRole::BANK_MANAGER, UserRole::DATA_ENTRY],
-            'users.manage' => [UserRole::CBY_ADMIN, UserRole::BANK_MANAGER],
+            'swift.upload' => [UserRole::SWIFT_OFFICER],
+            'voting.cast' => [UserRole::EXECUTIVE_MEMBER, UserRole::COMMITTEE_DIRECTOR],
+            'voting.finalize' => [UserRole::COMMITTEE_DIRECTOR],
+            'customs.issue' => [UserRole::COMMITTEE_DIRECTOR],
+            'reports.view' => [UserRole::CBY_ADMIN, UserRole::EXECUTIVE_MEMBER, UserRole::COMMITTEE_DIRECTOR],
+            'audit.view' => [UserRole::CBY_ADMIN, UserRole::SUPPORT_COMMITTEE, UserRole::EXECUTIVE_MEMBER, UserRole::COMMITTEE_DIRECTOR],
+            'merchants.manage' => [UserRole::CBY_ADMIN, UserRole::DATA_ENTRY],
+            'users.manage' => [UserRole::CBY_ADMIN],
             'entities.manage' => [UserRole::CBY_ADMIN],
             'docrules.manage' => [UserRole::CBY_ADMIN],
-            'roles.manage' => [UserRole::CBY_ADMIN, UserRole::BANK_MANAGER],
+            'roles.manage' => [UserRole::CBY_ADMIN],
         ];
 
         DB::table('role_permissions')->delete();
@@ -67,13 +67,8 @@ class PermissionSeeder extends Seeder
             }
         }
 
-        app(PermissionService::class)->clearRoleCache(UserRole::CBY_ADMIN);
-        app(PermissionService::class)->clearRoleCache(UserRole::BANK_MANAGER);
-        app(PermissionService::class)->clearRoleCache(UserRole::DATA_ENTRY);
-        app(PermissionService::class)->clearRoleCache(UserRole::BANK_REVIEWER);
-        app(PermissionService::class)->clearRoleCache(UserRole::SWIFT_OFFICER);
-        app(PermissionService::class)->clearRoleCache(UserRole::SUPPORT_COMMITTEE);
-        app(PermissionService::class)->clearRoleCache(UserRole::EXECUTIVE_MEMBER);
-        app(PermissionService::class)->clearRoleCache(UserRole::EXECUTIVE_DIRECTOR);
+        foreach (UserRole::cases() as $role) {
+            app(PermissionService::class)->clearRoleCache($role);
+        }
     }
 }

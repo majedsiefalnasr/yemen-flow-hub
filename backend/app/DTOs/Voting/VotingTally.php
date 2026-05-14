@@ -8,6 +8,7 @@ class VotingTally
         public int $approveCount,
         public int $rejectCount,
         public int $abstainCount,
+        public int $autoAbstainCount,
         public int $totalCast,
         public bool $isDecided,
         public string $result

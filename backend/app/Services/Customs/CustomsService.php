@@ -30,8 +30,8 @@ class CustomsService
             throw new CustomsException('Customs declaration can only be generated for EXECUTIVE_APPROVED requests.');
         }
 
-        if (!$issuer->hasRole(UserRole::EXECUTIVE_DIRECTOR)) {
-            throw new CustomsException('Only executive director can generate customs declarations.');
+        if (!$issuer->hasRole(UserRole::COMMITTEE_DIRECTOR)) {
+            throw new CustomsException('Only committee director can generate customs declarations.');
         }
 
         if ($request->customsDeclaration()->exists()) {
@@ -119,7 +119,8 @@ class CustomsService
             'reference_number' => $request->reference_number,
             'bank' => [
                 'id' => $request->bank?->id,
-                'name' => $request->bank?->name,
+                'name_ar' => $request->bank?->name_ar,
+                'name_en' => $request->bank?->name_en,
                 'code' => $request->bank?->code,
             ],
             'supplier_name' => $request->supplier_name,

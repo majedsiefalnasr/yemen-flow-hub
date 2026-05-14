@@ -4,15 +4,17 @@ namespace App\Services\Workflow;
 
 use App\Enums\AuditAction;
 use App\Enums\RequestStatus;
+use App\Enums\UserRole;
 use App\Events\RequestTransitioned;
 use App\Exceptions\InvalidTransitionException;
 use App\Exceptions\SelfReviewException;
 use App\Exceptions\UnauthorizedTransitionException;
+use App\Listeners\SendWorkflowNotifications;
 use App\Models\ImportRequest;
 use App\Models\RequestStageHistory;
 use App\Models\User;
-use App\Listeners\SendWorkflowNotifications;
 use App\Services\Audit\AuditService;
+use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\DB;
 
 class WorkflowService
@@ -101,9 +103,30 @@ class WorkflowService
                 $payload['revision_count'] = $request->revision_count + 1;
             }
 
-            $request->fill($payload);
-            $this->applyClaimSideEffects($request, $action, $actor);
-            $request->save();
+            // Use App::instance so App::offsetUnset fully removes the binding (bind() leaves it in $bindings)
+            App::instance('workflow.transition.active', true);
+            try {
+                $request->fill($payload);
+                $this->applyClaimSideEffects($request, $action, $actor);
+                $request->save();
+            } finally {
+                App::offsetUnset('workflow.transition.active');
+            }
+
+            // Auto-chain: BANK_APPROVED → SUPPORT_REVIEW_PENDING
+            if ($action === 'bank_approve') {
+                $this->autoChain($request, $actor, RequestStatus::SUPPORT_REVIEW_PENDING, UserRole::SUPPORT_COMMITTEE, 'move_to_support_queue');
+            }
+
+            // Auto-chain: SUPPORT_APPROVED → WAITING_FOR_SWIFT
+            if ($action === 'support_approve') {
+                $this->autoChain($request, $actor, RequestStatus::WAITING_FOR_SWIFT, UserRole::SWIFT_OFFICER, 'move_to_swift_queue');
+            }
+
+            // Auto-chain: SWIFT_UPLOADED → WAITING_FOR_VOTING_OPEN
+            if ($action === 'swift_upload') {
+                $this->autoChain($request, $actor, RequestStatus::WAITING_FOR_VOTING_OPEN, UserRole::COMMITTEE_DIRECTOR, 'move_to_voting_queue');
+            }
 
             RequestStageHistory::query()->create([
                 'request_id' => $request->id,
@@ -117,42 +140,6 @@ class WorkflowService
                 'reason' => $reason,
                 'metadata' => $transitionMetadata,
             ]);
-
-            // Inline auto-chain: swift upload immediately enters executive voting.
-            if ($action === 'swift_upload') {
-                $fromStatus2 = $request->status;
-                $fromOwner2 = $request->current_owner_role;
-
-                $request->update([
-                    'status' => RequestStatus::EXECUTIVE_VOTING,
-                    'current_owner_role' => \App\Enums\UserRole::EXECUTIVE_MEMBER,
-                ]);
-
-                RequestStageHistory::query()->create([
-                    'request_id' => $request->id,
-                    'from_status' => $fromStatus2,
-                    'to_status' => RequestStatus::EXECUTIVE_VOTING,
-                    'from_owner_role' => $fromOwner2,
-                    'to_owner_role' => \App\Enums\UserRole::EXECUTIVE_MEMBER,
-                    'actor_id' => $actor->id,
-                    'actor_role' => $actor->role,
-                    'action' => 'start_voting',
-                    'reason' => null,
-                    'metadata' => ['auto_chained' => true],
-                ]);
-
-                $this->auditService->log(
-                    AuditAction::STATUS_TRANSITION,
-                    $actor,
-                    $request,
-                    [
-                        'action' => 'start_voting',
-                        'from_status' => $fromStatus2?->value,
-                        'to_status' => RequestStatus::EXECUTIVE_VOTING->value,
-                        'metadata' => ['auto_chained' => true],
-                    ]
-                );
-            }
 
             $this->auditService->log(
                 AuditAction::STATUS_TRANSITION,
@@ -178,15 +165,61 @@ class WorkflowService
         return $request->refresh();
     }
 
+    private function autoChain(
+        ImportRequest $request,
+        User $actor,
+        RequestStatus $toStatus,
+        ?UserRole $nextOwner,
+        string $action
+    ): void {
+        $fromStatus = $request->status;
+        $fromOwner = $request->current_owner_role;
+
+        App::instance('workflow.transition.active', true);
+        try {
+            $request->forceFill([
+                'status' => $toStatus,
+                'current_owner_role' => $nextOwner,
+            ])->save();
+        } finally {
+            App::offsetUnset('workflow.transition.active');
+        }
+
+        RequestStageHistory::query()->create([
+            'request_id' => $request->id,
+            'from_status' => $fromStatus,
+            'to_status' => $toStatus,
+            'from_owner_role' => $fromOwner,
+            'to_owner_role' => $nextOwner,
+            'actor_id' => $actor->id,
+            'actor_role' => $actor->role,
+            'action' => $action,
+            'reason' => null,
+            'metadata' => ['auto_chained' => true],
+        ]);
+
+        $this->auditService->log(
+            AuditAction::STATUS_TRANSITION,
+            $actor,
+            $request,
+            [
+                'action' => $action,
+                'from_status' => $fromStatus?->value,
+                'to_status' => $toStatus->value,
+                'metadata' => ['auto_chained' => true],
+            ]
+        );
+    }
+
     private function applyClaimSideEffects(ImportRequest $request, string $action, User $actor): void
     {
-        $ttl = (int) config('workflow.support_claim_ttl_hours', 24);
+        $ttlMinutes = (int) config('workflow.support_claim_ttl_minutes', 15);
 
         match ($action) {
             'support_claim' => $request->forceFill([
                 'claimed_by' => $actor->id,
                 'claimed_at' => now(),
-                'claim_expires_at' => now()->addHours($ttl),
+                'claim_expires_at' => now()->addMinutes($ttlMinutes),
             ]),
             'support_release', 'support_approve', 'support_reject' => $request->forceFill([
                 'claimed_by' => null,

@@ -30,7 +30,7 @@ class SendWorkflowNotifications
             $request->creator?->notify(new RequestApprovedNotification($request));
         }
 
-        if (in_array($status, [RequestStatus::BANK_REJECTED, RequestStatus::SUPPORT_REJECTED, RequestStatus::EXECUTIVE_REJECTED], true)) {
+        if (in_array($status, [RequestStatus::SUPPORT_REJECTED, RequestStatus::EXECUTIVE_REJECTED], true)) {
             $creator = $request->creator;
             $reviewers = User::query()->where('bank_id', $request->bank_id)->where('role', UserRole::BANK_REVIEWER->value)->get();
             if ($creator) {
@@ -39,7 +39,7 @@ class SendWorkflowNotifications
             $reviewers->each(fn (User $u) => $u->notify(new RequestRejectedNotification($request)));
         }
 
-        if ($status === RequestStatus::RETURNED_TO_DATA_ENTRY) {
+        if ($status === RequestStatus::DRAFT_REJECTED_INTERNAL) {
             User::query()->where('bank_id', $request->bank_id)->where('role', UserRole::DATA_ENTRY->value)->get()
                 ->each(fn (User $u) => $u->notify(new RequestReturnedNotification($request)));
         }
@@ -49,12 +49,12 @@ class SendWorkflowNotifications
                 ->each(fn (User $u) => $u->notify(new SwiftUploadRequestedNotification($request)));
         }
 
-        if ($status === RequestStatus::EXECUTIVE_VOTING) {
-            User::query()->whereIn('role', [UserRole::EXECUTIVE_MEMBER->value, UserRole::EXECUTIVE_DIRECTOR->value])->get()
+        if ($status === RequestStatus::EXECUTIVE_VOTING_OPEN) {
+            User::query()->whereIn('role', [UserRole::EXECUTIVE_MEMBER->value, UserRole::COMMITTEE_DIRECTOR->value])->get()
                 ->each(fn (User $u) => $u->notify(new VotingOpenedNotification($request)));
         }
 
-        if ($status === RequestStatus::CUSTOMS_ISSUED) {
+        if ($status === RequestStatus::CUSTOMS_DECLARATION_ISSUED) {
             $creator = $request->creator;
             if ($creator) {
                 $creator->notify(new CustomsIssuedNotification($request));

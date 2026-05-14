@@ -13,7 +13,7 @@ return new class extends Migration {
             $table->index('request_id', 'rv_request_id_idx');
             $table->unsignedBigInteger('user_id');
             $table->index('user_id', 'rv_user_id_idx');
-            $table->enum('vote', ['APPROVE', 'REJECT', 'ABSTAIN']);
+            $table->enum('vote', ['APPROVE', 'REJECT', 'ABSTAIN', 'AUTO_ABSTAIN_TIMEOUT']);
             $table->text('justification')->nullable();
             $table->boolean('is_director_override')->default(false);
             $table->timestamps();

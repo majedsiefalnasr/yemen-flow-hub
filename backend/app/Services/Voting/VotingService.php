@@ -25,12 +25,12 @@ class VotingService
 
     public function castVote(ImportRequest $request, User $voter, VoteType $vote, ?string $justification): RequestVote
     {
-        if ($request->status !== RequestStatus::EXECUTIVE_VOTING) {
+        if ($request->status !== RequestStatus::EXECUTIVE_VOTING_OPEN) {
             throw new VotingException('Request is not in executive voting stage.');
         }
 
-        if (!$voter->hasRole(UserRole::EXECUTIVE_MEMBER)) {
-            throw new VotingException('Only executive members can cast votes.');
+        if (!$voter->hasRole(UserRole::EXECUTIVE_MEMBER) && !$voter->hasRole(UserRole::COMMITTEE_DIRECTOR)) {
+            throw new VotingException('Only executive members and committee director can cast votes.');
         }
 
         if (RequestVote::query()->where('request_id', $request->id)->where('user_id', $voter->id)->exists()) {
@@ -53,9 +53,12 @@ class VotingService
 
         $tally = $this->tally($request->fresh());
         if ($tally->approveCount >= 4) {
-            $this->workflowService->transition($request->fresh(), 'finalize_approved', $voter, null, ['auto_finalized' => true]);
+            // Must transition OPEN → CLOSED before CLOSED → APPROVED
+            $closed = $this->workflowService->transition($request->fresh(), 'close_voting', $voter, null, ['auto_finalized' => true]);
+            $this->workflowService->transition($closed, 'finalize_approved', $voter, null, ['auto_finalized' => true]);
         } elseif ($tally->rejectCount >= 4) {
-            $this->workflowService->transition($request->fresh(), 'finalize_rejected', $voter, null, ['auto_finalized' => true]);
+            $closed = $this->workflowService->transition($request->fresh(), 'close_voting', $voter, null, ['auto_finalized' => true]);
+            $this->workflowService->transition($closed, 'finalize_rejected', $voter, null, ['auto_finalized' => true]);
         }
 
         return $record->refresh();
@@ -72,7 +75,8 @@ class VotingService
         $approve = (int) ($counts[VoteType::APPROVE->value] ?? 0);
         $reject = (int) ($counts[VoteType::REJECT->value] ?? 0);
         $abstain = (int) ($counts[VoteType::ABSTAIN->value] ?? 0);
-        $totalCast = $approve + $reject + $abstain;
+        $autoAbstain = (int) ($counts[VoteType::AUTO_ABSTAIN_TIMEOUT->value] ?? 0);
+        $totalCast = $approve + $reject + $abstain + $autoAbstain;
 
         $result = 'PENDING';
         $isDecided = false;
@@ -88,13 +92,13 @@ class VotingService
             $isDecided = true;
         }
 
-        return new VotingTally($approve, $reject, $abstain, $totalCast, $isDecided, $result);
+        return new VotingTally($approve, $reject, $abstain, $autoAbstain, $totalCast, $isDecided, $result);
     }
 
     public function finalize(ImportRequest $request, User $director, ?VoteType $directorVote = null): ImportRequest
     {
-        if (!$director->hasRole(UserRole::EXECUTIVE_DIRECTOR)) {
-            throw new VotingException('Only executive director can finalize tie votes.');
+        if (!$director->hasRole(UserRole::COMMITTEE_DIRECTOR)) {
+            throw new VotingException('Only committee director can finalize tie votes.');
         }
 
         $tally = $this->tally($request);
@@ -126,11 +130,11 @@ class VotingService
         VoteType $finalDecision,
         string $justification
     ): ImportRequest {
-        if (!$director->hasRole(UserRole::EXECUTIVE_DIRECTOR)) {
-            throw new VotingException('Only executive director can override voting decisions.');
+        if (!$director->hasRole(UserRole::COMMITTEE_DIRECTOR)) {
+            throw new VotingException('Only committee director can override voting decisions.');
         }
 
-        if ($request->status !== RequestStatus::EXECUTIVE_VOTING) {
+        if ($request->status !== RequestStatus::EXECUTIVE_VOTING_OPEN) {
             throw new VotingException('Override is only allowed during executive voting stage.');
         }
 
@@ -150,22 +154,20 @@ class VotingService
         );
 
         $action = $finalDecision === VoteType::APPROVE ? 'finalize_approved' : 'finalize_rejected';
+        $overrideMeta = [
+            'was_override' => true,
+            'tally_before_override' => [
+                'approve' => $tally->approveCount,
+                'reject' => $tally->rejectCount,
+                'abstain' => $tally->abstainCount,
+                'total_cast' => $tally->totalCast,
+                'result' => $tally->result,
+            ],
+        ];
 
-        return $this->workflowService->transition(
-            $request->fresh(),
-            $action,
-            $director,
-            $justification,
-            [
-                'was_override' => true,
-                'tally_before_override' => [
-                    'approve' => $tally->approveCount,
-                    'reject' => $tally->rejectCount,
-                    'abstain' => $tally->abstainCount,
-                    'total_cast' => $tally->totalCast,
-                    'result' => $tally->result,
-                ],
-            ]
-        );
+        // Must transition OPEN → CLOSED before CLOSED → final decision
+        $closed = $this->workflowService->transition($request->fresh(), 'close_voting', $director, $justification, $overrideMeta);
+
+        return $this->workflowService->transition($closed, $action, $director, $justification, $overrideMeta);
     }
 }

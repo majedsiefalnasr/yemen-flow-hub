@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Enums\RequestStatus;
+use App\Enums\UserRole;
 use App\Http\Requests\StoreImportRequest;
 use App\Http\Requests\UpdateImportRequest;
 use App\Http\Resources\ImportRequestListResource;
@@ -11,6 +12,7 @@ use App\Http\Resources\StageHistoryResource;
 use App\Models\ImportRequest;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\App;
 use OpenApi\Attributes as OA;
 
 class ImportRequestController extends Controller
@@ -27,7 +29,7 @@ class ImportRequestController extends Controller
         $this->authorize('viewAny', ImportRequest::class);
 
         $query = ImportRequest::query()
-            ->with(['bank', 'merchant', 'claimedBy'])
+            ->with(['bank', 'merchant', 'claimedByUser'])
             ->forUser($request->user())
             ->when($request->filled('status'), function ($q) use ($request) {
                 $statuses = array_filter(array_map('trim', explode(',', (string) $request->query('status'))));
@@ -45,14 +47,14 @@ class ImportRequestController extends Controller
             ->when($request->filled('to_date'), fn ($q) => $q->whereDate('created_at', '<=', $request->string('to_date')->toString()))
             ->latest('id');
 
-        if ($request->user()->hasRole(\App\Enums\UserRole::SUPPORT_COMMITTEE)) {
+        if ($request->user()->hasRole(UserRole::SUPPORT_COMMITTEE)) {
             $claimFilter = (string) $request->query('claim_filter', 'all');
 
             if ($claimFilter === 'available') {
                 $query->where(function ($q) {
-                    $q->where('status', RequestStatus::BANK_APPROVED->value)
+                    $q->where('status', RequestStatus::SUPPORT_REVIEW_PENDING->value)
                         ->orWhere(function ($inner) {
-                            $inner->where('status', RequestStatus::SUPPORT_UNDER_REVIEW->value)
+                            $inner->where('status', RequestStatus::SUPPORT_REVIEW_IN_PROGRESS->value)
                                 ->whereNotNull('claimed_by')
                                 ->where(function ($expires) {
                                     $expires->whereNull('claim_expires_at')
@@ -61,7 +63,7 @@ class ImportRequestController extends Controller
                         });
                 });
             } elseif ($claimFilter === 'mine') {
-                $query->where('status', RequestStatus::SUPPORT_UNDER_REVIEW->value)
+                $query->where('status', RequestStatus::SUPPORT_REVIEW_IN_PROGRESS->value)
                     ->where('claimed_by', $request->user()->id)
                     ->whereNotNull('claim_expires_at')
                     ->where('claim_expires_at', '>', now());
@@ -100,15 +102,20 @@ class ImportRequestController extends Controller
     {
         $this->authorize('create', ImportRequest::class);
 
-        $importRequest = ImportRequest::query()->create([
-            ...$request->validated(),
-            'bank_id' => $request->user()->bank_id,
-            'created_by' => $request->user()->id,
-            'status' => RequestStatus::DRAFT,
-            'current_owner_role' => \App\Enums\UserRole::DATA_ENTRY,
-        ]);
+        App::instance('workflow.transition.active', true);
+        try {
+            $importRequest = ImportRequest::query()->create([
+                ...$request->validated(),
+                'bank_id' => $request->user()->bank_id,
+                'created_by' => $request->user()->id,
+                'status' => RequestStatus::DRAFT,
+                'current_owner_role' => UserRole::DATA_ENTRY,
+            ]);
+        } finally {
+            App::offsetUnset('workflow.transition.active');
+        }
 
-        return ApiResponse::success(new ImportRequestResource($importRequest->load(['bank', 'merchant', 'claimedBy'])), 'Draft request created.', 201);
+        return ApiResponse::success(new ImportRequestResource($importRequest->load(['bank', 'merchant', 'claimedByUser'])), 'Draft request created.', 201);
     }
 
     #[OA\Get(
@@ -122,7 +129,7 @@ class ImportRequestController extends Controller
     {
         $this->authorize('view', $importRequest);
 
-        return ApiResponse::success(new ImportRequestResource($importRequest->load(['bank', 'merchant', 'claimedBy'])), 'Request retrieved successfully.');
+        return ApiResponse::success(new ImportRequestResource($importRequest->load(['bank', 'merchant', 'claimedByUser'])), 'Request retrieved successfully.');
     }
 
     #[OA\Put(
@@ -138,7 +145,7 @@ class ImportRequestController extends Controller
 
         $importRequest->update($request->validated());
 
-        return ApiResponse::success(new ImportRequestResource($importRequest->refresh()->load(['bank', 'merchant', 'claimedBy'])), 'Request updated successfully.');
+        return ApiResponse::success(new ImportRequestResource($importRequest->refresh()->load(['bank', 'merchant', 'claimedByUser'])), 'Request updated successfully.');
     }
 
     #[OA\Delete(

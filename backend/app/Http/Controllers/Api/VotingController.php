@@ -28,12 +28,15 @@ class VotingController extends Controller
     public function index()
     {
         $user = request()->user();
-        if (!$user->hasRole(UserRole::EXECUTIVE_MEMBER) && !$user->hasRole(UserRole::EXECUTIVE_DIRECTOR)) {
+        if (!$user->hasRole(UserRole::EXECUTIVE_MEMBER) && !$user->hasRole(UserRole::COMMITTEE_DIRECTOR)) {
             return ApiResponse::forbidden();
         }
 
         $items = ImportRequest::query()
-            ->where('status', RequestStatus::EXECUTIVE_VOTING->value)
+            ->whereIn('status', [
+                RequestStatus::EXECUTIVE_VOTING_OPEN->value,
+                RequestStatus::EXECUTIVE_VOTING_CLOSED->value,
+            ])
             ->with('bank')
             ->latest('id')
             ->paginate(20);
@@ -45,7 +48,7 @@ class VotingController extends Controller
     public function show(ImportRequest $importRequest)
     {
         $user = request()->user();
-        if (!$user->hasRole(UserRole::EXECUTIVE_MEMBER) && !$user->hasRole(UserRole::EXECUTIVE_DIRECTOR)) {
+        if (!$user->hasRole(UserRole::EXECUTIVE_MEMBER) && !$user->hasRole(UserRole::COMMITTEE_DIRECTOR)) {
             return ApiResponse::forbidden();
         }
 
@@ -90,7 +93,7 @@ class VotingController extends Controller
         return ApiResponse::success(new ImportRequestResource($updated->load('bank')), 'Director decision applied.');
     }
 
-    #[OA\Post(path: '/api/voting/{importRequest}/override', tags: ['Voting'], summary: 'Executive director override and finalize', parameters: [new OA\Parameter(name: 'importRequest', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], requestBody: new OA\RequestBody(required: true, content: new OA\JsonContent(required: ['decision', 'justification'], properties: [new OA\Property(property: 'decision', type: 'string', enum: ['APPROVE', 'REJECT']), new OA\Property(property: 'justification', type: 'string', minLength: 3, maxLength: 3000)])), responses: [new OA\Response(response: 200, description: 'Override decision applied')])]
+    #[OA\Post(path: '/api/voting/{importRequest}/override', tags: ['Voting'], summary: 'Committee director override and finalize', parameters: [new OA\Parameter(name: 'importRequest', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], requestBody: new OA\RequestBody(required: true, content: new OA\JsonContent(required: ['decision', 'justification'], properties: [new OA\Property(property: 'decision', type: 'string', enum: ['APPROVE', 'REJECT']), new OA\Property(property: 'justification', type: 'string', minLength: 3, maxLength: 3000)])), responses: [new OA\Response(response: 200, description: 'Override decision applied')])]
     public function override(OverrideVoteRequest $request, ImportRequest $importRequest)
     {
         if (!$request->user()->hasPermission('voting.finalize')) {

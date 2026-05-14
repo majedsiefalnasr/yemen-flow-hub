@@ -22,7 +22,7 @@ class MerchantSeeder extends Seeder
         Bank::query()->where('is_active', true)->orderBy('id')->get()->each(function (Bank $bank) use (&$inactiveBudget, $templates): void {
             $manager = User::query()
                 ->where('bank_id', $bank->id)
-                ->where('role', 'BANK_MANAGER')
+                ->where('role', 'DATA_ENTRY')
                 ->first();
 
             foreach ($templates as $i => $template) {

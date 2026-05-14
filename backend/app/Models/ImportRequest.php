@@ -2,8 +2,11 @@
 
 namespace App\Models;
 
+use App\Enums\Currency;
 use App\Enums\RequestStatus;
 use App\Enums\UserRole;
+use App\Enums\VotingSessionStatus;
+use App\Exceptions\DirectStatusMutationException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -20,6 +23,7 @@ class ImportRequest extends Model
         'bank_id',
         'merchant_id',
         'created_by',
+        'last_updated_by',
         'currency',
         'amount',
         'supplier_name',
@@ -32,11 +36,24 @@ class ImportRequest extends Model
         'claimed_at',
         'claim_expires_at',
         'submitted_at',
+        'submitted_by',
         'bank_approved_at',
+        'reviewed_by',
+        'rejected_by',
+        'resubmitted_by',
         'support_approved_at',
+        'support_reviewed_by',
         'swift_uploaded_at',
+        'swift_uploaded_by',
         'executive_decided_at',
         'customs_issued_at',
+        'voting_opened_by',
+        'voting_opened_at',
+        'voting_closed_by',
+        'voting_closed_at',
+        'voting_session_status',
+        'final_decision_at',
+        'customs_declaration_id',
         'revision_count',
     ];
 
@@ -45,6 +62,8 @@ class ImportRequest extends Model
         return [
             'status' => RequestStatus::class,
             'current_owner_role' => UserRole::class,
+            'currency' => Currency::class,
+            'voting_session_status' => VotingSessionStatus::class,
             'amount' => 'decimal:2',
             'claimed_at' => 'datetime',
             'claim_expires_at' => 'datetime',
@@ -54,7 +73,19 @@ class ImportRequest extends Model
             'swift_uploaded_at' => 'datetime',
             'executive_decided_at' => 'datetime',
             'customs_issued_at' => 'datetime',
+            'voting_opened_at' => 'datetime',
+            'voting_closed_at' => 'datetime',
+            'final_decision_at' => 'datetime',
         ];
+    }
+
+    public function setAttribute($key, $value): static
+    {
+        if ($key === 'status' && !app()->bound('workflow.transition.active')) {
+            throw new DirectStatusMutationException();
+        }
+
+        return parent::setAttribute($key, $value);
     }
 
     public function bank(): BelongsTo
@@ -67,7 +98,52 @@ class ImportRequest extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
-    public function claimedBy(): BelongsTo
+    public function lastUpdatedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'last_updated_by');
+    }
+
+    public function submittedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'submitted_by');
+    }
+
+    public function reviewedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'reviewed_by');
+    }
+
+    public function rejectedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'rejected_by');
+    }
+
+    public function resubmittedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'resubmitted_by');
+    }
+
+    public function supportReviewedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'support_reviewed_by');
+    }
+
+    public function swiftUploadedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'swift_uploaded_by');
+    }
+
+    public function votingOpenedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'voting_opened_by');
+    }
+
+    public function votingClosedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'voting_closed_by');
+    }
+
+    public function claimedByUser(): BelongsTo
     {
         return $this->belongsTo(User::class, 'claimed_by');
     }
@@ -119,10 +195,7 @@ class ImportRequest extends Model
     public function isEditable(): bool
     {
         return $this->current_owner_role === UserRole::DATA_ENTRY
-            && in_array($this->status, [
-                RequestStatus::DRAFT,
-                RequestStatus::RETURNED_TO_DATA_ENTRY,
-            ], true);
+            && $this->status?->isEditable() === true;
     }
 
     public function isClaimed(): bool
@@ -152,7 +225,7 @@ class ImportRequest extends Model
 
             $year = now()->format('Y');
             $prefix = "YFH-{$year}-";
-            $latest = self::query()
+            $latest = self::withTrashed()
                 ->where('reference_number', 'like', $prefix.'%')
                 ->latest('id')
                 ->value('reference_number');

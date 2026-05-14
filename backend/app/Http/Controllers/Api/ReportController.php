@@ -56,7 +56,6 @@ class ReportController extends Controller
             'completed' => ImportRequest::query()->where('status', RequestStatus::COMPLETED->value)->count(),
             'approved' => ImportRequest::query()->where('status', RequestStatus::EXECUTIVE_APPROVED->value)->count(),
             'rejected' => ImportRequest::query()->whereIn('status', [
-                RequestStatus::BANK_REJECTED->value,
                 RequestStatus::SUPPORT_REJECTED->value,
                 RequestStatus::EXECUTIVE_REJECTED->value,
             ])->count(),
@@ -88,15 +87,15 @@ class ReportController extends Controller
         }
 
         $executiveFinal = ImportRequest::query()
-            ->whereIn('status', [RequestStatus::EXECUTIVE_APPROVED->value, RequestStatus::EXECUTIVE_REJECTED->value, RequestStatus::CUSTOMS_ISSUED->value, RequestStatus::COMPLETED->value])
+            ->whereIn('status', [RequestStatus::EXECUTIVE_APPROVED->value, RequestStatus::EXECUTIVE_REJECTED->value, RequestStatus::CUSTOMS_DECLARATION_ISSUED->value, RequestStatus::COMPLETED->value])
             ->count();
 
-        $approved = ImportRequest::query()->whereIn('status', [RequestStatus::EXECUTIVE_APPROVED->value, RequestStatus::CUSTOMS_ISSUED->value, RequestStatus::COMPLETED->value])->count();
+        $approved = ImportRequest::query()->whereIn('status', [RequestStatus::EXECUTIVE_APPROVED->value, RequestStatus::CUSTOMS_DECLARATION_ISSUED->value, RequestStatus::COMPLETED->value])->count();
         $rejected = ImportRequest::query()->where('status', RequestStatus::EXECUTIVE_REJECTED->value)->count();
 
         $ties = 0;
         $candidateIds = ImportRequest::query()
-            ->whereIn('status', [RequestStatus::EXECUTIVE_APPROVED->value, RequestStatus::EXECUTIVE_REJECTED->value, RequestStatus::EXECUTIVE_VOTING->value, RequestStatus::CUSTOMS_ISSUED->value, RequestStatus::COMPLETED->value])
+            ->whereIn('status', [RequestStatus::EXECUTIVE_APPROVED->value, RequestStatus::EXECUTIVE_REJECTED->value, RequestStatus::EXECUTIVE_VOTING_OPEN->value, RequestStatus::EXECUTIVE_VOTING_CLOSED->value, RequestStatus::CUSTOMS_DECLARATION_ISSUED->value, RequestStatus::COMPLETED->value])
             ->pluck('id');
         foreach ($candidateIds as $requestId) {
             $counts = RequestVote::query()
