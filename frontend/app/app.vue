@@ -1,12 +1,5 @@
 <script setup lang="ts">
-import { useAuthStore } from './stores/auth.store'
-
-const auth = useAuthStore()
-
-// Hydrate auth state on app load — 401 is caught silently inside fetchUser()
-onMounted(async () => {
-  await auth.fetchUser()
-})
+// Auth hydration is handled by plugins/01.auth.client.ts before any route middleware fires
 </script>
 
 <template>

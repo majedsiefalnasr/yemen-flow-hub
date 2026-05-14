@@ -3,10 +3,6 @@ import AppSidebar from '../components/layout/AppSidebar.vue'
 import AppHeader from '../components/layout/AppHeader.vue'
 import { ref } from 'vue'
 
-definePageMeta({
-  middleware: ['auth'],
-})
-
 const mobileMenuOpen = ref(false)
 
 function toggleMobileMenu() {

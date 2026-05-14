@@ -33,6 +33,12 @@ export const useAuthStore = defineStore('auth', {
       const config = useRuntimeConfig()
       const baseURL = config.public.apiBase as string
 
+      // Sanctum SPA requires CSRF cookie initialization before the login POST
+      await $fetch('/sanctum/csrf-cookie', {
+        baseURL,
+        credentials: 'include',
+      })
+
       const response = await $fetch<ApiResponse<AuthUser>>('/api/auth/login', {
         method: 'POST',
         baseURL,
@@ -40,6 +46,10 @@ export const useAuthStore = defineStore('auth', {
         headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
         body: { email, password },
       })
+
+      if (!response.data.is_active) {
+        throw { statusCode: 403, data: { success: false, message: 'حسابك موقوف. يرجى التواصل مع المسؤول.' } }
+      }
 
       this.user = response.data
       this.isAuthenticated = true
@@ -76,6 +86,11 @@ export const useAuthStore = defineStore('auth', {
           credentials: 'include',
           headers: { Accept: 'application/json' },
         })
+        if (!response.data.is_active) {
+          this.user = null
+          this.isAuthenticated = false
+          return
+        }
         this.user = response.data
         this.isAuthenticated = true
       }

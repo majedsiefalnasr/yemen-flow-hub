@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../../stores/auth.store'
-import { NAV_ITEMS } from '../../constants/workflow'
+import { NAV_ITEMS, ROLE_LABELS } from '../../constants/workflow'
 
 const props = defineProps<{
   mobileOpen: boolean
@@ -14,6 +14,7 @@ const emit = defineEmits<{
 
 const auth = useAuthStore()
 const route = useRoute()
+const router = useRouter()
 
 const visibleNavItems = computed(() => {
   if (!auth.user) return []
@@ -21,15 +22,12 @@ const visibleNavItems = computed(() => {
 })
 
 function isActive(itemRoute: string): boolean {
-  if (itemRoute === '/') {
-    return route.path === '/'
-  }
-  return route.path.startsWith(itemRoute)
+  return route.path === itemRoute || route.path.startsWith(itemRoute + '/')
 }
 
 async function handleLogout() {
   await auth.logout()
-  navigateTo('/login')
+  await router.push('/login')
 }
 </script>
 
@@ -82,7 +80,7 @@ async function handleLogout() {
         </div>
         <div class="user-details">
           <span class="user-name">{{ auth.user?.name }}</span>
-          <span class="user-role-chip">{{ auth.user?.role }}</span>
+          <span class="user-role-chip">{{ auth.user ? (ROLE_LABELS[auth.user.role] ?? auth.user.role) : '' }}</span>
         </div>
       </div>
       <button class="logout-btn" @click="handleLogout">

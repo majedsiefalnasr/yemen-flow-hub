@@ -10,7 +10,7 @@ describe('NAV_ITEMS role filtering', () => {
   it('all roles see dashboard and requests', () => {
     for (const role of Object.values(UserRole)) {
       const routes = navItemsForRole(role).map(i => i.route)
-      expect(routes).toContain('/')
+      expect(routes).toContain('/dashboard')
       expect(routes).toContain('/requests')
     }
   })

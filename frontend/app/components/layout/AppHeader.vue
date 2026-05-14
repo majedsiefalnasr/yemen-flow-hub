@@ -1,22 +1,13 @@
 <script setup lang="ts">
 import { useAuthStore } from '../../stores/auth.store'
 import SidebarIcon from './SidebarIcon.vue'
+import { ROLE_LABELS } from '../../constants/workflow'
 
 const emit = defineEmits<{
   toggleMobileMenu: []
 }>()
 
 const auth = useAuthStore()
-
-const ROLE_LABELS: Record<string, string> = {
-  DATA_ENTRY: 'إدخال البيانات',
-  BANK_REVIEWER: 'مراجع البنك',
-  SWIFT_OFFICER: 'مسؤول SWIFT',
-  SUPPORT_COMMITTEE: 'لجنة الدعم',
-  EXECUTIVE_MEMBER: 'عضو تنفيذي',
-  COMMITTEE_DIRECTOR: 'مدير اللجنة',
-  CBY_ADMIN: 'مدير النظام',
-}
 </script>
 
 <template>

@@ -35,10 +35,14 @@ const onSubmit = handleSubmit(async (values) => {
 
   try {
     await auth.login(values.email, values.password)
-    await router.push('/')
+    await router.push('/dashboard')
   }
   catch (err: unknown) {
-    if (
+    const status = (err as { statusCode?: number })?.statusCode
+    if (status === 429) {
+      serverError.value = 'لقد تجاوزت الحد المسموح به من محاولات تسجيل الدخول. يرجى الانتظار دقيقة ثم حاول مرة أخرى.'
+    }
+    else if (
       typeof err === 'object' && err !== null &&
       'data' in err && typeof (err as { data?: { message?: string } }).data === 'object'
     ) {

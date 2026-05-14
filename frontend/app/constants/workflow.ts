@@ -2,6 +2,28 @@ import { RequestStatus, UserRole } from '../types/enums'
 
 export const ALL_ROLES: UserRole[] = Object.values(UserRole)
 
+/** Arabic display labels for each role — used in header, sidebar chip, and tables */
+export const ROLE_LABELS: Record<UserRole, string> = {
+  [UserRole.DATA_ENTRY]: 'إدخال البيانات',
+  [UserRole.BANK_REVIEWER]: 'مراجع البنك',
+  [UserRole.SWIFT_OFFICER]: 'مسؤول SWIFT',
+  [UserRole.SUPPORT_COMMITTEE]: 'لجنة الدعم',
+  [UserRole.EXECUTIVE_MEMBER]: 'عضو تنفيذي',
+  [UserRole.COMMITTEE_DIRECTOR]: 'مدير اللجنة',
+  [UserRole.CBY_ADMIN]: 'مدير النظام',
+}
+
+/** Role-specific queue titles shown on the dashboard — each role sees their own work queue */
+export const ROLE_QUEUE_TITLES: Record<UserRole, string> = {
+  [UserRole.DATA_ENTRY]: 'طلبات التمويل الخاصة بك',
+  [UserRole.BANK_REVIEWER]: 'الطلبات المعلقة للمراجعة',
+  [UserRole.SWIFT_OFFICER]: 'الطلبات الجاهزة لرفع SWIFT',
+  [UserRole.SUPPORT_COMMITTEE]: 'الطلبات في انتظار لجنة الدعم',
+  [UserRole.EXECUTIVE_MEMBER]: 'جلسات التصويت الفعّالة',
+  [UserRole.COMMITTEE_DIRECTOR]: 'القرارات التنفيذية المعلقة',
+  [UserRole.CBY_ADMIN]: 'لوحة إدارة النظام',
+}
+
 export const BANK_ROLES: UserRole[] = [
   UserRole.DATA_ENTRY,
   UserRole.BANK_REVIEWER,
@@ -25,7 +47,7 @@ export interface NavItem {
 export const NAV_ITEMS: NavItem[] = [
   {
     label: 'اللوحة الرئيسية',
-    route: '/',
+    route: '/dashboard',
     icon: 'home',
     roles: ALL_ROLES,
   },

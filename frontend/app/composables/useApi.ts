@@ -8,15 +8,16 @@ export function useApi() {
     path: string,
     options: Parameters<typeof $fetch>[1] = {},
   ): Promise<T> {
+    const { headers: extraHeaders, ...restOptions } = options
     return $fetch<T>(path, {
       baseURL,
       credentials: 'include',
+      ...restOptions,
       headers: {
         Accept: 'application/json',
         'Content-Type': 'application/json',
-        ...(options.headers as Record<string, string>),
+        ...(extraHeaders as Record<string, string>),
       },
-      ...options,
     })
   }
 
