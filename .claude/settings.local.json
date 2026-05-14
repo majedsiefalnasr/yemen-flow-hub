@@ -4,7 +4,8 @@
       "Bash(rtk ls *)",
       "Bash(rtk read *)",
       "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\('PHP:', d.get\\('require',{}\\).get\\('php',''\\)\\); print\\('Laravel:', d.get\\('require',{}\\).get\\('laravel/framework',''\\)\\)\")",
-      "Bash(python3 *)"
+      "Bash(python3 *)",
+      "Bash(php *)"
     ]
   }
 }
