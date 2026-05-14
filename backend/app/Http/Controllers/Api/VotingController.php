@@ -1,0 +1,109 @@
+<?php
+
+namespace App\Http\Controllers\Api;
+
+use App\Enums\RequestStatus;
+use App\Enums\UserRole;
+use App\Enums\VoteType;
+use App\Http\Requests\CastVoteRequest;
+use App\Http\Requests\DirectorDecideRequest;
+use App\Http\Requests\OverrideVoteRequest;
+use App\Http\Resources\ImportRequestListResource;
+use App\Http\Resources\ImportRequestResource;
+use App\Http\Resources\VoteResource;
+use App\Http\Resources\VotingTallyResource;
+use App\Models\ImportRequest;
+use App\Models\RequestVote;
+use App\Services\Voting\VotingService;
+use App\Support\ApiResponse;
+use OpenApi\Attributes as OA;
+
+class VotingController extends Controller
+{
+    public function __construct(private readonly VotingService $votingService)
+    {
+    }
+
+    #[OA\Get(path: '/api/voting', tags: ['Voting'], summary: 'List requests in executive voting', responses: [new OA\Response(response: 200, description: 'Voting list')])]
+    public function index()
+    {
+        $user = request()->user();
+        if (!$user->hasRole(UserRole::EXECUTIVE_MEMBER) && !$user->hasRole(UserRole::EXECUTIVE_DIRECTOR)) {
+            return ApiResponse::forbidden();
+        }
+
+        $items = ImportRequest::query()
+            ->where('status', RequestStatus::EXECUTIVE_VOTING->value)
+            ->with('bank')
+            ->latest('id')
+            ->paginate(20);
+
+        return ApiResponse::success(ImportRequestListResource::collection($items), 'Voting requests retrieved.');
+    }
+
+    #[OA\Get(path: '/api/voting/{id}', tags: ['Voting'], summary: 'Voting detail', responses: [new OA\Response(response: 200, description: 'Voting detail')])]
+    public function show(ImportRequest $importRequest)
+    {
+        $user = request()->user();
+        if (!$user->hasRole(UserRole::EXECUTIVE_MEMBER) && !$user->hasRole(UserRole::EXECUTIVE_DIRECTOR)) {
+            return ApiResponse::forbidden();
+        }
+
+        $myVote = RequestVote::query()
+            ->where('request_id', $importRequest->id)
+            ->where('user_id', $user->id)
+            ->first();
+
+        return ApiResponse::success([
+            'request' => new ImportRequestResource($importRequest->load('bank')),
+            'tally' => new VotingTallyResource($this->votingService->tally($importRequest)),
+            'my_vote' => $myVote ? new VoteResource($myVote) : null,
+        ], 'Voting details retrieved.');
+    }
+
+    #[OA\Post(path: '/api/voting/{importRequest}/vote', tags: ['Voting'], summary: 'Cast executive vote', parameters: [new OA\Parameter(name: 'importRequest', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], requestBody: new OA\RequestBody(required: true, content: new OA\JsonContent(required: ['vote'], properties: [new OA\Property(property: 'vote', type: 'string', enum: ['APPROVE', 'REJECT']), new OA\Property(property: 'justification', type: 'string', nullable: true, maxLength: 3000)])), responses: [new OA\Response(response: 200, description: 'Vote cast')])]
+    public function vote(CastVoteRequest $request, ImportRequest $importRequest)
+    {
+        $vote = $this->votingService->castVote(
+            $importRequest,
+            $request->user(),
+            VoteType::from($request->string('vote')->toString()),
+            $request->input('justification')
+        );
+
+        return ApiResponse::success(new VoteResource($vote), 'Vote submitted successfully.');
+    }
+
+    #[OA\Post(path: '/api/voting/{importRequest}/director-decide', tags: ['Voting'], summary: 'Director tie-break decision', parameters: [new OA\Parameter(name: 'importRequest', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], requestBody: new OA\RequestBody(required: true, content: new OA\JsonContent(required: ['vote'], properties: [new OA\Property(property: 'vote', type: 'string', enum: ['APPROVE', 'REJECT']), new OA\Property(property: 'justification', type: 'string', nullable: true, maxLength: 3000)])), responses: [new OA\Response(response: 200, description: 'Director decision applied')])]
+    public function directorDecide(DirectorDecideRequest $request, ImportRequest $importRequest)
+    {
+        if (!$request->user()->hasPermission('voting.finalize')) {
+            return ApiResponse::forbidden();
+        }
+
+        $updated = $this->votingService->finalize(
+            $importRequest,
+            $request->user(),
+            VoteType::from($request->string('vote')->toString())
+        );
+
+        return ApiResponse::success(new ImportRequestResource($updated->load('bank')), 'Director decision applied.');
+    }
+
+    #[OA\Post(path: '/api/voting/{importRequest}/override', tags: ['Voting'], summary: 'Executive director override and finalize', parameters: [new OA\Parameter(name: 'importRequest', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], requestBody: new OA\RequestBody(required: true, content: new OA\JsonContent(required: ['decision', 'justification'], properties: [new OA\Property(property: 'decision', type: 'string', enum: ['APPROVE', 'REJECT']), new OA\Property(property: 'justification', type: 'string', minLength: 3, maxLength: 3000)])), responses: [new OA\Response(response: 200, description: 'Override decision applied')])]
+    public function override(OverrideVoteRequest $request, ImportRequest $importRequest)
+    {
+        if (!$request->user()->hasPermission('voting.finalize')) {
+            return ApiResponse::forbidden();
+        }
+
+        $updated = $this->votingService->overrideAndFinalize(
+            $importRequest,
+            $request->user(),
+            VoteType::from($request->string('decision')->toString()),
+            $request->string('justification')->toString()
+        );
+
+        return ApiResponse::success(new ImportRequestResource($updated->load('bank')), 'Override decision applied.');
+    }
+}

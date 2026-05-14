@@ -1,0 +1,85 @@
+---
+description: Yemen Flow Hub backend rules — Laravel 11 API
+globs: ["**/*.php", "**/*.json", "database/**", "routes/**", "config/**"]
+alwaysApply: true
+---
+
+# Yemen Flow Hub Backend Rules
+
+Read `../AGENTS.md` before taking any action. It is the single file of truth.
+
+## Git
+Backend code lives in two repos. After every change, commit to both:
+1. `backend/` → `git@github.com:ultimate-eg/yemen-flow-hub-backend.git` (team repo)
+2. Root `/` → `git@github.com:majedsiefalnasr/yemen-flow-hub.git` (monorepo, `git add backend/<files>`)
+
+Commit format: `type(scope): description`
+
+## Stack
+PHP 8.2+, Laravel 11, Sanctum, MySQL, Redis
+
+## Non-negotiable Architecture Rules
+
+### WorkflowService is the only path for status changes
+```php
+// ✅ Correct
+$workflowService->transition($request, 'support_approve', $user);
+
+// ❌ Never
+$request->current_status = RequestStatus::SUPPORT_APPROVED;
+$request->save();
+```
+
+### Thin controllers
+Controllers only: receive request → validate → call service → return response.
+Zero business logic in controllers.
+
+### Canonical status enum
+Use only these values (from `../AGENTS.md`):
+DRAFT, DRAFT_REJECTED_INTERNAL, SUBMITTED, BANK_REVIEW, BANK_APPROVED,
+SUPPORT_REVIEW_PENDING, SUPPORT_REVIEW_IN_PROGRESS, SUPPORT_APPROVED,
+SUPPORT_REJECTED, WAITING_FOR_SWIFT, SWIFT_UPLOADED, WAITING_FOR_VOTING_OPEN,
+EXECUTIVE_VOTING_OPEN, EXECUTIVE_VOTING_CLOSED, EXECUTIVE_APPROVED,
+EXECUTIVE_REJECTED, CUSTOMS_DECLARATION_ISSUED, COMPLETED
+
+### Visibility scoping
+All Eloquent queries for requests must scope by `bank_id` for bank users.
+Never return requests outside a user's organization.
+
+### Audit logging
+Every transition → `request_stage_history` record + `audit_logs` record.
+`audit_logs` must include: `user_id`, `role`, `action`, `from_status`, `to_status`.
+
+### Voting concurrency
+```php
+DB::transaction(function() use ($request, $vote) {
+    $request->lockForUpdate()->find($request->id);
+    // validate session still open, then record vote
+});
+```
+
+### Immutable state responses
+```php
+// Terminal states return 403
+return response()->json([
+    'success' => false,
+    'message' => '...',
+    'error_code' => 'WORKFLOW_IMMUTABLE_STATE',
+    'current_status' => $request->current_status,
+], 403);
+```
+
+### File uploads
+PDF only. Private storage. `SWIFT_UPLOADED` documents are immutable after upload.
+
+## Context7
+```bash
+npx ctx7@latest library "Laravel" "<question>"
+npx ctx7@latest docs <id> "<question>"
+```
+
+## SocratiCode
+Before modifying any service/model/policy:
+- `codebase_symbol` → find the class/method
+- `codebase_flow` → trace callers
+- `codebase_impact` → assess change impact

@@ -1,0 +1,35 @@
+<?php
+
+namespace App\Enums;
+
+enum AuditAction: string
+{
+    case LOGIN = 'LOGIN';
+    case LOGOUT = 'LOGOUT';
+    case REQUEST_CREATED = 'REQUEST_CREATED';
+    case REQUEST_UPDATED = 'REQUEST_UPDATED';
+    case REQUEST_DELETED = 'REQUEST_DELETED';
+    case STATUS_TRANSITION = 'STATUS_TRANSITION';
+    case VOTE_CAST = 'VOTE_CAST';
+    case DOCUMENT_UPLOADED = 'DOCUMENT_UPLOADED';
+    case DOCUMENT_DOWNLOADED = 'DOCUMENT_DOWNLOADED';
+    case SWIFT_UPLOADED = 'SWIFT_UPLOADED';
+    case CUSTOMS_ISSUED = 'CUSTOMS_ISSUED';
+
+    public function label(): string
+    {
+        return match ($this) {
+            self::LOGIN => 'Login / تسجيل الدخول',
+            self::LOGOUT => 'Logout / تسجيل الخروج',
+            self::REQUEST_CREATED => 'Request Created / إنشاء طلب',
+            self::REQUEST_UPDATED => 'Request Updated / تحديث طلب',
+            self::REQUEST_DELETED => 'Request Deleted / حذف طلب',
+            self::STATUS_TRANSITION => 'Status Transition / انتقال الحالة',
+            self::VOTE_CAST => 'Vote Cast / تسجيل تصويت',
+            self::DOCUMENT_UPLOADED => 'Document Uploaded / رفع مستند',
+            self::DOCUMENT_DOWNLOADED => 'Document Downloaded / تنزيل مستند',
+            self::SWIFT_UPLOADED => 'SWIFT Uploaded / رفع سويفت',
+            self::CUSTOMS_ISSUED => 'Customs Issued / إصدار الجمارك',
+        };
+    }
+}
