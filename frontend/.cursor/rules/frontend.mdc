@@ -1,0 +1,97 @@
+---
+description: Yemen Flow Hub frontend rules — Nuxt 4 / Vue 4
+globs: ["**/*.vue", "**/*.ts", "**/*.tsx", "**/*.css", "tailwind.config.*", "nuxt.config.*"]
+alwaysApply: true
+---
+
+# Yemen Flow Hub Frontend Rules
+
+Read `../AGENTS.md` before taking any action. It is the single file of truth.
+
+## Git
+Frontend code lives in two repos. After every change, commit to both:
+1. `frontend/` → `git@github.com:ultimate-eg/yemen-flow-hub-frontend.git` (team repo)
+2. Root `/` → `git@github.com:majedsiefalnasr/yemen-flow-hub.git` (monorepo, `git add frontend/<files>`)
+
+Commit format: `type(scope): description`
+
+## Stack
+Nuxt 4, Vue 4, TypeScript, Tailwind CSS v4, shadcn-vue, Pinia, VeeValidate, Zod
+
+## Non-negotiable UI Rules
+
+### RTL is default
+```html
+<html dir="rtl" lang="ar">
+```
+All layouts, tables, sidebars, and forms are RTL. Never mirror LTR layouts.
+
+### Desktop-first
+Responsive degradation at ≤ 600px. Not mobile-first progressive enhancement.
+
+### No business logic in components
+```typescript
+// ✅ Correct — logic in composable
+const { submitVote } = useVoting()
+
+// ❌ Never — logic directly in <script setup>
+const result = await $fetch('/api/voting/...')
+if (result.votes > 3) { ... }
+```
+
+### Canonical status enum
+Use only values from `../AGENTS.md`. Never use `INTERNAL_REJECTED`, `WAITING_SWIFT`, or any unlisted value.
+
+### Data Entry simplified statuses
+Map internal statuses using the table from `../docs/01-workflow-and-business-rules.md`.
+Centralize this mapping in `constants/statusMap.ts` — never inline it.
+
+### Design tokens (non-negotiable)
+```ts
+// constants/design.ts
+export const colors = {
+  background: '#f5f5f7',
+  surface: '#ffffff',
+  primaryText: '#1d1d1f',
+  border: '#d2d2d7',
+  primaryBlue: '#0071e3',
+  approvedGreen: '#34c759',
+  rejectedRed: '#ff3b30',
+  pendingAmber: '#ff9f0a',
+  votingIndigo: '#5856d6',
+  swiftCyan: '#32ade6',
+  lockedGray: '#8e8e93',
+}
+```
+No inline hex values that differ from these. No gradients. No glassmorphism.
+
+### Support claim heartbeat
+```typescript
+// useClaimHeartbeat.ts
+onMounted(() => {
+  interval = setInterval(() => {
+    $fetch(`/api/workflow/${requestId}/claim-support-review/heartbeat`, { method: 'POST' })
+  }, 60_000)
+})
+onUnmounted(() => clearInterval(interval))
+```
+
+### Voting optimistic UI
+After vote submission, show result optimistically. On `VOTING_SESSION_CLOSED` error, revert and notify.
+
+### Locked state visual
+- Disable all action buttons
+- Show `#8e8e93` lock badge
+- Use `#f5f5f7` field backgrounds
+
+## Context7
+```bash
+npx ctx7@latest library "Nuxt" "<question>"
+npx ctx7@latest docs <id> "<question>"
+```
+
+## SocratiCode
+Before modifying composables, stores, or services:
+- `codebase_search` → find related code
+- `codebase_flow` → trace data flow
+- `codebase_impact` → check what breaks
