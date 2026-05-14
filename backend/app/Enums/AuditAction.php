@@ -6,6 +6,7 @@ enum AuditAction: string
 {
     case LOGIN = 'LOGIN';
     case LOGOUT = 'LOGOUT';
+    case LOGIN_FAILED = 'LOGIN_FAILED';
     case REQUEST_CREATED = 'REQUEST_CREATED';
     case REQUEST_UPDATED = 'REQUEST_UPDATED';
     case REQUEST_DELETED = 'REQUEST_DELETED';
@@ -21,6 +22,7 @@ enum AuditAction: string
         return match ($this) {
             self::LOGIN => 'Login / تسجيل الدخول',
             self::LOGOUT => 'Logout / تسجيل الخروج',
+            self::LOGIN_FAILED => 'Login Failed / فشل تسجيل الدخول',
             self::REQUEST_CREATED => 'Request Created / إنشاء طلب',
             self::REQUEST_UPDATED => 'Request Updated / تحديث طلب',
             self::REQUEST_DELETED => 'Request Deleted / حذف طلب',

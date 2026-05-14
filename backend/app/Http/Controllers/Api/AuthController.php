@@ -9,13 +9,18 @@ use App\Models\User;
 use App\Services\Audit\AuditService;
 use App\Support\ApiResponse;
 use Illuminate\Support\Facades\Auth;
+use Laravel\Sanctum\PersonalAccessToken;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use OpenApi\Attributes as OA;
 
 class AuthController extends Controller
 {
+    private const LOCKOUT_THRESHOLD = 10;
+    private const LOCKOUT_MINUTES = 15;
+
     public function __construct(private readonly AuditService $auditService)
     {
     }
@@ -38,23 +43,41 @@ class AuthController extends Controller
         responses: [
             new OA\Response(response: 200, description: 'Login successful'),
             new OA\Response(response: 422, description: 'Validation failed'),
-            new OA\Response(response: 403, description: 'Inactive account'),
+            new OA\Response(response: 403, description: 'Inactive account or account locked'),
+            new OA\Response(response: 429, description: 'Too many requests — per-IP throttle via throttle:login middleware'),
         ]
     )]
     public function login(LoginRequest $request)
     {
-        $credentials = $request->only('email', 'password');
-        $user = User::query()->where('email', $credentials['email'])->first();
+        $ip = $request->ip();
+        // Normalize email for consistent counter keys and DB lookup
+        $email = $request->string('email')->lower()->toString();
+        $failKey = 'login_fail:' . $email;
 
-        if (!$user || !Hash::check($credentials['password'], $user->password)) {
+        // Per-email account lockout: 10 consecutive failures → 15 min lock
+        if (RateLimiter::tooManyAttempts($failKey, self::LOCKOUT_THRESHOLD)) {
+            $this->logFailedLogin($email, 'LOCKED', $ip);
+            return ApiResponse::lockedOut();
+        }
+
+        $user = User::query()->where('email', $email)->first();
+
+        // Check is_active before password — inactive is an admin state, not an auth failure
+        if ($user && !$user->is_active) {
+            $this->logFailedLogin($email, 'INACTIVE', $ip);
+            return ApiResponse::forbidden('Account is inactive.');
+        }
+
+        if (!$user || !Hash::check($request->string('password')->toString(), $user->password)) {
+            RateLimiter::hit($failKey, self::LOCKOUT_MINUTES * 60);
+            $this->logFailedLogin($email, 'WRONG_CREDENTIALS', $ip);
             throw ValidationException::withMessages([
                 'email' => ['Invalid credentials.'],
             ]);
         }
 
-        if (!$user->is_active) {
-            return ApiResponse::forbidden('Account is inactive.');
-        }
+        // Success: clear only the per-email failure counter; IP window decays naturally
+        RateLimiter::clear($failKey);
 
         if ($request->hasSession()) {
             Auth::guard('web')->login($user);
@@ -118,7 +141,10 @@ class AuthController extends Controller
     public function logout(Request $request)
     {
         $user = $request->user();
-        $user->currentAccessToken()?->delete();
+        $token = $user->currentAccessToken();
+        if ($token instanceof PersonalAccessToken) {
+            $token->delete();
+        }
 
         if ($request->hasSession()) {
             Auth::guard('web')->logout();
@@ -133,5 +159,15 @@ class AuthController extends Controller
         );
 
         return ApiResponse::success((object) [], 'Logged out successfully.');
+    }
+
+    private function logFailedLogin(string $email, string $reason, string $ip): void
+    {
+        $this->auditService->log(
+            AuditAction::LOGIN_FAILED,
+            null,
+            null,
+            ['email' => $email, 'reason' => $reason, 'ip' => $ip]
+        );
     }
 }

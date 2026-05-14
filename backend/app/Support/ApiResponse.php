@@ -43,4 +43,13 @@ class ApiResponse
     {
         return self::error('Validation failed.', $errors, 422);
     }
+
+    public static function lockedOut(string $message = 'Account is temporarily locked due to too many failed attempts.'): JsonResponse
+    {
+        return response()->json([
+            'success' => false,
+            'message' => $message,
+            'error_code' => 'ACCOUNT_LOCKED',
+        ], 403);
+    }
 }

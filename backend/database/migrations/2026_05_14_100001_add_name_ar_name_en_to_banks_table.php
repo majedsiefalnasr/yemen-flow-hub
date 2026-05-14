@@ -24,6 +24,7 @@ return new class extends Migration {
         });
 
         Schema::table('banks', function (Blueprint $table) {
+            $table->dropUnique('banks_name_unique');
             $table->dropColumn('name');
         });
     }
@@ -39,6 +40,9 @@ return new class extends Migration {
 
         Schema::table('banks', function (Blueprint $table) {
             $table->string('name')->nullable(false)->change();
+        });
+
+        Schema::table('banks', function (Blueprint $table) {
             $table->dropColumn(['name_ar', 'name_en']);
         });
     }
