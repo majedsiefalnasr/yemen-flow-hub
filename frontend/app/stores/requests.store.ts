@@ -1,0 +1,66 @@
+import { defineStore } from 'pinia'
+import type { ImportRequest } from '../types/models'
+import type { RequestsFilter } from '../composables/useRequests'
+import { useRequests } from '../composables/useRequests'
+
+interface PaginationMeta {
+  current_page: number
+  last_page: number
+  per_page: number
+  total: number
+}
+
+export const useRequestsStore = defineStore('requests', {
+  state: () => ({
+    requests: [] as ImportRequest[],
+    loading: false,
+    error: null as string | null,
+    meta: null as PaginationMeta | null,
+    currentFilter: {} as RequestsFilter,
+  }),
+
+  getters: {
+    hasNextPage: (state): boolean =>
+      state.meta !== null && state.meta.current_page < state.meta.last_page,
+
+    hasPrevPage: (state): boolean =>
+      state.meta !== null && state.meta.current_page > 1,
+
+    currentPage: (state): number => state.meta?.current_page ?? 1,
+
+    totalCount: (state): number => state.meta?.total ?? 0,
+  },
+
+  actions: {
+    async loadRequests(filter: RequestsFilter = {}): Promise<void> {
+      this.loading = true
+      this.error = null
+      this.currentFilter = filter
+
+      try {
+        const { fetchRequests } = useRequests()
+        const result = await fetchRequests(filter)
+        this.requests = result.data
+        this.meta = result.meta
+      }
+      catch {
+        this.error = 'تعذّر تحميل قائمة الطلبات.'
+        this.requests = []
+        this.meta = null
+      }
+      finally {
+        this.loading = false
+      }
+    },
+
+    async nextPage(): Promise<void> {
+      if (!this.hasNextPage || !this.meta) return
+      await this.loadRequests({ ...this.currentFilter, page: this.meta.current_page + 1 })
+    },
+
+    async prevPage(): Promise<void> {
+      if (!this.hasPrevPage || !this.meta) return
+      await this.loadRequests({ ...this.currentFilter, page: this.meta.current_page - 1 })
+    },
+  },
+})

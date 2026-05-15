@@ -1,5 +1,107 @@
 import { RequestStatus, UserRole } from '../types/enums'
 
+/** Hex color for each status — matches UX-DR38 semantic color mapping */
+export const STATUS_COLORS: Record<RequestStatus, string> = {
+  [RequestStatus.DRAFT]: '#8e8e93',
+  [RequestStatus.DRAFT_REJECTED_INTERNAL]: '#ff9f0a',
+  [RequestStatus.SUBMITTED]: '#ff9f0a',
+  [RequestStatus.BANK_REVIEW]: '#ff9f0a',
+  [RequestStatus.BANK_APPROVED]: '#5856d6',
+  [RequestStatus.SUPPORT_REVIEW_PENDING]: '#5856d6',
+  [RequestStatus.SUPPORT_REVIEW_IN_PROGRESS]: '#5856d6',
+  [RequestStatus.SUPPORT_APPROVED]: '#32ade6',
+  [RequestStatus.SUPPORT_REJECTED]: '#ff3b30',
+  [RequestStatus.WAITING_FOR_SWIFT]: '#32ade6',
+  [RequestStatus.SWIFT_UPLOADED]: '#32ade6',
+  [RequestStatus.WAITING_FOR_VOTING_OPEN]: '#5856d6',
+  [RequestStatus.EXECUTIVE_VOTING_OPEN]: '#5856d6',
+  [RequestStatus.EXECUTIVE_VOTING_CLOSED]: '#5856d6',
+  [RequestStatus.EXECUTIVE_APPROVED]: '#34c759',
+  [RequestStatus.EXECUTIVE_REJECTED]: '#ff3b30',
+  [RequestStatus.CUSTOMS_DECLARATION_ISSUED]: '#34c759',
+  [RequestStatus.COMPLETED]: '#34c759',
+}
+
+/** Icon name for each status — used alongside color; never color-only (UX-DR38, NFR19) */
+export const STATUS_ICONS: Record<RequestStatus, string> = {
+  [RequestStatus.DRAFT]: 'file',
+  [RequestStatus.DRAFT_REJECTED_INTERNAL]: 'rotate-ccw',
+  [RequestStatus.SUBMITTED]: 'clock',
+  [RequestStatus.BANK_REVIEW]: 'clock',
+  [RequestStatus.BANK_APPROVED]: 'check-circle',
+  [RequestStatus.SUPPORT_REVIEW_PENDING]: 'users',
+  [RequestStatus.SUPPORT_REVIEW_IN_PROGRESS]: 'users',
+  [RequestStatus.SUPPORT_APPROVED]: 'check-circle',
+  [RequestStatus.SUPPORT_REJECTED]: 'x-circle',
+  [RequestStatus.WAITING_FOR_SWIFT]: 'upload-cloud',
+  [RequestStatus.SWIFT_UPLOADED]: 'upload-cloud',
+  [RequestStatus.WAITING_FOR_VOTING_OPEN]: 'vote',
+  [RequestStatus.EXECUTIVE_VOTING_OPEN]: 'vote',
+  [RequestStatus.EXECUTIVE_VOTING_CLOSED]: 'lock',
+  [RequestStatus.EXECUTIVE_APPROVED]: 'check-circle',
+  [RequestStatus.EXECUTIVE_REJECTED]: 'x-circle',
+  [RequestStatus.CUSTOMS_DECLARATION_ISSUED]: 'file-check',
+  [RequestStatus.COMPLETED]: 'check-circle',
+}
+
+export interface BusinessStatus {
+  label: string
+  color: string
+  icon: string
+  /** The canonical status driving the badge (may be the original, or a simplified bucket for DATA_ENTRY) */
+  canonicalStatus: RequestStatus
+}
+
+/**
+ * Returns the display label, color, and icon for a request status scoped to the viewing role.
+ * DATA_ENTRY receives simplified business statuses — never internal CBY operational stages.
+ */
+export function getBusinessStatus(status: RequestStatus, role: UserRole): BusinessStatus {
+  if (role === UserRole.DATA_ENTRY) {
+    const label = DATA_ENTRY_STATUS_LABELS[status] ?? STATUS_LABELS[status]
+    // Map simplified label groups back to the canonical status that drives the color/icon
+    const representativeStatus = DATA_ENTRY_REPRESENTATIVE_STATUS[status] ?? status
+    return {
+      label,
+      color: STATUS_COLORS[representativeStatus],
+      icon: STATUS_ICONS[representativeStatus],
+      canonicalStatus: representativeStatus,
+    }
+  }
+
+  return {
+    label: STATUS_LABELS[status],
+    color: STATUS_COLORS[status],
+    icon: STATUS_ICONS[status],
+    canonicalStatus: status,
+  }
+}
+
+/**
+ * Maps each status to the canonical status that best represents the DATA_ENTRY simplified bucket.
+ * Used to select the right color/icon for simplified badge groups.
+ */
+const DATA_ENTRY_REPRESENTATIVE_STATUS: Record<RequestStatus, RequestStatus> = {
+  [RequestStatus.DRAFT]: RequestStatus.DRAFT,
+  [RequestStatus.DRAFT_REJECTED_INTERNAL]: RequestStatus.DRAFT_REJECTED_INTERNAL,
+  [RequestStatus.SUBMITTED]: RequestStatus.SUBMITTED,
+  [RequestStatus.BANK_REVIEW]: RequestStatus.SUBMITTED,
+  [RequestStatus.BANK_APPROVED]: RequestStatus.BANK_APPROVED,
+  [RequestStatus.SUPPORT_REVIEW_PENDING]: RequestStatus.BANK_APPROVED,
+  [RequestStatus.SUPPORT_REVIEW_IN_PROGRESS]: RequestStatus.BANK_APPROVED,
+  [RequestStatus.SUPPORT_APPROVED]: RequestStatus.BANK_APPROVED,
+  [RequestStatus.SUPPORT_REJECTED]: RequestStatus.SUPPORT_REJECTED,
+  [RequestStatus.WAITING_FOR_SWIFT]: RequestStatus.BANK_APPROVED,
+  [RequestStatus.SWIFT_UPLOADED]: RequestStatus.BANK_APPROVED,
+  [RequestStatus.WAITING_FOR_VOTING_OPEN]: RequestStatus.BANK_APPROVED,
+  [RequestStatus.EXECUTIVE_VOTING_OPEN]: RequestStatus.BANK_APPROVED,
+  [RequestStatus.EXECUTIVE_VOTING_CLOSED]: RequestStatus.BANK_APPROVED,
+  [RequestStatus.EXECUTIVE_APPROVED]: RequestStatus.COMPLETED,
+  [RequestStatus.EXECUTIVE_REJECTED]: RequestStatus.EXECUTIVE_REJECTED,
+  [RequestStatus.CUSTOMS_DECLARATION_ISSUED]: RequestStatus.COMPLETED,
+  [RequestStatus.COMPLETED]: RequestStatus.COMPLETED,
+}
+
 export const ALL_ROLES: UserRole[] = Object.values(UserRole)
 
 /** Arabic display labels for each role — used in header, sidebar chip, and tables */
