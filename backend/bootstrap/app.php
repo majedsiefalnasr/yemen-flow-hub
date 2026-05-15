@@ -9,6 +9,7 @@ use Illuminate\Validation\ValidationException;
 use Illuminate\Http\Request;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Exceptions\ThrottleRequestsException;
+use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful;
 use App\Support\ApiResponse;
@@ -50,7 +51,9 @@ return Application::configure(basePath: dirname(__DIR__))
             }
         });
 
-        $exceptions->render(function (AuthorizationException $e, Request $request) {
+        // AuthorizationException is converted to AccessDeniedHttpException by the framework
+        // before reaching render callbacks, so both types must be listed.
+        $exceptions->render(function (AccessDeniedHttpException|AuthorizationException $e, Request $request) {
             if ($request->is('api/*')) {
                 return ApiResponse::forbidden();
             }

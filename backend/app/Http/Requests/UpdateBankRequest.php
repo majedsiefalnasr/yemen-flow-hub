@@ -16,7 +16,8 @@ class UpdateBankRequest extends ApiFormRequest
         $bankId = $this->route('bank')?->id;
 
         return [
-            'name' => ['required', 'string', 'max:255', Rule::unique('banks', 'name')->ignore($bankId)],
+            'name_ar' => ['required', 'string', 'max:255', Rule::unique('banks', 'name_ar')->ignore($bankId)],
+            'name_en' => ['required', 'string', 'max:255'],
             'code' => ['required', 'string', 'max:20', Rule::unique('banks', 'code')->ignore($bankId)],
             'is_active' => ['required', 'boolean'],
         ];

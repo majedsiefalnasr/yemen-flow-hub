@@ -22,7 +22,7 @@ class BankController extends Controller
     {
         $this->authorize('viewAny', Bank::class);
 
-        return ApiResponse::success(BankResource::collection(Bank::query()->latest('id')->get()), 'Banks retrieved.');
+        return ApiResponse::success(BankResource::collection(Bank::query()->latest('id')->paginate(20)), 'Banks retrieved.');
     }
 
     #[OA\Post(
