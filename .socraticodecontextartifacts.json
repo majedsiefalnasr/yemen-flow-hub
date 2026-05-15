@@ -1,0 +1,54 @@
+{
+  "artifacts": [
+    {
+      "name": "agents-truth",
+      "path": "AGENTS.md",
+      "description": "AI single source of truth: project identity, git workflow, tech stack, canonical status and role enums, core architecture rules, and anti-patterns"
+    },
+    {
+      "name": "workflow-and-business-rules",
+      "path": "docs/01-workflow-and-business-rules.md",
+      "description": "Complete workflow lifecycle: all 18 status transitions, business rules per stage, role responsibilities, and simplified status mapping for Data Entry users"
+    },
+    {
+      "name": "system-architecture",
+      "path": "docs/02-system-architecture.md",
+      "description": "Overall system architecture: component diagram, infrastructure layout, service boundaries, and data flow between backend and frontend"
+    },
+    {
+      "name": "database-and-models",
+      "path": "docs/03-database-and-models.md",
+      "description": "Canonical database schema: table definitions, foreign keys, canonical status and role enum values, model relationships, and indexing strategy"
+    },
+    {
+      "name": "frontend-guide",
+      "path": "docs/04-frontend-guide.md",
+      "description": "Frontend architecture: Nuxt 4 project structure, composable patterns, store conventions, RTL rules, role-aware UI rules, and component anti-patterns"
+    },
+    {
+      "name": "backend-guide",
+      "path": "docs/05-backend-guide.md",
+      "description": "Backend architecture: Laravel 11 service-oriented patterns, WorkflowService contract, security rules, audit logging requirements, and coding conventions"
+    },
+    {
+      "name": "api-reference",
+      "path": "docs/06-api-reference.md",
+      "description": "Full API contract: all endpoints, HTTP methods, request/response shapes, permission matrix per role, error codes, and pagination conventions"
+    },
+    {
+      "name": "design-system",
+      "path": "DESIGN.md",
+      "description": "Visual design system: color tokens, typography scale, spacing grid, component radius/sizing rules, RTL layout conventions, and status color semantics"
+    },
+    {
+      "name": "planning-epics",
+      "path": "_bmad-output/planning-artifacts/epics.md",
+      "description": "Full epic and story breakdown: all planned features, acceptance criteria, and implementation scope for the entire Yemen Flow Hub platform"
+    },
+    {
+      "name": "project-context",
+      "path": "_bmad-output/planning-artifacts/project-context.md",
+      "description": "Project context document: stakeholder needs, constraints, goals, and technical decisions captured during planning"
+    }
+  ]
+}

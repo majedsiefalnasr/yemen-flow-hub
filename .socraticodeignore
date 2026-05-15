@@ -1,0 +1,37 @@
+# ── PHP / Laravel ────────────────────────────────────────────────────────────
+# Composer packages — third-party code, not this project's source
+backend/vendor
+
+# Laravel runtime data — logs, file cache, uploaded documents, sessions
+backend/storage
+
+# Laravel bootstrap cache — generated service manifests and config cache
+backend/bootstrap/cache
+
+# Generated OpenAPI HTML viewer
+backend/public/api-docs
+
+# PHPUnit test cache
+backend/.phpunit.cache
+
+# ── Nuxt / Node ───────────────────────────────────────────────────────────────
+# Already covered by frontend/.gitignore (read by SocratiCode automatically),
+# listed here as an explicit safety net for monorepo-root indexing runs.
+frontend/.nuxt
+frontend/.output
+
+# ── Lovable prototype ─────────────────────────────────────────────────────────
+# Reference-only UI prototype — NOT part of the shipped product.
+# Duplicates patterns, incorrect business logic, and must not influence the index.
+lovable
+
+# ── BMAD framework internals ──────────────────────────────────────────────────
+# Framework templates, scripts, and skill bundles — not project source code.
+# Custom BMAD config (_bmad/custom/, _bmad/config.toml) is also excluded because
+# it contains workflow instructions, not implementation-level knowledge.
+_bmad
+
+# ── BMAD-generated planning & story documents ─────────────────────────────────
+# Indexed as context artifacts (see .socraticodecontextartifacts.json) so they are
+# available for semantic search without polluting the code-chunk index.
+_bmad-output
