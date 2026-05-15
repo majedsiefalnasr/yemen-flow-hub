@@ -12,7 +12,13 @@
       "Bash(npx nuxt *)",
       "Bash(npm *)",
       "Bash(git *)",
-      "Bash(npx socraticode *)"
+      "Bash(npx socraticode *)",
+      "mcp__plugin_socraticode_socraticode__codebase_search",
+      "mcp__plugin_socraticode_socraticode__codebase_symbol",
+      "mcp__plugin_socraticode_socraticode__codebase_impact",
+      "mcp__plugin_socraticode_socraticode__codebase_flow",
+      "Skill(bmad-code-review)",
+      "Bash(rtk git *)"
     ]
   }
 }
