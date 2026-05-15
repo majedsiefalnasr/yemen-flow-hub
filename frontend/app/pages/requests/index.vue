@@ -55,10 +55,8 @@ onUnmounted(() => {
   if (searchTimeout.value !== null) clearTimeout(searchTimeout.value)
 })
 
-function formatAmount(amount: string, currency: string): string {
-  const num = parseFloat(amount)
-  if (Number.isNaN(num)) return `${amount} ${currency}`
-  return `${num.toLocaleString('ar-YE')} ${currency}`
+function formatAmount(amount: number, currency: string): string {
+  return `${amount.toLocaleString('ar-YE')} ${currency}`
 }
 </script>
 
@@ -110,7 +108,7 @@ function formatAmount(amount: string, currency: string): string {
     </div>
 
     <!-- Loading state -->
-    <div v-if="requestsStore.loading" class="state-card">
+    <div v-if="requestsStore.loadingList" class="state-card">
       <span class="state-text">جاري التحميل...</span>
     </div>
 

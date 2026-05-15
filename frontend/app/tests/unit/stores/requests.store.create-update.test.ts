@@ -74,10 +74,11 @@ describe('useRequestsStore — initial state', () => {
     mockUpdateRequest.mockReset()
   })
 
-  it('starts with currentRequest null and saving false', () => {
+  it('starts with currentRequest null, saving false, and loadingRequest false', () => {
     const store = useRequestsStore()
     expect(store.currentRequest).toBeNull()
     expect(store.saving).toBe(false)
+    expect(store.loadingRequest).toBe(false)
   })
 })
 
@@ -87,17 +88,17 @@ describe('useRequestsStore — loadRequest()', () => {
     mockFetchRequest.mockReset()
   })
 
-  it('sets loading to true while fetching and false after', async () => {
+  it('sets loadingRequest to true while fetching and false after', async () => {
     let resolveFn!: (v: unknown) => void
     mockFetchRequest.mockReturnValueOnce(new Promise(r => (resolveFn = r)))
 
     const store = useRequestsStore()
     const promise = store.loadRequest(42)
-    expect(store.loading).toBe(true)
+    expect(store.loadingRequest).toBe(true)
 
     resolveFn(REQUEST_FIXTURE)
     await promise
-    expect(store.loading).toBe(false)
+    expect(store.loadingRequest).toBe(false)
   })
 
   it('populates currentRequest on success', async () => {
@@ -118,7 +119,7 @@ describe('useRequestsStore — loadRequest()', () => {
 
     expect(store.currentRequest).toBeNull()
     expect(store.error).toBe('تعذّر تحميل بيانات الطلب.')
-    expect(store.loading).toBe(false)
+    expect(store.loadingRequest).toBe(false)
   })
 })
 

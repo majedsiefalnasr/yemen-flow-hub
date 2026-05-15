@@ -14,7 +14,8 @@ export const useRequestsStore = defineStore('requests', {
   state: () => ({
     requests: [] as ImportRequest[],
     currentRequest: null as ImportRequest | null,
-    loading: false,
+    loadingList: false,
+    loadingRequest: false,
     saving: false,
     error: null as string | null,
     meta: null as PaginationMeta | null,
@@ -38,7 +39,7 @@ export const useRequestsStore = defineStore('requests', {
   actions: {
     async loadRequests(filter: RequestsFilter = {}): Promise<void> {
       const token = ++this._loadToken
-      this.loading = true
+      this.loadingList = true
       this.error = null
       this.currentFilter = filter
 
@@ -61,13 +62,13 @@ export const useRequestsStore = defineStore('requests', {
       }
       finally {
         if (token === this._loadToken) {
-          this.loading = false
+          this.loadingList = false
         }
       }
     },
 
     async loadRequest(id: number): Promise<void> {
-      this.loading = true
+      this.loadingRequest = true
       this.error = null
       this.currentRequest = null
 
@@ -82,11 +83,12 @@ export const useRequestsStore = defineStore('requests', {
         this.error = 'تعذّر تحميل بيانات الطلب.'
       }
       finally {
-        this.loading = false
+        this.loadingRequest = false
       }
     },
 
     async createRequest(data: RequestFormData): Promise<number> {
+      if (this.saving) throw new Error('حفظ قيد التنفيذ بالفعل')
       this.saving = true
       this.error = null
 
@@ -109,6 +111,7 @@ export const useRequestsStore = defineStore('requests', {
     },
 
     async updateRequest(id: number, data: RequestFormData): Promise<void> {
+      if (this.saving) throw new Error('حفظ قيد التنفيذ بالفعل')
       this.saving = true
       this.error = null
 
@@ -130,12 +133,12 @@ export const useRequestsStore = defineStore('requests', {
     },
 
     async nextPage(): Promise<void> {
-      if (this.loading || !this.hasNextPage || !this.meta) return
+      if (this.loadingList || !this.hasNextPage || !this.meta) return
       await this.loadRequests({ ...this.currentFilter, page: this.meta.current_page + 1 })
     },
 
     async prevPage(): Promise<void> {
-      if (this.loading || !this.hasPrevPage || !this.meta) return
+      if (this.loadingList || !this.hasPrevPage || !this.meta) return
       await this.loadRequests({ ...this.currentFilter, page: this.meta.current_page - 1 })
     },
   },

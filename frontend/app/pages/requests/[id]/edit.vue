@@ -16,7 +16,8 @@ const route = useRoute()
 const router = useRouter()
 const requestsStore = useRequestsStore()
 
-const id = Number(route.params.id)
+const rawId = route.params.id
+const id = Number(Array.isArray(rawId) ? rawId[0] : rawId)
 const toast = ref<{ message: string; type: 'success' | 'error' } | null>(null)
 
 const isEditable = computed(() => {
@@ -28,7 +29,7 @@ const initialValues = computed<Partial<RequestFormData> | undefined>(() => {
   const r = requestsStore.currentRequest
   if (!r) return undefined
   return {
-    merchant_id: r.merchant?.id ?? null,
+    merchant_id: r.merchant?.id,
     currency: r.currency,
     amount: r.amount,
     supplier_name: r.supplier_name,
@@ -39,9 +40,22 @@ const initialValues = computed<Partial<RequestFormData> | undefined>(() => {
 })
 
 onMounted(async () => {
+  if (Number.isNaN(id)) {
+    await router.replace('/requests')
+    return
+  }
+
   await requestsStore.loadRequest(id)
-  if (requestsStore.currentRequest && !isEditable.value) {
-    await router.replace(`/requests/${id}`)
+
+  if (requestsStore.error || !requestsStore.currentRequest) {
+    // Load failed — redirect to list; error already surfaced via toast if available
+    await router.replace('/requests')
+    return
+  }
+
+  if (!isEditable.value) {
+    // Request exists but is not editable — redirect to list (detail page not built yet)
+    await router.replace('/requests')
   }
 })
 
@@ -49,7 +63,8 @@ async function handleSubmit(data: RequestFormData) {
   try {
     await requestsStore.updateRequest(id, data)
     toast.value = { message: 'تم تحديث الطلب بنجاح.', type: 'success' }
-    await router.push(`/requests/${id}`)
+    // TODO(Story 2.6): navigate to /requests/${id} once detail page exists
+    await router.push('/requests')
   }
   catch {
     toast.value = { message: requestsStore.error ?? 'تعذّر تحديث الطلب.', type: 'error' }
@@ -61,54 +76,47 @@ async function handleSubmit(data: RequestFormData) {
   <div class="edit-request-page" dir="rtl">
     <div class="page-header">
       <h1 class="page-title">تعديل الطلب</h1>
-      <NuxtLink :to="`/requests/${id}`" class="back-link">← العودة إلى الطلب</NuxtLink>
+      <NuxtLink to="/requests" class="back-link">← العودة إلى القائمة</NuxtLink>
     </div>
 
     <!-- Loading state -->
-    <div v-if="requestsStore.loading" class="state-card">
+    <div v-if="requestsStore.loadingRequest" class="state-card">
       <span class="state-text">جاري التحميل...</span>
     </div>
 
-    <!-- Error state -->
-    <div v-else-if="requestsStore.error && !requestsStore.currentRequest" class="state-card state-card--error">
-      <span class="state-text">{{ requestsStore.error }}</span>
-    </div>
+    <!-- Ready: form rendered only after request is loaded and confirmed editable -->
+    <template v-else-if="requestsStore.currentRequest && isEditable">
+      <!-- Toast notification -->
+      <div
+        v-if="toast"
+        class="toast"
+        :class="toast.type === 'success' ? 'toast--success' : 'toast--error'"
+        role="alert"
+      >
+        {{ toast.message }}
+      </div>
 
-    <template v-else-if="requestsStore.currentRequest">
-      <!-- Locked state -->
-      <LockedBanner
-        v-if="!isEditable"
-        :status="requestsStore.currentRequest.status"
-      />
+      <RequestForm
+        :initial-values="initialValues"
+        :loading="requestsStore.saving"
+        @submit="handleSubmit"
+      >
+        <template #actions>
+          <button
+            type="submit"
+            class="btn-primary"
+            :disabled="requestsStore.saving"
+          >
+            {{ requestsStore.saving ? 'جاري الحفظ...' : 'حفظ التعديلات' }}
+          </button>
+          <NuxtLink to="/requests" class="btn-secondary">إلغاء</NuxtLink>
+        </template>
+      </RequestForm>
+    </template>
 
-      <template v-else>
-        <!-- Toast notification -->
-        <div
-          v-if="toast"
-          class="toast"
-          :class="toast.type === 'success' ? 'toast--success' : 'toast--error'"
-          role="alert"
-        >
-          {{ toast.message }}
-        </div>
-
-        <RequestForm
-          :initial-values="initialValues"
-          :loading="requestsStore.saving"
-          @submit="handleSubmit"
-        >
-          <template #actions>
-            <button
-              type="submit"
-              class="btn-primary"
-              :disabled="requestsStore.saving"
-            >
-              {{ requestsStore.saving ? 'جاري الحفظ...' : 'حفظ التعديلات' }}
-            </button>
-            <NuxtLink :to="`/requests/${id}`" class="btn-secondary">إلغاء</NuxtLink>
-          </template>
-        </RequestForm>
-      </template>
+    <!-- Locked state (should not normally render — onMounted redirects away) -->
+    <template v-else-if="requestsStore.currentRequest && !isEditable">
+      <LockedBanner :status="requestsStore.currentRequest.status" />
     </template>
   </div>
 </template>
@@ -154,10 +162,6 @@ async function handleSubmit(data: RequestFormData) {
   align-items: center;
   gap: 16px;
   text-align: center;
-}
-
-.state-card--error {
-  border-color: #ff3b30;
 }
 
 .state-text {

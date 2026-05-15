@@ -46,24 +46,24 @@ describe('useRequestsStore', () => {
     it('starts empty with no loading or error', () => {
       const store = useRequestsStore()
       expect(store.requests).toEqual([])
-      expect(store.loading).toBe(false)
+      expect(store.loadingList).toBe(false)
       expect(store.error).toBeNull()
       expect(store.meta).toBeNull()
     })
   })
 
   describe('loadRequests()', () => {
-    it('sets loading to true while fetching and false after', async () => {
+    it('sets loadingList to true while fetching and false after', async () => {
       let resolveFn!: (v: unknown) => void
       mockFetchRequests.mockReturnValueOnce(new Promise(r => (resolveFn = r)))
 
       const store = useRequestsStore()
       const promise = store.loadRequests()
-      expect(store.loading).toBe(true)
+      expect(store.loadingList).toBe(true)
 
       resolveFn(buildPage(1, 1))
       await promise
-      expect(store.loading).toBe(false)
+      expect(store.loadingList).toBe(false)
     })
 
     it('populates requests and meta on success', async () => {

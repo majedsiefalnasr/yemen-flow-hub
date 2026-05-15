@@ -65,9 +65,9 @@ export interface ImportRequest {
 
 /** Fields sent to POST /api/requests and PUT /api/requests/{id} */
 export interface RequestFormData {
-  merchant_id: number | null
+  merchant_id: number
   currency: string
-  amount: number | null
+  amount: number
   supplier_name: string
   goods_description: string
   port_of_entry: string

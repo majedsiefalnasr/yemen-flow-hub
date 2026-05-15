@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { useForm, useField } from 'vee-validate'
+import { ref, onMounted, watch } from 'vue'
+import { useForm } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/zod'
 import type { RequestFormData, Merchant } from '../../types/models'
 import { Currency } from '../../types/enums'
@@ -16,7 +16,7 @@ const emit = defineEmits<{
   submit: [data: RequestFormData]
 }>()
 
-const { handleSubmit, errors } = useForm({
+const { handleSubmit, errors, setValues, values } = useForm({
   validationSchema: toTypedSchema(requestFormSchema),
   initialValues: {
     merchant_id: props.initialValues?.merchant_id ?? undefined,
@@ -29,41 +29,55 @@ const { handleSubmit, errors } = useForm({
   },
 })
 
-const { value: merchantId } = useField<number | undefined>('merchant_id')
-const { value: currency } = useField<Currency>('currency')
-const { value: amount } = useField<number | undefined>('amount')
-const { value: supplierName } = useField<string>('supplier_name')
-const { value: goodsDescription } = useField<string>('goods_description')
-const { value: portOfEntry } = useField<string>('port_of_entry')
-const { value: notes } = useField<string>('notes')
+// Reactively hydrate form when initialValues arrive asynchronously (edit mode)
+watch(
+  () => props.initialValues,
+  (next) => {
+    if (!next) return
+    setValues({
+      merchant_id: next.merchant_id ?? undefined,
+      currency: (next.currency as Currency | undefined) ?? Currency.USD,
+      amount: next.amount ?? undefined,
+      supplier_name: next.supplier_name ?? '',
+      goods_description: next.goods_description ?? '',
+      port_of_entry: next.port_of_entry ?? '',
+      notes: next.notes ?? '',
+    })
+  },
+  { deep: true },
+)
 
 const merchants = ref<Merchant[]>([])
 const merchantsLoading = ref(false)
+const merchantsError = ref(false)
 
 const { fetchMerchants } = useMerchants()
 
-onMounted(async () => {
+async function loadMerchants() {
   merchantsLoading.value = true
+  merchantsError.value = false
   try {
     merchants.value = await fetchMerchants()
   }
   catch {
-    // Merchants load failure is non-fatal; user can retry
+    merchantsError.value = true
   }
   finally {
     merchantsLoading.value = false
   }
-})
+}
 
-const onSubmit = handleSubmit((values) => {
+onMounted(loadMerchants)
+
+const onSubmit = handleSubmit((v) => {
   emit('submit', {
-    merchant_id: values.merchant_id as number,
-    currency: values.currency,
-    amount: values.amount as number,
-    supplier_name: values.supplier_name,
-    goods_description: values.goods_description,
-    port_of_entry: values.port_of_entry,
-    notes: values.notes ?? '',
+    merchant_id: v.merchant_id as number,
+    currency: v.currency,
+    amount: v.amount as number,
+    supplier_name: v.supplier_name,
+    goods_description: v.goods_description,
+    port_of_entry: v.port_of_entry,
+    notes: v.notes ?? '',
   })
 })
 </script>
@@ -79,25 +93,37 @@ const onSubmit = handleSubmit((values) => {
         <label class="field-label" for="merchant-select">
           المستورد <span class="required-mark">*</span>
         </label>
-        <select
-          id="merchant-select"
-          v-model="merchantId"
-          class="form-input"
-          :disabled="merchantsLoading || loading"
-          :class="{ 'form-input--error': errors.merchant_id }"
-        >
-          <option :value="undefined" disabled>
-            {{ merchantsLoading ? 'جاري التحميل...' : 'اختر المستورد...' }}
-          </option>
-          <option
-            v-for="m in merchants"
-            :key="m.id"
-            :value="m.id"
+
+        <!-- Merchant fetch error with retry -->
+        <div v-if="merchantsError" class="merchant-error" role="alert">
+          <span class="merchant-error-text">تعذّر تحميل قائمة التجار.</span>
+          <button type="button" class="retry-inline-btn" @click="loadMerchants">
+            إعادة المحاولة
+          </button>
+        </div>
+
+        <template v-else>
+          <select
+            id="merchant-select"
+            :value="values.merchant_id"
+            class="form-input"
+            :disabled="merchantsLoading || loading"
+            :class="{ 'form-input--error': errors.merchant_id }"
+            @change="(e) => setValues({ merchant_id: Number((e.target as HTMLSelectElement).value) || undefined })"
           >
-            {{ m.name }}
-          </option>
-        </select>
-        <span v-if="errors.merchant_id" class="field-error" role="alert">{{ errors.merchant_id }}</span>
+            <option :value="undefined" disabled>
+              {{ merchantsLoading ? 'جاري التحميل...' : 'اختر المستورد...' }}
+            </option>
+            <option
+              v-for="m in merchants"
+              :key="m.id"
+              :value="m.id"
+            >
+              {{ m.name }}
+            </option>
+          </select>
+          <span v-if="errors.merchant_id" class="field-error" role="alert">{{ errors.merchant_id }}</span>
+        </template>
       </div>
     </section>
 
@@ -111,12 +137,13 @@ const onSubmit = handleSubmit((values) => {
         </label>
         <input
           id="supplier-name"
-          v-model="supplierName"
+          :value="values.supplier_name"
           type="text"
           class="form-input"
           :disabled="loading"
           :class="{ 'form-input--error': errors.supplier_name }"
           placeholder="أدخل اسم المورد"
+          @input="(e) => setValues({ supplier_name: (e.target as HTMLInputElement).value })"
         />
         <span v-if="errors.supplier_name" class="field-error" role="alert">{{ errors.supplier_name }}</span>
       </div>
@@ -132,12 +159,13 @@ const onSubmit = handleSubmit((values) => {
         </label>
         <textarea
           id="goods-description"
-          v-model="goodsDescription"
+          :value="values.goods_description"
           class="form-input form-textarea"
           :disabled="loading"
           :class="{ 'form-input--error': errors.goods_description }"
           placeholder="أدخل وصفاً تفصيلياً للبضائع"
           rows="3"
+          @input="(e) => setValues({ goods_description: (e.target as HTMLTextAreaElement).value })"
         />
         <span v-if="errors.goods_description" class="field-error" role="alert">{{ errors.goods_description }}</span>
       </div>
@@ -148,12 +176,13 @@ const onSubmit = handleSubmit((values) => {
         </label>
         <input
           id="port-of-entry"
-          v-model="portOfEntry"
+          :value="values.port_of_entry"
           type="text"
           class="form-input"
           :disabled="loading"
           :class="{ 'form-input--error': errors.port_of_entry }"
           placeholder="مثال: ميناء عدن"
+          @input="(e) => setValues({ port_of_entry: (e.target as HTMLInputElement).value })"
         />
         <span v-if="errors.port_of_entry" class="field-error" role="alert">{{ errors.port_of_entry }}</span>
       </div>
@@ -170,14 +199,15 @@ const onSubmit = handleSubmit((values) => {
           </label>
           <input
             id="amount"
-            v-model.number="amount"
+            :value="values.amount"
             type="number"
-            min="1"
+            min="0.01"
             step="0.01"
             class="form-input"
             :disabled="loading"
             :class="{ 'form-input--error': errors.amount }"
             placeholder="0.00"
+            @input="(e) => setValues({ amount: Number((e.target as HTMLInputElement).value) || undefined })"
           />
           <span v-if="errors.amount" class="field-error" role="alert">{{ errors.amount }}</span>
         </div>
@@ -188,16 +218,15 @@ const onSubmit = handleSubmit((values) => {
           </label>
           <select
             id="currency"
-            v-model="currency"
+            :value="values.currency"
             class="form-input"
             :disabled="loading"
             :class="{ 'form-input--error': errors.currency }"
+            @change="(e) => setValues({ currency: (e.target as HTMLSelectElement).value })"
           >
-            <option value="USD">USD — دولار أمريكي</option>
-            <option value="EUR">EUR — يورو</option>
-            <option value="SAR">SAR — ريال سعودي</option>
-            <option value="AED">AED — درهم إماراتي</option>
-            <option value="CNY">CNY — يوان صيني</option>
+            <option v-for="c in Object.values(Currency)" :key="c" :value="c">
+              {{ c }}
+            </option>
           </select>
           <span v-if="errors.currency" class="field-error" role="alert">{{ errors.currency }}</span>
         </div>
@@ -212,11 +241,12 @@ const onSubmit = handleSubmit((values) => {
         <label class="field-label" for="notes">ملاحظات إضافية</label>
         <textarea
           id="notes"
-          v-model="notes"
+          :value="values.notes"
           class="form-input form-textarea"
           :disabled="loading"
           placeholder="أي ملاحظات إضافية (اختياري)"
           rows="3"
+          @input="(e) => setValues({ notes: (e.target as HTMLTextAreaElement).value })"
         />
       </div>
     </section>
@@ -321,6 +351,41 @@ const onSubmit = handleSubmit((values) => {
 .field-error {
   font-size: 13px;
   color: #ff3b30;
+}
+
+.merchant-error {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: #fff0f0;
+  border: 1px solid #ff3b30;
+  border-radius: 12px;
+}
+
+.merchant-error-text {
+  font-size: 14px;
+  color: #c0392b;
+  flex: 1;
+}
+
+.retry-inline-btn {
+  height: 32px;
+  padding: 0 14px;
+  background: transparent;
+  color: #0071e3;
+  border: 1px solid #0071e3;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 100ms;
+}
+
+.retry-inline-btn:hover {
+  background: #0071e31a;
 }
 
 .form-actions {

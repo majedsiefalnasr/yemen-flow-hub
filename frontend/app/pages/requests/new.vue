@@ -18,9 +18,10 @@ const toast = ref<{ message: string; type: 'success' | 'error' } | null>(null)
 
 async function handleSubmit(data: RequestFormData) {
   try {
-    const id = await requestsStore.createRequest(data)
+    await requestsStore.createRequest(data)
     toast.value = { message: 'تم إنشاء الطلب بنجاح.', type: 'success' }
-    await router.push(`/requests/${id}`)
+    // TODO(Story 2.6): navigate to /requests/${id} once detail page exists
+    await router.push('/requests')
   }
   catch {
     toast.value = { message: requestsStore.error ?? 'تعذّر إنشاء الطلب.', type: 'error' }
