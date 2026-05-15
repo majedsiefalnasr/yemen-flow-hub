@@ -5,7 +5,14 @@
       "Bash(rtk read *)",
       "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\('PHP:', d.get\\('require',{}\\).get\\('php',''\\)\\); print\\('Laravel:', d.get\\('require',{}\\).get\\('laravel/framework',''\\)\\)\")",
       "Bash(python3 *)",
-      "Bash(php *)"
+      "Bash(php *)",
+      "Bash(npm view *)",
+      "Bash(npm install *)",
+      "Bash(npm test *)",
+      "Bash(npx nuxt *)",
+      "Bash(npm *)",
+      "Bash(git *)",
+      "Bash(npx socraticode *)"
     ]
   }
 }

@@ -1,0 +1,9 @@
+{
+  "plugins": {
+    "socraticode/socraticode": {
+      "enabled": true,
+      "gitUrl": "https://github.com/giancarloerra/socraticode",
+      "gitRef": "main"
+    }
+  }
+}

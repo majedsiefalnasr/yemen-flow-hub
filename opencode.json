@@ -1,0 +1,9 @@
+{
+  "mcp": {
+    "socraticode": {
+      "type": "local",
+      "command": ["npx", "-y", "socraticode"],
+      "enabled": true
+    }
+  }
+}
