@@ -58,8 +58,8 @@ class WorkflowService
             throw new UnauthorizedTransitionException('You cannot transition another bank request.');
         }
 
-        if ($action === 'bank_approve' && $actor->id === $request->created_by) {
-            throw new SelfReviewException('Reviewer cannot approve own request.');
+        if (in_array($action, ['bank_approve', 'bank_reject'], true) && $actor->id === $request->created_by) {
+            throw new SelfReviewException('Reviewer cannot approve or reject own request.');
         }
 
         if (in_array($action, ['support_approve', 'support_reject'], true) && !$request->isClaimedBy($actor)) {
@@ -97,6 +97,23 @@ class WorkflowService
 
             if ($timestampColumn) {
                 $payload[$timestampColumn] = now();
+            }
+
+            $actorColumn = match ($action) {
+                'submit' => 'submitted_by',
+                'bank_begin_review', 'bank_approve' => 'reviewed_by',
+                'bank_reject' => 'rejected_by',
+                'support_approve', 'support_reject' => 'support_reviewed_by',
+                'swift_upload' => 'swift_uploaded_by',
+                default => null,
+            };
+
+            if ($actorColumn) {
+                $payload[$actorColumn] = $actor->id;
+            }
+
+            if ($action === 'submit' && $request->status === RequestStatus::DRAFT_REJECTED_INTERNAL) {
+                $payload['resubmitted_by'] = $actor->id;
             }
 
             if ($action === 'return_to_entry') {

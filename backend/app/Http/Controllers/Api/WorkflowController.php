@@ -127,6 +127,6 @@ class WorkflowController extends Controller
             $request->input('reason')
         );
 
-        return ApiResponse::success(new ImportRequestResource($updated->load(['bank', 'merchant', 'claimedBy'])), 'Workflow transition executed.');
+        return ApiResponse::success(new ImportRequestResource($updated->load(['bank', 'merchant', 'claimedByUser'])), 'Workflow transition executed.');
     }
 }
