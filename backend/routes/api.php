@@ -39,6 +39,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('requests/{importRequest}', [ImportRequestController::class, 'update']);
     Route::delete('requests/{importRequest}', [ImportRequestController::class, 'destroy']);
     Route::get('requests/{importRequest}/history', [ImportRequestController::class, 'history']);
+    Route::post('documents/upload', [DocumentController::class, 'upload']);
     Route::post('requests/{importRequest}/documents', [DocumentController::class, 'uploadRequestDocument']);
     Route::delete('documents/{document}', [DocumentController::class, 'destroy']);
     Route::get('documents/{document}/download', [DocumentController::class, 'download']);

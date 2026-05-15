@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Requests\UploadDocumentRequest;
+use App\Http\Requests\UploadRequestDocumentRequest;
 use App\Http\Requests\UploadSwiftRequest;
 use App\Http\Resources\DocumentResource;
 use App\Models\ImportRequest;
@@ -16,6 +17,38 @@ class DocumentController extends Controller
 {
     public function __construct(private readonly DocumentService $documentService)
     {
+    }
+
+    #[OA\Post(
+        path: '/api/documents/upload',
+        tags: ['Documents'],
+        summary: 'Upload a PDF document to a request (request_id in body)',
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\MediaType(
+                mediaType: 'multipart/form-data',
+                schema: new OA\Schema(
+                    required: ['request_id', 'file'],
+                    properties: [
+                        new OA\Property(property: 'request_id', type: 'integer'),
+                        new OA\Property(property: 'file', type: 'string', format: 'binary'),
+                    ]
+                )
+            )
+        ),
+        responses: [new OA\Response(response: 201, description: 'Document uploaded')]
+    )]
+    public function upload(UploadRequestDocumentRequest $request)
+    {
+        $importRequest = ImportRequest::findOrFail($request->validated('request_id'));
+
+        $document = $this->documentService->uploadRequestDocument(
+            $importRequest,
+            $request->user(),
+            $request->file('file')
+        );
+
+        return ApiResponse::success(new DocumentResource($document), 'Document uploaded successfully.', 201);
     }
 
     #[OA\Post(

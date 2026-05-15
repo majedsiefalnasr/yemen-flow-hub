@@ -42,7 +42,7 @@ class RequestStatusTest extends TestCase
     {
         $this->assertTrue(RequestStatus::COMPLETED->isTerminal());
         $this->assertTrue(RequestStatus::EXECUTIVE_REJECTED->isTerminal());
-        $this->assertFalse(RequestStatus::CUSTOMS_DECLARATION_ISSUED->isTerminal(), 'CUSTOMS_DECLARATION_ISSUED has a complete outgoing transition');
+        $this->assertTrue(RequestStatus::CUSTOMS_DECLARATION_ISSUED->isTerminal(), 'CUSTOMS_DECLARATION_ISSUED is treated as immutable per Story 2.1 AC-5');
         $this->assertFalse(RequestStatus::SUPPORT_REJECTED->isTerminal(), 'SUPPORT_REJECTED can be reopened via return_to_entry');
         $this->assertFalse(RequestStatus::DRAFT->isTerminal());
         $this->assertFalse(RequestStatus::SUBMITTED->isTerminal());

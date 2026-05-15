@@ -15,6 +15,7 @@ class DocumentResource extends JsonResource
             'original_filename' => $this->original_filename,
             'mime_type' => $this->mime_type,
             'size_bytes' => $this->size_bytes,
+            'checksum' => $this->checksum,
             'uploaded_at' => $this->created_at?->toISOString(),
             'download_url' => url("/api/documents/{$this->id}/download"),
         ];

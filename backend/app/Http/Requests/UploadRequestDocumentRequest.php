@@ -2,7 +2,7 @@
 
 namespace App\Http\Requests;
 
-class UploadDocumentRequest extends ApiFormRequest
+class UploadRequestDocumentRequest extends ApiFormRequest
 {
     public function authorize(): bool
     {
@@ -12,6 +12,7 @@ class UploadDocumentRequest extends ApiFormRequest
     public function rules(): array
     {
         return [
+            'request_id' => ['required', 'integer', 'exists:import_requests,id'],
             'file' => ['required', 'file', 'mimetypes:application/pdf', 'max:10240'],
         ];
     }

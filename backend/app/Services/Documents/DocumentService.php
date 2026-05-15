@@ -5,6 +5,7 @@ namespace App\Services\Documents;
 use App\Enums\AuditAction;
 use App\Enums\RequestStatus;
 use App\Exceptions\DocumentException;
+use App\Exceptions\WorkflowLockedStateException;
 use App\Models\ImportRequest;
 use App\Models\RequestDocument;
 use App\Models\User;
@@ -29,7 +30,7 @@ class DocumentService
         $this->assertFileValid($file);
 
         if (!$request->isEditable()) {
-            throw new DocumentException('Request documents can only be uploaded while request is editable.');
+            throw new WorkflowLockedStateException('Request documents can only be uploaded while request is editable.');
         }
 
         if (!$uploader->hasPermission('request.create') || $uploader->bank_id !== $request->bank_id) {
@@ -110,7 +111,7 @@ class DocumentService
         }
 
         if (!$request->isEditable()) {
-            throw new DocumentException('Documents can only be deleted while request is editable.');
+            throw new WorkflowLockedStateException('Documents can only be deleted while request is editable.');
         }
 
         $path = 'private/'.$document->stored_path;
@@ -132,6 +133,7 @@ class DocumentService
     {
         $extension = $file->getClientOriginalExtension() ?: $file->extension() ?: 'bin';
         $relativePath = "{$folder}/".Str::uuid().".{$extension}";
+        $checksum = hash_file('sha256', $file->getRealPath());
 
         Storage::disk('local')->putFileAs(
             'private/'.$folder,
@@ -147,6 +149,7 @@ class DocumentService
             'stored_path' => $relativePath,
             'mime_type' => $file->getMimeType() ?: 'application/octet-stream',
             'size_bytes' => $file->getSize() ?: 0,
+            'checksum' => $checksum ?: null,
         ]);
     }
 

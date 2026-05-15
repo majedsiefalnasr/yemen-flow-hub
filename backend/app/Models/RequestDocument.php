@@ -16,6 +16,7 @@ class RequestDocument extends Model
         'stored_path',
         'mime_type',
         'size_bytes',
+        'checksum',
     ];
 
     public function request(): BelongsTo
