@@ -433,6 +433,7 @@ So that I can access the application and my role is available for all subsequent
 **And** the failed attempt is logged to `audit_logs` with `user_id: NULL`, `action: "login_failed"`
 **And** after 5 failed attempts within 60 seconds from the same IP, HTTP 429 is returned
 **And** after 10 consecutive failures, the account is locked for 15 minutes and HTTP 423 is returned
+**And** the account lock auto-expires after 15 minutes — a successful login after expiry must reset all failure counters and the lock flag
 
 **Given** an authenticated session exists
 **When** `GET /api/auth/me` is called
@@ -645,10 +646,39 @@ So that I can accurately capture all required financing request details.
 
 **Given** I navigate to `/requests/new`
 **When** the form renders
-**Then** I see fields: Currency (select: USD/EUR/SAR), Amount (number), Supplier Name (text), Goods Description (textarea), Port of Entry (text), Notes (textarea, optional)
+**Then** I see a multi-section form with the following fields:
+
+**Importer Data:**
+- Importer Name (text, required)
+- Importer Commercial Registration Number (text, required)
+- Importer Address (textarea, optional)
+
+**Supplier / Exporter Data:**
+- Supplier Name (text, required) — free-text field, NO merchant dropdown, NO merchant lookup dependency
+- Supplier Country (text, required)
+- Supplier Address (textarea, optional)
+
+**Goods Data:**
+- Goods Description (textarea, required)
+- HS Code / Goods Classification (text, optional)
+- Port of Entry (text, required)
+- Expected Delivery Date (date, optional)
+
+**Banking / Financial Metadata:**
+- Currency (select: USD / EUR / SAR, required)
+- Amount (number, required)
+- Bank Reference Number (text, optional)
+
+**Attachments:**
+- Document upload section: each upload requires a document type label; PDF files only; multiple uploads allowed
+
+**Notes / Remarks:**
+- Notes (textarea, optional)
+
 **And** the form is RTL-first: `dir="rtl"`, right-aligned buttons, labels above fields (Caption style, #6e6e73), 44px input height, 12px radius, 24px vertical field spacing
 **And** required fields show asterisk (#ff3b30)
 **And** client-side validation uses VeeValidate + Zod; errors appear inline below each field
+**And** the Attachments section sends documents via `POST /api/requests/{id}/documents` after the request is created
 
 **Given** I fill the form and click Submit
 **When** `POST /api/requests` succeeds
@@ -884,15 +914,16 @@ So that every executive decision is made with integrity, auditability, and no ra
 
 **Given** the voting session is EXECUTIVE_VOTING_OPEN
 **When** `POST /api/voting/{id}/vote` is called with `{ vote: "APPROVE"|"REJECT"|"ABSTAIN", justification? }`
-**Then** the vote is recorded in `request_votes` with `vote_source: MANUAL`
-**And** each executive member (EXECUTIVE_MEMBER or COMMITTEE_DIRECTOR) can vote exactly once
+**Then** the vote is recorded in `request_votes`
+**And** each executive member (EXECUTIVE_MEMBER or COMMITTEE_DIRECTOR) can vote exactly once — COMMITTEE_DIRECTOR is also a voting member, not just a lifecycle manager
 **And** a second vote attempt by the same user returns HTTP 422
 **And** vote submission uses `lockForUpdate()` pessimistic locking to prevent race conditions
+**And** no automatic finalization occurs at any vote count threshold — finalization only occurs when the Director explicitly closes the session
 
 **Given** I am COMMITTEE_DIRECTOR
 **When** I call `POST /api/voting/{id}/close`
 **Then** the session closure is wrapped in a database transaction with `lockForUpdate()` on the request
-**And** any executive member who has not yet voted is assigned `vote: AUTO_ABSTAIN_TIMEOUT`, `vote_source: TIMEOUT` in `request_votes`
+**And** any executive member (EXECUTIVE_MEMBER or COMMITTEE_DIRECTOR) who has not yet voted is assigned `vote: AUTO_ABSTAIN_TIMEOUT` in `request_votes`
 **And** `current_status` → EXECUTIVE_VOTING_CLOSED
 **And** `voting_closed_by` and `voting_closed_at` are recorded
 
@@ -905,6 +936,13 @@ So that every executive decision is made with integrity, auditability, and no ra
 **And** on a tie where Director has not voted or abstained → EXECUTIVE_REJECTED (safe stance)
 **And** EXECUTIVE_REJECTED is permanent: no further transitions are possible; any mutation returns HTTP 403 `WORKFLOW_IMMUTABLE_STATE`
 **And** `voting_session_status` is kept in sync with `current_status` throughout all voting transitions
+
+**Given** the voting session is EXECUTIVE_VOTING_OPEN and I am COMMITTEE_DIRECTOR
+**When** I call `POST /api/voting/{id}/override` with `{ decision: "APPROVE"|"REJECT", justification: "..." }`
+**Then** the Director's decision overrides the current tally unconditionally — a mandatory non-empty justification is required
+**And** the current tally state at time of override is snapshotted and stored in `audit_logs` metadata
+**And** the session is immediately closed (EXECUTIVE_VOTING_OPEN → EXECUTIVE_VOTING_CLOSED) and finalized (→ EXECUTIVE_APPROVED or EXECUTIVE_REJECTED) in one atomic operation
+**And** all non-voted members receive AUTO_ABSTAIN_TIMEOUT records as part of the same transaction
 
 ---
 
@@ -931,8 +969,12 @@ So that I can cast my vote or manage the session with full context and confidenc
 **Given** I am COMMITTEE_DIRECTOR
 **When** the request is in WAITING_FOR_VOTING_OPEN
 **Then** an "Open Voting Session" button is visible in the Actions Panel
-**And** when the session is EXECUTIVE_VOTING_OPEN, a "Close Voting Session" button is visible (red, with confirmation dialog)
-**And** when the session is EXECUTIVE_VOTING_CLOSED, a "Finalize Decision" button is visible
+**And** when the session is EXECUTIVE_VOTING_OPEN:
+  - A "Close Voting Session" button is visible (red, with confirmation dialog)
+  - A "Director Override" button is visible (amber, with a modal requiring decision + mandatory justification textarea)
+  - Director Override modal shows the current tally before confirming
+**And** when the session is EXECUTIVE_VOTING_CLOSED, a "Finalize Decision" button is visible with final tally summary
+**And** clicking "Director Override" calls `POST /api/voting/{id}/override` — success immediately redirects to the finalized request state
 
 **Given** the voting session has been finalized
 **When** the page renders
@@ -1101,7 +1143,11 @@ So that I can monitor platform-wide activity, identify compliance issues, and ma
 **Given** I am logged in as CBY_ADMIN
 **When** I navigate to `/dashboard`
 **Then** I see a full-system KPI grid: Total Requests (all banks), Approved count, In-Process count, Rejected count
-**And** a compliance alerts panel shows flagged issues (duplicate invoice numbers if detected)
+**And** a compliance alerts panel shows simple query-driven operational alerts — MVP scope only:
+  - Duplicate supplier names (same supplier_name appearing across 2+ requests in the current period)
+  - Unusually high amount (requests exceeding a configurable threshold, default: USD 1,000,000)
+  - Stale pending requests (requests in non-terminal, non-DRAFT status with no transition for >14 days)
+  - **Excluded from MVP:** no AI risk scoring, no fraud detection engine, no AML integration, no advanced pattern recognition
 **And** a "Most Active Banks" section shows request counts per bank
 **And** I can navigate to `/audit` for the full audit log
 **And** I can navigate to `/users` and `/banks` for management
@@ -1144,3 +1190,22 @@ And the entire platform must be fully RTL-correct with no broken layouts or misa
 **And** status badges render correctly in RTL with icon on the right side of text
 **And** at ≤600px: sidebar becomes top nav, cards stack full-width, tables degrade gracefully
 **And** executive voting pages meet 48px minimum touch target on all interactive elements
+
+---
+
+## MVP Explicit Exclusions
+
+The following features are **explicitly out of scope for MVP**. They must not be built, stubbed, or scaffolded unless a future story explicitly adds them:
+
+| Feature | Exclusion Reason |
+| ------- | ---------------- |
+| Notifications module (push, email, SMS, in-app) | Post-MVP; no notification infrastructure planned |
+| Settings module (user preferences, system config UI) | Post-MVP; configuration is env/seeder-driven |
+| Profile management (avatar, password change, personal settings) | Post-MVP; not required for workflow operation |
+| Advanced document type taxonomy (categories, hierarchies, metadata) | Post-MVP; flat document type list is sufficient |
+| Merchant / Supplier management CRUD | Post-MVP; `supplier_name` is free-text for MVP |
+| AI risk engine, fraud detection, AML integration | Post-MVP; compliance alerts are query-driven only |
+| Real-time notifications (WebSocket, SSE, Pusher) | Post-MVP |
+| Email/SMS delivery | Post-MVP |
+| SSO / external identity provider | Post-MVP |
+| Analytics / BI dashboards | Post-MVP; basic reports in Story 4.5 only |
