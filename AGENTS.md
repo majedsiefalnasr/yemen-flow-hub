@@ -194,23 +194,33 @@ npx ctx7@latest docs <libraryId> "<question>"
 Use for: Laravel 11, Nuxt 4, Vue 4, Tailwind v4, shadcn-vue, Pinia, VeeValidate, Zod, Sanctum, Redis.  
 Do NOT use for: business logic, workflow rules, or anything covered by this project's docs.
 
-### SocratiCode
-SocratiCode (https://github.com/giancarloerra/socraticode) provides semantic codebase search and dependency graph analysis.
+### SocratiCode (MANDATORY for all story/feature work)
 
-Use it to:
-- Search across the codebase semantically before adding new code
-- Understand what calls a function before modifying it
-- Trace workflow transitions end-to-end
-- Identify impact of changes before making them
+SocratiCode provides semantic codebase search and dependency graph analysis. It is **required** — not optional — for every BMAD dev-story run and any non-trivial implementation task.
 
-SocratiCode MCP tools are available as `mcp__plugin_socraticode_socraticode__*`.
+**Indexed path:** `/Users/majedsiefalnasr/Documents/Work/Ultimate-Solutions-EGY/yemen-flow-hub/code`
 
-Key tools:
-- `codebase_search` — semantic search
-- `codebase_symbol` — find a specific class/function
-- `codebase_flow` — trace execution flow
-- `codebase_impact` — analyze change impact
-- `codebase_graph_query` — query the dependency graph
+**Required workflow (enforce in every story task):**
+
+| When | Tool to call |
+| ---- | ------------ |
+| Before modifying an existing file | `codebase_symbol` → locate, then `codebase_impact` → assess blast radius |
+| Before creating code that touches existing services/models | `codebase_search` → find related code and avoid duplication |
+| After adding a new public function/method | `codebase_flow` → confirm the call chain is wired correctly |
+| Index is stale or returns no results | `codebase_index` on the path above to rebuild |
+
+**MCP tool names** (prefix: `mcp__plugin_socraticode_socraticode__`):
+
+```
+codebase_index        — index or re-index a path
+codebase_search       — semantic search across the codebase
+codebase_symbol       — find a specific class, function, or method
+codebase_flow         — trace execution flow from a symbol
+codebase_impact       — analyze the impact of changing a symbol
+codebase_graph_query  — query the full dependency graph
+```
+
+**BMAD integration:** The `_bmad/custom/bmad-dev-story.toml` file enforces SocratiCode checks as persistent facts on every story activation. On startup, the dev-story workflow calls `codebase_search` to verify the index is live and triggers `codebase_index` automatically if it is not.
 
 ---
 

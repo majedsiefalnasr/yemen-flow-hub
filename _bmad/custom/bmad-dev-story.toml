@@ -1,0 +1,21 @@
+# Team override for bmad-dev-story skill.
+# Committed — applies to every developer on this project.
+# Merged on top of .claude/skills/bmad-dev-story/customize.toml (base defaults).
+
+[workflow]
+
+# SocratiCode is MANDATORY before any implementation work.
+# Every story run must index-check and search before touching code.
+persistent_facts = [
+  "SocratiCode is the required codebase intelligence layer for this project. Its MCP tools are available as mcp__plugin_socraticode_socraticode__* in every Claude Code session. You MUST use them — they are not optional.",
+  "BEFORE modifying any existing file: call codebase_symbol to locate the symbol, then codebase_impact to understand what would break. Skipping this step is a HALT condition.",
+  "BEFORE creating new code that interacts with existing services or models: call codebase_search with a semantic query to find related code and avoid duplication.",
+  "BEFORE completing each task: call codebase_flow on any new public function you added to confirm the call chain is correct.",
+  "SocratiCode tool quick-reference: codebase_index (index/re-index a path) · codebase_search (semantic search) · codebase_symbol (find class/function) · codebase_flow (trace execution) · codebase_impact (change impact) · codebase_graph_query (dependency graph).",
+  "The project codebase is indexed at /Users/majedsiefalnasr/Documents/Work/Ultimate-Solutions-EGY/yemen-flow-hub/code. If codebase_search returns no results, call codebase_index on that path first to build or refresh the index.",
+]
+
+# On activation, verify SocratiCode is available and the index is fresh.
+activation_steps_append = [
+  "Call mcp__plugin_socraticode_socraticode__codebase_search with query='WorkflowService transition' to verify the SocratiCode index is live. If it returns results, confirm to the user that SocratiCode is active and indexed. If it returns an error or empty results, call mcp__plugin_socraticode_socraticode__codebase_index with path='/Users/majedsiefalnasr/Documents/Work/Ultimate-Solutions-EGY/yemen-flow-hub/code' and tell the user indexing has started (it runs in the background).",
+]
