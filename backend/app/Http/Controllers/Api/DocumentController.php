@@ -42,6 +42,8 @@ class DocumentController extends Controller
     {
         $importRequest = ImportRequest::findOrFail($request->validated('request_id'));
 
+        $this->authorize('uploadDocuments', $importRequest);
+
         $document = $this->documentService->uploadRequestDocument(
             $importRequest,
             $request->user(),
@@ -51,10 +53,15 @@ class DocumentController extends Controller
         return ApiResponse::success(new DocumentResource($document), 'Document uploaded successfully.', 201);
     }
 
+    /**
+     * @deprecated Use POST /api/documents/upload instead. Kept for backward compatibility during Epic 2.
+     * Delegates to the same canonical flow. Will be removed after Epic 2 stabilization.
+     */
     #[OA\Post(
         path: '/api/requests/{importRequest}/documents',
         tags: ['Documents'],
-        summary: 'Upload request document',
+        summary: '[DEPRECATED] Upload request document — use POST /api/documents/upload',
+        deprecated: true,
         parameters: [
             new OA\Parameter(name: 'importRequest', in: 'path', required: true, schema: new OA\Schema(type: 'integer')),
         ],
@@ -72,6 +79,8 @@ class DocumentController extends Controller
     )]
     public function uploadRequestDocument(UploadDocumentRequest $request, ImportRequest $importRequest)
     {
+        $this->authorize('uploadDocuments', $importRequest);
+
         $document = $this->documentService->uploadRequestDocument(
             $importRequest,
             $request->user(),
@@ -130,6 +139,8 @@ class DocumentController extends Controller
     )]
     public function destroy(RequestDocument $document)
     {
+        $this->authorize('deleteDocuments', $document->request);
+
         $this->documentService->delete($document, request()->user());
 
         return ApiResponse::success((object) [], 'Document deleted successfully.');

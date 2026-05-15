@@ -105,12 +105,15 @@ class DocumentControllerTest extends TestCase
 
     private function makeDocument(ImportRequest $request, User $uploader): RequestDocument
     {
+        $storedPath = "requests/{$request->id}/test.pdf";
+        Storage::disk('local')->put('private/'.$storedPath, 'fake-pdf-content');
+
         return RequestDocument::query()->create([
             'request_id' => $request->id,
             'uploaded_by' => $uploader->id,
             'type' => 'REQUEST_DOC',
             'original_filename' => 'test.pdf',
-            'stored_path' => "requests/{$request->id}/test.pdf",
+            'stored_path' => $storedPath,
             'mime_type' => 'application/pdf',
             'size_bytes' => 1024,
             'checksum' => 'abc123',
@@ -275,6 +278,7 @@ class DocumentControllerTest extends TestCase
     {
         $importRequest = $this->makeRequest($this->bank, $this->dataEntry);
         $document = $this->makeDocument($importRequest, $this->dataEntry);
+        $storedPath = $document->stored_path;
 
         $response = $this->actingAs($this->dataEntry)
             ->deleteJson("/api/documents/{$document->id}");
@@ -283,6 +287,7 @@ class DocumentControllerTest extends TestCase
             ->assertJsonPath('success', true);
 
         $this->assertDatabaseMissing('request_documents', ['id' => $document->id]);
+        Storage::disk('local')->assertMissing('private/'.$storedPath);
     }
 
     // ─── AC-3: WORKFLOW_LOCKED_STATE for delete on non-editable request ────────
@@ -311,9 +316,8 @@ class DocumentControllerTest extends TestCase
                 'file' => $this->makePdf(),
             ]);
 
-        // Cross-bank upload is blocked (422 from DocumentException — unauthorized bank scope)
-        $response->assertStatus(422)
-            ->assertJsonPath('success', false);
+        // Cross-bank upload blocked at policy layer (uploadDocuments policy checks bank_id match)
+        $response->assertStatus(403);
 
         $this->assertDatabaseMissing('request_documents', ['request_id' => $otherRequest->id]);
     }
@@ -328,5 +332,92 @@ class DocumentControllerTest extends TestCase
         ]);
 
         $response->assertStatus(401);
+    }
+
+    // ─── AC-3: Additional locked-status coverage (Patch K) ───────────────────
+
+    public function test_upload_on_bank_review_request_returns_422_workflow_locked_state(): void
+    {
+        $importRequest = $this->makeRequest($this->bank, $this->dataEntry, RequestStatus::BANK_REVIEW);
+
+        $response = $this->actingAs($this->dataEntry)
+            ->postJson('/api/documents/upload', [
+                'request_id' => $importRequest->id,
+                'file' => $this->makePdf(),
+            ]);
+
+        $response->assertStatus(422)
+            ->assertJsonPath('error_code', 'WORKFLOW_LOCKED_STATE');
+    }
+
+    public function test_upload_on_executive_voting_open_request_returns_422_workflow_locked_state(): void
+    {
+        $importRequest = $this->makeRequest($this->bank, $this->dataEntry, RequestStatus::EXECUTIVE_VOTING_OPEN);
+
+        $response = $this->actingAs($this->dataEntry)
+            ->postJson('/api/documents/upload', [
+                'request_id' => $importRequest->id,
+                'file' => $this->makePdf(),
+            ]);
+
+        $response->assertStatus(422)
+            ->assertJsonPath('error_code', 'WORKFLOW_LOCKED_STATE');
+    }
+
+    public function test_upload_on_completed_request_returns_422_workflow_locked_state(): void
+    {
+        $importRequest = $this->makeRequest($this->bank, $this->dataEntry, RequestStatus::COMPLETED);
+
+        $response = $this->actingAs($this->dataEntry)
+            ->postJson('/api/documents/upload', [
+                'request_id' => $importRequest->id,
+                'file' => $this->makePdf(),
+            ]);
+
+        $response->assertStatus(422)
+            ->assertJsonPath('error_code', 'WORKFLOW_LOCKED_STATE');
+    }
+
+    public function test_delete_on_bank_review_request_returns_422_workflow_locked_state(): void
+    {
+        $importRequest = $this->makeRequest($this->bank, $this->dataEntry, RequestStatus::BANK_REVIEW);
+        $document = $this->makeDocument($importRequest, $this->dataEntry);
+
+        $response = $this->actingAs($this->dataEntry)
+            ->deleteJson("/api/documents/{$document->id}");
+
+        $response->assertStatus(422)
+            ->assertJsonPath('error_code', 'WORKFLOW_LOCKED_STATE');
+    }
+
+    public function test_deprecated_endpoint_still_uploads_pdf_to_draft_request(): void
+    {
+        $importRequest = $this->makeRequest($this->bank, $this->dataEntry);
+
+        $response = $this->actingAs($this->dataEntry)
+            ->postJson("/api/requests/{$importRequest->id}/documents", [
+                'file' => $this->makePdf(),
+            ]);
+
+        $response->assertStatus(201)
+            ->assertJsonPath('success', true);
+
+        $this->assertDatabaseHas('request_documents', [
+            'request_id' => $importRequest->id,
+            'uploaded_by' => $this->dataEntry->id,
+        ]);
+    }
+
+    public function test_deprecated_endpoint_blocks_cross_bank_upload(): void
+    {
+        $otherRequest = $this->makeRequest($this->otherBank, $this->otherDataEntry);
+
+        $response = $this->actingAs($this->dataEntry)
+            ->postJson("/api/requests/{$otherRequest->id}/documents", [
+                'file' => $this->makePdf(),
+            ]);
+
+        $response->assertStatus(403);
+        $this->assertDatabaseMissing('request_documents', ['request_id' => $otherRequest->id]);
     }
 }

@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Services\Audit\AuditService;
 use App\Services\Workflow\WorkflowService;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -104,7 +105,6 @@ class DocumentService
     public function delete(RequestDocument $document, User $user): void
     {
         $request = $document->request;
-        Gate::forUser($user)->authorize('update', $request);
 
         if ($document->type !== 'REQUEST_DOC') {
             throw new DocumentException('Only regular request documents can be deleted.');
@@ -132,25 +132,37 @@ class DocumentService
     private function storeDocument(ImportRequest $request, User $uploader, UploadedFile $file, string $type, string $folder): RequestDocument
     {
         $extension = $file->getClientOriginalExtension() ?: $file->extension() ?: 'bin';
-        $relativePath = "{$folder}/".Str::uuid().".{$extension}";
+        $filename = Str::uuid().".{$extension}";
+        $relativePath = "{$folder}/{$filename}";
+        $storagePath = 'private/'.$folder;
+
         $checksum = hash_file('sha256', $file->getRealPath());
+        if ($checksum === false) {
+            throw new DocumentException('Failed to compute file checksum.');
+        }
 
-        Storage::disk('local')->putFileAs(
-            'private/'.$folder,
-            $file,
-            basename($relativePath)
-        );
+        $stored = Storage::disk('local')->putFileAs($storagePath, $file, $filename);
+        if ($stored === false) {
+            throw new DocumentException('Failed to store file on disk.');
+        }
 
-        return RequestDocument::query()->create([
-            'request_id' => $request->id,
-            'uploaded_by' => $uploader->id,
-            'type' => $type,
-            'original_filename' => $file->getClientOriginalName(),
-            'stored_path' => $relativePath,
-            'mime_type' => $file->getMimeType() ?: 'application/octet-stream',
-            'size_bytes' => $file->getSize() ?: 0,
-            'checksum' => $checksum ?: null,
-        ]);
+        try {
+            return DB::transaction(function () use ($request, $uploader, $file, $type, $relativePath, $checksum): RequestDocument {
+                return RequestDocument::query()->create([
+                    'request_id' => $request->id,
+                    'uploaded_by' => $uploader->id,
+                    'type' => $type,
+                    'original_filename' => $file->getClientOriginalName(),
+                    'stored_path' => $relativePath,
+                    'mime_type' => $file->getMimeType() ?: 'application/octet-stream',
+                    'size_bytes' => $file->getSize() ?: 0,
+                    'checksum' => $checksum,
+                ]);
+            });
+        } catch (\Throwable $e) {
+            Storage::disk('local')->delete('private/'.$relativePath);
+            throw $e;
+        }
     }
 
     private function assertFileValid(UploadedFile $file): void

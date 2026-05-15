@@ -33,4 +33,16 @@ class ImportRequestPolicy
         return $user->hasPermission('request.create')
             && $user->bank_id === $importRequest->bank_id;
     }
+
+    public function uploadDocuments(User $user, ImportRequest $importRequest): bool
+    {
+        return $user->hasPermission('request.create')
+            && $user->bank_id === $importRequest->bank_id;
+    }
+
+    public function deleteDocuments(User $user, ImportRequest $importRequest): bool
+    {
+        return $user->hasPermission('request.create')
+            && $user->bank_id === $importRequest->bank_id;
+    }
 }

@@ -40,6 +40,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('requests/{importRequest}', [ImportRequestController::class, 'destroy']);
     Route::get('requests/{importRequest}/history', [ImportRequestController::class, 'history']);
     Route::post('documents/upload', [DocumentController::class, 'upload']);
+    // @deprecated — use POST /api/documents/upload; kept for backward compat during Epic 2 stabilization
     Route::post('requests/{importRequest}/documents', [DocumentController::class, 'uploadRequestDocument']);
     Route::delete('documents/{document}', [DocumentController::class, 'destroy']);
     Route::get('documents/{document}/download', [DocumentController::class, 'download']);
