@@ -1,0 +1,416 @@
+<?php
+
+namespace Tests\Feature\Requests;
+
+use App\Enums\RequestStatus;
+use App\Enums\UserRole;
+use App\Models\Bank;
+use App\Models\ImportRequest;
+use App\Models\Merchant;
+use App\Models\Permission;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Tests\TestCase;
+
+class ImportRequestControllerTest extends TestCase
+{
+    use RefreshDatabase;
+
+    private Bank $bank;
+    private Bank $otherBank;
+    private User $dataEntry;
+    private User $otherDataEntry;
+    private Merchant $merchant;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        Cache::flush();
+        $this->seedPermissions();
+
+        $this->bank = $this->makeBank('YCB');
+        $this->otherBank = $this->makeBank('OTH');
+        $this->dataEntry = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $this->otherDataEntry = $this->makeUser(UserRole::DATA_ENTRY, $this->otherBank);
+        $this->merchant = $this->makeMerchant($this->bank);
+    }
+
+    // ─── Helpers ──────────────────────────────────────────────────────────────
+
+    private function seedPermissions(): void
+    {
+        $permissionId = DB::table('permissions')->insertGetId([
+            'slug' => 'request.create',
+            'name_ar' => 'إنشاء طلب',
+            'name_en' => 'Create request',
+            'group' => 'requests',
+        ]);
+
+        DB::table('role_permissions')->insert([
+            'permission_id' => $permissionId,
+            'role' => UserRole::DATA_ENTRY->value,
+        ]);
+    }
+
+    private function makeBank(string $code): Bank
+    {
+        return Bank::query()->create([
+            'name' => "بنك {$code}",
+            'code' => $code,
+            'is_active' => true,
+        ]);
+    }
+
+    private function makeUser(UserRole $role, ?Bank $bank = null): User
+    {
+        static $counter = 0;
+        $counter++;
+        return User::query()->create([
+            'name' => "User {$counter}",
+            'email' => "user{$counter}@example.com",
+            'password' => Hash::make('password'),
+            'role' => $role->value,
+            'bank_id' => $bank?->id,
+            'is_active' => true,
+        ]);
+    }
+
+    private function makeMerchant(Bank $bank): Merchant
+    {
+        static $merchantCounter = 0;
+        $merchantCounter++;
+        return Merchant::query()->create([
+            'name' => "مورد تجريبي {$merchantCounter}",
+            'tax_number' => "TX-{$merchantCounter}",
+            'commercial_register' => "CR-{$merchantCounter}",
+            'address' => 'صنعاء، اليمن',
+            'contact' => '+9671234567',
+            'category' => 'general',
+            'status' => 'active',
+            'bank_id' => $bank->id,
+        ]);
+    }
+
+    private function makeRequest(Bank $bank, User $creator, RequestStatus $status = RequestStatus::DRAFT): ImportRequest
+    {
+        app()->instance('workflow.transition.active', true);
+        try {
+            return ImportRequest::query()->create([
+                'bank_id' => $bank->id,
+                'merchant_id' => $this->makeMerchant($bank)->id,
+                'created_by' => $creator->id,
+                'currency' => 'USD',
+                'amount' => 10000.00,
+                'supplier_name' => 'Supplier Co.',
+                'goods_description' => 'Industrial equipment',
+                'port_of_entry' => 'Aden Port',
+                'notes' => null,
+                'status' => $status,
+                'current_owner_role' => UserRole::DATA_ENTRY,
+            ]);
+        } finally {
+            app()->offsetUnset('workflow.transition.active');
+        }
+    }
+
+    private function validPayload(): array
+    {
+        return [
+            'merchant_id' => $this->merchant->id,
+            'currency' => 'USD',
+            'amount' => 50000,
+            'supplier_name' => 'Global Imports Ltd.',
+            'goods_description' => 'Medical equipment',
+            'port_of_entry' => 'Hodeidah Port',
+            'notes' => 'Urgent shipment',
+        ];
+    }
+
+    // ─── AC-1: POST /api/requests ──────────────────────────────────────────────
+
+    public function test_data_entry_can_create_draft_request(): void
+    {
+        $response = $this->actingAs($this->dataEntry)
+            ->postJson('/api/requests', $this->validPayload());
+
+        $response->assertStatus(201)
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.status', RequestStatus::DRAFT->value)
+            ->assertJsonStructure(['data' => ['id', 'reference_number', 'status']]);
+
+        $this->assertDatabaseHas('import_requests', [
+            'bank_id' => $this->bank->id,
+            'created_by' => $this->dataEntry->id,
+            'status' => RequestStatus::DRAFT->value,
+            'supplier_name' => 'Global Imports Ltd.',
+        ]);
+    }
+
+    public function test_created_request_has_auto_generated_reference_number(): void
+    {
+        $response = $this->actingAs($this->dataEntry)
+            ->postJson('/api/requests', $this->validPayload());
+
+        $response->assertStatus(201);
+        $referenceNumber = $response->json('data.reference_number');
+        $year = now()->format('Y');
+        $this->assertMatchesRegularExpression("/^YFH-{$year}-\d{6}$/", $referenceNumber);
+    }
+
+    public function test_created_request_sets_bank_id_from_user(): void
+    {
+        $response = $this->actingAs($this->dataEntry)
+            ->postJson('/api/requests', $this->validPayload());
+
+        $response->assertStatus(201)
+            ->assertJsonPath('data.bank_id', $this->bank->id);
+    }
+
+    public function test_unauthenticated_user_cannot_create_request(): void
+    {
+        $this->postJson('/api/requests', $this->validPayload())
+            ->assertUnauthorized();
+    }
+
+    // ─── AC-2: PUT /api/requests/{id} — editable states ───────────────────────
+
+    public function test_data_entry_can_update_own_bank_draft_request(): void
+    {
+        $request = $this->makeRequest($this->bank, $this->dataEntry);
+
+        $response = $this->actingAs($this->dataEntry)
+            ->putJson("/api/requests/{$request->id}", array_merge($this->validPayload(), ['supplier_name' => 'Updated Supplier']));
+
+        $response->assertOk()->assertJsonPath('success', true);
+        $this->assertDatabaseHas('import_requests', [
+            'id' => $request->id,
+            'supplier_name' => 'Updated Supplier',
+            'last_updated_by' => $this->dataEntry->id,
+        ]);
+    }
+
+    public function test_any_bank_data_entry_can_update_bank_owned_draft(): void
+    {
+        $anotherDataEntry = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $request = $this->makeRequest($this->bank, $this->dataEntry);
+
+        $response = $this->actingAs($anotherDataEntry)
+            ->putJson("/api/requests/{$request->id}", $this->validPayload());
+
+        $response->assertOk();
+        $this->assertDatabaseHas('import_requests', [
+            'id' => $request->id,
+            'last_updated_by' => $anotherDataEntry->id,
+        ]);
+    }
+
+    public function test_update_sets_last_updated_by_to_current_user(): void
+    {
+        $request = $this->makeRequest($this->bank, $this->dataEntry);
+
+        $this->actingAs($this->dataEntry)
+            ->putJson("/api/requests/{$request->id}", $this->validPayload());
+
+        $this->assertDatabaseHas('import_requests', [
+            'id' => $request->id,
+            'last_updated_by' => $this->dataEntry->id,
+        ]);
+    }
+
+    public function test_data_entry_can_update_draft_rejected_internal_request(): void
+    {
+        $request = $this->makeRequest($this->bank, $this->dataEntry, RequestStatus::DRAFT_REJECTED_INTERNAL);
+
+        $response = $this->actingAs($this->dataEntry)
+            ->putJson("/api/requests/{$request->id}", $this->validPayload());
+
+        $response->assertOk();
+    }
+
+    // ─── AC-3: WORKFLOW_LOCKED_STATE on non-editable ──────────────────────────
+
+    public function test_update_returns_422_locked_state_when_submitted(): void
+    {
+        $request = $this->makeRequest($this->bank, $this->dataEntry, RequestStatus::SUBMITTED);
+
+        $response = $this->actingAs($this->dataEntry)
+            ->putJson("/api/requests/{$request->id}", $this->validPayload());
+
+        $response->assertStatus(422)
+            ->assertJsonPath('error_code', 'WORKFLOW_LOCKED_STATE');
+    }
+
+    public function test_update_returns_422_locked_state_when_bank_approved(): void
+    {
+        $request = $this->makeRequest($this->bank, $this->dataEntry, RequestStatus::BANK_APPROVED);
+
+        $response = $this->actingAs($this->dataEntry)
+            ->putJson("/api/requests/{$request->id}", $this->validPayload());
+
+        $response->assertStatus(422)
+            ->assertJsonPath('error_code', 'WORKFLOW_LOCKED_STATE');
+    }
+
+    // ─── AC-4: DELETE /api/requests/{id} ─────────────────────────────────────
+
+    public function test_data_entry_can_delete_draft_request(): void
+    {
+        $request = $this->makeRequest($this->bank, $this->dataEntry);
+
+        $response = $this->actingAs($this->dataEntry)
+            ->deleteJson("/api/requests/{$request->id}");
+
+        $response->assertOk()->assertJsonPath('success', true);
+        $this->assertSoftDeleted('import_requests', ['id' => $request->id]);
+    }
+
+    public function test_delete_returns_422_locked_state_when_submitted(): void
+    {
+        $request = $this->makeRequest($this->bank, $this->dataEntry, RequestStatus::SUBMITTED);
+
+        $response = $this->actingAs($this->dataEntry)
+            ->deleteJson("/api/requests/{$request->id}");
+
+        $response->assertStatus(422)
+            ->assertJsonPath('error_code', 'WORKFLOW_LOCKED_STATE');
+    }
+
+    public function test_delete_returns_422_locked_state_when_bank_review(): void
+    {
+        $request = $this->makeRequest($this->bank, $this->dataEntry, RequestStatus::BANK_REVIEW);
+
+        $response = $this->actingAs($this->dataEntry)
+            ->deleteJson("/api/requests/{$request->id}");
+
+        $response->assertStatus(422)
+            ->assertJsonPath('error_code', 'WORKFLOW_LOCKED_STATE');
+    }
+
+    // ─── AC-5: WORKFLOW_IMMUTABLE_STATE on terminal statuses ──────────────────
+
+    public function test_update_returns_403_immutable_state_when_executive_rejected(): void
+    {
+        $request = $this->makeRequest($this->bank, $this->dataEntry, RequestStatus::EXECUTIVE_REJECTED);
+
+        $response = $this->actingAs($this->dataEntry)
+            ->putJson("/api/requests/{$request->id}", $this->validPayload());
+
+        $response->assertStatus(403)
+            ->assertJsonPath('error_code', 'WORKFLOW_IMMUTABLE_STATE')
+            ->assertJsonPath('current_status', RequestStatus::EXECUTIVE_REJECTED->value);
+    }
+
+    public function test_update_returns_403_immutable_state_when_customs_declaration_issued(): void
+    {
+        $request = $this->makeRequest($this->bank, $this->dataEntry, RequestStatus::CUSTOMS_DECLARATION_ISSUED);
+
+        $response = $this->actingAs($this->dataEntry)
+            ->putJson("/api/requests/{$request->id}", $this->validPayload());
+
+        $response->assertStatus(403)
+            ->assertJsonPath('error_code', 'WORKFLOW_IMMUTABLE_STATE')
+            ->assertJsonPath('current_status', RequestStatus::CUSTOMS_DECLARATION_ISSUED->value);
+    }
+
+    public function test_update_returns_403_immutable_state_when_completed(): void
+    {
+        $request = $this->makeRequest($this->bank, $this->dataEntry, RequestStatus::COMPLETED);
+
+        $response = $this->actingAs($this->dataEntry)
+            ->putJson("/api/requests/{$request->id}", $this->validPayload());
+
+        $response->assertStatus(403)
+            ->assertJsonPath('error_code', 'WORKFLOW_IMMUTABLE_STATE')
+            ->assertJsonPath('current_status', RequestStatus::COMPLETED->value);
+    }
+
+    public function test_delete_returns_403_immutable_state_when_executive_rejected(): void
+    {
+        $request = $this->makeRequest($this->bank, $this->dataEntry, RequestStatus::EXECUTIVE_REJECTED);
+
+        $response = $this->actingAs($this->dataEntry)
+            ->deleteJson("/api/requests/{$request->id}");
+
+        $response->assertStatus(403)
+            ->assertJsonPath('error_code', 'WORKFLOW_IMMUTABLE_STATE')
+            ->assertJsonPath('current_status', RequestStatus::EXECUTIVE_REJECTED->value);
+    }
+
+    public function test_delete_returns_403_immutable_state_when_completed(): void
+    {
+        $request = $this->makeRequest($this->bank, $this->dataEntry, RequestStatus::COMPLETED);
+
+        $response = $this->actingAs($this->dataEntry)
+            ->deleteJson("/api/requests/{$request->id}");
+
+        $response->assertStatus(403)
+            ->assertJsonPath('error_code', 'WORKFLOW_IMMUTABLE_STATE')
+            ->assertJsonPath('current_status', RequestStatus::COMPLETED->value);
+    }
+
+    public function test_delete_returns_403_immutable_state_when_customs_declaration_issued(): void
+    {
+        $request = $this->makeRequest($this->bank, $this->dataEntry, RequestStatus::CUSTOMS_DECLARATION_ISSUED);
+
+        $response = $this->actingAs($this->dataEntry)
+            ->deleteJson("/api/requests/{$request->id}");
+
+        $response->assertStatus(403)
+            ->assertJsonPath('error_code', 'WORKFLOW_IMMUTABLE_STATE')
+            ->assertJsonPath('current_status', RequestStatus::CUSTOMS_DECLARATION_ISSUED->value);
+    }
+
+    // ─── Role enforcement ─────────────────────────────────────────────────────
+
+    public function test_non_data_entry_same_bank_user_cannot_update_draft(): void
+    {
+        $bankReviewer = $this->makeUser(UserRole::BANK_REVIEWER, $this->bank);
+        $request = $this->makeRequest($this->bank, $this->dataEntry);
+
+        $response = $this->actingAs($bankReviewer)
+            ->putJson("/api/requests/{$request->id}", $this->validPayload());
+
+        $response->assertStatus(403);
+    }
+
+    // ─── Org-scoping ──────────────────────────────────────────────────────────
+
+    public function test_data_entry_cannot_update_request_from_other_bank(): void
+    {
+        $request = $this->makeRequest($this->otherBank, $this->otherDataEntry);
+
+        $response = $this->actingAs($this->dataEntry)
+            ->putJson("/api/requests/{$request->id}", $this->validPayload());
+
+        $response->assertStatus(403);
+    }
+
+    public function test_data_entry_cannot_delete_request_from_other_bank(): void
+    {
+        $request = $this->makeRequest($this->otherBank, $this->otherDataEntry);
+
+        $response = $this->actingAs($this->dataEntry)
+            ->deleteJson("/api/requests/{$request->id}");
+
+        $response->assertStatus(403);
+    }
+
+    public function test_index_returns_only_own_bank_requests(): void
+    {
+        $this->makeRequest($this->bank, $this->dataEntry);
+        $this->makeRequest($this->otherBank, $this->otherDataEntry);
+
+        $response = $this->actingAs($this->dataEntry)
+            ->getJson('/api/requests');
+
+        $response->assertOk();
+        // Paginated resource collection is wrapped: data.data[] contains the items
+        $items = $response->json('data.data') ?? $response->json('data');
+        $bankIds = collect($items)->pluck('bank_id')->unique()->values()->all();
+        $this->assertNotEmpty($bankIds, 'Expected at least one request in response');
+        $this->assertEquals([$this->bank->id], $bankIds);
+    }
+}

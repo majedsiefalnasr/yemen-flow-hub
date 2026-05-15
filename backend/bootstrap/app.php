@@ -20,6 +20,8 @@ use App\Exceptions\DuplicateVoteException;
 use App\Exceptions\VotingException;
 use App\Exceptions\DocumentException;
 use App\Exceptions\CustomsException;
+use App\Exceptions\WorkflowLockedStateException;
+use App\Exceptions\WorkflowImmutableStateException;
 use App\Http\Middleware\Authenticate;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -92,6 +94,27 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->render(function (CustomsException $e, Request $request) {
             if ($request->is('api/*')) {
                 return ApiResponse::error($e->getMessage(), [], 422);
+            }
+        });
+
+        $exceptions->render(function (WorkflowLockedStateException $e, Request $request) {
+            if ($request->is('api/*')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $e->getMessage(),
+                    'error_code' => 'WORKFLOW_LOCKED_STATE',
+                ], 422);
+            }
+        });
+
+        $exceptions->render(function (WorkflowImmutableStateException $e, Request $request) {
+            if ($request->is('api/*')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $e->getMessage(),
+                    'error_code' => 'WORKFLOW_IMMUTABLE_STATE',
+                    'current_status' => $e->currentStatus->value,
+                ], 403);
             }
         });
 

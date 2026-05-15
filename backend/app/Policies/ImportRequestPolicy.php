@@ -2,7 +2,6 @@
 
 namespace App\Policies;
 
-use App\Enums\RequestStatus;
 use App\Models\ImportRequest;
 use App\Models\User;
 
@@ -26,14 +25,12 @@ class ImportRequestPolicy
     public function update(User $user, ImportRequest $importRequest): bool
     {
         return $user->hasPermission('request.create')
-            && $user->bank_id === $importRequest->bank_id
-            && $importRequest->isEditable();
+            && $user->bank_id === $importRequest->bank_id;
     }
 
     public function delete(User $user, ImportRequest $importRequest): bool
     {
         return $user->hasPermission('request.create')
-            && $user->bank_id === $importRequest->bank_id
-            && $importRequest->status === RequestStatus::DRAFT;
+            && $user->bank_id === $importRequest->bank_id;
     }
 }

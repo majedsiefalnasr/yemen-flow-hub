@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Api;
 
 use App\Enums\RequestStatus;
 use App\Enums\UserRole;
+use App\Exceptions\WorkflowImmutableStateException;
+use App\Exceptions\WorkflowLockedStateException;
 use App\Http\Requests\StoreImportRequest;
 use App\Http\Requests\UpdateImportRequest;
 use App\Http\Resources\ImportRequestListResource;
@@ -143,7 +145,22 @@ class ImportRequestController extends Controller
     {
         $this->authorize('update', $importRequest);
 
-        $importRequest->update($request->validated());
+        $status = $importRequest->status;
+
+        abort_if($status === null, 500, 'Request has no status — data integrity error.');
+
+        if ($status->isTerminal()) {
+            throw new WorkflowImmutableStateException($status);
+        }
+
+        if (!$importRequest->isEditable()) {
+            throw new WorkflowLockedStateException();
+        }
+
+        $importRequest->update([
+            ...$request->validated(),
+            'last_updated_by' => $request->user()->id,
+        ]);
 
         return ApiResponse::success(new ImportRequestResource($importRequest->refresh()->load(['bank', 'merchant', 'claimedByUser'])), 'Request updated successfully.');
     }
@@ -155,9 +172,21 @@ class ImportRequestController extends Controller
         security: [['bearerAuth' => []], ['sanctumCookie' => []]],
         responses: [new OA\Response(response: 200, description: 'Request deleted')]
     )]
-    public function destroy(ImportRequest $importRequest)
+    public function destroy(Request $request, ImportRequest $importRequest)
     {
         $this->authorize('delete', $importRequest);
+
+        $status = $importRequest->status;
+
+        abort_if($status === null, 500, 'Request has no status — data integrity error.');
+
+        if ($status->isTerminal()) {
+            throw new WorkflowImmutableStateException($status);
+        }
+
+        if ($status !== RequestStatus::DRAFT) {
+            throw new WorkflowLockedStateException('Request can only be deleted in DRAFT status.');
+        }
 
         $importRequest->delete();
 

@@ -51,6 +51,7 @@ enum RequestStatus: string
     {
         return in_array($this, [
             self::EXECUTIVE_REJECTED,
+            self::CUSTOMS_DECLARATION_ISSUED,
             self::COMPLETED,
         ], true);
     }
