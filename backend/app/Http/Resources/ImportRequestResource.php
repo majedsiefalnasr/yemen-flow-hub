@@ -5,6 +5,7 @@ namespace App\Http\Resources;
 use App\Enums\RequestStatus;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Facades\URL;
 
 class ImportRequestResource extends JsonResource
 {
@@ -53,6 +54,21 @@ class ImportRequestResource extends JsonResource
             'voting_session_status' => $this->voting_session_status?->value,
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),
+            'swift_uploaded_by' => $this->swift_uploaded_by,
+            'documents' => $this->whenLoaded('documents', function () {
+                return $this->documents->map(fn ($doc) => [
+                    'id' => $doc->id,
+                    'type' => $doc->type,
+                    'original_filename' => $doc->original_filename,
+                    'mime_type' => $doc->mime_type,
+                    'size_bytes' => $doc->size_bytes,
+                    'checksum' => $doc->checksum,
+                    'uploaded_by' => $doc->uploaded_by,
+                    'uploaded_by_name' => $doc->relationLoaded('uploader') ? $doc->uploader?->name : null,
+                    'uploaded_at' => $doc->created_at?->toISOString(),
+                    'download_url' => url("/api/documents/{$doc->id}/download"),
+                ])->values()->all();
+            }),
         ];
     }
 }
