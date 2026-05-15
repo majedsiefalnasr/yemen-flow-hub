@@ -40,8 +40,7 @@ class UserControllerTest extends TestCase
     private function makeBank(): Bank
     {
         return Bank::query()->create([
-            'name_ar' => 'بنك تجريبي',
-            'name_en' => 'Test Bank',
+            'name' => 'بنك تجريبي',
             'code' => 'TST',
             'is_active' => true,
         ]);

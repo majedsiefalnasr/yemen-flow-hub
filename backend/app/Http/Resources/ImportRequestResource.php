@@ -14,8 +14,7 @@ class ImportRequestResource extends JsonResource
             'id' => $this->id,
             'reference_number' => $this->reference_number,
             'bank_id' => $this->bank_id,
-            'bank_name_ar' => $this->bank?->name_ar,
-            'bank_name_en' => $this->bank?->name_en,
+            'bank_name' => $this->bank?->name,
             'merchant' => $this->merchant ? [
                 'id' => $this->merchant->id,
                 'name' => $this->merchant->name,

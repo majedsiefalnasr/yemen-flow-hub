@@ -119,8 +119,7 @@ class CustomsService
             'reference_number' => $request->reference_number,
             'bank' => [
                 'id' => $request->bank?->id,
-                'name_ar' => $request->bank?->name_ar,
-                'name_en' => $request->bank?->name_en,
+                'name' => $request->bank?->name,
                 'code' => $request->bank?->code,
             ],
             'supplier_name' => $request->supplier_name,

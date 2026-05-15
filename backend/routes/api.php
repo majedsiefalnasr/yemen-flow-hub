@@ -44,11 +44,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('documents/{document}/download', [DocumentController::class, 'download']);
 
     Route::post('workflow/{importRequest}/submit', [WorkflowController::class, 'submit'])->name('workflow.submit');
+    Route::post('workflow/{importRequest}/bank-review', [WorkflowController::class, 'bankBeginReview'])->name('workflow.bank-review');
     Route::post('workflow/{importRequest}/bank-approve', [WorkflowController::class, 'bankApprove'])->name('workflow.bank-approve');
     Route::post('workflow/{importRequest}/bank-reject', [WorkflowController::class, 'bankReject'])->name('workflow.bank-reject');
     Route::post('workflow/{importRequest}/return-to-entry', [WorkflowController::class, 'returnToEntry'])->name('workflow.return-to-entry');
     Route::post('workflow/{importRequest}/support-claim', [WorkflowController::class, 'supportClaim'])->name('workflow.support-claim');
     Route::post('workflow/{importRequest}/support-release', [WorkflowController::class, 'supportRelease'])->name('workflow.support-release');
+    Route::delete('workflow/{importRequest}/claim-support-review', [WorkflowController::class, 'claimRelease'])->name('workflow.claim-release');
+    Route::post('workflow/{importRequest}/claim-support-review/heartbeat', [WorkflowController::class, 'claimHeartbeat'])->name('workflow.claim-heartbeat');
     Route::post('workflow/{importRequest}/support-approve', [WorkflowController::class, 'supportApprove'])->name('workflow.support-approve');
     Route::post('workflow/{importRequest}/support-reject', [WorkflowController::class, 'supportReject'])->name('workflow.support-reject');
     Route::post('workflow/{importRequest}/swift-upload', [DocumentController::class, 'uploadSwift']);
@@ -56,6 +59,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('voting', [VotingController::class, 'index']);
     Route::get('voting/{importRequest}', [VotingController::class, 'show']);
+    Route::post('voting/{importRequest}/open', [VotingController::class, 'openSession'])->name('voting.open');
+    Route::post('voting/{importRequest}/close', [VotingController::class, 'closeSession'])->name('voting.close');
     Route::post('voting/{importRequest}/vote', [VotingController::class, 'vote']);
     Route::post('voting/{importRequest}/director-decide', [VotingController::class, 'directorDecide']);
     Route::post('voting/{importRequest}/override', [VotingController::class, 'override']);

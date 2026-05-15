@@ -47,8 +47,7 @@ class AuthControllerTest extends TestCase
     private function makeBank(): Bank
     {
         return Bank::query()->create([
-            'name_ar' => 'بنك تجريبي',
-            'name_en' => 'Test Bank',
+            'name' => 'بنك تجريبي',
             'code' => 'TST',
             'is_active' => true,
         ]);
@@ -226,8 +225,7 @@ class AuthControllerTest extends TestCase
         $response = $this->actingAs($user)->getJson('/api/auth/me');
 
         $response->assertStatus(200);
-        $response->assertJsonPath('data.bank_name_ar', 'بنك تجريبي');
-        $response->assertJsonPath('data.bank_name_en', 'Test Bank');
+        $response->assertJsonPath('data.bank_name', 'بنك تجريبي');
     }
 
     public function test_me_returns_null_bank_fields_for_cby_user(): void
@@ -241,8 +239,7 @@ class AuthControllerTest extends TestCase
         $response = $this->actingAs($user)->getJson('/api/auth/me');
 
         $response->assertStatus(200);
-        $response->assertJsonPath('data.bank_name_ar', null);
-        $response->assertJsonPath('data.bank_name_en', null);
+        $response->assertJsonPath('data.bank_name', null);
     }
 
     public function test_me_returns_401_when_unauthenticated(): void
@@ -252,7 +249,7 @@ class AuthControllerTest extends TestCase
 
     // --- AC-5 + Login response shape ---
 
-    public function test_successful_login_returns_user_with_bank_bilingual_fields(): void
+    public function test_successful_login_returns_user_with_bank_name(): void
     {
         $bank = $this->makeBank();
         $this->makeUser([
@@ -267,8 +264,7 @@ class AuthControllerTest extends TestCase
 
         $response->assertStatus(200);
         $response->assertJsonPath('success', true);
-        $response->assertJsonPath('data.user.bank_name_ar', 'بنك تجريبي');
-        $response->assertJsonPath('data.user.bank_name_en', 'Test Bank');
+        $response->assertJsonPath('data.user.bank_name', 'بنك تجريبي');
     }
 
     public function test_successful_login_logs_login_audit_entry(): void

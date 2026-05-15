@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Enums\RequestStatus;
 use App\Enums\UserRole;
 use App\Enums\VoteType;
+use App\Exceptions\VotingException;
 use App\Http\Requests\CastVoteRequest;
 use App\Http\Requests\DirectorDecideRequest;
 use App\Http\Requests\OverrideVoteRequest;
@@ -15,13 +16,17 @@ use App\Http\Resources\VotingTallyResource;
 use App\Models\ImportRequest;
 use App\Models\RequestVote;
 use App\Services\Voting\VotingService;
+use App\Services\Workflow\WorkflowService;
 use App\Support\ApiResponse;
+use Illuminate\Http\Request;
 use OpenApi\Attributes as OA;
 
 class VotingController extends Controller
 {
-    public function __construct(private readonly VotingService $votingService)
-    {
+    public function __construct(
+        private readonly VotingService $votingService,
+        private readonly WorkflowService $workflowService,
+    ) {
     }
 
     #[OA\Get(path: '/api/voting', tags: ['Voting'], summary: 'List requests in executive voting', responses: [new OA\Response(response: 200, description: 'Voting list')])]
@@ -62,6 +67,34 @@ class VotingController extends Controller
             'tally' => new VotingTallyResource($this->votingService->tally($importRequest)),
             'my_vote' => $myVote ? new VoteResource($myVote) : null,
         ], 'Voting details retrieved.');
+    }
+
+    #[OA\Post(path: '/api/voting/{importRequest}/open', tags: ['Voting'], summary: 'Director opens voting session (WAITING_FOR_VOTING_OPEN → EXECUTIVE_VOTING_OPEN)', parameters: [new OA\Parameter(name: 'importRequest', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], responses: [new OA\Response(response: 200, description: 'Voting session opened')])]
+    public function openSession(Request $request, ImportRequest $importRequest)
+    {
+        if (!$request->user()->hasPermission('voting.finalize')) {
+            return ApiResponse::forbidden();
+        }
+
+        $updated = $this->workflowService->transition($importRequest, 'open_voting', $request->user());
+
+        return ApiResponse::success(new ImportRequestResource($updated->load('bank')), 'Voting session opened.');
+    }
+
+    #[OA\Post(path: '/api/voting/{importRequest}/close', tags: ['Voting'], summary: 'Director closes voting session and applies AUTO_ABSTAIN_TIMEOUT to non-voters', parameters: [new OA\Parameter(name: 'importRequest', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], responses: [new OA\Response(response: 200, description: 'Voting session closed')])]
+    public function closeSession(Request $request, ImportRequest $importRequest)
+    {
+        if (!$request->user()->hasPermission('voting.finalize')) {
+            return ApiResponse::forbidden();
+        }
+
+        try {
+            $updated = $this->votingService->closeSession($importRequest, $request->user());
+        } catch (VotingException $e) {
+            return ApiResponse::error($e->getMessage(), [], 422);
+        }
+
+        return ApiResponse::success(new ImportRequestResource($updated->load('bank')), 'Voting session closed.');
     }
 
     #[OA\Post(path: '/api/voting/{importRequest}/vote', tags: ['Voting'], summary: 'Cast executive vote', parameters: [new OA\Parameter(name: 'importRequest', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], requestBody: new OA\RequestBody(required: true, content: new OA\JsonContent(required: ['vote'], properties: [new OA\Property(property: 'vote', type: 'string', enum: ['APPROVE', 'REJECT']), new OA\Property(property: 'justification', type: 'string', nullable: true, maxLength: 3000)])), responses: [new OA\Response(response: 200, description: 'Vote cast')])]

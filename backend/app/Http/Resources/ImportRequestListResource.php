@@ -14,8 +14,7 @@ class ImportRequestListResource extends JsonResource
             'id' => $this->id,
             'reference_number' => $this->reference_number,
             'bank_id' => $this->bank_id,
-            'bank_name_ar' => $this->bank?->name_ar,
-            'bank_name_en' => $this->bank?->name_en,
+            'bank_name' => $this->bank?->name,
             'status' => $this->status?->value,
             'current_owner_role' => $this->current_owner_role?->value,
             'claimed_by' => $this->claimedByUser ? [

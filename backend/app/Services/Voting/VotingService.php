@@ -14,6 +14,7 @@ use App\Models\RequestVote;
 use App\Models\User;
 use App\Services\Audit\AuditService;
 use App\Services\Workflow\WorkflowService;
+use Illuminate\Support\Facades\DB;
 
 class VotingService
 {
@@ -51,17 +52,42 @@ class VotingService
             ['vote' => $vote->value]
         );
 
-        $tally = $this->tally($request->fresh());
-        if ($tally->approveCount >= 4) {
-            // Must transition OPEN → CLOSED before CLOSED → APPROVED
-            $closed = $this->workflowService->transition($request->fresh(), 'close_voting', $voter, null, ['auto_finalized' => true]);
-            $this->workflowService->transition($closed, 'finalize_approved', $voter, null, ['auto_finalized' => true]);
-        } elseif ($tally->rejectCount >= 4) {
-            $closed = $this->workflowService->transition($request->fresh(), 'close_voting', $voter, null, ['auto_finalized' => true]);
-            $this->workflowService->transition($closed, 'finalize_rejected', $voter, null, ['auto_finalized' => true]);
+        return $record->refresh();
+    }
+
+    public function closeSession(ImportRequest $request, User $director): ImportRequest
+    {
+        if (!$director->hasRole(UserRole::COMMITTEE_DIRECTOR)) {
+            throw new VotingException('Only committee director can close the voting session.');
         }
 
-        return $record->refresh();
+        if ($request->status !== RequestStatus::EXECUTIVE_VOTING_OPEN) {
+            throw new VotingException('Voting session is not open.');
+        }
+
+        return DB::transaction(function () use ($request, $director) {
+            $voters = RequestVote::query()
+                ->where('request_id', $request->id)
+                ->lockForUpdate()
+                ->pluck('user_id')
+                ->all();
+
+            $nonVoters = User::query()
+                ->whereIn('role', [UserRole::EXECUTIVE_MEMBER->value, UserRole::COMMITTEE_DIRECTOR->value])
+                ->whereNotIn('id', $voters)
+                ->get();
+
+            foreach ($nonVoters as $member) {
+                RequestVote::query()->create([
+                    'request_id' => $request->id,
+                    'user_id' => $member->id,
+                    'vote' => VoteType::AUTO_ABSTAIN_TIMEOUT,
+                    'justification' => null,
+                ]);
+            }
+
+            return $this->workflowService->transition($request->fresh(), 'close_voting', $director);
+        });
     }
 
     public function tally(ImportRequest $request): VotingTally

@@ -16,8 +16,7 @@ class UserResource extends JsonResource
             'role' => $this->role?->value,
             'role_label' => $this->role?->label(),
             'bank_id' => $this->bank_id,
-            'bank_name_ar' => $this->bank?->name_ar,
-            'bank_name_en' => $this->bank?->name_en,
+            'bank_name' => $this->bank?->name,
             'is_active' => (bool) $this->is_active,
         ];
     }

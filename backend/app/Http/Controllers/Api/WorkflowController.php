@@ -7,6 +7,7 @@ use App\Http\Resources\ImportRequestResource;
 use App\Models\ImportRequest;
 use App\Services\Workflow\WorkflowService;
 use App\Support\ApiResponse;
+use Illuminate\Http\Request;
 use OpenApi\Attributes as OA;
 
 class WorkflowController extends Controller
@@ -19,6 +20,12 @@ class WorkflowController extends Controller
     public function submit(WorkflowActionRequest $request, ImportRequest $importRequest)
     {
         return $this->run($request, $importRequest, 'submit');
+    }
+
+    #[OA\Post(path: '/api/workflow/{importRequest}/bank-review', tags: ['Workflow'], summary: 'Bank begin review (SUBMITTED → BANK_REVIEW)', parameters: [new OA\Parameter(name: 'importRequest', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], requestBody: new OA\RequestBody(required: false, content: new OA\JsonContent(properties: [new OA\Property(property: 'reason', type: 'string', maxLength: 2000)])), responses: [new OA\Response(response: 200, description: 'Transition applied')])]
+    public function bankBeginReview(WorkflowActionRequest $request, ImportRequest $importRequest)
+    {
+        return $this->run($request, $importRequest, 'bank_begin_review');
     }
 
     #[OA\Post(path: '/api/workflow/{importRequest}/bank-approve', tags: ['Workflow'], summary: 'Bank approve request', parameters: [new OA\Parameter(name: 'importRequest', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], requestBody: new OA\RequestBody(required: false, content: new OA\JsonContent(properties: [new OA\Property(property: 'reason', type: 'string', maxLength: 2000)])), responses: [new OA\Response(response: 200, description: 'Transition applied')])]
@@ -63,6 +70,34 @@ class WorkflowController extends Controller
         }
 
         return $this->run($request, $importRequest, 'support_release');
+    }
+
+    #[OA\Delete(path: '/api/workflow/{importRequest}/claim-support-review', tags: ['Workflow'], summary: 'Release support claim (canonical DELETE endpoint)', parameters: [new OA\Parameter(name: 'importRequest', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], responses: [new OA\Response(response: 200, description: 'Claim released')])]
+    public function claimRelease(WorkflowActionRequest $request, ImportRequest $importRequest)
+    {
+        if (!$request->user()->hasPermission('request.claim')) {
+            return ApiResponse::forbidden();
+        }
+
+        return $this->run($request, $importRequest, 'support_release');
+    }
+
+    #[OA\Post(path: '/api/workflow/{importRequest}/claim-support-review/heartbeat', tags: ['Workflow'], summary: 'Extend support claim TTL by 15 minutes', parameters: [new OA\Parameter(name: 'importRequest', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], responses: [new OA\Response(response: 200, description: 'Claim extended'), new OA\Response(response: 403, description: 'Not the claim holder')])]
+    public function claimHeartbeat(Request $request, ImportRequest $importRequest)
+    {
+        $this->authorize('view', $importRequest);
+
+        if ($importRequest->claimed_by !== $request->user()->id) {
+            return ApiResponse::forbidden('You do not hold this claim.');
+        }
+
+        $ttlMinutes = (int) config('workflow.support_claim_ttl_minutes', 15);
+        $importRequest->forceFill(['claim_expires_at' => now()->addMinutes($ttlMinutes)])->save();
+
+        return ApiResponse::success(
+            ['claimed_until' => $importRequest->claim_expires_at->toISOString()],
+            'Claim extended.'
+        );
     }
 
     #[OA\Post(path: '/api/workflow/{importRequest}/support-reject', tags: ['Workflow'], summary: 'Support reject request', parameters: [new OA\Parameter(name: 'importRequest', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], requestBody: new OA\RequestBody(required: true, content: new OA\JsonContent(required: ['reason'], properties: [new OA\Property(property: 'reason', type: 'string', maxLength: 2000)])), responses: [new OA\Response(response: 200, description: 'Transition applied')])]

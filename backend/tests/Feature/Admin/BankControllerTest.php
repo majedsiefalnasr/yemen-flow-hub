@@ -40,8 +40,7 @@ class BankControllerTest extends TestCase
     private function makeBank(array $attrs = []): Bank
     {
         return Bank::query()->create(array_merge([
-            'name_ar' => 'البنك التجاري اليمني',
-            'name_en' => 'Yemen Commercial Bank',
+            'name' => 'البنك التجاري اليمني',
             'code' => 'YCB',
             'is_active' => true,
         ], $attrs));
@@ -58,7 +57,7 @@ class BankControllerTest extends TestCase
 
         $response->assertOk()
             ->assertJsonPath('success', true)
-            ->assertJsonStructure(['data' => [['id', 'name_ar', 'name_en', 'code', 'is_active']]]);
+            ->assertJsonStructure(['data' => [['id', 'name', 'code', 'is_active']]]);
     }
 
     public function test_index_returns_banks_for_bank_reviewer(): void
@@ -83,19 +82,17 @@ class BankControllerTest extends TestCase
         $admin = $this->makeCbyAdmin();
 
         $response = $this->actingAs($admin)->postJson('/api/banks', [
-            'name_ar' => 'بنك سبأ الإسلامي',
-            'name_en' => 'Saba Islamic Bank',
+            'name' => 'بنك سبأ الإسلامي',
             'code' => 'SIB',
             'is_active' => true,
         ]);
 
         $response->assertStatus(201)
             ->assertJsonPath('success', true)
-            ->assertJsonPath('data.name_ar', 'بنك سبأ الإسلامي')
-            ->assertJsonPath('data.name_en', 'Saba Islamic Bank')
+            ->assertJsonPath('data.name', 'بنك سبأ الإسلامي')
             ->assertJsonPath('data.code', 'SIB');
 
-        $this->assertDatabaseHas('banks', ['code' => 'SIB', 'name_ar' => 'بنك سبأ الإسلامي']);
+        $this->assertDatabaseHas('banks', ['code' => 'SIB', 'name' => 'بنك سبأ الإسلامي']);
     }
 
     public function test_store_returns_403_for_bank_reviewer(): void
@@ -104,20 +101,18 @@ class BankControllerTest extends TestCase
         $reviewer = $this->makeBankReviewer($bank);
 
         $this->actingAs($reviewer)->postJson('/api/banks', [
-            'name_ar' => 'بنك جديد',
-            'name_en' => 'New Bank',
+            'name' => 'بنك جديد',
             'code' => 'NBK',
         ])->assertForbidden();
     }
 
-    public function test_store_validates_name_ar_uniqueness(): void
+    public function test_store_validates_name_uniqueness(): void
     {
         $admin = $this->makeCbyAdmin();
-        $this->makeBank(['name_ar' => 'البنك التجاري اليمني', 'code' => 'YCB']);
+        $this->makeBank(['name' => 'البنك التجاري اليمني', 'code' => 'YCB']);
 
         $this->actingAs($admin)->postJson('/api/banks', [
-            'name_ar' => 'البنك التجاري اليمني',
-            'name_en' => 'Another English Name',
+            'name' => 'البنك التجاري اليمني',
             'code' => 'ACB',
         ])->assertUnprocessable();
     }
@@ -128,20 +123,18 @@ class BankControllerTest extends TestCase
         $this->makeBank(['code' => 'YCB']);
 
         $this->actingAs($admin)->postJson('/api/banks', [
-            'name_ar' => 'بنك آخر',
-            'name_en' => 'Other Bank',
+            'name' => 'بنك آخر',
             'code' => 'YCB',
         ])->assertUnprocessable();
     }
 
-    public function test_store_requires_name_ar_and_name_en(): void
+    public function test_store_requires_name_and_code(): void
     {
         $admin = $this->makeCbyAdmin();
 
-        $this->actingAs($admin)->postJson('/api/banks', [
-            'code' => 'XYZ',
-        ])->assertUnprocessable()
-            ->assertJsonValidationErrors(['name_ar', 'name_en']);
+        $this->actingAs($admin)->postJson('/api/banks', [])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['name', 'code']);
     }
 
     // ─── Update ───────────────────────────────────────────────────────────────
@@ -152,14 +145,13 @@ class BankControllerTest extends TestCase
         $bank = $this->makeBank();
 
         $response = $this->actingAs($admin)->putJson("/api/banks/{$bank->id}", [
-            'name_ar' => 'اسم محدث',
-            'name_en' => 'Updated Name',
+            'name' => 'اسم محدث',
             'code' => $bank->code,
             'is_active' => false,
         ]);
 
         $response->assertOk()
-            ->assertJsonPath('data.name_ar', 'اسم محدث')
+            ->assertJsonPath('data.name', 'اسم محدث')
             ->assertJsonPath('data.is_active', false);
     }
 
@@ -169,21 +161,19 @@ class BankControllerTest extends TestCase
         $reviewer = $this->makeBankReviewer($bank);
 
         $this->actingAs($reviewer)->putJson("/api/banks/{$bank->id}", [
-            'name_ar' => 'اسم محدث',
-            'name_en' => 'Updated Name',
+            'name' => 'اسم محدث',
             'code' => $bank->code,
             'is_active' => true,
         ])->assertForbidden();
     }
 
-    public function test_update_allows_same_name_ar_for_same_bank(): void
+    public function test_update_allows_same_name_for_same_bank(): void
     {
         $admin = $this->makeCbyAdmin();
-        $bank = $this->makeBank(['name_ar' => 'البنك التجاري اليمني', 'code' => 'YCB']);
+        $bank = $this->makeBank(['name' => 'البنك التجاري اليمني', 'code' => 'YCB']);
 
         $this->actingAs($admin)->putJson("/api/banks/{$bank->id}", [
-            'name_ar' => 'البنك التجاري اليمني',
-            'name_en' => 'Yemen Commercial Bank Updated',
+            'name' => 'البنك التجاري اليمني',
             'code' => 'YCB',
             'is_active' => true,
         ])->assertOk();

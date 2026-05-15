@@ -35,7 +35,7 @@ class BankController extends Controller
             content: new OA\JsonContent(
                 required: ['name', 'code'],
                 properties: [
-                    new OA\Property(property: 'name', type: 'string', maxLength: 255),
+                    new OA\Property(property: 'name', type: 'string', maxLength: 255, description: 'Bank display name (Arabic, MVP single-language)'),
                     new OA\Property(property: 'code', type: 'string', maxLength: 20),
                     new OA\Property(property: 'is_active', type: 'boolean'),
                 ]
