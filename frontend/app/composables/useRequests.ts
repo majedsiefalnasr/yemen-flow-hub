@@ -1,4 +1,4 @@
-import type { ApiResponse, ImportRequest, PaginatedResponse, RequestFormData } from '../types/models'
+import type { ApiResponse, ImportRequest, PaginatedResponse, RequestDocument, RequestFormData } from '../types/models'
 import type { RequestStatus } from '../types/enums'
 import { useApi } from './useApi'
 
@@ -62,5 +62,21 @@ export function useRequests() {
     })
   }
 
-  return { fetchRequests, fetchRequest, createRequest, updateRequest, uploadDocument }
+  async function performWorkflowAction(
+    id: number,
+    action: string,
+    reason?: string,
+  ): Promise<ImportRequest> {
+    const body: Record<string, string> = {}
+    if (reason !== undefined) body.reason = reason
+    const response = await post<ApiResponse<ImportRequest>>(`/api/workflow/${id}/${action}`, body)
+    return response.data
+  }
+
+  async function fetchRequestDocuments(id: number): Promise<RequestDocument[]> {
+    const response = await get<ApiResponse<ImportRequest>>(`/api/requests/${id}`)
+    return response.data.documents ?? []
+  }
+
+  return { fetchRequests, fetchRequest, createRequest, updateRequest, uploadDocument, performWorkflowAction, fetchRequestDocuments }
 }

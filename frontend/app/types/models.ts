@@ -55,12 +55,27 @@ export interface ImportRequest {
   submitted_at: string | null
   bank_approved_at: string | null
   support_approved_at: string | null
+  swift_uploaded_by: number | null
   swift_uploaded_at: string | null
   executive_decided_at: string | null
   customs_issued_at: string | null
   revision_count: number
   created_at: string
   updated_at: string
+  documents?: RequestDocument[]
+}
+
+export interface RequestDocument {
+  id: number
+  type: string | null
+  original_filename: string
+  mime_type: string | null
+  size_bytes: number
+  checksum: string
+  uploaded_by: number
+  uploaded_by_name: string | null
+  uploaded_at: string
+  download_url: string
 }
 
 /** Fields sent to POST /api/requests and PUT /api/requests/{id} */

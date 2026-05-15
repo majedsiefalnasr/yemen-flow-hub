@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import type { ImportRequest, RequestFormData } from '../types/models'
+import type { ImportRequest, RequestDocument, RequestFormData } from '../types/models'
 import type { RequestsFilter } from '../composables/useRequests'
 import { useRequests } from '../composables/useRequests'
 
@@ -14,8 +14,13 @@ export const useRequestsStore = defineStore('requests', {
   state: () => ({
     requests: [] as ImportRequest[],
     currentRequest: null as ImportRequest | null,
+    documents: [] as RequestDocument[],
+    documentsError: null as string | null,
+    documentsLoaded: false,
     loadingList: false,
     loadingRequest: false,
+    loadingDocuments: false,
+    performingAction: false,
     saving: false,
     error: null as string | null,
     meta: null as PaginationMeta | null,
@@ -71,6 +76,9 @@ export const useRequestsStore = defineStore('requests', {
       this.loadingRequest = true
       this.error = null
       this.currentRequest = null
+      this.documents = []
+      this.documentsError = null
+      this.documentsLoaded = false
 
       try {
         const { fetchRequest } = useRequests()
@@ -129,6 +137,49 @@ export const useRequestsStore = defineStore('requests', {
       }
       finally {
         this.saving = false
+      }
+    },
+
+    async loadDocuments(id: number): Promise<void> {
+      this.loadingDocuments = true
+      this.documents = []
+      this.documentsError = null
+
+      try {
+        const { fetchRequestDocuments } = useRequests()
+        this.documents = await fetchRequestDocuments(id)
+        this.documentsLoaded = true
+      }
+      catch (err) {
+        if (import.meta.dev) {
+          console.error('[requests.store] loadDocuments failed:', err)
+        }
+        this.documentsError = 'تعذّر تحميل المستندات. يرجى المحاولة مرة أخرى.'
+      }
+      finally {
+        this.loadingDocuments = false
+      }
+    },
+
+    async performAction(id: number, action: string, reason?: string): Promise<void> {
+      if (this.performingAction) throw new Error('إجراء قيد التنفيذ بالفعل')
+      this.performingAction = true
+      this.error = null
+
+      try {
+        const { performWorkflowAction } = useRequests()
+        const updated = await performWorkflowAction(id, action, reason)
+        this.currentRequest = updated
+      }
+      catch (err) {
+        if (import.meta.dev) {
+          console.error('[requests.store] performAction failed:', err)
+        }
+        this.error = 'تعذّر تنفيذ الإجراء.'
+        throw err
+      }
+      finally {
+        this.performingAction = false
       }
     },
 

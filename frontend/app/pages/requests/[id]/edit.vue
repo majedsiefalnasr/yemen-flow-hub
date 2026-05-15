@@ -54,8 +54,8 @@ onMounted(async () => {
   }
 
   if (!isEditable.value) {
-    // Request exists but is not editable — redirect to list (detail page not built yet)
-    await router.replace('/requests')
+    // Request exists but is not editable — redirect to detail page
+    await router.replace(`/requests/${id}`)
   }
 })
 
@@ -63,8 +63,7 @@ async function handleSubmit(data: RequestFormData) {
   try {
     await requestsStore.updateRequest(id, data)
     toast.value = { message: 'تم تحديث الطلب بنجاح.', type: 'success' }
-    // TODO(Story 2.6): navigate to /requests/${id} once detail page exists
-    await router.push('/requests')
+    await router.push(`/requests/${id}`)
   }
   catch {
     toast.value = { message: requestsStore.error ?? 'تعذّر تحديث الطلب.', type: 'error' }
