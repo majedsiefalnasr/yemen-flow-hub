@@ -4,6 +4,10 @@ import {
   STATUS_COLORS,
   STATUS_ICONS,
   getBusinessStatus,
+  DATA_ENTRY_ROLES,
+  CBY_OPERATIONAL_ROLES,
+  OPERATIONAL_FILTER_ROLES,
+  ROLE_FILTER_STATUSES,
 } from '../../../constants/workflow'
 
 describe('STATUS_COLORS', () => {
@@ -45,11 +49,19 @@ describe('STATUS_COLORS', () => {
     expect(STATUS_COLORS[RequestStatus.EXECUTIVE_VOTING_CLOSED]).toBe('#5856d6')
     expect(STATUS_COLORS[RequestStatus.WAITING_FOR_VOTING_OPEN]).toBe('#5856d6')
   })
+
+  it('maps support-review approval stages to voting indigo (not SWIFT cyan)', () => {
+    expect(STATUS_COLORS[RequestStatus.BANK_APPROVED]).toBe('#5856d6')
+    expect(STATUS_COLORS[RequestStatus.SUPPORT_REVIEW_PENDING]).toBe('#5856d6')
+    expect(STATUS_COLORS[RequestStatus.SUPPORT_REVIEW_IN_PROGRESS]).toBe('#5856d6')
+    expect(STATUS_COLORS[RequestStatus.SUPPORT_APPROVED]).toBe('#5856d6')
+  })
 })
 
 describe('STATUS_ICONS', () => {
-  it('covers all 18 RequestStatus values', () => {
+  it('covers exactly 18 RequestStatus values', () => {
     const statuses = Object.values(RequestStatus)
+    expect(Object.keys(STATUS_ICONS)).toHaveLength(statuses.length)
     for (const s of statuses) {
       expect(STATUS_ICONS[s], `missing icon for ${s}`).toBeDefined()
     }
@@ -166,6 +178,83 @@ describe('getBusinessStatus()', () => {
     it('returns internal status labels, not simplified', () => {
       const result = getBusinessStatus(RequestStatus.SUPPORT_REVIEW_IN_PROGRESS, UserRole.CBY_ADMIN)
       expect(result.label).toBe('قيد مراجعة الدعم')
+    })
+  })
+})
+
+describe('Role group constants', () => {
+  describe('DATA_ENTRY_ROLES', () => {
+    it('contains only DATA_ENTRY', () => {
+      expect(DATA_ENTRY_ROLES).toEqual([UserRole.DATA_ENTRY])
+    })
+  })
+
+  describe('CBY_OPERATIONAL_ROLES', () => {
+    it('contains SWIFT_OFFICER, SUPPORT_COMMITTEE, EXECUTIVE_MEMBER, COMMITTEE_DIRECTOR, CBY_ADMIN', () => {
+      expect(CBY_OPERATIONAL_ROLES).toContain(UserRole.SWIFT_OFFICER)
+      expect(CBY_OPERATIONAL_ROLES).toContain(UserRole.SUPPORT_COMMITTEE)
+      expect(CBY_OPERATIONAL_ROLES).toContain(UserRole.EXECUTIVE_MEMBER)
+      expect(CBY_OPERATIONAL_ROLES).toContain(UserRole.COMMITTEE_DIRECTOR)
+      expect(CBY_OPERATIONAL_ROLES).toContain(UserRole.CBY_ADMIN)
+    })
+
+    it('does not contain DATA_ENTRY or BANK_REVIEWER', () => {
+      expect(CBY_OPERATIONAL_ROLES).not.toContain(UserRole.DATA_ENTRY)
+      expect(CBY_OPERATIONAL_ROLES).not.toContain(UserRole.BANK_REVIEWER)
+    })
+  })
+
+  describe('OPERATIONAL_FILTER_ROLES', () => {
+    it('includes BANK_REVIEWER and all CBY_OPERATIONAL_ROLES', () => {
+      expect(OPERATIONAL_FILTER_ROLES).toContain(UserRole.BANK_REVIEWER)
+      for (const role of CBY_OPERATIONAL_ROLES) {
+        expect(OPERATIONAL_FILTER_ROLES).toContain(role)
+      }
+    })
+
+    it('does not include DATA_ENTRY', () => {
+      expect(OPERATIONAL_FILTER_ROLES).not.toContain(UserRole.DATA_ENTRY)
+    })
+  })
+
+  describe('ROLE_FILTER_STATUSES', () => {
+    it('BANK_REVIEWER filter statuses are bank-workflow-relevant', () => {
+      const statuses = ROLE_FILTER_STATUSES[UserRole.BANK_REVIEWER]!
+      expect(statuses).toContain(RequestStatus.SUBMITTED)
+      expect(statuses).toContain(RequestStatus.BANK_REVIEW)
+      expect(statuses).toContain(RequestStatus.BANK_APPROVED)
+      expect(statuses).not.toContain(RequestStatus.EXECUTIVE_VOTING_OPEN)
+      expect(statuses).not.toContain(RequestStatus.WAITING_FOR_SWIFT)
+    })
+
+    it('SWIFT_OFFICER filter statuses are SWIFT-workflow-relevant', () => {
+      const statuses = ROLE_FILTER_STATUSES[UserRole.SWIFT_OFFICER]!
+      expect(statuses).toContain(RequestStatus.WAITING_FOR_SWIFT)
+      expect(statuses).toContain(RequestStatus.SWIFT_UPLOADED)
+      expect(statuses).not.toContain(RequestStatus.DRAFT)
+      expect(statuses).not.toContain(RequestStatus.EXECUTIVE_VOTING_OPEN)
+    })
+
+    it('EXECUTIVE_MEMBER filter statuses are voting-relevant', () => {
+      const statuses = ROLE_FILTER_STATUSES[UserRole.EXECUTIVE_MEMBER]!
+      expect(statuses).toContain(RequestStatus.EXECUTIVE_VOTING_OPEN)
+      expect(statuses).toContain(RequestStatus.EXECUTIVE_APPROVED)
+      expect(statuses).not.toContain(RequestStatus.DRAFT)
+      expect(statuses).not.toContain(RequestStatus.BANK_REVIEW)
+    })
+
+    it('CBY_ADMIN has no entry — shows all statuses in filter', () => {
+      expect(ROLE_FILTER_STATUSES[UserRole.CBY_ADMIN]).toBeUndefined()
+    })
+
+    it('all defined filter status lists contain only valid RequestStatus values', () => {
+      const validStatuses = new Set(Object.values(RequestStatus))
+      for (const [, statuses] of Object.entries(ROLE_FILTER_STATUSES)) {
+        if (!statuses) continue
+        for (const s of statuses) {
+          expect(validStatuses.has(s), `invalid status: ${s}`).toBe(true)
+        }
+      }
     })
   })
 })

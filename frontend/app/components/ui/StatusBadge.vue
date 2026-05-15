@@ -18,7 +18,7 @@ const badgeStyle = computed(() => ({
 </script>
 
 <template>
-  <span class="status-badge" :style="badgeStyle" :aria-label="badge.label">
+  <span class="status-badge" role="img" :style="badgeStyle" :aria-label="badge.label">
     <svg
       class="status-badge__icon"
       width="14"
@@ -127,6 +127,6 @@ const badgeStyle = computed(() => ({
 }
 
 .status-badge__label {
-  letter-spacing: 0.01em;
+  /* No letter-spacing — Arabic connected script must not break */
 }
 </style>

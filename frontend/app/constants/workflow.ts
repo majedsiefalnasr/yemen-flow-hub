@@ -9,7 +9,7 @@ export const STATUS_COLORS: Record<RequestStatus, string> = {
   [RequestStatus.BANK_APPROVED]: '#5856d6',
   [RequestStatus.SUPPORT_REVIEW_PENDING]: '#5856d6',
   [RequestStatus.SUPPORT_REVIEW_IN_PROGRESS]: '#5856d6',
-  [RequestStatus.SUPPORT_APPROVED]: '#32ade6',
+  [RequestStatus.SUPPORT_APPROVED]: '#5856d6',
   [RequestStatus.SUPPORT_REJECTED]: '#ff3b30',
   [RequestStatus.WAITING_FOR_SWIFT]: '#32ade6',
   [RequestStatus.SWIFT_UPLOADED]: '#32ade6',
@@ -138,6 +138,61 @@ export const CBY_ROLES: UserRole[] = [
   UserRole.COMMITTEE_DIRECTOR,
   UserRole.CBY_ADMIN,
 ]
+
+/** Roles that see simplified business statuses — never CBY operational internals */
+export const DATA_ENTRY_ROLES: UserRole[] = [UserRole.DATA_ENTRY]
+
+/** Operational roles with full internal status visibility on /requests */
+export const CBY_OPERATIONAL_ROLES: UserRole[] = [
+  UserRole.SWIFT_OFFICER,
+  UserRole.SUPPORT_COMMITTEE,
+  UserRole.EXECUTIVE_MEMBER,
+  UserRole.COMMITTEE_DIRECTOR,
+  UserRole.CBY_ADMIN,
+]
+
+/** Roles that see operational filters (search + status dropdown) on /requests */
+export const OPERATIONAL_FILTER_ROLES: UserRole[] = [
+  UserRole.BANK_REVIEWER,
+  ...CBY_OPERATIONAL_ROLES,
+]
+
+/** Statuses relevant to each role's filter dropdown — absent role means show all statuses */
+export const ROLE_FILTER_STATUSES: Partial<Record<UserRole, RequestStatus[]>> = {
+  [UserRole.BANK_REVIEWER]: [
+    RequestStatus.SUBMITTED,
+    RequestStatus.BANK_REVIEW,
+    RequestStatus.BANK_APPROVED,
+    RequestStatus.DRAFT_REJECTED_INTERNAL,
+  ],
+  [UserRole.SWIFT_OFFICER]: [
+    RequestStatus.BANK_APPROVED,
+    RequestStatus.SUPPORT_APPROVED,
+    RequestStatus.WAITING_FOR_SWIFT,
+    RequestStatus.SWIFT_UPLOADED,
+  ],
+  [UserRole.SUPPORT_COMMITTEE]: [
+    RequestStatus.BANK_APPROVED,
+    RequestStatus.SUPPORT_REVIEW_PENDING,
+    RequestStatus.SUPPORT_REVIEW_IN_PROGRESS,
+    RequestStatus.SUPPORT_APPROVED,
+    RequestStatus.SUPPORT_REJECTED,
+  ],
+  [UserRole.EXECUTIVE_MEMBER]: [
+    RequestStatus.SUPPORT_APPROVED,
+    RequestStatus.WAITING_FOR_VOTING_OPEN,
+    RequestStatus.EXECUTIVE_VOTING_OPEN,
+    RequestStatus.EXECUTIVE_VOTING_CLOSED,
+    RequestStatus.EXECUTIVE_APPROVED,
+    RequestStatus.EXECUTIVE_REJECTED,
+  ],
+  [UserRole.COMMITTEE_DIRECTOR]: [
+    RequestStatus.EXECUTIVE_APPROVED,
+    RequestStatus.CUSTOMS_DECLARATION_ISSUED,
+    RequestStatus.COMPLETED,
+  ],
+  // CBY_ADMIN: not listed → all statuses shown in filter
+}
 
 export interface NavItem {
   label: string

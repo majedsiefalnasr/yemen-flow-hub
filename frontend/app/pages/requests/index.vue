@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useAuthStore } from '../../stores/auth.store'
 import { useRequestsStore } from '../../stores/requests.store'
 import { UserRole, RequestStatus } from '../../types/enums'
-import { STATUS_LABELS } from '../../constants/workflow'
+import { STATUS_LABELS, OPERATIONAL_FILTER_ROLES, ROLE_FILTER_STATUSES } from '../../constants/workflow'
 import StatusBadge from '../../components/ui/StatusBadge.vue'
 
 const auth = useAuthStore()
@@ -12,18 +12,23 @@ const requestsStore = useRequestsStore()
 const search = ref('')
 const selectedStatus = ref<RequestStatus | ''>('')
 
-const isDataEntry = computed(() => auth.user?.role === UserRole.DATA_ENTRY)
-const canFilter = computed(() =>
-  auth.user?.role === UserRole.BANK_REVIEWER || auth.user?.role === UserRole.CBY_ADMIN,
+const showsOperationalFilters = computed(() =>
+  !!auth.user && OPERATIONAL_FILTER_ROLES.includes(auth.user.role),
 )
 
-const statusOptions = computed<Array<{ value: RequestStatus | '', label: string }>>(() => [
-  { value: '', label: 'جميع الحالات' },
-  ...Object.entries(STATUS_LABELS).map(([value, label]) => ({
-    value: value as RequestStatus,
-    label,
-  })),
-])
+const statusOptions = computed<Array<{ value: RequestStatus | '', label: string }>>(() => {
+  const role = auth.user?.role
+  const filterStatuses = role ? ROLE_FILTER_STATUSES[role] : undefined
+
+  const statuses = filterStatuses
+    ? filterStatuses.map(s => ({ value: s, label: STATUS_LABELS[s] }))
+    : Object.entries(STATUS_LABELS).map(([value, label]) => ({
+        value: value as RequestStatus,
+        label,
+      }))
+
+  return [{ value: '' as RequestStatus | '', label: 'جميع الحالات' }, ...statuses]
+})
 
 async function loadPage(page = 1) {
   await requestsStore.loadRequests({
@@ -35,13 +40,18 @@ async function loadPage(page = 1) {
 
 onMounted(() => loadPage())
 
-let searchTimeout: ReturnType<typeof setTimeout>
+const searchTimeout = ref<ReturnType<typeof setTimeout> | null>(null)
+
 watch(search, () => {
-  clearTimeout(searchTimeout)
-  searchTimeout = setTimeout(() => loadPage(), 350)
+  if (searchTimeout.value !== null) clearTimeout(searchTimeout.value)
+  searchTimeout.value = setTimeout(() => loadPage(), 350)
 })
 
 watch(selectedStatus, () => loadPage())
+
+onUnmounted(() => {
+  if (searchTimeout.value !== null) clearTimeout(searchTimeout.value)
+})
 
 function formatAmount(amount: string, currency: string): string {
   const num = parseFloat(amount)
@@ -56,8 +66,8 @@ function formatAmount(amount: string, currency: string): string {
       <h1 class="requests-title">طلبات التمويل</h1>
     </div>
 
-    <!-- Filters (BANK_REVIEWER and CBY_ADMIN only) -->
-    <div v-if="canFilter" class="requests-filters">
+    <!-- Filters (operational roles only) -->
+    <div v-if="showsOperationalFilters" class="requests-filters">
       <div class="filter-search">
         <label class="filter-label" for="search-input">بحث</label>
         <input
@@ -110,11 +120,11 @@ function formatAmount(amount: string, currency: string): string {
       <table class="requests-table" dir="rtl">
         <thead>
           <tr>
-            <th class="col-reference">رقم المرجع</th>
-            <th class="col-supplier">المورد</th>
-            <th class="col-amount">المبلغ</th>
-            <th class="col-status">الحالة</th>
-            <th class="col-actions" />
+            <th scope="col" class="col-reference">رقم المرجع</th>
+            <th scope="col" class="col-supplier">المورد</th>
+            <th scope="col" class="col-amount">المبلغ</th>
+            <th scope="col" class="col-status">الحالة</th>
+            <th scope="col" class="col-actions" aria-label="الإجراءات" />
           </tr>
         </thead>
         <tbody>
@@ -341,7 +351,7 @@ function formatAmount(amount: string, currency: string): string {
 .col-reference { width: 160px; }
 .col-amount { width: 140px; white-space: nowrap; }
 .col-status { width: 200px; }
-.col-actions { width: 80px; text-align: left; }
+.col-actions { width: 80px; text-align: end; }
 
 .view-btn {
   height: 32px;

@@ -17,6 +17,8 @@ export const useRequestsStore = defineStore('requests', {
     error: null as string | null,
     meta: null as PaginationMeta | null,
     currentFilter: {} as RequestsFilter,
+    /** Sequence counter — only the latest in-flight request commits its results */
+    _loadToken: 0,
   }),
 
   getters: {
@@ -33,6 +35,7 @@ export const useRequestsStore = defineStore('requests', {
 
   actions: {
     async loadRequests(filter: RequestsFilter = {}): Promise<void> {
+      const token = ++this._loadToken
       this.loading = true
       this.error = null
       this.currentFilter = filter
@@ -40,26 +43,34 @@ export const useRequestsStore = defineStore('requests', {
       try {
         const { fetchRequests } = useRequests()
         const result = await fetchRequests(filter)
+
+        if (token !== this._loadToken) return
         this.requests = result.data
         this.meta = result.meta
       }
-      catch {
+      catch (err) {
+        if (token !== this._loadToken) return
+        if (import.meta.dev) {
+          console.error('[requests.store] loadRequests failed:', err)
+        }
         this.error = 'تعذّر تحميل قائمة الطلبات.'
         this.requests = []
         this.meta = null
       }
       finally {
-        this.loading = false
+        if (token === this._loadToken) {
+          this.loading = false
+        }
       }
     },
 
     async nextPage(): Promise<void> {
-      if (!this.hasNextPage || !this.meta) return
+      if (this.loading || !this.hasNextPage || !this.meta) return
       await this.loadRequests({ ...this.currentFilter, page: this.meta.current_page + 1 })
     },
 
     async prevPage(): Promise<void> {
-      if (!this.hasPrevPage || !this.meta) return
+      if (this.loading || !this.hasPrevPage || !this.meta) return
       await this.loadRequests({ ...this.currentFilter, page: this.meta.current_page - 1 })
     },
   },
