@@ -40,6 +40,28 @@ export interface ImportRequest {
   updated_at: string
 }
 
+export interface User {
+  id: number
+  name: string
+  email: string
+  role: UserRole
+  role_label: string
+  bank_id: number | null
+  bank_name_ar: string | null
+  bank_name_en: string | null
+  is_active: boolean
+}
+
+export interface PaginatedResponse<T> {
+  data: T[]
+  meta: {
+    current_page: number
+    last_page: number
+    per_page: number
+    total: number
+  }
+}
+
 export interface ApiResponse<T = unknown> {
   success: boolean
   message: string
