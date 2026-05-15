@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Workflow;
 
+use App\Enums\AuditAction;
 use App\Enums\RequestStatus;
 use App\Enums\UserRole;
 use App\Models\Bank;
@@ -91,24 +92,6 @@ class WorkflowControllerTest extends TestCase
         }
     }
 
-    private function advanceTo(ImportRequest $request, RequestStatus $status, User $actor): ImportRequest
-    {
-        $service = app(WorkflowService::class);
-        $map = [
-            RequestStatus::SUBMITTED => ['submit', $this->dataEntry],
-            RequestStatus::BANK_REVIEW => ['bank_begin_review', $this->bankReviewer],
-        ];
-
-        foreach ($map as $targetStatus => [$action, $defaultActor]) {
-            if ($request->status === $targetStatus) {
-                break;
-            }
-            $request = $service->transition($request, $action, $actor->role === $defaultActor->role ? $actor : $defaultActor);
-        }
-
-        return $request->refresh();
-    }
-
     // ─── AC-1: DATA_ENTRY submits DRAFT → SUBMITTED ───────────────────────────
 
     public function test_data_entry_can_submit_draft_request(): void
@@ -155,22 +138,68 @@ class WorkflowControllerTest extends TestCase
         $this->assertDatabaseHas('audit_logs', [
             'user_id' => $this->dataEntry->id,
             'user_role' => UserRole::DATA_ENTRY->value,
+            'action' => AuditAction::STATUS_TRANSITION->value,
+            'subject_type' => ImportRequest::class,
+            'subject_id' => $request->id,
         ]);
     }
 
-    public function test_submit_from_draft_rejected_internal_works(): void
+    public function test_submitted_by_is_write_once(): void
     {
-        $request = $this->makeRequest($this->bank, $this->dataEntry, RequestStatus::DRAFT_REJECTED_INTERNAL);
+        // First submit sets submitted_by
+        $request = $this->makeRequest($this->bank, $this->dataEntry);
+        $this->actingAs($this->dataEntry)->postJson("/api/workflow/{$request->id}/submit");
 
-        $this->actingAs($this->dataEntry)
+        $this->assertDatabaseHas('import_requests', [
+            'id' => $request->id,
+            'submitted_by' => $this->dataEntry->id,
+        ]);
+    }
+
+    public function test_submitted_by_preserved_when_different_user_resubmits(): void
+    {
+        $originalSubmitter = $this->dataEntry;
+        $resubmitter = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+
+        // Create request already in DRAFT_REJECTED_INTERNAL with original submitter tracked
+        $request = $this->makeRequest($this->bank, $originalSubmitter, RequestStatus::DRAFT_REJECTED_INTERNAL);
+
+        // Manually set submitted_by to simulate a prior submission by originalSubmitter
+        app()->instance('workflow.transition.active', true);
+        try {
+            $request->forceFill(['submitted_by' => $originalSubmitter->id])->save();
+        } finally {
+            app()->offsetUnset('workflow.transition.active');
+        }
+
+        // Resubmit as a different DATA_ENTRY user
+        $this->actingAs($resubmitter)
+            ->postJson("/api/workflow/{$request->id}/submit")
+            ->assertOk();
+
+        // submitted_by must remain the original submitter
+        $this->assertDatabaseHas('import_requests', [
+            'id' => $request->id,
+            'submitted_by' => $originalSubmitter->id,
+            'resubmitted_by' => $resubmitter->id,
+        ]);
+    }
+
+    public function test_submit_from_draft_rejected_internal_sets_resubmitted_by(): void
+    {
+        $originalSubmitter = $this->dataEntry;
+        $resubmitter = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+
+        $request = $this->makeRequest($this->bank, $originalSubmitter, RequestStatus::DRAFT_REJECTED_INTERNAL);
+
+        $this->actingAs($resubmitter)
             ->postJson("/api/workflow/{$request->id}/submit")
             ->assertOk()
             ->assertJsonPath('data.status', RequestStatus::SUBMITTED->value);
 
         $this->assertDatabaseHas('import_requests', [
             'id' => $request->id,
-            'submitted_by' => $this->dataEntry->id,
-            'resubmitted_by' => $this->dataEntry->id,
+            'resubmitted_by' => $resubmitter->id,
         ]);
     }
 
@@ -220,6 +249,9 @@ class WorkflowControllerTest extends TestCase
         $this->assertDatabaseHas('audit_logs', [
             'user_id' => $this->bankReviewer->id,
             'user_role' => UserRole::BANK_REVIEWER->value,
+            'action' => AuditAction::STATUS_TRANSITION->value,
+            'subject_type' => ImportRequest::class,
+            'subject_id' => $request->id,
         ]);
     }
 
@@ -241,7 +273,7 @@ class WorkflowControllerTest extends TestCase
         ]);
     }
 
-    public function test_bank_approve_sets_reviewed_by(): void
+    public function test_bank_approve_sets_approved_by_not_reviewed_by(): void
     {
         $request = $this->makeRequest($this->bank, $this->dataEntry, RequestStatus::BANK_REVIEW);
 
@@ -250,7 +282,13 @@ class WorkflowControllerTest extends TestCase
 
         $this->assertDatabaseHas('import_requests', [
             'id' => $request->id,
-            'reviewed_by' => $this->bankReviewer->id,
+            'approved_by' => $this->bankReviewer->id,
+        ]);
+
+        // reviewed_by is for begin-review actor only — must remain null here
+        $this->assertDatabaseHas('import_requests', [
+            'id' => $request->id,
+            'reviewed_by' => null,
         ]);
     }
 
@@ -267,7 +305,58 @@ class WorkflowControllerTest extends TestCase
             'to_status' => RequestStatus::BANK_APPROVED->value,
             'action' => 'bank_approve',
             'actor_id' => $this->bankReviewer->id,
+            'actor_role' => UserRole::BANK_REVIEWER->value,
         ]);
+
+        $this->assertDatabaseHas('audit_logs', [
+            'user_id' => $this->bankReviewer->id,
+            'user_role' => UserRole::BANK_REVIEWER->value,
+            'action' => AuditAction::STATUS_TRANSITION->value,
+            'subject_type' => ImportRequest::class,
+            'subject_id' => $request->id,
+        ]);
+    }
+
+    public function test_bank_approve_auto_chain_creates_stage_history_and_audit_log(): void
+    {
+        $request = $this->makeRequest($this->bank, $this->dataEntry, RequestStatus::BANK_REVIEW);
+
+        $this->actingAs($this->bankReviewer)
+            ->postJson("/api/workflow/{$request->id}/bank-approve");
+
+        // Auto-chain hop: BANK_APPROVED → SUPPORT_REVIEW_PENDING
+        $this->assertDatabaseHas('request_stage_history', [
+            'request_id' => $request->id,
+            'from_status' => RequestStatus::BANK_APPROVED->value,
+            'to_status' => RequestStatus::SUPPORT_REVIEW_PENDING->value,
+            'action' => 'move_to_support_queue',
+        ]);
+
+        $this->assertDatabaseHas('audit_logs', [
+            'user_id' => $this->bankReviewer->id,
+            'action' => AuditAction::STATUS_TRANSITION->value,
+            'subject_type' => ImportRequest::class,
+            'subject_id' => $request->id,
+        ]);
+    }
+
+    public function test_bank_approve_does_not_overwrite_reviewed_by_when_different_reviewers(): void
+    {
+        $beginner = $this->makeUser(UserRole::BANK_REVIEWER, $this->bank);
+        $approver = $this->bankReviewer;
+
+        $request = $this->makeRequest($this->bank, $this->dataEntry, RequestStatus::SUBMITTED);
+
+        // beginner starts the review
+        app(WorkflowService::class)->transition($request, 'bank_begin_review', $beginner);
+        $request->refresh();
+
+        // approver approves
+        app(WorkflowService::class)->transition($request, 'bank_approve', $approver);
+        $request->refresh();
+
+        $this->assertEquals($beginner->id, $request->reviewed_by, 'reviewed_by must be the begin-review actor');
+        $this->assertEquals($approver->id, $request->approved_by, 'approved_by must be the approval actor');
     }
 
     public function test_post_approve_request_is_permanently_locked(): void
@@ -278,6 +367,19 @@ class WorkflowControllerTest extends TestCase
         // Auto-chains to SUPPORT_REVIEW_PENDING — must be non-editable
         $this->assertFalse($request->isEditable(), 'Request must be locked after bank approval');
         $this->assertFalse($request->status->isEditable());
+    }
+
+    public function test_post_approve_request_locked_at_http_level(): void
+    {
+        $request = $this->makeRequest($this->bank, $this->dataEntry, RequestStatus::BANK_REVIEW);
+        app(WorkflowService::class)->transition($request, 'bank_approve', $this->bankReviewer);
+
+        // DELETE /api/requests/{id} throws WorkflowLockedStateException for non-DRAFT — no body fields required
+        $this->actingAs($this->dataEntry)
+            ->deleteJson("/api/requests/{$request->id}")
+            ->assertStatus(422)
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('error_code', 'WORKFLOW_LOCKED_STATE');
     }
 
     // ─── AC-4: BANK_REVIEWER rejects BANK_REVIEW → DRAFT_REJECTED_INTERNAL ───
@@ -332,6 +434,14 @@ class WorkflowControllerTest extends TestCase
             'actor_role' => UserRole::BANK_REVIEWER->value,
             'reason' => 'مستندات ناقصة',
         ]);
+
+        $this->assertDatabaseHas('audit_logs', [
+            'user_id' => $this->bankReviewer->id,
+            'user_role' => UserRole::BANK_REVIEWER->value,
+            'action' => AuditAction::STATUS_TRANSITION->value,
+            'subject_type' => ImportRequest::class,
+            'subject_id' => $request->id,
+        ]);
     }
 
     public function test_bank_reject_requires_reason_field(): void
@@ -348,7 +458,6 @@ class WorkflowControllerTest extends TestCase
 
     public function test_creator_cannot_approve_own_request(): void
     {
-        // Reviewer IS the creator
         $reviewerCreator = $this->bankReviewer;
         $request = $this->makeRequest($this->bank, $reviewerCreator, RequestStatus::BANK_REVIEW);
 
@@ -377,10 +486,10 @@ class WorkflowControllerTest extends TestCase
 
         $response = $this->actingAs($this->dataEntry)
             ->getJson('/api/requests')
-            ->assertOk();
+            ->assertOk()
+            ->assertJsonStructure(['success', 'data']);
 
-        $items = $response->json('data.data') ?? $response->json('data');
-        $bankIds = collect($items)->pluck('bank_id')->unique()->values()->all();
+        $bankIds = collect($response->json('data'))->pluck('bank_id')->unique()->values()->all();
         $this->assertNotEmpty($bankIds, 'Expected at least one request in response');
         $this->assertEquals([$this->bank->id], $bankIds);
     }
@@ -415,23 +524,27 @@ class WorkflowControllerTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_submit_wrong_status_returns_422(): void
+    public function test_submit_wrong_status_returns_workflow_error(): void
     {
         // Already submitted — can't submit again
         $request = $this->makeRequest($this->bank, $this->dataEntry, RequestStatus::SUBMITTED);
 
         $this->actingAs($this->dataEntry)
             ->postJson("/api/workflow/{$request->id}/submit")
-            ->assertStatus(422);
+            ->assertStatus(422)
+            ->assertJsonPath('success', false)
+            ->assertJsonFragment(['message' => 'Current status does not allow this transition.']);
     }
 
-    public function test_bank_approve_wrong_status_returns_422(): void
+    public function test_bank_approve_wrong_status_returns_workflow_error(): void
     {
         // Request still SUBMITTED — bank_approve expects BANK_REVIEW
         $request = $this->makeRequest($this->bank, $this->dataEntry, RequestStatus::SUBMITTED);
 
         $this->actingAs($this->bankReviewer)
             ->postJson("/api/workflow/{$request->id}/bank-approve")
-            ->assertStatus(422);
+            ->assertStatus(422)
+            ->assertJsonPath('success', false)
+            ->assertJsonFragment(['message' => 'Current status does not allow this transition.']);
     }
 }

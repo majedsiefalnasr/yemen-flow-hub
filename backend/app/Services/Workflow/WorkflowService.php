@@ -100,8 +100,8 @@ class WorkflowService
             }
 
             $actorColumn = match ($action) {
-                'submit' => 'submitted_by',
-                'bank_begin_review', 'bank_approve' => 'reviewed_by',
+                'bank_begin_review' => 'reviewed_by',
+                'bank_approve' => 'approved_by',
                 'bank_reject' => 'rejected_by',
                 'support_approve', 'support_reject' => 'support_reviewed_by',
                 'swift_upload' => 'swift_uploaded_by',
@@ -110,6 +110,11 @@ class WorkflowService
 
             if ($actorColumn) {
                 $payload[$actorColumn] = $actor->id;
+            }
+
+            // submitted_by is write-once: preserves the original first submitter
+            if ($action === 'submit' && $request->submitted_by === null) {
+                $payload['submitted_by'] = $actor->id;
             }
 
             if ($action === 'submit' && $request->status === RequestStatus::DRAFT_REJECTED_INTERNAL) {

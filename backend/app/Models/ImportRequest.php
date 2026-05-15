@@ -39,6 +39,7 @@ class ImportRequest extends Model
         'submitted_by',
         'bank_approved_at',
         'reviewed_by',
+        'approved_by',
         'rejected_by',
         'resubmitted_by',
         'support_approved_at',
@@ -111,6 +112,11 @@ class ImportRequest extends Model
     public function reviewedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'reviewed_by');
+    }
+
+    public function approvedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'approved_by');
     }
 
     public function rejectedBy(): BelongsTo

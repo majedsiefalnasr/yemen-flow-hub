@@ -40,6 +40,7 @@ class ImportRequestResource extends JsonResource
             'notes' => $this->notes,
             'submitted_by' => $this->submitted_by,
             'reviewed_by' => $this->reviewed_by,
+            'approved_by' => $this->approved_by,
             'rejected_by' => $this->rejected_by,
             'resubmitted_by' => $this->resubmitted_by,
             'submitted_at' => $this->submitted_at?->toISOString(),
