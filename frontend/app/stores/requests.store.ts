@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import type { ImportRequest } from '../types/models'
+import type { ImportRequest, RequestFormData } from '../types/models'
 import type { RequestsFilter } from '../composables/useRequests'
 import { useRequests } from '../composables/useRequests'
 
@@ -13,7 +13,9 @@ interface PaginationMeta {
 export const useRequestsStore = defineStore('requests', {
   state: () => ({
     requests: [] as ImportRequest[],
+    currentRequest: null as ImportRequest | null,
     loading: false,
+    saving: false,
     error: null as string | null,
     meta: null as PaginationMeta | null,
     currentFilter: {} as RequestsFilter,
@@ -61,6 +63,69 @@ export const useRequestsStore = defineStore('requests', {
         if (token === this._loadToken) {
           this.loading = false
         }
+      }
+    },
+
+    async loadRequest(id: number): Promise<void> {
+      this.loading = true
+      this.error = null
+      this.currentRequest = null
+
+      try {
+        const { fetchRequest } = useRequests()
+        this.currentRequest = await fetchRequest(id)
+      }
+      catch (err) {
+        if (import.meta.dev) {
+          console.error('[requests.store] loadRequest failed:', err)
+        }
+        this.error = 'تعذّر تحميل بيانات الطلب.'
+      }
+      finally {
+        this.loading = false
+      }
+    },
+
+    async createRequest(data: RequestFormData): Promise<number> {
+      this.saving = true
+      this.error = null
+
+      try {
+        const { createRequest } = useRequests()
+        const created = await createRequest(data)
+        this.currentRequest = created
+        return created.id
+      }
+      catch (err) {
+        if (import.meta.dev) {
+          console.error('[requests.store] createRequest failed:', err)
+        }
+        this.error = 'تعذّر إنشاء الطلب.'
+        throw err
+      }
+      finally {
+        this.saving = false
+      }
+    },
+
+    async updateRequest(id: number, data: RequestFormData): Promise<void> {
+      this.saving = true
+      this.error = null
+
+      try {
+        const { updateRequest } = useRequests()
+        const updated = await updateRequest(id, data)
+        this.currentRequest = updated
+      }
+      catch (err) {
+        if (import.meta.dev) {
+          console.error('[requests.store] updateRequest failed:', err)
+        }
+        this.error = 'تعذّر تحديث الطلب.'
+        throw err
+      }
+      finally {
+        this.saving = false
       }
     },
 

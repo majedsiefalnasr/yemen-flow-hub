@@ -16,6 +16,8 @@ const showsOperationalFilters = computed(() =>
   !!auth.user && OPERATIONAL_FILTER_ROLES.includes(auth.user.role),
 )
 
+const canCreateRequest = computed(() => auth.user?.role === UserRole.DATA_ENTRY)
+
 const statusOptions = computed<Array<{ value: RequestStatus | '', label: string }>>(() => {
   const role = auth.user?.role
   const filterStatuses = role ? ROLE_FILTER_STATUSES[role] : undefined
@@ -64,6 +66,14 @@ function formatAmount(amount: string, currency: string): string {
   <div class="requests-page">
     <div class="requests-header">
       <h1 class="requests-title">طلبات التمويل</h1>
+      <NuxtLink
+        v-if="canCreateRequest"
+        to="/requests/new"
+        class="new-request-btn"
+        aria-label="تقديم طلب جديد"
+      >
+        + طلب جديد
+      </NuxtLink>
     </div>
 
     <!-- Filters (operational roles only) -->
@@ -209,6 +219,24 @@ function formatAmount(amount: string, currency: string): string {
   font-weight: 500;
   color: var(--color-text-primary);
   margin: 0;
+}
+
+.new-request-btn {
+  height: 44px;
+  padding: 0 20px;
+  background: #0071e3;
+  color: #fff;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 500;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  transition: opacity 100ms;
+}
+
+.new-request-btn:hover {
+  opacity: 0.9;
 }
 
 /* Filters */

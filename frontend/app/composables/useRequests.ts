@@ -1,4 +1,4 @@
-import type { ApiResponse, ImportRequest, PaginatedResponse } from '../types/models'
+import type { ApiResponse, ImportRequest, PaginatedResponse, RequestFormData } from '../types/models'
 import type { RequestStatus } from '../types/enums'
 import { useApi } from './useApi'
 
@@ -10,7 +10,7 @@ export interface RequestsFilter {
 }
 
 export function useRequests() {
-  const { get } = useApi()
+  const { get, post, put } = useApi()
 
   async function fetchRequests(
     filter: RequestsFilter = {},
@@ -29,5 +29,38 @@ export function useRequests() {
     return response.data
   }
 
-  return { fetchRequests }
+  async function fetchRequest(id: number): Promise<ImportRequest> {
+    const response = await get<ApiResponse<ImportRequest>>(`/api/requests/${id}`)
+    return response.data
+  }
+
+  async function createRequest(data: RequestFormData): Promise<ImportRequest> {
+    const response = await post<ApiResponse<ImportRequest>>('/api/requests', data)
+    return response.data
+  }
+
+  async function updateRequest(id: number, data: RequestFormData): Promise<ImportRequest> {
+    const response = await put<ApiResponse<ImportRequest>>(`/api/requests/${id}`, data)
+    return response.data
+  }
+
+  async function uploadDocument(
+    requestId: number,
+    file: File,
+    label: string,
+  ): Promise<void> {
+    const config = useRuntimeConfig()
+    const baseURL = config.public.apiBase as string
+    const form = new FormData()
+    form.append('file', file)
+    form.append('label', label)
+    await $fetch(`/api/requests/${requestId}/documents`, {
+      method: 'POST',
+      baseURL,
+      credentials: 'include',
+      body: form,
+    })
+  }
+
+  return { fetchRequests, fetchRequest, createRequest, updateRequest, uploadDocument }
 }
