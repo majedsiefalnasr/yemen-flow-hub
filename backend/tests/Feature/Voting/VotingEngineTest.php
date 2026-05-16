@@ -443,4 +443,169 @@ class VotingEngineTest extends TestCase
         $this->actingAs($this->director)->postJson("/api/workflow/{$request->id}/finalize-decision")->assertOk();
         $this->assertEquals(VotingSessionStatus::FINALIZED, $request->fresh()->voting_session_status);
     }
+
+    // ─── Authorization: finalize-decision is COMMITTEE_DIRECTOR only ─────────
+
+    public function test_finalize_decision_executive_member_returns_403(): void
+    {
+        $request = $this->makeRequest(RequestStatus::EXECUTIVE_VOTING_CLOSED);
+
+        $this->actingAs($this->exec1)
+            ->postJson("/api/workflow/{$request->id}/finalize-decision")
+            ->assertStatus(403);
+    }
+
+    public function test_finalize_decision_data_entry_returns_403(): void
+    {
+        $request = $this->makeRequest(RequestStatus::EXECUTIVE_VOTING_CLOSED);
+
+        $this->actingAs($this->dataEntry)
+            ->postJson("/api/workflow/{$request->id}/finalize-decision")
+            ->assertStatus(403);
+    }
+
+    // ─── Duplicate finalize / already-finalized guard ────────────────────────
+
+    public function test_finalize_on_already_approved_request_returns_422(): void
+    {
+        $request = $this->makeRequest(RequestStatus::EXECUTIVE_APPROVED);
+
+        $this->actingAs($this->director)
+            ->postJson("/api/workflow/{$request->id}/finalize-decision")
+            ->assertStatus(422);
+    }
+
+    public function test_finalize_on_executive_rejected_returns_422(): void
+    {
+        $request = $this->makeRequest(RequestStatus::EXECUTIVE_REJECTED);
+
+        $this->actingAs($this->director)
+            ->postJson("/api/workflow/{$request->id}/finalize-decision")
+            ->assertStatus(422);
+    }
+
+    // ─── voted_at persistence ─────────────────────────────────────────────────
+
+    public function test_cast_vote_persists_voted_at_timestamp(): void
+    {
+        $request = $this->makeRequest(RequestStatus::EXECUTIVE_VOTING_OPEN);
+
+        $this->actingAs($this->exec1)
+            ->postJson("/api/voting/{$request->id}/vote", ['vote' => 'APPROVE'])
+            ->assertOk();
+
+        $voteRecord = RequestVote::query()
+            ->where('request_id', $request->id)
+            ->where('user_id', $this->exec1->id)
+            ->first();
+
+        $this->assertNotNull($voteRecord);
+        $this->assertNotNull($voteRecord->voted_at);
+    }
+
+    public function test_auto_abstain_persists_voted_at_timestamp(): void
+    {
+        $request = $this->makeRequest(RequestStatus::EXECUTIVE_VOTING_OPEN);
+        $this->castVote($request, $this->exec1, VoteType::APPROVE);
+
+        $this->actingAs($this->director)
+            ->postJson("/api/voting/{$request->id}/close")
+            ->assertOk();
+
+        // exec2 did not vote — should receive AUTO_ABSTAIN_TIMEOUT with voted_at set
+        $abstainRecord = RequestVote::query()
+            ->where('request_id', $request->id)
+            ->where('user_id', $this->exec2->id)
+            ->first();
+
+        $this->assertNotNull($abstainRecord);
+        $this->assertEquals(VoteType::AUTO_ABSTAIN_TIMEOUT, $abstainRecord->vote);
+        $this->assertNotNull($abstainRecord->voted_at);
+    }
+
+    // ─── Inactive user exclusion ─────────────────────────────────────────────
+
+    public function test_inactive_executive_excluded_from_auto_abstain_on_close(): void
+    {
+        $inactiveExec = User::query()->create([
+            'name' => 'Inactive Exec',
+            'email' => 'inactive_exec@vetest.com',
+            'password' => \Illuminate\Support\Facades\Hash::make('password'),
+            'role' => UserRole::EXECUTIVE_MEMBER->value,
+            'bank_id' => null,
+            'is_active' => false,
+        ]);
+
+        $request = $this->makeRequest(RequestStatus::EXECUTIVE_VOTING_OPEN);
+        $this->castVote($request, $this->exec1, VoteType::APPROVE);
+
+        $this->actingAs($this->director)
+            ->postJson("/api/voting/{$request->id}/close")
+            ->assertOk();
+
+        $this->assertDatabaseMissing('request_votes', [
+            'request_id' => $request->id,
+            'user_id' => $inactiveExec->id,
+        ]);
+    }
+
+    public function test_inactive_executive_excluded_from_auto_abstain_on_override(): void
+    {
+        $inactiveExec = User::query()->create([
+            'name' => 'Inactive Exec 2',
+            'email' => 'inactive_exec2@vetest.com',
+            'password' => \Illuminate\Support\Facades\Hash::make('password'),
+            'role' => UserRole::EXECUTIVE_MEMBER->value,
+            'bank_id' => null,
+            'is_active' => false,
+        ]);
+
+        $request = $this->makeRequest(RequestStatus::EXECUTIVE_VOTING_OPEN);
+
+        $this->actingAs($this->director)
+            ->postJson("/api/voting/{$request->id}/override", [
+                'decision' => 'APPROVE',
+                'justification' => 'Override test — inactive user must not receive auto-abstain',
+            ])
+            ->assertOk();
+
+        $this->assertDatabaseMissing('request_votes', [
+            'request_id' => $request->id,
+            'user_id' => $inactiveExec->id,
+        ]);
+    }
+
+    // ─── Override atomicity ───────────────────────────────────────────────────
+
+    public function test_override_produces_finalized_status_and_synced_voting_session_status(): void
+    {
+        $request = $this->makeRequest(RequestStatus::EXECUTIVE_VOTING_OPEN);
+        $this->castVote($request, $this->exec1, VoteType::REJECT);
+        $this->castVote($request, $this->exec2, VoteType::REJECT);
+
+        $this->actingAs($this->director)
+            ->postJson("/api/voting/{$request->id}/override", [
+                'decision' => 'APPROVE',
+                'justification' => 'Director override — governance test',
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.status', RequestStatus::EXECUTIVE_APPROVED->value);
+
+        $fresh = $request->fresh();
+        $this->assertEquals(RequestStatus::EXECUTIVE_APPROVED, $fresh->status);
+        $this->assertEquals(VotingSessionStatus::FINALIZED, $fresh->voting_session_status);
+    }
+
+    public function test_finalize_decision_sets_voting_session_status_finalized(): void
+    {
+        $request = $this->makeRequest(RequestStatus::EXECUTIVE_VOTING_CLOSED);
+        $this->castVote($request, $this->exec1, VoteType::APPROVE);
+        $this->castVote($request, $this->exec2, VoteType::APPROVE);
+
+        $this->actingAs($this->director)
+            ->postJson("/api/workflow/{$request->id}/finalize-decision")
+            ->assertOk();
+
+        $this->assertEquals(VotingSessionStatus::FINALIZED, $request->fresh()->voting_session_status);
+    }
 }

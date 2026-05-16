@@ -88,6 +88,7 @@ class VotingService
 
             $nonVoters = User::query()
                 ->whereIn('role', [UserRole::EXECUTIVE_MEMBER->value, UserRole::COMMITTEE_DIRECTOR->value])
+                ->where('is_active', true)
                 ->whereNotIn('id', $votedUserIds)
                 ->get();
 
@@ -147,27 +148,40 @@ class VotingService
             throw new VotingException('Voting session must be closed before finalizing.');
         }
 
-        $tally = $this->tally($request);
+        return DB::transaction(function () use ($request, $director) {
+            $lockedRequest = ImportRequest::query()
+                ->where('id', $request->id)
+                ->lockForUpdate()
+                ->first();
 
-        if ($tally->approveCount > $tally->rejectCount) {
-            return $this->workflowService->transition($request, 'finalize_approved', $director);
-        }
+            // Re-check status inside the lock to guard against concurrent finalize calls
+            if ($lockedRequest->status !== RequestStatus::EXECUTIVE_VOTING_CLOSED) {
+                throw new VotingException('Voting session must be closed before finalizing.');
+            }
 
-        if ($tally->rejectCount > $tally->approveCount) {
-            return $this->workflowService->transition($request, 'finalize_rejected', $director);
-        }
+            $tally = $this->tally($lockedRequest);
 
-        // Tie: Director's non-abstain APPROVE vote is the tiebreaker; anything else → REJECTED (safe stance)
-        $directorVoteRecord = RequestVote::query()
-            ->where('request_id', $request->id)
-            ->where('user_id', $director->id)
-            ->first();
+            if ($tally->approveCount > $tally->rejectCount) {
+                return $this->workflowService->transition($lockedRequest, 'finalize_approved', $director);
+            }
 
-        if ($directorVoteRecord !== null && $directorVoteRecord->vote === VoteType::APPROVE) {
-            return $this->workflowService->transition($request, 'finalize_approved', $director);
-        }
+            if ($tally->rejectCount > $tally->approveCount) {
+                return $this->workflowService->transition($lockedRequest, 'finalize_rejected', $director);
+            }
 
-        return $this->workflowService->transition($request, 'finalize_rejected', $director);
+            // Tie: Director's APPROVE vote is the tiebreaker; anything else → REJECTED (safe stance)
+            $directorVoteRecord = RequestVote::query()
+                ->where('request_id', $lockedRequest->id)
+                ->where('user_id', $director->id)
+                ->lockForUpdate()
+                ->first();
+
+            if ($directorVoteRecord !== null && $directorVoteRecord->vote === VoteType::APPROVE) {
+                return $this->workflowService->transition($lockedRequest, 'finalize_approved', $director);
+            }
+
+            return $this->workflowService->transition($lockedRequest, 'finalize_rejected', $director);
+        });
     }
 
     public function overrideAndFinalize(
@@ -215,6 +229,7 @@ class VotingService
 
             $nonVoters = User::query()
                 ->whereIn('role', [UserRole::EXECUTIVE_MEMBER->value, UserRole::COMMITTEE_DIRECTOR->value])
+                ->where('is_active', true)
                 ->whereNotIn('id', $votedUserIds)
                 ->get();
 

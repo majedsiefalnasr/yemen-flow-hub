@@ -119,8 +119,7 @@ class VotingController extends Controller
 
         $updated = $this->votingService->finalize(
             $importRequest,
-            $request->user(),
-            VoteType::from($request->string('vote')->toString())
+            $request->user()
         );
 
         return ApiResponse::success(new ImportRequestResource($updated->load('bank')), 'Director decision applied.');

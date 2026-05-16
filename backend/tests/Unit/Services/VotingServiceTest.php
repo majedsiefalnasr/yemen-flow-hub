@@ -323,4 +323,90 @@ class VotingServiceTest extends TestCase
         $this->expectException(VotingException::class);
         $this->votingService->finalize($request, $member);
     }
+
+    public function test_finalize_already_finalized_throws(): void
+    {
+        $request = $this->makeRequest(RequestStatus::EXECUTIVE_APPROVED);
+        $director = $this->makeUser(UserRole::COMMITTEE_DIRECTOR);
+
+        $this->expectException(VotingException::class);
+        $this->votingService->finalize($request, $director);
+    }
+
+    // ─── voted_at persistence tests ───────────────────────────────────────────
+
+    public function test_cast_vote_persists_voted_at(): void
+    {
+        $request = $this->makeRequest(RequestStatus::EXECUTIVE_VOTING_OPEN);
+        $member = $this->makeUser(UserRole::EXECUTIVE_MEMBER);
+
+        $vote = $this->votingService->castVote($request, $member, VoteType::APPROVE, null);
+
+        $this->assertNotNull($vote->voted_at);
+        $this->assertDatabaseHas('request_votes', [
+            'request_id' => $request->id,
+            'user_id' => $member->id,
+        ]);
+        $this->assertNotNull(
+            \App\Models\RequestVote::query()
+                ->where('request_id', $request->id)
+                ->where('user_id', $member->id)
+                ->value('voted_at')
+        );
+    }
+
+    // ─── inactive user exclusion tests ────────────────────────────────────────
+
+    public function test_close_session_excludes_inactive_users_from_auto_abstain(): void
+    {
+        $director = $this->makeUser(UserRole::COMMITTEE_DIRECTOR);
+        $activeExec = $this->makeUser(UserRole::EXECUTIVE_MEMBER);
+
+        $inactiveExec = User::query()->create([
+            'name' => 'Inactive Exec',
+            'email' => 'inactive@vstest.com',
+            'password' => \Illuminate\Support\Facades\Hash::make('password'),
+            'role' => UserRole::EXECUTIVE_MEMBER->value,
+            'bank_id' => null,
+            'is_active' => false,
+        ]);
+
+        $request = $this->makeRequest(RequestStatus::EXECUTIVE_VOTING_OPEN);
+        $this->castVoteDirectly($request, $activeExec, VoteType::APPROVE);
+
+        $this->votingService->closeSession($request, $director);
+
+        // Inactive user must NOT receive an AUTO_ABSTAIN_TIMEOUT record
+        $this->assertDatabaseMissing('request_votes', [
+            'request_id' => $request->id,
+            'user_id' => $inactiveExec->id,
+        ]);
+
+        // Director (active, not voted) DOES get AUTO_ABSTAIN_TIMEOUT
+        $this->assertDatabaseHas('request_votes', [
+            'request_id' => $request->id,
+            'user_id' => $director->id,
+            'vote' => VoteType::AUTO_ABSTAIN_TIMEOUT->value,
+        ]);
+    }
+
+    public function test_auto_abstain_voted_at_is_persisted(): void
+    {
+        $director = $this->makeUser(UserRole::COMMITTEE_DIRECTOR);
+        $exec = $this->makeUser(UserRole::EXECUTIVE_MEMBER);
+        $request = $this->makeRequest(RequestStatus::EXECUTIVE_VOTING_OPEN);
+        // exec votes; director does not → director receives AUTO_ABSTAIN_TIMEOUT
+        $this->castVoteDirectly($request, $exec, VoteType::APPROVE);
+
+        $this->votingService->closeSession($request, $director);
+
+        $directorVote = \App\Models\RequestVote::query()
+            ->where('request_id', $request->id)
+            ->where('user_id', $director->id)
+            ->first();
+
+        $this->assertNotNull($directorVote);
+        $this->assertEquals(VoteType::AUTO_ABSTAIN_TIMEOUT, $directorVote->vote);
+        $this->assertNotNull($directorVote->voted_at);
+    }
 }

@@ -14,6 +14,7 @@ class RequestVote extends Model
         'vote',
         'justification',
         'is_director_override',
+        'voted_at',
     ];
 
     protected function casts(): array
@@ -21,6 +22,7 @@ class RequestVote extends Model
         return [
             'vote' => VoteType::class,
             'is_director_override' => 'boolean',
+            'voted_at' => 'datetime',
         ];
     }
 
