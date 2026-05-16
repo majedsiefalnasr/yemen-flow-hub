@@ -27,9 +27,10 @@ class DashboardController extends Controller
         $user = request()->user();
 
         return match (true) {
-            $user->hasRole(UserRole::DATA_ENTRY)    => $this->dataEntryStats($user),
-            $user->hasRole(UserRole::BANK_REVIEWER) => $this->bankReviewerStats($user),
-            default                                 => ApiResponse::success([], 'Dashboard stats retrieved.'),
+            $user->hasRole(UserRole::DATA_ENTRY)        => $this->dataEntryStats($user),
+            $user->hasRole(UserRole::BANK_REVIEWER)     => $this->bankReviewerStats($user),
+            $user->hasRole(UserRole::SUPPORT_COMMITTEE) => $this->supportCommitteeStats($user),
+            default                                     => ApiResponse::success([], 'Dashboard stats retrieved.'),
         };
     }
 
@@ -124,6 +125,48 @@ class DashboardController extends Controller
             'returned_by_support' => $returnedBySupport,
             'approved_completed'  => $approvedCompleted,
             'review_queue'        => ImportRequestResource::collection($reviewQueue)->resolve(),
+        ], 'Dashboard stats retrieved.');
+    }
+
+    private function supportCommitteeStats($user)
+    {
+        $base = ImportRequest::query();
+
+        $waitingForClaim = (clone $base)
+            ->where('status', RequestStatus::SUPPORT_REVIEW_PENDING)
+            ->count();
+
+        $activeByMe = (clone $base)
+            ->where('status', RequestStatus::SUPPORT_REVIEW_IN_PROGRESS)
+            ->where('claimed_by', $user->id)
+            ->count();
+
+        $claimedByOthers = (clone $base)
+            ->where('status', RequestStatus::SUPPORT_REVIEW_IN_PROGRESS)
+            ->where('claimed_by', '!=', $user->id)
+            ->whereNotNull('claimed_by')
+            ->count();
+
+        $recentlyApproved = (clone $base)
+            ->where('status', RequestStatus::SUPPORT_APPROVED)
+            ->count();
+
+        $supportQueue = (clone $base)
+            ->whereIn('status', [
+                RequestStatus::SUPPORT_REVIEW_PENDING->value,
+                RequestStatus::SUPPORT_REVIEW_IN_PROGRESS->value,
+            ])
+            ->orderBy('updated_at')
+            ->limit(50)
+            ->with(['claimedByUser'])
+            ->get();
+
+        return ApiResponse::success([
+            'waiting_for_claim' => $waitingForClaim,
+            'active_by_me'      => $activeByMe,
+            'claimed_by_others' => $claimedByOthers,
+            'recently_approved' => $recentlyApproved,
+            'support_queue'     => ImportRequestResource::collection($supportQueue)->resolve(),
         ], 'Dashboard stats retrieved.');
     }
 }

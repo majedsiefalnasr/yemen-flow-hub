@@ -301,6 +301,164 @@ class DashboardStatsTest extends TestCase
         $this->assertContains(RequestStatus::BANK_REVIEW->value, $statuses);
     }
 
+    // ─── AC-5: SUPPORT_COMMITTEE stats shape ──────────────────────────────────
+
+    public function test_support_committee_stats_returns_correct_kpi_keys(): void
+    {
+        $sc = $this->makeUser(UserRole::SUPPORT_COMMITTEE);
+
+        $this->actingAs($sc)
+            ->getJson('/api/dashboard/stats')
+            ->assertOk()
+            ->assertJsonStructure([
+                'success',
+                'data' => [
+                    'waiting_for_claim',
+                    'active_by_me',
+                    'claimed_by_others',
+                    'recently_approved',
+                    'support_queue',
+                ],
+            ]);
+    }
+
+    public function test_support_committee_waiting_for_claim_counts_support_review_pending(): void
+    {
+        $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $sc = $this->makeUser(UserRole::SUPPORT_COMMITTEE);
+
+        $this->makeRequest($this->bank, $de, RequestStatus::SUPPORT_REVIEW_PENDING);
+        $this->makeRequest($this->bank, $de, RequestStatus::SUPPORT_REVIEW_PENDING);
+        $this->makeRequest($this->bank, $de, RequestStatus::SUPPORT_REVIEW_IN_PROGRESS);
+
+        $this->actingAs($sc)
+            ->getJson('/api/dashboard/stats')
+            ->assertJsonPath('data.waiting_for_claim', 2);
+    }
+
+    public function test_support_committee_active_by_me_counts_only_my_claims(): void
+    {
+        $de  = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $sc  = $this->makeUser(UserRole::SUPPORT_COMMITTEE);
+        $sc2 = $this->makeUser(UserRole::SUPPORT_COMMITTEE);
+
+        $myRequest    = $this->makeRequest($this->bank, $de, RequestStatus::SUPPORT_REVIEW_IN_PROGRESS);
+        $otherRequest = $this->makeRequest($this->bank, $de, RequestStatus::SUPPORT_REVIEW_IN_PROGRESS);
+
+        app()->instance('workflow.transition.active', true);
+        try {
+            $myRequest->update(['claimed_by' => $sc->id]);
+            $otherRequest->update(['claimed_by' => $sc2->id]);
+        } finally {
+            app()->offsetUnset('workflow.transition.active');
+        }
+
+        $this->actingAs($sc)
+            ->getJson('/api/dashboard/stats')
+            ->assertJsonPath('data.active_by_me', 1);
+    }
+
+    public function test_support_committee_claimed_by_others_excludes_mine(): void
+    {
+        $de  = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $sc  = $this->makeUser(UserRole::SUPPORT_COMMITTEE);
+        $sc2 = $this->makeUser(UserRole::SUPPORT_COMMITTEE);
+
+        $myRequest    = $this->makeRequest($this->bank, $de, RequestStatus::SUPPORT_REVIEW_IN_PROGRESS);
+        $otherRequest = $this->makeRequest($this->bank, $de, RequestStatus::SUPPORT_REVIEW_IN_PROGRESS);
+
+        app()->instance('workflow.transition.active', true);
+        try {
+            $myRequest->update(['claimed_by' => $sc->id]);
+            $otherRequest->update(['claimed_by' => $sc2->id]);
+        } finally {
+            app()->offsetUnset('workflow.transition.active');
+        }
+
+        $this->actingAs($sc)
+            ->getJson('/api/dashboard/stats')
+            ->assertJsonPath('data.claimed_by_others', 1);
+    }
+
+    public function test_support_committee_recently_approved_counts_support_approved(): void
+    {
+        $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $sc = $this->makeUser(UserRole::SUPPORT_COMMITTEE);
+
+        $this->makeRequest($this->bank, $de, RequestStatus::SUPPORT_APPROVED);
+        $this->makeRequest($this->bank, $de, RequestStatus::SUPPORT_APPROVED);
+        $this->makeRequest($this->bank, $de, RequestStatus::SUPPORT_REVIEW_PENDING);
+
+        $this->actingAs($sc)
+            ->getJson('/api/dashboard/stats')
+            ->assertJsonPath('data.recently_approved', 2);
+    }
+
+    public function test_support_committee_queue_contains_pending_and_in_progress(): void
+    {
+        $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $sc = $this->makeUser(UserRole::SUPPORT_COMMITTEE);
+
+        $this->makeRequest($this->bank, $de, RequestStatus::SUPPORT_REVIEW_PENDING);
+        $this->makeRequest($this->bank, $de, RequestStatus::SUPPORT_REVIEW_IN_PROGRESS);
+        $this->makeRequest($this->bank, $de, RequestStatus::SUPPORT_APPROVED);
+
+        $response = $this->actingAs($sc)->getJson('/api/dashboard/stats')->assertOk();
+        $queue = $response->json('data.support_queue');
+        $this->assertCount(2, $queue);
+        $statuses = array_column($queue, 'status');
+        $this->assertContains(RequestStatus::SUPPORT_REVIEW_PENDING->value, $statuses);
+        $this->assertContains(RequestStatus::SUPPORT_REVIEW_IN_PROGRESS->value, $statuses);
+    }
+
+    public function test_support_committee_queue_includes_claimer_name(): void
+    {
+        $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $sc = $this->makeUser(UserRole::SUPPORT_COMMITTEE);
+
+        $req = $this->makeRequest($this->bank, $de, RequestStatus::SUPPORT_REVIEW_IN_PROGRESS);
+        app()->instance('workflow.transition.active', true);
+        try {
+            $req->update(['claimed_by' => $sc->id]);
+        } finally {
+            app()->offsetUnset('workflow.transition.active');
+        }
+
+        $response = $this->actingAs($sc)->getJson('/api/dashboard/stats')->assertOk();
+        $queue = $response->json('data.support_queue');
+        $this->assertCount(1, $queue);
+        $this->assertNotNull($queue[0]['claimed_by']);
+        $this->assertSame($sc->id, $queue[0]['claimed_by']['id']);
+        $this->assertSame($sc->name, $queue[0]['claimed_by']['name']);
+    }
+
+    public function test_support_committee_sees_requests_across_all_banks(): void
+    {
+        $de1 = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $de2 = $this->makeUser(UserRole::DATA_ENTRY, $this->otherBank);
+        $sc  = $this->makeUser(UserRole::SUPPORT_COMMITTEE);
+
+        $this->makeRequest($this->bank, $de1, RequestStatus::SUPPORT_REVIEW_PENDING);
+        $this->makeRequest($this->otherBank, $de2, RequestStatus::SUPPORT_REVIEW_PENDING);
+
+        $this->actingAs($sc)
+            ->getJson('/api/dashboard/stats')
+            ->assertJsonPath('data.waiting_for_claim', 2);
+    }
+
+    public function test_support_committee_queue_max_50(): void
+    {
+        $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $sc = $this->makeUser(UserRole::SUPPORT_COMMITTEE);
+
+        for ($i = 0; $i < 55; $i++) {
+            $this->makeRequest($this->bank, $de, RequestStatus::SUPPORT_REVIEW_PENDING);
+        }
+
+        $response = $this->actingAs($sc)->getJson('/api/dashboard/stats')->assertOk();
+        $this->assertCount(50, $response->json('data.support_queue'));
+    }
+
     public function test_unauthenticated_returns_401(): void
     {
         $this->getJson('/api/dashboard/stats')->assertUnauthorized();
