@@ -106,7 +106,8 @@ class WorkflowController extends Controller
             return ApiResponse::forbidden('لا يمكنك تحرير حجز لا تملكه. / You do not hold this claim.');
         }
 
-        $updated = $this->workflowService->transition($importRequest, 'support_release', $actor);
+        $metadata = $isCbyadmin ? ['auto_finalized' => true] : [];
+        $updated = $this->workflowService->transition($importRequest, 'support_release', $actor, null, $metadata);
 
         return ApiResponse::success(
             new ImportRequestResource($updated->load(['bank', 'merchant', 'claimedByUser'])),

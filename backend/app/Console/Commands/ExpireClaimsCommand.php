@@ -8,6 +8,7 @@ use App\Models\ImportRequest;
 use App\Models\User;
 use App\Services\Workflow\WorkflowService;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\DB;
 
 class ExpireClaimsCommand extends Command
 {
@@ -16,12 +17,12 @@ class ExpireClaimsCommand extends Command
 
     public function handle(WorkflowService $workflowService): void
     {
-        $expired = ImportRequest::query()
+        $expiredIds = ImportRequest::query()
             ->where('status', RequestStatus::SUPPORT_REVIEW_IN_PROGRESS)
             ->where('claim_expires_at', '<', now())
-            ->get();
+            ->pluck('id');
 
-        if ($expired->isEmpty()) {
+        if ($expiredIds->isEmpty()) {
             return;
         }
 
@@ -30,26 +31,32 @@ class ExpireClaimsCommand extends Command
             ->first();
 
         if (!$systemActor) {
-            // Fallback: build a transient actor model for auditing
-            $systemActor = new User();
-            $systemActor->id = 0;
-            $systemActor->name = 'System (auto-expire)';
-            $systemActor->role = UserRole::CBY_ADMIN;
-            $systemActor->bank_id = null;
-            $systemActor->is_active = true;
+            $this->error('No CBY_ADMIN user found — cannot expire claims. Seed a system CBY_ADMIN user.');
+            return;
         }
 
-        foreach ($expired as $request) {
+        foreach ($expiredIds as $id) {
             try {
-                $workflowService->transition(
-                    $request,
-                    'support_release',
-                    $systemActor,
-                    null,
-                    ['auto_finalized' => true, 'auto_expire' => true]
-                );
+                // Re-fetch with lockForUpdate inside a transaction so a concurrent heartbeat
+                // cannot extend the TTL between our initial scan and the actual release.
+                DB::transaction(function () use ($id, $systemActor, $workflowService): void {
+                    $request = ImportRequest::query()->lockForUpdate()->find($id);
+                    if (!$request || $request->status !== RequestStatus::SUPPORT_REVIEW_IN_PROGRESS) {
+                        return;
+                    }
+                    if ($request->claim_expires_at === null || $request->claim_expires_at->isFuture()) {
+                        return;
+                    }
+                    $workflowService->transition(
+                        $request,
+                        'support_release',
+                        $systemActor,
+                        null,
+                        ['auto_finalized' => true, 'auto_expire' => true]
+                    );
+                });
             } catch (\Throwable $e) {
-                $this->error("Failed to expire claim for request {$request->id}: {$e->getMessage()}");
+                $this->error("Failed to expire claim for request {$id}: {$e->getMessage()}");
             }
         }
     }

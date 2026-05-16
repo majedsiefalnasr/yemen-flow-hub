@@ -114,6 +114,8 @@ class DashboardController extends Controller
         $reviewQueue = (clone $base)
             ->whereIn('status', [RequestStatus::SUBMITTED->value, RequestStatus::BANK_REVIEW->value])
             ->orderBy('updated_at')
+            ->limit(50)
+            ->with(['bank'])
             ->get();
 
         return ApiResponse::success([

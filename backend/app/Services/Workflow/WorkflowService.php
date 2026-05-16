@@ -131,7 +131,7 @@ class WorkflowService
             App::instance('workflow.transition.active', true);
             try {
                 $request->fill($payload);
-                $this->applyClaimSideEffects($request, $action, $actor);
+                $this->applyClaimDbSideEffects($request, $action, $actor);
                 $request->save();
             } finally {
                 App::offsetUnset('workflow.transition.active');
@@ -186,6 +186,9 @@ class WorkflowService
             app(SendWorkflowNotifications::class)->handle($event);
         });
 
+        // Cache writes happen after DB commit to avoid split-brain on rollback
+        $this->applyClaimCacheEffects($request, $action, $actor);
+
         return $request->refresh();
     }
 
@@ -235,28 +238,33 @@ class WorkflowService
         );
     }
 
-    private function applyClaimSideEffects(ImportRequest $request, string $action, User $actor): void
+    private function applyClaimDbSideEffects(ImportRequest $request, string $action, User $actor): void
+    {
+        $ttlMinutes = (int) config('workflow.support_claim_ttl_minutes', 15);
+
+        match ($action) {
+            'support_claim' => $request->forceFill([
+                'claimed_by' => $actor->id,
+                'claimed_at' => now(),
+                'claim_expires_at' => now()->addMinutes($ttlMinutes),
+            ]),
+            'support_release', 'support_approve', 'support_reject' => $request->forceFill([
+                'claimed_by' => null,
+                'claimed_at' => null,
+                'claim_expires_at' => null,
+            ]),
+            default => null,
+        };
+    }
+
+    private function applyClaimCacheEffects(ImportRequest $request, string $action, User $actor): void
     {
         $ttlMinutes = (int) config('workflow.support_claim_ttl_minutes', 15);
         $cacheKey = "support_claim:{$request->id}";
 
         match ($action) {
-            'support_claim' => (function () use ($request, $actor, $ttlMinutes, $cacheKey): void {
-                $request->forceFill([
-                    'claimed_by' => $actor->id,
-                    'claimed_at' => now(),
-                    'claim_expires_at' => now()->addMinutes($ttlMinutes),
-                ]);
-                Cache::put($cacheKey, $actor->id, now()->addMinutes($ttlMinutes));
-            })(),
-            'support_release', 'support_approve', 'support_reject' => (function () use ($request, $cacheKey): void {
-                $request->forceFill([
-                    'claimed_by' => null,
-                    'claimed_at' => null,
-                    'claim_expires_at' => null,
-                ]);
-                Cache::forget($cacheKey);
-            })(),
+            'support_claim' => Cache::put($cacheKey, $actor->id, now()->addMinutes($ttlMinutes)),
+            'support_release', 'support_approve', 'support_reject' => Cache::forget($cacheKey),
             default => null,
         };
     }
