@@ -73,7 +73,15 @@ const downloadingIds = ref<Set<number>>(new Set())
 const downloadErrors = ref<Record<number, string>>({})
 
 // Claim lifecycle for SUPPORT_COMMITTEE
-const { claimRequest, releaseRequest, startHeartbeat, stopHeartbeat } = useClaimLifecycle()
+const {
+  claimRequest,
+  releaseRequest,
+  verifyClaimAlive,
+  startHeartbeat,
+  stopHeartbeat,
+  claimError,
+  sessionExpired,
+} = useClaimLifecycle()
 const isActiveReviewer = ref(false)
 
 const isSupportCommittee = computed(() => userRole.value === UserRole.SUPPORT_COMMITTEE)
@@ -88,7 +96,19 @@ const showClaimedByOthersBanner = computed(() => {
   return !!req && req.is_claimed && !req.is_claimed_by_me
 })
 
+// Destruction guard: set to false in onBeforeUnmount so any in-flight async
+// continuations after unmount do not mutate component state or start timers.
+let isMounted = false
+
+async function handleSessionExpired() {
+  isActiveReviewer.value = false
+  stopHeartbeat(id)
+  await navigateTo('/login')
+}
+
 onMounted(async () => {
+  isMounted = true
+
   if (Number.isNaN(id)) {
     await router.replace('/requests')
     return
@@ -96,28 +116,82 @@ onMounted(async () => {
 
   await requestsStore.loadRequest(id)
 
+  if (!isMounted) return // navigated away during load
+
   if (requestsStore.error || !requestsStore.currentRequest) {
     await router.replace('/requests')
     return
   }
 
-  // Auto-claim for SUPPORT_COMMITTEE
+  // Auto-claim lifecycle for SUPPORT_COMMITTEE
   if (isSupportCommittee.value && requestsStore.currentRequest) {
     const req = requestsStore.currentRequest
+
     if (req.can_be_claimed) {
+      // Attempt to claim the unclaimed request
       const claimed = await claimRequest(id)
+
+      if (!isMounted) {
+        // Component was destroyed while claim was in-flight — release immediately
+        if (claimed) await releaseRequest(id)
+        return
+      }
+
       if (claimed) {
         isActiveReviewer.value = true
-        startHeartbeat(id)
-        // Reload to get updated claim state
+        startHeartbeat(id, handleSessionExpired)
+
+        // Reload to get authoritative claim state from server
         await requestsStore.loadRequest(id)
+
+        if (!isMounted) return
+
+        if (requestsStore.error || !requestsStore.currentRequest) {
+          // Reload failed after successful claim — release and bail
+          isActiveReviewer.value = false
+          stopHeartbeat(id)
+          await releaseRequest(id)
+          await router.replace('/requests')
+          return
+        }
+      }
+      else {
+        // Claim failed (e.g. 409 race) — reload to get authoritative state so
+        // ClaimedByOthersBanner reflects the actual server ownership
+        await requestsStore.loadRequest(id)
+        if (!isMounted) return
+
+        if (sessionExpired.value) {
+          await handleSessionExpired()
+          return
+        }
       }
     }
     else if (req.is_claimed && req.is_claimed_by_me) {
-      isActiveReviewer.value = true
-      startHeartbeat(id)
+      // Resume branch: client reports we own the claim, but TTL may have expired.
+      // Verify with server before starting heartbeat.
+      const alive = await verifyClaimAlive(id)
+
+      if (!isMounted) return
+
+      if (alive) {
+        isActiveReviewer.value = true
+        startHeartbeat(id, handleSessionExpired)
+      }
+      else {
+        // Claim expired or session invalid — reload to show authoritative UI state
+        await requestsStore.loadRequest(id)
+        if (!isMounted) return
+
+        if (sessionExpired.value) {
+          await handleSessionExpired()
+          return
+        }
+      }
     }
   }
+
+  if (!isMounted) return
 
   if (activeTab.value === 'documents') {
     await requestsStore.loadDocuments(id)
@@ -125,8 +199,10 @@ onMounted(async () => {
 })
 
 onBeforeUnmount(() => {
-  stopHeartbeat()
+  isMounted = false
+  stopHeartbeat(id)
   if (isActiveReviewer.value) {
+    // Best-effort release — fire-and-forget; TTL auto-expire recovers misses
     releaseRequest(id)
   }
 })
@@ -236,8 +312,17 @@ function actorLabel(id: number | null | undefined): string {
       </div>
 
       <!-- Banners -->
-      <div v-if="showActiveReviewBanner || showClaimedByOthersBanner || isLocked || isReturnedForCorrection" class="banner-area">
-        <ActiveReviewBanner v-if="showActiveReviewBanner" />
+      <div v-if="claimError || showActiveReviewBanner || showClaimedByOthersBanner || isLocked || isReturnedForCorrection" class="banner-area">
+        <!-- Claim error (highest priority — explicit action required) -->
+        <div v-if="claimError" class="claim-error-banner" role="alert" aria-live="assertive" dir="rtl">
+          <span class="claim-error-icon" aria-hidden="true">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
+          </span>
+          <span>{{ claimError }}</span>
+        </div>
+        <ActiveReviewBanner v-else-if="showActiveReviewBanner" />
         <ClaimedByOthersBanner v-else-if="showClaimedByOthersBanner" :claimer-name="request.claimed_by?.name ?? ''" />
         <LockedBanner v-else-if="isLocked" :status="request.status" />
         <CorrectionBanner v-else-if="isReturnedForCorrection" />
@@ -484,6 +569,25 @@ function actorLabel(id: number | null | undefined): string {
 /* Banners */
 .banner-area {
   padding: 0 24px 12px;
+}
+
+.claim-error-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: #fff0ef;
+  border: 1px solid #ff3b3033;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 500;
+  color: #cc0000;
+  direction: rtl;
+}
+
+.claim-error-icon {
+  display: flex;
+  flex-shrink: 0;
 }
 
 /* Tabs */

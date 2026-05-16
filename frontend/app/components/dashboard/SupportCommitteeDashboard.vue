@@ -57,8 +57,8 @@ onMounted(() => { store.loadStats() })
         <span class="kpi-value">{{ stats.claimed_by_others }}</span>
       </div>
       <div class="kpi-card kpi-card--indigo">
-        <span class="kpi-label">معتمد حديثاً</span>
-        <span class="kpi-value">{{ stats.recently_approved }}</span>
+        <span class="kpi-label">معتمد حديثاً (7 أيام)</span>
+        <span class="kpi-value">{{ stats.approved_last_7_days }}</span>
       </div>
     </div>
 

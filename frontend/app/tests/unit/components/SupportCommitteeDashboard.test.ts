@@ -74,7 +74,7 @@ describe('SupportCommitteeDashboard — queue empty state', () => {
       waiting_for_claim: 0,
       active_by_me: 0,
       claimed_by_others: 0,
-      recently_approved: 0,
+      approved_last_7_days: 0,
       support_queue: [],
     }
     expect(shouldShowEmptyQueue(stats)).toBe(true)
@@ -85,7 +85,7 @@ describe('SupportCommitteeDashboard — queue empty state', () => {
       waiting_for_claim: 1,
       active_by_me: 0,
       claimed_by_others: 0,
-      recently_approved: 0,
+      approved_last_7_days: 0,
       support_queue: [makeRequest()],
     }
     expect(shouldShowEmptyQueue(stats)).toBe(false)
@@ -116,13 +116,13 @@ describe('SupportCommitteeDashboard — KPI counts', () => {
       waiting_for_claim: 3,
       active_by_me: 1,
       claimed_by_others: 2,
-      recently_approved: 7,
+      approved_last_7_days: 7,
       support_queue: [],
     }
     expect(stats.waiting_for_claim).toBe(3)
     expect(stats.active_by_me).toBe(1)
     expect(stats.claimed_by_others).toBe(2)
-    expect(stats.recently_approved).toBe(7)
+    expect(stats.approved_last_7_days).toBe(7)
   })
 })
 
