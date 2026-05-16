@@ -1,12 +1,15 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { UserRole, RequestStatus } from '../../../types/enums'
 import { useAuthStore } from '../../../stores/auth.store'
 import { useRequestsStore } from '../../../stores/requests.store'
+import { useClaimLifecycle } from '../../../composables/useClaimLifecycle'
 import StatusBadge from '../../../components/ui/StatusBadge.vue'
 import LockedBanner from '../../../components/ui/LockedBanner.vue'
 import CorrectionBanner from '../../../components/ui/CorrectionBanner.vue'
+import ActiveReviewBanner from '../../../components/ui/ActiveReviewBanner.vue'
+import ClaimedByOthersBanner from '../../../components/ui/ClaimedByOthersBanner.vue'
 import ActionsPanel from '../../../components/requests/ActionsPanel.vue'
 
 definePageMeta({
@@ -69,6 +72,22 @@ const canEdit = computed(
 const downloadingIds = ref<Set<number>>(new Set())
 const downloadErrors = ref<Record<number, string>>({})
 
+// Claim lifecycle for SUPPORT_COMMITTEE
+const { claimRequest, releaseRequest, startHeartbeat, stopHeartbeat } = useClaimLifecycle()
+const isActiveReviewer = ref(false)
+
+const isSupportCommittee = computed(() => userRole.value === UserRole.SUPPORT_COMMITTEE)
+
+const showActiveReviewBanner = computed(
+  () => isSupportCommittee.value && isActiveReviewer.value,
+)
+
+const showClaimedByOthersBanner = computed(() => {
+  if (!isSupportCommittee.value || isActiveReviewer.value) return false
+  const req = request.value
+  return !!req && req.is_claimed && !req.is_claimed_by_me
+})
+
 onMounted(async () => {
   if (Number.isNaN(id)) {
     await router.replace('/requests')
@@ -82,8 +101,33 @@ onMounted(async () => {
     return
   }
 
+  // Auto-claim for SUPPORT_COMMITTEE
+  if (isSupportCommittee.value && requestsStore.currentRequest) {
+    const req = requestsStore.currentRequest
+    if (req.can_be_claimed) {
+      const claimed = await claimRequest(id)
+      if (claimed) {
+        isActiveReviewer.value = true
+        startHeartbeat(id)
+        // Reload to get updated claim state
+        await requestsStore.loadRequest(id)
+      }
+    }
+    else if (req.is_claimed && req.is_claimed_by_me) {
+      isActiveReviewer.value = true
+      startHeartbeat(id)
+    }
+  }
+
   if (activeTab.value === 'documents') {
     await requestsStore.loadDocuments(id)
+  }
+})
+
+onBeforeUnmount(() => {
+  stopHeartbeat()
+  if (isActiveReviewer.value) {
+    releaseRequest(id)
   }
 })
 
@@ -192,8 +236,10 @@ function actorLabel(id: number | null | undefined): string {
       </div>
 
       <!-- Banners -->
-      <div v-if="isLocked || isReturnedForCorrection" class="banner-area">
-        <LockedBanner v-if="isLocked" :status="request.status" />
+      <div v-if="showActiveReviewBanner || showClaimedByOthersBanner || isLocked || isReturnedForCorrection" class="banner-area">
+        <ActiveReviewBanner v-if="showActiveReviewBanner" />
+        <ClaimedByOthersBanner v-else-if="showClaimedByOthersBanner" :claimer-name="request.claimed_by?.name ?? ''" />
+        <LockedBanner v-else-if="isLocked" :status="request.status" />
         <CorrectionBanner v-else-if="isReturnedForCorrection" />
       </div>
 

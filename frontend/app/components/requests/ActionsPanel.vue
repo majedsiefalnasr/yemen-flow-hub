@@ -39,7 +39,15 @@ const showDataEntryActions = computed(() =>
   && (props.request.status === RequestStatus.DRAFT || props.request.status === RequestStatus.DRAFT_REJECTED_INTERNAL),
 )
 
-const showAnyActions = computed(() => showBankReviewerActions.value || showDataEntryActions.value)
+const showSupportCommitteeActions = computed(() =>
+  props.userRole === UserRole.SUPPORT_COMMITTEE
+  && props.request.status === RequestStatus.SUPPORT_REVIEW_IN_PROGRESS
+  && props.request.is_claimed_by_me,
+)
+
+const showAnyActions = computed(() =>
+  showBankReviewerActions.value || showDataEntryActions.value || showSupportCommitteeActions.value,
+)
 
 function resetRejectForm() {
   showRejectForm.value = false
@@ -55,6 +63,10 @@ async function handleApprove() {
   await dispatchAction('bank-approve')
 }
 
+async function handleSupportApprove() {
+  await dispatchAction('support-approve')
+}
+
 function handleRejectClick() {
   showRejectForm.value = true
   rejectReasonError.value = ''
@@ -65,7 +77,8 @@ async function handleRejectConfirm() {
     rejectReasonError.value = 'سبب الرفض مطلوب.'
     return
   }
-  await dispatchAction('bank-reject', rejectReason.value.trim())
+  const action = showSupportCommitteeActions.value ? 'support-reject' : 'bank-reject'
+  await dispatchAction(action, rejectReason.value.trim())
 }
 
 async function dispatchAction(action: string, reason?: string) {
@@ -134,6 +147,61 @@ async function dispatchAction(action: string, reason?: string) {
             :aria-describedby="rejectReasonError ? 'reject-reason-error' : undefined"
           />
           <p v-if="rejectReasonError" id="reject-reason-error" class="reject-error" role="alert">{{ rejectReasonError }}</p>
+          <div class="actions-row">
+            <button
+              class="action-btn action-btn--reject"
+              :disabled="performingAction"
+              @click="handleRejectConfirm"
+            >
+              {{ performingAction ? 'جارٍ التنفيذ…' : 'تأكيد الرفض' }}
+            </button>
+            <button
+              class="action-btn action-btn--secondary"
+              :disabled="performingAction"
+              @click="resetRejectForm"
+            >
+              إلغاء
+            </button>
+          </div>
+        </div>
+      </template>
+    </template>
+
+    <!-- SUPPORT_COMMITTEE: SUPPORT_REVIEW_IN_PROGRESS + is_claimed_by_me → approve or reject -->
+    <template v-if="showSupportCommitteeActions">
+      <template v-if="!showRejectForm">
+        <div class="actions-row">
+          <button
+            class="action-btn action-btn--approve"
+            :disabled="performingAction"
+            @click="handleSupportApprove"
+          >
+            {{ performingAction ? 'جارٍ التنفيذ…' : 'اعتماد' }}
+          </button>
+          <button
+            class="action-btn action-btn--reject"
+            :disabled="performingAction"
+            @click="handleRejectClick"
+          >
+            رفض
+          </button>
+        </div>
+      </template>
+
+      <!-- Rejection reason form -->
+      <template v-else>
+        <div class="reject-form">
+          <label class="reject-label" for="reject-reason-support">سبب الرفض <span class="required" aria-hidden="true">*</span></label>
+          <textarea
+            id="reject-reason-support"
+            v-model="rejectReason"
+            class="reject-textarea"
+            rows="3"
+            placeholder="اكتب سبب الرفض هنا…"
+            :aria-invalid="!!rejectReasonError"
+            :aria-describedby="rejectReasonError ? 'reject-reason-support-error' : undefined"
+          />
+          <p v-if="rejectReasonError" id="reject-reason-support-error" class="reject-error" role="alert">{{ rejectReasonError }}</p>
           <div class="actions-row">
             <button
               class="action-btn action-btn--reject"

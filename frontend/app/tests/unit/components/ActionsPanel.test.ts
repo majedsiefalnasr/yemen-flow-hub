@@ -60,8 +60,24 @@ function showDataEntryActions(request: ImportRequest, userRole: UserRole): boole
   )
 }
 
+function showSupportCommitteeActions(request: ImportRequest, userRole: UserRole): boolean {
+  return (
+    userRole === UserRole.SUPPORT_COMMITTEE
+    && request.status === RequestStatus.SUPPORT_REVIEW_IN_PROGRESS
+    && request.is_claimed_by_me
+  )
+}
+
 function showAnyActions(request: ImportRequest, userRole: UserRole): boolean {
-  return showBankReviewerActions(request, userRole) || showDataEntryActions(request, userRole)
+  return (
+    showBankReviewerActions(request, userRole)
+    || showDataEntryActions(request, userRole)
+    || showSupportCommitteeActions(request, userRole)
+  )
+}
+
+function resolveSupportRejectAction(isSupportCommittee: boolean): string {
+  return isSupportCommittee ? 'support-reject' : 'bank-reject'
 }
 
 function showBeginReview(request: ImportRequest, userRole: UserRole): boolean {
@@ -263,6 +279,74 @@ describe('ActionsPanel — isLocked logic (post-patch)', () => {
 
   it('EXECUTIVE_REJECTED is locked', () => {
     expect(isLocked(RequestStatus.EXECUTIVE_REJECTED)).toBe(true)
+  })
+})
+
+describe('ActionsPanel — showSupportCommitteeActions', () => {
+  it('true for SUPPORT_COMMITTEE + SUPPORT_REVIEW_IN_PROGRESS + is_claimed_by_me', () => {
+    const req = makeRequest({
+      status: RequestStatus.SUPPORT_REVIEW_IN_PROGRESS,
+      is_claimed: true,
+      is_claimed_by_me: true,
+    })
+    expect(showSupportCommitteeActions(req, UserRole.SUPPORT_COMMITTEE)).toBe(true)
+  })
+
+  it('false when is_claimed_by_me is false (claimed by others — view only)', () => {
+    const req = makeRequest({
+      status: RequestStatus.SUPPORT_REVIEW_IN_PROGRESS,
+      is_claimed: true,
+      is_claimed_by_me: false,
+    })
+    expect(showSupportCommitteeActions(req, UserRole.SUPPORT_COMMITTEE)).toBe(false)
+  })
+
+  it('false when status is SUPPORT_REVIEW_PENDING (not yet claimed)', () => {
+    const req = makeRequest({
+      status: RequestStatus.SUPPORT_REVIEW_PENDING,
+      can_be_claimed: true,
+      is_claimed_by_me: false,
+    })
+    expect(showSupportCommitteeActions(req, UserRole.SUPPORT_COMMITTEE)).toBe(false)
+  })
+
+  it('false for non-SUPPORT_COMMITTEE roles even if status is correct', () => {
+    const req = makeRequest({
+      status: RequestStatus.SUPPORT_REVIEW_IN_PROGRESS,
+      is_claimed_by_me: true,
+    })
+    expect(showSupportCommitteeActions(req, UserRole.BANK_REVIEWER)).toBe(false)
+    expect(showSupportCommitteeActions(req, UserRole.CBY_ADMIN)).toBe(false)
+  })
+})
+
+describe('ActionsPanel — showAnyActions includes SUPPORT_COMMITTEE', () => {
+  it('true for SUPPORT_COMMITTEE + SUPPORT_REVIEW_IN_PROGRESS + is_claimed_by_me', () => {
+    const req = makeRequest({
+      status: RequestStatus.SUPPORT_REVIEW_IN_PROGRESS,
+      is_claimed: true,
+      is_claimed_by_me: true,
+    })
+    expect(showAnyActions(req, UserRole.SUPPORT_COMMITTEE)).toBe(true)
+  })
+
+  it('false for SUPPORT_COMMITTEE + SUPPORT_REVIEW_IN_PROGRESS + not claimed by me', () => {
+    const req = makeRequest({
+      status: RequestStatus.SUPPORT_REVIEW_IN_PROGRESS,
+      is_claimed: true,
+      is_claimed_by_me: false,
+    })
+    expect(showAnyActions(req, UserRole.SUPPORT_COMMITTEE)).toBe(false)
+  })
+})
+
+describe('ActionsPanel — support reject action dispatch', () => {
+  it('dispatches support-reject when SUPPORT_COMMITTEE panel is active', () => {
+    expect(resolveSupportRejectAction(true)).toBe('support-reject')
+  })
+
+  it('dispatches bank-reject when bank reviewer panel is active', () => {
+    expect(resolveSupportRejectAction(false)).toBe('bank-reject')
   })
 })
 

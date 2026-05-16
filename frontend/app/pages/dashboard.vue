@@ -5,6 +5,7 @@ import { UserRole } from '../types/enums'
 import { ROLE_QUEUE_TITLES } from '../constants/workflow'
 import DataEntryDashboard from '../components/dashboard/DataEntryDashboard.vue'
 import BankReviewerDashboard from '../components/dashboard/BankReviewerDashboard.vue'
+import SupportCommitteeDashboard from '../components/dashboard/SupportCommitteeDashboard.vue'
 
 const auth = useAuthStore()
 
@@ -24,8 +25,9 @@ const role = computed(() => auth.user?.role)
 
     <DataEntryDashboard v-if="role === UserRole.DATA_ENTRY" />
     <BankReviewerDashboard v-else-if="role === UserRole.BANK_REVIEWER" />
+    <SupportCommitteeDashboard v-else-if="role === UserRole.SUPPORT_COMMITTEE" />
 
-    <!-- Placeholder for other roles (Story 3+) -->
+    <!-- Placeholder for other roles (Story 4+) -->
     <div v-else class="placeholder-card">
       <span class="placeholder-icon" aria-hidden="true">🚧</span>
       <p class="placeholder-text">هذه اللوحة قيد الإنشاء وستكون جاهزة في المرحلة القادمة.</p>

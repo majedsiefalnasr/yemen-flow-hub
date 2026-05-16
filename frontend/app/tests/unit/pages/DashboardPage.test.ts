@@ -5,9 +5,10 @@ import { describe, it, expect } from 'vitest'
 import { UserRole } from '../../../types/enums'
 
 // Logic mirrored from dashboard.vue: which component to render per role
-function resolveDashboardComponent(role: UserRole | undefined): 'DataEntryDashboard' | 'BankReviewerDashboard' | 'Placeholder' {
+function resolveDashboardComponent(role: UserRole | undefined): 'DataEntryDashboard' | 'BankReviewerDashboard' | 'SupportCommitteeDashboard' | 'Placeholder' {
   if (role === UserRole.DATA_ENTRY) return 'DataEntryDashboard'
   if (role === UserRole.BANK_REVIEWER) return 'BankReviewerDashboard'
+  if (role === UserRole.SUPPORT_COMMITTEE) return 'SupportCommitteeDashboard'
   return 'Placeholder'
 }
 
@@ -20,8 +21,8 @@ describe('Dashboard page — role-component routing', () => {
     expect(resolveDashboardComponent(UserRole.BANK_REVIEWER)).toBe('BankReviewerDashboard')
   })
 
-  it('renders Placeholder for SUPPORT_COMMITTEE role', () => {
-    expect(resolveDashboardComponent(UserRole.SUPPORT_COMMITTEE)).toBe('Placeholder')
+  it('renders SupportCommitteeDashboard for SUPPORT_COMMITTEE role', () => {
+    expect(resolveDashboardComponent(UserRole.SUPPORT_COMMITTEE)).toBe('SupportCommitteeDashboard')
   })
 
   it('renders Placeholder for EXECUTIVE_MEMBER role', () => {

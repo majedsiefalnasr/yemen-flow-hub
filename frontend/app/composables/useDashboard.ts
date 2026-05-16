@@ -18,7 +18,15 @@ export interface BankReviewerDashboardStats {
   review_queue: ImportRequest[]
 }
 
-export type DashboardStats = DataEntryDashboardStats | BankReviewerDashboardStats
+export interface SupportCommitteeDashboardStats {
+  waiting_for_claim: number
+  active_by_me: number
+  claimed_by_others: number
+  recently_approved: number
+  support_queue: ImportRequest[]
+}
+
+export type DashboardStats = DataEntryDashboardStats | BankReviewerDashboardStats | SupportCommitteeDashboardStats
 
 export function useDashboard() {
   const { get } = useApi()
