@@ -1,0 +1,32 @@
+import type { ApiResponse, ImportRequest } from '../types/models'
+import { useApi } from './useApi'
+
+export interface DataEntryDashboardStats {
+  draft: number
+  returned: number
+  under_cby_processing: number
+  completed: number
+  returned_requests: ImportRequest[]
+  recent_requests: ImportRequest[]
+}
+
+export interface BankReviewerDashboardStats {
+  pending_review: number
+  at_cby: number
+  returned_by_support: number
+  approved_completed: number
+  review_queue: ImportRequest[]
+}
+
+export type DashboardStats = DataEntryDashboardStats | BankReviewerDashboardStats
+
+export function useDashboard() {
+  const { get } = useApi()
+
+  async function fetchStats(): Promise<DashboardStats> {
+    const response = await get<ApiResponse<DashboardStats>>('/api/dashboard/stats')
+    return response.data
+  }
+
+  return { fetchStats }
+}

@@ -1,33 +1,40 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useAuthStore } from '../stores/auth.store'
+import { UserRole } from '../types/enums'
 import { ROLE_QUEUE_TITLES } from '../constants/workflow'
+import DataEntryDashboard from '../components/dashboard/DataEntryDashboard.vue'
+import BankReviewerDashboard from '../components/dashboard/BankReviewerDashboard.vue'
 
 const auth = useAuthStore()
 
 const queueTitle = computed(() =>
   auth.user ? (ROLE_QUEUE_TITLES[auth.user.role] ?? 'لوحة التحكم') : 'لوحة التحكم',
 )
+
+const role = computed(() => auth.user?.role)
 </script>
 
 <template>
-  <div class="dashboard">
+  <div class="dashboard-page">
     <div class="dashboard-header">
       <h1 class="dashboard-title">{{ queueTitle }}</h1>
-      <p class="dashboard-subtitle">
-        مرحباً، {{ auth.user?.name }}
-      </p>
+      <p class="dashboard-subtitle">مرحباً، {{ auth.user?.name }}</p>
     </div>
 
-    <div class="placeholder-card">
-      <span class="placeholder-icon">🚧</span>
-      <p class="placeholder-text">هذه الصفحة قيد الإنشاء. ستتوفر بيانات الطوابير في القصة التالية.</p>
+    <DataEntryDashboard v-if="role === UserRole.DATA_ENTRY" />
+    <BankReviewerDashboard v-else-if="role === UserRole.BANK_REVIEWER" />
+
+    <!-- Placeholder for other roles (Story 3+) -->
+    <div v-else class="placeholder-card">
+      <span class="placeholder-icon" aria-hidden="true">🚧</span>
+      <p class="placeholder-text">هذه اللوحة قيد الإنشاء وستكون جاهزة في المرحلة القادمة.</p>
     </div>
   </div>
 </template>
 
 <style scoped>
-.dashboard {
+.dashboard-page {
   display: flex;
   flex-direction: column;
   gap: 24px;
@@ -42,20 +49,20 @@ const queueTitle = computed(() =>
 .dashboard-title {
   font-size: 28px;
   font-weight: 500;
-  color: var(--color-text-primary);
+  color: var(--color-text-primary, #1d1d1f);
   margin: 0;
 }
 
 .dashboard-subtitle {
   font-size: 15px;
-  color: var(--color-text-secondary);
+  color: var(--color-text-secondary, #6e6e73);
   margin: 0;
 }
 
 .placeholder-card {
-  background-color: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-card);
+  background-color: var(--color-surface, #ffffff);
+  border: 1px solid var(--color-border, #d2d2d7);
+  border-radius: 12px;
   padding: 48px 32px;
   display: flex;
   flex-direction: column;
@@ -64,13 +71,11 @@ const queueTitle = computed(() =>
   text-align: center;
 }
 
-.placeholder-icon {
-  font-size: 40px;
-}
+.placeholder-icon { font-size: 40px; }
 
 .placeholder-text {
   font-size: 15px;
-  color: var(--color-text-secondary);
+  color: var(--color-text-secondary, #6e6e73);
   margin: 0;
   max-width: 400px;
 }
