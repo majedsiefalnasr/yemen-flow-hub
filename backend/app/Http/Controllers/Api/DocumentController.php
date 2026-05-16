@@ -117,6 +117,8 @@ class DocumentController extends Controller
             $request->file('file')
         );
 
+        $document->load('uploader');
+
         return ApiResponse::success(new DocumentResource($document), 'SWIFT uploaded successfully.', 201);
     }
 

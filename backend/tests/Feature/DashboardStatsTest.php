@@ -63,21 +63,21 @@ class DashboardStatsTest extends TestCase
         ]);
     }
 
-    private function makeRequest(Bank $bank, User $creator, RequestStatus $status): ImportRequest
+    private function makeRequest(Bank $bank, User $creator, RequestStatus $status, array $extra = []): ImportRequest
     {
         app()->instance('workflow.transition.active', true);
         try {
-            return ImportRequest::query()->create([
-                'bank_id'           => $bank->id,
-                'created_by'        => $creator->id,
-                'currency'          => 'USD',
-                'amount'            => 10000.00,
-                'supplier_name'     => 'Supplier Co.',
-                'goods_description' => 'Industrial equipment',
-                'port_of_entry'     => 'Aden Port',
-                'status'            => $status,
+            return ImportRequest::query()->create(array_merge([
+                'bank_id'            => $bank->id,
+                'created_by'         => $creator->id,
+                'currency'           => 'USD',
+                'amount'             => 10000.00,
+                'supplier_name'      => 'Supplier Co.',
+                'goods_description'  => 'Industrial equipment',
+                'port_of_entry'      => 'Aden Port',
+                'status'             => $status,
                 'current_owner_role' => UserRole::DATA_ENTRY,
-            ]);
+            ], $extra));
         } finally {
             app()->offsetUnset('workflow.transition.active');
         }
@@ -543,12 +543,14 @@ class DashboardStatsTest extends TestCase
             ->assertJsonPath('data.pending_swift_upload', 2);
     }
 
-    public function test_swift_officer_uploaded_counts_swift_uploaded_status(): void
+    public function test_swift_officer_uploaded_counts_requests_with_swift_uploaded_at(): void
     {
         $de    = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
         $swift = $this->makeUser(UserRole::SWIFT_OFFICER, $this->bank);
 
-        $this->makeRequest($this->bank, $de, RequestStatus::SWIFT_UPLOADED);
+        // SWIFT_UPLOADED is transient — after auto-chain the request lands at WAITING_FOR_VOTING_OPEN.
+        // The KPI uses swift_uploaded_at IS NOT NULL to count historically uploaded requests.
+        $this->makeRequest($this->bank, $de, RequestStatus::WAITING_FOR_VOTING_OPEN, ['swift_uploaded_at' => now()]);
         $this->makeRequest($this->bank, $de, RequestStatus::WAITING_FOR_SWIFT);
 
         $this->actingAs($swift)

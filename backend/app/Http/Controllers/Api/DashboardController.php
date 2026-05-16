@@ -187,8 +187,10 @@ class DashboardController extends Controller
             ->where('status', RequestStatus::WAITING_FOR_SWIFT->value)
             ->count();
 
+        // Counts requests where SWIFT has been uploaded, regardless of current status.
+        // SWIFT_UPLOADED is transient — auto-chains immediately to WAITING_FOR_VOTING_OPEN.
         $uploaded = (clone $base)
-            ->where('status', RequestStatus::SWIFT_UPLOADED->value)
+            ->whereNotNull('swift_uploaded_at')
             ->count();
 
         $finalApproved = (clone $base)
