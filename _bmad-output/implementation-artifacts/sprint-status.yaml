@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-16
-last_updated: 2026-05-16
+last_updated: 2026-05-16 (story 3.5 created)
 project: Yemen Flow Hub
 project_key: NOKEY
 tracking_system: file-system
@@ -67,7 +67,7 @@ development_status:
   3-2-support-committee-frontend-queue-auto-claim-ux-dashboard: review
   3-3-swift-officer-queue-upload-immutability: done
   3-4-executive-voting-engine-votingservice-session-lifecycle-apis: done
-  3-5-executive-voting-frontend-voting-interface-director-controls-dashboard: backlog
+  3-5-executive-voting-frontend-voting-interface-director-controls-dashboard: done
   3-6-customs-declaration-issuance-transaction-rtl-pdf-completion: backlog
   epic-3-retrospective: optional
 
