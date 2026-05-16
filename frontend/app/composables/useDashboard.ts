@@ -34,7 +34,15 @@ export interface SwiftOfficerDashboardStats {
   swift_queue: ImportRequest[]
 }
 
-export type DashboardStats = DataEntryDashboardStats | BankReviewerDashboardStats | SupportCommitteeDashboardStats | SwiftOfficerDashboardStats
+export interface ExecutiveDashboardStats {
+  waiting_for_voting_open: number
+  active_voting_sessions: number
+  decisions_approved: number
+  decisions_rejected: number
+  voting_queue: ImportRequest[]
+}
+
+export type DashboardStats = DataEntryDashboardStats | BankReviewerDashboardStats | SupportCommitteeDashboardStats | SwiftOfficerDashboardStats | ExecutiveDashboardStats
 
 export function useDashboard() {
   const { get } = useApi()

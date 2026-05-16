@@ -45,3 +45,9 @@ export enum Currency {
   AED = 'AED',
   CNY = 'CNY',
 }
+
+export enum VotingSessionStatus {
+  OPEN = 'OPEN',
+  CLOSED = 'CLOSED',
+  FINALIZED = 'FINALIZED',
+}

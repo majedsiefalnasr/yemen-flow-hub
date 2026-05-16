@@ -1,4 +1,4 @@
-import type { RequestStatus, UserRole } from './enums'
+import type { RequestStatus, UserRole, VoteType, VotingSessionStatus } from './enums'
 
 export interface AuthUser {
   id: number
@@ -57,6 +57,11 @@ export interface ImportRequest {
   support_approved_at: string | null
   swift_uploaded_by: number | null
   swift_uploaded_at: string | null
+  voting_opened_by: number | null
+  voting_opened_at: string | null
+  voting_closed_by: number | null
+  voting_closed_at: string | null
+  voting_session_status: VotingSessionStatus | null
   executive_decided_at: string | null
   customs_issued_at: string | null
   revision_count: number
@@ -123,4 +128,34 @@ export interface ApiError {
   error_code?: string
   current_status?: string
   errors?: Record<string, string[]>
+}
+
+export interface RequestVote {
+  id: number
+  request_id: number
+  user_id: number
+  user_name: string | null
+  vote: VoteType
+  justification: string | null
+  is_director_override: boolean
+  voted_at: string | null
+  created_at: string
+}
+
+export interface VotingTally {
+  approve_count: number
+  reject_count: number
+  abstain_count: number
+  auto_abstain_count: number
+  total_cast: number
+  is_decided: boolean
+  result: 'APPROVED' | 'REJECTED' | 'TIE' | 'PENDING'
+}
+
+export interface VotingDetail {
+  request: ImportRequest
+  tally: VotingTally
+  votes: RequestVote[]
+  total_members: number
+  my_vote: RequestVote | null
 }

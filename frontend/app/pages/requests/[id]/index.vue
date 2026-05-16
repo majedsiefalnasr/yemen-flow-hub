@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { UserRole, RequestStatus } from '../../../types/enums'
 import { useAuthStore } from '../../../stores/auth.store'
 import { useRequestsStore } from '../../../stores/requests.store'
+import { useVotingStore } from '../../../stores/voting.store'
 import { useClaimLifecycle } from '../../../composables/useClaimLifecycle'
 import StatusBadge from '../../../components/ui/StatusBadge.vue'
 import LockedBanner from '../../../components/ui/LockedBanner.vue'
@@ -11,6 +12,7 @@ import CorrectionBanner from '../../../components/ui/CorrectionBanner.vue'
 import ActiveReviewBanner from '../../../components/ui/ActiveReviewBanner.vue'
 import ClaimedByOthersBanner from '../../../components/ui/ClaimedByOthersBanner.vue'
 import ActionsPanel from '../../../components/requests/ActionsPanel.vue'
+import VotingPanel from '../../../components/voting/VotingPanel.vue'
 
 definePageMeta({
   middleware: ['auth'],
@@ -24,18 +26,33 @@ const requestsStore = useRequestsStore()
 const rawId = route.params.id
 const id = Number(Array.isArray(rawId) ? rawId[0] : rawId)
 
-type TabKey = 'overview' | 'documents' | 'timeline' | 'audit'
+const votingStore = useVotingStore()
+
+type TabKey = 'overview' | 'documents' | 'timeline' | 'votes' | 'audit'
 const activeTab = ref<TabKey>('overview')
 
-const tabs: Array<{ key: TabKey; label: string }> = [
-  { key: 'overview', label: 'نظرة عامة' },
-  { key: 'documents', label: 'المستندات' },
-  { key: 'timeline', label: 'مسار العمل' },
-  { key: 'audit', label: 'سجل التدقيق' },
-]
+const VOTING_STAGE_STATUSES = new Set([
+  RequestStatus.WAITING_FOR_VOTING_OPEN,
+  RequestStatus.EXECUTIVE_VOTING_OPEN,
+  RequestStatus.EXECUTIVE_VOTING_CLOSED,
+  RequestStatus.EXECUTIVE_APPROVED,
+  RequestStatus.EXECUTIVE_REJECTED,
+])
 
 const request = computed(() => requestsStore.currentRequest)
 const userRole = computed(() => auth.user?.role ?? UserRole.DATA_ENTRY)
+
+const showVotesTab = computed(() =>
+  !!request.value && VOTING_STAGE_STATUSES.has(request.value.status),
+)
+
+const tabs = computed((): Array<{ key: TabKey; label: string }> => [
+  { key: 'overview', label: 'نظرة عامة' },
+  { key: 'documents', label: 'المستندات' },
+  { key: 'timeline', label: 'مسار العمل' },
+  ...(showVotesTab.value ? [{ key: 'votes' as TabKey, label: 'التصويت' }] : []),
+  { key: 'audit', label: 'سجل التدقيق' },
+])
 
 const isEditable = computed(() => {
   const s = request.value?.status
@@ -44,6 +61,7 @@ const isEditable = computed(() => {
 
 // LockedBanner only for statuses that are truly immutable (no role has any action)
 // SUBMITTED and BANK_REVIEW are not locked — BANK_REVIEWER acts on them
+// Voting statuses are not locked for EXECUTIVE_MEMBER / COMMITTEE_DIRECTOR — they have actions
 const LOCKED_STATUSES = new Set([
   RequestStatus.BANK_APPROVED,
   RequestStatus.SUPPORT_REVIEW_PENDING,
@@ -61,7 +79,15 @@ const LOCKED_STATUSES = new Set([
   RequestStatus.COMPLETED,
 ])
 
-const isLocked = computed(() => !!request.value && LOCKED_STATUSES.has(request.value.status))
+const EXECUTIVE_ROLES = new Set([UserRole.EXECUTIVE_MEMBER, UserRole.COMMITTEE_DIRECTOR])
+
+const isLocked = computed(() => {
+  if (!request.value) return false
+  if (EXECUTIVE_ROLES.has(userRole.value) && VOTING_STAGE_STATUSES.has(request.value.status)) {
+    return false
+  }
+  return LOCKED_STATUSES.has(request.value.status)
+})
 const isReturnedForCorrection = computed(() => request.value?.status === RequestStatus.DRAFT_REJECTED_INTERNAL)
 
 const canEdit = computed(
@@ -196,6 +222,15 @@ onMounted(async () => {
   if (activeTab.value === 'documents') {
     await requestsStore.loadDocuments(id)
   }
+
+  // Pre-load voting detail for executive/director in voting stages
+  if (
+    EXECUTIVE_ROLES.has(userRole.value)
+    && requestsStore.currentRequest
+    && VOTING_STAGE_STATUSES.has(requestsStore.currentRequest.status)
+  ) {
+    await votingStore.loadVotingDetail(id)
+  }
 })
 
 onBeforeUnmount(() => {
@@ -212,13 +247,20 @@ async function onTabChange(key: TabKey) {
   if (key === 'documents' && !requestsStore.documentsLoaded && !requestsStore.loadingDocuments) {
     await requestsStore.loadDocuments(id)
   }
+  if (key === 'votes' && !votingStore.votingDetail && !votingStore.loadingDetail) {
+    await votingStore.loadVotingDetail(id)
+  }
 }
 
 async function onActionCompleted() {
   await requestsStore.loadRequest(id)
-  // Re-fetch documents if the user is on the documents tab (action may change document state)
+  // Re-fetch documents if the user is on the documents tab
   if (activeTab.value === 'documents') {
     await requestsStore.loadDocuments(id)
+  }
+  // Reload voting detail when a director action completes (session open/close/finalize/override)
+  if (votingStore.votingDetail || activeTab.value === 'votes') {
+    await votingStore.loadVotingDetail(id)
   }
 }
 
@@ -475,6 +517,17 @@ function actorLabel(id: number | null | undefined): string {
           </div>
         </section>
 
+        <!-- Votes tab -->
+        <section v-else-if="activeTab === 'votes'" class="tab-panel" role="tabpanel" aria-label="التصويت">
+          <div class="card card--no-padding">
+            <VotingPanel
+              :request-id="id"
+              :request-status="request.status"
+              :user-role="userRole"
+            />
+          </div>
+        </section>
+
         <!-- Workflow Timeline (placeholder) -->
         <section v-else-if="activeTab === 'timeline'" class="tab-panel" role="tabpanel" aria-label="مسار العمل">
           <div class="card placeholder-card">
@@ -643,6 +696,11 @@ function actorLabel(id: number | null | undefined): string {
   border: 1px solid #d2d2d7;
   border-radius: 12px;
   padding: 20px 24px;
+}
+
+.card--no-padding {
+  padding: 0;
+  overflow: hidden;
 }
 
 .card-title {

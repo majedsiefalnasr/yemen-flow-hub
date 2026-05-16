@@ -7,6 +7,7 @@ import DataEntryDashboard from '../components/dashboard/DataEntryDashboard.vue'
 import BankReviewerDashboard from '../components/dashboard/BankReviewerDashboard.vue'
 import SupportCommitteeDashboard from '../components/dashboard/SupportCommitteeDashboard.vue'
 import SwiftOfficerDashboard from '../components/dashboard/SwiftOfficerDashboard.vue'
+import ExecutiveDashboard from '../components/dashboard/ExecutiveDashboard.vue'
 
 const auth = useAuthStore()
 
@@ -28,8 +29,9 @@ const role = computed(() => auth.user?.role)
     <BankReviewerDashboard v-else-if="role === UserRole.BANK_REVIEWER" />
     <SupportCommitteeDashboard v-else-if="role === UserRole.SUPPORT_COMMITTEE" />
     <SwiftOfficerDashboard v-else-if="role === UserRole.SWIFT_OFFICER" />
+    <ExecutiveDashboard v-else-if="role === UserRole.EXECUTIVE_MEMBER || role === UserRole.COMMITTEE_DIRECTOR" />
 
-    <!-- Placeholder for other roles (Story 4+) -->
+    <!-- Placeholder for unknown roles -->
     <div v-else class="placeholder-card">
       <span class="placeholder-icon" aria-hidden="true">🚧</span>
       <p class="placeholder-text">هذه اللوحة قيد الإنشاء وستكون جاهزة في المرحلة القادمة.</p>
