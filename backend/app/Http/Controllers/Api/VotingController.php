@@ -15,6 +15,7 @@ use App\Http\Resources\VoteResource;
 use App\Http\Resources\VotingTallyResource;
 use App\Models\ImportRequest;
 use App\Models\RequestVote;
+use App\Models\User;
 use App\Services\Voting\VotingService;
 use App\Services\Workflow\WorkflowService;
 use App\Support\ApiResponse;
@@ -57,15 +58,24 @@ class VotingController extends Controller
             return ApiResponse::forbidden();
         }
 
-        $myVote = RequestVote::query()
+        $votes = RequestVote::query()
             ->where('request_id', $importRequest->id)
-            ->where('user_id', $user->id)
-            ->first();
+            ->with('user')
+            ->get();
+
+        $myVote = $votes->firstWhere('user_id', $user->id);
+
+        $totalMembers = User::query()
+            ->whereIn('role', [UserRole::EXECUTIVE_MEMBER->value, UserRole::COMMITTEE_DIRECTOR->value])
+            ->where('is_active', true)
+            ->count();
 
         return ApiResponse::success([
             'request' => new ImportRequestResource($importRequest->load('bank')),
             'tally' => new VotingTallyResource($this->votingService->tally($importRequest)),
-            'my_vote' => $myVote ? new VoteResource($myVote) : null,
+            'votes' => VoteResource::collection($votes),
+            'total_members' => $totalMembers,
+            'my_vote' => $myVote ? new VoteResource($myVote->load('user')) : null,
         ], 'Voting details retrieved.');
     }
 
