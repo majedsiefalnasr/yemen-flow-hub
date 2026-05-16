@@ -3,9 +3,11 @@
 namespace App\Http\Controllers\Api;
 
 use App\Enums\UserRole;
+use App\Exceptions\VotingException;
 use App\Http\Requests\WorkflowActionRequest;
 use App\Http\Resources\ImportRequestResource;
 use App\Models\ImportRequest;
+use App\Services\Voting\VotingService;
 use App\Services\Workflow\WorkflowService;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
@@ -15,8 +17,10 @@ use OpenApi\Attributes as OA;
 
 class WorkflowController extends Controller
 {
-    public function __construct(private readonly WorkflowService $workflowService)
-    {
+    public function __construct(
+        private readonly WorkflowService $workflowService,
+        private readonly VotingService $votingService
+    ) {
     }
 
     #[OA\Post(path: '/api/workflow/{importRequest}/submit', tags: ['Workflow'], summary: 'Submit request', parameters: [new OA\Parameter(name: 'importRequest', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], requestBody: new OA\RequestBody(required: false, content: new OA\JsonContent(properties: [new OA\Property(property: 'reason', type: 'string', maxLength: 2000)])), responses: [new OA\Response(response: 200, description: 'Transition applied')])]
@@ -167,14 +171,21 @@ class WorkflowController extends Controller
         return $this->run($request, $importRequest, 'bank_finalize_rejection');
     }
 
-    #[OA\Post(path: '/api/workflow/{importRequest}/finalize-decision', tags: ['Workflow'], summary: 'Finalize executive decision', parameters: [new OA\Parameter(name: 'importRequest', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], requestBody: new OA\RequestBody(required: false, content: new OA\JsonContent(properties: [new OA\Property(property: 'decision', type: 'string', enum: ['approve', 'reject']), new OA\Property(property: 'reason', type: 'string', maxLength: 2000)])), responses: [new OA\Response(response: 200, description: 'Transition applied')])]
+    #[OA\Post(path: '/api/workflow/{importRequest}/finalize-decision', tags: ['Workflow'], summary: 'Finalize executive decision — tally-computed, tie-resolved by Director vote', parameters: [new OA\Parameter(name: 'importRequest', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], responses: [new OA\Response(response: 200, description: 'Decision finalized')])]
     public function finalizeDecision(WorkflowActionRequest $request, ImportRequest $importRequest)
     {
-        $action = (string) $request->input('decision', 'approve') === 'reject'
-            ? 'finalize_rejected'
-            : 'finalize_approved';
+        $this->authorize('view', $importRequest);
 
-        return $this->run($request, $importRequest, $action);
+        try {
+            $updated = $this->votingService->finalize($importRequest, $request->user());
+        } catch (VotingException $e) {
+            return ApiResponse::error($e->getMessage(), [], 422);
+        }
+
+        return ApiResponse::success(
+            new ImportRequestResource($updated->load(['bank', 'merchant', 'claimedByUser'])),
+            'Executive decision finalized.'
+        );
     }
 
     private function run(WorkflowActionRequest $request, ImportRequest $importRequest, string $action)

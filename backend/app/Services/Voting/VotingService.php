@@ -34,25 +34,34 @@ class VotingService
             throw new VotingException('Only executive members and committee director can cast votes.');
         }
 
-        if (RequestVote::query()->where('request_id', $request->id)->where('user_id', $voter->id)->exists()) {
-            throw new DuplicateVoteException('You already voted on this request.');
-        }
+        return DB::transaction(function () use ($request, $voter, $vote, $justification) {
+            $existing = RequestVote::query()
+                ->where('request_id', $request->id)
+                ->where('user_id', $voter->id)
+                ->lockForUpdate()
+                ->first();
 
-        $record = RequestVote::query()->create([
-            'request_id' => $request->id,
-            'user_id' => $voter->id,
-            'vote' => $vote,
-            'justification' => $justification,
-        ]);
+            if ($existing !== null) {
+                throw new DuplicateVoteException('You already voted on this request.');
+            }
 
-        $this->auditService->log(
-            AuditAction::VOTE_CAST,
-            $voter,
-            $request,
-            ['vote' => $vote->value]
-        );
+            $record = RequestVote::query()->create([
+                'request_id' => $request->id,
+                'user_id' => $voter->id,
+                'vote' => $vote,
+                'justification' => $justification,
+                'voted_at' => now(),
+            ]);
 
-        return $record->refresh();
+            $this->auditService->log(
+                AuditAction::VOTE_CAST,
+                $voter,
+                $request,
+                ['vote' => $vote->value]
+            );
+
+            return $record->refresh();
+        });
     }
 
     public function closeSession(ImportRequest $request, User $director): ImportRequest
@@ -66,34 +75,40 @@ class VotingService
         }
 
         return DB::transaction(function () use ($request, $director) {
-            $voters = RequestVote::query()
-                ->where('request_id', $request->id)
+            $lockedRequest = ImportRequest::query()
+                ->where('id', $request->id)
+                ->lockForUpdate()
+                ->first();
+
+            $votedUserIds = RequestVote::query()
+                ->where('request_id', $lockedRequest->id)
                 ->lockForUpdate()
                 ->pluck('user_id')
                 ->all();
 
             $nonVoters = User::query()
                 ->whereIn('role', [UserRole::EXECUTIVE_MEMBER->value, UserRole::COMMITTEE_DIRECTOR->value])
-                ->whereNotIn('id', $voters)
+                ->whereNotIn('id', $votedUserIds)
                 ->get();
 
             foreach ($nonVoters as $member) {
                 RequestVote::query()->create([
-                    'request_id' => $request->id,
+                    'request_id' => $lockedRequest->id,
                     'user_id' => $member->id,
                     'vote' => VoteType::AUTO_ABSTAIN_TIMEOUT,
                     'justification' => null,
+                    'voted_at' => now(),
                 ]);
             }
 
-            return $this->workflowService->transition($request->fresh(), 'close_voting', $director);
+            return $this->workflowService->transition($lockedRequest->fresh(), 'close_voting', $director);
         });
     }
 
     public function tally(ImportRequest $request): VotingTally
     {
         $counts = RequestVote::query()
-            ->selectRaw("vote, COUNT(*) as aggregate")
+            ->selectRaw('vote, COUNT(*) as aggregate')
             ->where('request_id', $request->id)
             ->groupBy('vote')
             ->pluck('aggregate', 'vote');
@@ -104,16 +119,17 @@ class VotingService
         $autoAbstain = (int) ($counts[VoteType::AUTO_ABSTAIN_TIMEOUT->value] ?? 0);
         $totalCast = $approve + $reject + $abstain + $autoAbstain;
 
-        $result = 'PENDING';
-        $isDecided = false;
-
-        if ($approve >= 4) {
+        // Majority computed from approve vs reject only; abstains excluded per spec
+        if ($approve === 0 && $reject === 0) {
+            $result = 'PENDING';
+            $isDecided = false;
+        } elseif ($approve > $reject) {
             $result = 'APPROVED';
             $isDecided = true;
-        } elseif ($reject >= 4) {
+        } elseif ($reject > $approve) {
             $result = 'REJECTED';
             $isDecided = true;
-        } elseif ($totalCast === 6) {
+        } else {
             $result = 'TIE';
             $isDecided = true;
         }
@@ -121,33 +137,37 @@ class VotingService
         return new VotingTally($approve, $reject, $abstain, $autoAbstain, $totalCast, $isDecided, $result);
     }
 
-    public function finalize(ImportRequest $request, User $director, ?VoteType $directorVote = null): ImportRequest
+    public function finalize(ImportRequest $request, User $director): ImportRequest
     {
         if (!$director->hasRole(UserRole::COMMITTEE_DIRECTOR)) {
-            throw new VotingException('Only committee director can finalize tie votes.');
+            throw new VotingException('Only committee director can finalize the voting decision.');
+        }
+
+        if ($request->status !== RequestStatus::EXECUTIVE_VOTING_CLOSED) {
+            throw new VotingException('Voting session must be closed before finalizing.');
         }
 
         $tally = $this->tally($request);
-        if ($tally->result !== 'TIE') {
-            throw new VotingException('Director decision is only allowed for ties.');
+
+        if ($tally->approveCount > $tally->rejectCount) {
+            return $this->workflowService->transition($request, 'finalize_approved', $director);
         }
 
-        if (!in_array($directorVote, [VoteType::APPROVE, VoteType::REJECT], true)) {
-            throw new VotingException('Director vote must be APPROVE or REJECT.');
+        if ($tally->rejectCount > $tally->approveCount) {
+            return $this->workflowService->transition($request, 'finalize_rejected', $director);
         }
 
-        RequestVote::query()->updateOrCreate(
-            ['request_id' => $request->id, 'user_id' => $director->id],
-            [
-                'vote' => $directorVote,
-                'justification' => null,
-                'is_director_override' => true,
-            ]
-        );
+        // Tie: Director's non-abstain APPROVE vote is the tiebreaker; anything else → REJECTED (safe stance)
+        $directorVoteRecord = RequestVote::query()
+            ->where('request_id', $request->id)
+            ->where('user_id', $director->id)
+            ->first();
 
-        $action = $directorVote === VoteType::APPROVE ? 'finalize_approved' : 'finalize_rejected';
+        if ($directorVoteRecord !== null && $directorVoteRecord->vote === VoteType::APPROVE) {
+            return $this->workflowService->transition($request, 'finalize_approved', $director);
+        }
 
-        return $this->workflowService->transition($request->fresh(), $action, $director, null, ['director_override' => true]);
+        return $this->workflowService->transition($request, 'finalize_rejected', $director);
     }
 
     public function overrideAndFinalize(
@@ -170,16 +190,6 @@ class VotingService
 
         $tally = $this->tally($request);
 
-        RequestVote::query()->updateOrCreate(
-            ['request_id' => $request->id, 'user_id' => $director->id],
-            [
-                'vote' => $finalDecision,
-                'justification' => $justification,
-                'is_director_override' => true,
-            ]
-        );
-
-        $action = $finalDecision === VoteType::APPROVE ? 'finalize_approved' : 'finalize_rejected';
         $overrideMeta = [
             'was_override' => true,
             'tally_before_override' => [
@@ -191,9 +201,55 @@ class VotingService
             ],
         ];
 
-        // Must transition OPEN → CLOSED before CLOSED → final decision
-        $closed = $this->workflowService->transition($request->fresh(), 'close_voting', $director, $justification, $overrideMeta);
+        return DB::transaction(function () use ($request, $director, $finalDecision, $justification, $overrideMeta) {
+            $lockedRequest = ImportRequest::query()
+                ->where('id', $request->id)
+                ->lockForUpdate()
+                ->first();
 
-        return $this->workflowService->transition($closed, $action, $director, $justification, $overrideMeta);
+            $votedUserIds = RequestVote::query()
+                ->where('request_id', $lockedRequest->id)
+                ->lockForUpdate()
+                ->pluck('user_id')
+                ->all();
+
+            $nonVoters = User::query()
+                ->whereIn('role', [UserRole::EXECUTIVE_MEMBER->value, UserRole::COMMITTEE_DIRECTOR->value])
+                ->whereNotIn('id', $votedUserIds)
+                ->get();
+
+            foreach ($nonVoters as $member) {
+                RequestVote::query()->create([
+                    'request_id' => $lockedRequest->id,
+                    'user_id' => $member->id,
+                    'vote' => VoteType::AUTO_ABSTAIN_TIMEOUT,
+                    'justification' => null,
+                    'voted_at' => now(),
+                ]);
+            }
+
+            RequestVote::query()->updateOrCreate(
+                ['request_id' => $lockedRequest->id, 'user_id' => $director->id],
+                [
+                    'vote' => $finalDecision,
+                    'justification' => $justification,
+                    'is_director_override' => true,
+                    'voted_at' => now(),
+                ]
+            );
+
+            $action = $finalDecision === VoteType::APPROVE ? 'finalize_approved' : 'finalize_rejected';
+
+            // OPEN → CLOSED → final decision
+            $closed = $this->workflowService->transition(
+                $lockedRequest->fresh(),
+                'close_voting',
+                $director,
+                $justification,
+                $overrideMeta
+            );
+
+            return $this->workflowService->transition($closed, $action, $director, $justification, $overrideMeta);
+        });
     }
 }

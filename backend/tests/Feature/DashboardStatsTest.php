@@ -631,4 +631,147 @@ class DashboardStatsTest extends TestCase
         $response = $this->actingAs($swift)->getJson('/api/dashboard/stats')->assertOk();
         $this->assertCount(50, $response->json('data.swift_queue'));
     }
+
+    // ─── EXECUTIVE_MEMBER stats ───────────────────────────────────────────────
+
+    public function test_executive_member_stats_returns_correct_kpi_keys(): void
+    {
+        $exec = $this->makeUser(UserRole::EXECUTIVE_MEMBER);
+
+        $this->actingAs($exec)
+            ->getJson('/api/dashboard/stats')
+            ->assertOk()
+            ->assertJsonStructure(['data' => [
+                'waiting_for_voting_open',
+                'active_voting_sessions',
+                'decisions_approved',
+                'decisions_rejected',
+                'voting_queue',
+            ]]);
+    }
+
+    public function test_executive_member_waiting_for_voting_open_count(): void
+    {
+        $de   = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $exec = $this->makeUser(UserRole::EXECUTIVE_MEMBER);
+
+        $this->makeRequest($this->bank, $de, RequestStatus::WAITING_FOR_VOTING_OPEN);
+        $this->makeRequest($this->bank, $de, RequestStatus::WAITING_FOR_VOTING_OPEN);
+        $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_VOTING_OPEN);
+
+        $this->actingAs($exec)
+            ->getJson('/api/dashboard/stats')
+            ->assertOk()
+            ->assertJsonPath('data.waiting_for_voting_open', 2);
+    }
+
+    public function test_executive_member_active_voting_sessions_count(): void
+    {
+        $de   = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $exec = $this->makeUser(UserRole::EXECUTIVE_MEMBER);
+
+        $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_VOTING_OPEN);
+        $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_VOTING_OPEN);
+        $this->makeRequest($this->bank, $de, RequestStatus::WAITING_FOR_VOTING_OPEN);
+
+        $this->actingAs($exec)
+            ->getJson('/api/dashboard/stats')
+            ->assertOk()
+            ->assertJsonPath('data.active_voting_sessions', 2);
+    }
+
+    public function test_executive_member_decisions_approved_count(): void
+    {
+        $de   = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $exec = $this->makeUser(UserRole::EXECUTIVE_MEMBER);
+
+        $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_APPROVED);
+        $this->makeRequest($this->bank, $de, RequestStatus::CUSTOMS_DECLARATION_ISSUED);
+        $this->makeRequest($this->bank, $de, RequestStatus::COMPLETED);
+        $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_REJECTED);
+
+        $this->actingAs($exec)
+            ->getJson('/api/dashboard/stats')
+            ->assertOk()
+            ->assertJsonPath('data.decisions_approved', 3);
+    }
+
+    public function test_executive_member_decisions_rejected_count(): void
+    {
+        $de   = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $exec = $this->makeUser(UserRole::EXECUTIVE_MEMBER);
+
+        $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_REJECTED);
+        $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_APPROVED);
+
+        $this->actingAs($exec)
+            ->getJson('/api/dashboard/stats')
+            ->assertOk()
+            ->assertJsonPath('data.decisions_rejected', 1);
+    }
+
+    public function test_executive_member_voting_queue_contains_correct_statuses(): void
+    {
+        $de   = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $exec = $this->makeUser(UserRole::EXECUTIVE_MEMBER);
+
+        $this->makeRequest($this->bank, $de, RequestStatus::WAITING_FOR_VOTING_OPEN);
+        $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_VOTING_OPEN);
+        $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_VOTING_CLOSED);
+        $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_APPROVED);
+
+        $response = $this->actingAs($exec)->getJson('/api/dashboard/stats')->assertOk();
+        $queue    = $response->json('data.voting_queue');
+        $statuses = array_column($queue, 'status');
+
+        $this->assertContains(RequestStatus::WAITING_FOR_VOTING_OPEN->value, $statuses);
+        $this->assertContains(RequestStatus::EXECUTIVE_VOTING_OPEN->value, $statuses);
+        $this->assertCount(2, $queue);
+    }
+
+    // ─── COMMITTEE_DIRECTOR stats ─────────────────────────────────────────────
+
+    public function test_committee_director_stats_returns_correct_kpi_keys(): void
+    {
+        $director = $this->makeUser(UserRole::COMMITTEE_DIRECTOR);
+
+        $this->actingAs($director)
+            ->getJson('/api/dashboard/stats')
+            ->assertOk()
+            ->assertJsonStructure(['data' => [
+                'waiting_for_voting_open',
+                'active_voting_sessions',
+                'decisions_approved',
+                'decisions_rejected',
+                'voting_queue',
+            ]]);
+    }
+
+    public function test_committee_director_sees_all_banks_requests(): void
+    {
+        $de1      = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $de2      = $this->makeUser(UserRole::DATA_ENTRY, $this->otherBank);
+        $director = $this->makeUser(UserRole::COMMITTEE_DIRECTOR);
+
+        $this->makeRequest($this->bank, $de1, RequestStatus::WAITING_FOR_VOTING_OPEN);
+        $this->makeRequest($this->otherBank, $de2, RequestStatus::WAITING_FOR_VOTING_OPEN);
+
+        $this->actingAs($director)
+            ->getJson('/api/dashboard/stats')
+            ->assertOk()
+            ->assertJsonPath('data.waiting_for_voting_open', 2);
+    }
+
+    public function test_committee_director_voting_queue_max_50(): void
+    {
+        $de       = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $director = $this->makeUser(UserRole::COMMITTEE_DIRECTOR);
+
+        for ($i = 0; $i < 55; $i++) {
+            $this->makeRequest($this->bank, $de, RequestStatus::WAITING_FOR_VOTING_OPEN);
+        }
+
+        $response = $this->actingAs($director)->getJson('/api/dashboard/stats')->assertOk();
+        $this->assertCount(50, $response->json('data.voting_queue'));
+    }
 }

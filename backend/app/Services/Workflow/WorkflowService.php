@@ -5,6 +5,7 @@ namespace App\Services\Workflow;
 use App\Enums\AuditAction;
 use App\Enums\RequestStatus;
 use App\Enums\UserRole;
+use App\Enums\VotingSessionStatus;
 use App\Events\RequestTransitioned;
 use App\Exceptions\InvalidTransitionException;
 use App\Exceptions\SelfReviewException;
@@ -82,16 +83,18 @@ class WorkflowService
             $fromStatus = $request->status;
             $fromOwnerRole = $request->current_owner_role;
 
-            $payload = [
-                'status' => $toStatus,
-                'current_owner_role' => $newOwnerRole,
-            ];
+            $payload = ['status' => $toStatus];
+            if ($newOwnerRole !== null) {
+                $payload['current_owner_role'] = $newOwnerRole;
+            }
 
             $timestampColumn = match ($action) {
                 'submit' => 'submitted_at',
                 'bank_approve' => 'bank_approved_at',
                 'support_approve' => 'support_approved_at',
                 'swift_upload' => 'swift_uploaded_at',
+                'open_voting' => 'voting_opened_at',
+                'close_voting' => 'voting_closed_at',
                 'finalize_approved', 'finalize_rejected' => 'executive_decided_at',
                 'issue_customs' => 'customs_issued_at',
                 default => null,
@@ -107,11 +110,24 @@ class WorkflowService
                 'bank_reject' => 'rejected_by',
                 'support_approve', 'support_reject' => 'support_reviewed_by',
                 'swift_upload' => 'swift_uploaded_by',
+                'open_voting' => 'voting_opened_by',
+                'close_voting' => 'voting_closed_by',
                 default => null,
             };
 
             if ($actorColumn) {
                 $payload[$actorColumn] = $actor->id;
+            }
+
+            $votingSessionStatus = match ($action) {
+                'open_voting' => VotingSessionStatus::OPEN,
+                'close_voting' => VotingSessionStatus::CLOSED,
+                'finalize_approved', 'finalize_rejected' => VotingSessionStatus::FINALIZED,
+                default => null,
+            };
+
+            if ($votingSessionStatus !== null) {
+                $payload['voting_session_status'] = $votingSessionStatus;
             }
 
             // submitted_by is write-once: preserves the original first submitter

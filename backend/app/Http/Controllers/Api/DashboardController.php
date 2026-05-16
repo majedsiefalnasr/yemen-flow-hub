@@ -27,11 +27,13 @@ class DashboardController extends Controller
         $user = request()->user();
 
         return match (true) {
-            $user->hasRole(UserRole::DATA_ENTRY)        => $this->dataEntryStats($user),
-            $user->hasRole(UserRole::BANK_REVIEWER)     => $this->bankReviewerStats($user),
-            $user->hasRole(UserRole::SUPPORT_COMMITTEE) => $this->supportCommitteeStats($user),
-            $user->hasRole(UserRole::SWIFT_OFFICER)     => $this->swiftOfficerStats($user),
-            default                                     => ApiResponse::success([], 'Dashboard stats retrieved.'),
+            $user->hasRole(UserRole::DATA_ENTRY)          => $this->dataEntryStats($user),
+            $user->hasRole(UserRole::BANK_REVIEWER)       => $this->bankReviewerStats($user),
+            $user->hasRole(UserRole::SUPPORT_COMMITTEE)   => $this->supportCommitteeStats($user),
+            $user->hasRole(UserRole::SWIFT_OFFICER)       => $this->swiftOfficerStats($user),
+            $user->hasRole(UserRole::EXECUTIVE_MEMBER)    => $this->executiveMemberStats(),
+            $user->hasRole(UserRole::COMMITTEE_DIRECTOR)  => $this->committeeDirectorStats(),
+            default                                       => ApiResponse::success([], 'Dashboard stats retrieved.'),
         };
     }
 
@@ -220,5 +222,59 @@ class DashboardController extends Controller
             'final_rejected'       => $finalRejected,
             'swift_queue'          => ImportRequestResource::collection($swiftQueue)->toArray(request()),
         ], 'Dashboard stats retrieved.');
+    }
+
+    private function executiveVotingStats(): array
+    {
+        $waitingForVotingOpen = ImportRequest::query()
+            ->where('status', RequestStatus::WAITING_FOR_VOTING_OPEN->value)
+            ->count();
+
+        $activeVotingSessions = ImportRequest::query()
+            ->where('status', RequestStatus::EXECUTIVE_VOTING_OPEN->value)
+            ->count();
+
+        $decisionsApproved = ImportRequest::query()
+            ->whereIn('status', [
+                RequestStatus::EXECUTIVE_APPROVED->value,
+                RequestStatus::CUSTOMS_DECLARATION_ISSUED->value,
+                RequestStatus::COMPLETED->value,
+            ])
+            ->count();
+
+        $decisionsRejected = ImportRequest::query()
+            ->where('status', RequestStatus::EXECUTIVE_REJECTED->value)
+            ->count();
+
+        $votingQueue = ImportRequest::query()
+            ->whereIn('status', [
+                RequestStatus::WAITING_FOR_VOTING_OPEN->value,
+                RequestStatus::EXECUTIVE_VOTING_OPEN->value,
+            ])
+            ->orderBy('updated_at')
+            ->orderBy('id')
+            ->limit(50)
+            ->with(['bank'])
+            ->get();
+
+        return [
+            'waiting_for_voting_open' => $waitingForVotingOpen,
+            'active_voting_sessions'  => $activeVotingSessions,
+            'decisions_approved'      => $decisionsApproved,
+            'decisions_rejected'      => $decisionsRejected,
+            'voting_queue'            => ImportRequestResource::collection($votingQueue)->toArray(request()),
+        ];
+    }
+
+    // EXECUTIVE_MEMBER: global CBY view — no org scope
+    private function executiveMemberStats(): \Illuminate\Http\JsonResponse
+    {
+        return ApiResponse::success($this->executiveVotingStats(), 'Dashboard stats retrieved.');
+    }
+
+    // COMMITTEE_DIRECTOR: global CBY view — no org scope
+    private function committeeDirectorStats(): \Illuminate\Http\JsonResponse
+    {
+        return ApiResponse::success($this->executiveVotingStats(), 'Dashboard stats retrieved.');
     }
 }
