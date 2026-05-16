@@ -78,5 +78,19 @@ export function useRequests() {
     return response.data.documents ?? []
   }
 
-  return { fetchRequests, fetchRequest, createRequest, updateRequest, uploadDocument, performWorkflowAction, fetchRequestDocuments }
+  async function uploadSwift(requestId: number, file: File): Promise<void> {
+    const config = useRuntimeConfig()
+    const baseURL = config.public.apiBase as string
+    const form = new FormData()
+    form.append('file', file)
+    await $fetch(`/api/workflow/${requestId}/swift-upload`, {
+      method: 'POST',
+      baseURL,
+      credentials: 'include',
+      body: form,
+      headers: { Accept: 'application/json' },
+    })
+  }
+
+  return { fetchRequests, fetchRequest, createRequest, updateRequest, uploadDocument, performWorkflowAction, fetchRequestDocuments, uploadSwift }
 }

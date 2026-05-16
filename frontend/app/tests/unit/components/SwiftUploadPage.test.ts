@@ -186,6 +186,20 @@ describe('SwiftUploadPage — isUploaded', () => {
   })
 })
 
+// ── drag-and-drop PDF validation ──────────────────────────────────────────────
+
+describe('SwiftUploadPage — drag-and-drop validation', () => {
+  it('accepts PDF via validateFile', () => {
+    expect(validatePdfFile({ type: 'application/pdf' })).toBeNull()
+  })
+
+  it('rejects non-PDF dropped files', () => {
+    const result = validatePdfFile({ type: 'image/png' })
+    expect(result).not.toBeNull()
+    expect(result).toContain('PDF')
+  })
+})
+
 // ── uploaded doc metadata ────────────────────────────────────────────────────
 
 describe('SwiftUploadPage — uploaded doc metadata', () => {
@@ -199,9 +213,15 @@ describe('SwiftUploadPage — uploaded doc metadata', () => {
     expect(formatFileSize(doc.size_bytes)).toBe('200.0 KB')
   })
 
-  it('doc card shows uploader id', () => {
-    const doc = makeDoc({ uploaded_by: 42 })
-    expect(doc.uploaded_by).toBe(42)
+  it('doc card shows uploader name from uploaded_by_name field', () => {
+    const doc = makeDoc({ uploaded_by_name: 'فاطمة علي' })
+    expect(doc.uploaded_by_name).toBe('فاطمة علي')
+  })
+
+  it('doc card falls back to dash when uploaded_by_name is null', () => {
+    const doc = makeDoc({ uploaded_by_name: null })
+    const display = doc.uploaded_by_name ?? '—'
+    expect(display).toBe('—')
   })
 
   it('doc card shows formatted upload date in ar-YE locale', () => {

@@ -1,20 +1,23 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { RequestStatus } from '../../../types/enums'
+import { RequestStatus, UserRole } from '../../../types/enums'
 import { useRequestsStore } from '../../../stores/requests.store'
-import { useApi } from '../../../composables/useApi'
+import { useRequests } from '../../../composables/useRequests'
+import { STATUS_LABELS } from '../../../constants/workflow'
 import StatusBadge from '../../../components/ui/StatusBadge.vue'
 import type { RequestDocument } from '../../../types/models'
 import { useAuthStore } from '../../../stores/auth.store'
 
 definePageMeta({
-  middleware: ['auth'],
+  middleware: ['auth', 'role'],
+  requiredRoles: [UserRole.SWIFT_OFFICER],
 })
 
 const route = useRoute()
 const router = useRouter()
 const requestsStore = useRequestsStore()
+const { uploadSwift } = useRequests()
 const auth = useAuthStore()
 
 const rawId = route.params.id
@@ -23,35 +26,55 @@ const id = Number(Array.isArray(rawId) ? rawId[0] : rawId)
 const request = computed(() => requestsStore.currentRequest)
 
 const swiftDoc = computed<RequestDocument | undefined>(() =>
-  request.value?.documents?.find(d => d.type === 'SWIFT'),
+  requestsStore.documents.find(d => d.type === 'SWIFT'),
 )
 
 const isUploaded = computed(() => !!swiftDoc.value)
+const isReadyForUpload = computed(() =>
+  request.value?.status === RequestStatus.WAITING_FOR_SWIFT,
+)
 
 // Upload state
 const selectedFile = ref<File | null>(null)
 const fileError = ref<string | null>(null)
 const uploading = ref(false)
 const uploadError = ref<string | null>(null)
+const isDragOver = ref(false)
 
-function onFileChange(event: Event) {
-  fileError.value = null
-  uploadError.value = null
-  const input = event.target as HTMLInputElement
-  const file = input.files?.[0] ?? null
-
-  if (!file) {
-    selectedFile.value = null
-    return
-  }
-
+function validateFile(file: File): boolean {
   if (file.type !== 'application/pdf') {
     fileError.value = 'يُقبل ملف PDF فقط. الرجاء اختيار ملف بصيغة PDF.'
     selectedFile.value = null
-    return
+    return false
   }
+  fileError.value = null
+  return true
+}
 
-  selectedFile.value = file
+function onFileChange(event: Event) {
+  uploadError.value = null
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0] ?? null
+  if (!file) { selectedFile.value = null; return }
+  if (validateFile(file)) selectedFile.value = file
+}
+
+function onDragOver(event: DragEvent) {
+  event.preventDefault()
+  isDragOver.value = true
+}
+
+function onDragLeave() {
+  isDragOver.value = false
+}
+
+function onDrop(event: DragEvent) {
+  event.preventDefault()
+  isDragOver.value = false
+  uploadError.value = null
+  const file = event.dataTransfer?.files?.[0] ?? null
+  if (!file) return
+  if (validateFile(file)) selectedFile.value = file
 }
 
 async function submitUpload() {
@@ -60,20 +83,10 @@ async function submitUpload() {
   uploading.value = true
   uploadError.value = null
 
-  const formData = new FormData()
-  formData.append('file', selectedFile.value)
-
   try {
-    const config = useRuntimeConfig()
-    const baseURL = config.public.apiBase as string
-    await $fetch(`/api/workflow/${id}/swift-upload`, {
-      baseURL,
-      method: 'POST',
-      credentials: 'include',
-      body: formData,
-      headers: { Accept: 'application/json' },
-    })
+    await uploadSwift(id, selectedFile.value)
     await requestsStore.fetchRequest(id)
+    await requestsStore.loadDocuments(id)
     router.push(`/requests/${id}`)
   }
   catch (err: unknown) {
@@ -105,6 +118,7 @@ function formatAmount(amount: number, currency: string): string {
 
 onMounted(async () => {
   await requestsStore.fetchRequest(id)
+  await requestsStore.loadDocuments(id)
 })
 </script>
 
@@ -151,7 +165,7 @@ onMounted(async () => {
       </div>
 
       <!-- Uploaded state: show doc metadata + immutability warning -->
-      <div v-if="isUploaded" class="uploaded-state">
+      <div v-if="isUploaded && swiftDoc" class="uploaded-state">
         <div class="immutability-banner" role="alert">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
             <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
@@ -168,15 +182,15 @@ onMounted(async () => {
             </svg>
           </div>
           <div class="doc-meta">
-            <p class="doc-filename">{{ swiftDoc!.original_filename }}</p>
+            <p class="doc-filename">{{ swiftDoc.original_filename }}</p>
             <p class="doc-details">
-              {{ formatFileSize(swiftDoc!.size_bytes) }} ·
-              تم الرفع بواسطة #{{ swiftDoc!.uploaded_by }} ·
-              {{ formatDate(swiftDoc!.uploaded_at) }}
+              {{ formatFileSize(swiftDoc.size_bytes) }} ·
+              تم الرفع بواسطة {{ swiftDoc.uploaded_by_name ?? '—' }} ·
+              {{ formatDate(swiftDoc.uploaded_at) }}
             </p>
           </div>
           <a
-            :href="swiftDoc!.download_url"
+            :href="swiftDoc.download_url"
             class="btn-download"
             target="_blank"
             rel="noopener noreferrer"
@@ -185,12 +199,22 @@ onMounted(async () => {
       </div>
 
       <!-- Upload state: drop zone for WAITING_FOR_SWIFT -->
-      <div v-else-if="request.status === RequestStatus.WAITING_FOR_SWIFT" class="upload-state">
+      <div v-else-if="isReadyForUpload" class="upload-state">
         <h2 class="section-title">رفع وثيقة SWIFT</h2>
         <p class="section-hint">يُقبل ملف PDF فقط (الحد الأقصى: 10 ميجابايت)</p>
 
-        <!-- File input area -->
-        <label class="drop-zone" :class="{ 'drop-zone--has-file': !!selectedFile, 'drop-zone--error': !!fileError }">
+        <!-- File input area with full drag-and-drop support -->
+        <label
+          class="drop-zone"
+          :class="{
+            'drop-zone--has-file': !!selectedFile,
+            'drop-zone--error': !!fileError,
+            'drop-zone--drag-over': isDragOver,
+          }"
+          @dragover="onDragOver"
+          @dragleave="onDragLeave"
+          @drop="onDrop"
+        >
           <input
             type="file"
             accept="application/pdf"
@@ -230,9 +254,9 @@ onMounted(async () => {
         </button>
       </div>
 
-      <!-- Wrong status state -->
+      <!-- Wrong status state: show Arabic label, not raw enum -->
       <div v-else class="wrong-status-card" role="status">
-        <p>هذا الطلب لا يقبل رفع SWIFT في حالته الحالية ({{ request.status }}).</p>
+        <p>هذا الطلب لا يقبل رفع SWIFT في حالته الحالية ({{ STATUS_LABELS[request.status as RequestStatus] ?? request.status }}).</p>
         <button class="btn-back-link" @click="router.push(`/requests/${id}`)">العودة إلى تفاصيل الطلب</button>
       </div>
     </template>
@@ -425,13 +449,14 @@ onMounted(async () => {
   align-items: center;
   gap: 12px;
   cursor: pointer;
-  transition: border-color 0.15s;
+  transition: border-color 0.15s, background-color 0.15s;
   position: relative;
 }
 
 .drop-zone:hover { border-color: #32ade6; }
 .drop-zone--has-file { border-color: #34c759; background: #f0fff4; }
 .drop-zone--error { border-color: #ff3b30; }
+.drop-zone--drag-over { border-color: #32ade6; background: #f0faff; }
 
 .drop-zone__input {
   position: absolute;
