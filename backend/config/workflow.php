@@ -1,6 +1,5 @@
 <?php
 
 return [
-    'support_claim_ttl_hours' => env('SUPPORT_CLAIM_TTL_HOURS', 24),
+    'support_claim_ttl_minutes' => env('SUPPORT_CLAIM_TTL_MINUTES', 15),
 ];
-

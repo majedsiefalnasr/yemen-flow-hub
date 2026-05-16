@@ -15,6 +15,7 @@ use App\Models\RequestStageHistory;
 use App\Models\User;
 use App\Services\Audit\AuditService;
 use Illuminate\Support\Facades\App;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class WorkflowService
@@ -72,7 +73,8 @@ class WorkflowService
         if ($action === 'support_claim' && $request->isClaimed() && $request->claimed_by !== $actor->id) {
             $transitionMetadata['override_previous_claim_by'] = $request->claimed_by;
         }
-        if ($action === 'support_release' && !$request->isClaimed()) {
+        // Allow release of expired claims (isClaimed() returns false when TTL has passed)
+        if ($action === 'support_release' && !$request->isClaimed() && !$request->isClaimExpired()) {
             throw new InvalidTransitionException('الطلب غير محجوز. / Request is not currently claimed.');
         }
 
@@ -236,18 +238,25 @@ class WorkflowService
     private function applyClaimSideEffects(ImportRequest $request, string $action, User $actor): void
     {
         $ttlMinutes = (int) config('workflow.support_claim_ttl_minutes', 15);
+        $cacheKey = "support_claim:{$request->id}";
 
         match ($action) {
-            'support_claim' => $request->forceFill([
-                'claimed_by' => $actor->id,
-                'claimed_at' => now(),
-                'claim_expires_at' => now()->addMinutes($ttlMinutes),
-            ]),
-            'support_release', 'support_approve', 'support_reject' => $request->forceFill([
-                'claimed_by' => null,
-                'claimed_at' => null,
-                'claim_expires_at' => null,
-            ]),
+            'support_claim' => (function () use ($request, $actor, $ttlMinutes, $cacheKey): void {
+                $request->forceFill([
+                    'claimed_by' => $actor->id,
+                    'claimed_at' => now(),
+                    'claim_expires_at' => now()->addMinutes($ttlMinutes),
+                ]);
+                Cache::put($cacheKey, $actor->id, now()->addMinutes($ttlMinutes));
+            })(),
+            'support_release', 'support_approve', 'support_reject' => (function () use ($request, $cacheKey): void {
+                $request->forceFill([
+                    'claimed_by' => null,
+                    'claimed_at' => null,
+                    'claim_expires_at' => null,
+                ]);
+                Cache::forget($cacheKey);
+            })(),
             default => null,
         };
     }
