@@ -26,7 +26,15 @@ export interface SupportCommitteeDashboardStats {
   support_queue: ImportRequest[]
 }
 
-export type DashboardStats = DataEntryDashboardStats | BankReviewerDashboardStats | SupportCommitteeDashboardStats
+export interface SwiftOfficerDashboardStats {
+  pending_swift_upload: number
+  uploaded: number
+  final_approved: number
+  final_rejected: number
+  swift_queue: ImportRequest[]
+}
+
+export type DashboardStats = DataEntryDashboardStats | BankReviewerDashboardStats | SupportCommitteeDashboardStats | SwiftOfficerDashboardStats
 
 export function useDashboard() {
   const { get } = useApi()

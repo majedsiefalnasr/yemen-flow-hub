@@ -6,6 +6,7 @@ import { ROLE_QUEUE_TITLES } from '../constants/workflow'
 import DataEntryDashboard from '../components/dashboard/DataEntryDashboard.vue'
 import BankReviewerDashboard from '../components/dashboard/BankReviewerDashboard.vue'
 import SupportCommitteeDashboard from '../components/dashboard/SupportCommitteeDashboard.vue'
+import SwiftOfficerDashboard from '../components/dashboard/SwiftOfficerDashboard.vue'
 
 const auth = useAuthStore()
 
@@ -26,6 +27,7 @@ const role = computed(() => auth.user?.role)
     <DataEntryDashboard v-if="role === UserRole.DATA_ENTRY" />
     <BankReviewerDashboard v-else-if="role === UserRole.BANK_REVIEWER" />
     <SupportCommitteeDashboard v-else-if="role === UserRole.SUPPORT_COMMITTEE" />
+    <SwiftOfficerDashboard v-else-if="role === UserRole.SWIFT_OFFICER" />
 
     <!-- Placeholder for other roles (Story 4+) -->
     <div v-else class="placeholder-card">
