@@ -316,7 +316,7 @@ class DashboardStatsTest extends TestCase
                     'waiting_for_claim',
                     'active_by_me',
                     'claimed_by_others',
-                    'recently_approved',
+                    'approved_last_7_days',
                     'support_queue',
                 ],
             ]);
@@ -380,18 +380,61 @@ class DashboardStatsTest extends TestCase
             ->assertJsonPath('data.claimed_by_others', 1);
     }
 
-    public function test_support_committee_recently_approved_counts_support_approved(): void
+    public function test_support_committee_approved_last_7_days_counts_within_window(): void
     {
         $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
         $sc = $this->makeUser(UserRole::SUPPORT_COMMITTEE);
 
-        $this->makeRequest($this->bank, $de, RequestStatus::SUPPORT_APPROVED);
-        $this->makeRequest($this->bank, $de, RequestStatus::SUPPORT_APPROVED);
+        // Two approved within the 7-day window — set support_approved_at to now
+        $r1 = $this->makeRequest($this->bank, $de, RequestStatus::SUPPORT_APPROVED);
+        $r2 = $this->makeRequest($this->bank, $de, RequestStatus::SUPPORT_APPROVED);
+        \Illuminate\Support\Facades\DB::table('import_requests')
+            ->whereIn('id', [$r1->id, $r2->id])
+            ->update(['support_approved_at' => now()]);
+
+        // One approved 8 days ago — must NOT be counted
+        $old = $this->makeRequest($this->bank, $de, RequestStatus::SUPPORT_APPROVED);
+        \Illuminate\Support\Facades\DB::table('import_requests')
+            ->where('id', $old->id)
+            ->update(['support_approved_at' => now()->subDays(8)]);
+
+        // One still pending — must NOT be counted
         $this->makeRequest($this->bank, $de, RequestStatus::SUPPORT_REVIEW_PENDING);
 
         $this->actingAs($sc)
             ->getJson('/api/dashboard/stats')
-            ->assertJsonPath('data.recently_approved', 2);
+            ->assertJsonPath('data.approved_last_7_days', 2);
+    }
+
+    public function test_support_committee_approved_last_7_days_excludes_older_records(): void
+    {
+        $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $sc = $this->makeUser(UserRole::SUPPORT_COMMITTEE);
+
+        // All approved but support_approved_at is older than 7 days
+        $r1 = $this->makeRequest($this->bank, $de, RequestStatus::SUPPORT_APPROVED);
+        $r2 = $this->makeRequest($this->bank, $de, RequestStatus::SUPPORT_APPROVED);
+        \Illuminate\Support\Facades\DB::table('import_requests')
+            ->whereIn('id', [$r1->id, $r2->id])
+            ->update(['support_approved_at' => now()->subDays(10)]);
+
+        $this->actingAs($sc)
+            ->getJson('/api/dashboard/stats')
+            ->assertJsonPath('data.approved_last_7_days', 0);
+    }
+
+    public function test_support_committee_approved_last_7_days_null_support_approved_at_excluded(): void
+    {
+        $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $sc = $this->makeUser(UserRole::SUPPORT_COMMITTEE);
+
+        // Status is SUPPORT_APPROVED but support_approved_at is NULL — must not be counted
+        $this->makeRequest($this->bank, $de, RequestStatus::SUPPORT_APPROVED);
+        // support_approved_at remains NULL (makeRequest does not set it)
+
+        $this->actingAs($sc)
+            ->getJson('/api/dashboard/stats')
+            ->assertJsonPath('data.approved_last_7_days', 0);
     }
 
     public function test_support_committee_queue_contains_pending_and_in_progress(): void

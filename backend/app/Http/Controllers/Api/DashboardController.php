@@ -128,27 +128,33 @@ class DashboardController extends Controller
         ], 'Dashboard stats retrieved.');
     }
 
-    private function supportCommitteeStats($user)
+    // SUPPORT_COMMITTEE is CBY-global by institutional design: committee members review
+    // requests from all banks. No bank_id filter is applied here — this is intentional
+    // governance behaviour, not a missing tenant scope.
+    private function supportCommitteeStats(\App\Models\User $user): \Illuminate\Http\JsonResponse
     {
         $base = ImportRequest::query();
 
         $waitingForClaim = (clone $base)
-            ->where('status', RequestStatus::SUPPORT_REVIEW_PENDING)
+            ->where('status', RequestStatus::SUPPORT_REVIEW_PENDING->value)
             ->count();
 
         $activeByMe = (clone $base)
-            ->where('status', RequestStatus::SUPPORT_REVIEW_IN_PROGRESS)
+            ->where('status', RequestStatus::SUPPORT_REVIEW_IN_PROGRESS->value)
             ->where('claimed_by', $user->id)
             ->count();
 
         $claimedByOthers = (clone $base)
-            ->where('status', RequestStatus::SUPPORT_REVIEW_IN_PROGRESS)
-            ->where('claimed_by', '!=', $user->id)
             ->whereNotNull('claimed_by')
+            ->where('status', RequestStatus::SUPPORT_REVIEW_IN_PROGRESS->value)
+            ->where('claimed_by', '!=', $user->id)
             ->count();
 
-        $recentlyApproved = (clone $base)
-            ->where('status', RequestStatus::SUPPORT_APPROVED)
+        // Rolling 7-day window — "معتمد حديثاً" reflects active committee throughput,
+        // not a cumulative total. Scoped globally (all SC members), not per-reviewer.
+        $approvedLast7Days = (clone $base)
+            ->where('status', RequestStatus::SUPPORT_APPROVED->value)
+            ->where('support_approved_at', '>=', now()->subDays(7))
             ->count();
 
         $supportQueue = (clone $base)
@@ -157,16 +163,17 @@ class DashboardController extends Controller
                 RequestStatus::SUPPORT_REVIEW_IN_PROGRESS->value,
             ])
             ->orderBy('updated_at')
+            ->orderBy('id')
             ->limit(50)
-            ->with(['claimedByUser'])
+            ->with(['bank', 'claimedByUser'])
             ->get();
 
         return ApiResponse::success([
-            'waiting_for_claim' => $waitingForClaim,
-            'active_by_me'      => $activeByMe,
-            'claimed_by_others' => $claimedByOthers,
-            'recently_approved' => $recentlyApproved,
-            'support_queue'     => ImportRequestResource::collection($supportQueue)->resolve(),
+            'waiting_for_claim'   => $waitingForClaim,
+            'active_by_me'        => $activeByMe,
+            'claimed_by_others'   => $claimedByOthers,
+            'approved_last_7_days' => $approvedLast7Days,
+            'support_queue'       => ImportRequestResource::collection($supportQueue)->toArray(request()),
         ], 'Dashboard stats retrieved.');
     }
 }
