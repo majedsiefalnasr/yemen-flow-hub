@@ -4,10 +4,9 @@ namespace App\Http\Controllers\Api;
 
 use App\Enums\RequestStatus;
 use App\Enums\UserRole;
+use App\Http\Resources\ImportRequestResource;
 use App\Models\ImportRequest;
-use App\Models\RequestVote;
 use App\Support\ApiResponse;
-use Carbon\Carbon;
 use OpenApi\Attributes as OA;
 
 class DashboardController extends Controller
@@ -21,85 +20,108 @@ class DashboardController extends Controller
         responses: [
             new OA\Response(response: 200, description: 'Dashboard stats retrieved'),
             new OA\Response(response: 401, description: 'Unauthenticated'),
-            new OA\Response(response: 403, description: 'Forbidden'),
         ]
     )]
     public function stats()
     {
         $user = request()->user();
+
+        return match (true) {
+            $user->hasRole(UserRole::DATA_ENTRY)    => $this->dataEntryStats($user),
+            $user->hasRole(UserRole::BANK_REVIEWER) => $this->bankReviewerStats($user),
+            default                                 => ApiResponse::success([], 'Dashboard stats retrieved.'),
+        };
+    }
+
+    private function dataEntryStats($user)
+    {
         $base = ImportRequest::query()->forUser($user);
 
-        $total = (clone $base)->count();
-        $statusCounts = (clone $base)
-            ->selectRaw('status, COUNT(*) as aggregate')
-            ->groupBy('status')
-            ->pluck('aggregate', 'status')
-            ->toArray();
+        $draft     = (clone $base)->where('status', RequestStatus::DRAFT)->count();
+        $returned  = (clone $base)->where('status', RequestStatus::DRAFT_REJECTED_INTERNAL)->count();
 
-        $byStatus = [];
-        foreach (RequestStatus::cases() as $status) {
-            $byStatus[$status->value] = (int) ($statusCounts[$status->value] ?? 0);
-        }
+        $underCbyStatuses = [
+            RequestStatus::BANK_APPROVED,
+            RequestStatus::SUPPORT_REVIEW_PENDING,
+            RequestStatus::SUPPORT_REVIEW_IN_PROGRESS,
+            RequestStatus::SUPPORT_APPROVED,
+            RequestStatus::WAITING_FOR_SWIFT,
+            RequestStatus::SWIFT_UPLOADED,
+            RequestStatus::WAITING_FOR_VOTING_OPEN,
+            RequestStatus::EXECUTIVE_VOTING_OPEN,
+            RequestStatus::EXECUTIVE_VOTING_CLOSED,
+        ];
+        $underCby = (clone $base)->whereIn('status', array_map(fn ($s) => $s->value, $underCbyStatuses))->count();
 
-        $monthStart = Carbon::now()->startOfMonth();
-        $monthEnd = Carbon::now()->endOfMonth();
+        $completedStatuses = [
+            RequestStatus::EXECUTIVE_APPROVED,
+            RequestStatus::CUSTOMS_DECLARATION_ISSUED,
+            RequestStatus::COMPLETED,
+        ];
+        $completed = (clone $base)->whereIn('status', array_map(fn ($s) => $s->value, $completedStatuses))->count();
 
-        $createdThisMonth = (clone $base)->whereBetween('created_at', [$monthStart, $monthEnd])->count();
-        $approvedThisMonth = (clone $base)->whereIn('status', [
-            RequestStatus::BANK_APPROVED->value,
-            RequestStatus::SUPPORT_APPROVED->value,
+        $returnedRequests = (clone $base)
+            ->where('status', RequestStatus::DRAFT_REJECTED_INTERNAL)
+            ->orderByDesc('updated_at')
+            ->limit(10)
+            ->get();
+
+        $recentRequests = (clone $base)
+            ->orderByDesc('updated_at')
+            ->limit(5)
+            ->get();
+
+        return ApiResponse::success([
+            'draft'               => $draft,
+            'returned'            => $returned,
+            'under_cby_processing' => $underCby,
+            'completed'           => $completed,
+            'returned_requests'   => ImportRequestResource::collection($returnedRequests)->resolve(),
+            'recent_requests'     => ImportRequestResource::collection($recentRequests)->resolve(),
+        ], 'Dashboard stats retrieved.');
+    }
+
+    private function bankReviewerStats($user)
+    {
+        $base = ImportRequest::query()->forUser($user);
+
+        $pendingReview = (clone $base)->whereIn('status', [
+            RequestStatus::SUBMITTED->value,
+            RequestStatus::BANK_REVIEW->value,
+        ])->count();
+
+        $atCbyStatuses = [
+            RequestStatus::BANK_APPROVED,
+            RequestStatus::SUPPORT_REVIEW_PENDING,
+            RequestStatus::SUPPORT_REVIEW_IN_PROGRESS,
+            RequestStatus::SUPPORT_APPROVED,
+            RequestStatus::WAITING_FOR_SWIFT,
+            RequestStatus::SWIFT_UPLOADED,
+            RequestStatus::WAITING_FOR_VOTING_OPEN,
+            RequestStatus::EXECUTIVE_VOTING_OPEN,
+            RequestStatus::EXECUTIVE_VOTING_CLOSED,
+        ];
+        $atCby = (clone $base)->whereIn('status', array_map(fn ($s) => $s->value, $atCbyStatuses))->count();
+
+        $returnedBySupport = (clone $base)->where('status', RequestStatus::SUPPORT_REJECTED)->count();
+
+        $approvedCompleted = (clone $base)->whereIn('status', [
             RequestStatus::EXECUTIVE_APPROVED->value,
             RequestStatus::CUSTOMS_DECLARATION_ISSUED->value,
             RequestStatus::COMPLETED->value,
-        ])->whereBetween('updated_at', [$monthStart, $monthEnd])->count();
-        $rejectedThisMonth = (clone $base)->whereIn('status', [
-            RequestStatus::SUPPORT_REJECTED->value,
-            RequestStatus::EXECUTIVE_REJECTED->value,
-        ])->whereBetween('updated_at', [$monthStart, $monthEnd])->count();
+        ])->count();
 
-        $pendingActionForMe = (clone $base)->where('current_owner_role', $user->role->value)->count();
-
-        $openForMe = 0;
-        $tiesPendingDirector = 0;
-        if ($user->hasRole(UserRole::EXECUTIVE_MEMBER) || $user->hasRole(UserRole::COMMITTEE_DIRECTOR)) {
-            $votingQuery = ImportRequest::query()->whereIn('status', [
-                RequestStatus::EXECUTIVE_VOTING_OPEN->value,
-                RequestStatus::EXECUTIVE_VOTING_CLOSED->value,
-            ]);
-            $openForMe = $votingQuery->count();
-
-            if ($user->hasRole(UserRole::COMMITTEE_DIRECTOR)) {
-                $candidateIds = $votingQuery->pluck('id');
-                foreach ($candidateIds as $requestId) {
-                    $counts = RequestVote::query()
-                        ->selectRaw("vote, COUNT(*) as aggregate")
-                        ->where('request_id', $requestId)
-                        ->groupBy('vote')
-                        ->pluck('aggregate', 'vote');
-                    $approve = (int) ($counts['APPROVE'] ?? 0);
-                    $reject = (int) ($counts['REJECT'] ?? 0);
-                    $abstain = (int) ($counts['ABSTAIN'] ?? 0);
-                    $autoAbstain = (int) ($counts['AUTO_ABSTAIN_TIMEOUT'] ?? 0);
-                    if (($approve + $reject + $abstain + $autoAbstain) === 6 && $approve < 4 && $reject < 4) {
-                        $tiesPendingDirector++;
-                    }
-                }
-            }
-        }
+        $reviewQueue = (clone $base)
+            ->whereIn('status', [RequestStatus::SUBMITTED->value, RequestStatus::BANK_REVIEW->value])
+            ->orderBy('updated_at')
+            ->get();
 
         return ApiResponse::success([
-            'total_requests' => $total,
-            'by_status' => $byStatus,
-            'pending_action_for_me' => $pendingActionForMe,
-            'this_month' => [
-                'created' => $createdThisMonth,
-                'approved' => $approvedThisMonth,
-                'rejected' => $rejectedThisMonth,
-            ],
-            'voting' => [
-                'open_for_me' => $openForMe,
-                'ties_pending_director' => $tiesPendingDirector,
-            ],
+            'pending_review'      => $pendingReview,
+            'at_cby'              => $atCby,
+            'returned_by_support' => $returnedBySupport,
+            'approved_completed'  => $approvedCompleted,
+            'review_queue'        => ImportRequestResource::collection($reviewQueue)->resolve(),
         ], 'Dashboard stats retrieved.');
     }
 }
