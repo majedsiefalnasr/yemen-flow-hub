@@ -65,7 +65,7 @@ development_status:
   epic-3: in-progress
   3-1-support-committee-review-claim-lifecycle-approve-reject: done
   3-2-support-committee-frontend-queue-auto-claim-ux-dashboard: review
-  3-3-swift-officer-queue-upload-immutability: backlog
+  3-3-swift-officer-queue-upload-immutability: review
   3-4-executive-voting-engine-votingservice-session-lifecycle-apis: backlog
   3-5-executive-voting-frontend-voting-interface-director-controls-dashboard: backlog
   3-6-customs-declaration-issuance-transaction-rtl-pdf-completion: backlog
