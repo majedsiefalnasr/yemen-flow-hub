@@ -12,7 +12,7 @@ class UploadSwiftRequest extends ApiFormRequest
     public function rules(): array
     {
         return [
-            'file' => ['required', 'file', 'mimetypes:application/pdf,image/jpeg,image/png', 'max:10240'],
+            'file' => ['required', 'file', 'mimetypes:application/pdf', 'max:10240'],
         ];
     }
 }

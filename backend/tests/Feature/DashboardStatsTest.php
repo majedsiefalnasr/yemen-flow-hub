@@ -506,4 +506,127 @@ class DashboardStatsTest extends TestCase
     {
         $this->getJson('/api/dashboard/stats')->assertUnauthorized();
     }
+
+    // ─── AC-1: SWIFT Officer stats shape ──────────────────────────────────────
+
+    public function test_swift_officer_stats_returns_correct_kpi_keys(): void
+    {
+        $swift = $this->makeUser(UserRole::SWIFT_OFFICER, $this->bank);
+
+        $this->actingAs($swift)
+            ->getJson('/api/dashboard/stats')
+            ->assertOk()
+            ->assertJsonStructure([
+                'success',
+                'data' => [
+                    'pending_swift_upload',
+                    'uploaded',
+                    'final_approved',
+                    'final_rejected',
+                    'swift_queue',
+                ],
+            ]);
+    }
+
+    public function test_swift_officer_pending_swift_upload_counts_waiting_for_swift(): void
+    {
+        $de    = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $swift = $this->makeUser(UserRole::SWIFT_OFFICER, $this->bank);
+
+        $this->makeRequest($this->bank, $de, RequestStatus::WAITING_FOR_SWIFT);
+        $this->makeRequest($this->bank, $de, RequestStatus::WAITING_FOR_SWIFT);
+        $this->makeRequest($this->bank, $de, RequestStatus::SWIFT_UPLOADED);
+
+        $this->actingAs($swift)
+            ->getJson('/api/dashboard/stats')
+            ->assertOk()
+            ->assertJsonPath('data.pending_swift_upload', 2);
+    }
+
+    public function test_swift_officer_uploaded_counts_swift_uploaded_status(): void
+    {
+        $de    = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $swift = $this->makeUser(UserRole::SWIFT_OFFICER, $this->bank);
+
+        $this->makeRequest($this->bank, $de, RequestStatus::SWIFT_UPLOADED);
+        $this->makeRequest($this->bank, $de, RequestStatus::WAITING_FOR_SWIFT);
+
+        $this->actingAs($swift)
+            ->getJson('/api/dashboard/stats')
+            ->assertOk()
+            ->assertJsonPath('data.uploaded', 1);
+    }
+
+    public function test_swift_officer_final_approved_counts_executive_approved_and_completed(): void
+    {
+        $de    = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $swift = $this->makeUser(UserRole::SWIFT_OFFICER, $this->bank);
+
+        $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_APPROVED);
+        $this->makeRequest($this->bank, $de, RequestStatus::CUSTOMS_DECLARATION_ISSUED);
+        $this->makeRequest($this->bank, $de, RequestStatus::COMPLETED);
+        $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_REJECTED);
+
+        $this->actingAs($swift)
+            ->getJson('/api/dashboard/stats')
+            ->assertOk()
+            ->assertJsonPath('data.final_approved', 3);
+    }
+
+    public function test_swift_officer_final_rejected_counts_executive_rejected(): void
+    {
+        $de    = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $swift = $this->makeUser(UserRole::SWIFT_OFFICER, $this->bank);
+
+        $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_REJECTED);
+        $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_APPROVED);
+
+        $this->actingAs($swift)
+            ->getJson('/api/dashboard/stats')
+            ->assertOk()
+            ->assertJsonPath('data.final_rejected', 1);
+    }
+
+    public function test_swift_officer_queue_shows_only_waiting_for_swift(): void
+    {
+        $de    = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $swift = $this->makeUser(UserRole::SWIFT_OFFICER, $this->bank);
+
+        $this->makeRequest($this->bank, $de, RequestStatus::WAITING_FOR_SWIFT);
+        $this->makeRequest($this->bank, $de, RequestStatus::SWIFT_UPLOADED);
+        $this->makeRequest($this->bank, $de, RequestStatus::SUPPORT_APPROVED);
+
+        $response = $this->actingAs($swift)->getJson('/api/dashboard/stats')->assertOk();
+        $queue    = $response->json('data.swift_queue');
+        $this->assertCount(1, $queue);
+        $this->assertSame(RequestStatus::WAITING_FOR_SWIFT->value, $queue[0]['status']);
+    }
+
+    public function test_swift_officer_cannot_see_other_bank_requests(): void
+    {
+        $de1   = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $de2   = $this->makeUser(UserRole::DATA_ENTRY, $this->otherBank);
+        $swift = $this->makeUser(UserRole::SWIFT_OFFICER, $this->bank);
+
+        $this->makeRequest($this->bank, $de1, RequestStatus::WAITING_FOR_SWIFT);
+        $this->makeRequest($this->otherBank, $de2, RequestStatus::WAITING_FOR_SWIFT);
+
+        $this->actingAs($swift)
+            ->getJson('/api/dashboard/stats')
+            ->assertOk()
+            ->assertJsonPath('data.pending_swift_upload', 1);
+    }
+
+    public function test_swift_officer_queue_max_50(): void
+    {
+        $de    = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $swift = $this->makeUser(UserRole::SWIFT_OFFICER, $this->bank);
+
+        for ($i = 0; $i < 55; $i++) {
+            $this->makeRequest($this->bank, $de, RequestStatus::WAITING_FOR_SWIFT);
+        }
+
+        $response = $this->actingAs($swift)->getJson('/api/dashboard/stats')->assertOk();
+        $this->assertCount(50, $response->json('data.swift_queue'));
+    }
 }

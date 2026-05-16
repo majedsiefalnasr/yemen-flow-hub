@@ -30,6 +30,7 @@ class DashboardController extends Controller
             $user->hasRole(UserRole::DATA_ENTRY)        => $this->dataEntryStats($user),
             $user->hasRole(UserRole::BANK_REVIEWER)     => $this->bankReviewerStats($user),
             $user->hasRole(UserRole::SUPPORT_COMMITTEE) => $this->supportCommitteeStats($user),
+            $user->hasRole(UserRole::SWIFT_OFFICER)     => $this->swiftOfficerStats($user),
             default                                     => ApiResponse::success([], 'Dashboard stats retrieved.'),
         };
     }
@@ -174,6 +175,48 @@ class DashboardController extends Controller
             'claimed_by_others'   => $claimedByOthers,
             'approved_last_7_days' => $approvedLast7Days,
             'support_queue'       => ImportRequestResource::collection($supportQueue)->toArray(request()),
+        ], 'Dashboard stats retrieved.');
+    }
+
+    // SWIFT_OFFICER is bank-scoped: sees only their bank's requests.
+    private function swiftOfficerStats(\App\Models\User $user): \Illuminate\Http\JsonResponse
+    {
+        $base = ImportRequest::query()->forUser($user);
+
+        $pendingSwiftUpload = (clone $base)
+            ->where('status', RequestStatus::WAITING_FOR_SWIFT->value)
+            ->count();
+
+        $uploaded = (clone $base)
+            ->where('status', RequestStatus::SWIFT_UPLOADED->value)
+            ->count();
+
+        $finalApproved = (clone $base)
+            ->whereIn('status', [
+                RequestStatus::EXECUTIVE_APPROVED->value,
+                RequestStatus::CUSTOMS_DECLARATION_ISSUED->value,
+                RequestStatus::COMPLETED->value,
+            ])
+            ->count();
+
+        $finalRejected = (clone $base)
+            ->where('status', RequestStatus::EXECUTIVE_REJECTED->value)
+            ->count();
+
+        $swiftQueue = (clone $base)
+            ->where('status', RequestStatus::WAITING_FOR_SWIFT->value)
+            ->orderBy('updated_at')
+            ->orderBy('id')
+            ->limit(50)
+            ->with(['bank'])
+            ->get();
+
+        return ApiResponse::success([
+            'pending_swift_upload' => $pendingSwiftUpload,
+            'uploaded'             => $uploaded,
+            'final_approved'       => $finalApproved,
+            'final_rejected'       => $finalRejected,
+            'swift_queue'          => ImportRequestResource::collection($swiftQueue)->toArray(request()),
         ], 'Dashboard stats retrieved.');
     }
 }

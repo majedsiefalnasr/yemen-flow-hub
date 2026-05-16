@@ -52,8 +52,8 @@ class DocumentService
     {
         $this->assertFileValid($file);
 
-        if ($request->status !== RequestStatus::SUPPORT_APPROVED) {
-            throw new DocumentException('SWIFT can only be uploaded at SUPPORT_APPROVED stage.');
+        if ($request->status !== RequestStatus::WAITING_FOR_SWIFT) {
+            throw new DocumentException('SWIFT can only be uploaded when request is in WAITING_FOR_SWIFT status.');
         }
 
         if (!$uploader->hasPermission('swift.upload') || $uploader->bank_id !== $request->bank_id) {
