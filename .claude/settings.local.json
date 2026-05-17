@@ -29,7 +29,8 @@
       "Bash(rtk npm *)",
       "Skill(bmad-create-story)",
       "Bash(railway logs *)",
-      "Bash(railway status *)"
+      "Bash(railway status *)",
+      "Skill(bmad-review-edge-case-hunter)"
     ]
   }
 }
