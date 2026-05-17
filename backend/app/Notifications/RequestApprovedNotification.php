@@ -22,6 +22,11 @@ class RequestApprovedNotification extends Notification implements ShouldQueue
 
     public function toArray(object $notifiable): array
     {
-        return ['message' => 'Your request has been approved.', 'request_id' => $this->requestModel->id];
+        return [
+            'type' => 'request_approved',
+            'message' => 'تمت الموافقة على الطلب: ' . $this->requestModel->reference_number,
+            'request_id' => $this->requestModel->id,
+            'reference_number' => $this->requestModel->reference_number,
+        ];
     }
 }

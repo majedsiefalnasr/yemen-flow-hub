@@ -22,6 +22,11 @@ class SwiftUploadRequestedNotification extends Notification implements ShouldQue
 
     public function toArray(object $notifiable): array
     {
-        return ['message' => 'SWIFT upload is requested for this request.', 'request_id' => $this->requestModel->id];
+        return [
+            'type' => 'swift_upload_requested',
+            'message' => 'مطلوب رفع وثيقة SWIFT للطلب: ' . $this->requestModel->reference_number,
+            'request_id' => $this->requestModel->id,
+            'reference_number' => $this->requestModel->reference_number,
+        ];
     }
 }

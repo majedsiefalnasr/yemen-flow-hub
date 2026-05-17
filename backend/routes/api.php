@@ -92,8 +92,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('admin/settings/{key}/reset', [AdminSettingsController::class, 'reset'])->middleware('throttle:10,60');
 
     Route::get('notifications', [NotificationController::class, 'index']);
-    Route::post('notifications/{notification}/read', [NotificationController::class, 'read']);
+    Route::get('notifications/unread-count', [NotificationController::class, 'unreadCount']);
     Route::post('notifications/read-all', [NotificationController::class, 'readAll']);
+    Route::post('notifications/{notification}/read', [NotificationController::class, 'read']);
 
     Route::get('dashboard/stats', [DashboardController::class, 'stats']);
     Route::get('reports/workflow', [ReportController::class, 'workflow']);

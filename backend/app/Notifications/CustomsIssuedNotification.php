@@ -22,6 +22,11 @@ class CustomsIssuedNotification extends Notification implements ShouldQueue
 
     public function toArray(object $notifiable): array
     {
-        return ['message' => 'Customs declaration has been issued.', 'request_id' => $this->requestModel->id];
+        return [
+            'type' => 'customs_issued',
+            'message' => 'تم إصدار البيان الجمركي للطلب: ' . $this->requestModel->reference_number,
+            'request_id' => $this->requestModel->id,
+            'reference_number' => $this->requestModel->reference_number,
+        ];
     }
 }

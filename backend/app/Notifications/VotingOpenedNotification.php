@@ -22,6 +22,11 @@ class VotingOpenedNotification extends Notification implements ShouldQueue
 
     public function toArray(object $notifiable): array
     {
-        return ['message' => 'Executive voting has opened.', 'request_id' => $this->requestModel->id];
+        return [
+            'type' => 'voting_opened',
+            'message' => 'تم فتح جلسة التصويت للطلب: ' . $this->requestModel->reference_number,
+            'request_id' => $this->requestModel->id,
+            'reference_number' => $this->requestModel->reference_number,
+        ];
     }
 }

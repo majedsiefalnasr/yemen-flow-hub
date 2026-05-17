@@ -29,6 +29,14 @@ class NotificationController extends Controller
         return ApiResponse::success((object) [], 'Notification marked as read.');
     }
 
+    #[OA\Get(path: '/api/notifications/unread-count', tags: ['Notifications'], summary: 'Get unread notification count for current user', responses: [new OA\Response(response: 200, description: 'Unread count retrieved')])]
+    public function unreadCount()
+    {
+        $count = request()->user()->unreadNotifications()->count();
+
+        return ApiResponse::success(['count' => $count], 'Unread count retrieved.');
+    }
+
     #[OA\Post(path: '/api/notifications/read-all', tags: ['Notifications'], summary: 'Mark all current user notifications as read', responses: [new OA\Response(response: 200, description: 'All notifications marked read')])]
     public function readAll()
     {

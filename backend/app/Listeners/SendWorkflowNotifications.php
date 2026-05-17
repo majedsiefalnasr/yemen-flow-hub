@@ -16,6 +16,9 @@ use App\Notifications\VotingOpenedNotification;
 
 class SendWorkflowNotifications
 {
+    /** Types that must always be delivered regardless of user preferences (governance-critical). */
+    private const MANDATORY_TYPES = ['request_rejected', 'request_returned'];
+
     public function handle(RequestTransitioned $event): void
     {
         $request = $event->requestModel->fresh('creator');
@@ -23,44 +26,82 @@ class SendWorkflowNotifications
 
         if ($status === RequestStatus::SUBMITTED) {
             User::query()->where('bank_id', $request->bank_id)->where('role', UserRole::BANK_REVIEWER->value)->get()
-                ->each(fn (User $u) => $u->notify(new RequestSubmittedNotification($request)));
+                ->each(function (User $u) use ($request): void {
+                    if ($this->shouldNotify($u, 'request_submitted')) {
+                        $u->notify(new RequestSubmittedNotification($request));
+                    }
+                });
         }
 
         if (in_array($status, [RequestStatus::BANK_APPROVED, RequestStatus::SUPPORT_APPROVED, RequestStatus::EXECUTIVE_APPROVED], true)) {
-            $request->creator?->notify(new RequestApprovedNotification($request));
+            $creator = $request->creator;
+            if ($creator && $this->shouldNotify($creator, 'request_approved')) {
+                $creator->notify(new RequestApprovedNotification($request));
+            }
         }
 
         if (in_array($status, [RequestStatus::SUPPORT_REJECTED, RequestStatus::EXECUTIVE_REJECTED], true)) {
             $creator = $request->creator;
             $reviewers = User::query()->where('bank_id', $request->bank_id)->where('role', UserRole::BANK_REVIEWER->value)->get();
-            if ($creator) {
+            if ($creator && $this->shouldNotify($creator, 'request_rejected')) {
                 $creator->notify(new RequestRejectedNotification($request));
             }
-            $reviewers->each(fn (User $u) => $u->notify(new RequestRejectedNotification($request)));
+            $reviewers->each(function (User $u) use ($request): void {
+                if ($this->shouldNotify($u, 'request_rejected')) {
+                    $u->notify(new RequestRejectedNotification($request));
+                }
+            });
         }
 
         if ($status === RequestStatus::DRAFT_REJECTED_INTERNAL) {
             User::query()->where('bank_id', $request->bank_id)->where('role', UserRole::DATA_ENTRY->value)->get()
-                ->each(fn (User $u) => $u->notify(new RequestReturnedNotification($request)));
+                ->each(function (User $u) use ($request): void {
+                    if ($this->shouldNotify($u, 'request_returned')) {
+                        $u->notify(new RequestReturnedNotification($request));
+                    }
+                });
         }
 
         if ($status === RequestStatus::SUPPORT_APPROVED) {
             User::query()->where('bank_id', $request->bank_id)->where('role', UserRole::SWIFT_OFFICER->value)->get()
-                ->each(fn (User $u) => $u->notify(new SwiftUploadRequestedNotification($request)));
+                ->each(function (User $u) use ($request): void {
+                    if ($this->shouldNotify($u, 'swift_upload_requested')) {
+                        $u->notify(new SwiftUploadRequestedNotification($request));
+                    }
+                });
         }
 
         if ($status === RequestStatus::EXECUTIVE_VOTING_OPEN) {
             User::query()->whereIn('role', [UserRole::EXECUTIVE_MEMBER->value, UserRole::COMMITTEE_DIRECTOR->value])->get()
-                ->each(fn (User $u) => $u->notify(new VotingOpenedNotification($request)));
+                ->each(function (User $u) use ($request): void {
+                    if ($this->shouldNotify($u, 'voting_opened')) {
+                        $u->notify(new VotingOpenedNotification($request));
+                    }
+                });
         }
 
         if ($status === RequestStatus::CUSTOMS_DECLARATION_ISSUED) {
             $creator = $request->creator;
-            if ($creator) {
+            if ($creator && $this->shouldNotify($creator, 'customs_issued')) {
                 $creator->notify(new CustomsIssuedNotification($request));
             }
             User::query()->where('bank_id', $request->bank_id)->where('role', UserRole::BANK_REVIEWER->value)->get()
-                ->each(fn (User $u) => $u->notify(new CustomsIssuedNotification($request)));
+                ->each(function (User $u) use ($request): void {
+                    if ($this->shouldNotify($u, 'customs_issued')) {
+                        $u->notify(new CustomsIssuedNotification($request));
+                    }
+                });
         }
+    }
+
+    private function shouldNotify(User $user, string $type): bool
+    {
+        if (in_array($type, self::MANDATORY_TYPES, true)) {
+            return true;
+        }
+
+        $prefs = $user->user_preferences['notification_preferences'] ?? [];
+
+        return ($prefs[$type] ?? true) !== false;
     }
 }
