@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Enums\RequestStatus;
 use App\Enums\UserRole;
 use App\Http\Resources\ImportRequestResource;
+use App\Models\Bank;
 use App\Models\ImportRequest;
 use App\Support\ApiResponse;
 use OpenApi\Attributes as OA;
@@ -33,6 +34,7 @@ class DashboardController extends Controller
             $user->hasRole(UserRole::SWIFT_OFFICER)       => $this->swiftOfficerStats($user),
             $user->hasRole(UserRole::EXECUTIVE_MEMBER)    => $this->executiveMemberStats(),
             $user->hasRole(UserRole::COMMITTEE_DIRECTOR)  => $this->committeeDirectorStats(),
+            $user->hasRole(UserRole::CBY_ADMIN)           => $this->cbyadminStats(),
             default                                       => ApiResponse::success([], 'Dashboard stats retrieved.'),
         };
     }
@@ -276,5 +278,130 @@ class DashboardController extends Controller
     private function committeeDirectorStats(): \Illuminate\Http\JsonResponse
     {
         return ApiResponse::success($this->executiveVotingStats(), 'Dashboard stats retrieved.');
+    }
+
+    // CBY_ADMIN: full-system visibility across all banks
+    private function cbyadminStats(): \Illuminate\Http\JsonResponse
+    {
+        $terminalStatuses = [
+            RequestStatus::EXECUTIVE_REJECTED,
+            RequestStatus::CUSTOMS_DECLARATION_ISSUED,
+            RequestStatus::COMPLETED,
+        ];
+        $approvedStatuses = [
+            RequestStatus::EXECUTIVE_APPROVED,
+            RequestStatus::CUSTOMS_DECLARATION_ISSUED,
+            RequestStatus::COMPLETED,
+        ];
+        $inProcessExcluded = array_merge(
+            [RequestStatus::DRAFT, RequestStatus::DRAFT_REJECTED_INTERNAL],
+            $terminalStatuses,
+            $approvedStatuses,
+        );
+
+        $total    = ImportRequest::query()->count();
+        $approved = ImportRequest::query()
+            ->whereIn('status', array_map(fn ($s) => $s->value, $approvedStatuses))
+            ->count();
+        $rejected = ImportRequest::query()
+            ->where('status', RequestStatus::EXECUTIVE_REJECTED->value)
+            ->count();
+        $inProcess = ImportRequest::query()
+            ->whereNotIn('status', array_map(fn ($s) => $s->value, array_unique($inProcessExcluded, SORT_REGULAR)))
+            ->count();
+
+        return ApiResponse::success([
+            'total'              => $total,
+            'approved'           => $approved,
+            'in_process'         => $inProcess,
+            'rejected'           => $rejected,
+            'compliance_alerts'  => $this->complianceAlerts(),
+            'most_active_banks'  => $this->mostActiveBanks(),
+        ], 'Dashboard stats retrieved.');
+    }
+
+    private function complianceAlerts(): array
+    {
+        $draftStatuses = [RequestStatus::DRAFT, RequestStatus::DRAFT_REJECTED_INTERNAL];
+        $terminalStatuses = [
+            RequestStatus::EXECUTIVE_REJECTED,
+            RequestStatus::CUSTOMS_DECLARATION_ISSUED,
+            RequestStatus::COMPLETED,
+        ];
+
+        // Duplicate supplier names in non-draft, non-terminal active requests
+        $duplicateSuppliers = ImportRequest::query()
+            ->whereNotIn('status', array_map(fn ($s) => $s->value, $draftStatuses))
+            ->selectRaw('supplier_name, COUNT(*) as `count`')
+            ->groupBy('supplier_name')
+            ->havingRaw('COUNT(*) > 1')
+            ->orderByDesc('count')
+            ->limit(10)
+            ->get()
+            ->map(fn ($row) => ['supplier_name' => $row->supplier_name, 'count' => (int) $row->count])
+            ->values()
+            ->all();
+
+        // USD requests exceeding $1,000,000 in non-terminal status
+        $highAmountRequests = ImportRequest::query()
+            ->where('currency', 'USD')
+            ->where('amount', '>', 1_000_000)
+            ->whereNotIn('status', array_map(fn ($s) => $s->value, $terminalStatuses))
+            ->with(['bank'])
+            ->orderByDesc('amount')
+            ->limit(10)
+            ->get()
+            ->map(fn ($r) => [
+                'id'               => $r->id,
+                'reference_number' => $r->reference_number,
+                'bank_name'        => $r->bank?->name ?? '—',
+                'amount'           => (float) $r->amount,
+                'currency'         => $r->currency,
+            ])
+            ->values()
+            ->all();
+
+        // Stale pending: non-draft, non-terminal, updated > 14 days ago
+        $stalePendingExcluded = array_merge($draftStatuses, $terminalStatuses);
+        $stalePendingRequests = ImportRequest::query()
+            ->whereNotIn('status', array_map(fn ($s) => $s->value, $stalePendingExcluded))
+            ->where('updated_at', '<', now()->subDays(14))
+            ->with(['bank'])
+            ->orderBy('updated_at')
+            ->limit(10)
+            ->get()
+            ->map(fn ($r) => [
+                'id'               => $r->id,
+                'reference_number' => $r->reference_number,
+                'bank_name'        => $r->bank?->name ?? '—',
+                'updated_at'       => $r->updated_at->toIso8601String(),
+            ])
+            ->values()
+            ->all();
+
+        return [
+            'duplicate_suppliers'    => $duplicateSuppliers,
+            'high_amount_requests'   => $highAmountRequests,
+            'stale_pending_requests' => $stalePendingRequests,
+        ];
+    }
+
+    private function mostActiveBanks(): array
+    {
+        return Bank::query()
+            ->select('banks.id as bank_id', 'banks.name as bank_name')
+            ->selectRaw('COUNT(import_requests.id) as request_count')
+            ->leftJoin('import_requests', 'import_requests.bank_id', '=', 'banks.id')
+            ->groupBy('banks.id', 'banks.name')
+            ->orderByDesc('request_count')
+            ->limit(5)
+            ->get()
+            ->map(fn ($row) => [
+                'bank_id'       => $row->bank_id,
+                'bank_name'     => $row->bank_name,
+                'request_count' => (int) $row->request_count,
+            ])
+            ->values()
+            ->all();
     }
 }

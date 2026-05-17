@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Enums\RequestStatus;
 use App\Enums\UserRole;
+use App\Models\Bank;
 use App\Models\ImportRequest;
 use App\Models\RequestStageHistory;
 use App\Models\RequestVote;
@@ -31,6 +32,54 @@ class ReportController extends Controller
             return ApiResponse::forbidden();
         }
 
+        $fromDate = request()->query('from_date');
+        $toDate   = request()->query('to_date');
+
+        // Build base query with optional date-range filter on created_at
+        $baseQuery = function () use ($fromDate, $toDate) {
+            $q = ImportRequest::query();
+            if ($fromDate) {
+                $q->whereDate('created_at', '>=', $fromDate);
+            }
+            if ($toDate) {
+                $q->whereDate('created_at', '<=', $toDate);
+            }
+            return $q;
+        };
+
+        // Counts by status
+        $countsByStatus = [];
+        foreach (RequestStatus::cases() as $status) {
+            $countsByStatus[$status->value] = (clone $baseQuery())
+                ->where('status', $status->value)
+                ->count();
+        }
+
+        // Counts by bank
+        $countsByBank = Bank::query()
+            ->select('banks.id as bank_id', 'banks.name as bank_name')
+            ->selectRaw('COUNT(import_requests.id) as total')
+            ->leftJoin('import_requests', function ($join) use ($fromDate, $toDate) {
+                $join->on('import_requests.bank_id', '=', 'banks.id');
+                if ($fromDate) {
+                    $join->whereDate('import_requests.created_at', '>=', $fromDate);
+                }
+                if ($toDate) {
+                    $join->whereDate('import_requests.created_at', '<=', $toDate);
+                }
+            })
+            ->groupBy('banks.id', 'banks.name')
+            ->orderByDesc('total')
+            ->get()
+            ->map(fn ($row) => [
+                'bank_id'   => $row->bank_id,
+                'bank_name' => $row->bank_name,
+                'total'     => (int) $row->total,
+            ])
+            ->values()
+            ->all();
+
+        // Stage duration averages (not date-range filtered — reflects full history)
         $stageDurations = [];
         $histories = RequestStageHistory::query()->orderBy('request_id')->orderBy('created_at')->get();
         $grouped = $histories->groupBy('request_id');
@@ -54,16 +103,18 @@ class ReportController extends Controller
 
         $throughput = [
             'completed' => ImportRequest::query()->where('status', RequestStatus::COMPLETED->value)->count(),
-            'approved' => ImportRequest::query()->where('status', RequestStatus::EXECUTIVE_APPROVED->value)->count(),
-            'rejected' => ImportRequest::query()->whereIn('status', [
+            'approved'  => ImportRequest::query()->where('status', RequestStatus::EXECUTIVE_APPROVED->value)->count(),
+            'rejected'  => ImportRequest::query()->whereIn('status', [
                 RequestStatus::SUPPORT_REJECTED->value,
                 RequestStatus::EXECUTIVE_REJECTED->value,
             ])->count(),
         ];
 
         return ApiResponse::success([
+            'counts_by_status'       => $countsByStatus,
+            'counts_by_bank'         => $countsByBank,
             'avg_time_per_stage_hours' => $avgTimePerStage,
-            'throughput' => $throughput,
+            'throughput'             => $throughput,
         ], 'Workflow report retrieved.');
     }
 
@@ -86,12 +137,36 @@ class ReportController extends Controller
             return ApiResponse::forbidden();
         }
 
+        $votingStatuses = [
+            RequestStatus::EXECUTIVE_VOTING_OPEN->value,
+            RequestStatus::EXECUTIVE_VOTING_CLOSED->value,
+            RequestStatus::EXECUTIVE_APPROVED->value,
+            RequestStatus::EXECUTIVE_REJECTED->value,
+            RequestStatus::CUSTOMS_DECLARATION_ISSUED->value,
+            RequestStatus::COMPLETED->value,
+        ];
+
+        $totalVotingSessions = ImportRequest::query()
+            ->whereIn('status', $votingStatuses)
+            ->count();
+
         $executiveFinal = ImportRequest::query()
             ->whereIn('status', [RequestStatus::EXECUTIVE_APPROVED->value, RequestStatus::EXECUTIVE_REJECTED->value, RequestStatus::CUSTOMS_DECLARATION_ISSUED->value, RequestStatus::COMPLETED->value])
             ->count();
 
         $approved = ImportRequest::query()->whereIn('status', [RequestStatus::EXECUTIVE_APPROVED->value, RequestStatus::CUSTOMS_DECLARATION_ISSUED->value, RequestStatus::COMPLETED->value])->count();
         $rejected = ImportRequest::query()->where('status', RequestStatus::EXECUTIVE_REJECTED->value)->count();
+
+        // Raw vote tallies across all sessions
+        $tallyRows = RequestVote::query()
+            ->selectRaw('vote, COUNT(*) as `count`')
+            ->groupBy('vote')
+            ->pluck('count', 'vote');
+        $voteTallies = [
+            'approve' => (int) ($tallyRows['APPROVE'] ?? 0),
+            'reject'  => (int) ($tallyRows['REJECT'] ?? 0),
+            'abstain' => (int) ($tallyRows['ABSTAIN'] ?? 0) + (int) ($tallyRows['AUTO_ABSTAIN_TIMEOUT'] ?? 0),
+        ];
 
         $ties = 0;
         $candidateIds = ImportRequest::query()
@@ -120,9 +195,11 @@ class ReportController extends Controller
             : 0.0;
 
         return ApiResponse::success([
-            'approval_rate' => $executiveFinal ? round(($approved / $executiveFinal) * 100, 2) : 0,
-            'rejection_rate' => $executiveFinal ? round(($rejected / $executiveFinal) * 100, 2) : 0,
-            'tie_rate' => $candidateIds->count() ? round(($ties / $candidateIds->count()) * 100, 2) : 0,
+            'total_voting_sessions'      => $totalVotingSessions,
+            'vote_tallies'               => $voteTallies,
+            'approval_rate'              => $executiveFinal ? round(($approved / $executiveFinal) * 100, 2) : 0,
+            'rejection_rate'             => $executiveFinal ? round(($rejected / $executiveFinal) * 100, 2) : 0,
+            'tie_rate'                   => $candidateIds->count() ? round(($ties / $candidateIds->count()) * 100, 2) : 0,
             'avg_time_to_decision_hours' => $avgHours,
         ], 'Voting report retrieved.');
     }
