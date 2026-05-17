@@ -84,7 +84,7 @@ development_status:
   # ─── Epic 5: Post-MVP Institutional Operations Platform ──────────────────
   epic-5: in-progress
   5-1-bank-admin-role-hierarchical-rbac-scoped-bank-administration: done
-  5-2-profile-settings-navigation-completion: in-progress
+  5-2-profile-settings-navigation-completion: done
   5-3-in-app-notifications-phase-1: backlog
   5-4-global-search-phase-1: backlog
   5-5-customs-print-preview-page: backlog
