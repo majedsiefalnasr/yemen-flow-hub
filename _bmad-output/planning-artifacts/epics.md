@@ -11,6 +11,7 @@ inputDocuments:
   - docs/07-task-breakdown.md
   - DESIGN.md
   - _bmad-output/planning-artifacts/project-context.md
+  - _bmad-output/planning-artifacts/lovable-prototype-current-project-audit-2026-05-17.md
   - lovable/ (approved UX reference — workflow, dashboards, component hierarchy, RTL patterns)
 ---
 
@@ -1209,3 +1210,361 @@ The following features are **explicitly out of scope for MVP**. They must not be
 | Email/SMS delivery | Post-MVP |
 | SSO / external identity provider | Post-MVP |
 | Analytics / BI dashboards | Post-MVP; basic reports in Story 4.5 only |
+
+---
+
+## Epic 5: Post-MVP Institutional Operations Platform
+
+Yemen Flow Hub evolves from MVP workflow coverage into an institutional operational platform. Governance, auditability, usability, discoverability, and operational efficiency become first-class concerns while preserving strict workflow immutability, role/org scoping, and audit requirements.
+
+**Epic Goal:** Add scoped bank administration, production profile/settings, in-app notifications, global search, customs print preview, and advanced operational reporting without introducing prototype-only demo behavior or weakening regulatory workflow governance.
+
+**Source Authority:**
+- Stakeholder-accepted `lovable/` prototype for product surface and UX expectations.
+- `_bmad-output/planning-artifacts/lovable-prototype-current-project-audit-2026-05-17.md` for current gap analysis.
+- User-confirmed post-MVP scope from 2026-05-17.
+- Existing project docs remain authoritative for workflow, status, role, audit, document, and API behavior.
+
+**Non-negotiable Governance Rules:**
+1. No prototype demo controls in production: no role switcher, fake login picker, mock-state admin actions, or demo reset tools.
+2. Only expose navigation pages when fully implemented.
+3. All new capabilities must enforce role and organization scoping at policy, query, API, and UI layers.
+4. Every administrative action must be audit logged with actor user, actor role, target entity, before/after state where applicable, and timestamp.
+5. Workflow governance is never overridden by admin, reporting, search, notification, preview, profile, or settings features.
+6. PDF remains the canonical legal customs document; browser preview is operational UX only.
+7. Reporting stays operational and governance-focused; no external BI, data warehouse, or AI analytics in this sprint.
+
+### Story 5.1: BANK_ADMIN Role, Hierarchical RBAC & Scoped Bank Administration
+
+As a commercial bank administrator,
+I want to manage users and profile metadata for my own bank only,
+So that banks can operate independently without gaining CBY privileges or cross-bank visibility.
+
+**Acceptance Criteria:**
+
+**Given** the system role enums are updated
+**When** roles are listed in backend PHP enums, frontend TypeScript enums, validation rules, seeders, policies, navigation constants, and tests
+**Then** `BANK_ADMIN` exists as a canonical post-MVP role
+**And** all existing seven MVP roles retain their existing behavior
+**And** `BANK_ADMIN` users must have a non-null `bank_id`
+**And** `BANK_ADMIN` users cannot be created with `bank_id = NULL`
+
+**Given** I am logged in as `BANK_ADMIN`
+**When** I list users
+**Then** I only receive users from my own `bank_id`
+**And** I never receive CBY users or users from another bank
+**And** query-level scoping enforces this before serialization
+
+**Given** I am logged in as `BANK_ADMIN`
+**When** I create or update a user
+**Then** I can only create/deactivate/reset passwords for `DATA_ENTRY` and `BANK_REVIEWER` accounts in my own bank
+**And** I cannot create, update, or assign `CBY_ADMIN`, `SUPPORT_COMMITTEE`, `EXECUTIVE_MEMBER`, `COMMITTEE_DIRECTOR`, `SWIFT_OFFICER`, or another `BANK_ADMIN`
+**And** I cannot assign a user to another bank
+**And** policy, request validation, controller/API, and UI all enforce the same constraints
+
+**Given** I am logged in as `BANK_ADMIN`
+**When** I view dashboards
+**Then** I can view bank-level operational dashboard data for my own bank
+**And** I cannot access global CBY dashboards, global audit logs, other-bank requests, or cross-bank reports
+
+**Given** I am logged in as `BANK_ADMIN`
+**When** I update bank profile metadata
+**Then** I can update only allowed metadata fields for my own bank
+**And** I cannot change workflow-critical identifiers or CBY-controlled fields unless explicitly allowed by backend policy
+
+**Given** any `BANK_ADMIN` action succeeds or fails authorization
+**When** the request completes
+**Then** an audit log entry is written with actor user, actor role, bank_id, target entity, action, before/after metadata where applicable, IP/user agent where available, and timestamp
+**And** authorization failures are logged without leaking cross-bank data in the response
+
+**Technical Requirements:**
+
+- RBAC must support hierarchical role scope: global CBY roles, bank-scoped admin roles, bank operational roles.
+- Add focused backend feature tests for same-bank allowed and cross-bank denied cases.
+- Add frontend tests for navigation visibility and role guard behavior.
+- Do not allow `BANK_ADMIN` to override workflow transitions, immutable states, voting, support claims, SWIFT uploads, customs issuance, or audit-log access.
+
+---
+
+### Story 5.2: Profile, Settings & Navigation Completion
+
+As an authenticated user,
+I want production profile and settings pages,
+So that account preferences and operational defaults are managed inside the platform instead of through prototype/demo UI.
+
+**Acceptance Criteria:**
+
+**Given** I am authenticated
+**When** I navigate to `/profile`
+**Then** I see my name, email, role display, bank affiliation when applicable, recent activity summary, and session/security information
+**And** I can change my password through a real backend endpoint with validation and audit logging
+**And** all fields are read-only unless an explicit edit action is supported by backend policy
+
+**Given** I am authenticated
+**When** I navigate to `/settings`
+**Then** I can manage production-safe preferences: language preference, notification preferences, dashboard preferences, table density/page size, and default filters
+**And** preferences persist through backend storage, not local mock state
+**And** defaults are applied consistently across dashboards, tables, notifications, and reports where implemented
+
+**Given** I am `CBY_ADMIN`
+**When** I open admin settings
+**Then** I can view and manage system configuration that is safe for runtime administration: workflow timing values, upload limits, feature toggles, and reporting controls
+**And** each configurable value has validation, audit logging, and a clear fallback/default
+**And** settings cannot bypass workflow governance or immutable-state rules
+
+**Given** any sidebar or header navigation item is visible
+**When** I click it
+**Then** the destination page is fully implemented, role-guarded, and backed by real data
+**And** no unimplemented route remains exposed in production navigation
+
+**Technical Requirements:**
+
+- Add profile/settings APIs where missing.
+- Add storage for user preferences and safe system settings if not already present.
+- Add backend policy coverage for personal settings vs admin settings.
+- Exclude prototype demo reset tools, role switcher, and fake theme/language behavior unless persisted through production APIs.
+
+---
+
+### Story 5.3: In-App Notifications Phase 1
+
+As an operational user,
+I want scoped in-app notifications for workflow and admin events,
+So that I can discover urgent work without manually checking every queue.
+
+**Acceptance Criteria:**
+
+**Given** a workflow or admin event occurs
+**When** the event is relevant to a user
+**Then** an in-app notification is created for the correct role/org scope only
+**And** it never leaks cross-bank information to bank users
+
+**Notification Events Included in Phase 1:**
+
+- Workflow assignment alerts.
+- Review and claim alerts.
+- Support rejection alerts.
+- Voting opened and voting closed alerts.
+- Customs issued alerts.
+- Account/admin actions relevant to the affected user or bank.
+
+**Given** I am authenticated
+**When** I open `/notifications`
+**Then** I see a paginated notification center scoped to my role and organization
+**And** I can mark one notification as read
+**And** I can mark all notifications as read
+**And** unread counters are shown in the production header when the feature is enabled
+
+**Given** notification preferences exist
+**When** I update preferences in `/settings`
+**Then** only the allowed notification categories are enabled/disabled for my account
+**And** critical governance notifications cannot be disabled if product policy requires mandatory delivery
+
+**Technical Requirements:**
+
+- Use existing backend notification infrastructure where possible.
+- Add missing notification creation hooks in workflow/admin services.
+- Role/org scoping must be enforced before notification creation and again before notification retrieval.
+- Realtime websocket updates are explicitly out of scope for this story; this is Phase 1 in-app polling/API UX.
+
+---
+
+### Story 5.4: Global Search Phase 1
+
+As an authenticated user,
+I want global search across the entities I am allowed to see,
+So that I can quickly find requests, banks, customs declarations, users, and workflow records without navigating through multiple queues.
+
+**Acceptance Criteria:**
+
+**Given** I use global search
+**When** I type a query
+**Then** results are fetched through a debounced async backend API
+**And** results are always scoped to my role and organization before response serialization
+**And** the UI shows filter chips and grouped result types
+**And** selecting a result deep-links to the correct production page
+
+**Searchable Entities:**
+
+- Request number.
+- Importer/merchant.
+- Supplier.
+- Bank.
+- Customs declaration number.
+- Workflow status.
+- SWIFT references where stored.
+- Users for admin roles only.
+
+**Given** I am a bank-scoped role
+**When** search results are returned
+**Then** I only see records allowed by my bank and role scope
+**And** I never see other-bank requests, users, SWIFT data, customs data, or audit-sensitive metadata beyond my permission matrix
+
+**Given** I am an admin role
+**When** I search users
+**Then** user results follow the same hierarchy rules as user-management APIs
+**And** `BANK_ADMIN` can only search own-bank `DATA_ENTRY` and `BANK_REVIEWER` users
+**And** `CBY_ADMIN` can search users according to global admin policy
+
+**Technical Requirements:**
+
+- Add a dedicated backend search endpoint with indexed query paths.
+- Add recent searches per user if storage exists or as a small persisted preference.
+- Add keyboard shortcut support only if it does not conflict with browser/system shortcuts and is accessible.
+- Do not search raw audit logs for non-`CBY_ADMIN` users.
+
+---
+
+### Story 5.5: Customs Print Preview Page
+
+As a bank or CBY operations user with customs visibility,
+I want a browser print-preview page for issued customs declarations,
+So that I can inspect and print the declaration operationally while the official PDF remains the legal document.
+
+**Acceptance Criteria:**
+
+**Given** a customs declaration exists for a request
+**When** I navigate to `/requests/{id}/customs-preview`
+**Then** the page renders a print-optimized RTL preview using the same data source as the official PDF
+**And** the preview is read-only and immutable
+**And** the page includes a "Download Official PDF" action
+**And** browser print support works using print-specific CSS
+**And** watermark/status indicators are shown when useful, such as "Preview" or "Official PDF is canonical"
+
+**Given** I do not have permission to view the customs declaration
+**When** I request the preview
+**Then** the backend/API and frontend guard deny access according to the document permission matrix
+**And** no customs data is leaked in the error response
+
+**Given** the official PDF and preview are generated
+**When** data is compared
+**Then** both use the same canonical declaration/request fields
+**And** the browser preview does not introduce editable or unofficial values
+
+**Technical Requirements:**
+
+- Add route `/requests/{id}/customs-preview`.
+- Reuse existing customs declaration API or add a preview-safe endpoint returning the same canonical fields.
+- Add print CSS for Arabic RTL layout.
+- PDF download remains canonical legal output; preview is operational UX only.
+
+---
+
+### Story 5.6: Advanced Operational Reporting
+
+As a CBY or authorized bank operations user,
+I want advanced operational and governance-focused reports,
+So that I can monitor throughput, queue aging, SLA risk, voting behavior, and bank activity without external BI tools.
+
+**Acceptance Criteria:**
+
+**Operational Reports:**
+
+**Given** I have reporting access
+**When** I open `/reports`
+**Then** I can view workflow throughput, pending queue aging, SLA delay indicators, approval/rejection ratios, support committee activity, voting outcomes, and customs issuance metrics
+**And** all report widgets support date-range filtering
+**And** metrics are scoped to my role and organization
+
+**Bank Reports:**
+
+**Given** I am a bank-scoped reporting user
+**When** I view bank reports
+**Then** I see only bank-specific request statistics, importer/supplier activity, approval success rates, and historical workflow volume for my own bank
+**And** `CBY_ADMIN` can view cross-bank comparisons where policy permits
+
+**Executive Reports:**
+
+**Given** I am `COMMITTEE_DIRECTOR`, `EXECUTIVE_MEMBER`, or `CBY_ADMIN`
+**When** I view executive reports
+**Then** I see voting participation, abstention metrics, committee performance, and trend dashboards according to my role permissions
+**And** bank-scoped users cannot see executive-only details beyond their permitted request/document visibility
+
+**Exports and Presets:**
+
+**Given** I have reporting access
+**When** I export a report
+**Then** I can export to Excel and PDF using the same role-scoped filtered dataset
+**And** export events are audit logged
+**And** saved filters/presets can be created, updated, and reused by the owning user or role scope as allowed
+
+**Technical Requirements:**
+
+- Review and harden existing `ReportController` deferred issues before building UI polish.
+- Use performant indexed queries and aggregation; avoid full-table loading for large datasets.
+- Add backend tests for role-scoped reporting visibility and export datasets.
+- No external BI dependencies, data warehouse complexity, or AI analytics.
+- Reporting must remain operational and governance-focused, not speculative risk scoring.
+
+---
+
+### Story 5.7: Approved Lovable Prototype Parity & Production UI Alignment
+
+As a stakeholder and product owner,
+I want the production Nuxt application to match the accepted Lovable prototype as closely as possible within the current production tech stack,
+So that stakeholder-approved UX intent is preserved while replacing demo-only behavior with secure, audited, production implementations.
+
+**Acceptance Criteria:**
+
+**Given** the accepted prototype in `lovable/`
+**When** the parity audit runs
+**Then** every stakeholder-facing route in `lovable/src/routes/*` is mapped to one of:
+- implemented production route,
+- production-equivalent route with a different path/name,
+- intentionally excluded demo-only behavior,
+- explicitly deferred post-sprint item with reason.
+
+**Given** a prototype screen is part of the approved stakeholder UX
+**When** its production equivalent is implemented or reviewed
+**Then** the Nuxt/Vue/Tailwind UI matches the Lovable prototype as closely as practical for:
+- page structure,
+- RTL layout,
+- sidebar/header shell,
+- page headers and actions,
+- tables,
+- cards,
+- badges,
+- forms,
+- dialogs,
+- tabs,
+- notification surfaces,
+- search surfaces,
+- print-preview layout,
+- report/dashboard widgets,
+- empty/loading/error states.
+
+**Given** the current production tech stack is Nuxt 4, Vue, TypeScript, Tailwind CSS, shadcn-vue-compatible patterns, and Pinia
+**When** prototype UI is translated
+**Then** the implementation uses the existing production stack and component conventions
+**And** it does not copy React/TanStack code from Lovable directly
+**And** it does not use Lovable mock stores as production state
+**And** it adapts visual intent rather than importing prototype implementation details.
+
+**Given** a Lovable feature is demo-only
+**When** parity is assessed
+**Then** it is excluded from production implementation
+**And** the exclusion is documented in the parity checklist
+**And** excluded items include at minimum: role switcher, fake demo login picker, mock-state edits, demo reset tools, prototype footer/demo labels, and UI-only authorization shortcuts.
+
+**Given** a route appears in production navigation
+**When** the user opens it
+**Then** it is fully implemented, role-guarded, scoped, backed by production APIs, visually aligned with the accepted prototype, and has no placeholder-only state
+**And** if a page is not ready, it is not exposed in navigation.
+
+**Given** prototype parity is complete
+**When** QA reviews the app
+**Then** a final parity report is produced showing:
+- route-by-route comparison,
+- implemented production equivalents,
+- known visual differences and rationale,
+- demo-only exclusions,
+- remaining deferred items,
+- screenshots or manual verification notes for key flows.
+
+**Technical Requirements:**
+
+- Use `lovable/` as read-only reference; do not modify prototype files.
+- Use production docs and `DESIGN.md` as constraints where prototype details conflict with governance, canonical roles, status enums, security, or audit rules.
+- Keep Arabic RTL first and desktop-first responsive behavior.
+- Verify core pages at desktop and <=600px responsive widths where practical.
+- This story is a parity/signoff story; it should run after Stories 5.1-5.6 or be used as a rolling QA checklist across the sprint.

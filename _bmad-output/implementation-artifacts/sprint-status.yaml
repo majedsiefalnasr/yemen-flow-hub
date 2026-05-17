@@ -1,5 +1,5 @@
 # generated: 2026-05-16
-# last_updated: 2026-05-16
+# last_updated: 2026-05-17 (post-MVP sprint 5 planning)
 # project: Yemen Flow Hub
 # project_key: NOKEY
 # tracking_system: file-system
@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-16
-last_updated: 2026-05-17 (story 4.6 review)
+last_updated: 2026-05-17 (post-MVP sprint 5 planning)
 project: Yemen Flow Hub
 project_key: NOKEY
 tracking_system: file-system
@@ -62,7 +62,7 @@ development_status:
   epic-2-retrospective: optional
 
   # ─── Epic 3: CBY Operational Workflow — Support → SWIFT → Voting → Customs
-  epic-3: in-progress
+  epic-3: done
   3-1-support-committee-review-claim-lifecycle-approve-reject: done
   3-2-support-committee-frontend-queue-auto-claim-ux-dashboard: done
   3-3-swift-officer-queue-upload-immutability: done
@@ -72,7 +72,7 @@ development_status:
   epic-3-retrospective: optional
 
   # ─── Epic 4: System Completion — Audit, Documents, Dashboards & Polish ───
-  epic-4: in-progress
+  epic-4: done
   4-1-auditservice-stage-history-audit-api: done
   4-2-workflow-timeline-audit-timeline-components-frontend: done
   4-3-document-download-permission-matrix: done
@@ -80,3 +80,14 @@ development_status:
   4-5-cby-admin-dashboard-full-system-visibility: done
   4-6-swift-officer-executive-dashboards-rtl-final-pass: done
   epic-4-retrospective: optional
+
+  # ─── Epic 5: Post-MVP Institutional Operations Platform ──────────────────
+  epic-5: backlog
+  5-1-bank-admin-role-hierarchical-rbac-scoped-bank-administration: backlog
+  5-2-profile-settings-navigation-completion: backlog
+  5-3-in-app-notifications-phase-1: backlog
+  5-4-global-search-phase-1: backlog
+  5-5-customs-print-preview-page: backlog
+  5-6-advanced-operational-reporting: backlog
+  5-7-approved-lovable-prototype-parity-production-ui-alignment: backlog
+  epic-5-retrospective: optional
