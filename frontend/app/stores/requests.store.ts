@@ -27,6 +27,8 @@ export const useRequestsStore = defineStore('requests', {
     performingAction: false,
     issuingCustoms: false,
     downloadingCustoms: false,
+    uploading: false,
+    uploadError: null as string | null,
     saving: false,
     error: null as string | null,
     meta: null as PaginationMeta | null,
@@ -146,6 +148,27 @@ export const useRequestsStore = defineStore('requests', {
       }
       finally {
         this.saving = false
+      }
+    },
+
+    async uploadDocument(id: number, file: File): Promise<void> {
+      this.uploading = true
+      this.uploadError = null
+
+      try {
+        const { uploadDocument } = useRequests()
+        await uploadDocument(id, file, file.name)
+        await this.loadDocuments(id)
+      }
+      catch (err) {
+        if (import.meta.dev) {
+          console.error('[requests.store] uploadDocument failed:', err)
+        }
+        this.uploadError = 'تعذّر رفع المستند. يرجى المحاولة مرة أخرى.'
+        throw err
+      }
+      finally {
+        this.uploading = false
       }
     },
 

@@ -12,6 +12,7 @@ import CorrectionBanner from '../../../components/ui/CorrectionBanner.vue'
 import ActiveReviewBanner from '../../../components/ui/ActiveReviewBanner.vue'
 import ClaimedByOthersBanner from '../../../components/ui/ClaimedByOthersBanner.vue'
 import ActionsPanel from '../../../components/requests/ActionsPanel.vue'
+import DocumentChecklist from '../../../components/requests/DocumentChecklist.vue'
 import VotingPanel from '../../../components/voting/VotingPanel.vue'
 import WorkflowTimeline from '../../../components/workflow/WorkflowTimeline.vue'
 import AuditTimeline from '../../../components/workflow/AuditTimeline.vue'
@@ -307,6 +308,28 @@ async function downloadCustomsDeclaration() {
   }
 }
 
+async function handleDownloadCustoms(customsId: number, declarationNumber: string) {
+  customsDownloadError.value = ''
+  try {
+    await requestsStore.downloadCustomsDeclaration(
+      customsId,
+      `customs-declaration-${declarationNumber}.pdf`,
+    )
+  }
+  catch {
+    customsDownloadError.value = 'تعذّر تحميل البيان الجمركي.'
+  }
+}
+
+async function handleUploadDocument(file: File) {
+  try {
+    await requestsStore.uploadDocument(id, file)
+  }
+  catch {
+    // uploadError is set on the store by the action; component reads it from there
+  }
+}
+
 async function downloadDocument(docId: number, filename: string) {
   if (downloadingIds.value.has(docId)) return
 
@@ -551,46 +574,23 @@ function actorLabel(id: number | null | undefined): string {
         <section v-else-if="activeTab === 'documents'" class="tab-panel" role="tabpanel" aria-label="المستندات">
           <div class="card">
             <h2 class="card-title">المستندات المرفوعة</h2>
-
-            <div v-if="requestsStore.loadingDocuments" class="docs-loading" aria-busy="true">
-              <div class="skeleton skeleton--line" />
-              <div class="skeleton skeleton--line" />
-            </div>
-
-            <p v-else-if="requestsStore.documentsError" class="docs-error" role="alert">
-              {{ requestsStore.documentsError }}
-            </p>
-
-            <p v-else-if="requestsStore.documentsLoaded && requestsStore.documents.length === 0" class="docs-empty">
-              لا توجد مستندات مرفوعة بعد.
-            </p>
-
-            <ul v-else-if="requestsStore.documents.length > 0" class="docs-list" aria-label="قائمة المستندات">
-              <li
-                v-for="doc in requestsStore.documents"
-                :key="doc.id"
-                class="doc-item"
-              >
-                <div class="doc-info">
-                  <span class="doc-name">{{ doc.original_filename }}</span>
-                  <span class="doc-meta">
-                    {{ formatFileSize(doc.size_bytes) }} · {{ formatDate(doc.uploaded_at) }}
-                    <template v-if="doc.uploaded_by_name"> · {{ doc.uploaded_by_name }}</template>
-                  </span>
-                  <span v-if="downloadErrors[doc.id]" class="doc-download-error" role="alert">
-                    {{ downloadErrors[doc.id] }}
-                  </span>
-                </div>
-                <button
-                  class="doc-download"
-                  :disabled="downloadingIds.has(doc.id)"
-                  :aria-label="`تحميل ${doc.original_filename}`"
-                  @click="downloadDocument(doc.id, doc.original_filename)"
-                >
-                  {{ downloadingIds.has(doc.id) ? 'جارٍ التحميل…' : 'تحميل' }}
-                </button>
-              </li>
-            </ul>
+            <DocumentChecklist
+              :documents="requestsStore.documents"
+              :customs-declaration="request.customs_declaration ?? null"
+              :user-role="userRole"
+              :request-status="request.status"
+              :loading="requestsStore.loadingDocuments"
+              :error="requestsStore.documentsError"
+              :uploading-document="requestsStore.uploading"
+              :upload-error="requestsStore.uploadError"
+              :downloading-ids="downloadingIds"
+              :download-errors="downloadErrors"
+              :customs-downloading="requestsStore.downloadingCustoms"
+              :customs-download-error="customsDownloadError"
+              @download="downloadDocument"
+              @download-customs="handleDownloadCustoms"
+              @upload="handleUploadDocument"
+            />
           </div>
         </section>
 
@@ -884,91 +884,12 @@ function actorLabel(id: number | null | undefined): string {
   cursor: not-allowed;
 }
 
-/* Documents */
-.docs-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.doc-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 16px;
-  background: #f5f5f7;
-  border-radius: 8px;
-  gap: 12px;
-}
-
-.doc-info {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  flex: 1;
-  overflow: hidden;
-}
-
-.doc-name {
-  font-size: 14px;
-  font-weight: 500;
-  color: #1d1d1f;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.doc-meta {
-  font-size: 12px;
-  color: #6e6e73;
-}
-
-.doc-download-error {
-  font-size: 12px;
-  color: #ff3b30;
-}
-
-.doc-download {
-  background: none;
-  border: none;
-  color: #0071e3;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  flex-shrink: 0;
-  padding: 0;
-}
-
-.doc-download:hover:not(:disabled) {
-  text-decoration: underline;
-}
-
-.doc-download:disabled {
-  color: #8e8e93;
-  cursor: not-allowed;
-}
-
-.docs-empty {
-  color: #6e6e73;
-  font-size: 14px;
-  text-align: center;
-  padding: 24px 0;
-}
-
+/* Documents — error displayed in Overview tab's customs section */
 .docs-error {
   color: #ff3b30;
   font-size: 14px;
   text-align: center;
   padding: 24px 0;
-}
-
-.docs-loading {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
 }
 
 .history-loading {
