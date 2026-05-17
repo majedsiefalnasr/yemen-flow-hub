@@ -548,15 +548,16 @@ class DashboardStatsTest extends TestCase
         $de    = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
         $swift = $this->makeUser(UserRole::SWIFT_OFFICER, $this->bank);
 
-        // SWIFT_UPLOADED is transient — after auto-chain the request lands at WAITING_FOR_VOTING_OPEN.
-        // The KPI uses swift_uploaded_at IS NOT NULL to count historically uploaded requests.
+        // Production swift_upload auto-chains SWIFT_UPLOADED to WAITING_FOR_VOTING_OPEN,
+        // so the stable uploaded signal is the request-level upload timestamp.
         $this->makeRequest($this->bank, $de, RequestStatus::WAITING_FOR_VOTING_OPEN, ['swift_uploaded_at' => now()]);
+        $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_VOTING_OPEN, ['swift_uploaded_at' => now()]);
         $this->makeRequest($this->bank, $de, RequestStatus::WAITING_FOR_SWIFT);
 
         $this->actingAs($swift)
             ->getJson('/api/dashboard/stats')
             ->assertOk()
-            ->assertJsonPath('data.uploaded', 1);
+            ->assertJsonPath('data.uploaded', 2);
     }
 
     public function test_swift_officer_final_approved_counts_executive_approved_and_completed(): void
@@ -572,7 +573,7 @@ class DashboardStatsTest extends TestCase
         $this->actingAs($swift)
             ->getJson('/api/dashboard/stats')
             ->assertOk()
-            ->assertJsonPath('data.final_approved', 3);
+            ->assertJsonPath('data.final_approved', 2);
     }
 
     public function test_swift_officer_final_rejected_counts_executive_rejected(): void
@@ -646,6 +647,7 @@ class DashboardStatsTest extends TestCase
                 'active_voting_sessions',
                 'decisions_approved',
                 'decisions_rejected',
+                'finalized_decisions',
                 'voting_queue',
             ]]);
     }
@@ -743,7 +745,9 @@ class DashboardStatsTest extends TestCase
                 'active_voting_sessions',
                 'decisions_approved',
                 'decisions_rejected',
+                'finalized_decisions',
                 'voting_queue',
+                'customs_declaration_pending',
             ]]);
     }
 
@@ -773,5 +777,38 @@ class DashboardStatsTest extends TestCase
 
         $response = $this->actingAs($director)->getJson('/api/dashboard/stats')->assertOk();
         $this->assertCount(50, $response->json('data.voting_queue'));
+    }
+
+    public function test_committee_director_finalized_decisions_count(): void
+    {
+        $de       = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $director = $this->makeUser(UserRole::COMMITTEE_DIRECTOR);
+
+        $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_APPROVED);
+        $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_REJECTED);
+        $this->makeRequest($this->bank, $de, RequestStatus::CUSTOMS_DECLARATION_ISSUED);
+        $this->makeRequest($this->bank, $de, RequestStatus::COMPLETED);
+        $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_VOTING_OPEN);
+
+        $this->actingAs($director)
+            ->getJson('/api/dashboard/stats')
+            ->assertOk()
+            ->assertJsonPath('data.finalized_decisions', 4);
+    }
+
+    public function test_committee_director_customs_declaration_pending_lists_executive_approved(): void
+    {
+        $de       = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $director = $this->makeUser(UserRole::COMMITTEE_DIRECTOR);
+
+        $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_APPROVED);
+        $this->makeRequest($this->bank, $de, RequestStatus::COMPLETED);
+        $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_REJECTED);
+
+        $response = $this->actingAs($director)->getJson('/api/dashboard/stats')->assertOk();
+        $pending  = $response->json('data.customs_declaration_pending');
+
+        $this->assertCount(1, $pending);
+        $this->assertSame(RequestStatus::EXECUTIVE_APPROVED->value, $pending[0]['status']);
     }
 }

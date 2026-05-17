@@ -191,8 +191,6 @@ class DashboardController extends Controller
             ->where('status', RequestStatus::WAITING_FOR_SWIFT->value)
             ->count();
 
-        // Counts requests where SWIFT has been uploaded, regardless of current status.
-        // SWIFT_UPLOADED is transient — auto-chains immediately to WAITING_FOR_VOTING_OPEN.
         $uploaded = (clone $base)
             ->whereNotNull('swift_uploaded_at')
             ->count();
@@ -200,7 +198,6 @@ class DashboardController extends Controller
         $finalApproved = (clone $base)
             ->whereIn('status', [
                 RequestStatus::EXECUTIVE_APPROVED->value,
-                RequestStatus::CUSTOMS_DECLARATION_ISSUED->value,
                 RequestStatus::COMPLETED->value,
             ])
             ->count();
@@ -248,6 +245,15 @@ class DashboardController extends Controller
             ->where('status', RequestStatus::EXECUTIVE_REJECTED->value)
             ->count();
 
+        $finalizedDecisions = ImportRequest::query()
+            ->whereIn('status', [
+                RequestStatus::EXECUTIVE_APPROVED->value,
+                RequestStatus::EXECUTIVE_REJECTED->value,
+                RequestStatus::CUSTOMS_DECLARATION_ISSUED->value,
+                RequestStatus::COMPLETED->value,
+            ])
+            ->count();
+
         $votingQueue = ImportRequest::query()
             ->whereIn('status', [
                 RequestStatus::WAITING_FOR_VOTING_OPEN->value,
@@ -264,6 +270,7 @@ class DashboardController extends Controller
             'active_voting_sessions'  => $activeVotingSessions,
             'decisions_approved'      => $decisionsApproved,
             'decisions_rejected'      => $decisionsRejected,
+            'finalized_decisions'     => $finalizedDecisions,
             'voting_queue'            => ImportRequestResource::collection($votingQueue)->toArray(request()),
         ];
     }
@@ -277,7 +284,17 @@ class DashboardController extends Controller
     // COMMITTEE_DIRECTOR: global CBY view — no org scope
     private function committeeDirectorStats(): \Illuminate\Http\JsonResponse
     {
-        return ApiResponse::success($this->executiveVotingStats(), 'Dashboard stats retrieved.');
+        $customsDeclarationPending = ImportRequest::query()
+            ->where('status', RequestStatus::EXECUTIVE_APPROVED->value)
+            ->orderBy('updated_at')
+            ->orderBy('id')
+            ->limit(50)
+            ->with(['bank'])
+            ->get();
+
+        return ApiResponse::success(array_merge($this->executiveVotingStats(), [
+            'customs_declaration_pending' => ImportRequestResource::collection($customsDeclarationPending)->toArray(request()),
+        ]), 'Dashboard stats retrieved.');
     }
 
     // CBY_ADMIN: full-system visibility across all banks
