@@ -316,9 +316,15 @@ export const NAV_ITEMS: NavItem[] = [
     roles: [UserRole.BANK_ADMIN],
   },
   {
-    label: 'إعدادات النظام',
+    label: 'الإعدادات',
     route: '/settings',
     icon: 'settings',
+    roles: ALL_ROLES,
+  },
+  {
+    label: 'إعدادات النظام',
+    route: '/admin/settings',
+    icon: 'sliders',
     roles: [UserRole.CBY_ADMIN],
   },
 ]
@@ -368,7 +374,7 @@ export const STATUS_LABELS: Record<RequestStatus, string> = {
 }
 
 /** Routes that require authentication (all except login) */
-export const PROTECTED_ROUTES = ['/dashboard', '/requests', '/voting', '/customs', '/audit', '/reports', '/notifications', '/admin', '/bank', '/settings', '/merchants', '/banks', '/users']
+export const PROTECTED_ROUTES = ['/dashboard', '/requests', '/voting', '/customs', '/audit', '/reports', '/notifications', '/admin', '/admin/settings', '/bank', '/settings', '/merchants', '/banks', '/users']
 
 /** Route → allowed roles mapping for role middleware */
 export const ROUTE_ROLE_MAP: Record<string, UserRole[]> = {
@@ -384,8 +390,9 @@ export const ROUTE_ROLE_MAP: Record<string, UserRole[]> = {
   ],
   '/audit': [UserRole.CBY_ADMIN],
   '/admin': [UserRole.CBY_ADMIN],
+  '/admin/settings': [UserRole.CBY_ADMIN],
   '/banks': [UserRole.CBY_ADMIN, UserRole.BANK_ADMIN],
   '/users': [UserRole.CBY_ADMIN, UserRole.BANK_ADMIN],
   '/bank/users': [UserRole.BANK_REVIEWER],
-  '/settings': [UserRole.CBY_ADMIN],
+  '/settings': ALL_ROLES,
 }
