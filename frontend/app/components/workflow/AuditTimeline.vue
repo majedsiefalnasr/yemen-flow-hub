@@ -1,45 +1,41 @@
 <script setup lang="ts">
 import type { RequestStageHistory } from '../../types/models'
-import { STATUS_LABELS, ROLE_LABELS } from '../../constants/workflow'
+import { STATUS_LABELS, STATUS_COLORS, ROLE_LABELS } from '../../constants/workflow'
 import { RequestStatus, UserRole } from '../../types/enums'
 
 defineProps<{
   entries: RequestStageHistory[]
 }>()
 
-const GREEN_STATUSES = new Set<string>([
-  RequestStatus.BANK_APPROVED,
-  RequestStatus.SUPPORT_APPROVED,
-  RequestStatus.EXECUTIVE_APPROVED,
-  RequestStatus.CUSTOMS_DECLARATION_ISSUED,
-  RequestStatus.COMPLETED,
-])
+// F5: hoisted to module scope — not rebuilt per render
+const ACTION_LABELS: Record<string, string> = {
+  submit: 'تقديم الطلب',
+  bank_approve: 'موافقة البنك',
+  bank_reject: 'رفض البنك',
+  return_to_entry: 'إعادة إلى المُدخل',
+  support_claim: 'حجز المراجعة',
+  support_release: 'إلغاء الحجز',
+  support_approve: 'موافقة لجنة الدعم',
+  support_reject: 'رفض لجنة الدعم',
+  swift_upload: 'رفع مستند SWIFT',
+  start_voting: 'فتح جلسة التصويت',
+  close_voting: 'إغلاق جلسة التصويت',
+  cast_vote: 'تسجيل تصويت',
+  finalize_approved: 'اعتماد نهائي — موافقة',
+  finalize_rejected: 'اعتماد نهائي — رفض',
+  override_approved: 'تجاوز — موافقة',
+  override_rejected: 'تجاوز — رفض',
+  issue_customs: 'إصدار البيان الجمركي',
+  complete: 'إتمام الطلب',
+  claim_expire: 'انتهاء صلاحية الحجز',
+  document_upload: 'رفع مستند',
+}
 
-const RED_STATUSES = new Set<string>([
-  RequestStatus.SUPPORT_REJECTED,
-  RequestStatus.EXECUTIVE_REJECTED,
-])
-
-const AMBER_STATUSES = new Set<string>([
-  RequestStatus.DRAFT_REJECTED_INTERNAL,
-  RequestStatus.SUBMITTED,
-])
-
-const INDIGO_STATUSES = new Set<string>([
-  RequestStatus.SUPPORT_REVIEW_PENDING,
-  RequestStatus.SUPPORT_REVIEW_IN_PROGRESS,
-  RequestStatus.EXECUTIVE_VOTING_OPEN,
-  RequestStatus.EXECUTIVE_VOTING_CLOSED,
-])
-
+// F4: delegate to STATUS_COLORS from constants/workflow.ts (single source of truth)
 function entryColor(entry: RequestStageHistory): string {
-  const s = entry.to_status
+  const s = entry.to_status as RequestStatus | null
   if (!s) return '#8e8e93'
-  if (GREEN_STATUSES.has(s)) return '#34c759'
-  if (RED_STATUSES.has(s)) return '#ff3b30'
-  if (AMBER_STATUSES.has(s)) return '#ff9f0a'
-  if (INDIGO_STATUSES.has(s)) return '#5856d6'
-  return '#8e8e93'
+  return STATUS_COLORS[s] ?? '#8e8e93'
 }
 
 function statusLabel(value: string | null): string {
@@ -53,23 +49,7 @@ function roleLabel(value: string | null): string {
 }
 
 function actionLabel(action: string): string {
-  const MAP: Record<string, string> = {
-    submit: 'تقديم الطلب',
-    bank_approve: 'موافقة البنك',
-    bank_reject: 'رفض البنك',
-    return_to_entry: 'إعادة إلى المُدخل',
-    support_claim: 'حجز المراجعة',
-    support_release: 'إلغاء الحجز',
-    support_approve: 'موافقة لجنة الدعم',
-    support_reject: 'رفض لجنة الدعم',
-    swift_upload: 'رفع مستند SWIFT',
-    start_voting: 'فتح جلسة التصويت',
-    finalize_approved: 'اعتماد نهائي — موافقة',
-    finalize_rejected: 'اعتماد نهائي — رفض',
-    issue_customs: 'إصدار البيان الجمركي',
-    complete: 'إتمام الطلب',
-  }
-  return MAP[action] ?? action
+  return ACTION_LABELS[action] ?? action
 }
 
 function formatDate(iso: string): string {
@@ -99,7 +79,7 @@ function formatDate(iso: string): string {
       <div v-if="idx > 0" class="audit-connector" aria-hidden="true" />
 
       <div class="audit-body">
-        <!-- Color dot -->
+        <!-- Color dot — F8: entryColor called once, bound to CSS var on the entry root -->
         <div
           class="audit-dot"
           :style="{ background: entryColor(entry) }"
@@ -107,17 +87,22 @@ function formatDate(iso: string): string {
         />
 
         <!-- Entry content -->
-        <div class="audit-content">
+        <!-- F8: bind color to a CSS custom property so to-chip re-uses it without a second call -->
+        <div
+          class="audit-content"
+          :style="{ '--entry-color': entryColor(entry) }"
+        >
           <!-- Action title -->
           <span class="audit-action">{{ actionLabel(entry.action) }}</span>
 
           <!-- from → to status transition -->
+          <!-- F2: → (U+2192) is explicitly directional; bidi algorithm renders it correctly in RTL -->
           <span v-if="entry.from_status || entry.to_status" class="audit-transition">
             <span v-if="entry.from_status" class="audit-status-chip audit-status-chip--from">
               {{ statusLabel(entry.from_status) }}
             </span>
-            <span v-if="entry.from_status && entry.to_status" class="audit-arrow" aria-hidden="true">←</span>
-            <span v-if="entry.to_status" class="audit-status-chip audit-status-chip--to" :style="{ borderColor: entryColor(entry), color: entryColor(entry) }">
+            <span v-if="entry.from_status && entry.to_status" class="audit-arrow" aria-hidden="true">&#x2192;</span>
+            <span v-if="entry.to_status" class="audit-status-chip audit-status-chip--to">
               {{ statusLabel(entry.to_status) }}
             </span>
           </span>
@@ -218,6 +203,8 @@ function formatDate(iso: string): string {
 .audit-status-chip--to {
   background: transparent;
   font-weight: 600;
+  border-color: var(--entry-color);
+  color: var(--entry-color);
 }
 
 .audit-arrow {

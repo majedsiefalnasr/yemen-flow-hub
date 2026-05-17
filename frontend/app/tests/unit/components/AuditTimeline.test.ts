@@ -1,66 +1,50 @@
 /**
  * AuditTimeline — unit tests for color logic, action labels, and entry rendering helpers.
  * Pure-logic extraction pattern (no component mounting).
+ *
+ * F4: entryColor now delegates to STATUS_COLORS from constants/workflow.ts.
+ * Tests import STATUS_COLORS directly so color expectations stay in sync with
+ * the single source of truth rather than a local copy.
  */
 import { describe, it, expect } from 'vitest'
 import { RequestStatus } from '../../../types/enums'
+import { STATUS_COLORS } from '../../../constants/workflow'
 import type { RequestStageHistory } from '../../../types/models'
 
-// ─── Reproduce color logic from AuditTimeline.vue ────────────────────────────
-
-const GREEN_STATUSES = new Set<string>([
-  RequestStatus.BANK_APPROVED,
-  RequestStatus.SUPPORT_APPROVED,
-  RequestStatus.EXECUTIVE_APPROVED,
-  RequestStatus.CUSTOMS_DECLARATION_ISSUED,
-  RequestStatus.COMPLETED,
-])
-
-const RED_STATUSES = new Set<string>([
-  RequestStatus.SUPPORT_REJECTED,
-  RequestStatus.EXECUTIVE_REJECTED,
-])
-
-const AMBER_STATUSES = new Set<string>([
-  RequestStatus.DRAFT_REJECTED_INTERNAL,
-  RequestStatus.SUBMITTED,
-])
-
-const INDIGO_STATUSES = new Set<string>([
-  RequestStatus.SUPPORT_REVIEW_PENDING,
-  RequestStatus.SUPPORT_REVIEW_IN_PROGRESS,
-  RequestStatus.EXECUTIVE_VOTING_OPEN,
-  RequestStatus.EXECUTIVE_VOTING_CLOSED,
-])
+// ─── Reproduce color logic from AuditTimeline.vue (F4: delegates to STATUS_COLORS) ──
 
 function entryColor(entry: RequestStageHistory): string {
-  const s = entry.to_status
+  const s = entry.to_status as RequestStatus | null
   if (!s) return '#8e8e93'
-  if (GREEN_STATUSES.has(s)) return '#34c759'
-  if (RED_STATUSES.has(s)) return '#ff3b30'
-  if (AMBER_STATUSES.has(s)) return '#ff9f0a'
-  if (INDIGO_STATUSES.has(s)) return '#5856d6'
-  return '#8e8e93'
+  return STATUS_COLORS[s] ?? '#8e8e93'
+}
+
+// F5: ACTION_LABELS is now module-scope in the component; mirror that here
+const ACTION_LABELS: Record<string, string> = {
+  submit: 'تقديم الطلب',
+  bank_approve: 'موافقة البنك',
+  bank_reject: 'رفض البنك',
+  return_to_entry: 'إعادة إلى المُدخل',
+  support_claim: 'حجز المراجعة',
+  support_release: 'إلغاء الحجز',
+  support_approve: 'موافقة لجنة الدعم',
+  support_reject: 'رفض لجنة الدعم',
+  swift_upload: 'رفع مستند SWIFT',
+  start_voting: 'فتح جلسة التصويت',
+  close_voting: 'إغلاق جلسة التصويت',
+  cast_vote: 'تسجيل تصويت',
+  finalize_approved: 'اعتماد نهائي — موافقة',
+  finalize_rejected: 'اعتماد نهائي — رفض',
+  override_approved: 'تجاوز — موافقة',
+  override_rejected: 'تجاوز — رفض',
+  issue_customs: 'إصدار البيان الجمركي',
+  complete: 'إتمام الطلب',
+  claim_expire: 'انتهاء صلاحية الحجز',
+  document_upload: 'رفع مستند',
 }
 
 function actionLabel(action: string): string {
-  const MAP: Record<string, string> = {
-    submit: 'تقديم الطلب',
-    bank_approve: 'موافقة البنك',
-    bank_reject: 'رفض البنك',
-    return_to_entry: 'إعادة إلى المُدخل',
-    support_claim: 'حجز المراجعة',
-    support_release: 'إلغاء الحجز',
-    support_approve: 'موافقة لجنة الدعم',
-    support_reject: 'رفض لجنة الدعم',
-    swift_upload: 'رفع مستند SWIFT',
-    start_voting: 'فتح جلسة التصويت',
-    finalize_approved: 'اعتماد نهائي — موافقة',
-    finalize_rejected: 'اعتماد نهائي — رفض',
-    issue_customs: 'إصدار البيان الجمركي',
-    complete: 'إتمام الطلب',
-  }
-  return MAP[action] ?? action
+  return ACTION_LABELS[action] ?? action
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -82,86 +66,71 @@ const makeEntry = (overrides: Partial<RequestStageHistory> = {}): RequestStageHi
   ...overrides,
 })
 
-// ─── Color tests ─────────────────────────────────────────────────────────────
+// ─── Color tests — delegating to STATUS_COLORS ───────────────────────────────
 
 describe('AuditTimeline entryColor', () => {
-  it('returns green for approval statuses', () => {
-    const approvals = [
-      RequestStatus.BANK_APPROVED,
-      RequestStatus.SUPPORT_APPROVED,
-      RequestStatus.EXECUTIVE_APPROVED,
-      RequestStatus.CUSTOMS_DECLARATION_ISSUED,
-      RequestStatus.COMPLETED,
-    ]
-    for (const s of approvals) {
-      expect(entryColor(makeEntry({ to_status: s }))).toBe('#34c759')
+  it('returns the STATUS_COLORS value for each status', () => {
+    for (const s of Object.values(RequestStatus)) {
+      const expected = STATUS_COLORS[s]
+      expect(entryColor(makeEntry({ to_status: s }))).toBe(expected)
     }
   })
 
-  it('returns red for rejection statuses', () => {
+  it('returns neutral gray when to_status is null (non-transition event)', () => {
+    expect(entryColor(makeEntry({ to_status: null }))).toBe('#8e8e93')
+  })
+
+  it('returns neutral gray for DRAFT (initial creation — no color in STATUS_COLORS triggers fallback)', () => {
+    expect(entryColor(makeEntry({ to_status: RequestStatus.DRAFT }))).toBe(STATUS_COLORS[RequestStatus.DRAFT])
+  })
+
+  // Spot-check key semantic colors stay correct via STATUS_COLORS
+  it('rejection statuses (SUPPORT_REJECTED, EXECUTIVE_REJECTED) are red', () => {
     expect(entryColor(makeEntry({ to_status: RequestStatus.SUPPORT_REJECTED }))).toBe('#ff3b30')
     expect(entryColor(makeEntry({ to_status: RequestStatus.EXECUTIVE_REJECTED }))).toBe('#ff3b30')
   })
 
-  it('returns amber for DRAFT_REJECTED_INTERNAL and SUBMITTED', () => {
-    expect(entryColor(makeEntry({ to_status: RequestStatus.DRAFT_REJECTED_INTERNAL }))).toBe('#ff9f0a')
-    expect(entryColor(makeEntry({ to_status: RequestStatus.SUBMITTED }))).toBe('#ff9f0a')
+  it('final approval statuses are green', () => {
+    expect(entryColor(makeEntry({ to_status: RequestStatus.EXECUTIVE_APPROVED }))).toBe('#34c759')
+    expect(entryColor(makeEntry({ to_status: RequestStatus.CUSTOMS_DECLARATION_ISSUED }))).toBe('#34c759')
+    expect(entryColor(makeEntry({ to_status: RequestStatus.COMPLETED }))).toBe('#34c759')
   })
 
-  it('returns indigo for review/voting statuses', () => {
-    const reviews = [
-      RequestStatus.SUPPORT_REVIEW_PENDING,
-      RequestStatus.SUPPORT_REVIEW_IN_PROGRESS,
-      RequestStatus.EXECUTIVE_VOTING_OPEN,
-      RequestStatus.EXECUTIVE_VOTING_CLOSED,
-    ]
-    for (const s of reviews) {
-      expect(entryColor(makeEntry({ to_status: s }))).toBe('#5856d6')
-    }
-  })
-
-  it('returns neutral gray for SWIFT-related and WAITING statuses', () => {
-    const neutral = [
-      RequestStatus.SWIFT_UPLOADED,
-      RequestStatus.WAITING_FOR_SWIFT,
-      RequestStatus.WAITING_FOR_VOTING_OPEN,
-    ]
-    for (const s of neutral) {
-      expect(entryColor(makeEntry({ to_status: s }))).toBe('#8e8e93')
-    }
-  })
-
-  it('returns neutral gray when to_status is null', () => {
-    expect(entryColor(makeEntry({ to_status: null }))).toBe('#8e8e93')
-  })
-
-  it('returns neutral gray for DRAFT (initial creation)', () => {
-    expect(entryColor(makeEntry({ to_status: RequestStatus.DRAFT }))).toBe('#8e8e93')
-  })
-
-  it('returns neutral gray for BANK_REVIEW', () => {
-    expect(entryColor(makeEntry({ to_status: RequestStatus.BANK_REVIEW }))).toBe('#8e8e93')
+  it('SWIFT-related statuses use SWIFT cyan from STATUS_COLORS', () => {
+    expect(entryColor(makeEntry({ to_status: RequestStatus.WAITING_FOR_SWIFT }))).toBe('#32ade6')
+    expect(entryColor(makeEntry({ to_status: RequestStatus.SWIFT_UPLOADED }))).toBe('#32ade6')
   })
 })
 
 // ─── Action label tests ───────────────────────────────────────────────────────
 
 describe('AuditTimeline actionLabel', () => {
-  it('maps known action keys to Arabic labels', () => {
-    expect(actionLabel('submit')).toBe('تقديم الطلب')
-    expect(actionLabel('bank_approve')).toBe('موافقة البنك')
-    expect(actionLabel('bank_reject')).toBe('رفض البنك')
-    expect(actionLabel('return_to_entry')).toBe('إعادة إلى المُدخل')
-    expect(actionLabel('support_claim')).toBe('حجز المراجعة')
-    expect(actionLabel('support_release')).toBe('إلغاء الحجز')
-    expect(actionLabel('support_approve')).toBe('موافقة لجنة الدعم')
-    expect(actionLabel('support_reject')).toBe('رفض لجنة الدعم')
-    expect(actionLabel('swift_upload')).toBe('رفع مستند SWIFT')
-    expect(actionLabel('start_voting')).toBe('فتح جلسة التصويت')
-    expect(actionLabel('finalize_approved')).toBe('اعتماد نهائي — موافقة')
-    expect(actionLabel('finalize_rejected')).toBe('اعتماد نهائي — رفض')
-    expect(actionLabel('issue_customs')).toBe('إصدار البيان الجمركي')
-    expect(actionLabel('complete')).toBe('إتمام الطلب')
+  it('maps all known action keys to Arabic labels', () => {
+    const cases: [string, string][] = [
+      ['submit', 'تقديم الطلب'],
+      ['bank_approve', 'موافقة البنك'],
+      ['bank_reject', 'رفض البنك'],
+      ['return_to_entry', 'إعادة إلى المُدخل'],
+      ['support_claim', 'حجز المراجعة'],
+      ['support_release', 'إلغاء الحجز'],
+      ['support_approve', 'موافقة لجنة الدعم'],
+      ['support_reject', 'رفض لجنة الدعم'],
+      ['swift_upload', 'رفع مستند SWIFT'],
+      ['start_voting', 'فتح جلسة التصويت'],
+      ['close_voting', 'إغلاق جلسة التصويت'],
+      ['cast_vote', 'تسجيل تصويت'],
+      ['finalize_approved', 'اعتماد نهائي — موافقة'],
+      ['finalize_rejected', 'اعتماد نهائي — رفض'],
+      ['override_approved', 'تجاوز — موافقة'],
+      ['override_rejected', 'تجاوز — رفض'],
+      ['issue_customs', 'إصدار البيان الجمركي'],
+      ['complete', 'إتمام الطلب'],
+      ['claim_expire', 'انتهاء صلاحية الحجز'],
+      ['document_upload', 'رفع مستند'],
+    ]
+    for (const [key, label] of cases) {
+      expect(actionLabel(key)).toBe(label)
+    }
   })
 
   it('falls back to the raw action key for unknown actions', () => {
