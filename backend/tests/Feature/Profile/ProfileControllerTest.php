@@ -198,4 +198,46 @@ class ProfileControllerTest extends TestCase
         $this->assertEquals($user->role->value, $auditLog->user_role);
     }
 
+    public function test_change_password_rejects_same_password_as_current(): void
+    {
+        $user = User::query()->create([
+            'name' => 'Test User',
+            'email' => 'test@example.com',
+            'password' => Hash::make('CurrentPassword123'),
+            'role' => UserRole::DATA_ENTRY,
+            'bank_id' => null,
+            'is_active' => true,
+        ]);
+
+        $response = $this->actingAs($user)->postJson('/api/profile/change-password', [
+            'current_password' => 'CurrentPassword123',
+            'password' => 'CurrentPassword123',
+            'password_confirmation' => 'CurrentPassword123',
+        ]);
+
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors('password');
+        $response->assertJsonPath('errors.password.0', 'The new password must be different from the current password.');
+    }
+
+    public function test_change_password_requires_user_password_to_be_set(): void
+    {
+        $user = User::query()->create([
+            'name' => 'Test User',
+            'email' => 'test@example.com',
+            'password' => null,
+            'role' => UserRole::DATA_ENTRY,
+            'bank_id' => null,
+            'is_active' => true,
+        ]);
+
+        $response = $this->actingAs($user)->postJson('/api/profile/change-password', [
+            'current_password' => 'anyPassword',
+            'password' => 'NewPassword123',
+            'password_confirmation' => 'NewPassword123',
+        ]);
+
+        $response->assertStatus(403);
+    }
+
 }

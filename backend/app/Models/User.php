@@ -55,6 +55,11 @@ class User extends Authenticatable
         return $this->hasMany(AuditLog::class);
     }
 
+    public function loginHistory(): HasMany
+    {
+        return $this->hasMany(LoginHistory::class);
+    }
+
     public function hasRole(UserRole $role): bool
     {
         return $this->role === $role;

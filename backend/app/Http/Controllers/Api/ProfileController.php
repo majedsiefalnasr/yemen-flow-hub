@@ -30,8 +30,21 @@ class ProfileController extends Controller
     {
         $user = $request->user()->loadMissing('bank');
 
+        $user->load(['loginHistory' => function ($query) {
+            $query->orderBy('logged_in_at', 'desc')->limit(3);
+        }]);
+
+        $resource = new UserResource($user);
+
         return ApiResponse::success(
-            new UserResource($user),
+            array_merge($resource->resolve(), [
+                'last_3_logins' => $user->loginHistory->map(fn ($login) => [
+                    'logged_in_at' => $login->logged_in_at,
+                    'ip_address' => $login->ip_address,
+                    'user_agent' => $login->user_agent,
+                ])->values(),
+                'active_sessions_count' => $user->tokens()->whereNull('last_used_at')->orWhere('last_used_at', '>', now()->subHours(24))->count(),
+            ]),
             'Profile retrieved.'
         );
     }

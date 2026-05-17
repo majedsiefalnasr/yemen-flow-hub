@@ -4,6 +4,7 @@ namespace App\Services\Settings;
 
 use App\Models\SystemSetting;
 use App\Models\User;
+use Illuminate\Support\Facades\Cache;
 use InvalidArgumentException;
 
 class AdminSettingsService
@@ -75,6 +76,8 @@ class AdminSettingsService
             ]);
         }
 
+        $this->invalidateCache($key);
+
         return $setting->value;
     }
 
@@ -91,6 +94,8 @@ class AdminSettingsService
                 'updated_by' => $actor->id,
             ]);
         }
+
+        $this->invalidateCache($key);
 
         return $default;
     }
@@ -126,5 +131,11 @@ class AdminSettingsService
                 );
             }
         }
+    }
+
+    private function invalidateCache(string $key): void
+    {
+        Cache::forget("admin_setting:$key");
+        Cache::forget('admin_settings:all');
     }
 }

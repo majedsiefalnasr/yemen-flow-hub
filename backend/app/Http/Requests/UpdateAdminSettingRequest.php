@@ -2,13 +2,15 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\UserRole;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateAdminSettingRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true;
+        $user = $this->user();
+        return $user !== null && $user->hasRole(UserRole::CBY_ADMIN);
     }
 
     public function rules(): array

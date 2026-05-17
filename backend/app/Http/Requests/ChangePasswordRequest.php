@@ -9,7 +9,8 @@ class ChangePasswordRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user() !== null;
+        $user = $this->user();
+        return $user !== null && $user->password !== null;
     }
 
     public function rules(): array
@@ -33,7 +34,7 @@ class ChangePasswordRequest extends FormRequest
                 'regex:/[a-z]/', // At least one lowercase letter
                 'regex:/[0-9]/', // At least one digit
                 function ($attribute, $value, $fail) {
-                    if ($value === $this->user()->password) {
+                    if (Hash::check($value, $this->user()->password)) {
                         $fail('The new password must be different from the current password.');
                     }
                 },
