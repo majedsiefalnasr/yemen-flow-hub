@@ -31,7 +31,7 @@ const SC_STATS: SupportCommitteeDashboardStats = {
   waiting_for_claim: 3,
   active_by_me: 1,
   claimed_by_others: 2,
-  approved_last_7_days: 5,
+  recently_approved: 5,
   support_queue: [],
 }
 

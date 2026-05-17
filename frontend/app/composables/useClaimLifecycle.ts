@@ -1,5 +1,5 @@
 import { ref } from 'vue'
-import { useRuntimeConfig, navigateTo } from '#app'
+import { useRuntimeConfig } from '#app'
 import type { FetchError } from 'ofetch'
 
 const HEARTBEAT_INTERVAL_MS = 60_000
@@ -103,7 +103,11 @@ export function useClaimLifecycle() {
     }
   }
 
-  function startHeartbeat(id: number, onSessionExpired?: () => void): void {
+  function startHeartbeat(
+    id: number,
+    onSessionExpired?: () => void | Promise<void>,
+    onClaimLost?: () => void | Promise<void>,
+  ): void {
     // Clear any existing heartbeat for this id (singleton enforcement)
     stopHeartbeat(id)
 
@@ -124,12 +128,18 @@ export function useClaimLifecycle() {
           console.warn('[useClaimLifecycle] heartbeat failed:', status ?? 'network error', err)
         }
 
-        if (status === 401 || status === 403) {
+        if (status === 401) {
           // Auth failure is not a transient error — stop heartbeat and notify caller
           stopHeartbeat(id)
           sessionExpired.value = true
           claimError.value = 'انتهت جلستك أثناء المراجعة. يرجى تسجيل الدخول مرة أخرى.'
           onSessionExpired?.()
+        }
+        else if (status === 403 || status === 404 || status === 409 || status === 422) {
+          // Claim ownership was lost or expired — stop local reviewer state and let the page reload.
+          stopHeartbeat(id)
+          claimError.value = 'لم يعد الطلب محجوزاً باسمك.'
+          onClaimLost?.()
         }
         // For transient network errors or 5xx: stay silent — TTL handles missed beats
       }

@@ -89,6 +89,14 @@ function resolveBannerType(
   return 'none'
 }
 
+// Logic mirrored from onActionCompleted cleanup: active reviewer state only remains
+// valid while the request is still in-progress and claimed by the current user.
+function shouldKeepActiveReview(req: ImportRequest | null): boolean {
+  return !!req
+    && req.status === RequestStatus.SUPPORT_REVIEW_IN_PROGRESS
+    && req.is_claimed_by_me
+}
+
 describe('Request detail — SUPPORT_COMMITTEE claim action resolution', () => {
   it('attempts claim when request is SUPPORT_REVIEW_PENDING and can_be_claimed', () => {
     const req = makeRequest({ status: RequestStatus.SUPPORT_REVIEW_PENDING, can_be_claimed: true })
@@ -175,5 +183,36 @@ describe('Request detail — onBeforeUnmount claim release', () => {
   it('should NOT release claim when isActiveReviewer is false', () => {
     const isActiveReviewer = false
     expect(isActiveReviewer).toBe(false) // release should NOT be called
+  })
+})
+
+describe('Request detail — active review cleanup after actions', () => {
+  it('keeps active review while request remains claimed by me in support review', () => {
+    const req = makeRequest({
+      status: RequestStatus.SUPPORT_REVIEW_IN_PROGRESS,
+      is_claimed: true,
+      is_claimed_by_me: true,
+    })
+    expect(shouldKeepActiveReview(req)).toBe(true)
+  })
+
+  it('clears active review after support approve moves request out of support review', () => {
+    const req = makeRequest({
+      status: RequestStatus.WAITING_FOR_SWIFT,
+      is_claimed: false,
+      is_claimed_by_me: false,
+      claimed_by: null,
+    })
+    expect(shouldKeepActiveReview(req)).toBe(false)
+  })
+
+  it('clears active review when claim is no longer mine', () => {
+    const req = makeRequest({
+      status: RequestStatus.SUPPORT_REVIEW_IN_PROGRESS,
+      is_claimed: true,
+      is_claimed_by_me: false,
+      claimed_by: { id: 99, name: 'آخر' },
+    })
+    expect(shouldKeepActiveReview(req)).toBe(false)
   })
 })

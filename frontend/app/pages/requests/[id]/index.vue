@@ -132,6 +132,25 @@ async function handleSessionExpired() {
   await navigateTo('/login')
 }
 
+async function handleClaimLost() {
+  isActiveReviewer.value = false
+  stopHeartbeat(id)
+  if (isMounted) {
+    await requestsStore.loadRequest(id)
+  }
+}
+
+function syncActiveReviewState() {
+  const req = requestsStore.currentRequest
+  if (
+    isActiveReviewer.value
+    && (!req || req.status !== RequestStatus.SUPPORT_REVIEW_IN_PROGRESS || !req.is_claimed_by_me)
+  ) {
+    isActiveReviewer.value = false
+    stopHeartbeat(id)
+  }
+}
+
 onMounted(async () => {
   isMounted = true
 
@@ -165,7 +184,7 @@ onMounted(async () => {
 
       if (claimed) {
         isActiveReviewer.value = true
-        startHeartbeat(id, handleSessionExpired)
+        startHeartbeat(id, handleSessionExpired, handleClaimLost)
 
         // Reload to get authoritative claim state from server
         await requestsStore.loadRequest(id)
@@ -202,7 +221,7 @@ onMounted(async () => {
 
       if (alive) {
         isActiveReviewer.value = true
-        startHeartbeat(id, handleSessionExpired)
+        startHeartbeat(id, handleSessionExpired, handleClaimLost)
       }
       else {
         // Claim expired or session invalid — reload to show authoritative UI state
@@ -254,6 +273,7 @@ async function onTabChange(key: TabKey) {
 
 async function onActionCompleted() {
   await requestsStore.loadRequest(id)
+  syncActiveReviewState()
   // Re-fetch documents if the user is on the documents tab
   if (activeTab.value === 'documents') {
     await requestsStore.loadDocuments(id)

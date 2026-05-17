@@ -22,7 +22,7 @@ export interface SupportCommitteeDashboardStats {
   waiting_for_claim: number
   active_by_me: number
   claimed_by_others: number
-  approved_last_7_days: number
+  recently_approved: number
   support_queue: ImportRequest[]
 }
 

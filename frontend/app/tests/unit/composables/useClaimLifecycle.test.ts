@@ -352,20 +352,43 @@ describe('useClaimLifecycle — startHeartbeat / stopHeartbeat', () => {
     expect(onSessionExpired).toHaveBeenCalledTimes(1) // still just 1
   })
 
-  it('heartbeat 403 stops interval and calls onSessionExpired', async () => {
+  it('heartbeat 403 stops interval and calls onClaimLost', async () => {
     const error = { response: { status: 403 } }
     mockFetch.mockRejectedValue(error)
 
     const onSessionExpired = vi.fn()
-    const { startHeartbeat } = useClaimLifecycle()
+    const onClaimLost = vi.fn()
+    const { startHeartbeat, sessionExpired, claimError } = useClaimLifecycle()
 
-    startHeartbeat(42, onSessionExpired)
+    startHeartbeat(42, onSessionExpired, onClaimLost)
 
     await vi.advanceTimersByTimeAsync(60_000)
-    expect(onSessionExpired).toHaveBeenCalledTimes(1)
+    expect(onSessionExpired).not.toHaveBeenCalled()
+    expect(onClaimLost).toHaveBeenCalledTimes(1)
+    expect(sessionExpired.value).toBe(false)
+    expect(claimError.value).toContain('محجوز')
 
     await vi.advanceTimersByTimeAsync(180_000)
-    expect(onSessionExpired).toHaveBeenCalledTimes(1)
+    expect(onClaimLost).toHaveBeenCalledTimes(1)
+  })
+
+  it.each([404, 409, 422])('heartbeat %s stops interval and calls onClaimLost', async (status) => {
+    const error = { response: { status } }
+    mockFetch.mockRejectedValue(error)
+
+    const onSessionExpired = vi.fn()
+    const onClaimLost = vi.fn()
+    const { startHeartbeat, sessionExpired } = useClaimLifecycle()
+
+    startHeartbeat(42, onSessionExpired, onClaimLost)
+
+    await vi.advanceTimersByTimeAsync(60_000)
+    expect(onSessionExpired).not.toHaveBeenCalled()
+    expect(onClaimLost).toHaveBeenCalledTimes(1)
+    expect(sessionExpired.value).toBe(false)
+
+    await vi.advanceTimersByTimeAsync(180_000)
+    expect(onClaimLost).toHaveBeenCalledTimes(1)
   })
 
   it('heartbeat transient network errors do not stop interval', async () => {
