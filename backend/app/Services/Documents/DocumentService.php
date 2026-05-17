@@ -78,7 +78,7 @@ class DocumentService
 
     public function download(RequestDocument $document, User $user): StreamedResponse
     {
-        Gate::forUser($user)->authorize('view', $document->request);
+        Gate::forUser($user)->authorize('download', $document);
 
         $fullPath = 'private/'.$document->stored_path;
         if (!Storage::disk('local')->exists($fullPath)) {
@@ -92,6 +92,8 @@ class DocumentService
 
         $this->auditService->log(AuditAction::DOCUMENT_DOWNLOADED, $user, $document, [
             'request_id' => $document->request_id,
+            'document_id' => $document->id,
+            'document_type' => $document->type,
         ]);
 
         return response()->streamDownload(function () use ($stream): void {

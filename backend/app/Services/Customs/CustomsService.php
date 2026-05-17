@@ -100,7 +100,7 @@ class CustomsService
     public function getPdfStream(CustomsDeclaration $declaration, User $user): StreamedResponse
     {
         $declaration->loadMissing('request');
-        Gate::forUser($user)->authorize('view', $declaration->request);
+        Gate::forUser($user)->authorize('download', $declaration);
 
         $fullPath = 'private/'.$declaration->pdf_path;
         if (!Storage::disk('local')->exists($fullPath)) {
@@ -111,6 +111,12 @@ class CustomsService
         if ($stream === false) {
             throw new CustomsException('Unable to stream customs PDF.');
         }
+
+        $this->auditService->log(AuditAction::DOCUMENT_DOWNLOADED, $user, $declaration, [
+            'document_id' => $declaration->id,
+            'document_type' => 'CUSTOMS',
+            'request_id' => $declaration->request_id,
+        ]);
 
         return response()->streamDownload(function () use ($stream): void {
             fpassthru($stream);
