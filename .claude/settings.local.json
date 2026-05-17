@@ -30,7 +30,8 @@
       "Skill(bmad-create-story)",
       "Bash(railway logs *)",
       "Bash(railway status *)",
-      "Skill(bmad-review-edge-case-hunter)"
+      "Skill(bmad-review-edge-case-hunter)",
+      "Skill(commit-commands:commit)"
     ]
   }
 }
