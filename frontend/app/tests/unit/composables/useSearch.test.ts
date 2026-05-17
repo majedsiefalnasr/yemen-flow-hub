@@ -129,6 +129,38 @@ describe('useSearch — search()', () => {
       query: { q: 'alp' },
     }))
   })
+
+  it('ignores stale responses from older in-flight requests', async () => {
+    let resolveFirst: ((value: any) => void) | undefined
+    let resolveSecond: ((value: any) => void) | undefined
+
+    mockFetch
+      .mockImplementationOnce(() => new Promise((resolve) => { resolveFirst = resolve }))
+      .mockImplementationOnce(() => new Promise((resolve) => { resolveSecond = resolve }))
+
+    const oldResults = { requests: [{ id: 1, reference_number: 'OLD', bank_id: 1, bank_name: 'Bank A', status: 'SUBMITTED', supplier_name: 'Old', amount: 1, currency: 'USD', created_at: null }], users: [], banks: [], customs: [] }
+    const newResults = { requests: [{ id: 2, reference_number: 'NEW', bank_id: 1, bank_name: 'Bank A', status: 'SUBMITTED', supplier_name: 'New', amount: 2, currency: 'USD', created_at: null }], users: [], banks: [], customs: [] }
+
+    const { search, results } = useSearch()
+
+    search('old')
+    vi.advanceTimersByTime(400)
+    await Promise.resolve()
+
+    search('new')
+    vi.advanceTimersByTime(400)
+    await Promise.resolve()
+
+    resolveSecond?.({ success: true, data: newResults })
+    await Promise.resolve()
+    await Promise.resolve()
+    expect(results.value.requests[0].reference_number).toBe('NEW')
+
+    resolveFirst?.({ success: true, data: oldResults })
+    await Promise.resolve()
+    await Promise.resolve()
+    expect(results.value.requests[0].reference_number).toBe('NEW')
+  })
 })
 
 describe('useSearch — fetchRecent()', () => {

@@ -5,12 +5,16 @@ import SidebarIcon from './SidebarIcon.vue'
 import type { SearchEntityType } from '../../types/models'
 
 const router = useRouter()
+const props = withDefaults(defineProps<{ mobile?: boolean }>(), {
+  mobile: false,
+})
 
 const { results, recentSearches, loading, activeFilter, search, fetchRecent } = useSearch()
 
 const inputValue = ref('')
 const isOpen = ref(false)
 const inputRef = ref<HTMLInputElement | null>(null)
+const wrapperRef = ref<HTMLElement | null>(null)
 
 const hasResults = computed(() =>
   results.value.requests.length > 0
@@ -80,8 +84,7 @@ function navigateTo(path: string) {
 }
 
 function onClickOutside(e: MouseEvent) {
-  const wrapper = document.getElementById('global-search-wrapper')
-  if (wrapper && !wrapper.contains(e.target as Node)) {
+  if (wrapperRef.value && !wrapperRef.value.contains(e.target as Node)) {
     isOpen.value = false
   }
 }
@@ -97,7 +100,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div id="global-search-wrapper" class="global-search">
+  <div ref="wrapperRef" class="global-search" :class="{ 'mobile-visible': props.mobile }">
     <!-- Input -->
     <div class="search-input-wrap">
       <SidebarIcon name="search" class="search-icon" />
@@ -409,7 +412,7 @@ onBeforeUnmount(() => {
 
 /* Mobile: hide on small screens — handled via AppHeader */
 @media (max-width: 600px) {
-  .global-search {
+  .global-search:not(.mobile-visible) {
     display: none;
   }
 }

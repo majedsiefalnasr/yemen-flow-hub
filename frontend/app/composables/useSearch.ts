@@ -17,6 +17,7 @@ export const useSearch = () => {
   const activeFilter = ref<SearchEntityType | 'all'>('all')
 
   let debounceTimer: ReturnType<typeof setTimeout> | null = null
+  let requestSequence = 0
 
   const search = (query: string): void => {
     if (debounceTimer !== null) {
@@ -24,16 +25,20 @@ export const useSearch = () => {
     }
 
     if (query.length < MIN_QUERY_LENGTH) {
+      requestSequence++
+      loading.value = false
       results.value = { ...EMPTY_RESULTS }
       return
     }
 
+    const requestId = ++requestSequence
+
     debounceTimer = setTimeout(() => {
-      void _doSearch(query)
+      void _doSearch(query, requestId)
     }, DEBOUNCE_DELAY)
   }
 
-  const _doSearch = async (query: string): Promise<void> => {
+  const _doSearch = async (query: string, requestId: number): Promise<void> => {
     loading.value = true
     error.value = null
 
@@ -46,14 +51,20 @@ export const useSearch = () => {
         query: { q: query },
       })
 
-      results.value = response.data
+      if (requestId === requestSequence) {
+        results.value = response.data
+      }
     }
     catch (err: any) {
-      error.value = err.data?.message || 'Failed to perform search'
-      results.value = { ...EMPTY_RESULTS }
+      if (requestId === requestSequence) {
+        error.value = err.data?.message || 'Failed to perform search'
+        results.value = { ...EMPTY_RESULTS }
+      }
     }
     finally {
-      loading.value = false
+      if (requestId === requestSequence) {
+        loading.value = false
+      }
     }
   }
 

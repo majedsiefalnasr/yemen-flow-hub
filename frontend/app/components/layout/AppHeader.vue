@@ -73,7 +73,7 @@ onMounted(() => {
 
     <!-- Mobile search overlay (full-width, shown when mobileSearchOpen) -->
     <div v-if="mobileSearchOpen" class="mobile-search-overlay">
-      <GlobalSearch />
+      <GlobalSearch mobile />
       <button class="icon-btn" aria-label="إغلاق البحث" @click="mobileSearchOpen = false">
         <SidebarIcon name="x" />
       </button>
