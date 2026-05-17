@@ -12,6 +12,8 @@ class BankResource extends JsonResource
         return [
             'id' => $this->id,
             'name' => $this->name,
+            'name_ar' => $this->name,
+            'name_en' => $this->name,
             'code' => $this->code,
             'is_active' => (bool) $this->is_active,
             'created_at' => $this->created_at?->toISOString(),

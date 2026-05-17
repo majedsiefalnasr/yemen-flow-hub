@@ -9,7 +9,19 @@ class StoreUserRequest extends ApiFormRequest
 {
     public function authorize(): bool
     {
-        return true;
+        $actor = $this->user();
+        if (!$actor?->hasRole(UserRole::BANK_ADMIN)) {
+            return true;
+        }
+
+        $roleValue = $this->input('role');
+        if (!$roleValue || !UserRole::tryFrom($roleValue)) {
+            return true;
+        }
+
+        return $actor->bank_id !== null
+            && UserRole::from($roleValue)->isBankAdminManageable()
+            && (int) $this->input('bank_id') === (int) $actor->bank_id;
     }
 
     public function rules(): array
@@ -34,7 +46,10 @@ class StoreUserRequest extends ApiFormRequest
                 return;
             }
 
-            $role = UserRole::from($roleValue);
+            $role = UserRole::tryFrom($roleValue);
+            if (!$role) {
+                return;
+            }
 
             if ($role->isBankRole() && empty($bankId)) {
                 $validator->errors()->add('bank_id', 'bank_id is required for bank roles.');
@@ -42,6 +57,16 @@ class StoreUserRequest extends ApiFormRequest
 
             if ($role->isCbyRole() && !is_null($bankId)) {
                 $validator->errors()->add('bank_id', 'bank_id must be null for CBY roles.');
+            }
+
+            if ($this->user()?->hasRole(UserRole::BANK_ADMIN)) {
+                if (!$role->isBankAdminManageable()) {
+                    $validator->errors()->add('role', 'BANK_ADMIN can only manage DATA_ENTRY and BANK_REVIEWER users.');
+                }
+
+                if ((int) $bankId !== (int) $this->user()->bank_id) {
+                    $validator->errors()->add('bank_id', 'BANK_ADMIN can only manage users in their own bank.');
+                }
             }
         });
     }

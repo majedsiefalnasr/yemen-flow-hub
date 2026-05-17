@@ -15,7 +15,11 @@ class BankPolicy
 
     public function view(User $user, Bank $bank): bool
     {
-        return (bool) $user->is_active;
+        return (bool) $user->is_active
+            && (
+                $user->hasRole(UserRole::CBY_ADMIN)
+                || ($user->isBankUser() && $user->bank_id === $bank->id)
+            );
     }
 
     public function create(User $user): bool
@@ -25,7 +29,8 @@ class BankPolicy
 
     public function update(User $user, Bank $bank): bool
     {
-        return $user->hasRole(UserRole::CBY_ADMIN);
+        return $user->hasRole(UserRole::CBY_ADMIN)
+            || ($user->hasRole(UserRole::BANK_ADMIN) && $user->bank_id === $bank->id);
     }
 
     public function delete(User $user, Bank $bank): bool

@@ -30,6 +30,7 @@ class DashboardController extends Controller
         return match (true) {
             $user->hasRole(UserRole::DATA_ENTRY)          => $this->dataEntryStats($user),
             $user->hasRole(UserRole::BANK_REVIEWER)       => $this->bankReviewerStats($user),
+            $user->hasRole(UserRole::BANK_ADMIN)          => $this->bankAdminStats($user),
             $user->hasRole(UserRole::SUPPORT_COMMITTEE)   => $this->supportCommitteeStats($user),
             $user->hasRole(UserRole::SWIFT_OFFICER)       => $this->swiftOfficerStats($user),
             $user->hasRole(UserRole::EXECUTIVE_MEMBER)    => $this->executiveMemberStats(),
@@ -37,6 +38,58 @@ class DashboardController extends Controller
             $user->hasRole(UserRole::CBY_ADMIN)           => $this->cbyadminStats(),
             default                                       => ApiResponse::success([], 'Dashboard stats retrieved.'),
         };
+    }
+
+    private function bankAdminStats($user): \Illuminate\Http\JsonResponse
+    {
+        $base = ImportRequest::query()->where('bank_id', $user->bank_id);
+
+        $pendingBankReview = (clone $base)->whereIn('status', [
+            RequestStatus::SUBMITTED->value,
+            RequestStatus::BANK_REVIEW->value,
+        ])->count();
+
+        $atCby = (clone $base)->whereIn('status', [
+            RequestStatus::BANK_APPROVED->value,
+            RequestStatus::SUPPORT_REVIEW_PENDING->value,
+            RequestStatus::SUPPORT_REVIEW_IN_PROGRESS->value,
+            RequestStatus::SUPPORT_APPROVED->value,
+            RequestStatus::WAITING_FOR_SWIFT->value,
+            RequestStatus::SWIFT_UPLOADED->value,
+            RequestStatus::WAITING_FOR_VOTING_OPEN->value,
+            RequestStatus::EXECUTIVE_VOTING_OPEN->value,
+            RequestStatus::EXECUTIVE_VOTING_CLOSED->value,
+        ])->count();
+
+        $completed = (clone $base)->whereIn('status', [
+            RequestStatus::EXECUTIVE_APPROVED->value,
+            RequestStatus::CUSTOMS_DECLARATION_ISSUED->value,
+            RequestStatus::COMPLETED->value,
+        ])->count();
+
+        $rejected = (clone $base)->whereIn('status', [
+            RequestStatus::SUPPORT_REJECTED->value,
+            RequestStatus::EXECUTIVE_REJECTED->value,
+        ])->count();
+
+        $recentRequests = (clone $base)
+            ->orderByDesc('updated_at')
+            ->limit(10)
+            ->with(['bank'])
+            ->get();
+
+        return ApiResponse::success([
+            'pending_bank_review' => $pendingBankReview,
+            'at_cby' => $atCby,
+            'completed' => $completed,
+            'rejected' => $rejected,
+            'active_users' => \App\Models\User::query()
+                ->where('bank_id', $user->bank_id)
+                ->whereIn('role', [UserRole::DATA_ENTRY->value, UserRole::BANK_REVIEWER->value])
+                ->where('is_active', true)
+                ->count(),
+            'recent_requests' => ImportRequestResource::collection($recentRequests)->toArray(request()),
+        ], 'Dashboard stats retrieved.');
     }
 
     private function dataEntryStats($user)

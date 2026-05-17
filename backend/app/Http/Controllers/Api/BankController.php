@@ -2,15 +2,22 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\AuditAction;
+use App\Enums\UserRole;
 use App\Http\Requests\StoreBankRequest;
 use App\Http\Requests\UpdateBankRequest;
 use App\Http\Resources\BankResource;
 use App\Models\Bank;
+use App\Services\Audit\AuditService;
 use App\Support\ApiResponse;
 use OpenApi\Attributes as OA;
 
 class BankController extends Controller
 {
+    public function __construct(private readonly AuditService $auditService)
+    {
+    }
+
     #[OA\Get(
         path: '/api/banks',
         tags: ['Banks'],
@@ -21,8 +28,14 @@ class BankController extends Controller
     public function index()
     {
         $this->authorize('viewAny', Bank::class);
+        $actor = request()->user();
 
-        return ApiResponse::success(BankResource::collection(Bank::query()->latest('id')->paginate(20)), 'Banks retrieved.');
+        $banks = Bank::query()
+            ->when(!$actor->hasRole(UserRole::CBY_ADMIN), fn ($q) => $q->where('id', $actor->bank_id))
+            ->latest('id')
+            ->paginate(20);
+
+        return ApiResponse::success(BankResource::collection($banks), 'Banks retrieved.');
     }
 
     #[OA\Post(
@@ -80,9 +93,16 @@ class BankController extends Controller
     {
         $this->authorize('update', $bank);
 
+        $before = $bank->only(['name', 'code', 'is_active']);
         $bank->update($request->validated());
+        $bank->refresh();
+        $this->auditService->log(AuditAction::BANK_UPDATED, $request->user(), $bank, [
+            'bank_id' => $bank->id,
+            'before' => $before,
+            'after' => $bank->only(['name', 'code', 'is_active']),
+        ]);
 
-        return ApiResponse::success(new BankResource($bank->refresh()), 'Bank updated successfully.');
+        return ApiResponse::success(new BankResource($bank), 'Bank updated successfully.');
     }
 
     #[OA\Delete(

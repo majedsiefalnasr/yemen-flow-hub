@@ -2,15 +2,22 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\AuditAction;
+use App\Enums\UserRole;
 use App\Http\Requests\StoreUserRequest;
 use App\Http\Requests\UpdateUserRequest;
 use App\Http\Resources\UserResource;
 use App\Models\User;
+use App\Services\Audit\AuditService;
 use App\Support\ApiResponse;
 use OpenApi\Attributes as OA;
 
 class UserController extends Controller
 {
+    public function __construct(private readonly AuditService $auditService)
+    {
+    }
+
     #[OA\Get(
         path: '/api/users',
         tags: ['Users'],
@@ -21,10 +28,20 @@ class UserController extends Controller
     public function index()
     {
         $this->authorize('viewAny', User::class);
+        $actor = request()->user();
+
         $users = User::query()
             ->with('bank')
+            ->when(
+                $actor->hasRole(UserRole::BANK_ADMIN),
+                fn ($q) => $q->where('bank_id', $actor->bank_id)
+                    ->whereIn('role', [UserRole::DATA_ENTRY->value, UserRole::BANK_REVIEWER->value])
+            )
             ->when(request()->filled('role'), fn ($q) => $q->where('role', request('role')))
-            ->when(request()->filled('bank_id'), fn ($q) => $q->where('bank_id', request('bank_id')))
+            ->when(
+                request()->filled('bank_id') && !$actor->hasRole(UserRole::BANK_ADMIN),
+                fn ($q) => $q->where('bank_id', request('bank_id'))
+            )
             ->when(request()->has('is_active'), fn ($q) => $q->where('is_active', filter_var(request('is_active'), FILTER_VALIDATE_BOOL)))
             ->latest('id')
             ->paginate(20);
@@ -58,6 +75,11 @@ class UserController extends Controller
         $this->authorize('create', User::class);
 
         $user = User::query()->create($request->validated());
+        $this->auditService->log(AuditAction::USER_CREATED, $request->user(), $user, [
+            'bank_id' => $user->bank_id,
+            'target_role' => $user->role?->value,
+            'after' => $this->auditSnapshot($user),
+        ]);
 
         return ApiResponse::success(new UserResource($user->load('bank')), 'User created successfully.', 201);
     }
@@ -87,14 +109,23 @@ class UserController extends Controller
     {
         $this->authorize('update', $user);
 
+        $before = $this->auditSnapshot($user);
         $payload = $request->validated();
         if (empty($payload['password'])) {
             unset($payload['password']);
         }
 
         $user->update($payload);
+        $user->refresh();
+        $this->auditService->log(AuditAction::USER_UPDATED, $request->user(), $user, [
+            'bank_id' => $user->bank_id,
+            'target_role' => $user->role?->value,
+            'password_reset' => array_key_exists('password', $payload),
+            'before' => $before,
+            'after' => $this->auditSnapshot($user),
+        ]);
 
-        return ApiResponse::success(new UserResource($user->refresh()->load('bank')), 'User updated successfully.');
+        return ApiResponse::success(new UserResource($user->load('bank')), 'User updated successfully.');
     }
 
     #[OA\Delete(
@@ -108,8 +139,27 @@ class UserController extends Controller
     {
         $this->authorize('delete', $user);
 
+        $before = $this->auditSnapshot($user);
         $user->update(['is_active' => false]);
+        $user->refresh();
+        $this->auditService->log(AuditAction::USER_DEACTIVATED, request()->user(), $user, [
+            'bank_id' => $user->bank_id,
+            'target_role' => $user->role?->value,
+            'before' => $before,
+            'after' => $this->auditSnapshot($user),
+        ]);
 
         return ApiResponse::success((object) [], 'User deactivated successfully.');
+    }
+
+    private function auditSnapshot(User $user): array
+    {
+        return [
+            'name' => $user->name,
+            'email' => $user->email,
+            'role' => $user->role?->value,
+            'bank_id' => $user->bank_id,
+            'is_active' => $user->is_active,
+        ];
     }
 }

@@ -16,6 +16,10 @@ enum AuditAction: string
     case DOCUMENT_DOWNLOADED = 'DOCUMENT_DOWNLOADED';
     case SWIFT_UPLOADED = 'SWIFT_UPLOADED';
     case CUSTOMS_ISSUED = 'CUSTOMS_ISSUED';
+    case USER_CREATED = 'USER_CREATED';
+    case USER_UPDATED = 'USER_UPDATED';
+    case USER_DEACTIVATED = 'USER_DEACTIVATED';
+    case BANK_UPDATED = 'BANK_UPDATED';
     case AUTHORIZATION_FAILURE = 'AUTHORIZATION_FAILURE';
 
     public function label(): string
@@ -33,6 +37,10 @@ enum AuditAction: string
             self::DOCUMENT_DOWNLOADED => 'Document Downloaded / تنزيل مستند',
             self::SWIFT_UPLOADED => 'SWIFT Uploaded / رفع سويفت',
             self::CUSTOMS_ISSUED => 'Customs Issued / إصدار الجمارك',
+            self::USER_CREATED => 'User Created / إنشاء مستخدم',
+            self::USER_UPDATED => 'User Updated / تحديث مستخدم',
+            self::USER_DEACTIVATED => 'User Deactivated / إيقاف مستخدم',
+            self::BANK_UPDATED => 'Bank Updated / تحديث بنك',
             self::AUTHORIZATION_FAILURE => 'Authorization Failure / فشل التفويض',
         };
     }

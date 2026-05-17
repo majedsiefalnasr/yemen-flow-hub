@@ -6,6 +6,7 @@ enum UserRole: string
 {
     case DATA_ENTRY = 'DATA_ENTRY';
     case BANK_REVIEWER = 'BANK_REVIEWER';
+    case BANK_ADMIN = 'BANK_ADMIN';
     case SWIFT_OFFICER = 'SWIFT_OFFICER';
     case SUPPORT_COMMITTEE = 'SUPPORT_COMMITTEE';
     case EXECUTIVE_MEMBER = 'EXECUTIVE_MEMBER';
@@ -17,6 +18,7 @@ enum UserRole: string
         return match ($this) {
             self::DATA_ENTRY => 'موظف إدخال البنك / Bank Data Entry',
             self::BANK_REVIEWER => 'مراجع داخلي بالبنك / Bank Internal Reviewer',
+            self::BANK_ADMIN => 'مسؤول البنك / Bank Admin',
             self::SWIFT_OFFICER => 'موظف السويفت بالبنك / Bank SWIFT Officer',
             self::SUPPORT_COMMITTEE => 'عضو اللجنة المساندة / Support Committee Member',
             self::EXECUTIVE_MEMBER => 'عضو اللجنة التنفيذية / Executive Committee Member',
@@ -27,7 +29,17 @@ enum UserRole: string
 
     public function isBankRole(): bool
     {
+        return in_array($this, [self::DATA_ENTRY, self::BANK_REVIEWER, self::BANK_ADMIN, self::SWIFT_OFFICER], true);
+    }
+
+    public function isBankOperationalRole(): bool
+    {
         return in_array($this, [self::DATA_ENTRY, self::BANK_REVIEWER, self::SWIFT_OFFICER], true);
+    }
+
+    public function isBankAdminManageable(): bool
+    {
+        return in_array($this, [self::DATA_ENTRY, self::BANK_REVIEWER], true);
     }
 
     public function isCbyRole(): bool

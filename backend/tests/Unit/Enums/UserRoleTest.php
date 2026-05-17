@@ -7,11 +7,12 @@ use PHPUnit\Framework\TestCase;
 
 class UserRoleTest extends TestCase
 {
-    public function test_all_7_canonical_values_exist(): void
+    public function test_all_8_canonical_values_exist(): void
     {
         $expected = [
             'DATA_ENTRY',
             'BANK_REVIEWER',
+            'BANK_ADMIN',
             'SWIFT_OFFICER',
             'SUPPORT_COMMITTEE',
             'EXECUTIVE_MEMBER',
@@ -21,7 +22,7 @@ class UserRoleTest extends TestCase
 
         $actual = array_column(UserRole::cases(), 'value');
 
-        $this->assertCount(7, $actual);
+        $this->assertCount(8, $actual);
         foreach ($expected as $value) {
             $this->assertContains($value, $actual, "Missing canonical role: {$value}");
         }

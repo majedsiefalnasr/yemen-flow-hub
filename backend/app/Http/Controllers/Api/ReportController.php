@@ -2,17 +2,23 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\AuditAction;
 use App\Enums\RequestStatus;
 use App\Enums\UserRole;
 use App\Models\Bank;
 use App\Models\ImportRequest;
 use App\Models\RequestStageHistory;
 use App\Models\RequestVote;
+use App\Services\Audit\AuditService;
 use App\Support\ApiResponse;
 use OpenApi\Attributes as OA;
 
 class ReportController extends Controller
 {
+    public function __construct(private readonly AuditService $auditService)
+    {
+    }
+
     #[OA\Get(
         path: '/api/reports/workflow',
         tags: ['Reports'],
@@ -29,6 +35,13 @@ class ReportController extends Controller
     {
         $user = request()->user();
         if (!$user->isCbyUser()) {
+            $this->auditService->log(AuditAction::AUTHORIZATION_FAILURE, $user, null, [
+                'bank_id' => $user->bank_id,
+                'path' => request()->path(),
+                'method' => request()->method(),
+                'reason' => 'workflow reports require CBY role',
+            ]);
+
             return ApiResponse::forbidden();
         }
 
@@ -141,6 +154,13 @@ class ReportController extends Controller
     {
         $user = request()->user();
         if (!$user->isCbyUser()) {
+            $this->auditService->log(AuditAction::AUTHORIZATION_FAILURE, $user, null, [
+                'bank_id' => $user->bank_id,
+                'path' => request()->path(),
+                'method' => request()->method(),
+                'reason' => 'voting reports require CBY role',
+            ]);
+
             return ApiResponse::forbidden();
         }
 
