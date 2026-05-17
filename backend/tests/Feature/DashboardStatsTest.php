@@ -316,7 +316,7 @@ class DashboardStatsTest extends TestCase
                     'waiting_for_claim',
                     'active_by_me',
                     'claimed_by_others',
-                    'approved_last_7_days',
+                    'recently_approved',
                     'support_queue',
                 ],
             ]);
@@ -380,7 +380,7 @@ class DashboardStatsTest extends TestCase
             ->assertJsonPath('data.claimed_by_others', 1);
     }
 
-    public function test_support_committee_approved_last_7_days_counts_within_window(): void
+    public function test_support_committee_recently_approved_counts_within_7_day_window(): void
     {
         $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
         $sc = $this->makeUser(UserRole::SUPPORT_COMMITTEE);
@@ -403,10 +403,10 @@ class DashboardStatsTest extends TestCase
 
         $this->actingAs($sc)
             ->getJson('/api/dashboard/stats')
-            ->assertJsonPath('data.approved_last_7_days', 2);
+            ->assertJsonPath('data.recently_approved', 2);
     }
 
-    public function test_support_committee_approved_last_7_days_excludes_older_records(): void
+    public function test_support_committee_recently_approved_excludes_older_records(): void
     {
         $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
         $sc = $this->makeUser(UserRole::SUPPORT_COMMITTEE);
@@ -420,10 +420,10 @@ class DashboardStatsTest extends TestCase
 
         $this->actingAs($sc)
             ->getJson('/api/dashboard/stats')
-            ->assertJsonPath('data.approved_last_7_days', 0);
+            ->assertJsonPath('data.recently_approved', 0);
     }
 
-    public function test_support_committee_approved_last_7_days_null_support_approved_at_excluded(): void
+    public function test_support_committee_recently_approved_null_support_approved_at_excluded(): void
     {
         $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
         $sc = $this->makeUser(UserRole::SUPPORT_COMMITTEE);
@@ -434,7 +434,7 @@ class DashboardStatsTest extends TestCase
 
         $this->actingAs($sc)
             ->getJson('/api/dashboard/stats')
-            ->assertJsonPath('data.approved_last_7_days', 0);
+            ->assertJsonPath('data.recently_approved', 0);
     }
 
     public function test_support_committee_queue_contains_pending_and_in_progress(): void

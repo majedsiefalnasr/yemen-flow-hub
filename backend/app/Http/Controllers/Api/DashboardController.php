@@ -155,7 +155,7 @@ class DashboardController extends Controller
 
         // Rolling 7-day window — "معتمد حديثاً" reflects active committee throughput,
         // not a cumulative total. Scoped globally (all SC members), not per-reviewer.
-        $approvedLast7Days = (clone $base)
+        $recentlyApproved = (clone $base)
             ->where('status', RequestStatus::SUPPORT_APPROVED->value)
             ->where('support_approved_at', '>=', now()->subDays(7))
             ->count();
@@ -175,7 +175,7 @@ class DashboardController extends Controller
             'waiting_for_claim'   => $waitingForClaim,
             'active_by_me'        => $activeByMe,
             'claimed_by_others'   => $claimedByOthers,
-            'approved_last_7_days' => $approvedLast7Days,
+            'recently_approved'   => $recentlyApproved,
             'support_queue'       => ImportRequestResource::collection($supportQueue)->toArray(request()),
         ], 'Dashboard stats retrieved.');
     }
