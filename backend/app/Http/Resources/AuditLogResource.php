@@ -11,11 +11,19 @@ class AuditLogResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            'user' => $this->relationLoaded('user') && $this->user ? [
+                'id' => $this->user->id,
+                'name' => $this->user->name,
+                'email' => $this->user->email,
+                'role' => $this->user->role?->value,
+            ] : null,
             'user_id' => $this->user_id,
             'user_role' => $this->user_role,
             'action' => $this->action,
-            'subject_type' => $this->subject_type,
-            'subject_id' => $this->subject_id,
+            'entity_type' => $this->subject_type ? class_basename($this->subject_type) : null,
+            'entity_id' => $this->subject_id,
+            'from_status' => $this->metadata['from_status'] ?? null,
+            'to_status' => $this->metadata['to_status'] ?? null,
             'ip_address' => $this->ip_address,
             'user_agent' => $this->user_agent,
             'metadata' => $this->metadata,

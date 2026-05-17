@@ -214,7 +214,7 @@ class ImportRequestController extends Controller
         $this->authorize('view', $importRequest);
 
         return ApiResponse::success(
-            StageHistoryResource::collection($importRequest->stageHistory()->latest('id')->get()),
+            StageHistoryResource::collection($importRequest->stageHistory()->with('actor')->oldest('id')->get()),
             'History retrieved successfully.'
         );
     }

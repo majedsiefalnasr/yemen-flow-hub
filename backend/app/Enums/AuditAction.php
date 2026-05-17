@@ -16,6 +16,7 @@ enum AuditAction: string
     case DOCUMENT_DOWNLOADED = 'DOCUMENT_DOWNLOADED';
     case SWIFT_UPLOADED = 'SWIFT_UPLOADED';
     case CUSTOMS_ISSUED = 'CUSTOMS_ISSUED';
+    case AUTHORIZATION_FAILURE = 'AUTHORIZATION_FAILURE';
 
     public function label(): string
     {
@@ -32,6 +33,7 @@ enum AuditAction: string
             self::DOCUMENT_DOWNLOADED => 'Document Downloaded / تنزيل مستند',
             self::SWIFT_UPLOADED => 'SWIFT Uploaded / رفع سويفت',
             self::CUSTOMS_ISSUED => 'Customs Issued / إصدار الجمارك',
+            self::AUTHORIZATION_FAILURE => 'Authorization Failure / فشل التفويض',
         };
     }
 }

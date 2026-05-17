@@ -19,9 +19,11 @@ class AuditController extends Controller
         }
 
         $items = AuditLog::query()
+            ->with('user')
             ->when(request()->filled('user_id'), fn ($q) => $q->where('user_id', request('user_id')))
             ->when(request()->filled('action'), fn ($q) => $q->where('action', request('action')))
-            ->when(request()->filled('subject_type'), fn ($q) => $q->where('subject_type', request('subject_type')))
+            ->when(request()->filled('entity_type'), fn ($q) => $q->where('subject_type', request('entity_type')))
+            ->when(request()->filled('subject_type') && !request()->filled('entity_type'), fn ($q) => $q->where('subject_type', request('subject_type')))
             ->when(request()->filled('from_date'), fn ($q) => $q->whereDate('created_at', '>=', request('from_date')))
             ->when(request()->filled('to_date'), fn ($q) => $q->whereDate('created_at', '<=', request('to_date')))
             ->latest('id')

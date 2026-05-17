@@ -23,6 +23,8 @@ use App\Exceptions\CustomsException;
 use App\Exceptions\WorkflowLockedStateException;
 use App\Exceptions\WorkflowImmutableStateException;
 use App\Http\Middleware\Authenticate;
+use App\Enums\AuditAction;
+use App\Services\Audit\AuditService;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -57,6 +59,16 @@ return Application::configure(basePath: dirname(__DIR__))
         // before reaching render callbacks, so both types must be listed.
         $exceptions->render(function (AccessDeniedHttpException|AuthorizationException $e, Request $request) {
             if ($request->is('api/*')) {
+                try {
+                    app(AuditService::class)->log(
+                        AuditAction::AUTHORIZATION_FAILURE,
+                        $request->user(),
+                        null,
+                        ['reason' => $e->getMessage(), 'path' => $request->path(), 'method' => $request->method()]
+                    );
+                } catch (\Throwable) {
+                    // Never let audit failure suppress the actual response
+                }
                 return ApiResponse::forbidden();
             }
         });
@@ -75,6 +87,16 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $exceptions->render(function (UnauthorizedTransitionException|SelfReviewException $e, Request $request) {
             if ($request->is('api/*')) {
+                try {
+                    app(AuditService::class)->log(
+                        AuditAction::AUTHORIZATION_FAILURE,
+                        $request->user(),
+                        null,
+                        ['reason' => $e->getMessage(), 'path' => $request->path(), 'method' => $request->method()]
+                    );
+                } catch (\Throwable) {
+                    // Never let audit failure suppress the actual response
+                }
                 return ApiResponse::forbidden($e->getMessage());
             }
         });

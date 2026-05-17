@@ -18,8 +18,13 @@ class StageHistoryResource extends JsonResource
             'to_owner_role' => $this->to_owner_role?->value,
             'actor_id' => $this->actor_id,
             'actor_role' => $this->actor_role?->value,
+            'performed_by' => $this->relationLoaded('actor') && $this->actor ? [
+                'id' => $this->actor->id,
+                'name' => $this->actor->name,
+                'role' => $this->actor->role?->value,
+            ] : null,
             'action' => $this->action,
-            'reason' => $this->reason,
+            'notes' => $this->reason,
             'metadata' => $this->metadata,
             'created_at' => $this->created_at?->toISOString(),
         ];
