@@ -113,9 +113,12 @@
           </div>
 
           <!-- Notification Preferences -->
-          <div v-if="visibleNotifPrefs.length > 0" class="mb-6">
+          <div class="mb-6">
             <label class="block text-sm font-medium text-[#1d1d1f]">تفضيلات الإشعارات</label>
-            <div class="mt-3 space-y-3">
+            <p v-if="visibleNotifPrefs.length === 0" class="mt-3 text-sm text-[#6e6e73]">
+              لا توجد تفضيلات إشعارات متاحة لهذا الدور.
+            </p>
+            <div v-else class="mt-3 space-y-3">
               <div
                 v-for="pref in visibleNotifPrefs"
                 :key="pref.key"

@@ -2,6 +2,7 @@
 import { onMounted } from 'vue'
 import { useNotifications } from '../composables/useNotifications'
 import { useNotificationsStore } from '../stores/notifications.store'
+import SidebarIcon from '../components/layout/SidebarIcon.vue'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -10,7 +11,6 @@ const {
   pagination,
   loading,
   error,
-  unreadCount,
   fetchNotifications,
   markRead,
   markAllRead,
@@ -20,30 +20,71 @@ const store = useNotificationsStore()
 
 onMounted(async () => {
   await fetchNotifications()
+  await store.refreshUnreadCount()
 })
 
 async function handleMarkRead(id: string) {
-  await markRead(id)
-  store.unreadCount = unreadCount.value
+  const success = await markRead(id)
+  if (success) {
+    await store.refreshUnreadCount()
+  }
 }
 
 async function handleMarkAllRead() {
-  await markAllRead()
-  store.resetUnread()
+  const success = await markAllRead()
+  if (success) {
+    await store.refreshUnreadCount()
+  }
 }
 
 async function goToPage(page: number) {
   await fetchNotifications(page)
 }
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleString('ar-YE', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
+function formatRelativeTime(iso: string): string {
+  const now = Date.now()
+  const target = new Date(iso).getTime()
+  const diffSeconds = Math.round((target - now) / 1000)
+  const absSeconds = Math.abs(diffSeconds)
+  const rtf = new Intl.RelativeTimeFormat('ar', { numeric: 'auto' })
+
+  if (absSeconds < 60) return rtf.format(diffSeconds, 'second')
+
+  const diffMinutes = Math.round(diffSeconds / 60)
+  if (Math.abs(diffMinutes) < 60) return rtf.format(diffMinutes, 'minute')
+
+  const diffHours = Math.round(diffMinutes / 60)
+  if (Math.abs(diffHours) < 24) return rtf.format(diffHours, 'hour')
+
+  const diffDays = Math.round(diffHours / 24)
+  if (Math.abs(diffDays) < 30) return rtf.format(diffDays, 'day')
+
+  const diffMonths = Math.round(diffDays / 30)
+  if (Math.abs(diffMonths) < 12) return rtf.format(diffMonths, 'month')
+
+  const diffYears = Math.round(diffMonths / 12)
+  return rtf.format(diffYears, 'year')
+}
+
+function iconName(type?: string): string {
+  switch (type) {
+    case 'request_submitted':
+      return 'file-text'
+    case 'request_approved':
+      return 'check-circle'
+    case 'request_rejected':
+      return 'x-circle'
+    case 'request_returned':
+      return 'rotate-ccw'
+    case 'swift_upload_requested':
+      return 'upload-cloud'
+    case 'voting_opened':
+      return 'vote'
+    case 'customs_issued':
+      return 'stamp'
+    default:
+      return 'bell'
+  }
 }
 </script>
 
@@ -73,7 +114,7 @@ function formatDate(iso: string): string {
 
     <!-- Empty state -->
     <div v-else-if="!loading && notifications.length === 0" class="empty-state">
-      <p class="empty-text">لا توجد إشعارات</p>
+      <p class="empty-text">لا توجد إشعارات بعد</p>
     </div>
 
     <!-- Notification list -->
@@ -84,10 +125,13 @@ function formatDate(iso: string): string {
         class="notification-item"
         :class="{ unread: !notif.read_at }"
       >
+        <div class="notif-icon" aria-hidden="true">
+          <SidebarIcon :name="iconName(notif.data.type)" />
+        </div>
         <div class="notif-content">
           <p class="notif-message">{{ notif.data.message }}</p>
           <time class="notif-time" :datetime="notif.created_at">
-            {{ formatDate(notif.created_at) }}
+            {{ formatRelativeTime(notif.created_at) }}
           </time>
         </div>
         <button
@@ -241,6 +285,14 @@ function formatDate(iso: string): string {
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+
+.notif-icon {
+  width: 20px;
+  height: 20px;
+  color: var(--color-text-secondary, #6e6e73);
+  flex-shrink: 0;
+  margin-top: 2px;
 }
 
 .notif-message {

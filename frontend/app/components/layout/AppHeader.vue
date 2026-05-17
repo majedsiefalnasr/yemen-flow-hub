@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { onMounted } from 'vue'
 import { useAuthStore } from '../../stores/auth.store'
 import { useNotificationsStore } from '../../stores/notifications.store'
 import SidebarIcon from './SidebarIcon.vue'
@@ -15,6 +16,10 @@ const router = useRouter()
 function goToNotifications() {
   router.push('/notifications')
 }
+
+onMounted(() => {
+  void notificationsStore.refreshUnreadCount()
+})
 </script>
 
 <template>

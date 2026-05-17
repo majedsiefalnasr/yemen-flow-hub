@@ -65,7 +65,7 @@ export const useNotifications = () => {
     }
   }
 
-  const markRead = async (id: string) => {
+  const markRead = async (id: string): Promise<boolean> => {
     try {
       await $fetch(`/api/notifications/${id}/read`, {
         method: 'POST',
@@ -81,13 +81,16 @@ export const useNotifications = () => {
           unreadCount.value -= 1
         }
       }
+
+      return true
     }
     catch (err: any) {
       error.value = err.data?.message || 'Failed to mark notification as read'
+      return false
     }
   }
 
-  const markAllRead = async () => {
+  const markAllRead = async (): Promise<boolean> => {
     try {
       await $fetch('/api/notifications/read-all', {
         method: 'POST',
@@ -101,9 +104,12 @@ export const useNotifications = () => {
         if (!n.read_at) n.read_at = now
       })
       unreadCount.value = 0
+
+      return true
     }
     catch (err: any) {
       error.value = err.data?.message || 'Failed to mark all notifications as read'
+      return false
     }
   }
 
