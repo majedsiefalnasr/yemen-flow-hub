@@ -241,4 +241,33 @@ class CustomsDownloadPermissionTest extends TestCase
 
         $response->assertStatus(401);
     }
+
+    // ─── P1: Soft-deleted parent returns 403, not 500 ─────────────────────────
+
+    public function test_customs_download_returns_403_when_parent_request_soft_deleted(): void
+    {
+        $request = $this->makeRequest($this->bank);
+        $declaration = $this->makeCustomsDeclaration($request);
+
+        $request->delete(); // soft-delete; loadMissing('request') now returns null
+
+        $actor = $this->makeUser(UserRole::BANK_REVIEWER, $this->bank);
+        $response = $this->actingAs($actor)->getJson("/api/customs/{$declaration->id}/download");
+
+        $response->assertStatus(403);
+    }
+
+    // ─── P2: BANK_REVIEWER with null bank_id is always denied ─────────────────
+
+    public function test_bank_reviewer_with_null_bank_id_cannot_download_customs(): void
+    {
+        $request = $this->makeRequest($this->bank);
+        $declaration = $this->makeCustomsDeclaration($request);
+
+        // Orphaned user: bank-scoped role but no bank assigned
+        $actor = $this->makeUser(UserRole::BANK_REVIEWER, null);
+        $response = $this->actingAs($actor)->getJson("/api/customs/{$declaration->id}/download");
+
+        $response->assertStatus(403);
+    }
 }

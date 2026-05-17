@@ -11,6 +11,11 @@ class RequestDocumentPolicy
     public function download(User $user, RequestDocument $document): bool
     {
         $document->loadMissing('request');
+
+        if ($document->request === null) {
+            return false;
+        }
+
         $requestBankId = $document->request->bank_id;
 
         return match ($document->type) {
@@ -25,7 +30,7 @@ class RequestDocumentPolicy
         return match ($user->role) {
             UserRole::DATA_ENTRY,
             UserRole::BANK_REVIEWER,
-            UserRole::SWIFT_OFFICER => $user->bank_id === $requestBankId,
+            UserRole::SWIFT_OFFICER => $user->bank_id !== null && $user->bank_id === $requestBankId,
             UserRole::SUPPORT_COMMITTEE,
             UserRole::EXECUTIVE_MEMBER,
             UserRole::COMMITTEE_DIRECTOR,
@@ -40,7 +45,7 @@ class RequestDocumentPolicy
             UserRole::DATA_ENTRY,
             UserRole::SUPPORT_COMMITTEE => false,
             UserRole::BANK_REVIEWER,
-            UserRole::SWIFT_OFFICER => $user->bank_id === $requestBankId,
+            UserRole::SWIFT_OFFICER => $user->bank_id !== null && $user->bank_id === $requestBankId,
             UserRole::EXECUTIVE_MEMBER,
             UserRole::COMMITTEE_DIRECTOR,
             UserRole::CBY_ADMIN => true,

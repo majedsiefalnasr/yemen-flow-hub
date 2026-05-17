@@ -396,4 +396,47 @@ class DocumentDownloadPermissionTest extends TestCase
 
         $response->assertStatus(401);
     }
+
+    // ─── P1: Soft-deleted parent returns 403, not 500 ─────────────────────────
+
+    public function test_download_returns_403_when_parent_request_soft_deleted(): void
+    {
+        $creator = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $request = $this->makeRequest($this->bank, $creator);
+        $document = $this->makeDocument($request, $creator);
+
+        $request->delete(); // soft-delete; loadMissing('request') now returns null
+
+        $actor = $this->makeUser(UserRole::BANK_REVIEWER, $this->bank);
+        $response = $this->actingAs($actor)->getJson("/api/documents/{$document->id}/download");
+
+        $response->assertStatus(403);
+    }
+
+    // ─── P2: Bank-scoped user with null bank_id is always denied ──────────────
+
+    public function test_bank_scoped_user_with_null_bank_id_cannot_download_request_doc(): void
+    {
+        $creator = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $request = $this->makeRequest($this->bank, $creator);
+        $document = $this->makeDocument($request, $creator);
+
+        // Orphaned user: bank-scoped role but no bank assigned
+        $actor = $this->makeUser(UserRole::BANK_REVIEWER, null);
+        $response = $this->actingAs($actor)->getJson("/api/documents/{$document->id}/download");
+
+        $response->assertStatus(403);
+    }
+
+    public function test_bank_scoped_user_with_null_bank_id_cannot_download_swift(): void
+    {
+        $uploader = $this->makeUser(UserRole::SWIFT_OFFICER, $this->bank);
+        $request = $this->makeRequest($this->bank, $uploader);
+        $document = $this->makeDocument($request, $uploader, 'SWIFT');
+
+        $actor = $this->makeUser(UserRole::SWIFT_OFFICER, null);
+        $response = $this->actingAs($actor)->getJson("/api/documents/{$document->id}/download");
+
+        $response->assertStatus(403);
+    }
 }
