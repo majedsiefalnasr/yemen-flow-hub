@@ -1,0 +1,184 @@
+<?php
+
+namespace App\Http\Controllers\Api;
+
+use App\Enums\UserRole;
+use App\Http\Resources\ImportRequestListResource;
+use App\Http\Resources\UserResource;
+use App\Models\Bank;
+use App\Models\CustomsDeclaration;
+use App\Models\ImportRequest;
+use App\Models\User;
+use App\Support\ApiResponse;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use OpenApi\Attributes as OA;
+
+class SearchController extends Controller
+{
+    private const MIN_QUERY_LENGTH = 2;
+    private const MAX_RESULTS_PER_GROUP = 10;
+    private const MAX_RECENT_SEARCHES = 10;
+
+    #[OA\Get(
+        path: '/api/search',
+        tags: ['Search'],
+        summary: 'Global search across role-scoped entities',
+        security: [['bearerAuth' => []], ['sanctumCookie' => []]],
+        parameters: [new OA\Parameter(name: 'q', in: 'query', required: false, schema: new OA\Schema(type: 'string'))],
+        responses: [new OA\Response(response: 200, description: 'Search results')]
+    )]
+    public function search(Request $request): JsonResponse
+    {
+        $query = trim((string) $request->query('q', ''));
+        $user = $request->user();
+
+        if (mb_strlen($query) < self::MIN_QUERY_LENGTH) {
+            return ApiResponse::success([
+                'requests' => [],
+                'users' => [],
+                'banks' => [],
+                'customs' => [],
+            ], 'Search results.');
+        }
+
+        $results = [
+            'requests' => $this->searchRequests($user, $query),
+            'users' => $this->searchUsers($user, $query),
+            'banks' => $this->searchBanks($user, $query),
+            'customs' => $this->searchCustoms($user, $query),
+        ];
+
+        $this->persistRecentSearch($user, $query);
+
+        return ApiResponse::success($results, 'Search results.');
+    }
+
+    #[OA\Get(
+        path: '/api/search/recent',
+        tags: ['Search'],
+        summary: 'Get recent searches for authenticated user',
+        security: [['bearerAuth' => []], ['sanctumCookie' => []]],
+        responses: [new OA\Response(response: 200, description: 'Recent searches')]
+    )]
+    public function recent(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $prefs = $user->user_preferences ?? [];
+        $recent = $prefs['recent_searches'] ?? [];
+
+        return ApiResponse::success(['recent_searches' => $recent], 'Recent searches.');
+    }
+
+    private function searchRequests(User $user, string $query): array
+    {
+        $results = ImportRequest::query()
+            ->with(['bank'])
+            ->forUser($user)
+            ->where(function ($q) use ($query) {
+                $like = "%{$query}%";
+                $q->where('reference_number', 'like', $like)
+                    ->orWhere('supplier_name', 'like', $like)
+                    ->orWhere('goods_description', 'like', $like)
+                    ->orWhere('port_of_entry', 'like', $like);
+            })
+            ->limit(self::MAX_RESULTS_PER_GROUP)
+            ->get();
+
+        return ImportRequestListResource::collection($results)->resolve();
+    }
+
+    private function searchUsers(User $user, string $query): array
+    {
+        if (!in_array($user->role, [UserRole::CBY_ADMIN, UserRole::BANK_ADMIN], true)) {
+            return [];
+        }
+
+        $like = "%{$query}%";
+
+        $userQuery = User::query()
+            ->with(['bank'])
+            ->where(function ($q) use ($like) {
+                $q->where('name', 'like', $like)
+                    ->orWhere('email', 'like', $like);
+            });
+
+        if ($user->role === UserRole::BANK_ADMIN) {
+            $userQuery->where('bank_id', $user->bank_id)
+                ->whereIn('role', [
+                    UserRole::DATA_ENTRY->value,
+                    UserRole::BANK_REVIEWER->value,
+                ]);
+        }
+
+        return UserResource::collection(
+            $userQuery->limit(self::MAX_RESULTS_PER_GROUP)->get()
+        )->resolve();
+    }
+
+    private function searchBanks(User $user, string $query): array
+    {
+        if ($user->role !== UserRole::CBY_ADMIN) {
+            return [];
+        }
+
+        $like = "%{$query}%";
+
+        $banks = Bank::query()
+            ->where(function ($q) use ($like) {
+                $q->where('name', 'like', $like)
+                    ->orWhere('code', 'like', $like);
+            })
+            ->limit(self::MAX_RESULTS_PER_GROUP)
+            ->get();
+
+        return $banks->map(fn (Bank $bank) => [
+            'id' => $bank->id,
+            'name' => $bank->name,
+            'code' => $bank->code,
+            'is_active' => $bank->is_active,
+        ])->values()->all();
+    }
+
+    private function searchCustoms(User $user, string $query): array
+    {
+        $like = "%{$query}%";
+
+        $customsQuery = CustomsDeclaration::query()
+            ->with(['request'])
+            ->where('declaration_number', 'like', $like);
+
+        if ($user->isBankUser()) {
+            $customsQuery->whereHas('request', fn ($q) => $q->where('bank_id', $user->bank_id));
+        }
+
+        $declarations = $customsQuery->limit(self::MAX_RESULTS_PER_GROUP)->get();
+
+        return $declarations->map(fn (CustomsDeclaration $d) => [
+            'id' => $d->id,
+            'declaration_number' => $d->declaration_number,
+            'issued_at' => $d->issued_at?->toISOString(),
+            'request_id' => $d->request_id,
+            'reference_number' => $d->request?->reference_number,
+        ])->values()->all();
+    }
+
+    private function persistRecentSearch(User $user, string $query): void
+    {
+        try {
+            $prefs = $user->user_preferences ?? [];
+            $recent = $prefs['recent_searches'] ?? [];
+
+            // dedup: remove existing occurrence, prepend new
+            $recent = array_values(array_filter($recent, fn ($item) => $item !== $query));
+            array_unshift($recent, $query);
+            $recent = array_slice($recent, 0, self::MAX_RECENT_SEARCHES);
+
+            $prefs['recent_searches'] = $recent;
+            $user->user_preferences = $prefs;
+            $user->saveQuietly();
+        } catch (\Throwable) {
+            // fire-and-forget: do not fail the search response if preferences write fails
+        }
+    }
+}

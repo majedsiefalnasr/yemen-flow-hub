@@ -16,6 +16,7 @@ use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\VotingController;
+use App\Http\Controllers\Api\SearchController;
 use App\Http\Controllers\Api\WorkflowController;
 use Illuminate\Support\Facades\Route;
 
@@ -95,6 +96,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('notifications/unread-count', [NotificationController::class, 'unreadCount']);
     Route::post('notifications/read-all', [NotificationController::class, 'readAll']);
     Route::post('notifications/{notification}/read', [NotificationController::class, 'read']);
+
+    Route::get('search/recent', [SearchController::class, 'recent']);
+    Route::get('search', [SearchController::class, 'search']);
 
     Route::get('dashboard/stats', [DashboardController::class, 'stats']);
     Route::get('reports/workflow', [ReportController::class, 'workflow']);
