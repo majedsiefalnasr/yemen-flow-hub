@@ -7,6 +7,7 @@ import DataEntryDashboard from '../components/dashboard/DataEntryDashboard.vue'
 import BankReviewerDashboard from '../components/dashboard/BankReviewerDashboard.vue'
 import SupportCommitteeDashboard from '../components/dashboard/SupportCommitteeDashboard.vue'
 import SwiftOfficerDashboard from '../components/dashboard/SwiftOfficerDashboard.vue'
+import ExecutiveDashboard from '../components/dashboard/ExecutiveDashboard.vue'
 import CbyAdminDashboard from '../components/dashboard/CbyAdminDashboard.vue'
 
 const auth = useAuthStore()

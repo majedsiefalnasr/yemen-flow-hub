@@ -56,6 +56,10 @@ function shouldShowEmptyQueue(stats: ExecutiveDashboardStats): boolean {
   return stats.voting_queue.length === 0
 }
 
+function shouldShowCustomsDeclarationPending(stats: ExecutiveDashboardStats): boolean {
+  return (stats.customs_declaration_pending ?? []).length > 0
+}
+
 function isVotingOpen(status: RequestStatus): boolean {
   return status === RequestStatus.EXECUTIVE_VOTING_OPEN
 }
@@ -79,6 +83,7 @@ describe('ExecutiveDashboard — queue empty state', () => {
       active_voting_sessions: 0,
       decisions_approved: 0,
       decisions_rejected: 0,
+      finalized_decisions: 0,
       voting_queue: [],
     }
     expect(shouldShowEmptyQueue(stats)).toBe(true)
@@ -90,6 +95,7 @@ describe('ExecutiveDashboard — queue empty state', () => {
       active_voting_sessions: 0,
       decisions_approved: 0,
       decisions_rejected: 0,
+      finalized_decisions: 0,
       voting_queue: [makeRequest()],
     }
     expect(shouldShowEmptyQueue(stats)).toBe(false)
@@ -121,12 +127,14 @@ describe('ExecutiveDashboard — KPI counts', () => {
       active_voting_sessions: 1,
       decisions_approved: 10,
       decisions_rejected: 3,
+      finalized_decisions: 13,
       voting_queue: [],
     }
     expect(stats.waiting_for_voting_open).toBe(2)
     expect(stats.active_voting_sessions).toBe(1)
     expect(stats.decisions_approved).toBe(10)
     expect(stats.decisions_rejected).toBe(3)
+    expect(stats.finalized_decisions).toBe(13)
   })
 })
 
@@ -175,5 +183,36 @@ describe('ExecutiveDashboard — mixed queue composition', () => {
 
     const openCount = queue.filter(r => isVotingOpen(r.status)).length
     expect(openCount).toBe(1)
+  })
+})
+
+describe('ExecutiveDashboard — director customs pending section', () => {
+  it('shows customs declaration pending section when director stats include requests', () => {
+    const stats: ExecutiveDashboardStats = {
+      waiting_for_voting_open: 0,
+      active_voting_sessions: 0,
+      decisions_approved: 1,
+      decisions_rejected: 0,
+      finalized_decisions: 1,
+      voting_queue: [],
+      customs_declaration_pending: [
+        makeRequest({ status: RequestStatus.EXECUTIVE_APPROVED }),
+      ],
+    }
+
+    expect(shouldShowCustomsDeclarationPending(stats)).toBe(true)
+  })
+
+  it('hides customs declaration pending rows when list is absent or empty', () => {
+    const stats: ExecutiveDashboardStats = {
+      waiting_for_voting_open: 0,
+      active_voting_sessions: 0,
+      decisions_approved: 0,
+      decisions_rejected: 0,
+      finalized_decisions: 0,
+      voting_queue: [],
+    }
+
+    expect(shouldShowCustomsDeclarationPending(stats)).toBe(false)
   })
 })

@@ -270,15 +270,29 @@ onMounted(() => { store.loadStats() })
 .req-ref:hover { text-decoration: underline; }
 
 .btn-upload {
-  padding: 6px 14px;
+  min-height: 48px;
+  min-width: 48px;
+  padding: 10px 16px;
   background: #32ade6;
   border: none;
   border-radius: 8px;
   color: #ffffff;
-  font-size: 13px;
+  font-size: 14px;
   cursor: pointer;
-  min-height: 32px;
 }
 
 .btn-upload:hover { background: #28a0d8; }
+
+@media (max-width: 600px) {
+  .req-table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .req-table__th,
+  .req-table__td {
+    white-space: nowrap;
+  }
+}
 </style>

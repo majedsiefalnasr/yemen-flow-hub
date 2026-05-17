@@ -128,15 +128,15 @@ describe('SwiftOfficerDashboard — request rows', () => {
 })
 
 describe('SwiftOfficerDashboard — KPI values', () => {
-  it('final_approved sums executive_approved, customs_issued, completed', () => {
+  it('final_approved sums executive_approved and completed', () => {
     const stats: SwiftOfficerDashboardStats = {
       pending_swift_upload: 0,
       uploaded: 2,
-      final_approved: 5,
+      final_approved: 4,
       final_rejected: 1,
       swift_queue: [],
     }
-    expect(stats.final_approved).toBe(5)
+    expect(stats.final_approved).toBe(4)
     expect(stats.final_rejected).toBe(1)
   })
 

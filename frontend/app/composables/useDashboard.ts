@@ -39,7 +39,9 @@ export interface ExecutiveDashboardStats {
   active_voting_sessions: number
   decisions_approved: number
   decisions_rejected: number
+  finalized_decisions: number
   voting_queue: ImportRequest[]
+  customs_declaration_pending?: ImportRequest[]
 }
 
 export interface CbyAdminComplianceAlerts {

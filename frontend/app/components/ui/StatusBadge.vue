@@ -111,6 +111,7 @@ const badgeStyle = computed(() => ({
 .status-badge {
   display: inline-flex;
   align-items: center;
+  direction: rtl;
   gap: 5px;
   height: 24px;
   padding: 0 10px;

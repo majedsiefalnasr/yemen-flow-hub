@@ -2,14 +2,18 @@
 import { computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useDashboardStore } from '../../stores/dashboard.store'
+import { useAuthStore } from '../../stores/auth.store'
 import { UserRole, RequestStatus } from '../../types/enums'
 import type { ExecutiveDashboardStats } from '../../composables/useDashboard'
 import StatusBadge from '../ui/StatusBadge.vue'
 
 const router = useRouter()
 const store = useDashboardStore()
+const auth = useAuthStore()
 
 const stats = computed(() => store.stats as ExecutiveDashboardStats | null)
+const isDirector = computed(() => auth.user?.role === UserRole.COMMITTEE_DIRECTOR)
+const customsDeclarationPending = computed(() => stats.value?.customs_declaration_pending ?? [])
 
 function formatAmount(amount: number, currency: string): string {
   return new Intl.NumberFormat('ar-YE', { style: 'currency', currency, minimumFractionDigits: 0 }).format(amount)
@@ -45,7 +49,7 @@ onMounted(() => { store.loadStats() })
     </div>
 
     <!-- KPI grid -->
-    <div v-else-if="stats" class="kpi-grid">
+    <div v-else-if="stats" class="kpi-grid" :class="{ 'kpi-grid--director': isDirector }">
       <div class="kpi-card kpi-card--amber" :class="{ 'kpi-card--highlight': stats.waiting_for_voting_open > 0 }">
         <span class="kpi-label">بانتظار فتح التصويت</span>
         <span class="kpi-value">{{ stats.waiting_for_voting_open }}</span>
@@ -54,11 +58,15 @@ onMounted(() => { store.loadStats() })
         <span class="kpi-label">جلسات تصويت نشطة</span>
         <span class="kpi-value">{{ stats.active_voting_sessions }}</span>
       </div>
-      <div class="kpi-card kpi-card--green">
+      <div v-if="isDirector" class="kpi-card kpi-card--green">
+        <span class="kpi-label">قرارات نهائية</span>
+        <span class="kpi-value">{{ stats.finalized_decisions }}</span>
+      </div>
+      <div v-if="!isDirector" class="kpi-card kpi-card--green">
         <span class="kpi-label">قرارات معتمدة</span>
         <span class="kpi-value">{{ stats.decisions_approved }}</span>
       </div>
-      <div class="kpi-card kpi-card--red">
+      <div v-if="!isDirector" class="kpi-card kpi-card--red">
         <span class="kpi-label">قرارات مرفوضة</span>
         <span class="kpi-value">{{ stats.decisions_rejected }}</span>
       </div>
@@ -121,6 +129,57 @@ onMounted(() => { store.loadStats() })
       </table>
     </div>
 
+    <!-- Director customs declaration queue -->
+    <div v-if="stats && isDirector" class="customs-pending">
+      <h2 class="section-title">بيانات جمركية بانتظار الإصدار</h2>
+
+      <div v-if="customsDeclarationPending.length === 0" class="empty-queue" role="status">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#8e8e93" stroke-width="1.5" aria-hidden="true">
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" />
+        </svg>
+        <p>لا توجد طلبات بانتظار إصدار البيان الجمركي حالياً</p>
+      </div>
+
+      <table v-else class="req-table" role="table" aria-label="طلبات بانتظار إصدار البيان الجمركي">
+        <thead>
+          <tr class="req-table__header-row">
+            <th class="req-table__th" scope="col">المرجع</th>
+            <th class="req-table__th" scope="col">البنك</th>
+            <th class="req-table__th" scope="col">المبلغ</th>
+            <th class="req-table__th" scope="col">الحالة</th>
+            <th class="req-table__th req-table__th--action" scope="col">إجراء</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr
+            v-for="req in customsDeclarationPending"
+            :key="req.id"
+            class="req-table__row"
+          >
+            <td class="req-table__td">
+              <a
+                :href="`/requests/${req.id}`"
+                class="req-ref"
+                @click.prevent="router.push(`/requests/${req.id}`)"
+              >{{ req.reference_number }}</a>
+            </td>
+            <td class="req-table__td">{{ req.bank_name ?? '—' }}</td>
+            <td class="req-table__td req-table__td--mono">{{ formatAmount(req.amount, req.currency) }}</td>
+            <td class="req-table__td">
+              <StatusBadge :status="req.status" :role="UserRole.COMMITTEE_DIRECTOR" />
+            </td>
+            <td class="req-table__td req-table__td--action">
+              <button
+                class="btn-view btn-view--primary"
+                :aria-label="`إصدار البيان الجمركي للطلب ${req.reference_number}`"
+                @click="router.push(`/requests/${req.id}`)"
+              >إصدار</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
   </div>
 </template>
 
@@ -138,8 +197,15 @@ onMounted(() => { store.loadStats() })
   gap: 16px;
 }
 
+.kpi-grid--director {
+  grid-template-columns: repeat(3, 1fr);
+}
+
 @media (max-width: 600px) {
-  .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+  .kpi-grid,
+  .kpi-grid--director {
+    grid-template-columns: 1fr;
+  }
 }
 
 .kpi-card {
@@ -274,6 +340,11 @@ onMounted(() => { store.loadStats() })
   text-align: right;
 }
 
+.req-table__th--action,
+.req-table__td--action {
+  text-align: left;
+}
+
 .req-table__td--mono { font-family: monospace; font-size: 13px; }
 
 .req-ref {
@@ -309,15 +380,38 @@ onMounted(() => { store.loadStats() })
 }
 
 .btn-view {
-  padding: 6px 14px;
+  min-height: 48px;
+  min-width: 48px;
+  padding: 10px 16px;
   background: #ffffff;
   border: 1px solid #0071e3;
   border-radius: 8px;
   color: #0071e3;
-  font-size: 13px;
+  font-size: 14px;
   cursor: pointer;
-  min-height: 32px;
 }
 
 .btn-view:hover { background: #f0f7ff; }
+
+.btn-view--primary {
+  background: #0071e3;
+  color: #ffffff;
+}
+
+.btn-view--primary:hover {
+  background: #0077ed;
+}
+
+@media (max-width: 600px) {
+  .req-table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .req-table__th,
+  .req-table__td {
+    white-space: nowrap;
+  }
+}
 </style>

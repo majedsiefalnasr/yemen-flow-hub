@@ -1,6 +1,6 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
-import type { DataEntryDashboardStats, BankReviewerDashboardStats, SupportCommitteeDashboardStats, SwiftOfficerDashboardStats, CbyAdminDashboardStats } from '../../../composables/useDashboard'
+import type { DataEntryDashboardStats, BankReviewerDashboardStats, SupportCommitteeDashboardStats, SwiftOfficerDashboardStats, ExecutiveDashboardStats, CbyAdminDashboardStats } from '../../../composables/useDashboard'
 
 const mockFetchStats = vi.fn()
 
@@ -41,6 +41,16 @@ const SO_STATS: SwiftOfficerDashboardStats = {
   final_approved: 10,
   final_rejected: 1,
   swift_queue: [],
+}
+
+const EXEC_STATS: ExecutiveDashboardStats = {
+  waiting_for_voting_open: 3,
+  active_voting_sessions: 1,
+  decisions_approved: 8,
+  decisions_rejected: 2,
+  finalized_decisions: 10,
+  voting_queue: [],
+  customs_declaration_pending: [],
 }
 
 const CBY_STATS: CbyAdminDashboardStats = {
@@ -141,6 +151,15 @@ describe('useDashboardStore', () => {
     await store.loadStats()
 
     expect(store.stats).toEqual(SO_STATS)
+    expect(store.error).toBeNull()
+  })
+
+  it('loadStats stores executive stats on success', async () => {
+    mockFetchStats.mockResolvedValue(EXEC_STATS)
+    const store = useDashboardStore()
+    await store.loadStats()
+
+    expect(store.stats).toEqual(EXEC_STATS)
     expect(store.error).toBeNull()
   })
 
