@@ -209,16 +209,21 @@ SocratiCode provides semantic codebase search and dependency graph analysis. It 
 | After adding a new public function/method | `codebase_flow` → confirm the call chain is wired correctly |
 | Index is stale or returns no results | `codebase_index` on the path above to rebuild |
 
-**MCP tool names** (prefix: `mcp__plugin_socraticode_socraticode__`):
+**MCP tool names** (logical names):
 
 ```
 codebase_index        — index or re-index a path
+codebase_status       — check index progress and readiness
 codebase_search       — semantic search across the codebase
 codebase_symbol       — find a specific class, function, or method
 codebase_flow         — trace execution flow from a symbol
 codebase_impact       — analyze the impact of changing a symbol
 codebase_graph_query  — query the full dependency graph
 ```
+
+Tool prefixes vary by client:
+- Claude Code may expose these as `mcp__plugin_socraticode_socraticode__...`
+- Codex should load them from the `socraticode` MCP server configured in `~/.codex/config.toml`; use the SocratiCode tools exposed in the current session rather than hardcoding the Claude prefix.
 
 **BMAD integration:** The `_bmad/custom/bmad-dev-story.toml` file enforces SocratiCode checks as persistent facts on every story activation. On startup, the dev-story workflow calls `codebase_search` to verify the index is live and triggers `codebase_index` automatically if it is not.
 
