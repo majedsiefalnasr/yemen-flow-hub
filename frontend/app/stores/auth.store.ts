@@ -1,11 +1,12 @@
 import { defineStore } from 'pinia'
-import type { AuthUser, ApiResponse } from '../types/models'
+import type { AuthUser, ApiResponse, UserPreferences } from '../types/models'
 import { UserRole } from '../types/enums'
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
     user: null as AuthUser | null,
     isAuthenticated: false,
+    userPreferences: null as UserPreferences | null,
   }),
 
   getters: {
@@ -27,6 +28,21 @@ export const useAuthStore = defineStore('auth', {
         UserRole.COMMITTEE_DIRECTOR,
         UserRole.CBY_ADMIN,
       ].includes(state.user.role),
+
+    isCbyAdmin: (state): boolean =>
+      state.user?.role === UserRole.CBY_ADMIN,
+
+    preferredLanguage: (state): string =>
+      state.userPreferences?.language ?? 'ar',
+
+    preferredDashboardView: (state): string =>
+      state.userPreferences?.dashboard_view ?? 'normal',
+
+    preferredTableDensity: (state): string =>
+      state.userPreferences?.table_density ?? 'normal',
+
+    preferredPageSize: (state): number =>
+      state.userPreferences?.page_size ?? 25,
   },
 
   actions: {
@@ -99,6 +115,27 @@ export const useAuthStore = defineStore('auth', {
         this.user = null
         this.isAuthenticated = false
       }
+    },
+
+    async fetchUserPreferences(): Promise<void> {
+      const config = useRuntimeConfig()
+      const baseURL = config.public.apiBase as string
+
+      try {
+        const response = await $fetch<ApiResponse<UserPreferences>>('/api/settings', {
+          baseURL,
+          credentials: 'include',
+          headers: { Accept: 'application/json' },
+        })
+        this.userPreferences = response.data
+      }
+      catch {
+        this.userPreferences = null
+      }
+    },
+
+    setUserPreferences(preferences: UserPreferences): void {
+      this.userPreferences = preferences
     },
   },
 })

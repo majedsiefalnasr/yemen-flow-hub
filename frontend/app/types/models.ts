@@ -11,6 +11,15 @@ export interface AuthUser {
   is_active: boolean
 }
 
+export interface UserPreferences {
+  language: string
+  dashboard_view: string
+  table_density: string
+  page_size: number
+  default_filters: Record<string, any>
+  notification_preferences: Record<string, any>
+}
+
 export interface Bank {
   id: number
   name_ar: string
