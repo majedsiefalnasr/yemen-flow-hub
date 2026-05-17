@@ -31,6 +31,7 @@ const emit = defineEmits<{
 }>()
 
 const fileInputRef = ref<HTMLInputElement | null>(null)
+const fileTypeError = ref<string | null>(null)
 
 function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`
@@ -40,7 +41,9 @@ function formatFileSize(bytes: number): string {
 
 function formatDate(iso: string | null): string {
   if (!iso) return '—'
-  return new Date(iso).toLocaleDateString('ar-YE', {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return '—'
+  return d.toLocaleDateString('ar-YE', {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
@@ -58,6 +61,14 @@ function handleFileChange(event: Event) {
   const input = event.target as HTMLInputElement
   const file = input.files?.[0]
   if (!file) return
+
+  if (file.type !== 'application/pdf') {
+    fileTypeError.value = 'يُقبل ملف PDF فقط. الرجاء اختيار ملف بصيغة PDF.'
+    input.value = ''
+    return
+  }
+
+  fileTypeError.value = null
   emit('upload', file)
   // Reset input so the same file can be re-uploaded if needed
   input.value = ''
@@ -155,8 +166,8 @@ const hasContent = computed(
       </li>
     </ul>
 
-    <!-- Upload section (DATA_ENTRY only) -->
-    <div class="doc-upload-section">
+    <!-- Upload section (DATA_ENTRY only — not rendered at all for other roles) -->
+    <div v-if="userRole === UserRole.DATA_ENTRY" class="doc-upload-section">
       <!-- Upload button for editable requests -->
       <template v-if="showUploadButton">
         <input
@@ -169,12 +180,15 @@ const hasContent = computed(
         />
         <button
           class="doc-upload-btn"
-          :disabled="uploadingDocument"
+          :disabled="uploadingDocument || loading"
           @click="triggerFileInput"
         >
           {{ uploadingDocument ? 'جارٍ الرفع…' : 'رفع مستند' }}
         </button>
-        <p v-if="uploadError" class="docs-error docs-error--upload" role="alert">
+        <p v-if="fileTypeError" class="docs-error docs-error--upload" role="alert">
+          {{ fileTypeError }}
+        </p>
+        <p v-else-if="uploadError" class="docs-error docs-error--upload" role="alert">
           {{ uploadError }}
         </p>
       </template>
@@ -392,9 +406,5 @@ const hasContent = computed(
   gap: 4px;
 }
 
-/* Customs row — slight visual emphasis */
-.doc-item--customs .doc-type-label {
-  color: #5856d6;
-  font-weight: 600;
-}
+/* Customs row — identical visual treatment to regular document rows */
 </style>

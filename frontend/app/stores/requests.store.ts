@@ -90,6 +90,8 @@ export const useRequestsStore = defineStore('requests', {
       this.history = []
       this.historyError = null
       this.historyLoaded = false
+      this.uploading = false
+      this.uploadError = null
 
       try {
         const { fetchRequest } = useRequests()
@@ -158,7 +160,6 @@ export const useRequestsStore = defineStore('requests', {
       try {
         const { uploadDocument } = useRequests()
         await uploadDocument(id, file, file.name)
-        await this.loadDocuments(id)
       }
       catch (err) {
         if (import.meta.dev) {
@@ -170,6 +171,9 @@ export const useRequestsStore = defineStore('requests', {
       finally {
         this.uploading = false
       }
+
+      // Refresh document list after successful upload — errors handled by loadDocuments itself
+      await this.loadDocuments(id)
     },
 
     async loadDocuments(id: number): Promise<void> {

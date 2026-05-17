@@ -100,7 +100,8 @@ const canEdit = computed(
 // Downloading state per document id
 const downloadingIds = ref<Set<number>>(new Set())
 const downloadErrors = ref<Record<number, string>>({})
-const customsDownloadError = ref('')
+const customsDownloadError = ref('')           // overview tab customs card
+const checklistCustomsDownloadError = ref('') // documents tab DocumentChecklist
 
 // Claim lifecycle for SUPPORT_COMMITTEE
 const {
@@ -309,7 +310,7 @@ async function downloadCustomsDeclaration() {
 }
 
 async function handleDownloadCustoms(customsId: number, declarationNumber: string) {
-  customsDownloadError.value = ''
+  checklistCustomsDownloadError.value = ''
   try {
     await requestsStore.downloadCustomsDeclaration(
       customsId,
@@ -317,7 +318,7 @@ async function handleDownloadCustoms(customsId: number, declarationNumber: strin
     )
   }
   catch {
-    customsDownloadError.value = 'تعذّر تحميل البيان الجمركي.'
+    checklistCustomsDownloadError.value = 'تعذّر تحميل البيان الجمركي.'
   }
 }
 
@@ -586,7 +587,7 @@ function actorLabel(id: number | null | undefined): string {
               :downloading-ids="downloadingIds"
               :download-errors="downloadErrors"
               :customs-downloading="requestsStore.downloadingCustoms"
-              :customs-download-error="customsDownloadError"
+              :customs-download-error="checklistCustomsDownloadError"
               @download="downloadDocument"
               @download-customs="handleDownloadCustoms"
               @upload="handleUploadDocument"
