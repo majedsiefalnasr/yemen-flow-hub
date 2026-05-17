@@ -33,4 +33,15 @@ class CustomsDeclaration extends Model
     {
         return $this->belongsTo(User::class, 'issued_by');
     }
+
+    protected static function booted(): void
+    {
+        static::updating(function (): void {
+            throw new \LogicException('Customs declarations are immutable once issued.');
+        });
+
+        static::deleting(function (): void {
+            throw new \LogicException('Customs declarations are immutable once issued.');
+        });
+    }
 }

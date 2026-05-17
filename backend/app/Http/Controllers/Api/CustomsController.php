@@ -27,13 +27,15 @@ class CustomsController extends Controller
     )]
     public function generate(ImportRequest $importRequest)
     {
-        if (!request()->user()->hasPermission('customs.issue')) {
-            return ApiResponse::forbidden();
-        }
+        $this->authorize('view', $importRequest);
 
         $declaration = $this->customsService->generate($importRequest, request()->user());
 
-        return ApiResponse::success(new CustomsDeclarationResource($declaration), 'Customs declaration generated successfully.', 201);
+        return ApiResponse::success(
+            new CustomsDeclarationResource($declaration->load(['issuer', 'request.bank'])),
+            'Customs declaration generated successfully.',
+            201
+        );
     }
 
     #[OA\Get(
@@ -46,7 +48,10 @@ class CustomsController extends Controller
     {
         $this->authorize('view', $customsDeclaration->request);
 
-        return ApiResponse::success(new CustomsDeclarationResource($customsDeclaration), 'Customs declaration retrieved.');
+        return ApiResponse::success(
+            new CustomsDeclarationResource($customsDeclaration->load(['issuer', 'request.bank'])),
+            'Customs declaration retrieved.'
+        );
     }
 
     #[OA\Get(

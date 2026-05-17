@@ -131,7 +131,16 @@ class ImportRequestController extends Controller
     {
         $this->authorize('view', $importRequest);
 
-        return ApiResponse::success(new ImportRequestResource($importRequest->load(['bank', 'merchant', 'claimedByUser', 'documents.uploader'])), 'Request retrieved successfully.');
+        return ApiResponse::success(
+            new ImportRequestResource($importRequest->load([
+                'bank',
+                'merchant',
+                'claimedByUser',
+                'documents.uploader',
+                'issuedCustomsDeclaration.issuer',
+            ])),
+            'Request retrieved successfully.'
+        );
     }
 
     #[OA\Put(

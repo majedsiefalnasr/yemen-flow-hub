@@ -97,6 +97,16 @@ return Application::configure(basePath: dirname(__DIR__))
             }
         });
 
+        $exceptions->render(function (LogicException $e, Request $request) {
+            if ($request->is('api/*') && str_contains($e->getMessage(), 'immutable')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $e->getMessage(),
+                    'error_code' => 'WORKFLOW_IMMUTABLE_STATE',
+                ], 403);
+            }
+        });
+
         $exceptions->render(function (WorkflowLockedStateException $e, Request $request) {
             if ($request->is('api/*')) {
                 return response()->json([

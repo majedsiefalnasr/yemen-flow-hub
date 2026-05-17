@@ -50,6 +50,16 @@ class ImportRequestResource extends JsonResource
             'swift_uploaded_at' => $this->swift_uploaded_at?->toISOString(),
             'executive_decided_at' => $this->executive_decided_at?->toISOString(),
             'customs_issued_at' => $this->customs_issued_at?->toISOString(),
+            'customs_declaration' => $this->issuedCustomsDeclaration ? [
+                'id' => $this->issuedCustomsDeclaration->id,
+                'declaration_number' => $this->issuedCustomsDeclaration->declaration_number,
+                'issued_at' => $this->issuedCustomsDeclaration->issued_at?->toISOString(),
+                'issued_by' => $this->issuedCustomsDeclaration->issuer ? [
+                    'id' => $this->issuedCustomsDeclaration->issuer->id,
+                    'name' => $this->issuedCustomsDeclaration->issuer->name,
+                ] : null,
+                'download_url' => url("/api/customs/{$this->issuedCustomsDeclaration->id}/download"),
+            ] : null,
             'revision_count' => $this->revision_count,
             'voting_session_status' => $this->voting_session_status?->value,
             'created_at' => $this->created_at?->toISOString(),

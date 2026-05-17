@@ -179,6 +179,11 @@ class ImportRequest extends Model
         return $this->hasOne(CustomsDeclaration::class, 'request_id');
     }
 
+    public function issuedCustomsDeclaration(): BelongsTo
+    {
+        return $this->belongsTo(CustomsDeclaration::class, 'customs_declaration_id');
+    }
+
     public function scopeForUser(Builder $query, User $user): Builder
     {
         if ($user->isBankUser()) {

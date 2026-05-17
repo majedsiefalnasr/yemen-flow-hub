@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Services\Audit\AuditService;
 use App\Services\Workflow\WorkflowService;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -26,55 +27,79 @@ class CustomsService
 
     public function generate(ImportRequest $request, User $issuer): CustomsDeclaration
     {
-        if ($request->status !== RequestStatus::EXECUTIVE_APPROVED) {
-            throw new CustomsException('Customs declaration can only be generated for EXECUTIVE_APPROVED requests.');
-        }
-
         if (!$issuer->hasRole(UserRole::COMMITTEE_DIRECTOR)) {
             throw new CustomsException('Only committee director can generate customs declarations.');
         }
 
-        if ($request->customsDeclaration()->exists()) {
-            throw new CustomsException('Customs declaration already exists for this request.');
+        $storedPath = null;
+
+        try {
+            return DB::transaction(function () use ($request, $issuer, &$storedPath): CustomsDeclaration {
+                $lockedRequest = ImportRequest::query()
+                    ->with('bank')
+                    ->whereKey($request->id)
+                    ->lockForUpdate()
+                    ->firstOrFail();
+
+                if ($lockedRequest->status !== RequestStatus::EXECUTIVE_APPROVED) {
+                    throw new CustomsException('Customs declaration can only be generated for EXECUTIVE_APPROVED requests.');
+                }
+
+                if ($lockedRequest->customs_declaration_id !== null || $lockedRequest->customsDeclaration()->exists()) {
+                    throw new CustomsException('Customs declaration already exists for this request.');
+                }
+
+                $issuedAt = now();
+                $declarationNumber = $this->nextDeclarationNumber();
+                $snapshot = $this->snapshot($lockedRequest);
+
+                $pdf = Pdf::loadView('pdf.customs-declaration', [
+                    'requestModel' => $lockedRequest,
+                    'declarationNumber' => $declarationNumber,
+                    'issuedAt' => $issuedAt,
+                    'snapshot' => $snapshot,
+                    'issuer' => $issuer,
+                ])->setPaper('a4');
+
+                $relativePath = "customs/{$lockedRequest->id}/{$declarationNumber}.pdf";
+                $storedPath = 'private/'.$relativePath;
+                Storage::disk('local')->put($storedPath, $pdf->output());
+
+                $declaration = CustomsDeclaration::query()->create([
+                    'request_id' => $lockedRequest->id,
+                    'declaration_number' => $declarationNumber,
+                    'issued_by' => $issuer->id,
+                    'issued_at' => $issuedAt,
+                    'pdf_path' => $relativePath,
+                    'metadata' => $snapshot,
+                ]);
+
+                $lockedRequest->forceFill(['customs_declaration_id' => $declaration->id])->saveQuietly();
+
+                $afterIssue = $this->workflowService->transition($lockedRequest->fresh(), 'issue_customs', $issuer);
+                $this->workflowService->transition($afterIssue->fresh(), 'complete', $issuer);
+
+                $this->auditService->log(
+                    AuditAction::CUSTOMS_ISSUED,
+                    $issuer,
+                    $lockedRequest,
+                    ['declaration_id' => $declaration->id, 'declaration_number' => $declarationNumber]
+                );
+
+                return $declaration->load(['issuer', 'request.bank'])->refresh();
+            });
+        } catch (\Throwable $exception) {
+            if ($storedPath !== null) {
+                Storage::disk('local')->delete($storedPath);
+            }
+
+            throw $exception;
         }
-
-        $declarationNumber = $this->nextDeclarationNumber();
-        $snapshot = $this->snapshot($request->fresh(['bank']));
-
-        $pdf = Pdf::loadView('pdf.customs-declaration', [
-            'requestModel' => $request->fresh(['bank']),
-            'declarationNumber' => $declarationNumber,
-            'issuedAt' => now(),
-            'snapshot' => $snapshot,
-        ]);
-
-        $relativePath = "customs/{$request->id}/{$declarationNumber}.pdf";
-        Storage::disk('local')->put('private/'.$relativePath, $pdf->output());
-
-        $declaration = CustomsDeclaration::query()->create([
-            'request_id' => $request->id,
-            'declaration_number' => $declarationNumber,
-            'issued_by' => $issuer->id,
-            'issued_at' => now(),
-            'pdf_path' => $relativePath,
-            'metadata' => $snapshot,
-        ]);
-
-        $this->workflowService->transition($request->fresh(), 'issue_customs', $issuer);
-        $this->workflowService->transition($request->fresh(), 'complete', $issuer);
-
-        $this->auditService->log(
-            AuditAction::CUSTOMS_ISSUED,
-            $issuer,
-            $declaration,
-            ['request_id' => $request->id, 'declaration_number' => $declarationNumber]
-        );
-
-        return $declaration->refresh();
     }
 
     public function getPdfStream(CustomsDeclaration $declaration, User $user): StreamedResponse
     {
+        $declaration->loadMissing('request');
         Gate::forUser($user)->authorize('view', $declaration->request);
 
         $fullPath = 'private/'.$declaration->pdf_path;
@@ -99,18 +124,30 @@ class CustomsService
     {
         $year = now()->format('Y');
         $prefix = "CD-{$year}-";
-        $latest = CustomsDeclaration::query()
-            ->where('declaration_number', 'like', $prefix.'%')
-            ->latest('id')
-            ->value('declaration_number');
+        $isMySQL = DB::connection()->getDriverName() === 'mysql';
 
-        $next = 1;
-        if ($latest) {
-            $parts = explode('-', $latest);
-            $next = ((int) ($parts[2] ?? 0)) + 1;
+        if ($isMySQL) {
+            DB::statement("SELECT GET_LOCK('customs_declaration_number', 10)");
         }
 
-        return $prefix.str_pad((string) $next, 6, '0', STR_PAD_LEFT);
+        try {
+            $latest = CustomsDeclaration::query()
+                ->where('declaration_number', 'like', $prefix.'%')
+                ->latest('id')
+                ->value('declaration_number');
+
+            $next = 1;
+            if ($latest) {
+                $parts = explode('-', $latest);
+                $next = ((int) ($parts[2] ?? 0)) + 1;
+            }
+
+            return $prefix.str_pad((string) $next, 6, '0', STR_PAD_LEFT);
+        } finally {
+            if ($isMySQL) {
+                DB::statement("SELECT RELEASE_LOCK('customs_declaration_number')");
+            }
+        }
     }
 
     private function snapshot(ImportRequest $request): array
