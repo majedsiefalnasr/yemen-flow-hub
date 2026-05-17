@@ -1,3 +1,6 @@
+# Claude Code agent worktrees — ephemeral, never commit
+.claude/worktrees/
+
 # Lovable prototype — reference only, not committed to root
 lovable/
 
