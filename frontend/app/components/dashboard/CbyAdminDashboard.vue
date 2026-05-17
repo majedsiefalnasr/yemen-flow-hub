@@ -45,7 +45,7 @@ onMounted(() => { store.loadStats() })
           <span class="kpi-label">موافق عليها</span>
           <span class="kpi-value">{{ stats.approved }}</span>
         </div>
-        <div class="kpi-card kpi-card--blue">
+        <div class="kpi-card kpi-card--indigo">
           <span class="kpi-label">قيد المعالجة</span>
           <span class="kpi-value">{{ stats.in_process }}</span>
         </div>
@@ -122,7 +122,7 @@ onMounted(() => { store.loadStats() })
             >
               <span class="alert-list__ref">{{ req.reference_number }}</span>
               <span class="alert-list__name">{{ req.bank_name }}</span>
-              <span class="alert-list__badge alert-list__badge--gray">{{ req.status }}</span>
+
             </li>
           </ul>
         </div>
@@ -151,15 +151,15 @@ onMounted(() => { store.loadStats() })
       <section aria-labelledby="quicklinks-heading">
         <h2 id="quicklinks-heading" class="section-title">روابط سريعة</h2>
         <div class="quick-links">
-          <button class="quick-link-card" @click="router.push('/audit')">
+          <button class="quick-link-card" @click="navigateTo('/audit')">
             <span class="quick-link-card__icon" aria-hidden="true">📋</span>
             <span class="quick-link-card__label">سجل المراجعة</span>
           </button>
-          <button class="quick-link-card" @click="router.push('/users')">
+          <button class="quick-link-card" @click="navigateTo('/users')">
             <span class="quick-link-card__icon" aria-hidden="true">👥</span>
             <span class="quick-link-card__label">إدارة المستخدمين</span>
           </button>
-          <button class="quick-link-card" @click="router.push('/banks')">
+          <button class="quick-link-card" @click="navigateTo('/banks')">
             <span class="quick-link-card__icon" aria-hidden="true">🏦</span>
             <span class="quick-link-card__label">إدارة البنوك</span>
           </button>
@@ -210,7 +210,7 @@ onMounted(() => { store.loadStats() })
 }
 
 .kpi-card--green .kpi-value { color: #34c759; }
-.kpi-card--blue .kpi-value  { color: #0071e3; }
+.kpi-card--indigo .kpi-value { color: #5856d6; }
 .kpi-card--red .kpi-value   { color: #ff3b30; }
 
 /* Skeleton */

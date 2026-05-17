@@ -45,7 +45,7 @@ export interface ExecutiveDashboardStats {
 export interface CbyAdminComplianceAlerts {
   duplicate_suppliers: Array<{ supplier_name: string; count: number }>
   high_amount_requests: Array<{ id: number; reference_number: string; amount: number; currency: string; bank_name: string }>
-  stale_pending_requests: Array<{ id: number; reference_number: string; status: string; bank_name: string; updated_at: string }>
+  stale_pending_requests: Array<{ id: number; reference_number: string; bank_name: string; updated_at: string | null }>
 }
 
 export interface CbyAdminDashboardStats {
