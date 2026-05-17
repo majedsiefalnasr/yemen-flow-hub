@@ -64,10 +64,33 @@ export interface ImportRequest {
   voting_session_status: VotingSessionStatus | null
   executive_decided_at: string | null
   customs_issued_at: string | null
+  customs_declaration?: CustomsDeclarationSummary | null
   revision_count: number
   created_at: string
   updated_at: string
   documents?: RequestDocument[]
+}
+
+export interface CustomsDeclarationSummary {
+  id: number
+  declaration_number: string
+  issued_at: string
+  issued_by: number | null
+  issuer: { id: number; name: string } | null
+  download_url: string
+}
+
+export interface CustomsDeclaration {
+  id: number
+  request_id: number
+  declaration_number: string
+  issued_by: number
+  issuer: { id: number; name: string; email: string; role: UserRole } | null
+  issued_at: string
+  request: { id: number; reference_number: string; bank_name: string | null } | null
+  metadata: Record<string, unknown> | null
+  download_url: string
+  created_at: string
 }
 
 export interface RequestDocument {

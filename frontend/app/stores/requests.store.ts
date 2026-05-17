@@ -21,6 +21,8 @@ export const useRequestsStore = defineStore('requests', {
     loadingRequest: false,
     loadingDocuments: false,
     performingAction: false,
+    issuingCustoms: false,
+    downloadingCustoms: false,
     saving: false,
     error: null as string | null,
     meta: null as PaginationMeta | null,
@@ -180,6 +182,55 @@ export const useRequestsStore = defineStore('requests', {
       }
       finally {
         this.performingAction = false
+      }
+    },
+
+    async issueCustomsDeclaration(id: number): Promise<void> {
+      if (this.issuingCustoms) throw new Error('إصدار البيان الجمركي قيد التنفيذ بالفعل')
+      this.issuingCustoms = true
+      this.error = null
+
+      try {
+        const { generateCustomsDeclaration, fetchRequest } = useRequests()
+        await generateCustomsDeclaration(id)
+        this.currentRequest = await fetchRequest(id)
+      }
+      catch (err) {
+        if (import.meta.dev) {
+          console.error('[requests.store] issueCustomsDeclaration failed:', err)
+        }
+        this.error = 'تعذّر إصدار البيان الجمركي.'
+        throw err
+      }
+      finally {
+        this.issuingCustoms = false
+      }
+    },
+
+    async downloadCustomsDeclaration(customsDeclarationId: number, filename: string): Promise<void> {
+      if (this.downloadingCustoms) return
+      this.downloadingCustoms = true
+
+      try {
+        const { downloadCustomsDeclaration } = useRequests()
+        const response = await downloadCustomsDeclaration(customsDeclarationId)
+        const url = URL.createObjectURL(response)
+        const anchor = document.createElement('a')
+        anchor.href = url
+        anchor.download = filename
+        document.body.appendChild(anchor)
+        anchor.click()
+        anchor.remove()
+        URL.revokeObjectURL(url)
+      }
+      catch (err) {
+        if (import.meta.dev) {
+          console.error('[requests.store] downloadCustomsDeclaration failed:', err)
+        }
+        throw err
+      }
+      finally {
+        this.downloadingCustoms = false
       }
     },
 

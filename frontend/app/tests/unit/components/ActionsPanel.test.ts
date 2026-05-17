@@ -68,11 +68,16 @@ function showSupportCommitteeActions(request: ImportRequest, userRole: UserRole)
   )
 }
 
+function showDirectorCustomsActions(request: ImportRequest, userRole: UserRole): boolean {
+  return userRole === UserRole.COMMITTEE_DIRECTOR && request.status === RequestStatus.EXECUTIVE_APPROVED
+}
+
 function showAnyActions(request: ImportRequest, userRole: UserRole): boolean {
   return (
     showBankReviewerActions(request, userRole)
     || showDataEntryActions(request, userRole)
     || showSupportCommitteeActions(request, userRole)
+    || showDirectorCustomsActions(request, userRole)
   )
 }
 
@@ -168,10 +173,24 @@ describe('ActionsPanel — showAnyActions (overall panel visibility)', () => {
     }
   })
 
-  it('false for all roles on EXECUTIVE_APPROVED status', () => {
+  it('true only for COMMITTEE_DIRECTOR on EXECUTIVE_APPROVED status', () => {
     for (const role of Object.values(UserRole)) {
-      expect(showAnyActions(makeRequest({ status: RequestStatus.EXECUTIVE_APPROVED }), role)).toBe(false)
+      expect(showAnyActions(makeRequest({ status: RequestStatus.EXECUTIVE_APPROVED }), role)).toBe(role === UserRole.COMMITTEE_DIRECTOR)
     }
+  })
+})
+
+describe('ActionsPanel — showDirectorCustomsActions', () => {
+  it('true for COMMITTEE_DIRECTOR + EXECUTIVE_APPROVED', () => {
+    expect(showDirectorCustomsActions(makeRequest({ status: RequestStatus.EXECUTIVE_APPROVED }), UserRole.COMMITTEE_DIRECTOR)).toBe(true)
+  })
+
+  it('false for COMMITTEE_DIRECTOR after completion', () => {
+    expect(showDirectorCustomsActions(makeRequest({ status: RequestStatus.COMPLETED }), UserRole.COMMITTEE_DIRECTOR)).toBe(false)
+  })
+
+  it('false for non-director roles', () => {
+    expect(showDirectorCustomsActions(makeRequest({ status: RequestStatus.EXECUTIVE_APPROVED }), UserRole.EXECUTIVE_MEMBER)).toBe(false)
   })
 })
 

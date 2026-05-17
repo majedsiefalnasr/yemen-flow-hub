@@ -97,6 +97,7 @@ const canEdit = computed(
 // Downloading state per document id
 const downloadingIds = ref<Set<number>>(new Set())
 const downloadErrors = ref<Record<number, string>>({})
+const customsDownloadError = ref('')
 
 // Claim lifecycle for SUPPORT_COMMITTEE
 const {
@@ -273,6 +274,7 @@ async function onTabChange(key: TabKey) {
 
 async function onActionCompleted() {
   await requestsStore.loadRequest(id)
+  customsDownloadError.value = ''
   syncActiveReviewState()
   // Re-fetch documents if the user is on the documents tab
   if (activeTab.value === 'documents') {
@@ -281,6 +283,22 @@ async function onActionCompleted() {
   // Reload voting detail when a director action completes (session open/close/finalize/override)
   if (votingStore.votingDetail || activeTab.value === 'votes') {
     await votingStore.loadVotingDetail(id)
+  }
+}
+
+async function downloadCustomsDeclaration() {
+  const declaration = request.value?.customs_declaration
+  if (!declaration) return
+
+  customsDownloadError.value = ''
+  try {
+    await requestsStore.downloadCustomsDeclaration(
+      declaration.id,
+      `customs-declaration-${declaration.declaration_number}.pdf`,
+    )
+  }
+  catch {
+    customsDownloadError.value = 'تعذّر تحميل البيان الجمركي.'
   }
 }
 
@@ -487,6 +505,40 @@ function actorLabel(id: number | null | undefined): string {
                 <dd class="detail-value">{{ actorLabel(request.resubmitted_by) }}</dd>
               </div>
             </dl>
+          </div>
+
+          <div v-if="request.status === RequestStatus.COMPLETED && request.customs_declaration" class="card customs-card">
+            <div class="customs-card__header">
+              <h2 class="card-title customs-card__title">البيان الجمركي</h2>
+              <button
+                class="customs-download"
+                :disabled="requestsStore.downloadingCustoms"
+                @click="downloadCustomsDeclaration"
+              >
+                {{ requestsStore.downloadingCustoms ? 'جارٍ التحميل…' : 'تحميل PDF' }}
+              </button>
+            </div>
+            <dl class="detail-grid">
+              <div class="detail-row">
+                <dt class="detail-label">رقم البيان</dt>
+                <dd class="detail-value">{{ request.customs_declaration.declaration_number }}</dd>
+              </div>
+              <div class="detail-row">
+                <dt class="detail-label">تاريخ الإصدار</dt>
+                <dd class="detail-value">{{ formatDate(request.customs_declaration.issued_at) }}</dd>
+              </div>
+              <div class="detail-row">
+                <dt class="detail-label">أصدره</dt>
+                <dd class="detail-value">{{ request.customs_declaration.issuer?.name ?? '—' }}</dd>
+              </div>
+              <div class="detail-row">
+                <dt class="detail-label">الحالة</dt>
+                <dd class="detail-value detail-value--approved">مكتمل</dd>
+              </div>
+            </dl>
+            <p v-if="customsDownloadError" class="docs-error" role="alert">
+              {{ customsDownloadError }}
+            </p>
           </div>
         </section>
 
@@ -756,6 +808,47 @@ function actorLabel(id: number | null | undefined): string {
   word-break: break-word;
 }
 
+.detail-value--approved {
+  color: #34c759;
+  font-weight: 700;
+}
+
+.customs-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.customs-card__title {
+  margin-bottom: 0;
+}
+
+.customs-download {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 8px;
+  background: #0071e3;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.customs-download:hover:not(:disabled) {
+  opacity: 0.88;
+}
+
+.customs-download:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 /* Documents */
 .docs-list {
   list-style: none;
@@ -893,8 +986,33 @@ function actorLabel(id: number | null | undefined): string {
     grid-template-columns: 1fr;
   }
 
+  .customs-card__header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
   .page-header {
     flex-direction: column;
+  }
+}
+
+@media print {
+  .back-link,
+  .edit-btn,
+  .tab-nav,
+  .banner-area,
+  .customs-download,
+  .actions-panel {
+    display: none !important;
+  }
+
+  .detail-page,
+  .tab-content,
+  .tab-panel,
+  .card {
+    border: 0;
+    padding: 0;
+    box-shadow: none;
   }
 }
 </style>

@@ -1,4 +1,4 @@
-import type { ApiResponse, ImportRequest, PaginatedResponse, RequestDocument, RequestFormData } from '../types/models'
+import type { ApiResponse, CustomsDeclaration, ImportRequest, PaginatedResponse, RequestDocument, RequestFormData } from '../types/models'
 import type { RequestStatus } from '../types/enums'
 import { useApi } from './useApi'
 
@@ -92,5 +92,32 @@ export function useRequests() {
     })
   }
 
-  return { fetchRequests, fetchRequest, createRequest, updateRequest, uploadDocument, performWorkflowAction, fetchRequestDocuments, uploadSwift }
+  async function generateCustomsDeclaration(requestId: number): Promise<CustomsDeclaration> {
+    const response = await post<ApiResponse<CustomsDeclaration>>(`/api/customs/${requestId}/generate`)
+    return response.data
+  }
+
+  async function downloadCustomsDeclaration(customsDeclarationId: number): Promise<Blob> {
+    const config = useRuntimeConfig()
+    const baseURL = config.public.apiBase as string
+    return $fetch<Blob>(`/api/customs/${customsDeclarationId}/download`, {
+      method: 'GET',
+      baseURL,
+      credentials: 'include',
+      responseType: 'blob',
+    })
+  }
+
+  return {
+    fetchRequests,
+    fetchRequest,
+    createRequest,
+    updateRequest,
+    uploadDocument,
+    performWorkflowAction,
+    fetchRequestDocuments,
+    uploadSwift,
+    generateCustomsDeclaration,
+    downloadCustomsDeclaration,
+  }
 }

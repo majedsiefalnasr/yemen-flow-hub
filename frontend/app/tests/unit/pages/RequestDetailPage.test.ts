@@ -17,6 +17,8 @@ vi.mock('../../../composables/useRequests', () => ({
     uploadDocument: vi.fn(),
     performWorkflowAction: mockPerformWorkflowAction,
     fetchRequestDocuments: mockFetchRequestDocuments,
+    generateCustomsDeclaration: vi.fn(),
+    downloadCustomsDeclaration: vi.fn(),
   }),
 }))
 

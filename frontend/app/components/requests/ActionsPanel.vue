@@ -67,11 +67,17 @@ const showDirectorVotingActions = computed(() =>
   && DIRECTOR_VOTING_STATUSES.has(props.request.status),
 )
 
+const showDirectorCustomsActions = computed(() =>
+  props.userRole === UserRole.COMMITTEE_DIRECTOR
+  && props.request.status === RequestStatus.EXECUTIVE_APPROVED,
+)
+
 const showAnyActions = computed(() =>
   showBankReviewerActions.value
   || showDataEntryActions.value
   || showSupportCommitteeActions.value
-  || showDirectorVotingActions.value,
+  || showDirectorVotingActions.value
+  || showDirectorCustomsActions.value
 )
 
 function resetRejectForm() {
@@ -150,6 +156,18 @@ async function handleDirectorOverride() {
     const msg = err instanceof Error ? err.message : ''
     actionError.value = msg || 'تعذّر تنفيذ قرار التجاوز.'
     resetDirectorState()
+  }
+}
+
+async function handleIssueCustomsDeclaration() {
+  actionError.value = ''
+  try {
+    await requestsStore.issueCustomsDeclaration(props.request.id)
+    emit('action-completed')
+  }
+  catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : ''
+    actionError.value = msg || 'تعذّر إصدار البيان الجمركي.'
   }
 }
 
@@ -476,6 +494,17 @@ async function dispatchAction(action: string, reason?: string) {
         @click="handleFinalizeDecision"
       >
         {{ votingStore.performingDirectorAction ? 'جارٍ التنفيذ…' : 'إصدار القرار النهائي' }}
+      </button>
+    </template>
+
+    <!-- COMMITTEE_DIRECTOR: EXECUTIVE_APPROVED → issue customs declaration -->
+    <template v-if="showDirectorCustomsActions">
+      <button
+        class="action-btn action-btn--approve"
+        :disabled="requestsStore.issuingCustoms"
+        @click="handleIssueCustomsDeclaration"
+      >
+        {{ requestsStore.issuingCustoms ? 'جارٍ الإصدار…' : 'إصدار البيان الجمركي' }}
       </button>
     </template>
   </div>
