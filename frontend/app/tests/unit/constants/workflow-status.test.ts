@@ -5,8 +5,11 @@ import {
   STATUS_ICONS,
   getBusinessStatus,
   DATA_ENTRY_ROLES,
+  BANK_ADMIN_MANAGED_ROLES,
   CBY_OPERATIONAL_ROLES,
+  NAV_ITEMS,
   OPERATIONAL_FILTER_ROLES,
+  ROUTE_ROLE_MAP,
   ROLE_FILTER_STATUSES,
 } from '../../../constants/workflow'
 
@@ -201,12 +204,23 @@ describe('Role group constants', () => {
     it('does not contain DATA_ENTRY or BANK_REVIEWER', () => {
       expect(CBY_OPERATIONAL_ROLES).not.toContain(UserRole.DATA_ENTRY)
       expect(CBY_OPERATIONAL_ROLES).not.toContain(UserRole.BANK_REVIEWER)
+      expect(CBY_OPERATIONAL_ROLES).not.toContain(UserRole.BANK_ADMIN)
+    })
+  })
+
+  describe('BANK_ADMIN_MANAGED_ROLES', () => {
+    it('allows only DATA_ENTRY and BANK_REVIEWER management', () => {
+      expect(BANK_ADMIN_MANAGED_ROLES).toEqual([UserRole.DATA_ENTRY, UserRole.BANK_REVIEWER])
+      expect(BANK_ADMIN_MANAGED_ROLES).not.toContain(UserRole.BANK_ADMIN)
+      expect(BANK_ADMIN_MANAGED_ROLES).not.toContain(UserRole.CBY_ADMIN)
+      expect(BANK_ADMIN_MANAGED_ROLES).not.toContain(UserRole.SWIFT_OFFICER)
     })
   })
 
   describe('OPERATIONAL_FILTER_ROLES', () => {
-    it('includes BANK_REVIEWER and all CBY_OPERATIONAL_ROLES', () => {
+    it('includes BANK_REVIEWER, BANK_ADMIN, and all CBY_OPERATIONAL_ROLES', () => {
       expect(OPERATIONAL_FILTER_ROLES).toContain(UserRole.BANK_REVIEWER)
+      expect(OPERATIONAL_FILTER_ROLES).toContain(UserRole.BANK_ADMIN)
       for (const role of CBY_OPERATIONAL_ROLES) {
         expect(OPERATIONAL_FILTER_ROLES).toContain(role)
       }
@@ -247,6 +261,14 @@ describe('Role group constants', () => {
       expect(ROLE_FILTER_STATUSES[UserRole.CBY_ADMIN]).toBeUndefined()
     })
 
+    it('BANK_ADMIN has full own-bank status filters', () => {
+      const statuses = ROLE_FILTER_STATUSES[UserRole.BANK_ADMIN]!
+      expect(statuses).toContain(RequestStatus.DRAFT)
+      expect(statuses).toContain(RequestStatus.DRAFT_REJECTED_INTERNAL)
+      expect(statuses).toContain(RequestStatus.SUBMITTED)
+      expect(statuses).toContain(RequestStatus.EXECUTIVE_APPROVED)
+    })
+
     it('all defined filter status lists contain only valid RequestStatus values', () => {
       const validStatuses = new Set(Object.values(RequestStatus))
       for (const [, statuses] of Object.entries(ROLE_FILTER_STATUSES)) {
@@ -255,6 +277,26 @@ describe('Role group constants', () => {
           expect(validStatuses.has(s), `invalid status: ${s}`).toBe(true)
         }
       }
+    })
+  })
+
+  describe('Navigation and route map', () => {
+    it('allows BANK_ADMIN to reach users and own bank profile routes', () => {
+      expect(ROUTE_ROLE_MAP['/users']).toContain(UserRole.BANK_ADMIN)
+      expect(ROUTE_ROLE_MAP['/banks']).toContain(UserRole.BANK_ADMIN)
+      expect(ROUTE_ROLE_MAP['/audit']).not.toContain(UserRole.BANK_ADMIN)
+      expect(ROUTE_ROLE_MAP['/reports']).not.toContain(UserRole.BANK_ADMIN)
+    })
+
+    it('shows scoped administration nav items for BANK_ADMIN', () => {
+      const bankAdminRoutes = NAV_ITEMS
+        .filter(item => item.roles.includes(UserRole.BANK_ADMIN))
+        .map(item => item.route)
+
+      expect(bankAdminRoutes).toContain('/users')
+      expect(bankAdminRoutes).toContain('/banks')
+      expect(bankAdminRoutes).not.toContain('/audit')
+      expect(bankAdminRoutes).not.toContain('/reports')
     })
   })
 })

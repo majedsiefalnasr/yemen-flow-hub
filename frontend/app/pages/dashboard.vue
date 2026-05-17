@@ -28,6 +28,7 @@ const role = computed(() => auth.user?.role)
 
     <DataEntryDashboard v-if="role === UserRole.DATA_ENTRY" />
     <BankReviewerDashboard v-else-if="role === UserRole.BANK_REVIEWER" />
+    <BankAdminDashboard v-else-if="role === UserRole.BANK_ADMIN" />
     <SupportCommitteeDashboard v-else-if="role === UserRole.SUPPORT_COMMITTEE" />
     <SwiftOfficerDashboard v-else-if="role === UserRole.SWIFT_OFFICER" />
     <ExecutiveDashboard v-else-if="role === UserRole.EXECUTIVE_MEMBER || role === UserRole.COMMITTEE_DIRECTOR" />

@@ -1,16 +1,19 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { computed, ref, reactive, onMounted } from 'vue'
 import { UserRole } from '../types/enums'
 import type { Bank } from '../types/models'
 import { useBanks } from '../composables/useBanks'
+import { useAuthStore } from '../stores/auth.store'
 import type { CreateBankPayload, UpdateBankPayload } from '../composables/useBanks'
 
 definePageMeta({
   middleware: 'role',
-  requiredRoles: [UserRole.CBY_ADMIN],
+  requiredRoles: [UserRole.CBY_ADMIN, UserRole.BANK_ADMIN],
 })
 
 const { fetchBanks, createBank, updateBank } = useBanks()
+const auth = useAuthStore()
+const isBankAdmin = computed(() => auth.user?.role === UserRole.BANK_ADMIN)
 
 const banks = ref<Bank[]>([])
 const loading = ref(false)
@@ -87,8 +90,8 @@ function validateForm(): boolean {
   clearErrors()
   let valid = true
   if (!form.name_ar.trim()) { formErrors.name_ar = 'الاسم بالعربية مطلوب'; valid = false }
-  if (!form.name_en.trim()) { formErrors.name_en = 'الاسم بالإنجليزية مطلوب'; valid = false }
-  if (!form.code.trim()) { formErrors.code = 'الرمز مطلوب'; valid = false }
+  if (!isBankAdmin.value && !form.name_en.trim()) { formErrors.name_en = 'الاسم بالإنجليزية مطلوب'; valid = false }
+  if (!isBankAdmin.value && !form.code.trim()) { formErrors.code = 'الرمز مطلوب'; valid = false }
   return valid
 }
 
@@ -97,18 +100,28 @@ async function saveBank() {
   saving.value = true
   formError.value = null
   try {
-    const payload: CreateBankPayload | UpdateBankPayload = {
-      name_ar: form.name_ar.trim(),
-      name_en: form.name_en.trim(),
-      code: form.code.trim().toUpperCase(),
-      is_active: form.is_active,
-    }
     if (editingBank.value) {
+      const payload: UpdateBankPayload = isBankAdmin.value
+        ? { name: form.name_ar.trim(), name_ar: form.name_ar.trim() }
+        : {
+            name: form.name_ar.trim(),
+            name_ar: form.name_ar.trim(),
+            name_en: form.name_en.trim(),
+            code: form.code.trim().toUpperCase(),
+            is_active: form.is_active,
+          }
       const updated = await updateBank(editingBank.value.id, payload)
       const idx = banks.value.findIndex(b => b.id === updated.id)
       if (idx !== -1) banks.value[idx] = updated
     }
     else {
+      const payload: CreateBankPayload = {
+        name: form.name_ar.trim(),
+        name_ar: form.name_ar.trim(),
+        name_en: form.name_en.trim(),
+        code: form.code.trim().toUpperCase(),
+        is_active: form.is_active,
+      }
       const created = await createBank(payload)
       banks.value.unshift(created)
     }
@@ -137,8 +150,8 @@ onMounted(loadBanks)
 <template>
   <div class="page">
     <div class="page-header">
-      <h1 class="page-title">إدارة البنوك</h1>
-      <button class="btn-primary" @click="openCreate">
+      <h1 class="page-title">{{ isBankAdmin ? 'بيانات البنك' : 'إدارة البنوك' }}</h1>
+      <button v-if="!isBankAdmin" class="btn-primary" @click="openCreate">
         + إضافة بنك
       </button>
     </div>
@@ -192,19 +205,19 @@ onMounted(loadBanks)
           <span v-if="formErrors.name_ar" class="field-error">{{ formErrors.name_ar }}</span>
         </div>
 
-        <div class="form-field">
+        <div v-if="!isBankAdmin" class="form-field">
           <label class="form-label">الاسم بالإنجليزية <span class="required">*</span></label>
           <input v-model="form.name_en" class="form-input" :class="{ error: formErrors.name_en }" type="text" placeholder="e.g. Yemen Commercial Bank">
           <span v-if="formErrors.name_en" class="field-error">{{ formErrors.name_en }}</span>
         </div>
 
-        <div class="form-field">
+        <div v-if="!isBankAdmin" class="form-field">
           <label class="form-label">الرمز <span class="required">*</span></label>
           <input v-model="form.code" class="form-input" :class="{ error: formErrors.code }" type="text" maxlength="20" placeholder="مثال: YCB">
           <span v-if="formErrors.code" class="field-error">{{ formErrors.code }}</span>
         </div>
 
-        <div class="form-field form-field-inline">
+        <div v-if="!isBankAdmin" class="form-field form-field-inline">
           <label class="form-label">نشط</label>
           <input v-model="form.is_active" type="checkbox" class="form-checkbox">
         </div>

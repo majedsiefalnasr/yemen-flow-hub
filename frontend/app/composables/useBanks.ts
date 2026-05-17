@@ -2,6 +2,7 @@ import type { ApiResponse, Bank } from '../types/models'
 import { useApi } from './useApi'
 
 export interface CreateBankPayload {
+  name?: string
   name_ar: string
   name_en: string
   code: string
@@ -9,10 +10,11 @@ export interface CreateBankPayload {
 }
 
 export interface UpdateBankPayload {
-  name_ar: string
-  name_en: string
-  code: string
-  is_active: boolean
+  name?: string
+  name_ar?: string
+  name_en?: string
+  code?: string
+  is_active?: boolean
 }
 
 export function useBanks() {

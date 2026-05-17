@@ -5,9 +5,10 @@ import { describe, it, expect } from 'vitest'
 import { UserRole } from '../../../types/enums'
 
 // Logic mirrored from dashboard.vue: which component to render per role
-function resolveDashboardComponent(role: UserRole | undefined): 'DataEntryDashboard' | 'BankReviewerDashboard' | 'SupportCommitteeDashboard' | 'SwiftOfficerDashboard' | 'ExecutiveDashboard' | 'CbyAdminDashboard' | 'Placeholder' {
+function resolveDashboardComponent(role: UserRole | undefined): 'DataEntryDashboard' | 'BankReviewerDashboard' | 'BankAdminDashboard' | 'SupportCommitteeDashboard' | 'SwiftOfficerDashboard' | 'ExecutiveDashboard' | 'CbyAdminDashboard' | 'Placeholder' {
   if (role === UserRole.DATA_ENTRY) return 'DataEntryDashboard'
   if (role === UserRole.BANK_REVIEWER) return 'BankReviewerDashboard'
+  if (role === UserRole.BANK_ADMIN) return 'BankAdminDashboard'
   if (role === UserRole.SUPPORT_COMMITTEE) return 'SupportCommitteeDashboard'
   if (role === UserRole.SWIFT_OFFICER) return 'SwiftOfficerDashboard'
   if (role === UserRole.EXECUTIVE_MEMBER || role === UserRole.COMMITTEE_DIRECTOR) return 'ExecutiveDashboard'
@@ -22,6 +23,10 @@ describe('Dashboard page — role-component routing', () => {
 
   it('renders BankReviewerDashboard for BANK_REVIEWER role', () => {
     expect(resolveDashboardComponent(UserRole.BANK_REVIEWER)).toBe('BankReviewerDashboard')
+  })
+
+  it('renders BankAdminDashboard for BANK_ADMIN role', () => {
+    expect(resolveDashboardComponent(UserRole.BANK_ADMIN)).toBe('BankAdminDashboard')
   })
 
   it('renders SupportCommitteeDashboard for SUPPORT_COMMITTEE role', () => {

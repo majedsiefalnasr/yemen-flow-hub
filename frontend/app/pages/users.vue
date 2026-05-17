@@ -4,16 +4,18 @@ import { UserRole } from '../types/enums'
 import type { User, Bank } from '../types/models'
 import { useUsers } from '../composables/useUsers'
 import { useBanks } from '../composables/useBanks'
-import { ROLE_LABELS, BANK_ROLES, CBY_ROLES } from '../constants/workflow'
+import { useAuthStore } from '../stores/auth.store'
+import { ROLE_LABELS, BANK_ROLES, CBY_ROLES, BANK_ADMIN_MANAGED_ROLES } from '../constants/workflow'
 import type { CreateUserPayload, UpdateUserPayload } from '../composables/useUsers'
 
 definePageMeta({
   middleware: 'role',
-  requiredRoles: [UserRole.CBY_ADMIN],
+  requiredRoles: [UserRole.CBY_ADMIN, UserRole.BANK_ADMIN],
 })
 
 const { fetchUsers, createUser, updateUser } = useUsers()
 const { fetchBanks } = useBanks()
+const auth = useAuthStore()
 
 const users = ref<User[]>([])
 const banks = ref<Bank[]>([])
@@ -45,11 +47,16 @@ const form = reactive<UserForm>({
 
 const formErrors = reactive<Partial<Record<keyof UserForm, string>>>({})
 
+const isBankAdmin = computed(() => auth.user?.role === UserRole.BANK_ADMIN)
+const allowedRoles = computed(() => isBankAdmin.value ? BANK_ADMIN_MANAGED_ROLES : Object.values(UserRole))
 const isBankRole = computed(() => form.role !== '' && BANK_ROLES.includes(form.role as UserRole))
 
 watch(() => form.role, (newRole) => {
   if (newRole !== '' && CBY_ROLES.includes(newRole as UserRole)) {
     form.bank_id = null
+  }
+  if (isBankAdmin.value && newRole !== '') {
+    form.bank_id = auth.user?.bank_id ?? null
   }
 })
 
@@ -74,8 +81,8 @@ function openCreate() {
   form.name = ''
   form.email = ''
   form.password = ''
-  form.role = ''
-  form.bank_id = null
+  form.role = isBankAdmin.value ? UserRole.DATA_ENTRY : ''
+  form.bank_id = isBankAdmin.value ? auth.user?.bank_id ?? null : null
   form.is_active = true
   clearErrors()
   showModal.value = true
@@ -87,7 +94,7 @@ function openEdit(user: User) {
   form.email = user.email
   form.password = ''
   form.role = user.role
-  form.bank_id = user.bank_id
+  form.bank_id = isBankAdmin.value ? auth.user?.bank_id ?? null : user.bank_id
   form.is_active = user.is_active
   clearErrors()
   showModal.value = true
@@ -115,8 +122,16 @@ function validateForm(): boolean {
   if (!editingUser.value && !form.password) { formErrors.password = 'كلمة المرور مطلوبة'; valid = false }
   if (form.password && form.password.length < 8) { formErrors.password = 'كلمة المرور يجب أن تكون 8 أحرف على الأقل'; valid = false }
   if (!form.role) { formErrors.role = 'الدور الوظيفي مطلوب'; valid = false }
+  if (form.role && !allowedRoles.value.includes(form.role as UserRole)) {
+    formErrors.role = 'هذا الدور غير متاح لهذا المستخدم'
+    valid = false
+  }
   if (form.role && BANK_ROLES.includes(form.role as UserRole) && !form.bank_id) {
     formErrors.bank_id = 'يجب تحديد البنك للأدوار المصرفية'
+    valid = false
+  }
+  if (isBankAdmin.value && form.bank_id !== auth.user?.bank_id) {
+    formErrors.bank_id = 'يمكن إدارة مستخدمي البنك الخاص بك فقط'
     valid = false
   }
   return valid
@@ -132,7 +147,7 @@ async function saveUser() {
         name: form.name.trim(),
         email: form.email.trim(),
         role: form.role as UserRole,
-        bank_id: form.bank_id,
+        bank_id: isBankAdmin.value ? auth.user?.bank_id ?? null : form.bank_id,
         is_active: form.is_active,
       }
       if (form.password) payload.password = form.password
@@ -146,7 +161,7 @@ async function saveUser() {
         email: form.email.trim(),
         password: form.password,
         role: form.role as UserRole,
-        bank_id: form.bank_id,
+        bank_id: isBankAdmin.value ? auth.user?.bank_id ?? null : form.bank_id,
         is_active: form.is_active,
       }
       const created = await createUser(payload)
@@ -183,7 +198,7 @@ onMounted(loadData)
 <template>
   <div class="page">
     <div class="page-header">
-      <h1 class="page-title">مستخدمو النظام</h1>
+      <h1 class="page-title">{{ isBankAdmin ? 'مستخدمو البنك' : 'مستخدمو النظام' }}</h1>
       <button class="btn-primary" @click="openCreate">
         + إضافة مستخدم
       </button>
@@ -258,7 +273,7 @@ onMounted(loadData)
           <label class="form-label">الدور الوظيفي <span class="required">*</span></label>
           <select v-model="form.role" class="form-input" :class="{ error: formErrors.role }">
             <option value="" disabled>اختر الدور</option>
-            <option v-for="role in Object.values(UserRole)" :key="role" :value="role">
+            <option v-for="role in allowedRoles" :key="role" :value="role">
               {{ ROLE_LABELS[role] }}
             </option>
           </select>

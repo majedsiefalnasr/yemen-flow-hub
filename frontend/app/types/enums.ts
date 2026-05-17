@@ -20,10 +20,11 @@ export enum RequestStatus {
   COMPLETED = 'COMPLETED',
 }
 
-/** 7 canonical roles — must match backend UserRole exactly */
+/** 8 canonical roles — must match backend UserRole exactly */
 export enum UserRole {
   DATA_ENTRY = 'DATA_ENTRY',
   BANK_REVIEWER = 'BANK_REVIEWER',
+  BANK_ADMIN = 'BANK_ADMIN',
   SWIFT_OFFICER = 'SWIFT_OFFICER',
   SUPPORT_COMMITTEE = 'SUPPORT_COMMITTEE',
   EXECUTIVE_MEMBER = 'EXECUTIVE_MEMBER',

@@ -18,6 +18,15 @@ export interface BankReviewerDashboardStats {
   review_queue: ImportRequest[]
 }
 
+export interface BankAdminDashboardStats {
+  pending_bank_review: number
+  at_cby: number
+  completed: number
+  rejected: number
+  active_users: number
+  recent_requests: ImportRequest[]
+}
+
 export interface SupportCommitteeDashboardStats {
   waiting_for_claim: number
   active_by_me: number
@@ -59,7 +68,7 @@ export interface CbyAdminDashboardStats {
   most_active_banks: Array<{ bank_id: number; bank_name: string; request_count: number }>
 }
 
-export type DashboardStats = DataEntryDashboardStats | BankReviewerDashboardStats | SupportCommitteeDashboardStats | SwiftOfficerDashboardStats | ExecutiveDashboardStats | CbyAdminDashboardStats
+export type DashboardStats = DataEntryDashboardStats | BankReviewerDashboardStats | BankAdminDashboardStats | SupportCommitteeDashboardStats | SwiftOfficerDashboardStats | ExecutiveDashboardStats | CbyAdminDashboardStats
 
 export function useDashboard() {
   const { get } = useApi()

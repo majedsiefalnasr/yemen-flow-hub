@@ -108,6 +108,7 @@ export const ALL_ROLES: UserRole[] = Object.values(UserRole)
 export const ROLE_LABELS: Record<UserRole, string> = {
   [UserRole.DATA_ENTRY]: 'إدخال البيانات',
   [UserRole.BANK_REVIEWER]: 'مراجع البنك',
+  [UserRole.BANK_ADMIN]: 'مسؤول البنك',
   [UserRole.SWIFT_OFFICER]: 'مسؤول SWIFT',
   [UserRole.SUPPORT_COMMITTEE]: 'لجنة الدعم',
   [UserRole.EXECUTIVE_MEMBER]: 'عضو تنفيذي',
@@ -119,6 +120,7 @@ export const ROLE_LABELS: Record<UserRole, string> = {
 export const ROLE_QUEUE_TITLES: Record<UserRole, string> = {
   [UserRole.DATA_ENTRY]: 'طلبات التمويل الخاصة بك',
   [UserRole.BANK_REVIEWER]: 'الطلبات المعلقة للمراجعة',
+  [UserRole.BANK_ADMIN]: 'إدارة عمليات البنك',
   [UserRole.SWIFT_OFFICER]: 'الطلبات الجاهزة لرفع SWIFT',
   [UserRole.SUPPORT_COMMITTEE]: 'الطلبات في انتظار لجنة الدعم',
   [UserRole.EXECUTIVE_MEMBER]: 'جلسات التصويت الفعّالة',
@@ -129,7 +131,13 @@ export const ROLE_QUEUE_TITLES: Record<UserRole, string> = {
 export const BANK_ROLES: UserRole[] = [
   UserRole.DATA_ENTRY,
   UserRole.BANK_REVIEWER,
+  UserRole.BANK_ADMIN,
   UserRole.SWIFT_OFFICER,
+]
+
+export const BANK_ADMIN_MANAGED_ROLES: UserRole[] = [
+  UserRole.DATA_ENTRY,
+  UserRole.BANK_REVIEWER,
 ]
 
 export const CBY_ROLES: UserRole[] = [
@@ -154,6 +162,7 @@ export const CBY_OPERATIONAL_ROLES: UserRole[] = [
 /** Roles that see operational filters (search + status dropdown) on /requests */
 export const OPERATIONAL_FILTER_ROLES: UserRole[] = [
   UserRole.BANK_REVIEWER,
+  UserRole.BANK_ADMIN,
   ...CBY_OPERATIONAL_ROLES,
 ]
 
@@ -164,6 +173,26 @@ export const ROLE_FILTER_STATUSES: Partial<Record<UserRole, RequestStatus[]>> = 
     RequestStatus.BANK_REVIEW,
     RequestStatus.BANK_APPROVED,
     RequestStatus.DRAFT_REJECTED_INTERNAL,
+  ],
+  [UserRole.BANK_ADMIN]: [
+    RequestStatus.DRAFT,
+    RequestStatus.DRAFT_REJECTED_INTERNAL,
+    RequestStatus.SUBMITTED,
+    RequestStatus.BANK_REVIEW,
+    RequestStatus.BANK_APPROVED,
+    RequestStatus.SUPPORT_REVIEW_PENDING,
+    RequestStatus.SUPPORT_REVIEW_IN_PROGRESS,
+    RequestStatus.SUPPORT_APPROVED,
+    RequestStatus.SUPPORT_REJECTED,
+    RequestStatus.WAITING_FOR_SWIFT,
+    RequestStatus.SWIFT_UPLOADED,
+    RequestStatus.WAITING_FOR_VOTING_OPEN,
+    RequestStatus.EXECUTIVE_VOTING_OPEN,
+    RequestStatus.EXECUTIVE_VOTING_CLOSED,
+    RequestStatus.EXECUTIVE_APPROVED,
+    RequestStatus.EXECUTIVE_REJECTED,
+    RequestStatus.CUSTOMS_DECLARATION_ISSUED,
+    RequestStatus.COMPLETED,
   ],
   [UserRole.SWIFT_OFFICER]: [
     RequestStatus.BANK_APPROVED,
@@ -266,7 +295,7 @@ export const NAV_ITEMS: NavItem[] = [
     label: 'مستخدمي النظام',
     route: '/users',
     icon: 'users',
-    roles: [UserRole.CBY_ADMIN],
+    roles: [UserRole.CBY_ADMIN, UserRole.BANK_ADMIN],
   },
   {
     label: 'قواعد المستندات',
@@ -279,6 +308,12 @@ export const NAV_ITEMS: NavItem[] = [
     route: '/bank/users',
     icon: 'user-check',
     roles: [UserRole.BANK_REVIEWER],
+  },
+  {
+    label: 'بيانات البنك',
+    route: '/banks',
+    icon: 'landmark',
+    roles: [UserRole.BANK_ADMIN],
   },
   {
     label: 'إعدادات النظام',
@@ -349,8 +384,8 @@ export const ROUTE_ROLE_MAP: Record<string, UserRole[]> = {
   ],
   '/audit': [UserRole.CBY_ADMIN],
   '/admin': [UserRole.CBY_ADMIN],
-  '/banks': [UserRole.CBY_ADMIN],
-  '/users': [UserRole.CBY_ADMIN],
+  '/banks': [UserRole.CBY_ADMIN, UserRole.BANK_ADMIN],
+  '/users': [UserRole.CBY_ADMIN, UserRole.BANK_ADMIN],
   '/bank/users': [UserRole.BANK_REVIEWER],
   '/settings': [UserRole.CBY_ADMIN],
 }

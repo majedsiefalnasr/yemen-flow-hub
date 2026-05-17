@@ -16,6 +16,7 @@ export const useAuthStore = defineStore('auth', {
       state.user?.role != null && [
         UserRole.DATA_ENTRY,
         UserRole.BANK_REVIEWER,
+        UserRole.BANK_ADMIN,
         UserRole.SWIFT_OFFICER,
       ].includes(state.user.role),
 
