@@ -8,7 +8,7 @@
 
 ## Status
 
-review
+done
 
 ## Acceptance Criteria
 
@@ -47,7 +47,7 @@ Then a structured stats object is returned with:
   - `waiting_for_claim`: count of SUPPORT_REVIEW_PENDING
   - `active_by_me`: count of SUPPORT_REVIEW_IN_PROGRESS claimed by me
   - `claimed_by_others`: count of SUPPORT_REVIEW_IN_PROGRESS claimed by others
-  - `recently_approved`: count of SUPPORT_APPROVED
+  - `recently_approved`: count of SUPPORT_APPROVED with `support_approved_at` in the last 7 days
   - `support_queue`: array of SUPPORT_REVIEW_PENDING + SUPPORT_REVIEW_IN_PROGRESS requests (includes claimer name)
 
 ## Tasks / Subtasks
@@ -116,11 +116,11 @@ Then a structured stats object is returned with:
 #### Action Items
 
 **Decision-Needed (1):**
-- [ ] [Review][Decision] `recently_approved` scope — should it count globally (all SC members) or only the current user's own approvals? Spec says "recently approved" without clarifying actor scope. Evidence: `->where('status', RequestStatus::SUPPORT_APPROVED)->count()` with no `support_approved_by` or time window filter.
+- [x] [Review][Decision] `recently_approved` scope — decided to count globally for all support committee members, using a rolling 7-day window.
 
 **Patches — Critical (2):**
-- [ ] [Review][Patch] `claimError` set but never rendered — claim failures are invisible to users [frontend/app/composables/useClaimLifecycle.ts + frontend/app/pages/requests/[id]/index.vue:76]
-- [ ] [Review][Patch] Unmount race during in-flight `claimRequest` leaves orphaned heartbeat + locked claim for 15 minutes [frontend/app/pages/requests/[id]/index.vue:108-132]
+- [x] [Review][Patch] `claimError` set but never rendered — claim failures are invisible to users [frontend/app/composables/useClaimLifecycle.ts + frontend/app/pages/requests/[id]/index.vue:76]
+- [x] [Review][Patch] Unmount race during in-flight `claimRequest` leaves orphaned heartbeat + locked claim for 15 minutes [frontend/app/pages/requests/[id]/index.vue:108-132]
 
 **Patches — High (6):**
 - [x] [Review][Patch] Post-claim `loadRequest` failure leaves `currentRequest=null` while heartbeat runs — UI goes blank [frontend/app/pages/requests/[id]/index.vue:113]
@@ -169,6 +169,16 @@ _(To be checked off during patch implementation)_
 - [x] [AI-Review] Fix heartbeat-silence test to assert state, not `true === true`
 - [x] [AI-Review] Add assertion that both PENDING and IN_PROGRESS statuses appear in queue payload
 - [x] [AI-Review] Add inline comment on `$base = ImportRequest::query()` explaining CBY cross-org scope
+
+### Review Findings (2026-05-17)
+
+**Decision-Needed (1):**
+- [x] [Review][Decision] Confirm `recently_approved` KPI semantics — decided to keep the rolling 7-day metric and align the story/API contract around `recently_approved`.
+
+**Patches (3):**
+- [x] [Review][Patch] `recently_approved` API contract was renamed to `approved_last_7_days` [backend/app/Http/Controllers/Api/DashboardController.php:174]
+- [x] [Review][Patch] Active review state and heartbeat are not cleared after support approve/reject transitions [frontend/app/pages/requests/[id]/index.vue:255]
+- [x] [Review][Patch] Heartbeat only treats 401/403 as terminal and does not handle other lost-claim responses distinctly [frontend/app/composables/useClaimLifecycle.ts:120]
 
 ## Dev Notes
 

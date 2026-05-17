@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-16
-last_updated: 2026-05-16 (story 3.5 created)
+last_updated: 2026-05-17 (story 3.2 code review complete)
 project: Yemen Flow Hub
 project_key: NOKEY
 tracking_system: file-system
@@ -64,7 +64,7 @@ development_status:
   # ─── Epic 3: CBY Operational Workflow — Support → SWIFT → Voting → Customs
   epic-3: in-progress
   3-1-support-committee-review-claim-lifecycle-approve-reject: done
-  3-2-support-committee-frontend-queue-auto-claim-ux-dashboard: review
+  3-2-support-committee-frontend-queue-auto-claim-ux-dashboard: done
   3-3-swift-officer-queue-upload-immutability: done
   3-4-executive-voting-engine-votingservice-session-lifecycle-apis: done
   3-5-executive-voting-frontend-voting-interface-director-controls-dashboard: done
