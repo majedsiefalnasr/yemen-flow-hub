@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-16
-last_updated: 2026-05-17 (Story 5.2 created and marked ready-for-dev)
+last_updated: 2026-05-17 (Story 5.3 complete)
 project: Yemen Flow Hub
 project_key: NOKEY
 tracking_system: file-system
@@ -85,7 +85,7 @@ development_status:
   epic-5: in-progress
   5-1-bank-admin-role-hierarchical-rbac-scoped-bank-administration: done
   5-2-profile-settings-navigation-completion: done
-  5-3-in-app-notifications-phase-1: backlog
+  5-3-in-app-notifications-phase-1: done
   5-4-global-search-phase-1: backlog
   5-5-customs-print-preview-page: backlog
   5-6-advanced-operational-reporting: backlog
