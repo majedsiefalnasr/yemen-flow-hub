@@ -45,8 +45,8 @@ export const useSettings = () => {
         headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
         body: updates,
       })
-      preferences.value = response.data
-      auth.setUserPreferences(response.data)
+      preferences.value = { ...preferences.value, ...response.data }
+      auth.setUserPreferences({ ...preferences.value })
       return true
     }
     catch (err: any) {
@@ -69,8 +69,8 @@ export const useSettings = () => {
         credentials: 'include',
         headers: { Accept: 'application/json' },
       })
-      preferences.value = response.data
-      auth.setUserPreferences(response.data)
+      preferences.value = { ...response.data }
+      auth.setUserPreferences({ ...preferences.value })
       return true
     }
     catch (err: any) {

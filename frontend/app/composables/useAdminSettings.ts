@@ -1,4 +1,5 @@
 import { ref } from 'vue'
+import { useDebounceFn } from '@vueuse/core'
 import type { ApiResponse } from '../types/models'
 
 export interface AdminSettings {
@@ -18,6 +19,7 @@ export const useAdminSettings = () => {
   const settings = ref<AdminSettings | null>(null)
   const loading = ref(false)
   const error = ref<string | null>(null)
+  const pendingKeys = ref<Set<string>>(new Set())
 
   const fetchSettings = async () => {
     loading.value = true
@@ -40,8 +42,8 @@ export const useAdminSettings = () => {
     }
   }
 
-  const updateSetting = async (key: string, value: any) => {
-    loading.value = true
+  const updateSettingAsync = async (key: string, value: any) => {
+    pendingKeys.value.add(key)
     error.value = null
 
     try {
@@ -54,21 +56,25 @@ export const useAdminSettings = () => {
       })
 
       if (settings.value) {
-        (settings.value as any)[key] = response.data.value
+        settings.value = {
+          ...settings.value,
+          [key]: response.data.value,
+        }
       }
+      pendingKeys.value.delete(key)
       return true
     }
     catch (err: any) {
       error.value = err.data?.message || `Failed to update ${key}`
+      pendingKeys.value.delete(key)
       return false
-    }
-    finally {
-      loading.value = false
     }
   }
 
+  const updateSetting = useDebounceFn(updateSettingAsync, 500)
+
   const resetSetting = async (key: string) => {
-    loading.value = true
+    pendingKeys.value.add(key)
     error.value = null
 
     try {
@@ -80,16 +86,18 @@ export const useAdminSettings = () => {
       })
 
       if (settings.value) {
-        (settings.value as any)[key] = response.data.value
+        settings.value = {
+          ...settings.value,
+          [key]: response.data.value,
+        }
       }
+      pendingKeys.value.delete(key)
       return true
     }
     catch (err: any) {
       error.value = err.data?.message || `Failed to reset ${key}`
+      pendingKeys.value.delete(key)
       return false
-    }
-    finally {
-      loading.value = false
     }
   }
 
@@ -97,6 +105,7 @@ export const useAdminSettings = () => {
     settings,
     loading,
     error,
+    pendingKeys,
     fetchSettings,
     updateSetting,
     resetSetting,
