@@ -207,3 +207,27 @@ export interface RequestStageHistory {
   metadata: Record<string, unknown> | null
   created_at: string
 }
+
+export type NotificationType =
+  | 'request_submitted'
+  | 'request_approved'
+  | 'request_rejected'
+  | 'request_returned'
+  | 'swift_upload_requested'
+  | 'voting_opened'
+  | 'customs_issued'
+
+export interface NotificationData {
+  type: NotificationType
+  message: string
+  request_id: number | null
+  reference_number: string | null
+}
+
+export interface Notification {
+  id: string
+  type: string
+  data: NotificationData
+  read_at: string | null
+  created_at: string
+}

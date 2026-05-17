@@ -112,6 +112,44 @@
             </select>
           </div>
 
+          <!-- Notification Preferences -->
+          <div v-if="visibleNotifPrefs.length > 0" class="mb-6">
+            <label class="block text-sm font-medium text-[#1d1d1f]">تفضيلات الإشعارات</label>
+            <div class="mt-3 space-y-3">
+              <div
+                v-for="pref in visibleNotifPrefs"
+                :key="pref.key"
+                class="flex items-center justify-between rounded-lg border border-[#d2d2d7] px-4 py-3"
+              >
+                <div class="flex items-center gap-2">
+                  <span class="text-sm text-[#1d1d1f]">{{ pref.label }}</span>
+                  <span
+                    v-if="pref.mandatory"
+                    class="notif-lock-badge"
+                    data-testid="lock-badge"
+                    :aria-label="pref.label + ' — مطلوب دائماً'"
+                  >🔒 مطلوب دائماً</span>
+                </div>
+                <input
+                  v-if="!pref.mandatory"
+                  type="checkbox"
+                  :checked="isNotifEnabled(pref.key)"
+                  :aria-label="pref.label"
+                  class="h-4 w-4 cursor-pointer"
+                  @change="(e) => toggleNotifPref(pref.key, (e.target as HTMLInputElement).checked)"
+                />
+                <input
+                  v-else
+                  type="checkbox"
+                  checked
+                  disabled
+                  class="h-4 w-4 cursor-not-allowed opacity-50"
+                  :aria-label="pref.label + ' — مطلوب دائماً'"
+                />
+              </div>
+            </div>
+          </div>
+
           <!-- Error -->
           <div v-if="error" class="mb-6 rounded-lg bg-[#fff5f5] p-3">
             <p class="text-sm text-[#ff3b30]">{{ error }}</p>
@@ -147,14 +185,17 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useSettings } from '../composables/useSettings'
+import { useAuthStore } from '../stores/auth.store'
+import { UserRole } from '../types/enums'
 
 definePageMeta({
   middleware: 'auth',
 })
 
 const { preferences, loading, error, fetchSettings, updateSettings, resetSettings } = useSettings()
+const auth = useAuthStore()
 
 const formData = ref({
   language: 'ar',
@@ -162,6 +203,77 @@ const formData = ref({
   table_density: 'normal',
   page_size: 25,
 })
+
+// Notification preference toggles — per-role visibility
+interface NotifPrefItem {
+  key: string
+  label: string
+  mandatory: boolean
+  roles: UserRole[]
+}
+
+const ALL_NOTIF_PREFS: NotifPrefItem[] = [
+  {
+    key: 'request_submitted',
+    label: 'إشعار تقديم الطلبات الجديدة',
+    mandatory: false,
+    roles: [UserRole.BANK_REVIEWER],
+  },
+  {
+    key: 'request_approved',
+    label: 'إشعار الموافقة على الطلبات',
+    mandatory: false,
+    roles: [UserRole.DATA_ENTRY, UserRole.BANK_REVIEWER],
+  },
+  {
+    key: 'request_rejected',
+    label: 'إشعار رفض الطلبات',
+    mandatory: true,
+    roles: [UserRole.DATA_ENTRY, UserRole.BANK_REVIEWER],
+  },
+  {
+    key: 'request_returned',
+    label: 'إشعار إعادة الطلبات للمراجعة',
+    mandatory: true,
+    roles: [UserRole.DATA_ENTRY, UserRole.BANK_REVIEWER],
+  },
+  {
+    key: 'swift_upload_requested',
+    label: 'إشعار طلب رفع SWIFT',
+    mandatory: false,
+    roles: [UserRole.SWIFT_OFFICER],
+  },
+  {
+    key: 'voting_opened',
+    label: 'إشعار فتح جلسة التصويت',
+    mandatory: false,
+    roles: [UserRole.EXECUTIVE_MEMBER, UserRole.COMMITTEE_DIRECTOR],
+  },
+  {
+    key: 'customs_issued',
+    label: 'إشعار إصدار البيان الجمركي',
+    mandatory: false,
+    roles: [UserRole.DATA_ENTRY, UserRole.BANK_REVIEWER],
+  },
+]
+
+const visibleNotifPrefs = computed(() => {
+  const role = auth.user?.role as UserRole | undefined
+  if (!role) return []
+  return ALL_NOTIF_PREFS.filter(p => p.roles.includes(role))
+})
+
+const notifPrefs = ref<Record<string, boolean>>({})
+
+function isNotifEnabled(key: string): boolean {
+  return notifPrefs.value[key] !== false
+}
+
+async function toggleNotifPref(key: string, enabled: boolean) {
+  notifPrefs.value = { ...notifPrefs.value, [key]: enabled }
+  const current = preferences.value?.notification_preferences ?? {}
+  await updateSettings({ notification_preferences: { ...current, [key]: enabled } })
+}
 
 const handleSave = async () => {
   const success = await updateSettings({
@@ -210,8 +322,20 @@ onMounted(() => {
           table_density: newPrefs.table_density,
           page_size: newPrefs.page_size,
         }
+        notifPrefs.value = { ...(newPrefs.notification_preferences ?? {}) }
       }
     }
   )
 })
 </script>
+
+<style scoped>
+.notif-lock-badge {
+  font-size: 11px;
+  color: #8e8e93;
+  background-color: #f5f5f7;
+  border: 1px solid #d2d2d7;
+  border-radius: 4px;
+  padding: 1px 6px;
+}
+</style>

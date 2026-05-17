@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useAuthStore } from '../../stores/auth.store'
+import { useNotificationsStore } from '../../stores/notifications.store'
 import SidebarIcon from './SidebarIcon.vue'
 import { ROLE_LABELS } from '../../constants/workflow'
 
@@ -8,6 +9,12 @@ const emit = defineEmits<{
 }>()
 
 const auth = useAuthStore()
+const notificationsStore = useNotificationsStore()
+const router = useRouter()
+
+function goToNotifications() {
+  router.push('/notifications')
+}
 </script>
 
 <template>
@@ -25,10 +32,16 @@ const auth = useAuthStore()
 
     <!-- Left side (RTL): user info + notifications -->
     <div class="header-end">
-      <!-- Notification bell placeholder -->
-      <button class="icon-btn" aria-label="الإشعارات">
+      <!-- Notification bell -->
+      <button class="icon-btn" aria-label="الإشعارات" @click="goToNotifications">
         <SidebarIcon name="bell" />
-        <span class="notification-badge" aria-hidden="true" />
+        <span
+          v-if="notificationsStore.unreadCount > 0"
+          class="notification-badge"
+          :aria-label="`${notificationsStore.unreadCount} إشعارات غير مقروءة`"
+        >
+          {{ notificationsStore.unreadCount > 99 ? '99+' : notificationsStore.unreadCount }}
+        </span>
       </button>
 
       <!-- User info -->
@@ -104,13 +117,21 @@ const auth = useAuthStore()
 
 .notification-badge {
   position: absolute;
-  top: 8px;
-  inset-inline-end: 8px; /* RTL-aware */
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
+  top: 4px;
+  inset-inline-end: 4px; /* RTL-aware */
+  min-width: 16px;
+  height: 16px;
+  padding: 0 3px;
+  border-radius: 8px;
   background-color: var(--color-rejected);
   border: 2px solid var(--color-surface);
+  color: #ffffff;
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .user-meta {
