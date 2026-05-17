@@ -13,6 +13,8 @@ import ActiveReviewBanner from '../../../components/ui/ActiveReviewBanner.vue'
 import ClaimedByOthersBanner from '../../../components/ui/ClaimedByOthersBanner.vue'
 import ActionsPanel from '../../../components/requests/ActionsPanel.vue'
 import VotingPanel from '../../../components/voting/VotingPanel.vue'
+import WorkflowTimeline from '../../../components/workflow/WorkflowTimeline.vue'
+import AuditTimeline from '../../../components/workflow/AuditTimeline.vue'
 
 definePageMeta({
   middleware: ['auth'],
@@ -269,6 +271,9 @@ async function onTabChange(key: TabKey) {
   }
   if (key === 'votes' && !votingStore.votingDetail && !votingStore.loadingDetail) {
     await votingStore.loadVotingDetail(id)
+  }
+  if ((key === 'timeline' || key === 'audit') && !requestsStore.historyLoaded && !requestsStore.loadingHistory) {
+    await requestsStore.loadHistory(id)
   }
 }
 
@@ -600,17 +605,47 @@ function actorLabel(id: number | null | undefined): string {
           </div>
         </section>
 
-        <!-- Workflow Timeline (placeholder) -->
+        <!-- Workflow Timeline tab -->
         <section v-else-if="activeTab === 'timeline'" class="tab-panel" role="tabpanel" aria-label="مسار العمل">
-          <div class="card placeholder-card">
-            <p class="placeholder-text">مسار العمل — قريباً</p>
+          <div class="card">
+            <h2 class="card-title">مسار سير العمل</h2>
+
+            <div v-if="requestsStore.loadingHistory" class="history-loading" aria-busy="true">
+              <div class="skeleton skeleton--line" />
+              <div class="skeleton skeleton--line" />
+              <div class="skeleton skeleton--line skeleton--short" />
+            </div>
+
+            <p v-else-if="requestsStore.historyError" class="history-error" role="alert">
+              {{ requestsStore.historyError }}
+            </p>
+
+            <WorkflowTimeline
+              v-else
+              :current-status="request.status"
+              :history="requestsStore.history"
+            />
           </div>
         </section>
 
-        <!-- Audit History (placeholder) -->
+        <!-- Audit History tab -->
         <section v-else-if="activeTab === 'audit'" class="tab-panel" role="tabpanel" aria-label="سجل التدقيق">
-          <div class="card placeholder-card">
-            <p class="placeholder-text">سجل التدقيق — قريباً</p>
+          <div class="card">
+            <h2 class="card-title">سجل الأحداث</h2>
+
+            <div v-if="requestsStore.loadingHistory" class="history-loading" aria-busy="true">
+              <div class="skeleton skeleton--line" />
+              <div class="skeleton skeleton--line" />
+            </div>
+
+            <p v-else-if="requestsStore.historyError" class="history-error" role="alert">
+              {{ requestsStore.historyError }}
+            </p>
+
+            <AuditTimeline
+              v-else
+              :entries="requestsStore.history"
+            />
           </div>
         </section>
       </div>
@@ -936,16 +971,17 @@ function actorLabel(id: number | null | undefined): string {
   gap: 8px;
 }
 
-/* Placeholders */
-.placeholder-card {
-  text-align: center;
-  padding: 48px 24px;
+.history-loading {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
-.placeholder-text {
-  color: #6e6e73;
-  font-size: 15px;
-  margin: 0;
+.history-error {
+  color: #ff3b30;
+  font-size: 14px;
+  text-align: center;
+  padding: 24px 0;
 }
 
 /* Skeleton */

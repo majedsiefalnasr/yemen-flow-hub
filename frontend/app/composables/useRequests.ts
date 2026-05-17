@@ -1,4 +1,4 @@
-import type { ApiResponse, CustomsDeclaration, ImportRequest, PaginatedResponse, RequestDocument, RequestFormData } from '../types/models'
+import type { ApiResponse, CustomsDeclaration, ImportRequest, PaginatedResponse, RequestDocument, RequestFormData, RequestStageHistory } from '../types/models'
 import type { RequestStatus } from '../types/enums'
 import { useApi } from './useApi'
 
@@ -108,6 +108,11 @@ export function useRequests() {
     })
   }
 
+  async function fetchRequestHistory(id: number): Promise<RequestStageHistory[]> {
+    const response = await get<ApiResponse<RequestStageHistory[]>>(`/api/requests/${id}/history`)
+    return response.data
+  }
+
   return {
     fetchRequests,
     fetchRequest,
@@ -119,5 +124,6 @@ export function useRequests() {
     uploadSwift,
     generateCustomsDeclaration,
     downloadCustomsDeclaration,
+    fetchRequestHistory,
   }
 }

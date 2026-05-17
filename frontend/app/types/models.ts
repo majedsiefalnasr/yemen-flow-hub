@@ -182,3 +182,19 @@ export interface VotingDetail {
   total_members: number
   my_vote: RequestVote | null
 }
+
+export interface RequestStageHistory {
+  id: number
+  request_id: number
+  from_status: string | null
+  to_status: string | null
+  from_owner_role: string | null
+  to_owner_role: string | null
+  actor_id: number
+  actor_role: string | null
+  performed_by: { id: number; name: string; role: string | null } | null
+  action: string
+  notes: string | null
+  metadata: Record<string, unknown> | null
+  created_at: string
+}

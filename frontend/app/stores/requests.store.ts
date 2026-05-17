@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import type { ImportRequest, RequestDocument, RequestFormData } from '../types/models'
+import type { ImportRequest, RequestDocument, RequestFormData, RequestStageHistory } from '../types/models'
 import type { RequestsFilter } from '../composables/useRequests'
 import { useRequests } from '../composables/useRequests'
 
@@ -17,9 +17,13 @@ export const useRequestsStore = defineStore('requests', {
     documents: [] as RequestDocument[],
     documentsError: null as string | null,
     documentsLoaded: false,
+    history: [] as RequestStageHistory[],
+    historyError: null as string | null,
+    historyLoaded: false,
     loadingList: false,
     loadingRequest: false,
     loadingDocuments: false,
+    loadingHistory: false,
     performingAction: false,
     issuingCustoms: false,
     downloadingCustoms: false,
@@ -81,6 +85,9 @@ export const useRequestsStore = defineStore('requests', {
       this.documents = []
       this.documentsError = null
       this.documentsLoaded = false
+      this.history = []
+      this.historyError = null
+      this.historyLoaded = false
 
       try {
         const { fetchRequest } = useRequests()
@@ -231,6 +238,27 @@ export const useRequestsStore = defineStore('requests', {
       }
       finally {
         this.downloadingCustoms = false
+      }
+    },
+
+    async loadHistory(id: number): Promise<void> {
+      this.loadingHistory = true
+      this.history = []
+      this.historyError = null
+
+      try {
+        const { fetchRequestHistory } = useRequests()
+        this.history = await fetchRequestHistory(id)
+        this.historyLoaded = true
+      }
+      catch (err) {
+        if (import.meta.dev) {
+          console.error('[requests.store] loadHistory failed:', err)
+        }
+        this.historyError = 'تعذّر تحميل سجل المراحل. يرجى المحاولة مرة أخرى.'
+      }
+      finally {
+        this.loadingHistory = false
       }
     },
 
