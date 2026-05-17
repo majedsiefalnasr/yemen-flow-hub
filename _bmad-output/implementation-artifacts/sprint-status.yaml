@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-16
-last_updated: 2026-05-17 (story 4.4 review)
+last_updated: 2026-05-17 (story 4.4 code review — done)
 project: Yemen Flow Hub
 project_key: NOKEY
 tracking_system: file-system
@@ -76,7 +76,7 @@ development_status:
   4-1-auditservice-stage-history-audit-api: done
   4-2-workflow-timeline-audit-timeline-components-frontend: done
   4-3-document-download-permission-matrix: done
-  4-4-document-checklist-component-frontend: review
+  4-4-document-checklist-component-frontend: done
   4-5-cby-admin-dashboard-full-system-visibility: backlog
   4-6-swift-officer-executive-dashboards-rtl-final-pass: backlog
   epic-4-retrospective: optional

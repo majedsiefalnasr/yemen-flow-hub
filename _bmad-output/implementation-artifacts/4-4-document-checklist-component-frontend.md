@@ -1,6 +1,6 @@
 # Story 4.4: Document Checklist Component (Frontend)
 
-## Status: review
+## Status: done
 
 ## Story
 
@@ -218,6 +218,22 @@ All 6 ACs implemented and tested:
 
 - `frontend/app/stores/requests.store.ts` — added `uploading`/`uploadError` state + `uploadDocument` action
 - `frontend/app/pages/requests/[id]/index.vue` — imported `DocumentChecklist`, replaced inline documents markup, added handlers, removed orphaned CSS
+
+## Review Findings
+
+- [x] [Review][Decision] `EXECUTIVE_MEMBER` excluded from `canDownloadCustoms` — dismissed; spec is intentional (executive members vote but do not receive the customs PDF output).
+
+- [x] [Review][Patch] No PDF/MIME type validation before `emit('upload', file)` — added `fileTypeError` local ref; `handleFileChange` checks `file.type !== 'application/pdf'` and shows Arabic error message without emitting [`DocumentChecklist.vue:handleFileChange`]
+- [x] [Review][Patch] Customs row label CSS override breaks "identical row" constraint — removed `.doc-item--customs .doc-type-label { color: #5856d6; font-weight: 600 }` override; customs label now uses the same styling as regular type labels [`DocumentChecklist.vue:<style>`]
+- [x] [Review][Patch] Empty `doc-upload-section` div in DOM for non-DATA_ENTRY roles — wrapped `<div class="doc-upload-section">` with `v-if="userRole === UserRole.DATA_ENTRY"` to remove it entirely for non-DATA_ENTRY roles [`DocumentChecklist.vue:~165`]
+- [x] [Review][Patch] Upload success masked when `loadDocuments` throws — separated error handling: `uploadError` is now set only if the upload API call itself fails; `loadDocuments` runs after the `finally` block so its errors don't overwrite the upload success [`requests.store.ts:uploadDocument`]
+- [x] [Review][Patch] Upload button active while `loading=true` — added `|| loading` to upload button `:disabled` binding to prevent triggering concurrent `loadDocuments` calls [`DocumentChecklist.vue:upload-btn`]
+- [x] [Review][Patch] `uploadError` not cleared on `loadRequest` navigation — added `this.uploading = false; this.uploadError = null` to `loadRequest` state reset block [`requests.store.ts:loadRequest`]
+- [x] [Review][Patch] `customsDownloadError` ref shared between overview and documents tab handlers — introduced `checklistCustomsDownloadError` ref; `handleDownloadCustoms` writes to it; DocumentChecklist receives it via `:customs-download-error`; overview card keeps `customsDownloadError` unchanged [`pages/requests/[id]/index.vue`]
+- [x] [Review][Patch] `formatDate` renders literal `"Invalid Date"` on malformed ISO input — added `Number.isNaN(d.getTime())` guard returning `'—'` for invalid dates [`DocumentChecklist.vue:formatDate`]
+
+- [x] [Review][Defer] `loadDocuments` has no race/sequence guard [`requests.store.ts:loadDocuments`] — deferred, pre-existing architectural issue; `loadDocuments` lacks a sequence token (unlike `loadRequests`); concurrent calls resolve in arbitrary order. Pre-existing pattern across the store.
+- [x] [Review][Defer] No client-side file size guard [`DocumentChecklist.vue:handleFileChange`] — deferred, pre-existing; no maximum file size is specified in the project spec; a large file will be rejected by the backend with a generic error; add a size limit once a max is decided.
 
 ## Change Log
 
