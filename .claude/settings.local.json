@@ -18,7 +18,18 @@
       "mcp__plugin_socraticode_socraticode__codebase_impact",
       "mcp__plugin_socraticode_socraticode__codebase_flow",
       "Skill(bmad-code-review)",
-      "Bash(rtk git *)"
+      "Bash(rtk git *)",
+      "Skill(bmad-dev-story)",
+      "mcp__plugin_socraticode_socraticode__codebase_update",
+      "Bash(rtk grep *)",
+      "Bash(npx vitest *)",
+      "Bash(sed -n '7,15p' /Users/majedsiefalnasr/Documents/Work/Ultimate-Solutions-EGY/yemen-flow-hub/code/_bmad-output/implementation-artifacts/1-1-backend-project-scaffold-database-schema-seeders.md)",
+      "Bash(sed -n '7,15p' /Users/majedsiefalnasr/Documents/Work/Ultimate-Solutions-EGY/yemen-flow-hub/code/_bmad-output/implementation-artifacts/2-6-request-details-page-tabs-workflow-actors-actions-panel-frontend.md)",
+      "Bash(rtk vitest *)",
+      "Bash(rtk npm *)",
+      "Skill(bmad-create-story)",
+      "Bash(railway logs *)",
+      "Bash(railway status *)"
     ]
   }
 }
