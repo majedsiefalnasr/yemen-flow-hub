@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useAuthStore } from '../../stores/auth.store'
 import { useNotificationsStore } from '../../stores/notifications.store'
 import SidebarIcon from './SidebarIcon.vue'
+import GlobalSearch from './GlobalSearch.vue'
 import { ROLE_LABELS } from '../../constants/workflow'
 
 const emit = defineEmits<{
@@ -12,6 +13,8 @@ const emit = defineEmits<{
 const auth = useAuthStore()
 const notificationsStore = useNotificationsStore()
 const router = useRouter()
+
+const mobileSearchOpen = ref(false)
 
 function goToNotifications() {
   router.push('/notifications')
@@ -24,7 +27,7 @@ onMounted(() => {
 
 <template>
   <header class="app-header">
-    <!-- Right side (RTL): mobile menu toggle -->
+    <!-- Right side (RTL): mobile menu toggle + mobile search icon -->
     <div class="header-start">
       <button
         class="mobile-menu-btn"
@@ -33,6 +36,18 @@ onMounted(() => {
       >
         <SidebarIcon name="menu" />
       </button>
+      <button
+        class="mobile-search-btn"
+        aria-label="بحث"
+        @click="mobileSearchOpen = !mobileSearchOpen"
+      >
+        <SidebarIcon name="search" />
+      </button>
+    </div>
+
+    <!-- Center: global search (desktop) -->
+    <div class="header-center">
+      <GlobalSearch />
     </div>
 
     <!-- Left side (RTL): user info + notifications -->
@@ -50,10 +65,18 @@ onMounted(() => {
       </button>
 
       <!-- User info -->
-      <div class="user-meta" v-if="auth.user">
+      <div v-if="auth.user" class="user-meta">
         <span class="user-display-name">{{ auth.user.name }}</span>
         <span class="role-label">{{ ROLE_LABELS[auth.user.role] ?? auth.user.role }}</span>
       </div>
+    </div>
+
+    <!-- Mobile search overlay (full-width, shown when mobileSearchOpen) -->
+    <div v-if="mobileSearchOpen" class="mobile-search-overlay">
+      <GlobalSearch />
+      <button class="icon-btn" aria-label="إغلاق البحث" @click="mobileSearchOpen = false">
+        <SidebarIcon name="x" />
+      </button>
     </div>
   </header>
 </template>
@@ -72,11 +95,20 @@ onMounted(() => {
   z-index: 20;
   /* RTL: flex-row-reverse so "start" = right, "end" = left */
   flex-direction: row-reverse;
+  gap: 12px;
 }
 
 .header-start {
   display: flex;
   align-items: center;
+  gap: 4px;
+}
+
+.header-center {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  min-width: 0;
 }
 
 .header-end {
@@ -85,7 +117,8 @@ onMounted(() => {
   gap: 16px;
 }
 
-.mobile-menu-btn {
+.mobile-menu-btn,
+.mobile-search-btn {
   display: none;
   align-items: center;
   justify-content: center;
@@ -98,7 +131,8 @@ onMounted(() => {
   color: var(--color-text-secondary);
 }
 
-.mobile-menu-btn:hover {
+.mobile-menu-btn:hover,
+.mobile-search-btn:hover {
   background-color: var(--color-background);
 }
 
@@ -123,7 +157,7 @@ onMounted(() => {
 .notification-badge {
   position: absolute;
   top: 4px;
-  inset-inline-end: 4px; /* RTL-aware */
+  inset-inline-end: 4px;
   min-width: 16px;
   height: 16px;
   padding: 0 3px;
@@ -142,7 +176,7 @@ onMounted(() => {
 .user-meta {
   display: flex;
   flex-direction: column;
-  align-items: flex-end; /* RTL: align to the right */
+  align-items: flex-end;
   gap: 1px;
 }
 
@@ -159,9 +193,33 @@ onMounted(() => {
   line-height: 1.2;
 }
 
+.mobile-search-overlay {
+  display: none;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 56px;
+  background-color: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  padding: 0 12px;
+  align-items: center;
+  gap: 8px;
+  z-index: 30;
+}
+
 /* Mobile (≤600px) */
 @media (max-width: 600px) {
-  .mobile-menu-btn {
+  .mobile-menu-btn,
+  .mobile-search-btn {
+    display: flex;
+  }
+
+  .header-center {
+    display: none;
+  }
+
+  .mobile-search-overlay {
     display: flex;
   }
 }

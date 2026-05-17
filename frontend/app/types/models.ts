@@ -231,3 +231,50 @@ export interface Notification {
   read_at: string | null
   created_at: string
 }
+
+export type SearchEntityType = 'requests' | 'users' | 'banks' | 'customs'
+
+export interface SearchRequestResult {
+  id: number
+  reference_number: string
+  bank_id: number
+  bank_name: string | null
+  status: string | null
+  supplier_name: string
+  amount: number
+  currency: string
+  created_at: string | null
+}
+
+export interface SearchUserResult {
+  id: number
+  name: string
+  email: string
+  role: string
+  role_label: string
+  bank_id: number | null
+  bank_name: string | null
+  is_active: boolean
+}
+
+export interface SearchBankResult {
+  id: number
+  name: string
+  code: string
+  is_active: boolean
+}
+
+export interface SearchCustomsResult {
+  id: number
+  declaration_number: string
+  issued_at: string | null
+  request_id: number
+  reference_number: string | null
+}
+
+export interface SearchResults {
+  requests: SearchRequestResult[]
+  users: SearchUserResult[]
+  banks: SearchBankResult[]
+  customs: SearchCustomsResult[]
+}
