@@ -1,6 +1,6 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
-import type { DataEntryDashboardStats, BankReviewerDashboardStats, SupportCommitteeDashboardStats, SwiftOfficerDashboardStats } from '../../../composables/useDashboard'
+import type { DataEntryDashboardStats, BankReviewerDashboardStats, SupportCommitteeDashboardStats, SwiftOfficerDashboardStats, CbyAdminDashboardStats } from '../../../composables/useDashboard'
 
 const mockFetchStats = vi.fn()
 
@@ -41,6 +41,21 @@ const SO_STATS: SwiftOfficerDashboardStats = {
   final_approved: 10,
   final_rejected: 1,
   swift_queue: [],
+}
+
+const CBY_STATS: CbyAdminDashboardStats = {
+  total: 42,
+  approved: 20,
+  in_process: 15,
+  rejected: 7,
+  compliance_alerts: {
+    duplicate_suppliers: [{ supplier_name: 'شركة الأمل', count: 3 }],
+    high_amount_requests: [],
+    stale_pending_requests: [],
+  },
+  most_active_banks: [
+    { bank_id: 1, bank_name: 'بنك اليمن المركزي', request_count: 18 },
+  ],
 }
 
 describe('useDashboardStore', () => {
@@ -126,6 +141,15 @@ describe('useDashboardStore', () => {
     await store.loadStats()
 
     expect(store.stats).toEqual(SO_STATS)
+    expect(store.error).toBeNull()
+  })
+
+  it('loadStats stores CBY admin stats on success', async () => {
+    mockFetchStats.mockResolvedValue(CBY_STATS)
+    const store = useDashboardStore()
+    await store.loadStats()
+
+    expect(store.stats).toEqual(CBY_STATS)
     expect(store.error).toBeNull()
   })
 })

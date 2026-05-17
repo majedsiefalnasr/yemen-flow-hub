@@ -7,7 +7,7 @@ import DataEntryDashboard from '../components/dashboard/DataEntryDashboard.vue'
 import BankReviewerDashboard from '../components/dashboard/BankReviewerDashboard.vue'
 import SupportCommitteeDashboard from '../components/dashboard/SupportCommitteeDashboard.vue'
 import SwiftOfficerDashboard from '../components/dashboard/SwiftOfficerDashboard.vue'
-import ExecutiveDashboard from '../components/dashboard/ExecutiveDashboard.vue'
+import CbyAdminDashboard from '../components/dashboard/CbyAdminDashboard.vue'
 
 const auth = useAuthStore()
 
@@ -30,6 +30,7 @@ const role = computed(() => auth.user?.role)
     <SupportCommitteeDashboard v-else-if="role === UserRole.SUPPORT_COMMITTEE" />
     <SwiftOfficerDashboard v-else-if="role === UserRole.SWIFT_OFFICER" />
     <ExecutiveDashboard v-else-if="role === UserRole.EXECUTIVE_MEMBER || role === UserRole.COMMITTEE_DIRECTOR" />
+    <CbyAdminDashboard v-else-if="role === UserRole.CBY_ADMIN" />
 
     <!-- Placeholder for unknown roles -->
     <div v-else class="placeholder-card">

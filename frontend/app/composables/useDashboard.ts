@@ -42,7 +42,22 @@ export interface ExecutiveDashboardStats {
   voting_queue: ImportRequest[]
 }
 
-export type DashboardStats = DataEntryDashboardStats | BankReviewerDashboardStats | SupportCommitteeDashboardStats | SwiftOfficerDashboardStats | ExecutiveDashboardStats
+export interface CbyAdminComplianceAlerts {
+  duplicate_suppliers: Array<{ supplier_name: string; count: number }>
+  high_amount_requests: Array<{ id: number; reference_number: string; amount: number; currency: string; bank_name: string }>
+  stale_pending_requests: Array<{ id: number; reference_number: string; status: string; bank_name: string; updated_at: string }>
+}
+
+export interface CbyAdminDashboardStats {
+  total: number
+  approved: number
+  in_process: number
+  rejected: number
+  compliance_alerts: CbyAdminComplianceAlerts
+  most_active_banks: Array<{ bank_id: number; bank_name: string; request_count: number }>
+}
+
+export type DashboardStats = DataEntryDashboardStats | BankReviewerDashboardStats | SupportCommitteeDashboardStats | SwiftOfficerDashboardStats | ExecutiveDashboardStats | CbyAdminDashboardStats
 
 export function useDashboard() {
   const { get } = useApi()
