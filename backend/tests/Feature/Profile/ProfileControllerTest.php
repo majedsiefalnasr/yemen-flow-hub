@@ -220,24 +220,25 @@ class ProfileControllerTest extends TestCase
         $response->assertJsonPath('errors.password.0', 'The new password must be different from the current password.');
     }
 
-    public function test_change_password_requires_user_password_to_be_set(): void
+    public function test_change_password_with_wrong_current_password(): void
     {
         $user = User::query()->create([
             'name' => 'Test User',
             'email' => 'test@example.com',
-            'password' => null,
+            'password' => Hash::make('CorrectPassword123'),
             'role' => UserRole::DATA_ENTRY,
             'bank_id' => null,
             'is_active' => true,
         ]);
 
         $response = $this->actingAs($user)->postJson('/api/profile/change-password', [
-            'current_password' => 'anyPassword',
-            'password' => 'NewPassword123',
-            'password_confirmation' => 'NewPassword123',
+            'current_password' => 'WrongPassword123',
+            'password' => 'NewPassword456',
+            'password_confirmation' => 'NewPassword456',
         ]);
 
-        $response->assertStatus(403);
+        $response->assertStatus(422);
+        $response->assertJsonPath('errors.current_password.0', 'The current password is incorrect.');
     }
 
 }

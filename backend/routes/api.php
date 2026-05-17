@@ -29,7 +29,7 @@ Route::prefix('auth')->group(function () {
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('profile', [ProfileController::class, 'show']);
-    Route::post('profile/change-password', [ProfileController::class, 'changePassword']);
+    Route::post('profile/change-password', [ProfileController::class, 'changePassword'])->middleware('throttle:3,60');
     Route::get('settings', [SettingsController::class, 'show']);
     Route::put('settings', [SettingsController::class, 'update']);
     Route::post('settings/reset', [SettingsController::class, 'reset']);
@@ -88,8 +88,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('audit', [AuditController::class, 'index']);
 
     Route::get('admin/settings', [AdminSettingsController::class, 'index']);
-    Route::put('admin/settings/{key}', [AdminSettingsController::class, 'update']);
-    Route::post('admin/settings/{key}/reset', [AdminSettingsController::class, 'reset']);
+    Route::put('admin/settings/{key}', [AdminSettingsController::class, 'update'])->middleware('throttle:10,60');
+    Route::post('admin/settings/{key}/reset', [AdminSettingsController::class, 'reset'])->middleware('throttle:10,60');
 
     Route::get('notifications', [NotificationController::class, 'index']);
     Route::post('notifications/{notification}/read', [NotificationController::class, 'read']);

@@ -5,6 +5,7 @@ namespace App\Services\Settings;
 use App\Models\SystemSetting;
 use App\Models\User;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
 class AdminSettingsService
@@ -60,44 +61,47 @@ class AdminSettingsService
         $this->validateKey($key);
         $this->validateValue($key, $value);
 
-        $oldValue = $this->getSetting($key);
-        $setting = SystemSetting::findByKey($key);
+        return DB::transaction(function () use ($key, $value, $actor) {
+            $setting = SystemSetting::findByKey($key);
 
-        if (!$setting) {
-            $setting = SystemSetting::query()->create([
-                'key' => $key,
-                'value' => $value,
-                'updated_by' => $actor->id,
-            ]);
-        } else {
-            $setting->update([
-                'value' => $value,
-                'updated_by' => $actor->id,
-            ]);
-        }
+            if (!$setting) {
+                $setting = SystemSetting::query()->create([
+                    'key' => $key,
+                    'value' => $value,
+                    'updated_by' => $actor->id,
+                ]);
+            } else {
+                $setting->update([
+                    'value' => $value,
+                    'updated_by' => $actor->id,
+                ]);
+            }
 
-        $this->invalidateCache($key);
+            $this->invalidateCache($key);
 
-        return $setting->value;
+            return $setting->value;
+        });
     }
 
     public function resetSetting(string $key, User $actor): mixed
     {
         $this->validateKey($key);
 
-        $default = self::DEFAULTS[$key];
-        $setting = SystemSetting::findByKey($key);
+        return DB::transaction(function () use ($key, $actor) {
+            $default = self::DEFAULTS[$key];
+            $setting = SystemSetting::findByKey($key);
 
-        if ($setting) {
-            $setting->update([
-                'value' => $default,
-                'updated_by' => $actor->id,
-            ]);
-        }
+            if ($setting) {
+                $setting->update([
+                    'value' => $default,
+                    'updated_by' => $actor->id,
+                ]);
+            }
 
-        $this->invalidateCache($key);
+            $this->invalidateCache($key);
 
-        return $default;
+            return $default;
+        });
     }
 
     private function validateKey(string $key): void
