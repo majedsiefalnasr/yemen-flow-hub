@@ -20,6 +20,8 @@ enum AuditAction: string
     case USER_UPDATED = 'USER_UPDATED';
     case USER_DEACTIVATED = 'USER_DEACTIVATED';
     case BANK_UPDATED = 'BANK_UPDATED';
+    case PASSWORD_CHANGED = 'PASSWORD_CHANGED';
+    case SETTINGS_UPDATED = 'SETTINGS_UPDATED';
     case AUTHORIZATION_FAILURE = 'AUTHORIZATION_FAILURE';
 
     public function label(): string
@@ -41,6 +43,8 @@ enum AuditAction: string
             self::USER_UPDATED => 'User Updated / تحديث مستخدم',
             self::USER_DEACTIVATED => 'User Deactivated / إيقاف مستخدم',
             self::BANK_UPDATED => 'Bank Updated / تحديث بنك',
+            self::PASSWORD_CHANGED => 'Password Changed / تغيير كلمة المرور',
+            self::SETTINGS_UPDATED => 'Settings Updated / تحديث الإعدادات',
             self::AUTHORIZATION_FAILURE => 'Authorization Failure / فشل التفويض',
         };
     }

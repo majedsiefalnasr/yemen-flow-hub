@@ -37,6 +37,11 @@ class UserPolicy
             || $this->canManageOwnBankUser($user, $model);
     }
 
+    public function cbyAdmin(User $user): bool
+    {
+        return $user->hasRole(UserRole::CBY_ADMIN);
+    }
+
     private function canManageOwnBankUser(User $actor, User $target): bool
     {
         return $actor->hasRole(UserRole::BANK_ADMIN)

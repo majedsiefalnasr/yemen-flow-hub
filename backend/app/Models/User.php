@@ -23,6 +23,7 @@ class User extends Authenticatable
         'bank_id',
         'is_active',
         'last_login_at',
+        'user_preferences',
     ];
 
     protected $hidden = ['password', 'remember_token'];
@@ -35,6 +36,7 @@ class User extends Authenticatable
             'role' => UserRole::class,
             'is_active' => 'boolean',
             'last_login_at' => 'datetime',
+            'user_preferences' => 'array',
         ];
     }
 

@@ -2,7 +2,10 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\AuditController;
+use App\Http\Controllers\Api\AdminSettingsController;
 use App\Http\Controllers\Api\BankController;
+use App\Http\Controllers\Api\ProfileController;
+use App\Http\Controllers\Api\SettingsController;
 use App\Http\Controllers\Api\CustomsController;
 use App\Http\Controllers\Api\DocumentController;
 use App\Http\Controllers\Api\DocumentTypeController;
@@ -22,6 +25,14 @@ Route::prefix('auth')->group(function () {
         Route::post('logout', [AuthController::class, 'logout']);
         Route::get('me', [AuthController::class, 'me']);
     });
+});
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('profile', [ProfileController::class, 'show']);
+    Route::post('profile/change-password', [ProfileController::class, 'changePassword']);
+    Route::get('settings', [SettingsController::class, 'show']);
+    Route::put('settings', [SettingsController::class, 'update']);
+    Route::post('settings/reset', [SettingsController::class, 'reset']);
 });
 
 Route::middleware('auth:sanctum')->group(function () {
@@ -75,6 +86,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('customs/{customsDeclaration}/download', [CustomsController::class, 'download']);
 
     Route::get('audit', [AuditController::class, 'index']);
+
+    Route::get('admin/settings', [AdminSettingsController::class, 'index']);
+    Route::put('admin/settings/{key}', [AdminSettingsController::class, 'update']);
+    Route::post('admin/settings/{key}/reset', [AdminSettingsController::class, 'reset']);
 
     Route::get('notifications', [NotificationController::class, 'index']);
     Route::post('notifications/{notification}/read', [NotificationController::class, 'read']);
