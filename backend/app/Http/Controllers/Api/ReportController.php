@@ -35,6 +35,13 @@ class ReportController extends Controller
         $fromDate = request()->query('from_date');
         $toDate   = request()->query('to_date');
 
+        if ($fromDate && !\DateTime::createFromFormat('Y-m-d', $fromDate)) {
+            return ApiResponse::validationError(['from_date' => ['The from_date must be in Y-m-d format.']]);
+        }
+        if ($toDate && !\DateTime::createFromFormat('Y-m-d', $toDate)) {
+            return ApiResponse::validationError(['to_date' => ['The to_date must be in Y-m-d format.']]);
+        }
+
         // Build base query with optional date-range filter on created_at
         $baseQuery = function () use ($fromDate, $toDate) {
             $q = ImportRequest::query();

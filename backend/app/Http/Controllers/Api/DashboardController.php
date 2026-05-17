@@ -361,8 +361,8 @@ class DashboardController extends Controller
             ->values()
             ->all();
 
-        // Stale pending: non-draft, non-terminal, updated > 14 days ago
-        $stalePendingExcluded = array_merge($draftStatuses, $terminalStatuses);
+        // Stale pending: non-draft, non-terminal (and non-approved-awaiting-customs), updated > 14 days ago
+        $stalePendingExcluded = array_merge($draftStatuses, $terminalStatuses, [RequestStatus::EXECUTIVE_APPROVED]);
         $stalePendingRequests = ImportRequest::query()
             ->whereNotIn('status', array_map(fn ($s) => $s->value, $stalePendingExcluded))
             ->where('updated_at', '<', now()->subDays(14))
@@ -374,7 +374,7 @@ class DashboardController extends Controller
                 'id'               => $r->id,
                 'reference_number' => $r->reference_number,
                 'bank_name'        => $r->bank?->name ?? '—',
-                'updated_at'       => $r->updated_at->toIso8601String(),
+                'updated_at'       => $r->updated_at?->toIso8601String() ?? null,
             ])
             ->values()
             ->all();

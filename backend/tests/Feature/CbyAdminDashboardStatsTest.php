@@ -310,6 +310,20 @@ class CbyAdminDashboardStatsTest extends TestCase
         $this->assertCount(0, $response);
     }
 
+    public function test_compliance_alerts_stale_pending_excludes_executive_approved(): void
+    {
+        $de  = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $req = $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_APPROVED);
+        ImportRequest::query()->where('id', $req->id)->update(['updated_at' => now()->subDays(20)]);
+
+        $response = $this->actingAs($this->admin)
+            ->getJson('/api/dashboard/stats')
+            ->assertOk()
+            ->json('data.compliance_alerts.stale_pending_requests');
+
+        $this->assertCount(0, $response);
+    }
+
     // ─── AC3: Most active banks ───────────────────────────────────────────────
 
     public function test_most_active_banks_returns_top_banks_by_request_count(): void

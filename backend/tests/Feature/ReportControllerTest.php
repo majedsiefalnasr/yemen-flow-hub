@@ -308,4 +308,20 @@ class ReportControllerTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.approval_rate', 0);
     }
+
+    public function test_workflow_report_invalid_from_date_returns_422(): void
+    {
+        $this->actingAs($this->admin)
+            ->getJson('/api/reports/workflow?from_date=not-a-date')
+            ->assertStatus(422)
+            ->assertJsonPath('errors.from_date.0', 'The from_date must be in Y-m-d format.');
+    }
+
+    public function test_workflow_report_invalid_to_date_returns_422(): void
+    {
+        $this->actingAs($this->admin)
+            ->getJson('/api/reports/workflow?to_date=2024/01/01')
+            ->assertStatus(422)
+            ->assertJsonPath('errors.to_date.0', 'The to_date must be in Y-m-d format.');
+    }
 }
