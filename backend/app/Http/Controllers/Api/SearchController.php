@@ -104,6 +104,10 @@ class SearchController extends Controller
             });
 
         if ($user->role === UserRole::BANK_ADMIN) {
+            if (!$user->bank_id) {
+                return [];
+            }
+
             $userQuery->where('bank_id', $user->bank_id)
                 ->whereIn('role', [
                     UserRole::DATA_ENTRY->value,
@@ -125,6 +129,7 @@ class SearchController extends Controller
         $like = "%{$query}%";
 
         $banks = Bank::query()
+            ->where('is_active', true)
             ->where(function ($q) use ($like) {
                 $q->where('name', 'like', $like)
                     ->orWhere('code', 'like', $like);

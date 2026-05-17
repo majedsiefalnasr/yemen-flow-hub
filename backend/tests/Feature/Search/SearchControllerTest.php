@@ -250,6 +250,17 @@ class SearchControllerTest extends TestCase
         $this->assertNotContains($this->swiftOfficerA->id, $userIds);
     }
 
+    public function test_bank_admin_with_null_bank_id_gets_empty_users_array(): void
+    {
+        $banklessAdmin = $this->makeUser(UserRole::BANK_ADMIN);
+
+        $response = $this->actingAs($banklessAdmin)
+            ->getJson('/api/search?q=User');
+
+        $response->assertStatus(200)
+            ->assertJsonPath('data.users', []);
+    }
+
     public function test_cby_admin_sees_all_users(): void
     {
         $response = $this->actingAs($this->cbyadmin)
@@ -273,6 +284,20 @@ class SearchControllerTest extends TestCase
 
         $bankIds = collect($response->json('data.banks'))->pluck('id')->all();
         $this->assertContains($this->bankA->id, $bankIds);
+    }
+
+    public function test_cby_admin_search_excludes_inactive_banks(): void
+    {
+        $inactiveBank = $this->makeBank('YCBX', 'Bank Gamma');
+        $inactiveBank->update(['is_active' => false]);
+
+        $response = $this->actingAs($this->cbyadmin)
+            ->getJson('/api/search?q=Bank');
+
+        $bankIds = collect($response->json('data.banks'))->pluck('id')->all();
+        $this->assertContains($this->bankA->id, $bankIds);
+        $this->assertContains($this->bankB->id, $bankIds);
+        $this->assertNotContains($inactiveBank->id, $bankIds);
     }
 
     public function test_bank_scoped_user_gets_empty_banks_array(): void
