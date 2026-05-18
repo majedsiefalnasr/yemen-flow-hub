@@ -23,6 +23,7 @@ enum AuditAction: string
     case PASSWORD_CHANGED = 'PASSWORD_CHANGED';
     case SETTINGS_UPDATED = 'SETTINGS_UPDATED';
     case AUTHORIZATION_FAILURE = 'AUTHORIZATION_FAILURE';
+    case REPORT_EXPORTED = 'REPORT_EXPORTED';
 
     public function label(): string
     {
@@ -46,6 +47,7 @@ enum AuditAction: string
             self::PASSWORD_CHANGED => 'Password Changed / تغيير كلمة المرور',
             self::SETTINGS_UPDATED => 'Settings Updated / تحديث الإعدادات',
             self::AUTHORIZATION_FAILURE => 'Authorization Failure / فشل التفويض',
+            self::REPORT_EXPORTED => 'Report Exported / تصدير تقرير',
         };
     }
 }

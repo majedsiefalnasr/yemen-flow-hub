@@ -104,4 +104,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('dashboard/stats', [DashboardController::class, 'stats']);
     Route::get('reports/workflow', [ReportController::class, 'workflow']);
     Route::get('reports/voting', [ReportController::class, 'voting']);
+    Route::get('reports/bank', [ReportController::class, 'bank']);
+    Route::get('reports/workflow/export', [ReportController::class, 'exportWorkflow']);
+    Route::get('reports/bank/export', [ReportController::class, 'exportBank']);
 });
