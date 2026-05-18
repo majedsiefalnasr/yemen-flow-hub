@@ -68,6 +68,10 @@ function shouldShowEmptyState(stats: BankAdminDashboardStats): boolean {
   return stats.recent_requests.length === 0
 }
 
+function displayMerchantName(req: ImportRequest): string {
+  return req.merchant?.name ?? req.supplier_name
+}
+
 const CHART_W = 480
 const CHART_H = 80
 const CHART_PAD = 8
@@ -130,11 +134,19 @@ describe('BankAdminDashboard — recent requests table', () => {
   it('recent request has required display fields', () => {
     const req = makeRequest({ reference_number: 'YFH-2026-000042', amount: 25000, currency: 'USD' })
     expect(req.reference_number).toBe('YFH-2026-000042')
-    expect(req.supplier_name).toBe('Supplier Co.')
+    expect(displayMerchantName(req)).toBe('Supplier Co.')
     expect(req.amount).toBe(25000)
     expect(req.currency).toBe('USD')
     expect(req.status).toBe(RequestStatus.SUBMITTED)
     expect(req.updated_at).toBeDefined()
+  })
+
+  it('prefers merchant name when merchant object exists', () => {
+    const req = makeRequest({
+      merchant: { id: 22, name: 'Merchant Co.', commercial_register: null },
+      supplier_name: 'Supplier Co.',
+    })
+    expect(displayMerchantName(req)).toBe('Merchant Co.')
   })
 })
 

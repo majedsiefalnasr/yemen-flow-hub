@@ -177,7 +177,7 @@ onMounted(() => { store.loadStats() })
           <thead>
             <tr>
               <th>رقم المرجع</th>
-              <th>التاجر / المورد</th>
+              <th>التاجر</th>
               <th>المبلغ</th>
               <th>الحالة</th>
               <th>التاريخ</th>
@@ -190,7 +190,7 @@ onMounted(() => { store.loadStats() })
                   {{ req.reference_number }}
                 </a>
               </td>
-              <td>{{ req.supplier_name }}</td>
+              <td>{{ req.merchant?.name ?? req.supplier_name }}</td>
               <td class="mono">{{ formatAmount(req.amount) }} {{ req.currency }}</td>
               <td><StatusBadge :status="req.status" :role="UserRole.BANK_ADMIN" /></td>
               <td class="date-cell">{{ formatDate(req.updated_at) }}</td>
