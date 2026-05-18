@@ -539,13 +539,22 @@ function actorLabel(id: number | null | undefined): string {
           <div v-if="request.status === RequestStatus.COMPLETED && request.customs_declaration" class="card customs-card">
             <div class="customs-card__header">
               <h2 class="card-title customs-card__title">البيان الجمركي</h2>
-              <button
-                class="customs-download"
-                :disabled="requestsStore.downloadingCustoms"
-                @click="downloadCustomsDeclaration"
-              >
-                {{ requestsStore.downloadingCustoms ? 'جارٍ التحميل…' : 'تحميل PDF' }}
-              </button>
+              <div class="customs-card__actions">
+                <a
+                  v-if="[UserRole.COMMITTEE_DIRECTOR, UserRole.CBY_ADMIN, UserRole.BANK_REVIEWER].includes(userRole)"
+                  :href="`/requests/${id}/customs-preview`"
+                  class="customs-preview-link"
+                >
+                  معاينة البيان
+                </a>
+                <button
+                  class="customs-download"
+                  :disabled="requestsStore.downloadingCustoms"
+                  @click="downloadCustomsDeclaration"
+                >
+                  {{ requestsStore.downloadingCustoms ? 'جارٍ التحميل…' : 'تحميل PDF' }}
+                </button>
+              </div>
             </div>
             <dl class="detail-grid">
               <div class="detail-row">
@@ -861,6 +870,31 @@ function actorLabel(id: number | null | undefined): string {
   margin-bottom: 0;
 }
 
+.customs-card__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.customs-preview-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid #0071e3;
+  border-radius: 8px;
+  background: transparent;
+  color: #0071e3;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.customs-preview-link:hover {
+  background: #f0f7ff;
+}
+
 .customs-download {
   display: inline-flex;
   align-items: center;
@@ -960,6 +994,7 @@ function actorLabel(id: number | null | undefined): string {
   .tab-nav,
   .banner-area,
   .customs-download,
+  .customs-preview-link,
   .actions-panel {
     display: none !important;
   }

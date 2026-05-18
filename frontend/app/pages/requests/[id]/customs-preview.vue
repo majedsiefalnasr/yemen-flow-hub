@@ -1,0 +1,522 @@
+<script setup lang="ts">
+import { ref, computed, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { useRequests } from '../../../composables/useRequests'
+import type { CustomsDeclaration } from '../../../types/models'
+
+definePageMeta({
+  middleware: ['auth'],
+})
+
+const route = useRoute()
+const router = useRouter()
+const { fetchCustomsPreview } = useRequests()
+
+const rawId = route.params.id
+const requestId = Number(Array.isArray(rawId) ? rawId[0] : rawId)
+
+const declaration = ref<CustomsDeclaration | null>(null)
+const loading = ref(true)
+const errorStatus = ref<number | null>(null)
+const downloading = ref(false)
+const downloadError = ref('')
+
+onMounted(async () => {
+  try {
+    declaration.value = await fetchCustomsPreview(requestId)
+  }
+  catch (err: unknown) {
+    const status = (err as { statusCode?: number; status?: number })?.statusCode
+      ?? (err as { statusCode?: number; status?: number })?.status
+      ?? 500
+    if (status === 403) {
+      router.push('/dashboard')
+      return
+    }
+    errorStatus.value = status
+  }
+  finally {
+    loading.value = false
+  }
+})
+
+const metadata = computed(() => {
+  const m = declaration.value?.metadata as Record<string, unknown> | null | undefined
+  return m ?? {}
+})
+
+const bankName = computed(() => {
+  const bank = metadata.value.bank as { name?: string; code?: string } | undefined
+  if (!bank) return '—'
+  return bank.code ? `${bank.name} (${bank.code})` : (bank.name ?? '—')
+})
+
+function formatDate(iso: string | null | undefined): string {
+  if (!iso) return '—'
+  return new Date(iso).toLocaleDateString('ar-YE', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
+function formatAmount(amount: unknown, currency: unknown): string {
+  if (amount == null) return '—'
+  return `${Number(amount).toLocaleString('ar-YE')} ${currency ?? ''}`
+}
+
+function triggerPrint() {
+  window.print()
+}
+
+async function triggerDownload() {
+  if (!declaration.value) return
+  downloadError.value = ''
+  downloading.value = true
+  try {
+    const { downloadCustomsDeclaration: dl } = useRequests()
+    const blob = await dl(declaration.value.id)
+    const url = URL.createObjectURL(blob)
+    const anchor = document.createElement('a')
+    anchor.href = url
+    anchor.download = `customs-declaration-${declaration.value.declaration_number}.pdf`
+    document.body.appendChild(anchor)
+    anchor.click()
+    anchor.remove()
+    URL.revokeObjectURL(url)
+  }
+  catch {
+    downloadError.value = 'تعذّر تحميل ملف PDF الرسمي.'
+  }
+  finally {
+    downloading.value = false
+  }
+}
+</script>
+
+<template>
+  <div class="preview-page" dir="rtl">
+    <!-- Loading -->
+    <div v-if="loading" class="preview-loading" aria-busy="true" aria-label="جارٍ التحميل">
+      <div class="loading-spinner" />
+      <p>جارٍ تحميل البيان الجمركي…</p>
+    </div>
+
+    <!-- 404 — no declaration -->
+    <div v-else-if="!loading && !declaration && errorStatus === 404" class="preview-empty">
+      <p class="empty-title">لا يوجد بيان جمركي</p>
+      <p class="empty-body">لم يتم إصدار بيان جمركي لهذا الطلب بعد.</p>
+      <a :href="`/requests/${requestId}`" class="back-link">← العودة إلى الطلب</a>
+    </div>
+
+    <!-- Other error -->
+    <div v-else-if="!loading && !declaration && errorStatus !== 404" class="preview-empty">
+      <p class="empty-title">حدث خطأ</p>
+      <p class="empty-body">تعذّر تحميل البيان الجمركي. يرجى المحاولة مرة أخرى.</p>
+      <a :href="`/requests/${requestId}`" class="back-link">← العودة إلى الطلب</a>
+    </div>
+
+    <!-- Preview content -->
+    <template v-else-if="declaration">
+      <!-- Action bar (hidden on print) -->
+      <div class="preview-actions no-print">
+        <a :href="`/requests/${requestId}`" class="back-link">← العودة إلى الطلب</a>
+        <div class="action-buttons">
+          <button class="btn btn-secondary" @click="triggerPrint">طباعة</button>
+          <button
+            class="btn btn-primary"
+            :disabled="downloading"
+            @click="triggerDownload"
+          >
+            {{ downloading ? 'جارٍ التحميل…' : 'تحميل PDF الرسمي' }}
+          </button>
+        </div>
+        <p v-if="downloadError" class="download-error" role="alert">{{ downloadError }}</p>
+      </div>
+
+      <!-- Watermark / notice banner (shown in preview, hidden in print output) -->
+      <div class="preview-watermark no-print" role="note">
+        معاينة تشغيلية — ملف PDF الرسمي هو الوثيقة القانونية المعتمدة
+      </div>
+
+      <!-- Declaration content (printed) -->
+      <div class="customs-preview-content print-content">
+        <!-- Header -->
+        <div class="decl-header">
+          <div class="decl-logo">CBY</div>
+          <h1 class="decl-title">البنك المركزي اليمني</h1>
+          <p class="decl-subtitle">بيان جمركي للإفراج عن تمويل الاستيراد</p>
+        </div>
+
+        <!-- Meta info -->
+        <div class="decl-meta">
+          <p><strong>رقم البيان:</strong> {{ declaration.declaration_number }}</p>
+          <p><strong>تاريخ الإصدار:</strong> {{ formatDate(declaration.issued_at) }}</p>
+          <p><strong>رقم طلب التمويل:</strong> {{ declaration.request?.reference_number ?? '—' }}</p>
+          <p><strong>الجهة المصدرة:</strong> {{ declaration.issuer?.name ?? '—' }}</p>
+        </div>
+
+        <!-- Main data table -->
+        <table class="decl-table">
+          <tbody>
+            <tr>
+              <th>البنك التجاري</th>
+              <td>{{ bankName }}</td>
+            </tr>
+            <tr>
+              <th>اسم المورد</th>
+              <td>{{ (metadata.supplier_name as string) ?? '—' }}</td>
+            </tr>
+            <tr>
+              <th>المبلغ</th>
+              <td>{{ formatAmount(metadata.amount, metadata.currency) }}</td>
+            </tr>
+            <tr>
+              <th>وصف البضائع</th>
+              <td>{{ (metadata.goods_description as string) ?? '—' }}</td>
+            </tr>
+            <tr>
+              <th>منفذ الدخول</th>
+              <td>{{ (metadata.port_of_entry as string) ?? '—' }}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Approval dates table -->
+        <table class="decl-table">
+          <tbody>
+            <tr>
+              <th>تاريخ موافقة البنك</th>
+              <td>{{ formatDate(metadata.bank_approved_at as string | null) }}</td>
+            </tr>
+            <tr>
+              <th>تاريخ موافقة لجنة الدعم</th>
+              <td>{{ formatDate(metadata.support_approved_at as string | null) }}</td>
+            </tr>
+            <tr>
+              <th>تاريخ القرار التنفيذي</th>
+              <td>{{ formatDate(metadata.executive_decided_at as string | null) }}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Official notice -->
+        <div class="decl-notice">
+          بناءً على اكتمال الموافقات النظامية والتنفيذية، يصدر هذا البيان الجمركي كوثيقة رسمية نهائية وغير قابلة للتعديل ضمن منصة البنك المركزي اليمني.
+        </div>
+
+        <!-- Signatures -->
+        <div class="decl-signatures">
+          <div class="signature-block">
+            <p>توقيع مدير اللجنة</p>
+            <p class="signature-name">{{ declaration.issuer?.name ?? '—' }}</p>
+            <div class="signature-line" />
+          </div>
+          <div class="signature-block">
+            <p>ختم البنك المركزي</p>
+            <div class="signature-line" />
+          </div>
+        </div>
+      </div>
+    </template>
+  </div>
+</template>
+
+<style scoped>
+/* ─── Page shell ───────────────────────────────────────────────────────────── */
+.preview-page {
+  min-height: 100vh;
+  background: #f5f5f7;
+  padding: 24px;
+  font-family: 'IBM Plex Sans Arabic', 'Inter', sans-serif;
+  direction: rtl;
+}
+
+/* ─── Action bar ───────────────────────────────────────────────────────────── */
+.preview-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  background: #ffffff;
+  border: 1px solid #d2d2d7;
+  border-radius: 12px;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.back-link {
+  color: #0071e3;
+  text-decoration: none;
+  font-size: 14px;
+}
+
+.back-link:hover {
+  text-decoration: underline;
+}
+
+.btn {
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  cursor: pointer;
+  border: none;
+  font-family: inherit;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: #0071e3;
+  color: #ffffff;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #0059b3;
+}
+
+.btn-secondary {
+  background: #f5f5f7;
+  color: #1d1d1f;
+  border: 1px solid #d2d2d7;
+}
+
+.btn-secondary:hover {
+  background: #e8e8ed;
+}
+
+.download-error {
+  width: 100%;
+  color: #ff3b30;
+  font-size: 13px;
+  margin: 0;
+}
+
+/* ─── Watermark banner ─────────────────────────────────────────────────────── */
+.preview-watermark {
+  background: #fff9e6;
+  border: 1px solid #ff9f0a;
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-size: 13px;
+  color: #7a4a00;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+/* ─── Loading / empty states ───────────────────────────────────────────────── */
+.preview-loading,
+.preview-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 24px;
+  gap: 12px;
+  color: #6e6e73;
+}
+
+.loading-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid #d2d2d7;
+  border-top-color: #0071e3;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.empty-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1d1d1f;
+  margin: 0;
+}
+
+.empty-body {
+  font-size: 14px;
+  margin: 0;
+}
+
+/* ─── Declaration content ──────────────────────────────────────────────────── */
+.customs-preview-content {
+  background: #ffffff;
+  border: 1px solid #d2d2d7;
+  border-radius: 12px;
+  padding: 40px;
+  max-width: 860px;
+  margin: 0 auto;
+}
+
+/* Header */
+.decl-header {
+  text-align: center;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid #1d1d1f;
+}
+
+.decl-logo {
+  width: 64px;
+  height: 64px;
+  border: 1px solid #8e8e93;
+  border-radius: 8px;
+  margin: 0 auto 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: #6e6e73;
+}
+
+.decl-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #1d1d1f;
+  margin: 6px 0 4px;
+}
+
+.decl-subtitle {
+  font-size: 14px;
+  color: #6e6e73;
+  margin: 0;
+}
+
+/* Meta */
+.decl-meta {
+  margin-bottom: 20px;
+}
+
+.decl-meta p {
+  margin: 4px 0;
+  font-size: 14px;
+  color: #1d1d1f;
+}
+
+/* Tables */
+.decl-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 16px;
+  font-size: 14px;
+}
+
+.decl-table th,
+.decl-table td {
+  border: 1px solid #1d1d1f;
+  padding: 8px 12px;
+  vertical-align: top;
+  text-align: right;
+}
+
+.decl-table th {
+  background: #f5f5f7;
+  width: 30%;
+  font-weight: 600;
+  color: #1d1d1f;
+}
+
+.decl-table td {
+  color: #1d1d1f;
+}
+
+/* Notice */
+.decl-notice {
+  border: 1px solid #1d1d1f;
+  padding: 12px 16px;
+  margin: 16px 0;
+  background: #fafafa;
+  font-size: 13px;
+  color: #1d1d1f;
+  line-height: 1.6;
+  border-radius: 4px;
+}
+
+/* Signatures */
+.decl-signatures {
+  display: flex;
+  justify-content: space-around;
+  margin-top: 40px;
+  gap: 32px;
+}
+
+.signature-block {
+  flex: 1;
+  text-align: center;
+  font-size: 13px;
+  color: #1d1d1f;
+}
+
+.signature-block p {
+  margin: 0 0 4px;
+}
+
+.signature-name {
+  font-weight: 600;
+}
+
+.signature-line {
+  margin-top: 32px;
+  border-top: 1px solid #1d1d1f;
+  width: 80%;
+  margin-inline: auto;
+}
+
+/* ─── Print CSS ────────────────────────────────────────────────────────────── */
+@media print {
+  :global(.app-header),
+  :global(.sidebar),
+  :global(.sidebar-overlay) {
+    display: none !important;
+  }
+
+  :global(.app-main) {
+    margin-inline-end: 0 !important;
+  }
+
+  :global(.app-content) {
+    padding: 0 !important;
+    max-width: none !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .preview-page {
+    background: #ffffff;
+    padding: 0;
+  }
+
+  .customs-preview-content {
+    border: none;
+    border-radius: 0;
+    padding: 20px;
+    max-width: 100%;
+    margin: 0;
+  }
+
+  .decl-table th,
+  .decl-table td {
+    border-color: #000000;
+  }
+
+  .decl-header {
+    border-bottom-color: #000000;
+  }
+}
+</style>

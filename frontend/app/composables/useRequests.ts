@@ -113,6 +113,11 @@ export function useRequests() {
     return response.data
   }
 
+  async function fetchCustomsPreview(requestId: number): Promise<CustomsDeclaration> {
+    const response = await get<ApiResponse<CustomsDeclaration>>(`/api/requests/${requestId}/customs-preview`)
+    return response.data
+  }
+
   return {
     fetchRequests,
     fetchRequest,
@@ -125,5 +130,6 @@ export function useRequests() {
     generateCustomsDeclaration,
     downloadCustomsDeclaration,
     fetchRequestHistory,
+    fetchCustomsPreview,
   }
 }
