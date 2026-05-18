@@ -243,6 +243,22 @@ class ReportControllerTest extends TestCase
         $this->assertEquals(1, $row['total']);
     }
 
+    public function test_workflow_report_date_range_filters_throughput(): void
+    {
+        $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+
+        $old = $this->makeRequest($this->bank, $de, RequestStatus::COMPLETED);
+        ImportRequest::query()->where('id', $old->id)->update(['created_at' => now()->subDays(30)]);
+        $this->makeRequest($this->bank, $de, RequestStatus::COMPLETED);
+
+        $throughput = $this->actingAs($this->admin)
+            ->getJson('/api/reports/workflow?from_date=' . now()->subDays(5)->toDateString())
+            ->assertOk()
+            ->json('data.throughput');
+
+        $this->assertEquals(1, $throughput['completed']);
+    }
+
     // ─── Voting report structure ───────────────────────────────────────────────
 
     public function test_voting_report_returns_expected_keys(): void
@@ -309,6 +325,27 @@ class ReportControllerTest extends TestCase
             ->assertJsonPath('data.approval_rate', 0);
     }
 
+    public function test_voting_report_date_range_filters_sessions_and_votes(): void
+    {
+        $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+
+        $old = $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_VOTING_OPEN);
+        ImportRequest::query()->where('id', $old->id)->update(['created_at' => now()->subDays(30)]);
+        $this->makeVote($old, $this->makeUser(UserRole::EXECUTIVE_MEMBER), VoteType::REJECT);
+
+        $recent = $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_VOTING_OPEN);
+        $this->makeVote($recent, $this->makeUser(UserRole::EXECUTIVE_MEMBER), VoteType::APPROVE);
+
+        $data = $this->actingAs($this->admin)
+            ->getJson('/api/reports/voting?from_date=' . now()->subDays(5)->toDateString())
+            ->assertOk()
+            ->json('data');
+
+        $this->assertEquals(1, $data['total_voting_sessions']);
+        $this->assertEquals(1, $data['vote_tallies']['approve']);
+        $this->assertEquals(0, $data['vote_tallies']['reject']);
+    }
+
     public function test_workflow_report_invalid_from_date_returns_422(): void
     {
         $this->actingAs($this->admin)
@@ -323,6 +360,14 @@ class ReportControllerTest extends TestCase
             ->getJson('/api/reports/workflow?to_date=2024/01/01')
             ->assertStatus(422)
             ->assertJsonPath('errors.to_date.0', 'The to_date must be in Y-m-d format.');
+    }
+
+    public function test_voting_report_invalid_date_returns_422(): void
+    {
+        $this->actingAs($this->admin)
+            ->getJson('/api/reports/voting?from_date=2026-02-31')
+            ->assertStatus(422)
+            ->assertJsonPath('errors.from_date.0', 'The from_date must be in Y-m-d format.');
     }
 
     // ─── D1 fix: null to_status uses 'unknown' key ────────────────────────────
@@ -465,10 +510,11 @@ class ReportControllerTest extends TestCase
         $data = $this->actingAs($this->admin)
             ->getJson('/api/reports/bank')
             ->assertOk()
-            ->json('data.per_bank');
+            ->json('data');
 
-        $this->assertIsArray($data);
-        $this->assertCount(2, $data);
+        $this->assertEquals(2, $data['total_requests']);
+        $this->assertIsArray($data['per_bank']);
+        $this->assertCount(2, $data['per_bank']);
     }
 
     public function test_bank_report_date_range_filters_correctly(): void
@@ -509,6 +555,33 @@ class ReportControllerTest extends TestCase
         $this->assertEquals(50.0, $data['rejection_rate']);
     }
 
+    public function test_bank_report_date_range_filters_average_processing_time(): void
+    {
+        $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+
+        $old = $this->makeRequest($this->bank, $de, RequestStatus::COMPLETED, [
+            'created_at' => now()->subDays(30),
+            'executive_decided_at' => now()->subDays(29),
+        ]);
+        ImportRequest::query()->where('id', $old->id)->update([
+            'created_at' => now()->subDays(30),
+            'executive_decided_at' => now()->subDays(29),
+        ]);
+
+        $recent = $this->makeRequest($this->bank, $de, RequestStatus::COMPLETED);
+        ImportRequest::query()->where('id', $recent->id)->update([
+            'created_at' => now()->subHours(5),
+            'executive_decided_at' => now(),
+        ]);
+
+        $data = $this->actingAs($de)
+            ->getJson('/api/reports/bank?from_date=' . now()->subDays(5)->toDateString())
+            ->assertOk()
+            ->json('data');
+
+        $this->assertEquals(5.0, $data['avg_processing_hours']);
+    }
+
     // ─── Export: workflow ─────────────────────────────────────────────────────
 
     public function test_workflow_export_cby_user_can_export_csv(): void
@@ -546,6 +619,14 @@ class ReportControllerTest extends TestCase
             ->assertOk();
 
         $this->assertStringContainsString('application/pdf', $response->headers->get('Content-Type'));
+    }
+
+    public function test_workflow_export_invalid_format_returns_422(): void
+    {
+        $this->actingAs($this->admin)
+            ->get('/api/reports/workflow/export?format=xlsx')
+            ->assertStatus(422)
+            ->assertJsonPath('errors.format.0', 'The format must be either excel or pdf.');
     }
 
     // ─── Export: bank ─────────────────────────────────────────────────────────

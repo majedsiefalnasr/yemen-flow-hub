@@ -28,16 +28,35 @@ class ReportController extends Controller
         $toDate   = request()->query('to_date');
 
         $errors = [];
-        if ($fromDate && !\DateTime::createFromFormat('Y-m-d', $fromDate)) {
+        if ($fromDate && !$this->isValidDate($fromDate)) {
             $errors['from_date'] = ['The from_date must be in Y-m-d format.'];
         }
-        if ($toDate && !\DateTime::createFromFormat('Y-m-d', $toDate)) {
+        if ($toDate && !$this->isValidDate($toDate)) {
             $errors['to_date'] = ['The to_date must be in Y-m-d format.'];
         }
 
         if ($errors) {
             return $errors;
         }
+        return null;
+    }
+
+    private function isValidDate(string $date): bool
+    {
+        $parsed = \DateTime::createFromFormat('Y-m-d', $date);
+        $errors = \DateTime::getLastErrors();
+
+        return $parsed !== false
+            && $parsed->format('Y-m-d') === $date
+            && ($errors === false || ($errors['warning_count'] === 0 && $errors['error_count'] === 0));
+    }
+
+    private function validateExportFormat(string $format): array|null
+    {
+        if (!in_array($format, ['excel', 'pdf'], true)) {
+            return ['format' => ['The format must be either excel or pdf.']];
+        }
+
         return null;
     }
 
@@ -129,7 +148,7 @@ class ReportController extends Controller
             : 'TIMESTAMPDIFF(HOUR, h1.created_at, h2.created_at)';
 
         $stageRows = DB::table('request_stage_history as h1')
-            ->select('h1.to_status')
+            ->selectRaw("COALESCE(h1.to_status, 'unknown') as stage_status")
             ->selectRaw("AVG({$hoursDiff}) as avg_hours")
             ->join(DB::raw('request_stage_history h2'), function ($join) {
                 $join->on('h2.request_id', '=', 'h1.request_id')
@@ -137,25 +156,26 @@ class ReportController extends Controller
                         SELECT MIN(h3.id) FROM request_stage_history h3
                         WHERE h3.request_id = h1.request_id AND h3.created_at > h1.created_at
                     )');
-            })
-            ->whereNotNull('h1.to_status')
-            ->groupBy('h1.to_status')
+            });
+        $this->applyDateFilter($stageRows, $fromDate, $toDate, 'h1.created_at');
+        $stageRows = $stageRows
+            ->groupBy('stage_status')
             ->get();
 
         $avgTimePerStage = [];
         foreach ($stageRows as $row) {
-            // D1 fix: null to_status skipped by whereNotNull; use value directly
-            $key = $row->to_status ?? 'unknown';
+            // D1 fix: null to_status is explicitly reported as "unknown".
+            $key = $row->stage_status ?? 'unknown';
             $avgTimePerStage[$key] = round((float) $row->avg_hours, 2);
         }
 
         $throughput = [
-            'completed' => ImportRequest::query()->where('status', RequestStatus::COMPLETED->value)->count(),
-            'approved'  => ImportRequest::query()->where('status', RequestStatus::EXECUTIVE_APPROVED->value)->count(),
-            'rejected'  => ImportRequest::query()->whereIn('status', [
+            'completed' => $this->applyDateFilter(ImportRequest::query()->where('status', RequestStatus::COMPLETED->value), $fromDate, $toDate)->count(),
+            'approved'  => $this->applyDateFilter(ImportRequest::query()->where('status', RequestStatus::EXECUTIVE_APPROVED->value), $fromDate, $toDate)->count(),
+            'rejected'  => $this->applyDateFilter(ImportRequest::query()->whereIn('status', [
                 RequestStatus::SUPPORT_REJECTED->value,
                 RequestStatus::EXECUTIVE_REJECTED->value,
-            ])->count(),
+            ]), $fromDate, $toDate)->count(),
         ];
 
         return ApiResponse::success([
@@ -194,6 +214,14 @@ class ReportController extends Controller
             return ApiResponse::forbidden();
         }
 
+        $dateErrors = $this->validateDateParams();
+        if ($dateErrors) {
+            return ApiResponse::validationError($dateErrors);
+        }
+
+        $fromDate = request()->query('from_date');
+        $toDate   = request()->query('to_date');
+
         $votingStatuses = [
             RequestStatus::EXECUTIVE_VOTING_OPEN->value,
             RequestStatus::EXECUTIVE_VOTING_CLOSED->value,
@@ -204,7 +232,9 @@ class ReportController extends Controller
         ];
 
         $totalVotingSessions = ImportRequest::query()
-            ->whereIn('status', $votingStatuses)
+            ->whereIn('status', $votingStatuses);
+        $this->applyDateFilter($totalVotingSessions, $fromDate, $toDate);
+        $totalVotingSessions = $totalVotingSessions
             ->count();
 
         $executiveFinal = ImportRequest::query()
@@ -213,7 +243,9 @@ class ReportController extends Controller
                 RequestStatus::EXECUTIVE_REJECTED->value,
                 RequestStatus::CUSTOMS_DECLARATION_ISSUED->value,
                 RequestStatus::COMPLETED->value,
-            ])
+            ]);
+        $this->applyDateFilter($executiveFinal, $fromDate, $toDate);
+        $executiveFinal = $executiveFinal
             ->count();
 
         $approved = ImportRequest::query()
@@ -221,15 +253,32 @@ class ReportController extends Controller
                 RequestStatus::EXECUTIVE_APPROVED->value,
                 RequestStatus::CUSTOMS_DECLARATION_ISSUED->value,
                 RequestStatus::COMPLETED->value,
-            ])
+            ]);
+        $this->applyDateFilter($approved, $fromDate, $toDate);
+        $approved = $approved
             ->count();
 
         $rejected = ImportRequest::query()
-            ->where('status', RequestStatus::EXECUTIVE_REJECTED->value)
+            ->where('status', RequestStatus::EXECUTIVE_REJECTED->value);
+        $this->applyDateFilter($rejected, $fromDate, $toDate);
+        $rejected = $rejected
             ->count();
+
+        $candidateIds = ImportRequest::query()
+            ->whereIn('status', [
+                RequestStatus::EXECUTIVE_APPROVED->value,
+                RequestStatus::EXECUTIVE_REJECTED->value,
+                RequestStatus::EXECUTIVE_VOTING_OPEN->value,
+                RequestStatus::EXECUTIVE_VOTING_CLOSED->value,
+                RequestStatus::CUSTOMS_DECLARATION_ISSUED->value,
+                RequestStatus::COMPLETED->value,
+            ]);
+        $this->applyDateFilter($candidateIds, $fromDate, $toDate);
+        $candidateIds = $candidateIds->pluck('id');
 
         // Raw vote tallies
         $tallyRows = RequestVote::query()
+            ->whereIn('request_id', $candidateIds)
             ->selectRaw('vote, COUNT(*) as `count`')
             ->groupBy('vote')
             ->pluck('count', 'vote');
@@ -242,17 +291,6 @@ class ReportController extends Controller
         ];
 
         // D4 fix: single aggregated query replacing N+1 per-request loop
-        $candidateIds = ImportRequest::query()
-            ->whereIn('status', [
-                RequestStatus::EXECUTIVE_APPROVED->value,
-                RequestStatus::EXECUTIVE_REJECTED->value,
-                RequestStatus::EXECUTIVE_VOTING_OPEN->value,
-                RequestStatus::EXECUTIVE_VOTING_CLOSED->value,
-                RequestStatus::CUSTOMS_DECLARATION_ISSUED->value,
-                RequestStatus::COMPLETED->value,
-            ])
-            ->pluck('id');
-
         $ties = 0;
         if ($candidateIds->isNotEmpty()) {
             // D6 fix: group ABSTAIN and AUTO_ABSTAIN_TIMEOUT together in tie detection
@@ -275,7 +313,9 @@ class ReportController extends Controller
 
         $decidedRequests = ImportRequest::query()
             ->whereNotNull('swift_uploaded_at')
-            ->whereNotNull('executive_decided_at')
+            ->whereNotNull('executive_decided_at');
+        $this->applyDateFilter($decidedRequests, $fromDate, $toDate);
+        $decidedRequests = $decidedRequests
             ->get();
         $avgHours = $decidedRequests->count()
             ? round($decidedRequests->avg(fn ($r) => $r->swift_uploaded_at->diffInHours($r->executive_decided_at)), 2)
@@ -372,7 +412,36 @@ class ReportController extends Controller
                 ];
             }
 
-            return ApiResponse::success(['per_bank' => $perBank], 'Bank report retrieved.');
+            $summaryQuery = ImportRequest::query();
+            $this->applyDateFilter($summaryQuery, $fromDate, $toDate);
+            $summaryTotal = $summaryQuery->count();
+            $summaryApproved = (clone $summaryQuery)->whereIn('status', [
+                RequestStatus::EXECUTIVE_APPROVED->value,
+                RequestStatus::CUSTOMS_DECLARATION_ISSUED->value,
+                RequestStatus::COMPLETED->value,
+            ])->count();
+            $summaryRejected = (clone $summaryQuery)->whereIn('status', [
+                RequestStatus::SUPPORT_REJECTED->value,
+                RequestStatus::EXECUTIVE_REJECTED->value,
+            ])->count();
+            $summaryPending = (clone $summaryQuery)->whereNotIn('status', [
+                RequestStatus::EXECUTIVE_APPROVED->value,
+                RequestStatus::CUSTOMS_DECLARATION_ISSUED->value,
+                RequestStatus::COMPLETED->value,
+                RequestStatus::SUPPORT_REJECTED->value,
+                RequestStatus::EXECUTIVE_REJECTED->value,
+            ])->count();
+
+            return ApiResponse::success([
+                'total_requests' => $summaryTotal,
+                'approved_count' => $summaryApproved,
+                'rejected_count' => $summaryRejected,
+                'pending_count' => $summaryPending,
+                'approval_rate' => $summaryTotal > 0 ? round(($summaryApproved / $summaryTotal) * 100, 2) : 0,
+                'rejection_rate' => $summaryTotal > 0 ? round(($summaryRejected / $summaryTotal) * 100, 2) : 0,
+                'avg_processing_hours' => $this->avgProcessingHours(null, $fromDate, $toDate),
+                'per_bank' => $perBank,
+            ], 'Bank report retrieved.');
         }
 
         // Bank-scoped view
@@ -398,17 +467,7 @@ class ReportController extends Controller
         ])->count();
 
         // Avg processing hours: created_at to executive_decided_at for decided requests
-        $avgHours = ImportRequest::query()
-            ->where('bank_id', $user->bank_id)
-            ->whereNotNull('executive_decided_at')
-            ->get()
-            ->pipe(function ($rows) {
-                if ($rows->isEmpty()) {
-                    return 0.0;
-                }
-                $total = $rows->sum(fn ($r) => $r->created_at->diffInHours($r->executive_decided_at));
-                return round($total / $rows->count(), 2);
-            });
+        $avgHours = $this->avgProcessingHours($user->bank_id, $fromDate, $toDate);
 
         return ApiResponse::success([
             'total_requests'         => $total,
@@ -454,6 +513,11 @@ class ReportController extends Controller
         $fromDate = $request->query('from_date');
         $toDate   = $request->query('to_date');
         $format   = $request->query('format', 'excel');
+
+        $formatErrors = $this->validateExportFormat($format);
+        if ($formatErrors) {
+            return ApiResponse::validationError($formatErrors);
+        }
 
         // Collect counts by status
         $rows = [];
@@ -514,6 +578,11 @@ class ReportController extends Controller
         $fromDate = $request->query('from_date');
         $toDate   = $request->query('to_date');
         $format   = $request->query('format', 'excel');
+
+        $formatErrors = $this->validateExportFormat($format);
+        if ($formatErrors) {
+            return ApiResponse::validationError($formatErrors);
+        }
 
         $rows = $this->buildBankRows($user, $isCbyAdmin, $fromDate, $toDate);
 
@@ -599,6 +668,27 @@ class ReportController extends Controller
             'Content-Type'        => 'text/csv; charset=UTF-8',
             'Content-Disposition' => "attachment; filename=\"{$filename}\"",
         ]);
+    }
+
+    private function avgProcessingHours(?int $bankId, ?string $fromDate, ?string $toDate): float
+    {
+        $query = ImportRequest::query()
+            ->whereNotNull('executive_decided_at');
+
+        if ($bankId !== null) {
+            $query->where('bank_id', $bankId);
+        }
+
+        $this->applyDateFilter($query, $fromDate, $toDate);
+
+        $rows = $query->get();
+        if ($rows->isEmpty()) {
+            return 0.0;
+        }
+
+        $total = $rows->sum(fn ($r) => $r->created_at->diffInHours($r->executive_decided_at));
+
+        return round($total / $rows->count(), 2);
     }
 
     private function streamPdf(string $view, array $data, string $filename)
