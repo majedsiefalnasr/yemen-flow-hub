@@ -47,7 +47,7 @@ class PermissionSeeder extends Seeder
             'customs.issue' => [UserRole::COMMITTEE_DIRECTOR],
             'reports.view' => [UserRole::CBY_ADMIN, UserRole::EXECUTIVE_MEMBER, UserRole::COMMITTEE_DIRECTOR],
             'audit.view' => [UserRole::CBY_ADMIN, UserRole::SUPPORT_COMMITTEE, UserRole::EXECUTIVE_MEMBER, UserRole::COMMITTEE_DIRECTOR],
-            'merchants.manage' => [UserRole::CBY_ADMIN, UserRole::DATA_ENTRY],
+            'merchants.manage' => [UserRole::CBY_ADMIN, UserRole::BANK_ADMIN, UserRole::DATA_ENTRY],
             'users.manage' => [UserRole::CBY_ADMIN, UserRole::BANK_ADMIN],
             'entities.manage' => [UserRole::CBY_ADMIN],
             'docrules.manage' => [UserRole::CBY_ADMIN],
