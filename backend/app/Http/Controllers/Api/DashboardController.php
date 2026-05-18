@@ -7,7 +7,9 @@ use App\Enums\UserRole;
 use App\Http\Resources\ImportRequestResource;
 use App\Models\Bank;
 use App\Models\ImportRequest;
+use App\Models\User;
 use App\Support\ApiResponse;
+use Carbon\CarbonImmutable;
 use OpenApi\Attributes as OA;
 
 class DashboardController extends Controller
@@ -42,7 +44,17 @@ class DashboardController extends Controller
 
     private function bankAdminStats($user): \Illuminate\Http\JsonResponse
     {
-        $base = ImportRequest::query()->where('bank_id', $user->bank_id);
+        $asOf = CarbonImmutable::now();
+        $bankId = $user->bank_id ? (int) $user->bank_id : null;
+
+        if ($bankId === null) {
+            return ApiResponse::success(
+                $this->emptyBankAdminStats($asOf),
+                'Dashboard stats retrieved.'
+            );
+        }
+
+        $base = ImportRequest::query()->where('bank_id', $bankId);
 
         $approvedStatuses = [
             RequestStatus::EXECUTIVE_APPROVED->value,
@@ -59,6 +71,22 @@ class DashboardController extends Controller
         $pending  = (clone $base)->whereIn('status', [RequestStatus::SUBMITTED->value, RequestStatus::BANK_REVIEW->value])->count();
         $approved = (clone $base)->whereIn('status', $approvedStatuses)->count();
         $rejected = (clone $base)->whereIn('status', $rejectedStatuses)->count();
+        $atCby    = (clone $base)->whereIn('status', [
+            RequestStatus::BANK_APPROVED->value,
+            RequestStatus::SUPPORT_REVIEW_PENDING->value,
+            RequestStatus::SUPPORT_REVIEW_IN_PROGRESS->value,
+            RequestStatus::SUPPORT_APPROVED->value,
+            RequestStatus::WAITING_FOR_SWIFT->value,
+            RequestStatus::SWIFT_UPLOADED->value,
+            RequestStatus::WAITING_FOR_VOTING_OPEN->value,
+            RequestStatus::EXECUTIVE_VOTING_OPEN->value,
+            RequestStatus::EXECUTIVE_VOTING_CLOSED->value,
+        ])->count();
+        $activeUsers = User::query()
+            ->where('bank_id', $bankId)
+            ->whereIn('role', [UserRole::DATA_ENTRY->value, UserRole::BANK_REVIEWER->value])
+            ->where('is_active', true)
+            ->count();
 
         $totalFinancedAmount = (float) (clone $base)
             ->whereIn('status', $approvedStatuses)
@@ -70,42 +98,91 @@ class DashboardController extends Controller
             ->with(['bank'])
             ->get();
 
-        $monthlyRequests = $this->bankMonthlyRequests($user->bank_id);
+        $monthlyRequests = $this->bankMonthlyRequests($bankId, $asOf);
 
         return ApiResponse::success([
+            // New Story 6.3.2 fields
             'total'                 => $total,
             'pending'               => $pending,
             'approved'              => $approved,
             'rejected'              => $rejected,
             'total_financed_amount' => $totalFinancedAmount,
             'monthly_requests'      => $monthlyRequests,
+            // Backward-compat fields retained for existing clients
+            'pending_bank_review'   => $pending,
+            'at_cby'                => $atCby,
+            'completed'             => $approved,
+            'active_users'          => $activeUsers,
             'recent_requests'       => ImportRequestResource::collection($recentRequests)->toArray(request()),
         ], 'Dashboard stats retrieved.');
     }
 
-    private function bankMonthlyRequests(int $bankId): array
+    private function bankMonthlyRequests(int $bankId, CarbonImmutable $asOf): array
     {
-        $driver      = \Illuminate\Support\Facades\DB::getDriverName();
-        $monthExpr   = $driver === 'sqlite'
-            ? "strftime('%Y-%m', created_at) as month"
-            : "DATE_FORMAT(created_at, '%Y-%m') as month";
+        $timezone = config('app.timezone', 'UTC');
+        $anchorMonth = $asOf->setTimezone($timezone)->startOfMonth();
+        $windowStart = $anchorMonth->subMonths(5);
 
-        // Build a map of month → count from DB for the last 6 months
-        $rows = ImportRequest::query()
-            ->where('bank_id', $bankId)
-            ->where('created_at', '>=', now()->startOfMonth()->subMonths(5))
-            ->selectRaw("{$monthExpr}, COUNT(*) as `count`")
-            ->groupBy('month')
-            ->orderBy('month')
-            ->pluck('count', 'month')
-            ->map(fn ($c) => (int) $c)
-            ->all();
-
-        // Fill all 6 months so the chart always has a full series even with gaps
-        $months = [];
+        $monthKeys = [];
         for ($i = 5; $i >= 0; $i--) {
-            $key = now()->startOfMonth()->subMonths($i)->format('Y-m');
-            $months[] = ['month' => $key, 'count' => $rows[$key] ?? 0];
+            $monthKeys[] = $anchorMonth->subMonths($i)->format('Y-m');
+        }
+
+        $counts = array_fill_keys($monthKeys, 0);
+
+        // Group in app layer using UTC to avoid DB/session timezone drift at month boundaries.
+        $createdAtValues = ImportRequest::query()
+            ->where('bank_id', $bankId)
+            ->where('created_at', '>=', $windowStart)
+            ->pluck('created_at');
+
+        foreach ($createdAtValues as $createdAt) {
+            $monthKey = ($createdAt instanceof \DateTimeInterface
+                ? CarbonImmutable::instance($createdAt)
+                : CarbonImmutable::parse((string) $createdAt))
+                ->setTimezone($timezone)
+                ->format('Y-m');
+            if (array_key_exists($monthKey, $counts)) {
+                $counts[$monthKey]++;
+            }
+        }
+
+        return array_map(
+            fn (string $month): array => ['month' => $month, 'count' => $counts[$month]],
+            $monthKeys
+        );
+    }
+
+    private function emptyBankAdminStats(CarbonImmutable $asOf): array
+    {
+        return [
+            // New Story 6.3.2 fields
+            'total'                 => 0,
+            'pending'               => 0,
+            'approved'              => 0,
+            'rejected'              => 0,
+            'total_financed_amount' => 0.0,
+            'monthly_requests'      => $this->bankMonthlyRequestsForEmptyBank($asOf),
+            // Backward-compat fields retained for existing clients
+            'pending_bank_review'   => 0,
+            'at_cby'                => 0,
+            'completed'             => 0,
+            'active_users'          => 0,
+            'recent_requests'       => [],
+        ];
+    }
+
+    private function bankMonthlyRequestsForEmptyBank(CarbonImmutable $asOf): array
+    {
+        $timezone = config('app.timezone', 'UTC');
+        $anchorMonth = $asOf->setTimezone($timezone)->startOfMonth();
+        $months = [];
+
+        for ($i = 5; $i >= 0; $i--) {
+            $months[] = [
+                'month' => $anchorMonth->subMonths($i)->format('Y-m'),
+                'count' => 0,
+            ];
         }
 
         return $months;

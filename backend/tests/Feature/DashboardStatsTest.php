@@ -9,6 +9,7 @@ use App\Models\ImportRequest;
 use App\Models\Permission;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
@@ -621,6 +622,82 @@ class DashboardStatsTest extends TestCase
         $this->assertEquals(0, $response->json('data.rejected'));
         $this->assertEquals(0.0, $response->json('data.total_financed_amount'));
         $this->assertEmpty($response->json('data.recent_requests'));
+    }
+
+    public function test_bank_admin_stats_keep_legacy_compatibility_keys(): void
+    {
+        $de       = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $reviewer = $this->makeUser(UserRole::BANK_REVIEWER, $this->bank);
+        $this->makeUser(UserRole::SWIFT_OFFICER, $this->bank);
+        $admin = $this->makeUser(UserRole::BANK_ADMIN, $this->bank);
+
+        $this->makeRequest($this->bank, $de, RequestStatus::SUBMITTED);
+
+        $this->actingAs($admin)
+            ->getJson('/api/dashboard/stats')
+            ->assertOk()
+            ->assertJsonStructure([
+                'success',
+                'data' => [
+                    'pending_bank_review',
+                    'at_cby',
+                    'completed',
+                    'rejected',
+                    'active_users',
+                    'recent_requests',
+                ],
+            ])
+            ->assertJsonPath('data.pending_bank_review', 1)
+            ->assertJsonPath('data.active_users', 2);
+    }
+
+    public function test_bank_admin_without_bank_id_returns_zero_payload_instead_of_error(): void
+    {
+        $admin = $this->makeUser(UserRole::BANK_ADMIN, null);
+
+        $response = $this->actingAs($admin)->getJson('/api/dashboard/stats')->assertOk();
+
+        $this->assertEquals(0, $response->json('data.total'));
+        $this->assertEquals(0, $response->json('data.pending'));
+        $this->assertEquals(0, $response->json('data.approved'));
+        $this->assertEquals(0, $response->json('data.rejected'));
+        $this->assertEquals(0.0, $response->json('data.total_financed_amount'));
+        $this->assertEquals(0, $response->json('data.pending_bank_review'));
+        $this->assertEquals(0, $response->json('data.at_cby'));
+        $this->assertEquals(0, $response->json('data.completed'));
+        $this->assertEquals(0, $response->json('data.active_users'));
+        $this->assertEmpty($response->json('data.recent_requests'));
+        $this->assertCount(6, $response->json('data.monthly_requests'));
+    }
+
+    public function test_bank_admin_monthly_requests_handles_month_boundaries_consistently(): void
+    {
+        Carbon::setTestNow('2026-05-15 12:00:00');
+
+        try {
+            $de    = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+            $admin = $this->makeUser(UserRole::BANK_ADMIN, $this->bank);
+
+            $aprilRequest = $this->makeRequest($this->bank, $de, RequestStatus::DRAFT);
+            $aprilRequest->forceFill([
+                'created_at' => '2026-04-30 23:59:59',
+                'updated_at' => '2026-04-30 23:59:59',
+            ])->saveQuietly();
+
+            $mayRequest = $this->makeRequest($this->bank, $de, RequestStatus::DRAFT);
+            $mayRequest->forceFill([
+                'created_at' => '2026-05-01 00:00:00',
+                'updated_at' => '2026-05-01 00:00:00',
+            ])->saveQuietly();
+
+            $response = $this->actingAs($admin)->getJson('/api/dashboard/stats')->assertOk();
+            $monthly = collect($response->json('data.monthly_requests'));
+
+            $this->assertEquals(1, $monthly->firstWhere('month', '2026-04')['count'] ?? null);
+            $this->assertEquals(1, $monthly->firstWhere('month', '2026-05')['count'] ?? null);
+        } finally {
+            Carbon::setTestNow();
+        }
     }
 
     public function test_bank_admin_recent_requests_max_10(): void
