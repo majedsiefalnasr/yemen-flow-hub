@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-16
-last_updated: 2026-05-18 (Epic 6 added; Story 5.4 resolved)
+last_updated: 2026-05-18 (Story 6.2 review patches applied)
 project: Yemen Flow Hub
 project_key: NOKEY
 tracking_system: file-system
@@ -95,7 +95,7 @@ development_status:
   # ─── Epic 6: Production Readiness & Full Prototype Parity ────────────────
   epic-6: in-progress
   6-1-design-token-typography-foundation: done
-  6-2-appshell-layout-parity: review
+  6-2-appshell-layout-parity: done
   6-3-1-bank-admin-role-backend-registration-api-scope: backlog
   6-3-2-bank-admin-dashboard: backlog
   6-3-3-bank-admin-merchant-management: backlog
