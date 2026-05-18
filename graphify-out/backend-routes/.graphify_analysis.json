@@ -1,0 +1,16 @@
+{
+  "communities": {
+    "0": [
+      "api_php"
+    ],
+    "1": [
+      "console_php"
+    ],
+    "2": [
+      "web_php"
+    ]
+  },
+  "cohesion": {},
+  "god_nodes": [],
+  "surprises": []
+}

@@ -1,0 +1,29 @@
+{
+  "directed": false,
+  "multigraph": false,
+  "graph": {},
+  "nodes": [
+    {
+      "label": "console.php",
+      "file_type": "code",
+      "source_file": "console.php",
+      "source_location": "L1",
+      "id": "console_php"
+    },
+    {
+      "label": "web.php",
+      "file_type": "code",
+      "source_file": "web.php",
+      "source_location": "L1",
+      "id": "web_php"
+    },
+    {
+      "label": "api.php",
+      "file_type": "code",
+      "source_file": "api.php",
+      "source_location": "L1",
+      "id": "api_php"
+    }
+  ],
+  "edges": []
+}

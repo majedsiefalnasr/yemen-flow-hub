@@ -1,0 +1,865 @@
+{
+  "communities": {
+    "0": [
+      "models_importrequest_importrequest",
+      "models_importrequest_importrequest_approvedby",
+      "models_importrequest_importrequest_bank",
+      "models_importrequest_importrequest_booted",
+      "models_importrequest_importrequest_casts",
+      "models_importrequest_importrequest_claimedbyuser",
+      "models_importrequest_importrequest_creator",
+      "models_importrequest_importrequest_customsdeclaration",
+      "models_importrequest_importrequest_documents",
+      "models_importrequest_importrequest_isclaimed",
+      "models_importrequest_importrequest_isclaimedby",
+      "models_importrequest_importrequest_isclaimexpired",
+      "models_importrequest_importrequest_iseditable",
+      "models_importrequest_importrequest_issuedcustomsdeclaration",
+      "models_importrequest_importrequest_lastupdatedby",
+      "models_importrequest_importrequest_merchant",
+      "models_importrequest_importrequest_rejectedby",
+      "models_importrequest_importrequest_resubmittedby",
+      "models_importrequest_importrequest_reviewedby",
+      "models_importrequest_importrequest_scopeforuser",
+      "models_importrequest_importrequest_scopestatus",
+      "models_importrequest_importrequest_setattribute",
+      "models_importrequest_importrequest_stagehistory",
+      "models_importrequest_importrequest_submittedby",
+      "models_importrequest_importrequest_supportreviewedby",
+      "models_importrequest_importrequest_swiftuploadedby",
+      "models_importrequest_importrequest_votes",
+      "models_importrequest_importrequest_votingclosedby",
+      "models_importrequest_importrequest_votingopenedby",
+      "models_importrequest_php"
+    ],
+    "1": [
+      "api_searchcontroller_searchcontroller",
+      "api_searchcontroller_searchcontroller_persistrecentsearch",
+      "api_searchcontroller_searchcontroller_recent",
+      "api_searchcontroller_searchcontroller_search",
+      "api_searchcontroller_searchcontroller_searchbanks",
+      "api_searchcontroller_searchcontroller_searchcustoms",
+      "api_searchcontroller_searchcontroller_searchrequests",
+      "api_searchcontroller_searchcontroller_searchusers",
+      "api_usercontroller_usercontroller",
+      "api_usercontroller_usercontroller_auditsnapshot",
+      "api_usercontroller_usercontroller_construct",
+      "api_usercontroller_usercontroller_destroy",
+      "api_usercontroller_usercontroller_index",
+      "api_usercontroller_usercontroller_show",
+      "api_usercontroller_usercontroller_store",
+      "api_usercontroller_usercontroller_update",
+      "http_controllers_api_searchcontroller_php",
+      "http_controllers_api_usercontroller_php",
+      "http_resources_userresource_php",
+      "resources_userresource_userresource",
+      "resources_userresource_userresource_toarray"
+    ],
+    "2": [
+      "api_workflowcontroller_workflowcontroller",
+      "api_workflowcontroller_workflowcontroller_bankapprove",
+      "api_workflowcontroller_workflowcontroller_bankbeginreview",
+      "api_workflowcontroller_workflowcontroller_bankfinalizerejection",
+      "api_workflowcontroller_workflowcontroller_bankreject",
+      "api_workflowcontroller_workflowcontroller_bankreturnaftersupportreject",
+      "api_workflowcontroller_workflowcontroller_claimheartbeat",
+      "api_workflowcontroller_workflowcontroller_claimrelease",
+      "api_workflowcontroller_workflowcontroller_claimsupportreview",
+      "api_workflowcontroller_workflowcontroller_construct",
+      "api_workflowcontroller_workflowcontroller_finalizedecision",
+      "api_workflowcontroller_workflowcontroller_returntoentry",
+      "api_workflowcontroller_workflowcontroller_run",
+      "api_workflowcontroller_workflowcontroller_submit",
+      "api_workflowcontroller_workflowcontroller_supportapprove",
+      "api_workflowcontroller_workflowcontroller_supportclaim",
+      "api_workflowcontroller_workflowcontroller_supportreject",
+      "api_workflowcontroller_workflowcontroller_supportrelease",
+      "http_controllers_api_workflowcontroller_php"
+    ],
+    "3": [
+      "api_dashboardcontroller_dashboardcontroller",
+      "api_dashboardcontroller_dashboardcontroller_bankadminstats",
+      "api_dashboardcontroller_dashboardcontroller_bankreviewerstats",
+      "api_dashboardcontroller_dashboardcontroller_cbyadminstats",
+      "api_dashboardcontroller_dashboardcontroller_committeedirectorstats",
+      "api_dashboardcontroller_dashboardcontroller_compliancealerts",
+      "api_dashboardcontroller_dashboardcontroller_dataentrystats",
+      "api_dashboardcontroller_dashboardcontroller_executivememberstats",
+      "api_dashboardcontroller_dashboardcontroller_executivevotingstats",
+      "api_dashboardcontroller_dashboardcontroller_mostactivebanks",
+      "api_dashboardcontroller_dashboardcontroller_stats",
+      "api_dashboardcontroller_dashboardcontroller_supportcommitteestats",
+      "api_dashboardcontroller_dashboardcontroller_swiftofficerstats",
+      "http_controllers_api_dashboardcontroller_php",
+      "http_resources_importrequestresource_php",
+      "resources_importrequestresource_importrequestresource",
+      "resources_importrequestresource_importrequestresource_toarray"
+    ],
+    "4": [
+      "models_systemsetting_php",
+      "models_systemsetting_systemsetting",
+      "models_systemsetting_systemsetting_casts",
+      "models_systemsetting_systemsetting_findbykey",
+      "models_systemsetting_systemsetting_getvaluebykey",
+      "models_systemsetting_systemsetting_updatedby",
+      "services_settings_adminsettingsservice_php",
+      "settings_adminsettingsservice_adminsettingsservice",
+      "settings_adminsettingsservice_adminsettingsservice_getallsettings",
+      "settings_adminsettingsservice_adminsettingsservice_getdefaults",
+      "settings_adminsettingsservice_adminsettingsservice_getsetting",
+      "settings_adminsettingsservice_adminsettingsservice_getvalidationrules",
+      "settings_adminsettingsservice_adminsettingsservice_invalidatecache",
+      "settings_adminsettingsservice_adminsettingsservice_resetsetting",
+      "settings_adminsettingsservice_adminsettingsservice_updatesetting",
+      "settings_adminsettingsservice_adminsettingsservice_validatekey",
+      "settings_adminsettingsservice_adminsettingsservice_validatevalue"
+    ],
+    "5": [
+      "api_votingcontroller_votingcontroller_show",
+      "http_resources_voteresource_php",
+      "models_requestvote_php",
+      "models_requestvote_requestvote",
+      "models_requestvote_requestvote_casts",
+      "models_requestvote_requestvote_request",
+      "models_requestvote_requestvote_user",
+      "resources_voteresource_voteresource",
+      "resources_voteresource_voteresource_toarray",
+      "services_voting_votingservice_php",
+      "voting_votingservice_votingservice",
+      "voting_votingservice_votingservice_castvote",
+      "voting_votingservice_votingservice_closesession",
+      "voting_votingservice_votingservice_construct",
+      "voting_votingservice_votingservice_finalize",
+      "voting_votingservice_votingservice_overrideandfinalize",
+      "voting_votingservice_votingservice_tally"
+    ],
+    "6": [
+      "api_reportcontroller_reportcontroller",
+      "api_reportcontroller_reportcontroller_applydatefilter",
+      "api_reportcontroller_reportcontroller_avgprocessinghours",
+      "api_reportcontroller_reportcontroller_bank",
+      "api_reportcontroller_reportcontroller_buildbankrows",
+      "api_reportcontroller_reportcontroller_construct",
+      "api_reportcontroller_reportcontroller_exportbank",
+      "api_reportcontroller_reportcontroller_exportworkflow",
+      "api_reportcontroller_reportcontroller_isvaliddate",
+      "api_reportcontroller_reportcontroller_streamcsv",
+      "api_reportcontroller_reportcontroller_streampdf",
+      "api_reportcontroller_reportcontroller_validatedateparams",
+      "api_reportcontroller_reportcontroller_validateexportformat",
+      "api_reportcontroller_reportcontroller_voting",
+      "api_reportcontroller_reportcontroller_workflow",
+      "http_controllers_api_reportcontroller_php"
+    ],
+    "7": [
+      "api_adminsettingscontroller_adminsettingscontroller",
+      "api_adminsettingscontroller_adminsettingscontroller_construct",
+      "api_adminsettingscontroller_adminsettingscontroller_index",
+      "api_adminsettingscontroller_adminsettingscontroller_reset",
+      "api_adminsettingscontroller_adminsettingscontroller_update",
+      "http_controllers_api_adminsettingscontroller_php",
+      "support_apiresponse_apiresponse",
+      "support_apiresponse_apiresponse_error",
+      "support_apiresponse_apiresponse_forbidden",
+      "support_apiresponse_apiresponse_lockedout",
+      "support_apiresponse_apiresponse_notfound",
+      "support_apiresponse_apiresponse_success",
+      "support_apiresponse_apiresponse_unauthorized",
+      "support_apiresponse_apiresponse_validationerror",
+      "support_apiresponse_php"
+    ],
+    "8": [
+      "models_requeststagehistory_php",
+      "models_requeststagehistory_requeststagehistory",
+      "models_requeststagehistory_requeststagehistory_actor",
+      "models_requeststagehistory_requeststagehistory_casts",
+      "models_requeststagehistory_requeststagehistory_importrequest",
+      "services_workflow_transitionmap_php",
+      "services_workflow_workflowservice_php",
+      "workflow_transitionmap_transitionmap",
+      "workflow_transitionmap_transitionmap_definitions",
+      "workflow_workflowservice_workflowservice",
+      "workflow_workflowservice_workflowservice_applyclaimcacheeffects",
+      "workflow_workflowservice_workflowservice_applyclaimdbsideeffects",
+      "workflow_workflowservice_workflowservice_autochain",
+      "workflow_workflowservice_workflowservice_construct",
+      "workflow_workflowservice_workflowservice_transition"
+    ],
+    "9": [
+      "api_auditcontroller_auditcontroller",
+      "api_auditcontroller_auditcontroller_construct",
+      "api_auditcontroller_auditcontroller_index",
+      "audit_auditservice_auditservice",
+      "audit_auditservice_auditservice_log",
+      "http_controllers_api_auditcontroller_php",
+      "http_resources_auditlogresource_php",
+      "models_auditlog_auditlog",
+      "models_auditlog_auditlog_casts",
+      "models_auditlog_auditlog_user",
+      "models_auditlog_php",
+      "resources_auditlogresource_auditlogresource",
+      "resources_auditlogresource_auditlogresource_toarray",
+      "services_audit_auditservice_php"
+    ],
+    "10": [
+      "documents_documentservice_documentservice",
+      "documents_documentservice_documentservice_assertfilevalid",
+      "documents_documentservice_documentservice_construct",
+      "documents_documentservice_documentservice_delete",
+      "documents_documentservice_documentservice_download",
+      "documents_documentservice_documentservice_storedocument",
+      "documents_documentservice_documentservice_uploadrequestdocument",
+      "documents_documentservice_documentservice_uploadswift",
+      "models_requestdocument_php",
+      "models_requestdocument_requestdocument",
+      "models_requestdocument_requestdocument_documenttype",
+      "models_requestdocument_requestdocument_request",
+      "models_requestdocument_requestdocument_uploader",
+      "services_documents_documentservice_php"
+    ],
+    "11": [
+      "api_importrequestcontroller_importrequestcontroller_index",
+      "api_votingcontroller_votingcontroller",
+      "api_votingcontroller_votingcontroller_closesession",
+      "api_votingcontroller_votingcontroller_construct",
+      "api_votingcontroller_votingcontroller_directordecide",
+      "api_votingcontroller_votingcontroller_index",
+      "api_votingcontroller_votingcontroller_opensession",
+      "api_votingcontroller_votingcontroller_override",
+      "api_votingcontroller_votingcontroller_vote",
+      "http_controllers_api_votingcontroller_php",
+      "http_resources_importrequestlistresource_php",
+      "resources_importrequestlistresource_importrequestlistresource",
+      "resources_importrequestlistresource_importrequestlistresource_toarray"
+    ],
+    "12": [
+      "api_bankcontroller_bankcontroller",
+      "api_bankcontroller_bankcontroller_construct",
+      "api_bankcontroller_bankcontroller_destroy",
+      "api_bankcontroller_bankcontroller_index",
+      "api_bankcontroller_bankcontroller_show",
+      "api_bankcontroller_bankcontroller_store",
+      "api_bankcontroller_bankcontroller_update",
+      "http_controllers_api_bankcontroller_php",
+      "http_resources_bankresource_php",
+      "resources_bankresource_bankresource",
+      "resources_bankresource_bankresource_toarray"
+    ],
+    "13": [
+      "models_user_php",
+      "models_user_user",
+      "models_user_user_auditlogs",
+      "models_user_user_bank",
+      "models_user_user_casts",
+      "models_user_user_haspermission",
+      "models_user_user_hasrole",
+      "models_user_user_isbankuser",
+      "models_user_user_iscbyuser",
+      "models_user_user_loginhistory",
+      "models_user_user_votes"
+    ],
+    "14": [
+      "api_merchantcontroller_merchantcontroller",
+      "api_merchantcontroller_merchantcontroller_destroy",
+      "api_merchantcontroller_merchantcontroller_index",
+      "api_merchantcontroller_merchantcontroller_show",
+      "api_merchantcontroller_merchantcontroller_store",
+      "api_merchantcontroller_merchantcontroller_update",
+      "http_controllers_api_merchantcontroller_php",
+      "http_resources_merchantresource_php",
+      "resources_merchantresource_merchantresource",
+      "resources_merchantresource_merchantresource_toarray"
+    ],
+    "15": [
+      "api_importrequestcontroller_importrequestcontroller",
+      "api_importrequestcontroller_importrequestcontroller_destroy",
+      "api_importrequestcontroller_importrequestcontroller_history",
+      "api_importrequestcontroller_importrequestcontroller_show",
+      "api_importrequestcontroller_importrequestcontroller_store",
+      "api_importrequestcontroller_importrequestcontroller_update",
+      "http_controllers_api_importrequestcontroller_php",
+      "http_resources_stagehistoryresource_php",
+      "resources_stagehistoryresource_stagehistoryresource",
+      "resources_stagehistoryresource_stagehistoryresource_toarray"
+    ],
+    "16": [
+      "authorization_permissionservice_permissionservice",
+      "authorization_permissionservice_permissionservice_cachekey",
+      "authorization_permissionservice_permissionservice_clearrolecache",
+      "authorization_permissionservice_permissionservice_permissionsforrole",
+      "authorization_permissionservice_permissionservice_rolesforpermission",
+      "authorization_permissionservice_permissionservice_usercan",
+      "models_permission_permission",
+      "models_permission_permission_roles",
+      "models_permission_php",
+      "services_authorization_permissionservice_php"
+    ],
+    "17": [
+      "api_documenttypecontroller_documenttypecontroller",
+      "api_documenttypecontroller_documenttypecontroller_destroy",
+      "api_documenttypecontroller_documenttypecontroller_index",
+      "api_documenttypecontroller_documenttypecontroller_store",
+      "api_documenttypecontroller_documenttypecontroller_update",
+      "http_controllers_api_documenttypecontroller_php",
+      "http_resources_documenttyperesource_php",
+      "resources_documenttyperesource_documenttyperesource",
+      "resources_documenttyperesource_documenttyperesource_toarray"
+    ],
+    "18": [
+      "api_notificationcontroller_notificationcontroller",
+      "api_notificationcontroller_notificationcontroller_index",
+      "api_notificationcontroller_notificationcontroller_read",
+      "api_notificationcontroller_notificationcontroller_readall",
+      "api_notificationcontroller_notificationcontroller_unreadcount",
+      "http_controllers_api_notificationcontroller_php",
+      "http_resources_notificationresource_php",
+      "resources_notificationresource_notificationresource",
+      "resources_notificationresource_notificationresource_toarray"
+    ],
+    "19": [
+      "policies_importrequestpolicy_importrequestpolicy",
+      "policies_importrequestpolicy_importrequestpolicy_create",
+      "policies_importrequestpolicy_importrequestpolicy_delete",
+      "policies_importrequestpolicy_importrequestpolicy_deletedocuments",
+      "policies_importrequestpolicy_importrequestpolicy_update",
+      "policies_importrequestpolicy_importrequestpolicy_uploaddocuments",
+      "policies_importrequestpolicy_importrequestpolicy_view",
+      "policies_importrequestpolicy_importrequestpolicy_viewany",
+      "policies_importrequestpolicy_php"
+    ],
+    "20": [
+      "policies_userpolicy_php",
+      "policies_userpolicy_userpolicy",
+      "policies_userpolicy_userpolicy_canmanageownbankuser",
+      "policies_userpolicy_userpolicy_cbyadmin",
+      "policies_userpolicy_userpolicy_create",
+      "policies_userpolicy_userpolicy_delete",
+      "policies_userpolicy_userpolicy_update",
+      "policies_userpolicy_userpolicy_view",
+      "policies_userpolicy_userpolicy_viewany"
+    ],
+    "21": [
+      "api_documentcontroller_documentcontroller",
+      "api_documentcontroller_documentcontroller_construct",
+      "api_documentcontroller_documentcontroller_destroy",
+      "api_documentcontroller_documentcontroller_download",
+      "api_documentcontroller_documentcontroller_upload",
+      "api_documentcontroller_documentcontroller_uploadrequestdocument",
+      "api_documentcontroller_documentcontroller_uploadswift",
+      "http_controllers_api_documentcontroller_php"
+    ],
+    "22": [
+      "models_merchant_merchant",
+      "models_merchant_merchant_bank",
+      "models_merchant_merchant_casts",
+      "models_merchant_merchant_creator",
+      "models_merchant_merchant_importrequests",
+      "models_merchant_merchant_scopeactive",
+      "models_merchant_merchant_scopeforuser",
+      "models_merchant_php"
+    ],
+    "23": [
+      "api_authcontroller_authcontroller",
+      "api_authcontroller_authcontroller_construct",
+      "api_authcontroller_authcontroller_logfailedlogin",
+      "api_authcontroller_authcontroller_login",
+      "api_authcontroller_authcontroller_logout",
+      "api_authcontroller_authcontroller_me",
+      "http_controllers_api_authcontroller_php"
+    ],
+    "24": [
+      "api_customscontroller_customscontroller",
+      "api_customscontroller_customscontroller_construct",
+      "api_customscontroller_customscontroller_download",
+      "api_customscontroller_customscontroller_generate",
+      "api_customscontroller_customscontroller_preview",
+      "api_customscontroller_customscontroller_show",
+      "http_controllers_api_customscontroller_php"
+    ],
+    "25": [
+      "customs_customsservice_customsservice",
+      "customs_customsservice_customsservice_construct",
+      "customs_customsservice_customsservice_generate",
+      "customs_customsservice_customsservice_getpdfstream",
+      "customs_customsservice_customsservice_nextdeclarationnumber",
+      "customs_customsservice_customsservice_snapshot",
+      "services_customs_customsservice_php"
+    ],
+    "26": [
+      "policies_bankpolicy_bankpolicy",
+      "policies_bankpolicy_bankpolicy_create",
+      "policies_bankpolicy_bankpolicy_delete",
+      "policies_bankpolicy_bankpolicy_update",
+      "policies_bankpolicy_bankpolicy_view",
+      "policies_bankpolicy_bankpolicy_viewany",
+      "policies_bankpolicy_php"
+    ],
+    "27": [
+      "policies_merchantpolicy_merchantpolicy",
+      "policies_merchantpolicy_merchantpolicy_create",
+      "policies_merchantpolicy_merchantpolicy_delete",
+      "policies_merchantpolicy_merchantpolicy_update",
+      "policies_merchantpolicy_merchantpolicy_view",
+      "policies_merchantpolicy_merchantpolicy_viewany",
+      "policies_merchantpolicy_php"
+    ],
+    "28": [
+      "services_settings_userpreferencesservice_php",
+      "settings_userpreferencesservice_userpreferencesservice",
+      "settings_userpreferencesservice_userpreferencesservice_getdefaults",
+      "settings_userpreferencesservice_userpreferencesservice_getforuser",
+      "settings_userpreferencesservice_userpreferencesservice_resetforuser",
+      "settings_userpreferencesservice_userpreferencesservice_updateforuser",
+      "settings_userpreferencesservice_userpreferencesservice_validatepreferences"
+    ],
+    "29": [
+      "api_settingscontroller_settingscontroller",
+      "api_settingscontroller_settingscontroller_construct",
+      "api_settingscontroller_settingscontroller_reset",
+      "api_settingscontroller_settingscontroller_show",
+      "api_settingscontroller_settingscontroller_update",
+      "http_controllers_api_settingscontroller_php"
+    ],
+    "30": [
+      "enums_userrole_isbankadminmanageable",
+      "enums_userrole_isbankoperationalrole",
+      "enums_userrole_isbankrole",
+      "enums_userrole_iscbyrole",
+      "enums_userrole_label",
+      "enums_userrole_php"
+    ],
+    "31": [
+      "models_bank_bank",
+      "models_bank_bank_casts",
+      "models_bank_bank_importrequests",
+      "models_bank_bank_scopeactive",
+      "models_bank_bank_users",
+      "models_bank_php"
+    ],
+    "32": [
+      "models_customsdeclaration_customsdeclaration",
+      "models_customsdeclaration_customsdeclaration_booted",
+      "models_customsdeclaration_customsdeclaration_casts",
+      "models_customsdeclaration_customsdeclaration_issuer",
+      "models_customsdeclaration_customsdeclaration_request",
+      "models_customsdeclaration_php"
+    ],
+    "33": [
+      "api_profilecontroller_profilecontroller",
+      "api_profilecontroller_profilecontroller_changepassword",
+      "api_profilecontroller_profilecontroller_construct",
+      "api_profilecontroller_profilecontroller_show",
+      "http_controllers_api_profilecontroller_php"
+    ],
+    "34": [
+      "notifications_customsissuednotification_customsissuednotification",
+      "notifications_customsissuednotification_customsissuednotification_construct",
+      "notifications_customsissuednotification_customsissuednotification_toarray",
+      "notifications_customsissuednotification_customsissuednotification_via",
+      "notifications_customsissuednotification_php"
+    ],
+    "35": [
+      "notifications_requestapprovednotification_php",
+      "notifications_requestapprovednotification_requestapprovednotification",
+      "notifications_requestapprovednotification_requestapprovednotification_construct",
+      "notifications_requestapprovednotification_requestapprovednotification_toarray",
+      "notifications_requestapprovednotification_requestapprovednotification_via"
+    ],
+    "36": [
+      "notifications_requestrejectednotification_php",
+      "notifications_requestrejectednotification_requestrejectednotification",
+      "notifications_requestrejectednotification_requestrejectednotification_construct",
+      "notifications_requestrejectednotification_requestrejectednotification_toarray",
+      "notifications_requestrejectednotification_requestrejectednotification_via"
+    ],
+    "37": [
+      "notifications_requestreturnednotification_php",
+      "notifications_requestreturnednotification_requestreturnednotification",
+      "notifications_requestreturnednotification_requestreturnednotification_construct",
+      "notifications_requestreturnednotification_requestreturnednotification_toarray",
+      "notifications_requestreturnednotification_requestreturnednotification_via"
+    ],
+    "38": [
+      "notifications_requestsubmittednotification_php",
+      "notifications_requestsubmittednotification_requestsubmittednotification",
+      "notifications_requestsubmittednotification_requestsubmittednotification_construct",
+      "notifications_requestsubmittednotification_requestsubmittednotification_toarray",
+      "notifications_requestsubmittednotification_requestsubmittednotification_via"
+    ],
+    "39": [
+      "notifications_swiftuploadrequestednotification_php",
+      "notifications_swiftuploadrequestednotification_swiftuploadrequestednotification",
+      "notifications_swiftuploadrequestednotification_swiftuploadrequestednotification_construct",
+      "notifications_swiftuploadrequestednotification_swiftuploadrequestednotification_toarray",
+      "notifications_swiftuploadrequestednotification_swiftuploadrequestednotification_via"
+    ],
+    "40": [
+      "notifications_votingopenednotification_php",
+      "notifications_votingopenednotification_votingopenednotification",
+      "notifications_votingopenednotification_votingopenednotification_construct",
+      "notifications_votingopenednotification_votingopenednotification_toarray",
+      "notifications_votingopenednotification_votingopenednotification_via"
+    ],
+    "41": [
+      "policies_requestdocumentpolicy_php",
+      "policies_requestdocumentpolicy_requestdocumentpolicy",
+      "policies_requestdocumentpolicy_requestdocumentpolicy_candownloadrequestdoc",
+      "policies_requestdocumentpolicy_requestdocumentpolicy_candownloadswift",
+      "policies_requestdocumentpolicy_requestdocumentpolicy_download"
+    ],
+    "42": [
+      "http_requests_changepasswordrequest_php",
+      "requests_changepasswordrequest_changepasswordrequest",
+      "requests_changepasswordrequest_changepasswordrequest_authorize",
+      "requests_changepasswordrequest_changepasswordrequest_messages",
+      "requests_changepasswordrequest_changepasswordrequest_rules"
+    ],
+    "43": [
+      "http_requests_storebankrequest_php",
+      "requests_storebankrequest_storebankrequest",
+      "requests_storebankrequest_storebankrequest_authorize",
+      "requests_storebankrequest_storebankrequest_prepareforvalidation",
+      "requests_storebankrequest_storebankrequest_rules"
+    ],
+    "44": [
+      "http_requests_storeuserrequest_php",
+      "requests_storeuserrequest_storeuserrequest",
+      "requests_storeuserrequest_storeuserrequest_authorize",
+      "requests_storeuserrequest_storeuserrequest_rules",
+      "requests_storeuserrequest_storeuserrequest_withvalidator"
+    ],
+    "45": [
+      "http_requests_updateadminsettingrequest_php",
+      "requests_updateadminsettingrequest_updateadminsettingrequest",
+      "requests_updateadminsettingrequest_updateadminsettingrequest_authorize",
+      "requests_updateadminsettingrequest_updateadminsettingrequest_messages",
+      "requests_updateadminsettingrequest_updateadminsettingrequest_rules"
+    ],
+    "46": [
+      "http_requests_updatebankrequest_php",
+      "requests_updatebankrequest_updatebankrequest",
+      "requests_updatebankrequest_updatebankrequest_authorize",
+      "requests_updatebankrequest_updatebankrequest_prepareforvalidation",
+      "requests_updatebankrequest_updatebankrequest_rules"
+    ],
+    "47": [
+      "http_requests_updatesettingsrequest_php",
+      "requests_updatesettingsrequest_updatesettingsrequest",
+      "requests_updatesettingsrequest_updatesettingsrequest_authorize",
+      "requests_updatesettingsrequest_updatesettingsrequest_messages",
+      "requests_updatesettingsrequest_updatesettingsrequest_rules"
+    ],
+    "48": [
+      "http_requests_updateuserrequest_php",
+      "requests_updateuserrequest_updateuserrequest",
+      "requests_updateuserrequest_updateuserrequest_authorize",
+      "requests_updateuserrequest_updateuserrequest_rules",
+      "requests_updateuserrequest_updateuserrequest_withvalidator"
+    ],
+    "49": [
+      "enums_requeststatus_iseditable",
+      "enums_requeststatus_isterminal",
+      "enums_requeststatus_label",
+      "enums_requeststatus_php"
+    ],
+    "50": [
+      "http_requests_storedocumenttyperequest_php",
+      "requests_storedocumenttyperequest_storedocumenttyperequest",
+      "requests_storedocumenttyperequest_storedocumenttyperequest_authorize",
+      "requests_storedocumenttyperequest_storedocumenttyperequest_rules"
+    ],
+    "51": [
+      "http_requests_updatedocumenttyperequest_php",
+      "requests_updatedocumenttyperequest_updatedocumenttyperequest",
+      "requests_updatedocumenttyperequest_updatedocumenttyperequest_authorize",
+      "requests_updatedocumenttyperequest_updatedocumenttyperequest_rules"
+    ],
+    "52": [
+      "http_requests_uploadrequestdocumentrequest_php",
+      "requests_uploadrequestdocumentrequest_uploadrequestdocumentrequest",
+      "requests_uploadrequestdocumentrequest_uploadrequestdocumentrequest_authorize",
+      "requests_uploadrequestdocumentrequest_uploadrequestdocumentrequest_rules"
+    ],
+    "53": [
+      "listeners_sendworkflownotifications_php",
+      "listeners_sendworkflownotifications_sendworkflownotifications",
+      "listeners_sendworkflownotifications_sendworkflownotifications_handle",
+      "listeners_sendworkflownotifications_sendworkflownotifications_shouldnotify"
+    ],
+    "54": [
+      "models_documenttype_documenttype",
+      "models_documenttype_documenttype_casts",
+      "models_documenttype_documenttype_scopeactive",
+      "models_documenttype_php"
+    ],
+    "55": [
+      "models_loginhistory_loginhistory",
+      "models_loginhistory_loginhistory_casts",
+      "models_loginhistory_loginhistory_user",
+      "models_loginhistory_php"
+    ],
+    "56": [
+      "providers_appserviceprovider_appserviceprovider",
+      "providers_appserviceprovider_appserviceprovider_boot",
+      "providers_appserviceprovider_appserviceprovider_register",
+      "providers_appserviceprovider_php"
+    ],
+    "57": [
+      "http_requests_castvoterequest_php",
+      "requests_castvoterequest_castvoterequest",
+      "requests_castvoterequest_castvoterequest_authorize",
+      "requests_castvoterequest_castvoterequest_rules"
+    ],
+    "58": [
+      "http_requests_directordeciderequest_php",
+      "requests_directordeciderequest_directordeciderequest",
+      "requests_directordeciderequest_directordeciderequest_authorize",
+      "requests_directordeciderequest_directordeciderequest_rules"
+    ],
+    "59": [
+      "http_requests_loginrequest_php",
+      "requests_loginrequest_loginrequest",
+      "requests_loginrequest_loginrequest_authorize",
+      "requests_loginrequest_loginrequest_rules"
+    ],
+    "60": [
+      "http_requests_overridevoterequest_php",
+      "requests_overridevoterequest_overridevoterequest",
+      "requests_overridevoterequest_overridevoterequest_authorize",
+      "requests_overridevoterequest_overridevoterequest_rules"
+    ],
+    "61": [
+      "http_requests_storeimportrequest_php",
+      "requests_storeimportrequest_storeimportrequest",
+      "requests_storeimportrequest_storeimportrequest_authorize",
+      "requests_storeimportrequest_storeimportrequest_rules"
+    ],
+    "62": [
+      "http_requests_storemerchantrequest_php",
+      "requests_storemerchantrequest_storemerchantrequest",
+      "requests_storemerchantrequest_storemerchantrequest_authorize",
+      "requests_storemerchantrequest_storemerchantrequest_rules"
+    ],
+    "63": [
+      "http_requests_updateimportrequest_php",
+      "requests_updateimportrequest_updateimportrequest",
+      "requests_updateimportrequest_updateimportrequest_authorize",
+      "requests_updateimportrequest_updateimportrequest_rules"
+    ],
+    "64": [
+      "http_requests_updatemerchantrequest_php",
+      "requests_updatemerchantrequest_updatemerchantrequest",
+      "requests_updatemerchantrequest_updatemerchantrequest_authorize",
+      "requests_updatemerchantrequest_updatemerchantrequest_rules"
+    ],
+    "65": [
+      "http_requests_uploaddocumentrequest_php",
+      "requests_uploaddocumentrequest_uploaddocumentrequest",
+      "requests_uploaddocumentrequest_uploaddocumentrequest_authorize",
+      "requests_uploaddocumentrequest_uploaddocumentrequest_rules"
+    ],
+    "66": [
+      "http_requests_uploadswiftrequest_php",
+      "requests_uploadswiftrequest_uploadswiftrequest",
+      "requests_uploadswiftrequest_uploadswiftrequest_authorize",
+      "requests_uploadswiftrequest_uploadswiftrequest_rules"
+    ],
+    "67": [
+      "http_requests_workflowactionrequest_php",
+      "requests_workflowactionrequest_workflowactionrequest",
+      "requests_workflowactionrequest_workflowactionrequest_authorize",
+      "requests_workflowactionrequest_workflowactionrequest_rules"
+    ],
+    "68": [
+      "http_requests_apiformrequest_php",
+      "requests_apiformrequest_apiformrequest",
+      "requests_apiformrequest_apiformrequest_failedvalidation"
+    ],
+    "69": [
+      "commands_expireclaimscommand_expireclaimscommand",
+      "commands_expireclaimscommand_expireclaimscommand_handle",
+      "console_commands_expireclaimscommand_php"
+    ],
+    "70": [
+      "controllers_testapicontroller_testapicontroller",
+      "controllers_testapicontroller_testapicontroller_index",
+      "http_controllers_testapicontroller_php"
+    ],
+    "71": [
+      "events_requesttransitioned_php",
+      "events_requesttransitioned_requesttransitioned",
+      "events_requesttransitioned_requesttransitioned_construct"
+    ],
+    "72": [
+      "exceptions_directstatusmutationexception_directstatusmutationexception",
+      "exceptions_directstatusmutationexception_directstatusmutationexception_construct",
+      "exceptions_directstatusmutationexception_php"
+    ],
+    "73": [
+      "exceptions_workflowimmutablestateexception_php",
+      "exceptions_workflowimmutablestateexception_workflowimmutablestateexception",
+      "exceptions_workflowimmutablestateexception_workflowimmutablestateexception_construct"
+    ],
+    "74": [
+      "exceptions_workflowlockedstateexception_php",
+      "exceptions_workflowlockedstateexception_workflowlockedstateexception",
+      "exceptions_workflowlockedstateexception_workflowlockedstateexception_construct"
+    ],
+    "75": [
+      "http_resources_votingtallyresource_php",
+      "resources_votingtallyresource_votingtallyresource",
+      "resources_votingtallyresource_votingtallyresource_toarray"
+    ],
+    "76": [
+      "http_middleware_authenticate_php",
+      "middleware_authenticate_authenticate",
+      "middleware_authenticate_authenticate_redirectto"
+    ],
+    "77": [
+      "policies_customsdeclarationpolicy_customsdeclarationpolicy",
+      "policies_customsdeclarationpolicy_customsdeclarationpolicy_download",
+      "policies_customsdeclarationpolicy_php"
+    ],
+    "78": [
+      "providers_authserviceprovider_authserviceprovider",
+      "providers_authserviceprovider_authserviceprovider_boot",
+      "providers_authserviceprovider_php"
+    ],
+    "79": [
+      "http_resources_customsdeclarationresource_php",
+      "resources_customsdeclarationresource_customsdeclarationresource",
+      "resources_customsdeclarationresource_customsdeclarationresource_toarray"
+    ],
+    "80": [
+      "http_resources_documentresource_php",
+      "resources_documentresource_documentresource",
+      "resources_documentresource_documentresource_toarray"
+    ],
+    "81": [
+      "dtos_voting_votingtally_php",
+      "voting_votingtally_votingtally",
+      "voting_votingtally_votingtally_construct"
+    ],
+    "82": [
+      "enums_auditaction_label",
+      "enums_auditaction_php"
+    ],
+    "83": [
+      "enums_currency_label",
+      "enums_currency_php"
+    ],
+    "84": [
+      "enums_documenttype_label",
+      "enums_documenttype_php"
+    ],
+    "85": [
+      "enums_votetype_label",
+      "enums_votetype_php"
+    ],
+    "86": [
+      "enums_votingsessionstatus_label",
+      "enums_votingsessionstatus_php"
+    ],
+    "87": [
+      "exceptions_customsexception_customsexception",
+      "exceptions_customsexception_php"
+    ],
+    "88": [
+      "exceptions_documentexception_documentexception",
+      "exceptions_documentexception_php"
+    ],
+    "89": [
+      "exceptions_duplicatevoteexception_duplicatevoteexception",
+      "exceptions_duplicatevoteexception_php"
+    ],
+    "90": [
+      "exceptions_invalidtransitionexception_invalidtransitionexception",
+      "exceptions_invalidtransitionexception_php"
+    ],
+    "91": [
+      "exceptions_selfreviewexception_php",
+      "exceptions_selfreviewexception_selfreviewexception"
+    ],
+    "92": [
+      "exceptions_unauthorizedtransitionexception_php",
+      "exceptions_unauthorizedtransitionexception_unauthorizedtransitionexception"
+    ],
+    "93": [
+      "exceptions_votingexception_php",
+      "exceptions_votingexception_votingexception"
+    ],
+    "94": [
+      "exceptions_workflowexception_php",
+      "exceptions_workflowexception_workflowexception"
+    ],
+    "95": [
+      "api_controller_controller",
+      "http_controllers_api_controller_php"
+    ],
+    "96": [
+      "controllers_controller_controller",
+      "http_controllers_controller_php"
+    ],
+    "97": [
+      "openapi_openapispec_openapispec",
+      "openapi_openapispec_php"
+    ],
+    "98": [
+      "enums_workflowaction_php"
+    ]
+  },
+  "cohesion": {},
+  "god_nodes": [
+    {
+      "id": "support_apiresponse_apiresponse",
+      "label": "ApiResponse",
+      "degree": 85
+    },
+    {
+      "id": "models_importrequest_importrequest",
+      "label": "ImportRequest",
+      "degree": 29
+    },
+    {
+      "id": "api_workflowcontroller_workflowcontroller",
+      "label": "WorkflowController",
+      "degree": 18
+    },
+    {
+      "id": "api_reportcontroller_reportcontroller",
+      "label": "ReportController",
+      "degree": 15
+    },
+    {
+      "id": "api_dashboardcontroller_dashboardcontroller",
+      "label": "DashboardController",
+      "degree": 13
+    },
+    {
+      "id": "models_requestvote_requestvote",
+      "label": "RequestVote",
+      "degree": 11
+    },
+    {
+      "id": "models_user_user",
+      "label": "User",
+      "degree": 10
+    },
+    {
+      "id": "settings_adminsettingsservice_adminsettingsservice",
+      "label": "AdminSettingsService",
+      "degree": 10
+    },
+    {
+      "id": "resources_importrequestresource_importrequestresource",
+      "label": "ImportRequestResource",
+      "degree": 9
+    },
+    {
+      "id": "api_votingcontroller_votingcontroller",
+      "label": "VotingController",
+      "degree": 9
+    }
+  ],
+  "surprises": []
+}

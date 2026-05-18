@@ -1,0 +1,441 @@
+{
+  "directed": false,
+  "multigraph": false,
+  "graph": {},
+  "nodes": [
+    {
+      "label": "docs/00-project-brief.md",
+      "file_type": "document",
+      "source_file": "docs/00-project-brief.md",
+      "id": "doc_project_brief"
+    },
+    {
+      "label": "docs/01-workflow-and-business-rules.md",
+      "file_type": "document",
+      "source_file": "docs/01-workflow-and-business-rules.md",
+      "id": "doc_workflow_rules"
+    },
+    {
+      "label": "docs/02-system-architecture.md",
+      "file_type": "document",
+      "source_file": "docs/02-system-architecture.md",
+      "id": "doc_system_architecture"
+    },
+    {
+      "label": "docs/03-database-and-models.md",
+      "file_type": "document",
+      "source_file": "docs/03-database-and-models.md",
+      "id": "doc_database_models"
+    },
+    {
+      "label": "docs/04-frontend-guide.md",
+      "file_type": "document",
+      "source_file": "docs/04-frontend-guide.md",
+      "id": "doc_frontend_guide"
+    },
+    {
+      "label": "docs/05-backend-guide.md",
+      "file_type": "document",
+      "source_file": "docs/05-backend-guide.md",
+      "id": "doc_backend_guide"
+    },
+    {
+      "label": "docs/06-api-reference.md",
+      "file_type": "document",
+      "source_file": "docs/06-api-reference.md",
+      "id": "doc_api_reference"
+    },
+    {
+      "label": "docs/07-task-breakdown.md",
+      "file_type": "document",
+      "source_file": "docs/07-task-breakdown.md",
+      "id": "doc_task_breakdown"
+    },
+    {
+      "label": "docs/08-prototype-gap-analysis.md",
+      "file_type": "document",
+      "source_file": "docs/08-prototype-gap-analysis.md",
+      "id": "doc_gap_analysis"
+    },
+    {
+      "label": "docs/ux/missing-ui-states.md",
+      "file_type": "document",
+      "source_file": "docs/ux/missing-ui-states.md",
+      "id": "doc_missing_ui_states"
+    },
+    {
+      "label": "Workflow Service",
+      "file_type": "document",
+      "source_file": "Workflow Service",
+      "id": "concept_workflow_service"
+    },
+    {
+      "label": "Voting Service",
+      "file_type": "document",
+      "source_file": "Voting Service",
+      "id": "concept_voting_service"
+    },
+    {
+      "label": "Document Service",
+      "file_type": "document",
+      "source_file": "Document Service",
+      "id": "concept_document_service"
+    },
+    {
+      "label": "Workflow Status Enum",
+      "file_type": "document",
+      "source_file": "Workflow Status Enum",
+      "id": "concept_workflow_status_enum"
+    },
+    {
+      "label": "User Role Enum",
+      "file_type": "document",
+      "source_file": "User Role Enum",
+      "id": "concept_role_enum"
+    },
+    {
+      "label": "Voting Session Status",
+      "file_type": "document",
+      "source_file": "Voting Session Status",
+      "id": "concept_voting_session_status"
+    },
+    {
+      "label": "Organization-Scoped Visibility Model",
+      "file_type": "document",
+      "source_file": "Organization-Scoped Visibility Model",
+      "id": "concept_visibility_model"
+    },
+    {
+      "label": "Support Review Claim Soft-Lock",
+      "file_type": "document",
+      "source_file": "Support Review Claim Soft-Lock",
+      "id": "concept_support_claim_soft_lock"
+    },
+    {
+      "label": "Backend Authorization Authority",
+      "file_type": "document",
+      "source_file": "Backend Authorization Authority",
+      "id": "concept_backend_authority"
+    },
+    {
+      "label": "RequestWizard 4-Step Form",
+      "file_type": "document",
+      "source_file": "RequestWizard 4-Step Form",
+      "id": "concept_request_wizard"
+    },
+    {
+      "label": "BANK-ADMIN Role",
+      "file_type": "document",
+      "source_file": "BANK-ADMIN Role",
+      "id": "concept_bank_admin_role"
+    }
+  ],
+  "edges": [
+    {
+      "relation": "defines bank-owned operational visibility model",
+      "confidence": "EXTRACTED",
+      "source_file": "semantic_extraction",
+      "_src": "doc_project_brief",
+      "_tgt": "concept_visibility_model",
+      "source": "doc_project_brief",
+      "target": "concept_visibility_model"
+    },
+    {
+      "relation": "outlines multi-stage workflow lifecycle",
+      "confidence": "EXTRACTED",
+      "source_file": "semantic_extraction",
+      "_src": "doc_project_brief",
+      "_tgt": "concept_workflow_status_enum",
+      "source": "doc_project_brief",
+      "target": "concept_workflow_status_enum"
+    },
+    {
+      "relation": "defines stage progression from DRAFT to COMPLETED",
+      "confidence": "EXTRACTED",
+      "source_file": "semantic_extraction",
+      "_src": "doc_workflow_rules",
+      "_tgt": "concept_workflow_status_enum",
+      "source": "doc_workflow_rules",
+      "target": "concept_workflow_status_enum"
+    },
+    {
+      "relation": "requires single active support reviewer claim",
+      "confidence": "EXTRACTED",
+      "source_file": "semantic_extraction",
+      "_src": "doc_workflow_rules",
+      "_tgt": "concept_support_claim_soft_lock",
+      "source": "doc_workflow_rules",
+      "target": "concept_support_claim_soft_lock"
+    },
+    {
+      "relation": "maps stages to responsible roles",
+      "confidence": "EXTRACTED",
+      "source_file": "semantic_extraction",
+      "_src": "doc_workflow_rules",
+      "_tgt": "concept_role_enum",
+      "source": "doc_workflow_rules",
+      "target": "concept_role_enum"
+    },
+    {
+      "relation": "defines organization-scoped operational visibility architecture",
+      "confidence": "EXTRACTED",
+      "source_file": "semantic_extraction",
+      "_src": "doc_system_architecture",
+      "_tgt": "concept_visibility_model",
+      "source": "doc_system_architecture",
+      "target": "concept_visibility_model"
+    },
+    {
+      "relation": "lists as backend core service",
+      "confidence": "EXTRACTED",
+      "source_file": "semantic_extraction",
+      "_src": "doc_system_architecture",
+      "_tgt": "concept_workflow_service",
+      "source": "doc_system_architecture",
+      "target": "concept_workflow_service"
+    },
+    {
+      "relation": "lists as backend core service",
+      "confidence": "EXTRACTED",
+      "source_file": "semantic_extraction",
+      "_src": "doc_system_architecture",
+      "_tgt": "concept_voting_service",
+      "source": "doc_system_architecture",
+      "target": "concept_voting_service"
+    },
+    {
+      "relation": "stores canonical request statuses enum",
+      "confidence": "EXTRACTED",
+      "source_file": "semantic_extraction",
+      "_src": "doc_database_models",
+      "_tgt": "concept_workflow_status_enum",
+      "source": "doc_database_models",
+      "target": "concept_workflow_status_enum"
+    },
+    {
+      "relation": "defines user roles enum",
+      "confidence": "EXTRACTED",
+      "source_file": "semantic_extraction",
+      "_src": "doc_database_models",
+      "_tgt": "concept_role_enum",
+      "source": "doc_database_models",
+      "target": "concept_role_enum"
+    },
+    {
+      "relation": "defines denormalized executive voting sub-state",
+      "confidence": "EXTRACTED",
+      "source_file": "semantic_extraction",
+      "_src": "doc_database_models",
+      "_tgt": "concept_voting_session_status",
+      "source": "doc_database_models",
+      "target": "concept_voting_session_status"
+    },
+    {
+      "relation": "requires to sync voting_session_status",
+      "confidence": "EXTRACTED",
+      "source_file": "semantic_extraction",
+      "_src": "doc_database_models",
+      "_tgt": "concept_workflow_service",
+      "source": "doc_database_models",
+      "target": "concept_workflow_service"
+    },
+    {
+      "relation": "requires to sync voting_session_status",
+      "confidence": "EXTRACTED",
+      "source_file": "semantic_extraction",
+      "_src": "doc_database_models",
+      "_tgt": "concept_voting_service",
+      "source": "doc_database_models",
+      "target": "concept_voting_service"
+    },
+    {
+      "relation": "declares status enum source of truth in",
+      "confidence": "EXTRACTED",
+      "source_file": "semantic_extraction",
+      "_src": "doc_frontend_guide",
+      "_tgt": "doc_database_models",
+      "source": "doc_database_models",
+      "target": "doc_frontend_guide"
+    },
+    {
+      "relation": "states backend authorization remains source of truth",
+      "confidence": "EXTRACTED",
+      "source_file": "semantic_extraction",
+      "_src": "doc_frontend_guide",
+      "_tgt": "concept_backend_authority",
+      "source": "doc_frontend_guide",
+      "target": "concept_backend_authority"
+    },
+    {
+      "relation": "aligns frontend task phases with workflow-oriented UI delivery",
+      "confidence": "INFERRED",
+      "source_file": "semantic_extraction",
+      "_src": "doc_task_breakdown",
+      "_tgt": "doc_frontend_guide",
+      "source": "doc_frontend_guide",
+      "target": "doc_task_breakdown"
+    },
+    {
+      "relation": "declares backend as source of truth for permissions and workflow rules",
+      "confidence": "EXTRACTED",
+      "source_file": "semantic_extraction",
+      "_src": "doc_backend_guide",
+      "_tgt": "concept_backend_authority",
+      "source": "doc_backend_guide",
+      "target": "concept_backend_authority"
+    },
+    {
+      "relation": "positions as platform core",
+      "confidence": "EXTRACTED",
+      "source_file": "semantic_extraction",
+      "_src": "doc_backend_guide",
+      "_tgt": "concept_workflow_service",
+      "source": "doc_backend_guide",
+      "target": "concept_workflow_service"
+    },
+    {
+      "relation": "specifies atomic temporary claim soft-lock model",
+      "confidence": "EXTRACTED",
+      "source_file": "semantic_extraction",
+      "_src": "doc_backend_guide",
+      "_tgt": "concept_support_claim_soft_lock",
+      "source": "doc_backend_guide",
+      "target": "concept_support_claim_soft_lock"
+    },
+    {
+      "relation": "requires enforcement at query API policy and workflow levels",
+      "confidence": "EXTRACTED",
+      "source_file": "semantic_extraction",
+      "_src": "doc_backend_guide",
+      "_tgt": "concept_visibility_model",
+      "source": "doc_backend_guide",
+      "target": "concept_visibility_model"
+    },
+    {
+      "relation": "defines PDF-only immutable document handling rules",
+      "confidence": "EXTRACTED",
+      "source_file": "semantic_extraction",
+      "_src": "doc_backend_guide",
+      "_tgt": "concept_document_service",
+      "source": "doc_backend_guide",
+      "target": "concept_document_service"
+    },
+    {
+      "relation": "aligns backend task phases with service-oriented workflow implementation",
+      "confidence": "INFERRED",
+      "source_file": "semantic_extraction",
+      "_src": "doc_task_breakdown",
+      "_tgt": "doc_backend_guide",
+      "source": "doc_backend_guide",
+      "target": "doc_task_breakdown"
+    },
+    {
+      "relation": "documents claim release and heartbeat endpoints with TTL behavior",
+      "confidence": "EXTRACTED",
+      "source_file": "semantic_extraction",
+      "_src": "doc_api_reference",
+      "_tgt": "concept_support_claim_soft_lock",
+      "source": "doc_api_reference",
+      "target": "concept_support_claim_soft_lock"
+    },
+    {
+      "relation": "documents open close and submit-vote endpoints",
+      "confidence": "EXTRACTED",
+      "source_file": "semantic_extraction",
+      "_src": "doc_api_reference",
+      "_tgt": "concept_voting_service",
+      "source": "doc_api_reference",
+      "target": "concept_voting_service"
+    },
+    {
+      "relation": "requires request APIs to enforce organization scope",
+      "confidence": "EXTRACTED",
+      "source_file": "semantic_extraction",
+      "_src": "doc_api_reference",
+      "_tgt": "concept_visibility_model",
+      "source": "doc_api_reference",
+      "target": "concept_visibility_model"
+    },
+    {
+      "relation": "plans workflow service implementation in backend phase 2",
+      "confidence": "EXTRACTED",
+      "source_file": "semantic_extraction",
+      "_src": "doc_task_breakdown",
+      "_tgt": "concept_workflow_service",
+      "source": "doc_task_breakdown",
+      "target": "concept_workflow_service"
+    },
+    {
+      "relation": "plans voting system delivery in phase 3",
+      "confidence": "EXTRACTED",
+      "source_file": "semantic_extraction",
+      "_src": "doc_task_breakdown",
+      "_tgt": "concept_voting_service",
+      "source": "doc_task_breakdown",
+      "target": "concept_voting_service"
+    },
+    {
+      "relation": "references as implementation spec for unresolved UI gaps",
+      "confidence": "EXTRACTED",
+      "source_file": "semantic_extraction",
+      "_src": "doc_gap_analysis",
+      "_tgt": "doc_missing_ui_states",
+      "source": "doc_gap_analysis",
+      "target": "doc_missing_ui_states"
+    },
+    {
+      "relation": "identifies role as missing from current implementation",
+      "confidence": "EXTRACTED",
+      "source_file": "semantic_extraction",
+      "_src": "doc_gap_analysis",
+      "_tgt": "concept_bank_admin_role",
+      "source": "doc_gap_analysis",
+      "target": "concept_bank_admin_role"
+    },
+    {
+      "relation": "requires four-step request wizard parity",
+      "confidence": "EXTRACTED",
+      "source_file": "semantic_extraction",
+      "_src": "doc_gap_analysis",
+      "_tgt": "concept_request_wizard",
+      "source": "doc_gap_analysis",
+      "target": "concept_request_wizard"
+    },
+    {
+      "relation": "states BANK-ADMIN is absent from canonical role enum",
+      "confidence": "EXTRACTED",
+      "source_file": "semantic_extraction",
+      "_src": "doc_gap_analysis",
+      "_tgt": "concept_role_enum",
+      "source": "doc_gap_analysis",
+      "target": "concept_role_enum"
+    },
+    {
+      "relation": "specifies component behavior and validation rules",
+      "confidence": "EXTRACTED",
+      "source_file": "semantic_extraction",
+      "_src": "doc_missing_ui_states",
+      "_tgt": "concept_request_wizard",
+      "source": "doc_missing_ui_states",
+      "target": "concept_request_wizard"
+    },
+    {
+      "relation": "assigns RequestWizard usage to BANK-ADMIN",
+      "confidence": "EXTRACTED",
+      "source_file": "semantic_extraction",
+      "_src": "doc_missing_ui_states",
+      "_tgt": "concept_bank_admin_role",
+      "source": "doc_missing_ui_states",
+      "target": "concept_bank_admin_role"
+    },
+    {
+      "relation": "assigns RequestWizard usage to DATA_ENTRY role",
+      "confidence": "EXTRACTED",
+      "source_file": "semantic_extraction",
+      "_src": "doc_missing_ui_states",
+      "_tgt": "concept_role_enum",
+      "source": "doc_missing_ui_states",
+      "target": "concept_role_enum"
+    }
+  ]
+}

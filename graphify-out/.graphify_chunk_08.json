@@ -1,0 +1,519 @@
+{
+  "nodes": [
+    {"id": "seeders_bankseeder_bankseeder", "label": "BankSeeder", "file_type": "code", "source_file": "backend/database/seeders/BankSeeder.php", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "seeders_merchantseeder_merchantseeder", "label": "MerchantSeeder", "file_type": "code", "source_file": "backend/database/seeders/MerchantSeeder.php", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "seeders_importrequestseeder_importrequestseeder", "label": "ImportRequestSeeder", "file_type": "code", "source_file": "backend/database/seeders/ImportRequestSeeder.php", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "models_user_user", "label": "User", "file_type": "code", "source_file": "backend/app/Models/User.php", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "models_bank_bank", "label": "Bank", "file_type": "code", "source_file": "backend/app/Models/Bank.php", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "models_importrequest_importrequest", "label": "ImportRequest", "file_type": "code", "source_file": "backend/app/Models/ImportRequest.php", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "models_requeststagehistory_requeststagehistory", "label": "RequestStageHistory", "file_type": "code", "source_file": "backend/app/Models/RequestStageHistory.php", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "models_requestdocument_requestdocument", "label": "RequestDocument", "file_type": "code", "source_file": "backend/app/Models/RequestDocument.php", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "models_requestvote_requestvote", "label": "RequestVote", "file_type": "code", "source_file": "backend/app/Models/RequestVote.php", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "models_customsdeclaration_customsdeclaration", "label": "CustomsDeclaration", "file_type": "code", "source_file": "backend/app/Models/CustomsDeclaration.php", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "models_auditlog_auditlog", "label": "AuditLog", "file_type": "code", "source_file": "backend/app/Models/AuditLog.php", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "models_merchant_merchant", "label": "Merchant", "file_type": "code", "source_file": "backend/app/Models/Merchant.php", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "models_systemsetting_systemsetting", "label": "SystemSetting", "file_type": "code", "source_file": "backend/app/Models/SystemSetting.php", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "policies_importrequestpolicy_importrequestpolicy", "label": "ImportRequestPolicy", "file_type": "code", "source_file": "backend/app/Policies/ImportRequestPolicy.php", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "policies_requestdocumentpolicy_requestdocumentpolicy", "label": "RequestDocumentPolicy", "file_type": "code", "source_file": "backend/app/Policies/RequestDocumentPolicy.php", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "policies_userpolicy_userpolicy", "label": "UserPolicy", "file_type": "code", "source_file": "backend/app/Policies/UserPolicy.php", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "policies_bankpolicy_bankpolicy", "label": "BankPolicy", "file_type": "code", "source_file": "backend/app/Policies/BankPolicy.php", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "providers_appserviceprovider_appserviceprovider", "label": "AppServiceProvider", "file_type": "code", "source_file": "backend/app/Providers/AppServiceProvider.php", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "providers_authserviceprovider_authserviceprovider", "label": "AuthServiceProvider", "file_type": "code", "source_file": "backend/app/Providers/AuthServiceProvider.php", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "commands_expireclaimscommand_expireclaimscommand", "label": "ExpireClaimsCommand", "file_type": "code", "source_file": "backend/app/Console/Commands/ExpireClaimsCommand.php", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null}
+  ],
+  "edges": [
+    {
+      "source": "seeders_bankseeder_bankseeder",
+      "target": "models_bank_bank",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "backend/database/seeders/BankSeeder.php",
+      "source_location": "line 12",
+      "weight": 1.0
+    },
+    {
+      "source": "seeders_merchantseeder_merchantseeder",
+      "target": "models_bank_bank",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "backend/database/seeders/MerchantSeeder.php",
+      "source_location": "line 22",
+      "weight": 1.0
+    },
+    {
+      "source": "seeders_merchantseeder_merchantseeder",
+      "target": "models_user_user",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "backend/database/seeders/MerchantSeeder.php",
+      "source_location": "line 23",
+      "weight": 1.0
+    },
+    {
+      "source": "seeders_merchantseeder_merchantseeder",
+      "target": "models_merchant_merchant",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "backend/database/seeders/MerchantSeeder.php",
+      "source_location": "line 35",
+      "weight": 1.0
+    },
+    {
+      "source": "seeders_importrequestseeder_importrequestseeder",
+      "target": "models_bank_bank",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "backend/database/seeders/ImportRequestSeeder.php",
+      "source_location": "line 14",
+      "weight": 1.0
+    },
+    {
+      "source": "models_user_user",
+      "target": "models_bank_bank",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "backend/app/Models/User.php",
+      "source_location": "line 43-45 (belongsTo Bank)",
+      "weight": 1.0
+    },
+    {
+      "source": "models_user_user",
+      "target": "models_requestvote_requestvote",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "backend/app/Models/User.php",
+      "source_location": "line 49-51 (hasMany RequestVote)",
+      "weight": 1.0
+    },
+    {
+      "source": "models_user_user",
+      "target": "models_auditlog_auditlog",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "backend/app/Models/User.php",
+      "source_location": "line 53-55 (hasMany AuditLog)",
+      "weight": 1.0
+    },
+    {
+      "source": "models_bank_bank",
+      "target": "models_user_user",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "backend/app/Models/Bank.php",
+      "source_location": "line 21-23 (hasMany User)",
+      "weight": 1.0
+    },
+    {
+      "source": "models_bank_bank",
+      "target": "models_importrequest_importrequest",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "backend/app/Models/Bank.php",
+      "source_location": "line 25-27 (hasMany ImportRequest)",
+      "weight": 1.0
+    },
+    {
+      "source": "models_importrequest_importrequest",
+      "target": "models_bank_bank",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "backend/app/Models/ImportRequest.php",
+      "source_location": "line 92-94 (belongsTo Bank)",
+      "weight": 1.0
+    },
+    {
+      "source": "models_importrequest_importrequest",
+      "target": "models_user_user",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "backend/app/Models/ImportRequest.php",
+      "source_location": "lines 96-155 (multiple belongsTo User: creator, lastUpdatedBy, submittedBy, reviewedBy, approvedBy, rejectedBy, resubmittedBy, supportReviewedBy, swiftUploadedBy, votingOpenedBy, votingClosedBy, claimedByUser)",
+      "weight": 1.0
+    },
+    {
+      "source": "models_importrequest_importrequest",
+      "target": "models_merchant_merchant",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "backend/app/Models/ImportRequest.php",
+      "source_location": "line 157-159 (belongsTo Merchant)",
+      "weight": 1.0
+    },
+    {
+      "source": "models_importrequest_importrequest",
+      "target": "models_requeststagehistory_requeststagehistory",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "backend/app/Models/ImportRequest.php",
+      "source_location": "line 161-163 (hasMany RequestStageHistory)",
+      "weight": 1.0
+    },
+    {
+      "source": "models_importrequest_importrequest",
+      "target": "models_requestdocument_requestdocument",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "backend/app/Models/ImportRequest.php",
+      "source_location": "line 165-167 (hasMany RequestDocument)",
+      "weight": 1.0
+    },
+    {
+      "source": "models_importrequest_importrequest",
+      "target": "models_requestvote_requestvote",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "backend/app/Models/ImportRequest.php",
+      "source_location": "line 169-171 (hasMany RequestVote)",
+      "weight": 1.0
+    },
+    {
+      "source": "models_importrequest_importrequest",
+      "target": "models_customsdeclaration_customsdeclaration",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "backend/app/Models/ImportRequest.php",
+      "source_location": "lines 173-185 (hasOne CustomsDeclaration + belongsTo CustomsDeclaration)",
+      "weight": 1.0
+    },
+    {
+      "source": "models_requeststagehistory_requeststagehistory",
+      "target": "models_importrequest_importrequest",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "backend/app/Models/RequestStageHistory.php",
+      "source_location": "line 39-41 (belongsTo ImportRequest)",
+      "weight": 1.0
+    },
+    {
+      "source": "models_requeststagehistory_requeststagehistory",
+      "target": "models_user_user",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "backend/app/Models/RequestStageHistory.php",
+      "source_location": "line 43-45 (belongsTo User actor)",
+      "weight": 1.0
+    },
+    {
+      "source": "models_requestdocument_requestdocument",
+      "target": "models_importrequest_importrequest",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "backend/app/Models/RequestDocument.php",
+      "source_location": "line 23-25 (belongsTo ImportRequest)",
+      "weight": 1.0
+    },
+    {
+      "source": "models_requestdocument_requestdocument",
+      "target": "models_user_user",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "backend/app/Models/RequestDocument.php",
+      "source_location": "line 27-29 (belongsTo User uploader)",
+      "weight": 1.0
+    },
+    {
+      "source": "models_requestvote_requestvote",
+      "target": "models_importrequest_importrequest",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "backend/app/Models/RequestVote.php",
+      "source_location": "line 29-31 (belongsTo ImportRequest)",
+      "weight": 1.0
+    },
+    {
+      "source": "models_requestvote_requestvote",
+      "target": "models_user_user",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "backend/app/Models/RequestVote.php",
+      "source_location": "line 33-35 (belongsTo User)",
+      "weight": 1.0
+    },
+    {
+      "source": "models_customsdeclaration_customsdeclaration",
+      "target": "models_importrequest_importrequest",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "backend/app/Models/CustomsDeclaration.php",
+      "source_location": "line 28-30 (belongsTo ImportRequest)",
+      "weight": 1.0
+    },
+    {
+      "source": "models_customsdeclaration_customsdeclaration",
+      "target": "models_user_user",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "backend/app/Models/CustomsDeclaration.php",
+      "source_location": "line 32-34 (belongsTo User issuer)",
+      "weight": 1.0
+    },
+    {
+      "source": "models_auditlog_auditlog",
+      "target": "models_user_user",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "backend/app/Models/AuditLog.php",
+      "source_location": "line 31-33 (belongsTo User)",
+      "weight": 1.0
+    },
+    {
+      "source": "models_merchant_merchant",
+      "target": "models_bank_bank",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "backend/app/Models/Merchant.php",
+      "source_location": "line 34-36 (belongsTo Bank)",
+      "weight": 1.0
+    },
+    {
+      "source": "models_merchant_merchant",
+      "target": "models_user_user",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "backend/app/Models/Merchant.php",
+      "source_location": "line 38-40 (belongsTo User creator)",
+      "weight": 1.0
+    },
+    {
+      "source": "models_merchant_merchant",
+      "target": "models_importrequest_importrequest",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "backend/app/Models/Merchant.php",
+      "source_location": "line 42-44 (hasMany ImportRequest)",
+      "weight": 1.0
+    },
+    {
+      "source": "models_systemsetting_systemsetting",
+      "target": "models_user_user",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "backend/app/Models/SystemSetting.php",
+      "source_location": "line 22-24 (belongsTo User updatedBy)",
+      "weight": 1.0
+    },
+    {
+      "source": "policies_importrequestpolicy_importrequestpolicy",
+      "target": "models_importrequest_importrequest",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "backend/app/Policies/ImportRequestPolicy.php",
+      "source_location": "line 5",
+      "weight": 1.0
+    },
+    {
+      "source": "policies_importrequestpolicy_importrequestpolicy",
+      "target": "models_user_user",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "backend/app/Policies/ImportRequestPolicy.php",
+      "source_location": "line 6",
+      "weight": 1.0
+    },
+    {
+      "source": "policies_requestdocumentpolicy_requestdocumentpolicy",
+      "target": "models_requestdocument_requestdocument",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "backend/app/Policies/RequestDocumentPolicy.php",
+      "source_location": "line 5",
+      "weight": 1.0
+    },
+    {
+      "source": "policies_requestdocumentpolicy_requestdocumentpolicy",
+      "target": "models_user_user",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "backend/app/Policies/RequestDocumentPolicy.php",
+      "source_location": "line 6",
+      "weight": 1.0
+    },
+    {
+      "source": "policies_userpolicy_userpolicy",
+      "target": "models_user_user",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "backend/app/Policies/UserPolicy.php",
+      "source_location": "line 5",
+      "weight": 1.0
+    },
+    {
+      "source": "policies_bankpolicy_bankpolicy",
+      "target": "models_bank_bank",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "backend/app/Policies/BankPolicy.php",
+      "source_location": "line 5",
+      "weight": 1.0
+    },
+    {
+      "source": "policies_bankpolicy_bankpolicy",
+      "target": "models_user_user",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "backend/app/Policies/BankPolicy.php",
+      "source_location": "line 6",
+      "weight": 1.0
+    },
+    {
+      "source": "providers_authserviceprovider_authserviceprovider",
+      "target": "policies_bankpolicy_bankpolicy",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "backend/app/Providers/AuthServiceProvider.php",
+      "source_location": "line 25",
+      "weight": 1.0
+    },
+    {
+      "source": "providers_authserviceprovider_authserviceprovider",
+      "target": "policies_userpolicy_userpolicy",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "backend/app/Providers/AuthServiceProvider.php",
+      "source_location": "line 26",
+      "weight": 1.0
+    },
+    {
+      "source": "providers_authserviceprovider_authserviceprovider",
+      "target": "policies_importrequestpolicy_importrequestpolicy",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "backend/app/Providers/AuthServiceProvider.php",
+      "source_location": "line 27",
+      "weight": 1.0
+    },
+    {
+      "source": "providers_authserviceprovider_authserviceprovider",
+      "target": "policies_requestdocumentpolicy_requestdocumentpolicy",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "backend/app/Providers/AuthServiceProvider.php",
+      "source_location": "line 29",
+      "weight": 1.0
+    },
+    {
+      "source": "providers_authserviceprovider_authserviceprovider",
+      "target": "models_bank_bank",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "backend/app/Providers/AuthServiceProvider.php",
+      "source_location": "line 25 (Gate::policy binding)",
+      "weight": 1.0
+    },
+    {
+      "source": "providers_authserviceprovider_authserviceprovider",
+      "target": "models_user_user",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "backend/app/Providers/AuthServiceProvider.php",
+      "source_location": "line 26 (Gate::policy binding)",
+      "weight": 1.0
+    },
+    {
+      "source": "providers_authserviceprovider_authserviceprovider",
+      "target": "models_importrequest_importrequest",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "backend/app/Providers/AuthServiceProvider.php",
+      "source_location": "line 27 (Gate::policy binding)",
+      "weight": 1.0
+    },
+    {
+      "source": "providers_authserviceprovider_authserviceprovider",
+      "target": "models_merchant_merchant",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "backend/app/Providers/AuthServiceProvider.php",
+      "source_location": "line 28 (Gate::policy binding)",
+      "weight": 1.0
+    },
+    {
+      "source": "providers_authserviceprovider_authserviceprovider",
+      "target": "models_requestdocument_requestdocument",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "backend/app/Providers/AuthServiceProvider.php",
+      "source_location": "line 29 (Gate::policy binding)",
+      "weight": 1.0
+    },
+    {
+      "source": "providers_authserviceprovider_authserviceprovider",
+      "target": "models_customsdeclaration_customsdeclaration",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "backend/app/Providers/AuthServiceProvider.php",
+      "source_location": "line 30 (Gate::policy binding)",
+      "weight": 1.0
+    },
+    {
+      "source": "commands_expireclaimscommand_expireclaimscommand",
+      "target": "models_importrequest_importrequest",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "backend/app/Console/Commands/ExpireClaimsCommand.php",
+      "source_location": "lines 20-43",
+      "weight": 1.0
+    },
+    {
+      "source": "commands_expireclaimscommand_expireclaimscommand",
+      "target": "models_user_user",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "backend/app/Console/Commands/ExpireClaimsCommand.php",
+      "source_location": "line 29-32 (fetch CBY_ADMIN system actor)",
+      "weight": 1.0
+    }
+  ],
+  "hyperedges": [],
+  "input_tokens": 0,
+  "output_tokens": 0
+}
