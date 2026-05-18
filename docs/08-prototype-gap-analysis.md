@@ -1,7 +1,7 @@
 # Prototype Gap Analysis — Lovable vs Current Implementation
 
 **Date:** 2026-05-18  
-**Updated:** 2026-05-18 (screenshot analysis pass — all 80+ prototype screenshots reviewed)  
+**Updated:** 2026-05-18 (UX spec pass — missing UI states fully documented in `docs/ux/missing-ui-states.md`)  
 **Analyst:** Claude Code (automated analysis + manual screenshot verification)  
 **Purpose:** Identify all UI/UX/logic/feature gaps between the stakeholder-approved Lovable prototype and the current production frontend, to drive a sprint toward production acceptance.
 
@@ -13,6 +13,7 @@
 |------|------|
 | Reference prototype source | `lovable/src/` |
 | Reference screenshots (80+) | `lovable/screenshots/` (all roles, fully reviewed) |
+| UX design specifications | `docs/ux/missing-ui-states.md` (RequestWizard, SwiftUploadModal, EmptyState, Skeleton, Validation) |
 | Current frontend | `frontend/app/` |
 | Updated design authority | `DESIGN.md` (now reflects full screenshot analysis) |
 | Current design tokens | `frontend/app/assets/css/main.css` |
@@ -238,6 +239,8 @@ Key BANK-ADMIN differentiators vs. DATA_ENTRY:
 **D5 — Customs print flow**
 - Prototype has `/customs/$id/print` with A4 preview, zoom controls, issuance confirmation dialog
 - Current has `customs-preview.vue` — needs full parity check
+- Note: SWIFT_OFFICER upload flow confirmed as inline modal on request detail (not a separate page)
+- **UX SPECCED** → `docs/ux/missing-ui-states.md` Spec 2 (SwiftUploadModal — upload zone states, interaction flow, button states, toast)
 
 **D6 — Permission-based nav item visibility**
 - Prototype uses `can(role, permission)` from `lib/governance.ts` for fine-grained nav visibility
@@ -255,7 +258,8 @@ Key BANK-ADMIN differentiators vs. DATA_ENTRY:
 - Prototype: all bank roles use a 4-step form wizard for creating requests (BANK-ADMIN confirmed in screenshots)
 - Step 4 has an acknowledgment checkbox ("إقرار وتعهد") required before final submit
 - Current: single-page form with no stepper for request creation
-- Applies to: BANK-ADMIN, potentially DATA_ENTRY
+- Applies to: BANK-ADMIN, DATA_ENTRY (same wizard, merchant field read-only for DATA_ENTRY)
+- **UX SPECCED** → `docs/ux/missing-ui-states.md` Spec 1 (RequestWizard — full 4-step spec with all fields, validation rules, stepper states, nav bar)
 
 ---
 
@@ -284,18 +288,19 @@ Key BANK-ADMIN differentiators vs. DATA_ENTRY:
 
 ## Missing Screenshots (gaps in visual reference material)
 
-The following UI states have no screenshot in `lovable/screenshots/` and need to be captured from the Lovable dev server or confirmed from source code:
+Items marked **SPECCED** have been designed from first principles using DESIGN.md and are fully documented in `docs/ux/missing-ui-states.md`. Remaining items still require Lovable dev server capture.
 
-| Missing view | Role(s) | Reason needed |
-|-------------|---------|---------------|
-| DATA_ENTRY request creation form | DATA_ENTRY | Need to confirm if DATA_ENTRY uses same 4-step wizard or different form |
-| SUPPORT_COMMITTEE request detail (full) | SUPPORT_COMMITTEE | Only partial views available |
-| SWIFT_OFFICER upload form detail | SWIFT_OFFICER | Need to confirm upload UI pattern (drag-drop vs input?) |
-| Customs preview/print page | COMMITTEE_DIRECTOR | Customs workflow end state |
-| Error / access denied page | All | `COMMITTEE_DIRECTOR/role-access-denied.png` only shows one role |
-| Request list empty state | All roles | Need empty state design reference |
-| Form validation errors | Any | Need error state visual reference |
-| Notification settings (per-user) | Any | Separate from admin settings |
+| Missing view | Role(s) | Resolution |
+|-------------|---------|-----------|
+| DATA_ENTRY request creation form | DATA_ENTRY | **SPECCED** — same 4-step wizard as BANK-ADMIN; merchant field read-only pre-filled from org. See `docs/ux/missing-ui-states.md` Spec 1. |
+| SWIFT_OFFICER upload form detail | SWIFT_OFFICER | **SPECCED** — inline modal on request detail (not a separate page). See `docs/ux/missing-ui-states.md` Spec 2. |
+| Form validation errors | Any | **SPECCED** — full error state system + Arabic message catalog (18 entries). See `docs/ux/missing-ui-states.md` Spec 3. |
+| Request list / page empty states | All roles | **SPECCED** — 8 named variants (requests, filtered, notifications, queue, audit, merchants, staff, dropdown). See `docs/ux/missing-ui-states.md` Spec 4. |
+| Skeleton loaders | All roles | **SPECCED** — 5 compositions with shimmer animation spec. See `docs/ux/missing-ui-states.md` Spec 5. |
+| Error / access denied page | All | `COMMITTEE_DIRECTOR/role-access-denied.png` is sufficient reference — single screenshot covers the pattern. |
+| SUPPORT_COMMITTEE request detail (full) | SUPPORT_COMMITTEE | Still needed — only partial views in screenshots. Capture from Lovable dev server. |
+| Customs preview/print page | COMMITTEE_DIRECTOR | Still needed — no screenshot found. Capture from Lovable dev server before Sprint 6.7. |
+| Notification settings (per-user) | Any | Still needed — not found in screenshots. Capture from Lovable dev server. |
 
 ---
 
