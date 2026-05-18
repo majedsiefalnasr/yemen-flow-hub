@@ -38,14 +38,14 @@ function toggleMobileMenu() {
   display: flex;
   flex-direction: column;
   min-width: 0;
-  /* offset for fixed sidebar (264px) */
-  margin-inline-end: 264px;
+  /* offset for expanded sidebar (280px) */
+  margin-inline-end: var(--sidebar-expanded, 280px);
 }
 
 .app-content {
   flex: 1;
   padding: 24px;
-  max-width: 1280px;
+  max-width: var(--container-max, 1600px);
   width: 100%;
   margin: 0 auto;
 }

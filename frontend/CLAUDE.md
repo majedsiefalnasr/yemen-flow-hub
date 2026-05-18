@@ -86,7 +86,7 @@ frontend/
 ### RTL-first
 - `dir="rtl"` on `<html>`
 - All layouts default right-to-left
-- Sidebar on the right side (264px fixed)
+- Sidebar on the right side (280px expanded / 72px collapsed)
 - Action columns rightmost in all tables
 - No LTR layouts mirrored to RTL
 
@@ -120,22 +120,23 @@ After submitting a vote, optimistically update the UI. If server returns `VOTING
 ```ts
 // Use these exact values — no approximations
 const colors = {
-  background: '#f5f5f7',
+  background: '#ffffff',
   surface: '#ffffff',
-  primaryText: '#1d1d1f',
-  secondaryText: '#6e6e73',
-  border: '#d2d2d7',
-  primaryBlue: '#0071e3',
-  approvedGreen: '#34c759',
-  rejectedRed: '#ff3b30',
-  pendingAmber: '#ff9f0a',
+  primaryText: '#1c222b',       // on-surface
+  secondaryText: '#6c757d',     // on-surface-variant
+  border: '#cccccc',            // outline-variant
+  primaryBlue: '#0066cc',
+  successText: '#1b5e20',
+  errorText: '#c62828',
+  warningText: '#f57f17',
   votingIndigo: '#5856d6',
   swiftCyan: '#32ade6',
   lockedGray: '#8e8e93',
 }
 ```
 
-Card radius: `12px`. Grid: `8px` base, `24px` gutters. No gradients. No glassmorphism.
+Button radius: `16px` (lg). Input radius: `12px` (md). Modal radius: `24px` (xl).
+Container max: `1600px`. Sidebar: `280px` expanded / `72px` collapsed. Grid: `8px` base, `24px` gutters. No gradients. No glassmorphism.
 
 ## Pages
 
