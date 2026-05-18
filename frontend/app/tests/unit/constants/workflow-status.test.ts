@@ -286,6 +286,7 @@ describe('Role group constants', () => {
       expect(ROUTE_ROLE_MAP['/banks']).toContain(UserRole.BANK_ADMIN)
       expect(ROUTE_ROLE_MAP['/audit']).not.toContain(UserRole.BANK_ADMIN)
       expect(ROUTE_ROLE_MAP['/reports']).toContain(UserRole.BANK_ADMIN)
+      expect(ROUTE_ROLE_MAP['/reports']).not.toContain(UserRole.SUPPORT_COMMITTEE)
     })
 
     it('shows scoped administration nav items for BANK_ADMIN including reports', () => {

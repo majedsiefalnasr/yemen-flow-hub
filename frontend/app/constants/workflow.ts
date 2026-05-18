@@ -267,7 +267,6 @@ export const NAV_ITEMS: NavItem[] = [
     icon: 'bar-chart-2',
     roles: [
       UserRole.CBY_ADMIN,
-      UserRole.SUPPORT_COMMITTEE,
       UserRole.EXECUTIVE_MEMBER,
       UserRole.COMMITTEE_DIRECTOR,
       UserRole.DATA_ENTRY,
@@ -385,7 +384,6 @@ export const ROUTE_ROLE_MAP: Record<string, UserRole[]> = {
   '/customs': [UserRole.COMMITTEE_DIRECTOR, UserRole.CBY_ADMIN],
   '/reports': [
     UserRole.CBY_ADMIN,
-    UserRole.SUPPORT_COMMITTEE,
     UserRole.EXECUTIVE_MEMBER,
     UserRole.COMMITTEE_DIRECTOR,
     UserRole.DATA_ENTRY,

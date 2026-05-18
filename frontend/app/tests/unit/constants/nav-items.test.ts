@@ -74,6 +74,11 @@ describe('NAV_ITEMS role filtering', () => {
     expect(routes).toContain('/reports')
   })
 
+  it('SUPPORT_COMMITTEE does not see reports', () => {
+    const routes = navItemsForRole(UserRole.SUPPORT_COMMITTEE).map(i => i.route)
+    expect(routes).not.toContain('/reports')
+  })
+
   it('DATA_ENTRY sees reports (bank-scoped)', () => {
     const routes = navItemsForRole(UserRole.DATA_ENTRY).map(i => i.route)
     expect(routes).toContain('/reports')

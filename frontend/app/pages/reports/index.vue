@@ -4,7 +4,19 @@ import { useAuthStore } from '../../stores/auth.store'
 import { useReportsStore } from '../../stores/reports.store'
 import { UserRole } from '../../types/enums'
 
-definePageMeta({ middleware: 'auth' })
+const REPORTING_ROLES = [
+  UserRole.CBY_ADMIN,
+  UserRole.EXECUTIVE_MEMBER,
+  UserRole.COMMITTEE_DIRECTOR,
+  UserRole.DATA_ENTRY,
+  UserRole.BANK_REVIEWER,
+  UserRole.BANK_ADMIN,
+]
+
+definePageMeta({
+  middleware: ['auth', 'role'],
+  requiredRoles: REPORTING_ROLES,
+})
 
 const auth = useAuthStore()
 const store = useReportsStore()
@@ -12,7 +24,7 @@ const store = useReportsStore()
 const role = computed(() => auth.user?.role)
 
 const isCbyUser = computed(() =>
-  [UserRole.CBY_ADMIN, UserRole.SUPPORT_COMMITTEE, UserRole.EXECUTIVE_MEMBER, UserRole.COMMITTEE_DIRECTOR].includes(role.value as UserRole),
+  [UserRole.CBY_ADMIN, UserRole.EXECUTIVE_MEMBER, UserRole.COMMITTEE_DIRECTOR].includes(role.value as UserRole),
 )
 const isBankUser = computed(() =>
   [UserRole.DATA_ENTRY, UserRole.BANK_REVIEWER, UserRole.BANK_ADMIN].includes(role.value as UserRole),
