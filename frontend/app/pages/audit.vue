@@ -26,26 +26,26 @@ const filters = reactive({
 })
 
 const ACTION_LABELS: Record<string, string> = {
-  submit: 'تقديم الطلب',
-  bank_approve: 'موافقة البنك',
-  bank_reject: 'رفض البنك',
-  support_claim: 'حجز المراجعة',
-  support_approve: 'موافقة لجنة الدعم',
-  support_reject: 'رفض لجنة الدعم',
-  swift_upload: 'رفع SWIFT',
-  start_voting: 'فتح جلسة التصويت',
-  close_voting: 'إغلاق جلسة التصويت',
-  cast_vote: 'تسجيل تصويت',
-  finalize_approved: 'اعتماد نهائي — موافقة',
-  finalize_rejected: 'اعتماد نهائي — رفض',
-  issue_customs: 'إصدار البيان الجمركي',
-  complete: 'إتمام الطلب',
-  login: 'تسجيل دخول',
-  logout: 'تسجيل خروج',
-  login_failed: 'محاولة دخول فاشلة',
-  document_upload: 'رفع مستند',
-  document_download: 'تحميل مستند',
-  authorization_failure: 'فشل التخويل',
+  LOGIN: 'تسجيل دخول',
+  LOGOUT: 'تسجيل خروج',
+  LOGIN_FAILED: 'محاولة دخول فاشلة',
+  REQUEST_CREATED: 'إنشاء طلب',
+  REQUEST_UPDATED: 'تحديث طلب',
+  REQUEST_DELETED: 'حذف طلب',
+  STATUS_TRANSITION: 'انتقال الحالة',
+  VOTE_CAST: 'تسجيل تصويت',
+  DOCUMENT_UPLOADED: 'رفع مستند',
+  DOCUMENT_DOWNLOADED: 'تحميل مستند',
+  SWIFT_UPLOADED: 'رفع SWIFT',
+  CUSTOMS_ISSUED: 'إصدار البيان الجمركي',
+  USER_CREATED: 'إنشاء مستخدم',
+  USER_UPDATED: 'تحديث مستخدم',
+  USER_DEACTIVATED: 'إيقاف مستخدم',
+  BANK_UPDATED: 'تحديث بنك',
+  PASSWORD_CHANGED: 'تغيير كلمة المرور',
+  SETTINGS_UPDATED: 'تحديث الإعدادات',
+  AUTHORIZATION_FAILURE: 'فشل التخويل',
+  REPORT_EXPORTED: 'تصدير تقرير',
 }
 
 const ACTION_OPTIONS = Object.entries(ACTION_LABELS)
@@ -77,10 +77,11 @@ function actorRole(log: AuditLog): string {
 }
 
 function actionColor(action: string): string {
-  if (action.includes('reject') || action.includes('failed') || action.includes('failure')) return '#ff3b30'
-  if (action.includes('approve') || action.includes('approved') || action === 'complete') return '#34c759'
-  if (action === 'issue_customs') return '#34c759'
-  if (action.includes('vote') || action.includes('voting')) return '#5856d6'
+  const normalized = action.toUpperCase()
+  if (normalized.includes('REJECT') || normalized.includes('FAILED') || normalized.includes('FAILURE')) return '#ff3b30'
+  if (normalized.includes('APPROVE') || normalized.includes('APPROVED') || normalized === 'COMPLETE') return '#34c759'
+  if (normalized === 'CUSTOMS_ISSUED') return '#34c759'
+  if (normalized.includes('VOTE') || normalized.includes('VOTING')) return '#5856d6'
   return '#0071e3'
 }
 

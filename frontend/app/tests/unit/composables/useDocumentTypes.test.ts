@@ -37,9 +37,9 @@ describe('useDocumentTypes — fetchDocumentTypes', () => {
     const { fetchDocumentTypes } = useDocumentTypes()
     const result = await fetchDocumentTypes()
     expect(result).toHaveLength(1)
-    expect(result[0].slug).toBe('commercial_invoice')
-    expect(result[0].name_ar).toBe('الفاتورة التجارية')
-    expect(result[0].is_required).toBe(true)
+    expect(result[0]?.slug).toBe('commercial_invoice')
+    expect(result[0]?.name_ar).toBe('الفاتورة التجارية')
+    expect(result[0]?.is_required).toBe(true)
   })
 
   it('returns empty array when no document types exist', async () => {
@@ -92,14 +92,17 @@ describe('useDocumentTypes — updateDocumentType', () => {
     const updated = { ...DOC_TYPE_FIXTURE, is_active: false }
     mockPut.mockResolvedValueOnce({ success: true, data: updated })
     const { updateDocumentType } = useDocumentTypes()
-    const result = await updateDocumentType(1, { is_active: false })
-    expect(mockPut).toHaveBeenCalledWith('/api/document-types/1', expect.objectContaining({ is_active: false }))
+    const result = await updateDocumentType(1, { ...DOC_TYPE_FIXTURE, is_active: false })
+    expect(mockPut).toHaveBeenCalledWith('/api/document-types/1', expect.objectContaining({
+      slug: 'commercial_invoice',
+      is_active: false,
+    }))
     expect(result.is_active).toBe(false)
   })
 
   it('propagates 403 when user lacks docrules.manage permission', async () => {
     mockPut.mockRejectedValueOnce({ status: 403, data: { message: 'Forbidden' } })
     const { updateDocumentType } = useDocumentTypes()
-    await expect(updateDocumentType(1, { is_active: false })).rejects.toBeTruthy()
+    await expect(updateDocumentType(1, { ...DOC_TYPE_FIXTURE, is_active: false })).rejects.toBeTruthy()
   })
 })

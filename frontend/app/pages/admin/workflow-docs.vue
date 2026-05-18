@@ -107,6 +107,7 @@ async function saveDocType() {
   try {
     if (editingType.value) {
       const payload: UpdateDocumentTypePayload = {
+        slug: editingType.value.slug,
         name_ar: form.name_ar.trim(),
         name_en: form.name_en.trim(),
         is_required: form.is_required,

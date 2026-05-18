@@ -1,5 +1,5 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest'
-import { RequestStatus } from '../../../types/enums'
+import { RequestStatus, UserRole } from '../../../types/enums'
 import type { ImportRequest } from '../../../types/models'
 
 const mockGet = vi.fn()
@@ -18,7 +18,7 @@ const EXECUTIVE_APPROVED_REQUEST: ImportRequest = {
   bank_name: 'بنك اليمن',
   merchant: null,
   status: RequestStatus.EXECUTIVE_APPROVED,
-  current_owner_role: 'COMMITTEE_DIRECTOR' as any,
+  current_owner_role: UserRole.COMMITTEE_DIRECTOR,
   currency: 'USD',
   amount: 75000,
   supplier_name: 'Gulf Trade Ltd',
@@ -39,7 +39,13 @@ const EXECUTIVE_APPROVED_REQUEST: ImportRequest = {
   submitted_at: null,
   bank_approved_at: '2026-05-10T10:00:00.000Z',
   support_approved_at: null,
+  swift_uploaded_by: null,
   swift_uploaded_at: null,
+  voting_opened_by: null,
+  voting_opened_at: null,
+  voting_closed_by: null,
+  voting_closed_at: null,
+  voting_session_status: null,
   executive_decided_at: null,
   customs_issued_at: null,
   customs_declaration: null,
@@ -77,7 +83,7 @@ describe('Customs queue page — fetchRequests with EXECUTIVE_APPROVED status', 
     const { fetchRequests } = useRequests()
     const result = await fetchRequests({ status: RequestStatus.EXECUTIVE_APPROVED, per_page: 100 })
     expect(result.data).toHaveLength(1)
-    expect(result.data[0].status).toBe(RequestStatus.EXECUTIVE_APPROVED)
+    expect(result.data[0]?.status).toBe(RequestStatus.EXECUTIVE_APPROVED)
   })
 
   it('returns empty queue when no EXECUTIVE_APPROVED requests exist', async () => {

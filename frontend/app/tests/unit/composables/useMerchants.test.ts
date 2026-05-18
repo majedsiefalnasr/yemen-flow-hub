@@ -69,7 +69,7 @@ describe('useMerchants — fetchMerchants', () => {
     const { fetchMerchants } = useMerchants()
     const result = await fetchMerchants()
     expect(result).toHaveLength(2)
-    expect(result[0].name).toBe('شركة الأمل للتجارة')
+    expect(result[0]?.name).toBe('شركة الأمل للتجارة')
   })
 
   it('returns empty array when response data is empty', async () => {

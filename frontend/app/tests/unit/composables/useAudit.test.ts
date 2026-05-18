@@ -13,7 +13,7 @@ const LOG_FIXTURE = {
   user: { id: 5, name: 'مدير النظام', email: 'admin@cby.ye', role: 'CBY_ADMIN' },
   user_id: 5,
   user_role: 'CBY_ADMIN',
-  action: 'bank_approve',
+  action: 'STATUS_TRANSITION',
   entity_type: 'ImportRequest',
   entity_id: 42,
   from_status: 'BANK_REVIEW',
@@ -47,8 +47,8 @@ describe('useAudit — fetchAuditLogs', () => {
   it('appends action filter to query string', async () => {
     mockGet.mockResolvedValueOnce(PAGINATED_RESPONSE)
     const { fetchAuditLogs } = useAudit()
-    await fetchAuditLogs({ action: 'bank_approve' })
-    expect(mockGet).toHaveBeenCalledWith(expect.stringContaining('action=bank_approve'))
+    await fetchAuditLogs({ action: 'STATUS_TRANSITION' })
+    expect(mockGet).toHaveBeenCalledWith(expect.stringContaining('action=STATUS_TRANSITION'))
   })
 
   it('appends from_date and to_date filters', async () => {
@@ -80,11 +80,11 @@ describe('useAudit — fetchAuditLogs', () => {
     const { fetchAuditLogs } = useAudit()
     const result = await fetchAuditLogs()
     const log = result.data[0]
-    expect(log.action).toBe('bank_approve')
-    expect(log.entity_type).toBe('ImportRequest')
-    expect(log.from_status).toBe('BANK_REVIEW')
-    expect(log.to_status).toBe('BANK_APPROVED')
-    expect(log.user?.name).toBe('مدير النظام')
+    expect(log?.action).toBe('STATUS_TRANSITION')
+    expect(log?.entity_type).toBe('ImportRequest')
+    expect(log?.from_status).toBe('BANK_REVIEW')
+    expect(log?.to_status).toBe('BANK_APPROVED')
+    expect(log?.user?.name).toBe('مدير النظام')
   })
 
   it('returns empty data array when no logs match', async () => {

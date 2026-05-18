@@ -11,11 +11,12 @@ export interface CreateDocumentTypePayload {
 }
 
 export interface UpdateDocumentTypePayload {
-  name_ar?: string
-  name_en?: string
-  is_required?: boolean
-  is_active?: boolean
-  sort_order?: number
+  slug: string
+  name_ar: string
+  name_en: string
+  is_required: boolean
+  is_active: boolean
+  sort_order: number
 }
 
 export function useDocumentTypes() {
