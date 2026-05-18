@@ -215,7 +215,7 @@ class BankAdminRbacTest extends TestCase
 
         $this->actingAs($this->bankAdmin)->getJson('/api/dashboard/stats')
             ->assertOk()
-            ->assertJsonPath('data.pending_bank_review', 1);
+            ->assertJsonPath('data.pending', 1);
 
         $this->actingAs($this->bankAdmin)->getJson('/api/audit')->assertForbidden();
         $this->actingAs($this->bankAdmin)->getJson('/api/reports/workflow')->assertForbidden();

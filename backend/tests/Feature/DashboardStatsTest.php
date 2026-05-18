@@ -454,6 +454,188 @@ class DashboardStatsTest extends TestCase
         $this->assertContains(RequestStatus::SUPPORT_REVIEW_IN_PROGRESS->value, $statuses);
     }
 
+    // ─── Story 6.3.2: BANK_ADMIN dashboard ───────────────────────────────────
+
+    public function test_bank_admin_stats_returns_all_required_kpi_keys(): void
+    {
+        $admin = $this->makeUser(UserRole::BANK_ADMIN, $this->bank);
+
+        $this->actingAs($admin)
+            ->getJson('/api/dashboard/stats')
+            ->assertOk()
+            ->assertJsonStructure([
+                'success',
+                'data' => [
+                    'total',
+                    'pending',
+                    'approved',
+                    'rejected',
+                    'total_financed_amount',
+                    'monthly_requests',
+                    'recent_requests',
+                ],
+            ]);
+    }
+
+    public function test_bank_admin_total_counts_all_bank_requests(): void
+    {
+        $de    = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $admin = $this->makeUser(UserRole::BANK_ADMIN, $this->bank);
+        $otherDe = $this->makeUser(UserRole::DATA_ENTRY, $this->otherBank);
+
+        $this->makeRequest($this->bank, $de, RequestStatus::DRAFT);
+        $this->makeRequest($this->bank, $de, RequestStatus::SUBMITTED);
+        $this->makeRequest($this->bank, $de, RequestStatus::COMPLETED);
+        $this->makeRequest($this->otherBank, $otherDe, RequestStatus::DRAFT);
+
+        $this->actingAs($admin)
+            ->getJson('/api/dashboard/stats')
+            ->assertJsonPath('data.total', 3);
+    }
+
+    public function test_bank_admin_pending_counts_submitted_and_bank_review(): void
+    {
+        $de    = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $admin = $this->makeUser(UserRole::BANK_ADMIN, $this->bank);
+
+        $this->makeRequest($this->bank, $de, RequestStatus::SUBMITTED);
+        $this->makeRequest($this->bank, $de, RequestStatus::BANK_REVIEW);
+        $this->makeRequest($this->bank, $de, RequestStatus::BANK_APPROVED);
+
+        $this->actingAs($admin)
+            ->getJson('/api/dashboard/stats')
+            ->assertJsonPath('data.pending', 2);
+    }
+
+    public function test_bank_admin_approved_counts_terminal_approved_statuses(): void
+    {
+        $de    = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $admin = $this->makeUser(UserRole::BANK_ADMIN, $this->bank);
+
+        $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_APPROVED);
+        $this->makeRequest($this->bank, $de, RequestStatus::CUSTOMS_DECLARATION_ISSUED);
+        $this->makeRequest($this->bank, $de, RequestStatus::COMPLETED);
+        $this->makeRequest($this->bank, $de, RequestStatus::DRAFT);
+
+        $this->actingAs($admin)
+            ->getJson('/api/dashboard/stats')
+            ->assertJsonPath('data.approved', 3);
+    }
+
+    public function test_bank_admin_rejected_counts_support_and_executive_rejections(): void
+    {
+        $de    = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $admin = $this->makeUser(UserRole::BANK_ADMIN, $this->bank);
+
+        $this->makeRequest($this->bank, $de, RequestStatus::SUPPORT_REJECTED);
+        $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_REJECTED);
+        $this->makeRequest($this->bank, $de, RequestStatus::DRAFT);
+
+        $this->actingAs($admin)
+            ->getJson('/api/dashboard/stats')
+            ->assertJsonPath('data.rejected', 2);
+    }
+
+    public function test_bank_admin_total_financed_amount_sums_approved_requests(): void
+    {
+        $de    = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $admin = $this->makeUser(UserRole::BANK_ADMIN, $this->bank);
+
+        $this->makeRequest($this->bank, $de, RequestStatus::COMPLETED, ['amount' => 10000.00]);
+        $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_APPROVED, ['amount' => 5000.00]);
+        $this->makeRequest($this->bank, $de, RequestStatus::DRAFT, ['amount' => 3000.00]);
+
+        $response = $this->actingAs($admin)->getJson('/api/dashboard/stats')->assertOk();
+        $this->assertEquals(15000.0, $response->json('data.total_financed_amount'));
+    }
+
+    public function test_bank_admin_total_financed_amount_is_zero_for_no_approved(): void
+    {
+        $de    = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $admin = $this->makeUser(UserRole::BANK_ADMIN, $this->bank);
+
+        $this->makeRequest($this->bank, $de, RequestStatus::DRAFT, ['amount' => 5000.00]);
+
+        $response = $this->actingAs($admin)->getJson('/api/dashboard/stats')->assertOk();
+        $this->assertEquals(0.0, $response->json('data.total_financed_amount'));
+    }
+
+    public function test_bank_admin_stats_are_org_scoped(): void
+    {
+        $de      = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $admin   = $this->makeUser(UserRole::BANK_ADMIN, $this->bank);
+        $otherDe = $this->makeUser(UserRole::DATA_ENTRY, $this->otherBank);
+
+        $this->makeRequest($this->bank, $de, RequestStatus::SUBMITTED);
+        $this->makeRequest($this->otherBank, $otherDe, RequestStatus::SUBMITTED);
+        $this->makeRequest($this->otherBank, $otherDe, RequestStatus::SUBMITTED);
+
+        $this->actingAs($admin)
+            ->getJson('/api/dashboard/stats')
+            ->assertJsonPath('data.pending', 1)
+            ->assertJsonPath('data.total', 1);
+    }
+
+    public function test_bank_admin_monthly_requests_returns_6_month_array(): void
+    {
+        $admin = $this->makeUser(UserRole::BANK_ADMIN, $this->bank);
+
+        $response = $this->actingAs($admin)->getJson('/api/dashboard/stats')->assertOk();
+        $monthly = $response->json('data.monthly_requests');
+
+        $this->assertIsArray($monthly);
+        $this->assertCount(6, $monthly);
+        $this->assertArrayHasKey('month', $monthly[0]);
+        $this->assertArrayHasKey('count', $monthly[0]);
+    }
+
+    public function test_bank_admin_monthly_requests_counts_are_bank_scoped(): void
+    {
+        $de      = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $admin   = $this->makeUser(UserRole::BANK_ADMIN, $this->bank);
+        $otherDe = $this->makeUser(UserRole::DATA_ENTRY, $this->otherBank);
+
+        $currentMonth = now()->format('Y-m');
+
+        $this->makeRequest($this->bank, $de, RequestStatus::DRAFT);
+        $this->makeRequest($this->bank, $de, RequestStatus::SUBMITTED);
+        $this->makeRequest($this->otherBank, $otherDe, RequestStatus::DRAFT);
+
+        $response = $this->actingAs($admin)->getJson('/api/dashboard/stats')->assertOk();
+        $monthly = $response->json('data.monthly_requests');
+
+        $thisMonth = collect($monthly)->firstWhere('month', $currentMonth);
+        $this->assertNotNull($thisMonth);
+        $this->assertEquals(2, $thisMonth['count']);
+    }
+
+    public function test_bank_admin_empty_bank_returns_zeros_and_empty_arrays(): void
+    {
+        $admin = $this->makeUser(UserRole::BANK_ADMIN, $this->bank);
+
+        $response = $this->actingAs($admin)->getJson('/api/dashboard/stats')->assertOk();
+
+        $this->assertEquals(0, $response->json('data.total'));
+        $this->assertEquals(0, $response->json('data.pending'));
+        $this->assertEquals(0, $response->json('data.approved'));
+        $this->assertEquals(0, $response->json('data.rejected'));
+        $this->assertEquals(0.0, $response->json('data.total_financed_amount'));
+        $this->assertEmpty($response->json('data.recent_requests'));
+    }
+
+    public function test_bank_admin_recent_requests_max_10(): void
+    {
+        $de    = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $admin = $this->makeUser(UserRole::BANK_ADMIN, $this->bank);
+
+        for ($i = 0; $i < 12; $i++) {
+            $this->makeRequest($this->bank, $de, RequestStatus::DRAFT);
+        }
+
+        $response = $this->actingAs($admin)->getJson('/api/dashboard/stats')->assertOk();
+        $this->assertCount(10, $response->json('data.recent_requests'));
+    }
+
     public function test_support_committee_queue_includes_claimer_name(): void
     {
         $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);

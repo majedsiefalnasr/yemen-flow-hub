@@ -44,33 +44,25 @@ class DashboardController extends Controller
     {
         $base = ImportRequest::query()->where('bank_id', $user->bank_id);
 
-        $pendingBankReview = (clone $base)->whereIn('status', [
-            RequestStatus::SUBMITTED->value,
-            RequestStatus::BANK_REVIEW->value,
-        ])->count();
-
-        $atCby = (clone $base)->whereIn('status', [
-            RequestStatus::BANK_APPROVED->value,
-            RequestStatus::SUPPORT_REVIEW_PENDING->value,
-            RequestStatus::SUPPORT_REVIEW_IN_PROGRESS->value,
-            RequestStatus::SUPPORT_APPROVED->value,
-            RequestStatus::WAITING_FOR_SWIFT->value,
-            RequestStatus::SWIFT_UPLOADED->value,
-            RequestStatus::WAITING_FOR_VOTING_OPEN->value,
-            RequestStatus::EXECUTIVE_VOTING_OPEN->value,
-            RequestStatus::EXECUTIVE_VOTING_CLOSED->value,
-        ])->count();
-
-        $completed = (clone $base)->whereIn('status', [
+        $approvedStatuses = [
             RequestStatus::EXECUTIVE_APPROVED->value,
             RequestStatus::CUSTOMS_DECLARATION_ISSUED->value,
             RequestStatus::COMPLETED->value,
-        ])->count();
+        ];
 
-        $rejected = (clone $base)->whereIn('status', [
+        $rejectedStatuses = [
             RequestStatus::SUPPORT_REJECTED->value,
             RequestStatus::EXECUTIVE_REJECTED->value,
-        ])->count();
+        ];
+
+        $total    = (clone $base)->count();
+        $pending  = (clone $base)->whereIn('status', [RequestStatus::SUBMITTED->value, RequestStatus::BANK_REVIEW->value])->count();
+        $approved = (clone $base)->whereIn('status', $approvedStatuses)->count();
+        $rejected = (clone $base)->whereIn('status', $rejectedStatuses)->count();
+
+        $totalFinancedAmount = (float) (clone $base)
+            ->whereIn('status', $approvedStatuses)
+            ->sum('amount');
 
         $recentRequests = (clone $base)
             ->orderByDesc('updated_at')
@@ -78,18 +70,45 @@ class DashboardController extends Controller
             ->with(['bank'])
             ->get();
 
+        $monthlyRequests = $this->bankMonthlyRequests($user->bank_id);
+
         return ApiResponse::success([
-            'pending_bank_review' => $pendingBankReview,
-            'at_cby' => $atCby,
-            'completed' => $completed,
-            'rejected' => $rejected,
-            'active_users' => \App\Models\User::query()
-                ->where('bank_id', $user->bank_id)
-                ->whereIn('role', [UserRole::DATA_ENTRY->value, UserRole::BANK_REVIEWER->value])
-                ->where('is_active', true)
-                ->count(),
-            'recent_requests' => ImportRequestResource::collection($recentRequests)->toArray(request()),
+            'total'                 => $total,
+            'pending'               => $pending,
+            'approved'              => $approved,
+            'rejected'              => $rejected,
+            'total_financed_amount' => $totalFinancedAmount,
+            'monthly_requests'      => $monthlyRequests,
+            'recent_requests'       => ImportRequestResource::collection($recentRequests)->toArray(request()),
         ], 'Dashboard stats retrieved.');
+    }
+
+    private function bankMonthlyRequests(int $bankId): array
+    {
+        $driver      = \Illuminate\Support\Facades\DB::getDriverName();
+        $monthExpr   = $driver === 'sqlite'
+            ? "strftime('%Y-%m', created_at) as month"
+            : "DATE_FORMAT(created_at, '%Y-%m') as month";
+
+        // Build a map of month → count from DB for the last 6 months
+        $rows = ImportRequest::query()
+            ->where('bank_id', $bankId)
+            ->where('created_at', '>=', now()->startOfMonth()->subMonths(5))
+            ->selectRaw("{$monthExpr}, COUNT(*) as `count`")
+            ->groupBy('month')
+            ->orderBy('month')
+            ->pluck('count', 'month')
+            ->map(fn ($c) => (int) $c)
+            ->all();
+
+        // Fill all 6 months so the chart always has a full series even with gaps
+        $months = [];
+        for ($i = 5; $i >= 0; $i--) {
+            $key = now()->startOfMonth()->subMonths($i)->format('Y-m');
+            $months[] = ['month' => $key, 'count' => $rows[$key] ?? 0];
+        }
+
+        return $months;
     }
 
     private function dataEntryStats($user)
