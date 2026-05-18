@@ -43,6 +43,7 @@ describe('UserRole', () => {
   const EXPECTED_ROLES = [
     'DATA_ENTRY',
     'BANK_REVIEWER',
+    'BANK_ADMIN',
     'SWIFT_OFFICER',
     'SUPPORT_COMMITTEE',
     'EXECUTIVE_MEMBER',
@@ -50,8 +51,8 @@ describe('UserRole', () => {
     'CBY_ADMIN',
   ]
 
-  it('has exactly 7 canonical role values', () => {
-    expect(Object.values(UserRole)).toHaveLength(7)
+  it('has exactly 8 canonical role values', () => {
+    expect(Object.values(UserRole)).toHaveLength(8)
   })
 
   it.each(EXPECTED_ROLES)('defines %s', (role) => {

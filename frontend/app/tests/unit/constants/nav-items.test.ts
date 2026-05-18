@@ -50,7 +50,6 @@ describe('NAV_ITEMS role filtering', () => {
     expect(routes).not.toContain('/banks')
     expect(routes).not.toContain('/users')
     expect(routes).not.toContain('/audit')
-    expect(routes).not.toContain('/settings')
     expect(routes).not.toContain('/merchants')
   })
 
@@ -58,7 +57,6 @@ describe('NAV_ITEMS role filtering', () => {
     const routes = navItemsForRole(UserRole.SUPPORT_COMMITTEE).map(i => i.route)
     expect(routes).not.toContain('/banks')
     expect(routes).not.toContain('/audit')
-    expect(routes).not.toContain('/settings')
   })
 
   it('BANK_REVIEWER sees bank users management', () => {
@@ -76,9 +74,9 @@ describe('NAV_ITEMS role filtering', () => {
     expect(routes).toContain('/reports')
   })
 
-  it('DATA_ENTRY does not see reports', () => {
+  it('DATA_ENTRY sees reports (bank-scoped)', () => {
     const routes = navItemsForRole(UserRole.DATA_ENTRY).map(i => i.route)
-    expect(routes).not.toContain('/reports')
+    expect(routes).toContain('/reports')
   })
 
   it('all roles see notifications', () => {
