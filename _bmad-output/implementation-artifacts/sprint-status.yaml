@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-16
-last_updated: 2026-05-18 (Story 5.4 review patch resolved)
+last_updated: 2026-05-18 (Epic 6 added; Story 5.4 resolved)
 project: Yemen Flow Hub
 project_key: NOKEY
 tracking_system: file-system
@@ -82,7 +82,7 @@ development_status:
   epic-4-retrospective: optional
 
   # ─── Epic 5: Post-MVP Institutional Operations Platform ──────────────────
-  epic-5: in-progress
+  epic-5: done
   5-1-bank-admin-role-hierarchical-rbac-scoped-bank-administration: done
   5-2-profile-settings-navigation-completion: done
   5-3-in-app-notifications-phase-1: done
@@ -91,3 +91,18 @@ development_status:
   5-6-advanced-operational-reporting: done
   5-7-approved-lovable-prototype-parity-production-ui-alignment: done
   epic-5-retrospective: optional
+
+  # ─── Epic 6: Production Readiness & Full Prototype Parity ────────────────
+  epic-6: in-progress
+  6-1-design-token-typography-foundation: done
+  6-2-appshell-layout-parity: review
+  6-3-1-bank-admin-role-backend-registration-api-scope: backlog
+  6-3-2-bank-admin-dashboard: backlog
+  6-3-3-bank-admin-merchant-management: backlog
+  6-3-4-bank-admin-staff-management: backlog
+  6-3-5-bank-admin-request-wizard: backlog
+  6-4-login-page-redesign-otp-mfa-flow: backlog
+  6-5-missing-cby-admin-pages: backlog
+  6-6-request-detail-voting-panel-parity: backlog
+  6-7-polish-dark-mode-final-parity: backlog
+  epic-6-retrospective: optional
