@@ -7,7 +7,13 @@
 
 ## 1. Visual Identity
 
-Yemen Flow Hub is an institutional regulatory platform for the Central Bank of Yemen. The aesthetic is **"Institutional Clarity"**: clean, hierarchical, and trust-forward. The interface is designed for government banking officials managing complex multi-stage approval workflows.
+**Platform name:** منصة إدارة وتمويل الواردات — Central Bank of Yemen Import Financing Platform  
+**Logo:** CBY monogram (م.ب) — circular avatar, top-right of sidebar and login page  
+**Official CBY logo URL:** `https://www.ypagency.net/wp-content/uploads/2025/07/البنك-المركزي-اليمني-صنعاء.png`
+
+The aesthetic is **"Institutional Clarity"**: clean, hierarchical, and trust-forward, with a vibrant primary blue (`#0066cc`) that signals authority and confidence without coldness. The interface prioritises legibility and process transparency, treating each approval stage as a distinct, scannable milestone.
+
+**Brand voice:** Formal yet accessible, precise without jargon. Example: *"طلب التمويل الخاص بك دخل مرحلة المراجعة الداخلية — الإنجاز المتوقع خلال 3 أيام عمل."* Every interaction reinforces institutional competence and regulatory rigour.
 
 - **Not** a SaaS product. No startup styles, no gradients, no glassmorphism.
 - **Queue-first and workflow-centric.** Every view is organised around an operational queue or workflow stage.
@@ -18,33 +24,81 @@ Yemen Flow Hub is an institutional regulatory platform for the Central Bank of Y
 
 ## 2. Color Palette
 
-### Core Palette
+### Core Surface Palette
 
-| Token                     | HEX       | Usage                                           |
-| ------------------------- | --------- | ----------------------------------------------- |
-| `background`              | `#ffffff` | Page canvas, main background                    |
-| `surface-dim`             | `#f5f5f5` | Alternate row backgrounds, secondary surfaces   |
-| `surface-bright`          | `#fafafa` | Hover states, slightly elevated surfaces        |
-| `surface-container-low`   | `#f0f0f0` | Disabled field backgrounds                      |
-| `surface-container`       | `#e9ecef` | Input disabled state, surface containers        |
-| `surface-container-high`  | `#e0e0e0` | Dividers, skeleton loaders                      |
-| `on-surface`              | `#1c222b` | Primary text (headlines, table data)            |
-| `on-surface-variant`      | `#6c757d` | Secondary text (labels, captions, descriptions) |
-| `outline`                 | `#505050` | Strong borders (interactive focus)              |
-| `outline-variant`         | `#cccccc` | Default borders on cards, inputs, table rows    |
+| Token                        | HEX       | Usage                                              |
+| ---------------------------- | --------- | -------------------------------------------------- |
+| `background`                 | `#ffffff` | Page canvas, main background                       |
+| `on-background`              | `#1c222b` | Text directly on background (alias of on-surface)  |
+| `surface`                    | `#ffffff` | Cards, panels, table backgrounds                   |
+| `surface-dim`                | `#f5f5f5` | Alternate row backgrounds, secondary surfaces      |
+| `surface-bright`             | `#fafafa` | Hover states, slightly elevated surfaces           |
+| `surface-container-lowest`   | `#f9f9f9` | Subtle surface layering, innermost containers      |
+| `surface-container-low`      | `#f0f0f0` | Disabled field backgrounds, light containers       |
+| `surface-container`          | `#e9ecef` | Input disabled state, surface containers           |
+| `surface-variant`            | `#e9ecef` | Alias for surface-container (use interchangeably)  |
+| `surface-container-high`     | `#e0e0e0` | Dividers, skeleton loaders, strong containers      |
+| `surface-container-highest`  | `#d0d0d0` | Highest-contrast surface, strong dividers          |
+| `on-surface`                 | `#1c222b` | Primary text (headlines, table data)               |
+| `on-surface-variant`         | `#6c757d` | Secondary text (labels, captions, descriptions)    |
+| `inverse-surface`            | `#0c121a` | Dark surface for toasts / snackbars                |
+| `inverse-on-surface`         | `#f0f0f0` | Text on inverse-surface                            |
+| `outline`                    | `#505050` | Strong borders, interactive focus rings            |
+| `outline-variant`            | `#cccccc` | Default borders on cards, inputs, table rows       |
 
-### Brand Colors
+### Brand / Primary Colors
 
-| Token                | HEX       | Usage                                             |
-| -------------------- | --------- | ------------------------------------------------- |
-| `primary`            | `#0066cc` | Primary CTAs, active nav item, focus ring, links  |
-| `on-primary`         | `#ffffff` | Text on primary blue backgrounds                  |
-| `primary-container`  | `#e3f2fd` | Selected/hover background on list items           |
-| `on-primary-container` | `#003d99` | Text on primary-container backgrounds           |
-| `secondary`          | `#0052a3` | Button hover state, secondary actions             |
-| `surface-tint`       | `#0066cc` | Tint color for elevated surfaces                  |
+| Token                     | HEX       | Usage                                              |
+| ------------------------- | --------- | -------------------------------------------------- |
+| `primary`                 | `#0066cc` | Primary CTAs, active nav item, focus ring, links   |
+| `on-primary`              | `#ffffff` | Text on primary blue backgrounds                   |
+| `primary-container`       | `#e3f2fd` | Selected/hover background on list items            |
+| `on-primary-container`    | `#003d99` | Text on primary-container backgrounds              |
+| `primary-fixed`           | `#e3f2fd` | Fixed-hue primary container (light)                |
+| `primary-fixed-dim`       | `#bbdefb` | Dimmed fixed-hue primary container                 |
+| `on-primary-fixed`        | `#001f5c` | Text on primary-fixed                              |
+| `on-primary-fixed-variant`| `#003d99` | Secondary text on primary-fixed                    |
+| `inverse-primary`         | `#4da6ff` | Primary color on dark/inverse surfaces (dark mode) |
+| `surface-tint`            | `#0066cc` | Tint color applied to elevated surfaces            |
+
+### Secondary Colors
+
+| Token                      | HEX       | Usage                                    |
+| -------------------------- | --------- | ---------------------------------------- |
+| `secondary`                | `#0052a3` | Button hover, secondary actions          |
+| `on-secondary`             | `#ffffff` | Text on secondary backgrounds            |
+| `secondary-container`      | `#cce5ff` | Secondary hover/selected containers      |
+| `on-secondary-container`   | `#001f5c` | Text on secondary-container              |
+| `secondary-fixed`          | `#cce5ff` | Fixed secondary container                |
+| `secondary-fixed-dim`      | `#90caf9` | Dimmed fixed secondary container         |
+| `on-secondary-fixed`       | `#001f5c` | Text on secondary-fixed                  |
+| `on-secondary-fixed-variant`| `#003d99` | Secondary text on secondary-fixed       |
+
+### Tertiary / Success Colors
+
+| Token                     | HEX       | Usage                                    |
+| ------------------------- | --------- | ---------------------------------------- |
+| `tertiary`                | `#1a7a3d` | Success accent, approved state accent    |
+| `on-tertiary`             | `#ffffff` | Text on tertiary                         |
+| `tertiary-container`      | `#c8e6c9` | Success/approved container backgrounds   |
+| `on-tertiary-container`   | `#0d3d1a` | Text on tertiary-container               |
+| `tertiary-fixed`          | `#c8e6c9` | Fixed tertiary container                 |
+| `tertiary-fixed-dim`      | `#a5d6a7` | Dimmed fixed tertiary                    |
+| `on-tertiary-fixed`       | `#0d3d1a` | Text on tertiary-fixed                   |
+| `on-tertiary-fixed-variant`| `#1b5e20` | Secondary text on tertiary-fixed        |
+
+### Error Colors
+
+| Token              | HEX       | Usage                                    |
+| ------------------ | --------- | ---------------------------------------- |
+| `error`            | `#d32f2f` | Error base color (border, icon)          |
+| `on-error`         | `#ffffff` | Text on error backgrounds                |
+| `error-container`  | `#ffebee` | Error/rejection background               |
+| `on-error-container`| `#b71c1c`| Text on error-container                  |
 
 ### Semantic Status Colors
+
+These are the complete text + background + border triplets used for all badges, alerts, and status indicators.
 
 | Semantic Role    | Text / Icon    | Background    | Border        | Usage                                |
 | ---------------- | -------------- | ------------- | ------------- | ------------------------------------ |
@@ -56,7 +110,7 @@ Yemen Flow Hub is an institutional regulatory platform for the Central Bank of Y
 | **SWIFT**        | `#32ade6`      | `rgba(50,173,230,0.08)` | `rgba(50,173,230,0.25)` | SWIFT upload states |
 | **Locked**       | `#8e8e93`      | `#f5f5f5`     | `#d1d1d6`     | Read-only, locked workflow states    |
 
-> **Rule:** Use `outline-variant` (`#cccccc`) only for passive dividers. Use `outline` (`#505050`) for interactive focus rings. Never use color for decoration — only for status semantics.
+> **Rule:** Use `outline-variant` (`#cccccc`) only for passive dividers and card borders. Use `outline` (`#505050`) for interactive focus states on disabled inputs. Never use color for decoration — only for status semantics.
 
 ---
 
@@ -153,13 +207,39 @@ All three fonts must be loaded. Cairo and Tajawal from Google Fonts; IBM Plex Sa
 
 ## 6. Cards & Surfaces
 
+### Cards
+
 - **Background:** `#ffffff`
 - **Border:** 1px `#cccccc`
-- **Border radius:** `lg` = 1rem (16px) for most cards; `xl` = 1.5rem (24px) for modals
-- **Shadow (base):** `0 1px 2px rgba(0,0,0,0.06)`
-- **Shadow (hover):** `0 4px 12px rgba(0,0,0,0.10)` — transition 200ms ease
-- **Shadow (elevated/modal):** `0 16px 40px rgba(0,0,0,0.12)`
+- **Border radius:** `lg` = 16px for standard cards
+- **Shadow (base):** `0 1px 2px rgba(0,0,0,0.06)` (`sm`)
+- **Shadow (hover):** `0 4px 12px rgba(0,0,0,0.10)` (`md`) — transition 200ms ease
+- **Background (hover):** `#f0f0f0` (`surface-container-low`)
 - **Padding:** 24px internal
+
+### Modals
+
+- **Background:** `#ffffff`
+- **Border:** 1px `#cccccc`
+- **Border radius:** `xl` = 24px
+- **Shadow:** `0 16px 40px rgba(0,0,0,0.12)` (`lg`)
+- **Padding:** 40px (`spacing.lg`) — **not** 24px
+- **Backdrop overlay:** `rgba(12, 18, 26, 0.4)` with `backdrop-filter: blur(4px)`
+
+### List Items
+
+- **Background:** transparent
+- **Border:** 1px `#cccccc`, radius 12px
+- **Padding:** 12px 16px
+- **Hover:** background `#e3f2fd` (`primary-container`), border `#0066cc`
+- **Selected:** background `#e3f2fd`, border `#0066cc`, `box-shadow: inset 0 0 0 2px #0066cc`
+
+### Select Dropdowns
+
+- **Closed state:** same as input-field — bg `#ffffff`, border 1px `#cccccc`, radius 12px, height 44px, padding 12px 16px
+- **Open state:** border `#0066cc`, `box-shadow: 0 0 0 3px rgba(0,102,204,0.1)`
+- **Option hover:** background `#e3f2fd`
+- **Option selected:** background `#e3f2fd`, text `#003d99`, font-weight 600
 
 ### Stat Cards (KPI strip on dashboards)
 
@@ -172,20 +252,22 @@ All three fonts must be loaded. Cairo and Tajawal from Google Fonts; IBM Plex Sa
 
 ## 7. Buttons
 
-| Variant         | Background    | Text      | Border                  | Height | H-Padding | Radius | Shadow   |
-| --------------- | ------------- | --------- | ----------------------- | ------ | --------- | ------ | -------- |
-| `primary`       | `#0066cc`     | `#ffffff` | none                    | 48px   | 24px      | 16px   | md       |
-| `primary` hover | `#0052a3`     | `#ffffff` | none                    | 48px   | 24px      | 16px   | lg       |
-| `secondary`     | transparent   | `#0066cc` | 1px solid `#0066cc`     | 48px   | 24px      | 16px   | none     |
-| `secondary` hover | `#e3f2fd`  | `#0066cc` | 1px solid `#0066cc`     | 48px   | 24px      | 16px   | none     |
-| `destructive`   | `#d32f2f`     | `#ffffff` | none                    | 48px   | 24px      | 16px   | none     |
-| `ghost`         | transparent   | `#0066cc` | none                    | 40px   | 16px      | 12px   | none     |
-| `icon`          | transparent   | `#6c757d` | none                    | 40px   | 8px       | 12px   | none     |
-| `disabled`      | `#e9ecef`     | `#6c757d` | none                    | 48px   | 24px      | 16px   | none     |
+| Variant           | Background    | Text      | Border              | Height | H-Padding | Radius | Shadow        |
+| ----------------- | ------------- | --------- | ------------------- | ------ | --------- | ------ | ------------- |
+| `primary`         | `#0066cc`     | `#ffffff` | none                | 48px   | 24px      | 16px   | `md`          |
+| `primary` hover   | `#0052a3`     | `#ffffff` | none                | 48px   | 24px      | 16px   | `lg`          |
+| `primary` focus   | `#0066cc`     | `#ffffff` | none                | 48px   | 24px      | 16px   | `focus`       |
+| `secondary`       | transparent   | `#0066cc` | 1px `#0066cc`       | 48px   | 24px      | 16px   | none          |
+| `secondary` hover | `#e3f2fd`     | `#0066cc` | 1px `#0066cc`       | 48px   | 24px      | 16px   | none          |
+| `destructive`     | `#d32f2f`     | `#ffffff` | none                | 48px   | 24px      | 16px   | none          |
+| `ghost`           | transparent   | `#0066cc` | none                | 40px   | 16px      | 12px   | none          |
+| `icon`            | transparent   | `#6c757d` | none                | 40px   | 8px       | 12px   | none          |
+| `disabled`        | `#e9ecef`     | `#6c757d` | none                | 48px   | 24px      | 16px   | none          |
 
 - **Typography:** `label-md` (IBM Plex Sans Arabic, 14px, 600)
-- **Focus ring:** `box-shadow: 0 0 0 3px rgba(0,102,204,0.2)`
+- **Focus ring:** `box-shadow: 0 4px 12px rgba(0,0,0,0.1), 0 0 0 2px rgba(0,0,0,0.2)` (`focus` elevation token)
 - **Transition:** 150ms ease on all state changes
+- **Do not** apply any shadow to disabled buttons — reduced opacity on background only
 - **Small buttons** (table row actions): 36px height, 12px h-padding, 8px radius
 
 ---
@@ -564,17 +646,26 @@ Toggle: available from user header (sun/moon icon or profile menu).
 
 ## 26. Design Do's and Don'ts
 
-| Do                                                              | Don't                                              |
-| --------------------------------------------------------------- | -------------------------------------------------- |
-| Use `#0066cc` exclusively for primary CTAs and active nav       | Use primary blue for decorative elements           |
-| Apply Cairo for all Arabic headlines and official titles        | Mix Arabic typefaces within a single text block    |
-| Use 150ms ease on all interactive state transitions             | Use bounce, spring, or elastic animations          |
-| Show charts ONLY on CBY_ADMIN and BANK-ADMIN dashboards         | Add KPIs or charts to operational role dashboards  |
-| Use `lg` radius (16px) for buttons and `xl` (24px) for modals  | Use border-radius < 8px on interactive elements    |
-| Enforce sidebar collapse to 72px icons-only mode               | Lock sidebar at fixed width with no collapse       |
-| Use semantic status colors consistently across all views        | Use color for decoration or branding               |
-| Render all 3 Arabic fonts (Cairo, Tajawal, IBM Plex Sans Arabic)| Use only IBM Plex Sans Arabic and Inter            |
-| Support both light and dark modes                              | Build light-only UI                                |
-| Show merchant list as card grid for BANK-ADMIN                 | Use same table layout for all roles                |
-| Show OTP step after credentials step in login                  | Implement single-step login without MFA            |
-| Use 1600px container max-width                                  | Cap content at 1280px                              |
+| Do                                                                         | Don't                                                                      |
+| -------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| Use `#0066cc` exclusively for primary CTAs, focus states, and active nav   | Use primary blue for decorative elements or secondary actions              |
+| Maintain 7:1 contrast for primary text; 4.5:1 for all other text           | Ship any text combination that fails WCAG AA                               |
+| Apply Cairo for Arabic headlines and official titles                        | Mix Arabic typefaces within a single text block                            |
+| Use IBM Plex Sans Arabic for body copy and form labels                      | Use Inter or other Latin fonts for Arabic content                          |
+| Apply `md` elevation to cards/containers; `lg` only for hover and modals   | Apply more than one shadow level to a single element simultaneously        |
+| Use 150ms ease on all state changes (hover, focus, active)                  | Use bounce, spring, or elastic animations                                  |
+| Use 24px (md spacing) as the baseline section gutter                        | Use inconsistent gutters across equivalent layout regions                  |
+| Include a 2px focus ring on all interactive elements for keyboard nav       | Hide or suppress focus rings for aesthetic reasons                         |
+| Use semantic status colors (success/error/warning/info) consistently        | Use color for decoration or branding outside the semantic system           |
+| Show charts ONLY on CBY_ADMIN and BANK-ADMIN dashboards                     | Add KPIs, charts, or vanity metrics to operational role dashboards         |
+| Use `lg` radius (16px) for buttons, `md` (12px) for inputs, `xl` for modals| Use border-radius < 8px on any interactive element                        |
+| Give modal padding 40px (`spacing.lg`)                                      | Use 24px card padding for modals                                           |
+| Enforce sidebar collapse to 72px icons-only mode                            | Lock sidebar at fixed width with no collapse                               |
+| Render all 3 Arabic fonts: Cairo, Tajawal, IBM Plex Sans Arabic             | Load only IBM Plex Sans Arabic and skip Cairo or Tajawal                   |
+| Support both light and dark modes                                           | Build light-only UI                                                        |
+| Show merchant list as card grid for BANK-ADMIN                              | Use the same table layout for all roles                                    |
+| Show OTP step after credentials in login                                    | Implement single-step login without MFA                                    |
+| Use 1600px container max-width                                              | Cap content at 1280px                                                      |
+| Use `outline-variant` (`#cccccc`) for passive borders only                  | Use `outline-variant` as the border on primary interactive elements        |
+| Add `text-shadow: 0 1px 2px rgba(0,0,0,0.08)` to `label-sm` on color bg   | Place small 12px labels over colored backgrounds without legibility check  |
+| Use `inset 0 0 0 2px primary` box-shadow for selected list items            | Use background color alone to indicate selection                           |
