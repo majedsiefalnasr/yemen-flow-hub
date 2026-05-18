@@ -305,12 +305,6 @@ export const NAV_ITEMS: NavItem[] = [
     roles: [UserRole.CBY_ADMIN],
   },
   {
-    label: 'موظفو الجهة',
-    route: '/bank/users',
-    icon: 'user-check',
-    roles: [UserRole.BANK_REVIEWER],
-  },
-  {
     label: 'بيانات البنك',
     route: '/banks',
     icon: 'landmark',

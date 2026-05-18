@@ -59,14 +59,11 @@ describe('NAV_ITEMS role filtering', () => {
     expect(routes).not.toContain('/audit')
   })
 
-  it('BANK_REVIEWER sees bank users management', () => {
-    const routes = navItemsForRole(UserRole.BANK_REVIEWER).map(i => i.route)
-    expect(routes).toContain('/bank/users')
-  })
-
-  it('DATA_ENTRY does not see bank users management', () => {
-    const routes = navItemsForRole(UserRole.DATA_ENTRY).map(i => i.route)
-    expect(routes).not.toContain('/bank/users')
+  it('no role sees /bank/users (removed — no production page)', () => {
+    for (const role of Object.values(UserRole)) {
+      const routes = navItemsForRole(role).map(i => i.route)
+      expect(routes).not.toContain('/bank/users')
+    }
   })
 
   it('EXECUTIVE_MEMBER sees reports', () => {

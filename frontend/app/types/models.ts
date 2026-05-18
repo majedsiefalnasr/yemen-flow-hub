@@ -30,10 +30,19 @@ export interface Bank {
 
 export interface Merchant {
   id: number
+  bank_id: number
+  bank_name: string | null
   name: string
   commercial_register: string | null
+  tax_number: string | null
+  national_id: string | null
+  owner_name: string | null
+  phone: string | null
+  email: string | null
   address: string | null
-  bank_id: number
+  is_active: boolean
+  created_by: number | null
+  created_at: string | null
 }
 
 export interface ImportRequest {
@@ -277,4 +286,29 @@ export interface SearchResults {
   users: SearchUserResult[]
   banks: SearchBankResult[]
   customs: SearchCustomsResult[]
+}
+
+export interface AuditLog {
+  id: number
+  user: { id: number; name: string; email: string; role: string } | null
+  user_id: number | null
+  user_role: string | null
+  action: string
+  entity_type: string | null
+  entity_id: number | null
+  from_status: string | null
+  to_status: string | null
+  ip_address: string | null
+  metadata: Record<string, unknown> | null
+  created_at: string
+}
+
+export interface DocumentType {
+  id: number
+  slug: string
+  name_ar: string
+  name_en: string
+  is_required: boolean
+  is_active: boolean
+  sort_order: number
 }
