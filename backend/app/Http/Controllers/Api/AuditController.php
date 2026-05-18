@@ -42,6 +42,14 @@ class AuditController extends Controller
             ->latest('id')
             ->paginate(30);
 
-        return ApiResponse::success(AuditLogResource::collection($items), 'Audit logs retrieved.');
+        return ApiResponse::success([
+            'data' => AuditLogResource::collection($items)->resolve(),
+            'meta' => [
+                'current_page' => $items->currentPage(),
+                'last_page' => $items->lastPage(),
+                'per_page' => $items->perPage(),
+                'total' => $items->total(),
+            ],
+        ], 'Audit logs retrieved.');
     }
 }

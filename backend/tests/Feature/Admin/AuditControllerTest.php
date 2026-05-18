@@ -89,7 +89,7 @@ class AuditControllerTest extends TestCase
 
         $response->assertOk()
             ->assertJsonPath('success', true)
-            ->assertJsonStructure(['data' => [['id', 'action', 'created_at']]]);
+            ->assertJsonStructure(['data' => ['data' => [['id', 'action', 'created_at']], 'meta']]);
     }
 
     /** @test */
@@ -128,7 +128,7 @@ class AuditControllerTest extends TestCase
         $response = $this->actingAs($admin)->getJson('/api/audit');
 
         $response->assertOk();
-        $entry = $response->json('data.0');
+        $entry = $response->json('data.data.0');
 
         $this->assertNotNull($entry['user']);
         $this->assertSame($dataEntry->id, $entry['user']['id']);
@@ -155,7 +155,7 @@ class AuditControllerTest extends TestCase
         $response = $this->actingAs($admin)->getJson('/api/audit');
 
         $response->assertOk();
-        $entry = $response->json('data.0');
+        $entry = $response->json('data.data.0');
 
         $this->assertArrayHasKey('entity_type', $entry);
         $this->assertArrayHasKey('entity_id', $entry);
@@ -179,9 +179,11 @@ class AuditControllerTest extends TestCase
         $response = $this->actingAs($admin)->getJson('/api/audit');
 
         $response->assertOk();
-        // ApiResponse::success serializes the collection items as an array under data
-        $this->assertIsArray($response->json('data'));
-        $this->assertCount(5, $response->json('data'));
+        $this->assertIsArray($response->json('data.data'));
+        $this->assertCount(5, $response->json('data.data'));
+        $this->assertSame(1, $response->json('data.meta.current_page'));
+        $this->assertSame(30, $response->json('data.meta.per_page'));
+        $this->assertSame(5, $response->json('data.meta.total'));
     }
 
     // ─── GET /api/audit — filters ─────────────────────────────────────────────
@@ -205,7 +207,7 @@ class AuditControllerTest extends TestCase
         $response = $this->actingAs($admin)->getJson('/api/audit?action=LOGIN');
 
         $response->assertOk();
-        $data = $response->json('data');
+        $data = $response->json('data.data');
         $this->assertCount(1, $data);
         $this->assertSame('LOGIN', $data[0]['action']);
     }
@@ -230,7 +232,7 @@ class AuditControllerTest extends TestCase
         $response = $this->actingAs($admin)->getJson("/api/audit?user_id={$dataEntry->id}");
 
         $response->assertOk();
-        $data = $response->json('data');
+        $data = $response->json('data.data');
         $this->assertCount(1, $data);
         $this->assertSame($dataEntry->id, $data[0]['user_id']);
     }
@@ -251,7 +253,7 @@ class AuditControllerTest extends TestCase
         $response = $this->actingAs($admin)->getJson('/api/audit?from_date=2026-06-01&to_date=2026-06-30');
 
         $response->assertOk();
-        $this->assertCount(1, $response->json('data'));
+        $this->assertCount(1, $response->json('data.data'));
     }
 
     // ─── GET /api/requests/{id}/history ──────────────────────────────────────
