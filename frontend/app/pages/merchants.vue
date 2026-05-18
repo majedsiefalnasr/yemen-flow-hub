@@ -8,7 +8,7 @@ import type { CreateMerchantPayload, UpdateMerchantPayload } from '../composable
 
 definePageMeta({
   middleware: 'role',
-  requiredRoles: [UserRole.CBY_ADMIN],
+  requiredRoles: [UserRole.CBY_ADMIN, UserRole.BANK_ADMIN],
 })
 
 const { fetchMerchants, createMerchant, updateMerchant } = useMerchants()

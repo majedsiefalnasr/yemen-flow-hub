@@ -3,6 +3,8 @@ import { createSSRApp } from 'vue'
 import { renderToString } from 'vue/server-renderer'
 
 vi.stubGlobal('definePageMeta', vi.fn())
+const navigateToMock = vi.fn()
+vi.stubGlobal('navigateTo', navigateToMock)
 
 vi.mock('../../../composables/useMerchants', () => ({
   useMerchants: () => ({
@@ -56,5 +58,17 @@ describe('Story 5.7 page smoke tests', () => {
     const page = await import('../../../pages/admin/workflow-docs.vue')
     const html = await renderPage(page.default)
     expect(html).toContain('قواعد المستندات')
+  })
+
+  it('resolves Story 6.2 admin and staff route wrappers', async () => {
+    navigateToMock.mockClear()
+
+    await renderPage((await import('../../../pages/staff.vue')).default)
+    await renderPage((await import('../../../pages/admin/cby-staff.vue')).default)
+    await renderPage((await import('../../../pages/admin/entities.vue')).default)
+    await renderPage((await import('../../../pages/admin/roles.vue')).default)
+
+    expect(navigateToMock).toHaveBeenCalledWith('/users', { replace: true })
+    expect(navigateToMock).toHaveBeenCalledWith('/banks', { replace: true })
   })
 })

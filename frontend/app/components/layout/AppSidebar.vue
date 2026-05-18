@@ -55,7 +55,7 @@ async function handleLogout() {
     <!-- Brand -->
     <div class="sidebar-brand">
       <span class="brand-logo" aria-hidden="true">🏦</span>
-      <span v-if="!isCollapsed" class="brand-name">Yemen Flow Hub</span>
+      <span class="brand-name">Yemen Flow Hub</span>
     </div>
 
     <div class="sidebar-divider" />
@@ -74,7 +74,7 @@ async function handleLogout() {
         <span class="nav-icon" aria-hidden="true">
           <SidebarIcon :name="item.icon" />
         </span>
-        <span v-if="!isCollapsed" class="nav-label">{{ item.label }}</span>
+        <span class="nav-label">{{ item.label }}</span>
       </NuxtLink>
     </nav>
 
@@ -85,12 +85,12 @@ async function handleLogout() {
         <div class="user-avatar" aria-hidden="true">
           {{ auth.user?.name?.charAt(0) ?? '؟' }}
         </div>
-        <div v-if="!isCollapsed" class="user-details">
+        <div class="user-details">
           <span class="user-name">{{ auth.user?.name }}</span>
           <span class="user-role-chip">{{ auth.user ? (ROLE_LABELS[auth.user.role] ?? auth.user.role) : '' }}</span>
         </div>
       </div>
-      <button v-if="!isCollapsed" class="logout-btn" @click="handleLogout">
+      <button class="logout-btn" @click="handleLogout">
         تسجيل الخروج
       </button>
 
@@ -149,6 +149,13 @@ async function handleLogout() {
 
 .sidebar--collapsed {
   width: var(--sidebar-collapsed, 72px);
+}
+
+.sidebar--collapsed .brand-name,
+.sidebar--collapsed .nav-label,
+.sidebar--collapsed .user-details,
+.sidebar--collapsed .logout-btn {
+  display: none;
 }
 
 .sidebar-brand {
@@ -364,6 +371,23 @@ async function handleLogout() {
 
   .collapse-btn {
     display: none; /* no collapse on mobile — drawer handles show/hide */
+  }
+
+  .sidebar--collapsed .brand-name,
+  .sidebar--collapsed .nav-label,
+  .sidebar--collapsed .user-details,
+  .sidebar--collapsed .logout-btn {
+    display: flex;
+  }
+
+  .sidebar--collapsed .logout-btn {
+    display: block;
+  }
+
+  .sidebar--collapsed .nav-item,
+  .sidebar--collapsed .user-info {
+    justify-content: flex-start;
+    padding: 10px 12px;
   }
 }
 </style>
