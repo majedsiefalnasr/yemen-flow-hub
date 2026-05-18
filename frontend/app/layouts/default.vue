@@ -1,9 +1,15 @@
 <script setup lang="ts">
+import { computed, ref } from 'vue'
 import AppSidebar from '../components/layout/AppSidebar.vue'
 import AppHeader from '../components/layout/AppHeader.vue'
-import { ref } from 'vue'
+import { useSidebar } from '../composables/useSidebar'
 
 const mobileMenuOpen = ref(false)
+const { isCollapsed } = useSidebar()
+
+const mainMargin = computed(() =>
+  isCollapsed.value ? 'var(--sidebar-collapsed, 72px)' : 'var(--sidebar-expanded, 280px)'
+)
 
 function toggleMobileMenu() {
   mobileMenuOpen.value = !mobileMenuOpen.value
@@ -16,7 +22,7 @@ function toggleMobileMenu() {
     <AppSidebar :mobile-open="mobileMenuOpen" @close-mobile="mobileMenuOpen = false" />
 
     <!-- Main area -->
-    <div class="app-main">
+    <div class="app-main" :style="{ marginInlineEnd: mainMargin }">
       <AppHeader @toggle-mobile-menu="toggleMobileMenu" />
       <main class="app-content">
         <slot />
@@ -38,8 +44,7 @@ function toggleMobileMenu() {
   display: flex;
   flex-direction: column;
   min-width: 0;
-  /* offset for expanded sidebar (280px) */
-  margin-inline-end: var(--sidebar-expanded, 280px);
+  transition: margin-inline-end 200ms ease;
 }
 
 .app-content {
@@ -50,10 +55,21 @@ function toggleMobileMenu() {
   margin: 0 auto;
 }
 
+/* Tablet (601px–1024px) */
+@media (min-width: 601px) and (max-width: 1024px) {
+  .app-content {
+    padding: 16px;
+  }
+}
+
 /* Mobile (≤600px): sidebar hidden, no margin offset */
 @media (max-width: 600px) {
   .app-main {
-    margin-inline-end: 0;
+    margin-inline-end: 0 !important;
+  }
+
+  .app-content {
+    padding: 12px;
   }
 }
 </style>

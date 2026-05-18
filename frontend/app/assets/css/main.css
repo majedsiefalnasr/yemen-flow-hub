@@ -128,6 +128,15 @@
   --container-max: 1600px;
   --sidebar-expanded: 280px;
   --sidebar-collapsed: 72px;
+
+  /* ─── Sidebar tokens (separate from surface — enables future dark mode) ─── */
+  --sidebar: #ffffff;
+  --sidebar-foreground: #1c222b;
+  --sidebar-primary: #0066cc;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f0f4fa;
+  --sidebar-border: #cccccc;
+  --sidebar-ring: #0066cc;
 }
 
 /* ─── Global base ─── */

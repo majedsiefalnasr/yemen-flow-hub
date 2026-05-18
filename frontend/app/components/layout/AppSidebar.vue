@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../../stores/auth.store'
+import { useSidebar } from '../../composables/useSidebar'
 import { NAV_ITEMS, ROLE_LABELS } from '../../constants/workflow'
 import SidebarIcon from './SidebarIcon.vue'
 
@@ -16,6 +17,7 @@ const emit = defineEmits<{
 const auth = useAuthStore()
 const route = useRoute()
 const router = useRouter()
+const { isCollapsed, toggle } = useSidebar()
 
 const visibleNavItems = computed(() => {
   if (!auth.user) return []
@@ -44,13 +46,16 @@ async function handleLogout() {
   <!-- Sidebar -->
   <aside
     class="sidebar"
-    :class="{ 'sidebar--mobile-open': props.mobileOpen }"
+    :class="{
+      'sidebar--mobile-open': props.mobileOpen,
+      'sidebar--collapsed': isCollapsed,
+    }"
     aria-label="القائمة الرئيسية"
   >
     <!-- Brand -->
     <div class="sidebar-brand">
-      <span class="brand-logo">🏦</span>
-      <span class="brand-name">Yemen Flow Hub</span>
+      <span class="brand-logo" aria-hidden="true">🏦</span>
+      <span v-if="!isCollapsed" class="brand-name">Yemen Flow Hub</span>
     </div>
 
     <div class="sidebar-divider" />
@@ -63,12 +68,13 @@ async function handleLogout() {
         :to="item.route"
         class="nav-item"
         :class="{ 'nav-item--active': isActive(item.route) }"
+        :title="isCollapsed ? item.label : undefined"
         @click="emit('closeMobile')"
       >
         <span class="nav-icon" aria-hidden="true">
           <SidebarIcon :name="item.icon" />
         </span>
-        <span class="nav-label">{{ item.label }}</span>
+        <span v-if="!isCollapsed" class="nav-label">{{ item.label }}</span>
       </NuxtLink>
     </nav>
 
@@ -79,13 +85,38 @@ async function handleLogout() {
         <div class="user-avatar" aria-hidden="true">
           {{ auth.user?.name?.charAt(0) ?? '؟' }}
         </div>
-        <div class="user-details">
+        <div v-if="!isCollapsed" class="user-details">
           <span class="user-name">{{ auth.user?.name }}</span>
           <span class="user-role-chip">{{ auth.user ? (ROLE_LABELS[auth.user.role] ?? auth.user.role) : '' }}</span>
         </div>
       </div>
-      <button class="logout-btn" @click="handleLogout">
+      <button v-if="!isCollapsed" class="logout-btn" @click="handleLogout">
         تسجيل الخروج
+      </button>
+
+      <!-- Collapse toggle chevron -->
+      <button
+        class="collapse-btn"
+        :title="isCollapsed ? 'توسيع القائمة' : 'طي القائمة'"
+        :aria-label="isCollapsed ? 'توسيع القائمة' : 'طي القائمة'"
+        @click="toggle"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          class="collapse-icon"
+          :class="{ 'collapse-icon--collapsed': isCollapsed }"
+          aria-hidden="true"
+        >
+          <path d="M9 18l6-6-6-6" />
+        </svg>
       </button>
     </div>
   </aside>
@@ -105,13 +136,19 @@ async function handleLogout() {
   top: 0;
   bottom: 0;
   inset-inline-end: 0; /* RTL: right side */
-  width: 264px;
-  background-color: var(--color-surface);
-  border-inline-start: 1px solid var(--color-border); /* RTL: left border */
+  width: var(--sidebar-expanded, 280px);
+  background-color: var(--sidebar, #ffffff);
+  border-inline-start: 1px solid var(--sidebar-border, #cccccc);
   display: flex;
   flex-direction: column;
   z-index: 50;
   overflow-y: auto;
+  overflow-x: hidden;
+  transition: width 200ms ease;
+}
+
+.sidebar--collapsed {
+  width: var(--sidebar-collapsed, 72px);
 }
 
 .sidebar-brand {
@@ -119,6 +156,8 @@ async function handleLogout() {
   align-items: center;
   gap: 10px;
   padding: 20px 16px 16px;
+  overflow: hidden;
+  white-space: nowrap;
 }
 
 .brand-logo {
@@ -129,19 +168,23 @@ async function handleLogout() {
 .brand-name {
   font-size: 15px;
   font-weight: 600;
-  color: var(--color-text-primary);
+  color: var(--sidebar-foreground, #1c222b);
   font-family: var(--font-latin);
 }
 
 .sidebar-divider {
   height: 1px;
-  background-color: var(--color-border);
+  background-color: var(--sidebar-border, #cccccc);
   margin: 4px 16px;
+}
+
+.sidebar--collapsed .sidebar-divider {
+  margin: 4px 8px;
 }
 
 .sidebar-nav {
   flex: 1;
-  padding: 8px 8px;
+  padding: 8px;
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -155,18 +198,25 @@ async function handleLogout() {
   border-radius: 8px;
   font-size: 14px;
   font-weight: 400;
-  color: var(--color-text-primary);
+  color: var(--sidebar-foreground, #1c222b);
   text-decoration: none;
   transition: background-color 120ms ease, color 120ms ease;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.sidebar--collapsed .nav-item {
+  justify-content: center;
+  padding: 10px 0;
 }
 
 .nav-item:hover:not(.nav-item--active) {
-  background-color: var(--color-background);
+  background-color: var(--sidebar-accent, #f0f4fa);
 }
 
 .nav-item--active {
-  background-color: var(--color-primary);
-  color: #ffffff;
+  background-color: var(--sidebar-primary, #0066cc);
+  color: var(--sidebar-primary-foreground, #ffffff);
   font-weight: 500;
 }
 
@@ -194,14 +244,20 @@ async function handleLogout() {
   align-items: center;
   gap: 10px;
   padding: 10px 8px;
+  overflow: hidden;
+}
+
+.sidebar--collapsed .user-info {
+  justify-content: center;
+  padding: 10px 0;
 }
 
 .user-avatar {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background-color: var(--color-primary);
-  color: #ffffff;
+  background-color: var(--sidebar-primary, #0066cc);
+  color: var(--sidebar-primary-foreground, #ffffff);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -220,7 +276,7 @@ async function handleLogout() {
 .user-name {
   font-size: 14px;
   font-weight: 500;
-  color: var(--color-text-primary);
+  color: var(--sidebar-foreground, #1c222b);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -230,8 +286,8 @@ async function handleLogout() {
   display: inline-block;
   font-size: 11px;
   font-weight: 500;
-  color: var(--color-primary);
-  background-color: #e8f3fd;
+  color: var(--sidebar-primary, #0066cc);
+  background-color: var(--color-primary-container, #e3f2fd);
   padding: 1px 6px;
   border-radius: 9999px;
   font-family: var(--font-latin);
@@ -241,10 +297,10 @@ async function handleLogout() {
 .logout-btn {
   width: 100%;
   padding: 8px 12px;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--sidebar-border, #cccccc);
   border-radius: 8px;
   background-color: transparent;
-  color: var(--color-text-secondary);
+  color: var(--color-text-secondary, #6c757d);
   font-size: 13px;
   font-family: var(--font-arabic);
   cursor: pointer;
@@ -254,15 +310,48 @@ async function handleLogout() {
 }
 
 .logout-btn:hover {
-  background-color: var(--color-background);
-  color: var(--color-rejected);
+  background-color: var(--sidebar-accent, #f0f4fa);
+  color: var(--color-rejected, #c62828);
+}
+
+/* Collapse chevron button */
+.collapse-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 8px;
+  margin-top: 4px;
+  border: none;
+  border-radius: 8px;
+  background-color: transparent;
+  color: var(--color-text-secondary, #6c757d);
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.collapse-btn:hover {
+  background-color: var(--sidebar-accent, #f0f4fa);
+  color: var(--sidebar-foreground, #1c222b);
+}
+
+.collapse-icon {
+  /* RTL: chevron points left (toward content) when expanded */
+  transform: rotate(0deg);
+  transition: transform 200ms ease;
+}
+
+.collapse-icon--collapsed {
+  /* When collapsed: chevron points right (toward sidebar center) */
+  transform: rotate(180deg);
 }
 
 /* Mobile (≤600px): hide sidebar by default, show when mobileOpen */
 @media (max-width: 600px) {
   .sidebar {
-    transform: translateX(100%); /* hidden off-screen to the right */
-    transition: transform 200ms ease;
+    transform: translateX(100%); /* hidden off-screen to the right (RTL) */
+    transition: transform 200ms ease, width 200ms ease;
+    width: var(--sidebar-expanded, 280px) !important; /* always full width on mobile */
   }
 
   .sidebar--mobile-open {
@@ -271,6 +360,10 @@ async function handleLogout() {
 
   .sidebar-overlay {
     display: block;
+  }
+
+  .collapse-btn {
+    display: none; /* no collapse on mobile — drawer handles show/hide */
   }
 }
 </style>

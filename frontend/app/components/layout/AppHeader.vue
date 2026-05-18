@@ -88,11 +88,13 @@ onMounted(() => {
   justify-content: space-between;
   height: 56px;
   padding: 0 20px;
-  background-color: var(--color-surface);
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--color-border);
   position: sticky;
   top: 0;
-  z-index: 20;
+  z-index: 30;
   /* RTL: flex-row-reverse so "start" = right, "end" = left */
   flex-direction: row-reverse;
   gap: 12px;

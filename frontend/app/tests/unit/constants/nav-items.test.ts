@@ -37,9 +37,10 @@ describe('NAV_ITEMS role filtering', () => {
 
   it('CBY_ADMIN sees all admin routes', () => {
     const routes = navItemsForRole(UserRole.CBY_ADMIN).map(i => i.route)
-    expect(routes).toContain('/banks')
-    expect(routes).toContain('/users')
+    expect(routes).toContain('/admin/cby-staff')
+    expect(routes).toContain('/admin/entities')
     expect(routes).toContain('/admin/workflow-docs')
+    expect(routes).toContain('/admin/roles')
     expect(routes).toContain('/audit')
     expect(routes).toContain('/settings')
     expect(routes).toContain('/merchants')
@@ -47,16 +48,34 @@ describe('NAV_ITEMS role filtering', () => {
 
   it('DATA_ENTRY does not see admin routes', () => {
     const routes = navItemsForRole(UserRole.DATA_ENTRY).map(i => i.route)
-    expect(routes).not.toContain('/banks')
-    expect(routes).not.toContain('/users')
+    expect(routes).not.toContain('/admin/entities')
+    expect(routes).not.toContain('/admin/cby-staff')
     expect(routes).not.toContain('/audit')
     expect(routes).not.toContain('/merchants')
   })
 
   it('SUPPORT_COMMITTEE does not see admin routes', () => {
     const routes = navItemsForRole(UserRole.SUPPORT_COMMITTEE).map(i => i.route)
-    expect(routes).not.toContain('/banks')
+    expect(routes).not.toContain('/admin/entities')
     expect(routes).not.toContain('/audit')
+  })
+
+  it('BANK_ADMIN sees merchants, staff, reports, notifications', () => {
+    const routes = navItemsForRole(UserRole.BANK_ADMIN).map(i => i.route)
+    expect(routes).toContain('/dashboard')
+    expect(routes).toContain('/requests')
+    expect(routes).toContain('/merchants')
+    expect(routes).toContain('/staff')
+    expect(routes).toContain('/reports')
+    expect(routes).toContain('/notifications')
+  })
+
+  it('BANK_ADMIN does not see CBY admin routes', () => {
+    const routes = navItemsForRole(UserRole.BANK_ADMIN).map(i => i.route)
+    expect(routes).not.toContain('/audit')
+    expect(routes).not.toContain('/admin/cby-staff')
+    expect(routes).not.toContain('/admin/entities')
+    expect(routes).not.toContain('/admin/roles')
   })
 
   it('no role sees /bank/users (removed — no production page)', () => {

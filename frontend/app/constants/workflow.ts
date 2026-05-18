@@ -253,7 +253,13 @@ export const NAV_ITEMS: NavItem[] = [
     label: 'إدارة التجار',
     route: '/merchants',
     icon: 'building',
-    roles: [UserRole.CBY_ADMIN],
+    roles: [UserRole.CBY_ADMIN, UserRole.BANK_ADMIN],
+  },
+  {
+    label: 'الموظفون',
+    route: '/staff',
+    icon: 'user-check',
+    roles: [UserRole.BANK_ADMIN],
   },
   {
     label: 'البيان الجمركي',
@@ -287,16 +293,16 @@ export const NAV_ITEMS: NavItem[] = [
     roles: ALL_ROLES,
   },
   {
-    label: 'إدارة البنوك',
-    route: '/banks',
-    icon: 'landmark',
+    label: 'إدارة المستخدمين',
+    route: '/admin/cby-staff',
+    icon: 'users',
     roles: [UserRole.CBY_ADMIN],
   },
   {
-    label: 'مستخدمي النظام',
-    route: '/users',
-    icon: 'users',
-    roles: [UserRole.CBY_ADMIN, UserRole.BANK_ADMIN],
+    label: 'الكيانات',
+    route: '/admin/entities',
+    icon: 'landmark',
+    roles: [UserRole.CBY_ADMIN],
   },
   {
     label: 'قواعد المستندات',
@@ -305,22 +311,16 @@ export const NAV_ITEMS: NavItem[] = [
     roles: [UserRole.CBY_ADMIN],
   },
   {
-    label: 'بيانات البنك',
-    route: '/banks',
-    icon: 'landmark',
-    roles: [UserRole.BANK_ADMIN],
+    label: 'الصلاحيات',
+    route: '/admin/roles',
+    icon: 'shield-check',
+    roles: [UserRole.CBY_ADMIN],
   },
   {
     label: 'الإعدادات',
     route: '/settings',
     icon: 'settings',
     roles: ALL_ROLES,
-  },
-  {
-    label: 'إعدادات النظام',
-    route: '/admin/settings',
-    icon: 'sliders',
-    roles: [UserRole.CBY_ADMIN],
   },
 ]
 
@@ -369,12 +369,13 @@ export const STATUS_LABELS: Record<RequestStatus, string> = {
 }
 
 /** Routes that require authentication (all except login) */
-export const PROTECTED_ROUTES = ['/dashboard', '/requests', '/voting', '/customs', '/audit', '/reports', '/notifications', '/admin', '/admin/settings', '/bank', '/settings', '/merchants', '/banks', '/users']
+export const PROTECTED_ROUTES = ['/dashboard', '/requests', '/voting', '/customs', '/audit', '/reports', '/notifications', '/admin', '/bank', '/settings', '/merchants', '/staff']
 
 /** Route → allowed roles mapping for role middleware */
 export const ROUTE_ROLE_MAP: Record<string, UserRole[]> = {
-  '/requests/new': [UserRole.DATA_ENTRY],
-  '/merchants': [UserRole.CBY_ADMIN],
+  '/requests/new': [UserRole.DATA_ENTRY, UserRole.BANK_ADMIN],
+  '/merchants': [UserRole.CBY_ADMIN, UserRole.BANK_ADMIN],
+  '/staff': [UserRole.BANK_ADMIN],
   '/customs': [UserRole.COMMITTEE_DIRECTOR, UserRole.CBY_ADMIN],
   '/reports': [
     UserRole.CBY_ADMIN,
@@ -386,9 +387,9 @@ export const ROUTE_ROLE_MAP: Record<string, UserRole[]> = {
   ],
   '/audit': [UserRole.CBY_ADMIN],
   '/admin': [UserRole.CBY_ADMIN],
-  '/admin/settings': [UserRole.CBY_ADMIN],
-  '/banks': [UserRole.CBY_ADMIN, UserRole.BANK_ADMIN],
-  '/users': [UserRole.CBY_ADMIN, UserRole.BANK_ADMIN],
-  '/bank/users': [UserRole.BANK_REVIEWER],
+  '/admin/cby-staff': [UserRole.CBY_ADMIN],
+  '/admin/entities': [UserRole.CBY_ADMIN],
+  '/admin/roles': [UserRole.CBY_ADMIN],
+  '/admin/workflow-docs': [UserRole.CBY_ADMIN],
   '/settings': ALL_ROLES,
 }

@@ -281,9 +281,9 @@ describe('Role group constants', () => {
   })
 
   describe('Navigation and route map', () => {
-    it('allows BANK_ADMIN to reach users, own bank profile, and reports routes', () => {
-      expect(ROUTE_ROLE_MAP['/users']).toContain(UserRole.BANK_ADMIN)
-      expect(ROUTE_ROLE_MAP['/banks']).toContain(UserRole.BANK_ADMIN)
+    it('allows BANK_ADMIN to reach staff, merchants, and reports routes', () => {
+      expect(ROUTE_ROLE_MAP['/staff']).toContain(UserRole.BANK_ADMIN)
+      expect(ROUTE_ROLE_MAP['/merchants']).toContain(UserRole.BANK_ADMIN)
       expect(ROUTE_ROLE_MAP['/audit']).not.toContain(UserRole.BANK_ADMIN)
       expect(ROUTE_ROLE_MAP['/reports']).toContain(UserRole.BANK_ADMIN)
       expect(ROUTE_ROLE_MAP['/reports']).not.toContain(UserRole.SUPPORT_COMMITTEE)
@@ -294,8 +294,8 @@ describe('Role group constants', () => {
         .filter(item => item.roles.includes(UserRole.BANK_ADMIN))
         .map(item => item.route)
 
-      expect(bankAdminRoutes).toContain('/users')
-      expect(bankAdminRoutes).toContain('/banks')
+      expect(bankAdminRoutes).toContain('/staff')
+      expect(bankAdminRoutes).toContain('/merchants')
       expect(bankAdminRoutes).not.toContain('/audit')
       expect(bankAdminRoutes).toContain('/reports')
     })
