@@ -1,5 +1,5 @@
 ---
-stepsCompleted: ["step-01-validate-prerequisites", "step-02-design-epics", "step-03-create-stories", "step-04-final-validation"]
+stepsCompleted: ["step-01-validate-prerequisites", "step-02-design-epics", "step-03-create-stories", "step-04-final-validation", "epic-6-production-readiness"]
 inputDocuments:
   - docs/00-project-brief.md
   - docs/01-workflow-and-business-rules.md
@@ -9,10 +9,13 @@ inputDocuments:
   - docs/05-backend-guide.md
   - docs/06-api-reference.md
   - docs/07-task-breakdown.md
+  - docs/08-prototype-gap-analysis.md
+  - docs/ux/missing-ui-states.md
   - DESIGN.md
   - _bmad-output/planning-artifacts/project-context.md
   - _bmad-output/planning-artifacts/lovable-prototype-current-project-audit-2026-05-17.md
   - lovable/ (approved UX reference — workflow, dashboards, component hierarchy, RTL patterns)
+lastUpdated: "2026-05-18"
 ---
 
 # Yemen Flow Hub - Epic Breakdown
@@ -1568,3 +1571,614 @@ So that stakeholder-approved UX intent is preserved while replacing demo-only be
 - Keep Arabic RTL first and desktop-first responsive behavior.
 - Verify core pages at desktop and <=600px responsive widths where practical.
 - This story is a parity/signoff story; it should run after Stories 5.1-5.6 or be used as a rolling QA checklist across the sprint.
+
+---
+
+## Epic 6: Production Readiness & Full Prototype Parity
+
+**Purpose:** Close every gap identified in `docs/08-prototype-gap-analysis.md` so that the live production app matches the stakeholder-approved Lovable prototype (in `lovable/`) for all 8 roles. This epic covers design tokens, appshell, the new BANK-ADMIN role, login/auth, missing CBY Admin pages, request-detail/voting parity, and final polish including dark mode.
+
+**Source authorities (in order):**
+1. `docs/08-prototype-gap-analysis.md` — gap registry and sprint plan
+2. `docs/ux/missing-ui-states.md` — UX specs for RequestWizard, SwiftUploadModal, EmptyState, SkeletonLoaders, FormValidation
+3. `DESIGN.md` — corrected design token system (updated 2026-05-18)
+4. `lovable/screenshots/` — visual reference for all 8 roles (80+ screenshots)
+5. `lovable/src/` — prototype source (read-only; adapt intent, do not copy code)
+
+**Governance constraints (non-negotiable):**
+- Canonical role enum: `DATA_ENTRY`, `BANK_REVIEWER`, `SWIFT_OFFICER`, `SUPPORT_COMMITTEE`, `EXECUTIVE_MEMBER`, `COMMITTEE_DIRECTOR`, `CBY_ADMIN`, `BANK_ADMIN` (eighth role added in Story 6.3.1)
+- Canonical status enum: 18 values — frozen, as defined in `AGENTS.md`
+- All workflow transitions via `WorkflowService::transition()` — never direct model mutation
+- Do NOT modify `lovable/` contents
+- All frontend changes committed to both frontend team repo and root monorepo
+
+**Estimated total effort:** ~56 hours across 7 sprints
+
+---
+
+### Story 6.1: Design Token & Typography Foundation
+
+As a developer and stakeholder reviewer,
+I want the production frontend to use the correct design tokens from the confirmed Lovable prototype,
+So that every page renders with the stakeholder-approved colors, fonts, and spacing system instead of the previously incorrect values.
+
+> **Status: COMPLETED** (committed 2026-05-18 — Sprint 6.1)
+> Closes gaps: A1, A2, A3, A4, A5, A6, A9, E3
+
+**Acceptance Criteria:**
+
+**Given** `frontend/app/assets/css/main.css`
+**When** the page loads
+**Then** `--color-primary` is `#0066cc` (not `#0071e3`)
+**And** `--color-background` is `#ffffff` (not `#f5f5f7`)
+**And** all 8 surface-container variants are defined (`surface-dim` through `surface-container-highest`)
+**And** semantic status triplets exist for success/error/warning/info (text + bg + border each)
+**And** elevation tokens `--shadow-sm`, `--shadow-md`, `--shadow-lg`, `--shadow-focus` are defined
+**And** `--container-max` is `1600px`
+**And** `--sidebar-expanded` is `280px` and `--sidebar-collapsed` is `72px`
+
+**Given** `frontend/app/assets/css/fonts.css`
+**When** the stylesheet loads
+**Then** Cairo (weights 400/500/600/700) is imported for headlines
+**And** Tajawal (weights 400/500/700) is imported for section headers
+**And** IBM Plex Sans Arabic (all weights) is imported for body copy
+**And** Inter is imported as Latin fallback
+
+**Given** `frontend/app/layouts/default.vue`
+**When** the layout renders
+**Then** `max-width` of `.app-content` uses `var(--container-max, 1600px)`
+**And** sidebar offset uses `var(--sidebar-expanded, 280px)`
+
+**Given** a heading element (`h1`, `h2`, `h3`) anywhere in the app
+**When** rendered
+**Then** it uses the Cairo typeface
+
+**Given** a section header or role label
+**When** rendered
+**Then** it uses the Tajawal typeface
+
+**Given** body copy, form labels, or table data
+**When** rendered
+**Then** it uses IBM Plex Sans Arabic
+
+**Technical Requirements:**
+- All token changes made in `@theme {}` block only — no hardcoded hex values in component CSS
+- Legacy aliases (`--color-text-primary`, `--color-approved`, etc.) retained for backward compat with existing components until migrated
+- `*:focus-visible` uses `box-shadow: var(--shadow-focus)` instead of `outline: 2px solid primary`
+- No new components; only `main.css`, `fonts.css`, and `default.vue` are changed
+
+---
+
+### Story 6.2: AppShell & Layout Parity
+
+As a user of any role,
+I want the sidebar, header, and overall app shell to match the stakeholder-approved prototype layout,
+So that navigation feels consistent with the approved design and all role-specific pages are accessible.
+
+> **Estimate:** ~6 hours
+> Closes gaps: B1, B2, A7, E1, E2, E4
+
+**Acceptance Criteria:**
+
+**Given** any authenticated user viewing the app
+**When** they click the collapse chevron at the bottom of the sidebar
+**Then** the sidebar shrinks from 280px to 72px (icon-only, no text labels)
+**And** the main content area expands accordingly
+**And** the collapsed/expanded state persists in `localStorage` across page reloads
+
+**Given** the sidebar is in collapsed state (72px)
+**When** the user hovers over a nav icon
+**Then** a tooltip appears showing the nav item label in Arabic
+
+**Given** any authenticated page
+**When** the user scrolls down
+**Then** the sticky header remains visible with a semi-transparent blur background (`bg-surface/80 backdrop-blur-md`)
+**And** content behind the header is blurred, not visible through solid white
+
+**Given** the sidebar component
+**When** rendered with sidebar-specific CSS tokens defined
+**Then** it uses `--sidebar`, `--sidebar-foreground`, `--sidebar-primary`, `--sidebar-primary-foreground`, `--sidebar-accent`, `--sidebar-border`, `--sidebar-ring` tokens
+**And** these tokens are separate from the main surface tokens (enabling future dark mode)
+
+**Given** a user with role `BANK_ADMIN`
+**When** they view the sidebar
+**Then** they see nav items: لوحة التحكم, الطلبات, التجار, الموظفون, التقارير, الإشعارات
+
+**Given** a user with role `CBY_ADMIN`
+**When** they view the sidebar
+**Then** they see admin nav items including: لوحة التحكم, إدارة المستخدمين (cby-staff), الكيانات (entities), الصلاحيات (roles), الإعدادات, التقارير, التدقيق
+
+**Given** viewport ≤ 600px
+**When** the mobile menu is toggled
+**Then** the sidebar overlays the content as a drawer
+**And** content padding reduces to 12px
+
+**Given** viewport 601px–1024px (tablet)
+**When** the page loads
+**Then** content padding reduces to 16px
+
+**Technical Requirements:**
+- Sidebar collapse toggle: chevron button at sidebar bottom; `useSidebar` composable managing state + localStorage
+- Header: `position: sticky; top: 0; z-index: 30; backdrop-filter: blur(12px)` with `background: rgba(255,255,255,0.8)`
+- Sidebar nav items defined in a typed config array with `role[]` guards — not hardcoded in template
+- All new sidebar tokens added to `@theme {}` in `main.css` (not inline styles)
+- Commit to both frontend team repo and root monorepo
+
+---
+
+### Story 6.3.1: BANK_ADMIN Role — Backend Registration & API Scope
+
+As a platform architect,
+I want the `BANK_ADMIN` role registered in the canonical backend enum with correct RBAC and org-scoping,
+So that subsequent frontend pages can authenticate and call APIs as a BANK_ADMIN user.
+
+> **Estimate:** ~4 hours
+> Prerequisite for all 6.3.x stories
+
+**Acceptance Criteria:**
+
+**Given** `app/Enums/UserRole.php`
+**When** inspected
+**Then** `BANK_ADMIN = 'BANK_ADMIN'` exists in the enum
+
+**Given** `database/seeders/`
+**When** seeder runs
+**Then** a test BANK_ADMIN user exists with a `bank_id` foreign key pointing to a seeded bank
+
+**Given** a `BANK_ADMIN` user is authenticated
+**When** they call `GET /api/requests`
+**Then** the response includes only requests belonging to their bank (org-scoped)
+**And** they can see full internal workflow statuses (not simplified DATA_ENTRY statuses)
+
+**Given** a `BANK_ADMIN` user
+**When** they call any CBY-internal endpoint (audit logs, voting, support claim, etc.)
+**Then** the API returns `HTTP 403 WORKFLOW_IMMUTABLE_STATE` or role-guard 403
+
+**Given** a `BANK_ADMIN` user
+**When** they call `GET /api/users?bank_id={their_bank}`
+**Then** they receive only users belonging to their bank (not all system users)
+
+**Given** any `BANK_ADMIN` action
+**When** it succeeds or fails authorization
+**Then** it is logged to `audit_logs` with `actor_role = BANK_ADMIN`
+
+**Technical Requirements:**
+- Add `BANK_ADMIN` to `UserRole` enum (backend) and `UserRole` TypeScript enum (frontend)
+- Add `BANK_ADMIN` to `ROLE_LABELS` constant in `frontend/app/constants/workflow.ts`
+- Update `RequestPolicy` to allow BANK_ADMIN read access to own-bank requests
+- Update `UserPolicy` to allow BANK_ADMIN to list/manage own-bank users only
+- No new workflow transitions — BANK_ADMIN is an administrative role, not a workflow actor
+- Commit backend changes to both backend team repo and root monorepo
+- Commit frontend enum/constants changes to both frontend team repo and root monorepo
+
+---
+
+### Story 6.3.2: BANK_ADMIN Dashboard
+
+As a BANK_ADMIN user,
+I want a role-specific dashboard showing my bank's request activity, KPIs, and quick actions,
+So that I can monitor and manage my bank's financing operations at a glance.
+
+> **Estimate:** ~3 hours
+> Depends on: Story 6.3.1
+
+**Acceptance Criteria:**
+
+**Given** I am logged in as `BANK_ADMIN` and navigate to `/dashboard`
+**When** the page loads
+**Then** I see 5 KPI cards: total requests, pending requests, approved requests, rejected requests, total financed amount
+
+**Given** the dashboard has loaded
+**When** I view the chart section
+**Then** a line chart titled "حركة طلبات البنك الشهرية" is visible
+**And** it shows request volume over the last 6 months for my bank only
+
+**Given** the dashboard
+**When** I view the quick actions section
+**Then** I see a "تقديم طلب جديد" primary button that navigates to `/requests/new`
+
+**Given** the dashboard
+**When** I view the recent requests table
+**Then** it shows up to 10 most recent requests for my bank with: reference ID, merchant, amount, status badge, date
+
+**Given** my bank has no requests yet
+**When** the dashboard loads
+**Then** the recent requests table shows the EmptyState component (variant: `dashboard-queue` from `docs/ux/missing-ui-states.md` Spec 4)
+**And** KPI cards show `0` values, not loading errors
+
+**Given** the dashboard is loading data
+**When** the API call is in-flight
+**Then** skeleton loaders (stat-card variant from `docs/ux/missing-ui-states.md` Spec 5) replace the KPI cards
+**And** the table shows skeleton-row loaders
+
+**Technical Requirements:**
+- Component: `BankAdminDashboard.vue` in `frontend/app/components/dashboard/`
+- KPI data: extend `GET /api/dashboard` or add `GET /api/dashboard/bank` returning bank-scoped stats
+- Chart: use a lightweight chart library (Chart.js via vue-chartjs) or an SVG sparkline — no new heavy dependencies unless already installed
+- Dashboard page delegates to `BankAdminDashboard.vue` based on `auth.user.role === BANK_ADMIN`
+- Commit to both repos
+
+---
+
+### Story 6.3.3: BANK_ADMIN Merchant Management
+
+As a BANK_ADMIN user,
+I want to manage my bank's registered merchants via a card-grid interface with add/edit/suspend actions,
+So that I can maintain accurate importer records for financing requests.
+
+> **Estimate:** ~3 hours
+> Depends on: Story 6.3.1
+
+**Acceptance Criteria:**
+
+**Given** I navigate to `/merchants`
+**When** the page loads as `BANK_ADMIN`
+**Then** I see a card grid (3 columns on desktop, 2 on tablet, 1 on mobile) of merchant cards
+**And** each card shows: merchant name, commercial registration number, tax ID, status badge (نشط / موقوف), edit button, suspend/activate toggle
+
+**Given** I click "إضافة تاجر جديد"
+**When** the modal opens
+**Then** it contains: اسم التاجر (required), رقم السجل التجاري (required), الرقم الضريبي (required), العنوان (optional), نوع النشاط (select, optional)
+**And** the "حفظ" button is disabled until required fields are valid
+**And** submitting calls `POST /api/merchants`
+
+**Given** I click "تعديل" on a merchant card
+**When** the edit modal opens
+**Then** it is pre-filled with the merchant's current data
+**And** submitting calls `PUT /api/merchants/{id}`
+
+**Given** I click "تعليق" on an active merchant
+**When** confirmed in a confirmation dialog
+**Then** the merchant status changes to "موقوف" and the card badge updates
+**And** the action calls `PUT /api/merchants/{id}` with `status: suspended`
+
+**Given** there are no merchants yet
+**When** the page loads
+**Then** the EmptyState component shows (variant: `merchants` from `docs/ux/missing-ui-states.md` Spec 4)
+**And** the CTA "تسجيل تاجر جديد" opens the add merchant modal
+
+**Given** the page is loading merchants
+**When** the API is in-flight
+**Then** skeleton card loaders (card-grid variant from `docs/ux/missing-ui-states.md` Spec 5) are shown
+
+**Technical Requirements:**
+- Backend: `MerchantController` with `index` (org-scoped), `store`, `update` actions; `MerchantPolicy` scopes to `bank_id`
+- Frontend: `merchants.vue` page + `MerchantCard.vue` + `MerchantModal.vue` components
+- Card grid uses CSS Grid: `grid-template-columns: repeat(auto-fill, minmax(280px, 1fr))`
+- Modal uses shadcn-vue Dialog pattern
+- Commit to both repos
+
+---
+
+### Story 6.3.4: BANK_ADMIN Staff Management
+
+As a BANK_ADMIN user,
+I want to manage my bank's staff members with role and department assignments,
+So that I can onboard new bank employees and control their access levels.
+
+> **Estimate:** ~3 hours
+> Depends on: Story 6.3.1
+
+**Acceptance Criteria:**
+
+**Given** I navigate to `/staff`
+**When** the page loads as `BANK_ADMIN`
+**Then** I see a table of bank staff with columns: الاسم, الدور, القسم, الحالة (badge), تاريخ الإنضمام, الإجراءات
+**And** rows show only users where `bank_id = my_bank_id`
+
+**Given** I click "إضافة موظف"
+**When** the modal opens
+**Then** it contains: الاسم الكامل (required), البريد الإلكتروني (required), الدور (select: DATA_ENTRY | BANK_REVIEWER only), القسم (text, optional), كلمة المرور الأولية (required)
+**And** submitting calls `POST /api/users` with `bank_id` automatically set to my bank
+
+**Given** I click "تعديل" on a staff row
+**When** the edit modal opens
+**Then** the role select only shows `DATA_ENTRY` and `BANK_REVIEWER` (BANK_ADMIN cannot create CBY-level roles)
+**And** submitting calls `PUT /api/users/{id}`
+
+**Given** I deactivate a staff member
+**When** confirmed
+**Then** `is_active` is set to `false` via `PUT /api/users/{id}`
+**And** the status badge changes to "غير نشط"
+
+**Given** there are no staff members yet
+**When** the page loads
+**Then** EmptyState variant `staff` is shown with CTA "إضافة أول موظف"
+
+**Technical Requirements:**
+- Backend: extend existing `UserController` with BANK_ADMIN policy: can only manage `DATA_ENTRY` and `BANK_REVIEWER` users in own bank
+- Frontend: `staff.vue` page + `StaffModal.vue` component
+- Role select in modal filtered to `['DATA_ENTRY', 'BANK_REVIEWER']` for BANK_ADMIN (cannot escalate to CBY roles)
+- Commit to both repos
+
+---
+
+### Story 6.3.5: BANK_ADMIN Request Wizard (4-Step)
+
+As a BANK_ADMIN or DATA_ENTRY user,
+I want to submit a new financing request through a clear 4-step wizard,
+So that I can provide all required information in a guided, validated, step-by-step form before sending for review.
+
+> **Estimate:** ~6 hours
+> Depends on: Story 6.3.1
+> UX spec: `docs/ux/missing-ui-states.md` Spec 1 (RequestWizard), Spec 3 (FormValidation)
+
+**Acceptance Criteria:**
+
+**Given** I navigate to `/requests/new`
+**When** the page loads
+**Then** I see a horizontal stepper with 4 steps: بيانات الطلب → بيانات المورد → الوثائق المطلوبة → المراجعة والإرسال
+**And** the active step is highlighted in primary blue with a ring; completed steps show a green checkmark; future steps show a gray empty circle
+
+**Given** I am on Step 1 (بيانات الطلب)
+**When** I fill in the form
+**Then** I see: نوع الواردات (select, required), مبلغ التمويل (number with inline currency selector, required), العملة (select, required), شروط الدفع (select, required), تاريخ الاستحقاق (date picker, optional), المستورد (searchable select for BANK_ADMIN; read-only prefilled for DATA_ENTRY), ملاحظات إضافية (textarea, optional)
+
+**Given** I click "التالي" on Step 1 with empty required fields
+**When** validation runs
+**Then** each empty required field shows a 2px `#c62828` border + ⚠ icon + Arabic error message below
+**And** a form-level error banner appears at the top: `#fff8e1` background, "يوجد (N) حقول تحتاج إلى تصحيح قبل المتابعة."
+**And** the page auto-scrolls to the first error field
+
+**Given** I am on Step 2 (بيانات المورد)
+**When** I fill in the form
+**Then** I see: اسم المورد (required), رقم الفاتورة (required), بلد المنشأ (searchable select, required), تاريخ الفاتورة (date, required), ميناء الوصول (select: عدن/الحديدة/المكلا, required), ميناء الشحن (text, optional), الجمارك المختصة (auto-filled from port, overridable select), رقم بوليصة الشحن (text, optional)
+
+**Given** I am on Step 3 (الوثائق المطلوبة)
+**When** I view the upload grid
+**Then** I see a 2×2 grid of upload zones: الفاتورة الأولية (إلزامي), السجل التجاري (إلزامي), البطاقة الضريبية (إلزامي), مستندات إضافية (اختياري)
+**And** each zone has a dashed `#cccccc` border with upload icon, title, format hint, and "أضغط للرفع" button
+**And** drag-and-drop is supported
+
+**Given** I upload a file in Step 3
+**When** upload succeeds
+**Then** the zone shows: file name chip + ✓ icon + ✗ remove button + green `#1b5e20` border + `#f1f8f4` background
+
+**Given** I upload a non-PDF file in Step 3
+**When** upload is attempted
+**Then** the zone shows an error state: 2px `#c62828` border + "يجب أن يكون الملف بصيغة PDF أو JPG" message
+
+**Given** I am on Step 4 (المراجعة والإرسال)
+**When** I view the page
+**Then** I see a read-only summary card of all entered data grouped by section
+**And** I see an acknowledgment checkbox: "أُقر بأن جميع البيانات والمستندات المقدمة صحيحة وكاملة."
+**And** the "إرسال للمراجعة" primary button is disabled until the checkbox is checked
+
+**Given** I click "حفظ كمسودة" on any step
+**When** the action completes
+**Then** the request is saved as `DRAFT` status via `POST /api/requests` with `status: draft`
+**And** I remain on the current step
+
+**Given** I click "إرسال للمراجعة" on Step 4 with checkbox checked
+**When** the submission succeeds
+**Then** the request status changes to `SUBMITTED`
+**And** I am redirected to the request detail page with a success toast
+
+**Technical Requirements:**
+- Component: `RequestWizard.vue` with child step components: `WizardStep1.vue`, `WizardStep2.vue`, `WizardStep3.vue`, `WizardStep4.vue`
+- Stepper: `WizardStepper.vue` — receives `steps[]`, `currentStep`, emits `step-click` (only for completed steps)
+- State: managed via `useRequestWizard()` composable; no business logic in Vue components
+- Validation: VeeValidate + Zod per-step schemas; only current step validated on "التالي"
+- File uploads: reuse `DocumentUploadZone.vue` pattern from Story 2.2
+- Bottom nav bar: sticky, `position: sticky; bottom: 0; background: #ffffff; border-top: 1px solid #cccccc; z-index: 10`
+- DATA_ENTRY: merchant field rendered as read-only text, pre-filled from `auth.user.organization`
+- Commit to both repos
+
+---
+
+### Story 6.4: Login Page Redesign & OTP/MFA Flow
+
+As a user on any role,
+I want to log in through a professional two-column login page with an OTP verification step,
+So that the first interaction with the system matches the stakeholder-approved design and security requirements.
+
+> **Estimate:** ~4 hours
+> Closes gaps: C1, D1
+> Reference screenshots: `CBY_ADMIN/login.png`, `CBY_ADMIN/login-otp.png`
+
+**Acceptance Criteria:**
+
+**Given** I navigate to `/login`
+**When** the page loads
+**Then** I see a two-column layout: left column (50%) with the login form, right column (50%) with a primary blue (`#0066cc`) branded hero panel
+**And** the hero panel shows the CBY logo, platform name in Arabic, and a tagline
+
+**Given** the login page on desktop
+**When** rendered
+**Then** the form column has a centered card with: CBY logo, platform name, email input, password input, "تسجيل الدخول" primary button, "مصادقة متعددة العوامل (MFA) مفعّلة" footer note
+
+**Given** the login page on mobile (≤600px)
+**When** rendered
+**Then** only the form column is shown; the hero panel is hidden
+
+**Given** I submit valid credentials
+**When** the API returns a response requiring MFA
+**Then** the page transitions to the OTP step without a full page reload
+**And** I see 6 individual single-digit input cells, a "تأكيد ودخول" primary button, and a "رجوع" link
+
+**Given** I am on the OTP step
+**When** I type a digit
+**Then** focus automatically moves to the next cell
+
+**Given** I am on the OTP step
+**When** I paste a 6-digit code
+**Then** all 6 cells are filled automatically
+
+**Given** I submit a correct OTP
+**When** the API validates it
+**Then** I am redirected to `/dashboard`
+
+**Given** I submit an incorrect OTP
+**When** the API returns an error
+**Then** all 6 cells show a red error border (`#c62828`)
+**And** an error message appears: "الرمز المدخل غير صحيح. حاول مرة أخرى."
+
+**Technical Requirements:**
+- Login page: `login.vue` — two-column CSS Grid layout (50/50 on ≥ 1024px, full-width below)
+- OTP step: rendered in the same `login.vue` page via `v-if="otpStep"` — not a separate route
+- OTP cells: 6× `<input type="text" maxlength="1">` with `keydown` handler for auto-advance and `paste` handler for fill-all
+- Backend: existing Sanctum login + add `POST /api/auth/verify-otp` endpoint (or extend current login to support MFA token validation)
+- The demo RoleSwitcher (persona picker) in the login form is a **demo-only feature** — implement as a `v-if="isDemoMode"` block that is disabled/hidden in production; wire to an env variable `NUXT_PUBLIC_DEMO_MODE`
+- Commit to both repos
+
+---
+
+### Story 6.5: Missing CBY Admin Pages
+
+As a CBY_ADMIN user,
+I want access to system user management, entity management, role management, a full settings page, and a profile page,
+So that I can administer the platform fully from the browser without backend-only tooling.
+
+> **Estimate:** ~10 hours
+> Closes gaps: C4, C6, C7, C8, C9
+
+**Acceptance Criteria:**
+
+**Given** I navigate to `/admin/cby-staff`
+**When** the page loads as `CBY_ADMIN`
+**Then** I see a table of all system users (all banks, all roles) with: name, email, role badge, bank/entity, status, last-seen, actions (edit, deactivate)
+**And** I can filter by role, bank, and status
+
+**Given** I click "إضافة مستخدم نظام"
+**When** the modal opens
+**Then** it contains fields for all canonical roles including `CBY_ADMIN` and `BANK_ADMIN`
+**And** bank_id is required only for bank roles (`DATA_ENTRY`, `BANK_REVIEWER`, `BANK_ADMIN`)
+
+**Given** I navigate to `/admin/entities`
+**When** the page loads
+**Then** I see a table of all registered banks/entities with: entity name, entity type, license number, status, assigned users count, actions (edit, activate/deactivate)
+
+**Given** I navigate to `/admin/roles`
+**When** the page loads
+**Then** I see a read-only table of all 8 canonical roles with their descriptions, permissions list, and user count
+
+**Given** I navigate to `/settings`
+**When** the page loads as `CBY_ADMIN`
+**Then** I see 6 tabs: سير العمل, البريد الإلكتروني, الإشعارات, الأمن, عام, بيانات العرض التوضيحي
+
+**Given** I navigate to `/settings` tab "الأمن"
+**When** I view the content
+**Then** I see account lockout configuration (threshold, duration), session timeout settings, and MFA enforcement toggle
+
+**Given** I navigate to `/profile`
+**When** the page loads for any authenticated user
+**Then** I see: avatar upload/change, full name, email (read-only), role badge, stats (total actions, last login), recent activity list
+**And** I see "تغيير كلمة المرور" button and "تفعيل/إلغاء MFA" toggle
+
+**Technical Requirements:**
+- `/admin/cby-staff` route: guard with `role === CBY_ADMIN` middleware
+- `/admin/entities`: uses existing banks API (`GET /api/banks`) — extend if needed
+- `/admin/roles`: static data component; role definitions from `AGENTS.md` constants — no API needed
+- `/settings`: 6-tab layout using shadcn-vue `Tabs`; each tab is a separate component; only "بيانات العرض التوضيحي" tab is conditionally hidden in production (`NUXT_PUBLIC_DEMO_MODE`)
+- `/profile`: available to all authenticated roles; uses `GET /api/auth/user` for data; avatar upload calls `POST /api/profile/avatar`
+- Commit to both repos
+
+---
+
+### Story 6.6: Request Detail & Voting Panel Parity
+
+As a workflow participant (any role with access to request detail),
+I want the request detail page to match the prototype with full voting panel, document checklist, and correct tab structure,
+So that all workflow actions are visible and usable as approved.
+
+> **Estimate:** ~8 hours
+> Closes gaps: B4, B6, B8, C3, D7, D8
+
+**Acceptance Criteria:**
+
+**Given** I view any request detail page
+**When** the page loads
+**Then** I see 3 to 4 tabs depending on workflow stage: المعلومات, الوثائق, الأطراف, (التصويت — only when `EXECUTIVE_VOTING_OPEN` or `EXECUTIVE_VOTING_CLOSED`)
+
+**Given** I view the "الوثائق" tab
+**When** it renders
+**Then** I see `DocumentChecklist.vue`: a list of required and optional documents for the current workflow stage
+**And** each document row shows: document type, required/optional badge, upload status (مرفوع / مطلوب / غير مطلوب), file name if uploaded, download button if uploaded
+
+**Given** the request is in `EXECUTIVE_VOTING_OPEN` state and I view the "التصويت" tab
+**When** it renders
+**Then** I see the voting tally bar: موافقة N | رفض N | امتناع N
+**And** I see 6 committee member rows with: member name, email (@cby.gov.ye), and individual vote status badge (موافق / رافض / ممتنع / لم يصوت بعد)
+**And** if I have not yet voted, I see a vote form: optional textarea + 3 buttons (موافق green / رافض red / ممتنع gray)
+
+**Given** I am `COMMITTEE_DIRECTOR` viewing the voting tab
+**When** the session is not yet open
+**Then** I see "فتح جلسة التصويت" button only
+**When** the session is open
+**Then** I see "إغلاق جلسة التصويت" button + tie-break notice if `yesCount === noCount`
+
+**Given** `yesCount === noCount` in an open voting session
+**When** any user views the voting panel
+**Then** a notice banner appears: "تعادل — يُرجَّح صوت المدير عند التعادل"
+
+**Given** a request is in a locked state
+**When** I view the detail page
+**Then** `LockedBanner.vue` shows one of 3 variants:
+- `locked`: Lock icon, "هذا الطلب مقفل ولا يمكن اتخاذ أي إجراء عليه" (terminal states)
+- `readonly`: Eye icon, "هذا الطلب في وضع القراءة فقط" (intermediate locked states)
+- `pending`: Clock icon, "هذا الطلب قيد المراجعة — لا يمكن إجراء تعديلات حتى اكتمال المرحلة الحالية"
+
+**Given** the support claim is held by another user
+**When** I view the request in `SUPPORT_REVIEW_IN_PROGRESS`
+**Then** a blocking banner appears: "هذا الطلب محجوز حالياً بواسطة [اسم المستخدم]" (from `isClaimedByOther()`)
+**And** all action buttons are disabled
+
+**Technical Requirements:**
+- `DocumentChecklist.vue`: accepts `requestId`, `currentStatus` props; calls `GET /api/requests/{id}/documents`; shows per-stage required docs from a stage-to-docs mapping constant
+- `VotingPanel.vue`: refactor existing component to show 6 member rows using `GET /api/voting/{sessionId}/votes`; tally bar using `computed` from votes array
+- `LockedBanner.vue`: add `variant` prop (`'locked' | 'readonly' | 'pending'`); map variant to icon + message
+- Tie-break notice: `computed(() => votes.yes === votes.no && session.isOpen)` → renders notice banner
+- `isClaimedByOther()`: existing helper — verify it renders a banner on the detail page (not just console warning)
+- Commit to both repos
+
+---
+
+### Story 6.7: Polish, Dark Mode & Final Parity
+
+As a stakeholder reviewing the application,
+I want dark mode, a consistent Lucide icon system, the customs print page, and an in-app role switcher,
+So that the application is production-ready and matches the full approved prototype for the final acceptance review.
+
+> **Estimate:** ~8 hours
+> Closes gaps: B9, B11, C10, D2, D4
+
+**Acceptance Criteria:**
+
+**Given** any authenticated page
+**When** I click the dark/light toggle in the header
+**Then** the entire interface switches to a dark color scheme without page reload
+**And** the preference is persisted in `localStorage`
+
+**Given** dark mode is active
+**When** I view any page
+**Then** `background` renders as `#0c121a` (inverse-surface)
+**And** `on-surface` text renders as `#f0f0f0` (inverse-on-surface)
+**And** `primary` color remains `#0066cc` but interactive elements use `inverse-primary` (`#4da6ff`) for contrast
+
+**Given** any icon in the app (sidebar, actions, status indicators)
+**When** rendered
+**Then** it uses a Lucide Vue icon (`lucide-vue-next`) rather than a hardcoded SVG path
+**And** `SidebarIcon.vue` is replaced by direct Lucide icon usage
+
+**Given** I navigate to `/customs/{id}/print`
+**When** the page loads
+**Then** I see an A4 paper preview of the customs declaration document
+**And** I see zoom controls and a "طباعة" button
+**And** an issuance confirmation dialog appears before the print action executes
+
+**Given** I am in demo mode (`NUXT_PUBLIC_DEMO_MODE=true`)
+**When** I view the authenticated header
+**Then** I see a "تبديل الدور" (role switcher) dropdown showing all 8 canonical roles
+**And** selecting a role logs me in as that role's demo user without a full logout/login cycle
+
+**Given** a shadcn-vue Dialog (modal)
+**When** it opens
+**Then** the overlay has `background: rgba(12, 18, 26, 0.4)` with `backdrop-filter: blur(4px)`
+
+**Technical Requirements:**
+- Dark mode: CSS class strategy — add/remove `dark` class on `<html>`; define dark-variant CSS custom properties in `[html.dark]` selector block in `main.css`
+- Lucide Vue: `npm install lucide-vue-next`; create `Icon.vue` wrapper for consistent sizing; replace all hardcoded SVGs in `SidebarIcon.vue` and throughout
+- Customs print page: `pages/customs/[id]/print.vue`; uses `@media print` CSS for clean output; zoom via CSS `transform: scale()`
+- RoleSwitcher: `RoleSwitcher.vue` component gated by `isDemoMode`; calls existing `/api/auth/login` with demo credentials per role
+- shadcn-vue Dialog overlay: override `.dialog-overlay` CSS in `main.css`
+- Commit to both repos
