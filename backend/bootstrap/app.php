@@ -9,7 +9,9 @@ use Illuminate\Validation\ValidationException;
 use Illuminate\Http\Request;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Exceptions\ThrottleRequestsException;
+use Illuminate\Session\TokenMismatchException;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful;
 use App\Support\ApiResponse;
@@ -52,6 +54,18 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->render(function (AuthenticationException $e, Request $request) {
             if ($request->is('api/*')) {
                 return ApiResponse::unauthorized();
+            }
+        });
+
+        $exceptions->render(function (TokenMismatchException $e, Request $request) {
+            if ($request->is('api/*')) {
+                return ApiResponse::error('CSRF token mismatch.', [], 419);
+            }
+        });
+
+        $exceptions->render(function (HttpException $e, Request $request) {
+            if ($request->is('api/*') && $e->getStatusCode() === 419) {
+                return ApiResponse::error('CSRF token mismatch.', [], 419);
             }
         });
 
