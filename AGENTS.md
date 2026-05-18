@@ -252,21 +252,28 @@ Tool prefixes vary by client:
 
 Full rules in `DESIGN.md`. Key values:
 
-| Token           | Value     |
-| --------------- | --------- |
-| Background      | #f5f5f7   |
-| Surface         | #ffffff   |
-| Primary Text    | #1d1d1f   |
-| Border          | #d2d2d7   |
-| Primary Blue    | #0071e3   |
-| Approved Green  | #34c759   |
-| Rejected Red    | #ff3b30   |
-| Pending Amber   | #ff9f0a   |
-| Voting Indigo   | #5856d6   |
-| SWIFT Cyan      | #32ade6   |
-| Locked Gray     | #8e8e93   |
-| Font (Arabic)   | IBM Plex Sans Arabic |
-| Font (English)  | Inter     |
-| Card Radius     | 12px      |
+| Token           | Value                   |
+| --------------- | ----------------------- |
+| Background      | #ffffff                 |
+| Surface         | #ffffff                 |
+| Primary Text    | #1c222b                 |
+| Border          | #cccccc (outline-variant) |
+| Primary Blue    | #0066cc                 |
+| Success Text    | #1b5e20                 |
+| Error Text      | #c62828                 |
+| Warning Text    | #f57f17                 |
+| Voting Indigo   | #5856d6                 |
+| SWIFT Cyan      | #32ade6                 |
+| Locked Gray     | #8e8e93                 |
+| Font (headlines)| Cairo                   |
+| Font (sections) | Tajawal                 |
+| Font (body)     | IBM Plex Sans Arabic    |
+| Font (Latin)    | Inter                   |
+| Button Radius   | 16px (lg)               |
+| Input Radius    | 12px (md)               |
+| Modal Radius    | 24px (xl)               |
+| Sidebar expanded | 280px                  |
+| Sidebar collapsed | 72px                  |
+| Container max   | 1600px                  |
 
 Platform is **desktop-first** with responsive degradation at ≤ 600px. RTL is the default direction.
