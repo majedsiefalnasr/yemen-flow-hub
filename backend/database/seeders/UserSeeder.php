@@ -41,9 +41,10 @@ class UserSeeder extends Seeder
             );
         }
 
-        // Bank users — 3 canonical bank roles per bank (DATA_ENTRY, BANK_REVIEWER, SWIFT_OFFICER)
+        // Bank users — 4 canonical bank roles per bank (BANK_ADMIN, DATA_ENTRY, BANK_REVIEWER, SWIFT_OFFICER)
         $bankSpecific = [
             'YBRD' => [
+                ['role' => UserRole::BANK_ADMIN, 'name' => 'فاطمة المقطري', 'email' => 'admin@ybrd.com.ye'],
                 ['role' => UserRole::DATA_ENTRY, 'name' => 'علي القاضي', 'email' => 'entry@ybrd.com.ye'],
                 ['role' => UserRole::BANK_REVIEWER, 'name' => 'نوال الحاج', 'email' => 'reviewer@ybrd.com.ye'],
                 ['role' => UserRole::SWIFT_OFFICER, 'name' => 'سامي العتمي', 'email' => 'swift@ybrd.com.ye'],
@@ -62,6 +63,7 @@ class UserSeeder extends Seeder
         foreach ($activeBanks as $bank) {
             $code = strtolower($bank->code);
             $rows = $bankSpecific[$bank->code] ?? [
+                ['role' => UserRole::BANK_ADMIN, 'name' => $namePool[$nameIdx++ % count($namePool)], 'email' => "admin@{$code}.com.ye"],
                 ['role' => UserRole::DATA_ENTRY, 'name' => $namePool[$nameIdx++ % count($namePool)], 'email' => "entry@{$code}.com.ye"],
                 ['role' => UserRole::BANK_REVIEWER, 'name' => $namePool[$nameIdx++ % count($namePool)], 'email' => "reviewer@{$code}.com.ye"],
                 ['role' => UserRole::SWIFT_OFFICER, 'name' => $namePool[$nameIdx++ % count($namePool)], 'email' => "swift@{$code}.com.ye"],
@@ -86,10 +88,11 @@ class UserSeeder extends Seeder
         $this->command?->line('  - 2 SUPPORT_COMMITTEE');
         $this->command?->line('  - 1 COMMITTEE_DIRECTOR');
         $this->command?->line('  - 6 EXECUTIVE_MEMBER');
-        $this->command?->line('✓ Bank users (4 active banks × 3 canonical roles):');
+        $this->command?->line('✓ Bank users (4 active banks × 4 canonical roles):');
+        $this->command?->line('  - 4 BANK_ADMIN');
         $this->command?->line('  - 4 DATA_ENTRY');
         $this->command?->line('  - 4 BANK_REVIEWER');
         $this->command?->line('  - 4 SWIFT_OFFICER');
-        $this->command?->line('✓ Total: ~22 users');
+        $this->command?->line('✓ Total: ~26 users');
     }
 }

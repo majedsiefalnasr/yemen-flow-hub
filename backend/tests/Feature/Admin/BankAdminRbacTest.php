@@ -166,6 +166,48 @@ class BankAdminRbacTest extends TestCase
         ])->assertForbidden();
     }
 
+    // ─── AC-3: GET /api/requests is org-scoped ───────────────────────────────
+
+    public function test_bank_admin_request_list_returns_only_own_bank_requests(): void
+    {
+        $ownRequest = $this->makeRequest($this->bank, RequestStatus::SUBMITTED);
+        $this->makeRequest($this->otherBank, RequestStatus::SUBMITTED);
+
+        $response = $this->actingAs($this->bankAdmin)->getJson('/api/requests');
+
+        $response->assertOk();
+        $ids = collect($response->json('data'))->pluck('id');
+        $this->assertTrue($ids->contains($ownRequest->id));
+        $this->assertEquals(1, $ids->count());
+    }
+
+    public function test_bank_admin_request_list_excludes_other_bank_requests(): void
+    {
+        $this->makeRequest($this->otherBank, RequestStatus::BANK_REVIEW);
+        $this->makeRequest($this->otherBank, RequestStatus::SUBMITTED);
+
+        $response = $this->actingAs($this->bankAdmin)->getJson('/api/requests');
+
+        $response->assertOk();
+        $this->assertEmpty($response->json('data'));
+    }
+
+    // ─── AC-4: CBY-internal endpoints return 403 ─────────────────────────────
+
+    public function test_bank_admin_cannot_access_voting_list(): void
+    {
+        $this->actingAs($this->bankAdmin)->getJson('/api/voting')->assertForbidden();
+    }
+
+    public function test_bank_admin_cannot_claim_support_review(): void
+    {
+        $request = $this->makeRequest($this->bank, RequestStatus::SUPPORT_REVIEW_PENDING);
+
+        $this->actingAs($this->bankAdmin)
+            ->postJson("/api/workflow/{$request->id}/claim-support-review")
+            ->assertForbidden();
+    }
+
     public function test_bank_admin_dashboard_is_own_bank_scoped_and_global_areas_forbidden(): void
     {
         $this->makeRequest($this->bank, RequestStatus::SUBMITTED);
