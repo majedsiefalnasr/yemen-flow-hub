@@ -1,0 +1,92 @@
+{
+  "nodes": [
+    {
+      "id": "sanctum_php",
+      "label": "sanctum.php",
+      "file_type": "code",
+      "source_file": "sanctum.php",
+      "source_location": "L1"
+    },
+    {
+      "id": "auth_php",
+      "label": "auth.php",
+      "file_type": "code",
+      "source_file": "auth.php",
+      "source_location": "L1"
+    },
+    {
+      "id": "database_php",
+      "label": "database.php",
+      "file_type": "code",
+      "source_file": "database.php",
+      "source_location": "L1"
+    },
+    {
+      "id": "cache_php",
+      "label": "cache.php",
+      "file_type": "code",
+      "source_file": "cache.php",
+      "source_location": "L1"
+    },
+    {
+      "id": "queue_php",
+      "label": "queue.php",
+      "file_type": "code",
+      "source_file": "queue.php",
+      "source_location": "L1"
+    },
+    {
+      "id": "documents_php",
+      "label": "documents.php",
+      "file_type": "code",
+      "source_file": "documents.php",
+      "source_location": "L1"
+    },
+    {
+      "id": "l5_swagger_php",
+      "label": "l5-swagger.php",
+      "file_type": "code",
+      "source_file": "l5-swagger.php",
+      "source_location": "L1"
+    },
+    {
+      "id": "cors_php",
+      "label": "cors.php",
+      "file_type": "code",
+      "source_file": "cors.php",
+      "source_location": "L1"
+    },
+    {
+      "id": "workflow_php",
+      "label": "workflow.php",
+      "file_type": "code",
+      "source_file": "workflow.php",
+      "source_location": "L1"
+    }
+  ],
+  "edges": [
+    {
+      "source": "sanctum_php",
+      "target": "sanctum",
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "sanctum.php",
+      "source_location": "L3",
+      "weight": 1.0
+    },
+    {
+      "source": "database_php",
+      "target": "str",
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "database.php",
+      "source_location": "L3",
+      "weight": 1.0
+    }
+  ],
+  "input_tokens": 0,
+  "output_tokens": 0,
+  "hyperedges": []
+}

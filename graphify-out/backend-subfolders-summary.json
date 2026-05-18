@@ -1,0 +1,125 @@
+[
+  {
+    "name": "app",
+    "status": "ok",
+    "total": 119,
+    "words": 20269,
+    "nodes": 609,
+    "edges": 691,
+    "communities": 99,
+    "god_nodes": [
+      "ApiResponse",
+      "ImportRequest",
+      "WorkflowController",
+      "ReportController",
+      "DashboardController"
+    ],
+    "surprises_count": 0
+  },
+  {
+    "name": "bootstrap",
+    "status": "ok",
+    "total": 4,
+    "words": 1289,
+    "nodes": 4,
+    "edges": 0,
+    "communities": 4,
+    "god_nodes": [],
+    "surprises_count": 0
+  },
+  {
+    "name": "config",
+    "status": "ok",
+    "total": 9,
+    "words": 1057,
+    "nodes": 9,
+    "edges": 0,
+    "communities": 9,
+    "god_nodes": [],
+    "surprises_count": 0
+  },
+  {
+    "name": "database",
+    "status": "ok",
+    "total": 44,
+    "words": 15623,
+    "nodes": 147,
+    "edges": 120,
+    "communities": 44,
+    "god_nodes": [
+      "RequestScenarioBuilder",
+      "CustomsDeclarationSeeder",
+      "RequestDocumentSeeder",
+      "AuditLogSeeder",
+      "MerchantSeeder"
+    ],
+    "surprises_count": 0
+  },
+  {
+    "name": "public",
+    "status": "ok",
+    "total": 1,
+    "words": 57,
+    "nodes": 1,
+    "edges": 0,
+    "communities": 1,
+    "god_nodes": [],
+    "surprises_count": 0
+  },
+  {
+    "name": "resources",
+    "status": "ok",
+    "total": 5,
+    "words": 1719,
+    "nodes": 5,
+    "edges": 0,
+    "communities": 5,
+    "god_nodes": [],
+    "surprises_count": 0
+  },
+  {
+    "name": "routes",
+    "status": "ok",
+    "total": 3,
+    "words": 309,
+    "nodes": 3,
+    "edges": 0,
+    "communities": 3,
+    "god_nodes": [],
+    "surprises_count": 0
+  },
+  {
+    "name": "storage",
+    "status": "ok",
+    "total": 1,
+    "words": 3226,
+    "nodes": 131,
+    "edges": 351,
+    "communities": 20,
+    "god_nodes": [
+      "paths",
+      "responses",
+      "tags",
+      "summary",
+      "operationId"
+    ],
+    "surprises_count": 0
+  },
+  {
+    "name": "tests",
+    "status": "ok",
+    "total": 37,
+    "words": 21611,
+    "nodes": 701,
+    "edges": 1463,
+    "communities": 37,
+    "god_nodes": [
+      "DashboardStatsTest",
+      "ReportControllerTest",
+      "VotingEngineTest",
+      "WorkflowControllerTest",
+      "ImportRequestControllerTest"
+    ],
+    "surprises_count": 0
+  }
+]

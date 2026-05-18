@@ -1,0 +1,20 @@
+{
+  "files": {
+    "code": [
+      "/Users/majedsiefalnasr/Documents/Work/Ultimate-Solutions-EGY/yemen-flow-hub/code/backend/bootstrap/app.php",
+      "/Users/majedsiefalnasr/Documents/Work/Ultimate-Solutions-EGY/yemen-flow-hub/code/backend/bootstrap/providers.php",
+      "/Users/majedsiefalnasr/Documents/Work/Ultimate-Solutions-EGY/yemen-flow-hub/code/backend/bootstrap/cache/services.php",
+      "/Users/majedsiefalnasr/Documents/Work/Ultimate-Solutions-EGY/yemen-flow-hub/code/backend/bootstrap/cache/packages.php"
+    ],
+    "document": [],
+    "paper": [],
+    "image": [],
+    "video": []
+  },
+  "total_files": 4,
+  "total_words": 1289,
+  "needs_graph": false,
+  "warning": "Corpus is ~1,289 words - fits in a single context window. You may not need a graph.",
+  "skipped_sensitive": [],
+  "graphifyignore_patterns": 0
+}

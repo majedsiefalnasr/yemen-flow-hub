@@ -1,0 +1,17 @@
+{
+  "files": {
+    "code": [
+      "/Users/majedsiefalnasr/Documents/Work/Ultimate-Solutions-EGY/yemen-flow-hub/code/backend/storage/api-docs/api-docs.json"
+    ],
+    "document": [],
+    "paper": [],
+    "image": [],
+    "video": []
+  },
+  "total_files": 1,
+  "total_words": 3226,
+  "needs_graph": false,
+  "warning": "Corpus is ~3,226 words - fits in a single context window. You may not need a graph.",
+  "skipped_sensitive": [],
+  "graphifyignore_patterns": 0
+}

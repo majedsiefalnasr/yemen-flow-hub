@@ -1,0 +1,22 @@
+{
+  "communities": {
+    "0": [
+      "pdf_customs_declaration_blade_php"
+    ],
+    "1": [
+      "reports_bank_pdf_blade_php"
+    ],
+    "2": [
+      "reports_workflow_pdf_blade_php"
+    ],
+    "3": [
+      "test_api_blade_php"
+    ],
+    "4": [
+      "vendor_l5_swagger_index_blade_php"
+    ]
+  },
+  "cohesion": {},
+  "god_nodes": [],
+  "surprises": []
+}

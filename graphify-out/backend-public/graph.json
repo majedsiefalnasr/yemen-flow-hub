@@ -1,0 +1,15 @@
+{
+  "directed": false,
+  "multigraph": false,
+  "graph": {},
+  "nodes": [
+    {
+      "label": "index.php",
+      "file_type": "code",
+      "source_file": "index.php",
+      "source_location": "L1",
+      "id": "index_php"
+    }
+  ],
+  "edges": []
+}

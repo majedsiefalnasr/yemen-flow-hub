@@ -1,0 +1,34 @@
+{
+  "communities": {
+    "0": [
+      "auth_php"
+    ],
+    "1": [
+      "cache_php"
+    ],
+    "2": [
+      "cors_php"
+    ],
+    "3": [
+      "database_php"
+    ],
+    "4": [
+      "documents_php"
+    ],
+    "5": [
+      "l5_swagger_php"
+    ],
+    "6": [
+      "queue_php"
+    ],
+    "7": [
+      "sanctum_php"
+    ],
+    "8": [
+      "workflow_php"
+    ]
+  },
+  "cohesion": {},
+  "god_nodes": [],
+  "surprises": []
+}

@@ -1,0 +1,229 @@
+{
+  "communities": {
+    "0": [
+      "api_docs_api_docs_200_description",
+      "api_docs_api_docs_api_banks_id_put",
+      "api_docs_api_docs_api_document_types_id_put",
+      "api_docs_api_docs_api_merchants_id_put",
+      "api_docs_api_docs_api_requests_id_put",
+      "api_docs_api_docs_api_users_id_put",
+      "api_docs_api_docs_put_operationid",
+      "api_docs_api_docs_put_responses",
+      "api_docs_api_docs_put_security",
+      "api_docs_api_docs_put_summary",
+      "api_docs_api_docs_put_tags",
+      "api_docs_api_docs_responses_200"
+    ],
+    "1": [
+      "api_docs_api_docs_api_audit_get",
+      "api_docs_api_docs_api_auth_me_get",
+      "api_docs_api_docs_api_notifications_get",
+      "api_docs_api_docs_api_requests_get",
+      "api_docs_api_docs_api_voting_get",
+      "api_docs_api_docs_get_summary",
+      "api_docs_api_docs_get_tags",
+      "api_docs_api_docs_paths_api_auth_me",
+      "api_docs_api_docs_paths_api_notifications",
+      "api_docs_api_docs_paths_api_requests",
+      "api_docs_api_docs_paths_api_voting"
+    ],
+    "2": [
+      "api_docs_api_docs_api_banks_id_delete",
+      "api_docs_api_docs_api_document_types_id_delete",
+      "api_docs_api_docs_api_documents_id_delete",
+      "api_docs_api_docs_api_merchants_id_delete",
+      "api_docs_api_docs_api_requests_id_delete",
+      "api_docs_api_docs_api_users_id_delete",
+      "api_docs_api_docs_delete_operationid",
+      "api_docs_api_docs_delete_responses",
+      "api_docs_api_docs_delete_security",
+      "api_docs_api_docs_delete_summary",
+      "api_docs_api_docs_delete_tags"
+    ],
+    "3": [
+      "api_docs_api_docs_api_banks_post",
+      "api_docs_api_docs_api_notifications_read_all_post",
+      "api_docs_api_docs_api_requests_post",
+      "api_docs_api_docs_api_users_get",
+      "api_docs_api_docs_api_users_post",
+      "api_docs_api_docs_paths_api_banks",
+      "api_docs_api_docs_paths_api_notifications_read_all",
+      "api_docs_api_docs_paths_api_users",
+      "api_docs_api_docs_post_security",
+      "api_docs_api_docs_post_summary"
+    ],
+    "4": [
+      "api_docs_api_docs_api_customs_id_download_get",
+      "api_docs_api_docs_api_voting_id_get",
+      "api_docs_api_docs_paths",
+      "api_docs_api_docs_paths_api_audit",
+      "api_docs_api_docs_paths_api_customs_id_download",
+      "api_docs_api_docs_paths_api_document_types_id",
+      "api_docs_api_docs_paths_api_documents_id",
+      "api_docs_api_docs_paths_api_voting_id"
+    ],
+    "5": [
+      "api_docs_api_docs_api_banks_get",
+      "api_docs_api_docs_api_banks_id_get",
+      "api_docs_api_docs_api_requests_id_get",
+      "api_docs_api_docs_api_users_id_get",
+      "api_docs_api_docs_get_security",
+      "api_docs_api_docs_paths_api_banks_id",
+      "api_docs_api_docs_paths_api_requests_id",
+      "api_docs_api_docs_paths_api_users_id"
+    ],
+    "6": [
+      "api_docs_api_docs_401_description",
+      "api_docs_api_docs_api_merchants_id_get",
+      "api_docs_api_docs_api_requests_id_history_get",
+      "api_docs_api_docs_get_responses",
+      "api_docs_api_docs_paths_api_merchants_id",
+      "api_docs_api_docs_paths_api_requests_id_history",
+      "api_docs_api_docs_responses_401"
+    ],
+    "7": [
+      "api_docs_api_docs_api_dashboard_stats_get",
+      "api_docs_api_docs_api_reports_voting_get",
+      "api_docs_api_docs_api_reports_workflow_get",
+      "api_docs_api_docs_get_description",
+      "api_docs_api_docs_paths_api_dashboard_stats",
+      "api_docs_api_docs_paths_api_reports_voting",
+      "api_docs_api_docs_paths_api_reports_workflow"
+    ],
+    "8": [
+      "api_docs_api_docs_info",
+      "api_docs_api_docs_info_description",
+      "api_docs_api_docs_info_title",
+      "api_docs_api_docs_info_version",
+      "api_docs_api_docs_openapi",
+      "api_docs_api_docs_servers",
+      "api_docs_json"
+    ],
+    "9": [
+      "api_docs_api_docs_201_description",
+      "api_docs_api_docs_422_description",
+      "api_docs_api_docs_api_voting_importrequest_vote_post",
+      "api_docs_api_docs_paths_api_voting_importrequest_vote",
+      "api_docs_api_docs_post_responses",
+      "api_docs_api_docs_responses_201",
+      "api_docs_api_docs_responses_422"
+    ],
+    "10": [
+      "api_docs_api_docs_api_customs_importrequest_generate_post",
+      "api_docs_api_docs_api_requests_importrequest_documents_post",
+      "api_docs_api_docs_api_workflow_importrequest_bank_approve_post",
+      "api_docs_api_docs_paths_api_customs_importrequest_generate",
+      "api_docs_api_docs_paths_api_requests_importrequest_documents",
+      "api_docs_api_docs_paths_api_workflow_importrequest_bank_approve",
+      "api_docs_api_docs_post_parameters"
+    ],
+    "11": [
+      "api_docs_api_docs_api_workflow_importrequest_submit_post",
+      "api_docs_api_docs_api_workflow_importrequest_swift_upload_post",
+      "api_docs_api_docs_paths_api_workflow_importrequest_submit",
+      "api_docs_api_docs_paths_api_workflow_importrequest_swift_upload",
+      "api_docs_api_docs_post_requestbody",
+      "api_docs_api_docs_requestbody_required"
+    ],
+    "12": [
+      "api_docs_api_docs_api_customs_id_get",
+      "api_docs_api_docs_api_documents_id_download_get",
+      "api_docs_api_docs_get_operationid",
+      "api_docs_api_docs_paths_api_customs_id",
+      "api_docs_api_docs_paths_api_documents_id_download"
+    ],
+    "13": [
+      "api_docs_api_docs_application_json_schema",
+      "api_docs_api_docs_content_application_json",
+      "api_docs_api_docs_content_multipart_form_data",
+      "api_docs_api_docs_multipart_form_data_schema",
+      "api_docs_api_docs_requestbody_content"
+    ],
+    "14": [
+      "api_docs_api_docs_api_auth_logout_post",
+      "api_docs_api_docs_api_notifications_notification_read_post",
+      "api_docs_api_docs_paths_api_auth_logout",
+      "api_docs_api_docs_paths_api_notifications_notification_read",
+      "api_docs_api_docs_post_tags"
+    ],
+    "15": [
+      "api_docs_api_docs_api_auth_login_post",
+      "api_docs_api_docs_api_voting_importrequest_director_decide_post",
+      "api_docs_api_docs_paths_api_auth_login",
+      "api_docs_api_docs_paths_api_voting_importrequest_director_decide",
+      "api_docs_api_docs_post_operationid"
+    ],
+    "16": [
+      "api_docs_api_docs_api_document_types_get",
+      "api_docs_api_docs_api_document_types_post",
+      "api_docs_api_docs_paths_api_document_types"
+    ],
+    "17": [
+      "api_docs_api_docs_api_merchants_get",
+      "api_docs_api_docs_api_merchants_post",
+      "api_docs_api_docs_paths_api_merchants"
+    ],
+    "18": [
+      "api_docs_api_docs_403_description",
+      "api_docs_api_docs_responses_403"
+    ],
+    "19": [
+      "api_docs_api_docs_api_voting_importrequest_override_post",
+      "api_docs_api_docs_paths_api_voting_importrequest_override"
+    ]
+  },
+  "cohesion": {},
+  "god_nodes": [
+    {
+      "id": "api_docs_api_docs_paths",
+      "label": "paths",
+      "degree": 36
+    },
+    {
+      "id": "api_docs_api_docs_get_responses",
+      "label": "responses",
+      "degree": 24
+    },
+    {
+      "id": "api_docs_api_docs_get_tags",
+      "label": "tags",
+      "degree": 21
+    },
+    {
+      "id": "api_docs_api_docs_get_summary",
+      "label": "summary",
+      "degree": 21
+    },
+    {
+      "id": "api_docs_api_docs_get_operationid",
+      "label": "operationId",
+      "degree": 21
+    },
+    {
+      "id": "api_docs_api_docs_post_responses",
+      "label": "responses",
+      "degree": 21
+    },
+    {
+      "id": "api_docs_api_docs_post_tags",
+      "label": "tags",
+      "degree": 17
+    },
+    {
+      "id": "api_docs_api_docs_post_summary",
+      "label": "summary",
+      "degree": 17
+    },
+    {
+      "id": "api_docs_api_docs_post_operationid",
+      "label": "operationId",
+      "degree": 17
+    },
+    {
+      "id": "api_docs_api_docs_post_requestbody",
+      "label": "requestBody",
+      "degree": 15
+    }
+  ],
+  "surprises": []
+}
