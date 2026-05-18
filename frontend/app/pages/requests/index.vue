@@ -119,7 +119,7 @@ function formatAmount(amount: number, currency: string): string {
     </div>
 
     <!-- Empty state -->
-    <div v-else-if="requestsStore.requests.length === 0" class="state-card">
+    <div v-else-if="(requestsStore.requests?.length ?? 0) === 0" class="state-card">
       <span class="state-text">لا توجد طلبات.</span>
     </div>
 
@@ -137,7 +137,7 @@ function formatAmount(amount: number, currency: string): string {
         </thead>
         <tbody>
           <tr
-            v-for="request in requestsStore.requests"
+            v-for="request in (requestsStore.requests ?? [])"
             :key="request.id"
             class="table-row"
           >

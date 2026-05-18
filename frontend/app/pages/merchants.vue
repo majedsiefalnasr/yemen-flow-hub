@@ -235,10 +235,10 @@ onMounted(loadData)
           </tr>
         </thead>
         <tbody>
-          <tr v-if="filteredMerchants.length === 0">
+          <tr v-if="(filteredMerchants?.length ?? 0) === 0">
             <td colspan="7" class="empty-row">لا يوجد تجار مسجّلون.</td>
           </tr>
-          <tr v-for="merchant in filteredMerchants" :key="merchant.id">
+          <tr v-for="merchant in (filteredMerchants ?? [])" :key="merchant.id">
             <td class="name-cell">{{ merchant.name }}</td>
             <td class="mono-cell">{{ merchant.commercial_register ?? '—' }}</td>
             <td>{{ merchant.owner_name ?? '—' }}</td>

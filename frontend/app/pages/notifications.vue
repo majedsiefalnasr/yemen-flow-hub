@@ -93,7 +93,7 @@ function iconName(type?: string): string {
     <div class="page-header">
       <h1 class="page-title">الإشعارات</h1>
       <button
-        v-if="notifications.length > 0"
+        v-if="(notifications?.length ?? 0) > 0"
         class="mark-all-btn"
         :disabled="loading"
         @click="handleMarkAllRead"
@@ -108,19 +108,19 @@ function iconName(type?: string): string {
     </div>
 
     <!-- Loading state -->
-    <div v-if="loading && notifications.length === 0" class="loading-state">
+    <div v-if="loading && (notifications?.length ?? 0) === 0" class="loading-state">
       <div class="spinner" aria-label="جاري التحميل..." />
     </div>
 
     <!-- Empty state -->
-    <div v-else-if="!loading && notifications.length === 0" class="empty-state">
+    <div v-else-if="!loading && (notifications?.length ?? 0) === 0" class="empty-state">
       <p class="empty-text">لا توجد إشعارات بعد</p>
     </div>
 
     <!-- Notification list -->
     <ul v-else class="notifications-list" aria-label="قائمة الإشعارات">
       <li
-        v-for="notif in notifications"
+        v-for="notif in (notifications ?? [])"
         :key="notif.id"
         class="notification-item"
         :class="{ unread: !notif.read_at }"

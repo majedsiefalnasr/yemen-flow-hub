@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../../stores/auth.store'
 import { NAV_ITEMS, ROLE_LABELS } from '../../constants/workflow'
+import SidebarIcon from './SidebarIcon.vue'
 
 const props = defineProps<{
   mobileOpen: boolean

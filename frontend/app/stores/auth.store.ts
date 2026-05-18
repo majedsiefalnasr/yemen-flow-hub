@@ -2,6 +2,13 @@ import { defineStore } from 'pinia'
 import type { AuthUser, ApiResponse, UserPreferences } from '../types/models'
 import { UserRole } from '../types/enums'
 
+interface LoginResponseData {
+  user: AuthUser
+  token: string | null
+  token_type: string | null
+  mode: 'cookie' | 'token'
+}
+
 export const useAuthStore = defineStore('auth', {
   state: () => ({
     user: null as AuthUser | null,
@@ -46,6 +53,19 @@ export const useAuthStore = defineStore('auth', {
   },
 
   actions: {
+    getXsrfToken(): string | null {
+      if (!process.client) return null
+      const raw = document.cookie
+        .split(';')
+        .map(cookie => cookie.trim())
+        .find(cookie => cookie.startsWith('XSRF-TOKEN='))
+        ?.split('=')
+        .slice(1)
+        .join('=')
+
+      return raw ? decodeURIComponent(raw) : null
+    },
+
     async login(email: string, password: string): Promise<void> {
       const config = useRuntimeConfig()
       const baseURL = config.public.apiBase as string
@@ -56,20 +76,29 @@ export const useAuthStore = defineStore('auth', {
         credentials: 'include',
       })
 
-      const response = await $fetch<ApiResponse<AuthUser>>('/api/auth/login', {
+      const xsrfToken = this.getXsrfToken()
+
+      const response = await $fetch<ApiResponse<LoginResponseData>>('/api/auth/login', {
         method: 'POST',
         baseURL,
         credentials: 'include',
-        headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+          ...(xsrfToken ? { 'X-XSRF-TOKEN': xsrfToken } : {}),
+        },
         body: { email, password },
       })
 
-      if (!response.data.is_active) {
+      if (!response.data.user.is_active) {
         throw { statusCode: 403, data: { success: false, message: 'حسابك موقوف. يرجى التواصل مع المسؤول.' } }
       }
 
-      this.user = response.data
+      this.user = response.data.user
       this.isAuthenticated = true
+      if (process.client) {
+        localStorage.setItem('yfh-authenticated', '1')
+      }
     },
 
     async logout(): Promise<void> {
@@ -77,11 +106,15 @@ export const useAuthStore = defineStore('auth', {
       const baseURL = config.public.apiBase as string
 
       try {
+        const xsrfToken = this.getXsrfToken()
         await $fetch('/api/auth/logout', {
           method: 'POST',
           baseURL,
           credentials: 'include',
-          headers: { Accept: 'application/json' },
+          headers: {
+            Accept: 'application/json',
+            ...(xsrfToken ? { 'X-XSRF-TOKEN': xsrfToken } : {}),
+          },
         })
       }
       catch {
@@ -90,6 +123,9 @@ export const useAuthStore = defineStore('auth', {
       finally {
         this.user = null
         this.isAuthenticated = false
+        if (process.client) {
+          localStorage.removeItem('yfh-authenticated')
+        }
       }
     },
 
@@ -114,6 +150,9 @@ export const useAuthStore = defineStore('auth', {
       catch {
         this.user = null
         this.isAuthenticated = false
+        if (process.client) {
+          localStorage.removeItem('yfh-authenticated')
+        }
       }
     },
 

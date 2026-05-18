@@ -4,11 +4,26 @@ export function useApi() {
   const config = useRuntimeConfig()
   const baseURL = config.public.apiBase as string
 
+  function getXsrfToken(): string | null {
+    if (!process.client) return null
+    const raw = document.cookie
+      .split(';')
+      .map(cookie => cookie.trim())
+      .find(cookie => cookie.startsWith('XSRF-TOKEN='))
+      ?.split('=')
+      .slice(1)
+      .join('=')
+
+    return raw ? decodeURIComponent(raw) : null
+  }
+
   async function apiFetch<T>(
     path: string,
     options: Parameters<typeof $fetch>[1] = {},
   ): Promise<T> {
     const { headers: extraHeaders, ...restOptions } = options
+    const method = String(options.method ?? 'GET').toUpperCase()
+    const xsrfToken = getXsrfToken()
     return $fetch<T>(path, {
       baseURL,
       credentials: 'include',
@@ -16,6 +31,7 @@ export function useApi() {
       headers: {
         Accept: 'application/json',
         'Content-Type': 'application/json',
+        ...(xsrfToken && method !== 'GET' && method !== 'HEAD' ? { 'X-XSRF-TOKEN': xsrfToken } : {}),
         ...(extraHeaders as Record<string, string>),
       },
     })

@@ -9,7 +9,21 @@ import StatusBadge from '../ui/StatusBadge.vue'
 const router = useRouter()
 const store = useDashboardStore()
 
-const stats = computed(() => store.stats as SwiftOfficerDashboardStats | null)
+const stats = computed<SwiftOfficerDashboardStats | null>(() => {
+  const raw = store.stats as Partial<SwiftOfficerDashboardStats> | null
+  if (!raw || !Array.isArray(raw.swift_queue)) {
+    return null
+  }
+
+  return {
+    pending_swift_upload: raw.pending_swift_upload ?? 0,
+    uploaded: raw.uploaded ?? 0,
+    final_approved: raw.final_approved ?? 0,
+    final_rejected: raw.final_rejected ?? 0,
+    swift_queue: raw.swift_queue,
+  }
+})
+const queue = computed(() => stats.value?.swift_queue ?? [])
 
 function formatAmount(amount: number, currency: string): string {
   return new Intl.NumberFormat('ar-YE', { style: 'currency', currency, minimumFractionDigits: 0 }).format(amount)
@@ -64,7 +78,7 @@ onMounted(() => { store.loadStats() })
     <div v-if="stats" class="swift-queue">
       <h2 class="section-title">الطلبات الجاهزة لرفع SWIFT</h2>
 
-      <div v-if="stats.swift_queue.length === 0" class="empty-queue" role="status">
+      <div v-if="queue.length === 0" class="empty-queue" role="status">
         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#8e8e93" stroke-width="1.5" aria-hidden="true">
           <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" />
         </svg>
@@ -83,7 +97,7 @@ onMounted(() => { store.loadStats() })
         </thead>
         <tbody>
           <tr
-            v-for="req in stats.swift_queue"
+            v-for="req in queue"
             :key="req.id"
             class="req-table__row"
           >

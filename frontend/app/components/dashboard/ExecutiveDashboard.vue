@@ -76,7 +76,7 @@ onMounted(() => { store.loadStats() })
     <div v-if="stats" class="voting-queue">
       <h2 class="section-title">طابور التصويت التنفيذي</h2>
 
-      <div v-if="stats.voting_queue.length === 0" class="empty-queue" role="status">
+      <div v-if="(stats.voting_queue?.length ?? 0) === 0" class="empty-queue" role="status">
         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#8e8e93" stroke-width="1.5" aria-hidden="true">
           <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" />
         </svg>
@@ -95,7 +95,7 @@ onMounted(() => { store.loadStats() })
         </thead>
         <tbody>
           <tr
-            v-for="req in stats.voting_queue"
+            v-for="req in (stats.voting_queue ?? [])"
             :key="req.id"
             class="req-table__row"
             :class="{ 'req-table__row--voting-open': isVotingOpen(req.status) }"

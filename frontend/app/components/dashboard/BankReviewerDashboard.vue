@@ -11,7 +11,21 @@ const router = useRouter()
 const store = useDashboardStore()
 const auth = useAuthStore()
 
-const stats = computed(() => store.stats as BankReviewerDashboardStats | null)
+const stats = computed<BankReviewerDashboardStats | null>(() => {
+  const raw = store.stats as Partial<BankReviewerDashboardStats> | null
+  if (!raw || !Array.isArray(raw.review_queue)) {
+    return null
+  }
+
+  return {
+    pending_review: raw.pending_review ?? 0,
+    at_cby: raw.at_cby ?? 0,
+    returned_by_support: raw.returned_by_support ?? 0,
+    approved_completed: raw.approved_completed ?? 0,
+    review_queue: raw.review_queue,
+  }
+})
+const queue = computed(() => stats.value?.review_queue ?? [])
 
 function formatAmount(amount: number, currency: string): string {
   return new Intl.NumberFormat('ar-YE', { style: 'currency', currency, minimumFractionDigits: 0 }).format(amount)
@@ -66,7 +80,7 @@ onMounted(() => { store.loadStats() })
     <div v-if="stats" class="review-queue">
       <h2 class="section-title">طابور المراجعة</h2>
 
-      <div v-if="stats.review_queue.length === 0" class="empty-queue" role="status">
+      <div v-if="queue.length === 0" class="empty-queue" role="status">
         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#8e8e93" stroke-width="1.5" aria-hidden="true">
           <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" />
         </svg>
@@ -85,7 +99,7 @@ onMounted(() => { store.loadStats() })
         </thead>
         <tbody>
           <tr
-            v-for="req in stats.review_queue"
+            v-for="req in queue"
             :key="req.id"
             class="req-table__row"
           >

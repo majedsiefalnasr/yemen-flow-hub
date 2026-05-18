@@ -9,9 +9,6 @@ export default defineNuxtConfig({
     compatibilityVersion: 4,
   },
 
-  // SPA mode — Sanctum cookie auth works without SSR
-  ssr: false,
-
   modules: [
     '@pinia/nuxt',
     '@vueuse/nuxt',

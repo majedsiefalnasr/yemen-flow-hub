@@ -11,7 +11,21 @@ const router = useRouter()
 const store = useDashboardStore()
 const auth = useAuthStore()
 
-const stats = computed(() => store.stats as SupportCommitteeDashboardStats | null)
+const stats = computed<SupportCommitteeDashboardStats | null>(() => {
+  const raw = store.stats as Partial<SupportCommitteeDashboardStats> | null
+  if (!raw || !Array.isArray(raw.support_queue)) {
+    return null
+  }
+
+  return {
+    waiting_for_claim: raw.waiting_for_claim ?? 0,
+    active_by_me: raw.active_by_me ?? 0,
+    claimed_by_others: raw.claimed_by_others ?? 0,
+    recently_approved: raw.recently_approved ?? 0,
+    support_queue: raw.support_queue,
+  }
+})
+const queue = computed(() => stats.value?.support_queue ?? [])
 
 function formatAmount(amount: number, currency: string): string {
   return new Intl.NumberFormat('ar-YE', { style: 'currency', currency, minimumFractionDigits: 0 }).format(amount)
@@ -66,7 +80,7 @@ onMounted(() => { store.loadStats() })
     <div v-if="stats" class="support-queue">
       <h2 class="section-title">طابور لجنة الدعم</h2>
 
-      <div v-if="stats.support_queue.length === 0" class="empty-queue" role="status">
+      <div v-if="queue.length === 0" class="empty-queue" role="status">
         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#8e8e93" stroke-width="1.5" aria-hidden="true">
           <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" />
         </svg>
@@ -86,7 +100,7 @@ onMounted(() => { store.loadStats() })
         </thead>
         <tbody>
           <tr
-            v-for="req in stats.support_queue"
+            v-for="req in queue"
             :key="req.id"
             class="req-table__row"
             :class="{ 'req-table__row--mine': req.is_claimed_by_me }"
