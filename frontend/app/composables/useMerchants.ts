@@ -54,5 +54,10 @@ export function useMerchants() {
     return response.data
   }
 
-  return { fetchMerchants, createMerchant, updateMerchant }
+  async function suspendMerchant(id: number, isActive: boolean): Promise<Merchant> {
+    const response = await put<ApiResponse<Merchant>>(`/api/merchants/${id}`, { is_active: isActive })
+    return response.data
+  }
+
+  return { fetchMerchants, createMerchant, updateMerchant, suspendMerchant }
 }

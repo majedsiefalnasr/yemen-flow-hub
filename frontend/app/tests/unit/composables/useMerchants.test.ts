@@ -130,3 +130,33 @@ describe('useMerchants — updateMerchant', () => {
     await expect(updateMerchant(999, { name: 'x' })).rejects.toThrow('Not found')
   })
 })
+
+describe('useMerchants — suspendMerchant', () => {
+  beforeEach(() => {
+    mockPut.mockReset()
+  })
+
+  it('puts is_active: false to suspend merchant', async () => {
+    const suspended = { ...MERCHANT_FIXTURE, is_active: false }
+    mockPut.mockResolvedValueOnce({ success: true, data: suspended })
+    const { suspendMerchant } = useMerchants()
+    const result = await suspendMerchant(1, false)
+    expect(mockPut).toHaveBeenCalledWith('/api/merchants/1', { is_active: false })
+    expect(result.is_active).toBe(false)
+  })
+
+  it('puts is_active: true to reactivate merchant', async () => {
+    const active = { ...MERCHANT_FIXTURE, is_active: true }
+    mockPut.mockResolvedValueOnce({ success: true, data: active })
+    const { suspendMerchant } = useMerchants()
+    const result = await suspendMerchant(1, true)
+    expect(mockPut).toHaveBeenCalledWith('/api/merchants/1', { is_active: true })
+    expect(result.is_active).toBe(true)
+  })
+
+  it('propagates API error on suspend', async () => {
+    mockPut.mockRejectedValueOnce(new Error('Forbidden'))
+    const { suspendMerchant } = useMerchants()
+    await expect(suspendMerchant(1, false)).rejects.toThrow('Forbidden')
+  })
+})

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { createSSRApp } from 'vue'
+import { createPinia } from 'pinia'
 import { renderToString } from 'vue/server-renderer'
 
 vi.stubGlobal('definePageMeta', vi.fn())
@@ -11,6 +12,15 @@ vi.mock('../../../composables/useMerchants', () => ({
     fetchMerchants: vi.fn().mockResolvedValue([]),
     createMerchant: vi.fn(),
     updateMerchant: vi.fn(),
+    suspendMerchant: vi.fn(),
+  }),
+}))
+
+vi.mock('../../../stores/auth.store', () => ({
+  useAuthStore: () => ({
+    currentRole: 'BANK_ADMIN',
+    isCbyAdmin: false,
+    isBankUser: true,
   }),
 }))
 
@@ -38,7 +48,9 @@ vi.mock('../../../composables/useDocumentTypes', () => ({
 }))
 
 async function renderPage(component: unknown): Promise<string> {
-  return renderToString(createSSRApp(component as any))
+  const app = createSSRApp(component as any)
+  app.use(createPinia())
+  return renderToString(app)
 }
 
 describe('Story 5.7 page smoke tests', () => {
