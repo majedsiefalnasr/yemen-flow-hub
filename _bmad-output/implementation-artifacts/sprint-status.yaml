@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-16
-last_updated: 2026-05-19 (Story 6.3.1 clean review)
+last_updated: 2026-05-19 (Story 6.3.2 implemented)
 project: Yemen Flow Hub
 project_key: NOKEY
 tracking_system: file-system
@@ -97,7 +97,7 @@ development_status:
   6-1-design-token-typography-foundation: done
   6-2-appshell-layout-parity: done
   6-3-1-bank-admin-role-backend-registration-api-scope: done
-  6-3-2-bank-admin-dashboard: backlog
+  6-3-2-bank-admin-dashboard: review
   6-3-3-bank-admin-merchant-management: backlog
   6-3-4-bank-admin-staff-management: backlog
   6-3-5-bank-admin-request-wizard: backlog
