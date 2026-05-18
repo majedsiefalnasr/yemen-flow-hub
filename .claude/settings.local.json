@@ -31,7 +31,16 @@
       "Bash(railway logs *)",
       "Bash(railway status *)",
       "Skill(bmad-review-edge-case-hunter)",
-      "Skill(commit-commands:commit)"
+      "Skill(commit-commands:commit)",
+      "Bash(mv \"/Users/majedsiefalnasr/Documents/Work/Ultimate-Solutions-EGY/yemen-flow-hub/code/lovable/screenshots/BANK_REVIEWER /CleanShot 2026-05-18 at 17.45.26@2x.png\" \"/Users/majedsiefalnasr/Documents/Work/Ultimate-Solutions-EGY/yemen-flow-hub/code/lovable/screenshots/BANK_REVIEWER /dashboard.png\")",
+      "Bash(mv \"/Users/majedsiefalnasr/Documents/Work/Ultimate-Solutions-EGY/yemen-flow-hub/code/lovable/screenshots/BANK_REVIEWER /CleanShot 2026-05-18 at 17.46.26@2x.png\" \"/Users/majedsiefalnasr/Documents/Work/Ultimate-Solutions-EGY/yemen-flow-hub/code/lovable/screenshots/BANK_REVIEWER /request-view-internal-review.png\")",
+      "Bash(mv \"/Users/majedsiefalnasr/Documents/Work/Ultimate-Solutions-EGY/yemen-flow-hub/code/lovable/screenshots/BANK_REVIEWER /CleanShot 2026-05-18 at 17.46.41@2x.png\" \"/Users/majedsiefalnasr/Documents/Work/Ultimate-Solutions-EGY/yemen-flow-hub/code/lovable/screenshots/BANK_REVIEWER /request-view-actions-expanded.png\")",
+      "Bash(mv \"/Users/majedsiefalnasr/Documents/Work/Ultimate-Solutions-EGY/yemen-flow-hub/code/lovable/screenshots/SUPPORT_COMMITTEE /CleanShot 2026-05-18 at 17.47.13@2x.png\" \"/Users/majedsiefalnasr/Documents/Work/Ultimate-Solutions-EGY/yemen-flow-hub/code/lovable/screenshots/SUPPORT_COMMITTEE /dashboard.png\")",
+      "Bash(mv \"/Users/majedsiefalnasr/Documents/Work/Ultimate-Solutions-EGY/yemen-flow-hub/code/lovable/screenshots/SUPPORT_COMMITTEE /CleanShot 2026-05-18 at 17.47.42@2x.png\" \"/Users/majedsiefalnasr/Documents/Work/Ultimate-Solutions-EGY/yemen-flow-hub/code/lovable/screenshots/SUPPORT_COMMITTEE /requests-list.png\")",
+      "Bash(mv \"/Users/majedsiefalnasr/Documents/Work/Ultimate-Solutions-EGY/yemen-flow-hub/code/lovable/screenshots/SUPPORT_COMMITTEE /CleanShot 2026-05-18 at 17.47.50@2x.png\" \"/Users/majedsiefalnasr/Documents/Work/Ultimate-Solutions-EGY/yemen-flow-hub/code/lovable/screenshots/SUPPORT_COMMITTEE /request-view-pending-claim.png\")",
+      "Bash(mv \"/Users/majedsiefalnasr/Documents/Work/Ultimate-Solutions-EGY/yemen-flow-hub/code/lovable/screenshots/SUPPORT_COMMITTEE /CleanShot 2026-05-18 at 17.48.01@2x.png\" \"/Users/majedsiefalnasr/Documents/Work/Ultimate-Solutions-EGY/yemen-flow-hub/code/lovable/screenshots/SUPPORT_COMMITTEE /request-view-claimed-actions.png\")",
+      "Bash(mv \"/Users/majedsiefalnasr/Documents/Work/Ultimate-Solutions-EGY/yemen-flow-hub/code/lovable/screenshots/SUPPORT_COMMITTEE /CleanShot 2026-05-18 at 17.48.13@2x.png\" \"/Users/majedsiefalnasr/Documents/Work/Ultimate-Solutions-EGY/yemen-flow-hub/code/lovable/screenshots/SUPPORT_COMMITTEE /request-view-returned-to-bank.png\")",
+      "Skill(bmad-create-ux-design)"
     ]
   }
 }
