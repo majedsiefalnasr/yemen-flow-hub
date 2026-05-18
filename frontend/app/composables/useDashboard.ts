@@ -18,12 +18,18 @@ export interface BankReviewerDashboardStats {
   review_queue: ImportRequest[]
 }
 
+export interface BankAdminMonthlyEntry {
+  month: string
+  count: number
+}
+
 export interface BankAdminDashboardStats {
-  pending_bank_review: number
-  at_cby: number
-  completed: number
+  total: number
+  pending: number
+  approved: number
   rejected: number
-  active_users: number
+  total_financed_amount: number
+  monthly_requests: BankAdminMonthlyEntry[]
   recent_requests: ImportRequest[]
 }
 
