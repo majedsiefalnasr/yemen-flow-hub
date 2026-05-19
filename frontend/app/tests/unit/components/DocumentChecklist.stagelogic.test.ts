@@ -32,6 +32,25 @@ const STAGE_DOCS: Record<string, DocRequirement[]> = {
     { type: 'PACKING_LIST', label: 'قائمة التعبئة', required: false },
     { type: 'SWIFT', label: 'مستند SWIFT', required: true },
   ],
+  [RequestStatus.SUPPORT_REVIEW_PENDING]: [
+    { type: 'COMMERCIAL_INVOICE', label: 'فاتورة تجارية', required: true },
+    { type: 'PACKING_LIST', label: 'قائمة التعبئة', required: false },
+    { type: 'SWIFT', label: 'مستند SWIFT', required: true },
+  ],
+  [RequestStatus.SUPPORT_REVIEW_IN_PROGRESS]: [
+    { type: 'COMMERCIAL_INVOICE', label: 'فاتورة تجارية', required: true },
+    { type: 'PACKING_LIST', label: 'قائمة التعبئة', required: false },
+    { type: 'SWIFT', label: 'مستند SWIFT', required: true },
+  ],
+  [RequestStatus.SUPPORT_APPROVED]: [
+    { type: 'COMMERCIAL_INVOICE', label: 'فاتورة تجارية', required: true },
+    { type: 'PACKING_LIST', label: 'قائمة التعبئة', required: false },
+    { type: 'SWIFT', label: 'مستند SWIFT', required: true },
+  ],
+  [RequestStatus.SUPPORT_REJECTED]: [
+    { type: 'COMMERCIAL_INVOICE', label: 'فاتورة تجارية', required: true },
+    { type: 'PACKING_LIST', label: 'قائمة التعبئة', required: false },
+  ],
   [RequestStatus.WAITING_FOR_SWIFT]: [
     { type: 'COMMERCIAL_INVOICE', label: 'فاتورة تجارية', required: true },
     { type: 'PACKING_LIST', label: 'قائمة التعبئة', required: false },
@@ -92,10 +111,27 @@ function buildChecklist(status: RequestStatus, documents: RequestDocument[]): Ch
   const uploadedByType = new Map<string, RequestDocument>()
   const extraDocs: RequestDocument[] = []
 
+  function uploadedAtMs(doc: RequestDocument): number {
+    const ts = Date.parse(doc.uploaded_at ?? '')
+    return Number.isNaN(ts) ? 0 : ts
+  }
+
   for (const doc of documents) {
     const t = doc.type ?? 'REQUEST_DOC'
     const isStagedType = stageDocs.some(r => r.type === t)
-    if (isStagedType && !uploadedByType.has(t)) {
+    if (!isStagedType) {
+      extraDocs.push(doc)
+      continue
+    }
+
+    const existing = uploadedByType.get(t)
+    if (!existing) {
+      uploadedByType.set(t, doc)
+      continue
+    }
+
+    if (uploadedAtMs(doc) >= uploadedAtMs(existing)) {
+      extraDocs.push(existing)
       uploadedByType.set(t, doc)
     }
     else {
@@ -147,6 +183,26 @@ describe('DocumentChecklist — getStageDocs', () => {
   it('SWIFT_UPLOADED includes SWIFT as required', () => {
     const docs = getStageDocs(RequestStatus.SWIFT_UPLOADED)
     expect(docs.find(d => d.type === 'SWIFT')).toBeDefined()
+  })
+
+  it('SUPPORT_REVIEW_PENDING includes SWIFT as required', () => {
+    const docs = getStageDocs(RequestStatus.SUPPORT_REVIEW_PENDING)
+    expect(docs.find(d => d.type === 'SWIFT')?.required).toBe(true)
+  })
+
+  it('SUPPORT_REVIEW_IN_PROGRESS includes SWIFT as required', () => {
+    const docs = getStageDocs(RequestStatus.SUPPORT_REVIEW_IN_PROGRESS)
+    expect(docs.find(d => d.type === 'SWIFT')?.required).toBe(true)
+  })
+
+  it('SUPPORT_APPROVED includes SWIFT as required', () => {
+    const docs = getStageDocs(RequestStatus.SUPPORT_APPROVED)
+    expect(docs.find(d => d.type === 'SWIFT')?.required).toBe(true)
+  })
+
+  it('SUPPORT_REJECTED does not include SWIFT requirement', () => {
+    const docs = getStageDocs(RequestStatus.SUPPORT_REJECTED)
+    expect(docs.find(d => d.type === 'SWIFT')).toBeUndefined()
   })
 
   it('EXECUTIVE_VOTING_OPEN returns voting-and-beyond set (3 entries)', () => {
@@ -220,16 +276,16 @@ describe('DocumentChecklist — buildChecklist merge logic', () => {
     expect(extra).toHaveLength(1)
   })
 
-  it('duplicate type: first match goes to staged, second to extra', () => {
+  it('duplicate type: latest upload wins staged row, older becomes extra', () => {
     const docs = [
-      makeDoc('COMMERCIAL_INVOICE', { id: 1 }),
-      makeDoc('COMMERCIAL_INVOICE', { id: 2 }),
+      makeDoc('COMMERCIAL_INVOICE', { id: 1, uploaded_at: '2026-05-19T10:00:00.000Z' }),
+      makeDoc('COMMERCIAL_INVOICE', { id: 2, uploaded_at: '2026-05-19T12:00:00.000Z' }),
     ]
     const rows = buildChecklist(RequestStatus.DRAFT, docs)
     const staged = rows.filter(r => r.kind === 'staged' && r.requirement.type === 'COMMERCIAL_INVOICE') as Array<{ kind: 'staged'; requirement: DocRequirement; doc: RequestDocument | null }>
     const extras = rows.filter(r => r.kind === 'extra')
-    expect(staged[0]?.doc?.id).toBe(1)
-    expect((extras[0] as { kind: 'extra'; doc: RequestDocument })?.doc?.id).toBe(2)
+    expect(staged[0]?.doc?.id).toBe(2)
+    expect((extras[0] as { kind: 'extra'; doc: RequestDocument })?.doc?.id).toBe(1)
   })
 })
 

@@ -52,8 +52,10 @@ const canVote = computed(() =>
 const detail = computed(() => votingStore.votingDetail)
 const tally = computed(() => detail.value?.tally ?? null)
 const votes = computed<RequestVote[]>(() => detail.value?.votes ?? [])
-const totalMembers = computed(() => detail.value?.total_members ?? 0)
-const notYetVotedCount = computed(() => Math.max(0, totalMembers.value - votes.value.length))
+const COMMITTEE_SIZE = 6
+const totalMembers = computed(() => COMMITTEE_SIZE)
+const displayedVotes = computed<RequestVote[]>(() => votes.value.slice(0, COMMITTEE_SIZE))
+const notYetVotedCount = computed(() => Math.max(0, COMMITTEE_SIZE - displayedVotes.value.length))
 
 function tallyBarWidth(count: number): string {
   if (!totalMembers.value) return '0%'
@@ -230,7 +232,7 @@ onMounted(async () => {
           </thead>
           <tbody>
             <!-- Voted member rows -->
-            <tr v-for="v in votes" :key="v.id" class="roster-table__row">
+            <tr v-for="v in displayedVotes" :key="v.id" class="roster-table__row">
               <td class="roster-table__td">
                 <span class="member-name">{{ v.user_name ?? '—' }}</span>
                 <span v-if="v.is_director_override" class="director-badge">تجاوز المدير</span>
@@ -257,7 +259,7 @@ onMounted(async () => {
           </tbody>
         </table>
 
-        <div v-if="votes.length === 0 && notYetVotedCount === 0" class="empty-votes" role="status">
+        <div v-if="displayedVotes.length === 0 && notYetVotedCount === 0" class="empty-votes" role="status">
           لا توجد أصوات مسجّلة بعد.
         </div>
       </div>

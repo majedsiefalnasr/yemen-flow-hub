@@ -22,6 +22,11 @@ function buildTabs(status: RequestStatus): Array<{ key: TabKey; label: string }>
   ]
 }
 
+function normalizeActiveTab(activeTab: TabKey, status: RequestStatus): TabKey {
+  const availableTabs = buildTabs(status).map(t => t.key)
+  return availableTabs.includes(activeTab) ? activeTab : 'overview'
+}
+
 describe('Request detail — tab keys and labels', () => {
   it('uses "overview" key with label "المعلومات"', () => {
     const tabs = buildTabs(RequestStatus.DRAFT)
@@ -124,5 +129,19 @@ describe('Request detail — tab count', () => {
     const tabs = buildTabs(RequestStatus.BANK_REVIEW)
     const third = tabs.at(2)
     expect(third?.key).toBe('parties')
+  })
+})
+
+describe('Request detail — active tab normalization', () => {
+  it('keeps votes tab active while voting tab remains visible', () => {
+    expect(normalizeActiveTab('votes', RequestStatus.EXECUTIVE_VOTING_OPEN)).toBe('votes')
+  })
+
+  it('resets votes tab to overview when status hides voting tab', () => {
+    expect(normalizeActiveTab('votes', RequestStatus.EXECUTIVE_APPROVED)).toBe('overview')
+  })
+
+  it('does not alter non-votes tabs when voting tab is hidden', () => {
+    expect(normalizeActiveTab('documents', RequestStatus.EXECUTIVE_APPROVED)).toBe('documents')
   })
 })

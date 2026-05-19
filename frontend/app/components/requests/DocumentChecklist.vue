@@ -109,6 +109,11 @@ function getStageDocs(status: RequestStatus): DocRequirement[] {
   return STAGE_DOCS[status] ?? []
 }
 
+function uploadedAtMs(doc: RequestDocument): number {
+  const ts = Date.parse(doc.uploaded_at ?? '')
+  return Number.isNaN(ts) ? 0 : ts
+}
+
 // ── Checklist row type ────────────────────────────────────────────────────────
 
 type ChecklistRow =
@@ -127,7 +132,19 @@ const checklist = computed((): ChecklistRow[] => {
   for (const doc of props.documents) {
     const t = doc.type ?? 'REQUEST_DOC'
     const isStagedType = stageDocs.some(r => r.type === t)
-    if (isStagedType && !uploadedByType.has(t)) {
+    if (!isStagedType) {
+      extraDocs.push(doc)
+      continue
+    }
+
+    const existing = uploadedByType.get(t)
+    if (!existing) {
+      uploadedByType.set(t, doc)
+      continue
+    }
+
+    if (uploadedAtMs(doc) >= uploadedAtMs(existing)) {
+      extraDocs.push(existing)
       uploadedByType.set(t, doc)
     }
     else {

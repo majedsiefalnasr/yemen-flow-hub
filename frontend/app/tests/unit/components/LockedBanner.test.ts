@@ -95,10 +95,15 @@ const VOTING_STAGE_STATUSES = new Set([
 ])
 
 const EXECUTIVE_ROLES = new Set([UserRole.EXECUTIVE_MEMBER, UserRole.COMMITTEE_DIRECTOR])
+const ACTIONABLE_REVIEWER_STATUSES = new Set([
+  RequestStatus.SUBMITTED,
+  RequestStatus.BANK_REVIEW,
+])
 
 function lockedBannerVariant(role: UserRole, status: RequestStatus): LockedBannerVariant | null {
-  if (EXECUTIVE_ROLES.has(role) && VOTING_STAGE_STATUSES.has(status)) return null
   if (TERMINAL_STATUSES.has(status)) return 'locked'
+  if (role === UserRole.BANK_REVIEWER && ACTIONABLE_REVIEWER_STATUSES.has(status)) return null
+  if (EXECUTIVE_ROLES.has(role) && VOTING_STAGE_STATUSES.has(status)) return null
   if (READONLY_STATUSES.has(status)) return 'readonly'
   if (PENDING_STATUSES.has(status)) return 'pending'
   return null
@@ -195,7 +200,19 @@ describe('LockedBanner — executive roles bypass voting stage banners', () => {
     expect(lockedBannerVariant(UserRole.COMMITTEE_DIRECTOR, RequestStatus.WAITING_FOR_VOTING_OPEN)).toBeNull()
   })
 
+  it('COMMITTEE_DIRECTOR viewing EXECUTIVE_REJECTED → locked (terminal state)', () => {
+    expect(lockedBannerVariant(UserRole.COMMITTEE_DIRECTOR, RequestStatus.EXECUTIVE_REJECTED)).toBe('locked')
+  })
+
   it('BANK_REVIEWER viewing EXECUTIVE_VOTING_OPEN → pending (not executive)', () => {
     expect(lockedBannerVariant(UserRole.BANK_REVIEWER, RequestStatus.EXECUTIVE_VOTING_OPEN)).toBe('pending')
+  })
+
+  it('BANK_REVIEWER viewing SUBMITTED → null (actionable stage)', () => {
+    expect(lockedBannerVariant(UserRole.BANK_REVIEWER, RequestStatus.SUBMITTED)).toBeNull()
+  })
+
+  it('BANK_REVIEWER viewing BANK_REVIEW → null (actionable stage)', () => {
+    expect(lockedBannerVariant(UserRole.BANK_REVIEWER, RequestStatus.BANK_REVIEW)).toBeNull()
   })
 })

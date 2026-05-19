@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { UserRole, RequestStatus } from '../../../types/enums'
 import { useAuthStore } from '../../../stores/auth.store'
@@ -67,6 +67,10 @@ const isEditable = computed(() => {
 })
 
 const EXECUTIVE_ROLES = new Set([UserRole.EXECUTIVE_MEMBER, UserRole.COMMITTEE_DIRECTOR])
+const ACTIONABLE_REVIEWER_STATUSES = new Set([
+  RequestStatus.SUBMITTED,
+  RequestStatus.BANK_REVIEW,
+])
 
 // Terminal states — completely immutable, no role can act
 const TERMINAL_STATUSES = new Set([
@@ -101,9 +105,10 @@ type LockedBannerVariant = 'locked' | 'readonly' | 'pending'
 const lockedBannerVariant = computed((): LockedBannerVariant | null => {
   if (!request.value) return null
   const s = request.value.status
+  if (TERMINAL_STATUSES.has(s)) return 'locked'
+  if (userRole.value === UserRole.BANK_REVIEWER && ACTIONABLE_REVIEWER_STATUSES.has(s)) return null
   // Executive roles viewing voting stages have full access — no banner
   if (EXECUTIVE_ROLES.has(userRole.value) && VOTING_STAGE_STATUSES.has(s)) return null
-  if (TERMINAL_STATUSES.has(s)) return 'locked'
   if (READONLY_STATUSES.has(s)) return 'readonly'
   if (PENDING_STATUSES.has(s)) return 'pending'
   return null
@@ -111,6 +116,12 @@ const lockedBannerVariant = computed((): LockedBannerVariant | null => {
 
 const isLocked = computed(() => lockedBannerVariant.value !== null)
 const isReturnedForCorrection = computed(() => request.value?.status === RequestStatus.DRAFT_REJECTED_INTERNAL)
+
+watch(showVotesTab, (visible) => {
+  if (!visible && activeTab.value === 'votes') {
+    activeTab.value = 'overview'
+  }
+})
 
 const canEdit = computed(
   () => userRole.value === UserRole.DATA_ENTRY && isEditable.value,

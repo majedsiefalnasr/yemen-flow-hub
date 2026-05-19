@@ -138,7 +138,13 @@ function voteChipClass(vote: VoteType): string {
 }
 
 function notYetVotedCount(detail: VotingDetail): number {
-  return Math.max(0, detail.total_members - detail.votes.length)
+  const COMMITTEE_SIZE = 6
+  return Math.max(0, COMMITTEE_SIZE - detail.votes.length)
+}
+
+function displayedVotes(detail: VotingDetail): RequestVote[] {
+  const COMMITTEE_SIZE = 6
+  return detail.votes.slice(0, COMMITTEE_SIZE)
 }
 
 describe('VotingPanel — session state detection', () => {
@@ -281,8 +287,8 @@ describe('VotingPanel — vote chip classes', () => {
 describe('VotingPanel — not yet voted count', () => {
   it('returns 0 when all members have voted', () => {
     const detail = makeDetail({
-      total_members: 3,
-      votes: [makeVote({ id: 1 }), makeVote({ id: 2 }), makeVote({ id: 3 })],
+      total_members: 6,
+      votes: Array.from({ length: 6 }, (_, i) => makeVote({ id: i + 1 })),
     })
     expect(notYetVotedCount(detail)).toBe(0)
   })
@@ -292,12 +298,28 @@ describe('VotingPanel — not yet voted count', () => {
       total_members: 5,
       votes: [makeVote({ id: 1 }), makeVote({ id: 2 })],
     })
-    expect(notYetVotedCount(detail)).toBe(3)
+    expect(notYetVotedCount(detail)).toBe(4)
   })
 
   it('never returns negative count', () => {
     const detail = makeDetail({ total_members: 0, votes: [] })
-    expect(notYetVotedCount(detail)).toBe(0)
+    expect(notYetVotedCount(detail)).toBe(6)
+  })
+
+  it('enforces a 6-member roster even if backend total_members drifts', () => {
+    const detail = makeDetail({
+      total_members: 4,
+      votes: [makeVote({ id: 1 }), makeVote({ id: 2 })],
+    })
+    expect(notYetVotedCount(detail)).toBe(4)
+  })
+
+  it('caps displayed vote rows at 6', () => {
+    const detail = makeDetail({
+      total_members: 8,
+      votes: Array.from({ length: 8 }, (_, i) => makeVote({ id: i + 1 })),
+    })
+    expect(displayedVotes(detail)).toHaveLength(6)
   })
 })
 
@@ -388,10 +410,10 @@ describe('VotingPanel — not-yet-voted placeholder rows (Story 6.6)', () => {
     expect(notYetVotedCount(detail)).toBe(6)
   })
 
-  it('never negative even if votes exceed total_members', () => {
+  it('never negative even if vote rows exceed 6', () => {
     const detail = makeDetail({
       total_members: 2,
-      votes: Array.from({ length: 5 }, (_, i) => makeVote({ id: i + 1 })),
+      votes: Array.from({ length: 7 }, (_, i) => makeVote({ id: i + 1 })),
     })
     expect(notYetVotedCount(detail)).toBe(0)
   })
