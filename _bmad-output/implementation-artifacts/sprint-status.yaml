@@ -102,7 +102,7 @@ development_status:
   6-3-4-bank-admin-staff-management: done
   6-3-5-bank-admin-request-wizard: done
   6-4-login-page-redesign-otp-mfa-flow: done
-  6-5-missing-cby-admin-pages: backlog
+  6-5-missing-cby-admin-pages: review
   6-6-request-detail-voting-panel-parity: backlog
   6-7-polish-dark-mode-final-parity: backlog
   epic-6-retrospective: optional
