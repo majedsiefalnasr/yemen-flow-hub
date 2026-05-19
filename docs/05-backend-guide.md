@@ -265,6 +265,27 @@ Can monitor:
 
 ---
 
+## BANK_ADMIN
+
+Can access:
+
+- Users belonging to their own bank
+- Requests belonging to their own bank
+- Bank-level operational dashboard data
+
+Can manage:
+
+- Create/update/activate/deactivate own-bank users
+- Assign only bank-manageable roles (`DATA_ENTRY`, `BANK_REVIEWER`)
+
+Restrictions:
+
+- Cannot assign CBY roles
+- Cannot create or update users outside own bank
+- Cannot perform workflow decisions or governance overrides
+
+---
+
 ## SWIFT_OFFICER
 
 Can access:
@@ -461,6 +482,7 @@ Permissions depend on:
 ```text
 DATA_ENTRY
 BANK_REVIEWER
+BANK_ADMIN
 SWIFT_OFFICER
 SUPPORT_COMMITTEE
 EXECUTIVE_MEMBER

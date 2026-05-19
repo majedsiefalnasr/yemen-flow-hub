@@ -533,6 +533,7 @@ GET /api/documents/{id}/download
 | ------------------ | ----------------- | -------------- | ----------------------- |
 | DATA_ENTRY         | Own bank only     | No             | No                      |
 | BANK_REVIEWER      | Own bank only     | Own bank only  | Own bank only           |
+| BANK_ADMIN         | Own bank only     | Own bank only  | No                      |
 | SWIFT_OFFICER      | Own bank only     | Own bank only  | No                      |
 | SUPPORT_COMMITTEE  | Yes (all banks)   | No             | No                      |
 | EXECUTIVE_MEMBER   | Yes (all banks)   | Yes            | No                      |

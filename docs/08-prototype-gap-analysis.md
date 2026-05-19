@@ -133,11 +133,11 @@
 
 ## Track C: Missing / Mismatched Pages
 
-### NEW — BANK-ADMIN Role Entirely Missing
+### BANK-ADMIN Role (Canonical)
 
-**C0 — BANK-ADMIN role not implemented at all (Critical)**
+**C0 — Historical note (role is now canonical)**
 
-The prototype contains a complete BANK-ADMIN role (distinct from CBY_ADMIN) with its own full set of pages and features. This role is NOT in the canonical `AGENTS.md` role enum and does NOT exist anywhere in the current frontend or backend. It is confirmed as a distinct approved role from 22 screenshots.
+The prototype contains a complete BANK-ADMIN role (distinct from CBY_ADMIN) with its own full set of pages and features. This role is now part of the canonical `AGENTS.md` role enum and exists in both frontend and backend implementations.
 
 BANK-ADMIN pages visible in screenshots:
 

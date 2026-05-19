@@ -291,6 +291,7 @@ COMPLETED
 ```text
 DATA_ENTRY
 BANK_REVIEWER
+BANK_ADMIN
 SWIFT_OFFICER
 SUPPORT_COMMITTEE
 EXECUTIVE_MEMBER
@@ -303,7 +304,7 @@ CBY_ADMIN
 - `COMMITTEE_DIRECTOR` inherits all `EXECUTIVE_MEMBER` permissions plus director-specific actions (open/close voting sessions, resolve ties, finalize decisions, issue customs declarations).
 - A user cannot simultaneously hold `COMMITTEE_DIRECTOR` and `EXECUTIVE_MEMBER`. The director role is the sole executive role for that user.
 - `bank_id` is `NULL` for all CBY roles (`SUPPORT_COMMITTEE`, `EXECUTIVE_MEMBER`, `COMMITTEE_DIRECTOR`, `CBY_ADMIN`).
-- `bank_id` is required (non-null) for all bank roles (`DATA_ENTRY`, `BANK_REVIEWER`, `SWIFT_OFFICER`).
+- `bank_id` is required (non-null) for all bank roles (`DATA_ENTRY`, `BANK_REVIEWER`, `BANK_ADMIN`, `SWIFT_OFFICER`).
 
 ---
 
@@ -418,6 +419,27 @@ Can monitor:
 - SWIFT upload status
 - Executive workflow progress
 - Final decisions
+
+---
+
+## BANK_ADMIN
+
+Can access:
+
+- All users in their own bank
+- All requests belonging to their bank
+- Bank-level operational dashboard data
+
+Can manage:
+
+- Create/update/activate/deactivate users in own bank only
+- Assign only bank-scoped manageable roles (`DATA_ENTRY`, `BANK_REVIEWER`)
+
+Restrictions:
+
+- Cannot assign CBY roles
+- Cannot manage users outside own bank
+- Cannot execute workflow decisions or governance overrides
 
 ---
 
