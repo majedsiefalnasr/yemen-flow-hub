@@ -492,4 +492,33 @@ class AuthControllerTest extends TestCase
         ]);
         $response->assertStatus(429);
     }
+
+    public function test_switch_demo_role_returns_403_when_feature_disabled(): void
+    {
+        $actor = $this->makeUser(['email' => 'actor@example.com']);
+
+        $response = $this->actingAs($actor)->postJson('/api/auth/switch-demo-role', [
+            'role' => UserRole::CBY_ADMIN->value,
+        ]);
+
+        $response->assertStatus(403);
+        $response->assertJsonPath('success', false);
+    }
+
+    public function test_switch_demo_role_switches_session_when_enabled(): void
+    {
+        config(['demo.allow_role_switch' => true]);
+
+        $actor = $this->makeUser(['email' => 'actor@example.com', 'role' => UserRole::BANK_REVIEWER->value]);
+        $target = $this->makeUser(['email' => 'cby-admin@example.com', 'role' => UserRole::CBY_ADMIN->value]);
+
+        $response = $this->actingAs($actor)->postJson('/api/auth/switch-demo-role', [
+            'role' => UserRole::CBY_ADMIN->value,
+        ]);
+
+        $response->assertStatus(200);
+        $response->assertJsonPath('success', true);
+        $response->assertJsonPath('data.user.id', $target->id);
+        $response->assertJsonPath('data.user.role', UserRole::CBY_ADMIN->value);
+    }
 }

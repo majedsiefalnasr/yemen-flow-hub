@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Enums\AuditAction;
+use App\Enums\UserRole;
 use App\Http\Requests\LoginRequest;
 use App\Http\Resources\UserResource;
 use App\Models\User;
@@ -14,6 +15,7 @@ use Laravel\Sanctum\PersonalAccessToken;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use OpenApi\Attributes as OA;
 
@@ -189,6 +191,53 @@ class AuthController extends Controller
         $user = User::query()->where('email', $email)->first();
         if (!$user || !$user->is_active) {
             $this->throwInvalidOtp();
+        }
+
+        return $this->issueSession($request, $user);
+    }
+
+    #[OA\Post(
+        path: '/api/auth/switch-demo-role',
+        tags: ['Auth'],
+        summary: 'Switch authenticated session to a demo user role',
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(
+                required: ['role'],
+                properties: [
+                    new OA\Property(property: 'role', type: 'string'),
+                ]
+            )
+        ),
+        responses: [
+            new OA\Response(response: 200, description: 'Role switched'),
+            new OA\Response(response: 403, description: 'Demo role switching disabled'),
+            new OA\Response(response: 404, description: 'No demo account found for role'),
+            new OA\Response(response: 422, description: 'Validation failed'),
+        ]
+    )]
+    public function switchDemoRole(Request $request)
+    {
+        if (!config('demo.allow_role_switch', false)) {
+            return ApiResponse::forbidden('Demo role switching is disabled.');
+        }
+
+        $validated = $request->validate([
+            'role' => ['required', 'string', Rule::in(array_map(
+                static fn(UserRole $role): string => $role->value,
+                UserRole::cases()
+            ))],
+        ]);
+
+        $role = UserRole::from($validated['role']);
+        $user = User::query()
+            ->where('role', $role->value)
+            ->where('is_active', true)
+            ->orderBy('id')
+            ->first();
+
+        if (!$user) {
+            return ApiResponse::notFound('No active demo account found for selected role.');
         }
 
         return $this->issueSession($request, $user);
