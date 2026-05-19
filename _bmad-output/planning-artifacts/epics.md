@@ -1,5 +1,5 @@
 ---
-stepsCompleted: ["step-01-validate-prerequisites", "step-02-design-epics", "step-03-create-stories", "step-04-final-validation", "epic-6-production-readiness"]
+stepsCompleted: ["step-01-validate-prerequisites", "step-02-design-epics", "step-03-create-stories", "step-04-final-validation", "epic-6-production-readiness", "correct-course-lovable-1-1-ui-parity"]
 inputDocuments:
   - docs/00-project-brief.md
   - docs/01-workflow-and-business-rules.md
@@ -14,8 +14,9 @@ inputDocuments:
   - DESIGN.md
   - _bmad-output/planning-artifacts/project-context.md
   - _bmad-output/planning-artifacts/lovable-prototype-current-project-audit-2026-05-17.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-05-19.md
   - lovable/ (approved UX reference — workflow, dashboards, component hierarchy, RTL patterns)
-lastUpdated: "2026-05-18"
+lastUpdated: "2026-05-19"
 ---
 
 # Yemen Flow Hub - Epic Breakdown
@@ -27,8 +28,9 @@ This document provides the complete epic and story breakdown for Yemen Flow Hub,
 **Source Authority:**
 - docs/01-workflow-and-business-rules.md — highest authority for all workflow behavior
 - docs/ — architecture and business source of truth
-- lovable/ — approved operational UX baseline (interaction patterns, screen structure, component hierarchy)
-- DESIGN.md — visual design system (colors, typography, layout, component styling)
+- lovable/screenshots/ — final visual authority for 1:1 UI parity
+- lovable/src/ — React source reference for layout and component intent; adapt intent only, do not copy code
+- DESIGN.md — visual design system that must be updated when screenshots prove a conflict
 
 **Confirmed Governance Rules (non-negotiable):**
 1. **Organization-scoped visibility** — requests belong to the bank entity, not individual users. Any DATA_ENTRY user inside a bank can access all bank requests.
@@ -2018,7 +2020,7 @@ So that the first interaction with the system matches the stakeholder-approved d
 - OTP step: rendered in the same `login.vue` page via `v-if="otpStep"` — not a separate route
 - OTP cells: 6× `<input type="text" maxlength="1">` with `keydown` handler for auto-advance and `paste` handler for fill-all
 - Backend: existing Sanctum login + add `POST /api/auth/verify-otp` endpoint (or extend current login to support MFA token validation)
-- The demo RoleSwitcher (persona picker) in the login form is a **demo-only feature** — implement as a `v-if="isDemoMode"` block that is disabled/hidden in production; wire to an env variable `NUXT_PUBLIC_DEMO_MODE`
+- The demo RoleSwitcher (persona picker) in the Lovable login form is a **demo-only feature** — do not implement it for production parity. Use real backend-authenticated users per role.
 - Commit to both repos
 
 ---
@@ -2054,7 +2056,8 @@ So that I can administer the platform fully from the browser without backend-onl
 
 **Given** I navigate to `/settings`
 **When** the page loads as `CBY_ADMIN`
-**Then** I see 6 tabs: سير العمل, البريد الإلكتروني, الإشعارات, الأمن, عام, بيانات العرض التوضيحي
+**Then** I see 5 production tabs: سير العمل, البريد الإلكتروني, الإشعارات, الأمن, عام
+**And** demo-data reset controls are not rendered in production parity
 
 **Given** I navigate to `/settings` tab "الأمن"
 **When** I view the content
@@ -2069,7 +2072,7 @@ So that I can administer the platform fully from the browser without backend-onl
 - `/admin/cby-staff` route: guard with `role === CBY_ADMIN` middleware
 - `/admin/entities`: uses existing banks API (`GET /api/banks`) — extend if needed
 - `/admin/roles`: static data component; role definitions from `AGENTS.md` constants — no API needed
-- `/settings`: 6-tab layout using shadcn-vue `Tabs`; each tab is a separate component; only "بيانات العرض التوضيحي" tab is conditionally hidden in production (`NUXT_PUBLIC_DEMO_MODE`)
+- `/settings`: 5-tab production layout using shadcn-vue `Tabs`; each tab is a separate component; do not implement "بيانات العرض التوضيحي" demo reset controls in production parity
 - `/profile`: available to all authenticated roles; uses `GET /api/auth/user` for data; avatar upload calls `POST /api/profile/avatar`
 - Commit to both repos
 
@@ -2136,11 +2139,11 @@ So that all workflow actions are visible and usable as approved.
 ### Story 6.7: Polish, Dark Mode & Final Parity
 
 As a stakeholder reviewing the application,
-I want dark mode, a consistent Lucide icon system, the customs print page, and an in-app role switcher,
+I want dark mode, a consistent Lucide icon system, the customs print page, and final component polish,
 So that the application is production-ready and matches the full approved prototype for the final acceptance review.
 
 > **Estimate:** ~8 hours
-> Closes gaps: B9, B11, C10, D2, D4
+> Closes gaps: B9, B11, C10, D4
 
 **Acceptance Criteria:**
 
@@ -2166,11 +2169,6 @@ So that the application is production-ready and matches the full approved protot
 **And** I see zoom controls and a "طباعة" button
 **And** an issuance confirmation dialog appears before the print action executes
 
-**Given** I am in demo mode (`NUXT_PUBLIC_DEMO_MODE=true`)
-**When** I view the authenticated header
-**Then** I see a "تبديل الدور" (role switcher) dropdown showing all 8 canonical roles
-**And** selecting a role logs me in as that role's demo user without a full logout/login cycle
-
 **Given** a shadcn-vue Dialog (modal)
 **When** it opens
 **Then** the overlay has `background: rgba(12, 18, 26, 0.4)` with `backdrop-filter: blur(4px)`
@@ -2179,6 +2177,401 @@ So that the application is production-ready and matches the full approved protot
 - Dark mode: CSS class strategy — add/remove `dark` class on `<html>`; define dark-variant CSS custom properties in `[html.dark]` selector block in `main.css`
 - Lucide Vue: `npm install lucide-vue-next`; create `Icon.vue` wrapper for consistent sizing; replace all hardcoded SVGs in `SidebarIcon.vue` and throughout
 - Customs print page: `pages/customs/[id]/print.vue`; uses `@media print` CSS for clean output; zoom via CSS `transform: scale()`
-- RoleSwitcher: `RoleSwitcher.vue` component gated by `isDemoMode`; calls existing `/api/auth/login` with demo credentials per role
 - shadcn-vue Dialog overlay: override `.dialog-overlay` CSS in `main.css`
 - Commit to both repos
+
+---
+
+## Epic 7: Lovable 1:1 UI Parity Rework
+
+**Purpose:** Rework the production Nuxt UI screen-by-screen until it visually matches the stakeholder-approved Lovable React prototype. This epic exists because prior prototype parity work closed functional and route gaps, but did not enforce screenshot-level acceptance. Epic 7 is the acceptance pass.
+
+**Correct-course decision date:** 2026-05-19
+
+**Source authorities:**
+1. `docs/01-workflow-and-business-rules.md` and `docs/03-database-and-models.md` remain final authority for workflow, roles, statuses, security, and audit behavior.
+2. `lovable/screenshots/` is final authority for visual UI parity. If `DESIGN.md` conflicts with screenshots, update `DESIGN.md` and the implementation to match the screenshot.
+3. `lovable/src/` is the React source reference for layout and component intent. Adapt intent only; do not copy React/TanStack code.
+4. `DESIGN.md` is the tokenized design-system expression of the screenshots and must be kept current.
+5. `frontend/app/` must implement with Nuxt 4, Vue, TypeScript, Tailwind CSS v4, Pinia, and shadcn-vue.
+
+**Definition of 1:1 parity:**
+- Same layout structure, spacing, alignment, typography, color, border radius, shadow, component states, and responsive behavior.
+- No obvious visual difference when comparing the Nuxt screen to the Lovable screenshot at matching viewport widths.
+- All production data comes from Laravel APIs. If a Lovable screen needs data that no API provides, the story must create the backend API, policy, tests, and frontend integration.
+- Every screen uses shadcn-vue primitives as the base where a matching primitive exists, then customizes the primitive to match Lovable.
+- Demo-only features remain excluded even if visible in the prototype: role switchers, demo login shortcuts, demo reset tools, mock-state editing, fake authorization bypasses, and prototype/demo labels.
+
+**Required story evidence:**
+- Lovable React source path(s)
+- Lovable screenshot path(s)
+- Nuxt target path(s)
+- Backend API path(s), if the story requires data not already exposed
+- Desktop Playwright screenshot comparison
+- Mobile <=600px Playwright screenshot comparison
+- Story completion checklist documenting any intentional demo-only omissions
+
+**Common technical requirements for all Epic 7 stories:**
+- Run SocratiCode before modifying existing files: `codebase_symbol` / `codebase_search`, then `codebase_impact` for touched components/services.
+- Keep `lovable/` read-only.
+- Keep business logic out of Vue components; use composables/stores/services.
+- Preserve real backend authorization and organization scoping.
+- Commit frontend changes to frontend team repo and root monorepo; commit backend changes to backend team repo and root monorepo.
+- After code changes, run targeted frontend/backend tests and `graphify update .`.
+
+---
+
+### Story 7.1: AppShell and Login 1:1 Parity
+
+As any authenticated or unauthenticated user,
+I want the application shell and login flow to match the Lovable prototype,
+So that the first visible experience and persistent navigation are stakeholder-approved.
+
+**Lovable React references:**
+- `lovable/src/components/layout/AppShell.tsx`
+- `lovable/src/routes/__root.tsx`
+- `lovable/src/routes/login.tsx`
+
+**Lovable screenshot references:**
+- `lovable/screenshots/login.png`
+- `lovable/screenshots/login-otp.png`
+- `lovable/screenshots/CBY_ADMIN /dashboard.png`
+- `lovable/screenshots/CBY_ADMIN /dashboard-sidebar-collapsed.png`
+- `lovable/screenshots/CBY_ADMIN /notifications-dropdown.png`
+- `lovable/screenshots/CBY_ADMIN /notifications-empty.png`
+
+**Nuxt targets:**
+- `frontend/app/layouts/default.vue`
+- `frontend/app/layouts/auth.vue`
+- `frontend/app/components/layout/AppSidebar.vue`
+- `frontend/app/components/layout/AppHeader.vue`
+- `frontend/app/pages/login.vue`
+- `frontend/app/assets/css/main.css`
+- `frontend/app/assets/css/fonts.css`
+
+**Acceptance criteria:**
+- Sidebar, header, search, notifications dropdown, profile/menu area, collapsed state, spacing, and sticky behavior match screenshots.
+- Login is two-column on desktop and single-column on mobile, matching `login.png`.
+- OTP step uses six individual cells and matches `login-otp.png`.
+- Demo RoleSwitcher/persona picker is intentionally omitted.
+- If OTP backend support is incomplete, implement the real backend endpoint and tests in the same story.
+
+---
+
+### Story 7.2: Dashboard 1:1 Parity by Role
+
+As a user in any production role,
+I want my dashboard to match the Lovable role-specific dashboard,
+So that each role starts from the exact operational workspace stakeholders approved.
+
+**Lovable React references:**
+- `lovable/src/routes/index.tsx`
+- `lovable/src/components/layout/AppShell.tsx`
+- `lovable/src/lib/governance.ts`
+
+**Lovable screenshot references:**
+- `lovable/screenshots/BANK-ADMIN/dashboard.png`
+- `lovable/screenshots/BANK_REVIEWER /dashboard.png`
+- `lovable/screenshots/CBY_ADMIN /dashboard.png`
+- `lovable/screenshots/COMMITTEE_DIRECTOR/dashboard.png`
+- `lovable/screenshots/DATA_ENTRY/dashboard.png`
+- `lovable/screenshots/EXECUTIVE_MEMBER/dashboard.png`
+- `lovable/screenshots/SUPPORT_COMMITTEE /dashboard.png`
+- `lovable/screenshots/SWIFT_OFFICER/dashboard.png`
+
+**Nuxt targets:**
+- `frontend/app/pages/dashboard.vue`
+- `frontend/app/components/dashboard/*.vue`
+- `frontend/app/stores/dashboard.store.ts`
+- `frontend/app/composables/useDashboard.ts`
+
+**Acceptance criteria:**
+- Each role dashboard matches its screenshot for KPI count, card layout, charts, queues, quick actions, labels, empty/loading/error states, and responsive layout.
+- Charts appear only where the prototype shows them.
+- DATA_ENTRY sees simplified business statuses; BANK_ADMIN and CBY roles see appropriate internal workflow visibility.
+- Any missing dashboard metrics must be added through real backend API responses and tests.
+
+---
+
+### Story 7.3: Requests List 1:1 Parity
+
+As a user reviewing workflow queues,
+I want the requests list to match the Lovable list layout for my role,
+So that request scanning, filtering, and actions behave exactly as approved.
+
+**Lovable React references:**
+- `lovable/src/routes/requests.index.tsx`
+- `lovable/src/components/workflow/WorkflowProgress.tsx`
+- `lovable/src/components/ui/table.tsx`
+- `lovable/src/components/ui/badge.tsx`
+
+**Lovable screenshot references:**
+- `lovable/screenshots/BANK-ADMIN/requests-list.png`
+- `lovable/screenshots/CBY_ADMIN /requests.png`
+- `lovable/screenshots/COMMITTEE_DIRECTOR/requests-list.png`
+- `lovable/screenshots/EXECUTIVE_MEMBER/requests-list.png`
+- `lovable/screenshots/SUPPORT_COMMITTEE /requests-list.png`
+- `lovable/screenshots/SWIFT_OFFICER/requests-list.png`
+
+**Nuxt targets:**
+- `frontend/app/pages/requests/index.vue`
+- `frontend/app/constants/workflow.ts`
+- `frontend/app/stores/requests.store.ts`
+- `frontend/app/composables/useRequests.ts`
+- `frontend/app/components/ui/StatusBadge.vue`
+
+**Acceptance criteria:**
+- Table/card structure, search, filters, status badges, progress indicators, actions, pagination, and row spacing match Lovable for each role.
+- Role-specific differences are captured in the story checklist.
+- List data comes from `GET /api/requests` or an explicitly extended backend endpoint.
+
+---
+
+### Story 7.4: Request Detail 1:1 Parity
+
+As any role with request access,
+I want request detail pages to match the Lovable detail screens for my role and request status,
+So that workflow state, documents, parties, voting, and actions are visually and operationally clear.
+
+**Lovable React references:**
+- `lovable/src/routes/requests.$id.tsx`
+- `lovable/src/routes/customs.$id.print.tsx`
+- `lovable/src/components/workflow/AuditTimeline.tsx`
+- `lovable/src/components/workflow/DocumentChecklist.tsx`
+- `lovable/src/components/workflow/LockedBanner.tsx`
+- `lovable/src/components/workflow/VotingPanel.tsx`
+- `lovable/src/components/workflow/WorkflowProgress.tsx`
+
+**Lovable screenshot references:**
+- `lovable/screenshots/BANK-ADMIN/request-view-info-tab.png`
+- `lovable/screenshots/BANK-ADMIN/request-view-documents-tab.png`
+- `lovable/screenshots/BANK-ADMIN/request-view-parties-tab.png`
+- `lovable/screenshots/BANK-ADMIN/request-view-support-rejected.png`
+- `lovable/screenshots/BANK-ADMIN/request-view-voting-stage.png`
+- `lovable/screenshots/BANK_REVIEWER /request-view-actions-expanded.png`
+- `lovable/screenshots/BANK_REVIEWER /request-view-internal-review.png`
+- `lovable/screenshots/CBY_ADMIN /requests-view-request.png`
+- `lovable/screenshots/CBY_ADMIN /requests-view-request-tab.png`
+- `lovable/screenshots/CBY_ADMIN /requests-view-request-tab2.png`
+- `lovable/screenshots/CBY_ADMIN /requests-view-request-view-file.png`
+- `lovable/screenshots/COMMITTEE_DIRECTOR/request-view-voting-open-director.png`
+- `lovable/screenshots/COMMITTEE_DIRECTOR/request-view-voting-pending-open.png`
+- `lovable/screenshots/EXECUTIVE_MEMBER/request-view-voting-open-cast-vote.png`
+- `lovable/screenshots/SUPPORT_COMMITTEE /request-view-claimed-actions.png`
+- `lovable/screenshots/SUPPORT_COMMITTEE /request-view-pending-claim.png`
+- `lovable/screenshots/SWIFT_OFFICER/request-view-pending-swift.png`
+
+**Nuxt targets:**
+- `frontend/app/pages/requests/[id]/index.vue`
+- `frontend/app/pages/requests/[id]/swift.vue`
+- `frontend/app/pages/requests/[id]/customs-preview.vue`
+- `frontend/app/components/requests/ActionsPanel.vue`
+- `frontend/app/components/requests/DocumentChecklist.vue`
+- `frontend/app/components/ui/LockedBanner.vue`
+- `frontend/app/components/voting/VotingPanel.vue`
+- `frontend/app/components/workflow/*.vue`
+
+**Acceptance criteria:**
+- Detail layout, workflow rail, tabs, document checklist, action panel, support claim banners, locked/read-only states, voting panel, customs issue/print subflow, and file preview states match role/status screenshots.
+- Any missing actor names, document data, vote roster data, or customs preview data must be provided by real backend APIs.
+
+---
+
+### Story 7.5: Request Wizard 1:1 Parity
+
+As a bank user creating a financing request,
+I want the request wizard to match the Lovable four-step flow,
+So that submission feels guided and identical to the approved prototype.
+
+**Lovable React references:**
+- `lovable/src/routes/requests.new.tsx`
+- `lovable/src/components/ui/form.tsx`
+- `lovable/src/components/ui/input.tsx`
+- `lovable/src/components/ui/select.tsx`
+
+**Lovable screenshot references:**
+- `lovable/screenshots/BANK-ADMIN/new-request-step1-basic-info.png`
+- `lovable/screenshots/BANK-ADMIN/new-request-step2-supplier.png`
+- `lovable/screenshots/BANK-ADMIN/new-request-step3-documents.png`
+- `lovable/screenshots/BANK-ADMIN/new-request-step4-review-submit.png`
+
+**Nuxt targets:**
+- `frontend/app/pages/requests/new.vue`
+- `frontend/app/components/wizard/RequestWizard.vue`
+- `frontend/app/components/wizard/WizardStepper.vue`
+- `frontend/app/components/wizard/WizardStep*.vue`
+- `frontend/app/composables/useRequestWizard.ts`
+- `frontend/app/schemas/wizard.schema.ts`
+
+**Acceptance criteria:**
+- Stepper, fields, validation states, upload zones, summary card, acknowledgment checkbox, sticky footer actions, and responsive behavior match the four screenshots.
+- DATA_ENTRY and BANK_ADMIN differences are explicit and tested.
+- File upload and draft/submit actions use real backend APIs.
+
+---
+
+### Story 7.6: Merchants 1:1 Parity
+
+As a bank admin or CBY admin,
+I want merchant management to match the Lovable merchant screens,
+So that merchant cards, forms, and status actions are visually consistent with the prototype.
+
+**Lovable React references:**
+- `lovable/src/routes/merchants.tsx`
+- `lovable/src/components/ui/dialog.tsx`
+- `lovable/src/components/ui/card.tsx`
+
+**Lovable screenshot references:**
+- `lovable/screenshots/BANK-ADMIN/merchants-list-cards.png`
+- `lovable/screenshots/BANK-ADMIN/merchants-list-suspended.png`
+- `lovable/screenshots/BANK-ADMIN/merchants-add-modal.png`
+- `lovable/screenshots/BANK-ADMIN/merchants-edit-modal.png`
+- `lovable/screenshots/CBY_ADMIN /merchants.png`
+- `lovable/screenshots/CBY_ADMIN /merchants-view-merchant.png`
+
+**Nuxt targets:**
+- `frontend/app/pages/merchants.vue`
+- `frontend/app/components/merchants/MerchantCard.vue`
+- `frontend/app/components/merchants/MerchantModal.vue`
+- `frontend/app/components/merchants/SuspendConfirmDialog.vue`
+- `frontend/app/composables/useMerchants.ts`
+
+**Acceptance criteria:**
+- BANK_ADMIN merchant page uses card grid parity; CBY_ADMIN merchant page follows the CBY screenshot parity.
+- Add/edit/suspend modal states match screenshots.
+- All merchant data and status changes use real backend APIs and bank/CBY authorization.
+
+---
+
+### Story 7.7: Staff and Administration 1:1 Parity
+
+As a BANK_ADMIN or CBY_ADMIN,
+I want staff, CBY staff, entity, and role administration screens to match Lovable,
+So that administrative workflows have the same approved visual structure.
+
+**Lovable React references:**
+- `lovable/src/routes/bank.users.tsx`
+- `lovable/src/routes/admin.cby-staff.tsx`
+- `lovable/src/routes/admin.entities.tsx`
+- `lovable/src/routes/admin.roles.tsx`
+
+**Lovable screenshot references:**
+- `lovable/screenshots/BANK-ADMIN/staff-list.png`
+- `lovable/screenshots/BANK-ADMIN/staff-edit-modal.png`
+- `lovable/screenshots/BANK-ADMIN/staff-edit-modal2.png`
+- `lovable/screenshots/CBY_ADMIN /staff.png`
+- `lovable/screenshots/CBY_ADMIN /staff-add-member.png`
+- `lovable/screenshots/CBY_ADMIN /staff-edit-member.png`
+- `lovable/screenshots/CBY_ADMIN /banks.png`
+- `lovable/screenshots/CBY_ADMIN /banks-add-bank.png`
+- `lovable/screenshots/CBY_ADMIN /banks-view-bank.png`
+- `lovable/screenshots/CBY_ADMIN /roles.png`
+- `lovable/screenshots/CBY_ADMIN /roles2-readonly-view.png`
+
+**Nuxt targets:**
+- `frontend/app/pages/staff.vue`
+- `frontend/app/pages/admin/cby-staff.vue`
+- `frontend/app/pages/admin/entities.vue`
+- `frontend/app/pages/admin/roles.vue`
+- `frontend/app/pages/users.vue`
+- `frontend/app/pages/banks.vue`
+- `frontend/app/components/staff/StaffModal.vue`
+- `frontend/app/composables/useUsers.ts`
+- `frontend/app/composables/useBanks.ts`
+
+**Acceptance criteria:**
+- BANK_ADMIN staff management and CBY_ADMIN administration pages match the relevant screenshots.
+- Role definitions remain production-safe; no editable permissions matrix unless backed by real permission APIs and governance approval.
+- Any missing user/entity fields or counts are added through backend APIs and tests.
+
+---
+
+### Story 7.8: Reports 1:1 Parity
+
+As a reporting user,
+I want reports pages to match the Lovable reports screens for my role,
+So that operational analysis appears exactly as stakeholders reviewed it.
+
+**Lovable React references:**
+- `lovable/src/routes/reports.tsx`
+- `lovable/src/components/ui/chart.tsx`
+
+**Lovable screenshot references:**
+- `lovable/screenshots/BANK-ADMIN/reports.png`
+- `lovable/screenshots/CBY_ADMIN /reports.png`
+- `lovable/screenshots/COMMITTEE_DIRECTOR/reports.png`
+- `lovable/screenshots/EXECUTIVE_MEMBER/reports.png`
+- `lovable/screenshots/SUPPORT_COMMITTEE /reports.png`
+
+**Nuxt targets:**
+- `frontend/app/pages/reports/index.vue`
+- `frontend/app/composables/useReports.ts`
+- `frontend/app/stores/reports.store.ts`
+- `backend/app/Http/Controllers/Api/ReportController.php`
+
+**Acceptance criteria:**
+- KPI cards, filters, charts, tables, exports, and role-specific report variants match screenshots.
+- Report numbers are computed from stable backend data, not status-only shortcuts that can be distorted by auto-chained workflow transitions.
+- Any missing report dataset is implemented in the backend with tests before the UI is marked done.
+
+---
+
+### Story 7.9: Audit 1:1 Parity
+
+As an audit/compliance user,
+I want audit pages to match Lovable's compliance views,
+So that activity, duplicate invoice, and risk views support compliance review exactly as approved.
+
+**Lovable React references:**
+- `lovable/src/routes/audit.tsx`
+- `lovable/src/components/workflow/AuditTimeline.tsx`
+
+**Lovable screenshot references:**
+- `lovable/screenshots/CBY_ADMIN /audit.png`
+- `lovable/screenshots/CBY_ADMIN /audit-tab2.png`
+- `lovable/screenshots/CBY_ADMIN /audit-tab3.png`
+- `lovable/screenshots/COMMITTEE_DIRECTOR/audit-log-list.png`
+
+**Nuxt targets:**
+- `frontend/app/pages/audit.vue`
+- `frontend/app/composables/useAudit.ts`
+- `frontend/app/components/workflow/AuditTimeline.vue`
+- `backend/app/Http/Controllers/Api/AuditController.php`
+
+**Acceptance criteria:**
+- Audit page tabs, KPI cards, filters, table density, risk cards, duplicate invoice indicators, and empty/error states match screenshots.
+- If duplicate invoice or risk indicator data has no real API, create backend endpoints and tests rather than using mock data.
+
+---
+
+### Story 7.10: Settings and Profile 1:1 Parity
+
+As an authenticated user or CBY admin,
+I want settings and profile screens to match Lovable while excluding demo-only controls,
+So that account and system configuration screens are production-safe and visually approved.
+
+**Lovable React references:**
+- `lovable/src/routes/settings.tsx`
+- `lovable/src/routes/profile.tsx`
+
+**Lovable screenshot references:**
+- `lovable/screenshots/CBY_ADMIN /settings.png`
+- `lovable/screenshots/CBY_ADMIN /settings2.png`
+- `lovable/screenshots/CBY_ADMIN /settings3.png`
+- `lovable/screenshots/CBY_ADMIN /settings4.png`
+- `lovable/screenshots/CBY_ADMIN /settings5.png`
+- `lovable/screenshots/CBY_ADMIN /settings6.png`
+- `lovable/screenshots/CBY_ADMIN /profile.png`
+
+**Nuxt targets:**
+- `frontend/app/pages/settings.vue`
+- `frontend/app/pages/admin/settings.vue`
+- `frontend/app/pages/profile.vue`
+- `frontend/app/composables/useSettings.ts`
+- `frontend/app/composables/useAdminSettings.ts`
+- `frontend/app/composables/useProfile.ts`
+
+**Acceptance criteria:**
+- Profile layout, avatar card, stats, recent activity, settings tabs, form controls, toggles, and responsive behavior match screenshots.
+- Demo-data reset tooling is intentionally omitted, even if visible in the screenshots.
+- Any setting displayed in production must be backed by a real API, persisted value, authorization rule, and test.

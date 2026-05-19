@@ -1,7 +1,7 @@
 # Prototype Gap Analysis — Lovable vs Current Implementation
 
 **Date:** 2026-05-18  
-**Updated:** 2026-05-18 (UX spec pass — missing UI states fully documented in `docs/ux/missing-ui-states.md`)  
+**Updated:** 2026-05-19 (correct-course pass — strict Lovable 1:1 visual parity rules added)
 **Analyst:** Claude Code (automated analysis + manual screenshot verification)  
 **Purpose:** Identify all UI/UX/logic/feature gaps between the stakeholder-approved Lovable prototype and the current production frontend, to drive a sprint toward production acceptance.
 
@@ -17,6 +17,22 @@
 | Current frontend | `frontend/app/` |
 | Updated design authority | `DESIGN.md` (now reflects full screenshot analysis) |
 | Current design tokens | `frontend/app/assets/css/main.css` |
+
+---
+
+## 2026-05-19 Correct-Course Decision
+
+The previous parity plan closed routes and functional feature gaps, but it did not force the Nuxt implementation to match the Lovable React UI screenshot-by-screenshot. The corrected acceptance model is now:
+
+- `lovable/screenshots/` is the final visual authority. If `DESIGN.md` conflicts with the screenshots, update `DESIGN.md` and the implementation to match the screenshots.
+- "1:1 parity" means same layout, spacing, typography, colors, component states, responsive behavior, and no obvious screenshot difference.
+- All screen stories must cite exact Lovable React source files, exact screenshot references, and exact Nuxt target files.
+- shadcn-vue is the required component base; customization is allowed and expected to achieve Lovable parity.
+- Production screens must use real APIs. If the API does not exist, the backend API and authorization path must be created in the same story.
+- Demo-only features remain excluded: role switchers, demo login shortcuts, mock-state editing, demo reset tools, fake authorization bypasses, and prototype labels.
+- Future parity work is split by screen group, with role-specific screenshot matrices inside each story: AppShell/Login, Dashboard, Requests List, Request Detail, Request Wizard, Merchants, Staff, Reports, Audit, Settings/Profile.
+
+This section supersedes earlier language in this file that treated in-app role switching as a required demo acceptance feature.
 
 ---
 
@@ -104,11 +120,11 @@
 - Prototype has `DocumentChecklist.tsx` showing required/optional documents per stage with upload status
 - Current frontend has NO DocumentChecklist.vue — confirmed by grep
 
-**B7 — RoleSwitcher in login: EXISTS ✓ — but no in-header version**
-- Screenshot `login.png` confirms RoleSwitcher IS implemented in the login form (persona picker)
-- The login form shows a dropdown listing all 7+ roles with user names and subroles
-- However, the prototype also allows switching roles from within the authenticated session via the header; no in-app role switcher found in current frontend
-- **Status**: login-page RoleSwitcher: CLOSED. In-app header RoleSwitcher: OPEN (needed for stakeholder QA)
+**B7 — RoleSwitcher / demo persona controls: EXCLUDED**
+- The prototype contains demo role/persona switching controls for stakeholder walkthroughs.
+- Correct-course decision 2026-05-19: demo-only role switching must not be implemented as production parity.
+- If a RoleSwitcher appears in Lovable source or screenshots, the parity story must document it as an intentional omission.
+- **Status**: CLOSED as excluded scope, not a production gap.
 
 ### Major
 
@@ -171,7 +187,7 @@ Key BANK-ADMIN differentiators vs. DATA_ENTRY:
 | `/admin/entities` | `admin.entities.tsx` | Add/edit registered banks and entities | Critical |
 | `/admin/roles` | `admin.roles.tsx` | View and manage role definitions | Critical |
 | `/customs/[id]/print` | `customs.$id.print.tsx` | Customs declaration print/preview | Major |
-| `/settings` (OTP / MFA) | `settings.tsx` | 6-tab settings page (workflow/SMTP/notifications/security/general/demo-data) | Major |
+| `/settings` (OTP / MFA) | `settings.tsx` | 5 production settings tabs (workflow/SMTP/notifications/security/general); demo-data reset excluded | Major |
 | `/profile` | User profile page with avatar, stats, recent activity | Major |
 
 **Note:** `/bank/users` from the previous analysis maps to the BANK-ADMIN `/staff` page — it is part of the C0 BANK-ADMIN scope.
@@ -179,7 +195,7 @@ Key BANK-ADMIN differentiators vs. DATA_ENTRY:
 ### Mismatched Pages (exist but differ significantly)
 
 **C1 — Login page**
-- Prototype: two-column layout (form left 50% + branded hero right 50%), 2-step flow (credentials → OTP), `#0066cc` right panel with Arabic tagline, demo RoleSwitcher dropdown
+- Prototype: two-column layout (form left 50% + branded hero right 50%), 2-step flow (credentials → OTP), `#0066cc` right panel with Arabic tagline; demo RoleSwitcher dropdown is excluded from production parity
 - OTP step (`login-otp.png`): 6-cell digit input boxes, "تأكيد ودخول" button, "رجوع" link
 - Current: single-column form, no hero section, no OTP/MFA step
 - Severity: **Critical** — first page stakeholders see
@@ -195,7 +211,7 @@ Key BANK-ADMIN differentiators vs. DATA_ENTRY:
 - Severity: **Critical**
 
 **C4 — Settings page**
-- Prototype: 6-tab settings (سير العمل / البريد / الإشعارات / الأمن / عام / بيانات العرض التوضيحي) — only CBY_ADMIN
+- Prototype: settings tabs (سير العمل / البريد / الإشعارات / الأمن / عام). The demo-data tab/control is excluded from production parity — only CBY_ADMIN
 - Current: `settings.vue` exists but likely has different tabs or subset
 - Severity: **Major**
 
@@ -221,10 +237,11 @@ Key BANK-ADMIN differentiators vs. DATA_ENTRY:
 - Current: single-step credentials login, no OTP step
 - Severity: **Critical** — MFA is a security requirement visible to stakeholders
 
-**D2 — In-app role switcher for stakeholder QA**
-- While login page has a RoleSwitcher (confirmed), stakeholders need to switch roles without logging out
-- Prototype supports this via the authenticated header; current does not
-- Severity: **Critical** for QA and demo acceptance
+**D2 — In-app role switcher for stakeholder QA: EXCLUDED**
+- Earlier analysis treated this as required for demo acceptance.
+- Correct-course decision 2026-05-19: demo-only prototype features stay excluded.
+- Stakeholder QA should use real authenticated users per role, not UI-only role switching or mock authorization bypasses.
+- Severity: **N/A** — intentional omission.
 
 **D3 — Simplified status labels for Data Entry: IMPLEMENTED ✓ (CLOSED)**
 - Confirmed in `frontend/app/constants/workflow.ts`
@@ -320,8 +337,8 @@ Items marked **SPECCED** have been designed from first principles using DESIGN.m
 | B2 | Components | **Critical** | Header lacks backdrop-blur | Open |
 | B4 | Components | **Critical** | VotingPanel: 6 members, tally, director controls | Open |
 | B6 | Components | **Critical** | DocumentChecklist component MISSING | Open |
-| B7-login | Components | **Closed** | Login RoleSwitcher | **CLOSED** |
-| B7-app | Components | **Critical** | In-app role switcher for QA/demo | Open |
+| B7-login | Components | **Excluded** | Login RoleSwitcher / demo persona picker | **Excluded** |
+| B7-app | Components | **Excluded** | In-app role switcher for QA/demo | **Excluded** |
 | B8 | Components | **Major** | LockedBanner missing 3 variants | Open |
 | B9 | Components | **Major** | Icon system: need Lucide Vue | Open |
 | B10 | Components | **Closed** | StatusBadge role filtering | **CLOSED** |
@@ -337,7 +354,7 @@ Items marked **SPECCED** have been designed from first principles using DESIGN.m
 | C9 | Pages | **Critical** | `/admin/roles` MISSING | Open |
 | C10 | Pages | **Major** | `/customs/[id]/print` — dedicated print page | Open |
 | D1 | UX/Logic | **Critical** | OTP/MFA login step not implemented | Open |
-| D2 | UX/Logic | **Critical** | In-app role switcher for stakeholder QA | Open |
+| D2 | UX/Logic | **Excluded** | In-app role switcher for stakeholder QA | **Excluded** |
 | D3 | UX/Logic | **Closed** | DATA_ENTRY simplified status labels | **CLOSED** |
 | D4 | UX/Logic | **Major** | Dark mode not implemented | Open |
 | D5 | UX/Logic | **Major** | Customs print flow parity | Open |
@@ -350,10 +367,10 @@ Items marked **SPECCED** have been designed from first principles using DESIGN.m
 | E3 | Layout | **Major** | Max-width 1280px vs 1600px | Open |
 | E4 | Layout | **Minor** | Responsive padding not reducing on tablet/mobile | Open |
 
-**Open critical:** 17  
+**Open critical:** 15
 **Open major:** 16  
 **Open minor:** 3  
-**Closed:** 4
+**Closed/excluded:** 6
 
 ---
 
@@ -402,7 +419,7 @@ Items marked **SPECCED** have been designed from first principles using DESIGN.m
 23. `/admin/cby-staff` — CBY system user CRUD
 24. `/admin/entities` — Banks/entities CRUD
 25. `/admin/roles` — Role definitions viewer
-26. Settings page: 6-tab structure (سير العمل / البريد / الإشعارات / الأمن / عام / بيانات العرض)
+26. Settings page: 5 production tabs (سير العمل / البريد / الإشعارات / الأمن / عام); demo-data reset excluded
 27. Profile page: avatar + stats + recent activity + MFA toggle
 
 ### Sprint 6.6 — Request Detail & Voting Parity *(~8 hours)*
@@ -419,7 +436,31 @@ Items marked **SPECCED** have been designed from first principles using DESIGN.m
 34. LockedBanner 3-variant system
 35. Modal overlay blur
 36. Customs print page (`/customs/[id]/print`)
-37. In-app RoleSwitcher for stakeholder demo mode
+37. Demo RoleSwitcher remains excluded; document omission where screenshots show it
+
+---
+
+## Sprint 7 Corrected Plan — Lovable 1:1 UI Parity by Screen
+
+Sprint 6 closed many functional and route gaps, but stakeholder acceptance now requires a strict visual parity pass. Sprint 7 is the corrected screen-by-screen plan:
+
+1. **AppShell/Login** — sidebar/header/auth layout, OTP, notification dropdown, mobile shell.
+2. **Dashboard** — role-specific dashboards for all eight roles, with screenshot matrices per role.
+3. **Requests List** — role-scoped list layout, filters, progress, cards/table behavior, empty/loading/error states.
+4. **Request Detail** — status rail, tabs, documents, parties, voting, locked/claim states, customs issue/print subflow.
+5. **Request Wizard** — four-step request creation flow and validation/upload states.
+6. **Merchants** — card grid, add/edit/suspend states, CBY and BANK_ADMIN differences.
+7. **Staff** — BANK_ADMIN staff, CBY staff, entities, and role-definition administration screens.
+8. **Reports** — role-specific reports dashboards and exports backed by real APIs.
+9. **Audit** — activity, duplicate invoice, and risk indicator tabs backed by real APIs.
+10. **Settings/Profile** — production-safe settings and account profile; demo-data reset remains excluded.
+
+Every story must include exact references to:
+
+- Lovable React source path(s), for example `lovable/src/routes/reports.tsx`
+- Lovable screenshot path(s), for example `lovable/screenshots/CBY_ADMIN /reports.png`
+- Nuxt target path(s), for example `frontend/app/pages/reports/index.vue`
+- Backend API path(s) when a real endpoint must be created or extended
 
 ---
 
@@ -429,6 +470,7 @@ Items marked **SPECCED** have been designed from first principles using DESIGN.m
 - **OTP login** requires backend coordination — the OTP endpoint and delivery mechanism must be designed before Sprint 6.4 frontend work.
 - **Sprints 6.1–6.2** are independent and can be done in any order. Sprint 6.1 (token fixes) should land first so that all subsequent visual work happens on the correct token baseline.
 - **Dark mode** (Sprint 6.7) can be deferred to post-launch if timeline is tight, but must be acknowledged to stakeholders.
+- **Sprint 7 is the acceptance pass.** It supersedes loose parity language from Sprint 6 and requires screenshot evidence before a story can be marked done.
 
 ---
 

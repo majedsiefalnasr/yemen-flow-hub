@@ -1,7 +1,19 @@
 # Yemen Flow Hub — Design System
 
-> **Source of truth:** this file reflects the confirmed stakeholder-approved Lovable prototype.
-> The implementation must match this file exactly. Where a divergence exists, the implementation is wrong.
+> **Final visual authority:** `lovable/screenshots/`.
+> This file codifies the stakeholder-approved Lovable prototype, but screenshots are the final authority for visual parity. When this file conflicts with `lovable/screenshots/`, update this file and the implementation to match the screenshot.
+
+## 0. Lovable 1:1 Parity Rules
+
+These rules were confirmed during the 2026-05-19 correct-course pass and override earlier loose "close enough" parity language.
+
+1. **Visual acceptance standard:** Nuxt screens must match the Lovable React UI with the same layout, spacing, typography, colors, component states, responsive behavior, and no obvious screenshot difference.
+2. **Evidence per screen:** every parity story must cite the exact Lovable React source file, exact screenshot path(s), and exact Nuxt target file(s).
+3. **Component base:** use shadcn-vue primitives as the implementation base, then customize them to match the Lovable screenshots. Do not copy React/TanStack code directly.
+4. **Data authority:** production UI must use real Laravel APIs. If a Lovable screen requires data that has no API, create the backend API and authorization path instead of using mock data.
+5. **Demo-only exclusions:** do not implement prototype-only role switching, demo login shortcuts, demo reset tools, mock-state editing, fake authorization bypasses, or prototype-only labels. If a demo-only element appears in a screenshot, omit it and document the omission in the story parity checklist.
+6. **Visual verification:** before a parity story can be marked done, capture the Nuxt target with Playwright at desktop and mobile widths and compare it against the relevant `lovable/screenshots/` references.
+7. **Responsive scope:** desktop is primary, but <=600px behavior must match the prototype intent or the closest documented responsive behavior.
 
 ---
 
@@ -535,14 +547,15 @@ Two distinct layouts depending on role:
 
 **Route:** `/settings` (CBY_ADMIN only)
 
-### 6 tabs
+### 5 production tabs
 
 1. **سير العمل** — Approval cycle settings: support committee member count, executive committee member count, quorum threshold, review deadline (hours), voting tie-breaker toggle, director tiebreak toggle
 2. **البريد** (SMTP) — Host, Port, Username, Password, email template body
 3. **الإشعارات** — Toggle per notification channel: email on new request, in-app on status change, SMS on approval, fraud alert notification, daily activity summary
 4. **الأمن** — Toggles: require MFA, password expiry (90 days), lockout after 5 failed attempts, encrypt uploaded documents (AES-256), log all operations to audit, allow external network access
 5. **عام** — Platform name, department name, default language, timezone, last backup timestamp
-6. **بيانات العرض التوضيحي** — "إعادة تعيين بيانات العرض التوضيحي" — danger button to wipe and restore demo data
+
+Prototype screenshots may show **بيانات العرض التوضيحي** / demo reset controls. These are demo-only and must be omitted from production parity.
 
 ---
 
@@ -561,16 +574,18 @@ Two distinct layouts depending on role:
 ### Login (`/login`)
 
 - Two-column layout: left = form (40% width), right = blue hero panel (`#0066cc` background, white text)
-- Form: Email input, Password input, **RoleSwitcher** (demo persona picker dropdown), "متابعة" button
+- Form: Email input, Password input, "متابعة" button
 - Right panel: platform name "منصة إدارة ومراجعة طلبات تمويل الواردات" + workflow description
 - Footer: "مصادقة متعددة العوامل (MFA) مفعّلة" chip + version badge
 - Logo: top-right, CBY monogram
+
+If the Lovable login screenshot shows a **RoleSwitcher** / demo persona picker, it is intentionally excluded from production parity. Use real users and backend authentication for each role.
 
 ### OTP Step (`/login/otp`)
 
 - Same two-column layout
 - Left panel: 6-digit OTP input boxes (large, individual cells), "تأكيد ودخول" button, "رجوع" link
-- Pre-filled selected persona shown below OTP boxes
+- No selected persona or demo-user helper text
 - No password field on this step
 
 ---
