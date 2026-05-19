@@ -100,8 +100,8 @@ development_status:
   6-3-2-bank-admin-dashboard: done
   6-3-3-bank-admin-merchant-management: done
   6-3-4-bank-admin-staff-management: done
-  6-3-5-bank-admin-request-wizard: in-progress
-  6-4-login-page-redesign-otp-mfa-flow: backlog
+  6-3-5-bank-admin-request-wizard: done
+  6-4-login-page-redesign-otp-mfa-flow: review
   6-5-missing-cby-admin-pages: backlog
   6-6-request-detail-voting-panel-parity: backlog
   6-7-polish-dark-mode-final-parity: backlog
