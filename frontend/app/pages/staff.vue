@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { UserRole } from '../types/enums'
-import type { User } from '../types/models'
+import type { ApiError, User } from '../types/models'
 import { useUsers } from '../composables/useUsers'
 import { useAuthStore } from '../stores/auth.store'
 import { ROLE_LABELS } from '../constants/workflow'
 import StaffModal from '../components/staff/StaffModal.vue'
+import EmptyState from '../components/ui/EmptyState.vue'
 import type { CreateUserPayload, UpdateUserPayload } from '../composables/useUsers'
 
 definePageMeta({
@@ -13,7 +14,7 @@ definePageMeta({
   requiredRoles: [UserRole.BANK_ADMIN],
 })
 
-const { fetchUsers, createUser, updateUser } = useUsers()
+const { fetchUsers, createUser, updateUser, getUser } = useUsers()
 const auth = useAuthStore()
 
 const staff = ref<User[]>([])
@@ -30,6 +31,17 @@ const deactivatingStaff = ref<User | null>(null)
 const deactivating = ref(false)
 
 const isEmpty = computed(() => !loading.value && !error.value && staff.value.length === 0)
+
+function getFirstApiErrorMessage(err: unknown): string | null {
+  const data = (err as { data?: ApiError })?.data
+  if (!data) return null
+  if (data.errors) {
+    const firstKey = Object.keys(data.errors)[0]
+    const firstMessage = firstKey ? data.errors[firstKey]?.[0] : null
+    if (firstMessage) return firstMessage
+  }
+  return data.message ?? null
+}
 
 async function loadStaff() {
   loading.value = true
@@ -82,12 +94,13 @@ async function handleSave(data: {
   serverError.value = null
   try {
     if (editingStaff.value) {
+      const currentUser = await getUser(editingStaff.value.id)
       const payload: UpdateUserPayload = {
         name: data.name,
         email: data.email,
         role: data.role,
         bank_id: auth.user?.bank_id ?? null,
-        is_active: editingStaff.value.is_active,
+        is_active: currentUser.is_active,
       }
       if (data.password) payload.password = data.password
       const updated = await updateUser(editingStaff.value.id, payload)
@@ -109,8 +122,7 @@ async function handleSave(data: {
     closeModal()
   }
   catch (err: unknown) {
-    const e = err as { data?: { message?: string } }
-    serverError.value = e.data?.message ?? 'حدث خطأ أثناء الحفظ.'
+    serverError.value = getFirstApiErrorMessage(err) ?? 'حدث خطأ أثناء الحفظ.'
   }
   finally {
     saving.value = false
@@ -122,16 +134,19 @@ async function confirmDeactivate() {
   deactivating.value = true
   try {
     const target = deactivatingStaff.value
+    const currentUser = await getUser(target.id)
     const payload: UpdateUserPayload = {
-      name: target.name,
-      email: target.email,
-      role: target.role,
-      bank_id: auth.user?.bank_id ?? null,
+      name: currentUser.name,
+      email: currentUser.email,
+      role: currentUser.role,
+      bank_id: currentUser.bank_id,
       is_active: false,
     }
     const updated = await updateUser(target.id, payload)
     const idx = staff.value.findIndex(s => s.id === updated.id)
-    if (idx !== -1) staff.value[idx] = updated
+    if (idx !== -1) {
+      staff.value[idx] = updated
+    }
     closeDeactivate()
   }
   catch {
@@ -181,20 +196,11 @@ onMounted(loadStaff)
     </div>
 
     <!-- Empty state -->
-    <div v-else-if="isEmpty" class="empty-state">
-      <div class="empty-icon">
-        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#8e8e93" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-          <circle cx="9" cy="7" r="4" />
-          <polyline points="16 11 18 13 22 9" />
-        </svg>
-      </div>
-      <h2 class="empty-title">لا يوجد موظفون مسجّلون</h2>
-      <p class="empty-subtitle">ابدأ بإضافة أول موظف في بنكك لمنحه صلاحيات الدخول للنظام.</p>
+    <EmptyState v-else-if="isEmpty" variant="staff">
       <button class="btn-primary" @click="openCreate">
         إضافة أول موظف
       </button>
-    </div>
+    </EmptyState>
 
     <!-- Staff table -->
     <div v-else class="card">
@@ -224,7 +230,7 @@ onMounted(loadStaff)
                 {{ member.is_active ? 'نشط' : 'غير نشط' }}
               </span>
             </td>
-            <td class="text-muted">{{ formatJoinDate((member as any).created_at) }}</td>
+            <td class="text-muted">{{ formatJoinDate(member.created_at) }}</td>
             <td>
               <div class="actions-cell">
                 <button class="btn-action btn-edit" @click="openEdit(member)">تعديل</button>

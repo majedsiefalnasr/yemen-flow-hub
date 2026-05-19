@@ -38,5 +38,10 @@ export function useUsers() {
     return response.data
   }
 
-  return { fetchUsers, createUser, updateUser }
+  async function getUser(id: number): Promise<User> {
+    const response = await get<ApiResponse<User>>(`/api/users/${id}`)
+    return response.data
+  }
+
+  return { fetchUsers, createUser, updateUser, getUser }
 }

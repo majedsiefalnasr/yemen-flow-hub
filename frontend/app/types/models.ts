@@ -146,6 +146,7 @@ export interface User {
   bank_name_ar: string | null
   bank_name_en: string | null
   is_active: boolean
+  created_at?: string | null
 }
 
 export interface PaginatedResponse<T> {

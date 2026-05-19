@@ -13,16 +13,6 @@ import DialogHeader from '../ui/dialog/DialogHeader.vue'
 import DialogOverlay from '../ui/dialog/DialogOverlay.vue'
 import DialogTitle from '../ui/dialog/DialogTitle.vue'
 
-const schema = toTypedSchema(z.object({
-  name: z.string().trim().min(1, 'الاسم الكامل مطلوب'),
-  email: z.string().trim().min(1, 'البريد الإلكتروني مطلوب').email('البريد الإلكتروني غير صحيح'),
-  role: z.enum([UserRole.DATA_ENTRY, UserRole.BANK_REVIEWER], {
-    errorMap: () => ({ message: 'يجب اختيار الدور الوظيفي' }),
-  }),
-  department: z.string().optional().default(''),
-  password: z.string().optional().default(''),
-}))
-
 const props = defineProps<{
   staff: User | null
   saving: boolean
@@ -43,7 +33,20 @@ const emit = defineEmits<{
 const isEdit = computed(() => props.staff !== null)
 
 const extendedSchema = computed(() => {
-  if (isEdit.value) return schema
+  if (isEdit.value) {
+    return toTypedSchema(z.object({
+      name: z.string().trim().min(1, 'الاسم الكامل مطلوب'),
+      email: z.string().trim().min(1, 'البريد الإلكتروني مطلوب').email('البريد الإلكتروني غير صحيح'),
+      role: z.enum([UserRole.DATA_ENTRY, UserRole.BANK_REVIEWER], {
+        errorMap: () => ({ message: 'يجب اختيار الدور الوظيفي' }),
+      }),
+      department: z.string().optional().default(''),
+      password: z.string().default('').refine(
+        value => value.length === 0 || value.length >= 8,
+        'كلمة المرور يجب أن تكون 8 أحرف على الأقل',
+      ),
+    }))
+  }
   return toTypedSchema(z.object({
     name: z.string().trim().min(1, 'الاسم الكامل مطلوب'),
     email: z.string().trim().min(1, 'البريد الإلكتروني مطلوب').email('البريد الإلكتروني غير صحيح'),
