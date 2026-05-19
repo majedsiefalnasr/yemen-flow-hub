@@ -296,7 +296,7 @@ Tie notifications to real requests from the seeder (don't invent fake `request_i
 After running `php artisan migrate:fresh --seed`, verify:
 
 - [ ] 5 banks (4 active, 1 inactive).
-- [ ] 22 users covering all 7 roles.
+- [ ] 22 users covering all 8 roles.
 - [ ] ~27 import requests covering all 14 scenarios.
 - [ ] Every non-DRAFT request has documents.
 - [ ] Every SWIFT_UPLOADED+ request has 1 SWIFT document.

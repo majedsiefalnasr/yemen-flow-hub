@@ -14,7 +14,7 @@ class UserSeeder extends Seeder
     {
         $password = Hash::make('password');
 
-        // CBY users — canonical 7 roles, extra exec members for voting quorum
+        // CBY users — canonical 8-role model, extra exec members for voting quorum
         $cbyUsers = [
             ['name' => 'ياسر الحضرمي', 'email' => 'admin@cby.gov.ye', 'role' => UserRole::CBY_ADMIN],
             ['name' => 'محمد الشامي', 'email' => 'support1@cby.gov.ye', 'role' => UserRole::SUPPORT_COMMITTEE],

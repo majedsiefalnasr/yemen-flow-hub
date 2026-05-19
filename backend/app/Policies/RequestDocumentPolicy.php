@@ -30,6 +30,7 @@ class RequestDocumentPolicy
         return match ($user->role) {
             UserRole::DATA_ENTRY,
             UserRole::BANK_REVIEWER,
+            UserRole::BANK_ADMIN,
             UserRole::SWIFT_OFFICER => $user->bank_id !== null && $user->bank_id === $requestBankId,
             UserRole::SUPPORT_COMMITTEE,
             UserRole::EXECUTIVE_MEMBER,
@@ -45,6 +46,7 @@ class RequestDocumentPolicy
             UserRole::DATA_ENTRY,
             UserRole::SUPPORT_COMMITTEE => false,
             UserRole::BANK_REVIEWER,
+            UserRole::BANK_ADMIN,
             UserRole::SWIFT_OFFICER => $user->bank_id !== null && $user->bank_id === $requestBankId,
             UserRole::EXECUTIVE_MEMBER,
             UserRole::COMMITTEE_DIRECTOR,

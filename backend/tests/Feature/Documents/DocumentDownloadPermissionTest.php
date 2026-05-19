@@ -148,6 +148,30 @@ class DocumentDownloadPermissionTest extends TestCase
         $response->assertStatus(403);
     }
 
+    public function test_bank_admin_can_download_request_doc_for_own_bank(): void
+    {
+        $creator = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $request = $this->makeRequest($this->bank, $creator);
+        $document = $this->makeDocument($request, $creator);
+
+        $actor = $this->makeUser(UserRole::BANK_ADMIN, $this->bank);
+        $response = $this->actingAs($actor)->getJson("/api/documents/{$document->id}/download");
+
+        $response->assertStatus(200);
+    }
+
+    public function test_bank_admin_cannot_download_request_doc_for_other_bank(): void
+    {
+        $otherCreator = $this->makeUser(UserRole::DATA_ENTRY, $this->otherBank);
+        $request = $this->makeRequest($this->otherBank, $otherCreator);
+        $document = $this->makeDocument($request, $otherCreator);
+
+        $actor = $this->makeUser(UserRole::BANK_ADMIN, $this->bank);
+        $response = $this->actingAs($actor)->getJson("/api/documents/{$document->id}/download");
+
+        $response->assertStatus(403);
+    }
+
     public function test_swift_officer_can_download_request_doc_for_own_bank(): void
     {
         $creator = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
@@ -271,6 +295,30 @@ class DocumentDownloadPermissionTest extends TestCase
         $document = $this->makeDocument($request, $uploader, 'SWIFT');
 
         $actor = $this->makeUser(UserRole::BANK_REVIEWER, $this->bank);
+        $response = $this->actingAs($actor)->getJson("/api/documents/{$document->id}/download");
+
+        $response->assertStatus(403);
+    }
+
+    public function test_bank_admin_can_download_swift_for_own_bank(): void
+    {
+        $uploader = $this->makeUser(UserRole::SWIFT_OFFICER, $this->bank);
+        $request = $this->makeRequest($this->bank, $uploader);
+        $document = $this->makeDocument($request, $uploader, 'SWIFT');
+
+        $actor = $this->makeUser(UserRole::BANK_ADMIN, $this->bank);
+        $response = $this->actingAs($actor)->getJson("/api/documents/{$document->id}/download");
+
+        $response->assertStatus(200);
+    }
+
+    public function test_bank_admin_cannot_download_swift_for_other_bank(): void
+    {
+        $uploader = $this->makeUser(UserRole::SWIFT_OFFICER, $this->otherBank);
+        $request = $this->makeRequest($this->otherBank, $uploader);
+        $document = $this->makeDocument($request, $uploader, 'SWIFT');
+
+        $actor = $this->makeUser(UserRole::BANK_ADMIN, $this->bank);
         $response = $this->actingAs($actor)->getJson("/api/documents/{$document->id}/download");
 
         $response->assertStatus(403);

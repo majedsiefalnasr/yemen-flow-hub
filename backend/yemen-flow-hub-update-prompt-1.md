@@ -1,4 +1,6 @@
-# Yemen Flow Hub — Update Prompt #1 (Major Refactor)
+# Yemen Flow Hub — Update Prompt #1 (Major Refactor, Legacy)
+
+> **Legacy note:** This prompt is historical. If any role/status rule here conflicts with `AGENTS.md` and `docs/`, the canonical source of truth is `AGENTS.md` + `docs/`.
 
 ## How to use
 
@@ -15,7 +17,7 @@ Feed Codex **one chunk at a time** in order. Each chunk has its own acceptance c
 
 Add this preamble at the start of every Codex session for this update:
 
-> You are updating the **Yemen Flow Hub** Laravel 11 backend based on new client feedback derived from the live prototype at `yemen-flow-hub.lovable.app`. The original implementation (Modules 1–9) used 7 roles including `COMMITTEE_DIRECTOR`. The prototype now defines **exactly 8 roles** — `COMMITTEE_DIRECTOR` is removed entirely, and two new roles are added: `BANK_MANAGER` (commercial bank supervisor) and `EXECUTIVE_DIRECTOR` (head of the executive committee). The update also introduces a Merchants entity, a Permissions matrix table, tighter editing rules, and a claim mechanism for the Support Committee. Read the existing code in `app/Enums/`, `app/Services/Workflow/`, `app/Models/`, `app/Http/Controllers/Api/`, and `database/migrations/` before editing. Preserve all existing Swagger `@OA` annotations and extend them — never delete them.
+> You are updating the **Yemen Flow Hub** Laravel 11 backend based on new client feedback derived from the live prototype at `yemen-flow-hub.lovable.app`. Use the canonical 8-role model from `AGENTS.md` (`DATA_ENTRY`, `BANK_REVIEWER`, `BANK_ADMIN`, `SWIFT_OFFICER`, `SUPPORT_COMMITTEE`, `EXECUTIVE_MEMBER`, `COMMITTEE_DIRECTOR`, `CBY_ADMIN`) and treat `AGENTS.md` + `docs/` as source of truth. Read the existing code in `app/Enums/`, `app/Services/Workflow/`, `app/Models/`, `app/Http/Controllers/Api/`, and `database/migrations/` before editing. Preserve all existing Swagger `@OA` annotations and extend them — never delete them.
 
 ---
 

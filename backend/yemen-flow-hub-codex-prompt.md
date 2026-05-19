@@ -147,7 +147,7 @@ php artisan vendor:publish --provider="L5Swagger\L5SwaggerServiceProvider"
 
 ### 1.2 Create Enums (`app/Enums/`)
 
-- `UserRole` — backed string enum with all 7 role constants from Global Context.
+- `UserRole` — backed string enum with all 8 canonical role constants from Global Context.
 - `RequestStatus` — backed string enum with all 13 status constants.
 - `VoteType` — `APPROVE`, `REJECT`, `ABSTAIN`.
 - `AuditAction` — at minimum: `LOGIN`, `LOGOUT`, `REQUEST_CREATED`, `REQUEST_UPDATED`, `REQUEST_DELETED`, `STATUS_TRANSITION`, `VOTE_CAST`, `DOCUMENT_UPLOADED`, `DOCUMENT_DOWNLOADED`, `SWIFT_UPLOADED`, `CUSTOMS_ISSUED`.
