@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import { UserRole } from '../types/enums'
 import type { Merchant } from '../types/models'
 import { useMerchants } from '../composables/useMerchants'
+import { useBanks } from '../composables/useBanks'
 import { useAuthStore } from '../stores/auth.store'
 import MerchantCard from '../components/merchants/MerchantCard.vue'
 import MerchantModal from '../components/merchants/MerchantModal.vue'
@@ -15,8 +16,10 @@ definePageMeta({
 
 const { fetchMerchants, createMerchant, updateMerchant, suspendMerchant } = useMerchants()
 const authStore = useAuthStore()
+const { fetchBanks } = useBanks()
 
 const merchants = ref<Merchant[]>([])
+const bankOptions = ref<Array<{ id: number; name: string }>>([])
 const loading = ref(false)
 const loadError = ref<string | null>(null)
 
@@ -44,6 +47,22 @@ async function loadMerchants() {
   }
 }
 
+async function loadBanksForCbyAdmin() {
+  if (!authStore.isCbyAdmin) {
+    bankOptions.value = []
+    return
+  }
+  try {
+    const banks = await fetchBanks()
+    bankOptions.value = banks
+      .filter(bank => bank.is_active)
+      .map(bank => ({ id: bank.id, name: bank.name_ar || bank.name_en }))
+  }
+  catch {
+    loadError.value = 'تعذّر تحميل قائمة البنوك. حاول مجدداً.'
+  }
+}
+
 function openCreate() {
   editingMerchant.value = null
   saveError.value = null
@@ -67,7 +86,13 @@ async function handleSave(data: {
   tax_number: string
   address: string | null
   business_type: string | null
+  bank_id: number | null
 }) {
+  if (!editingMerchant.value && authStore.isCbyAdmin && !data.bank_id) {
+    saveError.value = 'اختيار البنك مطلوب.'
+    return
+  }
+
   saving.value = true
   saveError.value = null
   try {
@@ -77,7 +102,7 @@ async function handleSave(data: {
         commercial_register: data.commercial_register || null,
         tax_number: data.tax_number || null,
         address: data.address,
-        is_active: editingMerchant.value.is_active,
+        business_type: data.business_type,
       })
       const idx = merchants.value.findIndex(m => m.id === updated.id)
       if (idx !== -1) merchants.value[idx] = updated
@@ -85,9 +110,11 @@ async function handleSave(data: {
     else {
       const created = await createMerchant({
         name: data.name,
+        bank_id: authStore.isCbyAdmin ? data.bank_id : undefined,
         commercial_register: data.commercial_register || null,
         tax_number: data.tax_number || null,
         address: data.address,
+        business_type: data.business_type,
         is_active: true,
       })
       merchants.value.unshift(created)
@@ -129,7 +156,9 @@ async function confirmToggleStatus() {
   }
 }
 
-onMounted(loadMerchants)
+onMounted(async () => {
+  await Promise.all([loadMerchants(), loadBanksForCbyAdmin()])
+})
 </script>
 
 <template>
@@ -213,6 +242,9 @@ onMounted(loadMerchants)
       :merchant="editingMerchant"
       :saving="saving"
       :server-error="saveError"
+      :requires-bank-selection="authStore.isCbyAdmin"
+      :bank-options="bankOptions"
+      :default-bank-id="editingMerchant?.bank_id ?? null"
       @save="handleSave"
       @close="closeModal"
     />
@@ -300,8 +332,20 @@ onMounted(loadMerchants)
 /* Card grid — 3 cols desktop, 2 tablet, 1 mobile */
 .card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
+}
+
+@media (max-width: 1024px) {
+  .card-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .card-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* Skeleton card */

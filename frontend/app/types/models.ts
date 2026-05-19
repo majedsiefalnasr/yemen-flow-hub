@@ -40,6 +40,7 @@ export interface Merchant {
   phone: string | null
   email: string | null
   address: string | null
+  business_type?: string | null
   is_active: boolean
   created_by: number | null
   created_at: string | null

@@ -17,6 +17,7 @@ export interface CreateMerchantPayload {
   phone?: string | null
   email?: string | null
   address?: string | null
+  business_type?: string | null
   is_active?: boolean
 }
 
@@ -29,6 +30,7 @@ export interface UpdateMerchantPayload {
   phone?: string | null
   email?: string | null
   address?: string | null
+  business_type?: string | null
   is_active?: boolean
 }
 

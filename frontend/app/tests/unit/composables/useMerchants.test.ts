@@ -22,6 +22,7 @@ const MERCHANT_FIXTURE = {
   phone: '+967700123456',
   email: null,
   address: 'صنعاء',
+  business_type: 'import',
   is_active: true,
   created_by: 1,
   created_at: '2026-05-01T00:00:00.000Z',
@@ -98,8 +99,8 @@ describe('useMerchants — createMerchant', () => {
   it('posts to /api/merchants and returns created merchant', async () => {
     mockPost.mockResolvedValueOnce({ success: true, data: MERCHANT_FIXTURE })
     const { createMerchant } = useMerchants()
-    const result = await createMerchant({ name: 'شركة الأمل للتجارة', bank_id: 1 })
-    expect(mockPost).toHaveBeenCalledWith('/api/merchants', expect.objectContaining({ name: 'شركة الأمل للتجارة', bank_id: 1 }))
+    const result = await createMerchant({ name: 'شركة الأمل للتجارة', bank_id: 1, business_type: 'import' })
+    expect(mockPost).toHaveBeenCalledWith('/api/merchants', expect.objectContaining({ name: 'شركة الأمل للتجارة', bank_id: 1, business_type: 'import' }))
     expect(result.id).toBe(1)
   })
 

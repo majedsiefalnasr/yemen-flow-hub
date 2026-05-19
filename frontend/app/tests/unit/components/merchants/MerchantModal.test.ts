@@ -5,11 +5,12 @@ import type { Merchant } from '../../../../types/models'
 // ── Schema (mirrors MerchantModal.vue validation) ────────────────────────────
 
 const schema = z.object({
-  name: z.string().min(1, 'اسم التاجر مطلوب'),
-  commercial_register: z.string().min(1, 'رقم السجل التجاري مطلوب'),
-  tax_number: z.string().min(1, 'الرقم الضريبي مطلوب'),
+  name: z.string().trim().min(1, 'اسم التاجر مطلوب'),
+  commercial_register: z.string().trim().min(1, 'رقم السجل التجاري مطلوب'),
+  tax_number: z.string().trim().min(1, 'الرقم الضريبي مطلوب'),
   address: z.string().optional().default(''),
   business_type: z.string().optional().default(''),
+  bank_id: z.string().optional().default(''),
 })
 
 function validate(data: object) {
@@ -24,12 +25,13 @@ function prefillFromMerchant(merchant: Merchant) {
     commercial_register: merchant.commercial_register ?? '',
     tax_number: merchant.tax_number ?? '',
     address: merchant.address ?? '',
-    business_type: '',
+    business_type: merchant.business_type ?? '',
+    bank_id: merchant.bank_id ? String(merchant.bank_id) : '',
   }
 }
 
 function emptyFormValues() {
-  return { name: '', commercial_register: '', tax_number: '', address: '', business_type: '' }
+  return { name: '', commercial_register: '', tax_number: '', address: '', business_type: '', bank_id: '' }
 }
 
 // ── Modal title logic ────────────────────────────────────────────────────────
@@ -115,6 +117,7 @@ describe('MerchantModal — edit prefill', () => {
     phone: null,
     email: null,
     address: 'عدن، كريتر',
+    business_type: 'import',
     is_active: true,
     created_by: 1,
     created_at: '2026-05-01T00:00:00.000Z',
@@ -144,8 +147,16 @@ describe('MerchantModal — edit prefill', () => {
     expect(prefillFromMerchant({ ...merchant, address: null }).address).toBe('')
   })
 
-  it('resets business_type to empty string in edit mode', () => {
-    expect(prefillFromMerchant(merchant).business_type).toBe('')
+  it('prefills business_type from merchant when provided', () => {
+    expect(prefillFromMerchant(merchant).business_type).toBe('import')
+  })
+
+  it('defaults business_type to empty string when null', () => {
+    expect(prefillFromMerchant({ ...merchant, business_type: null }).business_type).toBe('')
+  })
+
+  it('prefills bank_id from merchant', () => {
+    expect(prefillFromMerchant(merchant).bank_id).toBe('1')
   })
 })
 
@@ -157,6 +168,7 @@ describe('MerchantModal — create mode', () => {
     expect(values.tax_number).toBe('')
     expect(values.address).toBe('')
     expect(values.business_type).toBe('')
+    expect(values.bank_id).toBe('')
   })
 })
 
@@ -185,5 +197,12 @@ describe('MerchantModal — business type options', () => {
       expect(opt.value).toBeTruthy()
       expect(opt.label).toBeTruthy()
     })
+  })
+})
+
+describe('MerchantModal — trimming', () => {
+  it('fails when required fields are whitespace only', () => {
+    const result = validate({ name: '   ', commercial_register: '  ', tax_number: '   ' })
+    expect(result.success).toBe(false)
   })
 })
