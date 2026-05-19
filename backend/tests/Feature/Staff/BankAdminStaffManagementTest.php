@@ -226,7 +226,13 @@ class BankAdminStaffManagementTest extends TestCase
     {
         $target = $this->makeUser(UserRole::BANK_REVIEWER, $this->otherBank, 'other.deactivate@bank.test');
 
-        $this->actingAs($this->bankAdmin)->deleteJson("/api/users/{$target->id}")
+        $this->actingAs($this->bankAdmin)->putJson("/api/users/{$target->id}", [
+            'name' => $target->name,
+            'email' => $target->email,
+            'role' => UserRole::BANK_REVIEWER->value,
+            'bank_id' => $target->bank_id,
+            'is_active' => false,
+        ])
             ->assertForbidden();
     }
 

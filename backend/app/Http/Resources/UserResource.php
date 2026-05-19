@@ -18,6 +18,7 @@ class UserResource extends JsonResource
             'bank_id' => $this->bank_id,
             'bank_name' => $this->bank?->name,
             'is_active' => (bool) $this->is_active,
+            'created_at' => $this->created_at?->toISOString(),
         ];
     }
 }
