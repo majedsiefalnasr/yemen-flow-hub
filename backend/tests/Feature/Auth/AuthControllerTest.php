@@ -7,8 +7,10 @@ use App\Enums\UserRole;
 use App\Models\AuditLog;
 use App\Models\Bank;
 use App\Models\User;
+use App\Services\Auth\MfaService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Routing\Middleware\ThrottleRequests;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Tests\TestCase;
@@ -350,5 +352,123 @@ class AuthControllerTest extends TestCase
         ]);
 
         $response->assertStatus(403);
+    }
+
+    // --- MFA: login returns requires_mfa when MFA enabled ---
+
+    public function test_login_returns_requires_mfa_when_mfa_enabled(): void
+    {
+        config(['mfa.enabled' => true]);
+        $this->makeUser();
+
+        $response = $this->postJson('/api/auth/login', [
+            'email' => 'test@example.com',
+            'password' => 'password',
+        ]);
+
+        $response->assertStatus(200);
+        $response->assertJsonPath('data.requires_mfa', true);
+        $response->assertJsonPath('data.email', 'test@example.com');
+        $response->assertJsonMissing(['token']);
+    }
+
+    public function test_login_does_not_return_requires_mfa_when_mfa_disabled(): void
+    {
+        config(['mfa.enabled' => false]);
+        $this->makeUser();
+
+        $response = $this->postJson('/api/auth/login', [
+            'email' => 'test@example.com',
+            'password' => 'password',
+        ]);
+
+        $response->assertStatus(200);
+        $response->assertJsonPath('data.requires_mfa', false);
+    }
+
+    // --- MFA: verify-otp success ---
+
+    public function test_verify_otp_completes_login_with_correct_code(): void
+    {
+        $this->makeUser();
+        $mfa = new MfaService();
+        $code = $mfa->generate('test@example.com');
+
+        $response = $this->postJson('/api/auth/verify-otp', [
+            'email' => 'test@example.com',
+            'otp' => $code,
+        ]);
+
+        $response->assertStatus(200);
+        $response->assertJsonPath('success', true);
+        $response->assertJsonPath('data.requires_mfa', false);
+    }
+
+    // --- MFA: verify-otp invalid code ---
+
+    public function test_verify_otp_returns_422_for_wrong_code(): void
+    {
+        $this->makeUser();
+        $mfa = new MfaService();
+        $mfa->generate('test@example.com');
+
+        $response = $this->postJson('/api/auth/verify-otp', [
+            'email' => 'test@example.com',
+            'otp' => '000000',
+        ]);
+
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors(['otp']);
+    }
+
+    // --- MFA: verify-otp expired (no pending OTP) ---
+
+    public function test_verify_otp_returns_422_when_no_pending_otp(): void
+    {
+        $this->makeUser();
+        Cache::forget('mfa_otp:test@example.com');
+
+        $response = $this->postJson('/api/auth/verify-otp', [
+            'email' => 'test@example.com',
+            'otp' => '123456',
+        ]);
+
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors(['otp']);
+    }
+
+    // --- MFA: verify-otp clears OTP after successful use ---
+
+    public function test_verify_otp_is_single_use(): void
+    {
+        $this->makeUser();
+        $mfa = new MfaService();
+        $code = $mfa->generate('test@example.com');
+
+        $this->postJson('/api/auth/verify-otp', ['email' => 'test@example.com', 'otp' => $code]);
+
+        // Second use of same code should fail
+        $response = $this->postJson('/api/auth/verify-otp', [
+            'email' => 'test@example.com',
+            'otp' => $code,
+        ]);
+
+        $response->assertStatus(422);
+    }
+
+    // --- MFA: verify-otp throttled ---
+
+    public function test_verify_otp_is_throttled(): void
+    {
+        $this->makeUser();
+        $mfa = new MfaService();
+        $mfa->generate('test@example.com');
+
+        for ($i = 0; $i < 10; $i++) {
+            $this->postJson('/api/auth/verify-otp', ['email' => 'test@example.com', 'otp' => '000000']);
+        }
+
+        $response = $this->postJson('/api/auth/verify-otp', ['email' => 'test@example.com', 'otp' => '000000']);
+        $response->assertStatus(429);
     }
 }

@@ -7,6 +7,7 @@ use App\Http\Requests\LoginRequest;
 use App\Http\Resources\UserResource;
 use App\Models\User;
 use App\Services\Audit\AuditService;
+use App\Services\Auth\MfaService;
 use App\Support\ApiResponse;
 use Illuminate\Support\Facades\Auth;
 use Laravel\Sanctum\PersonalAccessToken;
@@ -21,8 +22,10 @@ class AuthController extends Controller
     private const LOCKOUT_THRESHOLD = 10;
     private const LOCKOUT_MINUTES = 15;
 
-    public function __construct(private readonly AuditService $auditService)
-    {
+    public function __construct(
+        private readonly AuditService $auditService,
+        private readonly MfaService $mfaService,
+    ) {
     }
 
     #[OA\Post(
@@ -79,37 +82,16 @@ class AuthController extends Controller
         // Success: clear only the per-email failure counter; IP window decays naturally
         RateLimiter::clear($failKey);
 
-        if ($request->hasSession()) {
-            Auth::guard('web')->login($user);
-            $request->session()->regenerate();
-        }
-
-        $user->forceFill(['last_login_at' => now()])->save();
-
-        $this->auditService->log(
-            AuditAction::LOGIN,
-            $user,
-            $user,
-            ['mode' => $request->hasSession() ? 'cookie' : 'token']
-        );
-
-        if ($request->hasSession()) {
+        // MFA gate: generate OTP and return requires_mfa signal without creating session
+        if (config('mfa.enabled', false)) {
+            $this->mfaService->generate($email);
             return ApiResponse::success([
-                'user' => new UserResource($user->fresh('bank')),
-                'token' => null,
-                'token_type' => null,
-                'mode' => 'cookie',
-            ], 'Login successful.');
+                'requires_mfa' => true,
+                'email' => $email,
+            ], 'OTP sent. Complete MFA to continue.');
         }
 
-        $token = $user->createToken($request->string('device_name')->toString() ?: 'api-client')->plainTextToken;
-
-        return ApiResponse::success([
-            'user' => new UserResource($user->fresh('bank')),
-            'token' => $token,
-            'token_type' => 'Bearer',
-            'mode' => 'token',
-        ], 'Login successful.');
+        return $this->issueSession($request, $user);
     }
 
     #[OA\Get(
@@ -159,6 +141,90 @@ class AuthController extends Controller
         );
 
         return ApiResponse::success((object) [], 'Logged out successfully.');
+    }
+
+    #[OA\Post(
+        path: '/api/auth/verify-otp',
+        tags: ['Auth'],
+        summary: 'Verify MFA OTP code and complete login',
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(
+                required: ['email', 'otp'],
+                properties: [
+                    new OA\Property(property: 'email', type: 'string', format: 'email'),
+                    new OA\Property(property: 'otp', type: 'string', minLength: 6, maxLength: 6),
+                ]
+            )
+        ),
+        responses: [
+            new OA\Response(response: 200, description: 'OTP verified, login complete'),
+            new OA\Response(response: 422, description: 'Invalid or expired OTP'),
+            new OA\Response(response: 429, description: 'Too many OTP attempts'),
+        ]
+    )]
+    public function verifyOtp(Request $request)
+    {
+        $request->validate([
+            'email' => ['required', 'string', 'email'],
+            'otp' => ['required', 'string', 'size:6', 'regex:/^[0-9]{6}$/'],
+        ]);
+
+        $email = strtolower($request->string('email')->toString());
+        $otp = $request->string('otp')->toString();
+
+        $user = User::query()->where('email', $email)->first();
+
+        if (!$user || !$user->is_active) {
+            throw ValidationException::withMessages([
+                'otp' => ['Invalid request.'],
+            ]);
+        }
+
+        if (!$this->mfaService->verify($email, $otp)) {
+            throw ValidationException::withMessages([
+                'otp' => ['الرمز المدخل غير صحيح أو منتهي الصلاحية.'],
+            ]);
+        }
+
+        return $this->issueSession($request, $user);
+    }
+
+    private function issueSession(Request $request, User $user)
+    {
+        if ($request->hasSession()) {
+            Auth::guard('web')->login($user);
+            $request->session()->regenerate();
+        }
+
+        $user->forceFill(['last_login_at' => now()])->save();
+
+        $this->auditService->log(
+            AuditAction::LOGIN,
+            $user,
+            $user,
+            ['mode' => $request->hasSession() ? 'cookie' : 'token']
+        );
+
+        if ($request->hasSession()) {
+            return ApiResponse::success([
+                'user' => new UserResource($user->fresh('bank')),
+                'token' => null,
+                'token_type' => null,
+                'mode' => 'cookie',
+                'requires_mfa' => false,
+            ], 'Login successful.');
+        }
+
+        $token = $user->createToken($request->string('device_name')->toString() ?: 'api-client')->plainTextToken;
+
+        return ApiResponse::success([
+            'user' => new UserResource($user->fresh('bank')),
+            'token' => $token,
+            'token_type' => 'Bearer',
+            'mode' => 'token',
+            'requires_mfa' => false,
+        ], 'Login successful.');
     }
 
     private function logFailedLogin(string $email, string $reason, string $ip): void
