@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-16
-last_updated: 2026-05-19 (story 7.1 ready for review)
+last_updated: 2026-05-19 (story 7.1 frontend review patches completed; root diff follow-up pending)
 project: Yemen Flow Hub
 project_key: NOKEY
 tracking_system: file-system
@@ -110,7 +110,7 @@ development_status:
 
   # ─── Epic 7: Lovable 1:1 UI Parity Rework ───────────────────────────────
   epic-7: in-progress
-  7-1-appshell-and-login-1-1-parity: review
+  7-1-appshell-and-login-1-1-parity: in-progress
   7-2-dashboard-1-1-parity-by-role: backlog
   7-3-requests-list-1-1-parity: backlog
   7-4-request-detail-1-1-parity: backlog
