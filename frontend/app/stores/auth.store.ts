@@ -3,10 +3,20 @@ import type { AuthUser, ApiResponse, UserPreferences } from '../types/models'
 import { UserRole } from '../types/enums'
 
 interface LoginResponseData {
+  user?: AuthUser
+  token: string | null
+  token_type: string | null
+  mode: 'cookie' | 'token'
+  requires_mfa: boolean
+  email?: string
+}
+
+interface VerifyOtpResponseData {
   user: AuthUser
   token: string | null
   token_type: string | null
   mode: 'cookie' | 'token'
+  requires_mfa: false
 }
 
 export const useAuthStore = defineStore('auth', {
@@ -66,7 +76,7 @@ export const useAuthStore = defineStore('auth', {
       return raw ? decodeURIComponent(raw) : null
     },
 
-    async login(email: string, password: string): Promise<void> {
+    async login(email: string, password: string): Promise<{ requiresMfa: true; email: string } | void> {
       const config = useRuntimeConfig()
       const baseURL = config.public.apiBase as string
 
@@ -88,6 +98,39 @@ export const useAuthStore = defineStore('auth', {
           ...(xsrfToken ? { 'X-XSRF-TOKEN': xsrfToken } : {}),
         },
         body: { email, password },
+      })
+
+      if (response.data.requires_mfa) {
+        return { requiresMfa: true, email: response.data.email ?? email }
+      }
+
+      if (!response.data.user?.is_active) {
+        throw { statusCode: 403, data: { success: false, message: 'حسابك موقوف. يرجى التواصل مع المسؤول.' } }
+      }
+
+      this.user = response.data.user!
+      this.isAuthenticated = true
+      if (process.client) {
+        localStorage.setItem('yfh-authenticated', '1')
+      }
+    },
+
+    async verifyOtp(email: string, otp: string): Promise<void> {
+      const config = useRuntimeConfig()
+      const baseURL = config.public.apiBase as string
+
+      const xsrfToken = this.getXsrfToken()
+
+      const response = await $fetch<ApiResponse<VerifyOtpResponseData>>('/api/auth/verify-otp', {
+        method: 'POST',
+        baseURL,
+        credentials: 'include',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+          ...(xsrfToken ? { 'X-XSRF-TOKEN': xsrfToken } : {}),
+        },
+        body: { email, otp },
       })
 
       if (!response.data.user.is_active) {
