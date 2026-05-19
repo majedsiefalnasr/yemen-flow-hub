@@ -191,7 +191,30 @@ async function saveUser() {
 }
 
 function entityLabel(user: User): string {
-  return user.bank_name_ar ?? 'البنك المركزي اليمني'
+  const directLabel = user.bank_name_ar ?? user.bank_name_en ?? user.bank_name ?? null
+  if (directLabel && directLabel.trim().length > 0) {
+    return directLabel
+  }
+
+  if (user.bank_id !== null) {
+    const resolvedBank = banks.value.find(bank => bank.id === user.bank_id)
+    return resolvedBank?.name_ar ?? '—'
+  }
+
+  return 'البنك المركزي اليمني'
+}
+
+function lastSeenLabel(user: User): string {
+  const raw = user.last_seen_at ?? user.last_login_at ?? user.created_at ?? null
+  if (!raw) return '—'
+
+  const parsed = new Date(raw)
+  if (Number.isNaN(parsed.getTime())) return raw
+
+  return new Intl.DateTimeFormat('ar-YE', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(parsed)
 }
 
 onMounted(loadData)
@@ -233,12 +256,13 @@ onMounted(loadData)
             <th>الدور</th>
             <th>الجهة</th>
             <th>الحالة</th>
+            <th>آخر ظهور</th>
             <th>إجراءات</th>
           </tr>
         </thead>
         <tbody>
           <tr v-if="filteredUsers.length === 0">
-            <td colspan="6" class="empty-row" data-empty-state-variant="cby-staff">لا يوجد مستخدمون مطابقون للفلتر.</td>
+            <td colspan="7" class="empty-row" data-empty-state-variant="cby-staff">لا يوجد مستخدمون مطابقون للفلتر.</td>
           </tr>
           <tr v-for="user in filteredUsers" :key="user.id">
             <td>{{ user.name }}</td>
@@ -252,6 +276,7 @@ onMounted(loadData)
                 {{ user.is_active ? 'نشط' : 'موقوف' }}
               </span>
             </td>
+            <td class="last-seen-cell">{{ lastSeenLabel(user) }}</td>
             <td>
               <button class="btn-edit" @click="openEdit(user)">تعديل</button>
             </td>
@@ -398,6 +423,12 @@ onMounted(loadData)
   direction: ltr;
   text-align: right;
   font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.last-seen-cell {
+  white-space: nowrap;
+  font-size: 12px;
   color: var(--color-text-secondary);
 }
 

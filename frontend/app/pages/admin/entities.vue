@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { UserRole } from '../../types/enums'
-import type { Bank } from '../../types/models'
+import type { Bank, User } from '../../types/models'
 import { useBanks } from '../../composables/useBanks'
+import { useUsers } from '../../composables/useUsers'
 import type { CreateBankPayload, UpdateBankPayload } from '../../composables/useBanks'
 
 definePageMeta({
@@ -11,8 +12,10 @@ definePageMeta({
 })
 
 const { fetchBanks, createBank, updateBank } = useBanks()
+const { fetchUsers } = useUsers()
 
 const banks = ref<Bank[]>([])
+const userCountsByBank = ref<Record<number, number>>({})
 const loading = ref(false)
 const error = ref<string | null>(null)
 
@@ -47,7 +50,9 @@ async function loadBanks() {
   loading.value = true
   error.value = null
   try {
-    banks.value = await fetchBanks()
+    const [banksData, usersData] = await Promise.all([fetchBanks(), fetchUsers()])
+    banks.value = banksData
+    userCountsByBank.value = buildUserCounts(usersData)
   }
   catch {
     error.value = 'تعذّر تحميل قائمة الجهات.'
@@ -69,13 +74,21 @@ function openCreate() {
   showModal.value = true
 }
 
+function buildUserCounts(users: User[]): Record<number, number> {
+  return users.reduce<Record<number, number>>((counts, user) => {
+    if (user.bank_id === null) return counts
+    counts[user.bank_id] = (counts[user.bank_id] ?? 0) + 1
+    return counts
+  }, {})
+}
+
 function openEdit(bank: Bank) {
   editingBank.value = bank
   form.name_ar = bank.name_ar
   form.name_en = bank.name_en
   form.code = bank.code
-  form.license_number = ''
-  form.entity_type = 'تجاري'
+  form.license_number = bank.license_number ?? ''
+  form.entity_type = bank.entity_type ?? 'تجاري'
   form.is_active = bank.is_active
   clearErrors()
   showModal.value = true
@@ -106,6 +119,8 @@ async function saveEntity() {
   if (!validateForm()) return
   saving.value = true
   formError.value = null
+  const normalizedLicense = form.license_number.trim() || null
+  const normalizedEntityType = form.entity_type.trim() || 'تجاري'
   try {
     if (editingBank.value) {
       const payload: UpdateBankPayload = {
@@ -113,11 +128,20 @@ async function saveEntity() {
         name_ar: form.name_ar.trim(),
         name_en: form.name_en.trim(),
         code: form.code.trim().toUpperCase(),
+        license_number: normalizedLicense,
+        entity_type: normalizedEntityType,
         is_active: form.is_active,
       }
       const updated = await updateBank(editingBank.value.id, payload)
       const idx = banks.value.findIndex(b => b.id === updated.id)
-      if (idx !== -1) banks.value[idx] = updated
+      if (idx !== -1) {
+        banks.value[idx] = {
+          ...updated,
+          license_number: normalizedLicense,
+          entity_type: normalizedEntityType,
+          user_count: userCountsByBank.value[updated.id] ?? 0,
+        }
+      }
     }
     else {
       const payload: CreateBankPayload = {
@@ -125,10 +149,17 @@ async function saveEntity() {
         name_ar: form.name_ar.trim(),
         name_en: form.name_en.trim(),
         code: form.code.trim().toUpperCase(),
+        license_number: normalizedLicense,
+        entity_type: normalizedEntityType,
         is_active: form.is_active,
       }
       const created = await createBank(payload)
-      banks.value.unshift(created)
+      banks.value.unshift({
+        ...created,
+        license_number: normalizedLicense,
+        entity_type: normalizedEntityType,
+        user_count: 0,
+      })
     }
     closeModal()
   }
@@ -147,6 +178,22 @@ async function saveEntity() {
   finally {
     saving.value = false
   }
+}
+
+function entityTypeLabel(bank: Bank): string {
+  return bank.entity_type?.trim() || 'تجاري'
+}
+
+function licenseLabel(bank: Bank): string {
+  return bank.license_number?.trim() || '—'
+}
+
+function userCountLabel(bank: Bank): number {
+  const countedUsers = userCountsByBank.value[bank.id]
+  if (typeof countedUsers === 'number') {
+    return countedUsers
+  }
+  return bank.user_count ?? 0
 }
 
 onMounted(loadBanks)
@@ -168,14 +215,16 @@ onMounted(loadBanks)
           <tr>
             <th>اسم الجهة</th>
             <th>نوع الجهة</th>
+            <th>رقم الترخيص</th>
             <th>الرمز</th>
+            <th>عدد المستخدمين</th>
             <th>الحالة</th>
             <th>إجراءات</th>
           </tr>
         </thead>
         <tbody>
           <tr v-if="banks.length === 0">
-            <td colspan="5" class="empty-row" data-empty-state-variant="entities">لا توجد جهات مسجّلة.</td>
+            <td colspan="7" class="empty-row" data-empty-state-variant="entities">لا توجد جهات مسجّلة.</td>
           </tr>
           <tr v-for="bank in banks" :key="bank.id">
             <td>
@@ -183,9 +232,11 @@ onMounted(loadBanks)
               <div class="entity-name-en">{{ bank.name_en }}</div>
             </td>
             <td>
-              <span class="badge badge-type">تجاري</span>
+              <span class="badge badge-type">{{ entityTypeLabel(bank) }}</span>
             </td>
+            <td class="license-cell">{{ licenseLabel(bank) }}</td>
             <td class="code-cell">{{ bank.code }}</td>
+            <td class="count-cell">{{ userCountLabel(bank) }}</td>
             <td>
               <span :class="['badge', bank.is_active ? 'badge-active' : 'badge-inactive']">
                 {{ bank.is_active ? 'نشط' : 'موقوف' }}
@@ -222,6 +273,11 @@ onMounted(loadBanks)
           <label class="form-label">الرمز <span class="required">*</span></label>
           <input v-model="form.code" class="form-input" :class="{ error: formErrors.code }" type="text" maxlength="20" placeholder="مثال: YCB">
           <span v-if="formErrors.code" class="field-error">{{ formErrors.code }}</span>
+        </div>
+
+        <div class="form-field">
+          <label class="form-label">رقم الترخيص</label>
+          <input v-model="form.license_number" class="form-input" type="text" maxlength="50" placeholder="مثال: LIC-2026-001">
         </div>
 
         <div class="form-field">
@@ -319,6 +375,16 @@ onMounted(loadBanks)
   font-family: monospace;
   font-size: 13px;
   color: var(--color-text-secondary);
+}
+
+.license-cell {
+  font-family: monospace;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.count-cell {
+  font-weight: 600;
 }
 
 .empty-row {

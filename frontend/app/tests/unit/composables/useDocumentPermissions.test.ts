@@ -20,6 +20,7 @@ describe('canDownloadDocument — REQUEST_DOC type', () => {
 describe('canDownloadDocument — SWIFT type', () => {
   const SWIFT_ALLOWED = [
     UserRole.BANK_REVIEWER,
+    UserRole.BANK_ADMIN,
     UserRole.SWIFT_OFFICER,
     UserRole.EXECUTIVE_MEMBER,
     UserRole.COMMITTEE_DIRECTOR,

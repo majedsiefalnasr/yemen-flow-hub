@@ -7,14 +7,15 @@ import { UserRole, RequestStatus } from '../types/enums'
  * receive a 403, improving UX without removing the security gate.
  *
  * Permission matrix (mirrors RequestDocumentPolicy on the backend):
- *   REQUEST_DOC  → all 7 roles (backend enforces bank scope)
- *   SWIFT        → BANK_REVIEWER, SWIFT_OFFICER, EXECUTIVE_MEMBER,
+ *   REQUEST_DOC  → all 8 roles (backend enforces bank scope)
+ *   SWIFT        → BANK_REVIEWER, BANK_ADMIN, SWIFT_OFFICER, EXECUTIVE_MEMBER,
  *                  COMMITTEE_DIRECTOR, CBY_ADMIN only
  */
 export function canDownloadDocument(role: UserRole, docType: string | null): boolean {
   if (docType === 'SWIFT') {
     return (
       role === UserRole.BANK_REVIEWER
+      || role === UserRole.BANK_ADMIN
       || role === UserRole.SWIFT_OFFICER
       || role === UserRole.EXECUTIVE_MEMBER
       || role === UserRole.COMMITTEE_DIRECTOR

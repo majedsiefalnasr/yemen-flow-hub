@@ -116,7 +116,7 @@ describe('DocumentChecklist SWIFT badge visibility', () => {
 // ─── Download button visibility per role + type ───────────────────────────────
 
 describe('DocumentChecklist download button — REQUEST_DOC', () => {
-  it('shows for all 7 roles', () => {
+  it('shows for all 8 roles', () => {
     const doc = makeDoc({ type: 'REQUEST_DOC' })
     for (const role of Object.values(UserRole)) {
       expect(canDownloadDocument(role, doc.type)).toBe(true)

@@ -25,6 +25,9 @@ export interface Bank {
   name_ar: string
   name_en: string
   code: string
+  license_number?: string | null
+  entity_type?: string | null
+  user_count?: number | null
   is_active: boolean
 }
 
@@ -165,8 +168,11 @@ export interface User {
   role: UserRole
   role_label: string
   bank_id: number | null
+  bank_name?: string | null
   bank_name_ar: string | null
   bank_name_en: string | null
+  last_login_at?: string | null
+  last_seen_at?: string | null
   is_active: boolean
   created_at?: string | null
 }

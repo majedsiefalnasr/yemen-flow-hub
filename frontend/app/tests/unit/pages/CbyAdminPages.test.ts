@@ -73,8 +73,11 @@ function makeUser(overrides: Record<string, unknown> = {}) {
     email: 'ahmed@cby.gov.ye',
     role: UserRole.SUPPORT_COMMITTEE,
     bank_id: null,
+    bank_name: null,
     bank_name_ar: null,
+    bank_name_en: null,
     is_active: true,
+    last_login_at: '2026-05-10T11:45:00Z',
     created_at: '2026-05-01T10:00:00Z',
     ...overrides,
   }
@@ -86,6 +89,9 @@ function makeBank(overrides: Record<string, unknown> = {}) {
     name_ar: 'البنك التجاري اليمني',
     name_en: 'Yemen Commercial Bank',
     code: 'YCB',
+    license_number: 'LIC-001',
+    entity_type: 'تجاري',
+    user_count: 0,
     is_active: true,
     ...overrides,
   }
@@ -136,6 +142,7 @@ describe('/admin/cby-staff', () => {
     expect(headers).toContain('الدور')
     expect(headers).toContain('الجهة')
     expect(headers).toContain('الحالة')
+    expect(headers).toContain('آخر ظهور')
     expect(headers).toContain('إجراءات')
   })
 
@@ -144,6 +151,13 @@ describe('/admin/cby-staff', () => {
     const wrapper = await mountPage()
     expect(wrapper.text()).toContain('أحمد السالمي')
     expect(wrapper.text()).toContain('نشط')
+  })
+
+  it('renders last-seen value in table row', async () => {
+    fetchUsersMock.mockResolvedValue([makeUser({ last_login_at: '2026-05-12T08:30:00Z' })])
+    const wrapper = await mountPage()
+    expect(wrapper.text()).toContain('آخر ظهور')
+    expect(wrapper.text()).not.toContain('—')
   })
 
   it('renders role, bank and status filter dropdowns', async () => {
@@ -192,6 +206,22 @@ describe('/admin/cby-staff', () => {
 
     expect(wrapper.text()).toContain('مسؤول النظام')
     expect(wrapper.text()).not.toContain('مراجع البنك الوحيد')
+  })
+
+  it('resolves bank label from banks list when user bank name is missing', async () => {
+    fetchBanksMock.mockResolvedValue([makeBank({ id: 7, name_ar: 'بنك عدن' })])
+    fetchUsersMock.mockResolvedValue([
+      makeUser({
+        name: 'مشرف فرع',
+        bank_id: 7,
+        bank_name: null,
+        bank_name_ar: null,
+        bank_name_en: null,
+      }),
+    ])
+    const wrapper = await mountPage()
+    expect(wrapper.text()).toContain('بنك عدن')
+    expect(wrapper.text()).not.toContain('البنك المركزي اليمني')
   })
 
   it('opens modal when clicking Add button', async () => {
@@ -297,6 +327,7 @@ describe('/admin/cby-staff', () => {
 describe('/admin/entities', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    fetchUsersMock.mockResolvedValue([])
     fetchBanksMock.mockResolvedValue([])
     createBankMock.mockResolvedValue(makeBank({ id: 2 }))
     updateBankMock.mockResolvedValue(makeBank())
@@ -337,6 +368,23 @@ describe('/admin/entities', () => {
     const wrapper = await mountPage()
     const headers = wrapper.findAll('thead th').map(th => th.text())
     expect(headers).toContain('نوع الجهة')
+    expect(headers).toContain('رقم الترخيص')
+    expect(headers).toContain('عدد المستخدمين')
+  })
+
+  it('renders entity type, license number, and user count from data', async () => {
+    fetchUsersMock.mockResolvedValue([
+      makeUser({ id: 10, role: UserRole.BANK_ADMIN, bank_id: 1 }),
+      makeUser({ id: 11, role: UserRole.DATA_ENTRY, bank_id: 1 }),
+      makeUser({ id: 12, role: UserRole.CBY_ADMIN, bank_id: null }),
+    ])
+    fetchBanksMock.mockResolvedValue([
+      makeBank({ id: 1, entity_type: 'إسلامي', license_number: 'LIC-77' }),
+    ])
+    const wrapper = await mountPage()
+    expect(wrapper.text()).toContain('إسلامي')
+    expect(wrapper.text()).toContain('LIC-77')
+    expect(wrapper.text()).toContain('2')
   })
 
   it('opens create modal with required form fields', async () => {
@@ -404,6 +452,15 @@ describe('/admin/entities', () => {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 describe('/admin/roles', () => {
+  beforeEach(() => {
+    fetchUsersMock.mockResolvedValue([
+      makeUser({ id: 1, role: UserRole.CBY_ADMIN }),
+      makeUser({ id: 2, role: UserRole.BANK_ADMIN, bank_id: 1 }),
+      makeUser({ id: 3, role: UserRole.BANK_REVIEWER, bank_id: 1 }),
+      makeUser({ id: 4, role: UserRole.BANK_REVIEWER, bank_id: 1 }),
+    ])
+  })
+
   async function mountPage() {
     const page = (await import('../../../pages/admin/roles.vue')).default
     const wrapper = mount(page, { global: { stubs: { Teleport: true } } })
@@ -455,18 +512,25 @@ describe('/admin/roles', () => {
     expect(wrapper.find('.btn-edit').exists()).toBe(false)
   })
 
-  it('renders 3 header columns: الدور, الوصف, الصلاحيات', async () => {
+  it('renders 4 header columns: الدور, الوصف, الصلاحيات, عدد المستخدمين', async () => {
     const wrapper = await mountPage()
     const headers = wrapper.findAll('thead th').map(th => th.text())
     expect(headers).toContain('الدور')
     expect(headers).toContain('الوصف')
     expect(headers).toContain('الصلاحيات')
+    expect(headers).toContain('عدد المستخدمين')
   })
 
   it('each row has a role enum code displayed', async () => {
     const wrapper = await mountPage()
     expect(wrapper.text()).toContain('DATA_ENTRY')
     expect(wrapper.text()).toContain('CBY_ADMIN')
+  })
+
+  it('renders per-role user counts', async () => {
+    const wrapper = await mountPage()
+    expect(wrapper.find('[data-role="BANK_REVIEWER"]').text()).toContain('2')
+    expect(wrapper.find('[data-role="BANK_ADMIN"]').text()).toContain('1')
   })
 })
 

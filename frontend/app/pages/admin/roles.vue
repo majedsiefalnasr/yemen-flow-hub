@@ -1,11 +1,17 @@
 <script setup lang="ts">
+import { computed, onMounted, ref } from 'vue'
 import { UserRole } from '../../types/enums'
 import { ROLE_LABELS } from '../../constants/workflow'
+import type { User } from '../../types/models'
+import { useUsers } from '../../composables/useUsers'
 
 definePageMeta({
   middleware: 'role',
   requiredRoles: [UserRole.CBY_ADMIN],
 })
+
+const { fetchUsers } = useUsers()
+const users = ref<User[]>([])
 
 interface RoleDefinition {
   role: UserRole
@@ -55,6 +61,29 @@ const ROLE_DEFINITIONS: RoleDefinition[] = [
     permissions: ['إدارة جميع المستخدمين', 'إدارة البنوك والجهات', 'عرض التقارير الكاملة', 'إعدادات النظام', 'سجل التدقيق الكامل'],
   },
 ]
+
+const roleUserCounts = computed<Record<UserRole, number>>(() => {
+  const counts = Object.fromEntries(
+    Object.values(UserRole).map(role => [role, 0]),
+  ) as Record<UserRole, number>
+
+  for (const user of users.value) {
+    counts[user.role] = (counts[user.role] ?? 0) + 1
+  }
+
+  return counts
+})
+
+async function loadUsers() {
+  try {
+    users.value = await fetchUsers()
+  }
+  catch {
+    users.value = []
+  }
+}
+
+onMounted(loadUsers)
 </script>
 
 <template>
@@ -71,6 +100,7 @@ const ROLE_DEFINITIONS: RoleDefinition[] = [
             <th>الدور</th>
             <th>الوصف</th>
             <th>الصلاحيات</th>
+            <th>عدد المستخدمين</th>
           </tr>
         </thead>
         <tbody>
@@ -85,6 +115,7 @@ const ROLE_DEFINITIONS: RoleDefinition[] = [
                 <li v-for="perm in def.permissions" :key="perm">{{ perm }}</li>
               </ul>
             </td>
+            <td class="count-cell">{{ roleUserCounts[def.role] }}</td>
           </tr>
         </tbody>
       </table>
@@ -207,5 +238,10 @@ const ROLE_DEFINITIONS: RoleDefinition[] = [
   position: absolute;
   right: 0;
   color: #0066cc;
+}
+
+.count-cell {
+  font-weight: 600;
+  white-space: nowrap;
 }
 </style>

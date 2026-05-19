@@ -6,6 +6,8 @@ export interface CreateBankPayload {
   name_ar: string
   name_en: string
   code: string
+  license_number?: string | null
+  entity_type?: string | null
   is_active: boolean
 }
 
@@ -14,6 +16,8 @@ export interface UpdateBankPayload {
   name_ar?: string
   name_en?: string
   code?: string
+  license_number?: string | null
+  entity_type?: string | null
   is_active?: boolean
 }
 
