@@ -87,13 +87,14 @@ describe('Story 5.7 page smoke tests', () => {
     expect(html).toContain('إدارة الموظفين')
   })
 
-  it('resolves Story 6.2 admin route wrappers', async () => {
-    navigateToMock.mockClear()
+  it('renders Story 6.5 admin pages with real content (not redirects)', async () => {
+    const cbystaffHtml = await renderPage((await import('../../../pages/admin/cby-staff.vue')).default)
+    expect(cbystaffHtml).toContain('مستخدمو النظام')
 
-    await renderPage((await import('../../../pages/admin/cby-staff.vue')).default)
-    await renderPage((await import('../../../pages/admin/entities.vue')).default)
-    await renderPage((await import('../../../pages/admin/roles.vue')).default)
+    const entitiesHtml = await renderPage((await import('../../../pages/admin/entities.vue')).default)
+    expect(entitiesHtml).toContain('إدارة الجهات')
 
-    expect(navigateToMock).toHaveBeenCalledWith('/banks', { replace: true })
+    const rolesHtml = await renderPage((await import('../../../pages/admin/roles.vue')).default)
+    expect(rolesHtml).toContain('الأدوار والصلاحيات')
   })
 })
