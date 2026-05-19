@@ -9,6 +9,7 @@ interface LoginResponseData {
   mode: 'cookie' | 'token'
   requires_mfa: boolean
   email?: string
+  challenge_id?: string
 }
 
 interface VerifyOtpResponseData {
@@ -76,7 +77,7 @@ export const useAuthStore = defineStore('auth', {
       return raw ? decodeURIComponent(raw) : null
     },
 
-    async login(email: string, password: string): Promise<{ requiresMfa: true; email: string } | void> {
+    async login(email: string, password: string): Promise<{ requiresMfa: true; email: string; challengeId: string } | void> {
       const config = useRuntimeConfig()
       const baseURL = config.public.apiBase as string
 
@@ -101,7 +102,12 @@ export const useAuthStore = defineStore('auth', {
       })
 
       if (response.data.requires_mfa) {
-        return { requiresMfa: true, email: response.data.email ?? email }
+        const challengeId = response.data.challenge_id
+        if (!challengeId) {
+          throw { statusCode: 500, data: { success: false, message: 'تعذر بدء جلسة التحقق. يرجى إعادة المحاولة.' } }
+        }
+
+        return { requiresMfa: true, email: response.data.email ?? email, challengeId }
       }
 
       if (!response.data.user?.is_active) {
@@ -115,7 +121,7 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
-    async verifyOtp(email: string, otp: string): Promise<void> {
+    async verifyOtp(email: string, otp: string, challengeId: string): Promise<void> {
       const config = useRuntimeConfig()
       const baseURL = config.public.apiBase as string
 
@@ -130,7 +136,7 @@ export const useAuthStore = defineStore('auth', {
           'Content-Type': 'application/json',
           ...(xsrfToken ? { 'X-XSRF-TOKEN': xsrfToken } : {}),
         },
-        body: { email, otp },
+        body: { email, otp, challenge_id: challengeId },
       })
 
       if (!response.data.user.is_active) {

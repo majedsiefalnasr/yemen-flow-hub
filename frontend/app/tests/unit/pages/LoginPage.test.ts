@@ -30,9 +30,14 @@ function simulateOtpKeydown(
   cells: string[],
   index: number,
   key: string,
+  options: { ctrlKey?: boolean; metaKey?: boolean; altKey?: boolean } = {},
 ): { cells: string[]; nextFocus: number } {
   const updated = [...cells]
   let nextFocus = index
+
+  if (options.ctrlKey || options.metaKey || options.altKey) {
+    return { cells: updated, nextFocus }
+  }
 
   if (key === 'Backspace') {
     if (updated[index]) {
@@ -99,6 +104,13 @@ describe('Login page — OTP input behavior', () => {
       const { nextFocus } = simulateOtpKeydown(cells, 0, 'Backspace')
       expect(nextFocus).toBe(0)
     })
+
+    it('does not block keyboard shortcuts like Ctrl+V', () => {
+      const cells = ['', '', '', '', '', '']
+      const { cells: updated, nextFocus } = simulateOtpKeydown(cells, 0, 'v', { ctrlKey: true })
+      expect(updated).toEqual(['', '', '', '', '', ''])
+      expect(nextFocus).toBe(0)
+    })
   })
 
   describe('onOtpPaste — paste fill', () => {
@@ -140,13 +152,13 @@ describe('Login page — MFA flow via auth store', () => {
     mockFetch.mockResolvedValueOnce({
       success: true,
       message: 'OTP sent',
-      data: { requires_mfa: true, email: 'ahmed@bank.ye' },
+      data: { requires_mfa: true, email: 'ahmed@bank.ye', challenge_id: 'challenge-1' },
     })
 
     const store = useAuthStore()
     const result = await store.login('ahmed@bank.ye', 'password123')
 
-    expect(result).toMatchObject({ requiresMfa: true, email: 'ahmed@bank.ye' })
+    expect(result).toMatchObject({ requiresMfa: true, email: 'ahmed@bank.ye', challengeId: 'challenge-1' })
     expect(store.isAuthenticated).toBe(false)
   })
 
@@ -158,7 +170,7 @@ describe('Login page — MFA flow via auth store', () => {
     })
 
     const store = useAuthStore()
-    await store.verifyOtp('ahmed@bank.ye', '123456')
+    await store.verifyOtp('ahmed@bank.ye', '123456', 'challenge-1')
 
     expect(store.isAuthenticated).toBe(true)
     expect(store.user).toEqual(DEMO_USER)
@@ -168,7 +180,7 @@ describe('Login page — MFA flow via auth store', () => {
     mockFetch.mockRejectedValueOnce({ data: { message: 'الرمز غير صحيح' } })
 
     const store = useAuthStore()
-    await expect(store.verifyOtp('ahmed@bank.ye', '000000')).rejects.toBeDefined()
+    await expect(store.verifyOtp('ahmed@bank.ye', '000000', 'challenge-1')).rejects.toBeDefined()
     expect(store.isAuthenticated).toBe(false)
   })
 })

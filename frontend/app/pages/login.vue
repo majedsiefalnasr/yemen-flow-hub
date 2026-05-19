@@ -34,6 +34,7 @@ const serverError = ref<string | null>(null)
 // ── OTP state ─────────────────────────────────────────────────────────────────
 const otpStep = ref(false)
 const pendingEmail = ref('')
+const pendingChallengeId = ref('')
 const otpCells = ref<string[]>(['', '', '', '', '', ''])
 const otpCellRefs = ref<HTMLInputElement[]>([])
 const otpError = ref<string | null>(null)
@@ -49,6 +50,7 @@ const onSubmit = handleSubmit(async (values) => {
 
     if (result?.requiresMfa) {
       pendingEmail.value = result.email
+      pendingChallengeId.value = result.challengeId
       otpStep.value = true
       otpCells.value = ['', '', '', '', '', '']
       await nextTick()
@@ -82,6 +84,11 @@ const onSubmit = handleSubmit(async (values) => {
 // ── OTP cell keyboard handling ────────────────────────────────────────────────
 function onOtpKeydown(index: number, event: KeyboardEvent) {
   const key = event.key
+
+  // Preserve keyboard shortcuts like paste (Ctrl/Cmd+V).
+  if (event.ctrlKey || event.metaKey || event.altKey) {
+    return
+  }
 
   if (key === 'Backspace') {
     if (otpCells.value[index]) {
@@ -128,11 +135,17 @@ async function onOtpSubmit() {
     return
   }
 
+  if (!pendingChallengeId.value) {
+    otpError.value = 'انتهت جلسة التحقق. يرجى تسجيل الدخول مرة أخرى.'
+    backToLogin()
+    return
+  }
+
   isOtpLoading.value = true
   otpError.value = null
 
   try {
-    await auth.verifyOtp(pendingEmail.value, otp)
+    await auth.verifyOtp(pendingEmail.value, otp, pendingChallengeId.value)
     await router.push('/dashboard')
   }
   catch {
@@ -148,6 +161,7 @@ function backToLogin() {
   otpCells.value = ['', '', '', '', '', '']
   otpError.value = null
   pendingEmail.value = ''
+  pendingChallengeId.value = ''
 }
 </script>
 

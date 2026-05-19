@@ -91,13 +91,13 @@ describe('useAuthStore', () => {
       mockFetch.mockResolvedValueOnce({
         success: true,
         message: 'OTP sent',
-        data: { requires_mfa: true, email: 'ahmed@bank.ye' },
+        data: { requires_mfa: true, email: 'ahmed@bank.ye', challenge_id: 'challenge-1' },
       })
 
       const store = useAuthStore()
       const result = await store.login('ahmed@bank.ye', 'password123')
 
-      expect(result).toEqual({ requiresMfa: true, email: 'ahmed@bank.ye' })
+      expect(result).toEqual({ requiresMfa: true, email: 'ahmed@bank.ye', challengeId: 'challenge-1' })
       expect(store.isAuthenticated).toBe(false)
       expect(store.user).toBeNull()
     })
@@ -112,7 +112,7 @@ describe('useAuthStore', () => {
       })
 
       const store = useAuthStore()
-      await store.verifyOtp('ahmed@bank.ye', '123456')
+      await store.verifyOtp('ahmed@bank.ye', '123456', 'challenge-1')
 
       expect(store.isAuthenticated).toBe(true)
       expect(store.user).toEqual(DEMO_USER)
@@ -124,7 +124,7 @@ describe('useAuthStore', () => {
       })
 
       const store = useAuthStore()
-      await expect(store.verifyOtp('ahmed@bank.ye', '000000')).rejects.toBeDefined()
+      await expect(store.verifyOtp('ahmed@bank.ye', '000000', 'challenge-1')).rejects.toBeDefined()
       expect(store.isAuthenticated).toBe(false)
     })
 
@@ -137,7 +137,7 @@ describe('useAuthStore', () => {
       })
 
       const store = useAuthStore()
-      await expect(store.verifyOtp('ahmed@bank.ye', '123456')).rejects.toBeDefined()
+      await expect(store.verifyOtp('ahmed@bank.ye', '123456', 'challenge-1')).rejects.toBeDefined()
       expect(store.isAuthenticated).toBe(false)
     })
   })
