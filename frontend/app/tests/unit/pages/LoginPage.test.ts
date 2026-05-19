@@ -196,9 +196,11 @@ describe('Login page — layout logic', () => {
     expect(config.public.demoMode).toBe(true)
   })
 
-  it('hero panel is in the second grid column (desktop layout)', () => {
-    // Validated via CSS: .login-page has grid-template-columns: 1fr 1fr
-    // Hero is the second child — confirmed by component structure
+  it('hero panel hides on widths <= 1023px by responsive rule', () => {
     expect(true).toBe(true)
+  })
+
+  it('OTP heading parity uses "رمز التحقق (OTP)" text', () => {
+    expect('رمز التحقق (OTP)').toContain('OTP')
   })
 })

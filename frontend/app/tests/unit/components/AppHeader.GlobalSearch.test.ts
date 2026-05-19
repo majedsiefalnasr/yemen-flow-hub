@@ -5,6 +5,8 @@ import AppHeader from '../../../components/layout/AppHeader.vue'
 
 const mockPush = vi.hoisted(() => vi.fn())
 const mockRefreshUnreadCount = vi.hoisted(() => vi.fn())
+const mockFetchRecent = vi.hoisted(() => vi.fn())
+const mockMarkAllRead = vi.hoisted(() => vi.fn())
 
 vi.stubGlobal('useRouter', () => ({ push: mockPush }))
 vi.stubGlobal('useRuntimeConfig', () => ({ public: { apiBase: 'http://localhost', demoMode: false } }))
@@ -16,7 +18,10 @@ vi.mock('../../../stores/auth.store', () => ({
 vi.mock('../../../stores/notifications.store', () => ({
   useNotificationsStore: () => ({
     unreadCount: 2,
+    items: [],
     refreshUnreadCount: mockRefreshUnreadCount,
+    fetchRecent: mockFetchRecent,
+    markAllRead: mockMarkAllRead,
   }),
 }))
 
@@ -49,6 +54,18 @@ vi.mock('../../../components/layout/GlobalSearch.vue', () => ({
     },
     template: '<div class="global-search-stub" :data-mobile="mobile ? `true` : `false`" />',
   },
+}))
+
+vi.mock('../../../components/ui/Popover.vue', () => ({
+  default: { template: '<div><slot name="trigger" /><slot /></div>' },
+}))
+
+vi.mock('../../../components/ui/DropdownMenu.vue', () => ({
+  default: { template: '<div><slot name="trigger" /><slot /></div>' },
+}))
+
+vi.mock('../../../components/ui/EmptyState.vue', () => ({
+  default: { template: '<div class="empty-state-stub" />' },
 }))
 
 describe('AppHeader — GlobalSearch integration', () => {
@@ -86,13 +103,13 @@ describe('AppHeader — GlobalSearch integration', () => {
     expect(wrapper.emitted('toggleMobileMenu')).toHaveLength(1)
   })
 
-  it('refreshes unread notification count on mount and routes bell clicks', async () => {
+  it('refreshes unread notification count on mount and loads recent notifications on bell click', async () => {
     const wrapper = mount(AppHeader)
 
     expect(mockRefreshUnreadCount).toHaveBeenCalledTimes(1)
 
     await wrapper.get('button[aria-label="الإشعارات"]').trigger('click')
 
-    expect(mockPush).toHaveBeenCalledWith('/notifications')
+    expect(mockFetchRecent).toHaveBeenCalledTimes(1)
   })
 })

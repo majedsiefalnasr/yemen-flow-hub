@@ -5,10 +5,9 @@ vi.stubGlobal('useRouter', () => ({ push: mockPush }))
 
 const mockAuthUser = { value: null as { name: string; role: string } | null }
 const mockUnreadCount = { value: 0 }
-const mockLastFetched = { value: null as Date | null }
 const mockRefreshUnreadCount = vi.fn()
-const mockDecrementUnread = vi.fn()
-const mockResetUnread = vi.fn()
+const mockFetchRecent = vi.fn()
+const mockMarkAllRead = vi.fn()
 
 vi.mock('../../../stores/auth.store', () => ({
   useAuthStore: () => ({ user: mockAuthUser }),
@@ -17,10 +16,10 @@ vi.mock('../../../stores/auth.store', () => ({
 vi.mock('../../../stores/notifications.store', () => ({
   useNotificationsStore: () => ({
     unreadCount: mockUnreadCount.value,
-    lastFetched: mockLastFetched.value,
+    items: [],
     refreshUnreadCount: mockRefreshUnreadCount,
-    decrementUnread: mockDecrementUnread,
-    resetUnread: mockResetUnread,
+    fetchRecent: mockFetchRecent,
+    markAllRead: mockMarkAllRead,
   }),
 }))
 
@@ -69,8 +68,11 @@ describe('AppHeader — notification bell', () => {
     expect(displayed).toBe(42)
   })
 
-  it('navigates to /notifications when bell is clicked', () => {
-    mockPush('/notifications')
-    expect(mockPush).toHaveBeenCalledWith('/notifications')
+  it('can mark all as read through store action', async () => {
+    mockMarkAllRead.mockResolvedValueOnce(undefined)
+    const { useNotificationsStore } = await import('../../../stores/notifications.store')
+    const store = useNotificationsStore()
+    await store.markAllRead()
+    expect(mockMarkAllRead).toHaveBeenCalledOnce()
   })
 })

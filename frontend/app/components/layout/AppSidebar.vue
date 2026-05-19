@@ -54,8 +54,11 @@ async function handleLogout() {
   >
     <!-- Brand -->
     <div class="sidebar-brand">
-      <span class="brand-logo" aria-hidden="true">🏦</span>
-      <span class="brand-name">Yemen Flow Hub</span>
+      <span class="brand-logo" aria-hidden="true">ب م</span>
+      <span class="brand-copy">
+        <span class="brand-name">منصة الواردات</span>
+        <span class="brand-subtitle">البنك المركزي اليمني</span>
+      </span>
     </div>
 
     <div class="sidebar-divider" />
@@ -95,28 +98,8 @@ async function handleLogout() {
       </button>
 
       <!-- Collapse toggle chevron -->
-      <button
-        class="collapse-btn"
-        :title="isCollapsed ? 'توسيع القائمة' : 'طي القائمة'"
-        :aria-label="isCollapsed ? 'توسيع القائمة' : 'طي القائمة'"
-        @click="toggle"
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          class="collapse-icon"
-          :class="{ 'collapse-icon--collapsed': isCollapsed }"
-          aria-hidden="true"
-        >
-          <path d="M9 18l6-6-6-6" />
-        </svg>
+      <button class="collapse-btn" @click="toggle">
+        {{ isCollapsed ? 'توسيع ›' : '‹ طي الشريط الجانبي' }}
       </button>
     </div>
   </aside>
@@ -168,15 +151,33 @@ async function handleLogout() {
 }
 
 .brand-logo {
-  font-size: 24px;
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border-radius: 12px;
+  background: var(--sidebar-primary, #0066cc);
+  color: var(--sidebar-primary-foreground, #ffffff);
+  font-size: 14px;
+  font-weight: 700;
   flex-shrink: 0;
+}
+
+.brand-copy {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
 }
 
 .brand-name {
   font-size: 15px;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--sidebar-foreground, #1c222b);
-  font-family: var(--font-latin);
+}
+
+.brand-subtitle {
+  font-size: 11px;
+  color: color-mix(in srgb, var(--sidebar-foreground, #1c222b) 60%, transparent);
 }
 
 .sidebar-divider {
@@ -325,14 +326,15 @@ async function handleLogout() {
 .collapse-btn {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   width: 100%;
-  padding: 8px;
+  padding: 10px 12px;
   margin-top: 4px;
-  border: none;
+  border: 1px solid var(--sidebar-border, #cccccc);
   border-radius: 8px;
   background-color: transparent;
-  color: var(--color-text-secondary, #6c757d);
+  color: var(--sidebar-foreground, #1c222b);
+  font-size: 13px;
   cursor: pointer;
   transition: background-color 120ms ease, color 120ms ease;
 }
@@ -342,15 +344,12 @@ async function handleLogout() {
   color: var(--sidebar-foreground, #1c222b);
 }
 
-.collapse-icon {
-  /* RTL: chevron points left (toward content) when expanded */
-  transform: rotate(0deg);
-  transition: transform 200ms ease;
+.sidebar--collapsed .brand-copy {
+  display: none;
 }
 
-.collapse-icon--collapsed {
-  /* When collapsed: chevron points right (toward sidebar center) */
-  transform: rotate(180deg);
+.sidebar--collapsed .collapse-btn {
+  justify-content: center;
 }
 
 /* Mobile (≤600px): hide sidebar by default, show when mobileOpen */

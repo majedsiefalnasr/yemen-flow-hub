@@ -28,6 +28,7 @@ import {
   RotateCcw,
   UploadCloud,
   Vote,
+  Lock,
 } from 'lucide-vue-next'
 
 export const ICONS = {
@@ -59,6 +60,7 @@ export const ICONS = {
   'rotate-ccw': RotateCcw,
   'upload-cloud': UploadCloud,
   vote: Vote,
+  lock: Lock,
 } as const satisfies Record<string, Component>
 
 export type IconName = keyof typeof ICONS
