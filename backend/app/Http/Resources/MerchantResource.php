@@ -21,6 +21,7 @@ class MerchantResource extends JsonResource
             'phone' => $this->phone,
             'email' => $this->email,
             'address' => $this->address,
+            'business_type' => $this->business_type,
             'is_active' => (bool) $this->is_active,
             'created_by' => $this->created_by,
             'created_at' => $this->created_at?->toISOString(),

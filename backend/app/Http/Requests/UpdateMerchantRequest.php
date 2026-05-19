@@ -17,15 +17,16 @@ class UpdateMerchantRequest extends ApiFormRequest
 
         return [
             'bank_id' => ['nullable', 'integer', 'exists:banks,id'],
-            'name' => ['required', 'string', 'max:255'],
-            'commercial_register' => ['nullable', 'string', 'max:255', Rule::unique('merchants', 'commercial_register')->ignore($merchantId)],
-            'tax_number' => ['nullable', 'string', 'max:255', Rule::unique('merchants', 'tax_number')->ignore($merchantId)],
-            'national_id' => ['nullable', 'string', 'max:255'],
-            'owner_name' => ['nullable', 'string', 'max:255'],
-            'phone' => ['nullable', 'string', 'max:255'],
-            'email' => ['nullable', 'email', 'max:255'],
-            'address' => ['nullable', 'string'],
-            'is_active' => ['required', 'boolean'],
+            'name' => ['sometimes', 'required', 'string', 'max:255'],
+            'commercial_register' => ['sometimes', 'nullable', 'string', 'max:255', Rule::unique('merchants', 'commercial_register')->ignore($merchantId)],
+            'tax_number' => ['sometimes', 'nullable', 'string', 'max:255', Rule::unique('merchants', 'tax_number')->ignore($merchantId)],
+            'national_id' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'owner_name' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'phone' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'email' => ['sometimes', 'nullable', 'email', 'max:255'],
+            'address' => ['sometimes', 'nullable', 'string'],
+            'business_type' => ['sometimes', 'nullable', 'string', 'max:100'],
+            'is_active' => ['sometimes', 'boolean'],
         ];
     }
 }

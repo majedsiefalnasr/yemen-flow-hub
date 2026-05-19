@@ -65,6 +65,7 @@ class MerchantControllerTest extends TestCase
             'name' => 'تاجر الاختبار',
             'commercial_register' => 'CR-' . uniqid(),
             'tax_number' => 'TX-' . uniqid(),
+            'business_type' => null,
             'is_active' => true,
             'created_by' => $this->bankAdmin->id,
         ], $overrides));
@@ -109,6 +110,26 @@ class MerchantControllerTest extends TestCase
 
         $response->assertOk();
         $this->assertGreaterThanOrEqual(2, count($response->json('data')));
+    }
+
+    public function test_per_page_query_param_is_respected_up_to_limit(): void
+    {
+        Merchant::query()->insert(collect(range(1, 25))->map(fn ($i) => [
+            'bank_id' => $this->bank->id,
+            'name' => "Merchant {$i}",
+            'commercial_register' => "CR-P{$i}",
+            'tax_number' => "TX-P{$i}",
+            'business_type' => null,
+            'is_active' => true,
+            'created_by' => $this->bankAdmin->id,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ])->all());
+
+        $response = $this->actingAs($this->cbyadmin)->getJson('/api/merchants?per_page=100');
+
+        $response->assertOk();
+        $this->assertCount(25, $response->json('data'));
     }
 
     public function test_bank_admin_cannot_filter_another_banks_merchants(): void
@@ -156,6 +177,7 @@ class MerchantControllerTest extends TestCase
             'commercial_register' => 'CR-12345',
             'tax_number' => 'TX-99999',
             'address' => 'صنعاء، شارع التحرير',
+            'business_type' => 'import',
             'is_active' => true,
         ];
 
@@ -166,6 +188,32 @@ class MerchantControllerTest extends TestCase
             'name' => 'شركة التقنية للاستيراد',
             'bank_id' => $this->bank->id,
             'created_by' => $this->bankAdmin->id,
+            'business_type' => 'import',
+        ]);
+    }
+
+    public function test_cby_admin_must_provide_bank_id_when_creating_merchant(): void
+    {
+        $response = $this->actingAs($this->cbyadmin)->postJson('/api/merchants', [
+            'name' => 'تاجر بدون بنك',
+        ]);
+
+        $response->assertUnprocessable()->assertJsonValidationErrors(['bank_id']);
+    }
+
+    public function test_cby_admin_can_create_merchant_for_selected_bank(): void
+    {
+        $response = $this->actingAs($this->cbyadmin)->postJson('/api/merchants', [
+            'name' => 'تاجر مركزي',
+            'bank_id' => $this->otherBank->id,
+            'business_type' => 'services',
+        ]);
+
+        $response->assertStatus(201);
+        $this->assertDatabaseHas('merchants', [
+            'name' => 'تاجر مركزي',
+            'bank_id' => $this->otherBank->id,
+            'business_type' => 'services',
         ]);
     }
 
@@ -195,16 +243,17 @@ class MerchantControllerTest extends TestCase
 
     public function test_bank_admin_updates_own_bank_merchant(): void
     {
-        $merchant = $this->makeMerchant($this->bank);
+        $merchant = $this->makeMerchant($this->bank, ['business_type' => 'retail']);
 
         $response = $this->actingAs($this->bankAdmin)->putJson("/api/merchants/{$merchant->id}", [
             'name' => 'اسم محدّث',
-            'is_active' => true,
+            'business_type' => 'import',
         ]);
 
         $response->assertOk();
         $response->assertJsonPath('data.name', 'اسم محدّث');
-        $this->assertDatabaseHas('merchants', ['id' => $merchant->id, 'name' => 'اسم محدّث']);
+        $response->assertJsonPath('data.business_type', 'import');
+        $this->assertDatabaseHas('merchants', ['id' => $merchant->id, 'name' => 'اسم محدّث', 'business_type' => 'import']);
     }
 
     public function test_bank_admin_cannot_update_other_bank_merchant(): void
@@ -212,7 +261,7 @@ class MerchantControllerTest extends TestCase
         $merchant = $this->makeMerchant($this->otherBank);
 
         $this->actingAs($this->bankAdmin)
-            ->putJson("/api/merchants/{$merchant->id}", ['name' => 'Hacked', 'is_active' => true])
+            ->putJson("/api/merchants/{$merchant->id}", ['name' => 'Hacked'])
             ->assertForbidden();
     }
 
@@ -222,10 +271,7 @@ class MerchantControllerTest extends TestCase
     {
         $merchant = $this->makeMerchant($this->bank, ['is_active' => true]);
 
-        $response = $this->actingAs($this->bankAdmin)->putJson("/api/merchants/{$merchant->id}", [
-            'name' => $merchant->name,
-            'is_active' => false,
-        ]);
+        $response = $this->actingAs($this->bankAdmin)->putJson("/api/merchants/{$merchant->id}", ['is_active' => false]);
 
         $response->assertOk();
         $response->assertJsonPath('data.is_active', false);
@@ -236,10 +282,7 @@ class MerchantControllerTest extends TestCase
     {
         $merchant = $this->makeMerchant($this->bank, ['is_active' => false]);
 
-        $response = $this->actingAs($this->bankAdmin)->putJson("/api/merchants/{$merchant->id}", [
-            'name' => $merchant->name,
-            'is_active' => true,
-        ]);
+        $response = $this->actingAs($this->bankAdmin)->putJson("/api/merchants/{$merchant->id}", ['is_active' => true]);
 
         $response->assertOk();
         $response->assertJsonPath('data.is_active', true);

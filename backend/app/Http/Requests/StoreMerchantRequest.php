@@ -23,6 +23,7 @@ class StoreMerchantRequest extends ApiFormRequest
             'phone' => ['nullable', 'string', 'max:255'],
             'email' => ['nullable', 'email', 'max:255'],
             'address' => ['nullable', 'string'],
+            'business_type' => ['nullable', 'string', 'max:100'],
             'is_active' => ['sometimes', 'boolean'],
         ];
     }

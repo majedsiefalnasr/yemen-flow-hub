@@ -22,6 +22,7 @@ class Merchant extends Model
         'phone',
         'email',
         'address',
+        'business_type',
         'is_active',
         'created_by',
     ];

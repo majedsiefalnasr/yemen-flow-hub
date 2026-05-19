@@ -15,6 +15,7 @@ class MerchantController extends Controller
     public function index()
     {
         $this->authorize('viewAny', Merchant::class);
+        $perPage = min(max((int) request('per_page', 20), 1), 100);
 
         $query = Merchant::query()
             ->with('bank')
@@ -27,7 +28,7 @@ class MerchantController extends Controller
             })
             ->latest('id');
 
-        return ApiResponse::success(MerchantResource::collection($query->paginate(20)), 'Merchants retrieved.');
+        return ApiResponse::success(MerchantResource::collection($query->paginate($perPage)), 'Merchants retrieved.');
     }
 
     #[OA\Post(
@@ -48,6 +49,7 @@ class MerchantController extends Controller
                     new OA\Property(property: 'phone', type: 'string', nullable: true, maxLength: 255),
                     new OA\Property(property: 'email', type: 'string', format: 'email', nullable: true, maxLength: 255),
                     new OA\Property(property: 'address', type: 'string', nullable: true),
+                    new OA\Property(property: 'business_type', type: 'string', nullable: true, maxLength: 100),
                     new OA\Property(property: 'is_active', type: 'boolean'),
                 ]
             )
