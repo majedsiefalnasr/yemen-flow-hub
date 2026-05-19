@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useAuthStore } from '../../stores/auth.store'
 import { useNotificationsStore } from '../../stores/notifications.store'
 import { ROLE_LABELS } from '../../constants/workflow'
@@ -8,7 +8,6 @@ import { formatRelativeTime } from '../../utils/formatRelativeTime'
 import Icon from '../ui/Icon.vue'
 import Popover from '../ui/Popover.vue'
 import DropdownMenu from '../ui/DropdownMenu.vue'
-import EmptyState from '../ui/EmptyState.vue'
 import GlobalSearch from './GlobalSearch.vue'
 import RoleSwitcher from './RoleSwitcher.vue'
 
@@ -16,6 +15,7 @@ const emit = defineEmits<{ toggleMobileMenu: [] }>()
 const auth = useAuthStore()
 const notificationsStore = useNotificationsStore()
 const router = useRouter()
+const route = useRoute()
 const config = useRuntimeConfig()
 const mobileSearchOpen = ref(false)
 const notificationOpen = ref(false)
@@ -25,18 +25,43 @@ const isDemoMode = (config.public as Record<string, unknown>).demoMode === true
   || (config.public as Record<string, unknown>).demoMode === 'true'
 const userInitial = computed(() => auth.user?.name?.trim()?.charAt(0) ?? '؟')
 
+function closeHeaderMenus() {
+  mobileSearchOpen.value = false
+  notificationOpen.value = false
+  userMenuOpen.value = false
+}
+
 async function toggleNotifications() {
   notificationOpen.value = !notificationOpen.value
   if (notificationOpen.value) await notificationsStore.fetchRecent()
 }
 
+async function goToProfile() {
+  closeHeaderMenus()
+  await router.push('/profile')
+}
+
+async function goToSettings() {
+  closeHeaderMenus()
+  await router.push('/settings')
+}
+
+async function handleMarkAllRead() {
+  await notificationsStore.markAllRead()
+}
+
 async function handleLogout() {
+  closeHeaderMenus()
   await auth.logout()
   await router.push('/login')
 }
 
 onMounted(() => {
   void notificationsStore.refreshUnreadCount()
+})
+
+watch(() => route.fullPath, () => {
+  closeHeaderMenus()
 })
 </script>
 
@@ -80,10 +105,13 @@ onMounted(() => {
               <span>الإشعارات</span>
               <span class="notif-count">{{ notificationsStore.unreadCount }}</span>
             </div>
-            <button class="notif-mark-all" @click="notificationsStore.markAllRead()">قراءة الكل</button>
+            <button class="notif-mark-all" @click="handleMarkAllRead">قراءة الكل</button>
           </div>
           <div v-if="notificationsStore.items.length === 0" class="notif-empty">
-            <EmptyState title="لا توجد إشعارات بعد" description="" />
+            <div class="notif-empty-icon" aria-hidden="true">
+              <Icon name="bell" />
+            </div>
+            <p class="notif-empty-title">لا توجد إشعارات بعد</p>
           </div>
           <div v-else class="notif-list">
             <div v-for="n in notificationsStore.items" :key="n.id" class="notif-item">
@@ -109,8 +137,8 @@ onMounted(() => {
             </div>
           </button>
         </template>
-        <button class="menu-item" @click="router.push('/profile')">الملف الشخصي</button>
-        <button class="menu-item" @click="router.push('/settings')">الإعدادات</button>
+        <button class="menu-item" @click="goToProfile">الملف الشخصي</button>
+        <button class="menu-item" @click="goToSettings">الإعدادات</button>
         <hr class="menu-separator">
         <button class="menu-item menu-item--danger" @click="handleLogout">تسجيل الخروج</button>
       </DropdownMenu>
@@ -133,6 +161,7 @@ onMounted(() => {
 .header-center { flex: 1; display: flex; justify-content: center; min-width: 0; }
 .mobile-menu-btn, .mobile-search-btn, .icon-btn { display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border: none; background: transparent; border-radius: 8px; cursor: pointer; color: var(--color-text-secondary); }
 .mobile-menu-btn, .mobile-search-btn { display: none; }
+.icon-btn { position: relative; }
 .mobile-menu-btn:hover, .mobile-search-btn:hover, .icon-btn:hover { background-color: var(--color-background); }
 .notification-badge { position: absolute; top: 4px; inset-inline-end: 4px; min-width: 16px; height: 16px; padding: 0 3px; border-radius: 8px; background-color: var(--color-rejected); border: 2px solid var(--color-surface); color: #fff; font-size: 9px; font-weight: 600; line-height: 12px; display: flex; align-items: center; justify-content: center; }
 .user-trigger { border: none; background: transparent; display: flex; align-items: center; gap: 8px; cursor: pointer; }
@@ -153,11 +182,14 @@ onMounted(() => {
 .notif-message, .notif-sub, .notif-time { margin: 0; font-size: 12px; }
 .notif-sub, .notif-time { color: var(--color-text-secondary); }
 .notif-footer-link { display: block; padding: 10px 12px; font-size: 13px; color: var(--color-primary); text-decoration: none; }
-.notif-empty :deep(.empty-state) { padding: 24px 12px; }
+.notif-empty { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 24px 12px; color: var(--color-text-secondary); }
+.notif-empty-icon { width: 44px; height: 44px; border-radius: 9999px; background: color-mix(in srgb, var(--color-primary) 12%, var(--color-surface)); color: var(--color-primary); display: grid; place-items: center; }
+.notif-empty-title { margin: 0; font-size: 13px; color: var(--color-text-secondary); }
 .menu-item { width: 100%; border: none; background: transparent; text-align: start; padding: 8px 10px; border-radius: 8px; cursor: pointer; }
 .menu-item:hover { background: var(--sidebar-accent); }
 .menu-separator { border: none; border-top: 1px solid var(--color-outline-variant); margin: 6px 0; }
 .menu-item--danger { color: var(--color-error-text); }
 .mobile-search-overlay { display: none; position: absolute; top: 0; left: 0; right: 0; height: 64px; background-color: var(--color-surface); border-bottom: 1px solid var(--color-border); padding: 0 12px; align-items: center; gap: 8px; z-index: 30; }
-@media (max-width: 600px) { .mobile-menu-btn, .mobile-search-btn { display: flex; } .header-center { display: none; } .mobile-search-overlay { display: flex; } .user-meta { display: none; } }
+@media (max-width: 1023px) { .mobile-menu-btn { display: flex; } }
+@media (max-width: 767px) { .mobile-search-btn { display: flex; } .header-center { display: none; } .mobile-search-overlay { display: flex; } .user-meta { display: none; } }
 </style>

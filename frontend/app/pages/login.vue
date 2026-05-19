@@ -39,7 +39,7 @@ const onSubmit = handleSubmit(async (values) => {
     if (result?.requiresMfa) {
       pendingEmail.value = result.email
       pendingChallengeId.value = result.challengeId
-      otpRoleLabel.value = auth.user ? (ROLE_LABELS[auth.user.role] ?? auth.user.role) : 'مستخدم النظام'
+      otpRoleLabel.value = result.roleLabel ?? 'مستخدم النظام'
       otpStep.value = true
       otpCells.value = ['', '', '', '', '', '']
       await nextTick()
@@ -138,7 +138,7 @@ function backToLogin() {
           <div class="login-heading">
             <h2>تسجيل الدخول</h2>
           </div>
-          <div v-if="serverError" class="error-alert">{{ serverError }}</div>
+          <div v-if="serverError" class="error-alert" role="alert" aria-live="assertive">{{ serverError }}</div>
           <form class="login-form" novalidate @submit.prevent="onSubmit">
             <div class="field-group">
               <label for="email" class="field-label">البريد الإلكتروني</label>
@@ -160,7 +160,7 @@ function backToLogin() {
             <h2 class="otp-title">رمز التحقق (OTP)</h2>
             <p class="otp-desc">أدخل الرمز المرسل إلى هاتفك المنتهي بـ {{ otpDestination }}</p>
           </div>
-          <div v-if="otpError" class="error-alert">{{ otpError }}</div>
+          <div v-if="otpError" class="error-alert" role="alert" aria-live="assertive">{{ otpError }}</div>
           <div class="otp-cells" @paste.prevent="onOtpPaste">
             <input v-for="(_, i) in otpCells" :key="i" :ref="(el) => { if (el) otpCellRefs[i] = el as HTMLInputElement }" v-model="otpCells[i]" type="text" inputmode="numeric" maxlength="1" class="otp-cell" :class="{ 'otp-cell--error': otpError }" autocomplete="one-time-code" @keydown="onOtpKeydown(i, $event)">
           </div>

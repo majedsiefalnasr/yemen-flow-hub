@@ -1,29 +1,119 @@
-import { describe, it, expect } from 'vitest'
+// @vitest-environment jsdom
+import { mount } from '@vue/test-utils'
+import { computed } from 'vue'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import AppSidebar from '../../../components/layout/AppSidebar.vue'
 
-describe('AppSidebar parity copy', () => {
-  it('uses required collapse labels', () => {
-    expect('توسيع ›').toBeTruthy()
-    expect('‹ طي الشريط الجانبي').toBeTruthy()
+const mockPush = vi.hoisted(() => vi.fn())
+const mockLogout = vi.hoisted(() => vi.fn())
+const collapsed = vi.hoisted(() => ({ value: false }))
+const toggleSidebar = vi.hoisted(() => vi.fn(() => {
+  collapsed.value = !collapsed.value
+}))
+const mockPath = vi.hoisted(() => ({ value: '/dashboard' }))
+const mockUser = vi.hoisted(() => ({ value: {
+  name: 'Test User',
+  role: 'CBY_ADMIN',
+} }))
+
+vi.mock('vue-router', () => ({
+  useRoute: () => ({ path: mockPath.value }),
+  useRouter: () => ({ push: mockPush }),
+}))
+
+vi.mock('../../../stores/auth.store', () => ({
+  useAuthStore: () => ({
+    user: mockUser.value,
+    logout: mockLogout,
+  }),
+}))
+
+vi.mock('../../../composables/useSidebar', () => ({
+  useSidebar: () => ({
+    isCollapsed: computed(() => collapsed.value),
+    toggle: toggleSidebar,
+    collapse: vi.fn(),
+    expand: vi.fn(),
+  }),
+}))
+
+vi.mock('../../../constants/workflow', () => ({
+  ROLE_LABELS: {
+    CBY_ADMIN: 'مدير النظام',
+    DATA_ENTRY: 'إدخال البيانات',
+  },
+  NAV_ITEMS: [
+    { route: '/dashboard', label: 'لوحة التحكم', icon: 'home', roles: ['CBY_ADMIN', 'DATA_ENTRY'] },
+    { route: '/users', label: 'المستخدمون', icon: 'users', roles: ['CBY_ADMIN'] },
+    { route: '/requests', label: 'الطلبات', icon: 'file-text', roles: ['DATA_ENTRY'] },
+  ],
+}))
+
+vi.mock('../../../components/ui/Icon.vue', () => ({
+  default: {
+    props: ['name'],
+    template: '<span class="icon-stub" :data-icon="name" />',
+  },
+}))
+
+describe('AppSidebar', () => {
+  beforeEach(() => {
+    collapsed.value = false
+    mockPath.value = '/dashboard'
+    mockLogout.mockReset()
+    mockPush.mockReset()
+    toggleSidebar.mockClear()
+    mockUser.value = {
+      name: 'Test User',
+      role: 'CBY_ADMIN',
+    }
   })
 
-  it('uses monogram brand block text', () => {
-    expect('منصة الواردات').toBeTruthy()
-    expect('البنك المركزي اليمني').toBeTruthy()
+  function mountSidebar() {
+    return mount(AppSidebar, {
+      props: { mobileOpen: false },
+      global: {
+        stubs: {
+          NuxtLink: {
+            props: ['to'],
+            template: '<a :href="to"><slot /></a>',
+          },
+        },
+      },
+    })
+  }
+
+  it('renders expanded sidebar brand, labels, and collapse copy', () => {
+    const wrapper = mountSidebar()
+    expect(wrapper.find('.brand-logo').text()).toBe('ب م')
+    expect(wrapper.find('.brand-name').text()).toBe('منصة الواردات')
+    expect(wrapper.find('.brand-subtitle').text()).toBe('البنك المركزي اليمني')
+    expect(wrapper.find('.collapse-btn').text()).toContain('‹ طي الشريط الجانبي')
+    expect(wrapper.html()).toMatchSnapshot()
   })
 
-  it('expanded width token is 280px', () => {
-    expect('280px').toBe('280px')
+  it('renders only role-authorized nav items', () => {
+    const wrapper = mountSidebar()
+    const navLinks = wrapper.findAll('.nav-item')
+    expect(navLinks).toHaveLength(2)
+    expect(navLinks[0]?.text()).toContain('لوحة التحكم')
+    expect(navLinks[1]?.text()).toContain('المستخدمون')
+    expect(wrapper.html()).not.toContain('الطلبات')
   })
 
-  it('collapsed width token is 72px', () => {
-    expect('72px').toBe('72px')
+  it('applies collapsed class and keeps collapse toggle text parity', async () => {
+    collapsed.value = true
+    const wrapper = mountSidebar()
+    expect(wrapper.find('.sidebar').classes()).toContain('sidebar--collapsed')
+    expect(wrapper.find('.collapse-btn').text()).toContain('توسيع ›')
+    expect(wrapper.html()).toMatchSnapshot()
   })
 
-  it('active item highlight uses sidebar primary token', () => {
-    expect('var(--sidebar-primary, #0066cc)').toContain('#0066cc')
-  })
-
-  it('brand monogram uses Arabic initials', () => {
-    expect('ب م').toMatch(/ب/)
+  it('logs out and navigates to login on logout click', async () => {
+    mockLogout.mockResolvedValueOnce(undefined)
+    const wrapper = mountSidebar()
+    await wrapper.get('.logout-btn').trigger('click')
+    expect(mockLogout).toHaveBeenCalledTimes(1)
+    expect(mockPush).toHaveBeenCalledWith('/login')
   })
 })

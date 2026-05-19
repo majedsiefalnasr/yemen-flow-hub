@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 const props = withDefaults(defineProps<{
   open?: boolean
@@ -15,6 +15,7 @@ const triggerRef = ref<HTMLElement | null>(null)
 const menuRef = ref<HTMLElement | null>(null)
 const top = ref(0)
 const left = ref(0)
+const panelWidth = ref(220)
 
 const isOpen = computed(() => props.open === true)
 
@@ -26,8 +27,25 @@ function updatePosition() {
   const trigger = triggerRef.value
   if (!trigger) return
   const rect = trigger.getBoundingClientRect()
-  top.value = rect.bottom + 8
-  left.value = rect.right - 220
+  const viewportPadding = 8
+  const availableWidth = Math.max(window.innerWidth - viewportPadding * 2, 0)
+  panelWidth.value = Math.min(220, availableWidth)
+  const desiredLeft = rect.right - panelWidth.value
+  left.value = Math.max(
+    viewportPadding,
+    Math.min(desiredLeft, window.innerWidth - panelWidth.value - viewportPadding),
+  )
+
+  const menuHeight = menuRef.value?.offsetHeight ?? 200
+  const preferredTop = rect.bottom + 8
+  const fallbackTop = rect.top - menuHeight - 8
+  const placedTop = (preferredTop + menuHeight + viewportPadding <= window.innerHeight)
+    ? preferredTop
+    : fallbackTop
+  top.value = Math.max(
+    viewportPadding,
+    Math.min(placedTop, window.innerHeight - menuHeight - viewportPadding),
+  )
 }
 
 function onDocClick(event: MouseEvent) {
@@ -41,8 +59,10 @@ function onKeydown(event: KeyboardEvent) {
   if (event.key === 'Escape' && isOpen.value) close()
 }
 
-watch(isOpen, (value) => {
-  if (value) updatePosition()
+watch(isOpen, async (value) => {
+  if (!value) return
+  await nextTick()
+  updatePosition()
 })
 
 onMounted(() => {
@@ -69,7 +89,7 @@ onBeforeUnmount(() => {
       v-if="isOpen"
       ref="menuRef"
       class="dropdown-content"
-      :style="{ top: `${top}px`, left: `${left}px` }"
+      :style="{ top: `${top}px`, left: `${left}px`, width: `${panelWidth}px`, maxWidth: `${panelWidth}px` }"
       role="menu"
     >
       <slot />
@@ -83,7 +103,6 @@ onBeforeUnmount(() => {
 }
 
 .dropdown-content {
-  width: 220px;
   position: fixed;
   z-index: 60;
   border: 1px solid var(--color-outline-variant);

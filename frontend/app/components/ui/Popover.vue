@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 const props = withDefaults(defineProps<{
   open?: boolean
@@ -15,7 +15,7 @@ const triggerRef = ref<HTMLElement | null>(null)
 const contentRef = ref<HTMLElement | null>(null)
 const top = ref(0)
 const left = ref(0)
-const minWidth = ref(260)
+const panelWidth = ref(260)
 
 const isOpen = computed(() => props.open === true)
 
@@ -26,10 +26,29 @@ function close() {
 function updatePosition() {
   const trigger = triggerRef.value
   if (!trigger) return
+
   const rect = trigger.getBoundingClientRect()
-  top.value = rect.bottom + 8
-  left.value = rect.right - Math.max(rect.width, 320)
-  minWidth.value = Math.max(rect.width, 260)
+  const viewportPadding = 8
+  const availableWidth = Math.max(window.innerWidth - viewportPadding * 2, 0)
+  const preferredWidth = Math.min(360, Math.max(rect.width, 260))
+  panelWidth.value = Math.min(preferredWidth, availableWidth)
+  const desiredLeft = rect.right - panelWidth.value
+  const clampedLeft = Math.max(
+    viewportPadding,
+    Math.min(desiredLeft, window.innerWidth - panelWidth.value - viewportPadding),
+  )
+  left.value = clampedLeft
+
+  const panelHeight = contentRef.value?.offsetHeight ?? 320
+  const preferredTop = rect.bottom + 8
+  const fallbackTop = rect.top - panelHeight - 8
+  const placedTop = (preferredTop + panelHeight + viewportPadding <= window.innerHeight)
+    ? preferredTop
+    : fallbackTop
+  top.value = Math.max(
+    viewportPadding,
+    Math.min(placedTop, window.innerHeight - panelHeight - viewportPadding),
+  )
 }
 
 function onDocClick(event: MouseEvent) {
@@ -43,8 +62,12 @@ function onKeydown(event: KeyboardEvent) {
   if (event.key === 'Escape' && isOpen.value) close()
 }
 
-watch(isOpen, (value) => {
+watch(isOpen, async (value) => {
   if (value) updatePosition()
+  if (value) {
+    await nextTick()
+    updatePosition()
+  }
 })
 
 onMounted(() => {
@@ -71,7 +94,7 @@ onBeforeUnmount(() => {
       v-if="isOpen"
       ref="contentRef"
       class="popover-content"
-      :style="{ top: `${top}px`, left: `${left}px`, minWidth: `${minWidth}px` }"
+      :style="{ top: `${top}px`, left: `${left}px`, width: `${panelWidth}px`, maxWidth: `${panelWidth}px` }"
       role="dialog"
       aria-modal="false"
     >

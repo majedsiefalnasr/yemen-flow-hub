@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import type { AuthUser, ApiResponse, UserPreferences } from '../types/models'
+import { ROLE_LABELS } from '../constants/workflow'
 import { UserRole } from '../types/enums'
 
 interface LoginResponseData {
@@ -10,6 +11,7 @@ interface LoginResponseData {
   requires_mfa: boolean
   email?: string
   challenge_id?: string
+  role_label?: string
 }
 
 interface VerifyOtpResponseData {
@@ -18,6 +20,23 @@ interface VerifyOtpResponseData {
   token_type: string | null
   mode: 'cookie' | 'token'
   requires_mfa: false
+}
+
+function clearAuthState(store: { user: AuthUser | null; isAuthenticated: boolean }) {
+  store.user = null
+  store.isAuthenticated = false
+
+  if (process.client) {
+    localStorage.removeItem('yfh-authenticated')
+  }
+}
+
+function resolveMfaRoleLabel(data: LoginResponseData): string | undefined {
+  if (data.role_label) {
+    return data.role_label
+  }
+
+  return data.user ? (ROLE_LABELS[data.user.role] ?? data.user.role) : undefined
 }
 
 export const useAuthStore = defineStore('auth', {
@@ -77,7 +96,7 @@ export const useAuthStore = defineStore('auth', {
       return raw ? decodeURIComponent(raw) : null
     },
 
-    async login(email: string, password: string): Promise<{ requiresMfa: true; email: string; challengeId: string } | void> {
+    async login(email: string, password: string): Promise<{ requiresMfa: true; email: string; challengeId: string; roleLabel?: string } | void> {
       const config = useRuntimeConfig()
       const baseURL = config.public.apiBase as string
 
@@ -107,7 +126,14 @@ export const useAuthStore = defineStore('auth', {
           throw { statusCode: 500, data: { success: false, message: 'تعذر بدء جلسة التحقق. يرجى إعادة المحاولة.' } }
         }
 
-        return { requiresMfa: true, email: response.data.email ?? email, challengeId }
+        clearAuthState(this)
+        const roleLabel = resolveMfaRoleLabel(response.data)
+        return {
+          requiresMfa: true,
+          email: response.data.email ?? email,
+          challengeId,
+          ...(roleLabel ? { roleLabel } : {}),
+        }
       }
 
       if (!response.data.user?.is_active) {
@@ -198,11 +224,7 @@ export const useAuthStore = defineStore('auth', {
         // Always clear local state, even on network failure
       }
       finally {
-        this.user = null
-        this.isAuthenticated = false
-        if (process.client) {
-          localStorage.removeItem('yfh-authenticated')
-        }
+        clearAuthState(this)
       }
     },
 
@@ -217,19 +239,14 @@ export const useAuthStore = defineStore('auth', {
           headers: { Accept: 'application/json' },
         })
         if (!response.data.is_active) {
-          this.user = null
-          this.isAuthenticated = false
+          clearAuthState(this)
           return
         }
         this.user = response.data
         this.isAuthenticated = true
       }
       catch {
-        this.user = null
-        this.isAuthenticated = false
-        if (process.client) {
-          localStorage.removeItem('yfh-authenticated')
-        }
+        clearAuthState(this)
       }
     },
 

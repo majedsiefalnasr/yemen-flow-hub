@@ -101,6 +101,72 @@ describe('useAuthStore', () => {
       expect(store.isAuthenticated).toBe(false)
       expect(store.user).toBeNull()
     })
+
+    it('returns MFA role label when backend includes it', async () => {
+      mockFetch.mockResolvedValueOnce(null)
+      mockFetch.mockResolvedValueOnce({
+        success: true,
+        message: 'OTP sent',
+        data: {
+          requires_mfa: true,
+          email: 'ahmed@bank.ye',
+          challenge_id: 'challenge-1',
+          role_label: 'مدير النظام',
+        },
+      })
+
+      const store = useAuthStore()
+      const result = await store.login('ahmed@bank.ye', 'password123')
+
+      expect(result).toEqual({
+        requiresMfa: true,
+        email: 'ahmed@bank.ye',
+        challengeId: 'challenge-1',
+        roleLabel: 'مدير النظام',
+      })
+    })
+
+    it('clears stale authenticated state before returning an MFA challenge', async () => {
+      mockFetch.mockResolvedValueOnce(null)
+      mockFetch.mockResolvedValueOnce({
+        success: true,
+        message: 'OTP sent',
+        data: { requires_mfa: true, email: 'ahmed@bank.ye', challenge_id: 'challenge-1' },
+      })
+
+      const store = useAuthStore()
+      store.user = DEMO_USER
+      store.isAuthenticated = true
+
+      await store.login('ahmed@bank.ye', 'password123')
+
+      expect(store.user).toBeNull()
+      expect(store.isAuthenticated).toBe(false)
+    })
+
+    it('derives MFA role label from the returned user role when role_label is missing', async () => {
+      mockFetch.mockResolvedValueOnce(null)
+      mockFetch.mockResolvedValueOnce({
+        success: true,
+        message: 'OTP sent',
+        data: {
+          requires_mfa: true,
+          email: 'ahmed@bank.ye',
+          challenge_id: 'challenge-1',
+          user: DEMO_USER,
+        },
+      })
+
+      const store = useAuthStore()
+      const result = await store.login('ahmed@bank.ye', 'password123')
+
+      expect(result).toEqual({
+        requiresMfa: true,
+        email: 'ahmed@bank.ye',
+        challengeId: 'challenge-1',
+        roleLabel: 'إدخال البيانات',
+      })
+    })
   })
 
   describe('verifyOtp()', () => {
