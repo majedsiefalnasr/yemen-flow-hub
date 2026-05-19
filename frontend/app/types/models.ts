@@ -60,6 +60,16 @@ export interface ImportRequest {
   goods_description: string
   port_of_entry: string
   notes: string | null
+  goods_type: string | null
+  payment_terms: string | null
+  due_date: string | null
+  invoice_number: string | null
+  invoice_date: string | null
+  origin_country: string | null
+  arrival_port: string | null
+  shipping_port: string | null
+  customs_office: string | null
+  bl_number: string | null
   created_by: number
   submitted_by: number | null
   reviewed_by: number | null
@@ -134,6 +144,18 @@ export interface RequestFormData {
   goods_description: string
   port_of_entry: string
   notes: string
+  // Wizard step 1 extended fields
+  goods_type?: string | null
+  payment_terms?: string | null
+  due_date?: string | null
+  // Wizard step 2 fields
+  invoice_number?: string | null
+  invoice_date?: string | null
+  origin_country?: string | null
+  arrival_port?: string | null
+  shipping_port?: string | null
+  customs_office?: string | null
+  bl_number?: string | null
 }
 
 export interface User {
