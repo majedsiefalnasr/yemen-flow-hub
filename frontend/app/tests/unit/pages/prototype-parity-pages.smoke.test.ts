@@ -16,8 +16,17 @@ vi.mock('../../../composables/useMerchants', () => ({
   }),
 }))
 
+vi.mock('../../../composables/useUsers', () => ({
+  useUsers: () => ({
+    fetchUsers: vi.fn().mockResolvedValue([]),
+    createUser: vi.fn(),
+    updateUser: vi.fn(),
+  }),
+}))
+
 vi.mock('../../../stores/auth.store', () => ({
   useAuthStore: () => ({
+    user: { id: 1, bank_id: 1, role: 'BANK_ADMIN' },
     currentRole: 'BANK_ADMIN',
     isCbyAdmin: false,
     isBankUser: true,
@@ -72,15 +81,19 @@ describe('Story 5.7 page smoke tests', () => {
     expect(html).toContain('قواعد المستندات')
   })
 
-  it('resolves Story 6.2 admin and staff route wrappers', async () => {
+  it('renders /staff page shell (BANK_ADMIN staff management)', async () => {
+    const page = await import('../../../pages/staff.vue')
+    const html = await renderPage(page.default)
+    expect(html).toContain('إدارة الموظفين')
+  })
+
+  it('resolves Story 6.2 admin route wrappers', async () => {
     navigateToMock.mockClear()
 
-    await renderPage((await import('../../../pages/staff.vue')).default)
     await renderPage((await import('../../../pages/admin/cby-staff.vue')).default)
     await renderPage((await import('../../../pages/admin/entities.vue')).default)
     await renderPage((await import('../../../pages/admin/roles.vue')).default)
 
-    expect(navigateToMock).toHaveBeenCalledWith('/users', { replace: true })
     expect(navigateToMock).toHaveBeenCalledWith('/banks', { replace: true })
   })
 })
