@@ -65,6 +65,18 @@ export interface CbyAdminComplianceAlerts {
   stale_pending_requests: Array<{ id: number; reference_number: string; bank_name: string; updated_at: string | null }>
 }
 
+export interface CbyAdminMonthlyEntry {
+  month: string
+  submitted: number
+  approved: number
+}
+
+export interface CbyAdminCategoryEntry {
+  label: string
+  count: number
+  color: string
+}
+
 export interface CbyAdminDashboardStats {
   total: number
   approved: number
@@ -72,6 +84,9 @@ export interface CbyAdminDashboardStats {
   rejected: number
   compliance_alerts: CbyAdminComplianceAlerts
   most_active_banks: Array<{ bank_id: number; bank_name: string; request_count: number }>
+  monthly_requests?: CbyAdminMonthlyEntry[]
+  category_distribution?: CbyAdminCategoryEntry[]
+  recent_requests?: ImportRequest[]
 }
 
 export type DashboardStats = DataEntryDashboardStats | BankReviewerDashboardStats | BankAdminDashboardStats | SupportCommitteeDashboardStats | SwiftOfficerDashboardStats | ExecutiveDashboardStats | CbyAdminDashboardStats
