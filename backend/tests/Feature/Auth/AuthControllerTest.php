@@ -369,6 +369,7 @@ class AuthControllerTest extends TestCase
         $response->assertStatus(200);
         $response->assertJsonPath('data.requires_mfa', true);
         $response->assertJsonPath('data.email', 'test@example.com');
+        $this->assertNotEmpty($response->json('data.challenge_id'));
         $response->assertJsonMissing(['token']);
     }
 
@@ -393,10 +394,12 @@ class AuthControllerTest extends TestCase
         $this->makeUser();
         $mfa = new MfaService();
         $code = $mfa->generate('test@example.com');
+        $challengeId = $mfa->getChallengeId('test@example.com');
 
         $response = $this->postJson('/api/auth/verify-otp', [
             'email' => 'test@example.com',
             'otp' => $code,
+            'challenge_id' => $challengeId,
         ]);
 
         $response->assertStatus(200);
@@ -411,10 +414,12 @@ class AuthControllerTest extends TestCase
         $this->makeUser();
         $mfa = new MfaService();
         $mfa->generate('test@example.com');
+        $challengeId = $mfa->getChallengeId('test@example.com');
 
         $response = $this->postJson('/api/auth/verify-otp', [
             'email' => 'test@example.com',
             'otp' => '000000',
+            'challenge_id' => $challengeId,
         ]);
 
         $response->assertStatus(422);
@@ -431,6 +436,7 @@ class AuthControllerTest extends TestCase
         $response = $this->postJson('/api/auth/verify-otp', [
             'email' => 'test@example.com',
             'otp' => '123456',
+            'challenge_id' => '00000000-0000-0000-0000-000000000000',
         ]);
 
         $response->assertStatus(422);
@@ -444,13 +450,19 @@ class AuthControllerTest extends TestCase
         $this->makeUser();
         $mfa = new MfaService();
         $code = $mfa->generate('test@example.com');
+        $challengeId = $mfa->getChallengeId('test@example.com');
 
-        $this->postJson('/api/auth/verify-otp', ['email' => 'test@example.com', 'otp' => $code]);
+        $this->postJson('/api/auth/verify-otp', [
+            'email' => 'test@example.com',
+            'otp' => $code,
+            'challenge_id' => $challengeId,
+        ]);
 
         // Second use of same code should fail
         $response = $this->postJson('/api/auth/verify-otp', [
             'email' => 'test@example.com',
             'otp' => $code,
+            'challenge_id' => $challengeId,
         ]);
 
         $response->assertStatus(422);
@@ -463,12 +475,21 @@ class AuthControllerTest extends TestCase
         $this->makeUser();
         $mfa = new MfaService();
         $mfa->generate('test@example.com');
+        $challengeId = $mfa->getChallengeId('test@example.com');
 
         for ($i = 0; $i < 10; $i++) {
-            $this->postJson('/api/auth/verify-otp', ['email' => 'test@example.com', 'otp' => '000000']);
+            $this->postJson('/api/auth/verify-otp', [
+                'email' => 'test@example.com',
+                'otp' => '000000',
+                'challenge_id' => $challengeId,
+            ]);
         }
 
-        $response = $this->postJson('/api/auth/verify-otp', ['email' => 'test@example.com', 'otp' => '000000']);
+        $response = $this->postJson('/api/auth/verify-otp', [
+            'email' => 'test@example.com',
+            'otp' => '000000',
+            'challenge_id' => $challengeId,
+        ]);
         $response->assertStatus(429);
     }
 }

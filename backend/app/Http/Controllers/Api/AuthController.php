@@ -85,9 +85,15 @@ class AuthController extends Controller
         // MFA gate: generate OTP and return requires_mfa signal without creating session
         if (config('mfa.enabled', false)) {
             $this->mfaService->generate($email);
+            $challengeId = $this->mfaService->getChallengeId($email);
+            if ($challengeId === null) {
+                return ApiResponse::error('Unable to initialize MFA challenge.', [], 500);
+            }
+
             return ApiResponse::success([
                 'requires_mfa' => true,
                 'email' => $email,
+                'challenge_id' => $challengeId,
             ], 'OTP sent. Complete MFA to continue.');
         }
 
@@ -150,10 +156,11 @@ class AuthController extends Controller
         requestBody: new OA\RequestBody(
             required: true,
             content: new OA\JsonContent(
-                required: ['email', 'otp'],
+                required: ['email', 'otp', 'challenge_id'],
                 properties: [
                     new OA\Property(property: 'email', type: 'string', format: 'email'),
                     new OA\Property(property: 'otp', type: 'string', minLength: 6, maxLength: 6),
+                    new OA\Property(property: 'challenge_id', type: 'string', format: 'uuid'),
                 ]
             )
         ),
@@ -168,23 +175,20 @@ class AuthController extends Controller
         $request->validate([
             'email' => ['required', 'string', 'email'],
             'otp' => ['required', 'string', 'size:6', 'regex:/^[0-9]{6}$/'],
+            'challenge_id' => ['required', 'string', 'uuid'],
         ]);
 
         $email = strtolower($request->string('email')->toString());
         $otp = $request->string('otp')->toString();
+        $challengeId = $request->string('challenge_id')->toString();
 
-        $user = User::query()->where('email', $email)->first();
-
-        if (!$user || !$user->is_active) {
-            throw ValidationException::withMessages([
-                'otp' => ['Invalid request.'],
-            ]);
+        if (!$this->mfaService->verify($email, $otp, $challengeId)) {
+            $this->throwInvalidOtp();
         }
 
-        if (!$this->mfaService->verify($email, $otp)) {
-            throw ValidationException::withMessages([
-                'otp' => ['الرمز المدخل غير صحيح أو منتهي الصلاحية.'],
-            ]);
+        $user = User::query()->where('email', $email)->first();
+        if (!$user || !$user->is_active) {
+            $this->throwInvalidOtp();
         }
 
         return $this->issueSession($request, $user);
@@ -235,5 +239,12 @@ class AuthController extends Controller
             null,
             ['email' => $email, 'reason' => $reason, 'ip' => $ip]
         );
+    }
+
+    private function throwInvalidOtp(): void
+    {
+        throw ValidationException::withMessages([
+            'otp' => ['الرمز المدخل غير صحيح أو منتهي الصلاحية.'],
+        ]);
     }
 }
