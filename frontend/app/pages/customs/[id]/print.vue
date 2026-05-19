@@ -20,9 +20,16 @@ const error = ref<string | null>(null)
 const zoom = ref(1)
 const showConfirmDialog = ref(false)
 
-const requestId = Number(route.params.id)
+const rawRequestId = Array.isArray(route.params.id) ? route.params.id[0] : route.params.id
+const requestId = Number.parseInt(rawRequestId ?? '', 10)
+const hasValidRequestId = Number.isInteger(requestId) && requestId > 0
 
 async function loadDeclaration() {
+  if (!hasValidRequestId) {
+    error.value = 'معرّف الطلب غير صالح.'
+    return
+  }
+
   loading.value = true
   error.value = null
   try {
@@ -61,8 +68,13 @@ function cancelPrint() {
   showConfirmDialog.value = false
 }
 
-function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString('ar-YE', {
+function formatDate(dateStr: string | null | undefined): string {
+  if (!dateStr) return '—'
+
+  const parsed = new Date(dateStr)
+  if (Number.isNaN(parsed.getTime())) return '—'
+
+  return parsed.toLocaleDateString('ar-YE', {
     year: 'numeric',
     month: 'long',
     day: 'numeric',

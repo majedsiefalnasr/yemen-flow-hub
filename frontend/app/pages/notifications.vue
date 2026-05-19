@@ -3,6 +3,7 @@ import { onMounted } from 'vue'
 import { useNotifications } from '../composables/useNotifications'
 import { useNotificationsStore } from '../stores/notifications.store'
 import Icon from '../components/ui/Icon.vue'
+import type { IconName } from '../components/ui/icon-map'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -66,7 +67,7 @@ function formatRelativeTime(iso: string): string {
   return rtf.format(diffYears, 'year')
 }
 
-function iconName(type?: string): string {
+function iconName(type?: string): IconName {
   switch (type) {
     case 'request_submitted':
       return 'file-text'
@@ -126,7 +127,7 @@ function iconName(type?: string): string {
         :class="{ unread: !notif.read_at }"
       >
         <div class="notif-icon" aria-hidden="true">
-          <Icon :name="(iconName(notif.data.type) as any)" />
+          <Icon :name="iconName(notif.data.type)" />
         </div>
         <div class="notif-content">
           <p class="notif-message">{{ notif.data.message }}</p>

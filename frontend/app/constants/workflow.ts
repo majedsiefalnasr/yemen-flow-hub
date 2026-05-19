@@ -1,4 +1,5 @@
 import { RequestStatus, UserRole } from '../types/enums'
+import type { IconName } from '../components/ui/icon-map'
 
 /** Hex color for each status — matches UX-DR38 semantic color mapping */
 export const STATUS_COLORS: Record<RequestStatus, string> = {
@@ -226,7 +227,7 @@ export const ROLE_FILTER_STATUSES: Partial<Record<UserRole, RequestStatus[]>> = 
 export interface NavItem {
   label: string
   route: string
-  icon: string
+  icon: IconName
   roles: UserRole[]
 }
 

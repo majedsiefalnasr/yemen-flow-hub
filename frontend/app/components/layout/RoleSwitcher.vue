@@ -1,33 +1,33 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useAuthStore } from '../../stores/auth.store'
+import { UserRole } from '../../types/enums'
 import Icon from '../ui/Icon.vue'
 
-const DEMO_CREDENTIALS: Record<string, { email: string; label: string }> = {
-  DATA_ENTRY:          { email: 'entry@ybrd.com.ye',     label: 'إدخال بيانات' },
-  BANK_REVIEWER:       { email: 'reviewer@ybrd.com.ye',  label: 'مراجع بنك' },
-  BANK_ADMIN:          { email: 'admin@ybrd.com.ye',     label: 'مدير بنك' },
-  SWIFT_OFFICER:       { email: 'swift@ybrd.com.ye',     label: 'ضابط SWIFT' },
-  SUPPORT_COMMITTEE:   { email: 'support1@cby.gov.ye',   label: 'لجنة الدعم' },
-  EXECUTIVE_MEMBER:    { email: 'exec1@cby.gov.ye',      label: 'عضو تنفيذي' },
-  COMMITTEE_DIRECTOR:  { email: 'director@cby.gov.ye',   label: 'مدير اللجنة' },
-  CBY_ADMIN:           { email: 'admin@cby.gov.ye',      label: 'مدير CBY' },
+const DEMO_ROLE_LABELS: Record<UserRole, string> = {
+  [UserRole.DATA_ENTRY]: 'إدخال بيانات',
+  [UserRole.BANK_REVIEWER]: 'مراجع بنك',
+  [UserRole.BANK_ADMIN]: 'مدير بنك',
+  [UserRole.SWIFT_OFFICER]: 'ضابط SWIFT',
+  [UserRole.SUPPORT_COMMITTEE]: 'لجنة الدعم',
+  [UserRole.EXECUTIVE_MEMBER]: 'عضو تنفيذي',
+  [UserRole.COMMITTEE_DIRECTOR]: 'مدير اللجنة',
+  [UserRole.CBY_ADMIN]: 'مدير CBY',
 }
 
 const auth = useAuthStore()
 const router = useRouter()
+const roleOptions = Object.entries(DEMO_ROLE_LABELS) as Array<[UserRole, string]>
 
 const open = ref(false)
 const switching = ref(false)
 const error = ref<string | null>(null)
 
-async function switchRole(roleKey: string) {
-  const creds = DEMO_CREDENTIALS[roleKey]
-  if (!creds) return
+async function switchRole(role: UserRole) {
   switching.value = true
   error.value = null
   try {
-    await auth.login(creds.email, 'password')
+    await auth.switchDemoRole(role)
     open.value = false
     await router.push('/dashboard')
   } catch {
@@ -54,14 +54,14 @@ async function switchRole(roleKey: string) {
     <div v-if="open" class="switcher-dropdown" role="listbox" aria-label="اختر الدور">
       <p v-if="error" class="switcher-error">{{ error }}</p>
       <button
-        v-for="(creds, roleKey) in DEMO_CREDENTIALS"
+        v-for="([roleKey, label]) in roleOptions"
         :key="roleKey"
         class="switcher-option"
         :disabled="switching"
         role="option"
         @click="switchRole(roleKey)"
       >
-        {{ creds.label }}
+        {{ label }}
       </button>
     </div>
 

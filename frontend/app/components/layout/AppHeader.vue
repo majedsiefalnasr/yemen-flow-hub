@@ -102,7 +102,7 @@ onMounted(() => {
   justify-content: space-between;
   height: 56px;
   padding: 0 20px;
-  background: rgba(255, 255, 255, 0.8);
+  background: color-mix(in srgb, var(--color-surface) 88%, transparent);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--color-border);

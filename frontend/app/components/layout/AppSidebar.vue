@@ -72,7 +72,7 @@ async function handleLogout() {
         @click="emit('closeMobile')"
       >
         <span class="nav-icon" aria-hidden="true">
-          <Icon :name="(item.icon as any)" />
+          <Icon :name="item.icon" />
         </span>
         <span class="nav-label">{{ item.label }}</span>
       </NuxtLink>
