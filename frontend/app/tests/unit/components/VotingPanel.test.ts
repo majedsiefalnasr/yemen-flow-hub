@@ -322,3 +322,77 @@ describe('VotingPanel — my_vote state', () => {
     expect(canVote(RequestStatus.EXECUTIVE_VOTING_OPEN, UserRole.EXECUTIVE_MEMBER, detail.my_vote)).toBe(true)
   })
 })
+
+// ── Story 6.6 additions ───────────────────────────────────────────────────────
+
+function showTieBreak(tally: VotingTally | null, status: RequestStatus): boolean {
+  if (status !== RequestStatus.EXECUTIVE_VOTING_OPEN || !tally) return false
+  return tally.approve_count === tally.reject_count && tally.approve_count > 0
+}
+
+describe('VotingPanel — tie-break notice (Story 6.6)', () => {
+  it('shows tie-break when approve === reject > 0 in open session', () => {
+    const tally = makeTally({ approve_count: 2, reject_count: 2, abstain_count: 0, auto_abstain_count: 0 })
+    expect(showTieBreak(tally, RequestStatus.EXECUTIVE_VOTING_OPEN)).toBe(true)
+  })
+
+  it('does not show tie-break when approve !== reject', () => {
+    const tally = makeTally({ approve_count: 3, reject_count: 2 })
+    expect(showTieBreak(tally, RequestStatus.EXECUTIVE_VOTING_OPEN)).toBe(false)
+  })
+
+  it('does not show tie-break when both are 0 (no votes cast yet)', () => {
+    const tally = makeTally({ approve_count: 0, reject_count: 0 })
+    expect(showTieBreak(tally, RequestStatus.EXECUTIVE_VOTING_OPEN)).toBe(false)
+  })
+
+  it('does not show tie-break when session is closed', () => {
+    const tally = makeTally({ approve_count: 2, reject_count: 2 })
+    expect(showTieBreak(tally, RequestStatus.EXECUTIVE_VOTING_CLOSED)).toBe(false)
+  })
+
+  it('does not show tie-break when session is finalized', () => {
+    const tally = makeTally({ approve_count: 2, reject_count: 2 })
+    expect(showTieBreak(tally, RequestStatus.EXECUTIVE_APPROVED)).toBe(false)
+  })
+
+  it('does not show tie-break when tally is null', () => {
+    expect(showTieBreak(null, RequestStatus.EXECUTIVE_VOTING_OPEN)).toBe(false)
+  })
+
+  it('shows for 1 vs 1 (smallest possible tie)', () => {
+    const tally = makeTally({ approve_count: 1, reject_count: 1 })
+    expect(showTieBreak(tally, RequestStatus.EXECUTIVE_VOTING_OPEN)).toBe(true)
+  })
+})
+
+describe('VotingPanel — not-yet-voted placeholder rows (Story 6.6)', () => {
+  it('placeholder count equals total_members minus voted count', () => {
+    const detail = makeDetail({
+      total_members: 6,
+      votes: [makeVote({ id: 1 }), makeVote({ id: 2 }), makeVote({ id: 3 })],
+    })
+    expect(notYetVotedCount(detail)).toBe(3)
+  })
+
+  it('zero placeholders when all 6 members voted', () => {
+    const detail = makeDetail({
+      total_members: 6,
+      votes: Array.from({ length: 6 }, (_, i) => makeVote({ id: i + 1 })),
+    })
+    expect(notYetVotedCount(detail)).toBe(0)
+  })
+
+  it('6 placeholders when no one has voted yet', () => {
+    const detail = makeDetail({ total_members: 6, votes: [] })
+    expect(notYetVotedCount(detail)).toBe(6)
+  })
+
+  it('never negative even if votes exceed total_members', () => {
+    const detail = makeDetail({
+      total_members: 2,
+      votes: Array.from({ length: 5 }, (_, i) => makeVote({ id: i + 1 })),
+    })
+    expect(notYetVotedCount(detail)).toBe(0)
+  })
+})

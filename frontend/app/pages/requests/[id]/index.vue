@@ -31,7 +31,7 @@ const id = Number(Array.isArray(rawId) ? rawId[0] : rawId)
 
 const votingStore = useVotingStore()
 
-type TabKey = 'overview' | 'documents' | 'timeline' | 'votes' | 'audit'
+type TabKey = 'overview' | 'documents' | 'parties' | 'votes'
 const activeTab = ref<TabKey>('overview')
 
 const VOTING_STAGE_STATUSES = new Set([
@@ -42,19 +42,23 @@ const VOTING_STAGE_STATUSES = new Set([
   RequestStatus.EXECUTIVE_REJECTED,
 ])
 
+const VOTING_TAB_STATUSES = new Set([
+  RequestStatus.EXECUTIVE_VOTING_OPEN,
+  RequestStatus.EXECUTIVE_VOTING_CLOSED,
+])
+
 const request = computed(() => requestsStore.currentRequest)
 const userRole = computed(() => auth.user?.role ?? UserRole.DATA_ENTRY)
 
 const showVotesTab = computed(() =>
-  !!request.value && VOTING_STAGE_STATUSES.has(request.value.status),
+  !!request.value && VOTING_TAB_STATUSES.has(request.value.status),
 )
 
 const tabs = computed((): Array<{ key: TabKey; label: string }> => [
-  { key: 'overview', label: 'نظرة عامة' },
-  { key: 'documents', label: 'المستندات' },
-  { key: 'timeline', label: 'مسار العمل' },
+  { key: 'overview', label: 'المعلومات' },
+  { key: 'documents', label: 'الوثائق' },
+  { key: 'parties', label: 'الأطراف' },
   ...(showVotesTab.value ? [{ key: 'votes' as TabKey, label: 'التصويت' }] : []),
-  { key: 'audit', label: 'سجل التدقيق' },
 ])
 
 const isEditable = computed(() => {
@@ -62,35 +66,50 @@ const isEditable = computed(() => {
   return s === RequestStatus.DRAFT || s === RequestStatus.DRAFT_REJECTED_INTERNAL
 })
 
-// LockedBanner only for statuses that are truly immutable (no role has any action)
-// SUBMITTED and BANK_REVIEW are not locked — BANK_REVIEWER acts on them
-// Voting statuses are not locked for EXECUTIVE_MEMBER / COMMITTEE_DIRECTOR — they have actions
-const LOCKED_STATUSES = new Set([
-  RequestStatus.BANK_APPROVED,
-  RequestStatus.SUPPORT_REVIEW_PENDING,
-  RequestStatus.SUPPORT_REVIEW_IN_PROGRESS,
-  RequestStatus.SUPPORT_APPROVED,
+const EXECUTIVE_ROLES = new Set([UserRole.EXECUTIVE_MEMBER, UserRole.COMMITTEE_DIRECTOR])
+
+// Terminal states — completely immutable, no role can act
+const TERMINAL_STATUSES = new Set([
   RequestStatus.SUPPORT_REJECTED,
-  RequestStatus.WAITING_FOR_SWIFT,
-  RequestStatus.SWIFT_UPLOADED,
-  RequestStatus.WAITING_FOR_VOTING_OPEN,
-  RequestStatus.EXECUTIVE_VOTING_OPEN,
-  RequestStatus.EXECUTIVE_VOTING_CLOSED,
-  RequestStatus.EXECUTIVE_APPROVED,
   RequestStatus.EXECUTIVE_REJECTED,
   RequestStatus.CUSTOMS_DECLARATION_ISSUED,
   RequestStatus.COMPLETED,
 ])
 
-const EXECUTIVE_ROLES = new Set([UserRole.EXECUTIVE_MEMBER, UserRole.COMMITTEE_DIRECTOR])
+// Readonly states — intermediate, no action for the viewing user on this page
+const READONLY_STATUSES = new Set([
+  RequestStatus.SUBMITTED,
+  RequestStatus.BANK_REVIEW,
+  RequestStatus.BANK_APPROVED,
+  RequestStatus.WAITING_FOR_SWIFT,
+  RequestStatus.SWIFT_UPLOADED,
+  RequestStatus.WAITING_FOR_VOTING_OPEN,
+  RequestStatus.EXECUTIVE_APPROVED,
+])
 
-const isLocked = computed(() => {
-  if (!request.value) return false
-  if (EXECUTIVE_ROLES.has(userRole.value) && VOTING_STAGE_STATUSES.has(request.value.status)) {
-    return false
-  }
-  return LOCKED_STATUSES.has(request.value.status)
+// Pending states — actively in review by another role
+const PENDING_STATUSES = new Set([
+  RequestStatus.SUPPORT_REVIEW_PENDING,
+  RequestStatus.SUPPORT_REVIEW_IN_PROGRESS,
+  RequestStatus.SUPPORT_APPROVED,
+  RequestStatus.EXECUTIVE_VOTING_OPEN,
+  RequestStatus.EXECUTIVE_VOTING_CLOSED,
+])
+
+type LockedBannerVariant = 'locked' | 'readonly' | 'pending'
+
+const lockedBannerVariant = computed((): LockedBannerVariant | null => {
+  if (!request.value) return null
+  const s = request.value.status
+  // Executive roles viewing voting stages have full access — no banner
+  if (EXECUTIVE_ROLES.has(userRole.value) && VOTING_STAGE_STATUSES.has(s)) return null
+  if (TERMINAL_STATUSES.has(s)) return 'locked'
+  if (READONLY_STATUSES.has(s)) return 'readonly'
+  if (PENDING_STATUSES.has(s)) return 'pending'
+  return null
 })
+
+const isLocked = computed(() => lockedBannerVariant.value !== null)
 const isReturnedForCorrection = computed(() => request.value?.status === RequestStatus.DRAFT_REJECTED_INTERNAL)
 
 const canEdit = computed(
@@ -274,7 +293,7 @@ async function onTabChange(key: TabKey) {
   if (key === 'votes' && !votingStore.votingDetail && !votingStore.loadingDetail) {
     await votingStore.loadVotingDetail(id)
   }
-  if ((key === 'timeline' || key === 'audit') && !requestsStore.historyLoaded && !requestsStore.loadingHistory) {
+  if (key === 'parties' && !requestsStore.historyLoaded && !requestsStore.loadingHistory) {
     await requestsStore.loadHistory(id)
   }
 }
@@ -286,6 +305,9 @@ async function onActionCompleted() {
   // Re-fetch documents if the user is on the documents tab
   if (activeTab.value === 'documents') {
     await requestsStore.loadDocuments(id)
+  }
+  if (activeTab.value === 'parties') {
+    await requestsStore.loadHistory(id)
   }
   // Reload voting detail when a director action completes (session open/close/finalize/override)
   if (votingStore.votingDetail || activeTab.value === 'votes') {
@@ -433,7 +455,7 @@ function actorLabel(id: number | null | undefined): string {
         </div>
         <ActiveReviewBanner v-else-if="showActiveReviewBanner" />
         <ClaimedByOthersBanner v-else-if="showClaimedByOthersBanner" :claimer-name="request.claimed_by?.name ?? ''" />
-        <LockedBanner v-else-if="isLocked" :status="request.status" />
+        <LockedBanner v-else-if="isLocked && lockedBannerVariant" :variant="lockedBannerVariant" />
         <CorrectionBanner v-else-if="isReturnedForCorrection" />
       </div>
 
@@ -453,8 +475,8 @@ function actorLabel(id: number | null | undefined): string {
 
       <!-- Tab panels -->
       <div class="tab-content">
-        <!-- Overview tab -->
-        <section v-if="activeTab === 'overview'" class="tab-panel" role="tabpanel" aria-label="نظرة عامة">
+        <!-- المعلومات tab -->
+        <section v-if="activeTab === 'overview'" class="tab-panel" role="tabpanel" aria-label="المعلومات">
           <div class="card">
             <h2 class="card-title">بيانات الطلب</h2>
             <dl class="detail-grid">
@@ -493,45 +515,6 @@ function actorLabel(id: number | null | undefined): string {
               <div class="detail-row">
                 <dt class="detail-label">تاريخ الإنشاء</dt>
                 <dd class="detail-value">{{ formatDate(request.created_at) }}</dd>
-              </div>
-            </dl>
-          </div>
-
-          <!-- Workflow actors -->
-          <div class="card">
-            <h2 class="card-title">فريق العمل</h2>
-            <dl class="detail-grid">
-              <div class="detail-row">
-                <dt class="detail-label">أنشأ الطلب</dt>
-                <dd class="detail-value">{{ actorLabel(request.created_by) }}</dd>
-              </div>
-              <div class="detail-row">
-                <dt class="detail-label">قدّم الطلب</dt>
-                <dd class="detail-value">{{ actorLabel(request.submitted_by) }}</dd>
-              </div>
-              <div class="detail-row">
-                <dt class="detail-label">المراجع الداخلي</dt>
-                <dd class="detail-value">{{ actorLabel(request.reviewed_by) }}</dd>
-              </div>
-              <div class="detail-row">
-                <dt class="detail-label">وافق</dt>
-                <dd class="detail-value">{{ actorLabel(request.approved_by) }}</dd>
-              </div>
-              <div class="detail-row">
-                <dt class="detail-label">مراجع لجنة الدعم</dt>
-                <dd class="detail-value">{{ request.claimed_by?.name ?? '—' }}</dd>
-              </div>
-              <div class="detail-row">
-                <dt class="detail-label">رفع SWIFT</dt>
-                <dd class="detail-value">{{ actorLabel(request.swift_uploaded_by) }}</dd>
-              </div>
-              <div class="detail-row">
-                <dt class="detail-label">رفض الطلب</dt>
-                <dd class="detail-value">{{ actorLabel(request.rejected_by) }}</dd>
-              </div>
-              <div class="detail-row">
-                <dt class="detail-label">أعاد التقديم</dt>
-                <dd class="detail-value">{{ actorLabel(request.resubmitted_by) }}</dd>
               </div>
             </dl>
           </div>
@@ -580,8 +563,8 @@ function actorLabel(id: number | null | undefined): string {
           </div>
         </section>
 
-        <!-- Documents tab -->
-        <section v-else-if="activeTab === 'documents'" class="tab-panel" role="tabpanel" aria-label="المستندات">
+        <!-- الوثائق tab -->
+        <section v-else-if="activeTab === 'documents'" class="tab-panel" role="tabpanel" aria-label="الوثائق">
           <div class="card">
             <h2 class="card-title">المستندات المرفوعة</h2>
             <DocumentChecklist
@@ -615,8 +598,48 @@ function actorLabel(id: number | null | undefined): string {
           </div>
         </section>
 
-        <!-- Workflow Timeline tab -->
-        <section v-else-if="activeTab === 'timeline'" class="tab-panel" role="tabpanel" aria-label="مسار العمل">
+        <!-- الأطراف tab: actors + workflow timeline + audit trail -->
+        <section v-else-if="activeTab === 'parties'" class="tab-panel" role="tabpanel" aria-label="الأطراف">
+          <!-- Workflow actors -->
+          <div class="card">
+            <h2 class="card-title">فريق العمل</h2>
+            <dl class="detail-grid">
+              <div class="detail-row">
+                <dt class="detail-label">أنشأ الطلب</dt>
+                <dd class="detail-value">{{ actorLabel(request.created_by) }}</dd>
+              </div>
+              <div class="detail-row">
+                <dt class="detail-label">قدّم الطلب</dt>
+                <dd class="detail-value">{{ actorLabel(request.submitted_by) }}</dd>
+              </div>
+              <div class="detail-row">
+                <dt class="detail-label">المراجع الداخلي</dt>
+                <dd class="detail-value">{{ actorLabel(request.reviewed_by) }}</dd>
+              </div>
+              <div class="detail-row">
+                <dt class="detail-label">وافق</dt>
+                <dd class="detail-value">{{ actorLabel(request.approved_by) }}</dd>
+              </div>
+              <div class="detail-row">
+                <dt class="detail-label">مراجع لجنة الدعم</dt>
+                <dd class="detail-value">{{ request.claimed_by?.name ?? '—' }}</dd>
+              </div>
+              <div class="detail-row">
+                <dt class="detail-label">رفع SWIFT</dt>
+                <dd class="detail-value">{{ actorLabel(request.swift_uploaded_by) }}</dd>
+              </div>
+              <div class="detail-row">
+                <dt class="detail-label">رفض الطلب</dt>
+                <dd class="detail-value">{{ actorLabel(request.rejected_by) }}</dd>
+              </div>
+              <div class="detail-row">
+                <dt class="detail-label">أعاد التقديم</dt>
+                <dd class="detail-value">{{ actorLabel(request.resubmitted_by) }}</dd>
+              </div>
+            </dl>
+          </div>
+
+          <!-- Workflow timeline -->
           <div class="card">
             <h2 class="card-title">مسار سير العمل</h2>
 
@@ -636,10 +659,8 @@ function actorLabel(id: number | null | undefined): string {
               :history="requestsStore.history"
             />
           </div>
-        </section>
 
-        <!-- Audit History tab -->
-        <section v-else-if="activeTab === 'audit'" class="tab-panel" role="tabpanel" aria-label="سجل التدقيق">
+          <!-- Audit trail -->
           <div class="card">
             <h2 class="card-title">سجل الأحداث</h2>
 

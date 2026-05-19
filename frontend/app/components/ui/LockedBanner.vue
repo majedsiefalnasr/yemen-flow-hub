@@ -1,44 +1,35 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import { RequestStatus } from '../../types/enums'
+type LockedBannerVariant = 'locked' | 'readonly' | 'pending'
 
 const props = defineProps<{
-  status: RequestStatus
+  variant: LockedBannerVariant
 }>()
 
-const message = computed(() => {
-  switch (props.status) {
-    case RequestStatus.SUBMITTED:
-    case RequestStatus.BANK_REVIEW:
-      return 'هذا الطلب قيد المراجعة من قِبل البنك ولا يمكن تعديله.'
-    case RequestStatus.BANK_APPROVED:
-    case RequestStatus.SUPPORT_REVIEW_PENDING:
-    case RequestStatus.SUPPORT_REVIEW_IN_PROGRESS:
-    case RequestStatus.WAITING_FOR_SWIFT:
-      return 'هذا الطلب قيد المعالجة من قِبل CBY ولا يمكن تعديله.'
-    case RequestStatus.SUPPORT_APPROVED:
-    case RequestStatus.SWIFT_UPLOADED:
-    case RequestStatus.WAITING_FOR_VOTING_OPEN:
-    case RequestStatus.EXECUTIVE_VOTING_OPEN:
-    case RequestStatus.EXECUTIVE_VOTING_CLOSED:
-      return 'هذا الطلب في مرحلة التصويت التنفيذي ولا يمكن تعديله.'
-    case RequestStatus.EXECUTIVE_APPROVED:
-    case RequestStatus.CUSTOMS_DECLARATION_ISSUED:
-    case RequestStatus.COMPLETED:
-      return 'تم اعتماد هذا الطلب ولا يمكن تعديله.'
-    case RequestStatus.SUPPORT_REJECTED:
-    case RequestStatus.EXECUTIVE_REJECTED:
-      return 'تم رفض هذا الطلب نهائياً ولا يمكن تعديله.'
-    default:
-      return 'هذا الطلب مقفل ولا يمكن تعديله.'
-  }
-})
+const VARIANT_CONFIG: Record<LockedBannerVariant, { icon: string; message: string; mod: string }> = {
+  locked: {
+    icon: '🔒',
+    message: 'هذا الطلب مقفل ولا يمكن اتخاذ أي إجراء عليه',
+    mod: 'locked-banner--locked',
+  },
+  readonly: {
+    icon: '👁',
+    message: 'هذا الطلب في وضع القراءة فقط',
+    mod: 'locked-banner--readonly',
+  },
+  pending: {
+    icon: '🕐',
+    message: 'هذا الطلب قيد المراجعة — لا يمكن إجراء تعديلات حتى اكتمال المرحلة الحالية',
+    mod: 'locked-banner--pending',
+  },
+}
+
+const config = VARIANT_CONFIG[props.variant]
 </script>
 
 <template>
-  <div class="locked-banner" role="alert" aria-live="polite" dir="rtl">
-    <span class="locked-icon" aria-hidden="true">🔒</span>
-    <span class="locked-message">{{ message }}</span>
+  <div class="locked-banner" :class="config.mod" role="alert" aria-live="polite" dir="rtl">
+    <span class="locked-icon" aria-hidden="true">{{ config.icon }}</span>
+    <span class="locked-message">{{ config.message }}</span>
   </div>
 </template>
 
@@ -54,6 +45,24 @@ const message = computed(() => {
   color: #8e8e93;
   font-size: 15px;
   font-weight: 500;
+}
+
+.locked-banner--locked {
+  background: #f5f5f7;
+  border-color: #d2d2d7;
+  color: #8e8e93;
+}
+
+.locked-banner--readonly {
+  background: #f0f7ff;
+  border-color: #b3d4f5;
+  color: #0066cc;
+}
+
+.locked-banner--pending {
+  background: #fffbf0;
+  border-color: #f5d78a;
+  color: #a05a00;
 }
 
 .locked-icon {

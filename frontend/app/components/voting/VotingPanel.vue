@@ -29,6 +29,11 @@ const VOTING_STAGES = new Set([
 ])
 
 const isSessionOpen = computed(() => props.requestStatus === RequestStatus.EXECUTIVE_VOTING_OPEN)
+
+const showTieBreak = computed(() => {
+  if (!isSessionOpen.value || !tally.value) return false
+  return tally.value.approve_count === tally.value.reject_count && tally.value.approve_count > 0
+})
 const isSessionClosed = computed(() => props.requestStatus === RequestStatus.EXECUTIVE_VOTING_CLOSED)
 const isFinalized = computed(() =>
   props.requestStatus === RequestStatus.EXECUTIVE_APPROVED
@@ -203,19 +208,28 @@ onMounted(async () => {
         </div>
       </div>
 
+      <!-- Tie-break notice -->
+      <div v-if="showTieBreak" class="tiebreak-notice" role="alert">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+        </svg>
+        <span>تعادل — يُرجَّح صوت المدير عند التعادل</span>
+      </div>
+
       <!-- Member roster -->
       <div class="roster-section">
         <h3 class="section-title">حالة أعضاء اللجنة</h3>
 
-        <table v-if="votes.length > 0" class="roster-table" role="table" aria-label="أصوات الأعضاء">
+        <table class="roster-table" role="table" aria-label="أصوات الأعضاء">
           <thead>
             <tr class="roster-table__header-row">
               <th class="roster-table__th" scope="col">العضو</th>
-              <th class="roster-table__th" scope="col">الصوت</th>
+              <th class="roster-table__th" scope="col">الحالة</th>
               <th class="roster-table__th" scope="col">وقت التصويت</th>
             </tr>
           </thead>
           <tbody>
+            <!-- Voted member rows -->
             <tr v-for="v in votes" :key="v.id" class="roster-table__row">
               <td class="roster-table__td">
                 <span class="member-name">{{ v.user_name ?? '—' }}</span>
@@ -228,14 +242,20 @@ onMounted(async () => {
                 {{ v.voted_at ? new Date(v.voted_at).toLocaleString('ar-YE') : '—' }}
               </td>
             </tr>
+            <!-- Placeholder rows for members who haven't voted yet -->
+            <tr
+              v-for="n in notYetVotedCount"
+              :key="`pending-${n}`"
+              class="roster-table__row roster-table__row--pending"
+            >
+              <td class="roster-table__td member-pending">عضو اللجنة</td>
+              <td class="roster-table__td">
+                <span class="vote-chip vote-chip--not-voted">لم يصوت بعد</span>
+              </td>
+              <td class="roster-table__td roster-table__td--mono">—</td>
+            </tr>
           </tbody>
         </table>
-
-        <!-- Not yet voted count -->
-        <div v-if="notYetVotedCount > 0" class="not-voted-summary" role="status">
-          <span class="not-voted-dot" aria-hidden="true" />
-          <span>{{ notYetVotedCount }} عضو لم يُصوِّت بعد</span>
-        </div>
 
         <div v-if="votes.length === 0 && notYetVotedCount === 0" class="empty-votes" role="status">
           لا توجد أصوات مسجّلة بعد.
@@ -546,22 +566,32 @@ onMounted(async () => {
 .vote-chip--abstain { background: #8e8e9322; color: #5a5a5e; }
 .vote-chip--auto-abstain { background: #6e6e7322; color: #4a4a4e; font-style: italic; }
 
-.not-voted-summary {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
+.roster-table__row--pending { opacity: 0.6; }
+
+.member-pending {
   font-size: 13px;
   color: #8e8e93;
-  border-top: 1px solid #d2d2d7;
+  font-style: italic;
 }
 
-.not-voted-dot {
-  width: 8px;
-  height: 8px;
-  background: #d2d2d7;
-  border-radius: 50%;
-  flex-shrink: 0;
+.vote-chip--not-voted {
+  background: #f5f5f7;
+  color: #8e8e93;
+  border: 1px dashed #d2d2d7;
+}
+
+/* Tie-break notice */
+.tiebreak-notice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: #fff9f0;
+  border: 1px solid #f5d78a;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #a05a00;
 }
 
 .empty-votes {
