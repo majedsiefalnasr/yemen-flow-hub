@@ -2,7 +2,7 @@
 import { onMounted } from 'vue'
 import { useNotifications } from '../composables/useNotifications'
 import { useNotificationsStore } from '../stores/notifications.store'
-import SidebarIcon from '../components/layout/SidebarIcon.vue'
+import Icon from '../components/ui/Icon.vue'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -126,7 +126,7 @@ function iconName(type?: string): string {
         :class="{ unread: !notif.read_at }"
       >
         <div class="notif-icon" aria-hidden="true">
-          <SidebarIcon :name="iconName(notif.data.type)" />
+          <Icon :name="(iconName(notif.data.type) as any)" />
         </div>
         <div class="notif-content">
           <p class="notif-message">{{ notif.data.message }}</p>

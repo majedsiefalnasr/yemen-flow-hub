@@ -1,5 +1,10 @@
 <script setup lang="ts">
 // Auth hydration is handled by plugins/01.auth.client.ts before any route middleware fires
+import { onMounted } from 'vue'
+import { useColorScheme } from './composables/useColorScheme'
+
+const { hydrate } = useColorScheme()
+onMounted(hydrate)
 </script>
 
 <template>

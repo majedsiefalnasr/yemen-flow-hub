@@ -4,7 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../../stores/auth.store'
 import { useSidebar } from '../../composables/useSidebar'
 import { NAV_ITEMS, ROLE_LABELS } from '../../constants/workflow'
-import SidebarIcon from './SidebarIcon.vue'
+import Icon from '../ui/Icon.vue'
 
 const props = defineProps<{
   mobileOpen: boolean
@@ -72,7 +72,7 @@ async function handleLogout() {
         @click="emit('closeMobile')"
       >
         <span class="nav-icon" aria-hidden="true">
-          <SidebarIcon :name="item.icon" />
+          <Icon :name="(item.icon as any)" />
         </span>
         <span class="nav-label">{{ item.label }}</span>
       </NuxtLink>

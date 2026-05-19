@@ -28,7 +28,7 @@ vi.mock('../../../constants/workflow', () => ({
   ROLE_LABELS: { DATA_ENTRY: 'إدخال البيانات' },
 }))
 
-vi.mock('../../../components/layout/SidebarIcon.vue', () => ({
+vi.mock('../../../components/ui/Icon.vue', () => ({
   default: { template: '<span />' },
 }))
 

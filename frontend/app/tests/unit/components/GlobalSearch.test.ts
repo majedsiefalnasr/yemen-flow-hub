@@ -38,7 +38,7 @@ vi.mock('../../../composables/useSearch', async () => {
   }
 })
 
-vi.mock('../../../components/layout/SidebarIcon.vue', () => ({
+vi.mock('../../../components/ui/Icon.vue', () => ({
   default: {
     props: ['name'],
     template: '<span class="icon-stub" :data-icon="name" />',

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useSearch } from '../../composables/useSearch'
-import SidebarIcon from './SidebarIcon.vue'
+import Icon from '../ui/Icon.vue'
 import type { SearchEntityType } from '../../types/models'
 
 const router = useRouter()
@@ -103,7 +103,7 @@ onBeforeUnmount(() => {
   <div ref="wrapperRef" class="global-search" :class="{ 'mobile-visible': props.mobile }">
     <!-- Input -->
     <div class="search-input-wrap">
-      <SidebarIcon name="search" class="search-icon" />
+      <Icon name="search" class="search-icon" />
       <input
         ref="inputRef"
         type="search"
@@ -132,7 +132,7 @@ onBeforeUnmount(() => {
           type="button"
           @click="selectRecent(term)"
         >
-          <SidebarIcon name="clock" class="result-icon" />
+          <Icon name="clock" class="result-icon" />
           <span>{{ term }}</span>
         </button>
       </template>
@@ -163,7 +163,7 @@ onBeforeUnmount(() => {
             type="button"
             @click="navigateTo(`/requests/${req.id}`)"
           >
-            <SidebarIcon name="file-text" class="result-icon" />
+            <Icon name="file-text" class="result-icon" />
             <div class="result-content">
               <span class="result-primary">{{ req.reference_number }}</span>
               <span class="result-secondary">{{ req.supplier_name }}</span>
@@ -181,7 +181,7 @@ onBeforeUnmount(() => {
             type="button"
             @click="navigateTo('/users')"
           >
-            <SidebarIcon name="user" class="result-icon" />
+            <Icon name="user" class="result-icon" />
             <div class="result-content">
               <span class="result-primary">{{ user.name }}</span>
               <span class="result-secondary">{{ user.role_label }}</span>
@@ -199,7 +199,7 @@ onBeforeUnmount(() => {
             type="button"
             @click="navigateTo('/banks')"
           >
-            <SidebarIcon name="bank" class="result-icon" />
+            <Icon name="bank" class="result-icon" />
             <div class="result-content">
               <span class="result-primary">{{ bank.name }}</span>
               <span class="result-secondary">{{ bank.code }}</span>
@@ -217,7 +217,7 @@ onBeforeUnmount(() => {
             type="button"
             @click="navigateTo(`/requests/${customs.request_id}`)"
           >
-            <SidebarIcon name="stamp" class="result-icon" />
+            <Icon name="stamp" class="result-icon" />
             <div class="result-content">
               <span class="result-primary">{{ customs.declaration_number }}</span>
               <span class="result-secondary">{{ customs.reference_number }}</span>
@@ -227,7 +227,7 @@ onBeforeUnmount(() => {
 
         <!-- Empty state -->
         <div v-if="!hasResults && !loading" class="search-empty">
-          <SidebarIcon name="search" class="empty-icon" />
+          <Icon name="search" class="empty-icon" />
           <span>لا توجد نتائج لـ «{{ inputValue }}»</span>
         </div>
       </template>

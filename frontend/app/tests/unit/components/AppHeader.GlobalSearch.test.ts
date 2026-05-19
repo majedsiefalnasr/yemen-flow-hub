@@ -7,6 +7,7 @@ const mockPush = vi.hoisted(() => vi.fn())
 const mockRefreshUnreadCount = vi.hoisted(() => vi.fn())
 
 vi.stubGlobal('useRouter', () => ({ push: mockPush }))
+vi.stubGlobal('useRuntimeConfig', () => ({ public: { apiBase: 'http://localhost', demoMode: false } }))
 
 vi.mock('../../../stores/auth.store', () => ({
   useAuthStore: () => ({ user: { name: 'Test User', role: 'DATA_ENTRY' } }),
@@ -23,11 +24,19 @@ vi.mock('../../../constants/workflow', () => ({
   ROLE_LABELS: { DATA_ENTRY: 'إدخال البيانات' },
 }))
 
-vi.mock('../../../components/layout/SidebarIcon.vue', () => ({
+vi.mock('../../../components/ui/Icon.vue', () => ({
   default: {
     props: ['name'],
     template: '<span class="icon-stub" :data-icon="name" />',
   },
+}))
+
+vi.mock('../../../composables/useColorScheme', () => ({
+  useColorScheme: () => ({ isDark: { value: false }, toggle: vi.fn(), hydrate: vi.fn() }),
+}))
+
+vi.mock('../../../components/layout/RoleSwitcher.vue', () => ({
+  default: { template: '<div class="role-switcher-stub" />' },
 }))
 
 vi.mock('../../../components/layout/GlobalSearch.vue', () => ({

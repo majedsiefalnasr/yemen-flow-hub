@@ -2,9 +2,11 @@
 import { ref, onMounted } from 'vue'
 import { useAuthStore } from '../../stores/auth.store'
 import { useNotificationsStore } from '../../stores/notifications.store'
-import SidebarIcon from './SidebarIcon.vue'
+import Icon from '../ui/Icon.vue'
 import GlobalSearch from './GlobalSearch.vue'
+import RoleSwitcher from './RoleSwitcher.vue'
 import { ROLE_LABELS } from '../../constants/workflow'
+import { useColorScheme } from '../../composables/useColorScheme'
 
 const emit = defineEmits<{
   toggleMobileMenu: []
@@ -13,8 +15,12 @@ const emit = defineEmits<{
 const auth = useAuthStore()
 const notificationsStore = useNotificationsStore()
 const router = useRouter()
+const config = useRuntimeConfig()
 
 const mobileSearchOpen = ref(false)
+const { isDark, toggle: toggleColorScheme } = useColorScheme()
+const isDemoMode = (config.public as Record<string, unknown>).demoMode === true
+  || (config.public as Record<string, unknown>).demoMode === 'true'
 
 function goToNotifications() {
   router.push('/notifications')
@@ -34,14 +40,14 @@ onMounted(() => {
         aria-label="فتح القائمة"
         @click="emit('toggleMobileMenu')"
       >
-        <SidebarIcon name="menu" />
+        <Icon name="menu" />
       </button>
       <button
         class="mobile-search-btn"
         aria-label="بحث"
         @click="mobileSearchOpen = !mobileSearchOpen"
       >
-        <SidebarIcon name="search" />
+        <Icon name="search" />
       </button>
     </div>
 
@@ -52,9 +58,17 @@ onMounted(() => {
 
     <!-- Left side (RTL): user info + notifications -->
     <div class="header-end">
+      <!-- Dark/light mode toggle -->
+      <button class="icon-btn" :aria-label="isDark ? 'تفعيل الوضع الفاتح' : 'تفعيل الوضع الداكن'" @click="toggleColorScheme">
+        <Icon :name="isDark ? 'sun' : 'moon'" />
+      </button>
+
+      <!-- Role switcher (demo mode only) -->
+      <RoleSwitcher v-if="isDemoMode" />
+
       <!-- Notification bell -->
       <button class="icon-btn" aria-label="الإشعارات" @click="goToNotifications">
-        <SidebarIcon name="bell" />
+        <Icon name="bell" />
         <span
           v-if="notificationsStore.unreadCount > 0"
           class="notification-badge"
@@ -75,7 +89,7 @@ onMounted(() => {
     <div v-if="mobileSearchOpen" class="mobile-search-overlay">
       <GlobalSearch mobile />
       <button class="icon-btn" aria-label="إغلاق البحث" @click="mobileSearchOpen = false">
-        <SidebarIcon name="x" />
+        <Icon name="x" />
       </button>
     </div>
   </header>
