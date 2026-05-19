@@ -476,14 +476,92 @@ class DashboardController extends Controller
             ->whereNotIn('status', array_map(fn ($s) => $s->value, array_unique($inProcessExcluded, SORT_REGULAR)))
             ->count();
 
+        $recentRequests = ImportRequest::query()
+            ->orderByDesc('updated_at')
+            ->limit(10)
+            ->with(['bank'])
+            ->get();
+
         return ApiResponse::success([
-            'total'              => $total,
-            'approved'           => $approved,
-            'in_process'         => $inProcess,
-            'rejected'           => $rejected,
-            'compliance_alerts'  => $this->complianceAlerts(),
-            'most_active_banks'  => $this->mostActiveBanks(),
+            'total'                  => $total,
+            'approved'               => $approved,
+            'in_process'             => $inProcess,
+            'rejected'               => $rejected,
+            'compliance_alerts'      => $this->complianceAlerts(),
+            'most_active_banks'      => $this->mostActiveBanks(),
+            'monthly_requests'       => $this->cbyadminMonthlyRequests(CarbonImmutable::now()),
+            'category_distribution'  => $this->cbyadminCategoryDistribution(),
+            'recent_requests'        => ImportRequestResource::collection($recentRequests)->toArray(request()),
         ], 'Dashboard stats retrieved.');
+    }
+
+    private function cbyadminMonthlyRequests(CarbonImmutable $asOf): array
+    {
+        $timezone = config('app.timezone', 'UTC');
+        $anchorMonth = $asOf->setTimezone($timezone)->startOfMonth();
+        $windowStart = $anchorMonth->subMonths(5);
+
+        $monthKeys = [];
+        for ($i = 5; $i >= 0; $i--) {
+            $monthKeys[] = $anchorMonth->subMonths($i)->format('Y-m');
+        }
+
+        $submitted = array_fill_keys($monthKeys, 0);
+        $approved  = array_fill_keys($monthKeys, 0);
+
+        $approvedStatuses = [
+            RequestStatus::EXECUTIVE_APPROVED->value,
+            RequestStatus::CUSTOMS_DECLARATION_ISSUED->value,
+            RequestStatus::COMPLETED->value,
+        ];
+
+        $rows = ImportRequest::query()
+            ->where('created_at', '>=', $windowStart)
+            ->get(['created_at', 'status']);
+
+        foreach ($rows as $row) {
+            $monthKey = (CarbonImmutable::instance($row->created_at))->setTimezone($timezone)->format('Y-m');
+            if (!array_key_exists($monthKey, $submitted)) {
+                continue;
+            }
+            $submitted[$monthKey]++;
+            $statusValue = $row->status instanceof \BackedEnum ? $row->status->value : (string) $row->status;
+            if (in_array($statusValue, $approvedStatuses, true)) {
+                $approved[$monthKey]++;
+            }
+        }
+
+        return array_map(
+            fn (string $month): array => [
+                'month'     => $month,
+                'submitted' => $submitted[$month],
+                'approved'  => $approved[$month],
+            ],
+            $monthKeys
+        );
+    }
+
+    private function cbyadminCategoryDistribution(): array
+    {
+        // Category distribution by commodity_type field (if available), falling back to currency grouping
+        // as a meaningful operational segmentation visible in the CBY_ADMIN dashboard.
+        $colors = ['#0066cc', '#1b5e20', '#f57f17', '#c62828', '#5856d6', '#32ade6'];
+
+        $groups = ImportRequest::query()
+            ->selectRaw('currency as label, COUNT(*) as `count`')
+            ->groupBy('currency')
+            ->orderByDesc('count')
+            ->limit(6)
+            ->get()
+            ->values()
+            ->map(fn ($row, $i) => [
+                'label' => $row->label ?? 'أخرى',
+                'count' => (int) $row->count,
+                'color' => $colors[$i] ?? '#8e8e93',
+            ])
+            ->all();
+
+        return $groups;
     }
 
     private function complianceAlerts(): array

@@ -104,8 +104,107 @@ class CbyAdminDashboardStatsTest extends TestCase
                         'stale_pending_requests',
                     ],
                     'most_active_banks',
+                    'monthly_requests',
+                    'category_distribution',
+                    'recent_requests',
                 ],
             ]);
+    }
+
+    // ─── Monthly trend chart fields ───────────────────────────────────────────
+
+    public function test_cby_admin_monthly_requests_returns_6_month_window(): void
+    {
+        $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $this->makeRequest($this->bank, $de, RequestStatus::SUBMITTED);
+
+        $response = $this->actingAs($this->admin)
+            ->getJson('/api/dashboard/stats')
+            ->assertOk()
+            ->json('data.monthly_requests');
+
+        $this->assertCount(6, $response);
+        $this->assertArrayHasKey('month', $response[0]);
+        $this->assertArrayHasKey('submitted', $response[0]);
+        $this->assertArrayHasKey('approved', $response[0]);
+    }
+
+    public function test_cby_admin_monthly_requests_counts_submitted_and_approved(): void
+    {
+        $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $this->makeRequest($this->bank, $de, RequestStatus::SUBMITTED);
+        $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_APPROVED);
+        $this->makeRequest($this->bank, $de, RequestStatus::COMPLETED);
+
+        $response = $this->actingAs($this->admin)
+            ->getJson('/api/dashboard/stats')
+            ->assertOk()
+            ->json('data.monthly_requests');
+
+        $currentMonth = now()->format('Y-m');
+        $currentEntry = collect($response)->firstWhere('month', $currentMonth);
+
+        $this->assertNotNull($currentEntry);
+        $this->assertEquals(3, $currentEntry['submitted']);
+        $this->assertEquals(2, $currentEntry['approved']); // EXECUTIVE_APPROVED + COMPLETED
+    }
+
+    // ─── Category distribution ────────────────────────────────────────────────
+
+    public function test_cby_admin_category_distribution_returns_currency_groups(): void
+    {
+        $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $this->makeRequest($this->bank, $de, RequestStatus::SUBMITTED, ['currency' => 'USD']);
+        $this->makeRequest($this->bank, $de, RequestStatus::SUBMITTED, ['currency' => 'EUR']);
+        $this->makeRequest($this->bank, $de, RequestStatus::SUBMITTED, ['currency' => 'USD']);
+
+        $response = $this->actingAs($this->admin)
+            ->getJson('/api/dashboard/stats')
+            ->assertOk()
+            ->json('data.category_distribution');
+
+        $this->assertNotEmpty($response);
+        $this->assertArrayHasKey('label', $response[0]);
+        $this->assertArrayHasKey('count', $response[0]);
+        $this->assertArrayHasKey('color', $response[0]);
+
+        $usd = collect($response)->firstWhere('label', 'USD');
+        $this->assertNotNull($usd);
+        $this->assertEquals(2, $usd['count']);
+    }
+
+    // ─── Recent requests ──────────────────────────────────────────────────────
+
+    public function test_cby_admin_recent_requests_returns_up_to_10_requests(): void
+    {
+        $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        for ($i = 0; $i < 12; $i++) {
+            $this->makeRequest($this->bank, $de, RequestStatus::SUBMITTED);
+        }
+
+        $response = $this->actingAs($this->admin)
+            ->getJson('/api/dashboard/stats')
+            ->assertOk()
+            ->json('data.recent_requests');
+
+        $this->assertLessThanOrEqual(10, count($response));
+        $this->assertGreaterThan(0, count($response));
+    }
+
+    public function test_cby_admin_recent_requests_spans_all_banks(): void
+    {
+        $de1 = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $de2 = $this->makeUser(UserRole::DATA_ENTRY, $this->otherBank);
+
+        $this->makeRequest($this->bank, $de1, RequestStatus::SUBMITTED);
+        $this->makeRequest($this->otherBank, $de2, RequestStatus::SUBMITTED);
+
+        $response = $this->actingAs($this->admin)
+            ->getJson('/api/dashboard/stats')
+            ->assertOk()
+            ->json('data.recent_requests');
+
+        $this->assertCount(2, $response);
     }
 
     // ─── AC5: CBY Admin sees all banks ────────────────────────────────────────
