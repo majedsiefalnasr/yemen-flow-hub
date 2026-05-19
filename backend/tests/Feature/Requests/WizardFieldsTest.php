@@ -195,6 +195,39 @@ class WizardFieldsTest extends TestCase
         );
     }
 
+    public function test_submit_rejects_draft_when_required_wizard_fields_are_missing(): void
+    {
+        $createResponse = $this->actingAs($this->dataEntry)
+            ->postJson('/api/requests', $this->basePayload());
+
+        $createResponse->assertStatus(201);
+        $requestId = $createResponse->json('data.id');
+
+        $submitResponse = $this->actingAs($this->dataEntry)
+            ->postJson("/api/workflow/{$requestId}/submit");
+
+        $submitResponse->assertStatus(422);
+        $this->assertStringContainsString(
+            'Missing required wizard fields',
+            (string) $submitResponse->json('message')
+        );
+    }
+
+    public function test_submit_accepts_draft_when_required_wizard_fields_exist(): void
+    {
+        $createResponse = $this->actingAs($this->dataEntry)
+            ->postJson('/api/requests', $this->fullWizardPayload());
+
+        $createResponse->assertStatus(201);
+        $requestId = $createResponse->json('data.id');
+
+        $submitResponse = $this->actingAs($this->dataEntry)
+            ->postJson("/api/workflow/{$requestId}/submit");
+
+        $submitResponse->assertStatus(200);
+        $this->assertSame(RequestStatus::SUBMITTED->value, $submitResponse->json('data.status'));
+    }
+
     public function test_goods_type_max_length_enforced(): void
     {
         $response = $this->actingAs($this->dataEntry)
@@ -234,6 +267,36 @@ class WizardFieldsTest extends TestCase
         $response->assertStatus(200);
         $this->assertSame('TT', $response->json('data.payment_terms'));
         $this->assertSame('BL-UPDATE-001', $response->json('data.bl_number'));
+    }
+
+    public function test_update_allows_unchanged_past_due_date(): void
+    {
+        $pastDueDate = now()->subDay()->toDateString();
+
+        app()->instance('workflow.transition.active', true);
+        $importRequest = ImportRequest::query()->create([
+            'bank_id' => $this->bank->id,
+            'merchant_id' => $this->merchant->id,
+            'created_by' => $this->dataEntry->id,
+            'currency' => 'USD',
+            'amount' => 10000,
+            'supplier_name' => 'Old Supplier',
+            'goods_description' => 'Old goods',
+            'port_of_entry' => 'Aden',
+            'due_date' => $pastDueDate,
+            'status' => RequestStatus::DRAFT,
+            'current_owner_role' => UserRole::DATA_ENTRY,
+        ]);
+        app()->offsetUnset('workflow.transition.active');
+
+        $response = $this->actingAs($this->dataEntry)
+            ->putJson("/api/requests/{$importRequest->id}", array_merge($this->basePayload(), [
+                'due_date' => $pastDueDate,
+                'notes' => 'Updated note only',
+            ]));
+
+        $response->assertStatus(200);
+        $this->assertSame($pastDueDate, $response->json('data.due_date'));
     }
 
     // ─── Resource includes all wizard fields ───────────────────────────────────

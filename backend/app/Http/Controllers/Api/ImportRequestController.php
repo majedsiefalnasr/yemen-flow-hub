@@ -95,6 +95,16 @@ class ImportRequestController extends Controller
                     new OA\Property(property: 'goods_description', type: 'string'),
                     new OA\Property(property: 'port_of_entry', type: 'string', maxLength: 255),
                     new OA\Property(property: 'notes', type: 'string', nullable: true),
+                    new OA\Property(property: 'goods_type', type: 'string', maxLength: 100, nullable: true),
+                    new OA\Property(property: 'payment_terms', type: 'string', enum: ['LC', 'TT', 'CAD'], nullable: true),
+                    new OA\Property(property: 'due_date', type: 'string', format: 'date', nullable: true),
+                    new OA\Property(property: 'invoice_number', type: 'string', maxLength: 100, nullable: true),
+                    new OA\Property(property: 'invoice_date', type: 'string', format: 'date', nullable: true),
+                    new OA\Property(property: 'origin_country', type: 'string', maxLength: 100, nullable: true),
+                    new OA\Property(property: 'arrival_port', type: 'string', maxLength: 100, nullable: true),
+                    new OA\Property(property: 'shipping_port', type: 'string', maxLength: 255, nullable: true),
+                    new OA\Property(property: 'customs_office', type: 'string', maxLength: 100, nullable: true),
+                    new OA\Property(property: 'bl_number', type: 'string', maxLength: 100, nullable: true),
                 ]
             )
         ),
@@ -148,6 +158,31 @@ class ImportRequestController extends Controller
         tags: ['Import Requests'],
         summary: 'Update request',
         security: [['bearerAuth' => []], ['sanctumCookie' => []]],
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(
+                required: ['merchant_id', 'currency', 'amount', 'supplier_name', 'goods_description', 'port_of_entry'],
+                properties: [
+                    new OA\Property(property: 'merchant_id', type: 'integer'),
+                    new OA\Property(property: 'currency', type: 'string', enum: ['USD', 'EUR', 'SAR', 'AED', 'CNY']),
+                    new OA\Property(property: 'amount', type: 'number', format: 'float'),
+                    new OA\Property(property: 'supplier_name', type: 'string', maxLength: 255),
+                    new OA\Property(property: 'goods_description', type: 'string'),
+                    new OA\Property(property: 'port_of_entry', type: 'string', maxLength: 255),
+                    new OA\Property(property: 'notes', type: 'string', nullable: true),
+                    new OA\Property(property: 'goods_type', type: 'string', maxLength: 100, nullable: true),
+                    new OA\Property(property: 'payment_terms', type: 'string', enum: ['LC', 'TT', 'CAD'], nullable: true),
+                    new OA\Property(property: 'due_date', type: 'string', format: 'date', nullable: true),
+                    new OA\Property(property: 'invoice_number', type: 'string', maxLength: 100, nullable: true),
+                    new OA\Property(property: 'invoice_date', type: 'string', format: 'date', nullable: true),
+                    new OA\Property(property: 'origin_country', type: 'string', maxLength: 100, nullable: true),
+                    new OA\Property(property: 'arrival_port', type: 'string', maxLength: 100, nullable: true),
+                    new OA\Property(property: 'shipping_port', type: 'string', maxLength: 255, nullable: true),
+                    new OA\Property(property: 'customs_office', type: 'string', maxLength: 100, nullable: true),
+                    new OA\Property(property: 'bl_number', type: 'string', maxLength: 100, nullable: true),
+                ]
+            )
+        ),
         responses: [new OA\Response(response: 200, description: 'Request updated')]
     )]
     public function update(UpdateImportRequest $request, ImportRequest $importRequest)

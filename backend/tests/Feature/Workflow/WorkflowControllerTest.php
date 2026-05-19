@@ -84,6 +84,13 @@ class WorkflowControllerTest extends TestCase
                 'supplier_name' => 'Supplier Co.',
                 'goods_description' => 'Industrial equipment',
                 'port_of_entry' => 'Aden Port',
+                'goods_type' => 'مواد غذائية',
+                'payment_terms' => 'LC',
+                'invoice_number' => 'INV-WF-001',
+                'invoice_date' => now()->subDays(2)->toDateString(),
+                'origin_country' => 'اليمن',
+                'arrival_port' => 'ميناء عدن',
+                'customs_office' => 'جمارك عدن',
                 'status' => $status,
                 'current_owner_role' => UserRole::DATA_ENTRY,
             ]);

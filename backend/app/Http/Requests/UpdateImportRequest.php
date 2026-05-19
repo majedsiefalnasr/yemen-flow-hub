@@ -14,6 +14,9 @@ class UpdateImportRequest extends ApiFormRequest
     public function rules(): array
     {
         $bankId = $this->user()?->bank_id;
+        $existingDueDateValue = $this->route('importRequest')?->due_date;
+        $existingDueDate = $existingDueDateValue ? substr((string) $existingDueDateValue, 0, 10) : null;
+        $incomingDueDate = $this->input('due_date');
 
         return [
             'merchant_id' => ['required', 'integer', Rule::exists('merchants', 'id')->where(fn ($q) => $q->where('bank_id', $bankId))],
@@ -25,7 +28,14 @@ class UpdateImportRequest extends ApiFormRequest
             'notes' => ['nullable', 'string'],
             'goods_type' => ['nullable', 'string', 'max:100'],
             'payment_terms' => ['nullable', 'string', Rule::in(['LC', 'TT', 'CAD'])],
-            'due_date' => ['nullable', 'date', 'after:today'],
+            'due_date' => [
+                'nullable',
+                'date',
+                Rule::when(
+                    $incomingDueDate !== null && (string) $incomingDueDate !== (string) $existingDueDate,
+                    ['after:today']
+                ),
+            ],
             'invoice_number' => ['nullable', 'string', 'max:100'],
             'invoice_date' => ['nullable', 'date'],
             'origin_country' => ['nullable', 'string', 'max:100'],

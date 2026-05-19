@@ -70,6 +70,10 @@ class WorkflowService
             );
         }
 
+        if ($action === 'submit') {
+            $this->assertSubmitReadiness($request);
+        }
+
         $transitionMetadata = $metadata;
         if ($action === 'support_claim' && $request->isClaimed() && $request->claimed_by !== $actor->id) {
             $transitionMetadata['override_previous_claim_by'] = $request->claimed_by;
@@ -206,6 +210,32 @@ class WorkflowService
         $this->applyClaimCacheEffects($request, $action, $actor);
 
         return $request->refresh();
+    }
+
+    private function assertSubmitReadiness(ImportRequest $request): void
+    {
+        $requiredWizardFields = [
+            'goods_type',
+            'payment_terms',
+            'invoice_number',
+            'invoice_date',
+            'origin_country',
+            'arrival_port',
+            'customs_office',
+        ];
+
+        $missingFields = array_values(array_filter(
+            $requiredWizardFields,
+            fn (string $field): bool => blank($request->{$field})
+        ));
+
+        if ($missingFields === []) {
+            return;
+        }
+
+        throw new InvalidTransitionException(
+            'Cannot submit request. Missing required wizard fields: '.implode(', ', $missingFields).'.'
+        );
     }
 
     private function autoChain(
