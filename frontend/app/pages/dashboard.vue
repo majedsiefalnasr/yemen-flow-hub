@@ -3,7 +3,7 @@ import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth.store'
 import { UserRole } from '../types/enums'
-import { ROLE_LABELS } from '../constants/workflow'
+import { ROLE_LABELS, ROUTE_ROLE_MAP } from '../constants/workflow'
 import DataEntryDashboard from '../components/dashboard/DataEntryDashboard.vue'
 import BankReviewerDashboard from '../components/dashboard/BankReviewerDashboard.vue'
 import BankAdminDashboard from '../components/dashboard/BankAdminDashboard.vue'
@@ -36,9 +36,9 @@ const roleSubtitle = computed(() =>
   role.value ? (ROLE_SUBTITLES[role.value] ?? ROLE_LABELS[role.value] ?? '') : '',
 )
 
-/** Show "طلب جديد" header action only for DATA_ENTRY and BANK_ADMIN (production-authorized) */
+/** Show "طلب جديد" only when the route is allowed for the current production role. */
 const showNewRequestAction = computed(() =>
-  role.value === UserRole.DATA_ENTRY || role.value === UserRole.BANK_ADMIN,
+  role.value != null && ROUTE_ROLE_MAP['/requests/new']?.includes(role.value),
 )
 </script>
 

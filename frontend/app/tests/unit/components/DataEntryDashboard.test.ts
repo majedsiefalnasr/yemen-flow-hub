@@ -58,6 +58,10 @@ function buildStatusRole(): UserRole {
   return UserRole.DATA_ENTRY
 }
 
+function shouldShowDraftsEmptyState(stats: DataEntryDashboardStats): boolean {
+  return stats.draft_requests.length === 0
+}
+
 describe('DataEntryDashboard — returned alert visibility', () => {
   it('shows alert when returned_requests is non-empty', () => {
     const stats: DataEntryDashboardStats = {
@@ -65,6 +69,7 @@ describe('DataEntryDashboard — returned alert visibility', () => {
       returned: 1,
       under_cby_processing: 0,
       completed: 0,
+      draft_requests: [],
       returned_requests: [makeRequest({ status: RequestStatus.DRAFT_REJECTED_INTERNAL })],
       recent_requests: [],
     }
@@ -77,6 +82,7 @@ describe('DataEntryDashboard — returned alert visibility', () => {
       returned: 0,
       under_cby_processing: 0,
       completed: 0,
+      draft_requests: [],
       returned_requests: [],
       recent_requests: [],
     }
@@ -110,6 +116,7 @@ describe('DataEntryDashboard — recent requests max 5', () => {
       returned: 0,
       under_cby_processing: 0,
       completed: 0,
+      draft_requests: [],
       returned_requests: [],
       recent_requests: requests,
     }
@@ -124,6 +131,7 @@ describe('DataEntryDashboard — KPI counts', () => {
       returned: 2,
       under_cby_processing: 3,
       completed: 4,
+      draft_requests: [],
       returned_requests: [],
       recent_requests: [],
     }
@@ -131,5 +139,34 @@ describe('DataEntryDashboard — KPI counts', () => {
     expect(stats.returned).toBe(2)
     expect(stats.under_cby_processing).toBe(3)
     expect(stats.completed).toBe(4)
+  })
+})
+
+describe('DataEntryDashboard — draft requests section', () => {
+  it('shows empty state when no draft requests are returned', () => {
+    const stats: DataEntryDashboardStats = {
+      draft: 2,
+      returned: 0,
+      under_cby_processing: 0,
+      completed: 0,
+      draft_requests: [],
+      returned_requests: [],
+      recent_requests: [],
+    }
+    expect(shouldShowDraftsEmptyState(stats)).toBe(true)
+  })
+
+  it('renders returned draft list separately from returned-for-edit requests', () => {
+    const stats: DataEntryDashboardStats = {
+      draft: 1,
+      returned: 1,
+      under_cby_processing: 0,
+      completed: 0,
+      draft_requests: [makeRequest({ id: 2, status: RequestStatus.DRAFT })],
+      returned_requests: [makeRequest({ id: 3, status: RequestStatus.DRAFT_REJECTED_INTERNAL })],
+      recent_requests: [],
+    }
+    expect(stats.draft_requests[0]?.status).toBe(RequestStatus.DRAFT)
+    expect(stats.returned_requests[0]?.status).toBe(RequestStatus.DRAFT_REJECTED_INTERNAL)
   })
 })

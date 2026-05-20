@@ -6,6 +6,7 @@ export interface DataEntryDashboardStats {
   returned: number
   under_cby_processing: number
   completed: number
+  draft_requests: ImportRequest[]
   returned_requests: ImportRequest[]
   recent_requests: ImportRequest[]
 }

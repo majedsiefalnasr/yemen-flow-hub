@@ -5,19 +5,20 @@ import { useDashboardStore } from '../../stores/dashboard.store'
 import { UserRole } from '../../types/enums'
 import type { SwiftOfficerDashboardStats } from '../../composables/useDashboard'
 import StatusBadge from '../ui/StatusBadge.vue'
+import { getRequestProgress } from '../../utils/requestProgress'
 
 const router = useRouter()
 const store = useDashboardStore()
 
 const stats = computed<SwiftOfficerDashboardStats | null>(() => {
   const raw = store.stats as Partial<SwiftOfficerDashboardStats> | null
-  if (!raw || !Array.isArray(raw.swift_queue)) return null
+  if (!raw) return null
   return {
     pending_swift_upload: raw.pending_swift_upload ?? 0,
     uploaded: raw.uploaded ?? 0,
     final_approved: raw.final_approved ?? 0,
     final_rejected: raw.final_rejected ?? 0,
-    swift_queue: raw.swift_queue,
+    swift_queue: Array.isArray(raw.swift_queue) ? raw.swift_queue : [],
   }
 })
 const queue = computed(() => stats.value?.swift_queue ?? [])
@@ -154,9 +155,9 @@ onMounted(() => { store.loadStats() })
               <td><StatusBadge :status="req.status" :role="UserRole.SWIFT_OFFICER" /></td>
               <td class="progress-cell">
                 <div class="progress-bar">
-                  <div class="progress-bar__fill" style="width:50%" />
+                  <div class="progress-bar__fill" :style="{ width: `${getRequestProgress(req.status)}%` }" />
                 </div>
-                <span class="progress-pct">50%</span>
+                <span class="progress-pct">{{ getRequestProgress(req.status) }}%</span>
               </td>
               <td>
                 <button class="btn-upload" :aria-label="`رفع SWIFT للطلب ${req.reference_number}`" @click="router.push(`/requests/${req.id}/swift`)">

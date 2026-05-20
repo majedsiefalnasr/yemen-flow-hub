@@ -374,7 +374,7 @@ export const PROTECTED_ROUTES = ['/dashboard', '/requests', '/voting', '/customs
 
 /** Route → allowed roles mapping for role middleware */
 export const ROUTE_ROLE_MAP: Record<string, UserRole[]> = {
-  '/requests/new': [UserRole.DATA_ENTRY, UserRole.BANK_ADMIN],
+  '/requests/new': [UserRole.DATA_ENTRY],
   '/merchants': [UserRole.CBY_ADMIN, UserRole.BANK_ADMIN],
   '/staff': [UserRole.BANK_ADMIN],
   '/customs': [UserRole.COMMITTEE_DIRECTOR, UserRole.CBY_ADMIN],

@@ -39,6 +39,9 @@ export const useDashboardStore = defineStore('dashboard', {
         if ('returned_requests' in stats) {
           stats.returned_requests = stats.returned_requests ?? []
         }
+        if ('draft_requests' in stats) {
+          stats.draft_requests = stats.draft_requests ?? []
+        }
 
         this.stats = stats
       }

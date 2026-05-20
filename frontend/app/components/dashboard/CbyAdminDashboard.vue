@@ -5,14 +5,23 @@ import { useDashboardStore } from '../../stores/dashboard.store'
 import { UserRole } from '../../types/enums'
 import type { CbyAdminDashboardStats } from '../../composables/useDashboard'
 import StatusBadge from '../ui/StatusBadge.vue'
+import { getRequestProgress } from '../../utils/requestProgress'
 
 const router = useRouter()
 const store = useDashboardStore()
 
 const stats = computed(() => store.stats as CbyAdminDashboardStats | null)
+const monthlyRequests = computed(() => stats.value?.monthly_requests ?? [])
+const categoryDistribution = computed(() => stats.value?.category_distribution ?? [])
+const hasChartContent = computed(() => monthlyRequests.value.length > 0 || categoryDistribution.value.length > 0)
 
 function formatAmount(amount: number, currency: string): string {
   return new Intl.NumberFormat('ar-YE', { style: 'currency', currency, minimumFractionDigits: 0 }).format(amount)
+}
+
+function formatUpdatedAt(iso: string | null): string {
+  if (!iso) return '—'
+  return new Intl.DateTimeFormat('ar-YE', { year: 'numeric', month: 'short', day: 'numeric' }).format(new Date(iso))
 }
 
 // ── Monthly trend chart (SVG) ─────────────────────────────────────────────
@@ -196,23 +205,23 @@ onMounted(() => { store.loadStats() })
       </section>
 
       <!-- Charts row: monthly trend + category distribution -->
-      <div v-if="stats.monthly_requests?.length" class="charts-row">
+      <div v-if="hasChartContent" class="charts-row">
 
         <!-- Monthly trend chart -->
-        <section class="chart-card chart-card--wide" aria-labelledby="trend-heading">
+        <section v-if="monthlyRequests.length" class="chart-card chart-card--wide" aria-labelledby="trend-heading">
           <h2 id="trend-heading" class="section-title">حركة الطلبات الشهرية</h2>
           <p class="chart-subtitle">تتابع مُقدَّم مقابل مُعتمَد</p>
           <div class="chart-wrap">
             <svg :viewBox="`0 0 ${CHART_W} ${CHART_H}`" class="sparkline" role="img" aria-label="مخطط الطلبات الشهرية" preserveAspectRatio="none">
               <!-- submitted area -->
-              <polygon :points="buildArea(stats.monthly_requests as MonthlyEntry[], 'submitted')" fill="#0066cc" opacity="0.08" />
-              <polyline :points="buildLine(stats.monthly_requests as MonthlyEntry[], 'submitted')" fill="none" stroke="#0066cc" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
+              <polygon :points="buildArea(monthlyRequests as MonthlyEntry[], 'submitted')" fill="#0066cc" opacity="0.08" />
+              <polyline :points="buildLine(monthlyRequests as MonthlyEntry[], 'submitted')" fill="none" stroke="#0066cc" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
               <!-- approved area -->
-              <polygon :points="buildArea(stats.monthly_requests as MonthlyEntry[], 'approved')" fill="#1b5e20" opacity="0.08" />
-              <polyline :points="buildLine(stats.monthly_requests as MonthlyEntry[], 'approved')" fill="none" stroke="#1b5e20" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="4 2" />
+              <polygon :points="buildArea(monthlyRequests as MonthlyEntry[], 'approved')" fill="#1b5e20" opacity="0.08" />
+              <polyline :points="buildLine(monthlyRequests as MonthlyEntry[], 'approved')" fill="none" stroke="#1b5e20" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="4 2" />
             </svg>
             <div class="chart-labels">
-              <span v-for="e in (stats.monthly_requests as MonthlyEntry[])" :key="e.month" class="chart-label">{{ monthLabel(e.month) }}</span>
+              <span v-for="e in (monthlyRequests as MonthlyEntry[])" :key="e.month" class="chart-label">{{ monthLabel(e.month) }}</span>
             </div>
             <div class="chart-legend">
               <span class="legend-item"><span class="legend-dot legend-dot--blue" />مُقدَّم</span>
@@ -222,25 +231,25 @@ onMounted(() => { store.loadStats() })
         </section>
 
         <!-- Category distribution donut -->
-        <section v-if="stats.category_distribution?.length" class="chart-card chart-card--narrow" aria-labelledby="cat-heading">
+        <section v-if="categoryDistribution.length" class="chart-card chart-card--narrow" aria-labelledby="cat-heading">
           <h2 id="cat-heading" class="section-title">توزيع فئات الواردات</h2>
           <p class="chart-subtitle">حسب نوع البضاعة</p>
           <div class="donut-wrap">
             <svg viewBox="0 0 100 100" class="donut-svg" role="img" aria-label="توزيع فئات الواردات">
               <circle cx="50" cy="50" r="38" fill="#f5f5f5" />
               <path
-                v-for="(entry, i) in (stats.category_distribution as CategoryEntry[])"
+                v-for="(entry, i) in (categoryDistribution as CategoryEntry[])"
                 :key="entry.label"
-                :d="buildDonutPath(stats.category_distribution as CategoryEntry[], i, 50, 50, 38)"
+                :d="buildDonutPath(categoryDistribution as CategoryEntry[], i, 50, 50, 38)"
                 :fill="entry.color"
               />
               <circle cx="50" cy="50" r="25" fill="#ffffff" />
             </svg>
             <ul class="donut-legend">
-              <li v-for="entry in (stats.category_distribution as CategoryEntry[])" :key="entry.label" class="donut-legend__item">
+              <li v-for="entry in (categoryDistribution as CategoryEntry[])" :key="entry.label" class="donut-legend__item">
                 <span class="donut-legend__dot" :style="{ background: entry.color }" />
                 <span class="donut-legend__label">{{ entry.label }}</span>
-                <span class="donut-legend__pct">{{ Math.round(entry.count / (stats.category_distribution as CategoryEntry[]).reduce((s, e) => s + e.count, 0) * 100) }}%</span>
+                <span class="donut-legend__pct">{{ Math.round(entry.count / (categoryDistribution as CategoryEntry[]).reduce((s, e) => s + e.count, 0) * 100) }}%</span>
               </li>
             </ul>
           </div>
@@ -278,9 +287,9 @@ onMounted(() => { store.loadStats() })
                 <td><StatusBadge :status="req.status" :role="UserRole.CBY_ADMIN" /></td>
                 <td class="progress-cell">
                   <div class="progress-bar">
-                    <div class="progress-bar__fill" style="width:40%" />
+                    <div class="progress-bar__fill" :style="{ width: `${getRequestProgress(req.status)}%` }" />
                   </div>
-                  <span class="progress-pct">40%</span>
+                  <span class="progress-pct">{{ getRequestProgress(req.status) }}%</span>
                 </td>
                 <td><button class="btn-action" @click.stop="router.push(`/requests/${req.id}`)">عرض</button></td>
               </tr>
@@ -323,6 +332,26 @@ onMounted(() => { store.loadStats() })
                 <span class="compliance-ref">{{ req.reference_number }}</span>
                 <span class="compliance-name">{{ req.bank_name }}</span>
                 <span class="badge badge--red">{{ new Intl.NumberFormat('en-US', { style: 'currency', currency: req.currency, maximumFractionDigits: 0 }).format(req.amount) }}</span>
+              </li>
+            </ul>
+          </div>
+
+          <div class="compliance-group">
+            <h3 class="compliance-subtitle">طلبات معلقة منذ أكثر من 14 يوماً</h3>
+            <div v-if="!stats.compliance_alerts.stale_pending_requests.length" class="compliance-ok">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1b5e20" stroke-width="2" aria-hidden="true"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></svg>
+              لا توجد تنبيهات
+            </div>
+            <ul v-else class="compliance-list">
+              <li
+                v-for="req in stats.compliance_alerts.stale_pending_requests"
+                :key="req.id"
+                class="compliance-item compliance-item--link"
+                @click="router.push(`/requests/${req.id}`)"
+              >
+                <span class="compliance-ref">{{ req.reference_number }}</span>
+                <span class="compliance-name">{{ req.bank_name }}</span>
+                <span class="badge badge--amber">{{ formatUpdatedAt(req.updated_at) }}</span>
               </li>
             </ul>
           </div>

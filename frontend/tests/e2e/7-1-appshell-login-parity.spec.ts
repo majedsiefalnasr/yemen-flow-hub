@@ -207,10 +207,8 @@ async function mockApi(page: Page) {
 }
 
 async function waitForNuxtHydration(page: Page) {
-  await page.waitForFunction(() => {
-    const root = document.querySelector('#__nuxt') as Record<string, unknown> | null
-    return Boolean(root && '__vue_app__' in root)
-  })
+  await page.waitForSelector('#__nuxt')
+  await page.waitForFunction(() => (document.querySelector('#__nuxt')?.children.length ?? 0) > 0)
 }
 
 async function openAuthenticatedDashboard(page: Page, collapsed = false) {

@@ -5,37 +5,26 @@ import { useDashboardStore } from '../../stores/dashboard.store'
 import { UserRole } from '../../types/enums'
 import type { BankReviewerDashboardStats } from '../../composables/useDashboard'
 import StatusBadge from '../ui/StatusBadge.vue'
+import { getRequestProgress } from '../../utils/requestProgress'
 
 const router = useRouter()
 const store = useDashboardStore()
 
 const stats = computed<BankReviewerDashboardStats | null>(() => {
   const raw = store.stats as Partial<BankReviewerDashboardStats> | null
-  if (!raw || !Array.isArray(raw.review_queue)) return null
+  if (!raw) return null
   return {
     pending_review: raw.pending_review ?? 0,
     at_cby: raw.at_cby ?? 0,
     returned_by_support: raw.returned_by_support ?? 0,
     approved_completed: raw.approved_completed ?? 0,
-    review_queue: raw.review_queue,
+    review_queue: Array.isArray(raw.review_queue) ? raw.review_queue : [],
   }
 })
 const queue = computed(() => stats.value?.review_queue ?? [])
 
 function formatAmount(amount: number, currency: string): string {
   return new Intl.NumberFormat('ar-YE', { style: 'currency', currency, minimumFractionDigits: 0 }).format(amount)
-}
-
-/** Map status to a deterministic progress percentage for the progress bar (visual only) */
-function progressForStatus(status: string): number {
-  const map: Record<string, number> = {
-    SUBMITTED: 25,
-    BANK_REVIEW: 25,
-    BANK_APPROVED: 50,
-    SUPPORT_REVIEW_PENDING: 60,
-    SUPPORT_REVIEW_IN_PROGRESS: 70,
-  }
-  return map[status] ?? 25
 }
 
 onMounted(() => { store.loadStats() })
@@ -173,10 +162,10 @@ onMounted(() => { store.loadStats() })
               <td class="mono">{{ formatAmount(req.amount, req.currency) }}</td>
               <td><StatusBadge :status="req.status" :role="UserRole.BANK_REVIEWER" /></td>
               <td class="progress-cell">
-                <div class="progress-bar" :aria-label="`التقدم ${progressForStatus(req.status)}%`">
-                  <div class="progress-bar__fill" :style="{ width: `${progressForStatus(req.status)}%` }" />
+                <div class="progress-bar" :aria-label="`التقدم ${getRequestProgress(req.status)}%`">
+                  <div class="progress-bar__fill" :style="{ width: `${getRequestProgress(req.status)}%` }" />
                 </div>
-                <span class="progress-pct">{{ progressForStatus(req.status) }}%</span>
+                <span class="progress-pct">{{ getRequestProgress(req.status) }}%</span>
               </td>
               <td>
                 <button class="btn-action" :aria-label="`عرض الطلب ${req.reference_number}`" @click="router.push(`/requests/${req.id}`)">عرض</button>

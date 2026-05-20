@@ -50,6 +50,10 @@ const STATS_BY_ROLE: Record<string, unknown> = {
     returned: 1,
     under_cby_processing: 5,
     completed: 8,
+    draft_requests: [
+      makeReq(13, RequestStatus.DRAFT),
+      makeReq(14, RequestStatus.DRAFT),
+    ],
     returned_requests: [makeReq(10, RequestStatus.DRAFT_REJECTED_INTERNAL)],
     recent_requests: [
       makeReq(11, RequestStatus.SUBMITTED),
@@ -97,9 +101,9 @@ const STATS_BY_ROLE: Record<string, unknown> = {
     ],
   },
   [UserRole.SUPPORT_COMMITTEE]: {
-    waiting_for_claim: 5,
+    waiting_for_claim: 1,
     active_by_me: 1,
-    claimed_by_others: 2,
+    claimed_by_others: 1,
     recently_approved: 4,
     support_queue: [
       makeReq(50, RequestStatus.SUPPORT_REVIEW_PENDING),
@@ -107,6 +111,11 @@ const STATS_BY_ROLE: Record<string, unknown> = {
         claimed_by: { id: 999, name: 'علي الزبيري' },
         is_claimed: true,
         is_claimed_by_me: true,
+      }),
+      makeReq(52, RequestStatus.SUPPORT_REVIEW_IN_PROGRESS, {
+        claimed_by: { id: 777, name: 'منى الحكيمي' },
+        is_claimed: true,
+        is_claimed_by_me: false,
       }),
     ],
   },
@@ -275,10 +284,8 @@ async function mockApiForRole(page: Page, role: UserRole) {
 }
 
 async function waitForNuxtHydration(page: Page) {
-  await page.waitForFunction(() => {
-    const root = document.querySelector('#__nuxt') as Record<string, unknown> | null
-    return Boolean(root && '__vue_app__' in root)
-  })
+  await page.waitForSelector('#__nuxt')
+  await page.waitForFunction(() => (document.querySelector('#__nuxt')?.children.length ?? 0) > 0)
 }
 
 async function openDashboardForRole(page: Page, role: UserRole) {

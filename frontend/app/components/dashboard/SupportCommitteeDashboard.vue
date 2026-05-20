@@ -6,6 +6,7 @@ import { useAuthStore } from '../../stores/auth.store'
 import { UserRole } from '../../types/enums'
 import type { SupportCommitteeDashboardStats } from '../../composables/useDashboard'
 import StatusBadge from '../ui/StatusBadge.vue'
+import { getRequestProgress } from '../../utils/requestProgress'
 
 const router = useRouter()
 const store = useDashboardStore()
@@ -13,19 +14,28 @@ const auth = useAuthStore()
 
 const stats = computed<SupportCommitteeDashboardStats | null>(() => {
   const raw = store.stats as Partial<SupportCommitteeDashboardStats> | null
-  if (!raw || !Array.isArray(raw.support_queue)) return null
+  if (!raw) return null
   return {
     waiting_for_claim: raw.waiting_for_claim ?? 0,
     active_by_me: raw.active_by_me ?? 0,
     claimed_by_others: raw.claimed_by_others ?? 0,
     recently_approved: raw.recently_approved ?? 0,
-    support_queue: raw.support_queue,
+    support_queue: Array.isArray(raw.support_queue) ? raw.support_queue : [],
   }
 })
 const queue = computed(() => stats.value?.support_queue ?? [])
+const currentUserId = computed(() => auth.user?.id ?? null)
 
 function formatAmount(amount: number, currency: string): string {
   return new Intl.NumberFormat('ar-YE', { style: 'currency', currency, minimumFractionDigits: 0 }).format(amount)
+}
+
+function claimOwnerLabel(req: SupportCommitteeDashboardStats['support_queue'][number]): string {
+  if (!req.claimed_by) return 'غير مطالب به'
+  if (req.is_claimed_by_me || (currentUserId.value != null && req.claimed_by.id === currentUserId.value)) {
+    return `${req.claimed_by.name} (أنت)`
+  }
+  return req.claimed_by.name
 }
 
 onMounted(() => { store.loadStats() })
@@ -119,14 +129,14 @@ onMounted(() => { store.loadStats() })
             <span class="qa-card__sub">{{ stats.waiting_for_claim }} طلب جاهز للمراجعة</span>
           </button>
 
-          <button class="qa-card" @click="router.push('/reports')">
+          <button class="qa-card" @click="router.push('/notifications')">
             <div class="qa-card__icon" aria-hidden="true">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" />
               </svg>
             </div>
-            <span class="qa-card__label">التقارير والإحصائيات</span>
-            <span class="qa-card__sub">عرض بيانات أداء اللجنة</span>
+            <span class="qa-card__label">الإشعارات</span>
+            <span class="qa-card__sub">آخر تحديثات الطابور والقرارات</span>
           </button>
         </div>
       </section>
@@ -152,29 +162,48 @@ onMounted(() => { store.loadStats() })
               <th scope="col">المورد</th>
               <th scope="col">المبلغ</th>
               <th scope="col">الحالة</th>
+              <th scope="col">الحجز</th>
               <th scope="col">التقدم</th>
               <th scope="col">إجراء</th>
             </tr>
           </thead>
           <tbody>
             <tr
-              v-for="req in queue"
-              :key="req.id"
-              class="req-table__row"
-              :class="{ 'req-table__row--mine': req.is_claimed_by_me }"
-            >
-              <td><a class="req-ref" :href="`/requests/${req.id}`" @click.prevent="router.push(`/requests/${req.id}`)">{{ req.reference_number }}</a></td>
-              <td>{{ req.supplier_name }}</td>
-              <td class="mono">{{ formatAmount(req.amount, req.currency) }}</td>
-              <td><StatusBadge :status="req.status" :role="UserRole.SUPPORT_COMMITTEE" /></td>
-              <td class="progress-cell">
-                <div class="progress-bar">
-                  <div class="progress-bar__fill" :class="req.is_claimed_by_me ? 'fill--indigo' : ''" style="width:33%" />
-                </div>
-                <span class="progress-pct">33%</span>
-              </td>
-              <td><button class="btn-action" :aria-label="`عرض الطلب ${req.reference_number}`" @click="router.push(`/requests/${req.id}`)">عرض</button></td>
-            </tr>
+               v-for="req in queue"
+               :key="req.id"
+               class="req-table__row"
+               :class="{
+                 'req-table__row--mine': req.is_claimed_by_me,
+                 'req-table__row--claimed': !!req.claimed_by && !req.is_claimed_by_me,
+               }"
+             >
+               <td><a class="req-ref" :href="`/requests/${req.id}`" @click.prevent="router.push(`/requests/${req.id}`)">{{ req.reference_number }}</a></td>
+               <td>{{ req.supplier_name }}</td>
+               <td class="mono">{{ formatAmount(req.amount, req.currency) }}</td>
+               <td><StatusBadge :status="req.status" :role="UserRole.SUPPORT_COMMITTEE" /></td>
+               <td>
+                 <span
+                   class="claim-owner"
+                   :class="{
+                     'claim-owner--mine': req.is_claimed_by_me,
+                     'claim-owner--claimed': !!req.claimed_by && !req.is_claimed_by_me,
+                   }"
+                 >
+                   {{ claimOwnerLabel(req) }}
+                 </span>
+               </td>
+               <td class="progress-cell">
+                 <div class="progress-bar">
+                   <div
+                     class="progress-bar__fill"
+                     :class="req.is_claimed_by_me ? 'fill--indigo' : ''"
+                     :style="{ width: `${getRequestProgress(req.status)}%` }"
+                   />
+                 </div>
+                 <span class="progress-pct">{{ getRequestProgress(req.status) }}%</span>
+               </td>
+               <td><button class="btn-action" :aria-label="`عرض الطلب ${req.reference_number}`" @click="router.push(`/requests/${req.id}`)">عرض</button></td>
+             </tr>
           </tbody>
         </table>
       </section>
@@ -252,10 +281,33 @@ onMounted(() => { store.loadStats() })
 .req-table__row + .req-table__row td { border-top: 1px solid #f0f0f0; }
 .req-table__row--mine td { background: #f0f5ff; }
 .req-table__row--mine:hover td { background: #e8eeff; }
+.req-table__row--claimed td { background: #faf7ff; }
+.req-table__row--claimed:hover td { background: #f5eeff; }
 .req-table td { padding: 10px 14px; color: #1c222b; text-align: right; vertical-align: middle; }
 .req-ref { font-family: monospace; color: #0066cc; text-decoration: none; }
 .req-ref:hover { text-decoration: underline; }
 .mono { direction: ltr; font-variant-numeric: tabular-nums; text-align: left; }
+
+.claim-owner {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #f5f5f5;
+  color: #6c757d;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.claim-owner--mine {
+  background: #ede7f6;
+  color: #5856d6;
+}
+
+.claim-owner--claimed {
+  background: #fff8e1;
+  color: #f57f17;
+}
 
 .progress-cell { display: flex; align-items: center; gap: 6px; min-width: 90px; }
 .progress-bar { flex: 1; height: 6px; background: #f0f0f0; border-radius: 999px; overflow: hidden; }

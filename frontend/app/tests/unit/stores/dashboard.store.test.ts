@@ -15,6 +15,7 @@ const DE_STATS: DataEntryDashboardStats = {
   returned: 1,
   under_cby_processing: 5,
   completed: 2,
+  draft_requests: [],
   returned_requests: [],
   recent_requests: [],
 }

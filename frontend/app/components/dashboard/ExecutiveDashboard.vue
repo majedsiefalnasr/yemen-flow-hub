@@ -162,11 +162,17 @@ onMounted(() => { store.loadStats() })
       </section>
 
       <!-- Director-only: customs declaration queue -->
-      <section v-if="isDirector && customsDeclarationPending.length > 0" aria-labelledby="customs-heading">
+      <section v-if="isDirector" aria-labelledby="customs-heading">
         <div class="section-header">
           <h2 id="customs-heading" class="section-title">بيانات جمركية بانتظار الإصدار</h2>
         </div>
-        <table class="req-table" role="table" aria-label="طلبات بانتظار إصدار البيان الجمركي">
+        <div v-if="customsDeclarationPending.length === 0" class="empty-queue" role="status">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#8e8e93" stroke-width="1.5" aria-hidden="true">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" />
+          </svg>
+          <p>لا توجد بيانات جمركية بانتظار الإصدار حالياً</p>
+        </div>
+        <table v-else class="req-table" role="table" aria-label="طلبات بانتظار إصدار البيان الجمركي">
           <thead>
             <tr>
               <th scope="col">المرجع</th>

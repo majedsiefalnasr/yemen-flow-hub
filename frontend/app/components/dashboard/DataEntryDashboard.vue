@@ -171,7 +171,7 @@ onMounted(() => { store.loadStats() })
             <h2 id="drafts-heading" class="table-card__title">مسوداتي</h2>
             <a class="table-card__viewall" href="/requests" @click.prevent="router.push('/requests')">عرض الكل</a>
           </div>
-          <div v-if="stats.returned_requests.length === 0 && stats.draft === 0" class="empty-state" role="status">
+          <div v-if="stats.draft_requests.length === 0" class="empty-state" role="status">
             <p>لا توجد مسودات بعد</p>
           </div>
           <table v-else class="req-table" role="table" aria-label="مسوداتي">
@@ -185,7 +185,7 @@ onMounted(() => { store.loadStats() })
             </thead>
             <tbody>
               <tr
-                v-for="req in stats.returned_requests.slice(0, 5)"
+                v-for="req in stats.draft_requests"
                 :key="req.id"
                 class="req-table__row"
                 @click="router.push(`/requests/${req.id}`)"
