@@ -43,6 +43,7 @@ const props = defineProps<{
   requiresBankSelection: boolean
   bankOptions: BankOption[]
   defaultBankId: number | null
+  lockedBankName: string | null
 }>()
 
 const emit = defineEmits<{
@@ -82,6 +83,7 @@ const [bank_id, bankIdAttrs] = defineField('bank_id')
 
 const isEditMode = computed(() => !!props.merchant)
 const isBankRequiredForCreate = computed(() => props.requiresBankSelection && !props.merchant)
+const showLockedBankField = computed(() => !props.requiresBankSelection && !!props.lockedBankName)
 const isSaveDisabled = computed(() => (
   props.saving
   || !meta.value.valid
@@ -208,6 +210,19 @@ const onSubmit = handleSubmit((values) => {
                 </option>
               </select>
               <span v-if="errors.bank_id" class="field-error" role="alert">{{ errors.bank_id }}</span>
+            </div>
+
+            <div v-else-if="showLockedBankField" class="form-field form-field-full">
+              <label class="form-label" for="locked-bank-name">البنك التابع له <span class="required">*</span></label>
+              <input
+                id="locked-bank-name"
+                :value="props.lockedBankName ?? ''"
+                type="text"
+                class="form-input form-input-locked"
+                readonly
+                disabled
+              >
+              <span class="field-hint">مرتبط بالبنك المسجل على حسابك.</span>
             </div>
 
             <!-- Name -->
@@ -464,6 +479,17 @@ const onSubmit = handleSubmit((values) => {
 .field-error {
   font-size: 12px;
   color: #c62828;
+}
+
+.field-hint {
+  font-size: 12px;
+  color: #6c757d;
+}
+
+.form-input-locked {
+  background: #f8f9fa;
+  color: #6c757d;
+  cursor: not-allowed;
 }
 
 .modal-actions {

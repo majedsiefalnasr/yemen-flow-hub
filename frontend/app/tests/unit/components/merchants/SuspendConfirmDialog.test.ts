@@ -29,7 +29,10 @@ function dialogTitle(merchant: Merchant): string {
   return merchant.is_active ? 'تأكيد تعليق التاجر' : 'تأكيد تفعيل التاجر'
 }
 
-function confirmButtonLabel(merchant: Merchant): string {
+function confirmButtonLabel(merchant: Merchant, submitting = false): string {
+  if (submitting) {
+    return 'جارٍ التحديث…'
+  }
   return merchant.is_active ? 'تعليق' : 'تفعيل'
 }
 
@@ -46,6 +49,10 @@ function dialogMessage(merchant: Merchant): string {
     return `هل أنت متأكد من تعليق التاجر ${merchant.name}؟ لن يتمكن المستخدمون من اختياره في الطلبات الجديدة.`
   }
   return `هل أنت متأكد من تفعيل التاجر ${merchant.name}؟`
+}
+
+function canDismissDialog(submitting: boolean): boolean {
+  return !submitting
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
@@ -75,6 +82,10 @@ describe('SuspendConfirmDialog — confirm button', () => {
 
   it('uses btn-activate class for suspended merchant', () => {
     expect(confirmButtonClass(makeMerchant({ is_active: false }))).toBe('btn-activate')
+  })
+
+  it('shows loading label while submitting', () => {
+    expect(confirmButtonLabel(makeMerchant({ is_active: true }), true)).toBe('جارٍ التحديث…')
   })
 })
 
@@ -107,5 +118,15 @@ describe('SuspendConfirmDialog — message', () => {
     const suspendMsg = dialogMessage({ ...m, is_active: true })
     const activateMsg = dialogMessage({ ...m, is_active: false })
     expect(suspendMsg).not.toBe(activateMsg)
+  })
+})
+
+describe('SuspendConfirmDialog — interaction guard', () => {
+  it('allows dismiss when not submitting', () => {
+    expect(canDismissDialog(false)).toBe(true)
+  })
+
+  it('blocks dismiss while submitting', () => {
+    expect(canDismissDialog(true)).toBe(false)
   })
 })

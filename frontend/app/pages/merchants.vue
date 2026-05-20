@@ -37,6 +37,7 @@ const saveError = ref<string | null>(null)
 
 const suspendTarget = ref<Merchant | null>(null)
 const suspending = ref(false)
+const suspendError = ref<string | null>(null)
 
 const viewingMerchant = ref<Merchant | null>(null)
 
@@ -45,6 +46,12 @@ const statusFilter = ref<'' | 'active' | 'suspended'>('')
 const bankFilter = ref<string>('')
 
 const isBankAdmin = computed(() => authStore.currentRole === UserRole.BANK_ADMIN)
+const lockedBankName = computed(() =>
+  editingMerchant.value?.bank_name
+  ?? authStore.user?.bank_name_ar
+  ?? authStore.user?.bank_name_en
+  ?? null,
+)
 
 const pageSubtitle = computed(() =>
   isBankAdmin.value
@@ -59,7 +66,8 @@ const filteredMerchants = computed(() => {
     list = list.filter(m =>
       m.name.toLowerCase().includes(q)
       || (m.commercial_register ?? '').toLowerCase().includes(q)
-      || (m.tax_number ?? '').toLowerCase().includes(q),
+      || (m.tax_number ?? '').toLowerCase().includes(q)
+      || (m.bank_name ?? '').toLowerCase().includes(q),
     )
   }
   if (statusFilter.value === 'active') list = list.filter(m => m.is_active)
@@ -94,6 +102,17 @@ function metaVal(val: string | null | undefined): string {
   return val ?? '—'
 }
 
+function replaceMerchant(updated: Merchant) {
+  const idx = merchants.value.findIndex(m => m.id === updated.id)
+  if (idx !== -1) {
+    merchants.value[idx] = updated
+  }
+
+  if (viewingMerchant.value?.id === updated.id) {
+    viewingMerchant.value = updated
+  }
+}
+
 async function loadMerchants() {
   loading.value = true
   loadError.value = null
@@ -117,8 +136,10 @@ async function loadBanksForCbyAdmin() {
   try {
     const banks = await fetchBanks()
     bankOptions.value = banks
-      .filter(bank => bank.is_active)
-      .map(bank => ({ id: bank.id, name: bank.name_ar || bank.name_en }))
+      .map(bank => ({
+        id: bank.id,
+        name: `${bank.name_ar || bank.name_en}${bank.is_active ? '' : ' (موقوف)'}`,
+      }))
   }
   catch {
     bankLoadError.value = 'تعذّر تحميل قائمة البنوك.'
@@ -178,8 +199,7 @@ async function handleSave(data: {
         business_type: data.business_type,
         is_active: data.is_active,
       })
-      const idx = merchants.value.findIndex(m => m.id === updated.id)
-      if (idx !== -1) merchants.value[idx] = updated
+      replaceMerchant(updated)
     }
     else {
       const created = await createMerchant({
@@ -207,24 +227,28 @@ async function handleSave(data: {
 
 function requestToggleStatus(merchant: Merchant) {
   suspendTarget.value = merchant
+  suspendError.value = null
 }
 
 function cancelSuspend() {
+  if (suspending.value) return
   suspendTarget.value = null
+  suspendError.value = null
 }
 
 async function confirmToggleStatus() {
   if (!suspendTarget.value) return
   const target = suspendTarget.value
   suspending.value = true
-  suspendTarget.value = null
+  suspendError.value = null
   try {
     const updated = await suspendMerchant(target.id, !target.is_active)
-    const idx = merchants.value.findIndex(m => m.id === updated.id)
-    if (idx !== -1) merchants.value[idx] = updated
+    replaceMerchant(updated)
+    suspendTarget.value = null
   }
-  catch {
-    loadError.value = 'تعذّر تحديث حالة التاجر.'
+  catch (err: unknown) {
+    const e = err as { data?: { message?: string } }
+    suspendError.value = e.data?.message ?? 'تعذّر تحديث حالة التاجر.'
   }
   finally {
     suspending.value = false
@@ -437,7 +461,8 @@ onMounted(async () => {
       :server-error="saveError"
       :requires-bank-selection="authStore.isCbyAdmin"
       :bank-options="bankOptions"
-      :default-bank-id="editingMerchant?.bank_id ?? null"
+      :default-bank-id="editingMerchant?.bank_id ?? authStore.user?.bank_id ?? null"
+      :locked-bank-name="lockedBankName"
       @save="handleSave"
       @close="closeModal"
     />
@@ -501,6 +526,8 @@ onMounted(async () => {
     <SuspendConfirmDialog
       v-if="suspendTarget"
       :merchant="suspendTarget"
+      :submitting="suspending"
+      :error="suspendError"
       @confirm="confirmToggleStatus"
       @cancel="cancelSuspend"
     />

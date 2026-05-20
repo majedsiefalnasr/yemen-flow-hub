@@ -4,16 +4,24 @@ import type { Merchant } from '../../types/models'
 
 const props = defineProps<{
   merchant: Merchant
+  submitting: boolean
+  error: string | null
 }>()
 
 const emit = defineEmits<{
   confirm: []
   cancel: []
 }>()
+
+function requestClose() {
+  if (!props.submitting) {
+    emit('cancel')
+  }
+}
 </script>
 
 <template>
-  <div class="dialog-backdrop" role="alertdialog" aria-modal="true" :aria-label="props.merchant.is_active ? 'تأكيد تعليق التاجر' : 'تأكيد تفعيل التاجر'" @click.self="emit('cancel')">
+  <div class="dialog-backdrop" role="alertdialog" aria-modal="true" :aria-label="props.merchant.is_active ? 'تأكيد تعليق التاجر' : 'تأكيد تفعيل التاجر'" @click.self="requestClose">
     <div class="dialog" dir="rtl">
       <div class="dialog-icon" :class="props.merchant.is_active ? 'icon-suspend' : 'icon-activate'" aria-hidden="true">
         <Pause v-if="props.merchant.is_active" :size="24" />
@@ -33,13 +41,18 @@ const emit = defineEmits<{
         </template>
       </p>
 
+      <div v-if="props.error" class="dialog-error" role="alert">
+        {{ props.error }}
+      </div>
+
       <div class="dialog-actions">
-        <button class="btn-cancel" @click="emit('cancel')">إلغاء</button>
+        <button class="btn-cancel" :disabled="props.submitting" @click="requestClose">إلغاء</button>
         <button
           :class="['btn-confirm', props.merchant.is_active ? 'btn-suspend' : 'btn-activate']"
+          :disabled="props.submitting"
           @click="emit('confirm')"
         >
-          {{ props.merchant.is_active ? 'تعليق' : 'تفعيل' }}
+          {{ props.submitting ? 'جارٍ التحديث…' : (props.merchant.is_active ? 'تعليق' : 'تفعيل') }}
         </button>
       </div>
     </div>
@@ -110,6 +123,16 @@ const emit = defineEmits<{
   width: 100%;
 }
 
+.dialog-error {
+  width: 100%;
+  background: #fff0ef;
+  border: 1px solid #c62828;
+  border-radius: 12px;
+  padding: 10px 14px;
+  color: #c62828;
+  font-size: 13px;
+}
+
 .btn-cancel {
   flex: 1;
   height: 44px;
@@ -119,6 +142,12 @@ const emit = defineEmits<{
   border-radius: 16px;
   font-size: 14px;
   cursor: pointer;
+}
+
+.btn-cancel:disabled,
+.btn-confirm:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .btn-confirm {

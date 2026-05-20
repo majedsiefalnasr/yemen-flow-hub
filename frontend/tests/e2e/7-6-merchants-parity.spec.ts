@@ -280,10 +280,24 @@ test.describe('BANK_ADMIN merchants parity', () => {
     await expect(page.locator('.modal-title')).toHaveText('تسجيل تاجر جديد')
   })
 
+  test('add modal shows the authenticated bank as a locked field', async ({ page }) => {
+    await page.click('button:has-text("تاجر جديد")')
+    await page.waitForSelector('.modal-title', { timeout: 8000 })
+    await expect(page.getByLabel('البنك التابع له')).toHaveValue(BANK_NAME)
+    await expect(page.getByLabel('البنك التابع له')).toBeDisabled()
+  })
+
   test('edit modal title is "تعديل بيانات التاجر"', async ({ page }) => {
     await page.locator('.merchant-card').first().locator('[aria-label="تعديل التاجر"]').click()
     await page.waitForSelector('.modal-title', { timeout: 8000 })
     await expect(page.locator('.modal-title')).toHaveText('تعديل بيانات التاجر')
+  })
+
+  test('edit modal keeps the bank field locked to the merchant bank', async ({ page }) => {
+    await page.locator('.merchant-card').first().locator('[aria-label="تعديل التاجر"]').click()
+    await page.waitForSelector('.modal-title', { timeout: 8000 })
+    await expect(page.getByLabel('البنك التابع له')).toHaveValue(BANK_NAME)
+    await expect(page.getByLabel('البنك التابع له')).toBeDisabled()
   })
 
   test('page title and breadcrumbs are present', async ({ page }) => {

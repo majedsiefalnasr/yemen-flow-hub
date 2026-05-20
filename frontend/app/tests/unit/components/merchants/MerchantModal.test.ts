@@ -26,14 +26,33 @@ function prefillFromMerchant(merchant: Merchant) {
     name: merchant.name,
     commercial_register: merchant.commercial_register ?? '',
     tax_number: merchant.tax_number ?? '',
+    phone: merchant.phone ?? '',
     address: merchant.address ?? '',
     business_type: merchant.business_type ?? '',
+    is_active: merchant.is_active ? 'true' : 'false',
     bank_id: merchant.bank_id ? String(merchant.bank_id) : '',
   }
 }
 
-function emptyFormValues() {
-  return { name: '', commercial_register: '', tax_number: '', address: '', business_type: '', bank_id: '' }
+function emptyFormValues(defaultBankId: number | null = null) {
+  return {
+    name: '',
+    commercial_register: '',
+    tax_number: '',
+    phone: '',
+    address: '',
+    business_type: '',
+    is_active: 'true',
+    bank_id: defaultBankId ? String(defaultBankId) : '',
+  }
+}
+
+function lockedBankFieldVisible(requiresBankSelection: boolean, lockedBankName: string | null): boolean {
+  return !requiresBankSelection && !!lockedBankName
+}
+
+function bankSelectionRequired(requiresBankSelection: boolean, merchant: Merchant | null): boolean {
+  return requiresBankSelection && !merchant
 }
 
 // ── Modal title logic ────────────────────────────────────────────────────────
@@ -141,6 +160,10 @@ describe('MerchantModal — edit prefill', () => {
     expect(prefillFromMerchant(merchant).address).toBe('عدن، كريتر')
   })
 
+  it('prefills phone from merchant', () => {
+    expect(prefillFromMerchant({ ...merchant, phone: '+967700000001' }).phone).toBe('+967700000001')
+  })
+
   it('defaults commercial_register to empty string when null', () => {
     expect(prefillFromMerchant({ ...merchant, commercial_register: null }).commercial_register).toBe('')
   })
@@ -160,6 +183,10 @@ describe('MerchantModal — edit prefill', () => {
   it('prefills bank_id from merchant', () => {
     expect(prefillFromMerchant(merchant).bank_id).toBe('1')
   })
+
+  it('prefills is_active as "true" for active merchant', () => {
+    expect(prefillFromMerchant(merchant).is_active).toBe('true')
+  })
 })
 
 describe('MerchantModal — create mode', () => {
@@ -168,9 +195,16 @@ describe('MerchantModal — create mode', () => {
     expect(values.name).toBe('')
     expect(values.commercial_register).toBe('')
     expect(values.tax_number).toBe('')
+    expect(values.phone).toBe('')
     expect(values.address).toBe('')
     expect(values.business_type).toBe('')
+    expect(values.is_active).toBe('true')
     expect(values.bank_id).toBe('')
+  })
+
+  it('uses the authenticated bank id as the default bank value when provided', () => {
+    const values = emptyFormValues(9)
+    expect(values.bank_id).toBe('9')
   })
 })
 
@@ -206,5 +240,21 @@ describe('MerchantModal — trimming', () => {
   it('fails when required fields are whitespace only', () => {
     const result = validate({ name: '   ', commercial_register: '  ', tax_number: '   ' })
     expect(result.success).toBe(false)
+  })
+})
+
+describe('MerchantModal — bank field behavior', () => {
+  it('shows a locked bank field for BANK_ADMIN create/edit flows', () => {
+    expect(lockedBankFieldVisible(false, 'بنك اليمن')).toBe(true)
+  })
+
+  it('does not show the locked bank field when no locked bank name is available', () => {
+    expect(lockedBankFieldVisible(false, null)).toBe(false)
+  })
+
+  it('requires bank selection only for CBY create flow', () => {
+    expect(bankSelectionRequired(true, null)).toBe(true)
+    expect(bankSelectionRequired(true, { id: 1 } as Merchant)).toBe(false)
+    expect(bankSelectionRequired(false, null)).toBe(false)
   })
 })
