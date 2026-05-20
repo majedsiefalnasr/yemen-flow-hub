@@ -16,7 +16,9 @@ function makeMerchant(overrides: Partial<Merchant> = {}): Merchant {
     phone: '+967700123456',
     email: null,
     address: 'صنعاء، شارع التحرير',
+    business_type: 'import',
     is_active: true,
+    transaction_count: 5,
     created_by: 1,
     created_at: '2026-05-01T00:00:00.000Z',
     ...overrides,
@@ -34,15 +36,27 @@ function statusClass(merchant: Merchant): string {
 }
 
 function toggleButtonLabel(merchant: Merchant): string {
-  return merchant.is_active ? 'تعليق' : 'تفعيل'
-}
-
-function avatarChar(merchant: Merchant): string {
-  return merchant.name.charAt(0)
+  return merchant.is_active ? 'تعليق التاجر' : 'تفعيل التاجر'
 }
 
 function metaValue(val: string | null): string {
   return val ?? '—'
+}
+
+function businessTypeLabel(type: string | null | undefined): string {
+  const MAP: Record<string, string> = {
+    import: 'استيراد',
+    export: 'تصدير',
+    retail: 'تجارة تجزئة',
+    wholesale: 'تجارة جملة',
+    manufacturing: 'تصنيع',
+    services: 'خدمات',
+  }
+  return type ? (MAP[type] ?? type) : '—'
+}
+
+function transactionCount(merchant: Merchant): number {
+  return merchant.transaction_count ?? 0
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
@@ -66,22 +80,60 @@ describe('MerchantCard — status badge', () => {
 })
 
 describe('MerchantCard — toggle button', () => {
-  it('shows "تعليق" for active merchant', () => {
-    expect(toggleButtonLabel(makeMerchant({ is_active: true }))).toBe('تعليق')
+  it('shows "تعليق التاجر" aria-label for active merchant', () => {
+    expect(toggleButtonLabel(makeMerchant({ is_active: true }))).toBe('تعليق التاجر')
   })
 
-  it('shows "تفعيل" for suspended merchant', () => {
-    expect(toggleButtonLabel(makeMerchant({ is_active: false }))).toBe('تفعيل')
+  it('shows "تفعيل التاجر" aria-label for suspended merchant', () => {
+    expect(toggleButtonLabel(makeMerchant({ is_active: false }))).toBe('تفعيل التاجر')
   })
 })
 
-describe('MerchantCard — avatar', () => {
-  it('shows first character of merchant name as avatar', () => {
-    expect(avatarChar(makeMerchant({ name: 'شركة النجاح' }))).toBe('ش')
+describe('MerchantCard — businessTypeLabel', () => {
+  it('maps import to استيراد', () => {
+    expect(businessTypeLabel('import')).toBe('استيراد')
   })
 
-  it('handles single-character names', () => {
-    expect(avatarChar(makeMerchant({ name: 'أ' }))).toBe('أ')
+  it('maps export to تصدير', () => {
+    expect(businessTypeLabel('export')).toBe('تصدير')
+  })
+
+  it('maps retail to تجارة تجزئة', () => {
+    expect(businessTypeLabel('retail')).toBe('تجارة تجزئة')
+  })
+
+  it('maps wholesale to تجارة جملة', () => {
+    expect(businessTypeLabel('wholesale')).toBe('تجارة جملة')
+  })
+
+  it('maps manufacturing to تصنيع', () => {
+    expect(businessTypeLabel('manufacturing')).toBe('تصنيع')
+  })
+
+  it('maps services to خدمات', () => {
+    expect(businessTypeLabel('services')).toBe('خدمات')
+  })
+
+  it('returns dash for null', () => {
+    expect(businessTypeLabel(null)).toBe('—')
+  })
+
+  it('returns unknown values as-is', () => {
+    expect(businessTypeLabel('other')).toBe('other')
+  })
+})
+
+describe('MerchantCard — transaction count', () => {
+  it('shows transaction_count when present', () => {
+    expect(transactionCount(makeMerchant({ transaction_count: 12 }))).toBe(12)
+  })
+
+  it('falls back to 0 when transaction_count is null', () => {
+    expect(transactionCount(makeMerchant({ transaction_count: null }))).toBe(0)
+  })
+
+  it('falls back to 0 when transaction_count is undefined', () => {
+    expect(transactionCount(makeMerchant({ transaction_count: undefined }))).toBe(0)
   })
 })
 
@@ -124,6 +176,5 @@ describe('MerchantCard — merchant data integrity', () => {
   it('can override name', () => {
     const m = makeMerchant({ name: 'مؤسسة النور التجارية' })
     expect(m.name).toBe('مؤسسة النور التجارية')
-    expect(avatarChar(m)).toBe('م')
   })
 })

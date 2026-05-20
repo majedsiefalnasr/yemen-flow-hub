@@ -45,6 +45,7 @@ export interface Merchant {
   address: string | null
   business_type?: string | null
   is_active: boolean
+  transaction_count?: number | null
   created_by: number | null
   created_at: string | null
 }

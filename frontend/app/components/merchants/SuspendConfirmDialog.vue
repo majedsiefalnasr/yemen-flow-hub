@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Pause, Play } from 'lucide-vue-next'
 import type { Merchant } from '../../types/models'
 
 const props = defineProps<{
@@ -15,7 +16,8 @@ const emit = defineEmits<{
   <div class="dialog-backdrop" role="alertdialog" aria-modal="true" :aria-label="props.merchant.is_active ? 'تأكيد تعليق التاجر' : 'تأكيد تفعيل التاجر'" @click.self="emit('cancel')">
     <div class="dialog" dir="rtl">
       <div class="dialog-icon" :class="props.merchant.is_active ? 'icon-suspend' : 'icon-activate'" aria-hidden="true">
-        {{ props.merchant.is_active ? '⏸' : '▶' }}
+        <Pause v-if="props.merchant.is_active" :size="24" />
+        <Play v-else :size="24" />
       </div>
 
       <h3 class="dialog-title">

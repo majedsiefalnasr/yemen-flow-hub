@@ -24,8 +24,10 @@ const schema = toTypedSchema(z.object({
   name: z.string().trim().min(1, 'اسم التاجر مطلوب'),
   commercial_register: z.string().trim().min(1, 'رقم السجل التجاري مطلوب'),
   tax_number: z.string().trim().min(1, 'الرقم الضريبي مطلوب'),
+  phone: z.string().optional().default(''),
   address: z.string().optional().default(''),
   business_type: z.string().optional().default(''),
+  is_active: z.string().optional().default('true'),
   bank_id: z.string().optional().default(''),
 }))
 
@@ -48,8 +50,10 @@ const emit = defineEmits<{
     name: string
     commercial_register: string
     tax_number: string
+    phone: string | null
     address: string | null
     business_type: string | null
+    is_active: boolean | undefined
     bank_id: number | null
   }]
   close: []
@@ -70,10 +74,13 @@ const {
 const [name, nameAttrs] = defineField('name')
 const [commercial_register, commercialRegisterAttrs] = defineField('commercial_register')
 const [tax_number, taxNumberAttrs] = defineField('tax_number')
+const [phone, phoneAttrs] = defineField('phone')
 const [address, addressAttrs] = defineField('address')
 const [business_type, businessTypeAttrs] = defineField('business_type')
+const [is_active, isActiveAttrs] = defineField('is_active')
 const [bank_id, bankIdAttrs] = defineField('bank_id')
 
+const isEditMode = computed(() => !!props.merchant)
 const isBankRequiredForCreate = computed(() => props.requiresBankSelection && !props.merchant)
 const isSaveDisabled = computed(() => (
   props.saving
@@ -88,8 +95,10 @@ watch(() => props.merchant, (merchant) => {
         name: merchant.name,
         commercial_register: merchant.commercial_register ?? '',
         tax_number: merchant.tax_number ?? '',
+        phone: merchant.phone ?? '',
         address: merchant.address ?? '',
         business_type: merchant.business_type ?? '',
+        is_active: merchant.is_active ? 'true' : 'false',
         bank_id: merchant.bank_id ? String(merchant.bank_id) : '',
       },
     })
@@ -100,8 +109,10 @@ watch(() => props.merchant, (merchant) => {
         name: '',
         commercial_register: '',
         tax_number: '',
+        phone: '',
         address: '',
         business_type: '',
+        is_active: 'true',
         bank_id: props.defaultBankId ? String(props.defaultBankId) : '',
       },
     })
@@ -115,8 +126,10 @@ watch(() => props.defaultBankId, (newValue) => {
         name: name.value ?? '',
         commercial_register: commercial_register.value ?? '',
         tax_number: tax_number.value ?? '',
+        phone: phone.value ?? '',
         address: address.value ?? '',
         business_type: business_type.value ?? '',
+        is_active: is_active.value ?? 'true',
         bank_id: newValue ? String(newValue) : '',
       },
     })
@@ -145,8 +158,10 @@ const onSubmit = handleSubmit((values) => {
     name: values.name.trim(),
     commercial_register: values.commercial_register.trim(),
     tax_number: values.tax_number.trim(),
+    phone: values.phone?.trim() || null,
     address: values.address?.trim() || null,
     business_type: values.business_type?.trim() || null,
+    is_active: isEditMode.value ? values.is_active === 'true' : undefined,
     bank_id: values.bank_id ? Number(values.bank_id) : null,
   })
 })
@@ -156,9 +171,18 @@ const onSubmit = handleSubmit((values) => {
   <Dialog :open="true" @update:open="onDialogOpenChange">
     <div class="modal-layer">
       <DialogOverlay class="modal-backdrop" @click="requestClose" />
-      <DialogContent class="modal" dir="rtl" :aria-label="props.merchant ? 'تعديل بيانات التاجر' : 'إضافة تاجر جديد'">
+      <DialogContent
+        class="modal"
+        dir="rtl"
+        :aria-label="isEditMode ? 'تعديل بيانات التاجر' : 'تسجيل تاجر جديد'"
+      >
         <DialogHeader class="modal-header">
-          <DialogTitle class="modal-title">{{ props.merchant ? 'تعديل بيانات التاجر' : 'إضافة تاجر جديد' }}</DialogTitle>
+          <div>
+            <DialogTitle class="modal-title">
+              {{ isEditMode ? 'تعديل بيانات التاجر' : 'تسجيل تاجر جديد' }}
+            </DialogTitle>
+            <p class="modal-description">الحقول المعلّمة بـ * إلزامية.</p>
+          </div>
           <button class="close-btn" aria-label="إغلاق" :disabled="props.saving" @click="requestClose">✕</button>
         </DialogHeader>
 
@@ -168,8 +192,9 @@ const onSubmit = handleSubmit((values) => {
 
         <form class="modal-form" @submit.prevent="onSubmit">
           <div class="form-grid">
+            <!-- Bank selector for CBY Admin creating a new merchant -->
             <div v-if="isBankRequiredForCreate" class="form-field form-field-full">
-              <label class="form-label" for="bank-id">البنك <span class="required">*</span></label>
+              <label class="form-label" for="bank-id">البنك التابع له <span class="required">*</span></label>
               <select
                 id="bank-id"
                 v-model="bank_id"
@@ -185,8 +210,9 @@ const onSubmit = handleSubmit((values) => {
               <span v-if="errors.bank_id" class="field-error" role="alert">{{ errors.bank_id }}</span>
             </div>
 
+            <!-- Name -->
             <div class="form-field form-field-full">
-              <label class="form-label" for="merchant-name">اسم التاجر <span class="required">*</span></label>
+              <label class="form-label" for="merchant-name">اسم التاجر / الشركة <span class="required">*</span></label>
               <input
                 id="merchant-name"
                 v-model="name"
@@ -194,11 +220,12 @@ const onSubmit = handleSubmit((values) => {
                 type="text"
                 class="form-input"
                 :class="{ 'input-error': errors.name }"
-                placeholder="الاسم التجاري أو اسم المؤسسة"
+                placeholder="مثال: شركة الكميم للأدوية"
               >
               <span v-if="errors.name" class="field-error" role="alert">{{ errors.name }}</span>
             </div>
 
+            <!-- Commercial register -->
             <div class="form-field">
               <label class="form-label" for="commercial-register">رقم السجل التجاري <span class="required">*</span></label>
               <input
@@ -214,6 +241,7 @@ const onSubmit = handleSubmit((values) => {
               <span v-if="errors.commercial_register" class="field-error" role="alert">{{ errors.commercial_register }}</span>
             </div>
 
+            <!-- Tax number -->
             <div class="form-field">
               <label class="form-label" for="tax-number">الرقم الضريبي <span class="required">*</span></label>
               <input
@@ -223,27 +251,57 @@ const onSubmit = handleSubmit((values) => {
                 type="text"
                 class="form-input"
                 :class="{ 'input-error': errors.tax_number }"
-                placeholder="TX-99999"
+                placeholder="4123456"
                 dir="ltr"
               >
               <span v-if="errors.tax_number" class="field-error" role="alert">{{ errors.tax_number }}</span>
             </div>
 
+            <!-- Phone -->
             <div class="form-field">
-              <label class="form-label" for="business-type">نوع النشاط</label>
+              <label class="form-label" for="merchant-phone">هاتف التواصل</label>
+              <input
+                id="merchant-phone"
+                v-model="phone"
+                v-bind="phoneAttrs"
+                type="text"
+                class="form-input"
+                placeholder="+9677…"
+                dir="ltr"
+              >
+            </div>
+
+            <!-- Business type -->
+            <div class="form-field">
+              <label class="form-label" for="business-type">القطاع / النشاط</label>
               <select
                 id="business-type"
                 v-model="business_type"
                 v-bind="businessTypeAttrs"
                 class="form-input"
               >
-                <option value="">اختر نوع النشاط</option>
+                <option value="">اختر القطاع</option>
                 <option v-for="opt in BUSINESS_TYPE_OPTIONS" :key="opt.value" :value="opt.value">
                   {{ opt.label }}
                 </option>
               </select>
             </div>
 
+            <!-- Status — edit mode only -->
+            <div v-if="isEditMode" class="form-field">
+              <label class="form-label" for="merchant-status">الحالة</label>
+              <select
+                id="merchant-status"
+                v-model="is_active"
+                v-bind="isActiveAttrs"
+                class="form-input"
+              >
+                <option value="true">نشط</option>
+                <option value="false">موقوف</option>
+              </select>
+            </div>
+
+            <!-- Address -->
             <div class="form-field form-field-full">
               <label class="form-label" for="address">العنوان</label>
               <input
@@ -252,7 +310,7 @@ const onSubmit = handleSubmit((values) => {
                 v-bind="addressAttrs"
                 type="text"
                 class="form-input"
-                placeholder="المدينة، الشارع…"
+                placeholder="المدينة – الشارع"
               >
             </div>
           </div>
@@ -262,7 +320,9 @@ const onSubmit = handleSubmit((values) => {
               إلغاء
             </button>
             <button type="submit" class="btn-primary" :disabled="isSaveDisabled">
-              {{ props.saving ? 'جارٍ الحفظ…' : 'حفظ' }}
+              <template v-if="props.saving">جارٍ الحفظ…</template>
+              <template v-else-if="isEditMode">حفظ التعديلات</template>
+              <template v-else>حفظ التاجر</template>
             </button>
           </DialogFooter>
         </form>
@@ -304,14 +364,21 @@ const onSubmit = handleSubmit((values) => {
 
 .modal-header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
+  gap: 16px;
 }
 
 .modal-title {
   font-size: 20px;
   font-weight: 600;
   color: #1c222b;
+  margin: 0 0 4px;
+}
+
+.modal-description {
+  font-size: 13px;
+  color: #6c757d;
   margin: 0;
 }
 
@@ -323,6 +390,7 @@ const onSubmit = handleSubmit((values) => {
   cursor: pointer;
   line-height: 1;
   padding: 4px;
+  flex-shrink: 0;
 }
 
 .close-btn:disabled {

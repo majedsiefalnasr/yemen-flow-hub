@@ -8,8 +8,10 @@ const schema = z.object({
   name: z.string().trim().min(1, 'اسم التاجر مطلوب'),
   commercial_register: z.string().trim().min(1, 'رقم السجل التجاري مطلوب'),
   tax_number: z.string().trim().min(1, 'الرقم الضريبي مطلوب'),
+  phone: z.string().optional().default(''),
   address: z.string().optional().default(''),
   business_type: z.string().optional().default(''),
+  is_active: z.string().optional().default('true'),
   bank_id: z.string().optional().default(''),
 })
 
@@ -37,7 +39,7 @@ function emptyFormValues() {
 // ── Modal title logic ────────────────────────────────────────────────────────
 
 function modalTitle(merchant: Merchant | null): string {
-  return merchant ? 'تعديل بيانات التاجر' : 'إضافة تاجر جديد'
+  return merchant ? 'تعديل بيانات التاجر' : 'تسجيل تاجر جديد'
 }
 
 // ── BUSINESS_TYPE_OPTIONS ────────────────────────────────────────────────────
@@ -173,8 +175,8 @@ describe('MerchantModal — create mode', () => {
 })
 
 describe('MerchantModal — title', () => {
-  it('shows "إضافة تاجر جديد" when no merchant', () => {
-    expect(modalTitle(null)).toBe('إضافة تاجر جديد')
+  it('shows "تسجيل تاجر جديد" when no merchant', () => {
+    expect(modalTitle(null)).toBe('تسجيل تاجر جديد')
   })
 
   it('shows "تعديل بيانات التاجر" when merchant provided', () => {
