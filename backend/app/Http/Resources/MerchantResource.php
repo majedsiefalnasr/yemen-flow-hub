@@ -23,6 +23,7 @@ class MerchantResource extends JsonResource
             'address' => $this->address,
             'business_type' => $this->business_type,
             'is_active' => (bool) $this->is_active,
+            'transaction_count' => $this->import_requests_count ?? null,
             'created_by' => $this->created_by,
             'created_at' => $this->created_at?->toISOString(),
         ];

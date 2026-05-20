@@ -19,6 +19,7 @@ class MerchantController extends Controller
 
         $query = Merchant::query()
             ->with('bank')
+            ->withCount('importRequests')
             ->forUser(request()->user())
             ->when(request()->filled('bank_id') && !request()->user()->isBankUser(), fn ($q) => $q->where('bank_id', request('bank_id')))
             ->when(request()->has('is_active'), fn ($q) => $q->where('is_active', filter_var(request('is_active'), FILTER_VALIDATE_BOOL)))
@@ -76,7 +77,7 @@ class MerchantController extends Controller
     public function show(Merchant $merchant)
     {
         $this->authorize('view', $merchant);
-        return ApiResponse::success(new MerchantResource($merchant->load('bank')), 'Merchant retrieved.');
+        return ApiResponse::success(new MerchantResource($merchant->loadCount('importRequests')->load('bank')), 'Merchant retrieved.');
     }
 
     #[OA\Put(path: '/api/merchants/{id}', tags: ['التجار / Merchants'], summary: 'Update merchant', responses: [new OA\Response(response: 200, description: 'Merchant updated')])]
