@@ -150,12 +150,19 @@ Focused merchant component/composable/page tests, backend merchant feature tests
 
 ### Task 8: Targeted tests and graph update (AC15)
 - [x] 8.1 SocratiCode used before modifying shared files.
-- [x] 8.2 Vitest suites: 1368 tests, 0 failures.
+- [x] 8.2 Vitest suites: 1380 tests, 0 failures.
 - [x] 8.3 TypeScript typecheck: `ok` (no errors).
-- [x] 8.4 Playwright: 25 tests, 0 failures (14 behavioral + 11 screenshot baselines).
-- [x] 8.5 Backend merchant tests: 16 tests, 37 assertions, 0 failures.
+- [x] 8.4 Playwright: 27 tests, 0 failures (16 behavioral + 11 screenshot baselines).
+- [x] 8.5 Backend merchant tests: 17 tests, 43 assertions, 0 failures.
 - [x] 8.6 Story 7.1 AppShell not modified — no regression run needed.
-- [x] 8.7 `graphify update .` pending (to run after commits).
+- [x] 8.7 `graphify update .` completed after review fixes.
+
+### Review Findings
+- [x] [Review][Patch] Preserve `transaction_count` in merchant mutation responses [backend/app/Http/Controllers/Api/MerchantController.php:73]
+- [x] [Review][Patch] Show BANK_ADMIN bank field as locked authenticated-bank context [frontend/app/components/merchants/MerchantModal.vue:196]
+- [x] [Review][Patch] Keep suspend/reactivate dialog open with visible loading and error state [frontend/app/pages/merchants.vue:216]
+- [x] [Review][Patch] Add focused backend tests for the `transaction_count` contract [backend/tests/Feature/Merchants/MerchantControllerTest.php:173]
+- [x] [Review][Patch] Include inactive banks in the CBY bank filter options [frontend/app/pages/merchants.vue:118]
 
 ---
 
