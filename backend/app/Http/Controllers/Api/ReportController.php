@@ -60,6 +60,81 @@ class ReportController extends Controller
         return null;
     }
 
+    private function buildAnalyticsForScope(?int $bankId, ?string $fromDate, ?string $toDate, string $driver): array
+    {
+        $monthFormat = $driver === 'sqlite'
+            ? "strftime('%Y-%m', created_at)"
+            : "DATE_FORMAT(created_at, '%Y-%m')";
+
+        $base = fn () => ImportRequest::query()->when($bankId, fn ($q) => $q->where('bank_id', $bankId));
+
+        $monthlyRows = $base()
+            ->selectRaw("{$monthFormat} as month")
+            ->selectRaw('COUNT(*) as total')
+            ->selectRaw('SUM(CASE WHEN status IN (?, ?, ?) THEN 1 ELSE 0 END) as approved', [
+                RequestStatus::EXECUTIVE_APPROVED->value,
+                RequestStatus::CUSTOMS_DECLARATION_ISSUED->value,
+                RequestStatus::COMPLETED->value,
+            ])
+            ->selectRaw('SUM(CASE WHEN status IN (?, ?) THEN 1 ELSE 0 END) as rejected', [
+                RequestStatus::SUPPORT_REJECTED->value,
+                RequestStatus::EXECUTIVE_REJECTED->value,
+            ]);
+        $this->applyDateFilter($monthlyRows, $fromDate, $toDate);
+        $monthlyRows = $monthlyRows->groupByRaw($monthFormat)->orderBy('month')->limit(12)->get();
+        $monthlyTrend = $monthlyRows->map(fn ($r) => [
+            'month'    => $r->month,
+            'total'    => (int) $r->total,
+            'approved' => (int) ($r->approved ?? 0),
+            'rejected' => (int) ($r->rejected ?? 0),
+        ])->values()->all();
+
+        $categoryRows = $base()->select('goods_type')->selectRaw('COUNT(*) as count')->groupBy('goods_type');
+        $this->applyDateFilter($categoryRows, $fromDate, $toDate);
+        $categoryDist = $categoryRows->orderByDesc('count')->get()->map(fn ($r) => [
+            'category' => $r->goods_type ?? 'Uncategorized',
+            'count'    => (int) $r->count,
+        ])->values()->all();
+
+        $currencyRows = $base()->select('currency')->selectRaw('SUM(amount) as total_amount')->groupBy('currency');
+        $this->applyDateFilter($currencyRows, $fromDate, $toDate);
+        $amountByCurrency = $currencyRows->orderByDesc('total_amount')->get()->map(fn ($r) => [
+            'currency' => $r->currency,
+            'amount'   => (float) ($r->total_amount ?? 0),
+        ])->values()->all();
+
+        if ($driver === 'sqlite') {
+            $dayOfWeek = "CAST((julianday(created_at) - julianday('2000-01-03')) % 7 AS INTEGER) + 1";
+            $hour      = "CAST(strftime('%H', created_at) AS INTEGER)";
+        } else {
+            $dayOfWeek = 'DAYOFWEEK(created_at)';
+            $hour      = 'HOUR(created_at)';
+        }
+
+        $heatmapRows = $base()
+            ->selectRaw("{$dayOfWeek} as day_of_week")
+            ->selectRaw("FLOOR({$hour} / 2) * 2 as time_slot")
+            ->selectRaw('COUNT(*) as count')
+            ->whereRaw("{$hour} >= 8 AND {$hour} < 20");
+        $this->applyDateFilter($heatmapRows, $fromDate, $toDate);
+        $heatmapData = $heatmapRows
+            ->groupByRaw("{$dayOfWeek}, FLOOR({$hour} / 2)")
+            ->orderBy('day_of_week')->orderBy('time_slot')
+            ->get()
+            ->map(fn ($r) => [
+                'day'   => (int) ($r->day_of_week ?? 1),
+                'slot'  => (int) ($r->time_slot ?? 8),
+                'count' => (int) $r->count,
+            ])->values()->all();
+
+        return [
+            'monthly_trend'         => $monthlyTrend,
+            'category_distribution' => $categoryDist,
+            'amount_by_currency'    => $amountByCurrency,
+            'submission_heatmap'    => $heatmapData,
+        ];
+    }
+
     private function applyDateFilter($query, ?string $fromDate, ?string $toDate, string $column = 'created_at')
     {
         if ($fromDate) {
@@ -178,101 +253,8 @@ class ReportController extends Controller
             ]), $fromDate, $toDate)->count(),
         ];
 
-        // Monthly trend: month, total, approved, rejected
-        $monthlyData = [];
         $driver = DB::connection()->getDriverName();
-        $monthFormat = $driver === 'sqlite'
-            ? "strftime('%Y-%m', created_at)"
-            : "DATE_FORMAT(created_at, '%Y-%m')";
-
-        $monthlyRows = ImportRequest::query()
-            ->selectRaw("{$monthFormat} as month")
-            ->selectRaw("COUNT(*) as total")
-            ->selectRaw("SUM(CASE WHEN status IN (?, ?, ?) THEN 1 ELSE 0 END) as approved", [
-                RequestStatus::EXECUTIVE_APPROVED->value,
-                RequestStatus::CUSTOMS_DECLARATION_ISSUED->value,
-                RequestStatus::COMPLETED->value,
-            ])
-            ->selectRaw("SUM(CASE WHEN status IN (?, ?) THEN 1 ELSE 0 END) as rejected", [
-                RequestStatus::SUPPORT_REJECTED->value,
-                RequestStatus::EXECUTIVE_REJECTED->value,
-            ]);
-        $this->applyDateFilter($monthlyRows, $fromDate, $toDate);
-        $monthlyRows = $monthlyRows
-            ->groupByRaw($monthFormat)
-            ->orderBy('month')
-            ->get();
-        foreach ($monthlyRows as $row) {
-            $monthlyData[] = [
-                'month' => $row->month,
-                'total' => (int) $row->total,
-                'approved' => (int) ($row->approved ?? 0),
-                'rejected' => (int) ($row->rejected ?? 0),
-            ];
-        }
-
-        // Category distribution: goods_type, count
-        $categoryData = [];
-        $categoryRows = ImportRequest::query()
-            ->select('goods_type')
-            ->selectRaw('COUNT(*) as count')
-            ->groupBy('goods_type');
-        $this->applyDateFilter($categoryRows, $fromDate, $toDate);
-        $categoryRows = $categoryRows
-            ->orderByDesc('count')
-            ->get();
-        foreach ($categoryRows as $row) {
-            $categoryData[] = [
-                'category' => $row->goods_type ?? 'Uncategorized',
-                'count' => (int) $row->count,
-            ];
-        }
-
-        // Amount by currency: currency, amount
-        $currencyData = [];
-        $currencyRows = ImportRequest::query()
-            ->select('currency')
-            ->selectRaw('SUM(amount) as total_amount')
-            ->groupBy('currency');
-        $this->applyDateFilter($currencyRows, $fromDate, $toDate);
-        $currencyRows = $currencyRows
-            ->orderByDesc('total_amount')
-            ->get();
-        foreach ($currencyRows as $row) {
-            $currencyData[] = [
-                'currency' => $row->currency,
-                'amount' => (float) ($row->total_amount ?? 0),
-            ];
-        }
-
-        // Submission heatmap: day of week, time slot, count
-        $heatmapData = [];
-        $driver = DB::connection()->getDriverName();
-        if ($driver === 'sqlite') {
-            $dayOfWeek = "CAST((julianday(created_at) - julianday('2000-01-03')) % 7 AS INTEGER) + 1";
-            $hour = "CAST(strftime('%H', created_at) AS INTEGER)";
-        } else {
-            $dayOfWeek = "DAYOFWEEK(created_at)";
-            $hour = "HOUR(created_at)";
-        }
-
-        $heatmapRows = ImportRequest::query()
-            ->selectRaw("{$dayOfWeek} as day_of_week")
-            ->selectRaw("FLOOR({$hour} / 2) * 2 as time_slot")
-            ->selectRaw('COUNT(*) as count');
-        $this->applyDateFilter($heatmapRows, $fromDate, $toDate);
-        $heatmapRows = $heatmapRows
-            ->groupByRaw("{$dayOfWeek}, FLOOR({$hour} / 2)")
-            ->orderBy('day_of_week')
-            ->orderBy('time_slot')
-            ->get();
-        foreach ($heatmapRows as $row) {
-            $heatmapData[] = [
-                'day' => (int) ($row->day_of_week ?? 1),
-                'slot' => (int) ($row->time_slot ?? 0),
-                'count' => (int) $row->count,
-            ];
-        }
+        $analytics = $this->buildAnalyticsForScope(null, $fromDate, $toDate, $driver);
 
         // Total financing value: sum of approved requests
         $totalFinancing = ImportRequest::query()
@@ -286,7 +268,6 @@ class ReportController extends Controller
 
         // Duplicate invoice count
         $duplicateCount = 0;
-        $driver = DB::connection()->getDriverName();
         $duplicateQuery = DB::table('import_requests')
             ->selectRaw('invoice_number, COUNT(*) as cnt');
         $this->applyDateFilter($duplicateQuery, $fromDate, $toDate, 'created_at');
@@ -304,10 +285,10 @@ class ReportController extends Controller
             'counts_by_bank'           => $countsByBank,
             'avg_time_per_stage_hours' => $avgTimePerStage,
             'throughput'               => $throughput,
-            'monthly_trend'            => $monthlyData,
-            'category_distribution'    => $categoryData,
-            'amount_by_currency'       => $currencyData,
-            'submission_heatmap'       => $heatmapData,
+            'monthly_trend'            => $analytics['monthly_trend'],
+            'category_distribution'    => $analytics['category_distribution'],
+            'amount_by_currency'       => $analytics['amount_by_currency'],
+            'submission_heatmap'       => $analytics['submission_heatmap'],
             'total_financing_value'    => $totalFinancing,
             'duplicate_invoice_count'  => $duplicateCount,
         ], 'Workflow report retrieved.');
@@ -596,6 +577,9 @@ class ReportController extends Controller
         // Avg processing hours: created_at to executive_decided_at for decided requests
         $avgHours = $this->avgProcessingHours($user->bank_id, $fromDate, $toDate);
 
+        // Analytics fields (bank-scoped)
+        $bankAnalytics = $this->buildAnalyticsForScope($user->bank_id, $fromDate, $toDate, DB::connection()->getDriverName());
+
         return ApiResponse::success([
             'total_requests'         => $total,
             'approved_count'         => $approved,
@@ -604,6 +588,10 @@ class ReportController extends Controller
             'approval_rate'          => $total > 0 ? round(($approved / $total) * 100, 2) : 0,
             'rejection_rate'         => $total > 0 ? round(($rejected / $total) * 100, 2) : 0,
             'avg_processing_hours'   => $avgHours,
+            'monthly_trend'          => $bankAnalytics['monthly_trend'],
+            'category_distribution'  => $bankAnalytics['category_distribution'],
+            'amount_by_currency'     => $bankAnalytics['amount_by_currency'],
+            'submission_heatmap'     => $bankAnalytics['submission_heatmap'],
         ], 'Bank report retrieved.');
     }
 
