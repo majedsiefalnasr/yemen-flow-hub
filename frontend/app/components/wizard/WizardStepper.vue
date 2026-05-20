@@ -68,8 +68,11 @@ function handleStepClick(index: number): void {
 
 <style scoped>
 .wizard-stepper {
-  padding: 24px 0;
+  padding: 20px 24px;
   background: #ffffff;
+  border: 1px solid #cccccc;
+  border-radius: 16px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
 }
 
 .stepper-inner {
@@ -99,8 +102,8 @@ function handleStepClick(index: number): void {
 
 /* Step circle */
 .step-circle {
-  width: 28px;
-  height: 28px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -142,8 +145,8 @@ function handleStepClick(index: number): void {
 }
 
 .step-check {
-  width: 16px;
-  height: 16px;
+  width: 20px;
+  height: 20px;
   color: #ffffff;
 }
 
@@ -176,7 +179,7 @@ function handleStepClick(index: number): void {
   height: 2px;
   background: #cccccc;
   align-self: flex-start;
-  margin-top: 13px; /* center on 28px circle */
+  margin-top: 19px; /* center on 40px circle */
   min-width: 24px;
   transition: background 200ms;
 }

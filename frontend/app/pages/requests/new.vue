@@ -16,7 +16,6 @@ definePageMeta({
 
 <style scoped>
 .new-request-page {
-  max-width: 900px;
   padding: 24px;
 }
 </style>

@@ -105,74 +105,8 @@ const errorCount = computed(() => Object.keys(props.errors).length)
         <span v-if="errors.goods_type" class="field-error" role="alert">{{ errors.goods_type }}</span>
       </div>
 
-      <!-- شروط الدفع -->
-      <div class="field-group" :class="{ 'field-group--error': errors.payment_terms }">
-        <label class="field-label" for="payment-terms">شروط الدفع <span class="req">*</span></label>
-        <div class="field-input-wrap">
-          <span v-if="errors.payment_terms" class="field-error-icon" aria-hidden="true">⚠</span>
-          <select
-            id="payment-terms"
-            class="form-input"
-            :class="{ 'form-input--error': errors.payment_terms }"
-            :value="modelValue.payment_terms"
-            :disabled="loading"
-            @change="update('payment_terms', ($event.target as HTMLSelectElement).value)"
-          >
-            <option value="" disabled>اختر شروط الدفع...</option>
-            <option v-for="t in PAYMENT_TERMS" :key="t" :value="t">{{ PAYMENT_LABELS[t] }}</option>
-          </select>
-        </div>
-        <span v-if="errors.payment_terms" class="field-error" role="alert">{{ errors.payment_terms }}</span>
-      </div>
-
-      <!-- مبلغ التمويل + العملة (compound field) -->
-      <div class="field-group field-group--full" :class="{ 'field-group--error': errors.amount || errors.currency }">
-        <label class="field-label" for="amount">مبلغ التمويل <span class="req">*</span></label>
-        <div class="amount-currency-wrap">
-          <div class="amount-input-wrap">
-            <span v-if="errors.amount" class="field-error-icon" aria-hidden="true">⚠</span>
-            <input
-              id="amount"
-              type="number"
-              min="1000"
-              step="1"
-              class="form-input amount-input"
-              :class="{ 'form-input--error': errors.amount }"
-              :value="modelValue.amount ?? ''"
-              :disabled="loading"
-              placeholder="0"
-              @input="update('amount', Number(($event.target as HTMLInputElement).value) || null)"
-            />
-          </div>
-          <select
-            class="form-input currency-select"
-            :class="{ 'form-input--error': errors.currency }"
-            :value="modelValue.currency"
-            :disabled="loading"
-            @change="update('currency', ($event.target as HTMLSelectElement).value)"
-          >
-            <option v-for="c in Object.values(Currency)" :key="c" :value="c">{{ c }}</option>
-          </select>
-        </div>
-        <span v-if="errors.amount" class="field-error" role="alert">{{ errors.amount }}</span>
-        <span v-else-if="errors.currency" class="field-error" role="alert">{{ errors.currency }}</span>
-      </div>
-
-      <!-- تاريخ الاستحقاق (optional) -->
-      <div class="field-group">
-        <label class="field-label" for="due-date">تاريخ الاستحقاق المتوقع</label>
-        <input
-          id="due-date"
-          type="date"
-          class="form-input"
-          :value="modelValue.due_date ?? ''"
-          :disabled="loading"
-          @input="update('due_date', ($event.target as HTMLInputElement).value || '')"
-        />
-      </div>
-
       <!-- المستورد -->
-      <div class="field-group field-group--full" :class="{ 'field-group--error': errors.merchant_id }">
+      <div class="field-group" :class="{ 'field-group--error': errors.merchant_id }">
         <label class="field-label" for="merchant">المستورد (التاجر) <span class="req">*</span></label>
 
         <!-- DATA_ENTRY: read-only -->
@@ -212,6 +146,79 @@ const errorCount = computed(() => Object.keys(props.errors).length)
           </template>
         </template>
         <span v-if="errors.merchant_id" class="field-error" role="alert">{{ errors.merchant_id }}</span>
+      </div>
+
+      <!-- مبلغ التمويل -->
+      <div class="field-group" :class="{ 'field-group--error': errors.amount }">
+        <label class="field-label" for="amount">مبلغ التمويل <span class="req">*</span></label>
+        <div class="field-input-wrap">
+          <span v-if="errors.amount" class="field-error-icon" aria-hidden="true">⚠</span>
+          <input
+            id="amount"
+            type="number"
+            min="1000"
+            step="1"
+            class="form-input"
+            :class="{ 'form-input--error': errors.amount }"
+            :value="modelValue.amount ?? ''"
+            :disabled="loading"
+            placeholder="0"
+            @input="update('amount', Number(($event.target as HTMLInputElement).value) || null)"
+          />
+        </div>
+        <span v-if="errors.amount" class="field-error" role="alert">{{ errors.amount }}</span>
+      </div>
+
+      <!-- العملة -->
+      <div class="field-group" :class="{ 'field-group--error': errors.currency }">
+        <label class="field-label" for="currency">العملة <span class="req">*</span></label>
+        <div class="field-input-wrap">
+          <span v-if="errors.currency" class="field-error-icon" aria-hidden="true">⚠</span>
+          <select
+            id="currency"
+            class="form-input"
+            :class="{ 'form-input--error': errors.currency }"
+            :value="modelValue.currency"
+            :disabled="loading"
+            @change="update('currency', ($event.target as HTMLSelectElement).value)"
+          >
+            <option v-for="c in Object.values(Currency)" :key="c" :value="c">{{ CURRENCY_LABELS[c] ?? c }}</option>
+          </select>
+        </div>
+        <span v-if="errors.currency" class="field-error" role="alert">{{ errors.currency }}</span>
+      </div>
+
+      <!-- شروط الدفع -->
+      <div class="field-group" :class="{ 'field-group--error': errors.payment_terms }">
+        <label class="field-label" for="payment-terms">شروط الدفع <span class="req">*</span></label>
+        <div class="field-input-wrap">
+          <span v-if="errors.payment_terms" class="field-error-icon" aria-hidden="true">⚠</span>
+          <select
+            id="payment-terms"
+            class="form-input"
+            :class="{ 'form-input--error': errors.payment_terms }"
+            :value="modelValue.payment_terms"
+            :disabled="loading"
+            @change="update('payment_terms', ($event.target as HTMLSelectElement).value)"
+          >
+            <option value="" disabled>اختر شروط الدفع...</option>
+            <option v-for="t in PAYMENT_TERMS" :key="t" :value="t">{{ PAYMENT_LABELS[t] }}</option>
+          </select>
+        </div>
+        <span v-if="errors.payment_terms" class="field-error" role="alert">{{ errors.payment_terms }}</span>
+      </div>
+
+      <!-- تاريخ الاستحقاق (optional) -->
+      <div class="field-group">
+        <label class="field-label" for="due-date">تاريخ الاستحقاق المتوقع</label>
+        <input
+          id="due-date"
+          type="date"
+          class="form-input"
+          :value="modelValue.due_date ?? ''"
+          :disabled="loading"
+          @input="update('due_date', ($event.target as HTMLInputElement).value || '')"
+        />
       </div>
 
       <!-- ملاحظات -->
@@ -356,38 +363,6 @@ const errorCount = computed(() => Object.keys(props.errors).length)
   font-family: 'IBM Plex Sans Arabic', sans-serif;
   font-size: 13px;
   color: #c62828;
-}
-
-/* Amount + currency compound */
-.amount-currency-wrap {
-  display: flex;
-  gap: 0;
-}
-
-.amount-input-wrap {
-  position: relative;
-  flex: 1;
-}
-
-.amount-input {
-  border-radius: 12px 0 0 12px;
-  border-left: none;
-}
-
-.currency-select {
-  width: 96px;
-  flex-shrink: 0;
-  border-radius: 0 12px 12px 0;
-  border-right: none;
-  border-left: 1px solid #cccccc;
-}
-
-.amount-input:focus,
-.currency-select:focus {
-  border-color: #0066cc;
-  border-width: 2px;
-  z-index: 1;
-  position: relative;
 }
 
 /* Merchant readonly */

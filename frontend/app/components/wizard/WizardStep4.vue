@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { ShieldCheck } from 'lucide-vue-next'
 import type { WizardStep1Data, WizardStep2Data, WizardStep3Data } from '../../composables/useRequestWizard'
 
 const PAYMENT_LABELS: Record<string, string> = {
@@ -46,68 +47,68 @@ const formattedAmount = computed(() => {
       <div class="summary-section">
         <h3 class="summary-heading">بيانات الطلب</h3>
         <div class="summary-divider" />
-        <dl class="summary-list">
-          <div v-if="step1.goods_type" class="summary-row">
-            <dt class="summary-key">نوع الواردات</dt>
-            <dd class="summary-val">{{ step1.goods_type }}</dd>
+        <div class="summary-grid">
+          <div v-if="step1.goods_type" class="summary-cell">
+            <span class="summary-cell__label">نوع الواردات</span>
+            <span class="summary-cell__value">{{ step1.goods_type }}</span>
           </div>
-          <div class="summary-row">
-            <dt class="summary-key">المستورد</dt>
-            <dd class="summary-val">{{ merchantName || '—' }}</dd>
+          <div class="summary-cell">
+            <span class="summary-cell__label">المستورد</span>
+            <span class="summary-cell__value">{{ merchantName || '—' }}</span>
           </div>
-          <div v-if="step1.amount" class="summary-row">
-            <dt class="summary-key">مبلغ التمويل</dt>
-            <dd class="summary-val">{{ formattedAmount }}</dd>
+          <div v-if="step1.amount" class="summary-cell">
+            <span class="summary-cell__label">مبلغ التمويل</span>
+            <span class="summary-cell__value">{{ formattedAmount }}</span>
           </div>
-          <div v-if="step1.payment_terms" class="summary-row">
-            <dt class="summary-key">شروط الدفع</dt>
-            <dd class="summary-val">{{ PAYMENT_LABELS[step1.payment_terms] ?? step1.payment_terms }}</dd>
+          <div v-if="step1.payment_terms" class="summary-cell">
+            <span class="summary-cell__label">شروط الدفع</span>
+            <span class="summary-cell__value">{{ PAYMENT_LABELS[step1.payment_terms] ?? step1.payment_terms }}</span>
           </div>
-          <div v-if="step1.due_date" class="summary-row">
-            <dt class="summary-key">تاريخ الاستحقاق</dt>
-            <dd class="summary-val">{{ step1.due_date }}</dd>
+          <div v-if="step1.due_date" class="summary-cell">
+            <span class="summary-cell__label">تاريخ الاستحقاق</span>
+            <span class="summary-cell__value">{{ step1.due_date }}</span>
           </div>
-          <div v-if="step1.notes" class="summary-row">
-            <dt class="summary-key">ملاحظات</dt>
-            <dd class="summary-val">{{ step1.notes }}</dd>
+          <div v-if="step1.notes" class="summary-cell summary-cell--full">
+            <span class="summary-cell__label">ملاحظات</span>
+            <span class="summary-cell__value">{{ step1.notes }}</span>
           </div>
-        </dl>
+        </div>
       </div>
 
       <!-- بيانات المورد والشحنة -->
       <div class="summary-section">
         <h3 class="summary-heading">بيانات المورد والشحنة</h3>
         <div class="summary-divider" />
-        <dl class="summary-list">
-          <div class="summary-row">
-            <dt class="summary-key">المورد</dt>
-            <dd class="summary-val">{{ step2.supplier_name || '—' }}</dd>
+        <div class="summary-grid">
+          <div class="summary-cell">
+            <span class="summary-cell__label">المورد</span>
+            <span class="summary-cell__value">{{ step2.supplier_name || '—' }}</span>
           </div>
-          <div v-if="step2.invoice_number" class="summary-row">
-            <dt class="summary-key">رقم الفاتورة</dt>
-            <dd class="summary-val">{{ step2.invoice_number }}</dd>
+          <div v-if="step2.origin_country" class="summary-cell">
+            <span class="summary-cell__label">بلد المنشأ</span>
+            <span class="summary-cell__value">{{ step2.origin_country }}</span>
           </div>
-          <div v-if="step2.invoice_date" class="summary-row">
-            <dt class="summary-key">تاريخ الفاتورة</dt>
-            <dd class="summary-val">{{ step2.invoice_date }}</dd>
+          <div v-if="step2.invoice_number" class="summary-cell">
+            <span class="summary-cell__label">رقم الفاتورة</span>
+            <span class="summary-cell__value">{{ step2.invoice_number }}</span>
           </div>
-          <div v-if="step2.arrival_port" class="summary-row">
-            <dt class="summary-key">ميناء الوصول</dt>
-            <dd class="summary-val">{{ step2.arrival_port }}</dd>
+          <div v-if="step2.invoice_date" class="summary-cell">
+            <span class="summary-cell__label">تاريخ الفاتورة</span>
+            <span class="summary-cell__value">{{ step2.invoice_date }}</span>
           </div>
-          <div v-if="step2.origin_country" class="summary-row">
-            <dt class="summary-key">بلد المنشأ</dt>
-            <dd class="summary-val">{{ step2.origin_country }}</dd>
+          <div v-if="step2.arrival_port" class="summary-cell">
+            <span class="summary-cell__label">ميناء الوصول</span>
+            <span class="summary-cell__value">{{ step2.arrival_port }}</span>
           </div>
-          <div v-if="step2.customs_office" class="summary-row">
-            <dt class="summary-key">الجمارك المختصة</dt>
-            <dd class="summary-val">{{ step2.customs_office }}</dd>
+          <div v-if="step2.bl_number" class="summary-cell">
+            <span class="summary-cell__label">رقم بوليصة الشحن</span>
+            <span class="summary-cell__value">{{ step2.bl_number }}</span>
           </div>
-          <div v-if="step2.bl_number" class="summary-row">
-            <dt class="summary-key">رقم بوليصة الشحن</dt>
-            <dd class="summary-val">{{ step2.bl_number }}</dd>
+          <div v-if="step2.customs_office" class="summary-cell">
+            <span class="summary-cell__label">الجمارك المختصة</span>
+            <span class="summary-cell__value">{{ step2.customs_office }}</span>
           </div>
-        </dl>
+        </div>
       </div>
 
       <!-- الوثائق المرفوعة -->
@@ -126,6 +127,10 @@ const formattedAmount = computed(() => {
 
     <!-- Acknowledgment checkbox -->
     <div class="ack-container">
+      <div class="ack-header">
+        <ShieldCheck class="ack-icon" :size="20" aria-hidden="true" />
+        <span class="ack-header-text">إقرار بصحة البيانات</span>
+      </div>
       <label class="ack-label">
         <input
           type="checkbox"
@@ -186,29 +191,31 @@ const formattedAmount = computed(() => {
   margin-bottom: 12px;
 }
 
-.summary-list {
+/* 2-column summary grid */
+.summary-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 24px;
+}
+
+.summary-cell {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin: 0;
-  padding: 0;
+  gap: 2px;
 }
 
-.summary-row {
-  display: flex;
-  gap: 8px;
-  align-items: flex-start;
+.summary-cell--full {
+  grid-column: span 2;
 }
 
-.summary-key {
+.summary-cell__label {
   font-family: 'IBM Plex Sans Arabic', sans-serif;
-  font-size: 14px;
+  font-size: 12px;
   color: #6c757d;
-  min-width: 140px;
-  flex-shrink: 0;
+  font-weight: 400;
 }
 
-.summary-val {
+.summary-cell__value {
   font-family: 'IBM Plex Sans Arabic', sans-serif;
   font-size: 14px;
   font-weight: 500;
@@ -250,13 +257,32 @@ const formattedAmount = computed(() => {
   color: #1c222b;
 }
 
-/* Acknowledgment */
+/* Acknowledgment — blue info tone */
 .ack-container {
-  background: #fff8e1;
-  border: 1px solid #ffe082;
+  background: #e3f2fd;
+  border: 1px solid #bbdefb;
   border-radius: 12px;
   padding: 16px;
   margin-bottom: 8px;
+}
+
+.ack-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.ack-icon {
+  color: #0066cc;
+  flex-shrink: 0;
+}
+
+.ack-header-text {
+  font-family: 'Tajawal', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  color: #0d47a1;
 }
 
 .ack-label {
@@ -270,7 +296,7 @@ const formattedAmount = computed(() => {
   width: 20px;
   height: 20px;
   border-radius: 4px;
-  border: 2px solid #cccccc;
+  border: 2px solid #90caf9;
   accent-color: #0066cc;
   flex-shrink: 0;
   margin-top: 2px;
@@ -280,7 +306,16 @@ const formattedAmount = computed(() => {
 .ack-text {
   font-family: 'IBM Plex Sans Arabic', sans-serif;
   font-size: 14px;
-  color: #1c222b;
+  color: #0d47a1;
   line-height: 1.6;
+}
+
+@media (max-width: 600px) {
+  .summary-grid {
+    grid-template-columns: 1fr;
+  }
+  .summary-cell--full {
+    grid-column: span 1;
+  }
 }
 </style>

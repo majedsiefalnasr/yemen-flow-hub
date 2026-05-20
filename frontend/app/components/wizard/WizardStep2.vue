@@ -65,25 +65,6 @@ const errorCount = computed(() => Object.keys(props.errors).length)
         <span v-if="errors.supplier_name" class="field-error" role="alert">{{ errors.supplier_name }}</span>
       </div>
 
-      <!-- رقم الفاتورة -->
-      <div class="field-group" :class="{ 'field-group--error': errors.invoice_number }">
-        <label class="field-label" for="invoice-number">رقم الفاتورة <span class="req">*</span></label>
-        <div class="field-input-wrap">
-          <span v-if="errors.invoice_number" class="field-error-icon" aria-hidden="true">⚠</span>
-          <input
-            id="invoice-number"
-            type="text"
-            class="form-input"
-            :class="{ 'form-input--error': errors.invoice_number }"
-            :value="modelValue.invoice_number"
-            :disabled="loading"
-            placeholder="INV-2025-XXXX"
-            @input="update('invoice_number', ($event.target as HTMLInputElement).value)"
-          />
-        </div>
-        <span v-if="errors.invoice_number" class="field-error" role="alert">{{ errors.invoice_number }}</span>
-      </div>
-
       <!-- بلد المنشأ -->
       <div class="field-group" :class="{ 'field-group--error': errors.origin_country }">
         <label class="field-label" for="origin-country">بلد المنشأ <span class="req">*</span></label>
@@ -102,6 +83,25 @@ const errorCount = computed(() => Object.keys(props.errors).length)
           </select>
         </div>
         <span v-if="errors.origin_country" class="field-error" role="alert">{{ errors.origin_country }}</span>
+      </div>
+
+      <!-- رقم الفاتورة -->
+      <div class="field-group" :class="{ 'field-group--error': errors.invoice_number }">
+        <label class="field-label" for="invoice-number">رقم الفاتورة <span class="req">*</span></label>
+        <div class="field-input-wrap">
+          <span v-if="errors.invoice_number" class="field-error-icon" aria-hidden="true">⚠</span>
+          <input
+            id="invoice-number"
+            type="text"
+            class="form-input"
+            :class="{ 'form-input--error': errors.invoice_number }"
+            :value="modelValue.invoice_number"
+            :disabled="loading"
+            placeholder="INV-2025-XXXX"
+            @input="update('invoice_number', ($event.target as HTMLInputElement).value)"
+          />
+        </div>
+        <span v-if="errors.invoice_number" class="field-error" role="alert">{{ errors.invoice_number }}</span>
       </div>
 
       <!-- تاريخ الفاتورة -->
@@ -156,8 +156,22 @@ const errorCount = computed(() => Object.keys(props.errors).length)
         />
       </div>
 
+      <!-- رقم بوليصة الشحن (optional) -->
+      <div class="field-group">
+        <label class="field-label" for="bl-number">رقم بوليصة الشحن</label>
+        <input
+          id="bl-number"
+          type="text"
+          class="form-input"
+          :value="modelValue.bl_number ?? ''"
+          :disabled="loading"
+          placeholder="BL-XXXX-XXXX"
+          @input="update('bl_number', ($event.target as HTMLInputElement).value)"
+        />
+      </div>
+
       <!-- الجمارك المختصة -->
-      <div class="field-group field-group--full">
+      <div class="field-group">
         <label class="field-label" for="customs-office">
           الجمارك المختصة
           <span v-if="autoFillChip" class="autofill-chip" aria-live="polite">تم التعبئة التلقائية</span>
@@ -174,20 +188,6 @@ const errorCount = computed(() => Object.keys(props.errors).length)
           <option value="جمارك الحديدة">جمارك الحديدة</option>
           <option value="جمارك المكلا">جمارك المكلا</option>
         </select>
-      </div>
-
-      <!-- رقم بوليصة الشحن (optional) -->
-      <div class="field-group">
-        <label class="field-label" for="bl-number">رقم بوليصة الشحن</label>
-        <input
-          id="bl-number"
-          type="text"
-          class="form-input"
-          :value="modelValue.bl_number ?? ''"
-          :disabled="loading"
-          placeholder="BL-XXXX-XXXX"
-          @input="update('bl_number', ($event.target as HTMLInputElement).value)"
-        />
       </div>
     </div>
   </div>

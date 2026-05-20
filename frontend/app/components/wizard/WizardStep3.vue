@@ -27,8 +27,8 @@ const ZONES: DocumentZone[] = [
 ]
 
 const MAX_SIZE_MB = 10
-const ALLOWED_TYPES = ['application/pdf', 'image/jpeg', 'image/jpg']
-const ALLOWED_EXTENSIONS = ['.pdf', '.jpg', '.jpeg']
+const ALLOWED_TYPES = ['application/pdf']
+const ALLOWED_EXTENSIONS = ['.pdf']
 
 const dragOver = ref<WizardDocumentKey | null>(null)
 const fileErrors = ref<Partial<Record<WizardDocumentKey, string>>>({})
@@ -40,7 +40,7 @@ function formatBytes(bytes: number): string {
 
 function validateFile(file: File): string | null {
   if (!ALLOWED_TYPES.includes(file.type)) {
-    return 'يجب أن يكون الملف بصيغة PDF أو JPG'
+    return 'يجب أن يكون الملف بصيغة PDF فقط'
   }
   if (file.size > MAX_SIZE_MB * 1024 * 1024) {
     return `حجم الملف يتجاوز الحد الأقصى (${MAX_SIZE_MB}MB)`
@@ -144,9 +144,12 @@ function getFileError(key: WizardDocumentKey): string | null {
         <!-- Idle / error state -->
         <template v-else>
           <span class="zone-upload-icon" aria-hidden="true">⬆</span>
-          <p class="zone-drop-text">أسقط الملف هنا<br /><span class="zone-or">أو</span></p>
+          <p class="zone-title">{{ zone.title }}</p>
+          <p class="zone-hint">
+            {{ zone.required ? 'إلزامي' : 'اختياري' }} — PDF (حد أقصى {{ MAX_SIZE_MB }}MB)
+          </p>
           <label class="zone-browse-btn">
-            أضغط للرفع
+            اضغط للرفع
             <input
               type="file"
               class="visually-hidden"
@@ -155,8 +158,6 @@ function getFileError(key: WizardDocumentKey): string | null {
               @change="onInputChange(zone.key, $event)"
             />
           </label>
-          <p class="zone-title">{{ zone.title }}</p>
-          <p class="zone-hint">PDF, JPG — مد أقصى {{ MAX_SIZE_MB }}MB</p>
         </template>
 
         <!-- File error -->
@@ -269,9 +270,11 @@ function getFileError(key: WizardDocumentKey): string | null {
 }
 
 .zone-browse-btn {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  height: 32px;
+  justify-content: center;
+  width: 100%;
+  height: 36px;
   padding: 0 16px;
   border: 1px solid #cccccc;
   border-radius: 16px;
@@ -281,6 +284,7 @@ function getFileError(key: WizardDocumentKey): string | null {
   font-size: 13px;
   cursor: pointer;
   transition: border-color 150ms;
+  box-sizing: border-box;
 }
 
 .zone-browse-btn:hover {

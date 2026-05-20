@@ -121,7 +121,7 @@ const isSubmitDisabled = computed(() => !wizard.acknowledged.value || wizard.sub
     <!-- Page title -->
     <div class="page-header">
       <h1 class="page-title">تقديم طلب تمويل واردات جديد</h1>
-      <p class="page-subtitle">أملأ البيانات بدقة وأرفق المستندات المطلوبة</p>
+      <p class="page-subtitle">املأ البيانات بدقة وأرفق المستندات المطلوبة</p>
     </div>
 
     <!-- Toast -->
@@ -179,53 +179,54 @@ const isSubmitDisabled = computed(() => !wizard.acknowledged.value || wizard.sub
         :acknowledged="wizard.acknowledged.value"
         @update:acknowledged="(v) => { wizard.acknowledged.value = v }"
       />
-    </div>
 
-    <!-- Bottom navigation bar -->
-    <div class="bottom-nav" role="toolbar" aria-label="تنقل خطوات الطلب">
-      <!-- Previous -->
-      <button
-        v-if="!isFirstStep"
-        type="button"
-        class="btn-ghost btn-prev"
-        :disabled="wizard.saving.value || wizard.submitting.value"
-        @click="wizard.prevStep"
-      >
-        → السابق
-      </button>
-      <span v-else class="btn-placeholder" />
+      <!-- Bottom navigation bar (inside step card) -->
+      <div class="bottom-nav-divider" aria-hidden="true" />
+      <div class="bottom-nav" role="toolbar" aria-label="تنقل خطوات الطلب">
+        <!-- Previous -->
+        <button
+          v-if="!isFirstStep"
+          type="button"
+          class="btn-ghost btn-prev"
+          :disabled="wizard.saving.value || wizard.submitting.value"
+          @click="wizard.prevStep"
+        >
+          → السابق
+        </button>
+        <span v-else class="btn-placeholder" />
 
-      <!-- Save draft -->
-      <button
-        type="button"
-        class="btn-ghost btn-draft"
-        :disabled="wizard.saving.value || wizard.submitting.value"
-        @click="handleSaveDraft"
-      >
-        <span v-if="wizard.saving.value">جارٍ الحفظ...</span>
-        <span v-else>💾 حفظ كمسودة</span>
-      </button>
+        <!-- Save draft -->
+        <button
+          type="button"
+          class="btn-ghost btn-draft"
+          :disabled="wizard.saving.value || wizard.submitting.value"
+          @click="handleSaveDraft"
+        >
+          <span v-if="wizard.saving.value">جارٍ الحفظ...</span>
+          <span v-else>💾 حفظ كمسودة</span>
+        </button>
 
-      <!-- Next / Submit -->
-      <button
-        v-if="!isLastStep"
-        type="button"
-        class="btn-primary btn-next"
-        :disabled="wizard.saving.value"
-        @click="handleNext"
-      >
-        التالي ←
-      </button>
-      <button
-        v-else
-        type="button"
-        class="btn-primary btn-submit"
-        :disabled="isSubmitDisabled"
-        @click="handleSubmit"
-      >
-        <span v-if="wizard.submitting.value">جارٍ الإرسال...</span>
-        <span v-else>إرسال للمراجعة ←</span>
-      </button>
+        <!-- Next / Submit -->
+        <button
+          v-if="!isLastStep"
+          type="button"
+          class="btn-primary btn-next"
+          :disabled="wizard.saving.value"
+          @click="handleNext"
+        >
+          التالي ←
+        </button>
+        <button
+          v-else
+          type="button"
+          class="btn-primary btn-submit"
+          :disabled="isSubmitDisabled"
+          @click="handleSubmit"
+        >
+          <span v-if="wizard.submitting.value">جارٍ الإرسال...</span>
+          <span v-else>إرسال للمراجعة ←</span>
+        </button>
+      </div>
     </div>
   </div>
 </template>
@@ -235,7 +236,6 @@ const isSubmitDisabled = computed(() => !wizard.acknowledged.value || wizard.sub
   display: flex;
   flex-direction: column;
   gap: 24px;
-  padding-bottom: 100px; /* room for sticky bottom nav */
 }
 
 /* Breadcrumb */
@@ -311,18 +311,19 @@ const isSubmitDisabled = computed(() => !wizard.acknowledged.value || wizard.sub
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
 }
 
-/* Bottom nav */
+/* Bottom nav divider */
+.bottom-nav-divider {
+  height: 1px;
+  background: #cccccc;
+  margin: 24px -24px 0;
+}
+
+/* Bottom nav — now inside the step card */
 .bottom-nav {
-  position: sticky;
-  bottom: 0;
-  background: #ffffff;
-  border-top: 1px solid #cccccc;
-  padding: 16px 24px;
-  z-index: 10;
   display: flex;
   align-items: center;
   gap: 12px;
-  margin: 0 -24px;
+  padding-top: 16px;
 }
 
 .btn-placeholder { flex: 0 0 80px; }

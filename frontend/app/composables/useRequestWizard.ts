@@ -284,9 +284,9 @@ export function useRequestWizard() {
         uploadState.value[key] = 'uploading'
         try {
           const form = new FormData()
+          form.append('request_id', String(requestId))
           form.append('file', file)
-          form.append('label', DOCUMENT_LABELS[key])
-          await $fetch(`/api/requests/${requestId}/documents`, {
+          await $fetch(`/api/documents/upload`, {
             method: 'POST',
             baseURL,
             credentials: 'include',
