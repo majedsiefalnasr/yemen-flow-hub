@@ -46,7 +46,7 @@ const slices = computed(() => {
             :stroke="slice.color"
             stroke-width="3"
             :stroke-dasharray="`${slice.pct} ${100 - slice.pct}`"
-            :stroke-dashoffset="100 - slice.offset + 25"
+            :stroke-dashoffset="25 - slice.offset"
           />
           <text x="21" y="20.5" text-anchor="middle" font-size="5" font-weight="600" fill="#1c222b">
             {{ total.toLocaleString('ar-EG') }}

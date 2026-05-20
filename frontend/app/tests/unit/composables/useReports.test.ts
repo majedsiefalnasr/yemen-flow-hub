@@ -226,6 +226,25 @@ describe('useReports — WorkflowReport new 7.8 fields', () => {
       avg_processing_hours: 12.5,
     })
   })
+
+  it('BankReport interface accepts optional analytics fields from 7.8 bank endpoint', async () => {
+    const bankReportWithAnalytics = {
+      ...BANK_REPORT,
+      monthly_trend: [{ month: '2026-05', total: 3, approved: 2, rejected: 0 }],
+      category_distribution: [{ category: 'Electronics', count: 3 }],
+      amount_by_currency: [{ currency: 'USD', amount: 5000 }],
+      submission_heatmap: [{ day: 2, slot: 10, count: 2 }],
+    }
+    mockGet.mockResolvedValueOnce({ success: true, data: bankReportWithAnalytics })
+
+    const { fetchBankReport } = useReports()
+    const result = await fetchBankReport()
+
+    expect(result.monthly_trend).toHaveLength(1)
+    expect(result.category_distribution![0]).toMatchObject({ category: 'Electronics', count: 3 })
+    expect(result.amount_by_currency![0]).toMatchObject({ currency: 'USD', amount: 5000 })
+    expect(result.submission_heatmap![0]).toMatchObject({ day: 2, slot: 10, count: 2 })
+  })
 })
 
 // localStorage stub for node environment

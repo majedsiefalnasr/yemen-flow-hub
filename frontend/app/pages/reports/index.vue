@@ -12,7 +12,7 @@ const REPORTING_ROLES = [
   UserRole.CBY_ADMIN,
   UserRole.EXECUTIVE_MEMBER,
   UserRole.COMMITTEE_DIRECTOR,
-  UserRole.DATA_ENTRY,
+  UserRole.SUPPORT_COMMITTEE,
   UserRole.BANK_REVIEWER,
   UserRole.BANK_ADMIN,
 ]
@@ -28,10 +28,10 @@ const store = useReportsStore()
 const role = computed(() => auth.user?.role)
 
 const isCbyUser = computed(() =>
-  [UserRole.CBY_ADMIN, UserRole.EXECUTIVE_MEMBER, UserRole.COMMITTEE_DIRECTOR].includes(role.value as UserRole),
+  [UserRole.CBY_ADMIN, UserRole.EXECUTIVE_MEMBER, UserRole.COMMITTEE_DIRECTOR, UserRole.SUPPORT_COMMITTEE].includes(role.value as UserRole),
 )
 const isBankUser = computed(() =>
-  [UserRole.DATA_ENTRY, UserRole.BANK_REVIEWER, UserRole.BANK_ADMIN].includes(role.value as UserRole),
+  [UserRole.BANK_REVIEWER, UserRole.BANK_ADMIN].includes(role.value as UserRole),
 )
 
 // Filters
@@ -130,10 +130,27 @@ function formatFinancing(v: number): string {
   return v.toLocaleString('ar-EG')
 }
 
+// ─── Chart data sources (CBY from workflowReport, bank from bankReport) ──────
+
+const chartMonthlyTrend = computed(() =>
+  store.workflowReport?.monthly_trend ?? store.bankReport?.monthly_trend ?? [],
+)
+const chartCategoryDist = computed(() =>
+  store.workflowReport?.category_distribution ?? store.bankReport?.category_distribution ?? [],
+)
+const chartAmountByCurrency = computed(() =>
+  store.workflowReport?.amount_by_currency ?? store.bankReport?.amount_by_currency ?? [],
+)
+const chartHeatmap = computed(() =>
+  store.workflowReport?.submission_heatmap ?? store.bankReport?.submission_heatmap ?? [],
+)
+
+const hasChartData = computed(() => !!(store.workflowReport || store.bankReport))
+
 // ─── Line chart ──────────────────────────────────────────────────────────────
 
 const lineChartSeries = computed(() => {
-  const trend = store.workflowReport?.monthly_trend ?? []
+  const trend = chartMonthlyTrend.value
   if (!trend.length) return []
   return [
     { label: 'طلبات', values: trend.map((m) => m.total), color: '#0066cc' },
@@ -143,7 +160,7 @@ const lineChartSeries = computed(() => {
 })
 
 const lineChartLabels = computed(() =>
-  (store.workflowReport?.monthly_trend ?? []).map((m) => m.month.slice(5)), // show MM only
+  chartMonthlyTrend.value.map((m) => m.month.slice(5)), // show MM only
 )
 
 // ─── Pie chart ────────────────────────────────────────────────────────────────
@@ -151,8 +168,7 @@ const lineChartLabels = computed(() =>
 const PIE_COLORS = ['#0066cc', '#5856d6', '#32ade6', '#f57f17', '#c62828']
 
 const pieChartData = computed(() => {
-  const cats = store.workflowReport?.category_distribution ?? []
-  return cats.map((c, i) => ({
+  return chartCategoryDist.value.map((c, i) => ({
     label: c.category,
     value: c.count,
     color: PIE_COLORS[i % PIE_COLORS.length] ?? '#0066cc',
@@ -162,17 +178,12 @@ const pieChartData = computed(() => {
 // ─── Currency bar chart ────────────────────────────────────────────────────
 
 const currencyBarData = computed(() =>
-  (store.workflowReport?.amount_by_currency ?? []).map((c) => ({
-    currency: c.currency,
-    amount: c.amount,
-  })),
+  chartAmountByCurrency.value.map((c) => ({ currency: c.currency, amount: c.amount })),
 )
 
 // ─── Heatmap ─────────────────────────────────────────────────────────────────
 
-const heatmapData = computed(() =>
-  store.workflowReport?.submission_heatmap ?? [],
-)
+const heatmapData = computed(() => chartHeatmap.value)
 
 // ─── Bank bar chart (existing) ────────────────────────────────────────────────
 
@@ -380,7 +391,7 @@ const statusRows = computed(() => {
       </div>
 
       <!-- Charts: Row 1 — Line + Pie -->
-      <div v-if="store.workflowReport" class="charts-row">
+      <div v-if="hasChartData" class="charts-row">
         <div class="section-card chart-lg" data-testid="line-chart">
           <h2 class="section-title">تطور أحجام الطلبات</h2>
           <p class="section-subtitle">أحجام الطلبات الشهرية خلال آخر 12 شهرًا</p>
@@ -402,7 +413,7 @@ const statusRows = computed(() => {
       </div>
 
       <!-- Charts: Row 2 — Currency Bar + Bank Volume -->
-      <div v-if="store.workflowReport" class="charts-row">
+      <div v-if="hasChartData" class="charts-row">
         <div class="section-card chart-lg">
           <h2 class="section-title">قيمة التمويل بالعملة</h2>
           <CurrencyBarChart
@@ -431,7 +442,7 @@ const statusRows = computed(() => {
       </div>
 
       <!-- Heatmap (full width) -->
-      <div v-if="store.workflowReport" class="section-card" data-testid="heatmap">
+      <div v-if="hasChartData" class="section-card" data-testid="heatmap">
         <h2 class="section-title">خريطة حرارية: كثافة التقديم خلال الأسبوع</h2>
         <p class="section-subtitle">أنماط تقديم الطلبات حسب اليوم والوقت</p>
         <SubmissionHeatmap :data="heatmapData" />

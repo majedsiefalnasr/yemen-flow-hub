@@ -54,7 +54,7 @@ const yTicks = computed(() => {
 
 <template>
   <div class="line-chart" dir="rtl">
-    <div v-if="!series.length || !labels.length" class="chart-empty">لا توجد بيانات</div>
+    <div v-if="!series.length || !labels.length || series.some((s) => s.values.length !== labels.length)" class="chart-empty">لا توجد بيانات</div>
     <svg v-else :viewBox="`0 0 ${width} ${height}`" class="chart-svg" aria-label="مخطط خطي">
       <!-- Y-axis grid lines -->
       <line

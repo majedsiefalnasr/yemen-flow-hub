@@ -28,6 +28,10 @@ export interface BankReport {
   approval_rate: number
   rejection_rate: number
   avg_processing_hours: number
+  monthly_trend?: Array<{ month: string; total: number; approved: number; rejected: number }>
+  category_distribution?: Array<{ category: string; count: number }>
+  amount_by_currency?: Array<{ currency: string; amount: number }>
+  submission_heatmap?: Array<{ day: number; slot: number; count: number }>
   per_bank?: Array<{
     bank_id: number
     bank_name: string
