@@ -312,7 +312,10 @@ class ClaimLifecycleTest extends TestCase
 
         $this->actingAs($this->supportUser)
             ->postJson("/api/workflow/{$request->id}/support-approve")
-            ->assertOk();
+            ->assertOk()
+            ->assertJsonPath('data.support_reviewed_by', $this->supportUser->id)
+            ->assertJsonPath('data.support_reviewed_by_user.id', $this->supportUser->id)
+            ->assertJsonPath('data.support_reviewed_by_user.name', $this->supportUser->name);
 
         $request->refresh();
         $this->assertEquals(RequestStatus::WAITING_FOR_SWIFT, $request->status);

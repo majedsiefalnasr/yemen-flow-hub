@@ -113,7 +113,9 @@ class VotingEngineTest extends TestCase
         $this->actingAs($this->director)
             ->postJson("/api/voting/{$request->id}/open")
             ->assertOk()
-            ->assertJsonPath('data.status', RequestStatus::EXECUTIVE_VOTING_OPEN->value);
+            ->assertJsonPath('data.status', RequestStatus::EXECUTIVE_VOTING_OPEN->value)
+            ->assertJsonPath('data.created_by_user.id', $this->dataEntry->id)
+            ->assertJsonPath('data.created_by_user.name', $this->dataEntry->name);
 
         $this->assertDatabaseHas('import_requests', [
             'id' => $request->id,

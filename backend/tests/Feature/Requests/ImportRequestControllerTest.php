@@ -23,6 +23,7 @@ class ImportRequestControllerTest extends TestCase
     private Bank $otherBank;
     private User $dataEntry;
     private User $otherDataEntry;
+    private User $supportReviewer;
     private Merchant $merchant;
 
     protected function setUp(): void
@@ -35,6 +36,7 @@ class ImportRequestControllerTest extends TestCase
         $this->otherBank = $this->makeBank('OTH');
         $this->dataEntry = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
         $this->otherDataEntry = $this->makeUser(UserRole::DATA_ENTRY, $this->otherBank);
+        $this->supportReviewer = $this->makeUser(UserRole::SUPPORT_COMMITTEE);
         $this->merchant = $this->makeMerchant($this->bank);
     }
 
@@ -169,6 +171,17 @@ class ImportRequestControllerTest extends TestCase
             ->assertJsonPath('data.bank_id', $this->bank->id);
     }
 
+    public function test_create_response_includes_created_by_user(): void
+    {
+        $response = $this->actingAs($this->dataEntry)
+            ->postJson('/api/requests', $this->validPayload());
+
+        $response->assertStatus(201)
+            ->assertJsonPath('data.created_by', $this->dataEntry->id)
+            ->assertJsonPath('data.created_by_user.id', $this->dataEntry->id)
+            ->assertJsonPath('data.created_by_user.name', $this->dataEntry->name);
+    }
+
     public function test_unauthenticated_user_cannot_create_request(): void
     {
         $this->postJson('/api/requests', $this->validPayload())
@@ -190,6 +203,19 @@ class ImportRequestControllerTest extends TestCase
             'supplier_name' => 'Updated Supplier',
             'last_updated_by' => $this->dataEntry->id,
         ]);
+    }
+
+    public function test_update_response_includes_last_updated_by_user(): void
+    {
+        $request = $this->makeRequest($this->bank, $this->dataEntry);
+
+        $response = $this->actingAs($this->dataEntry)
+            ->putJson("/api/requests/{$request->id}", $this->validPayload());
+
+        $response->assertOk()
+            ->assertJsonPath('data.last_updated_by', $this->dataEntry->id)
+            ->assertJsonPath('data.last_updated_by_user.id', $this->dataEntry->id)
+            ->assertJsonPath('data.last_updated_by_user.name', $this->dataEntry->name);
     }
 
     public function test_any_bank_data_entry_can_update_bank_owned_draft(): void
@@ -567,6 +593,29 @@ class ImportRequestControllerTest extends TestCase
         $this->assertNull($response->json('data.submitted_by_user'));
     }
 
+    public function test_show_includes_support_reviewed_by_user_name(): void
+    {
+        $request = $this->makeRequest($this->bank, $this->dataEntry, RequestStatus::WAITING_FOR_SWIFT);
+
+        app()->instance('workflow.transition.active', true);
+        try {
+            $request->forceFill([
+                'support_reviewed_by' => $this->supportReviewer->id,
+            ])->save();
+        } finally {
+            app()->offsetUnset('workflow.transition.active');
+        }
+
+        $response = $this->actingAs($this->dataEntry)
+            ->getJson("/api/requests/{$request->id}");
+
+        $response->assertOk()
+            ->assertJsonPath('data.support_reviewed_by', $this->supportReviewer->id)
+            ->assertJsonPath('data.support_reviewed_by_user.id', $this->supportReviewer->id)
+            ->assertJsonPath('data.support_reviewed_by_user.name', $this->supportReviewer->name)
+            ->assertJsonPath('data.support_reviewer.id', $this->supportReviewer->id);
+    }
+
     public function test_show_includes_all_actor_user_keys(): void
     {
         $req = $this->makeRequest($this->bank, $this->dataEntry);
@@ -577,12 +626,17 @@ class ImportRequestControllerTest extends TestCase
         $response->assertOk();
         $keys = [
             'created_by_user',
+            'last_updated_by_user',
             'submitted_by_user',
             'reviewed_by_user',
             'approved_by_user',
             'rejected_by_user',
             'resubmitted_by_user',
+            'support_reviewed_by_user',
             'swift_uploaded_by_user',
+            'internal_reviewer',
+            'support_reviewer',
+            'support_claimed_by',
         ];
         foreach ($keys as $key) {
             $this->assertArrayHasKey($key, $response->json('data'), "Missing key: {$key}");
@@ -598,11 +652,13 @@ class ImportRequestControllerTest extends TestCase
 
         $response->assertOk();
         $nullableActors = [
+            'last_updated_by_user',
             'submitted_by_user',
             'reviewed_by_user',
             'approved_by_user',
             'rejected_by_user',
             'resubmitted_by_user',
+            'support_reviewed_by_user',
             'swift_uploaded_by_user',
         ];
         foreach ($nullableActors as $key) {

@@ -80,7 +80,7 @@ class WorkflowController extends Controller
             );
 
             return ApiResponse::success(
-                new ImportRequestResource($updated->load(['bank', 'merchant', 'claimedByUser'])),
+                new ImportRequestResource($updated->load(ImportRequestResource::baseRelations())),
                 'Claim acquired.'
             );
         });
@@ -114,7 +114,7 @@ class WorkflowController extends Controller
         $updated = $this->workflowService->transition($importRequest, 'support_release', $actor, null, $metadata);
 
         return ApiResponse::success(
-            new ImportRequestResource($updated->load(['bank', 'merchant', 'claimedByUser'])),
+            new ImportRequestResource($updated->load(ImportRequestResource::baseRelations())),
             'Claim released.'
         );
     }
@@ -185,7 +185,7 @@ class WorkflowController extends Controller
         }
 
         return ApiResponse::success(
-            new ImportRequestResource($updated->load(['bank', 'merchant', 'claimedByUser'])),
+            new ImportRequestResource($updated->load(ImportRequestResource::baseRelations())),
             'Executive decision finalized.'
         );
     }
@@ -201,6 +201,6 @@ class WorkflowController extends Controller
             $request->input('reason')
         );
 
-        return ApiResponse::success(new ImportRequestResource($updated->load(['bank', 'merchant', 'claimedByUser'])), 'Workflow transition executed.');
+        return ApiResponse::success(new ImportRequestResource($updated->load(ImportRequestResource::baseRelations())), 'Workflow transition executed.');
     }
 }

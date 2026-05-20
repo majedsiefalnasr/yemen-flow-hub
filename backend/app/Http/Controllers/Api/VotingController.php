@@ -71,7 +71,7 @@ class VotingController extends Controller
             ->count();
 
         return ApiResponse::success([
-            'request' => new ImportRequestResource($importRequest->load('bank')),
+            'request' => new ImportRequestResource($importRequest->load(ImportRequestResource::baseRelations())),
             'tally' => new VotingTallyResource($this->votingService->tally($importRequest)),
             'votes' => VoteResource::collection($votes),
             'total_members' => $totalMembers,
@@ -88,7 +88,7 @@ class VotingController extends Controller
 
         $updated = $this->workflowService->transition($importRequest, 'open_voting', $request->user());
 
-        return ApiResponse::success(new ImportRequestResource($updated->load('bank')), 'Voting session opened.');
+        return ApiResponse::success(new ImportRequestResource($updated->load(ImportRequestResource::baseRelations())), 'Voting session opened.');
     }
 
     #[OA\Post(path: '/api/voting/{importRequest}/close', tags: ['Voting'], summary: 'Director closes voting session and applies AUTO_ABSTAIN_TIMEOUT to non-voters', parameters: [new OA\Parameter(name: 'importRequest', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], responses: [new OA\Response(response: 200, description: 'Voting session closed')])]
@@ -104,7 +104,7 @@ class VotingController extends Controller
             return ApiResponse::error($e->getMessage(), [], 422);
         }
 
-        return ApiResponse::success(new ImportRequestResource($updated->load('bank')), 'Voting session closed.');
+        return ApiResponse::success(new ImportRequestResource($updated->load(ImportRequestResource::baseRelations())), 'Voting session closed.');
     }
 
     #[OA\Post(path: '/api/voting/{importRequest}/vote', tags: ['Voting'], summary: 'Cast executive vote', parameters: [new OA\Parameter(name: 'importRequest', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], requestBody: new OA\RequestBody(required: true, content: new OA\JsonContent(required: ['vote'], properties: [new OA\Property(property: 'vote', type: 'string', enum: ['APPROVE', 'REJECT']), new OA\Property(property: 'justification', type: 'string', nullable: true, maxLength: 3000)])), responses: [new OA\Response(response: 200, description: 'Vote cast')])]
@@ -132,7 +132,7 @@ class VotingController extends Controller
             $request->user()
         );
 
-        return ApiResponse::success(new ImportRequestResource($updated->load('bank')), 'Director decision applied.');
+        return ApiResponse::success(new ImportRequestResource($updated->load(ImportRequestResource::baseRelations())), 'Director decision applied.');
     }
 
     #[OA\Post(path: '/api/voting/{importRequest}/override', tags: ['Voting'], summary: 'Committee director override and finalize', parameters: [new OA\Parameter(name: 'importRequest', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], requestBody: new OA\RequestBody(required: true, content: new OA\JsonContent(required: ['decision', 'justification'], properties: [new OA\Property(property: 'decision', type: 'string', enum: ['APPROVE', 'REJECT']), new OA\Property(property: 'justification', type: 'string', minLength: 3, maxLength: 3000)])), responses: [new OA\Response(response: 200, description: 'Override decision applied')])]
@@ -149,6 +149,6 @@ class VotingController extends Controller
             $request->string('justification')->toString()
         );
 
-        return ApiResponse::success(new ImportRequestResource($updated->load('bank')), 'Override decision applied.');
+        return ApiResponse::success(new ImportRequestResource($updated->load(ImportRequestResource::baseRelations())), 'Override decision applied.');
     }
 }

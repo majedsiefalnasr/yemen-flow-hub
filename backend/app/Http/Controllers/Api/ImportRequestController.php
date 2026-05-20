@@ -179,7 +179,7 @@ class ImportRequestController extends Controller
             App::offsetUnset('workflow.transition.active');
         }
 
-        return ApiResponse::success(new ImportRequestResource($importRequest->load(['bank', 'merchant', 'claimedByUser'])), 'Draft request created.', 201);
+        return ApiResponse::success(new ImportRequestResource($importRequest->load(ImportRequestResource::baseRelations())), 'Draft request created.', 201);
     }
 
     #[OA\Get(
@@ -194,20 +194,7 @@ class ImportRequestController extends Controller
         $this->authorize('view', $importRequest);
 
         return ApiResponse::success(
-            new ImportRequestResource($importRequest->load([
-                'bank',
-                'merchant',
-                'claimedByUser',
-                'documents.uploader',
-                'issuedCustomsDeclaration.issuer',
-                'creator',
-                'submittedBy',
-                'reviewedBy',
-                'approvedBy',
-                'rejectedBy',
-                'resubmittedBy',
-                'swiftUploadedBy',
-            ])),
+            new ImportRequestResource($importRequest->load(ImportRequestResource::detailRelations())),
             'Request retrieved successfully.'
         );
     }
@@ -265,7 +252,7 @@ class ImportRequestController extends Controller
             'last_updated_by' => $request->user()->id,
         ]);
 
-        return ApiResponse::success(new ImportRequestResource($importRequest->refresh()->load(['bank', 'merchant', 'claimedByUser'])), 'Request updated successfully.');
+        return ApiResponse::success(new ImportRequestResource($importRequest->refresh()->load(ImportRequestResource::baseRelations())), 'Request updated successfully.');
     }
 
     #[OA\Delete(

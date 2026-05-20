@@ -9,6 +9,50 @@ use Illuminate\Support\Facades\URL;
 
 class ImportRequestResource extends JsonResource
 {
+    public static function baseRelations(): array
+    {
+        return [
+            'bank',
+            'merchant',
+            'claimedByUser',
+            'creator',
+            'lastUpdatedBy',
+            'submittedBy',
+            'reviewedBy',
+            'approvedBy',
+            'rejectedBy',
+            'resubmittedBy',
+            'supportReviewedBy',
+            'swiftUploadedBy',
+        ];
+    }
+
+    public static function detailRelations(): array
+    {
+        return [
+            ...self::baseRelations(),
+            'documents.uploader',
+            'issuedCustomsDeclaration.issuer',
+        ];
+    }
+
+    private function actorSummary($user): ?array
+    {
+        if (!$user) {
+            return null;
+        }
+
+        return [
+            'id' => $user->id,
+            'name' => $user->name,
+        ];
+    }
+
+    private function actorWhenLoaded(string $relation): mixed
+    {
+        return $this->whenLoaded($relation, fn () => $this->actorSummary($this->{$relation}));
+    }
+
     public function toArray(Request $request): array
     {
         return [
@@ -22,13 +66,13 @@ class ImportRequestResource extends JsonResource
                 'commercial_register' => $this->merchant->commercial_register,
             ] : null,
             'created_by' => $this->created_by,
-            'created_by_user' => $this->whenLoaded('creator', fn () => $this->creator ? ['id' => $this->creator->id, 'name' => $this->creator->name] : null),
+            'created_by_user' => $this->actorWhenLoaded('creator'),
+            'last_updated_by' => $this->last_updated_by,
+            'last_updated_by_user' => $this->actorWhenLoaded('lastUpdatedBy'),
             'status' => $this->status?->value,
             'current_owner_role' => $this->current_owner_role?->value,
-            'claimed_by' => $this->claimedByUser ? [
-                'id' => $this->claimedByUser->id,
-                'name' => $this->claimedByUser->name,
-            ] : null,
+            'claimed_by' => $this->actorSummary($this->claimedByUser),
+            'support_claimed_by' => $this->actorSummary($this->claimedByUser),
             'claimed_until' => $this->claim_expires_at?->toISOString(),
             'is_claimed' => $this->isClaimed(),
             'is_claimed_by_me' => $request->user() ? $this->isClaimedBy($request->user()) : false,
@@ -51,15 +95,19 @@ class ImportRequestResource extends JsonResource
             'customs_office' => $this->customs_office,
             'bl_number' => $this->bl_number,
             'submitted_by' => $this->submitted_by,
-            'submitted_by_user' => $this->whenLoaded('submittedBy', fn () => $this->submittedBy ? ['id' => $this->submittedBy->id, 'name' => $this->submittedBy->name] : null),
+            'submitted_by_user' => $this->actorWhenLoaded('submittedBy'),
             'reviewed_by' => $this->reviewed_by,
-            'reviewed_by_user' => $this->whenLoaded('reviewedBy', fn () => $this->reviewedBy ? ['id' => $this->reviewedBy->id, 'name' => $this->reviewedBy->name] : null),
+            'reviewed_by_user' => $this->actorWhenLoaded('reviewedBy'),
+            'internal_reviewer' => $this->actorWhenLoaded('reviewedBy'),
             'approved_by' => $this->approved_by,
-            'approved_by_user' => $this->whenLoaded('approvedBy', fn () => $this->approvedBy ? ['id' => $this->approvedBy->id, 'name' => $this->approvedBy->name] : null),
+            'approved_by_user' => $this->actorWhenLoaded('approvedBy'),
             'rejected_by' => $this->rejected_by,
-            'rejected_by_user' => $this->whenLoaded('rejectedBy', fn () => $this->rejectedBy ? ['id' => $this->rejectedBy->id, 'name' => $this->rejectedBy->name] : null),
+            'rejected_by_user' => $this->actorWhenLoaded('rejectedBy'),
             'resubmitted_by' => $this->resubmitted_by,
-            'resubmitted_by_user' => $this->whenLoaded('resubmittedBy', fn () => $this->resubmittedBy ? ['id' => $this->resubmittedBy->id, 'name' => $this->resubmittedBy->name] : null),
+            'resubmitted_by_user' => $this->actorWhenLoaded('resubmittedBy'),
+            'support_reviewed_by' => $this->support_reviewed_by,
+            'support_reviewed_by_user' => $this->actorWhenLoaded('supportReviewedBy'),
+            'support_reviewer' => $this->actorWhenLoaded('supportReviewedBy'),
             'submitted_at' => $this->submitted_at?->toISOString(),
             'bank_approved_at' => $this->bank_approved_at?->toISOString(),
             'support_approved_at' => $this->support_approved_at?->toISOString(),
@@ -81,7 +129,7 @@ class ImportRequestResource extends JsonResource
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),
             'swift_uploaded_by' => $this->swift_uploaded_by,
-            'swift_uploaded_by_user' => $this->whenLoaded('swiftUploadedBy', fn () => $this->swiftUploadedBy ? ['id' => $this->swiftUploadedBy->id, 'name' => $this->swiftUploadedBy->name] : null),
+            'swift_uploaded_by_user' => $this->actorWhenLoaded('swiftUploadedBy'),
             'documents' => $this->whenLoaded('documents', function () {
                 return $this->documents->map(fn ($doc) => [
                     'id' => $doc->id,
