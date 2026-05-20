@@ -3,12 +3,38 @@ import { UserRole, RequestStatus } from '../../app/types/enums'
 
 // ── Request fixture factory ───────────────────────────────────────────────────
 
+const BANKS = [
+  {
+    id: 1,
+    name: 'بنك اليمن الدولي',
+    name_ar: 'بنك اليمن الدولي',
+    name_en: 'Yemen International Bank',
+    code: 'YIB',
+    is_active: true,
+  },
+  {
+    id: 2,
+    name: 'بنك عدن التجاري',
+    name_ar: 'بنك عدن التجاري',
+    name_en: 'Aden Commercial Bank',
+    code: 'ACB',
+    is_active: true,
+  },
+] as const
+
+function bankFor(id: number) {
+  return BANKS.find(bank => bank.id === id) ?? BANKS[0]
+}
+
 function makeReq(id: number, status: string, extra: Record<string, unknown> = {}) {
+  const bankId = Number(extra.bank_id ?? 1)
+  const bank = bankFor(bankId)
+
   return {
     id,
     reference_number: `YFH-2026-${String(id).padStart(6, '0')}`,
-    bank_id: 1,
-    bank_name: 'بنك اليمن الدولي',
+    bank_id: bank.id,
+    bank_name: bank.name_ar,
     merchant: { id: 10 + id, name: `تاجر رقم ${id}`, commercial_register: `CR-${id}` },
     status,
     current_owner_role: UserRole.DATA_ENTRY,
@@ -60,7 +86,9 @@ const REQUESTS_BY_ROLE: Record<string, unknown[]> = {
     makeReq(22, RequestStatus.SWIFT_UPLOADED),
   ],
   [UserRole.SUPPORT_COMMITTEE]: [
-    makeReq(30, RequestStatus.SUPPORT_REVIEW_PENDING),
+    makeReq(30, RequestStatus.SUPPORT_REVIEW_PENDING, {
+      can_be_claimed: true,
+    }),
     makeReq(31, RequestStatus.SUPPORT_REVIEW_IN_PROGRESS, {
       is_claimed: true,
       is_claimed_by_me: true,
@@ -84,11 +112,11 @@ const REQUESTS_BY_ROLE: Record<string, unknown[]> = {
     makeReq(52, RequestStatus.CUSTOMS_DECLARATION_ISSUED),
   ],
   [UserRole.CBY_ADMIN]: [
-    makeReq(60, RequestStatus.SUBMITTED),
-    makeReq(61, RequestStatus.BANK_REVIEW),
-    makeReq(62, RequestStatus.SUPPORT_REVIEW_PENDING),
-    makeReq(63, RequestStatus.EXECUTIVE_VOTING_OPEN),
-    makeReq(64, RequestStatus.COMPLETED),
+    makeReq(60, RequestStatus.SUBMITTED, { bank_id: 1 }),
+    makeReq(61, RequestStatus.BANK_REVIEW, { bank_id: 2, currency: 'EUR' }),
+    makeReq(62, RequestStatus.SUPPORT_REVIEW_PENDING, { bank_id: 1 }),
+    makeReq(63, RequestStatus.EXECUTIVE_VOTING_OPEN, { bank_id: 2 }),
+    makeReq(64, RequestStatus.COMPLETED, { bank_id: 1 }),
   ],
 }
 
@@ -131,6 +159,44 @@ function buildRequestsPage(role: UserRole) {
   }
 }
 
+function countByStatus(data: Record<string, unknown>[]) {
+  return data.reduce<Record<string, number>>((totals, item) => {
+    const status = String(item.status)
+    totals[status] = (totals[status] ?? 0) + 1
+    return totals
+  }, {})
+}
+
+function applyRequestFilters(role: UserRole, searchParams: URLSearchParams) {
+  const source = [...(REQUESTS_BY_ROLE[role] ?? [])] as Record<string, unknown>[]
+
+  const filteredScope = source.filter((request) => {
+    const matchesBank = !searchParams.get('bank_id')
+      || Number(searchParams.get('bank_id')) === request.bank_id
+    const matchesCurrency = !searchParams.get('currency')
+      || searchParams.get('currency') === request.currency
+    const query = searchParams.get('search')?.trim()
+    const matchesSearch = !query || [
+      request.reference_number,
+      request.invoice_number,
+      request.supplier_name,
+      (request.merchant as { name?: string } | null)?.name,
+    ].some(value => String(value ?? '').includes(query))
+
+    return matchesBank && matchesCurrency && matchesSearch
+  })
+
+  const statuses = searchParams.get('status')?.split(',').filter(Boolean) ?? []
+  const data = statuses.length > 0
+    ? filteredScope.filter(request => statuses.includes(String(request.status)))
+    : filteredScope
+
+  return {
+    data,
+    statusTotals: countByStatus(filteredScope),
+  }
+}
+
 async function mockApiForRole(page: Page, role: UserRole) {
   const user = buildUser(role)
 
@@ -152,10 +218,41 @@ async function mockApiForRole(page: Page, role: UserRole) {
     }
 
     if (url.pathname === '/api/requests') {
+      const requestsPage = applyRequestFilters(role, url.searchParams)
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ success: true, message: 'OK', data: buildRequestsPage(role) }),
+        body: JSON.stringify({
+          success: true,
+          message: 'OK',
+          data: {
+            ...buildRequestsPage(role),
+            data: requestsPage.data,
+            meta: {
+              current_page: 1,
+              last_page: 1,
+              per_page: 20,
+              total: requestsPage.data.length,
+              status_totals: requestsPage.statusTotals,
+            },
+          },
+        }),
+      })
+      return
+    }
+
+    if (url.pathname === '/api/banks') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          success: true,
+          message: 'OK',
+          data: {
+            data: BANKS,
+            meta: { current_page: 1, last_page: 1, per_page: 20, total: BANKS.length },
+          },
+        }),
       })
       return
     }
@@ -283,6 +380,8 @@ test('7.3 SUPPORT_COMMITTEE shows claim badges on rows', async ({ page }) => {
   await expect(page.getByText('محجوز لك')).toBeVisible()
   // Claimed-by-other badge
   await expect(page.getByText('محجوز: منى الحكيمي')).toBeVisible()
+  // Available badge
+  await expect(page.getByText('متاح للمراجعة')).toBeVisible()
 })
 
 test('7.3 EXECUTIVE_MEMBER shows voting-open badge on correct rows', async ({ page }) => {
@@ -307,6 +406,17 @@ test('7.3 CBY_ADMIN sees bank filter', async ({ page }) => {
   await expect(page.locator('.filter-select--bank')).toBeVisible()
 })
 
+test('7.3 CBY_ADMIN bank filter narrows the list', async ({ page }) => {
+  await mockApiForRole(page, UserRole.CBY_ADMIN)
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await openRequestsForRole(page, UserRole.CBY_ADMIN)
+
+  await page.locator('.filter-select--bank').selectOption('2')
+
+  await expect(page.locator('.bank-name').filter({ hasText: 'بنك عدن التجاري' })).toHaveCount(2)
+  await expect(page.locator('.bank-name').filter({ hasText: 'بنك اليمن الدولي' })).toHaveCount(0)
+})
+
 test('7.3 BANK_ADMIN does not see bank filter', async ({ page }) => {
   await mockApiForRole(page, UserRole.BANK_ADMIN)
   await page.setViewportSize({ width: 1440, height: 900 })
@@ -321,6 +431,16 @@ test('7.3 page shows stage tabs for roles with buckets', async ({ page }) => {
   await expect(page.locator('.stage-tabs-card')).toBeVisible()
   // الكل tab always present
   await expect(page.getByRole('button', { name: /الكل/ })).toBeVisible()
+})
+
+test('7.3 advanced filters can be toggled open', async ({ page }) => {
+  await mockApiForRole(page, UserRole.CBY_ADMIN)
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await openRequestsForRole(page, UserRole.CBY_ADMIN)
+
+  await page.getByRole('button', { name: 'فلاتر متقدمة' }).click()
+  await expect(page.getByText('من تاريخ')).toBeVisible()
+  await expect(page.getByText('إلى تاريخ')).toBeVisible()
 })
 
 test('7.3 pagination footer shows item count', async ({ page }) => {

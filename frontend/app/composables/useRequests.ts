@@ -4,9 +4,12 @@ import { useApi } from './useApi'
 
 export interface RequestsFilter {
   search?: string
-  status?: RequestStatus | ''
+  status?: RequestStatus | RequestStatus[] | string | ''
   bank_id?: number | ''
   currency?: string | ''
+  from_date?: string | ''
+  to_date?: string | ''
+  claim_filter?: 'all' | 'available' | 'mine' | ''
   page?: number
   per_page?: number
 }
@@ -20,9 +23,17 @@ export function useRequests() {
     const params = new URLSearchParams()
 
     if (filter.search) params.set('search', filter.search)
-    if (filter.status) params.set('status', filter.status)
+    if (filter.status) {
+      params.set(
+        'status',
+        Array.isArray(filter.status) ? filter.status.join(',') : filter.status,
+      )
+    }
     if (filter.bank_id) params.set('bank_id', String(filter.bank_id))
     if (filter.currency) params.set('currency', filter.currency)
+    if (filter.from_date) params.set('from_date', filter.from_date)
+    if (filter.to_date) params.set('to_date', filter.to_date)
+    if (filter.claim_filter) params.set('claim_filter', filter.claim_filter)
     if (filter.page) params.set('page', String(filter.page))
     if (filter.per_page) params.set('per_page', String(filter.per_page))
 

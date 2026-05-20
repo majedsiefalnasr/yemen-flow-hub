@@ -1,4 +1,4 @@
-import type { ApiResponse, Bank } from '../types/models'
+import type { ApiResponse, Bank, PaginatedResponse } from '../types/models'
 import { useApi } from './useApi'
 
 export interface CreateBankPayload {
@@ -25,8 +25,14 @@ export function useBanks() {
   const { get, post, put } = useApi()
 
   async function fetchBanks(): Promise<Bank[]> {
-    const response = await get<ApiResponse<Bank[]>>('/api/banks')
-    return response.data
+    const response = await get<ApiResponse<Bank[] | PaginatedResponse<Bank>>>('/api/banks')
+    const payload = response.data
+
+    if (Array.isArray(payload)) {
+      return payload
+    }
+
+    return payload.data
   }
 
   async function createBank(payload: CreateBankPayload): Promise<Bank> {

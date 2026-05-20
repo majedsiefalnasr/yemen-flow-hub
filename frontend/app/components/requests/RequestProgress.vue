@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { RequestStatus } from '../../types/enums'
-import { STATUS_PROGRESS } from '../../constants/workflow'
+import type { RequestStatus, UserRole } from '../../types/enums'
+import { getStatusProgress } from '../../constants/workflow'
 
 const props = defineProps<{
   status: RequestStatus
+  role: UserRole
 }>()
 
-const progress = computed(() => STATUS_PROGRESS[props.status] ?? 0)
+const progress = computed(() => getStatusProgress(props.status, props.role))
 </script>
 
 <template>

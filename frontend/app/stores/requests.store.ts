@@ -8,6 +8,7 @@ interface PaginationMeta {
   last_page: number
   per_page: number
   total: number
+  status_totals?: Partial<Record<string, number>>
 }
 
 export const useRequestsStore = defineStore('requests', {

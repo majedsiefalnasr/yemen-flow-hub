@@ -1,40 +1,32 @@
-/** RequestProgress — logic-only tests (no DOM mount; env is node per vitest.config.ts) */
+// @vitest-environment jsdom
+import { mount } from '@vue/test-utils'
 import { describe, it, expect } from 'vitest'
-import { RequestStatus } from '../../../types/enums'
-import { STATUS_PROGRESS } from '../../../constants/workflow'
+import RequestProgress from '../../../components/requests/RequestProgress.vue'
+import { RequestStatus, UserRole } from '../../../types/enums'
+import { getStatusProgress } from '../../../constants/workflow'
 
-describe('RequestProgress logic via STATUS_PROGRESS', () => {
-  it('DRAFT progress is 5', () => {
-    expect(STATUS_PROGRESS[RequestStatus.DRAFT]).toBe(5)
+describe('RequestProgress', () => {
+  it('renders canonical progress for operational roles', () => {
+    const wrapper = mount(RequestProgress, {
+      props: {
+        status: RequestStatus.EXECUTIVE_APPROVED,
+        role: UserRole.CBY_ADMIN,
+      },
+    })
+
+    expect(wrapper.text()).toContain(`${getStatusProgress(RequestStatus.EXECUTIVE_APPROVED, UserRole.CBY_ADMIN)}%`)
+    expect(wrapper.get('[role="progressbar"]').attributes('aria-valuenow')).toBe('92')
   })
 
-  it('COMPLETED progress is 100', () => {
-    expect(STATUS_PROGRESS[RequestStatus.COMPLETED]).toBe(100)
-  })
+  it('uses simplified progress for data entry users', () => {
+    const wrapper = mount(RequestProgress, {
+      props: {
+        status: RequestStatus.EXECUTIVE_APPROVED,
+        role: UserRole.DATA_ENTRY,
+      },
+    })
 
-  it('SUBMITTED progress is greater than DRAFT', () => {
-    expect(STATUS_PROGRESS[RequestStatus.SUBMITTED]).toBeGreaterThan(
-      STATUS_PROGRESS[RequestStatus.DRAFT],
-    )
-  })
-
-  it('EXECUTIVE_APPROVED progress is greater than BANK_APPROVED', () => {
-    expect(STATUS_PROGRESS[RequestStatus.EXECUTIVE_APPROVED]).toBeGreaterThan(
-      STATUS_PROGRESS[RequestStatus.BANK_APPROVED],
-    )
-  })
-
-  it('all values are numbers in [0, 100]', () => {
-    for (const [status, pct] of Object.entries(STATUS_PROGRESS)) {
-      expect(typeof pct, `${status} not a number`).toBe('number')
-      expect(pct, `${status} out of range`).toBeGreaterThanOrEqual(0)
-      expect(pct, `${status} out of range`).toBeLessThanOrEqual(100)
-    }
-  })
-
-  it('unknown status defaults to 0 via nullish coalescing', () => {
-    const unknown = 'UNKNOWN_STATUS' as RequestStatus
-    const val = STATUS_PROGRESS[unknown] ?? 0
-    expect(val).toBe(0)
+    expect(wrapper.text()).toContain('100%')
+    expect(wrapper.get('[role="progressbar"]').attributes('aria-valuenow')).toBe('100')
   })
 })

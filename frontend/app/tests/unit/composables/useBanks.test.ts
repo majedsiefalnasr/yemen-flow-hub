@@ -39,6 +39,22 @@ describe('useBanks', () => {
       const { fetchBanks } = useBanks()
       await expect(fetchBanks()).rejects.toThrow('Network error')
     })
+
+    it('unwraps paginated bank payloads', async () => {
+      mockGet.mockResolvedValueOnce({
+        success: true,
+        message: 'OK',
+        data: {
+          data: [BANK_FIXTURE],
+          meta: { current_page: 1, last_page: 1, per_page: 20, total: 1 },
+        },
+      })
+
+      const { fetchBanks } = useBanks()
+      const result = await fetchBanks()
+
+      expect(result).toEqual([BANK_FIXTURE])
+    })
   })
 
   describe('createBank()', () => {

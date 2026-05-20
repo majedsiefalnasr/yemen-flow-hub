@@ -2,7 +2,9 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useAuthStore } from '../../stores/auth.store'
 import { useRequestsStore } from '../../stores/requests.store'
+import { useBanks } from '../../composables/useBanks'
 import { UserRole, RequestStatus } from '../../types/enums'
+import type { Bank, ImportRequest } from '../../types/models'
 import {
   ROLE_BUCKETS,
   CBY_BANK_FILTER_ROLES,
@@ -13,13 +15,19 @@ import RequestProgress from '../../components/requests/RequestProgress.vue'
 
 const auth = useAuthStore()
 const requestsStore = useRequestsStore()
+const { fetchBanks } = useBanks()
 
 // ── Filter state ──────────────────────────────────────────────────────────────
 
 const search = ref('')
 const selectedBankId = ref<number | ''>('')
 const selectedCurrency = ref<string | ''>('')
+const selectedFromDate = ref('')
+const selectedToDate = ref('')
 const selectedBucket = ref<string>('all')
+const showAdvancedFilters = ref(false)
+const banks = ref<Bank[]>([])
+const loadingBanks = ref(false)
 
 // ── Role-derived flags ────────────────────────────────────────────────────────
 
@@ -35,6 +43,9 @@ const showBankFilter = computed(() =>
 )
 
 const canCreateRequest = computed(() => role.value === UserRole.DATA_ENTRY)
+const hasAdvancedFilters = computed(() =>
+  selectedFromDate.value !== '' || selectedToDate.value !== '',
+)
 
 // ── Stage tabs ────────────────────────────────────────────────────────────────
 
@@ -43,29 +54,44 @@ const roleBuckets = computed(() => {
   return ROLE_BUCKETS[role.value] ?? []
 })
 
-/** Buckets that actually have matching requests in the current loaded page */
+const activeBucket = computed(() =>
+  roleBuckets.value.find(bucket => bucket.key === selectedBucket.value),
+)
+
+const statusTotals = computed(() => requestsStore.meta?.status_totals ?? {})
+
+function countStatuses(statuses: RequestStatus[]): number {
+  return statuses.reduce(
+    (total, status) => total + (statusTotals.value[status] ?? 0),
+    0,
+  )
+}
+
+/** Buckets that actually have matching requests in the active filtered dataset */
 const visibleBuckets = computed(() => {
-  const requests = requestsStore.requests ?? []
-  return roleBuckets.value.filter(b =>
-    requests.some(r => b.statuses.includes(r.status)),
+  return roleBuckets.value.filter(bucket =>
+    countForBucket(bucket.key) > 0 || bucket.key === selectedBucket.value,
   )
 })
 
 function countForBucket(key: string): number {
-  const requests = requestsStore.requests ?? []
-  if (key === 'all') return requests.length
+  if (key === 'all') {
+    const totalFromBuckets = Object.values(statusTotals.value).reduce(
+      (total, count) => total + count,
+      0,
+    )
+
+    return totalFromBuckets > 0
+      ? totalFromBuckets
+      : (requestsStore.meta?.total ?? requestsStore.requests.length)
+  }
   const bucket = roleBuckets.value.find(b => b.key === key)
   if (!bucket) return 0
-  return requests.filter(r => bucket.statuses.includes(r.status)).length
+  return countStatuses(bucket.statuses)
 }
 
-/** Requests filtered by the active bucket tab (client-side of loaded page) */
 const displayedRequests = computed(() => {
-  const requests = requestsStore.requests ?? []
-  if (selectedBucket.value === 'all') return requests
-  const bucket = roleBuckets.value.find(b => b.key === selectedBucket.value)
-  if (!bucket) return requests
-  return requests.filter(r => bucket.statuses.includes(r.status))
+  return requestsStore.requests ?? []
 })
 
 // ── Special badge helpers ─────────────────────────────────────────────────────
@@ -78,10 +104,22 @@ function canSeeVotingBadge(): boolean {
   return role.value === UserRole.EXECUTIVE_MEMBER || role.value === UserRole.COMMITTEE_DIRECTOR
 }
 
-function claimBadgeLabel(request: { is_claimed_by_me: boolean; claimed_by: { name: string } | null }): string {
+function claimBadgeLabel(request: Pick<ImportRequest, 'is_claimed' | 'is_claimed_by_me' | 'claimed_by' | 'can_be_claimed'>): string {
   if (request.is_claimed_by_me) return 'محجوز لك'
-  if (request.claimed_by?.name) return `محجوز: ${request.claimed_by.name}`
+  if (request.is_claimed && request.claimed_by?.name) return `محجوز: ${request.claimed_by.name}`
+  if (request.can_be_claimed) return 'متاح للمراجعة'
   return 'محجوز'
+}
+
+function claimBadgeClass(request: Pick<ImportRequest, 'is_claimed' | 'is_claimed_by_me' | 'can_be_claimed'>): string {
+  if (request.is_claimed_by_me) return 'badge--claim-mine'
+  if (request.is_claimed) return 'badge--claim-other'
+  return 'badge--claim-available'
+}
+
+function showClaimBadge(request: Pick<ImportRequest, 'is_claimed' | 'can_be_claimed'>): boolean {
+  return role.value === UserRole.SUPPORT_COMMITTEE
+    && (request.is_claimed || request.can_be_claimed)
 }
 
 // ── Data loading ──────────────────────────────────────────────────────────────
@@ -89,18 +127,41 @@ function claimBadgeLabel(request: { is_claimed_by_me: boolean; claimed_by: { nam
 async function loadPage(page = 1) {
   await requestsStore.loadRequests({
     search: search.value || undefined,
+    status: activeBucket.value?.statuses,
     bank_id: selectedBankId.value || undefined,
     currency: selectedCurrency.value || undefined,
+    from_date: selectedFromDate.value || undefined,
+    to_date: selectedToDate.value || undefined,
     page,
   })
-  // Reset to 'all' tab when data reloads so counts stay consistent
-  if (selectedBucket.value !== 'all') {
-    const stillHasMatch = countForBucket(selectedBucket.value) > 0
-    if (!stillHasMatch) selectedBucket.value = 'all'
+}
+
+async function loadBankOptions() {
+  if (!showBankFilter.value || loadingBanks.value || banks.value.length > 0) return
+
+  loadingBanks.value = true
+
+  try {
+    banks.value = await fetchBanks()
+  }
+  catch (err) {
+    if (import.meta.dev) {
+      console.error('[requests.page] loadBankOptions failed:', err)
+    }
+  }
+  finally {
+    loadingBanks.value = false
   }
 }
 
-onMounted(() => loadPage())
+function clearAdvancedFilters() {
+  selectedFromDate.value = ''
+  selectedToDate.value = ''
+}
+
+onMounted(() => {
+  void loadPage()
+})
 
 const searchTimeout = ref<ReturnType<typeof setTimeout> | null>(null)
 
@@ -109,17 +170,24 @@ watch(search, () => {
   searchTimeout.value = setTimeout(() => loadPage(), 350)
 })
 
-watch([selectedBankId, selectedCurrency], () => loadPage())
+watch(selectedBucket, () => {
+  void loadPage()
+})
+
+watch([selectedBankId, selectedCurrency, selectedFromDate, selectedToDate], () => {
+  void loadPage()
+})
+
+watch(showBankFilter, enabled => {
+  if (enabled) {
+    void loadBankOptions()
+  }
+}, { immediate: true })
 
 onUnmounted(() => {
   if (searchTimeout.value !== null) clearTimeout(searchTimeout.value)
 })
 
-// ── Formatting ────────────────────────────────────────────────────────────────
-
-function formatAmount(amount: number, currency: string): string {
-  return `${amount.toLocaleString('ar-YE')} ${currency}`
-}
 </script>
 
 <template>
@@ -193,8 +261,12 @@ function formatAmount(amount: number, currency: string): string {
           v-model="selectedBankId"
           class="filter-select filter-select--bank"
           dir="rtl"
+          :disabled="loadingBanks"
         >
           <option value="">جميع البنوك</option>
+          <option v-for="bank in banks" :key="bank.id" :value="bank.id">
+            {{ bank.name_ar || bank.name_en }}
+          </option>
         </select>
 
         <!-- Currency filter -->
@@ -206,6 +278,34 @@ function formatAmount(amount: number, currency: string): string {
           <option value="">جميع العملات</option>
           <option v-for="cur in CURRENCY_OPTIONS" :key="cur" :value="cur">{{ cur }}</option>
         </select>
+
+        <button
+          type="button"
+          :class="['filter-advanced-toggle', (showAdvancedFilters || hasAdvancedFilters) && 'filter-advanced-toggle--active']"
+          @click="showAdvancedFilters = !showAdvancedFilters"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+          فلاتر متقدمة
+        </button>
+      </div>
+
+      <div v-if="showAdvancedFilters || hasAdvancedFilters" class="advanced-filters">
+        <label class="advanced-filter-group">
+          <span class="filter-label">من تاريخ</span>
+          <input v-model="selectedFromDate" type="date" class="filter-input" dir="rtl" />
+        </label>
+        <label class="advanced-filter-group">
+          <span class="filter-label">إلى تاريخ</span>
+          <input v-model="selectedToDate" type="date" class="filter-input" dir="rtl" />
+        </label>
+        <button
+          v-if="hasAdvancedFilters"
+          type="button"
+          class="btn-clear-filters"
+          @click="clearAdvancedFilters"
+        >
+          مسح الفلاتر
+        </button>
       </div>
     </div>
 
@@ -308,8 +408,8 @@ function formatAmount(amount: number, currency: string): string {
                   </span>
                   <!-- Support claim badge (support committee only) -->
                   <span
-                    v-if="role === UserRole.SUPPORT_COMMITTEE && request.is_claimed"
-                    :class="['badge', request.is_claimed_by_me ? 'badge--claim-mine' : 'badge--claim-other']"
+                    v-if="showClaimBadge(request)"
+                    :class="['badge', claimBadgeClass(request)]"
                     role="status"
                   >
                     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
@@ -347,7 +447,7 @@ function formatAmount(amount: number, currency: string): string {
 
               <!-- Progress -->
               <td class="td">
-                <RequestProgress :status="request.status" />
+                <RequestProgress :status="request.status" :role="auth.user.role" />
               </td>
 
               <!-- Sticky action -->
@@ -614,6 +714,61 @@ function formatAmount(amount: number, currency: string): string {
 
 .filter-select:focus { border-color: #0066cc; }
 
+.filter-advanced-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--color-border, #cccccc);
+  border-radius: 12px;
+  background: var(--color-surface, #fff);
+  color: var(--color-text-primary, #1c222b);
+  font-size: 14px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 100ms, background 100ms, color 100ms;
+}
+
+.filter-advanced-toggle:hover,
+.filter-advanced-toggle--active {
+  border-color: #0066cc;
+  color: #0066cc;
+  background: rgba(0,102,204,.05);
+}
+
+.advanced-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 12px;
+  align-items: flex-end;
+}
+
+.advanced-filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 180px;
+}
+
+.filter-label {
+  font-size: 12px;
+  color: var(--color-text-secondary, #6c757d);
+}
+
+.btn-clear-filters {
+  height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--color-border, #cccccc);
+  border-radius: 12px;
+  background: transparent;
+  color: var(--color-text-secondary, #6c757d);
+  font-size: 14px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
 /* ── Table card ──────────────────────────────────────────────────────────────── */
 
 .table-card {
@@ -741,6 +896,11 @@ function formatAmount(amount: number, currency: string): string {
 .badge--claim-other {
   background: rgba(142,142,147,.12);
   color: #8e8e93;
+}
+
+.badge--claim-available {
+  background: rgba(52,199,89,.12);
+  color: #1b5e20;
 }
 
 /* ── Importer / bank ─────────────────────────────────────────────────────────── */
@@ -940,7 +1100,11 @@ function formatAmount(amount: number, currency: string): string {
   .page-title { font-size: 20px; }
   .filter-row { flex-direction: column; }
   .filter-select--bank,
-  .filter-select--currency { width: 100%; }
+  .filter-select--currency,
+  .filter-advanced-toggle,
+  .advanced-filter-group,
+  .btn-clear-filters { width: 100%; }
+  .advanced-filters { flex-direction: column; }
   .pagination-footer { flex-direction: column; gap: 8px; align-items: flex-start; }
   .pagination-controls { flex-wrap: wrap; }
   /* Hide numbered pages on mobile to avoid overflow */

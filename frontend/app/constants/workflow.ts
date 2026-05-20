@@ -391,6 +391,11 @@ export const STATUS_PROGRESS: Record<RequestStatus, number> = {
   [RequestStatus.COMPLETED]: 100,
 }
 
+export function getStatusProgress(status: RequestStatus, role: UserRole): number {
+  const representativeStatus = getBusinessStatus(status, role).canonicalStatus
+  return STATUS_PROGRESS[representativeStatus] ?? 0
+}
+
 export interface StageBucket {
   key: string
   label: string

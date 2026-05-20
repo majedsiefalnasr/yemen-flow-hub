@@ -68,6 +68,30 @@ describe('useRequests – extended list filters (Story 7.3)', () => {
     expect(calledWith).toContain('page=1')
   })
 
+  it('serializes multiple statuses as a comma-separated query value', async () => {
+    const { fetchRequests } = useRequests()
+    await fetchRequests({
+      status: [RequestStatus.SUBMITTED, RequestStatus.BANK_REVIEW],
+    })
+
+    const calledWith = (mockGet.mock.calls[0] as [string])[0]
+    expect(calledWith).toContain('status=SUBMITTED%2CBANK_REVIEW')
+  })
+
+  it('appends advanced filter params when provided', async () => {
+    const { fetchRequests } = useRequests()
+    await fetchRequests({
+      from_date: '2026-05-01',
+      to_date: '2026-05-31',
+      claim_filter: 'available',
+    })
+
+    const calledWith = (mockGet.mock.calls[0] as [string])[0]
+    expect(calledWith).toContain('from_date=2026-05-01')
+    expect(calledWith).toContain('to_date=2026-05-31')
+    expect(calledWith).toContain('claim_filter=available')
+  })
+
   it('uses correct API path without trailing ?', async () => {
     const { fetchRequests } = useRequests()
     await fetchRequests({})
