@@ -1,6 +1,6 @@
 # Story 7.5: Request Wizard 1:1 Parity
 
-Status: review
+Status: done
 
 ## Story
 
@@ -166,6 +166,14 @@ Targeted wizard component/composable/schema tests, request API tests if contract
 - [x] 10.6 Re-run Story 7.1 AppShell visual coverage and Story 7.3 request-list navigation coverage if shared shell, route guards, or create action links change.
 - [x] 10.7 Run `graphify update .` from repo root after code changes.
 
+### Review Findings
+- [x] [Review][Patch] Block submit when document uploads fail and surface per-document error/retry states [frontend/app/composables/useRequestWizard.ts:272]
+- [x] [Review][Patch] Stop inferring the DATA_ENTRY merchant from the first fetched merchant record [frontend/app/components/wizard/RequestWizard.vue:38]
+- [x] [Review][Patch] Accept valid `.pdf` uploads when the browser leaves MIME type empty [frontend/app/components/wizard/WizardStep3.vue:41]
+- [x] [Review][Patch] Prevent the stepper from overflowing on `<=600px` mobile widths [frontend/app/components/wizard/WizardStepper.vue:70]
+- [x] [Review][Patch] Rebuild the Story 7.5 Playwright flow around authenticated navigation, correct selectors, and real per-step assertions [frontend/tests/e2e/7-5-request-wizard-parity.spec.ts:1]
+- [x] [Review][Patch] Capture the required BANK_ADMIN/DATA_ENTRY baselines with `toHaveScreenshot()` under `frontend/tests/screenshots/7-5/` [frontend/tests/e2e/7-5-request-wizard-parity.spec.ts:1]
+
 ---
 
 ## Dev Notes
@@ -290,23 +298,27 @@ Claude Sonnet 4.6 (GitHub Copilot CLI)
 - **AC3**: Rewrote `WizardStep1.vue` field order to match Lovable screenshot: `نوع الواردات | المستورد` / `مبلغ التمويل | العملة` (now two separate half-width field groups, no compound wrap) / `شروط الدفع | تاريخ الاستحقاق` / full-width `ملاحظات`. Merchant field moved from full-width to half-width. Currency label uses `CURRENCY_LABELS[c] ?? c`.
 - **AC4**: Rewrote `WizardStep2.vue` field order: `اسم المورد | بلد المنشأ` / `رقم الفاتورة | تاريخ الفاتورة` / `ميناء الوصول | ميناء الشحن` / `رقم بوليصة الشحن | الجمارك المختصة`. `customs_office` changed from full-width to half-width.
 - **AC5/AC10**: `WizardStep3.vue` — removed `image/jpeg` / `image/jpg` from `ALLOWED_TYPES` and `ALLOWED_EXTENSIONS` (PDF-only, matching backend `UploadRequestDocumentRequest`). Zone idle layout redesigned: icon → title → hint (with required/optional inline) → full-width upload button. Hint text updated to `إلزامي/اختياري — PDF (حد أقصى XMB)`. Error message updated to `يجب أن يكون الملف بصيغة PDF فقط`. **Production-governance override: backend is PDF-only; screenshots showing PDF/JPG are overridden by backend policy.**
+- **AC7**: DATA_ENTRY merchant resolution no longer picks the first fetched merchant blindly. `RequestWizard.vue` now auto-fills only when exactly one active bank-scoped merchant is available; otherwise it leaves the field locked with an explicit guidance message instead of silently choosing the wrong merchant.
 - **AC6**: Rewrote `WizardStep4.vue` summary from `dl/dt/dd` rows to a 2-column CSS `summary-grid`. Acknowledgment panel changed from yellow (`#fff8e1`/`#ffe082`) to blue info (`#e3f2fd`/`#bbdefb`). Added `ShieldCheck` from `lucide-vue-next` (20px, color `#0066cc`) as decorative header icon. Kept checkbox gate for submit button.
-- **AC8**: `useRequestWizard.ts` `uploadDocuments()` — switched from deprecated `POST /api/requests/${requestId}/documents` to canonical `POST /api/documents/upload`. Added `request_id` body param, removed `label` param.
-- **AC14/AC15**: Created `frontend/tests/e2e/7-5-request-wizard-parity.spec.ts` with deterministic mocked API, desktop `1440x900` and mobile `390x844` screenshots under `frontend/tests/screenshots/7-5/`.
-- **AC16**: Vitest 1363 tests passing. TypeScript typecheck: only pre-existing errors (missing pages/components from future stories), zero new errors from Story 7.5 changes. `graphify update .` completed (102224 nodes, 133256 edges).
+- **AC8/AC11**: `useRequestWizard.ts` now blocks workflow submission when any selected document upload fails, returns the user to Step 3, preserves per-document `uploadState` errors, and shows retryable error messaging instead of allowing `submit` to proceed with missing uploads.
+- **AC12**: `WizardStepper.vue` now collapses safely at `<=600px` by wrapping steps into two rows, removing connector lines on narrow screens, and preventing horizontal overflow.
+- **AC14/AC15**: Rebuilt `frontend/tests/e2e/7-5-request-wizard-parity.spec.ts` around the established authenticated AppShell flow. The suite now captures BANK_ADMIN Step 1-4 baselines at desktop/mobile plus the DATA_ENTRY read-only merchant baseline with `toHaveScreenshot()` under `frontend/tests/screenshots/7-5/`.
+- **AC16**: Full frontend Vitest suite passed, `npm run typecheck` passed, `npm run build` passed, `npx playwright test tests/e2e/7-5-request-wizard-parity.spec.ts` passed, and `graphify update .` completed after the review fixes.
 
 ### File List
 
 - `frontend/app/pages/requests/new.vue` — removed `max-width: 900px`, removed `padding-bottom: 100px`
 - `frontend/app/components/wizard/RequestWizard.vue` — subtitle typo fixed; bottom-nav moved inside `.step-card` with divider; removed sticky/negative-margin styles
-- `frontend/app/components/wizard/WizardStepper.vue` — 40px circles, 20px check, 19px connector, card styling
-- `frontend/app/components/wizard/WizardStep1.vue` — field order rewritten, amount/currency split into separate half-width groups, merchant half-width, `CURRENCY_LABELS` applied
+- `frontend/app/components/wizard/WizardStepper.vue` — 40px circles, 20px check, 19px connector, card styling, responsive wrap/no-overflow mobile behavior
+- `frontend/app/components/wizard/WizardStep1.vue` — field order rewritten, amount/currency split into separate half-width groups, merchant half-width, `CURRENCY_LABELS` applied, DATA_ENTRY error-state messaging
 - `frontend/app/components/wizard/WizardStep2.vue` — field order rewritten, `customs_office` moved to half-width
-- `frontend/app/components/wizard/WizardStep3.vue` — PDF-only file types, full-width upload button, redesigned idle zone layout, updated error/hint copy
+- `frontend/app/components/wizard/WizardStep3.vue` — PDF-only file types, `.pdf` extension fallback, full-width upload button, redesigned idle zone layout, upload retry/error feedback
 - `frontend/app/components/wizard/WizardStep4.vue` — 2-col summary grid, blue ack panel, ShieldCheck icon, removed `dl/dt/dd` layout
-- `frontend/app/composables/useRequestWizard.ts` — `uploadDocuments()` now uses canonical `POST /api/documents/upload` with `request_id` body param
-- `frontend/tests/e2e/7-5-request-wizard-parity.spec.ts` — new Playwright spec (created)
-- `frontend/tests/screenshots/7-5/` — screenshots directory (created)
+- `frontend/app/composables/useRequestWizard.ts` — `uploadDocuments()` now uses canonical `POST /api/documents/upload`, blocks submit on failed uploads, and exposes retry-state reset handling
+- `frontend/app/tests/unit/components/wizard/WizardStep3.test.ts` — updated PDF-only validation coverage, including empty-MIME `.pdf` uploads
+- `frontend/app/tests/unit/composables/useRequestWizard.test.ts` — added submit/upload failure coverage
+- `frontend/tests/e2e/7-5-request-wizard-parity.spec.ts` — authenticated parity suite with real step coverage and upload-failure regression coverage
+- `frontend/tests/screenshots/7-5/` — BANK_ADMIN step 1-4 desktop/mobile baselines plus DATA_ENTRY read-only merchant baseline
 - `_bmad-output/implementation-artifacts/7-5-request-wizard-1-1-parity.md` — status, tasks, file list, completion notes updated
 ---
 
@@ -315,3 +327,4 @@ Claude Sonnet 4.6 (GitHub Copilot CLI)
 | Date | Change |
 |------|--------|
 | 2025-07-16 | Story 7.5 implemented: visual parity pass on all 4 wizard steps, PDF-only enforcement, canonical upload endpoint, blue ack panel with ShieldCheck, 2-col summary grid, full-width page layout, 40px stepper circles, Playwright spec created, 1363 Vitest tests passing, graphify updated |
+| 2026-05-20 | Code review patches applied: upload failures now block submit with visible retry states, DATA_ENTRY merchant inference is fail-safe, `.pdf` extension fallback is accepted, mobile stepper overflow is fixed, Story 7.5 Playwright coverage was rebuilt, and screenshot baselines were committed |
