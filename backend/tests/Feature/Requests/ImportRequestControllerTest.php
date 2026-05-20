@@ -536,4 +536,77 @@ class ImportRequestControllerTest extends TestCase
         $this->assertNotNull($draft);
         $this->assertNotNull($submitted);
     }
+
+    // ─── AC-7: Actor name objects in show response (Story 7.4) ────────────────
+
+    public function test_show_includes_created_by_user_name(): void
+    {
+        $req = $this->makeRequest($this->bank, $this->dataEntry);
+
+        $response = $this->actingAs($this->dataEntry)
+            ->getJson("/api/requests/{$req->id}");
+
+        $response->assertOk();
+        $data = $response->json('data');
+        $this->assertArrayHasKey('created_by_user', $data);
+        $this->assertNotNull($data['created_by_user']);
+        $this->assertEquals($this->dataEntry->id, $data['created_by_user']['id']);
+        $this->assertEquals($this->dataEntry->name, $data['created_by_user']['name']);
+    }
+
+    public function test_show_submitted_by_user_null_when_not_yet_submitted(): void
+    {
+        $req = $this->makeRequest($this->bank, $this->dataEntry, RequestStatus::DRAFT);
+
+        $response = $this->actingAs($this->dataEntry)
+            ->getJson("/api/requests/{$req->id}");
+
+        $response->assertOk();
+        // submitted_by is null on a DRAFT, so submitted_by_user must also be null
+        $this->assertNull($response->json('data.submitted_by'));
+        $this->assertNull($response->json('data.submitted_by_user'));
+    }
+
+    public function test_show_includes_all_actor_user_keys(): void
+    {
+        $req = $this->makeRequest($this->bank, $this->dataEntry);
+
+        $response = $this->actingAs($this->dataEntry)
+            ->getJson("/api/requests/{$req->id}");
+
+        $response->assertOk();
+        $keys = [
+            'created_by_user',
+            'submitted_by_user',
+            'reviewed_by_user',
+            'approved_by_user',
+            'rejected_by_user',
+            'resubmitted_by_user',
+            'swift_uploaded_by_user',
+        ];
+        foreach ($keys as $key) {
+            $this->assertArrayHasKey($key, $response->json('data'), "Missing key: {$key}");
+        }
+    }
+
+    public function test_show_actor_user_fields_are_null_when_actions_not_yet_taken(): void
+    {
+        $req = $this->makeRequest($this->bank, $this->dataEntry);
+
+        $response = $this->actingAs($this->dataEntry)
+            ->getJson("/api/requests/{$req->id}");
+
+        $response->assertOk();
+        $nullableActors = [
+            'submitted_by_user',
+            'reviewed_by_user',
+            'approved_by_user',
+            'rejected_by_user',
+            'resubmitted_by_user',
+            'swift_uploaded_by_user',
+        ];
+        foreach ($nullableActors as $key) {
+            $this->assertNull($response->json("data.{$key}"), "{$key} should be null on a fresh DRAFT");
+        }
+    }
 }

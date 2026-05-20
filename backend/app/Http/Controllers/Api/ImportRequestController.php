@@ -200,6 +200,13 @@ class ImportRequestController extends Controller
                 'claimedByUser',
                 'documents.uploader',
                 'issuedCustomsDeclaration.issuer',
+                'creator',
+                'submittedBy',
+                'reviewedBy',
+                'approvedBy',
+                'rejectedBy',
+                'resubmittedBy',
+                'swiftUploadedBy',
             ])),
             'Request retrieved successfully.'
         );
