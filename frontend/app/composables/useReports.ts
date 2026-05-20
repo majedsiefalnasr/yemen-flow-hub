@@ -11,6 +11,13 @@ export interface WorkflowReport {
   counts_by_bank: Array<{ bank_id: number; bank_name: string; total: number }>
   avg_time_per_stage_hours: Record<string, number>
   throughput: { completed: number; approved: number; rejected: number }
+  // New in 7.8
+  monthly_trend: Array<{ month: string; total: number; approved: number; rejected: number }>
+  category_distribution: Array<{ category: string; count: number }>
+  amount_by_currency: Array<{ currency: string; amount: number }>
+  submission_heatmap: Array<{ day: number; slot: number; count: number }>
+  total_financing_value: number
+  duplicate_invoice_count: number
 }
 
 export interface BankReport {

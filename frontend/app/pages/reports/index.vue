@@ -3,6 +3,10 @@ import { computed, onMounted, ref } from 'vue'
 import { useAuthStore } from '../../stores/auth.store'
 import { useReportsStore } from '../../stores/reports.store'
 import { UserRole } from '../../types/enums'
+import LineChart from '../../components/charts/LineChart.vue'
+import PieChart from '../../components/charts/PieChart.vue'
+import CurrencyBarChart from '../../components/charts/CurrencyBarChart.vue'
+import SubmissionHeatmap from '../../components/charts/SubmissionHeatmap.vue'
 
 const REPORTING_ROLES = [
   UserRole.CBY_ADMIN,
@@ -75,58 +79,6 @@ function handleSavePreset() {
   showPresetForm.value = false
 }
 
-// KPI computations from workflow report
-const kpis = computed(() => {
-  const wr = store.workflowReport
-  const br = store.bankReport
-  if (!wr && !br) return []
-
-  if (wr) {
-    const counts = wr.counts_by_status
-    const total = Object.values(counts).reduce((s, v) => s + v, 0)
-    const completed = (wr.throughput.completed ?? 0) + (wr.throughput.approved ?? 0)
-    const rejected = wr.throughput.rejected ?? 0
-    const approvalRate = total > 0 ? Math.round((completed / total) * 100) : 0
-    const pending = (counts['SUBMITTED'] ?? 0) + (counts['BANK_REVIEW'] ?? 0) + (counts['SUPPORT_REVIEW_IN_PROGRESS'] ?? 0)
-
-    return [
-      { label: 'إجمالي الطلبات', value: total.toLocaleString('ar-EG'), sub: `${pending} معلّق` },
-      { label: 'نسبة الاعتماد', value: `${approvalRate}%`, sub: `${completed} مكتمل` },
-      { label: 'نسبة الرفض', value: `${total > 0 ? Math.round((rejected / total) * 100) : 0}%`, sub: `${rejected} مرفوض` },
-      { label: 'الطلبات المعلقة', value: pending.toLocaleString('ar-EG'), sub: 'في قيد المعالجة' },
-    ]
-  }
-
-  if (br) {
-    return [
-      { label: 'إجمالي طلبات البنك', value: br.total_requests.toLocaleString('ar-EG'), sub: `${br.pending_count} معلّق` },
-      { label: 'نسبة الاعتماد', value: `${br.approval_rate}%`, sub: `${br.approved_count} مكتمل` },
-      { label: 'نسبة الرفض', value: `${br.rejection_rate}%`, sub: `${br.rejected_count} مرفوض` },
-      { label: 'متوسط وقت المعالجة', value: `${br.avg_processing_hours} ساعة`, sub: 'من التقديم للقرار' },
-    ]
-  }
-
-  return []
-})
-
-// Status breakdown rows
-const statusRows = computed(() => {
-  const counts = store.workflowReport?.counts_by_status ?? {}
-  return Object.entries(counts).map(([status, count]) => ({ status, count }))
-})
-
-// Chart: simple bar data for counts_by_bank
-const bankChartData = computed(() => {
-  if (!store.workflowReport) return []
-  return store.workflowReport.counts_by_bank
-    .filter((b) => b.total > 0)
-    .slice(0, 8)
-})
-
-const maxBankTotal = computed(() =>
-  Math.max(...bankChartData.value.map((b) => b.total), 1),
-)
-
 async function handleExportWorkflow(format: 'excel' | 'pdf') {
   await store.exportWorkflow(format)
 }
@@ -139,6 +91,105 @@ function retry() {
   store.error = null
   loadReports()
 }
+
+// ─── KPI strip ────────────────────────────────────────────────────────────────
+
+const kpiData = computed(() => {
+  const wr = store.workflowReport
+  const br = store.bankReport
+
+  if (wr) {
+    const counts = wr.counts_by_status
+    const total = Object.values(counts).reduce((s, v) => s + v, 0)
+    const approvalRate = total > 0 ? Math.round(((wr.throughput.completed + wr.throughput.approved) / total) * 100) : 0
+    return {
+      totalRequests: total,
+      totalFinancingValue: wr.total_financing_value ?? 0,
+      avgProcessingHours: null as number | null,
+      approvalRate,
+      duplicateInvoiceCount: wr.duplicate_invoice_count ?? 0,
+    }
+  }
+
+  if (br) {
+    return {
+      totalRequests: br.total_requests,
+      totalFinancingValue: null as number | null,
+      avgProcessingHours: br.avg_processing_hours,
+      approvalRate: br.approval_rate,
+      duplicateInvoiceCount: null as number | null,
+    }
+  }
+
+  return null
+})
+
+function formatFinancing(v: number): string {
+  if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`
+  if (v >= 1_000) return `${(v / 1_000).toFixed(1)}K`
+  return v.toLocaleString('ar-EG')
+}
+
+// ─── Line chart ──────────────────────────────────────────────────────────────
+
+const lineChartSeries = computed(() => {
+  const trend = store.workflowReport?.monthly_trend ?? []
+  if (!trend.length) return []
+  return [
+    { label: 'طلبات', values: trend.map((m) => m.total), color: '#0066cc' },
+    { label: 'مُعتمد', values: trend.map((m) => m.approved), color: '#1b5e20' },
+    { label: 'مرفوض', values: trend.map((m) => m.rejected), color: '#c62828' },
+  ]
+})
+
+const lineChartLabels = computed(() =>
+  (store.workflowReport?.monthly_trend ?? []).map((m) => m.month.slice(5)), // show MM only
+)
+
+// ─── Pie chart ────────────────────────────────────────────────────────────────
+
+const PIE_COLORS = ['#0066cc', '#5856d6', '#32ade6', '#f57f17', '#c62828']
+
+const pieChartData = computed(() => {
+  const cats = store.workflowReport?.category_distribution ?? []
+  return cats.map((c, i) => ({
+    label: c.category,
+    value: c.count,
+    color: PIE_COLORS[i % PIE_COLORS.length] ?? '#0066cc',
+  }))
+})
+
+// ─── Currency bar chart ────────────────────────────────────────────────────
+
+const currencyBarData = computed(() =>
+  (store.workflowReport?.amount_by_currency ?? []).map((c) => ({
+    currency: c.currency,
+    amount: c.amount,
+  })),
+)
+
+// ─── Heatmap ─────────────────────────────────────────────────────────────────
+
+const heatmapData = computed(() =>
+  store.workflowReport?.submission_heatmap ?? [],
+)
+
+// ─── Bank bar chart (existing) ────────────────────────────────────────────────
+
+const bankChartData = computed(() => {
+  if (!store.workflowReport) return []
+  return store.workflowReport.counts_by_bank
+    .filter((b) => b.total > 0)
+    .slice(0, 8)
+})
+
+const maxBankTotal = computed(() => Math.max(...bankChartData.value.map((b) => b.total), 1))
+
+// Status breakdown rows (existing)
+const statusRows = computed(() => {
+  const counts = store.workflowReport?.counts_by_status ?? {}
+  return Object.entries(counts).map(([status, count]) => ({ status, count }))
+})
 </script>
 
 <template>
@@ -146,41 +197,32 @@ function retry() {
     <!-- Page Header -->
     <div class="page-header">
       <div class="header-text">
-        <h1 class="page-title">التقارير التشغيلية</h1>
-        <p class="page-subtitle">مؤشرات الأداء والبيانات الإدارية</p>
+        <nav class="breadcrumbs" aria-label="مسار التنقل">
+          <NuxtLink to="/dashboard" class="breadcrumb-link">الرئيسية</NuxtLink>
+          <span class="breadcrumb-sep">←</span>
+          <span class="breadcrumb-current">التقارير</span>
+        </nav>
+        <h1 class="page-title">التقارير والتحليلات المتقدمة</h1>
+        <p class="page-subtitle">مؤشرات الأداء، التحليل الإحصائي، والتقارير القابلة للتصدير</p>
       </div>
       <div class="header-actions">
-        <button
-          v-if="isCbyUser"
-          class="btn btn-outline"
-          :disabled="store.exportLoading"
-          @click="handleExportWorkflow('excel')"
-        >
-          تصدير Excel
+        <button class="btn btn-outline btn-icon" :disabled="store.loading" aria-label="تحديد الفترة الزمنية">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>
+          الفترة
         </button>
         <button
-          v-if="isCbyUser"
           class="btn btn-outline"
           :disabled="store.exportLoading"
-          @click="handleExportWorkflow('pdf')"
+          @click="isCbyUser ? handleExportWorkflow('pdf') : handleExportBank('pdf')"
         >
           تصدير PDF
         </button>
         <button
-          v-if="isBankUser"
           class="btn btn-outline"
           :disabled="store.exportLoading"
-          @click="handleExportBank('excel')"
+          @click="isCbyUser ? handleExportWorkflow('excel') : handleExportBank('excel')"
         >
           تصدير Excel
-        </button>
-        <button
-          v-if="isBankUser"
-          class="btn btn-outline"
-          :disabled="store.exportLoading"
-          @click="handleExportBank('pdf')"
-        >
-          تصدير PDF
         </button>
       </div>
     </div>
@@ -267,18 +309,132 @@ function retry() {
 
     <!-- Loading Skeleton -->
     <div v-if="store.loading" class="skeleton-grid">
-      <div v-for="i in 4" :key="i" class="skeleton-kpi" />
-      <div class="skeleton-table" />
+      <div class="skeleton-kpi-row">
+        <div v-for="i in 5" :key="i" class="skeleton-kpi" />
+      </div>
+      <div class="skeleton-charts-row">
+        <div class="skeleton-chart skeleton-chart-lg" />
+        <div class="skeleton-chart skeleton-chart-sm" />
+      </div>
+      <div class="skeleton-charts-row">
+        <div class="skeleton-chart skeleton-chart-lg" />
+        <div class="skeleton-chart skeleton-chart-sm" />
+      </div>
+      <div class="skeleton-chart skeleton-chart-full" />
     </div>
 
     <template v-else>
-      <!-- KPI Strip -->
-      <div v-if="kpis.length" class="kpi-strip">
-        <div v-for="kpi in kpis" :key="kpi.label" class="kpi-card">
-          <div class="kpi-label">{{ kpi.label }}</div>
-          <div class="kpi-value">{{ kpi.value }}</div>
-          <div class="kpi-sub">{{ kpi.sub }}</div>
+      <!-- 5-KPI Strip -->
+      <div v-if="kpiData" class="kpi-strip" data-testid="kpi-cards">
+        <div class="kpi-card">
+          <div class="kpi-icon kpi-icon-blue">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          </div>
+          <div class="kpi-content">
+            <div class="kpi-label">إجمالي الطلبات</div>
+            <div class="kpi-value">{{ kpiData.totalRequests.toLocaleString('ar-EG') }}</div>
+          </div>
         </div>
+        <div class="kpi-card">
+          <div class="kpi-icon kpi-icon-green">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          </div>
+          <div class="kpi-content">
+            <div class="kpi-label">إجمالي قيمة التمويل</div>
+            <div class="kpi-value">
+              {{ kpiData.totalFinancingValue != null ? formatFinancing(kpiData.totalFinancingValue) : '—' }}
+            </div>
+          </div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon kpi-icon-indigo">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          </div>
+          <div class="kpi-content">
+            <div class="kpi-label">متوسط وقت المعالجة</div>
+            <div class="kpi-value">
+              {{ kpiData.avgProcessingHours != null ? `${kpiData.avgProcessingHours} ساعة` : '—' }}
+            </div>
+          </div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon kpi-icon-cyan">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <div class="kpi-content">
+            <div class="kpi-label">معدل الاعتماد</div>
+            <div class="kpi-value">{{ kpiData.approvalRate }}%</div>
+          </div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon kpi-icon-orange">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          </div>
+          <div class="kpi-content">
+            <div class="kpi-label">الفواتير المكررة</div>
+            <div class="kpi-value">
+              {{ kpiData.duplicateInvoiceCount != null ? kpiData.duplicateInvoiceCount : '—' }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Charts: Row 1 — Line + Pie -->
+      <div v-if="store.workflowReport" class="charts-row">
+        <div class="section-card chart-lg" data-testid="line-chart">
+          <h2 class="section-title">تطور أحجام الطلبات</h2>
+          <p class="section-subtitle">أحجام الطلبات الشهرية خلال آخر 12 شهرًا</p>
+          <LineChart
+            v-if="lineChartSeries.length"
+            :labels="lineChartLabels"
+            :series="lineChartSeries"
+          />
+          <div v-else class="chart-empty-msg">لا توجد بيانات للفترة المحددة</div>
+        </div>
+        <div class="section-card chart-sm" data-testid="pie-chart">
+          <h2 class="section-title">التوزيع حسب الفئة</h2>
+          <PieChart
+            v-if="pieChartData.length"
+            :data="pieChartData"
+          />
+          <div v-else class="chart-empty-msg">لا توجد بيانات للفترة المحددة</div>
+        </div>
+      </div>
+
+      <!-- Charts: Row 2 — Currency Bar + Bank Volume -->
+      <div v-if="store.workflowReport" class="charts-row">
+        <div class="section-card chart-lg">
+          <h2 class="section-title">قيمة التمويل بالعملة</h2>
+          <CurrencyBarChart
+            v-if="currencyBarData.length"
+            :data="currencyBarData"
+          />
+          <div v-else class="chart-empty-msg">لا توجد بيانات للفترة المحددة</div>
+        </div>
+        <div v-if="bankChartData.length" class="section-card chart-sm">
+          <h2 class="section-title">حجم الطلبات حسب البنك</h2>
+          <div class="bar-chart" role="list" aria-label="مخطط طلبات البنوك">
+            <div
+              v-for="bank in bankChartData"
+              :key="bank.bank_id"
+              class="bar-row"
+              role="listitem"
+            >
+              <span class="bar-label">{{ bank.bank_name }}</span>
+              <div class="bar-track">
+                <div class="bar-fill" :style="{ width: `${Math.round((bank.total / maxBankTotal) * 100)}%` }" />
+              </div>
+              <span class="bar-value">{{ bank.total }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Heatmap (full width) -->
+      <div v-if="store.workflowReport" class="section-card" data-testid="heatmap">
+        <h2 class="section-title">خريطة حرارية: كثافة التقديم خلال الأسبوع</h2>
+        <p class="section-subtitle">أنماط تقديم الطلبات حسب اليوم والوقت</p>
+        <SubmissionHeatmap :data="heatmapData" />
       </div>
 
       <!-- Workflow Report: Status Breakdown Table -->
@@ -298,28 +454,6 @@ function retry() {
             </tr>
           </tbody>
         </table>
-      </div>
-
-      <!-- Bank Volume Chart (CBY: counts_by_bank) -->
-      <div v-if="store.workflowReport && bankChartData.length" class="section-card">
-        <h2 class="section-title">حجم الطلبات حسب البنك</h2>
-        <div class="bar-chart" role="list" aria-label="مخطط طلبات البنوك">
-          <div
-            v-for="bank in bankChartData"
-            :key="bank.bank_id"
-            class="bar-row"
-            role="listitem"
-          >
-            <span class="bar-label">{{ bank.bank_name }}</span>
-            <div class="bar-track">
-              <div
-                class="bar-fill"
-                :style="{ width: `${Math.round((bank.total / maxBankTotal) * 100)}%` }"
-              />
-            </div>
-            <span class="bar-value">{{ bank.total }}</span>
-          </div>
-        </div>
       </div>
 
       <!-- Bank Report: Per-bank cross-bank breakdown (CBY Admin) -->
@@ -354,20 +488,28 @@ function retry() {
         <h2 class="section-title">إحصاءات بنكك</h2>
         <div class="kpi-strip">
           <div class="kpi-card">
-            <div class="kpi-label">إجمالي الطلبات</div>
-            <div class="kpi-value">{{ store.bankReport.total_requests }}</div>
+            <div class="kpi-content">
+              <div class="kpi-label">إجمالي الطلبات</div>
+              <div class="kpi-value">{{ store.bankReport.total_requests }}</div>
+            </div>
           </div>
           <div class="kpi-card">
-            <div class="kpi-label">الطلبات المعتمدة</div>
-            <div class="kpi-value" style="color:#34c759">{{ store.bankReport.approved_count }}</div>
+            <div class="kpi-content">
+              <div class="kpi-label">الطلبات المعتمدة</div>
+              <div class="kpi-value" style="color:#1b5e20">{{ store.bankReport.approved_count }}</div>
+            </div>
           </div>
           <div class="kpi-card">
-            <div class="kpi-label">الطلبات المرفوضة</div>
-            <div class="kpi-value" style="color:#ff3b30">{{ store.bankReport.rejected_count }}</div>
+            <div class="kpi-content">
+              <div class="kpi-label">الطلبات المرفوضة</div>
+              <div class="kpi-value" style="color:#c62828">{{ store.bankReport.rejected_count }}</div>
+            </div>
           </div>
           <div class="kpi-card">
-            <div class="kpi-label">متوسط وقت المعالجة</div>
-            <div class="kpi-value">{{ store.bankReport.avg_processing_hours }} ساعة</div>
+            <div class="kpi-content">
+              <div class="kpi-label">متوسط وقت المعالجة</div>
+              <div class="kpi-value">{{ store.bankReport.avg_processing_hours }} ساعة</div>
+            </div>
           </div>
         </div>
       </div>
@@ -388,6 +530,7 @@ function retry() {
   direction: rtl;
 }
 
+/* ─── Header ────────────────────────────────────────────────── */
 .page-header {
   display: flex;
   align-items: flex-start;
@@ -395,16 +538,42 @@ function retry() {
   gap: 16px;
 }
 
+.breadcrumbs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #6c757d;
+  margin-bottom: 6px;
+}
+
+.breadcrumb-link {
+  color: #0066cc;
+  text-decoration: none;
+}
+
+.breadcrumb-link:hover {
+  text-decoration: underline;
+}
+
+.breadcrumb-sep {
+  color: #cccccc;
+}
+
+.breadcrumb-current {
+  color: #1c222b;
+}
+
 .page-title {
   font-size: 28px;
-  font-weight: 500;
-  color: #1d1d1f;
+  font-weight: 600;
+  color: #1c222b;
   margin: 0;
 }
 
 .page-subtitle {
-  font-size: 15px;
-  color: #6e6e73;
+  font-size: 14px;
+  color: #6c757d;
   margin: 4px 0 0;
 }
 
@@ -412,41 +581,46 @@ function retry() {
   display: flex;
   gap: 8px;
   flex-shrink: 0;
+  align-items: center;
 }
 
-/* Buttons */
+/* ─── Buttons ───────────────────────────────────────────────── */
 .btn {
   padding: 8px 16px;
-  border-radius: 8px;
+  border-radius: 16px;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
   border: none;
   transition: opacity 0.15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-.btn-primary { background: #0071e3; color: #fff; }
-.btn-outline { background: transparent; border: 1px solid #d2d2d7; color: #1d1d1f; }
-.btn-ghost { background: transparent; color: #0071e3; }
+.btn-primary { background: #0066cc; color: #fff; }
+.btn-outline { background: transparent; border: 1px solid #cccccc; color: #1c222b; }
+.btn-ghost { background: transparent; color: #0066cc; }
 .btn-sm { padding: 4px 10px; font-size: 13px; }
+.btn-icon { padding: 8px 12px; }
 
-/* Error */
+/* ─── Error ─────────────────────────────────────────────────── */
 .error-banner {
   background: #fff5f5;
-  border: 1px solid #ff3b30;
-  border-radius: 8px;
+  border: 1px solid #c62828;
+  border-radius: 12px;
   padding: 12px 16px;
-  color: #ff3b30;
+  color: #c62828;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
 }
 
-/* Filter Card */
+/* ─── Filter Card ────────────────────────────────────────────── */
 .filter-card {
   background: #fff;
-  border: 1px solid #d2d2d7;
+  border: 1px solid #cccccc;
   border-radius: 12px;
   padding: 16px 20px;
   display: flex;
@@ -469,15 +643,15 @@ function retry() {
 
 .filter-label {
   font-size: 13px;
-  color: #6e6e73;
+  color: #6c757d;
 }
 
 .filter-input {
   padding: 8px 10px;
-  border: 1px solid #d2d2d7;
-  border-radius: 8px;
+  border: 1px solid #cccccc;
+  border-radius: 12px;
   font-size: 14px;
-  color: #1d1d1f;
+  color: #1c222b;
   background: #fff;
   min-width: 160px;
 }
@@ -487,7 +661,7 @@ function retry() {
   gap: 8px;
 }
 
-/* Presets */
+/* ─── Presets ───────────────────────────────────────────────── */
 .presets-row {
   display: flex;
   align-items: center;
@@ -497,7 +671,7 @@ function retry() {
 
 .presets-label {
   font-size: 13px;
-  color: #6e6e73;
+  color: #6c757d;
 }
 
 .presets-list {
@@ -508,8 +682,8 @@ function retry() {
 }
 
 .preset-chip {
-  background: #f5f5f7;
-  border: 1px solid #d2d2d7;
+  background: #f5f5f5;
+  border: 1px solid #cccccc;
   border-radius: 20px;
   padding: 4px 12px;
   font-size: 13px;
@@ -520,7 +694,7 @@ function retry() {
 }
 
 .preset-delete {
-  color: #ff3b30;
+  color: #c62828;
   font-weight: bold;
   line-height: 1;
   cursor: pointer;
@@ -541,65 +715,118 @@ function retry() {
   min-width: 160px;
 }
 
-/* Skeleton */
+/* ─── Skeleton ──────────────────────────────────────────────── */
 .skeleton-grid {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 20px;
+}
+
+.skeleton-kpi-row {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+}
+
+.skeleton-charts-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 20px;
 }
 
 .skeleton-kpi,
-.skeleton-table {
-  background: linear-gradient(90deg, #f5f5f7 25%, #e8e8ed 50%, #f5f5f7 75%);
+.skeleton-chart {
+  background: linear-gradient(90deg, #f5f5f5 25%, #e8e8e8 50%, #f5f5f5 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
   border-radius: 12px;
 }
 
-.skeleton-kpi { height: 88px; }
-.skeleton-table { height: 200px; }
+.skeleton-kpi { height: 100px; }
+.skeleton-chart-lg { height: 240px; }
+.skeleton-chart-sm { height: 240px; }
+.skeleton-chart-full { height: 200px; }
 
 @keyframes shimmer {
   0% { background-position: 200% 0; }
   100% { background-position: -200% 0; }
 }
 
-/* KPI Strip */
+/* ─── KPI Strip ─────────────────────────────────────────────── */
 .kpi-strip {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  grid-template-columns: repeat(2, 1fr);
   gap: 12px;
+}
+
+@media (min-width: 1024px) {
+  .kpi-strip {
+    grid-template-columns: repeat(5, 1fr);
+  }
 }
 
 .kpi-card {
   background: #fff;
-  border: 1px solid #d2d2d7;
+  border: 1px solid #cccccc;
   border-radius: 12px;
   padding: 16px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.kpi-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.kpi-icon-blue { background: #e8f0fc; color: #0066cc; }
+.kpi-icon-green { background: #e8f5e9; color: #1b5e20; }
+.kpi-icon-indigo { background: #ede7f6; color: #5856d6; }
+.kpi-icon-cyan { background: #e0f7fa; color: #32ade6; }
+.kpi-icon-orange { background: #fff3e0; color: #f57f17; }
+
+.kpi-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
 }
 
 .kpi-label {
   font-size: 12px;
-  color: #6e6e73;
-  margin-bottom: 4px;
+  color: #6c757d;
 }
 
 .kpi-value {
-  font-size: 24px;
-  font-weight: 600;
-  color: #1d1d1f;
+  font-size: 22px;
+  font-weight: 700;
+  color: #1c222b;
+  line-height: 1.2;
 }
 
-.kpi-sub {
-  font-size: 12px;
-  color: #8e8e93;
-  margin-top: 2px;
+/* ─── Charts Layout ─────────────────────────────────────────── */
+.charts-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 20px;
 }
 
-/* Section Card */
+@media (max-width: 900px) {
+  .charts-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ─── Section Card ──────────────────────────────────────────── */
 .section-card {
   background: #fff;
-  border: 1px solid #d2d2d7;
+  border: 1px solid #cccccc;
   border-radius: 12px;
   padding: 20px 24px;
 }
@@ -607,39 +834,26 @@ function retry() {
 .section-title {
   font-size: 16px;
   font-weight: 600;
-  color: #1d1d1f;
+  color: #1c222b;
+  margin: 0 0 4px;
+}
+
+.section-subtitle {
+  font-size: 13px;
+  color: #6c757d;
   margin: 0 0 16px;
 }
 
-/* Table */
-.report-table {
-  width: 100%;
-  border-collapse: collapse;
-  text-align: right;
-}
-
-.report-table th,
-.report-table td {
-  padding: 10px 12px;
-  border-bottom: 1px solid #d2d2d7;
+.chart-empty-msg {
+  height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6c757d;
   font-size: 14px;
 }
 
-.report-table th {
-  background: #f5f5f7;
-  font-weight: 600;
-  color: #1d1d1f;
-}
-
-.report-table td {
-  color: #1d1d1f;
-}
-
-.report-table tr:last-child td {
-  border-bottom: none;
-}
-
-/* Bar Chart */
+/* ─── Bank bar chart (existing pattern) ─────────────────────── */
 .bar-chart {
   display: flex;
   flex-direction: column;
@@ -653,9 +867,9 @@ function retry() {
 }
 
 .bar-label {
-  width: 140px;
+  width: 120px;
   font-size: 13px;
-  color: #1d1d1f;
+  color: #1c222b;
   text-align: right;
   flex-shrink: 0;
   white-space: nowrap;
@@ -666,34 +880,62 @@ function retry() {
 .bar-track {
   flex: 1;
   height: 10px;
-  background: #f5f5f7;
+  background: #f5f5f5;
   border-radius: 5px;
   overflow: hidden;
 }
 
 .bar-fill {
   height: 100%;
-  background: #0071e3;
+  background: #0066cc;
   border-radius: 5px;
   transition: width 0.3s ease;
   min-width: 2px;
 }
 
 .bar-value {
-  width: 40px;
+  width: 36px;
   font-size: 13px;
-  color: #6e6e73;
+  color: #6c757d;
   text-align: left;
   flex-shrink: 0;
 }
 
-/* Empty State */
+/* ─── Table ─────────────────────────────────────────────────── */
+.report-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: right;
+}
+
+.report-table th,
+.report-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #cccccc;
+  font-size: 14px;
+}
+
+.report-table th {
+  background: #f5f5f5;
+  font-weight: 600;
+  color: #1c222b;
+}
+
+.report-table td {
+  color: #1c222b;
+}
+
+.report-table tr:last-child td {
+  border-bottom: none;
+}
+
+/* ─── Empty State ───────────────────────────────────────────── */
 .empty-state {
   background: #fff;
-  border: 1px solid #d2d2d7;
+  border: 1px solid #cccccc;
   border-radius: 12px;
   padding: 48px;
   text-align: center;
-  color: #6e6e73;
+  color: #6c757d;
 }
 </style>

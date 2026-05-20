@@ -126,6 +126,108 @@ describe('useReports — exportReport()', () => {
   })
 })
 
+describe('useReports — WorkflowReport new 7.8 fields', () => {
+  beforeEach(() => vi.resetAllMocks())
+
+  it('WorkflowReport interface accepts all 6 new analytics fields', async () => {
+    const report = {
+      counts_by_status: { DRAFT: 1 },
+      counts_by_bank: [],
+      avg_time_per_stage_hours: {},
+      throughput: { completed: 0, approved: 0, rejected: 0 },
+      monthly_trend: [{ month: '2026-01', total: 5, approved: 3, rejected: 1 }],
+      category_distribution: [{ category: 'Electronics', count: 5 }],
+      amount_by_currency: [{ currency: 'USD', amount: 10000 }],
+      submission_heatmap: [{ day: 1, slot: 8, count: 3 }],
+      total_financing_value: 50000,
+      duplicate_invoice_count: 2,
+    }
+    mockGet.mockResolvedValueOnce({ success: true, data: report })
+
+    const { fetchWorkflowReport } = useReports()
+    const result = await fetchWorkflowReport()
+
+    expect(result.monthly_trend).toHaveLength(1)
+    expect(result.monthly_trend[0]).toMatchObject({ month: '2026-01', total: 5, approved: 3, rejected: 1 })
+    expect(result.category_distribution).toHaveLength(1)
+    expect(result.amount_by_currency[0]).toMatchObject({ currency: 'USD', amount: 10000 })
+    expect(result.total_financing_value).toBe(50000)
+    expect(result.duplicate_invoice_count).toBe(2)
+  })
+
+  it('fetchWorkflowReport maps monthly_trend response correctly', async () => {
+    const trend = [
+      { month: '2026-03', total: 10, approved: 7, rejected: 2 },
+      { month: '2026-04', total: 15, approved: 11, rejected: 3 },
+    ]
+    mockGet.mockResolvedValueOnce({
+      success: true,
+      data: {
+        counts_by_status: {},
+        counts_by_bank: [],
+        avg_time_per_stage_hours: {},
+        throughput: { completed: 0, approved: 0, rejected: 0 },
+        monthly_trend: trend,
+        category_distribution: [],
+        amount_by_currency: [],
+        submission_heatmap: [],
+        total_financing_value: 0,
+        duplicate_invoice_count: 0,
+      },
+    })
+
+    const { fetchWorkflowReport } = useReports()
+    const result = await fetchWorkflowReport()
+
+    expect(result.monthly_trend).toHaveLength(2)
+    expect(result.monthly_trend[1]!.month).toBe('2026-04')
+    expect(result.monthly_trend[1]!.approved).toBe(11)
+  })
+
+  it('submission_heatmap entries have day, slot, count keys', async () => {
+    mockGet.mockResolvedValueOnce({
+      success: true,
+      data: {
+        counts_by_status: {},
+        counts_by_bank: [],
+        avg_time_per_stage_hours: {},
+        throughput: { completed: 0, approved: 0, rejected: 0 },
+        monthly_trend: [],
+        category_distribution: [],
+        amount_by_currency: [],
+        submission_heatmap: [{ day: 2, slot: 10, count: 5 }],
+        total_financing_value: 0,
+        duplicate_invoice_count: 0,
+      },
+    })
+
+    const { fetchWorkflowReport } = useReports()
+    const result = await fetchWorkflowReport()
+
+    expect(result.submission_heatmap[0]).toHaveProperty('day')
+    expect(result.submission_heatmap[0]).toHaveProperty('slot')
+    expect(result.submission_heatmap[0]).toHaveProperty('count')
+    expect(result.submission_heatmap[0]!.day).toBe(2)
+  })
+
+  it('BankReport interface still passes with existing fields unchanged', async () => {
+    mockGet.mockResolvedValueOnce({ success: true, data: BANK_REPORT })
+
+    const { fetchBankReport } = useReports()
+    const result = await fetchBankReport()
+
+    expect(result).toMatchObject({
+      total_requests: 5,
+      approved_count: 3,
+      rejected_count: 1,
+      pending_count: 1,
+      approval_rate: 60.0,
+      rejection_rate: 20.0,
+      avg_processing_hours: 12.5,
+    })
+  })
+})
+
 // localStorage stub for node environment
 const localStorageStore: Map<string, string> = new Map()
 const localStorageStub = {
