@@ -130,20 +130,19 @@ describe('/admin/cby-staff', () => {
   it('renders empty state when no users', async () => {
     const wrapper = await mountPage()
     expect(wrapper.find('[data-empty-state-variant="cby-staff"]').exists()).toBe(true)
-    expect(wrapper.text()).toContain('لا يوجد مستخدمون')
+    expect(wrapper.text()).toContain('لا توجد نتائج')
   })
 
   it('renders user table with all required columns', async () => {
     fetchUsersMock.mockResolvedValue([makeUser()])
     const wrapper = await mountPage()
     const headers = wrapper.findAll('thead th').map(th => th.text())
-    expect(headers).toContain('الاسم')
-    expect(headers).toContain('البريد الإلكتروني')
+    expect(headers).toContain('المستخدم')
     expect(headers).toContain('الدور')
     expect(headers).toContain('الجهة')
     expect(headers).toContain('الحالة')
     expect(headers).toContain('آخر ظهور')
-    expect(headers).toContain('إجراءات')
+    expect(headers).toContain('الإجراءات')
   })
 
   it('renders user row with name and status badge', async () => {
@@ -220,15 +219,16 @@ describe('/admin/cby-staff', () => {
       }),
     ])
     const wrapper = await mountPage()
-    expect(wrapper.text()).toContain('بنك عدن')
-    expect(wrapper.text()).not.toContain('البنك المركزي اليمني')
+    // User row should show the bank from the fetched banks list
+    const rows = wrapper.findAll('tbody tr')
+    expect(rows[0]?.text()).toContain('بنك عدن')
   })
 
   it('opens modal when clicking Add button', async () => {
     const wrapper = await mountPage()
     await wrapper.get('.btn-primary').trigger('click')
     expect(wrapper.find('.modal').exists()).toBe(true)
-    expect(wrapper.text()).toContain('إضافة مستخدم نظام')
+    expect(wrapper.text()).toContain('إضافة مستخدم جديد')
   })
 
   it('modal role dropdown includes all canonical roles', async () => {
@@ -327,7 +327,6 @@ describe('/admin/cby-staff', () => {
 describe('/admin/entities', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    fetchUsersMock.mockResolvedValue([])
     fetchBanksMock.mockResolvedValue([])
     createBankMock.mockResolvedValue(makeBank({ id: 2 }))
     updateBankMock.mockResolvedValue(makeBank())
@@ -340,9 +339,9 @@ describe('/admin/entities', () => {
     return wrapper
   }
 
-  it('renders page title as "إدارة الجهات"', async () => {
+  it('renders page title as "إدارة البنوك التجارية"', async () => {
     const wrapper = await mountPage()
-    expect(wrapper.find('.page-title').text()).toBe('إدارة الجهات')
+    expect(wrapper.find('.page-title').text()).toBe('إدارة البنوك التجارية')
   })
 
   it('renders empty state when no banks', async () => {
@@ -350,55 +349,66 @@ describe('/admin/entities', () => {
     expect(wrapper.find('[data-empty-state-variant="entities"]').exists()).toBe(true)
   })
 
-  it('renders entity rows with name, code, status', async () => {
+  it('renders stat cards: total, active, inactive', async () => {
+    fetchBanksMock.mockResolvedValue([
+      makeBank({ id: 1, is_active: true }),
+      makeBank({ id: 2, is_active: false }),
+    ])
+    const wrapper = await mountPage()
+    expect(wrapper.text()).toContain('إجمالي البنوك')
+    expect(wrapper.text()).toContain('نشط')
+    expect(wrapper.text()).toContain('غير نشط')
+  })
+
+  it('renders entity rows with name, code, license, status', async () => {
     fetchBanksMock.mockResolvedValue([makeBank()])
     const wrapper = await mountPage()
     expect(wrapper.text()).toContain('البنك التجاري اليمني')
     expect(wrapper.text()).toContain('YCB')
+    expect(wrapper.text()).toContain('LIC-001')
     expect(wrapper.text()).toContain('نشط')
   })
 
-  it('renders entity English name', async () => {
+  it('renders entity English name in icon cell', async () => {
     fetchBanksMock.mockResolvedValue([makeBank()])
     const wrapper = await mountPage()
     expect(wrapper.text()).toContain('Yemen Commercial Bank')
   })
 
-  it('renders entity type column header', async () => {
+  it('renders correct column headers: الجهة, رقم الترخيص, الرمز, الحالة, إجراءات', async () => {
     const wrapper = await mountPage()
     const headers = wrapper.findAll('thead th').map(th => th.text())
-    expect(headers).toContain('نوع الجهة')
+    expect(headers).toContain('الجهة')
     expect(headers).toContain('رقم الترخيص')
-    expect(headers).toContain('عدد المستخدمين')
+    expect(headers).toContain('الرمز')
+    expect(headers).toContain('الحالة')
+    expect(headers).toContain('إجراءات')
   })
 
-  it('renders entity type, license number, and user count from data', async () => {
-    fetchUsersMock.mockResolvedValue([
-      makeUser({ id: 10, role: UserRole.BANK_ADMIN, bank_id: 1 }),
-      makeUser({ id: 11, role: UserRole.DATA_ENTRY, bank_id: 1 }),
-      makeUser({ id: 12, role: UserRole.CBY_ADMIN, bank_id: null }),
-    ])
-    fetchBanksMock.mockResolvedValue([
-      makeBank({ id: 1, entity_type: 'إسلامي', license_number: 'LIC-77' }),
-    ])
+  it('does not render entity_type or user_count columns', async () => {
     const wrapper = await mountPage()
-    expect(wrapper.text()).toContain('إسلامي')
-    expect(wrapper.text()).toContain('LIC-77')
-    expect(wrapper.text()).toContain('2')
+    const headers = wrapper.findAll('thead th').map(th => th.text())
+    expect(headers).not.toContain('نوع الجهة')
+    expect(headers).not.toContain('عدد المستخدمين')
   })
 
-  it('opens create modal with required form fields', async () => {
+  it('renders bank avatar initials from name_ar', async () => {
+    fetchBanksMock.mockResolvedValue([makeBank({ name_ar: 'بنك عدن' })])
+    const wrapper = await mountPage()
+    expect(wrapper.find('.bank-avatar').text()).toBe('بع')
+  })
+
+  it('opens create modal with correct title and form fields', async () => {
     const wrapper = await mountPage()
     await wrapper.get('.btn-primary').trigger('click')
     expect(wrapper.find('.modal').exists()).toBe(true)
-    expect(wrapper.text()).toContain('إضافة جهة جديدة')
+    expect(wrapper.text()).toContain('إضافة بنك جديد')
     const text = wrapper.find('.modal').text()
-    expect(text).toContain('الاسم بالعربية')
+    expect(text).toContain('اسم البنك')
     expect(text).toContain('الاسم بالإنجليزية')
-    expect(text).toContain('الرمز')
   })
 
-  it('validates required fields before saving', async () => {
+  it('validates required name_ar before saving', async () => {
     const wrapper = await mountPage()
     await wrapper.get('.btn-primary').trigger('click')
 
@@ -410,7 +420,7 @@ describe('/admin/entities', () => {
     expect(createBankMock).not.toHaveBeenCalled()
   })
 
-  it('creates an entity and dismisses modal on success', async () => {
+  it('creates a bank and dismisses modal on success', async () => {
     createBankMock.mockResolvedValue(makeBank({ id: 99, name_ar: 'بنك جديد' }))
     const wrapper = await mountPage()
     await wrapper.get('.btn-primary').trigger('click')
@@ -429,38 +439,38 @@ describe('/admin/entities', () => {
     expect(wrapper.find('.modal').exists()).toBe(false)
   })
 
-  it('opens edit modal with title "تعديل بيانات الجهة"', async () => {
+  it('opens edit modal with title "تعديل بيانات البنك"', async () => {
     fetchBanksMock.mockResolvedValue([makeBank()])
     const wrapper = await mountPage()
     await wrapper.get('.btn-edit').trigger('click')
-    expect(wrapper.text()).toContain('تعديل بيانات الجهة')
+    expect(wrapper.text()).toContain('تعديل بيانات البنك')
   })
 
-  it('entity type dropdown has multiple options', async () => {
+  it('opens view modal on عرض button click', async () => {
+    fetchBanksMock.mockResolvedValue([makeBank()])
     const wrapper = await mountPage()
-    await wrapper.get('.btn-primary').trigger('click')
-    const selects = wrapper.findAll('.modal select')
-    const typeSelect = selects[selects.length - 1]!
-    const options = typeSelect.findAll('option').map(o => o.text())
-    expect(options).toContain('تجاري')
-    expect(options).toContain('إسلامي')
+    await wrapper.get('.btn-view').trigger('click')
+    expect(wrapper.text()).toContain('بيانات البنك')
+    expect(wrapper.find('.view-fields').exists()).toBe(true)
+  })
+
+  it('toggles activation state when إيقاف button is clicked', async () => {
+    fetchBanksMock.mockResolvedValue([makeBank({ id: 3, is_active: true })])
+    updateBankMock.mockResolvedValue(makeBank({ id: 3, is_active: false }))
+    const wrapper = await mountPage()
+
+    await wrapper.get('.btn-deactivate').trigger('click')
+    await flushPromises()
+
+    expect(updateBankMock).toHaveBeenCalledWith(3, expect.objectContaining({ is_active: false }))
   })
 })
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// /admin/roles
+// /admin/roles — permission matrix (14 rows × 8 role columns)
 // ═══════════════════════════════════════════════════════════════════════════════
 
 describe('/admin/roles', () => {
-  beforeEach(() => {
-    fetchUsersMock.mockResolvedValue([
-      makeUser({ id: 1, role: UserRole.CBY_ADMIN }),
-      makeUser({ id: 2, role: UserRole.BANK_ADMIN, bank_id: 1 }),
-      makeUser({ id: 3, role: UserRole.BANK_REVIEWER, bank_id: 1 }),
-      makeUser({ id: 4, role: UserRole.BANK_REVIEWER, bank_id: 1 }),
-    ])
-  })
-
   async function mountPage() {
     const page = (await import('../../../pages/admin/roles.vue')).default
     const wrapper = mount(page, { global: { stubs: { Teleport: true } } })
@@ -468,9 +478,9 @@ describe('/admin/roles', () => {
     return wrapper
   }
 
-  it('renders page title "الأدوار والصلاحيات"', async () => {
+  it('renders page title "مصفوفة الأدوار والصلاحيات"', async () => {
     const wrapper = await mountPage()
-    expect(wrapper.find('.page-title').text()).toBe('الأدوار والصلاحيات')
+    expect(wrapper.find('.page-title').text()).toBe('مصفوفة الأدوار والصلاحيات')
   })
 
   it('renders "قراءة فقط" badge', async () => {
@@ -478,59 +488,75 @@ describe('/admin/roles', () => {
     expect(wrapper.find('.read-only-badge').text()).toContain('قراءة فقط')
   })
 
-  it('renders all 8 canonical role rows', async () => {
+  it('renders 9 header columns (الصلاحيات + 8 role columns)', async () => {
     const wrapper = await mountPage()
-    const allRoles = Object.values(UserRole)
+    const headers = wrapper.findAll('thead th')
+    expect(headers.length).toBe(9)
+    expect(headers[0]!.text()).toBe('الصلاحيات')
+  })
+
+  it('renders 14 permission rows', async () => {
+    const wrapper = await mountPage()
     const rows = wrapper.findAll('tbody tr')
-    expect(rows.length).toBe(allRoles.length)
+    expect(rows.length).toBe(14)
   })
 
-  it('renders DATA_ENTRY row with label and permissions', async () => {
+  it('renders each permission with a code badge', async () => {
     const wrapper = await mountPage()
-    const row = wrapper.find('[data-role="DATA_ENTRY"]')
-    expect(row.exists()).toBe(true)
-    expect(row.text()).toContain('إدخال البيانات')
-    expect(row.text()).toContain('إنشاء طلب')
+    expect(wrapper.text()).toContain('request.create')
+    expect(wrapper.text()).toContain('voting.finalize')
+    expect(wrapper.text()).toContain('docrules.manage')
   })
 
-  it('renders CBY_ADMIN row', async () => {
+  it('renders all 8 role column headers', async () => {
     const wrapper = await mountPage()
-    const row = wrapper.find('[data-role="CBY_ADMIN"]')
-    expect(row.exists()).toBe(true)
-    expect(row.text()).toContain('مدير النظام')
+    const roleCols = wrapper.findAll('thead th[data-role]')
+    expect(roleCols.length).toBe(8)
+    const roles = roleCols.map(th => th.attributes('data-role'))
+    expect(roles).toContain('DATA_ENTRY')
+    expect(roles).toContain('CBY_ADMIN')
+    expect(roles).toContain('COMMITTEE_DIRECTOR')
   })
 
-  it('renders COMMITTEE_DIRECTOR with director-specific permissions', async () => {
+  it('all checkboxes are disabled (read-only matrix)', async () => {
     const wrapper = await mountPage()
-    const row = wrapper.find('[data-role="COMMITTEE_DIRECTOR"]')
-    expect(row.text()).toContain('فتح جلسة التصويت')
+    const checkboxes = wrapper.findAll('.perm-checkbox')
+    expect(checkboxes.length).toBeGreaterThan(0)
+    checkboxes.forEach(cb => {
+      expect((cb.element as HTMLInputElement).disabled).toBe(true)
+    })
   })
 
-  it('has no create/edit buttons (read-only)', async () => {
+  it('request.create row is checked for DATA_ENTRY', async () => {
+    const wrapper = await mountPage()
+    const permRow = wrapper.find('[data-permission="request.create"]')
+    expect(permRow.exists()).toBe(true)
+    const checkboxes = permRow.findAll('.perm-checkbox')
+    // DATA_ENTRY is first ROLE_COLUMN → first checkbox should be checked
+    expect((checkboxes[0]!.element as HTMLInputElement).checked).toBe(true)
+  })
+
+  it('voting.finalize row is NOT checked for DATA_ENTRY', async () => {
+    const wrapper = await mountPage()
+    const permRow = wrapper.find('[data-permission="voting.finalize"]')
+    const checkboxes = permRow.findAll('.perm-checkbox')
+    expect((checkboxes[0]!.element as HTMLInputElement).checked).toBe(false)
+  })
+
+  it('has no create/edit buttons (read-only page)', async () => {
     const wrapper = await mountPage()
     expect(wrapper.find('.btn-primary').exists()).toBe(false)
     expect(wrapper.find('.btn-edit').exists()).toBe(false)
   })
 
-  it('renders 4 header columns: الدور, الوصف, الصلاحيات, عدد المستخدمين', async () => {
+  it('does not show per-role user counts', async () => {
     const wrapper = await mountPage()
-    const headers = wrapper.findAll('thead th').map(th => th.text())
-    expect(headers).toContain('الدور')
-    expect(headers).toContain('الوصف')
-    expect(headers).toContain('الصلاحيات')
-    expect(headers).toContain('عدد المستخدمين')
+    expect(wrapper.text()).not.toContain('عدد المستخدمين')
   })
 
-  it('each row has a role enum code displayed', async () => {
-    const wrapper = await mountPage()
-    expect(wrapper.text()).toContain('DATA_ENTRY')
-    expect(wrapper.text()).toContain('CBY_ADMIN')
-  })
-
-  it('renders per-role user counts', async () => {
-    const wrapper = await mountPage()
-    expect(wrapper.find('[data-role="BANK_REVIEWER"]').text()).toContain('2')
-    expect(wrapper.find('[data-role="BANK_ADMIN"]').text()).toContain('1')
+  it('does not call fetchUsers (static constants only)', async () => {
+    await mountPage()
+    expect(fetchUsersMock).not.toHaveBeenCalled()
   })
 })
 

@@ -84,17 +84,17 @@ describe('Story 5.7 page smoke tests', () => {
   it('renders /staff page shell (BANK_ADMIN staff management)', async () => {
     const page = await import('../../../pages/staff.vue')
     const html = await renderPage(page.default)
-    expect(html).toContain('إدارة الموظفين')
+    expect(html).toContain('موظفو الجهة')
   })
 
   it('renders Story 6.5 admin pages with real content (not redirects)', async () => {
     const cbystaffHtml = await renderPage((await import('../../../pages/admin/cby-staff.vue')).default)
-    expect(cbystaffHtml).toContain('مستخدمو النظام')
+    expect(cbystaffHtml).toContain('مستخدمي النظام')
 
     const entitiesHtml = await renderPage((await import('../../../pages/admin/entities.vue')).default)
-    expect(entitiesHtml).toContain('إدارة الجهات')
+    expect(entitiesHtml).toContain('إدارة البنوك التجارية')
 
     const rolesHtml = await renderPage((await import('../../../pages/admin/roles.vue')).default)
-    expect(rolesHtml).toContain('الأدوار والصلاحيات')
+    expect(rolesHtml).toContain('مصفوفة الأدوار والصلاحيات')
   })
 })

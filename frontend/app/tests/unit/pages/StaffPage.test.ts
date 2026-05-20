@@ -62,6 +62,67 @@ describe('staff.vue', () => {
     expect(wrapper.text()).toContain('لا يوجد موظفون مسجّلون')
   })
 
+  it('renders page title "موظفو الجهة"', async () => {
+    const wrapper = mount(staffPage, { global: { stubs: { Teleport: true } } })
+    await flushPromises()
+    expect(wrapper.find('.page-title').text()).toBe('موظفو الجهة')
+  })
+
+  it('renders stat cards: إجمالي الموظفين, نشط, غير نشط', async () => {
+    fetchUsersMock.mockResolvedValue([
+      makeStaff({ id: 1, is_active: true }),
+      makeStaff({ id: 2, is_active: false }),
+    ])
+    const wrapper = mount(staffPage, { global: { stubs: { Teleport: true } } })
+    await flushPromises()
+    expect(wrapper.text()).toContain('إجمالي الموظفين')
+    expect(wrapper.text()).toContain('نشط')
+    expect(wrapper.text()).toContain('غير نشط')
+  })
+
+  it('shows correct counts in stat cards', async () => {
+    fetchUsersMock.mockResolvedValue([
+      makeStaff({ id: 1, is_active: true }),
+      makeStaff({ id: 2, is_active: true }),
+      makeStaff({ id: 3, is_active: false }),
+    ])
+    const wrapper = mount(staffPage, { global: { stubs: { Teleport: true } } })
+    await flushPromises()
+    const statValues = wrapper.findAll('.stat-value').map(el => el.text())
+    expect(statValues).toContain('3')
+    expect(statValues).toContain('2')
+    expect(statValues).toContain('1')
+  })
+
+  it('renders search input in filter card', async () => {
+    const wrapper = mount(staffPage, { global: { stubs: { Teleport: true } } })
+    await flushPromises()
+    expect(wrapper.find('.search-input').exists()).toBe(true)
+  })
+
+  it('filters staff by search query on name', async () => {
+    fetchUsersMock.mockResolvedValue([
+      makeStaff({ id: 1, name: 'أحمد السالمي' }),
+      makeStaff({ id: 2, name: 'سارة العتيبي' }),
+    ])
+    const wrapper = mount(staffPage, { global: { stubs: { Teleport: true } } })
+    await flushPromises()
+
+    const vm = wrapper.vm as any
+    vm.searchQuery = 'أحمد'
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('أحمد السالمي')
+    expect(wrapper.text()).not.toContain('سارة العتيبي')
+  })
+
+  it('renders avatar initials from staff name (first letter of each word)', async () => {
+    fetchUsersMock.mockResolvedValue([makeStaff({ name: 'محمد علي' })])
+    const wrapper = mount(staffPage, { global: { stubs: { Teleport: true } } })
+    await flushPromises()
+    expect(wrapper.find('.avatar').text()).toBe('مع')
+  })
+
   it('renders join date from API created_at field', async () => {
     fetchUsersMock.mockResolvedValue([makeStaff()])
     const wrapper = mount(staffPage, {

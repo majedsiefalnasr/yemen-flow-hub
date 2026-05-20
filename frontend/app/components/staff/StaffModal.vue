@@ -148,6 +148,10 @@ const onSubmit = handleSubmit((values) => {
           </button>
         </DialogHeader>
 
+        <p class="modal-description">
+          الفصل بين الإدخال والمراجعة الداخلية مفروض تلقائياً على نفس الطلب.
+        </p>
+
         <div v-if="props.serverError" class="server-error-banner" role="alert">
           {{ props.serverError }}
         </div>
@@ -278,6 +282,13 @@ const onSubmit = handleSubmit((values) => {
   display: flex;
   align-items: center;
   justify-content: space-between;
+}
+
+.modal-description {
+  font-size: 13px;
+  color: #6c757d;
+  margin: -8px 0 0 0;
+  line-height: 1.5;
 }
 
 .modal-title {

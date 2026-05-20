@@ -63,4 +63,11 @@ describe('StaffModal', () => {
     await wrapper.get('.close-btn').trigger('click')
     expect(wrapper.emitted('close')).toHaveLength(1)
   })
+
+  it('renders parity description about role separation', async () => {
+    const wrapper = mountModal()
+    await flushPromises()
+    expect(wrapper.find('.modal-description').exists()).toBe(true)
+    expect(wrapper.text()).toContain('الفصل بين الإدخال والمراجعة الداخلية')
+  })
 })
