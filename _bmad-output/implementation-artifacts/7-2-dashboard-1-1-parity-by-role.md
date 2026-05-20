@@ -1,6 +1,6 @@
 # Story 7.2: Dashboard 1:1 Parity by Role
 
-Status: review
+Status: done
 
 ## Story
 
@@ -167,6 +167,16 @@ Targeted frontend unit tests, dashboard store/composable tests, Playwright dashb
 - [x] 13.3 Run `cd frontend && npx playwright test frontend/tests/e2e/7-2-dashboard-role-parity.spec.ts` or the equivalent project-relative command from the frontend root.
 - [x] 13.4 If backend changed, run targeted Laravel dashboard tests such as `php artisan test --filter=DashboardStatsTest`.
 - [x] 13.5 Run `graphify update .` from repo root after code changes.
+
+### Review Findings
+- [x] [Review][Patch] Remove unauthorized BANK_ADMIN request-creation affordances and align dashboard actions with production authorization [frontend/app/pages/dashboard.vue:39]
+- [x] [Review][Patch] Add real DATA_ENTRY draft request data/rendering for the "مسوداتي" section [frontend/app/components/dashboard/DataEntryDashboard.vue:168]
+- [x] [Review][Patch] Restore support committee claim-owner distinction and replace the forbidden quick action [frontend/app/components/dashboard/SupportCommitteeDashboard.vue:122]
+- [x] [Review][Patch] Always render the director customs section with an explicit empty state [frontend/app/components/dashboard/ExecutiveDashboard.vue:165]
+- [x] [Review][Patch] Restore CBY admin stale-pending alerts and render the donut chart independently from monthly trend data [frontend/app/components/dashboard/CbyAdminDashboard.vue:198]
+- [x] [Review][Patch] Replace hardcoded dashboard row progress bars with status-driven progress values [frontend/app/components/dashboard/BankAdminDashboard.vue:242]
+- [x] [Review][Patch] Tolerate missing queue arrays in role dashboard partial responses [frontend/app/components/dashboard/BankReviewerDashboard.vue:12]
+- [x] [Review][Patch] Commit the missing Story 7.2 Playwright screenshot baselines [frontend/tests/e2e/7-2-dashboard-role-parity.spec.ts:1]
 
 ---
 
@@ -348,4 +358,3 @@ claude-sonnet-4-6
 - `frontend/tests/e2e/7-2-dashboard-role-parity.spec.ts` (new)
 - `backend/app/Http/Controllers/Api/DashboardController.php` (modified — cbyadminStats extended, 2 new private helpers)
 - `backend/tests/Feature/CbyAdminDashboardStatsTest.php` (modified — 6 new tests, 20 total)
-
