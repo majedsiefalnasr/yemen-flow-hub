@@ -455,16 +455,16 @@ It should contain:
 - Voting results
 - Audit information
 - Notes and comments
-- Created By (`created_by`)
-- Last Updated By (`last_updated_by`)
-- Submitted By (`submitted_by`)
-- Internal Reviewer (`reviewed_by` in DB, serialized as `internal_reviewer` in API response)
-- Support Reviewer (`support_reviewed_by`)
-- SWIFT Uploaded By (`swift_uploaded_by`)
-- Rejected By (`rejected_by`)
-- Resubmitted By (`resubmitted_by`)
+- Created By (`created_by_user` companion for `created_by`)
+- Last Updated By (`last_updated_by_user` companion for `last_updated_by`)
+- Submitted By (`submitted_by_user` companion for `submitted_by`)
+- Internal Reviewer (`reviewed_by_user`, also aliased as `internal_reviewer`)
+- Support Reviewer (`support_reviewed_by_user`, also aliased as `support_reviewer`)
+- SWIFT Uploaded By (`swift_uploaded_by_user` companion for `swift_uploaded_by`)
+- Rejected By (`rejected_by_user` companion for `rejected_by`)
+- Resubmitted By (`resubmitted_by_user` companion for `resubmitted_by`)
 - Voting Session Status (`voting_session_status`)
-- Current Active Reviewer (`support_claimed_by`)
+- Current Active Reviewer (`claimed_by`, also aliased as `support_claimed_by`)
 - Locked/Read-only indicators
 
 ---

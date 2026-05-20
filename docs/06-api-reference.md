@@ -181,18 +181,30 @@ GET /api/requests/{id}
 
 ## Ownership Metadata
 
-Request details responses should include:
+Request details responses should include actor IDs plus companion user objects for any actor-backed field:
 
 ```json
 {
-  "created_by": {},
-  "last_updated_by": {},
-  "submitted_by": {},
-  "internal_reviewer": {},
-  "support_reviewer": {},
-  "resubmitted_by": {},
-  "rejected_by": {},
-  "swift_uploaded_by": {}
+  "created_by": 12,
+  "created_by_user": { "id": 12, "name": "..." },
+  "last_updated_by": 18,
+  "last_updated_by_user": { "id": 18, "name": "..." },
+  "submitted_by": 12,
+  "submitted_by_user": { "id": 12, "name": "..." },
+  "reviewed_by": 27,
+  "reviewed_by_user": { "id": 27, "name": "..." },
+  "internal_reviewer": { "id": 27, "name": "..." },
+  "support_reviewed_by": 33,
+  "support_reviewed_by_user": { "id": 33, "name": "..." },
+  "support_reviewer": { "id": 33, "name": "..." },
+  "resubmitted_by": 21,
+  "resubmitted_by_user": { "id": 21, "name": "..." },
+  "rejected_by": 44,
+  "rejected_by_user": { "id": 44, "name": "..." },
+  "swift_uploaded_by": 55,
+  "swift_uploaded_by_user": { "id": 55, "name": "..." },
+  "claimed_by": { "id": 33, "name": "..." },
+  "support_claimed_by": { "id": 33, "name": "..." }
 }
 ```
 
