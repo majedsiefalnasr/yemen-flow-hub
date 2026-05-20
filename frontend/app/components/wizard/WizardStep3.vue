@@ -11,6 +11,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:modelValue': [value: WizardStep3Data]
+  'file-reset': [key: WizardDocumentKey]
 }>()
 
 interface DocumentZone {
@@ -39,7 +40,9 @@ function formatBytes(bytes: number): string {
 }
 
 function validateFile(file: File): string | null {
-  if (!ALLOWED_TYPES.includes(file.type)) {
+  const normalizedName = file.name.toLowerCase()
+  const hasAllowedExtension = ALLOWED_EXTENSIONS.some(extension => normalizedName.endsWith(extension))
+  if (!ALLOWED_TYPES.includes(file.type) && !hasAllowedExtension) {
     return 'يجب أن يكون الملف بصيغة PDF فقط'
   }
   if (file.size > MAX_SIZE_MB * 1024 * 1024) {
@@ -51,6 +54,7 @@ function validateFile(file: File): string | null {
 function handleFileSelect(key: WizardDocumentKey, file: File | null): void {
   if (!file) return
   const err = validateFile(file)
+  emit('file-reset', key)
   if (err) {
     fileErrors.value = { ...fileErrors.value, [key]: err }
     return
@@ -84,6 +88,7 @@ function onDragLeave(): void {
 
 function removeFile(key: WizardDocumentKey): void {
   fileErrors.value = { ...fileErrors.value, [key]: undefined }
+  emit('file-reset', key)
   emit('update:modelValue', { ...props.modelValue, [key]: null })
 }
 
@@ -92,7 +97,9 @@ function getZoneFile(key: WizardDocumentKey): File | null {
 }
 
 function getFileError(key: WizardDocumentKey): string | null {
-  return fileErrors.value[key] ?? props.errors[key] ?? null
+  return fileErrors.value[key]
+    ?? props.errors[key]
+    ?? (props.uploadState[key] === 'error' ? 'تعذّر رفع الملف، يرجى إعادة المحاولة.' : null)
 }
 </script>
 
@@ -145,6 +152,7 @@ function getFileError(key: WizardDocumentKey): string | null {
         <template v-else>
           <span class="zone-upload-icon" aria-hidden="true">⬆</span>
           <p class="zone-title">{{ zone.title }}</p>
+          <p v-if="getZoneFile(zone.key)" class="zone-selected-file">{{ getZoneFile(zone.key)!.name }}</p>
           <p class="zone-hint">
             {{ zone.required ? 'إلزامي' : 'اختياري' }} — PDF (حد أقصى {{ MAX_SIZE_MB }}MB)
           </p>
@@ -309,6 +317,15 @@ function getFileError(key: WizardDocumentKey): string | null {
   font-size: 12px;
   color: #6c757d;
   margin: 0;
+}
+
+.zone-selected-file {
+  font-family: 'IBM Plex Sans Arabic', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: #1c222b;
+  margin: 0;
+  word-break: break-word;
 }
 
 /* Uploaded state */

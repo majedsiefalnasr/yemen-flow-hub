@@ -10,6 +10,8 @@ const props = defineProps<{
   modelValue: WizardStep1Data
   errors: Partial<Record<keyof WizardStep1Data, string>>
   isDataEntry: boolean
+  dataEntryMerchantName?: string
+  dataEntryMerchantError?: string | null
   loading?: boolean
 }>()
 
@@ -56,7 +58,11 @@ async function loadMerchants(): Promise<void> {
   }
 }
 
-onMounted(loadMerchants)
+onMounted(() => {
+  if (!props.isDataEntry) {
+    loadMerchants()
+  }
+})
 
 const filteredMerchants = computed(() => {
   const q = merchantSearch.value.trim().toLowerCase()
@@ -65,6 +71,10 @@ const filteredMerchants = computed(() => {
 })
 
 const selectedMerchantName = computed(() => {
+  if (props.isDataEntry && props.dataEntryMerchantName) {
+    return props.dataEntryMerchantName
+  }
+
   if (!props.modelValue.merchant_id) return ''
   return merchants.value.find(m => m.id === props.modelValue.merchant_id)?.name ?? ''
 })
@@ -110,10 +120,15 @@ const errorCount = computed(() => Object.keys(props.errors).length)
         <label class="field-label" for="merchant">المستورد (التاجر) <span class="req">*</span></label>
 
         <!-- DATA_ENTRY: read-only -->
-        <div v-if="isDataEntry" class="merchant-readonly">
+        <div
+          v-if="isDataEntry"
+          class="merchant-readonly"
+          :class="{ 'merchant-readonly--error': !!dataEntryMerchantError }"
+        >
           <span class="lock-icon" aria-hidden="true">🔒</span>
-          <span>{{ selectedMerchantName || 'جارٍ التحميل...' }}</span>
+          <span>{{ selectedMerchantName || 'لم يتم تحديد التاجر بعد' }}</span>
         </div>
+        <span v-if="isDataEntry && dataEntryMerchantError" class="field-error" role="alert">{{ dataEntryMerchantError }}</span>
 
         <!-- BANK_ADMIN: searchable select -->
         <template v-else>
@@ -379,6 +394,11 @@ const errorCount = computed(() => Object.keys(props.errors).length)
   font-family: 'IBM Plex Sans Arabic', sans-serif;
   font-size: 14px;
   cursor: not-allowed;
+}
+
+.merchant-readonly--error {
+  border-color: #c62828;
+  background: #ffebee;
 }
 
 .lock-icon {

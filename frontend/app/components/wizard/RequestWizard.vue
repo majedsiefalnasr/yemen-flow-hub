@@ -34,18 +34,43 @@ const wizard = useRequestWizard()
 
 // Merchant name for Step 4 summary
 const merchantName = ref('')
+const merchantResolutionError = ref<string | null>(null)
 
 async function resolveDataEntryMerchant(): Promise<void> {
   if (!wizard.isDataEntry.value) return
   try {
-    const merchants = await fetchMerchants()
-    const first = merchants[0]
-    if (!first) return
+    const merchants = await fetchMerchants({
+      bank_id: authStore.user?.bank_id ?? undefined,
+      is_active: true,
+    })
 
-    wizard.step1.value.merchant_id = first.id
-    merchantName.value = first.name
+    if (wizard.step1.value.merchant_id) {
+      const currentMerchant = merchants.find(merchant => merchant.id === wizard.step1.value.merchant_id)
+      if (currentMerchant) {
+        merchantName.value = currentMerchant.name
+        merchantResolutionError.value = null
+        return
+      }
+    }
+
+    if (merchants.length === 1) {
+      wizard.step1.value.merchant_id = merchants[0]!.id
+      merchantName.value = merchants[0]!.name
+      merchantResolutionError.value = null
+      return
+    }
+
+    wizard.step1.value.merchant_id = null
+    merchantName.value = ''
+    merchantResolutionError.value = merchants.length === 0
+      ? 'لا يوجد تاجر نشط مرتبط بحساب إدخال البيانات هذا.'
+      : 'تعذّر تحديد التاجر تلقائياً لهذا الحساب. يرجى التواصل مع مسؤول البنك.'
   }
-  catch { /* ignore — user can retry */ }
+  catch {
+    wizard.step1.value.merchant_id = null
+    merchantName.value = ''
+    merchantResolutionError.value = 'تعذّر تحميل بيانات التاجر المرتبط بالحساب. حاول مرة أخرى لاحقاً.'
+  }
 }
 
 onMounted(resolveDataEntryMerchant)
@@ -59,17 +84,6 @@ async function refreshMerchantName(id: number | null): Promise<void> {
   }
   catch { merchantName.value = '' }
 }
-
-// Watch merchant_id changes for BANK_ADMIN
-const step1DataProxy = computed({
-  get: () => wizard.step1.value,
-  set: (val) => {
-    wizard.step1.value = val
-    if (!wizard.isDataEntry.value && val.merchant_id !== wizard.step1.value.merchant_id) {
-      refreshMerchantName(val.merchant_id)
-    }
-  },
-})
 
 async function handleNext(): Promise<void> {
   const ok = wizard.nextStep()
@@ -150,6 +164,8 @@ const isSubmitDisabled = computed(() => !wizard.acknowledged.value || wizard.sub
         v-model="wizard.step1.value"
         :errors="wizard.step1Errors.value"
         :is-data-entry="wizard.isDataEntry.value"
+        :data-entry-merchant-name="merchantName"
+        :data-entry-merchant-error="merchantResolutionError"
         :loading="wizard.saving.value"
         @update:model-value="(v) => { wizard.step1.value = v; if (v.merchant_id) refreshMerchantName(v.merchant_id) }"
       />
@@ -168,6 +184,7 @@ const isSubmitDisabled = computed(() => !wizard.acknowledged.value || wizard.sub
         :errors="wizard.step3Errors.value"
         :upload-state="wizard.uploadState.value"
         :loading="wizard.saving.value"
+        @file-reset="wizard.resetUploadState"
         @update:model-value="(v) => { wizard.step3.value = v }"
       />
       <WizardStep4

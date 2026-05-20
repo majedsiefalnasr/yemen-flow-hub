@@ -50,9 +50,11 @@ const DOCUMENT_LABELS: Record<WizardDocumentKey, string> = {
   extra_docs: 'مستندات إضافية',
 }
 
+const UPLOAD_ERROR_MESSAGE = 'تعذّر رفع الملف، يرجى إعادة المحاولة.'
+
 export function useRequestWizard() {
   const authStore = useAuthStore()
-  const { createRequest, uploadDocument } = useRequests()
+  const { createRequest } = useRequests()
 
   // ── State ──────────────────────────────────────────────────────────────────
 
@@ -171,6 +173,16 @@ export function useRequestWizard() {
     return Object.keys(errs).length === 0
   }
 
+  function resetUploadState(key: WizardDocumentKey): void {
+    uploadState.value[key] = 'idle'
+
+    if (step3Errors.value[key]) {
+      const nextErrors = { ...step3Errors.value }
+      delete nextErrors[key]
+      step3Errors.value = nextErrors
+    }
+  }
+
   function validateCurrentStep(): boolean {
     if (currentStep.value === 1) return validateStep1()
     if (currentStep.value === 2) return validateStep2()
@@ -269,15 +281,19 @@ export function useRequestWizard() {
 
   // ── Upload documents ───────────────────────────────────────────────────────
 
-  async function uploadDocuments(requestId: number): Promise<void> {
+  async function uploadDocuments(requestId: number): Promise<WizardDocumentKey[]> {
     const config = useRuntimeConfig()
     const baseURL = config.public.apiBase as string
     const entries: Array<{ key: WizardDocumentKey; file: File }> = []
+    const failedUploads: WizardDocumentKey[] = []
+    const uploadErrors: Partial<Record<WizardDocumentKey, string>> = {}
 
     for (const key of Object.keys(step3.value) as WizardDocumentKey[]) {
       const file = step3.value[key]
       if (file) entries.push({ key, file })
     }
+
+    step3Errors.value = {}
 
     await Promise.all(
       entries.map(async ({ key, file }) => {
@@ -296,9 +312,17 @@ export function useRequestWizard() {
         }
         catch {
           uploadState.value[key] = 'error'
+          uploadErrors[key] = UPLOAD_ERROR_MESSAGE
+          failedUploads.push(key)
         }
       }),
     )
+
+    if (failedUploads.length > 0) {
+      step3Errors.value = uploadErrors
+    }
+
+    return failedUploads
   }
 
   // ── Submit ─────────────────────────────────────────────────────────────────
@@ -317,7 +341,12 @@ export function useRequestWizard() {
       }
 
       // Upload documents
-      await uploadDocuments(reqId)
+      const failedUploads = await uploadDocuments(reqId)
+      if (failedUploads.length > 0) {
+        currentStep.value = 3
+        submitError.value = 'تعذّر رفع بعض الوثائق. صحّح الأخطاء الظاهرة ثم أعد المحاولة.'
+        return null
+      }
 
       // Trigger submit transition
       const { performWorkflowAction } = useRequests()
@@ -368,6 +397,7 @@ export function useRequestWizard() {
     validateStep1,
     validateStep2,
     validateStep3,
+    resetUploadState,
     onArrivalPortChange,
     saveDraft,
     submitRequest,

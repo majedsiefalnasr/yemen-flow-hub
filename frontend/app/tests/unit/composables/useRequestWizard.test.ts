@@ -72,6 +72,16 @@ function fillStep2(wizard: ReturnType<typeof makeWizard>): void {
   }
 }
 
+function fillStep3(wizard: ReturnType<typeof makeWizard>): void {
+  const file = new File(['content'], 'required.pdf', { type: 'application/pdf' })
+  wizard.step3.value = {
+    proforma_invoice: file,
+    commercial_register: file,
+    tax_card: file,
+    extra_docs: null,
+  }
+}
+
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 describe('useRequestWizard — initial state', () => {
@@ -346,5 +356,50 @@ describe('useRequestWizard — buildPayload', () => {
     expect(payload.origin_country).toBe('الولايات المتحدة')
     expect(payload.arrival_port).toBe('ميناء عدن')
     expect(payload.customs_office).toBe('جمارك عدن')
+  })
+})
+
+describe('useRequestWizard — submitRequest', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    vi.clearAllMocks()
+    mockCreateRequest.mockResolvedValue({ id: 42, status: 'DRAFT' })
+    mockPerformWorkflowAction.mockResolvedValue({ id: 42, status: 'SUBMITTED' })
+    mockFetch.mockResolvedValue({ success: true })
+  })
+
+  it('does not submit the workflow when a document upload fails', async () => {
+    const wizard = makeWizard()
+    fillStep1(wizard)
+    fillStep2(wizard)
+    fillStep3(wizard)
+    wizard.acknowledged.value = true
+    mockFetch
+      .mockResolvedValueOnce({ success: true })
+      .mockRejectedValueOnce(new Error('upload failed'))
+      .mockResolvedValueOnce({ success: true })
+
+    const result = await wizard.submitRequest()
+
+    expect(result).toBeNull()
+    expect(wizard.currentStep.value).toBe(3)
+    expect(wizard.submitError.value).toContain('تعذّر رفع بعض الوثائق')
+    expect(wizard.step3Errors.value.commercial_register).toContain('تعذّر رفع الملف')
+    expect(mockPerformWorkflowAction).not.toHaveBeenCalled()
+  })
+
+  it('submits the workflow after the draft and uploads succeed', async () => {
+    const wizard = makeWizard()
+    fillStep1(wizard)
+    fillStep2(wizard)
+    fillStep3(wizard)
+    wizard.acknowledged.value = true
+
+    const result = await wizard.submitRequest()
+
+    expect(result).toEqual({ id: 42, status: 'SUBMITTED' })
+    expect(mockCreateRequest).toHaveBeenCalledOnce()
+    expect(mockFetch).toHaveBeenCalledTimes(3)
+    expect(mockPerformWorkflowAction).toHaveBeenCalledWith(42, 'submit')
   })
 })

@@ -187,4 +187,31 @@ function handleStepClick(index: number): void {
 .step-connector--done {
   background: #1b5e20;
 }
+
+@media (max-width: 600px) {
+  .wizard-stepper {
+    padding: 16px;
+  }
+
+  .stepper-inner {
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 12px 8px;
+  }
+
+  .step-item {
+    flex: 1 1 calc(50% - 8px);
+    min-width: 0;
+  }
+
+  .step-label {
+    white-space: normal;
+    text-align: center;
+    line-height: 1.4;
+  }
+
+  .step-connector {
+    display: none;
+  }
+}
 </style>
