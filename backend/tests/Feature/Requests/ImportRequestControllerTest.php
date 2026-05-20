@@ -413,4 +413,76 @@ class ImportRequestControllerTest extends TestCase
         $this->assertNotEmpty($bankIds, 'Expected at least one request in response');
         $this->assertEquals([$this->bank->id], $bankIds);
     }
+
+    // ─── AC-6: List resource fields for parity (Story 7.3) ───────────────────
+
+    public function test_index_list_resource_includes_merchant_goods_type_invoice_number(): void
+    {
+        app()->instance('workflow.transition.active', true);
+        try {
+            $req = ImportRequest::query()->create([
+                'bank_id' => $this->bank->id,
+                'merchant_id' => $this->merchant->id,
+                'created_by' => $this->dataEntry->id,
+                'currency' => 'USD',
+                'amount' => 10000.00,
+                'supplier_name' => 'Parity Supplier',
+                'goods_description' => 'Medical goods',
+                'port_of_entry' => 'Aden Port',
+                'goods_type' => 'أجهزة طبية',
+                'invoice_number' => 'INV-2026-001',
+                'status' => RequestStatus::DRAFT,
+                'current_owner_role' => UserRole::DATA_ENTRY,
+            ]);
+        } finally {
+            app()->offsetUnset('workflow.transition.active');
+        }
+
+        $response = $this->actingAs($this->dataEntry)->getJson('/api/requests');
+
+        $response->assertOk();
+        $items = $response->json('data.data') ?? $response->json('data');
+        $item = collect($items)->firstWhere('id', $req->id);
+
+        $this->assertNotNull($item, 'Request must appear in list');
+        $this->assertArrayHasKey('merchant', $item);
+        $this->assertArrayHasKey('goods_type', $item);
+        $this->assertArrayHasKey('invoice_number', $item);
+        $this->assertEquals('أجهزة طبية', $item['goods_type']);
+        $this->assertEquals('INV-2026-001', $item['invoice_number']);
+        $this->assertNotNull($item['merchant']);
+        $this->assertEquals($this->merchant->id, $item['merchant']['id']);
+    }
+
+    public function test_index_list_resource_merchant_null_when_no_merchant(): void
+    {
+        app()->instance('workflow.transition.active', true);
+        try {
+            $req = ImportRequest::query()->create([
+                'bank_id' => $this->bank->id,
+                'merchant_id' => null,
+                'created_by' => $this->dataEntry->id,
+                'currency' => 'USD',
+                'amount' => 5000.00,
+                'supplier_name' => 'Direct Supplier',
+                'goods_description' => 'Electronics',
+                'port_of_entry' => 'Hodeidah',
+                'status' => RequestStatus::DRAFT,
+                'current_owner_role' => UserRole::DATA_ENTRY,
+            ]);
+        } finally {
+            app()->offsetUnset('workflow.transition.active');
+        }
+
+        $response = $this->actingAs($this->dataEntry)->getJson('/api/requests');
+
+        $response->assertOk();
+        $items = $response->json('data.data') ?? $response->json('data');
+        $item = collect($items)->firstWhere('id', $req->id);
+
+        $this->assertNotNull($item, 'Request must appear in list');
+        $this->assertNull($item['merchant']);
+        $this->assertNull($item['goods_type']);
+        $this->assertNull($item['invoice_number']);
+    }
 }

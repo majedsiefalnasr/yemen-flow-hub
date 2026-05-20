@@ -15,6 +15,11 @@ class ImportRequestListResource extends JsonResource
             'reference_number' => $this->reference_number,
             'bank_id' => $this->bank_id,
             'bank_name' => $this->bank?->name,
+            'merchant' => $this->merchant ? [
+                'id' => $this->merchant->id,
+                'name' => $this->merchant->name,
+                'commercial_register' => $this->merchant->commercial_register,
+            ] : null,
             'status' => $this->status?->value,
             'current_owner_role' => $this->current_owner_role?->value,
             'claimed_by' => $this->claimedByUser ? [
@@ -29,6 +34,8 @@ class ImportRequestListResource extends JsonResource
             'currency' => is_object($this->currency) ? $this->currency->value : $this->currency,
             'amount' => (float) $this->amount,
             'supplier_name' => $this->supplier_name,
+            'goods_type' => $this->goods_type,
+            'invoice_number' => $this->invoice_number,
             'created_at' => $this->created_at?->toISOString(),
         ];
     }
