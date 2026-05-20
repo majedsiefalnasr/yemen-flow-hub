@@ -230,6 +230,64 @@ describe('DocumentChecklist upload section — showLockedNote', () => {
   })
 })
 
+// ─── missingRequiredCount summary badge logic (Story 7.4) ────────────────────
+
+type DocRequirement = { type: string; label: string; required: boolean }
+type ChecklistRow =
+  | { kind: 'staged'; requirement: DocRequirement; doc: RequestDocument | null }
+  | { kind: 'extra'; doc: RequestDocument }
+  | { kind: 'customs'; customs: { id: number; declaration_number: string } }
+
+function missingRequiredCount(rows: ChecklistRow[]): number {
+  return rows.filter(r => r.kind === 'staged' && r.requirement.required && !r.doc).length
+}
+
+describe('DocumentChecklist — missingRequiredCount summary badge', () => {
+  it('returns 0 when all required docs are uploaded', () => {
+    const rows: ChecklistRow[] = [
+      { kind: 'staged', requirement: { type: 'COMMERCIAL_INVOICE', label: 'فاتورة تجارية', required: true }, doc: makeDoc({ type: 'COMMERCIAL_INVOICE' }) },
+      { kind: 'staged', requirement: { type: 'PACKING_LIST', label: 'قائمة التعبئة', required: false }, doc: null },
+    ]
+    expect(missingRequiredCount(rows)).toBe(0)
+  })
+
+  it('returns 1 when one required doc is missing', () => {
+    const rows: ChecklistRow[] = [
+      { kind: 'staged', requirement: { type: 'COMMERCIAL_INVOICE', label: 'فاتورة تجارية', required: true }, doc: null },
+      { kind: 'staged', requirement: { type: 'PACKING_LIST', label: 'قائمة التعبئة', required: false }, doc: null },
+    ]
+    expect(missingRequiredCount(rows)).toBe(1)
+  })
+
+  it('returns 2 when two required docs are missing', () => {
+    const rows: ChecklistRow[] = [
+      { kind: 'staged', requirement: { type: 'COMMERCIAL_INVOICE', label: 'فاتورة تجارية', required: true }, doc: null },
+      { kind: 'staged', requirement: { type: 'SWIFT', label: 'مستند SWIFT', required: true }, doc: null },
+      { kind: 'staged', requirement: { type: 'PACKING_LIST', label: 'قائمة التعبئة', required: false }, doc: null },
+    ]
+    expect(missingRequiredCount(rows)).toBe(2)
+  })
+
+  it('does not count optional missing docs', () => {
+    const rows: ChecklistRow[] = [
+      { kind: 'staged', requirement: { type: 'PACKING_LIST', label: 'قائمة التعبئة', required: false }, doc: null },
+    ]
+    expect(missingRequiredCount(rows)).toBe(0)
+  })
+
+  it('does not count extra or customs rows', () => {
+    const rows: ChecklistRow[] = [
+      { kind: 'extra', doc: makeDoc() },
+      { kind: 'customs', customs: { id: 99, declaration_number: 'CUST-001' } },
+    ]
+    expect(missingRequiredCount(rows)).toBe(0)
+  })
+
+  it('returns 0 for empty checklist', () => {
+    expect(missingRequiredCount([])).toBe(0)
+  })
+})
+
 // ─── Upload button and locked note are mutually exclusive ────────────────────
 
 describe('DocumentChecklist: upload button and locked note are mutually exclusive', () => {

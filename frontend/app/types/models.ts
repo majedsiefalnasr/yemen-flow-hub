@@ -74,11 +74,17 @@ export interface ImportRequest {
   customs_office: string | null
   bl_number: string | null
   created_by: number
+  created_by_user?: { id: number; name: string } | null
   submitted_by: number | null
+  submitted_by_user?: { id: number; name: string } | null
   reviewed_by: number | null
+  reviewed_by_user?: { id: number; name: string } | null
   approved_by: number | null
+  approved_by_user?: { id: number; name: string } | null
   rejected_by: number | null
+  rejected_by_user?: { id: number; name: string } | null
   resubmitted_by: number | null
+  resubmitted_by_user?: { id: number; name: string } | null
   claimed_by: { id: number; name: string } | null
   claimed_until: string | null
   is_claimed: boolean
@@ -88,6 +94,7 @@ export interface ImportRequest {
   bank_approved_at: string | null
   support_approved_at: string | null
   swift_uploaded_by: number | null
+  swift_uploaded_by_user?: { id: number; name: string } | null
   swift_uploaded_at: string | null
   voting_opened_by: number | null
   voting_opened_at: string | null

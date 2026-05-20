@@ -6,6 +6,7 @@ import { useAuthStore } from '../../../stores/auth.store'
 import { useRequestsStore } from '../../../stores/requests.store'
 import { useVotingStore } from '../../../stores/voting.store'
 import { useClaimLifecycle } from '../../../composables/useClaimLifecycle'
+import { STATUS_LABELS } from '../../../constants/workflow'
 import StatusBadge from '../../../components/ui/StatusBadge.vue'
 import LockedBanner from '../../../components/ui/LockedBanner.vue'
 import CorrectionBanner from '../../../components/ui/CorrectionBanner.vue'
@@ -16,6 +17,7 @@ import DocumentChecklist from '../../../components/requests/DocumentChecklist.vu
 import VotingPanel from '../../../components/voting/VotingPanel.vue'
 import WorkflowTimeline from '../../../components/workflow/WorkflowTimeline.vue'
 import AuditTimeline from '../../../components/workflow/AuditTimeline.vue'
+import WorkflowProgress from '../../../components/workflow/WorkflowProgress.vue'
 
 definePageMeta({
   middleware: ['auth'],
@@ -31,7 +33,7 @@ const id = Number(Array.isArray(rawId) ? rawId[0] : rawId)
 
 const votingStore = useVotingStore()
 
-type TabKey = 'overview' | 'documents' | 'parties' | 'votes'
+type TabKey = 'overview' | 'documents' | 'parties'
 const activeTab = ref<TabKey>('overview')
 
 const VOTING_STAGE_STATUSES = new Set([
@@ -42,23 +44,22 @@ const VOTING_STAGE_STATUSES = new Set([
   RequestStatus.EXECUTIVE_REJECTED,
 ])
 
-const VOTING_TAB_STATUSES = new Set([
-  RequestStatus.EXECUTIVE_VOTING_OPEN,
-  RequestStatus.EXECUTIVE_VOTING_CLOSED,
-])
+const EXECUTIVE_ROLES = new Set([UserRole.EXECUTIVE_MEMBER, UserRole.COMMITTEE_DIRECTOR])
 
 const request = computed(() => requestsStore.currentRequest)
 const userRole = computed(() => auth.user?.role ?? UserRole.DATA_ENTRY)
 
-const showVotesTab = computed(() =>
-  !!request.value && VOTING_TAB_STATUSES.has(request.value.status),
+// VotingPanel is shown inline above tabs for executive/director roles in voting stages
+const showVotingPanelInline = computed(() =>
+  !!request.value
+  && EXECUTIVE_ROLES.has(userRole.value)
+  && VOTING_STAGE_STATUSES.has(request.value.status),
 )
 
 const tabs = computed((): Array<{ key: TabKey; label: string }> => [
   { key: 'overview', label: 'المعلومات' },
   { key: 'documents', label: 'الوثائق' },
   { key: 'parties', label: 'الأطراف' },
-  ...(showVotesTab.value ? [{ key: 'votes' as TabKey, label: 'التصويت' }] : []),
 ])
 
 const isEditable = computed(() => {
@@ -66,7 +67,6 @@ const isEditable = computed(() => {
   return s === RequestStatus.DRAFT || s === RequestStatus.DRAFT_REJECTED_INTERNAL
 })
 
-const EXECUTIVE_ROLES = new Set([UserRole.EXECUTIVE_MEMBER, UserRole.COMMITTEE_DIRECTOR])
 const ACTIONABLE_REVIEWER_STATUSES = new Set([
   RequestStatus.SUBMITTED,
   RequestStatus.BANK_REVIEW,
@@ -117,21 +117,45 @@ const lockedBannerVariant = computed((): LockedBannerVariant | null => {
 const isLocked = computed(() => lockedBannerVariant.value !== null)
 const isReturnedForCorrection = computed(() => request.value?.status === RequestStatus.DRAFT_REJECTED_INTERNAL)
 
-watch(showVotesTab, (visible) => {
-  if (!visible && activeTab.value === 'votes') {
-    activeTab.value = 'overview'
-  }
-})
-
 const canEdit = computed(
   () => userRole.value === UserRole.DATA_ENTRY && isEditable.value,
 )
 
+const DIRECTOR_VOTING_STATUSES = new Set([
+  RequestStatus.WAITING_FOR_VOTING_OPEN,
+  RequestStatus.EXECUTIVE_VOTING_OPEN,
+  RequestStatus.EXECUTIVE_VOTING_CLOSED,
+])
+
+// Mirror ActionsPanel's showAnyActions to conditionally show the rail actions card
+const hasActions = computed(() => {
+  if (!request.value) return false
+  const s = request.value.status
+  const role = userRole.value
+  const bankReviewerAction
+    = role === UserRole.BANK_REVIEWER
+    && (s === RequestStatus.SUBMITTED || s === RequestStatus.BANK_REVIEW)
+  const dataEntryAction
+    = role === UserRole.DATA_ENTRY
+    && (s === RequestStatus.DRAFT || s === RequestStatus.DRAFT_REJECTED_INTERNAL)
+  const supportAction
+    = role === UserRole.SUPPORT_COMMITTEE
+    && s === RequestStatus.SUPPORT_REVIEW_IN_PROGRESS
+    && request.value.is_claimed_by_me
+  const directorVotingAction
+    = role === UserRole.COMMITTEE_DIRECTOR
+    && DIRECTOR_VOTING_STATUSES.has(s)
+  const directorCustomsAction
+    = role === UserRole.COMMITTEE_DIRECTOR
+    && s === RequestStatus.EXECUTIVE_APPROVED
+  return bankReviewerAction || dataEntryAction || supportAction || directorVotingAction || directorCustomsAction
+})
+
 // Downloading state per document id
 const downloadingIds = ref<Set<number>>(new Set())
 const downloadErrors = ref<Record<number, string>>({})
-const customsDownloadError = ref('')           // overview tab customs card
-const checklistCustomsDownloadError = ref('') // documents tab DocumentChecklist
+const customsDownloadError = ref('')
+const checklistCustomsDownloadError = ref('')
 
 // Claim lifecycle for SUPPORT_COMMITTEE
 const {
@@ -196,7 +220,7 @@ onMounted(async () => {
 
   await requestsStore.loadRequest(id)
 
-  if (!isMounted) return // navigated away during load
+  if (!isMounted) return
 
   if (requestsStore.error || !requestsStore.currentRequest) {
     await router.replace('/requests')
@@ -208,11 +232,9 @@ onMounted(async () => {
     const req = requestsStore.currentRequest
 
     if (req.can_be_claimed) {
-      // Attempt to claim the unclaimed request
       const claimed = await claimRequest(id)
 
       if (!isMounted) {
-        // Component was destroyed while claim was in-flight — release immediately
         if (claimed) await releaseRequest(id)
         return
       }
@@ -221,13 +243,11 @@ onMounted(async () => {
         isActiveReviewer.value = true
         startHeartbeat(id, handleSessionExpired, handleClaimLost)
 
-        // Reload to get authoritative claim state from server
         await requestsStore.loadRequest(id)
 
         if (!isMounted) return
 
         if (requestsStore.error || !requestsStore.currentRequest) {
-          // Reload failed after successful claim — release and bail
           isActiveReviewer.value = false
           stopHeartbeat(id)
           await releaseRequest(id)
@@ -236,8 +256,6 @@ onMounted(async () => {
         }
       }
       else {
-        // Claim failed (e.g. 409 race) — reload to get authoritative state so
-        // ClaimedByOthersBanner reflects the actual server ownership
         await requestsStore.loadRequest(id)
         if (!isMounted) return
 
@@ -248,8 +266,6 @@ onMounted(async () => {
       }
     }
     else if (req.is_claimed && req.is_claimed_by_me) {
-      // Resume branch: client reports we own the claim, but TTL may have expired.
-      // Verify with server before starting heartbeat.
       const alive = await verifyClaimAlive(id)
 
       if (!isMounted) return
@@ -259,7 +275,6 @@ onMounted(async () => {
         startHeartbeat(id, handleSessionExpired, handleClaimLost)
       }
       else {
-        // Claim expired or session invalid — reload to show authoritative UI state
         await requestsStore.loadRequest(id)
         if (!isMounted) return
 
@@ -291,7 +306,6 @@ onBeforeUnmount(() => {
   isMounted = false
   stopHeartbeat(id)
   if (isActiveReviewer.value) {
-    // Best-effort release — fire-and-forget; TTL auto-expire recovers misses
     releaseRequest(id)
   }
 })
@@ -300,9 +314,6 @@ async function onTabChange(key: TabKey) {
   activeTab.value = key
   if (key === 'documents' && !requestsStore.documentsLoaded && !requestsStore.loadingDocuments) {
     await requestsStore.loadDocuments(id)
-  }
-  if (key === 'votes' && !votingStore.votingDetail && !votingStore.loadingDetail) {
-    await votingStore.loadVotingDetail(id)
   }
   if (key === 'parties' && !requestsStore.historyLoaded && !requestsStore.loadingHistory) {
     await requestsStore.loadHistory(id)
@@ -313,15 +324,13 @@ async function onActionCompleted() {
   await requestsStore.loadRequest(id)
   customsDownloadError.value = ''
   syncActiveReviewState()
-  // Re-fetch documents if the user is on the documents tab
   if (activeTab.value === 'documents') {
     await requestsStore.loadDocuments(id)
   }
   if (activeTab.value === 'parties') {
     await requestsStore.loadHistory(id)
   }
-  // Reload voting detail when a director action completes (session open/close/finalize/override)
-  if (votingStore.votingDetail || activeTab.value === 'votes') {
+  if (showVotingPanelInline.value || votingStore.votingDetail) {
     await votingStore.loadVotingDetail(id)
   }
 }
@@ -360,7 +369,7 @@ async function handleUploadDocument(file: File) {
     await requestsStore.uploadDocument(id, file)
   }
   catch {
-    // uploadError is set on the store by the action; component reads it from there
+    // uploadError is set on the store by the action
   }
 }
 
@@ -395,20 +404,12 @@ async function downloadDocument(docId: number, filename: string) {
   }
 }
 
-function formatFileSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-}
-
 function formatDate(iso: string | null): string {
   if (!iso) return '—'
   return new Date(iso).toLocaleDateString('ar-YE', {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
   })
 }
 
@@ -416,10 +417,21 @@ function formatAmount(amount: number, currency: string): string {
   return `${amount.toLocaleString('ar-YE')} ${currency}`
 }
 
-function actorLabel(id: number | null | undefined): string {
+function actorLabel(
+  user: { id: number; name: string } | null | undefined,
+  id?: number | null,
+): string {
+  if (user?.name) return user.name
   if (id === null || id === undefined) return '—'
   return `#${id}`
 }
+
+// Watch voting panel inline to pre-load voting detail when it becomes visible
+watch(showVotingPanelInline, async (visible) => {
+  if (visible && !votingStore.votingDetail && !votingStore.loadingDetail) {
+    await votingStore.loadVotingDetail(id)
+  }
+})
 </script>
 
 <template>
@@ -432,272 +444,366 @@ function actorLabel(id: number | null | undefined): string {
     </div>
 
     <template v-else-if="request">
-      <!-- Page header -->
-      <div class="page-header">
-        <div class="page-header__right">
-          <NuxtLink to="/requests" class="back-link" aria-label="العودة إلى القائمة">
-            ← العودة إلى القائمة
-          </NuxtLink>
-          <h1 class="page-title">{{ request.reference_number }}</h1>
-        </div>
-        <div class="page-header__actions">
-          <StatusBadge :status="request.status" :role="userRole" />
-          <NuxtLink
-            v-if="canEdit"
-            :to="`/requests/${request.id}/edit`"
-            class="edit-btn"
-            aria-label="تعديل الطلب"
-          >
-            تعديل
-          </NuxtLink>
-        </div>
-      </div>
-
-      <!-- Banners -->
-      <div v-if="claimError || showActiveReviewBanner || showClaimedByOthersBanner || isLocked || isReturnedForCorrection" class="banner-area">
-        <!-- Claim error (highest priority — explicit action required) -->
-        <div v-if="claimError" class="claim-error-banner" role="alert" aria-live="assertive" dir="rtl">
-          <span class="claim-error-icon" aria-hidden="true">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
-            </svg>
-          </span>
-          <span>{{ claimError }}</span>
-        </div>
-        <ActiveReviewBanner v-else-if="showActiveReviewBanner" />
-        <ClaimedByOthersBanner v-else-if="showClaimedByOthersBanner" :claimer-name="request.claimed_by?.name ?? ''" />
-        <LockedBanner v-else-if="isLocked && lockedBannerVariant" :variant="lockedBannerVariant" />
-        <CorrectionBanner v-else-if="isReturnedForCorrection" />
-      </div>
-
-      <!-- Tab navigation -->
-      <nav class="tab-nav" role="tablist" aria-label="تبويبات تفاصيل الطلب">
-        <button
-          v-for="tab in tabs"
-          :key="tab.key"
-          role="tab"
-          :aria-selected="activeTab === tab.key"
-          :class="['tab-btn', { 'tab-btn--active': activeTab === tab.key }]"
-          @click="onTabChange(tab.key)"
-        >
-          {{ tab.label }}
-        </button>
+      <!-- Breadcrumbs -->
+      <nav class="breadcrumbs" aria-label="مسار التنقل">
+        <NuxtLink to="/dashboard" class="breadcrumb-link">الرئيسية</NuxtLink>
+        <span class="breadcrumb-sep" aria-hidden="true">/</span>
+        <NuxtLink to="/requests" class="breadcrumb-link">الطلبات</NuxtLink>
+        <span class="breadcrumb-sep" aria-hidden="true">/</span>
+        <span class="breadcrumb-current">{{ request.reference_number }}</span>
       </nav>
 
-      <!-- Tab panels -->
-      <div class="tab-content">
-        <!-- المعلومات tab -->
-        <section v-if="activeTab === 'overview'" class="tab-panel" role="tabpanel" aria-label="المعلومات">
-          <div class="card">
-            <h2 class="card-title">بيانات الطلب</h2>
-            <dl class="detail-grid">
-              <div class="detail-row">
-                <dt class="detail-label">رقم الطلب</dt>
-                <dd class="detail-value">{{ request.reference_number }}</dd>
-              </div>
-              <div class="detail-row">
-                <dt class="detail-label">البنك</dt>
-                <dd class="detail-value">{{ request.bank_name ?? '—' }}</dd>
-              </div>
-              <div class="detail-row">
-                <dt class="detail-label">العملة</dt>
-                <dd class="detail-value">{{ request.currency }}</dd>
-              </div>
-              <div class="detail-row">
-                <dt class="detail-label">المبلغ</dt>
-                <dd class="detail-value">{{ formatAmount(request.amount, request.currency) }}</dd>
-              </div>
-              <div class="detail-row">
-                <dt class="detail-label">المورّد</dt>
-                <dd class="detail-value">{{ request.supplier_name }}</dd>
-              </div>
-              <div class="detail-row">
-                <dt class="detail-label">وصف البضاعة</dt>
-                <dd class="detail-value">{{ request.goods_description }}</dd>
-              </div>
-              <div class="detail-row">
-                <dt class="detail-label">ميناء الدخول</dt>
-                <dd class="detail-value">{{ request.port_of_entry }}</dd>
-              </div>
-              <div class="detail-row">
-                <dt class="detail-label">ملاحظات</dt>
-                <dd class="detail-value">{{ request.notes ?? '—' }}</dd>
-              </div>
-              <div class="detail-row">
-                <dt class="detail-label">تاريخ الإنشاء</dt>
-                <dd class="detail-value">{{ formatDate(request.created_at) }}</dd>
-              </div>
-            </dl>
-          </div>
+      <!-- Page header -->
+      <div class="page-header">
+        <div class="page-header__main">
+          <h1 class="page-title">{{ request.reference_number }}</h1>
+          <p class="page-subtitle">
+            <span>{{ request.merchant?.name ?? '—' }}</span>
+            <template v-if="request.goods_type">
+              <span class="subtitle-dot" aria-hidden="true">·</span>
+              <span>{{ request.goods_type }}</span>
+            </template>
+          </p>
+        </div>
+        <div class="page-header__actions">
+          <button
+            v-if="request.customs_declaration"
+            class="download-btn"
+            :disabled="requestsStore.downloadingCustoms"
+            @click="downloadCustomsDeclaration"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+            {{ requestsStore.downloadingCustoms ? 'جارٍ التحميل…' : 'تحميل البيان' }}
+          </button>
+          <StatusBadge :status="request.status" :role="userRole" />
+        </div>
+      </div>
 
-          <div v-if="request.status === RequestStatus.COMPLETED && request.customs_declaration" class="card customs-card">
-            <div class="customs-card__header">
-              <h2 class="card-title customs-card__title">البيان الجمركي</h2>
-              <div class="customs-card__actions">
-                <a
-                  v-if="[UserRole.COMMITTEE_DIRECTOR, UserRole.CBY_ADMIN, UserRole.BANK_REVIEWER].includes(userRole)"
-                  :href="`/requests/${id}/customs-preview`"
-                  class="customs-preview-link"
-                >
-                  معاينة البيان
-                </a>
-                <button
-                  class="customs-download"
-                  :disabled="requestsStore.downloadingCustoms"
-                  @click="downloadCustomsDeclaration"
-                >
-                  {{ requestsStore.downloadingCustoms ? 'جارٍ التحميل…' : 'تحميل PDF' }}
-                </button>
-              </div>
+      <!-- Two-column layout -->
+      <div class="detail-layout">
+        <!-- Primary content (2/3) -->
+        <div class="detail-main">
+          <!-- Banners -->
+          <div
+            v-if="claimError || showActiveReviewBanner || showClaimedByOthersBanner || isLocked || isReturnedForCorrection"
+            class="banner-area"
+          >
+            <div v-if="claimError" class="claim-error-banner" role="alert" aria-live="assertive">
+              <span class="claim-error-icon" aria-hidden="true">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+                </svg>
+              </span>
+              <span>{{ claimError }}</span>
             </div>
-            <dl class="detail-grid">
-              <div class="detail-row">
-                <dt class="detail-label">رقم البيان</dt>
-                <dd class="detail-value">{{ request.customs_declaration.declaration_number }}</dd>
-              </div>
-              <div class="detail-row">
-                <dt class="detail-label">تاريخ الإصدار</dt>
-                <dd class="detail-value">{{ formatDate(request.customs_declaration.issued_at) }}</dd>
-              </div>
-              <div class="detail-row">
-                <dt class="detail-label">أصدره</dt>
-                <dd class="detail-value">{{ request.customs_declaration.issuer?.name ?? '—' }}</dd>
-              </div>
-              <div class="detail-row">
-                <dt class="detail-label">الحالة</dt>
-                <dd class="detail-value detail-value--approved">مكتمل</dd>
-              </div>
-            </dl>
-            <p v-if="customsDownloadError" class="docs-error" role="alert">
-              {{ customsDownloadError }}
-            </p>
+            <ActiveReviewBanner v-else-if="showActiveReviewBanner" />
+            <ClaimedByOthersBanner v-else-if="showClaimedByOthersBanner" :claimer-name="request.claimed_by?.name ?? ''" />
+            <LockedBanner v-else-if="isLocked && lockedBannerVariant" :variant="lockedBannerVariant" />
+            <CorrectionBanner v-else-if="isReturnedForCorrection" />
           </div>
-        </section>
 
-        <!-- الوثائق tab -->
-        <section v-else-if="activeTab === 'documents'" class="tab-panel" role="tabpanel" aria-label="الوثائق">
-          <div class="card">
-            <h2 class="card-title">المستندات المرفوعة</h2>
-            <DocumentChecklist
-              :documents="requestsStore.documents"
-              :customs-declaration="request.customs_declaration ?? null"
-              :user-role="userRole"
-              :request-status="request.status"
-              :loading="requestsStore.loadingDocuments"
-              :error="requestsStore.documentsError"
-              :uploading-document="requestsStore.uploading"
-              :upload-error="requestsStore.uploadError"
-              :downloading-ids="downloadingIds"
-              :download-errors="downloadErrors"
-              :customs-downloading="requestsStore.downloadingCustoms"
-              :customs-download-error="checklistCustomsDownloadError"
-              @download="downloadDocument"
-              @download-customs="handleDownloadCustoms"
-              @upload="handleUploadDocument"
-            />
-          </div>
-        </section>
-
-        <!-- Votes tab -->
-        <section v-else-if="activeTab === 'votes'" class="tab-panel" role="tabpanel" aria-label="التصويت">
-          <div class="card card--no-padding">
+          <!-- VotingPanel inline for executive roles in voting stages -->
+          <div v-if="showVotingPanelInline" class="card card--no-padding voting-inline">
             <VotingPanel
               :request-id="id"
               :request-status="request.status"
               :user-role="userRole"
             />
           </div>
-        </section>
 
-        <!-- الأطراف tab: actors + workflow timeline + audit trail -->
-        <section v-else-if="activeTab === 'parties'" class="tab-panel" role="tabpanel" aria-label="الأطراف">
-          <!-- Workflow actors -->
-          <div class="card">
-            <h2 class="card-title">فريق العمل</h2>
-            <dl class="detail-grid">
-              <div class="detail-row">
-                <dt class="detail-label">أنشأ الطلب</dt>
-                <dd class="detail-value">{{ actorLabel(request.created_by) }}</dd>
+          <!-- Tab navigation -->
+          <nav class="tab-nav" role="tablist" aria-label="تبويبات تفاصيل الطلب">
+            <button
+              v-for="tab in tabs"
+              :key="tab.key"
+              role="tab"
+              :aria-selected="activeTab === tab.key"
+              :class="['tab-btn', { 'tab-btn--active': activeTab === tab.key }]"
+              @click="onTabChange(tab.key)"
+            >
+              {{ tab.label }}
+            </button>
+          </nav>
+
+          <!-- Tab panels -->
+          <div class="tab-content">
+            <!-- المعلومات tab -->
+            <section v-if="activeTab === 'overview'" class="tab-panel" role="tabpanel" aria-label="المعلومات">
+              <div class="card">
+                <h2 class="card-title">بيانات الطلب</h2>
+                <dl class="detail-grid">
+                  <div class="detail-row">
+                    <dt class="detail-label">نوع الواردات</dt>
+                    <dd class="detail-value">{{ request.goods_type ?? '—' }}</dd>
+                  </div>
+                  <div class="detail-row">
+                    <dt class="detail-label">المستورد</dt>
+                    <dd class="detail-value">{{ request.merchant?.name ?? '—' }}</dd>
+                  </div>
+                  <div class="detail-row">
+                    <dt class="detail-label">المبلغ</dt>
+                    <dd class="detail-value">{{ formatAmount(request.amount, request.currency) }}</dd>
+                  </div>
+                  <div class="detail-row">
+                    <dt class="detail-label">البنك / الجهة</dt>
+                    <dd class="detail-value">{{ request.bank_name ?? '—' }}</dd>
+                  </div>
+                  <div class="detail-row">
+                    <dt class="detail-label">المورّد</dt>
+                    <dd class="detail-value">{{ request.supplier_name }}</dd>
+                  </div>
+                  <div class="detail-row">
+                    <dt class="detail-label">رقم الفاتورة</dt>
+                    <dd class="detail-value">{{ request.invoice_number ?? '—' }}</dd>
+                  </div>
+                  <div class="detail-row">
+                    <dt class="detail-label">ميناء الوصول</dt>
+                    <dd class="detail-value">{{ request.arrival_port ?? request.port_of_entry }}</dd>
+                  </div>
+                  <div class="detail-row">
+                    <dt class="detail-label">تاريخ التقديم</dt>
+                    <dd class="detail-value">{{ formatDate(request.submitted_at) }}</dd>
+                  </div>
+                </dl>
               </div>
-              <div class="detail-row">
-                <dt class="detail-label">قدّم الطلب</dt>
-                <dd class="detail-value">{{ actorLabel(request.submitted_by) }}</dd>
+
+              <div v-if="request.customs_declaration" class="card customs-card">
+                <div class="customs-card__header">
+                  <h2 class="card-title customs-card__title">البيان الجمركي</h2>
+                  <div class="customs-card__actions">
+                    <a
+                      v-if="[UserRole.COMMITTEE_DIRECTOR, UserRole.CBY_ADMIN, UserRole.BANK_REVIEWER].includes(userRole)"
+                      :href="`/requests/${id}/customs-preview`"
+                      class="customs-preview-link"
+                    >
+                      معاينة البيان
+                    </a>
+                    <button
+                      class="customs-download"
+                      :disabled="requestsStore.downloadingCustoms"
+                      @click="downloadCustomsDeclaration"
+                    >
+                      {{ requestsStore.downloadingCustoms ? 'جارٍ التحميل…' : 'تحميل PDF' }}
+                    </button>
+                  </div>
+                </div>
+                <dl class="detail-grid">
+                  <div class="detail-row">
+                    <dt class="detail-label">رقم البيان</dt>
+                    <dd class="detail-value">{{ request.customs_declaration.declaration_number }}</dd>
+                  </div>
+                  <div class="detail-row">
+                    <dt class="detail-label">تاريخ الإصدار</dt>
+                    <dd class="detail-value">{{ formatDate(request.customs_declaration.issued_at) }}</dd>
+                  </div>
+                  <div class="detail-row">
+                    <dt class="detail-label">أصدره</dt>
+                    <dd class="detail-value">{{ request.customs_declaration.issuer?.name ?? '—' }}</dd>
+                  </div>
+                  <div class="detail-row">
+                    <dt class="detail-label">الحالة</dt>
+                    <dd class="detail-value detail-value--approved">مكتمل</dd>
+                  </div>
+                </dl>
+                <p v-if="customsDownloadError" class="docs-error" role="alert">
+                  {{ customsDownloadError }}
+                </p>
               </div>
-              <div class="detail-row">
-                <dt class="detail-label">المراجع الداخلي</dt>
-                <dd class="detail-value">{{ actorLabel(request.reviewed_by) }}</dd>
+            </section>
+
+            <!-- الوثائق tab -->
+            <section v-else-if="activeTab === 'documents'" class="tab-panel" role="tabpanel" aria-label="الوثائق">
+              <div class="card">
+                <h2 class="card-title">المستندات المرفوعة</h2>
+                <DocumentChecklist
+                  :documents="requestsStore.documents"
+                  :customs-declaration="request.customs_declaration ?? null"
+                  :user-role="userRole"
+                  :request-status="request.status"
+                  :loading="requestsStore.loadingDocuments"
+                  :error="requestsStore.documentsError"
+                  :uploading-document="requestsStore.uploading"
+                  :upload-error="requestsStore.uploadError"
+                  :downloading-ids="downloadingIds"
+                  :download-errors="downloadErrors"
+                  :customs-downloading="requestsStore.downloadingCustoms"
+                  :customs-download-error="checklistCustomsDownloadError"
+                  @download="downloadDocument"
+                  @download-customs="handleDownloadCustoms"
+                  @upload="handleUploadDocument"
+                />
               </div>
-              <div class="detail-row">
-                <dt class="detail-label">وافق</dt>
-                <dd class="detail-value">{{ actorLabel(request.approved_by) }}</dd>
+            </section>
+
+            <!-- الأطراف tab: actors + workflow timeline + audit trail -->
+            <section v-else-if="activeTab === 'parties'" class="tab-panel" role="tabpanel" aria-label="الأطراف">
+              <div class="card">
+                <h2 class="card-title">فريق العمل</h2>
+                <dl class="detail-grid">
+                  <div class="detail-row">
+                    <dt class="detail-label">أنشأ الطلب</dt>
+                    <dd class="detail-value">{{ actorLabel(request.created_by_user, request.created_by) }}</dd>
+                  </div>
+                  <div class="detail-row">
+                    <dt class="detail-label">قدّم الطلب</dt>
+                    <dd class="detail-value">{{ actorLabel(request.submitted_by_user, request.submitted_by) }}</dd>
+                  </div>
+                  <div class="detail-row">
+                    <dt class="detail-label">المراجع الداخلي</dt>
+                    <dd class="detail-value">{{ actorLabel(request.reviewed_by_user, request.reviewed_by) }}</dd>
+                  </div>
+                  <div class="detail-row">
+                    <dt class="detail-label">وافق</dt>
+                    <dd class="detail-value">{{ actorLabel(request.approved_by_user, request.approved_by) }}</dd>
+                  </div>
+                  <div class="detail-row">
+                    <dt class="detail-label">مراجع لجنة الدعم</dt>
+                    <dd class="detail-value">{{ request.claimed_by?.name ?? '—' }}</dd>
+                  </div>
+                  <div class="detail-row">
+                    <dt class="detail-label">رفع SWIFT</dt>
+                    <dd class="detail-value">{{ actorLabel(request.swift_uploaded_by_user, request.swift_uploaded_by) }}</dd>
+                  </div>
+                  <div class="detail-row">
+                    <dt class="detail-label">رفض الطلب</dt>
+                    <dd class="detail-value">{{ actorLabel(request.rejected_by_user, request.rejected_by) }}</dd>
+                  </div>
+                  <div class="detail-row">
+                    <dt class="detail-label">أعاد التقديم</dt>
+                    <dd class="detail-value">{{ actorLabel(request.resubmitted_by_user, request.resubmitted_by) }}</dd>
+                  </div>
+                </dl>
               </div>
-              <div class="detail-row">
-                <dt class="detail-label">مراجع لجنة الدعم</dt>
-                <dd class="detail-value">{{ request.claimed_by?.name ?? '—' }}</dd>
+
+              <div class="card">
+                <h2 class="card-title">مسار سير العمل</h2>
+
+                <div v-if="requestsStore.loadingHistory" class="history-loading" aria-busy="true">
+                  <div class="skeleton skeleton--line" />
+                  <div class="skeleton skeleton--line" />
+                  <div class="skeleton skeleton--line skeleton--short" />
+                </div>
+
+                <p v-else-if="requestsStore.historyError" class="history-error" role="alert">
+                  {{ requestsStore.historyError }}
+                </p>
+
+                <WorkflowTimeline
+                  v-else
+                  :current-status="request.status"
+                  :history="requestsStore.history"
+                />
               </div>
-              <div class="detail-row">
-                <dt class="detail-label">رفع SWIFT</dt>
-                <dd class="detail-value">{{ actorLabel(request.swift_uploaded_by) }}</dd>
+
+              <div class="card">
+                <h2 class="card-title">سجل الأحداث</h2>
+
+                <div v-if="requestsStore.loadingHistory" class="history-loading" aria-busy="true">
+                  <div class="skeleton skeleton--line" />
+                  <div class="skeleton skeleton--line" />
+                </div>
+
+                <p v-else-if="requestsStore.historyError" class="history-error" role="alert">
+                  {{ requestsStore.historyError }}
+                </p>
+
+                <AuditTimeline
+                  v-else
+                  :entries="requestsStore.history"
+                />
               </div>
-              <div class="detail-row">
-                <dt class="detail-label">رفض الطلب</dt>
-                <dd class="detail-value">{{ actorLabel(request.rejected_by) }}</dd>
-              </div>
-              <div class="detail-row">
-                <dt class="detail-label">أعاد التقديم</dt>
-                <dd class="detail-value">{{ actorLabel(request.resubmitted_by) }}</dd>
-              </div>
-            </dl>
+            </section>
           </div>
+        </div>
 
-          <!-- Workflow timeline -->
-          <div class="card">
-            <h2 class="card-title">مسار سير العمل</h2>
-
-            <div v-if="requestsStore.loadingHistory" class="history-loading" aria-busy="true">
-              <div class="skeleton skeleton--line" />
-              <div class="skeleton skeleton--line" />
-              <div class="skeleton skeleton--line skeleton--short" />
-            </div>
-
-            <p v-else-if="requestsStore.historyError" class="history-error" role="alert">
-              {{ requestsStore.historyError }}
-            </p>
-
-            <WorkflowTimeline
-              v-else
+        <!-- Right rail (1/3) -->
+        <aside class="detail-rail">
+          <!-- Workflow progress -->
+          <div class="rail-card">
+            <WorkflowProgress
               :current-status="request.status"
-              :history="requestsStore.history"
+              :user-role="userRole"
             />
           </div>
 
-          <!-- Audit trail -->
-          <div class="card">
-            <h2 class="card-title">سجل الأحداث</h2>
-
-            <div v-if="requestsStore.loadingHistory" class="history-loading" aria-busy="true">
-              <div class="skeleton skeleton--line" />
-              <div class="skeleton skeleton--line" />
-            </div>
-
-            <p v-else-if="requestsStore.historyError" class="history-error" role="alert">
-              {{ requestsStore.historyError }}
-            </p>
-
-            <AuditTimeline
-              v-else
-              :entries="requestsStore.history"
+          <!-- Available actions -->
+          <div v-if="hasActions" class="rail-card rail-card--actions">
+            <p class="rail-card__title">إجراءات متاحة لك</p>
+            <ActionsPanel
+              :request="request"
+              :user-role="userRole"
+              @action-completed="onActionCompleted"
             />
           </div>
-        </section>
+
+          <!-- Quick info -->
+          <div class="rail-card">
+            <p class="rail-card__title">معلومات سريعة</p>
+            <ul class="quick-info-list">
+              <li class="quick-info-item">
+                <span class="quick-info-icon" aria-hidden="true">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                    <circle cx="12" cy="7" r="4" />
+                  </svg>
+                </span>
+                <div class="quick-info-content">
+                  <span class="quick-info-label">المُنشئ</span>
+                  <span class="quick-info-value">{{ actorLabel(request.created_by_user, request.created_by) }}</span>
+                </div>
+              </li>
+              <li class="quick-info-item">
+                <span class="quick-info-icon" aria-hidden="true">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+                    <line x1="8" y1="21" x2="16" y2="21" /><line x1="12" y1="17" x2="12" y2="21" />
+                  </svg>
+                </span>
+                <div class="quick-info-content">
+                  <span class="quick-info-label">البنك</span>
+                  <span class="quick-info-value">{{ request.bank_name ?? '—' }}</span>
+                </div>
+              </li>
+              <li class="quick-info-item">
+                <span class="quick-info-icon" aria-hidden="true">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10" />
+                    <polyline points="12 6 12 12 16 14" />
+                  </svg>
+                </span>
+                <div class="quick-info-content">
+                  <span class="quick-info-label">تاريخ التقديم</span>
+                  <span class="quick-info-value">{{ formatDate(request.submitted_at) }}</span>
+                </div>
+              </li>
+              <li class="quick-info-item">
+                <span class="quick-info-icon" aria-hidden="true">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                    <circle cx="12" cy="10" r="3" />
+                  </svg>
+                </span>
+                <div class="quick-info-content">
+                  <span class="quick-info-label">ميناء الوصول</span>
+                  <span class="quick-info-value">{{ request.arrival_port ?? request.port_of_entry }}</span>
+                </div>
+              </li>
+            </ul>
+          </div>
+
+          <!-- Back link -->
+          <NuxtLink to="/requests" class="rail-back-link">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+            العودة إلى قائمة الطلبات
+          </NuxtLink>
+        </aside>
       </div>
-
-      <!-- Actions panel (sticky at bottom) -->
-      <ActionsPanel
-        :request="request"
-        :user-role="userRole"
-        @action-completed="onActionCompleted"
-      />
     </template>
   </div>
 </template>
@@ -708,19 +814,49 @@ function actorLabel(id: number | null | undefined): string {
   flex-direction: column;
   gap: 0;
   min-height: 100%;
+  padding: 24px;
+  direction: rtl;
 }
 
-/* Header */
+/* Breadcrumbs */
+.breadcrumbs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 16px;
+  font-size: 13px;
+}
+
+.breadcrumb-link {
+  color: #6c757d;
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.breadcrumb-link:hover {
+  color: #0066cc;
+}
+
+.breadcrumb-sep {
+  color: #cccccc;
+}
+
+.breadcrumb-current {
+  color: #1c222b;
+  font-weight: 500;
+}
+
+/* Page header */
 .page-header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  padding: 24px 24px 16px;
-  flex-wrap: wrap;
   gap: 12px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
 }
 
-.page-header__right {
+.page-header__main {
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -729,48 +865,80 @@ function actorLabel(id: number | null | undefined): string {
 .page-header__actions {
   display: flex;
   align-items: center;
-  gap: 12px;
-}
-
-.back-link {
-  color: #0071e3;
-  text-decoration: none;
-  font-size: 14px;
-}
-
-.back-link:hover {
-  text-decoration: underline;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .page-title {
   font-size: 22px;
   font-weight: 700;
-  color: #1d1d1f;
+  color: #1c222b;
   margin: 0;
 }
 
-.edit-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: 36px;
-  padding: 0 16px;
-  border-radius: 8px;
-  background: #0071e3;
-  color: #ffffff;
+.page-subtitle {
   font-size: 14px;
-  font-weight: 600;
-  text-decoration: none;
-  transition: opacity 0.15s;
+  color: #6c757d;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
-.edit-btn:hover {
-  opacity: 0.88;
+.subtitle-dot {
+  color: #cccccc;
+}
+
+.download-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 14px;
+  border: 1px solid #cccccc;
+  border-radius: 16px;
+  background: #ffffff;
+  color: #1c222b;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.download-btn:hover:not(:disabled) {
+  border-color: #0066cc;
+  color: #0066cc;
+}
+
+.download-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Two-column layout */
+.detail-layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+@media (min-width: 1024px) {
+  .detail-layout {
+    grid-template-columns: 2fr 1fr;
+  }
+}
+
+.detail-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-width: 0;
 }
 
 /* Banners */
 .banner-area {
-  padding: 0 24px 12px;
+  margin-bottom: 12px;
 }
 
 .claim-error-banner {
@@ -781,10 +949,9 @@ function actorLabel(id: number | null | undefined): string {
   background: #fff0ef;
   border: 1px solid #ff3b3033;
   border-radius: 12px;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 500;
-  color: #cc0000;
-  direction: rtl;
+  color: #c62828;
 }
 
 .claim-error-icon {
@@ -792,12 +959,16 @@ function actorLabel(id: number | null | undefined): string {
   flex-shrink: 0;
 }
 
+/* Inline voting panel */
+.voting-inline {
+  margin-bottom: 16px;
+}
+
 /* Tabs */
 .tab-nav {
   display: flex;
   gap: 4px;
-  padding: 0 24px 0;
-  border-bottom: 1px solid #d2d2d7;
+  border-bottom: 1px solid #cccccc;
   overflow-x: auto;
 }
 
@@ -807,30 +978,26 @@ function actorLabel(id: number | null | undefined): string {
   background: none;
   border: none;
   border-bottom: 2px solid transparent;
-  font-size: 15px;
-  color: #6e6e73;
+  font-size: 14px;
+  color: #6c757d;
   cursor: pointer;
   white-space: nowrap;
   transition: color 0.15s, border-color 0.15s;
 }
 
 .tab-btn--active {
-  color: #0071e3;
-  border-bottom-color: #0071e3;
+  color: #0066cc;
+  border-bottom-color: #0066cc;
   font-weight: 600;
 }
 
 .tab-btn:hover:not(.tab-btn--active) {
-  color: #1d1d1f;
+  color: #1c222b;
 }
 
 /* Tab content */
 .tab-content {
-  flex: 1;
-  padding: 20px 24px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+  padding-top: 16px;
 }
 
 .tab-panel {
@@ -842,9 +1009,9 @@ function actorLabel(id: number | null | undefined): string {
 /* Cards */
 .card {
   background: #ffffff;
-  border: 1px solid #d2d2d7;
+  border: 1px solid #cccccc;
   border-radius: 12px;
-  padding: 20px 24px;
+  padding: 20px;
 }
 
 .card--no-padding {
@@ -853,41 +1020,49 @@ function actorLabel(id: number | null | undefined): string {
 }
 
 .card-title {
-  font-size: 16px;
-  font-weight: 700;
-  color: #1d1d1f;
+  font-size: 15px;
+  font-weight: 600;
+  color: #1c222b;
   margin: 0 0 16px 0;
 }
 
-/* Detail grid */
+/* Detail grid — Lovable field order, 2 columns */
 .detail-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px 24px;
   margin: 0;
 }
 
 .detail-row {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
+  padding: 12px 0;
+  border-bottom: 1px solid #f5f5f7;
+}
+
+.detail-row:nth-last-child(-n+2) {
+  border-bottom: none;
 }
 
 .detail-label {
-  font-size: 12px;
-  color: #6e6e73;
+  font-size: 11px;
+  color: #6c757d;
   font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
 }
 
 .detail-value {
-  font-size: 15px;
-  color: #1d1d1f;
+  font-size: 14px;
+  color: #1c222b;
   word-break: break-word;
+  font-weight: 500;
 }
 
 .detail-value--approved {
-  color: #34c759;
-  font-weight: 700;
+  color: #1b5e20;
+  font-weight: 600;
 }
 
 .customs-card__header {
@@ -912,15 +1087,16 @@ function actorLabel(id: number | null | undefined): string {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 44px;
+  height: 36px;
   padding: 0 14px;
-  border: 1px solid #0071e3;
-  border-radius: 8px;
+  border: 1px solid #0066cc;
+  border-radius: 16px;
   background: transparent;
-  color: #0071e3;
-  font-size: 14px;
-  font-weight: 600;
+  color: #0066cc;
+  font-size: 13px;
+  font-weight: 500;
   text-decoration: none;
+  transition: background 0.15s;
 }
 
 .customs-preview-link:hover {
@@ -931,15 +1107,16 @@ function actorLabel(id: number | null | undefined): string {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 44px;
-  padding: 0 18px;
+  height: 36px;
+  padding: 0 16px;
   border: 0;
-  border-radius: 8px;
-  background: #0071e3;
+  border-radius: 16px;
+  background: #0066cc;
   color: #ffffff;
-  font-size: 14px;
-  font-weight: 700;
+  font-size: 13px;
+  font-weight: 600;
   cursor: pointer;
+  transition: opacity 0.15s;
 }
 
 .customs-download:hover:not(:disabled) {
@@ -951,12 +1128,11 @@ function actorLabel(id: number | null | undefined): string {
   cursor: not-allowed;
 }
 
-/* Documents — error displayed in Overview tab's customs section */
 .docs-error {
-  color: #ff3b30;
-  font-size: 14px;
+  color: #c62828;
+  font-size: 13px;
   text-align: center;
-  padding: 24px 0;
+  padding: 12px 0 0;
 }
 
 .history-loading {
@@ -966,15 +1142,111 @@ function actorLabel(id: number | null | undefined): string {
 }
 
 .history-error {
-  color: #ff3b30;
-  font-size: 14px;
+  color: #c62828;
+  font-size: 13px;
   text-align: center;
   padding: 24px 0;
 }
 
+/* Right rail */
+.detail-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  position: sticky;
+  top: 24px;
+}
+
+.rail-card {
+  background: #ffffff;
+  border: 1px solid #cccccc;
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.rail-card--actions {
+  padding-bottom: 8px;
+}
+
+.rail-card__title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1c222b;
+  margin: 0 0 12px 0;
+}
+
+/* Quick info list */
+.quick-info-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.quick-info-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.quick-info-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: #f5f5f7;
+  color: #6c757d;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.quick-info-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+
+.quick-info-label {
+  font-size: 11px;
+  color: #6c757d;
+  font-weight: 500;
+}
+
+.quick-info-value {
+  font-size: 13px;
+  color: #1c222b;
+  font-weight: 500;
+  word-break: break-word;
+}
+
+/* Back link in rail */
+.rail-back-link {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 16px;
+  background: #ffffff;
+  border: 1px solid #cccccc;
+  border-radius: 12px;
+  color: #6c757d;
+  font-size: 13px;
+  text-decoration: none;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.rail-back-link:hover {
+  color: #0066cc;
+  border-color: #0066cc;
+}
+
 /* Skeleton */
 .skeleton-container {
-  padding: 24px;
+  padding: 0;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -1006,6 +1278,10 @@ function actorLabel(id: number | null | undefined): string {
 }
 
 @media (max-width: 600px) {
+  .detail-page {
+    padding: 16px;
+  }
+
   .detail-grid {
     grid-template-columns: 1fr;
   }
@@ -1018,17 +1294,25 @@ function actorLabel(id: number | null | undefined): string {
   .page-header {
     flex-direction: column;
   }
+
+  .detail-rail {
+    position: static;
+  }
 }
 
 @media print {
-  .back-link,
-  .edit-btn,
+  .breadcrumbs,
+  .download-btn,
   .tab-nav,
   .banner-area,
   .customs-download,
   .customs-preview-link,
-  .actions-panel {
+  .detail-rail {
     display: none !important;
+  }
+
+  .detail-layout {
+    grid-template-columns: 1fr;
   }
 
   .detail-page,

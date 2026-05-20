@@ -172,6 +172,13 @@ const checklist = computed((): ChecklistRow[] => {
 
 const hasContent = computed(() => checklist.value.length > 0)
 
+const missingRequiredCount = computed(
+  () =>
+    checklist.value.filter(
+      r => r.kind === 'staged' && r.requirement.required && !r.doc,
+    ).length,
+)
+
 // ── Upload state ──────────────────────────────────────────────────────────────
 
 const fileInputRef = ref<HTMLInputElement | null>(null)
@@ -240,27 +247,98 @@ function formatDate(iso: string | null): string {
     <!-- Empty state -->
     <p v-else-if="!hasContent" class="docs-empty">لا توجد مستندات بعد.</p>
 
-    <!-- Checklist -->
-    <ul v-else class="docs-list" aria-label="قائمة المستندات">
+    <!-- Checklist summary badge -->
+    <template v-else>
+      <div class="checklist-summary">
+        <span class="checklist-summary__label">قائمة المستندات</span>
+        <span
+          v-if="missingRequiredCount > 0"
+          class="checklist-summary__badge checklist-summary__badge--missing"
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+          </svg>
+          ينقص {{ missingRequiredCount }} مستند مطلوب
+        </span>
+        <span v-else class="checklist-summary__badge checklist-summary__badge--ok">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+          مكتمل
+        </span>
+      </div>
 
-      <!-- Staged requirement rows -->
-      <template v-for="(row, idx) in checklist" :key="idx">
+      <!-- Checklist rows -->
+      <ul class="docs-list" aria-label="قائمة المستندات">
+        <template v-for="(row, idx) in checklist" :key="idx">
 
-        <!-- Staged requirement with optional upload -->
-        <li v-if="row.kind === 'staged'" class="doc-item">
-          <div class="doc-info">
-            <div class="doc-header">
-              <span class="doc-type-label">{{ row.requirement.label }}</span>
-              <span
-                class="doc-badge"
-                :class="row.requirement.required ? 'doc-badge--required' : 'doc-badge--optional'"
-              >
-                {{ row.requirement.required ? 'مطلوب' : 'اختياري' }}
-              </span>
+          <!-- Staged requirement row -->
+          <li
+            v-if="row.kind === 'staged'"
+            class="doc-item"
+            :class="{
+              'doc-item--uploaded': !!row.doc,
+              'doc-item--missing-required': !row.doc && row.requirement.required,
+              'doc-item--missing-optional': !row.doc && !row.requirement.required,
+            }"
+          >
+            <!-- Left: status icon box -->
+            <div class="doc-icon" :class="row.doc ? 'doc-icon--ok' : 'doc-icon--pending'">
+              <svg v-if="row.doc" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+              <svg v-else width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" />
+              </svg>
             </div>
 
-            <template v-if="row.doc">
-              <!-- Uploaded -->
+            <!-- Center: labels -->
+            <div class="doc-info">
+              <div class="doc-header">
+                <span class="doc-type-label">{{ row.requirement.label }}</span>
+              </div>
+              <template v-if="row.doc">
+                <span class="doc-name">{{ row.doc.original_filename }}</span>
+                <span class="doc-meta">
+                  {{ formatFileSize(row.doc.size_bytes) }}
+                  · {{ formatDate(row.doc.uploaded_at) }}
+                  <template v-if="row.doc.uploaded_by_name"> · {{ row.doc.uploaded_by_name }}</template>
+                </span>
+                <span v-if="downloadErrors[row.doc.id]" class="doc-download-error" role="alert">
+                  {{ downloadErrors[row.doc.id] }}
+                </span>
+              </template>
+              <span v-else class="doc-meta">{{ row.requirement.required ? 'لم يُرفع بعد' : 'لم يُرفع' }}</span>
+            </div>
+
+            <!-- Right: badge + download -->
+            <div class="doc-item__actions">
+              <span class="doc-badge" :class="row.requirement.required ? 'doc-badge--required' : 'doc-badge--optional'">
+                {{ row.requirement.required ? 'مطلوب' : 'اختياري' }}
+              </span>
+              <button
+                v-if="row.doc && canDownloadDocument(userRole, row.doc.type)"
+                class="doc-download-btn"
+                :disabled="downloadingIds.has(row.doc.id)"
+                :aria-label="`تحميل ${row.doc.original_filename}`"
+                @click="emit('download', row.doc.id, row.doc.original_filename)"
+              >
+                {{ downloadingIds.has(row.doc.id) ? 'جارٍ التحميل…' : 'تحميل' }}
+              </button>
+            </div>
+          </li>
+
+          <!-- Extra uploaded docs -->
+          <li v-else-if="row.kind === 'extra'" class="doc-item doc-item--uploaded">
+            <div class="doc-icon doc-icon--ok">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            </div>
+            <div class="doc-info">
+              <div class="doc-header">
+                <span class="doc-type-label">{{ row.doc.type === 'SWIFT' ? 'مستند SWIFT' : 'مستند طلب' }}</span>
+              </div>
               <span class="doc-name">{{ row.doc.original_filename }}</span>
               <span class="doc-meta">
                 {{ formatFileSize(row.doc.size_bytes) }}
@@ -270,102 +348,54 @@ function formatDate(iso: string | null): string {
               <span v-if="downloadErrors[row.doc.id]" class="doc-download-error" role="alert">
                 {{ downloadErrors[row.doc.id] }}
               </span>
-            </template>
-            <template v-else>
-              <!-- Not uploaded yet -->
-              <span class="doc-not-uploaded">—</span>
-            </template>
-          </div>
-
-          <div class="doc-item__actions">
-            <!-- Upload status badge -->
-            <span
-              class="upload-status-badge"
-              :class="
-                row.doc
-                  ? 'upload-status-badge--uploaded'
-                  : row.requirement.required
-                    ? 'upload-status-badge--required'
-                    : 'upload-status-badge--optional'
-              "
-            >
-              {{ row.doc ? 'مرفوع' : row.requirement.required ? 'مطلوب' : 'غير مطلوب' }}
-            </span>
-
-            <!-- Download button for uploaded doc -->
-            <button
-              v-if="row.doc && canDownloadDocument(userRole, row.doc.type)"
-              class="doc-download-btn"
-              :disabled="downloadingIds.has(row.doc.id)"
-              :aria-label="`تحميل ${row.doc.original_filename}`"
-              @click="emit('download', row.doc.id, row.doc.original_filename)"
-            >
-              {{ downloadingIds.has(row.doc.id) ? 'جارٍ التحميل…' : 'تحميل' }}
-            </button>
-          </div>
-        </li>
-
-        <!-- Extra uploaded docs not in stage requirements -->
-        <li v-else-if="row.kind === 'extra'" class="doc-item">
-          <div class="doc-info">
-            <div class="doc-header">
-              <span class="doc-type-label">{{ row.doc.type === 'SWIFT' ? 'مستند SWIFT' : 'مستند طلب' }}</span>
-              <span v-if="row.doc.type === 'SWIFT'" class="doc-badge doc-badge--swift" aria-label="مستند SWIFT">SWIFT</span>
             </div>
-            <span class="doc-name">{{ row.doc.original_filename }}</span>
-            <span class="doc-meta">
-              {{ formatFileSize(row.doc.size_bytes) }}
-              · {{ formatDate(row.doc.uploaded_at) }}
-              <template v-if="row.doc.uploaded_by_name"> · {{ row.doc.uploaded_by_name }}</template>
-            </span>
-            <span v-if="downloadErrors[row.doc.id]" class="doc-download-error" role="alert">
-              {{ downloadErrors[row.doc.id] }}
-            </span>
-          </div>
-
-          <div class="doc-item__actions">
-            <span class="upload-status-badge upload-status-badge--uploaded">مرفوع</span>
-            <button
-              v-if="canDownloadDocument(userRole, row.doc.type)"
-              class="doc-download-btn"
-              :disabled="downloadingIds.has(row.doc.id)"
-              :aria-label="`تحميل ${row.doc.original_filename}`"
-              @click="emit('download', row.doc.id, row.doc.original_filename)"
-            >
-              {{ downloadingIds.has(row.doc.id) ? 'جارٍ التحميل…' : 'تحميل' }}
-            </button>
-          </div>
-        </li>
-
-        <!-- Customs declaration row -->
-        <li v-else-if="row.kind === 'customs'" class="doc-item doc-item--customs">
-          <div class="doc-info">
-            <div class="doc-header">
-              <span class="doc-type-label">بيان جمركي</span>
+            <div class="doc-item__actions">
+              <span v-if="row.doc.type === 'SWIFT'" class="doc-badge doc-badge--swift">SWIFT</span>
+              <button
+                v-if="canDownloadDocument(userRole, row.doc.type)"
+                class="doc-download-btn"
+                :disabled="downloadingIds.has(row.doc.id)"
+                :aria-label="`تحميل ${row.doc.original_filename}`"
+                @click="emit('download', row.doc.id, row.doc.original_filename)"
+              >
+                {{ downloadingIds.has(row.doc.id) ? 'جارٍ التحميل…' : 'تحميل' }}
+              </button>
             </div>
-            <span class="doc-name">{{ row.customs.declaration_number }}</span>
-            <span class="doc-meta">{{ formatDate(row.customs.issued_at) }}</span>
-            <span v-if="customsDownloadError" class="doc-download-error" role="alert">
-              {{ customsDownloadError }}
-            </span>
-          </div>
+          </li>
 
-          <div class="doc-item__actions">
-            <span class="upload-status-badge upload-status-badge--uploaded">مرفوع</span>
-            <button
-              v-if="canDownloadCustoms(userRole)"
-              class="doc-download-btn"
-              :disabled="customsDownloading"
-              aria-label="تحميل البيان الجمركي"
-              @click="emit('download-customs', row.customs.id, row.customs.declaration_number)"
-            >
-              {{ customsDownloading ? 'جارٍ التحميل…' : 'تحميل' }}
-            </button>
-          </div>
-        </li>
+          <!-- Customs declaration row -->
+          <li v-else-if="row.kind === 'customs'" class="doc-item doc-item--uploaded">
+            <div class="doc-icon doc-icon--ok">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            </div>
+            <div class="doc-info">
+              <div class="doc-header">
+                <span class="doc-type-label">بيان جمركي</span>
+              </div>
+              <span class="doc-name">{{ row.customs.declaration_number }}</span>
+              <span class="doc-meta">{{ formatDate(row.customs.issued_at) }}</span>
+              <span v-if="customsDownloadError" class="doc-download-error" role="alert">
+                {{ customsDownloadError }}
+              </span>
+            </div>
+            <div class="doc-item__actions">
+              <button
+                v-if="canDownloadCustoms(userRole)"
+                class="doc-download-btn"
+                :disabled="customsDownloading"
+                aria-label="تحميل البيان الجمركي"
+                @click="emit('download-customs', row.customs.id, row.customs.declaration_number)"
+              >
+                {{ customsDownloading ? 'جارٍ التحميل…' : 'تحميل' }}
+              </button>
+            </div>
+          </li>
 
-      </template>
-    </ul>
+        </template>
+      </ul>
+    </template>
 
     <!-- Upload section (DATA_ENTRY only) -->
     <div v-if="userRole === UserRole.DATA_ENTRY" class="doc-upload-section">
@@ -433,7 +463,7 @@ function formatDate(iso: string | null): string {
 
 /* States */
 .docs-error {
-  color: #ff3b30;
+  color: #c62828;
   font-size: 14px;
   margin: 8px 0 0;
 }
@@ -444,6 +474,33 @@ function formatDate(iso: string | null): string {
   margin: 8px 0 0;
 }
 
+/* Checklist summary bar */
+.checklist-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  gap: 8px;
+}
+
+.checklist-summary__label {
+  font-size: 12px;
+  color: #6c757d;
+}
+
+.checklist-summary__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.checklist-summary__badge--missing { background: #fff0f0; color: #c62828; }
+.checklist-summary__badge--ok { background: #e8f5e9; color: #1b5e20; }
+
 /* Document list */
 .docs-list {
   list-style: none;
@@ -451,24 +508,41 @@ function formatDate(iso: string | null): string {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 0;
+  gap: 6px;
 }
 
 .doc-item {
   display: flex;
   align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 12px 0;
-  border-bottom: 1px solid #f0f0f0;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
 }
 
-.doc-item:last-child { border-bottom: none; }
+.doc-item--uploaded { border-color: rgba(27, 94, 32, 0.25); background: rgba(27, 94, 32, 0.04); }
+.doc-item--missing-required { border-color: rgba(198, 40, 40, 0.25); background: rgba(198, 40, 40, 0.04); }
+.doc-item--missing-optional { border-color: #e5e7eb; background: #f5f5f7; }
+
+/* Left icon box */
+.doc-icon {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.doc-icon--ok { background: rgba(27, 94, 32, 0.15); color: #1b5e20; }
+.doc-icon--pending { background: #f0f0f0; color: #8e8e93; }
 
 .doc-info {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
   flex: 1;
   min-width: 0;
 }
@@ -482,8 +556,8 @@ function formatDate(iso: string | null): string {
 
 .doc-type-label {
   font-size: 12px;
-  color: #8e8e93;
-  font-weight: 500;
+  color: #1c222b;
+  font-weight: 600;
 }
 
 .doc-badge {
@@ -491,35 +565,31 @@ function formatDate(iso: string | null): string {
   align-items: center;
   padding: 2px 8px;
   border-radius: 4px;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.03em;
+  flex-shrink: 0;
 }
 
-.doc-badge--required { background: #fff0f0; color: #c62828; }
-.doc-badge--optional { background: #f5f5f7; color: #6e6e73; }
+.doc-badge--required { background: rgba(198, 40, 40, 0.1); color: #c62828; border: 1px solid rgba(198, 40, 40, 0.2); }
+.doc-badge--optional { background: #f5f5f7; color: #6c757d; border: 1px solid #e5e7eb; }
 .doc-badge--swift { background: #32ade6; color: #ffffff; }
 
 .doc-name {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
-  color: #1d1d1f;
+  color: #1c222b;
   word-break: break-all;
 }
 
-.doc-not-uploaded {
-  font-size: 14px;
-  color: #8e8e93;
-}
-
 .doc-meta {
-  font-size: 12px;
+  font-size: 11px;
   color: #8e8e93;
 }
 
 .doc-download-error {
-  font-size: 12px;
-  color: #ff3b30;
+  font-size: 11px;
+  color: #c62828;
 }
 
 /* Actions column */
@@ -529,22 +599,8 @@ function formatDate(iso: string | null): string {
   align-items: flex-end;
   gap: 6px;
   flex-shrink: 0;
+  padding-top: 2px;
 }
-
-/* Upload status badge */
-.upload-status-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 3px 10px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.upload-status-badge--uploaded { background: #e8f5e9; color: #1b5e20; }
-.upload-status-badge--required { background: #fff0f0; color: #c62828; }
-.upload-status-badge--optional { background: #f5f5f7; color: #6e6e73; }
 
 /* Download button */
 .doc-download-btn {
@@ -552,20 +608,20 @@ function formatDate(iso: string | null): string {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: 32px;
-  padding: 0 14px;
+  height: 30px;
+  padding: 0 12px;
   border-radius: 8px;
-  border: 1px solid #d2d2d7;
+  border: 1px solid #cccccc;
   background: #ffffff;
-  color: #0071e3;
-  font-size: 13px;
+  color: #0066cc;
+  font-size: 12px;
   font-weight: 500;
   cursor: pointer;
   transition: background 0.15s;
   white-space: nowrap;
 }
 
-.doc-download-btn:hover:not(:disabled) { background: #f0f7ff; }
+.doc-download-btn:hover:not(:disabled) { background: #f0f7ff; border-color: #0066cc; }
 .doc-download-btn:disabled { opacity: 0.55; cursor: not-allowed; }
 
 /* Upload section */
@@ -591,17 +647,17 @@ function formatDate(iso: string | null): string {
   justify-content: center;
   height: 36px;
   padding: 0 16px;
-  border-radius: 8px;
-  border: 1px solid #0071e3;
+  border-radius: 16px;
+  border: 1px solid #0066cc;
   background: #ffffff;
-  color: #0071e3;
+  color: #0066cc;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
 }
 
-.doc-upload-btn:hover:not(:disabled) { background: #0071e3; color: #ffffff; }
+.doc-upload-btn:hover:not(:disabled) { background: #0066cc; color: #ffffff; }
 .doc-upload-btn:disabled { opacity: 0.55; cursor: not-allowed; }
 
 .docs-error--upload { margin: 0; }

@@ -512,9 +512,6 @@ async function dispatchAction(action: string, reason?: string) {
 
 <style scoped>
 .actions-panel {
-  background: #ffffff;
-  border-top: 1px solid #d2d2d7;
-  padding: 20px 24px;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -531,11 +528,11 @@ async function dispatchAction(action: string, reason?: string) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: 44px;
-  min-width: 120px;
-  padding: 0 20px;
-  border-radius: 12px;
-  font-size: 15px;
+  height: 40px;
+  min-width: 100%;
+  padding: 0 16px;
+  border-radius: 16px;
+  font-size: 14px;
   font-weight: 600;
   border: none;
   cursor: pointer;
@@ -549,7 +546,7 @@ async function dispatchAction(action: string, reason?: string) {
 }
 
 .action-btn--primary {
-  background: #0071e3;
+  background: #0066cc;
   color: #ffffff;
 }
 
@@ -558,7 +555,7 @@ async function dispatchAction(action: string, reason?: string) {
 }
 
 .action-btn--approve {
-  background: #34c759;
+  background: #1b5e20;
   color: #ffffff;
 }
 
@@ -567,7 +564,7 @@ async function dispatchAction(action: string, reason?: string) {
 }
 
 .action-btn--reject {
-  background: #ff3b30;
+  background: #c62828;
   color: #ffffff;
 }
 
@@ -577,12 +574,12 @@ async function dispatchAction(action: string, reason?: string) {
 
 .action-btn--secondary {
   background: #f5f5f7;
-  color: #1d1d1f;
-  border: 1px solid #d2d2d7;
+  color: #1c222b;
+  border: 1px solid #cccccc;
 }
 
 .action-btn--secondary:hover:not(:disabled) {
-  background: #e5e5ea;
+  background: #e8e8ed;
 }
 
 .reject-form {

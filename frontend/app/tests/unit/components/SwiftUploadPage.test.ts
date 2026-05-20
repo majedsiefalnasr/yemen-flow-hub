@@ -186,6 +186,73 @@ describe('SwiftUploadPage — isUploaded', () => {
   })
 })
 
+// ── wrong-status fallback state ───────────────────────────────────────────────
+
+describe('SwiftUploadPage — wrong-status fallback (AC10)', () => {
+  const wrongStatuses = [
+    RequestStatus.DRAFT,
+    RequestStatus.SUBMITTED,
+    RequestStatus.BANK_REVIEW,
+    RequestStatus.BANK_APPROVED,
+    RequestStatus.SUPPORT_REVIEW_PENDING,
+    RequestStatus.SUPPORT_REVIEW_IN_PROGRESS,
+    RequestStatus.SUPPORT_APPROVED,
+    RequestStatus.SUPPORT_REJECTED,
+    RequestStatus.SWIFT_UPLOADED,
+    RequestStatus.WAITING_FOR_VOTING_OPEN,
+    RequestStatus.EXECUTIVE_VOTING_OPEN,
+    RequestStatus.EXECUTIVE_VOTING_CLOSED,
+    RequestStatus.EXECUTIVE_APPROVED,
+    RequestStatus.EXECUTIVE_REJECTED,
+    RequestStatus.CUSTOMS_DECLARATION_ISSUED,
+    RequestStatus.COMPLETED,
+  ]
+
+  wrongStatuses.forEach((status) => {
+    it(`shows wrong-status card for ${status}`, () => {
+      const isReady = isWaitingForSwift({ status })
+      const uploaded = isUploaded([])
+      expect(isReady).toBe(false)
+      expect(uploaded).toBe(false)
+    })
+  })
+
+  it('neither pending nor uploaded state for BANK_REVIEW → shows wrong-status card', () => {
+    const request = { status: RequestStatus.BANK_REVIEW }
+    expect(isWaitingForSwift(request)).toBe(false)
+    expect(isUploaded(undefined)).toBe(false)
+  })
+})
+
+// ── immutability (uploaded state) ─────────────────────────────────────────────
+
+describe('SwiftUploadPage — immutability after SWIFT upload (AC10)', () => {
+  it('uploaded state is detected when SWIFT document present', () => {
+    const docs = [makeDoc({ type: 'SWIFT' })]
+    expect(isUploaded(docs)).toBe(true)
+  })
+
+  it('upload zone is hidden once SWIFT document is present regardless of status', () => {
+    const docs = [makeDoc({ type: 'SWIFT' })]
+    const request = { status: RequestStatus.SWIFT_UPLOADED }
+    expect(isUploaded(docs)).toBe(true)
+    expect(isWaitingForSwift(request)).toBe(false)
+  })
+
+  it('SWIFT document cannot be replaced: isUploaded stays true after duplicate SWIFT docs', () => {
+    const docs = [
+      makeDoc({ id: 1, type: 'SWIFT', original_filename: 'first.pdf' }),
+      makeDoc({ id: 2, type: 'SWIFT', original_filename: 'second.pdf' }),
+    ]
+    expect(isUploaded(docs)).toBe(true)
+  })
+
+  it('isUploaded false when only non-SWIFT docs present → upload zone shown', () => {
+    const docs = [makeDoc({ type: 'INVOICE' }), makeDoc({ type: 'CONTRACT' })]
+    expect(isUploaded(docs)).toBe(false)
+  })
+})
+
 // ── drag-and-drop PDF validation ──────────────────────────────────────────────
 
 describe('SwiftUploadPage — drag-and-drop validation', () => {

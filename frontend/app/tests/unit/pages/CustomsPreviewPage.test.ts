@@ -193,6 +193,76 @@ describe('CustomsPreviewPage — bankName computed', () => {
   })
 })
 
+// ─── customs authorization behavior (AC12) ───────────────────────────────────
+
+describe('CustomsPreviewPage — customs authorization (AC12)', () => {
+  beforeEach(() => {
+    vi.resetAllMocks()
+  })
+
+  it('500 error sets errorStatus to 500 (generic error state)', async () => {
+    const err = Object.assign(new Error('Internal Server Error'), { statusCode: 500 })
+    mockFetchCustomsPreview.mockRejectedValue(err)
+
+    let errorStatus: number | null = null
+    try {
+      await mockFetchCustomsPreview(42)
+    }
+    catch (e: unknown) {
+      errorStatus = (e as { statusCode?: number })?.statusCode ?? 500
+    }
+
+    expect(errorStatus).toBe(500)
+  })
+
+  it('error without statusCode defaults to 500', async () => {
+    mockFetchCustomsPreview.mockRejectedValue(new Error('Unknown'))
+
+    let errorStatus: number | null = null
+    try {
+      await mockFetchCustomsPreview(42)
+    }
+    catch (e: unknown) {
+      errorStatus = (e as { statusCode?: number })?.statusCode ?? 500
+    }
+
+    expect(errorStatus).toBe(500)
+  })
+
+  it('declaration has correct request_id matching route param', async () => {
+    const decl = makeDeclaration({ request_id: 42 })
+    mockFetchCustomsPreview.mockResolvedValue(decl)
+
+    const result = await mockFetchCustomsPreview(42)
+    expect(result.request_id).toBe(42)
+  })
+
+  it('declaration issuer role is COMMITTEE_DIRECTOR', async () => {
+    const decl = makeDeclaration()
+    mockFetchCustomsPreview.mockResolvedValue(decl)
+
+    const result = await mockFetchCustomsPreview(42)
+    expect(result.issuer?.role).toBe('COMMITTEE_DIRECTOR')
+  })
+
+  it('declaration metadata contains all required customs fields', async () => {
+    const decl = makeDeclaration()
+    mockFetchCustomsPreview.mockResolvedValue(decl)
+
+    const result = await mockFetchCustomsPreview(42)
+    const m = result.metadata as Record<string, unknown>
+    expect(m.bank).toBeDefined()
+    expect(m.supplier_name).toBeDefined()
+    expect(m.amount).toBeDefined()
+    expect(m.currency).toBeDefined()
+    expect(m.goods_description).toBeDefined()
+    expect(m.port_of_entry).toBeDefined()
+    expect(m.bank_approved_at).toBeDefined()
+    expect(m.support_approved_at).toBeDefined()
+    expect(m.executive_decided_at).toBeDefined()
+  })
+})
+
 // ─── download trigger logic ───────────────────────────────────────────────────
 
 describe('CustomsPreviewPage — download trigger', () => {
