@@ -13,8 +13,10 @@ use App\Http\Resources\ImportRequestResource;
 use App\Http\Resources\StageHistoryResource;
 use App\Models\ImportRequest;
 use App\Support\ApiResponse;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\App;
+use Illuminate\Support\Facades\DB;
 use OpenApi\Attributes as OA;
 
 class ImportRequestController extends Controller
@@ -30,35 +32,88 @@ class ImportRequestController extends Controller
     {
         $this->authorize('viewAny', ImportRequest::class);
 
+        $statusTotals = $this->buildIndexQuery($request, false)
+            ->reorder()
+            ->select('status', DB::raw('count(*) as aggregate'))
+            ->groupBy('status')
+            ->pluck('aggregate', 'status')
+            ->map(fn ($count) => (int) $count)
+            ->all();
+
+        $paginator = $this->buildIndexQuery($request)->paginate(20);
+
+        return ApiResponse::success(
+            [
+                'data' => ImportRequestListResource::collection($paginator->getCollection())->resolve(),
+                'meta' => [
+                    'current_page' => $paginator->currentPage(),
+                    'last_page' => $paginator->lastPage(),
+                    'per_page' => $paginator->perPage(),
+                    'total' => $paginator->total(),
+                    'status_totals' => $statusTotals,
+                ],
+            ],
+            'Requests retrieved successfully.'
+        );
+    }
+
+    private function buildIndexQuery(Request $request, bool $applyStatusFilter = true): Builder
+    {
         $query = ImportRequest::query()
             ->with(['bank', 'merchant', 'claimedByUser'])
-            ->forUser($request->user())
-            ->when($request->filled('status'), function ($q) use ($request) {
+            ->forUser($request->user());
+
+        return $this->applyIndexFilters($query, $request, $applyStatusFilter);
+    }
+
+    private function applyIndexFilters(Builder $query, Request $request, bool $applyStatusFilter = true): Builder
+    {
+        $query
+            ->when($applyStatusFilter && $request->filled('status'), function (Builder $q) use ($request) {
                 $statuses = array_filter(array_map('trim', explode(',', (string) $request->query('status'))));
+
                 return $q->whereIn('status', $statuses);
             })
-            ->when($request->filled('bank_id') && $request->user()->isCbyUser(), fn ($q) => $q->where('bank_id', $request->integer('bank_id')))
-            ->when($request->filled('search'), function ($q) use ($request) {
+            ->when(
+                $request->filled('bank_id') && $request->user()->isCbyUser(),
+                fn (Builder $q) => $q->where('bank_id', $request->integer('bank_id'))
+            )
+            ->when(
+                $request->filled('currency'),
+                fn (Builder $q) => $q->where('currency', $request->string('currency')->toString())
+            )
+            ->when($request->filled('search'), function (Builder $q) use ($request) {
                 $search = $request->string('search')->toString();
-                return $q->where(function ($inner) use ($search) {
+
+                return $q->where(function (Builder $inner) use ($search) {
                     $inner->where('reference_number', 'like', "%{$search}%")
-                        ->orWhere('supplier_name', 'like', "%{$search}%");
+                        ->orWhere('supplier_name', 'like', "%{$search}%")
+                        ->orWhere('invoice_number', 'like', "%{$search}%")
+                        ->orWhereHas('merchant', function (Builder $merchantQuery) use ($search) {
+                            $merchantQuery->where('name', 'like', "%{$search}%");
+                        });
                 });
             })
-            ->when($request->filled('from_date'), fn ($q) => $q->whereDate('created_at', '>=', $request->string('from_date')->toString()))
-            ->when($request->filled('to_date'), fn ($q) => $q->whereDate('created_at', '<=', $request->string('to_date')->toString()))
+            ->when(
+                $request->filled('from_date'),
+                fn (Builder $q) => $q->whereDate('created_at', '>=', $request->string('from_date')->toString())
+            )
+            ->when(
+                $request->filled('to_date'),
+                fn (Builder $q) => $q->whereDate('created_at', '<=', $request->string('to_date')->toString())
+            )
             ->latest('id');
 
         if ($request->user()->hasRole(UserRole::SUPPORT_COMMITTEE)) {
             $claimFilter = (string) $request->query('claim_filter', 'all');
 
             if ($claimFilter === 'available') {
-                $query->where(function ($q) {
+                $query->where(function (Builder $q) {
                     $q->where('status', RequestStatus::SUPPORT_REVIEW_PENDING->value)
-                        ->orWhere(function ($inner) {
+                        ->orWhere(function (Builder $inner) {
                             $inner->where('status', RequestStatus::SUPPORT_REVIEW_IN_PROGRESS->value)
                                 ->whereNotNull('claimed_by')
-                                ->where(function ($expires) {
+                                ->where(function (Builder $expires) {
                                     $expires->whereNull('claim_expires_at')
                                         ->orWhere('claim_expires_at', '<=', now());
                                 });
@@ -72,10 +127,7 @@ class ImportRequestController extends Controller
             }
         }
 
-        return ApiResponse::success(
-            ImportRequestListResource::collection($query->paginate(20)),
-            'Requests retrieved successfully.'
-        );
+        return $query;
     }
 
     #[OA\Post(

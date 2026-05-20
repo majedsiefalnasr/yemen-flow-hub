@@ -37,6 +37,18 @@ class BankControllerTest extends TestCase
         ]);
     }
 
+    private function makeSupportCommittee(): User
+    {
+        return User::query()->create([
+            'name' => 'Support Member',
+            'email' => 'support@cby.gov.ye',
+            'password' => Hash::make('password'),
+            'role' => UserRole::SUPPORT_COMMITTEE->value,
+            'bank_id' => null,
+            'is_active' => true,
+        ]);
+    }
+
     private function makeBank(array $attrs = []): Bank
     {
         return Bank::query()->create(array_merge([
@@ -68,6 +80,18 @@ class BankControllerTest extends TestCase
         $response = $this->actingAs($reviewer)->getJson('/api/banks');
 
         $response->assertOk();
+    }
+
+    public function test_index_returns_all_banks_for_support_committee(): void
+    {
+        $this->makeBank(['name' => 'بنك أول', 'code' => 'ONE']);
+        $this->makeBank(['name' => 'بنك ثانٍ', 'code' => 'TWO']);
+        $support = $this->makeSupportCommittee();
+
+        $response = $this->actingAs($support)->getJson('/api/banks');
+
+        $response->assertOk()
+            ->assertJsonCount(2, 'data');
     }
 
     public function test_index_requires_authentication(): void

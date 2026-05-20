@@ -31,7 +31,7 @@ class BankController extends Controller
         $actor = request()->user();
 
         $banks = Bank::query()
-            ->when(!$actor->hasRole(UserRole::CBY_ADMIN), fn ($q) => $q->where('id', $actor->bank_id))
+            ->when($actor->isBankUser(), fn ($q) => $q->where('id', $actor->bank_id))
             ->latest('id')
             ->paginate(20);
 

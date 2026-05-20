@@ -485,4 +485,55 @@ class ImportRequestControllerTest extends TestCase
         $this->assertNull($item['goods_type']);
         $this->assertNull($item['invoice_number']);
     }
+
+    public function test_index_applies_currency_filter_and_searches_invoice_and_merchant(): void
+    {
+        $matching = $this->makeRequest($this->bank, $this->dataEntry, RequestStatus::SUBMITTED);
+        $matching->update([
+            'currency' => 'EUR',
+            'invoice_number' => 'INV-SEARCH-001',
+            'supplier_name' => 'Fallback Supplier',
+            'merchant_id' => $this->merchant->id,
+        ]);
+
+        $other = $this->makeRequest($this->bank, $this->dataEntry, RequestStatus::SUBMITTED);
+        $other->update([
+            'currency' => 'USD',
+            'invoice_number' => 'INV-OTHER-002',
+            'supplier_name' => 'Another Supplier',
+        ]);
+
+        $response = $this->actingAs($this->dataEntry)
+            ->getJson('/api/requests?currency=EUR&search=INV-SEARCH-001');
+
+        $response->assertOk()
+            ->assertJsonCount(1, 'data.data')
+            ->assertJsonPath('data.data.0.id', $matching->id);
+
+        $merchantSearchResponse = $this->actingAs($this->dataEntry)
+            ->getJson('/api/requests?search='.urlencode($this->merchant->name));
+
+        $merchantSearchResponse->assertOk();
+        $ids = collect($merchantSearchResponse->json('data.data'))->pluck('id')->all();
+
+        $this->assertContains($matching->id, $ids);
+        $this->assertNotContains($other->id, $ids);
+    }
+
+    public function test_index_returns_status_totals_for_filtered_scope(): void
+    {
+        $draft = $this->makeRequest($this->bank, $this->dataEntry, RequestStatus::DRAFT);
+        $submitted = $this->makeRequest($this->bank, $this->dataEntry, RequestStatus::SUBMITTED);
+        $this->makeRequest($this->otherBank, $this->otherDataEntry, RequestStatus::COMPLETED);
+
+        $response = $this->actingAs($this->dataEntry)->getJson('/api/requests');
+
+        $response->assertOk()
+            ->assertJsonPath('data.meta.status_totals.DRAFT', 1)
+            ->assertJsonPath('data.meta.status_totals.SUBMITTED', 1);
+
+        $this->assertNull($response->json('data.meta.status_totals.COMPLETED'));
+        $this->assertNotNull($draft);
+        $this->assertNotNull($submitted);
+    }
 }
