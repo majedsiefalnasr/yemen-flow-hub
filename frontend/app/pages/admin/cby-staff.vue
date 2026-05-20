@@ -228,8 +228,9 @@ async function toggleActivation(user: User) {
     const idx = users.value.findIndex(u => u.id === updated.id)
     if (idx !== -1) users.value[idx] = updated
   }
-  catch {
-    await loadData()
+  catch (err: unknown) {
+    const e = err as { data?: { message?: string } }
+    error.value = e.data?.message ?? 'تعذّر تحديث حالة المستخدم.'
   }
   finally {
     saving.value = false

@@ -205,8 +205,10 @@ async function toggleActivation(bank: Bank) {
       banks.value[idx] = { ...banks.value[idx]!, is_active: !bank.is_active }
     }
   }
-  catch {
-    // silent — user sees no change
+  catch (err: unknown) {
+    const e = err as { data?: { message?: string } }
+    const msg = e.data?.message ?? 'تعذّر تغيير حالة التفعيل.'
+    error.value = msg
   }
 }
 
@@ -457,7 +459,7 @@ onMounted(loadBanks)
           </div>
 
           <div class="form-field">
-            <label class="form-label" for="bank-code">رقم الترخيص <span class="required">*</span></label>
+            <label class="form-label" for="bank-code">الرمز <span class="required">*</span></label>
             <input
               id="bank-code"
               v-model="form.code"
@@ -472,7 +474,7 @@ onMounted(loadBanks)
           </div>
 
           <div class="form-field">
-            <label class="form-label" for="bank-license">الرمز</label>
+            <label class="form-label" for="bank-license">رقم الترخيص</label>
             <input
               id="bank-license"
               v-model="form.license_number"

@@ -134,6 +134,11 @@ async function handleSave(data: {
 }) {
   saving.value = true
   serverError.value = null
+  if (!auth.user?.bank_id) {
+    serverError.value = 'خطأ: معرّف البنك غير متاح.'
+    saving.value = false
+    return
+  }
   try {
     if (editingStaff.value) {
       const currentUser = await getUser(editingStaff.value.id)
@@ -141,21 +146,20 @@ async function handleSave(data: {
         name: data.name,
         email: data.email,
         role: data.role,
-        bank_id: auth.user?.bank_id ?? null,
+        bank_id: auth.user.bank_id,
         is_active: currentUser.is_active,
       }
       if (data.password) payload.password = data.password
       const updated = await updateUser(editingStaff.value.id, payload)
       const idx = staff.value.findIndex(s => s.id === updated.id)
       if (idx !== -1) staff.value[idx] = updated
-    }
-    else {
+    } else {
       const payload: CreateUserPayload = {
         name: data.name,
         email: data.email,
         password: data.password!,
         role: data.role,
-        bank_id: auth.user?.bank_id ?? null,
+        bank_id: auth.user.bank_id,
         is_active: true,
       }
       const created = await createUser(payload)
