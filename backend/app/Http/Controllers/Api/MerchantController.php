@@ -70,7 +70,7 @@ class MerchantController extends Controller
         $payload['created_by'] = request()->user()->id;
 
         $merchant = Merchant::query()->create($payload);
-        return ApiResponse::success(new MerchantResource($merchant->load('bank')), 'Merchant created successfully.', 201);
+        return ApiResponse::success(new MerchantResource($merchant->load('bank')->loadCount('importRequests')), 'Merchant created successfully.', 201);
     }
 
     #[OA\Get(path: '/api/merchants/{id}', tags: ['التجار / Merchants'], summary: 'Get merchant', responses: [new OA\Response(response: 200, description: 'Merchant retrieved')])]
@@ -89,7 +89,7 @@ class MerchantController extends Controller
             $payload['bank_id'] = request()->user()->bank_id;
         }
         $merchant->update($payload);
-        return ApiResponse::success(new MerchantResource($merchant->refresh()->load('bank')), 'Merchant updated successfully.');
+        return ApiResponse::success(new MerchantResource($merchant->refresh()->load('bank')->loadCount('importRequests')), 'Merchant updated successfully.');
     }
 
     #[OA\Delete(path: '/api/merchants/{id}', tags: ['التجار / Merchants'], summary: 'Delete merchant', responses: [new OA\Response(response: 200, description: 'Merchant deleted')])]

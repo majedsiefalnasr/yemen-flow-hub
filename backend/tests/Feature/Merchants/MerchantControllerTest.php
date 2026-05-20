@@ -71,6 +71,23 @@ class MerchantControllerTest extends TestCase
         ], $overrides));
     }
 
+    private function makeImportRequestForMerchant(Merchant $merchant, array $overrides = []): void
+    {
+        DB::table('import_requests')->insert(array_merge([
+            'reference_number' => 'YFH-TEST-' . uniqid(),
+            'bank_id' => $merchant->bank_id,
+            'merchant_id' => $merchant->id,
+            'created_by' => $this->bankAdmin->id,
+            'currency' => 'USD',
+            'amount' => 1000,
+            'supplier_name' => 'Supplier Test',
+            'goods_description' => 'Medical supplies',
+            'port_of_entry' => 'Aden',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ], $overrides));
+    }
+
     private function seedMerchantsPermission(): void
     {
         $permissionId = Permission::query()->insertGetId([
@@ -110,6 +127,20 @@ class MerchantControllerTest extends TestCase
 
         $response->assertOk();
         $this->assertGreaterThanOrEqual(2, count($response->json('data')));
+    }
+
+    public function test_index_includes_transaction_count_for_each_merchant(): void
+    {
+        $merchant = $this->makeMerchant($this->bank);
+        $this->makeImportRequestForMerchant($merchant);
+        $this->makeImportRequestForMerchant($merchant);
+
+        $response = $this->actingAs($this->bankAdmin)->getJson('/api/merchants');
+
+        $response->assertOk();
+        $merchantData = collect($response->json('data'))->firstWhere('id', $merchant->id);
+        $this->assertNotNull($merchantData);
+        $this->assertSame(2, $merchantData['transaction_count']);
     }
 
     public function test_per_page_query_param_is_respected_up_to_limit(): void
@@ -184,6 +215,7 @@ class MerchantControllerTest extends TestCase
         $response = $this->actingAs($this->bankAdmin)->postJson('/api/merchants', $payload);
 
         $response->assertStatus(201);
+        $response->assertJsonPath('data.transaction_count', 0);
         $this->assertDatabaseHas('merchants', [
             'name' => 'شركة التقنية للاستيراد',
             'bank_id' => $this->bank->id,
@@ -244,6 +276,8 @@ class MerchantControllerTest extends TestCase
     public function test_bank_admin_updates_own_bank_merchant(): void
     {
         $merchant = $this->makeMerchant($this->bank, ['business_type' => 'retail']);
+        $this->makeImportRequestForMerchant($merchant);
+        $this->makeImportRequestForMerchant($merchant);
 
         $response = $this->actingAs($this->bankAdmin)->putJson("/api/merchants/{$merchant->id}", [
             'name' => 'اسم محدّث',
@@ -253,6 +287,7 @@ class MerchantControllerTest extends TestCase
         $response->assertOk();
         $response->assertJsonPath('data.name', 'اسم محدّث');
         $response->assertJsonPath('data.business_type', 'import');
+        $response->assertJsonPath('data.transaction_count', 2);
         $this->assertDatabaseHas('merchants', ['id' => $merchant->id, 'name' => 'اسم محدّث', 'business_type' => 'import']);
     }
 
@@ -270,11 +305,13 @@ class MerchantControllerTest extends TestCase
     public function test_bank_admin_suspends_merchant(): void
     {
         $merchant = $this->makeMerchant($this->bank, ['is_active' => true]);
+        $this->makeImportRequestForMerchant($merchant);
 
         $response = $this->actingAs($this->bankAdmin)->putJson("/api/merchants/{$merchant->id}", ['is_active' => false]);
 
         $response->assertOk();
         $response->assertJsonPath('data.is_active', false);
+        $response->assertJsonPath('data.transaction_count', 1);
         $this->assertDatabaseHas('merchants', ['id' => $merchant->id, 'is_active' => false]);
     }
 
