@@ -369,6 +369,96 @@ export const STATUS_LABELS: Record<RequestStatus, string> = {
   [RequestStatus.COMPLETED]: 'مكتمل',
 }
 
+/** Progress percentage per status — role-aware, derived from canonical RequestStatus */
+export const STATUS_PROGRESS: Record<RequestStatus, number> = {
+  [RequestStatus.DRAFT]: 5,
+  [RequestStatus.DRAFT_REJECTED_INTERNAL]: 5,
+  [RequestStatus.SUBMITTED]: 15,
+  [RequestStatus.BANK_REVIEW]: 25,
+  [RequestStatus.BANK_APPROVED]: 35,
+  [RequestStatus.SUPPORT_REVIEW_PENDING]: 45,
+  [RequestStatus.SUPPORT_REVIEW_IN_PROGRESS]: 55,
+  [RequestStatus.SUPPORT_APPROVED]: 65,
+  [RequestStatus.SUPPORT_REJECTED]: 65,
+  [RequestStatus.WAITING_FOR_SWIFT]: 70,
+  [RequestStatus.SWIFT_UPLOADED]: 75,
+  [RequestStatus.WAITING_FOR_VOTING_OPEN]: 80,
+  [RequestStatus.EXECUTIVE_VOTING_OPEN]: 85,
+  [RequestStatus.EXECUTIVE_VOTING_CLOSED]: 88,
+  [RequestStatus.EXECUTIVE_APPROVED]: 92,
+  [RequestStatus.EXECUTIVE_REJECTED]: 92,
+  [RequestStatus.CUSTOMS_DECLARATION_ISSUED]: 97,
+  [RequestStatus.COMPLETED]: 100,
+}
+
+export interface StageBucket {
+  key: string
+  label: string
+  statuses: RequestStatus[]
+}
+
+/** Role-aware stage buckets — production reimplementation of Lovable bucketsFor() */
+export const ROLE_BUCKETS: Partial<Record<UserRole, StageBucket[]>> = {
+  [UserRole.DATA_ENTRY]: [
+    { key: 'draft', label: 'مسودة', statuses: [RequestStatus.DRAFT, RequestStatus.DRAFT_REJECTED_INTERNAL] },
+    { key: 'submitted', label: 'مقدّم', statuses: [RequestStatus.SUBMITTED, RequestStatus.BANK_REVIEW] },
+    { key: 'processing', label: 'قيد المعالجة', statuses: [RequestStatus.BANK_APPROVED, RequestStatus.SUPPORT_REVIEW_PENDING, RequestStatus.SUPPORT_REVIEW_IN_PROGRESS, RequestStatus.SUPPORT_APPROVED, RequestStatus.WAITING_FOR_SWIFT, RequestStatus.SWIFT_UPLOADED, RequestStatus.WAITING_FOR_VOTING_OPEN, RequestStatus.EXECUTIVE_VOTING_OPEN, RequestStatus.EXECUTIVE_VOTING_CLOSED] },
+    { key: 'completed', label: 'مكتمل', statuses: [RequestStatus.EXECUTIVE_APPROVED, RequestStatus.CUSTOMS_DECLARATION_ISSUED, RequestStatus.COMPLETED] },
+    { key: 'rejected', label: 'مرفوض', statuses: [RequestStatus.SUPPORT_REJECTED, RequestStatus.EXECUTIVE_REJECTED] },
+  ],
+  [UserRole.BANK_REVIEWER]: [
+    { key: 'pending', label: 'قيد المراجعة', statuses: [RequestStatus.SUBMITTED, RequestStatus.BANK_REVIEW] },
+    { key: 'approved', label: 'موافقة البنك', statuses: [RequestStatus.BANK_APPROVED] },
+    { key: 'returned', label: 'مُعاد للتعديل', statuses: [RequestStatus.DRAFT_REJECTED_INTERNAL] },
+  ],
+  [UserRole.BANK_ADMIN]: [
+    { key: 'pending', label: 'معلّق', statuses: [RequestStatus.SUBMITTED, RequestStatus.BANK_REVIEW] },
+    { key: 'at_cby', label: 'لدى البنك المركزي', statuses: [RequestStatus.BANK_APPROVED, RequestStatus.SUPPORT_REVIEW_PENDING, RequestStatus.SUPPORT_REVIEW_IN_PROGRESS, RequestStatus.SUPPORT_APPROVED, RequestStatus.WAITING_FOR_SWIFT, RequestStatus.SWIFT_UPLOADED, RequestStatus.WAITING_FOR_VOTING_OPEN, RequestStatus.EXECUTIVE_VOTING_OPEN, RequestStatus.EXECUTIVE_VOTING_CLOSED] },
+    { key: 'completed', label: 'مكتمل', statuses: [RequestStatus.EXECUTIVE_APPROVED, RequestStatus.CUSTOMS_DECLARATION_ISSUED, RequestStatus.COMPLETED] },
+    { key: 'rejected', label: 'مرفوض', statuses: [RequestStatus.SUPPORT_REJECTED, RequestStatus.EXECUTIVE_REJECTED] },
+  ],
+  [UserRole.SWIFT_OFFICER]: [
+    { key: 'pending_swift', label: 'انتظار رفع SWIFT', statuses: [RequestStatus.WAITING_FOR_SWIFT] },
+    { key: 'swift_done', label: 'تم رفع SWIFT', statuses: [RequestStatus.SWIFT_UPLOADED] },
+  ],
+  [UserRole.SUPPORT_COMMITTEE]: [
+    { key: 'pending', label: 'انتظار المراجعة', statuses: [RequestStatus.SUPPORT_REVIEW_PENDING] },
+    { key: 'in_progress', label: 'قيد المراجعة', statuses: [RequestStatus.SUPPORT_REVIEW_IN_PROGRESS] },
+    { key: 'approved', label: 'موافقة', statuses: [RequestStatus.SUPPORT_APPROVED] },
+    { key: 'rejected', label: 'مرفوض', statuses: [RequestStatus.SUPPORT_REJECTED] },
+  ],
+  [UserRole.EXECUTIVE_MEMBER]: [
+    { key: 'voting_open', label: 'التصويت مفتوح', statuses: [RequestStatus.EXECUTIVE_VOTING_OPEN] },
+    { key: 'voting_closed', label: 'التصويت مغلق', statuses: [RequestStatus.EXECUTIVE_VOTING_CLOSED] },
+    { key: 'approved', label: 'موافقة', statuses: [RequestStatus.EXECUTIVE_APPROVED] },
+    { key: 'rejected', label: 'مرفوض', statuses: [RequestStatus.EXECUTIVE_REJECTED] },
+  ],
+  [UserRole.COMMITTEE_DIRECTOR]: [
+    { key: 'voting_open', label: 'التصويت مفتوح', statuses: [RequestStatus.EXECUTIVE_VOTING_OPEN] },
+    { key: 'voting_closed', label: 'التصويت مغلق', statuses: [RequestStatus.EXECUTIVE_VOTING_CLOSED] },
+    { key: 'approved', label: 'موافقة', statuses: [RequestStatus.EXECUTIVE_APPROVED] },
+    { key: 'customs', label: 'البيان الجمركي', statuses: [RequestStatus.CUSTOMS_DECLARATION_ISSUED, RequestStatus.COMPLETED] },
+  ],
+  [UserRole.CBY_ADMIN]: [
+    { key: 'bank_stage', label: 'مرحلة البنك', statuses: [RequestStatus.SUBMITTED, RequestStatus.BANK_REVIEW, RequestStatus.BANK_APPROVED] },
+    { key: 'support_stage', label: 'مرحلة الدعم', statuses: [RequestStatus.SUPPORT_REVIEW_PENDING, RequestStatus.SUPPORT_REVIEW_IN_PROGRESS, RequestStatus.SUPPORT_APPROVED, RequestStatus.SUPPORT_REJECTED] },
+    { key: 'swift_stage', label: 'مرحلة SWIFT', statuses: [RequestStatus.WAITING_FOR_SWIFT, RequestStatus.SWIFT_UPLOADED] },
+    { key: 'voting_stage', label: 'مرحلة التصويت', statuses: [RequestStatus.WAITING_FOR_VOTING_OPEN, RequestStatus.EXECUTIVE_VOTING_OPEN, RequestStatus.EXECUTIVE_VOTING_CLOSED, RequestStatus.EXECUTIVE_APPROVED, RequestStatus.EXECUTIVE_REJECTED] },
+    { key: 'completed', label: 'مكتمل', statuses: [RequestStatus.CUSTOMS_DECLARATION_ISSUED, RequestStatus.COMPLETED] },
+  ],
+}
+
+/** CBY/global roles that see the bank filter dropdown */
+export const CBY_BANK_FILTER_ROLES: UserRole[] = [
+  UserRole.SUPPORT_COMMITTEE,
+  UserRole.EXECUTIVE_MEMBER,
+  UserRole.COMMITTEE_DIRECTOR,
+  UserRole.CBY_ADMIN,
+]
+
+/** Supported currencies for the currency filter */
+export const CURRENCY_OPTIONS = ['USD', 'EUR', 'SAR', 'AED', 'CNY'] as const
+
 /** Routes that require authentication (all except login) */
 export const PROTECTED_ROUTES = ['/dashboard', '/requests', '/voting', '/customs', '/audit', '/reports', '/notifications', '/admin', '/bank', '/settings', '/merchants', '/staff']
 

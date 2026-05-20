@@ -9,7 +9,7 @@ export default defineConfig({
     },
   },
   use: {
-    baseURL: 'http://127.0.0.1:3000',
+    baseURL: process.env['PLAYWRIGHT_BASE_URL'] ?? 'http://localhost:3000',
     locale: 'ar',
   },
 })

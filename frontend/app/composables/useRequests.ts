@@ -5,6 +5,8 @@ import { useApi } from './useApi'
 export interface RequestsFilter {
   search?: string
   status?: RequestStatus | ''
+  bank_id?: number | ''
+  currency?: string | ''
   page?: number
   per_page?: number
 }
@@ -19,6 +21,8 @@ export function useRequests() {
 
     if (filter.search) params.set('search', filter.search)
     if (filter.status) params.set('status', filter.status)
+    if (filter.bank_id) params.set('bank_id', String(filter.bank_id))
+    if (filter.currency) params.set('currency', filter.currency)
     if (filter.page) params.set('page', String(filter.page))
     if (filter.per_page) params.set('per_page', String(filter.per_page))
 
