@@ -68,6 +68,14 @@ const BASE_REQUEST = {
   documents: [],
 }
 
+const BASE_CUSTOMS_DECLARATION = {
+  id: 70,
+  declaration_number: 'CD-2026-70',
+  issued_at: '2026-05-18T10:00:00.000Z',
+  issuer: { id: 12, name: 'مدير اللجنة' },
+  download_url: '/api/customs/70/download',
+}
+
 function makeRequest(overrides: Record<string, unknown> = {}) {
   return { ...BASE_REQUEST, ...overrides }
 }
@@ -360,6 +368,197 @@ test('7.4 CBY_ADMIN bank-approved request detail desktop', async ({ page }) => {
   })
 })
 
+test('7.4 DATA_ENTRY rejected request detail desktop', async ({ page }) => {
+  await mockDetailApi(page, UserRole.DATA_ENTRY, {
+    status: RequestStatus.DRAFT_REJECTED_INTERNAL,
+    current_owner_role: UserRole.DATA_ENTRY,
+  })
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await openDetailPage(page, UserRole.DATA_ENTRY)
+  await expect(page.locator('.detail-page')).toBeVisible()
+  await expect(page).toHaveScreenshot(['7-4', 'data-entry-rejected-desktop.png'], {
+    animations: 'disabled',
+    fullPage: false,
+    maxDiffPixelRatio: 0.02,
+  })
+})
+
+test('7.4 DATA_ENTRY completed request detail desktop', async ({ page }) => {
+  await mockDetailApi(page, UserRole.DATA_ENTRY, {
+    status: RequestStatus.COMPLETED,
+    current_owner_role: UserRole.DATA_ENTRY,
+    customs_declaration: BASE_CUSTOMS_DECLARATION,
+  })
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await openDetailPage(page, UserRole.DATA_ENTRY)
+  await expect(page.locator('.detail-page')).toBeVisible()
+  await expect(page).toHaveScreenshot(['7-4', 'data-entry-completed-desktop.png'], {
+    animations: 'disabled',
+    fullPage: false,
+    maxDiffPixelRatio: 0.02,
+  })
+})
+
+test('7.4 BANK_ADMIN documents tab request detail desktop', async ({ page }) => {
+  await mockDetailApi(page, UserRole.BANK_ADMIN, {
+    status: RequestStatus.WAITING_FOR_SWIFT,
+    current_owner_role: UserRole.SWIFT_OFFICER,
+  })
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await openDetailPage(page, UserRole.BANK_ADMIN)
+  await page.locator('.tab-btn', { hasText: 'الوثائق' }).click()
+  await expect(page).toHaveScreenshot(['7-4', 'bank-admin-documents-desktop.png'], {
+    animations: 'disabled',
+    fullPage: false,
+    maxDiffPixelRatio: 0.02,
+  })
+})
+
+test('7.4 BANK_ADMIN support-rejected request detail desktop', async ({ page }) => {
+  await mockDetailApi(page, UserRole.BANK_ADMIN, {
+    status: RequestStatus.SUPPORT_REJECTED,
+    current_owner_role: UserRole.BANK_REVIEWER,
+  })
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await openDetailPage(page, UserRole.BANK_ADMIN)
+  await expect(page.locator('.detail-page')).toBeVisible()
+  await expect(page).toHaveScreenshot(['7-4', 'bank-admin-support-rejected-desktop.png'], {
+    animations: 'disabled',
+    fullPage: false,
+    maxDiffPixelRatio: 0.02,
+  })
+})
+
+test('7.4 SUPPORT_COMMITTEE approved request detail desktop', async ({ page }) => {
+  await mockDetailApi(page, UserRole.SUPPORT_COMMITTEE, {
+    status: RequestStatus.SUPPORT_APPROVED,
+    current_owner_role: UserRole.SWIFT_OFFICER,
+    support_approved_at: '2026-05-14T10:00:00.000Z',
+  })
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await openDetailPage(page, UserRole.SUPPORT_COMMITTEE)
+  await expect(page.locator('.detail-page')).toBeVisible()
+  await expect(page).toHaveScreenshot(['7-4', 'support-committee-approved-desktop.png'], {
+    animations: 'disabled',
+    fullPage: false,
+    maxDiffPixelRatio: 0.02,
+  })
+})
+
+test('7.4 SWIFT_OFFICER swift-uploaded request detail desktop', async ({ page }) => {
+  await mockDetailApi(page, UserRole.SWIFT_OFFICER, {
+    status: RequestStatus.SWIFT_UPLOADED,
+    current_owner_role: UserRole.COMMITTEE_DIRECTOR,
+    swift_uploaded_at: '2026-05-15T10:00:00.000Z',
+    swift_uploaded_by: 7,
+    swift_uploaded_by_user: { id: 7, name: 'مسؤول سويفت' },
+  })
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await openDetailPage(page, UserRole.SWIFT_OFFICER)
+  await expect(page.locator('.detail-page')).toBeVisible()
+  await expect(page).toHaveScreenshot(['7-4', 'swift-officer-swift-uploaded-desktop.png'], {
+    animations: 'disabled',
+    fullPage: false,
+    maxDiffPixelRatio: 0.02,
+  })
+})
+
+test('7.4 EXECUTIVE_MEMBER voting-pending request detail desktop', async ({ page }) => {
+  await mockDetailApi(page, UserRole.EXECUTIVE_MEMBER, {
+    status: RequestStatus.WAITING_FOR_VOTING_OPEN,
+    current_owner_role: UserRole.COMMITTEE_DIRECTOR,
+  })
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await openDetailPage(page, UserRole.EXECUTIVE_MEMBER)
+  await expect(page.locator('.detail-page')).toBeVisible()
+  await expect(page).toHaveScreenshot(['7-4', 'executive-member-voting-pending-desktop.png'], {
+    animations: 'disabled',
+    fullPage: false,
+    maxDiffPixelRatio: 0.02,
+  })
+})
+
+test('7.4 EXECUTIVE_MEMBER rejected request detail desktop', async ({ page }) => {
+  await mockDetailApi(page, UserRole.EXECUTIVE_MEMBER, {
+    status: RequestStatus.EXECUTIVE_REJECTED,
+    current_owner_role: UserRole.EXECUTIVE_MEMBER,
+  })
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await openDetailPage(page, UserRole.EXECUTIVE_MEMBER)
+  await expect(page.locator('.detail-page')).toBeVisible()
+  await expect(page).toHaveScreenshot(['7-4', 'executive-member-rejected-desktop.png'], {
+    animations: 'disabled',
+    fullPage: false,
+    maxDiffPixelRatio: 0.02,
+  })
+})
+
+test('7.4 COMMITTEE_DIRECTOR voting-pending request detail desktop', async ({ page }) => {
+  await mockDetailApi(page, UserRole.COMMITTEE_DIRECTOR, {
+    status: RequestStatus.WAITING_FOR_VOTING_OPEN,
+    current_owner_role: UserRole.COMMITTEE_DIRECTOR,
+  })
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await openDetailPage(page, UserRole.COMMITTEE_DIRECTOR)
+  await expect(page.locator('.detail-page')).toBeVisible()
+  await expect(page).toHaveScreenshot(['7-4', 'committee-director-voting-pending-desktop.png'], {
+    animations: 'disabled',
+    fullPage: false,
+    maxDiffPixelRatio: 0.02,
+  })
+})
+
+test('7.4 COMMITTEE_DIRECTOR waiting-customs request detail desktop', async ({ page }) => {
+  await mockDetailApi(page, UserRole.COMMITTEE_DIRECTOR, {
+    status: RequestStatus.EXECUTIVE_APPROVED,
+    current_owner_role: UserRole.COMMITTEE_DIRECTOR,
+    executive_decided_at: '2026-05-16T10:00:00.000Z',
+  })
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await openDetailPage(page, UserRole.COMMITTEE_DIRECTOR)
+  await expect(page.locator('.detail-page')).toBeVisible()
+  await expect(page).toHaveScreenshot(['7-4', 'committee-director-waiting-customs-desktop.png'], {
+    animations: 'disabled',
+    fullPage: false,
+    maxDiffPixelRatio: 0.02,
+  })
+})
+
+test('7.4 COMMITTEE_DIRECTOR documents-tab-customs request detail desktop', async ({ page }) => {
+  await mockDetailApi(page, UserRole.COMMITTEE_DIRECTOR, {
+    status: RequestStatus.CUSTOMS_DECLARATION_ISSUED,
+    current_owner_role: UserRole.COMMITTEE_DIRECTOR,
+    customs_declaration: BASE_CUSTOMS_DECLARATION,
+  })
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await openDetailPage(page, UserRole.COMMITTEE_DIRECTOR)
+  await page.locator('.tab-btn', { hasText: 'الوثائق' }).click()
+  await expect(page).toHaveScreenshot(['7-4', 'committee-director-documents-customs-desktop.png'], {
+    animations: 'disabled',
+    fullPage: false,
+    maxDiffPixelRatio: 0.02,
+  })
+})
+
+test('7.4 CBY_ADMIN parties tab request detail desktop', async ({ page }) => {
+  await mockDetailApi(page, UserRole.CBY_ADMIN, {
+    status: RequestStatus.BANK_APPROVED,
+    current_owner_role: UserRole.SUPPORT_COMMITTEE,
+    approved_by: 5,
+    approved_by_user: { id: 5, name: 'محمد الزبيري' },
+    support_reviewed_by: 9,
+    support_reviewed_by_user: { id: 9, name: 'مراجع الدعم' },
+  })
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await openDetailPage(page, UserRole.CBY_ADMIN)
+  await page.locator('.tab-btn', { hasText: 'الأطراف' }).click()
+  await expect(page).toHaveScreenshot(['7-4', 'cby-admin-parties-desktop.png'], {
+    animations: 'disabled',
+    fullPage: false,
+    maxDiffPixelRatio: 0.02,
+  })
+})
+
 // ── Mobile screenshots (390×844) ─────────────────────────────────────────────
 
 test('7.4 DATA_ENTRY draft request detail mobile', async ({ page }) => {
@@ -413,6 +612,72 @@ test('7.4 CBY_ADMIN completed request detail mobile', async ({ page }) => {
   })
 })
 
+test('7.4 DATA_ENTRY rejected request detail mobile', async ({ page }) => {
+  await mockDetailApi(page, UserRole.DATA_ENTRY, {
+    status: RequestStatus.DRAFT_REJECTED_INTERNAL,
+    current_owner_role: UserRole.DATA_ENTRY,
+  })
+  await page.setViewportSize({ width: 390, height: 844 })
+  await openDetailPage(page, UserRole.DATA_ENTRY)
+  await expect(page.locator('.detail-page')).toBeVisible()
+  await expect(page).toHaveScreenshot(['7-4', 'data-entry-rejected-mobile.png'], {
+    animations: 'disabled',
+    fullPage: false,
+    maxDiffPixelRatio: 0.02,
+  })
+})
+
+test('7.4 SUPPORT_COMMITTEE pending-claim request detail mobile', async ({ page }) => {
+  await mockDetailApi(page, UserRole.SUPPORT_COMMITTEE, {
+    status: RequestStatus.SUPPORT_REVIEW_PENDING,
+    current_owner_role: UserRole.SUPPORT_COMMITTEE,
+    can_be_claimed: true,
+    is_claimed: false,
+    is_claimed_by_me: false,
+  })
+  await page.setViewportSize({ width: 390, height: 844 })
+  await openDetailPage(page, UserRole.SUPPORT_COMMITTEE)
+  await expect(page.locator('.detail-page')).toBeVisible()
+  await expect(page).toHaveScreenshot(['7-4', 'support-committee-pending-claim-mobile.png'], {
+    animations: 'disabled',
+    fullPage: false,
+    maxDiffPixelRatio: 0.02,
+  })
+})
+
+test('7.4 EXECUTIVE_MEMBER voting-open request detail mobile', async ({ page }) => {
+  await mockDetailApi(page, UserRole.EXECUTIVE_MEMBER, {
+    status: RequestStatus.EXECUTIVE_VOTING_OPEN,
+    current_owner_role: UserRole.EXECUTIVE_MEMBER,
+    voting_session_status: VotingSessionStatus.OPEN,
+    voting_opened_at: '2026-05-15T10:00:00.000Z',
+  })
+  await page.setViewportSize({ width: 390, height: 844 })
+  await openDetailPage(page, UserRole.EXECUTIVE_MEMBER)
+  await expect(page.locator('.detail-page')).toBeVisible()
+  await expect(page).toHaveScreenshot(['7-4', 'executive-member-voting-open-mobile.png'], {
+    animations: 'disabled',
+    fullPage: false,
+    maxDiffPixelRatio: 0.02,
+  })
+})
+
+test('7.4 COMMITTEE_DIRECTOR waiting-customs request detail mobile', async ({ page }) => {
+  await mockDetailApi(page, UserRole.COMMITTEE_DIRECTOR, {
+    status: RequestStatus.EXECUTIVE_APPROVED,
+    current_owner_role: UserRole.COMMITTEE_DIRECTOR,
+    executive_decided_at: '2026-05-16T10:00:00.000Z',
+  })
+  await page.setViewportSize({ width: 390, height: 844 })
+  await openDetailPage(page, UserRole.COMMITTEE_DIRECTOR)
+  await expect(page.locator('.detail-page')).toBeVisible()
+  await expect(page).toHaveScreenshot(['7-4', 'committee-director-waiting-customs-mobile.png'], {
+    animations: 'disabled',
+    fullPage: false,
+    maxDiffPixelRatio: 0.02,
+  })
+})
+
 // ── Behavioral tests ──────────────────────────────────────────────────────────
 
 test('7.4 detail page shows breadcrumbs with reference number', async ({ page }) => {
@@ -430,6 +695,20 @@ test('7.4 detail page header shows reference number as title', async ({ page }) 
   await openDetailPage(page, UserRole.DATA_ENTRY)
 
   await expect(page.locator('.page-title')).toContainText('YFH-2026-000042')
+})
+
+test('7.4 detail page header subtitle keeps merchant, goods type, and bank context', async ({ page }) => {
+  await mockDetailApi(page, UserRole.DATA_ENTRY, {
+    status: RequestStatus.DRAFT,
+    bank_name: 'بنك اليمن الدولي',
+    goods_type: 'معدات طبية',
+  })
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await openDetailPage(page, UserRole.DATA_ENTRY)
+
+  await expect(page.locator('.page-subtitle')).toContainText('مؤسسة النور التجارية')
+  await expect(page.locator('.page-subtitle')).toContainText('معدات طبية')
+  await expect(page.locator('.page-subtitle')).toContainText('بنك اليمن الدولي')
 })
 
 test('7.4 information tab is active by default', async ({ page }) => {
@@ -493,6 +772,24 @@ test('7.4 actor names shown in parties tab (no #1 fallback when name available)'
 
   await page.locator('.tab-btn', { hasText: 'الأطراف' }).click()
   await expect(page.locator('.tab-panel')).toContainText('علي حسن')
+})
+
+test('7.4 unauthorized customs download buttons stay hidden on the detail page', async ({ page }) => {
+  await mockDetailApi(page, UserRole.DATA_ENTRY, {
+    status: RequestStatus.COMPLETED,
+    customs_declaration: {
+      id: 70,
+      declaration_number: 'CD-2026-70',
+      issued_at: '2026-05-18T10:00:00.000Z',
+      issuer: { id: 12, name: 'مدير اللجنة' },
+      download_url: '/api/customs/70/download',
+    },
+  })
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await openDetailPage(page, UserRole.DATA_ENTRY)
+
+  await expect(page.locator('.download-btn')).toHaveCount(0)
+  await expect(page.locator('.customs-download')).toHaveCount(0)
 })
 
 test('7.4 two-column layout visible at desktop width', async ({ page }) => {

@@ -6,6 +6,7 @@ import { useAuthStore } from '../../../stores/auth.store'
 import { useRequestsStore } from '../../../stores/requests.store'
 import { useVotingStore } from '../../../stores/voting.store'
 import { useClaimLifecycle } from '../../../composables/useClaimLifecycle'
+import { canDownloadCustoms } from '../../../composables/useDocumentPermissions'
 import { STATUS_LABELS } from '../../../constants/workflow'
 import StatusBadge from '../../../components/ui/StatusBadge.vue'
 import LockedBanner from '../../../components/ui/LockedBanner.vue'
@@ -48,6 +49,7 @@ const EXECUTIVE_ROLES = new Set([UserRole.EXECUTIVE_MEMBER, UserRole.COMMITTEE_D
 
 const request = computed(() => requestsStore.currentRequest)
 const userRole = computed(() => auth.user?.role ?? UserRole.DATA_ENTRY)
+const canDownloadCustomsDeclaration = computed(() => canDownloadCustoms(userRole.value))
 
 // VotingPanel is shown inline above tabs for executive/director roles in voting stages
 const showVotingPanelInline = computed(() =>
@@ -463,11 +465,15 @@ watch(showVotingPanelInline, async (visible) => {
               <span class="subtitle-dot" aria-hidden="true">·</span>
               <span>{{ request.goods_type }}</span>
             </template>
+            <template v-if="request.bank_name">
+              <span class="subtitle-dot" aria-hidden="true">·</span>
+              <span>{{ request.bank_name }}</span>
+            </template>
           </p>
         </div>
         <div class="page-header__actions">
           <button
-            v-if="request.customs_declaration"
+            v-if="request.customs_declaration && canDownloadCustomsDeclaration"
             class="download-btn"
             :disabled="requestsStore.downloadingCustoms"
             @click="downloadCustomsDeclaration"
@@ -583,6 +589,7 @@ watch(showVotingPanelInline, async (visible) => {
                       معاينة البيان
                     </a>
                     <button
+                      v-if="canDownloadCustomsDeclaration"
                       class="customs-download"
                       :disabled="requestsStore.downloadingCustoms"
                       @click="downloadCustomsDeclaration"
@@ -662,6 +669,10 @@ watch(showVotingPanelInline, async (visible) => {
                   </div>
                   <div class="detail-row">
                     <dt class="detail-label">مراجع لجنة الدعم</dt>
+                    <dd class="detail-value">{{ actorLabel(request.support_reviewed_by_user, request.support_reviewed_by) }}</dd>
+                  </div>
+                  <div class="detail-row">
+                    <dt class="detail-label">المراجع الحالي</dt>
                     <dd class="detail-value">{{ request.claimed_by?.name ?? '—' }}</dd>
                   </div>
                   <div class="detail-row">

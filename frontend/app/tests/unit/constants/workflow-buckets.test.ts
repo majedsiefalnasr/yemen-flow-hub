@@ -70,6 +70,7 @@ describe('ROLE_BUCKETS', () => {
 
   it('SUPPORT_COMMITTEE buckets cover claim lifecycle statuses', () => {
     const allStatuses = ROLE_BUCKETS[UserRole.SUPPORT_COMMITTEE]!.flatMap(b => b.statuses)
+    expect(allStatuses).toContain(RequestStatus.BANK_APPROVED)
     expect(allStatuses).toContain(RequestStatus.SUPPORT_REVIEW_PENDING)
     expect(allStatuses).toContain(RequestStatus.SUPPORT_REVIEW_IN_PROGRESS)
     expect(allStatuses).toContain(RequestStatus.SUPPORT_APPROVED)
@@ -78,17 +79,32 @@ describe('ROLE_BUCKETS', () => {
 
   it('EXECUTIVE_MEMBER buckets cover voting statuses', () => {
     const allStatuses = ROLE_BUCKETS[UserRole.EXECUTIVE_MEMBER]!.flatMap(b => b.statuses)
+    expect(allStatuses).toContain(RequestStatus.SUPPORT_APPROVED)
+    expect(allStatuses).toContain(RequestStatus.WAITING_FOR_VOTING_OPEN)
     expect(allStatuses).toContain(RequestStatus.EXECUTIVE_VOTING_OPEN)
     expect(allStatuses).toContain(RequestStatus.EXECUTIVE_VOTING_CLOSED)
     expect(allStatuses).toContain(RequestStatus.EXECUTIVE_APPROVED)
     expect(allStatuses).toContain(RequestStatus.EXECUTIVE_REJECTED)
   })
 
-  it('SWIFT_OFFICER buckets cover SWIFT statuses only', () => {
+  it('SWIFT_OFFICER buckets cover the full SWIFT queue lifecycle', () => {
     const allStatuses = ROLE_BUCKETS[UserRole.SWIFT_OFFICER]!.flatMap(b => b.statuses)
+    expect(allStatuses).toContain(RequestStatus.BANK_APPROVED)
+    expect(allStatuses).toContain(RequestStatus.SUPPORT_APPROVED)
     expect(allStatuses).toContain(RequestStatus.WAITING_FOR_SWIFT)
     expect(allStatuses).toContain(RequestStatus.SWIFT_UPLOADED)
-    expect(allStatuses.length).toBe(2)
+    expect(allStatuses.length).toBe(4)
+  })
+
+  it('COMMITTEE_DIRECTOR buckets cover voting-open, customs, and rejected states', () => {
+    const allStatuses = ROLE_BUCKETS[UserRole.COMMITTEE_DIRECTOR]!.flatMap(b => b.statuses)
+    expect(allStatuses).toContain(RequestStatus.WAITING_FOR_VOTING_OPEN)
+    expect(allStatuses).toContain(RequestStatus.EXECUTIVE_VOTING_OPEN)
+    expect(allStatuses).toContain(RequestStatus.EXECUTIVE_VOTING_CLOSED)
+    expect(allStatuses).toContain(RequestStatus.EXECUTIVE_APPROVED)
+    expect(allStatuses).toContain(RequestStatus.CUSTOMS_DECLARATION_ISSUED)
+    expect(allStatuses).toContain(RequestStatus.COMPLETED)
+    expect(allStatuses).toContain(RequestStatus.EXECUTIVE_REJECTED)
   })
 
   it('BANK_ADMIN buckets do not expose CBY-internal stages to UI consumers by accident', () => {

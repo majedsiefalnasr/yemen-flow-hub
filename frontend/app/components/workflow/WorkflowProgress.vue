@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { RequestStatus, UserRole } from '../../types/enums'
-import { ROLE_BUCKETS, STATUS_LABELS, STATUS_PROGRESS } from '../../constants/workflow'
+import { ROLE_BUCKETS, getBusinessStatus, getStatusProgress } from '../../constants/workflow'
 import type { StageBucket } from '../../constants/workflow'
 
 const props = defineProps<{
@@ -24,16 +24,27 @@ const buckets = computed((): StageBucket[] => {
   return ROLE_BUCKETS[props.userRole] ?? ROLE_BUCKETS[UserRole.CBY_ADMIN] ?? []
 })
 
-const progress = computed(() => STATUS_PROGRESS[props.currentStatus] ?? 0)
+const displayStatus = computed(() => getBusinessStatus(props.currentStatus, props.userRole))
+
+const progress = computed(() => getStatusProgress(props.currentStatus, props.userRole))
+
+const effectiveStatuses = computed(() => {
+  const canonicalStatus = displayStatus.value.canonicalStatus
+  return canonicalStatus === props.currentStatus
+    ? [props.currentStatus]
+    : [props.currentStatus, canonicalStatus]
+})
 
 const currentBucketIndex = computed(() => {
-  return buckets.value.findIndex(b => b.statuses.includes(props.currentStatus))
+  return buckets.value.findIndex(bucket =>
+    effectiveStatuses.value.some(status => bucket.statuses.includes(status)),
+  )
 })
 
 function bucketState(idx: number): 'done' | 'current' | 'rejected' | 'future' {
   const bucket = buckets.value[idx]
   if (!bucket) return 'future'
-  const isCurrentBucket = bucket.statuses.includes(props.currentStatus)
+  const isCurrentBucket = effectiveStatuses.value.some(status => bucket.statuses.includes(status))
   if (isCurrentBucket && REJECT_STATUSES.has(props.currentStatus)) return 'rejected'
   if (isCurrentBucket) return 'current'
   if (idx < currentBucketIndex.value) return 'done'
@@ -43,7 +54,7 @@ function bucketState(idx: number): 'done' | 'current' | 'rejected' | 'future' {
 const isRejected = computed(() => REJECT_STATUSES.has(props.currentStatus))
 const isCompleted = computed(() => DONE_STATUSES.has(props.currentStatus))
 
-const currentLabel = computed(() => STATUS_LABELS[props.currentStatus] ?? props.currentStatus)
+const currentLabel = computed(() => displayStatus.value.label)
 </script>
 
 <template>

@@ -423,26 +423,29 @@ export const ROLE_BUCKETS: Partial<Record<UserRole, StageBucket[]>> = {
     { key: 'rejected', label: 'مرفوض', statuses: [RequestStatus.SUPPORT_REJECTED, RequestStatus.EXECUTIVE_REJECTED] },
   ],
   [UserRole.SWIFT_OFFICER]: [
-    { key: 'pending_swift', label: 'انتظار رفع SWIFT', statuses: [RequestStatus.WAITING_FOR_SWIFT] },
+    { key: 'pending_swift', label: 'انتظار رفع SWIFT', statuses: [RequestStatus.BANK_APPROVED, RequestStatus.SUPPORT_APPROVED, RequestStatus.WAITING_FOR_SWIFT] },
     { key: 'swift_done', label: 'تم رفع SWIFT', statuses: [RequestStatus.SWIFT_UPLOADED] },
   ],
   [UserRole.SUPPORT_COMMITTEE]: [
-    { key: 'pending', label: 'انتظار المراجعة', statuses: [RequestStatus.SUPPORT_REVIEW_PENDING] },
+    { key: 'pending', label: 'انتظار المراجعة', statuses: [RequestStatus.BANK_APPROVED, RequestStatus.SUPPORT_REVIEW_PENDING] },
     { key: 'in_progress', label: 'قيد المراجعة', statuses: [RequestStatus.SUPPORT_REVIEW_IN_PROGRESS] },
     { key: 'approved', label: 'موافقة', statuses: [RequestStatus.SUPPORT_APPROVED] },
     { key: 'rejected', label: 'مرفوض', statuses: [RequestStatus.SUPPORT_REJECTED] },
   ],
   [UserRole.EXECUTIVE_MEMBER]: [
+    { key: 'pending_open', label: 'انتظار فتح التصويت', statuses: [RequestStatus.SUPPORT_APPROVED, RequestStatus.WAITING_FOR_VOTING_OPEN] },
     { key: 'voting_open', label: 'التصويت مفتوح', statuses: [RequestStatus.EXECUTIVE_VOTING_OPEN] },
     { key: 'voting_closed', label: 'التصويت مغلق', statuses: [RequestStatus.EXECUTIVE_VOTING_CLOSED] },
     { key: 'approved', label: 'موافقة', statuses: [RequestStatus.EXECUTIVE_APPROVED] },
     { key: 'rejected', label: 'مرفوض', statuses: [RequestStatus.EXECUTIVE_REJECTED] },
   ],
   [UserRole.COMMITTEE_DIRECTOR]: [
+    { key: 'pending_open', label: 'انتظار فتح التصويت', statuses: [RequestStatus.WAITING_FOR_VOTING_OPEN] },
     { key: 'voting_open', label: 'التصويت مفتوح', statuses: [RequestStatus.EXECUTIVE_VOTING_OPEN] },
     { key: 'voting_closed', label: 'التصويت مغلق', statuses: [RequestStatus.EXECUTIVE_VOTING_CLOSED] },
     { key: 'approved', label: 'موافقة', statuses: [RequestStatus.EXECUTIVE_APPROVED] },
     { key: 'customs', label: 'البيان الجمركي', statuses: [RequestStatus.CUSTOMS_DECLARATION_ISSUED, RequestStatus.COMPLETED] },
+    { key: 'rejected', label: 'مرفوض', statuses: [RequestStatus.EXECUTIVE_REJECTED] },
   ],
   [UserRole.CBY_ADMIN]: [
     { key: 'bank_stage', label: 'مرحلة البنك', statuses: [RequestStatus.SUBMITTED, RequestStatus.BANK_REVIEW, RequestStatus.BANK_APPROVED] },

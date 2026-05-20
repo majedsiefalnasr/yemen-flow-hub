@@ -75,17 +75,24 @@ export interface ImportRequest {
   bl_number: string | null
   created_by: number
   created_by_user?: { id: number; name: string } | null
+  last_updated_by?: number | null
+  last_updated_by_user?: { id: number; name: string } | null
   submitted_by: number | null
   submitted_by_user?: { id: number; name: string } | null
   reviewed_by: number | null
   reviewed_by_user?: { id: number; name: string } | null
+  internal_reviewer?: { id: number; name: string } | null
   approved_by: number | null
   approved_by_user?: { id: number; name: string } | null
   rejected_by: number | null
   rejected_by_user?: { id: number; name: string } | null
   resubmitted_by: number | null
   resubmitted_by_user?: { id: number; name: string } | null
+  support_reviewed_by?: number | null
+  support_reviewed_by_user?: { id: number; name: string } | null
+  support_reviewer?: { id: number; name: string } | null
   claimed_by: { id: number; name: string } | null
+  support_claimed_by?: { id: number; name: string } | null
   claimed_until: string | null
   is_claimed: boolean
   is_claimed_by_me: boolean
