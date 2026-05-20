@@ -121,6 +121,12 @@ class ReportControllerTest extends TestCase
                     'counts_by_bank',
                     'avg_time_per_stage_hours',
                     'throughput',
+                    'monthly_trend',
+                    'category_distribution',
+                    'amount_by_currency',
+                    'submission_heatmap',
+                    'total_financing_value',
+                    'duplicate_invoice_count',
                 ],
             ]);
     }
@@ -678,5 +684,86 @@ class ReportControllerTest extends TestCase
             ->assertOk();
 
         $this->assertStringContainsString('text/csv', $response->headers->get('Content-Type'));
+    }
+
+    // ─── Workflow report: new analytics fields ─────────────────────────────────
+
+    public function test_workflow_report_monthly_trend_has_correct_shape(): void
+    {
+        $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $this->makeRequest($this->bank, $de, RequestStatus::SUBMITTED);
+        $this->makeRequest($this->bank, $de, RequestStatus::SUBMITTED);
+        $this->makeRequest($this->bank, $de, RequestStatus::COMPLETED);
+
+        $response = $this->actingAs($this->admin)
+            ->getJson('/api/reports/workflow')
+            ->assertOk();
+
+        $monthlyTrend = $response->json('data.monthly_trend');
+        $this->assertIsArray($monthlyTrend);
+
+        foreach ($monthlyTrend as $entry) {
+            $this->assertArrayHasKey('month', $entry);
+            $this->assertArrayHasKey('total', $entry);
+            $this->assertArrayHasKey('approved', $entry);
+            $this->assertArrayHasKey('rejected', $entry);
+            $this->assertMatchesRegularExpression('/\d{4}-\d{2}/', $entry['month']);
+        }
+    }
+
+    public function test_workflow_report_total_financing_value_sums_approved_requests(): void
+    {
+        $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_APPROVED, ['amount' => 1000.00]);
+        $this->makeRequest($this->bank, $de, RequestStatus::COMPLETED, ['amount' => 2000.00]);
+        $this->makeRequest($this->bank, $de, RequestStatus::SUBMITTED, ['amount' => 500.00]); // Not approved
+
+        $data = $this->actingAs($this->admin)
+            ->getJson('/api/reports/workflow')
+            ->assertOk()
+            ->json('data');
+
+        $this->assertEquals(3000.0, $data['total_financing_value']);
+    }
+
+    public function test_workflow_report_duplicate_invoice_count_detects_duplicates(): void
+    {
+        $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $this->makeRequest($this->bank, $de, RequestStatus::SUBMITTED, ['invoice_number' => 'INV-001']);
+        $this->makeRequest($this->bank, $de, RequestStatus::SUBMITTED, ['invoice_number' => 'INV-001']);
+        $this->makeRequest($this->bank, $de, RequestStatus::SUBMITTED, ['invoice_number' => 'INV-001']);
+        $this->makeRequest($this->bank, $de, RequestStatus::SUBMITTED, ['invoice_number' => 'INV-002']); // Unique
+
+        $data = $this->actingAs($this->admin)
+            ->getJson('/api/reports/workflow')
+            ->assertOk()
+            ->json('data');
+
+        // 3 INV-001 entries = 2 duplicates (3 - 1)
+        $this->assertEquals(2, $data['duplicate_invoice_count']);
+    }
+
+    public function test_workflow_report_heatmap_groups_by_day_and_time_slot(): void
+    {
+        $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $this->makeRequest($this->bank, $de, RequestStatus::SUBMITTED);
+
+        $data = $this->actingAs($this->admin)
+            ->getJson('/api/reports/workflow')
+            ->assertOk()
+            ->json('data');
+
+        $heatmap = $data['submission_heatmap'];
+        $this->assertIsArray($heatmap);
+
+        foreach ($heatmap as $entry) {
+            $this->assertArrayHasKey('day', $entry);
+            $this->assertArrayHasKey('slot', $entry);
+            $this->assertArrayHasKey('count', $entry);
+            $this->assertGreaterThanOrEqual(1, $entry['day']);
+            $this->assertLessThanOrEqual(7, $entry['day']);
+            $this->assertGreaterThanOrEqual(0, $entry['slot']);
+            $this->assertLessThanOrEqual(22, $entry['slot']);
+        }
     }
 }

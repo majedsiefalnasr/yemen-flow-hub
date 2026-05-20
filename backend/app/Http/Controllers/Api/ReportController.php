@@ -178,11 +178,138 @@ class ReportController extends Controller
             ]), $fromDate, $toDate)->count(),
         ];
 
+        // Monthly trend: month, total, approved, rejected
+        $monthlyData = [];
+        $driver = DB::connection()->getDriverName();
+        $monthFormat = $driver === 'sqlite'
+            ? "strftime('%Y-%m', created_at)"
+            : "DATE_FORMAT(created_at, '%Y-%m')";
+
+        $monthlyRows = ImportRequest::query()
+            ->selectRaw("{$monthFormat} as month")
+            ->selectRaw("COUNT(*) as total")
+            ->selectRaw("SUM(CASE WHEN status IN (?, ?, ?) THEN 1 ELSE 0 END) as approved", [
+                RequestStatus::EXECUTIVE_APPROVED->value,
+                RequestStatus::CUSTOMS_DECLARATION_ISSUED->value,
+                RequestStatus::COMPLETED->value,
+            ])
+            ->selectRaw("SUM(CASE WHEN status IN (?, ?) THEN 1 ELSE 0 END) as rejected", [
+                RequestStatus::SUPPORT_REJECTED->value,
+                RequestStatus::EXECUTIVE_REJECTED->value,
+            ]);
+        $this->applyDateFilter($monthlyRows, $fromDate, $toDate);
+        $monthlyRows = $monthlyRows
+            ->groupByRaw($monthFormat)
+            ->orderBy('month')
+            ->get();
+        foreach ($monthlyRows as $row) {
+            $monthlyData[] = [
+                'month' => $row->month,
+                'total' => (int) $row->total,
+                'approved' => (int) ($row->approved ?? 0),
+                'rejected' => (int) ($row->rejected ?? 0),
+            ];
+        }
+
+        // Category distribution: goods_type, count
+        $categoryData = [];
+        $categoryRows = ImportRequest::query()
+            ->select('goods_type')
+            ->selectRaw('COUNT(*) as count')
+            ->groupBy('goods_type');
+        $this->applyDateFilter($categoryRows, $fromDate, $toDate);
+        $categoryRows = $categoryRows
+            ->orderByDesc('count')
+            ->get();
+        foreach ($categoryRows as $row) {
+            $categoryData[] = [
+                'category' => $row->goods_type ?? 'Uncategorized',
+                'count' => (int) $row->count,
+            ];
+        }
+
+        // Amount by currency: currency, amount
+        $currencyData = [];
+        $currencyRows = ImportRequest::query()
+            ->select('currency')
+            ->selectRaw('SUM(amount) as total_amount')
+            ->groupBy('currency');
+        $this->applyDateFilter($currencyRows, $fromDate, $toDate);
+        $currencyRows = $currencyRows
+            ->orderByDesc('total_amount')
+            ->get();
+        foreach ($currencyRows as $row) {
+            $currencyData[] = [
+                'currency' => $row->currency,
+                'amount' => (float) ($row->total_amount ?? 0),
+            ];
+        }
+
+        // Submission heatmap: day of week, time slot, count
+        $heatmapData = [];
+        $driver = DB::connection()->getDriverName();
+        if ($driver === 'sqlite') {
+            $dayOfWeek = "CAST((julianday(created_at) - julianday('2000-01-03')) % 7 AS INTEGER) + 1";
+            $hour = "CAST(strftime('%H', created_at) AS INTEGER)";
+        } else {
+            $dayOfWeek = "DAYOFWEEK(created_at)";
+            $hour = "HOUR(created_at)";
+        }
+
+        $heatmapRows = ImportRequest::query()
+            ->selectRaw("{$dayOfWeek} as day_of_week")
+            ->selectRaw("FLOOR({$hour} / 2) * 2 as time_slot")
+            ->selectRaw('COUNT(*) as count');
+        $this->applyDateFilter($heatmapRows, $fromDate, $toDate);
+        $heatmapRows = $heatmapRows
+            ->groupByRaw("{$dayOfWeek}, FLOOR({$hour} / 2)")
+            ->orderBy('day_of_week')
+            ->orderBy('time_slot')
+            ->get();
+        foreach ($heatmapRows as $row) {
+            $heatmapData[] = [
+                'day' => (int) ($row->day_of_week ?? 1),
+                'slot' => (int) ($row->time_slot ?? 0),
+                'count' => (int) $row->count,
+            ];
+        }
+
+        // Total financing value: sum of approved requests
+        $totalFinancing = ImportRequest::query()
+            ->whereIn('status', [
+                RequestStatus::EXECUTIVE_APPROVED->value,
+                RequestStatus::CUSTOMS_DECLARATION_ISSUED->value,
+                RequestStatus::COMPLETED->value,
+            ]);
+        $this->applyDateFilter($totalFinancing, $fromDate, $toDate);
+        $totalFinancing = (float) ($totalFinancing->sum('amount') ?? 0);
+
+        // Duplicate invoice count
+        $duplicateCount = 0;
+        $driver = DB::connection()->getDriverName();
+        $duplicateQuery = DB::table('import_requests')
+            ->selectRaw('invoice_number, COUNT(*) as cnt');
+        $this->applyDateFilter($duplicateQuery, $fromDate, $toDate, 'created_at');
+        $duplicateQuery = $duplicateQuery
+            ->whereNotNull('invoice_number')
+            ->groupBy('invoice_number')
+            ->havingRaw('COUNT(*) > 1');
+        $duplicateCounts = $duplicateQuery->get();
+        foreach ($duplicateCounts as $row) {
+            $duplicateCount += $row->cnt - 1;
+        }
+
         return ApiResponse::success([
             'counts_by_status'         => $countsByStatus,
             'counts_by_bank'           => $countsByBank,
             'avg_time_per_stage_hours' => $avgTimePerStage,
             'throughput'               => $throughput,
+            'monthly_trend'            => $monthlyData,
+            'category_distribution'    => $categoryData,
+            'amount_by_currency'       => $currencyData,
+            'submission_heatmap'       => $heatmapData,
+            'total_financing_value'    => $totalFinancing,
+            'duplicate_invoice_count'  => $duplicateCount,
         ], 'Workflow report retrieved.');
     }
 
