@@ -88,12 +88,30 @@ Supports:
 - Filtering
 - Status filtering
 - Search
+- Currency filtering
 - Bank scoping
 - Queue-based filtering
 - Workflow-stage filtering
 - Organization-scoped visibility
 - Role-scoped operational filtering
 - Queue-scoped operational filtering
+
+### Query Parameters
+
+- `search` — matches `reference_number`, `supplier_name`, `invoice_number`, and merchant name
+- `status` — one canonical status or a comma-separated list of canonical statuses
+- `bank_id` — CBY-scoped bank filter
+- `currency` — exact currency code (`USD`, `EUR`, `SAR`, `AED`, `CNY`)
+- `from_date`, `to_date` — created-at date range filters
+- `claim_filter` — support queue filter (`all`, `available`, `mine`)
+
+### Response Meta
+
+- `current_page`
+- `last_page`
+- `per_page`
+- `total`
+- `status_totals` — per-status counts after non-status filters are applied; used for role bucket tabs
 
 ---
 
