@@ -221,6 +221,12 @@ class DashboardController extends Controller
             ->limit(10)
             ->get();
 
+        $draftRequests = (clone $base)
+            ->where('status', RequestStatus::DRAFT)
+            ->orderByDesc('updated_at')
+            ->limit(5)
+            ->get();
+
         $recentRequests = (clone $base)
             ->orderByDesc('updated_at')
             ->limit(5)
@@ -231,6 +237,7 @@ class DashboardController extends Controller
             'returned'            => $returned,
             'under_cby_processing' => $underCby,
             'completed'           => $completed,
+            'draft_requests'      => ImportRequestResource::collection($draftRequests)->resolve(),
             'returned_requests'   => ImportRequestResource::collection($returnedRequests)->resolve(),
             'recent_requests'     => ImportRequestResource::collection($recentRequests)->resolve(),
         ], 'Dashboard stats retrieved.');

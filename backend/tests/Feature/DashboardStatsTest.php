@@ -100,6 +100,7 @@ class DashboardStatsTest extends TestCase
                     'returned',
                     'under_cby_processing',
                     'completed',
+                    'draft_requests',
                     'returned_requests',
                     'recent_requests',
                 ],
@@ -185,6 +186,32 @@ class DashboardStatsTest extends TestCase
         $returnedRequests = $response->json('data.returned_requests');
         $this->assertCount(1, $returnedRequests);
         $this->assertSame(RequestStatus::DRAFT_REJECTED_INTERNAL->value, $returnedRequests[0]['status']);
+    }
+
+    public function test_data_entry_draft_requests_contains_drafts_only(): void
+    {
+        $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $this->makeRequest($this->bank, $de, RequestStatus::DRAFT);
+        $this->makeRequest($this->bank, $de, RequestStatus::DRAFT_REJECTED_INTERNAL);
+
+        $response = $this->actingAs($de)
+            ->getJson('/api/dashboard/stats')
+            ->assertOk();
+
+        $draftRequests = $response->json('data.draft_requests');
+        $this->assertCount(1, $draftRequests);
+        $this->assertSame(RequestStatus::DRAFT->value, $draftRequests[0]['status']);
+    }
+
+    public function test_data_entry_draft_requests_max_5(): void
+    {
+        $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        for ($i = 0; $i < 7; $i++) {
+            $this->makeRequest($this->bank, $de, RequestStatus::DRAFT);
+        }
+
+        $response = $this->actingAs($de)->getJson('/api/dashboard/stats')->assertOk();
+        $this->assertCount(5, $response->json('data.draft_requests'));
     }
 
     public function test_data_entry_recent_requests_max_5(): void
