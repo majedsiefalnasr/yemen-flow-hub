@@ -134,7 +134,7 @@ export interface RequestDocument {
   checksum: string
   uploaded_by: number
   uploaded_by_name: string | null
-  uploaded_at: string
+  uploaded_at: string | null
   download_url: string
 }
 

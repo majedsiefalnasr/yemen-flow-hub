@@ -34,7 +34,7 @@ describe('RoleSwitcher — role map', () => {
 describe('RoleSwitcher — labels', () => {
   it('all roles have a non-empty Arabic label', () => {
     Object.values(DEMO_ROLE_LABELS).forEach((label) => {
-      expect(label.length).toBeGreaterThan(0)
+      expect(label?.length ?? 0).toBeGreaterThan(0)
     })
   })
 
@@ -74,7 +74,7 @@ describe('RoleSwitcher — switch logic', () => {
     CANONICAL_ROLES.forEach(role => {
       const label = DEMO_ROLE_LABELS[role]
       expect(label).toBeDefined()
-      expect(label.length).toBeGreaterThan(0)
+      expect(label?.length ?? 0).toBeGreaterThan(0)
     })
   })
 

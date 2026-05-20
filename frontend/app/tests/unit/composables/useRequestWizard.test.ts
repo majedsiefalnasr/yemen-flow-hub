@@ -6,6 +6,7 @@ import { createPinia, setActivePinia } from 'pinia'
 const mockCreateRequest = vi.fn()
 const mockUpdateRequest = vi.fn()
 const mockPerformWorkflowAction = vi.fn()
+const mockFetch = vi.fn().mockResolvedValue({})
 
 vi.mock('../../../composables/useRequests', () => ({
   useRequests: () => ({
@@ -33,7 +34,10 @@ vi.mock('#app', () => ({
 }))
 
 // Prevent $fetch from being called in tests
-globalThis.$fetch = vi.fn().mockResolvedValue({})
+globalThis.$fetch = Object.assign(mockFetch, {
+  raw: vi.fn(),
+  create: vi.fn(() => mockFetch),
+}) as unknown as typeof $fetch
 
 const { useRequestWizard } = await import('../../../composables/useRequestWizard')
 

@@ -77,7 +77,7 @@ describe('useSearch — search()', () => {
     await Promise.resolve()
 
     expect(results.value.requests).toHaveLength(1)
-    expect(results.value.requests[0].reference_number).toBe('REF-001')
+    expect(results.value.requests[0]!.reference_number).toBe('REF-001')
   })
 
   it('sets loading true while in-flight and false after', async () => {
@@ -154,12 +154,12 @@ describe('useSearch — search()', () => {
     resolveSecond?.({ success: true, data: newResults })
     await Promise.resolve()
     await Promise.resolve()
-    expect(results.value.requests[0].reference_number).toBe('NEW')
+    expect(results.value.requests[0]!.reference_number).toBe('NEW')
 
     resolveFirst?.({ success: true, data: oldResults })
     await Promise.resolve()
     await Promise.resolve()
-    expect(results.value.requests[0].reference_number).toBe('NEW')
+    expect(results.value.requests[0]!.reference_number).toBe('NEW')
   })
 })
 

@@ -1,5 +1,8 @@
 import type { ApiError } from '../types/models'
 
+type ApiFetchOptions = NonNullable<Parameters<typeof $fetch>[1]>
+type ApiFetchBody = ApiFetchOptions['body']
+
 export function useApi() {
   const config = useRuntimeConfig()
   const baseURL = config.public.apiBase as string
@@ -19,7 +22,7 @@ export function useApi() {
 
   async function apiFetch<T>(
     path: string,
-    options: Parameters<typeof $fetch>[1] = {},
+    options: ApiFetchOptions = {},
   ): Promise<T> {
     const { headers: extraHeaders, ...restOptions } = options
     const method = String(options.method ?? 'GET').toUpperCase()
@@ -41,11 +44,11 @@ export function useApi() {
     return apiFetch<T>(path, { method: 'GET' })
   }
 
-  async function post<T>(path: string, body?: unknown): Promise<T> {
+  async function post<T>(path: string, body?: ApiFetchBody): Promise<T> {
     return apiFetch<T>(path, { method: 'POST', body })
   }
 
-  async function put<T>(path: string, body?: unknown): Promise<T> {
+  async function put<T>(path: string, body?: ApiFetchBody): Promise<T> {
     return apiFetch<T>(path, { method: 'PUT', body })
   }
 

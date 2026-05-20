@@ -88,7 +88,7 @@ describe('notifications page — markRead interaction', () => {
     await fetchNotifications()
     await markRead('n-1')
 
-    expect(notifications.value[0].read_at).not.toBeNull()
+    expect(notifications.value[0]!.read_at).not.toBeNull()
     expect(unreadCount.value).toBe(2)
   })
 

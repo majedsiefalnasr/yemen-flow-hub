@@ -1,6 +1,7 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest'
 import { RequestStatus, UserRole } from '../../../types/enums'
 import type { ImportRequest } from '../../../types/models'
+import { makeImportRequest } from '../fixtures/request-data'
 
 const mockGet = vi.fn()
 const mockPost = vi.fn()
@@ -11,49 +12,22 @@ vi.mock('../../../composables/useApi', () => ({
 
 const { useRequests } = await import('../../../composables/useRequests')
 
-const EXECUTIVE_APPROVED_REQUEST: ImportRequest = {
+const EXECUTIVE_APPROVED_REQUEST: ImportRequest = makeImportRequest({
   id: 10,
   reference_number: 'YFH-2026-000010',
-  bank_id: 1,
-  bank_name: 'بنك اليمن',
-  merchant: null,
   status: RequestStatus.EXECUTIVE_APPROVED,
   current_owner_role: UserRole.COMMITTEE_DIRECTOR,
-  currency: 'USD',
   amount: 75000,
   supplier_name: 'Gulf Trade Ltd',
   goods_description: 'Medical supplies',
-  port_of_entry: 'Aden',
-  notes: null,
-  created_by: 1,
   submitted_by: 2,
   reviewed_by: 3,
-  approved_by: null,
-  rejected_by: null,
-  resubmitted_by: null,
-  claimed_by: null,
-  claimed_until: null,
-  is_claimed: false,
-  is_claimed_by_me: false,
-  can_be_claimed: false,
-  submitted_at: null,
   bank_approved_at: '2026-05-10T10:00:00.000Z',
-  support_approved_at: null,
-  swift_uploaded_by: null,
-  swift_uploaded_at: null,
-  voting_opened_by: null,
-  voting_opened_at: null,
-  voting_closed_by: null,
-  voting_closed_at: null,
-  voting_session_status: null,
-  executive_decided_at: null,
-  customs_issued_at: null,
   customs_declaration: null,
-  revision_count: 0,
   created_at: '2026-05-01T00:00:00.000Z',
   updated_at: '2026-05-10T00:00:00.000Z',
   documents: [],
-}
+})
 
 const PAGINATED_RESPONSE = {
   success: true,

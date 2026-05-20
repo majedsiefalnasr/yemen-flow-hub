@@ -44,7 +44,7 @@ describe('useNotifications — fetchNotifications', () => {
     await fetchNotifications()
 
     expect(notifications.value).toHaveLength(1)
-    expect(notifications.value[0].id).toBe('abc-123')
+    expect(notifications.value[0]!.id).toBe('abc-123')
     expect(pagination.value.currentPage).toBe(1)
     expect(pagination.value.lastPage).toBe(2)
     expect(pagination.value.total).toBe(40)
@@ -127,7 +127,7 @@ describe('useNotifications — markRead', () => {
     await fetchNotifications()
     await markRead('abc-123')
 
-    expect(notifications.value[0].read_at).not.toBeNull()
+    expect(notifications.value[0]!.read_at).not.toBeNull()
     expect(unreadCount.value).toBe(2)
   })
 

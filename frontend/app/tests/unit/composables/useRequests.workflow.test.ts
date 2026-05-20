@@ -106,7 +106,7 @@ describe('useRequests — performWorkflowAction', () => {
     const { performWorkflowAction } = useRequests()
     await performWorkflowAction(42, 'bank-approve', undefined)
 
-    const body = mockPost.mock.calls[0][1] as Record<string, string>
+    const body = mockPost.mock.calls[0]![1] as Record<string, string>
     expect(Object.keys(body)).not.toContain('reason')
   })
 })
@@ -128,8 +128,8 @@ describe('useRequests — fetchRequestDocuments', () => {
 
     expect(mockGet).toHaveBeenCalledWith('/api/requests/42')
     expect(docs).toHaveLength(1)
-    expect(docs[0].id).toBe(10)
-    expect(docs[0].original_filename).toBe('invoice.pdf')
+    expect(docs[0]!.id).toBe(10)
+    expect(docs[0]!.original_filename).toBe('invoice.pdf')
   })
 
   it('returns empty array when documents field is absent', async () => {

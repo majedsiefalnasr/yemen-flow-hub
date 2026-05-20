@@ -1,6 +1,7 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest'
 import { VoteType, RequestStatus, UserRole, VotingSessionStatus } from '../../../types/enums'
 import type { ImportRequest, VotingDetail, VotingTally, RequestVote } from '../../../types/models'
+import { makeImportRequest } from '../fixtures/request-data'
 
 const mockGet = vi.fn()
 const mockPost = vi.fn()
@@ -12,31 +13,18 @@ vi.mock('../../../composables/useApi', () => ({
 const { useVoting } = await import('../../../composables/useVoting')
 
 function makeRequest(overrides: Partial<ImportRequest> = {}): ImportRequest {
-  return {
+  return makeImportRequest({
     id: 1,
     reference_number: 'YFH-2026-000001',
-    bank_id: 1,
     bank_name: 'بنك اليمن المركزي',
-    merchant: null,
     status: RequestStatus.EXECUTIVE_VOTING_OPEN,
     current_owner_role: UserRole.EXECUTIVE_MEMBER,
-    currency: 'USD',
     amount: 100000,
     supplier_name: 'Global Supplier',
     goods_description: 'Industrial Equipment',
-    port_of_entry: 'Aden',
-    notes: null,
-    created_by: 1,
     submitted_by: 2,
     reviewed_by: 3,
     approved_by: 4,
-    rejected_by: null,
-    resubmitted_by: null,
-    claimed_by: null,
-    claimed_until: null,
-    is_claimed: false,
-    is_claimed_by_me: false,
-    can_be_claimed: false,
     submitted_at: '2026-05-01T00:00:00.000000Z',
     bank_approved_at: '2026-05-02T00:00:00.000000Z',
     support_approved_at: '2026-05-03T00:00:00.000000Z',
@@ -44,16 +32,11 @@ function makeRequest(overrides: Partial<ImportRequest> = {}): ImportRequest {
     swift_uploaded_at: '2026-05-04T00:00:00.000000Z',
     voting_opened_by: 6,
     voting_opened_at: '2026-05-05T00:00:00.000000Z',
-    voting_closed_by: null,
-    voting_closed_at: null,
     voting_session_status: VotingSessionStatus.OPEN,
-    executive_decided_at: null,
-    customs_issued_at: null,
-    revision_count: 0,
     created_at: '2026-05-01T00:00:00.000000Z',
     updated_at: '2026-05-05T00:00:00.000000Z',
     ...overrides,
-  }
+  })
 }
 
 function makeTally(overrides: Partial<VotingTally> = {}): VotingTally {
@@ -156,7 +139,7 @@ describe('useVoting — castVote', () => {
     const { castVote } = useVoting()
     await castVote(1, VoteType.APPROVE)
 
-    const body = mockPost.mock.calls[0][1] as Record<string, string>
+    const body = mockPost.mock.calls[0]![1] as Record<string, string>
     expect(body.vote).toBe(VoteType.APPROVE)
     expect(Object.keys(body)).not.toContain('justification')
   })
@@ -168,7 +151,7 @@ describe('useVoting — castVote', () => {
     const { castVote } = useVoting()
     await castVote(1, VoteType.REJECT, '   ')
 
-    const body = mockPost.mock.calls[0][1] as Record<string, string>
+    const body = mockPost.mock.calls[0]![1] as Record<string, string>
     expect(body.vote).toBe(VoteType.REJECT)
     expect(Object.keys(body)).not.toContain('justification')
   })
@@ -193,7 +176,7 @@ describe('useVoting — castVote', () => {
     const { castVote } = useVoting()
     await castVote(1, VoteType.ABSTAIN)
 
-    const body = mockPost.mock.calls[0][1] as Record<string, string>
+    const body = mockPost.mock.calls[0]![1] as Record<string, string>
     expect(body.vote).toBe(VoteType.ABSTAIN)
     expect(Object.keys(body)).not.toContain('justification')
   })
@@ -283,7 +266,7 @@ describe('useVoting — finalizeDecision', () => {
     const { finalizeDecision } = useVoting()
     await finalizeDecision(1)
 
-    const body = mockPost.mock.calls[0][1] as Record<string, unknown>
+    const body = mockPost.mock.calls[0]![1] as Record<string, unknown>
     expect(Object.keys(body)).toHaveLength(0)
   })
 
@@ -328,7 +311,7 @@ describe('useVoting — directorOverride', () => {
     const { directorOverride } = useVoting()
     await directorOverride(1, 'REJECT', 'مخالفة للوائح')
 
-    const body = mockPost.mock.calls[0][1] as Record<string, string>
+    const body = mockPost.mock.calls[0]![1] as Record<string, string>
     expect(body.decision).toBe('REJECT')
     expect(body.justification).toBe('مخالفة للوائح')
     expect(Object.keys(body)).not.toContain('vote')

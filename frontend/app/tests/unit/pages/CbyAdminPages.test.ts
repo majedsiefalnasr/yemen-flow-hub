@@ -263,7 +263,7 @@ describe('/admin/cby-staff', () => {
     const wrapper = await mountPage()
     await wrapper.get('.btn-primary').trigger('click')
 
-    const saveBtn = wrapper.findAll('.modal-actions button')[1]
+    const saveBtn = wrapper.findAll('.modal-actions button')[1]!
     await saveBtn.trigger('click')
     await flushPromises()
 
@@ -282,7 +282,7 @@ describe('/admin/cby-staff', () => {
     vm.form.role = UserRole.SWIFT_OFFICER
     await flushPromises()
 
-    const saveBtn = wrapper.findAll('.modal-actions button')[1]
+    const saveBtn = wrapper.findAll('.modal-actions button')[1]!
     await saveBtn.trigger('click')
     await flushPromises()
 
@@ -312,7 +312,7 @@ describe('/admin/cby-staff', () => {
     vm.form.is_active = false
     await flushPromises()
 
-    const saveBtn = wrapper.findAll('.modal-actions button')[1]
+    const saveBtn = wrapper.findAll('.modal-actions button')[1]!
     await saveBtn.trigger('click')
     await flushPromises()
 
@@ -402,7 +402,7 @@ describe('/admin/entities', () => {
     const wrapper = await mountPage()
     await wrapper.get('.btn-primary').trigger('click')
 
-    const saveBtn = wrapper.findAll('.modal-actions button')[1]
+    const saveBtn = wrapper.findAll('.modal-actions button')[1]!
     await saveBtn.trigger('click')
     await flushPromises()
 
@@ -421,7 +421,7 @@ describe('/admin/entities', () => {
     vm.form.code = 'NB'
     await flushPromises()
 
-    const saveBtn = wrapper.findAll('.modal-actions button')[1]
+    const saveBtn = wrapper.findAll('.modal-actions button')[1]!
     await saveBtn.trigger('click')
     await flushPromises()
 
@@ -440,7 +440,7 @@ describe('/admin/entities', () => {
     const wrapper = await mountPage()
     await wrapper.get('.btn-primary').trigger('click')
     const selects = wrapper.findAll('.modal select')
-    const typeSelect = selects[selects.length - 1]
+    const typeSelect = selects[selects.length - 1]!
     const options = typeSelect.findAll('option').map(o => o.text())
     expect(options).toContain('تجاري')
     expect(options).toContain('إسلامي')

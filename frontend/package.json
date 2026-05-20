@@ -7,7 +7,7 @@
     "dev": "nuxt dev",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
-    "postinstall": "nuxt prepare",
+    "postinstall": "nuxt prepare && node scripts/patch-vue-router-volar.mjs",
     "test": "vitest run",
     "test:e2e": "playwright test",
     "test:watch": "vitest",

@@ -45,7 +45,7 @@ describe('useRequests.fetchRequestHistory', () => {
 
     expect(mockGet).toHaveBeenCalledWith('/api/requests/10/history')
     expect(result).toHaveLength(1)
-    expect(result[0]).toEqual(entry)
+    expect(result[0]!).toEqual(entry)
   })
 
   it('returns empty array when history is empty', async () => {
@@ -68,8 +68,8 @@ describe('useRequests.fetchRequestHistory', () => {
     const result = await fetchRequestHistory(10)
 
     expect(result).toHaveLength(2)
-    expect(result[0].action).toBe('submit')
-    expect(result[1].action).toBe('bank_approve')
+    expect(result[0]!.action).toBe('submit')
+    expect(result[1]!.action).toBe('bank_approve')
   })
 
   it('propagates errors thrown by useApi.get', async () => {
@@ -86,8 +86,8 @@ describe('useRequests.fetchRequestHistory', () => {
     const { fetchRequestHistory } = useRequests()
     const result = await fetchRequestHistory(10)
 
-    expect(result[0].from_status).toBeNull()
-    expect(result[0].to_status).toBe('DRAFT')
+    expect(result[0]!.from_status).toBeNull()
+    expect(result[0]!.to_status).toBe('DRAFT')
   })
 
   it('handles history entries with null performed_by', async () => {
@@ -97,7 +97,7 @@ describe('useRequests.fetchRequestHistory', () => {
     const { fetchRequestHistory } = useRequests()
     const result = await fetchRequestHistory(10)
 
-    expect(result[0].performed_by).toBeNull()
-    expect(result[0].actor_id).toBe(3)
+    expect(result[0]!.performed_by).toBeNull()
+    expect(result[0]!.actor_id).toBe(3)
   })
 })

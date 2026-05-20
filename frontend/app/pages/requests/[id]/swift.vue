@@ -24,6 +24,7 @@ const rawId = route.params.id
 const id = Number(Array.isArray(rawId) ? rawId[0] : rawId)
 
 const request = computed(() => requestsStore.currentRequest)
+const viewerRole = computed(() => auth.user?.role ?? UserRole.SWIFT_OFFICER)
 
 const swiftDoc = computed<RequestDocument | undefined>(() =>
   requestsStore.documents.find(d => d.type === 'SWIFT'),
@@ -85,7 +86,7 @@ async function submitUpload() {
 
   try {
     await uploadSwift(id, selectedFile.value)
-    await requestsStore.fetchRequest(id)
+    await requestsStore.loadRequest(id)
     await requestsStore.loadDocuments(id)
     router.push(`/requests/${id}`)
   }
@@ -117,7 +118,7 @@ function formatAmount(amount: number, currency: string): string {
 }
 
 onMounted(async () => {
-  await requestsStore.fetchRequest(id)
+  await requestsStore.loadRequest(id)
   await requestsStore.loadDocuments(id)
 })
 </script>
@@ -142,7 +143,7 @@ onMounted(async () => {
       <div class="summary-card">
         <div class="summary-header">
           <h1 class="summary-ref">{{ request.reference_number }}</h1>
-          <StatusBadge :status="request.status" :role="auth.user?.role" />
+          <StatusBadge :status="request.status" :role="viewerRole" />
         </div>
         <dl class="summary-grid">
           <div class="summary-item">

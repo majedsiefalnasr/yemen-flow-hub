@@ -53,6 +53,10 @@ const merchantsError = ref(false)
 
 const { fetchMerchants } = useMerchants()
 
+function onCurrencyChange(event: Event) {
+  setValues({ currency: (event.target as HTMLSelectElement).value as Currency })
+}
+
 async function loadMerchants() {
   merchantsLoading.value = true
   merchantsError.value = false
@@ -222,7 +226,7 @@ const onSubmit = handleSubmit((v) => {
             class="form-input"
             :disabled="loading"
             :class="{ 'form-input--error': errors.currency }"
-            @change="(e) => setValues({ currency: (e.target as HTMLSelectElement).value })"
+            @change="onCurrencyChange"
           >
             <option v-for="c in Object.values(Currency)" :key="c" :value="c">
               {{ c }}

@@ -7,6 +7,8 @@ import { useRequestsStore } from '../../../stores/requests.store'
 import RequestForm from '../../../components/forms/RequestForm.vue'
 import LockedBanner from '../../../components/ui/LockedBanner.vue'
 
+type LockedBannerVariant = 'locked' | 'readonly' | 'pending'
+
 definePageMeta({
   middleware: ['auth'],
   requiredRoles: [UserRole.DATA_ENTRY],
@@ -36,6 +38,23 @@ const initialValues = computed<Partial<RequestFormData> | undefined>(() => {
     goods_description: r.goods_description,
     port_of_entry: r.port_of_entry,
     notes: r.notes ?? '',
+  }
+})
+
+const lockedBannerVariant = computed<LockedBannerVariant>(() => {
+  switch (requestsStore.currentRequest?.status) {
+    case RequestStatus.BANK_APPROVED:
+    case RequestStatus.SUPPORT_APPROVED:
+    case RequestStatus.SUPPORT_REJECTED:
+    case RequestStatus.SWIFT_UPLOADED:
+    case RequestStatus.EXECUTIVE_VOTING_CLOSED:
+    case RequestStatus.EXECUTIVE_APPROVED:
+    case RequestStatus.EXECUTIVE_REJECTED:
+    case RequestStatus.CUSTOMS_DECLARATION_ISSUED:
+    case RequestStatus.COMPLETED:
+      return 'readonly'
+    default:
+      return 'pending'
   }
 })
 
@@ -115,7 +134,7 @@ async function handleSubmit(data: RequestFormData) {
 
     <!-- Locked state (should not normally render — onMounted redirects away) -->
     <template v-else-if="requestsStore.currentRequest && !isEditable">
-      <LockedBanner :status="requestsStore.currentRequest.status" />
+      <LockedBanner :variant="lockedBannerVariant" />
     </template>
   </div>
 </template>

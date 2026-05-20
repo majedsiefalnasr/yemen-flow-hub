@@ -158,7 +158,7 @@ describe('useReports — preset management', () => {
 
     const stored = loadPresets()
     expect(stored).toHaveLength(1)
-    expect(stored[0].name).toBe('Q1 2026')
+    expect(stored[0]!.name).toBe('Q1 2026')
   })
 
   it('savePreset truncates name at 50 chars', () => {
@@ -177,7 +177,7 @@ describe('useReports — preset management', () => {
 
     const remaining = loadPresets()
     expect(remaining).toHaveLength(1)
-    expect(remaining[0].id).toBe(p2.id)
+    expect(remaining[0]!.id).toBe(p2.id)
   })
 
   it('deletePreset on non-existent id leaves presets unchanged', () => {

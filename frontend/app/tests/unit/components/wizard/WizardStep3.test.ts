@@ -38,7 +38,7 @@ describe('WizardStep3 — zone definitions', () => {
     expect(required.length).toBe(3)
   })
   it('last zone (extra_docs) is optional', () => {
-    expect(ZONES[3].required).toBe(false)
+    expect(ZONES[3]!.required).toBe(false)
   })
 })
 

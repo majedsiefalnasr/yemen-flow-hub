@@ -39,11 +39,11 @@ async function resolveDataEntryMerchant(): Promise<void> {
   if (!wizard.isDataEntry.value) return
   try {
     const merchants = await fetchMerchants()
-    if (merchants.length > 0) {
-      const first = merchants[0]
-      wizard.step1.value.merchant_id = first.id
-      merchantName.value = first.name
-    }
+    const first = merchants[0]
+    if (!first) return
+
+    wizard.step1.value.merchant_id = first.id
+    merchantName.value = first.name
   }
   catch { /* ignore — user can retry */ }
 }

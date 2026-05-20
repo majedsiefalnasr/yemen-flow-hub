@@ -132,7 +132,7 @@ describe('GlobalSearch', () => {
     expect(wrapper.text()).toContain('عمليات البحث الأخيرة')
     expect(wrapper.text()).toContain('alpha')
 
-    await wrapper.findAll('button.search-recent-item')[0].trigger('click')
+    await wrapper.findAll('button.search-recent-item')[0]!.trigger('click')
 
     expect((wrapper.get('input').element as HTMLInputElement).value).toBe('alpha')
     expect(mockSearch).toHaveBeenCalledWith('alpha')
@@ -189,7 +189,7 @@ describe('GlobalSearch', () => {
 
     await wrapper.get('input').setValue('alpha')
 
-    await wrapper.findAll('button.search-result-item')[0].trigger('click')
+    await wrapper.findAll('button.search-result-item')[0]!.trigger('click')
     expect(mockPush).toHaveBeenCalledWith('/requests/1')
 
     await wrapper.get('input').setValue('alpha')

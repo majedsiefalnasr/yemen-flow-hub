@@ -1,6 +1,7 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
-import { RequestStatus } from '../../../types/enums'
+import { RequestStatus, UserRole } from '../../../types/enums'
+import { makeImportRequest, makeRequestDocument } from '../fixtures/request-data'
 
 const mockPerformWorkflowAction = vi.fn()
 const mockFetchRequestDocuments = vi.fn()
@@ -20,53 +21,18 @@ vi.mock('../../../composables/useRequests', () => ({
 
 const { useRequestsStore } = await import('../../../stores/requests.store')
 
-const REQUEST_FIXTURE = {
-  id: 42,
-  reference_number: 'YFH-2026-000042',
-  bank_id: 1,
-  bank_name: 'بنك اليمن',
+const REQUEST_FIXTURE = makeImportRequest({
   merchant: { id: 5, name: 'شركة الأمل', commercial_register: '12345' },
   status: RequestStatus.BANK_REVIEW,
-  current_owner_role: 'BANK_REVIEWER',
-  currency: 'USD',
-  amount: 50000,
-  supplier_name: 'ACME Corp',
-  goods_description: 'Electronics',
-  port_of_entry: 'Aden',
-  notes: null,
-  created_by: 1,
+  current_owner_role: UserRole.BANK_REVIEWER,
   submitted_by: 2,
   reviewed_by: 3,
-  approved_by: null,
-  rejected_by: null,
-  resubmitted_by: null,
-  claimed_by: null,
-  claimed_until: null,
-  is_claimed: false,
-  is_claimed_by_me: false,
-  can_be_claimed: false,
-  submitted_at: null,
-  bank_approved_at: null,
-  support_approved_at: null,
-  swift_uploaded_at: null,
-  executive_decided_at: null,
-  customs_issued_at: null,
-  revision_count: 0,
   created_at: '2026-05-15T00:00:00.000000Z',
   updated_at: '2026-05-15T00:00:00.000000Z',
   documents: [],
-}
+})
 
-const DOCUMENT_FIXTURE = {
-  id: 10,
-  type: 'commercial_invoice',
-  original_filename: 'invoice.pdf',
-  mime_type: 'application/pdf',
-  size_bytes: 204800,
-  checksum: 'abc123',
-  uploaded_at: '2026-05-15T00:00:00.000000Z',
-  download_url: 'http://localhost/api/documents/10/download',
-}
+const DOCUMENT_FIXTURE = makeRequestDocument()
 
 describe('requests.store — performAction', () => {
   beforeEach(() => {
@@ -160,7 +126,7 @@ describe('requests.store — loadDocuments', () => {
     await store.loadDocuments(42)
 
     expect(store.documents).toHaveLength(1)
-    expect(store.documents[0].id).toBe(10)
+    expect(store.documents[0]!.id).toBe(10)
   })
 
   it('clears documents before fetching', async () => {
@@ -171,7 +137,7 @@ describe('requests.store — loadDocuments', () => {
     await store.loadDocuments(42)
 
     expect(store.documents).toHaveLength(1)
-    expect(store.documents[0].id).toBe(10)
+    expect(store.documents[0]!.id).toBe(10)
   })
 
   it('keeps documents empty on failure without re-throwing', async () => {

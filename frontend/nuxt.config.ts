@@ -1,6 +1,7 @@
 import tailwindcss from '@tailwindcss/vite'
+import type { NuxtConfig } from 'nuxt/schema'
 
-export default defineNuxtConfig({
+export default {
   compatibilityDate: '2025-05-15',
   devtools: { enabled: true },
 
@@ -33,4 +34,4 @@ export default defineNuxtConfig({
     strict: true,
     typeCheck: false,
   },
-})
+} satisfies NuxtConfig

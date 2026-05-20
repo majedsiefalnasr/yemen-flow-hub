@@ -76,8 +76,8 @@ const visibleBuckets = computed(() => {
 
 function countForBucket(key: string): number {
   if (key === 'all') {
-    const totalFromBuckets = Object.values(statusTotals.value).reduce(
-      (total, count) => total + count,
+    const totalFromBuckets = Object.values(statusTotals.value).reduce<number>(
+      (total, count) => total + (count ?? 0),
       0,
     )
 
@@ -447,7 +447,7 @@ onUnmounted(() => {
 
               <!-- Progress -->
               <td class="td">
-                <RequestProgress :status="request.status" :role="auth.user.role" />
+                <RequestProgress v-if="role" :status="request.status" :role="role" />
               </td>
 
               <!-- Sticky action -->

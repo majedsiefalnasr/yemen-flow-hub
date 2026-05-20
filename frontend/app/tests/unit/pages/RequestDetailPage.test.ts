@@ -2,6 +2,7 @@ import { vi, describe, it, expect, beforeEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 import { RequestStatus, UserRole } from '../../../types/enums'
 import type { ImportRequest } from '../../../types/models'
+import { makeImportRequest, makeRequestDocument } from '../fixtures/request-data'
 
 // ---------- composable mock ----------
 const mockFetchRequest = vi.fn()
@@ -25,43 +26,15 @@ vi.mock('../../../composables/useRequests', () => ({
 const { useRequestsStore } = await import('../../../stores/requests.store')
 
 function makeRequest(overrides: Partial<ImportRequest> = {}): ImportRequest {
-  return {
-    id: 42,
-    reference_number: 'YFH-2026-000042',
-    bank_id: 1,
-    bank_name: 'بنك اليمن',
-    merchant: null,
+  return makeImportRequest({
     status: RequestStatus.DRAFT,
     current_owner_role: UserRole.DATA_ENTRY,
-    currency: 'USD',
-    amount: 50000,
-    supplier_name: 'ACME Corp',
-    goods_description: 'Electronics',
-    port_of_entry: 'Aden',
     notes: 'ملاحظة تجريبية',
-    created_by: 1,
-    submitted_by: null,
-    reviewed_by: null,
-    approved_by: null,
-    rejected_by: null,
-    resubmitted_by: null,
-    claimed_by: null,
-    claimed_until: null,
-    is_claimed: false,
-    is_claimed_by_me: false,
-    can_be_claimed: false,
-    submitted_at: null,
-    bank_approved_at: null,
-    support_approved_at: null,
-    swift_uploaded_at: null,
-    executive_decided_at: null,
-    customs_issued_at: null,
-    revision_count: 0,
     created_at: '2026-05-15T00:00:00.000000Z',
     updated_at: '2026-05-15T00:00:00.000000Z',
     documents: [],
     ...overrides,
-  }
+  })
 }
 
 describe('RequestsStore — detail page integration (loadRequest + loadDocuments)', () => {
@@ -71,7 +44,7 @@ describe('RequestsStore — detail page integration (loadRequest + loadDocuments
   })
 
   it('loadRequest populates currentRequest with documents field', async () => {
-    const req = makeRequest({ documents: [{ id: 1, type: 'invoice', original_filename: 'inv.pdf', mime_type: 'application/pdf', size_bytes: 1024, checksum: 'abc', uploaded_at: '2026-05-15T00:00:00.000000Z', download_url: 'http://localhost/api/documents/1/download' }] })
+    const req = makeRequest({ documents: [makeRequestDocument({ id: 1, type: 'invoice', original_filename: 'inv.pdf', size_bytes: 1024, checksum: 'abc' })] })
     mockFetchRequest.mockResolvedValue(req)
 
     const store = useRequestsStore()
@@ -83,14 +56,14 @@ describe('RequestsStore — detail page integration (loadRequest + loadDocuments
 
   it('loadDocuments populates documents from fetchRequestDocuments', async () => {
     mockFetchRequestDocuments.mockResolvedValue([
-      { id: 10, type: 'commercial_invoice', original_filename: 'invoice.pdf', mime_type: 'application/pdf', size_bytes: 204800, checksum: 'abc123', uploaded_at: '2026-05-15T00:00:00.000000Z', download_url: 'http://localhost/api/documents/10/download' },
+      makeRequestDocument(),
     ])
 
     const store = useRequestsStore()
     await store.loadDocuments(42)
 
     expect(store.documents).toHaveLength(1)
-    expect(store.documents[0].original_filename).toBe('invoice.pdf')
+    expect(store.documents[0]!.original_filename).toBe('invoice.pdf')
   })
 
   it('isEditable: DRAFT and DRAFT_REJECTED_INTERNAL are editable', async () => {

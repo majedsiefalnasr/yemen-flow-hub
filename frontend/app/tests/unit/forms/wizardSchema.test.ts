@@ -43,7 +43,7 @@ describe('step1Schema — required fields', () => {
   it('rejects amount below 1000', () => {
     const r = step1Schema.safeParse({ ...VALID_STEP1, amount: 500 })
     expect(r.success).toBe(false)
-    if (!r.success) expect(r.error.issues[0].path).toContain('amount')
+    if (!r.success) expect(r.error.issues[0]!.path).toContain('amount')
   })
 
   it('rejects missing payment_terms', () => {

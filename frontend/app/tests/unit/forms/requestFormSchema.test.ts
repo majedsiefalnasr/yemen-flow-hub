@@ -54,7 +54,7 @@ describe('requestFormSchema — merchant_id', () => {
     const result = requestFormSchema.safeParse({ ...VALID, merchant_id: 0 })
     expect(result.success).toBe(false)
     if (!result.success) {
-      expect(result.error.issues[0].path).toContain('merchant_id')
+      expect(result.error.issues[0]!.path).toContain('merchant_id')
     }
   })
 
@@ -74,7 +74,7 @@ describe('requestFormSchema — currency', () => {
     const result = requestFormSchema.safeParse({ ...VALID, currency: 'GBP' })
     expect(result.success).toBe(false)
     if (!result.success) {
-      expect(result.error.issues[0].path).toContain('currency')
+      expect(result.error.issues[0]!.path).toContain('currency')
     }
   })
 
@@ -90,7 +90,7 @@ describe('requestFormSchema — amount', () => {
     const result = requestFormSchema.safeParse({ ...VALID, amount: 0 })
     expect(result.success).toBe(false)
     if (!result.success) {
-      expect(result.error.issues[0].path).toContain('amount')
+      expect(result.error.issues[0]!.path).toContain('amount')
     }
   })
 
@@ -115,7 +115,7 @@ describe('requestFormSchema — supplier_name', () => {
     const result = requestFormSchema.safeParse({ ...VALID, supplier_name: '' })
     expect(result.success).toBe(false)
     if (!result.success) {
-      expect(result.error.issues[0].path).toContain('supplier_name')
+      expect(result.error.issues[0]!.path).toContain('supplier_name')
     }
   })
 
@@ -135,7 +135,7 @@ describe('requestFormSchema — goods_description', () => {
     const result = requestFormSchema.safeParse({ ...VALID, goods_description: '' })
     expect(result.success).toBe(false)
     if (!result.success) {
-      expect(result.error.issues[0].path).toContain('goods_description')
+      expect(result.error.issues[0]!.path).toContain('goods_description')
     }
   })
 
@@ -150,7 +150,7 @@ describe('requestFormSchema — port_of_entry', () => {
     const result = requestFormSchema.safeParse({ ...VALID, port_of_entry: '' })
     expect(result.success).toBe(false)
     if (!result.success) {
-      expect(result.error.issues[0].path).toContain('port_of_entry')
+      expect(result.error.issues[0]!.path).toContain('port_of_entry')
     }
   })
 

@@ -29,9 +29,12 @@ const roleLabel = computed(() => {
 
 const avatarInitials = computed(() => {
   const name = profile.value?.name ?? auth.user?.name ?? ''
-  const parts = name.trim().split(' ')
-  if (parts.length >= 2) return parts[0][0] + parts[1][0]
-  return parts[0]?.[0] ?? '؟'
+  const parts = name.trim().split(/\s+/).filter(Boolean)
+  const firstInitial = parts[0]?.[0]
+  const secondInitial = parts[1]?.[0]
+
+  if (firstInitial && secondInitial) return firstInitial + secondInitial
+  return firstInitial ?? '؟'
 })
 
 const lastLoginFormatted = computed(() => {
