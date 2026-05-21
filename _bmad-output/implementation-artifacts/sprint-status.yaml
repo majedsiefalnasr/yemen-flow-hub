@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-16
-last_updated: 2026-05-21 (story 7.10 created, ready-for-dev)
+last_updated: 2026-05-21 (Sprint 8 planned, 10 stories ready-for-dev)
 project: Yemen Flow Hub
 project_key: NOKEY
 tracking_system: file-system
@@ -121,3 +121,19 @@ development_status:
   7-9-audit-1-1-parity: done
   7-10-settings-and-profile-1-1-parity: done
   epic-7-retrospective: optional
+
+  # ─── Epic 8: Workflow & Production Completion ────────────────────────────
+  # Closes the residual workflow + audit + UX gaps surfaced by docs/09.
+  # NOT a new architecture phase; extends — never replaces — prior sprints.
+  epic-8: in-progress
+  8-1-bank-returned-status-return-to-intake: review
+  8-2-support-returned-direct-return-from-support: ready-for-dev
+  8-3-bank-rejected-terminal-status: ready-for-dev
+  8-4-claim-release-notification-and-audit: ready-for-dev
+  8-5-copy-and-resubmit-on-terminal-rejections: ready-for-dev
+  8-6-cross-bank-duplicate-invoice-detection: ready-for-dev
+  8-7-audit-metadata-polish: ready-for-dev
+  8-8-request-detail-print-page: ready-for-dev
+  8-9-advanced-request-list-filters: ready-for-dev
+  8-10-inactivity-lock-ui-banner: ready-for-dev
+  epic-8-retrospective: optional
