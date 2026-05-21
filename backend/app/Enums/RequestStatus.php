@@ -23,6 +23,7 @@ enum RequestStatus: string
     case CUSTOMS_DECLARATION_ISSUED = 'CUSTOMS_DECLARATION_ISSUED';
     case COMPLETED = 'COMPLETED';
     case BANK_RETURNED = 'BANK_RETURNED';
+    case SUPPORT_RETURNED = 'SUPPORT_RETURNED';
 
     public function label(): string
     {
@@ -46,6 +47,7 @@ enum RequestStatus: string
             self::CUSTOMS_DECLARATION_ISSUED => 'صدر البيان الجمركي / Customs Declaration Issued',
             self::COMPLETED => 'مكتمل / Completed',
             self::BANK_RETURNED => 'إعادة للمدخل / Returned to Intake',
+            self::SUPPORT_RETURNED => 'إعادة من المساندة / Returned from Support',
         };
     }
 
@@ -64,6 +66,7 @@ enum RequestStatus: string
             self::DRAFT,
             self::DRAFT_REJECTED_INTERNAL,
             self::BANK_RETURNED,
+            self::SUPPORT_RETURNED,
         ], true);
     }
 }

@@ -11,7 +11,7 @@ class TransitionMap
     {
         return [
             'submit' => [
-                'from' => [RequestStatus::DRAFT, RequestStatus::DRAFT_REJECTED_INTERNAL, RequestStatus::BANK_RETURNED],
+                'from' => [RequestStatus::DRAFT, RequestStatus::DRAFT_REJECTED_INTERNAL, RequestStatus::BANK_RETURNED, RequestStatus::SUPPORT_RETURNED],
                 'to' => RequestStatus::SUBMITTED,
                 'roles' => [UserRole::DATA_ENTRY],
                 'next_owner' => UserRole::BANK_REVIEWER,
@@ -81,6 +81,12 @@ class TransitionMap
                 'to' => RequestStatus::SUPPORT_REJECTED,
                 'roles' => [UserRole::SUPPORT_COMMITTEE],
                 'next_owner' => UserRole::BANK_REVIEWER,
+            ],
+            'support_return_to_intake' => [
+                'from' => [RequestStatus::SUPPORT_REVIEW_IN_PROGRESS],
+                'to' => RequestStatus::SUPPORT_RETURNED,
+                'roles' => [UserRole::SUPPORT_COMMITTEE],
+                'next_owner' => UserRole::DATA_ENTRY,
             ],
             'swift_upload' => [
                 'from' => [RequestStatus::WAITING_FOR_SWIFT],

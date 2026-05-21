@@ -29,11 +29,12 @@ class RequestStatusTest extends TestCase
             'CUSTOMS_DECLARATION_ISSUED',
             'COMPLETED',
             'BANK_RETURNED',
+            'SUPPORT_RETURNED',
         ];
 
         $actual = array_column(RequestStatus::cases(), 'value');
 
-        $this->assertCount(19, $actual);
+        $this->assertCount(20, $actual);
         foreach ($expected as $value) {
             $this->assertContains($value, $actual, "Missing canonical status: {$value}");
         }
@@ -48,6 +49,7 @@ class RequestStatusTest extends TestCase
         $this->assertFalse(RequestStatus::DRAFT->isTerminal());
         $this->assertFalse(RequestStatus::SUBMITTED->isTerminal());
         $this->assertFalse(RequestStatus::BANK_RETURNED->isTerminal());
+        $this->assertFalse(RequestStatus::SUPPORT_RETURNED->isTerminal());
     }
 
     public function test_editable_statuses(): void
@@ -55,6 +57,7 @@ class RequestStatusTest extends TestCase
         $this->assertTrue(RequestStatus::DRAFT->isEditable());
         $this->assertTrue(RequestStatus::DRAFT_REJECTED_INTERNAL->isEditable());
         $this->assertTrue(RequestStatus::BANK_RETURNED->isEditable());
+        $this->assertTrue(RequestStatus::SUPPORT_RETURNED->isEditable());
         $this->assertFalse(RequestStatus::SUBMITTED->isEditable());
         $this->assertFalse(RequestStatus::COMPLETED->isEditable());
     }

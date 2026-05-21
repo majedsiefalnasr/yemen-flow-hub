@@ -64,7 +64,7 @@ class WorkflowService
             throw new SelfReviewException('Reviewer cannot approve, reject, or return own request.');
         }
 
-        if (in_array($action, ['support_approve', 'support_reject'], true) && !$request->isClaimedBy($actor)) {
+        if (in_array($action, ['support_approve', 'support_reject', 'support_return_to_intake'], true) && !$request->isClaimedBy($actor)) {
             throw new UnauthorizedTransitionException(
                 'لا يمكنك اتخاذ قرار على طلب لم تقم بحجزه. / You cannot decide on a request you have not claimed.'
             );
@@ -139,7 +139,7 @@ class WorkflowService
                 $payload['submitted_by'] = $actor->id;
             }
 
-            if ($action === 'submit' && in_array($request->status, [RequestStatus::DRAFT_REJECTED_INTERNAL, RequestStatus::BANK_RETURNED], true)) {
+            if ($action === 'submit' && in_array($request->status, [RequestStatus::DRAFT_REJECTED_INTERNAL, RequestStatus::BANK_RETURNED, RequestStatus::SUPPORT_RETURNED], true)) {
                 $payload['resubmitted_by'] = $actor->id;
                 $payload['revision_count'] = $request->revision_count + 1;
             }
@@ -295,7 +295,7 @@ class WorkflowService
                 'claimed_at' => now(),
                 'claim_expires_at' => now()->addMinutes($ttlMinutes),
             ]),
-            'support_release', 'support_approve', 'support_reject' => $request->forceFill([
+            'support_release', 'support_approve', 'support_reject', 'support_return_to_intake' => $request->forceFill([
                 'claimed_by' => null,
                 'claimed_at' => null,
                 'claim_expires_at' => null,
@@ -311,7 +311,7 @@ class WorkflowService
 
         match ($action) {
             'support_claim' => Cache::put($cacheKey, $actor->id, now()->addMinutes($ttlMinutes)),
-            'support_release', 'support_approve', 'support_reject' => Cache::forget($cacheKey),
+            'support_release', 'support_approve', 'support_reject', 'support_return_to_intake' => Cache::forget($cacheKey),
             default => null,
         };
     }

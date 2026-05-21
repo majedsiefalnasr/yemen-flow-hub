@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Enums\UserRole;
 use App\Exceptions\VotingException;
 use App\Http\Requests\BankReturnRequest;
+use App\Http\Requests\SupportReturnRequest;
 use App\Http\Requests\WorkflowActionRequest;
 use App\Http\Resources\ImportRequestResource;
 use App\Models\ImportRequest;
@@ -175,6 +176,30 @@ class WorkflowController extends Controller
             $importRequest,
             'bank_return_to_intake',
             $request->user(),
+            $request->input('comment')
+        );
+
+        return ApiResponse::success(new ImportRequestResource($updated->load(ImportRequestResource::baseRelations())), 'Workflow transition executed.');
+    }
+
+    #[OA\Post(path: '/api/workflow/{importRequest}/support-return', tags: ['Workflow'], summary: 'Return SUPPORT_REVIEW_IN_PROGRESS request to intake (SUPPORT_RETURNED) with mandatory comment', parameters: [new OA\Parameter(name: 'importRequest', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], requestBody: new OA\RequestBody(required: true, content: new OA\JsonContent(required: ['comment'], properties: [new OA\Property(property: 'comment', type: 'string', minLength: 3, maxLength: 2000)])), responses: [new OA\Response(response: 200, description: 'Transition applied'), new OA\Response(response: 422, description: 'Comment required'), new OA\Response(response: 403, description: 'Forbidden — not claim holder or wrong role')])]
+    public function supportReturn(SupportReturnRequest $request, ImportRequest $importRequest)
+    {
+        $this->authorize('view', $importRequest);
+
+        $actor = $request->user();
+        if ($importRequest->claimed_by !== $actor->id) {
+            return ApiResponse::error(
+                'لا يمكنك إعادة طلب لم تقم بحجزه. / You do not hold the claim for this request.',
+                ['error_code' => 'CLAIM_NOT_HELD'],
+                403
+            );
+        }
+
+        $updated = $this->workflowService->transition(
+            $importRequest,
+            'support_return_to_intake',
+            $actor,
             $request->input('comment')
         );
 

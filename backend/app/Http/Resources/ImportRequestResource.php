@@ -130,6 +130,12 @@ class ImportRequestResource extends JsonResource
                     ->latest()
                     ->value('reason')
                 : null,
+            'support_return_comment' => $this->status === RequestStatus::SUPPORT_RETURNED
+                ? $this->stageHistory()
+                    ->where('action', 'support_return_to_intake')
+                    ->latest()
+                    ->value('reason')
+                : null,
             'revision_count' => $this->revision_count,
             'voting_session_status' => $this->voting_session_status?->value,
             'created_at' => $this->created_at?->toISOString(),
