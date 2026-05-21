@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-16
-last_updated: 2026-05-21 (Story 8.3 review fixes applied and completed)
+last_updated: 2026-05-21 (Story 8.4 review fixes applied and completed)
 project: Yemen Flow Hub
 project_key: NOKEY
 tracking_system: file-system
@@ -129,7 +129,7 @@ development_status:
   8-1-bank-returned-status-return-to-intake: done
   8-2-support-returned-direct-return-from-support: done
   8-3-bank-rejected-terminal-status: done
-  8-4-claim-release-notification-and-audit: ready-for-dev
+  8-4-claim-release-notification-and-audit: done
   8-5-copy-and-resubmit-on-terminal-rejections: ready-for-dev
   8-6-cross-bank-duplicate-invoice-detection: ready-for-dev
   8-7-audit-metadata-polish: ready-for-dev
