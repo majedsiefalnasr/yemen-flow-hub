@@ -3,18 +3,26 @@
 namespace App\Http\Controllers\Api;
 
 use App\Enums\AuditAction;
+use App\Enums\RequestStatus;
+use App\Enums\UserRole;
 use App\Http\Requests\ChangePasswordRequest;
 use App\Http\Resources\UserResource;
+use App\Models\AuditLog;
+use App\Models\ImportRequest;
 use App\Services\Audit\AuditService;
+use App\Services\Settings\AdminSettingsService;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
 use OpenApi\Attributes as OA;
 
 class ProfileController extends Controller
 {
-    public function __construct(private readonly AuditService $auditService)
-    {
+    public function __construct(
+        private readonly AuditService $auditService,
+        private readonly AdminSettingsService $settingsService,
+    ) {
     }
 
     #[OA\Get(
@@ -34,10 +42,18 @@ class ProfileController extends Controller
             $query->orderBy('logged_in_at', 'desc')->limit(3);
         }]);
 
+        $stats = $this->computeStats($user);
+        $recentActivity = $this->getRecentActivity($user);
+
+        $mfaRequired = (bool) $this->settingsService->getSetting('mfa_required');
+
         $resource = new UserResource($user);
 
         return ApiResponse::success(
             array_merge($resource->resolve(), [
+                'stats' => $stats,
+                'recent_activity' => $recentActivity,
+                'mfa_required' => $mfaRequired,
                 'last_3_logins' => $user->loginHistory->map(fn ($login) => [
                     'logged_in_at' => $login->logged_in_at,
                     'ip_address' => $login->ip_address,
@@ -46,6 +62,79 @@ class ProfileController extends Controller
                 'active_sessions_count' => $user->tokens()->whereNull('last_used_at')->orWhere('last_used_at', '>', now()->subHours(24))->count(),
             ]),
             'Profile retrieved.'
+        );
+    }
+
+    #[OA\Put(
+        path: '/api/profile',
+        tags: ['Profile'],
+        summary: 'Update authenticated user profile',
+        responses: [
+            new OA\Response(response: 200, description: 'Profile updated'),
+            new OA\Response(response: 401, description: 'Unauthenticated'),
+            new OA\Response(response: 422, description: 'Validation failed'),
+        ]
+    )]
+    public function update(Request $request)
+    {
+        $user = $request->user();
+
+        $validated = $request->validate([
+            'name'  => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', Rule::unique('users')->ignore($user->id)],
+            'phone' => ['nullable', 'string', 'max:20'],
+        ]);
+
+        $user->fill($validated)->save();
+
+        $this->auditService->log(
+            AuditAction::SETTINGS_UPDATED,
+            $user,
+            $user,
+            ['fields' => array_keys($validated)]
+        );
+
+        return ApiResponse::success(new UserResource($user->loadMissing('bank')), 'Profile updated.');
+    }
+
+    #[OA\Post(
+        path: '/api/profile/mfa/toggle',
+        tags: ['Profile'],
+        summary: 'Toggle MFA for authenticated user',
+        responses: [
+            new OA\Response(response: 200, description: 'MFA toggled'),
+            new OA\Response(response: 403, description: 'MFA is system-enforced'),
+            new OA\Response(response: 401, description: 'Unauthenticated'),
+        ]
+    )]
+    public function toggleMfa(Request $request)
+    {
+        $mfaRequired = false;
+        try {
+            $mfaRequired = (bool) $this->settingsService->getSetting('mfa_required');
+        } catch (\InvalidArgumentException) {
+            // key not yet registered — treat as not enforced
+        }
+
+        if ($mfaRequired) {
+            return ApiResponse::error('MFA is system-enforced', [], 403);
+        }
+
+        $user = $request->user();
+        $user->mfa_enabled = !$user->mfa_enabled;
+        $user->save();
+
+        $mfaRequiredFull = false;
+        try {
+            $mfaRequiredFull = (bool) $this->settingsService->getSetting('mfa_required');
+        } catch (\InvalidArgumentException) {
+        }
+
+        return ApiResponse::success(
+            array_merge((new UserResource($user->loadMissing('bank')))->resolve(), [
+                'mfa_required' => $mfaRequiredFull,
+            ]),
+            'MFA toggled.'
         );
     }
 
@@ -84,5 +173,56 @@ class ProfileController extends Controller
         );
 
         return ApiResponse::success((object) [], 'Password changed successfully.');
+    }
+
+    private function computeStats(mixed $user): array
+    {
+        $query = ImportRequest::query();
+
+        $cbySideRoles = [
+            UserRole::CBY_ADMIN,
+            UserRole::COMMITTEE_DIRECTOR,
+            UserRole::SUPPORT_COMMITTEE,
+            UserRole::SWIFT_OFFICER,
+            UserRole::EXECUTIVE_MEMBER,
+        ];
+
+        if (!in_array($user->role, $cbySideRoles)) {
+            $query->where('bank_id', $user->bank_id);
+        }
+
+        $terminalStatuses = [
+            RequestStatus::COMPLETED->value,
+            RequestStatus::EXECUTIVE_REJECTED->value,
+            RequestStatus::CUSTOMS_DECLARATION_ISSUED->value,
+        ];
+
+        return [
+            'total'       => (clone $query)->count(),
+            'in_progress' => (clone $query)
+                ->whereNotIn('current_status', $terminalStatuses)
+                ->whereNotIn('current_status', [RequestStatus::DRAFT->value, RequestStatus::DRAFT_REJECTED_INTERNAL->value])
+                ->count(),
+            'completed'   => (clone $query)
+                ->where('current_status', RequestStatus::COMPLETED->value)
+                ->count(),
+        ];
+    }
+
+    private function getRecentActivity(mixed $user): array
+    {
+        return AuditLog::query()
+            ->where('user_id', $user->id)
+            ->orderBy('created_at', 'desc')
+            ->limit(6)
+            ->get()
+            ->map(fn ($log) => [
+                'id'     => $log->id,
+                'action' => $log->action,
+                'ref'    => $log->subject_id ?? $log->entity_id,
+                'ts'     => $log->created_at->toIso8601String(),
+            ])
+            ->values()
+            ->all();
     }
 }

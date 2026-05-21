@@ -32,6 +32,8 @@ Route::prefix('auth')->group(function () {
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('profile', [ProfileController::class, 'show']);
+    Route::put('profile', [ProfileController::class, 'update']);
+    Route::post('profile/mfa/toggle', [ProfileController::class, 'toggleMfa']);
     Route::post('profile/change-password', [ProfileController::class, 'changePassword'])->middleware('throttle:3,60');
     Route::get('settings', [SettingsController::class, 'show']);
     Route::put('settings', [SettingsController::class, 'update']);
@@ -95,6 +97,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('audit/risk-indicators', [AuditController::class, 'riskIndicators']);
 
     Route::get('admin/settings', [AdminSettingsController::class, 'index']);
+    Route::get('admin/settings/smtp', [AdminSettingsController::class, 'getSmtp']);
+    Route::put('admin/settings/smtp', [AdminSettingsController::class, 'updateSmtp']);
     Route::put('admin/settings/{key}', [AdminSettingsController::class, 'update'])->middleware('throttle:10,60');
     Route::post('admin/settings/{key}/reset', [AdminSettingsController::class, 'reset'])->middleware('throttle:10,60');
 

@@ -5,6 +5,8 @@ namespace Tests\Feature\Profile;
 use App\Enums\AuditAction;
 use App\Enums\UserRole;
 use App\Models\AuditLog;
+use App\Models\Bank;
+use App\Models\SystemSetting;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -239,6 +241,122 @@ class ProfileControllerTest extends TestCase
 
         $response->assertStatus(422);
         $response->assertJsonPath('errors.current_password.0', 'The current password is incorrect.');
+    }
+
+    // --- GET /api/profile — stats and recent_activity ---
+
+    public function test_get_profile_returns_stats_and_recent_activity(): void
+    {
+        $user = User::query()->create([
+            'name' => 'Stats User',
+            'email' => 'stats@bank.com',
+            'password' => Hash::make('Password123'),
+            'role' => UserRole::DATA_ENTRY,
+            'bank_id' => null,
+            'is_active' => true,
+        ]);
+
+        $response = $this->actingAs($user)->getJson('/api/profile');
+
+        $response->assertStatus(200);
+        $response->assertJsonPath('success', true);
+        $response->assertJsonStructure([
+            'data' => [
+                'stats' => ['total', 'in_progress', 'completed'],
+                'recent_activity',
+            ],
+        ]);
+        $this->assertIsInt($response->json('data.stats.total'));
+        $this->assertIsInt($response->json('data.stats.in_progress'));
+        $this->assertIsInt($response->json('data.stats.completed'));
+        $this->assertIsArray($response->json('data.recent_activity'));
+    }
+
+    // --- PUT /api/profile ---
+
+    public function test_put_profile_updates_name_email_phone(): void
+    {
+        $user = User::query()->create([
+            'name' => 'Old Name',
+            'email' => 'old@bank.com',
+            'password' => Hash::make('Password123'),
+            'role' => UserRole::DATA_ENTRY,
+            'bank_id' => null,
+            'is_active' => true,
+        ]);
+
+        $response = $this->actingAs($user)->putJson('/api/profile', [
+            'name'  => 'New Name',
+            'email' => 'new@bank.com',
+            'phone' => '+9671234567',
+        ]);
+
+        $response->assertStatus(200);
+        $response->assertJsonPath('success', true);
+        $response->assertJsonPath('data.name', 'New Name');
+        $response->assertJsonPath('data.email', 'new@bank.com');
+        $response->assertJsonPath('data.phone', '+9671234567');
+
+        $user->refresh();
+        $this->assertEquals('New Name', $user->name);
+        $this->assertEquals('new@bank.com', $user->email);
+        $this->assertEquals('+9671234567', $user->phone);
+    }
+
+    public function test_put_profile_only_updates_own_profile(): void
+    {
+        // The PUT /api/profile endpoint operates only on the authenticated user —
+        // there is no route to update another user's profile via this endpoint.
+        // Verify unauthenticated request returns 401.
+        $response = $this->putJson('/api/profile', [
+            'name'  => 'Attacker',
+            'email' => 'attacker@evil.com',
+        ]);
+        $response->assertStatus(401);
+    }
+
+    // --- GET /api/admin/settings/smtp ---
+
+    public function test_get_smtp_returns_masked_password(): void
+    {
+        $cbyAdmin = User::query()->create([
+            'name'  => 'CBY Admin',
+            'email' => 'admin@cby.ye',
+            'password' => Hash::make('Password123'),
+            'role'  => UserRole::CBY_ADMIN,
+            'bank_id' => null,
+            'is_active' => true,
+        ]);
+
+        // Seed an SMTP password setting
+        SystemSetting::query()->create([
+            'key'        => 'smtp_password',
+            'value'      => encrypt('secret123'),
+            'updated_by' => $cbyAdmin->id,
+        ]);
+
+        $response = $this->actingAs($cbyAdmin)->getJson('/api/admin/settings/smtp');
+
+        $response->assertStatus(200);
+        $response->assertJsonPath('success', true);
+        // Password must be masked
+        $this->assertStringContainsString('•', $response->json('data.password'));
+        $this->assertStringNotContainsString('secret123', $response->json('data.password'));
+    }
+
+    public function test_get_smtp_returns_403_for_non_cby_admin(): void
+    {
+        $bankUser = User::query()->create([
+            'name'  => 'Bank User',
+            'email' => 'user@bank.com',
+            'password' => Hash::make('Password123'),
+            'role'  => UserRole::BANK_REVIEWER,
+            'bank_id' => null,
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($bankUser)->getJson('/api/admin/settings/smtp')
+            ->assertStatus(403);
     }
 
 }

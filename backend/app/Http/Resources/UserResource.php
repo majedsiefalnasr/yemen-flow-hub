@@ -13,6 +13,7 @@ class UserResource extends JsonResource
             'id' => $this->id,
             'name' => $this->name,
             'email' => $this->email,
+            'phone' => $this->phone,
             'role' => $this->role?->value,
             'role_label' => $this->role?->label(),
             'bank_id' => $this->bank_id,
@@ -22,6 +23,7 @@ class UserResource extends JsonResource
             'last_login_at' => $this->last_login_at?->toISOString(),
             'last_seen_at' => $this->last_login_at?->toISOString(),
             'is_active' => (bool) $this->is_active,
+            'mfa_enabled' => (bool) $this->mfa_enabled,
             'created_at' => $this->created_at?->toISOString(),
         ];
     }

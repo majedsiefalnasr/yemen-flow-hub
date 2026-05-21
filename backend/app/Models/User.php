@@ -18,10 +18,12 @@ class User extends Authenticatable
     protected $fillable = [
         'name',
         'email',
+        'phone',
         'password',
         'role',
         'bank_id',
         'is_active',
+        'mfa_enabled',
         'last_login_at',
         'user_preferences',
     ];
@@ -35,6 +37,7 @@ class User extends Authenticatable
             'password' => 'hashed',
             'role' => UserRole::class,
             'is_active' => 'boolean',
+            'mfa_enabled' => 'boolean',
             'last_login_at' => 'datetime',
             'user_preferences' => 'array',
         ];

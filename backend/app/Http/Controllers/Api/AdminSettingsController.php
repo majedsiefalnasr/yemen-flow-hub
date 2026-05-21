@@ -34,9 +34,69 @@ class AdminSettingsController extends Controller
     public function index(Request $request)
     {
         Gate::authorize('cbyAdmin', $request->user());
-        $settings = $this->settingsService->getAllSettings();
 
-        return ApiResponse::success($settings, 'System settings retrieved.');
+        $settings = $this->settingsService->getAllSettings();
+        $securityPolicies = $this->settingsService->getSecurityPolicies();
+
+        return ApiResponse::success(
+            array_merge($settings, $securityPolicies),
+            'System settings retrieved.'
+        );
+    }
+
+    #[OA\Get(
+        path: '/api/admin/settings/smtp',
+        tags: ['Admin Settings'],
+        summary: 'Get SMTP settings (CBY_ADMIN only)',
+        responses: [
+            new OA\Response(response: 200, description: 'SMTP settings retrieved'),
+            new OA\Response(response: 403, description: 'Forbidden — requires CBY_ADMIN role'),
+        ]
+    )]
+    public function getSmtp(Request $request)
+    {
+        Gate::authorize('cbyAdmin', $request->user());
+
+        return ApiResponse::success(
+            $this->settingsService->getSmtpSettings(),
+            'SMTP settings retrieved.'
+        );
+    }
+
+    #[OA\Put(
+        path: '/api/admin/settings/smtp',
+        tags: ['Admin Settings'],
+        summary: 'Update SMTP settings (CBY_ADMIN only)',
+        responses: [
+            new OA\Response(response: 200, description: 'SMTP settings updated'),
+            new OA\Response(response: 403, description: 'Forbidden — requires CBY_ADMIN role'),
+        ]
+    )]
+    public function updateSmtp(Request $request)
+    {
+        Gate::authorize('cbyAdmin', $request->user());
+
+        $validated = $request->validate([
+            'host'     => ['nullable', 'string', 'max:255'],
+            'port'     => ['nullable', 'integer', 'min:1', 'max:65535'],
+            'username' => ['nullable', 'string', 'max:255'],
+            'password' => ['nullable', 'string', 'max:255'],
+            'template' => ['nullable', 'string'],
+        ]);
+
+        $this->settingsService->updateSmtpSettings($validated, $request->user());
+
+        $this->auditService->log(
+            AuditAction::SETTINGS_UPDATED,
+            $request->user(),
+            $request->user(),
+            ['setting_group' => 'smtp']
+        );
+
+        return ApiResponse::success(
+            $this->settingsService->getSmtpSettings(),
+            'SMTP settings updated successfully.'
+        );
     }
 
     #[OA\Put(
