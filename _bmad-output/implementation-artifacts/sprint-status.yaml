@@ -127,7 +127,7 @@ development_status:
   # NOT a new architecture phase; extends — never replaces — prior sprints.
   epic-8: in-progress
   8-1-bank-returned-status-return-to-intake: done
-  8-2-support-returned-direct-return-from-support: ready-for-dev
+  8-2-support-returned-direct-return-from-support: review
   8-3-bank-rejected-terminal-status: ready-for-dev
   8-4-claim-release-notification-and-audit: ready-for-dev
   8-5-copy-and-resubmit-on-terminal-rejections: ready-for-dev
