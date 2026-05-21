@@ -98,6 +98,7 @@ const ALL_NOTIF_PREFS: NotifPrefItem[] = [
   { key: 'swift_upload_requested', label: 'إشعار طلب رفع SWIFT', mandatory: false, roles: [UserRole.SWIFT_OFFICER] },
   { key: 'voting_opened', label: 'إشعار فتح جلسة التصويت', mandatory: false, roles: [UserRole.EXECUTIVE_MEMBER, UserRole.COMMITTEE_DIRECTOR] },
   { key: 'customs_issued', label: 'إشعار إصدار البيان الجمركي', mandatory: false, roles: [UserRole.DATA_ENTRY, UserRole.BANK_REVIEWER] },
+  { key: 'claim_released', label: 'إشعار إلغاء المطالبة', mandatory: false, roles: [UserRole.CBY_ADMIN] },
 ]
 
 const visibleNotifPrefs = computed(() => {

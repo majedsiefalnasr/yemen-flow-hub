@@ -292,6 +292,7 @@ export type NotificationType =
   | 'swift_upload_requested'
   | 'voting_opened'
   | 'customs_issued'
+  | 'claim_released'
 
 export interface NotificationData {
   type: NotificationType

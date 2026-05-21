@@ -35,6 +35,7 @@ const ALL_NOTIF_PREFS: NotifPrefItem[] = [
   { key: 'swift_upload_requested', label: 'إشعار طلب رفع SWIFT', mandatory: false, roles: [UserRole.SWIFT_OFFICER] },
   { key: 'voting_opened', label: 'إشعار فتح جلسة التصويت', mandatory: false, roles: [UserRole.EXECUTIVE_MEMBER, UserRole.COMMITTEE_DIRECTOR] },
   { key: 'customs_issued', label: 'إشعار إصدار البيان الجمركي', mandatory: false, roles: [UserRole.DATA_ENTRY, UserRole.BANK_REVIEWER] },
+  { key: 'claim_released', label: 'إشعار إلغاء المطالبة', mandatory: false, roles: [UserRole.CBY_ADMIN] },
 ]
 
 function getVisiblePrefs(role: UserRole) {
@@ -106,6 +107,39 @@ describe('settings — mandatory notification types', () => {
   })
 })
 
+describe('settings — claim_released preference (CBY_ADMIN)', () => {
+  it('CBY_ADMIN sees claim_released toggle', () => {
+    const prefs = getVisiblePrefs(UserRole.CBY_ADMIN)
+    const keys = prefs.map(p => p.key)
+    expect(keys).toContain('claim_released')
+  })
+
+  it('claim_released is not mandatory', () => {
+    const item = ALL_NOTIF_PREFS.find(p => p.key === 'claim_released')!
+    expect(item.mandatory).toBe(false)
+  })
+
+  it('claim_released label is correct Arabic', () => {
+    const item = ALL_NOTIF_PREFS.find(p => p.key === 'claim_released')!
+    expect(item.label).toBe('إشعار إلغاء المطالبة')
+  })
+
+  it('non-CBY_ADMIN roles do not see claim_released', () => {
+    const rolesWithoutClaim = [
+      UserRole.DATA_ENTRY,
+      UserRole.BANK_REVIEWER,
+      UserRole.SWIFT_OFFICER,
+      UserRole.SUPPORT_COMMITTEE,
+      UserRole.EXECUTIVE_MEMBER,
+      UserRole.COMMITTEE_DIRECTOR,
+    ]
+    rolesWithoutClaim.forEach(role => {
+      const keys = getVisiblePrefs(role).map(p => p.key)
+      expect(keys).not.toContain('claim_released')
+    })
+  })
+})
+
 describe('settings — toggleNotifPref calls updateSettings', () => {
   beforeEach(() => {
     vi.resetAllMocks()
@@ -144,6 +178,21 @@ describe('settings — toggleNotifPref calls updateSettings', () => {
     expect(mockFetch).toHaveBeenCalledWith('/api/settings', expect.objectContaining({
       method: 'PUT',
       body: expect.objectContaining({ notification_preferences: { voting_opened: false } }),
+    }))
+  })
+
+  it('toggling claim_released to false persists via updateSettings', async () => {
+    mockFetch.mockResolvedValueOnce({
+      success: true,
+      data: { language: 'ar', dashboard_view: 'normal', table_density: 'normal', page_size: 25, default_filters: {}, notification_preferences: { claim_released: false } },
+    })
+
+    const { updateSettings } = useSettings()
+    await updateSettings({ notification_preferences: { claim_released: false } })
+
+    expect(mockFetch).toHaveBeenCalledWith('/api/settings', expect.objectContaining({
+      method: 'PUT',
+      body: expect.objectContaining({ notification_preferences: { claim_released: false } }),
     }))
   })
 

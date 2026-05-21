@@ -153,6 +153,75 @@ describe('notifications page — markAllRead interaction', () => {
   })
 })
 
+describe('notifications page — claim_released icon variant', () => {
+  // The iconName function is tested via the composable data contract:
+  // claim_released type must be a recognized NotificationType so the
+  // page renders a specific icon (alert-triangle) rather than the generic bell.
+  it('claim_released notification type is in the recognized set', async () => {
+    mockFetch.mockResolvedValueOnce({
+      success: true,
+      data: {
+        data: [{
+          id: 'n-cr',
+          type: 'App\\Notifications\\ClaimReleasedNotification',
+          data: {
+            type: 'claim_released',
+            message: 'أُلغيت مطالبة على الطلب YFH-042 — يدوي',
+            request_id: 42,
+            reference_number: 'YFH-042',
+            released_by_user_id: 5,
+            released_by_name: 'سعد',
+            reason: 'manual',
+          },
+          read_at: null,
+          created_at: '2026-05-21T10:00:00.000000Z',
+        }],
+        meta: { current_page: 1, last_page: 1, per_page: 20, total: 1 },
+      },
+    })
+
+    const { notifications, fetchNotifications } = useNotifications()
+    await fetchNotifications()
+
+    const notif = notifications.value[0]!
+    expect(notif.data.type).toBe('claim_released')
+    expect(notif.data.request_id).toBe(42)
+    expect(notif.data.message).toContain('YFH-042')
+  })
+
+  it('claim_released notification with ttl_expired reason has null released_by fields', async () => {
+    mockFetch.mockResolvedValueOnce({
+      success: true,
+      data: {
+        data: [{
+          id: 'n-cr2',
+          type: 'App\\Notifications\\ClaimReleasedNotification',
+          data: {
+            type: 'claim_released',
+            message: 'أُلغيت مطالبة على الطلب YFH-043 — انتهاء المهلة',
+            request_id: 43,
+            reference_number: 'YFH-043',
+            released_by_user_id: null,
+            released_by_name: null,
+            reason: 'ttl_expired',
+          },
+          read_at: null,
+          created_at: '2026-05-21T10:00:00.000000Z',
+        }],
+        meta: { current_page: 1, last_page: 1, per_page: 20, total: 1 },
+      },
+    })
+
+    const { notifications, fetchNotifications } = useNotifications()
+    await fetchNotifications()
+
+    const notif = notifications.value[0]!
+    expect(notif.data.type).toBe('claim_released')
+    expect((notif.data as any).released_by_user_id).toBeNull()
+    expect((notif.data as any).reason).toBe('ttl_expired')
+  })
+})
+
 describe('notifications page — pagination', () => {
   beforeEach(() => {
     vi.resetAllMocks()

@@ -59,9 +59,20 @@ function iconName(type?: string): IconName {
       return 'vote'
     case 'customs_issued':
       return 'stamp'
+    case 'claim_released':
+      return 'alert-triangle'
     default:
       return 'bell'
   }
+}
+
+function notifAccentClass(type?: string): string {
+  return type === 'claim_released' ? 'notif-amber' : ''
+}
+
+function notifLink(data: { type?: string; request_id?: number | null }): string | null {
+  if (data.request_id) return `/requests/${data.request_id}`
+  return null
 }
 </script>
 
@@ -100,9 +111,11 @@ function iconName(type?: string): IconName {
         v-for="notif in (notifications ?? [])"
         :key="notif.id"
         class="notification-item"
-        :class="{ unread: !notif.read_at }"
+        :class="[{ unread: !notif.read_at }, notifAccentClass(notif.data.type)]"
+        :style="notifLink(notif.data) ? 'cursor: pointer' : ''"
+        @click="notifLink(notif.data) ? navigateTo(notifLink(notif.data)!) : undefined"
       >
-        <div class="notif-icon" aria-hidden="true">
+        <div class="notif-icon" :class="notifAccentClass(notif.data.type)" aria-hidden="true">
           <Icon :name="iconName(notif.data.type)" />
         </div>
         <div class="notif-content">
@@ -326,5 +339,14 @@ function iconName(type?: string): IconName {
 .page-info {
   font-size: 13px;
   color: var(--color-text-secondary, #6e6e73);
+}
+
+/* claim_released: warning amber accent (#f57f17) */
+.notification-item.notif-amber.unread {
+  border-inline-end-color: #f57f17;
+}
+
+.notif-icon.notif-amber {
+  color: #f57f17;
 }
 </style>
