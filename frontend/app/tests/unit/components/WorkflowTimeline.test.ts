@@ -20,6 +20,7 @@ const WORKFLOW_STAGE_ORDER: RequestStatus[] = [
   RequestStatus.SUPPORT_REVIEW_IN_PROGRESS,
   RequestStatus.SUPPORT_APPROVED,
   RequestStatus.SUPPORT_REJECTED,
+  RequestStatus.SUPPORT_RETURNED,
   RequestStatus.WAITING_FOR_SWIFT,
   RequestStatus.SWIFT_UPLOADED,
   RequestStatus.WAITING_FOR_VOTING_OPEN,
@@ -33,6 +34,8 @@ const WORKFLOW_STAGE_ORDER: RequestStatus[] = [
 
 const BRANCH_STATUSES = new Set<RequestStatus>([
   RequestStatus.DRAFT_REJECTED_INTERNAL,
+  RequestStatus.BANK_RETURNED,
+  RequestStatus.SUPPORT_RETURNED,
   RequestStatus.SUPPORT_REJECTED,
   RequestStatus.EXECUTIVE_REJECTED,
 ])
@@ -103,8 +106,8 @@ const happyPathHistory: RequestStageHistory[] = [
 // ─── Stage classification — happy path ───────────────────────────────────────
 
 describe('WorkflowTimeline stage classification', () => {
-  it('covers all 19 canonical stages — none missing', () => {
-    expect(WORKFLOW_STAGE_ORDER).toHaveLength(19)
+  it('covers all 20 canonical stages — none missing', () => {
+    expect(WORKFLOW_STAGE_ORDER).toHaveLength(20)
     const all = Object.values(RequestStatus)
     for (const s of all) {
       expect(WORKFLOW_STAGE_ORDER).toContain(s)

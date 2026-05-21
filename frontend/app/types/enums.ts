@@ -1,4 +1,4 @@
-/** 19 canonical workflow states — must match backend RequestStatus exactly */
+/** 20 canonical workflow states — must match backend RequestStatus exactly */
 export enum RequestStatus {
   DRAFT = 'DRAFT',
   DRAFT_REJECTED_INTERNAL = 'DRAFT_REJECTED_INTERNAL',
@@ -6,6 +6,7 @@ export enum RequestStatus {
   BANK_REVIEW = 'BANK_REVIEW',
   BANK_APPROVED = 'BANK_APPROVED',
   BANK_RETURNED = 'BANK_RETURNED',
+  SUPPORT_RETURNED = 'SUPPORT_RETURNED',
   SUPPORT_REVIEW_PENDING = 'SUPPORT_REVIEW_PENDING',
   SUPPORT_REVIEW_IN_PROGRESS = 'SUPPORT_REVIEW_IN_PROGRESS',
   SUPPORT_APPROVED = 'SUPPORT_APPROVED',

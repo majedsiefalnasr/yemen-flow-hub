@@ -16,10 +16,12 @@ const WORKFLOW_STAGE_ORDER: RequestStatus[] = [
   RequestStatus.SUBMITTED,
   RequestStatus.BANK_REVIEW,
   RequestStatus.BANK_APPROVED,
+  RequestStatus.BANK_RETURNED,
   RequestStatus.SUPPORT_REVIEW_PENDING,
   RequestStatus.SUPPORT_REVIEW_IN_PROGRESS,
   RequestStatus.SUPPORT_APPROVED,
   RequestStatus.SUPPORT_REJECTED,
+  RequestStatus.SUPPORT_RETURNED,
   RequestStatus.WAITING_FOR_SWIFT,
   RequestStatus.SWIFT_UPLOADED,
   RequestStatus.WAITING_FOR_VOTING_OPEN,
@@ -38,6 +40,8 @@ const WORKFLOW_STAGE_ORDER: RequestStatus[] = [
  */
 const BRANCH_STATUSES = new Set<RequestStatus>([
   RequestStatus.DRAFT_REJECTED_INTERNAL,
+  RequestStatus.BANK_RETURNED,
+  RequestStatus.SUPPORT_RETURNED,
   RequestStatus.SUPPORT_REJECTED,
   RequestStatus.EXECUTIVE_REJECTED,
 ])

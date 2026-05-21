@@ -26,6 +26,10 @@ const showBankReturnModal = ref(false)
 const bankReturnComment = ref('')
 const bankReturnCommentError = ref('')
 
+const showSupportReturnModal = ref(false)
+const supportReturnComment = ref('')
+const supportReturnCommentError = ref('')
+
 // Director session lifecycle state
 const showCloseConfirm = ref(false)
 const showOverrideModal = ref(false)
@@ -39,6 +43,7 @@ watch(() => props.request.status, () => {
   actionError.value = ''
   resetRejectForm()
   resetBankReturnModal()
+  resetSupportReturnModal()
   resetDirectorState()
 })
 
@@ -54,7 +59,8 @@ const showDataEntryActions = computed(() =>
   props.userRole === UserRole.DATA_ENTRY
   && (props.request.status === RequestStatus.DRAFT
     || props.request.status === RequestStatus.DRAFT_REJECTED_INTERNAL
-    || props.request.status === RequestStatus.BANK_RETURNED),
+    || props.request.status === RequestStatus.BANK_RETURNED
+    || props.request.status === RequestStatus.SUPPORT_RETURNED),
 )
 
 const showSupportCommitteeActions = computed(() =>
@@ -99,6 +105,12 @@ function resetBankReturnModal() {
   bankReturnCommentError.value = ''
 }
 
+function resetSupportReturnModal() {
+  showSupportReturnModal.value = false
+  supportReturnComment.value = ''
+  supportReturnCommentError.value = ''
+}
+
 async function handleBankReturnConfirm() {
   bankReturnCommentError.value = ''
   if (bankReturnComment.value.trim().length < 3) {
@@ -115,6 +127,25 @@ async function handleBankReturnConfirm() {
     const msg = err instanceof Error ? err.message : ''
     actionError.value = msg || 'تعذّر إعادة الطلب للمدخل.'
     resetBankReturnModal()
+  }
+}
+
+async function handleSupportReturnConfirm() {
+  supportReturnCommentError.value = ''
+  if (supportReturnComment.value.trim().length < 3) {
+    supportReturnCommentError.value = 'التعليق مطلوب ويجب أن يكون 3 أحرف على الأقل.'
+    return
+  }
+  actionError.value = ''
+  try {
+    await requestsStore.supportReturn(props.request.id, supportReturnComment.value.trim())
+    resetSupportReturnModal()
+    emit('action-completed')
+  }
+  catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : ''
+    actionError.value = msg || 'تعذّر إعادة الطلب للمدخل.'
+    resetSupportReturnModal()
   }
 }
 
@@ -322,7 +353,7 @@ async function dispatchAction(action: string, reason?: string) {
       </template>
     </template>
 
-    <!-- SUPPORT_COMMITTEE: SUPPORT_REVIEW_IN_PROGRESS + is_claimed_by_me → approve or reject -->
+    <!-- SUPPORT_COMMITTEE: SUPPORT_REVIEW_IN_PROGRESS + is_claimed_by_me → approve, reject, or return -->
     <template v-if="showSupportCommitteeActions">
       <template v-if="!showRejectForm">
         <div class="actions-row">
@@ -339,6 +370,13 @@ async function dispatchAction(action: string, reason?: string) {
             @click="handleRejectClick"
           >
             رفض
+          </button>
+          <button
+            class="action-btn action-btn--secondary"
+            :disabled="performingAction"
+            @click="showSupportReturnModal = true"
+          >
+            إعادة للمدخل
           </button>
         </div>
       </template>
@@ -393,6 +431,13 @@ async function dispatchAction(action: string, reason?: string) {
 
     <!-- DATA_ENTRY: BANK_RETURNED → edit & resubmit -->
     <template v-if="showDataEntryActions && request.status === RequestStatus.BANK_RETURNED">
+      <NuxtLink :to="`/requests/${request.id}/edit`" class="action-btn action-btn--primary">
+        تعديل وإعادة تقديم
+      </NuxtLink>
+    </template>
+
+    <!-- DATA_ENTRY: SUPPORT_RETURNED → edit & resubmit -->
+    <template v-if="showDataEntryActions && request.status === RequestStatus.SUPPORT_RETURNED">
       <NuxtLink :to="`/requests/${request.id}/edit`" class="action-btn action-btn--primary">
         تعديل وإعادة تقديم
       </NuxtLink>
@@ -593,6 +638,51 @@ async function dispatchAction(action: string, reason?: string) {
             class="action-btn action-btn--secondary"
             :disabled="performingAction"
             @click="resetBankReturnModal"
+          >
+            إلغاء
+          </button>
+        </div>
+      </div>
+    </div>
+    <!-- Support Return modal -->
+    <div
+      v-if="showSupportReturnModal"
+      class="bank-return-modal"
+      role="dialog"
+      aria-labelledby="support-return-modal-title"
+      aria-modal="true"
+    >
+      <div class="bank-return-modal__content">
+        <h3 id="support-return-modal-title" class="bank-return-modal__title">إعادة الطلب للمدخل</h3>
+        <div class="bank-return-form">
+          <label class="reject-label" for="support-return-comment">
+            سبب الإعادة <span class="required" aria-hidden="true">*</span>
+          </label>
+          <textarea
+            id="support-return-comment"
+            v-model="supportReturnComment"
+            class="reject-textarea"
+            rows="4"
+            placeholder="اكتب سبب الإعادة هنا (3 أحرف على الأقل)…"
+            :aria-invalid="!!supportReturnCommentError"
+            :aria-describedby="supportReturnCommentError ? 'support-return-comment-error' : undefined"
+          />
+          <p v-if="supportReturnCommentError" id="support-return-comment-error" class="reject-error" role="alert">
+            {{ supportReturnCommentError }}
+          </p>
+        </div>
+        <div class="bank-return-modal__actions">
+          <button
+            class="action-btn action-btn--secondary"
+            :disabled="performingAction"
+            @click="handleSupportReturnConfirm"
+          >
+            {{ performingAction ? 'جارٍ التنفيذ…' : 'تأكيد الإعادة' }}
+          </button>
+          <button
+            class="action-btn action-btn--secondary"
+            :disabled="performingAction"
+            @click="resetSupportReturnModal"
           >
             إلغاء
           </button>

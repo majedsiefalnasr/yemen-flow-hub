@@ -1,8 +1,9 @@
 <script setup lang="ts">
 withDefaults(defineProps<{
-  variant?: 'draft_rejected' | 'bank_returned'
+  variant?: 'draft_rejected' | 'bank_returned' | 'support_returned'
   rejectionReason?: string | null
   reviewerComment?: string | null
+  supportComment?: string | null
 }>(), {
   variant: 'draft_rejected',
 })
@@ -15,11 +16,17 @@ withDefaults(defineProps<{
       <span v-if="variant === 'bank_returned'" class="correction-message">
         إعادة من المراجع — يرجى التعديل وإعادة الإرسال
       </span>
+      <span v-else-if="variant === 'support_returned'" class="correction-message">
+        إعادة من لجنة المساندة — يرجى التعديل وإعادة الإرسال
+      </span>
       <span v-else class="correction-message">
         تم إرجاع الطلب للتصحيح من المراجعة الداخلية — يرجى مراجعة الملاحظات وتعديل الطلب.
       </span>
       <span v-if="variant === 'bank_returned' && reviewerComment" class="correction-reason">
         تعليق المراجع: {{ reviewerComment }}
+      </span>
+      <span v-else-if="variant === 'support_returned' && supportComment" class="correction-reason">
+        تعليق لجنة المساندة: {{ supportComment }}
       </span>
       <span v-else-if="rejectionReason" class="correction-reason">سبب الإرجاع: {{ rejectionReason }}</span>
     </div>

@@ -66,7 +66,7 @@ const tabs = computed((): Array<{ key: TabKey; label: string }> => [
 
 const isEditable = computed(() => {
   const s = request.value?.status
-  return s === RequestStatus.DRAFT || s === RequestStatus.DRAFT_REJECTED_INTERNAL || s === RequestStatus.BANK_RETURNED
+  return s === RequestStatus.DRAFT || s === RequestStatus.DRAFT_REJECTED_INTERNAL || s === RequestStatus.BANK_RETURNED || s === RequestStatus.SUPPORT_RETURNED
 })
 
 const ACTIONABLE_REVIEWER_STATUSES = new Set([
@@ -121,6 +121,16 @@ const isReturnedForCorrection = computed(() =>
   request.value?.status === RequestStatus.DRAFT_REJECTED_INTERNAL,
 )
 const isBankReturned = computed(() => request.value?.status === RequestStatus.BANK_RETURNED)
+const isSupportReturned = computed(() => request.value?.status === RequestStatus.SUPPORT_RETURNED)
+
+/** Chip shown to bank reviewer when a SUBMITTED request was previously support-returned */
+const supportReturnHint = computed(() => {
+  if (userRole.value !== UserRole.BANK_REVIEWER) return null
+  if (request.value?.status !== RequestStatus.SUBMITTED) return null
+  const entry = requestsStore.history.find(h => h.action === 'support_return_to_intake')
+  if (!entry) return null
+  return { comment: entry.notes }
+})
 
 const canEdit = computed(
   () => userRole.value === UserRole.DATA_ENTRY && isEditable.value,
@@ -142,7 +152,7 @@ const hasActions = computed(() => {
     && (s === RequestStatus.SUBMITTED || s === RequestStatus.BANK_REVIEW)
   const dataEntryAction
     = role === UserRole.DATA_ENTRY
-    && (s === RequestStatus.DRAFT || s === RequestStatus.DRAFT_REJECTED_INTERNAL || s === RequestStatus.BANK_RETURNED)
+    && (s === RequestStatus.DRAFT || s === RequestStatus.DRAFT_REJECTED_INTERNAL || s === RequestStatus.BANK_RETURNED || s === RequestStatus.SUPPORT_RETURNED)
   const supportAction
     = role === UserRole.SUPPORT_COMMITTEE
     && s === RequestStatus.SUPPORT_REVIEW_IN_PROGRESS
@@ -304,6 +314,16 @@ onMounted(async () => {
     && VOTING_STAGE_STATUSES.has(requestsStore.currentRequest.status)
   ) {
     await votingStore.loadVotingDetail(id)
+  }
+
+  // Pre-load history for bank reviewers on SUBMITTED requests to detect resubmit-after-support-return
+  if (
+    userRole.value === UserRole.BANK_REVIEWER
+    && requestsStore.currentRequest?.status === RequestStatus.SUBMITTED
+    && !requestsStore.historyLoaded
+    && !requestsStore.loadingHistory
+  ) {
+    await requestsStore.loadHistory(id)
   }
 })
 
@@ -498,7 +518,7 @@ watch(showVotingPanelInline, async (visible) => {
         <div class="detail-main">
           <!-- Banners -->
           <div
-            v-if="claimError || showActiveReviewBanner || showClaimedByOthersBanner || isLocked || isReturnedForCorrection || isBankReturned"
+            v-if="claimError || showActiveReviewBanner || showClaimedByOthersBanner || isLocked || isReturnedForCorrection || isBankReturned || isSupportReturned"
             class="banner-area"
           >
             <div v-if="claimError" class="claim-error-banner" role="alert" aria-live="assertive">
@@ -517,7 +537,19 @@ watch(showVotingPanelInline, async (visible) => {
               variant="bank_returned"
               :reviewer-comment="request.bank_return_comment"
             />
+            <CorrectionBanner
+              v-else-if="isSupportReturned"
+              variant="support_returned"
+              :support-comment="request.support_return_comment"
+            />
             <CorrectionBanner v-else-if="isReturnedForCorrection" />
+          </div>
+
+          <!-- Bank reviewer chip: re-submitted after support return (AC10) -->
+          <div v-if="supportReturnHint" class="support-return-hint" role="note" dir="rtl">
+            <span class="support-return-hint__icon" aria-hidden="true">🔄</span>
+            <span class="support-return-hint__text">إعادة بعد عودة من المساندة</span>
+            <span v-if="supportReturnHint.comment" class="support-return-hint__comment">— {{ supportReturnHint.comment }}</span>
           </div>
 
           <!-- VotingPanel inline for executive roles in voting stages -->
@@ -958,6 +990,30 @@ watch(showVotingPanelInline, async (visible) => {
 /* Banners */
 .banner-area {
   margin-bottom: 12px;
+}
+
+.support-return-hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: #f0f6ff;
+  border: 1px solid #0066cc33;
+  border-radius: 12px;
+  color: #004499;
+  font-size: 14px;
+  margin-bottom: 12px;
+}
+
+.support-return-hint__icon {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.support-return-hint__comment {
+  font-size: 13px;
+  color: #004499;
+  font-weight: 400;
 }
 
 .claim-error-banner {

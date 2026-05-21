@@ -131,6 +131,7 @@ export interface ImportRequest {
   customs_issued_at: string | null
   customs_declaration?: CustomsDeclarationSummary | null
   bank_return_comment: string | null
+  support_return_comment: string | null
   revision_count: number
   created_at: string
   updated_at: string

@@ -138,6 +138,11 @@ export function useRequests() {
     return response.data
   }
 
+  async function supportReturn(id: number, comment: string): Promise<ImportRequest> {
+    const response = await post<ApiResponse<ImportRequest>>(`/api/workflow/${id}/support-return`, { comment })
+    return response.data
+  }
+
   return {
     fetchRequests,
     fetchRequest,
@@ -152,5 +157,6 @@ export function useRequests() {
     fetchRequestHistory,
     fetchCustomsPreview,
     bankReturn,
+    supportReturn,
   }
 }
