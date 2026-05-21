@@ -24,6 +24,8 @@ git commit -m "feat(workflow): add support claim heartbeat endpoint"
 ```
 
 Conventional commit format: `type(scope): description`
+All commits must stay signed. Never use `--no-gpg-sign`, `--no-sign`, or `-c commit.gpgsign=false`; if signing fails, fix signing first.
+
 Examples:
 - `feat(workflow): add support claim heartbeat endpoint`
 - `fix(voting): prevent race condition on session closure`
