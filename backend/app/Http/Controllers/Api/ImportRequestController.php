@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\AuditAction;
 use App\Enums\RequestStatus;
 use App\Enums\UserRole;
 use App\Exceptions\WorkflowImmutableStateException;
@@ -12,6 +13,9 @@ use App\Http\Resources\ImportRequestListResource;
 use App\Http\Resources\ImportRequestResource;
 use App\Http\Resources\StageHistoryResource;
 use App\Models\ImportRequest;
+use App\Services\Audit\AuditService;
+use App\Services\DuplicateDetectionService;
+use App\Services\Settings\AdminSettingsService;
 use App\Services\Workflow\WorkflowService;
 use App\Support\ApiResponse;
 use Illuminate\Database\Eloquent\Builder;
@@ -22,6 +26,12 @@ use OpenApi\Attributes as OA;
 
 class ImportRequestController extends Controller
 {
+    public function __construct(
+        private readonly DuplicateDetectionService $duplicateService,
+        private readonly AdminSettingsService $settingsService,
+        private readonly AuditService $auditService,
+    ) {
+    }
     #[OA\Get(
         path: '/api/requests',
         tags: ['Import Requests'],
@@ -167,6 +177,25 @@ class ImportRequestController extends Controller
     {
         $this->authorize('create', ImportRequest::class);
 
+        $invoiceNumber = $request->validated('invoice_number');
+        $duplicateCount = 0;
+
+        if ($invoiceNumber) {
+            $duplicates = $this->duplicateService->findDuplicatesForInvoice($invoiceNumber);
+            $duplicateCount = $duplicates->count();
+
+            if ($duplicateCount > 0) {
+                $policy = $this->settingsService->getSetting('duplicate_invoice_policy');
+                if ($policy === 'block') {
+                    return ApiResponse::error(
+                        'رقم الفاتورة مكرر في طلبات أخرى - يرجى المراجعة',
+                        ['invoice_number' => ['رقم الفاتورة مكرر في طلبات أخرى - يرجى المراجعة']],
+                        422
+                    );
+                }
+            }
+        }
+
         App::instance('workflow.transition.active', true);
         try {
             $importRequest = ImportRequest::query()->create([
@@ -180,6 +209,13 @@ class ImportRequestController extends Controller
             App::offsetUnset('workflow.transition.active');
         }
 
+        $this->auditService->log(
+            AuditAction::REQUEST_CREATED,
+            $request->user(),
+            $importRequest,
+            array_filter(['duplicate_count' => $duplicateCount > 0 ? $duplicateCount : null])
+        );
+
         return ApiResponse::success(new ImportRequestResource($importRequest->load(ImportRequestResource::baseRelations())), 'Draft request created.', 201);
     }
 
@@ -190,14 +226,43 @@ class ImportRequestController extends Controller
         security: [['bearerAuth' => []], ['sanctumCookie' => []]],
         responses: [new OA\Response(response: 200, description: 'Request retrieved')]
     )]
-    public function show(ImportRequest $importRequest)
+    public function show(Request $request, ImportRequest $importRequest)
     {
         $this->authorize('view', $importRequest);
 
-        return ApiResponse::success(
-            new ImportRequestResource($importRequest->load(ImportRequestResource::detailRelations())),
-            'Request retrieved successfully.'
-        );
+        $resource = new ImportRequestResource($importRequest->load(ImportRequestResource::detailRelations()));
+        $data = $resource->resolve($request);
+
+        $role = $request->user()->role;
+        $isFullAuditor = in_array($role, [UserRole::CBY_ADMIN, UserRole::SUPPORT_COMMITTEE], true);
+        $isBankScoped = in_array($role, [UserRole::BANK_REVIEWER, UserRole::BANK_ADMIN], true);
+
+        if ($isFullAuditor || $isBankScoped) {
+            $duplicates = $importRequest->invoice_number
+                ? $this->duplicateService->findDuplicatesForInvoice($importRequest->invoice_number, $importRequest->id)
+                : collect();
+
+            if ($isFullAuditor) {
+                $data['duplicate_warnings'] = $duplicates->map(fn ($d) => [
+                    'id' => $d->id,
+                    'reference_number' => $d->reference_number,
+                    'bank_id' => $d->bank_id,
+                    'bank_name' => $d->bank?->name,
+                    'amount' => (float) $d->amount,
+                    'currency' => is_object($d->currency) ? $d->currency->value : $d->currency,
+                    'created_at' => $d->created_at?->toISOString(),
+                    'status' => is_object($d->status) ? $d->status->value : $d->status,
+                ])->values()->all();
+            } else {
+                // Bank-scoped: count + bank names only
+                $data['duplicate_warnings'] = $duplicates->map(fn ($d) => [
+                    'bank_name' => $d->bank?->name,
+                ])->values()->all();
+            }
+        }
+        // DATA_ENTRY: field omitted entirely
+
+        return ApiResponse::success($data, 'Request retrieved successfully.');
     }
 
     #[OA\Put(

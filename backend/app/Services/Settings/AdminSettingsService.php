@@ -34,6 +34,8 @@ class AdminSettingsService
         'review_timeout_hours' => 48,
         'secret_voting' => true,
         'director_tiebreak' => true,
+        // Duplicate invoice detection
+        'duplicate_invoice_policy' => 'warn',
     ];
 
     private const VALIDATION_RULES = [
@@ -56,6 +58,7 @@ class AdminSettingsService
         'allow_external_access' => ['type' => 'boolean'],
         'secret_voting' => ['type' => 'boolean'],
         'director_tiebreak' => ['type' => 'boolean'],
+        'duplicate_invoice_policy' => ['type' => 'enum', 'values' => ['warn', 'block']],
     ];
 
     public function getDefaults(): array
@@ -201,6 +204,12 @@ class AdminSettingsService
             if ($rule['type'] === 'boolean' && !is_bool($value)) {
                 throw new InvalidArgumentException(
                     "Setting '$key' must be a boolean."
+                );
+            }
+            if ($rule['type'] === 'enum' && !in_array($value, $rule['values'], true)) {
+                $allowed = implode(', ', $rule['values']);
+                throw new InvalidArgumentException(
+                    "Setting '$key' must be one of: $allowed."
                 );
             }
         } else {

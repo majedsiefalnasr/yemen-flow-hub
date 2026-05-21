@@ -8,16 +8,18 @@ use App\Http\Resources\AuditLogResource;
 use App\Models\AuditLog;
 use App\Models\ImportRequest;
 use App\Services\Audit\AuditService;
+use App\Services\DuplicateDetectionService;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
 use OpenApi\Attributes as OA;
 
 class AuditController extends Controller
 {
-    public function __construct(private readonly AuditService $auditService)
-    {
+    public function __construct(
+        private readonly AuditService $auditService,
+        private readonly DuplicateDetectionService $duplicateService,
+    ) {
     }
 
     private function isAuditAuthorized(): bool
@@ -92,13 +94,7 @@ class AuditController extends Controller
             ->whereDate('created_at', today())
             ->count();
 
-        $duplicateInvoiceCount = DB::table('import_requests')
-            ->whereNotNull('invoice_number')
-            ->select('invoice_number', DB::raw('COUNT(*) as cnt'))
-            ->groupBy('invoice_number')
-            ->havingRaw('cnt > 1')
-            ->get()
-            ->count();
+        $duplicateInvoiceCount = $this->duplicateService->findDuplicateGroups()->count();
 
         return ApiResponse::success([
             'today_count'             => $todayCount,
@@ -112,60 +108,25 @@ class AuditController extends Controller
             return $this->forbiddenAuditResponse('audit duplicates require CBY_ADMIN or COMMITTEE_DIRECTOR');
         }
 
-        $dupInvoices = DB::table('import_requests')
-            ->whereNotNull('invoice_number')
-            ->select('invoice_number', DB::raw('MIN(id) as first_id'))
-            ->groupBy('invoice_number')
-            ->havingRaw('COUNT(*) > 1')
-            ->pluck('first_id', 'invoice_number');
+        $groups = $this->duplicateService->findDuplicateGroups();
 
-        $requests = ImportRequest::query()
-            ->whereIn('invoice_number', $dupInvoices->keys())
-            ->orderBy('invoice_number')
-            ->orderBy('id')
-            ->paginate(30);
-
-        $invoiceNumbers = collect($requests->items())
-            ->pluck('invoice_number')
-            ->filter()
-            ->unique()
-            ->values();
-
-        $requestsByInvoice = ImportRequest::query()
-            ->whereIn('invoice_number', $invoiceNumbers)
-            ->orderBy('invoice_number')
-            ->orderBy('id')
-            ->get()
-            ->groupBy('invoice_number');
-
-        $items = collect($requests->items())->map(function (ImportRequest $request) use ($dupInvoices, $requestsByInvoice) {
-            /** @var Collection<int, ImportRequest> $siblings */
-            $siblings = $requestsByInvoice->get($request->invoice_number, collect());
-            $firstId = (int) ($dupInvoices[$request->invoice_number] ?? $request->id);
-            $firstRequest = $siblings->firstWhere('id', $firstId) ?? $siblings->first();
-            $sibling = $request->id === $firstId
-                ? $siblings->first(fn (ImportRequest $candidate) => $candidate->id !== $request->id)
-                : $firstRequest;
-
+        $data = $groups->map(function (Collection $rows, string $invoiceNumber) {
             return [
-                'id' => $request->id,
-                'ref' => $this->formatAuditRequestRef($request),
-                'importer' => $request->supplier_name ?? '—',
-                'invoice_number' => $request->invoice_number,
-                'sibling_id' => $sibling?->id,
-                'sibling_ref' => $this->formatAuditRequestRef($sibling, $sibling?->id),
+                'invoice_number' => $invoiceNumber,
+                'banks' => $rows->map(fn ($r) => $r->bank?->name)->filter()->unique()->values()->all(),
+                'requests' => $rows->map(fn ($r) => [
+                    'id' => $r->id,
+                    'reference_number' => $r->reference_number,
+                    'bank_name' => $r->bank?->name,
+                    'amount' => (float) $r->amount,
+                    'currency' => is_object($r->currency) ? $r->currency->value : $r->currency,
+                    'created_at' => $r->created_at?->toISOString(),
+                    'status' => is_object($r->status) ? $r->status->value : $r->status,
+                ])->values()->all(),
             ];
-        })->values();
+        })->values()->all();
 
-        return ApiResponse::success([
-            'data' => $items,
-            'meta' => [
-                'current_page' => $requests->currentPage(),
-                'last_page' => $requests->lastPage(),
-                'per_page' => $requests->perPage(),
-                'total' => $requests->total(),
-            ],
-        ]);
+        return ApiResponse::success(['data' => $data]);
     }
 
     public function riskIndicators(): JsonResponse

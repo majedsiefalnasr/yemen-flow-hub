@@ -410,24 +410,37 @@ class AuditControllerTest extends TestCase
         $response = $this->actingAs($admin)->getJson('/api/audit/duplicates');
 
         $response->assertOk();
-        $items = $response->json('data.data');
+        $groups = $response->json('data.data');
 
-        $this->assertIsArray($items);
-        $this->assertCount(2, $items);
+        // Story 8.6 AC6: endpoint returns groups keyed by invoice_number
+        $this->assertIsArray($groups);
+        $this->assertCount(1, $groups); // only INV-DUP-001 is a duplicate group
 
-        $ids = array_column($items, 'id');
-        $this->assertContains($req1->id, $ids);
-        $this->assertContains($req2->id, $ids);
-        $this->assertNotContains($req3->id, $ids);
+        $group = $groups[0];
+        $this->assertArrayHasKey('invoice_number', $group);
+        $this->assertArrayHasKey('banks', $group);
+        $this->assertArrayHasKey('requests', $group);
+        $this->assertEquals('INV-DUP-001', $group['invoice_number']);
+        $this->assertCount(2, $group['requests']);
 
-        $this->assertArrayHasKey('ref',            $items[0]);
-        $this->assertArrayHasKey('importer',       $items[0]);
-        $this->assertArrayHasKey('invoice_number', $items[0]);
-        $this->assertArrayHasKey('sibling_id',     $items[0]);
-        $this->assertArrayHasKey('sibling_ref',    $items[0]);
-        $response->assertJsonPath('data.meta.current_page', 1);
-        $response->assertJsonPath('data.meta.per_page', 30);
-        $response->assertJsonPath('data.meta.total', 2);
+        $reqIds = array_column($group['requests'], 'id');
+        $this->assertContains($req1->id, $reqIds);
+        $this->assertContains($req2->id, $reqIds);
+
+        // req3 has a unique invoice; it must not appear in any group
+        $allIds = array_merge(...array_column($groups, 'requests'));
+        $allIds = array_column($allIds, 'id');
+        $this->assertNotContains($req3->id, $allIds);
+
+        // Each request row has the required fields
+        $row = $group['requests'][0];
+        $this->assertArrayHasKey('id',               $row);
+        $this->assertArrayHasKey('reference_number', $row);
+        $this->assertArrayHasKey('bank_name',        $row);
+        $this->assertArrayHasKey('amount',           $row);
+        $this->assertArrayHasKey('currency',         $row);
+        $this->assertArrayHasKey('created_at',       $row);
+        $this->assertArrayHasKey('status',           $row);
     }
 
     // ─── GET /api/audit/risk-indicators ──────────────────────────────────────
