@@ -550,18 +550,19 @@ class DashboardStatsTest extends TestCase
             ->assertJsonPath('data.approved', 3);
     }
 
-    public function test_bank_admin_rejected_counts_support_and_executive_rejections(): void
+    public function test_bank_admin_rejected_counts_support_executive_and_bank_terminal_rejections(): void
     {
         $de    = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
         $admin = $this->makeUser(UserRole::BANK_ADMIN, $this->bank);
 
+        $this->makeRequest($this->bank, $de, RequestStatus::BANK_REJECTED);
         $this->makeRequest($this->bank, $de, RequestStatus::SUPPORT_REJECTED);
         $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_REJECTED);
         $this->makeRequest($this->bank, $de, RequestStatus::DRAFT);
 
         $this->actingAs($admin)
             ->getJson('/api/dashboard/stats')
-            ->assertJsonPath('data.rejected', 2);
+            ->assertJsonPath('data.rejected', 3);
     }
 
     public function test_bank_admin_total_financed_amount_sums_approved_requests(): void

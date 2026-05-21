@@ -62,10 +62,7 @@ class DashboardController extends Controller
             RequestStatus::COMPLETED->value,
         ];
 
-        $rejectedStatuses = [
-            RequestStatus::SUPPORT_REJECTED->value,
-            RequestStatus::EXECUTIVE_REJECTED->value,
-        ];
+        $rejectedStatuses = $this->bankFacingRejectedStatuses();
 
         $total    = (clone $base)->count();
         $pending  = (clone $base)->whereIn('status', [RequestStatus::SUBMITTED->value, RequestStatus::BANK_REVIEW->value])->count();
@@ -654,5 +651,18 @@ class DashboardController extends Controller
             ])
             ->values()
             ->all();
+    }
+
+    /**
+     * Bank-facing rejected queues include support rejection, executive rejection,
+     * and terminal bank rejection.
+     */
+    private function bankFacingRejectedStatuses(): array
+    {
+        return [
+            RequestStatus::SUPPORT_REJECTED->value,
+            RequestStatus::EXECUTIVE_REJECTED->value,
+            RequestStatus::BANK_REJECTED->value,
+        ];
     }
 }

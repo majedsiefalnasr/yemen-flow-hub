@@ -76,9 +76,10 @@ class ReportController extends Controller
                 RequestStatus::CUSTOMS_DECLARATION_ISSUED->value,
                 RequestStatus::COMPLETED->value,
             ])
-            ->selectRaw('SUM(CASE WHEN status IN (?, ?) THEN 1 ELSE 0 END) as rejected', [
+            ->selectRaw('SUM(CASE WHEN status IN (?, ?, ?) THEN 1 ELSE 0 END) as rejected', [
                 RequestStatus::SUPPORT_REJECTED->value,
                 RequestStatus::EXECUTIVE_REJECTED->value,
+                RequestStatus::BANK_REJECTED->value,
             ]);
         $this->applyDateFilter($monthlyRows, $fromDate, $toDate);
         $monthlyRows = $monthlyRows->groupByRaw($monthFormat)->orderBy('month')->limit(12)->get();
@@ -247,10 +248,7 @@ class ReportController extends Controller
         $throughput = [
             'completed' => $this->applyDateFilter(ImportRequest::query()->where('status', RequestStatus::COMPLETED->value), $fromDate, $toDate)->count(),
             'approved'  => $this->applyDateFilter(ImportRequest::query()->where('status', RequestStatus::EXECUTIVE_APPROVED->value), $fromDate, $toDate)->count(),
-            'rejected'  => $this->applyDateFilter(ImportRequest::query()->whereIn('status', [
-                RequestStatus::SUPPORT_REJECTED->value,
-                RequestStatus::EXECUTIVE_REJECTED->value,
-            ]), $fromDate, $toDate)->count(),
+            'rejected'  => $this->applyDateFilter(ImportRequest::query()->whereIn('status', $this->rejectedStatuses()), $fromDate, $toDate)->count(),
         ];
 
         $driver = DB::connection()->getDriverName();
@@ -496,16 +494,12 @@ class ReportController extends Controller
                     RequestStatus::CUSTOMS_DECLARATION_ISSUED->value,
                     RequestStatus::COMPLETED->value,
                 ])->count();
-                $rejected = (clone $q)->whereIn('status', [
-                    RequestStatus::SUPPORT_REJECTED->value,
-                    RequestStatus::EXECUTIVE_REJECTED->value,
-                ])->count();
+                $rejected = (clone $q)->whereIn('status', $this->rejectedStatuses())->count();
                 $pending = (clone $q)->whereNotIn('status', [
                     RequestStatus::EXECUTIVE_APPROVED->value,
                     RequestStatus::CUSTOMS_DECLARATION_ISSUED->value,
                     RequestStatus::COMPLETED->value,
-                    RequestStatus::SUPPORT_REJECTED->value,
-                    RequestStatus::EXECUTIVE_REJECTED->value,
+                    ...$this->rejectedStatuses(),
                 ])->count();
 
                 $perBank[] = [
@@ -528,16 +522,12 @@ class ReportController extends Controller
                 RequestStatus::CUSTOMS_DECLARATION_ISSUED->value,
                 RequestStatus::COMPLETED->value,
             ])->count();
-            $summaryRejected = (clone $summaryQuery)->whereIn('status', [
-                RequestStatus::SUPPORT_REJECTED->value,
-                RequestStatus::EXECUTIVE_REJECTED->value,
-            ])->count();
+            $summaryRejected = (clone $summaryQuery)->whereIn('status', $this->rejectedStatuses())->count();
             $summaryPending = (clone $summaryQuery)->whereNotIn('status', [
                 RequestStatus::EXECUTIVE_APPROVED->value,
                 RequestStatus::CUSTOMS_DECLARATION_ISSUED->value,
                 RequestStatus::COMPLETED->value,
-                RequestStatus::SUPPORT_REJECTED->value,
-                RequestStatus::EXECUTIVE_REJECTED->value,
+                ...$this->rejectedStatuses(),
             ])->count();
 
             return ApiResponse::success([
@@ -562,16 +552,12 @@ class ReportController extends Controller
             RequestStatus::CUSTOMS_DECLARATION_ISSUED->value,
             RequestStatus::COMPLETED->value,
         ])->count();
-        $rejected = (clone $q)->whereIn('status', [
-            RequestStatus::SUPPORT_REJECTED->value,
-            RequestStatus::EXECUTIVE_REJECTED->value,
-        ])->count();
+        $rejected = (clone $q)->whereIn('status', $this->rejectedStatuses())->count();
         $pending = (clone $q)->whereNotIn('status', [
             RequestStatus::EXECUTIVE_APPROVED->value,
             RequestStatus::CUSTOMS_DECLARATION_ISSUED->value,
             RequestStatus::COMPLETED->value,
-            RequestStatus::SUPPORT_REJECTED->value,
-            RequestStatus::EXECUTIVE_REJECTED->value,
+            ...$this->rejectedStatuses(),
         ])->count();
 
         // Avg processing hours: created_at to executive_decided_at for decided requests
@@ -729,7 +715,7 @@ class ReportController extends Controller
                 $this->applyDateFilter($q, $fromDate, $toDate);
                 $total    = $q->count();
                 $approved = (clone $q)->whereIn('status', [RequestStatus::EXECUTIVE_APPROVED->value, RequestStatus::CUSTOMS_DECLARATION_ISSUED->value, RequestStatus::COMPLETED->value])->count();
-                $rejected = (clone $q)->whereIn('status', [RequestStatus::SUPPORT_REJECTED->value, RequestStatus::EXECUTIVE_REJECTED->value])->count();
+                $rejected = (clone $q)->whereIn('status', $this->rejectedStatuses())->count();
                 $pending  = $total - $approved - $rejected;
                 $rows[] = [
                     'bank_name'      => $b->name,
@@ -748,7 +734,7 @@ class ReportController extends Controller
         $this->applyDateFilter($q, $fromDate, $toDate);
         $total    = $q->count();
         $approved = (clone $q)->whereIn('status', [RequestStatus::EXECUTIVE_APPROVED->value, RequestStatus::CUSTOMS_DECLARATION_ISSUED->value, RequestStatus::COMPLETED->value])->count();
-        $rejected = (clone $q)->whereIn('status', [RequestStatus::SUPPORT_REJECTED->value, RequestStatus::EXECUTIVE_REJECTED->value])->count();
+        $rejected = (clone $q)->whereIn('status', $this->rejectedStatuses())->count();
         $pending  = $total - $approved - $rejected;
 
         return [[
@@ -783,6 +769,19 @@ class ReportController extends Controller
             'Content-Type'        => 'text/csv; charset=UTF-8',
             'Content-Disposition' => "attachment; filename=\"{$filename}\"",
         ]);
+    }
+
+    /**
+     * Request-level reporting treats support, executive, and terminal bank
+     * rejection as rejected outcomes.
+     */
+    private function rejectedStatuses(): array
+    {
+        return [
+            RequestStatus::SUPPORT_REJECTED->value,
+            RequestStatus::EXECUTIVE_REJECTED->value,
+            RequestStatus::BANK_REJECTED->value,
+        ];
     }
 
     private function avgProcessingHours(?int $bankId, ?string $fromDate, ?string $toDate): float

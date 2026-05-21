@@ -265,6 +265,22 @@ class ReportControllerTest extends TestCase
         $this->assertEquals(1, $throughput['completed']);
     }
 
+    public function test_workflow_report_rejected_throughput_includes_bank_rejected(): void
+    {
+        $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+
+        $this->makeRequest($this->bank, $de, RequestStatus::BANK_REJECTED);
+        $this->makeRequest($this->bank, $de, RequestStatus::SUPPORT_REJECTED);
+        $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_REJECTED);
+
+        $throughput = $this->actingAs($this->admin)
+            ->getJson('/api/reports/workflow')
+            ->assertOk()
+            ->json('data.throughput');
+
+        $this->assertEquals(3, $throughput['rejected']);
+    }
+
     // ─── Voting report structure ───────────────────────────────────────────────
 
     public function test_voting_report_returns_expected_keys(): void
@@ -561,6 +577,23 @@ class ReportControllerTest extends TestCase
         $this->assertEquals(50.0, $data['rejection_rate']);
     }
 
+    public function test_bank_report_rejected_count_includes_bank_rejected(): void
+    {
+        $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+
+        $this->makeRequest($this->bank, $de, RequestStatus::BANK_REJECTED);
+        $this->makeRequest($this->bank, $de, RequestStatus::SUPPORT_REJECTED);
+        $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_REJECTED);
+
+        $data = $this->actingAs($de)
+            ->getJson('/api/reports/bank')
+            ->assertOk()
+            ->json('data');
+
+        $this->assertEquals(3, $data['rejected_count']);
+        $this->assertEquals(100.0, $data['rejection_rate']);
+    }
+
     public function test_bank_report_date_range_filters_average_processing_time(): void
     {
         $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
@@ -709,6 +742,26 @@ class ReportControllerTest extends TestCase
             $this->assertArrayHasKey('rejected', $entry);
             $this->assertMatchesRegularExpression('/\d{4}-\d{2}/', $entry['month']);
         }
+    }
+
+    public function test_workflow_report_monthly_trend_rejected_includes_bank_rejected(): void
+    {
+        $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+
+        $this->makeRequest($this->bank, $de, RequestStatus::BANK_REJECTED);
+        $this->makeRequest($this->bank, $de, RequestStatus::SUPPORT_REJECTED);
+        $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_REJECTED);
+
+        $monthlyTrend = $this->actingAs($this->admin)
+            ->getJson('/api/reports/workflow')
+            ->assertOk()
+            ->json('data.monthly_trend');
+
+        $currentMonth = now()->format('Y-m');
+        $row = collect($monthlyTrend)->firstWhere('month', $currentMonth);
+
+        $this->assertNotNull($row);
+        $this->assertEquals(3, $row['rejected']);
     }
 
     public function test_workflow_report_total_financing_value_sums_approved_requests(): void
