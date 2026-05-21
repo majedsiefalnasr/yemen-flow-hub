@@ -3,15 +3,18 @@
 namespace Tests\Feature\Workflow;
 
 use App\Console\Commands\ExpireClaimsCommand;
+use App\Enums\AuditAction;
 use App\Enums\RequestStatus;
 use App\Enums\UserRole;
 use App\Models\Bank;
 use App\Models\ImportRequest;
 use App\Models\User;
+use App\Notifications\ClaimReleasedNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
 
 class ClaimLifecycleTest extends TestCase
@@ -425,5 +428,179 @@ class ClaimLifecycleTest extends TestCase
 
         $this->postJson("/api/workflow/{$request->id}/claim-support-review")
             ->assertUnauthorized();
+    }
+
+    // ─── AC3: Manual release dispatch + audit ──────────────────────────────────
+
+    public function test_manual_release_dispatches_notification_to_cby_admins(): void
+    {
+        Notification::fake();
+
+        $cbyadmin2 = $this->makeUser(UserRole::CBY_ADMIN);
+        $request = $this->makeRequest();
+
+        $this->actingAs($this->supportUser)
+            ->postJson("/api/workflow/{$request->id}/claim-support-review")
+            ->assertOk();
+
+        $this->actingAs($this->supportUser)
+            ->deleteJson("/api/workflow/{$request->id}/claim-support-review")
+            ->assertOk();
+
+        Notification::assertSentTo($this->cbyadmin, ClaimReleasedNotification::class);
+        Notification::assertSentTo($cbyadmin2, ClaimReleasedNotification::class);
+        Notification::assertNotSentTo($this->supportUser, ClaimReleasedNotification::class);
+    }
+
+    public function test_manual_release_notification_has_correct_payload(): void
+    {
+        Notification::fake();
+
+        $request = $this->makeRequest();
+
+        $this->actingAs($this->supportUser)
+            ->postJson("/api/workflow/{$request->id}/claim-support-review")
+            ->assertOk();
+
+        $this->actingAs($this->supportUser)
+            ->deleteJson("/api/workflow/{$request->id}/claim-support-review")
+            ->assertOk();
+
+        Notification::assertSentTo(
+            $this->cbyadmin,
+            ClaimReleasedNotification::class,
+            function (ClaimReleasedNotification $notification) use ($request) {
+                $payload = $notification->toArray(new \stdClass());
+                return $payload['type'] === 'claim_released'
+                    && $payload['reason'] === 'manual'
+                    && $payload['request_id'] === $request->id
+                    && $payload['released_by_user_id'] === $this->supportUser->id;
+            }
+        );
+    }
+
+    public function test_manual_release_writes_audit_log(): void
+    {
+        $request = $this->makeRequest();
+
+        $this->actingAs($this->supportUser)
+            ->postJson("/api/workflow/{$request->id}/claim-support-review")
+            ->assertOk();
+
+        $this->actingAs($this->supportUser)
+            ->deleteJson("/api/workflow/{$request->id}/claim-support-review")
+            ->assertOk();
+
+        $this->assertDatabaseHas('audit_logs', [
+            'user_id' => $this->supportUser->id,
+            'action' => AuditAction::CLAIM_RELEASED->value,
+            'subject_id' => $request->id,
+        ]);
+    }
+
+    // ─── AC4: TTL expiry dispatch + audit ──────────────────────────────────────
+
+    public function test_ttl_expiry_dispatches_notification_to_cby_admins(): void
+    {
+        Notification::fake();
+
+        $request = $this->makeRequest();
+
+        $this->actingAs($this->supportUser)
+            ->postJson("/api/workflow/{$request->id}/claim-support-review")
+            ->assertOk();
+
+        app()->instance('workflow.transition.active', true);
+        try {
+            $request->forceFill(['claim_expires_at' => now()->subMinute()])->save();
+        } finally {
+            app()->offsetUnset('workflow.transition.active');
+        }
+
+        Artisan::call(ExpireClaimsCommand::class);
+
+        Notification::assertSentTo($this->cbyadmin, ClaimReleasedNotification::class);
+    }
+
+    public function test_ttl_expiry_notification_has_ttl_reason_and_null_user(): void
+    {
+        Notification::fake();
+
+        $request = $this->makeRequest();
+
+        $this->actingAs($this->supportUser)
+            ->postJson("/api/workflow/{$request->id}/claim-support-review")
+            ->assertOk();
+
+        app()->instance('workflow.transition.active', true);
+        try {
+            $request->forceFill(['claim_expires_at' => now()->subMinute()])->save();
+        } finally {
+            app()->offsetUnset('workflow.transition.active');
+        }
+
+        Artisan::call(ExpireClaimsCommand::class);
+
+        Notification::assertSentTo(
+            $this->cbyadmin,
+            ClaimReleasedNotification::class,
+            function (ClaimReleasedNotification $notification) {
+                $payload = $notification->toArray(new \stdClass());
+                return $payload['reason'] === 'ttl_expired'
+                    && $payload['released_by_user_id'] === null;
+            }
+        );
+    }
+
+    public function test_ttl_expiry_writes_audit_log_with_null_user(): void
+    {
+        $request = $this->makeRequest();
+
+        $this->actingAs($this->supportUser)
+            ->postJson("/api/workflow/{$request->id}/claim-support-review")
+            ->assertOk();
+
+        app()->instance('workflow.transition.active', true);
+        try {
+            $request->forceFill(['claim_expires_at' => now()->subMinute()])->save();
+        } finally {
+            app()->offsetUnset('workflow.transition.active');
+        }
+
+        Artisan::call(ExpireClaimsCommand::class);
+
+        $this->assertDatabaseHas('audit_logs', [
+            'user_id' => null,
+            'action' => AuditAction::CLAIM_RELEASED->value,
+            'subject_id' => $request->id,
+        ]);
+    }
+
+    // ─── AC5: Preference enforcement ───────────────────────────────────────────
+
+    public function test_cby_admin_with_claim_released_pref_false_does_not_get_notification(): void
+    {
+        Notification::fake();
+
+        app()->instance('workflow.transition.active', true);
+        try {
+            $this->cbyadmin->forceFill([
+                'user_preferences' => ['notification_preferences' => ['claim_released' => false]],
+            ])->save();
+        } finally {
+            app()->offsetUnset('workflow.transition.active');
+        }
+
+        $request = $this->makeRequest();
+
+        $this->actingAs($this->supportUser)
+            ->postJson("/api/workflow/{$request->id}/claim-support-review")
+            ->assertOk();
+
+        $this->actingAs($this->supportUser)
+            ->deleteJson("/api/workflow/{$request->id}/claim-support-review")
+            ->assertOk();
+
+        Notification::assertNotSentTo($this->cbyadmin, ClaimReleasedNotification::class);
     }
 }

@@ -7,6 +7,8 @@ use App\Enums\UserRole;
 use App\Models\Bank;
 use App\Models\ImportRequest;
 use App\Models\User;
+use App\Enums\AuditAction;
+use App\Notifications\ClaimReleasedNotification;
 use App\Notifications\CustomsIssuedNotification;
 use App\Notifications\RequestApprovedNotification;
 use App\Notifications\RequestRejectedNotification;
@@ -151,6 +153,48 @@ class NotificationPayloadTest extends TestCase
         $this->assertSame($request->reference_number, $payload['reference_number']);
     }
 
+    public function test_claim_released_enum_case_exists(): void
+    {
+        $this->assertSame('CLAIM_RELEASED', AuditAction::CLAIM_RELEASED->value);
+        $this->assertStringContainsString('Claim Released', AuditAction::CLAIM_RELEASED->label());
+        $this->assertStringContainsString('إلغاء المطالبة', AuditAction::CLAIM_RELEASED->label());
+    }
+
+    public function test_claim_released_manual_payload(): void
+    {
+        $request = $this->makeRequest();
+        $releasedBy = User::query()->create([
+            'name' => 'Support User',
+            'email' => 'support@example.com',
+            'password' => Hash::make('password'),
+            'role' => UserRole::SUPPORT_COMMITTEE,
+            'bank_id' => null,
+            'is_active' => true,
+        ]);
+
+        $payload = $this->callToArray(new ClaimReleasedNotification($request, 'manual', $releasedBy));
+
+        $this->assertSame('claim_released', $payload['type']);
+        $this->assertSame($request->id, $payload['request_id']);
+        $this->assertSame($request->reference_number, $payload['reference_number']);
+        $this->assertSame('manual', $payload['reason']);
+        $this->assertSame($releasedBy->id, $payload['released_by_user_id']);
+        $this->assertSame($releasedBy->name, $payload['released_by_name']);
+        $this->assertStringContainsString($request->reference_number, $payload['message']);
+    }
+
+    public function test_claim_released_ttl_payload_has_null_user(): void
+    {
+        $request = $this->makeRequest();
+        $payload = $this->callToArray(new ClaimReleasedNotification($request, 'ttl_expired'));
+
+        $this->assertSame('claim_released', $payload['type']);
+        $this->assertSame('ttl_expired', $payload['reason']);
+        $this->assertNull($payload['released_by_user_id']);
+        $this->assertNull($payload['released_by_name']);
+        $this->assertStringContainsString($request->reference_number, $payload['message']);
+    }
+
     public function test_all_notifications_have_required_fields(): void
     {
         $request = $this->makeRequest();
@@ -162,6 +206,7 @@ class NotificationPayloadTest extends TestCase
             new SwiftUploadRequestedNotification($request),
             new VotingOpenedNotification($request),
             new CustomsIssuedNotification($request),
+            new ClaimReleasedNotification($request, 'manual'),
         ];
 
         foreach ($notifications as $notification) {

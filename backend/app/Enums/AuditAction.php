@@ -24,6 +24,7 @@ enum AuditAction: string
     case SETTINGS_UPDATED = 'SETTINGS_UPDATED';
     case AUTHORIZATION_FAILURE = 'AUTHORIZATION_FAILURE';
     case REPORT_EXPORTED = 'REPORT_EXPORTED';
+    case CLAIM_RELEASED = 'CLAIM_RELEASED';
 
     public function label(): string
     {
@@ -48,6 +49,7 @@ enum AuditAction: string
             self::SETTINGS_UPDATED => 'Settings Updated / تحديث الإعدادات',
             self::AUTHORIZATION_FAILURE => 'Authorization Failure / فشل التفويض',
             self::REPORT_EXPORTED => 'Report Exported / تصدير تقرير',
+            self::CLAIM_RELEASED => 'Claim Released / إلغاء المطالبة',
         };
     }
 }

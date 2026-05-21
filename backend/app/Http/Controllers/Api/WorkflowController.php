@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\AuditAction;
 use App\Enums\UserRole;
 use App\Exceptions\VotingException;
 use App\Http\Requests\BankRejectTerminalRequest;
@@ -10,6 +11,9 @@ use App\Http\Requests\SupportReturnRequest;
 use App\Http\Requests\WorkflowActionRequest;
 use App\Http\Resources\ImportRequestResource;
 use App\Models\ImportRequest;
+use App\Models\User;
+use App\Notifications\ClaimReleasedNotification;
+use App\Services\Audit\AuditService;
 use App\Services\Voting\VotingService;
 use App\Services\Workflow\WorkflowService;
 use App\Support\ApiResponse;
@@ -22,7 +26,8 @@ class WorkflowController extends Controller
 {
     public function __construct(
         private readonly WorkflowService $workflowService,
-        private readonly VotingService $votingService
+        private readonly VotingService $votingService,
+        private readonly AuditService $auditService,
     ) {
     }
 
@@ -115,6 +120,23 @@ class WorkflowController extends Controller
 
         $metadata = $isCbyadmin ? ['auto_finalized' => true] : [];
         $updated = $this->workflowService->transition($importRequest, 'support_release', $actor, null, $metadata);
+
+        // Notify all active CBY_ADMIN users who have not opted out (initial: broadcast to all)
+        $releasedBy = $isCbyadmin ? null : $actor;
+        $notification = new ClaimReleasedNotification($updated, 'manual', $releasedBy);
+        User::query()->where('role', UserRole::CBY_ADMIN->value)->where('is_active', true)->get()
+            ->each(function (User $u) use ($notification): void {
+                $prefs = $u->user_preferences['notification_preferences'] ?? [];
+                if (($prefs['claim_released'] ?? true) !== false) {
+                    $u->notify($notification);
+                }
+            });
+
+        $this->auditService->log(AuditAction::CLAIM_RELEASED, $actor, $updated, [
+            'reason' => 'manual',
+            'request_id' => $updated->id,
+            'reference_number' => $updated->reference_number,
+        ]);
 
         return ApiResponse::success(
             new ImportRequestResource($updated->load(ImportRequestResource::baseRelations())),
