@@ -17,6 +17,18 @@ export const requestFormSchema = z.object({
     invalid_type_error: 'يرجى إدخال رقم صحيح',
   }).positive('يجب أن يكون المبلغ أكبر من صفر'),
 
+  goods_type: z.string().max(100, 'الاسم طويل جداً').optional(),
+
+  payment_terms: z.enum(['LC', 'TT', 'CAD']).or(z.literal('')).optional(),
+
+  due_date: z.string()
+    .refine((value) => value === '' || !Number.isNaN(Date.parse(value)), 'تاريخ غير صالح')
+    .refine((value) => {
+      if (value === '') return true
+      return new Date(value) > new Date(new Date().toDateString())
+    }, 'يجب أن يكون تاريخ الاستحقاق في المستقبل')
+    .optional(),
+
   supplier_name: z.string()
     .min(1, 'يرجى إدخال اسم المورد')
     .max(255, 'الاسم طويل جداً'),
@@ -29,6 +41,15 @@ export const requestFormSchema = z.object({
     .max(255, 'الاسم طويل جداً'),
 
   notes: z.string().optional().default(''),
+  invoice_number: z.string().max(100, 'القيمة طويلة جداً').optional(),
+  invoice_date: z.string()
+    .refine((value) => value === '' || !Number.isNaN(Date.parse(value)), 'تاريخ غير صالح')
+    .optional(),
+  origin_country: z.string().max(100, 'القيمة طويلة جداً').optional(),
+  arrival_port: z.string().max(100, 'القيمة طويلة جداً').optional(),
+  shipping_port: z.string().max(255, 'القيمة طويلة جداً').optional(),
+  customs_office: z.string().max(100, 'القيمة طويلة جداً').optional(),
+  bl_number: z.string().max(100, 'القيمة طويلة جداً').optional(),
 })
 
 export type RequestFormValues = z.infer<typeof requestFormSchema>

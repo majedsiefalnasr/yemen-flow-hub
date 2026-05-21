@@ -1,151 +1,278 @@
-import { vi, describe, it, expect, beforeEach } from 'vitest'
-import { setActivePinia, createPinia } from 'pinia'
+// @vitest-environment jsdom
+import { mount, flushPromises } from '@vue/test-utils'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { defineComponent, h } from 'vue'
 import { RequestStatus, UserRole } from '../../../types/enums'
 import { makeImportRequest } from '../fixtures/request-data'
+import requestDetailPage from '../../../pages/requests/[id]/index.vue'
+import newRequestPage from '../../../pages/requests/new.vue'
 
-// ---------- composable mocks ----------
-const mockCloneRequest = vi.fn()
-const mockFetchRequest = vi.fn()
-const mockFetchRequestDocuments = vi.fn()
+vi.stubGlobal('definePageMeta', vi.fn())
 
-vi.mock('../../../composables/useRequests', () => ({
-  useRequests: () => ({
-    fetchRequests: vi.fn(),
-    fetchRequest: mockFetchRequest,
-    createRequest: vi.fn(),
-    updateRequest: vi.fn(),
-    uploadDocument: vi.fn(),
-    performWorkflowAction: vi.fn(),
-    fetchRequestDocuments: mockFetchRequestDocuments,
-    generateCustomsDeclaration: vi.fn(),
-    downloadCustomsDeclaration: vi.fn(),
-    bankReturn: vi.fn(),
-    supportReturn: vi.fn(),
-    bankRejectTerminal: vi.fn(),
-    cloneRequest: mockCloneRequest,
-    fetchRequestHistory: vi.fn(),
-    fetchCustomsPreview: vi.fn(),
-    uploadSwift: vi.fn(),
+const navigateToMock = vi.hoisted(() => vi.fn())
+vi.stubGlobal('navigateTo', navigateToMock)
+
+const routeState = vi.hoisted(() => ({
+  params: { id: '42' },
+  query: {} as Record<string, string>,
+  path: '/requests/42',
+}))
+
+const routerReplaceMock = vi.hoisted(() => vi.fn())
+const routerPushMock = vi.hoisted(() => vi.fn())
+const mockCloneRequest = vi.hoisted(() => vi.fn())
+const mockLoadRequest = vi.hoisted(() => vi.fn())
+const mockLoadVotingDetail = vi.hoisted(() => vi.fn())
+
+const authStoreState = vi.hoisted(() => ({
+  user: { id: 1, bank_id: 1, role: 'DATA_ENTRY' },
+}))
+
+const requestsStoreState = vi.hoisted(() => ({
+  currentRequest: null as ReturnType<typeof makeImportRequest> | null,
+  loadingRequest: false,
+  downloadingCustoms: false,
+  history: [] as any[],
+  documents: [] as any[],
+  error: null as string | null,
+  loadRequest: mockLoadRequest,
+  loadDocuments: vi.fn(),
+  loadHistory: vi.fn(),
+  bankReturn: vi.fn(),
+  supportReturn: vi.fn(),
+  bankRejectTerminal: vi.fn(),
+  issueCustomsDeclaration: vi.fn(),
+}))
+
+vi.mock('vue-router', () => ({
+  useRoute: () => routeState,
+  useRouter: () => ({
+    replace: routerReplaceMock,
+    push: routerPushMock,
   }),
 }))
 
-const { useRequestsStore } = await import('../../../stores/requests.store')
+vi.mock('../../../stores/auth.store', () => ({
+  useAuthStore: () => authStoreState,
+}))
 
-// ─── showCloneButton visibility logic ─────────────────────────────────────────
+vi.mock('../../../stores/requests.store', () => ({
+  useRequestsStore: () => requestsStoreState,
+}))
 
-const CLONEABLE_STATUSES = [
-  RequestStatus.BANK_REJECTED,
-  RequestStatus.SUPPORT_REJECTED,
-  RequestStatus.EXECUTIVE_REJECTED,
-]
+vi.mock('../../../stores/voting.store', () => ({
+  useVotingStore: () => ({
+    votingDetail: null,
+    loadingDetail: false,
+    loadVotingDetail: mockLoadVotingDetail,
+    openSession: vi.fn(),
+    closeSession: vi.fn(),
+    finalizeDecision: vi.fn(),
+    directorOverride: vi.fn(),
+  }),
+}))
 
-const NON_CLONEABLE_STATUSES = [
-  RequestStatus.DRAFT,
-  RequestStatus.SUBMITTED,
-  RequestStatus.BANK_REVIEW,
-  RequestStatus.BANK_APPROVED,
-  RequestStatus.SUPPORT_REVIEW_PENDING,
-  RequestStatus.SUPPORT_REVIEW_IN_PROGRESS,
-  RequestStatus.SUPPORT_APPROVED,
-  RequestStatus.WAITING_FOR_SWIFT,
-  RequestStatus.SWIFT_UPLOADED,
-  RequestStatus.EXECUTIVE_APPROVED,
-  RequestStatus.COMPLETED,
-  RequestStatus.CUSTOMS_DECLARATION_ISSUED,
-]
+vi.mock('../../../composables/useClaimLifecycle', () => ({
+  useClaimLifecycle: () => ({
+    claimRequest: vi.fn(),
+    releaseRequest: vi.fn(),
+    verifyClaimAlive: vi.fn(),
+    startHeartbeat: vi.fn(),
+    stopHeartbeat: vi.fn(),
+    claimError: null,
+    sessionExpired: false,
+  }),
+}))
 
-const CLONE_ALLOWED_ROLES = [UserRole.DATA_ENTRY, UserRole.BANK_ADMIN]
-const CLONE_BLOCKED_ROLES = [
-  UserRole.BANK_REVIEWER,
-  UserRole.SUPPORT_COMMITTEE,
-  UserRole.EXECUTIVE_MEMBER,
-  UserRole.COMMITTEE_DIRECTOR,
-  UserRole.CBY_ADMIN,
-  UserRole.SWIFT_OFFICER,
-]
+vi.mock('../../../composables/useDocumentPermissions', () => ({
+  canDownloadCustoms: () => false,
+}))
 
-function shouldShowClone(status: RequestStatus, role: UserRole): boolean {
-  const cloneableStatuses = new Set([
-    RequestStatus.BANK_REJECTED,
-    RequestStatus.SUPPORT_REJECTED,
-    RequestStatus.EXECUTIVE_REJECTED,
-  ])
-  const allowedRoles = new Set([UserRole.DATA_ENTRY, UserRole.BANK_ADMIN])
-  return cloneableStatuses.has(status) && allowedRoles.has(role)
+vi.mock('../../../composables/useRequests', () => ({
+  useRequests: () => ({
+    cloneRequest: mockCloneRequest,
+  }),
+}))
+
+vi.mock('../../../components/ui/alert-dialog', async () => {
+  const { defineComponent, h } = await import('vue')
+
+  const slotStub = (tag: string) => defineComponent({
+    setup(_, { slots, attrs }) {
+      return () => h(tag, attrs, slots.default?.())
+    },
+  })
+
+  return {
+    AlertDialog: defineComponent({
+      props: { open: { type: Boolean, default: false } },
+      setup(props, { slots }) {
+        return () => props.open ? h('div', { 'data-testid': 'alert-dialog' }, slots.default?.()) : null
+      },
+    }),
+    AlertDialogCancel: slotStub('button'),
+    AlertDialogContent: slotStub('div'),
+    AlertDialogDescription: slotStub('p'),
+    AlertDialogFooter: slotStub('div'),
+    AlertDialogHeader: slotStub('div'),
+    AlertDialogTitle: slotStub('h2'),
+  }
+})
+
+vi.mock('../../../components/ui/button', async () => {
+  const { defineComponent, h } = await import('vue')
+
+  return {
+    Button: defineComponent({
+      setup(_, { slots, attrs }) {
+        return () => h('button', attrs, slots.default?.())
+      },
+    }),
+  }
+})
+
+vi.mock('../../../components/wizard/RequestWizard.vue', async () => {
+  const { defineComponent, h } = await import('vue')
+
+  return {
+    default: defineComponent({
+      name: 'RequestWizard',
+      setup() {
+        return () => h('div', { 'data-testid': 'request-wizard' }, 'RequestWizard')
+      },
+    }),
+  }
+})
+
+function buildDetailRequest(status: RequestStatus = RequestStatus.BANK_REJECTED) {
+  return makeImportRequest({
+    id: 42,
+    status,
+    bank_name: 'بنك اليمن',
+    merchant: { id: 1, name: 'التاجر', commercial_register: null },
+    created_by_user: { id: 1, name: 'صاحب الطلب' },
+  })
 }
 
-describe('clone button visibility', () => {
-  it.each(CLONEABLE_STATUSES)('shows clone button for DATA_ENTRY on %s', (status) => {
-    expect(shouldShowClone(status, UserRole.DATA_ENTRY)).toBe(true)
+function mountDetailPage() {
+  return mount(requestDetailPage, {
+    global: {
+      stubs: {
+        NuxtLink: defineComponent({ props: ['to'], setup(_, { slots }) { return () => h('a', slots.default?.()) } }),
+        StatusBadge: true,
+        LockedBanner: true,
+        CorrectionBanner: true,
+        ActiveReviewBanner: true,
+        ClaimedByOthersBanner: true,
+        ActionsPanel: true,
+        DocumentChecklist: true,
+        VotingPanel: true,
+        WorkflowTimeline: true,
+        AuditTimeline: true,
+        WorkflowProgress: true,
+      },
+    },
   })
+}
 
-  it.each(CLONEABLE_STATUSES)('shows clone button for BANK_ADMIN on %s', (status) => {
-    expect(shouldShowClone(status, UserRole.BANK_ADMIN)).toBe(true)
-  })
-
-  it.each(NON_CLONEABLE_STATUSES)('hides clone button for DATA_ENTRY on %s', (status) => {
-    expect(shouldShowClone(status, UserRole.DATA_ENTRY)).toBe(false)
-  })
-
-  it.each(CLONE_BLOCKED_ROLES)('hides clone button for %s on BANK_REJECTED', (role) => {
-    expect(shouldShowClone(RequestStatus.BANK_REJECTED, role)).toBe(false)
-  })
-})
-
-// ─── cloneRequest composable integration ──────────────────────────────────────
-
-describe('RequestsStore — clone request via store', () => {
+describe('request detail clone flow', () => {
   beforeEach(() => {
-    setActivePinia(createPinia())
-    vi.resetAllMocks()
+    vi.clearAllMocks()
+    routeState.params.id = '42'
+    routeState.path = '/requests/42'
+    routeState.query = {}
+    authStoreState.user.role = UserRole.DATA_ENTRY
+    requestsStoreState.currentRequest = buildDetailRequest()
+    requestsStoreState.loadingRequest = false
+    requestsStoreState.error = null
+    mockLoadRequest.mockImplementation(async () => {})
   })
 
-  it('store loads cloned request after clone', async () => {
-    const cloned = makeImportRequest({ id: 99, status: RequestStatus.DRAFT })
-    mockFetchRequest.mockResolvedValue(cloned)
+  it('shows the clone button for BANK_ADMIN on a terminal rejection', async () => {
+    authStoreState.user.role = UserRole.BANK_ADMIN
 
-    const store = useRequestsStore()
-    await store.loadRequest(99)
+    const wrapper = mountDetailPage()
+    await flushPromises()
 
-    expect(store.currentRequest?.id).toBe(99)
-    expect(store.currentRequest?.status).toBe(RequestStatus.DRAFT)
+    expect(wrapper.find('[data-testid="clone-request-btn"]').exists()).toBe(true)
   })
 
-  it('cloneRequest returns new id on success', async () => {
+  it('opens the dialog and navigates to the cloned draft after confirm', async () => {
     mockCloneRequest.mockResolvedValueOnce(99)
 
-    const { useRequests } = await import('../../../composables/useRequests')
-    const { cloneRequest } = useRequests()
-    const newId = await cloneRequest(42)
+    const wrapper = mountDetailPage()
+    await flushPromises()
+
+    await wrapper.get('[data-testid="clone-request-btn"]').trigger('click')
+    expect(wrapper.find('[data-testid="alert-dialog"]').exists()).toBe(true)
+
+    await wrapper.get('[data-testid="clone-confirm-btn"]').trigger('click')
+    await flushPromises()
 
     expect(mockCloneRequest).toHaveBeenCalledWith(42)
-    expect(newId).toBe(99)
+    expect(navigateToMock).toHaveBeenCalledWith('/requests/99/edit')
   })
 
-  it('cloneRequest propagates rejection', async () => {
-    mockCloneRequest.mockRejectedValueOnce(Object.assign(new Error('Forbidden'), { statusCode: 403 }))
+  it('keeps the dialog open and shows the error when cloning fails', async () => {
+    mockCloneRequest.mockRejectedValueOnce(new Error('Forbidden'))
 
-    const { useRequests } = await import('../../../composables/useRequests')
-    const { cloneRequest } = useRequests()
-    await expect(cloneRequest(42)).rejects.toMatchObject({ statusCode: 403 })
+    const wrapper = mountDetailPage()
+    await flushPromises()
+
+    await wrapper.get('[data-testid="clone-request-btn"]').trigger('click')
+    await wrapper.get('[data-testid="clone-confirm-btn"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('تعذّر إنشاء النسخة. يرجى المحاولة مرة أخرى.')
+    expect(wrapper.find('[data-testid="alert-dialog"]').exists()).toBe(true)
   })
 })
 
-// ─── /requests/new?clone_of guard logic ───────────────────────────────────────
-
-describe('new.vue clone_of guard', () => {
-  it('invalid clone_of param (NaN) does not trigger clone', () => {
-    const sourceId = Number('abc')
-    expect(Number.isNaN(sourceId)).toBe(true)
+describe('new.vue clone_of flow', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    routeState.path = '/requests/new'
+    routeState.params.id = '42'
+    routeState.query = {}
   })
 
-  it('zero clone_of param does not trigger clone', () => {
-    const sourceId = Number('0')
-    expect(sourceId <= 0).toBe(true)
+  it('strips the query before cloning and redirects to the edit page', async () => {
+    routeState.query = { clone_of: '42' }
+    mockCloneRequest.mockResolvedValueOnce(77)
+    const replaceStateSpy = vi.spyOn(window.history, 'replaceState')
+
+    const wrapper = mount(newRequestPage, {
+      global: {
+        stubs: {
+          RequestWizard: true,
+        },
+      },
+    })
+    await flushPromises()
+
+    expect(mockCloneRequest).toHaveBeenCalledWith(42)
+    expect(replaceStateSpy).toHaveBeenCalledWith(window.history.state, '', '/requests/new')
+    expect(navigateToMock).toHaveBeenCalledWith('/requests/77/edit', { replace: true })
+    expect(wrapper.find('[data-testid="request-wizard"]').exists()).toBe(false)
+
+    replaceStateSpy.mockRestore()
   })
 
-  it('valid clone_of param triggers clone', () => {
-    const sourceId = Number('42')
-    expect(!Number.isNaN(sourceId) && sourceId > 0).toBe(true)
+  it('shows the forbidden banner when clone_of fails with 403', async () => {
+    routeState.query = { clone_of: '42' }
+    mockCloneRequest.mockRejectedValueOnce({ statusCode: 403 })
+
+    const wrapper = mount(newRequestPage, {
+      global: {
+        stubs: {
+          RequestWizard: true,
+        },
+      },
+    })
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('ليس لديك صلاحية نسخ هذا الطلب.')
+    expect(navigateToMock).not.toHaveBeenCalled()
+    expect(wrapper.find('[data-testid="request-wizard"]').exists()).toBe(false)
   })
 })

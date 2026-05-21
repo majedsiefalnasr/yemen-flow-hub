@@ -28,7 +28,7 @@ function showBankReviewerActions(request: ImportRequest, userRole: UserRole): bo
 
 function showDataEntryActions(request: ImportRequest, userRole: UserRole): boolean {
   return (
-    userRole === UserRole.DATA_ENTRY
+    (userRole === UserRole.DATA_ENTRY || userRole === UserRole.BANK_ADMIN)
     && (request.status === RequestStatus.DRAFT
       || request.status === RequestStatus.DRAFT_REJECTED_INTERNAL
       || request.status === RequestStatus.BANK_RETURNED
@@ -146,6 +146,10 @@ describe('ActionsPanel — showDataEntryActions', () => {
 
   it('false for BANK_REVIEWER + DRAFT (wrong role)', () => {
     expect(showDataEntryActions(makeRequest({ status: RequestStatus.DRAFT }), UserRole.BANK_REVIEWER)).toBe(false)
+  })
+
+  it('true for BANK_ADMIN + DRAFT', () => {
+    expect(showDataEntryActions(makeRequest({ status: RequestStatus.DRAFT }), UserRole.BANK_ADMIN)).toBe(true)
   })
 
   it('false for DATA_ENTRY + BANK_APPROVED (locked)', () => {

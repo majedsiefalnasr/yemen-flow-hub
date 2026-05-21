@@ -61,7 +61,7 @@ const showBankReviewerActions = computed(() =>
 )
 
 const showDataEntryActions = computed(() =>
-  props.userRole === UserRole.DATA_ENTRY
+  (props.userRole === UserRole.DATA_ENTRY || props.userRole === UserRole.BANK_ADMIN)
   && (props.request.status === RequestStatus.DRAFT
     || props.request.status === RequestStatus.DRAFT_REJECTED_INTERNAL
     || props.request.status === RequestStatus.BANK_RETURNED

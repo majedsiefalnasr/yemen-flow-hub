@@ -11,7 +11,7 @@ type LockedBannerVariant = 'locked' | 'readonly' | 'pending'
 
 definePageMeta({
   middleware: ['auth'],
-  requiredRoles: [UserRole.DATA_ENTRY],
+  requiredRoles: [UserRole.DATA_ENTRY, UserRole.BANK_ADMIN],
 })
 
 const route = useRoute()
@@ -24,7 +24,10 @@ const toast = ref<{ message: string; type: 'success' | 'error' } | null>(null)
 
 const isEditable = computed(() => {
   const s = requestsStore.currentRequest?.status
-  return s === RequestStatus.DRAFT || s === RequestStatus.DRAFT_REJECTED_INTERNAL || s === RequestStatus.BANK_RETURNED
+  return s === RequestStatus.DRAFT
+    || s === RequestStatus.DRAFT_REJECTED_INTERNAL
+    || s === RequestStatus.BANK_RETURNED
+    || s === RequestStatus.SUPPORT_RETURNED
 })
 
 const initialValues = computed<Partial<RequestFormData> | undefined>(() => {
@@ -38,6 +41,16 @@ const initialValues = computed<Partial<RequestFormData> | undefined>(() => {
     goods_description: r.goods_description,
     port_of_entry: r.port_of_entry,
     notes: r.notes ?? '',
+    goods_type: r.goods_type ?? '',
+    payment_terms: r.payment_terms ?? '',
+    due_date: r.due_date ? String(r.due_date).slice(0, 10) : '',
+    invoice_number: r.invoice_number ?? '',
+    invoice_date: r.invoice_date ? String(r.invoice_date).slice(0, 10) : '',
+    origin_country: r.origin_country ?? '',
+    arrival_port: r.arrival_port ?? '',
+    shipping_port: r.shipping_port ?? '',
+    customs_office: r.customs_office ?? '',
+    bl_number: r.bl_number ?? '',
   }
 })
 

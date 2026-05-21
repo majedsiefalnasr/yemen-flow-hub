@@ -55,8 +55,13 @@ function hasActions(
     role === UserRole.BANK_REVIEWER &&
     (status === RequestStatus.SUBMITTED || status === RequestStatus.BANK_REVIEW)
   const dataEntryAction =
-    role === UserRole.DATA_ENTRY &&
-    (status === RequestStatus.DRAFT || status === RequestStatus.DRAFT_REJECTED_INTERNAL)
+    (role === UserRole.DATA_ENTRY || role === UserRole.BANK_ADMIN) &&
+    (
+      status === RequestStatus.DRAFT
+      || status === RequestStatus.DRAFT_REJECTED_INTERNAL
+      || status === RequestStatus.BANK_RETURNED
+      || status === RequestStatus.SUPPORT_RETURNED
+    )
   const supportAction =
     role === UserRole.SUPPORT_COMMITTEE &&
     status === RequestStatus.SUPPORT_REVIEW_IN_PROGRESS &&
@@ -212,6 +217,10 @@ describe('Request detail — hasActions rail-card visibility', () => {
 
   it('DATA_ENTRY has NO actions in SUBMITTED', () => {
     expect(hasActions(UserRole.DATA_ENTRY, RequestStatus.SUBMITTED)).toBe(false)
+  })
+
+  it('BANK_ADMIN has actions in DRAFT_REJECTED_INTERNAL', () => {
+    expect(hasActions(UserRole.BANK_ADMIN, RequestStatus.DRAFT_REJECTED_INTERNAL)).toBe(true)
   })
 
   it('SUPPORT_COMMITTEE has actions in SUPPORT_REVIEW_IN_PROGRESS when claimed', () => {

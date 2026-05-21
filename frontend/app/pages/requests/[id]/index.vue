@@ -2,6 +2,16 @@
 import { ref, computed, nextTick, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { UserRole, RequestStatus } from '../../../types/enums'
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '../../../components/ui/alert-dialog'
+import { Button } from '../../../components/ui/button'
 import { useRequests } from '../../../composables/useRequests'
 import { useAuthStore } from '../../../stores/auth.store'
 import { useRequestsStore } from '../../../stores/requests.store'
@@ -51,6 +61,7 @@ const EXECUTIVE_ROLES = new Set([UserRole.EXECUTIVE_MEMBER, UserRole.COMMITTEE_D
 const request = computed(() => requestsStore.currentRequest)
 const userRole = computed(() => auth.user?.role ?? UserRole.DATA_ENTRY)
 const canDownloadCustomsDeclaration = computed(() => canDownloadCustoms(userRole.value))
+const DRAFT_EDITOR_ROLES = new Set([UserRole.DATA_ENTRY, UserRole.BANK_ADMIN])
 
 // VotingPanel is shown inline above tabs for executive/director roles in voting stages
 const showVotingPanelInline = computed(() =>
@@ -138,7 +149,7 @@ const supportReturnHint = computed(() => {
 })
 
 const canEdit = computed(
-  () => userRole.value === UserRole.DATA_ENTRY && isEditable.value,
+  () => DRAFT_EDITOR_ROLES.has(userRole.value) && isEditable.value,
 )
 
 const DIRECTOR_VOTING_STATUSES = new Set([
@@ -156,7 +167,7 @@ const hasActions = computed(() => {
     = role === UserRole.BANK_REVIEWER
     && (s === RequestStatus.SUBMITTED || s === RequestStatus.BANK_REVIEW)
   const dataEntryAction
-    = role === UserRole.DATA_ENTRY
+    = DRAFT_EDITOR_ROLES.has(role)
     && (s === RequestStatus.DRAFT || s === RequestStatus.DRAFT_REJECTED_INTERNAL || s === RequestStatus.BANK_RETURNED || s === RequestStatus.SUPPORT_RETURNED)
   const supportAction
     = role === UserRole.SUPPORT_COMMITTEE
@@ -482,13 +493,11 @@ const CLONEABLE_STATUSES = new Set([
   RequestStatus.EXECUTIVE_REJECTED,
 ])
 
-const CLONE_ALLOWED_ROLES = new Set([UserRole.DATA_ENTRY, UserRole.BANK_ADMIN])
-
 const showCloneButton = computed(() => {
   if (!request.value) return false
   return (
     CLONEABLE_STATUSES.has(request.value.status)
-    && CLONE_ALLOWED_ROLES.has(userRole.value)
+    && DRAFT_EDITOR_ROLES.has(userRole.value)
   )
 })
 
@@ -496,6 +505,19 @@ const showCloneDialog = ref(false)
 const cloneLoading = ref(false)
 const cloneError = ref('')
 const { cloneRequest } = useRequests()
+
+function openCloneDialog() {
+  cloneError.value = ''
+  showCloneDialog.value = true
+}
+
+function handleCloneDialogOpenChange(nextOpen: boolean) {
+  if (cloneLoading.value && !nextOpen) return
+  if (!nextOpen) {
+    cloneError.value = ''
+  }
+  showCloneDialog.value = nextOpen
+}
 
 async function handleCloneConfirm() {
   cloneLoading.value = true
@@ -555,7 +577,7 @@ async function handleCloneConfirm() {
             class="clone-btn"
             :disabled="cloneLoading"
             data-testid="clone-request-btn"
-            @click="showCloneDialog = true"
+            @click="openCloneDialog"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
               <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
@@ -932,34 +954,25 @@ async function handleCloneConfirm() {
       </div>
     </template>
 
-    <!-- Clone confirm dialog -->
-    <Teleport to="body">
-      <div v-if="showCloneDialog" class="clone-dialog-overlay" role="dialog" aria-modal="true" aria-labelledby="clone-dialog-title" @click.self="showCloneDialog = false">
-        <div class="clone-dialog" dir="rtl">
-          <h2 id="clone-dialog-title" class="clone-dialog__title">نسخ وإعادة إرسال</h2>
-          <p class="clone-dialog__body">سيتم إنشاء طلب جديد بنفس بياناتك. متابعة؟</p>
-          <p v-if="cloneError" class="clone-dialog__error" role="alert">{{ cloneError }}</p>
-          <div class="clone-dialog__actions">
-            <button
-              class="clone-dialog__confirm"
-              :disabled="cloneLoading"
-              data-testid="clone-confirm-btn"
-              @click="handleCloneConfirm"
-            >
-              {{ cloneLoading ? 'جارٍ الإنشاء…' : 'متابعة' }}
-            </button>
-            <button
-              class="clone-dialog__cancel"
-              :disabled="cloneLoading"
-              data-testid="clone-cancel-btn"
-              @click="showCloneDialog = false"
-            >
-              إلغاء
-            </button>
-          </div>
-        </div>
-      </div>
-    </Teleport>
+    <AlertDialog :open="showCloneDialog" @update:open="handleCloneDialogOpenChange">
+      <AlertDialogContent dir="rtl">
+        <AlertDialogHeader>
+          <AlertDialogTitle>نسخ وإعادة إرسال</AlertDialogTitle>
+          <AlertDialogDescription class="clone-dialog__body">
+            سيتم إنشاء طلب جديد بنفس بياناتك. متابعة؟
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <p v-if="cloneError" class="clone-dialog__error" role="alert">{{ cloneError }}</p>
+        <AlertDialogFooter class="clone-dialog__actions">
+          <AlertDialogCancel :disabled="cloneLoading" data-testid="clone-cancel-btn">
+            إلغاء
+          </AlertDialogCancel>
+          <Button :disabled="cloneLoading" data-testid="clone-confirm-btn" @click="handleCloneConfirm">
+            {{ cloneLoading ? 'جارٍ الإنشاء…' : 'متابعة' }}
+          </Button>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   </div>
 </template>
 
@@ -1546,88 +1559,20 @@ async function handleCloneConfirm() {
   cursor: not-allowed;
 }
 
-/* Clone dialog */
-.clone-dialog-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.4);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.clone-dialog {
-  background: #ffffff;
-  border-radius: 24px;
-  padding: 32px;
-  width: 400px;
-  max-width: 90vw;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
-}
-
-.clone-dialog__title {
-  font-size: 18px;
-  font-weight: 700;
-  color: #1c222b;
-  margin: 0 0 12px;
-}
-
 .clone-dialog__body {
   font-size: 14px;
   color: #6c757d;
-  margin: 0 0 20px;
   line-height: 1.6;
 }
 
 .clone-dialog__error {
   font-size: 13px;
   color: #c62828;
-  margin: 0 0 12px;
 }
 
 .clone-dialog__actions {
   display: flex;
   gap: 8px;
   justify-content: flex-end;
-}
-
-.clone-dialog__confirm {
-  height: 36px;
-  padding: 0 20px;
-  border: none;
-  border-radius: 16px;
-  background: #0066cc;
-  color: #ffffff;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-
-.clone-dialog__confirm:hover:not(:disabled) {
-  background: #0052a3;
-}
-
-.clone-dialog__confirm:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.clone-dialog__cancel {
-  height: 36px;
-  padding: 0 20px;
-  border: 1px solid #cccccc;
-  border-radius: 16px;
-  background: #ffffff;
-  color: #1c222b;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: border-color 0.15s;
-}
-
-.clone-dialog__cancel:hover:not(:disabled) {
-  border-color: #1c222b;
 }
 </style>

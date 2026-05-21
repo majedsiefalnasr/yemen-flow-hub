@@ -12,21 +12,21 @@ definePageMeta({
 
 const route = useRoute()
 const cloneError = ref('')
-const cloneLoading = ref(false)
+const cloneSourceId = Number(route.query.clone_of)
+const shouldAutoClone = Number.isInteger(cloneSourceId) && cloneSourceId > 0
+const cloneLoading = ref(shouldAutoClone)
 
 const { cloneRequest } = useRequests()
 
 onMounted(async () => {
-  const cloneOf = route.query.clone_of
-  if (!cloneOf) return
-
-  const sourceId = Number(cloneOf)
-  if (Number.isNaN(sourceId) || sourceId <= 0) return
+  if (!shouldAutoClone) return
 
   cloneLoading.value = true
   cloneError.value = ''
   try {
-    const newId = await cloneRequest(sourceId)
+    window.history.replaceState(window.history.state, '', route.path)
+
+    const newId = await cloneRequest(cloneSourceId)
     await navigateTo(`/requests/${newId}/edit`, { replace: true })
   }
   catch (err: unknown) {

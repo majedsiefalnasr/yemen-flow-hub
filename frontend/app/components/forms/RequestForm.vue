@@ -22,10 +22,20 @@ const { handleSubmit, errors, setValues, values } = useForm({
     merchant_id: props.initialValues?.merchant_id ?? undefined,
     currency: (props.initialValues?.currency as Currency | undefined) ?? Currency.USD,
     amount: props.initialValues?.amount ?? undefined,
+    goods_type: props.initialValues?.goods_type ?? '',
+    payment_terms: props.initialValues?.payment_terms ?? '',
+    due_date: props.initialValues?.due_date ?? '',
     supplier_name: props.initialValues?.supplier_name ?? '',
     goods_description: props.initialValues?.goods_description ?? '',
     port_of_entry: props.initialValues?.port_of_entry ?? '',
     notes: props.initialValues?.notes ?? '',
+    invoice_number: props.initialValues?.invoice_number ?? '',
+    invoice_date: props.initialValues?.invoice_date ?? '',
+    origin_country: props.initialValues?.origin_country ?? '',
+    arrival_port: props.initialValues?.arrival_port ?? '',
+    shipping_port: props.initialValues?.shipping_port ?? '',
+    customs_office: props.initialValues?.customs_office ?? '',
+    bl_number: props.initialValues?.bl_number ?? '',
   },
 })
 
@@ -38,10 +48,20 @@ watch(
       merchant_id: next.merchant_id ?? undefined,
       currency: (next.currency as Currency | undefined) ?? Currency.USD,
       amount: next.amount ?? undefined,
+      goods_type: next.goods_type ?? '',
+      payment_terms: next.payment_terms ?? '',
+      due_date: next.due_date ?? '',
       supplier_name: next.supplier_name ?? '',
       goods_description: next.goods_description ?? '',
       port_of_entry: next.port_of_entry ?? '',
       notes: next.notes ?? '',
+      invoice_number: next.invoice_number ?? '',
+      invoice_date: next.invoice_date ?? '',
+      origin_country: next.origin_country ?? '',
+      arrival_port: next.arrival_port ?? '',
+      shipping_port: next.shipping_port ?? '',
+      customs_office: next.customs_office ?? '',
+      bl_number: next.bl_number ?? '',
     })
   },
   { deep: true },
@@ -76,14 +96,24 @@ onMounted(loadMerchants)
 const onSubmit = handleSubmit((v) => {
   emit('submit', {
     merchant_id: v.merchant_id as number,
-    currency: v.currency,
-    amount: v.amount as number,
-    supplier_name: v.supplier_name,
-    goods_description: v.goods_description,
-    port_of_entry: v.port_of_entry,
-    notes: v.notes ?? '',
+      currency: v.currency,
+      amount: v.amount as number,
+      goods_type: v.goods_type || null,
+      payment_terms: v.payment_terms || null,
+      due_date: v.due_date || null,
+      supplier_name: v.supplier_name,
+      goods_description: v.goods_description,
+      port_of_entry: v.port_of_entry,
+      notes: v.notes ?? '',
+      invoice_number: v.invoice_number || null,
+      invoice_date: v.invoice_date || null,
+      origin_country: v.origin_country || null,
+      arrival_port: v.arrival_port || null,
+      shipping_port: v.shipping_port || null,
+      customs_office: v.customs_office || null,
+      bl_number: v.bl_number || null,
+    })
   })
-})
 </script>
 
 <template>
@@ -234,6 +264,163 @@ const onSubmit = handleSubmit((v) => {
           </select>
           <span v-if="errors.currency" class="field-error" role="alert">{{ errors.currency }}</span>
         </div>
+      </div>
+
+      <div class="field-row">
+        <div class="field-group field-group--flex">
+          <label class="field-label" for="goods-type">نوع البضائع</label>
+          <input
+            id="goods-type"
+            :value="values.goods_type"
+            type="text"
+            class="form-input"
+            :disabled="loading"
+            :class="{ 'form-input--error': errors.goods_type }"
+            placeholder="مثال: مواد غذائية"
+            @input="(e) => setValues({ goods_type: (e.target as HTMLInputElement).value })"
+          />
+          <span v-if="errors.goods_type" class="field-error" role="alert">{{ errors.goods_type }}</span>
+        </div>
+
+        <div class="field-group field-group--flex">
+          <label class="field-label" for="payment-terms">شروط الدفع</label>
+          <select
+            id="payment-terms"
+            :value="values.payment_terms"
+            class="form-input"
+            :disabled="loading"
+            :class="{ 'form-input--error': errors.payment_terms }"
+            @change="(e) => setValues({ payment_terms: (e.target as HTMLSelectElement).value })"
+          >
+            <option value="">اختر شروط الدفع</option>
+            <option value="LC">LC</option>
+            <option value="TT">TT</option>
+            <option value="CAD">CAD</option>
+          </select>
+          <span v-if="errors.payment_terms" class="field-error" role="alert">{{ errors.payment_terms }}</span>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label" for="due-date">تاريخ الاستحقاق</label>
+        <input
+          id="due-date"
+          :value="values.due_date"
+          type="date"
+          class="form-input"
+          :disabled="loading"
+          :class="{ 'form-input--error': errors.due_date }"
+          @input="(e) => setValues({ due_date: (e.target as HTMLInputElement).value })"
+        />
+        <span v-if="errors.due_date" class="field-error" role="alert">{{ errors.due_date }}</span>
+      </div>
+    </section>
+
+    <section class="form-section">
+      <h2 class="section-title">بيانات الشحنة والفاتورة</h2>
+
+      <div class="field-row">
+        <div class="field-group field-group--flex">
+          <label class="field-label" for="invoice-number">رقم الفاتورة</label>
+          <input
+            id="invoice-number"
+            :value="values.invoice_number"
+            type="text"
+            class="form-input"
+            :disabled="loading"
+            :class="{ 'form-input--error': errors.invoice_number }"
+            @input="(e) => setValues({ invoice_number: (e.target as HTMLInputElement).value })"
+          />
+          <span v-if="errors.invoice_number" class="field-error" role="alert">{{ errors.invoice_number }}</span>
+        </div>
+
+        <div class="field-group field-group--flex">
+          <label class="field-label" for="invoice-date">تاريخ الفاتورة</label>
+          <input
+            id="invoice-date"
+            :value="values.invoice_date"
+            type="date"
+            class="form-input"
+            :disabled="loading"
+            :class="{ 'form-input--error': errors.invoice_date }"
+            @input="(e) => setValues({ invoice_date: (e.target as HTMLInputElement).value })"
+          />
+          <span v-if="errors.invoice_date" class="field-error" role="alert">{{ errors.invoice_date }}</span>
+        </div>
+      </div>
+
+      <div class="field-row">
+        <div class="field-group field-group--flex">
+          <label class="field-label" for="origin-country">بلد المنشأ</label>
+          <input
+            id="origin-country"
+            :value="values.origin_country"
+            type="text"
+            class="form-input"
+            :disabled="loading"
+            :class="{ 'form-input--error': errors.origin_country }"
+            @input="(e) => setValues({ origin_country: (e.target as HTMLInputElement).value })"
+          />
+          <span v-if="errors.origin_country" class="field-error" role="alert">{{ errors.origin_country }}</span>
+        </div>
+
+        <div class="field-group field-group--flex">
+          <label class="field-label" for="arrival-port">ميناء الوصول</label>
+          <input
+            id="arrival-port"
+            :value="values.arrival_port"
+            type="text"
+            class="form-input"
+            :disabled="loading"
+            :class="{ 'form-input--error': errors.arrival_port }"
+            @input="(e) => setValues({ arrival_port: (e.target as HTMLInputElement).value })"
+          />
+          <span v-if="errors.arrival_port" class="field-error" role="alert">{{ errors.arrival_port }}</span>
+        </div>
+      </div>
+
+      <div class="field-row">
+        <div class="field-group field-group--flex">
+          <label class="field-label" for="shipping-port">ميناء الشحن</label>
+          <input
+            id="shipping-port"
+            :value="values.shipping_port"
+            type="text"
+            class="form-input"
+            :disabled="loading"
+            :class="{ 'form-input--error': errors.shipping_port }"
+            @input="(e) => setValues({ shipping_port: (e.target as HTMLInputElement).value })"
+          />
+          <span v-if="errors.shipping_port" class="field-error" role="alert">{{ errors.shipping_port }}</span>
+        </div>
+
+        <div class="field-group field-group--flex">
+          <label class="field-label" for="customs-office">المكتب الجمركي</label>
+          <input
+            id="customs-office"
+            :value="values.customs_office"
+            type="text"
+            class="form-input"
+            :disabled="loading"
+            :class="{ 'form-input--error': errors.customs_office }"
+            @input="(e) => setValues({ customs_office: (e.target as HTMLInputElement).value })"
+          />
+          <span v-if="errors.customs_office" class="field-error" role="alert">{{ errors.customs_office }}</span>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label" for="bl-number">رقم بوليصة الشحن</label>
+        <input
+          id="bl-number"
+          :value="values.bl_number"
+          type="text"
+          class="form-input"
+          :disabled="loading"
+          :class="{ 'form-input--error': errors.bl_number }"
+          @input="(e) => setValues({ bl_number: (e.target as HTMLInputElement).value })"
+        />
+        <span v-if="errors.bl_number" class="field-error" role="alert">{{ errors.bl_number }}</span>
       </div>
     </section>
 
