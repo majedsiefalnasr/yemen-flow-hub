@@ -2575,3 +2575,371 @@ So that account and system configuration screens are production-safe and visuall
 - Profile layout, avatar card, stats, recent activity, settings tabs, form controls, toggles, and responsive behavior match screenshots.
 - Demo-data reset tooling is intentionally omitted, even if visible in the screenshots.
 - Any setting displayed in production must be backed by a real API, persisted value, authorization rule, and test.
+
+---
+
+## Epic 8: Workflow & Production Completion
+
+**Purpose:** Close the final workflow-completeness and production-readiness gaps identified in `docs/09-user-stories-gap-analysis.md`. This epic is NOT a new architecture phase; all prior epics 1–7 are canonical and complete. Epic 8 only organizes the residual in-scope gaps into executable stories.
+
+**Created:** 2026-05-21
+**Source authorities:**
+1. `docs/09-user-stories-gap-analysis.md` — defines S1–S10 scope, dependencies, and acceptance.
+2. `docs/08-prototype-gap-analysis.md` — Lovable visual parity reference (referenced, not reopened).
+3. `docs/01-workflow-and-business-rules.md` and `docs/03-database-and-models.md` remain final authority for workflow rules, roles, statuses, and audit behavior.
+4. `AGENTS.md` canonical enums remain the source of truth. The three new statuses (`BANK_RETURNED`, `SUPPORT_RETURNED`, `BANK_REJECTED`) extend — never replace — the existing 18-status enum.
+
+**Hard scope boundaries (non-negotiable):**
+- Treat all stories in Epics 1–7 as canonical and completed. Do NOT reopen unless explicitly listed below.
+- No architecture rewrites. No new MVP scope expansion. No deferred or out-of-scope items from `docs/09` §5.
+- No Lovable parity rework except what is already tracked in `docs/08`.
+- All commits must remain signed; commit to both team repo and root monorepo per `AGENTS.md`.
+- All workflow status changes continue to go through `WorkflowService::transition()`.
+
+**Definition of done for Epic 8:**
+- Three new canonical statuses are live and routed correctly through `WorkflowService::transition()` and `TransitionMap`.
+- All 9 USER-STORIES.md gaps (G1–G5 + 4 polish items) are closed per `docs/09` §6.
+- All existing tests (~1,447 frontend + ~564 backend) still green; new stories add their own targeted tests.
+- `sprint-status.yaml` reflects epic-8 progress; no prior epic statuses are mutated.
+
+**Common technical requirements for all Epic 8 stories:**
+- Run SocratiCode before modifying existing files: `codebase_symbol` / `codebase_search`, then `codebase_impact` for touched services/components.
+- Keep `lovable/` read-only.
+- Keep business logic out of Vue components; use composables/stores/services.
+- Preserve real backend authorization and organization scoping.
+- After code changes, run targeted frontend/backend tests and `graphify update .`.
+
+---
+
+### Story 8.1: BANK_RETURNED Status & Return-to-Intake Transition
+
+As a `BANK_REVIEWER`,
+I want to return a `BANK_REVIEW` request to the data-entry queue with a mandatory comment (instead of being forced to reject or approve),
+So that intake can fix surface-level issues without the request being treated as rejected.
+
+**Source authority:**
+- `docs/09-user-stories-gap-analysis.md` §1.3 (new status), §2.2 Story 4.1, §6 S1
+- USER-STORIES.md §4.1 (return-with-comment path), Workflow B
+- Gap G1
+
+**Nuxt + Laravel targets:**
+- `backend/app/Enums/RequestStatus.php` — add `BANK_RETURNED` case + label + editable check
+- `backend/app/Services/Workflow/TransitionMap.php` — add `bank_return_to_intake` transition
+- `backend/app/Services/Workflow/WorkflowService.php` — emit `STATUS_TRANSITION` audit with notes
+- `backend/app/Http/Controllers/Api/WorkflowController.php` — add `bankReturn()` action
+- `backend/routes/api.php` — `POST /api/workflow/{importRequest}/bank-return`
+- `backend/app/Notifications/RequestReturnedNotification.php` — already exists; verify payload includes `from_role: BANK_REVIEWER`
+- `backend/database/migrations/2026_05_21_xxxxxx_add_bank_returned_status.php` — index-only DDL (no enum table change needed; status is a string column)
+- `frontend/app/types/enums.ts` — add `BANK_RETURNED`
+- `frontend/app/constants/workflow.ts` — extend STATUS_PROGRESS / STATUS_LABEL / ROLE_BUCKETS
+- `frontend/app/components/requests/ActionsPanel.vue` — add "إعادة للمدخل" action with comment textarea
+- `frontend/app/components/ui/CorrectionBanner.vue` — variant: returned-from-bank-review
+- `frontend/app/pages/requests/[id]/edit.vue` — allow edit when status === `BANK_RETURNED`
+
+**Acceptance criteria:**
+- New canonical status `BANK_RETURNED` exists and `isEditable()` returns true for it.
+- `POST /api/workflow/{id}/bank-return { comment: string }` transitions a `BANK_REVIEW` request to `BANK_RETURNED`; 422 if comment is empty/whitespace.
+- Transition is rejected (403 `WORKFLOW_FORBIDDEN_ROLE`) for non-BANK_REVIEWER actors.
+- Self-review SOD: same `DATA_ENTRY` user who submitted cannot also act as reviewer (existing guard reused).
+- `request_stage_history` and `audit_logs` capture comment as `notes`.
+- Intake `request.update` continues to work on `BANK_RETURNED` like on `DRAFT_REJECTED_INTERNAL`.
+- Intake `submit` transition accepts `BANK_RETURNED` as a valid `from` state.
+- Frontend banner reads "إعادة من المراجع — يرجى التعديل وإعادة الإرسال" and shows the reviewer's comment.
+- Notification `RequestReturnedNotification` is dispatched to bank intake users in the same bank.
+
+**Out of scope:** support-return-to-intake (covered by Story 8.2), terminal bank rejection (covered by Story 8.3).
+
+---
+
+### Story 8.2: SUPPORT_RETURNED Status & Direct Return-from-Support Transition
+
+As a `SUPPORT_COMMITTEE` member,
+I want to return a `SUPPORT_REVIEW_IN_PROGRESS` request directly to data entry with a mandatory comment (without going through rejection-then-bank-return),
+So that intake gets a clear signal that the support committee flagged an issue distinct from internal bank rejection.
+
+**Source authority:**
+- `docs/09-user-stories-gap-analysis.md` §1.3 (new status), §2.5 Story 7.4, §6 S2
+- USER-STORIES.md §7.4, Workflow C
+- Gap G2
+
+**Nuxt + Laravel targets:**
+- `backend/app/Enums/RequestStatus.php` — add `SUPPORT_RETURNED` case + label + editable check
+- `backend/app/Services/Workflow/TransitionMap.php` — add `support_return_to_intake` transition; release the support claim atomically
+- `backend/app/Services/Workflow/WorkflowService.php` — release claim + notify
+- `backend/app/Http/Controllers/Api/WorkflowController.php` — add `supportReturn()` action
+- `backend/routes/api.php` — `POST /api/workflow/{importRequest}/support-return`
+- `frontend/app/types/enums.ts` — add `SUPPORT_RETURNED`
+- `frontend/app/constants/workflow.ts` — STATUS_PROGRESS / STATUS_LABEL / ROLE_BUCKETS / business-status mapping
+- `frontend/app/components/requests/ActionsPanel.vue` — support-side "إعادة للمدخل" action with comment
+- `frontend/app/components/ui/CorrectionBanner.vue` — variant: returned-from-support
+- `frontend/app/pages/requests/[id]/edit.vue` — allow edit when status === `SUPPORT_RETURNED`
+
+**Acceptance criteria:**
+- New canonical status `SUPPORT_RETURNED` exists and `isEditable()` returns true for it.
+- `POST /api/workflow/{id}/support-return { comment: string }` transitions a `SUPPORT_REVIEW_IN_PROGRESS` request to `SUPPORT_RETURNED`; 422 on empty comment.
+- The support claim Redis key is released atomically as part of the transition.
+- Only the `SUPPORT_COMMITTEE` user who currently holds the claim may invoke this action (403 otherwise).
+- Intake banner reads "إعادة من لجنة المساندة — يرجى التعديل وإعادة الإرسال" and shows the support member's comment.
+- After intake edits and submits, request goes back through `BANK_REVIEW` first (preserving the SOD invariant — the bank reviewer sees a re-submitted-after-support-return flag in the UI).
+- Audit logs capture `from_status: SUPPORT_REVIEW_IN_PROGRESS`, `to_status: SUPPORT_RETURNED`, comment in `notes`.
+- Existing `bank_return_after_support_reject` path is preserved but documented as the legacy path; new flow is preferred.
+
+**Out of scope:** removing legacy `bank_return_after_support_reject` (deferred until one release window passes).
+
+**Depends on:** S1 (Story 8.1 establishes the return-to-intake banner pattern; S2 reuses it).
+
+---
+
+### Story 8.3: Terminal BANK_REJECTED Status
+
+As a `BANK_REVIEWER`,
+I want a separate terminal `BANK_REJECTED` status (distinct from the recoverable `DRAFT_REJECTED_INTERNAL`),
+So that the system correctly models rejection-without-resubmission paths required by USER-STORIES Workflow D.
+
+**Source authority:**
+- `docs/09-user-stories-gap-analysis.md` §1.3, §2.2 Story 4.1, §6 S3
+- USER-STORIES.md §4.1 (reject path) and §11 Workflow D
+- Behavioral mismatch flagged in §1.2
+
+**Nuxt + Laravel targets:**
+- `backend/app/Enums/RequestStatus.php` — add `BANK_REJECTED`; include in `isTerminal()`; NOT in `isEditable()`
+- `backend/app/Services/Workflow/TransitionMap.php` — add new `bank_reject_terminal` transition `BANK_REVIEW → BANK_REJECTED`
+- `backend/app/Services/Workflow/WorkflowService.php` — keep existing `bank_reject` (recoverable) for one release; new `bank_reject_terminal` is the preferred action
+- `backend/app/Http/Controllers/Api/WorkflowController.php` — add `bankRejectTerminal()` action; existing `bankReject()` continues to function
+- `backend/routes/api.php` — `POST /api/workflow/{importRequest}/bank-reject-terminal`
+- `backend/app/Policies/ImportRequestPolicy.php` — `update`/`delete` return false for `BANK_REJECTED`
+- `frontend/app/types/enums.ts` — add `BANK_REJECTED`
+- `frontend/app/constants/workflow.ts` — terminal mapping + STATUS_LABEL + STATUS_PROGRESS
+- `frontend/app/components/requests/ActionsPanel.vue` — split UI: "إعادة للمدخل" (S1) vs "رفض نهائي" (S3) with destructive-confirm dialog
+- `frontend/app/components/ui/LockedBanner.vue` — variant for terminal bank rejection (S5 "نسخ وإعادة إرسال" appears here)
+
+**Acceptance criteria:**
+- `BANK_REJECTED` is included in `RequestStatus::isTerminal()`.
+- `POST /api/workflow/{id}/bank-reject-terminal { comment: string }` transitions `BANK_REVIEW → BANK_REJECTED`; 422 on empty comment; 403 if non-reviewer.
+- Mutations on `BANK_REJECTED` return HTTP 403 with error_code `WORKFLOW_IMMUTABLE_STATE`.
+- The legacy `bank_reject` route remains operational and continues to land in `DRAFT_REJECTED_INTERNAL` (recoverable) — UI does not invoke it anymore.
+- A migration plan note is added to `docs/01-workflow-and-business-rules.md` documenting that `DRAFT_REJECTED_INTERNAL` will be deprecated after one release.
+- Frontend destructive-confirm dialog matches the existing pattern used in `support_reject`.
+- Notification `RequestRejectedNotification` is dispatched with `terminal: true` payload key.
+
+**Out of scope:** Deleting `bank_reject` legacy route. Deleting `DRAFT_REJECTED_INTERNAL` status.
+
+**Depends on:** S1 (Story 8.1 establishes the split UI for "return" vs other reviewer actions).
+
+---
+
+### Story 8.4: Claim Release Notification + Audit Visibility
+
+As a `BANK_ADMIN` or CBY support committee lead,
+I want to be notified when a support member releases a claim (manually or via TTL expiry),
+So that long-running claim oscillation is visible and stale-claim patterns can be investigated.
+
+**Source authority:**
+- `docs/09-user-stories-gap-analysis.md` §2.5 Story 7.2, §4.1, §5 item 8, §6 S4
+- USER-STORIES.md §15.8
+- Gap G3
+
+**Nuxt + Laravel targets:**
+- `backend/app/Notifications/ClaimReleasedNotification.php` — new notification class
+- `backend/app/Services/Workflow/WorkflowService.php` — dispatch on manual release path
+- `backend/app/Console/Commands/ExpireClaimsCommand.php` — dispatch on TTL expiry path
+- `backend/app/Enums/AuditAction.php` — add `CLAIM_RELEASED` case + label
+- `backend/app/Services/Audit/AuditService.php` — log on both release paths
+- `frontend/app/pages/notifications.vue` — already paginated; render `claim_released` icon variant
+- `frontend/app/composables/useNotifications.ts` — type definition
+
+**Acceptance criteria:**
+- `DELETE /api/workflow/{id}/claim-support-review` emits a `ClaimReleasedNotification` to all `SUPPORT_COMMITTEE` leads (defined as a configurable set; for now: all `CBY_ADMIN` users).
+- `ExpireClaimsCommand` (cron) emits the same notification on TTL expiry with `reason: ttl_expired`.
+- `audit_logs` entry: `action: CLAIM_RELEASED`, `notes: { reason: manual|ttl_expired }`, `user_id` is the releaser (NULL for TTL).
+- Notification preferences allow toggling `claim_released` off; defaults ON for `CBY_ADMIN`.
+- Notification payload includes `request_id`, `reference_number`, `released_by_name` (nullable), `reason`.
+- Frontend notification center shows a yellow/warning icon for `claim_released`.
+
+**Out of scope:** SLA timer on claim-release frequency, supervisor-required reason after N releases (deferred).
+
+---
+
+### Story 8.5: Copy & Resubmit on Terminal Rejections
+
+As a `DATA_ENTRY` or `BANK_ADMIN` user,
+I want to clone a terminally-rejected request into a new draft (pre-filled from the original, sans documents),
+So that I do not have to re-key all wizard fields from scratch when responding to a permanent rejection.
+
+**Source authority:**
+- `docs/09-user-stories-gap-analysis.md` §5 item 10, §6 S5
+- USER-STORIES.md §15.10
+- Gap G4
+
+**Nuxt + Laravel targets:**
+- `backend/app/Http/Controllers/Api/ImportRequestController.php` — add `clone()` action
+- `backend/routes/api.php` — `POST /api/requests/{importRequest}/clone`
+- `backend/app/Policies/ImportRequestPolicy.php` — `clone` ability: actor must be `DATA_ENTRY` or `BANK_ADMIN` in same bank as source; source must be terminal-rejected
+- `backend/app/Services/Workflow/WorkflowService.php` — clone helper that creates a new `DRAFT` request with copied wizard fields and `revision_count` linked
+- `frontend/app/composables/useRequests.ts` — `cloneRequest(id)` returning new request id
+- `frontend/app/pages/requests/[id]/index.vue` — render "نسخ وإعادة إرسال" button on terminal-rejected statuses (`BANK_REJECTED`, `SUPPORT_REJECTED`, `EXECUTIVE_REJECTED`)
+- `frontend/app/pages/requests/new.vue` — accept `?clone_of=<id>` query param to pre-fill the wizard
+
+**Acceptance criteria:**
+- `POST /api/requests/{id}/clone` returns the new draft request id; 403 if source is not terminal-rejected; 403 if actor not in source's bank or not in allowed role.
+- Cloned request has: copied wizard fields (currency, amount, supplier_name, goods_description, port_of_entry, goods_type, payment_terms, due_date, invoice_number, invoice_date, origin_country, arrival_port, shipping_port, customs_office, bl_number, merchant_id, notes), status `DRAFT`, new `reference_number`, `revision_count = source.revision_count + 1`.
+- Documents are NOT copied (re-upload required for audit integrity).
+- A `REQUEST_CREATED` audit entry is logged with `notes: { cloned_from: <source_id> }`.
+- Frontend button is visible only when current status is terminal-rejected AND current user has appropriate role.
+- After clone, user is redirected to `/requests/<new_id>/edit`.
+
+**Out of scope:** Bulk clone, partial-field clone, document carry-over.
+
+---
+
+### Story 8.6: Cross-Bank Duplicate Invoice Detection
+
+As a `BANK_REVIEWER`, `SUPPORT_COMMITTEE` member, or `CBY_ADMIN`,
+I want the system to detect duplicate `invoice_number` values across all banks (not only within the actor's own bank),
+So that the same supplier invoice cannot be financed twice through different commercial banks.
+
+**Source authority:**
+- `docs/09-user-stories-gap-analysis.md` §3 Workflow F, §5 item 13, §6 S6
+- USER-STORIES.md §15.13 and §15.14
+- Gap G5
+
+**Nuxt + Laravel targets:**
+- `backend/database/migrations/2026_05_21_xxxxxx_add_index_invoice_number_to_import_requests.php` — composite index `(invoice_number, deleted_at)` for fast scans
+- `backend/app/Services/DuplicateDetectionService.php` — new service: `findDuplicatesForInvoice(string $invoiceNumber, int $excludeRequestId = null)` returns peer rows across all banks (no scope filter)
+- `backend/app/Http/Controllers/Api/ImportRequestController.php` — `show()` includes `duplicate_warnings` array in response when actor has audit/reviewer permission
+- `backend/app/Http/Controllers/Api/AuditController.php` — `duplicates()` query updated to use the new service for cross-bank scan
+- `backend/app/Services/Settings/SystemSettings.php` — new key `duplicate_invoice_policy` with values `warn` (default) or `block`
+- `backend/app/Http/Requests/StoreImportRequest.php` — when policy=`block`, return 422 on duplicate detection
+- `frontend/app/composables/useRequests.ts` — surface `duplicate_warnings` in the typed model
+- `frontend/app/pages/requests/[id]/index.vue` — duplicate-warning badge + side-by-side compare widget showing the other row(s)
+- `frontend/app/pages/audit.vue` — duplicates tab queries the cross-bank scan endpoint
+- `frontend/app/pages/admin/settings.vue` — surface the `duplicate_invoice_policy` toggle for `CBY_ADMIN`
+
+**Acceptance criteria:**
+- `ImportRequest::show()` returns a `duplicate_warnings` array (possibly empty) for reviewer/auditor roles; bank-scoped roles see only the count + bank names of matches, not full data of other banks' rows.
+- `CBY_ADMIN` and `SUPPORT_COMMITTEE` see full peer-row payload (reference number, bank name, amount, currency, created_at).
+- `audit.vue` duplicates tab lists cross-bank duplicates grouped by `invoice_number`.
+- `duplicate_invoice_policy = block` causes wizard submission to fail with 422 + arabic error message; `warn` (default) creates the request and surfaces the warning in detail view.
+- A "نسخ وإعادة إرسال" overlap with S5 is NOT triggered by duplicate detection — these are independent.
+- Audit log entry `REQUEST_CREATED` includes `notes.duplicate_count` when > 0.
+
+**Out of scope:** Side-by-side amount/currency diff highlighting (covered as part of the same UI widget but acceptance is shipped if both rows render — full diff highlighting is a fast-follow).
+
+---
+
+### Story 8.7: Audit Metadata Polish
+
+As a `CBY_ADMIN`,
+I want audit entries to record real client IP (proxy-aware), browser user agent, and before/after values on role/permission changes,
+So that compliance investigations can reconstruct who did what from where without guesswork.
+
+**Source authority:**
+- `docs/09-user-stories-gap-analysis.md` §4.2, §5 items 22 and 25, §6 S7
+- USER-STORIES.md §13.1 and §15.22 and §15.25
+
+**Nuxt + Laravel targets:**
+- `backend/bootstrap/app.php` — configure `TrustProxies` with proper header set
+- `backend/database/migrations/2026_05_21_xxxxxx_add_user_agent_to_audit_logs.php` — add nullable `user_agent` column
+- `backend/app/Services/Audit/AuditService.php` — populate `ip`, `user_agent` from request; on role/permission change include `before` and `after` values in `notes` JSON
+- `backend/app/Http/Controllers/Api/UserController.php::update()` — capture old role before update; pass to AuditService
+- `backend/app/Http/Resources/AuditLogResource.php` — expose `user_agent` and `metadata` in the audit feed
+- `frontend/app/pages/audit.vue` — render UA + before/after metadata in the row expansion
+
+**Acceptance criteria:**
+- All new audit entries (post-deployment) carry non-null `ip` resolved through trusted proxies and non-null `user_agent`.
+- `UserController::update()` logs `USER_UPDATED` with `notes: { before: { role, is_active, ... }, after: { ... } }` when fields change.
+- `audit.vue` row expansion renders the UA string (truncated with full on hover) and a "before/after" diff for administrative changes.
+- Existing audit rows (pre-deployment) continue to render without errors (nullable column).
+- No existing test breaks; new tests assert UA capture + before/after payload.
+
+**Out of scope:** Geolocation lookup from IP, signed audit entries, audit-log immutability proof (separate concern).
+
+---
+
+### Story 8.8: Request Detail Print Page
+
+As any user with read access to a request,
+I want a print-friendly view of the request detail,
+So that I can produce a paper trail for offline review or signature collection without screenshots.
+
+**Source authority:**
+- `docs/09-user-stories-gap-analysis.md` §5 item 18, §6 S8
+- USER-STORIES.md §15.18
+- Pattern reference: existing `frontend/app/pages/customs/[id]/print.vue`
+
+**Nuxt + Laravel targets:**
+- `frontend/app/pages/requests/[id]/print.vue` — new print-optimized page; mirrors styling of `customs/[id]/print.vue`
+- `frontend/app/components/requests/RequestPrintable.vue` — extracted printable block (mirrors `customs/PrintablePermit.vue` pattern)
+- `frontend/app/pages/requests/[id]/index.vue` — add "طباعة" button in the page header
+- `backend/app/Http/Controllers/Api/ImportRequestController.php::show()` — already returns required fields; no API change needed
+- `backend/app/Policies/ImportRequestPolicy.php` — `view` already gates access; reused for print
+
+**Acceptance criteria:**
+- `/requests/{id}/print` is reachable to any user with `view` permission on the request.
+- The page renders: reference number, status badge, requester bank, requester user, wizard fields, document list (names + dates, no inline PDF), audit timeline (compact), workflow timeline (compact).
+- `@media print` styles hide nav/header/sidebar; A4 portrait page sized; RTL layout preserved.
+- A "العودة" link (hidden in print) returns to the detail page.
+- No new API endpoint; data comes from existing `GET /api/requests/{id}` + `GET /api/requests/{id}/history`.
+- No editing controls visible on the print page.
+
+**Out of scope:** PDF generation server-side (browser-driven print is sufficient).
+
+---
+
+### Story 8.9: Advanced Request List Filters
+
+As a `BANK_REVIEWER`, `SUPPORT_COMMITTEE` member, or `CBY_ADMIN`,
+I want to filter the requests list by date range, amount range, and (where applicable) assigned reviewer,
+So that I can narrow down high-volume queues during peak periods.
+
+**Source authority:**
+- `docs/09-user-stories-gap-analysis.md` §5 item 20, §6 S9
+- USER-STORIES.md §15.20
+
+**Nuxt + Laravel targets:**
+- `backend/app/Http/Controllers/Api/ImportRequestController.php::index()` — accept `created_from`, `created_to`, `amount_min`, `amount_max`, `assigned_reviewer_id` query params; validate; apply to Eloquent query
+- `backend/tests/Feature/RequestListFilterTest.php` — new tests
+- `frontend/app/composables/useRequests.ts` — extend list query payload
+- `frontend/app/pages/requests/index.vue` — add filter UI: date range pickers, two numeric inputs, reviewer select (visible only for CBY/admin scope); preserve existing ref/importer/invoice/bank/currency filters
+- `frontend/app/components/requests/RequestFilters.vue` — extracted from `requests/index.vue` if it grows too large (optional refactor)
+
+**Acceptance criteria:**
+- `GET /api/requests?created_from=YYYY-MM-DD&created_to=YYYY-MM-DD&amount_min=...&amount_max=...&assigned_reviewer_id=...` returns filtered results; bad input returns 422.
+- Bank-scoped roles ignore the `assigned_reviewer_id` param if the reviewer is outside their bank scope (silent).
+- Filters compose with existing filters and existing pagination; no N+1 regression (verified via test).
+- Empty-range inputs (`amount_min` without `amount_max`) are accepted and treated as one-sided ranges.
+- `assigned_reviewer_id` only filters by the actor that last performed a review action (`reviewed_by`).
+- Frontend persists last-applied filters in URL query params for shareable links.
+
+**Out of scope:** Risk-level filter (no risk model exists yet), full-text search across all fields (covered by global search story 5.4).
+
+---
+
+### Story 8.10: Inactivity-Lock UI Banner
+
+As any authenticated user,
+I want the UI to warn me before my session expires due to inactivity, and to safely log me out when it does,
+So that compliance-grade session-timeout behavior is visible and predictable.
+
+**Source authority:**
+- `docs/09-user-stories-gap-analysis.md` §5 item 5, §6 S10
+- USER-STORIES.md §15.5
+
+**Nuxt + Laravel targets:**
+- `frontend/app/composables/useInactivityTimer.ts` — new composable: tracks last input timestamp via `mousemove`/`keydown`/`pointerdown`/`scroll` debounced events; computes time-until-expiry from a configured threshold
+- `frontend/app/components/layout/InactivityBanner.vue` — sticky top banner shown when expiry < 2 minutes; "أنت على وشك الخروج بسبب عدم النشاط — انقر للبقاء"
+- `frontend/app/layouts/default.vue` — mount `InactivityBanner` + initialize composable
+- `frontend/app/stores/auth.store.ts` — `extendSession()` calls `GET /api/auth/me` to renew the Sanctum cookie; `forceLogout()` calls `POST /api/auth/logout` and redirects to `/login?reason=inactivity`
+- `frontend/app/pages/login.vue` — render an info banner if `?reason=inactivity` is present
+- `backend/config/sanctum.php` — session lifetime confirmed (no backend code change required if already configured)
+
+**Acceptance criteria:**
+- Inactivity threshold is 15 minutes (configurable via a Nuxt runtime config key); warning fires at T-2 minutes.
+- Banner is non-blocking and dismissible by any user interaction (clicking the banner OR continuing to use the app).
+- At T-0, the user is logged out via `forceLogout()`; redirected to `/login?reason=inactivity`.
+- Login page surfaces a non-error info message: "تم تسجيل خروجك بسبب عدم النشاط".
+- Composable correctly cleans up event listeners on layout unmount (no memory leaks; verified by Vitest).
+- Works in RTL; banner text is right-aligned; close icon is on the left.
+- Existing tests are unaffected; new tests cover the composable and banner separately.
+
+**Out of scope:** Multi-tab sync of activity (a refresh-tab approach can be a fast-follow), keystroke-level idle detection beyond the listed events.
