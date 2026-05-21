@@ -98,6 +98,29 @@ class NotificationPayloadTest extends TestCase
         $this->assertSame($request->reference_number, $payload['reference_number']);
     }
 
+    public function test_request_returned_payload_includes_from_role_and_comment(): void
+    {
+        $request = $this->makeRequest();
+        $payload = $this->callToArray(new RequestReturnedNotification($request, 'BANK_REVIEWER', 'يرجى تصحيح المستندات'));
+
+        $this->assertSame('request_returned', $payload['type']);
+        $this->assertSame('BANK_REVIEWER', $payload['from_role']);
+        $this->assertSame('يرجى تصحيح المستندات', $payload['comment']);
+        $this->assertSame($request->id, $payload['request_id']);
+        $this->assertSame($request->reference_number, $payload['reference_number']);
+    }
+
+    public function test_request_returned_payload_defaults_when_no_from_role_or_comment(): void
+    {
+        $request = $this->makeRequest();
+        $payload = $this->callToArray(new RequestReturnedNotification($request));
+
+        $this->assertArrayHasKey('from_role', $payload);
+        $this->assertArrayHasKey('comment', $payload);
+        $this->assertSame('', $payload['from_role']);
+        $this->assertNull($payload['comment']);
+    }
+
     public function test_swift_upload_requested_payload(): void
     {
         $request = $this->makeRequest();

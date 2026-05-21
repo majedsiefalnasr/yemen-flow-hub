@@ -22,6 +22,7 @@ enum RequestStatus: string
     case EXECUTIVE_REJECTED = 'EXECUTIVE_REJECTED';
     case CUSTOMS_DECLARATION_ISSUED = 'CUSTOMS_DECLARATION_ISSUED';
     case COMPLETED = 'COMPLETED';
+    case BANK_RETURNED = 'BANK_RETURNED';
 
     public function label(): string
     {
@@ -44,6 +45,7 @@ enum RequestStatus: string
             self::EXECUTIVE_REJECTED => 'رفض تنفيذي نهائي / Executive Rejected',
             self::CUSTOMS_DECLARATION_ISSUED => 'صدر البيان الجمركي / Customs Declaration Issued',
             self::COMPLETED => 'مكتمل / Completed',
+            self::BANK_RETURNED => 'إعادة للمدخل / Returned to Intake',
         };
     }
 
@@ -61,6 +63,7 @@ enum RequestStatus: string
         return in_array($this, [
             self::DRAFT,
             self::DRAFT_REJECTED_INTERNAL,
+            self::BANK_RETURNED,
         ], true);
     }
 }

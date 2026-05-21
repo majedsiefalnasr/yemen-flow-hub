@@ -7,7 +7,7 @@ use PHPUnit\Framework\TestCase;
 
 class RequestStatusTest extends TestCase
 {
-    public function test_all_18_canonical_values_exist(): void
+    public function test_all_canonical_values_exist(): void
     {
         $expected = [
             'DRAFT',
@@ -28,11 +28,12 @@ class RequestStatusTest extends TestCase
             'EXECUTIVE_REJECTED',
             'CUSTOMS_DECLARATION_ISSUED',
             'COMPLETED',
+            'BANK_RETURNED',
         ];
 
         $actual = array_column(RequestStatus::cases(), 'value');
 
-        $this->assertCount(18, $actual);
+        $this->assertCount(19, $actual);
         foreach ($expected as $value) {
             $this->assertContains($value, $actual, "Missing canonical status: {$value}");
         }
@@ -46,14 +47,23 @@ class RequestStatusTest extends TestCase
         $this->assertFalse(RequestStatus::SUPPORT_REJECTED->isTerminal(), 'SUPPORT_REJECTED can be reopened via return_to_entry');
         $this->assertFalse(RequestStatus::DRAFT->isTerminal());
         $this->assertFalse(RequestStatus::SUBMITTED->isTerminal());
+        $this->assertFalse(RequestStatus::BANK_RETURNED->isTerminal());
     }
 
     public function test_editable_statuses(): void
     {
         $this->assertTrue(RequestStatus::DRAFT->isEditable());
         $this->assertTrue(RequestStatus::DRAFT_REJECTED_INTERNAL->isEditable());
+        $this->assertTrue(RequestStatus::BANK_RETURNED->isEditable());
         $this->assertFalse(RequestStatus::SUBMITTED->isEditable());
         $this->assertFalse(RequestStatus::COMPLETED->isEditable());
+    }
+
+    public function test_bank_returned_has_arabic_and_english_label(): void
+    {
+        $label = RequestStatus::BANK_RETURNED->label();
+        $this->assertStringContainsString('إعادة للمدخل', $label);
+        $this->assertStringContainsString('Returned to Intake', $label);
     }
 
     public function test_from_string_round_trips(): void

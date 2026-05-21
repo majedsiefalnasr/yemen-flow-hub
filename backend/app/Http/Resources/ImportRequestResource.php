@@ -124,6 +124,12 @@ class ImportRequestResource extends JsonResource
                 ] : null,
                 'download_url' => url("/api/customs/{$this->issuedCustomsDeclaration->id}/download"),
             ] : null,
+            'bank_return_comment' => $this->status === RequestStatus::BANK_RETURNED
+                ? $this->stageHistory()
+                    ->where('action', 'bank_return_to_intake')
+                    ->latest()
+                    ->value('notes')
+                : null,
             'revision_count' => $this->revision_count,
             'voting_session_status' => $this->voting_session_status?->value,
             'created_at' => $this->created_at?->toISOString(),

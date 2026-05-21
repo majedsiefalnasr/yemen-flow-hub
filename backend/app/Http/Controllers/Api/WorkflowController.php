@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Enums\UserRole;
 use App\Exceptions\VotingException;
+use App\Http\Requests\BankReturnRequest;
 use App\Http\Requests\WorkflowActionRequest;
 use App\Http\Resources\ImportRequestResource;
 use App\Models\ImportRequest;
@@ -163,6 +164,21 @@ class WorkflowController extends Controller
     public function bankReturnAfterSupportReject(WorkflowActionRequest $request, ImportRequest $importRequest)
     {
         return $this->run($request, $importRequest, 'bank_return_after_support_reject');
+    }
+
+    #[OA\Post(path: '/api/workflow/{importRequest}/bank-return', tags: ['Workflow'], summary: 'Return BANK_REVIEW request to intake (BANK_RETURNED) with mandatory comment', parameters: [new OA\Parameter(name: 'importRequest', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], requestBody: new OA\RequestBody(required: true, content: new OA\JsonContent(required: ['comment'], properties: [new OA\Property(property: 'comment', type: 'string', minLength: 3, maxLength: 2000)])), responses: [new OA\Response(response: 200, description: 'Transition applied'), new OA\Response(response: 422, description: 'Comment required'), new OA\Response(response: 403, description: 'Forbidden')])]
+    public function bankReturn(BankReturnRequest $request, ImportRequest $importRequest)
+    {
+        $this->authorize('view', $importRequest);
+
+        $updated = $this->workflowService->transition(
+            $importRequest,
+            'bank_return_to_intake',
+            $request->user(),
+            $request->input('comment')
+        );
+
+        return ApiResponse::success(new ImportRequestResource($updated->load(ImportRequestResource::baseRelations())), 'Workflow transition executed.');
     }
 
     #[OA\Post(path: '/api/workflow/{importRequest}/bank-finalize-rejection', tags: ['Workflow'], summary: 'BANK_REVIEWER finalizes a support-rejected request as terminal', parameters: [new OA\Parameter(name: 'importRequest', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], requestBody: new OA\RequestBody(required: false, content: new OA\JsonContent(properties: [new OA\Property(property: 'reason', type: 'string', maxLength: 2000)])), responses: [new OA\Response(response: 200, description: 'Transition applied')])]

@@ -139,8 +139,9 @@ class WorkflowService
                 $payload['submitted_by'] = $actor->id;
             }
 
-            if ($action === 'submit' && $request->status === RequestStatus::DRAFT_REJECTED_INTERNAL) {
+            if ($action === 'submit' && in_array($request->status, [RequestStatus::DRAFT_REJECTED_INTERNAL, RequestStatus::BANK_RETURNED], true)) {
                 $payload['resubmitted_by'] = $actor->id;
+                $payload['revision_count'] = $request->revision_count + 1;
             }
 
             if ($action === 'return_to_entry') {
@@ -201,7 +202,7 @@ class WorkflowService
                 ]
             );
 
-            $event = new RequestTransitioned($request->refresh(), $action, $actor);
+            $event = new RequestTransitioned($request->refresh(), $action, $actor, $reason);
             event($event);
             app(SendWorkflowNotifications::class)->handle($event);
         });

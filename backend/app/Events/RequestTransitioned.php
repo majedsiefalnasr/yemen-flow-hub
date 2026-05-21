@@ -14,7 +14,8 @@ class RequestTransitioned
     public function __construct(
         public ImportRequest $requestModel,
         public string $action,
-        public User $actor
+        public User $actor,
+        public ?string $reason = null,
     ) {
     }
 }

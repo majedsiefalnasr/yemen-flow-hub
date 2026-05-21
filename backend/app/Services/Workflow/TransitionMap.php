@@ -11,7 +11,7 @@ class TransitionMap
     {
         return [
             'submit' => [
-                'from' => [RequestStatus::DRAFT, RequestStatus::DRAFT_REJECTED_INTERNAL],
+                'from' => [RequestStatus::DRAFT, RequestStatus::DRAFT_REJECTED_INTERNAL, RequestStatus::BANK_RETURNED],
                 'to' => RequestStatus::SUBMITTED,
                 'roles' => [UserRole::DATA_ENTRY],
                 'next_owner' => UserRole::BANK_REVIEWER,
@@ -31,6 +31,12 @@ class TransitionMap
             'bank_reject' => [
                 'from' => [RequestStatus::BANK_REVIEW],
                 'to' => RequestStatus::DRAFT_REJECTED_INTERNAL,
+                'roles' => [UserRole::BANK_REVIEWER],
+                'next_owner' => UserRole::DATA_ENTRY,
+            ],
+            'bank_return_to_intake' => [
+                'from' => [RequestStatus::BANK_REVIEW],
+                'to' => RequestStatus::BANK_RETURNED,
                 'roles' => [UserRole::BANK_REVIEWER],
                 'next_owner' => UserRole::DATA_ENTRY,
             ],
