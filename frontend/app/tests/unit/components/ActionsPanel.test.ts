@@ -31,7 +31,8 @@ function showDataEntryActions(request: ImportRequest, userRole: UserRole): boole
     userRole === UserRole.DATA_ENTRY
     && (request.status === RequestStatus.DRAFT
       || request.status === RequestStatus.DRAFT_REJECTED_INTERNAL
-      || request.status === RequestStatus.BANK_RETURNED)
+      || request.status === RequestStatus.BANK_RETURNED
+      || request.status === RequestStatus.SUPPORT_RETURNED)
   )
 }
 
@@ -49,6 +50,10 @@ function validateBankReturnComment(comment: string): string | null {
 
 function showBankReturnedEditLink(request: ImportRequest, userRole: UserRole): boolean {
   return showDataEntryActions(request, userRole) && request.status === RequestStatus.BANK_RETURNED
+}
+
+function showSupportReturnedEditLink(request: ImportRequest, userRole: UserRole): boolean {
+  return showDataEntryActions(request, userRole) && request.status === RequestStatus.SUPPORT_RETURNED
 }
 
 function showSupportCommitteeActions(request: ImportRequest, userRole: UserRole): boolean {
@@ -135,6 +140,10 @@ describe('ActionsPanel — showDataEntryActions', () => {
     expect(showDataEntryActions(makeRequest({ status: RequestStatus.SUBMITTED }), UserRole.DATA_ENTRY)).toBe(false)
   })
 
+  it('true for DATA_ENTRY + SUPPORT_RETURNED', () => {
+    expect(showDataEntryActions(makeRequest({ status: RequestStatus.SUPPORT_RETURNED }), UserRole.DATA_ENTRY)).toBe(true)
+  })
+
   it('false for BANK_REVIEWER + DRAFT (wrong role)', () => {
     expect(showDataEntryActions(makeRequest({ status: RequestStatus.DRAFT }), UserRole.BANK_REVIEWER)).toBe(false)
   })
@@ -218,6 +227,18 @@ describe('ActionsPanel — edit link target', () => {
 
   it('generates correct edit link for request id 1', () => {
     expect(editLinkTarget(1)).toBe('/requests/1/edit')
+  })
+})
+
+describe('ActionsPanel — returned edit links', () => {
+  it('shows bank-return edit link only for DATA_ENTRY + BANK_RETURNED', () => {
+    expect(showBankReturnedEditLink(makeRequest({ status: RequestStatus.BANK_RETURNED }), UserRole.DATA_ENTRY)).toBe(true)
+    expect(showBankReturnedEditLink(makeRequest({ status: RequestStatus.SUPPORT_RETURNED }), UserRole.DATA_ENTRY)).toBe(false)
+  })
+
+  it('shows support-return edit link only for DATA_ENTRY + SUPPORT_RETURNED', () => {
+    expect(showSupportReturnedEditLink(makeRequest({ status: RequestStatus.SUPPORT_RETURNED }), UserRole.DATA_ENTRY)).toBe(true)
+    expect(showSupportReturnedEditLink(makeRequest({ status: RequestStatus.BANK_RETURNED }), UserRole.DATA_ENTRY)).toBe(false)
   })
 })
 

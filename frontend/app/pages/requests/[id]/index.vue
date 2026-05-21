@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
+import { ref, computed, nextTick, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { UserRole, RequestStatus } from '../../../types/enums'
 import { useAuthStore } from '../../../stores/auth.store'
@@ -127,9 +127,11 @@ const isSupportReturned = computed(() => request.value?.status === RequestStatus
 const supportReturnHint = computed(() => {
   if (userRole.value !== UserRole.BANK_REVIEWER) return null
   if (request.value?.status !== RequestStatus.SUBMITTED) return null
-  const entry = requestsStore.history.find(h => h.action === 'support_return_to_intake')
-  if (!entry) return null
-  return { comment: entry.notes }
+  const latestSubmitIndex = requestsStore.history.findLastIndex(entry => entry.to_status === RequestStatus.SUBMITTED)
+  if (latestSubmitIndex <= 0) return null
+  const previousEntry = requestsStore.history[latestSubmitIndex - 1]
+  if (!previousEntry || previousEntry.to_status !== RequestStatus.SUPPORT_RETURNED) return null
+  return { comment: previousEntry.notes }
 })
 
 const canEdit = computed(
@@ -360,6 +362,18 @@ async function onActionCompleted() {
   }
 }
 
+async function openSupportReturnHistory() {
+  if (activeTab.value !== 'parties') {
+    await onTabChange('parties')
+  }
+
+  await nextTick()
+  document.getElementById('audit-trail')?.scrollIntoView({
+    behavior: 'smooth',
+    block: 'start',
+  })
+}
+
 async function downloadCustomsDeclaration() {
   const declaration = request.value?.customs_declaration
   if (!declaration) return
@@ -550,6 +564,9 @@ watch(showVotingPanelInline, async (visible) => {
             <span class="support-return-hint__icon" aria-hidden="true">🔄</span>
             <span class="support-return-hint__text">إعادة بعد عودة من المساندة</span>
             <span v-if="supportReturnHint.comment" class="support-return-hint__comment">— {{ supportReturnHint.comment }}</span>
+            <button type="button" class="support-return-hint__link" @click="openSupportReturnHistory">
+              عرض التعليق في السجل
+            </button>
           </div>
 
           <!-- VotingPanel inline for executive roles in voting stages -->
@@ -750,7 +767,7 @@ watch(showVotingPanelInline, async (visible) => {
                 />
               </div>
 
-              <div class="card">
+              <div id="audit-trail" class="card">
                 <h2 class="card-title">سجل الأحداث</h2>
 
                 <div v-if="requestsStore.loadingHistory" class="history-loading" aria-busy="true">
@@ -1014,6 +1031,21 @@ watch(showVotingPanelInline, async (visible) => {
   font-size: 13px;
   color: #004499;
   font-weight: 400;
+}
+
+.support-return-hint__link {
+  margin-inline-start: auto;
+  border: 0;
+  background: transparent;
+  color: #0066cc;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.support-return-hint__link:hover {
+  color: #004499;
 }
 
 .claim-error-banner {

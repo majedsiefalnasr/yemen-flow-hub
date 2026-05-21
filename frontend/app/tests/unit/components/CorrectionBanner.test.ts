@@ -145,7 +145,11 @@ describe('CorrectionBanner — support comment display', () => {
 })
 
 describe('CorrectionBanner — reviewer chip (support return hint)', () => {
-  interface HistoryEntry { action: string; notes: string | null }
+  interface HistoryEntry {
+    action: string
+    notes: string | null
+    to_status: RequestStatus | null
+  }
 
   function resolveSupportReturnHint(
     role: string,
@@ -154,25 +158,35 @@ describe('CorrectionBanner — reviewer chip (support return hint)', () => {
   ): { comment: string | null } | null {
     if (role !== 'BANK_REVIEWER') return null
     if (status !== RequestStatus.SUBMITTED) return null
-    const entry = history.find(h => h.action === 'support_return_to_intake')
-    if (!entry) return null
-    return { comment: entry.notes }
+    const latestSubmitIndex = history.findLastIndex(entry => entry.to_status === RequestStatus.SUBMITTED)
+    if (latestSubmitIndex <= 0) return null
+    const previousEntry = history[latestSubmitIndex - 1]
+    if (!previousEntry || previousEntry.to_status !== RequestStatus.SUPPORT_RETURNED) return null
+    return { comment: previousEntry.notes }
   }
 
   const historyWithReturn: HistoryEntry[] = [
-    { action: 'submit', notes: null },
-    { action: 'bank_review', notes: null },
-    { action: 'bank_approve', notes: null },
-    { action: 'support_review', notes: null },
-    { action: 'support_return_to_intake', notes: 'يرجى مراجعة المستندات' },
-    { action: 'submit', notes: null },
+    { action: 'submit', notes: null, to_status: RequestStatus.SUBMITTED },
+    { action: 'bank_review', notes: null, to_status: RequestStatus.BANK_REVIEW },
+    { action: 'bank_approve', notes: null, to_status: RequestStatus.BANK_APPROVED },
+    { action: 'support_review', notes: null, to_status: RequestStatus.SUPPORT_REVIEW_IN_PROGRESS },
+    { action: 'support_return_to_intake', notes: 'يرجى مراجعة المستندات', to_status: RequestStatus.SUPPORT_RETURNED },
+    { action: 'submit', notes: null, to_status: RequestStatus.SUBMITTED },
   ]
 
   const historyWithoutReturn: HistoryEntry[] = [
-    { action: 'submit', notes: null },
-    { action: 'bank_review', notes: null },
-    { action: 'bank_approve', notes: null },
-    { action: 'support_review', notes: null },
+    { action: 'submit', notes: null, to_status: RequestStatus.SUBMITTED },
+    { action: 'bank_review', notes: null, to_status: RequestStatus.BANK_REVIEW },
+    { action: 'bank_approve', notes: null, to_status: RequestStatus.BANK_APPROVED },
+    { action: 'support_review', notes: null, to_status: RequestStatus.SUPPORT_REVIEW_IN_PROGRESS },
+  ]
+
+  const historyWithOlderSupportReturnOnly: HistoryEntry[] = [
+    { action: 'submit', notes: null, to_status: RequestStatus.SUBMITTED },
+    { action: 'support_return_to_intake', notes: 'تعليق قديم', to_status: RequestStatus.SUPPORT_RETURNED },
+    { action: 'submit', notes: null, to_status: RequestStatus.SUBMITTED },
+    { action: 'bank_return_to_intake', notes: 'إرجاع أحدث من البنك', to_status: RequestStatus.BANK_RETURNED },
+    { action: 'submit', notes: null, to_status: RequestStatus.SUBMITTED },
   ]
 
   it('shows hint for BANK_REVIEWER on SUBMITTED with prior support_return_to_intake', () => {
@@ -183,6 +197,11 @@ describe('CorrectionBanner — reviewer chip (support return hint)', () => {
 
   it('hides hint when no support_return_to_intake in history', () => {
     const hint = resolveSupportReturnHint('BANK_REVIEWER', RequestStatus.SUBMITTED, historyWithoutReturn)
+    expect(hint).toBeNull()
+  })
+
+  it('hides hint when support return exists but is not the immediately previous status', () => {
+    const hint = resolveSupportReturnHint('BANK_REVIEWER', RequestStatus.SUBMITTED, historyWithOlderSupportReturnOnly)
     expect(hint).toBeNull()
   })
 
@@ -198,8 +217,8 @@ describe('CorrectionBanner — reviewer chip (support return hint)', () => {
 
   it('returns null comment when history entry has no notes', () => {
     const historyNoNotes: HistoryEntry[] = [
-      { action: 'support_return_to_intake', notes: null },
-      { action: 'submit', notes: null },
+      { action: 'support_return_to_intake', notes: null, to_status: RequestStatus.SUPPORT_RETURNED },
+      { action: 'submit', notes: null, to_status: RequestStatus.SUBMITTED },
     ]
     const hint = resolveSupportReturnHint('BANK_REVIEWER', RequestStatus.SUBMITTED, historyNoNotes)
     expect(hint).not.toBeNull()
