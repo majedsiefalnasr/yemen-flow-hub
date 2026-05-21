@@ -3,7 +3,7 @@
  */
 import { describe, it, expect } from 'vitest'
 
-type LockedBannerVariant = 'locked' | 'readonly' | 'pending'
+type LockedBannerVariant = 'locked' | 'readonly' | 'pending' | 'bank_rejected'
 
 const VARIANT_CONFIG: Record<LockedBannerVariant, { icon: string; message: string }> = {
   locked: {
@@ -17,6 +17,10 @@ const VARIANT_CONFIG: Record<LockedBannerVariant, { icon: string; message: strin
   pending: {
     icon: '🕐',
     message: 'هذا الطلب قيد المراجعة — لا يمكن إجراء تعديلات حتى اكتمال المرحلة الحالية',
+  },
+  bank_rejected: {
+    icon: '🚫',
+    message: 'تم رفض هذا الطلب نهائياً من قِبَل البنك — لا يمكن اتخاذ أي إجراء',
   },
 }
 
@@ -45,16 +49,24 @@ describe('LockedBanner — variant config', () => {
     expect(VARIANT_CONFIG.pending.message).toContain('قيد المراجعة')
   })
 
-  it('all three variants have distinct messages', () => {
-    const messages = Object.values(VARIANT_CONFIG).map(c => c.message)
-    const unique = new Set(messages)
-    expect(unique.size).toBe(3)
+  it('bank_rejected variant has blocked icon', () => {
+    expect(VARIANT_CONFIG.bank_rejected.icon).toBe('🚫')
   })
 
-  it('all three variants have distinct icons', () => {
+  it('bank_rejected variant message mentions "رفض"', () => {
+    expect(VARIANT_CONFIG.bank_rejected.message).toContain('رفض')
+  })
+
+  it('all four variants have distinct messages', () => {
+    const messages = Object.values(VARIANT_CONFIG).map(c => c.message)
+    const unique = new Set(messages)
+    expect(unique.size).toBe(4)
+  })
+
+  it('all four variants have distinct icons', () => {
     const icons = Object.values(VARIANT_CONFIG).map(c => c.icon)
     const unique = new Set(icons)
-    expect(unique.size).toBe(3)
+    expect(unique.size).toBe(4)
   })
 })
 
@@ -66,6 +78,7 @@ const TERMINAL_STATUSES = new Set([
   RequestStatus.EXECUTIVE_REJECTED,
   RequestStatus.CUSTOMS_DECLARATION_ISSUED,
   RequestStatus.COMPLETED,
+  RequestStatus.BANK_REJECTED,
 ])
 
 const READONLY_STATUSES = new Set([
@@ -101,6 +114,7 @@ const ACTIONABLE_REVIEWER_STATUSES = new Set([
 ])
 
 function lockedBannerVariant(role: UserRole, status: RequestStatus): LockedBannerVariant | null {
+  if (status === RequestStatus.BANK_REJECTED) return 'bank_rejected'
   if (TERMINAL_STATUSES.has(status)) return 'locked'
   if (role === UserRole.BANK_REVIEWER && ACTIONABLE_REVIEWER_STATUSES.has(status)) return null
   if (EXECUTIVE_ROLES.has(role) && VOTING_STAGE_STATUSES.has(status)) return null
@@ -124,6 +138,10 @@ describe('LockedBanner — variant mapping from status', () => {
 
   it('SUPPORT_REJECTED → locked', () => {
     expect(lockedBannerVariant(UserRole.DATA_ENTRY, RequestStatus.SUPPORT_REJECTED)).toBe('locked')
+  })
+
+  it('BANK_REJECTED → bank_rejected', () => {
+    expect(lockedBannerVariant(UserRole.DATA_ENTRY, RequestStatus.BANK_REJECTED)).toBe('bank_rejected')
   })
 
   it('SUBMITTED → readonly', () => {
@@ -202,6 +220,10 @@ describe('LockedBanner — executive roles bypass voting stage banners', () => {
 
   it('COMMITTEE_DIRECTOR viewing EXECUTIVE_REJECTED → locked (terminal state)', () => {
     expect(lockedBannerVariant(UserRole.COMMITTEE_DIRECTOR, RequestStatus.EXECUTIVE_REJECTED)).toBe('locked')
+  })
+
+  it('COMMITTEE_DIRECTOR viewing BANK_REJECTED → bank_rejected', () => {
+    expect(lockedBannerVariant(UserRole.COMMITTEE_DIRECTOR, RequestStatus.BANK_REJECTED)).toBe('bank_rejected')
   })
 
   it('BANK_REVIEWER viewing EXECUTIVE_VOTING_OPEN → pending (not executive)', () => {

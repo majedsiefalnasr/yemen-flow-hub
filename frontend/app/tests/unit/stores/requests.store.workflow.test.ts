@@ -6,6 +6,7 @@ import { makeImportRequest, makeRequestDocument } from '../fixtures/request-data
 const mockPerformWorkflowAction = vi.fn()
 const mockFetchRequestDocuments = vi.fn()
 const mockFetchRequest = vi.fn()
+const mockBankRejectTerminal = vi.fn()
 
 vi.mock('../../../composables/useRequests', () => ({
   useRequests: () => ({
@@ -16,6 +17,7 @@ vi.mock('../../../composables/useRequests', () => ({
     uploadDocument: vi.fn(),
     performWorkflowAction: mockPerformWorkflowAction,
     fetchRequestDocuments: mockFetchRequestDocuments,
+    bankRejectTerminal: mockBankRejectTerminal,
   }),
 }))
 
@@ -167,6 +169,38 @@ describe('requests.store — loadDocuments', () => {
 
     expect(store.documentsLoaded).toBe(true)
     expect(store.documentsError).toBeNull()
+  })
+})
+
+describe('requests.store — bankRejectTerminal', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    vi.resetAllMocks()
+  })
+
+  it('updates currentRequest with BANK_REJECTED response', async () => {
+    mockBankRejectTerminal.mockResolvedValue({
+      ...REQUEST_FIXTURE,
+      status: RequestStatus.BANK_REJECTED,
+      bank_reject_comment: 'رفض نهائي',
+    })
+
+    const store = useRequestsStore()
+    await store.bankRejectTerminal(42, 'رفض نهائي')
+
+    expect(mockBankRejectTerminal).toHaveBeenCalledWith(42, 'رفض نهائي')
+    expect(store.currentRequest?.status).toBe(RequestStatus.BANK_REJECTED)
+    expect(store.performingAction).toBe(false)
+  })
+
+  it('sets store error and rethrows when bankRejectTerminal fails', async () => {
+    mockBankRejectTerminal.mockRejectedValue(new Error('Forbidden'))
+
+    const store = useRequestsStore()
+    await expect(store.bankRejectTerminal(42, 'رفض نهائي')).rejects.toThrow('Forbidden')
+
+    expect(store.error).toBe('تعذّر تنفيذ الرفض النهائي.')
+    expect(store.performingAction).toBe(false)
   })
 })
 

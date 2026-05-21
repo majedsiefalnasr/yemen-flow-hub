@@ -111,6 +111,26 @@ describe('useRequests — performWorkflowAction', () => {
   })
 })
 
+describe('useRequests — bankRejectTerminal', () => {
+  beforeEach(() => {
+    vi.resetAllMocks()
+  })
+
+  it('posts comment payload to /api/workflow/{id}/bank-reject-terminal', async () => {
+    mockPost.mockResolvedValue({
+      success: true,
+      message: 'ok',
+      data: { ...REQUEST_FIXTURE, status: RequestStatus.BANK_REJECTED, bank_reject_comment: 'رفض نهائي' },
+    })
+
+    const { bankRejectTerminal } = useRequests()
+    const result = await bankRejectTerminal(42, 'رفض نهائي')
+
+    expect(mockPost).toHaveBeenCalledWith('/api/workflow/42/bank-reject-terminal', { comment: 'رفض نهائي' })
+    expect(result.status).toBe(RequestStatus.BANK_REJECTED)
+  })
+})
+
 describe('useRequests — fetchRequestDocuments', () => {
   beforeEach(() => {
     vi.resetAllMocks()
