@@ -148,6 +148,11 @@ export function useRequests() {
     return response.data
   }
 
+  async function cloneRequest(sourceId: number): Promise<number> {
+    const response = await post<ApiResponse<ImportRequest>>(`/api/requests/${sourceId}/clone`, {})
+    return response.data.id
+  }
+
   return {
     fetchRequests,
     fetchRequest,
@@ -164,5 +169,6 @@ export function useRequests() {
     bankReturn,
     supportReturn,
     bankRejectTerminal,
+    cloneRequest,
   }
 }
