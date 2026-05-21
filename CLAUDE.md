@@ -34,6 +34,8 @@ cd frontend && git add <files> && git commit -m "feat(scope): description"
 cd .. && git add frontend/<files> && git commit -m "feat(scope): description"
 ```
 
+All commits must stay signed. Never use `--no-gpg-sign`, `--no-sign`, or `-c commit.gpgsign=false`; if signing fails, fix signing first.
+
 ## Skills Available
 
 Use `/bmad-*` skills for project management, PRD, architecture, and sprint planning.

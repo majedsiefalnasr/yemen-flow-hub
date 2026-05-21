@@ -82,6 +82,8 @@ git commit -m "feat(voting): ..."
 - Commit message format: `type(scope): description` (conventional commits)
 - Co-author all AI-assisted commits with: `Co-Authored-By: Claude <noreply@anthropic.com>`
 - Keep commit messages identical between the team repo and the root monorepo for the same change
+- All commits must remain signed. Do NOT use `--no-gpg-sign`, `--no-sign`, or `-c commit.gpgsign=false` as a workaround.
+- If signing fails, stop and fix the Git signing setup instead of creating an unsigned commit.
 
 ---
 
