@@ -1,0 +1,124 @@
+// @vitest-environment jsdom
+import { mount, flushPromises } from '@vue/test-utils'
+import { ref } from 'vue'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import notificationsPage from '../../../pages/notifications.vue'
+
+vi.stubGlobal('definePageMeta', vi.fn())
+
+const navigateToMock = vi.hoisted(() => vi.fn())
+vi.stubGlobal('navigateTo', navigateToMock)
+
+const refreshUnreadCountMock = vi.hoisted(() => vi.fn())
+vi.mock('../../../stores/notifications.store', () => ({
+  useNotificationsStore: () => ({
+    refreshUnreadCount: refreshUnreadCountMock,
+  }),
+}))
+
+const notificationsRef = ref<any[]>([])
+const paginationRef = ref({ currentPage: 1, lastPage: 1, perPage: 20, total: 0 })
+const loadingRef = ref(false)
+const errorRef = ref<string | null>(null)
+const fetchNotificationsMock = vi.hoisted(() => vi.fn())
+const markReadMock = vi.hoisted(() => vi.fn())
+const markAllReadMock = vi.hoisted(() => vi.fn())
+
+vi.mock('../../../composables/useNotifications', () => ({
+  useNotifications: () => ({
+    get notifications() { return notificationsRef },
+    get pagination() { return paginationRef },
+    get loading() { return loadingRef },
+    get error() { return errorRef },
+    fetchNotifications: fetchNotificationsMock,
+    markRead: markReadMock,
+    markAllRead: markAllReadMock,
+  }),
+}))
+
+vi.mock('../../../utils/formatRelativeTime', () => ({
+  formatRelativeTime: () => 'الآن',
+}))
+
+describe('notifications page interactions', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    notificationsRef.value = []
+    paginationRef.value = { currentPage: 1, lastPage: 1, perPage: 20, total: 0 }
+    loadingRef.value = false
+    errorRef.value = null
+    fetchNotificationsMock.mockResolvedValue(undefined)
+    markReadMock.mockResolvedValue(true)
+    markAllReadMock.mockResolvedValue(true)
+  })
+
+  it('navigates to the request detail for claim_released notifications', async () => {
+    notificationsRef.value = [{
+      id: 'n-claim',
+      type: 'App\\Notifications\\ClaimReleasedNotification',
+      data: {
+        type: 'claim_released',
+        message: 'أُلغيت مطالبة على الطلب YFH-042 — يدوي',
+        request_id: 42,
+        reference_number: 'YFH-042',
+        reason: 'manual',
+        released_by_user_id: 5,
+        released_by_name: 'سعد',
+      },
+      read_at: null,
+      created_at: '2026-05-21T10:00:00.000000Z',
+    }]
+
+    const wrapper = mount(notificationsPage, { global: { stubs: { Teleport: true } } })
+    await flushPromises()
+
+    await wrapper.find('.notification-item').trigger('click')
+
+    expect(navigateToMock).toHaveBeenCalledWith('/requests/42')
+  })
+
+  it('does not navigate when marking a notification as read', async () => {
+    notificationsRef.value = [{
+      id: 'n-claim',
+      type: 'App\\Notifications\\ClaimReleasedNotification',
+      data: {
+        type: 'claim_released',
+        message: 'أُلغيت مطالبة على الطلب YFH-042 — يدوي',
+        request_id: 42,
+        reference_number: 'YFH-042',
+      },
+      read_at: null,
+      created_at: '2026-05-21T10:00:00.000000Z',
+    }]
+
+    const wrapper = mount(notificationsPage, { global: { stubs: { Teleport: true } } })
+    await flushPromises()
+
+    await wrapper.find('.read-btn').trigger('click')
+
+    expect(markReadMock).toHaveBeenCalledWith('n-claim')
+    expect(navigateToMock).not.toHaveBeenCalled()
+  })
+
+  it('does not navigate for non-claim notifications even when request_id is present', async () => {
+    notificationsRef.value = [{
+      id: 'n-submitted',
+      type: 'App\\Notifications\\RequestSubmittedNotification',
+      data: {
+        type: 'request_submitted',
+        message: 'طلب جديد',
+        request_id: 7,
+        reference_number: 'YFH-007',
+      },
+      read_at: null,
+      created_at: '2026-05-21T10:00:00.000000Z',
+    }]
+
+    const wrapper = mount(notificationsPage, { global: { stubs: { Teleport: true } } })
+    await flushPromises()
+
+    await wrapper.find('.notification-item').trigger('click')
+
+    expect(navigateToMock).not.toHaveBeenCalled()
+  })
+})

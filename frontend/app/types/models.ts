@@ -299,6 +299,9 @@ export interface NotificationData {
   message: string
   request_id: number | null
   reference_number: string | null
+  reason?: 'manual' | 'ttl_expired' | null
+  released_by_user_id?: number | null
+  released_by_name?: string | null
 }
 
 export interface Notification {

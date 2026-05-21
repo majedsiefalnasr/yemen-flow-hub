@@ -71,8 +71,15 @@ function notifAccentClass(type?: string): string {
 }
 
 function notifLink(data: { type?: string; request_id?: number | null }): string | null {
-  if (data.request_id) return `/requests/${data.request_id}`
+  if (data.type === 'claim_released' && data.request_id) return `/requests/${data.request_id}`
   return null
+}
+
+function handleNotificationClick(data: { type?: string; request_id?: number | null }) {
+  const link = notifLink(data)
+  if (link) {
+    return navigateTo(link)
+  }
 }
 </script>
 
@@ -113,7 +120,7 @@ function notifLink(data: { type?: string; request_id?: number | null }): string 
         class="notification-item"
         :class="[{ unread: !notif.read_at }, notifAccentClass(notif.data.type)]"
         :style="notifLink(notif.data) ? 'cursor: pointer' : ''"
-        @click="notifLink(notif.data) ? navigateTo(notifLink(notif.data)!) : undefined"
+        @click="handleNotificationClick(notif.data)"
       >
         <div class="notif-icon" :class="notifAccentClass(notif.data.type)" aria-hidden="true">
           <Icon :name="iconName(notif.data.type)" />
@@ -128,7 +135,7 @@ function notifLink(data: { type?: string; request_id?: number | null }): string 
           v-if="!notif.read_at"
           class="read-btn"
           :aria-label="`تحديد كمقروء`"
-          @click="handleMarkRead(notif.id)"
+          @click.stop="handleMarkRead(notif.id)"
         >
           تحديد كمقروء
         </button>
