@@ -1,32 +1,19 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted } from 'vue'
+import type { DialogRootEmits, DialogRootProps } from 'reka-ui'
+import { DialogRoot, useForwardPropsEmits } from 'reka-ui'
 
-const props = defineProps<{ open: boolean }>()
-const emit = defineEmits<{ 'update:open': [open: boolean] }>()
+const props = defineProps<DialogRootProps>()
+const emits = defineEmits<DialogRootEmits>()
 
-function close() {
-  emit('update:open', false)
-}
-
-function onKeydown(event: KeyboardEvent) {
-  if (event.key === 'Escape') {
-    close()
-  }
-}
-
-onMounted(() => {
-  document.addEventListener('keydown', onKeydown)
-})
-
-onBeforeUnmount(() => {
-  document.removeEventListener('keydown', onKeydown)
-})
+const forwarded = useForwardPropsEmits(props, emits)
 </script>
 
 <template>
-  <Teleport to="body">
-    <div v-if="props.open">
-      <slot :close="close" />
-    </div>
-  </Teleport>
+  <DialogRoot
+    v-slot="slotProps"
+    data-slot="dialog"
+    v-bind="forwarded"
+  >
+    <slot v-bind="slotProps" />
+  </DialogRoot>
 </template>
