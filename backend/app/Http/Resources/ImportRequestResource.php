@@ -128,7 +128,7 @@ class ImportRequestResource extends JsonResource
                 ? $this->stageHistory()
                     ->where('action', 'bank_return_to_intake')
                     ->latest()
-                    ->value('notes')
+                    ->value('reason')
                 : null,
             'revision_count' => $this->revision_count,
             'voting_session_status' => $this->voting_session_status?->value,

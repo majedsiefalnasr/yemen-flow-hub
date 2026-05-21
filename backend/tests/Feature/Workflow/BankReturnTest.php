@@ -84,7 +84,8 @@ class BankReturnTest extends TestCase
             ->postJson("/api/workflow/{$request->id}/bank-return", ['comment' => 'يرجى تصحيح المستندات'])
             ->assertOk()
             ->assertJsonPath('success', true)
-            ->assertJsonPath('data.status', RequestStatus::BANK_RETURNED->value);
+            ->assertJsonPath('data.status', RequestStatus::BANK_RETURNED->value)
+            ->assertJsonPath('data.bank_return_comment', 'يرجى تصحيح المستندات');
     }
 
     public function test_bank_return_records_stage_history_with_comment(): void
@@ -170,6 +171,45 @@ class BankReturnTest extends TestCase
         $this->actingAs($this->otherBankReviewer)
             ->postJson("/api/workflow/{$request->id}/bank-return", ['comment' => 'يرجى تصحيح المستندات'])
             ->assertStatus(403);
+    }
+
+    public function test_creator_cannot_bank_return_own_request(): void
+    {
+        $reviewerCreator = $this->makeUser(UserRole::BANK_REVIEWER, $this->bank);
+
+        app()->instance('workflow.transition.active', true);
+        try {
+            $request = ImportRequest::query()->create([
+                'bank_id' => $this->bank->id,
+                'created_by' => $reviewerCreator->id,
+                'currency' => 'USD',
+                'amount' => 10000.00,
+                'supplier_name' => 'Supplier Co.',
+                'goods_description' => 'Industrial equipment',
+                'port_of_entry' => 'Aden Port',
+                'goods_type' => 'مواد غذائية',
+                'payment_terms' => 'LC',
+                'invoice_number' => 'INV-BR-SELF-001',
+                'invoice_date' => now()->subDays(2)->toDateString(),
+                'origin_country' => 'اليمن',
+                'arrival_port' => 'ميناء عدن',
+                'customs_office' => 'جمارك عدن',
+                'status' => RequestStatus::BANK_REVIEW,
+                'current_owner_role' => UserRole::BANK_REVIEWER,
+            ]);
+        } finally {
+            app()->offsetUnset('workflow.transition.active');
+        }
+
+        $this->actingAs($reviewerCreator)
+            ->postJson("/api/workflow/{$request->id}/bank-return", ['comment' => 'يرجى تصحيح المستندات'])
+            ->assertStatus(403);
+
+        $this->assertDatabaseHas('import_requests', [
+            'id' => $request->id,
+            'status' => RequestStatus::BANK_REVIEW->value,
+            'current_owner_role' => UserRole::BANK_REVIEWER->value,
+        ]);
     }
 
     // ─── AC6: submit from BANK_RETURNED increments revision_count ───────────
