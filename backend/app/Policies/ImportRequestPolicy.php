@@ -34,6 +34,23 @@ class ImportRequestPolicy
             && $user->bank_id === $importRequest->bank_id;
     }
 
+    public function clone(User $user, ImportRequest $importRequest): bool
+    {
+        if (!$user->hasPermission('request.create')) {
+            return false;
+        }
+
+        if ($user->bank_id !== $importRequest->bank_id) {
+            return false;
+        }
+
+        return in_array($importRequest->status, [
+            \App\Enums\RequestStatus::BANK_REJECTED,
+            \App\Enums\RequestStatus::SUPPORT_REJECTED,
+            \App\Enums\RequestStatus::EXECUTIVE_REJECTED,
+        ], true);
+    }
+
     public function uploadDocuments(User $user, ImportRequest $importRequest): bool
     {
         return $user->hasPermission('request.create')

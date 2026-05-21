@@ -36,7 +36,7 @@ class PermissionSeeder extends Seeder
         }
 
         $map = [
-            'request.create' => [UserRole::DATA_ENTRY],
+            'request.create' => [UserRole::DATA_ENTRY, UserRole::BANK_ADMIN],
             'request.review' => [UserRole::BANK_REVIEWER],
             'request.approve' => [UserRole::SUPPORT_COMMITTEE],
             'request.reject' => [UserRole::SUPPORT_COMMITTEE],

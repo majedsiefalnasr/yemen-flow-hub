@@ -57,6 +57,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('requests/{importRequest}', [ImportRequestController::class, 'update']);
     Route::delete('requests/{importRequest}', [ImportRequestController::class, 'destroy']);
     Route::get('requests/{importRequest}/history', [ImportRequestController::class, 'history']);
+    Route::post('requests/{importRequest}/clone', [ImportRequestController::class, 'clone']);
     Route::get('requests/{importRequest}/customs-preview', [CustomsController::class, 'preview']);
     Route::post('documents/upload', [DocumentController::class, 'upload']);
     // @deprecated — use POST /api/documents/upload; kept for backward compat during Epic 2 stabilization

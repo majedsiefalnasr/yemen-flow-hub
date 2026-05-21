@@ -12,6 +12,7 @@ use App\Http\Resources\ImportRequestListResource;
 use App\Http\Resources\ImportRequestResource;
 use App\Http\Resources\StageHistoryResource;
 use App\Models\ImportRequest;
+use App\Services\Workflow\WorkflowService;
 use App\Support\ApiResponse;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -297,6 +298,19 @@ class ImportRequestController extends Controller
         return ApiResponse::success(
             StageHistoryResource::collection($importRequest->stageHistory()->with('actor')->oldest('id')->get()),
             'History retrieved successfully.'
+        );
+    }
+
+    public function clone(Request $request, ImportRequest $importRequest, WorkflowService $workflowService)
+    {
+        $this->authorize('clone', $importRequest);
+
+        $cloned = $workflowService->cloneRequest($importRequest, $request->user());
+
+        return ApiResponse::success(
+            new ImportRequestResource($cloned->load(ImportRequestResource::baseRelations())),
+            'Request cloned successfully.',
+            201
         );
     }
 }

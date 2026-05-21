@@ -213,6 +213,74 @@ class WorkflowService
         return $request->refresh();
     }
 
+    public function cloneRequest(ImportRequest $source, User $actor): ImportRequest
+    {
+        $cloneableStatuses = [
+            RequestStatus::BANK_REJECTED,
+            RequestStatus::SUPPORT_REJECTED,
+            RequestStatus::EXECUTIVE_REJECTED,
+        ];
+
+        if (!in_array($source->status, $cloneableStatuses, true)) {
+            throw new \App\Exceptions\InvalidTransitionException('Source request is not in a terminal-rejected status.');
+        }
+
+        $fields = [
+            'currency', 'amount', 'supplier_name', 'goods_description', 'port_of_entry',
+            'notes', 'goods_type', 'payment_terms', 'due_date', 'invoice_number',
+            'invoice_date', 'origin_country', 'arrival_port', 'shipping_port',
+            'customs_office', 'bl_number', 'merchant_id',
+        ];
+
+        $payload = [];
+        foreach ($fields as $field) {
+            $payload[$field] = $source->{$field};
+        }
+
+        $newRequest = DB::transaction(function () use ($source, $actor, $payload): ImportRequest {
+            App::instance('workflow.transition.active', true);
+            try {
+                $cloned = ImportRequest::query()->create([
+                    ...$payload,
+                    'bank_id' => $source->bank_id,
+                    'created_by' => $actor->id,
+                    'status' => RequestStatus::DRAFT,
+                    'current_owner_role' => UserRole::DATA_ENTRY,
+                    'revision_count' => $source->revision_count + 1,
+                ]);
+            } finally {
+                App::offsetUnset('workflow.transition.active');
+            }
+
+            RequestStageHistory::query()->create([
+                'request_id' => $cloned->id,
+                'from_status' => null,
+                'to_status' => RequestStatus::DRAFT,
+                'from_owner_role' => null,
+                'to_owner_role' => UserRole::DATA_ENTRY,
+                'actor_id' => $actor->id,
+                'actor_role' => $actor->role,
+                'action' => 'create',
+                'reason' => null,
+                'metadata' => ['cloned_from' => $source->id],
+            ]);
+
+            $this->auditService->log(
+                AuditAction::REQUEST_CREATED,
+                $actor,
+                $cloned,
+                [
+                    'cloned_from' => $source->id,
+                    'source_reference_number' => $source->reference_number,
+                ]
+            );
+
+            return $cloned;
+        });
+
+        return $newRequest->refresh();
+    }
+
     private function assertSubmitReadiness(ImportRequest $request): void
     {
         $requiredWizardFields = [

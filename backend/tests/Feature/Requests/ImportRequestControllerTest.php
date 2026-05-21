@@ -52,8 +52,8 @@ class ImportRequestControllerTest extends TestCase
         ]);
 
         DB::table('role_permissions')->insert([
-            'permission_id' => $permissionId,
-            'role' => UserRole::DATA_ENTRY->value,
+            ['permission_id' => $permissionId, 'role' => UserRole::DATA_ENTRY->value],
+            ['permission_id' => $permissionId, 'role' => UserRole::BANK_ADMIN->value],
         ]);
     }
 
@@ -664,5 +664,197 @@ class ImportRequestControllerTest extends TestCase
         foreach ($nullableActors as $key) {
             $this->assertNull($response->json("data.{$key}"), "{$key} should be null on a fresh DRAFT");
         }
+    }
+
+    // ─── Clone endpoint: POST /api/requests/{id}/clone ────────────────────────
+
+    /** @dataProvider terminalRejectedStatuses */
+    public function test_data_entry_can_clone_terminal_rejected_request(RequestStatus $status): void
+    {
+        $source = $this->makeRequest($this->bank, $this->dataEntry, $status);
+
+        $response = $this->actingAs($this->dataEntry)
+            ->postJson("/api/requests/{$source->id}/clone");
+
+        $response->assertStatus(201)
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.status', RequestStatus::DRAFT->value);
+
+        $cloned = ImportRequest::find($response->json('data.id'));
+        $this->assertNotNull($cloned);
+        $this->assertNotEquals($source->id, $cloned->id);
+        $this->assertNotEquals($source->reference_number, $cloned->reference_number);
+    }
+
+    public static function terminalRejectedStatuses(): array
+    {
+        return [
+            'BANK_REJECTED' => [RequestStatus::BANK_REJECTED],
+            'SUPPORT_REJECTED' => [RequestStatus::SUPPORT_REJECTED],
+            'EXECUTIVE_REJECTED' => [RequestStatus::EXECUTIVE_REJECTED],
+        ];
+    }
+
+    public function test_clone_copies_wizard_fields_correctly(): void
+    {
+        $source = $this->makeRequest($this->bank, $this->dataEntry, RequestStatus::EXECUTIVE_REJECTED);
+        $source->forceFill([
+            'supplier_name' => 'Clone Supplier',
+            'goods_description' => 'Clone goods',
+            'port_of_entry' => 'Clone Port',
+            'currency' => 'EUR',
+            'amount' => 99999.99,
+            'notes' => 'Clone notes',
+            'goods_type' => 'Machinery',
+            'payment_terms' => 'LC',
+            'invoice_number' => 'INV-999',
+            'origin_country' => 'Germany',
+            'arrival_port' => 'Aden',
+            'shipping_port' => 'Hamburg',
+            'customs_office' => 'Aden Customs',
+            'bl_number' => 'BL-999',
+        ])->saveQuietly();
+
+        $response = $this->actingAs($this->dataEntry)
+            ->postJson("/api/requests/{$source->id}/clone");
+
+        $response->assertStatus(201);
+        $clonedId = $response->json('data.id');
+        $cloned = ImportRequest::find($clonedId);
+
+        $this->assertEquals('Clone Supplier', $cloned->supplier_name);
+        $this->assertEquals('Clone goods', $cloned->goods_description);
+        $this->assertEquals('Clone Port', $cloned->port_of_entry);
+        $this->assertEquals('EUR', $cloned->currency->value);
+        $this->assertEquals('INV-999', $cloned->invoice_number);
+        $this->assertEquals('Germany', $cloned->origin_country);
+    }
+
+    public function test_clone_does_not_copy_documents(): void
+    {
+        $source = $this->makeRequest($this->bank, $this->dataEntry, RequestStatus::BANK_REJECTED);
+
+        $response = $this->actingAs($this->dataEntry)
+            ->postJson("/api/requests/{$source->id}/clone");
+
+        $response->assertStatus(201);
+        $clonedId = $response->json('data.id');
+
+        $this->assertDatabaseMissing('request_documents', ['request_id' => $clonedId]);
+    }
+
+    public function test_clone_increments_revision_count(): void
+    {
+        $source = $this->makeRequest($this->bank, $this->dataEntry, RequestStatus::BANK_REJECTED);
+        $source->forceFill(['revision_count' => 3])->saveQuietly();
+
+        $response = $this->actingAs($this->dataEntry)
+            ->postJson("/api/requests/{$source->id}/clone");
+
+        $response->assertStatus(201);
+        $cloned = ImportRequest::find($response->json('data.id'));
+        $this->assertEquals(4, $cloned->revision_count);
+    }
+
+    public function test_clone_creates_fresh_stage_history_entry(): void
+    {
+        $source = $this->makeRequest($this->bank, $this->dataEntry, RequestStatus::BANK_REJECTED);
+
+        $response = $this->actingAs($this->dataEntry)
+            ->postJson("/api/requests/{$source->id}/clone");
+
+        $response->assertStatus(201);
+        $clonedId = $response->json('data.id');
+
+        $this->assertDatabaseHas('request_stage_history', [
+            'request_id' => $clonedId,
+            'action' => 'create',
+        ]);
+
+        $historyCount = \App\Models\RequestStageHistory::where('request_id', $clonedId)->count();
+        $this->assertEquals(1, $historyCount);
+    }
+
+    public function test_clone_writes_audit_log_with_cloned_from(): void
+    {
+        $source = $this->makeRequest($this->bank, $this->dataEntry, RequestStatus::SUPPORT_REJECTED);
+
+        $response = $this->actingAs($this->dataEntry)
+            ->postJson("/api/requests/{$source->id}/clone");
+
+        $response->assertStatus(201);
+        $clonedId = $response->json('data.id');
+
+        $audit = \App\Models\AuditLog::where('action', 'REQUEST_CREATED')
+            ->where('subject_id', $clonedId)
+            ->first();
+
+        $this->assertNotNull($audit);
+        $this->assertEquals($source->id, $audit->metadata['cloned_from']);
+        $this->assertEquals($source->reference_number, $audit->metadata['source_reference_number']);
+    }
+
+    public function test_clone_rejects_non_terminal_source(): void
+    {
+        $source = $this->makeRequest($this->bank, $this->dataEntry, RequestStatus::DRAFT);
+
+        $this->actingAs($this->dataEntry)
+            ->postJson("/api/requests/{$source->id}/clone")
+            ->assertStatus(403);
+    }
+
+    public function test_clone_rejects_cross_bank_actor(): void
+    {
+        $source = $this->makeRequest($this->bank, $this->dataEntry, RequestStatus::BANK_REJECTED);
+
+        $this->actingAs($this->otherDataEntry)
+            ->postJson("/api/requests/{$source->id}/clone")
+            ->assertStatus(403);
+    }
+
+    public function test_clone_rejects_wrong_role(): void
+    {
+        $source = $this->makeRequest($this->bank, $this->dataEntry, RequestStatus::BANK_REJECTED);
+
+        $this->actingAs($this->supportReviewer)
+            ->postJson("/api/requests/{$source->id}/clone")
+            ->assertStatus(403);
+    }
+
+    public function test_bank_admin_can_clone_terminal_rejected_request(): void
+    {
+        $bankAdmin = $this->makeUser(UserRole::BANK_ADMIN, $this->bank);
+        $source = $this->makeRequest($this->bank, $this->dataEntry, RequestStatus::EXECUTIVE_REJECTED);
+
+        $response = $this->actingAs($bankAdmin)
+            ->postJson("/api/requests/{$source->id}/clone");
+
+        $response->assertStatus(201)
+            ->assertJsonPath('data.status', RequestStatus::DRAFT->value);
+    }
+
+    public function test_clone_sets_created_by_to_actor(): void
+    {
+        $source = $this->makeRequest($this->bank, $this->dataEntry, RequestStatus::BANK_REJECTED);
+
+        $response = $this->actingAs($this->dataEntry)
+            ->postJson("/api/requests/{$source->id}/clone");
+
+        $response->assertStatus(201);
+        $this->assertEquals($this->dataEntry->id, $response->json('data.created_by'));
+    }
+
+    public function test_clone_generates_unique_reference_number(): void
+    {
+        $source = $this->makeRequest($this->bank, $this->dataEntry, RequestStatus::BANK_REJECTED);
+
+        $response = $this->actingAs($this->dataEntry)
+            ->postJson("/api/requests/{$source->id}/clone");
+
+        $response->assertStatus(201);
+        $year = now()->format('Y');
+        $refNum = $response->json('data.reference_number');
+        $this->assertMatchesRegularExpression("/^YFH-{$year}-\d{6}$/", $refNum);
+        $this->assertNotEquals($source->reference_number, $refNum);
     }
 }
