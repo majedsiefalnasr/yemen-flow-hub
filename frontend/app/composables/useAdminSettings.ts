@@ -17,6 +17,7 @@ export interface AdminSettings {
   review_timeout_hours: number
   secret_voting: boolean
   director_tiebreak: boolean
+  duplicate_invoice_policy: 'warn' | 'block'
 }
 
 export interface SmtpSettings {

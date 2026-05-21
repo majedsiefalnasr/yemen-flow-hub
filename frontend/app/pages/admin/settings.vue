@@ -295,6 +295,26 @@ onMounted(async () => {
                   </label>
                 </div>
               </div>
+
+              <!-- Duplicate invoice policy (AC9) -->
+              <div class="section-divider" />
+              <div class="section-sub-header">
+                <h3 class="section-sub-title">سياسة الفواتير المكررة</h3>
+                <p class="section-sub-desc">تحديد سلوك النظام عند اكتشاف رقم فاتورة مكرر عبر البنوك</p>
+              </div>
+              <div class="field-group" style="max-width: 320px;" data-testid="duplicate-policy-field">
+                <label class="field-label">إجراء التكرار</label>
+                <select
+                  class="form-input"
+                  :value="settings.duplicate_invoice_policy"
+                  :disabled="pendingKeys.has('duplicate_invoice_policy')"
+                  data-testid="duplicate-policy-select"
+                  @change="(e) => updateSetting('duplicate_invoice_policy', (e.target as HTMLSelectElement).value)"
+                >
+                  <option value="warn">تحذير (warn) — إنشاء الطلب مع تسجيل تحذير</option>
+                  <option value="block">حظر (block) — رفض الطلب المكرر</option>
+                </select>
+              </div>
             </template>
           </div>
         </div>
@@ -549,6 +569,29 @@ onMounted(async () => {
 }
 
 .section-desc {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+.section-divider {
+  border: none;
+  border-top: 1px solid #cccccc;
+  margin: 20px 0;
+}
+
+.section-sub-header {
+  margin-bottom: 12px;
+}
+
+.section-sub-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin: 0 0 2px;
+}
+
+.section-sub-desc {
   font-size: 13px;
   color: var(--color-text-secondary);
   margin: 0;

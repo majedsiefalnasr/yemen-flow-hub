@@ -137,6 +137,18 @@ export interface ImportRequest {
   created_at: string
   updated_at: string
   documents?: RequestDocument[]
+  duplicate_warnings?: DuplicateWarning[]
+}
+
+export interface DuplicateWarning {
+  id: number
+  reference_number: string
+  bank_id: number
+  bank_name: string | null
+  amount: number
+  currency: string
+  created_at: string
+  status: string
 }
 
 export interface CustomsDeclarationSummary {

@@ -158,6 +158,19 @@ const DIRECTOR_VOTING_STATUSES = new Set([
   RequestStatus.EXECUTIVE_VOTING_CLOSED,
 ])
 
+// ─── Duplicate warnings (AC7) ─────────────────────────────────────────────────
+const FULL_DUPLICATE_ROLES = new Set([UserRole.CBY_ADMIN, UserRole.SUPPORT_COMMITTEE])
+const BANK_DUPLICATE_ROLES = new Set([UserRole.BANK_REVIEWER, UserRole.BANK_ADMIN])
+
+const duplicateWarnings = computed(() => request.value?.duplicate_warnings ?? [])
+
+const showDuplicateWidget = computed(() =>
+  duplicateWarnings.value.length > 0
+  && (FULL_DUPLICATE_ROLES.has(userRole.value) || BANK_DUPLICATE_ROLES.has(userRole.value)),
+)
+
+const duplicateWidgetFull = computed(() => FULL_DUPLICATE_ROLES.has(userRole.value))
+
 // Mirror ActionsPanel's showAnyActions to conditionally show the rail actions card
 const hasActions = computed(() => {
   if (!request.value) return false
@@ -637,6 +650,51 @@ async function handleCloneConfirm() {
               :support-comment="request.support_return_comment"
             />
             <CorrectionBanner v-else-if="isReturnedForCorrection" />
+          </div>
+
+          <!-- Duplicate invoice warning widget (AC7) -->
+          <div v-if="showDuplicateWidget" class="dup-widget" data-testid="dup-widget">
+            <div class="dup-widget-header">
+              <span class="dup-badge" data-testid="dup-badge">مكرر</span>
+              <span class="dup-widget-title">فواتير مكررة ({{ duplicateWarnings.length }})</span>
+            </div>
+            <div class="dup-widget-body" data-testid="dup-widget-body">
+              <!-- Full view: CBY_ADMIN and SUPPORT_COMMITTEE -->
+              <template v-if="duplicateWidgetFull">
+                <table class="data-table dup-widget-table">
+                  <thead>
+                    <tr>
+                      <th>الرقم المرجعي</th>
+                      <th>البنك</th>
+                      <th>المبلغ</th>
+                      <th>العملة</th>
+                      <th>التاريخ</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="warn in duplicateWarnings" :key="warn.id">
+                      <td>
+                        <NuxtLink :to="`/requests/${warn.id}`" style="color: #0066cc;" class="font-mono text-xs">
+                          {{ warn.reference_number }}
+                        </NuxtLink>
+                      </td>
+                      <td class="text-sm">{{ warn.bank_name ?? '—' }}</td>
+                      <td class="text-sm font-mono">{{ warn.amount.toLocaleString('ar') }}</td>
+                      <td class="text-sm">{{ warn.currency }}</td>
+                      <td class="text-xs" style="color: #6c757d;">
+                        {{ new Date(warn.created_at).toLocaleDateString('ar-YE') }}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </template>
+              <!-- Restricted view: BANK_REVIEWER / BANK_ADMIN — count + bank names only -->
+              <template v-else>
+                <p class="dup-widget-summary" data-testid="dup-bank-summary">
+                  مكرر مع: {{ duplicateWarnings.map(w => w.bank_name).filter(Boolean).join('، ') }}
+                </p>
+              </template>
+            </div>
           </div>
 
           <!-- Bank reviewer chip: re-submitted after support return (AC10) -->
@@ -1146,6 +1204,52 @@ async function handleCloneConfirm() {
 
 .support-return-hint__link:hover {
   color: #004499;
+}
+
+.dup-widget {
+  border: 1px solid #f57f1755;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #fffbf0;
+  margin-bottom: 12px;
+}
+
+.dup-widget-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  background: #fff8e1;
+  border-bottom: 1px solid #f57f1733;
+}
+
+.dup-badge {
+  font-size: 11px;
+  font-weight: 700;
+  color: #ffffff;
+  background: #f57f17;
+  border-radius: 6px;
+  padding: 2px 8px;
+}
+
+.dup-widget-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #7c5700;
+}
+
+.dup-widget-body {
+  padding: 12px 16px;
+}
+
+.dup-widget-table {
+  margin: 0;
+}
+
+.dup-widget-summary {
+  font-size: 13px;
+  color: #6c757d;
+  margin: 0;
 }
 
 .claim-error-banner {

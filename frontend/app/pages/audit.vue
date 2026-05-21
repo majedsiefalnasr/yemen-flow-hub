@@ -3,7 +3,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { UserRole } from '../types/enums'
 import type { AuditLog } from '../types/models'
 import { useAudit } from '../composables/useAudit'
-import type { AuditStats, DuplicateInvoice, RiskIndicator } from '../composables/useAudit'
+import type { AuditStats, DuplicateGroup, RiskIndicator } from '../composables/useAudit'
 import { ROLE_LABELS } from '../constants/workflow'
 import Badge from '../components/ui/Badge.vue'
 import Icon from '../components/ui/Icon.vue'
@@ -39,12 +39,10 @@ const stats = ref<AuditStats>({ today_count: 0, duplicate_invoice_count: 0 })
 const statsLoading = ref(false)
 
 // ─── Tab 2: Duplicates ────────────────────────────────────────────────────────
-const duplicates = ref<DuplicateInvoice[]>([])
+const duplicates = ref<DuplicateGroup[]>([])
 const dupLoading = ref(false)
 const dupError = ref<string | null>(null)
-const dupCurrentPage = ref(1)
-const dupLastPage = ref(1)
-const dupTotal = ref(0)
+const expandedGroups = ref<Set<string>>(new Set())
 
 // ─── Tab 3: Risk indicators ───────────────────────────────────────────────────
 const riskIndicators = ref<RiskIndicator[]>([])
@@ -57,6 +55,16 @@ const potentialFraudCount = computed(() =>
   riskIndicators.value.filter(r => r.level === 'عالية').length,
 )
 const kpiLoading = computed(() => statsLoading.value || riskLoading.value)
+const dupTotal = computed(() => duplicates.value.length)
+
+function toggleGroup(invoiceNumber: string) {
+  if (expandedGroups.value.has(invoiceNumber)) {
+    expandedGroups.value.delete(invoiceNumber)
+  }
+  else {
+    expandedGroups.value.add(invoiceNumber)
+  }
+}
 
 const filteredLogs = computed(() => {
   const q = searchQuery.value.trim().toLowerCase()
@@ -183,15 +191,11 @@ async function loadStats() {
   }
 }
 
-async function loadDuplicates(page = 1) {
+async function loadDuplicates() {
   dupLoading.value = true
   dupError.value = null
-  dupCurrentPage.value = page
   try {
-    const result = await fetchDuplicates(page)
-    duplicates.value = result.data
-    dupLastPage.value = result.meta.last_page
-    dupTotal.value = result.meta.total
+    duplicates.value = await fetchDuplicates()
   }
   catch {
     dupError.value = 'تعذّر تحميل بيانات الفواتير المكررة.'
@@ -227,7 +231,7 @@ function resetFilters() {
 function onTabChange(tab: 'logs' | 'dup' | 'risk') {
   activeTab.value = tab
   if (tab === 'dup' && !tabLoaded.dup) {
-    loadDuplicates()
+    void loadDuplicates()
     tabLoaded.dup = true
   }
   if (tab === 'risk' && !tabLoaded.risk) {
@@ -434,7 +438,7 @@ onMounted(() => {
         >
           <Icon name="alert-triangle" :size="18" style="color: #c62828; margin-top: 2px; flex-shrink: 0;" />
           <p class="dup-banner-text">
-            تم اكتشاف {{ dupTotal }} حالات لفواتير مكررة بحاجة لمراجعة عاجلة
+            تم اكتشاف {{ dupTotal }} مجموعات لفواتير مكررة بحاجة لمراجعة عاجلة
           </p>
         </div>
 
@@ -442,32 +446,59 @@ onMounted(() => {
           <p style="color: #6c757d; font-size: 14px;">لا توجد فواتير مكررة حالياً.</p>
         </div>
 
-        <div v-else class="dup-list">
+        <div v-else class="dup-list" data-testid="dup-groups">
           <div
-            v-for="dup in duplicates"
-            :key="dup.id"
+            v-for="group in duplicates"
+            :key="group.invoice_number"
             class="dup-card"
           >
-            <div class="dup-card-content">
-              <div>
-                <span class="dup-ref">{{ dup.ref }}</span>
-                <div class="dup-detail">{{ dup.importer }}</div>
-                <div class="dup-detail">فاتورة: {{ dup.invoice_number }}</div>
+            <button
+              type="button"
+              class="dup-card-header"
+              :aria-expanded="expandedGroups.has(group.invoice_number)"
+              @click="toggleGroup(group.invoice_number)"
+            >
+              <div class="dup-card-header-info">
+                <span class="dup-ref">فاتورة: {{ group.invoice_number }}</span>
+                <span class="dup-detail">{{ group.banks.join('، ') }}</span>
+                <Badge variant="destructive" style="font-size: 11px;">{{ group.requests.length }} طلبات</Badge>
               </div>
-              <div v-if="dup.sibling_id" class="dup-sibling">
-                مرتبط بـ
-                <NuxtLink :to="`/requests/${dup.sibling_id}`" style="color: #0066cc;" class="font-mono">
-                  {{ dup.sibling_ref }}
-                </NuxtLink>
-              </div>
+              <Icon
+                :name="expandedGroups.has(group.invoice_number) ? 'chevron-up' : 'chevron-down'"
+                :size="16"
+                style="flex-shrink: 0; color: #6c757d;"
+              />
+            </button>
+
+            <div v-if="expandedGroups.has(group.invoice_number)" class="dup-rows">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>الرقم المرجعي</th>
+                    <th>البنك</th>
+                    <th>المبلغ</th>
+                    <th>العملة</th>
+                    <th>الحالة</th>
+                    <th>التاريخ</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="req in group.requests" :key="req.id">
+                    <td>
+                      <NuxtLink :to="`/requests/${req.id}`" style="color: #0066cc;" class="font-mono text-xs">
+                        {{ req.reference_number }}
+                      </NuxtLink>
+                    </td>
+                    <td class="text-sm">{{ req.bank_name ?? '—' }}</td>
+                    <td class="text-sm font-mono">{{ req.amount.toLocaleString('ar') }}</td>
+                    <td class="text-sm">{{ req.currency }}</td>
+                    <td><Badge variant="secondary" style="font-size: 11px;">{{ req.status }}</Badge></td>
+                    <td class="text-xs" style="color: #6c757d;">{{ formatDate(req.created_at) }}</td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </div>
-        </div>
-
-        <div v-if="dupLastPage > 1" class="pagination">
-          <button class="page-btn" :disabled="dupCurrentPage <= 1" @click="loadDuplicates(dupCurrentPage - 1)">السابق</button>
-          <span class="page-info">{{ dupCurrentPage }} / {{ dupLastPage }}</span>
-          <button class="page-btn" :disabled="dupCurrentPage >= dupLastPage" @click="loadDuplicates(dupCurrentPage + 1)">التالي</button>
         </div>
       </template>
     </div>
@@ -869,14 +900,31 @@ onMounted(() => {
   background: #ffffff;
   border: 1px solid #cccccc;
   border-radius: 12px;
-  padding: 16px;
+  overflow: hidden;
 }
 
-.dup-card-content {
+.dup-card-header {
+  width: 100%;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 16px;
+  padding: 14px 16px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: right;
+}
+
+.dup-card-header:hover {
+  background: #f9fafb;
+}
+
+.dup-card-header-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 .dup-ref {
@@ -889,13 +937,11 @@ onMounted(() => {
 .dup-detail {
   font-size: 12px;
   color: #6c757d;
-  margin-top: 2px;
 }
 
-.dup-sibling {
-  font-size: 12px;
-  color: #6c757d;
-  white-space: nowrap;
+.dup-rows {
+  border-top: 1px solid #eeeeee;
+  overflow-x: auto;
 }
 
 /* Risk tab */

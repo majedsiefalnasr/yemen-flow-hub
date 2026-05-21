@@ -124,26 +124,34 @@ describe('useAudit — new endpoints (Story 7.9)', () => {
     expect(mockGet).toHaveBeenCalledWith('/api/audit/stats')
   })
 
-  it('fetchDuplicates returns array of duplicate invoice items', async () => {
-    const item = {
-      id: 1, ref: 'IMP-2026-0001', importer: 'شركة النيل',
-      invoice_number: 'INV-001', sibling_id: 2, sibling_ref: 'IMP-2026-0002',
+  it('fetchDuplicates returns grouped DuplicateGroup array (Story 8.6)', async () => {
+    const group = {
+      invoice_number: 'INV-001',
+      banks: ['بنك التضامن', 'بنك سبأ'],
+      requests: [
+        { id: 1, reference_number: 'YFH-2026-000001', bank_name: 'بنك التضامن', amount: 5000, currency: 'USD', created_at: '2026-05-18T10:00:00Z', status: 'DRAFT' },
+        { id: 2, reference_number: 'YFH-2026-000002', bank_name: 'بنك سبأ', amount: 5000, currency: 'USD', created_at: '2026-05-18T11:00:00Z', status: 'SUBMITTED' },
+      ],
     }
     mockGet.mockResolvedValueOnce({
       success: true,
       message: 'OK',
-      data: {
-        data: [item],
-        meta: { current_page: 1, last_page: 1, per_page: 30, total: 1 },
-      },
+      data: { data: [group] },
     })
     const { fetchDuplicates } = useAudit()
     const result = await fetchDuplicates()
-    expect(result.data).toHaveLength(1)
-    expect(result.data[0]?.invoice_number).toBe('INV-001')
-    expect(result.data[0]?.sibling_ref).toBe('IMP-2026-0002')
-    expect(result.meta.total).toBe(1)
-    expect(mockGet).toHaveBeenCalledWith('/api/audit/duplicates?page=1')
+    expect(result).toHaveLength(1)
+    expect(result[0]?.invoice_number).toBe('INV-001')
+    expect(result[0]?.banks).toEqual(['بنك التضامن', 'بنك سبأ'])
+    expect(result[0]?.requests).toHaveLength(2)
+    expect(mockGet).toHaveBeenCalledWith('/api/audit/duplicates')
+  })
+
+  it('fetchDuplicates returns empty array when backend has no groups', async () => {
+    mockGet.mockResolvedValueOnce({ success: true, message: 'OK', data: { data: [] } })
+    const { fetchDuplicates } = useAudit()
+    const result = await fetchDuplicates()
+    expect(result).toEqual([])
   })
 
   it('fetchRiskIndicators returns array with title, body, level', async () => {

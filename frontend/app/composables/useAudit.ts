@@ -14,14 +14,24 @@ export interface AuditStats {
   duplicate_invoice_count: number
 }
 
-export interface DuplicateInvoice {
+export interface DuplicateRequest {
   id: number
-  ref: string
-  importer: string
-  invoice_number: string
-  sibling_id: number | null
-  sibling_ref: string
+  reference_number: string
+  bank_name: string | null
+  amount: number
+  currency: string
+  created_at: string
+  status: string
 }
+
+export interface DuplicateGroup {
+  invoice_number: string
+  banks: string[]
+  requests: DuplicateRequest[]
+}
+
+/** @deprecated use DuplicateGroup */
+export type DuplicateInvoice = DuplicateGroup
 
 export interface RiskIndicator {
   title: string
@@ -50,9 +60,9 @@ export function useAudit() {
     return response.data
   }
 
-  async function fetchDuplicates(page = 1): Promise<PaginatedResponse<DuplicateInvoice>> {
-    const response = await get<ApiResponse<PaginatedResponse<DuplicateInvoice>>>(`/api/audit/duplicates?page=${page}`)
-    return response.data
+  async function fetchDuplicates(): Promise<DuplicateGroup[]> {
+    const response = await get<ApiResponse<{ data: DuplicateGroup[] }>>('/api/audit/duplicates')
+    return response.data.data ?? []
   }
 
   async function fetchRiskIndicators(): Promise<RiskIndicator[]> {
