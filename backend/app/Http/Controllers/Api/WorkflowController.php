@@ -188,12 +188,20 @@ class WorkflowController extends Controller
         $this->authorize('view', $importRequest);
 
         $actor = $request->user();
+        if ($actor->role !== UserRole::SUPPORT_COMMITTEE) {
+            return response()->json([
+                'success' => false,
+                'message' => 'هذا الإجراء متاح فقط للجنة المساندة. / This action is only available to support committee members.',
+                'error_code' => 'WORKFLOW_FORBIDDEN_ROLE',
+            ], 403);
+        }
+
         if ($importRequest->claimed_by !== $actor->id) {
-            return ApiResponse::error(
-                'لا يمكنك إعادة طلب لم تقم بحجزه. / You do not hold the claim for this request.',
-                ['error_code' => 'CLAIM_NOT_HELD'],
-                403
-            );
+            return response()->json([
+                'success' => false,
+                'message' => 'لا يمكنك إعادة طلب لم تقم بحجزه. / You do not hold the claim for this request.',
+                'error_code' => 'CLAIM_NOT_HELD',
+            ], 403);
         }
 
         $updated = $this->workflowService->transition(

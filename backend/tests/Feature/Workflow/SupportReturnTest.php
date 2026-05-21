@@ -191,7 +191,8 @@ class SupportReturnTest extends TestCase
 
         $this->actingAs($this->otherSupportMember)
             ->postJson("/api/workflow/{$request->id}/support-return", ['comment' => 'يرجى تصحيح المستندات'])
-            ->assertStatus(403);
+            ->assertStatus(403)
+            ->assertJsonPath('error_code', 'CLAIM_NOT_HELD');
     }
 
     // ─── AC4: Role guard ─────────────────────────────────────────────────────
@@ -202,7 +203,8 @@ class SupportReturnTest extends TestCase
 
         $this->actingAs($this->dataEntry)
             ->postJson("/api/workflow/{$request->id}/support-return", ['comment' => 'يرجى تصحيح المستندات'])
-            ->assertStatus(403);
+            ->assertStatus(403)
+            ->assertJsonPath('error_code', 'WORKFLOW_FORBIDDEN_ROLE');
     }
 
     // ─── AC5: submit from SUPPORT_RETURNED re-enters bank queue ─────────────
