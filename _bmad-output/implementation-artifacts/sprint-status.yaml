@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-16
-last_updated: 2026-05-20 (story 7.8 created)
+last_updated: 2026-05-21 (story 7.9 moved to review)
 project: Yemen Flow Hub
 project_key: NOKEY
 tracking_system: file-system
@@ -118,6 +118,6 @@ development_status:
   7-6-merchants-1-1-parity: done
   7-7-staff-and-administration-1-1-parity: done
   7-8-reports-1-1-parity: done
-  7-9-audit-1-1-parity: backlog
+  7-9-audit-1-1-parity: review
   7-10-settings-and-profile-1-1-parity: backlog
   epic-7-retrospective: optional
