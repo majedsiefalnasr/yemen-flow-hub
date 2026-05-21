@@ -66,7 +66,7 @@ const tabs = computed((): Array<{ key: TabKey; label: string }> => [
 
 const isEditable = computed(() => {
   const s = request.value?.status
-  return s === RequestStatus.DRAFT || s === RequestStatus.DRAFT_REJECTED_INTERNAL
+  return s === RequestStatus.DRAFT || s === RequestStatus.DRAFT_REJECTED_INTERNAL || s === RequestStatus.BANK_RETURNED
 })
 
 const ACTIONABLE_REVIEWER_STATUSES = new Set([
@@ -117,7 +117,10 @@ const lockedBannerVariant = computed((): LockedBannerVariant | null => {
 })
 
 const isLocked = computed(() => lockedBannerVariant.value !== null)
-const isReturnedForCorrection = computed(() => request.value?.status === RequestStatus.DRAFT_REJECTED_INTERNAL)
+const isReturnedForCorrection = computed(() =>
+  request.value?.status === RequestStatus.DRAFT_REJECTED_INTERNAL,
+)
+const isBankReturned = computed(() => request.value?.status === RequestStatus.BANK_RETURNED)
 
 const canEdit = computed(
   () => userRole.value === UserRole.DATA_ENTRY && isEditable.value,
@@ -139,7 +142,7 @@ const hasActions = computed(() => {
     && (s === RequestStatus.SUBMITTED || s === RequestStatus.BANK_REVIEW)
   const dataEntryAction
     = role === UserRole.DATA_ENTRY
-    && (s === RequestStatus.DRAFT || s === RequestStatus.DRAFT_REJECTED_INTERNAL)
+    && (s === RequestStatus.DRAFT || s === RequestStatus.DRAFT_REJECTED_INTERNAL || s === RequestStatus.BANK_RETURNED)
   const supportAction
     = role === UserRole.SUPPORT_COMMITTEE
     && s === RequestStatus.SUPPORT_REVIEW_IN_PROGRESS
@@ -509,6 +512,11 @@ watch(showVotingPanelInline, async (visible) => {
             <ActiveReviewBanner v-else-if="showActiveReviewBanner" />
             <ClaimedByOthersBanner v-else-if="showClaimedByOthersBanner" :claimer-name="request.claimed_by?.name ?? ''" />
             <LockedBanner v-else-if="isLocked && lockedBannerVariant" :variant="lockedBannerVariant" />
+            <CorrectionBanner
+              v-else-if="isBankReturned"
+              variant="bank_returned"
+              :reviewer-comment="request.bank_return_comment"
+            />
             <CorrectionBanner v-else-if="isReturnedForCorrection" />
           </div>
 

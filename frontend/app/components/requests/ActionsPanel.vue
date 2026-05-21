@@ -22,6 +22,10 @@ const rejectReason = ref('')
 const rejectReasonError = ref('')
 const actionError = ref('')
 
+const showBankReturnModal = ref(false)
+const bankReturnComment = ref('')
+const bankReturnCommentError = ref('')
+
 // Director session lifecycle state
 const showCloseConfirm = ref(false)
 const showOverrideModal = ref(false)
@@ -34,6 +38,7 @@ const overrideJustificationError = ref('')
 watch(() => props.request.status, () => {
   actionError.value = ''
   resetRejectForm()
+  resetBankReturnModal()
   resetDirectorState()
 })
 
@@ -47,7 +52,9 @@ const showBankReviewerActions = computed(() =>
 
 const showDataEntryActions = computed(() =>
   props.userRole === UserRole.DATA_ENTRY
-  && (props.request.status === RequestStatus.DRAFT || props.request.status === RequestStatus.DRAFT_REJECTED_INTERNAL),
+  && (props.request.status === RequestStatus.DRAFT
+    || props.request.status === RequestStatus.DRAFT_REJECTED_INTERNAL
+    || props.request.status === RequestStatus.BANK_RETURNED),
 )
 
 const showSupportCommitteeActions = computed(() =>
@@ -84,6 +91,31 @@ function resetRejectForm() {
   showRejectForm.value = false
   rejectReason.value = ''
   rejectReasonError.value = ''
+}
+
+function resetBankReturnModal() {
+  showBankReturnModal.value = false
+  bankReturnComment.value = ''
+  bankReturnCommentError.value = ''
+}
+
+async function handleBankReturnConfirm() {
+  bankReturnCommentError.value = ''
+  if (bankReturnComment.value.trim().length < 3) {
+    bankReturnCommentError.value = 'التعليق مطلوب ويجب أن يكون 3 أحرف على الأقل.'
+    return
+  }
+  actionError.value = ''
+  try {
+    await requestsStore.bankReturn(props.request.id, bankReturnComment.value.trim())
+    resetBankReturnModal()
+    emit('action-completed')
+  }
+  catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : ''
+    actionError.value = msg || 'تعذّر إعادة الطلب للمدخل.'
+    resetBankReturnModal()
+  }
 }
 
 function resetDirectorState() {
@@ -228,7 +260,7 @@ async function dispatchAction(action: string, reason?: string) {
       </button>
     </template>
 
-    <!-- BANK_REVIEWER: BANK_REVIEW → approve or reject -->
+    <!-- BANK_REVIEWER: BANK_REVIEW → approve, reject, or return to intake -->
     <template v-if="showBankReviewerActions && request.status === RequestStatus.BANK_REVIEW">
       <template v-if="!showRejectForm">
         <div class="actions-row">
@@ -245,6 +277,13 @@ async function dispatchAction(action: string, reason?: string) {
             @click="handleRejectClick"
           >
             رفض
+          </button>
+          <button
+            class="action-btn action-btn--secondary"
+            :disabled="performingAction"
+            @click="showBankReturnModal = true"
+          >
+            إعادة للمدخل
           </button>
         </div>
       </template>
@@ -347,6 +386,13 @@ async function dispatchAction(action: string, reason?: string) {
 
     <!-- DATA_ENTRY: DRAFT_REJECTED_INTERNAL → edit & resubmit -->
     <template v-if="showDataEntryActions && request.status === RequestStatus.DRAFT_REJECTED_INTERNAL">
+      <NuxtLink :to="`/requests/${request.id}/edit`" class="action-btn action-btn--primary">
+        تعديل وإعادة تقديم
+      </NuxtLink>
+    </template>
+
+    <!-- DATA_ENTRY: BANK_RETURNED → edit & resubmit -->
+    <template v-if="showDataEntryActions && request.status === RequestStatus.BANK_RETURNED">
       <NuxtLink :to="`/requests/${request.id}/edit`" class="action-btn action-btn--primary">
         تعديل وإعادة تقديم
       </NuxtLink>
@@ -507,6 +553,52 @@ async function dispatchAction(action: string, reason?: string) {
         {{ requestsStore.issuingCustoms ? 'جارٍ الإصدار…' : 'إصدار البيان الجمركي' }}
       </button>
     </template>
+
+    <!-- Bank Return modal -->
+    <div
+      v-if="showBankReturnModal"
+      class="bank-return-modal"
+      role="dialog"
+      aria-labelledby="bank-return-modal-title"
+      aria-modal="true"
+    >
+      <div class="bank-return-modal__content">
+        <h3 id="bank-return-modal-title" class="bank-return-modal__title">إعادة الطلب للمدخل</h3>
+        <div class="bank-return-form">
+          <label class="reject-label" for="bank-return-comment">
+            سبب الإعادة <span class="required" aria-hidden="true">*</span>
+          </label>
+          <textarea
+            id="bank-return-comment"
+            v-model="bankReturnComment"
+            class="reject-textarea"
+            rows="4"
+            placeholder="اكتب سبب الإعادة هنا (3 أحرف على الأقل)…"
+            :aria-invalid="!!bankReturnCommentError"
+            :aria-describedby="bankReturnCommentError ? 'bank-return-comment-error' : undefined"
+          />
+          <p v-if="bankReturnCommentError" id="bank-return-comment-error" class="reject-error" role="alert">
+            {{ bankReturnCommentError }}
+          </p>
+        </div>
+        <div class="bank-return-modal__actions">
+          <button
+            class="action-btn action-btn--secondary"
+            :disabled="performingAction"
+            @click="handleBankReturnConfirm"
+          >
+            {{ performingAction ? 'جارٍ التنفيذ…' : 'تأكيد الإعادة' }}
+          </button>
+          <button
+            class="action-btn action-btn--secondary"
+            :disabled="performingAction"
+            @click="resetBankReturnModal"
+          >
+            إلغاء
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -763,6 +855,49 @@ async function dispatchAction(action: string, reason?: string) {
 }
 
 .override-actions {
+  display: flex;
+  gap: 10px;
+  flex-direction: row-reverse;
+  justify-content: flex-start;
+}
+
+/* Bank Return modal */
+.bank-return-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.bank-return-modal__content {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 28px;
+  width: 480px;
+  max-width: 95vw;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  direction: rtl;
+}
+
+.bank-return-modal__title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1d1d1f;
+  margin: 0;
+}
+
+.bank-return-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.bank-return-modal__actions {
   display: flex;
   gap: 10px;
   flex-direction: row-reverse;

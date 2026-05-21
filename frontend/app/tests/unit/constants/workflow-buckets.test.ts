@@ -5,17 +5,23 @@ import {
   CBY_BANK_FILTER_ROLES,
   CURRENCY_OPTIONS,
   STATUS_PROGRESS,
+  STATUS_LABELS,
+  DATA_ENTRY_STATUS_LABELS,
 } from '../../../constants/workflow'
 
 // ── STATUS_PROGRESS ───────────────────────────────────────────────────────────
 
 describe('STATUS_PROGRESS', () => {
-  it('covers all 18 RequestStatus values', () => {
+  it('covers all 19 RequestStatus values', () => {
     const statuses = Object.values(RequestStatus)
     expect(Object.keys(STATUS_PROGRESS)).toHaveLength(statuses.length)
     for (const s of statuses) {
       expect(STATUS_PROGRESS[s], `missing progress for ${s}`).toBeDefined()
     }
+  })
+
+  it('BANK_RETURNED returns 18%', () => {
+    expect(STATUS_PROGRESS[RequestStatus.BANK_RETURNED]).toBe(18)
   })
 
   it('DRAFT returns 5%', () => {
@@ -107,6 +113,22 @@ describe('ROLE_BUCKETS', () => {
     expect(allStatuses).toContain(RequestStatus.EXECUTIVE_REJECTED)
   })
 
+  it('BANK_RETURNED is in BANK_REVIEWER returned_to_intake bucket', () => {
+    const allStatuses = ROLE_BUCKETS[UserRole.BANK_REVIEWER]!.flatMap(b => b.statuses)
+    expect(allStatuses).toContain(RequestStatus.BANK_RETURNED)
+    const bucket = ROLE_BUCKETS[UserRole.BANK_REVIEWER]!.find(b => b.key === 'returned_to_intake')
+    expect(bucket).toBeDefined()
+    expect(bucket!.label).toBe('بحاجة تعديل')
+    expect(bucket!.statuses).toContain(RequestStatus.BANK_RETURNED)
+  })
+
+  it('BANK_RETURNED is in DATA_ENTRY returned bucket', () => {
+    const bucket = ROLE_BUCKETS[UserRole.DATA_ENTRY]!.find(b => b.key === 'returned')
+    expect(bucket).toBeDefined()
+    expect(bucket!.label).toBe('مُعادة')
+    expect(bucket!.statuses).toContain(RequestStatus.BANK_RETURNED)
+  })
+
   it('BANK_ADMIN buckets do not expose CBY-internal stages to UI consumers by accident', () => {
     // BANK_ADMIN can see at_cby bucket which groups all CBY stages, but should NOT see individual raw stage buckets
     const keys = ROLE_BUCKETS[UserRole.BANK_ADMIN]!.map(b => b.key)
@@ -114,12 +136,12 @@ describe('ROLE_BUCKETS', () => {
     expect(keys).not.toContain('voting_stage')
   })
 
-  it('CBY_ADMIN buckets cover all 18 statuses across buckets', () => {
+  it('CBY_ADMIN buckets cover all 19 statuses across buckets', () => {
     const allStatuses = ROLE_BUCKETS[UserRole.CBY_ADMIN]!.flatMap(b => b.statuses)
     const allStatusValues = Object.values(RequestStatus)
     // DRAFT and DRAFT_REJECTED_INTERNAL are not included in CBY_ADMIN buckets
-    // because they are bank-internal; verify at least 16 statuses are covered
-    expect(allStatuses.length).toBeGreaterThanOrEqual(16)
+    // because they are bank-internal; verify at least 17 statuses are covered
+    expect(allStatuses.length).toBeGreaterThanOrEqual(17)
     for (const s of allStatusValues) {
       if (s !== RequestStatus.DRAFT && s !== RequestStatus.DRAFT_REJECTED_INTERNAL) {
         expect(allStatuses, `CBY_ADMIN missing ${s}`).toContain(s)
@@ -165,5 +187,28 @@ describe('CURRENCY_OPTIONS', () => {
     expect(CURRENCY_OPTIONS).toContain('SAR')
     expect(CURRENCY_OPTIONS).toContain('AED')
     expect(CURRENCY_OPTIONS).toContain('CNY')
+  })
+})
+
+// ── STATUS_LABELS (BANK_RETURNED) ─────────────────────────────────────────────
+
+describe('STATUS_LABELS BANK_RETURNED', () => {
+  it('defines BANK_RETURNED label as "إعادة للمدخل"', () => {
+    expect(STATUS_LABELS[RequestStatus.BANK_RETURNED]).toBe('إعادة للمدخل')
+  })
+
+  it('covers all 19 RequestStatus values', () => {
+    const statuses = Object.values(RequestStatus)
+    for (const s of statuses) {
+      expect(STATUS_LABELS[s], `STATUS_LABELS missing ${s}`).toBeDefined()
+    }
+  })
+})
+
+// ── DATA_ENTRY_STATUS_LABELS (BANK_RETURNED) ──────────────────────────────────
+
+describe('DATA_ENTRY_STATUS_LABELS BANK_RETURNED', () => {
+  it('maps BANK_RETURNED to "مُعادة"', () => {
+    expect(DATA_ENTRY_STATUS_LABELS[RequestStatus.BANK_RETURNED]).toBe('مُعادة')
   })
 })

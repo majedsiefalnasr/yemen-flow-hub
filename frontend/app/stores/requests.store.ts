@@ -220,6 +220,27 @@ export const useRequestsStore = defineStore('requests', {
       }
     },
 
+    async bankReturn(id: number, comment: string): Promise<void> {
+      if (this.performingAction) throw new Error('إجراء قيد التنفيذ بالفعل')
+      this.performingAction = true
+      this.error = null
+
+      try {
+        const { bankReturn } = useRequests()
+        this.currentRequest = await bankReturn(id, comment)
+      }
+      catch (err) {
+        if (import.meta.dev) {
+          console.error('[requests.store] bankReturn failed:', err)
+        }
+        this.error = 'تعذّر إعادة الطلب للمدخل.'
+        throw err
+      }
+      finally {
+        this.performingAction = false
+      }
+    },
+
     async issueCustomsDeclaration(id: number): Promise<void> {
       if (this.issuingCustoms) throw new Error('إصدار البيان الجمركي قيد التنفيذ بالفعل')
       this.issuingCustoms = true

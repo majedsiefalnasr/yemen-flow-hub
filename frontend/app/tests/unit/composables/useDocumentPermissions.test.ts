@@ -81,7 +81,7 @@ describe('canDownloadCustoms', () => {
 
 // ─── canUploadDocument ────────────────────────────────────────────────────────
 
-describe('canUploadDocument — only DATA_ENTRY on DRAFT or DRAFT_REJECTED_INTERNAL', () => {
+describe('canUploadDocument — only DATA_ENTRY on DRAFT, DRAFT_REJECTED_INTERNAL, or BANK_RETURNED', () => {
   it('returns true for DATA_ENTRY + DRAFT', () => {
     expect(canUploadDocument(UserRole.DATA_ENTRY, RequestStatus.DRAFT)).toBe(true)
   })
@@ -90,9 +90,15 @@ describe('canUploadDocument — only DATA_ENTRY on DRAFT or DRAFT_REJECTED_INTER
     expect(canUploadDocument(UserRole.DATA_ENTRY, RequestStatus.DRAFT_REJECTED_INTERNAL)).toBe(true)
   })
 
+  it('returns true for DATA_ENTRY + BANK_RETURNED', () => {
+    expect(canUploadDocument(UserRole.DATA_ENTRY, RequestStatus.BANK_RETURNED)).toBe(true)
+  })
+
   it('returns false for DATA_ENTRY on any other status', () => {
     const lockedStatuses = Object.values(RequestStatus).filter(
-      s => s !== RequestStatus.DRAFT && s !== RequestStatus.DRAFT_REJECTED_INTERNAL,
+      s => s !== RequestStatus.DRAFT
+        && s !== RequestStatus.DRAFT_REJECTED_INTERNAL
+        && s !== RequestStatus.BANK_RETURNED,
     )
     for (const status of lockedStatuses) {
       expect(canUploadDocument(UserRole.DATA_ENTRY, status)).toBe(false)
@@ -125,18 +131,24 @@ describe('isDocumentModificationLocked', () => {
     expect(isDocumentModificationLocked(RequestStatus.DRAFT_REJECTED_INTERNAL)).toBe(false)
   })
 
+  it('returns false for BANK_RETURNED (editable)', () => {
+    expect(isDocumentModificationLocked(RequestStatus.BANK_RETURNED)).toBe(false)
+  })
+
   it('returns true for all other statuses', () => {
     const lockedStatuses = Object.values(RequestStatus).filter(
-      s => s !== RequestStatus.DRAFT && s !== RequestStatus.DRAFT_REJECTED_INTERNAL,
+      s => s !== RequestStatus.DRAFT
+        && s !== RequestStatus.DRAFT_REJECTED_INTERNAL
+        && s !== RequestStatus.BANK_RETURNED,
     )
     for (const status of lockedStatuses) {
       expect(isDocumentModificationLocked(status)).toBe(true)
     }
   })
 
-  it('covers all 18 canonical statuses — exactly 2 are unlocked', () => {
+  it('covers all 19 canonical statuses — exactly 3 are unlocked', () => {
     const allStatuses = Object.values(RequestStatus)
-    expect(allStatuses).toHaveLength(18)
+    expect(allStatuses).toHaveLength(19)
     const locked = allStatuses.filter(s => isDocumentModificationLocked(s))
     expect(locked).toHaveLength(16)
   })

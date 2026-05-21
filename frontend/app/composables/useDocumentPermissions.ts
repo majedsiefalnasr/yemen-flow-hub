@@ -46,15 +46,21 @@ export function canDownloadCustoms(role: UserRole): boolean {
 export function canUploadDocument(role: UserRole, status: RequestStatus): boolean {
   return (
     role === UserRole.DATA_ENTRY
-    && (status === RequestStatus.DRAFT || status === RequestStatus.DRAFT_REJECTED_INTERNAL)
+    && (status === RequestStatus.DRAFT
+      || status === RequestStatus.DRAFT_REJECTED_INTERNAL
+      || status === RequestStatus.BANK_RETURNED)
   )
 }
 
 /**
  * Returns true when the request is in a status where documents can no longer
- * be modified (i.e. any status other than DRAFT and DRAFT_REJECTED_INTERNAL).
+ * be modified (i.e. any status other than DRAFT, DRAFT_REJECTED_INTERNAL, and BANK_RETURNED).
  * Used to show the "مقفل — لا يمكن تعديل المستندات" note to DATA_ENTRY users.
  */
 export function isDocumentModificationLocked(status: RequestStatus): boolean {
-  return status !== RequestStatus.DRAFT && status !== RequestStatus.DRAFT_REJECTED_INTERNAL
+  return (
+    status !== RequestStatus.DRAFT
+    && status !== RequestStatus.DRAFT_REJECTED_INTERNAL
+    && status !== RequestStatus.BANK_RETURNED
+  )
 }

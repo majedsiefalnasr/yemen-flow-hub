@@ -12,6 +12,7 @@ import type { RequestStageHistory } from '../../../types/models'
 const WORKFLOW_STAGE_ORDER: RequestStatus[] = [
   RequestStatus.DRAFT,
   RequestStatus.DRAFT_REJECTED_INTERNAL,
+  RequestStatus.BANK_RETURNED,
   RequestStatus.SUBMITTED,
   RequestStatus.BANK_REVIEW,
   RequestStatus.BANK_APPROVED,
@@ -102,8 +103,8 @@ const happyPathHistory: RequestStageHistory[] = [
 // ─── Stage classification — happy path ───────────────────────────────────────
 
 describe('WorkflowTimeline stage classification', () => {
-  it('covers all 18 canonical stages — none missing', () => {
-    expect(WORKFLOW_STAGE_ORDER).toHaveLength(18)
+  it('covers all 19 canonical stages — none missing', () => {
+    expect(WORKFLOW_STAGE_ORDER).toHaveLength(19)
     const all = Object.values(RequestStatus)
     for (const s of all) {
       expect(WORKFLOW_STAGE_ORDER).toContain(s)

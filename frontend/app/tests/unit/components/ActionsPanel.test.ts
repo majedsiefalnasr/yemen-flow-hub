@@ -29,8 +29,26 @@ function showBankReviewerActions(request: ImportRequest, userRole: UserRole): bo
 function showDataEntryActions(request: ImportRequest, userRole: UserRole): boolean {
   return (
     userRole === UserRole.DATA_ENTRY
-    && (request.status === RequestStatus.DRAFT || request.status === RequestStatus.DRAFT_REJECTED_INTERNAL)
+    && (request.status === RequestStatus.DRAFT
+      || request.status === RequestStatus.DRAFT_REJECTED_INTERNAL
+      || request.status === RequestStatus.BANK_RETURNED)
   )
+}
+
+function showBankReturnButton(request: ImportRequest, userRole: UserRole): boolean {
+  return (
+    userRole === UserRole.BANK_REVIEWER
+    && request.status === RequestStatus.BANK_REVIEW
+  )
+}
+
+function validateBankReturnComment(comment: string): string | null {
+  if (comment.trim().length < 3) return 'التعليق مطلوب ويجب أن يكون 3 أحرف على الأقل.'
+  return null
+}
+
+function showBankReturnedEditLink(request: ImportRequest, userRole: UserRole): boolean {
+  return showDataEntryActions(request, userRole) && request.status === RequestStatus.BANK_RETURNED
 }
 
 function showSupportCommitteeActions(request: ImportRequest, userRole: UserRole): boolean {
@@ -361,5 +379,88 @@ describe('ActionsPanel — CorrectionBanner trigger', () => {
 
   it('does not show correction banner for BANK_APPROVED', () => {
     expect(showCorrectionBanner(RequestStatus.BANK_APPROVED)).toBe(false)
+  })
+})
+
+// ── BANK_RETURNED — new tests ─────────────────────────────────────────────────
+
+describe('ActionsPanel — showBankReturnButton (BANK_REVIEWER + BANK_REVIEW)', () => {
+  it('true for BANK_REVIEWER + BANK_REVIEW', () => {
+    expect(showBankReturnButton(makeRequest({ status: RequestStatus.BANK_REVIEW }), UserRole.BANK_REVIEWER)).toBe(true)
+  })
+
+  it('false for BANK_REVIEWER + SUBMITTED (not yet in review)', () => {
+    expect(showBankReturnButton(makeRequest({ status: RequestStatus.SUBMITTED }), UserRole.BANK_REVIEWER)).toBe(false)
+  })
+
+  it('false for DATA_ENTRY + BANK_REVIEW (wrong role)', () => {
+    expect(showBankReturnButton(makeRequest({ status: RequestStatus.BANK_REVIEW }), UserRole.DATA_ENTRY)).toBe(false)
+  })
+
+  it('false for BANK_REVIEWER + BANK_RETURNED (already returned)', () => {
+    expect(showBankReturnButton(makeRequest({ status: RequestStatus.BANK_RETURNED }), UserRole.BANK_REVIEWER)).toBe(false)
+  })
+})
+
+describe('ActionsPanel — validateBankReturnComment', () => {
+  it('returns error for empty comment', () => {
+    expect(validateBankReturnComment('')).not.toBeNull()
+  })
+
+  it('returns error for whitespace-only comment', () => {
+    expect(validateBankReturnComment('   ')).not.toBeNull()
+  })
+
+  it('returns error for 2-char comment (min is 3)', () => {
+    expect(validateBankReturnComment('ab')).not.toBeNull()
+  })
+
+  it('returns null for valid 3-char comment', () => {
+    expect(validateBankReturnComment('abc')).toBeNull()
+  })
+
+  it('returns null for valid longer comment', () => {
+    expect(validateBankReturnComment('يرجى تصحيح المستندات')).toBeNull()
+  })
+})
+
+describe('ActionsPanel — DATA_ENTRY actions on BANK_RETURNED', () => {
+  it('showDataEntryActions true for DATA_ENTRY + BANK_RETURNED', () => {
+    expect(showDataEntryActions(makeRequest({ status: RequestStatus.BANK_RETURNED }), UserRole.DATA_ENTRY)).toBe(true)
+  })
+
+  it('showBankReturnedEditLink true for DATA_ENTRY + BANK_RETURNED', () => {
+    expect(showBankReturnedEditLink(makeRequest({ status: RequestStatus.BANK_RETURNED }), UserRole.DATA_ENTRY)).toBe(true)
+  })
+
+  it('showBankReturnedEditLink false for BANK_REVIEWER + BANK_RETURNED', () => {
+    expect(showBankReturnedEditLink(makeRequest({ status: RequestStatus.BANK_RETURNED }), UserRole.BANK_REVIEWER)).toBe(false)
+  })
+
+  it('edit link target is correct', () => {
+    expect(editLinkTarget(99)).toBe('/requests/99/edit')
+  })
+})
+
+describe('ActionsPanel — isLocked excludes BANK_RETURNED', () => {
+  const LOCKED_STATUSES = new Set([
+    RequestStatus.BANK_APPROVED,
+    RequestStatus.SUPPORT_REVIEW_PENDING,
+    RequestStatus.SUPPORT_REVIEW_IN_PROGRESS,
+    RequestStatus.SUPPORT_APPROVED,
+    RequestStatus.SUPPORT_REJECTED,
+    RequestStatus.WAITING_FOR_SWIFT,
+    RequestStatus.SWIFT_UPLOADED,
+    RequestStatus.WAITING_FOR_VOTING_OPEN,
+    RequestStatus.EXECUTIVE_VOTING_OPEN,
+    RequestStatus.EXECUTIVE_VOTING_CLOSED,
+    RequestStatus.EXECUTIVE_APPROVED,
+    RequestStatus.EXECUTIVE_REJECTED,
+    RequestStatus.CUSTOMS_DECLARATION_ISSUED,
+    RequestStatus.COMPLETED,
+  ])
+
+  it('BANK_RETURNED is NOT locked (DATA_ENTRY can edit)', () => {
+    expect(LOCKED_STATUSES.has(RequestStatus.BANK_RETURNED)).toBe(false)
   })
 })

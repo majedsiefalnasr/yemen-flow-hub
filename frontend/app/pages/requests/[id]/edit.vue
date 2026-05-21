@@ -24,7 +24,7 @@ const toast = ref<{ message: string; type: 'success' | 'error' } | null>(null)
 
 const isEditable = computed(() => {
   const s = requestsStore.currentRequest?.status
-  return s === RequestStatus.DRAFT || s === RequestStatus.DRAFT_REJECTED_INTERNAL
+  return s === RequestStatus.DRAFT || s === RequestStatus.DRAFT_REJECTED_INTERNAL || s === RequestStatus.BANK_RETURNED
 })
 
 const initialValues = computed<Partial<RequestFormData> | undefined>(() => {
