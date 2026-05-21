@@ -498,7 +498,7 @@ watch(showVotingPanelInline, async (visible) => {
         <div class="detail-main">
           <!-- Banners -->
           <div
-            v-if="claimError || showActiveReviewBanner || showClaimedByOthersBanner || isLocked || isReturnedForCorrection"
+            v-if="claimError || showActiveReviewBanner || showClaimedByOthersBanner || isLocked || isReturnedForCorrection || isBankReturned"
             class="banner-area"
           >
             <div v-if="claimError" class="claim-error-banner" role="alert" aria-live="assertive">

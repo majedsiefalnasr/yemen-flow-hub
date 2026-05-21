@@ -362,11 +362,15 @@ describe('ActionsPanel — support reject action dispatch', () => {
 
 describe('ActionsPanel — CorrectionBanner trigger', () => {
   function showCorrectionBanner(status: RequestStatus): boolean {
-    return status === RequestStatus.DRAFT_REJECTED_INTERNAL
+    return status === RequestStatus.DRAFT_REJECTED_INTERNAL || status === RequestStatus.BANK_RETURNED
   }
 
   it('shows correction banner for DRAFT_REJECTED_INTERNAL', () => {
     expect(showCorrectionBanner(RequestStatus.DRAFT_REJECTED_INTERNAL)).toBe(true)
+  })
+
+  it('shows correction banner for BANK_RETURNED', () => {
+    expect(showCorrectionBanner(RequestStatus.BANK_RETURNED)).toBe(true)
   })
 
   it('does not show correction banner for DRAFT', () => {
