@@ -50,8 +50,8 @@ export function useAudit() {
     return response.data
   }
 
-  async function fetchDuplicates(): Promise<{ data: DuplicateInvoice[] }> {
-    const response = await get<ApiResponse<{ data: DuplicateInvoice[] }>>('/api/audit/duplicates')
+  async function fetchDuplicates(page = 1): Promise<PaginatedResponse<DuplicateInvoice>> {
+    const response = await get<ApiResponse<PaginatedResponse<DuplicateInvoice>>>(`/api/audit/duplicates?page=${page}`)
     return response.data
   }
 

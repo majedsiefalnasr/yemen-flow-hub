@@ -342,9 +342,11 @@ export interface AuditLog {
   action: string
   entity_type: string | null
   entity_id: number | null
+  entity_reference?: string | null
   from_status: string | null
   to_status: string | null
   ip_address: string | null
+  user_agent?: string | null
   metadata: Record<string, unknown> | null
   created_at: string
 }

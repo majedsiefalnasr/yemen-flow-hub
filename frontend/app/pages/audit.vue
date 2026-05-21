@@ -5,6 +5,7 @@ import type { AuditLog } from '../types/models'
 import { useAudit } from '../composables/useAudit'
 import type { AuditStats, DuplicateInvoice, RiskIndicator } from '../composables/useAudit'
 import { ROLE_LABELS } from '../constants/workflow'
+import Badge from '../components/ui/Badge.vue'
 import Icon from '../components/ui/Icon.vue'
 
 definePageMeta({
@@ -41,6 +42,9 @@ const statsLoading = ref(false)
 const duplicates = ref<DuplicateInvoice[]>([])
 const dupLoading = ref(false)
 const dupError = ref<string | null>(null)
+const dupCurrentPage = ref(1)
+const dupLastPage = ref(1)
+const dupTotal = ref(0)
 
 // ─── Tab 3: Risk indicators ───────────────────────────────────────────────────
 const riskIndicators = ref<RiskIndicator[]>([])
@@ -48,9 +52,11 @@ const riskLoading = ref(false)
 const riskError = ref<string | null>(null)
 
 // ─── Computed ─────────────────────────────────────────────────────────────────
-const openAlertsCount = computed(() =>
+const openAlertsCount = computed(() => riskIndicators.value.length)
+const potentialFraudCount = computed(() =>
   riskIndicators.value.filter(r => r.level === 'عالية').length,
 )
+const kpiLoading = computed(() => statsLoading.value || riskLoading.value)
 
 const filteredLogs = computed(() => {
   const q = searchQuery.value.trim().toLowerCase()
@@ -114,23 +120,22 @@ function actorRole(log: AuditLog): string {
   return ROLE_LABELS[role as keyof typeof ROLE_LABELS] ?? role
 }
 
-function formatRef(entityId: number | null): string {
-  if (!entityId) return '—'
-  return `IMP-${new Date().getFullYear()}-${String(entityId).padStart(4, '0')}`
+function formatRef(entityReference?: string | null): string {
+  return entityReference ?? '—'
 }
 
 function parseDevice(ua: string | null | undefined): string {
   if (!ua) return '—'
-  const browser = ua.includes('Chrome') ? 'Chrome'
+  const browser = (ua.includes('Edg/') || ua.includes('Edge')) ? 'Edge'
+    : ua.includes('Chrome') ? 'Chrome'
     : ua.includes('Firefox') ? 'Firefox'
     : ua.includes('Safari') ? 'Safari'
-    : ua.includes('Edge') ? 'Edge'
     : 'Unknown'
-  const os = ua.includes('Windows') ? 'Win'
+  const os = ua.includes('Android') ? 'Android'
+    : (ua.includes('iOS') || ua.includes('iPhone')) ? 'iOS'
+    : ua.includes('Windows') ? 'Win'
     : ua.includes('Mac') ? 'Mac'
     : ua.includes('Linux') ? 'Linux'
-    : ua.includes('Android') ? 'Android'
-    : (ua.includes('iOS') || ua.includes('iPhone')) ? 'iOS'
     : 'Unknown'
   return `${browser} / ${os}`
 }
@@ -178,12 +183,15 @@ async function loadStats() {
   }
 }
 
-async function loadDuplicates() {
+async function loadDuplicates(page = 1) {
   dupLoading.value = true
   dupError.value = null
+  dupCurrentPage.value = page
   try {
-    const result = await fetchDuplicates()
+    const result = await fetchDuplicates(page)
     duplicates.value = result.data
+    dupLastPage.value = result.meta.last_page
+    dupTotal.value = result.meta.total
   }
   catch {
     dupError.value = 'تعذّر تحميل بيانات الفواتير المكررة.'
@@ -229,8 +237,15 @@ function onTabChange(tab: 'logs' | 'dup' | 'risk') {
 }
 
 onMounted(() => {
-  loadLogs(1)
-  loadStats()
+  void Promise.allSettled([
+    loadLogs(1),
+    loadStats(),
+    loadRiskIndicators(),
+  ]).then(() => {
+    if (riskIndicators.value.length > 0) {
+      tabLoaded.risk = true
+    }
+  })
 })
 </script>
 
@@ -257,7 +272,7 @@ onMounted(() => {
         </div>
         <div>
           <div class="kpi-label">نشاطات اليوم</div>
-          <div class="kpi-value">{{ statsLoading ? '…' : stats.today_count }}</div>
+          <div class="kpi-value">{{ kpiLoading ? '…' : stats.today_count }}</div>
         </div>
       </div>
 
@@ -267,7 +282,7 @@ onMounted(() => {
         </div>
         <div>
           <div class="kpi-label">تنبيهات مفتوحة</div>
-          <div class="kpi-value">{{ openAlertsCount }}</div>
+          <div class="kpi-value">{{ kpiLoading ? '…' : openAlertsCount }}</div>
         </div>
       </div>
 
@@ -277,7 +292,7 @@ onMounted(() => {
         </div>
         <div>
           <div class="kpi-label">فواتير مكررة</div>
-          <div class="kpi-value">{{ statsLoading ? '…' : stats.duplicate_invoice_count }}</div>
+          <div class="kpi-value">{{ kpiLoading ? '…' : stats.duplicate_invoice_count }}</div>
         </div>
       </div>
 
@@ -287,7 +302,7 @@ onMounted(() => {
         </div>
         <div>
           <div class="kpi-label">حالات احتيال محتملة</div>
-          <div class="kpi-value">2</div>
+          <div class="kpi-value">{{ kpiLoading ? '…' : potentialFraudCount }}</div>
         </div>
       </div>
     </div>
@@ -369,7 +384,7 @@ onMounted(() => {
                 <div v-if="actorRole(log)" class="text-xs" style="color: #6c757d;">{{ actorRole(log) }}</div>
               </td>
               <td>
-                <span class="action-badge">{{ actionLabel(log.action) }}</span>
+                <Badge variant="secondary">{{ actionLabel(log.action) }}</Badge>
               </td>
               <td>
                 <NuxtLink
@@ -378,11 +393,11 @@ onMounted(() => {
                   class="font-mono text-xs"
                   style="color: #0066cc;"
                 >
-                  {{ formatRef(log.entity_id) }}
+                  {{ formatRef(log.entity_reference) }}
                 </NuxtLink>
                 <span v-else style="color: #6c757d;">—</span>
               </td>
-              <td class="text-xs" style="color: #6c757d;">{{ parseDevice((log as any).user_agent) }}</td>
+              <td class="text-xs" style="color: #6c757d;">{{ parseDevice(log.user_agent) }}</td>
               <td class="text-xs" style="color: #6c757d;">{{ log.ip_address ?? '—' }}</td>
               <td class="text-xs whitespace-nowrap" style="color: #6c757d;">{{ formatDate(log.created_at) }}</td>
             </tr>
@@ -408,22 +423,22 @@ onMounted(() => {
 
       <div v-else-if="dupError" class="state-card state-error">
         {{ dupError }}
-        <button class="btn-retry" @click="loadDuplicates">إعادة المحاولة</button>
+        <button class="btn-retry" @click="() => loadDuplicates()">إعادة المحاولة</button>
       </div>
 
       <template v-else>
         <div
-          v-if="duplicates.length > 0"
+          v-if="dupTotal > 0"
           class="dup-banner"
           data-testid="dup-banner"
         >
           <Icon name="alert-triangle" :size="18" style="color: #c62828; margin-top: 2px; flex-shrink: 0;" />
           <p class="dup-banner-text">
-            تم اكتشاف {{ duplicates.length }} حالات لفواتير مكررة بحاجة لمراجعة عاجلة
+            تم اكتشاف {{ dupTotal }} حالات لفواتير مكررة بحاجة لمراجعة عاجلة
           </p>
         </div>
 
-        <div v-if="duplicates.length === 0" class="state-card">
+        <div v-if="dupTotal === 0" class="state-card">
           <p style="color: #6c757d; font-size: 14px;">لا توجد فواتير مكررة حالياً.</p>
         </div>
 
@@ -448,6 +463,12 @@ onMounted(() => {
             </div>
           </div>
         </div>
+
+        <div v-if="dupLastPage > 1" class="pagination">
+          <button class="page-btn" :disabled="dupCurrentPage <= 1" @click="loadDuplicates(dupCurrentPage - 1)">السابق</button>
+          <span class="page-info">{{ dupCurrentPage }} / {{ dupLastPage }}</span>
+          <button class="page-btn" :disabled="dupCurrentPage >= dupLastPage" @click="loadDuplicates(dupCurrentPage + 1)">التالي</button>
+        </div>
       </template>
     </div>
 
@@ -461,7 +482,7 @@ onMounted(() => {
 
       <div v-else-if="riskError" class="state-card state-error">
         {{ riskError }}
-        <button class="btn-retry" @click="loadRiskIndicators">إعادة المحاولة</button>
+        <button class="btn-retry" @click="() => loadRiskIndicators()">إعادة المحاولة</button>
       </div>
 
       <template v-else>

@@ -6,23 +6,22 @@ import { defineComponent, ref, reactive } from 'vue'
 
 function parseDevice(ua: string | null | undefined): string {
   if (!ua) return '—'
-  const browser = ua.includes('Chrome') ? 'Chrome'
+  const browser = (ua.includes('Edg/') || ua.includes('Edge')) ? 'Edge'
+    : ua.includes('Chrome') ? 'Chrome'
     : ua.includes('Firefox') ? 'Firefox'
     : ua.includes('Safari') ? 'Safari'
-    : ua.includes('Edge') ? 'Edge'
     : 'Unknown'
-  const os = ua.includes('Windows') ? 'Win'
+  const os = ua.includes('Android') ? 'Android'
+    : (ua.includes('iOS') || ua.includes('iPhone')) ? 'iOS'
+    : ua.includes('Windows') ? 'Win'
     : ua.includes('Mac') ? 'Mac'
     : ua.includes('Linux') ? 'Linux'
-    : ua.includes('Android') ? 'Android'
-    : (ua.includes('iOS') || ua.includes('iPhone')) ? 'iOS'
     : 'Unknown'
   return `${browser} / ${os}`
 }
 
-function formatRef(entityId: number | null): string {
-  if (!entityId) return '—'
-  return `IMP-${new Date().getFullYear()}-${String(entityId).padStart(4, '0')}`
+function formatRef(entityReference?: string | null): string {
+  return entityReference ?? '—'
 }
 
 type RiskLevel = 'عالية' | 'متوسطة' | 'منخفضة'
@@ -34,7 +33,7 @@ function riskIconColor(level: RiskLevel): string {
 }
 
 function openAlertsCount(indicators: Array<{ level: RiskLevel }>): number {
-  return indicators.filter(r => r.level === 'عالية').length
+  return indicators.length
 }
 
 // ─── KPI rendering ────────────────────────────────────────────────────────────
@@ -50,19 +49,24 @@ describe('audit page — KPI rendering', () => {
     expect(stats.duplicate_invoice_count).toBe(7)
   })
 
-  it('open alerts count is derived from high-level risk indicators', () => {
+  it('open alerts count is derived from all returned risk indicators', () => {
     const indicators = [
       { level: 'عالية' as RiskLevel },
       { level: 'عالية' as RiskLevel },
       { level: 'متوسطة' as RiskLevel },
       { level: 'منخفضة' as RiskLevel },
     ]
-    expect(openAlertsCount(indicators)).toBe(2)
+    expect(openAlertsCount(indicators)).toBe(4)
   })
 
-  it('fraud count KPI is hardcoded to 2', () => {
-    // Per story spec: no real API for fraud count yet; value is hardcoded to 2
-    const fraudCount = 2
+  it('fraud count KPI is derived from high-severity indicators', () => {
+    const indicators = [
+      { level: 'عالية' as RiskLevel },
+      { level: 'عالية' as RiskLevel },
+      { level: 'متوسطة' as RiskLevel },
+      { level: 'منخفضة' as RiskLevel },
+    ]
+    const fraudCount = indicators.filter(item => item.level === 'عالية').length
     expect(fraudCount).toBe(2)
   })
 })
@@ -123,6 +127,14 @@ describe('parseDevice helper', () => {
     expect(parseDevice('Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/115.0')).toBe('Firefox / Linux')
   })
 
+  it('parses Edge before Chrome', () => {
+    expect(parseDevice('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36 Edg/124.0')).toBe('Edge / Win')
+  })
+
+  it('parses Android before Linux', () => {
+    expect(parseDevice('Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36')).toBe('Chrome / Android')
+  })
+
   it('returns "—" for null user agent', () => {
     expect(parseDevice(null)).toBe('—')
   })
@@ -131,12 +143,11 @@ describe('parseDevice helper', () => {
 // ─── formatRef helper ─────────────────────────────────────────────────────────
 
 describe('formatRef helper', () => {
-  it('formats entity id with current year and padded id', () => {
-    const year = new Date().getFullYear()
-    expect(formatRef(42)).toBe(`IMP-${year}-0042`)
+  it('returns the server-provided entity reference', () => {
+    expect(formatRef('IMP-2025-0042')).toBe('IMP-2025-0042')
   })
 
-  it('returns "—" for null entity id', () => {
+  it('returns "—" when no entity reference is available', () => {
     expect(formatRef(null)).toBe('—')
   })
 })

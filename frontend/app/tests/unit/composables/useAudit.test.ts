@@ -129,13 +129,21 @@ describe('useAudit — new endpoints (Story 7.9)', () => {
       id: 1, ref: 'IMP-2026-0001', importer: 'شركة النيل',
       invoice_number: 'INV-001', sibling_id: 2, sibling_ref: 'IMP-2026-0002',
     }
-    mockGet.mockResolvedValueOnce({ success: true, message: 'OK', data: { data: [item] } })
+    mockGet.mockResolvedValueOnce({
+      success: true,
+      message: 'OK',
+      data: {
+        data: [item],
+        meta: { current_page: 1, last_page: 1, per_page: 30, total: 1 },
+      },
+    })
     const { fetchDuplicates } = useAudit()
     const result = await fetchDuplicates()
     expect(result.data).toHaveLength(1)
     expect(result.data[0]?.invoice_number).toBe('INV-001')
     expect(result.data[0]?.sibling_ref).toBe('IMP-2026-0002')
-    expect(mockGet).toHaveBeenCalledWith('/api/audit/duplicates')
+    expect(result.meta.total).toBe(1)
+    expect(mockGet).toHaveBeenCalledWith('/api/audit/duplicates?page=1')
   })
 
   it('fetchRiskIndicators returns array with title, body, level', async () => {
