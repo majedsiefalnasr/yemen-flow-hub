@@ -1,14 +1,32 @@
 import type { RequestStatus, UserRole, VoteType, VotingSessionStatus } from './enums'
 
+export interface ProfileStats {
+  total: number
+  in_progress: number
+  completed: number
+}
+
+export interface RecentActivity {
+  id: number
+  action: string
+  ref: string | null
+  ts: string
+}
+
 export interface AuthUser {
   id: number
   name: string
   email: string
+  phone?: string | null
   role: UserRole
   bank_id: number | null
   bank_name_ar: string | null
   bank_name_en: string | null
   is_active: boolean
+  mfa_enabled?: boolean
+  mfa_required?: boolean
+  stats?: ProfileStats
+  recent_activity?: RecentActivity[]
 }
 
 export interface UserPreferences {

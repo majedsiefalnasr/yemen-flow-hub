@@ -32,6 +32,15 @@ import {
   Activity,
   AlertTriangle,
   FileWarning,
+  // New icons for 7.10
+  Workflow,
+  ShieldAlert,
+  Database,
+  BadgeCheck,
+  Phone,
+  Save,
+  KeyRound,
+  Mail,
 } from 'lucide-vue-next'
 
 export const ICONS = {
@@ -40,9 +49,11 @@ export const ICONS = {
   'plus-circle': PlusCircle,
   building: Building,
   bank: Building2,
+  'building-2': Building2,
   stamp: Stamp,
   'bar-chart-2': BarChart2,
   'shield-check': ShieldCheck,
+  'shield-alert': ShieldAlert,
   bell: Bell,
   landmark: Landmark,
   users: Users,
@@ -67,6 +78,13 @@ export const ICONS = {
   activity: Activity,
   'alert-triangle': AlertTriangle,
   'file-warning': FileWarning,
+  workflow: Workflow,
+  database: Database,
+  'badge-check': BadgeCheck,
+  phone: Phone,
+  save: Save,
+  'key-round': KeyRound,
+  mail: Mail,
 } as const satisfies Record<string, Component>
 
 export type IconName = keyof typeof ICONS

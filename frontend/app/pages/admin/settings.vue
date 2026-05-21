@@ -1,189 +1,9 @@
-<template>
-  <div class="min-h-screen bg-[#f5f5f7] p-6">
-    <div class="mx-auto max-w-4xl">
-      <!-- Header -->
-      <div class="mb-8">
-        <h1 class="text-3xl font-bold text-[#1d1d1f]">إعدادات النظام</h1>
-        <p class="text-[#6e6e73]">إدارة إعدادات النظام والميزات</p>
-      </div>
-
-      <!-- Loading State -->
-      <div v-if="loading" class="rounded-lg bg-white p-8 shadow-sm">
-        <div class="flex items-center justify-center">
-          <div class="h-8 w-8 animate-spin rounded-full border-4 border-[#d2d2d7] border-t-[#0071e3]"></div>
-          <span class="mr-3 text-[#6e6e73]">جاري التحميل...</span>
-        </div>
-      </div>
-
-      <!-- Settings -->
-      <div v-else-if="settings" class="space-y-6">
-        <!-- Numeric Settings -->
-        <div class="rounded-lg bg-white p-6 shadow-sm">
-          <h2 class="mb-4 text-lg font-semibold text-[#1d1d1f]">إعدادات الوقت والحجم</h2>
-          <div class="space-y-6">
-            <!-- Support Claim TTL -->
-            <div class="flex items-end justify-between rounded-lg border border-[#d2d2d7] p-4">
-              <div class="flex-1">
-                <label class="block text-sm font-medium text-[#1d1d1f]">مدة صلاحية المطالبة (دقيقة)</label>
-                <p class="text-xs text-[#6e6e73]">النطاق: 5-60 دقيقة</p>
-                <div class="mt-2 text-lg font-semibold text-[#1d1d1f]">{{ settings.support_claim_ttl }}</div>
-              </div>
-              <div class="ml-4 flex gap-2">
-                <button
-                  @click="updateValue('support_claim_ttl', Math.max(5, settings.support_claim_ttl - 1))"
-                  :disabled="loading || settings.support_claim_ttl <= 5"
-                  class="rounded bg-[#f5f5f7] px-3 py-1 text-sm hover:bg-[#e5e5e7] disabled:opacity-50"
-                >
-                  −
-                </button>
-                <button
-                  @click="updateValue('support_claim_ttl', Math.min(60, settings.support_claim_ttl + 1))"
-                  :disabled="loading || settings.support_claim_ttl >= 60"
-                  class="rounded bg-[#f5f5f7] px-3 py-1 text-sm hover:bg-[#e5e5e7] disabled:opacity-50"
-                >
-                  +
-                </button>
-              </div>
-            </div>
-
-            <!-- Voting Session Timeout -->
-            <div class="flex items-end justify-between rounded-lg border border-[#d2d2d7] p-4">
-              <div class="flex-1">
-                <label class="block text-sm font-medium text-[#1d1d1f]">انتظار جلسة التصويت (دقيقة)</label>
-                <p class="text-xs text-[#6e6e73]">النطاق: 15-120 دقيقة</p>
-                <div class="mt-2 text-lg font-semibold text-[#1d1d1f]">{{ settings.voting_session_timeout }}</div>
-              </div>
-              <div class="ml-4 flex gap-2">
-                <button
-                  @click="updateValue('voting_session_timeout', Math.max(15, settings.voting_session_timeout - 1))"
-                  :disabled="loading || settings.voting_session_timeout <= 15"
-                  class="rounded bg-[#f5f5f7] px-3 py-1 text-sm hover:bg-[#e5e5e7] disabled:opacity-50"
-                >
-                  −
-                </button>
-                <button
-                  @click="updateValue('voting_session_timeout', Math.min(120, settings.voting_session_timeout + 1))"
-                  :disabled="loading || settings.voting_session_timeout >= 120"
-                  class="rounded bg-[#f5f5f7] px-3 py-1 text-sm hover:bg-[#e5e5e7] disabled:opacity-50"
-                >
-                  +
-                </button>
-              </div>
-            </div>
-
-            <!-- PDF Upload Size Limit -->
-            <div class="flex items-end justify-between rounded-lg border border-[#d2d2d7] p-4">
-              <div class="flex-1">
-                <label class="block text-sm font-medium text-[#1d1d1f]">حد رفع PDF (MB)</label>
-                <p class="text-xs text-[#6e6e73]">النطاق: 1-50 MB</p>
-                <div class="mt-2 text-lg font-semibold text-[#1d1d1f]">{{ settings.pdf_upload_size_limit }}</div>
-              </div>
-              <div class="ml-4 flex gap-2">
-                <button
-                  @click="updateValue('pdf_upload_size_limit', Math.max(1, settings.pdf_upload_size_limit - 1))"
-                  :disabled="loading || settings.pdf_upload_size_limit <= 1"
-                  class="rounded bg-[#f5f5f7] px-3 py-1 text-sm hover:bg-[#e5e5e7] disabled:opacity-50"
-                >
-                  −
-                </button>
-                <button
-                  @click="updateValue('pdf_upload_size_limit', Math.min(50, settings.pdf_upload_size_limit + 1))"
-                  :disabled="loading || settings.pdf_upload_size_limit >= 50"
-                  class="rounded bg-[#f5f5f7] px-3 py-1 text-sm hover:bg-[#e5e5e7] disabled:opacity-50"
-                >
-                  +
-                </button>
-              </div>
-            </div>
-
-            <!-- Login Lockout Duration -->
-            <div class="flex items-end justify-between rounded-lg border border-[#d2d2d7] p-4">
-              <div class="flex-1">
-                <label class="block text-sm font-medium text-[#1d1d1f]">مدة حظر الدخول (دقيقة)</label>
-                <p class="text-xs text-[#6e6e73]">النطاق: 5-60 دقيقة</p>
-                <div class="mt-2 text-lg font-semibold text-[#1d1d1f]">{{ settings.login_lockout_duration }}</div>
-              </div>
-              <div class="ml-4 flex gap-2">
-                <button
-                  @click="updateValue('login_lockout_duration', Math.max(5, settings.login_lockout_duration - 1))"
-                  :disabled="loading || settings.login_lockout_duration <= 5"
-                  class="rounded bg-[#f5f5f7] px-3 py-1 text-sm hover:bg-[#e5e5e7] disabled:opacity-50"
-                >
-                  −
-                </button>
-                <button
-                  @click="updateValue('login_lockout_duration', Math.min(60, settings.login_lockout_duration + 1))"
-                  :disabled="loading || settings.login_lockout_duration >= 60"
-                  class="rounded bg-[#f5f5f7] px-3 py-1 text-sm hover:bg-[#e5e5e7] disabled:opacity-50"
-                >
-                  +
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Feature Toggles -->
-        <div class="rounded-lg bg-white p-6 shadow-sm">
-          <h2 class="mb-4 text-lg font-semibold text-[#1d1d1f]">تفعيل الميزات</h2>
-          <div class="space-y-4">
-            <label class="flex items-center rounded-lg border border-[#d2d2d7] p-4">
-              <input
-                type="checkbox"
-                :checked="settings.notifications_phase_1_enabled"
-                @change="updateValue('notifications_phase_1_enabled', !settings.notifications_phase_1_enabled)"
-                :disabled="loading"
-                class="h-4 w-4"
-              />
-              <span class="mr-3 text-sm font-medium text-[#1d1d1f]">تفعيل الإشعارات (المرحلة الأولى)</span>
-            </label>
-            <label class="flex items-center rounded-lg border border-[#d2d2d7] p-4">
-              <input
-                type="checkbox"
-                :checked="settings.search_phase_1_enabled"
-                @change="updateValue('search_phase_1_enabled', !settings.search_phase_1_enabled)"
-                :disabled="loading"
-                class="h-4 w-4"
-              />
-              <span class="mr-3 text-sm font-medium text-[#1d1d1f]">تفعيل البحث (المرحلة الأولى)</span>
-            </label>
-            <label class="flex items-center rounded-lg border border-[#d2d2d7] p-4">
-              <input
-                type="checkbox"
-                :checked="settings.customs_print_preview_enabled"
-                @change="updateValue('customs_print_preview_enabled', !settings.customs_print_preview_enabled)"
-                :disabled="loading"
-                class="h-4 w-4"
-              />
-              <span class="mr-3 text-sm font-medium text-[#1d1d1f]">معاينة الطباعة للتصريحات الجمركية</span>
-            </label>
-          </div>
-        </div>
-
-        <!-- Error -->
-        <div v-if="error" class="rounded-lg bg-[#fff5f5] p-4">
-          <p class="text-sm text-[#ff3b30]">{{ error }}</p>
-        </div>
-      </div>
-
-      <!-- Forbidden -->
-      <div v-else-if="forbidden" class="rounded-lg bg-white p-8">
-        <p class="text-center text-[#ff3b30]">لا توجد صلاحيات كافية للوصول إلى هذه الصفحة</p>
-      </div>
-
-      <!-- Error State -->
-      <div v-else class="rounded-lg bg-white p-8">
-        <p class="text-center text-[#ff3b30]">{{ error }}</p>
-      </div>
-    </div>
-  </div>
-</template>
-
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useAdminSettings } from '../../composables/useAdminSettings'
 import { useAuthStore } from '../../stores/auth.store'
 import { useRouter } from 'nuxt/app'
+import Icon from '../../components/ui/Icon.vue'
 
 definePageMeta({
   middleware: 'auth',
@@ -192,26 +12,807 @@ definePageMeta({
 const router = useRouter()
 const auth = useAuthStore()
 
-// Check admin access
 if (!auth.isCbyAdmin) {
   router.push('/dashboard')
 }
 
-const { settings, loading, error, fetchSettings, updateSetting } = useAdminSettings()
-const forbidden = ref(false)
+const {
+  settings,
+  loading,
+  error,
+  pendingKeys,
+  smtpSettings,
+  securityPolicies,
+  fetchSettings,
+  fetchSmtpSettings,
+  fetchSecurityPolicies,
+  updateSetting,
+  updateSmtpSettings,
+  updateSecurityPolicy,
+  resetSetting,
+} = useAdminSettings()
 
-const updateValue = async (key: string, value: any) => {
-  const success = await updateSetting(key, value)
-  if (!success) {
-    // Error is shown in the component
+type TabId = 'workflow' | 'email' | 'security' | 'general'
+
+const activeTab = ref<TabId>('workflow')
+
+const tabs: Array<{ id: TabId; label: string; icon: string }> = [
+  { id: 'workflow', label: 'سير العمل', icon: 'workflow' },
+  { id: 'email', label: 'البريد الإلكتروني', icon: 'mail' },
+  { id: 'security', label: 'الأمن', icon: 'shield-alert' },
+  { id: 'general', label: 'عام', icon: 'settings' },
+]
+
+// ── SMTP ─────────────────────────────────────────────────────────────────────
+const smtpForm = ref({ host: '', port: 587, username: '', password: '', template: '' })
+const smtpSaving = ref(false)
+const smtpError = ref<string | null>(null)
+const smtpSuccess = ref(false)
+
+async function handleSmtpSave() {
+  smtpSaving.value = true
+  smtpError.value = null
+  smtpSuccess.value = false
+  const ok = await updateSmtpSettings({ ...smtpForm.value })
+  smtpSaving.value = false
+  if (ok) smtpSuccess.value = true
+  else smtpError.value = 'فشل حفظ إعدادات SMTP'
+}
+
+// ── Security policies ─────────────────────────────────────────────────────────
+const SECURITY_ROWS = [
+  { key: 'mfa_required', label: 'إلزام التحقق الثنائي (MFA)', desc: 'يُجبر جميع المستخدمين على إدخال رمز OTP عند تسجيل الدخول' },
+  { key: 'password_expiry_90_days', label: 'انتهاء صلاحية كلمة المرور (90 يوم)', desc: 'يُجبر المستخدمين على تغيير كلمة المرور كل 90 يوماً' },
+  { key: 'lockout_after_5_attempts', label: 'قفل الحساب بعد 5 محاولات', desc: 'يُقفل الحساب تلقائياً بعد 5 محاولات دخول فاشلة متتالية' },
+  { key: 'encrypt_uploads_aes256', label: 'تشفير الملفات المرفوعة (AES-256)', desc: 'تشفير جميع الملفات المرفوعة باستخدام معيار AES-256' },
+  { key: 'log_all_audit', label: 'تسجيل جميع أحداث التدقيق', desc: 'تسجيل جميع الإجراءات في سجل التدقيق الشامل' },
+  { key: 'allow_external_access', label: 'السماح بالوصول الخارجي', desc: 'السماح للمستخدمين بالوصول من خارج الشبكة الداخلية' },
+]
+
+function getSecurityValue(key: string): boolean {
+  return (securityPolicies.value as any)?.[key] ?? false
+}
+
+// ── Feature toggles (عام tab) ─────────────────────────────────────────────────
+const FEATURE_ROWS = [
+  { key: 'notifications_phase_1_enabled', label: 'الإشعارات (المرحلة الأولى)', desc: 'تفعيل نظام الإشعارات التجريبي' },
+  { key: 'search_phase_1_enabled', label: 'البحث (المرحلة الأولى)', desc: 'تفعيل ميزة البحث المتقدم التجريبية' },
+  { key: 'customs_print_preview_enabled', label: 'معاينة الطباعة الجمركية', desc: 'تفعيل معاينة PDF للبيان الجمركي قبل الإصدار' },
+]
+
+// ── Mount ─────────────────────────────────────────────────────────────────────
+onMounted(async () => {
+  if (!auth.isCbyAdmin) return
+
+  await fetchSettings()
+  fetchSmtpSettings()
+  fetchSecurityPolicies()
+
+  watch(
+    () => smtpSettings.value,
+    (s) => {
+      if (s) {
+        smtpForm.value = { host: s.host, port: s.port, username: s.username, password: '', template: s.template }
+      }
+    },
+  )
+})
+</script>
+
+<template>
+  <div class="admin-settings-page">
+    <!-- Header -->
+    <div class="page-header">
+      <nav class="breadcrumbs" aria-label="مسار التنقل">
+        <NuxtLink to="/dashboard" class="breadcrumb-link">الرئيسية</NuxtLink>
+        <span class="breadcrumb-sep">›</span>
+        <span class="breadcrumb-current">إعدادات النظام</span>
+      </nav>
+      <h1 class="page-title">إعدادات النظام</h1>
+      <p class="page-subtitle">إدارة إعدادات المنصة وسياسات الأمن والميزات</p>
+    </div>
+
+    <!-- Loading -->
+    <div v-if="loading" class="state-loading">جارٍ التحميل…</div>
+
+    <template v-else>
+      <!-- Tab nav -->
+      <nav class="tab-nav" role="tablist">
+        <button
+          v-for="tab in tabs"
+          :key="tab.id"
+          :data-tab="tab.id"
+          :class="['tab-btn', { active: activeTab === tab.id }]"
+          role="tab"
+          :aria-selected="activeTab === tab.id"
+          @click="activeTab = tab.id"
+        >
+          <Icon :name="tab.icon" :size="16" />
+          {{ tab.label }}
+        </button>
+      </nav>
+
+      <!-- Error banner -->
+      <div v-if="error" class="error-banner">{{ error }}</div>
+
+      <!-- Tab panels -->
+      <div class="tab-content">
+
+        <!-- ── سير العمل ────────────────────────────────────────────── -->
+        <div v-show="activeTab === 'workflow'" class="panel">
+          <div class="section-card">
+            <div class="section-header">
+              <h2 class="section-title">إعدادات وقت وحجم النظام</h2>
+              <p class="section-desc">ضبط مهل المراحل وحجم الملفات</p>
+            </div>
+
+            <div v-if="settings" class="two-col-grid">
+              <div class="stepper-field">
+                <label class="field-label">مدة صلاحية المطالبة (دقيقة)</label>
+                <p class="field-hint">النطاق: 5–60 دقيقة</p>
+                <div class="stepper-row">
+                  <button
+                    class="stepper-btn"
+                    :disabled="loading || settings.support_claim_ttl <= 5"
+                    @click="updateSetting('support_claim_ttl', Math.max(5, settings.support_claim_ttl - 1))"
+                  >−</button>
+                  <span class="stepper-value">{{ settings.support_claim_ttl }}</span>
+                  <button
+                    class="stepper-btn"
+                    :disabled="loading || settings.support_claim_ttl >= 60"
+                    @click="updateSetting('support_claim_ttl', Math.min(60, settings.support_claim_ttl + 1))"
+                  >+</button>
+                </div>
+              </div>
+
+              <div class="stepper-field">
+                <label class="field-label">انتظار جلسة التصويت (دقيقة)</label>
+                <p class="field-hint">النطاق: 15–120 دقيقة</p>
+                <div class="stepper-row">
+                  <button
+                    class="stepper-btn"
+                    :disabled="loading || settings.voting_session_timeout <= 15"
+                    @click="updateSetting('voting_session_timeout', Math.max(15, settings.voting_session_timeout - 1))"
+                  >−</button>
+                  <span class="stepper-value">{{ settings.voting_session_timeout }}</span>
+                  <button
+                    class="stepper-btn"
+                    :disabled="loading || settings.voting_session_timeout >= 120"
+                    @click="updateSetting('voting_session_timeout', Math.min(120, settings.voting_session_timeout + 1))"
+                  >+</button>
+                </div>
+              </div>
+
+              <div class="stepper-field">
+                <label class="field-label">حد رفع PDF (MB)</label>
+                <p class="field-hint">النطاق: 1–50 MB</p>
+                <div class="stepper-row">
+                  <button
+                    class="stepper-btn"
+                    :disabled="loading || settings.pdf_upload_size_limit <= 1"
+                    @click="updateSetting('pdf_upload_size_limit', Math.max(1, settings.pdf_upload_size_limit - 1))"
+                  >−</button>
+                  <span class="stepper-value">{{ settings.pdf_upload_size_limit }}</span>
+                  <button
+                    class="stepper-btn"
+                    :disabled="loading || settings.pdf_upload_size_limit >= 50"
+                    @click="updateSetting('pdf_upload_size_limit', Math.min(50, settings.pdf_upload_size_limit + 1))"
+                  >+</button>
+                </div>
+              </div>
+
+              <div class="stepper-field">
+                <label class="field-label">مدة حظر الدخول (دقيقة)</label>
+                <p class="field-hint">النطاق: 5–60 دقيقة</p>
+                <div class="stepper-row">
+                  <button
+                    class="stepper-btn"
+                    :disabled="loading || settings.login_lockout_duration <= 5"
+                    @click="updateSetting('login_lockout_duration', Math.max(5, settings.login_lockout_duration - 1))"
+                  >−</button>
+                  <span class="stepper-value">{{ settings.login_lockout_duration }}</span>
+                  <button
+                    class="stepper-btn"
+                    :disabled="loading || settings.login_lockout_duration >= 60"
+                    @click="updateSetting('login_lockout_duration', Math.min(60, settings.login_lockout_duration + 1))"
+                  >+</button>
+                </div>
+              </div>
+            </div>
+
+            <template v-if="settings">
+              <div class="section-header" style="margin-top: 8px;">
+                <h3 class="section-title" style="font-size: 15px;">دورة الموافقة</h3>
+              </div>
+              <div class="two-col-grid">
+                <div class="field-group">
+                  <label class="field-label">حجم لجنة الدعم</label>
+                  <input
+                    type="number"
+                    class="form-input"
+                    :value="settings.support_committee_size"
+                    @change="(e) => updateSetting('support_committee_size', Number((e.target as HTMLInputElement).value))"
+                  />
+                </div>
+                <div class="field-group">
+                  <label class="field-label">حجم اللجنة التنفيذية</label>
+                  <input
+                    type="number"
+                    class="form-input"
+                    :value="settings.executive_committee_size"
+                    @change="(e) => updateSetting('executive_committee_size', Number((e.target as HTMLInputElement).value))"
+                  />
+                </div>
+                <div class="field-group">
+                  <label class="field-label">الحد الأدنى للنصاب</label>
+                  <input
+                    type="number"
+                    class="form-input"
+                    :value="settings.minimum_quorum"
+                    @change="(e) => updateSetting('minimum_quorum', Number((e.target as HTMLInputElement).value))"
+                  />
+                </div>
+                <div class="field-group">
+                  <label class="field-label">مهلة المراجعة (ساعة)</label>
+                  <input
+                    type="number"
+                    class="form-input"
+                    :value="settings.review_timeout_hours"
+                    @change="(e) => updateSetting('review_timeout_hours', Number((e.target as HTMLInputElement).value))"
+                  />
+                </div>
+              </div>
+
+              <div class="switch-section">
+                <div class="switch-row">
+                  <div class="switch-info">
+                    <span class="switch-label">التصويت السري</span>
+                    <span class="switch-desc">إخفاء هوية الناخبين من نتائج التصويت</span>
+                  </div>
+                  <label class="toggle-switch">
+                    <input
+                      type="checkbox"
+                      :checked="settings.secret_voting"
+                      :disabled="pendingKeys.has('secret_voting')"
+                      @change="(e) => updateSetting('secret_voting', (e.target as HTMLInputElement).checked)"
+                    />
+                    <span class="toggle-knob" />
+                  </label>
+                </div>
+                <div class="switch-row">
+                  <div class="switch-info">
+                    <span class="switch-label">كسر التعادل بالمدير</span>
+                    <span class="switch-desc">يملك مدير اللجنة صلاحية كسر التعادل عند التصويت</span>
+                  </div>
+                  <label class="toggle-switch">
+                    <input
+                      type="checkbox"
+                      :checked="settings.director_tiebreak"
+                      :disabled="pendingKeys.has('director_tiebreak')"
+                      @change="(e) => updateSetting('director_tiebreak', (e.target as HTMLInputElement).checked)"
+                    />
+                    <span class="toggle-knob" />
+                  </label>
+                </div>
+              </div>
+            </template>
+          </div>
+        </div>
+
+        <!-- ── البريد الإلكتروني ──────────────────────────────────── -->
+        <div v-show="activeTab === 'email'" class="panel">
+          <div class="section-card">
+            <div class="section-header">
+              <h2 class="section-title">إعدادات البريد الإلكتروني (SMTP)</h2>
+              <p class="section-desc">تهيئة خادم البريد لإرسال الإشعارات</p>
+            </div>
+
+            <div class="two-col-grid">
+              <div class="field-group">
+                <label class="field-label">الخادم (Host)</label>
+                <input v-model="smtpForm.host" type="text" class="form-input" placeholder="smtp.example.com" dir="ltr" />
+              </div>
+              <div class="field-group">
+                <label class="field-label">المنفذ (Port)</label>
+                <input v-model.number="smtpForm.port" type="number" class="form-input" placeholder="587" dir="ltr" />
+              </div>
+              <div class="field-group">
+                <label class="field-label">اسم المستخدم</label>
+                <input v-model="smtpForm.username" type="text" class="form-input" dir="ltr" />
+              </div>
+              <div class="field-group">
+                <label class="field-label">كلمة المرور</label>
+                <input v-model="smtpForm.password" type="password" class="form-input" dir="ltr" placeholder="••••••••" />
+              </div>
+            </div>
+            <div class="field-group">
+              <label class="field-label">قالب البريد</label>
+              <textarea v-model="smtpForm.template" class="form-input form-textarea" dir="ltr" rows="3" />
+            </div>
+
+            <div v-if="smtpError" class="error-banner">{{ smtpError }}</div>
+            <div v-if="smtpSuccess" class="success-banner">تم حفظ إعدادات SMTP بنجاح</div>
+
+            <div class="form-actions">
+              <button class="btn-primary" :disabled="smtpSaving" @click="handleSmtpSave">
+                <Icon name="save" :size="16" />
+                {{ smtpSaving ? 'جاري الحفظ...' : 'حفظ إعدادات SMTP' }}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── الأمن ─────────────────────────────────────────────── -->
+        <div v-show="activeTab === 'security'" class="panel">
+          <div class="section-card">
+            <div class="section-header">
+              <h2 class="section-title">سياسات الأمن</h2>
+              <p class="section-desc">ضبط سياسات الأمان على مستوى النظام</p>
+            </div>
+
+            <div class="switch-section">
+              <div
+                v-for="row in SECURITY_ROWS"
+                :key="row.key"
+                class="switch-row"
+              >
+                <div class="switch-info">
+                  <span class="switch-label">{{ row.label }}</span>
+                  <span class="switch-desc">{{ row.desc }}</span>
+                </div>
+                <label class="toggle-switch">
+                  <input
+                    type="checkbox"
+                    :checked="getSecurityValue(row.key)"
+                    :disabled="pendingKeys.has(row.key)"
+                    @change="(e) => updateSecurityPolicy(row.key, (e.target as HTMLInputElement).checked)"
+                  />
+                  <span class="toggle-knob" />
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── عام ───────────────────────────────────────────────── -->
+        <div v-show="activeTab === 'general'" class="panel">
+          <div class="section-card">
+            <div class="section-header">
+              <h2 class="section-title">تفعيل الميزات</h2>
+              <p class="section-desc">تشغيل وإيقاف ميزات المنصة التجريبية</p>
+            </div>
+
+            <div v-if="settings" class="switch-section">
+              <div
+                v-for="row in FEATURE_ROWS"
+                :key="row.key"
+                class="switch-row"
+              >
+                <div class="switch-info">
+                  <span class="switch-label">{{ row.label }}</span>
+                  <span class="switch-desc">{{ row.desc }}</span>
+                </div>
+                <label class="toggle-switch">
+                  <input
+                    type="checkbox"
+                    :checked="(settings as any)[row.key]"
+                    :disabled="loading || pendingKeys.has(row.key)"
+                    @change="(e) => updateSetting(row.key, (e.target as HTMLInputElement).checked)"
+                  />
+                  <span class="toggle-knob" />
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Platform info -->
+          <div class="section-card" style="margin-top: 16px;">
+            <div class="section-header">
+              <h2 class="section-title">معلومات المنصة</h2>
+            </div>
+            <div class="info-grid">
+              <div class="info-row">
+                <span class="info-label">اسم المنصة</span>
+                <span class="info-value">Yemen Flow Hub</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">الجهة</span>
+                <span class="info-value">البنك المركزي اليمني</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">المنطقة الزمنية</span>
+                <span class="info-value">Asia/Aden (UTC+3)</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </template>
+  </div>
+</template>
+
+<style scoped>
+.admin-settings-page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  max-width: 900px;
+}
+
+/* Header */
+.page-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.breadcrumbs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  margin-bottom: 4px;
+}
+
+.breadcrumb-link {
+  color: #0066cc;
+  text-decoration: none;
+}
+
+.breadcrumb-link:hover {
+  text-decoration: underline;
+}
+
+.breadcrumb-sep {
+  color: var(--color-border);
+}
+
+.breadcrumb-current {
+  color: var(--color-text-secondary);
+}
+
+.page-title {
+  font-size: 28px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.page-subtitle {
+  font-size: 14px;
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+/* Tab nav */
+.tab-nav {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--color-border);
+  flex-wrap: wrap;
+}
+
+.tab-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+  margin-bottom: -1px;
+  white-space: nowrap;
+}
+
+.tab-btn.active {
+  color: #0066cc;
+  border-bottom-color: #0066cc;
+}
+
+.tab-btn:hover:not(.active) {
+  color: var(--color-text-primary);
+}
+
+.tab-content {
+  min-height: 200px;
+}
+
+/* Section card */
+.section-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.section-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.section-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.section-desc {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+/* Stepper */
+.two-col-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 600px) {
+  .two-col-grid {
+    grid-template-columns: 1fr;
   }
 }
 
-onMounted(async () => {
-  if (!auth.isCbyAdmin) {
-    forbidden.value = true
-    return
-  }
-  await fetchSettings()
-})
-</script>
+.stepper-field {
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.field-hint {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+.stepper-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.stepper-btn {
+  width: 32px;
+  height: 32px;
+  background: #f5f5f7;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stepper-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.stepper-value {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  min-width: 36px;
+  text-align: center;
+}
+
+/* Form fields */
+.field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-input {
+  height: 44px;
+  padding: 0 12px;
+  border: 1px solid #cccccc;
+  border-radius: 12px;
+  font-size: 14px;
+  color: var(--color-text-primary);
+  background: var(--color-surface);
+  outline: none;
+  width: 100%;
+}
+
+.form-input:focus {
+  border-color: #0066cc;
+}
+
+.form-textarea {
+  height: auto;
+  padding: 10px 12px;
+  resize: vertical;
+}
+
+/* Switch rows */
+.switch-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+}
+
+.switch-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+
+.switch-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+
+.switch-desc {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+/* Toggle switch */
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+  flex-shrink: 0;
+  margin-right: 16px;
+  cursor: pointer;
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+  position: absolute;
+}
+
+.toggle-knob {
+  position: absolute;
+  inset: 0;
+  background: #cccccc;
+  border-radius: 24px;
+  transition: background 0.2s;
+}
+
+.toggle-knob::before {
+  content: '';
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  left: 3px;
+  top: 3px;
+  background: #fff;
+  border-radius: 50%;
+  transition: transform 0.2s;
+}
+
+.toggle-switch input:checked + .toggle-knob {
+  background: #0066cc;
+}
+
+.toggle-switch input:checked + .toggle-knob::before {
+  transform: translateX(20px);
+}
+
+.toggle-switch input:disabled + .toggle-knob {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Info rows */
+.info-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.info-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: #f5f5f7;
+  border-radius: 10px;
+}
+
+.info-label {
+  font-size: 14px;
+  color: var(--color-text-secondary);
+}
+
+.info-value {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+
+/* Banners */
+.error-banner {
+  background: #fff0ef;
+  border: 1px solid #c62828;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 13px;
+  color: #c62828;
+}
+
+.success-banner {
+  background: #e6f9ec;
+  border: 1px solid #1a7a35;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 13px;
+  color: #1b5e20;
+}
+
+/* Form actions */
+.form-actions {
+  display: flex;
+  gap: 12px;
+}
+
+/* Buttons */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 44px;
+  padding: 0 20px;
+  background: #0066cc;
+  color: #fff;
+  border: none;
+  border-radius: 16px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.state-loading {
+  text-align: center;
+  color: var(--color-text-secondary);
+  padding: 32px;
+}
+</style>

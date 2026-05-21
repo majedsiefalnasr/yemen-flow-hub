@@ -32,6 +32,49 @@ export const useProfile = () => {
     }
   }
 
+  const updateProfile = async (data: { name: string; email: string; phone?: string }): Promise<boolean> => {
+    loading.value = true
+    error.value = null
+
+    try {
+      const response = await $fetch<ApiResponse<AuthUser>>('/api/profile', {
+        method: 'PUT',
+        baseURL,
+        credentials: 'include',
+        headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+        body: data,
+      })
+      profile.value = response.data
+      return true
+    }
+    catch (err: any) {
+      error.value = err.data?.message || 'Failed to update profile'
+      return false
+    }
+    finally {
+      loading.value = false
+    }
+  }
+
+  const toggleMfa = async (): Promise<boolean> => {
+    error.value = null
+
+    try {
+      const response = await $fetch<ApiResponse<AuthUser>>('/api/profile/mfa/toggle', {
+        method: 'POST',
+        baseURL,
+        credentials: 'include',
+        headers: { Accept: 'application/json' },
+      })
+      profile.value = response.data
+      return true
+    }
+    catch (err: any) {
+      error.value = err.data?.message || 'Failed to toggle MFA'
+      return false
+    }
+  }
+
   const changePassword = async (data: {
     current_password: string
     password: string
@@ -64,6 +107,8 @@ export const useProfile = () => {
     loading,
     error,
     fetchProfile,
+    updateProfile,
+    toggleMfa,
     changePassword,
   }
 }
