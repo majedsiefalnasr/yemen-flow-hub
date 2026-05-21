@@ -159,8 +159,13 @@ class AuditControllerTest extends TestCase
 
         $this->assertArrayHasKey('entity_type', $entry);
         $this->assertArrayHasKey('entity_id', $entry);
+        $this->assertArrayHasKey('entity_reference', $entry);
         $this->assertSame('ImportRequest', $entry['entity_type']);
         $this->assertSame($request->id, $entry['entity_id']);
+        $this->assertSame(
+            sprintf('IMP-%s-%04d', $request->created_at->format('Y'), $request->id),
+            $entry['entity_reference']
+        );
     }
 
     /** @test */
@@ -420,6 +425,9 @@ class AuditControllerTest extends TestCase
         $this->assertArrayHasKey('invoice_number', $items[0]);
         $this->assertArrayHasKey('sibling_id',     $items[0]);
         $this->assertArrayHasKey('sibling_ref',    $items[0]);
+        $response->assertJsonPath('data.meta.current_page', 1);
+        $response->assertJsonPath('data.meta.per_page', 30);
+        $response->assertJsonPath('data.meta.total', 2);
     }
 
     // ─── GET /api/audit/risk-indicators ──────────────────────────────────────

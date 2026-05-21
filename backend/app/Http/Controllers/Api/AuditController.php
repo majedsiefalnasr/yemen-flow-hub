@@ -10,6 +10,7 @@ use App\Models\ImportRequest;
 use App\Services\Audit\AuditService;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use OpenApi\Attributes as OA;
 
@@ -25,19 +26,38 @@ class AuditController extends Controller
         return in_array($role, [UserRole::CBY_ADMIN, UserRole::COMMITTEE_DIRECTOR], true);
     }
 
+    private function forbiddenAuditResponse(string $reason): JsonResponse
+    {
+        $user = request()->user();
+
+        $this->auditService->log(AuditAction::AUTHORIZATION_FAILURE, $user, null, [
+            'bank_id' => $user->bank_id,
+            'path' => request()->path(),
+            'method' => request()->method(),
+            'reason' => $reason,
+        ]);
+
+        return ApiResponse::forbidden();
+    }
+
+    private function formatAuditRequestRef(?ImportRequest $request, ?int $fallbackId = null): string
+    {
+        $requestId = $request?->id ?? $fallbackId;
+
+        if (!$requestId) {
+            return '—';
+        }
+
+        $year = $request?->created_at?->format('Y') ?? now()->format('Y');
+
+        return 'IMP-' . $year . '-' . str_pad((string) $requestId, 4, '0', STR_PAD_LEFT);
+    }
+
     #[OA\Get(path: '/api/audit', tags: ['Audit'], summary: 'List audit logs', responses: [new OA\Response(response: 200, description: 'Audit logs retrieved')])]
     public function index()
     {
-        $user = request()->user();
         if (!$this->isAuditAuthorized()) {
-            $this->auditService->log(AuditAction::AUTHORIZATION_FAILURE, $user, null, [
-                'bank_id' => $user->bank_id,
-                'path' => request()->path(),
-                'method' => request()->method(),
-                'reason' => 'audit requires CBY_ADMIN or COMMITTEE_DIRECTOR',
-            ]);
-
-            return ApiResponse::forbidden();
+            return $this->forbiddenAuditResponse('audit requires CBY_ADMIN or COMMITTEE_DIRECTOR');
         }
 
         $items = AuditLog::query()
@@ -65,7 +85,7 @@ class AuditController extends Controller
     public function stats(): JsonResponse
     {
         if (!$this->isAuditAuthorized()) {
-            return ApiResponse::forbidden();
+            return $this->forbiddenAuditResponse('audit stats require CBY_ADMIN or COMMITTEE_DIRECTOR');
         }
 
         $todayCount = AuditLog::query()
@@ -89,7 +109,7 @@ class AuditController extends Controller
     public function duplicates(): JsonResponse
     {
         if (!$this->isAuditAuthorized()) {
-            return ApiResponse::forbidden();
+            return $this->forbiddenAuditResponse('audit duplicates require CBY_ADMIN or COMMITTEE_DIRECTOR');
         }
 
         $dupInvoices = DB::table('import_requests')
@@ -103,37 +123,55 @@ class AuditController extends Controller
             ->whereIn('invoice_number', $dupInvoices->keys())
             ->orderBy('invoice_number')
             ->orderBy('id')
-            ->get();
+            ->paginate(30);
 
-        $items = $requests->map(function ($r) use ($dupInvoices) {
-            $firstId   = $dupInvoices[$r->invoice_number];
-            $siblingId = $r->id === $firstId
-                ? ImportRequest::where('invoice_number', $r->invoice_number)
-                    ->where('id', '!=', $firstId)
-                    ->value('id')
-                : $firstId;
+        $invoiceNumbers = collect($requests->items())
+            ->pluck('invoice_number')
+            ->filter()
+            ->unique()
+            ->values();
 
-            $siblingRef = $siblingId
-                ? 'IMP-' . ImportRequest::find($siblingId)?->created_at?->format('Y') . '-' . str_pad($siblingId, 4, '0', STR_PAD_LEFT)
-                : '—';
+        $requestsByInvoice = ImportRequest::query()
+            ->whereIn('invoice_number', $invoiceNumbers)
+            ->orderBy('invoice_number')
+            ->orderBy('id')
+            ->get()
+            ->groupBy('invoice_number');
+
+        $items = collect($requests->items())->map(function (ImportRequest $request) use ($dupInvoices, $requestsByInvoice) {
+            /** @var Collection<int, ImportRequest> $siblings */
+            $siblings = $requestsByInvoice->get($request->invoice_number, collect());
+            $firstId = (int) ($dupInvoices[$request->invoice_number] ?? $request->id);
+            $firstRequest = $siblings->firstWhere('id', $firstId) ?? $siblings->first();
+            $sibling = $request->id === $firstId
+                ? $siblings->first(fn (ImportRequest $candidate) => $candidate->id !== $request->id)
+                : $firstRequest;
 
             return [
-                'id'             => $r->id,
-                'ref'            => 'IMP-' . $r->created_at->format('Y') . '-' . str_pad($r->id, 4, '0', STR_PAD_LEFT),
-                'importer'       => $r->supplier_name ?? '—',
-                'invoice_number' => $r->invoice_number,
-                'sibling_id'     => $siblingId,
-                'sibling_ref'    => $siblingRef,
+                'id' => $request->id,
+                'ref' => $this->formatAuditRequestRef($request),
+                'importer' => $request->supplier_name ?? '—',
+                'invoice_number' => $request->invoice_number,
+                'sibling_id' => $sibling?->id,
+                'sibling_ref' => $this->formatAuditRequestRef($sibling, $sibling?->id),
             ];
-        });
+        })->values();
 
-        return ApiResponse::success(['data' => $items]);
+        return ApiResponse::success([
+            'data' => $items,
+            'meta' => [
+                'current_page' => $requests->currentPage(),
+                'last_page' => $requests->lastPage(),
+                'per_page' => $requests->perPage(),
+                'total' => $requests->total(),
+            ],
+        ]);
     }
 
     public function riskIndicators(): JsonResponse
     {
         if (!$this->isAuditAuthorized()) {
-            return ApiResponse::forbidden();
+            return $this->forbiddenAuditResponse('audit risk indicators require CBY_ADMIN or COMMITTEE_DIRECTOR');
         }
 
         return ApiResponse::success([
