@@ -29,6 +29,9 @@ import {
   UploadCloud,
   Vote,
   Lock,
+  Activity,
+  AlertTriangle,
+  FileWarning,
 } from 'lucide-vue-next'
 
 export const ICONS = {
@@ -61,6 +64,9 @@ export const ICONS = {
   'upload-cloud': UploadCloud,
   vote: Vote,
   lock: Lock,
+  activity: Activity,
+  'alert-triangle': AlertTriangle,
+  'file-warning': FileWarning,
 } as const satisfies Record<string, Component>
 
 export type IconName = keyof typeof ICONS

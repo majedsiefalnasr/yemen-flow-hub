@@ -105,3 +105,65 @@ describe('useAudit — fetchAuditLogs', () => {
     await expect(fetchAuditLogs()).rejects.toThrow('Forbidden')
   })
 })
+
+describe('useAudit — new endpoints (Story 7.9)', () => {
+  beforeEach(() => {
+    mockGet.mockReset()
+  })
+
+  it('fetchAuditStats maps today_count and duplicate_invoice_count', async () => {
+    mockGet.mockResolvedValueOnce({
+      success: true,
+      message: 'OK',
+      data: { today_count: 12, duplicate_invoice_count: 3 },
+    })
+    const { fetchAuditStats } = useAudit()
+    const result = await fetchAuditStats()
+    expect(result.today_count).toBe(12)
+    expect(result.duplicate_invoice_count).toBe(3)
+    expect(mockGet).toHaveBeenCalledWith('/api/audit/stats')
+  })
+
+  it('fetchDuplicates returns array of duplicate invoice items', async () => {
+    const item = {
+      id: 1, ref: 'IMP-2026-0001', importer: 'شركة النيل',
+      invoice_number: 'INV-001', sibling_id: 2, sibling_ref: 'IMP-2026-0002',
+    }
+    mockGet.mockResolvedValueOnce({ success: true, message: 'OK', data: { data: [item] } })
+    const { fetchDuplicates } = useAudit()
+    const result = await fetchDuplicates()
+    expect(result.data).toHaveLength(1)
+    expect(result.data[0]?.invoice_number).toBe('INV-001')
+    expect(result.data[0]?.sibling_ref).toBe('IMP-2026-0002')
+    expect(mockGet).toHaveBeenCalledWith('/api/audit/duplicates')
+  })
+
+  it('fetchRiskIndicators returns array with title, body, level', async () => {
+    const indicators = [
+      { title: 'نمط غير عادي', body: 'تفصيل', level: 'عالية' as const },
+      { title: 'محاولة مشبوهة', body: 'تفصيل 2', level: 'متوسطة' as const },
+    ]
+    mockGet.mockResolvedValueOnce({ success: true, message: 'OK', data: { data: indicators } })
+    const { fetchRiskIndicators } = useAudit()
+    const result = await fetchRiskIndicators()
+    expect(result).toHaveLength(2)
+    expect(result[0]?.level).toBe('عالية')
+    expect(result[1]?.level).toBe('متوسطة')
+    expect(mockGet).toHaveBeenCalledWith('/api/audit/risk-indicators')
+  })
+
+  it('fetchAuditLogs still works unchanged after composable extension', async () => {
+    mockGet.mockResolvedValueOnce({
+      success: true,
+      message: 'OK',
+      data: {
+        data: [LOG_FIXTURE],
+        meta: { current_page: 1, last_page: 1, per_page: 30, total: 1 },
+      },
+    })
+    const { fetchAuditLogs } = useAudit()
+    const result = await fetchAuditLogs()
+    expect(result.data).toHaveLength(1)
+    expect(result.data[0]?.action).toBe('STATUS_TRANSITION')
+  })
+})

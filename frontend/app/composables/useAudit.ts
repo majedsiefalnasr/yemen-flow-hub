@@ -9,6 +9,26 @@ export interface AuditFilters {
   page?: number
 }
 
+export interface AuditStats {
+  today_count: number
+  duplicate_invoice_count: number
+}
+
+export interface DuplicateInvoice {
+  id: number
+  ref: string
+  importer: string
+  invoice_number: string
+  sibling_id: number | null
+  sibling_ref: string
+}
+
+export interface RiskIndicator {
+  title: string
+  body: string
+  level: 'عالية' | 'متوسطة' | 'منخفضة'
+}
+
 export function useAudit() {
   const { get } = useApi()
 
@@ -25,5 +45,20 @@ export function useAudit() {
     return response.data
   }
 
-  return { fetchAuditLogs }
+  async function fetchAuditStats(): Promise<AuditStats> {
+    const response = await get<ApiResponse<AuditStats>>('/api/audit/stats')
+    return response.data
+  }
+
+  async function fetchDuplicates(): Promise<{ data: DuplicateInvoice[] }> {
+    const response = await get<ApiResponse<{ data: DuplicateInvoice[] }>>('/api/audit/duplicates')
+    return response.data
+  }
+
+  async function fetchRiskIndicators(): Promise<RiskIndicator[]> {
+    const response = await get<ApiResponse<{ data: RiskIndicator[] }>>('/api/audit/risk-indicators')
+    return response.data.data
+  }
+
+  return { fetchAuditLogs, fetchAuditStats, fetchDuplicates, fetchRiskIndicators }
 }
