@@ -42,7 +42,8 @@
       "Bash(/bin/cat /Users/majedsiefalnasr/Documents/Work/Ultimate-Solutions-EGY/yemen-flow-hub/code/lovable/app/components/layout/AppShell.vue)",
       "Bash(/usr/bin/head -80)",
       "Bash(/usr/bin/wc *)",
-      "Bash(/bin/ls *)"
+      "Bash(/bin/ls *)",
+      "Bash(git stash *)"
     ]
   }
 }
