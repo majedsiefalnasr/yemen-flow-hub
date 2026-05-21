@@ -20,3 +20,6 @@ Thumbs.db
 # Env files
 .env
 .env.local
+
+# Generated knowledge graph files
+graphify-out/
