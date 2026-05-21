@@ -24,6 +24,8 @@ git commit -m "feat(voting): add session open/close director controls"
 ```
 
 Conventional commit format: `type(scope): description`
+All commits must stay signed. Never use `--no-gpg-sign`, `--no-sign`, or `-c commit.gpgsign=false`; if signing fails, fix signing first.
+
 Examples:
 - `feat(voting): add session open/close director controls`
 - `fix(support-queue): show heartbeat claim indicator`
