@@ -130,6 +130,12 @@ class ImportRequestResource extends JsonResource
                     ->latest()
                     ->value('reason')
                 : null,
+            'bank_reject_comment' => $this->status === RequestStatus::BANK_REJECTED
+                ? $this->stageHistory()
+                    ->where('action', 'bank_reject_terminal')
+                    ->latest()
+                    ->value('reason')
+                : null,
             'support_return_comment' => $this->status === RequestStatus::SUPPORT_RETURNED
                 ? $this->stageHistory()
                     ->where('action', 'support_return_to_intake')

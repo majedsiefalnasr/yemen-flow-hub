@@ -24,6 +24,7 @@ enum RequestStatus: string
     case COMPLETED = 'COMPLETED';
     case BANK_RETURNED = 'BANK_RETURNED';
     case SUPPORT_RETURNED = 'SUPPORT_RETURNED';
+    case BANK_REJECTED = 'BANK_REJECTED';
 
     public function label(): string
     {
@@ -48,6 +49,7 @@ enum RequestStatus: string
             self::COMPLETED => 'مكتمل / Completed',
             self::BANK_RETURNED => 'إعادة للمدخل / Returned to Intake',
             self::SUPPORT_RETURNED => 'إعادة من المساندة / Returned from Support',
+            self::BANK_REJECTED => 'مرفوض (البنك) / Bank Rejected',
         };
     }
 
@@ -57,6 +59,7 @@ enum RequestStatus: string
             self::EXECUTIVE_REJECTED,
             self::CUSTOMS_DECLARATION_ISSUED,
             self::COMPLETED,
+            self::BANK_REJECTED,
         ], true);
     }
 

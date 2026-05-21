@@ -11,8 +11,11 @@ class RequestRejectedNotification extends Notification implements ShouldQueue
 {
     use Queueable;
 
-    public function __construct(private readonly ImportRequest $requestModel)
-    {
+    public function __construct(
+        private readonly ImportRequest $requestModel,
+        private readonly bool $terminal = false,
+        private readonly ?string $comment = null,
+    ) {
     }
 
     public function via(object $notifiable): array
@@ -27,6 +30,8 @@ class RequestRejectedNotification extends Notification implements ShouldQueue
             'message' => 'تم رفض الطلب: ' . $this->requestModel->reference_number,
             'request_id' => $this->requestModel->id,
             'reference_number' => $this->requestModel->reference_number,
+            'terminal' => $this->terminal,
+            'comment' => $this->comment,
         ];
     }
 }

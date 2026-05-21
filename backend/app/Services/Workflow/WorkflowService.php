@@ -60,7 +60,7 @@ class WorkflowService
             throw new UnauthorizedTransitionException('You cannot transition another bank request.');
         }
 
-        if (in_array($action, ['bank_approve', 'bank_reject', 'bank_return_to_intake'], true) && $actor->id === $request->created_by) {
+        if (in_array($action, ['bank_approve', 'bank_reject', 'bank_return_to_intake', 'bank_reject_terminal'], true) && $actor->id === $request->created_by) {
             throw new SelfReviewException('Reviewer cannot approve, reject, or return own request.');
         }
 
@@ -111,7 +111,7 @@ class WorkflowService
             $actorColumn = match ($action) {
                 'bank_begin_review' => 'reviewed_by',
                 'bank_approve' => 'approved_by',
-                'bank_reject' => 'rejected_by',
+                'bank_reject', 'bank_reject_terminal' => 'rejected_by',
                 'support_approve', 'support_reject' => 'support_reviewed_by',
                 'swift_upload' => 'swift_uploaded_by',
                 'open_voting' => 'voting_opened_by',

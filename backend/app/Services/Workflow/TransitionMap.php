@@ -40,6 +40,12 @@ class TransitionMap
                 'roles' => [UserRole::BANK_REVIEWER],
                 'next_owner' => UserRole::DATA_ENTRY,
             ],
+            'bank_reject_terminal' => [
+                'from' => [RequestStatus::BANK_REVIEW],
+                'to' => RequestStatus::BANK_REJECTED,
+                'roles' => [UserRole::BANK_REVIEWER],
+                'next_owner' => null,
+            ],
             'return_to_entry' => [
                 'from' => [RequestStatus::SUPPORT_REJECTED],
                 'to' => RequestStatus::DRAFT_REJECTED_INTERNAL,

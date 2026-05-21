@@ -554,4 +554,141 @@ class WorkflowControllerTest extends TestCase
             ->assertJsonPath('success', false)
             ->assertJsonFragment(['message' => 'Current status does not allow this transition.']);
     }
+
+    // ─── Story 8.3: bank-reject-terminal (BANK_REVIEW → BANK_REJECTED) ────────
+
+    public function test_bank_reject_terminal_happy_path(): void
+    {
+        $request = $this->makeRequest($this->bank, $this->dataEntry, RequestStatus::BANK_REVIEW);
+
+        $this->actingAs($this->bankReviewer)
+            ->postJson("/api/workflow/{$request->id}/bank-reject-terminal", ['comment' => 'رفض نهائي'])
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.status', RequestStatus::BANK_REJECTED->value);
+    }
+
+    public function test_bank_reject_terminal_creates_stage_history_and_audit(): void
+    {
+        $request = $this->makeRequest($this->bank, $this->dataEntry, RequestStatus::BANK_REVIEW);
+
+        $this->actingAs($this->bankReviewer)
+            ->postJson("/api/workflow/{$request->id}/bank-reject-terminal", ['comment' => 'وثائق غير مكتملة']);
+
+        $this->assertDatabaseHas('request_stage_history', [
+            'request_id' => $request->id,
+            'from_status' => RequestStatus::BANK_REVIEW->value,
+            'to_status' => RequestStatus::BANK_REJECTED->value,
+            'action' => 'bank_reject_terminal',
+            'actor_id' => $this->bankReviewer->id,
+            'actor_role' => UserRole::BANK_REVIEWER->value,
+            'reason' => 'وثائق غير مكتملة',
+        ]);
+
+        $this->assertDatabaseHas('audit_logs', [
+            'user_id' => $this->bankReviewer->id,
+            'user_role' => UserRole::BANK_REVIEWER->value,
+            'action' => AuditAction::STATUS_TRANSITION->value,
+            'subject_type' => ImportRequest::class,
+            'subject_id' => $request->id,
+        ]);
+    }
+
+    public function test_bank_reject_terminal_requires_comment(): void
+    {
+        $request = $this->makeRequest($this->bank, $this->dataEntry, RequestStatus::BANK_REVIEW);
+
+        $this->actingAs($this->bankReviewer)
+            ->postJson("/api/workflow/{$request->id}/bank-reject-terminal")
+            ->assertStatus(422)
+            ->assertJsonStructure(['errors' => ['comment']]);
+    }
+
+    public function test_bank_reject_terminal_comment_min_three_chars(): void
+    {
+        $request = $this->makeRequest($this->bank, $this->dataEntry, RequestStatus::BANK_REVIEW);
+
+        $this->actingAs($this->bankReviewer)
+            ->postJson("/api/workflow/{$request->id}/bank-reject-terminal", ['comment' => 'ab'])
+            ->assertStatus(422)
+            ->assertJsonStructure(['errors' => ['comment']]);
+    }
+
+    public function test_bank_reject_terminal_sod_creator_cannot_reject_own(): void
+    {
+        // bankReviewer creates the request
+        $request = $this->makeRequest($this->bank, $this->bankReviewer, RequestStatus::BANK_REVIEW);
+
+        $this->actingAs($this->bankReviewer)
+            ->postJson("/api/workflow/{$request->id}/bank-reject-terminal", ['comment' => 'تعارض مصالح'])
+            ->assertForbidden();
+    }
+
+    public function test_bank_reject_terminal_wrong_status_returns_422(): void
+    {
+        $request = $this->makeRequest($this->bank, $this->dataEntry, RequestStatus::SUBMITTED);
+
+        $this->actingAs($this->bankReviewer)
+            ->postJson("/api/workflow/{$request->id}/bank-reject-terminal", ['comment' => 'رفض نهائي'])
+            ->assertStatus(422)
+            ->assertJsonPath('success', false);
+    }
+
+    public function test_bank_reject_terminal_cross_bank_forbidden(): void
+    {
+        $otherReviewer = $this->makeUser(UserRole::BANK_REVIEWER, $this->otherBank);
+        $request = $this->makeRequest($this->bank, $this->dataEntry, RequestStatus::BANK_REVIEW);
+
+        $this->actingAs($otherReviewer)
+            ->postJson("/api/workflow/{$request->id}/bank-reject-terminal", ['comment' => 'رفض نهائي'])
+            ->assertForbidden();
+    }
+
+    public function test_bank_reject_terminal_sets_rejected_by(): void
+    {
+        $request = $this->makeRequest($this->bank, $this->dataEntry, RequestStatus::BANK_REVIEW);
+
+        $this->actingAs($this->bankReviewer)
+            ->postJson("/api/workflow/{$request->id}/bank-reject-terminal", ['comment' => 'رفض نهائي']);
+
+        $this->assertDatabaseHas('import_requests', [
+            'id' => $request->id,
+            'rejected_by' => $this->bankReviewer->id,
+            'status' => RequestStatus::BANK_REJECTED->value,
+        ]);
+    }
+
+    // ─── Story 8.3: Immutability of BANK_REJECTED ─────────────────────────────
+
+    public function test_bank_rejected_blocks_further_transitions(): void
+    {
+        $request = $this->makeRequest($this->bank, $this->dataEntry, RequestStatus::BANK_REJECTED);
+
+        $this->actingAs($this->bankReviewer)
+            ->postJson("/api/workflow/{$request->id}/bank-approve")
+            ->assertStatus(422)
+            ->assertJsonPath('success', false);
+    }
+
+    public function test_bank_rejected_transition_immutability_via_service(): void
+    {
+        // BANK_REJECTED is terminal — any further transition must throw InvalidTransitionException
+        $request = $this->makeRequest($this->bank, $this->dataEntry, RequestStatus::BANK_REJECTED);
+
+        $this->expectException(\App\Exceptions\InvalidTransitionException::class);
+        app(WorkflowService::class)->transition($request, 'bank_approve', $this->bankReviewer);
+    }
+
+    // ─── Story 8.3: Legacy bank-reject still works (AC5) ──────────────────────
+
+    public function test_legacy_bank_reject_still_lands_in_draft_rejected_internal(): void
+    {
+        $request = $this->makeRequest($this->bank, $this->dataEntry, RequestStatus::BANK_REVIEW);
+
+        $this->actingAs($this->bankReviewer)
+            ->postJson("/api/workflow/{$request->id}/bank-reject", ['reason' => 'مستندات ناقصة'])
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.status', RequestStatus::DRAFT_REJECTED_INTERNAL->value);
+    }
 }

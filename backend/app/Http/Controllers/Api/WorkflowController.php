@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Enums\UserRole;
 use App\Exceptions\VotingException;
+use App\Http\Requests\BankRejectTerminalRequest;
 use App\Http\Requests\BankReturnRequest;
 use App\Http\Requests\SupportReturnRequest;
 use App\Http\Requests\WorkflowActionRequest;
@@ -208,6 +209,21 @@ class WorkflowController extends Controller
             $importRequest,
             'support_return_to_intake',
             $actor,
+            $request->input('comment')
+        );
+
+        return ApiResponse::success(new ImportRequestResource($updated->load(ImportRequestResource::baseRelations())), 'Workflow transition executed.');
+    }
+
+    #[OA\Post(path: '/api/workflow/{importRequest}/bank-reject-terminal', tags: ['Workflow'], summary: 'Terminal bank rejection — BANK_REVIEW → BANK_REJECTED (immutable)', parameters: [new OA\Parameter(name: 'importRequest', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], requestBody: new OA\RequestBody(required: true, content: new OA\JsonContent(required: ['comment'], properties: [new OA\Property(property: 'comment', type: 'string', minLength: 3, maxLength: 2000)])), responses: [new OA\Response(response: 200, description: 'Transition applied'), new OA\Response(response: 422, description: 'Comment required or wrong status'), new OA\Response(response: 403, description: 'Forbidden — SOD or cross-bank')])]
+    public function bankRejectTerminal(BankRejectTerminalRequest $request, ImportRequest $importRequest)
+    {
+        $this->authorize('view', $importRequest);
+
+        $updated = $this->workflowService->transition(
+            $importRequest,
+            'bank_reject_terminal',
+            $request->user(),
             $request->input('comment')
         );
 

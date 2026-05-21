@@ -53,6 +53,14 @@ class SendWorkflowNotifications
             });
         }
 
+        if ($status === RequestStatus::BANK_REJECTED) {
+            $comment = $event->reason;
+            User::query()->where('bank_id', $request->bank_id)->where('role', UserRole::DATA_ENTRY->value)->get()
+                ->each(function (User $u) use ($request, $comment): void {
+                    $u->notify(new RequestRejectedNotification($request, true, $comment));
+                });
+        }
+
         if (in_array($status, [RequestStatus::DRAFT_REJECTED_INTERNAL, RequestStatus::BANK_RETURNED, RequestStatus::SUPPORT_RETURNED], true)) {
             $fromRole = $event->actor->role->value ?? '';
             $comment = $event->reason;

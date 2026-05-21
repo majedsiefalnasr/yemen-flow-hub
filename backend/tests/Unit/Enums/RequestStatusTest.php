@@ -30,11 +30,12 @@ class RequestStatusTest extends TestCase
             'COMPLETED',
             'BANK_RETURNED',
             'SUPPORT_RETURNED',
+            'BANK_REJECTED',
         ];
 
         $actual = array_column(RequestStatus::cases(), 'value');
 
-        $this->assertCount(20, $actual);
+        $this->assertCount(21, $actual);
         foreach ($expected as $value) {
             $this->assertContains($value, $actual, "Missing canonical status: {$value}");
         }
@@ -50,6 +51,7 @@ class RequestStatusTest extends TestCase
         $this->assertFalse(RequestStatus::SUBMITTED->isTerminal());
         $this->assertFalse(RequestStatus::BANK_RETURNED->isTerminal());
         $this->assertFalse(RequestStatus::SUPPORT_RETURNED->isTerminal());
+        $this->assertTrue(RequestStatus::BANK_REJECTED->isTerminal(), 'BANK_REJECTED is a terminal status — no resubmission allowed');
     }
 
     public function test_editable_statuses(): void
@@ -60,6 +62,7 @@ class RequestStatusTest extends TestCase
         $this->assertTrue(RequestStatus::SUPPORT_RETURNED->isEditable());
         $this->assertFalse(RequestStatus::SUBMITTED->isEditable());
         $this->assertFalse(RequestStatus::COMPLETED->isEditable());
+        $this->assertFalse(RequestStatus::BANK_REJECTED->isEditable(), 'BANK_REJECTED is terminal — not editable');
     }
 
     public function test_bank_returned_has_arabic_and_english_label(): void
@@ -67,6 +70,13 @@ class RequestStatusTest extends TestCase
         $label = RequestStatus::BANK_RETURNED->label();
         $this->assertStringContainsString('إعادة للمدخل', $label);
         $this->assertStringContainsString('Returned to Intake', $label);
+    }
+
+    public function test_bank_rejected_has_arabic_and_english_label(): void
+    {
+        $label = RequestStatus::BANK_REJECTED->label();
+        $this->assertStringContainsString('مرفوض', $label);
+        $this->assertStringContainsString('Bank Rejected', $label);
     }
 
     public function test_from_string_round_trips(): void
