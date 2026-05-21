@@ -1,6 +1,6 @@
 # Story 7.9: Audit 1:1 Parity
 
-Status: review
+Status: done
 
 ## Story
 
@@ -100,14 +100,22 @@ so that the audit UI provides a tabbed layout with KPI cards, an activity log wi
 - [ ] Task 11: Post-implementation (AC: all)
   - [x] 11.1 Run `php artisan test --filter AuditController` — 17 pass, 1 pre-existing failure documented
   - [x] 11.2 Run `npm run test` in frontend — 1427 passed (exceeds 1419 minimum)
-  - [ ] 11.3 Run `graphify update .` from repo root — running in background
-  - [ ] 11.4 Commit to frontend team repo: `feat(audit): 7.9 audit 1:1 parity`
-  - [ ] 11.5 Commit to root monorepo: `feat(audit): 7.9 audit 1:1 parity`
-  - [ ] 11.6 Commit to backend team repo: `feat(audit): add stats, duplicates, risk-indicators endpoints`
-  - [ ] 11.7 Commit to root monorepo: `feat(audit): add stats, duplicates, risk-indicators endpoints`
-  - [ ] 11.8 Update `sprint-status.yaml`: `7-9-audit-1-1-parity: review`
+  - [x] 11.3 Run `graphify update .` from repo root
+  - [x] 11.4 Commit to frontend team repo: `feat(audit): 7.9 audit 1:1 parity`
+  - [x] 11.5 Commit to root monorepo: `feat(audit): 7.9 audit 1:1 parity`
+  - [x] 11.6 Commit to backend team repo: `feat(audit): add stats, duplicates, risk-indicators endpoints`
+  - [x] 11.7 Commit to root monorepo: `feat(audit): add stats, duplicates, risk-indicators endpoints`
+  - [x] 11.8 Update `sprint-status.yaml`: `7-9-audit-1-1-parity: done`
 
 ## Dev Notes
+
+### Review Findings
+
+- [x] [Review][Patch] KPI risk counts are wrong on first render because the page does not load risk indicators with the KPI strip and `حالات احتيال محتملة` is hard-coded instead of derived, so AC 3 and AC 15 are not met until the user opens Tab 3. [frontend/app/pages/audit.vue:45]
+- [x] [Review][Patch] Audit log request refs are fabricated from the current year in the page helper, which mislabels non-current-year `ImportRequest` rows instead of using the real request reference from the backend contract. [frontend/app/pages/audit.vue:117]
+- [x] [Review][Patch] `GET /api/audit/duplicates` returns a raw array even though AC 10 requires a paginated response, and the frontend composable/page currently depend on that incorrect shape. [backend/app/Http/Controllers/Api/AuditController.php:89]
+- [x] [Review][Patch] `parseDevice()` matches `Chrome` before `Edge` and `Linux` before `Android`, so Edge and Android audit rows render incorrect browser/OS labels in Tab 1. [frontend/app/pages/audit.vue:122]
+- [x] [Review][Patch] The audit table still renders the action cell with a custom span instead of the shared badge component required by AC 6, so the page misses the project design-system contract in the log rows. [frontend/app/pages/audit.vue:287]
 
 ### SocratiCode Pre-Flight (MANDATORY)
 
