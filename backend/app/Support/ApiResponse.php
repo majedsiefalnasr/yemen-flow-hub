@@ -15,13 +15,19 @@ class ApiResponse
         ], $status);
     }
 
-    public static function error(string $message, array $errors = [], int $status = 400): JsonResponse
+    public static function error(string $message, array $errors = [], int $status = 400, ?string $errorCode = null): JsonResponse
     {
-        return response()->json([
+        $payload = [
             'success' => false,
             'message' => $message,
             'errors' => (object) $errors,
-        ], $status);
+        ];
+
+        if ($errorCode !== null) {
+            $payload['error_code'] = $errorCode;
+        }
+
+        return response()->json($payload, $status);
     }
 
     public static function unauthorized(string $message = 'Unauthorized action'): JsonResponse
@@ -29,9 +35,9 @@ class ApiResponse
         return self::error($message, [], 401);
     }
 
-    public static function forbidden(string $message = 'Forbidden action'): JsonResponse
+    public static function forbidden(string $message = 'Forbidden action', ?string $errorCode = null): JsonResponse
     {
-        return self::error($message, [], 403);
+        return self::error($message, [], 403, $errorCode);
     }
 
     public static function notFound(string $message = 'Resource not found'): JsonResponse

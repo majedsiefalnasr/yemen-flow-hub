@@ -790,6 +790,7 @@ class ImportRequestControllerTest extends TestCase
             ->first();
 
         $this->assertNotNull($audit);
+        $this->assertSame('import_request', $audit->subject_type);
         $this->assertEquals($source->id, $audit->metadata['cloned_from']);
         $this->assertEquals($source->reference_number, $audit->metadata['source_reference_number']);
     }
@@ -800,7 +801,8 @@ class ImportRequestControllerTest extends TestCase
 
         $this->actingAs($this->dataEntry)
             ->postJson("/api/requests/{$source->id}/clone")
-            ->assertStatus(403);
+            ->assertStatus(403)
+            ->assertJsonPath('error_code', 'WORKFLOW_FORBIDDEN');
     }
 
     public function test_clone_rejects_cross_bank_actor(): void
@@ -809,7 +811,8 @@ class ImportRequestControllerTest extends TestCase
 
         $this->actingAs($this->otherDataEntry)
             ->postJson("/api/requests/{$source->id}/clone")
-            ->assertStatus(403);
+            ->assertStatus(403)
+            ->assertJsonPath('error_code', 'WORKFLOW_FORBIDDEN');
     }
 
     public function test_clone_rejects_wrong_role(): void
@@ -818,7 +821,19 @@ class ImportRequestControllerTest extends TestCase
 
         $this->actingAs($this->supportReviewer)
             ->postJson("/api/requests/{$source->id}/clone")
-            ->assertStatus(403);
+            ->assertStatus(403)
+            ->assertJsonPath('error_code', 'WORKFLOW_FORBIDDEN');
+    }
+
+    public function test_clone_rejects_inactive_user(): void
+    {
+        $source = $this->makeRequest($this->bank, $this->dataEntry, RequestStatus::BANK_REJECTED);
+        $this->dataEntry->forceFill(['is_active' => false])->saveQuietly();
+
+        $this->actingAs($this->dataEntry)
+            ->postJson("/api/requests/{$source->id}/clone")
+            ->assertStatus(403)
+            ->assertJsonPath('error_code', 'WORKFLOW_FORBIDDEN');
     }
 
     public function test_bank_admin_can_clone_terminal_rejected_request(): void

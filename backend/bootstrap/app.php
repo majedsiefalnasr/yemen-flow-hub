@@ -83,7 +83,7 @@ return Application::configure(basePath: dirname(__DIR__))
                 } catch (\Throwable) {
                     // Never let audit failure suppress the actual response
                 }
-                return ApiResponse::forbidden();
+                return ApiResponse::forbidden('Forbidden action', 'WORKFLOW_FORBIDDEN');
             }
         });
 
@@ -111,7 +111,7 @@ return Application::configure(basePath: dirname(__DIR__))
                 } catch (\Throwable) {
                     // Never let audit failure suppress the actual response
                 }
-                return ApiResponse::forbidden($e->getMessage());
+                return ApiResponse::forbidden($e->getMessage(), 'WORKFLOW_FORBIDDEN');
             }
         });
 

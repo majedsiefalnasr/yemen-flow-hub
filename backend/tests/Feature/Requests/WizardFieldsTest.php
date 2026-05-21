@@ -228,6 +228,55 @@ class WizardFieldsTest extends TestCase
         $this->assertSame(RequestStatus::SUBMITTED->value, $submitResponse->json('data.status'));
     }
 
+    public function test_bank_admin_can_submit_draft_when_required_wizard_fields_exist(): void
+    {
+        $createResponse = $this->actingAs($this->bankAdmin)
+            ->postJson('/api/requests', $this->fullWizardPayload());
+
+        $createResponse->assertStatus(201);
+        $requestId = $createResponse->json('data.id');
+
+        $submitResponse = $this->actingAs($this->bankAdmin)
+            ->postJson("/api/workflow/{$requestId}/submit");
+
+        $submitResponse->assertStatus(200);
+        $this->assertSame(RequestStatus::SUBMITTED->value, $submitResponse->json('data.status'));
+    }
+
+    public function test_submit_rejects_draft_with_past_due_date(): void
+    {
+        $pastDueDate = now()->subDay()->toDateString();
+
+        app()->instance('workflow.transition.active', true);
+        $request = ImportRequest::query()->create([
+            'bank_id' => $this->bank->id,
+            'merchant_id' => $this->merchant->id,
+            'created_by' => $this->dataEntry->id,
+            'currency' => 'USD',
+            'amount' => 10000,
+            'supplier_name' => 'Old Supplier',
+            'goods_description' => 'Old goods',
+            'port_of_entry' => 'Aden',
+            'goods_type' => 'مواد غذائية',
+            'payment_terms' => 'LC',
+            'due_date' => $pastDueDate,
+            'invoice_number' => 'INV-OLD',
+            'invoice_date' => now()->subDays(5)->toDateString(),
+            'origin_country' => 'اليمن',
+            'arrival_port' => 'ميناء عدن',
+            'customs_office' => 'جمارك عدن',
+            'status' => RequestStatus::DRAFT,
+            'current_owner_role' => UserRole::DATA_ENTRY,
+        ]);
+        app()->offsetUnset('workflow.transition.active');
+
+        $submitResponse = $this->actingAs($this->dataEntry)
+            ->postJson("/api/workflow/{$request->id}/submit");
+
+        $submitResponse->assertStatus(422);
+        $this->assertStringContainsString('due_date must be in the future', (string) $submitResponse->json('message'));
+    }
+
     public function test_goods_type_max_length_enforced(): void
     {
         $response = $this->actingAs($this->dataEntry)

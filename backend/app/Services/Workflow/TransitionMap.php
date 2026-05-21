@@ -13,7 +13,7 @@ class TransitionMap
             'submit' => [
                 'from' => [RequestStatus::DRAFT, RequestStatus::DRAFT_REJECTED_INTERNAL, RequestStatus::BANK_RETURNED, RequestStatus::SUPPORT_RETURNED],
                 'to' => RequestStatus::SUBMITTED,
-                'roles' => [UserRole::DATA_ENTRY],
+                'roles' => [UserRole::DATA_ENTRY, UserRole::BANK_ADMIN],
                 'next_owner' => UserRole::BANK_REVIEWER,
             ],
             'bank_begin_review' => [

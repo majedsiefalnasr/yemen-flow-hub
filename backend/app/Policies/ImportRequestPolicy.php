@@ -36,7 +36,7 @@ class ImportRequestPolicy
 
     public function clone(User $user, ImportRequest $importRequest): bool
     {
-        if (!$user->hasPermission('request.create')) {
+        if (!$user->is_active || !$user->hasPermission('request.create')) {
             return false;
         }
 

@@ -15,6 +15,7 @@ use App\Models\ImportRequest;
 use App\Models\RequestStageHistory;
 use App\Models\User;
 use App\Services\Audit\AuditService;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -272,7 +273,8 @@ class WorkflowService
                 [
                     'cloned_from' => $source->id,
                     'source_reference_number' => $source->reference_number,
-                ]
+                ],
+                'import_request'
             );
 
             return $cloned;
@@ -299,6 +301,10 @@ class WorkflowService
         ));
 
         if ($missingFields === []) {
+            if (filled($request->due_date) && Carbon::parse((string) $request->due_date)->toDateString() <= today()->toDateString()) {
+                throw new InvalidTransitionException('Cannot submit request. due_date must be in the future.');
+            }
+
             return;
         }
 

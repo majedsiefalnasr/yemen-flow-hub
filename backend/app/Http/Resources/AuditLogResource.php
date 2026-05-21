@@ -10,6 +10,10 @@ class AuditLogResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
+        $entityType = $this->subject_type
+            ? (str_contains($this->subject_type, '\\') ? class_basename($this->subject_type) : $this->subject_type)
+            : null;
+
         return [
             'id' => $this->id,
             'user' => $this->relationLoaded('user') && $this->user ? [
@@ -21,7 +25,7 @@ class AuditLogResource extends JsonResource
             'user_id' => $this->user_id,
             'user_role' => $this->user_role,
             'action' => $this->action,
-            'entity_type' => $this->subject_type ? class_basename($this->subject_type) : null,
+            'entity_type' => $entityType,
             'entity_id' => $this->subject_id,
             'entity_reference' => $this->entityReference(),
             'from_status' => $this->metadata['from_status'] ?? null,
@@ -35,7 +39,7 @@ class AuditLogResource extends JsonResource
 
     private function entityReference(): ?string
     {
-        if ($this->subject_type !== ImportRequest::class || !$this->subject_id) {
+        if (!in_array($this->subject_type, [ImportRequest::class, 'import_request'], true) || !$this->subject_id) {
             return null;
         }
 
