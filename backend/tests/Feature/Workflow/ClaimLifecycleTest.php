@@ -479,6 +479,33 @@ class ClaimLifecycleTest extends TestCase
         );
     }
 
+    public function test_manual_release_by_cby_admin_preserves_releaser_identity(): void
+    {
+        Notification::fake();
+
+        $recipient = $this->makeUser(UserRole::CBY_ADMIN);
+        $request = $this->makeRequest();
+
+        $this->actingAs($this->supportUser)
+            ->postJson("/api/workflow/{$request->id}/claim-support-review")
+            ->assertOk();
+
+        $this->actingAs($this->cbyadmin)
+            ->deleteJson("/api/workflow/{$request->id}/claim-support-review")
+            ->assertOk();
+
+        Notification::assertSentTo(
+            $recipient,
+            ClaimReleasedNotification::class,
+            function (ClaimReleasedNotification $notification) {
+                $payload = $notification->toArray(new \stdClass());
+                return $payload['reason'] === 'manual'
+                    && $payload['released_by_user_id'] === $this->cbyadmin->id
+                    && $payload['released_by_name'] === $this->cbyadmin->name;
+            }
+        );
+    }
+
     public function test_manual_release_writes_audit_log(): void
     {
         $request = $this->makeRequest();
