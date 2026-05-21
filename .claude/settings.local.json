@@ -32,7 +32,8 @@
       "Bash(nuxt dev *)",
       "Bash(rtk git *)",
       "Bash(rtk npx *)",
-      "Bash(rtk wc *)"
+      "Bash(rtk wc *)",
+      "Bash(mcp__plugin_socraticode_socraticode__codebase_status)"
     ]
   }
 }
