@@ -90,6 +90,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('customs/{customsDeclaration}/download', [CustomsController::class, 'download']);
 
     Route::get('audit', [AuditController::class, 'index']);
+    Route::get('audit/stats', [AuditController::class, 'stats']);
+    Route::get('audit/duplicates', [AuditController::class, 'duplicates']);
+    Route::get('audit/risk-indicators', [AuditController::class, 'riskIndicators']);
 
     Route::get('admin/settings', [AdminSettingsController::class, 'index']);
     Route::put('admin/settings/{key}', [AdminSettingsController::class, 'update'])->middleware('throttle:10,60');

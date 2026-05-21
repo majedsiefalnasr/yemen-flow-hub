@@ -95,12 +95,12 @@ class AuditControllerTest extends TestCase
     /** @test */
     public function test_non_cby_admin_cannot_access_audit_log(): void
     {
+        // COMMITTEE_DIRECTOR now has access (AC 13 of Story 7.9); excluded here
         foreach ([
             UserRole::DATA_ENTRY,
             UserRole::BANK_REVIEWER,
             UserRole::SUPPORT_COMMITTEE,
             UserRole::EXECUTIVE_MEMBER,
-            UserRole::COMMITTEE_DIRECTOR,
             UserRole::SWIFT_OFFICER,
         ] as $role) {
             $bankForRole = in_array($role, [UserRole::DATA_ENTRY, UserRole::BANK_REVIEWER, UserRole::SWIFT_OFFICER], true)
@@ -352,5 +352,101 @@ class AuditControllerTest extends TestCase
             'user_id' => $dataEntry->id,
             'action' => AuditAction::AUTHORIZATION_FAILURE->value,
         ]);
+    }
+
+    // ─── GET /api/audit/stats ─────────────────────────────────────────────────
+
+    /** @test */
+    public function test_stats_endpoint_returns_correct_shape(): void
+    {
+        $admin = $this->makeUser(UserRole::CBY_ADMIN);
+
+        AuditLog::query()->create([
+            'user_id'   => $admin->id,
+            'user_role' => UserRole::CBY_ADMIN->value,
+            'action'    => AuditAction::LOGIN->value,
+        ]);
+
+        $response = $this->actingAs($admin)->getJson('/api/audit/stats');
+
+        $response->assertOk()
+            ->assertJsonStructure(['data' => ['today_count', 'duplicate_invoice_count']]);
+
+        $this->assertIsInt($response->json('data.today_count'));
+        $this->assertIsInt($response->json('data.duplicate_invoice_count'));
+    }
+
+    /** @test */
+    public function test_stats_endpoint_forbidden_for_non_audit_roles(): void
+    {
+        foreach ([UserRole::DATA_ENTRY, UserRole::BANK_REVIEWER, UserRole::SWIFT_OFFICER] as $role) {
+            $user = $this->makeUser($role, $this->bank);
+            $this->actingAs($user)->getJson('/api/audit/stats')->assertForbidden();
+        }
+    }
+
+    // ─── GET /api/audit/duplicates ────────────────────────────────────────────
+
+    /** @test */
+    public function test_duplicates_endpoint_returns_requests_with_same_invoice_number(): void
+    {
+        $admin     = $this->makeUser(UserRole::CBY_ADMIN);
+        $dataEntry = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+
+        $req1 = $this->makeRequest($dataEntry);
+        $req2 = $this->makeRequest($dataEntry);
+        $req3 = $this->makeRequest($dataEntry);
+
+        // Two requests share an invoice number; the third is unique
+        DB::table('import_requests')->where('id', $req1->id)->update(['invoice_number' => 'INV-DUP-001']);
+        DB::table('import_requests')->where('id', $req2->id)->update(['invoice_number' => 'INV-DUP-001']);
+        DB::table('import_requests')->where('id', $req3->id)->update(['invoice_number' => 'INV-UNIQUE-999']);
+
+        $response = $this->actingAs($admin)->getJson('/api/audit/duplicates');
+
+        $response->assertOk();
+        $items = $response->json('data.data');
+
+        $this->assertIsArray($items);
+        $this->assertCount(2, $items);
+
+        $ids = array_column($items, 'id');
+        $this->assertContains($req1->id, $ids);
+        $this->assertContains($req2->id, $ids);
+        $this->assertNotContains($req3->id, $ids);
+
+        $this->assertArrayHasKey('ref',            $items[0]);
+        $this->assertArrayHasKey('importer',       $items[0]);
+        $this->assertArrayHasKey('invoice_number', $items[0]);
+        $this->assertArrayHasKey('sibling_id',     $items[0]);
+        $this->assertArrayHasKey('sibling_ref',    $items[0]);
+    }
+
+    // ─── GET /api/audit/risk-indicators ──────────────────────────────────────
+
+    /** @test */
+    public function test_risk_indicators_endpoint_returns_list_with_required_fields(): void
+    {
+        $admin    = $this->makeUser(UserRole::CBY_ADMIN);
+        $response = $this->actingAs($admin)->getJson('/api/audit/risk-indicators');
+
+        $response->assertOk();
+        $items = $response->json('data.data');
+
+        $this->assertIsArray($items);
+        $this->assertNotEmpty($items);
+        $this->assertArrayHasKey('title', $items[0]);
+        $this->assertArrayHasKey('body',  $items[0]);
+        $this->assertArrayHasKey('level', $items[0]);
+    }
+
+    /** @test */
+    public function test_new_audit_endpoints_forbidden_for_non_audit_roles(): void
+    {
+        $dataEntry = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+
+        $this->actingAs($dataEntry)->getJson('/api/audit/stats')->assertForbidden();
+        $this->actingAs($dataEntry)->getJson('/api/audit/duplicates')->assertForbidden();
+        $this->actingAs($dataEntry)->getJson('/api/audit/risk-indicators')->assertForbidden();
     }
 }
