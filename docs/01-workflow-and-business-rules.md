@@ -500,6 +500,20 @@ If the support committee rejects the request:
 
 ---
 
+# Bank Terminal Rejection (BANK_REJECTED)
+
+`BANK_REJECTED` is a **terminal, permanent** bank-stage rejection distinct from `DRAFT_REJECTED_INTERNAL`.
+
+- Triggered by `BANK_REVIEWER` via the `bank_reject_terminal` action from `BANK_REVIEW` state
+- A mandatory comment (minimum 3 characters) must be provided
+- The request cannot be reopened, edited, or resubmitted
+- `DATA_ENTRY` users in the originating bank receive a notification with `terminal: true` and the rejection comment
+- SOD guard applies: the creator cannot reject their own request
+
+**Deprecation note:** `DRAFT_REJECTED_INTERNAL` (recoverable bank return) will be deprecated after one release window once all consumers have migrated to use `BANK_RETURNED` for recoverable returns and `BANK_REJECTED` for terminal rejections.
+
+---
+
 # Executive Committee Rejection
 
 Executive rejection is FINAL.
@@ -588,6 +602,7 @@ Once a request leaves the bank approval stage, Data Entry users should generally
 | `DRAFT_REJECTED_INTERNAL`           | Returned For Correction    |
 | `SUBMITTED`                         | Submitted To CBY           |
 | `BANK_REVIEW`                       | Submitted To CBY           |
+| `BANK_REJECTED`                     | Rejected                   |
 | `BANK_APPROVED`                     | Under CBY Processing       |
 | `SUPPORT_REVIEW_PENDING`            | Under CBY Processing       |
 | `SUPPORT_REVIEW_IN_PROGRESS`        | Under CBY Processing       |
