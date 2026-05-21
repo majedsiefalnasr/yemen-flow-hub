@@ -134,11 +134,18 @@ class AdminSettingsService
 
     public function getSmtpSettings(): array
     {
+        $smtpPassword = SystemSetting::findByKey('smtp_password');
+        $passwordMask = '';
+        if ($smtpPassword) {
+            $decrypted = decrypt($smtpPassword->value);
+            $passwordMask = str_repeat('•', strlen($decrypted));
+        }
+
         return [
             'host'     => SystemSetting::findByKey('smtp_host')?->value ?? '',
             'port'     => SystemSetting::findByKey('smtp_port')?->value ?? 587,
             'username' => SystemSetting::findByKey('smtp_username')?->value ?? '',
-            'password' => SystemSetting::findByKey('smtp_password') ? str_repeat('•', 8) : '',
+            'password' => $passwordMask,
             'template' => SystemSetting::findByKey('smtp_template')?->value ?? '',
         ];
     }

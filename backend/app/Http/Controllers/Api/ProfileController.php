@@ -45,7 +45,12 @@ class ProfileController extends Controller
         $stats = $this->computeStats($user);
         $recentActivity = $this->getRecentActivity($user);
 
-        $mfaRequired = (bool) $this->settingsService->getSetting('mfa_required');
+        $mfaRequired = false;
+        try {
+            $mfaRequired = (bool) $this->settingsService->getSetting('mfa_required');
+        } catch (\InvalidArgumentException) {
+            // key not yet registered — treat as not enforced
+        }
 
         $resource = new UserResource($user);
 
@@ -82,7 +87,7 @@ class ProfileController extends Controller
         $validated = $request->validate([
             'name'  => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', Rule::unique('users')->ignore($user->id)],
-            'phone' => ['nullable', 'string', 'max:20'],
+            'phone' => ['nullable', 'regex:/^\+?[1-9]\d{1,14}$/'],
         ]);
 
         $user->fill($validated)->save();
@@ -197,11 +202,27 @@ class ProfileController extends Controller
             RequestStatus::CUSTOMS_DECLARATION_ISSUED->value,
         ];
 
+        $inProgressStatuses = [
+            RequestStatus::DRAFT_REJECTED_INTERNAL->value,
+            RequestStatus::SUBMITTED->value,
+            RequestStatus::BANK_REVIEW->value,
+            RequestStatus::BANK_APPROVED->value,
+            RequestStatus::SUPPORT_REVIEW_PENDING->value,
+            RequestStatus::SUPPORT_REVIEW_IN_PROGRESS->value,
+            RequestStatus::SUPPORT_APPROVED->value,
+            RequestStatus::SUPPORT_REJECTED->value,
+            RequestStatus::WAITING_FOR_SWIFT->value,
+            RequestStatus::SWIFT_UPLOADED->value,
+            RequestStatus::WAITING_FOR_VOTING_OPEN->value,
+            RequestStatus::EXECUTIVE_VOTING_OPEN->value,
+            RequestStatus::EXECUTIVE_VOTING_CLOSED->value,
+            RequestStatus::EXECUTIVE_APPROVED->value,
+        ];
+
         return [
             'total'       => (clone $query)->count(),
             'in_progress' => (clone $query)
-                ->whereNotIn('current_status', $terminalStatuses)
-                ->whereNotIn('current_status', [RequestStatus::DRAFT->value, RequestStatus::DRAFT_REJECTED_INTERNAL->value])
+                ->whereIn('current_status', $inProgressStatuses)
                 ->count(),
             'completed'   => (clone $query)
                 ->where('current_status', RequestStatus::COMPLETED->value)
@@ -219,7 +240,7 @@ class ProfileController extends Controller
             ->map(fn ($log) => [
                 'id'     => $log->id,
                 'action' => $log->action,
-                'ref'    => $log->subject_id ?? $log->entity_id,
+                'ref'    => $log->subject_id ?? $log->entity_id ?? null,
                 'ts'     => $log->created_at->toIso8601String(),
             ])
             ->values()

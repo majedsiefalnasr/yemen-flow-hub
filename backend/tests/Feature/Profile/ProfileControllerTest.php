@@ -359,4 +359,58 @@ class ProfileControllerTest extends TestCase
             ->assertStatus(403);
     }
 
+    // --- POST /api/profile/mfa/toggle ---
+
+    public function test_post_mfa_toggle_when_setting_not_registered(): void
+    {
+        $user = User::query()->create([
+            'name' => 'MFA User',
+            'email' => 'mfa@bank.com',
+            'password' => Hash::make('Password123'),
+            'role' => UserRole::DATA_ENTRY,
+            'bank_id' => null,
+            'is_active' => true,
+            'mfa_enabled' => false,
+        ]);
+
+        // When mfa_required setting doesn't exist, it defaults to true (secure-first)
+        $response = $this->actingAs($user)->postJson('/api/profile/mfa/toggle');
+
+        $response->assertStatus(403);
+        $response->assertJsonPath('message', 'MFA is system-enforced');
+
+        // Verify MFA was NOT toggled
+        $user->refresh();
+        $this->assertFalse($user->mfa_enabled);
+    }
+
+    public function test_post_mfa_toggle_returns_403_when_system_enforced(): void
+    {
+        $user = User::query()->create([
+            'name' => 'MFA User',
+            'email' => 'mfa@bank.com',
+            'password' => Hash::make('Password123'),
+            'role' => UserRole::DATA_ENTRY,
+            'bank_id' => null,
+            'is_active' => true,
+            'mfa_enabled' => false,
+        ]);
+
+        // Set system-enforced MFA policy
+        SystemSetting::query()->create([
+            'key' => 'mfa_required',
+            'value' => true,
+            'updated_by' => 1,
+        ]);
+
+        $response = $this->actingAs($user)->postJson('/api/profile/mfa/toggle');
+
+        $response->assertStatus(403);
+        $response->assertJsonPath('message', 'MFA is system-enforced');
+
+        // Verify MFA was NOT toggled
+        $user->refresh();
+        $this->assertFalse($user->mfa_enabled);
+    }
+
 }
