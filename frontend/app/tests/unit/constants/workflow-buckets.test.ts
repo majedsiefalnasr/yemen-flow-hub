@@ -12,7 +12,7 @@ import {
 // ── STATUS_PROGRESS ───────────────────────────────────────────────────────────
 
 describe('STATUS_PROGRESS', () => {
-  it('covers all 20 RequestStatus values', () => {
+  it('covers all RequestStatus values', () => {
     const statuses = Object.values(RequestStatus)
     expect(Object.keys(STATUS_PROGRESS)).toHaveLength(statuses.length)
     for (const s of statuses) {
@@ -197,7 +197,7 @@ describe('STATUS_LABELS BANK_RETURNED', () => {
     expect(STATUS_LABELS[RequestStatus.BANK_RETURNED]).toBe('إعادة للمدخل')
   })
 
-  it('covers all 20 RequestStatus values', () => {
+  it('covers all RequestStatus values', () => {
     const statuses = Object.values(RequestStatus)
     for (const s of statuses) {
       expect(STATUS_LABELS[s], `STATUS_LABELS missing ${s}`).toBeDefined()

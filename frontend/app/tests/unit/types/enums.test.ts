@@ -6,6 +6,7 @@ describe('RequestStatus', () => {
     'DRAFT',
     'DRAFT_REJECTED_INTERNAL',
     'BANK_RETURNED',
+    'BANK_REJECTED',
     'SUPPORT_RETURNED',
     'SUBMITTED',
     'BANK_REVIEW',
@@ -25,9 +26,9 @@ describe('RequestStatus', () => {
     'COMPLETED',
   ]
 
-  it('has exactly 20 canonical status values', () => {
+  it('has exactly 21 canonical status values', () => {
     const values = Object.values(RequestStatus)
-    expect(values).toHaveLength(20)
+    expect(values).toHaveLength(21)
   })
 
   it.each(EXPECTED_STATUSES)('defines %s', (status) => {

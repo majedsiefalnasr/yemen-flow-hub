@@ -26,6 +26,10 @@ const showBankReturnModal = ref(false)
 const bankReturnComment = ref('')
 const bankReturnCommentError = ref('')
 
+const showBankRejectTerminalModal = ref(false)
+const bankRejectTerminalComment = ref('')
+const bankRejectTerminalCommentError = ref('')
+
 const showSupportReturnModal = ref(false)
 const supportReturnComment = ref('')
 const supportReturnCommentError = ref('')
@@ -43,6 +47,7 @@ watch(() => props.request.status, () => {
   actionError.value = ''
   resetRejectForm()
   resetBankReturnModal()
+  resetBankRejectTerminalModal()
   resetSupportReturnModal()
   resetDirectorState()
 })
@@ -103,6 +108,31 @@ function resetBankReturnModal() {
   showBankReturnModal.value = false
   bankReturnComment.value = ''
   bankReturnCommentError.value = ''
+}
+
+function resetBankRejectTerminalModal() {
+  showBankRejectTerminalModal.value = false
+  bankRejectTerminalComment.value = ''
+  bankRejectTerminalCommentError.value = ''
+}
+
+async function handleBankRejectTerminalConfirm() {
+  bankRejectTerminalCommentError.value = ''
+  if (bankRejectTerminalComment.value.trim().length < 3) {
+    bankRejectTerminalCommentError.value = 'سبب الرفض مطلوب ويجب أن يكون 3 أحرف على الأقل.'
+    return
+  }
+  actionError.value = ''
+  try {
+    await requestsStore.bankRejectTerminal(props.request.id, bankRejectTerminalComment.value.trim())
+    resetBankRejectTerminalModal()
+    emit('action-completed')
+  }
+  catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : ''
+    actionError.value = msg || 'تعذّر تنفيذ الرفض النهائي.'
+    resetBankRejectTerminalModal()
+  }
 }
 
 function resetSupportReturnModal() {
@@ -291,66 +321,31 @@ async function dispatchAction(action: string, reason?: string) {
       </button>
     </template>
 
-    <!-- BANK_REVIEWER: BANK_REVIEW → approve, reject, or return to intake -->
+    <!-- BANK_REVIEWER: BANK_REVIEW → approve, terminal reject, or return to intake -->
     <template v-if="showBankReviewerActions && request.status === RequestStatus.BANK_REVIEW">
-      <template v-if="!showRejectForm">
-        <div class="actions-row">
-          <button
-            class="action-btn action-btn--approve"
-            :disabled="performingAction"
-            @click="handleApprove"
-          >
-            {{ performingAction ? 'جارٍ التنفيذ…' : 'موافقة' }}
-          </button>
-          <button
-            class="action-btn action-btn--reject"
-            :disabled="performingAction"
-            @click="handleRejectClick"
-          >
-            رفض
-          </button>
-          <button
-            class="action-btn action-btn--secondary"
-            :disabled="performingAction"
-            @click="showBankReturnModal = true"
-          >
-            إعادة للمدخل
-          </button>
-        </div>
-      </template>
-
-      <!-- Rejection reason form -->
-      <template v-else>
-        <div class="reject-form">
-          <label class="reject-label" for="reject-reason">سبب الرفض <span class="required" aria-hidden="true">*</span></label>
-          <textarea
-            id="reject-reason"
-            v-model="rejectReason"
-            class="reject-textarea"
-            rows="3"
-            placeholder="اكتب سبب الرفض هنا…"
-            :aria-invalid="!!rejectReasonError"
-            :aria-describedby="rejectReasonError ? 'reject-reason-error' : undefined"
-          />
-          <p v-if="rejectReasonError" id="reject-reason-error" class="reject-error" role="alert">{{ rejectReasonError }}</p>
-          <div class="actions-row">
-            <button
-              class="action-btn action-btn--reject"
-              :disabled="performingAction"
-              @click="handleRejectConfirm"
-            >
-              {{ performingAction ? 'جارٍ التنفيذ…' : 'تأكيد الرفض' }}
-            </button>
-            <button
-              class="action-btn action-btn--secondary"
-              :disabled="performingAction"
-              @click="resetRejectForm"
-            >
-              إلغاء
-            </button>
-          </div>
-        </div>
-      </template>
+      <div class="actions-row">
+        <button
+          class="action-btn action-btn--approve"
+          :disabled="performingAction"
+          @click="handleApprove"
+        >
+          {{ performingAction ? 'جارٍ التنفيذ…' : 'اعتماد' }}
+        </button>
+        <button
+          class="action-btn action-btn--reject"
+          :disabled="performingAction"
+          @click="showBankRejectTerminalModal = true"
+        >
+          رفض نهائي
+        </button>
+        <button
+          class="action-btn action-btn--secondary"
+          :disabled="performingAction"
+          @click="showBankReturnModal = true"
+        >
+          إعادة للمدخل
+        </button>
+      </div>
     </template>
 
     <!-- SUPPORT_COMMITTEE: SUPPORT_REVIEW_IN_PROGRESS + is_claimed_by_me → approve, reject, or return -->
@@ -644,6 +639,57 @@ async function dispatchAction(action: string, reason?: string) {
         </div>
       </div>
     </div>
+    <!-- Bank Reject Terminal modal -->
+    <div
+      v-if="showBankRejectTerminalModal"
+      class="bank-return-modal bank-reject-terminal-modal"
+      role="dialog"
+      aria-labelledby="bank-reject-terminal-modal-title"
+      aria-modal="true"
+    >
+      <div class="bank-return-modal__content">
+        <h3 id="bank-reject-terminal-modal-title" class="bank-return-modal__title bank-reject-terminal-modal__title">
+          تأكيد الرفض النهائي
+        </h3>
+        <p class="bank-reject-terminal-modal__warning">
+          تحذير: هذا الإجراء نهائي ولا يمكن التراجع عنه. سيتم رفض الطلب بشكل دائم.
+        </p>
+        <div class="bank-return-form">
+          <label class="reject-label" for="bank-reject-terminal-comment">
+            سبب الرفض <span class="required" aria-hidden="true">*</span>
+          </label>
+          <textarea
+            id="bank-reject-terminal-comment"
+            v-model="bankRejectTerminalComment"
+            class="reject-textarea"
+            rows="4"
+            placeholder="اكتب سبب الرفض النهائي هنا (3 أحرف على الأقل)…"
+            :aria-invalid="!!bankRejectTerminalCommentError"
+            :aria-describedby="bankRejectTerminalCommentError ? 'bank-reject-terminal-comment-error' : undefined"
+          />
+          <p v-if="bankRejectTerminalCommentError" id="bank-reject-terminal-comment-error" class="reject-error" role="alert">
+            {{ bankRejectTerminalCommentError }}
+          </p>
+        </div>
+        <div class="bank-return-modal__actions">
+          <button
+            class="action-btn action-btn--reject"
+            :disabled="performingAction"
+            @click="handleBankRejectTerminalConfirm"
+          >
+            {{ performingAction ? 'جارٍ التنفيذ…' : 'تأكيد الرفض النهائي' }}
+          </button>
+          <button
+            class="action-btn action-btn--secondary"
+            :disabled="performingAction"
+            @click="resetBankRejectTerminalModal"
+          >
+            إلغاء
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Support Return modal -->
     <div
       v-if="showSupportReturnModal"
@@ -992,5 +1038,19 @@ async function dispatchAction(action: string, reason?: string) {
   gap: 10px;
   flex-direction: row-reverse;
   justify-content: flex-start;
+}
+
+.bank-reject-terminal-modal__title {
+  color: #c62828;
+}
+
+.bank-reject-terminal-modal__warning {
+  font-size: 13px;
+  color: #c62828;
+  background: #fff0ef;
+  border: 1px solid #ff3b3033;
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin: 0;
 }
 </style>

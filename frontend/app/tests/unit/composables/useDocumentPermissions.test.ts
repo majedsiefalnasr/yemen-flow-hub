@@ -156,10 +156,10 @@ describe('isDocumentModificationLocked', () => {
     }
   })
 
-  it('covers all 20 canonical statuses — exactly 4 are unlocked', () => {
+  it('covers all 21 canonical statuses — exactly 4 are unlocked', () => {
     const allStatuses = Object.values(RequestStatus)
-    expect(allStatuses).toHaveLength(20)
+    expect(allStatuses).toHaveLength(21)
     const locked = allStatuses.filter(s => isDocumentModificationLocked(s))
-    expect(locked).toHaveLength(16)
+    expect(locked).toHaveLength(17)
   })
 })

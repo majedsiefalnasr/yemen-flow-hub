@@ -9,7 +9,7 @@ const props = defineProps<{
   history: RequestStageHistory[]
 }>()
 
-/** Ordered list of all 18 canonical workflow stages */
+/** Ordered list of all 21 canonical workflow stages */
 const WORKFLOW_STAGE_ORDER: RequestStatus[] = [
   RequestStatus.DRAFT,
   RequestStatus.DRAFT_REJECTED_INTERNAL,
@@ -17,6 +17,7 @@ const WORKFLOW_STAGE_ORDER: RequestStatus[] = [
   RequestStatus.BANK_REVIEW,
   RequestStatus.BANK_APPROVED,
   RequestStatus.BANK_RETURNED,
+  RequestStatus.BANK_REJECTED,
   RequestStatus.SUPPORT_REVIEW_PENDING,
   RequestStatus.SUPPORT_REVIEW_IN_PROGRESS,
   RequestStatus.SUPPORT_APPROVED,
@@ -44,11 +45,13 @@ const BRANCH_STATUSES = new Set<RequestStatus>([
   RequestStatus.SUPPORT_RETURNED,
   RequestStatus.SUPPORT_REJECTED,
   RequestStatus.EXECUTIVE_REJECTED,
+  RequestStatus.BANK_REJECTED,
 ])
 
-/** Only EXECUTIVE_REJECTED is a dead-end terminal — COMPLETED is a success state. */
+/** Dead-end terminal statuses — no further actions possible. */
 const TERMINAL_STATUSES = new Set<RequestStatus>([
   RequestStatus.EXECUTIVE_REJECTED,
+  RequestStatus.BANK_REJECTED,
 ])
 
 const currentIndex = computed(

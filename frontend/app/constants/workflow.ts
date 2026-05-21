@@ -9,6 +9,7 @@ export const STATUS_COLORS: Record<RequestStatus, string> = {
   [RequestStatus.BANK_REVIEW]: '#ff9f0a',
   [RequestStatus.BANK_RETURNED]: '#ff9f0a',
   [RequestStatus.SUPPORT_RETURNED]: '#ff9f0a',
+  [RequestStatus.BANK_REJECTED]: '#ff3b30',
   [RequestStatus.BANK_APPROVED]: '#5856d6',
   [RequestStatus.SUPPORT_REVIEW_PENDING]: '#5856d6',
   [RequestStatus.SUPPORT_REVIEW_IN_PROGRESS]: '#5856d6',
@@ -33,6 +34,7 @@ export const STATUS_ICONS: Record<RequestStatus, string> = {
   [RequestStatus.BANK_REVIEW]: 'clock',
   [RequestStatus.BANK_RETURNED]: 'rotate-ccw',
   [RequestStatus.SUPPORT_RETURNED]: 'rotate-ccw',
+  [RequestStatus.BANK_REJECTED]: 'x-circle',
   [RequestStatus.BANK_APPROVED]: 'check-circle',
   [RequestStatus.SUPPORT_REVIEW_PENDING]: 'users',
   [RequestStatus.SUPPORT_REVIEW_IN_PROGRESS]: 'users',
@@ -93,6 +95,7 @@ const DATA_ENTRY_REPRESENTATIVE_STATUS: Record<RequestStatus, RequestStatus> = {
   [RequestStatus.BANK_REVIEW]: RequestStatus.SUBMITTED,
   [RequestStatus.BANK_RETURNED]: RequestStatus.DRAFT_REJECTED_INTERNAL,
   [RequestStatus.SUPPORT_RETURNED]: RequestStatus.DRAFT_REJECTED_INTERNAL,
+  [RequestStatus.BANK_REJECTED]: RequestStatus.BANK_REJECTED,
   [RequestStatus.BANK_APPROVED]: RequestStatus.BANK_APPROVED,
   [RequestStatus.SUPPORT_REVIEW_PENDING]: RequestStatus.BANK_APPROVED,
   [RequestStatus.SUPPORT_REVIEW_IN_PROGRESS]: RequestStatus.BANK_APPROVED,
@@ -181,6 +184,7 @@ export const ROLE_FILTER_STATUSES: Partial<Record<UserRole, RequestStatus[]>> = 
     RequestStatus.BANK_APPROVED,
     RequestStatus.DRAFT_REJECTED_INTERNAL,
     RequestStatus.BANK_RETURNED,
+    RequestStatus.BANK_REJECTED,
   ],
   [UserRole.BANK_ADMIN]: [
     RequestStatus.DRAFT,
@@ -190,6 +194,7 @@ export const ROLE_FILTER_STATUSES: Partial<Record<UserRole, RequestStatus[]>> = 
     RequestStatus.SUBMITTED,
     RequestStatus.BANK_REVIEW,
     RequestStatus.BANK_APPROVED,
+    RequestStatus.BANK_REJECTED,
     RequestStatus.SUPPORT_REVIEW_PENDING,
     RequestStatus.SUPPORT_REVIEW_IN_PROGRESS,
     RequestStatus.SUPPORT_APPROVED,
@@ -356,6 +361,7 @@ export const DATA_ENTRY_STATUS_LABELS: Partial<Record<RequestStatus, string>> = 
   [RequestStatus.EXECUTIVE_REJECTED]: 'مرفوض نهائياً',
   [RequestStatus.CUSTOMS_DECLARATION_ISSUED]: 'مكتمل',
   [RequestStatus.COMPLETED]: 'مكتمل',
+  [RequestStatus.BANK_REJECTED]: 'مرفوض (البنك)',
 }
 
 /** Full internal status labels for bank/CBY roles */
@@ -380,6 +386,7 @@ export const STATUS_LABELS: Record<RequestStatus, string> = {
   [RequestStatus.EXECUTIVE_REJECTED]: 'رفض نهائي',
   [RequestStatus.CUSTOMS_DECLARATION_ISSUED]: 'بيان جمركي صادر',
   [RequestStatus.COMPLETED]: 'مكتمل',
+  [RequestStatus.BANK_REJECTED]: 'مرفوض (البنك)',
 }
 
 /** Progress percentage per status — role-aware, derived from canonical RequestStatus */
@@ -404,6 +411,7 @@ export const STATUS_PROGRESS: Record<RequestStatus, number> = {
   [RequestStatus.EXECUTIVE_REJECTED]: 92,
   [RequestStatus.CUSTOMS_DECLARATION_ISSUED]: 97,
   [RequestStatus.COMPLETED]: 100,
+  [RequestStatus.BANK_REJECTED]: 25,
 }
 
 export function getStatusProgress(status: RequestStatus, role: UserRole): number {
@@ -425,19 +433,20 @@ export const ROLE_BUCKETS: Partial<Record<UserRole, StageBucket[]>> = {
     { key: 'submitted', label: 'مقدّم', statuses: [RequestStatus.SUBMITTED, RequestStatus.BANK_REVIEW] },
     { key: 'processing', label: 'قيد المعالجة', statuses: [RequestStatus.BANK_APPROVED, RequestStatus.SUPPORT_REVIEW_PENDING, RequestStatus.SUPPORT_REVIEW_IN_PROGRESS, RequestStatus.SUPPORT_APPROVED, RequestStatus.WAITING_FOR_SWIFT, RequestStatus.SWIFT_UPLOADED, RequestStatus.WAITING_FOR_VOTING_OPEN, RequestStatus.EXECUTIVE_VOTING_OPEN, RequestStatus.EXECUTIVE_VOTING_CLOSED] },
     { key: 'completed', label: 'مكتمل', statuses: [RequestStatus.EXECUTIVE_APPROVED, RequestStatus.CUSTOMS_DECLARATION_ISSUED, RequestStatus.COMPLETED] },
-    { key: 'rejected', label: 'مرفوض', statuses: [RequestStatus.SUPPORT_REJECTED, RequestStatus.EXECUTIVE_REJECTED] },
+    { key: 'rejected', label: 'مرفوض', statuses: [RequestStatus.SUPPORT_REJECTED, RequestStatus.EXECUTIVE_REJECTED, RequestStatus.BANK_REJECTED] },
   ],
   [UserRole.BANK_REVIEWER]: [
     { key: 'pending', label: 'قيد المراجعة', statuses: [RequestStatus.SUBMITTED, RequestStatus.BANK_REVIEW] },
     { key: 'approved', label: 'موافقة البنك', statuses: [RequestStatus.BANK_APPROVED] },
     { key: 'returned', label: 'مُعاد للتعديل', statuses: [RequestStatus.DRAFT_REJECTED_INTERNAL] },
     { key: 'returned_to_intake', label: 'بحاجة تعديل', statuses: [RequestStatus.BANK_RETURNED] },
+    { key: 'rejected', label: 'مرفوض نهائياً', statuses: [RequestStatus.BANK_REJECTED] },
   ],
   [UserRole.BANK_ADMIN]: [
     { key: 'pending', label: 'معلّق', statuses: [RequestStatus.SUBMITTED, RequestStatus.BANK_REVIEW, RequestStatus.BANK_RETURNED, RequestStatus.SUPPORT_RETURNED] },
     { key: 'at_cby', label: 'لدى البنك المركزي', statuses: [RequestStatus.BANK_APPROVED, RequestStatus.SUPPORT_REVIEW_PENDING, RequestStatus.SUPPORT_REVIEW_IN_PROGRESS, RequestStatus.SUPPORT_APPROVED, RequestStatus.WAITING_FOR_SWIFT, RequestStatus.SWIFT_UPLOADED, RequestStatus.WAITING_FOR_VOTING_OPEN, RequestStatus.EXECUTIVE_VOTING_OPEN, RequestStatus.EXECUTIVE_VOTING_CLOSED] },
     { key: 'completed', label: 'مكتمل', statuses: [RequestStatus.EXECUTIVE_APPROVED, RequestStatus.CUSTOMS_DECLARATION_ISSUED, RequestStatus.COMPLETED] },
-    { key: 'rejected', label: 'مرفوض', statuses: [RequestStatus.SUPPORT_REJECTED, RequestStatus.EXECUTIVE_REJECTED] },
+    { key: 'rejected', label: 'مرفوض', statuses: [RequestStatus.SUPPORT_REJECTED, RequestStatus.EXECUTIVE_REJECTED, RequestStatus.BANK_REJECTED] },
   ],
   [UserRole.SWIFT_OFFICER]: [
     { key: 'pending_swift', label: 'انتظار رفع SWIFT', statuses: [RequestStatus.BANK_APPROVED, RequestStatus.SUPPORT_APPROVED, RequestStatus.WAITING_FOR_SWIFT] },
@@ -465,7 +474,7 @@ export const ROLE_BUCKETS: Partial<Record<UserRole, StageBucket[]>> = {
     { key: 'rejected', label: 'مرفوض', statuses: [RequestStatus.EXECUTIVE_REJECTED] },
   ],
   [UserRole.CBY_ADMIN]: [
-    { key: 'bank_stage', label: 'مرحلة البنك', statuses: [RequestStatus.SUBMITTED, RequestStatus.BANK_REVIEW, RequestStatus.BANK_RETURNED, RequestStatus.BANK_APPROVED] },
+    { key: 'bank_stage', label: 'مرحلة البنك', statuses: [RequestStatus.SUBMITTED, RequestStatus.BANK_REVIEW, RequestStatus.BANK_RETURNED, RequestStatus.BANK_APPROVED, RequestStatus.BANK_REJECTED] },
     { key: 'support_stage', label: 'مرحلة الدعم', statuses: [RequestStatus.SUPPORT_REVIEW_PENDING, RequestStatus.SUPPORT_REVIEW_IN_PROGRESS, RequestStatus.SUPPORT_APPROVED, RequestStatus.SUPPORT_REJECTED, RequestStatus.SUPPORT_RETURNED] },
     { key: 'swift_stage', label: 'مرحلة SWIFT', statuses: [RequestStatus.WAITING_FOR_SWIFT, RequestStatus.SWIFT_UPLOADED] },
     { key: 'voting_stage', label: 'مرحلة التصويت', statuses: [RequestStatus.WAITING_FOR_VOTING_OPEN, RequestStatus.EXECUTIVE_VOTING_OPEN, RequestStatus.EXECUTIVE_VOTING_CLOSED, RequestStatus.EXECUTIVE_APPROVED, RequestStatus.EXECUTIVE_REJECTED] },

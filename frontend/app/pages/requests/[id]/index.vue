@@ -80,6 +80,7 @@ const TERMINAL_STATUSES = new Set([
   RequestStatus.EXECUTIVE_REJECTED,
   RequestStatus.CUSTOMS_DECLARATION_ISSUED,
   RequestStatus.COMPLETED,
+  RequestStatus.BANK_REJECTED,
 ])
 
 // Readonly states — intermediate, no action for the viewing user on this page
@@ -102,11 +103,12 @@ const PENDING_STATUSES = new Set([
   RequestStatus.EXECUTIVE_VOTING_CLOSED,
 ])
 
-type LockedBannerVariant = 'locked' | 'readonly' | 'pending'
+type LockedBannerVariant = 'locked' | 'readonly' | 'pending' | 'bank_rejected'
 
 const lockedBannerVariant = computed((): LockedBannerVariant | null => {
   if (!request.value) return null
   const s = request.value.status
+  if (s === RequestStatus.BANK_REJECTED) return 'bank_rejected'
   if (TERMINAL_STATUSES.has(s)) return 'locked'
   if (userRole.value === UserRole.BANK_REVIEWER && ACTIONABLE_REVIEWER_STATUSES.has(s)) return null
   // Executive roles viewing voting stages have full access — no banner
@@ -545,7 +547,11 @@ watch(showVotingPanelInline, async (visible) => {
             </div>
             <ActiveReviewBanner v-else-if="showActiveReviewBanner" />
             <ClaimedByOthersBanner v-else-if="showClaimedByOthersBanner" :claimer-name="request.claimed_by?.name ?? ''" />
-            <LockedBanner v-else-if="isLocked && lockedBannerVariant" :variant="lockedBannerVariant" />
+            <LockedBanner
+              v-else-if="isLocked && lockedBannerVariant"
+              :variant="lockedBannerVariant"
+              :comment="lockedBannerVariant === 'bank_rejected' ? (request?.bank_reject_comment ?? undefined) : undefined"
+            />
             <CorrectionBanner
               v-else-if="isBankReturned"
               variant="bank_returned"

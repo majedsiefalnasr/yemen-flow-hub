@@ -13,6 +13,7 @@ const WORKFLOW_STAGE_ORDER: RequestStatus[] = [
   RequestStatus.DRAFT,
   RequestStatus.DRAFT_REJECTED_INTERNAL,
   RequestStatus.BANK_RETURNED,
+  RequestStatus.BANK_REJECTED,
   RequestStatus.SUBMITTED,
   RequestStatus.BANK_REVIEW,
   RequestStatus.BANK_APPROVED,
@@ -35,14 +36,16 @@ const WORKFLOW_STAGE_ORDER: RequestStatus[] = [
 const BRANCH_STATUSES = new Set<RequestStatus>([
   RequestStatus.DRAFT_REJECTED_INTERNAL,
   RequestStatus.BANK_RETURNED,
+  RequestStatus.BANK_REJECTED,
   RequestStatus.SUPPORT_RETURNED,
   RequestStatus.SUPPORT_REJECTED,
   RequestStatus.EXECUTIVE_REJECTED,
 ])
 
-// Only EXECUTIVE_REJECTED is a dead-end terminal — COMPLETED is a success state
+// Dead-end terminal statuses — no further actions possible
 const TERMINAL_STATUSES = new Set<RequestStatus>([
   RequestStatus.EXECUTIVE_REJECTED,
+  RequestStatus.BANK_REJECTED,
 ])
 
 type StageState = 'completed' | 'current' | 'future' | 'terminal' | 'skipped'
@@ -106,8 +109,8 @@ const happyPathHistory: RequestStageHistory[] = [
 // ─── Stage classification — happy path ───────────────────────────────────────
 
 describe('WorkflowTimeline stage classification', () => {
-  it('covers all 20 canonical stages — none missing', () => {
-    expect(WORKFLOW_STAGE_ORDER).toHaveLength(20)
+  it('covers all 21 canonical stages — none missing', () => {
+    expect(WORKFLOW_STAGE_ORDER).toHaveLength(21)
     const all = Object.values(RequestStatus)
     for (const s of all) {
       expect(WORKFLOW_STAGE_ORDER).toContain(s)
@@ -196,10 +199,15 @@ describe('WorkflowTimeline branch state — skipped vs completed', () => {
 
 // ─── Terminal state ───────────────────────────────────────────────────────────
 
-describe('WorkflowTimeline terminal state — EXECUTIVE_REJECTED only', () => {
+describe('WorkflowTimeline terminal state', () => {
   it('classifies EXECUTIVE_REJECTED as "terminal" when it is the current status', () => {
     const visited = new Set<string>(['EXECUTIVE_REJECTED'])
     expect(getStageState(RequestStatus.EXECUTIVE_REJECTED, RequestStatus.EXECUTIVE_REJECTED, visited)).toBe('terminal')
+  })
+
+  it('classifies BANK_REJECTED as "terminal" when it is the current status', () => {
+    const visited = new Set<string>(['BANK_REJECTED'])
+    expect(getStageState(RequestStatus.BANK_REJECTED, RequestStatus.BANK_REJECTED, visited)).toBe('terminal')
   })
 
   it('COMPLETED is NOT terminal — it is a success "current" state', () => {
@@ -207,15 +215,16 @@ describe('WorkflowTimeline terminal state — EXECUTIVE_REJECTED only', () => {
     expect(getStageState(RequestStatus.COMPLETED, RequestStatus.COMPLETED, visited)).toBe('current')
   })
 
-  it('only EXECUTIVE_REJECTED is in the terminal set', () => {
+  it('EXECUTIVE_REJECTED and BANK_REJECTED are in the terminal set', () => {
     expect(TERMINAL_STATUSES.has(RequestStatus.EXECUTIVE_REJECTED)).toBe(true)
+    expect(TERMINAL_STATUSES.has(RequestStatus.BANK_REJECTED)).toBe(true)
     expect(TERMINAL_STATUSES.has(RequestStatus.COMPLETED)).toBe(false)
-    expect(TERMINAL_STATUSES.size).toBe(1)
+    expect(TERMINAL_STATUSES.size).toBe(2)
   })
 
   it('no other status is in the terminal set', () => {
     const nonTerminal = Object.values(RequestStatus).filter(
-      s => s !== RequestStatus.EXECUTIVE_REJECTED,
+      s => s !== RequestStatus.EXECUTIVE_REJECTED && s !== RequestStatus.BANK_REJECTED,
     )
     for (const s of nonTerminal) {
       expect(TERMINAL_STATUSES.has(s)).toBe(false)
@@ -230,6 +239,18 @@ describe('WorkflowTimeline terminal state — EXECUTIVE_REJECTED only', () => {
   it('EXECUTIVE_REJECTED is "skipped" on a COMPLETED (approved) request', () => {
     const visited = new Set<string>(['DRAFT', 'SUBMITTED', 'BANK_APPROVED', 'EXECUTIVE_APPROVED', 'COMPLETED'])
     expect(getStageState(RequestStatus.EXECUTIVE_REJECTED, RequestStatus.COMPLETED, visited)).toBe('skipped')
+  })
+
+  it('BANK_REJECTED is "skipped" when the request is at BANK_REVIEW (branch not taken)', () => {
+    // BANK_REJECTED sits before BANK_REVIEW in WORKFLOW_STAGE_ORDER; since it
+    // is a BRANCH_STATUS and was not visited, it shows as "skipped" — not "future".
+    const visited = new Set<string>(['DRAFT', 'SUBMITTED', 'BANK_REVIEW'])
+    expect(getStageState(RequestStatus.BANK_REJECTED, RequestStatus.BANK_REVIEW, visited)).toBe('skipped')
+  })
+
+  it('BANK_REJECTED is "skipped" on a BANK_APPROVED request (approved path)', () => {
+    const visited = new Set<string>(['DRAFT', 'SUBMITTED', 'BANK_REVIEW', 'BANK_APPROVED'])
+    expect(getStageState(RequestStatus.BANK_REJECTED, RequestStatus.BANK_APPROVED, visited)).toBe('skipped')
   })
 })
 

@@ -262,6 +262,27 @@ export const useRequestsStore = defineStore('requests', {
       }
     },
 
+    async bankRejectTerminal(id: number, comment: string): Promise<void> {
+      if (this.performingAction) throw new Error('إجراء قيد التنفيذ بالفعل')
+      this.performingAction = true
+      this.error = null
+
+      try {
+        const { bankRejectTerminal } = useRequests()
+        this.currentRequest = await bankRejectTerminal(id, comment)
+      }
+      catch (err) {
+        if (import.meta.dev) {
+          console.error('[requests.store] bankRejectTerminal failed:', err)
+        }
+        this.error = 'تعذّر تنفيذ الرفض النهائي.'
+        throw err
+      }
+      finally {
+        this.performingAction = false
+      }
+    },
+
     async issueCustomsDeclaration(id: number): Promise<void> {
       if (this.issuingCustoms) throw new Error('إصدار البيان الجمركي قيد التنفيذ بالفعل')
       this.issuingCustoms = true

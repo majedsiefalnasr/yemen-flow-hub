@@ -1,8 +1,9 @@
 <script setup lang="ts">
-type LockedBannerVariant = 'locked' | 'readonly' | 'pending'
+type LockedBannerVariant = 'locked' | 'readonly' | 'pending' | 'bank_rejected'
 
 const props = defineProps<{
   variant: LockedBannerVariant
+  comment?: string
 }>()
 
 const VARIANT_CONFIG: Record<LockedBannerVariant, { icon: string; message: string; mod: string }> = {
@@ -21,6 +22,11 @@ const VARIANT_CONFIG: Record<LockedBannerVariant, { icon: string; message: strin
     message: 'هذا الطلب قيد المراجعة — لا يمكن إجراء تعديلات حتى اكتمال المرحلة الحالية',
     mod: 'locked-banner--pending',
   },
+  bank_rejected: {
+    icon: '🚫',
+    message: 'تم رفض هذا الطلب نهائياً من قِبَل البنك — لا يمكن اتخاذ أي إجراء',
+    mod: 'locked-banner--bank-rejected',
+  },
 }
 
 const config = VARIANT_CONFIG[props.variant]
@@ -29,7 +35,10 @@ const config = VARIANT_CONFIG[props.variant]
 <template>
   <div class="locked-banner" :class="config.mod" role="alert" aria-live="polite" dir="rtl">
     <span class="locked-icon" aria-hidden="true">{{ config.icon }}</span>
-    <span class="locked-message">{{ config.message }}</span>
+    <div class="locked-body">
+      <span class="locked-message">{{ config.message }}</span>
+      <span v-if="variant === 'bank_rejected' && comment" class="locked-comment">{{ comment }}</span>
+    </div>
   </div>
 </template>
 
@@ -65,12 +74,31 @@ const config = VARIANT_CONFIG[props.variant]
   color: #a05a00;
 }
 
+.locked-banner--bank-rejected {
+  background: #fff0ef;
+  border-color: #ff3b3033;
+  color: #c62828;
+}
+
 .locked-icon {
   font-size: 18px;
   flex-shrink: 0;
 }
 
+.locked-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
 .locked-message {
   flex: 1;
+}
+
+.locked-comment {
+  font-size: 13px;
+  opacity: 0.8;
+  font-style: italic;
 }
 </style>
