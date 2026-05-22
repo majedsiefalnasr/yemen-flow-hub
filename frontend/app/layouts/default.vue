@@ -2,10 +2,13 @@
 import { computed, ref } from 'vue'
 import AppSidebar from '../components/layout/AppSidebar.vue'
 import AppHeader from '../components/layout/AppHeader.vue'
+import InactivityBanner from '../components/layout/InactivityBanner.vue'
 import { useSidebar } from '../composables/useSidebar'
+import { useInactivityTimer } from '../composables/useInactivityTimer'
 
 const mobileMenuOpen = ref(false)
 const { isCollapsed } = useSidebar()
+useInactivityTimer()
 
 const mainMargin = computed(() =>
   isCollapsed.value ? 'var(--sidebar-collapsed, 72px)' : 'var(--sidebar-expanded, 280px)'
@@ -23,6 +26,7 @@ function toggleMobileMenu() {
 
     <!-- Main area -->
     <div class="app-main" :style="{ marginInlineEnd: mainMargin }">
+      <InactivityBanner />
       <AppHeader @toggle-mobile-menu="toggleMobileMenu" />
       <main class="app-content">
         <slot />

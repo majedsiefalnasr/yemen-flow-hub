@@ -250,6 +250,51 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
+    async forceLogout(): Promise<void> {
+      const config = useRuntimeConfig()
+      const baseURL = config.public.apiBase as string
+
+      try {
+        const xsrfToken = this.getXsrfToken()
+        await $fetch('/api/auth/logout', {
+          method: 'POST',
+          baseURL,
+          credentials: 'include',
+          headers: {
+            Accept: 'application/json',
+            ...(xsrfToken ? { 'X-XSRF-TOKEN': xsrfToken } : {}),
+          },
+        })
+      }
+      catch {
+        // Clear local state even if the network call fails
+      }
+      finally {
+        clearAuthState(this)
+        await navigateTo('/login?reason=inactivity')
+      }
+    },
+
+    async extendSession(): Promise<void> {
+      const config = useRuntimeConfig()
+      const baseURL = config.public.apiBase as string
+
+      try {
+        const response = await $fetch<ApiResponse<AuthUser>>('/api/auth/me', {
+          baseURL,
+          credentials: 'include',
+          headers: { Accept: 'application/json' },
+        })
+        if (response.data.is_active) {
+          this.user = response.data
+          this.isAuthenticated = true
+        }
+      }
+      catch {
+        // Session may have already expired — let inactivity timer handle it
+      }
+    },
+
     async fetchUserPreferences(): Promise<void> {
       const config = useRuntimeConfig()
       const baseURL = config.public.apiBase as string

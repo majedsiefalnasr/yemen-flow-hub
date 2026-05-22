@@ -3,7 +3,7 @@ import { nextTick, ref, computed } from 'vue'
 import { useForm } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/zod'
 import { z } from 'zod'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/auth.store'
 import { ROLE_LABELS } from '../constants/workflow'
 import Icon from '../components/ui/Icon.vue'
@@ -11,7 +11,11 @@ import Icon from '../components/ui/Icon.vue'
 definePageMeta({ layout: false, middleware: ['guest'] })
 
 const router = useRouter()
+const route = useRoute()
 const auth = useAuthStore()
+
+const showInactivityBanner = computed(() => route.query.reason === 'inactivity')
+const inactivityBannerDismissed = ref(false)
 const schema = toTypedSchema(z.object({
   email: z.string().min(1, 'البريد الإلكتروني مطلوب').email('صيغة البريد الإلكتروني غير صحيحة'),
   password: z.string().min(8, 'كلمة المرور يجب أن تكون 8 أحرف على الأقل'),
@@ -34,6 +38,7 @@ const otpDestination = computed(() => pendingEmail.value ? '••42' : '••4
 const onSubmit = handleSubmit(async (values) => {
   isLoading.value = true
   serverError.value = null
+  inactivityBannerDismissed.value = true
   try {
     const result = await auth.login(values.email, values.password)
     if (result?.requiresMfa) {
@@ -138,6 +143,9 @@ function backToLogin() {
           <div class="login-heading">
             <h2>تسجيل الدخول</h2>
           </div>
+          <div v-if="showInactivityBanner && !inactivityBannerDismissed" class="info-alert" role="status" aria-live="polite">
+            تم تسجيل خروجك بسبب عدم النشاط — يرجى تسجيل الدخول مرة أخرى
+          </div>
           <div v-if="serverError" class="error-alert" role="alert" aria-live="assertive">{{ serverError }}</div>
           <form class="login-form" novalidate @submit.prevent="onSubmit">
             <div class="field-group">
@@ -190,6 +198,7 @@ function backToLogin() {
 .login-form-col { background: #fff; display: flex; align-items: center; justify-content: center; padding: 40px 24px; }
 .login-form-wrap { width: 100%; max-width: 420px; }
 .login-heading h2 { margin: 0 0 20px; font-size: 30px; font-weight: 700; color: #1c222b; }
+.info-alert { background-color: #fff8e1; border: 1px solid #f57f17; border-radius: 8px; color: #e65100; font-size: 14px; padding: 12px 16px; margin-bottom: 20px; }
 .error-alert { background-color: #fff5f5; border: 1px solid #c62828; border-radius: 8px; color: #c62828; font-size: 14px; padding: 12px 16px; margin-bottom: 20px; }
 .login-form { display: flex; flex-direction: column; gap: 20px; }
 .field-group { display: flex; flex-direction: column; gap: 6px; }
