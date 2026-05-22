@@ -40,6 +40,8 @@ const statsLoading = ref(false)
 
 // ─── Row expansion ───────────────────────────────────────────────────────────
 const expandedLogs = ref<Set<number>>(new Set())
+const MISSING_DIFF_VALUE = '—'
+const EMPTY_DIFF_VALUE = 'فارغ'
 
 function toggleLog(id: number) {
   if (expandedLogs.value.has(id)) {
@@ -52,8 +54,19 @@ function toggleLog(id: number) {
 }
 
 function hasDiff(log: AuditLog): boolean {
-  const meta = log.metadata as Record<string, unknown> | null
-  return !!(meta && (meta.before || meta.after))
+  return diffRows(log).length > 0
+}
+
+function hasDiffValue(record: Record<string, unknown>, key: string): boolean {
+  return Object.prototype.hasOwnProperty.call(record, key)
+}
+
+function formatDiffValue(record: Record<string, unknown>, key: string): unknown {
+  if (!hasDiffValue(record, key)) return MISSING_DIFF_VALUE
+
+  const value = record[key]
+
+  return value === null ? EMPTY_DIFF_VALUE : value
 }
 
 function diffRows(log: AuditLog): Array<{ key: string; before: unknown; after: unknown }> {
@@ -62,11 +75,28 @@ function diffRows(log: AuditLog): Array<{ key: string; before: unknown; after: u
   const before = (meta.before ?? {}) as Record<string, unknown>
   const after  = (meta.after  ?? {}) as Record<string, unknown>
   const keys = Array.from(new Set([...Object.keys(before), ...Object.keys(after)]))
-  return keys.map(k => ({ key: k, before: before[k] ?? '—', after: after[k] ?? '—' }))
+
+  return keys
+    .filter((key) => {
+      const beforeHasValue = hasDiffValue(before, key)
+      const afterHasValue = hasDiffValue(after, key)
+
+      if (!beforeHasValue && !afterHasValue) return false
+
+      const beforeValue = beforeHasValue ? before[key] : undefined
+      const afterValue = afterHasValue ? after[key] : undefined
+
+      return !beforeHasValue || !afterHasValue || beforeValue !== afterValue
+    })
+    .map(key => ({
+      key,
+      before: formatDiffValue(before, key),
+      after: formatDiffValue(after, key),
+    }))
 }
 
 function truncateUa(ua: string | null | undefined, max = 80): string {
-  if (!ua) return '—'
+  if (!ua) return MISSING_DIFF_VALUE
   return ua.length > max ? ua.slice(0, max) + '…' : ua
 }
 

@@ -1,6 +1,56 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+// @vitest-environment jsdom
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
-import { defineComponent, ref, reactive } from 'vue'
+import { reactive, ref } from 'vue'
+import auditPage from '../../../pages/audit.vue'
+import { UserRole } from '../../../types/enums'
+
+vi.stubGlobal('definePageMeta', vi.fn())
+
+const fetchAuditLogsMock = vi.hoisted(() => vi.fn())
+const fetchAuditStatsMock = vi.hoisted(() => vi.fn())
+const fetchDuplicatesMock = vi.hoisted(() => vi.fn())
+const fetchRiskIndicatorsMock = vi.hoisted(() => vi.fn())
+
+vi.mock('../../../composables/useAudit', () => ({
+  useAudit: () => ({
+    fetchAuditLogs: fetchAuditLogsMock,
+    fetchAuditStats: fetchAuditStatsMock,
+    fetchDuplicates: fetchDuplicatesMock,
+    fetchRiskIndicators: fetchRiskIndicatorsMock,
+  }),
+}))
+
+function makeAuditLog(overrides: Record<string, unknown> = {}) {
+  return {
+    id: 1,
+    user: { id: 1, name: 'مشرف النظام', email: 'admin@cby.gov.ye', role: UserRole.CBY_ADMIN },
+    user_id: 1,
+    user_role: UserRole.CBY_ADMIN,
+    action: 'USER_UPDATED',
+    entity_type: null,
+    entity_id: null,
+    entity_reference: null,
+    from_status: null,
+    to_status: null,
+    ip_address: '10.0.0.1',
+    user_agent: 'Mozilla/5.0 TestAgent',
+    metadata: null,
+    created_at: '2026-05-22T09:00:00.000Z',
+    ...overrides,
+  }
+}
+
+function mountAuditPage() {
+  return mount(auditPage, {
+    global: {
+      stubs: {
+        Teleport: true,
+        NuxtLink: { template: '<a><slot /></a>' },
+      },
+    },
+  })
+}
 
 // ─── Pure-logic helpers (mirrored from audit.vue) ─────────────────────────────
 
@@ -177,8 +227,23 @@ function truncateUa(ua: string | null | undefined, max = 80): string {
 
 type AuditLogMeta = { before?: Record<string, unknown>; after?: Record<string, unknown> } | null
 
+const MISSING_DIFF_VALUE = '—'
+const EMPTY_DIFF_VALUE = 'فارغ'
+
+function hasDiffValue(record: Record<string, unknown>, key: string): boolean {
+  return Object.prototype.hasOwnProperty.call(record, key)
+}
+
+function formatDiffValue(record: Record<string, unknown>, key: string): unknown {
+  if (!hasDiffValue(record, key)) return MISSING_DIFF_VALUE
+
+  const value = record[key]
+
+  return value === null ? EMPTY_DIFF_VALUE : value
+}
+
 function hasDiff(meta: AuditLogMeta): boolean {
-  return !!(meta && (meta.before || meta.after))
+  return diffRows(meta).length > 0
 }
 
 function diffRows(meta: AuditLogMeta): Array<{ key: string; before: unknown; after: unknown }> {
@@ -186,8 +251,87 @@ function diffRows(meta: AuditLogMeta): Array<{ key: string; before: unknown; aft
   const before = (meta.before ?? {}) as Record<string, unknown>
   const after  = (meta.after  ?? {}) as Record<string, unknown>
   const keys = Array.from(new Set([...Object.keys(before), ...Object.keys(after)]))
-  return keys.map(k => ({ key: k, before: before[k] ?? '—', after: after[k] ?? '—' }))
+
+  return keys
+    .filter((key) => {
+      const beforeHasValue = hasDiffValue(before, key)
+      const afterHasValue = hasDiffValue(after, key)
+
+      if (!beforeHasValue && !afterHasValue) return false
+
+      const beforeValue = beforeHasValue ? before[key] : undefined
+      const afterValue = afterHasValue ? after[key] : undefined
+
+      return !beforeHasValue || !afterHasValue || beforeValue !== afterValue
+    })
+    .map(key => ({
+      key,
+      before: formatDiffValue(before, key),
+      after: formatDiffValue(after, key),
+    }))
 }
+
+describe('audit.vue row expansion rendering', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    fetchAuditLogsMock.mockResolvedValue({ data: [], meta: { last_page: 1, total: 0 } })
+    fetchAuditStatsMock.mockResolvedValue({ today_count: 0, duplicate_invoice_count: 0 })
+    fetchDuplicatesMock.mockResolvedValue([])
+    fetchRiskIndicatorsMock.mockResolvedValue([])
+  })
+
+  it('renders the empty detail state for no-op before/after metadata', async () => {
+    fetchAuditLogsMock.mockResolvedValue({
+      data: [
+        makeAuditLog({
+          id: 8,
+          user_agent: null,
+          metadata: { before: {}, after: {} },
+        }),
+      ],
+      meta: { last_page: 1, total: 1 },
+    })
+
+    const wrapper = mountAuditPage()
+    await flushPromises()
+
+    await wrapper.get('[data-testid="log-row"]').trigger('click')
+
+    expect(wrapper.find('[data-testid="log-diff-table"]').exists()).toBe(false)
+    expect(wrapper.find('.detail-empty').text()).toContain('لا توجد تفاصيل إضافية')
+  })
+
+  it('renders only changed keys and preserves explicit null values in the diff table', async () => {
+    fetchAuditLogsMock.mockResolvedValue({
+      data: [
+        makeAuditLog({
+          id: 9,
+          user_agent: 'A'.repeat(120),
+          metadata: {
+            before: { bank_id: 12, name: 'علي' },
+            after: { bank_id: null, name: 'علي' },
+          },
+        }),
+      ],
+      meta: { last_page: 1, total: 1 },
+    })
+
+    const wrapper = mountAuditPage()
+    await flushPromises()
+
+    await wrapper.get('[data-testid="log-row"]').trigger('click')
+
+    const tableText = wrapper.get('[data-testid="log-diff-table"]').text()
+    expect(tableText).toContain('bank_id')
+    expect(tableText).toContain('12')
+    expect(tableText).toContain('فارغ')
+    expect(tableText).not.toContain('علي')
+
+    const truncatedUa = wrapper.get('[data-testid="log-ua-full"]').text()
+    expect(truncatedUa).toHaveLength(81)
+    expect(truncatedUa.endsWith('…')).toBe(true)
+  })
+})
 
 describe('audit page — row expansion: toggleLog', () => {
   it('adds log id to expandedLogs on first click', () => {
@@ -264,6 +408,10 @@ describe('audit page — row expansion: hasDiff', () => {
   it('returns false when metadata has neither before nor after', () => {
     expect(hasDiff({ } as AuditLogMeta)).toBe(false)
   })
+
+  it('returns false when before and after are both empty objects', () => {
+    expect(hasDiff({ before: {}, after: {} })).toBe(false)
+  })
 })
 
 describe('audit page — row expansion: diffRows', () => {
@@ -272,8 +420,7 @@ describe('audit page — row expansion: diffRows', () => {
       before: { role: 'DATA_ENTRY', name: 'Ali' },
       after:  { role: 'BANK_REVIEWER', name: 'Ali' },
     })
-    // Both keys appear (name is present in before/after even if same value)
-    expect(rows).toHaveLength(2)
+    expect(rows).toHaveLength(1)
     const roleRow = rows.find(r => r.key === 'role')
     expect(roleRow?.before).toBe('DATA_ENTRY')
     expect(roleRow?.after).toBe('BANK_REVIEWER')
@@ -287,6 +434,16 @@ describe('audit page — row expansion: diffRows', () => {
     expect(rows).toHaveLength(1)
     expect(rows[0].before).toBe('—')
     expect(rows[0].after).toBe('BANK_REVIEWER')
+  })
+
+  it('renders explicit null values as فارغ instead of dropping the key', () => {
+    const rows = diffRows({
+      before: { bank_id: 7 },
+      after: { bank_id: null },
+    })
+    expect(rows).toHaveLength(1)
+    expect(rows[0].before).toBe(7)
+    expect(rows[0].after).toBe('فارغ')
   })
 
   it('returns empty array for null metadata', () => {
