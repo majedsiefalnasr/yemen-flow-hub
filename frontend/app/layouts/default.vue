@@ -8,7 +8,7 @@ import { useInactivityTimer } from '../composables/useInactivityTimer'
 
 const mobileMenuOpen = ref(false)
 const { isCollapsed } = useSidebar()
-useInactivityTimer()
+const { isWarning, extend } = useInactivityTimer()
 
 const mainMargin = computed(() =>
   isCollapsed.value ? 'var(--sidebar-collapsed, 72px)' : 'var(--sidebar-expanded, 280px)'
@@ -26,7 +26,7 @@ function toggleMobileMenu() {
 
     <!-- Main area -->
     <div class="app-main" :style="{ marginInlineEnd: mainMargin }">
-      <InactivityBanner />
+      <InactivityBanner :visible="isWarning" @extend="extend" />
       <AppHeader @toggle-mobile-menu="toggleMobileMenu" />
       <main class="app-content">
         <slot />

@@ -1,12 +1,16 @@
 <script setup lang="ts">
-import { useInactivityTimer } from '../../composables/useInactivityTimer'
+defineProps<{
+  visible: boolean
+}>()
 
-const { isWarning, extend } = useInactivityTimer()
+const emit = defineEmits<{
+  extend: []
+}>()
 </script>
 
 <template>
   <div
-    v-if="isWarning"
+    v-if="visible"
     class="inactivity-banner"
     role="status"
     aria-live="polite"
@@ -18,7 +22,7 @@ const { isWarning, extend } = useInactivityTimer()
     <button
       type="button"
       class="inactivity-banner__btn"
-      @click="extend()"
+      @click="emit('extend')"
     >
       متابعة الجلسة
     </button>
