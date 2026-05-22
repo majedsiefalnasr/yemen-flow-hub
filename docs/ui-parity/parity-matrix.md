@@ -1,8 +1,7 @@
 # Lovable Parity Verdict Matrix — Epic 7 Re-Audit
 
-**Status:** awaiting sign-off (Story 9.2 AC9)
+**Status:** signed off — 2026-05-22 by MAJED (AC9 complete)
 **Author:** Story 9.2 dev pass — 2026-05-22
-**Sign-off line:** `Signed off: <date> by <user>` (add when accepted)
 
 This matrix is the verdict layer of the parity-evidence triplets under `_bmad-output/parity-evidence/<area>/<page>/`. Every row is grounded in a triplet on disk; non-PASS rows feed remediation Stories 9.3 (workflow surface) and 9.4 (management surface).
 
@@ -201,5 +200,5 @@ Once those baselines exist, re-run this matrix's verdicting loop against the fre
 > _The sign-off line below is the AC9 gate. Add it (or a returned-for-corrections note) before Stories 9.3 and 9.4 may begin._
 
 ```
-Signed off: <YYYY-MM-DD> by <user>
+Signed off: 2026-05-22 by MAJED
 ```
