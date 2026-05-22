@@ -15,7 +15,7 @@ This matrix is the verdict layer of the parity-evidence triplets under `_bmad-ou
 - **PASS** — no visible drift at either viewport; ship as-is.
 - **MINOR_DRIFT** — spacing, color, density, or single-component differences; remediable via **patch** posture (small CSS / component-prop fixes inside the existing page).
 - **MAJOR_DRIFT** — layout, structure, composition, or whole-section differences; remediable via **teardown** posture (rewrite the page following `clone-page` workflow).
-- **MISSING** — Lovable page is not rendered at all in the current Nuxt app, **or** the Epic 7 Playwright suite never captured a current screenshot for it. Either way the gap requires production-side work.
+- **MISSING** — Two distinct conditions share this verdict: (a) *Page absent* — the Lovable page is not rendered at all in the current Nuxt app (genuine gap requiring new production code); (b) *Capture gap* — the page exists in production but the Epic 7 Playwright suite never photographed it (parity-coverage hole, not necessarily a UI drift). Rows in the matrix identify which condition applies in their `gap summary`. 9.3/9.4 teams must triage capture-gap rows by capturing baselines before treating them as teardown targets.
 - **SKIP** — Lovable-only feature (demo controls, role switcher, demo reset) not in scope; one-line reason required (AC7).
 
 ## Remediation Story Scope
@@ -41,15 +41,15 @@ A row that passes all five probes is annotated `RTL OK`; otherwise the failing p
 
 | Bucket | Count |
 | ------ | ----- |
-| Total matrix rows | 100 |
+| Total matrix rows | 99 |
 | `PASS` | 1 |
 | `MINOR_DRIFT` | 61 |
-| `MAJOR_DRIFT` | 3 |
-| `MISSING` | 34 |
-| `SKIP` | 1 |
-| Routed to 9.3 (workflow) | 54 |
-| Routed to 9.4 (management) | 44 |
-| Routed to `n/a` (PASS/SKIP) | 2 |
+| `MAJOR_DRIFT` | 2 |
+| `MISSING` | 33 |
+| `SKIP` | 2 |
+| Routed to 9.3 (workflow) | 57 |
+| Routed to 9.4 (management) | 39 |
+| Routed to `n/a` (PASS/SKIP/pending product call) | 3 |
 | Lovable PNGs accounted for (AC5) | 99 / 99 |
 
 The headline takeaways:
@@ -68,15 +68,15 @@ The headline takeaways:
 | auth/login-otp | `lovable/screenshots/login-otp.png` | `frontend/app/pages/login.vue` (OTP step) | desktop | MINOR_DRIFT | 6-cell OTP grid matches; "back to login" link present in both. Lovable shows a subtle session timer that current does not. Otherwise visually similar. RTL OK. | 9.3 | patch |
 | dashboards/data-entry | `lovable/screenshots/DATA_ENTRY/dashboard.png` | `frontend/app/pages/dashboard.vue` (DATA_ENTRY variant) | desktop+mobile | PASS | KPI grid (4), Quick Actions row (3), alert banner, dual data tables — structure matches Lovable cleanly. Spacing and color tokens match. RTL OK across all five probes. | n/a | n/a |
 | dashboards/bank-reviewer | `lovable/screenshots/BANK_REVIEWER /dashboard.png` | `frontend/app/pages/dashboard.vue` (BANK_REVIEWER variant) | desktop+mobile | MINOR_DRIFT | KPI cards + recent-requests table match; Lovable surfaces an "internal review queue" card above the table that current renders inline at the same priority. Color/spacing differ in the KPI tiles. RTL OK. | 9.3 | patch |
-| dashboards/bank-admin | `lovable/screenshots/BANK-ADMIN/dashboard.png` | `frontend/app/pages/dashboard.vue` (BANK_ADMIN variant) | desktop+mobile | MINOR_DRIFT | 5-KPI strip + sparkline + recent requests match shape; Lovable adds a "staff snapshot" widget the current page omits. RTL OK. | 9.4 | patch |
+| dashboards/bank-admin | `lovable/screenshots/BANK-ADMIN/dashboard.png` | `frontend/app/pages/dashboard.vue` (BANK_ADMIN variant) | desktop+mobile | MINOR_DRIFT | 5-KPI strip + sparkline + recent requests match shape; Lovable adds a "staff snapshot" widget the current page omits. RTL OK. | 9.3 | patch |
 | dashboards/support-committee | `lovable/screenshots/SUPPORT_COMMITTEE /dashboard.png` | `frontend/app/pages/dashboard.vue` (SUPPORT_COMMITTEE variant) | desktop+mobile | MINOR_DRIFT | Claim queue table + claimed-now banner match; Lovable's "approved last 7 days" tile is present in current but smaller in size. RTL OK. | 9.3 | patch |
 | dashboards/swift-officer | `lovable/screenshots/SWIFT_OFFICER/dashboard.png` | `frontend/app/pages/dashboard.vue` (SWIFT_OFFICER variant) | desktop+mobile | MINOR_DRIFT | Pending-upload queue matches; KPI counts use slightly different label wording vs. Lovable. RTL OK. | 9.3 | patch |
 | dashboards/executive-member | `lovable/screenshots/EXECUTIVE_MEMBER/dashboard.png` | `frontend/app/pages/dashboard.vue` (EXECUTIVE_MEMBER variant) | desktop+mobile | MINOR_DRIFT | Voting queue + my-pending-votes + recently-closed match structure; "cast vote" CTA color in current is a slightly different blue. RTL OK. | 9.3 | patch |
 | dashboards/committee-director | `lovable/screenshots/COMMITTEE_DIRECTOR/dashboard.png` | `frontend/app/pages/dashboard.vue` (COMMITTEE_DIRECTOR variant) | desktop+mobile | MINOR_DRIFT | Open-voting + waiting-customs queues match; Lovable shows a "director override count" tile current does not yet render. RTL OK. | 9.3 | patch |
 | dashboards/cby-admin | `lovable/screenshots/CBY_ADMIN /dashboard.png` | `frontend/app/pages/dashboard.vue` (CBY_ADMIN variant) | desktop+mobile | MAJOR_DRIFT | Lovable target is a dense analytics dashboard: donut chart (currency distribution), monthly-volume line chart, monthly-amounts bar chart, two ranked-list tables, and a compliance heat strip. Current renders 4 KPI cards + 1 line chart + a "recent requests" placeholder — significant content absent. RTL OK on what does render. Teardown required because the missing widgets reshape the entire grid. | 9.4 | teardown |
-| dashboards/shell-collapsed | `lovable/screenshots/CBY_ADMIN /dashboard-sidebar-collapsed.png` | `frontend/app/layouts/default.vue` (collapsed state) | desktop | MINOR_DRIFT | Collapsed sidebar widths match (72px). Icon-only nav matches. Lovable shows the org/bank chip even when collapsed; current hides it. RTL OK. | 9.4 | patch |
-| dashboards/shell-expanded | `lovable/screenshots/CBY_ADMIN /dashboard.png` (shell axis) | `frontend/app/layouts/default.vue` (expanded state) | desktop | MINOR_DRIFT | Expanded sidebar widths match (280px). Section spacing matches. Search box is full-width in Lovable vs. compressed in current. RTL OK. | 9.4 | patch |
-| dashboards/dark-mode | `lovable/screenshots/CBY_ADMIN /dark-mode.png` | n/a (no current Playwright capture for dark mode) | desktop | MISSING | Story 6.7 shipped dark mode (html.dark CSS overrides). The Epic 7 Playwright suite never captured the dark variant. Need a fresh current.png at viewport 1440×900 with `html.dark` applied, then re-verdict. | 9.4 | patch (verdict provisional pending capture) |
+| dashboards/shell-collapsed | `lovable/screenshots/CBY_ADMIN /dashboard-sidebar-collapsed.png` | `frontend/app/layouts/default.vue` (collapsed state) | desktop | MINOR_DRIFT | Collapsed sidebar widths match (72px). Icon-only nav matches. Lovable shows the org/bank chip even when collapsed; current hides it. RTL OK. | 9.3 | patch |
+| dashboards/shell-expanded | `lovable/screenshots/CBY_ADMIN /dashboard.png` (shell axis) | `frontend/app/layouts/default.vue` (expanded state) | desktop | MINOR_DRIFT | Expanded sidebar widths match (280px). Section spacing matches. Search box is full-width in Lovable vs. compressed in current. RTL OK. | 9.3 | patch |
+| dashboards/dark-mode | `lovable/screenshots/CBY_ADMIN /dark-mode.png` | n/a (no current Playwright capture for dark mode) | desktop | MISSING | Story 6.7 shipped dark mode (html.dark CSS overrides). The Epic 7 Playwright suite never captured the dark variant. Need a fresh current.png at viewport 1440×900 with `html.dark` applied, then re-verdict. | 9.3 | patch (verdict provisional pending capture) |
 | requests/list | `lovable/screenshots/CBY_ADMIN /requests.png` | `frontend/app/pages/requests/index.vue` | desktop+mobile | MINOR_DRIFT | Filter bar (stage tabs + status chips + search) matches; data table with status badge + progress bar + actions matches. Lovable density shows more rows per viewport — current's row height is taller by ~10px. RTL OK across all probes. | 9.3 | patch |
 | requests/list-bank-reviewer | `lovable/screenshots/COMMITTEE_DIRECTOR/requests-list.png` | `frontend/app/pages/requests/index.vue` (BANK_REVIEWER bucket) | desktop+mobile | MINOR_DRIFT | Filter chips render the right stage buckets for the role; row density differs same as above. RTL OK. | 9.3 | patch |
 | requests/list-executive | `lovable/screenshots/EXECUTIVE_MEMBER/requests-list.png` | `frontend/app/pages/requests/index.vue` (EXECUTIVE_MEMBER bucket) | desktop+mobile | MINOR_DRIFT | Buckets match; the "voting open" pill in Lovable uses the voting indigo `#5856d6`; current renders the same. RTL OK. | 9.3 | patch |
@@ -91,7 +91,7 @@ The headline takeaways:
 | requests/detail-voting-pending | `lovable/screenshots/EXECUTIVE_MEMBER/request-view-voting-pending.png` | `frontend/app/pages/requests/[id]/index.vue` (voting pending state) | desktop | MINOR_DRIFT | "Waiting for voting to open" banner color/weight matches. RTL OK. | 9.3 | patch |
 | requests/detail-voting-open-director | `lovable/screenshots/COMMITTEE_DIRECTOR/request-view-voting-open-director.png` | `frontend/app/pages/requests/[id]/index.vue` (director controls) | desktop | MINOR_DRIFT | Director's "close voting" + "override" controls present in both. Lovable surfaces the override-justification textarea inline; current uses a modal (acceptable A/B). RTL OK. | 9.3 | patch |
 | requests/detail-voting-pending-open | `lovable/screenshots/COMMITTEE_DIRECTOR/request-view-voting-pending-open.png` | `frontend/app/pages/requests/[id]/index.vue` (open-voting CTA state) | desktop | MINOR_DRIFT | "Open voting" director CTA matches. RTL OK. | 9.3 | patch |
-| requests/detail-voting-duplicate-invoice | `lovable/screenshots/COMMITTEE_DIRECTOR/request-view-voting-open-duplicate-invoice.png` | n/a — current does not surface duplicate-invoice warning at the voting view | desktop | MISSING | Lovable shows an inline "duplicate-invoice warning" pill (presumably from a backend check). Current Nuxt detail does not render this signal yet — backend duplicate-detection is partial. Verify whether warning should be added or whether this is a Lovable-only mock. | 9.3 | patch (or downgrade to SKIP if confirmed mock-only) |
+| requests/detail-voting-duplicate-invoice | `lovable/screenshots/COMMITTEE_DIRECTOR/request-view-voting-open-duplicate-invoice.png` | n/a — current does not surface duplicate-invoice warning at the voting view | desktop | MISSING | Lovable shows an inline "duplicate-invoice warning" pill (presumably from a backend check). Current Nuxt detail does not render this signal yet — backend duplicate-detection is partial. Verify whether warning should be added or whether this is a Lovable-only mock. | n/a (pending product call) | patch (or SKIP after product call) |
 | requests/detail-customs | `lovable/screenshots/COMMITTEE_DIRECTOR/request-view-waiting-customs.png` | `frontend/app/pages/requests/[id]/index.vue` (waiting-customs state) | desktop+mobile | MINOR_DRIFT | "Waiting for customs declaration" banner + director CTA present in both. RTL OK. | 9.3 | patch |
 | requests/detail-customs-documents | `lovable/screenshots/COMMITTEE_DIRECTOR/request-view-documents-tab-customs.png` | `frontend/app/pages/requests/[id]/index.vue` (documents tab post-customs) | desktop | MINOR_DRIFT | Documents tab adds the issued declaration as a row in both views. RTL OK. | 9.3 | patch |
 | requests/detail-customs-parties | `lovable/screenshots/COMMITTEE_DIRECTOR/request-view-parties-tab-customs.png` | n/a | desktop | MISSING | Parties tab in current does not visibly differ between pre- and post-customs; Lovable adds the customs office as a party row post-issuance. Add a customs-office party row when present. | 9.3 | patch |
@@ -114,10 +114,10 @@ The headline takeaways:
 | requests/detail-executive-waiting-customs | `lovable/screenshots/EXECUTIVE_MEMBER/request-view-waiting-customs.png` | `frontend/app/pages/requests/[id]/index.vue` (post-vote waiting-customs, executive viewer) | desktop | MINOR_DRIFT | Banner matches. RTL OK. | 9.3 | patch |
 | requests/detail-data-entry-draft-actions | `lovable/screenshots/DATA_ENTRY/request-view-draft-actions.png` | `frontend/app/pages/requests/[id]/index.vue` (DRAFT state, data entry viewer) | desktop | MINOR_DRIFT | Draft actions (Edit / Delete / Submit) match. RTL OK. | 9.3 | patch |
 | requests/detail-data-entry-submitted | `lovable/screenshots/DATA_ENTRY/request-view-submitted.png` | `frontend/app/pages/requests/[id]/index.vue` (SUBMITTED state, data entry viewer) | desktop | MINOR_DRIFT | Read-only submitted state matches. RTL OK. | 9.3 | patch |
-| requests/detail-note | `lovable/screenshots/CBY_ADMIN /requests-view-request-note.png` | n/a — current Playwright did not capture the inline-note overlay | desktop | MISSING | Lovable surfaces an admin note overlay tied to a flagged request. Needs decision: ship the note overlay in current Nuxt, or SKIP if it's a Lovable-only operator surface. | 9.3 | patch (or SKIP after product call) |
+| requests/detail-note | `lovable/screenshots/CBY_ADMIN /requests-view-request-note.png` | n/a — current Playwright did not capture the inline-note overlay | desktop | MISSING | Lovable surfaces an admin note overlay tied to a flagged request. Needs decision: ship the note overlay in current Nuxt, or SKIP if it's a Lovable-only operator surface. | n/a (pending product call) | patch (or SKIP after product call) |
 | requests/detail-tab-cby-2 | `lovable/screenshots/CBY_ADMIN /requests-view-request-tab.png` | n/a | desktop | MISSING | Provisional pending capture / CBY-specific tab layout review. | 9.3 | patch (verdict provisional pending capture) |
 | requests/detail-tab-cby-3 | `lovable/screenshots/CBY_ADMIN /requests-view-request-tab2.png` | n/a | desktop | MISSING | Provisional pending capture. | 9.3 | patch (verdict provisional pending capture) |
-| requests/detail-view-file | `lovable/screenshots/CBY_ADMIN /requests-view-request-view-file.png` | n/a — current opens the PDF in a new tab rather than inline drawer | desktop | MISSING | Decide: in-page PDF preview (Lovable behaviour) vs. open-in-new-tab (current behaviour) — product call. If preview is required, build it in 9.3. | 9.3 | patch (or SKIP after product call) |
+| requests/detail-view-file | `lovable/screenshots/CBY_ADMIN /requests-view-request-view-file.png` | n/a — current opens the PDF in a new tab rather than inline drawer | desktop | MISSING | Decide: in-page PDF preview (Lovable behaviour) vs. open-in-new-tab (current behaviour) — product call. If preview is required, build it in 9.3. | n/a (pending product call) | patch (or SKIP after product call) |
 | requests/detail-secondary | `lovable/screenshots/CBY_ADMIN /requests-view-request2.png` | n/a | desktop | MISSING | Provisional pending capture. | 9.3 | patch (verdict provisional pending capture) |
 | requests/new-step-1 | `lovable/screenshots/BANK-ADMIN/new-request-step1-basic-info.png` | `frontend/app/pages/requests/new.vue` (step 1) | desktop+mobile | MINOR_DRIFT | Stepper + field-grid for basic info match. Required-field markers match. RTL OK. | 9.3 | patch |
 | requests/new-step-2 | `lovable/screenshots/BANK-ADMIN/new-request-step2-supplier.png` | `frontend/app/pages/requests/new.vue` (step 2) | desktop+mobile | MINOR_DRIFT | Supplier section matches. RTL OK. | 9.3 | patch |
@@ -139,8 +139,7 @@ The headline takeaways:
 | admin/cby-staff | `lovable/screenshots/CBY_ADMIN /staff-add-member.png` | `frontend/app/pages/admin/cby-staff.vue` (add modal) | desktop | MINOR_DRIFT | Add-member modal matches. Story 6.5 shipped this. RTL OK. | 9.4 | patch |
 | admin/cby-staff-edit | `lovable/screenshots/CBY_ADMIN /staff-edit-member.png` | n/a — Playwright did not capture the edit-member modal | desktop | MISSING | Provisional pending capture. | 9.4 | patch (verdict provisional pending capture) |
 | admin/entities | `lovable/screenshots/CBY_ADMIN /banks2.png` | `frontend/app/pages/admin/entities.vue` | desktop+mobile | MAJOR_DRIFT | Lovable's "entities" view is an alternate visualization of banks (card grid with metrics). Current `entities.vue` exists (Story 6.5) but lays out a tabular list closer to `banks.vue`. Decide whether entities and banks should be merged or whether entities needs a teardown to match the card grid. | 9.4 | teardown |
-| admin/roles | `lovable/screenshots/CBY_ADMIN /roles.png` | `frontend/app/pages/admin/roles.vue` | desktop+mobile | MAJOR_DRIFT | Lovable's roles matrix is an editable permissions grid. Current `roles.vue` (Story 6.5) is read-only-by-design (canonical role enum is frozen — see `AGENTS.md` "Never Do"). Verdict is MAJOR_DRIFT against Lovable, but resolution is **NOT to add editable roles** — instead document the read-only posture and add the read-only state from the `roles2-readonly-view.png` Lovable shot as the parity baseline. Effectively this row is "PASS on intent, MAJOR_DRIFT on naive copy". | 9.4 | patch (re-baseline against the read-only Lovable variant) |
-| admin/roles-readonly | `lovable/screenshots/CBY_ADMIN /roles2-readonly-view.png` | `frontend/app/pages/admin/roles.vue` (read-only state) | desktop | MINOR_DRIFT | Read-only roles view matches what current renders. RTL OK. **This is the true baseline** for `admin/roles`. | 9.4 | patch |
+| admin/roles | `lovable/screenshots/CBY_ADMIN /roles2-readonly-view.png` | `frontend/app/pages/admin/roles.vue` (read-only state) | desktop | MINOR_DRIFT | Read-only roles view matches what current renders. RTL OK. Baseline is `roles2-readonly-view.png` — the editable Lovable variant (`roles.png`) is intentionally not implemented; canonical role enum is frozen per `AGENTS.md` "Never Do". | 9.4 | patch |
 | admin/workflow-docs | `lovable/screenshots/CBY_ADMIN /workflow-docs.png` | `frontend/app/pages/admin/workflow-docs.vue` | desktop | MISSING | Story 5.7 shipped the page; Playwright never captured it. Need fresh current.png. | 9.4 | patch (verdict provisional pending capture) |
 | reports/index | `lovable/screenshots/CBY_ADMIN /reports.png` | `frontend/app/pages/reports.vue` | desktop | MISSING | Story 5.6 + 7.8 shipped charts (LineChart, PieChart, CurrencyBarChart, SubmissionHeatmap) but the 7.8 Playwright spec never wrote a baseline (`frontend/tests/screenshots/7-8/` is empty). Fresh current.png required before verdicting. | 9.4 | patch (verdict provisional pending capture) |
 | reports/bank-admin | `lovable/screenshots/BANK-ADMIN/reports.png` | `frontend/app/pages/reports.vue` (BANK_ADMIN viewer) | desktop | MISSING | Same as above — no Playwright baseline. | 9.4 | patch (verdict provisional pending capture) |
@@ -156,7 +155,7 @@ The headline takeaways:
 | settings/tab-3 | `lovable/screenshots/CBY_ADMIN /settings3.png` | `frontend/app/pages/settings.vue` (tab 3) | desktop | MISSING | Same. | 9.4 | patch (verdict provisional pending capture) |
 | settings/tab-4 | `lovable/screenshots/CBY_ADMIN /settings4.png` | `frontend/app/pages/settings.vue` (tab 4) | desktop | MISSING | Same. | 9.4 | patch (verdict provisional pending capture) |
 | settings/tab-5 | `lovable/screenshots/CBY_ADMIN /settings5.png` | `frontend/app/pages/settings.vue` (tab 5) | desktop | MISSING | Same. | 9.4 | patch (verdict provisional pending capture) |
-| settings/tab-6 | `lovable/screenshots/CBY_ADMIN /settings6.png` | `frontend/app/pages/settings.vue` (tab 6) | desktop | MISSING | Same. Note: one of these tabs is the Lovable "Demo Controls" tab — if that's the case for `tab-6`, it should be re-classified as `SKIP — demo-only`. Confirm during sign-off. | 9.4 | patch (or SKIP if demo tab) |
+| settings/tab-6 | `lovable/screenshots/CBY_ADMIN /settings6.png` | n/a — Lovable "Demo Controls" tab; no production equivalent | desktop | SKIP | Confirmed demo-only during sign-off (AC7). This tab surfaces demo-reset and mock-state editing tools that do not exist in production. No remediation work. | n/a | n/a |
 | profile/index | `lovable/screenshots/CBY_ADMIN /profile.png` | `frontend/app/pages/profile.vue` | desktop | MISSING | Story 6.5 + 7.10 shipped the profile page; Playwright never captured. | 9.4 | patch (verdict provisional pending capture) |
 | notifications/index | `lovable/screenshots/CBY_ADMIN /notifications.png` | `frontend/app/pages/notifications.vue` | desktop | MISSING | Story 5.3 shipped the page; never captured by a parity spec. | 9.4 | patch (verdict provisional pending capture) |
 | notifications/dropdown | `lovable/screenshots/CBY_ADMIN /notifications-dropdown.png` | `frontend/app/components/NotificationDropdown.vue` | desktop | MISSING | Header dropdown was shipped by 5.3 / 6.7. Never captured. | 9.4 | patch (verdict provisional pending capture) |
@@ -169,13 +168,16 @@ The headline takeaways:
 
 ## SKIP Rows — Demo-only Exclusions (AC7)
 
-These three rows are explicit demo-only exclusions per `AGENTS.md` §Prototype-Only Demo Features. They live in the matrix for AC5 coverage but get **no remediation work**.
+These rows are explicit demo-only exclusions per `AGENTS.md` §Prototype-Only Demo Features. They live in the matrix for AC5 coverage but get **no remediation work**.
 
 1. `auth/access-denied` — demo role-switcher artefact (see row above).
-2. (Lovable `RoleSwitcher` in header) — not represented by a single PNG row; SKIP applied at the layout level.
-3. (Lovable demo-reset / mock-state editing tools under `settings/`) — `settings/tab-6` is the most likely host; final classification deferred to sign-off.
+2. `settings/tab-6` — confirmed demo-only during sign-off; hosts Lovable Demo Controls / mock-state editing tools with no production equivalent.
+3. (Lovable `RoleSwitcher` in header) — not represented by a single PNG row; SKIP applied at the layout level.
 
-If sign-off confirms additional Lovable surfaces are demo-only (the inline-note overlay at `requests/detail-note`, the duplicate-invoice pill at `requests/detail-voting-duplicate-invoice`, the inline file preview at `requests/detail-view-file`), they convert from `MISSING` to `SKIP — demo-only` and drop their remediation assignment.
+Three additional rows remain pending a product call before their MISSING/SKIP classification can be finalized:
+- `requests/detail-note` — admin note overlay (Lovable-only operator surface vs. production feature?)
+- `requests/detail-voting-duplicate-invoice` — duplicate-invoice warning pill (backend mock vs. real signal?)
+- `requests/detail-view-file` — inline PDF preview vs. open-in-new-tab (product preference?)
 
 ---
 

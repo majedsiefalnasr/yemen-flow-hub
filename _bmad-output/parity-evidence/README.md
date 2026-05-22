@@ -32,22 +32,22 @@ Story 9.2 chose the **single-composite** convention for both `lovable.png` and `
 - `lovable.png` — desktop (1440×900) capture. Mobile coverage is included inline via the existing prototype's responsive rendering when available; pages that have a distinct mobile lovable shot use `lovable-mobile.png` alongside.
 - `current.png` — desktop (1440×900) capture of the live Nuxt app.
 - `current-mobile.png` — present when a distinct mobile Playwright baseline exists at `frontend/tests/screenshots/<story>/...-mobile-darwin.png`.
-- `side-by-side.png` — desktop composite only; mobile composites are generated on demand by `tools/make-side-by-side.py --include-mobile`.
+- `side-by-side.png` — desktop composite only; mobile composites can be generated on demand via `tools/build-parity-evidence.py` (see below).
 
 Story 9.5 (visual regression lock) will introduce per-area `golden/` files independently.
 
 ## Producing Side-by-Side Composites
 
-The repository does not ship ImageMagick. Use Python with Pillow (already installed in the dev environment):
+The repository does not ship ImageMagick. Use `tools/build-parity-evidence.py` (Python + Pillow, already installed in the dev environment) for both single-page and batch operations:
 
 ```bash
-python3 tools/make-side-by-side.py \
-  --lovable _bmad-output/parity-evidence/<area>/<page>/lovable.png \
-  --current _bmad-output/parity-evidence/<area>/<page>/current.png \
-  --out     _bmad-output/parity-evidence/<area>/<page>/side-by-side.png
+# Re-run for all pages (batch)
+python3 tools/build-parity-evidence.py
+
+# For a single page: edit the PAGES list to contain only the target entry, then re-run.
 ```
 
-For batch operations across an entire epic or remediation story, see `tools/build-parity-evidence.py` — which both copies source PNGs into `<area>/<page>/` and emits the composite. That script was used to materialise the initial evidence set for Story 9.2.
+`build-parity-evidence.py` copies the lovable and current source PNGs into `<area>/<page>/` and generates `side-by-side.png`. It was used to materialise the initial evidence set for Story 9.2 and is the canonical tool for 9.3/9.4 remediation passes.
 
 ## Source PNG Provenance
 
