@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
 import { useRequests } from '../../../composables/useRequests'
-import type { ImportRequest, RequestDocument, RequestStageHistory } from '../../../types/models'
+import type { ImportRequest, RequestStageHistory } from '../../../types/models'
 import RequestPrintable from '../../../components/requests/RequestPrintable.vue'
 
 definePageMeta({
@@ -11,17 +11,28 @@ definePageMeta({
 })
 
 const route = useRoute()
-const { fetchRequest, fetchRequestDocuments, fetchRequestHistory } = useRequests()
+const { fetchRequest, fetchRequestHistory } = useRequests()
 
 const rawId = route.params.id
 const id = Number(Array.isArray(rawId) ? rawId[0] : rawId)
 const hasValidId = Number.isInteger(id) && id > 0
 
 const request = ref<ImportRequest | null>(null)
-const documents = ref<RequestDocument[]>([])
 const history = ref<RequestStageHistory[]>([])
 const loading = ref(false)
 const error = ref<string | null>(null)
+let printTimer: ReturnType<typeof setTimeout> | null = null
+
+function clearPrintTimer() {
+  if (printTimer !== null) {
+    clearTimeout(printTimer)
+    printTimer = null
+  }
+}
+
+function triggerPrint() {
+  window.print()
+}
 
 async function loadData() {
   if (!hasValidId) {
@@ -31,23 +42,28 @@ async function loadData() {
 
   loading.value = true
   error.value = null
+  clearPrintTimer()
   try {
-    const [req, docs, hist] = await Promise.all([
+    const [req, hist] = await Promise.all([
       fetchRequest(id),
-      fetchRequestDocuments(id),
       fetchRequestHistory(id),
     ])
     request.value = req
-    documents.value = docs
     history.value = [...hist].sort((a, b) => a.created_at.localeCompare(b.created_at))
 
     // AC5: auto-trigger print after data finishes loading
-    setTimeout(() => {
-      window.print()
+    printTimer = setTimeout(() => {
+      printTimer = null
+      triggerPrint()
     }, 300)
   }
-  catch {
-    error.value = 'تعذّر تحميل بيانات الطلب.'
+  catch (err: unknown) {
+    const status = (err as { statusCode?: number; status?: number })?.statusCode
+      ?? (err as { statusCode?: number; status?: number })?.status
+
+    error.value = status === 403
+      ? 'ليس لديك صلاحية طباعة هذا الطلب.'
+      : 'تعذّر تحميل بيانات الطلب.'
   }
   finally {
     loading.value = false
@@ -55,6 +71,7 @@ async function loadData() {
 }
 
 onMounted(loadData)
+onBeforeUnmount(clearPrintTimer)
 </script>
 
 <template>
@@ -70,7 +87,7 @@ onMounted(loadData)
           العودة
         </NuxtLink>
         <h1 class="controls-title">معاينة طلب تمويل واردات</h1>
-        <button class="print-btn" :disabled="loading || !!error" @click="() => window.print()">
+        <button class="print-btn" :disabled="loading || !!error" @click="triggerPrint">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
             <polyline points="6 9 6 2 18 2 18 9" />
             <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
@@ -96,7 +113,7 @@ onMounted(loadData)
       <RequestPrintable
         :request="request"
         :history="history"
-        :documents="documents"
+        :documents="request.documents ?? []"
       />
     </div>
   </div>

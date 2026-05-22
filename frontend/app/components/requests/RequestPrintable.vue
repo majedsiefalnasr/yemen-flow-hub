@@ -1,9 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { ImportRequest, RequestDocument, RequestStageHistory } from '../../types/models'
-import { UserRole } from '../../types/enums'
 import { STATUS_LABELS } from '../../constants/workflow'
-import WorkflowTimeline from '../workflow/WorkflowTimeline.vue'
 import AuditTimeline from '../workflow/AuditTimeline.vue'
 
 const props = defineProps<{
@@ -36,6 +34,15 @@ function actorName(user: { name: string } | null | undefined): string {
 function statusLabel(status: string): string {
   return STATUS_LABELS[status as keyof typeof STATUS_LABELS] ?? status
 }
+
+const workflowEntries = computed(() =>
+  sortedHistory.value.map(entry => ({
+    id: entry.id,
+    statusLabel: entry.to_status ? statusLabel(entry.to_status) : '—',
+    actor: entry.performed_by?.name ?? `#${entry.actor_id}`,
+    timestamp: formatDate(entry.created_at),
+  })),
+)
 
 const fields = computed(() => [
   { label: 'العملة', value: props.request.currency },
@@ -128,7 +135,14 @@ const fields = computed(() => [
     <!-- ─── Section 5: Workflow timeline ─── -->
     <section class="printable-timeline" aria-label="مسار سير العمل">
       <h2 class="section-title">مسار سير العمل</h2>
-      <WorkflowTimeline :current-status="request.status" :history="sortedHistory" />
+      <p v-if="workflowEntries.length === 0" class="empty-state">لا توجد مراحل مسجّلة بعد.</p>
+      <ol v-else class="workflow-list">
+        <li v-for="entry in workflowEntries" :key="entry.id" class="workflow-entry">
+          <span class="workflow-entry__status">{{ entry.statusLabel }}</span>
+          <span class="workflow-entry__actor">{{ entry.actor }}</span>
+          <span class="workflow-entry__timestamp">{{ entry.timestamp }}</span>
+        </li>
+      </ol>
     </section>
 
     <div class="printable-divider" />
@@ -292,6 +306,43 @@ const fields = computed(() => [
   overflow: hidden;
 }
 
+.workflow-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.workflow-entry {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid #cccccc;
+  border-radius: 12px;
+  background: #f9fafb;
+}
+
+.workflow-entry__status {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1c222b;
+}
+
+.workflow-entry__actor {
+  font-size: 13px;
+  color: #505050;
+}
+
+.workflow-entry__timestamp {
+  font-size: 12px;
+  color: #6c757d;
+  white-space: nowrap;
+}
+
 /* ─── Print media ─── */
 @media print {
   .printable {
@@ -307,6 +358,11 @@ const fields = computed(() => [
 
   .doc-table th {
     background: #e0e0e0;
+  }
+
+  .workflow-entry {
+    background: transparent;
+    break-inside: avoid;
   }
 
   .printable-timeline,
