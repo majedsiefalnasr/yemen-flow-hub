@@ -258,6 +258,7 @@ Avoid duplicating rules already defined in the documentation files.
 - Do NOT generate fake or mock-only logic.
 - Do NOT bypass WorkflowService for state mutations.
 - Do NOT mutate workflow statuses directly.
+- Do NOT add or commit generated artifacts from `graphify-out/`, `_bmad-output/implementation-artifacts/`, or `_bmad-output/test-artifacts/`. These directories are local working artifacts only.
 - Do NOT duplicate RBAC logic.
 - Do NOT place business logic inside frontend components.
 - Do NOT use heavy or flashy UI libraries.

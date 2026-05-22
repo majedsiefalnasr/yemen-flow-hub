@@ -36,6 +36,8 @@ cd .. && git add frontend/<files> && git commit -m "feat(scope): description"
 
 All commits must stay signed. Never use `--no-gpg-sign`, `--no-sign`, or `-c commit.gpgsign=false`; if signing fails, fix signing first.
 
+Never add or commit generated artifacts from `graphify-out/`, `_bmad-output/implementation-artifacts/`, or `_bmad-output/test-artifacts/`. Keep them local only in every repo workflow.
+
 ## Skills Available
 
 Use `/bmad-*` skills for project management, PRD, architecture, and sprint planning.
@@ -67,3 +69,4 @@ Rules:
 - If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
 - Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
 - After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).
+- `graphify update .` refreshes local analysis only. Never stage or commit `graphify-out/`.

@@ -20,6 +20,7 @@ Backend and frontend also each have their own team repos. Every change to `backe
 - Docs in `docs/` override all Copilot suggestions about workflow or business logic
 - Use Context7 CLI for library documentation: `npx ctx7@latest library "<name>" "<question>"`
 - Use SocratiCode MCP for codebase exploration before suggesting changes
+- Never add or commit generated artifacts from `graphify-out/`, `_bmad-output/implementation-artifacts/`, or `_bmad-output/test-artifacts/`. Keep them local only.
 
 ## graphify
 
@@ -38,3 +39,4 @@ source files when (a) modifying/debugging specific code, (b) the graph lacks the
 (c) the graph is missing or stale.
 
 Type `/graphify` in Copilot Chat to build or update the graph.
+`/graphify` updates local analysis only. Never stage or commit `graphify-out/`.

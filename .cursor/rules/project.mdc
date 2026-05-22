@@ -21,6 +21,7 @@ Tracks everything: docs, backend, frontend.
 - Backend changes → commit from `backend/` (team repo) then from root (monorepo)
 - Frontend changes → commit from `frontend/` (team repo) then from root (monorepo)
 - Commit format: `type(scope): description`
+- Never add or commit generated artifacts from `graphify-out/`, `_bmad-output/implementation-artifacts/`, or `_bmad-output/test-artifacts/`. Keep them local only.
 
 ## Docs Are Law
 Documentation in `docs/` overrides all AI assumptions.

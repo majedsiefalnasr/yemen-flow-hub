@@ -84,6 +84,7 @@ git commit -m "feat(voting): ..."
 - Keep commit messages identical between the team repo and the root monorepo for the same change
 - All commits must remain signed. Do NOT use `--no-gpg-sign`, `--no-sign`, or `-c commit.gpgsign=false` as a workaround.
 - If signing fails, stop and fix the Git signing setup instead of creating an unsigned commit.
+- Never add or commit generated artifacts from `graphify-out/`, `_bmad-output/implementation-artifacts/`, or `_bmad-output/test-artifacts/` in any repo. Keep them local only, even when they change during agent workflows.
 
 ---
 
@@ -293,3 +294,4 @@ Rules:
 - If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
 - Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
 - After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).
+- `graphify update .` is for local refresh only. Never stage or commit `graphify-out/` output.
