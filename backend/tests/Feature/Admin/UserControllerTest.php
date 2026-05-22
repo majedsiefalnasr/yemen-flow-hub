@@ -59,6 +59,39 @@ class UserControllerTest extends TestCase
             ->assertJsonStructure(['data' => [['id', 'name', 'email', 'role']]]);
     }
 
+    public function test_index_honors_role_and_per_page_filters(): void
+    {
+        $admin = $this->makeCbyAdmin();
+        $bank = $this->makeBank();
+
+        User::query()->create([
+            'name' => 'Data Entry',
+            'email' => 'entry@bank.com',
+            'password' => Hash::make('password'),
+            'role' => UserRole::DATA_ENTRY->value,
+            'bank_id' => $bank->id,
+            'is_active' => true,
+        ]);
+
+        for ($i = 1; $i <= 3; $i++) {
+            User::query()->create([
+                'name' => "Reviewer {$i}",
+                'email' => "reviewer{$i}@bank.com",
+                'password' => Hash::make('password'),
+                'role' => UserRole::BANK_REVIEWER->value,
+                'bank_id' => $bank->id,
+                'is_active' => true,
+            ]);
+        }
+
+        $response = $this->actingAs($admin)->getJson('/api/users?role=BANK_REVIEWER&per_page=2');
+
+        $response->assertOk()
+            ->assertJsonCount(2, 'data')
+            ->assertJsonPath('data.0.role', UserRole::BANK_REVIEWER->value)
+            ->assertJsonPath('data.1.role', UserRole::BANK_REVIEWER->value);
+    }
+
     public function test_index_returns_403_for_bank_reviewer(): void
     {
         $bank = $this->makeBank();

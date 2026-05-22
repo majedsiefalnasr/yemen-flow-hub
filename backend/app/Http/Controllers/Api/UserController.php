@@ -29,6 +29,7 @@ class UserController extends Controller
     {
         $this->authorize('viewAny', User::class);
         $actor = request()->user();
+        $perPage = max(1, min(request()->integer('per_page', 20), 200));
 
         $users = User::query()
             ->with('bank')
@@ -44,7 +45,7 @@ class UserController extends Controller
             )
             ->when(request()->has('is_active'), fn ($q) => $q->where('is_active', filter_var(request('is_active'), FILTER_VALIDATE_BOOL)))
             ->latest('id')
-            ->paginate(20);
+            ->paginate($perPage);
 
         return ApiResponse::success(UserResource::collection($users), 'Users retrieved.');
     }
