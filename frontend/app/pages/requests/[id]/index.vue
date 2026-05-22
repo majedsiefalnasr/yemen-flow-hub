@@ -595,6 +595,20 @@ async function handleCloneConfirm() {
           </p>
         </div>
         <div class="page-header__actions">
+          <!-- AC5: Print button navigates to /requests/{id}/print -->
+          <NuxtLink
+            :to="`/requests/${id}/print`"
+            class="print-btn"
+            data-testid="print-request-btn"
+            aria-label="طباعة الطلب"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <polyline points="6 9 6 2 18 2 18 9" />
+              <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+              <rect x="6" y="14" width="12" height="8" />
+            </svg>
+            طباعة
+          </NuxtLink>
           <button
             v-if="showCloneButton"
             class="clone-btn"
@@ -1135,6 +1149,28 @@ async function handleCloneConfirm() {
 
 .subtitle-dot {
   color: #cccccc;
+}
+
+.print-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 14px;
+  border: 1px solid #cccccc;
+  border-radius: 16px;
+  background: #ffffff;
+  color: #1c222b;
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.print-btn:hover {
+  border-color: #0066cc;
+  color: #0066cc;
 }
 
 .download-btn {

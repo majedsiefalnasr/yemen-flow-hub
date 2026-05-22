@@ -41,6 +41,8 @@ import {
   Save,
   KeyRound,
   Mail,
+  // New icons for 8.8
+  Printer,
 } from 'lucide-vue-next'
 
 export const ICONS = {
@@ -85,6 +87,7 @@ export const ICONS = {
   save: Save,
   'key-round': KeyRound,
   mail: Mail,
+  printer: Printer,
 } as const satisfies Record<string, Component>
 
 export type IconName = keyof typeof ICONS
