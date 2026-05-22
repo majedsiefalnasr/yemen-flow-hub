@@ -950,7 +950,7 @@ onUnmounted(() => {
 .table-head-row { background: #f8f9fa; }
 
 .th {
-  padding: 12px 16px;
+  padding: 10px 16px;
   font-size: 12px;
   font-weight: 500;
   color: var(--color-text-secondary, #6c757d);
@@ -978,7 +978,7 @@ onUnmounted(() => {
 .table-row:hover { background: #f8f9fa; }
 
 .td {
-  padding: 10px 16px;
+  padding: 8px 16px;
   font-size: 14px;
   color: var(--color-text-primary, #1c222b);
   vertical-align: top;

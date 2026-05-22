@@ -1,3 +1,4 @@
+// @parity-exempt — dashboard sub-component; parity evidence captured at dashboards/executive page level
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
@@ -48,8 +49,8 @@ onMounted(() => { store.loadStats() })
 
     <template v-else-if="stats">
 
-      <!-- KPI grid — 3 cards for both EXECUTIVE_MEMBER and COMMITTEE_DIRECTOR -->
-      <div class="kpi-grid">
+      <!-- KPI grid — 3 cards for EXECUTIVE_MEMBER, 4 for COMMITTEE_DIRECTOR -->
+      <div class="kpi-grid" :class="{ 'kpi-grid--4': isDirector }">
         <!-- قرارات رفض -->
         <div class="kpi-card kpi-card--red">
           <div class="kpi-card__icon kpi-icon--red" aria-hidden="true">
@@ -81,6 +82,17 @@ onMounted(() => { store.loadStats() })
           </div>
           <span class="kpi-card__value">{{ stats.active_voting_sessions }}</span>
           <span class="kpi-card__label">طابور التصويت</span>
+        </div>
+
+        <!-- D6: Director override count (amber) — COMMITTEE_DIRECTOR only -->
+        <div v-if="isDirector" class="kpi-card kpi-card--amber">
+          <div class="kpi-card__icon kpi-icon--amber" aria-hidden="true">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+            </svg>
+          </div>
+          <span class="kpi-card__value">{{ (stats as any).director_override_count ?? 0 }}</span>
+          <span class="kpi-card__label">تجاوزات المدير</span>
         </div>
       </div>
 
@@ -203,6 +215,8 @@ onMounted(() => { store.loadStats() })
 
 /* KPI */
 .kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.kpi-grid--4 { grid-template-columns: repeat(4, 1fr); }
+@media (max-width: 1100px) { .kpi-grid--4 { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 900px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 600px) { .kpi-grid { grid-template-columns: 1fr; } }
 
@@ -212,11 +226,13 @@ onMounted(() => { store.loadStats() })
 .kpi-icon--red    { background: #fde8e8; color: #c62828; }
 .kpi-icon--green  { background: #e8f5e9; color: #1b5e20; }
 .kpi-icon--indigo { background: #ede7f6; color: #5856d6; }
+.kpi-icon--amber  { background: #fff8e1; color: #f57f17; }
 
 .kpi-card__value { font-size: 28px; font-weight: 600; color: #1c222b; line-height: 1; }
 .kpi-card--red .kpi-card__value    { color: #c62828; }
 .kpi-card--green .kpi-card__value  { color: #1b5e20; }
 .kpi-card--indigo .kpi-card__value { color: #5856d6; }
+.kpi-card--amber .kpi-card__value  { color: #f57f17; }
 .kpi-card__label { font-size: 13px; color: #6c757d; }
 
 /* Skeleton */
@@ -239,8 +255,9 @@ onMounted(() => { store.loadStats() })
 @media (max-width: 600px) { .quick-actions { grid-template-columns: 1fr; } }
 .qa-card { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 16px 20px; background: #ffffff; border: 1px solid #cccccc; border-radius: 12px; cursor: pointer; text-align: right; transition: border-color 0.15s; }
 .qa-card:hover { border-color: #0066cc; }
-.qa-card--primary { background: #0066cc; border-color: #0066cc; }
-.qa-card--primary:hover { background: #0052a3; }
+/* D5: voting CTA uses voting indigo, not primary blue */
+.qa-card--primary { background: #5856d6; border-color: #5856d6; }
+.qa-card--primary:hover { background: #4b4ac0; }
 .qa-card--primary .qa-card__label { color: #ffffff; }
 .qa-card--primary .qa-card__sub { color: rgba(255,255,255,0.75); }
 .qa-card--primary .qa-card__icon { color: #ffffff; }

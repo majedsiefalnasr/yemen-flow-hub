@@ -1,3 +1,4 @@
+// @parity-exempt — voting sub-component; parity evidence captured at requests/detail-voting page level
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useVotingStore } from '../../stores/voting.store'
@@ -582,18 +583,19 @@ onMounted(async () => {
   border: 1px dashed #d2d2d7;
 }
 
-/* Tie-break notice */
+/* Tie-break notice — heavier amber emphasis per parity matrix */
 .tiebreak-notice {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 12px 16px;
-  background: #fff9f0;
-  border: 1px solid #f5d78a;
+  padding: 14px 16px;
+  background: #fff8e1;
+  border: 1.5px solid #f57f17;
+  border-inline-start: 4px solid #f57f17;
   border-radius: 10px;
   font-size: 14px;
-  font-weight: 500;
-  color: #a05a00;
+  font-weight: 600;
+  color: #7c4a00;
 }
 
 .empty-votes {

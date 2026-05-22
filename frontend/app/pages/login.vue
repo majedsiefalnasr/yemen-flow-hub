@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick, ref, computed } from 'vue'
+import { nextTick, ref, computed, watch, onBeforeUnmount } from 'vue'
 import { useForm } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/zod'
 import { z } from 'zod'
@@ -116,6 +116,32 @@ function backToLogin() {
   pendingEmail.value = ''
   pendingChallengeId.value = ''
 }
+
+const OTP_TTL = 300
+const otpSecondsLeft = ref(OTP_TTL)
+let otpTimerHandle: ReturnType<typeof setInterval> | null = null
+
+function startOtpTimer() {
+  otpSecondsLeft.value = OTP_TTL
+  clearOtpTimer()
+  otpTimerHandle = setInterval(() => {
+    if (otpSecondsLeft.value > 0) otpSecondsLeft.value--
+    else clearOtpTimer()
+  }, 1000)
+}
+
+function clearOtpTimer() {
+  if (otpTimerHandle !== null) { clearInterval(otpTimerHandle); otpTimerHandle = null }
+}
+
+const otpTimerDisplay = computed(() => {
+  const m = Math.floor(otpSecondsLeft.value / 60).toString().padStart(2, '0')
+  const s = (otpSecondsLeft.value % 60).toString().padStart(2, '0')
+  return `${m}:${s}`
+})
+
+watch(otpStep, (val) => { if (val) startOtpTimer(); else clearOtpTimer() })
+onBeforeUnmount(clearOtpTimer)
 </script>
 
 <template>
@@ -172,6 +198,12 @@ function backToLogin() {
           <div class="otp-cells" @paste.prevent="onOtpPaste">
             <input v-for="(_, i) in otpCells" :key="i" :ref="(el) => { if (el) otpCellRefs[i] = el as HTMLInputElement }" v-model="otpCells[i]" type="text" inputmode="numeric" maxlength="1" class="otp-cell" :class="{ 'otp-cell--error': otpError }" autocomplete="one-time-code" @keydown="onOtpKeydown(i, $event)">
           </div>
+          <div class="otp-timer" :class="{ 'otp-timer--expiring': otpSecondsLeft <= 60 }" aria-live="polite">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
+            </svg>
+            <span>{{ otpSecondsLeft > 0 ? `الرمز صالح لمدة ${otpTimerDisplay}` : 'انتهت صلاحية الرمز' }}</span>
+          </div>
           <div class="otp-role-card">
             <Icon name="lock" />
             <span>سيتم تسجيل دخولك بصلاحيات: <strong>{{ otpRoleLabel || 'مستخدم النظام' }}</strong></span>
@@ -218,6 +250,8 @@ function backToLogin() {
 .otp-cell { width: 48px; height: 56px; border: 2px solid #cccccc; border-radius: 12px; font-size: 24px; font-weight: 600; text-align: center; color: #1c222b; background-color: #fff; transition: border-color 120ms ease; outline: none; caret-color: transparent; }
 .otp-cell:focus { border-color: #0066cc; }
 .otp-cell--error { border-color: #c62828; }
+.otp-timer { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #6c757d; margin-bottom: 12px; justify-content: center; }
+.otp-timer--expiring { color: #c62828; font-weight: 500; }
 .otp-role-card { display: flex; align-items: center; gap: 8px; border: 1px dashed #cccccc; border-radius: 12px; padding: 12px; background: color-mix(in srgb, var(--color-muted, #f5f5f7) 40%, #fff); font-size: 13px; margin-bottom: 12px; }
 .back-link { display: block; width: 100%; margin-top: 12px; padding: 10px; background: none; border: none; color: #0066cc; font-size: 14px; text-align: center; cursor: pointer; text-decoration: underline; }
 @media (max-width: 1023px) { .login-page { grid-template-columns: 1fr; } .login-hero { display: none; } .login-form-col { padding: 24px 16px; } }

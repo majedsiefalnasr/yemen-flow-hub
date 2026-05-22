@@ -1,3 +1,4 @@
+// @parity-exempt — dashboard sub-component; parity evidence captured at dashboards/bank-reviewer page level
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'

@@ -918,6 +918,10 @@ async function handleCloneConfirm() {
                     <dt class="detail-label">أعاد التقديم</dt>
                     <dd class="detail-value">{{ actorLabel(request.resubmitted_by_user, request.resubmitted_by) }}</dd>
                   </div>
+                  <div v-if="request.customs_declaration?.issuer" class="detail-row detail-row--customs">
+                    <dt class="detail-label">مكتب الجمارك (مُصدِر البيان)</dt>
+                    <dd class="detail-value">{{ request.customs_declaration.issuer.name }}</dd>
+                  </div>
                 </dl>
               </div>
 
@@ -1431,6 +1435,11 @@ async function handleCloneConfirm() {
   border-bottom: none;
 }
 
+.detail-row--customs {
+  border-inline-start: 2px solid #6c757d;
+  padding-inline-start: 10px;
+}
+
 .detail-label {
   font-size: 11px;
   color: #6c757d;
@@ -1584,8 +1593,8 @@ async function handleCloneConfirm() {
   width: 28px;
   height: 28px;
   border-radius: 8px;
-  background: #f5f5f7;
-  color: #6c757d;
+  background: #e8f0fb;
+  color: #0066cc;
   flex-shrink: 0;
   margin-top: 1px;
 }
