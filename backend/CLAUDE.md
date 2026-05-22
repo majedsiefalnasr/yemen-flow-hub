@@ -25,6 +25,7 @@ git commit -m "feat(workflow): add support claim heartbeat endpoint"
 
 Conventional commit format: `type(scope): description`
 All commits must stay signed. Never use `--no-gpg-sign`, `--no-sign`, or `-c commit.gpgsign=false`; if signing fails, fix signing first.
+Never add or commit generated artifacts from `graphify-out/`, `_bmad-output/implementation-artifacts/`, or `_bmad-output/test-artifacts/`. Keep them local only.
 
 Examples:
 - `feat(workflow): add support claim heartbeat endpoint`

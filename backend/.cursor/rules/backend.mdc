@@ -14,6 +14,7 @@ Backend code lives in two repos. After every change, commit to both:
 2. Root `/` → `git@github.com:majedsiefalnasr/yemen-flow-hub.git` (monorepo, `git add backend/<files>`)
 
 Commit format: `type(scope): description`
+Never add or commit generated artifacts from `graphify-out/`, `_bmad-output/implementation-artifacts/`, or `_bmad-output/test-artifacts/`. Keep them local only.
 
 ## Stack
 PHP 8.2+, Laravel 11, Sanctum, MySQL, Redis

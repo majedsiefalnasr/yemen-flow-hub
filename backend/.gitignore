@@ -21,3 +21,5 @@ auth.json
 npm-debug.log
 yarn-error.log
 graphify-out/
+_bmad-output/implementation-artifacts/
+_bmad-output/test-artifacts/
