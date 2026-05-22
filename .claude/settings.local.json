@@ -12,6 +12,7 @@
       "mcp__plugin_socraticode_socraticode__codebase_impact",
       "mcp__plugin_socraticode_socraticode__codebase_flow",
       "mcp__plugin_socraticode_socraticode__codebase_update",
+      "mcp__plugin_socraticode_socraticode__codebase_status",
       "Bash(rtk ls *)",
       "Bash(rtk read *)",
       "Bash(rtk grep *)",
@@ -33,17 +34,12 @@
       "Bash(rtk git *)",
       "Bash(rtk npx *)",
       "Bash(rtk wc *)",
-      "Bash(mcp__plugin_socraticode_socraticode__codebase_status)",
-      "Bash(/usr/bin/find /Users/majedsiefalnasr/Documents/Work/Ultimate-Solutions-EGY/yemen-flow-hub/code/lovable/app -type f -name \"*.vue\")",
-      "Bash(/usr/bin/find /Users/majedsiefalnasr/Documents/Work/Ultimate-Solutions-EGY/yemen-flow-hub/code/lovable -maxdepth 3 -type d)",
-      "Bash(/bin/ls -la /Users/majedsiefalnasr/Documents/Work/Ultimate-Solutions-EGY/yemen-flow-hub/code/)",
-      "Bash(/bin/ls -d /Users/majedsiefalnasr/Documents/Work/Ultimate-Solutions-EGY/yemen-flow-hub/code/lovable)",
-      "Bash(/bin/ls /Users/majedsiefalnasr/Documents/Work/Ultimate-Solutions-EGY/yemen-flow-hub/code/frontend/app/pages/bank/)",
-      "Bash(/bin/cat /Users/majedsiefalnasr/Documents/Work/Ultimate-Solutions-EGY/yemen-flow-hub/code/lovable/app/components/layout/AppShell.vue)",
-      "Bash(/usr/bin/head -80)",
       "Bash(/usr/bin/wc *)",
       "Bash(/bin/ls *)",
-      "Bash(git stash *)"
+      "Bash(git stash *)",
+      "Bash(git -C *)",
+      "Bash(dev-browser *)",
+      "Bash(npx dev-browser *)"
     ]
   }
 }

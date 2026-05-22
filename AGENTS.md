@@ -184,6 +184,18 @@ CBY_ADMIN
 
 ## AI Tool Usage
 
+### dev-browser (Browser Automation)
+Use [dev-browser](https://github.com/SawyerHood/dev-browser) whenever browser interaction is needed — UI verification, screenshot capture, navigating the running app, or testing frontend flows. Prefer it over manual curl or fetch for anything that requires a real browser context.
+
+```bash
+# Launch or connect to the dev-browser MCP server as configured in the project
+# Then use its tools: navigate, screenshot, click, fill, evaluate, etc.
+```
+
+All AI tools (Claude Code, Cursor, Codex, GitHub Copilot) must use dev-browser when browser access is required. Do not skip browser verification for UI-facing stories.
+
+---
+
 ### Context7 CLI
 Use `ctx7` to fetch current library documentation before writing implementation code.
 
