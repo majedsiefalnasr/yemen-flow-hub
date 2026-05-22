@@ -14,6 +14,7 @@ Frontend code lives in two repos. After every change, commit to both:
 2. Root `/` → `git@github.com:majedsiefalnasr/yemen-flow-hub.git` (monorepo, `git add frontend/<files>`)
 
 Commit format: `type(scope): description`
+Never add or commit generated artifacts from `graphify-out/`, `_bmad-output/implementation-artifacts/`, or `_bmad-output/test-artifacts/`. Keep them local only.
 
 ## Stack
 Nuxt 4, Vue 4, TypeScript, Tailwind CSS v4, shadcn-vue, Pinia, VeeValidate, Zod

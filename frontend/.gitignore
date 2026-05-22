@@ -25,3 +25,5 @@ node_modules/
 
 # Generated files
 graphify-out/
+_bmad-output/implementation-artifacts/
+_bmad-output/test-artifacts/
