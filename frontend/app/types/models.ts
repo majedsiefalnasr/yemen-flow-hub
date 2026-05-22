@@ -141,14 +141,14 @@ export interface ImportRequest {
 }
 
 export interface DuplicateWarning {
-  id: number
-  reference_number: string
-  bank_id: number
   bank_name: string | null
-  amount: number
-  currency: string
-  created_at: string
-  status: string
+  id?: number
+  reference_number?: string
+  bank_id?: number
+  amount?: number
+  currency?: string
+  created_at?: string
+  status?: string
 }
 
 export interface CustomsDeclarationSummary {

@@ -108,19 +108,14 @@ describe('Story 8.6 — AC7: role-aware fields in duplicate_warnings', () => {
     expect(warning.currency).toBe('USD')
   })
 
-  it('BANK_REVIEWER warning has bank_name but amount is still present (filtered by backend)', () => {
-    // Backend returns only {bank_name} for bank roles — we verify the type allows it
+  it('BANK_REVIEWER warning type allows the restricted backend payload', () => {
+    // Backend returns only bank names for bank roles; the frontend type must allow that.
     const restrictedWarning: DuplicateWarning = {
-      id: 99,
-      reference_number: '',
-      bank_id: 2,
       bank_name: 'بنك سبأ',
-      amount: 0,
-      currency: '',
-      created_at: '',
-      status: '',
     }
     expect(restrictedWarning.bank_name).toBe('بنك سبأ')
+    expect(restrictedWarning.reference_number).toBeUndefined()
+    expect(restrictedWarning.amount).toBeUndefined()
   })
 })
 

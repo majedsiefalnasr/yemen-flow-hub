@@ -163,6 +163,16 @@ const FULL_DUPLICATE_ROLES = new Set([UserRole.CBY_ADMIN, UserRole.SUPPORT_COMMI
 const BANK_DUPLICATE_ROLES = new Set([UserRole.BANK_REVIEWER, UserRole.BANK_ADMIN])
 
 const duplicateWarnings = computed(() => request.value?.duplicate_warnings ?? [])
+const duplicateWidgetExpanded = ref(true)
+const duplicateBankNames = computed(() =>
+  Array.from(
+    new Set(
+      duplicateWarnings.value
+        .map(warning => warning.bank_name)
+        .filter((name): name is string => Boolean(name)),
+    ),
+  ),
+)
 
 const showDuplicateWidget = computed(() =>
   duplicateWarnings.value.length > 0
@@ -655,10 +665,21 @@ async function handleCloneConfirm() {
           <!-- Duplicate invoice warning widget (AC7) -->
           <div v-if="showDuplicateWidget" class="dup-widget" data-testid="dup-widget">
             <div class="dup-widget-header">
-              <span class="dup-badge" data-testid="dup-badge">مكرر</span>
-              <span class="dup-widget-title">فواتير مكررة ({{ duplicateWarnings.length }})</span>
+              <div class="dup-widget-heading">
+                <span class="dup-badge" data-testid="dup-badge">مكرر</span>
+                <span class="dup-widget-title">فواتير مكررة ({{ duplicateWarnings.length }})</span>
+              </div>
+              <button
+                type="button"
+                class="dup-widget-toggle"
+                :aria-expanded="duplicateWidgetExpanded"
+                data-testid="dup-widget-toggle"
+                @click="duplicateWidgetExpanded = !duplicateWidgetExpanded"
+              >
+                {{ duplicateWidgetExpanded ? 'إخفاء التفاصيل' : 'إظهار التفاصيل' }}
+              </button>
             </div>
-            <div class="dup-widget-body" data-testid="dup-widget-body">
+            <div v-if="duplicateWidgetExpanded" class="dup-widget-body" data-testid="dup-widget-body">
               <!-- Full view: CBY_ADMIN and SUPPORT_COMMITTEE -->
               <template v-if="duplicateWidgetFull">
                 <table class="data-table dup-widget-table">
@@ -674,15 +695,16 @@ async function handleCloneConfirm() {
                   <tbody>
                     <tr v-for="warn in duplicateWarnings" :key="warn.id">
                       <td>
-                        <NuxtLink :to="`/requests/${warn.id}`" style="color: #0066cc;" class="font-mono text-xs">
-                          {{ warn.reference_number }}
+                        <NuxtLink v-if="warn.id" :to="`/requests/${warn.id}`" style="color: #0066cc;" class="font-mono text-xs">
+                          {{ warn.reference_number ?? '—' }}
                         </NuxtLink>
+                        <span v-else class="font-mono text-xs">{{ warn.reference_number ?? '—' }}</span>
                       </td>
                       <td class="text-sm">{{ warn.bank_name ?? '—' }}</td>
-                      <td class="text-sm font-mono">{{ warn.amount.toLocaleString('ar') }}</td>
-                      <td class="text-sm">{{ warn.currency }}</td>
+                      <td class="text-sm font-mono">{{ warn.amount?.toLocaleString('ar') ?? '—' }}</td>
+                      <td class="text-sm">{{ warn.currency ?? '—' }}</td>
                       <td class="text-xs" style="color: #6c757d;">
-                        {{ new Date(warn.created_at).toLocaleDateString('ar-YE') }}
+                        {{ warn.created_at ? new Date(warn.created_at).toLocaleDateString('ar-YE') : '—' }}
                       </td>
                     </tr>
                   </tbody>
@@ -691,7 +713,7 @@ async function handleCloneConfirm() {
               <!-- Restricted view: BANK_REVIEWER / BANK_ADMIN — count + bank names only -->
               <template v-else>
                 <p class="dup-widget-summary" data-testid="dup-bank-summary">
-                  مكرر مع: {{ duplicateWarnings.map(w => w.bank_name).filter(Boolean).join('، ') }}
+                  مكرر مع: {{ duplicateBankNames.join('، ') }}
                 </p>
               </template>
             </div>
@@ -1217,10 +1239,17 @@ async function handleCloneConfirm() {
 .dup-widget-header {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 10px;
   padding: 10px 16px;
   background: #fff8e1;
   border-bottom: 1px solid #f57f1733;
+}
+
+.dup-widget-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .dup-badge {
@@ -1236,6 +1265,16 @@ async function handleCloneConfirm() {
   font-size: 13px;
   font-weight: 600;
   color: #7c5700;
+}
+
+.dup-widget-toggle {
+  border: none;
+  background: none;
+  color: #7c5700;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 0;
 }
 
 .dup-widget-body {
