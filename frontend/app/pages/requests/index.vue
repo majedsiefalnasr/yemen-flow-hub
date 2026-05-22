@@ -149,11 +149,11 @@ function hydrateFromUrl() {
   if (q.bank_id) selectedBankId.value = Number(q.bank_id)
   if (q.currency) selectedCurrency.value = String(q.currency)
   if (q.bucket) selectedBucket.value = String(q.bucket)
-  if (q.from_date) selectedFromDate.value = String(q.from_date)
-  if (q.to_date) selectedToDate.value = String(q.to_date)
+  if (q.created_from ?? q.from_date) selectedFromDate.value = String(q.created_from ?? q.from_date)
+  if (q.created_to ?? q.to_date) selectedToDate.value = String(q.created_to ?? q.to_date)
   if (q.amount_min !== undefined && q.amount_min !== '') selectedAmountMin.value = Number(q.amount_min)
   if (q.amount_max !== undefined && q.amount_max !== '') selectedAmountMax.value = Number(q.amount_max)
-  if (q.reviewer_id) selectedReviewerId.value = Number(q.reviewer_id)
+  if (q.assigned_reviewer_id ?? q.reviewer_id) selectedReviewerId.value = Number(q.assigned_reviewer_id ?? q.reviewer_id)
   if (hasAdvancedFilters.value) showAdvancedFilters.value = true
 }
 
@@ -163,11 +163,11 @@ function pushUrl() {
   if (selectedBankId.value !== '') query.bank_id = String(selectedBankId.value)
   if (selectedCurrency.value) query.currency = selectedCurrency.value
   if (selectedBucket.value && selectedBucket.value !== 'all') query.bucket = selectedBucket.value
-  if (selectedFromDate.value) query.from_date = selectedFromDate.value
-  if (selectedToDate.value) query.to_date = selectedToDate.value
+  if (selectedFromDate.value) query.created_from = selectedFromDate.value
+  if (selectedToDate.value) query.created_to = selectedToDate.value
   if (selectedAmountMin.value !== '') query.amount_min = String(selectedAmountMin.value)
   if (selectedAmountMax.value !== '') query.amount_max = String(selectedAmountMax.value)
-  if (selectedReviewerId.value !== '') query.reviewer_id = String(selectedReviewerId.value)
+  if (selectedReviewerId.value !== '') query.assigned_reviewer_id = String(selectedReviewerId.value)
   void router.replace({ query })
 }
 
@@ -213,8 +213,11 @@ async function loadReviewerOptions() {
   loadingReviewers.value = true
 
   try {
-    const all = await fetchUsers()
-    reviewers.value = all.filter(u => u.role === UserRole.BANK_REVIEWER)
+    reviewers.value = await fetchUsers({
+      role: UserRole.BANK_REVIEWER,
+      is_active: true,
+      per_page: 100,
+    })
   }
   catch (err) {
     if (import.meta.dev) {

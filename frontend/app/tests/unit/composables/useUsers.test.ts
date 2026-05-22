@@ -44,6 +44,20 @@ describe('useUsers', () => {
       const { fetchUsers } = useUsers()
       await expect(fetchUsers()).rejects.toThrow('Network error')
     })
+
+    it('appends supported query params when provided', async () => {
+      mockGet.mockResolvedValueOnce({ success: true, message: 'OK', data: [USER_FIXTURE] })
+      const { fetchUsers } = useUsers()
+
+      await fetchUsers({
+        role: UserRole.BANK_REVIEWER,
+        bank_id: 7,
+        is_active: true,
+        per_page: 100,
+      })
+
+      expect(mockGet).toHaveBeenCalledWith('/api/users?role=BANK_REVIEWER&bank_id=7&is_active=true&per_page=100')
+    })
   })
 
   describe('createUser()', () => {

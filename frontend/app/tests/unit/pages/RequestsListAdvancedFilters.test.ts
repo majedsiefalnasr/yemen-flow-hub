@@ -68,11 +68,11 @@ function hydrateFromQuery(query: Record<string, string>): FilterState {
   if (query.bank_id) state.selectedBankId = Number(query.bank_id)
   if (query.currency) state.selectedCurrency = query.currency
   if (query.bucket) state.selectedBucket = query.bucket
-  if (query.from_date) state.selectedFromDate = query.from_date
-  if (query.to_date) state.selectedToDate = query.to_date
+  if (query.created_from ?? query.from_date) state.selectedFromDate = query.created_from ?? query.from_date
+  if (query.created_to ?? query.to_date) state.selectedToDate = query.created_to ?? query.to_date
   if (query.amount_min !== undefined && query.amount_min !== '') state.selectedAmountMin = Number(query.amount_min)
   if (query.amount_max !== undefined && query.amount_max !== '') state.selectedAmountMax = Number(query.amount_max)
-  if (query.reviewer_id) state.selectedReviewerId = Number(query.reviewer_id)
+  if (query.assigned_reviewer_id ?? query.reviewer_id) state.selectedReviewerId = Number(query.assigned_reviewer_id ?? query.reviewer_id)
   return state
 }
 
@@ -82,11 +82,11 @@ function buildQuery(state: FilterState): Record<string, string> {
   if (state.selectedBankId !== '') query.bank_id = String(state.selectedBankId)
   if (state.selectedCurrency) query.currency = state.selectedCurrency
   if (state.selectedBucket && state.selectedBucket !== 'all') query.bucket = state.selectedBucket
-  if (state.selectedFromDate) query.from_date = state.selectedFromDate
-  if (state.selectedToDate) query.to_date = state.selectedToDate
+  if (state.selectedFromDate) query.created_from = state.selectedFromDate
+  if (state.selectedToDate) query.created_to = state.selectedToDate
   if (state.selectedAmountMin !== '') query.amount_min = String(state.selectedAmountMin)
   if (state.selectedAmountMax !== '') query.amount_max = String(state.selectedAmountMax)
-  if (state.selectedReviewerId !== '') query.reviewer_id = String(state.selectedReviewerId)
+  if (state.selectedReviewerId !== '') query.assigned_reviewer_id = String(state.selectedReviewerId)
   return query
 }
 
@@ -135,11 +135,11 @@ describe('Story 8.9 — hasAdvancedFilters', () => {
     expect(hasAdvancedFilters(empty)).toBe(false)
   })
 
-  it('returns true when from_date is set', () => {
+  it('returns true when created_from is set', () => {
     expect(hasAdvancedFilters({ ...empty, selectedFromDate: '2026-01-01' })).toBe(true)
   })
 
-  it('returns true when to_date is set', () => {
+  it('returns true when created_to is set', () => {
     expect(hasAdvancedFilters({ ...empty, selectedToDate: '2026-12-31' })).toBe(true)
   })
 
@@ -151,7 +151,7 @@ describe('Story 8.9 — hasAdvancedFilters', () => {
     expect(hasAdvancedFilters({ ...empty, selectedAmountMax: 99999 })).toBe(true)
   })
 
-  it('returns true when reviewer_id is set', () => {
+  it('returns true when assigned_reviewer_id is set', () => {
     expect(hasAdvancedFilters({ ...empty, selectedReviewerId: 7 })).toBe(true)
   })
 })
@@ -167,18 +167,18 @@ describe('Story 8.9 — URL persistence: hydrateFromQuery', () => {
     expect(state.selectedAmountMax).toBe(50000)
   })
 
-  it('restores reviewer_id from URL', () => {
-    const state = hydrateFromQuery({ reviewer_id: '42' })
+  it('restores assigned_reviewer_id from URL', () => {
+    const state = hydrateFromQuery({ assigned_reviewer_id: '42' })
     expect(state.selectedReviewerId).toBe(42)
   })
 
   it('restores full advanced filter state from URL', () => {
     const state = hydrateFromQuery({
-      from_date: '2026-01-01',
-      to_date: '2026-12-31',
+      created_from: '2026-01-01',
+      created_to: '2026-12-31',
       amount_min: '1000',
       amount_max: '50000',
-      reviewer_id: '7',
+      assigned_reviewer_id: '7',
     })
     expect(state.selectedFromDate).toBe('2026-01-01')
     expect(state.selectedToDate).toBe('2026-12-31')
@@ -195,6 +195,17 @@ describe('Story 8.9 — URL persistence: hydrateFromQuery', () => {
   it('ignores empty amount_min string in URL', () => {
     const state = hydrateFromQuery({ amount_min: '' })
     expect(state.selectedAmountMin).toBe('')
+  })
+
+  it('still hydrates legacy query aliases for backward compatibility', () => {
+    const state = hydrateFromQuery({
+      from_date: '2026-02-01',
+      to_date: '2026-02-28',
+      reviewer_id: '8',
+    })
+    expect(state.selectedFromDate).toBe('2026-02-01')
+    expect(state.selectedToDate).toBe('2026-02-28')
+    expect(state.selectedReviewerId).toBe(8)
   })
 })
 
@@ -221,9 +232,9 @@ describe('Story 8.9 — URL persistence: buildQuery', () => {
     expect(q.amount_max).toBe('50000')
   })
 
-  it('serializes reviewer_id into URL', () => {
+  it('serializes assigned_reviewer_id into URL', () => {
     const q = buildQuery({ ...emptyState, selectedReviewerId: 7 })
-    expect(q.reviewer_id).toBe('7')
+    expect(q.assigned_reviewer_id).toBe('7')
   })
 
   it('omits amount_min when empty', () => {
@@ -231,9 +242,9 @@ describe('Story 8.9 — URL persistence: buildQuery', () => {
     expect(q.amount_min).toBeUndefined()
   })
 
-  it('omits reviewer_id when empty', () => {
+  it('omits assigned_reviewer_id when empty', () => {
     const q = buildQuery({ ...emptyState, selectedReviewerId: '' })
-    expect(q.reviewer_id).toBeUndefined()
+    expect(q.assigned_reviewer_id).toBeUndefined()
   })
 
   it('omits bucket when value is "all"', () => {
