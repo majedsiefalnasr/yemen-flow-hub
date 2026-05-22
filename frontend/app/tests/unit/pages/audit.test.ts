@@ -167,3 +167,129 @@ describe('riskIconColor helper', () => {
     expect(riskIconColor('منخفضة')).toBe('#32ade6')
   })
 })
+
+// ─── Row expansion helpers ────────────────────────────────────────────────────
+
+function truncateUa(ua: string | null | undefined, max = 80): string {
+  if (!ua) return '—'
+  return ua.length > max ? ua.slice(0, max) + '…' : ua
+}
+
+type AuditLogMeta = { before?: Record<string, unknown>; after?: Record<string, unknown> } | null
+
+function hasDiff(meta: AuditLogMeta): boolean {
+  return !!(meta && (meta.before || meta.after))
+}
+
+function diffRows(meta: AuditLogMeta): Array<{ key: string; before: unknown; after: unknown }> {
+  if (!meta) return []
+  const before = (meta.before ?? {}) as Record<string, unknown>
+  const after  = (meta.after  ?? {}) as Record<string, unknown>
+  const keys = Array.from(new Set([...Object.keys(before), ...Object.keys(after)]))
+  return keys.map(k => ({ key: k, before: before[k] ?? '—', after: after[k] ?? '—' }))
+}
+
+describe('audit page — row expansion: toggleLog', () => {
+  it('adds log id to expandedLogs on first click', () => {
+    const expanded = ref(new Set<number>())
+    function toggleLog(id: number) {
+      if (expanded.value.has(id)) { expanded.value.delete(id) }
+      else { expanded.value.add(id) }
+      expanded.value = new Set(expanded.value)
+    }
+    toggleLog(42)
+    expect(expanded.value.has(42)).toBe(true)
+  })
+
+  it('removes log id from expandedLogs on second click', () => {
+    const expanded = ref(new Set<number>([42]))
+    function toggleLog(id: number) {
+      if (expanded.value.has(id)) { expanded.value.delete(id) }
+      else { expanded.value.add(id) }
+      expanded.value = new Set(expanded.value)
+    }
+    toggleLog(42)
+    expect(expanded.value.has(42)).toBe(false)
+  })
+
+  it('supports multiple expanded rows independently', () => {
+    const expanded = ref(new Set<number>())
+    function toggleLog(id: number) {
+      if (expanded.value.has(id)) { expanded.value.delete(id) }
+      else { expanded.value.add(id) }
+      expanded.value = new Set(expanded.value)
+    }
+    toggleLog(1)
+    toggleLog(3)
+    expect(expanded.value.has(1)).toBe(true)
+    expect(expanded.value.has(3)).toBe(true)
+    expect(expanded.value.has(2)).toBe(false)
+  })
+})
+
+describe('audit page — row expansion: truncateUa', () => {
+  it('returns full UA when shorter than max', () => {
+    expect(truncateUa('Mozilla/5.0', 80)).toBe('Mozilla/5.0')
+  })
+
+  it('truncates long UA with ellipsis', () => {
+    const long = 'A'.repeat(100)
+    const result = truncateUa(long, 80)
+    expect(result).toHaveLength(81) // 80 chars + '…'
+    expect(result.endsWith('…')).toBe(true)
+  })
+
+  it('returns "—" for null UA', () => {
+    expect(truncateUa(null)).toBe('—')
+  })
+
+  it('returns "—" for undefined UA', () => {
+    expect(truncateUa(undefined)).toBe('—')
+  })
+})
+
+describe('audit page — row expansion: hasDiff', () => {
+  it('returns true when metadata has before and after', () => {
+    expect(hasDiff({ before: { role: 'DATA_ENTRY' }, after: { role: 'BANK_REVIEWER' } })).toBe(true)
+  })
+
+  it('returns true when metadata has only after', () => {
+    expect(hasDiff({ after: { role: 'BANK_REVIEWER' } })).toBe(true)
+  })
+
+  it('returns false for null metadata', () => {
+    expect(hasDiff(null)).toBe(false)
+  })
+
+  it('returns false when metadata has neither before nor after', () => {
+    expect(hasDiff({ } as AuditLogMeta)).toBe(false)
+  })
+})
+
+describe('audit page — row expansion: diffRows', () => {
+  it('returns one row per changed key', () => {
+    const rows = diffRows({
+      before: { role: 'DATA_ENTRY', name: 'Ali' },
+      after:  { role: 'BANK_REVIEWER', name: 'Ali' },
+    })
+    // Both keys appear (name is present in before/after even if same value)
+    expect(rows).toHaveLength(2)
+    const roleRow = rows.find(r => r.key === 'role')
+    expect(roleRow?.before).toBe('DATA_ENTRY')
+    expect(roleRow?.after).toBe('BANK_REVIEWER')
+  })
+
+  it('uses "—" as placeholder for missing key in before or after', () => {
+    const rows = diffRows({
+      before: {},
+      after:  { role: 'BANK_REVIEWER' },
+    })
+    expect(rows).toHaveLength(1)
+    expect(rows[0].before).toBe('—')
+    expect(rows[0].after).toBe('BANK_REVIEWER')
+  })
+
+  it('returns empty array for null metadata', () => {
+    expect(diffRows(null)).toHaveLength(0)
+  })
+})

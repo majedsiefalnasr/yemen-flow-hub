@@ -38,6 +38,38 @@ const filters = reactive({
 const stats = ref<AuditStats>({ today_count: 0, duplicate_invoice_count: 0 })
 const statsLoading = ref(false)
 
+// ─── Row expansion ───────────────────────────────────────────────────────────
+const expandedLogs = ref<Set<number>>(new Set())
+
+function toggleLog(id: number) {
+  if (expandedLogs.value.has(id)) {
+    expandedLogs.value.delete(id)
+  }
+  else {
+    expandedLogs.value.add(id)
+  }
+  expandedLogs.value = new Set(expandedLogs.value)
+}
+
+function hasDiff(log: AuditLog): boolean {
+  const meta = log.metadata as Record<string, unknown> | null
+  return !!(meta && (meta.before || meta.after))
+}
+
+function diffRows(log: AuditLog): Array<{ key: string; before: unknown; after: unknown }> {
+  const meta = log.metadata as Record<string, unknown> | null
+  if (!meta) return []
+  const before = (meta.before ?? {}) as Record<string, unknown>
+  const after  = (meta.after  ?? {}) as Record<string, unknown>
+  const keys = Array.from(new Set([...Object.keys(before), ...Object.keys(after)]))
+  return keys.map(k => ({ key: k, before: before[k] ?? '—', after: after[k] ?? '—' }))
+}
+
+function truncateUa(ua: string | null | undefined, max = 80): string {
+  if (!ua) return '—'
+  return ua.length > max ? ua.slice(0, max) + '…' : ua
+}
+
 // ─── Tab 2: Duplicates ────────────────────────────────────────────────────────
 const duplicates = ref<DuplicateGroup[]>([])
 const dupLoading = ref(false)
@@ -382,29 +414,77 @@ onMounted(() => {
             <tr v-if="filteredLogs.length === 0">
               <td colspan="6" class="empty-row">لا توجد سجلات تطابق البحث.</td>
             </tr>
-            <tr v-for="log in filteredLogs" :key="log.id">
-              <td class="actor-cell">
-                <div class="font-medium text-sm">{{ actorName(log) }}</div>
-                <div v-if="actorRole(log)" class="text-xs" style="color: #6c757d;">{{ actorRole(log) }}</div>
-              </td>
-              <td>
-                <Badge variant="secondary">{{ actionLabel(log.action) }}</Badge>
-              </td>
-              <td>
-                <NuxtLink
-                  v-if="log.entity_type === 'ImportRequest' && log.entity_id"
-                  :to="`/requests/${log.entity_id}`"
-                  class="font-mono text-xs"
-                  style="color: #0066cc;"
-                >
-                  {{ formatRef(log.entity_reference) }}
-                </NuxtLink>
-                <span v-else style="color: #6c757d;">—</span>
-              </td>
-              <td class="text-xs" style="color: #6c757d;">{{ parseDevice(log.user_agent) }}</td>
-              <td class="text-xs" style="color: #6c757d;">{{ log.ip_address ?? '—' }}</td>
-              <td class="text-xs whitespace-nowrap" style="color: #6c757d;">{{ formatDate(log.created_at) }}</td>
-            </tr>
+            <template v-for="log in filteredLogs" :key="log.id">
+              <tr
+                class="log-row"
+                :class="{ 'log-row--expanded': expandedLogs.has(log.id) }"
+                data-testid="log-row"
+                @click="toggleLog(log.id)"
+              >
+                <td class="actor-cell">
+                  <div class="font-medium text-sm">{{ actorName(log) }}</div>
+                  <div v-if="actorRole(log)" class="text-xs" style="color: #6c757d;">{{ actorRole(log) }}</div>
+                </td>
+                <td>
+                  <Badge variant="secondary">{{ actionLabel(log.action) }}</Badge>
+                </td>
+                <td>
+                  <NuxtLink
+                    v-if="log.entity_type === 'ImportRequest' && log.entity_id"
+                    :to="`/requests/${log.entity_id}`"
+                    class="font-mono text-xs"
+                    style="color: #0066cc;"
+                    @click.stop
+                  >
+                    {{ formatRef(log.entity_reference) }}
+                  </NuxtLink>
+                  <span v-else style="color: #6c757d;">—</span>
+                </td>
+                <td class="text-xs" style="color: #6c757d;">{{ parseDevice(log.user_agent) }}</td>
+                <td class="text-xs" style="color: #6c757d;">{{ log.ip_address ?? '—' }}</td>
+                <td class="text-xs whitespace-nowrap" style="color: #6c757d;">{{ formatDate(log.created_at) }}</td>
+              </tr>
+
+              <!-- Expansion detail row -->
+              <tr v-if="expandedLogs.has(log.id)" data-testid="log-detail-row">
+                <td colspan="6" class="log-detail-cell">
+                  <!-- Full user-agent with tooltip -->
+                  <div v-if="log.user_agent" class="detail-section">
+                    <span class="detail-label">User-Agent</span>
+                    <span
+                      class="detail-ua"
+                      :title="log.user_agent"
+                      data-testid="log-ua-full"
+                    >{{ truncateUa(log.user_agent) }}</span>
+                  </div>
+
+                  <!-- Before/after diff table -->
+                  <div v-if="hasDiff(log)" class="detail-section">
+                    <span class="detail-label">التغييرات</span>
+                    <table class="diff-table" data-testid="log-diff-table">
+                      <thead>
+                        <tr>
+                          <th>الحقل</th>
+                          <th>قبل</th>
+                          <th>بعد</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr v-for="row in diffRows(log)" :key="row.key">
+                          <td class="diff-key">{{ row.key }}</td>
+                          <td class="diff-before">{{ row.before }}</td>
+                          <td class="diff-after">{{ row.after }}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div v-if="!log.user_agent && !hasDiff(log)" class="detail-empty">
+                    لا توجد تفاصيل إضافية لهذا الإجراء.
+                  </div>
+                </td>
+              </tr>
+            </template>
           </tbody>
         </table>
 
@@ -1008,5 +1088,99 @@ onMounted(() => {
 .risk-badge--low {
   background: #e0f2fe;
   color: #32ade6;
+}
+
+/* Log row expansion */
+.log-row {
+  cursor: pointer;
+}
+
+.log-row:hover td {
+  background: #f9fafb;
+}
+
+.log-row--expanded td {
+  background: #f5f5f7;
+}
+
+.log-detail-cell {
+  padding: 12px 14px !important;
+  background: #f9fafb;
+  border-bottom: 1px solid var(--color-border, #cccccc);
+}
+
+.detail-section {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.detail-section:last-child {
+  margin-bottom: 0;
+}
+
+.detail-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #6c757d;
+  white-space: nowrap;
+  padding-top: 1px;
+  min-width: 80px;
+}
+
+.detail-ua {
+  font-size: 12px;
+  font-family: monospace;
+  color: #1c222b;
+  word-break: break-all;
+  cursor: help;
+}
+
+.detail-empty {
+  font-size: 12px;
+  color: #6c757d;
+  font-style: italic;
+}
+
+/* Before/after diff table */
+.diff-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  direction: rtl;
+}
+
+.diff-table th {
+  text-align: right;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #6c757d;
+  background: #eeeeee;
+  border: 1px solid #dddddd;
+}
+
+.diff-key {
+  padding: 4px 8px;
+  font-family: monospace;
+  font-weight: 500;
+  color: #1c222b;
+  border: 1px solid #dddddd;
+  background: #fafafa;
+}
+
+.diff-before {
+  padding: 4px 8px;
+  color: #c62828;
+  border: 1px solid #dddddd;
+  background: #fff5f5;
+}
+
+.diff-after {
+  padding: 4px 8px;
+  color: #1b5e20;
+  border: 1px solid #dddddd;
+  background: #f5fff7;
 }
 </style>
