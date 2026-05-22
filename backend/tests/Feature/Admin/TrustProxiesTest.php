@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Admin;
 
+use Illuminate\Http\Middleware\TrustProxies;
 use Illuminate\Http\Request;
 use Tests\TestCase;
 
@@ -16,20 +17,25 @@ class TrustProxiesTest extends TestCase
         $request->server->set('REMOTE_ADDR', '10.0.0.1');
         $request->headers->set('X-Forwarded-For', '203.0.113.55');
 
-        // Without trust the proxy IP is returned (spoofing is ignored).
-        $this->assertSame('10.0.0.1', $request->ip());
-
-        // Configure exactly the same header constants used in bootstrap/app.php.
-        Request::setTrustedProxies(
-            ['10.0.0.1'],
+        TrustProxies::at('*');
+        TrustProxies::withHeaders(
             Request::HEADER_X_FORWARDED_FOR
                 | Request::HEADER_X_FORWARDED_HOST
                 | Request::HEADER_X_FORWARDED_PORT
                 | Request::HEADER_X_FORWARDED_PROTO,
         );
 
-        // Now the real client IP is resolved from X-Forwarded-For.
-        $this->assertSame('203.0.113.55', $request->ip());
+        $resolvedIp = null;
+
+        // Exercise Laravel's TrustProxies middleware path rather than mutating
+        // the Request object directly.
+        app(TrustProxies::class)->handle($request, function (Request $handled) use (&$resolvedIp) {
+            $resolvedIp = $handled->ip();
+
+            return response()->noContent();
+        });
+
+        $this->assertSame('203.0.113.55', $resolvedIp);
     }
 
     /** @test */
@@ -39,16 +45,21 @@ class TrustProxiesTest extends TestCase
         $request->server->set('REMOTE_ADDR', '1.2.3.4');
         $request->headers->set('X-Forwarded-For', '9.9.9.9');
 
-        // No trusted proxies configured — forwarded header is ignored.
-        Request::setTrustedProxies([], -1);
+        $resolvedIp = null;
 
-        $this->assertSame('1.2.3.4', $request->ip());
+        app(TrustProxies::class)->handle($request, function (Request $handled) use (&$resolvedIp) {
+            $resolvedIp = $handled->ip();
+
+            return response()->noContent();
+        });
+
+        $this->assertSame('1.2.3.4', $resolvedIp);
     }
 
     protected function tearDown(): void
     {
         // Reset global trusted-proxy state so other tests are unaffected.
-        Request::setTrustedProxies([], -1);
+        TrustProxies::flushState();
         parent::tearDown();
     }
 }

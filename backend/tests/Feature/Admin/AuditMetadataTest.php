@@ -120,6 +120,7 @@ class AuditMetadataTest extends TestCase
             ['source' => 'job'],
         );
 
+        $this->assertNull($log->ip_address);
         $this->assertNull($log->user_agent);
     }
 
@@ -151,6 +152,36 @@ class AuditMetadataTest extends TestCase
         $this->assertNotNull($log);
         $this->assertNotNull($log->user_agent);
         $this->assertLessThanOrEqual(512, strlen($log->user_agent));
+    }
+
+    /** @test */
+    public function test_audit_service_truncates_multibyte_user_agent_without_breaking_utf8(): void
+    {
+        $admin = $this->makeCbyAdmin();
+        $bank = $this->makeBank('UTF');
+        $longUa = str_repeat('متصفح-', 120);
+
+        $this->actingAs($admin)
+            ->withHeaders(['User-Agent' => $longUa])
+            ->postJson('/api/users', [
+                'name' => 'UTF User Agent',
+                'email' => 'utf-agent@cby.gov.ye',
+                'password' => 'Secret123!',
+                'role' => UserRole::DATA_ENTRY->value,
+                'bank_id' => $bank->id,
+                'is_active' => true,
+            ])
+            ->assertStatus(201);
+
+        $log = AuditLog::query()
+            ->where('action', AuditAction::USER_CREATED->value)
+            ->latest('id')
+            ->first();
+
+        $this->assertNotNull($log);
+        $this->assertNotNull($log->user_agent);
+        $this->assertSame(512, mb_strlen($log->user_agent));
+        $this->assertTrue(mb_check_encoding($log->user_agent, 'UTF-8'));
     }
 
     // ─── AuditLogResource: exposes user_agent ─────────────────────────────────
