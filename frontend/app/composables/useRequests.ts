@@ -7,8 +7,14 @@ export interface RequestsFilter {
   status?: RequestStatus | RequestStatus[] | string | ''
   bank_id?: number | ''
   currency?: string | ''
+  /** Legacy aliases kept for backward compat — prefer created_from / created_to */
   from_date?: string | ''
   to_date?: string | ''
+  created_from?: string | ''
+  created_to?: string | ''
+  amount_min?: number | ''
+  amount_max?: number | ''
+  assigned_reviewer_id?: number | ''
   claim_filter?: 'all' | 'available' | 'mine' | ''
   page?: number
   per_page?: number
@@ -31,8 +37,14 @@ export function useRequests() {
     }
     if (filter.bank_id) params.set('bank_id', String(filter.bank_id))
     if (filter.currency) params.set('currency', filter.currency)
-    if (filter.from_date) params.set('from_date', filter.from_date)
-    if (filter.to_date) params.set('to_date', filter.to_date)
+    if (filter.created_from) params.set('created_from', filter.created_from)
+    if (filter.created_to) params.set('created_to', filter.created_to)
+    // Legacy aliases: only sent if new params absent
+    if (!filter.created_from && filter.from_date) params.set('from_date', filter.from_date)
+    if (!filter.created_to && filter.to_date) params.set('to_date', filter.to_date)
+    if (filter.amount_min !== '' && filter.amount_min !== undefined) params.set('amount_min', String(filter.amount_min))
+    if (filter.amount_max !== '' && filter.amount_max !== undefined) params.set('amount_max', String(filter.amount_max))
+    if (filter.assigned_reviewer_id) params.set('assigned_reviewer_id', String(filter.assigned_reviewer_id))
     if (filter.claim_filter) params.set('claim_filter', filter.claim_filter)
     if (filter.page) params.set('page', String(filter.page))
     if (filter.per_page) params.set('per_page', String(filter.per_page))

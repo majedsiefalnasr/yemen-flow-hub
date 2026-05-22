@@ -3,8 +3,9 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useAuthStore } from '../../stores/auth.store'
 import { useRequestsStore } from '../../stores/requests.store'
 import { useBanks } from '../../composables/useBanks'
+import { useUsers } from '../../composables/useUsers'
 import { UserRole, RequestStatus } from '../../types/enums'
-import type { Bank, ImportRequest } from '../../types/models'
+import type { Bank, ImportRequest, User } from '../../types/models'
 import {
   ROLE_BUCKETS,
   CBY_BANK_FILTER_ROLES,
@@ -13,9 +14,13 @@ import {
 import StatusBadge from '../../components/ui/StatusBadge.vue'
 import RequestProgress from '../../components/requests/RequestProgress.vue'
 
+const route = useRoute()
+const router = useRouter()
+
 const auth = useAuthStore()
 const requestsStore = useRequestsStore()
 const { fetchBanks } = useBanks()
+const { fetchUsers } = useUsers()
 
 // ── Filter state ──────────────────────────────────────────────────────────────
 
@@ -24,10 +29,15 @@ const selectedBankId = ref<number | ''>('')
 const selectedCurrency = ref<string | ''>('')
 const selectedFromDate = ref('')
 const selectedToDate = ref('')
+const selectedAmountMin = ref<number | ''>('')
+const selectedAmountMax = ref<number | ''>('')
+const selectedReviewerId = ref<number | ''>('')
 const selectedBucket = ref<string>('all')
 const showAdvancedFilters = ref(false)
 const banks = ref<Bank[]>([])
 const loadingBanks = ref(false)
+const reviewers = ref<User[]>([])
+const loadingReviewers = ref(false)
 
 // ── Role-derived flags ────────────────────────────────────────────────────────
 
@@ -42,9 +52,18 @@ const showBankFilter = computed(() =>
   !!role.value && CBY_BANK_FILTER_ROLES.includes(role.value),
 )
 
+/** Reviewer filter is active only for CBY/global roles (bank actors see it disabled) */
+const reviewerFilterEnabled = computed(() =>
+  !!role.value && CBY_BANK_FILTER_ROLES.includes(role.value),
+)
+
 const canCreateRequest = computed(() => role.value === UserRole.DATA_ENTRY)
 const hasAdvancedFilters = computed(() =>
-  selectedFromDate.value !== '' || selectedToDate.value !== '',
+  selectedFromDate.value !== ''
+  || selectedToDate.value !== ''
+  || selectedAmountMin.value !== ''
+  || selectedAmountMax.value !== ''
+  || selectedReviewerId.value !== '',
 )
 
 // ── Stage tabs ────────────────────────────────────────────────────────────────
@@ -122,16 +141,50 @@ function showClaimBadge(request: Pick<ImportRequest, 'is_claimed' | 'can_be_clai
     && (request.is_claimed || request.can_be_claimed)
 }
 
+// ── URL persistence ───────────────────────────────────────────────────────────
+
+function hydrateFromUrl() {
+  const q = route.query
+  if (q.search) search.value = String(q.search)
+  if (q.bank_id) selectedBankId.value = Number(q.bank_id)
+  if (q.currency) selectedCurrency.value = String(q.currency)
+  if (q.bucket) selectedBucket.value = String(q.bucket)
+  if (q.from_date) selectedFromDate.value = String(q.from_date)
+  if (q.to_date) selectedToDate.value = String(q.to_date)
+  if (q.amount_min !== undefined && q.amount_min !== '') selectedAmountMin.value = Number(q.amount_min)
+  if (q.amount_max !== undefined && q.amount_max !== '') selectedAmountMax.value = Number(q.amount_max)
+  if (q.reviewer_id) selectedReviewerId.value = Number(q.reviewer_id)
+  if (hasAdvancedFilters.value) showAdvancedFilters.value = true
+}
+
+function pushUrl() {
+  const query: Record<string, string> = {}
+  if (search.value) query.search = search.value
+  if (selectedBankId.value !== '') query.bank_id = String(selectedBankId.value)
+  if (selectedCurrency.value) query.currency = selectedCurrency.value
+  if (selectedBucket.value && selectedBucket.value !== 'all') query.bucket = selectedBucket.value
+  if (selectedFromDate.value) query.from_date = selectedFromDate.value
+  if (selectedToDate.value) query.to_date = selectedToDate.value
+  if (selectedAmountMin.value !== '') query.amount_min = String(selectedAmountMin.value)
+  if (selectedAmountMax.value !== '') query.amount_max = String(selectedAmountMax.value)
+  if (selectedReviewerId.value !== '') query.reviewer_id = String(selectedReviewerId.value)
+  void router.replace({ query })
+}
+
 // ── Data loading ──────────────────────────────────────────────────────────────
 
 async function loadPage(page = 1) {
+  pushUrl()
   await requestsStore.loadRequests({
     search: search.value || undefined,
     status: activeBucket.value?.statuses,
     bank_id: selectedBankId.value || undefined,
     currency: selectedCurrency.value || undefined,
-    from_date: selectedFromDate.value || undefined,
-    to_date: selectedToDate.value || undefined,
+    created_from: selectedFromDate.value || undefined,
+    created_to: selectedToDate.value || undefined,
+    amount_min: selectedAmountMin.value !== '' ? selectedAmountMin.value : undefined,
+    amount_max: selectedAmountMax.value !== '' ? selectedAmountMax.value : undefined,
+    assigned_reviewer_id: selectedReviewerId.value || undefined,
     page,
   })
 }
@@ -154,12 +207,35 @@ async function loadBankOptions() {
   }
 }
 
+async function loadReviewerOptions() {
+  if (!reviewerFilterEnabled.value || loadingReviewers.value || reviewers.value.length > 0) return
+
+  loadingReviewers.value = true
+
+  try {
+    const all = await fetchUsers()
+    reviewers.value = all.filter(u => u.role === UserRole.BANK_REVIEWER)
+  }
+  catch (err) {
+    if (import.meta.dev) {
+      console.error('[requests.page] loadReviewerOptions failed:', err)
+    }
+  }
+  finally {
+    loadingReviewers.value = false
+  }
+}
+
 function clearAdvancedFilters() {
   selectedFromDate.value = ''
   selectedToDate.value = ''
+  selectedAmountMin.value = ''
+  selectedAmountMax.value = ''
+  selectedReviewerId.value = ''
 }
 
 onMounted(() => {
+  hydrateFromUrl()
   void loadPage()
 })
 
@@ -174,13 +250,19 @@ watch(selectedBucket, () => {
   void loadPage()
 })
 
-watch([selectedBankId, selectedCurrency, selectedFromDate, selectedToDate], () => {
+watch([selectedBankId, selectedCurrency, selectedFromDate, selectedToDate, selectedAmountMin, selectedAmountMax, selectedReviewerId], () => {
   void loadPage()
 })
 
 watch(showBankFilter, enabled => {
   if (enabled) {
     void loadBankOptions()
+  }
+}, { immediate: true })
+
+watch(reviewerFilterEnabled, enabled => {
+  if (enabled) {
+    void loadReviewerOptions()
   }
 }, { immediate: true })
 
@@ -290,14 +372,77 @@ onUnmounted(() => {
       </div>
 
       <div v-if="showAdvancedFilters || hasAdvancedFilters" class="advanced-filters">
+        <!-- Date range -->
         <label class="advanced-filter-group">
-          <span class="filter-label">من تاريخ</span>
-          <input v-model="selectedFromDate" type="date" class="filter-input" dir="rtl" />
+          <span class="filter-label">من</span>
+          <input v-model="selectedFromDate" type="date" class="filter-input" dir="rtl" aria-label="من تاريخ" />
         </label>
         <label class="advanced-filter-group">
-          <span class="filter-label">إلى تاريخ</span>
-          <input v-model="selectedToDate" type="date" class="filter-input" dir="rtl" />
+          <span class="filter-label">إلى</span>
+          <input v-model="selectedToDate" type="date" class="filter-input" dir="rtl" aria-label="إلى تاريخ" />
         </label>
+
+        <!-- Amount range -->
+        <label class="advanced-filter-group">
+          <span class="filter-label">أقل مبلغ</span>
+          <input
+            v-model.number="selectedAmountMin"
+            type="number"
+            min="0"
+            step="any"
+            class="filter-input filter-input--amount"
+            dir="ltr"
+            placeholder="0"
+            aria-label="أقل مبلغ"
+          />
+        </label>
+        <label class="advanced-filter-group">
+          <span class="filter-label">أعلى مبلغ</span>
+          <input
+            v-model.number="selectedAmountMax"
+            type="number"
+            min="0"
+            step="any"
+            class="filter-input filter-input--amount"
+            dir="ltr"
+            placeholder="∞"
+            aria-label="أعلى مبلغ"
+          />
+        </label>
+
+        <!-- Reviewer select -->
+        <label class="advanced-filter-group">
+          <span class="filter-label">المراجع</span>
+          <span
+            v-if="!reviewerFilterEnabled"
+            class="filter-reviewer-locked"
+            :title="'متاح لمسؤول النظام'"
+          >
+            <select
+              v-model="selectedReviewerId"
+              class="filter-select filter-select--reviewer"
+              dir="rtl"
+              disabled
+              aria-label="المراجع المكلف"
+            >
+              <option value="">متاح لمسؤول النظام</option>
+            </select>
+          </span>
+          <select
+            v-else
+            v-model="selectedReviewerId"
+            class="filter-select filter-select--reviewer"
+            dir="rtl"
+            :disabled="loadingReviewers"
+            aria-label="المراجع المكلف"
+          >
+            <option value="">جميع المراجعين</option>
+            <option v-for="reviewer in reviewers" :key="reviewer.id" :value="reviewer.id">
+              {{ reviewer.name }}
+            </option>
+          </select>
+        </label>
+
         <button
           v-if="hasAdvancedFilters"
           type="button"

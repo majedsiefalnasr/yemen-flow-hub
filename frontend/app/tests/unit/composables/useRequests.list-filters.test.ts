@@ -98,4 +98,103 @@ describe('useRequests – extended list filters (Story 7.3)', () => {
 
     expect(mockGet).toHaveBeenCalledWith('/api/requests')
   })
+
+  // ── Story 8.9: advanced filters ──────────────────────────────────────────────
+
+  it('appends created_from param when provided', async () => {
+    const { fetchRequests } = useRequests()
+    await fetchRequests({ created_from: '2026-01-01' })
+
+    const calledWith = (mockGet.mock.calls[0] as [string])[0]
+    expect(calledWith).toContain('created_from=2026-01-01')
+  })
+
+  it('appends created_to param when provided', async () => {
+    const { fetchRequests } = useRequests()
+    await fetchRequests({ created_to: '2026-12-31' })
+
+    const calledWith = (mockGet.mock.calls[0] as [string])[0]
+    expect(calledWith).toContain('created_to=2026-12-31')
+  })
+
+  it('omits created_from when empty string', async () => {
+    const { fetchRequests } = useRequests()
+    await fetchRequests({ created_from: '' })
+
+    expect(mockGet).toHaveBeenCalledWith('/api/requests')
+  })
+
+  it('appends amount_min when provided', async () => {
+    const { fetchRequests } = useRequests()
+    await fetchRequests({ amount_min: 5000 })
+
+    const calledWith = (mockGet.mock.calls[0] as [string])[0]
+    expect(calledWith).toContain('amount_min=5000')
+  })
+
+  it('appends amount_max when provided', async () => {
+    const { fetchRequests } = useRequests()
+    await fetchRequests({ amount_max: 99999 })
+
+    const calledWith = (mockGet.mock.calls[0] as [string])[0]
+    expect(calledWith).toContain('amount_max=99999')
+  })
+
+  it('omits amount_min when empty string', async () => {
+    const { fetchRequests } = useRequests()
+    await fetchRequests({ amount_min: '' })
+
+    expect(mockGet).toHaveBeenCalledWith('/api/requests')
+  })
+
+  it('omits amount_max when empty string', async () => {
+    const { fetchRequests } = useRequests()
+    await fetchRequests({ amount_max: '' })
+
+    expect(mockGet).toHaveBeenCalledWith('/api/requests')
+  })
+
+  it('appends assigned_reviewer_id when provided', async () => {
+    const { fetchRequests } = useRequests()
+    await fetchRequests({ assigned_reviewer_id: 42 })
+
+    const calledWith = (mockGet.mock.calls[0] as [string])[0]
+    expect(calledWith).toContain('assigned_reviewer_id=42')
+  })
+
+  it('omits assigned_reviewer_id when empty string', async () => {
+    const { fetchRequests } = useRequests()
+    await fetchRequests({ assigned_reviewer_id: '' })
+
+    expect(mockGet).toHaveBeenCalledWith('/api/requests')
+  })
+
+  it('combines all advanced filters with existing filters', async () => {
+    const { fetchRequests } = useRequests()
+    await fetchRequests({
+      currency: 'USD',
+      created_from: '2026-01-01',
+      created_to: '2026-12-31',
+      amount_min: 1000,
+      amount_max: 50000,
+      assigned_reviewer_id: 7,
+    })
+
+    const calledWith = (mockGet.mock.calls[0] as [string])[0]
+    expect(calledWith).toContain('currency=USD')
+    expect(calledWith).toContain('created_from=2026-01-01')
+    expect(calledWith).toContain('created_to=2026-12-31')
+    expect(calledWith).toContain('amount_min=1000')
+    expect(calledWith).toContain('amount_max=50000')
+    expect(calledWith).toContain('assigned_reviewer_id=7')
+  })
+
+  it('prefers created_from over legacy from_date when both set', async () => {
+    const { fetchRequests } = useRequests()
+    await fetchRequests({ created_from: '2026-03-01', from_date: '2026-01-01' })
+
+    const calledWith = (mockGet.mock.calls[0] as [string])[0]
+    expect(calledWith).toContain('created_from=2026-03-01')
+    expect(calledWith).not.toContain('from_date=')
+  })
 })
