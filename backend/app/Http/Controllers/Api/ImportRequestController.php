@@ -13,6 +13,7 @@ use App\Http\Resources\ImportRequestListResource;
 use App\Http\Resources\ImportRequestResource;
 use App\Http\Resources\StageHistoryResource;
 use App\Models\ImportRequest;
+use App\Models\User;
 use App\Services\Audit\AuditService;
 use App\Services\DuplicateDetectionService;
 use App\Services\Settings\AdminSettingsService;
@@ -22,6 +23,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use OpenApi\Attributes as OA;
 
 class ImportRequestController extends Controller
@@ -42,6 +44,17 @@ class ImportRequestController extends Controller
     public function index(Request $request)
     {
         $this->authorize('viewAny', ImportRequest::class);
+
+        $request->validate([
+            'created_from'          => ['nullable', 'date'],
+            'created_to'            => ['nullable', 'date'],
+            'amount_min'            => ['nullable', 'numeric', 'min:0'],
+            'amount_max'            => ['nullable', 'numeric', 'min:0', Rule::when(
+                fn () => $request->filled('amount_min'),
+                'gte:amount_min',
+            )],
+            'assigned_reviewer_id'  => ['nullable', 'integer'],
+        ]);
 
         $statusTotals = $this->buildIndexQuery($request, false)
             ->reorder()
@@ -106,12 +119,37 @@ class ImportRequestController extends Controller
                 });
             })
             ->when(
-                $request->filled('from_date'),
-                fn (Builder $q) => $q->whereDate('created_at', '>=', $request->string('from_date')->toString())
+                $request->filled('created_from') || $request->filled('from_date'),
+                fn (Builder $q) => $q->whereDate('created_at', '>=', $request->input('created_from') ?? $request->input('from_date'))
             )
             ->when(
-                $request->filled('to_date'),
-                fn (Builder $q) => $q->whereDate('created_at', '<=', $request->string('to_date')->toString())
+                $request->filled('created_to') || $request->filled('to_date'),
+                fn (Builder $q) => $q->whereDate('created_at', '<=', $request->input('created_to') ?? $request->input('to_date'))
+            )
+            ->when(
+                $request->filled('amount_min'),
+                fn (Builder $q) => $q->where('amount', '>=', $request->input('amount_min'))
+            )
+            ->when(
+                $request->filled('amount_max'),
+                fn (Builder $q) => $q->where('amount', '<=', $request->input('amount_max'))
+            )
+            ->when(
+                $request->filled('assigned_reviewer_id'),
+                function (Builder $q) use ($request) {
+                    $reviewerId = $request->integer('assigned_reviewer_id');
+
+                    if (! $request->user()->isCbyUser()) {
+                        $inScope = User::where('id', $reviewerId)
+                            ->where('bank_id', $request->user()->bank_id)
+                            ->exists();
+                        if (! $inScope) {
+                            return $q;
+                        }
+                    }
+
+                    return $q->where('reviewed_by', $reviewerId);
+                }
             )
             ->latest('id');
 
