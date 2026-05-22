@@ -17,6 +17,8 @@ class AuditService
         ?string $subjectTypeOverride = null
     ): AuditLog
     {
+        $rawUa = request()->userAgent();
+
         return AuditLog::query()->create([
             'user_id' => $actor?->id,
             'user_role' => $actor?->role?->value,
@@ -24,7 +26,7 @@ class AuditService
             'subject_type' => $subjectTypeOverride ?? ($subject ? $subject::class : null),
             'subject_id' => $subject?->getKey(),
             'ip_address' => request()->ip(),
-            'user_agent' => request()->userAgent(),
+            'user_agent' => $rawUa !== null ? substr($rawUa, 0, 512) : null,
             'metadata' => $metadata,
             'created_at' => now(),
         ]);

@@ -117,12 +117,19 @@ class UserController extends Controller
 
         $user->update($payload);
         $user->refresh();
+        $after = $this->auditSnapshot($user);
+        $changedKeys = array_keys(array_filter(
+            $after,
+            fn ($v, $k) => array_key_exists($k, $before) && $before[$k] !== $v,
+            ARRAY_FILTER_USE_BOTH,
+        ));
+
         $this->auditService->log(AuditAction::USER_UPDATED, $request->user(), $user, [
             'bank_id' => $user->bank_id,
             'target_role' => $user->role?->value,
             'password_reset' => array_key_exists('password', $payload),
-            'before' => $before,
-            'after' => $this->auditSnapshot($user),
+            'before' => array_intersect_key($before, array_flip($changedKeys)),
+            'after'  => array_intersect_key($after, array_flip($changedKeys)),
         ]);
 
         return ApiResponse::success(new UserResource($user->load('bank')), 'User updated successfully.');

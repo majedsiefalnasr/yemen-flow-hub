@@ -96,10 +96,17 @@ class BankController extends Controller
         $before = $bank->only(['name', 'code', 'is_active']);
         $bank->update($request->validated());
         $bank->refresh();
+        $after = $bank->only(['name', 'code', 'is_active']);
+        $changedKeys = array_keys(array_filter(
+            $after,
+            fn ($v, $k) => array_key_exists($k, $before) && $before[$k] !== $v,
+            ARRAY_FILTER_USE_BOTH,
+        ));
+
         $this->auditService->log(AuditAction::BANK_UPDATED, $request->user(), $bank, [
             'bank_id' => $bank->id,
-            'before' => $before,
-            'after' => $bank->only(['name', 'code', 'is_active']),
+            'before' => array_intersect_key($before, array_flip($changedKeys)),
+            'after'  => array_intersect_key($after, array_flip($changedKeys)),
         ]);
 
         return ApiResponse::success(new BankResource($bank), 'Bank updated successfully.');
