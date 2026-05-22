@@ -238,7 +238,7 @@ class DuplicateInvoiceTest extends TestCase
             ->first();
 
         $this->assertNotNull($log);
-        $this->assertEquals(1, $log->metadata['duplicate_count'] ?? null);
+        $this->assertEquals(1, $log->metadata['notes']['duplicate_count'] ?? null);
     }
 
     public function test_store_no_audit_duplicate_count_when_no_duplicate(): void
@@ -254,7 +254,7 @@ class DuplicateInvoiceTest extends TestCase
             ->first();
 
         $this->assertNotNull($log);
-        $this->assertArrayNotHasKey('duplicate_count', $log->metadata ?? []);
+        $this->assertArrayNotHasKey('notes', $log->metadata ?? []);
     }
 
     public function test_store_no_block_when_no_invoice_number(): void

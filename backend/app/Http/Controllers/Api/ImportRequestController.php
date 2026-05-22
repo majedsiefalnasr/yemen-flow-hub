@@ -213,7 +213,9 @@ class ImportRequestController extends Controller
             AuditAction::REQUEST_CREATED,
             $request->user(),
             $importRequest,
-            array_filter(['duplicate_count' => $duplicateCount > 0 ? $duplicateCount : null])
+            array_filter([
+                'notes' => $duplicateCount > 0 ? ['duplicate_count' => $duplicateCount] : null,
+            ])
         );
 
         return ApiResponse::success(new ImportRequestResource($importRequest->load(ImportRequestResource::baseRelations())), 'Draft request created.', 201);
