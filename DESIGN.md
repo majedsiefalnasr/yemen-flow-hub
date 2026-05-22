@@ -1,5 +1,7 @@
 # Yemen Flow Hub — Design System
 
+> **Source of truth:** When `DESIGN.md` tokens conflict with `lovable/screenshots/` rendered values, update `DESIGN.md` to match the screenshot. Screenshots win.
+>
 > **Final visual authority:** `lovable/screenshots/`.
 > This file codifies the stakeholder-approved Lovable prototype, but screenshots are the final authority for visual parity. When this file conflicts with `lovable/screenshots/`, update this file and the implementation to match the screenshot.
 

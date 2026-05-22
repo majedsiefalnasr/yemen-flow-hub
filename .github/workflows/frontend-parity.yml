@@ -1,0 +1,40 @@
+name: Frontend Parity Evidence
+
+# Yemen Flow Hub — Epic 9, Story 9.1
+# Gates merges by verifying that any UI-touching change ships its
+# parity-evidence triplet alongside the Vue/CSS edit.
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "frontend/app/**/*.vue"
+      - "frontend/app/assets/css/**"
+      - "frontend/scripts/check-parity-evidence.ts"
+      - "_bmad-output/parity-evidence/**"
+  push:
+    branches: [main]
+    paths:
+      - "frontend/app/**/*.vue"
+      - "frontend/app/assets/css/**"
+      - "frontend/scripts/check-parity-evidence.ts"
+
+jobs:
+  parity-evidence:
+    name: Verify parity-evidence triplets
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Run parity-evidence check
+        working-directory: frontend
+        run: npx --yes tsx scripts/check-parity-evidence.ts

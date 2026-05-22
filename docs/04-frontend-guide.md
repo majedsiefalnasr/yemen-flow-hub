@@ -1,5 +1,19 @@
 # Frontend Guide
 
+# Visual Parity Workflow
+
+All UI work in Yemen Flow Hub must achieve 1:1 visual parity with the Lovable React prototype. Parity is enforced at the BMad workflow level — a UI story cannot be marked complete without a committed parity-evidence triplet.
+
+**Procedure:** see [`docs/ui-parity/clone-page-workflow.md`](./ui-parity/clone-page-workflow.md) for the per-page port procedure (matched viewports, screenshots, RTL mirror, side-by-side composite).
+
+**Gate:** the BMad dev-story workflow (`_bmad/custom/bmad-dev-story.toml`) refuses to mark any story complete whose File List touches `frontend/app/**/*.vue` or `frontend/app/assets/css/**` unless a `_bmad-output/parity-evidence/<area>/<page>/` directory exists with `lovable.png`, `current.png`, and `side-by-side.png` committed in the same change. Stale or missing evidence triggers a HALT.
+
+**Exemption marker:** use `// @parity-exempt` as the first non-blank line of a Vue file to skip the check for comment-only or non-rendering edits.
+
+**Verification:** `npx tsx frontend/scripts/check-parity-evidence.ts` (also runs in pre-push and CI).
+
+---
+
 # Frontend Overview
 
 The frontend of Yemen Flow Hub is built as a workflow-oriented internal dashboard application.

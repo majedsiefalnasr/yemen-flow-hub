@@ -58,7 +58,7 @@ npx ctx7@latest docs <id> "<question>"
 - `docs/` — Authoritative project documentation
 - `DESIGN.md` — Visual design system
 - `AI-ENGINEERING-PROMPT.md` — Full engineering context
-- `lovable/` — Reference prototype, do NOT modify
+- `lovable/` — **Visual source of truth** for all UI work. Clone it 1:1; translate React idioms to Vue; mirror for RTL; preserve Arabic copy. `lovable/` itself remains read-only. Every UI-touching story is gated by the parity-evidence workflow (see `docs/ui-parity/clone-page-workflow.md` and the BMad dev-story gate in `_bmad/custom/bmad-dev-story.toml`)
 
 ## graphify
 
