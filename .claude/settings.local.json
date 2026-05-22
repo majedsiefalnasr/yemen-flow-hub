@@ -39,7 +39,16 @@
       "Bash(git stash *)",
       "Bash(git -C *)",
       "Bash(dev-browser *)",
-      "Bash(npx dev-browser *)"
+      "Bash(npx dev-browser *)",
+      "Bash(docker compose *)",
+      "Bash(redis-cli ping *)",
+      "Bash(docker exec yfh-redis *)",
+      "Bash(npx *)",
+      "Bash(echo \"EXIT=$?\")",
+      "Bash(echo \"REAL_EXIT=$?\")",
+      "Read(//tmp/**)",
+      "Bash(claude mcp *)",
+      "Bash(magick -version)"
     ]
   }
 }
