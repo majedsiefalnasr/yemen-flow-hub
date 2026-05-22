@@ -9,15 +9,9 @@ on:
     branches: [main]
     paths:
       - "frontend/app/**/*.vue"
-      - "frontend/app/assets/css/**"
+      - "frontend/app/assets/css/**/*.css"
       - "frontend/scripts/check-parity-evidence.ts"
       - "_bmad-output/parity-evidence/**"
-  push:
-    branches: [main]
-    paths:
-      - "frontend/app/**/*.vue"
-      - "frontend/app/assets/css/**"
-      - "frontend/scripts/check-parity-evidence.ts"
 
 jobs:
   parity-evidence:
