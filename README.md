@@ -2,6 +2,26 @@
 
 Docker-first setup for running the full project locally and preparing separate backend/frontend images for deployment.
 
+## Repository Structure
+
+This monorepo tracks all code: `docs/`, `backend/`, and `frontend/`. The `backend/` and `frontend/` directories are also maintained as independent git repositories for each team:
+
+| Repo | Remote |
+| ---- | ------ |
+| Root (monorepo) | `git@github.com:majedsiefalnasr/yemen-flow-hub.git` |
+| Backend team repo | `git@github.com:ultimate-eg/yemen-flow-hub-backend.git` |
+| Frontend team repo | `git@github.com:ultimate-eg/yemen-flow-hub-frontend.git` |
+
+The `backend/` and `frontend/` directories are git submodules pointing to their respective team repos. When cloning this repo, initialize them with:
+
+```bash
+git clone --recurse-submodules git@github.com:majedsiefalnasr/yemen-flow-hub.git
+# or after a plain clone:
+git submodule update --init
+```
+
+Every change to `backend/` or `frontend/` must be committed to **both** the team repo and this root monorepo (see `AGENTS.md` for the full dual-commit workflow).
+
 ## Run the full project with Docker
 
 1. Start everything:
