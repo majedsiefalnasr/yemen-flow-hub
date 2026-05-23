@@ -66,7 +66,7 @@ This is set in the `visual` project block of `frontend/playwright.config.ts`.
 
 ### Justification
 
-- A deliberate 4 px padding change on `login.vue` produces a pixel diff of approximately 300–600 px (depending on the element's width and row height). This exceeds the 200 px ceiling and reliably fails.
+- A deliberate 4 px padding change on `dashboard.vue` (`.page-header__action`, `padding: 10px 20px` → `14px 20px`) produces a pixel diff of **1088 px desktop / 252 px mobile** — well above the 200 px ceiling, so the regression is caught reliably (see Dev Agent Record in `_bmad-output/implementation-artifacts/9-5-visual-regression-lock-and-future-drift-prevention.md`).
 - OS-level font-rendering noise between macOS (developer laptops) and Ubuntu 22.04 (GitHub Actions runner) typically introduces < 50 px of sub-pixel variance per test run. This stays well below 200 px and does not cause false positives.
 
 ### CI font-rendering posture

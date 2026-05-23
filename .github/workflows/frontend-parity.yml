@@ -67,20 +67,11 @@ jobs:
         # Install Chromium only — keeps CI time and disk usage bounded
         run: npx playwright install --with-deps chromium
 
-      - name: Build frontend
-        working-directory: frontend
-        run: npm run build
-
-      - name: Start preview server
-        working-directory: frontend
-        # Run in background; wait-on waits for it to become ready
-        run: npm run preview &
-
-      - name: Wait for preview server
-        run: npx wait-on http://localhost:3000 --timeout 30000
-
       - name: Run visual regression tests
         working-directory: frontend
+        # Playwright's webServer config starts `npm run dev` and tears it down.
+        # Dev mode matches the environment baselines were captured in
+        # (DEVTOOLS_MASK targets Nuxt devtools elements that only exist in dev).
         run: npm run test:visual
         env:
           PLAYWRIGHT_BASE_URL: "http://localhost:3000"
