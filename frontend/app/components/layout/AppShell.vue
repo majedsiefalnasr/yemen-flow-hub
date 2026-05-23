@@ -24,7 +24,7 @@ import {
   ChevronLeft,
   LogOut,
 } from 'lucide-vue-next'
-import RoleSwitcher from '@/components/workflow/RoleSwitcher.vue'
+import RoleSwitcher from './RoleSwitcher.vue'
 import { useAuthStore } from '@/stores/auth.store'
 import { useNotificationsStore } from '@/stores/notifications.store'
 import { useTheme } from '@/composables/useTheme'

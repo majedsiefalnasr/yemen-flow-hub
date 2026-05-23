@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url'
 import tailwindcss from '@tailwindcss/vite'
 import type { NuxtConfig } from 'nuxt/schema'
 
@@ -34,7 +35,7 @@ export default defineNuxtConfig({
     plugins: [tailwindcss()],
     resolve: {
       alias: {
-        '@': new URL('./app', import.meta.url).pathname,
+        '@': fileURLToPath(new URL('./app', import.meta.url)),
       },
     },
   },
