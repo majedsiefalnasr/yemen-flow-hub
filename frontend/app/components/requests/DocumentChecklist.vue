@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { AlertCircle } from 'lucide-vue-next'
 import type { RequestDocument, CustomsDeclarationSummary } from '../../types/models'
 import { UserRole, RequestStatus } from '../../types/enums'
 import {
@@ -8,6 +9,9 @@ import {
   canUploadDocument,
   isDocumentModificationLocked,
 } from '../../composables/useDocumentPermissions'
+import { Button } from '../ui/button'
+import { Badge } from '../ui/badge'
+import { Alert, AlertDescription } from '../ui/alert'
 
 const props = defineProps<{
   documents: RequestDocument[]
@@ -233,57 +237,58 @@ function formatDate(iso: string | null): string {
 </script>
 
 <template>
-  <div class="doc-checklist" dir="rtl">
+  <div class="flex flex-col gap-0" dir="rtl">
     <!-- Loading state -->
-    <div v-if="loading" class="docs-loading" aria-busy="true" aria-label="جارٍ تحميل المستندات">
-      <div class="skeleton skeleton--line" />
-      <div class="skeleton skeleton--line" />
-      <div class="skeleton skeleton--line skeleton--short" />
+    <div v-if="loading" class="flex flex-col gap-3 py-2" aria-busy="true" aria-label="جارٍ تحميل المستندات">
+      <div class="w-full h-4 bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 rounded animate-pulse" />
+      <div class="w-full h-4 bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 rounded animate-pulse" />
+      <div class="w-3/5 h-4 bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 rounded animate-pulse" />
     </div>
 
     <!-- Error state -->
-    <p v-else-if="error" class="docs-error" role="alert">{{ error }}</p>
+    <Alert v-else-if="error" class="border-l-4 border-l-red-600 bg-red-50 border-0">
+      <AlertCircle class="h-4 w-4 text-red-600" aria-hidden="true" />
+      <AlertDescription class="text-red-600 text-sm">{{ error }}</AlertDescription>
+    </Alert>
 
     <!-- Empty state -->
-    <p v-else-if="!hasContent" class="docs-empty">لا توجد مستندات بعد.</p>
+    <p v-else-if="!hasContent" class="text-sm text-gray-500 mt-2">لا توجد مستندات بعد.</p>
 
     <!-- Checklist summary badge -->
     <template v-else>
-      <div class="checklist-summary">
-        <span class="checklist-summary__label">قائمة المستندات</span>
-        <span
-          v-if="missingRequiredCount > 0"
-          class="checklist-summary__badge checklist-summary__badge--missing"
-        >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-            <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
-          </svg>
+      <div class="flex items-center justify-between gap-2 mb-2.5">
+        <span class="text-xs text-gray-500">قائمة المستندات</span>
+        <div v-if="missingRequiredCount > 0" class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-red-50 text-red-700 text-xs font-semibold">
+          <AlertCircle class="w-3 h-3" aria-hidden="true" />
           ينقص {{ missingRequiredCount }} مستند مطلوب
-        </span>
-        <span v-else class="checklist-summary__badge checklist-summary__badge--ok">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        </div>
+        <div v-else class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-green-50 text-green-800 text-xs font-semibold">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
             <polyline points="20 6 9 17 4 12" />
           </svg>
           مكتمل
-        </span>
+        </div>
       </div>
 
       <!-- Checklist rows -->
-      <ul class="docs-list" aria-label="قائمة المستندات">
+      <ul class="flex flex-col gap-1.5 list-none m-0 p-0" aria-label="قائمة المستندات">
         <template v-for="(row, idx) in checklist" :key="idx">
 
           <!-- Staged requirement row -->
           <li
             v-if="row.kind === 'staged'"
-            class="doc-item"
+            class="flex items-start gap-2.5 p-3 rounded-lg border"
             :class="{
-              'doc-item--uploaded': !!row.doc,
-              'doc-item--missing-required': !row.doc && row.requirement.required,
-              'doc-item--missing-optional': !row.doc && !row.requirement.required,
+              'border-green-300 bg-green-50': !!row.doc,
+              'border-red-300 bg-red-50': !row.doc && row.requirement.required,
+              'border-gray-300 bg-gray-100': !row.doc && !row.requirement.required,
             }"
           >
             <!-- Left: status icon box -->
-            <div class="doc-icon" :class="row.doc ? 'doc-icon--ok' : 'doc-icon--pending'">
+            <div
+              class="flex-shrink-0 w-7 h-7 rounded-md flex items-center justify-center text-sm"
+              :class="row.doc ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-500'"
+            >
               <svg v-if="row.doc" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
                 <polyline points="20 6 9 17 4 12" />
               </svg>
@@ -293,103 +298,109 @@ function formatDate(iso: string | null): string {
             </div>
 
             <!-- Center: labels -->
-            <div class="doc-info">
-              <div class="doc-header">
-                <span class="doc-type-label">{{ row.requirement.label }}</span>
+            <div class="flex flex-col gap-0.5 flex-1 min-w-0">
+              <div class="flex items-center gap-1.5">
+                <span class="text-xs font-semibold text-gray-900">{{ row.requirement.label }}</span>
               </div>
               <template v-if="row.doc">
-                <span class="doc-name">{{ row.doc.original_filename }}</span>
-                <span class="doc-meta">
+                <span class="text-xs font-medium text-gray-900 break-all">{{ row.doc.original_filename }}</span>
+                <span class="text-xs text-gray-500">
                   {{ formatFileSize(row.doc.size_bytes) }}
                   · {{ formatDate(row.doc.uploaded_at) }}
                   <template v-if="row.doc.uploaded_by_name"> · {{ row.doc.uploaded_by_name }}</template>
                 </span>
-                <span v-if="downloadErrors[row.doc.id]" class="doc-download-error" role="alert">
+                <span v-if="downloadErrors[row.doc.id]" class="text-xs text-red-600" role="alert">
                   {{ downloadErrors[row.doc.id] }}
                 </span>
               </template>
-              <span v-else class="doc-meta">{{ row.requirement.required ? 'لم يُرفع بعد' : 'لم يُرفع' }}</span>
+              <span v-else class="text-xs text-gray-500">{{ row.requirement.required ? 'لم يُرفع بعد' : 'لم يُرفع' }}</span>
             </div>
 
             <!-- Right: badge + download -->
-            <div class="doc-item__actions">
-              <span class="doc-badge" :class="row.requirement.required ? 'doc-badge--required' : 'doc-badge--optional'">
+            <div class="flex flex-col items-end gap-1.5 flex-shrink-0 pt-0.5">
+              <Badge :variant="row.requirement.required ? 'destructive' : 'secondary'" class="text-xs">
                 {{ row.requirement.required ? 'مطلوب' : 'اختياري' }}
-              </span>
-              <button
+              </Badge>
+              <Button
                 v-if="row.doc && canDownloadDocument(userRole, row.doc.type)"
-                class="doc-download-btn"
+                variant="outline"
+                size="sm"
                 :disabled="downloadingIds.has(row.doc.id)"
+                class="h-7 text-xs px-3 whitespace-nowrap"
                 :aria-label="`تحميل ${row.doc.original_filename}`"
                 @click="emit('download', row.doc.id, row.doc.original_filename)"
               >
                 {{ downloadingIds.has(row.doc.id) ? 'جارٍ التحميل…' : 'تحميل' }}
-              </button>
+              </Button>
             </div>
           </li>
 
           <!-- Extra uploaded docs -->
-          <li v-else-if="row.kind === 'extra'" class="doc-item doc-item--uploaded">
-            <div class="doc-icon doc-icon--ok">
+          <li v-else-if="row.kind === 'extra'" class="flex items-start gap-2.5 p-3 rounded-lg border border-green-300 bg-green-50">
+            <div class="flex-shrink-0 w-7 h-7 rounded-md flex items-center justify-center bg-green-100 text-green-700">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
                 <polyline points="20 6 9 17 4 12" />
               </svg>
             </div>
-            <div class="doc-info">
-              <div class="doc-header">
-                <span class="doc-type-label">{{ row.doc.type === 'SWIFT' ? 'مستند SWIFT' : 'مستند طلب' }}</span>
+            <div class="flex flex-col gap-0.5 flex-1 min-w-0">
+              <div class="flex items-center gap-1.5">
+                <span class="text-xs font-semibold text-gray-900">{{ row.doc.type === 'SWIFT' ? 'مستند SWIFT' : 'مستند طلب' }}</span>
               </div>
-              <span class="doc-name">{{ row.doc.original_filename }}</span>
-              <span class="doc-meta">
+              <span class="text-xs font-medium text-gray-900 break-all">{{ row.doc.original_filename }}</span>
+              <span class="text-xs text-gray-500">
                 {{ formatFileSize(row.doc.size_bytes) }}
                 · {{ formatDate(row.doc.uploaded_at) }}
                 <template v-if="row.doc.uploaded_by_name"> · {{ row.doc.uploaded_by_name }}</template>
               </span>
-              <span v-if="downloadErrors[row.doc.id]" class="doc-download-error" role="alert">
+              <span v-if="downloadErrors[row.doc.id]" class="text-xs text-red-600" role="alert">
                 {{ downloadErrors[row.doc.id] }}
               </span>
             </div>
-            <div class="doc-item__actions">
-              <span v-if="row.doc.type === 'SWIFT'" class="doc-badge doc-badge--swift">SWIFT</span>
-              <button
+            <div class="flex flex-col items-end gap-1.5 flex-shrink-0 pt-0.5">
+              <Badge v-if="row.doc.type === 'SWIFT'" class="bg-cyan-500 text-white text-xs">SWIFT</Badge>
+              <Button
                 v-if="canDownloadDocument(userRole, row.doc.type)"
-                class="doc-download-btn"
+                variant="outline"
+                size="sm"
                 :disabled="downloadingIds.has(row.doc.id)"
+                class="h-7 text-xs px-3 whitespace-nowrap"
                 :aria-label="`تحميل ${row.doc.original_filename}`"
                 @click="emit('download', row.doc.id, row.doc.original_filename)"
               >
                 {{ downloadingIds.has(row.doc.id) ? 'جارٍ التحميل…' : 'تحميل' }}
-              </button>
+              </Button>
             </div>
           </li>
 
           <!-- Customs declaration row -->
-          <li v-else-if="row.kind === 'customs'" class="doc-item doc-item--uploaded">
-            <div class="doc-icon doc-icon--ok">
+          <li v-else-if="row.kind === 'customs'" class="flex items-start gap-2.5 p-3 rounded-lg border border-green-300 bg-green-50">
+            <div class="flex-shrink-0 w-7 h-7 rounded-md flex items-center justify-center bg-green-100 text-green-700">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
                 <polyline points="20 6 9 17 4 12" />
               </svg>
             </div>
-            <div class="doc-info">
-              <div class="doc-header">
-                <span class="doc-type-label">بيان جمركي</span>
+            <div class="flex flex-col gap-0.5 flex-1 min-w-0">
+              <div class="flex items-center gap-1.5">
+                <span class="text-xs font-semibold text-gray-900">بيان جمركي</span>
               </div>
-              <span class="doc-name">{{ row.customs.declaration_number }}</span>
-              <span class="doc-meta">{{ formatDate(row.customs.issued_at) }}</span>
-              <span v-if="customsDownloadError" class="doc-download-error" role="alert">
+              <span class="text-xs font-medium text-gray-900">{{ row.customs.declaration_number }}</span>
+              <span class="text-xs text-gray-500">{{ formatDate(row.customs.issued_at) }}</span>
+              <span v-if="customsDownloadError" class="text-xs text-red-600" role="alert">
                 {{ customsDownloadError }}
               </span>
             </div>
-            <div class="doc-item__actions">
-              <button
+            <div class="flex flex-col items-end gap-1.5 flex-shrink-0 pt-0.5">
+              <Button
                 v-if="canDownloadCustoms(userRole)"
-                class="doc-download-btn"
+                variant="outline"
+                size="sm"
                 :disabled="customsDownloading"
+                class="h-7 text-xs px-3 whitespace-nowrap"
                 aria-label="تحميل البيان الجمركي"
                 @click="emit('download-customs', row.customs.id, row.customs.declaration_number)"
               >
                 {{ customsDownloading ? 'جارٍ التحميل…' : 'تحميل' }}
-              </button>
+              </Button>
             </div>
           </li>
 
@@ -398,272 +409,39 @@ function formatDate(iso: string | null): string {
     </template>
 
     <!-- Upload section (DATA_ENTRY only) -->
-    <div v-if="userRole === UserRole.DATA_ENTRY" class="doc-upload-section">
+    <div v-if="userRole === UserRole.DATA_ENTRY" class="flex flex-col items-start gap-2 pt-4">
       <template v-if="showUploadButton">
         <input
           ref="fileInputRef"
           type="file"
           accept="application/pdf"
-          class="doc-file-input"
+          class="sr-only"
           aria-label="اختر ملف PDF للرفع"
           @change="handleFileChange"
         />
-        <button
-          class="doc-upload-btn"
+        <Button
           :disabled="uploadingDocument || loading"
+          class="h-9 px-4 rounded-lg"
           @click="triggerFileInput"
         >
           {{ uploadingDocument ? 'جارٍ الرفع…' : 'رفع مستند' }}
-        </button>
-        <p v-if="fileTypeError" class="docs-error docs-error--upload" role="alert">
-          {{ fileTypeError }}
-        </p>
-        <p v-else-if="uploadError" class="docs-error docs-error--upload" role="alert">
-          {{ uploadError }}
-        </p>
+        </Button>
+        <Alert v-if="fileTypeError" class="border-l-4 border-l-red-600 bg-red-50 border-0 w-full">
+          <AlertCircle class="h-4 w-4 text-red-600" aria-hidden="true" />
+          <AlertDescription class="text-red-600 text-sm">{{ fileTypeError }}</AlertDescription>
+        </Alert>
+        <Alert v-else-if="uploadError" class="border-l-4 border-l-red-600 bg-red-50 border-0 w-full">
+          <AlertCircle class="h-4 w-4 text-red-600" aria-hidden="true" />
+          <AlertDescription class="text-red-600 text-sm">{{ uploadError }}</AlertDescription>
+        </Alert>
       </template>
 
-      <p v-else-if="showLockedNote" class="docs-locked-note" role="note">
+      <p v-else-if="showLockedNote" class="text-xs text-gray-500 flex items-center gap-1" role="note">
         🔒 مقفل — لا يمكن تعديل المستندات
       </p>
     </div>
   </div>
 </template>
-
-<style scoped>
-.doc-checklist {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-}
-
-/* Loading skeletons */
-.docs-loading {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 8px 0;
-}
-
-.skeleton {
-  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.4s infinite;
-  border-radius: 6px;
-  height: 16px;
-}
-
-.skeleton--line { width: 100%; }
-.skeleton--short { width: 60%; }
-
-@keyframes shimmer {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
-}
-
-/* States */
-.docs-error {
-  color: #c62828;
-  font-size: 14px;
-  margin: 8px 0 0;
-}
-
-.docs-empty {
-  color: #8e8e93;
-  font-size: 14px;
-  margin: 8px 0 0;
-}
-
-/* Checklist summary bar */
-.checklist-summary {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 10px;
-  gap: 8px;
-}
-
-.checklist-summary__label {
-  font-size: 12px;
-  color: #6c757d;
-}
-
-.checklist-summary__badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 3px 10px;
-  border-radius: 999px;
-  font-size: 11px;
-  font-weight: 600;
-}
-
-.checklist-summary__badge--missing { background: #fff0f0; color: #c62828; }
-.checklist-summary__badge--ok { background: #e8f5e9; color: #1b5e20; }
-
-/* Document list */
-.docs-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.doc-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 10px 12px;
-  border-radius: 8px;
-  border: 1px solid #e5e7eb;
-  background: #f9fafb;
-}
-
-.doc-item--uploaded { border-color: rgba(27, 94, 32, 0.25); background: rgba(27, 94, 32, 0.04); }
-.doc-item--missing-required { border-color: rgba(198, 40, 40, 0.25); background: rgba(198, 40, 40, 0.04); }
-.doc-item--missing-optional { border-color: #e5e7eb; background: #f5f5f7; }
-
-/* Left icon box */
-.doc-icon {
-  flex-shrink: 0;
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.doc-icon--ok { background: rgba(27, 94, 32, 0.15); color: #1b5e20; }
-.doc-icon--pending { background: #f0f0f0; color: #8e8e93; }
-
-.doc-info {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  flex: 1;
-  min-width: 0;
-}
-
-.doc-header {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-
-.doc-type-label {
-  font-size: 12px;
-  color: #1c222b;
-  font-weight: 600;
-}
-
-.doc-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.03em;
-  flex-shrink: 0;
-}
-
-.doc-badge--required { background: rgba(198, 40, 40, 0.1); color: #c62828; border: 1px solid rgba(198, 40, 40, 0.2); }
-.doc-badge--optional { background: #f5f5f7; color: #6c757d; border: 1px solid #e5e7eb; }
-.doc-badge--swift { background: #32ade6; color: #ffffff; }
-
-.doc-name {
-  font-size: 13px;
-  font-weight: 500;
-  color: #1c222b;
-  word-break: break-all;
-}
-
-.doc-meta {
-  font-size: 11px;
-  color: #8e8e93;
-}
-
-.doc-download-error {
-  font-size: 11px;
-  color: #c62828;
-}
-
-/* Actions column */
-.doc-item__actions {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 6px;
-  flex-shrink: 0;
-  padding-top: 2px;
-}
-
-/* Download button */
-.doc-download-btn {
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: 30px;
-  padding: 0 12px;
-  border-radius: 8px;
-  border: 1px solid #cccccc;
-  background: #ffffff;
-  color: #0066cc;
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background 0.15s;
-  white-space: nowrap;
-}
-
-.doc-download-btn:hover:not(:disabled) { background: #f0f7ff; border-color: #0066cc; }
-.doc-download-btn:disabled { opacity: 0.55; cursor: not-allowed; }
-
-/* Upload section */
-.doc-upload-section {
-  padding-top: 16px;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 8px;
-}
-
-.doc-file-input {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  opacity: 0;
-  pointer-events: none;
-}
-
-.doc-upload-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: 36px;
-  padding: 0 16px;
-  border-radius: 16px;
-  border: 1px solid #0066cc;
-  background: #ffffff;
-  color: #0066cc;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s;
-}
-
-.doc-upload-btn:hover:not(:disabled) { background: #0066cc; color: #ffffff; }
-.doc-upload-btn:disabled { opacity: 0.55; cursor: not-allowed; }
-
-.docs-error--upload { margin: 0; }
-
-.docs-locked-note {
-  font-size: 13px;
   color: #8e8e93;
   margin: 0;
   display: flex;
