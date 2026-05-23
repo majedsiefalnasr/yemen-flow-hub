@@ -1,7 +1,6 @@
-import { defineConfig } from '@playwright/test'
+import { defineConfig, devices } from '@playwright/test'
 
 export default defineConfig({
-  testDir: './tests/e2e',
   snapshotDir: './tests/screenshots',
   expect: {
     toHaveScreenshot: {
@@ -12,4 +11,34 @@ export default defineConfig({
     baseURL: process.env['PLAYWRIGHT_BASE_URL'] ?? 'http://localhost:3000',
     locale: 'ar',
   },
+  projects: [
+    // ── Existing e2e suite (unchanged behaviour) ───────────────────────────
+    {
+      name: 'e2e',
+      testDir: './tests/e2e',
+      use: { ...devices['Desktop Chrome'] },
+    },
+
+    // ── Visual regression lock (Story 9.5) ────────────────────────────────
+    {
+      name: 'visual',
+      testDir: './tests/visual',
+      snapshotDir: './tests/visual/__screenshots__',
+      expect: {
+        toHaveScreenshot: {
+          // Tuned after test-the-test exercise (AC7/AC8):
+          // 200px tolerates OS-level font-rendering noise (macOS vs Ubuntu)
+          // while still catching a deliberate 4px padding change (~300–600px diff).
+          maxDiffPixels: 200,
+          // Path template: keep default Playwright layout under __screenshots__/
+          pathTemplate: '{snapshotDir}/{testFilePath}/{arg}{ext}',
+        },
+      },
+      use: {
+        ...devices['Desktop Chrome'],
+        // Disable animations so screenshots are deterministic.
+        reducedMotion: 'reduce',
+      },
+    },
+  ],
 })
