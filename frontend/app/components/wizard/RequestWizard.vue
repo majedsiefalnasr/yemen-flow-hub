@@ -122,27 +122,31 @@ const isSubmitDisabled = computed(() => !wizard.acknowledged.value || wizard.sub
 </script>
 
 <template>
-  <div class="wizard-page" dir="rtl">
+  <div class="flex flex-col gap-6" dir="rtl">
     <!-- Breadcrumb -->
-    <nav class="breadcrumb" aria-label="مسار التنقل">
-      <NuxtLink to="/" class="breadcrumb-link">الرئيسية</NuxtLink>
-      <span class="breadcrumb-sep">/</span>
-      <NuxtLink to="/requests" class="breadcrumb-link">الطلبات</NuxtLink>
-      <span class="breadcrumb-sep">/</span>
-      <span class="breadcrumb-current">طلب جديد</span>
+    <nav class="flex items-center gap-1.5 text-xs text-muted-foreground font-family-arabic" aria-label="مسار التنقل">
+      <NuxtLink to="/" class="text-muted-foreground hover:text-primary-blue hover:underline transition-colors">الرئيسية</NuxtLink>
+      <span class="text-border">/</span>
+      <NuxtLink to="/requests" class="text-muted-foreground hover:text-primary-blue hover:underline transition-colors">الطلبات</NuxtLink>
+      <span class="text-border">/</span>
+      <span class="text-primary-text font-medium">طلب جديد</span>
     </nav>
 
     <!-- Page title -->
-    <div class="page-header">
-      <h1 class="page-title">تقديم طلب تمويل واردات جديد</h1>
-      <p class="page-subtitle">املأ البيانات بدقة وأرفق المستندات المطلوبة</p>
+    <div class="flex flex-col gap-1">
+      <h1 class="text-2xl font-bold text-primary-text font-cairo">تقديم طلب تمويل واردات جديد</h1>
+      <p class="text-sm text-muted-foreground font-family-arabic">املأ البيانات بدقة وأرفق المستندات المطلوبة</p>
     </div>
 
     <!-- Toast -->
     <div
       v-if="toast"
-      class="toast"
-      :class="`toast--${toast.type}`"
+      :class="{
+        'bg-green-50 text-green-700 border border-green-200': toast.type === 'success',
+        'bg-red-50 text-red-700 border border-red-200': toast.type === 'error',
+        'bg-blue-50 text-blue-700 border border-blue-200': toast.type === 'info',
+      }"
+      class="px-4 py-3 rounded-md text-sm font-medium font-family-arabic"
       role="status"
       aria-live="polite"
     >
@@ -158,7 +162,7 @@ const isSubmitDisabled = computed(() => !wizard.acknowledged.value || wizard.sub
     />
 
     <!-- Step content card -->
-    <div class="step-card">
+    <div class="bg-white border border-border rounded-2xl p-6 shadow-sm">
       <WizardStep1
         v-if="wizard.currentStep.value === 1"
         v-model="wizard.step1.value"
@@ -197,25 +201,25 @@ const isSubmitDisabled = computed(() => !wizard.acknowledged.value || wizard.sub
         @update:acknowledged="(v) => { wizard.acknowledged.value = v }"
       />
 
-      <!-- Bottom navigation bar (inside step card) -->
-      <div class="bottom-nav-divider" aria-hidden="true" />
-      <div class="bottom-nav" role="toolbar" aria-label="تنقل خطوات الطلب">
+      <!-- Bottom navigation bar -->
+      <div class="h-px bg-border my-6" aria-hidden="true" />
+      <div class="flex items-center gap-3" role="toolbar" aria-label="تنقل خطوات الطلب">
         <!-- Previous -->
         <button
           v-if="!isFirstStep"
           type="button"
-          class="btn-ghost btn-prev"
+          class="h-10 px-5 border border-border rounded-2xl bg-transparent text-primary-text hover:border-primary-blue hover:text-primary-blue disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium text-sm whitespace-nowrap"
           :disabled="wizard.saving.value || wizard.submitting.value"
           @click="wizard.prevStep"
         >
           → السابق
         </button>
-        <span v-else class="btn-placeholder" />
+        <span v-else class="flex-shrink-0 w-20" />
 
         <!-- Save draft -->
         <button
           type="button"
-          class="btn-ghost btn-draft"
+          class="h-10 px-5 border border-border rounded-2xl bg-transparent text-primary-text hover:border-primary-blue hover:text-primary-blue disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium text-sm whitespace-nowrap ml-auto"
           :disabled="wizard.saving.value || wizard.submitting.value"
           @click="handleSaveDraft"
         >
@@ -227,7 +231,7 @@ const isSubmitDisabled = computed(() => !wizard.acknowledged.value || wizard.sub
         <button
           v-if="!isLastStep"
           type="button"
-          class="btn-primary btn-next"
+          class="h-10 px-6 bg-primary-blue text-white rounded-2xl border-none font-medium text-sm whitespace-nowrap hover:opacity-90 disabled:bg-gray-200 disabled:text-muted-foreground disabled:cursor-not-allowed transition-all"
           :disabled="wizard.saving.value"
           @click="handleNext"
         >
@@ -236,7 +240,7 @@ const isSubmitDisabled = computed(() => !wizard.acknowledged.value || wizard.sub
         <button
           v-else
           type="button"
-          class="btn-primary btn-submit"
+          class="h-10 px-6 bg-primary-blue text-white rounded-2xl border-none font-medium text-sm whitespace-nowrap hover:opacity-90 disabled:bg-gray-200 disabled:text-muted-foreground disabled:cursor-not-allowed transition-all"
           :disabled="isSubmitDisabled"
           @click="handleSubmit"
         >
@@ -248,154 +252,3 @@ const isSubmitDisabled = computed(() => !wizard.acknowledged.value || wizard.sub
   </div>
 </template>
 
-<style scoped>
-.wizard-page {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
-
-/* Breadcrumb */
-.breadcrumb {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-family: 'IBM Plex Sans Arabic', sans-serif;
-  font-size: 13px;
-  color: #6c757d;
-}
-
-.breadcrumb-link {
-  color: #6c757d;
-  text-decoration: none;
-}
-
-.breadcrumb-link:hover {
-  color: #0066cc;
-  text-decoration: underline;
-}
-
-.breadcrumb-sep {
-  color: #cccccc;
-}
-
-.breadcrumb-current {
-  color: #1c222b;
-  font-weight: 500;
-}
-
-/* Page header */
-.page-header {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.page-title {
-  font-family: 'Cairo', sans-serif;
-  font-size: 28px;
-  font-weight: 600;
-  color: #1c222b;
-  margin: 0;
-}
-
-.page-subtitle {
-  font-family: 'IBM Plex Sans Arabic', sans-serif;
-  font-size: 14px;
-  color: #6c757d;
-  margin: 0;
-}
-
-/* Toast */
-.toast {
-  padding: 12px 16px;
-  border-radius: 12px;
-  font-family: 'IBM Plex Sans Arabic', sans-serif;
-  font-size: 14px;
-  font-weight: 500;
-}
-
-.toast--success { background: #f1f8f4; color: #1b5e20; border: 1px solid #a5d6a7; }
-.toast--error { background: #ffebee; color: #c62828; border: 1px solid #ffcdd2; }
-.toast--info { background: #e3f2fd; color: #0d47a1; border: 1px solid #bbdefb; }
-
-/* Step card */
-.step-card {
-  background: #ffffff;
-  border: 1px solid #cccccc;
-  border-radius: 16px;
-  padding: 24px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
-}
-
-/* Bottom nav divider */
-.bottom-nav-divider {
-  height: 1px;
-  background: #cccccc;
-  margin: 24px -24px 0;
-}
-
-/* Bottom nav — now inside the step card */
-.bottom-nav {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding-top: 16px;
-}
-
-.btn-placeholder { flex: 0 0 80px; }
-
-/* Ghost button */
-.btn-ghost {
-  height: 40px;
-  padding: 0 20px;
-  background: transparent;
-  border: 1px solid #cccccc;
-  border-radius: 16px;
-  font-family: 'IBM Plex Sans Arabic', sans-serif;
-  font-size: 14px;
-  color: #1c222b;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: border-color 150ms;
-}
-
-.btn-ghost:hover:not(:disabled) {
-  border-color: #0066cc;
-  color: #0066cc;
-}
-
-.btn-ghost:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.btn-prev { margin-left: auto; }
-.btn-draft { margin-right: auto; }
-
-/* Primary button */
-.btn-primary {
-  height: 40px;
-  padding: 0 24px;
-  background: #0066cc;
-  color: #ffffff;
-  border: none;
-  border-radius: 16px;
-  font-family: 'IBM Plex Sans Arabic', sans-serif;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: opacity 150ms;
-}
-
-.btn-primary:hover:not(:disabled) {
-  opacity: 0.9;
-}
-
-.btn-primary:disabled {
-  background: #e9ecef;
-  color: #6c757d;
-  cursor: not-allowed;
-}
-</style>
