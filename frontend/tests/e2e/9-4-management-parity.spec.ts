@@ -1,7 +1,11 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { expect, test, type Page } from '@playwright/test'
 import { UserRole } from '../../app/types/enums'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 
 // ── Shared fixtures ────────────────────────────────────────────────────────────
 
@@ -198,11 +202,9 @@ async function waitForNuxt(page: Page) {
 }
 
 async function navigateTo(page: Page, targetPath: string) {
-  await page.evaluate((p) => {
-    const app = (window as unknown as { useNuxtApp?: () => { $router: { push: (path: string) => void } } }).useNuxtApp?.()
-    app?.$router.push(p)
-  }, targetPath)
+  await page.goto(targetPath)
   await page.waitForURL(`**${targetPath}`, { timeout: 12000 })
+  await waitForNuxt(page)
 }
 
 // ── Notifications ──────────────────────────────────────────────────────────────
@@ -212,7 +214,7 @@ test.describe('9.4 notifications/index', () => {
     const user = makeCbyUser()
     await setupAuth(page, user)
     await mockBaseApis(page, user)
-    await page.route('**/api/notifications**', route =>
+    await page.route(/\/api\/notifications(?:\?.*)?$/, route =>
       route.fulfill({ json: NOTIFICATIONS_RESPONSE }),
     )
     await page.goto('/dashboard')
@@ -247,7 +249,7 @@ test.describe('9.4 notifications/empty', () => {
     const user = makeCbyUser()
     await setupAuth(page, user)
     await mockBaseApis(page, user)
-    await page.route('**/api/notifications**', route =>
+    await page.route(/\/api\/notifications(?:\?.*)?$/, route =>
       route.fulfill({
         json: {
           success: true, message: 'ok',
@@ -272,7 +274,7 @@ test.describe('9.4 notifications/bank-admin', () => {
     const user = makeBankUser()
     await setupAuth(page, user)
     await mockBaseApis(page, user)
-    await page.route('**/api/notifications**', route =>
+    await page.route(/\/api\/notifications(?:\?.*)?$/, route =>
       route.fulfill({ json: NOTIFICATIONS_RESPONSE }),
     )
     await page.goto('/dashboard')
@@ -322,14 +324,14 @@ test.describe('9.4 admin/banks', () => {
     await page.screenshot({ path: parityPath('admin', 'banks-add', 'current.png'), fullPage: true })
   })
 
-  test('banks view modal desktop', async ({ page }) => {
+  test('banks edit modal desktop', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 })
     await page.waitForSelector('.data-table', { timeout: 10000 })
     await page.locator('button.btn-edit').first().click()
     await page.waitForSelector('.modal', { timeout: 5000 })
     await disableAnimations(page)
     await expect(page.locator('.modal')).toBeVisible()
-    await page.screenshot({ path: parityPath('admin', 'banks-view', 'current.png'), fullPage: true })
+    await page.screenshot({ path: parityPath('admin', 'banks-edit', 'current.png'), fullPage: true })
   })
 })
 
@@ -474,6 +476,11 @@ test.describe('9.4 reports — other roles', () => {
 // ── Audit ──────────────────────────────────────────────────────────────────────
 
 async function mockAuditApis(page: Page) {
+  // Register the catch-all logs route FIRST so the more specific routes,
+  // registered after, take precedence under Playwright's LIFO matching.
+  await page.route(/\/api\/audit(?:\?.*)?$/, route =>
+    route.fulfill({ json: AUDIT_LOGS_RESPONSE }),
+  )
   await page.route('**/api/audit/stats**', route =>
     route.fulfill({ json: AUDIT_STATS_RESPONSE }),
   )
@@ -482,9 +489,6 @@ async function mockAuditApis(page: Page) {
   )
   await page.route('**/api/audit/risk-indicators**', route =>
     route.fulfill({ json: AUDIT_RISK_RESPONSE }),
-  )
-  await page.route('**/api/audit**', route =>
-    route.fulfill({ json: AUDIT_LOGS_RESPONSE }),
   )
 }
 
@@ -583,8 +587,10 @@ test.describe('9.4 settings tabs', () => {
   for (const { key, tab, label } of SETTINGS_TABS) {
     test(`settings ${label} tab desktop`, async ({ page }) => {
       await page.setViewportSize({ width: 1440, height: 900 })
-      await page.waitForSelector(`[data-testid="${tab}"]`, { timeout: 10000 })
-      await page.locator(`[data-testid="${tab}"]`).click()
+      const tabBtn = page.locator(`[data-testid="${tab}"]`)
+      await tabBtn.waitFor({ state: 'visible', timeout: 10000 })
+      await tabBtn.click()
+      await expect(tabBtn).toHaveAttribute('aria-selected', 'true')
       await disableAnimations(page)
       await page.screenshot({ path: parityPath('settings', key, 'current.png'), fullPage: true })
     })
@@ -702,10 +708,10 @@ test.describe('9.4 merchants list + modals', () => {
     await page.setViewportSize({ width: 1440, height: 900 })
     await page.waitForSelector('.page-title', { timeout: 10000 })
     const filterBtn = page.locator('button, .filter-btn, [role="tab"]').filter({ hasText: /موقوف|معلق|غير نشط/ }).first()
-    if (await filterBtn.isVisible()) {
-      await filterBtn.click()
-      await disableAnimations(page)
-    }
+    test.skip(!(await filterBtn.isVisible().catch(() => false)),
+      'Suspended filter control not present in merchants page yet')
+    await filterBtn.click()
+    await disableAnimations(page)
     await page.screenshot({ path: parityPath('merchants', 'list-suspended', 'current.png'), fullPage: true })
   })
 })

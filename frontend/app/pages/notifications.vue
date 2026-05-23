@@ -33,12 +33,24 @@ const filteredList = computed(() => {
   if (activeFilter.value === 'unread') list = list.filter(n => !n.read_at)
   else if (activeFilter.value === 'read') list = list.filter(n => !!n.read_at)
   const q = searchQuery.value.trim().toLowerCase()
-  if (q) list = list.filter(n => (n.data.message ?? '').toLowerCase().includes(q))
+  if (q) list = list.filter(n => (n.data?.message ?? '').toLowerCase().includes(q))
   return list
 })
 
 const totalDisplayCount = computed(() => `${allList.value.length} إشعار`)
-const unreadDisplayCount = computed(() => unreadCount.value)
+const isFiltered = computed(() =>
+  activeFilter.value !== 'all' || searchQuery.value.trim() !== '',
+)
+const emptyTitle = computed(() =>
+  isFiltered.value && allList.value.length > 0
+    ? 'لا توجد نتائج مطابقة'
+    : 'لا توجد إشعارات',
+)
+const emptySub = computed(() =>
+  isFiltered.value && allList.value.length > 0
+    ? 'جرب تعديل الفلتر أو البحث'
+    : 'ستظهر إشعاراتك هنا عند وصولها',
+)
 
 onMounted(async () => {
   await fetchNotifications()
@@ -59,7 +71,7 @@ async function goToPage(page: number) {
   await fetchNotifications(page)
 }
 
-function iconName(type?: string): IconName {
+function iconName(type?: string | null): IconName {
   switch (type) {
     case 'request_submitted': return 'file-text'
     case 'request_approved': return 'check-circle'
@@ -73,16 +85,16 @@ function iconName(type?: string): IconName {
   }
 }
 
-function notifAccentClass(type?: string): string {
+function notifAccentClass(type?: string | null): string {
   return type === 'claim_released' ? 'notif-amber' : ''
 }
 
-function notifLink(data: { type?: string; request_id?: number | null }): string | null {
-  if (data.type === 'claim_released' && data.request_id) return `/requests/${data.request_id}`
+function notifLink(data?: { type?: string; request_id?: number | null } | null): string | null {
+  if (data?.type === 'claim_released' && data.request_id) return `/requests/${data.request_id}`
   return null
 }
 
-function handleNotificationClick(data: { type?: string; request_id?: number | null }) {
+function handleNotificationClick(data?: { type?: string; request_id?: number | null } | null) {
   const link = notifLink(data)
   if (link) navigateTo(link)
 }
@@ -104,9 +116,6 @@ function handleNotificationClick(data: { type?: string; request_id?: number | nu
           @click="handleMarkAllRead"
         >
           تحديد الكل كمقروء
-        </button>
-        <button class="icon-btn" aria-label="حذف الكل">
-          <Icon name="trash" />
         </button>
       </div>
     </div>
@@ -171,8 +180,8 @@ function handleNotificationClick(data: { type?: string; request_id?: number | nu
       <div class="empty-icon" aria-hidden="true">
         <Icon name="bell" />
       </div>
-      <p class="empty-title">لا توجد إشعارات</p>
-      <p class="empty-sub">ستظهر إشعاراتك هنا عند وصولها</p>
+      <p class="empty-title">{{ emptyTitle }}</p>
+      <p class="empty-sub">{{ emptySub }}</p>
     </div>
 
     <!-- Notification list -->
@@ -186,15 +195,15 @@ function handleNotificationClick(data: { type?: string; request_id?: number | nu
         v-for="notif in filteredList"
         :key="notif.id"
         class="notification-item"
-        :class="[{ unread: !notif.read_at }, notifAccentClass(notif.data.type)]"
+        :class="[{ unread: !notif.read_at }, notifAccentClass(notif.data?.type)]"
         :style="notifLink(notif.data) ? 'cursor: pointer' : ''"
         @click="handleNotificationClick(notif.data)"
       >
-        <div class="notif-icon-wrap" :class="notifAccentClass(notif.data.type)" aria-hidden="true">
-          <Icon :name="iconName(notif.data.type)" />
+        <div class="notif-icon-wrap" :class="notifAccentClass(notif.data?.type)" aria-hidden="true">
+          <Icon :name="iconName(notif.data?.type)" />
         </div>
         <div class="notif-content">
-          <p class="notif-message">{{ notif.data.message }}</p>
+          <p class="notif-message">{{ notif.data?.message }}</p>
           <time class="notif-time" :datetime="notif.created_at">
             {{ formatRelativeTime(notif.created_at) }}
           </time>
@@ -207,9 +216,6 @@ function handleNotificationClick(data: { type?: string; request_id?: number | nu
             @click.stop="handleMarkRead(notif.id)"
           >
             <Icon name="check" />
-          </button>
-          <button class="delete-icon-btn" aria-label="حذف الإشعار" @click.stop>
-            <Icon name="trash" />
           </button>
         </div>
       </li>
@@ -301,19 +307,6 @@ function handleNotificationClick(data: { type?: string; request_id?: number | nu
 .mark-all-btn:disabled {
   opacity: 0.5;
   cursor: default;
-}
-
-.icon-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  background: transparent;
-  border: 1px solid #cccccc;
-  border-radius: 8px;
-  color: #6c757d;
-  cursor: pointer;
 }
 
 /* Filter row */
@@ -534,8 +527,7 @@ function handleNotificationClick(data: { type?: string; request_id?: number | nu
   flex-shrink: 0;
 }
 
-.read-icon-btn,
-.delete-icon-btn {
+.read-icon-btn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -551,11 +543,6 @@ function handleNotificationClick(data: { type?: string; request_id?: number | nu
 .read-icon-btn:hover {
   background: #e6f9ec;
   color: #1b5e20;
-}
-
-.delete-icon-btn:hover {
-  background: #fff0ef;
-  color: #c62828;
 }
 
 /* Pagination */
