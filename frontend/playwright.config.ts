@@ -11,6 +11,18 @@ export default defineConfig({
     baseURL: process.env['PLAYWRIGHT_BASE_URL'] ?? 'http://localhost:3000',
     locale: 'ar',
   },
+  // Start the Nuxt dev server for visual tests. Dev mode matches the
+  // environment baselines were captured in (DEVTOOLS_MASK targets Nuxt
+  // devtools elements that only exist in dev). In CI, Playwright owns the
+  // process lifecycle; locally we reuse a running dev server if one exists.
+  webServer: {
+    command: 'npm run dev',
+    url: 'http://localhost:3000',
+    reuseExistingServer: !process.env['CI'],
+    timeout: 180_000,
+    stdout: 'ignore',
+    stderr: 'pipe',
+  },
   projects: [
     // ── Existing e2e suite (unchanged behaviour) ───────────────────────────
     {

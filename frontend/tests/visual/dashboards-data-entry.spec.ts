@@ -160,7 +160,10 @@ async function openDashboard(page: Page) {
   await page.goto('/dashboard')
   await page.waitForSelector('#__nuxt')
   await page.waitForFunction(() => (document.querySelector('#__nuxt')?.children.length ?? 0) > 0)
-  await page.waitForSelector('.kpi-grid, .error-card', { timeout: 10_000 })
+  // Wait for the success-path KPI grid only. Accepting `.error-card` here
+  // would let a missed API mock baseline the dashboard's error state instead
+  // of its normal render — let the timeout fail loudly if state is wrong.
+  await page.waitForSelector('.kpi-grid', { timeout: 10_000 })
   // Await font loading before screenshot to prevent font-rendering races
   await page.evaluate(() => document.fonts.ready)
 }
