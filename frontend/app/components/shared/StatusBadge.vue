@@ -14,13 +14,25 @@ const badgeStyle = computed(() => ({
   backgroundColor: `${badge.value.color}1a`,
   color: badge.value.color,
   borderColor: `${badge.value.color}33`,
+  display: 'inline-flex',
+  alignItems: 'center',
+  direction: 'rtl',
+  gap: '5px',
+  height: '24px',
+  padding: '0 10px',
+  borderRadius: '12px',
+  border: '1px solid',
+  fontSize: '12px',
+  fontWeight: '500',
+  whiteSpace: 'nowrap',
+  lineHeight: '1',
 }))
 </script>
 
 <template>
   <span class="status-badge" role="img" :style="badgeStyle" :aria-label="badge.label">
     <svg
-      class="status-badge__icon"
+      class="flex-shrink-0"
       width="14"
       height="14"
       viewBox="0 0 24 24"
@@ -106,28 +118,3 @@ const badgeStyle = computed(() => ({
     <span class="status-badge__label">{{ badge.label }}</span>
   </span>
 </template>
-
-<style scoped>
-.status-badge {
-  display: inline-flex;
-  align-items: center;
-  direction: rtl;
-  gap: 5px;
-  height: 24px;
-  padding: 0 10px;
-  border-radius: 12px;
-  border: 1px solid transparent;
-  font-size: 12px;
-  font-weight: 500;
-  white-space: nowrap;
-  line-height: 1;
-}
-
-.status-badge__icon {
-  flex-shrink: 0;
-}
-
-.status-badge__label {
-  /* No letter-spacing — Arabic connected script must not break */
-}
-</style>

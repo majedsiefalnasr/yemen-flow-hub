@@ -12,39 +12,10 @@ const progress = computed(() => getStatusProgress(props.status, props.role))
 </script>
 
 <template>
-  <div class="request-progress">
-    <div class="progress-track" role="progressbar" :aria-valuenow="progress" aria-valuemin="0" aria-valuemax="100">
-      <div class="progress-fill" :style="{ width: `${progress}%` }" />
+  <div class="flex flex-col gap-1 min-w-20">
+    <div class="h-1.5 bg-gray-300 rounded-full overflow-hidden" role="progressbar" :aria-valuenow="progress" aria-valuemin="0" aria-valuemax="100">
+      <div class="h-full bg-blue-600 rounded-full transition-all" :style="{ width: `${progress}%` }" />
     </div>
-    <span class="progress-label">{{ progress }}%</span>
+    <span class="text-xs text-gray-600 font-tabular-nums">{{ progress }}%</span>
   </div>
 </template>
-
-<style scoped>
-.request-progress {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 80px;
-}
-
-.progress-track {
-  height: 6px;
-  background: var(--color-border, #cccccc);
-  border-radius: 3px;
-  overflow: hidden;
-}
-
-.progress-fill {
-  height: 100%;
-  background: #0066cc;
-  border-radius: 3px;
-  transition: width 200ms ease;
-}
-
-.progress-label {
-  font-size: 10px;
-  color: var(--color-text-secondary, #6c757d);
-  font-variant-numeric: tabular-nums;
-}
-</style>

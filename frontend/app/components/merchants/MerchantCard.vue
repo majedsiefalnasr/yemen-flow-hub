@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { Building2, Edit, Pause, Play } from 'lucide-vue-next'
 import type { Merchant } from '../../types/models'
+import { Card } from '../ui/card'
+import { Button } from '../ui/button'
+import { Badge } from '../ui/badge'
 
 const props = defineProps<{
   merchant: Merchant
@@ -29,261 +32,79 @@ function businessTypeLabel(type: string | null | undefined): string {
 </script>
 
 <template>
-  <div class="merchant-card" dir="rtl">
+  <Card dir="rtl" class="hover:shadow-md transition-shadow">
     <!-- Header: icon tile + status badge -->
-    <div class="card-top">
-      <div class="icon-tile" aria-hidden="true">
+    <div class="flex items-start justify-between gap-3 pb-3 border-b border-gray-200">
+      <div class="w-12 h-12 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center flex-shrink-0" aria-hidden="true">
         <Building2 :size="24" />
       </div>
-      <span
-        :class="['status-badge', props.merchant.is_active ? 'badge-active' : 'badge-suspended']"
+      <Badge
+        :variant="props.merchant.is_active ? 'default' : 'secondary'"
         role="status"
       >
         {{ props.merchant.is_active ? 'نشط' : 'موقوف' }}
-      </span>
+      </Badge>
     </div>
 
     <!-- Name + category -->
-    <div class="card-identity">
-      <span class="merchant-name">{{ props.merchant.name }}</span>
-      <span class="merchant-category">{{ businessTypeLabel(props.merchant.business_type) }}</span>
+    <div class="flex flex-col gap-1 py-3 border-b border-gray-200">
+      <p class="text-sm font-semibold text-gray-900">{{ props.merchant.name }}</p>
+      <p class="text-xs text-gray-600">{{ businessTypeLabel(props.merchant.business_type) }}</p>
     </div>
 
     <!-- Metadata rows -->
-    <dl class="card-meta">
-      <div class="meta-row">
-        <dt class="meta-label">السجل التجاري</dt>
-        <dd class="meta-value mono">{{ metaVal(props.merchant.commercial_register) }}</dd>
+    <dl class="flex flex-col gap-2 py-3 border-b border-gray-200 text-xs">
+      <div class="flex justify-between items-center gap-2">
+        <dt class="text-gray-600">السجل التجاري</dt>
+        <dd class="font-mono text-gray-900 font-medium">{{ metaVal(props.merchant.commercial_register) }}</dd>
       </div>
-      <div class="meta-row">
-        <dt class="meta-label">الرقم الضريبي</dt>
-        <dd class="meta-value mono">{{ metaVal(props.merchant.tax_number) }}</dd>
+      <div class="flex justify-between items-center gap-2">
+        <dt class="text-gray-600">الرقم الضريبي</dt>
+        <dd class="font-mono text-gray-900 font-medium">{{ metaVal(props.merchant.tax_number) }}</dd>
       </div>
-      <div class="meta-row">
-        <dt class="meta-label">البنك</dt>
-        <dd class="meta-value">{{ metaVal(props.merchant.bank_name) }}</dd>
+      <div class="flex justify-between items-center gap-2">
+        <dt class="text-gray-600">البنك</dt>
+        <dd class="text-gray-900 font-medium overflow-hidden text-ellipsis whitespace-nowrap max-w-xs">{{ metaVal(props.merchant.bank_name) }}</dd>
       </div>
-      <div class="meta-row">
-        <dt class="meta-label">العنوان</dt>
-        <dd class="meta-value">{{ metaVal(props.merchant.address) }}</dd>
+      <div class="flex justify-between items-center gap-2">
+        <dt class="text-gray-600">العنوان</dt>
+        <dd class="text-gray-900 font-medium overflow-hidden text-ellipsis whitespace-nowrap max-w-xs">{{ metaVal(props.merchant.address) }}</dd>
       </div>
-      <div class="meta-row">
-        <dt class="meta-label">هاتف</dt>
-        <dd class="meta-value ltr">{{ metaVal(props.merchant.phone) }}</dd>
+      <div class="flex justify-between items-center gap-2">
+        <dt class="text-gray-600">هاتف</dt>
+        <dd class="font-mono text-gray-900 font-medium direction-ltr">{{ metaVal(props.merchant.phone) }}</dd>
       </div>
     </dl>
 
     <!-- Footer: transaction count + actions -->
-    <div class="card-footer">
-      <div class="transaction-count">
-        <span class="tx-label">المعاملات:</span>
-        <span class="tx-value">{{ props.merchant.transaction_count ?? 0 }}</span>
+    <div class="flex items-center justify-between gap-2 pt-3">
+      <div class="text-xs flex items-center gap-1">
+        <span class="text-gray-600">المعاملات:</span>
+        <span class="font-mono font-bold text-gray-900">{{ props.merchant.transaction_count ?? 0 }}</span>
       </div>
-      <div class="card-actions">
-        <button
-          class="icon-btn"
-          :class="props.merchant.is_active ? 'btn-suspend' : 'btn-activate'"
+      <div class="flex gap-1">
+        <Button
+          variant="ghost"
+          size="sm"
+          class="h-8 w-8 p-0"
           :aria-label="props.merchant.is_active ? 'تعليق التاجر' : 'تفعيل التاجر'"
           :title="props.merchant.is_active ? 'تعليق' : 'تفعيل'"
           @click="emit('toggleStatus', props.merchant)"
         >
           <Pause v-if="props.merchant.is_active" :size="16" />
           <Play v-else :size="16" />
-        </button>
-        <button
-          class="icon-btn btn-edit"
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          class="h-8 w-8 p-0"
           aria-label="تعديل التاجر"
           title="تعديل"
           @click="emit('edit', props.merchant)"
         >
           <Edit :size="16" />
-        </button>
+        </Button>
       </div>
     </div>
-  </div>
+  </Card>
 </template>
-
-<style scoped>
-.merchant-card {
-  background: #ffffff;
-  border: 1px solid #cccccc;
-  border-radius: 16px;
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  transition: box-shadow 0.15s;
-}
-
-.merchant-card:hover {
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
-}
-
-.card-top {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.icon-tile {
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
-  background: #e8f0fe;
-  color: #0066cc;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.status-badge {
-  display: inline-block;
-  padding: 3px 12px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 500;
-}
-
-.badge-active {
-  background: #e8f5e9;
-  color: #1b5e20;
-}
-
-.badge-suspended {
-  background: #f5f5f7;
-  color: #8e8e93;
-}
-
-.card-identity {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.merchant-name {
-  font-size: 15px;
-  font-weight: 600;
-  color: #1c222b;
-}
-
-.merchant-category {
-  font-size: 12px;
-  color: #6c757d;
-}
-
-.card-meta {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin: 0;
-  border-top: 1px solid #f0f0f0;
-  padding-top: 12px;
-  font-size: 12px;
-}
-
-.meta-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
-}
-
-.meta-label {
-  color: #6c757d;
-  flex-shrink: 0;
-}
-
-.meta-value {
-  color: #1c222b;
-  text-align: left;
-  direction: rtl;
-  font-weight: 500;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 180px;
-}
-
-.meta-value.mono,
-.meta-value.ltr {
-  direction: ltr;
-  font-family: 'Inter', monospace;
-  text-align: right;
-}
-
-.card-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  border-top: 1px solid #f0f0f0;
-  padding-top: 12px;
-  margin-top: 4px;
-}
-
-.transaction-count {
-  font-size: 12px;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.tx-label {
-  color: #6c757d;
-}
-
-.tx-value {
-  font-weight: 700;
-  color: #1c222b;
-  font-family: 'Inter', monospace;
-}
-
-.card-actions {
-  display: flex;
-  gap: 4px;
-}
-
-.icon-btn {
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 8px;
-  border: none;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-
-.btn-edit {
-  background: transparent;
-  color: #6c757d;
-}
-
-.btn-edit:hover {
-  background: #f5f5f7;
-  color: #0066cc;
-}
-
-.btn-suspend {
-  background: transparent;
-  color: #6c757d;
-}
-
-.btn-suspend:hover {
-  background: #fff3e0;
-  color: #f57f17;
-}
-
-.btn-activate {
-  background: transparent;
-  color: #6c757d;
-}
-
-.btn-activate:hover {
-  background: #e8f5e9;
-  color: #1b5e20;
-}
-</style>
