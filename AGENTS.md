@@ -20,7 +20,7 @@ yemen-flow-hub/               ← Root repo (git@github.com:majedsiefalnasr/yeme
 ├── backend/                  ← Laravel 11 API (git@github.com:ultimate-eg/yemen-flow-hub-backend.git)
 ├── frontend/                 ← Nuxt 4 app (git@github.com:ultimate-eg/yemen-flow-hub-frontend.git)
 ├── docs/                     ← Project documentation (source of truth)
-├── lovable/                  ← Lovable prototype (visual source of truth, read-only)
+├── lovable/                  ← Lovable Nuxt prototype (UI source — components being transplanted into frontend/)
 ├── DESIGN.md                 ← Visual design system
 ├── AI-ENGINEERING-PROMPT.md  ← Full engineering context
 └── AGENTS.md                 ← This file
@@ -118,9 +118,7 @@ All implementation decisions must follow these docs in order of authority:
 7. `DESIGN.md` — Visual design system (colors, typography, layout)
 8. `AI-ENGINEERING-PROMPT.md` — Full engineering context and anti-patterns
 
-**lovable/** is the **visual source of truth** for all UI work. Clone it 1:1; translate React idioms to Vue; mirror for RTL; preserve Arabic copy. `lovable/` itself remains read-only.
-
-Every UI-touching story is gated by the parity-evidence workflow (see `docs/ui-parity/clone-page-workflow.md` and the BMad dev-story gate in `_bmad/custom/bmad-dev-story.toml`). Story completion is blocked until a `_bmad-output/parity-evidence/<area>/<page>/` triplet (`lovable.png`, `current.png`, `side-by-side.png`) is committed in the same change.
+**lovable/** is a Nuxt 4 + Vue + shadcn-vue prototype used as the UI source. Pages, components, and layouts are being transplanted into `frontend/` and wired to real Laravel APIs; until that work completes, treat Lovable as the visual reference for any new UI.
 
 ---
 
