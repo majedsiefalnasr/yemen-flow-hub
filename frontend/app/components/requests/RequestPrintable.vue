@@ -65,309 +65,92 @@ const fields = computed(() => [
 </script>
 
 <template>
-  <div class="printable" dir="rtl">
+  <div class="max-w-[900px] mx-auto bg-white text-gray-900 p-6 print:p-0 print:max-w-full" dir="rtl">
     <!-- ─── Section 1: Title + reference + status ─── -->
-    <header class="printable-header">
-      <div class="printable-header__title-group">
-        <h1 class="printable-title">طلب تمويل واردات</h1>
-        <span class="printable-ref">{{ request.reference_number }}</span>
+    <header class="flex items-start justify-between gap-4 mb-2">
+      <div class="flex flex-col gap-1">
+        <h1 class="font-bold text-2xl text-gray-900 m-0">طلب تمويل واردات</h1>
+        <span class="text-blue-600 font-semibold text-base">{{ request.reference_number }}</span>
       </div>
-      <span class="printable-status-badge">{{ statusLabel(request.status) }}</span>
+      <span class="text-sm font-semibold px-3 py-1 rounded-full border border-gray-300 text-gray-900 bg-gray-100 whitespace-nowrap flex-shrink-0 print:border-black print:bg-transparent print:text-black">{{ statusLabel(request.status) }}</span>
     </header>
 
-    <div class="printable-divider" />
+    <div class="h-px bg-gray-300 my-4" />
 
     <!-- ─── Section 2: Bank / user / date ─── -->
-    <section class="printable-meta" aria-label="بيانات الطلب">
-      <div class="meta-row">
-        <span class="meta-label">البنك:</span>
-        <span class="meta-value">{{ request.bank_name ?? '—' }}</span>
+    <section class="flex flex-col gap-1.5" aria-label="بيانات الطلب">
+      <div class="flex gap-2 text-sm">
+        <span class="font-semibold w-36 text-gray-600">البنك:</span>
+        <span class="text-gray-900">{{ request.bank_name ?? '—' }}</span>
       </div>
-      <div class="meta-row">
-        <span class="meta-label">مقدّم الطلب:</span>
-        <span class="meta-value">{{ actorName(request.created_by_user) }}</span>
+      <div class="flex gap-2 text-sm">
+        <span class="font-semibold w-36 text-gray-600">مقدّم الطلب:</span>
+        <span class="text-gray-900">{{ actorName(request.created_by_user) }}</span>
       </div>
-      <div class="meta-row">
-        <span class="meta-label">تاريخ الإنشاء:</span>
-        <span class="meta-value">{{ formatDate(request.created_at) }}</span>
+      <div class="flex gap-2 text-sm">
+        <span class="font-semibold w-36 text-gray-600">تاريخ الإنشاء:</span>
+        <span class="text-gray-900">{{ formatDate(request.created_at) }}</span>
       </div>
     </section>
 
-    <div class="printable-divider" />
+    <div class="h-px bg-gray-300 my-4" />
 
     <!-- ─── Section 3: Wizard fields ─── -->
-    <section class="printable-fields" aria-label="تفاصيل الطلب">
-      <h2 class="section-title">تفاصيل الطلب</h2>
-      <div class="fields-grid">
-        <div v-for="field in fields" :key="field.label" class="field-item">
-          <span class="field-label">{{ field.label }}</span>
-          <span class="field-value">{{ field.value }}</span>
+    <section aria-label="تفاصيل الطلب">
+      <h2 class="font-bold text-base text-blue-600 mb-3 m-0">تفاصيل الطلب</h2>
+      <div class="grid grid-cols-2 gap-y-2.5 gap-x-6">
+        <div v-for="field in fields" :key="field.label" class="flex flex-col gap-0.5">
+          <span class="text-xs text-gray-500 font-semibold">{{ field.label }}</span>
+          <span class="text-sm text-gray-900">{{ field.value }}</span>
         </div>
       </div>
     </section>
 
-    <div class="printable-divider" />
+    <div class="h-px bg-gray-300 my-4" />
 
     <!-- ─── Section 4: Documents ─── -->
-    <section class="printable-documents" aria-label="المستندات المرفقة">
-      <h2 class="section-title">المستندات المرفقة</h2>
-      <p v-if="documents.length === 0" class="empty-state">لا توجد مستندات مرفقة.</p>
-      <table v-else class="doc-table">
+    <section aria-label="المستندات المرفقة">
+      <h2 class="font-bold text-base text-blue-600 mb-3 m-0">المستندات المرفقة</h2>
+      <p v-if="documents.length === 0" class="text-sm text-gray-500 text-center py-4">لا توجد مستندات مرفقة.</p>
+      <table v-else class="w-full border-collapse text-sm">
         <thead>
           <tr>
-            <th>اسم الملف</th>
-            <th>تاريخ الرفع</th>
-            <th>رُفع بواسطة</th>
+            <th class="text-right py-2 px-2.5 border border-gray-300 bg-gray-100 font-semibold text-gray-900 print:bg-gray-300">اسم الملف</th>
+            <th class="text-right py-2 px-2.5 border border-gray-300 bg-gray-100 font-semibold text-gray-900 print:bg-gray-300">تاريخ الرفع</th>
+            <th class="text-right py-2 px-2.5 border border-gray-300 bg-gray-100 font-semibold text-gray-900 print:bg-gray-300">رُفع بواسطة</th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="doc in documents" :key="doc.id">
-            <td>{{ doc.original_filename }}</td>
-            <td>{{ formatDate(doc.uploaded_at) }}</td>
-            <td>{{ doc.uploaded_by_name ?? '—' }}</td>
+            <td class="text-right py-2 px-2.5 border border-gray-300 text-gray-900">{{ doc.original_filename }}</td>
+            <td class="text-right py-2 px-2.5 border border-gray-300 text-gray-900">{{ formatDate(doc.uploaded_at) }}</td>
+            <td class="text-right py-2 px-2.5 border border-gray-300 text-gray-900">{{ doc.uploaded_by_name ?? '—' }}</td>
           </tr>
         </tbody>
       </table>
     </section>
 
-    <div class="printable-divider" />
+    <div class="h-px bg-gray-300 my-4" />
 
     <!-- ─── Section 5: Workflow timeline ─── -->
-    <section class="printable-timeline" aria-label="مسار سير العمل">
-      <h2 class="section-title">مسار سير العمل</h2>
-      <p v-if="workflowEntries.length === 0" class="empty-state">لا توجد مراحل مسجّلة بعد.</p>
-      <ol v-else class="workflow-list">
-        <li v-for="entry in workflowEntries" :key="entry.id" class="workflow-entry">
-          <span class="workflow-entry__status">{{ entry.statusLabel }}</span>
-          <span class="workflow-entry__actor">{{ entry.actor }}</span>
-          <span class="workflow-entry__timestamp">{{ entry.timestamp }}</span>
+    <section aria-label="مسار سير العمل">
+      <h2 class="font-bold text-base text-blue-600 mb-3 m-0">مسار سير العمل</h2>
+      <p v-if="workflowEntries.length === 0" class="text-sm text-gray-500 text-center py-4">لا توجد مراحل مسجّلة بعد.</p>
+      <ol v-else class="list-none p-0 m-0 flex flex-col gap-2.5 print:break-inside-avoid">
+        <li v-for="entry in workflowEntries" :key="entry.id" class="workflow-entry grid grid-cols-[1.4fr_1fr_auto] gap-3 items-center p-3 border border-gray-300 rounded-3xl bg-gray-50 print:bg-transparent">
+          <span class="text-sm font-semibold text-gray-900">{{ entry.statusLabel }}</span>
+          <span class="text-xs text-gray-600">{{ entry.actor }}</span>
+          <span class="text-xs text-gray-500 whitespace-nowrap">{{ entry.timestamp }}</span>
         </li>
       </ol>
     </section>
 
-    <div class="printable-divider" />
+    <div class="h-px bg-gray-300 my-4" />
 
     <!-- ─── Section 6: Audit timeline ─── -->
-    <section class="printable-audit" aria-label="سجل الأحداث">
-      <h2 class="section-title">سجل الأحداث</h2>
+    <section aria-label="سجل الأحداث" class="print:break-inside-avoid">
+      <h2 class="font-bold text-base text-blue-600 mb-3 m-0">سجل الأحداث</h2>
       <AuditTimeline :entries="sortedHistory" />
     </section>
   </div>
 </template>
-
-<style scoped>
-.printable {
-  font-family: 'IBM Plex Sans Arabic', sans-serif;
-  color: #1c222b;
-  background: #ffffff;
-  padding: 24px;
-  max-width: 900px;
-  margin: 0 auto;
-}
-
-/* ─── Header ─── */
-.printable-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 8px;
-}
-
-.printable-header__title-group {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.printable-title {
-  font-family: 'Cairo', sans-serif;
-  font-size: 22px;
-  font-weight: 700;
-  margin: 0;
-  color: #1c222b;
-}
-
-.printable-ref {
-  font-size: 15px;
-  color: #0066cc;
-  font-weight: 600;
-}
-
-.printable-status-badge {
-  font-size: 12px;
-  font-weight: 600;
-  padding: 4px 12px;
-  border-radius: 20px;
-  border: 1px solid #cccccc;
-  color: #1c222b;
-  background: #f5f5f7;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-/* ─── Divider ─── */
-.printable-divider {
-  height: 1px;
-  background: #cccccc;
-  margin: 16px 0;
-}
-
-/* ─── Meta ─── */
-.printable-meta {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.meta-row {
-  display: flex;
-  gap: 8px;
-  font-size: 14px;
-}
-
-.meta-label {
-  font-weight: 600;
-  min-width: 140px;
-  color: #505050;
-}
-
-.meta-value {
-  color: #1c222b;
-}
-
-/* ─── Section titles ─── */
-.section-title {
-  font-family: 'Tajawal', sans-serif;
-  font-size: 16px;
-  font-weight: 700;
-  color: #0066cc;
-  margin: 0 0 12px;
-}
-
-/* ─── Fields grid ─── */
-.fields-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 10px 24px;
-}
-
-.field-item {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.field-label {
-  font-size: 12px;
-  color: #6c757d;
-  font-weight: 600;
-}
-
-.field-value {
-  font-size: 14px;
-  color: #1c222b;
-}
-
-/* ─── Document table ─── */
-.doc-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-}
-
-.doc-table th,
-.doc-table td {
-  text-align: right;
-  padding: 8px 10px;
-  border: 1px solid #cccccc;
-}
-
-.doc-table th {
-  background: #f5f5f7;
-  font-weight: 600;
-  color: #1c222b;
-}
-
-.doc-table td {
-  color: #1c222b;
-}
-
-.empty-state {
-  font-size: 14px;
-  color: #6c757d;
-  text-align: center;
-  padding: 16px;
-}
-
-/* ─── Timeline sections ─── */
-.printable-timeline,
-.printable-audit {
-  overflow: hidden;
-}
-
-.workflow-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.workflow-entry {
-  display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) auto;
-  gap: 12px;
-  align-items: center;
-  padding: 10px 12px;
-  border: 1px solid #cccccc;
-  border-radius: 12px;
-  background: #f9fafb;
-}
-
-.workflow-entry__status {
-  font-size: 14px;
-  font-weight: 600;
-  color: #1c222b;
-}
-
-.workflow-entry__actor {
-  font-size: 13px;
-  color: #505050;
-}
-
-.workflow-entry__timestamp {
-  font-size: 12px;
-  color: #6c757d;
-  white-space: nowrap;
-}
-
-/* ─── Print media ─── */
-@media print {
-  .printable {
-    padding: 0;
-    max-width: 100%;
-  }
-
-  .printable-status-badge {
-    border: 1px solid #000000;
-    background: transparent;
-    color: #000000;
-  }
-
-  .doc-table th {
-    background: #e0e0e0;
-  }
-
-  .workflow-entry {
-    background: transparent;
-    break-inside: avoid;
-  }
-
-  .printable-timeline,
-  .printable-audit {
-    page-break-inside: avoid;
-  }
-}
-</style>
