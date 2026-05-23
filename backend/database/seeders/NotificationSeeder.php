@@ -107,24 +107,53 @@ class NotificationSeeder extends Seeder
             ];
         }
 
-        // Bank-rejected back to data entry
-        if ($status === RequestStatus::DRAFT_REJECTED_INTERNAL) {
+        // Bank returned (need corrections) → data entry creator
+        if ($status === RequestStatus::DRAFT_REJECTED_INTERNAL || $status === RequestStatus::BANK_RETURNED) {
             $events[] = [
-                'type' => 'App\\Notifications\\RequestRejectedNotification',
+                'type' => 'App\\Notifications\\RequestReturnedNotification',
                 'audience' => 'data_entry_creator',
-                'ar' => 'تمت إعادة الطلب من مراجع البنك للتعديل.',
-                'en' => 'Your request was returned by the bank reviewer.',
+                'ar' => 'تمت إعادة الطلب من مراجع البنك للتعديل — يرجى مراجعة الملاحظات.',
+                'en' => 'Your request was returned by the bank reviewer for corrections.',
                 'at' => $request->updated_at,
             ];
         }
 
-        // Support rejected → notify bank
+        // Bank rejected (terminal) → data entry creator + bank admin
+        if ($status === RequestStatus::BANK_REJECTED) {
+            $events[] = [
+                'type' => 'App\\Notifications\\RequestRejectedNotification',
+                'audience' => 'data_entry_creator',
+                'ar' => 'تم رفض الطلب نهائياً من البنك.',
+                'en' => 'Your request has been permanently rejected by the bank.',
+                'at' => $request->updated_at,
+            ];
+            $events[] = [
+                'type' => 'App\\Notifications\\RequestRejectedNotification',
+                'audience' => 'bank_admin',
+                'ar' => 'تم رفض أحد الطلبات نهائياً — يرجى المراجعة.',
+                'en' => 'A request was permanently rejected — please review.',
+                'at' => $request->updated_at,
+            ];
+        }
+
+        // Support rejected → notify bank reviewers
         if ($status === RequestStatus::SUPPORT_REJECTED) {
             $events[] = [
                 'type' => 'App\\Notifications\\RequestReturnedNotification',
                 'audience' => 'bank_reviewers',
-                'ar' => 'رفض/إعادة من لجنة الدعم.',
-                'en' => 'Returned by support committee.',
+                'ar' => 'رُفض الطلب من لجنة الدعم — يرجى المراجعة.',
+                'en' => 'Request rejected by support committee.',
+                'at' => $request->updated_at,
+            ];
+        }
+
+        // Support returned → notify data entry creator
+        if ($status === RequestStatus::SUPPORT_RETURNED) {
+            $events[] = [
+                'type' => 'App\\Notifications\\RequestReturnedNotification',
+                'audience' => 'data_entry_creator',
+                'ar' => 'أعادت لجنة الدعم الطلب — يرجى استيفاء المتطلبات الإضافية.',
+                'en' => 'Support committee returned your request — please provide additional documentation.',
                 'at' => $request->updated_at,
             ];
         }
@@ -163,9 +192,38 @@ class NotificationSeeder extends Seeder
             $events[] = [
                 'type' => 'App\\Notifications\\VotingOpenedNotification',
                 'audience' => 'executive_members',
-                'ar' => 'تم فتح جلسة تصويت تنفيذية.',
-                'en' => 'An executive voting session has opened.',
-                'at' => ($request->swift_uploaded_at ?? $request->updated_at)?->copy()->addDays(2),
+                'ar' => 'تم فتح جلسة تصويت تنفيذية — يرجى الإدلاء بصوتك.',
+                'en' => 'An executive voting session has opened — please cast your vote.',
+                'at' => $request->voting_opened_at ?? ($request->swift_uploaded_at ?? $request->updated_at)?->copy()->addDays(2),
+            ];
+        }
+
+        // Executive approved → notify director (ready for customs)
+        if ($status === RequestStatus::EXECUTIVE_APPROVED) {
+            $events[] = [
+                'type' => 'App\\Notifications\\ExecutiveApprovedNotification',
+                'audience' => 'director',
+                'ar' => 'وافقت اللجنة التنفيذية على الطلب — جاهز لإصدار البيان الجمركي.',
+                'en' => 'Executive committee approved the request — ready to issue customs declaration.',
+                'at' => $request->executive_decided_at,
+            ];
+        }
+
+        // Executive rejected → notify bank reviewer and data entry creator
+        if ($status === RequestStatus::EXECUTIVE_REJECTED) {
+            $events[] = [
+                'type' => 'App\\Notifications\\RequestRejectedNotification',
+                'audience' => 'bank_reviewers',
+                'ar' => 'رفضت اللجنة التنفيذية الطلب.',
+                'en' => 'Executive committee rejected the request.',
+                'at' => $request->executive_decided_at,
+            ];
+            $events[] = [
+                'type' => 'App\\Notifications\\RequestRejectedNotification',
+                'audience' => 'data_entry_creator',
+                'ar' => 'رُفض طلبك من اللجنة التنفيذية.',
+                'en' => 'Your request was rejected by the executive committee.',
+                'at' => $request->executive_decided_at,
             ];
         }
 
@@ -198,6 +256,9 @@ class NotificationSeeder extends Seeder
     {
         return match ($audience) {
             'bank_reviewers' => ($usersByRole->get(UserRole::BANK_REVIEWER->value) ?? collect())
+                ->where('bank_id', $request->bank_id)
+                ->values(),
+            'bank_admin' => ($usersByRole->get(UserRole::BANK_ADMIN->value) ?? collect())
                 ->where('bank_id', $request->bank_id)
                 ->values(),
             'data_entry_creator' => User::query()->where('id', $request->created_by)->get(),
