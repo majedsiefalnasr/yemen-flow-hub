@@ -13,7 +13,13 @@ export default {
   modules: [
     '@pinia/nuxt',
     '@vueuse/nuxt',
+    'shadcn-nuxt',
   ],
+
+  shadcn: {
+    prefix: '',
+    componentDir: './app/components/ui',
+  },
 
   vite: {
     plugins: [tailwindcss()],

@@ -1,1042 +1,487 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { Eye } from 'lucide-vue-next'
-import { UserRole } from '../types/enums'
-import type { Merchant } from '../types/models'
-import { useMerchants } from '../composables/useMerchants'
-import { useBanks } from '../composables/useBanks'
-import { useAuthStore } from '../stores/auth.store'
-import MerchantCard from '../components/merchants/MerchantCard.vue'
-import MerchantModal from '../components/merchants/MerchantModal.vue'
-import SuspendConfirmDialog from '../components/merchants/SuspendConfirmDialog.vue'
-import Dialog from '../components/ui/dialog/Dialog.vue'
-import DialogContent from '../components/ui/dialog/DialogContent.vue'
-import DialogHeader from '../components/ui/dialog/DialogHeader.vue'
-import DialogTitle from '../components/ui/dialog/DialogTitle.vue'
-import DialogOverlay from '../components/ui/dialog/DialogOverlay.vue'
+import PageHeader from '@/components/layout/PageHeader.vue'
+import MerchantDialog from '@/components/merchants/MerchantDialog.vue'
+import type { MerchantFormData } from '@/components/merchants/MerchantDialog.vue'
+import { Building2, Edit, Eye, Plus, Search, Trash2 } from 'lucide-vue-next'
+import { useAuthStore } from '@/stores/auth.store'
+import { useMerchants } from '@/composables/useMerchants'
+import { useBanks } from '@/composables/useBanks'
+import { UserRole } from '@/types/enums'
+import type { Merchant } from '@/types/models'
 
-definePageMeta({
-  middleware: 'role',
-  requiredRoles: [UserRole.CBY_ADMIN, UserRole.BANK_ADMIN],
-})
-
-const { fetchMerchants, createMerchant, updateMerchant, suspendMerchant } = useMerchants()
 const authStore = useAuthStore()
+const user = computed(() => authStore.user)
+const { fetchMerchants, createMerchant, updateMerchant, suspendMerchant } = useMerchants()
 const { fetchBanks } = useBanks()
+const { toast } = useToast()
 
 const merchants = ref<Merchant[]>([])
-const bankOptions = ref<Array<{ id: number; name: string }>>([])
-const loading = ref(false)
-const loadError = ref<string | null>(null)
-const bankLoadError = ref<string | null>(null)
-
-const showModal = ref(false)
-const editingMerchant = ref<Merchant | null>(null)
-const saving = ref(false)
-const saveError = ref<string | null>(null)
-
-const suspendTarget = ref<Merchant | null>(null)
-const suspending = ref(false)
-const suspendError = ref<string | null>(null)
-
-const viewingMerchant = ref<Merchant | null>(null)
-
-const searchQuery = ref('')
-const statusFilter = ref<'' | 'active' | 'suspended'>('')
-const bankFilter = ref<string>('')
-
-const isBankAdmin = computed(() => authStore.currentRole === UserRole.BANK_ADMIN)
-const lockedBankName = computed(() =>
-  editingMerchant.value?.bank_name
-  ?? authStore.user?.bank_name_ar
-  ?? authStore.user?.bank_name_en
-  ?? null,
-)
-
-const pageSubtitle = computed(() =>
-  isBankAdmin.value
-    ? 'تسجيل ومتابعة التجار والمستوردين المرتبطين بالبنك'
-    : 'عرض جميع التجار المسجّلين على المنصّة مع البنوك التابعة لها',
-)
-
-const filteredMerchants = computed(() => {
-  let list = merchants.value
-  if (searchQuery.value.trim()) {
-    const q = searchQuery.value.trim().toLowerCase()
-    list = list.filter(m =>
-      m.name.toLowerCase().includes(q)
-      || (m.commercial_register ?? '').toLowerCase().includes(q)
-      || (m.tax_number ?? '').toLowerCase().includes(q)
-      || (m.bank_name ?? '').toLowerCase().includes(q),
-    )
-  }
-  if (statusFilter.value === 'active') list = list.filter(m => m.is_active)
-  if (statusFilter.value === 'suspended') list = list.filter(m => !m.is_active)
-  if (!isBankAdmin.value && bankFilter.value) {
-    list = list.filter(m => String(m.bank_id) === bankFilter.value)
-  }
-  return list
-})
-
-const totalCount = computed(() => merchants.value.length)
-const activeCount = computed(() => merchants.value.filter(m => m.is_active).length)
-const suspendedCount = computed(() => merchants.value.filter(m => !m.is_active).length)
-
-const isFiltered = computed(() =>
-  searchQuery.value.trim() !== '' || statusFilter.value !== '' || bankFilter.value !== '',
-)
-
-function businessTypeLabel(type: string | null | undefined): string {
-  const MAP: Record<string, string> = {
-    import: 'استيراد',
-    export: 'تصدير',
-    retail: 'تجارة تجزئة',
-    wholesale: 'تجارة جملة',
-    manufacturing: 'تصنيع',
-    services: 'خدمات',
-  }
-  return type ? (MAP[type] ?? type) : '—'
-}
-
-function metaVal(val: string | null | undefined): string {
-  return val ?? '—'
-}
-
-function replaceMerchant(updated: Merchant) {
-  const idx = merchants.value.findIndex(m => m.id === updated.id)
-  if (idx !== -1) {
-    merchants.value[idx] = updated
-  }
-
-  if (viewingMerchant.value?.id === updated.id) {
-    viewingMerchant.value = updated
-  }
-}
-
-async function loadMerchants() {
-  loading.value = true
-  loadError.value = null
-  try {
-    merchants.value = await fetchMerchants()
-  }
-  catch {
-    loadError.value = 'تعذّر تحميل التجار. حاول مجدداً.'
-  }
-  finally {
-    loading.value = false
-  }
-}
-
-async function loadBanksForCbyAdmin() {
-  if (!authStore.isCbyAdmin) {
-    bankOptions.value = []
-    return
-  }
-  bankLoadError.value = null
-  try {
-    const banks = await fetchBanks()
-    bankOptions.value = banks
-      .map(bank => ({
-        id: bank.id,
-        name: `${bank.name_ar || bank.name_en}${bank.is_active ? '' : ' (موقوف)'}`,
-      }))
-  }
-  catch {
-    bankLoadError.value = 'تعذّر تحميل قائمة البنوك.'
-  }
-}
-
-function openCreate() {
-  editingMerchant.value = null
-  saveError.value = null
-  showModal.value = true
-}
-
-function openEdit(merchant: Merchant) {
-  editingMerchant.value = merchant
-  saveError.value = null
-  showModal.value = true
-}
-
-function closeModal() {
-  showModal.value = false
-  saveError.value = null
-}
-
-function openView(merchant: Merchant) {
-  viewingMerchant.value = merchant
-}
-
-function closeView() {
-  viewingMerchant.value = null
-}
-
-async function handleSave(data: {
-  name: string
-  commercial_register: string
-  tax_number: string
-  phone: string | null
-  address: string | null
-  business_type: string | null
-  is_active: boolean | undefined
-  bank_id: number | null
-}) {
-  if (!editingMerchant.value && authStore.isCbyAdmin && !data.bank_id) {
-    saveError.value = 'اختيار البنك مطلوب.'
-    return
-  }
-
-  saving.value = true
-  saveError.value = null
-  try {
-    if (editingMerchant.value) {
-      const updated = await updateMerchant(editingMerchant.value.id, {
-        name: data.name,
-        commercial_register: data.commercial_register || null,
-        tax_number: data.tax_number || null,
-        phone: data.phone,
-        address: data.address,
-        business_type: data.business_type,
-        is_active: data.is_active,
-      })
-      replaceMerchant(updated)
-    }
-    else {
-      const created = await createMerchant({
-        name: data.name,
-        bank_id: authStore.isCbyAdmin ? data.bank_id : undefined,
-        commercial_register: data.commercial_register || null,
-        tax_number: data.tax_number || null,
-        phone: data.phone,
-        address: data.address,
-        business_type: data.business_type,
-        is_active: true,
-      })
-      merchants.value.unshift(created)
-    }
-    closeModal()
-  }
-  catch (err: unknown) {
-    const e = err as { data?: { message?: string } }
-    saveError.value = e.data?.message ?? 'حدث خطأ أثناء الحفظ.'
-  }
-  finally {
-    saving.value = false
-  }
-}
-
-function requestToggleStatus(merchant: Merchant) {
-  suspendTarget.value = merchant
-  suspendError.value = null
-}
-
-function cancelSuspend() {
-  if (suspending.value) return
-  suspendTarget.value = null
-  suspendError.value = null
-}
-
-async function confirmToggleStatus() {
-  if (!suspendTarget.value) return
-  const target = suspendTarget.value
-  suspending.value = true
-  suspendError.value = null
-  try {
-    const updated = await suspendMerchant(target.id, !target.is_active)
-    replaceMerchant(updated)
-    suspendTarget.value = null
-  }
-  catch (err: unknown) {
-    const e = err as { data?: { message?: string } }
-    suspendError.value = e.data?.message ?? 'تعذّر تحديث حالة التاجر.'
-  }
-  finally {
-    suspending.value = false
-  }
-}
+const banks = ref<import('@/types/models').Bank[]>([])
+const query = ref('')
+const statusFilter = ref<'all' | 'active' | 'suspended'>('all')
+const bankFilter = ref<number | 'all'>('all')
+const createOpen = ref(false)
+const editing = ref<Merchant | null>(null)
+const viewing = ref<Merchant | null>(null)
 
 onMounted(async () => {
-  await Promise.all([loadMerchants(), loadBanksForCbyAdmin()])
+  const [merchantsResult, banksResult] = await Promise.allSettled([
+    fetchMerchants(),
+    fetchBanks(),
+  ])
+  if (merchantsResult.status === 'fulfilled') merchants.value = merchantsResult.value
+  if (banksResult.status === 'fulfilled') banks.value = banksResult.value
 })
+
+const isCbyAdmin = computed(() => user.value?.role === UserRole.CBY_ADMIN)
+const isBankAdmin = computed(() => user.value?.role === UserRole.BANK_ADMIN)
+const canManage = computed(() => isBankAdmin.value || isCbyAdmin.value)
+
+function bankName(id?: number | null) {
+  return banks.value.find(b => b.id === id)?.name_ar ?? '—'
+}
+
+const scoped = computed(() => {
+  if (isBankAdmin.value && user.value?.bank_id) {
+    return merchants.value.filter(m => m.bank_id === user.value?.bank_id)
+  }
+  return merchants.value
+})
+
+const filtered = computed(() => {
+  const q = query.value.trim().toLowerCase()
+  return scoped.value.filter((m) => {
+    if (statusFilter.value !== 'all' && (statusFilter.value === 'active') !== m.is_active) return false
+    if (isCbyAdmin.value && bankFilter.value !== 'all' && m.bank_id !== bankFilter.value) return false
+    if (!q) return true
+    return [m.name, m.commercial_register, m.tax_number, bankName(m.bank_id)].some(v => (v ?? '').toLowerCase().includes(q))
+  })
+})
+
+const stats = computed(() => ({
+  total: scoped.value.length,
+  active: scoped.value.filter(m => m.is_active).length,
+  suspended: scoped.value.filter(m => !m.is_active).length,
+}))
+
+function merchantToForm(m: Merchant): MerchantFormData {
+  return {
+    name: m.name,
+    commercial_register: m.commercial_register ?? '',
+    tax_number: m.tax_number ?? '',
+    address: m.address ?? '',
+    phone: m.phone ?? '',
+    business_type: m.business_type ?? '',
+    is_active: m.is_active,
+    bank_id: m.bank_id,
+  }
+}
+
+async function saveNew(data: MerchantFormData) {
+  const created = await createMerchant({ ...data, bank_id: data.bank_id ?? undefined })
+  merchants.value = [created, ...merchants.value]
+  createOpen.value = false
+  toast({ title: `تم تسجيل التاجر "${created.name}"` })
+}
+
+async function saveEdit(data: MerchantFormData) {
+  if (!editing.value) return
+  const updated = await updateMerchant(editing.value.id, data)
+  merchants.value = merchants.value.map(m => m.id === updated.id ? updated : m)
+  editing.value = null
+  toast({ title: 'تم تحديث بيانات التاجر' })
+}
+
+async function toggleStatus(merchant: Merchant) {
+  const updated = await suspendMerchant(merchant.id, !merchant.is_active)
+  merchants.value = merchants.value.map(m => m.id === updated.id ? updated : m)
+}
 </script>
 
 <template>
-  <div class="merchants-page" dir="rtl">
-    <!-- Breadcrumbs -->
-    <nav class="breadcrumbs" aria-label="breadcrumb">
-      <span class="breadcrumb-item">الرئيسية</span>
-      <span class="breadcrumb-sep">/</span>
-      <span class="breadcrumb-item breadcrumb-current">التجار</span>
-    </nav>
+  <div v-if="user && canManage">
+    <PageHeader
+      title="إدارة التجار"
+      :subtitle="isCbyAdmin ? 'عرض جميع التجار المسجّلين على المنصّة مع البنوك التابعة لها' : 'تسجيل ومتابعة التجار والمستوردين المرتبطين بالبنك'"
+      :breadcrumbs="[{ label: 'الرئيسية', to: '/' }, { label: 'التجار' }]"
+    >
+      <template #actions>
+        <Button @click="createOpen = true">
+          <Plus class="ms-1 h-4 w-4" />
+          تاجر جديد
+        </Button>
+      </template>
+    </PageHeader>
 
-    <!-- Page header -->
-    <div class="page-header">
-      <div>
-        <h1 class="page-title">إدارة التجار</h1>
-        <p class="page-subtitle">{{ pageSubtitle }}</p>
-      </div>
-      <button v-if="isBankAdmin" class="btn-primary" @click="openCreate">
-        + تاجر جديد
-      </button>
+    <div class="mb-4 grid grid-cols-3 gap-3">
+      <Card class="border-0 p-4 shadow-card">
+        <div class="grid h-9 w-9 place-items-center rounded-lg bg-primary/10 text-primary">
+          <Building2 class="h-4 w-4" />
+        </div>
+        <div class="mt-2 text-2xl font-bold tabular-nums">
+          {{ stats.total }}
+        </div>
+        <div class="text-xs text-muted-foreground">
+          إجمالي
+        </div>
+      </Card>
+      <Card class="border-0 p-4 shadow-card">
+        <div class="grid h-9 w-9 place-items-center rounded-lg bg-success/10 text-success">
+          <Building2 class="h-4 w-4" />
+        </div>
+        <div class="mt-2 text-2xl font-bold tabular-nums">
+          {{ stats.active }}
+        </div>
+        <div class="text-xs text-muted-foreground">
+          نشط
+        </div>
+      </Card>
+      <Card class="border-0 p-4 shadow-card">
+        <div class="grid h-9 w-9 place-items-center rounded-lg bg-destructive/10 text-destructive">
+          <Building2 class="h-4 w-4" />
+        </div>
+        <div class="mt-2 text-2xl font-bold tabular-nums">
+          {{ stats.suspended }}
+        </div>
+        <div class="text-xs text-muted-foreground">
+          موقوف
+        </div>
+      </Card>
     </div>
 
-    <!-- Load error -->
-    <div v-if="loadError" class="error-banner" role="alert">
-      {{ loadError }}
-      <button class="retry-btn" @click="loadMerchants">إعادة المحاولة</button>
-    </div>
-
-    <!-- Bank load error (non-blocking — still show merchants) -->
-    <div v-if="bankLoadError" class="warning-banner" role="alert">
-      {{ bankLoadError }}
-      <button class="retry-btn-warn" @click="loadBanksForCbyAdmin">إعادة المحاولة</button>
-    </div>
-
-    <!-- Skeleton loaders while loading -->
-    <template v-if="loading">
-      <!-- Stat card skeletons -->
-      <div class="stat-cards">
-        <div v-for="n in 3" :key="n" class="stat-card skel-stat" aria-hidden="true">
-          <div class="skel-bar skel-stat-val" />
-          <div class="skel-bar skel-stat-lbl" />
-        </div>
-      </div>
-
-      <!-- Card/table skeleton -->
-      <div class="card-grid" aria-busy="true" aria-label="جارٍ تحميل التجار">
-        <div v-for="n in 4" :key="n" class="skeleton-card">
-          <div class="skel-header">
-            <div class="skel-avatar" />
-            <div class="skel-title-group">
-              <div class="skel-bar skel-name" />
-              <div class="skel-bar skel-badge" />
-            </div>
-          </div>
-          <div class="skel-divider" />
-          <div class="skel-meta">
-            <div class="skel-bar skel-meta-row" />
-            <div class="skel-bar skel-meta-row" />
-            <div class="skel-bar skel-meta-row" />
-          </div>
-          <div class="skel-divider" />
-          <div class="skel-actions">
-            <div class="skel-bar skel-action" />
-            <div class="skel-bar skel-action" />
-          </div>
-        </div>
-      </div>
-    </template>
-
-    <!-- Loaded state -->
-    <template v-else>
-      <!-- Stat cards -->
-      <div class="stat-cards">
-        <div class="stat-card">
-          <span class="stat-value">{{ totalCount }}</span>
-          <span class="stat-label">إجمالي التجار</span>
-        </div>
-        <div class="stat-card stat-card-active">
-          <span class="stat-value stat-value-active">{{ activeCount }}</span>
-          <span class="stat-label">نشط</span>
-        </div>
-        <div class="stat-card stat-card-suspended">
-          <span class="stat-value stat-value-suspended">{{ suspendedCount }}</span>
-          <span class="stat-label">موقوف</span>
-        </div>
-      </div>
-
-      <!-- Search + filter bar -->
-      <div class="filter-bar">
-        <input
-          v-model="searchQuery"
-          type="text"
-          class="search-input"
-          placeholder="بحث باسم التاجر أو رقم السجل..."
-          aria-label="بحث عن تاجر"
-        >
-        <select v-model="statusFilter" class="filter-select" aria-label="تصفية بالحالة">
-          <option value="">جميع الحالات</option>
-          <option value="active">نشط</option>
-          <option value="suspended">موقوف</option>
-        </select>
-        <select v-if="!isBankAdmin" v-model="bankFilter" class="filter-select" aria-label="تصفية بالبنك">
-          <option value="">جميع البنوك</option>
-          <option v-for="bank in bankOptions" :key="bank.id" :value="String(bank.id)">
-            {{ bank.name }}
-          </option>
-        </select>
-      </div>
-
-      <!-- Empty state (no merchants at all) -->
-      <div v-if="merchants.length === 0" class="empty-state" role="status">
-        <div class="empty-icon" aria-hidden="true">
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#6c757d" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z" />
-            <path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2" />
-            <path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 0-2 2h-2" />
-            <path d="M10 6h4" /><path d="M10 10h4" /><path d="M10 14h4" /><path d="M10 18h4" />
-          </svg>
-        </div>
-        <h2 class="empty-heading">لا يوجد تجار مسجلون</h2>
-        <p class="empty-subtext">ابدأ بتسجيل أول تاجر أو مستورد مرتبط بهذا البنك في النظام.</p>
-        <button v-if="isBankAdmin" class="btn-primary" aria-label="تسجيل تاجر جديد" @click="openCreate">
-          تسجيل تاجر جديد
-        </button>
-      </div>
-
-      <!-- Filtered-empty state -->
-      <div v-else-if="filteredMerchants.length === 0" class="empty-state" role="status">
-        <div class="empty-icon" aria-hidden="true">
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#6c757d" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" />
-          </svg>
-        </div>
-        <h2 class="empty-heading">لا توجد نتائج مطابقة.</h2>
-        <p class="empty-subtext">جرّب تعديل معايير البحث أو التصفية.</p>
-      </div>
-
-      <!-- BANK_ADMIN: card grid -->
-      <div v-else-if="isBankAdmin" class="card-grid">
-        <MerchantCard
-          v-for="merchant in filteredMerchants"
-          :key="merchant.id"
-          :merchant="merchant"
-          @edit="openEdit"
-          @toggle-status="requestToggleStatus"
+    <Card class="mb-4 flex flex-col items-stretch gap-3 border-0 p-4 shadow-card sm:flex-row sm:items-center">
+      <div class="relative flex-1">
+        <Search class="absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          v-model="query"
+          placeholder="بحث برقم السجل، الرقم الضريبي، أو الاسم..."
+          class="pe-10"
         />
       </div>
 
-      <!-- CBY_ADMIN: table -->
-      <div v-else class="table-wrapper">
-        <table class="merchants-table">
-          <thead>
-            <tr>
-              <th>التاجر</th>
-              <th>السجل التجاري</th>
-              <th>الرقم الضريبي</th>
-              <th>القطاع</th>
-              <th>البنك التابع له</th>
-              <th>الحالة</th>
-              <th>المعاملات</th>
-              <th aria-label="إجراءات" />
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="merchant in filteredMerchants" :key="merchant.id" class="table-row">
-              <td class="cell-name">{{ merchant.name }}</td>
-              <td class="cell-mono">{{ metaVal(merchant.commercial_register) }}</td>
-              <td class="cell-mono">{{ metaVal(merchant.tax_number) }}</td>
-              <td>{{ businessTypeLabel(merchant.business_type) }}</td>
-              <td>
-                <span v-if="merchant.bank_name" class="bank-badge">{{ merchant.bank_name }}</span>
-                <span v-else class="text-muted">—</span>
-              </td>
-              <td>
-                <span :class="['status-badge', merchant.is_active ? 'badge-active' : 'badge-suspended']">
-                  {{ merchant.is_active ? 'نشط' : 'موقوف' }}
-                </span>
-              </td>
-              <td class="cell-count">{{ merchant.transaction_count ?? 0 }}</td>
-              <td>
-                <button
-                  class="icon-btn-view"
-                  aria-label="عرض التفاصيل"
-                  title="عرض"
-                  @click="openView(merchant)"
+      <Select
+        v-if="isCbyAdmin"
+        :model-value="bankFilter === 'all' ? 'all' : bankFilter.toString()"
+        @update:model-value="v => bankFilter = v === 'all' ? 'all' : Number(v)"
+      >
+        <SelectTrigger class="w-full sm:w-56">
+          <SelectValue placeholder="البنك" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">
+            كل البنوك
+          </SelectItem>
+          <SelectItem
+            v-for="bank in banks"
+            :key="bank.id"
+            :value="bank.id.toString()"
+          >
+            {{ bank.name_ar }}
+          </SelectItem>
+        </SelectContent>
+      </Select>
+
+      <Select v-model="statusFilter">
+        <SelectTrigger class="w-full sm:w-44">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">
+            كل الحالات
+          </SelectItem>
+          <SelectItem value="active">
+            نشط فقط
+          </SelectItem>
+          <SelectItem value="suspended">
+            موقوف فقط
+          </SelectItem>
+        </SelectContent>
+      </Select>
+    </Card>
+
+    <Card
+      v-if="isCbyAdmin"
+      class="overflow-hidden border-0 shadow-card"
+    >
+      <div class="overflow-x-auto">
+        <Table class="w-full text-sm">
+          <TableHeader class="bg-muted/40 text-end text-xs text-muted-foreground">
+            <TableRow>
+              <TableHead class="p-3 font-semibold">
+                التاجر
+              </TableHead>
+              <TableHead class="p-3 font-semibold">
+                السجل التجاري
+              </TableHead>
+              <TableHead class="p-3 font-semibold">
+                الرقم الضريبي
+              </TableHead>
+              <TableHead class="p-3 font-semibold">
+                القطاع
+              </TableHead>
+              <TableHead class="p-3 font-semibold">
+                البنك التابع له
+              </TableHead>
+              <TableHead class="p-3 font-semibold">
+                الحالة
+              </TableHead>
+              <TableHead class="p-3 font-semibold">
+                المعاملات
+              </TableHead>
+              <TableHead class="w-12 p-3 font-semibold" />
+            </TableRow>
+          </TableHeader>
+          <TableBody class="divide-y">
+            <TableRow
+              v-for="merchant in filtered"
+              :key="merchant.id"
+              class="hover:bg-muted/30"
+            >
+              <TableCell class="p-3 font-medium">
+                {{ merchant.name }}
+              </TableCell>
+              <TableCell class="p-3 text-muted-foreground">
+                {{ merchant.commercial_register ?? '—' }}
+              </TableCell>
+              <TableCell class="p-3 tabular-nums text-muted-foreground">
+                {{ merchant.tax_number ?? '—' }}
+              </TableCell>
+              <TableCell class="p-3 text-muted-foreground">
+                {{ merchant.business_type ?? '—' }}
+              </TableCell>
+              <TableCell class="p-3">
+                <Badge
+                  variant="outline"
+                  class="font-normal"
                 >
-                  <Eye :size="16" />
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+                  <Building2 class="ms-1 h-3 w-3" />
+                  {{ bankName(merchant.bank_id) }}
+                </Badge>
+              </TableCell>
+              <TableCell class="p-3">
+                <Badge :class="merchant.is_active ? 'border-0 bg-success/15 text-success' : 'border-0 bg-destructive/15 text-destructive'">
+                  {{ merchant.is_active ? 'نشط' : 'موقوف' }}
+                </Badge>
+              </TableCell>
+              <TableCell class="p-3 font-semibold tabular-nums">
+                {{ merchant.transaction_count ?? 0 }}
+              </TableCell>
+              <TableCell class="p-3">
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  class="h-8 w-8"
+                  @click="viewing = merchant"
+                >
+                  <Eye class="h-4 w-4" />
+                </Button>
+              </TableCell>
+            </TableRow>
+            <TableRow v-if="filtered.length === 0">
+              <TableCell
+                colspan="8"
+                class="p-8 text-center text-muted-foreground"
+              >
+                لا توجد نتائج مطابقة.
+              </TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
       </div>
-    </template>
+    </Card>
 
-    <!-- Add/Edit modal (BANK_ADMIN only) -->
-    <MerchantModal
-      v-if="showModal"
-      :merchant="editingMerchant"
-      :saving="saving"
-      :server-error="saveError"
-      :requires-bank-selection="authStore.isCbyAdmin"
-      :bank-options="bankOptions"
-      :default-bank-id="editingMerchant?.bank_id ?? authStore.user?.bank_id ?? null"
-      :locked-bank-name="lockedBankName"
-      @save="handleSave"
-      @close="closeModal"
-    />
-
-    <!-- CBY_ADMIN view-details modal -->
-    <Dialog v-if="viewingMerchant" :open="true" @update:open="(open) => { if (!open) closeView() }">
-      <div class="modal-layer">
-        <DialogOverlay class="modal-backdrop" @click="closeView" />
-        <DialogContent class="view-modal" dir="rtl" aria-label="تفاصيل التاجر">
-          <DialogHeader class="view-modal-header">
-            <DialogTitle class="view-modal-title">تفاصيل التاجر</DialogTitle>
-            <button class="close-btn" aria-label="إغلاق" @click="closeView">✕</button>
-          </DialogHeader>
-          <div class="view-modal-body">
-            <div class="view-grid">
-              <div class="view-field">
-                <span class="view-label">اسم التاجر</span>
-                <span class="view-value">{{ viewingMerchant.name }}</span>
-              </div>
-              <div class="view-field">
-                <span class="view-label">السجل التجاري</span>
-                <span class="view-value mono">{{ metaVal(viewingMerchant.commercial_register) }}</span>
-              </div>
-              <div class="view-field">
-                <span class="view-label">الرقم الضريبي</span>
-                <span class="view-value mono">{{ metaVal(viewingMerchant.tax_number) }}</span>
-              </div>
-              <div class="view-field">
-                <span class="view-label">القطاع / النشاط</span>
-                <span class="view-value">{{ businessTypeLabel(viewingMerchant.business_type) }}</span>
-              </div>
-              <div class="view-field">
-                <span class="view-label">البنك</span>
-                <span class="view-value">{{ metaVal(viewingMerchant.bank_name) }}</span>
-              </div>
-              <div class="view-field">
-                <span class="view-label">الحالة</span>
-                <span :class="['status-badge', viewingMerchant.is_active ? 'badge-active' : 'badge-suspended']">
-                  {{ viewingMerchant.is_active ? 'نشط' : 'موقوف' }}
-                </span>
-              </div>
-              <div class="view-field">
-                <span class="view-label">المعاملات</span>
-                <span class="view-value mono">{{ viewingMerchant.transaction_count ?? 0 }}</span>
-              </div>
-              <div class="view-field">
-                <span class="view-label">هاتف التواصل</span>
-                <span class="view-value ltr">{{ metaVal(viewingMerchant.phone) }}</span>
-              </div>
-              <div class="view-field view-field-full">
-                <span class="view-label">العنوان</span>
-                <span class="view-value">{{ metaVal(viewingMerchant.address) }}</span>
-              </div>
-            </div>
+    <div
+      v-else
+      class="grid gap-4 md:grid-cols-2 lg:grid-cols-3"
+    >
+      <Card
+        v-for="merchant in filtered"
+        :key="merchant.id"
+        class="flex flex-col border-0 p-5 shadow-card transition-shadow hover:shadow-soft"
+      >
+        <div class="mb-3 flex items-start justify-between">
+          <div class="grid h-12 w-12 place-items-center rounded-xl bg-primary text-primary-foreground">
+            <Building2 class="h-6 w-6" />
           </div>
-        </DialogContent>
-      </div>
+          <Badge :class="merchant.is_active ? 'border-0 bg-success/15 text-success' : 'border-0 bg-destructive/15 text-destructive'">
+            {{ merchant.is_active ? 'نشط' : 'موقوف' }}
+          </Badge>
+        </div>
+        <div class="text-base font-semibold">
+          {{ merchant.name }}
+        </div>
+        <div class="text-xs text-muted-foreground">
+          {{ merchant.business_type ?? '—' }}
+        </div>
+        <div class="mt-4 space-y-1.5 text-xs">
+          <div class="flex justify-between gap-2">
+            <span class="text-muted-foreground">السجل التجاري</span>
+            <span class="font-medium">{{ merchant.commercial_register ?? '—' }}</span>
+          </div>
+          <div class="flex justify-between gap-2">
+            <span class="text-muted-foreground">الرقم الضريبي</span>
+            <span class="font-medium">{{ merchant.tax_number ?? '—' }}</span>
+          </div>
+          <div class="flex justify-between gap-2">
+            <span class="text-muted-foreground">البنك</span>
+            <span class="font-medium">{{ bankName(merchant.bank_id) }}</span>
+          </div>
+          <div class="flex justify-between gap-2">
+            <span class="text-muted-foreground">العنوان</span>
+            <span class="text-end font-medium">{{ merchant.address ?? '—' }}</span>
+          </div>
+          <div class="flex justify-between gap-2">
+            <span class="text-muted-foreground">هاتف</span>
+            <span class="font-medium">{{ merchant.phone ?? '—' }}</span>
+          </div>
+        </div>
+        <div class="mt-auto flex items-center justify-between border-t pt-4">
+          <div class="text-xs">
+            <span class="text-muted-foreground">المعاملات: </span>
+            <span class="font-bold tabular-nums">{{ merchant.transaction_count ?? 0 }}</span>
+          </div>
+          <div class="flex gap-1">
+            <Button
+              size="sm"
+              variant="ghost"
+              class="h-8"
+              @click="toggleStatus(merchant)"
+            >
+              {{ merchant.is_active ? 'إيقاف' : 'تفعيل' }}
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              class="h-8 w-8"
+              @click="editing = merchant"
+            >
+              <Edit class="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        </div>
+      </Card>
+
+      <Card
+        v-if="filtered.length === 0"
+        class="col-span-full border-0 p-8 text-center text-sm text-muted-foreground shadow-card"
+      >
+        لا توجد نتائج مطابقة.
+      </Card>
+    </div>
+
+    <Dialog v-model:open="createOpen">
+      <MerchantDialog
+        title="تسجيل تاجر جديد"
+        :banks="banks"
+        :default-bank-id="user?.bank_id"
+        :lock-bank="Boolean(user?.bank_id && !isCbyAdmin)"
+        @save="saveNew"
+      />
     </Dialog>
 
-    <!-- Suspend/Activate confirm dialog -->
-    <SuspendConfirmDialog
-      v-if="suspendTarget"
-      :merchant="suspendTarget"
-      :submitting="suspending"
-      :error="suspendError"
-      @confirm="confirmToggleStatus"
-      @cancel="cancelSuspend"
+    <Dialog :open="Boolean(editing)" @update:open="v => !v && (editing = null)">
+      <MerchantDialog
+        v-if="editing"
+        title="تعديل بيانات التاجر"
+        :banks="banks"
+        :initial="merchantToForm(editing)"
+        :default-bank-id="user?.bank_id"
+        :lock-bank="false"
+        @save="saveEdit"
+      />
+    </Dialog>
+
+    <Dialog :open="Boolean(viewing)" @update:open="v => !v && (viewing = null)">
+      <DialogContent
+        v-if="viewing"
+        class="sm:max-w-lg"
+      >
+        <DialogHeader>
+          <DialogTitle class="flex items-center gap-2">
+            <Building2 class="h-5 w-5" />
+            {{ viewing.name }}
+          </DialogTitle>
+          <DialogDescription>تفاصيل التاجر — عرض فقط</DialogDescription>
+        </DialogHeader>
+        <div class="grid gap-3 py-2 text-sm sm:grid-cols-2">
+          <div class="space-y-0.5">
+            <div class="text-xs text-muted-foreground">
+              السجل التجاري
+            </div>
+            <div class="font-medium">
+              {{ viewing.commercial_register ?? '—' }}
+            </div>
+          </div>
+          <div class="space-y-0.5">
+            <div class="text-xs text-muted-foreground">
+              الرقم الضريبي
+            </div>
+            <div class="font-medium">
+              {{ viewing.tax_number ?? '—' }}
+            </div>
+          </div>
+          <div class="space-y-0.5">
+            <div class="text-xs text-muted-foreground">
+              القطاع
+            </div>
+            <div class="font-medium">
+              {{ viewing.business_type ?? '—' }}
+            </div>
+          </div>
+          <div class="space-y-0.5">
+            <div class="text-xs text-muted-foreground">
+              الحالة
+            </div>
+            <div class="font-medium">
+              {{ viewing.is_active ? 'نشط' : 'موقوف' }}
+            </div>
+          </div>
+          <div class="space-y-0.5">
+            <div class="text-xs text-muted-foreground">
+              البنك التابع له
+            </div>
+            <div class="font-medium">
+              {{ bankName(viewing.bank_id) }}
+            </div>
+          </div>
+          <div class="space-y-0.5">
+            <div class="text-xs text-muted-foreground">
+              عدد المعاملات
+            </div>
+            <div class="font-medium">
+              {{ viewing.transaction_count ?? 0 }}
+            </div>
+          </div>
+          <div class="space-y-0.5 sm:col-span-2">
+            <div class="text-xs text-muted-foreground">
+              العنوان
+            </div>
+            <div class="font-medium">
+              {{ viewing.address ?? '—' }}
+            </div>
+          </div>
+          <div class="space-y-0.5 sm:col-span-2">
+            <div class="text-xs text-muted-foreground">
+              هاتف التواصل
+            </div>
+            <div class="font-medium">
+              {{ viewing.phone ?? '—' }}
+            </div>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  </div>
+
+  <div v-else>
+    <PageHeader
+      title="إدارة التجار"
+      subtitle="هذه الصفحة متاحة لمسؤول النظام أو مسؤول البنك فقط."
     />
+    <Card class="border-0 p-6 shadow-card">
+      <div class="text-sm text-muted-foreground">
+        لا تملك صلاحية إدارة التجار.
+      </div>
+    </Card>
   </div>
 </template>
-
-<style scoped>
-.merchants-page {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  max-width: 1600px;
-}
-
-/* Breadcrumbs */
-.breadcrumbs {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  color: #6c757d;
-}
-
-.breadcrumb-sep {
-  color: #cccccc;
-}
-
-.breadcrumb-current {
-  color: #1c222b;
-  font-weight: 500;
-}
-
-/* Page header */
-.page-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.page-title {
-  font-size: 28px;
-  font-weight: 600;
-  color: #1c222b;
-  margin: 0 0 4px;
-}
-
-.page-subtitle {
-  font-size: 14px;
-  color: #6c757d;
-  margin: 0;
-}
-
-.btn-primary {
-  height: 44px;
-  padding: 0 24px;
-  background: #0066cc;
-  color: #ffffff;
-  border: none;
-  border-radius: 16px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.btn-primary:hover {
-  background: #0057b3;
-}
-
-/* Error / warning banners */
-.error-banner {
-  background: #fff0ef;
-  border: 1px solid #c62828;
-  border-radius: 12px;
-  padding: 14px 18px;
-  color: #c62828;
-  font-size: 14px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.warning-banner {
-  background: #fffde7;
-  border: 1px solid #f57f17;
-  border-radius: 12px;
-  padding: 14px 18px;
-  color: #f57f17;
-  font-size: 14px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.retry-btn {
-  background: none;
-  border: 1px solid #c62828;
-  border-radius: 8px;
-  color: #c62828;
-  font-size: 13px;
-  padding: 4px 12px;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.retry-btn-warn {
-  background: none;
-  border: 1px solid #f57f17;
-  border-radius: 8px;
-  color: #f57f17;
-  font-size: 13px;
-  padding: 4px 12px;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-/* Stat cards */
-.stat-cards {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
-}
-
-.stat-card {
-  background: #ffffff;
-  border: 1px solid #cccccc;
-  border-radius: 16px;
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.stat-value {
-  font-size: 28px;
-  font-weight: 700;
-  color: #1c222b;
-  font-family: 'Inter', monospace;
-}
-
-.stat-value-active { color: #1b5e20; }
-.stat-value-suspended { color: #c62828; }
-
-.stat-label {
-  font-size: 13px;
-  color: #6c757d;
-}
-
-/* Skeleton stat card */
-.skel-stat {
-  padding: 20px;
-  gap: 8px;
-}
-
-.skel-stat-val { height: 28px; width: 60px; }
-.skel-stat-lbl { height: 13px; width: 80px; }
-
-/* Filter bar */
-.filter-bar {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.search-input {
-  flex: 1;
-  min-width: 200px;
-  height: 40px;
-  padding: 0 12px;
-  border: 1px solid #cccccc;
-  border-radius: 12px;
-  font-size: 14px;
-  color: #1c222b;
-  background: #ffffff;
-  outline: none;
-  font-family: inherit;
-}
-
-.search-input:focus {
-  border-color: #0066cc;
-}
-
-.filter-select {
-  height: 40px;
-  padding: 0 12px;
-  border: 1px solid #cccccc;
-  border-radius: 12px;
-  font-size: 14px;
-  color: #1c222b;
-  background: #ffffff;
-  outline: none;
-  cursor: pointer;
-  font-family: inherit;
-  min-width: 140px;
-}
-
-.filter-select:focus {
-  border-color: #0066cc;
-}
-
-/* Card grid — 3 cols desktop, 2 tablet, 1 mobile */
-.card-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
-}
-
-@media (max-width: 1024px) {
-  .card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
-
-@media (max-width: 640px) {
-  .card-grid { grid-template-columns: 1fr; }
-  .stat-cards { grid-template-columns: 1fr; }
-  .filter-bar { flex-direction: column; }
-}
-
-/* Skeleton card */
-.skeleton-card {
-  background: #ffffff;
-  border: 1px solid #cccccc;
-  border-radius: 16px;
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.skel-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.skel-avatar {
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
-  background: #e9ecef;
-  flex-shrink: 0;
-  animation: shimmer 1.5s infinite;
-}
-
-.skel-title-group {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  flex: 1;
-}
-
-.skel-bar {
-  background: #e9ecef;
-  border-radius: 6px;
-  animation: shimmer 1.5s infinite;
-}
-
-.skel-name { height: 14px; width: 70%; }
-.skel-badge { height: 10px; width: 30%; }
-.skel-divider { height: 1px; background: #e9ecef; }
-.skel-meta { display: flex; flex-direction: column; gap: 8px; }
-.skel-meta-row { height: 12px; width: 100%; }
-.skel-actions { display: flex; gap: 8px; }
-.skel-action { height: 32px; flex: 1; border-radius: 8px; }
-
-@keyframes shimmer {
-  0% { opacity: 1; }
-  50% { opacity: 0.5; }
-  100% { opacity: 1; }
-}
-
-/* Empty state */
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-  padding: 64px 24px;
-  text-align: center;
-}
-
-.empty-icon {
-  width: 72px;
-  height: 72px;
-  border-radius: 50%;
-  background: #f5f5f7;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.empty-heading {
-  font-size: 20px;
-  font-weight: 600;
-  color: #1c222b;
-  margin: 0;
-}
-
-.empty-subtext {
-  font-size: 14px;
-  color: #6c757d;
-  margin: 0;
-  max-width: 360px;
-}
-
-/* CBY_ADMIN table */
-.table-wrapper {
-  overflow-x: auto;
-  background: #ffffff;
-  border: 1px solid #cccccc;
-  border-radius: 16px;
-}
-
-.merchants-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-}
-
-.merchants-table thead th {
-  padding: 14px 16px;
-  text-align: right;
-  font-weight: 600;
-  color: #6c757d;
-  background: #f9fafb;
-  border-bottom: 1px solid #cccccc;
-  white-space: nowrap;
-}
-
-.table-row td {
-  padding: 14px 16px;
-  color: #1c222b;
-  border-bottom: 1px solid #f0f0f0;
-  vertical-align: middle;
-}
-
-.table-row:last-child td {
-  border-bottom: none;
-}
-
-.table-row:hover {
-  background: #f9fafb;
-}
-
-.cell-name {
-  font-weight: 500;
-}
-
-.cell-mono {
-  font-family: 'Inter', monospace;
-  direction: ltr;
-  text-align: right;
-}
-
-.cell-count {
-  font-family: 'Inter', monospace;
-  font-weight: 600;
-  text-align: center;
-}
-
-.bank-badge {
-  display: inline-block;
-  padding: 2px 10px;
-  background: #e8f0fe;
-  color: #0066cc;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 500;
-  white-space: nowrap;
-}
-
-.text-muted {
-  color: #6c757d;
-}
-
-.status-badge {
-  display: inline-block;
-  padding: 3px 12px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 500;
-  white-space: nowrap;
-}
-
-.badge-active {
-  background: #e8f5e9;
-  color: #1b5e20;
-}
-
-.badge-suspended {
-  background: #f5f5f7;
-  color: #8e8e93;
-}
-
-.icon-btn-view {
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 8px;
-  border: none;
-  background: transparent;
-  color: #6c757d;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-
-.icon-btn-view:hover {
-  background: #e8f0fe;
-  color: #0066cc;
-}
-
-/* View-details modal */
-.modal-layer {
-  position: fixed;
-  inset: 0;
-  z-index: 100;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.modal-backdrop {
-  position: absolute;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.4);
-}
-
-.view-modal {
-  position: relative;
-  z-index: 1;
-  background: #ffffff;
-  border-radius: 24px;
-  padding: 32px;
-  width: 560px;
-  max-width: 90vw;
-  max-height: 90vh;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.view-modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.view-modal-title {
-  font-size: 20px;
-  font-weight: 600;
-  color: #1c222b;
-  margin: 0;
-}
-
-.close-btn {
-  background: none;
-  border: none;
-  font-size: 18px;
-  color: #6c757d;
-  cursor: pointer;
-  line-height: 1;
-  padding: 4px;
-  flex-shrink: 0;
-}
-
-.view-modal-body {
-  flex: 1;
-}
-
-.view-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-}
-
-.view-field {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.view-field-full {
-  grid-column: 1 / -1;
-}
-
-.view-label {
-  font-size: 12px;
-  color: #6c757d;
-  font-weight: 500;
-}
-
-.view-value {
-  font-size: 14px;
-  color: #1c222b;
-  font-weight: 500;
-}
-
-.view-value.mono,
-.view-value.ltr {
-  direction: ltr;
-  font-family: 'Inter', monospace;
-  text-align: right;
-}
-</style>

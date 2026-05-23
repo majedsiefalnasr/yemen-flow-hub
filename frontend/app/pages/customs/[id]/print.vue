@@ -1,555 +1,369 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
-import { UserRole } from '../../../types/enums'
-import type { CustomsDeclaration } from '../../../types/models'
-import { useRequests } from '../../../composables/useRequests'
-
-definePageMeta({
-  middleware: 'role',
-  requiredRoles: [UserRole.COMMITTEE_DIRECTOR],
-  layout: 'default',
-})
+import {
+  AlertTriangle,
+  ArrowRight,
+  CheckCircle2,
+  Download,
+  FileSignature,
+  FileText,
+  Lock,
+  Printer,
+  ShieldCheck,
+  Stamp,
+  ZoomIn,
+  ZoomOut,
+} from 'lucide-vue-next'
+import PrintablePermit from '@/components/customs/PrintablePermit.vue'
+import { RequestStatus, UserRole } from '@/types/enums'
+import { getBusinessStatus } from '@/constants/workflow'
+import { useAuthStore } from '@/stores/auth.store'
+import { useRequestsStore } from '@/stores/requests.store'
 
 const route = useRoute()
-const { fetchCustomsPreview } = useRequests()
+const authStore = useAuthStore()
+const store = useRequestsStore()
+const { toast } = useToast()
 
-const declaration = ref<CustomsDeclaration | null>(null)
-const loading = ref(false)
-const error = ref<string | null>(null)
-const zoom = ref(1)
-const showConfirmDialog = ref(false)
+const user = computed(() => authStore.user)
+const request = computed(() => store.currentRequest)
 
-const rawRequestId = Array.isArray(route.params.id) ? route.params.id[0] : route.params.id
-const requestId = Number.parseInt(rawRequestId ?? '', 10)
-const hasValidRequestId = Number.isInteger(requestId) && requestId > 0
+const zoom = ref(0.85)
+const confirmIssueOpen = ref(false)
 
-async function loadDeclaration() {
-  if (!hasValidRequestId) {
-    error.value = 'معرّف الطلب غير صالح.'
-    return
-  }
+const id = computed(() => Number(route.params.id))
 
-  loading.value = true
-  error.value = null
+onMounted(async () => {
+  await store.loadRequest(id.value)
+})
+
+const issued = computed(() => Boolean(request.value?.customs_declaration))
+
+const canIssueNow = computed(() => {
+  if (!request.value || !user.value) return false
+  const canIssueRoles = [UserRole.CBY_ADMIN, UserRole.COMMITTEE_DIRECTOR]
+  return (
+    canIssueRoles.includes(user.value.role)
+    && request.value.status === RequestStatus.EXECUTIVE_APPROVED
+  )
+})
+
+const canView = computed(() => {
+  if (!request.value || !user.value) return false
+  const viewRoles = [UserRole.CBY_ADMIN, UserRole.COMMITTEE_DIRECTOR, UserRole.EXECUTIVE_MEMBER]
+  return issued.value || canIssueNow.value || viewRoles.includes(user.value.role)
+})
+
+const stageBlocked = computed(() =>
+  Boolean(request.value && !issued.value && !canIssueNow.value),
+)
+
+const stageStatus = computed(() => {
+  if (!request.value || !user.value) return null
+  return getBusinessStatus(request.value.status, user.value.role)
+})
+
+function setZoom(nextZoom: number) {
+  zoom.value = Math.min(1.5, Math.max(0.5, nextZoom))
+}
+
+function formatDate(value?: string | null) {
+  return value ? new Date(value).toLocaleString('ar-EG') : '—'
+}
+
+function formatDay(value?: string | null) {
+  return value ? new Date(value).toLocaleDateString('ar-EG') : '—'
+}
+
+async function performIssue() {
+  if (!request.value || !canIssueNow.value) return
   try {
-    declaration.value = await fetchCustomsPreview(requestId)
+    await store.issueCustomsDeclaration(request.value.id)
+    toast({ title: `تم إصدار إذن بيان جمركي رقم ${request.value.customs_declaration?.declaration_number} بنجاح` })
   }
   catch {
-    error.value = 'تعذّر تحميل بيانات البيان الجمركي.'
+    toast({ title: 'فشل إصدار إذن بيان جمركي', variant: 'destructive' })
   }
   finally {
-    loading.value = false
+    confirmIssueOpen.value = false
   }
 }
-
-function zoomIn() {
-  zoom.value = Math.min(zoom.value + 0.1, 2)
-}
-
-function zoomOut() {
-  zoom.value = Math.max(zoom.value - 0.1, 0.5)
-}
-
-function resetZoom() {
-  zoom.value = 1
-}
-
-function confirmPrint() {
-  showConfirmDialog.value = true
-}
-
-function executePrint() {
-  showConfirmDialog.value = false
-  window.print()
-}
-
-function cancelPrint() {
-  showConfirmDialog.value = false
-}
-
-function formatDate(dateStr: string | null | undefined): string {
-  if (!dateStr) return '—'
-
-  const parsed = new Date(dateStr)
-  if (Number.isNaN(parsed.getTime())) return '—'
-
-  return parsed.toLocaleDateString('ar-YE', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  })
-}
-
-onMounted(loadDeclaration)
 </script>
 
 <template>
-  <div class="print-page">
-    <!-- Print controls (hidden on print) -->
-    <div class="print-controls no-print">
-      <div class="controls-bar">
-        <h1 class="controls-title">معاينة البيان الجمركي</h1>
-        <div class="zoom-controls">
-          <button class="zoom-btn" aria-label="تصغير" :disabled="zoom <= 0.5" @click="zoomOut">−</button>
-          <span class="zoom-level">{{ Math.round(zoom * 100) }}%</span>
-          <button class="zoom-btn" aria-label="تكبير" :disabled="zoom >= 2" @click="zoomIn">+</button>
-          <button class="zoom-btn zoom-reset" aria-label="إعادة ضبط التكبير" @click="resetZoom">↺</button>
-        </div>
-        <button class="print-btn" :disabled="!declaration || loading" @click="confirmPrint">
-          طباعة
-        </button>
-      </div>
+  <div
+    v-if="user && request"
+    class="space-y-4"
+  >
+    <div
+      v-if="!canView"
+      class="mx-auto max-w-md p-8 text-center"
+    >
+      <Card class="border-warning/30 bg-warning/5 p-8">
+        <Lock class="mx-auto mb-3 h-10 w-10 text-warning" />
+        <h2 class="mb-1 text-lg font-bold">
+          غير مصرح بمعاينة البيان
+        </h2>
+        <p class="mb-4 text-sm text-muted-foreground">
+          معاينة وإصدار إذن بيان جمركي متاحة لأعضاء اللجنة التنفيذية أو إدارة المنصة فقط.
+        </p>
+        <Button
+          as="a"
+          variant="outline"
+          :href="`/requests/${request.id}`"
+        >
+          <ArrowRight class="ms-1 h-4 w-4" />
+          العودة للطلب
+        </Button>
+      </Card>
     </div>
 
-    <!-- Loading state -->
-    <div v-if="loading" class="print-loading no-print">
-      <span>جارٍ التحميل...</span>
-    </div>
+    <template v-else>
+      <div class="print:hidden">
+        <Card class="border-0 p-4 shadow-card">
+          <div class="flex flex-wrap items-start justify-between gap-3">
+            <div class="min-w-0">
+              <h1 class="flex items-center gap-2 text-lg font-bold">
+                <FileText class="h-5 w-5 text-accent" />
+                {{ issued ? 'إذن إصدار بيان جمركي' : 'معاينة إذن إصدار بيان جمركي' }}
+              </h1>
+              <p class="mt-0.5 text-xs text-muted-foreground">
+                طلب {{ request.reference_number }} — {{ request.merchant?.name }}
+              </p>
+            </div>
 
-    <!-- Error state -->
-    <div v-else-if="error" class="print-error no-print">
-      <p>{{ error }}</p>
-    </div>
+            <div class="flex flex-wrap gap-2">
+              <Button
+                as="a"
+                variant="outline"
+                :href="`/requests/${request.id}`"
+              >
+                <ArrowRight class="ms-1 h-4 w-4" />
+                العودة للطلب
+              </Button>
+              <Button
+                v-if="issued"
+                @click="window.print()"
+              >
+                <Printer class="ms-1 h-4 w-4" />
+                طباعة / تنزيل PDF
+              </Button>
+              <Button
+                v-else-if="canIssueNow"
+                class="bg-accent hover:bg-accent/90"
+                :disabled="store.issuingCustoms"
+                @click="confirmIssueOpen = true"
+              >
+                <FileSignature class="ms-1 h-4 w-4" />
+                إصدار إذن بيان جمركي رسمياً
+              </Button>
+            </div>
+          </div>
 
-    <!-- Paper preview -->
-    <div v-else-if="declaration" class="paper-viewport">
-      <div class="paper-sheet" :style="{ transform: `scale(${zoom})` }">
-        <!-- RTL A4 content -->
-        <div class="declaration-doc" dir="rtl">
-          <header class="doc-header">
-            <div class="doc-logo-area">
-              <span class="doc-logo">🏦</span>
-              <div>
-                <p class="doc-org-name">البنك المركزي اليمني</p>
-                <p class="doc-org-sub">Central Bank of Yemen</p>
+          <div
+            v-if="issued"
+            class="mt-4 flex items-center gap-3 rounded-lg border border-success/30 bg-success/5 p-3"
+          >
+            <CheckCircle2 class="h-5 w-5 shrink-0 text-success" />
+            <div class="flex-1 text-sm">
+              <div class="font-semibold text-success">
+                تم إصدار إذن بيان جمركي بنجاح
+              </div>
+              <div class="text-xs text-muted-foreground">
+                رقم البيان
+                <span class="font-mono font-semibold">{{ request.customs_declaration?.declaration_number }}</span>
+                · بواسطة {{ request.customs_declaration?.issuer?.name ?? user?.name }}
+                · {{ formatDate(request.customs_declaration?.issued_at) }}
               </div>
             </div>
-            <div class="doc-title-area">
-              <h2 class="doc-title">بيان جمركي</h2>
-              <p class="doc-subtitle">Customs Declaration</p>
-            </div>
-          </header>
+          </div>
 
-          <div class="doc-divider" />
+          <div
+            v-else-if="stageBlocked"
+            class="mt-4 flex items-center gap-3 rounded-lg border border-warning/30 bg-warning/5 p-3"
+          >
+            <AlertTriangle class="h-5 w-5 shrink-0 text-warning" />
+            <div class="flex-1 text-sm">
+              <div class="font-semibold">
+                لا يمكن إصدار إذن بيان جمركي حالياً
+              </div>
+              <div class="text-xs text-muted-foreground">
+                الطلب في مرحلة
+                <span class="font-medium">{{ stageStatus?.label }}</span>.
+                يجب اعتماد التصويت التنفيذي أولاً.
+              </div>
+            </div>
+          </div>
 
-          <section class="doc-meta">
-            <div class="doc-meta-row">
-              <span class="meta-label">رقم البيان:</span>
-              <span class="meta-value doc-number">{{ declaration.declaration_number }}</span>
+          <div
+            v-else
+            class="mt-4 flex items-center gap-3 rounded-lg border border-info/30 bg-info/5 p-3"
+          >
+            <ShieldCheck class="h-5 w-5 shrink-0 text-info" />
+            <div class="flex-1 text-sm">
+              <div class="font-semibold">
+                جاهز للإصدار
+              </div>
+              <div class="text-xs text-muted-foreground">
+                راجع المعاينة أدناه ثم اضغط "إصدار إذن بيان جمركي رسمياً" لتوقيع وإغلاق الطلب نهائياً.
+              </div>
             </div>
-            <div class="doc-meta-row">
-              <span class="meta-label">تاريخ الإصدار:</span>
-              <span class="meta-value">{{ formatDate(declaration.issued_at) }}</span>
-            </div>
-            <div v-if="declaration.request" class="doc-meta-row">
-              <span class="meta-label">رقم الطلب المرجعي:</span>
-              <span class="meta-value">{{ declaration.request.reference_number }}</span>
-            </div>
-            <div v-if="declaration.request?.bank_name" class="doc-meta-row">
-              <span class="meta-label">البنك المصدر:</span>
-              <span class="meta-value">{{ declaration.request.bank_name }}</span>
-            </div>
-            <div v-if="declaration.issuer" class="doc-meta-row">
-              <span class="meta-label">أصدره:</span>
-              <span class="meta-value">{{ declaration.issuer.name }}</span>
-            </div>
-          </section>
+          </div>
+        </Card>
+      </div>
 
-          <div class="doc-divider" />
+      <div class="overflow-hidden rounded-xl border bg-[oklch(0.22_0.02_260)] shadow-card print:hidden">
+        <div class="flex items-center justify-between bg-[oklch(0.18_0.02_260)] px-4 py-2 text-xs text-white">
+          <div class="flex items-center gap-2">
+            <FileText class="h-4 w-4 text-red-400" />
+            <span class="font-mono">{{ request.customs_declaration?.declaration_number ?? `DRAFT-${request.reference_number}` }}.pdf</span>
+            <span
+              v-if="issued"
+              class="inline-flex items-center gap-1 rounded bg-success/20 px-2 py-0.5 text-[10px] text-success"
+            >
+              <ShieldCheck class="h-3 w-3" />
+              موقّع إلكترونياً
+            </span>
+          </div>
 
-          <section class="doc-body">
-            <p class="doc-body-text">
-              يُشهد بموجب هذا البيان أن الطلب المشار إليه أعلاه قد استوفى جميع الشروط والمتطلبات المقررة
-              وصدر القرار بالموافقة عليه من قِبَل اللجنة التنفيذية للبنك المركزي اليمني وفقاً للأنظمة المعمول بها.
-            </p>
-          </section>
+          <div class="flex items-center gap-1">
+            <Button
+              size="icon"
+              variant="ghost"
+              class="h-7 w-7 text-white hover:bg-white/10"
+              @click="setZoom(zoom - 0.1)"
+            >
+              <ZoomOut class="h-3.5 w-3.5" />
+            </Button>
+            <span class="w-12 text-center tabular-nums">{{ Math.round(zoom * 100) }}%</span>
+            <Button
+              size="icon"
+              variant="ghost"
+              class="h-7 w-7 text-white hover:bg-white/10"
+              @click="setZoom(zoom + 0.1)"
+            >
+              <ZoomIn class="h-3.5 w-3.5" />
+            </Button>
+            <span class="mx-2 h-4 w-px bg-white/20" />
+            <Button
+              size="icon"
+              variant="ghost"
+              class="h-7 w-7 text-white hover:bg-white/10"
+              @click="window.print()"
+            >
+              <Download class="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        </div>
 
-          <div class="doc-divider" />
-
-          <footer class="doc-footer">
-            <div class="signature-area">
-              <p class="signature-label">توقيع المدير</p>
-              <div class="signature-line" />
-            </div>
-            <div class="doc-stamp">
-              <span>ختم رسمي</span>
-            </div>
-          </footer>
+        <div class="grid max-h-[80vh] place-items-start justify-center overflow-auto bg-[oklch(0.25_0.02_260)] px-2 py-6">
+          <div :style="{ transform: `scale(${zoom})`, transformOrigin: 'top center' }">
+            <PrintablePermit
+              :request="request"
+              :watermark="!issued"
+              :format-date="formatDate"
+              :format-day="formatDay"
+            />
+          </div>
         </div>
       </div>
-    </div>
 
-    <!-- Confirmation dialog -->
-    <div v-if="showConfirmDialog" class="confirm-overlay" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
-      <div class="confirm-card">
-        <h3 id="confirm-title" class="confirm-title">تأكيد الطباعة</h3>
-        <p class="confirm-body">هل تريد طباعة البيان الجمركي رقم <strong>{{ declaration?.declaration_number }}</strong>؟</p>
-        <div class="confirm-actions">
-          <button class="confirm-btn confirm-btn--cancel" @click="cancelPrint">إلغاء</button>
-          <button class="confirm-btn confirm-btn--print" @click="executePrint">طباعة</button>
-        </div>
+      <div class="hidden print:block">
+        <PrintablePermit
+          :request="request"
+          :watermark="false"
+          :format-date="formatDate"
+          :format-day="formatDay"
+        />
       </div>
-    </div>
+
+      <Dialog v-model:open="confirmIssueOpen">
+        <DialogContent
+          class="sm:max-w-md"
+          dir="rtl"
+        >
+          <DialogHeader>
+            <DialogTitle class="flex items-center gap-2">
+              <Stamp class="h-5 w-5 text-accent" />
+              تأكيد إصدار إذن بيان جمركي
+            </DialogTitle>
+            <DialogDescription class="space-y-2 text-start">
+              <span class="block">
+                سيتم توقيع وإصدار إذن بيان جمركي للطلب
+                <span class="font-mono font-semibold">{{ request.reference_number }}</span>
+                بشكل نهائي ولن يمكن التراجع.
+              </span>
+              <span class="block rounded border border-warning/30 bg-warning/10 p-2 text-xs text-warning-foreground">
+                سيتم إكمال دورة الطلب وإغلاقها فور الإصدار.
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              @click="confirmIssueOpen = false"
+            >
+              إلغاء
+            </Button>
+            <Button
+              class="bg-accent hover:bg-accent/90"
+              :disabled="store.issuingCustoms"
+              @click="performIssue"
+            >
+              <FileSignature class="ms-1 h-4 w-4" />
+              تأكيد الإصدار
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </template>
+  </div>
+
+  <div
+    v-else-if="user"
+    class="mx-auto max-w-md p-8 text-center"
+  >
+    <Card class="border-destructive/30 bg-destructive/5 p-8">
+      <AlertTriangle class="mx-auto mb-3 h-10 w-10 text-destructive" />
+      <h2 class="mb-1 text-lg font-bold">
+        الطلب غير موجود
+      </h2>
+      <p class="mb-4 text-sm text-muted-foreground">
+        رقم الطلب {{ id }} غير معروف.
+      </p>
+      <Button
+        as="a"
+        variant="outline"
+        href="/customs"
+      >
+        <ArrowRight class="ms-1 h-4 w-4" />
+        العودة لطابور الجمارك
+      </Button>
+    </Card>
   </div>
 </template>
 
-<style scoped>
-.print-page {
-  min-height: 100vh;
-  background-color: var(--color-surface-dim);
-}
-
-/* ─── Controls bar ─── */
-.print-controls {
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  background-color: var(--color-surface);
-  border-bottom: 1px solid var(--color-border);
-  padding: 12px 24px;
-}
-
-.controls-bar {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  max-width: 900px;
-  margin: 0 auto;
-  flex-direction: row-reverse;
-}
-
-.controls-title {
-  flex: 1;
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--color-text-primary);
-  margin: 0;
-  text-align: right;
-}
-
-.zoom-controls {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.zoom-btn {
-  width: 32px;
-  height: 32px;
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-  background: var(--color-surface);
-  color: var(--color-text-primary);
-  font-size: 16px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background-color 120ms ease;
-}
-
-.zoom-btn:hover:not(:disabled) {
-  background-color: var(--color-surface-dim);
-}
-
-.zoom-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.zoom-reset {
-  font-size: 14px;
-}
-
-.zoom-level {
-  font-size: 13px;
-  color: var(--color-text-secondary);
-  min-width: 44px;
-  text-align: center;
-}
-
-.print-btn {
-  padding: 8px 20px;
-  background-color: var(--color-primary);
-  color: var(--color-on-primary);
-  border: none;
-  border-radius: var(--radius-lg);
-  font-size: 14px;
-  font-family: var(--font-body);
-  cursor: pointer;
-  transition: opacity 120ms ease;
-}
-
-.print-btn:hover:not(:disabled) {
-  opacity: 0.9;
-}
-
-.print-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* ─── Paper viewport ─── */
-.paper-viewport {
-  display: flex;
-  justify-content: center;
-  padding: 32px 16px;
-}
-
-.paper-sheet {
-  transform-origin: top center;
-  transition: transform 200ms ease;
-}
-
-/* ─── A4 document ─── */
-.declaration-doc {
-  width: 210mm;
-  min-height: 297mm;
-  background: #ffffff;
-  color: #1c222b;
-  padding: 24mm 20mm;
-  box-shadow: var(--shadow-lg);
-  font-family: 'IBM Plex Sans Arabic', sans-serif;
-  font-size: 11pt;
-  line-height: 1.7;
-}
-
-.doc-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 8mm;
-}
-
-.doc-logo-area {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.doc-logo {
-  font-size: 32px;
-}
-
-.doc-org-name {
-  font-size: 13pt;
-  font-weight: 700;
-  margin: 0;
-  font-family: 'Cairo', sans-serif;
-}
-
-.doc-org-sub {
-  font-size: 9pt;
-  color: #6c757d;
-  margin: 0;
-  font-family: 'Inter', sans-serif;
-}
-
-.doc-title-area {
-  text-align: left;
-}
-
-.doc-title {
-  font-size: 18pt;
-  font-weight: 700;
-  margin: 0;
-  font-family: 'Cairo', sans-serif;
-  color: #0066cc;
-}
-
-.doc-subtitle {
-  font-size: 9pt;
-  color: #6c757d;
-  margin: 0;
-  font-family: 'Inter', sans-serif;
-}
-
-.doc-divider {
-  height: 1px;
-  background-color: #cccccc;
-  margin: 6mm 0;
-}
-
-.doc-meta {
-  display: flex;
-  flex-direction: column;
-  gap: 3mm;
-}
-
-.doc-meta-row {
-  display: flex;
-  gap: 8px;
-}
-
-.meta-label {
-  font-weight: 600;
-  min-width: 160px;
-  color: #505050;
-}
-
-.meta-value {
-  color: #1c222b;
-}
-
-.doc-number {
-  font-weight: 700;
-  font-size: 12pt;
-  color: #0066cc;
-}
-
-.doc-body {
-  margin: 4mm 0;
-}
-
-.doc-body-text {
-  text-align: justify;
-  line-height: 2;
-  color: #1c222b;
-}
-
-.doc-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  margin-top: 16mm;
-}
-
-.signature-area {
-  text-align: center;
-}
-
-.signature-label {
-  font-size: 10pt;
-  color: #6c757d;
-  margin-bottom: 8mm;
-}
-
-.signature-line {
-  width: 48mm;
-  height: 1px;
-  background-color: #1c222b;
-}
-
-.doc-stamp {
-  width: 32mm;
-  height: 32mm;
-  border: 2px dashed #cccccc;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 9pt;
-  color: #6c757d;
-}
-
-/* ─── Loading / error ─── */
-.print-loading,
-.print-error {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 64px;
-  color: var(--color-text-secondary);
-  font-size: 15px;
-}
-
-.print-error {
-  color: var(--color-error-text);
-}
-
-/* ─── Confirmation dialog ─── */
-.confirm-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(12, 18, 26, 0.4);
-  backdrop-filter: blur(4px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 200;
-}
-
-.confirm-card {
-  background: var(--color-surface);
-  border-radius: var(--radius-xl);
-  padding: 32px;
-  width: 380px;
-  box-shadow: var(--shadow-lg);
-  text-align: right;
-}
-
-.confirm-title {
-  font-size: 18px;
-  font-weight: 700;
-  margin: 0 0 12px;
-  color: var(--color-text-primary);
-  font-family: var(--font-headline);
-}
-
-.confirm-body {
-  font-size: 14px;
-  color: var(--color-text-secondary);
-  margin: 0 0 24px;
-  line-height: 1.6;
-}
-
-.confirm-actions {
-  display: flex;
-  gap: 12px;
-  justify-content: flex-start;
-  flex-direction: row-reverse;
-}
-
-.confirm-btn {
-  padding: 10px 20px;
-  border-radius: var(--radius-lg);
-  border: none;
-  font-size: 14px;
-  font-family: var(--font-body);
-  cursor: pointer;
-  transition: opacity 120ms ease;
-}
-
-.confirm-btn--print {
-  background-color: var(--color-primary);
-  color: var(--color-on-primary);
-}
-
-.confirm-btn--cancel {
-  background-color: var(--color-surface-dim);
-  color: var(--color-text-secondary);
-  border: 1px solid var(--color-border);
-}
-
-.confirm-btn:hover {
-  opacity: 0.85;
-}
-
-/* ─── Print media ─── */
+<style>
 @media print {
-  .no-print {
+  body {
+    background: white !important;
+  }
+
+  aside,
+  header,
+  footer,
+  nav,
+  .print\:hidden {
     display: none !important;
   }
 
-  .print-page {
-    background: transparent;
-    min-height: unset;
+  main {
+    max-width: none !important;
+    padding: 0 !important;
   }
 
-  .paper-viewport {
-    padding: 0;
-  }
-
-  .paper-sheet {
-    transform: none !important;
-    box-shadow: none;
-  }
-
-  .declaration-doc {
-    box-shadow: none;
-    width: 100%;
-    padding: 0;
+  @page {
+    size: A4;
+    margin: 0;
   }
 }
 </style>

@@ -1,586 +1,237 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import { useNotifications } from '../composables/useNotifications'
-import { useNotificationsStore } from '../stores/notifications.store'
-import Icon from '../components/ui/Icon.vue'
-import type { IconName } from '../components/ui/icon-map'
-import { formatRelativeTime } from '../utils/formatRelativeTime'
+import PageHeader from '@/components/layout/PageHeader.vue'
+import {
+  Bell,
+  Check,
+  CheckCheck,
+  CheckCircle2,
+  FileText,
+  Inbox,
+  Search,
+  Undo2,
+  Vote,
+  XCircle,
+} from 'lucide-vue-next'
+import { cn } from '@/lib/utils'
+import { useNotificationsStore } from '@/stores/notifications.store'
+import { useNotifications } from '@/composables/useNotifications'
+import type { Notification } from '@/types/models'
 
-definePageMeta({ middleware: 'auth' })
+type FilterMode = 'all' | 'unread' | 'read'
+type Severity = 'critical' | 'warning' | 'success' | 'voting' | 'info'
 
-const {
-  notifications,
-  pagination,
-  loading,
-  error,
-  fetchNotifications,
-  markRead,
-  markAllRead,
-} = useNotifications()
+const notificationsStore = useNotificationsStore()
+const { fetchNotifications, markRead, markAllRead } = useNotifications()
 
-const store = useNotificationsStore()
+const filter = ref<FilterMode>('all')
+const query = ref('')
 
-type FilterTab = 'all' | 'unread' | 'read'
-const activeFilter = ref<FilterTab>('all')
-const searchQuery = ref('')
+onMounted(() => fetchNotifications())
 
-const allList = computed(() => notifications.value ?? [])
-const unreadCount = computed(() => allList.value.filter(n => !n.read_at).length)
-const readCount = computed(() => allList.value.filter(n => !!n.read_at).length)
+function severityFor(notification: Notification): Severity {
+  const text = notification.data?.message?.toLowerCase() ?? ''
+  if (text.includes('رفض') || text.includes('تنبيه')) return 'critical'
+  if (text.includes('إعادة') || text.includes('معاد') || text.includes('نقص')) return 'warning'
+  if (text.includes('اعتماد') || text.includes('صدر') || text.includes('مكتمل')) return 'success'
+  if (text.includes('تصويت') || text.includes('اللجنة')) return 'voting'
+  return 'info'
+}
 
-const filteredList = computed(() => {
-  let list = allList.value
-  if (activeFilter.value === 'unread') list = list.filter(n => !n.read_at)
-  else if (activeFilter.value === 'read') list = list.filter(n => !!n.read_at)
-  const q = searchQuery.value.trim().toLowerCase()
-  if (q) list = list.filter(n => (n.data?.message ?? '').toLowerCase().includes(q))
-  return list
+const SEVERITY_STYLES: Record<Severity, {
+  icon: unknown
+  iconWrap: string
+  border: string
+  unreadBg: string
+  dot: string
+  label: string
+}> = {
+  critical: { icon: XCircle, iconWrap: 'text-rose-50 bg-rose-600 ring-2 ring-rose-200', border: 'border-e-4 border-e-rose-600', unreadBg: 'bg-rose-50/70', dot: 'bg-rose-600', label: 'عاجل' },
+  warning: { icon: FileText, iconWrap: 'text-amber-50 bg-amber-500 ring-2 ring-amber-200', border: 'border-e-4 border-e-amber-500', unreadBg: 'bg-amber-50/60', dot: 'bg-amber-500', label: 'مهم' },
+  success: { icon: CheckCircle2, iconWrap: 'text-emerald-50 bg-emerald-600 ring-2 ring-emerald-200', border: 'border-e-4 border-e-emerald-600', unreadBg: 'bg-emerald-50/60', dot: 'bg-emerald-600', label: 'إنجاز' },
+  voting: { icon: Vote, iconWrap: 'text-violet-50 bg-violet-600 ring-2 ring-violet-200', border: 'border-e-4 border-e-violet-600', unreadBg: 'bg-violet-50/60', dot: 'bg-violet-600', label: 'تصويت' },
+  info: { icon: Bell, iconWrap: 'text-sky-50 bg-sky-600 ring-2 ring-sky-200', border: 'border-e-4 border-e-sky-500', unreadBg: 'bg-sky-50/50', dot: 'bg-sky-500', label: 'إشعار' },
+}
+
+function bucketLabel(createdAt: string) {
+  const diff = Date.now() - new Date(createdAt).getTime()
+  const hours = diff / 3_600_000
+  if (hours < 24) return 'اليوم'
+  if (hours < 48) return 'أمس'
+  if (hours < 168) return 'هذا الأسبوع'
+  return 'أقدم'
+}
+
+const notifications = computed(() => notificationsStore.items)
+const unreadCount = computed(() => notificationsStore.unreadCount)
+
+const filtered = computed(() => notifications.value.filter((n) => {
+  if (filter.value === 'unread' && n.read_at) return false
+  if (filter.value === 'read' && !n.read_at) return false
+  if (query.value.trim()) {
+    return (n.data?.message ?? '').toLowerCase().includes(query.value.trim().toLowerCase())
+  }
+  return true
+}))
+
+const groups = computed(() => {
+  const map = new Map<string, Notification[]>()
+  for (const n of filtered.value) {
+    const key = bucketLabel(n.created_at)
+    if (!map.has(key)) map.set(key, [])
+    map.get(key)!.push(n)
+  }
+  return [...map.entries()]
 })
 
-const totalDisplayCount = computed(() => `${allList.value.length} إشعار`)
-const isFiltered = computed(() =>
-  activeFilter.value !== 'all' || searchQuery.value.trim() !== '',
-)
-const emptyTitle = computed(() =>
-  isFiltered.value && allList.value.length > 0
-    ? 'لا توجد نتائج مطابقة'
-    : 'لا توجد إشعارات',
-)
-const emptySub = computed(() =>
-  isFiltered.value && allList.value.length > 0
-    ? 'جرب تعديل الفلتر أو البحث'
-    : 'ستظهر إشعاراتك هنا عند وصولها',
-)
-
-onMounted(async () => {
-  await fetchNotifications()
-  await store.refreshUnreadCount()
-})
-
-async function handleMarkRead(id: string) {
-  const success = await markRead(id)
-  if (success) await store.refreshUnreadCount()
-}
-
-async function handleMarkAllRead() {
-  const success = await markAllRead()
-  if (success) await store.refreshUnreadCount()
-}
-
-async function goToPage(page: number) {
-  await fetchNotifications(page)
-}
-
-function iconName(type?: string | null): IconName {
-  switch (type) {
-    case 'request_submitted': return 'file-text'
-    case 'request_approved': return 'check-circle'
-    case 'request_rejected': return 'x-circle'
-    case 'request_returned': return 'rotate-ccw'
-    case 'swift_upload_requested': return 'upload-cloud'
-    case 'voting_opened': return 'vote'
-    case 'customs_issued': return 'stamp'
-    case 'claim_released': return 'alert-triangle'
-    default: return 'bell'
+async function openNotification(notification: Notification) {
+  if (!notification.read_at) await markRead(notification.id)
+  if (notification.data?.request_id) {
+    navigateTo(`/requests/${notification.data.request_id}`)
   }
 }
 
-function notifAccentClass(type?: string | null): string {
-  return type === 'claim_released' ? 'notif-amber' : ''
-}
-
-function notifLink(data?: { type?: string; request_id?: number | null } | null): string | null {
-  if (data?.type === 'claim_released' && data.request_id) return `/requests/${data.request_id}`
-  return null
-}
-
-function handleNotificationClick(data?: { type?: string; request_id?: number | null } | null) {
-  const link = notifLink(data)
-  if (link) navigateTo(link)
+async function handleMarkAllRead() {
+  await markAllRead()
+  notificationsStore.markAllRead()
 }
 </script>
 
 <template>
-  <div class="notifications-page" dir="rtl">
-    <!-- Page header -->
-    <div class="page-header">
-      <div class="page-title-group">
-        <h1 class="page-title">مركز الإشعارات</h1>
-        <span class="page-count">{{ totalDisplayCount }}</span>
-      </div>
-      <div class="header-actions">
-        <button
-          v-if="unreadCount > 0"
-          class="mark-all-btn"
-          :disabled="loading"
+  <div>
+    <PageHeader
+      title="مركز الإشعارات"
+      :subtitle="`${unreadCount} غير مقروء من ${notifications.length} إجمالاً`"
+      :breadcrumbs="[{ label: 'الرئيسية', to: '/' }, { label: 'الإشعارات' }]"
+    >
+      <template #actions>
+        <Button
+          variant="outline"
+          size="sm"
+          :disabled="unreadCount === 0"
           @click="handleMarkAllRead"
         >
+          <CheckCheck class="ms-1 h-4 w-4" />
           تحديد الكل كمقروء
-        </button>
+        </Button>
+      </template>
+    </PageHeader>
+
+    <Card class="mb-4 border-0 p-3 shadow-card">
+      <div class="flex flex-col gap-3 md:flex-row md:items-center">
+        <div class="relative flex-1">
+          <Search class="absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            v-model="query"
+            placeholder="ابحث في الإشعارات..."
+            class="pe-9"
+          />
+        </div>
+
+        <Tabs
+          v-model="filter"
+          class="w-full md:w-auto"
+        >
+          <TabsList>
+            <TabsTrigger value="all">
+              الكل ({{ notifications.length }})
+            </TabsTrigger>
+            <TabsTrigger value="unread">
+              غير مقروء ({{ unreadCount }})
+            </TabsTrigger>
+            <TabsTrigger value="read">
+              مقروء ({{ notifications.length - unreadCount }})
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
       </div>
-    </div>
+    </Card>
 
-    <!-- Filter tabs + search row -->
-    <div class="filter-row">
-      <div class="filter-tabs" role="tablist" aria-label="فلتر الإشعارات">
-        <button
-          role="tab"
-          :aria-selected="activeFilter === 'all'"
-          :class="['filter-tab', { active: activeFilter === 'all' }]"
-          @click="activeFilter = 'all'"
-        >
-          الكل <span class="tab-count">{{ allList.length }}</span>
-        </button>
-        <button
-          role="tab"
-          :aria-selected="activeFilter === 'unread'"
-          :class="['filter-tab', { active: activeFilter === 'unread' }]"
-          @click="activeFilter = 'unread'"
-        >
-          غير مقروء <span class="tab-count">{{ unreadCount }}</span>
-        </button>
-        <button
-          role="tab"
-          :aria-selected="activeFilter === 'read'"
-          :class="['filter-tab', { active: activeFilter === 'read' }]"
-          @click="activeFilter = 'read'"
-        >
-          مقروء <span class="tab-count">{{ readCount }}</span>
-        </button>
-      </div>
-      <div class="search-wrap">
-        <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
-        <input
-          v-model="searchQuery"
-          type="text"
-          class="search-input"
-          placeholder="ابحث في الإشعارات..."
-          dir="rtl"
-          aria-label="البحث في الإشعارات"
-        >
-      </div>
-    </div>
-
-    <!-- Error state -->
-    <div v-if="error" class="error-banner" role="alert">
-      {{ error }}
-    </div>
-
-    <!-- Loading state -->
-    <div v-if="loading && allList.length === 0" class="loading-state">
-      <div class="spinner" aria-label="جاري التحميل..." />
-    </div>
-
-    <!-- Empty state -->
-    <div
-      v-else-if="!loading && filteredList.length === 0"
-      class="empty-state"
-      data-testid="notifications-empty"
+    <Card
+      v-if="filtered.length === 0"
+      class="border-0 shadow-card"
     >
-      <div class="empty-icon" aria-hidden="true">
-        <Icon name="bell" />
+      <div class="p-12 text-center">
+        <Inbox class="mx-auto h-10 w-10 text-muted-foreground/60" />
+        <div class="mt-3 text-sm text-muted-foreground">
+          {{ notifications.length === 0 ? 'لا توجد إشعارات بعد.' : 'لا توجد إشعارات تطابق هذا الفلتر.' }}
+        </div>
       </div>
-      <p class="empty-title">{{ emptyTitle }}</p>
-      <p class="empty-sub">{{ emptySub }}</p>
-    </div>
+    </Card>
 
-    <!-- Notification list -->
-    <ul
+    <div
       v-else
-      class="notifications-list"
-      aria-label="قائمة الإشعارات"
-      data-testid="notifications-list"
+      class="space-y-4"
     >
-      <li
-        v-for="notif in filteredList"
-        :key="notif.id"
-        class="notification-item"
-        :class="[{ unread: !notif.read_at }, notifAccentClass(notif.data?.type)]"
-        :style="notifLink(notif.data) ? 'cursor: pointer' : ''"
-        @click="handleNotificationClick(notif.data)"
+      <div
+        v-for="[label, items] in groups"
+        :key="label"
       >
-        <div class="notif-icon-wrap" :class="notifAccentClass(notif.data?.type)" aria-hidden="true">
-          <Icon :name="iconName(notif.data?.type)" />
+        <div class="mb-2 px-1 text-xs font-semibold text-muted-foreground">
+          {{ label }}
         </div>
-        <div class="notif-content">
-          <p class="notif-message">{{ notif.data?.message }}</p>
-          <time class="notif-time" :datetime="notif.created_at">
-            {{ formatRelativeTime(notif.created_at) }}
-          </time>
-        </div>
-        <div class="notif-actions">
-          <button
-            v-if="!notif.read_at"
-            class="read-icon-btn"
-            aria-label="تحديد كمقروء"
-            @click.stop="handleMarkRead(notif.id)"
+        <Card class="overflow-hidden border-0 shadow-card">
+          <div
+            v-for="notification in items"
+            :key="notification.id"
+            :class="cn(
+              'flex cursor-pointer gap-3 border-b p-4 transition-colors last:border-b-0 hover:bg-muted/40',
+              SEVERITY_STYLES[severityFor(notification)].border,
+              !notification.read_at && SEVERITY_STYLES[severityFor(notification)].unreadBg,
+            )"
+            @click="openNotification(notification)"
           >
-            <Icon name="check" />
-          </button>
-        </div>
-      </li>
-    </ul>
+            <div :class="cn('grid h-10 w-10 shrink-0 place-items-center rounded-full shadow-sm', SEVERITY_STYLES[severityFor(notification)].iconWrap)">
+              <component
+                :is="SEVERITY_STYLES[severityFor(notification)].icon"
+                class="h-5 w-5"
+              />
+            </div>
 
-    <!-- Pagination -->
-    <div
-      v-if="pagination.lastPage > 1"
-      class="pagination"
-      role="navigation"
-      aria-label="تنقل الصفحات"
-    >
-      <button
-        class="page-btn"
-        :disabled="pagination.currentPage <= 1"
-        @click="goToPage(pagination.currentPage - 1)"
-      >
-        السابق
-      </button>
-      <span class="page-info">
-        {{ pagination.currentPage }} / {{ pagination.lastPage }}
-      </span>
-      <button
-        class="page-btn"
-        :disabled="pagination.currentPage >= pagination.lastPage"
-        @click="goToPage(pagination.currentPage + 1)"
-      >
-        التالي
-      </button>
+            <div class="min-w-0 flex-1">
+              <div class="flex flex-wrap items-center gap-2 text-sm font-semibold">
+                <span class="truncate">{{ notification.data?.message ?? 'إشعار' }}</span>
+                <span :class="cn('rounded px-1.5 py-0.5 text-[9px] font-bold text-white', SEVERITY_STYLES[severityFor(notification)].dot)">
+                  {{ SEVERITY_STYLES[severityFor(notification)].label }}
+                </span>
+                <span
+                  v-if="!notification.read_at"
+                  :class="cn('inline-block h-2 w-2 rounded-full', SEVERITY_STYLES[severityFor(notification)].dot)"
+                />
+              </div>
+              <div
+                v-if="notification.data?.reference_number"
+                class="mt-0.5 text-xs text-muted-foreground"
+              >
+                طلب رقم: {{ notification.data.reference_number }}
+              </div>
+              <div class="mt-1 text-[10px] text-muted-foreground">
+                {{ new Date(notification.created_at).toLocaleString('ar-EG') }}
+              </div>
+            </div>
+
+            <div
+              class="flex shrink-0 items-start gap-1"
+              @click.stop
+            >
+              <Button
+                variant="ghost"
+                size="icon"
+                class="h-7 w-7"
+                @click="markRead(notification.id)"
+              >
+                <Check
+                  v-if="!notification.read_at"
+                  class="h-3.5 w-3.5"
+                />
+                <Undo2
+                  v-else
+                  class="h-3.5 w-3.5"
+                />
+              </Button>
+            </div>
+          </div>
+        </Card>
+      </div>
     </div>
   </div>
 </template>
-
-<style scoped>
-.notifications-page {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  max-width: 760px;
-}
-
-/* Header */
-.page-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.page-title-group {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.page-title {
-  font-size: 28px;
-  font-weight: 600;
-  color: #1c222b;
-  margin: 0;
-}
-
-.page-count {
-  font-size: 13px;
-  color: #6c757d;
-  background: #f5f5f7;
-  border: 1px solid #cccccc;
-  border-radius: 20px;
-  padding: 3px 10px;
-}
-
-.header-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.mark-all-btn {
-  font-size: 13px;
-  color: #0066cc;
-  background: transparent;
-  border: 1px solid #0066cc;
-  border-radius: 8px;
-  padding: 6px 14px;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.mark-all-btn:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
-
-/* Filter row */
-.filter-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.filter-tabs {
-  display: flex;
-  gap: 4px;
-  background: #f5f5f7;
-  border: 1px solid #cccccc;
-  border-radius: 12px;
-  padding: 4px;
-}
-
-.filter-tab {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 14px;
-  border: none;
-  border-radius: 8px;
-  font-size: 13px;
-  color: #6c757d;
-  background: transparent;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.filter-tab.active {
-  background: #ffffff;
-  color: #1c222b;
-  font-weight: 500;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.tab-count {
-  font-size: 11px;
-  background: #cccccc;
-  color: #1c222b;
-  border-radius: 20px;
-  padding: 1px 6px;
-  min-width: 18px;
-  text-align: center;
-}
-
-.filter-tab.active .tab-count {
-  background: #e8f0fe;
-  color: #0066cc;
-}
-
-.search-wrap {
-  position: relative;
-  flex: 1;
-  min-width: 200px;
-}
-
-.search-icon {
-  position: absolute;
-  right: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: #8e8e93;
-  pointer-events: none;
-}
-
-.search-input {
-  width: 100%;
-  height: 40px;
-  padding: 0 38px 0 12px;
-  border: 1px solid #cccccc;
-  border-radius: 12px;
-  font-size: 14px;
-  color: #1c222b;
-  background: #ffffff;
-  outline: none;
-  box-sizing: border-box;
-  font-family: inherit;
-}
-
-.search-input:focus {
-  border-color: #0066cc;
-}
-
-/* Error */
-.error-banner {
-  background-color: #fff2f2;
-  border: 1px solid #c62828;
-  border-radius: 8px;
-  padding: 12px 16px;
-  color: #c62828;
-  font-size: 14px;
-}
-
-/* Loading */
-.loading-state {
-  display: flex;
-  justify-content: center;
-  padding: 48px 0;
-}
-
-.spinner {
-  width: 32px;
-  height: 32px;
-  border: 3px solid #cccccc;
-  border-top-color: #0066cc;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-/* Empty state */
-.empty-state {
-  background: #ffffff;
-  border: 1px solid #cccccc;
-  border-radius: 16px;
-  padding: 56px 32px;
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-}
-
-.empty-icon {
-  width: 48px;
-  height: 48px;
-  background: #f5f5f7;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #8e8e93;
-  margin-bottom: 8px;
-}
-
-.empty-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: #1c222b;
-  margin: 0;
-}
-
-.empty-sub {
-  font-size: 13px;
-  color: #6c757d;
-  margin: 0;
-}
-
-/* Notifications list */
-.notifications-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.notification-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 14px;
-  background: #ffffff;
-  border: 1px solid #cccccc;
-  border-radius: 12px;
-  padding: 14px 16px;
-  border-inline-end: 4px solid transparent;
-}
-
-.notification-item.unread {
-  border-inline-end-color: #0066cc;
-}
-
-.notif-icon-wrap {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  background: #e8f0fe;
-  color: #0066cc;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.notif-content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-}
-
-.notif-message {
-  font-size: 14px;
-  color: #1c222b;
-  margin: 0;
-  line-height: 1.5;
-}
-
-.notif-time {
-  font-size: 12px;
-  color: #6c757d;
-}
-
-.notif-actions {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  flex-shrink: 0;
-}
-
-.read-icon-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
-  border: none;
-  border-radius: 6px;
-  background: transparent;
-  cursor: pointer;
-  color: #6c757d;
-}
-
-.read-icon-btn:hover {
-  background: #e6f9ec;
-  color: #1b5e20;
-}
-
-/* Pagination */
-.pagination {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-  padding: 8px 0;
-}
-
-.page-btn {
-  font-size: 13px;
-  color: #0066cc;
-  background: #ffffff;
-  border: 1px solid #cccccc;
-  border-radius: 8px;
-  padding: 6px 16px;
-  cursor: pointer;
-}
-
-.page-btn:disabled {
-  opacity: 0.4;
-  cursor: default;
-}
-
-.page-info {
-  font-size: 13px;
-  color: #6c757d;
-}
-
-/* Amber accent for claim_released */
-.notification-item.notif-amber.unread {
-  border-inline-end-color: #f57f17;
-}
-
-.notif-icon-wrap.notif-amber {
-  background: #fff3e0;
-  color: #f57f17;
-}
-</style>
