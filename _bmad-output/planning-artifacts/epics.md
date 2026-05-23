@@ -2943,3 +2943,220 @@ So that compliance-grade session-timeout behavior is visible and predictable.
 - Existing tests are unaffected; new tests cover the composable and banner separately.
 
 **Out of scope:** Multi-tab sync of activity (a refresh-tab approach can be a fast-follow), keystroke-level idle detection beyond the listed events.
+
+---
+
+## Epic 9: Lovable Parity Enforcement & Remediation
+
+**Purpose:** Epic 7 declared 1:1 Lovable parity as a goal across 10 stories and all 10 shipped, yet visible drift remains. The root cause is structural: the screenshot-pair acceptance criterion in Epic 7 was a doc-level rule, not a workflow-level gate. Stories could be marked complete without a committed before/after screenshot pair. Epic 9 promotes parity from "intended" to "enforced" — it (a) wires a hard pre-completion gate into the BMad dev-story workflow so no UI story can ship without committed parity evidence, (b) re-audits every Epic 7 surface against the new gate, (c) remediates confirmed drift in the production Nuxt UI, and (d) locks the final state behind visual regression baselines so future stories cannot silently degrade parity.
+
+**Decision date:** 2026-05-22
+
+**Relationship to Epic 7:** Epic 7's scope, source authorities, and story-level acceptance criteria remain canonical. Epic 9 does not re-do Epic 7's work — it enforces what Epic 7 declared, and surgically remediates what slipped through. Epic 7 stories that pass the Story 9.2 re-audit are not reopened.
+
+**Source authorities (unchanged from Epic 7):**
+1. `docs/01-workflow-and-business-rules.md`, `docs/03-database-and-models.md` — final authority for workflow, roles, statuses, security, audit.
+2. `lovable/screenshots/` — final visual authority for UI parity. If `DESIGN.md` conflicts with a screenshot, update `DESIGN.md` to match the screenshot.
+3. `lovable/src/` — React source reference for layout and component intent. Adapt intent only; do not copy React/TanStack code.
+4. `DESIGN.md` — tokenized expression of the screenshots; kept current as parity evidence reveals deltas.
+5. `frontend/app/` must remain Nuxt 4, Vue, TypeScript, Tailwind CSS v4, Pinia, shadcn-vue.
+
+**Definition of "enforced parity":**
+- Every user-visible Vue page or component under `frontend/app/**` has a corresponding `_bmad-output/parity-evidence/<area>/<page>/{lovable.png, current.png, side-by-side.png}` triplet committed to the repo.
+- Lovable layout is mirrored for RTL (sidebar-on-right, icon flips, chevron directions) while preserving Arabic copy. "1:1" means visually equivalent under RTL mirror — not character-identical to the LTR English source.
+- Any story that touches `frontend/app/**/*.vue` or `frontend/app/assets/css/**` cannot be marked complete by the dev agent without producing/updating the evidence triplet for every affected page. The BMad dev-story workflow enforces this; CI fails otherwise.
+- Routes may differ between lovable and the Nuxt app (e.g., lovable `/login`, Nuxt `/signin`). Route differences are explicitly allowed; only rendered UI must match.
+
+**Hard scope boundaries:**
+- No new feature work. No backend logic changes except to expose data a lovable screen requires that no current API provides (and only as a documented sub-task of the parity story that needs it).
+- No re-doing Epic 7 stories that pass the Story 9.2 re-audit. Pass = ship as-is.
+- Demo-only features remain excluded even if visible in the prototype (role switcher, demo login shortcuts, demo reset tools, mock-state editing).
+- `lovable/` stays read-only.
+- Workflow, roles, statuses, security, and audit behavior must not regress. Story 9.3 and 9.4 are UI-only.
+
+**Common technical requirements for all Epic 9 stories:**
+- Run SocratiCode before modifying existing files: `codebase_symbol` / `codebase_search`, then `codebase_impact` for touched components.
+- Use dev-browser to capture both lovable and current-app screenshots at matching viewports (desktop 1440×900 and mobile 390×844).
+- Commit frontend changes to frontend team repo and root monorepo; commit any backend changes to backend team repo and root monorepo.
+- After code changes, run targeted Vitest + Playwright tests and `graphify update .`.
+
+---
+
+### Story 9.1: Parity Workflow Gate, Doctrine Update & Initial Tooling
+
+As a dev agent (Claude or other) implementing any UI-touching story,
+I want the BMad dev-story workflow to refuse to mark UI stories complete without a committed parity-evidence triplet,
+So that "1:1 with lovable" stops being an aspirational doc rule and becomes a structural pre-completion gate.
+
+**Source authority:**
+- Epic 7 post-completion gap (drift persists despite shipped stories) — captured in this epic's purpose.
+- AGENTS.md `lovable/` line — currently says "reference prototype, do not copy" and must be rewritten.
+
+**Targets:**
+
+*BMad workflow gate:*
+- `_bmad/custom/bmad-dev-story.toml` — add `persistent_facts` and `activation_steps_append` entries enforcing the parity-evidence rule. New persistent fact: "Any story touching `frontend/app/**/*.vue` or `frontend/app/assets/css/**` is INCOMPLETE until a `_bmad-output/parity-evidence/<area>/<page>/` directory exists with `lovable.png`, `current.png`, and `side-by-side.png` committed in the same change. Missing or stale evidence is a HALT condition before marking the story complete."
+- New activation step: "If the active story touches frontend UI files, list its target pages and verify (or queue creation of) parity-evidence triplets for each before claiming completion."
+
+*Doctrine docs:*
+- `AGENTS.md` — replace the `lovable/` rule: "lovable/ is the **visual source of truth** for all UI work. Clone it 1:1; translate React idioms to Vue; mirror for RTL; preserve Arabic copy. lovable/ itself remains read-only."
+- `CLAUDE.md` (root) — mirror the same line update.
+- `docs/04-frontend-guide.md` — add a new top-level section "Visual Parity Workflow" pointing all UI work to the parity workflow doc and the BMad gate.
+- `DESIGN.md` — add a "Source of truth" note: when DESIGN.md tokens conflict with `lovable/screenshots/` rendered values, update DESIGN.md to match the screenshot.
+- New: `docs/ui-parity/clone-page-workflow.md` — codify the per-page port procedure (open lovable file → both apps in dev-browser at matched viewport → screenshot lovable → screenshot current → produce side-by-side composite → port markup → re-wire composables → re-screenshot → commit triplet → user sign-off).
+
+*CI/CD gate (optional but recommended):*
+- A new `frontend/scripts/check-parity-evidence.ts` script that, given a list of changed Vue files, asserts each has a corresponding evidence triplet under `_bmad-output/parity-evidence/`. Wired as a pre-push hook or CI step. Failures block merge.
+
+*Skill alias:*
+- `.claude/skills/clone-page/SKILL.md` — short skill alias `/clone-page <lovable-file>` that runs the per-page port procedure documented above.
+
+**Acceptance criteria:**
+- BMad dev-story workflow refuses to claim completion on a UI-touching story without the evidence triplet present.
+- AGENTS.md, CLAUDE.md, frontend-guide, DESIGN.md, and the new clone-page-workflow doc all consistently declare lovable as visual source of truth.
+- A dry-run on a sample UI story (e.g., re-touching `frontend/app/pages/login.vue`) demonstrates the gate firing.
+- `/clone-page` skill is callable and produces the expected per-page port artifacts.
+- Existing dev-story workflow steps (SocratiCode index checks, persistent facts) are preserved; the new facts are additive.
+
+**Out of scope:** Running the gate retroactively against shipped Epic 7 stories — that is Story 9.2's job.
+
+---
+
+### Story 9.2: Epic 7 Re-Audit & Parity Verdict Matrix
+
+As a planner verifying Epic 7's actual delivered state,
+I want a fresh, evidence-backed re-audit of every Epic 7 page against its lovable screenshot,
+So that the remediation backlog in Stories 9.3 and 9.4 is grounded in confirmed gaps, not speculation.
+
+**Source authority:**
+- Epic 7 (Stories 7.1–7.10) — defines every page in scope.
+- `lovable/screenshots/` — visual baseline for each page.
+- The parity gate from Story 9.1 — defines the evidence artifact format.
+
+**Targets:**
+- `_bmad-output/parity-evidence/<area>/<page>/{lovable.png, current.png, side-by-side.png}` — one triplet per page that Epic 7 declared in scope.
+- `docs/ui-parity/parity-matrix.md` — single matrix with one row per page:
+
+| area | lovable screenshot path | current Vue path | viewport | verdict | gap summary | remediation story |
+|---|---|---|---|---|---|---|
+
+Verdict values: `PASS` (no drift visible), `MINOR_DRIFT` (spacing/color/density), `MAJOR_DRIFT` (layout/structure), `MISSING` (lovable page not rendered at all in current app), `SKIP` (lovable-only page not in workflow scope).
+
+**Coverage requirement:**
+- Every screenshot path referenced in Story 7.1 through 7.10 must appear as a row.
+- Both desktop (1440×900) and mobile (390×844) screenshots are captured per page.
+- Demo-only features remain excluded; rows for those are tagged `SKIP — demo-only` with a one-line reason.
+
+**Acceptance criteria:**
+- Matrix is complete (every Epic 7 in-scope screenshot represented).
+- Every row's evidence triplet is committed under `_bmad-output/parity-evidence/`.
+- Every non-PASS row carries a one-paragraph gap summary and a target remediation story (9.3 or 9.4).
+- User signs off on the matrix before Stories 9.3/9.4 begin.
+
+**Out of scope:** Code changes. This story produces evidence and a remediation backlog only.
+
+---
+
+### Story 9.3: Remediate Workflow Surface Drift (Auth, Dashboards, Requests)
+
+As any user inside the daily workflow,
+I want the auth screens, role dashboards, and request screens to match lovable 1:1 under RTL mirror,
+So that the surface users touch every day is visually identical to the stakeholder-approved prototype.
+
+**Source authority:**
+- Story 9.2 verdict matrix rows tagged `MINOR_DRIFT`, `MAJOR_DRIFT`, or `MISSING` and assigned to this story.
+- Epic 7 stories 7.1, 7.2, 7.3, 7.4, 7.5 — original source-authority lists remain valid.
+
+**Targets (only pages with non-PASS verdicts; final list from 9.2):**
+
+*Auth:*
+- `frontend/app/pages/login.vue`, OTP step, forgot-password, reset-password
+- `frontend/app/layouts/auth.vue`
+
+*Dashboards (per role):*
+- `frontend/app/pages/dashboard.vue` and `frontend/app/components/dashboard/*.vue` for any role with drift
+
+*Requests:*
+- `frontend/app/pages/requests/index.vue`
+- `frontend/app/pages/requests/[id]/index.vue`
+- `frontend/app/pages/requests/new.vue`
+- `frontend/app/pages/requests/[id]/edit.vue`
+- `frontend/app/pages/requests/[id]/print.vue`
+- `frontend/app/pages/requests/[id]/swift.vue`
+- `frontend/app/components/requests/*.vue`, `frontend/app/components/wizard/*.vue`, `frontend/app/components/workflow/*.vue`, `frontend/app/components/voting/VotingPanel.vue`
+
+**Acceptance criteria:**
+- Every non-PASS row from 9.2 in this story's scope flips to PASS in a re-screenshot pass.
+- Updated evidence triplets committed for every touched page.
+- DESIGN.md tokens updated where 9.2 surfaced a token-vs-screenshot delta.
+- Vitest + Playwright suites green.
+- No regression in workflow, security, or audit behavior (verified by re-running existing test suites).
+
+**Posture per page (carried from 9.2):** Each page is tagged `patch` (incremental class/spacing adjustments) or `teardown` (delete current markup, port lovable's markup wholesale, re-wire existing composables/stores). 9.3 honors the per-page posture.
+
+**Out of scope:** Admin, settings/profile, reports, audit, customs, merchants, notifications (Story 9.4). Visual regression baselines (Story 9.5).
+
+---
+
+### Story 9.4: Remediate Management Surface Drift (Admin, Settings/Profile, Reports, Misc)
+
+As an admin, auditor, or reporting user,
+I want the management and supporting screens to match lovable 1:1 under RTL mirror,
+So that the full app — not just the hot path — reaches the parity bar Epic 7 set.
+
+**Source authority:**
+- Story 9.2 verdict matrix rows assigned to this story.
+- Epic 7 stories 7.6, 7.7, 7.8, 7.9, 7.10 — original source-authority lists remain valid.
+
+**Targets (only pages with non-PASS verdicts; final list from 9.2):**
+
+*Admin:*
+- `frontend/app/pages/banks.vue`, `frontend/app/pages/users.vue`, `frontend/app/pages/staff.vue`
+- `frontend/app/pages/admin/cby-staff.vue`, `frontend/app/pages/admin/entities.vue`, `frontend/app/pages/admin/roles.vue`, `frontend/app/pages/admin/workflow-docs.vue`
+
+*Settings & profile:*
+- `frontend/app/pages/settings.vue`, `frontend/app/pages/admin/settings.vue`, `frontend/app/pages/profile.vue`
+
+*Reports:*
+- `frontend/app/pages/reports/index.vue` and any chart components
+
+*Misc / supporting:*
+- `frontend/app/pages/notifications.vue`, `frontend/app/pages/audit.vue`, `frontend/app/pages/customs.vue`, `frontend/app/pages/merchants.vue`, `frontend/app/components/merchants/*.vue`
+
+**Acceptance criteria:**
+- Every non-PASS row from 9.2 in this story's scope flips to PASS in a re-screenshot pass.
+- Updated evidence triplets committed for every touched page.
+- DESIGN.md tokens updated where 9.2 surfaced a delta not already addressed in 9.3.
+- Vitest + Playwright suites green.
+- No regression in admin RBAC, settings persistence, report computation, or audit data integrity.
+
+**Posture per page (carried from 9.2):** patch vs teardown per row.
+
+**Out of scope:** Auth, dashboards, requests (Story 9.3). Visual regression baselines (Story 9.5).
+
+---
+
+### Story 9.5: Visual Regression Lock & Future-Drift Prevention
+
+As a project maintainer,
+I want every parity-locked page to fail CI if its rendered output drifts from the committed baseline,
+So that future stories cannot silently regress the UI we just remediated.
+
+**Source authority:**
+- Stories 9.1, 9.2, 9.3, 9.4 — produced the evidence triplets that become the baselines.
+- Existing Playwright test infrastructure under `frontend/tests/`.
+
+**Targets:**
+- `frontend/tests/visual/*.spec.ts` — one spec per parity-locked page; uses Playwright's `toHaveScreenshot()` against the `current.png` baseline from `_bmad-output/parity-evidence/`.
+- `frontend/playwright.config.ts` — visual project configuration (threshold, max diff pixels, animation handling).
+- `.github/workflows/visual-regression.yml` (or equivalent CI step) — runs the visual project on every PR touching `frontend/app/**`.
+- `_bmad/custom/bmad-dev-story.toml` — add a new persistent fact: "If a story intentionally changes a parity-locked page, the dev agent MUST update both the `_bmad-output/parity-evidence/<page>/current.png` and the Playwright baseline in the same change. Updating one without the other is a HALT condition."
+- `docs/ui-parity/visual-regression.md` — how to update a baseline when an intentional UI change is made.
+
+**Acceptance criteria:**
+- Every page that ended Story 9.3 or 9.4 with a PASS verdict has a corresponding Playwright visual spec and baseline.
+- CI runs the visual project on PRs touching `frontend/app/**` and fails on baseline mismatch.
+- A test-the-test exercise: deliberately introduce a 4px padding change on one parity-locked page, confirm CI fails, revert, confirm CI passes.
+- Documentation for baseline updates is clear enough that a future dev (or agent) can update intentionally without breaking the gate.
+
+**Out of scope:** Performance budgets, accessibility regression, semantic HTML linting — separate concerns.
