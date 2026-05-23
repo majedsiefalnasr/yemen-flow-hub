@@ -129,62 +129,94 @@ function formatDate(iso: string): string {
     minute: '2-digit',
   })
 }
+
+function stageItemClasses(state: StageState): string {
+  const baseClasses = 'relative flex flex-col'
+  const stateMap: Record<StageState, string> = {
+    completed: '',
+    current: '',
+    future: '',
+    terminal: '',
+    skipped: '',
+  }
+  return `${baseClasses} ${stateMap[state]}`
+}
+
+function stageLabelClasses(state: StageState): string {
+  const baseClasses = 'text-sm font-medium'
+  const stateMap: Record<StageState, string> = {
+    completed: 'text-gray-900',
+    current: 'text-blue-600 font-bold',
+    future: 'text-gray-500 font-normal',
+    terminal: 'text-gray-500 font-bold',
+    skipped: 'text-gray-500 font-normal italic',
+  }
+  return `${baseClasses} ${stateMap[state]}`
+}
+
+function stageBodyClasses(state: StageState): string {
+  const baseClasses = 'flex items-start gap-3 py-1'
+  if (state === 'current' || state === 'terminal') {
+    return `${baseClasses} bg-gray-100 rounded-lg p-2 -mx-3`
+  }
+  return baseClasses
+}
+
+function connectorClasses(isDone: boolean): string {
+  return `w-0.5 h-5 flex-shrink-0 -mr-[5.5px] mb-0 ${isDone ? 'bg-green-600' : 'bg-gray-300'}`
+}
 </script>
 
 <template>
-  <div class="workflow-timeline" dir="rtl" role="list" aria-label="مسار سير العمل">
+  <div class="flex flex-col py-2 px-0 relative" dir="rtl" role="list" aria-label="مسار سير العمل">
     <div
       v-for="(stage, idx) in stages"
       :key="stage.status"
-      class="stage-item"
-      :class="`stage-item--${stage.state}`"
+      :class="stageItemClasses(stage.state)"
       role="listitem"
       :aria-current="stage.state === 'current' || stage.state === 'terminal' ? 'step' : undefined"
     >
       <!-- Connector line (except for first item) -->
       <div
         v-if="idx > 0"
-        class="stage-connector"
-        :class="{
-          'stage-connector--done': stage.state === 'completed' || stage.state === 'current' || stage.state === 'terminal',
-        }"
+        :class="connectorClasses(stage.state === 'completed' || stage.state === 'current' || stage.state === 'terminal')"
         aria-hidden="true"
       />
 
-      <div class="stage-body">
+      <div :class="stageBodyClasses(stage.state)">
         <!-- Node icon -->
-        <div class="stage-node" aria-hidden="true">
+        <div class="w-5 h-5 flex-shrink-0 flex items-center justify-center" aria-hidden="true">
           <!-- Completed: green checkmark -->
-          <svg v-if="stage.state === 'completed'" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="icon-check" role="img" aria-label="مكتمل">
+          <svg v-if="stage.state === 'completed'" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-green-600" role="img" aria-label="مكتمل">
             <polyline points="20 6 9 17 4 12" />
           </svg>
           <!-- Terminal (EXECUTIVE_REJECTED): lock icon -->
-          <svg v-else-if="stage.state === 'terminal'" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-lock" role="img" aria-label="نهائي">
+          <svg v-else-if="stage.state === 'terminal'" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-500" role="img" aria-label="نهائي">
             <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
             <path d="M7 11V7a5 5 0 0 1 10 0v4" />
           </svg>
           <!-- Skipped branch (not visited): dash -->
-          <span v-else-if="stage.state === 'skipped'" class="node-dot node-dot--skipped" aria-hidden="true" />
+          <span v-else-if="stage.state === 'skipped'" class="w-3 h-3 flex-shrink-0 rounded-full border-2 border-dashed border-gray-300 bg-transparent" aria-hidden="true" />
           <!-- Current: filled circle -->
-          <span v-else-if="stage.state === 'current'" class="node-dot node-dot--current" aria-hidden="true" />
+          <span v-else-if="stage.state === 'current'" class="w-3 h-3 rounded-full bg-blue-600 shadow-[0_0_0_3px_rgba(0,113,227,0.2)]" aria-hidden="true" />
           <!-- Future: empty circle -->
-          <span v-else class="node-dot node-dot--future" aria-hidden="true" />
+          <span v-else class="w-3 h-3 rounded-full border-2 border-gray-300 bg-transparent" aria-hidden="true" />
         </div>
 
         <!-- Stage content -->
-        <div class="stage-content">
-          <span class="stage-label">{{ stage.label }}</span>
+        <div class="flex flex-col gap-0.5 flex-1 pb-1">
+          <span :class="stageLabelClasses(stage.state)">{{ stage.label }}</span>
 
           <!-- Current/terminal stage: show actor + timestamp from history -->
           <template v-if="(stage.state === 'current' || stage.state === 'terminal') && stage.entry">
-            <span class="stage-actor">
+            <span class="text-xs text-gray-600">
               {{ stage.entry.performed_by?.name ?? `#${stage.entry.actor_id}` }}
             </span>
-            <span class="stage-timestamp">{{ formatDate(stage.entry.created_at) }}</span>
+            <span class="text-xs text-gray-500">{{ formatDate(stage.entry.created_at) }}</span>
           </template>
 
           <!-- Terminal label — EXECUTIVE_REJECTED only (dead-end, no further actions) -->
-          <span v-if="stage.state === 'terminal'" class="stage-terminal-label">
+          <span v-if="stage.state === 'terminal'" class="text-xs font-semibold text-gray-500 mt-0.5">
             نهائي — لا إجراءات إضافية
           </span>
         </div>
@@ -192,140 +224,3 @@ function formatDate(iso: string): string {
     </div>
   </div>
 </template>
-
-<style scoped>
-.workflow-timeline {
-  display: flex;
-  flex-direction: column;
-  padding: 8px 0;
-  position: relative;
-}
-
-.stage-item {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-}
-
-/* Vertical connector line between nodes */
-.stage-connector {
-  width: 2px;
-  height: 20px;
-  background: #d2d2d7;
-  margin-right: 9px; /* aligns with node center (20px node / 2 - 1px) */
-  margin-bottom: 0;
-  flex-shrink: 0;
-}
-
-.stage-connector--done {
-  background: #34c759;
-}
-
-.stage-body {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 4px 0;
-}
-
-/* Node circle/icon */
-.stage-node {
-  width: 20px;
-  height: 20px;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.node-dot {
-  display: block;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-}
-
-.node-dot--current {
-  background: #0071e3;
-  box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.2);
-}
-
-.node-dot--future {
-  background: transparent;
-  border: 2px solid #d2d2d7;
-}
-
-.node-dot--skipped {
-  background: transparent;
-  border: 2px dashed #d2d2d7;
-}
-
-.icon-check {
-  color: #34c759;
-}
-
-.icon-lock {
-  color: #8e8e93;
-}
-
-/* Stage content text */
-.stage-content {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  flex: 1;
-  padding-bottom: 4px;
-}
-
-.stage-label {
-  font-size: 14px;
-  font-weight: 500;
-  color: #1d1d1f;
-}
-
-.stage-item--future .stage-label,
-.stage-item--skipped .stage-label {
-  color: #8e8e93;
-  font-weight: 400;
-}
-
-.stage-item--current .stage-label {
-  color: #0071e3;
-  font-weight: 700;
-}
-
-.stage-item--terminal .stage-label {
-  color: #8e8e93;
-  font-weight: 700;
-}
-
-.stage-actor {
-  font-size: 12px;
-  color: #6e6e73;
-}
-
-.stage-timestamp {
-  font-size: 12px;
-  color: #8e8e93;
-}
-
-.stage-terminal-label {
-  font-size: 12px;
-  font-weight: 600;
-  color: #8e8e93;
-  margin-top: 2px;
-}
-
-/* Current and terminal stage elevated card effect */
-.stage-item--current .stage-body,
-.stage-item--terminal .stage-body {
-  background: #f5f5f7;
-  border-radius: 8px;
-  padding: 8px 12px;
-  margin: 0 -12px;
-}
-
-.stage-item--skipped .stage-label {
-  font-style: italic;
-}
-</style>
