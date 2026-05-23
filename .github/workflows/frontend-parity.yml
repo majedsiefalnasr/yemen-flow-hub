@@ -1,17 +1,21 @@
 name: Frontend Parity Evidence
 
-# Yemen Flow Hub — Epic 9, Story 9.1
-# Gates merges by verifying that any UI-touching change ships its
-# parity-evidence triplet alongside the Vue/CSS edit.
+# Yemen Flow Hub — Epic 9, Story 9.1 + Story 9.5
+# Two jobs:
+#   parity-evidence  — gates any UI-touching change that lacks a parity-evidence triplet
+#   visual-regression — runs Playwright visual baselines against parity-locked pages
+#
+# The on.paths filter determines which PRs trigger this workflow.
 
 on:
   pull_request:
     branches: [main]
     paths:
-      - "frontend/app/**/*.vue"
-      - "frontend/app/assets/css/**/*.css"
+      - "frontend/app/**"
+      - "frontend/app/assets/css/**"
       - "frontend/scripts/check-parity-evidence.ts"
       - "_bmad-output/parity-evidence/**"
+      - "frontend/tests/visual/**"
 
 jobs:
   parity-evidence:
@@ -32,3 +36,59 @@ jobs:
       - name: Run parity-evidence check
         working-directory: frontend
         run: npx --yes tsx scripts/check-parity-evidence.ts
+
+  visual-regression:
+    name: Visual regression — parity-locked pages
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ hashFiles('frontend/package-lock.json') }}
+
+      - name: Install Playwright browsers
+        working-directory: frontend
+        # Install Chromium only — keeps CI time and disk usage bounded
+        run: npx playwright install --with-deps chromium
+
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+
+      - name: Start preview server
+        working-directory: frontend
+        # Run in background; wait-on waits for it to become ready
+        run: npm run preview &
+
+      - name: Wait for preview server
+        run: npx wait-on http://localhost:3000 --timeout 30000
+
+      - name: Run visual regression tests
+        working-directory: frontend
+        run: npm run test:visual
+        env:
+          PLAYWRIGHT_BASE_URL: "http://localhost:3000"
+
+      - name: Upload diff artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-regression-diffs
+          path: frontend/test-results/
+          retention-days: 7
