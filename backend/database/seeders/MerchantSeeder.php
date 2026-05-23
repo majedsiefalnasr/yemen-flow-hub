@@ -15,22 +15,31 @@ class MerchantSeeder extends Seeder
             ['ar' => 'شركة الهدى للتجارة', 'en' => 'Al-Hadi Trading LLC'],
             ['ar' => 'مؤسسة النور للاستيراد', 'en' => 'Al-Noor Import Est.'],
             ['ar' => 'شركة اليمن الذهبية', 'en' => 'Golden Yemen Co.'],
+            ['ar' => 'مجموعة الفلاح التجارية', 'en' => 'Al-Falah Commercial Group'],
+            ['ar' => 'شركة الشرق للأدوية', 'en' => 'East Pharma Co.'],
+            ['ar' => 'مؤسسة الجزيرة للأغذية', 'en' => 'Al-Jazeera Foods Est.'],
+            ['ar' => 'شركة السلام للإلكترونيات', 'en' => 'Al-Salam Electronics'],
+            ['ar' => 'مجموعة الأمل للأقمشة', 'en' => 'Al-Amal Textiles Group'],
+            ['ar' => 'شركة المختار للمعدات', 'en' => 'Al-Mukhtar Equipment Co.'],
+            ['ar' => 'مؤسسة عدن البحرية', 'en' => 'Aden Maritime Est.'],
+            ['ar' => 'شركة صنعاء للمواد الغذائية', 'en' => "Sana'a Food Materials"],
+            ['ar' => 'مجموعة حضرموت التجارية', 'en' => 'Hadramaut Trading Group'],
+            ['ar' => 'شركة تعز للأدوات الصحية', 'en' => 'Taiz Sanitary Co.'],
+            ['ar' => 'مؤسسة الحديدة للنقل', 'en' => 'Hodeidah Transport Est.'],
+            ['ar' => 'شركة المكلا للحبوب', 'en' => 'Mukalla Grains Co.'],
         ];
 
-        $inactiveBudget = 2;
+        $businessTypes = ['Trading', 'Manufacturing', 'Wholesale', 'Pharma', 'Food', 'Electronics', 'Textiles', 'Logistics'];
 
-        Bank::query()->where('is_active', true)->orderBy('id')->get()->each(function (Bank $bank) use (&$inactiveBudget, $templates): void {
+        Bank::query()->where('is_active', true)->orderBy('id')->get()->each(function (Bank $bank) use ($templates, $businessTypes): void {
             $manager = User::query()
                 ->where('bank_id', $bank->id)
                 ->where('role', 'DATA_ENTRY')
                 ->first();
 
             foreach ($templates as $i => $template) {
-                $isActive = true;
-                if ($inactiveBudget > 0 && (($bank->id + $i) % 5 === 0)) {
-                    $isActive = false;
-                    $inactiveBudget--;
-                }
+                // ~10% inactive across the merchant population
+                $isActive = (($bank->id + $i) % 10) !== 0;
 
                 Merchant::query()->updateOrCreate(
                     [
@@ -45,6 +54,7 @@ class MerchantSeeder extends Seeder
                         'phone' => '+967 7'.random_int(0, 9).' '.random_int(100, 999).' '.random_int(1000, 9999),
                         'email' => strtolower($bank->code).'-m'.($i + 1).'@merchant.ye',
                         'address' => 'Yemen, Sana\'a',
+                        'business_type' => $businessTypes[$i % count($businessTypes)],
                         'is_active' => $isActive,
                         'created_by' => $manager?->id,
                     ]
@@ -53,4 +63,3 @@ class MerchantSeeder extends Seeder
         });
     }
 }
-
