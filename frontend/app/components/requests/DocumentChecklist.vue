@@ -442,10 +442,3 @@ function formatDate(iso: string | null): string {
     </div>
   </div>
 </template>
-  color: #8e8e93;
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-</style>
