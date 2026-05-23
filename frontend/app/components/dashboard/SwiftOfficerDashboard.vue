@@ -32,231 +32,144 @@ onMounted(() => { store.loadStats() })
 </script>
 
 <template>
-  <div class="swift-dashboard" dir="rtl">
+  <div class="flex flex-col gap-6" dir="rtl">
 
     <!-- Skeleton -->
-    <div v-if="store.loading" class="kpi-grid" aria-busy="true" aria-label="جارٍ تحميل الإحصائيات">
-      <div v-for="n in 4" :key="n" class="kpi-card kpi-skeleton" aria-hidden="true">
-        <div class="skel skel--label" />
-        <div class="skel skel--value" />
+    <div v-if="store.loading" class="grid grid-cols-4 gap-4 md:grid-cols-2 sm:grid-cols-1" aria-busy="true" aria-label="جارٍ تحميل الإحصائيات">
+      <div v-for="n in 4" :key="n" class="bg-white border border-border rounded-md p-5 flex flex-col gap-3 animate-pulse" aria-hidden="true">
+        <div class="h-3.5 w-2/5 bg-gray-200 rounded" />
+        <div class="h-8 w-1/2 bg-gray-200 rounded" />
       </div>
     </div>
 
     <!-- Error -->
-    <div v-else-if="store.error" class="error-card" role="alert">
+    <div v-else-if="store.error" class="bg-white border border-border rounded-md p-5 text-error-text flex items-center gap-3" role="alert">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
         <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
       </svg>
       <span>{{ store.error }}</span>
-      <button class="btn-retry" @click="store.loadStats()">إعادة المحاولة</button>
+      <button class="ml-auto px-4 py-1.5 bg-white border border-error-text rounded text-error-text text-xs hover:bg-red-50 transition-colors" @click="store.loadStats()">إعادة المحاولة</button>
     </div>
 
     <template v-else-if="stats">
 
       <!-- KPI grid -->
-      <div class="kpi-grid">
+      <div class="grid grid-cols-4 gap-4 md:grid-cols-2 sm:grid-cols-1">
         <!-- مرفوض نهائياً -->
-        <div class="kpi-card kpi-card--red">
-          <div class="kpi-card__icon kpi-icon--red" aria-hidden="true">
+        <div class="bg-white border border-border rounded-md p-6 flex flex-col gap-1.5">
+          <div class="w-9 h-9 rounded bg-red-50 flex items-center justify-center text-error-text mb-1" aria-hidden="true">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" />
             </svg>
           </div>
-          <span class="kpi-card__value">{{ stats.final_rejected }}</span>
-          <span class="kpi-card__label">مرفوض نهائياً</span>
+          <span class="text-2xl font-bold text-error-text leading-none">{{ stats.final_rejected }}</span>
+          <span class="text-xs text-muted-foreground">مرفوض نهائياً</span>
         </div>
 
         <!-- مُعتمد نهائياً -->
-        <div class="kpi-card kpi-card--green">
-          <div class="kpi-card__icon kpi-icon--green" aria-hidden="true">
+        <div class="bg-white border border-border rounded-md p-6 flex flex-col gap-1.5">
+          <div class="w-9 h-9 rounded bg-green-50 flex items-center justify-center text-success-text mb-1" aria-hidden="true">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" />
             </svg>
           </div>
-          <span class="kpi-card__value">{{ stats.final_approved }}</span>
-          <span class="kpi-card__label">مُعتمد نهائياً</span>
+          <span class="text-2xl font-bold text-success-text leading-none">{{ stats.final_approved }}</span>
+          <span class="text-xs text-muted-foreground">مُعتمد نهائياً</span>
         </div>
 
         <!-- تم رفع السويفت -->
-        <div class="kpi-card kpi-card--cyan">
-          <div class="kpi-card__icon kpi-icon--cyan" aria-hidden="true">
+        <div class="bg-white border border-border rounded-md p-6 flex flex-col gap-1.5">
+          <div class="w-9 h-9 rounded bg-cyan-50 flex items-center justify-center text-swift-cyan mb-1" aria-hidden="true">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polyline points="16 16 12 12 8 16" /><line x1="12" y1="12" x2="12" y2="21" />
               <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3" />
             </svg>
           </div>
-          <span class="kpi-card__value">{{ stats.uploaded }}</span>
-          <span class="kpi-card__label">تم رفع السويفت</span>
+          <span class="text-2xl font-bold text-swift-cyan leading-none">{{ stats.uploaded }}</span>
+          <span class="text-xs text-muted-foreground">تم رفع السويفت</span>
         </div>
 
         <!-- بانتظار رفع السويفت -->
-        <div class="kpi-card" :class="{ 'kpi-card--amber': stats.pending_swift_upload > 0 }">
-          <div class="kpi-card__icon" :class="stats.pending_swift_upload > 0 ? 'kpi-icon--amber' : 'kpi-icon--gray'" aria-hidden="true">
+        <div :class="{ 'border-l-4 border-l-warning-text': stats.pending_swift_upload > 0 }" class="bg-white border border-border rounded-md p-6 flex flex-col gap-1.5">
+          <div :class="stats.pending_swift_upload > 0 ? 'bg-yellow-50 text-warning-text' : 'bg-gray-100 text-muted-foreground'" class="w-9 h-9 rounded flex items-center justify-center mb-1" aria-hidden="true">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
             </svg>
           </div>
-          <span class="kpi-card__value" :class="{ 'kpi-value--amber': stats.pending_swift_upload > 0 }">{{ stats.pending_swift_upload }}</span>
-          <span class="kpi-card__label">بانتظار رفع السويفت</span>
+          <span :class="stats.pending_swift_upload > 0 ? 'text-warning-text' : 'text-primary-text'" class="text-2xl font-bold leading-none">{{ stats.pending_swift_upload }}</span>
+          <span class="text-xs text-muted-foreground">بانتظار رفع السويفت</span>
         </div>
       </div>
 
-      <!-- Quick action (single card — Lovable screenshot) -->
+      <!-- Quick action (single card) -->
       <section aria-labelledby="qa-heading">
-        <h2 id="qa-heading" class="section-heading">
+        <h2 id="qa-heading" class="flex items-center gap-2 text-sm font-bold text-primary-text mb-3">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
             <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
           </svg>
           إجراءات سريعة
         </h2>
-        <div class="quick-actions">
-          <button class="qa-card qa-card--primary" @click="router.push('/requests')">
-            <div class="qa-card__icon" aria-hidden="true">
+        <div class="w-full sm:max-w-sm">
+          <button class="w-full flex flex-col items-start gap-1 p-5 bg-swift-cyan border border-swift-cyan rounded-md hover:opacity-90 transition-opacity cursor-pointer" @click="router.push('/requests')">
+            <div class="w-8 h-8 flex items-center justify-center text-white mb-1" aria-hidden="true">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <polyline points="16 16 12 12 8 16" /><line x1="12" y1="12" x2="12" y2="21" />
                 <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3" />
               </svg>
             </div>
-            <span class="qa-card__label">طابور رفع السويفت</span>
-            <span class="qa-card__sub">{{ stats.pending_swift_upload }} طلب بانتظار الرفع MT103</span>
+            <span class="text-sm font-bold text-white">طابور رفع السويفت</span>
+            <span class="text-xs text-white/75">{{ stats.pending_swift_upload }} طلب بانتظار الرفع MT103</span>
           </button>
         </div>
       </section>
 
       <!-- SWIFT queue table -->
       <section aria-labelledby="swift-queue-heading">
-        <div class="section-header">
-          <h2 id="swift-queue-heading" class="section-title">طابور رفع السويفت</h2>
-          <a class="viewall-link" href="/requests" @click.prevent="router.push('/requests')">عرض الكل</a>
+        <div class="flex items-center justify-between mb-3">
+          <h2 id="swift-queue-heading" class="text-sm font-bold text-primary-text">طابور رفع السويفت</h2>
+          <a class="text-xs text-primary-blue hover:underline" href="/requests" @click.prevent="router.push('/requests')">عرض الكل</a>
         </div>
 
-        <div v-if="queue.length === 0" class="empty-queue" role="status">
+        <div v-if="queue.length === 0" class="bg-white border border-border rounded-md p-10 flex flex-col items-center gap-3 text-muted-foreground text-sm text-center" role="status">
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#8e8e93" stroke-width="1.5" aria-hidden="true">
             <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" />
           </svg>
-          <p>لا توجد طلبات بانتظار رفع SWIFT حالياً</p>
+          <p class="m-0">لا توجد طلبات بانتظار رفع SWIFT حالياً</p>
         </div>
 
-        <table v-else class="req-table" role="table" aria-label="طابور رفع السويفت">
-          <thead>
-            <tr>
-              <th scope="col">المرجع</th>
-              <th scope="col">البنك</th>
-              <th scope="col">المبلغ</th>
-              <th scope="col">الحالة</th>
-              <th scope="col">التقدم</th>
-              <th scope="col">إجراء</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="req in queue" :key="req.id" class="req-table__row">
-              <td><a class="req-ref" :href="`/requests/${req.id}/swift`" @click.prevent="router.push(`/requests/${req.id}/swift`)">{{ req.reference_number }}</a></td>
-              <td>{{ req.bank_name ?? '—' }}</td>
-              <td class="mono">{{ formatAmount(req.amount, req.currency) }}</td>
-              <td><StatusBadge :status="req.status" :role="UserRole.SWIFT_OFFICER" /></td>
-              <td class="progress-cell">
-                <div class="progress-bar">
-                  <div class="progress-bar__fill" :style="{ width: `${getRequestProgress(req.status)}%` }" />
-                </div>
-                <span class="progress-pct">{{ getRequestProgress(req.status) }}%</span>
-              </td>
-              <td>
-                <button class="btn-upload" :aria-label="`رفع SWIFT للطلب ${req.reference_number}`" @click="router.push(`/requests/${req.id}/swift`)">
-                  رفع SWIFT
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        <div v-else class="bg-white border border-border rounded-md overflow-hidden">
+          <table class="w-full border-collapse text-xs" role="table" aria-label="طابور رفع السويفت">
+            <thead>
+              <tr class="bg-gray-50">
+                <th scope="col" class="text-right py-2.5 px-3.5 font-medium text-muted-foreground border-b border-gray-200 whitespace-nowrap">المرجع</th>
+                <th scope="col" class="text-right py-2.5 px-3.5 font-medium text-muted-foreground border-b border-gray-200 whitespace-nowrap">البنك</th>
+                <th scope="col" class="text-right py-2.5 px-3.5 font-medium text-muted-foreground border-b border-gray-200 whitespace-nowrap">المبلغ</th>
+                <th scope="col" class="text-right py-2.5 px-3.5 font-medium text-muted-foreground border-b border-gray-200 whitespace-nowrap">الحالة</th>
+                <th scope="col" class="text-right py-2.5 px-3.5 font-medium text-muted-foreground border-b border-gray-200 whitespace-nowrap">التقدم</th>
+                <th scope="col" class="text-right py-2.5 px-3.5 font-medium text-muted-foreground border-b border-gray-200 whitespace-nowrap">إجراء</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="req in queue" :key="req.id" class="hover:bg-gray-50 border-t border-gray-200">
+                <td class="text-right py-2.5 px-3.5 text-primary-text"><a class="font-mono text-primary-blue hover:underline" :href="`/requests/${req.id}/swift`" @click.prevent="router.push(`/requests/${req.id}/swift`)">{{ req.reference_number }}</a></td>
+                <td class="text-right py-2.5 px-3.5 text-primary-text">{{ req.bank_name ?? '—' }}</td>
+                <td class="text-right py-2.5 px-3.5 text-primary-text ltr tabular-nums">{{ formatAmount(req.amount, req.currency) }}</td>
+                <td class="text-right py-2.5 px-3.5"><StatusBadge :status="req.status" :role="UserRole.SWIFT_OFFICER" /></td>
+                <td class="text-right py-2.5 px-3.5">
+                  <div class="flex items-center gap-1.5 min-w-24">
+                    <div class="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                      <div class="h-full rounded-full" :style="{ width: `${getRequestProgress(req.status)}%`, backgroundColor: '#32ade6' }" />
+                    </div>
+                    <span class="text-xs text-muted-foreground whitespace-nowrap">{{ getRequestProgress(req.status) }}%</span>
+                  </div>
+                </td>
+                <td class="text-right py-2.5 px-3.5"><button class="px-3.5 py-1.5 bg-swift-cyan text-white rounded text-xs hover:opacity-90 transition-opacity" :aria-label="`رفع SWIFT للطلب ${req.reference_number}`" @click="router.push(`/requests/${req.id}/swift`)">رفع SWIFT</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </section>
 
     </template>
   </div>
 </template>
-
-<style scoped>
-.swift-dashboard { display: flex; flex-direction: column; gap: 24px; }
-
-/* KPI */
-.kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
-@media (max-width: 900px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 600px) { .kpi-grid { grid-template-columns: 1fr; } }
-
-.kpi-card { background: #ffffff; border: 1px solid #cccccc; border-radius: 12px; padding: 20px 24px; display: flex; flex-direction: column; gap: 6px; }
-.kpi-card--amber { border-inline-start: 3px solid #f57f17; }
-.kpi-card__icon { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-bottom: 4px; }
-.kpi-icon--red    { background: #fde8e8; color: #c62828; }
-.kpi-icon--green  { background: #e8f5e9; color: #1b5e20; }
-.kpi-icon--cyan   { background: #e0f7fa; color: #32ade6; }
-.kpi-icon--amber  { background: #fff8e1; color: #f57f17; }
-.kpi-icon--gray   { background: #f5f5f5; color: #6c757d; }
-
-.kpi-card__value { font-size: 28px; font-weight: 600; color: #1c222b; line-height: 1; }
-.kpi-value--amber  { color: #f57f17; }
-.kpi-card--red .kpi-card__value    { color: #c62828; }
-.kpi-card--green .kpi-card__value  { color: #1b5e20; }
-.kpi-card--cyan .kpi-card__value   { color: #32ade6; }
-.kpi-card__label { font-size: 13px; color: #6c757d; }
-
-/* Skeleton */
-.kpi-skeleton { gap: 12px; animation: pulse 1.4s ease-in-out infinite; }
-@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-.skel { background: #f5f5f5; border-radius: 6px; }
-.skel--label { height: 14px; width: 60%; }
-.skel--value { height: 32px; width: 40%; }
-
-/* Error */
-.error-card { background: #ffffff; border: 1px solid #cccccc; border-radius: 12px; padding: 20px; color: #c62828; display: flex; align-items: center; gap: 12px; }
-.btn-retry { margin-inline-start: auto; padding: 6px 16px; background: #ffffff; border: 1px solid #c62828; border-radius: 8px; color: #c62828; font-size: 13px; cursor: pointer; }
-.btn-retry:hover { background: #fde8e8; }
-
-/* Section heading */
-.section-heading { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 600; color: #1c222b; margin: 0 0 12px; }
-
-/* Quick actions */
-.quick-actions { display: grid; grid-template-columns: repeat(1, 1fr); max-width: 360px; }
-.qa-card { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 16px 20px; background: #ffffff; border: 1px solid #cccccc; border-radius: 12px; cursor: pointer; text-align: right; transition: border-color 0.15s; }
-.qa-card:hover { border-color: #0066cc; }
-.qa-card--primary { background: #0066cc; border-color: #0066cc; }
-.qa-card--primary:hover { background: #0052a3; border-color: #0052a3; }
-.qa-card--primary .qa-card__label { color: #ffffff; }
-.qa-card--primary .qa-card__sub { color: rgba(255,255,255,0.75); }
-.qa-card--primary .qa-card__icon { color: #ffffff; }
-.qa-card__icon { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; color: #32ade6; margin-bottom: 4px; }
-.qa-card__label { font-size: 14px; font-weight: 600; color: #1c222b; }
-.qa-card__sub { font-size: 12px; color: #6c757d; }
-
-/* Section header */
-.section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-.section-title { font-size: 15px; font-weight: 600; color: #1c222b; margin: 0; }
-.viewall-link { font-size: 13px; color: #0066cc; text-decoration: none; }
-.viewall-link:hover { text-decoration: underline; }
-
-/* Queue */
-.empty-queue { background: #ffffff; border: 1px solid #cccccc; border-radius: 12px; padding: 40px; display: flex; flex-direction: column; align-items: center; gap: 12px; color: #6c757d; font-size: 14px; }
-.empty-queue p { margin: 0; }
-
-.req-table { width: 100%; border-collapse: collapse; background: #ffffff; border: 1px solid #cccccc; border-radius: 12px; overflow: hidden; font-size: 13px; }
-.req-table thead tr { background: #f9fafb; }
-.req-table th { padding: 10px 14px; text-align: right; font-weight: 500; color: #6c757d; border-bottom: 1px solid #f0f0f0; white-space: nowrap; }
-.req-table__row:hover td { background: #f9fafb; }
-.req-table__row + .req-table__row td { border-top: 1px solid #f0f0f0; }
-.req-table td { padding: 10px 14px; color: #1c222b; text-align: right; vertical-align: middle; }
-.req-ref { font-family: monospace; color: #0066cc; text-decoration: none; }
-.req-ref:hover { text-decoration: underline; }
-.mono { direction: ltr; font-variant-numeric: tabular-nums; text-align: left; }
-
-.progress-cell { display: flex; align-items: center; gap: 6px; min-width: 90px; }
-.progress-bar { flex: 1; height: 6px; background: #f0f0f0; border-radius: 999px; overflow: hidden; }
-.progress-bar__fill { height: 100%; background: #32ade6; border-radius: 999px; }
-.progress-pct { font-size: 11px; color: #6c757d; white-space: nowrap; }
-
-.btn-upload { padding: 6px 14px; background: #32ade6; border: none; border-radius: 8px; color: #ffffff; font-size: 13px; cursor: pointer; }
-.btn-upload:hover { background: #28a0d8; }
-
-@media (max-width: 600px) {
-  .req-table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  .req-table th, .req-table td { white-space: nowrap; }
-  .quick-actions { max-width: 100%; }
-}
-</style>
