@@ -247,7 +247,7 @@ function userInitials(name: string) {
           <Menu class="h-5 w-5" />
         </Button>
 
-        <div class="relative hidden w-full max-w-md md:block">
+        <div class="relative hidden flex-1 max-w-md md:block">
           <Search class="absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="ابحث عن طلب، تاجر، أو رقم فاتورة..."

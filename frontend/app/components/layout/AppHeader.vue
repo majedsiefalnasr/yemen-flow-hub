@@ -6,8 +6,6 @@ import { ROLE_LABELS } from '../../constants/workflow'
 import { useColorScheme } from '../../composables/useColorScheme'
 import { formatRelativeTime } from '../../utils/formatRelativeTime'
 import Icon from '../ui/Icon.vue'
-import Popover from '../ui/Popover.vue'
-import DropdownMenu from '../ui/DropdownMenu.vue'
 import GlobalSearch from './GlobalSearch.vue'
 import RoleSwitcher from './RoleSwitcher.vue'
 
