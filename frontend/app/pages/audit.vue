@@ -941,7 +941,7 @@ onMounted(() => {
   font-size: 11px;
   font-weight: 500;
   background: #f0f0f3;
-  color: #6e6e73;
+  color: #6c757d;
 }
 
 .empty-row {

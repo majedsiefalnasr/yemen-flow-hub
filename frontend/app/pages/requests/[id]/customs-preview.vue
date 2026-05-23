@@ -244,7 +244,7 @@ async function triggerDownload() {
   margin-bottom: 16px;
   padding: 12px 16px;
   background: #ffffff;
-  border: 1px solid #d2d2d7;
+  border: 1px solid #cccccc;
   border-radius: 12px;
 }
 
@@ -254,7 +254,7 @@ async function triggerDownload() {
 }
 
 .back-link {
-  color: #0071e3;
+  color: #0066cc;
   text-decoration: none;
   font-size: 14px;
 }
@@ -278,7 +278,7 @@ async function triggerDownload() {
 }
 
 .btn-primary {
-  background: #0071e3;
+  background: #0066cc;
   color: #ffffff;
 }
 
@@ -288,8 +288,8 @@ async function triggerDownload() {
 
 .btn-secondary {
   background: #f5f5f7;
-  color: #1d1d1f;
-  border: 1px solid #d2d2d7;
+  color: #1c222b;
+  border: 1px solid #cccccc;
 }
 
 .btn-secondary:hover {
@@ -330,8 +330,8 @@ async function triggerDownload() {
 .loading-spinner {
   width: 32px;
   height: 32px;
-  border: 3px solid #d2d2d7;
-  border-top-color: #0071e3;
+  border: 3px solid #cccccc;
+  border-top-color: #0066cc;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
@@ -343,7 +343,7 @@ async function triggerDownload() {
 .empty-title {
   font-size: 18px;
   font-weight: 600;
-  color: #1d1d1f;
+  color: #1c222b;
   margin: 0;
 }
 
@@ -355,7 +355,7 @@ async function triggerDownload() {
 /* ─── Declaration content ──────────────────────────────────────────────────── */
 .customs-preview-content {
   background: #ffffff;
-  border: 1px solid #d2d2d7;
+  border: 1px solid #cccccc;
   border-radius: 12px;
   padding: 40px;
   max-width: 860px;
@@ -367,7 +367,7 @@ async function triggerDownload() {
   text-align: center;
   margin-bottom: 24px;
   padding-bottom: 16px;
-  border-bottom: 2px solid #1d1d1f;
+  border-bottom: 2px solid #1c222b;
 }
 
 .decl-logo {
@@ -386,7 +386,7 @@ async function triggerDownload() {
 .decl-title {
   font-size: 22px;
   font-weight: 700;
-  color: #1d1d1f;
+  color: #1c222b;
   margin: 6px 0 4px;
 }
 
@@ -404,7 +404,7 @@ async function triggerDownload() {
 .decl-meta p {
   margin: 4px 0;
   font-size: 14px;
-  color: #1d1d1f;
+  color: #1c222b;
 }
 
 /* Tables */
@@ -417,7 +417,7 @@ async function triggerDownload() {
 
 .decl-table th,
 .decl-table td {
-  border: 1px solid #1d1d1f;
+  border: 1px solid #1c222b;
   padding: 8px 12px;
   vertical-align: top;
   text-align: right;
@@ -427,21 +427,21 @@ async function triggerDownload() {
   background: #f5f5f7;
   width: 30%;
   font-weight: 600;
-  color: #1d1d1f;
+  color: #1c222b;
 }
 
 .decl-table td {
-  color: #1d1d1f;
+  color: #1c222b;
 }
 
 /* Notice */
 .decl-notice {
-  border: 1px solid #1d1d1f;
+  border: 1px solid #1c222b;
   padding: 12px 16px;
   margin: 16px 0;
   background: #fafafa;
   font-size: 13px;
-  color: #1d1d1f;
+  color: #1c222b;
   line-height: 1.6;
   border-radius: 4px;
 }
@@ -458,7 +458,7 @@ async function triggerDownload() {
   flex: 1;
   text-align: center;
   font-size: 13px;
-  color: #1d1d1f;
+  color: #1c222b;
 }
 
 .signature-block p {
@@ -471,7 +471,7 @@ async function triggerDownload() {
 
 .signature-line {
   margin-top: 32px;
-  border-top: 1px solid #1d1d1f;
+  border-top: 1px solid #1c222b;
   width: 80%;
   margin-inline: auto;
 }

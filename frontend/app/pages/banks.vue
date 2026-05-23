@@ -322,10 +322,10 @@ onMounted(loadBanks)
 .btn-primary {
   height: 44px;
   padding: 0 20px;
-  background: #0071e3;
+  background: #0066cc;
   color: #fff;
   border: none;
-  border-radius: 12px;
+  border-radius: 16px;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
@@ -355,8 +355,8 @@ onMounted(loadBanks)
 .btn-edit {
   padding: 6px 14px;
   background: transparent;
-  color: #0071e3;
-  border: 1px solid #0071e3;
+  color: #0066cc;
+  border: 1px solid #0066cc;
   border-radius: 8px;
   font-size: 13px;
   cursor: pointer;
@@ -369,7 +369,7 @@ onMounted(loadBanks)
 }
 
 .state-error {
-  color: #ff3b30;
+  color: #c62828;
 }
 
 /* Modal */
@@ -415,17 +415,17 @@ onMounted(loadBanks)
 
 .form-label {
   font-size: 13px;
-  color: #6e6e73;
+  color: #6c757d;
 }
 
 .required {
-  color: #ff3b30;
+  color: #c62828;
 }
 
 .form-input {
   height: 44px;
   padding: 0 12px;
-  border: 1px solid #d2d2d7;
+  border: 1px solid #cccccc;
   border-radius: 12px;
   font-size: 14px;
   color: var(--color-text-primary);
@@ -435,11 +435,11 @@ onMounted(loadBanks)
 }
 
 .form-input:focus {
-  border-color: #0071e3;
+  border-color: #0066cc;
 }
 
 .form-input.error {
-  border-color: #ff3b30;
+  border-color: #c62828;
 }
 
 .form-checkbox {
@@ -450,16 +450,16 @@ onMounted(loadBanks)
 
 .field-error {
   font-size: 12px;
-  color: #ff3b30;
+  color: #c62828;
 }
 
 .form-error-banner {
   background: #fff0ef;
-  border: 1px solid #ff3b30;
+  border: 1px solid #c62828;
   border-radius: 8px;
   padding: 10px 14px;
   font-size: 13px;
-  color: #ff3b30;
+  color: #c62828;
 }
 
 .modal-actions {

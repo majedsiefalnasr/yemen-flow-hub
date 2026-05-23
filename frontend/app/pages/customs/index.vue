@@ -192,17 +192,17 @@ onMounted(loadQueue)
   align-items: center;
   justify-content: space-between;
   background: #fff0ef;
-  border: 1px solid #ff3b30;
+  border: 1px solid #c62828;
   border-radius: 10px;
   padding: 12px 16px;
   font-size: 14px;
-  color: #ff3b30;
+  color: #c62828;
 }
 
 .alert-dismiss {
   background: none;
   border: none;
-  color: #ff3b30;
+  color: #c62828;
   cursor: pointer;
   font-size: 16px;
   padding: 0 4px;
@@ -223,14 +223,14 @@ onMounted(loadQueue)
 }
 
 .state-error {
-  color: #ff3b30;
+  color: #c62828;
 }
 
 .spinner {
   width: 32px;
   height: 32px;
   border: 3px solid var(--color-border);
-  border-top-color: #0071e3;
+  border-top-color: #0066cc;
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
 }
@@ -259,8 +259,8 @@ onMounted(loadQueue)
 .btn-retry {
   padding: 8px 20px;
   background: transparent;
-  color: #0071e3;
-  border: 1px solid #0071e3;
+  color: #0066cc;
+  border: 1px solid #0066cc;
   border-radius: 8px;
   font-size: 13px;
   cursor: pointer;
@@ -305,7 +305,7 @@ onMounted(loadQueue)
 .link-btn {
   background: none;
   border: none;
-  color: #0071e3;
+  color: #0066cc;
   font-size: 14px;
   cursor: pointer;
   padding: 0;
@@ -330,7 +330,7 @@ onMounted(loadQueue)
 
 .btn-issue {
   padding: 8px 16px;
-  background: #0071e3;
+  background: #0066cc;
   color: #fff;
   border: none;
   border-radius: 10px;

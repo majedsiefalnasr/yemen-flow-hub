@@ -308,14 +308,14 @@ onMounted(loadTypes)
 }
 
 .state-error {
-  color: #ff3b30;
+  color: #c62828;
 }
 
 .spinner {
   width: 32px;
   height: 32px;
   border: 3px solid var(--color-border);
-  border-top-color: #0071e3;
+  border-top-color: #0066cc;
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
 }
@@ -327,8 +327,8 @@ onMounted(loadTypes)
 .btn-retry {
   padding: 8px 20px;
   background: transparent;
-  color: #0071e3;
-  border: 1px solid #0071e3;
+  color: #0066cc;
+  border: 1px solid #0066cc;
   border-radius: 8px;
   font-size: 13px;
   cursor: pointer;
@@ -416,7 +416,7 @@ onMounted(loadTypes)
 
 .badge-optional {
   background: #f0f0f3;
-  color: #6e6e73;
+  color: #6c757d;
 }
 
 .badge-active {
@@ -432,7 +432,7 @@ onMounted(loadTypes)
 .btn-primary {
   height: 44px;
   padding: 0 20px;
-  background: #0071e3;
+  background: #0066cc;
   color: #fff;
   border: none;
   border-radius: 12px;
@@ -465,8 +465,8 @@ onMounted(loadTypes)
 .btn-edit {
   padding: 6px 14px;
   background: transparent;
-  color: #0071e3;
-  border: 1px solid #0071e3;
+  color: #0066cc;
+  border: 1px solid #0066cc;
   border-radius: 8px;
   font-size: 13px;
   cursor: pointer;
@@ -522,17 +522,17 @@ onMounted(loadTypes)
 
 .form-label {
   font-size: 13px;
-  color: #6e6e73;
+  color: #6c757d;
 }
 
 .required {
-  color: #ff3b30;
+  color: #c62828;
 }
 
 .form-input {
   height: 40px;
   padding: 0 12px;
-  border: 1px solid #d2d2d7;
+  border: 1px solid #cccccc;
   border-radius: 10px;
   font-size: 14px;
   color: var(--color-text-primary);
@@ -541,11 +541,11 @@ onMounted(loadTypes)
 }
 
 .form-input:focus {
-  border-color: #0071e3;
+  border-color: #0066cc;
 }
 
 .form-input.error {
-  border-color: #ff3b30;
+  border-color: #c62828;
 }
 
 .form-checkbox {
@@ -556,7 +556,7 @@ onMounted(loadTypes)
 
 .field-error {
   font-size: 12px;
-  color: #ff3b30;
+  color: #c62828;
 }
 
 .field-hint {
@@ -566,11 +566,11 @@ onMounted(loadTypes)
 
 .form-error-banner {
   background: #fff0ef;
-  border: 1px solid #ff3b30;
+  border: 1px solid #c62828;
   border-radius: 8px;
   padding: 10px 14px;
   font-size: 13px;
-  color: #ff3b30;
+  color: #c62828;
 }
 
 .modal-actions {

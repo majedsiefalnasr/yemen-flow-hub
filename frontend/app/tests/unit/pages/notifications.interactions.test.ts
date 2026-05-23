@@ -94,7 +94,7 @@ describe('notifications page interactions', () => {
     const wrapper = mount(notificationsPage, { global: { stubs: { Teleport: true } } })
     await flushPromises()
 
-    await wrapper.find('.read-btn').trigger('click')
+    await wrapper.find('.read-icon-btn').trigger('click')
 
     expect(markReadMock).toHaveBeenCalledWith('n-claim')
     expect(navigateToMock).not.toHaveBeenCalled()
