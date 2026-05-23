@@ -54,7 +54,14 @@
       "Read(//private/tmp/**)",
       "Bash(awk '{print $7}')",
       "Bash(curl *)",
-      "Bash(grep *)"
+      "Bash(grep *)",
+      "Bash(docker-compose ps *)",
+      "Bash(pkill -f \"npm run dev\")",
+      "Bash(open http://localhost:3000)",
+      "Bash(kill 15837)",
+      "Bash(docker-compose *)",
+      "Bash(kill 22451)",
+      "Bash(kill 34184)"
     ]
   }
 }
