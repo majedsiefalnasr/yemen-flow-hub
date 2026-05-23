@@ -5,6 +5,13 @@ import { GOODS_TYPES, PAYMENT_TERMS } from '../../schemas/wizard.schema'
 import { Currency } from '../../types/enums'
 import { useMerchants } from '../../composables/useMerchants'
 import type { Merchant } from '../../types/models'
+import { Button } from '../ui/button'
+import { Input } from '../ui/input'
+import { Label } from '../ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select'
+import { Textarea } from '../ui/textarea'
+import { Alert, AlertDescription } from '../ui/alert'
+import { AlertTriangle, Lock, RotateCcw } from 'lucide-vue-next'
 
 const props = defineProps<{
   modelValue: WizardStep1Data
@@ -85,163 +92,186 @@ const errorCount = computed(() => Object.keys(props.errors).length)
 </script>
 
 <template>
-  <div class="step-content" dir="rtl">
+  <div class="flex flex-col gap-6" dir="rtl">
     <!-- Error banner -->
-    <div v-if="errorCount > 0" class="error-banner" role="alert">
-      <span class="error-banner__icon">⚠</span>
-      <span>يوجد {{ errorCount }} {{ errorCount === 1 ? 'حقل يحتاج' : 'حقول تحتاج' }} إلى تصحيح قبل المتابعة.</span>
-    </div>
+    <Alert v-if="errorCount > 0" variant="destructive">
+      <AlertTriangle class="h-4 w-4" />
+      <AlertDescription>
+        يوجد {{ errorCount }} {{ errorCount === 1 ? 'حقل يحتاج' : 'حقول تحتاج' }} إلى تصحيح قبل المتابعة.
+      </AlertDescription>
+    </Alert>
 
-    <h2 class="section-title">معلومات الطلب الأساسية</h2>
+    <h2 class="text-2xl font-bold">معلومات الطلب الأساسية</h2>
 
-    <div class="fields-grid">
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
       <!-- نوع الواردات -->
-      <div class="field-group" :class="{ 'field-group--error': errors.goods_type }">
-        <label class="field-label" for="goods-type">نوع الواردات <span class="req">*</span></label>
-        <div class="field-input-wrap">
-          <span v-if="errors.goods_type" class="field-error-icon" aria-hidden="true">⚠</span>
-          <select
-            id="goods-type"
-            class="form-input"
-            :class="{ 'form-input--error': errors.goods_type }"
-            :value="modelValue.goods_type"
-            :disabled="loading"
-            @change="update('goods_type', ($event.target as HTMLSelectElement).value)"
-          >
-            <option value="" disabled>اختر نوع الواردات...</option>
-            <option v-for="t in GOODS_TYPES" :key="t" :value="t">{{ t }}</option>
-          </select>
-        </div>
-        <span v-if="errors.goods_type" class="field-error" role="alert">{{ errors.goods_type }}</span>
+      <div class="flex flex-col gap-2">
+        <Label for="goods-type" class="text-sm">
+          نوع الواردات
+          <span class="text-red-600">*</span>
+        </Label>
+        <Select
+          :model-value="modelValue.goods_type || ''"
+          :disabled="loading"
+          @update:model-value="(val) => update('goods_type', val)"
+        >
+          <SelectTrigger id="goods-type" :class="{ 'border-red-600': errors.goods_type }">
+            <SelectValue placeholder="اختر نوع الواردات..." />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem v-for="t in GOODS_TYPES" :key="t" :value="t">{{ t }}</SelectItem>
+          </SelectContent>
+        </Select>
+        <p v-if="errors.goods_type" class="text-sm text-red-600">{{ errors.goods_type }}</p>
       </div>
 
       <!-- المستورد -->
-      <div class="field-group" :class="{ 'field-group--error': errors.merchant_id }">
-        <label class="field-label" for="merchant">المستورد (التاجر) <span class="req">*</span></label>
+      <div class="flex flex-col gap-2">
+        <Label for="merchant" class="text-sm">
+          المستورد (التاجر)
+          <span class="text-red-600">*</span>
+        </Label>
 
         <!-- DATA_ENTRY: read-only -->
         <div
           v-if="isDataEntry"
-          class="merchant-readonly"
-          :class="{ 'merchant-readonly--error': !!dataEntryMerchantError }"
+          class="flex items-center gap-2 h-10 px-3 border border-border rounded-md bg-muted text-muted-foreground"
+          :class="{ 'border-red-600 bg-red-50': !!dataEntryMerchantError }"
         >
-          <span class="lock-icon" aria-hidden="true">🔒</span>
-          <span>{{ selectedMerchantName || 'لم يتم تحديد التاجر بعد' }}</span>
+          <Lock class="h-4 w-4 flex-shrink-0" />
+          <span class="text-sm">{{ selectedMerchantName || 'لم يتم تحديد التاجر بعد' }}</span>
         </div>
-        <span v-if="isDataEntry && dataEntryMerchantError" class="field-error" role="alert">{{ dataEntryMerchantError }}</span>
+        <p v-if="isDataEntry && dataEntryMerchantError" class="text-sm text-red-600">{{ dataEntryMerchantError }}</p>
 
         <!-- BANK_ADMIN: searchable select -->
         <template v-else>
-          <div v-if="merchantsError" class="merchant-error" role="alert">
-            <span>تعذّر تحميل قائمة التجار.</span>
-            <button type="button" class="retry-btn" @click="loadMerchants">إعادة المحاولة</button>
-          </div>
+          <Alert v-if="merchantsError" variant="destructive" class="mb-2">
+            <AlertTriangle class="h-4 w-4" />
+            <AlertDescription>
+              <div class="flex items-center justify-between gap-2">
+                <span>تعذّر تحميل قائمة التجار.</span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  @click="loadMerchants"
+                  class="whitespace-nowrap"
+                >
+                  <RotateCcw class="h-3 w-3 me-1" />
+                  إعادة المحاولة
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
           <template v-else>
-            <input
+            <Input
               v-model="merchantSearch"
               type="text"
-              class="form-input search-input"
               placeholder="ابحث عن تاجر..."
               :disabled="merchantsLoading || loading"
+              class="mb-2"
             />
-            <div class="field-input-wrap">
-              <span v-if="errors.merchant_id" class="field-error-icon" aria-hidden="true">⚠</span>
-              <select
-                id="merchant"
-                class="form-input"
-                :class="{ 'form-input--error': errors.merchant_id }"
-                :value="modelValue.merchant_id ?? ''"
-                :disabled="merchantsLoading || loading"
-                @change="update('merchant_id', Number(($event.target as HTMLSelectElement).value) || null)"
-              >
-                <option value="" disabled>{{ merchantsLoading ? 'جاري التحميل...' : 'اختر المستورد...' }}</option>
-                <option v-for="m in filteredMerchants" :key="m.id" :value="m.id">{{ m.name }}</option>
-              </select>
-            </div>
+            <Select
+              :model-value="String(modelValue.merchant_id ?? '')"
+              :disabled="merchantsLoading || loading"
+              @update:model-value="(val) => update('merchant_id', val ? Number(val) : null)"
+            >
+              <SelectTrigger id="merchant" :class="{ 'border-red-600': errors.merchant_id }">
+                <SelectValue :placeholder="merchantsLoading ? 'جاري التحميل...' : 'اختر المستورد...'" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem v-for="m in filteredMerchants" :key="m.id" :value="String(m.id)">
+                  {{ m.name }}
+                </SelectItem>
+              </SelectContent>
+            </Select>
           </template>
         </template>
-        <span v-if="errors.merchant_id" class="field-error" role="alert">{{ errors.merchant_id }}</span>
+        <p v-if="errors.merchant_id" class="text-sm text-red-600">{{ errors.merchant_id }}</p>
       </div>
 
       <!-- مبلغ التمويل -->
-      <div class="field-group" :class="{ 'field-group--error': errors.amount }">
-        <label class="field-label" for="amount">مبلغ التمويل <span class="req">*</span></label>
-        <div class="field-input-wrap">
-          <span v-if="errors.amount" class="field-error-icon" aria-hidden="true">⚠</span>
-          <input
-            id="amount"
-            type="number"
-            min="1000"
-            step="1"
-            class="form-input"
-            :class="{ 'form-input--error': errors.amount }"
-            :value="modelValue.amount ?? ''"
-            :disabled="loading"
-            placeholder="0"
-            @input="update('amount', Number(($event.target as HTMLInputElement).value) || null)"
-          />
-        </div>
-        <span v-if="errors.amount" class="field-error" role="alert">{{ errors.amount }}</span>
+      <div class="flex flex-col gap-2">
+        <Label for="amount" class="text-sm">
+          مبلغ التمويل
+          <span class="text-red-600">*</span>
+        </Label>
+        <Input
+          id="amount"
+          type="number"
+          min="1000"
+          step="1"
+          :disabled="loading"
+          :class="{ 'border-red-600': errors.amount }"
+          :value="modelValue.amount ?? ''"
+          placeholder="0"
+          @input="update('amount', Number(($event.target as HTMLInputElement).value) || null)"
+        />
+        <p v-if="errors.amount" class="text-sm text-red-600">{{ errors.amount }}</p>
       </div>
 
       <!-- العملة -->
-      <div class="field-group" :class="{ 'field-group--error': errors.currency }">
-        <label class="field-label" for="currency">العملة <span class="req">*</span></label>
-        <div class="field-input-wrap">
-          <span v-if="errors.currency" class="field-error-icon" aria-hidden="true">⚠</span>
-          <select
-            id="currency"
-            class="form-input"
-            :class="{ 'form-input--error': errors.currency }"
-            :value="modelValue.currency"
-            :disabled="loading"
-            @change="update('currency', ($event.target as HTMLSelectElement).value)"
-          >
-            <option v-for="c in Object.values(Currency)" :key="c" :value="c">{{ CURRENCY_LABELS[c] ?? c }}</option>
-          </select>
-        </div>
-        <span v-if="errors.currency" class="field-error" role="alert">{{ errors.currency }}</span>
+      <div class="flex flex-col gap-2">
+        <Label for="currency" class="text-sm">
+          العملة
+          <span class="text-red-600">*</span>
+        </Label>
+        <Select
+          :model-value="modelValue.currency || ''"
+          :disabled="loading"
+          @update:model-value="(val) => update('currency', val)"
+        >
+          <SelectTrigger id="currency" :class="{ 'border-red-600': errors.currency }">
+            <SelectValue :placeholder="modelValue.currency" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem v-for="c in Object.values(Currency)" :key="c" :value="c">
+              {{ CURRENCY_LABELS[c] ?? c }}
+            </SelectItem>
+          </SelectContent>
+        </Select>
+        <p v-if="errors.currency" class="text-sm text-red-600">{{ errors.currency }}</p>
       </div>
 
       <!-- شروط الدفع -->
-      <div class="field-group" :class="{ 'field-group--error': errors.payment_terms }">
-        <label class="field-label" for="payment-terms">شروط الدفع <span class="req">*</span></label>
-        <div class="field-input-wrap">
-          <span v-if="errors.payment_terms" class="field-error-icon" aria-hidden="true">⚠</span>
-          <select
-            id="payment-terms"
-            class="form-input"
-            :class="{ 'form-input--error': errors.payment_terms }"
-            :value="modelValue.payment_terms"
-            :disabled="loading"
-            @change="update('payment_terms', ($event.target as HTMLSelectElement).value)"
-          >
-            <option value="" disabled>اختر شروط الدفع...</option>
-            <option v-for="t in PAYMENT_TERMS" :key="t" :value="t">{{ PAYMENT_LABELS[t] }}</option>
-          </select>
-        </div>
-        <span v-if="errors.payment_terms" class="field-error" role="alert">{{ errors.payment_terms }}</span>
+      <div class="flex flex-col gap-2">
+        <Label for="payment-terms" class="text-sm">
+          شروط الدفع
+          <span class="text-red-600">*</span>
+        </Label>
+        <Select
+          :model-value="modelValue.payment_terms || ''"
+          :disabled="loading"
+          @update:model-value="(val) => update('payment_terms', val)"
+        >
+          <SelectTrigger id="payment-terms" :class="{ 'border-red-600': errors.payment_terms }">
+            <SelectValue placeholder="اختر شروط الدفع..." />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="">بدون شروط</SelectItem>
+            <SelectItem v-for="t in PAYMENT_TERMS" :key="t" :value="t">{{ PAYMENT_LABELS[t] }}</SelectItem>
+          </SelectContent>
+        </Select>
+        <p v-if="errors.payment_terms" class="text-sm text-red-600">{{ errors.payment_terms }}</p>
       </div>
 
       <!-- تاريخ الاستحقاق (optional) -->
-      <div class="field-group">
-        <label class="field-label" for="due-date">تاريخ الاستحقاق المتوقع</label>
-        <input
+      <div class="flex flex-col gap-2">
+        <Label for="due-date" class="text-sm">تاريخ الاستحقاق المتوقع</Label>
+        <Input
           id="due-date"
           type="date"
-          class="form-input"
-          :value="modelValue.due_date ?? ''"
           :disabled="loading"
+          :value="modelValue.due_date ?? ''"
           @input="update('due_date', ($event.target as HTMLInputElement).value || '')"
         />
       </div>
 
       <!-- ملاحظات -->
-      <div class="field-group field-group--full">
-        <label class="field-label" for="notes">ملاحظات إضافية</label>
-        <textarea
+      <div class="col-span-1 sm:col-span-2 flex flex-col gap-2">
+        <Label for="notes" class="text-sm">ملاحظات إضافية</Label>
+        <Textarea
           id="notes"
-          class="form-input form-textarea"
           :value="modelValue.notes ?? ''"
           :disabled="loading"
           rows="3"
@@ -249,7 +279,7 @@ const errorCount = computed(() => Object.keys(props.errors).length)
           placeholder="أي معلومات إضافية تتعلق بالطلب..."
           @input="update('notes', ($event.target as HTMLTextAreaElement).value)"
         />
-        <span class="char-counter">{{ notesLength }}/500</span>
+        <div class="flex justify-end text-xs text-muted-foreground">{{ notesLength }}/500</div>
       </div>
     </div>
   </div>

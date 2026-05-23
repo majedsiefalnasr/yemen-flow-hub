@@ -46,99 +46,29 @@ function intensity(day: number, slot: number): number {
 </script>
 
 <template>
-  <div class="heatmap" dir="rtl">
-    <div v-if="!data.length" class="chart-empty">لا توجد بيانات</div>
-    <div v-else class="heatmap-grid">
-      <!-- Corner -->
-      <div class="corner-cell" />
-      <!-- Slot headers (top row) -->
-      <div v-for="slot in SLOTS" :key="`slot-${slot}`" class="slot-header">
+  <div class="flex flex-col gap-3" dir="rtl">
+    <div v-if="!data.length" class="h-40 flex items-center justify-center text-gray-600 text-sm">لا توجد بيانات</div>
+    <div v-else class="grid gap-1" style="grid-template-columns: 72px repeat(6, 1fr)">
+      <div />
+      <div v-for="slot in SLOTS" :key="`slot-${slot}`" class="text-xs text-gray-600 text-center px-0 py-0.5">
         {{ SLOT_LABELS[slot] }}
       </div>
-      <!-- Rows per day -->
       <template v-for="day in DAYS" :key="`day-${day}`">
-        <div class="day-header">{{ DAY_LABELS[day] }}</div>
+        <div class="text-xs text-gray-900 flex items-center justify-end pl-2">{{ DAY_LABELS[day] }}</div>
         <div
           v-for="slot in SLOTS"
           :key="`cell-${day}-${slot}`"
-          class="heat-cell"
+          class="h-7 rounded border border-gray-200 cursor-default transition-opacity duration-200 hover:opacity-80"
           :style="{ background: `rgba(0, 102, 204, ${intensity(day, slot)})` }"
           :title="`${DAY_LABELS[day]} ${SLOT_LABELS[slot]}: ${countFor(day, slot)}`"
           :aria-label="`${DAY_LABELS[day]} ${SLOT_LABELS[slot]}: ${countFor(day, slot)} طلب`"
         />
       </template>
     </div>
-    <!-- Intensity scale -->
-    <div class="heatmap-scale">
-      <span class="scale-label">أقل</span>
-      <div class="scale-bar" />
-      <span class="scale-label">أكثر</span>
+    <div class="flex items-center gap-2 text-xs text-gray-600">
+      <span class="whitespace-nowrap">أقل</span>
+      <div class="flex-1 h-2 rounded max-w-32" style="background: linear-gradient(to left, rgba(0,102,204,1), rgba(0,102,204,0.1))" />
+      <span class="whitespace-nowrap">أكثر</span>
     </div>
   </div>
 </template>
-
-<style scoped>
-.heatmap {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-.chart-empty {
-  height: 160px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #6c757d;
-  font-size: 14px;
-}
-.heatmap-grid {
-  display: grid;
-  grid-template-columns: 72px repeat(6, 1fr);
-  gap: 4px;
-}
-.corner-cell {
-  /* empty top-left */
-}
-.slot-header {
-  font-size: 10px;
-  color: #6c757d;
-  text-align: center;
-  padding: 2px 0;
-}
-.day-header {
-  font-size: 12px;
-  color: #1c222b;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  padding-left: 8px;
-}
-.heat-cell {
-  height: 28px;
-  border-radius: 4px;
-  background: rgba(0, 102, 204, 0);
-  border: 1px solid #e5e7eb;
-  cursor: default;
-  transition: opacity 0.2s;
-}
-.heat-cell:hover {
-  opacity: 0.8;
-}
-.heatmap-scale {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 11px;
-  color: #6c757d;
-}
-.scale-bar {
-  flex: 1;
-  height: 8px;
-  border-radius: 4px;
-  background: linear-gradient(to left, rgba(0,102,204,1), rgba(0,102,204,0.1));
-  max-width: 140px;
-}
-.scale-label {
-  white-space: nowrap;
-}
-</style>

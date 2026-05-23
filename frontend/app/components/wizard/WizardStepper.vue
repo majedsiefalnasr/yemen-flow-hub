@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { CheckCircle2 } from 'lucide-vue-next'
+
 const props = defineProps<{
   steps: string[]
   currentStep: number
@@ -18,17 +20,14 @@ function handleStepClick(index: number): void {
 </script>
 
 <template>
-  <div class="wizard-stepper" dir="rtl" role="navigation" aria-label="خطوات الطلب">
-    <div class="stepper-inner">
+  <div dir="rtl" role="navigation" aria-label="خطوات الطلب" class="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+    <div class="flex items-center justify-center gap-0">
       <template v-for="(label, index) in steps" :key="index">
         <!-- Step -->
         <div
-          class="step-item"
+          class="flex flex-col items-center gap-2 flex-shrink-0 min-w-24 transition-all"
           :class="{
-            'step-item--active': stepStatuses[index] === 'active',
-            'step-item--completed': stepStatuses[index] === 'completed',
-            'step-item--future': stepStatuses[index] === 'future',
-            'step-item--clickable': stepStatuses[index] === 'completed',
+            'cursor-pointer': stepStatuses[index] === 'completed',
           }"
           :aria-current="stepStatuses[index] === 'active' ? 'step' : undefined"
           :role="stepStatuses[index] === 'completed' ? 'button' : undefined"
@@ -37,181 +36,55 @@ function handleStepClick(index: number): void {
           @keydown.enter="handleStepClick(index)"
           @keydown.space.prevent="handleStepClick(index)"
         >
-          <div class="step-circle">
-            <!-- Completed: checkmark -->
-            <svg
-              v-if="stepStatuses[index] === 'completed'"
-              class="step-check"
-              viewBox="0 0 16 16"
-              fill="none"
-              aria-hidden="true"
-            >
-              <path d="M3 8l3.5 3.5L13 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-            </svg>
+          <!-- Step circle -->
+          <div
+            class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border-2 transition-all"
+            :class="{
+              'border-gray-300 bg-white': stepStatuses[index] === 'future',
+              'border-blue-600 bg-blue-600 shadow-lg shadow-blue-600/20': stepStatuses[index] === 'active',
+              'border-green-700 bg-green-700': stepStatuses[index] === 'completed',
+            }"
+          >
+            <!-- Completed: checkmark icon -->
+            <CheckCircle2 v-if="stepStatuses[index] === 'completed'" class="h-5 w-5 text-white" aria-hidden="true" />
             <!-- Active / Future: number -->
-            <span v-else class="step-number">{{ index + 1 }}</span>
+            <span
+              v-else
+              class="text-sm font-medium leading-none"
+              :class="{
+                'text-gray-600': stepStatuses[index] === 'future',
+                'text-white': stepStatuses[index] === 'active',
+              }"
+            >
+              {{ index + 1 }}
+            </span>
           </div>
-          <span class="step-label">{{ label }}</span>
+
+          <!-- Label -->
+          <span
+            class="text-xs transition-colors"
+            :class="{
+              'text-gray-600 font-normal': stepStatuses[index] === 'future',
+              'text-blue-600 font-semibold': stepStatuses[index] === 'active',
+              'text-green-700 font-normal': stepStatuses[index] === 'completed',
+            }"
+            :class="{ 'hover:underline': stepStatuses[index] === 'completed' }"
+          >
+            {{ label }}
+          </span>
         </div>
 
         <!-- Connector line (not after last step) -->
         <div
           v-if="index < steps.length - 1"
-          class="step-connector"
-          :class="{ 'step-connector--done': stepStatuses[index] === 'completed' }"
+          class="h-0.5 flex-1 min-w-6 transition-colors"
+          :class="{
+            'bg-gray-300': stepStatuses[index] !== 'completed',
+            'bg-green-700': stepStatuses[index] === 'completed',
+          }"
           aria-hidden="true"
         />
       </template>
     </div>
   </div>
 </template>
-
-<style scoped>
-.wizard-stepper {
-  padding: 20px 24px;
-  background: #ffffff;
-  border: 1px solid #cccccc;
-  border-radius: 16px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
-}
-
-.stepper-inner {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0;
-}
-
-/* Each step item */
-.step-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  flex-shrink: 0;
-  min-width: 96px;
-}
-
-.step-item--clickable {
-  cursor: pointer;
-}
-
-.step-item--clickable:hover .step-label {
-  text-decoration: underline;
-}
-
-/* Step circle */
-.step-circle {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  transition: background 200ms, border-color 200ms;
-}
-
-.step-item--future .step-circle {
-  background: #ffffff;
-  border: 2px solid #cccccc;
-}
-
-.step-item--active .step-circle {
-  background: #0066cc;
-  border: 2px solid #0066cc;
-  box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.2);
-}
-
-.step-item--completed .step-circle {
-  background: #1b5e20;
-  border: 2px solid #1b5e20;
-}
-
-/* Numbers / icons */
-.step-number {
-  font-family: 'IBM Plex Sans Arabic', sans-serif;
-  font-size: 13px;
-  font-weight: 500;
-  line-height: 1;
-}
-
-.step-item--future .step-number {
-  color: #6c757d;
-}
-
-.step-item--active .step-number {
-  color: #ffffff;
-}
-
-.step-check {
-  width: 20px;
-  height: 20px;
-  color: #ffffff;
-}
-
-/* Step labels */
-.step-label {
-  font-family: 'IBM Plex Sans Arabic', sans-serif;
-  font-size: 13px;
-  white-space: nowrap;
-  transition: color 200ms;
-}
-
-.step-item--future .step-label {
-  color: #6c757d;
-  font-weight: 400;
-}
-
-.step-item--active .step-label {
-  color: #0066cc;
-  font-weight: 600;
-}
-
-.step-item--completed .step-label {
-  color: #1b5e20;
-  font-weight: 400;
-}
-
-/* Connector line */
-.step-connector {
-  flex: 1;
-  height: 2px;
-  background: #cccccc;
-  align-self: flex-start;
-  margin-top: 19px; /* center on 40px circle */
-  min-width: 24px;
-  transition: background 200ms;
-}
-
-.step-connector--done {
-  background: #1b5e20;
-}
-
-@media (max-width: 600px) {
-  .wizard-stepper {
-    padding: 16px;
-  }
-
-  .stepper-inner {
-    flex-wrap: wrap;
-    justify-content: space-between;
-    gap: 12px 8px;
-  }
-
-  .step-item {
-    flex: 1 1 calc(50% - 8px);
-    min-width: 0;
-  }
-
-  .step-label {
-    white-space: normal;
-    text-align: center;
-    line-height: 1.4;
-  }
-
-  .step-connector {
-    display: none;
-  }
-}
-</style>

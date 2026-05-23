@@ -53,10 +53,9 @@ const yTicks = computed(() => {
 </script>
 
 <template>
-  <div class="line-chart" dir="rtl">
-    <div v-if="!series.length || !labels.length || series.some((s) => s.values.length !== labels.length)" class="chart-empty">لا توجد بيانات</div>
-    <svg v-else :viewBox="`0 0 ${width} ${height}`" class="chart-svg" aria-label="مخطط خطي">
-      <!-- Y-axis grid lines -->
+  <div class="flex flex-col gap-3" dir="rtl">
+    <div v-if="!series.length || !labels.length || series.some((s) => s.values.length !== labels.length)" class="h-44 flex items-center justify-center text-gray-600 text-sm">لا توجد بيانات</div>
+    <svg v-else :viewBox="`0 0 ${width} ${height}`" class="w-full h-auto overflow-visible" aria-label="مخطط خطي">
       <line
         v-for="tick in yTicks"
         :key="tick.label"
@@ -67,7 +66,6 @@ const yTicks = computed(() => {
         stroke="#e5e7eb"
         stroke-width="1"
       />
-      <!-- Y-axis labels -->
       <text
         v-for="tick in yTicks"
         :key="`label-${tick.label}`"
@@ -77,7 +75,6 @@ const yTicks = computed(() => {
         font-size="10"
         fill="#6c757d"
       >{{ tick.label }}</text>
-      <!-- Series lines -->
       <polyline
         v-for="s in series"
         :key="s.label"
@@ -88,7 +85,6 @@ const yTicks = computed(() => {
         stroke-linecap="round"
         stroke-linejoin="round"
       />
-      <!-- Data points -->
       <template v-for="s in series" :key="`dots-${s.label}`">
         <circle
           v-for="(v, i) in s.values"
@@ -99,7 +95,6 @@ const yTicks = computed(() => {
           :fill="s.color"
         />
       </template>
-      <!-- X-axis labels (RTL: reverse order visually, but keep data order) -->
       <text
         v-for="(label, i) in labels"
         :key="`x-${label}`"
@@ -110,55 +105,11 @@ const yTicks = computed(() => {
         fill="#6c757d"
       >{{ label }}</text>
     </svg>
-    <!-- Legend -->
-    <div class="chart-legend">
-      <div v-for="s in series" :key="`leg-${s.label}`" class="legend-item">
-        <span class="legend-dot" :style="{ background: s.color }" />
-        <span class="legend-label">{{ s.label }}</span>
+    <div class="flex gap-4 justify-center flex-wrap">
+      <div v-for="s in series" :key="`leg-${s.label}`" class="flex items-center gap-1.5 text-sm text-gray-900">
+        <span class="w-2.5 h-2.5 rounded-full flex-shrink-0" :style="{ background: s.color }" />
+        <span>{{ s.label }}</span>
       </div>
     </div>
   </div>
 </template>
-
-<style scoped>
-.line-chart {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-.chart-svg {
-  width: 100%;
-  height: auto;
-  overflow: visible;
-}
-.chart-empty {
-  height: 180px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #6c757d;
-  font-size: 14px;
-}
-.chart-legend {
-  display: flex;
-  gap: 16px;
-  justify-content: center;
-  flex-wrap: wrap;
-}
-.legend-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  color: #1c222b;
-}
-.legend-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-.legend-label {
-  white-space: nowrap;
-}
-</style>

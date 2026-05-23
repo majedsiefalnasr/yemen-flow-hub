@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { ChevronDown } from 'lucide-vue-next'
 import { useAuthStore } from '../../stores/auth.store'
 import { UserRole } from '../../types/enums'
-import Icon from '../shared/Icon.vue'
+import { Button } from '../ui/button'
 
 const DEMO_ROLE_LABELS: Record<UserRole, string> = {
   [UserRole.DATA_ENTRY]: 'إدخال بيانات',
@@ -39,24 +40,31 @@ async function switchRole(role: UserRole) {
 </script>
 
 <template>
-  <div class="role-switcher">
-    <button
-      class="switcher-trigger"
+  <div class="relative">
+    <Button
+      variant="outline"
+      size="sm"
       :aria-expanded="open"
       aria-haspopup="listbox"
       aria-label="تبديل الدور"
+      class="gap-1.5"
       @click="open = !open"
     >
-      <span class="switcher-label">تبديل الدور</span>
-      <Icon name="chevron-down" :size="14" :class="{ 'rotate-180': open }" />
-    </button>
+      <span>تبديل الدور</span>
+      <ChevronDown :size="14" :class="{ 'rotate-180': open }" class="transition-transform" />
+    </Button>
 
-    <div v-if="open" class="switcher-dropdown" role="listbox" aria-label="اختر الدور">
-      <p v-if="error" class="switcher-error">{{ error }}</p>
+    <div
+      v-if="open"
+      class="absolute top-full start-0 z-50 mt-1 min-w-40 rounded-md border border-gray-200 bg-white p-1 shadow-md"
+      role="listbox"
+      aria-label="اختر الدور"
+    >
+      <p v-if="error" class="px-3 py-2 text-xs text-red-600">{{ error }}</p>
       <button
         v-for="([roleKey, label]) in roleOptions"
         :key="roleKey"
-        class="switcher-option"
+        class="w-full rounded px-3 py-2 text-start text-sm text-gray-900 hover:bg-gray-100 disabled:cursor-wait disabled:opacity-50"
         :disabled="switching"
         role="option"
         @click="switchRole(roleKey)"
@@ -65,93 +73,6 @@ async function switchRole(role: UserRole) {
       </button>
     </div>
 
-    <!-- Close on outside click -->
-    <div v-if="open" class="switcher-backdrop" aria-hidden="true" @click="open = false" />
+    <div v-if="open" class="fixed inset-0 z-40" aria-hidden="true" @click="open = false" />
   </div>
 </template>
-
-<style scoped>
-.role-switcher {
-  position: relative;
-}
-
-.switcher-trigger {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 10px;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  background: transparent;
-  color: var(--color-text-secondary);
-  font-size: 13px;
-  font-family: var(--font-body);
-  cursor: pointer;
-  transition: background-color 120ms ease;
-  white-space: nowrap;
-}
-
-.switcher-trigger:hover {
-  background-color: var(--color-surface-dim);
-}
-
-.switcher-label {
-  font-size: 13px;
-}
-
-.switcher-dropdown {
-  position: absolute;
-  top: calc(100% + 4px);
-  inset-inline-start: 0;
-  min-width: 160px;
-  background-color: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  box-shadow: var(--shadow-md);
-  z-index: 100;
-  padding: 4px;
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-}
-
-.switcher-option {
-  width: 100%;
-  padding: 8px 12px;
-  border: none;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--color-text-primary);
-  font-size: 13px;
-  font-family: var(--font-body);
-  text-align: start;
-  cursor: pointer;
-  transition: background-color 120ms ease;
-}
-
-.switcher-option:hover:not(:disabled) {
-  background-color: var(--color-surface-dim);
-}
-
-.switcher-option:disabled {
-  opacity: 0.5;
-  cursor: wait;
-}
-
-.switcher-error {
-  font-size: 12px;
-  color: var(--color-error-text);
-  padding: 4px 12px;
-  margin: 0;
-}
-
-.switcher-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 99;
-}
-
-.rotate-180 {
-  transform: rotate(180deg);
-}
-</style>

@@ -1,13 +1,23 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
+import { Menu, Search, X, Sun, Moon, Bell } from 'lucide-vue-next'
 import { useAuthStore } from '../../stores/auth.store'
 import { useNotificationsStore } from '../../stores/notifications.store'
 import { ROLE_LABELS } from '../../constants/workflow'
 import { useColorScheme } from '../../composables/useColorScheme'
 import { formatRelativeTime } from '../../utils/formatRelativeTime'
-import Icon from '../shared/Icon.vue'
 import GlobalSearch from './GlobalSearch.vue'
 import RoleSwitcher from './RoleSwitcher.vue'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from '../ui/dropdown-menu'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '../ui/popover'
 
 const emit = defineEmits<{ toggleMobileMenu: [] }>()
 const auth = useAuthStore()
@@ -64,130 +74,143 @@ watch(() => route.fullPath, () => {
 </script>
 
 <template>
-  <header class="app-header">
-    <div class="header-start">
-      <button class="mobile-menu-btn" aria-label="فتح القائمة" @click="emit('toggleMobileMenu')">
-        <Icon name="menu" />
+  <header class="sticky top-0 z-30 flex items-center justify-between h-16 px-5 bg-white/88 backdrop-blur border-b border-gray-300 flex-row-reverse gap-3" dir="rtl">
+    <!-- Start: Mobile menu & search buttons -->
+    <div class="flex items-center gap-1">
+      <button
+        class="max-lg:flex hidden items-center justify-center w-10 h-10 border-none bg-transparent rounded-lg cursor-pointer text-gray-600 hover:bg-gray-100"
+        aria-label="فتح القائمة"
+        @click="emit('toggleMobileMenu')"
+      >
+        <Menu class="w-5 h-5" />
       </button>
-      <button class="mobile-search-btn" aria-label="بحث" @click="mobileSearchOpen = !mobileSearchOpen">
-        <Icon name="search" />
+      <button
+        class="max-md:flex hidden items-center justify-center w-10 h-10 border-none bg-transparent rounded-lg cursor-pointer text-gray-600 hover:bg-gray-100"
+        aria-label="بحث"
+        @click="mobileSearchOpen = !mobileSearchOpen"
+      >
+        <Search class="w-5 h-5" />
       </button>
     </div>
 
-    <div class="header-center">
+    <!-- Center: Global search (hidden on mobile) -->
+    <div class="flex-1 flex justify-center min-w-0 max-md:hidden">
       <GlobalSearch />
     </div>
 
-    <div class="header-end">
-      <button class="icon-btn" :aria-label="isDark ? 'تفعيل الوضع الفاتح' : 'تفعيل الوضع الداكن'" @click="toggleColorScheme">
-        <Icon :name="isDark ? 'sun' : 'moon'" />
+    <!-- End: Color scheme, notifications, user menu -->
+    <div class="flex items-center gap-3">
+      <button
+        class="flex items-center justify-center w-10 h-10 border-none bg-transparent rounded-lg cursor-pointer text-gray-600 hover:bg-gray-100"
+        :aria-label="isDark ? 'تفعيل الوضع الفاتح' : 'تفعيل الوضع الداكن'"
+        @click="toggleColorScheme"
+      >
+        <Sun v-if="isDark" class="w-5 h-5" />
+        <Moon v-else class="w-5 h-5" />
       </button>
       <RoleSwitcher v-if="isDemoMode" />
 
+      <!-- Notifications -->
       <Popover v-model:open="notificationOpen">
-        <template #trigger>
-          <button class="icon-btn" aria-label="الإشعارات" @click="toggleNotifications">
-            <Icon name="bell" />
+        <PopoverTrigger asChild>
+          <button
+            class="relative flex items-center justify-center w-10 h-10 border-none bg-transparent rounded-lg cursor-pointer text-gray-600 hover:bg-gray-100"
+            aria-label="الإشعارات"
+            @click="toggleNotifications"
+          >
+            <Bell class="w-5 h-5" />
             <span
               v-if="notificationsStore.unreadCount > 0"
-              class="notification-badge"
+              class="absolute top-1 end-1 min-w-4 h-4 px-0.75 rounded-full bg-red-700 text-white text-xs font-semibold flex items-center justify-center border-2 border-white"
               :aria-label="`${notificationsStore.unreadCount} إشعارات غير مقروءة`"
             >
               {{ notificationsStore.unreadCount > 99 ? '99+' : notificationsStore.unreadCount }}
             </span>
           </button>
-        </template>
-        <div class="notif-popover">
-          <div class="notif-popover-header">
-            <div class="notif-title-wrap">
-              <span>الإشعارات</span>
-              <span class="notif-count">{{ notificationsStore.unreadCount }}</span>
+        </PopoverTrigger>
+        <PopoverContent class="w-96 max-w-[calc(100vw-24px)] p-0" side="bottom" align="start">
+          <div class="flex items-center justify-between px-3 py-2.5 border-b border-gray-200">
+            <div class="flex gap-2 items-center">
+              <span class="text-sm font-medium">الإشعارات</span>
+              <span v-if="notificationsStore.unreadCount > 0" class="text-xs bg-blue-50 text-blue-600 rounded-full px-1.5 py-0.5">
+                {{ notificationsStore.unreadCount }}
+              </span>
             </div>
-            <button class="notif-mark-all" @click="handleMarkAllRead">قراءة الكل</button>
+            <button class="text-sm text-blue-600 bg-transparent border-none cursor-pointer hover:underline" @click="handleMarkAllRead">قراءة الكل</button>
           </div>
-          <div v-if="notificationsStore.items.length === 0" class="notif-empty">
-            <div class="notif-empty-icon" aria-hidden="true">
-              <Icon name="bell" />
+          <div v-if="notificationsStore.items.length === 0" class="flex flex-col items-center gap-2 px-3 py-6 text-center">
+            <div class="w-11 h-11 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
+              <Bell class="w-5 h-5" />
             </div>
-            <p class="notif-empty-title">لا توجد إشعارات بعد</p>
+            <p class="text-sm text-gray-600">لا توجد إشعارات بعد</p>
           </div>
-          <div v-else class="notif-list">
-            <div v-for="n in notificationsStore.items" :key="n.id" class="notif-item">
-              <span class="notif-dot" :class="{ 'notif-dot--read': !!n.read_at }" />
-              <div class="notif-copy">
-                <p class="notif-message">{{ n.data.message }}</p>
-                <p class="notif-sub">{{ n.data.reference_number ?? '—' }}</p>
+          <div v-else class="max-h-96 overflow-auto">
+            <div v-for="n in notificationsStore.items" :key="n.id" class="flex gap-2 px-3 py-2.5 border-b border-gray-200 last:border-b-0">
+              <div
+                class="w-2 h-2 mt-1.5 rounded-full flex-shrink-0"
+                :class="n.read_at ? 'bg-gray-300' : 'bg-blue-600'"
+              />
+              <div class="flex-1 min-w-0">
+                <p class="text-sm text-gray-900">{{ n.data.message }}</p>
+                <p class="text-xs text-gray-600">{{ n.data.reference_number ?? '—' }}</p>
               </div>
-              <time class="notif-time">{{ formatRelativeTime(n.created_at) }}</time>
+              <time class="text-xs text-gray-600 flex-shrink-0">{{ formatRelativeTime(n.created_at) }}</time>
             </div>
           </div>
-          <NuxtLink class="notif-footer-link" to="/notifications">عرض كل الإشعارات</NuxtLink>
-        </div>
+          <NuxtLink to="/notifications" class="block px-3 py-2.5 text-sm text-blue-600 font-medium no-underline hover:bg-gray-50">عرض كل الإشعارات</NuxtLink>
+        </PopoverContent>
       </Popover>
 
+      <!-- User menu -->
       <DropdownMenu v-if="auth.user" v-model:open="userMenuOpen">
-        <template #trigger>
-          <button class="user-trigger" @click="userMenuOpen = !userMenuOpen">
-            <div class="avatar-btn">{{ userInitial }}</div>
-            <div class="user-meta">
-              <span class="user-display-name">{{ auth.user.name }}</span>
-              <span class="role-label">{{ ROLE_LABELS[auth.user.role] ?? auth.user.role }}</span>
+        <DropdownMenuTrigger asChild>
+          <button
+            class="flex items-center gap-2 border-none bg-transparent cursor-pointer hover:opacity-80 transition-opacity"
+            @click="userMenuOpen = !userMenuOpen"
+          >
+            <div class="w-9 h-9 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm">
+              {{ userInitial }}
+            </div>
+            <div class="flex flex-col items-end gap-0.5 max-md:hidden">
+              <span class="text-sm font-medium text-gray-900 leading-tight">{{ auth.user.name }}</span>
+              <span class="text-xs text-gray-600 leading-tight">{{ ROLE_LABELS[auth.user.role] ?? auth.user.role }}</span>
             </div>
           </button>
-        </template>
-        <button class="menu-item" @click="goToProfile">الملف الشخصي</button>
-        <button class="menu-item" @click="goToSettings">الإعدادات</button>
-        <hr class="menu-separator">
-        <button class="menu-item menu-item--danger" @click="handleLogout">تسجيل الخروج</button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent class="w-48" align="start">
+          <button
+            class="w-full text-start px-2.5 py-2 text-sm bg-transparent border-none cursor-pointer rounded hover:bg-gray-100 transition-colors"
+            @click="goToProfile"
+          >
+            الملف الشخصي
+          </button>
+          <button
+            class="w-full text-start px-2.5 py-2 text-sm bg-transparent border-none cursor-pointer rounded hover:bg-gray-100 transition-colors"
+            @click="goToSettings"
+          >
+            الإعدادات
+          </button>
+          <hr class="border-t border-gray-200 my-1.5 mx-0" />
+          <button
+            class="w-full text-start px-2.5 py-2 text-sm text-red-700 bg-transparent border-none cursor-pointer rounded hover:bg-gray-100 transition-colors"
+            @click="handleLogout"
+          >
+            تسجيل الخروج
+          </button>
+        </DropdownMenuContent>
       </DropdownMenu>
     </div>
 
-    <div v-if="mobileSearchOpen" class="mobile-search-overlay">
+    <!-- Mobile search overlay -->
+    <div v-if="mobileSearchOpen" class="absolute top-16 inset-x-0 h-16 bg-white border-b border-gray-300 px-3 py-2 flex items-center gap-2 z-30 max-md:flex hidden" dir="rtl">
       <GlobalSearch mobile />
-      <button class="icon-btn" aria-label="إغلاق البحث" @click="mobileSearchOpen = false">
-        <Icon name="x" />
+      <button
+        class="flex items-center justify-center w-10 h-10 border-none bg-transparent rounded-lg cursor-pointer text-gray-600"
+        aria-label="إغلاق البحث"
+        @click="mobileSearchOpen = false"
+      >
+        <X class="w-5 h-5" />
       </button>
     </div>
   </header>
 </template>
-
-<style scoped>
-.app-header { display: flex; align-items: center; justify-content: space-between; height: 64px; padding: 0 20px; background: color-mix(in srgb, var(--color-surface) 88%, transparent); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-bottom: 1px solid var(--color-border); position: sticky; top: 0; z-index: 30; flex-direction: row-reverse; gap: 12px; }
-.header-start, .header-end { display: flex; align-items: center; }
-.header-start { gap: 4px; }
-.header-end { gap: 12px; }
-.header-center { flex: 1; display: flex; justify-content: center; min-width: 0; }
-.mobile-menu-btn, .mobile-search-btn, .icon-btn { display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border: none; background: transparent; border-radius: 8px; cursor: pointer; color: var(--color-text-secondary); }
-.mobile-menu-btn, .mobile-search-btn { display: none; }
-.icon-btn { position: relative; }
-.mobile-menu-btn:hover, .mobile-search-btn:hover, .icon-btn:hover { background-color: var(--color-background); }
-.notification-badge { position: absolute; top: 4px; inset-inline-end: 4px; min-width: 16px; height: 16px; padding: 0 3px; border-radius: 8px; background-color: var(--color-rejected); border: 2px solid var(--color-surface); color: #fff; font-size: 9px; font-weight: 600; line-height: 12px; display: flex; align-items: center; justify-content: center; }
-.user-trigger { border: none; background: transparent; display: flex; align-items: center; gap: 8px; cursor: pointer; }
-.avatar-btn { width: 36px; height: 36px; border-radius: 9999px; background: var(--color-primary); color: var(--color-on-primary); display: grid; place-items: center; font-weight: 700; }
-.user-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; }
-.user-display-name { font-size: 14px; font-weight: 500; color: var(--color-text-primary); line-height: 1.2; }
-.role-label { font-size: 11px; color: var(--color-text-secondary); line-height: 1.2; }
-.notif-popover { width: 360px; max-width: calc(100vw - 24px); }
-.notif-popover-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-bottom: 1px solid var(--color-outline-variant); }
-.notif-title-wrap { display: flex; gap: 8px; align-items: center; }
-.notif-count { font-size: 11px; background: var(--color-primary-container); color: var(--color-on-primary-container); border-radius: 9999px; padding: 1px 6px; }
-.notif-mark-all { border: none; background: transparent; color: var(--color-primary); cursor: pointer; }
-.notif-list { max-height: 24rem; overflow: auto; }
-.notif-item { display: flex; gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--color-outline-variant); }
-.notif-dot { width: 8px; height: 8px; margin-top: 6px; border-radius: 9999px; background: var(--color-primary); flex-shrink: 0; }
-.notif-dot--read { background: var(--color-border); }
-.notif-copy { flex: 1; }
-.notif-message, .notif-sub, .notif-time { margin: 0; font-size: 12px; }
-.notif-sub, .notif-time { color: var(--color-text-secondary); }
-.notif-footer-link { display: block; padding: 10px 12px; font-size: 13px; color: var(--color-primary); text-decoration: none; }
-.notif-empty { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 24px 12px; color: var(--color-text-secondary); }
-.notif-empty-icon { width: 44px; height: 44px; border-radius: 9999px; background: color-mix(in srgb, var(--color-primary) 12%, var(--color-surface)); color: var(--color-primary); display: grid; place-items: center; }
-.notif-empty-title { margin: 0; font-size: 13px; color: var(--color-text-secondary); }
-.menu-item { width: 100%; border: none; background: transparent; text-align: start; padding: 8px 10px; border-radius: 8px; cursor: pointer; }
-.menu-item:hover { background: var(--sidebar-accent); }
-.menu-separator { border: none; border-top: 1px solid var(--color-outline-variant); margin: 6px 0; }
-.menu-item--danger { color: var(--color-error-text); }
-.mobile-search-overlay { display: none; position: absolute; top: 0; left: 0; right: 0; height: 64px; background-color: var(--color-surface); border-bottom: 1px solid var(--color-border); padding: 0 12px; align-items: center; gap: 8px; z-index: 30; }
-@media (max-width: 1023px) { .mobile-menu-btn { display: flex; } }
-@media (max-width: 767px) { .mobile-search-btn { display: flex; } .header-center { display: none; } .mobile-search-overlay { display: flex; } .user-meta { display: none; } }
-</style>

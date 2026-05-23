@@ -20,75 +20,19 @@ function formatAmount(v: number): string {
 </script>
 
 <template>
-  <div class="currency-bar-chart" dir="rtl">
-    <div v-if="!data.length" class="chart-empty">لا توجد بيانات</div>
-    <div v-else class="bars" role="list" aria-label="مخطط تمويل العملات">
-      <div v-for="item in data" :key="item.currency" class="bar-row" role="listitem">
-        <span class="currency-label">{{ item.currency }}</span>
-        <div class="bar-track">
+  <div class="flex flex-col gap-2" dir="rtl">
+    <div v-if="!data.length" class="h-28 flex items-center justify-center text-gray-600 text-sm">لا توجد بيانات</div>
+    <div v-else class="flex flex-col gap-3" role="list" aria-label="مخطط تمويل العملات">
+      <div v-for="item in data" :key="item.currency" class="flex items-center gap-2.5" role="listitem">
+        <span class="w-12 text-xs font-semibold text-gray-900 flex-shrink-0 text-end">{{ item.currency }}</span>
+        <div class="flex-1 h-3 bg-gray-100 rounded-full overflow-hidden">
           <div
-            class="bar-fill"
-            :style="{ width: `${(item.amount / maxAmount) * 100}%` }"
+            class="h-full bg-blue-600 rounded-full transition-all duration-500"
+            :style="{ width: `${(item.amount / maxAmount) * 100}%`, minWidth: item.amount > 0 ? '2px' : '0' }"
           />
         </div>
-        <span class="amount-label">{{ formatAmount(item.amount) }}</span>
+        <span class="w-13 text-xs text-gray-600 flex-shrink-0 text-start font-tabular-nums">{{ formatAmount(item.amount) }}</span>
       </div>
     </div>
   </div>
 </template>
-
-<style scoped>
-.currency-bar-chart {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.chart-empty {
-  height: 120px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #6c757d;
-  font-size: 14px;
-}
-.bars {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-.bar-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.currency-label {
-  width: 48px;
-  font-size: 13px;
-  font-weight: 600;
-  color: #1c222b;
-  flex-shrink: 0;
-  text-align: right;
-}
-.bar-track {
-  flex: 1;
-  height: 12px;
-  background: #f5f5f7;
-  border-radius: 6px;
-  overflow: hidden;
-}
-.bar-fill {
-  height: 100%;
-  background: #0066cc;
-  border-radius: 6px;
-  transition: width 0.4s ease;
-  min-width: 2px;
-}
-.amount-label {
-  width: 52px;
-  font-size: 12px;
-  color: #6c757d;
-  text-align: left;
-  flex-shrink: 0;
-  font-variant-numeric: tabular-nums;
-}
-</style>

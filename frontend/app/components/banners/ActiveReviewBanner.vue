@@ -1,51 +1,17 @@
 <script setup lang="ts">
+import { CheckCircle2 } from 'lucide-vue-next'
+import { Alert, AlertDescription } from '../ui/alert'
+import { Badge } from '../ui/badge'
+
 // No props — banner is shown whenever the current user is the active claim holder
 </script>
 
 <template>
-  <div class="active-review-banner" role="status" aria-live="polite" dir="rtl">
-    <span class="active-icon" aria-hidden="true">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-        <polyline points="22 4 12 14.01 9 11.01" />
-      </svg>
-    </span>
-    <span class="active-message">أنت المراجع النشط — الطلب محجوز لك حالياً</span>
-    <span class="active-badge">مراجعة نشطة</span>
-  </div>
+  <Alert dir="rtl" class="flex items-center gap-3 border-green-200 bg-green-50">
+    <CheckCircle2 class="h-5 w-5 flex-shrink-0 text-green-600" aria-hidden="true" />
+    <AlertDescription class="flex-1 text-sm font-medium text-green-900">
+      أنت المراجع النشط — الطلب محجوز لك حالياً
+    </AlertDescription>
+    <Badge class="flex-shrink-0 bg-green-600 text-white hover:bg-green-700">مراجعة نشطة</Badge>
+  </Alert>
 </template>
-
-<style scoped>
-.active-review-banner {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 16px;
-  background: #f0fff4;
-  border: 1px solid #34c75933;
-  border-radius: 12px;
-  color: #34c759;
-  font-size: 15px;
-  font-weight: 500;
-}
-
-.active-icon {
-  display: flex;
-  flex-shrink: 0;
-}
-
-.active-message {
-  flex: 1;
-  color: #1d5c2e;
-}
-
-.active-badge {
-  padding: 3px 10px;
-  background: #34c759;
-  color: #ffffff;
-  font-size: 12px;
-  font-weight: 600;
-  border-radius: 20px;
-  flex-shrink: 0;
-}
-</style>

@@ -1,9 +1,21 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
+import { AlertCircle, Loader2 } from 'lucide-vue-next'
 import { UserRole, RequestStatus } from '../../types/enums'
 import type { ImportRequest } from '../../types/models'
 import { useRequestsStore } from '../../stores/requests.store'
 import { useVotingStore } from '../../stores/voting.store'
+import { Button } from '../ui/button'
+import { Textarea } from '../ui/textarea'
+import { Alert, AlertDescription } from '../ui/alert'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '../ui/dialog'
 
 const props = defineProps<{
   request: ImportRequest
@@ -306,606 +318,479 @@ async function dispatchAction(action: string, reason?: string) {
 </script>
 
 <template>
-  <div v-if="showAnyActions" class="actions-panel" dir="rtl" role="region" aria-label="لوحة الإجراءات">
-    <!-- Error message -->
-    <p v-if="actionError" class="actions-error" role="alert">{{ actionError }}</p>
+  <div v-if="showAnyActions" class="space-y-4" dir="rtl" role="region" aria-label="لوحة الإجراءات">
+    <!-- Error alert -->
+    <Alert v-if="actionError" class="border-s-4 border-s-red-600 bg-red-50">
+      <AlertCircle class="h-4 w-4 text-red-600" />
+      <AlertDescription class="text-red-700">{{ actionError }}</AlertDescription>
+    </Alert>
 
     <!-- BANK_REVIEWER: SUBMITTED → begin review -->
     <template v-if="showBankReviewerActions && request.status === RequestStatus.SUBMITTED">
-      <button
-        class="action-btn action-btn--primary"
+      <Button
+        class="w-full"
         :disabled="performingAction"
         @click="handleBeginReview"
       >
+        <Loader2 v-if="performingAction" class="h-4 w-4 me-2 animate-spin" />
         {{ performingAction ? 'جارٍ التنفيذ…' : 'البدء بالمراجعة' }}
-      </button>
+      </Button>
     </template>
 
     <!-- BANK_REVIEWER: BANK_REVIEW → approve, terminal reject, or return to intake -->
     <template v-if="showBankReviewerActions && request.status === RequestStatus.BANK_REVIEW">
-      <div class="actions-row">
-        <button
-          class="action-btn action-btn--approve"
+      <div class="flex gap-3 flex-row-reverse">
+        <Button
+          class="flex-1 bg-green-600 hover:bg-green-700"
           :disabled="performingAction"
           @click="handleApprove"
         >
+          <Loader2 v-if="performingAction" class="h-4 w-4 me-2 animate-spin" />
           {{ performingAction ? 'جارٍ التنفيذ…' : 'اعتماد' }}
-        </button>
-        <button
-          class="action-btn action-btn--reject"
-          :disabled="performingAction"
-          @click="showBankRejectTerminalModal = true"
-        >
-          رفض نهائي
-        </button>
-        <button
-          class="action-btn action-btn--secondary"
-          :disabled="performingAction"
-          @click="showBankReturnModal = true"
-        >
-          إعادة للمدخل
-        </button>
+        </Button>
+
+        <Dialog v-model:open="showBankRejectTerminalModal">
+          <DialogTrigger as-child>
+            <Button
+              variant="destructive"
+              class="flex-1"
+              :disabled="performingAction"
+            >
+              رفض نهائي
+            </Button>
+          </DialogTrigger>
+          <DialogContent class="max-w-md">
+            <DialogHeader>
+              <DialogTitle class="text-red-600">تأكيد الرفض النهائي</DialogTitle>
+              <DialogDescription class="text-red-600">
+                تحذير: هذا الإجراء نهائي ولا يمكن التراجع عنه.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div class="space-y-4">
+              <div>
+                <label for="bank-reject-terminal-comment" class="text-sm font-medium">
+                  سبب الرفض <span class="text-red-600">*</span>
+                </label>
+                <Textarea
+                  id="bank-reject-terminal-comment"
+                  v-model="bankRejectTerminalComment"
+                  placeholder="اكتب سبب الرفض النهائي هنا…"
+                  class="mt-2 min-h-24"
+                  :aria-invalid="!!bankRejectTerminalCommentError"
+                />
+                <p v-if="bankRejectTerminalCommentError" class="text-xs text-red-600 mt-1">
+                  {{ bankRejectTerminalCommentError }}
+                </p>
+              </div>
+
+              <div class="flex gap-2 justify-end">
+                <Button
+                  variant="outline"
+                  @click="resetBankRejectTerminalModal"
+                >
+                  إلغاء
+                </Button>
+                <Button
+                  variant="destructive"
+                  :disabled="performingAction"
+                  @click="handleBankRejectTerminalConfirm"
+                >
+                  <Loader2 v-if="performingAction" class="h-4 w-4 me-2 animate-spin" />
+                  {{ performingAction ? 'جارٍ التنفيذ…' : 'تأكيد الرفض' }}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog v-model:open="showBankReturnModal">
+          <DialogTrigger as-child>
+            <Button
+              variant="outline"
+              class="flex-1"
+              :disabled="performingAction"
+            >
+              إعادة للمدخل
+            </Button>
+          </DialogTrigger>
+          <DialogContent class="max-w-md">
+            <DialogHeader>
+              <DialogTitle>إعادة الطلب للمدخل</DialogTitle>
+            </DialogHeader>
+
+            <div class="space-y-4">
+              <div>
+                <label for="bank-return-comment" class="text-sm font-medium">
+                  سبب الإعادة <span class="text-red-600">*</span>
+                </label>
+                <Textarea
+                  id="bank-return-comment"
+                  v-model="bankReturnComment"
+                  placeholder="اكتب سبب الإعادة هنا…"
+                  class="mt-2 min-h-24"
+                  :aria-invalid="!!bankReturnCommentError"
+                />
+                <p v-if="bankReturnCommentError" class="text-xs text-red-600 mt-1">
+                  {{ bankReturnCommentError }}
+                </p>
+              </div>
+
+              <div class="flex gap-2 justify-end">
+                <Button
+                  variant="outline"
+                  @click="resetBankReturnModal"
+                >
+                  إلغاء
+                </Button>
+                <Button
+                  :disabled="performingAction"
+                  @click="handleBankReturnConfirm"
+                >
+                  <Loader2 v-if="performingAction" class="h-4 w-4 me-2 animate-spin" />
+                  {{ performingAction ? 'جارٍ التنفيذ…' : 'تأكيد الإعادة' }}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </template>
 
     <!-- SUPPORT_COMMITTEE: SUPPORT_REVIEW_IN_PROGRESS + is_claimed_by_me → approve, reject, or return -->
     <template v-if="showSupportCommitteeActions">
-      <template v-if="!showRejectForm">
-        <div class="actions-row">
-          <button
-            class="action-btn action-btn--approve"
-            :disabled="performingAction"
-            @click="handleSupportApprove"
-          >
-            {{ performingAction ? 'جارٍ التنفيذ…' : 'اعتماد' }}
-          </button>
-          <button
-            class="action-btn action-btn--reject"
-            :disabled="performingAction"
-            @click="handleRejectClick"
-          >
-            رفض
-          </button>
-          <button
-            class="action-btn action-btn--secondary"
-            :disabled="performingAction"
-            @click="showSupportReturnModal = true"
-          >
-            إعادة للمدخل
-          </button>
-        </div>
-      </template>
+      <div class="flex gap-3 flex-row-reverse">
+        <Button
+          class="flex-1 bg-green-600 hover:bg-green-700"
+          :disabled="performingAction"
+          @click="handleSupportApprove"
+        >
+          <Loader2 v-if="performingAction" class="h-4 w-4 me-2 animate-spin" />
+          {{ performingAction ? 'جارٍ التنفيذ…' : 'اعتماد' }}
+        </Button>
 
-      <!-- Rejection reason form -->
-      <template v-else>
-        <div class="reject-form">
-          <label class="reject-label" for="reject-reason-support">سبب الرفض <span class="required" aria-hidden="true">*</span></label>
-          <textarea
-            id="reject-reason-support"
-            v-model="rejectReason"
-            class="reject-textarea"
-            rows="3"
-            placeholder="اكتب سبب الرفض هنا…"
-            :aria-invalid="!!rejectReasonError"
-            :aria-describedby="rejectReasonError ? 'reject-reason-support-error' : undefined"
-          />
-          <p v-if="rejectReasonError" id="reject-reason-support-error" class="reject-error" role="alert">{{ rejectReasonError }}</p>
-          <div class="actions-row">
-            <button
-              class="action-btn action-btn--reject"
+        <Dialog v-model:open="showRejectForm">
+          <DialogTrigger as-child>
+            <Button
+              variant="destructive"
+              class="flex-1"
               :disabled="performingAction"
-              @click="handleRejectConfirm"
             >
-              {{ performingAction ? 'جارٍ التنفيذ…' : 'تأكيد الرفض' }}
-            </button>
-            <button
-              class="action-btn action-btn--secondary"
+              رفض
+            </Button>
+          </DialogTrigger>
+          <DialogContent class="max-w-md">
+            <DialogHeader>
+              <DialogTitle>رفض الطلب</DialogTitle>
+            </DialogHeader>
+
+            <div class="space-y-4">
+              <div>
+                <label for="reject-reason-support" class="text-sm font-medium">
+                  سبب الرفض <span class="text-red-600">*</span>
+                </label>
+                <Textarea
+                  id="reject-reason-support"
+                  v-model="rejectReason"
+                  placeholder="اكتب سبب الرفض هنا…"
+                  class="mt-2 min-h-24"
+                  :aria-invalid="!!rejectReasonError"
+                />
+                <p v-if="rejectReasonError" class="text-xs text-red-600 mt-1">
+                  {{ rejectReasonError }}
+                </p>
+              </div>
+
+              <div class="flex gap-2 justify-end">
+                <Button
+                  variant="outline"
+                  @click="resetRejectForm"
+                >
+                  إلغاء
+                </Button>
+                <Button
+                  variant="destructive"
+                  :disabled="performingAction"
+                  @click="handleRejectConfirm"
+                >
+                  <Loader2 v-if="performingAction" class="h-4 w-4 me-2 animate-spin" />
+                  {{ performingAction ? 'جارٍ التنفيذ…' : 'تأكيد الرفض' }}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog v-model:open="showSupportReturnModal">
+          <DialogTrigger as-child>
+            <Button
+              variant="outline"
+              class="flex-1"
               :disabled="performingAction"
-              @click="resetRejectForm"
             >
-              إلغاء
-            </button>
-          </div>
-        </div>
-      </template>
+              إعادة للمدخل
+            </Button>
+          </DialogTrigger>
+          <DialogContent class="max-w-md">
+            <DialogHeader>
+              <DialogTitle>إعادة الطلب للمدخل</DialogTitle>
+            </DialogHeader>
+
+            <div class="space-y-4">
+              <div>
+                <label for="support-return-comment" class="text-sm font-medium">
+                  سبب الإعادة <span class="text-red-600">*</span>
+                </label>
+                <Textarea
+                  id="support-return-comment"
+                  v-model="supportReturnComment"
+                  placeholder="اكتب سبب الإعادة هنا…"
+                  class="mt-2 min-h-24"
+                  :aria-invalid="!!supportReturnCommentError"
+                />
+                <p v-if="supportReturnCommentError" class="text-xs text-red-600 mt-1">
+                  {{ supportReturnCommentError }}
+                </p>
+              </div>
+
+              <div class="flex gap-2 justify-end">
+                <Button
+                  variant="outline"
+                  @click="resetSupportReturnModal"
+                >
+                  إلغاء
+                </Button>
+                <Button
+                  :disabled="performingAction"
+                  @click="handleSupportReturnConfirm"
+                >
+                  <Loader2 v-if="performingAction" class="h-4 w-4 me-2 animate-spin" />
+                  {{ performingAction ? 'جارٍ التنفيذ…' : 'تأكيد الإعادة' }}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
     </template>
 
     <!-- DATA_ENTRY: DRAFT → edit -->
     <template v-if="showDataEntryActions && request.status === RequestStatus.DRAFT">
-      <NuxtLink :to="`/requests/${request.id}/edit`" class="action-btn action-btn--primary">
-        تعديل
+      <NuxtLink :to="`/requests/${request.id}/edit`">
+        <Button class="w-full">تعديل</Button>
       </NuxtLink>
     </template>
 
     <!-- DATA_ENTRY: DRAFT_REJECTED_INTERNAL → edit & resubmit -->
     <template v-if="showDataEntryActions && request.status === RequestStatus.DRAFT_REJECTED_INTERNAL">
-      <NuxtLink :to="`/requests/${request.id}/edit`" class="action-btn action-btn--primary">
-        تعديل وإعادة تقديم
+      <NuxtLink :to="`/requests/${request.id}/edit`">
+        <Button class="w-full">تعديل وإعادة تقديم</Button>
       </NuxtLink>
     </template>
 
     <!-- DATA_ENTRY: BANK_RETURNED → edit & resubmit -->
     <template v-if="showDataEntryActions && request.status === RequestStatus.BANK_RETURNED">
-      <NuxtLink :to="`/requests/${request.id}/edit`" class="action-btn action-btn--primary">
-        تعديل وإعادة تقديم
+      <NuxtLink :to="`/requests/${request.id}/edit`">
+        <Button class="w-full">تعديل وإعادة تقديم</Button>
       </NuxtLink>
     </template>
 
     <!-- DATA_ENTRY: SUPPORT_RETURNED → edit & resubmit -->
     <template v-if="showDataEntryActions && request.status === RequestStatus.SUPPORT_RETURNED">
-      <NuxtLink :to="`/requests/${request.id}/edit`" class="action-btn action-btn--primary">
-        تعديل وإعادة تقديم
+      <NuxtLink :to="`/requests/${request.id}/edit`">
+        <Button class="w-full">تعديل وإعادة تقديم</Button>
       </NuxtLink>
     </template>
 
     <!-- COMMITTEE_DIRECTOR: WAITING_FOR_VOTING_OPEN → open session -->
     <template v-if="showDirectorVotingActions && request.status === RequestStatus.WAITING_FOR_VOTING_OPEN">
-      <button
-        class="action-btn action-btn--primary"
+      <Button
+        class="w-full"
         :disabled="votingStore.performingDirectorAction"
         @click="handleOpenSession"
       >
+        <Loader2 v-if="votingStore.performingDirectorAction" class="h-4 w-4 me-2 animate-spin" />
         {{ votingStore.performingDirectorAction ? 'جارٍ التنفيذ…' : 'فتح جلسة التصويت' }}
-      </button>
+      </Button>
     </template>
 
     <!-- COMMITTEE_DIRECTOR: EXECUTIVE_VOTING_OPEN → close session or override -->
     <template v-if="showDirectorVotingActions && request.status === RequestStatus.EXECUTIVE_VOTING_OPEN">
-      <div class="actions-row">
-        <!-- Close session with inline confirmation -->
-        <template v-if="!showCloseConfirm">
-          <button
-            class="action-btn action-btn--reject"
-            :disabled="votingStore.performingDirectorAction"
-            @click="showCloseConfirm = true"
-          >
-            إغلاق جلسة التصويت
-          </button>
-          <button
-            class="action-btn action-btn--amber"
-            :disabled="votingStore.performingDirectorAction"
-            @click="showOverrideModal = true"
-          >
-            تجاوز مدير اللجنة
-          </button>
-        </template>
-        <template v-else>
-          <div class="close-confirm">
-            <p class="close-confirm__text">هل أنت متأكد من إغلاق جلسة التصويت؟ لن يتمكن الأعضاء من التصويت بعد ذلك.</p>
-            <div class="actions-row">
-              <button
-                class="action-btn action-btn--reject"
-                :disabled="votingStore.performingDirectorAction"
-                @click="handleCloseSession"
-              >
-                {{ votingStore.performingDirectorAction ? 'جارٍ التنفيذ…' : 'تأكيد الإغلاق' }}
-              </button>
-              <button
-                class="action-btn action-btn--secondary"
-                :disabled="votingStore.performingDirectorAction"
+      <div class="flex gap-3 flex-row-reverse">
+        <Dialog v-model:open="showCloseConfirm">
+          <DialogTrigger as-child>
+            <Button
+              variant="destructive"
+              class="flex-1"
+              :disabled="votingStore.performingDirectorAction"
+            >
+              إغلاق جلسة التصويت
+            </Button>
+          </DialogTrigger>
+          <DialogContent class="max-w-md">
+            <DialogHeader>
+              <DialogTitle>تأكيد إغلاق جلسة التصويت</DialogTitle>
+              <DialogDescription>
+                هل أنت متأكد؟ لن يتمكن الأعضاء من التصويت بعد ذلك.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div class="flex gap-2 justify-end">
+              <Button
+                variant="outline"
                 @click="showCloseConfirm = false"
               >
                 إلغاء
-              </button>
+              </Button>
+              <Button
+                variant="destructive"
+                :disabled="votingStore.performingDirectorAction"
+                @click="handleCloseSession"
+              >
+                <Loader2 v-if="votingStore.performingDirectorAction" class="h-4 w-4 me-2 animate-spin" />
+                {{ votingStore.performingDirectorAction ? 'جارٍ التنفيذ…' : 'تأكيد الإغلاق' }}
+              </Button>
             </div>
-          </div>
-        </template>
-      </div>
+          </DialogContent>
+        </Dialog>
 
-      <!-- Director Override modal (inline) -->
-      <div v-if="showOverrideModal" class="override-modal" role="dialog" aria-labelledby="override-modal-title" aria-modal="true">
-        <div class="override-modal__content">
-          <h3 id="override-modal-title" class="override-modal__title">تجاوز مدير اللجنة</h3>
-
-          <!-- Current tally snapshot -->
-          <div v-if="votingStore.votingDetail?.tally" class="tally-snapshot">
-            <span class="tally-snapshot__item tally-snapshot__item--approve">
-              موافق: {{ votingStore.votingDetail.tally.approve_count }}
-            </span>
-            <span class="tally-snapshot__item tally-snapshot__item--reject">
-              رافض: {{ votingStore.votingDetail.tally.reject_count }}
-            </span>
-            <span class="tally-snapshot__item tally-snapshot__item--abstain">
-              ممتنع/غائب: {{ votingStore.votingDetail.tally.abstain_count + votingStore.votingDetail.tally.auto_abstain_count }}
-            </span>
-          </div>
-
-          <!-- Decision selection -->
-          <fieldset class="override-fieldset">
-            <legend class="override-legend">القرار <span class="required" aria-hidden="true">*</span></legend>
-            <label class="override-radio-label">
-              <input v-model="overrideDecision" type="radio" name="override-decision" value="APPROVE" />
-              <span>موافقة</span>
-            </label>
-            <label class="override-radio-label">
-              <input v-model="overrideDecision" type="radio" name="override-decision" value="REJECT" />
-              <span>رفض</span>
-            </label>
-            <p v-if="overrideDecisionError" class="override-error" role="alert">{{ overrideDecisionError }}</p>
-          </fieldset>
-
-          <!-- Justification -->
-          <div class="override-justify">
-            <label class="override-legend" for="override-justification">
-              المبرر <span class="required" aria-hidden="true">*</span>
-            </label>
-            <textarea
-              id="override-justification"
-              v-model="overrideJustification"
-              class="override-textarea"
-              rows="4"
-              placeholder="اكتب مبرر القرار هنا (10 أحرف على الأقل)…"
-              :aria-invalid="!!overrideJustificationError"
-            />
-            <p v-if="overrideJustificationError" class="override-error" role="alert">{{ overrideJustificationError }}</p>
-          </div>
-
-          <!-- Actions -->
-          <div class="override-actions">
-            <button
-              class="action-btn action-btn--amber"
+        <Dialog v-model:open="showOverrideModal">
+          <DialogTrigger as-child>
+            <Button
+              class="flex-1 bg-amber-500 hover:bg-amber-600"
               :disabled="votingStore.performingDirectorAction"
-              @click="handleDirectorOverride"
             >
-              {{ votingStore.performingDirectorAction ? 'جارٍ التنفيذ…' : 'تأكيد التجاوز' }}
-            </button>
-            <button
-              class="action-btn action-btn--secondary"
-              :disabled="votingStore.performingDirectorAction"
-              @click="resetDirectorState"
-            >
-              إلغاء
-            </button>
-          </div>
-        </div>
+              تجاوز مدير اللجنة
+            </Button>
+          </DialogTrigger>
+          <DialogContent class="max-w-md">
+            <DialogHeader>
+              <DialogTitle>تجاوز مدير اللجنة</DialogTitle>
+            </DialogHeader>
+
+            <div class="space-y-4">
+              <!-- Current tally snapshot -->
+              <div v-if="votingStore.votingDetail?.tally" class="grid grid-cols-3 gap-2 text-center">
+                <div class="bg-green-50 p-2 rounded">
+                  <p class="text-sm font-medium text-green-700">موافق</p>
+                  <p class="text-lg font-bold text-green-600">{{ votingStore.votingDetail.tally.approve_count }}</p>
+                </div>
+                <div class="bg-red-50 p-2 rounded">
+                  <p class="text-sm font-medium text-red-700">رافض</p>
+                  <p class="text-lg font-bold text-red-600">{{ votingStore.votingDetail.tally.reject_count }}</p>
+                </div>
+                <div class="bg-gray-50 p-2 rounded">
+                  <p class="text-sm font-medium text-gray-700">ممتنع</p>
+                  <p class="text-lg font-bold text-gray-600">{{ votingStore.votingDetail.tally.abstain_count + votingStore.votingDetail.tally.auto_abstain_count }}</p>
+                </div>
+              </div>
+
+              <!-- Decision selection -->
+              <div class="space-y-2">
+                <p class="text-sm font-medium">القرار <span class="text-red-600">*</span></p>
+                <div class="space-y-2">
+                  <label class="flex items-center gap-2 cursor-pointer">
+                    <input
+                      v-model="overrideDecision"
+                      type="radio"
+                      name="override-decision"
+                      value="APPROVE"
+                      class="rounded"
+                    />
+                    <span class="text-sm">موافقة</span>
+                  </label>
+                  <label class="flex items-center gap-2 cursor-pointer">
+                    <input
+                      v-model="overrideDecision"
+                      type="radio"
+                      name="override-decision"
+                      value="REJECT"
+                      class="rounded"
+                    />
+                    <span class="text-sm">رفض</span>
+                  </label>
+                </div>
+                <p v-if="overrideDecisionError" class="text-xs text-red-600">{{ overrideDecisionError }}</p>
+              </div>
+
+              <!-- Justification -->
+              <div>
+                <label for="override-justification" class="text-sm font-medium">
+                  المبرر <span class="text-red-600">*</span>
+                </label>
+                <Textarea
+                  id="override-justification"
+                  v-model="overrideJustification"
+                  placeholder="اكتب مبرر القرار هنا (10 أحرف على الأقل)…"
+                  class="mt-2 min-h-24"
+                  :aria-invalid="!!overrideJustificationError"
+                />
+                <p v-if="overrideJustificationError" class="text-xs text-red-600 mt-1">
+                  {{ overrideJustificationError }}
+                </p>
+              </div>
+
+              <div class="flex gap-2 justify-end">
+                <Button
+                  variant="outline"
+                  @click="resetDirectorState"
+                >
+                  إلغاء
+                </Button>
+                <Button
+                  class="bg-amber-500 hover:bg-amber-600"
+                  :disabled="votingStore.performingDirectorAction"
+                  @click="handleDirectorOverride"
+                >
+                  <Loader2 v-if="votingStore.performingDirectorAction" class="h-4 w-4 me-2 animate-spin" />
+                  {{ votingStore.performingDirectorAction ? 'جارٍ التنفيذ…' : 'تأكيد التجاوز' }}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </template>
 
     <!-- COMMITTEE_DIRECTOR: EXECUTIVE_VOTING_CLOSED → finalize decision -->
     <template v-if="showDirectorVotingActions && request.status === RequestStatus.EXECUTIVE_VOTING_CLOSED">
-      <div v-if="votingStore.votingDetail?.tally" class="tally-snapshot tally-snapshot--standalone">
-        <span class="tally-snapshot__item tally-snapshot__item--approve">
-          موافق: {{ votingStore.votingDetail.tally.approve_count }}
-        </span>
-        <span class="tally-snapshot__item tally-snapshot__item--reject">
-          رافض: {{ votingStore.votingDetail.tally.reject_count }}
-        </span>
-        <span class="tally-snapshot__item tally-snapshot__item--abstain">
-          ممتنع/غائب: {{ votingStore.votingDetail.tally.abstain_count + votingStore.votingDetail.tally.auto_abstain_count }}
-        </span>
+      <div v-if="votingStore.votingDetail?.tally" class="grid grid-cols-3 gap-2 text-center">
+        <div class="bg-green-50 p-2 rounded">
+          <p class="text-sm font-medium text-green-700">موافق</p>
+          <p class="text-lg font-bold text-green-600">{{ votingStore.votingDetail.tally.approve_count }}</p>
+        </div>
+        <div class="bg-red-50 p-2 rounded">
+          <p class="text-sm font-medium text-red-700">رافض</p>
+          <p class="text-lg font-bold text-red-600">{{ votingStore.votingDetail.tally.reject_count }}</p>
+        </div>
+        <div class="bg-gray-50 p-2 rounded">
+          <p class="text-sm font-medium text-gray-700">ممتنع</p>
+          <p class="text-lg font-bold text-gray-600">{{ votingStore.votingDetail.tally.abstain_count + votingStore.votingDetail.tally.auto_abstain_count }}</p>
+        </div>
       </div>
-      <button
-        class="action-btn action-btn--primary"
+      <Button
         :disabled="votingStore.performingDirectorAction"
         @click="handleFinalizeDecision"
       >
+        <Loader2 v-if="votingStore.performingDirectorAction" class="h-4 w-4 me-2 animate-spin" />
         {{ votingStore.performingDirectorAction ? 'جارٍ التنفيذ…' : 'إصدار القرار النهائي' }}
-      </button>
+      </Button>
     </template>
 
     <!-- COMMITTEE_DIRECTOR: EXECUTIVE_APPROVED → issue customs declaration -->
     <template v-if="showDirectorCustomsActions">
-      <button
-        class="action-btn action-btn--approve"
+      <Button
+        class="bg-green-600 hover:bg-green-700"
         :disabled="requestsStore.issuingCustoms"
         @click="handleIssueCustomsDeclaration"
       >
+        <Loader2 v-if="requestsStore.issuingCustoms" class="h-4 w-4 me-2 animate-spin" />
         {{ requestsStore.issuingCustoms ? 'جارٍ الإصدار…' : 'إصدار البيان الجمركي' }}
-      </button>
+      </Button>
     </template>
 
-    <!-- Bank Return modal -->
-    <div
-      v-if="showBankReturnModal"
-      class="bank-return-modal"
-      role="dialog"
-      aria-labelledby="bank-return-modal-title"
-      aria-modal="true"
-    >
-      <div class="bank-return-modal__content">
-        <h3 id="bank-return-modal-title" class="bank-return-modal__title">إعادة الطلب للمدخل</h3>
-        <div class="bank-return-form">
-          <label class="reject-label" for="bank-return-comment">
-            سبب الإعادة <span class="required" aria-hidden="true">*</span>
-          </label>
-          <textarea
-            id="bank-return-comment"
-            v-model="bankReturnComment"
-            class="reject-textarea"
-            rows="4"
-            placeholder="اكتب سبب الإعادة هنا (3 أحرف على الأقل)…"
-            :aria-invalid="!!bankReturnCommentError"
-            :aria-describedby="bankReturnCommentError ? 'bank-return-comment-error' : undefined"
-          />
-          <p v-if="bankReturnCommentError" id="bank-return-comment-error" class="reject-error" role="alert">
-            {{ bankReturnCommentError }}
-          </p>
-        </div>
-        <div class="bank-return-modal__actions">
-          <button
-            class="action-btn action-btn--secondary"
-            :disabled="performingAction"
-            @click="handleBankReturnConfirm"
-          >
-            {{ performingAction ? 'جارٍ التنفيذ…' : 'تأكيد الإعادة' }}
-          </button>
-          <button
-            class="action-btn action-btn--secondary"
-            :disabled="performingAction"
-            @click="resetBankReturnModal"
-          >
-            إلغاء
-          </button>
-        </div>
-      </div>
-    </div>
-    <!-- Bank Reject Terminal modal -->
-    <div
-      v-if="showBankRejectTerminalModal"
-      class="bank-return-modal bank-reject-terminal-modal"
-      role="dialog"
-      aria-labelledby="bank-reject-terminal-modal-title"
-      aria-modal="true"
-    >
-      <div class="bank-return-modal__content">
-        <h3 id="bank-reject-terminal-modal-title" class="bank-return-modal__title bank-reject-terminal-modal__title">
-          تأكيد الرفض النهائي
-        </h3>
-        <p class="bank-reject-terminal-modal__warning">
-          تحذير: هذا الإجراء نهائي ولا يمكن التراجع عنه. سيتم رفض الطلب بشكل دائم.
-        </p>
-        <div class="bank-return-form">
-          <label class="reject-label" for="bank-reject-terminal-comment">
-            سبب الرفض <span class="required" aria-hidden="true">*</span>
-          </label>
-          <textarea
-            id="bank-reject-terminal-comment"
-            v-model="bankRejectTerminalComment"
-            class="reject-textarea"
-            rows="4"
-            placeholder="اكتب سبب الرفض النهائي هنا (3 أحرف على الأقل)…"
-            :aria-invalid="!!bankRejectTerminalCommentError"
-            :aria-describedby="bankRejectTerminalCommentError ? 'bank-reject-terminal-comment-error' : undefined"
-          />
-          <p v-if="bankRejectTerminalCommentError" id="bank-reject-terminal-comment-error" class="reject-error" role="alert">
-            {{ bankRejectTerminalCommentError }}
-          </p>
-        </div>
-        <div class="bank-return-modal__actions">
-          <button
-            class="action-btn action-btn--reject"
-            :disabled="performingAction"
-            @click="handleBankRejectTerminalConfirm"
-          >
-            {{ performingAction ? 'جارٍ التنفيذ…' : 'تأكيد الرفض النهائي' }}
-          </button>
-          <button
-            class="action-btn action-btn--secondary"
-            :disabled="performingAction"
-            @click="resetBankRejectTerminalModal"
-          >
-            إلغاء
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Support Return modal -->
-    <div
-      v-if="showSupportReturnModal"
-      class="bank-return-modal"
-      role="dialog"
-      aria-labelledby="support-return-modal-title"
-      aria-modal="true"
-    >
-      <div class="bank-return-modal__content">
-        <h3 id="support-return-modal-title" class="bank-return-modal__title">إعادة الطلب للمدخل</h3>
-        <div class="bank-return-form">
-          <label class="reject-label" for="support-return-comment">
-            سبب الإعادة <span class="required" aria-hidden="true">*</span>
-          </label>
-          <textarea
-            id="support-return-comment"
-            v-model="supportReturnComment"
-            class="reject-textarea"
-            rows="4"
-            placeholder="اكتب سبب الإعادة هنا (3 أحرف على الأقل)…"
-            :aria-invalid="!!supportReturnCommentError"
-            :aria-describedby="supportReturnCommentError ? 'support-return-comment-error' : undefined"
-          />
-          <p v-if="supportReturnCommentError" id="support-return-comment-error" class="reject-error" role="alert">
-            {{ supportReturnCommentError }}
-          </p>
-        </div>
-        <div class="bank-return-modal__actions">
-          <button
-            class="action-btn action-btn--secondary"
-            :disabled="performingAction"
-            @click="handleSupportReturnConfirm"
-          >
-            {{ performingAction ? 'جارٍ التنفيذ…' : 'تأكيد الإعادة' }}
-          </button>
-          <button
-            class="action-btn action-btn--secondary"
-            :disabled="performingAction"
-            @click="resetSupportReturnModal"
-          >
-            إلغاء
-          </button>
-        </div>
-      </div>
-    </div>
   </div>
 </template>
-
-<style scoped>
-.actions-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.actions-row {
-  display: flex;
-  gap: 12px;
-  flex-direction: row-reverse;
-  justify-content: flex-start;
-}
-
-.action-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: 40px;
-  min-width: 100%;
-  padding: 0 16px;
-  border-radius: 16px;
-  font-size: 14px;
-  font-weight: 600;
-  border: none;
-  cursor: pointer;
-  text-decoration: none;
-  transition: opacity 0.15s;
-}
-
-.action-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.action-btn--primary {
-  background: #0066cc;
-  color: #ffffff;
-}
-
-.action-btn--primary:hover:not(:disabled) {
-  opacity: 0.88;
-}
-
-.action-btn--approve {
-  background: #1b5e20;
-  color: #ffffff;
-}
-
-.action-btn--approve:hover:not(:disabled) {
-  opacity: 0.88;
-}
-
-.action-btn--reject {
-  background: #c62828;
-  color: #ffffff;
-}
-
-.action-btn--reject:hover:not(:disabled) {
-  opacity: 0.88;
-}
-
-.action-btn--secondary {
-  background: #f5f5f7;
-  color: #1c222b;
-  border: 1px solid #cccccc;
-}
-
-.action-btn--secondary:hover:not(:disabled) {
-  background: #e8e8ed;
-}
-
-.reject-form {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.reject-label {
-  font-size: 14px;
-  font-weight: 500;
-  color: #6e6e73;
-}
-
-.required {
-  color: #ff3b30;
-}
-
-.reject-textarea {
-  width: 100%;
-  padding: 10px 12px;
-  border: 1.5px solid #d2d2d7;
-  border-radius: 8px;
-  font-size: 15px;
-  font-family: inherit;
-  color: #1d1d1f;
-  background: #ffffff;
-  resize: vertical;
-  direction: rtl;
-}
-
-.reject-textarea:focus {
-  outline: none;
-  border-color: #0071e3;
-}
-
-.reject-error {
-  font-size: 13px;
-  color: #ff3b30;
-  margin: 0;
-}
-
-.actions-error {
-  font-size: 14px;
-  color: #ff3b30;
-  background: #fff0ef;
-  border: 1px solid #ff3b3033;
-  border-radius: 8px;
-  padding: 10px 14px;
-  margin: 0;
-}
-
-.action-btn--amber {
-  background: #ff9f0a;
-  color: #ffffff;
-}
-
-.action-btn--amber:hover:not(:disabled) {
-  opacity: 0.88;
-}
-
-/* Close session confirm */
-.close-confirm {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.close-confirm__text {
-  font-size: 14px;
-  color: #1d1d1f;
-  margin: 0;
-}
-
-/* Director override modal */
-.override-modal {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.4);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 100;
-}
-
-.override-modal__content {
-  background: #ffffff;
-  border-radius: 16px;
-  padding: 28px;
-  width: 480px;
-  max-width: 95vw;
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-  direction: rtl;
-}
-
-.override-modal__title {
   font-size: 18px;
   font-weight: 600;
   color: #1d1d1f;

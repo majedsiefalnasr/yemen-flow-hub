@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { ShieldCheck } from 'lucide-vue-next'
+import { ShieldCheck, CheckCircle2 } from 'lucide-vue-next'
 import type { WizardStep1Data, WizardStep2Data, WizardStep3Data } from '../../composables/useRequestWizard'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card'
+import { Checkbox } from '../ui/checkbox'
+import { Label } from '../ui/label'
 
 const PAYMENT_LABELS: Record<string, string> = {
   LC: 'L/C اعتماد مستندي',
@@ -38,284 +41,115 @@ const formattedAmount = computed(() => {
 </script>
 
 <template>
-  <div class="step-content" dir="rtl">
-    <h2 class="section-title">مراجعة الطلب قبل الإرسال</h2>
+  <div class="flex flex-col gap-6" dir="rtl">
+    <h2 class="text-2xl font-bold">مراجعة الطلب قبل الإرسال</h2>
 
-    <!-- Summary card -->
-    <div class="summary-card">
-      <!-- بيانات الطلب -->
-      <div class="summary-section">
-        <h3 class="summary-heading">بيانات الطلب</h3>
-        <div class="summary-divider" />
-        <div class="summary-grid">
-          <div v-if="step1.goods_type" class="summary-cell">
-            <span class="summary-cell__label">نوع الواردات</span>
-            <span class="summary-cell__value">{{ step1.goods_type }}</span>
+    <Card>
+      <CardHeader>
+        <CardTitle>بيانات الطلب</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div v-if="step1.goods_type">
+            <p class="text-xs text-gray-600">نوع الواردات</p>
+            <p class="text-sm font-medium text-gray-900">{{ step1.goods_type }}</p>
           </div>
-          <div class="summary-cell">
-            <span class="summary-cell__label">المستورد</span>
-            <span class="summary-cell__value">{{ merchantName || '—' }}</span>
+          <div>
+            <p class="text-xs text-gray-600">المستورد</p>
+            <p class="text-sm font-medium text-gray-900">{{ merchantName || '—' }}</p>
           </div>
-          <div v-if="step1.amount" class="summary-cell">
-            <span class="summary-cell__label">مبلغ التمويل</span>
-            <span class="summary-cell__value">{{ formattedAmount }}</span>
+          <div v-if="step1.amount">
+            <p class="text-xs text-gray-600">مبلغ التمويل</p>
+            <p class="text-sm font-medium text-gray-900">{{ formattedAmount }}</p>
           </div>
-          <div v-if="step1.payment_terms" class="summary-cell">
-            <span class="summary-cell__label">شروط الدفع</span>
-            <span class="summary-cell__value">{{ PAYMENT_LABELS[step1.payment_terms] ?? step1.payment_terms }}</span>
+          <div v-if="step1.payment_terms">
+            <p class="text-xs text-gray-600">شروط الدفع</p>
+            <p class="text-sm font-medium text-gray-900">{{ PAYMENT_LABELS[step1.payment_terms] ?? step1.payment_terms }}</p>
           </div>
-          <div v-if="step1.due_date" class="summary-cell">
-            <span class="summary-cell__label">تاريخ الاستحقاق</span>
-            <span class="summary-cell__value">{{ step1.due_date }}</span>
+          <div v-if="step1.due_date">
+            <p class="text-xs text-gray-600">تاريخ الاستحقاق</p>
+            <p class="text-sm font-medium text-gray-900">{{ step1.due_date }}</p>
           </div>
-          <div v-if="step1.notes" class="summary-cell summary-cell--full">
-            <span class="summary-cell__label">ملاحظات</span>
-            <span class="summary-cell__value">{{ step1.notes }}</span>
+          <div v-if="step1.notes" class="sm:col-span-2">
+            <p class="text-xs text-gray-600">ملاحظات</p>
+            <p class="text-sm font-medium text-gray-900">{{ step1.notes }}</p>
           </div>
         </div>
-      </div>
+      </CardContent>
+    </Card>
 
-      <!-- بيانات المورد والشحنة -->
-      <div class="summary-section">
-        <h3 class="summary-heading">بيانات المورد والشحنة</h3>
-        <div class="summary-divider" />
-        <div class="summary-grid">
-          <div class="summary-cell">
-            <span class="summary-cell__label">المورد</span>
-            <span class="summary-cell__value">{{ step2.supplier_name || '—' }}</span>
+    <Card>
+      <CardHeader>
+        <CardTitle>بيانات المورد والشحنة</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <p class="text-xs text-gray-600">المورد</p>
+            <p class="text-sm font-medium text-gray-900">{{ step2.supplier_name || '—' }}</p>
           </div>
-          <div v-if="step2.origin_country" class="summary-cell">
-            <span class="summary-cell__label">بلد المنشأ</span>
-            <span class="summary-cell__value">{{ step2.origin_country }}</span>
+          <div v-if="step2.origin_country">
+            <p class="text-xs text-gray-600">بلد المنشأ</p>
+            <p class="text-sm font-medium text-gray-900">{{ step2.origin_country }}</p>
           </div>
-          <div v-if="step2.invoice_number" class="summary-cell">
-            <span class="summary-cell__label">رقم الفاتورة</span>
-            <span class="summary-cell__value">{{ step2.invoice_number }}</span>
+          <div v-if="step2.invoice_number">
+            <p class="text-xs text-gray-600">رقم الفاتورة</p>
+            <p class="text-sm font-medium text-gray-900">{{ step2.invoice_number }}</p>
           </div>
-          <div v-if="step2.invoice_date" class="summary-cell">
-            <span class="summary-cell__label">تاريخ الفاتورة</span>
-            <span class="summary-cell__value">{{ step2.invoice_date }}</span>
+          <div v-if="step2.invoice_date">
+            <p class="text-xs text-gray-600">تاريخ الفاتورة</p>
+            <p class="text-sm font-medium text-gray-900">{{ step2.invoice_date }}</p>
           </div>
-          <div v-if="step2.arrival_port" class="summary-cell">
-            <span class="summary-cell__label">ميناء الوصول</span>
-            <span class="summary-cell__value">{{ step2.arrival_port }}</span>
+          <div v-if="step2.arrival_port">
+            <p class="text-xs text-gray-600">ميناء الوصول</p>
+            <p class="text-sm font-medium text-gray-900">{{ step2.arrival_port }}</p>
           </div>
-          <div v-if="step2.bl_number" class="summary-cell">
-            <span class="summary-cell__label">رقم بوليصة الشحن</span>
-            <span class="summary-cell__value">{{ step2.bl_number }}</span>
+          <div v-if="step2.bl_number">
+            <p class="text-xs text-gray-600">رقم بوليصة الشحن</p>
+            <p class="text-sm font-medium text-gray-900">{{ step2.bl_number }}</p>
           </div>
-          <div v-if="step2.customs_office" class="summary-cell">
-            <span class="summary-cell__label">الجمارك المختصة</span>
-            <span class="summary-cell__value">{{ step2.customs_office }}</span>
+          <div v-if="step2.customs_office">
+            <p class="text-xs text-gray-600">الجمارك المختصة</p>
+            <p class="text-sm font-medium text-gray-900">{{ step2.customs_office }}</p>
           </div>
         </div>
-      </div>
+      </CardContent>
+    </Card>
 
-      <!-- الوثائق المرفوعة -->
-      <div v-if="uploadedDocs.length" class="summary-section">
-        <h3 class="summary-heading">الوثائق المرفوعة</h3>
-        <div class="summary-divider" />
-        <ul class="docs-list">
-          <li v-for="doc in uploadedDocs" :key="doc.key" class="doc-item">
-            <span class="doc-check">✓</span>
-            <span class="doc-label">{{ doc.label }}</span>
-            <span class="doc-name">{{ doc.name }}</span>
+    <Card v-if="uploadedDocs.length">
+      <CardHeader>
+        <CardTitle>الوثائق المرفوعة</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <ul class="flex flex-col gap-2">
+          <li v-for="doc in uploadedDocs" :key="doc.key" class="flex items-center gap-3">
+            <CheckCircle2 class="h-5 w-5 text-green-600 flex-shrink-0" />
+            <span class="text-sm text-gray-600 min-w-36">{{ doc.label }}</span>
+            <span class="text-sm font-medium text-gray-900">{{ doc.name }}</span>
           </li>
         </ul>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
 
-    <!-- Acknowledgment checkbox -->
-    <div class="ack-container">
-      <div class="ack-header">
-        <ShieldCheck class="ack-icon" :size="20" aria-hidden="true" />
-        <span class="ack-header-text">إقرار بصحة البيانات</span>
-      </div>
-      <label class="ack-label">
-        <input
-          type="checkbox"
-          class="ack-checkbox"
-          :checked="acknowledged"
-          @change="emit('update:acknowledged', ($event.target as HTMLInputElement).checked)"
-        />
-        <span class="ack-text">
-          أُقر بأن جميع البيانات والمستندات المقدمة صحيحة وكاملة، وأتحمل المسؤولية القانونية عن أي بيانات غير دقيقة أو مستندات مزوّرة، وفقاً للوائح البنك المركزي اليمني.
-        </span>
-      </label>
-    </div>
+    <Card class="border-blue-200 bg-blue-50">
+      <CardHeader>
+        <div class="flex items-center gap-2">
+          <ShieldCheck class="h-5 w-5 text-blue-600" />
+          <CardTitle class="text-blue-900">إقرار بصحة البيانات</CardTitle>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div class="flex gap-3">
+          <Checkbox
+            :checked="acknowledged"
+            @update:checked="emit('update:acknowledged', $event)"
+          />
+          <Label class="text-sm text-blue-900 leading-relaxed cursor-pointer">
+            أُقر بأن جميع البيانات والمستندات المقدمة صحيحة وكاملة، وأتحمل المسؤولية القانونية عن أي بيانات غير دقيقة أو مستندات مزوّرة، وفقاً للوائح البنك المركزي اليمني.
+          </Label>
+        </div>
+      </CardContent>
+    </Card>
   </div>
 </template>
 
-<style scoped>
-.step-content {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
-
-.section-title {
-  font-family: 'Tajawal', sans-serif;
-  font-size: 20px;
-  font-weight: 700;
-  color: #1c222b;
-  margin: 0;
-}
-
-/* Summary card */
-.summary-card {
-  border: 1px solid #cccccc;
-  border-radius: 16px;
-  background: #ffffff;
-  overflow: hidden;
-}
-
-.summary-section {
-  padding: 16px 20px;
-}
-
-.summary-section + .summary-section {
-  border-top: 1px solid #cccccc;
-}
-
-.summary-heading {
-  font-family: 'Tajawal', sans-serif;
-  font-size: 16px;
-  font-weight: 700;
-  color: #1c222b;
-  margin: 0 0 8px;
-}
-
-.summary-divider {
-  height: 1px;
-  background: #cccccc;
-  margin-bottom: 12px;
-}
-
-/* 2-column summary grid */
-.summary-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px 24px;
-}
-
-.summary-cell {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.summary-cell--full {
-  grid-column: span 2;
-}
-
-.summary-cell__label {
-  font-family: 'IBM Plex Sans Arabic', sans-serif;
-  font-size: 12px;
-  color: #6c757d;
-  font-weight: 400;
-}
-
-.summary-cell__value {
-  font-family: 'IBM Plex Sans Arabic', sans-serif;
-  font-size: 14px;
-  font-weight: 500;
-  color: #1c222b;
-}
-
-/* Docs list */
-.docs-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.doc-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.doc-check {
-  color: #1b5e20;
-  font-weight: 700;
-  font-size: 14px;
-}
-
-.doc-label {
-  font-family: 'IBM Plex Sans Arabic', sans-serif;
-  font-size: 14px;
-  color: #6c757d;
-  min-width: 140px;
-}
-
-.doc-name {
-  font-family: 'IBM Plex Sans Arabic', sans-serif;
-  font-size: 14px;
-  color: #1c222b;
-}
-
-/* Acknowledgment — blue info tone */
-.ack-container {
-  background: #e3f2fd;
-  border: 1px solid #bbdefb;
-  border-radius: 12px;
-  padding: 16px;
-  margin-bottom: 8px;
-}
-
-.ack-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-
-.ack-icon {
-  color: #0066cc;
-  flex-shrink: 0;
-}
-
-.ack-header-text {
-  font-family: 'Tajawal', sans-serif;
-  font-size: 15px;
-  font-weight: 700;
-  color: #0d47a1;
-}
-
-.ack-label {
-  display: flex;
-  gap: 12px;
-  align-items: flex-start;
-  cursor: pointer;
-}
-
-.ack-checkbox {
-  width: 20px;
-  height: 20px;
-  border-radius: 4px;
-  border: 2px solid #90caf9;
-  accent-color: #0066cc;
-  flex-shrink: 0;
-  margin-top: 2px;
-  cursor: pointer;
-}
-
-.ack-text {
-  font-family: 'IBM Plex Sans Arabic', sans-serif;
-  font-size: 14px;
-  color: #0d47a1;
-  line-height: 1.6;
-}
-
-@media (max-width: 600px) {
-  .summary-grid {
-    grid-template-columns: 1fr;
-  }
-  .summary-cell--full {
-    grid-column: span 1;
-  }
-}
-</style>

@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { Search, Loader2, Clock, FileText, User, Building2, Stamp } from 'lucide-vue-next'
 import { useSearch } from '../../composables/useSearch'
-import Icon from '../shared/Icon.vue'
+import { Input } from '../ui/input'
 import type { SearchEntityType } from '../../types/models'
 
 const router = useRouter()
@@ -100,52 +101,58 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div ref="wrapperRef" class="global-search" :class="{ 'mobile-visible': props.mobile }">
+  <div ref="wrapperRef" class="relative w-full max-w-sm" :class="{ 'block': props.mobile, 'hidden max-md:hidden': !props.mobile }">
     <!-- Input -->
-    <div class="search-input-wrap">
-      <Icon name="search" class="search-icon" />
+    <div class="flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2">
+      <Search class="h-4 w-4 flex-shrink-0 text-gray-500" />
       <input
         ref="inputRef"
         type="search"
-        class="search-input"
+        class="flex-1 border-none bg-transparent text-sm outline-none placeholder:text-gray-400"
         placeholder="بحث..."
         aria-label="بحث في النظام"
         autocomplete="off"
+        dir="rtl"
         :value="inputValue"
         @input="onInput"
         @focus="onFocus"
         @keydown="onKeydown"
       />
-      <span v-if="loading" class="search-spinner" aria-hidden="true" />
+      <Loader2 v-if="loading" class="h-4 w-4 flex-shrink-0 animate-spin text-blue-600" aria-hidden="true" />
     </div>
 
     <!-- Dropdown -->
-    <div v-if="showDropdown" class="search-dropdown" role="listbox" aria-label="نتائج البحث">
+    <div
+      v-if="showDropdown"
+      class="absolute top-full start-0 z-50 mt-1 w-full max-h-96 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg"
+      role="listbox"
+      aria-label="نتائج البحث"
+    >
 
       <!-- Recent searches (when query is empty) -->
       <template v-if="inputValue.length === 0 && recentSearches.length > 0">
-        <div class="search-section-header">عمليات البحث الأخيرة</div>
+        <div class="px-3 py-2 text-xs font-semibold uppercase text-gray-500">عمليات البحث الأخيرة</div>
         <button
           v-for="term in recentSearches"
           :key="term"
-          class="search-recent-item"
+          class="flex w-full items-center gap-2.5 px-3 py-2 text-start transition-colors hover:bg-gray-100"
           type="button"
           @click="selectRecent(term)"
         >
-          <Icon name="clock" class="result-icon" />
-          <span>{{ term }}</span>
+          <Clock class="h-4 w-4 flex-shrink-0 text-gray-500" />
+          <span class="text-sm text-gray-700">{{ term }}</span>
         </button>
       </template>
 
       <!-- Results (when query ≥ 2 chars) -->
       <template v-else-if="inputValue.length >= 2">
         <!-- Filter chips -->
-        <div v-if="hasResults" class="search-chips">
+        <div v-if="hasResults" class="flex flex-wrap gap-1.5 border-b border-gray-200 px-3 py-2">
           <button
             v-for="chip in availableChips"
             :key="chip.key"
-            class="search-chip"
-            :class="{ active: activeFilter === chip.key }"
+            class="rounded-full border text-xs px-2.5 py-1 transition-all"
+            :class="activeFilter === chip.key ? 'border-blue-600 bg-blue-600 text-white' : 'border-gray-300 bg-transparent text-gray-700 hover:bg-gray-100'"
             type="button"
             @click="activeFilter = chip.key"
           >
@@ -155,265 +162,84 @@ onBeforeUnmount(() => {
 
         <!-- Requests group -->
         <template v-if="filteredResults.requests.length > 0">
-          <div class="search-section-header">الطلبات</div>
+          <div class="px-3 py-2 text-xs font-semibold uppercase text-gray-500">الطلبات</div>
           <button
             v-for="req in filteredResults.requests"
             :key="req.id"
-            class="search-result-item"
+            class="flex w-full items-center gap-2.5 px-3 py-2 text-start transition-colors hover:bg-gray-100"
             type="button"
             @click="navigateTo(`/requests/${req.id}`)"
           >
-            <Icon name="file-text" class="result-icon" />
-            <div class="result-content">
-              <span class="result-primary">{{ req.reference_number }}</span>
-              <span class="result-secondary">{{ req.supplier_name }}</span>
+            <FileText class="h-4 w-4 flex-shrink-0 text-gray-500" />
+            <div class="min-w-0 flex-1">
+              <div class="text-sm font-medium text-gray-900">{{ req.reference_number }}</div>
+              <div class="truncate text-xs text-gray-600">{{ req.supplier_name }}</div>
             </div>
           </button>
         </template>
 
         <!-- Users group -->
         <template v-if="filteredResults.users.length > 0">
-          <div class="search-section-header">المستخدمون</div>
+          <div class="px-3 py-2 text-xs font-semibold uppercase text-gray-500">المستخدمون</div>
           <button
             v-for="user in filteredResults.users"
             :key="user.id"
-            class="search-result-item"
+            class="flex w-full items-center gap-2.5 px-3 py-2 text-start transition-colors hover:bg-gray-100"
             type="button"
             @click="navigateTo('/users')"
           >
-            <Icon name="user" class="result-icon" />
-            <div class="result-content">
-              <span class="result-primary">{{ user.name }}</span>
-              <span class="result-secondary">{{ user.role_label }}</span>
+            <User class="h-4 w-4 flex-shrink-0 text-gray-500" />
+            <div class="min-w-0 flex-1">
+              <div class="text-sm font-medium text-gray-900">{{ user.name }}</div>
+              <div class="truncate text-xs text-gray-600">{{ user.role_label }}</div>
             </div>
           </button>
         </template>
 
         <!-- Banks group -->
         <template v-if="filteredResults.banks.length > 0">
-          <div class="search-section-header">البنوك</div>
+          <div class="px-3 py-2 text-xs font-semibold uppercase text-gray-500">البنوك</div>
           <button
             v-for="bank in filteredResults.banks"
             :key="bank.id"
-            class="search-result-item"
+            class="flex w-full items-center gap-2.5 px-3 py-2 text-start transition-colors hover:bg-gray-100"
             type="button"
             @click="navigateTo('/banks')"
           >
-            <Icon name="bank" class="result-icon" />
-            <div class="result-content">
-              <span class="result-primary">{{ bank.name }}</span>
-              <span class="result-secondary">{{ bank.code }}</span>
+            <Building2 class="h-4 w-4 flex-shrink-0 text-gray-500" />
+            <div class="min-w-0 flex-1">
+              <div class="text-sm font-medium text-gray-900">{{ bank.name }}</div>
+              <div class="truncate text-xs text-gray-600">{{ bank.code }}</div>
             </div>
           </button>
         </template>
 
         <!-- Customs group -->
         <template v-if="filteredResults.customs.length > 0">
-          <div class="search-section-header">البيانات الجمركية</div>
+          <div class="px-3 py-2 text-xs font-semibold uppercase text-gray-500">البيانات الجمركية</div>
           <button
             v-for="customs in filteredResults.customs"
             :key="customs.id"
-            class="search-result-item"
+            class="flex w-full items-center gap-2.5 px-3 py-2 text-start transition-colors hover:bg-gray-100"
             type="button"
             @click="navigateTo(`/requests/${customs.request_id}`)"
           >
-            <Icon name="stamp" class="result-icon" />
-            <div class="result-content">
-              <span class="result-primary">{{ customs.declaration_number }}</span>
-              <span class="result-secondary">{{ customs.reference_number }}</span>
+            <Stamp class="h-4 w-4 flex-shrink-0 text-gray-500" />
+            <div class="min-w-0 flex-1">
+              <div class="text-sm font-medium text-gray-900">{{ customs.declaration_number }}</div>
+              <div class="truncate text-xs text-gray-600">{{ customs.reference_number }}</div>
             </div>
           </button>
         </template>
 
         <!-- Empty state -->
-        <div v-if="!hasResults && !loading" class="search-empty">
-          <Icon name="search" class="empty-icon" />
-          <span>لا توجد نتائج لـ «{{ inputValue }}»</span>
+        <div v-if="!hasResults && !loading" class="flex flex-col items-center gap-2 px-4 py-6 text-center">
+          <Search class="h-6 w-6 opacity-30 text-gray-400" />
+          <span class="text-sm text-gray-600">لا توجد نتائج لـ «{{ inputValue }}»</span>
         </div>
       </template>
     </div>
+
+    <div v-if="showDropdown" class="fixed inset-0 z-40" aria-hidden="true" @click="isOpen = false" />
   </div>
 </template>
-
-<style scoped>
-.global-search {
-  position: relative;
-  width: 100%;
-  max-width: 480px;
-}
-
-.search-input-wrap {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background-color: var(--color-background);
-  border: 1px solid var(--color-border);
-  border-radius: 10px;
-  padding: 0 12px;
-  height: 36px;
-}
-
-.search-icon {
-  color: var(--color-text-secondary);
-  flex-shrink: 0;
-  width: 16px;
-  height: 16px;
-}
-
-.search-input {
-  flex: 1;
-  border: none;
-  background: transparent;
-  font-size: 14px;
-  color: var(--color-text-primary);
-  outline: none;
-  direction: rtl;
-  min-width: 0;
-}
-
-.search-input::placeholder {
-  color: var(--color-text-secondary);
-}
-
-/* Remove browser default clear button */
-.search-input::-webkit-search-cancel-button {
-  display: none;
-}
-
-.search-spinner {
-  width: 14px;
-  height: 14px;
-  border: 2px solid var(--color-border);
-  border-top-color: var(--color-primary);
-  border-radius: 50%;
-  animation: spin 0.6s linear infinite;
-  flex-shrink: 0;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-.search-dropdown {
-  position: absolute;
-  top: calc(100% + 6px);
-  inset-inline-start: 0;
-  inset-inline-end: 0;
-  background-color: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 12px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
-  z-index: 100;
-  max-height: 400px;
-  overflow-y: auto;
-  padding: 8px 0;
-}
-
-.search-section-header {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--color-text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  padding: 6px 14px 2px;
-}
-
-.search-chips {
-  display: flex;
-  gap: 6px;
-  padding: 8px 12px;
-  flex-wrap: wrap;
-}
-
-.search-chip {
-  padding: 4px 10px;
-  border-radius: 20px;
-  border: 1px solid var(--color-border);
-  background-color: transparent;
-  font-size: 12px;
-  color: var(--color-text-secondary);
-  cursor: pointer;
-  transition: background-color 0.15s, color 0.15s;
-}
-
-.search-chip.active,
-.search-chip:hover {
-  background-color: var(--color-primary);
-  color: #ffffff;
-  border-color: var(--color-primary);
-}
-
-.search-result-item,
-.search-recent-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  padding: 8px 14px;
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  text-align: start;
-  direction: rtl;
-  transition: background-color 0.1s;
-}
-
-.search-result-item:hover,
-.search-recent-item:hover {
-  background-color: var(--color-background);
-}
-
-.result-icon {
-  color: var(--color-text-secondary);
-  flex-shrink: 0;
-  width: 16px;
-  height: 16px;
-}
-
-.result-content {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  min-width: 0;
-}
-
-.result-primary {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--color-text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.result-secondary {
-  font-size: 11px;
-  color: var(--color-text-secondary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.search-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  padding: 24px 16px;
-  color: var(--color-text-secondary);
-  font-size: 13px;
-}
-
-.empty-icon {
-  width: 24px;
-  height: 24px;
-  opacity: 0.4;
-}
-
-/* Mobile: hide on small screens — handled via AppHeader */
-@media (max-width: 600px) {
-  .global-search:not(.mobile-visible) {
-    display: none;
-  }
-}
-</style>

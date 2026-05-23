@@ -4,12 +4,17 @@ import { useForm } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/zod'
 import { z } from 'zod'
 import type { Merchant } from '../../types/models'
+import { AlertCircle } from 'lucide-vue-next'
 import Dialog from '@/components/ui/dialog/Dialog.vue'
 import DialogContent from '@/components/ui/dialog/DialogContent.vue'
 import DialogFooter from '@/components/ui/dialog/DialogFooter.vue'
 import DialogHeader from '@/components/ui/dialog/DialogHeader.vue'
 import DialogOverlay from '@/components/ui/dialog/DialogOverlay.vue'
 import DialogTitle from '@/components/ui/dialog/DialogTitle.vue'
+import Button from '@/components/ui/button/Button.vue'
+import Input from '@/components/ui/input/Input.vue'
+import Label from '@/components/ui/label/Label.vue'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 
 const BUSINESS_TYPE_OPTIONS = [
   { value: 'import', label: 'استيراد' },
@@ -178,122 +183,144 @@ const onSubmit = handleSubmit((values) => {
         dir="rtl"
         :aria-label="isEditMode ? 'تعديل بيانات التاجر' : 'تسجيل تاجر جديد'"
       >
-        <DialogHeader class="modal-header">
+        <DialogHeader class="flex items-start justify-between">
           <div>
-            <DialogTitle class="modal-title">
+            <DialogTitle class="text-xl font-semibold text-gray-900">
               {{ isEditMode ? 'تعديل بيانات التاجر' : 'تسجيل تاجر جديد' }}
             </DialogTitle>
-            <p class="modal-description">الحقول المعلّمة بـ * إلزامية.</p>
+            <p class="text-xs text-gray-600 mt-1">الحقول المعلّمة بـ * إلزامية.</p>
           </div>
-          <button class="close-btn" aria-label="إغلاق" :disabled="props.saving" @click="requestClose">✕</button>
+          <button
+            class="text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed text-lg leading-none p-1"
+            aria-label="إغلاق"
+            :disabled="props.saving"
+            @click="requestClose"
+          >
+            ✕
+          </button>
         </DialogHeader>
 
-        <div v-if="props.serverError" class="server-error-banner" role="alert">
-          {{ props.serverError }}
-        </div>
+        <Alert v-if="props.serverError" class="border-l-4 border-l-red-600 bg-red-50 border-0" role="alert">
+          <AlertCircle class="h-4 w-4 text-red-600" aria-hidden="true" />
+          <AlertDescription class="text-red-600 text-sm">{{ props.serverError }}</AlertDescription>
+        </Alert>
 
-        <form class="modal-form" @submit.prevent="onSubmit">
-          <div class="form-grid">
+        <form class="flex flex-col gap-5" @submit.prevent="onSubmit">
+          <div class="grid grid-cols-2 gap-4">
             <!-- Bank selector for CBY Admin creating a new merchant -->
-            <div v-if="isBankRequiredForCreate" class="form-field form-field-full">
-              <label class="form-label" for="bank-id">البنك التابع له <span class="required">*</span></label>
-              <select
-                id="bank-id"
-                v-model="bank_id"
-                v-bind="bankIdAttrs"
-                class="form-input"
-                :class="{ 'input-error': errors.bank_id }"
-              >
-                <option value="">اختر البنك</option>
-                <option v-for="bank in props.bankOptions" :key="bank.id" :value="String(bank.id)">
-                  {{ bank.name }}
-                </option>
-              </select>
-              <span v-if="errors.bank_id" class="field-error" role="alert">{{ errors.bank_id }}</span>
-            </div>
+            <template v-if="isBankRequiredForCreate">
+              <div class="col-span-2 flex flex-col gap-2">
+                <Label for="bank-id" class="text-xs text-gray-600 font-medium">
+                  البنك التابع له <span class="text-red-600">*</span>
+                </Label>
+                <select
+                  id="bank-id"
+                  v-model="bank_id"
+                  v-bind="bankIdAttrs"
+                  class="h-9 px-3 border border-gray-300 rounded-md bg-white text-sm text-gray-900 outline-none focus-visible:ring-1 focus-visible:ring-blue-600"
+                  :class="{ 'border-red-600': errors.bank_id }"
+                >
+                  <option value="">اختر البنك</option>
+                  <option v-for="bank in props.bankOptions" :key="bank.id" :value="String(bank.id)">
+                    {{ bank.name }}
+                  </option>
+                </select>
+                <span v-if="errors.bank_id" class="text-xs text-red-600" role="alert">{{ errors.bank_id }}</span>
+              </div>
+            </template>
 
-            <div v-else-if="showLockedBankField" class="form-field form-field-full">
-              <label class="form-label" for="locked-bank-name">البنك التابع له <span class="required">*</span></label>
-              <input
-                id="locked-bank-name"
-                :value="props.lockedBankName ?? ''"
-                type="text"
-                class="form-input form-input-locked"
-                readonly
-                disabled
-              >
-              <span class="field-hint">مرتبط بالبنك المسجل على حسابك.</span>
-            </div>
+            <template v-else-if="showLockedBankField">
+              <div class="col-span-2 flex flex-col gap-2">
+                <Label for="locked-bank-name" class="text-xs text-gray-600 font-medium">
+                  البنك التابع له <span class="text-red-600">*</span>
+                </Label>
+                <Input
+                  id="locked-bank-name"
+                  :value="props.lockedBankName ?? ''"
+                  type="text"
+                  readonly
+                  disabled
+                  class="bg-gray-100 text-gray-600 cursor-not-allowed"
+                />
+                <span class="text-xs text-gray-600">مرتبط بالبنك المسجل على حسابك.</span>
+              </div>
+            </template>
 
             <!-- Name -->
-            <div class="form-field form-field-full">
-              <label class="form-label" for="merchant-name">اسم التاجر / الشركة <span class="required">*</span></label>
-              <input
+            <div class="col-span-2 flex flex-col gap-2">
+              <Label for="merchant-name" class="text-xs text-gray-600 font-medium">
+                اسم التاجر / الشركة <span class="text-red-600">*</span>
+              </Label>
+              <Input
                 id="merchant-name"
                 v-model="name"
                 v-bind="nameAttrs"
                 type="text"
-                class="form-input"
-                :class="{ 'input-error': errors.name }"
                 placeholder="مثال: شركة الكميم للأدوية"
-              >
-              <span v-if="errors.name" class="field-error" role="alert">{{ errors.name }}</span>
+                :class="{ 'border-red-600': errors.name }"
+              />
+              <span v-if="errors.name" class="text-xs text-red-600" role="alert">{{ errors.name }}</span>
             </div>
 
             <!-- Commercial register -->
-            <div class="form-field">
-              <label class="form-label" for="commercial-register">رقم السجل التجاري <span class="required">*</span></label>
-              <input
+            <div class="flex flex-col gap-2">
+              <Label for="commercial-register" class="text-xs text-gray-600 font-medium">
+                رقم السجل التجاري <span class="text-red-600">*</span>
+              </Label>
+              <Input
                 id="commercial-register"
                 v-model="commercial_register"
                 v-bind="commercialRegisterAttrs"
                 type="text"
-                class="form-input"
-                :class="{ 'input-error': errors.commercial_register }"
                 placeholder="CR-12345"
                 dir="ltr"
-              >
-              <span v-if="errors.commercial_register" class="field-error" role="alert">{{ errors.commercial_register }}</span>
+                :class="{ 'border-red-600': errors.commercial_register }"
+              />
+              <span v-if="errors.commercial_register" class="text-xs text-red-600" role="alert">{{ errors.commercial_register }}</span>
             </div>
 
             <!-- Tax number -->
-            <div class="form-field">
-              <label class="form-label" for="tax-number">الرقم الضريبي <span class="required">*</span></label>
-              <input
+            <div class="flex flex-col gap-2">
+              <Label for="tax-number" class="text-xs text-gray-600 font-medium">
+                الرقم الضريبي <span class="text-red-600">*</span>
+              </Label>
+              <Input
                 id="tax-number"
                 v-model="tax_number"
                 v-bind="taxNumberAttrs"
                 type="text"
-                class="form-input"
-                :class="{ 'input-error': errors.tax_number }"
                 placeholder="4123456"
                 dir="ltr"
-              >
-              <span v-if="errors.tax_number" class="field-error" role="alert">{{ errors.tax_number }}</span>
+                :class="{ 'border-red-600': errors.tax_number }"
+              />
+              <span v-if="errors.tax_number" class="text-xs text-red-600" role="alert">{{ errors.tax_number }}</span>
             </div>
 
             <!-- Phone -->
-            <div class="form-field">
-              <label class="form-label" for="merchant-phone">هاتف التواصل</label>
-              <input
+            <div class="flex flex-col gap-2">
+              <Label for="merchant-phone" class="text-xs text-gray-600 font-medium">
+                هاتف التواصل
+              </Label>
+              <Input
                 id="merchant-phone"
                 v-model="phone"
                 v-bind="phoneAttrs"
                 type="text"
-                class="form-input"
                 placeholder="+9677…"
                 dir="ltr"
-              >
+              />
             </div>
 
             <!-- Business type -->
-            <div class="form-field">
-              <label class="form-label" for="business-type">القطاع / النشاط</label>
+            <div class="flex flex-col gap-2">
+              <Label for="business-type" class="text-xs text-gray-600 font-medium">
+                القطاع / النشاط
+              </Label>
               <select
                 id="business-type"
                 v-model="business_type"
                 v-bind="businessTypeAttrs"
-                class="form-input"
+                class="h-9 px-3 border border-gray-300 rounded-md bg-white text-sm text-gray-900 outline-none focus-visible:ring-1 focus-visible:ring-blue-600"
               >
                 <option value="">اختر القطاع</option>
                 <option v-for="opt in BUSINESS_TYPE_OPTIONS" :key="opt.value" :value="opt.value">
@@ -303,13 +330,15 @@ const onSubmit = handleSubmit((values) => {
             </div>
 
             <!-- Status — edit mode only -->
-            <div v-if="isEditMode" class="form-field">
-              <label class="form-label" for="merchant-status">الحالة</label>
+            <div v-if="isEditMode" class="flex flex-col gap-2">
+              <Label for="merchant-status" class="text-xs text-gray-600 font-medium">
+                الحالة
+              </Label>
               <select
                 id="merchant-status"
                 v-model="is_active"
                 v-bind="isActiveAttrs"
-                class="form-input"
+                class="h-9 px-3 border border-gray-300 rounded-md bg-white text-sm text-gray-900 outline-none focus-visible:ring-1 focus-visible:ring-blue-600"
               >
                 <option value="true">نشط</option>
                 <option value="false">موقوف</option>
@@ -317,28 +346,29 @@ const onSubmit = handleSubmit((values) => {
             </div>
 
             <!-- Address -->
-            <div class="form-field form-field-full">
-              <label class="form-label" for="address">العنوان</label>
-              <input
+            <div class="col-span-2 flex flex-col gap-2">
+              <Label for="address" class="text-xs text-gray-600 font-medium">
+                العنوان
+              </Label>
+              <Input
                 id="address"
                 v-model="address"
                 v-bind="addressAttrs"
                 type="text"
-                class="form-input"
                 placeholder="المدينة – الشارع"
-              >
+              />
             </div>
           </div>
 
-          <DialogFooter class="modal-actions">
-            <button type="button" class="btn-secondary" :disabled="props.saving" @click="requestClose">
+          <DialogFooter class="flex justify-end gap-3 pt-2">
+            <Button type="button" variant="outline" :disabled="props.saving" @click="requestClose">
               إلغاء
-            </button>
-            <button type="submit" class="btn-primary" :disabled="isSaveDisabled">
+            </Button>
+            <Button type="submit" :disabled="isSaveDisabled">
               <template v-if="props.saving">جارٍ الحفظ…</template>
               <template v-else-if="isEditMode">حفظ التعديلات</template>
               <template v-else>حفظ التاجر</template>
-            </button>
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>
@@ -346,188 +376,3 @@ const onSubmit = handleSubmit((values) => {
   </Dialog>
 </template>
 
-<style scoped>
-.modal-layer {
-  position: fixed;
-  inset: 0;
-  z-index: 100;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.modal-backdrop {
-  position: absolute;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.4);
-}
-
-.modal {
-  position: relative;
-  z-index: 1;
-  background: #ffffff;
-  border-radius: 24px;
-  padding: 32px;
-  width: 560px;
-  max-width: 90vw;
-  max-height: 90vh;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.modal-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.modal-title {
-  font-size: 20px;
-  font-weight: 600;
-  color: #1c222b;
-  margin: 0 0 4px;
-}
-
-.modal-description {
-  font-size: 13px;
-  color: #6c757d;
-  margin: 0;
-}
-
-.close-btn {
-  background: none;
-  border: none;
-  font-size: 18px;
-  color: #6c757d;
-  cursor: pointer;
-  line-height: 1;
-  padding: 4px;
-  flex-shrink: 0;
-}
-
-.close-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.server-error-banner {
-  background: #fff0ef;
-  border: 1px solid #c62828;
-  border-radius: 8px;
-  padding: 10px 14px;
-  font-size: 13px;
-  color: #c62828;
-}
-
-.modal-form {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.form-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-}
-
-.form-field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.form-field-full {
-  grid-column: 1 / -1;
-}
-
-.form-label {
-  font-size: 13px;
-  color: #6c757d;
-  font-weight: 500;
-}
-
-.required {
-  color: #c62828;
-}
-
-.form-input {
-  height: 40px;
-  padding: 0 12px;
-  border: 1px solid #cccccc;
-  border-radius: 12px;
-  font-size: 14px;
-  color: #1c222b;
-  background: #ffffff;
-  outline: none;
-  width: 100%;
-  box-sizing: border-box;
-  font-family: inherit;
-}
-
-.form-input:focus {
-  border-color: #0066cc;
-}
-
-.input-error {
-  border-color: #c62828;
-}
-
-.field-error {
-  font-size: 12px;
-  color: #c62828;
-}
-
-.field-hint {
-  font-size: 12px;
-  color: #6c757d;
-}
-
-.form-input-locked {
-  background: #f8f9fa;
-  color: #6c757d;
-  cursor: not-allowed;
-}
-
-.modal-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-}
-
-.btn-primary {
-  height: 44px;
-  padding: 0 24px;
-  background: #0066cc;
-  color: #ffffff;
-  border: none;
-  border-radius: 16px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-}
-
-.btn-primary:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.btn-secondary {
-  height: 44px;
-  padding: 0 24px;
-  background: transparent;
-  color: #1c222b;
-  border: 1px solid #cccccc;
-  border-radius: 16px;
-  font-size: 14px;
-  cursor: pointer;
-}
-
-.btn-secondary:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-</style>

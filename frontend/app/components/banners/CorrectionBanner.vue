@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { AlertTriangle } from 'lucide-vue-next'
+import { Alert, AlertDescription } from '../ui/alert'
+
 withDefaults(defineProps<{
   variant?: 'draft_rejected' | 'bank_returned' | 'support_returned'
   rejectionReason?: string | null
@@ -10,63 +13,25 @@ withDefaults(defineProps<{
 </script>
 
 <template>
-  <div class="correction-banner" role="status" aria-live="polite" dir="rtl">
-    <span class="correction-icon" aria-hidden="true">⚠️</span>
-    <div class="correction-body">
-      <span v-if="variant === 'bank_returned'" class="correction-message">
+  <Alert variant="destructive" dir="rtl" class="flex items-start gap-3 border-amber-300 bg-amber-50">
+    <AlertTriangle class="h-5 w-5 flex-shrink-0 mt-0.5 text-amber-600" aria-hidden="true" />
+    <div class="flex flex-col gap-1 flex-1">
+      <AlertDescription v-if="variant === 'bank_returned'" class="text-sm font-medium">
         إعادة من المراجع — يرجى التعديل وإعادة الإرسال
-      </span>
-      <span v-else-if="variant === 'support_returned'" class="correction-message">
+      </AlertDescription>
+      <AlertDescription v-else-if="variant === 'support_returned'" class="text-sm font-medium">
         إعادة من لجنة المساندة — يرجى التعديل وإعادة الإرسال
-      </span>
-      <span v-else class="correction-message">
+      </AlertDescription>
+      <AlertDescription v-else class="text-sm font-medium">
         تم إرجاع الطلب للتصحيح من المراجعة الداخلية — يرجى مراجعة الملاحظات وتعديل الطلب.
-      </span>
-      <span v-if="variant === 'bank_returned' && reviewerComment" class="correction-reason">
+      </AlertDescription>
+      <p v-if="variant === 'bank_returned' && reviewerComment" class="text-xs text-amber-800">
         تعليق المراجع: {{ reviewerComment }}
-      </span>
-      <span v-else-if="variant === 'support_returned' && supportComment" class="correction-reason">
+      </p>
+      <p v-else-if="variant === 'support_returned' && supportComment" class="text-xs text-amber-800">
         تعليق لجنة المساندة: {{ supportComment }}
-      </span>
-      <span v-else-if="rejectionReason" class="correction-reason">سبب الإرجاع: {{ rejectionReason }}</span>
+      </p>
+      <p v-else-if="rejectionReason" class="text-xs text-amber-800">سبب الإرجاع: {{ rejectionReason }}</p>
     </div>
-  </div>
+  </Alert>
 </template>
-
-<style scoped>
-.correction-banner {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 12px 16px;
-  background: #fff7ed;
-  border: 1px solid #ff9f0a55;
-  border-radius: 12px;
-  color: #9a5a00;
-  font-size: 15px;
-  font-weight: 500;
-}
-
-.correction-icon {
-  font-size: 18px;
-  flex-shrink: 0;
-  margin-top: 1px;
-}
-
-.correction-body {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  flex: 1;
-}
-
-.correction-message {
-  line-height: 1.5;
-}
-
-.correction-reason {
-  font-size: 13px;
-  color: #6b3d00;
-  font-weight: 400;
-}
-</style>

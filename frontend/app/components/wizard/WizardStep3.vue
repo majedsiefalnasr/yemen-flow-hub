@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import type { WizardStep3Data, WizardUploadState, WizardDocumentKey } from '../../composables/useRequestWizard'
+import { Button } from '../ui/button'
+import { AlertTriangle, CheckCircle2, Upload, X } from 'lucide-vue-next'
 
 const props = defineProps<{
   modelValue: WizardStep3Data
@@ -104,303 +106,91 @@ function getFileError(key: WizardDocumentKey): string | null {
 </script>
 
 <template>
-  <div class="step-content" dir="rtl">
-    <h2 class="section-title">رفع الوثائق المطلوبة</h2>
+  <div class="flex flex-col gap-6" dir="rtl">
+    <h2 class="text-2xl font-bold">رفع الوثائق المطلوبة</h2>
 
-    <div class="upload-grid">
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
       <div
         v-for="zone in ZONES"
         :key="zone.key"
-        class="upload-zone"
+        class="relative min-h-36 p-5 border-2 border-dashed rounded-lg transition-colors"
         :class="{
-          'upload-zone--drag': dragOver === zone.key,
-          'upload-zone--done': getZoneFile(zone.key) && !getFileError(zone.key),
-          'upload-zone--error': !!getFileError(zone.key),
+          'border-blue-500 bg-blue-50': dragOver === zone.key,
+          'border-green-600 bg-green-50': getZoneFile(zone.key) && !getFileError(zone.key),
+          'border-red-600 bg-red-50': getFileError(zone.key),
+          'border-gray-300 bg-gray-50': !dragOver && !getZoneFile(zone.key),
         }"
         @dragover="onDragOver(zone.key, $event)"
         @dragleave="onDragLeave"
         @drop="onDrop(zone.key, $event)"
       >
-        <!-- Required / optional badge -->
-        <span class="zone-badge" :class="zone.required ? 'zone-badge--required' : 'zone-badge--optional'">
+        <!-- Badge -->
+        <span
+          class="absolute top-2 start-2 text-xs font-normal rounded-full px-2 py-1"
+          :class="zone.required ? 'bg-red-100 text-red-700 border border-red-200' : 'bg-blue-100 text-blue-700 border border-blue-200'"
+        >
           {{ zone.required ? 'إلزامي' : 'اختياري' }}
         </span>
 
         <!-- Uploaded state -->
         <template v-if="getZoneFile(zone.key) && !getFileError(zone.key)">
-          <div class="zone-uploaded">
-            <span class="zone-check">✓</span>
-            <span class="zone-title zone-title--done">{{ zone.title }}</span>
-          </div>
-          <div class="file-chip">
-            <span class="file-chip__icon">📎</span>
-            <span class="file-chip__name">{{ getZoneFile(zone.key)!.name }}</span>
-            <span class="file-chip__size">{{ formatBytes(getZoneFile(zone.key)!.size) }}</span>
-            <button
-              type="button"
-              class="file-chip__remove"
-              :aria-label="`إزالة ${zone.title}`"
-              :disabled="loading"
-              @click="removeFile(zone.key)"
-            >
-              ✗
-            </button>
+          <div class="flex flex-col items-center justify-center h-full gap-2">
+            <div class="flex items-center gap-2">
+              <CheckCircle2 class="h-5 w-5 text-green-600" />
+              <p class="font-semibold text-green-700">{{ zone.title }}</p>
+            </div>
+            <div class="flex items-center gap-2 bg-green-100 rounded px-3 py-1">
+              <span class="text-sm text-green-700">{{ getZoneFile(zone.key)!.name }}</span>
+              <span class="text-xs text-gray-600">{{ formatBytes(getZoneFile(zone.key)!.size) }}</span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                class="h-5 w-5 p-0 text-red-600 hover:text-red-800"
+                :aria-label="`إزالة ${zone.title}`"
+                :disabled="loading"
+                @click="removeFile(zone.key)"
+              >
+                <X class="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </template>
 
         <!-- Idle / error state -->
         <template v-else>
-          <span class="zone-upload-icon" aria-hidden="true">⬆</span>
-          <p class="zone-title">{{ zone.title }}</p>
-          <p v-if="getZoneFile(zone.key)" class="zone-selected-file">{{ getZoneFile(zone.key)!.name }}</p>
-          <p class="zone-hint">
-            {{ zone.required ? 'إلزامي' : 'اختياري' }} — PDF (حد أقصى {{ MAX_SIZE_MB }}MB)
-          </p>
-          <label class="zone-browse-btn">
-            اضغط للرفع
-            <input
-              type="file"
-              class="visually-hidden"
-              :accept="ALLOWED_EXTENSIONS.join(',')"
-              :disabled="loading"
-              @change="onInputChange(zone.key, $event)"
-            />
-          </label>
+          <div class="flex flex-col items-center justify-center h-full gap-3">
+            <Upload class="h-6 w-6 text-gray-500" :class="{ 'text-blue-500': dragOver === zone.key }" />
+            <p class="font-semibold text-gray-900">{{ zone.title }}</p>
+            <p v-if="getZoneFile(zone.key)" class="text-sm text-gray-700 break-words">{{ getZoneFile(zone.key)!.name }}</p>
+            <p class="text-xs text-gray-600">{{ zone.required ? 'إلزامي' : 'اختياري' }} — PDF ({{ MAX_SIZE_MB }}MB)</p>
+            <label>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                as-child
+              >
+                <span>اضغط للرفع</span>
+              </Button>
+              <input
+                type="file"
+                class="sr-only"
+                :accept="ALLOWED_EXTENSIONS.join(',')"
+                :disabled="loading"
+                @change="onInputChange(zone.key, $event)"
+              />
+            </label>
+          </div>
         </template>
 
         <!-- File error -->
-        <p v-if="getFileError(zone.key)" class="zone-file-error" role="alert">
-          ⚠ {{ getFileError(zone.key) }}
+        <p v-if="getFileError(zone.key)" class="absolute bottom-2 start-2 end-2 text-xs text-red-600 flex items-center gap-1" role="alert">
+          <AlertTriangle class="h-3 w-3" />
+          {{ getFileError(zone.key) }}
         </p>
       </div>
     </div>
   </div>
 </template>
 
-<style scoped>
-.step-content {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
-
-.section-title {
-  font-family: 'Tajawal', sans-serif;
-  font-size: 20px;
-  font-weight: 700;
-  color: #1c222b;
-  margin: 0;
-}
-
-.upload-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px;
-}
-
-.upload-zone {
-  position: relative;
-  min-height: 140px;
-  padding: 20px 16px;
-  border: 2px dashed #cccccc;
-  border-radius: 12px;
-  background: #fafafa;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  text-align: center;
-  transition: border-color 150ms, background 150ms;
-}
-
-.upload-zone--drag {
-  border-color: #0066cc;
-  background: #e3f2fd;
-}
-
-.upload-zone--done {
-  border: 2px solid #1b5e20;
-  background: #f1f8f4;
-}
-
-.upload-zone--error {
-  border: 2px solid #c62828;
-  background: #ffebee;
-}
-
-/* Badge */
-.zone-badge {
-  position: absolute;
-  top: 10px;
-  left: 10px;
-  font-family: 'IBM Plex Sans Arabic', sans-serif;
-  font-size: 12px;
-  border-radius: 9999px;
-  padding: 2px 8px;
-}
-
-.zone-badge--required {
-  background: #ffebee;
-  color: #c62828;
-  border: 1px solid #ffcdd2;
-}
-
-.zone-badge--optional {
-  background: #e3f2fd;
-  color: #0d47a1;
-  border: 1px solid #bbdefb;
-}
-
-.zone-upload-icon {
-  font-size: 24px;
-  color: #6c757d;
-}
-
-.upload-zone--drag .zone-upload-icon {
-  color: #0066cc;
-}
-
-.zone-drop-text {
-  font-family: 'IBM Plex Sans Arabic', sans-serif;
-  font-size: 14px;
-  color: #6c757d;
-  margin: 0;
-  line-height: 1.6;
-}
-
-.upload-zone--drag .zone-drop-text {
-  color: #0066cc;
-}
-
-.zone-or {
-  font-size: 12px;
-}
-
-.zone-browse-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 36px;
-  padding: 0 16px;
-  border: 1px solid #cccccc;
-  border-radius: 16px;
-  background: transparent;
-  color: #1c222b;
-  font-family: 'IBM Plex Sans Arabic', sans-serif;
-  font-size: 13px;
-  cursor: pointer;
-  transition: border-color 150ms;
-  box-sizing: border-box;
-}
-
-.zone-browse-btn:hover {
-  border-color: #0066cc;
-  color: #0066cc;
-}
-
-.zone-title {
-  font-family: 'Tajawal', sans-serif;
-  font-size: 14px;
-  font-weight: 600;
-  color: #1c222b;
-  margin: 0;
-}
-
-.zone-title--done {
-  color: #1b5e20;
-}
-
-.zone-hint {
-  font-family: 'IBM Plex Sans Arabic', sans-serif;
-  font-size: 12px;
-  color: #6c757d;
-  margin: 0;
-}
-
-.zone-selected-file {
-  font-family: 'IBM Plex Sans Arabic', sans-serif;
-  font-size: 13px;
-  font-weight: 500;
-  color: #1c222b;
-  margin: 0;
-  word-break: break-word;
-}
-
-/* Uploaded state */
-.zone-uploaded {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 8px;
-}
-
-.zone-check {
-  color: #1b5e20;
-  font-size: 18px;
-  font-weight: 700;
-}
-
-/* File chip */
-.file-chip {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  background: #e8f5e9;
-  border-radius: 8px;
-  padding: 4px 10px;
-  max-width: 100%;
-}
-
-.file-chip__icon { font-size: 14px; }
-
-.file-chip__name {
-  font-family: 'IBM Plex Sans Arabic', sans-serif;
-  font-size: 13px;
-  color: #1b5e20;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 120px;
-}
-
-.file-chip__size {
-  font-family: 'IBM Plex Sans Arabic', sans-serif;
-  font-size: 12px;
-  color: #6c757d;
-  white-space: nowrap;
-}
-
-.file-chip__remove {
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  color: #c62828;
-  font-size: 14px;
-  padding: 0 2px;
-  line-height: 1;
-}
-
-.zone-file-error {
-  font-family: 'IBM Plex Sans Arabic', sans-serif;
-  font-size: 13px;
-  color: #c62828;
-  margin: 4px 0 0;
-}
-
-.visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
-}
-
-@media (max-width: 600px) {
-  .upload-grid {
-    grid-template-columns: 1fr;
-  }
-}
-</style>

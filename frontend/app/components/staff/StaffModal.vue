@@ -6,12 +6,17 @@ import { z } from 'zod'
 import { UserRole } from '../../types/enums'
 import { ROLE_LABELS, BANK_ADMIN_MANAGED_ROLES } from '../../constants/workflow'
 import type { User } from '../../types/models'
+import { AlertCircle } from 'lucide-vue-next'
 import Dialog from '@/components/ui/dialog/Dialog.vue'
 import DialogContent from '@/components/ui/dialog/DialogContent.vue'
 import DialogFooter from '@/components/ui/dialog/DialogFooter.vue'
 import DialogHeader from '@/components/ui/dialog/DialogHeader.vue'
 import DialogOverlay from '@/components/ui/dialog/DialogOverlay.vue'
 import DialogTitle from '@/components/ui/dialog/DialogTitle.vue'
+import Button from '@/components/ui/button/Button.vue'
+import Input from '@/components/ui/input/Input.vue'
+import Label from '@/components/ui/label/Label.vue'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 
 const props = defineProps<{
   staff: User | null
@@ -148,98 +153,108 @@ const onSubmit = handleSubmit((values) => {
           </button>
         </DialogHeader>
 
-        <p class="modal-description">
+        <p class="text-xs text-gray-600 -mt-2">
           الفصل بين الإدخال والمراجعة الداخلية مفروض تلقائياً على نفس الطلب.
         </p>
 
-        <div v-if="props.serverError" class="server-error-banner" role="alert">
-          {{ props.serverError }}
-        </div>
+        <Alert v-if="props.serverError" class="border-l-4 border-l-red-600 bg-red-50 border-0" role="alert">
+          <AlertCircle class="h-4 w-4 text-red-600" aria-hidden="true" />
+          <AlertDescription class="text-red-600 text-sm">{{ props.serverError }}</AlertDescription>
+        </Alert>
 
-        <form class="modal-form" @submit.prevent="onSubmit">
-          <div class="form-grid">
-            <div class="form-field form-field-full">
-              <label class="form-label" for="staff-name">الاسم الكامل <span class="required">*</span></label>
-              <input
+        <form class="flex flex-col gap-5" @submit.prevent="onSubmit">
+          <div class="grid grid-cols-2 gap-4">
+            <!-- Name -->
+            <div class="col-span-2 flex flex-col gap-2">
+              <Label for="staff-name" class="text-xs text-gray-600 font-medium">
+                الاسم الكامل <span class="text-red-600">*</span>
+              </Label>
+              <Input
                 id="staff-name"
                 v-model="name"
                 v-bind="nameAttrs"
                 type="text"
-                class="form-input"
-                :class="{ 'input-error': errors.name }"
                 placeholder="الاسم الكامل للموظف"
-              >
-              <span v-if="errors.name" class="field-error" role="alert">{{ errors.name }}</span>
+                :class="{ 'border-red-600': errors.name }"
+              />
+              <span v-if="errors.name" class="text-xs text-red-600" role="alert">{{ errors.name }}</span>
             </div>
 
-            <div class="form-field form-field-full">
-              <label class="form-label" for="staff-email">البريد الإلكتروني <span class="required">*</span></label>
-              <input
+            <!-- Email -->
+            <div class="col-span-2 flex flex-col gap-2">
+              <Label for="staff-email" class="text-xs text-gray-600 font-medium">
+                البريد الإلكتروني <span class="text-red-600">*</span>
+              </Label>
+              <Input
                 id="staff-email"
                 v-model="email"
                 v-bind="emailAttrs"
                 type="email"
-                class="form-input"
-                :class="{ 'input-error': errors.email }"
                 placeholder="email@bank.ye"
                 dir="ltr"
-              >
-              <span v-if="errors.email" class="field-error" role="alert">{{ errors.email }}</span>
+                :class="{ 'border-red-600': errors.email }"
+              />
+              <span v-if="errors.email" class="text-xs text-red-600" role="alert">{{ errors.email }}</span>
             </div>
 
-            <div class="form-field">
-              <label class="form-label" for="staff-role">الدور الوظيفي <span class="required">*</span></label>
+            <!-- Role -->
+            <div class="flex flex-col gap-2">
+              <Label for="staff-role" class="text-xs text-gray-600 font-medium">
+                الدور الوظيفي <span class="text-red-600">*</span>
+              </Label>
               <select
                 id="staff-role"
                 v-model="role"
                 v-bind="roleAttrs"
-                class="form-input"
-                :class="{ 'input-error': errors.role }"
+                class="h-9 px-3 border border-gray-300 rounded-md bg-white text-sm text-gray-900 outline-none focus-visible:ring-1 focus-visible:ring-blue-600"
+                :class="{ 'border-red-600': errors.role }"
               >
                 <option :value="undefined" disabled>اختر الدور</option>
                 <option v-for="r in BANK_ADMIN_MANAGED_ROLES" :key="r" :value="r">
                   {{ ROLE_LABELS[r] }}
                 </option>
               </select>
-              <span v-if="errors.role" class="field-error" role="alert">{{ errors.role }}</span>
+              <span v-if="errors.role" class="text-xs text-red-600" role="alert">{{ errors.role }}</span>
             </div>
 
-            <div class="form-field">
-              <label class="form-label" for="staff-department">القسم</label>
-              <input
+            <!-- Department -->
+            <div class="flex flex-col gap-2">
+              <Label for="staff-department" class="text-xs text-gray-600 font-medium">
+                القسم
+              </Label>
+              <Input
                 id="staff-department"
                 v-model="department"
                 v-bind="departmentAttrs"
                 type="text"
-                class="form-input"
                 placeholder="القسم أو الإدارة (اختياري)"
-              >
+              />
             </div>
 
-            <div class="form-field form-field-full">
-              <label class="form-label" for="staff-password">
+            <!-- Password -->
+            <div class="col-span-2 flex flex-col gap-2">
+              <Label for="staff-password" class="text-xs text-gray-600 font-medium">
                 {{ isEdit ? 'كلمة المرور (اتركها فارغة للإبقاء على الحالية)' : 'كلمة المرور الأولية *' }}
-              </label>
-              <input
+              </Label>
+              <Input
                 id="staff-password"
                 v-model="password"
                 v-bind="passwordAttrs"
                 type="password"
-                class="form-input"
-                :class="{ 'input-error': errors.password }"
                 placeholder="8 أحرف على الأقل"
-              >
-              <span v-if="errors.password" class="field-error" role="alert">{{ errors.password }}</span>
+                :class="{ 'border-red-600': errors.password }"
+              />
+              <span v-if="errors.password" class="text-xs text-red-600" role="alert">{{ errors.password }}</span>
             </div>
           </div>
 
-          <DialogFooter class="modal-actions">
-            <button type="button" class="btn-secondary" :disabled="props.saving" @click="requestClose">
+          <DialogFooter class="flex justify-end gap-3 pt-2">
+            <Button type="button" variant="outline" :disabled="props.saving" @click="requestClose">
               إلغاء
-            </button>
-            <button type="submit" class="btn-primary" :disabled="isSaveDisabled">
+            </Button>
+            <Button type="submit" :disabled="isSaveDisabled">
               {{ props.saving ? 'جارٍ الحفظ…' : 'حفظ' }}
-            </button>
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>
@@ -247,176 +262,3 @@ const onSubmit = handleSubmit((values) => {
   </Dialog>
 </template>
 
-<style scoped>
-.modal-layer {
-  position: fixed;
-  inset: 0;
-  z-index: 100;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.modal-backdrop {
-  position: absolute;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.4);
-}
-
-.modal {
-  position: relative;
-  z-index: 1;
-  background: #ffffff;
-  border-radius: 24px;
-  padding: 32px;
-  width: 560px;
-  max-width: 90vw;
-  max-height: 90vh;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.modal-description {
-  font-size: 13px;
-  color: #6c757d;
-  margin: -8px 0 0 0;
-  line-height: 1.5;
-}
-
-.modal-title {
-  font-size: 20px;
-  font-weight: 600;
-  color: #1c222b;
-  margin: 0;
-}
-
-.close-btn {
-  background: none;
-  border: none;
-  font-size: 18px;
-  color: #6c757d;
-  cursor: pointer;
-  line-height: 1;
-  padding: 4px;
-}
-
-.close-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.server-error-banner {
-  background: #fff0ef;
-  border: 1px solid #c62828;
-  border-radius: 8px;
-  padding: 10px 14px;
-  font-size: 13px;
-  color: #c62828;
-}
-
-.modal-form {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.form-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-}
-
-.form-field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.form-field-full {
-  grid-column: 1 / -1;
-}
-
-.form-label {
-  font-size: 13px;
-  color: #6c757d;
-  font-weight: 500;
-}
-
-.required {
-  color: #c62828;
-}
-
-.form-input {
-  height: 40px;
-  padding: 0 12px;
-  border: 1px solid #cccccc;
-  border-radius: 12px;
-  font-size: 14px;
-  color: #1c222b;
-  background: #ffffff;
-  outline: none;
-  width: 100%;
-  box-sizing: border-box;
-  font-family: inherit;
-}
-
-.form-input:focus {
-  border-color: #0066cc;
-}
-
-.input-error {
-  border-color: #c62828;
-}
-
-.field-error {
-  font-size: 12px;
-  color: #c62828;
-}
-
-.modal-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-}
-
-.btn-primary {
-  height: 44px;
-  padding: 0 24px;
-  background: #0066cc;
-  color: #ffffff;
-  border: none;
-  border-radius: 16px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-}
-
-.btn-primary:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.btn-secondary {
-  height: 44px;
-  padding: 0 24px;
-  background: transparent;
-  color: #1c222b;
-  border: 1px solid #cccccc;
-  border-radius: 16px;
-  font-size: 14px;
-  cursor: pointer;
-}
-
-.btn-secondary:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-</style>
