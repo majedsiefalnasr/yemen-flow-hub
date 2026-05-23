@@ -86,133 +86,136 @@ onMounted(() => { store.loadStats() })
 </script>
 
 <template>
-  <div class="cby-dashboard" dir="rtl">
+  <div class="flex flex-col gap-6" dir="rtl">
 
     <!-- Skeleton -->
     <div v-if="store.loading">
-      <div class="kpi-grid" aria-busy="true" aria-label="جارٍ تحميل الإحصائيات">
-        <div v-for="n in 4" :key="n" class="kpi-card kpi-skeleton" aria-hidden="true">
-          <div class="skel skel--label" />
-          <div class="skel skel--value" />
+      <div class="grid grid-cols-4 gap-4 md:grid-cols-2 sm:grid-cols-1" aria-busy="true" aria-label="جارٍ تحميل الإحصائيات">
+        <div v-for="n in 4" :key="n" class="bg-white border border-border rounded-md p-5 flex flex-col gap-3 animate-pulse" aria-hidden="true">
+          <div class="h-3.5 w-2/5 bg-gray-200 rounded" />
+          <div class="h-8 w-1/2 bg-gray-200 rounded" />
         </div>
       </div>
     </div>
 
     <!-- Error -->
-    <div v-else-if="store.error" class="error-card" role="alert">
+    <div v-else-if="store.error" class="bg-white border border-border rounded-md p-5 text-error-text flex items-center gap-3" role="alert">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+      </svg>
       <span>{{ store.error }}</span>
-      <button class="btn-retry" @click="store.loadStats()">إعادة المحاولة</button>
+      <button class="ml-auto px-4 py-1.5 bg-white border border-error-text rounded text-error-text text-xs hover:bg-red-50 transition-colors" @click="store.loadStats()">إعادة المحاولة</button>
     </div>
 
     <template v-else-if="stats">
 
       <!-- KPI grid -->
-      <div class="kpi-grid">
+      <div class="grid grid-cols-4 gap-4 md:grid-cols-2 sm:grid-cols-1">
         <!-- بنوك مشاركة -->
-        <div class="kpi-card shadow-card">
-          <div class="kpi-card__icon kpi-icon--gray" aria-hidden="true">
+        <div class="bg-white border border-border rounded-md p-6 flex flex-col gap-1.5">
+          <div class="w-9 h-9 rounded bg-gray-100 flex items-center justify-center text-muted-foreground mb-1" aria-hidden="true">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <line x1="3" y1="22" x2="21" y2="22" /><rect x="2" y="6" width="20" height="16" rx="2" /><path d="M6 6V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v2" /><line x1="12" y1="12" x2="12" y2="18" /><line x1="9" y1="15" x2="15" y2="15" />
             </svg>
           </div>
-          <span class="kpi-card__value">{{ stats.most_active_banks.length }}</span>
-          <span class="kpi-card__label">بنوك مشاركة</span>
+          <span class="text-2xl font-bold text-primary-text leading-none">{{ stats.most_active_banks.length }}</span>
+          <span class="text-xs text-muted-foreground">بنوك مشاركة</span>
         </div>
 
         <!-- كل الطلبات -->
-        <div class="kpi-card shadow-card">
-          <div class="kpi-card__icon kpi-icon--blue" aria-hidden="true">
+        <div class="bg-white border border-border rounded-md p-6 flex flex-col gap-1.5">
+          <div class="w-9 h-9 rounded bg-blue-50 flex items-center justify-center text-primary-blue mb-1" aria-hidden="true">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" />
             </svg>
           </div>
-          <span class="kpi-card__value">{{ stats.total }}</span>
-          <span class="kpi-card__label">كل الطلبات</span>
+          <span class="text-2xl font-bold text-primary-text leading-none">{{ stats.total }}</span>
+          <span class="text-xs text-muted-foreground">كل الطلبات</span>
         </div>
 
         <!-- طلبات معلقة -->
-        <div class="kpi-card kpi-card--amber shadow-card">
-          <div class="kpi-card__icon kpi-icon--amber" aria-hidden="true">
+        <div class="border-l-4 border-l-warning-text bg-white border border-border rounded-md p-6 flex flex-col gap-1.5">
+          <div class="w-9 h-9 rounded bg-yellow-50 flex items-center justify-center text-warning-text mb-1" aria-hidden="true">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
             </svg>
           </div>
-          <span class="kpi-card__value">{{ stats.in_process }}</span>
-          <span class="kpi-card__label">طلبات معلقة</span>
+          <span class="text-2xl font-bold text-warning-text leading-none">{{ stats.in_process }}</span>
+          <span class="text-xs text-muted-foreground">طلبات معلقة</span>
         </div>
 
         <!-- إجمالي الطلبات -->
-        <div class="kpi-card shadow-card">
-          <div class="kpi-card__icon kpi-icon--green" aria-hidden="true">
+        <div class="bg-white border border-border rounded-md p-6 flex flex-col gap-1.5">
+          <div class="w-9 h-9 rounded bg-green-50 flex items-center justify-center text-success-text mb-1" aria-hidden="true">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" />
             </svg>
           </div>
-          <span class="kpi-card__value">{{ stats.approved }}</span>
-          <span class="kpi-card__label">إجمالي الطلبات</span>
+          <span class="text-2xl font-bold text-success-text leading-none">{{ stats.approved }}</span>
+          <span class="text-xs text-muted-foreground">إجمالي الطلبات</span>
         </div>
       </div>
 
       <!-- Quick actions (4 cards) -->
       <section aria-labelledby="qa-heading">
-        <h2 id="qa-heading" class="section-heading">
+        <h2 id="qa-heading" class="flex items-center gap-2 text-sm font-bold text-primary-text mb-3">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
             <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
           </svg>
           إجراءات سريعة
         </h2>
-        <div class="quick-actions">
-          <button class="qa-card qa-card--primary" @click="router.push('/requests')">
-            <div class="qa-card__icon" aria-hidden="true">
+        <div class="grid grid-cols-4 gap-3 md:grid-cols-2 sm:grid-cols-1">
+          <button class="flex flex-col items-start gap-1 p-5 bg-primary-blue border border-primary-blue rounded-md hover:opacity-90 transition-opacity cursor-pointer text-white" @click="router.push('/requests')">
+            <div class="w-8 h-8 flex items-center justify-center mb-1" aria-hidden="true">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
               </svg>
             </div>
-            <span class="qa-card__label">سجل الطلبات</span>
-            <span class="qa-card__sub">كل طلبات المنصة</span>
+            <span class="text-sm font-bold">سجل الطلبات</span>
+            <span class="text-xs opacity-75">كل طلبات المنصة</span>
           </button>
 
-          <button class="qa-card" @click="router.push('/reports')">
-            <div class="qa-card__icon" aria-hidden="true">
+          <button class="flex flex-col items-start gap-1 p-5 bg-white border border-border rounded-md hover:border-primary-blue hover:text-primary-blue transition-colors cursor-pointer text-primary-text" @click="router.push('/reports')">
+            <div class="w-8 h-8 flex items-center justify-center mb-1 text-primary-blue" aria-hidden="true">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" />
               </svg>
             </div>
-            <span class="qa-card__label">التقارير</span>
-            <span class="qa-card__sub">تحليلات وإحصاءات المنصة</span>
+            <span class="text-sm font-bold">التقارير</span>
+            <span class="text-xs text-muted-foreground">تحليلات وإحصاءات المنصة</span>
           </button>
 
-          <button class="qa-card" @click="router.push('/admin/cby-staff')">
-            <div class="qa-card__icon" aria-hidden="true">
+          <button class="flex flex-col items-start gap-1 p-5 bg-white border border-border rounded-md hover:border-primary-blue hover:text-primary-blue transition-colors cursor-pointer text-primary-text" @click="router.push('/admin/cby-staff')">
+            <div class="w-8 h-8 flex items-center justify-center mb-1 text-primary-blue" aria-hidden="true">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" />
               </svg>
             </div>
-            <span class="qa-card__label">مستخدمو النظام</span>
-            <span class="qa-card__sub">إدارة الصلاحيات والمستخدمين</span>
+            <span class="text-sm font-bold">مستخدمو النظام</span>
+            <span class="text-xs text-muted-foreground">إدارة الصلاحيات والمستخدمين</span>
           </button>
 
-          <button class="qa-card" @click="router.push('/audit')">
-            <div class="qa-card__icon" aria-hidden="true">
+          <button class="flex flex-col items-start gap-1 p-5 bg-white border border-border rounded-md hover:border-primary-blue hover:text-primary-blue transition-colors cursor-pointer text-primary-text" @click="router.push('/audit')">
+            <div class="w-8 h-8 flex items-center justify-center mb-1 text-primary-blue" aria-hidden="true">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
               </svg>
             </div>
-            <span class="qa-card__label">الإشعارات</span>
-            <span class="qa-card__sub">آخر أحداث المنصة</span>
+            <span class="text-sm font-bold">الإشعارات</span>
+            <span class="text-xs text-muted-foreground">آخر أحداث المنصة</span>
           </button>
         </div>
       </section>
 
       <!-- Charts row: monthly trend + category distribution -->
-      <div v-if="hasChartContent" class="charts-row">
+      <div v-if="hasChartContent" class="grid grid-cols-2fr-1fr gap-4 lg:grid-cols-1">
 
         <!-- Monthly trend chart -->
-        <section v-if="monthlyRequests.length" class="chart-card chart-card--wide" aria-labelledby="trend-heading">
-          <h2 id="trend-heading" class="section-title">حركة الطلبات الشهرية</h2>
-          <p class="chart-subtitle">تتابع مُقدَّم مقابل مُعتمَد</p>
-          <div class="chart-wrap">
-            <svg :viewBox="`0 0 ${CHART_W} ${CHART_H}`" class="sparkline" role="img" aria-label="مخطط الطلبات الشهرية" preserveAspectRatio="none">
+        <section v-if="monthlyRequests.length" class="bg-white border border-border rounded-md p-6" aria-labelledby="trend-heading">
+          <h2 id="trend-heading" class="text-sm font-bold text-primary-text mb-1">حركة الطلبات الشهرية</h2>
+          <p class="text-xs text-muted-foreground mb-3">تتابع مُقدَّم مقابل مُعتمَد</p>
+          <div class="flex flex-col gap-1.5">
+            <svg :viewBox="`0 0 ${CHART_W} ${CHART_H}`" class="w-full h-24" role="img" aria-label="مخطط الطلبات الشهرية" preserveAspectRatio="none">
               <!-- submitted area -->
               <polygon :points="buildArea(monthlyRequests as MonthlyEntry[], 'submitted')" fill="#0066cc" opacity="0.08" />
               <polyline :points="buildLine(monthlyRequests as MonthlyEntry[], 'submitted')" fill="none" stroke="#0066cc" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
@@ -220,22 +223,22 @@ onMounted(() => { store.loadStats() })
               <polygon :points="buildArea(monthlyRequests as MonthlyEntry[], 'approved')" fill="#1b5e20" opacity="0.08" />
               <polyline :points="buildLine(monthlyRequests as MonthlyEntry[], 'approved')" fill="none" stroke="#1b5e20" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="4 2" />
             </svg>
-            <div class="chart-labels">
-              <span v-for="e in (monthlyRequests as MonthlyEntry[])" :key="e.month" class="chart-label">{{ monthLabel(e.month) }}</span>
+            <div class="flex justify-between px-3 text-xs text-muted-foreground">
+              <span v-for="e in (monthlyRequests as MonthlyEntry[])" :key="e.month">{{ monthLabel(e.month) }}</span>
             </div>
-            <div class="chart-legend">
-              <span class="legend-item"><span class="legend-dot legend-dot--blue" />مُقدَّم</span>
-              <span class="legend-item"><span class="legend-dot legend-dot--green" />مُعتمَد</span>
+            <div class="flex gap-4 mt-1.5">
+              <span class="flex items-center gap-1 text-xs text-muted-foreground"><span class="w-2.5 h-2.5 rounded-full" style="background: #0066cc" />مُقدَّم</span>
+              <span class="flex items-center gap-1 text-xs text-muted-foreground"><span class="w-2.5 h-2.5 rounded-full" style="background: #1b5e20" />مُعتمَد</span>
             </div>
           </div>
         </section>
 
         <!-- Category distribution donut -->
-        <section v-if="categoryDistribution.length" class="chart-card chart-card--narrow" aria-labelledby="cat-heading">
-          <h2 id="cat-heading" class="section-title">توزيع فئات الواردات</h2>
-          <p class="chart-subtitle">حسب نوع البضاعة</p>
-          <div class="donut-wrap">
-            <svg viewBox="0 0 100 100" class="donut-svg" role="img" aria-label="توزيع فئات الواردات">
+        <section v-if="categoryDistribution.length" class="bg-white border border-border rounded-md p-6" aria-labelledby="cat-heading">
+          <h2 id="cat-heading" class="text-sm font-bold text-primary-text mb-1">توزيع فئات الواردات</h2>
+          <p class="text-xs text-muted-foreground mb-3">حسب نوع البضاعة</p>
+          <div class="flex items-center gap-4">
+            <svg viewBox="0 0 100 100" class="w-24 h-24 flex-shrink-0" role="img" aria-label="توزيع فئات الواردات">
               <circle cx="50" cy="50" r="38" fill="#f5f5f5" />
               <path
                 v-for="(entry, i) in (categoryDistribution as CategoryEntry[])"
@@ -245,11 +248,11 @@ onMounted(() => { store.loadStats() })
               />
               <circle cx="50" cy="50" r="25" fill="#ffffff" />
             </svg>
-            <ul class="donut-legend">
-              <li v-for="entry in (categoryDistribution as CategoryEntry[])" :key="entry.label" class="donut-legend__item">
-                <span class="donut-legend__dot" :style="{ background: entry.color }" />
-                <span class="donut-legend__label">{{ entry.label }}</span>
-                <span class="donut-legend__pct">{{ Math.round(entry.count / (categoryDistribution as CategoryEntry[]).reduce((s, e) => s + e.count, 0) * 100) }}%</span>
+            <ul class="flex flex-col gap-1.5">
+              <li v-for="entry in (categoryDistribution as CategoryEntry[])" :key="entry.label" class="flex items-center gap-1.5 text-xs">
+                <span class="w-2 h-2 rounded-full flex-shrink-0" :style="{ background: entry.color }" />
+                <span class="text-primary-text">{{ entry.label }}</span>
+                <span class="text-muted-foreground">{{ Math.round(entry.count / (categoryDistribution as CategoryEntry[]).reduce((s, e) => s + e.count, 0) * 100) }}%</span>
               </li>
             </ul>
           </div>
@@ -257,116 +260,122 @@ onMounted(() => { store.loadStats() })
       </div>
 
       <!-- Two-column: أحدث الطلبات + أنشط البنوك -->
-      <div class="two-col">
+      <div class="grid grid-cols-2 gap-4 lg:grid-cols-1">
 
         <!-- أحدث الطلبات -->
-        <section class="section-card" aria-labelledby="recent-heading">
-          <div class="section-card__header">
-            <h2 id="recent-heading" class="section-title">أحدث الطلبات</h2>
-            <a class="viewall-link" href="/requests" @click.prevent="router.push('/requests')">عرض الكل</a>
+        <section class="bg-white border border-border rounded-md p-6 flex flex-col gap-4" aria-labelledby="recent-heading">
+          <div class="flex items-center justify-between">
+            <h2 id="recent-heading" class="text-sm font-bold text-primary-text">أحدث الطلبات</h2>
+            <a class="text-xs text-primary-blue hover:underline" href="/requests" @click.prevent="router.push('/requests')">عرض الكل</a>
           </div>
-          <div v-if="!stats.recent_requests?.length" class="empty-state" role="status">
+          <div v-if="!stats.recent_requests?.length" class="py-6 text-center text-sm text-muted-foreground" role="status">
             <p>لا توجد طلبات بعد</p>
           </div>
-          <table v-else class="req-table" aria-label="أحدث الطلبات">
+          <table v-else class="w-full border-collapse text-xs" aria-label="أحدث الطلبات">
             <thead>
-              <tr>
-                <th scope="col">المرجع</th>
-                <th scope="col">البنك</th>
-                <th scope="col">المبلغ</th>
-                <th scope="col">الحالة</th>
-                <th scope="col">التقدم</th>
-                <th scope="col">إجراء</th>
+              <tr class="bg-gray-50">
+                <th scope="col" class="text-right py-2.5 px-3.5 font-medium text-muted-foreground border-b border-gray-200 whitespace-nowrap">المرجع</th>
+                <th scope="col" class="text-right py-2.5 px-3.5 font-medium text-muted-foreground border-b border-gray-200 whitespace-nowrap">البنك</th>
+                <th scope="col" class="text-right py-2.5 px-3.5 font-medium text-muted-foreground border-b border-gray-200 whitespace-nowrap">المبلغ</th>
+                <th scope="col" class="text-right py-2.5 px-3.5 font-medium text-muted-foreground border-b border-gray-200 whitespace-nowrap">الحالة</th>
+                <th scope="col" class="text-right py-2.5 px-3.5 font-medium text-muted-foreground border-b border-gray-200 whitespace-nowrap">التقدم</th>
+                <th scope="col" class="text-right py-2.5 px-3.5 font-medium text-muted-foreground border-b border-gray-200 whitespace-nowrap">إجراء</th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="req in stats.recent_requests" :key="req.id" class="req-table__row" @click="router.push(`/requests/${req.id}`)">
-                <td><a class="req-ref" href="#" @click.prevent="router.push(`/requests/${req.id}`)">{{ req.reference_number }}</a></td>
-                <td>{{ req.bank_name ?? '—' }}</td>
-                <td class="mono">{{ formatAmount(req.amount, req.currency) }}</td>
-                <td><StatusBadge :status="req.status" :role="UserRole.CBY_ADMIN" /></td>
-                <td class="progress-cell">
-                  <div class="progress-bar">
-                    <div class="progress-bar__fill" :style="{ width: `${getRequestProgress(req.status)}%` }" />
+              <tr v-for="req in stats.recent_requests" :key="req.id" class="hover:bg-gray-50 border-t border-gray-200 cursor-pointer" @click="router.push(`/requests/${req.id}`)">
+                <td class="text-right py-2.5 px-3.5 text-primary-text"><a class="font-mono text-primary-blue hover:underline" href="#" @click.prevent="router.push(`/requests/${req.id}`)">{{ req.reference_number }}</a></td>
+                <td class="text-right py-2.5 px-3.5 text-primary-text">{{ req.bank_name ?? '—' }}</td>
+                <td class="text-right py-2.5 px-3.5 text-primary-text ltr tabular-nums">{{ formatAmount(req.amount, req.currency) }}</td>
+                <td class="text-right py-2.5 px-3.5"><StatusBadge :status="req.status" :role="UserRole.CBY_ADMIN" /></td>
+                <td class="text-right py-2.5 px-3.5">
+                  <div class="flex items-center gap-1.5 min-w-24">
+                    <div class="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                      <div class="h-full rounded-full" :style="{ width: `${getRequestProgress(req.status)}%`, backgroundColor: '#0066cc' }" />
+                    </div>
+                    <span class="text-xs text-muted-foreground whitespace-nowrap">{{ getRequestProgress(req.status) }}%</span>
                   </div>
-                  <span class="progress-pct">{{ getRequestProgress(req.status) }}%</span>
                 </td>
-                <td><button class="btn-action" @click.stop="router.push(`/requests/${req.id}`)">عرض</button></td>
+                <td class="text-right py-2.5 px-3.5"><button class="px-3.5 py-1.5 bg-white border border-border rounded text-xs text-primary-text hover:border-primary-blue hover:text-primary-blue transition-colors" @click.stop="router.push(`/requests/${req.id}`)">عرض</button></td>
               </tr>
             </tbody>
           </table>
         </section>
 
         <!-- أنشط البنوك -->
-        <section class="section-card" aria-labelledby="banks-heading">
-          <h2 id="banks-heading" class="section-title">تصنيف الامتثال</h2>
+        <section class="bg-white border border-border rounded-md p-6 flex flex-col gap-4" aria-labelledby="banks-heading">
+          <h2 id="banks-heading" class="text-sm font-bold text-primary-text">تصنيف الامتثال</h2>
 
           <!-- compliance alerts compact -->
-          <div class="compliance-group">
-            <h3 class="compliance-subtitle">فاتورة مكررة خارجياً</h3>
-            <div v-if="!stats.compliance_alerts.duplicate_suppliers.length" class="compliance-ok">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1b5e20" stroke-width="2" aria-hidden="true"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></svg>
+          <div class="flex flex-col gap-1.5 py-3 border-b border-gray-200">
+            <h3 class="text-xs font-bold text-muted-foreground">فاتورة مكررة خارجياً</h3>
+            <div v-if="!stats.compliance_alerts.duplicate_suppliers.length" class="flex items-center gap-1.5 text-xs text-success-text">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></svg>
               لا توجد تنبيهات
             </div>
-            <ul v-else class="compliance-list">
-              <li v-for="item in stats.compliance_alerts.duplicate_suppliers" :key="item.supplier_name" class="compliance-item">
-                <span class="compliance-name">{{ item.supplier_name }}</span>
-                <span class="badge badge--amber">{{ item.count }} طلب</span>
+            <ul v-else class="flex flex-col gap-1">
+              <li v-for="item in stats.compliance_alerts.duplicate_suppliers" :key="item.supplier_name" class="flex items-center justify-between gap-2 py-1.5 px-2 bg-gray-50 rounded text-xs">
+                <span class="text-primary-text">{{ item.supplier_name }}</span>
+                <span class="inline-flex items-center px-2 py-0.5 bg-yellow-50 text-warning-text rounded-full text-xs font-medium">{{ item.count }} طلب</span>
               </li>
             </ul>
           </div>
 
-          <div class="compliance-group">
-            <h3 class="compliance-subtitle">طلبات بمبالغ مرتفعة</h3>
-            <div v-if="!stats.compliance_alerts.high_amount_requests.length" class="compliance-ok">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1b5e20" stroke-width="2" aria-hidden="true"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></svg>
+          <div class="flex flex-col gap-1.5 py-3 border-b border-gray-200">
+            <h3 class="text-xs font-bold text-muted-foreground">طلبات بمبالغ مرتفعة</h3>
+            <div v-if="!stats.compliance_alerts.high_amount_requests.length" class="flex items-center gap-1.5 text-xs text-success-text">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></svg>
               لا توجد تنبيهات
             </div>
-            <ul v-else class="compliance-list">
+            <ul v-else class="flex flex-col gap-1">
               <li
                 v-for="req in stats.compliance_alerts.high_amount_requests"
                 :key="req.id"
-                class="compliance-item compliance-item--link"
+                class="flex items-center justify-between gap-2 py-1.5 px-2 bg-gray-50 rounded text-xs cursor-pointer hover:bg-gray-100"
                 @click="router.push(`/requests/${req.id}`)"
               >
-                <span class="compliance-ref">{{ req.reference_number }}</span>
-                <span class="compliance-name">{{ req.bank_name }}</span>
-                <span class="badge badge--red">{{ new Intl.NumberFormat('en-US', { style: 'currency', currency: req.currency, maximumFractionDigits: 0 }).format(req.amount) }}</span>
+                <div class="flex flex-col gap-0.5">
+                  <span class="font-mono text-primary-blue">{{ req.reference_number }}</span>
+                  <span class="text-primary-text">{{ req.bank_name }}</span>
+                </div>
+                <span class="inline-flex items-center px-2 py-0.5 bg-red-50 text-error-text rounded-full text-xs font-medium whitespace-nowrap">{{ new Intl.NumberFormat('en-US', { style: 'currency', currency: req.currency, maximumFractionDigits: 0 }).format(req.amount) }}</span>
               </li>
             </ul>
           </div>
 
-          <div class="compliance-group">
-            <h3 class="compliance-subtitle">طلبات معلقة منذ أكثر من 14 يوماً</h3>
-            <div v-if="!stats.compliance_alerts.stale_pending_requests.length" class="compliance-ok">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1b5e20" stroke-width="2" aria-hidden="true"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></svg>
+          <div class="flex flex-col gap-1.5 py-3 border-b border-gray-200">
+            <h3 class="text-xs font-bold text-muted-foreground">طلبات معلقة منذ أكثر من 14 يوماً</h3>
+            <div v-if="!stats.compliance_alerts.stale_pending_requests.length" class="flex items-center gap-1.5 text-xs text-success-text">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></svg>
               لا توجد تنبيهات
             </div>
-            <ul v-else class="compliance-list">
+            <ul v-else class="flex flex-col gap-1">
               <li
                 v-for="req in stats.compliance_alerts.stale_pending_requests"
                 :key="req.id"
-                class="compliance-item compliance-item--link"
+                class="flex items-center justify-between gap-2 py-1.5 px-2 bg-gray-50 rounded text-xs cursor-pointer hover:bg-gray-100"
                 @click="router.push(`/requests/${req.id}`)"
               >
-                <span class="compliance-ref">{{ req.reference_number }}</span>
-                <span class="compliance-name">{{ req.bank_name }}</span>
-                <span class="badge badge--amber">{{ formatUpdatedAt(req.updated_at) }}</span>
+                <div class="flex flex-col gap-0.5">
+                  <span class="font-mono text-primary-blue">{{ req.reference_number }}</span>
+                  <span class="text-primary-text">{{ req.bank_name }}</span>
+                </div>
+                <span class="inline-flex items-center px-2 py-0.5 bg-yellow-50 text-warning-text rounded-full text-xs font-medium whitespace-nowrap">{{ formatUpdatedAt(req.updated_at) }}</span>
               </li>
             </ul>
           </div>
 
           <!-- Most active banks bar list -->
-          <div v-if="stats.most_active_banks.length" class="compliance-group">
-            <h3 class="compliance-subtitle">أنشط البنوك</h3>
-            <ul class="banks-list">
-              <li v-for="(bank, index) in stats.most_active_banks" :key="bank.bank_id" class="banks-list__item">
-                <span class="banks-list__rank">{{ index + 1 }}</span>
-                <span class="banks-list__name">{{ bank.bank_name }}</span>
-                <div class="banks-list__bar-wrap">
-                  <div class="banks-list__bar" :style="{ width: `${Math.round(bank.request_count / (stats.most_active_banks[0]?.request_count || 1) * 100)}%` }" />
+          <div v-if="stats.most_active_banks.length" class="flex flex-col gap-1.5">
+            <h3 class="text-xs font-bold text-muted-foreground">أنشط البنوك</h3>
+            <ul class="flex flex-col gap-1.5">
+              <li v-for="(bank, index) in stats.most_active_banks" :key="bank.bank_id" class="flex items-center gap-2">
+                <span class="w-5 h-5 bg-primary-blue text-white rounded-full text-xs font-bold flex items-center justify-center flex-shrink-0">{{ index + 1 }}</span>
+                <span class="text-xs text-primary-text w-20 truncate">{{ bank.bank_name }}</span>
+                <div class="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                  <div class="h-full rounded-full" :style="{ width: `${Math.round(bank.request_count / (stats.most_active_banks[0]?.request_count || 1) * 100)}%`, backgroundColor: '#0066cc' }" />
                 </div>
-                <span class="banks-list__count">{{ bank.request_count }}</span>
+                <span class="text-xs text-muted-foreground whitespace-nowrap">{{ bank.request_count }}</span>
               </li>
             </ul>
           </div>
@@ -379,132 +388,6 @@ onMounted(() => { store.loadStats() })
 </template>
 
 <style scoped>
-.cby-dashboard { display: flex; flex-direction: column; gap: 24px; }
-
-/* KPI */
-.kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
-@media (max-width: 900px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 600px) { .kpi-grid { grid-template-columns: 1fr; } }
-
-.kpi-card { background: #ffffff; border: 1px solid #cccccc; border-radius: 12px; padding: 20px 24px; display: flex; flex-direction: column; gap: 6px; }
-.kpi-card--amber { border-inline-start: 3px solid #f57f17; }
-.kpi-card__icon { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-bottom: 4px; }
-.kpi-icon--gray  { background: #f5f5f5; color: #6c757d; }
-.kpi-icon--blue  { background: #e3f2fd; color: #0066cc; }
-.kpi-icon--amber { background: #fff8e1; color: #f57f17; }
-.kpi-icon--green { background: #e8f5e9; color: #1b5e20; }
-
-.kpi-card__value { font-size: 28px; font-weight: 600; color: #1c222b; line-height: 1; }
-.kpi-card--amber .kpi-card__value { color: #f57f17; }
-.kpi-card__label { font-size: 13px; color: #6c757d; }
-
-/* Skeleton */
-.kpi-skeleton { gap: 12px; animation: pulse 1.4s ease-in-out infinite; }
-@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-.skel { background: #f5f5f5; border-radius: 6px; }
-.skel--label { height: 14px; width: 60%; }
-.skel--value { height: 32px; width: 40%; }
-
-/* Error */
-.error-card { background: #ffffff; border: 1px solid #cccccc; border-radius: 12px; padding: 20px; color: #c62828; display: flex; align-items: center; gap: 16px; }
-.btn-retry { border: 1px solid #cccccc; background: #ffffff; border-radius: 8px; padding: 6px 14px; cursor: pointer; color: #1c222b; }
-
-/* Section heading */
-.section-heading { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 600; color: #1c222b; margin: 0 0 12px; }
-
-/* Quick actions */
-.quick-actions { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
-@media (max-width: 900px) { .quick-actions { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 600px) { .quick-actions { grid-template-columns: 1fr; } }
-.qa-card { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 16px 20px; background: #ffffff; border: 1px solid #cccccc; border-radius: 12px; cursor: pointer; text-align: right; transition: border-color 0.15s; }
-.qa-card:hover { border-color: #0066cc; }
-.qa-card--primary { background: #0066cc; border-color: #0066cc; }
-.qa-card--primary:hover { background: #0052a3; }
-.qa-card--primary .qa-card__label { color: #ffffff; }
-.qa-card--primary .qa-card__sub { color: rgba(255,255,255,0.75); }
-.qa-card--primary .qa-card__icon { color: #ffffff; }
-.qa-card__icon { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; color: #0066cc; margin-bottom: 4px; }
-.qa-card__label { font-size: 14px; font-weight: 600; color: #1c222b; }
-.qa-card__sub { font-size: 12px; color: #6c757d; }
-
-/* Charts row */
-.charts-row { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; }
-@media (max-width: 900px) { .charts-row { grid-template-columns: 1fr; } }
-
-.chart-card { background: #ffffff; border: 1px solid #cccccc; border-radius: 12px; padding: 20px 24px; }
-.section-title { font-size: 15px; font-weight: 600; color: #1c222b; margin: 0; }
-.chart-subtitle { font-size: 12px; color: #6c757d; margin: 4px 0 12px; }
-
-.chart-wrap { display: flex; flex-direction: column; gap: 6px; }
-.sparkline { width: 100%; height: 100px; }
-.chart-labels { display: flex; justify-content: space-between; padding: 0 12px; }
-.chart-label { font-size: 10px; color: #6c757d; }
-.chart-legend { display: flex; gap: 16px; margin-top: 6px; }
-.legend-item { display: flex; align-items: center; gap: 4px; font-size: 11px; color: #6c757d; }
-.legend-dot { width: 10px; height: 10px; border-radius: 50%; }
-.legend-dot--blue { background: #0066cc; }
-.legend-dot--green { background: #1b5e20; }
-
-.donut-wrap { display: flex; align-items: center; gap: 16px; }
-.donut-svg { width: 100px; height: 100px; flex-shrink: 0; }
-.donut-legend { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
-.donut-legend__item { display: flex; align-items: center; gap: 6px; font-size: 11px; }
-.donut-legend__dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-.donut-legend__label { color: #1c222b; flex: 1; }
-.donut-legend__pct { color: #6c757d; }
-
-/* Two-column */
-.two-col { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
-@media (max-width: 900px) { .two-col { grid-template-columns: 1fr; } }
-
-/* Section card */
-.section-card { background: #ffffff; border: 1px solid #cccccc; border-radius: 12px; padding: 20px 24px; display: flex; flex-direction: column; gap: 16px; }
-.section-card__header { display: flex; align-items: center; justify-content: space-between; }
-.viewall-link { font-size: 13px; color: #0066cc; text-decoration: none; }
-.viewall-link:hover { text-decoration: underline; }
-
-.empty-state { padding: 24px; text-align: center; color: #6c757d; font-size: 14px; }
-.empty-state p { margin: 0; }
-
-/* Request table */
-.req-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-.req-table th { padding: 8px 10px; text-align: right; font-weight: 500; color: #6c757d; border-bottom: 1px solid #f0f0f0; white-space: nowrap; }
-.req-table__row { cursor: pointer; }
-.req-table__row:hover td { background: #f9fafb; }
-.req-table__row + .req-table__row td { border-top: 1px solid #f0f0f0; }
-.req-table td { padding: 8px 10px; color: #1c222b; text-align: right; vertical-align: middle; }
-.req-ref { font-family: monospace; color: #0066cc; text-decoration: none; }
-.req-ref:hover { text-decoration: underline; }
-.mono { direction: ltr; font-variant-numeric: tabular-nums; text-align: left; font-size: 11px; }
-
-.progress-cell { display: flex; align-items: center; gap: 4px; min-width: 70px; }
-.progress-bar { flex: 1; height: 5px; background: #f0f0f0; border-radius: 999px; overflow: hidden; }
-.progress-bar__fill { height: 100%; background: #0066cc; border-radius: 999px; }
-.progress-pct { font-size: 10px; color: #6c757d; white-space: nowrap; }
-.btn-action { padding: 4px 10px; background: #ffffff; border: 1px solid #cccccc; border-radius: 6px; font-size: 11px; color: #1c222b; cursor: pointer; }
-.btn-action:hover { border-color: #0066cc; color: #0066cc; }
-
-/* Compliance */
-.compliance-group { display: flex; flex-direction: column; gap: 6px; padding-top: 12px; border-top: 1px solid #f0f0f0; }
-.compliance-group:first-child { padding-top: 0; border-top: none; }
-.compliance-subtitle { font-size: 12px; font-weight: 600; color: #6c757d; margin: 0; }
-.compliance-ok { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #1b5e20; }
-.compliance-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
-.compliance-item { display: flex; align-items: center; gap: 8px; padding: 6px 8px; background: #f9fafb; border-radius: 6px; }
-.compliance-item--link { cursor: pointer; }
-.compliance-item--link:hover { background: #f0f0f5; }
-.compliance-ref { font-family: monospace; font-size: 11px; color: #0066cc; }
-.compliance-name { font-size: 12px; color: #1c222b; flex: 1; }
-.badge { font-size: 11px; font-weight: 500; padding: 2px 7px; border-radius: 20px; }
-.badge--amber { background: #fff8e1; color: #f57f17; }
-.badge--red { background: #fde8e8; color: #c62828; }
-
-/* Banks bar list */
-.banks-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
-.banks-list__item { display: flex; align-items: center; gap: 8px; }
-.banks-list__rank { width: 20px; height: 20px; background: #0066cc; color: #ffffff; border-radius: 50%; font-size: 11px; font-weight: 600; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-.banks-list__name { font-size: 12px; color: #1c222b; width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.banks-list__bar-wrap { flex: 1; height: 6px; background: #f0f0f0; border-radius: 999px; overflow: hidden; }
-.banks-list__bar { height: 100%; background: #0066cc; border-radius: 999px; transition: width 0.3s; }
-.banks-list__count { font-size: 11px; color: #6c757d; white-space: nowrap; }
+.grid-cols-2fr-1fr { grid-template-columns: 2fr 1fr; }
+@media (max-width: 900px) { .grid-cols-2fr-1fr { grid-template-columns: 1fr; } }
 </style>
