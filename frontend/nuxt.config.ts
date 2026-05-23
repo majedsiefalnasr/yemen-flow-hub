@@ -1,9 +1,10 @@
 import tailwindcss from '@tailwindcss/vite'
 import type { NuxtConfig } from 'nuxt/schema'
 
-export default {
+export default defineNuxtConfig({
   compatibilityDate: '2025-05-15',
   devtools: { enabled: true },
+  ssr: false,
 
   // Nuxt 4: app/ is the default srcDir
   future: {
@@ -16,6 +17,14 @@ export default {
     'shadcn-nuxt',
   ],
 
+  components: [
+    {
+      path: '~/components',
+      extensions: ['vue'],
+      ignore: ['**/ui/**', '**/index.ts'],
+    },
+  ],
+
   shadcn: {
     prefix: '',
     componentDir: './app/components/ui',
@@ -23,6 +32,11 @@ export default {
 
   vite: {
     plugins: [tailwindcss()],
+    resolve: {
+      alias: {
+        '@': new URL('./app', import.meta.url).pathname,
+      },
+    },
   },
 
   css: [
@@ -42,4 +56,11 @@ export default {
     strict: true,
     typeCheck: false,
   },
-} satisfies NuxtConfig
+
+  nitro: {
+    prerender: {
+      crawlLinks: false,
+      routes: [],
+    },
+  },
+}) satisfies NuxtConfig
