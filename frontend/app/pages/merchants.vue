@@ -13,7 +13,7 @@ const authStore = useAuthStore()
 const user = computed(() => authStore.user)
 const { fetchMerchants, createMerchant, updateMerchant, suspendMerchant } = useMerchants()
 const { fetchBanks } = useBanks()
-const { toast } = useToast()
+const { notify } = useToast()
 
 const merchants = ref<Merchant[]>([])
 const banks = ref<import('@/types/models').Bank[]>([])
@@ -81,7 +81,7 @@ async function saveNew(data: MerchantFormData) {
   const created = await createMerchant({ ...data, bank_id: data.bank_id ?? undefined })
   merchants.value = [created, ...merchants.value]
   createOpen.value = false
-  toast({ title: `تم تسجيل التاجر "${created.name}"` })
+  notify(`تم تسجيل التاجر "${created.name}"`)
 }
 
 async function saveEdit(data: MerchantFormData) {
@@ -89,7 +89,7 @@ async function saveEdit(data: MerchantFormData) {
   const updated = await updateMerchant(editing.value.id, data)
   merchants.value = merchants.value.map(m => m.id === updated.id ? updated : m)
   editing.value = null
-  toast({ title: 'تم تحديث بيانات التاجر' })
+  notify('تم تحديث بيانات التاجر')
 }
 
 async function toggleStatus(merchant: Merchant) {

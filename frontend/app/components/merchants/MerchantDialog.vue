@@ -32,7 +32,7 @@ const form = reactive<MerchantFormData>({
   tax_number: props.initial?.tax_number ?? '',
   address: props.initial?.address ?? '',
   phone: props.initial?.phone ?? '',
-  business_type: props.initial?.business_type ?? CATEGORIES[0],
+  business_type: props.initial?.business_type ?? CATEGORIES[0] ?? '',
   is_active: props.initial?.is_active ?? true,
   bank_id: props.initial?.bank_id ?? props.defaultBankId ?? null,
 })

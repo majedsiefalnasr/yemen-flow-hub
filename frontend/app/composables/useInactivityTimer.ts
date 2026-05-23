@@ -13,11 +13,11 @@ function installXhrPatch() {
 
   const proto = XMLHttpRequest.prototype
   const originalOpen = proto.open
-  proto.open = function (this: XMLHttpRequest, ...args: Parameters<typeof originalOpen>) {
+  proto.open = function (this: XMLHttpRequest, method: string, url: string | URL, async: boolean = true, username?: string | null, password?: string | null) {
     this.addEventListener('loadstart', () => window.dispatchEvent(new CustomEvent('xhr:loadstart')))
     this.addEventListener('progress', () => window.dispatchEvent(new CustomEvent('xhr:progress')))
     this.addEventListener('loadend', () => window.dispatchEvent(new CustomEvent('xhr:finished')))
-    return originalOpen.apply(this, args as Parameters<typeof originalOpen>)
+    return originalOpen.call(this, method, url, async, username, password)
   }
 }
 

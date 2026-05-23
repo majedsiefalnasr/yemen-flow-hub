@@ -9,7 +9,7 @@ import { useAuthStore } from '@/stores/auth.store'
 const authStore = useAuthStore()
 const currentUser = computed(() => authStore.user)
 const { fetchDocumentTypes, createDocumentType, updateDocumentType } = useDocumentTypes()
-const { toast } = useToast()
+const { notify, error: toastError } = useToast()
 
 const docTypes = ref<DocumentType[]>([])
 const saving = ref(false)
@@ -29,7 +29,7 @@ const canAdd = computed(() => Boolean(draft.name_ar.trim() && draft.slug.trim())
 
 async function addRule() {
   if (!canAdd.value) {
-    toast({ title: 'الاسم والمعرّف مطلوبان', variant: 'destructive' })
+    toastError('الاسم والمعرّف مطلوبان')
     return
   }
   saving.value = true
@@ -48,10 +48,10 @@ async function addRule() {
     draft.name_en = ''
     draft.slug = ''
     draft.is_required = true
-    toast({ title: 'تمت إضافة نوع المستند' })
+    notify('تمت إضافة نوع المستند')
   }
   catch {
-    toast({ title: 'حدث خطأ', variant: 'destructive' })
+    toastError('حدث خطأ')
   }
   finally {
     saving.value = false
@@ -72,7 +72,7 @@ async function toggleRequired(item: DocumentType) {
     docTypes.value = docTypes.value.map(d => d.id === item.id ? updated : d)
   }
   catch {
-    toast({ title: 'فشل تحديث الحالة', variant: 'destructive' })
+    toastError('فشل تحديث الحالة')
   }
 }
 
@@ -90,7 +90,7 @@ async function toggleActive(item: DocumentType) {
     docTypes.value = docTypes.value.map(d => d.id === item.id ? updated : d)
   }
   catch {
-    toast({ title: 'فشل تحديث الحالة', variant: 'destructive' })
+    toastError('فشل تحديث الحالة')
   }
 }
 </script>

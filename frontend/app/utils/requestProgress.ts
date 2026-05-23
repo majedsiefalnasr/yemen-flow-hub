@@ -19,6 +19,9 @@ const REQUEST_PROGRESS: Record<RequestStatus, number> = {
   [RequestStatus.EXECUTIVE_REJECTED]: 100,
   [RequestStatus.CUSTOMS_DECLARATION_ISSUED]: 100,
   [RequestStatus.COMPLETED]: 100,
+  [RequestStatus.BANK_RETURNED]: 20,
+  [RequestStatus.SUPPORT_RETURNED]: 60,
+  [RequestStatus.BANK_REJECTED]: 100,
 }
 
 export function getRequestProgress(status: RequestStatus): number {

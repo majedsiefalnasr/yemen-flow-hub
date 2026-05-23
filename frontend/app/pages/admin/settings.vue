@@ -4,6 +4,7 @@ import { useAdminSettings } from '../../composables/useAdminSettings'
 import { useAuthStore } from '../../stores/auth.store'
 import { useRouter } from 'nuxt/app'
 import Icon from '../../components/ui/Icon.vue'
+import type { IconName } from '../../components/ui/icon-map'
 
 definePageMeta({
   middleware: 'auth',
@@ -36,7 +37,7 @@ type TabId = 'workflow' | 'email' | 'security' | 'general'
 
 const activeTab = ref<TabId>('workflow')
 
-const tabs: Array<{ id: TabId; label: string; icon: string }> = [
+const tabs: Array<{ id: TabId; label: string; icon: IconName }> = [
   { id: 'workflow', label: 'سير العمل', icon: 'workflow' },
   { id: 'email', label: 'البريد الإلكتروني', icon: 'mail' },
   { id: 'security', label: 'الأمن', icon: 'shield-alert' },

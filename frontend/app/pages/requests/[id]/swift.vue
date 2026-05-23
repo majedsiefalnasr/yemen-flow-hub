@@ -12,7 +12,8 @@ const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 const user = computed(() => authStore.user)
-const { fetchRequest } = useRequests()
+const { fetchRequest, uploadSwift } = useRequests()
+const uploading = ref(false)
 
 const request = ref<import('@/types/models').ImportRequest | null>(null)
 
@@ -39,6 +40,20 @@ const statusLabel = computed(() => {
   if (!request.value || !user.value) return ''
   return getBusinessStatus(request.value.status, user.value.role).label
 })
+
+async function handleUpload(file: File, swiftReference: string) {
+  if (!request.value) return
+  uploading.value = true
+  try {
+    await uploadSwift(request.value.id, file)
+    request.value = await fetchRequest(request.value.id)
+  }
+  catch { /* errors surfaced by API layer */ }
+  finally {
+    uploading.value = false
+  }
+  void swiftReference
+}
 </script>
 
 <template>
@@ -102,8 +117,9 @@ const statusLabel = computed(() => {
             رفع وثيقة السويفت
           </h3>
           <SwiftUploadForm
-            :request-id="request.id"
-            mode="page"
+            :request="request"
+            :uploading="uploading"
+            @upload="handleUpload"
           />
         </div>
       </Card>

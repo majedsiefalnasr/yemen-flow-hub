@@ -22,7 +22,7 @@ import { useRequestsStore } from '@/stores/requests.store'
 const route = useRoute()
 const authStore = useAuthStore()
 const store = useRequestsStore()
-const { toast } = useToast()
+const { notify, error: toastError } = useToast()
 
 const user = computed(() => authStore.user)
 const request = computed(() => store.currentRequest)
@@ -74,14 +74,18 @@ function formatDay(value?: string | null) {
   return value ? new Date(value).toLocaleDateString('ar-EG') : '—'
 }
 
+function printPage() {
+  if (import.meta.client) window.print()
+}
+
 async function performIssue() {
   if (!request.value || !canIssueNow.value) return
   try {
     await store.issueCustomsDeclaration(request.value.id)
-    toast({ title: `تم إصدار إذن بيان جمركي رقم ${request.value.customs_declaration?.declaration_number} بنجاح` })
+    notify(`تم إصدار إذن بيان جمركي رقم ${request.value.customs_declaration?.declaration_number} بنجاح`)
   }
   catch {
-    toast({ title: 'فشل إصدار إذن بيان جمركي', variant: 'destructive' })
+    toastError('فشل إصدار إذن بيان جمركي')
   }
   finally {
     confirmIssueOpen.value = false
@@ -142,7 +146,7 @@ async function performIssue() {
               </Button>
               <Button
                 v-if="issued"
-                @click="window.print()"
+                @click="printPage()"
               >
                 <Printer class="ms-1 h-4 w-4" />
                 طباعة / تنزيل PDF
@@ -248,7 +252,7 @@ async function performIssue() {
               size="icon"
               variant="ghost"
               class="h-7 w-7 text-white hover:bg-white/10"
-              @click="window.print()"
+              @click="printPage()"
             >
               <Download class="h-3.5 w-3.5" />
             </Button>

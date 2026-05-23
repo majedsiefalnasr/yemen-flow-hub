@@ -58,7 +58,7 @@ const navItems: NavItem[] = [
 const route = useRoute()
 const authStore = useAuthStore()
 const notificationsStore = useNotificationsStore()
-const { isDark, toggleTheme } = useTheme()
+const { isDark, setTheme } = useTheme()
 
 const user = computed(() => authStore.user)
 const mobileOpen = ref(false)
@@ -76,7 +76,7 @@ const notifications = computed(() => notificationsStore.items ?? [])
 const unreadCount = computed(() => notificationsStore.unreadCount)
 
 onMounted(() => {
-  notificationsStore.loadUnreadCount()
+  notificationsStore.refreshUnreadCount()
 })
 
 watch(() => route.fullPath, () => {
@@ -262,7 +262,7 @@ function userInitials(name: string) {
             variant="ghost"
             size="icon"
             class="hidden sm:inline-flex"
-            @click="toggleTheme()"
+            @click="setTheme(isDark ? 'light' : 'dark')"
           >
             <Sun
               v-if="isDark"

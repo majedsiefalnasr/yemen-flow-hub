@@ -432,8 +432,8 @@ describe('audit page — row expansion: diffRows', () => {
       after:  { role: 'BANK_REVIEWER' },
     })
     expect(rows).toHaveLength(1)
-    expect(rows[0].before).toBe('—')
-    expect(rows[0].after).toBe('BANK_REVIEWER')
+    expect(rows[0]!.before).toBe('—')
+    expect(rows[0]!.after).toBe('BANK_REVIEWER')
   })
 
   it('renders explicit null values as فارغ instead of dropping the key', () => {
@@ -442,8 +442,8 @@ describe('audit page — row expansion: diffRows', () => {
       after: { bank_id: null },
     })
     expect(rows).toHaveLength(1)
-    expect(rows[0].before).toBe(7)
-    expect(rows[0].after).toBe('فارغ')
+    expect(rows[0]!.before).toBe(7)
+    expect(rows[0]!.after).toBe('فارغ')
   })
 
   it('returns empty array for null metadata', () => {

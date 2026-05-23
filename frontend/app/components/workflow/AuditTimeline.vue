@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { Clock } from 'lucide-vue-next'
-import type { AuditLog } from '@/types/models'
+import type { RequestStageHistory } from '@/types/models'
 
 const props = withDefaults(defineProps<{
-  entries: AuditLog[]
+  entries: RequestStageHistory[]
   limit?: number
 }>(), {
   limit: 25,
@@ -41,7 +41,7 @@ const visible = computed(() => props.entries.slice(0, props.limit))
           </div>
         </div>
         <div class="mt-1 text-xs text-muted-foreground">
-          {{ entry.user?.name ?? 'غير معروف' }}
+          {{ entry.performed_by?.name ?? 'غير معروف' }}
           <span v-if="entry.from_status && entry.to_status">
             — من «{{ entry.from_status }}» إلى «{{ entry.to_status }}»
           </span>

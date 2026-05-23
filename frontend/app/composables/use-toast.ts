@@ -35,9 +35,18 @@ export function useToast() {
     toasts.value = toasts.value.filter(toast => toast.id !== id)
   }
 
+  function notify(input: ToastInput) { return push(input) }
+  function notifyError(input: ToastInput) { return push(input, 'error') }
+  function notifySuccess(input: ToastInput) { return push(input, 'success') }
+  function notifyInfo(input: ToastInput) { return push(input, 'info') }
+
   return {
     toasts,
     dismiss,
+    notify,
+    error: notifyError,
+    success: notifySuccess,
+    info: notifyInfo,
     toast: {
       default: (input: ToastInput) => push(input),
       success: (input: ToastInput) => push(input, 'success'),

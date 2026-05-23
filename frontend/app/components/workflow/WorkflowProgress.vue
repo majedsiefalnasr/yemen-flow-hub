@@ -6,14 +6,17 @@ import { useAuthStore } from '@/stores/auth.store'
 import { cn } from '@/lib/utils'
 
 const props = withDefaults(defineProps<{
-  status: RequestStatus
+  status?: RequestStatus
+  currentStatus?: RequestStatus
   compact?: boolean
+  userRole?: UserRole
 }>(), {
   compact: false,
 })
 
 const authStore = useAuthStore()
-const role = computed(() => authStore.user?.role ?? UserRole.CBY_ADMIN)
+const resolvedStatus = computed(() => props.status ?? props.currentStatus ?? RequestStatus.DRAFT)
+const role = computed(() => props.userRole ?? authStore.user?.role ?? UserRole.CBY_ADMIN)
 
 const REJECT_STATUSES: RequestStatus[] = [
   RequestStatus.SUPPORT_REJECTED,
@@ -43,10 +46,10 @@ const steps = computed(() => {
 })
 
 const currentIndex = computed(() =>
-  steps.value.findIndex(step => step.statuses.includes(props.status)),
+  steps.value.findIndex(step => step.statuses.includes(resolvedStatus.value)),
 )
 const completedAll = computed(() =>
-  TERMINAL_DONE.includes(props.status) || currentIndex.value === steps.value.length - 1,
+  TERMINAL_DONE.includes(resolvedStatus.value) || currentIndex.value === steps.value.length - 1,
 )
 </script>
 
@@ -57,14 +60,14 @@ const completedAll = computed(() =>
         سير العملية التنظيمية
       </div>
       <span
-        v-if="RETURN_STATUSES.includes(status) || REJECT_STATUSES.includes(status)"
+        v-if="RETURN_STATUSES.includes(resolvedStatus) || REJECT_STATUSES.includes(resolvedStatus)"
         :class="cn(
           'rounded-full px-2 py-0.5 text-[10px] font-medium',
-          RETURN_STATUSES.includes(status) && 'bg-warning/15 text-warning',
-          REJECT_STATUSES.includes(status) && 'bg-destructive/15 text-destructive',
+          RETURN_STATUSES.includes(resolvedStatus) && 'bg-warning/15 text-warning',
+          REJECT_STATUSES.includes(resolvedStatus) && 'bg-destructive/15 text-destructive',
         )"
       >
-        {{ RETURN_STATUSES.includes(status) ? 'مُعاد للتعديل' : 'مرفوض' }}
+        {{ RETURN_STATUSES.includes(resolvedStatus) ? 'مُعاد للتعديل' : 'مرفوض' }}
       </span>
     </div>
 
@@ -72,7 +75,7 @@ const completedAll = computed(() =>
       <li
         v-for="(step, index) in steps"
         :key="step.key"
-        :class="cn('relative flex items-start gap-3', index < steps.length - 1 && 'pb-5')"
+        :class="cn('relative flex items-start gap-3', index < steps.length - 1 && 'pb-5', index === currentIndex && 'wp-step--current')"
       >
         <span
           v-if="index < steps.length - 1"

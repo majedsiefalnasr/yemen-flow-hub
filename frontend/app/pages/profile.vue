@@ -8,7 +8,7 @@ import { useProfile } from '@/composables/useProfile'
 const authStore = useAuthStore()
 const user = computed(() => authStore.user)
 const { profile, loading, fetchProfile, updateProfile } = useProfile()
-const { toast } = useToast()
+const { notify } = useToast()
 
 const name = ref(user.value?.name ?? '')
 const email = ref(user.value?.email ?? '')
@@ -37,15 +37,15 @@ const myActivity = computed(() => profile.value?.recent_activity?.slice(0, 6) ??
 
 async function saveProfile() {
   const ok = await updateProfile({ name: name.value, email: email.value, phone: phone.value })
-  if (ok) toast({ title: 'تم حفظ التغييرات', variant: 'default' })
+  if (ok) notify('تم حفظ التغييرات')
 }
 
 function requestPasswordReset() {
-  toast({ title: 'سيتم إرسال رابط إعادة التعيين إلى بريدك' })
+  notify('سيتم إرسال رابط إعادة التعيين إلى بريدك')
 }
 
 function requestMfaActivation() {
-  toast({ title: 'تم إرسال طلب تفعيل المصادقة الثنائية' })
+  notify('تم إرسال طلب تفعيل المصادقة الثنائية')
 }
 
 function userInitials(n?: string) {

@@ -3,7 +3,7 @@ import PageHeader from '@/components/layout/PageHeader.vue'
 import { Bell, Mail, Settings as Cog, ShieldAlert, Workflow } from 'lucide-vue-next'
 import { useTheme } from '@/composables/useTheme'
 
-const { isDark, toggleTheme } = useTheme()
+const { isDark, setTheme } = useTheme()
 
 const workflowSettings = reactive({
   supportMembers: '5',
@@ -236,7 +236,7 @@ const generalSettings = reactive({
             <Button
               variant="outline"
               size="sm"
-              @click="toggleTheme"
+              @click="setTheme(isDark ? 'light' : 'dark')"
             >
               {{ isDark ? 'الوضع الفاتح' : 'الوضع الداكن' }}
             </Button>

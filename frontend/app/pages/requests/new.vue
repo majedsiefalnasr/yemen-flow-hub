@@ -93,7 +93,7 @@ const authStore = useAuthStore()
 const requestsStore = useRequestsStore()
 const { fetchMerchants } = useMerchants()
 const router = useRouter()
-const { toast } = useToast()
+const { notify, error: toastError } = useToast()
 
 const user = computed(() => authStore.user)
 const step = ref(0)
@@ -115,7 +115,7 @@ const merchants = ref<Merchant[]>([])
 onMounted(async () => {
   merchants.value = await fetchMerchants()
   if (merchants.value.length > 0 && !form.merchant_id) {
-    form.merchant_id = merchants.value[0].id
+    form.merchant_id = merchants.value[0]!.id
   }
 })
 
@@ -153,7 +153,7 @@ function onFilePicked(name: string, event: Event) {
   if (!file) return
 
   if (file.size > 10 * 1024 * 1024) {
-    toast({ title: 'حجم الملف يتجاوز 10MB', variant: 'destructive' })
+    toastError('حجم الملف يتجاوز 10MB')
     target.value = ''
     return
   }
@@ -164,7 +164,7 @@ function onFilePicked(name: string, event: Event) {
     [name]: { fileName: file.name, mime: file.type || 'application/pdf', size: file.size, file, previewUrl },
   }
   target.value = ''
-  toast({ title: `تم رفع: ${file.name}` })
+  notify(`تم رفع: ${file.name}`)
 }
 
 function removeUpload(name: string) {
@@ -180,13 +180,13 @@ async function persist(asDraft: boolean) {
 
   if (!form.merchant_id || !form.amount || !form.goods_description || !form.supplier_name) {
     step.value = 0
-    toast({ title: 'يرجى إكمال البيانات الأساسية', variant: 'destructive' })
+    toastError('يرجى إكمال البيانات الأساسية')
     return
   }
 
   if (!asDraft && requiredDocsMissing.value.length > 0) {
     step.value = 2
-    toast({ title: 'يرجى إرفاق المستندات المطلوبة', variant: 'destructive' })
+    toastError('يرجى إرفاق المستندات المطلوبة')
     return
   }
 
@@ -210,11 +210,11 @@ async function persist(asDraft: boolean) {
       payment_terms: form.payment_terms || undefined,
       due_date: form.due_date || undefined,
     })
-    toast({ title: asDraft ? 'تم حفظ المسودة' : 'تم تقديم الطلب للمراجعة الداخلية' })
+    notify(asDraft ? 'تم حفظ المسودة' : 'تم تقديم الطلب للمراجعة الداخلية')
     router.push('/requests')
   }
   catch {
-    toast({ title: 'حدث خطأ أثناء حفظ الطلب', variant: 'destructive' })
+    toastError('حدث خطأ أثناء حفظ الطلب')
   }
   finally {
     saving.value = false
@@ -487,7 +487,7 @@ const canCreate = computed(() =>
             >
               <div class="flex min-w-0 items-center gap-2">
                 <FileText class="h-4 w-4 shrink-0 text-success" />
-                <span class="truncate font-medium">{{ uploads[doc.name].fileName }}</span>
+                <span class="truncate font-medium">{{ uploads[doc.name]?.fileName }}</span>
                 <Badge variant="secondary" class="gap-1 text-[10px]">
                   <ShieldCheck class="h-3 w-3" />
                   آمن
@@ -499,7 +499,7 @@ const canCreate = computed(() =>
                   variant="ghost"
                   class="h-7 w-7"
                   aria-label="معاينة"
-                  @click="preview = { name: uploads[doc.name].fileName, mime: uploads[doc.name].mime, url: uploads[doc.name].previewUrl }"
+                  @click="preview = uploads[doc.name] ? { name: uploads[doc.name]!.fileName, mime: uploads[doc.name]!.mime, url: uploads[doc.name]!.previewUrl } : null"
                 >
                   <Eye class="h-3.5 w-3.5" />
                 </Button>

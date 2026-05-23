@@ -23,7 +23,7 @@ const { handleSubmit, errors, setValues, values } = useForm({
     currency: (props.initialValues?.currency as Currency | undefined) ?? Currency.USD,
     amount: props.initialValues?.amount ?? undefined,
     goods_type: props.initialValues?.goods_type ?? '',
-    payment_terms: props.initialValues?.payment_terms ?? '',
+    payment_terms: (props.initialValues?.payment_terms ?? '') as '' | 'LC' | 'TT' | 'CAD',
     due_date: props.initialValues?.due_date ?? '',
     supplier_name: props.initialValues?.supplier_name ?? '',
     goods_description: props.initialValues?.goods_description ?? '',
@@ -49,7 +49,7 @@ watch(
       currency: (next.currency as Currency | undefined) ?? Currency.USD,
       amount: next.amount ?? undefined,
       goods_type: next.goods_type ?? '',
-      payment_terms: next.payment_terms ?? '',
+      payment_terms: (next.payment_terms ?? '') as '' | 'LC' | 'TT' | 'CAD',
       due_date: next.due_date ?? '',
       supplier_name: next.supplier_name ?? '',
       goods_description: next.goods_description ?? '',
@@ -290,7 +290,7 @@ const onSubmit = handleSubmit((v) => {
             class="form-input"
             :disabled="loading"
             :class="{ 'form-input--error': errors.payment_terms }"
-            @change="(e) => setValues({ payment_terms: (e.target as HTMLSelectElement).value })"
+            @change="(e) => setValues({ payment_terms: (e.target as HTMLSelectElement).value as '' | 'LC' | 'TT' | 'CAD' })"
           >
             <option value="">اختر شروط الدفع</option>
             <option value="LC">LC</option>

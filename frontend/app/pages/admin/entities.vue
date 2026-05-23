@@ -19,7 +19,7 @@ type EntityForm = {
 const authStore = useAuthStore()
 const currentUser = computed(() => authStore.user)
 const { fetchBanks, createBank, updateBank } = useBanks()
-const { toast } = useToast()
+const { notify, error: toastError } = useToast()
 
 const query = ref('')
 const createOpen = ref(false)
@@ -102,7 +102,7 @@ async function saveEntity() {
       }
       const updated = await updateBank(editing.value.id, payload)
       banks.value = banks.value.map(b => b.id === editing.value!.id ? updated : b)
-      toast({ title: 'تم حفظ التعديلات' })
+      notify('تم حفظ التعديلات')
     }
     else {
       const payload: CreateBankPayload = {
@@ -114,12 +114,12 @@ async function saveEntity() {
       }
       const created = await createBank(payload)
       banks.value = [...banks.value, created]
-      toast({ title: `تم إضافة "${created.name_ar}"` })
+      notify(`تم إضافة "${created.name_ar}"`)
     }
     closeForm()
   }
   catch {
-    toast({ title: 'حدث خطأ، يرجى المحاولة مجدداً', variant: 'destructive' })
+    toastError('حدث خطأ، يرجى المحاولة مجدداً')
   }
   finally {
     saving.value = false
@@ -137,10 +137,10 @@ async function toggleStatus(bank: Bank) {
     }
     const updated = await updateBank(bank.id, payload)
     banks.value = banks.value.map(b => b.id === bank.id ? updated : b)
-    toast({ title: updated.is_active ? `تم تفعيل ${bank.name_ar}` : `تم إيقاف ${bank.name_ar}` })
+    notify(updated.is_active ? `تم تفعيل ${bank.name_ar}` : `تم إيقاف ${bank.name_ar}`)
   }
   catch {
-    toast({ title: 'فشل تغيير الحالة', variant: 'destructive' })
+    toastError('فشل تغيير الحالة')
   }
 }
 </script>

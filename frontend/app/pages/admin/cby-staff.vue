@@ -19,7 +19,7 @@ const STAFF_ROLES: UserRole[] = CBY_ROLES
 const authStore = useAuthStore()
 const currentUser = computed(() => authStore.user)
 const { fetchUsers, createUser, updateUser } = useUsers()
-const { toast } = useToast()
+const { notify, error: toastError } = useToast()
 
 const query = ref('')
 const roleFilter = ref<'all' | UserRole>('all')
@@ -103,7 +103,7 @@ async function saveStaff() {
       }
       const updated = await updateUser(editing.value.id, payload)
       staffUsers.value = staffUsers.value.map(u => u.id === editing.value!.id ? updated : u)
-      toast({ title: 'تم حفظ التعديلات' })
+      notify('تم حفظ التعديلات')
     }
     else {
       const payload: CreateUserPayload = {
@@ -116,12 +116,12 @@ async function saveStaff() {
       }
       const created = await createUser(payload)
       staffUsers.value = [...staffUsers.value, created]
-      toast({ title: `تمت إضافة ${created.name}` })
+      notify(`تمت إضافة ${created.name}`)
     }
     closeForm()
   }
   catch {
-    toast({ title: 'حدث خطأ، يرجى المحاولة مجدداً', variant: 'destructive' })
+    toastError('حدث خطأ، يرجى المحاولة مجدداً')
   }
   finally {
     saving.value = false
@@ -140,10 +140,10 @@ async function toggleActive(target: User) {
     }
     const updated = await updateUser(target.id, payload)
     staffUsers.value = staffUsers.value.map(u => u.id === target.id ? updated : u)
-    toast({ title: updated.is_active ? `تم تفعيل ${target.name}` : `تم إلغاء تفعيل ${target.name}` })
+    notify(updated.is_active ? `تم تفعيل ${target.name}` : `تم إلغاء تفعيل ${target.name}`)
   }
   catch {
-    toast({ title: 'فشل تغيير الحالة', variant: 'destructive' })
+    toastError('فشل تغيير الحالة')
   }
 }
 </script>

@@ -44,6 +44,8 @@ describe('OTP Countdown Timer (AC2 — auth/login-otp parity)', () => {
       else clearOtpTimer()
     })
 
+    function getOtpTimerHandle() { return otpTimerHandle }
+
     return {
       otpStep,
       otpSecondsLeft,
@@ -52,6 +54,7 @@ describe('OTP Countdown Timer (AC2 — auth/login-otp parity)', () => {
       startOtpTimer,
       clearOtpTimer,
       updateWatcher,
+      getOtpTimerHandle,
     }
   }
 
@@ -119,7 +122,7 @@ describe('OTP Countdown Timer (AC2 — auth/login-otp parity)', () => {
     timer.startOtpTimer()
     timer.updateWatcher(false)
     timer.clearOtpTimer()
-    expect(timer.otpTimerHandle).not.toBeDefined()
+    expect(timer.getOtpTimerHandle()).toBeNull()
   })
 })
 

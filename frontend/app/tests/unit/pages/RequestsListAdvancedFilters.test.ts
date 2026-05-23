@@ -68,8 +68,8 @@ function hydrateFromQuery(query: Record<string, string>): FilterState {
   if (query.bank_id) state.selectedBankId = Number(query.bank_id)
   if (query.currency) state.selectedCurrency = query.currency
   if (query.bucket) state.selectedBucket = query.bucket
-  if (query.created_from ?? query.from_date) state.selectedFromDate = query.created_from ?? query.from_date
-  if (query.created_to ?? query.to_date) state.selectedToDate = query.created_to ?? query.to_date
+  if (query.created_from ?? query.from_date) state.selectedFromDate = query.created_from ?? query.from_date ?? ''
+  if (query.created_to ?? query.to_date) state.selectedToDate = query.created_to ?? query.to_date ?? ''
   if (query.amount_min !== undefined && query.amount_min !== '') state.selectedAmountMin = Number(query.amount_min)
   if (query.amount_max !== undefined && query.amount_max !== '') state.selectedAmountMax = Number(query.amount_max)
   if (query.assigned_reviewer_id ?? query.reviewer_id) state.selectedReviewerId = Number(query.assigned_reviewer_id ?? query.reviewer_id)

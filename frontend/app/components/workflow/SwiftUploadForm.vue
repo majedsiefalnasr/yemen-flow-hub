@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { CheckCircle2, FileText, Upload } from 'lucide-vue-next'
-import type { Request } from '@/types/models'
+import type { ImportRequest } from '@/types/models'
 
 const props = defineProps<{
-  request: Request
+  request: ImportRequest
   uploading?: boolean
 }>()
 
@@ -15,7 +15,7 @@ const file = ref<File | null>(null)
 const swiftReference = ref('')
 const fileInput = ref<HTMLInputElement | null>(null)
 
-const hasSwift = computed(() => props.request.current_status === 'SWIFT_UPLOADED')
+const hasSwift = computed(() => props.request.status === 'SWIFT_UPLOADED')
 
 function onFileChange(event: Event) {
   const target = event.target as HTMLInputElement
