@@ -48,7 +48,13 @@
       "Bash(echo \"REAL_EXIT=$?\")",
       "Read(//tmp/**)",
       "Bash(claude mcp *)",
-      "Bash(magick -version)"
+      "Bash(magick -version)",
+      "Bash(docker exec *)",
+      "Bash(curl -s -c /tmp/yfh-cookies.txt http://localhost:8000/sanctum/csrf-cookie -o /dev/null)",
+      "Read(//private/tmp/**)",
+      "Bash(awk '{print $7}')",
+      "Bash(curl *)",
+      "Bash(grep *)"
     ]
   }
 }
