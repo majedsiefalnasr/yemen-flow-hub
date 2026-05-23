@@ -6,12 +6,12 @@ import { z } from 'zod'
 import { UserRole } from '../../types/enums'
 import { ROLE_LABELS, BANK_ADMIN_MANAGED_ROLES } from '../../constants/workflow'
 import type { User } from '../../types/models'
-import Dialog from '../ui/dialog/Dialog.vue'
-import DialogContent from '../ui/dialog/DialogContent.vue'
-import DialogFooter from '../ui/dialog/DialogFooter.vue'
-import DialogHeader from '../ui/dialog/DialogHeader.vue'
-import DialogOverlay from '../ui/dialog/DialogOverlay.vue'
-import DialogTitle from '../ui/dialog/DialogTitle.vue'
+import Dialog from '@/components/ui/dialog/Dialog.vue'
+import DialogContent from '@/components/ui/dialog/DialogContent.vue'
+import DialogFooter from '@/components/ui/dialog/DialogFooter.vue'
+import DialogHeader from '@/components/ui/dialog/DialogHeader.vue'
+import DialogOverlay from '@/components/ui/dialog/DialogOverlay.vue'
+import DialogTitle from '@/components/ui/dialog/DialogTitle.vue'
 
 const props = defineProps<{
   staff: User | null

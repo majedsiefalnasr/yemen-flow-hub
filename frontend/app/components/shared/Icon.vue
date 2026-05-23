@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { ICONS } from './icon-map'
-import type { IconName } from './icon-map'
+import { ICONS } from '../../utils/icon-map'
+import type { IconName } from '../../utils/icon-map'
 
 const props = withDefaults(defineProps<{
   name: IconName

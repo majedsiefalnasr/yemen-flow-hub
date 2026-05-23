@@ -5,7 +5,7 @@ import { UserRole, RequestStatus } from '../../../types/enums'
 import type { RequestFormData } from '../../../types/models'
 import { useRequestsStore } from '../../../stores/requests.store'
 import RequestForm from '../../../components/forms/RequestForm.vue'
-import LockedBanner from '../../../components/ui/LockedBanner.vue'
+import LockedBanner from '../../../components/banners/LockedBanner.vue'
 
 type LockedBannerVariant = 'locked' | 'readonly' | 'pending'
 

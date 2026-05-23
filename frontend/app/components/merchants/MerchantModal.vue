@@ -4,12 +4,12 @@ import { useForm } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/zod'
 import { z } from 'zod'
 import type { Merchant } from '../../types/models'
-import Dialog from '../ui/dialog/Dialog.vue'
-import DialogContent from '../ui/dialog/DialogContent.vue'
-import DialogFooter from '../ui/dialog/DialogFooter.vue'
-import DialogHeader from '../ui/dialog/DialogHeader.vue'
-import DialogOverlay from '../ui/dialog/DialogOverlay.vue'
-import DialogTitle from '../ui/dialog/DialogTitle.vue'
+import Dialog from '@/components/ui/dialog/Dialog.vue'
+import DialogContent from '@/components/ui/dialog/DialogContent.vue'
+import DialogFooter from '@/components/ui/dialog/DialogFooter.vue'
+import DialogHeader from '@/components/ui/dialog/DialogHeader.vue'
+import DialogOverlay from '@/components/ui/dialog/DialogOverlay.vue'
+import DialogTitle from '@/components/ui/dialog/DialogTitle.vue'
 
 const BUSINESS_TYPE_OPTIONS = [
   { value: 'import', label: 'استيراد' },

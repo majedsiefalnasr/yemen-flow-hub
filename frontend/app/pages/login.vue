@@ -6,7 +6,7 @@ import { z } from 'zod'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/auth.store'
 import { ROLE_LABELS } from '../constants/workflow'
-import Icon from '../components/ui/Icon.vue'
+import Icon from '../components/shared/Icon.vue'
 
 definePageMeta({ layout: false, middleware: ['guest'] })
 

@@ -3,8 +3,8 @@ import { ref, onMounted, watch } from 'vue'
 import { useAdminSettings } from '../../composables/useAdminSettings'
 import { useAuthStore } from '../../stores/auth.store'
 import { useRouter } from 'nuxt/app'
-import Icon from '../../components/ui/Icon.vue'
-import type { IconName } from '../../components/ui/icon-map'
+import Icon from '../../components/shared/Icon.vue'
+import type { IconName } from '../../utils/icon-map'
 
 definePageMeta({
   middleware: 'auth',

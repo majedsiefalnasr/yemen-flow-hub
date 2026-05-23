@@ -6,7 +6,7 @@ import { useDashboardStore } from '../../stores/dashboard.store'
 import { useAuthStore } from '../../stores/auth.store'
 import { UserRole } from '../../types/enums'
 import type { SupportCommitteeDashboardStats } from '../../composables/useDashboard'
-import StatusBadge from '../ui/StatusBadge.vue'
+import StatusBadge from '../shared/StatusBadge.vue'
 import { getRequestProgress } from '../../utils/requestProgress'
 
 const router = useRouter()

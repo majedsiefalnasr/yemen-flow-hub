@@ -2,7 +2,7 @@
 import { ref } from 'vue'
 import { useAuthStore } from '../../stores/auth.store'
 import { UserRole } from '../../types/enums'
-import Icon from '../ui/Icon.vue'
+import Icon from '../shared/Icon.vue'
 
 const DEMO_ROLE_LABELS: Record<UserRole, string> = {
   [UserRole.DATA_ENTRY]: 'إدخال بيانات',

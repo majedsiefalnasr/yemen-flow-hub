@@ -4,7 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../../stores/auth.store'
 import { useSidebar } from '../../composables/useSidebar'
 import { NAV_ITEMS, ROLE_LABELS } from '../../constants/workflow'
-import Icon from '../ui/Icon.vue'
+import Icon from '../shared/Icon.vue'
 
 const props = defineProps<{
   mobileOpen: boolean

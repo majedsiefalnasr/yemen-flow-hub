@@ -6,7 +6,7 @@ import { useUsers } from '../composables/useUsers'
 import { useAuthStore } from '../stores/auth.store'
 import { ROLE_LABELS } from '../constants/workflow'
 import StaffModal from '../components/staff/StaffModal.vue'
-import EmptyState from '../components/ui/EmptyState.vue'
+import EmptyState from '../components/shared/EmptyState.vue'
 import type { CreateUserPayload, UpdateUserPayload } from '../composables/useUsers'
 
 definePageMeta({

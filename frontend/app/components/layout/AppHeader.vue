@@ -5,7 +5,7 @@ import { useNotificationsStore } from '../../stores/notifications.store'
 import { ROLE_LABELS } from '../../constants/workflow'
 import { useColorScheme } from '../../composables/useColorScheme'
 import { formatRelativeTime } from '../../utils/formatRelativeTime'
-import Icon from '../ui/Icon.vue'
+import Icon from '../shared/Icon.vue'
 import GlobalSearch from './GlobalSearch.vue'
 import RoleSwitcher from './RoleSwitcher.vue'
 

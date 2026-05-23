@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router'
 import { useDashboardStore } from '../../stores/dashboard.store'
 import { UserRole } from '../../types/enums'
 import type { DataEntryDashboardStats } from '../../composables/useDashboard'
-import StatusBadge from '../ui/StatusBadge.vue'
+import StatusBadge from '../shared/StatusBadge.vue'
 import { getBusinessStatus } from '../../constants/workflow'
 
 const router = useRouter()

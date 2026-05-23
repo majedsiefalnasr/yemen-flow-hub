@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useSearch } from '../../composables/useSearch'
-import Icon from '../ui/Icon.vue'
+import Icon from '../shared/Icon.vue'
 import type { SearchEntityType } from '../../types/models'
 
 const router = useRouter()
