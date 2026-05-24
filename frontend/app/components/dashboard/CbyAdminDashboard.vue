@@ -387,5 +387,6 @@ onMounted(() => { store.loadStats() })
 </template>
 
 <style scoped>
-.grid-cols-2fr-1fr { @apply lg:grid-cols-1; grid-template-columns: 2fr 1fr; }
+.grid-cols-2fr-1fr { grid-template-columns: 2fr 1fr; }
+@media (max-width: 900px) { .grid-cols-2fr-1fr { grid-template-columns: 1fr; } }
 </style>
