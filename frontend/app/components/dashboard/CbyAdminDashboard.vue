@@ -143,7 +143,7 @@ onMounted(() => { store.loadStats() })
             <CardTitle class="text-sm font-medium">طلبات معلقة</CardTitle>
           </CardHeader>
           <CardContent>
-            <div class="text-3xl font-bold text-orange-600">{{ stats.in_process }}</div>
+            <div class="text-3xl font-bold text-warning">{{ stats.in_process }}</div>
             <p class="text-xs text-muted-foreground mt-1">قيد المراجعة</p>
           </CardContent>
         </Card>
@@ -153,7 +153,7 @@ onMounted(() => { store.loadStats() })
             <CardTitle class="text-sm font-medium">معتمدة</CardTitle>
           </CardHeader>
           <CardContent>
-            <div class="text-3xl font-bold text-green-600">{{ stats.approved }}</div>
+            <div class="text-3xl font-bold text-success">{{ stats.approved }}</div>
             <p class="text-xs text-muted-foreground mt-1">الطلبات المعتمدة</p>
           </CardContent>
         </Card>
@@ -204,8 +204,8 @@ onMounted(() => { store.loadStats() })
             <svg :viewBox="`0 0 ${CHART_W} ${CHART_H}`" class="w-full h-24" role="img" aria-label="مخطط الطلبات الشهرية" preserveAspectRatio="none">
               <polygon :points="buildArea(monthlyRequests as MonthlyEntry[], 'submitted')" fill="currentColor" class="text-primary" opacity="0.08" />
               <polyline :points="buildLine(monthlyRequests as MonthlyEntry[], 'submitted')" fill="none" stroke="currentColor" class="text-primary" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
-              <polygon :points="buildArea(monthlyRequests as MonthlyEntry[], 'approved')" fill="currentColor" class="text-green-600" opacity="0.08" />
-              <polyline :points="buildLine(monthlyRequests as MonthlyEntry[], 'approved')" fill="none" stroke="currentColor" class="text-green-600" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="4 2" />
+              <polygon :points="buildArea(monthlyRequests as MonthlyEntry[], 'approved')" fill="currentColor" class="text-success" opacity="0.08" />
+              <polyline :points="buildLine(monthlyRequests as MonthlyEntry[], 'approved')" fill="none" stroke="currentColor" class="text-success" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="4 2" />
             </svg>
             <div class="flex justify-between px-3 text-xs text-muted-foreground">
               <span v-for="e in (monthlyRequests as MonthlyEntry[])" :key="e.month">{{ monthLabel(e.month) }}</span>
@@ -216,7 +216,7 @@ onMounted(() => { store.loadStats() })
                 مُقدَّم
               </Badge>
               <Badge variant="secondary" class="w-fit">
-                <span class="size-2 rounded-full bg-green-600 mr-2" />
+                <span class="size-2 rounded-full bg-success mr-2" />
                 مُعتمَد
               </Badge>
             </div>
@@ -306,7 +306,7 @@ onMounted(() => { store.loadStats() })
             <!-- Duplicate suppliers -->
             <div class="space-y-2">
               <h3 class="text-xs font-semibold text-muted-foreground">فاتورة مكررة خارجياً</h3>
-              <div v-if="!stats.compliance_alerts.duplicate_suppliers.length" class="flex items-center gap-2 text-xs text-green-600">
+              <div v-if="!stats.compliance_alerts.duplicate_suppliers.length" class="flex items-center gap-2 text-xs text-success">
                 <CheckCircle2 class="size-4" />
                 لا توجد تنبيهات
               </div>
@@ -321,7 +321,7 @@ onMounted(() => { store.loadStats() })
             <!-- High amount requests -->
             <div class="space-y-2 border-t pt-4">
               <h3 class="text-xs font-semibold text-muted-foreground">طلبات بمبالغ مرتفعة</h3>
-              <div v-if="!stats.compliance_alerts.high_amount_requests.length" class="flex items-center gap-2 text-xs text-green-600">
+              <div v-if="!stats.compliance_alerts.high_amount_requests.length" class="flex items-center gap-2 text-xs text-success">
                 <CheckCircle2 class="size-4" />
                 لا توجد تنبيهات
               </div>
@@ -344,7 +344,7 @@ onMounted(() => { store.loadStats() })
             <!-- Stale requests -->
             <div class="space-y-2 border-t pt-4">
               <h3 class="text-xs font-semibold text-muted-foreground">طلبات معلقة &gt; 14 يوم</h3>
-              <div v-if="!stats.compliance_alerts.stale_pending_requests.length" class="flex items-center gap-2 text-xs text-green-600">
+              <div v-if="!stats.compliance_alerts.stale_pending_requests.length" class="flex items-center gap-2 text-xs text-success">
                 <CheckCircle2 class="size-4" />
                 لا توجد تنبيهات
               </div>

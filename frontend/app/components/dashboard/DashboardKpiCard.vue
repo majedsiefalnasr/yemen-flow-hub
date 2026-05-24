@@ -15,14 +15,14 @@ const props = withDefaults(defineProps<{
 
 const variantColorClass = computed(() => {
   const colorMap: Record<string, string> = {
-    green: 'text-green-700',
-    amber: 'text-amber-600',
-    red: 'text-red-700',
+    green: 'text-success',
+    amber: 'text-warning',
+    red: 'text-destructive',
     indigo: 'text-indigo-600',
     cyan: 'text-cyan-500',
-    blue: 'text-blue-600',
+    blue: 'text-primary',
   }
-  return colorMap[props.variant] || 'text-gray-900'
+  return colorMap[props.variant] || 'text-foreground'
 })
 
 const borderClass = computed(() => props.highlighted ? 'border-s-4' : '')
@@ -33,6 +33,6 @@ const borderColorClass = computed(() => props.highlighted ? variantColorClass.va
   <Card class="border-0 p-4 shadow-card flex flex-col gap-1.5" :class="[borderClass, borderColorClass]">
     <slot name="icon" />
     <span class="text-2xl font-semibold leading-none" :class="variantColorClass">{{ value }}</span>
-    <span class="text-xs text-gray-600">{{ label }}</span>
+    <span class="text-xs text-muted-foreground">{{ label }}</span>
   </Card>
 </template>
