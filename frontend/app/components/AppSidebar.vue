@@ -17,6 +17,7 @@ import {
   Settings,
   HelpCircle,
   Search,
+  Menu,
 } from 'lucide-vue-next'
 import {
   Sidebar,
@@ -26,15 +27,17 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarTrigger,
 } from '@/components/ui/sidebar'
 import NavMain from '@/components/NavMain.vue'
 import NavSecondary from '@/components/NavSecondary.vue'
 import NavUser from '@/components/NavUser.vue'
+import SearchForm from '@/components/SearchForm.vue'
 import { useAuthStore } from '@/stores/auth.store'
 import { UserRole } from '@/types/enums'
 
 const props = withDefaults(defineProps<SidebarProps>(), {
-  collapsible: 'offcanvas',
+  collapsible: 'icon',
 })
 
 const authStore = useAuthStore()
@@ -59,7 +62,6 @@ const navMain = computed(() => [
 const navSecondary = [
   { title: 'إعدادات النظام', url: '/settings', icon: Settings },
   { title: 'المساعدة', url: '#', icon: HelpCircle },
-  { title: 'بحث', url: '#', icon: Search },
 ]
 
 const userData = computed(() => ({
@@ -72,21 +74,28 @@ const userData = computed(() => ({
 <template>
   <Sidebar v-bind="props" collapsible="offcanvas">
     <SidebarHeader>
-      <SidebarMenu>
-        <SidebarMenuItem>
-          <SidebarMenuButton
-            as-child
-            class="data-[slot=sidebar-menu-button]:!p-1.5"
-          >
-            <NuxtLink to="/">
-              <div class="grid h-8 w-8 place-items-center rounded-lg bg-blue-600 font-bold text-white text-sm">
-                ب
-              </div>
-              <span class="text-base font-semibold">منصة الواردات</span>
-            </NuxtLink>
-          </SidebarMenuButton>
-        </SidebarMenuItem>
-      </SidebarMenu>
+      <div class="flex items-center justify-between gap-2">
+        <SidebarMenu class="flex-1">
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              as-child
+              class="data-[slot=sidebar-menu-button]:!p-1.5"
+            >
+              <NuxtLink to="/" class="flex items-center gap-3">
+                <div class="grid h-10 w-10 place-items-center rounded-lg bg-blue-600 font-bold text-white text-sm flex-shrink-0">
+                  ب
+                </div>
+                <div class="flex flex-col gap-0.5 leading-none min-w-0">
+                  <span class="text-sm font-semibold truncate">منصة الواردات</span>
+                  <span class="text-xs text-muted-foreground truncate">البنك المركزي اليمني</span>
+                </div>
+              </NuxtLink>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+        <SidebarTrigger class="h-8 w-8" />
+      </div>
+      <SearchForm />
     </SidebarHeader>
     <SidebarContent>
       <NavMain :items="navMain" />
