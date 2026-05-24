@@ -153,21 +153,21 @@ const onSubmit = handleSubmit((values) => {
           </button>
         </DialogHeader>
 
-        <p class="text-xs text-gray-600 -mt-2">
+        <p class="text-xs text-muted-foreground -mt-2">
           الفصل بين الإدخال والمراجعة الداخلية مفروض تلقائياً على نفس الطلب.
         </p>
 
-        <Alert v-if="props.serverError" class="border-l-4 border-l-red-600 bg-red-50 border-0" role="alert">
-          <AlertCircle class="h-4 w-4 text-red-600" aria-hidden="true" />
-          <AlertDescription class="text-red-600 text-sm">{{ props.serverError }}</AlertDescription>
+        <Alert v-if="props.serverError" class="border-l-4 border-l-red-600 bg-destructive/10 border-0" role="alert">
+          <AlertCircle class="h-4 w-4 text-destructive" aria-hidden="true" />
+          <AlertDescription class="text-destructive text-sm">{{ props.serverError }}</AlertDescription>
         </Alert>
 
         <form class="flex flex-col gap-5" @submit.prevent="onSubmit">
           <div class="grid grid-cols-2 gap-4">
             <!-- Name -->
             <div class="col-span-2 flex flex-col gap-2">
-              <Label for="staff-name" class="text-xs text-gray-600 font-medium">
-                الاسم الكامل <span class="text-red-600">*</span>
+              <Label for="staff-name" class="text-xs text-muted-foreground font-medium">
+                الاسم الكامل <span class="text-destructive">*</span>
               </Label>
               <Input
                 id="staff-name"
@@ -175,15 +175,15 @@ const onSubmit = handleSubmit((values) => {
                 v-bind="nameAttrs"
                 type="text"
                 placeholder="الاسم الكامل للموظف"
-                :class="{ 'border-red-600': errors.name }"
+                :class="{ 'border-destructive': errors.name }"
               />
-              <span v-if="errors.name" class="text-xs text-red-600" role="alert">{{ errors.name }}</span>
+              <span v-if="errors.name" class="text-xs text-destructive" role="alert">{{ errors.name }}</span>
             </div>
 
             <!-- Email -->
             <div class="col-span-2 flex flex-col gap-2">
-              <Label for="staff-email" class="text-xs text-gray-600 font-medium">
-                البريد الإلكتروني <span class="text-red-600">*</span>
+              <Label for="staff-email" class="text-xs text-muted-foreground font-medium">
+                البريد الإلكتروني <span class="text-destructive">*</span>
               </Label>
               <Input
                 id="staff-email"
@@ -192,34 +192,34 @@ const onSubmit = handleSubmit((values) => {
                 type="email"
                 placeholder="email@bank.ye"
                 dir="ltr"
-                :class="{ 'border-red-600': errors.email }"
+                :class="{ 'border-destructive': errors.email }"
               />
-              <span v-if="errors.email" class="text-xs text-red-600" role="alert">{{ errors.email }}</span>
+              <span v-if="errors.email" class="text-xs text-destructive" role="alert">{{ errors.email }}</span>
             </div>
 
             <!-- Role -->
             <div class="flex flex-col gap-2">
-              <Label for="staff-role" class="text-xs text-gray-600 font-medium">
-                الدور الوظيفي <span class="text-red-600">*</span>
+              <Label for="staff-role" class="text-xs text-muted-foreground font-medium">
+                الدور الوظيفي <span class="text-destructive">*</span>
               </Label>
               <select
                 id="staff-role"
                 v-model="role"
                 v-bind="roleAttrs"
-                class="h-9 px-3 border border-gray-300 rounded-md bg-white text-sm text-gray-900 outline-none focus-visible:ring-1 focus-visible:ring-blue-600"
-                :class="{ 'border-red-600': errors.role }"
+                class="h-9 px-3 border border-border rounded-md bg-white text-sm text-foreground outline-none focus-visible:ring-1 focus-visible:ring-blue-600"
+                :class="{ 'border-destructive': errors.role }"
               >
                 <option :value="undefined" disabled>اختر الدور</option>
                 <option v-for="r in BANK_ADMIN_MANAGED_ROLES" :key="r" :value="r">
                   {{ ROLE_LABELS[r] }}
                 </option>
               </select>
-              <span v-if="errors.role" class="text-xs text-red-600" role="alert">{{ errors.role }}</span>
+              <span v-if="errors.role" class="text-xs text-destructive" role="alert">{{ errors.role }}</span>
             </div>
 
             <!-- Department -->
             <div class="flex flex-col gap-2">
-              <Label for="staff-department" class="text-xs text-gray-600 font-medium">
+              <Label for="staff-department" class="text-xs text-muted-foreground font-medium">
                 القسم
               </Label>
               <Input
@@ -233,7 +233,7 @@ const onSubmit = handleSubmit((values) => {
 
             <!-- Password -->
             <div class="col-span-2 flex flex-col gap-2">
-              <Label for="staff-password" class="text-xs text-gray-600 font-medium">
+              <Label for="staff-password" class="text-xs text-muted-foreground font-medium">
                 {{ isEdit ? 'كلمة المرور (اتركها فارغة للإبقاء على الحالية)' : 'كلمة المرور الأولية *' }}
               </Label>
               <Input
@@ -242,9 +242,9 @@ const onSubmit = handleSubmit((values) => {
                 v-bind="passwordAttrs"
                 type="password"
                 placeholder="8 أحرف على الأقل"
-                :class="{ 'border-red-600': errors.password }"
+                :class="{ 'border-destructive': errors.password }"
               />
-              <span v-if="errors.password" class="text-xs text-red-600" role="alert">{{ errors.password }}</span>
+              <span v-if="errors.password" class="text-xs text-destructive" role="alert">{{ errors.password }}</span>
             </div>
           </div>
 

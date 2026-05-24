@@ -46,7 +46,7 @@ const SEVERITY_STYLES: Record<Severity, {
   label: string
 }> = {
   critical: { icon: XCircle, iconWrap: 'text-rose-50 bg-rose-600 ring-2 ring-rose-200', border: 'border-e-4 border-e-rose-600', unreadBg: 'bg-rose-50/70', dot: 'bg-rose-600', label: 'عاجل' },
-  warning: { icon: FileText, iconWrap: 'text-amber-50 bg-amber-500 ring-2 ring-amber-200', border: 'border-e-4 border-e-amber-500', unreadBg: 'bg-amber-50/60', dot: 'bg-amber-500', label: 'مهم' },
+  warning: { icon: FileText, iconWrap: 'text-warning bg-warning/100 ring-2 ring-warning', border: 'border-e-4 border-e-amber-500', unreadBg: 'bg-warning/10/60', dot: 'bg-warning/100', label: 'مهم' },
   success: { icon: CheckCircle2, iconWrap: 'text-emerald-50 bg-emerald-600 ring-2 ring-emerald-200', border: 'border-e-4 border-e-emerald-600', unreadBg: 'bg-emerald-50/60', dot: 'bg-emerald-600', label: 'إنجاز' },
   voting: { icon: Vote, iconWrap: 'text-violet-50 bg-violet-600 ring-2 ring-violet-200', border: 'border-e-4 border-e-violet-600', unreadBg: 'bg-violet-50/60', dot: 'bg-violet-600', label: 'تصويت' },
   info: { icon: Bell, iconWrap: 'text-sky-50 bg-sky-600 ring-2 ring-sky-200', border: 'border-e-4 border-e-sky-500', unreadBg: 'bg-sky-50/50', dot: 'bg-sky-500', label: 'إشعار' },

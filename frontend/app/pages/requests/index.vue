@@ -277,14 +277,14 @@ const canCreateRequest = computed(() => user.value?.role === UserRole.DATA_ENTRY
                     </span>
                     <span
                       v-if="req.is_claimed && !req.is_claimed_by_me && user.role === UserRole.SUPPORT_COMMITTEE"
-                      class="inline-flex items-center gap-0.5 rounded-full bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-600"
+                      class="inline-flex items-center gap-0.5 rounded-full bg-warning/100/10 px-1.5 py-0.5 text-[10px] font-medium text-warning"
                     >
                       <Lock class="h-2.5 w-2.5" />
                       محجوز: {{ req.claimed_by?.name ?? '—' }}
                     </span>
                     <span
                       v-else-if="req.is_claimed_by_me"
-                      class="inline-flex items-center gap-0.5 rounded-full bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-600"
+                      class="inline-flex items-center gap-0.5 rounded-full bg-warning/100/10 px-1.5 py-0.5 text-[10px] font-medium text-warning"
                     >
                       <Lock class="h-2.5 w-2.5" />
                       محجوز لك

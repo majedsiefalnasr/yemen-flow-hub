@@ -23,7 +23,7 @@ defineProps<{
       v-if="watermark"
       class="pointer-events-none absolute inset-0 grid place-items-center print:hidden"
     >
-      <div class="-rotate-12 select-none text-[140px] font-black tracking-widest text-muted print:text-gray-200/70">
+      <div class="-rotate-12 select-none text-[140px] font-black tracking-widest text-muted print:text-muted/50">
         مسودة
       </div>
     </div>
@@ -70,53 +70,53 @@ defineProps<{
       <table class="w-full border-collapse text-xs">
         <tbody>
           <tr>
-            <td :class="cn('w-1/4 border p-2', 'bg-muted text-foreground print:bg-gray-100 print:text-black border-border print:border-gray-300')">
+            <td :class="cn('w-1/4 border p-2', 'bg-muted text-foreground print:bg-muted print:text-black border-border print:border-border')">
               المستورد
             </td>
-            <td :class="cn('w-1/4 border p-2', 'text-foreground border-border print:text-black print:border-gray-300')">
+            <td :class="cn('w-1/4 border p-2', 'text-foreground border-border print:text-black print:border-border')">
               {{ request.merchant?.name ?? '—' }}
             </td>
-            <td :class="cn('w-1/4 border p-2', 'bg-muted text-foreground print:bg-gray-100 print:text-black border-border print:border-gray-300')">
+            <td :class="cn('w-1/4 border p-2', 'bg-muted text-foreground print:bg-muted print:text-black border-border print:border-border')">
               البنك / الجهة
             </td>
-            <td :class="cn('w-1/4 border p-2', 'text-foreground border-border print:text-black print:border-gray-300')">
+            <td :class="cn('w-1/4 border p-2', 'text-foreground border-border print:text-black print:border-border')">
               {{ request.bank_name ?? '—' }}
             </td>
           </tr>
           <tr>
-            <td :class="cn('border p-2', 'bg-muted text-foreground print:bg-gray-100 print:text-black border-border print:border-gray-300')">
+            <td :class="cn('border p-2', 'bg-muted text-foreground print:bg-muted print:text-black border-border print:border-border')">
               المبلغ
             </td>
-            <td :class="cn('border p-2', 'text-foreground border-border print:text-black print:border-gray-300')">
+            <td :class="cn('border p-2', 'text-foreground border-border print:text-black print:border-border')">
               {{ request.amount.toLocaleString('en-US') }} {{ request.currency }}
             </td>
-            <td :class="cn('border p-2', 'bg-muted text-foreground print:bg-gray-100 print:text-black border-border print:border-gray-300')">
+            <td :class="cn('border p-2', 'bg-muted text-foreground print:bg-muted print:text-black border-border print:border-border')">
               رقم الفاتورة
             </td>
-            <td :class="cn('border p-2', 'text-foreground border-border print:text-black print:border-gray-300')">
+            <td :class="cn('border p-2', 'text-foreground border-border print:text-black print:border-border')">
               {{ request.invoice_number ?? '—' }}
             </td>
           </tr>
           <tr>
-            <td :class="cn('border p-2', 'bg-muted text-foreground print:bg-gray-100 print:text-black border-border print:border-gray-300')">
+            <td :class="cn('border p-2', 'bg-muted text-foreground print:bg-muted print:text-black border-border print:border-border')">
               المورد
             </td>
-            <td :class="cn('border p-2', 'text-foreground border-border print:text-black print:border-gray-300')">
+            <td :class="cn('border p-2', 'text-foreground border-border print:text-black print:border-border')">
               {{ request.supplier_name }}
             </td>
-            <td :class="cn('border p-2', 'bg-muted text-foreground print:bg-gray-100 print:text-black border-border print:border-gray-300')">
+            <td :class="cn('border p-2', 'bg-muted text-foreground print:bg-muted print:text-black border-border print:border-border')">
               ميناء الوصول
             </td>
-            <td :class="cn('border p-2', 'text-foreground border-border print:text-black print:border-gray-300')">
+            <td :class="cn('border p-2', 'text-foreground border-border print:text-black print:border-border')">
               {{ request.port_of_entry }}
             </td>
           </tr>
           <tr>
-            <td :class="cn('border p-2', 'bg-muted text-foreground print:bg-gray-100 print:text-black border-border print:border-gray-300')">
+            <td :class="cn('border p-2', 'bg-muted text-foreground print:bg-muted print:text-black border-border print:border-border')">
               نوع البضاعة
             </td>
             <td
-              :class="cn('border p-2 colspan', 'text-foreground border-border print:text-black print:border-gray-300')"
+              :class="cn('border p-2 colspan', 'text-foreground border-border print:text-black print:border-border')"
               colspan="3"
             >
               {{ request.goods_description }}
@@ -133,30 +133,30 @@ defineProps<{
       <table class="w-full border-collapse text-xs">
         <tbody>
           <tr>
-            <td :class="cn('w-1/4 border p-2', 'bg-muted text-foreground print:bg-gray-100 print:text-black border-border print:border-gray-300')">
+            <td :class="cn('w-1/4 border p-2', 'bg-muted text-foreground print:bg-muted print:text-black border-border print:border-border')">
               اعتماد المساندة
             </td>
-            <td :class="cn('border p-2', 'text-foreground border-border print:text-black print:border-gray-300')">
+            <td :class="cn('border p-2', 'text-foreground border-border print:text-black print:border-border')">
               تم
             </td>
-            <td :class="cn('w-1/4 border p-2', 'bg-muted text-foreground print:bg-gray-100 print:text-black border-border print:border-gray-300')">
+            <td :class="cn('w-1/4 border p-2', 'bg-muted text-foreground print:bg-muted print:text-black border-border print:border-border')">
               رقم السويفت
             </td>
-            <td :class="cn('border p-2', 'text-foreground border-border print:text-black print:border-gray-300')">
+            <td :class="cn('border p-2', 'text-foreground border-border print:text-black print:border-border')">
               {{ request.swift_uploaded_at ? formatDay(request.swift_uploaded_at) : '—' }}
             </td>
           </tr>
           <tr>
-            <td :class="cn('border p-2', 'bg-muted text-foreground print:bg-gray-100 print:text-black border-border print:border-gray-300')">
+            <td :class="cn('border p-2', 'bg-muted text-foreground print:bg-muted print:text-black border-border print:border-border')">
               اعتماد التصويت التنفيذي
             </td>
-            <td :class="cn('border p-2', 'text-foreground border-border print:text-black print:border-gray-300')">
+            <td :class="cn('border p-2', 'text-foreground border-border print:text-black print:border-border')">
               تم
             </td>
-            <td :class="cn('border p-2', 'bg-muted text-foreground print:bg-gray-100 print:text-black border-border print:border-gray-300')">
+            <td :class="cn('border p-2', 'bg-muted text-foreground print:bg-muted print:text-black border-border print:border-border')">
               تاريخ الإصدار
             </td>
-            <td :class="cn('border p-2', 'text-foreground border-border print:text-black print:border-gray-300')">
+            <td :class="cn('border p-2', 'text-foreground border-border print:text-black print:border-border')">
               {{ formatDate(request.customs_declaration?.issued_at) }}
             </td>
           </tr>
@@ -182,7 +182,7 @@ defineProps<{
       </div>
     </section>
 
-    <footer :class="cn('relative mt-12 border-t pt-2 text-center text-[10px]', 'border-border text-muted-foreground print:border-gray-400 print:text-gray-600')">
+    <footer :class="cn('relative mt-12 border-t pt-2 text-center text-[10px]', 'border-border text-muted-foreground print:border-border print:text-muted-foreground')">
       هذه الوثيقة صادرة إلكترونياً من منصة إدارة الواردات — البنك المركزي اليمني. للتحقق من الصحة، يرجى مراجعة سجل المنصة باستخدام رقم البيان.
     </footer>
   </div>

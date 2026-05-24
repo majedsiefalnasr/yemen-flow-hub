@@ -33,8 +33,8 @@ onMounted(() => { store.loadStats() })
     <!-- Skeleton -->
     <div v-if="store.loading" class="grid grid-cols-3 md:grid-cols-2 sm:grid-cols-1 gap-4" aria-busy="true" aria-label="جارٍ تحميل الإحصائيات">
       <div v-for="n in 3" :key="n" class="bg-white border border-border rounded-md p-6 flex flex-col gap-1.5 animate-pulse" aria-hidden="true">
-        <div class="h-3.5 w-2/5 bg-gray-200 rounded" />
-        <div class="h-8 w-1/3 bg-gray-200 rounded" />
+        <div class="h-3.5 w-2/5 bg-muted rounded" />
+        <div class="h-8 w-1/3 bg-muted rounded" />
       </div>
     </div>
 
@@ -44,7 +44,7 @@ onMounted(() => { store.loadStats() })
         <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
       </svg>
       <span>{{ store.error }}</span>
-      <button class="ms-auto px-4 py-1.5 bg-white border border-error-text rounded text-error-text text-xs hover:bg-red-50 transition-colors" @click="store.loadStats()">إعادة المحاولة</button>
+      <button class="ms-auto px-4 py-1.5 bg-white border border-error-text rounded text-error-text text-xs hover:bg-destructive/10 transition-colors" @click="store.loadStats()">إعادة المحاولة</button>
     </div>
 
     <template v-else-if="stats">
@@ -53,7 +53,7 @@ onMounted(() => { store.loadStats() })
       <div :class="isDirector ? 'grid grid-cols-4 lg:grid-cols-2 md:grid-cols-1 gap-4' : 'grid grid-cols-3 md:grid-cols-2 sm:grid-cols-1 gap-4'">
         <!-- قرارات رفض -->
         <div class="bg-white border border-border rounded-md p-6 flex flex-col gap-1.5">
-          <div class="w-9 h-9 rounded bg-red-50 text-error-text flex items-center justify-center mb-1" aria-hidden="true">
+          <div class="w-9 h-9 rounded bg-destructive/10 text-error-text flex items-center justify-center mb-1" aria-hidden="true">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" />
             </svg>
@@ -64,7 +64,7 @@ onMounted(() => { store.loadStats() })
 
         <!-- قرارات اعتماد -->
         <div class="bg-white border border-border rounded-md p-6 flex flex-col gap-1.5">
-          <div class="w-9 h-9 rounded bg-green-50 text-success-text flex items-center justify-center mb-1" aria-hidden="true">
+          <div class="w-9 h-9 rounded bg-success/10 text-success-text flex items-center justify-center mb-1" aria-hidden="true">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" />
             </svg>
@@ -143,20 +143,20 @@ onMounted(() => { store.loadStats() })
 
         <table v-else class="w-full border-collapse text-xs bg-white border border-border rounded-md overflow-hidden" role="table" aria-label="طلبات بانتظار تصويتك">
           <thead>
-            <tr class="bg-gray-50">
-              <th class="px-3.5 py-2.5 text-right font-medium text-muted-foreground border-b border-gray-200 whitespace-nowrap">المرجع</th>
-              <th class="px-3.5 py-2.5 text-right font-medium text-muted-foreground border-b border-gray-200 whitespace-nowrap">المورد</th>
-              <th class="px-3.5 py-2.5 text-right font-medium text-muted-foreground border-b border-gray-200 whitespace-nowrap">المبلغ</th>
-              <th class="px-3.5 py-2.5 text-right font-medium text-muted-foreground border-b border-gray-200 whitespace-nowrap">الحالة</th>
-              <th class="px-3.5 py-2.5 text-right font-medium text-muted-foreground border-b border-gray-200 whitespace-nowrap">التصويت</th>
-              <th class="px-3.5 py-2.5 text-right font-medium text-muted-foreground border-b border-gray-200 whitespace-nowrap">إجراء</th>
+            <tr class="bg-muted">
+              <th class="px-3.5 py-2.5 text-right font-medium text-muted-foreground border-b border-border whitespace-nowrap">المرجع</th>
+              <th class="px-3.5 py-2.5 text-right font-medium text-muted-foreground border-b border-border whitespace-nowrap">المورد</th>
+              <th class="px-3.5 py-2.5 text-right font-medium text-muted-foreground border-b border-border whitespace-nowrap">المبلغ</th>
+              <th class="px-3.5 py-2.5 text-right font-medium text-muted-foreground border-b border-border whitespace-nowrap">الحالة</th>
+              <th class="px-3.5 py-2.5 text-right font-medium text-muted-foreground border-b border-border whitespace-nowrap">التصويت</th>
+              <th class="px-3.5 py-2.5 text-right font-medium text-muted-foreground border-b border-border whitespace-nowrap">إجراء</th>
             </tr>
           </thead>
           <tbody>
             <tr
               v-for="req in (stats.voting_queue ?? [])"
               :key="req.id"
-              class="hover:bg-gray-50 border-t border-gray-200"
+              class="hover:bg-muted border-t border-border"
               :class="{ 'bg-indigo-50': isVotingOpen(req.status) }"
             >
               <td class="px-3.5 py-2.5"><a class="text-primary-blue hover:underline font-mono" :href="`/requests/${req.id}`" @click.prevent="router.push(`/requests/${req.id}`)">{{ req.reference_number }}</a></td>
@@ -165,7 +165,7 @@ onMounted(() => { store.loadStats() })
               <td class="px-3.5 py-2.5"><StatusBadge :status="req.status" :role="UserRole.EXECUTIVE_MEMBER" /></td>
               <td class="px-3.5 py-2.5">
                 <span v-if="isVotingOpen(req.status)" class="inline-flex items-center px-2.5 py-1 bg-voting-indigo text-white rounded-full text-xs font-medium animate-pulse">باب التصويت مفتوح</span>
-                <span v-else class="inline-flex items-center px-2.5 py-1 bg-gray-100 text-muted-foreground rounded-full text-xs">انتظار فتح التصويت</span>
+                <span v-else class="inline-flex items-center px-2.5 py-1 bg-muted text-muted-foreground rounded-full text-xs">انتظار فتح التصويت</span>
               </td>
               <td class="px-3.5 py-2.5"><button class="px-3.5 py-1.5 bg-white border border-border rounded text-xs hover:border-primary-blue hover:text-primary-blue transition-colors" :aria-label="`عرض الطلب ${req.reference_number}`" @click="router.push(`/requests/${req.id}`)">عرض</button></td>
             </tr>
@@ -186,16 +186,16 @@ onMounted(() => { store.loadStats() })
         </div>
         <table v-else class="w-full border-collapse text-xs bg-white border border-border rounded-md overflow-hidden" role="table" aria-label="طلبات بانتظار إصدار البيان الجمركي">
           <thead>
-            <tr class="bg-gray-50">
-              <th class="px-3.5 py-2.5 text-right font-medium text-muted-foreground border-b border-gray-200 whitespace-nowrap">المرجع</th>
-              <th class="px-3.5 py-2.5 text-right font-medium text-muted-foreground border-b border-gray-200 whitespace-nowrap">البنك</th>
-              <th class="px-3.5 py-2.5 text-right font-medium text-muted-foreground border-b border-gray-200 whitespace-nowrap">المبلغ</th>
-              <th class="px-3.5 py-2.5 text-right font-medium text-muted-foreground border-b border-gray-200 whitespace-nowrap">الحالة</th>
-              <th class="px-3.5 py-2.5 text-right font-medium text-muted-foreground border-b border-gray-200 whitespace-nowrap">إجراء</th>
+            <tr class="bg-muted">
+              <th class="px-3.5 py-2.5 text-right font-medium text-muted-foreground border-b border-border whitespace-nowrap">المرجع</th>
+              <th class="px-3.5 py-2.5 text-right font-medium text-muted-foreground border-b border-border whitespace-nowrap">البنك</th>
+              <th class="px-3.5 py-2.5 text-right font-medium text-muted-foreground border-b border-border whitespace-nowrap">المبلغ</th>
+              <th class="px-3.5 py-2.5 text-right font-medium text-muted-foreground border-b border-border whitespace-nowrap">الحالة</th>
+              <th class="px-3.5 py-2.5 text-right font-medium text-muted-foreground border-b border-border whitespace-nowrap">إجراء</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="req in customsDeclarationPending" :key="req.id" class="hover:bg-gray-50 border-t border-gray-200">
+            <tr v-for="req in customsDeclarationPending" :key="req.id" class="hover:bg-muted border-t border-border">
               <td class="px-3.5 py-2.5"><a class="text-primary-blue hover:underline font-mono" :href="`/requests/${req.id}`" @click.prevent="router.push(`/requests/${req.id}`)">{{ req.reference_number }}</a></td>
               <td class="px-3.5 py-2.5 text-right">{{ req.bank_name ?? '—' }}</td>
               <td class="px-3.5 py-2.5 text-left direction-ltr font-variant-numeric-tabular-nums">{{ formatAmount(req.amount, req.currency) }}</td>

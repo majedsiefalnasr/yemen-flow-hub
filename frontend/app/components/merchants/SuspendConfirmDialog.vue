@@ -45,24 +45,24 @@ function requestClose() {
       >
         <div
           class="w-14 h-14 rounded-full flex items-center justify-center flex-shrink-0"
-          :class="isSuspend ? 'bg-amber-50 text-amber-600' : 'bg-green-50 text-green-700'"
+          :class="isSuspend ? 'bg-warning/10 text-warning' : 'bg-success/10 text-success'"
           aria-hidden="true"
         >
           <Pause v-if="isSuspend" :size="24" />
           <Play v-else :size="24" />
         </div>
 
-        <h3 class="text-lg font-semibold text-gray-900">
+        <h3 class="text-lg font-semibold text-foreground">
           {{ title }}
         </h3>
 
-        <p class="text-sm text-gray-600 leading-relaxed">
+        <p class="text-sm text-muted-foreground leading-relaxed">
           {{ message }}
         </p>
 
-        <Alert v-if="props.error" class="border-l-4 border-l-red-600 bg-red-50 border-0 w-full" role="alert">
-          <AlertCircle class="h-4 w-4 text-red-600" aria-hidden="true" />
-          <AlertDescription class="text-red-600 text-sm">{{ props.error }}</AlertDescription>
+        <Alert v-if="props.error" class="border-l-4 border-l-red-600 bg-destructive/10 border-0 w-full" role="alert">
+          <AlertCircle class="h-4 w-4 text-destructive" aria-hidden="true" />
+          <AlertDescription class="text-destructive text-sm">{{ props.error }}</AlertDescription>
         </Alert>
 
         <DialogFooter class="flex gap-3 w-full pt-2">
@@ -73,7 +73,7 @@ function requestClose() {
             type="button"
             :disabled="props.submitting"
             class="flex-1"
-            :class="isSuspend ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-green-600 hover:bg-green-700 text-white'"
+            :class="isSuspend ? 'bg-destructive hover:opacity-90 text-white' : 'bg-success hover:bg-success text-white'"
             @click="emit('confirm')"
           >
             {{ confirmLabel }}

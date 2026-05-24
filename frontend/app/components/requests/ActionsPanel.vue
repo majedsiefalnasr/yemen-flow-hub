@@ -320,9 +320,9 @@ async function dispatchAction(action: string, reason?: string) {
 <template>
   <div v-if="showAnyActions" class="space-y-4" dir="rtl" role="region" aria-label="لوحة الإجراءات">
     <!-- Error alert -->
-    <Alert v-if="actionError" class="border-s-4 border-s-red-600 bg-red-50">
-      <AlertCircle class="h-4 w-4 text-red-600" />
-      <AlertDescription class="text-red-700">{{ actionError }}</AlertDescription>
+    <Alert v-if="actionError" class="border-s-4 border-s-red-600 bg-destructive/10">
+      <AlertCircle class="h-4 w-4 text-destructive" />
+      <AlertDescription class="text-destructive">{{ actionError }}</AlertDescription>
     </Alert>
 
     <!-- BANK_REVIEWER: SUBMITTED → begin review -->
@@ -341,7 +341,7 @@ async function dispatchAction(action: string, reason?: string) {
     <template v-if="showBankReviewerActions && request.status === RequestStatus.BANK_REVIEW">
       <div class="flex gap-3 flex-row-reverse">
         <Button
-          class="flex-1 bg-green-600 hover:bg-green-700"
+          class="flex-1 bg-success hover:bg-success"
           :disabled="performingAction"
           @click="handleApprove"
         >
@@ -361,8 +361,8 @@ async function dispatchAction(action: string, reason?: string) {
           </DialogTrigger>
           <DialogContent class="max-w-md">
             <DialogHeader>
-              <DialogTitle class="text-red-600">تأكيد الرفض النهائي</DialogTitle>
-              <DialogDescription class="text-red-600">
+              <DialogTitle class="text-destructive">تأكيد الرفض النهائي</DialogTitle>
+              <DialogDescription class="text-destructive">
                 تحذير: هذا الإجراء نهائي ولا يمكن التراجع عنه.
               </DialogDescription>
             </DialogHeader>
@@ -370,7 +370,7 @@ async function dispatchAction(action: string, reason?: string) {
             <div class="space-y-4">
               <div>
                 <label for="bank-reject-terminal-comment" class="text-sm font-medium">
-                  سبب الرفض <span class="text-red-600">*</span>
+                  سبب الرفض <span class="text-destructive">*</span>
                 </label>
                 <Textarea
                   id="bank-reject-terminal-comment"
@@ -379,7 +379,7 @@ async function dispatchAction(action: string, reason?: string) {
                   class="mt-2 min-h-24"
                   :aria-invalid="!!bankRejectTerminalCommentError"
                 />
-                <p v-if="bankRejectTerminalCommentError" class="text-xs text-red-600 mt-1">
+                <p v-if="bankRejectTerminalCommentError" class="text-xs text-destructive mt-1">
                   {{ bankRejectTerminalCommentError }}
                 </p>
               </div>
@@ -422,7 +422,7 @@ async function dispatchAction(action: string, reason?: string) {
             <div class="space-y-4">
               <div>
                 <label for="bank-return-comment" class="text-sm font-medium">
-                  سبب الإعادة <span class="text-red-600">*</span>
+                  سبب الإعادة <span class="text-destructive">*</span>
                 </label>
                 <Textarea
                   id="bank-return-comment"
@@ -431,7 +431,7 @@ async function dispatchAction(action: string, reason?: string) {
                   class="mt-2 min-h-24"
                   :aria-invalid="!!bankReturnCommentError"
                 />
-                <p v-if="bankReturnCommentError" class="text-xs text-red-600 mt-1">
+                <p v-if="bankReturnCommentError" class="text-xs text-destructive mt-1">
                   {{ bankReturnCommentError }}
                 </p>
               </div>
@@ -461,7 +461,7 @@ async function dispatchAction(action: string, reason?: string) {
     <template v-if="showSupportCommitteeActions">
       <div class="flex gap-3 flex-row-reverse">
         <Button
-          class="flex-1 bg-green-600 hover:bg-green-700"
+          class="flex-1 bg-success hover:bg-success"
           :disabled="performingAction"
           @click="handleSupportApprove"
         >
@@ -487,7 +487,7 @@ async function dispatchAction(action: string, reason?: string) {
             <div class="space-y-4">
               <div>
                 <label for="reject-reason-support" class="text-sm font-medium">
-                  سبب الرفض <span class="text-red-600">*</span>
+                  سبب الرفض <span class="text-destructive">*</span>
                 </label>
                 <Textarea
                   id="reject-reason-support"
@@ -496,7 +496,7 @@ async function dispatchAction(action: string, reason?: string) {
                   class="mt-2 min-h-24"
                   :aria-invalid="!!rejectReasonError"
                 />
-                <p v-if="rejectReasonError" class="text-xs text-red-600 mt-1">
+                <p v-if="rejectReasonError" class="text-xs text-destructive mt-1">
                   {{ rejectReasonError }}
                 </p>
               </div>
@@ -539,7 +539,7 @@ async function dispatchAction(action: string, reason?: string) {
             <div class="space-y-4">
               <div>
                 <label for="support-return-comment" class="text-sm font-medium">
-                  سبب الإعادة <span class="text-red-600">*</span>
+                  سبب الإعادة <span class="text-destructive">*</span>
                 </label>
                 <Textarea
                   id="support-return-comment"
@@ -548,7 +548,7 @@ async function dispatchAction(action: string, reason?: string) {
                   class="mt-2 min-h-24"
                   :aria-invalid="!!supportReturnCommentError"
                 />
-                <p v-if="supportReturnCommentError" class="text-xs text-red-600 mt-1">
+                <p v-if="supportReturnCommentError" class="text-xs text-destructive mt-1">
                   {{ supportReturnCommentError }}
                 </p>
               </div>
@@ -657,7 +657,7 @@ async function dispatchAction(action: string, reason?: string) {
         <Dialog v-model:open="showOverrideModal">
           <DialogTrigger as-child>
             <Button
-              class="flex-1 bg-amber-500 hover:bg-amber-600"
+              class="flex-1 bg-warning/100 hover:bg-warning"
               :disabled="votingStore.performingDirectorAction"
             >
               تجاوز مدير اللجنة
@@ -671,23 +671,23 @@ async function dispatchAction(action: string, reason?: string) {
             <div class="space-y-4">
               <!-- Current tally snapshot -->
               <div v-if="votingStore.votingDetail?.tally" class="grid grid-cols-3 gap-2 text-center">
-                <div class="bg-green-50 p-2 rounded">
-                  <p class="text-sm font-medium text-green-700">موافق</p>
-                  <p class="text-lg font-bold text-green-600">{{ votingStore.votingDetail.tally.approve_count }}</p>
+                <div class="bg-success/10 p-2 rounded">
+                  <p class="text-sm font-medium text-success">موافق</p>
+                  <p class="text-lg font-bold text-success">{{ votingStore.votingDetail.tally.approve_count }}</p>
                 </div>
-                <div class="bg-red-50 p-2 rounded">
-                  <p class="text-sm font-medium text-red-700">رافض</p>
-                  <p class="text-lg font-bold text-red-600">{{ votingStore.votingDetail.tally.reject_count }}</p>
+                <div class="bg-destructive/10 p-2 rounded">
+                  <p class="text-sm font-medium text-destructive">رافض</p>
+                  <p class="text-lg font-bold text-destructive">{{ votingStore.votingDetail.tally.reject_count }}</p>
                 </div>
-                <div class="bg-gray-50 p-2 rounded">
-                  <p class="text-sm font-medium text-gray-700">ممتنع</p>
-                  <p class="text-lg font-bold text-gray-600">{{ votingStore.votingDetail.tally.abstain_count + votingStore.votingDetail.tally.auto_abstain_count }}</p>
+                <div class="bg-muted p-2 rounded">
+                  <p class="text-sm font-medium text-foreground">ممتنع</p>
+                  <p class="text-lg font-bold text-muted-foreground">{{ votingStore.votingDetail.tally.abstain_count + votingStore.votingDetail.tally.auto_abstain_count }}</p>
                 </div>
               </div>
 
               <!-- Decision selection -->
               <div class="space-y-2">
-                <p class="text-sm font-medium">القرار <span class="text-red-600">*</span></p>
+                <p class="text-sm font-medium">القرار <span class="text-destructive">*</span></p>
                 <div class="space-y-2">
                   <label class="flex items-center gap-2 cursor-pointer">
                     <input
@@ -710,13 +710,13 @@ async function dispatchAction(action: string, reason?: string) {
                     <span class="text-sm">رفض</span>
                   </label>
                 </div>
-                <p v-if="overrideDecisionError" class="text-xs text-red-600">{{ overrideDecisionError }}</p>
+                <p v-if="overrideDecisionError" class="text-xs text-destructive">{{ overrideDecisionError }}</p>
               </div>
 
               <!-- Justification -->
               <div>
                 <label for="override-justification" class="text-sm font-medium">
-                  المبرر <span class="text-red-600">*</span>
+                  المبرر <span class="text-destructive">*</span>
                 </label>
                 <Textarea
                   id="override-justification"
@@ -725,7 +725,7 @@ async function dispatchAction(action: string, reason?: string) {
                   class="mt-2 min-h-24"
                   :aria-invalid="!!overrideJustificationError"
                 />
-                <p v-if="overrideJustificationError" class="text-xs text-red-600 mt-1">
+                <p v-if="overrideJustificationError" class="text-xs text-destructive mt-1">
                   {{ overrideJustificationError }}
                 </p>
               </div>
@@ -738,7 +738,7 @@ async function dispatchAction(action: string, reason?: string) {
                   إلغاء
                 </Button>
                 <Button
-                  class="bg-amber-500 hover:bg-amber-600"
+                  class="bg-warning/100 hover:bg-warning"
                   :disabled="votingStore.performingDirectorAction"
                   @click="handleDirectorOverride"
                 >
@@ -755,17 +755,17 @@ async function dispatchAction(action: string, reason?: string) {
     <!-- COMMITTEE_DIRECTOR: EXECUTIVE_VOTING_CLOSED → finalize decision -->
     <template v-if="showDirectorVotingActions && request.status === RequestStatus.EXECUTIVE_VOTING_CLOSED">
       <div v-if="votingStore.votingDetail?.tally" class="grid grid-cols-3 gap-2 text-center">
-        <div class="bg-green-50 p-2 rounded">
-          <p class="text-sm font-medium text-green-700">موافق</p>
-          <p class="text-lg font-bold text-green-600">{{ votingStore.votingDetail.tally.approve_count }}</p>
+        <div class="bg-success/10 p-2 rounded">
+          <p class="text-sm font-medium text-success">موافق</p>
+          <p class="text-lg font-bold text-success">{{ votingStore.votingDetail.tally.approve_count }}</p>
         </div>
-        <div class="bg-red-50 p-2 rounded">
-          <p class="text-sm font-medium text-red-700">رافض</p>
-          <p class="text-lg font-bold text-red-600">{{ votingStore.votingDetail.tally.reject_count }}</p>
+        <div class="bg-destructive/10 p-2 rounded">
+          <p class="text-sm font-medium text-destructive">رافض</p>
+          <p class="text-lg font-bold text-destructive">{{ votingStore.votingDetail.tally.reject_count }}</p>
         </div>
-        <div class="bg-gray-50 p-2 rounded">
-          <p class="text-sm font-medium text-gray-700">ممتنع</p>
-          <p class="text-lg font-bold text-gray-600">{{ votingStore.votingDetail.tally.abstain_count + votingStore.votingDetail.tally.auto_abstain_count }}</p>
+        <div class="bg-muted p-2 rounded">
+          <p class="text-sm font-medium text-foreground">ممتنع</p>
+          <p class="text-lg font-bold text-muted-foreground">{{ votingStore.votingDetail.tally.abstain_count + votingStore.votingDetail.tally.auto_abstain_count }}</p>
         </div>
       </div>
       <Button
@@ -780,7 +780,7 @@ async function dispatchAction(action: string, reason?: string) {
     <!-- COMMITTEE_DIRECTOR: EXECUTIVE_APPROVED → issue customs declaration -->
     <template v-if="showDirectorCustomsActions">
       <Button
-        class="bg-green-600 hover:bg-green-700"
+        class="bg-success hover:bg-success"
         :disabled="requestsStore.issuingCustoms"
         @click="handleIssueCustomsDeclaration"
       >

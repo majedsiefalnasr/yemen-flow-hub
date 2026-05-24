@@ -37,8 +37,8 @@ onMounted(() => { store.loadStats() })
     <!-- Skeleton -->
     <div v-if="store.loading" class="grid grid-cols-4 gap-4 md:grid-cols-2 sm:grid-cols-1" aria-busy="true" aria-label="جارٍ تحميل الإحصائيات">
       <div v-for="n in 4" :key="n" class="bg-white border border-border rounded-md p-5 flex flex-col gap-3 animate-pulse" aria-hidden="true">
-        <div class="h-3.5 w-2/5 bg-gray-200 rounded" />
-        <div class="h-8 w-1/2 bg-gray-200 rounded" />
+        <div class="h-3.5 w-2/5 bg-muted rounded" />
+        <div class="h-8 w-1/2 bg-muted rounded" />
       </div>
     </div>
 
@@ -48,7 +48,7 @@ onMounted(() => { store.loadStats() })
         <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
       </svg>
       <span>{{ store.error }}</span>
-      <button class="ml-auto px-4 py-1.5 bg-white border border-error-text rounded text-error-text text-xs hover:bg-red-50 transition-colors" @click="store.loadStats()">إعادة المحاولة</button>
+      <button class="ml-auto px-4 py-1.5 bg-white border border-error-text rounded text-error-text text-xs hover:bg-destructive/10 transition-colors" @click="store.loadStats()">إعادة المحاولة</button>
     </div>
 
     <template v-else-if="stats">
@@ -57,7 +57,7 @@ onMounted(() => { store.loadStats() })
       <div class="grid grid-cols-4 gap-4 md:grid-cols-2 sm:grid-cols-1">
         <!-- مرفوض نهائياً -->
         <div class="bg-white border border-border rounded-md p-6 flex flex-col gap-1.5">
-          <div class="w-9 h-9 rounded bg-red-50 flex items-center justify-center text-error-text mb-1" aria-hidden="true">
+          <div class="w-9 h-9 rounded bg-destructive/10 flex items-center justify-center text-error-text mb-1" aria-hidden="true">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" />
             </svg>
@@ -68,7 +68,7 @@ onMounted(() => { store.loadStats() })
 
         <!-- مُعتمد نهائياً -->
         <div class="bg-white border border-border rounded-md p-6 flex flex-col gap-1.5">
-          <div class="w-9 h-9 rounded bg-green-50 flex items-center justify-center text-success-text mb-1" aria-hidden="true">
+          <div class="w-9 h-9 rounded bg-success/10 flex items-center justify-center text-success-text mb-1" aria-hidden="true">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" />
             </svg>
@@ -91,7 +91,7 @@ onMounted(() => { store.loadStats() })
 
         <!-- بانتظار رفع السويفت -->
         <div :class="{ 'border-l-4 border-l-warning-text': stats.pending_swift_upload > 0 }" class="bg-white border border-border rounded-md p-6 flex flex-col gap-1.5">
-          <div :class="stats.pending_swift_upload > 0 ? 'bg-yellow-50 text-warning-text' : 'bg-gray-100 text-muted-foreground'" class="w-9 h-9 rounded flex items-center justify-center mb-1" aria-hidden="true">
+          <div :class="stats.pending_swift_upload > 0 ? 'bg-yellow-50 text-warning-text' : 'bg-muted text-muted-foreground'" class="w-9 h-9 rounded flex items-center justify-center mb-1" aria-hidden="true">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
             </svg>
@@ -140,24 +140,24 @@ onMounted(() => { store.loadStats() })
         <div v-else class="bg-white border border-border rounded-md overflow-hidden">
           <table class="w-full border-collapse text-xs" role="table" aria-label="طابور رفع السويفت">
             <thead>
-              <tr class="bg-gray-50">
-                <th scope="col" class="text-right py-2.5 px-3.5 font-medium text-muted-foreground border-b border-gray-200 whitespace-nowrap">المرجع</th>
-                <th scope="col" class="text-right py-2.5 px-3.5 font-medium text-muted-foreground border-b border-gray-200 whitespace-nowrap">البنك</th>
-                <th scope="col" class="text-right py-2.5 px-3.5 font-medium text-muted-foreground border-b border-gray-200 whitespace-nowrap">المبلغ</th>
-                <th scope="col" class="text-right py-2.5 px-3.5 font-medium text-muted-foreground border-b border-gray-200 whitespace-nowrap">الحالة</th>
-                <th scope="col" class="text-right py-2.5 px-3.5 font-medium text-muted-foreground border-b border-gray-200 whitespace-nowrap">التقدم</th>
-                <th scope="col" class="text-right py-2.5 px-3.5 font-medium text-muted-foreground border-b border-gray-200 whitespace-nowrap">إجراء</th>
+              <tr class="bg-muted">
+                <th scope="col" class="text-right py-2.5 px-3.5 font-medium text-muted-foreground border-b border-border whitespace-nowrap">المرجع</th>
+                <th scope="col" class="text-right py-2.5 px-3.5 font-medium text-muted-foreground border-b border-border whitespace-nowrap">البنك</th>
+                <th scope="col" class="text-right py-2.5 px-3.5 font-medium text-muted-foreground border-b border-border whitespace-nowrap">المبلغ</th>
+                <th scope="col" class="text-right py-2.5 px-3.5 font-medium text-muted-foreground border-b border-border whitespace-nowrap">الحالة</th>
+                <th scope="col" class="text-right py-2.5 px-3.5 font-medium text-muted-foreground border-b border-border whitespace-nowrap">التقدم</th>
+                <th scope="col" class="text-right py-2.5 px-3.5 font-medium text-muted-foreground border-b border-border whitespace-nowrap">إجراء</th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="req in queue" :key="req.id" class="hover:bg-gray-50 border-t border-gray-200">
+              <tr v-for="req in queue" :key="req.id" class="hover:bg-muted border-t border-border">
                 <td class="text-right py-2.5 px-3.5 text-primary-text"><a class="font-mono text-primary-blue hover:underline" :href="`/requests/${req.id}/swift`" @click.prevent="router.push(`/requests/${req.id}/swift`)">{{ req.reference_number }}</a></td>
                 <td class="text-right py-2.5 px-3.5 text-primary-text">{{ req.bank_name ?? '—' }}</td>
                 <td class="text-right py-2.5 px-3.5 text-primary-text ltr tabular-nums">{{ formatAmount(req.amount, req.currency) }}</td>
                 <td class="text-right py-2.5 px-3.5"><StatusBadge :status="req.status" :role="UserRole.SWIFT_OFFICER" /></td>
                 <td class="text-right py-2.5 px-3.5">
                   <div class="flex items-center gap-1.5 min-w-24">
-                    <div class="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                    <div class="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
                       <div class="h-full rounded-full" :style="{ width: `${getRequestProgress(req.status)}%`, backgroundColor: '#32ade6' }" />
                     </div>
                     <span class="text-xs text-muted-foreground whitespace-nowrap">{{ getRequestProgress(req.status) }}%</span>

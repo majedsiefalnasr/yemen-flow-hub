@@ -115,10 +115,10 @@ function getFileError(key: WizardDocumentKey): string | null {
         :key="zone.key"
         class="relative min-h-36 p-5 border-2 border-dashed rounded-lg transition-colors"
         :class="{
-          'border-blue-500 bg-blue-50': dragOver === zone.key,
-          'border-green-600 bg-green-50': getZoneFile(zone.key) && !getFileError(zone.key),
-          'border-red-600 bg-red-50': getFileError(zone.key),
-          'border-gray-300 bg-gray-50': !dragOver && !getZoneFile(zone.key),
+          'border-primary bg-primary/10': dragOver === zone.key,
+          'border-green-600 bg-success/10': getZoneFile(zone.key) && !getFileError(zone.key),
+          'border-destructive bg-destructive/10': getFileError(zone.key),
+          'border-border bg-muted': !dragOver && !getZoneFile(zone.key),
         }"
         @dragover="onDragOver(zone.key, $event)"
         @dragleave="onDragLeave"
@@ -127,7 +127,7 @@ function getFileError(key: WizardDocumentKey): string | null {
         <!-- Badge -->
         <span
           class="absolute top-2 start-2 text-xs font-normal rounded-full px-2 py-1"
-          :class="zone.required ? 'bg-red-100 text-red-700 border border-red-200' : 'bg-blue-100 text-blue-700 border border-blue-200'"
+          :class="zone.required ? 'bg-destructive/10 text-destructive border border-destructive' : 'bg-primary/10 text-primary border border-border'"
         >
           {{ zone.required ? 'إلزامي' : 'اختياري' }}
         </span>
@@ -136,17 +136,17 @@ function getFileError(key: WizardDocumentKey): string | null {
         <template v-if="getZoneFile(zone.key) && !getFileError(zone.key)">
           <div class="flex flex-col items-center justify-center h-full gap-2">
             <div class="flex items-center gap-2">
-              <CheckCircle2 class="h-5 w-5 text-green-600" />
-              <p class="font-semibold text-green-700">{{ zone.title }}</p>
+              <CheckCircle2 class="h-5 w-5 text-success" />
+              <p class="font-semibold text-success">{{ zone.title }}</p>
             </div>
-            <div class="flex items-center gap-2 bg-green-100 rounded px-3 py-1">
-              <span class="text-sm text-green-700">{{ getZoneFile(zone.key)!.name }}</span>
-              <span class="text-xs text-gray-600">{{ formatBytes(getZoneFile(zone.key)!.size) }}</span>
+            <div class="flex items-center gap-2 bg-success/10 rounded px-3 py-1">
+              <span class="text-sm text-success">{{ getZoneFile(zone.key)!.name }}</span>
+              <span class="text-xs text-muted-foreground">{{ formatBytes(getZoneFile(zone.key)!.size) }}</span>
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
-                class="h-5 w-5 p-0 text-red-600 hover:text-red-800"
+                class="h-5 w-5 p-0 text-destructive hover:text-destructive"
                 :aria-label="`إزالة ${zone.title}`"
                 :disabled="loading"
                 @click="removeFile(zone.key)"
@@ -160,10 +160,10 @@ function getFileError(key: WizardDocumentKey): string | null {
         <!-- Idle / error state -->
         <template v-else>
           <div class="flex flex-col items-center justify-center h-full gap-3">
-            <Upload class="h-6 w-6 text-gray-500" :class="{ 'text-blue-500': dragOver === zone.key }" />
-            <p class="font-semibold text-gray-900">{{ zone.title }}</p>
-            <p v-if="getZoneFile(zone.key)" class="text-sm text-gray-700 break-words">{{ getZoneFile(zone.key)!.name }}</p>
-            <p class="text-xs text-gray-600">{{ zone.required ? 'إلزامي' : 'اختياري' }} — PDF ({{ MAX_SIZE_MB }}MB)</p>
+            <Upload class="h-6 w-6 text-muted-foreground" :class="{ 'text-primary': dragOver === zone.key }" />
+            <p class="font-semibold text-foreground">{{ zone.title }}</p>
+            <p v-if="getZoneFile(zone.key)" class="text-sm text-foreground break-words">{{ getZoneFile(zone.key)!.name }}</p>
+            <p class="text-xs text-muted-foreground">{{ zone.required ? 'إلزامي' : 'اختياري' }} — PDF ({{ MAX_SIZE_MB }}MB)</p>
             <label>
               <Button
                 type="button"
@@ -185,7 +185,7 @@ function getFileError(key: WizardDocumentKey): string | null {
         </template>
 
         <!-- File error -->
-        <p v-if="getFileError(zone.key)" class="absolute bottom-2 start-2 end-2 text-xs text-red-600 flex items-center gap-1" role="alert">
+        <p v-if="getFileError(zone.key)" class="absolute bottom-2 start-2 end-2 text-xs text-destructive flex items-center gap-1" role="alert">
           <AlertTriangle class="h-3 w-3" />
           {{ getFileError(zone.key) }}
         </p>

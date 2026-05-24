@@ -12,11 +12,11 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <Alert v-if="visible" dir="rtl" class="sticky top-0 z-50 flex items-center justify-between gap-4 border-b border-amber-600 bg-amber-100">
-    <AlertDescription class="flex-1 text-sm font-medium text-amber-900">
+  <Alert v-if="visible" dir="rtl" class="sticky top-0 z-50 flex items-center justify-between gap-4 border-b border-warning bg-warning/10">
+    <AlertDescription class="flex-1 text-sm font-medium text-warning">
       أنت على وشك الخروج بسبب عدم النشاط — يرجى التفاعل للبقاء
     </AlertDescription>
-    <Button size="sm" class="flex-shrink-0 bg-amber-600 text-white hover:bg-amber-700" @click="emit('extend')">
+    <Button size="sm" class="flex-shrink-0 bg-warning text-white hover:opacity-90" @click="emit('extend')">
       متابعة الجلسة
     </Button>
   </Alert>

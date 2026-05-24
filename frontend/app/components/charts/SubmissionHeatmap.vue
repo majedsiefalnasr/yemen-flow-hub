@@ -47,25 +47,25 @@ function intensity(day: number, slot: number): number {
 
 <template>
   <div class="flex flex-col gap-3" dir="rtl">
-    <div v-if="!data.length" class="h-40 flex items-center justify-center text-gray-600 text-sm">لا توجد بيانات</div>
+    <div v-if="!data.length" class="h-40 flex items-center justify-center text-muted-foreground text-sm">لا توجد بيانات</div>
     <div v-else class="grid gap-1" style="grid-template-columns: 72px repeat(6, 1fr)">
       <div />
-      <div v-for="slot in SLOTS" :key="`slot-${slot}`" class="text-xs text-gray-600 text-center px-0 py-0.5">
+      <div v-for="slot in SLOTS" :key="`slot-${slot}`" class="text-xs text-muted-foreground text-center px-0 py-0.5">
         {{ SLOT_LABELS[slot] }}
       </div>
       <template v-for="day in DAYS" :key="`day-${day}`">
-        <div class="text-xs text-gray-900 flex items-center justify-end pl-2">{{ DAY_LABELS[day] }}</div>
+        <div class="text-xs text-foreground flex items-center justify-end pl-2">{{ DAY_LABELS[day] }}</div>
         <div
           v-for="slot in SLOTS"
           :key="`cell-${day}-${slot}`"
-          class="h-7 rounded border border-gray-200 cursor-default transition-opacity duration-200 hover:opacity-80"
+          class="h-7 rounded border border-border cursor-default transition-opacity duration-200 hover:opacity-80"
           :style="{ background: `rgba(0, 102, 204, ${intensity(day, slot)})` }"
           :title="`${DAY_LABELS[day]} ${SLOT_LABELS[slot]}: ${countFor(day, slot)}`"
           :aria-label="`${DAY_LABELS[day]} ${SLOT_LABELS[slot]}: ${countFor(day, slot)} طلب`"
         />
       </template>
     </div>
-    <div class="flex items-center gap-2 text-xs text-gray-600">
+    <div class="flex items-center gap-2 text-xs text-muted-foreground">
       <span class="whitespace-nowrap">أقل</span>
       <div class="flex-1 h-2 rounded max-w-32" style="background: linear-gradient(to left, rgba(0,102,204,1), rgba(0,102,204,0.1))" />
       <span class="whitespace-nowrap">أكثر</span>

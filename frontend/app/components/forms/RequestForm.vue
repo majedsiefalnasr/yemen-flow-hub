@@ -133,7 +133,7 @@ const onSubmit = handleSubmit((v) => {
       <div class="flex flex-col gap-2">
         <Label for="merchant-select" class="text-sm">
           المستورد
-          <span class="text-red-600">*</span>
+          <span class="text-destructive">*</span>
         </Label>
 
         <!-- Merchant fetch error with retry -->
@@ -162,7 +162,7 @@ const onSubmit = handleSubmit((v) => {
             :disabled="merchantsLoading || loading"
             @update:model-value="(val) => setValues({ merchant_id: val ? Number(val) : undefined })"
           >
-            <SelectTrigger id="merchant-select" :class="{ 'border-red-600': errors.merchant_id }">
+            <SelectTrigger id="merchant-select" :class="{ 'border-destructive': errors.merchant_id }">
               <SelectValue :placeholder="merchantsLoading ? 'جاري التحميل...' : 'اختر المستورد...'" />
             </SelectTrigger>
             <SelectContent>
@@ -171,7 +171,7 @@ const onSubmit = handleSubmit((v) => {
               </SelectItem>
             </SelectContent>
           </Select>
-          <p v-if="errors.merchant_id" class="text-sm text-red-600">{{ errors.merchant_id }}</p>
+          <p v-if="errors.merchant_id" class="text-sm text-destructive">{{ errors.merchant_id }}</p>
         </template>
       </div>
     </section>
@@ -183,18 +183,18 @@ const onSubmit = handleSubmit((v) => {
       <div class="flex flex-col gap-2">
         <Label for="supplier-name" class="text-sm">
           اسم المورد
-          <span class="text-red-600">*</span>
+          <span class="text-destructive">*</span>
         </Label>
         <Input
           id="supplier-name"
           :value="values.supplier_name"
           type="text"
           :disabled="loading"
-          :class="{ 'border-red-600': errors.supplier_name }"
+          :class="{ 'border-destructive': errors.supplier_name }"
           placeholder="أدخل اسم المورد"
           @input="(e) => setValues({ supplier_name: (e.target as HTMLInputElement).value })"
         />
-        <p v-if="errors.supplier_name" class="text-sm text-red-600">{{ errors.supplier_name }}</p>
+        <p v-if="errors.supplier_name" class="text-sm text-destructive">{{ errors.supplier_name }}</p>
       </div>
     </section>
 
@@ -205,35 +205,35 @@ const onSubmit = handleSubmit((v) => {
       <div class="flex flex-col gap-2">
         <Label for="goods-description" class="text-sm">
           وصف البضائع
-          <span class="text-red-600">*</span>
+          <span class="text-destructive">*</span>
         </Label>
         <Textarea
           id="goods-description"
           :value="values.goods_description"
           :disabled="loading"
-          :class="{ 'border-red-600': errors.goods_description }"
+          :class="{ 'border-destructive': errors.goods_description }"
           placeholder="أدخل وصفاً تفصيلياً للبضائع"
           rows="3"
           @input="(e) => setValues({ goods_description: (e.target as HTMLTextAreaElement).value })"
         />
-        <p v-if="errors.goods_description" class="text-sm text-red-600">{{ errors.goods_description }}</p>
+        <p v-if="errors.goods_description" class="text-sm text-destructive">{{ errors.goods_description }}</p>
       </div>
 
       <div class="flex flex-col gap-2">
         <Label for="port-of-entry" class="text-sm">
           ميناء الدخول
-          <span class="text-red-600">*</span>
+          <span class="text-destructive">*</span>
         </Label>
         <Input
           id="port-of-entry"
           :value="values.port_of_entry"
           type="text"
           :disabled="loading"
-          :class="{ 'border-red-600': errors.port_of_entry }"
+          :class="{ 'border-destructive': errors.port_of_entry }"
           placeholder="مثال: ميناء عدن"
           @input="(e) => setValues({ port_of_entry: (e.target as HTMLInputElement).value })"
         />
-        <p v-if="errors.port_of_entry" class="text-sm text-red-600">{{ errors.port_of_entry }}</p>
+        <p v-if="errors.port_of_entry" class="text-sm text-destructive">{{ errors.port_of_entry }}</p>
       </div>
     </section>
 
@@ -245,7 +245,7 @@ const onSubmit = handleSubmit((v) => {
         <div class="flex flex-col gap-2 flex-1">
           <Label for="amount" class="text-sm">
             المبلغ
-            <span class="text-red-600">*</span>
+            <span class="text-destructive">*</span>
           </Label>
           <Input
             id="amount"
@@ -254,24 +254,24 @@ const onSubmit = handleSubmit((v) => {
             min="0.01"
             step="0.01"
             :disabled="loading"
-            :class="{ 'border-red-600': errors.amount }"
+            :class="{ 'border-destructive': errors.amount }"
             placeholder="0.00"
             @input="(e) => setValues({ amount: Number((e.target as HTMLInputElement).value) || undefined })"
           />
-          <p v-if="errors.amount" class="text-sm text-red-600">{{ errors.amount }}</p>
+          <p v-if="errors.amount" class="text-sm text-destructive">{{ errors.amount }}</p>
         </div>
 
         <div class="flex flex-col gap-2 flex-1">
           <Label for="currency" class="text-sm">
             العملة
-            <span class="text-red-600">*</span>
+            <span class="text-destructive">*</span>
           </Label>
           <Select
             :model-value="values.currency"
             :disabled="loading"
             @update:model-value="(val) => setValues({ currency: val as Currency })"
           >
-            <SelectTrigger id="currency" :class="{ 'border-red-600': errors.currency }">
+            <SelectTrigger id="currency" :class="{ 'border-destructive': errors.currency }">
               <SelectValue :placeholder="values.currency" />
             </SelectTrigger>
             <SelectContent>
@@ -280,7 +280,7 @@ const onSubmit = handleSubmit((v) => {
               </SelectItem>
             </SelectContent>
           </Select>
-          <p v-if="errors.currency" class="text-sm text-red-600">{{ errors.currency }}</p>
+          <p v-if="errors.currency" class="text-sm text-destructive">{{ errors.currency }}</p>
         </div>
       </div>
 
@@ -292,11 +292,11 @@ const onSubmit = handleSubmit((v) => {
             :value="values.goods_type"
             type="text"
             :disabled="loading"
-            :class="{ 'border-red-600': errors.goods_type }"
+            :class="{ 'border-destructive': errors.goods_type }"
             placeholder="مثال: مواد غذائية"
             @input="(e) => setValues({ goods_type: (e.target as HTMLInputElement).value })"
           />
-          <p v-if="errors.goods_type" class="text-sm text-red-600">{{ errors.goods_type }}</p>
+          <p v-if="errors.goods_type" class="text-sm text-destructive">{{ errors.goods_type }}</p>
         </div>
 
         <div class="flex flex-col gap-2 flex-1">
@@ -306,7 +306,7 @@ const onSubmit = handleSubmit((v) => {
             :disabled="loading"
             @update:model-value="(val) => setValues({ payment_terms: (val || '') as '' | 'LC' | 'TT' | 'CAD' })"
           >
-            <SelectTrigger id="payment-terms" :class="{ 'border-red-600': errors.payment_terms }">
+            <SelectTrigger id="payment-terms" :class="{ 'border-destructive': errors.payment_terms }">
               <SelectValue placeholder="اختر شروط الدفع" />
             </SelectTrigger>
             <SelectContent>
@@ -316,7 +316,7 @@ const onSubmit = handleSubmit((v) => {
               <SelectItem value="CAD">CAD</SelectItem>
             </SelectContent>
           </Select>
-          <p v-if="errors.payment_terms" class="text-sm text-red-600">{{ errors.payment_terms }}</p>
+          <p v-if="errors.payment_terms" class="text-sm text-destructive">{{ errors.payment_terms }}</p>
         </div>
       </div>
 
@@ -327,10 +327,10 @@ const onSubmit = handleSubmit((v) => {
           :value="values.due_date"
           type="date"
           :disabled="loading"
-          :class="{ 'border-red-600': errors.due_date }"
+          :class="{ 'border-destructive': errors.due_date }"
           @input="(e) => setValues({ due_date: (e.target as HTMLInputElement).value })"
         />
-        <p v-if="errors.due_date" class="text-sm text-red-600">{{ errors.due_date }}</p>
+        <p v-if="errors.due_date" class="text-sm text-destructive">{{ errors.due_date }}</p>
       </div>
     </section>
 
@@ -345,10 +345,10 @@ const onSubmit = handleSubmit((v) => {
             :value="values.invoice_number"
             type="text"
             :disabled="loading"
-            :class="{ 'border-red-600': errors.invoice_number }"
+            :class="{ 'border-destructive': errors.invoice_number }"
             @input="(e) => setValues({ invoice_number: (e.target as HTMLInputElement).value })"
           />
-          <p v-if="errors.invoice_number" class="text-sm text-red-600">{{ errors.invoice_number }}</p>
+          <p v-if="errors.invoice_number" class="text-sm text-destructive">{{ errors.invoice_number }}</p>
         </div>
 
         <div class="flex flex-col gap-2 flex-1">
@@ -358,10 +358,10 @@ const onSubmit = handleSubmit((v) => {
             :value="values.invoice_date"
             type="date"
             :disabled="loading"
-            :class="{ 'border-red-600': errors.invoice_date }"
+            :class="{ 'border-destructive': errors.invoice_date }"
             @input="(e) => setValues({ invoice_date: (e.target as HTMLInputElement).value })"
           />
-          <p v-if="errors.invoice_date" class="text-sm text-red-600">{{ errors.invoice_date }}</p>
+          <p v-if="errors.invoice_date" class="text-sm text-destructive">{{ errors.invoice_date }}</p>
         </div>
       </div>
 
@@ -373,10 +373,10 @@ const onSubmit = handleSubmit((v) => {
             :value="values.origin_country"
             type="text"
             :disabled="loading"
-            :class="{ 'border-red-600': errors.origin_country }"
+            :class="{ 'border-destructive': errors.origin_country }"
             @input="(e) => setValues({ origin_country: (e.target as HTMLInputElement).value })"
           />
-          <p v-if="errors.origin_country" class="text-sm text-red-600">{{ errors.origin_country }}</p>
+          <p v-if="errors.origin_country" class="text-sm text-destructive">{{ errors.origin_country }}</p>
         </div>
 
         <div class="flex flex-col gap-2 flex-1">
@@ -386,10 +386,10 @@ const onSubmit = handleSubmit((v) => {
             :value="values.arrival_port"
             type="text"
             :disabled="loading"
-            :class="{ 'border-red-600': errors.arrival_port }"
+            :class="{ 'border-destructive': errors.arrival_port }"
             @input="(e) => setValues({ arrival_port: (e.target as HTMLInputElement).value })"
           />
-          <p v-if="errors.arrival_port" class="text-sm text-red-600">{{ errors.arrival_port }}</p>
+          <p v-if="errors.arrival_port" class="text-sm text-destructive">{{ errors.arrival_port }}</p>
         </div>
       </div>
 
@@ -401,10 +401,10 @@ const onSubmit = handleSubmit((v) => {
             :value="values.shipping_port"
             type="text"
             :disabled="loading"
-            :class="{ 'border-red-600': errors.shipping_port }"
+            :class="{ 'border-destructive': errors.shipping_port }"
             @input="(e) => setValues({ shipping_port: (e.target as HTMLInputElement).value })"
           />
-          <p v-if="errors.shipping_port" class="text-sm text-red-600">{{ errors.shipping_port }}</p>
+          <p v-if="errors.shipping_port" class="text-sm text-destructive">{{ errors.shipping_port }}</p>
         </div>
 
         <div class="flex flex-col gap-2 flex-1">
@@ -414,10 +414,10 @@ const onSubmit = handleSubmit((v) => {
             :value="values.customs_office"
             type="text"
             :disabled="loading"
-            :class="{ 'border-red-600': errors.customs_office }"
+            :class="{ 'border-destructive': errors.customs_office }"
             @input="(e) => setValues({ customs_office: (e.target as HTMLInputElement).value })"
           />
-          <p v-if="errors.customs_office" class="text-sm text-red-600">{{ errors.customs_office }}</p>
+          <p v-if="errors.customs_office" class="text-sm text-destructive">{{ errors.customs_office }}</p>
         </div>
       </div>
 
@@ -428,10 +428,10 @@ const onSubmit = handleSubmit((v) => {
           :value="values.bl_number"
           type="text"
           :disabled="loading"
-          :class="{ 'border-red-600': errors.bl_number }"
+          :class="{ 'border-destructive': errors.bl_number }"
           @input="(e) => setValues({ bl_number: (e.target as HTMLInputElement).value })"
         />
-        <p v-if="errors.bl_number" class="text-sm text-red-600">{{ errors.bl_number }}</p>
+        <p v-if="errors.bl_number" class="text-sm text-destructive">{{ errors.bl_number }}</p>
       </div>
     </section>
 

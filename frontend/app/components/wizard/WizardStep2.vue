@@ -57,95 +57,95 @@ const errorCount = computed(() => Object.keys(props.errors).length)
       <div class="flex flex-col gap-2">
         <Label for="supplier-name" class="text-sm">
           اسم المورد
-          <span class="text-red-600">*</span>
+          <span class="text-destructive">*</span>
         </Label>
         <Input
           id="supplier-name"
           type="text"
           :disabled="loading"
-          :class="{ 'border-red-600': errors.supplier_name }"
+          :class="{ 'border-destructive': errors.supplier_name }"
           :value="modelValue.supplier_name ?? ''"
           placeholder="مثال: Cargill Trading Inc."
           @input="update('supplier_name', ($event.target as HTMLInputElement).value)"
         />
-        <p v-if="errors.supplier_name" class="text-sm text-red-600">{{ errors.supplier_name }}</p>
+        <p v-if="errors.supplier_name" class="text-sm text-destructive">{{ errors.supplier_name }}</p>
       </div>
 
       <!-- بلد المنشأ -->
       <div class="flex flex-col gap-2">
         <Label for="origin-country" class="text-sm">
           بلد المنشأ
-          <span class="text-red-600">*</span>
+          <span class="text-destructive">*</span>
         </Label>
         <Select
           :model-value="modelValue.origin_country || ''"
           :disabled="loading"
           @update:model-value="(val) => update('origin_country', val)"
         >
-          <SelectTrigger id="origin-country" :class="{ 'border-red-600': errors.origin_country }">
+          <SelectTrigger id="origin-country" :class="{ 'border-destructive': errors.origin_country }">
             <SelectValue placeholder="اختر بلد المنشأ..." />
           </SelectTrigger>
           <SelectContent>
             <SelectItem v-for="c in COUNTRIES" :key="c" :value="c">{{ c }}</SelectItem>
           </SelectContent>
         </Select>
-        <p v-if="errors.origin_country" class="text-sm text-red-600">{{ errors.origin_country }}</p>
+        <p v-if="errors.origin_country" class="text-sm text-destructive">{{ errors.origin_country }}</p>
       </div>
 
       <!-- رقم الفاتورة -->
       <div class="flex flex-col gap-2">
         <Label for="invoice-number" class="text-sm">
           رقم الفاتورة
-          <span class="text-red-600">*</span>
+          <span class="text-destructive">*</span>
         </Label>
         <Input
           id="invoice-number"
           type="text"
           :disabled="loading"
-          :class="{ 'border-red-600': errors.invoice_number }"
+          :class="{ 'border-destructive': errors.invoice_number }"
           :value="modelValue.invoice_number ?? ''"
           placeholder="INV-2025-XXXX"
           @input="update('invoice_number', ($event.target as HTMLInputElement).value)"
         />
-        <p v-if="errors.invoice_number" class="text-sm text-red-600">{{ errors.invoice_number }}</p>
+        <p v-if="errors.invoice_number" class="text-sm text-destructive">{{ errors.invoice_number }}</p>
       </div>
 
       <!-- تاريخ الفاتورة -->
       <div class="flex flex-col gap-2">
         <Label for="invoice-date" class="text-sm">
           تاريخ الفاتورة
-          <span class="text-red-600">*</span>
+          <span class="text-destructive">*</span>
         </Label>
         <Input
           id="invoice-date"
           type="date"
           :disabled="loading"
-          :class="{ 'border-red-600': errors.invoice_date }"
+          :class="{ 'border-destructive': errors.invoice_date }"
           :value="modelValue.invoice_date ?? ''"
           @input="update('invoice_date', ($event.target as HTMLInputElement).value)"
         />
-        <p v-if="errors.invoice_date" class="text-sm text-red-600">{{ errors.invoice_date }}</p>
+        <p v-if="errors.invoice_date" class="text-sm text-destructive">{{ errors.invoice_date }}</p>
       </div>
 
       <!-- ميناء الوصول -->
       <div class="flex flex-col gap-2">
         <Label for="arrival-port" class="text-sm">
           ميناء الوصول
-          <span class="text-red-600">*</span>
+          <span class="text-destructive">*</span>
         </Label>
         <Select
           :model-value="modelValue.arrival_port || ''"
           :disabled="loading"
           @update:model-value="(val) => { update('arrival_port', val); onPortChange(val) }"
         >
-          <SelectTrigger id="arrival-port" :class="{ 'border-red-600': errors.arrival_port }">
+          <SelectTrigger id="arrival-port" :class="{ 'border-destructive': errors.arrival_port }">
             <SelectValue placeholder="اختر ميناء الوصول..." />
           </SelectTrigger>
           <SelectContent>
             <SelectItem v-for="p in ARRIVAL_PORTS" :key="p" :value="p">{{ p }}</SelectItem>
           </SelectContent>
         </Select>
-        <p v-if="errors.arrival_port" class="text-sm text-red-600">{{ errors.arrival_port }}</p>
+        <p v-if="errors.arrival_port" class="text-sm text-destructive">{{ errors.arrival_port }}</p>
       </div>
 
       <!-- ميناء الشحن (optional) -->
@@ -178,7 +178,7 @@ const errorCount = computed(() => Object.keys(props.errors).length)
       <div class="flex flex-col gap-2">
         <Label for="customs-office" class="text-sm">
           الجمارك المختصة
-          <span v-if="autoFillChip" class="inline-block text-xs font-normal bg-blue-50 text-blue-600 border border-blue-200 rounded-full px-2 py-1 ms-2" aria-live="polite">تم التعبئة التلقائية</span>
+          <span v-if="autoFillChip" class="inline-block text-xs font-normal bg-primary/10 text-primary border border-border rounded-full px-2 py-1 ms-2" aria-live="polite">تم التعبئة التلقائية</span>
         </Label>
         <Select
           :model-value="modelValue.customs_office || ''"

@@ -142,9 +142,9 @@ const isSubmitDisabled = computed(() => !wizard.acknowledged.value || wizard.sub
     <div
       v-if="toast"
       :class="{
-        'bg-green-50 text-green-700 border border-green-200': toast.type === 'success',
-        'bg-red-50 text-red-700 border border-red-200': toast.type === 'error',
-        'bg-blue-50 text-blue-700 border border-blue-200': toast.type === 'info',
+        'bg-success/10 text-success border border-green-200': toast.type === 'success',
+        'bg-destructive/10 text-destructive border border-destructive': toast.type === 'error',
+        'bg-primary/10 text-primary border border-border': toast.type === 'info',
       }"
       class="px-4 py-3 rounded-md text-sm font-medium font-family-arabic"
       role="status"
@@ -231,7 +231,7 @@ const isSubmitDisabled = computed(() => !wizard.acknowledged.value || wizard.sub
         <button
           v-if="!isLastStep"
           type="button"
-          class="h-10 px-6 bg-primary-blue text-white rounded-2xl border-none font-medium text-sm whitespace-nowrap hover:opacity-90 disabled:bg-gray-200 disabled:text-muted-foreground disabled:cursor-not-allowed transition-all"
+          class="h-10 px-6 bg-primary-blue text-white rounded-2xl border-none font-medium text-sm whitespace-nowrap hover:opacity-90 disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed transition-all"
           :disabled="wizard.saving.value"
           @click="handleNext"
         >
@@ -240,7 +240,7 @@ const isSubmitDisabled = computed(() => !wizard.acknowledged.value || wizard.sub
         <button
           v-else
           type="button"
-          class="h-10 px-6 bg-primary-blue text-white rounded-2xl border-none font-medium text-sm whitespace-nowrap hover:opacity-90 disabled:bg-gray-200 disabled:text-muted-foreground disabled:cursor-not-allowed transition-all"
+          class="h-10 px-6 bg-primary-blue text-white rounded-2xl border-none font-medium text-sm whitespace-nowrap hover:opacity-90 disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed transition-all"
           :disabled="isSubmitDisabled"
           @click="handleSubmit"
         >

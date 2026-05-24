@@ -218,7 +218,7 @@ async function performIssue() {
       <div class="overflow-hidden rounded-xl border bg-[oklch(0.22_0.02_260)] shadow-card print:hidden">
         <div class="flex items-center justify-between bg-[oklch(0.18_0.02_260)] px-4 py-2 text-xs text-white">
           <div class="flex items-center gap-2">
-            <FileText class="h-4 w-4 text-red-400" />
+            <FileText class="h-4 w-4 text-destructive" />
             <span class="font-mono">{{ request.customs_declaration?.declaration_number ?? `DRAFT-${request.reference_number}` }}.pdf</span>
             <span
               v-if="issued"

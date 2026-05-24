@@ -246,23 +246,23 @@ function formatDate(iso: string | null): string {
     </div>
 
     <!-- Error state -->
-    <Alert v-else-if="error" class="border-l-4 border-l-red-600 bg-red-50 border-0">
-      <AlertCircle class="h-4 w-4 text-red-600" aria-hidden="true" />
-      <AlertDescription class="text-red-600 text-sm">{{ error }}</AlertDescription>
+    <Alert v-else-if="error" class="border-l-4 border-l-red-600 bg-destructive/10 border-0">
+      <AlertCircle class="h-4 w-4 text-destructive" aria-hidden="true" />
+      <AlertDescription class="text-destructive text-sm">{{ error }}</AlertDescription>
     </Alert>
 
     <!-- Empty state -->
-    <p v-else-if="!hasContent" class="text-sm text-gray-500 mt-2">لا توجد مستندات بعد.</p>
+    <p v-else-if="!hasContent" class="text-sm text-muted-foreground mt-2">لا توجد مستندات بعد.</p>
 
     <!-- Checklist summary badge -->
     <template v-else>
       <div class="flex items-center justify-between gap-2 mb-2.5">
-        <span class="text-xs text-gray-500">قائمة المستندات</span>
-        <div v-if="missingRequiredCount > 0" class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-red-50 text-red-700 text-xs font-semibold">
+        <span class="text-xs text-muted-foreground">قائمة المستندات</span>
+        <div v-if="missingRequiredCount > 0" class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-destructive/10 text-destructive text-xs font-semibold">
           <AlertCircle class="w-3 h-3" aria-hidden="true" />
           ينقص {{ missingRequiredCount }} مستند مطلوب
         </div>
-        <div v-else class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-green-50 text-green-800 text-xs font-semibold">
+        <div v-else class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-success/10 text-success text-xs font-semibold">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
             <polyline points="20 6 9 17 4 12" />
           </svg>
@@ -279,15 +279,15 @@ function formatDate(iso: string | null): string {
             v-if="row.kind === 'staged'"
             class="flex items-start gap-2.5 p-3 rounded-lg border"
             :class="{
-              'border-green-300 bg-green-50': !!row.doc,
-              'border-red-300 bg-red-50': !row.doc && row.requirement.required,
-              'border-gray-300 bg-gray-100': !row.doc && !row.requirement.required,
+              'border-success bg-success/10': !!row.doc,
+              'border-destructive bg-destructive/10': !row.doc && row.requirement.required,
+              'border-border bg-muted': !row.doc && !row.requirement.required,
             }"
           >
             <!-- Left: status icon box -->
             <div
               class="flex-shrink-0 w-7 h-7 rounded-md flex items-center justify-center text-sm"
-              :class="row.doc ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-500'"
+              :class="row.doc ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground'"
             >
               <svg v-if="row.doc" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
                 <polyline points="20 6 9 17 4 12" />
@@ -300,20 +300,20 @@ function formatDate(iso: string | null): string {
             <!-- Center: labels -->
             <div class="flex flex-col gap-0.5 flex-1 min-w-0">
               <div class="flex items-center gap-1.5">
-                <span class="text-xs font-semibold text-gray-900">{{ row.requirement.label }}</span>
+                <span class="text-xs font-semibold text-foreground">{{ row.requirement.label }}</span>
               </div>
               <template v-if="row.doc">
-                <span class="text-xs font-medium text-gray-900 break-all">{{ row.doc.original_filename }}</span>
-                <span class="text-xs text-gray-500">
+                <span class="text-xs font-medium text-foreground break-all">{{ row.doc.original_filename }}</span>
+                <span class="text-xs text-muted-foreground">
                   {{ formatFileSize(row.doc.size_bytes) }}
                   · {{ formatDate(row.doc.uploaded_at) }}
                   <template v-if="row.doc.uploaded_by_name"> · {{ row.doc.uploaded_by_name }}</template>
                 </span>
-                <span v-if="downloadErrors[row.doc.id]" class="text-xs text-red-600" role="alert">
+                <span v-if="downloadErrors[row.doc.id]" class="text-xs text-destructive" role="alert">
                   {{ downloadErrors[row.doc.id] }}
                 </span>
               </template>
-              <span v-else class="text-xs text-gray-500">{{ row.requirement.required ? 'لم يُرفع بعد' : 'لم يُرفع' }}</span>
+              <span v-else class="text-xs text-muted-foreground">{{ row.requirement.required ? 'لم يُرفع بعد' : 'لم يُرفع' }}</span>
             </div>
 
             <!-- Right: badge + download -->
@@ -336,23 +336,23 @@ function formatDate(iso: string | null): string {
           </li>
 
           <!-- Extra uploaded docs -->
-          <li v-else-if="row.kind === 'extra'" class="flex items-start gap-2.5 p-3 rounded-lg border border-green-300 bg-green-50">
-            <div class="flex-shrink-0 w-7 h-7 rounded-md flex items-center justify-center bg-green-100 text-green-700">
+          <li v-else-if="row.kind === 'extra'" class="flex items-start gap-2.5 p-3 rounded-lg border border-success bg-success/10">
+            <div class="flex-shrink-0 w-7 h-7 rounded-md flex items-center justify-center bg-success/10 text-success">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
                 <polyline points="20 6 9 17 4 12" />
               </svg>
             </div>
             <div class="flex flex-col gap-0.5 flex-1 min-w-0">
               <div class="flex items-center gap-1.5">
-                <span class="text-xs font-semibold text-gray-900">{{ row.doc.type === 'SWIFT' ? 'مستند SWIFT' : 'مستند طلب' }}</span>
+                <span class="text-xs font-semibold text-foreground">{{ row.doc.type === 'SWIFT' ? 'مستند SWIFT' : 'مستند طلب' }}</span>
               </div>
-              <span class="text-xs font-medium text-gray-900 break-all">{{ row.doc.original_filename }}</span>
-              <span class="text-xs text-gray-500">
+              <span class="text-xs font-medium text-foreground break-all">{{ row.doc.original_filename }}</span>
+              <span class="text-xs text-muted-foreground">
                 {{ formatFileSize(row.doc.size_bytes) }}
                 · {{ formatDate(row.doc.uploaded_at) }}
                 <template v-if="row.doc.uploaded_by_name"> · {{ row.doc.uploaded_by_name }}</template>
               </span>
-              <span v-if="downloadErrors[row.doc.id]" class="text-xs text-red-600" role="alert">
+              <span v-if="downloadErrors[row.doc.id]" class="text-xs text-destructive" role="alert">
                 {{ downloadErrors[row.doc.id] }}
               </span>
             </div>
@@ -373,19 +373,19 @@ function formatDate(iso: string | null): string {
           </li>
 
           <!-- Customs declaration row -->
-          <li v-else-if="row.kind === 'customs'" class="flex items-start gap-2.5 p-3 rounded-lg border border-green-300 bg-green-50">
-            <div class="flex-shrink-0 w-7 h-7 rounded-md flex items-center justify-center bg-green-100 text-green-700">
+          <li v-else-if="row.kind === 'customs'" class="flex items-start gap-2.5 p-3 rounded-lg border border-success bg-success/10">
+            <div class="flex-shrink-0 w-7 h-7 rounded-md flex items-center justify-center bg-success/10 text-success">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
                 <polyline points="20 6 9 17 4 12" />
               </svg>
             </div>
             <div class="flex flex-col gap-0.5 flex-1 min-w-0">
               <div class="flex items-center gap-1.5">
-                <span class="text-xs font-semibold text-gray-900">بيان جمركي</span>
+                <span class="text-xs font-semibold text-foreground">بيان جمركي</span>
               </div>
-              <span class="text-xs font-medium text-gray-900">{{ row.customs.declaration_number }}</span>
-              <span class="text-xs text-gray-500">{{ formatDate(row.customs.issued_at) }}</span>
-              <span v-if="customsDownloadError" class="text-xs text-red-600" role="alert">
+              <span class="text-xs font-medium text-foreground">{{ row.customs.declaration_number }}</span>
+              <span class="text-xs text-muted-foreground">{{ formatDate(row.customs.issued_at) }}</span>
+              <span v-if="customsDownloadError" class="text-xs text-destructive" role="alert">
                 {{ customsDownloadError }}
               </span>
             </div>
@@ -426,17 +426,17 @@ function formatDate(iso: string | null): string {
         >
           {{ uploadingDocument ? 'جارٍ الرفع…' : 'رفع مستند' }}
         </Button>
-        <Alert v-if="fileTypeError" class="border-l-4 border-l-red-600 bg-red-50 border-0 w-full">
-          <AlertCircle class="h-4 w-4 text-red-600" aria-hidden="true" />
-          <AlertDescription class="text-red-600 text-sm">{{ fileTypeError }}</AlertDescription>
+        <Alert v-if="fileTypeError" class="border-l-4 border-l-red-600 bg-destructive/10 border-0 w-full">
+          <AlertCircle class="h-4 w-4 text-destructive" aria-hidden="true" />
+          <AlertDescription class="text-destructive text-sm">{{ fileTypeError }}</AlertDescription>
         </Alert>
-        <Alert v-else-if="uploadError" class="border-l-4 border-l-red-600 bg-red-50 border-0 w-full">
-          <AlertCircle class="h-4 w-4 text-red-600" aria-hidden="true" />
-          <AlertDescription class="text-red-600 text-sm">{{ uploadError }}</AlertDescription>
+        <Alert v-else-if="uploadError" class="border-l-4 border-l-red-600 bg-destructive/10 border-0 w-full">
+          <AlertCircle class="h-4 w-4 text-destructive" aria-hidden="true" />
+          <AlertDescription class="text-destructive text-sm">{{ uploadError }}</AlertDescription>
         </Alert>
       </template>
 
-      <p v-else-if="showLockedNote" class="text-xs text-gray-500 flex items-center gap-1" role="note">
+      <p v-else-if="showLockedNote" class="text-xs text-muted-foreground flex items-center gap-1" role="note">
         🔒 مقفل — لا يمكن تعديل المستندات
       </p>
     </div>

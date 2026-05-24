@@ -108,40 +108,40 @@ const errorCount = computed(() => Object.keys(props.errors).length)
       <div class="flex flex-col gap-2">
         <Label for="goods-type" class="text-sm">
           نوع الواردات
-          <span class="text-red-600">*</span>
+          <span class="text-destructive">*</span>
         </Label>
         <Select
           :model-value="modelValue.goods_type || ''"
           :disabled="loading"
           @update:model-value="(val) => update('goods_type', val)"
         >
-          <SelectTrigger id="goods-type" :class="{ 'border-red-600': errors.goods_type }">
+          <SelectTrigger id="goods-type" :class="{ 'border-destructive': errors.goods_type }">
             <SelectValue placeholder="اختر نوع الواردات..." />
           </SelectTrigger>
           <SelectContent>
             <SelectItem v-for="t in GOODS_TYPES" :key="t" :value="t">{{ t }}</SelectItem>
           </SelectContent>
         </Select>
-        <p v-if="errors.goods_type" class="text-sm text-red-600">{{ errors.goods_type }}</p>
+        <p v-if="errors.goods_type" class="text-sm text-destructive">{{ errors.goods_type }}</p>
       </div>
 
       <!-- المستورد -->
       <div class="flex flex-col gap-2">
         <Label for="merchant" class="text-sm">
           المستورد (التاجر)
-          <span class="text-red-600">*</span>
+          <span class="text-destructive">*</span>
         </Label>
 
         <!-- DATA_ENTRY: read-only -->
         <div
           v-if="isDataEntry"
           class="flex items-center gap-2 h-10 px-3 border border-border rounded-md bg-muted text-muted-foreground"
-          :class="{ 'border-red-600 bg-red-50': !!dataEntryMerchantError }"
+          :class="{ 'border-destructive bg-destructive/10': !!dataEntryMerchantError }"
         >
           <Lock class="h-4 w-4 flex-shrink-0" />
           <span class="text-sm">{{ selectedMerchantName || 'لم يتم تحديد التاجر بعد' }}</span>
         </div>
-        <p v-if="isDataEntry && dataEntryMerchantError" class="text-sm text-red-600">{{ dataEntryMerchantError }}</p>
+        <p v-if="isDataEntry && dataEntryMerchantError" class="text-sm text-destructive">{{ dataEntryMerchantError }}</p>
 
         <!-- BANK_ADMIN: searchable select -->
         <template v-else>
@@ -176,7 +176,7 @@ const errorCount = computed(() => Object.keys(props.errors).length)
               :disabled="merchantsLoading || loading"
               @update:model-value="(val) => update('merchant_id', val ? Number(val) : null)"
             >
-              <SelectTrigger id="merchant" :class="{ 'border-red-600': errors.merchant_id }">
+              <SelectTrigger id="merchant" :class="{ 'border-destructive': errors.merchant_id }">
                 <SelectValue :placeholder="merchantsLoading ? 'جاري التحميل...' : 'اختر المستورد...'" />
               </SelectTrigger>
               <SelectContent>
@@ -187,14 +187,14 @@ const errorCount = computed(() => Object.keys(props.errors).length)
             </Select>
           </template>
         </template>
-        <p v-if="errors.merchant_id" class="text-sm text-red-600">{{ errors.merchant_id }}</p>
+        <p v-if="errors.merchant_id" class="text-sm text-destructive">{{ errors.merchant_id }}</p>
       </div>
 
       <!-- مبلغ التمويل -->
       <div class="flex flex-col gap-2">
         <Label for="amount" class="text-sm">
           مبلغ التمويل
-          <span class="text-red-600">*</span>
+          <span class="text-destructive">*</span>
         </Label>
         <Input
           id="amount"
@@ -202,26 +202,26 @@ const errorCount = computed(() => Object.keys(props.errors).length)
           min="1000"
           step="1"
           :disabled="loading"
-          :class="{ 'border-red-600': errors.amount }"
+          :class="{ 'border-destructive': errors.amount }"
           :value="modelValue.amount ?? ''"
           placeholder="0"
           @input="update('amount', Number(($event.target as HTMLInputElement).value) || null)"
         />
-        <p v-if="errors.amount" class="text-sm text-red-600">{{ errors.amount }}</p>
+        <p v-if="errors.amount" class="text-sm text-destructive">{{ errors.amount }}</p>
       </div>
 
       <!-- العملة -->
       <div class="flex flex-col gap-2">
         <Label for="currency" class="text-sm">
           العملة
-          <span class="text-red-600">*</span>
+          <span class="text-destructive">*</span>
         </Label>
         <Select
           :model-value="modelValue.currency || ''"
           :disabled="loading"
           @update:model-value="(val) => update('currency', val)"
         >
-          <SelectTrigger id="currency" :class="{ 'border-red-600': errors.currency }">
+          <SelectTrigger id="currency" :class="{ 'border-destructive': errors.currency }">
             <SelectValue :placeholder="modelValue.currency" />
           </SelectTrigger>
           <SelectContent>
@@ -230,21 +230,21 @@ const errorCount = computed(() => Object.keys(props.errors).length)
             </SelectItem>
           </SelectContent>
         </Select>
-        <p v-if="errors.currency" class="text-sm text-red-600">{{ errors.currency }}</p>
+        <p v-if="errors.currency" class="text-sm text-destructive">{{ errors.currency }}</p>
       </div>
 
       <!-- شروط الدفع -->
       <div class="flex flex-col gap-2">
         <Label for="payment-terms" class="text-sm">
           شروط الدفع
-          <span class="text-red-600">*</span>
+          <span class="text-destructive">*</span>
         </Label>
         <Select
           :model-value="modelValue.payment_terms || ''"
           :disabled="loading"
           @update:model-value="(val) => update('payment_terms', val)"
         >
-          <SelectTrigger id="payment-terms" :class="{ 'border-red-600': errors.payment_terms }">
+          <SelectTrigger id="payment-terms" :class="{ 'border-destructive': errors.payment_terms }">
             <SelectValue placeholder="اختر شروط الدفع..." />
           </SelectTrigger>
           <SelectContent>
@@ -252,7 +252,7 @@ const errorCount = computed(() => Object.keys(props.errors).length)
             <SelectItem v-for="t in PAYMENT_TERMS" :key="t" :value="t">{{ PAYMENT_LABELS[t] }}</SelectItem>
           </SelectContent>
         </Select>
-        <p v-if="errors.payment_terms" class="text-sm text-red-600">{{ errors.payment_terms }}</p>
+        <p v-if="errors.payment_terms" class="text-sm text-destructive">{{ errors.payment_terms }}</p>
       </div>
 
       <!-- تاريخ الاستحقاق (optional) -->
