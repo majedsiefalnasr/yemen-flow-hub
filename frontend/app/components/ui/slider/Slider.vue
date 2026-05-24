@@ -28,13 +28,13 @@ const forwarded = useForwardPropsEmits(delegatedProps, emits)
       data-slot="slider-track"
       :data-horizontal="props.orientation !== 'vertical' ? '' : undefined"
       :data-vertical="props.orientation === 'vertical' ? '' : undefined"
-      class="bg-muted rounded-full data-horizontal:h-1 data-vertical:w-1 relative grow overflow-hidden data-horizontal:w-full data-vertical:h-full"
+      class="bg-gray-50 rounded-full data-horizontal:h-1 data-vertical:w-1 relative grow overflow-hidden data-horizontal:w-full data-vertical:h-full"
     >
       <SliderRange
         data-slot="slider-range"
         :data-horizontal="props.orientation !== 'vertical' ? '' : undefined"
         :data-vertical="props.orientation === 'vertical' ? '' : undefined"
-        class="bg-primary absolute select-none data-horizontal:h-full data-vertical:w-full"
+        class="bg-blue-600 absolute select-none data-horizontal:h-full data-vertical:w-full"
       />
     </SliderTrack>
 

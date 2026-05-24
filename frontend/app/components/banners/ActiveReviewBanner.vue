@@ -7,11 +7,11 @@ import { Badge } from '../ui/badge'
 </script>
 
 <template>
-  <Alert dir="rtl" class="flex items-center gap-3 border-green-200 bg-success/10">
-    <CheckCircle2 class="h-5 w-5 flex-shrink-0 text-success" aria-hidden="true" />
-    <AlertDescription class="flex-1 text-sm font-medium text-success">
+  <Alert dir="rtl" class="flex items-center gap-3 border-green-200 bg-green-50/10">
+    <CheckCircle2 class="h-5 w-5 flex-shrink-0 text-green-700" aria-hidden="true" />
+    <AlertDescription class="flex-1 text-sm font-medium text-green-700">
       أنت المراجع النشط — الطلب محجوز لك حالياً
     </AlertDescription>
-    <Badge class="flex-shrink-0 bg-success text-white hover:bg-success">مراجعة نشطة</Badge>
+    <Badge class="flex-shrink-0 bg-green-50 text-white hover:bg-green-50">مراجعة نشطة</Badge>
   </Alert>
 </template>

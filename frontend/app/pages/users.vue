@@ -323,7 +323,7 @@ onMounted(loadData)
 .page-title {
   font-size: 28px;
   font-weight: 500;
-  color: var(--color-text-primary);
+  color: var(--color-text-blue-600);
   margin: 0;
 }
 
@@ -356,7 +356,7 @@ onMounted(loadData)
 
 .data-table td {
   border-bottom: 1px solid var(--color-border);
-  color: var(--color-text-primary);
+  color: var(--color-text-blue-600);
 }
 
 .data-table tr:last-child td {
@@ -420,7 +420,7 @@ onMounted(loadData)
   height: 44px;
   padding: 0 20px;
   background: transparent;
-  color: var(--color-text-primary);
+  color: var(--color-text-blue-600);
   border: 1px solid var(--color-border);
   border-radius: 12px;
   font-size: 14px;
@@ -479,7 +479,7 @@ onMounted(loadData)
 .modal-title {
   font-size: 20px;
   font-weight: 500;
-  color: var(--color-text-primary);
+  color: var(--color-text-blue-600);
   margin: 0;
 }
 
@@ -510,7 +510,7 @@ onMounted(loadData)
   border: 1px solid #d2d2d7;
   border-radius: 12px;
   font-size: 14px;
-  color: var(--color-text-primary);
+  color: var(--color-text-blue-600);
   background: var(--color-surface);
   outline: none;
   direction: inherit;

@@ -27,7 +27,7 @@ const forwarded = useForwardPropsEmits(props, emits)
         props.class,
       )"
     >
-      <div class="bg-muted mt-4 h-1 w-[100px] rounded-full mx-auto hidden shrink-0 group-data-[vaul-drawer-direction=bottom]/drawer-content:block" />
+      <div class="bg-gray-50 mt-4 h-1 w-[100px] rounded-full mx-auto hidden shrink-0 group-data-[vaul-drawer-direction=bottom]/drawer-content:block" />
       <slot />
     </DrawerContent>
   </DrawerPortal>

@@ -44,11 +44,11 @@ function submit() {
   <div class="space-y-4">
     <div
       v-if="hasSwift"
-      class="flex items-start gap-3 rounded-xl border border-success/30 bg-success/5 p-4"
+      class="flex items-start gap-3 rounded-xl border border-green-200/30 bg-green-50/5 p-4"
     >
-      <CheckCircle2 class="mt-0.5 h-5 w-5 text-success" />
+      <CheckCircle2 class="mt-0.5 h-5 w-5 text-green-700" />
       <div class="text-sm">
-        <div class="font-semibold text-success">
+        <div class="font-semibold text-green-700">
           تم رفع وثيقة SWIFT
         </div>
       </div>
@@ -59,14 +59,14 @@ function submit() {
       class="space-y-4"
     >
       <div
-        class="cursor-pointer rounded-xl border-2 border-dashed border-border p-8 text-center hover:border-primary/40 hover:bg-primary/5"
+        class="cursor-pointer rounded-xl border-2 border-dashed border-gray-200 p-8 text-center hover:border-primary/40 hover:bg-blue-600/5"
         @click="fileInput?.click()"
       >
-        <FileText class="mx-auto mb-3 h-10 w-10 text-muted-foreground/50" />
+        <FileText class="mx-auto mb-3 h-10 w-10 text-gray-600/50" />
         <div class="text-sm font-medium">
           {{ file ? file.name : 'اختر ملف PDF للسويفت' }}
         </div>
-        <div class="mt-1 text-xs text-muted-foreground">
+        <div class="mt-1 text-xs text-gray-600">
           PDF · حد أقصى 10MB
         </div>
         <input

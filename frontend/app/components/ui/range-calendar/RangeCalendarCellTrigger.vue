@@ -23,15 +23,15 @@ const forwardedProps = useForwardProps(delegatedProps)
       'h-8 w-8 p-0 font-normal data-[selected]:opacity-100',
       '[&[data-today]:not([data-selected])]:bg-accent [&[data-today]:not([data-selected])]:text-accent-foreground',
       // Selection Start
-      'data-[selection-start]:bg-primary data-[selection-start]:text-primary-foreground data-[selection-start]:hover:bg-primary data-[selection-start]:hover:text-primary-foreground data-[selection-start]:focus:bg-primary data-[selection-start]:focus:text-primary-foreground',
+      'data-[selection-start]:bg-blue-600 data-[selection-start]:text-blue-600-foreground data-[selection-start]:hover:bg-blue-600 data-[selection-start]:hover:text-blue-600-foreground data-[selection-start]:focus:bg-blue-600 data-[selection-start]:focus:text-blue-600-foreground',
       // Selection End
-      'data-[selection-end]:bg-primary data-[selection-end]:text-primary-foreground data-[selection-end]:hover:bg-primary data-[selection-end]:hover:text-primary-foreground data-[selection-end]:focus:bg-primary data-[selection-end]:focus:text-primary-foreground',
+      'data-[selection-end]:bg-blue-600 data-[selection-end]:text-blue-600-foreground data-[selection-end]:hover:bg-blue-600 data-[selection-end]:hover:text-blue-600-foreground data-[selection-end]:focus:bg-blue-600 data-[selection-end]:focus:text-blue-600-foreground',
       // Outside months
-      'data-[outside-view]:text-muted-foreground',
+      'data-[outside-view]:text-gray-600',
       // Disabled
-      'data-[disabled]:text-muted-foreground data-[disabled]:opacity-50',
+      'data-[disabled]:text-gray-600 data-[disabled]:opacity-50',
       // Unavailable
-      'data-[unavailable]:text-destructive-foreground data-[unavailable]:line-through',
+      'data-[unavailable]:text-red-700-foreground data-[unavailable]:line-through',
       props.class,
     )"
     v-bind="forwardedProps"

@@ -32,10 +32,10 @@ function formatAmount(amount: number, currency: string): string {
 
 function getKpiIconColor(variant: string): string {
   const colors: Record<string, string> = {
-    green: 'text-success bg-success/10',
-    blue: 'text-primary bg-primary/10',
-    amber: 'text-warning bg-warning/10',
-    gray: 'text-muted-foreground bg-muted',
+    green: 'text-green-700 bg-green-50/10',
+    blue: 'text-blue-600 bg-blue-600/10',
+    amber: 'text-amber-600 bg-amber-50/10',
+    gray: 'text-gray-600 bg-gray-50',
   }
   return colors[variant] || colors.gray
 }
@@ -55,18 +55,18 @@ onMounted(() => { store.loadStats() })
 
     <!-- Skeleton -->
     <div v-if="store.loading" class="grid grid-cols-4 max-lg:grid-cols-2 max-md:grid-cols-1 gap-4" aria-busy="true" aria-label="جارٍ تحميل الإحصائيات">
-      <div v-for="n in 4" :key="n" class="border-0 p-4 shadow-card animate-pulse" aria-hidden="true">
-        <div class="h-3.5 w-15 bg-muted rounded mb-3" />
-        <div class="h-8 w-10 bg-muted rounded" />
+      <div v-for="n in 4" :key="n" class="border-0 p-4 shadow animate-pulse" aria-hidden="true">
+        <div class="h-3.5 w-15 bg-gray-50 rounded mb-3" />
+        <div class="h-8 w-10 bg-gray-50 rounded" />
       </div>
     </div>
 
     <!-- Error -->
-    <Card v-else-if="store.error" class="border-l-4 border-destructive border-b border-border border-r bg-white" role="alert">
+    <Card v-else-if="store.error" class="border-l-4 border-destructive border-b border-gray-200 border-r bg-white" role="alert">
       <CardContent class="pt-6 flex items-center gap-3">
-        <AlertCircle class="w-4.5 h-4.5 flex-shrink-0 text-destructive" aria-hidden="true" />
-        <span class="text-destructive flex-1">{{ store.error }}</span>
-        <button class="px-4 py-1.5 bg-white border border-destructive rounded-lg text-destructive text-sm cursor-pointer hover:bg-destructive/10 transition-colors" @click="store.loadStats()">إعادة المحاولة</button>
+        <AlertCircle class="w-4.5 h-4.5 flex-shrink-0 text-red-700" aria-hidden="true" />
+        <span class="text-red-700 flex-1">{{ store.error }}</span>
+        <button class="px-4 py-1.5 bg-white border border-destructive rounded-lg text-red-700 text-sm cursor-pointer hover:bg-red-700/10 transition-colors" @click="store.loadStats()">إعادة المحاولة</button>
       </CardContent>
     </Card>
 
@@ -75,35 +75,35 @@ onMounted(() => { store.loadStats() })
       <!-- KPI grid -->
       <div class="grid grid-cols-4 max-lg:grid-cols-2 max-md:grid-cols-1 gap-4">
         <template v-for="kpi in kpiConfig" :key="kpi.label">
-          <Card class="border-0 p-4 shadow-card flex flex-col gap-1.5" :class="{ 'border-s-4 border-s-amber-600': kpi.variant === 'amber' }">
+          <Card class="border-0 p-4 shadow flex flex-col gap-1.5" :class="{ 'border-s-4 border-s-amber-600': kpi.variant === 'amber' }">
             <div class="h-9 w-9 rounded flex items-center justify-center flex-shrink-0" :class="getKpiIconColor(kpi.variant)">
               <component :is="kpi.icon" class="h-5 w-5" aria-hidden="true" />
             </div>
-            <span class="text-2xl font-semibold leading-none" :class="kpi.variant === 'amber' && kpi.value > 0 ? 'text-warning' : kpi.variant === 'green' ? 'text-success' : 'text-foreground'">
+            <span class="text-2xl font-semibold leading-none" :class="kpi.variant === 'amber' && kpi.value > 0 ? 'text-amber-600' : kpi.variant === 'green' ? 'text-green-700' : 'text-gray-900'">
               {{ kpi.value }}
             </span>
-            <span class="text-xs text-muted-foreground">{{ kpi.label }}</span>
+            <span class="text-xs text-gray-600">{{ kpi.label }}</span>
           </Card>
         </template>
       </div>
 
       <!-- Quick actions -->
       <section aria-labelledby="qa-heading">
-        <h2 id="qa-heading" class="flex items-center gap-2 text-sm font-semibold text-foreground mb-3">
+        <h2 id="qa-heading" class="flex items-center gap-2 text-sm font-semibold text-gray-900 mb-3">
           <Zap class="h-4 w-4" aria-hidden="true" />
           إجراءات سريعة
         </h2>
         <div class="grid grid-cols-2 max-md:grid-cols-1 gap-3">
-          <button class="flex flex-col items-start gap-1 p-4 bg-primary text-white border-0 rounded-lg cursor-pointer hover:hover:opacity-90 transition-colors" @click="router.push('/requests')">
+          <button class="flex flex-col items-start gap-1 p-4 bg-blue-600 text-white border-0 rounded-lg cursor-pointer hover:hover:opacity-90 transition-colors" @click="router.push('/requests')">
             <Users class="h-5 w-5 flex-shrink-0 mb-1" aria-hidden="true" />
             <span class="text-sm font-semibold">طابور المراجعة</span>
             <span class="text-xs opacity-75">{{ stats.pending_review }} طلب بانتظار المراجعة</span>
           </button>
 
-          <button class="flex flex-col items-start gap-1 p-4 bg-white border border-border text-foreground rounded-lg cursor-pointer hover:border-primary hover:shadow-md transition-all" @click="router.push('/requests')">
-            <FileText class="h-5 w-5 flex-shrink-0 text-primary mb-1" aria-hidden="true" />
+          <button class="flex flex-col items-start gap-1 p-4 bg-white border border-gray-200 text-gray-900 rounded-lg cursor-pointer hover:border-primary hover:shadow-md transition-all" @click="router.push('/requests')">
+            <FileText class="h-5 w-5 flex-shrink-0 text-blue-600 mb-1" aria-hidden="true" />
             <span class="text-sm font-semibold">كل الطلبات</span>
-            <span class="text-xs text-muted-foreground">عرض سائر الطلبات كاملاً</span>
+            <span class="text-xs text-gray-600">عرض سائر الطلبات كاملاً</span>
           </button>
         </div>
       </section>
@@ -111,45 +111,45 @@ onMounted(() => { store.loadStats() })
       <!-- Review queue table -->
       <section aria-labelledby="queue-heading">
         <div class="flex items-center justify-between mb-4">
-          <h2 id="queue-heading" class="text-sm font-semibold text-foreground">طابور المراجعة الحالي</h2>
-          <a class="text-xs text-primary hover:underline transition-colors cursor-pointer" @click="router.push('/requests')">عرض الكل</a>
+          <h2 id="queue-heading" class="text-sm font-semibold text-gray-900">طابور المراجعة الحالي</h2>
+          <a class="text-xs text-blue-600 hover:underline transition-colors cursor-pointer" @click="router.push('/requests')">عرض الكل</a>
         </div>
 
-        <Card v-if="queue.length === 0" class="border-0 shadow-card">
+        <Card v-if="queue.length === 0" class="border-0 shadow">
           <CardContent class="pt-16 pb-16 flex flex-col items-center gap-3 text-center">
-            <CheckCircle2 class="h-7 w-7 text-muted-foreground" aria-hidden="true" />
-            <p class="text-sm text-muted-foreground m-0">لا توجد طلبات في طابور المراجعة حالياً</p>
+            <CheckCircle2 class="h-7 w-7 text-gray-600" aria-hidden="true" />
+            <p class="text-sm text-gray-600 m-0">لا توجد طلبات في طابور المراجعة حالياً</p>
           </CardContent>
         </Card>
 
-        <Card v-else class="border-0 shadow-card">
+        <Card v-else class="border-0 shadow">
           <CardContent class="p-4">
             <table class="w-full border-collapse text-xs" role="table" aria-label="طابور المراجعة الحالي">
               <thead>
-                <tr class="border-b border-border">
-                  <th scope="col" class="py-2 px-2 text-right font-medium text-muted-foreground">المرجع</th>
-                  <th scope="col" class="py-2 px-2 text-right font-medium text-muted-foreground">المورد</th>
-                  <th scope="col" class="py-2 px-2 text-right font-medium text-muted-foreground">المبلغ</th>
-                  <th scope="col" class="py-2 px-2 text-right font-medium text-muted-foreground">الحالة</th>
-                  <th scope="col" class="py-2 px-2 text-right font-medium text-muted-foreground">التقدم</th>
-                  <th scope="col" class="py-2 px-2 text-right font-medium text-muted-foreground">إجراء</th>
+                <tr class="border-b border-gray-200">
+                  <th scope="col" class="py-2 px-2 text-right font-medium text-gray-600">المرجع</th>
+                  <th scope="col" class="py-2 px-2 text-right font-medium text-gray-600">المورد</th>
+                  <th scope="col" class="py-2 px-2 text-right font-medium text-gray-600">المبلغ</th>
+                  <th scope="col" class="py-2 px-2 text-right font-medium text-gray-600">الحالة</th>
+                  <th scope="col" class="py-2 px-2 text-right font-medium text-gray-600">التقدم</th>
+                  <th scope="col" class="py-2 px-2 text-right font-medium text-gray-600">إجراء</th>
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="req in queue" :key="req.id" class="border-t border-muted hover:bg-muted cursor-pointer transition-colors">
-                  <td class="py-2 px-2"><a class="font-mono text-primary hover:underline" :href="`/requests/${req.id}`" @click.prevent="router.push(`/requests/${req.id}`)">{{ req.reference_number }}</a></td>
-                  <td class="py-2 px-2 text-foreground">{{ req.supplier_name }}</td>
-                  <td class="py-2 px-2 text-foreground direction-ltr font-tabular-nums">{{ formatAmount(req.amount, req.currency) }}</td>
+                <tr v-for="req in queue" :key="req.id" class="border-t border-muted hover:bg-gray-50 cursor-pointer transition-colors">
+                  <td class="py-2 px-2"><a class="font-mono text-blue-600 hover:underline" :href="`/requests/${req.id}`" @click.prevent="router.push(`/requests/${req.id}`)">{{ req.reference_number }}</a></td>
+                  <td class="py-2 px-2 text-gray-900">{{ req.supplier_name }}</td>
+                  <td class="py-2 px-2 text-gray-900 direction-ltr font-tabular-nums">{{ formatAmount(req.amount, req.currency) }}</td>
                   <td class="py-2 px-2"><StatusBadge :status="req.status" :role="UserRole.BANK_REVIEWER" /></td>
                   <td class="py-2 px-2">
                     <div class="flex items-center gap-2 min-w-24">
-                      <div class="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
-                        <div class="h-full bg-primary transition-all" :style="{ width: `${getRequestProgress(req.status)}%` }" />
+                      <div class="flex-1 h-1.5 bg-gray-50 rounded-full overflow-hidden">
+                        <div class="h-full bg-blue-600 transition-all" :style="{ width: `${getRequestProgress(req.status)}%` }" />
                       </div>
-                      <span class="text-xs text-muted-foreground whitespace-nowrap">{{ getRequestProgress(req.status) }}%</span>
+                      <span class="text-xs text-gray-600 whitespace-nowrap">{{ getRequestProgress(req.status) }}%</span>
                     </div>
                   </td>
-                  <td class="py-2 px-2"><button class="px-2 py-1 bg-white border border-border text-xs text-foreground rounded hover:border-primary hover:text-primary transition-colors" :aria-label="`عرض الطلب ${req.reference_number}`" @click.stop="router.push(`/requests/${req.id}`)">عرض</button></td>
+                  <td class="py-2 px-2"><button class="px-2 py-1 bg-white border border-gray-200 text-xs text-gray-900 rounded hover:border-primary hover:text-blue-600 transition-colors" :aria-label="`عرض الطلب ${req.reference_number}`" @click.stop="router.push(`/requests/${req.id}`)">عرض</button></td>
                 </tr>
               </tbody>
             </table>

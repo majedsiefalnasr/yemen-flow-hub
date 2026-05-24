@@ -56,7 +56,7 @@ function submit() {
 
     <div class="grid gap-3 py-2 sm:grid-cols-2">
       <div class="space-y-1.5">
-        <Label class="text-xs text-muted-foreground">اسم التاجر / الشركة</Label>
+        <Label class="text-xs text-gray-600">اسم التاجر / الشركة</Label>
         <Input
           v-model="form.name"
           placeholder="مثال: شركة الكميم للأدوية"
@@ -64,7 +64,7 @@ function submit() {
       </div>
 
       <div class="space-y-1.5">
-        <Label class="text-xs text-muted-foreground">رقم السجل التجاري</Label>
+        <Label class="text-xs text-gray-600">رقم السجل التجاري</Label>
         <Input
           v-model="form.commercial_register"
           placeholder="CR-12345"
@@ -72,7 +72,7 @@ function submit() {
       </div>
 
       <div class="space-y-1.5">
-        <Label class="text-xs text-muted-foreground">الرقم الضريبي</Label>
+        <Label class="text-xs text-gray-600">الرقم الضريبي</Label>
         <Input
           v-model="form.tax_number"
           placeholder="4123456"
@@ -80,7 +80,7 @@ function submit() {
       </div>
 
       <div class="space-y-1.5">
-        <Label class="text-xs text-muted-foreground">هاتف التواصل</Label>
+        <Label class="text-xs text-gray-600">هاتف التواصل</Label>
         <Input
           v-model="form.phone"
           placeholder="+9677..."
@@ -88,7 +88,7 @@ function submit() {
       </div>
 
       <div class="space-y-1.5">
-        <Label class="text-xs text-muted-foreground">القطاع / النشاط</Label>
+        <Label class="text-xs text-gray-600">القطاع / النشاط</Label>
         <Select v-model="form.business_type">
           <SelectTrigger><SelectValue /></SelectTrigger>
           <SelectContent>
@@ -104,7 +104,7 @@ function submit() {
       </div>
 
       <div class="space-y-1.5">
-        <Label class="text-xs text-muted-foreground">الحالة</Label>
+        <Label class="text-xs text-gray-600">الحالة</Label>
         <Select :model-value="form.is_active ? 'active' : 'suspended'" @update:model-value="v => form.is_active = v === 'active'">
           <SelectTrigger><SelectValue /></SelectTrigger>
           <SelectContent>
@@ -119,7 +119,7 @@ function submit() {
       </div>
 
       <div class="space-y-1.5 sm:col-span-2">
-        <Label class="text-xs text-muted-foreground">البنك التابع له</Label>
+        <Label class="text-xs text-gray-600">البنك التابع له</Label>
         <Select
           :model-value="form.bank_id?.toString() ?? ''"
           :disabled="lockBank"
@@ -139,7 +139,7 @@ function submit() {
       </div>
 
       <div class="space-y-1.5 sm:col-span-2">
-        <Label class="text-xs text-muted-foreground">العنوان</Label>
+        <Label class="text-xs text-gray-600">العنوان</Label>
         <Input
           v-model="form.address"
           placeholder="المدينة – الشارع"

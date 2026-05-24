@@ -108,7 +108,7 @@ const errorCount = computed(() => Object.keys(props.errors).length)
       <div class="flex flex-col gap-2">
         <Label for="goods-type" class="text-sm">
           نوع الواردات
-          <span class="text-destructive">*</span>
+          <span class="text-red-700">*</span>
         </Label>
         <Select
           :model-value="modelValue.goods_type || ''"
@@ -122,26 +122,26 @@ const errorCount = computed(() => Object.keys(props.errors).length)
             <SelectItem v-for="t in GOODS_TYPES" :key="t" :value="t">{{ t }}</SelectItem>
           </SelectContent>
         </Select>
-        <p v-if="errors.goods_type" class="text-sm text-destructive">{{ errors.goods_type }}</p>
+        <p v-if="errors.goods_type" class="text-sm text-red-700">{{ errors.goods_type }}</p>
       </div>
 
       <!-- المستورد -->
       <div class="flex flex-col gap-2">
         <Label for="merchant" class="text-sm">
           المستورد (التاجر)
-          <span class="text-destructive">*</span>
+          <span class="text-red-700">*</span>
         </Label>
 
         <!-- DATA_ENTRY: read-only -->
         <div
           v-if="isDataEntry"
-          class="flex items-center gap-2 h-10 px-3 border border-border rounded-md bg-muted text-muted-foreground"
-          :class="{ 'border-destructive bg-destructive/10': !!dataEntryMerchantError }"
+          class="flex items-center gap-2 h-10 px-3 border border-gray-200 rounded-md bg-gray-50 text-gray-600"
+          :class="{ 'border-destructive bg-red-700/10': !!dataEntryMerchantError }"
         >
           <Lock class="h-4 w-4 flex-shrink-0" />
           <span class="text-sm">{{ selectedMerchantName || 'لم يتم تحديد التاجر بعد' }}</span>
         </div>
-        <p v-if="isDataEntry && dataEntryMerchantError" class="text-sm text-destructive">{{ dataEntryMerchantError }}</p>
+        <p v-if="isDataEntry && dataEntryMerchantError" class="text-sm text-red-700">{{ dataEntryMerchantError }}</p>
 
         <!-- BANK_ADMIN: searchable select -->
         <template v-else>
@@ -187,14 +187,14 @@ const errorCount = computed(() => Object.keys(props.errors).length)
             </Select>
           </template>
         </template>
-        <p v-if="errors.merchant_id" class="text-sm text-destructive">{{ errors.merchant_id }}</p>
+        <p v-if="errors.merchant_id" class="text-sm text-red-700">{{ errors.merchant_id }}</p>
       </div>
 
       <!-- مبلغ التمويل -->
       <div class="flex flex-col gap-2">
         <Label for="amount" class="text-sm">
           مبلغ التمويل
-          <span class="text-destructive">*</span>
+          <span class="text-red-700">*</span>
         </Label>
         <Input
           id="amount"
@@ -207,14 +207,14 @@ const errorCount = computed(() => Object.keys(props.errors).length)
           placeholder="0"
           @input="update('amount', Number(($event.target as HTMLInputElement).value) || null)"
         />
-        <p v-if="errors.amount" class="text-sm text-destructive">{{ errors.amount }}</p>
+        <p v-if="errors.amount" class="text-sm text-red-700">{{ errors.amount }}</p>
       </div>
 
       <!-- العملة -->
       <div class="flex flex-col gap-2">
         <Label for="currency" class="text-sm">
           العملة
-          <span class="text-destructive">*</span>
+          <span class="text-red-700">*</span>
         </Label>
         <Select
           :model-value="modelValue.currency || ''"
@@ -230,14 +230,14 @@ const errorCount = computed(() => Object.keys(props.errors).length)
             </SelectItem>
           </SelectContent>
         </Select>
-        <p v-if="errors.currency" class="text-sm text-destructive">{{ errors.currency }}</p>
+        <p v-if="errors.currency" class="text-sm text-red-700">{{ errors.currency }}</p>
       </div>
 
       <!-- شروط الدفع -->
       <div class="flex flex-col gap-2">
         <Label for="payment-terms" class="text-sm">
           شروط الدفع
-          <span class="text-destructive">*</span>
+          <span class="text-red-700">*</span>
         </Label>
         <Select
           :model-value="modelValue.payment_terms || ''"
@@ -252,7 +252,7 @@ const errorCount = computed(() => Object.keys(props.errors).length)
             <SelectItem v-for="t in PAYMENT_TERMS" :key="t" :value="t">{{ PAYMENT_LABELS[t] }}</SelectItem>
           </SelectContent>
         </Select>
-        <p v-if="errors.payment_terms" class="text-sm text-destructive">{{ errors.payment_terms }}</p>
+        <p v-if="errors.payment_terms" class="text-sm text-red-700">{{ errors.payment_terms }}</p>
       </div>
 
       <!-- تاريخ الاستحقاق (optional) -->
@@ -279,7 +279,7 @@ const errorCount = computed(() => Object.keys(props.errors).length)
           placeholder="أي معلومات إضافية تتعلق بالطلب..."
           @input="update('notes', ($event.target as HTMLTextAreaElement).value)"
         />
-        <div class="flex justify-end text-xs text-muted-foreground">{{ notesLength }}/500</div>
+        <div class="flex justify-end text-xs text-gray-600">{{ notesLength }}/500</div>
       </div>
     </div>
   </div>

@@ -160,9 +160,9 @@ async function toggleStatus(bank: Bank) {
       </template>
     </PageHeader>
 
-    <Card class="mb-4 border-0 p-4 shadow-card">
+    <Card class="mb-4 border-0 p-4 shadow">
       <div class="relative max-w-md">
-        <Search class="absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Search class="absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-600" />
         <Input
           v-model="query"
           class="pe-10"
@@ -171,10 +171,10 @@ async function toggleStatus(bank: Bank) {
       </div>
     </Card>
 
-    <Card class="overflow-hidden border-0 shadow-card">
+    <Card class="overflow-hidden border-0 shadow">
       <div class="overflow-x-auto">
         <Table class="w-full min-w-[720px] text-sm">
-          <TableHeader class="bg-muted/40 text-xs text-muted-foreground">
+          <TableHeader class="bg-gray-50/40 text-xs text-gray-600">
             <TableRow class="text-end">
               <TableHead class="px-4 py-3">
                 الجهة
@@ -188,7 +188,7 @@ async function toggleStatus(bank: Bank) {
               <TableHead class="px-4 py-3">
                 الحالة
               </TableHead>
-              <TableHead class="sticky start-0 z-10 bg-muted/40 px-4 py-3 text-start shadow-[6px_0_8px_-6px_rgba(0,0,0,0.12)]">
+              <TableHead class="sticky start-0 z-10 bg-gray-50/40 px-4 py-3 text-start shadow-[6px_0_8px_-6px_rgba(0,0,0,0.12)]">
                 إجراءات
               </TableHead>
             </TableRow>
@@ -197,16 +197,16 @@ async function toggleStatus(bank: Bank) {
             <TableRow
               v-for="bank in filtered"
               :key="bank.id"
-              class="border-t hover:bg-muted/30"
+              class="border-t hover:bg-gray-50/30"
             >
               <TableCell class="px-4 py-3 font-medium">
                 <div class="flex items-center gap-2">
-                  <div class="grid h-8 w-8 place-items-center rounded-lg bg-primary/10 text-primary">
+                  <div class="grid h-8 w-8 place-items-center rounded-lg bg-blue-600/10 text-blue-600">
                     <Building2 class="h-4 w-4" />
                   </div>
                   <div>
                     <div>{{ bank.name_ar }}</div>
-                    <div class="text-[11px] text-muted-foreground">
+                    <div class="text-[11px] text-gray-600">
                       {{ bank.name_en }}
                     </div>
                   </div>
@@ -219,11 +219,11 @@ async function toggleStatus(bank: Bank) {
                 {{ bank.code }}
               </TableCell>
               <TableCell class="px-4 py-3">
-                <Badge :class="bank.is_active ? 'border-0 bg-success/15 text-success' : 'border-0 bg-destructive/15 text-destructive'">
+                <Badge :class="bank.is_active ? 'border-0 bg-green-50/15 text-green-700' : 'border-0 bg-red-700/15 text-red-700'">
                   {{ bank.is_active ? 'نشط' : 'موقوف' }}
                 </Badge>
               </TableCell>
-              <TableCell class="sticky start-0 z-10 bg-card px-4 py-3 shadow-[6px_0_8px_-6px_rgba(0,0,0,0.12)]">
+              <TableCell class="sticky start-0 z-10 bg-white px-4 py-3 shadow-[6px_0_8px_-6px_rgba(0,0,0,0.12)]">
                 <div class="flex justify-end gap-1">
                   <Button
                     size="sm"
@@ -244,7 +244,7 @@ async function toggleStatus(bank: Bank) {
                   <Button
                     size="sm"
                     variant="ghost"
-                    :class="bank.is_active ? 'text-destructive' : 'text-success'"
+                    :class="bank.is_active ? 'text-red-700' : 'text-green-700'"
                     @click="toggleStatus(bank)"
                   >
                     <Power class="ms-1 h-3.5 w-3.5" />
@@ -256,7 +256,7 @@ async function toggleStatus(bank: Bank) {
             <TableRow v-if="filtered.length === 0">
               <TableCell
                 colspan="5"
-                class="px-4 py-8 text-center text-sm text-muted-foreground"
+                class="px-4 py-8 text-center text-sm text-gray-600"
               >
                 لا توجد نتائج.
               </TableCell>
@@ -335,9 +335,9 @@ async function toggleStatus(bank: Bank) {
             class="mt-2 border-t pt-3"
           >
             <div class="mb-1 text-sm font-semibold">
-              حساب مدير البنك <span class="text-destructive">*</span>
+              حساب مدير البنك <span class="text-red-700">*</span>
             </div>
-            <p class="mb-3 text-xs text-muted-foreground">
+            <p class="mb-3 text-xs text-gray-600">
               يُنشأ حساب المدير الأول للبنك تلقائياً ويُستخدم لتسجيل الدخول وإضافة باقي المستخدمين.
             </p>
             <div class="space-y-3">
@@ -358,7 +358,7 @@ async function toggleStatus(bank: Bank) {
                 />
                 <p
                   v-if="!emailValid"
-                  class="text-xs text-destructive"
+                  class="text-xs text-red-700"
                 >
                   صيغة البريد غير صحيحة
                 </p>
@@ -389,7 +389,7 @@ async function toggleStatus(bank: Bank) {
       >
         <DialogHeader>
           <DialogTitle class="flex items-center gap-2">
-            <Building2 class="h-5 w-5 text-primary" />
+            <Building2 class="h-5 w-5 text-blue-600" />
             {{ viewing.name_ar }}
           </DialogTitle>
           <DialogDescription>
@@ -399,26 +399,26 @@ async function toggleStatus(bank: Bank) {
 
         <div class="space-y-3 py-2 text-sm">
           <div class="flex items-center justify-between border-b pb-2">
-            <span class="text-muted-foreground">الاسم الإنجليزي</span>
+            <span class="text-gray-600">الاسم الإنجليزي</span>
             <span class="font-medium">{{ viewing.name_en }}</span>
           </div>
           <div class="flex items-center justify-between border-b pb-2">
-            <span class="text-muted-foreground">الكود</span>
+            <span class="text-gray-600">الكود</span>
             <span class="font-mono font-medium">{{ viewing.code }}</span>
           </div>
           <div class="flex items-center justify-between border-b pb-2">
-            <span class="text-muted-foreground">رقم الترخيص</span>
+            <span class="text-gray-600">رقم الترخيص</span>
             <span class="font-mono font-medium">{{ viewing.license_number ?? '—' }}</span>
           </div>
           <div class="flex items-center justify-between border-b pb-2">
-            <span class="text-muted-foreground">الحالة</span>
+            <span class="text-gray-600">الحالة</span>
             <span class="font-medium">{{ viewing.is_active ? 'نشط' : 'موقوف' }}</span>
           </div>
           <div
             v-if="viewing.user_count != null"
             class="flex items-center justify-between border-b pb-2"
           >
-            <span class="text-muted-foreground">عدد المستخدمين</span>
+            <span class="text-gray-600">عدد المستخدمين</span>
             <span class="font-medium">{{ viewing.user_count }}</span>
           </div>
         </div>

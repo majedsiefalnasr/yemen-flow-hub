@@ -82,7 +82,7 @@ const generalSettings = reactive({
         value="workflow"
         class="mt-4"
       >
-        <Card class="space-y-5 border-0 p-6 shadow-card">
+        <Card class="space-y-5 border-0 p-6 shadow">
           <h3 class="font-semibold">
             إعدادات دورة الموافقة
           </h3>
@@ -109,7 +109,7 @@ const generalSettings = reactive({
               <div class="text-sm font-medium">
                 تصويت سري
               </div>
-              <div class="text-xs text-muted-foreground">
+              <div class="text-xs text-gray-600">
                 إخفاء أصوات الأعضاء قبل الإغلاق
               </div>
             </div>
@@ -129,7 +129,7 @@ const generalSettings = reactive({
         value="email"
         class="mt-4"
       >
-        <Card class="space-y-5 border-0 p-6 shadow-card">
+        <Card class="space-y-5 border-0 p-6 shadow">
           <h3 class="font-semibold">
             إعدادات SMTP
           </h3>
@@ -169,7 +169,7 @@ const generalSettings = reactive({
         value="notif"
         class="mt-4"
       >
-        <Card class="space-y-3 border-0 p-6 shadow-card">
+        <Card class="space-y-3 border-0 p-6 shadow">
           <h3 class="mb-2 font-semibold">
             قنوات الإشعارات
           </h3>
@@ -190,7 +190,7 @@ const generalSettings = reactive({
         value="security"
         class="mt-4"
       >
-        <Card class="space-y-3 border-0 p-6 shadow-card">
+        <Card class="space-y-3 border-0 p-6 shadow">
           <h3 class="mb-2 font-semibold">
             سياسات الأمن
           </h3>
@@ -211,7 +211,7 @@ const generalSettings = reactive({
         value="general"
         class="mt-4"
       >
-        <Card class="space-y-5 border-0 p-6 shadow-card">
+        <Card class="space-y-5 border-0 p-6 shadow">
           <h3 class="font-semibold">
             إعدادات عامة
           </h3>

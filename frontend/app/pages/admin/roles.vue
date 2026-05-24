@@ -99,11 +99,11 @@ function hasPermission(role: UserRole, permission: Permission) {
       :breadcrumbs="[{ label: 'الرئيسية', to: '/' }, { label: 'الأدوار والصلاحيات' }]"
     />
 
-    <Card class="overflow-x-auto border-0 p-0 shadow-card">
+    <Card class="overflow-x-auto border-0 p-0 shadow">
       <Table class="w-full min-w-[640px] text-sm">
-        <TableHeader class="bg-muted/40">
+        <TableHeader class="bg-gray-50/40">
           <TableRow>
-            <TableHead class="sticky end-0 min-w-[260px] bg-muted/40 p-3 text-end">
+            <TableHead class="sticky end-0 min-w-[260px] bg-gray-50/40 p-3 text-end">
               الصلاحية
             </TableHead>
             <TableHead
@@ -121,9 +121,9 @@ function hasPermission(role: UserRole, permission: Permission) {
           <TableRow
             v-for="permission in ALL_PERMISSIONS"
             :key="permission.key"
-            class="border-t hover:bg-muted/20"
+            class="border-t hover:bg-gray-50/20"
           >
-            <TableCell class="sticky end-0 bg-card p-3 font-medium">
+            <TableCell class="sticky end-0 bg-white p-3 font-medium">
               {{ permission.label }}
               <Badge
                 variant="outline"

@@ -69,15 +69,15 @@ const canCreateRequest = computed(() => user.value?.role === UserRole.DATA_ENTRY
     <!-- Page header -->
     <div class="mb-6 flex flex-wrap items-start justify-between gap-4">
       <div>
-        <nav class="mb-1.5 flex items-center gap-1 text-xs text-muted-foreground">
-          <NuxtLink to="/" class="hover:text-foreground">الرئيسية</NuxtLink>
+        <nav class="mb-1.5 flex items-center gap-1 text-xs text-gray-600">
+          <NuxtLink to="/" class="hover:text-gray-900">الرئيسية</NuxtLink>
           <span>/</span>
           <span>الطلبات</span>
         </nav>
         <h1 class="text-2xl font-bold tracking-tight">
           طلبات تمويل الواردات
         </h1>
-        <p class="mt-1 text-sm text-muted-foreground">
+        <p class="mt-1 text-sm text-gray-600">
           {{ isBankScoped ? 'طلبات جهتك فقط' : 'جميع الطلبات المقدمة عبر المنصة مع حالاتها ومراحل المعالجة' }}
         </p>
       </div>
@@ -94,14 +94,14 @@ const canCreateRequest = computed(() => user.value?.role === UserRole.DATA_ENTRY
     </div>
 
     <!-- Filter tabs -->
-    <div class="mb-4 flex items-center gap-0 border-b border-border">
+    <div class="mb-4 flex items-center gap-0 border-b border-gray-200">
       <button
         type="button"
         :class="[
           'flex items-center gap-1.5 border-b-2 px-4 py-2.5 text-sm font-medium transition-colors',
           filter === 'all'
-            ? 'border-primary text-primary'
-            : 'border-transparent text-muted-foreground hover:text-foreground',
+            ? 'border-primary text-blue-600'
+            : 'border-transparent text-gray-600 hover:text-gray-900',
         ]"
         @click="filter = 'all'"
       >
@@ -109,7 +109,7 @@ const canCreateRequest = computed(() => user.value?.role === UserRole.DATA_ENTRY
         <span
           :class="[
             'rounded-full px-1.5 py-0.5 text-[11px] tabular-nums leading-none',
-            filter === 'all' ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground',
+            filter === 'all' ? 'bg-blue-600/10 text-blue-600' : 'bg-gray-50 text-gray-600',
           ]"
         >
           {{ countForBucket('all') }}
@@ -122,8 +122,8 @@ const canCreateRequest = computed(() => user.value?.role === UserRole.DATA_ENTRY
         :class="[
           'flex items-center gap-1.5 border-b-2 px-4 py-2.5 text-sm font-medium transition-colors',
           filter === bucket.key
-            ? 'border-primary text-primary'
-            : 'border-transparent text-muted-foreground hover:text-foreground',
+            ? 'border-primary text-blue-600'
+            : 'border-transparent text-gray-600 hover:text-gray-900',
         ]"
         @click="filter = bucket.key"
       >
@@ -131,7 +131,7 @@ const canCreateRequest = computed(() => user.value?.role === UserRole.DATA_ENTRY
         <span
           :class="[
             'rounded-full px-1.5 py-0.5 text-[11px] tabular-nums leading-none',
-            filter === bucket.key ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground',
+            filter === bucket.key ? 'bg-blue-600/10 text-blue-600' : 'bg-gray-50 text-gray-600',
           ]"
         >
           {{ countForBucket(bucket.key) }}
@@ -142,7 +142,7 @@ const canCreateRequest = computed(() => user.value?.role === UserRole.DATA_ENTRY
     <!-- Search + filters row -->
     <div class="mb-4 flex flex-wrap items-center gap-2">
       <div class="relative min-w-[240px] flex-1">
-        <Search class="absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Search class="absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-600" />
         <Input
           v-model="query"
           placeholder="بحث برقم الطلب، التاجر، أو رقم الفاتورة..."
@@ -169,24 +169,24 @@ const canCreateRequest = computed(() => user.value?.role === UserRole.DATA_ENTRY
     </div>
 
     <!-- Table -->
-    <div class="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+    <div class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
       <div class="overflow-x-auto">
         <Table class="w-full min-w-[700px]">
           <TableHeader>
-            <TableRow class="border-b bg-muted/30 hover:bg-muted/30">
-              <TableHead class="px-4 py-3 text-xs font-medium text-muted-foreground">
+            <TableRow class="border-b bg-gray-50/30 hover:bg-gray-50/30">
+              <TableHead class="px-4 py-3 text-xs font-medium text-gray-600">
                 المرجع
               </TableHead>
-              <TableHead class="px-4 py-3 text-xs font-medium text-muted-foreground">
+              <TableHead class="px-4 py-3 text-xs font-medium text-gray-600">
                 التاجر / البنك
               </TableHead>
-              <TableHead class="px-4 py-3 text-xs font-medium text-muted-foreground">
+              <TableHead class="px-4 py-3 text-xs font-medium text-gray-600">
                 نوع البضاعة
               </TableHead>
-              <TableHead class="px-4 py-3 text-xs font-medium text-muted-foreground">
+              <TableHead class="px-4 py-3 text-xs font-medium text-gray-600">
                 المبلغ
               </TableHead>
-              <TableHead class="px-4 py-3 text-xs font-medium text-muted-foreground">
+              <TableHead class="px-4 py-3 text-xs font-medium text-gray-600">
                 الحالة
               </TableHead>
               <TableHead class="w-8 px-2 py-3" />
@@ -198,24 +198,24 @@ const canCreateRequest = computed(() => user.value?.role === UserRole.DATA_ENTRY
             <template v-if="store.loadingList">
               <TableRow v-for="i in 7" :key="i">
                 <TableCell class="px-4 py-4">
-                  <div class="mb-1.5 h-3.5 w-32 animate-pulse rounded bg-muted" />
-                  <div class="h-3 w-20 animate-pulse rounded bg-muted/60" />
+                  <div class="mb-1.5 h-3.5 w-32 animate-pulse rounded bg-gray-50" />
+                  <div class="h-3 w-20 animate-pulse rounded bg-gray-50/60" />
                 </TableCell>
                 <TableCell class="px-4 py-4">
-                  <div class="mb-1.5 h-3.5 w-36 animate-pulse rounded bg-muted" />
-                  <div class="h-3 w-24 animate-pulse rounded bg-muted/60" />
+                  <div class="mb-1.5 h-3.5 w-36 animate-pulse rounded bg-gray-50" />
+                  <div class="h-3 w-24 animate-pulse rounded bg-gray-50/60" />
                 </TableCell>
                 <TableCell class="px-4 py-4">
-                  <div class="h-3.5 w-24 animate-pulse rounded bg-muted" />
+                  <div class="h-3.5 w-24 animate-pulse rounded bg-gray-50" />
                 </TableCell>
                 <TableCell class="px-4 py-4">
-                  <div class="h-3.5 w-24 animate-pulse rounded bg-muted" />
+                  <div class="h-3.5 w-24 animate-pulse rounded bg-gray-50" />
                 </TableCell>
                 <TableCell class="px-4 py-4">
-                  <div class="h-5 w-24 animate-pulse rounded-full bg-muted" />
+                  <div class="h-5 w-24 animate-pulse rounded-full bg-gray-50" />
                 </TableCell>
                 <TableCell class="px-2 py-4">
-                  <div class="h-4 w-4 animate-pulse rounded bg-muted/40" />
+                  <div class="h-4 w-4 animate-pulse rounded bg-gray-50/40" />
                 </TableCell>
               </TableRow>
             </template>
@@ -223,7 +223,7 @@ const canCreateRequest = computed(() => user.value?.role === UserRole.DATA_ENTRY
             <!-- Empty state -->
             <TableRow v-else-if="filteredRequests.length === 0">
               <TableCell colspan="6" class="py-16 text-center">
-                <div class="flex flex-col items-center gap-3 text-muted-foreground">
+                <div class="flex flex-col items-center gap-3 text-gray-600">
                   <svg
                     class="h-12 w-12 opacity-25"
                     viewBox="0 0 24 24"
@@ -251,18 +251,18 @@ const canCreateRequest = computed(() => user.value?.role === UserRole.DATA_ENTRY
               <TableRow
                 v-for="req in filteredRequests"
                 :key="req.id"
-                class="cursor-pointer border-t transition-colors hover:bg-muted/40"
+                class="cursor-pointer border-t transition-colors hover:bg-gray-50/40"
                 @click="navigateTo(`/requests/${req.id}`)"
               >
                 <!-- Reference -->
                 <TableCell class="px-4 py-3.5">
                   <div class="flex flex-wrap items-center gap-1.5">
-                    <span class="font-mono text-[13px] font-semibold text-primary">
+                    <span class="font-mono text-[13px] font-semibold text-blue-600">
                       {{ req.reference_number }}
                     </span>
                     <span
                       v-if="req.duplicate_warnings?.length"
-                      class="inline-flex items-center gap-0.5 rounded-full bg-destructive/10 px-1.5 py-0.5 text-[10px] font-medium text-destructive"
+                      class="inline-flex items-center gap-0.5 rounded-full bg-red-700/10 px-1.5 py-0.5 text-[10px] font-medium text-red-700"
                     >
                       <AlertTriangle class="h-2.5 w-2.5" />
                       مكرر
@@ -277,47 +277,47 @@ const canCreateRequest = computed(() => user.value?.role === UserRole.DATA_ENTRY
                     </span>
                     <span
                       v-if="req.is_claimed && !req.is_claimed_by_me && user.role === UserRole.SUPPORT_COMMITTEE"
-                      class="inline-flex items-center gap-0.5 rounded-full bg-warning/100/10 px-1.5 py-0.5 text-[10px] font-medium text-warning"
+                      class="inline-flex items-center gap-0.5 rounded-full bg-amber-50/100/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-600"
                     >
                       <Lock class="h-2.5 w-2.5" />
                       محجوز: {{ req.claimed_by?.name ?? '—' }}
                     </span>
                     <span
                       v-else-if="req.is_claimed_by_me"
-                      class="inline-flex items-center gap-0.5 rounded-full bg-warning/100/10 px-1.5 py-0.5 text-[10px] font-medium text-warning"
+                      class="inline-flex items-center gap-0.5 rounded-full bg-amber-50/100/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-600"
                     >
                       <Lock class="h-2.5 w-2.5" />
                       محجوز لك
                     </span>
                   </div>
-                  <div v-if="req.invoice_number" class="mt-0.5 text-[11px] text-muted-foreground">
+                  <div v-if="req.invoice_number" class="mt-0.5 text-[11px] text-gray-600">
                     {{ req.invoice_number }}
                   </div>
                 </TableCell>
 
                 <!-- Merchant / Bank -->
                 <TableCell class="px-4 py-3.5">
-                  <div class="truncate text-sm font-medium text-foreground">
+                  <div class="truncate text-sm font-medium text-gray-900">
                     {{ req.merchant?.name ?? '—' }}
                   </div>
-                  <div class="truncate text-xs text-muted-foreground">
+                  <div class="truncate text-xs text-gray-600">
                     {{ req.bank_name ?? '—' }}
                   </div>
                 </TableCell>
 
                 <!-- Goods type -->
                 <TableCell class="px-4 py-3.5">
-                  <span class="line-clamp-1 max-w-[180px] text-sm text-muted-foreground">
+                  <span class="line-clamp-1 max-w-[180px] text-sm text-gray-600">
                     {{ req.goods_description ?? '—' }}
                   </span>
                 </TableCell>
 
                 <!-- Amount -->
                 <TableCell class="whitespace-nowrap px-4 py-3.5">
-                  <span class="font-mono text-sm font-semibold tabular-nums text-foreground">
+                  <span class="font-mono text-sm font-semibold tabular-nums text-gray-900">
                     {{ req.amount.toLocaleString('en-US') }}
                   </span>
-                  <span class="ms-1 text-xs text-muted-foreground">{{ req.currency }}</span>
+                  <span class="ms-1 text-xs text-gray-600">{{ req.currency }}</span>
                 </TableCell>
 
                 <!-- Status badge -->
@@ -327,7 +327,7 @@ const canCreateRequest = computed(() => user.value?.role === UserRole.DATA_ENTRY
 
                 <!-- Row chevron -->
                 <TableCell class="px-2 py-3.5">
-                  <ChevronLeft class="h-4 w-4 text-muted-foreground/40" />
+                  <ChevronLeft class="h-4 w-4 text-gray-600/40" />
                 </TableCell>
               </TableRow>
             </template>
@@ -340,7 +340,7 @@ const canCreateRequest = computed(() => user.value?.role === UserRole.DATA_ENTRY
         v-if="store.meta && store.meta.last_page > 1"
         class="flex items-center justify-between border-t px-4 py-3"
       >
-        <span class="text-xs text-muted-foreground">
+        <span class="text-xs text-gray-600">
           {{ store.meta.total }} طلب — صفحة {{ store.meta.current_page }} من {{ store.meta.last_page }}
         </span>
         <div class="flex gap-2">

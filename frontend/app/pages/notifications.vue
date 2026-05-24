@@ -46,7 +46,7 @@ const SEVERITY_STYLES: Record<Severity, {
   label: string
 }> = {
   critical: { icon: XCircle, iconWrap: 'text-rose-50 bg-rose-600 ring-2 ring-rose-200', border: 'border-e-4 border-e-rose-600', unreadBg: 'bg-rose-50/70', dot: 'bg-rose-600', label: 'عاجل' },
-  warning: { icon: FileText, iconWrap: 'text-warning bg-warning/100 ring-2 ring-warning', border: 'border-e-4 border-e-amber-500', unreadBg: 'bg-warning/10/60', dot: 'bg-warning/100', label: 'مهم' },
+  warning: { icon: FileText, iconWrap: 'text-amber-600 bg-amber-50/100 ring-2 ring-warning', border: 'border-e-4 border-e-amber-500', unreadBg: 'bg-amber-50/10/60', dot: 'bg-amber-50/100', label: 'مهم' },
   success: { icon: CheckCircle2, iconWrap: 'text-emerald-50 bg-emerald-600 ring-2 ring-emerald-200', border: 'border-e-4 border-e-emerald-600', unreadBg: 'bg-emerald-50/60', dot: 'bg-emerald-600', label: 'إنجاز' },
   voting: { icon: Vote, iconWrap: 'text-violet-50 bg-violet-600 ring-2 ring-violet-200', border: 'border-e-4 border-e-violet-600', unreadBg: 'bg-violet-50/60', dot: 'bg-violet-600', label: 'تصويت' },
   info: { icon: Bell, iconWrap: 'text-sky-50 bg-sky-600 ring-2 ring-sky-200', border: 'border-e-4 border-e-sky-500', unreadBg: 'bg-sky-50/50', dot: 'bg-sky-500', label: 'إشعار' },
@@ -116,10 +116,10 @@ async function handleMarkAllRead() {
       </template>
     </PageHeader>
 
-    <Card class="mb-4 border-0 p-3 shadow-card">
+    <Card class="mb-4 border-0 p-3 shadow">
       <div class="flex flex-col gap-3 md:flex-row md:items-center">
         <div class="relative flex-1">
-          <Search class="absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Search class="absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-600" />
           <Input
             v-model="query"
             placeholder="ابحث في الإشعارات..."
@@ -148,11 +148,11 @@ async function handleMarkAllRead() {
 
     <Card
       v-if="filtered.length === 0"
-      class="border-0 shadow-card"
+      class="border-0 shadow"
     >
       <div class="p-12 text-center">
-        <Inbox class="mx-auto h-10 w-10 text-muted-foreground/60" />
-        <div class="mt-3 text-sm text-muted-foreground">
+        <Inbox class="mx-auto h-10 w-10 text-gray-600/60" />
+        <div class="mt-3 text-sm text-gray-600">
           {{ notifications.length === 0 ? 'لا توجد إشعارات بعد.' : 'لا توجد إشعارات تطابق هذا الفلتر.' }}
         </div>
       </div>
@@ -166,15 +166,15 @@ async function handleMarkAllRead() {
         v-for="[label, items] in groups"
         :key="label"
       >
-        <div class="mb-2 px-1 text-xs font-semibold text-muted-foreground">
+        <div class="mb-2 px-1 text-xs font-semibold text-gray-600">
           {{ label }}
         </div>
-        <Card class="overflow-hidden border-0 shadow-card">
+        <Card class="overflow-hidden border-0 shadow">
           <div
             v-for="notification in items"
             :key="notification.id"
             :class="cn(
-              'flex cursor-pointer gap-3 border-b p-4 transition-colors last:border-b-0 hover:bg-muted/40',
+              'flex cursor-pointer gap-3 border-b p-4 transition-colors last:border-b-0 hover:bg-gray-50/40',
               SEVERITY_STYLES[severityFor(notification)].border,
               !notification.read_at && SEVERITY_STYLES[severityFor(notification)].unreadBg,
             )"
@@ -200,11 +200,11 @@ async function handleMarkAllRead() {
               </div>
               <div
                 v-if="notification.data?.reference_number"
-                class="mt-0.5 text-xs text-muted-foreground"
+                class="mt-0.5 text-xs text-gray-600"
               >
                 طلب رقم: {{ notification.data.reference_number }}
               </div>
-              <div class="mt-1 text-[10px] text-muted-foreground">
+              <div class="mt-1 text-[10px] text-gray-600">
                 {{ new Date(notification.created_at).toLocaleString('ar-EG') }}
               </div>
             </div>

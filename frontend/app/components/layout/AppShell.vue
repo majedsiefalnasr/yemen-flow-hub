@@ -55,7 +55,7 @@ function userInitials(name: string) {
 <template>
   <div
     v-if="user"
-    class="min-h-screen bg-background text-foreground"
+    class="min-h-screen bg-background text-gray-900"
     dir="rtl"
   >
     <SidebarProvider>
@@ -65,10 +65,10 @@ function userInitials(name: string) {
         <header class="sticky top-0 z-30 flex h-16 items-center justify-between gap-2 border-b bg-background/95 px-3 sm:gap-3 sm:px-6 backdrop-blur-sm">
           <!-- Left: Search (hidden on mobile) -->
           <div class="relative hidden flex-1 max-w-md md:block">
-            <Search class="absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Search class="absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-600" />
             <Input
               placeholder="ابحث عن طلب، تاجر، أو رقم فاتورة..."
-              class="border-transparent bg-muted/50 pe-10 focus-visible:bg-card"
+              class="border-transparent bg-gray-50/50 pe-10 focus-visible:bg-white"
             />
           </div>
 
@@ -103,7 +103,7 @@ function userInitials(name: string) {
                   <Bell class="h-5 w-5" />
                   <span
                     v-if="unreadCount > 0"
-                    class="absolute start-1.5 top-1.5 h-2 w-2 rounded-full bg-destructive ring-2 ring-card"
+                    class="absolute start-1.5 top-1.5 h-2 w-2 rounded-full bg-red-700 ring-2 ring-card"
                   />
                 </Button>
               </PopoverTrigger>
@@ -122,7 +122,7 @@ function userInitials(name: string) {
                       type="button"
                       variant="link"
                       size="sm"
-                      class="h-auto p-0 text-[11px] text-primary"
+                      class="h-auto p-0 text-[11px] text-blue-600"
                       @click="notificationsStore.markAllRead()"
                     >
                       قراءة الكل
@@ -135,22 +135,22 @@ function userInitials(name: string) {
                       v-for="notification in notifications.slice(0, 12)"
                       :key="notification.id"
                       :to="notification.data.request_id ? `/requests/${notification.data.request_id}` : '/notifications'"
-                      class="flex gap-3 p-4 hover:bg-muted/50"
+                      class="flex gap-3 p-4 hover:bg-gray-50/50"
                     >
                       <Badge
                         :class="[
                           'mt-1 h-2 w-2 shrink-0 rounded-full p-0',
-                          !notification.read_at ? 'bg-accent' : 'bg-muted',
+                          !notification.read_at ? 'bg-accent' : 'bg-gray-50',
                         ]"
                       />
                       <div class="min-w-0 flex-1">
                         <div class="truncate text-sm font-medium">
                           {{ notification.data.reference_number || notification.type }}
                         </div>
-                        <div class="truncate text-xs text-muted-foreground">
+                        <div class="truncate text-xs text-gray-600">
                           {{ notification.data.message }}
                         </div>
-                        <div class="mt-1 text-[10px] text-muted-foreground">
+                        <div class="mt-1 text-[10px] text-gray-600">
                           {{ notification.created_at }}
                         </div>
                       </div>
@@ -160,7 +160,7 @@ function userInitials(name: string) {
                 <div class="border-t p-2 text-center">
                   <NuxtLink
                     to="/notifications"
-                    class="text-xs text-primary hover:underline"
+                    class="text-xs text-blue-600 hover:underline"
                   >
                     عرض كل الإشعارات
                   </NuxtLink>
@@ -179,12 +179,12 @@ function userInitials(name: string) {
                     <div class="text-sm font-semibold">
                       {{ user.name }}
                     </div>
-                    <div class="text-[11px] text-muted-foreground">
+                    <div class="text-[11px] text-gray-600">
                       {{ ROLE_LABELS[user.role] }}
                     </div>
                   </div>
                   <Avatar size="sm">
-                    <AvatarFallback class="bg-primary text-sm font-bold text-primary-foreground">
+                    <AvatarFallback class="bg-blue-600 text-sm font-bold text-blue-600-foreground">
                       {{ userInitials(user.name) }}
                     </AvatarFallback>
                   </Avatar>
@@ -198,12 +198,12 @@ function userInitials(name: string) {
                   <div class="font-semibold">
                     {{ user.name }}
                   </div>
-                  <div class="text-xs font-normal text-muted-foreground">
+                  <div class="text-xs font-normal text-gray-600">
                     {{ user.email }}
                   </div>
                   <div
                     v-if="user.bank_name_ar"
-                    class="mt-0.5 text-xs font-normal text-muted-foreground"
+                    class="mt-0.5 text-xs font-normal text-gray-600"
                   >
                     {{ user.bank_name_ar }}
                   </div>
@@ -234,7 +234,7 @@ function userInitials(name: string) {
         </main>
 
         <!-- Footer -->
-        <footer class="flex flex-wrap items-center justify-between gap-2 border-t px-3 py-4 text-[10px] text-muted-foreground sm:px-6 sm:text-xs">
+        <footer class="flex flex-wrap items-center justify-between gap-2 border-t px-3 py-4 text-[10px] text-gray-600 sm:px-6 sm:text-xs">
           <div>© 2025 البنك المركزي اليمني</div>
           <div class="flex shrink-0 items-center gap-2">
             <AlertTriangle class="h-3.5 w-3.5" />

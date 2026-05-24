@@ -169,7 +169,7 @@ async function handleSubmit(data: RequestFormData) {
 .page-title {
   font-size: 28px;
   font-weight: 500;
-  color: var(--color-text-primary, #1d1d1f);
+  color: var(--color-text-blue-600, #1d1d1f);
   margin: 0;
 }
 
@@ -246,7 +246,7 @@ async function handleSubmit(data: RequestFormData) {
   height: 44px;
   padding: 0 20px;
   background: transparent;
-  color: var(--color-text-primary, #1d1d1f);
+  color: var(--color-text-blue-600, #1d1d1f);
   border: 1px solid var(--color-border, #d2d2d7);
   border-radius: 12px;
   font-size: 15px;

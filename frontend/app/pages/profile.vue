@@ -62,15 +62,15 @@ function userInitials(n?: string) {
     />
 
     <div class="grid gap-6 lg:grid-cols-3">
-      <Card class="border-0 p-6 text-center shadow-card">
+      <Card class="border-0 p-6 text-center shadow">
         <Avatar class="mx-auto h-24 w-24">
-          <AvatarFallback class="bg-primary text-3xl font-bold text-primary-foreground">
+          <AvatarFallback class="bg-blue-600 text-3xl font-bold text-blue-600-foreground">
             {{ userInitials(user.name) }}
           </AvatarFallback>
         </Avatar>
         <div class="mt-4 flex items-center justify-center gap-1.5 text-lg font-bold">
           {{ user.name }}
-          <BadgeCheck class="h-4 w-4 text-primary" />
+          <BadgeCheck class="h-4 w-4 text-blue-600" />
         </div>
         <Badge
           variant="secondary"
@@ -78,7 +78,7 @@ function userInitials(n?: string) {
         >
           {{ ROLE_LABELS[user.role] }}
         </Badge>
-        <div class="mt-2 text-xs text-muted-foreground">
+        <div class="mt-2 text-xs text-gray-600">
           {{ user.bank_name_ar }}
         </div>
 
@@ -90,27 +90,27 @@ function userInitials(n?: string) {
             <div class="font-bold tabular-nums">
               {{ stat.value }}
             </div>
-            <div class="text-[10px] text-muted-foreground">
+            <div class="text-[10px] text-gray-600">
               {{ stat.label }}
             </div>
           </div>
         </div>
 
         <div class="mt-6 space-y-2 border-t pt-6 text-end">
-          <div class="flex items-center gap-2 text-xs text-muted-foreground">
+          <div class="flex items-center gap-2 text-xs text-gray-600">
             <Mail class="h-3.5 w-3.5 shrink-0" />
             <span class="truncate">{{ user.email }}</span>
           </div>
           <div
             v-if="phone"
-            class="flex items-center gap-2 text-xs text-muted-foreground"
+            class="flex items-center gap-2 text-xs text-gray-600"
           >
             <Phone class="h-3.5 w-3.5 shrink-0" />
             <span class="truncate">{{ phone }}</span>
           </div>
           <div
             v-if="user.bank_name_ar"
-            class="flex items-center gap-2 text-xs text-muted-foreground"
+            class="flex items-center gap-2 text-xs text-gray-600"
           >
             <Building2 class="h-3.5 w-3.5 shrink-0" />
             <span class="truncate">{{ user.bank_name_ar }}</span>
@@ -118,12 +118,12 @@ function userInitials(n?: string) {
         </div>
       </Card>
 
-      <Card class="space-y-5 border-0 p-6 shadow-card lg:col-span-2">
+      <Card class="space-y-5 border-0 p-6 shadow lg:col-span-2">
         <div>
           <h3 class="font-semibold">
             المعلومات الأساسية
           </h3>
-          <p class="mt-0.5 text-xs text-muted-foreground">
+          <p class="mt-0.5 text-xs text-gray-600">
             حدّث بياناتك الشخصية وطرق التواصل
           </p>
         </div>
@@ -202,7 +202,7 @@ function userInitials(n?: string) {
           </h3>
           <div
             v-if="myActivity.length === 0"
-            class="py-6 text-center text-sm text-muted-foreground"
+            class="py-6 text-center text-sm text-gray-600"
           >
             لا يوجد نشاط مسجل بعد.
           </div>
@@ -213,9 +213,9 @@ function userInitials(n?: string) {
             <div
               v-for="entry in myActivity"
               :key="entry.id"
-              class="flex items-center gap-3 rounded-lg p-2.5 hover:bg-muted/40"
+              class="flex items-center gap-3 rounded-lg p-2.5 hover:bg-gray-50/40"
             >
-              <div class="grid h-8 w-8 place-items-center rounded-lg bg-muted">
+              <div class="grid h-8 w-8 place-items-center rounded-lg bg-gray-50">
                 <Activity class="h-4 w-4" />
               </div>
               <div class="flex-1 text-sm">
@@ -224,12 +224,12 @@ function userInitials(n?: string) {
                 </div>
                 <div
                   v-if="entry.ref"
-                  class="font-mono text-[11px] text-muted-foreground"
+                  class="font-mono text-[11px] text-gray-600"
                 >
                   {{ entry.ref }}
                 </div>
               </div>
-              <div class="text-xs text-muted-foreground">
+              <div class="text-xs text-gray-600">
                 {{ new Date(entry.ts).toLocaleString('ar-EG', { dateStyle: 'medium', timeStyle: 'short' }) }}
               </div>
             </div>

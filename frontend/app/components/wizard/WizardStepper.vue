@@ -20,7 +20,7 @@ function handleStepClick(index: number): void {
 </script>
 
 <template>
-  <div dir="rtl" role="navigation" aria-label="خطوات الطلب" class="rounded-lg border border-border bg-white p-6 shadow-sm">
+  <div dir="rtl" role="navigation" aria-label="خطوات الطلب" class="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
     <div class="flex items-center justify-center gap-0">
       <template v-for="(label, index) in steps" :key="index">
         <!-- Step -->
@@ -40,9 +40,9 @@ function handleStepClick(index: number): void {
           <div
             class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border-2 transition-all"
             :class="{
-              'border-border bg-white': stepStatuses[index] === 'future',
-              'border-primary bg-primary shadow-lg shadow-blue-600/20': stepStatuses[index] === 'active',
-              'border-success bg-success': stepStatuses[index] === 'completed',
+              'border-gray-200 bg-white': stepStatuses[index] === 'future',
+              'border-primary bg-blue-600 shadow-lg shadow-blue-600/20': stepStatuses[index] === 'active',
+              'border-green-200 bg-green-50': stepStatuses[index] === 'completed',
             }"
           >
             <!-- Completed: checkmark icon -->
@@ -52,7 +52,7 @@ function handleStepClick(index: number): void {
               v-else
               class="text-sm font-medium leading-none"
               :class="{
-                'text-muted-foreground': stepStatuses[index] === 'future',
+                'text-gray-600': stepStatuses[index] === 'future',
                 'text-white': stepStatuses[index] === 'active',
               }"
             >
@@ -64,9 +64,9 @@ function handleStepClick(index: number): void {
           <span
             class="text-xs transition-colors"
             :class="{
-              'text-muted-foreground font-normal': stepStatuses[index] === 'future',
-              'text-primary font-semibold': stepStatuses[index] === 'active',
-              'text-success font-normal': stepStatuses[index] === 'completed',
+              'text-gray-600 font-normal': stepStatuses[index] === 'future',
+              'text-blue-600 font-semibold': stepStatuses[index] === 'active',
+              'text-green-700 font-normal': stepStatuses[index] === 'completed',
             }"
             :class="{ 'hover:underline': stepStatuses[index] === 'completed' }"
           >
@@ -80,7 +80,7 @@ function handleStepClick(index: number): void {
           class="h-0.5 flex-1 min-w-6 transition-colors"
           :class="{
             'bg-border': stepStatuses[index] !== 'completed',
-            'bg-success': stepStatuses[index] === 'completed',
+            'bg-green-50': stepStatuses[index] === 'completed',
           }"
           aria-hidden="true"
         />

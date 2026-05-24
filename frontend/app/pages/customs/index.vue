@@ -38,16 +38,16 @@ const issued = computed(() =>
     />
 
     <div class="grid gap-6 lg:grid-cols-2">
-      <Card class="border-0 p-5 shadow-card">
+      <Card class="border-0 p-5 shadow">
         <h3 class="mb-4 flex items-center gap-2 font-semibold">
-          <PackageCheck class="h-5 w-5 text-success" />
+          <PackageCheck class="h-5 w-5 text-green-700" />
           طلبات جاهزة للإصدار ({{ ready.length }})
         </h3>
 
         <div class="space-y-3">
           <div
             v-if="ready.length === 0"
-            class="text-sm text-muted-foreground"
+            class="text-sm text-gray-600"
           >
             لا توجد طلبات جاهزة حالياً.
           </div>
@@ -55,9 +55,9 @@ const issued = computed(() =>
           <div
             v-for="request in ready"
             :key="request.id"
-            class="flex items-center gap-3 rounded-lg border p-3 transition-colors hover:border-success/40"
+            class="flex items-center gap-3 rounded-lg border p-3 transition-colors hover:border-green-200/40"
           >
-            <div class="grid h-11 w-11 place-items-center rounded-lg bg-success/10 text-success">
+            <div class="grid h-11 w-11 place-items-center rounded-lg bg-green-50/10 text-green-700">
               <Truck class="h-5 w-5" />
             </div>
 
@@ -65,7 +65,7 @@ const issued = computed(() =>
               <div class="font-mono text-sm font-semibold">
                 {{ request.reference_number }}
               </div>
-              <div class="truncate text-xs text-muted-foreground">
+              <div class="truncate text-xs text-gray-600">
                 {{ request.merchant?.name }} · {{ request.port_of_entry }}
               </div>
             </div>
@@ -82,7 +82,7 @@ const issued = computed(() =>
         </div>
       </Card>
 
-      <Card class="border-0 p-5 shadow-card">
+      <Card class="border-0 p-5 shadow">
         <h3 class="mb-4 font-semibold">
           بيانات صادرة مؤخراً ({{ issued.length }})
         </h3>
@@ -90,7 +90,7 @@ const issued = computed(() =>
         <div class="space-y-3">
           <div
             v-if="issued.length === 0"
-            class="text-sm text-muted-foreground"
+            class="text-sm text-gray-600"
           >
             لم تُصدَر أي بيانات بعد.
           </div>
@@ -104,7 +104,7 @@ const issued = computed(() =>
               <div class="font-mono text-sm font-semibold">
                 {{ request.customs_declaration?.declaration_number ?? request.reference_number }}
               </div>
-              <div class="truncate text-xs text-muted-foreground">
+              <div class="truncate text-xs text-gray-600">
                 {{ request.merchant?.name }}
               </div>
             </div>

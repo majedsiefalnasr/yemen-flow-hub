@@ -497,7 +497,7 @@ onMounted(async () => {
 .page-title {
   font-size: 28px;
   font-weight: 600;
-  color: var(--color-text-primary);
+  color: var(--color-text-blue-600);
   margin: 0;
 }
 
@@ -538,7 +538,7 @@ onMounted(async () => {
 }
 
 .tab-btn:hover:not(.active) {
-  color: var(--color-text-primary);
+  color: var(--color-text-blue-600);
 }
 
 .tab-content {
@@ -565,7 +565,7 @@ onMounted(async () => {
 .section-title {
   font-size: 18px;
   font-weight: 600;
-  color: var(--color-text-primary);
+  color: var(--color-text-blue-600);
   margin: 0;
 }
 
@@ -588,7 +588,7 @@ onMounted(async () => {
 .section-sub-title {
   font-size: 15px;
   font-weight: 600;
-  color: var(--color-text-primary);
+  color: var(--color-text-blue-600);
   margin: 0 0 2px;
 }
 
@@ -662,7 +662,7 @@ onMounted(async () => {
 .stepper-value {
   font-size: 18px;
   font-weight: 600;
-  color: var(--color-text-primary);
+  color: var(--color-text-blue-600);
   min-width: 36px;
   text-align: center;
 }
@@ -680,7 +680,7 @@ onMounted(async () => {
   border: 1px solid #cccccc;
   border-radius: 12px;
   font-size: 14px;
-  color: var(--color-text-primary);
+  color: var(--color-text-blue-600);
   background: var(--color-surface);
   outline: none;
   width: 100%;
@@ -722,7 +722,7 @@ onMounted(async () => {
 .switch-label {
   font-size: 14px;
   font-weight: 500;
-  color: var(--color-text-primary);
+  color: var(--color-text-blue-600);
 }
 
 .switch-desc {
@@ -805,7 +805,7 @@ onMounted(async () => {
 .info-value {
   font-size: 14px;
   font-weight: 500;
-  color: var(--color-text-primary);
+  color: var(--color-text-blue-600);
 }
 
 /* Banners */

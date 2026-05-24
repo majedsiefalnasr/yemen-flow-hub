@@ -185,13 +185,13 @@ const onSubmit = handleSubmit((values) => {
       >
         <DialogHeader class="flex items-start justify-between">
           <div>
-            <DialogTitle class="text-xl font-semibold text-foreground">
+            <DialogTitle class="text-xl font-semibold text-gray-900">
               {{ isEditMode ? 'تعديل بيانات التاجر' : 'تسجيل تاجر جديد' }}
             </DialogTitle>
-            <p class="text-xs text-muted-foreground mt-1">الحقول المعلّمة بـ * إلزامية.</p>
+            <p class="text-xs text-gray-600 mt-1">الحقول المعلّمة بـ * إلزامية.</p>
           </div>
           <button
-            class="text-muted-foreground hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed text-lg leading-none p-1"
+            class="text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed text-lg leading-none p-1"
             aria-label="إغلاق"
             :disabled="props.saving"
             @click="requestClose"
@@ -200,9 +200,9 @@ const onSubmit = handleSubmit((values) => {
           </button>
         </DialogHeader>
 
-        <Alert v-if="props.serverError" class="border-l-4 border-l-red-600 bg-destructive/10 border-0" role="alert">
-          <AlertCircle class="h-4 w-4 text-destructive" aria-hidden="true" />
-          <AlertDescription class="text-destructive text-sm">{{ props.serverError }}</AlertDescription>
+        <Alert v-if="props.serverError" class="border-l-4 border-l-red-600 bg-red-700/10 border-0" role="alert">
+          <AlertCircle class="h-4 w-4 text-red-700" aria-hidden="true" />
+          <AlertDescription class="text-red-700 text-sm">{{ props.serverError }}</AlertDescription>
         </Alert>
 
         <form class="flex flex-col gap-5" @submit.prevent="onSubmit">
@@ -210,14 +210,14 @@ const onSubmit = handleSubmit((values) => {
             <!-- Bank selector for CBY Admin creating a new merchant -->
             <template v-if="isBankRequiredForCreate">
               <div class="col-span-2 flex flex-col gap-2">
-                <Label for="bank-id" class="text-xs text-muted-foreground font-medium">
-                  البنك التابع له <span class="text-destructive">*</span>
+                <Label for="bank-id" class="text-xs text-gray-600 font-medium">
+                  البنك التابع له <span class="text-red-700">*</span>
                 </Label>
                 <select
                   id="bank-id"
                   v-model="bank_id"
                   v-bind="bankIdAttrs"
-                  class="h-9 px-3 border border-border rounded-md bg-white text-sm text-foreground outline-none focus-visible:ring-1 focus-visible:ring-blue-600"
+                  class="h-9 px-3 border border-gray-200 rounded-md bg-white text-sm text-gray-900 outline-none focus-visible:ring-1 focus-visible:ring-blue-600"
                   :class="{ 'border-destructive': errors.bank_id }"
                 >
                   <option value="">اختر البنك</option>
@@ -225,14 +225,14 @@ const onSubmit = handleSubmit((values) => {
                     {{ bank.name }}
                   </option>
                 </select>
-                <span v-if="errors.bank_id" class="text-xs text-destructive" role="alert">{{ errors.bank_id }}</span>
+                <span v-if="errors.bank_id" class="text-xs text-red-700" role="alert">{{ errors.bank_id }}</span>
               </div>
             </template>
 
             <template v-else-if="showLockedBankField">
               <div class="col-span-2 flex flex-col gap-2">
-                <Label for="locked-bank-name" class="text-xs text-muted-foreground font-medium">
-                  البنك التابع له <span class="text-destructive">*</span>
+                <Label for="locked-bank-name" class="text-xs text-gray-600 font-medium">
+                  البنك التابع له <span class="text-red-700">*</span>
                 </Label>
                 <Input
                   id="locked-bank-name"
@@ -240,16 +240,16 @@ const onSubmit = handleSubmit((values) => {
                   type="text"
                   readonly
                   disabled
-                  class="bg-muted text-muted-foreground cursor-not-allowed"
+                  class="bg-gray-50 text-gray-600 cursor-not-allowed"
                 />
-                <span class="text-xs text-muted-foreground">مرتبط بالبنك المسجل على حسابك.</span>
+                <span class="text-xs text-gray-600">مرتبط بالبنك المسجل على حسابك.</span>
               </div>
             </template>
 
             <!-- Name -->
             <div class="col-span-2 flex flex-col gap-2">
-              <Label for="merchant-name" class="text-xs text-muted-foreground font-medium">
-                اسم التاجر / الشركة <span class="text-destructive">*</span>
+              <Label for="merchant-name" class="text-xs text-gray-600 font-medium">
+                اسم التاجر / الشركة <span class="text-red-700">*</span>
               </Label>
               <Input
                 id="merchant-name"
@@ -259,13 +259,13 @@ const onSubmit = handleSubmit((values) => {
                 placeholder="مثال: شركة الكميم للأدوية"
                 :class="{ 'border-destructive': errors.name }"
               />
-              <span v-if="errors.name" class="text-xs text-destructive" role="alert">{{ errors.name }}</span>
+              <span v-if="errors.name" class="text-xs text-red-700" role="alert">{{ errors.name }}</span>
             </div>
 
             <!-- Commercial register -->
             <div class="flex flex-col gap-2">
-              <Label for="commercial-register" class="text-xs text-muted-foreground font-medium">
-                رقم السجل التجاري <span class="text-destructive">*</span>
+              <Label for="commercial-register" class="text-xs text-gray-600 font-medium">
+                رقم السجل التجاري <span class="text-red-700">*</span>
               </Label>
               <Input
                 id="commercial-register"
@@ -276,13 +276,13 @@ const onSubmit = handleSubmit((values) => {
                 dir="ltr"
                 :class="{ 'border-destructive': errors.commercial_register }"
               />
-              <span v-if="errors.commercial_register" class="text-xs text-destructive" role="alert">{{ errors.commercial_register }}</span>
+              <span v-if="errors.commercial_register" class="text-xs text-red-700" role="alert">{{ errors.commercial_register }}</span>
             </div>
 
             <!-- Tax number -->
             <div class="flex flex-col gap-2">
-              <Label for="tax-number" class="text-xs text-muted-foreground font-medium">
-                الرقم الضريبي <span class="text-destructive">*</span>
+              <Label for="tax-number" class="text-xs text-gray-600 font-medium">
+                الرقم الضريبي <span class="text-red-700">*</span>
               </Label>
               <Input
                 id="tax-number"
@@ -293,12 +293,12 @@ const onSubmit = handleSubmit((values) => {
                 dir="ltr"
                 :class="{ 'border-destructive': errors.tax_number }"
               />
-              <span v-if="errors.tax_number" class="text-xs text-destructive" role="alert">{{ errors.tax_number }}</span>
+              <span v-if="errors.tax_number" class="text-xs text-red-700" role="alert">{{ errors.tax_number }}</span>
             </div>
 
             <!-- Phone -->
             <div class="flex flex-col gap-2">
-              <Label for="merchant-phone" class="text-xs text-muted-foreground font-medium">
+              <Label for="merchant-phone" class="text-xs text-gray-600 font-medium">
                 هاتف التواصل
               </Label>
               <Input
@@ -313,14 +313,14 @@ const onSubmit = handleSubmit((values) => {
 
             <!-- Business type -->
             <div class="flex flex-col gap-2">
-              <Label for="business-type" class="text-xs text-muted-foreground font-medium">
+              <Label for="business-type" class="text-xs text-gray-600 font-medium">
                 القطاع / النشاط
               </Label>
               <select
                 id="business-type"
                 v-model="business_type"
                 v-bind="businessTypeAttrs"
-                class="h-9 px-3 border border-border rounded-md bg-white text-sm text-foreground outline-none focus-visible:ring-1 focus-visible:ring-blue-600"
+                class="h-9 px-3 border border-gray-200 rounded-md bg-white text-sm text-gray-900 outline-none focus-visible:ring-1 focus-visible:ring-blue-600"
               >
                 <option value="">اختر القطاع</option>
                 <option v-for="opt in BUSINESS_TYPE_OPTIONS" :key="opt.value" :value="opt.value">
@@ -331,14 +331,14 @@ const onSubmit = handleSubmit((values) => {
 
             <!-- Status — edit mode only -->
             <div v-if="isEditMode" class="flex flex-col gap-2">
-              <Label for="merchant-status" class="text-xs text-muted-foreground font-medium">
+              <Label for="merchant-status" class="text-xs text-gray-600 font-medium">
                 الحالة
               </Label>
               <select
                 id="merchant-status"
                 v-model="is_active"
                 v-bind="isActiveAttrs"
-                class="h-9 px-3 border border-border rounded-md bg-white text-sm text-foreground outline-none focus-visible:ring-1 focus-visible:ring-blue-600"
+                class="h-9 px-3 border border-gray-200 rounded-md bg-white text-sm text-gray-900 outline-none focus-visible:ring-1 focus-visible:ring-blue-600"
               >
                 <option value="true">نشط</option>
                 <option value="false">موقوف</option>
@@ -347,7 +347,7 @@ const onSubmit = handleSubmit((values) => {
 
             <!-- Address -->
             <div class="col-span-2 flex flex-col gap-2">
-              <Label for="address" class="text-xs text-muted-foreground font-medium">
+              <Label for="address" class="text-xs text-gray-600 font-medium">
                 العنوان
               </Label>
               <Input

@@ -103,7 +103,7 @@ async function toggleActive(item: DocumentType) {
       :breadcrumbs="[{ label: 'الرئيسية', to: '/' }, { label: 'أنواع المستندات' }]"
     />
 
-    <Card class="mb-6 border-0 p-5 shadow-card">
+    <Card class="mb-6 border-0 p-5 shadow">
       <div class="mb-3 font-semibold">
         إضافة نوع مستند جديد
       </div>
@@ -140,10 +140,10 @@ async function toggleActive(item: DocumentType) {
       </Button>
     </Card>
 
-    <Card class="divide-y border-0 shadow-card">
+    <Card class="divide-y border-0 shadow">
       <div
         v-if="docTypes.length === 0"
-        class="p-8 text-center text-sm text-muted-foreground"
+        class="p-8 text-center text-sm text-gray-600"
       >
         لا توجد أنواع مستندات.
       </div>
@@ -156,7 +156,7 @@ async function toggleActive(item: DocumentType) {
           <div class="text-sm font-medium">
             {{ item.name_ar }}
           </div>
-          <div class="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
+          <div class="mt-0.5 flex items-center gap-2 text-xs text-gray-600">
             <Badge
               variant="outline"
               class="font-mono text-[10px]"
@@ -183,7 +183,7 @@ async function toggleActive(item: DocumentType) {
         <Button
           variant="ghost"
           size="icon"
-          class="text-muted-foreground"
+          class="text-gray-600"
           disabled
           title="الحذف غير متاح عبر الواجهة"
         >

@@ -54,7 +54,7 @@ const completedAll = computed(() =>
 </script>
 
 <template>
-  <div class="rounded-2xl border bg-card p-5 shadow-card">
+  <div class="rounded-2xl border bg-white p-5 shadow">
     <div class="mb-4 flex items-center justify-between">
       <div class="text-sm font-semibold">
         سير العملية التنظيمية
@@ -63,8 +63,8 @@ const completedAll = computed(() =>
         v-if="RETURN_STATUSES.includes(resolvedStatus) || REJECT_STATUSES.includes(resolvedStatus)"
         :class="cn(
           'rounded-full px-2 py-0.5 text-[10px] font-medium',
-          RETURN_STATUSES.includes(resolvedStatus) && 'bg-warning/15 text-warning',
-          REJECT_STATUSES.includes(resolvedStatus) && 'bg-destructive/15 text-destructive',
+          RETURN_STATUSES.includes(resolvedStatus) && 'bg-amber-50/15 text-amber-600',
+          REJECT_STATUSES.includes(resolvedStatus) && 'bg-red-700/15 text-red-700',
         )"
       >
         {{ RETURN_STATUSES.includes(resolvedStatus) ? 'مُعاد للتعديل' : 'مرفوض' }}
@@ -81,26 +81,26 @@ const completedAll = computed(() =>
           v-if="index < steps.length - 1"
           :class="cn(
             'absolute end-[11px] top-7 h-[calc(100%-1.25rem)] w-px',
-            completedAll || index < currentIndex ? 'bg-foreground/80' : 'bg-border',
+            completedAll || index < currentIndex ? 'bg-gray-900/80' : 'bg-border',
           )"
         />
 
         <div class="relative z-10 grid h-[22px] w-[22px] shrink-0 place-items-center">
           <span
             v-if="completedAll || index < currentIndex"
-            class="grid h-[22px] w-[22px] place-items-center rounded-full bg-foreground text-background"
+            class="grid h-[22px] w-[22px] place-items-center rounded-full bg-gray-900 text-white"
           >
             <Check class="h-3 w-3" :stroke-width="3" />
           </span>
           <span
             v-else-if="index === currentIndex"
-            class="grid h-[22px] w-[22px] place-items-center rounded-full bg-foreground ring-4 ring-foreground/15"
+            class="grid h-[22px] w-[22px] place-items-center rounded-full bg-gray-900 ring-4 ring-foreground/15"
           >
             <span class="h-2 w-2 rounded-full bg-background" />
           </span>
           <span
             v-else
-            class="h-[22px] w-[22px] rounded-full border-2 border-border bg-muted/40"
+            class="h-[22px] w-[22px] rounded-full border-2 border-gray-200 bg-gray-50/40"
           />
         </div>
 
@@ -108,7 +108,7 @@ const completedAll = computed(() =>
           <div
             :class="cn(
               'text-sm leading-snug',
-              index === currentIndex ? 'font-semibold text-foreground' : index < currentIndex ? 'text-foreground' : 'text-muted-foreground',
+              index === currentIndex ? 'font-semibold text-gray-900' : index < currentIndex ? 'text-gray-900' : 'text-gray-600',
             )"
           >
             {{ step.label }}
@@ -117,7 +117,7 @@ const completedAll = computed(() =>
             v-if="!compact"
             :class="cn(
               'mt-0.5 text-[11px] leading-tight',
-              index === currentIndex ? 'text-primary' : index < currentIndex ? 'text-success' : 'text-muted-foreground/70',
+              index === currentIndex ? 'text-blue-600' : index < currentIndex ? 'text-green-700' : 'text-gray-600/70',
             )"
           >
             {{ index === currentIndex ? 'المرحلة الحالية' : index < currentIndex ? 'مكتملة' : 'بانتظار' }}

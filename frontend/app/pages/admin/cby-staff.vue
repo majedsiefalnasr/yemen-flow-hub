@@ -164,44 +164,44 @@ async function toggleActive(target: User) {
     </PageHeader>
 
     <div class="mb-4 grid grid-cols-3 gap-3">
-      <Card class="border-0 p-4 shadow-card">
-        <div class="grid h-9 w-9 place-items-center rounded-lg bg-primary/10 text-primary">
+      <Card class="border-0 p-4 shadow">
+        <div class="grid h-9 w-9 place-items-center rounded-lg bg-blue-600/10 text-blue-600">
           <UserCog class="h-4 w-4" />
         </div>
         <div class="mt-2 text-2xl font-bold tabular-nums">
           {{ stats.total }}
         </div>
-        <div class="text-xs text-muted-foreground">
+        <div class="text-xs text-gray-600">
           إجمالي المستخدمين
         </div>
       </Card>
-      <Card class="border-0 p-4 shadow-card">
-        <div class="grid h-9 w-9 place-items-center rounded-lg bg-success/10 text-success">
+      <Card class="border-0 p-4 shadow">
+        <div class="grid h-9 w-9 place-items-center rounded-lg bg-green-50/10 text-green-700">
           <ShieldCheck class="h-4 w-4" />
         </div>
         <div class="mt-2 text-2xl font-bold tabular-nums">
           {{ stats.active }}
         </div>
-        <div class="text-xs text-muted-foreground">
+        <div class="text-xs text-gray-600">
           نشط
         </div>
       </Card>
-      <Card class="border-0 p-4 shadow-card">
-        <div class="grid h-9 w-9 place-items-center rounded-lg bg-destructive/10 text-destructive">
+      <Card class="border-0 p-4 shadow">
+        <div class="grid h-9 w-9 place-items-center rounded-lg bg-red-700/10 text-red-700">
           <Power class="h-4 w-4" />
         </div>
         <div class="mt-2 text-2xl font-bold tabular-nums">
           {{ stats.inactive }}
         </div>
-        <div class="text-xs text-muted-foreground">
+        <div class="text-xs text-gray-600">
           غير نشط
         </div>
       </Card>
     </div>
 
-    <Card class="mb-4 flex flex-col gap-3 border-0 p-4 shadow-card sm:flex-row">
+    <Card class="mb-4 flex flex-col gap-3 border-0 p-4 shadow sm:flex-row">
       <div class="relative flex-1">
-        <Search class="absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Search class="absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-600" />
         <Input
           v-model="query"
           class="pe-10"
@@ -227,10 +227,10 @@ async function toggleActive(target: User) {
       </Select>
     </Card>
 
-    <Card class="overflow-hidden border-0 shadow-card">
+    <Card class="overflow-hidden border-0 shadow">
       <div class="overflow-x-auto">
         <Table class="w-full min-w-[720px] text-sm">
-          <TableHeader class="bg-muted/40 text-xs text-muted-foreground">
+          <TableHeader class="bg-gray-50/40 text-xs text-gray-600">
             <TableRow class="text-end">
               <TableHead class="px-4 py-3">
                 المستخدم
@@ -244,7 +244,7 @@ async function toggleActive(target: User) {
               <TableHead class="px-4 py-3">
                 الحالة
               </TableHead>
-              <TableHead class="sticky start-0 z-10 bg-muted/40 px-4 py-3 text-start shadow-[6px_0_8px_-6px_rgba(0,0,0,0.12)]">
+              <TableHead class="sticky start-0 z-10 bg-gray-50/40 px-4 py-3 text-start shadow-[6px_0_8px_-6px_rgba(0,0,0,0.12)]">
                 إجراءات
               </TableHead>
             </TableRow>
@@ -253,7 +253,7 @@ async function toggleActive(target: User) {
             <TableRow
               v-for="staff in filtered"
               :key="staff.id"
-              class="border-t hover:bg-muted/30"
+              class="border-t hover:bg-gray-50/30"
             >
               <TableCell class="px-4 py-3">
                 <div class="flex items-center gap-2">
@@ -276,11 +276,11 @@ async function toggleActive(target: User) {
                 </Badge>
               </TableCell>
               <TableCell class="px-4 py-3">
-                <Badge :class="staff.is_active ? 'border-0 bg-success/15 text-success' : 'border-0 bg-destructive/15 text-destructive'">
+                <Badge :class="staff.is_active ? 'border-0 bg-green-50/15 text-green-700' : 'border-0 bg-red-700/15 text-red-700'">
                   {{ staff.is_active ? 'نشط' : 'غير نشط' }}
                 </Badge>
               </TableCell>
-              <TableCell class="sticky start-0 z-10 bg-card px-4 py-3 shadow-[6px_0_8px_-6px_rgba(0,0,0,0.12)]">
+              <TableCell class="sticky start-0 z-10 bg-white px-4 py-3 shadow-[6px_0_8px_-6px_rgba(0,0,0,0.12)]">
                 <div class="flex justify-end gap-1">
                   <Button
                     size="sm"
@@ -301,7 +301,7 @@ async function toggleActive(target: User) {
                   <Button
                     size="sm"
                     variant="ghost"
-                    :class="staff.is_active ? 'text-destructive' : 'text-success'"
+                    :class="staff.is_active ? 'text-red-700' : 'text-green-700'"
                     :disabled="staff.id === currentUser?.id"
                     :title="staff.id === currentUser?.id ? 'لا يمكنك تعطيل حسابك' : ''"
                     @click="toggleActive(staff)"
@@ -315,7 +315,7 @@ async function toggleActive(target: User) {
             <TableRow v-if="filtered.length === 0">
               <TableCell
                 colspan="5"
-                class="px-4 py-8 text-center text-sm text-muted-foreground"
+                class="px-4 py-8 text-center text-sm text-gray-600"
               >
                 لا توجد نتائج.
               </TableCell>
@@ -405,7 +405,7 @@ async function toggleActive(target: User) {
       >
         <DialogHeader>
           <DialogTitle class="flex items-center gap-2">
-            <UserCog class="h-5 w-5 text-primary" />
+            <UserCog class="h-5 w-5 text-blue-600" />
             {{ viewing.name }}
           </DialogTitle>
           <DialogDescription>
@@ -415,22 +415,22 @@ async function toggleActive(target: User) {
 
         <div class="space-y-3 py-2 text-sm">
           <div class="flex items-center justify-between gap-3 border-b pb-2">
-            <span class="text-muted-foreground">البريد</span>
+            <span class="text-gray-600">البريد</span>
             <span class="text-start font-medium">{{ viewing.email }}</span>
           </div>
           <div class="flex items-center justify-between gap-3 border-b pb-2">
-            <span class="text-muted-foreground">الدور</span>
+            <span class="text-gray-600">الدور</span>
             <span class="text-start font-medium">{{ ROLE_LABELS[viewing.role] }}</span>
           </div>
           <div class="flex items-center justify-between gap-3 border-b pb-2">
-            <span class="text-muted-foreground">الحالة</span>
+            <span class="text-gray-600">الحالة</span>
             <span class="text-start font-medium">{{ viewing.is_active ? 'نشط' : 'غير نشط' }}</span>
           </div>
           <div
             v-if="viewing.last_login_at"
             class="flex items-center justify-between gap-3 border-b pb-2"
           >
-            <span class="text-muted-foreground">آخر تسجيل دخول</span>
+            <span class="text-gray-600">آخر تسجيل دخول</span>
             <span class="text-start font-medium">{{ new Date(viewing.last_login_at).toLocaleString('ar-EG') }}</span>
           </div>
         </div>

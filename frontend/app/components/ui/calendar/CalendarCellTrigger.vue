@@ -23,13 +23,13 @@ const forwardedProps = useForwardProps(delegatedProps)
       'size-8 p-0 font-normal aria-selected:opacity-100 cursor-default',
       '[&[data-today]:not([data-selected])]:bg-accent [&[data-today]:not([data-selected])]:text-accent-foreground',
       // Selected
-      'data-[selected]:bg-primary data-[selected]:text-primary-foreground data-[selected]:opacity-100 data-[selected]:hover:bg-primary data-[selected]:hover:text-primary-foreground data-[selected]:focus:bg-primary data-[selected]:focus:text-primary-foreground',
+      'data-[selected]:bg-blue-600 data-[selected]:text-blue-600-foreground data-[selected]:opacity-100 data-[selected]:hover:bg-blue-600 data-[selected]:hover:text-blue-600-foreground data-[selected]:focus:bg-blue-600 data-[selected]:focus:text-blue-600-foreground',
       // Disabled
-      'data-[disabled]:text-muted-foreground data-[disabled]:opacity-50',
+      'data-[disabled]:text-gray-600 data-[disabled]:opacity-50',
       // Unavailable
-      'data-[unavailable]:text-destructive-foreground data-[unavailable]:line-through',
+      'data-[unavailable]:text-red-700-foreground data-[unavailable]:line-through',
       // Outside months
-      'data-[outside-view]:text-muted-foreground',
+      'data-[outside-view]:text-gray-600',
       props.class,
     )"
     v-bind="forwardedProps"

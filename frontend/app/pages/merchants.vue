@@ -114,44 +114,44 @@ async function toggleStatus(merchant: Merchant) {
     </PageHeader>
 
     <div class="mb-4 grid grid-cols-3 gap-3">
-      <Card class="border-0 p-4 shadow-card">
-        <div class="grid h-9 w-9 place-items-center rounded-lg bg-primary/10 text-primary">
+      <Card class="border-0 p-4 shadow">
+        <div class="grid h-9 w-9 place-items-center rounded-lg bg-blue-600/10 text-blue-600">
           <Building2 class="h-4 w-4" />
         </div>
         <div class="mt-2 text-2xl font-bold tabular-nums">
           {{ stats.total }}
         </div>
-        <div class="text-xs text-muted-foreground">
+        <div class="text-xs text-gray-600">
           إجمالي
         </div>
       </Card>
-      <Card class="border-0 p-4 shadow-card">
-        <div class="grid h-9 w-9 place-items-center rounded-lg bg-success/10 text-success">
+      <Card class="border-0 p-4 shadow">
+        <div class="grid h-9 w-9 place-items-center rounded-lg bg-green-50/10 text-green-700">
           <Building2 class="h-4 w-4" />
         </div>
         <div class="mt-2 text-2xl font-bold tabular-nums">
           {{ stats.active }}
         </div>
-        <div class="text-xs text-muted-foreground">
+        <div class="text-xs text-gray-600">
           نشط
         </div>
       </Card>
-      <Card class="border-0 p-4 shadow-card">
-        <div class="grid h-9 w-9 place-items-center rounded-lg bg-destructive/10 text-destructive">
+      <Card class="border-0 p-4 shadow">
+        <div class="grid h-9 w-9 place-items-center rounded-lg bg-red-700/10 text-red-700">
           <Building2 class="h-4 w-4" />
         </div>
         <div class="mt-2 text-2xl font-bold tabular-nums">
           {{ stats.suspended }}
         </div>
-        <div class="text-xs text-muted-foreground">
+        <div class="text-xs text-gray-600">
           موقوف
         </div>
       </Card>
     </div>
 
-    <Card class="mb-4 flex flex-col items-stretch gap-3 border-0 p-4 shadow-card sm:flex-row sm:items-center">
+    <Card class="mb-4 flex flex-col items-stretch gap-3 border-0 p-4 shadow sm:flex-row sm:items-center">
       <div class="relative flex-1">
-        <Search class="absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Search class="absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-600" />
         <Input
           v-model="query"
           placeholder="بحث برقم السجل، الرقم الضريبي، أو الاسم..."
@@ -201,11 +201,11 @@ async function toggleStatus(merchant: Merchant) {
 
     <Card
       v-if="isCbyAdmin"
-      class="overflow-hidden border-0 shadow-card"
+      class="overflow-hidden border-0 shadow"
     >
       <div class="overflow-x-auto">
         <Table class="w-full text-sm">
-          <TableHeader class="bg-muted/40 text-end text-xs text-muted-foreground">
+          <TableHeader class="bg-gray-50/40 text-end text-xs text-gray-600">
             <TableRow>
               <TableHead class="p-3 font-semibold">
                 التاجر
@@ -235,18 +235,18 @@ async function toggleStatus(merchant: Merchant) {
             <TableRow
               v-for="merchant in filtered"
               :key="merchant.id"
-              class="hover:bg-muted/30"
+              class="hover:bg-gray-50/30"
             >
               <TableCell class="p-3 font-medium">
                 {{ merchant.name }}
               </TableCell>
-              <TableCell class="p-3 text-muted-foreground">
+              <TableCell class="p-3 text-gray-600">
                 {{ merchant.commercial_register ?? '—' }}
               </TableCell>
-              <TableCell class="p-3 tabular-nums text-muted-foreground">
+              <TableCell class="p-3 tabular-nums text-gray-600">
                 {{ merchant.tax_number ?? '—' }}
               </TableCell>
-              <TableCell class="p-3 text-muted-foreground">
+              <TableCell class="p-3 text-gray-600">
                 {{ merchant.business_type ?? '—' }}
               </TableCell>
               <TableCell class="p-3">
@@ -259,7 +259,7 @@ async function toggleStatus(merchant: Merchant) {
                 </Badge>
               </TableCell>
               <TableCell class="p-3">
-                <Badge :class="merchant.is_active ? 'border-0 bg-success/15 text-success' : 'border-0 bg-destructive/15 text-destructive'">
+                <Badge :class="merchant.is_active ? 'border-0 bg-green-50/15 text-green-700' : 'border-0 bg-red-700/15 text-red-700'">
                   {{ merchant.is_active ? 'نشط' : 'موقوف' }}
                 </Badge>
               </TableCell>
@@ -280,7 +280,7 @@ async function toggleStatus(merchant: Merchant) {
             <TableRow v-if="filtered.length === 0">
               <TableCell
                 colspan="8"
-                class="p-8 text-center text-muted-foreground"
+                class="p-8 text-center text-gray-600"
               >
                 لا توجد نتائج مطابقة.
               </TableCell>
@@ -297,47 +297,47 @@ async function toggleStatus(merchant: Merchant) {
       <Card
         v-for="merchant in filtered"
         :key="merchant.id"
-        class="flex flex-col border-0 p-5 shadow-card transition-shadow hover:shadow-soft"
+        class="flex flex-col border-0 p-5 shadow transition-shadow hover:shadow-soft"
       >
         <div class="mb-3 flex items-start justify-between">
-          <div class="grid h-12 w-12 place-items-center rounded-xl bg-primary text-primary-foreground">
+          <div class="grid h-12 w-12 place-items-center rounded-xl bg-blue-600 text-blue-600-foreground">
             <Building2 class="h-6 w-6" />
           </div>
-          <Badge :class="merchant.is_active ? 'border-0 bg-success/15 text-success' : 'border-0 bg-destructive/15 text-destructive'">
+          <Badge :class="merchant.is_active ? 'border-0 bg-green-50/15 text-green-700' : 'border-0 bg-red-700/15 text-red-700'">
             {{ merchant.is_active ? 'نشط' : 'موقوف' }}
           </Badge>
         </div>
         <div class="text-base font-semibold">
           {{ merchant.name }}
         </div>
-        <div class="text-xs text-muted-foreground">
+        <div class="text-xs text-gray-600">
           {{ merchant.business_type ?? '—' }}
         </div>
         <div class="mt-4 space-y-1.5 text-xs">
           <div class="flex justify-between gap-2">
-            <span class="text-muted-foreground">السجل التجاري</span>
+            <span class="text-gray-600">السجل التجاري</span>
             <span class="font-medium">{{ merchant.commercial_register ?? '—' }}</span>
           </div>
           <div class="flex justify-between gap-2">
-            <span class="text-muted-foreground">الرقم الضريبي</span>
+            <span class="text-gray-600">الرقم الضريبي</span>
             <span class="font-medium">{{ merchant.tax_number ?? '—' }}</span>
           </div>
           <div class="flex justify-between gap-2">
-            <span class="text-muted-foreground">البنك</span>
+            <span class="text-gray-600">البنك</span>
             <span class="font-medium">{{ bankName(merchant.bank_id) }}</span>
           </div>
           <div class="flex justify-between gap-2">
-            <span class="text-muted-foreground">العنوان</span>
+            <span class="text-gray-600">العنوان</span>
             <span class="text-end font-medium">{{ merchant.address ?? '—' }}</span>
           </div>
           <div class="flex justify-between gap-2">
-            <span class="text-muted-foreground">هاتف</span>
+            <span class="text-gray-600">هاتف</span>
             <span class="font-medium">{{ merchant.phone ?? '—' }}</span>
           </div>
         </div>
         <div class="mt-auto flex items-center justify-between border-t pt-4">
           <div class="text-xs">
-            <span class="text-muted-foreground">المعاملات: </span>
+            <span class="text-gray-600">المعاملات: </span>
             <span class="font-bold tabular-nums">{{ merchant.transaction_count ?? 0 }}</span>
           </div>
           <div class="flex gap-1">
@@ -363,7 +363,7 @@ async function toggleStatus(merchant: Merchant) {
 
       <Card
         v-if="filtered.length === 0"
-        class="col-span-full border-0 p-8 text-center text-sm text-muted-foreground shadow-card"
+        class="col-span-full border-0 p-8 text-center text-sm text-gray-600 shadow"
       >
         لا توجد نتائج مطابقة.
       </Card>
@@ -405,7 +405,7 @@ async function toggleStatus(merchant: Merchant) {
         </DialogHeader>
         <div class="grid gap-3 py-2 text-sm sm:grid-cols-2">
           <div class="space-y-0.5">
-            <div class="text-xs text-muted-foreground">
+            <div class="text-xs text-gray-600">
               السجل التجاري
             </div>
             <div class="font-medium">
@@ -413,7 +413,7 @@ async function toggleStatus(merchant: Merchant) {
             </div>
           </div>
           <div class="space-y-0.5">
-            <div class="text-xs text-muted-foreground">
+            <div class="text-xs text-gray-600">
               الرقم الضريبي
             </div>
             <div class="font-medium">
@@ -421,7 +421,7 @@ async function toggleStatus(merchant: Merchant) {
             </div>
           </div>
           <div class="space-y-0.5">
-            <div class="text-xs text-muted-foreground">
+            <div class="text-xs text-gray-600">
               القطاع
             </div>
             <div class="font-medium">
@@ -429,7 +429,7 @@ async function toggleStatus(merchant: Merchant) {
             </div>
           </div>
           <div class="space-y-0.5">
-            <div class="text-xs text-muted-foreground">
+            <div class="text-xs text-gray-600">
               الحالة
             </div>
             <div class="font-medium">
@@ -437,7 +437,7 @@ async function toggleStatus(merchant: Merchant) {
             </div>
           </div>
           <div class="space-y-0.5">
-            <div class="text-xs text-muted-foreground">
+            <div class="text-xs text-gray-600">
               البنك التابع له
             </div>
             <div class="font-medium">
@@ -445,7 +445,7 @@ async function toggleStatus(merchant: Merchant) {
             </div>
           </div>
           <div class="space-y-0.5">
-            <div class="text-xs text-muted-foreground">
+            <div class="text-xs text-gray-600">
               عدد المعاملات
             </div>
             <div class="font-medium">
@@ -453,7 +453,7 @@ async function toggleStatus(merchant: Merchant) {
             </div>
           </div>
           <div class="space-y-0.5 sm:col-span-2">
-            <div class="text-xs text-muted-foreground">
+            <div class="text-xs text-gray-600">
               العنوان
             </div>
             <div class="font-medium">
@@ -461,7 +461,7 @@ async function toggleStatus(merchant: Merchant) {
             </div>
           </div>
           <div class="space-y-0.5 sm:col-span-2">
-            <div class="text-xs text-muted-foreground">
+            <div class="text-xs text-gray-600">
               هاتف التواصل
             </div>
             <div class="font-medium">
@@ -478,8 +478,8 @@ async function toggleStatus(merchant: Merchant) {
       title="إدارة التجار"
       subtitle="هذه الصفحة متاحة لمسؤول النظام أو مسؤول البنك فقط."
     />
-    <Card class="border-0 p-6 shadow-card">
-      <div class="text-sm text-muted-foreground">
+    <Card class="border-0 p-6 shadow">
+      <div class="text-sm text-gray-600">
         لا تملك صلاحية إدارة التجار.
       </div>
     </Card>

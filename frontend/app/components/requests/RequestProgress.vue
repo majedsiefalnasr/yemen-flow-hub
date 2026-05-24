@@ -14,8 +14,8 @@ const progress = computed(() => getStatusProgress(props.status, props.role))
 <template>
   <div class="flex flex-col gap-1 min-w-20">
     <div class="h-1.5 bg-border rounded-full overflow-hidden" role="progressbar" :aria-valuenow="progress" aria-valuemin="0" aria-valuemax="100">
-      <div class="h-full bg-primary rounded-full transition-all" :style="{ width: `${progress}%` }" />
+      <div class="h-full bg-blue-600 rounded-full transition-all" :style="{ width: `${progress}%` }" />
     </div>
-    <span class="text-xs text-muted-foreground font-tabular-nums">{{ progress }}%</span>
+    <span class="text-xs text-gray-600 font-tabular-nums">{{ progress }}%</span>
   </div>
 </template>

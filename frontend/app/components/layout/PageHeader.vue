@@ -15,7 +15,7 @@ defineProps<{
   <div class="mb-6">
     <nav
       v-if="breadcrumbs?.length"
-      class="mb-2 flex items-center gap-1.5 text-xs text-muted-foreground"
+      class="mb-2 flex items-center gap-1.5 text-xs text-gray-600"
     >
       <template
         v-for="(breadcrumb, index) in breadcrumbs"
@@ -25,7 +25,7 @@ defineProps<{
         <NuxtLink
           v-if="breadcrumb.to"
           :to="breadcrumb.to"
-          class="hover:text-foreground"
+          class="hover:text-gray-900"
         >
           {{ breadcrumb.label }}
         </NuxtLink>
@@ -40,7 +40,7 @@ defineProps<{
         </h1>
         <p
           v-if="subtitle"
-          class="mt-1 text-sm text-muted-foreground"
+          class="mt-1 text-sm text-gray-600"
         >
           {{ subtitle }}
         </p>

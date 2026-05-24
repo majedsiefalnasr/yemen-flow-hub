@@ -258,7 +258,7 @@ const canCreate = computed(() =>
       ]"
     />
 
-    <Card class="mb-6 border-0 p-6 shadow-card">
+    <Card class="mb-6 border-0 p-6 shadow">
       <div class="flex items-center justify-between gap-2">
         <div
           v-for="(label, index) in STEPS"
@@ -269,7 +269,7 @@ const canCreate = computed(() =>
             <div
               :class="[
                 'grid h-10 w-10 place-items-center rounded-full text-sm font-semibold transition-colors',
-                index < step ? 'bg-success text-success-foreground' : index === step ? 'bg-primary text-primary-foreground ring-4 ring-primary/15' : 'bg-muted text-muted-foreground',
+                index < step ? 'bg-green-50 text-green-700-foreground' : index === step ? 'bg-blue-600 text-blue-600-foreground ring-4 ring-primary/15' : 'bg-gray-50 text-gray-600',
               ]"
             >
               <Check v-if="index < step" class="h-5 w-5" />
@@ -278,7 +278,7 @@ const canCreate = computed(() =>
             <div
               :class="[
                 'mt-2 max-w-[110px] text-xs',
-                index === step ? 'font-semibold text-foreground' : 'text-muted-foreground',
+                index === step ? 'font-semibold text-gray-900' : 'text-gray-600',
               ]"
             >
               {{ label }}
@@ -286,13 +286,13 @@ const canCreate = computed(() =>
           </div>
           <div
             v-if="index < STEPS.length - 1"
-            :class="['mx-2 h-0.5 flex-1 transition-colors', index < step ? 'bg-success' : 'bg-muted']"
+            :class="['mx-2 h-0.5 flex-1 transition-colors', index < step ? 'bg-green-50' : 'bg-gray-50']"
           />
         </div>
       </div>
     </Card>
 
-    <Card class="border-0 p-6 shadow-card">
+    <Card class="border-0 p-6 shadow">
       <!-- Step 0: Request basics -->
       <div v-if="step === 0" class="space-y-6">
         <h3 class="font-semibold">معلومات الطلب الأساسية</h3>
@@ -321,7 +321,7 @@ const canCreate = computed(() =>
                 </SelectItem>
               </SelectContent>
             </Select>
-            <p v-if="merchants.length === 0" class="text-xs text-muted-foreground">
+            <p v-if="merchants.length === 0" class="text-xs text-gray-600">
               يجب إضافة تجار أولاً من شاشة سجل التجار.
             </p>
           </div>
@@ -438,7 +438,7 @@ const canCreate = computed(() =>
       <div v-else-if="step === 2" class="space-y-6">
         <div class="flex items-center justify-between">
           <h3 class="font-semibold">رفع الوثائق المطلوبة</h3>
-          <Badge v-if="requiredDocsMissing.length > 0" class="border-0 bg-warning/15 text-warning">
+          <Badge v-if="requiredDocsMissing.length > 0" class="border-0 bg-amber-50/15 text-amber-600">
             ينقص {{ requiredDocsMissing.length }} مستند
           </Badge>
         </div>
@@ -449,7 +449,7 @@ const canCreate = computed(() =>
             :key="doc.name"
             :class="[
               'rounded-xl border-2 border-dashed p-5 transition-colors',
-              uploads[doc.name] ? 'border-success/40 bg-success/5' : 'border-border hover:border-accent/40',
+              uploads[doc.name] ? 'border-green-200/40 bg-green-50/5' : 'border-gray-200 hover:border-accent/40',
             ]"
           >
             <Input
@@ -465,7 +465,7 @@ const canCreate = computed(() =>
                 <div
                   :class="[
                     'grid h-11 w-11 place-items-center rounded-lg',
-                    uploads[doc.name] ? 'bg-success/15 text-success' : 'bg-muted text-muted-foreground',
+                    uploads[doc.name] ? 'bg-green-50/15 text-green-700' : 'bg-gray-50 text-gray-600',
                   ]"
                 >
                   <FileCheck2 v-if="uploads[doc.name]" class="h-5 w-5" />
@@ -473,7 +473,7 @@ const canCreate = computed(() =>
                 </div>
                 <div>
                   <div class="text-sm font-medium">{{ doc.name }}</div>
-                  <div class="text-xs text-muted-foreground">
+                  <div class="text-xs text-gray-600">
                     {{ doc.required ? 'مطلوب' : 'اختياري' }} · PDF فقط (حد أقصى 10MB)
                   </div>
                 </div>
@@ -483,10 +483,10 @@ const canCreate = computed(() =>
 
             <div
               v-if="uploads[doc.name]"
-              class="mt-4 flex items-center justify-between gap-2 border-t border-success/20 pt-4 text-xs"
+              class="mt-4 flex items-center justify-between gap-2 border-t border-green-200/20 pt-4 text-xs"
             >
               <div class="flex min-w-0 items-center gap-2">
-                <FileText class="h-4 w-4 shrink-0 text-success" />
+                <FileText class="h-4 w-4 shrink-0 text-green-700" />
                 <span class="truncate font-medium">{{ uploads[doc.name]?.fileName }}</span>
                 <Badge variant="secondary" class="gap-1 text-[10px]">
                   <ShieldCheck class="h-3 w-3" />
@@ -506,7 +506,7 @@ const canCreate = computed(() =>
                 <Button
                   size="icon"
                   variant="ghost"
-                  class="h-7 w-7 text-destructive"
+                  class="h-7 w-7 text-red-700"
                   aria-label="حذف"
                   @click="removeUpload(doc.name)"
                 >
@@ -533,12 +533,12 @@ const canCreate = computed(() =>
       <div v-else class="space-y-6">
         <h3 class="font-semibold">مراجعة الطلب قبل الإرسال</h3>
 
-        <div class="space-y-5 rounded-xl border bg-muted/30 p-6">
+        <div class="space-y-5 rounded-xl border bg-gray-50/30 p-6">
           <div>
             <div class="mb-3 border-b pb-2 text-sm font-medium">بيانات الطلب</div>
             <div class="grid gap-x-8 gap-y-2 text-sm md:grid-cols-2">
               <div v-for="[key, value] in reviewRows.request" :key="key" class="flex justify-between gap-4">
-                <span class="text-muted-foreground">{{ key }}</span>
+                <span class="text-gray-600">{{ key }}</span>
                 <span class="font-medium">{{ value }}</span>
               </div>
             </div>
@@ -548,7 +548,7 @@ const canCreate = computed(() =>
             <div class="mb-3 border-b pb-2 text-sm font-medium">بيانات المورد والشحنة</div>
             <div class="grid gap-x-8 gap-y-2 text-sm md:grid-cols-2">
               <div v-for="[key, value] in reviewRows.shipment" :key="key" class="flex justify-between gap-4">
-                <span class="text-muted-foreground">{{ key }}</span>
+                <span class="text-gray-600">{{ key }}</span>
                 <span class="font-medium">{{ value }}</span>
               </div>
             </div>
@@ -575,7 +575,7 @@ const canCreate = computed(() =>
           <ShieldCheck class="mt-0.5 h-5 w-5 shrink-0 text-info" />
           <div class="text-sm">
             <div class="font-medium">إقرار وتعهد</div>
-            <p class="mt-1 text-xs leading-relaxed text-muted-foreground">
+            <p class="mt-1 text-xs leading-relaxed text-gray-600">
               أُقر بأن جميع البيانات والمستندات المقدمة صحيحة وكاملة، وسيتم إخضاع الطلب للتدقيق الآلي للتحقق من الفواتير المكررة والامتثال.
             </p>
           </div>
@@ -621,9 +621,9 @@ const canCreate = computed(() =>
             v-else-if="preview.mime.startsWith('image/')"
             :src="preview.url"
             :alt="preview.name"
-            class="max-h-[70vh] w-full rounded-md bg-muted object-contain"
+            class="max-h-[70vh] w-full rounded-md bg-gray-50 object-contain"
           >
-          <div v-else class="p-6 text-center text-sm text-muted-foreground">
+          <div v-else class="p-6 text-center text-sm text-gray-600">
             لا يمكن المعاينة داخل المتصفح.
           </div>
         </template>
@@ -636,7 +636,7 @@ const canCreate = computed(() =>
       title="غير مصرح بإنشاء طلب"
       subtitle="هذه الصفحة متاحة لمُدخِل البيانات أو مسؤول البنك فقط."
     />
-    <Card class="border-0 p-6 shadow-card">
+    <Card class="border-0 p-6 shadow">
       <Button variant="outline" @click="router.push('/requests')">
         العودة لقائمة الطلبات
       </Button>

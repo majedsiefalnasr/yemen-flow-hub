@@ -373,7 +373,7 @@ onMounted(loadStaff)
                 {{ member.is_active ? 'نشط' : 'غير نشط' }}
               </span>
             </td>
-            <td class="text-muted">{{ formatJoinDate(member.created_at) }}</td>
+            <td class="text-gray-500">{{ formatJoinDate(member.created_at) }}</td>
             <td class="col-actions">
               <div class="actions-cell">
                 <button class="btn-action btn-edit" @click="openEdit(member)">تعديل</button>
@@ -663,7 +663,7 @@ onMounted(loadStaff)
   text-align: left;
 }
 
-.text-muted {
+.text-gray-500 {
   color: #6c757d;
 }
 

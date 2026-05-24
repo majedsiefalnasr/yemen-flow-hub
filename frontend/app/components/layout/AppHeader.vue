@@ -74,18 +74,18 @@ watch(() => route.fullPath, () => {
 </script>
 
 <template>
-  <header class="sticky top-0 z-30 flex items-center justify-between h-16 px-5 bg-white/88 backdrop-blur border-b border-border flex-row-reverse gap-3" dir="rtl">
+  <header class="sticky top-0 z-30 flex items-center justify-between h-16 px-5 bg-white/88 backdrop-blur border-b border-gray-200 flex-row-reverse gap-3" dir="rtl">
     <!-- Start: Mobile menu & search buttons -->
     <div class="flex items-center gap-1">
       <button
-        class="max-lg:flex hidden items-center justify-center w-10 h-10 border-none bg-transparent rounded-lg cursor-pointer text-muted-foreground hover:bg-muted"
+        class="max-lg:flex hidden items-center justify-center w-10 h-10 border-none bg-transparent rounded-lg cursor-pointer text-gray-600 hover:bg-gray-50"
         aria-label="فتح القائمة"
         @click="emit('toggleMobileMenu')"
       >
         <Menu class="w-5 h-5" />
       </button>
       <button
-        class="max-md:flex hidden items-center justify-center w-10 h-10 border-none bg-transparent rounded-lg cursor-pointer text-muted-foreground hover:bg-muted"
+        class="max-md:flex hidden items-center justify-center w-10 h-10 border-none bg-transparent rounded-lg cursor-pointer text-gray-600 hover:bg-gray-50"
         aria-label="بحث"
         @click="mobileSearchOpen = !mobileSearchOpen"
       >
@@ -101,7 +101,7 @@ watch(() => route.fullPath, () => {
     <!-- End: Color scheme, notifications, user menu -->
     <div class="flex items-center gap-3">
       <button
-        class="flex items-center justify-center w-10 h-10 border-none bg-transparent rounded-lg cursor-pointer text-muted-foreground hover:bg-muted"
+        class="flex items-center justify-center w-10 h-10 border-none bg-transparent rounded-lg cursor-pointer text-gray-600 hover:bg-gray-50"
         :aria-label="isDark ? 'تفعيل الوضع الفاتح' : 'تفعيل الوضع الداكن'"
         @click="toggleColorScheme"
       >
@@ -114,14 +114,14 @@ watch(() => route.fullPath, () => {
       <Popover v-model:open="notificationOpen">
         <PopoverTrigger asChild>
           <button
-            class="relative flex items-center justify-center w-10 h-10 border-none bg-transparent rounded-lg cursor-pointer text-muted-foreground hover:bg-muted"
+            class="relative flex items-center justify-center w-10 h-10 border-none bg-transparent rounded-lg cursor-pointer text-gray-600 hover:bg-gray-50"
             aria-label="الإشعارات"
             @click="toggleNotifications"
           >
             <Bell class="w-5 h-5" />
             <span
               v-if="notificationsStore.unreadCount > 0"
-              class="absolute top-1 end-1 min-w-4 h-4 px-0.75 rounded-full bg-destructive text-white text-xs font-semibold flex items-center justify-center border-2 border-white"
+              class="absolute top-1 end-1 min-w-4 h-4 px-0.75 rounded-full bg-red-700 text-white text-xs font-semibold flex items-center justify-center border-2 border-white"
               :aria-label="`${notificationsStore.unreadCount} إشعارات غير مقروءة`"
             >
               {{ notificationsStore.unreadCount > 99 ? '99+' : notificationsStore.unreadCount }}
@@ -129,35 +129,35 @@ watch(() => route.fullPath, () => {
           </button>
         </PopoverTrigger>
         <PopoverContent class="w-96 max-w-[calc(100vw-24px)] p-0" side="bottom" align="start">
-          <div class="flex items-center justify-between px-3 py-2.5 border-b border-border">
+          <div class="flex items-center justify-between px-3 py-2.5 border-b border-gray-200">
             <div class="flex gap-2 items-center">
               <span class="text-sm font-medium">الإشعارات</span>
-              <span v-if="notificationsStore.unreadCount > 0" class="text-xs bg-primary/10 text-primary rounded-full px-1.5 py-0.5">
+              <span v-if="notificationsStore.unreadCount > 0" class="text-xs bg-blue-600/10 text-blue-600 rounded-full px-1.5 py-0.5">
                 {{ notificationsStore.unreadCount }}
               </span>
             </div>
-            <button class="text-sm text-primary bg-transparent border-none cursor-pointer hover:underline" @click="handleMarkAllRead">قراءة الكل</button>
+            <button class="text-sm text-blue-600 bg-transparent border-none cursor-pointer hover:underline" @click="handleMarkAllRead">قراءة الكل</button>
           </div>
           <div v-if="notificationsStore.items.length === 0" class="flex flex-col items-center gap-2 px-3 py-6 text-center">
-            <div class="w-11 h-11 rounded-full bg-primary/10 text-primary flex items-center justify-center">
+            <div class="w-11 h-11 rounded-full bg-blue-600/10 text-blue-600 flex items-center justify-center">
               <Bell class="w-5 h-5" />
             </div>
-            <p class="text-sm text-muted-foreground">لا توجد إشعارات بعد</p>
+            <p class="text-sm text-gray-600">لا توجد إشعارات بعد</p>
           </div>
           <div v-else class="max-h-96 overflow-auto">
-            <div v-for="n in notificationsStore.items" :key="n.id" class="flex gap-2 px-3 py-2.5 border-b border-border last:border-b-0">
+            <div v-for="n in notificationsStore.items" :key="n.id" class="flex gap-2 px-3 py-2.5 border-b border-gray-200 last:border-b-0">
               <div
                 class="w-2 h-2 mt-1.5 rounded-full flex-shrink-0"
-                :class="n.read_at ? 'bg-border' : 'bg-primary'"
+                :class="n.read_at ? 'bg-border' : 'bg-blue-600'"
               />
               <div class="flex-1 min-w-0">
-                <p class="text-sm text-foreground">{{ n.data.message }}</p>
-                <p class="text-xs text-muted-foreground">{{ n.data.reference_number ?? '—' }}</p>
+                <p class="text-sm text-gray-900">{{ n.data.message }}</p>
+                <p class="text-xs text-gray-600">{{ n.data.reference_number ?? '—' }}</p>
               </div>
-              <time class="text-xs text-muted-foreground flex-shrink-0">{{ formatRelativeTime(n.created_at) }}</time>
+              <time class="text-xs text-gray-600 flex-shrink-0">{{ formatRelativeTime(n.created_at) }}</time>
             </div>
           </div>
-          <NuxtLink to="/notifications" class="block px-3 py-2.5 text-sm text-primary font-medium no-underline hover:bg-muted/50">عرض كل الإشعارات</NuxtLink>
+          <NuxtLink to="/notifications" class="block px-3 py-2.5 text-sm text-blue-600 font-medium no-underline hover:bg-gray-50/50">عرض كل الإشعارات</NuxtLink>
         </PopoverContent>
       </Popover>
 
@@ -168,31 +168,31 @@ watch(() => route.fullPath, () => {
             class="flex items-center gap-2 border-none bg-transparent cursor-pointer hover:opacity-80 transition-opacity"
             @click="userMenuOpen = !userMenuOpen"
           >
-            <div class="w-9 h-9 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-sm">
+            <div class="w-9 h-9 rounded-full bg-blue-600 text-blue-600-foreground flex items-center justify-center font-bold text-sm">
               {{ userInitial }}
             </div>
             <div class="flex flex-col items-end gap-0.5 max-md:hidden">
-              <span class="text-sm font-medium text-foreground leading-tight">{{ auth.user.name }}</span>
-              <span class="text-xs text-muted-foreground leading-tight">{{ ROLE_LABELS[auth.user.role] ?? auth.user.role }}</span>
+              <span class="text-sm font-medium text-gray-900 leading-tight">{{ auth.user.name }}</span>
+              <span class="text-xs text-gray-600 leading-tight">{{ ROLE_LABELS[auth.user.role] ?? auth.user.role }}</span>
             </div>
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent class="w-48" align="start">
           <button
-            class="w-full text-start px-2.5 py-2 text-sm bg-transparent border-none cursor-pointer rounded hover:bg-muted transition-colors"
+            class="w-full text-start px-2.5 py-2 text-sm bg-transparent border-none cursor-pointer rounded hover:bg-gray-50 transition-colors"
             @click="goToProfile"
           >
             الملف الشخصي
           </button>
           <button
-            class="w-full text-start px-2.5 py-2 text-sm bg-transparent border-none cursor-pointer rounded hover:bg-muted transition-colors"
+            class="w-full text-start px-2.5 py-2 text-sm bg-transparent border-none cursor-pointer rounded hover:bg-gray-50 transition-colors"
             @click="goToSettings"
           >
             الإعدادات
           </button>
-          <hr class="border-t border-border my-1.5 mx-0" />
+          <hr class="border-t border-gray-200 my-1.5 mx-0" />
           <button
-            class="w-full text-start px-2.5 py-2 text-sm text-destructive bg-transparent border-none cursor-pointer rounded hover:bg-muted transition-colors"
+            class="w-full text-start px-2.5 py-2 text-sm text-red-700 bg-transparent border-none cursor-pointer rounded hover:bg-gray-50 transition-colors"
             @click="handleLogout"
           >
             تسجيل الخروج
@@ -202,10 +202,10 @@ watch(() => route.fullPath, () => {
     </div>
 
     <!-- Mobile search overlay -->
-    <div v-if="mobileSearchOpen" class="absolute top-16 inset-x-0 h-16 bg-background border-b border-border px-3 py-2 flex items-center gap-2 z-30 max-md:flex hidden" dir="rtl">
+    <div v-if="mobileSearchOpen" class="absolute top-16 inset-x-0 h-16 bg-background border-b border-gray-200 px-3 py-2 flex items-center gap-2 z-30 max-md:flex hidden" dir="rtl">
       <GlobalSearch mobile />
       <button
-        class="flex items-center justify-center w-10 h-10 border-none bg-transparent rounded-lg cursor-pointer text-muted-foreground"
+        class="flex items-center justify-center w-10 h-10 border-none bg-transparent rounded-lg cursor-pointer text-gray-600"
         aria-label="إغلاق البحث"
         @click="mobileSearchOpen = false"
       >

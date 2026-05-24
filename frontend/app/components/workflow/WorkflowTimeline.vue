@@ -145,11 +145,11 @@ function stageItemClasses(state: StageState): string {
 function stageLabelClasses(state: StageState): string {
   const baseClasses = 'text-sm font-medium'
   const stateMap: Record<StageState, string> = {
-    completed: 'text-foreground',
-    current: 'text-primary font-bold',
-    future: 'text-muted-foreground font-normal',
-    terminal: 'text-muted-foreground font-bold',
-    skipped: 'text-muted-foreground font-normal italic',
+    completed: 'text-gray-900',
+    current: 'text-blue-600 font-bold',
+    future: 'text-gray-600 font-normal',
+    terminal: 'text-gray-600 font-bold',
+    skipped: 'text-gray-600 font-normal italic',
   }
   return `${baseClasses} ${stateMap[state]}`
 }
@@ -157,13 +157,13 @@ function stageLabelClasses(state: StageState): string {
 function stageBodyClasses(state: StageState): string {
   const baseClasses = 'flex items-start gap-3 py-1'
   if (state === 'current' || state === 'terminal') {
-    return `${baseClasses} bg-muted rounded-lg p-2 -mx-3`
+    return `${baseClasses} bg-gray-50 rounded-lg p-2 -mx-3`
   }
   return baseClasses
 }
 
 function connectorClasses(isDone: boolean): string {
-  return `w-0.5 h-5 flex-shrink-0 -mr-[5.5px] mb-0 ${isDone ? 'bg-success' : 'bg-border'}`
+  return `w-0.5 h-5 flex-shrink-0 -mr-[5.5px] mb-0 ${isDone ? 'bg-green-50' : 'bg-border'}`
 }
 </script>
 
@@ -187,20 +187,20 @@ function connectorClasses(isDone: boolean): string {
         <!-- Node icon -->
         <div class="w-5 h-5 flex-shrink-0 flex items-center justify-center" aria-hidden="true">
           <!-- Completed: green checkmark -->
-          <svg v-if="stage.state === 'completed'" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-success" role="img" aria-label="مكتمل">
+          <svg v-if="stage.state === 'completed'" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-green-700" role="img" aria-label="مكتمل">
             <polyline points="20 6 9 17 4 12" />
           </svg>
           <!-- Terminal (EXECUTIVE_REJECTED): lock icon -->
-          <svg v-else-if="stage.state === 'terminal'" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-muted-foreground" role="img" aria-label="نهائي">
+          <svg v-else-if="stage.state === 'terminal'" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-600" role="img" aria-label="نهائي">
             <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
             <path d="M7 11V7a5 5 0 0 1 10 0v4" />
           </svg>
           <!-- Skipped branch (not visited): dash -->
-          <span v-else-if="stage.state === 'skipped'" class="w-3 h-3 flex-shrink-0 rounded-full border-2 border-dashed border-border bg-transparent" aria-hidden="true" />
+          <span v-else-if="stage.state === 'skipped'" class="w-3 h-3 flex-shrink-0 rounded-full border-2 border-dashed border-gray-200 bg-transparent" aria-hidden="true" />
           <!-- Current: filled circle -->
-          <span v-else-if="stage.state === 'current'" class="w-3 h-3 rounded-full bg-primary shadow-[0_0_0_3px_rgba(0,113,227,0.2)]" aria-hidden="true" />
+          <span v-else-if="stage.state === 'current'" class="w-3 h-3 rounded-full bg-blue-600 shadow-[0_0_0_3px_rgba(0,113,227,0.2)]" aria-hidden="true" />
           <!-- Future: empty circle -->
-          <span v-else class="w-3 h-3 rounded-full border-2 border-border bg-transparent" aria-hidden="true" />
+          <span v-else class="w-3 h-3 rounded-full border-2 border-gray-200 bg-transparent" aria-hidden="true" />
         </div>
 
         <!-- Stage content -->
@@ -209,14 +209,14 @@ function connectorClasses(isDone: boolean): string {
 
           <!-- Current/terminal stage: show actor + timestamp from history -->
           <template v-if="(stage.state === 'current' || stage.state === 'terminal') && stage.entry">
-            <span class="text-xs text-muted-foreground">
+            <span class="text-xs text-gray-600">
               {{ stage.entry.performed_by?.name ?? `#${stage.entry.actor_id}` }}
             </span>
-            <span class="text-xs text-muted-foreground">{{ formatDate(stage.entry.created_at) }}</span>
+            <span class="text-xs text-gray-600">{{ formatDate(stage.entry.created_at) }}</span>
           </template>
 
           <!-- Terminal label — EXECUTIVE_REJECTED only (dead-end, no further actions) -->
-          <span v-if="stage.state === 'terminal'" class="text-xs font-semibold text-muted-foreground mt-0.5">
+          <span v-if="stage.state === 'terminal'" class="text-xs font-semibold text-gray-600 mt-0.5">
             نهائي — لا إجراءات إضافية
           </span>
         </div>
