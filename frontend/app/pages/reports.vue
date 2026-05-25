@@ -1,8 +1,14 @@
 <script setup lang="ts">
 import { Calendar, Download, FileSpreadsheet, FileText, Filter } from 'lucide-vue-next'
 import PageHeader from '@/components/layout/PageHeader.vue'
+import { ROUTE_ROLE_MAP } from '@/constants/workflow'
 import { useReports } from '@/composables/useReports'
 import type { WorkflowReport } from '@/composables/useReports'
+
+definePageMeta({
+  middleware: ['auth', 'role'],
+  requiredRoles: ROUTE_ROLE_MAP['/reports'],
+})
 
 const { fetchWorkflowReport, exportReport } = useReports()
 

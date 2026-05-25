@@ -70,9 +70,15 @@ import {
   TabsList,
   TabsTrigger,
 } from '@/components/ui/tabs'
+import { ROUTE_ROLE_MAP } from '@/constants/workflow'
 import { useNotificationsStore } from '@/stores/notifications.store'
 import { useNotifications } from '@/composables/useNotifications'
 import type { Notification } from '@/types/models'
+
+definePageMeta({
+  middleware: ['auth', 'role'],
+  requiredRoles: ROUTE_ROLE_MAP['/notifications'],
+})
 
 type FilterMode = 'all' | 'unread' | 'read'
 type Severity = 'critical' | 'warning' | 'success' | 'voting' | 'info'

@@ -14,6 +14,11 @@ import SwiftOfficerDashboard from '../components/dashboard/SwiftOfficerDashboard
 import ExecutiveDashboard from '../components/dashboard/ExecutiveDashboard.vue'
 import CbyAdminDashboard from '../components/dashboard/CbyAdminDashboard.vue'
 
+definePageMeta({
+  middleware: ['auth', 'role'],
+  requiredRoles: ROUTE_ROLE_MAP['/dashboard'],
+})
+
 const auth = useAuthStore()
 const router = useRouter()
 

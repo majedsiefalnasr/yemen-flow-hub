@@ -4,9 +4,14 @@ import SwiftUploadForm from '@/components/workflow/SwiftUploadForm.vue'
 import { Lock } from 'lucide-vue-next'
 import { cn } from '@/lib/utils'
 import { RequestStatus, UserRole } from '@/types/enums'
-import { getBusinessStatus } from '@/constants/workflow'
+import { getBusinessStatus, ROUTE_ROLE_MAP } from '@/constants/workflow'
 import { useAuthStore } from '@/stores/auth.store'
 import { useRequests } from '@/composables/useRequests'
+
+definePageMeta({
+  middleware: ['auth', 'role'],
+  requiredRoles: ROUTE_ROLE_MAP['/requests/:id/swift'],
+})
 
 const route = useRoute()
 const router = useRouter()

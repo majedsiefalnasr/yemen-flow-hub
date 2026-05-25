@@ -15,6 +15,7 @@ import {
   MoreHorizontal, Plus, Search, SearchX,
 } from 'lucide-vue-next'
 import PageHeader from '@/components/layout/PageHeader.vue'
+import { ROUTE_ROLE_MAP } from '@/constants/workflow'
 import { UserRole } from '@/types/enums'
 import type { Bank } from '@/types/models'
 import { useBanks, type CreateBankPayload, type UpdateBankPayload } from '@/composables/useBanks'
@@ -53,6 +54,11 @@ import {
   EmptyTitle,
 } from '@/components/ui/empty'
 import { Skeleton } from '@/components/ui/skeleton'
+
+definePageMeta({
+  middleware: ['auth', 'role'],
+  requiredRoles: ROUTE_ROLE_MAP['/admin/entities'],
+})
 
 type EntityForm = {
   name_ar: string

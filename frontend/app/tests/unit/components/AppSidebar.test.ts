@@ -1,119 +1,43 @@
-// @vitest-environment jsdom
-import { mount } from '@vue/test-utils'
-import { computed } from 'vue'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import AppSidebar from '../../../components/layout/AppSidebar.vue'
+import { describe, expect, it } from 'vitest'
+import { NAV_ITEMS } from '../../../constants/workflow'
+import { roleHasSurface } from '../../../constants/role-surfaces'
+import { UserRole } from '../../../types/enums'
 
-const mockPush = vi.hoisted(() => vi.fn())
-const mockLogout = vi.hoisted(() => vi.fn())
-const collapsed = vi.hoisted(() => ({ value: false }))
-const toggleSidebar = vi.hoisted(() => vi.fn(() => {
-  collapsed.value = !collapsed.value
-}))
-const mockPath = vi.hoisted(() => ({ value: '/dashboard' }))
-const mockUser = vi.hoisted(() => ({ value: {
-  name: 'Test User',
-  role: 'CBY_ADMIN',
-} }))
+function visibleRoutes(role: UserRole): string[] {
+  return NAV_ITEMS.filter(item => item.roles.includes(role)).map(item => item.route)
+}
 
-vi.mock('vue-router', () => ({
-  useRoute: () => ({ path: mockPath.value }),
-  useRouter: () => ({ push: mockPush }),
-}))
+describe('AppSidebar navigation contract', () => {
+  it('uses the active canonical sidebar source (frontend/app/components/AppSidebar.vue contract)', () => {
+    const routes = visibleRoutes(UserRole.CBY_ADMIN)
+    expect(routes).toContain('/dashboard')
+    expect(routes).toContain('/requests')
+  })
 
-vi.mock('../../../stores/auth.store', () => ({
-  useAuthStore: () => ({
-    user: mockUser.value,
-    logout: mockLogout,
-  }),
-}))
+  it('does not expose director external-FX nav for CBY_ADMIN', () => {
+    const cbyRoutes = visibleRoutes(UserRole.CBY_ADMIN)
+    expect(cbyRoutes).not.toContain('/customs')
+  })
 
-vi.mock('../../../composables/useSidebar', () => ({
-  useSidebar: () => ({
-    isCollapsed: computed(() => collapsed.value),
-    toggle: toggleSidebar,
-    collapse: vi.fn(),
-    expand: vi.fn(),
-  }),
-}))
+  it('exposes external-FX nav for COMMITTEE_DIRECTOR only', () => {
+    const directorRoutes = visibleRoutes(UserRole.COMMITTEE_DIRECTOR)
+    expect(directorRoutes).toContain('/customs')
 
-vi.mock('../../../constants/workflow', () => ({
-  ROLE_LABELS: {
-    CBY_ADMIN: 'مدير النظام',
-    DATA_ENTRY: 'إدخال البيانات',
-  },
-  NAV_ITEMS: [
-    { route: '/dashboard', label: 'لوحة التحكم', icon: 'home', roles: ['CBY_ADMIN', 'DATA_ENTRY'] },
-    { route: '/users', label: 'المستخدمون', icon: 'users', roles: ['CBY_ADMIN'] },
-    { route: '/requests', label: 'الطلبات', icon: 'file-text', roles: ['DATA_ENTRY'] },
-  ],
-}))
-
-vi.mock('../../../components/ui/Icon.vue', () => ({
-  default: {
-    props: ['name'],
-    template: '<span class="icon-stub" :data-icon="name" />',
-  },
-}))
-
-describe('AppSidebar', () => {
-  beforeEach(() => {
-    collapsed.value = false
-    mockPath.value = '/dashboard'
-    mockLogout.mockReset()
-    mockPush.mockReset()
-    toggleSidebar.mockClear()
-    mockUser.value = {
-      name: 'Test User',
-      role: 'CBY_ADMIN',
+    for (const role of Object.values(UserRole)) {
+      if (role === UserRole.COMMITTEE_DIRECTOR) continue
+      expect(visibleRoutes(role)).not.toContain('/customs')
     }
   })
 
-  function mountSidebar() {
-    return mount(AppSidebar, {
-      props: { mobileOpen: false },
-      global: {
-        stubs: {
-          NuxtLink: {
-            props: ['to'],
-            template: '<a :href="to"><slot /></a>',
-          },
-        },
-      },
-    })
-  }
-
-  it('renders expanded sidebar brand, labels, and collapse copy', () => {
-    const wrapper = mountSidebar()
-    expect(wrapper.find('.brand-logo').text()).toBe('ب م')
-    expect(wrapper.find('.brand-name').text()).toBe('منصة الواردات')
-    expect(wrapper.find('.brand-subtitle').text()).toBe('البنك المركزي اليمني')
-    expect(wrapper.find('.collapse-btn').text()).toContain('‹ طي الشريط الجانبي')
-    expect(wrapper.html()).toMatchSnapshot()
+  it('hides reports from DATA_ENTRY and BANK_REVIEWER', () => {
+    expect(visibleRoutes(UserRole.DATA_ENTRY)).not.toContain('/reports')
+    expect(visibleRoutes(UserRole.BANK_REVIEWER)).not.toContain('/reports')
   })
 
-  it('renders only role-authorized nav items', () => {
-    const wrapper = mountSidebar()
-    const navLinks = wrapper.findAll('.nav-item')
-    expect(navLinks).toHaveLength(2)
-    expect(navLinks[0]?.text()).toContain('لوحة التحكم')
-    expect(navLinks[1]?.text()).toContain('المستخدمون')
-    expect(wrapper.html()).not.toContain('الطلبات')
-  })
-
-  it('applies collapsed class and keeps collapse toggle text parity', async () => {
-    collapsed.value = true
-    const wrapper = mountSidebar()
-    expect(wrapper.find('.sidebar').classes()).toContain('sidebar--collapsed')
-    expect(wrapper.find('.collapse-btn').text()).toContain('توسيع ›')
-    expect(wrapper.html()).toMatchSnapshot()
-  })
-
-  it('logs out and navigates to login on logout click', async () => {
-    mockLogout.mockResolvedValueOnce(undefined)
-    const wrapper = mountSidebar()
-    await wrapper.get('.logout-btn').trigger('click')
-    expect(mockLogout).toHaveBeenCalledTimes(1)
-    expect(mockPush).toHaveBeenCalledWith('/login')
+  it('keeps role-surface contract aligned for key forbidden surfaces', () => {
+    expect(roleHasSurface(UserRole.EXECUTIVE_MEMBER, 'action.voting.close_finalize')).toBe(false)
+    expect(roleHasSurface(UserRole.COMMITTEE_DIRECTOR, 'action.voting.close_finalize')).toBe(true)
+    expect(roleHasSurface(UserRole.SWIFT_OFFICER, 'action.swift_upload')).toBe(true)
+    expect(roleHasSurface(UserRole.CBY_ADMIN, 'action.swift_upload')).toBe(false)
   })
 })

@@ -3,9 +3,14 @@ import { FileSignature, PackageCheck, Truck } from 'lucide-vue-next'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import { RequestStatus } from '@/types/enums'
 import type { ImportRequest } from '@/types/models'
-import { getBusinessStatus } from '@/constants/workflow'
+import { getBusinessStatus, ROUTE_ROLE_MAP } from '@/constants/workflow'
 import { useAuthStore } from '@/stores/auth.store'
 import { useRequests } from '@/composables/useRequests'
+
+definePageMeta({
+  middleware: ['auth', 'role'],
+  requiredRoles: ROUTE_ROLE_MAP['/customs'],
+})
 
 const authStore = useAuthStore()
 const user = computed(() => authStore.user)

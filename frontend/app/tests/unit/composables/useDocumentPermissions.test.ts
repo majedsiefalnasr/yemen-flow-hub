@@ -41,6 +41,30 @@ describe('canDownloadDocument — SWIFT type', () => {
   })
 })
 
+describe('canDownloadDocument — FX_REQUEST type', () => {
+  const FX_ALLOWED = [
+    UserRole.BANK_REVIEWER,
+    UserRole.BANK_ADMIN,
+    UserRole.SWIFT_OFFICER,
+    UserRole.EXECUTIVE_MEMBER,
+    UserRole.COMMITTEE_DIRECTOR,
+    UserRole.CBY_ADMIN,
+  ] as const
+
+  const FX_DENIED = [
+    UserRole.DATA_ENTRY,
+    UserRole.SUPPORT_COMMITTEE,
+  ] as const
+
+  it.each(FX_ALLOWED)('returns true for allowed role %s', (role) => {
+    expect(canDownloadDocument(role, 'FX_REQUEST')).toBe(true)
+  })
+
+  it.each(FX_DENIED)('returns false for denied role %s', (role) => {
+    expect(canDownloadDocument(role, 'FX_REQUEST')).toBe(false)
+  })
+})
+
 describe('canDownloadDocument — unknown / null type', () => {
   it('returns true for null type (treated as REQUEST_DOC)', () => {
     expect(canDownloadDocument(UserRole.DATA_ENTRY, null)).toBe(true)

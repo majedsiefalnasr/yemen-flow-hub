@@ -67,7 +67,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Checkbox } from '@/components/ui/checkbox'
 
 definePageMeta({
-  middleware: 'role',
+  middleware: ['auth', 'role'],
   requiredRoles: [UserRole.CBY_ADMIN, UserRole.BANK_ADMIN],
 })
 

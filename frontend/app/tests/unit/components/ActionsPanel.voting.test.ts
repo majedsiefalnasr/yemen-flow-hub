@@ -25,7 +25,6 @@ function makeRequest(overrides: Partial<ImportRequest> = {}): ImportRequest {
 
 // Logic extracted from ActionsPanel
 const DIRECTOR_VOTING_STATUSES = new Set([
-  RequestStatus.WAITING_FOR_VOTING_OPEN,
   RequestStatus.EXECUTIVE_VOTING_OPEN,
   RequestStatus.EXECUTIVE_VOTING_CLOSED,
 ])
@@ -59,8 +58,8 @@ function validateOverride(decision: 'APPROVE' | 'REJECT' | null, justification: 
 }
 
 describe('ActionsPanel — showDirectorVotingActions', () => {
-  it('shows director actions for COMMITTEE_DIRECTOR on WAITING_FOR_VOTING_OPEN', () => {
-    expect(showDirectorVotingActions(UserRole.COMMITTEE_DIRECTOR, RequestStatus.WAITING_FOR_VOTING_OPEN)).toBe(true)
+  it('does NOT show director action buttons for WAITING_FOR_VOTING_OPEN', () => {
+    expect(showDirectorVotingActions(UserRole.COMMITTEE_DIRECTOR, RequestStatus.WAITING_FOR_VOTING_OPEN)).toBe(false)
   })
 
   it('shows director actions for COMMITTEE_DIRECTOR on EXECUTIVE_VOTING_OPEN', () => {
@@ -89,8 +88,8 @@ describe('ActionsPanel — showDirectorVotingActions', () => {
 })
 
 describe('ActionsPanel — showAnyActions includes director voting', () => {
-  it('returns true for director on WAITING_FOR_VOTING_OPEN', () => {
-    expect(showAnyActions(UserRole.COMMITTEE_DIRECTOR, RequestStatus.WAITING_FOR_VOTING_OPEN, false)).toBe(true)
+  it('returns false for director on WAITING_FOR_VOTING_OPEN (manual open is hidden)', () => {
+    expect(showAnyActions(UserRole.COMMITTEE_DIRECTOR, RequestStatus.WAITING_FOR_VOTING_OPEN, false)).toBe(false)
   })
 
   it('returns true for director on EXECUTIVE_VOTING_OPEN', () => {
@@ -107,10 +106,10 @@ describe('ActionsPanel — showAnyActions includes director voting', () => {
 })
 
 describe('ActionsPanel — director status-specific controls', () => {
-  it('shows open session button only for WAITING_FOR_VOTING_OPEN', () => {
+  it('does not expose open session controls on WAITING_FOR_VOTING_OPEN', () => {
     const req = makeRequest({ status: RequestStatus.WAITING_FOR_VOTING_OPEN })
     expect(showDirectorVotingActions(UserRole.COMMITTEE_DIRECTOR, req.status)
-      && req.status === RequestStatus.WAITING_FOR_VOTING_OPEN).toBe(true)
+      && req.status === RequestStatus.WAITING_FOR_VOTING_OPEN).toBe(false)
   })
 
   it('shows close/override buttons only for EXECUTIVE_VOTING_OPEN', () => {

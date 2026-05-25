@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { Search, FileText, Building2, Users, BarChart3, Settings, Bell } from 'lucide-vue-next'
+import { Search } from 'lucide-vue-next'
 import { useMagicKeys, whenever } from '@vueuse/core'
 import { useAuthStore } from '@/stores/auth.store'
-import { UserRole } from '@/types/enums'
+import { NAV_ITEMS } from '@/constants/workflow'
+import { ICONS } from '@/utils/icon-map'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -32,94 +33,28 @@ whenever(meta_k, () => {
 
 const quickActions = computed(() => {
   const user = authStore.user
-  const actions = [
-    {
-      title: 'طلبات التمويل',
-      url: '/requests',
-      icon: FileText,
-      roles: [
-        UserRole.DATA_ENTRY,
-        UserRole.BANK_REVIEWER,
-        UserRole.BANK_ADMIN,
-        UserRole.SUPPORT_COMMITTEE,
-        UserRole.SWIFT_OFFICER,
-        UserRole.EXECUTIVE_MEMBER,
-        UserRole.COMMITTEE_DIRECTOR,
-        UserRole.CBY_ADMIN,
-      ],
-      shortcut: 'R',
-    },
-    {
-      title: 'تقديم طلب جديد',
-      url: '/requests/new',
-      icon: FileText,
-      roles: [UserRole.DATA_ENTRY, UserRole.BANK_ADMIN],
-      shortcut: 'N',
-    },
-    {
-      title: 'إدارة التجار',
-      url: '/merchants',
-      icon: Building2,
-      roles: [UserRole.CBY_ADMIN, UserRole.COMMITTEE_DIRECTOR],
-      shortcut: 'M',
-    },
-    {
-      title: 'إدارة البنوك',
-      url: '/admin/entities',
-      icon: Building2,
-      roles: [UserRole.CBY_ADMIN],
-      shortcut: 'B',
-    },
-    {
-      title: 'مستخدمي النظام',
-      url: '/admin/cby-staff',
-      icon: Users,
-      roles: [UserRole.CBY_ADMIN],
-      shortcut: 'U',
-    },
-    {
-      title: 'التقارير والتحليلات',
-      url: '/reports',
-      icon: BarChart3,
-      roles: [UserRole.CBY_ADMIN, UserRole.COMMITTEE_DIRECTOR, UserRole.BANK_ADMIN],
-      shortcut: 'T',
-    },
-    {
-      title: 'الإشعارات',
-      url: '/notifications',
-      icon: Bell,
-      roles: [
-        UserRole.DATA_ENTRY,
-        UserRole.BANK_REVIEWER,
-        UserRole.BANK_ADMIN,
-        UserRole.SUPPORT_COMMITTEE,
-        UserRole.SWIFT_OFFICER,
-        UserRole.EXECUTIVE_MEMBER,
-        UserRole.COMMITTEE_DIRECTOR,
-        UserRole.CBY_ADMIN,
-      ],
-      shortcut: 'I',
-    },
-    {
-      title: 'الإعدادات',
-      url: '/settings',
-      icon: Settings,
-      roles: [
-        UserRole.DATA_ENTRY,
-        UserRole.BANK_REVIEWER,
-        UserRole.BANK_ADMIN,
-        UserRole.SUPPORT_COMMITTEE,
-        UserRole.SWIFT_OFFICER,
-        UserRole.EXECUTIVE_MEMBER,
-        UserRole.COMMITTEE_DIRECTOR,
-        UserRole.CBY_ADMIN,
-      ],
-      shortcut: 'S',
-    },
-  ]
-
   if (!user) return []
-  return actions.filter(action => action.roles.includes(user.role))
+  const shortcutByRoute: Record<string, string> = {
+    '/requests': 'R',
+    '/requests/new': 'N',
+    '/merchants': 'M',
+    '/admin/entities': 'B',
+    '/admin/cby-staff': 'U',
+    '/reports': 'T',
+    '/notifications': 'I',
+    '/settings': 'S',
+    '/customs': 'X',
+  }
+
+  return NAV_ITEMS
+    .filter(item => item.roles.includes(user.role))
+    .filter(item => shortcutByRoute[item.route])
+    .map(item => ({
+      title: item.label,
+      url: item.route,
+      icon: ICONS[item.icon] ?? ICONS.search,
+      shortcut: shortcutByRoute[item.route],
+    }))
 })
 
 function navigateTo(path: string) {

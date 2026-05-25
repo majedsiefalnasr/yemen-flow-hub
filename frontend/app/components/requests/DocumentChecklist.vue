@@ -59,21 +59,25 @@ const STAGE_DOCS: Record<string, DocRequirement[]> = {
     { type: 'COMMERCIAL_INVOICE', label: 'فاتورة تجارية', required: true },
     { type: 'PACKING_LIST', label: 'قائمة التعبئة', required: false },
     { type: 'SWIFT', label: 'مستند SWIFT', required: true },
+    { type: 'FX_REQUEST', label: 'مستند طلب المصارفة الخارجية', required: true },
   ],
   [RequestStatus.SUPPORT_REVIEW_PENDING]: [
     { type: 'COMMERCIAL_INVOICE', label: 'فاتورة تجارية', required: true },
     { type: 'PACKING_LIST', label: 'قائمة التعبئة', required: false },
     { type: 'SWIFT', label: 'مستند SWIFT', required: true },
+    { type: 'FX_REQUEST', label: 'مستند طلب المصارفة الخارجية', required: true },
   ],
   [RequestStatus.SUPPORT_REVIEW_IN_PROGRESS]: [
     { type: 'COMMERCIAL_INVOICE', label: 'فاتورة تجارية', required: true },
     { type: 'PACKING_LIST', label: 'قائمة التعبئة', required: false },
     { type: 'SWIFT', label: 'مستند SWIFT', required: true },
+    { type: 'FX_REQUEST', label: 'مستند طلب المصارفة الخارجية', required: true },
   ],
   [RequestStatus.SUPPORT_APPROVED]: [
     { type: 'COMMERCIAL_INVOICE', label: 'فاتورة تجارية', required: true },
     { type: 'PACKING_LIST', label: 'قائمة التعبئة', required: false },
     { type: 'SWIFT', label: 'مستند SWIFT', required: true },
+    { type: 'FX_REQUEST', label: 'مستند طلب المصارفة الخارجية', required: true },
   ],
   [RequestStatus.SUPPORT_REJECTED]: [
     { type: 'COMMERCIAL_INVOICE', label: 'فاتورة تجارية', required: true },
@@ -83,11 +87,13 @@ const STAGE_DOCS: Record<string, DocRequirement[]> = {
     { type: 'COMMERCIAL_INVOICE', label: 'فاتورة تجارية', required: true },
     { type: 'PACKING_LIST', label: 'قائمة التعبئة', required: false },
     { type: 'SWIFT', label: 'مستند SWIFT', required: true },
+    { type: 'FX_REQUEST', label: 'مستند طلب المصارفة الخارجية', required: true },
   ],
   [RequestStatus.SWIFT_UPLOADED]: [
     { type: 'COMMERCIAL_INVOICE', label: 'فاتورة تجارية', required: true },
     { type: 'PACKING_LIST', label: 'قائمة التعبئة', required: false },
     { type: 'SWIFT', label: 'مستند SWIFT', required: true },
+    { type: 'FX_REQUEST', label: 'مستند طلب المصارفة الخارجية', required: true },
   ],
 }
 
@@ -96,6 +102,7 @@ const VOTING_AND_BEYOND_DOCS: DocRequirement[] = [
   { type: 'COMMERCIAL_INVOICE', label: 'فاتورة تجارية', required: true },
   { type: 'PACKING_LIST', label: 'قائمة التعبئة', required: false },
   { type: 'SWIFT', label: 'مستند SWIFT', required: true },
+  { type: 'FX_REQUEST', label: 'مستند طلب المصارفة الخارجية', required: true },
 ]
 
 const VOTING_AND_BEYOND = new Set([
@@ -344,7 +351,15 @@ function formatDate(iso: string | null): string {
             </div>
             <div class="flex flex-col gap-0.5 flex-1 min-w-0">
               <div class="flex items-center gap-1.5">
-                <span class="text-xs font-semibold text-foreground">{{ row.doc.type === 'SWIFT' ? 'مستند SWIFT' : 'مستند طلب' }}</span>
+                <span class="text-xs font-semibold text-foreground">
+                  {{
+                    row.doc.type === 'SWIFT'
+                      ? 'مستند SWIFT'
+                      : row.doc.type === 'FX_REQUEST'
+                        ? 'مستند طلب المصارفة الخارجية'
+                        : 'مستند طلب'
+                  }}
+                </span>
               </div>
               <span class="text-xs font-medium text-foreground break-all">{{ row.doc.original_filename }}</span>
               <span class="text-xs text-muted-foreground">
@@ -358,6 +373,7 @@ function formatDate(iso: string | null): string {
             </div>
             <div class="flex flex-col items-end gap-1.5 flex-shrink-0 pt-0.5">
               <Badge v-if="row.doc.type === 'SWIFT'" class="bg-cyan-500 text-white text-xs">SWIFT</Badge>
+              <Badge v-else-if="row.doc.type === 'FX_REQUEST'" class="bg-violet-600 text-white text-xs">FX</Badge>
               <Button
                 v-if="canDownloadDocument(userRole, row.doc.type)"
                 variant="outline"

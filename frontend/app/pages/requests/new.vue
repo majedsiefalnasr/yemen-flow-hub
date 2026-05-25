@@ -14,10 +14,16 @@ import {
   Upload,
 } from 'lucide-vue-next'
 import { UserRole } from '@/types/enums'
+import { ROUTE_ROLE_MAP } from '@/constants/workflow'
 import { useAuthStore } from '@/stores/auth.store'
 import { useRequestsStore } from '@/stores/requests.store'
 import { useMerchants } from '@/composables/useMerchants'
 import type { Merchant } from '@/types/models'
+
+definePageMeta({
+  middleware: ['auth', 'role'],
+  requiredRoles: ROUTE_ROLE_MAP['/requests/new'],
+})
 
 type FormState = {
   merchant_id: number | null

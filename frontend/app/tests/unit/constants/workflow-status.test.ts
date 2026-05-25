@@ -290,6 +290,11 @@ describe('Role group constants', () => {
       expect(ROUTE_ROLE_MAP['/requests/new']).toEqual([UserRole.DATA_ENTRY])
     })
 
+    it('limits external-FX route to COMMITTEE_DIRECTOR', () => {
+      expect(ROUTE_ROLE_MAP['/customs']).toEqual([UserRole.COMMITTEE_DIRECTOR])
+      expect(ROUTE_ROLE_MAP['/customs']).not.toContain(UserRole.CBY_ADMIN)
+    })
+
     it('shows scoped administration nav items for BANK_ADMIN including reports', () => {
       const bankAdminRoutes = NAV_ITEMS
         .filter(item => item.roles.includes(UserRole.BANK_ADMIN))
@@ -299,6 +304,13 @@ describe('Role group constants', () => {
       expect(bankAdminRoutes).toContain('/merchants')
       expect(bankAdminRoutes).not.toContain('/audit')
       expect(bankAdminRoutes).toContain('/reports')
+    })
+
+    it('keeps reports hidden for DATA_ENTRY and BANK_REVIEWER nav', () => {
+      const dataEntryRoutes = NAV_ITEMS.filter(item => item.roles.includes(UserRole.DATA_ENTRY)).map(item => item.route)
+      const reviewerRoutes = NAV_ITEMS.filter(item => item.roles.includes(UserRole.BANK_REVIEWER)).map(item => item.route)
+      expect(dataEntryRoutes).not.toContain('/reports')
+      expect(reviewerRoutes).not.toContain('/reports')
     })
   })
 })

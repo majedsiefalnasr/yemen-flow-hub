@@ -48,8 +48,14 @@ import {
 } from '@/components/ui/command'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
+import { ROUTE_ROLE_MAP } from '@/constants/workflow'
 import { useThemingStore, type AutoplayPreference, type LayoutMode, type ThemeMode } from '@/stores/theming.store'
 import { useSettingsStore } from '@/stores/settings.store'
+
+definePageMeta({
+  middleware: ['auth', 'role'],
+  requiredRoles: ROUTE_ROLE_MAP['/settings'],
+})
 
 const themingStore = useThemingStore()
 const settingsStore = useSettingsStore()

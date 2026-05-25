@@ -8,11 +8,11 @@ import { UserRole, RequestStatus } from '../types/enums'
  *
  * Permission matrix (mirrors RequestDocumentPolicy on the backend):
  *   REQUEST_DOC  → all 8 roles (backend enforces bank scope)
- *   SWIFT        → BANK_REVIEWER, BANK_ADMIN, SWIFT_OFFICER, EXECUTIVE_MEMBER,
- *                  COMMITTEE_DIRECTOR, CBY_ADMIN only
+ *   SWIFT/FX_REQUEST → BANK_REVIEWER, BANK_ADMIN, SWIFT_OFFICER, EXECUTIVE_MEMBER,
+ *                      COMMITTEE_DIRECTOR, CBY_ADMIN only
  */
 export function canDownloadDocument(role: UserRole, docType: string | null): boolean {
-  if (docType === 'SWIFT') {
+  if (docType === 'SWIFT' || docType === 'FX_REQUEST') {
     return (
       role === UserRole.BANK_REVIEWER
       || role === UserRole.BANK_ADMIN

@@ -46,6 +46,11 @@ describe('NAV_ITEMS role filtering', () => {
     expect(routes).toContain('/merchants')
   })
 
+  it('CBY_ADMIN does not see external-FX completion navigation', () => {
+    const routes = navItemsForRole(UserRole.CBY_ADMIN).map(i => i.route)
+    expect(routes).not.toContain('/customs')
+  })
+
   it('DATA_ENTRY does not see admin routes', () => {
     const routes = navItemsForRole(UserRole.DATA_ENTRY).map(i => i.route)
     expect(routes).not.toContain('/admin/entities')
@@ -95,9 +100,14 @@ describe('NAV_ITEMS role filtering', () => {
     expect(routes).not.toContain('/reports')
   })
 
-  it('DATA_ENTRY sees reports (bank-scoped)', () => {
+  it('DATA_ENTRY does not see reports', () => {
     const routes = navItemsForRole(UserRole.DATA_ENTRY).map(i => i.route)
-    expect(routes).toContain('/reports')
+    expect(routes).not.toContain('/reports')
+  })
+
+  it('BANK_REVIEWER does not see reports', () => {
+    const routes = navItemsForRole(UserRole.BANK_REVIEWER).map(i => i.route)
+    expect(routes).not.toContain('/reports')
   })
 
   it('all roles see notifications', () => {

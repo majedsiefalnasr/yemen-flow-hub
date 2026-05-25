@@ -1,5 +1,6 @@
 import { RequestStatus, UserRole } from '../types/enums'
 import type { IconName } from '../utils/icon-map'
+import { NAV_SURFACE_ROUTES, rolesForSurface } from './role-surfaces'
 
 /** Hex color for each status — matches UX-DR38 semantic color mapping */
 export const STATUS_COLORS: Record<RequestStatus, string> = {
@@ -248,94 +249,87 @@ export interface NavItem {
 export const NAV_ITEMS: NavItem[] = [
   {
     label: 'اللوحة الرئيسية',
-    route: '/dashboard',
+    route: NAV_SURFACE_ROUTES['nav.dashboard'],
     icon: 'home',
-    roles: ALL_ROLES,
+    roles: rolesForSurface('nav.dashboard'),
   },
   {
     label: 'طلبات التمويل',
-    route: '/requests',
+    route: NAV_SURFACE_ROUTES['nav.requests'],
     icon: 'file-text',
-    roles: ALL_ROLES,
+    roles: rolesForSurface('nav.requests'),
   },
   {
     label: 'تقديم طلب جديد',
-    route: '/requests/new',
+    route: NAV_SURFACE_ROUTES['nav.new_request'],
     icon: 'plus-circle',
-    roles: [UserRole.DATA_ENTRY],
+    roles: rolesForSurface('nav.new_request'),
   },
   {
     label: 'إدارة التجار',
-    route: '/merchants',
+    route: NAV_SURFACE_ROUTES['nav.merchants'],
     icon: 'building',
-    roles: [UserRole.CBY_ADMIN, UserRole.BANK_ADMIN],
+    roles: rolesForSurface('nav.merchants'),
   },
   {
     label: 'الموظفون',
-    route: '/staff',
+    route: NAV_SURFACE_ROUTES['nav.staff'],
     icon: 'user-check',
-    roles: [UserRole.BANK_ADMIN],
+    roles: rolesForSurface('nav.staff'),
   },
   {
-    label: 'البيان الجمركي',
-    route: '/customs',
+    label: 'تأكيد المصارفة الخارجية',
+    route: NAV_SURFACE_ROUTES['nav.external_fx_confirmation'],
     icon: 'stamp',
-    roles: [UserRole.COMMITTEE_DIRECTOR],
+    roles: rolesForSurface('nav.external_fx_confirmation'),
   },
   {
     label: 'التقارير والتحليلات',
-    route: '/reports',
+    route: NAV_SURFACE_ROUTES['nav.reports'],
     icon: 'bar-chart-2',
-    roles: [
-      UserRole.CBY_ADMIN,
-      UserRole.EXECUTIVE_MEMBER,
-      UserRole.COMMITTEE_DIRECTOR,
-      UserRole.DATA_ENTRY,
-      UserRole.BANK_REVIEWER,
-      UserRole.BANK_ADMIN,
-    ],
+    roles: rolesForSurface('nav.reports'),
   },
   {
     label: 'التدقيق والامتثال',
-    route: '/audit',
+    route: NAV_SURFACE_ROUTES['nav.audit'],
     icon: 'shield-check',
-    roles: [UserRole.CBY_ADMIN],
+    roles: rolesForSurface('nav.audit'),
   },
   {
     label: 'الإشعارات',
-    route: '/notifications',
+    route: NAV_SURFACE_ROUTES['nav.notifications'],
     icon: 'bell',
-    roles: ALL_ROLES,
+    roles: rolesForSurface('nav.notifications'),
   },
   {
     label: 'إدارة المستخدمين',
-    route: '/admin/cby-staff',
+    route: NAV_SURFACE_ROUTES['nav.admin.cby_staff'],
     icon: 'users',
-    roles: [UserRole.CBY_ADMIN],
+    roles: rolesForSurface('nav.admin.cby_staff'),
   },
   {
     label: 'الكيانات',
-    route: '/admin/entities',
+    route: NAV_SURFACE_ROUTES['nav.admin.entities'],
     icon: 'landmark',
-    roles: [UserRole.CBY_ADMIN],
+    roles: rolesForSurface('nav.admin.entities'),
   },
   {
     label: 'قواعد المستندات',
-    route: '/admin/workflow-docs',
+    route: NAV_SURFACE_ROUTES['nav.admin.workflow_docs'],
     icon: 'file-cog',
-    roles: [UserRole.CBY_ADMIN],
+    roles: rolesForSurface('nav.admin.workflow_docs'),
   },
   {
     label: 'الصلاحيات',
-    route: '/admin/roles',
+    route: NAV_SURFACE_ROUTES['nav.admin.roles'],
     icon: 'shield-check',
-    roles: [UserRole.CBY_ADMIN],
+    roles: rolesForSurface('nav.admin.roles'),
   },
   {
     label: 'الإعدادات',
-    route: '/settings',
+    route: NAV_SURFACE_ROUTES['nav.settings'],
     icon: 'settings',
-    roles: ALL_ROLES,
+    roles: rolesForSurface('nav.settings'),
   },
 ]
 
@@ -498,23 +492,35 @@ export const PROTECTED_ROUTES = ['/dashboard', '/requests', '/voting', '/customs
 
 /** Route → allowed roles mapping for role middleware */
 export const ROUTE_ROLE_MAP: Record<string, UserRole[]> = {
-  '/requests/new': [UserRole.DATA_ENTRY],
-  '/merchants': [UserRole.CBY_ADMIN, UserRole.BANK_ADMIN],
-  '/staff': [UserRole.BANK_ADMIN],
-  '/customs': [UserRole.COMMITTEE_DIRECTOR, UserRole.CBY_ADMIN],
-  '/reports': [
-    UserRole.CBY_ADMIN,
-    UserRole.EXECUTIVE_MEMBER,
-    UserRole.COMMITTEE_DIRECTOR,
-    UserRole.DATA_ENTRY,
-    UserRole.BANK_REVIEWER,
-    UserRole.BANK_ADMIN,
-  ],
-  '/audit': [UserRole.CBY_ADMIN],
+  '/dashboard': rolesForSurface('nav.dashboard'),
+  '/requests': rolesForSurface('nav.requests'),
+  '/requests/new': rolesForSurface('nav.new_request'),
+  '/requests/:id/swift': rolesForSurface('action.swift_upload'),
+  '/merchants': rolesForSurface('nav.merchants'),
+  '/staff': rolesForSurface('nav.staff'),
+  '/customs': rolesForSurface('nav.external_fx_confirmation'),
+  '/reports': rolesForSurface('nav.reports'),
+  '/audit': rolesForSurface('nav.audit'),
+  '/notifications': rolesForSurface('nav.notifications'),
   '/admin': [UserRole.CBY_ADMIN],
-  '/admin/cby-staff': [UserRole.CBY_ADMIN],
-  '/admin/entities': [UserRole.CBY_ADMIN],
-  '/admin/roles': [UserRole.CBY_ADMIN],
-  '/admin/workflow-docs': [UserRole.CBY_ADMIN],
-  '/settings': ALL_ROLES,
+  '/admin/cby-staff': rolesForSurface('nav.admin.cby_staff'),
+  '/admin/entities': rolesForSurface('nav.admin.entities'),
+  '/admin/roles': rolesForSurface('nav.admin.roles'),
+  '/admin/workflow-docs': rolesForSurface('nav.admin.workflow_docs'),
+  '/settings': rolesForSurface('nav.settings'),
+}
+
+const ROUTE_ROLE_ENTRIES = Object.entries(ROUTE_ROLE_MAP).map(([pattern, roles]) => {
+  const escaped = pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const regex = new RegExp(`^${escaped.replace(/:([^/]+)/g, '[^/]+')}$`)
+  return { pattern, regex, roles }
+})
+
+export function resolveRouteRoles(path: string): UserRole[] | undefined {
+  for (const entry of ROUTE_ROLE_ENTRIES) {
+    if (entry.regex.test(path)) {
+      return entry.roles
+    }
+  }
+  return undefined
 }

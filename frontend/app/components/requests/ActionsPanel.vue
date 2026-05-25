@@ -87,7 +87,6 @@ const showSupportCommitteeActions = computed(() =>
 )
 
 const DIRECTOR_VOTING_STATUSES = new Set([
-  RequestStatus.WAITING_FOR_VOTING_OPEN,
   RequestStatus.EXECUTIVE_VOTING_OPEN,
   RequestStatus.EXECUTIVE_VOTING_CLOSED,
 ])
@@ -96,6 +95,13 @@ const showDirectorVotingActions = computed(() =>
   props.userRole === UserRole.COMMITTEE_DIRECTOR
   && DIRECTOR_VOTING_STATUSES.has(props.request.status),
 )
+
+const allExecutiveVotesCast = computed(() => {
+  if (props.request.status !== RequestStatus.EXECUTIVE_VOTING_OPEN) return false
+  const detail = votingStore.votingDetail
+  if (!detail) return false
+  return detail.tally.total_cast >= detail.total_members
+})
 
 const showDirectorCustomsActions = computed(() =>
   props.userRole === UserRole.COMMITTEE_DIRECTOR
@@ -200,19 +206,13 @@ function resetDirectorState() {
   overrideJustificationError.value = ''
 }
 
-async function handleOpenSession() {
-  actionError.value = ''
-  try {
-    await votingStore.openSession(props.request.id)
-    emit('action-completed')
-  }
-  catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : ''
-    actionError.value = msg || 'تعذّر فتح جلسة التصويت.'
-  }
-}
-
 async function handleCloseSession() {
+  if (!allExecutiveVotesCast.value) {
+    actionError.value = 'لا يمكن إغلاق التصويت قبل إتمام تصويت جميع الأعضاء النشطين.'
+    showCloseConfirm.value = false
+    return
+  }
+
   actionError.value = ''
   try {
     await votingStore.closeSession(props.request.id)
@@ -602,27 +602,21 @@ async function dispatchAction(action: string, reason?: string) {
       </NuxtLink>
     </template>
 
-    <!-- COMMITTEE_DIRECTOR: WAITING_FOR_VOTING_OPEN → open session -->
-    <template v-if="showDirectorVotingActions && request.status === RequestStatus.WAITING_FOR_VOTING_OPEN">
-      <Button
-        class="w-full"
-        :disabled="votingStore.performingDirectorAction"
-        @click="handleOpenSession"
-      >
-        <Loader2 v-if="votingStore.performingDirectorAction" class="h-4 w-4 me-2 animate-spin" />
-        {{ votingStore.performingDirectorAction ? 'جارٍ التنفيذ…' : 'فتح جلسة التصويت' }}
-      </Button>
-    </template>
-
     <!-- COMMITTEE_DIRECTOR: EXECUTIVE_VOTING_OPEN → close session or override -->
     <template v-if="showDirectorVotingActions && request.status === RequestStatus.EXECUTIVE_VOTING_OPEN">
+      <p
+        v-if="!allExecutiveVotesCast"
+        class="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-700"
+      >
+        لا يمكن الإغلاق قبل اكتمال تصويت جميع الأعضاء النشطين.
+      </p>
       <div class="flex gap-3 flex-row-reverse">
         <Dialog v-model:open="showCloseConfirm">
           <DialogTrigger as-child>
             <Button
               variant="destructive"
               class="flex-1"
-              :disabled="votingStore.performingDirectorAction"
+              :disabled="votingStore.performingDirectorAction || !allExecutiveVotesCast"
             >
               إغلاق جلسة التصويت
             </Button>
@@ -791,4 +785,3 @@ async function dispatchAction(action: string, reason?: string) {
 
   </div>
 </template>
-

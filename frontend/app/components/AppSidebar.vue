@@ -1,21 +1,7 @@
 <script setup lang="ts">
 import type { SidebarProps } from '@/components/ui/sidebar'
 import {
-  LayoutDashboard,
-  FileText,
-  FilePlus2,
-  Building2,
-  PackageCheck,
-  BarChart3,
-  ScrollText,
-  Bell,
-  Network,
-  UserCog,
-  FileCheck2,
-  KeyRound,
-  Users,
-  Settings,
-  HelpCircle,
+  Home,
 } from 'lucide-vue-next'
 import {
   Sidebar,
@@ -32,7 +18,8 @@ import {
 } from '@/components/ui/sidebar'
 import NavUser from '@/components/NavUser.vue'
 import { useAuthStore } from '@/stores/auth.store'
-import { UserRole } from '@/types/enums'
+import { NAV_ITEMS } from '@/constants/workflow'
+import { ICONS } from '@/utils/icon-map'
 
 const props = withDefaults(defineProps<SidebarProps>(), {
   collapsible: 'icon',
@@ -47,43 +34,34 @@ const brandInitial = computed(() => {
   return name.trim().charAt(0)
 })
 
-const navMain = computed(() => [
-  {
-    title: 'الرئيسية',
-    items: [
-      { title: 'اللوحة الرئيسية', url: '/', icon: LayoutDashboard },
-      { title: 'طلبات التمويل', url: '/requests', icon: FileText },
-      { title: 'الإشعارات', url: '/notifications', icon: Bell },
-    ],
-  },
-  {
-    title: 'التمويل',
-    items: [
-      { title: 'تقديم طلب جديد', url: '/requests/new', icon: FilePlus2, roles: [UserRole.DATA_ENTRY, UserRole.BANK_ADMIN] },
-      { title: 'إدارة التجار', url: '/merchants', icon: Building2, roles: [UserRole.CBY_ADMIN, UserRole.COMMITTEE_DIRECTOR] },
-      { title: 'إذن إصدار بيان جمركي', url: '/customs', icon: PackageCheck, roles: [UserRole.COMMITTEE_DIRECTOR] },
-    ].filter(item => !item.roles || (user.value && item.roles.includes(user.value.role))),
-  },
-  {
-    title: 'الإدارة',
-    items: [
-      { title: 'التقارير والتحليلات', url: '/reports', icon: BarChart3, roles: [UserRole.CBY_ADMIN, UserRole.COMMITTEE_DIRECTOR, UserRole.BANK_ADMIN] },
-      { title: 'التدقيق والامتثال', url: '/audit', icon: ScrollText, roles: [UserRole.CBY_ADMIN, UserRole.COMMITTEE_DIRECTOR] },
-      { title: 'إدارة البنوك', url: '/admin/entities', icon: Network, roles: [UserRole.CBY_ADMIN] },
-      { title: 'مستخدمي النظام', url: '/admin/cby-staff', icon: UserCog, roles: [UserRole.CBY_ADMIN] },
-      { title: 'قواعد المستندات', url: '/admin/workflow-docs', icon: FileCheck2, roles: [UserRole.CBY_ADMIN] },
-      { title: 'الأدوار والصلاحيات', url: '/admin/roles', icon: KeyRound, roles: [UserRole.CBY_ADMIN] },
-      { title: 'موظفو الجهة', url: '/staff', icon: Users, roles: [UserRole.BANK_ADMIN] },
-    ].filter(item => !item.roles || (user.value && item.roles.includes(user.value.role))),
-  },
-  {
-    title: 'الأخرى',
-    items: [
-      { title: 'إعدادات النظام', url: '/settings', icon: Settings },
-      { title: 'المساعدة', url: '#', icon: HelpCircle },
-    ],
-  },
-])
+const allowedNavItems = computed(() => {
+  const role = user.value?.role
+  if (!role) return []
+
+  return NAV_ITEMS
+    .filter(item => item.roles.includes(role))
+    .map(item => ({
+      title: item.label,
+      url: item.route,
+      icon: ICONS[item.icon] ?? Home,
+    }))
+})
+
+const NAV_GROUPS: Array<{ title: string, routes: string[] }> = [
+  { title: 'الرئيسية', routes: ['/dashboard', '/requests', '/notifications'] },
+  { title: 'العمليات', routes: ['/requests/new', '/customs'] },
+  { title: 'الإدارة', routes: ['/merchants', '/staff', '/reports', '/audit', '/admin/entities', '/admin/cby-staff', '/admin/workflow-docs', '/admin/roles'] },
+  { title: 'الأخرى', routes: ['/settings'] },
+]
+
+const navMain = computed(() =>
+  NAV_GROUPS
+    .map(group => ({
+      title: group.title,
+      items: allowedNavItems.value.filter(item => group.routes.includes(item.url)),
+    }))
+    .filter(group => group.items.length > 0),
+)
 
 const userData = computed(() => ({
   name: user.value?.name ?? 'المستخدم',

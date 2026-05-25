@@ -14,7 +14,7 @@ import {
   Download, MoreHorizontal, Plus, Printer, Search, SearchX, ShieldCheck, UserCog, X,
 } from 'lucide-vue-next'
 import PageHeader from '@/components/layout/PageHeader.vue'
-import { ROLE_LABELS, CBY_ROLES } from '@/constants/workflow'
+import { ROLE_LABELS, CBY_ROLES, ROUTE_ROLE_MAP } from '@/constants/workflow'
 import { UserRole } from '@/types/enums'
 import type { User } from '@/types/models'
 import { useUsers, type CreateUserPayload, type UpdateUserPayload } from '@/composables/useUsers'
@@ -64,6 +64,11 @@ import {
 } from '@/components/ui/empty'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Checkbox } from '@/components/ui/checkbox'
+
+definePageMeta({
+  middleware: ['auth', 'role'],
+  requiredRoles: ROUTE_ROLE_MAP['/admin/cby-staff'],
+})
 
 type StaffForm = {
   name: string

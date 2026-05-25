@@ -1,10 +1,16 @@
 <script setup lang="ts">
 import { Plus, Trash2 } from 'lucide-vue-next'
 import PageHeader from '@/components/layout/PageHeader.vue'
+import { ROUTE_ROLE_MAP } from '@/constants/workflow'
 import { UserRole } from '@/types/enums'
 import type { DocumentType } from '@/types/models'
 import { useDocumentTypes, type CreateDocumentTypePayload, type UpdateDocumentTypePayload } from '@/composables/useDocumentTypes'
 import { useAuthStore } from '@/stores/auth.store'
+
+definePageMeta({
+  middleware: ['auth', 'role'],
+  requiredRoles: ROUTE_ROLE_MAP['/admin/workflow-docs'],
+})
 
 const authStore = useAuthStore()
 const currentUser = computed(() => authStore.user)

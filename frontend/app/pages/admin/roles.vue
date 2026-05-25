@@ -1,8 +1,13 @@
 <script setup lang="ts">
 import PageHeader from '@/components/layout/PageHeader.vue'
-import { ROLE_LABELS, ALL_ROLES } from '@/constants/workflow'
+import { ROLE_LABELS, ALL_ROLES, ROUTE_ROLE_MAP } from '@/constants/workflow'
 import { UserRole } from '@/types/enums'
 import { useAuthStore } from '@/stores/auth.store'
+
+definePageMeta({
+  middleware: ['auth', 'role'],
+  requiredRoles: ROUTE_ROLE_MAP['/admin/roles'],
+})
 
 type Permission = {
   key: string

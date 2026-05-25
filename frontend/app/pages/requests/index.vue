@@ -9,6 +9,7 @@ import {
   ROLE_BUCKETS,
   BANK_ROLES,
   CBY_BANK_FILTER_ROLES,
+  ROUTE_ROLE_MAP,
   type StageBucket,
 } from '@/constants/workflow'
 import { useAuthStore } from '@/stores/auth.store'
@@ -37,6 +38,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+
+definePageMeta({
+  middleware: ['auth', 'role'],
+  requiredRoles: ROUTE_ROLE_MAP['/requests'],
+})
 
 const authStore = useAuthStore()
 const store = useRequestsStore()

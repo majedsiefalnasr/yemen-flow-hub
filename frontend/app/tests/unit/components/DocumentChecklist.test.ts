@@ -73,6 +73,7 @@ describe('DocumentChecklist formatFileSize', () => {
 
 function typeLabel(docType: string | null): string {
   if (docType === 'SWIFT') return 'مستند SWIFT'
+  if (docType === 'FX_REQUEST') return 'مستند طلب المصارفة الخارجية'
   return 'مستند طلب'
 }
 
@@ -83,6 +84,10 @@ describe('DocumentChecklist typeLabel', () => {
 
   it('returns Arabic request label for REQUEST_DOC type', () => {
     expect(typeLabel('REQUEST_DOC')).toBe('مستند طلب')
+  })
+
+  it('returns Arabic FX request label for FX_REQUEST type', () => {
+    expect(typeLabel('FX_REQUEST')).toBe('مستند طلب المصارفة الخارجية')
   })
 
   it('returns Arabic request label for null type', () => {
@@ -127,6 +132,7 @@ describe('DocumentChecklist download button — REQUEST_DOC', () => {
 describe('DocumentChecklist download button — SWIFT', () => {
   const SHOWN: UserRole[] = [
     UserRole.BANK_REVIEWER,
+    UserRole.BANK_ADMIN,
     UserRole.SWIFT_OFFICER,
     UserRole.EXECUTIVE_MEMBER,
     UserRole.COMMITTEE_DIRECTOR,
@@ -140,6 +146,26 @@ describe('DocumentChecklist download button — SWIFT', () => {
 
   it.each(HIDDEN)('hides for %s', (role) => {
     expect(canDownloadDocument(role, 'SWIFT')).toBe(false)
+  })
+})
+
+describe('DocumentChecklist download button — FX_REQUEST', () => {
+  const SHOWN: UserRole[] = [
+    UserRole.BANK_REVIEWER,
+    UserRole.BANK_ADMIN,
+    UserRole.SWIFT_OFFICER,
+    UserRole.EXECUTIVE_MEMBER,
+    UserRole.COMMITTEE_DIRECTOR,
+    UserRole.CBY_ADMIN,
+  ]
+  const HIDDEN: UserRole[] = [UserRole.DATA_ENTRY, UserRole.SUPPORT_COMMITTEE]
+
+  it.each(SHOWN)('shows for %s', (role) => {
+    expect(canDownloadDocument(role, 'FX_REQUEST')).toBe(true)
+  })
+
+  it.each(HIDDEN)('hides for %s', (role) => {
+    expect(canDownloadDocument(role, 'FX_REQUEST')).toBe(false)
   })
 })
 

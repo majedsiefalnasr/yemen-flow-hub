@@ -25,6 +25,7 @@ import {
 } from 'lucide-vue-next'
 import { h } from 'vue'
 import PageHeader from '@/components/layout/PageHeader.vue'
+import { ROUTE_ROLE_MAP } from '@/constants/workflow'
 import { useAudit } from '@/composables/useAudit'
 import type { AuditLog } from '@/types/models'
 import {
@@ -50,6 +51,11 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
+
+definePageMeta({
+  middleware: ['auth', 'role'],
+  requiredRoles: ROUTE_ROLE_MAP['/audit'],
+})
 
 const { fetchAuditLogs, fetchAuditStats, fetchDuplicates, fetchRiskIndicators } = useAudit()
 

@@ -70,7 +70,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 
 definePageMeta({
-  middleware: 'role',
+  middleware: ['auth', 'role'],
   requiredRoles: [UserRole.BANK_ADMIN],
 })
 

@@ -21,6 +21,7 @@ import { useAuthStore } from '@/stores/auth.store'
 import { useMerchants } from '@/composables/useMerchants'
 import { useBanks } from '@/composables/useBanks'
 import { UserRole } from '@/types/enums'
+import { ROUTE_ROLE_MAP } from '@/constants/workflow'
 import type { Merchant } from '@/types/models'
 import {
   Table,
@@ -64,6 +65,11 @@ import {
 } from '@/components/ui/empty'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Checkbox } from '@/components/ui/checkbox'
+
+definePageMeta({
+  middleware: ['auth', 'role'],
+  requiredRoles: ROUTE_ROLE_MAP['/merchants'],
+})
 
 const authStore = useAuthStore()
 const user = computed(() => authStore.user)
