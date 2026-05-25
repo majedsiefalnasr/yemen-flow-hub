@@ -3160,3 +3160,146 @@ So that future stories cannot silently regress the UI we just remediated.
 - Documentation for baseline updates is clear enough that a future dev (or agent) can update intentionally without breaking the gate.
 
 **Out of scope:** Performance budgets, accessibility regression, semantic HTML linting — separate concerns.
+
+---
+
+## Epic 11: Role Surface Governance and External FX Confirmation Alignment
+
+**Purpose:** Align the production app with `roles-reference.md` and `testing-playbook.md` after those files became the practical source of truth for role responsibilities, role-specific UI rendering, document access, lifecycle QA, and external FX confirmation terminology. This epic corrects governance drift: the app must render different operational workspaces per role, not a shared surface with disabled or backend-rejected controls.
+
+**Decision date:** 2026-05-25
+
+**Source authorities:**
+1. `roles-reference.md` - final authority for each role's responsibilities, dashboard content, visible surfaces, forbidden surfaces, and document access.
+2. `testing-playbook.md` - final authority for role smoke coverage, lifecycle handoff tests, document permission tests, and non-visibility checks.
+3. Backend enforcement (`TransitionMap`, policies, permission seeder, controllers) - final authority for whether an action is allowed.
+4. Existing docs remain valid where they do not conflict with the two new references.
+
+**Correction rules:**
+- Role-inappropriate UI is not rendered. Do not rely on disabled buttons, hidden CSS, or backend rejection as the normal UX.
+- UI visibility is not a security boundary. Backend policies and workflow guards must continue to reject unauthorized direct calls.
+- Start every role surface from the role's operational queue, then add supporting metrics.
+- `CBY_ADMIN` has broad visibility but is not a substitute workflow actor for Director, SWIFT, Support, Bank Reviewer, or Executive Member actions.
+- Customs declaration terminology is legacy for the Director completion workflow. New user-facing work should use external FX confirmation (`تأكيد مصارفة خارجية`) and the `FX_CONFIRMATION_PENDING` handoff unless a migration story explicitly preserves a compatibility alias.
+- Real authenticated users per role are required for testing; do not introduce demo role switching.
+
+**Common technical requirements for all Epic 11 stories:**
+- Run SocratiCode before modifying existing files: `codebase_search`, then `codebase_symbol` and `codebase_impact` for touched symbols/components.
+- Use browser verification for UI-facing stories.
+- Add targeted tests for both visibility and non-visibility.
+- Keep `_bmad-output/implementation-artifacts/`, `_bmad-output/test-artifacts/`, and `graphify-out/` local-only and unstaged.
+
+---
+
+### Story 11.1: Role Surface Authority Matrix and Navigation Contract
+
+As a workflow participant in any production role,
+I want the app shell, navigation, page access, quick actions, and request actions to be derived from one role-surface authority matrix,
+So that each role sees only the product surfaces that belong to its operational job.
+
+**Source authority:**
+- `roles-reference.md`
+- `testing-playbook.md` Part 1 and Part 5
+- `frontend/app/constants/workflow.ts`
+- `frontend/app/components/AppSidebar.vue`
+- `frontend/app/middleware/role.ts`
+- Request detail action components and document permission composables
+
+**Targets:**
+- A canonical role-surface matrix in frontend constants or an adjacent typed module.
+- Sidebar/nav rendering migrated away from local hardcoded role lists when those duplicate or conflict with the canonical contract.
+- Route metadata and `ROUTE_ROLE_MAP` checked against the matrix.
+- Request detail actions, dashboard quick actions, search shortcuts, and document rows audited for role-inappropriate rendering.
+
+**Acceptance criteria:**
+- Every role from `roles-reference.md` has explicit visible and non-visible navigation surfaces.
+- `AppSidebar.vue` no longer maintains divergent role lists for routes already covered by the canonical contract.
+- `DATA_ENTRY` sees New Request, Requests, Notifications, and business-facing dashboard surfaces, but no SWIFT, support, voting, admin, or Director controls.
+- `BANK_REVIEWER` sees review/request tracking surfaces, but no staff management, SWIFT upload, support claim, voting, or external FX controls.
+- `BANK_ADMIN` sees bank operations, staff, merchants, reports where allowed, but no reviewer governance, SWIFT upload, support claim, voting, or Director controls.
+- `SWIFT_OFFICER` sees only SWIFT-relevant queue/upload surfaces and no non-SWIFT workflow controls.
+- `SUPPORT_COMMITTEE` sees support claim-aware queue surfaces and no SWIFT, voting, external FX, or bank-admin staff controls.
+- `EXECUTIVE_MEMBER` sees voting queue/report surfaces and no close/finalize, SWIFT, support, external FX, or system-admin controls.
+- `COMMITTEE_DIRECTOR` sees governance, voting lifecycle, and external FX confirmation surfaces, but not bank-admin widgets or SWIFT/support controls.
+- `CBY_ADMIN` sees global admin/oversight surfaces, but no role-inappropriate workflow action buttons.
+- Tests assert that role-forbidden UI is not rendered, not merely disabled.
+
+**Out of scope:** Backend status migration and external FX data model changes; those belong to Story 11.2.
+
+---
+
+### Story 11.2: External FX Confirmation Status and Terminology Migration
+
+As the Committee Director and SWIFT Officer,
+I want the final post-SWIFT workflow to use external FX confirmation terminology and status semantics,
+So that the product matches the approved institutional process instead of legacy customs-declaration wording.
+
+**Source authority:**
+- `roles-reference.md`
+- `testing-playbook.md`
+- Backend `RequestStatus`, `TransitionMap`, document services, customs/external-FX controllers, resources, tests
+- Frontend status constants, routes, request detail, SWIFT upload page, Director completion surfaces, document checklist
+
+**Acceptance criteria:**
+- A migration decision is documented: replace `CUSTOMS_DECLARATION_ISSUED`, introduce `FX_CONFIRMATION_PENDING`, and either migrate or alias legacy customs database/API names.
+- The happy path follows: `EXECUTIVE_APPROVED` -> `WAITING_FOR_SWIFT` -> `SWIFT_UPLOADED` -> `FX_CONFIRMATION_PENDING` -> `COMPLETED`.
+- SWIFT Officer uploads both SWIFT PDF and FX confirmation request PDF before the request leaves SWIFT ownership.
+- Committee Director can download generated external FX confirmation PDF and upload signed/stamped external FX confirmation PDF.
+- `CBY_ADMIN` may view/download where permitted, but cannot complete the Director-only workflow.
+- User-facing labels no longer say customs declaration for the Director external FX completion workflow.
+- Existing historical data remains readable.
+- Backend and frontend enums match exactly after migration.
+- Tests cover allowed and forbidden roles for external FX documents and actions.
+
+**Out of scope:** Visual parity polish unrelated to terminology/status correctness.
+
+---
+
+### Story 11.3: Role Dashboard and Request Detail Alignment
+
+As a production user,
+I want my dashboard and request detail view to match my role responsibilities,
+So that I start from the right queue and never see controls belonging to another workflow actor.
+
+**Source authority:**
+- `roles-reference.md` dashboard sections
+- `testing-playbook.md` role smoke tests and Part 5 dashboard checklist
+- `frontend/app/pages/dashboard.vue`
+- `frontend/app/components/dashboard/*.vue`
+- `frontend/app/pages/requests/[id]/index.vue`
+- `ActionsPanel`, `DocumentChecklist`, `VotingPanel`, support claim and SWIFT components
+- `GET /api/dashboard/stats`
+
+**Acceptance criteria:**
+- Each dashboard's KPI cards, quick actions, tables, and empty/loading/error states match the role's operational mission from `roles-reference.md`.
+- Dashboard data is scoped correctly by bank/global role.
+- Request detail actions are rendered only for the eligible role/status combination.
+- Support claim state distinguishes unclaimed, claimed by me, and claimed by others.
+- Director sees external FX pending workload after SWIFT upload.
+- Data Entry sees simplified business status and no deep CBY operational internals as the primary UX.
+- Tests cover dashboard role smoke expectations for all eight roles.
+
+**Out of scope:** Creating new workflow powers not already approved by backend rules.
+
+---
+
+### Story 11.4: Role Smoke and Lifecycle Test Automation
+
+As the project maintainer,
+I want the manual testing playbook converted into repeatable automated or scripted checks,
+So that role-surface regressions and lifecycle handoff regressions are caught before release.
+
+**Source authority:**
+- `testing-playbook.md`
+- Existing backend feature tests
+- Existing frontend Vitest and Playwright setup
+
+**Acceptance criteria:**
+- Automated role smoke tests cover all eight roles.
+- Visibility and non-visibility are both asserted.
+- Happy-path lifecycle coverage verifies status, owner role, visible UI state, and document handoffs from draft to completed.
+- Branch coverage includes bank return, bank terminal rejection, support rejection, support return, executive rejection, claim expiry, document permissions, cross-bank isolation, and immutable states.
+- Test evidence format follows the playbook fields: role, request reference, start status, action, expected, actual, result.
+- Browser-based verification is used for UI flows.
+
+**Out of scope:** Load/performance testing and production monitoring.

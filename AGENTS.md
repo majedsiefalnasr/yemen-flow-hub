@@ -109,14 +109,18 @@ git commit -m "feat(voting): ..."
 
 All implementation decisions must follow these docs in order of authority:
 
-1. `docs/01-workflow-and-business-rules.md` — Workflow stages, business rules, status enums
-2. `docs/03-database-and-models.md` — Canonical status/role enums, table schemas
-3. `docs/06-api-reference.md` — API contracts, endpoint conventions
-4. `docs/05-backend-guide.md` — Backend architecture, security rules
-5. `docs/04-frontend-guide.md` — Frontend architecture, UI rules
-6. `docs/02-system-architecture.md` — Overall architecture
-7. `DESIGN.md` — Visual design system (colors, typography, layout)
-8. `AI-ENGINEERING-PROMPT.md` — Full engineering context and anti-patterns
+1. `roles-reference.md` — production role responsibilities, visibility, dashboard surfaces, and role-specific non-visibility rules
+2. `testing-playbook.md` — role smoke tests, lifecycle handoff tests, document access checks, and end-to-end QA expectations
+3. `docs/01-workflow-and-business-rules.md` — Workflow stages, business rules, status enums
+4. `docs/03-database-and-models.md` — Canonical status/role enums, table schemas
+5. `docs/06-api-reference.md` — API contracts, endpoint conventions
+6. `docs/05-backend-guide.md` — Backend architecture, security rules
+7. `docs/04-frontend-guide.md` — Frontend architecture, UI rules
+8. `docs/02-system-architecture.md` — Overall architecture
+9. `DESIGN.md` — Visual design system (colors, typography, layout)
+10. `AI-ENGINEERING-PROMPT.md` — Full engineering context and anti-patterns
+
+`roles-reference.md` and `testing-playbook.md` intentionally supersede older customs-declaration terminology. Where older docs or code say "customs declaration" for the final Director workflow, align new work to external FX confirmation (`تأكيد مصارفة خارجية`) and the `FX_CONFIRMATION_PENDING` handoff unless a correction story explicitly preserves a legacy alias during migration.
 
 **lovable/** is a Nuxt 4 + Vue + shadcn-vue prototype used as the UI source. Pages, components, and layouts are being transplanted into `frontend/` and wired to real Laravel APIs; until that work completes, treat Lovable as the visual reference for any new UI.
 
@@ -141,9 +145,12 @@ EXECUTIVE_VOTING_OPEN
 EXECUTIVE_VOTING_CLOSED
 EXECUTIVE_APPROVED
 EXECUTIVE_REJECTED
+FX_CONFIRMATION_PENDING
 CUSTOMS_DECLARATION_ISSUED
 COMPLETED
 ```
+
+`CUSTOMS_DECLARATION_ISSUED` is legacy terminology retained only until the external FX confirmation migration is completed. New stories must not introduce additional customs-facing UI copy for the Director completion workflow.
 
 ## Canonical Role Enum
 
@@ -168,14 +175,17 @@ CBY_ADMIN
 - Do NOT expose requests outside a user's organization scope
 - Do NOT generate shared admin dashboards — every view is queue-scoped and role-scoped
 - Do NOT use statuses not in the canonical enum above
+- Do NOT render role-inappropriate UI controls and rely on backend rejection later; role-forbidden surfaces should not be mounted/rendered
+- Do NOT use `CBY_ADMIN` as a workflow super-actor for Director, SWIFT, Support, Bank Reviewer, or Executive Member actions
 - Do NOT create `AI-PROTOTYPE-PROMPT.md` — that file lives only in the root repo
 - Do NOT modify anything inside `lovable/`
 
 ### Always Do
 - Enforce organization-scoped visibility at the database query level
+- Start role UI decisions from `roles-reference.md`: operational queue first, supporting metrics second, least privilege on uncertainty
 - Log every workflow transition to both `request_stage_history` and `audit_logs`
 - Include `role` (at time of action) in every audit log entry
-- Wrap customs declaration generation in a single database transaction
+- Wrap external FX confirmation generation/completion in a single database transaction
 - Use pessimistic locking for vote submission and voting session closure
 - Validate file type as PDF-only for all document uploads
 - Return `WORKFLOW_IMMUTABLE_STATE` (HTTP 403) for mutations on terminal states
