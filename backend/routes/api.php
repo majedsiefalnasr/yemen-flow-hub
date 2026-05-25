@@ -40,6 +40,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('settings', [SettingsController::class, 'show']);
     Route::put('settings', [SettingsController::class, 'update']);
     Route::post('settings/reset', [SettingsController::class, 'reset']);
+    Route::post('settings/save-section', [SettingsController::class, 'saveSection']);
 });
 
 Route::middleware('auth:sanctum')->group(function () {
