@@ -1,12 +1,24 @@
 <script setup lang="ts">
-import { Activity, AlertTriangle, FileWarning, Search, ShieldCheck } from 'lucide-vue-next'
+import { Activity, AlertTriangle, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, FileWarning, Search, SearchX, ShieldCheck } from 'lucide-vue-next'
+import { FlexRender, getCoreRowModel, getPaginationRowModel, getSortedRowModel, useVueTable } from '@tanstack/vue-table'
+import type { ColumnDef } from '@tanstack/vue-table'
+import { h } from 'vue'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import { useAudit } from '@/composables/useAudit'
 import type { AuditLog } from '@/types/models'
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+} from '@/components/ui/empty'
+import { Skeleton } from '@/components/ui/skeleton'
 
 const { fetchAuditLogs, fetchAuditStats, fetchDuplicates, fetchRiskIndicators } = useAudit()
 
 const query = ref('')
+const loadingAudit = ref(true)
 const auditLogs = ref<AuditLog[]>([])
 const todayCount = ref(0)
 const duplicates = ref<{ invoice_number: string; banks: string[]; requests: { id: number; reference_number: string }[] }[]>([])
@@ -23,6 +35,7 @@ onMounted(async () => {
   if (statsResult.status === 'fulfilled') todayCount.value = statsResult.value.today_count
   if (dupsResult.status === 'fulfilled') duplicates.value = dupsResult.value
   if (risksResult.status === 'fulfilled') risks.value = risksResult.value
+  loadingAudit.value = false
 })
 
 const filteredAudits = computed(() => {
@@ -45,6 +58,71 @@ const kpis = computed(() => [
 function formatDate(ts: string) {
   return new Date(ts).toLocaleString('ar-EG')
 }
+
+const ACTION_LABELS: Record<string, string> = {
+  LOGIN: 'تسجيل دخول',
+  LOGIN_FAILED: 'فشل تسجيل الدخول',
+  LOGOUT: 'تسجيل خروج',
+  SETTINGS_UPDATED: 'تحديث الإعدادات',
+  USER_CREATED: 'إنشاء مستخدم',
+  USER_UPDATED: 'تحديث مستخدم',
+  USER_DEACTIVATED: 'تعطيل مستخدم',
+  PASSWORD_CHANGED: 'تغيير كلمة المرور',
+  MFA_ENABLED: 'تفعيل المصادقة الثنائية',
+  MFA_DISABLED: 'تعطيل المصادقة الثنائية',
+  CLAIM_RELEASED: 'إفراج عن المطالبة',
+  AUTHORIZATION_FAILURE: 'فشل التفويض',
+  WORKFLOW_TRANSITION: 'انتقال سير عمل',
+  DOCUMENT_UPLOADED: 'رفع وثيقة',
+  DOCUMENT_DOWNLOADED: 'تحميل وثيقة',
+  VOTE_SUBMITTED: 'تسجيل تصويت',
+  VOTING_SESSION_OPENED: 'فتح جلسة تصويت',
+  VOTING_SESSION_CLOSED: 'إغلاق جلسة تصويت',
+  CUSTOMS_DECLARATION_ISSUED: 'إصدار بيان جمركي',
+}
+
+function formatAction(action: string): string {
+  return ACTION_LABELS[action] ?? action.replace(/_/g, ' ')
+}
+
+const columns: ColumnDef<AuditLog>[] = [
+  {
+    accessorKey: 'user',
+    header: 'المستخدم',
+    cell: ({ row }) => h('span', { class: 'font-medium' }, row.original.user?.name ?? 'غير معروف'),
+  },
+  {
+    accessorKey: 'action',
+    header: 'الإجراء',
+    cell: ({ row }) => h('span', { class: 'inline-flex items-center rounded-md border border-border bg-muted px-2 py-0.5 text-xs font-medium text-foreground' }, formatAction(row.original.action)),
+  },
+  {
+    accessorKey: 'from_status',
+    header: 'من',
+    cell: ({ row }) => h('span', { class: 'text-xs text-muted-foreground' }, row.original.from_status ?? '—'),
+  },
+  {
+    accessorKey: 'to_status',
+    header: 'إلى',
+    cell: ({ row }) => h('span', { class: 'text-xs text-muted-foreground' }, row.original.to_status ?? '—'),
+  },
+  {
+    accessorKey: 'created_at',
+    header: 'التوقيت',
+    cell: ({ row }) => h('span', { class: 'text-xs text-muted-foreground' }, formatDate(row.original.created_at)),
+  },
+]
+
+const table = useVueTable({
+  get data() { return filteredAudits.value },
+  columns,
+  getCoreRowModel: getCoreRowModel(),
+  getPaginationRowModel: getPaginationRowModel(),
+  getSortedRowModel: getSortedRowModel(),
+  initialState: {
+    pagination: { pageSize: 20 },
+  },
+})
 </script>
 
 <template>
@@ -68,7 +146,7 @@ function formatDate(ts: string) {
           />
         </div>
         <div>
-          <div class="text-xs text-gray-600">
+          <div class="text-xs text-muted-foreground">
             {{ kpi.label }}
           </div>
           <div class="text-xl font-bold">
@@ -95,73 +173,137 @@ function formatDate(ts: string) {
         value="logs"
         class="mt-4"
       >
-        <Card class="border-0 shadow">
-          <div class="border-b p-4">
-            <div class="relative max-w-md">
-              <Search class="absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-600" />
-              <Input
-                v-model="query"
-                class="pe-10"
-                placeholder="بحث في السجل: مستخدم، إجراء..."
-              />
-            </div>
+        <div class="mb-3 flex items-center gap-2">
+          <div class="relative max-w-xs">
+            <Search class="absolute end-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              v-model="query"
+              class="h-8 rounded-md pe-9 text-sm"
+              placeholder="بحث: مستخدم، إجراء..."
+            />
           </div>
+        </div>
 
+        <Card class="border-0 shadow">
           <div class="overflow-x-auto">
             <Table class="w-full min-w-[760px] text-sm">
-              <TableHeader class="bg-gray-50/40 text-end text-xs text-gray-600">
-                <TableRow>
-                  <TableHead class="px-4 py-3">
-                    المستخدم
-                  </TableHead>
-                  <TableHead class="px-4 py-3">
-                    الإجراء
-                  </TableHead>
-                  <TableHead class="px-4 py-3">
-                    من
-                  </TableHead>
-                  <TableHead class="px-4 py-3">
-                    إلى
-                  </TableHead>
-                  <TableHead class="px-4 py-3">
-                    التوقيت
+              <TableHeader>
+                <TableRow
+                  v-for="headerGroup in table.getHeaderGroups()"
+                  :key="headerGroup.id"
+                >
+                  <TableHead
+                    v-for="header in headerGroup.headers"
+                    :key="header.id"
+                    class="px-4 py-3 text-xs text-muted-foreground"
+                  >
+                    <FlexRender
+                      v-if="!header.isPlaceholder"
+                      :render="header.column.columnDef.header"
+                      :props="header.getContext()"
+                    />
                   </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                <TableRow
-                  v-for="entry in filteredAudits"
-                  :key="entry.id"
-                  class="border-t hover:bg-gray-50/30"
-                >
-                  <TableCell class="px-4 py-3 font-medium">
-                    {{ entry.user?.name ?? 'غير معروف' }}
-                  </TableCell>
-                  <TableCell class="px-4 py-3">
-                    <Badge variant="secondary">
-                      {{ entry.action }}
-                    </Badge>
-                  </TableCell>
-                  <TableCell class="px-4 py-3 text-xs text-gray-600">
-                    {{ entry.from_status ?? '—' }}
-                  </TableCell>
-                  <TableCell class="px-4 py-3 text-xs text-gray-600">
-                    {{ entry.to_status ?? '—' }}
-                  </TableCell>
-                  <TableCell class="px-4 py-3 text-xs text-gray-600">
-                    {{ formatDate(entry.created_at) }}
-                  </TableCell>
-                </TableRow>
-                <TableRow v-if="filteredAudits.length === 0">
-                  <TableCell
-                    colspan="5"
-                    class="px-4 py-8 text-center text-gray-600"
+                <template v-if="loadingAudit">
+                  <TableRow
+                    v-for="i in 8"
+                    :key="i"
                   >
-                    لا توجد سجلات.
-                  </TableCell>
-                </TableRow>
+                    <TableCell
+                      v-for="j in 5"
+                      :key="j"
+                      class="px-4 py-3"
+                    >
+                      <Skeleton class="h-4 w-full rounded" />
+                    </TableCell>
+                  </TableRow>
+                </template>
+                <template v-else-if="table.getRowModel().rows.length">
+                  <TableRow
+                    v-for="row in table.getRowModel().rows"
+                    :key="row.id"
+                    class="border-t hover:bg-muted/30"
+                  >
+                    <TableCell
+                      v-for="cell in row.getVisibleCells()"
+                      :key="cell.id"
+                      class="px-4 py-3"
+                    >
+                      <FlexRender
+                        :render="cell.column.columnDef.cell"
+                        :props="cell.getContext()"
+                      />
+                    </TableCell>
+                  </TableRow>
+                </template>
+                <template v-else>
+                  <TableRow>
+                    <TableCell colspan="5" class="p-8">
+                      <Empty class="min-h-[200px] rounded-xl border border-dashed bg-muted/20">
+                        <EmptyHeader>
+                          <div class="flex size-12 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+                            <SearchX class="size-5" />
+                          </div>
+                          <EmptyTitle>لا توجد سجلات مطابقة</EmptyTitle>
+                        </EmptyHeader>
+                        <EmptyContent>
+                          <EmptyDescription>جرّب تغيير نص البحث.</EmptyDescription>
+                        </EmptyContent>
+                      </Empty>
+                    </TableCell>
+                  </TableRow>
+                </template>
               </TableBody>
             </Table>
+          </div>
+
+          <div class="flex items-center justify-between border-t px-4 py-3">
+            <p class="text-sm text-muted-foreground">
+              {{ table.getFilteredRowModel().rows.length }} سجل
+            </p>
+            <div class="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                class="h-8 w-8"
+                :disabled="!table.getCanPreviousPage()"
+                @click="table.setPageIndex(0)"
+              >
+                <ChevronsRight class="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                class="h-8 w-8"
+                :disabled="!table.getCanPreviousPage()"
+                @click="table.previousPage()"
+              >
+                <ChevronRight class="h-4 w-4" />
+              </Button>
+              <span class="px-2 text-sm text-muted-foreground">
+                {{ table.getState().pagination.pageIndex + 1 }} / {{ table.getPageCount() }}
+              </span>
+              <Button
+                variant="ghost"
+                size="icon"
+                class="h-8 w-8"
+                :disabled="!table.getCanNextPage()"
+                @click="table.nextPage()"
+              >
+                <ChevronLeft class="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                class="h-8 w-8"
+                :disabled="!table.getCanNextPage()"
+                @click="table.setPageIndex(table.getPageCount() - 1)"
+              >
+                <ChevronsLeft class="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </Card>
       </TabsContent>
@@ -182,12 +324,17 @@ function formatDate(ts: string) {
             </div>
           </div>
 
-          <div
+          <Empty
             v-if="duplicates.length === 0"
-            class="py-8 text-center text-sm text-gray-600"
+            class="min-h-[160px] rounded-xl border border-dashed bg-muted/20"
           >
-            لا توجد فواتير مكررة.
-          </div>
+            <EmptyHeader>
+              <EmptyTitle>لا توجد فواتير مكررة</EmptyTitle>
+            </EmptyHeader>
+            <EmptyContent>
+              <EmptyDescription>لم يُكتشف أي تكرار في أرقام الفواتير.</EmptyDescription>
+            </EmptyContent>
+          </Empty>
 
           <div class="space-y-3">
             <div
@@ -203,11 +350,11 @@ function formatDate(ts: string) {
                     </Badge>
                     <span class="font-mono font-semibold">{{ dup.invoice_number }}</span>
                   </div>
-                  <div class="mt-1 text-xs text-gray-600">
+                  <div class="mt-1 text-xs text-muted-foreground">
                     البنوك: {{ dup.banks.join('، ') }}
                   </div>
                 </div>
-                <div class="text-start text-xs text-gray-600">
+                <div class="text-start text-xs text-muted-foreground">
                   {{ dup.requests.length }} طلبات مرتبطة
                 </div>
               </div>
@@ -225,12 +372,17 @@ function formatDate(ts: string) {
             مؤشرات المخاطر النشطة
           </h3>
 
-          <div
+          <Empty
             v-if="risks.length === 0"
-            class="py-8 text-center text-sm text-gray-600"
+            class="min-h-[160px] rounded-xl border border-dashed bg-muted/20"
           >
-            لا توجد مؤشرات مخاطر.
-          </div>
+            <EmptyHeader>
+              <EmptyTitle>لا توجد مؤشرات مخاطر</EmptyTitle>
+            </EmptyHeader>
+            <EmptyContent>
+              <EmptyDescription>النظام في وضع سليم، لا تنبيهات نشطة.</EmptyDescription>
+            </EmptyContent>
+          </Empty>
 
           <div class="space-y-3">
             <div
@@ -248,7 +400,7 @@ function formatDate(ts: string) {
                 <div class="text-sm font-medium">
                   {{ risk.title }}
                 </div>
-                <div class="text-xs text-gray-600">
+                <div class="text-xs text-muted-foreground">
                   {{ risk.body }}
                 </div>
               </div>

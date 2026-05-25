@@ -1,13 +1,68 @@
 <script setup lang="ts">
+import type { ColumnDef } from '@tanstack/vue-table'
+import {
+  FlexRender,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  useVueTable,
+} from '@tanstack/vue-table'
+import { h } from 'vue'
+import {
+  Building2,
+  ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
+  Edit, MoreHorizontal, Plus, Search, SearchX,
+} from 'lucide-vue-next'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import MerchantDialog from '@/components/merchants/MerchantDialog.vue'
 import type { MerchantFormData } from '@/components/merchants/MerchantDialog.vue'
-import { Building2, Edit, Eye, Plus, Search, Trash2 } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth.store'
 import { useMerchants } from '@/composables/useMerchants'
 import { useBanks } from '@/composables/useBanks'
 import { UserRole } from '@/types/enums'
 import type { Merchant } from '@/types/models'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import { Card } from '@/components/ui/card'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+} from '@/components/ui/empty'
+import { Skeleton } from '@/components/ui/skeleton'
 
 const authStore = useAuthStore()
 const user = computed(() => authStore.user)
@@ -17,6 +72,7 @@ const { notify } = useToast()
 
 const merchants = ref<Merchant[]>([])
 const banks = ref<import('@/types/models').Bank[]>([])
+const loadingMerchants = ref(false)
 const query = ref('')
 const statusFilter = ref<'all' | 'active' | 'suspended'>('all')
 const bankFilter = ref<number | 'all'>('all')
@@ -25,12 +81,14 @@ const editing = ref<Merchant | null>(null)
 const viewing = ref<Merchant | null>(null)
 
 onMounted(async () => {
+  loadingMerchants.value = true
   const [merchantsResult, banksResult] = await Promise.allSettled([
     fetchMerchants(),
     fetchBanks(),
   ])
   if (merchantsResult.status === 'fulfilled') merchants.value = merchantsResult.value
   if (banksResult.status === 'fulfilled') banks.value = banksResult.value
+  loadingMerchants.value = false
 })
 
 const isCbyAdmin = computed(() => user.value?.role === UserRole.CBY_ADMIN)
@@ -96,6 +154,112 @@ async function toggleStatus(merchant: Merchant) {
   const updated = await suspendMerchant(merchant.id, !merchant.is_active)
   merchants.value = merchants.value.map(m => m.id === updated.id ? updated : m)
 }
+
+function activeStatusCell(isActive: boolean) {
+  const color = isActive ? 'var(--color-success)' : 'var(--color-destructive)'
+  const label = isActive ? 'نشط' : 'موقوف'
+  const paths = isActive
+    ? [
+        h('path', { d: 'M22 11.08V12a10 10 0 1 1-5.93-9.14' }),
+        h('polyline', { points: '22 4 12 14.01 9 11.01' }),
+      ]
+    : [
+        h('circle', { cx: '12', cy: '12', r: '10' }),
+        h('line', { x1: '15', y1: '9', x2: '9', y2: '15' }),
+        h('line', { x1: '9', y1: '9', x2: '15', y2: '15' }),
+      ]
+  return h('span', { class: 'inline-flex items-center gap-1.5 whitespace-nowrap' }, [
+    h('svg', {
+      class: 'shrink-0', style: { color }, width: 15, height: 15,
+      viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor',
+      'stroke-width': '2.5', 'stroke-linecap': 'round', 'stroke-linejoin': 'round',
+    }, paths),
+    h('span', { class: 'text-sm font-medium text-foreground' }, label),
+  ])
+}
+
+const columns: ColumnDef<Merchant>[] = [
+  {
+    accessorKey: 'name',
+    header: 'التاجر',
+    cell: ({ row }) => h('span', { class: 'text-sm font-medium' }, row.original.name),
+  },
+  {
+    accessorKey: 'commercial_register',
+    header: 'السجل التجاري',
+    cell: ({ row }) => h('span', { class: 'text-sm text-muted-foreground' }, row.original.commercial_register ?? '—'),
+  },
+  {
+    accessorKey: 'tax_number',
+    header: 'الرقم الضريبي',
+    cell: ({ row }) => h('span', { class: 'text-sm tabular-nums text-muted-foreground' }, row.original.tax_number ?? '—'),
+  },
+  {
+    accessorKey: 'business_type',
+    header: 'القطاع',
+    cell: ({ row }) => h('span', { class: 'text-sm text-muted-foreground' }, row.original.business_type ?? '—'),
+  },
+  {
+    id: 'bank',
+    header: 'البنك التابع له',
+    cell: ({ row }) => h(Badge, { variant: 'outline', class: 'font-normal' }, () => [
+      h(Building2, { class: 'ms-1 h-3 w-3' }),
+      bankName(row.original.bank_id),
+    ]),
+  },
+  {
+    accessorKey: 'is_active',
+    header: 'الحالة',
+    cell: ({ row }) => activeStatusCell(row.original.is_active),
+  },
+  {
+    id: 'transactions',
+    header: 'المعاملات',
+    cell: ({ row }) => h('span', { class: 'text-sm font-semibold tabular-nums' }, String(row.original.transaction_count ?? 0)),
+  },
+  {
+    id: 'actions',
+    enableHiding: false,
+    cell: ({ row }) => {
+      const merchant = row.original
+      return h(DropdownMenu, {}, {
+        default: () => [
+          h(DropdownMenuTrigger, { asChild: true }, {
+            default: () => h(Button, {
+              variant: 'ghost', size: 'icon', class: 'h-8 w-8',
+            }, {
+              default: () => [
+                h('span', { class: 'sr-only' }, 'فتح القائمة'),
+                h(MoreHorizontal, { class: 'h-4 w-4' }),
+              ],
+            }),
+          }),
+          h(DropdownMenuContent, { align: 'end' }, {
+            default: () => [
+              h(DropdownMenuItem, { onClick: () => (viewing.value = merchant) }, () => 'عرض'),
+              h(DropdownMenuItem, { onClick: () => (editing.value = merchant) }, () => 'تعديل'),
+              h(DropdownMenuSeparator),
+              h(DropdownMenuItem, {
+                class: merchant.is_active ? 'text-destructive' : 'text-green-700',
+                onClick: () => toggleStatus(merchant),
+              }, () => merchant.is_active ? 'إيقاف' : 'تفعيل'),
+            ],
+          }),
+        ],
+      })
+    },
+  },
+]
+
+const table = useVueTable({
+  get data() { return filtered.value },
+  columns,
+  getCoreRowModel: getCoreRowModel(),
+  getPaginationRowModel: getPaginationRowModel(),
+  getSortedRowModel: getSortedRowModel(),
+  getFilteredRowModel: getFilteredRowModel(),
+  initialState: { pagination: { pageSize: 20 } },
+})
 </script>
 
 <template>
@@ -106,56 +270,46 @@ async function toggleStatus(merchant: Merchant) {
       :breadcrumbs="[{ label: 'الرئيسية', to: '/' }, { label: 'التجار' }]"
     >
       <template #actions>
-        <Button @click="createOpen = true">
-          <Plus class="ms-1 h-4 w-4" />
-          تاجر جديد
+        <Button size="sm" class="h-8" @click="createOpen = true">
+          <Plus class="h-4 w-4" />
+          <span class="hidden lg:inline">تاجر جديد</span>
         </Button>
       </template>
     </PageHeader>
 
-    <div class="mb-4 grid grid-cols-3 gap-3">
+    <!-- KPI Cards -->
+    <div class="mb-6 grid grid-cols-3 gap-3">
       <Card class="border-0 p-4 shadow">
-        <div class="grid h-9 w-9 place-items-center rounded-lg bg-blue-600/10 text-blue-600">
+        <div class="grid h-9 w-9 place-items-center rounded-lg bg-primary/10 text-primary">
           <Building2 class="h-4 w-4" />
         </div>
-        <div class="mt-2 text-2xl font-bold tabular-nums">
-          {{ stats.total }}
-        </div>
-        <div class="text-xs text-gray-600">
-          إجمالي
-        </div>
+        <div class="mt-2 text-2xl font-bold tabular-nums">{{ stats.total }}</div>
+        <div class="text-xs text-muted-foreground">إجمالي</div>
       </Card>
       <Card class="border-0 p-4 shadow">
         <div class="grid h-9 w-9 place-items-center rounded-lg bg-green-50/10 text-green-700">
           <Building2 class="h-4 w-4" />
         </div>
-        <div class="mt-2 text-2xl font-bold tabular-nums">
-          {{ stats.active }}
-        </div>
-        <div class="text-xs text-gray-600">
-          نشط
-        </div>
+        <div class="mt-2 text-2xl font-bold tabular-nums">{{ stats.active }}</div>
+        <div class="text-xs text-muted-foreground">نشط</div>
       </Card>
       <Card class="border-0 p-4 shadow">
         <div class="grid h-9 w-9 place-items-center rounded-lg bg-red-700/10 text-red-700">
           <Building2 class="h-4 w-4" />
         </div>
-        <div class="mt-2 text-2xl font-bold tabular-nums">
-          {{ stats.suspended }}
-        </div>
-        <div class="text-xs text-gray-600">
-          موقوف
-        </div>
+        <div class="mt-2 text-2xl font-bold tabular-nums">{{ stats.suspended }}</div>
+        <div class="text-xs text-muted-foreground">موقوف</div>
       </Card>
     </div>
 
-    <Card class="mb-4 flex flex-col items-stretch gap-3 border-0 p-4 shadow sm:flex-row sm:items-center">
-      <div class="relative flex-1">
-        <Search class="absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-600" />
+    <!-- Toolbar: search + filters -->
+    <div class="mb-4 flex flex-wrap items-center gap-2">
+      <div class="relative min-w-[220px] flex-1">
+        <Search class="absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           v-model="query"
           placeholder="بحث برقم السجل، الرقم الضريبي، أو الاسم..."
-          class="pe-10"
+          class="h-8 rounded-md pe-9 text-sm"
         />
       </div>
 
@@ -164,210 +318,223 @@ async function toggleStatus(merchant: Merchant) {
         :model-value="bankFilter === 'all' ? 'all' : bankFilter.toString()"
         @update:model-value="v => bankFilter = v === 'all' ? 'all' : Number(v)"
       >
-        <SelectTrigger class="w-full sm:w-56">
+        <SelectTrigger class="h-8 w-full rounded-md text-sm sm:w-48">
           <SelectValue placeholder="البنك" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="all">
-            كل البنوك
-          </SelectItem>
-          <SelectItem
-            v-for="bank in banks"
-            :key="bank.id"
-            :value="bank.id.toString()"
-          >
-            {{ bank.name_ar }}
-          </SelectItem>
+          <SelectItem value="all">كل البنوك</SelectItem>
+          <SelectItem v-for="bank in banks" :key="bank.id" :value="bank.id.toString()">{{ bank.name_ar }}</SelectItem>
         </SelectContent>
       </Select>
 
       <Select v-model="statusFilter">
-        <SelectTrigger class="w-full sm:w-44">
+        <SelectTrigger class="h-8 w-full rounded-md text-sm sm:w-40">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="all">
-            كل الحالات
-          </SelectItem>
-          <SelectItem value="active">
-            نشط فقط
-          </SelectItem>
-          <SelectItem value="suspended">
-            موقوف فقط
-          </SelectItem>
+          <SelectItem value="all">كل الحالات</SelectItem>
+          <SelectItem value="active">نشط فقط</SelectItem>
+          <SelectItem value="suspended">موقوف فقط</SelectItem>
         </SelectContent>
       </Select>
-    </Card>
-
-    <Card
-      v-if="isCbyAdmin"
-      class="overflow-hidden border-0 shadow"
-    >
-      <div class="overflow-x-auto">
-        <Table class="w-full text-sm">
-          <TableHeader class="bg-gray-50/40 text-end text-xs text-gray-600">
-            <TableRow>
-              <TableHead class="p-3 font-semibold">
-                التاجر
-              </TableHead>
-              <TableHead class="p-3 font-semibold">
-                السجل التجاري
-              </TableHead>
-              <TableHead class="p-3 font-semibold">
-                الرقم الضريبي
-              </TableHead>
-              <TableHead class="p-3 font-semibold">
-                القطاع
-              </TableHead>
-              <TableHead class="p-3 font-semibold">
-                البنك التابع له
-              </TableHead>
-              <TableHead class="p-3 font-semibold">
-                الحالة
-              </TableHead>
-              <TableHead class="p-3 font-semibold">
-                المعاملات
-              </TableHead>
-              <TableHead class="w-12 p-3 font-semibold" />
-            </TableRow>
-          </TableHeader>
-          <TableBody class="divide-y">
-            <TableRow
-              v-for="merchant in filtered"
-              :key="merchant.id"
-              class="hover:bg-gray-50/30"
-            >
-              <TableCell class="p-3 font-medium">
-                {{ merchant.name }}
-              </TableCell>
-              <TableCell class="p-3 text-gray-600">
-                {{ merchant.commercial_register ?? '—' }}
-              </TableCell>
-              <TableCell class="p-3 tabular-nums text-gray-600">
-                {{ merchant.tax_number ?? '—' }}
-              </TableCell>
-              <TableCell class="p-3 text-gray-600">
-                {{ merchant.business_type ?? '—' }}
-              </TableCell>
-              <TableCell class="p-3">
-                <Badge
-                  variant="outline"
-                  class="font-normal"
-                >
-                  <Building2 class="ms-1 h-3 w-3" />
-                  {{ bankName(merchant.bank_id) }}
-                </Badge>
-              </TableCell>
-              <TableCell class="p-3">
-                <Badge :class="merchant.is_active ? 'border-0 bg-green-50/15 text-green-700' : 'border-0 bg-red-700/15 text-red-700'">
-                  {{ merchant.is_active ? 'نشط' : 'موقوف' }}
-                </Badge>
-              </TableCell>
-              <TableCell class="p-3 font-semibold tabular-nums">
-                {{ merchant.transaction_count ?? 0 }}
-              </TableCell>
-              <TableCell class="p-3">
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  class="h-8 w-8"
-                  @click="viewing = merchant"
-                >
-                  <Eye class="h-4 w-4" />
-                </Button>
-              </TableCell>
-            </TableRow>
-            <TableRow v-if="filtered.length === 0">
-              <TableCell
-                colspan="8"
-                class="p-8 text-center text-gray-600"
-              >
-                لا توجد نتائج مطابقة.
-              </TableCell>
-            </TableRow>
-          </TableBody>
-        </Table>
-      </div>
-    </Card>
-
-    <div
-      v-else
-      class="grid gap-4 md:grid-cols-2 lg:grid-cols-3"
-    >
-      <Card
-        v-for="merchant in filtered"
-        :key="merchant.id"
-        class="flex flex-col border-0 p-5 shadow transition-shadow hover:shadow-soft"
-      >
-        <div class="mb-3 flex items-start justify-between">
-          <div class="grid h-12 w-12 place-items-center rounded-xl bg-blue-600 text-blue-600-foreground">
-            <Building2 class="h-6 w-6" />
-          </div>
-          <Badge :class="merchant.is_active ? 'border-0 bg-green-50/15 text-green-700' : 'border-0 bg-red-700/15 text-red-700'">
-            {{ merchant.is_active ? 'نشط' : 'موقوف' }}
-          </Badge>
-        </div>
-        <div class="text-base font-semibold">
-          {{ merchant.name }}
-        </div>
-        <div class="text-xs text-gray-600">
-          {{ merchant.business_type ?? '—' }}
-        </div>
-        <div class="mt-4 space-y-1.5 text-xs">
-          <div class="flex justify-between gap-2">
-            <span class="text-gray-600">السجل التجاري</span>
-            <span class="font-medium">{{ merchant.commercial_register ?? '—' }}</span>
-          </div>
-          <div class="flex justify-between gap-2">
-            <span class="text-gray-600">الرقم الضريبي</span>
-            <span class="font-medium">{{ merchant.tax_number ?? '—' }}</span>
-          </div>
-          <div class="flex justify-between gap-2">
-            <span class="text-gray-600">البنك</span>
-            <span class="font-medium">{{ bankName(merchant.bank_id) }}</span>
-          </div>
-          <div class="flex justify-between gap-2">
-            <span class="text-gray-600">العنوان</span>
-            <span class="text-end font-medium">{{ merchant.address ?? '—' }}</span>
-          </div>
-          <div class="flex justify-between gap-2">
-            <span class="text-gray-600">هاتف</span>
-            <span class="font-medium">{{ merchant.phone ?? '—' }}</span>
-          </div>
-        </div>
-        <div class="mt-auto flex items-center justify-between border-t pt-4">
-          <div class="text-xs">
-            <span class="text-gray-600">المعاملات: </span>
-            <span class="font-bold tabular-nums">{{ merchant.transaction_count ?? 0 }}</span>
-          </div>
-          <div class="flex gap-1">
-            <Button
-              size="sm"
-              variant="ghost"
-              class="h-8"
-              @click="toggleStatus(merchant)"
-            >
-              {{ merchant.is_active ? 'إيقاف' : 'تفعيل' }}
-            </Button>
-            <Button
-              size="icon"
-              variant="ghost"
-              class="h-8 w-8"
-              @click="editing = merchant"
-            >
-              <Edit class="h-3.5 w-3.5" />
-            </Button>
-          </div>
-        </div>
-      </Card>
-
-      <Card
-        v-if="filtered.length === 0"
-        class="col-span-full border-0 p-8 text-center text-sm text-gray-600 shadow"
-      >
-        لا توجد نتائج مطابقة.
-      </Card>
     </div>
+
+    <!-- CBY Admin: tanstack table view -->
+    <template v-if="isCbyAdmin">
+      <div class="relative flex flex-col gap-4 overflow-auto">
+        <div class="overflow-hidden rounded-lg border">
+          <Table>
+            <TableHeader class="bg-muted sticky top-0 z-10">
+              <TableRow
+                v-for="headerGroup in table.getHeaderGroups()"
+                :key="headerGroup.id"
+                class="hover:bg-transparent"
+              >
+                <TableHead
+                  v-for="header in headerGroup.headers"
+                  :key="header.id"
+                  class="h-10 px-4 text-sm font-medium text-foreground"
+                >
+                  <FlexRender
+                    v-if="!header.isPlaceholder"
+                    :render="header.column.columnDef.header"
+                    :props="header.getContext()"
+                  />
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+
+            <TableBody>
+              <template v-if="loadingMerchants">
+                <TableRow v-for="i in 8" :key="`skel-${i}`">
+                  <TableCell v-for="col in columns" :key="col.id ?? (col as any).accessorKey" class="px-4 py-3">
+                    <Skeleton class="h-4 w-full" />
+                  </TableCell>
+                </TableRow>
+              </template>
+
+              <TableRow v-else-if="!table.getRowModel().rows.length">
+                <TableCell :col-span="columns.length" class="p-8">
+                  <Empty class="min-h-[200px] rounded-xl border border-dashed bg-muted/20">
+                    <EmptyHeader>
+                      <div class="flex size-12 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+                        <SearchX class="size-5" />
+                      </div>
+                      <EmptyTitle>لا توجد نتائج مطابقة</EmptyTitle>
+                    </EmptyHeader>
+                    <EmptyContent>
+                      <EmptyDescription>جرّب تغيير البحث أو الفلاتر.</EmptyDescription>
+                    </EmptyContent>
+                  </Empty>
+                </TableCell>
+              </TableRow>
+
+              <template v-else>
+                <TableRow
+                  v-for="row in table.getRowModel().rows"
+                  :key="row.id"
+                  class="transition-colors hover:bg-muted/30"
+                >
+                  <TableCell
+                    v-for="cell in row.getVisibleCells()"
+                    :key="cell.id"
+                    class="px-4 py-3 align-middle"
+                  >
+                    <FlexRender :render="cell.column.columnDef.cell" :props="cell.getContext()" />
+                  </TableCell>
+                </TableRow>
+              </template>
+            </TableBody>
+          </Table>
+        </div>
+
+        <!-- Pagination -->
+        <div class="flex items-center justify-between px-2">
+          <p class="text-sm text-muted-foreground">{{ table.getFilteredRowModel().rows.length }} تاجر</p>
+          <div class="flex items-center gap-4">
+            <p class="text-sm font-medium whitespace-nowrap">
+              صفحة {{ table.getState().pagination.pageIndex + 1 }} من {{ table.getPageCount() }}
+            </p>
+            <div class="flex items-center gap-1">
+              <Button variant="outline" size="icon" class="hidden h-8 w-8 lg:flex" :disabled="!table.getCanPreviousPage()" @click="table.setPageIndex(0)">
+                <span class="sr-only">الصفحة الأولى</span><ChevronsRight class="h-4 w-4" />
+              </Button>
+              <Button variant="outline" size="icon" class="h-8 w-8" :disabled="!table.getCanPreviousPage()" @click="table.previousPage()">
+                <span class="sr-only">الصفحة السابقة</span><ChevronRight class="h-4 w-4" />
+              </Button>
+              <Button variant="outline" size="icon" class="h-8 w-8" :disabled="!table.getCanNextPage()" @click="table.nextPage()">
+                <span class="sr-only">الصفحة التالية</span><ChevronLeft class="h-4 w-4" />
+              </Button>
+              <Button variant="outline" size="icon" class="hidden h-8 w-8 lg:flex" :disabled="!table.getCanNextPage()" @click="table.setPageIndex(table.getPageCount() - 1)">
+                <span class="sr-only">الصفحة الأخيرة</span><ChevronsLeft class="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </template>
+
+    <!-- Bank Admin: card grid view -->
+    <template v-else>
+      <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <!-- Skeleton loading cards -->
+        <template v-if="loadingMerchants">
+          <Card v-for="i in 6" :key="`skel-card-${i}`" class="flex flex-col border-0 p-5 shadow">
+            <div class="mb-3 flex items-start justify-between">
+              <Skeleton class="h-12 w-12 rounded-xl" />
+              <Skeleton class="h-5 w-16 rounded-full" />
+            </div>
+            <Skeleton class="mb-1 h-4 w-3/4" />
+            <Skeleton class="h-3 w-1/2" />
+            <div class="mt-4 space-y-2">
+              <Skeleton class="h-3 w-full" />
+              <Skeleton class="h-3 w-full" />
+              <Skeleton class="h-3 w-3/4" />
+            </div>
+            <div class="mt-auto border-t pt-4">
+              <Skeleton class="h-8 w-full rounded-md" />
+            </div>
+          </Card>
+        </template>
+
+        <!-- Empty state -->
+        <template v-else-if="filtered.length === 0">
+          <div class="col-span-full">
+            <Empty class="min-h-[240px] rounded-xl border border-dashed bg-muted/20">
+              <EmptyHeader>
+                <div class="flex size-12 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+                  <SearchX class="size-5" />
+                </div>
+                <EmptyTitle>
+                  {{ merchants.length === 0 ? 'لا يوجد تجار مسجّلون بعد' : 'لا توجد نتائج مطابقة' }}
+                </EmptyTitle>
+              </EmptyHeader>
+              <EmptyContent>
+                <EmptyDescription>
+                  {{ merchants.length === 0 ? 'ابدأ بتسجيل أول تاجر باستخدام الزر أعلاه.' : 'جرّب تغيير البحث أو الفلاتر.' }}
+                </EmptyDescription>
+              </EmptyContent>
+            </Empty>
+          </div>
+        </template>
+
+        <!-- Merchant cards -->
+        <template v-else>
+          <Card
+            v-for="merchant in filtered"
+            :key="merchant.id"
+            class="flex flex-col border-0 p-5 shadow transition-shadow hover:shadow-soft"
+          >
+            <div class="mb-3 flex items-start justify-between">
+              <div class="grid h-12 w-12 place-items-center rounded-xl bg-primary text-primary-foreground">
+                <Building2 class="h-6 w-6" />
+              </div>
+              <Badge :class="merchant.is_active ? 'border-0 bg-green-50/15 text-green-700' : 'border-0 bg-red-700/15 text-red-700'">
+                {{ merchant.is_active ? 'نشط' : 'موقوف' }}
+              </Badge>
+            </div>
+            <div class="text-base font-semibold">{{ merchant.name }}</div>
+            <div class="text-xs text-muted-foreground">{{ merchant.business_type ?? '—' }}</div>
+            <div class="mt-4 space-y-1.5 text-xs">
+              <div class="flex justify-between gap-2">
+                <span class="text-muted-foreground">السجل التجاري</span>
+                <span class="font-medium">{{ merchant.commercial_register ?? '—' }}</span>
+              </div>
+              <div class="flex justify-between gap-2">
+                <span class="text-muted-foreground">الرقم الضريبي</span>
+                <span class="font-medium">{{ merchant.tax_number ?? '—' }}</span>
+              </div>
+              <div class="flex justify-between gap-2">
+                <span class="text-muted-foreground">البنك</span>
+                <span class="font-medium">{{ bankName(merchant.bank_id) }}</span>
+              </div>
+              <div class="flex justify-between gap-2">
+                <span class="text-muted-foreground">العنوان</span>
+                <span class="text-end font-medium">{{ merchant.address ?? '—' }}</span>
+              </div>
+              <div class="flex justify-between gap-2">
+                <span class="text-muted-foreground">هاتف</span>
+                <span class="font-medium">{{ merchant.phone ?? '—' }}</span>
+              </div>
+            </div>
+            <div class="mt-auto flex items-center justify-between border-t pt-4">
+              <div class="text-xs">
+                <span class="text-muted-foreground">المعاملات: </span>
+                <span class="font-bold tabular-nums">{{ merchant.transaction_count ?? 0 }}</span>
+              </div>
+              <div class="flex gap-1">
+                <Button size="sm" variant="ghost" class="h-8" @click="toggleStatus(merchant)">
+                  {{ merchant.is_active ? 'إيقاف' : 'تفعيل' }}
+                </Button>
+                <Button size="icon" variant="ghost" class="h-8 w-8" @click="editing = merchant">
+                  <Edit class="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </div>
+          </Card>
+        </template>
+      </div>
+    </template>
 
     <Dialog v-model:open="createOpen">
       <MerchantDialog
@@ -392,10 +559,7 @@ async function toggleStatus(merchant: Merchant) {
     </Dialog>
 
     <Dialog :open="Boolean(viewing)" @update:open="v => !v && (viewing = null)">
-      <DialogContent
-        v-if="viewing"
-        class="sm:max-w-lg"
-      >
+      <DialogContent v-if="viewing" class="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle class="flex items-center gap-2">
             <Building2 class="h-5 w-5" />
@@ -405,68 +569,36 @@ async function toggleStatus(merchant: Merchant) {
         </DialogHeader>
         <div class="grid gap-3 py-2 text-sm sm:grid-cols-2">
           <div class="space-y-0.5">
-            <div class="text-xs text-gray-600">
-              السجل التجاري
-            </div>
-            <div class="font-medium">
-              {{ viewing.commercial_register ?? '—' }}
-            </div>
+            <div class="text-xs text-muted-foreground">السجل التجاري</div>
+            <div class="font-medium">{{ viewing.commercial_register ?? '—' }}</div>
           </div>
           <div class="space-y-0.5">
-            <div class="text-xs text-gray-600">
-              الرقم الضريبي
-            </div>
-            <div class="font-medium">
-              {{ viewing.tax_number ?? '—' }}
-            </div>
+            <div class="text-xs text-muted-foreground">الرقم الضريبي</div>
+            <div class="font-medium">{{ viewing.tax_number ?? '—' }}</div>
           </div>
           <div class="space-y-0.5">
-            <div class="text-xs text-gray-600">
-              القطاع
-            </div>
-            <div class="font-medium">
-              {{ viewing.business_type ?? '—' }}
-            </div>
+            <div class="text-xs text-muted-foreground">القطاع</div>
+            <div class="font-medium">{{ viewing.business_type ?? '—' }}</div>
           </div>
           <div class="space-y-0.5">
-            <div class="text-xs text-gray-600">
-              الحالة
-            </div>
-            <div class="font-medium">
-              {{ viewing.is_active ? 'نشط' : 'موقوف' }}
-            </div>
+            <div class="text-xs text-muted-foreground">الحالة</div>
+            <div class="font-medium">{{ viewing.is_active ? 'نشط' : 'موقوف' }}</div>
           </div>
           <div class="space-y-0.5">
-            <div class="text-xs text-gray-600">
-              البنك التابع له
-            </div>
-            <div class="font-medium">
-              {{ bankName(viewing.bank_id) }}
-            </div>
+            <div class="text-xs text-muted-foreground">البنك التابع له</div>
+            <div class="font-medium">{{ bankName(viewing.bank_id) }}</div>
           </div>
           <div class="space-y-0.5">
-            <div class="text-xs text-gray-600">
-              عدد المعاملات
-            </div>
-            <div class="font-medium">
-              {{ viewing.transaction_count ?? 0 }}
-            </div>
+            <div class="text-xs text-muted-foreground">عدد المعاملات</div>
+            <div class="font-medium">{{ viewing.transaction_count ?? 0 }}</div>
           </div>
           <div class="space-y-0.5 sm:col-span-2">
-            <div class="text-xs text-gray-600">
-              العنوان
-            </div>
-            <div class="font-medium">
-              {{ viewing.address ?? '—' }}
-            </div>
+            <div class="text-xs text-muted-foreground">العنوان</div>
+            <div class="font-medium">{{ viewing.address ?? '—' }}</div>
           </div>
           <div class="space-y-0.5 sm:col-span-2">
-            <div class="text-xs text-gray-600">
-              هاتف التواصل
-            </div>
-            <div class="font-medium">
-              {{ viewing.phone ?? '—' }}
-            </div>
+            <div class="text-xs text-muted-foreground">هاتف التواصل</div>
+            <div class="font-medium">{{ viewing.phone ?? '—' }}</div>
           </div>
         </div>
       </DialogContent>
@@ -479,9 +611,7 @@ async function toggleStatus(merchant: Merchant) {
       subtitle="هذه الصفحة متاحة لمسؤول النظام أو مسؤول البنك فقط."
     />
     <Card class="border-0 p-6 shadow">
-      <div class="text-sm text-gray-600">
-        لا تملك صلاحية إدارة التجار.
-      </div>
+      <div class="text-sm text-muted-foreground">لا تملك صلاحية إدارة التجار.</div>
     </Card>
   </div>
 </template>

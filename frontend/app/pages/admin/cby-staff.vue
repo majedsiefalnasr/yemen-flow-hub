@@ -1,11 +1,68 @@
 <script setup lang="ts">
-import { Edit, Eye, Plus, Power, Search, ShieldCheck, UserCog } from 'lucide-vue-next'
+import type { ColumnDef } from '@tanstack/vue-table'
+import {
+  FlexRender,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  useVueTable,
+} from '@tanstack/vue-table'
+import { h } from 'vue'
+import {
+  ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
+  MoreHorizontal, Plus, Search, SearchX, ShieldCheck, UserCog,
+} from 'lucide-vue-next'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import { ROLE_LABELS, CBY_ROLES } from '@/constants/workflow'
 import { UserRole } from '@/types/enums'
 import type { User } from '@/types/models'
 import { useUsers, type CreateUserPayload, type UpdateUserPayload } from '@/composables/useUsers'
 import { useAuthStore } from '@/stores/auth.store'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import { Card } from '@/components/ui/card'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Label } from '@/components/ui/label'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+} from '@/components/ui/empty'
+import { Skeleton } from '@/components/ui/skeleton'
 
 type StaffForm = {
   name: string
@@ -27,6 +84,7 @@ const createOpen = ref(false)
 const editing = ref<User | null>(null)
 const viewing = ref<User | null>(null)
 const saving = ref(false)
+const loading = ref(true)
 const staffUsers = ref<User[]>([])
 
 const form = reactive<StaffForm>({
@@ -37,8 +95,13 @@ const form = reactive<StaffForm>({
 })
 
 onMounted(async () => {
-  const results = await fetchUsers({ per_page: 200 })
-  staffUsers.value = results.filter(u => STAFF_ROLES.includes(u.role))
+  try {
+    const results = await fetchUsers({ per_page: 200 })
+    staffUsers.value = results.filter(u => STAFF_ROLES.includes(u.role))
+  }
+  finally {
+    loading.value = false
+  }
 })
 
 const filtered = computed(() => {
@@ -146,6 +209,105 @@ async function toggleActive(target: User) {
     toastError('فشل تغيير الحالة')
   }
 }
+
+function activeStatusCell(isActive: boolean) {
+  const color = isActive ? 'var(--color-success)' : 'var(--color-locked)'
+  const label = isActive ? 'نشط' : 'غير نشط'
+  const paths = isActive
+    ? [
+        h('path', { d: 'M22 11.08V12a10 10 0 1 1-5.93-9.14' }),
+        h('polyline', { points: '22 4 12 14.01 9 11.01' }),
+      ]
+    : [
+        h('circle', { cx: '12', cy: '12', r: '10' }),
+        h('line', { x1: '15', y1: '9', x2: '9', y2: '15' }),
+        h('line', { x1: '9', y1: '9', x2: '15', y2: '15' }),
+      ]
+  return h('span', { class: 'inline-flex items-center gap-1.5 whitespace-nowrap' }, [
+    h('svg', {
+      class: 'shrink-0', style: { color }, width: 15, height: 15,
+      viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor',
+      'stroke-width': '2.5', 'stroke-linecap': 'round', 'stroke-linejoin': 'round',
+    }, paths),
+    h('span', { class: 'text-sm font-medium text-foreground' }, label),
+  ])
+}
+
+const columns: ColumnDef<User>[] = [
+  {
+    id: 'user',
+    header: 'المستخدم',
+    cell: ({ row }) => {
+      const staff = row.original
+      return h('div', { class: 'flex items-center gap-2' }, [
+        h(Avatar, { size: 'sm' }, {
+          default: () => h(AvatarFallback, { class: 'bg-gradient-hero text-xs font-bold text-white' }, () => userInitials(staff.name)),
+        }),
+        h('div', { class: 'flex flex-col gap-0.5' }, [
+          h('span', { class: 'text-sm font-medium' }, staff.name),
+          h('span', { class: 'text-xs text-muted-foreground', dir: 'ltr' }, staff.email),
+        ]),
+      ])
+    },
+  },
+  {
+    accessorKey: 'role',
+    header: 'الدور',
+    cell: ({ row }) => h(Badge, { variant: 'secondary' }, () => ROLE_LABELS[row.original.role]),
+  },
+  {
+    accessorKey: 'is_active',
+    header: 'الحالة',
+    cell: ({ row }) => activeStatusCell(row.original.is_active),
+  },
+  {
+    id: 'actions',
+    enableHiding: false,
+    cell: ({ row }) => {
+      const staff = row.original
+      const isSelf = staff.id === currentUser.value?.id
+      return h(DropdownMenu, {}, {
+        default: () => [
+          h(DropdownMenuTrigger, { asChild: true }, {
+            default: () => h(Button, {
+              variant: 'ghost', size: 'icon', class: 'h-8 w-8',
+            }, {
+              default: () => [
+                h('span', { class: 'sr-only' }, 'فتح القائمة'),
+                h(MoreHorizontal, { class: 'h-4 w-4' }),
+              ],
+            }),
+          }),
+          h(DropdownMenuContent, { align: 'end' }, {
+            default: () => [
+              h(DropdownMenuItem, { onClick: () => (viewing.value = staff) }, () => 'عرض'),
+              h(DropdownMenuItem, { onClick: () => openEdit(staff) }, () => 'تعديل'),
+              ...(!isSelf
+                ? [
+                    h(DropdownMenuSeparator),
+                    h(DropdownMenuItem, {
+                      class: staff.is_active ? 'text-destructive' : 'text-green-700',
+                      onClick: () => toggleActive(staff),
+                    }, () => staff.is_active ? 'إلغاء تفعيل' : 'تفعيل'),
+                  ]
+                : []),
+            ],
+          }),
+        ],
+      })
+    },
+  },
+]
+
+const table = useVueTable({
+  get data() { return filtered.value },
+  columns,
+  getCoreRowModel: getCoreRowModel(),
+  getPaginationRowModel: getPaginationRowModel(),
+  getSortedRowModel: getSortedRowModel(),
+  getFilteredRowModel: getFilteredRowModel(),
+  initialState: { pagination: { pageSize: 20 } },
+})
 </script>
 
 <template>
@@ -156,190 +318,165 @@ async function toggleActive(target: User) {
       :breadcrumbs="[{ label: 'الرئيسية', to: '/' }, { label: 'مستخدمي النظام' }]"
     >
       <template #actions>
-        <Button @click="openCreate">
-          <Plus class="ms-1 h-4 w-4" />
-          مستخدم جديد
+        <Button size="sm" class="h-8" @click="openCreate">
+          <Plus class="h-4 w-4" />
+          <span class="hidden lg:inline">مستخدم جديد</span>
         </Button>
       </template>
     </PageHeader>
 
-    <div class="mb-4 grid grid-cols-3 gap-3">
+    <!-- KPI Cards -->
+    <div class="mb-6 grid grid-cols-3 gap-3">
       <Card class="border-0 p-4 shadow">
-        <div class="grid h-9 w-9 place-items-center rounded-lg bg-blue-600/10 text-blue-600">
+        <div class="grid h-9 w-9 place-items-center rounded-lg bg-primary/10 text-primary">
           <UserCog class="h-4 w-4" />
         </div>
-        <div class="mt-2 text-2xl font-bold tabular-nums">
-          {{ stats.total }}
-        </div>
-        <div class="text-xs text-gray-600">
-          إجمالي المستخدمين
-        </div>
+        <div class="mt-2 text-2xl font-bold tabular-nums">{{ stats.total }}</div>
+        <div class="text-xs text-muted-foreground">إجمالي المستخدمين</div>
       </Card>
       <Card class="border-0 p-4 shadow">
         <div class="grid h-9 w-9 place-items-center rounded-lg bg-green-50/10 text-green-700">
           <ShieldCheck class="h-4 w-4" />
         </div>
-        <div class="mt-2 text-2xl font-bold tabular-nums">
-          {{ stats.active }}
-        </div>
-        <div class="text-xs text-gray-600">
-          نشط
-        </div>
+        <div class="mt-2 text-2xl font-bold tabular-nums">{{ stats.active }}</div>
+        <div class="text-xs text-muted-foreground">نشط</div>
       </Card>
       <Card class="border-0 p-4 shadow">
         <div class="grid h-9 w-9 place-items-center rounded-lg bg-red-700/10 text-red-700">
-          <Power class="h-4 w-4" />
+          <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+          </svg>
         </div>
-        <div class="mt-2 text-2xl font-bold tabular-nums">
-          {{ stats.inactive }}
-        </div>
-        <div class="text-xs text-gray-600">
-          غير نشط
-        </div>
+        <div class="mt-2 text-2xl font-bold tabular-nums">{{ stats.inactive }}</div>
+        <div class="text-xs text-muted-foreground">غير نشط</div>
       </Card>
     </div>
 
-    <Card class="mb-4 flex flex-col gap-3 border-0 p-4 shadow sm:flex-row">
-      <div class="relative flex-1">
-        <Search class="absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-600" />
+    <!-- Toolbar: search + role filter -->
+    <div class="mb-4 flex flex-wrap items-center gap-2">
+      <div class="relative min-w-[220px] flex-1">
+        <Search class="absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           v-model="query"
-          class="pe-10"
+          class="h-8 rounded-md pe-9 text-sm"
           placeholder="بحث بالاسم أو البريد..."
         />
       </div>
       <Select v-model="roleFilter">
-        <SelectTrigger class="w-full sm:w-64">
+        <SelectTrigger class="h-8 w-full rounded-md text-sm sm:w-56">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="all">
-            كل الأدوار
-          </SelectItem>
-          <SelectItem
-            v-for="role in STAFF_ROLES"
-            :key="role"
-            :value="role"
-          >
+          <SelectItem value="all">كل الأدوار</SelectItem>
+          <SelectItem v-for="role in STAFF_ROLES" :key="role" :value="role">
             {{ ROLE_LABELS[role] }}
           </SelectItem>
         </SelectContent>
       </Select>
-    </Card>
+    </div>
 
-    <Card class="overflow-hidden border-0 shadow">
-      <div class="overflow-x-auto">
-        <Table class="w-full min-w-[720px] text-sm">
-          <TableHeader class="bg-gray-50/40 text-xs text-gray-600">
-            <TableRow class="text-end">
-              <TableHead class="px-4 py-3">
-                المستخدم
-              </TableHead>
-              <TableHead class="px-4 py-3">
-                البريد
-              </TableHead>
-              <TableHead class="px-4 py-3">
-                الدور
-              </TableHead>
-              <TableHead class="px-4 py-3">
-                الحالة
-              </TableHead>
-              <TableHead class="sticky start-0 z-10 bg-gray-50/40 px-4 py-3 text-start shadow-[6px_0_8px_-6px_rgba(0,0,0,0.12)]">
-                إجراءات
+    <!-- Table -->
+    <div class="relative flex flex-col gap-4 overflow-auto">
+      <div class="overflow-hidden rounded-lg border">
+        <Table>
+          <TableHeader class="bg-muted sticky top-0 z-10">
+            <TableRow
+              v-for="headerGroup in table.getHeaderGroups()"
+              :key="headerGroup.id"
+              class="hover:bg-transparent"
+            >
+              <TableHead
+                v-for="header in headerGroup.headers"
+                :key="header.id"
+                class="h-10 px-4 text-sm font-medium text-foreground"
+              >
+                <FlexRender
+                  v-if="!header.isPlaceholder"
+                  :render="header.column.columnDef.header"
+                  :props="header.getContext()"
+                />
               </TableHead>
             </TableRow>
           </TableHeader>
+
           <TableBody>
-            <TableRow
-              v-for="staff in filtered"
-              :key="staff.id"
-              class="border-t hover:bg-gray-50/30"
-            >
-              <TableCell class="px-4 py-3">
-                <div class="flex items-center gap-2">
-                  <Avatar size="sm">
-                    <AvatarFallback class="bg-gradient-hero text-xs font-bold text-white">
-                      {{ userInitials(staff.name) }}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div class="font-medium">
-                    {{ staff.name }}
-                  </div>
-                </div>
-              </TableCell>
-              <TableCell class="px-4 py-3 text-xs">
-                {{ staff.email }}
-              </TableCell>
-              <TableCell class="px-4 py-3">
-                <Badge variant="secondary">
-                  {{ ROLE_LABELS[staff.role] }}
-                </Badge>
-              </TableCell>
-              <TableCell class="px-4 py-3">
-                <Badge :class="staff.is_active ? 'border-0 bg-green-50/15 text-green-700' : 'border-0 bg-red-700/15 text-red-700'">
-                  {{ staff.is_active ? 'نشط' : 'غير نشط' }}
-                </Badge>
-              </TableCell>
-              <TableCell class="sticky start-0 z-10 bg-white px-4 py-3 shadow-[6px_0_8px_-6px_rgba(0,0,0,0.12)]">
-                <div class="flex justify-end gap-1">
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    @click="viewing = staff"
-                  >
-                    <Eye class="ms-1 h-3.5 w-3.5" />
-                    عرض
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    @click="openEdit(staff)"
-                  >
-                    <Edit class="ms-1 h-3.5 w-3.5" />
-                    تعديل
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    :class="staff.is_active ? 'text-red-700' : 'text-green-700'"
-                    :disabled="staff.id === currentUser?.id"
-                    :title="staff.id === currentUser?.id ? 'لا يمكنك تعطيل حسابك' : ''"
-                    @click="toggleActive(staff)"
-                  >
-                    <Power class="ms-1 h-3.5 w-3.5" />
-                    {{ staff.is_active ? 'إلغاء تفعيل' : 'تفعيل' }}
-                  </Button>
-                </div>
+            <template v-if="loading">
+              <TableRow v-for="i in 6" :key="`skel-${i}`">
+                <TableCell v-for="col in columns" :key="col.id ?? (col as any).accessorKey" class="px-4 py-3">
+                  <Skeleton class="h-4 w-full" />
+                </TableCell>
+              </TableRow>
+            </template>
+
+            <TableRow v-else-if="!table.getRowModel().rows.length">
+              <TableCell :col-span="columns.length" class="p-8">
+                <Empty class="min-h-[200px] rounded-xl border border-dashed bg-muted/20">
+                  <EmptyHeader>
+                    <div class="flex size-12 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+                      <SearchX class="size-5" />
+                    </div>
+                    <EmptyTitle>لا توجد نتائج</EmptyTitle>
+                  </EmptyHeader>
+                  <EmptyContent>
+                    <EmptyDescription>جرّب تغيير البحث أو فلتر الدور.</EmptyDescription>
+                  </EmptyContent>
+                </Empty>
               </TableCell>
             </TableRow>
-            <TableRow v-if="filtered.length === 0">
-              <TableCell
-                colspan="5"
-                class="px-4 py-8 text-center text-sm text-gray-600"
+
+            <template v-else>
+              <TableRow
+                v-for="row in table.getRowModel().rows"
+                :key="row.id"
+                class="transition-colors hover:bg-muted/30"
               >
-                لا توجد نتائج.
-              </TableCell>
-            </TableRow>
+                <TableCell
+                  v-for="cell in row.getVisibleCells()"
+                  :key="cell.id"
+                  class="px-4 py-3 align-middle"
+                >
+                  <FlexRender :render="cell.column.columnDef.cell" :props="cell.getContext()" />
+                </TableCell>
+              </TableRow>
+            </template>
           </TableBody>
         </Table>
       </div>
-    </Card>
 
+      <!-- Pagination -->
+      <div class="flex items-center justify-between px-2">
+        <p class="text-sm text-muted-foreground">{{ table.getFilteredRowModel().rows.length }} مستخدم</p>
+        <div class="flex items-center gap-4">
+          <p class="text-sm font-medium whitespace-nowrap">
+            صفحة {{ table.getState().pagination.pageIndex + 1 }} من {{ table.getPageCount() }}
+          </p>
+          <div class="flex items-center gap-1">
+            <Button variant="outline" size="icon" class="hidden h-8 w-8 lg:flex" :disabled="!table.getCanPreviousPage()" @click="table.setPageIndex(0)">
+              <span class="sr-only">الصفحة الأولى</span><ChevronsRight class="h-4 w-4" />
+            </Button>
+            <Button variant="outline" size="icon" class="h-8 w-8" :disabled="!table.getCanPreviousPage()" @click="table.previousPage()">
+              <span class="sr-only">الصفحة السابقة</span><ChevronRight class="h-4 w-4" />
+            </Button>
+            <Button variant="outline" size="icon" class="h-8 w-8" :disabled="!table.getCanNextPage()" @click="table.nextPage()">
+              <span class="sr-only">الصفحة التالية</span><ChevronLeft class="h-4 w-4" />
+            </Button>
+            <Button variant="outline" size="icon" class="hidden h-8 w-8 lg:flex" :disabled="!table.getCanNextPage()" @click="table.setPageIndex(table.getPageCount() - 1)">
+              <span class="sr-only">الصفحة الأخيرة</span><ChevronsLeft class="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Create / Edit Dialog -->
     <Dialog
       :open="createOpen || Boolean(editing)"
       @update:open="value => !value && closeForm()"
     >
-      <DialogContent
-        dir="rtl"
-        class="sm:max-w-md"
-      >
+      <DialogContent dir="rtl" class="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>
-            {{ editing ? 'تعديل بيانات المستخدم' : 'إضافة مستخدم نظام' }}
-          </DialogTitle>
-          <DialogDescription>
-            مستخدمو البنك المركزي فقط (لجان وإدارة النظام).
-          </DialogDescription>
+          <DialogTitle>{{ editing ? 'تعديل بيانات المستخدم' : 'إضافة مستخدم نظام' }}</DialogTitle>
+          <DialogDescription>مستخدمو البنك المركزي فقط (لجان وإدارة النظام).</DialogDescription>
         </DialogHeader>
 
         <div class="space-y-3 py-2">
@@ -349,88 +486,56 @@ async function toggleActive(target: User) {
           </div>
           <div class="space-y-1.5">
             <Label>البريد الإلكتروني *</Label>
-            <Input
-              v-model="form.email"
-              type="email"
-              dir="ltr"
-            />
+            <Input v-model="form.email" type="email" dir="ltr" />
           </div>
           <div class="space-y-1.5">
             <Label>{{ editing ? 'كلمة المرور (اتركها فارغة للإبقاء على الحالية)' : 'كلمة المرور *' }}</Label>
-            <Input
-              v-model="form.password"
-              type="password"
-              dir="ltr"
-              :placeholder="editing ? '••••••••' : 'كلمة مرور قوية'"
-            />
+            <Input v-model="form.password" type="password" dir="ltr" :placeholder="editing ? '••••••••' : 'كلمة مرور قوية'" />
           </div>
           <div class="space-y-1.5">
             <Label>الدور *</Label>
             <Select v-model="form.role">
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
+              <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem
-                  v-for="role in STAFF_ROLES"
-                  :key="role"
-                  :value="role"
-                >
-                  {{ ROLE_LABELS[role] }}
-                </SelectItem>
+                <SelectItem v-for="role in STAFF_ROLES" :key="role" :value="role">{{ ROLE_LABELS[role] }}</SelectItem>
               </SelectContent>
             </Select>
           </div>
         </div>
 
         <DialogFooter>
-          <Button
-            :disabled="!formValid || saving"
-            @click="saveStaff"
-          >
+          <Button :disabled="!formValid || saving" @click="saveStaff">
             {{ editing ? 'حفظ التعديلات' : 'إضافة' }}
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
 
-    <Dialog
-      :open="Boolean(viewing)"
-      @update:open="value => !value && (viewing = null)"
-    >
-      <DialogContent
-        v-if="viewing"
-        dir="rtl"
-        class="sm:max-w-md"
-      >
+    <!-- View Dialog -->
+    <Dialog :open="Boolean(viewing)" @update:open="value => !value && (viewing = null)">
+      <DialogContent v-if="viewing" dir="rtl" class="sm:max-w-md">
         <DialogHeader>
           <DialogTitle class="flex items-center gap-2">
-            <UserCog class="h-5 w-5 text-blue-600" />
+            <UserCog class="h-5 w-5 text-primary" />
             {{ viewing.name }}
           </DialogTitle>
-          <DialogDescription>
-            تفاصيل المستخدم
-          </DialogDescription>
+          <DialogDescription>تفاصيل المستخدم</DialogDescription>
         </DialogHeader>
-
         <div class="space-y-3 py-2 text-sm">
           <div class="flex items-center justify-between gap-3 border-b pb-2">
-            <span class="text-gray-600">البريد</span>
+            <span class="text-muted-foreground">البريد</span>
             <span class="text-start font-medium">{{ viewing.email }}</span>
           </div>
           <div class="flex items-center justify-between gap-3 border-b pb-2">
-            <span class="text-gray-600">الدور</span>
+            <span class="text-muted-foreground">الدور</span>
             <span class="text-start font-medium">{{ ROLE_LABELS[viewing.role] }}</span>
           </div>
           <div class="flex items-center justify-between gap-3 border-b pb-2">
-            <span class="text-gray-600">الحالة</span>
+            <span class="text-muted-foreground">الحالة</span>
             <span class="text-start font-medium">{{ viewing.is_active ? 'نشط' : 'غير نشط' }}</span>
           </div>
-          <div
-            v-if="viewing.last_login_at"
-            class="flex items-center justify-between gap-3 border-b pb-2"
-          >
-            <span class="text-gray-600">آخر تسجيل دخول</span>
+          <div v-if="viewing.last_login_at" class="flex items-center justify-between gap-3 border-b pb-2">
+            <span class="text-muted-foreground">آخر تسجيل دخول</span>
             <span class="text-start font-medium">{{ new Date(viewing.last_login_at).toLocaleString('ar-EG') }}</span>
           </div>
         </div>

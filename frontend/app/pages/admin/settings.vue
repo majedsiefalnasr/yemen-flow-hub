@@ -4,6 +4,7 @@ import { useAdminSettings } from '../../composables/useAdminSettings'
 import { useAuthStore } from '../../stores/auth.store'
 import { useRouter } from 'nuxt/app'
 import Icon from '../../components/shared/Icon.vue'
+import PageHeader from '../../components/layout/PageHeader.vue'
 import type { IconName } from '../../utils/icon-map'
 
 definePageMeta({
@@ -102,16 +103,11 @@ onMounted(async () => {
 
 <template>
   <div class="admin-settings-page">
-    <!-- Header -->
-    <div class="page-header">
-      <nav class="breadcrumbs" aria-label="مسار التنقل">
-        <NuxtLink to="/dashboard" class="breadcrumb-link">الرئيسية</NuxtLink>
-        <span class="breadcrumb-sep">›</span>
-        <span class="breadcrumb-current">إعدادات النظام</span>
-      </nav>
-      <h1 class="page-title">إعدادات النظام</h1>
-      <p class="page-subtitle">إدارة إعدادات المنصة وسياسات الأمن والميزات</p>
-    </div>
+    <PageHeader
+      title="إعدادات النظام"
+      subtitle="إدارة إعدادات المنصة وسياسات الأمن والميزات"
+      :breadcrumbs="[{ label: 'الرئيسية', to: '/dashboard' }, { label: 'إعدادات النظام' }]"
+    />
 
     <!-- Loading -->
     <div v-if="loading" class="state-loading">جارٍ التحميل…</div>
@@ -461,57 +457,11 @@ onMounted(async () => {
   max-width: 900px;
 }
 
-/* Header */
-.page-header {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.breadcrumbs {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  color: var(--color-text-secondary);
-  margin-bottom: 4px;
-}
-
-.breadcrumb-link {
-  color: #0066cc;
-  text-decoration: none;
-}
-
-.breadcrumb-link:hover {
-  text-decoration: underline;
-}
-
-.breadcrumb-sep {
-  color: var(--color-border);
-}
-
-.breadcrumb-current {
-  color: var(--color-text-secondary);
-}
-
-.page-title {
-  font-size: 28px;
-  font-weight: 600;
-  color: var(--color-text-blue-600);
-  margin: 0;
-}
-
-.page-subtitle {
-  font-size: 14px;
-  color: var(--color-text-secondary);
-  margin: 0;
-}
-
 /* Tab nav */
 .tab-nav {
   display: flex;
   gap: 4px;
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--border);
   flex-wrap: wrap;
 }
 
@@ -522,7 +472,7 @@ onMounted(async () => {
   padding: 10px 16px;
   font-size: 14px;
   font-weight: 500;
-  color: var(--color-text-secondary);
+  color: var(--muted-foreground);
   background: transparent;
   border: none;
   border-bottom: 2px solid transparent;
@@ -533,12 +483,12 @@ onMounted(async () => {
 }
 
 .tab-btn.active {
-  color: #0066cc;
-  border-bottom-color: #0066cc;
+  color: var(--primary);
+  border-bottom-color: var(--primary);
 }
 
 .tab-btn:hover:not(.active) {
-  color: var(--color-text-blue-600);
+  color: var(--foreground);
 }
 
 .tab-content {
@@ -547,8 +497,8 @@ onMounted(async () => {
 
 /* Section card */
 .section-card {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
+  background: var(--background);
+  border: 1px solid var(--border);
   border-radius: var(--radius-card);
   padding: 24px;
   display: flex;
@@ -565,19 +515,19 @@ onMounted(async () => {
 .section-title {
   font-size: 18px;
   font-weight: 600;
-  color: var(--color-text-blue-600);
+  color: var(--foreground);
   margin: 0;
 }
 
 .section-desc {
   font-size: 13px;
-  color: var(--color-text-secondary);
+  color: var(--muted-foreground);
   margin: 0;
 }
 
 .section-divider {
   border: none;
-  border-top: 1px solid #cccccc;
+  border-top: 1px solid var(--border);
   margin: 20px 0;
 }
 
@@ -588,13 +538,13 @@ onMounted(async () => {
 .section-sub-title {
   font-size: 15px;
   font-weight: 600;
-  color: var(--color-text-blue-600);
+  color: var(--foreground);
   margin: 0 0 2px;
 }
 
 .section-sub-desc {
   font-size: 13px;
-  color: var(--color-text-secondary);
+  color: var(--muted-foreground);
   margin: 0;
 }
 
@@ -612,7 +562,7 @@ onMounted(async () => {
 }
 
 .stepper-field {
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--border);
   border-radius: 10px;
   padding: 14px 16px;
   display: flex;
@@ -623,14 +573,14 @@ onMounted(async () => {
 .field-label {
   font-size: 12px;
   font-weight: 500;
-  color: var(--color-text-secondary);
+  color: var(--muted-foreground);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 
 .field-hint {
   font-size: 11px;
-  color: var(--color-text-secondary);
+  color: var(--muted-foreground);
   margin: 0;
 }
 
@@ -644,8 +594,8 @@ onMounted(async () => {
 .stepper-btn {
   width: 32px;
   height: 32px;
-  background: #f5f5f7;
-  border: 1px solid var(--color-border);
+  background: var(--muted);
+  border: 1px solid var(--border);
   border-radius: 8px;
   font-size: 16px;
   cursor: pointer;
@@ -662,7 +612,7 @@ onMounted(async () => {
 .stepper-value {
   font-size: 18px;
   font-weight: 600;
-  color: var(--color-text-blue-600);
+  color: var(--foreground);
   min-width: 36px;
   text-align: center;
 }
@@ -677,17 +627,17 @@ onMounted(async () => {
 .form-input {
   height: 44px;
   padding: 0 12px;
-  border: 1px solid #cccccc;
+  border: 1px solid var(--border);
   border-radius: 12px;
   font-size: 14px;
-  color: var(--color-text-blue-600);
-  background: var(--color-surface);
+  color: var(--foreground);
+  background: var(--background);
   outline: none;
   width: 100%;
 }
 
 .form-input:focus {
-  border-color: #0066cc;
+  border-color: var(--primary);
 }
 
 .form-textarea {
@@ -708,7 +658,7 @@ onMounted(async () => {
   align-items: center;
   justify-content: space-between;
   padding: 14px 16px;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--border);
   border-radius: 10px;
 }
 
@@ -722,12 +672,12 @@ onMounted(async () => {
 .switch-label {
   font-size: 14px;
   font-weight: 500;
-  color: var(--color-text-blue-600);
+  color: var(--foreground);
 }
 
 .switch-desc {
   font-size: 12px;
-  color: var(--color-text-secondary);
+  color: var(--muted-foreground);
 }
 
 /* Toggle switch */
@@ -751,7 +701,7 @@ onMounted(async () => {
 .toggle-knob {
   position: absolute;
   inset: 0;
-  background: #cccccc;
+  background: var(--border);
   border-radius: 24px;
   transition: background 0.2s;
 }
@@ -763,13 +713,13 @@ onMounted(async () => {
   height: 18px;
   left: 3px;
   top: 3px;
-  background: #fff;
+  background: var(--background);
   border-radius: 50%;
   transition: transform 0.2s;
 }
 
 .toggle-switch input:checked + .toggle-knob {
-  background: #0066cc;
+  background: var(--primary);
 }
 
 .toggle-switch input:checked + .toggle-knob::before {
@@ -793,38 +743,38 @@ onMounted(async () => {
   align-items: center;
   justify-content: space-between;
   padding: 12px 16px;
-  background: #f5f5f7;
+  background: var(--muted);
   border-radius: 10px;
 }
 
 .info-label {
   font-size: 14px;
-  color: var(--color-text-secondary);
+  color: var(--muted-foreground);
 }
 
 .info-value {
   font-size: 14px;
   font-weight: 500;
-  color: var(--color-text-blue-600);
+  color: var(--foreground);
 }
 
 /* Banners */
 .error-banner {
-  background: #fff0ef;
-  border: 1px solid #c62828;
+  background: color-mix(in srgb, var(--destructive) 8%, var(--background));
+  border: 1px solid color-mix(in srgb, var(--destructive) 40%, transparent);
   border-radius: 8px;
   padding: 10px 14px;
   font-size: 13px;
-  color: #c62828;
+  color: var(--destructive);
 }
 
 .success-banner {
-  background: #e6f9ec;
-  border: 1px solid #1a7a35;
+  background: color-mix(in srgb, var(--color-success) 10%, var(--background));
+  border: 1px solid color-mix(in srgb, var(--color-success) 40%, transparent);
   border-radius: 8px;
   padding: 10px 14px;
   font-size: 13px;
-  color: #1b5e20;
+  color: var(--color-success);
 }
 
 /* Form actions */
@@ -840,8 +790,8 @@ onMounted(async () => {
   gap: 6px;
   height: 44px;
   padding: 0 20px;
-  background: #0066cc;
-  color: #fff;
+  background: var(--primary);
+  color: var(--primary-foreground);
   border: none;
   border-radius: 16px;
   font-size: 14px;
@@ -856,7 +806,7 @@ onMounted(async () => {
 
 .state-loading {
   text-align: center;
-  color: var(--color-text-secondary);
+  color: var(--muted-foreground);
   padding: 32px;
 }
 </style>
