@@ -1,4 +1,4 @@
-import type { ApiResponse, User } from '../types/models'
+import type { ApiResponse, PaginatedResponse, User } from '../types/models'
 import type { UserRole } from '../types/enums'
 import { useApi } from './useApi'
 
@@ -38,8 +38,14 @@ export function useUsers() {
     if (params.per_page !== undefined) query.set('per_page', String(params.per_page))
 
     const path = query.size > 0 ? `/api/users?${query.toString()}` : '/api/users'
-    const response = await get<ApiResponse<User[]>>(path)
-    return response.data
+    const response = await get<ApiResponse<User[] | PaginatedResponse<User>>>(path)
+    const payload = response.data
+
+    if (Array.isArray(payload)) {
+      return payload
+    }
+
+    return payload.data ?? []
   }
 
   async function createUser(payload: CreateUserPayload): Promise<User> {

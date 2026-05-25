@@ -48,9 +48,7 @@ const slices = computed(() => {
             :stroke-dasharray="`${slice.pct} ${100 - slice.pct}`"
             :stroke-dashoffset="25 - slice.offset"
           />
-          <text x="21" y="20.5" text-anchor="middle" font-size="5" font-weight="600" :fill="'var(--foreground)'"
-            {{ total.toLocaleString('ar-EG') }}
-          </text>
+          <text x="21" y="20.5" text-anchor="middle" font-size="5" font-weight="600" :fill="'var(--foreground)'">{{ total.toLocaleString('ar-EG') }}</text>
           <text x="21" y="25" text-anchor="middle" font-size="3.5" :fill="'var(--muted-foreground)'">إجمالي</text>
         </svg>
       </div>

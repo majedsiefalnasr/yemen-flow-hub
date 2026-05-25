@@ -31,12 +31,30 @@ describe('useUsers', () => {
   })
 
   describe('fetchUsers()', () => {
-    it('calls GET /api/users and returns the data array', async () => {
-      mockGet.mockResolvedValueOnce({ success: true, message: 'OK', data: [USER_FIXTURE] })
+    it('calls GET /api/users and returns the inner paginated data array', async () => {
+      mockGet.mockResolvedValueOnce({
+        success: true,
+        message: 'OK',
+        data: {
+          data: [USER_FIXTURE],
+          meta: {
+            current_page: 1,
+            last_page: 1,
+            per_page: 20,
+            total: 1,
+          },
+        },
+      })
       const { fetchUsers } = useUsers()
       const result = await fetchUsers()
       expect(mockGet).toHaveBeenCalledWith('/api/users')
       expect(result).toEqual([USER_FIXTURE])
+    })
+
+    it('supports legacy non-paginated array responses', async () => {
+      mockGet.mockResolvedValueOnce({ success: true, message: 'OK', data: [USER_FIXTURE] })
+      const { fetchUsers } = useUsers()
+      await expect(fetchUsers()).resolves.toEqual([USER_FIXTURE])
     })
 
     it('propagates errors from the API', async () => {
@@ -46,7 +64,19 @@ describe('useUsers', () => {
     })
 
     it('appends supported query params when provided', async () => {
-      mockGet.mockResolvedValueOnce({ success: true, message: 'OK', data: [USER_FIXTURE] })
+      mockGet.mockResolvedValueOnce({
+        success: true,
+        message: 'OK',
+        data: {
+          data: [USER_FIXTURE],
+          meta: {
+            current_page: 1,
+            last_page: 1,
+            per_page: 100,
+            total: 1,
+          },
+        },
+      })
       const { fetchUsers } = useUsers()
 
       await fetchUsers({
