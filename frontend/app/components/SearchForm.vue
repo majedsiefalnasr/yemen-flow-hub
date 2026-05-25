@@ -4,12 +4,7 @@ import { Search, FileText, Building2, Users, BarChart3, Settings, Bell } from 'l
 import { useMagicKeys, whenever } from '@vueuse/core'
 import { useAuthStore } from '@/stores/auth.store'
 import { UserRole } from '@/types/enums'
-import {
-  SidebarGroup,
-  SidebarGroupContent,
-} from '@/components/ui/sidebar'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import {
   Dialog,
   DialogContent,
@@ -21,7 +16,6 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-  CommandSeparator,
   CommandShortcut,
 } from '@/components/ui/command'
 import { Kbd } from '@/components/ui/kbd'
@@ -139,26 +133,24 @@ function handleSelect(path: string) {
 </script>
 
 <template>
-  <SidebarGroup class="py-0">
-    <SidebarGroupContent class="relative">
-      <Button
-        variant="outline"
-        class="w-full justify-start rounded-lg border-muted-foreground/20 text-sm text-muted-foreground"
-        @click="open = true"
-      >
-        <Search class="h-4 w-4" />
-        <span class="hidden flex-1 text-start md:inline-flex">ابحث...</span>
-        <div class="flex items-center gap-1">
-          <Kbd>⌘</Kbd>
-          <Kbd>K</Kbd>
-        </div>
-      </Button>
-    </SidebarGroupContent>
-  </SidebarGroup>
+  <Button
+    variant="ghost"
+    size="sm"
+    class="h-7 gap-1.5 rounded-md px-2 text-muted-foreground hover:text-foreground"
+    aria-label="بحث ⌘K"
+    @click="open = true"
+  >
+    <Search class="h-4 w-4" />
+    <span class="hidden text-sm sm:inline">ابحث...</span>
+    <div class="hidden items-center gap-0.5 sm:flex">
+      <Kbd class="h-5 px-1 text-[10px]">⌘</Kbd>
+      <Kbd class="h-5 px-1 text-[10px]">K</Kbd>
+    </div>
+  </Button>
 
   <Dialog v-model:open="open">
     <DialogContent class="overflow-hidden p-0 shadow-lg">
-      <Command class="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group]:overflow-hidden [&_[cmdk-group]>:first-child]:border-t [&_[cmdk-input-wrapper]_svg]:h-5 [&_[cmdk-input-wrapper]_svg]:w-5 [&_[cmdk-input]]:h-12 [&_[cmdk-item]]:px-2 [&_[cmdk-item]]:py-3 [&_[cmdk-item]_svg]:h-5 [&_[cmdk-item]_svg]:w-5">
+      <Command class="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group-heading]]:text-xs [&_[cmdk-input-wrapper]_svg]:h-5 [&_[cmdk-input-wrapper]_svg]:w-5 [&_[cmdk-input]]:h-12 [&_[cmdk-item]]:px-2 [&_[cmdk-item]]:py-3 [&_[cmdk-item]_svg]:h-5 [&_[cmdk-item]_svg]:w-5">
         <CommandInput placeholder="ابحث أو اختر إجراء..." />
         <CommandList>
           <CommandEmpty>لم يتم العثور على نتائج.</CommandEmpty>
@@ -166,10 +158,10 @@ function handleSelect(path: string) {
             <CommandItem
               v-for="action in quickActions"
               :key="action.url"
-              value={action.title}
+              :value="action.title"
               @select="handleSelect(action.url)"
             >
-              <component :is="action.icon" class="mr-2 h-4 w-4" />
+              <component :is="action.icon" class="h-4 w-4" />
               <span>{{ action.title }}</span>
               <CommandShortcut>⌘{{ action.shortcut }}</CommandShortcut>
             </CommandItem>

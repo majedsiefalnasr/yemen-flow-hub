@@ -64,7 +64,7 @@ function getKpiIconColor(variant: string): string {
     green: 'text-green-700 bg-green-50/10',
     indigo: 'text-indigo-600 bg-indigo-50',
     amber: 'text-amber-600 bg-amber-50/10',
-    gray: 'text-gray-600 bg-gray-50',
+    gray: 'text-muted-foreground bg-muted',
   }
   return colors[variant] || colors.gray
 }
@@ -85,13 +85,13 @@ onMounted(() => { store.loadStats() })
     <!-- Skeleton -->
     <div v-if="store.loading" class="grid grid-cols-4 max-lg:grid-cols-2 max-md:grid-cols-1 gap-4" aria-busy="true" aria-label="جارٍ تحميل الإحصائيات">
       <div v-for="n in 4" :key="n" class="border-0 p-4 shadow animate-pulse" aria-hidden="true">
-        <div class="h-3.5 w-15 bg-gray-50 rounded mb-3" />
-        <div class="h-8 w-10 bg-gray-50 rounded" />
+        <div class="h-3.5 w-15 bg-muted rounded mb-3" />
+        <div class="h-8 w-10 bg-muted rounded" />
       </div>
     </div>
 
     <!-- Error -->
-    <Card v-else-if="store.error" class="border-l-4 border-destructive border-b border-gray-200 border-r bg-background" role="alert">
+    <Card v-else-if="store.error" class="border-l-4 border-destructive border-b border-border border-r bg-background" role="alert">
       <CardContent class="pt-6 flex items-center gap-3">
         <AlertCircle class="w-4.5 h-4.5 flex-shrink-0 text-red-700" aria-hidden="true" />
         <span class="text-red-700 flex-1">{{ store.error }}</span>
@@ -108,43 +108,43 @@ onMounted(() => { store.loadStats() })
             <div class="h-9 w-9 rounded flex items-center justify-center flex-shrink-0" :class="getKpiIconColor(kpi.variant)">
               <component :is="kpi.icon" class="h-5 w-5" aria-hidden="true" />
             </div>
-            <span class="text-2xl font-semibold leading-none" :class="kpi.variant === 'amber' && kpi.value > 0 ? 'text-amber-600' : kpi.variant === 'green' ? 'text-green-700' : kpi.variant === 'indigo' ? 'text-indigo-600' : 'text-gray-900'">
+            <span class="text-2xl font-semibold leading-none" :class="kpi.variant === 'amber' && kpi.value > 0 ? 'text-amber-600' : kpi.variant === 'green' ? 'text-green-700' : kpi.variant === 'indigo' ? 'text-indigo-600' : 'text-foreground'">
               {{ kpi.value }}
             </span>
-            <span class="text-xs text-gray-600">{{ kpi.label }}</span>
+            <span class="text-xs text-muted-foreground">{{ kpi.label }}</span>
           </Card>
         </template>
       </div>
 
       <!-- Quick actions -->
       <section aria-labelledby="qa-heading">
-        <h2 id="qa-heading" class="flex items-center gap-2 text-sm font-semibold text-gray-900 mb-3">
+        <h2 id="qa-heading" class="flex items-center gap-2 text-sm font-semibold text-foreground mb-3">
           <Zap class="h-4 w-4" aria-hidden="true" />
           إجراءات سريعة
         </h2>
         <div class="grid grid-cols-4 max-lg:grid-cols-2 max-md:grid-cols-1 gap-3">
-          <button class="flex flex-col items-start gap-1 p-4 bg-blue-600 text-blue-600-foreground border-0 rounded-lg cursor-pointer hover:opacity-90 transition-colors" @click="router.push('/requests')">
+          <button class="flex flex-col items-start gap-1 p-4 bg-primary text-primary-foreground border-0 rounded-lg cursor-pointer hover:opacity-90 transition-colors" @click="router.push('/requests')">
             <FileText class="h-5 w-5 flex-shrink-0 mb-1" aria-hidden="true" />
             <span class="text-sm font-semibold">طلبات البنك</span>
             <span class="text-xs opacity-75">عرض جميع طلبات البنك</span>
           </button>
 
-          <button class="flex flex-col items-start gap-1 p-4 bg-background border border-gray-200 text-gray-900 rounded-lg cursor-pointer hover:border-primary hover:shadow-md transition-all" @click="router.push('/merchants')">
-            <Building2 class="h-5 w-5 flex-shrink-0 text-blue-600 mb-1" aria-hidden="true" />
+          <button class="flex flex-col items-start gap-1 p-4 bg-background border border-border text-foreground rounded-lg cursor-pointer hover:border-primary hover:shadow-md transition-all" @click="router.push('/merchants')">
+            <Building2 class="h-5 w-5 flex-shrink-0 text-primary mb-1" aria-hidden="true" />
             <span class="text-sm font-semibold">إدارة التجار</span>
-            <span class="text-xs text-gray-600">إدارة بيانات التجار</span>
+            <span class="text-xs text-muted-foreground">إدارة بيانات التجار</span>
           </button>
 
-          <button class="flex flex-col items-start gap-1 p-4 bg-background border border-gray-200 text-gray-900 rounded-lg cursor-pointer hover:border-primary hover:shadow-md transition-all" @click="router.push('/staff')">
-            <Users class="h-5 w-5 flex-shrink-0 text-blue-600 mb-1" aria-hidden="true" />
+          <button class="flex flex-col items-start gap-1 p-4 bg-background border border-border text-foreground rounded-lg cursor-pointer hover:border-primary hover:shadow-md transition-all" @click="router.push('/staff')">
+            <Users class="h-5 w-5 flex-shrink-0 text-primary mb-1" aria-hidden="true" />
             <span class="text-sm font-semibold">مستخدمو البنك</span>
-            <span class="text-xs text-gray-600">إدارة موظفي البنك</span>
+            <span class="text-xs text-muted-foreground">إدارة موظفي البنك</span>
           </button>
 
-          <button class="flex flex-col items-start gap-1 p-4 bg-background border border-gray-200 text-gray-900 rounded-lg cursor-pointer hover:border-primary hover:shadow-md transition-all" @click="router.push('/reports')">
-            <BarChart3 class="h-5 w-5 flex-shrink-0 text-blue-600 mb-1" aria-hidden="true" />
+          <button class="flex flex-col items-start gap-1 p-4 bg-background border border-border text-foreground rounded-lg cursor-pointer hover:border-primary hover:shadow-md transition-all" @click="router.push('/reports')">
+            <BarChart3 class="h-5 w-5 flex-shrink-0 text-primary mb-1" aria-hidden="true" />
             <span class="text-sm font-semibold">التقارير</span>
-            <span class="text-xs text-gray-600">تقارير وتحليلات البنك</span>
+            <span class="text-xs text-muted-foreground">تقارير وتحليلات البنك</span>
           </button>
         </div>
       </section>
@@ -152,8 +152,8 @@ onMounted(() => { store.loadStats() })
       <!-- Monthly chart -->
       <Card v-if="stats.monthly_requests.length" class="border-0 shadow" aria-labelledby="chart-heading">
         <CardContent class="p-4">
-          <h2 id="chart-heading" class="text-sm font-semibold text-gray-900 mb-2">حركة طلبات البنك الشهرية</h2>
-          <p class="text-xs text-gray-600 mb-3">تتابع ملك الشهر المُقدَّم</p>
+          <h2 id="chart-heading" class="text-sm font-semibold text-foreground mb-2">حركة طلبات البنك الشهرية</h2>
+          <p class="text-xs text-muted-foreground mb-3">تتابع ملك الشهر المُقدَّم</p>
           <div class="flex flex-col gap-1.5">
             <svg
               :viewBox="`0 0 ${CHART_W} ${CHART_H}`"
@@ -162,19 +162,19 @@ onMounted(() => { store.loadStats() })
               role="img"
               preserveAspectRatio="none"
             >
-              <polygon :points="buildArea(stats.monthly_requests)" fill="currentColor" class="text-blue-600" opacity="0.08" />
+              <polygon :points="buildArea(stats.monthly_requests)" fill="currentColor" class="text-primary" opacity="0.08" />
               <polyline
                 :points="buildLine(stats.monthly_requests)"
                 fill="none"
                 stroke="currentColor"
-                class="text-blue-600"
+                class="text-primary"
                 stroke-width="2"
                 stroke-linejoin="round"
                 stroke-linecap="round"
               />
             </svg>
             <div class="flex justify-between px-2">
-              <span v-for="entry in stats.monthly_requests" :key="entry.month" class="text-xs text-gray-600">
+              <span v-for="entry in stats.monthly_requests" :key="entry.month" class="text-xs text-muted-foreground">
                 {{ monthLabel(entry.month) }}
               </span>
             </div>
@@ -186,38 +186,38 @@ onMounted(() => { store.loadStats() })
       <Card class="border-0 shadow" aria-labelledby="recent-heading">
         <CardContent class="p-4">
           <div class="flex items-center justify-between mb-4">
-            <h2 id="recent-heading" class="text-sm font-semibold text-gray-900">أحدث الطلبات</h2>
-            <a class="text-xs text-blue-600 hover:underline transition-colors cursor-pointer" @click="router.push('/requests')">عرض الكل</a>
+            <h2 id="recent-heading" class="text-sm font-semibold text-foreground">أحدث الطلبات</h2>
+            <a class="text-xs text-primary hover:underline transition-colors cursor-pointer" @click="router.push('/requests')">عرض الكل</a>
           </div>
 
-          <div v-if="stats.recent_requests.length === 0" class="py-8 text-center text-sm text-gray-600" role="status">لا توجد طلبات بعد</div>
+          <div v-if="stats.recent_requests.length === 0" class="py-8 text-center text-sm text-muted-foreground" role="status">لا توجد طلبات بعد</div>
 
           <table v-else class="w-full border-collapse text-xs" role="table" aria-label="أحدث طلبات البنك">
             <thead>
-              <tr class="border-b border-gray-200">
-                <th scope="col" class="py-2 px-2 text-right font-medium text-gray-600">المرجع</th>
-                <th scope="col" class="py-2 px-2 text-right font-medium text-gray-600">التاجر</th>
-                <th scope="col" class="py-2 px-2 text-right font-medium text-gray-600">المبلغ</th>
-                <th scope="col" class="py-2 px-2 text-right font-medium text-gray-600">الحالة</th>
-                <th scope="col" class="py-2 px-2 text-right font-medium text-gray-600">التقدم</th>
-                <th scope="col" class="py-2 px-2 text-right font-medium text-gray-600">إجراء</th>
+              <tr class="border-b border-border">
+                <th scope="col" class="py-2 px-2 text-right font-medium text-muted-foreground">المرجع</th>
+                <th scope="col" class="py-2 px-2 text-right font-medium text-muted-foreground">التاجر</th>
+                <th scope="col" class="py-2 px-2 text-right font-medium text-muted-foreground">المبلغ</th>
+                <th scope="col" class="py-2 px-2 text-right font-medium text-muted-foreground">الحالة</th>
+                <th scope="col" class="py-2 px-2 text-right font-medium text-muted-foreground">التقدم</th>
+                <th scope="col" class="py-2 px-2 text-right font-medium text-muted-foreground">إجراء</th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="req in stats.recent_requests" :key="req.id" class="border-t border-muted hover:bg-gray-50 cursor-pointer transition-colors">
-                <td class="py-2 px-2"><a class="font-mono text-blue-600 hover:underline" :href="`/requests/${req.id}`" @click.prevent="router.push(`/requests/${req.id}`)">{{ req.reference_number }}</a></td>
-                <td class="py-2 px-2 text-gray-900">{{ req.merchant?.name ?? req.supplier_name }}</td>
-                <td class="py-2 px-2 text-gray-900 direction-ltr font-tabular-nums">{{ formatAmount(req.amount) }} {{ req.currency }}</td>
+              <tr v-for="req in stats.recent_requests" :key="req.id" class="border-t border-muted hover:bg-muted/50 cursor-pointer transition-colors">
+                <td class="py-2 px-2"><a class="font-mono text-primary hover:underline" :href="`/requests/${req.id}`" @click.prevent="router.push(`/requests/${req.id}`)">{{ req.reference_number }}</a></td>
+                <td class="py-2 px-2 text-foreground">{{ req.merchant?.name ?? req.supplier_name }}</td>
+                <td class="py-2 px-2 text-foreground direction-ltr font-tabular-nums">{{ formatAmount(req.amount) }} {{ req.currency }}</td>
                 <td class="py-2 px-2"><StatusBadge :status="req.status" :role="UserRole.BANK_ADMIN" /></td>
                 <td class="py-2 px-2">
                   <div class="flex items-center gap-2 min-w-24">
-                    <div class="flex-1 h-1.5 bg-gray-50 rounded-full overflow-hidden">
-                      <div class="h-full bg-blue-600 transition-all" :style="{ width: `${getRequestProgress(req.status)}%` }" />
+                    <div class="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                      <div class="h-full bg-primary transition-all" :style="{ width: `${getRequestProgress(req.status)}%` }" />
                     </div>
-                    <span class="text-xs text-gray-600 whitespace-nowrap">{{ getRequestProgress(req.status) }}%</span>
+                    <span class="text-xs text-muted-foreground whitespace-nowrap">{{ getRequestProgress(req.status) }}%</span>
                   </div>
                 </td>
-                <td class="py-2 px-2"><button class="px-2 py-1 bg-background border border-gray-200 text-xs text-gray-900 rounded hover:border-primary hover:text-blue-600 transition-colors" :aria-label="`عرض الطلب ${req.reference_number}`" @click.stop="router.push(`/requests/${req.id}`)">عرض</button></td>
+                <td class="py-2 px-2"><button class="px-2 py-1 bg-background border border-border text-xs text-foreground rounded hover:border-primary hover:text-primary transition-colors" :aria-label="`عرض الطلب ${req.reference_number}`" @click.stop="router.push(`/requests/${req.id}`)">عرض</button></td>
               </tr>
             </tbody>
           </table>

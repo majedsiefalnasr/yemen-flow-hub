@@ -153,9 +153,9 @@ const lineChartSeries = computed(() => {
   const trend = chartMonthlyTrend.value
   if (!trend.length) return []
   return [
-    { label: 'طلبات', values: trend.map((m) => m.total), color: '#0066cc' },
-    { label: 'مُعتمد', values: trend.map((m) => m.approved), color: '#1b5e20' },
-    { label: 'مرفوض', values: trend.map((m) => m.rejected), color: '#c62828' },
+    { label: 'طلبات', values: trend.map((m) => m.total), color: 'var(--color-primary)' },
+    { label: 'مُعتمد', values: trend.map((m) => m.approved), color: 'var(--color-success)' },
+    { label: 'مرفوض', values: trend.map((m) => m.rejected), color: 'var(--color-destructive)' },
   ]
 })
 
@@ -165,13 +165,13 @@ const lineChartLabels = computed(() =>
 
 // ─── Pie chart ────────────────────────────────────────────────────────────────
 
-const PIE_COLORS = ['#0066cc', '#5856d6', '#32ade6', '#f57f17', '#c62828']
+const PIE_COLORS = ['var(--color-primary)', 'var(--color-voting)', 'var(--color-info)', 'var(--color-warning)', 'var(--color-destructive)']
 
 const pieChartData = computed(() => {
   return chartCategoryDist.value.map((c, i) => ({
     label: c.category,
     value: c.count,
-    color: PIE_COLORS[i % PIE_COLORS.length] ?? '#0066cc',
+    color: PIE_COLORS[i % PIE_COLORS.length] ?? 'var(--color-primary)',
   }))
 })
 
@@ -507,13 +507,13 @@ const statusRows = computed(() => {
           <div class="kpi-card">
             <div class="kpi-content">
               <div class="kpi-label">الطلبات المعتمدة</div>
-              <div class="kpi-value" style="color:#1b5e20">{{ store.bankReport.approved_count }}</div>
+              <div class="kpi-value" style="color: var(--success)">{{ store.bankReport.approved_count }}</div>
             </div>
           </div>
           <div class="kpi-card">
             <div class="kpi-content">
               <div class="kpi-label">الطلبات المرفوضة</div>
-              <div class="kpi-value" style="color:#c62828">{{ store.bankReport.rejected_count }}</div>
+              <div class="kpi-value" style="color: var(--destructive)">{{ store.bankReport.rejected_count }}</div>
             </div>
           </div>
           <div class="kpi-card">
@@ -554,12 +554,12 @@ const statusRows = computed(() => {
   align-items: center;
   gap: 6px;
   font-size: 13px;
-  color: #6c757d;
+  color: var(--muted-foreground);
   margin-bottom: 6px;
 }
 
 .breadcrumb-link {
-  color: #0066cc;
+  color: var(--color-primary);
   text-decoration: none;
 }
 
@@ -568,23 +568,23 @@ const statusRows = computed(() => {
 }
 
 .breadcrumb-sep {
-  color: #cccccc;
+  color: var(--border);
 }
 
 .breadcrumb-current {
-  color: #1c222b;
+  color: var(--foreground);
 }
 
 .page-title {
   font-size: 28px;
   font-weight: 600;
-  color: #1c222b;
+  color: var(--foreground);
   margin: 0;
 }
 
 .page-subtitle {
   font-size: 14px;
-  color: #6c757d;
+  color: var(--muted-foreground);
   margin: 4px 0 0;
 }
 
@@ -609,19 +609,19 @@ const statusRows = computed(() => {
   gap: 6px;
 }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-.btn-primary { background: #0066cc; color: #fff; }
-.btn-outline { background: transparent; border: 1px solid #cccccc; color: #1c222b; }
-.btn-ghost { background: transparent; color: #0066cc; }
+.btn-primary { background: var(--primary); color: var(--primary-foreground); }
+.btn-outline { background: transparent; border: 1px solid var(--border); color: var(--foreground); }
+.btn-ghost { background: transparent; color: var(--primary); }
 .btn-sm { padding: 4px 10px; font-size: 13px; }
 .btn-icon { padding: 8px 12px; }
 
 /* ─── Error ─────────────────────────────────────────────────── */
 .error-banner {
-  background: #fff5f5;
-  border: 1px solid #c62828;
+  background: color-mix(in srgb, var(--destructive) 8%, var(--background));
+  border: 1px solid color-mix(in srgb, var(--destructive) 40%, transparent);
   border-radius: 12px;
   padding: 12px 16px;
-  color: #c62828;
+  color: var(--destructive);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -630,8 +630,8 @@ const statusRows = computed(() => {
 
 /* ─── Filter Card ────────────────────────────────────────────── */
 .filter-card {
-  background: #fff;
-  border: 1px solid #cccccc;
+  background: var(--background);
+  border: 1px solid var(--border);
   border-radius: 12px;
   padding: 16px 20px;
   display: flex;
@@ -654,16 +654,16 @@ const statusRows = computed(() => {
 
 .filter-label {
   font-size: 13px;
-  color: #6c757d;
+  color: var(--muted-foreground);
 }
 
 .filter-input {
   padding: 8px 10px;
-  border: 1px solid #cccccc;
+  border: 1px solid var(--border);
   border-radius: 12px;
   font-size: 14px;
-  color: #1c222b;
-  background: #fff;
+  color: var(--foreground);
+  background: var(--background);
   min-width: 160px;
 }
 
@@ -682,7 +682,7 @@ const statusRows = computed(() => {
 
 .presets-label {
   font-size: 13px;
-  color: #6c757d;
+  color: var(--muted-foreground);
 }
 
 .presets-list {
@@ -693,8 +693,8 @@ const statusRows = computed(() => {
 }
 
 .preset-chip {
-  background: #f5f5f5;
-  border: 1px solid #cccccc;
+  background: var(--muted);
+  border: 1px solid var(--border);
   border-radius: 20px;
   padding: 4px 12px;
   font-size: 13px;
@@ -705,7 +705,7 @@ const statusRows = computed(() => {
 }
 
 .preset-delete {
-  color: #c62828;
+  color: var(--destructive);
   font-weight: bold;
   line-height: 1;
   cursor: pointer;
@@ -747,7 +747,7 @@ const statusRows = computed(() => {
 
 .skeleton-kpi,
 .skeleton-chart {
-  background: linear-gradient(90deg, #f5f5f5 25%, #e8e8e8 50%, #f5f5f5 75%);
+  background: linear-gradient(90deg, var(--muted) 25%, var(--border) 50%, var(--muted) 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
   border-radius: 12px;
@@ -777,8 +777,8 @@ const statusRows = computed(() => {
 }
 
 .kpi-card {
-  background: #fff;
-  border: 1px solid #cccccc;
+  background: var(--background);
+  border: 1px solid var(--border);
   border-radius: 12px;
   padding: 16px;
   display: flex;
@@ -796,11 +796,11 @@ const statusRows = computed(() => {
   flex-shrink: 0;
 }
 
-.kpi-icon-blue { background: #e8f0fc; color: #0066cc; }
-.kpi-icon-green { background: #e8f5e9; color: #1b5e20; }
-.kpi-icon-indigo { background: #ede7f6; color: #5856d6; }
-.kpi-icon-cyan { background: #e0f7fa; color: #32ade6; }
-.kpi-icon-orange { background: #fff3e0; color: #f57f17; }
+.kpi-icon-blue { background: color-mix(in srgb, var(--color-primary) 10%, transparent); color: var(--color-primary); }
+.kpi-icon-green { background: color-mix(in srgb, var(--color-success) 10%, transparent); color: var(--color-success); }
+.kpi-icon-indigo { background: color-mix(in srgb, var(--color-voting) 10%, transparent); color: var(--color-voting); }
+.kpi-icon-cyan { background: color-mix(in srgb, var(--color-info) 10%, transparent); color: var(--color-info); }
+.kpi-icon-orange { background: color-mix(in srgb, var(--color-warning) 10%, transparent); color: var(--color-warning); }
 
 .kpi-content {
   display: flex;
@@ -811,13 +811,13 @@ const statusRows = computed(() => {
 
 .kpi-label {
   font-size: 12px;
-  color: #6c757d;
+  color: var(--muted-foreground);
 }
 
 .kpi-value {
   font-size: 22px;
   font-weight: 700;
-  color: #1c222b;
+  color: var(--foreground);
   line-height: 1.2;
 }
 
@@ -836,8 +836,8 @@ const statusRows = computed(() => {
 
 /* ─── Section Card ──────────────────────────────────────────── */
 .section-card {
-  background: #fff;
-  border: 1px solid #cccccc;
+  background: var(--background);
+  border: 1px solid var(--border);
   border-radius: 12px;
   padding: 20px 24px;
 }
@@ -845,13 +845,13 @@ const statusRows = computed(() => {
 .section-title {
   font-size: 16px;
   font-weight: 600;
-  color: #1c222b;
+  color: var(--foreground);
   margin: 0 0 4px;
 }
 
 .section-subtitle {
   font-size: 13px;
-  color: #6c757d;
+  color: var(--muted-foreground);
   margin: 0 0 16px;
 }
 
@@ -860,7 +860,7 @@ const statusRows = computed(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #6c757d;
+  color: var(--muted-foreground);
   font-size: 14px;
 }
 
@@ -880,7 +880,7 @@ const statusRows = computed(() => {
 .bar-label {
   width: 120px;
   font-size: 13px;
-  color: #1c222b;
+  color: var(--foreground);
   text-align: right;
   flex-shrink: 0;
   white-space: nowrap;
@@ -891,14 +891,14 @@ const statusRows = computed(() => {
 .bar-track {
   flex: 1;
   height: 10px;
-  background: #f5f5f5;
+  background: var(--muted);
   border-radius: 5px;
   overflow: hidden;
 }
 
 .bar-fill {
   height: 100%;
-  background: #0066cc;
+  background: var(--color-primary);
   border-radius: 5px;
   transition: width 0.3s ease;
   min-width: 2px;
@@ -907,7 +907,7 @@ const statusRows = computed(() => {
 .bar-value {
   width: 36px;
   font-size: 13px;
-  color: #6c757d;
+  color: var(--muted-foreground);
   text-align: left;
   flex-shrink: 0;
 }
@@ -922,18 +922,18 @@ const statusRows = computed(() => {
 .report-table th,
 .report-table td {
   padding: 10px 12px;
-  border-bottom: 1px solid #cccccc;
+  border-bottom: 1px solid var(--border);
   font-size: 14px;
 }
 
 .report-table th {
-  background: #f5f5f5;
+  background: var(--muted);
   font-weight: 600;
-  color: #1c222b;
+  color: var(--foreground);
 }
 
 .report-table td {
-  color: #1c222b;
+  color: var(--foreground);
 }
 
 .report-table tr:last-child td {
@@ -942,11 +942,11 @@ const statusRows = computed(() => {
 
 /* ─── Empty State ───────────────────────────────────────────── */
 .empty-state {
-  background: #fff;
-  border: 1px solid #cccccc;
+  background: var(--background);
+  border: 1px solid var(--border);
   border-radius: 12px;
   padding: 48px;
   text-align: center;
-  color: #6c757d;
+  color: var(--muted-foreground);
 }
 </style>

@@ -1,7 +1,11 @@
 <script setup lang="ts">
+import { FilePlus2 } from 'lucide-vue-next'
+import { computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth.store'
 import { UserRole } from '../types/enums'
 import { ROLE_LABELS, ROUTE_ROLE_MAP } from '../constants/workflow'
+import { Button } from '../components/ui/button'
 import DataEntryDashboard from '../components/dashboard/DataEntryDashboard.vue'
 import BankReviewerDashboard from '../components/dashboard/BankReviewerDashboard.vue'
 import BankAdminDashboard from '../components/dashboard/BankAdminDashboard.vue'
@@ -37,27 +41,26 @@ const showNewRequestAction = computed(() =>
 </script>
 
 <template>
-  <div class="dashboard-page" dir="rtl">
-    <div class="page-header">
-      <div class="page-header__text">
-        <h1 class="page-header__greeting">
+  <div class="flex flex-col gap-6" dir="rtl">
+    <!-- Page header -->
+    <div class="flex flex-wrap items-start justify-between gap-4">
+      <div class="flex flex-col gap-1">
+        <h1 class="text-2xl font-semibold tracking-tight sm:text-3xl">
           أهلاً، {{ firstName }}
-          <span class="page-header__wave" aria-hidden="true">👋</span>
         </h1>
-        <p class="page-header__subtitle">{{ roleSubtitle }}</p>
+        <p class="text-sm text-muted-foreground">{{ roleSubtitle }}</p>
       </div>
-      <button
+      <Button
         v-if="showNewRequestAction"
-        class="page-header__action"
+        class="shrink-0"
         @click="router.push('/requests/new')"
       >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-          <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-        </svg>
+        <FilePlus2 class="h-4 w-4" />
         طلب جديد
-      </button>
+      </Button>
     </div>
 
+    <!-- Role-specific dashboard body -->
     <DataEntryDashboard v-if="role === UserRole.DATA_ENTRY" />
     <BankReviewerDashboard v-else-if="role === UserRole.BANK_REVIEWER" />
     <BankAdminDashboard v-else-if="role === UserRole.BANK_ADMIN" />
@@ -66,104 +69,20 @@ const showNewRequestAction = computed(() =>
     <ExecutiveDashboard v-else-if="role === UserRole.EXECUTIVE_MEMBER || role === UserRole.COMMITTEE_DIRECTOR" />
     <CbyAdminDashboard v-else-if="role === UserRole.CBY_ADMIN" />
 
-    <div v-else class="unknown-role-card" role="status">
-      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#8e8e93" stroke-width="1.5" aria-hidden="true">
-        <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
-      </svg>
-      <p class="unknown-role-card__text">لوحة التحكم غير متاحة للدور المحدد. يرجى التواصل مع المسؤول.</p>
+    <!-- Unknown role -->
+    <div
+      v-else
+      class="flex flex-col items-center gap-4 rounded-xl border border-border bg-background px-8 py-12 text-center"
+      role="status"
+    >
+      <div class="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="text-muted-foreground" aria-hidden="true">
+          <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+        </svg>
+      </div>
+      <p class="max-w-sm text-sm text-muted-foreground">
+        لوحة التحكم غير متاحة للدور المحدد. يرجى التواصل مع المسؤول.
+      </p>
     </div>
   </div>
 </template>
-
-<style scoped>
-.dashboard-page {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
-
-.page-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.page-header__text {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.page-header__greeting {
-  font-size: 28px;
-  font-weight: 600;
-  color: #1c222b;
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.page-header__wave {
-  font-style: normal;
-}
-
-.page-header__subtitle {
-  font-size: 14px;
-  color: #6c757d;
-  margin: 0;
-}
-
-.page-header__action {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 10px 20px;
-  background: #0066cc;
-  color: #ffffff;
-  border: none;
-  border-radius: 16px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  white-space: nowrap;
-  flex-shrink: 0;
-  transition: background 0.15s;
-}
-
-.page-header__action:hover {
-  background: #0052a3;
-}
-
-.unknown-role-card {
-  background: #ffffff;
-  border: 1px solid #cccccc;
-  border-radius: 12px;
-  padding: 48px 32px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
-  text-align: center;
-}
-
-.unknown-role-card__text {
-  font-size: 15px;
-  color: #6c757d;
-  margin: 0;
-  max-width: 400px;
-}
-
-@media (max-width: 600px) {
-  .page-header {
-    flex-direction: column;
-  }
-  .page-header__action {
-    align-self: flex-start;
-  }
-  .page-header__greeting {
-    font-size: 22px;
-  }
-}
-</style>

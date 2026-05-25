@@ -42,13 +42,13 @@ const KPI_LABELS = [
 
 // ─── Pie chart data transform (mirrors pieChartData computed) ─────────────────
 
-const PIE_COLORS = ['#0066cc', '#5856d6', '#32ade6', '#f57f17', '#c62828']
+const PIE_COLORS = ['var(--color-primary)', '#5856d6', '#32ade6', '#f57f17', '#c62828']
 
 function buildPieData(cats: Array<{ category: string; count: number }>) {
   return cats.map((c, i) => ({
     label: c.category,
     value: c.count,
-    color: PIE_COLORS[i % PIE_COLORS.length] ?? '#0066cc',
+    color: PIE_COLORS[i % PIE_COLORS.length] ?? 'var(--color-primary)',
   }))
 }
 
@@ -57,7 +57,7 @@ function buildPieData(cats: Array<{ category: string; count: number }>) {
 function buildLineChartSeries(trend: WorkflowReportStub['monthly_trend']) {
   if (!trend.length) return []
   return [
-    { label: 'طلبات', values: trend.map((m) => m.total), color: '#0066cc' },
+    { label: 'طلبات', values: trend.map((m) => m.total), color: 'var(--color-primary)' },
     { label: 'مُعتمد', values: trend.map((m) => m.approved), color: '#1b5e20' },
     { label: 'مرفوض', values: trend.map((m) => m.rejected), color: '#c62828' },
   ]
@@ -148,7 +148,7 @@ describe('Reports page — LineChart monthly_trend data', () => {
     const trend = [{ month: '2026-01', total: 5, approved: 3, rejected: 1 }]
     const series = buildLineChartSeries(trend)
 
-    expect(series[0]!.color).toBe('#0066cc')
+    expect(series[0]!.color).toBe('var(--color-primary)')
     expect(series[1]!.color).toBe('#1b5e20')
     expect(series[2]!.color).toBe('#c62828')
   })

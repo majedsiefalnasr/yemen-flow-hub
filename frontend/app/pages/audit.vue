@@ -1,7 +1,28 @@
 <script setup lang="ts">
-import { Activity, AlertTriangle, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, FileWarning, Search, SearchX, ShieldCheck } from 'lucide-vue-next'
-import { FlexRender, getCoreRowModel, getPaginationRowModel, getSortedRowModel, useVueTable } from '@tanstack/vue-table'
-import type { ColumnDef } from '@tanstack/vue-table'
+import type { ColumnDef, ColumnFiltersState, SortingState, VisibilityState } from '@tanstack/vue-table'
+import {
+  FlexRender,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  useVueTable,
+} from '@tanstack/vue-table'
+import {
+  Activity,
+  AlertTriangle,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  Download,
+  FileWarning,
+  MoreHorizontal,
+  Printer,
+  SearchX,
+  ShieldCheck,
+  X,
+} from 'lucide-vue-next'
 import { h } from 'vue'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import { useAudit } from '@/composables/useAudit'
@@ -14,6 +35,21 @@ import {
   EmptyTitle,
 } from '@/components/ui/empty'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Checkbox } from '@/components/ui/checkbox'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Label } from '@/components/ui/label'
 
 const { fetchAuditLogs, fetchAuditStats, fetchDuplicates, fetchRiskIndicators } = useAudit()
 
@@ -85,7 +121,37 @@ function formatAction(action: string): string {
   return ACTION_LABELS[action] ?? action.replace(/_/g, ' ')
 }
 
+// ── Table state ────────────────────────────────────────────────────────────────
+const sorting = ref<SortingState>([])
+const columnFilters = ref<ColumnFiltersState>([])
+const rowSelection = ref<Record<string, boolean>>({})
+
+const selectedCount = computed(() => Object.values(rowSelection.value).filter(Boolean).length)
+
+function clearSelection() {
+  table.resetRowSelection()
+}
+
 const columns: ColumnDef<AuditLog>[] = [
+  {
+    id: 'select',
+    header: ({ table: t }) =>
+      h(Checkbox, {
+        'modelValue': t.getIsAllPageRowsSelected() || (t.getIsSomePageRowsSelected() ? 'indeterminate' : false),
+        'onUpdate:modelValue': (v: boolean | 'indeterminate') => t.toggleAllPageRowsSelected(!!v),
+        'aria-label': 'تحديد الكل',
+      }),
+    cell: ({ row }) =>
+      h('div', { onClick: (e: Event) => e.stopPropagation() }, [
+        h(Checkbox, {
+          'modelValue': row.getIsSelected(),
+          'onUpdate:modelValue': (v: boolean | 'indeterminate') => row.toggleSelected(!!v),
+          'aria-label': 'تحديد السجل',
+        }),
+      ]),
+    enableSorting: false,
+    enableHiding: false,
+  },
   {
     accessorKey: 'user',
     header: 'المستخدم',
@@ -111,6 +177,34 @@ const columns: ColumnDef<AuditLog>[] = [
     header: 'التوقيت',
     cell: ({ row }) => h('span', { class: 'text-xs text-muted-foreground' }, formatDate(row.original.created_at)),
   },
+  {
+    id: 'actions',
+    enableHiding: false,
+    cell: ({ row }) =>
+      h(DropdownMenu, {}, {
+        default: () => [
+          h(DropdownMenuTrigger, { asChild: true }, {
+            default: () =>
+              h(Button, {
+                variant: 'ghost',
+                size: 'icon',
+                class: 'h-8 w-8',
+                onClick: (e: Event) => e.stopPropagation(),
+              }, {
+                default: () => [
+                  h('span', { class: 'sr-only' }, 'فتح القائمة'),
+                  h(MoreHorizontal, { class: 'h-4 w-4' }),
+                ],
+              }),
+          }),
+          h(DropdownMenuContent, { align: 'end' }, {
+            default: () => [
+              h(DropdownMenuItem, {}, () => 'تصدير السجل'),
+            ],
+          }),
+        ],
+      }),
+  },
 ]
 
 const table = useVueTable({
@@ -119,6 +213,16 @@ const table = useVueTable({
   getCoreRowModel: getCoreRowModel(),
   getPaginationRowModel: getPaginationRowModel(),
   getSortedRowModel: getSortedRowModel(),
+  getFilteredRowModel: getFilteredRowModel(),
+  onSortingChange: updater =>
+    sorting.value = typeof updater === 'function' ? updater(sorting.value) : updater,
+  onRowSelectionChange: updater =>
+    rowSelection.value = typeof updater === 'function' ? updater(rowSelection.value) : updater,
+  state: {
+    get sorting() { return sorting.value },
+    get columnFilters() { return columnFilters.value },
+    get rowSelection() { return rowSelection.value },
+  },
   initialState: {
     pagination: { pageSize: 20 },
   },
@@ -173,9 +277,31 @@ const table = useVueTable({
         value="logs"
         class="mt-4"
       >
-        <div class="mb-3 flex items-center gap-2">
-          <div class="relative max-w-xs">
-            <Search class="absolute end-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+        <!-- Bulk toolbar (when rows selected) OR search row (default) -->
+        <div v-if="selectedCount > 0" class="mb-3 flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2">
+          <span class="text-sm font-medium text-primary">{{ selectedCount }} محدد</span>
+          <div class="mx-2 h-4 w-px bg-border" />
+          <Button variant="outline" size="sm" class="h-7 gap-1.5 text-xs">
+            <Download class="h-3.5 w-3.5" />
+            تصدير
+          </Button>
+          <Button variant="outline" size="sm" class="h-7 gap-1.5 text-xs">
+            <Printer class="h-3.5 w-3.5" />
+            طباعة
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            class="ms-auto h-7 gap-1 text-xs text-muted-foreground"
+            @click="clearSelection"
+          >
+            <X class="h-3.5 w-3.5" />
+            إلغاء التحديد
+          </Button>
+        </div>
+
+        <div v-else class="mb-3 flex items-center gap-2">
+          <div class="relative max-w-xs flex-1">
             <Input
               v-model="query"
               class="h-8 rounded-md pe-9 text-sm"
@@ -185,17 +311,19 @@ const table = useVueTable({
         </div>
 
         <Card class="border-0 shadow">
-          <div class="overflow-x-auto">
+          <!-- Table (hidden when empty and not loading) -->
+          <div v-if="loadingAudit || table.getRowModel().rows.length > 0" class="overflow-x-auto">
             <Table class="w-full min-w-[760px] text-sm">
               <TableHeader>
                 <TableRow
                   v-for="headerGroup in table.getHeaderGroups()"
                   :key="headerGroup.id"
+                  class="hover:bg-transparent"
                 >
                   <TableHead
                     v-for="header in headerGroup.headers"
                     :key="header.id"
-                    class="px-4 py-3 text-xs text-muted-foreground"
+                    class="h-10 px-4 text-xs font-medium text-foreground"
                   >
                     <FlexRender
                       v-if="!header.isPlaceholder"
@@ -211,6 +339,9 @@ const table = useVueTable({
                     v-for="i in 8"
                     :key="i"
                   >
+                    <TableCell class="px-4 py-3">
+                      <Skeleton class="size-4 rounded-sm" />
+                    </TableCell>
                     <TableCell
                       v-for="j in 5"
                       :key="j"
@@ -218,13 +349,17 @@ const table = useVueTable({
                     >
                       <Skeleton class="h-4 w-full rounded" />
                     </TableCell>
+                    <TableCell class="px-4 py-3">
+                      <Skeleton class="h-8 w-8 rounded-md" />
+                    </TableCell>
                   </TableRow>
                 </template>
-                <template v-else-if="table.getRowModel().rows.length">
+                <template v-else>
                   <TableRow
                     v-for="row in table.getRowModel().rows"
                     :key="row.id"
                     class="border-t hover:bg-muted/30"
+                    :data-state="row.getIsSelected() ? 'selected' : undefined"
                   >
                     <TableCell
                       v-for="cell in row.getVisibleCells()"
@@ -238,71 +373,93 @@ const table = useVueTable({
                     </TableCell>
                   </TableRow>
                 </template>
-                <template v-else>
-                  <TableRow>
-                    <TableCell colspan="5" class="p-8">
-                      <Empty class="min-h-[200px] rounded-xl border border-dashed bg-muted/20">
-                        <EmptyHeader>
-                          <div class="flex size-12 items-center justify-center rounded-xl bg-muted text-muted-foreground">
-                            <SearchX class="size-5" />
-                          </div>
-                          <EmptyTitle>لا توجد سجلات مطابقة</EmptyTitle>
-                        </EmptyHeader>
-                        <EmptyContent>
-                          <EmptyDescription>جرّب تغيير نص البحث.</EmptyDescription>
-                        </EmptyContent>
-                      </Empty>
-                    </TableCell>
-                  </TableRow>
-                </template>
               </TableBody>
             </Table>
+          </div>
+
+          <!-- Empty state (outside table) -->
+          <div v-if="!loadingAudit && !table.getRowModel().rows.length" class="p-8">
+            <Empty class="min-h-[200px] rounded-xl border border-dashed bg-muted/20">
+              <EmptyHeader>
+                <div class="flex size-12 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+                  <SearchX class="size-5" />
+                </div>
+                <EmptyTitle>لا توجد سجلات مطابقة</EmptyTitle>
+              </EmptyHeader>
+              <EmptyContent>
+                <EmptyDescription>جرّب تغيير نص البحث.</EmptyDescription>
+              </EmptyContent>
+            </Empty>
           </div>
 
           <div class="flex items-center justify-between border-t px-4 py-3">
             <p class="text-sm text-muted-foreground">
               {{ table.getFilteredRowModel().rows.length }} سجل
             </p>
-            <div class="flex items-center gap-1">
-              <Button
-                variant="ghost"
-                size="icon"
-                class="h-8 w-8"
-                :disabled="!table.getCanPreviousPage()"
-                @click="table.setPageIndex(0)"
-              >
-                <ChevronsRight class="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                class="h-8 w-8"
-                :disabled="!table.getCanPreviousPage()"
-                @click="table.previousPage()"
-              >
-                <ChevronRight class="h-4 w-4" />
-              </Button>
-              <span class="px-2 text-sm text-muted-foreground">
-                {{ table.getState().pagination.pageIndex + 1 }} / {{ table.getPageCount() }}
-              </span>
-              <Button
-                variant="ghost"
-                size="icon"
-                class="h-8 w-8"
-                :disabled="!table.getCanNextPage()"
-                @click="table.nextPage()"
-              >
-                <ChevronLeft class="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                class="h-8 w-8"
-                :disabled="!table.getCanNextPage()"
-                @click="table.setPageIndex(table.getPageCount() - 1)"
-              >
-                <ChevronsLeft class="h-4 w-4" />
-              </Button>
+            <div class="flex items-center gap-6">
+              <div class="hidden items-center gap-2 lg:flex">
+                <Label for="audit-rows-per-page" class="text-sm font-medium whitespace-nowrap">الصفوف لكل صفحة</Label>
+                <Select
+                  :model-value="`${table.getState().pagination.pageSize}`"
+                  @update:model-value="(v) => table.setPageSize(Number(v))"
+                >
+                  <SelectTrigger id="audit-rows-per-page" size="sm" class="w-16">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent side="top">
+                    <SelectItem v-for="size in ['10', '20', '30', '50']" :key="size" :value="size">
+                      {{ size }}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <p class="text-sm font-medium whitespace-nowrap">
+                صفحة {{ table.getState().pagination.pageIndex + 1 }} من {{ table.getPageCount() }}
+              </p>
+
+              <div class="flex items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  class="hidden h-8 w-8 lg:flex"
+                  :disabled="!table.getCanPreviousPage()"
+                  @click="table.setPageIndex(0)"
+                >
+                  <span class="sr-only">الصفحة الأولى</span>
+                  <ChevronsRight class="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  class="h-8 w-8"
+                  :disabled="!table.getCanPreviousPage()"
+                  @click="table.previousPage()"
+                >
+                  <span class="sr-only">الصفحة السابقة</span>
+                  <ChevronRight class="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  class="h-8 w-8"
+                  :disabled="!table.getCanNextPage()"
+                  @click="table.nextPage()"
+                >
+                  <span class="sr-only">الصفحة التالية</span>
+                  <ChevronLeft class="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  class="hidden h-8 w-8 lg:flex"
+                  :disabled="!table.getCanNextPage()"
+                  @click="table.setPageIndex(table.getPageCount() - 1)"
+                >
+                  <span class="sr-only">الصفحة الأخيرة</span>
+                  <ChevronsLeft class="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           </div>
         </Card>

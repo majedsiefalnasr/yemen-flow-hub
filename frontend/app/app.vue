@@ -2,24 +2,39 @@
 import AppShell from '@/components/layout/AppShell.vue'
 import { Toaster } from 'vue-sonner'
 import { ConfigProvider } from 'reka-ui'
-import { useTheme } from '@/composables/useTheme'
 import { useAuthStore } from '@/stores/auth.store'
+import { useThemingStore } from '@/stores/theming.store'
 
 const route = useRoute()
 const authStore = useAuthStore()
+const themingStore = useThemingStore()
 const user = computed(() => authStore.user)
-const { isDark, initTheme } = useTheme()
+let mediaQuery: MediaQueryList | null = null
+const applySystemTheme = () => {
+  if (themingStore.mode === 'system') {
+    themingStore.applyTheme()
+  }
+}
 
-// Initialize theme from localStorage/system preference
+// Initialize persisted user/system theme before the app shell renders.
 onBeforeMount(() => {
-  initTheme()
+  themingStore.loadSettings()
+})
+
+onMounted(() => {
+  mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+  mediaQuery.addEventListener('change', applySystemTheme)
+})
+
+onUnmounted(() => {
+  mediaQuery?.removeEventListener('change', applySystemTheme)
 })
 
 useHead({
   htmlAttrs: {
     lang: 'ar',
     dir: 'rtl',
-    class: computed(() => isDark.value ? 'dark' : ''),
+    class: computed(() => themingStore.isDark ? 'dark' : ''),
   },
   titleTemplate: (titleChunk) => titleChunk
     ? `${titleChunk} — منصة إدارة وتمويل الواردات`

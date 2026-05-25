@@ -12,7 +12,7 @@ import { h } from 'vue'
 import {
   Building2,
   ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
-  Edit, MoreHorizontal, Plus, Search, SearchX,
+  Download, Edit, MoreHorizontal, Plus, Printer, Search, SearchX, X,
 } from 'lucide-vue-next'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import MerchantDialog from '@/components/merchants/MerchantDialog.vue'
@@ -63,6 +63,7 @@ import {
   EmptyTitle,
 } from '@/components/ui/empty'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Checkbox } from '@/components/ui/checkbox'
 
 const authStore = useAuthStore()
 const user = computed(() => authStore.user)
@@ -150,6 +151,13 @@ async function saveEdit(data: MerchantFormData) {
   notify('تم تحديث بيانات التاجر')
 }
 
+const rowSelection = ref<Record<string, boolean>>({})
+const selectedCount = computed(() => Object.values(rowSelection.value).filter(Boolean).length)
+
+function clearSelection() {
+  table.resetRowSelection()
+}
+
 async function toggleStatus(merchant: Merchant) {
   const updated = await suspendMerchant(merchant.id, !merchant.is_active)
   merchants.value = merchants.value.map(m => m.id === updated.id ? updated : m)
@@ -179,6 +187,25 @@ function activeStatusCell(isActive: boolean) {
 }
 
 const columns: ColumnDef<Merchant>[] = [
+  {
+    id: 'select',
+    header: ({ table }) =>
+      h(Checkbox, {
+        'modelValue': table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() ? 'indeterminate' : false),
+        'onUpdate:modelValue': (v: boolean | 'indeterminate') => table.toggleAllPageRowsSelected(!!v),
+        'aria-label': 'تحديد الكل',
+      }),
+    cell: ({ row }) =>
+      h('div', { onClick: (e: Event) => e.stopPropagation() }, [
+        h(Checkbox, {
+          'modelValue': row.getIsSelected(),
+          'onUpdate:modelValue': (v: boolean | 'indeterminate') => row.toggleSelected(!!v),
+          'aria-label': 'تحديد التاجر',
+        }),
+      ]),
+    enableSorting: false,
+    enableHiding: false,
+  },
   {
     accessorKey: 'name',
     header: 'التاجر',
@@ -258,6 +285,11 @@ const table = useVueTable({
   getPaginationRowModel: getPaginationRowModel(),
   getSortedRowModel: getSortedRowModel(),
   getFilteredRowModel: getFilteredRowModel(),
+  onRowSelectionChange: updater =>
+    rowSelection.value = typeof updater === 'function' ? updater(rowSelection.value) : updater,
+  state: {
+    get rowSelection() { return rowSelection.value },
+  },
   initialState: { pagination: { pageSize: 20 } },
 })
 </script>
@@ -302,8 +334,30 @@ const table = useVueTable({
       </Card>
     </div>
 
-    <!-- Toolbar: search + filters -->
-    <div class="mb-4 flex flex-wrap items-center gap-2">
+    <!-- Toolbar: bulk (when selected in table view) OR search + filters (default) -->
+    <div v-if="isCbyAdmin && selectedCount > 0" class="mb-4 flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2">
+      <span class="text-sm font-medium text-primary">{{ selectedCount }} محدد</span>
+      <div class="mx-2 h-4 w-px bg-border" />
+      <Button variant="outline" size="sm" class="h-7 gap-1.5 text-xs">
+        <Download class="h-3.5 w-3.5" />
+        تصدير
+      </Button>
+      <Button variant="outline" size="sm" class="h-7 gap-1.5 text-xs">
+        <Printer class="h-3.5 w-3.5" />
+        طباعة
+      </Button>
+      <Button
+        variant="ghost"
+        size="sm"
+        class="ms-auto h-7 gap-1 text-xs text-muted-foreground"
+        @click="clearSelection"
+      >
+        <X class="h-3.5 w-3.5" />
+        إلغاء التحديد
+      </Button>
+    </div>
+
+    <div v-else class="mb-4 flex flex-wrap items-center gap-2">
       <div class="relative min-w-[220px] flex-1">
         <Search class="absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
@@ -342,7 +396,7 @@ const table = useVueTable({
     <!-- CBY Admin: tanstack table view -->
     <template v-if="isCbyAdmin">
       <div class="relative flex flex-col gap-4 overflow-auto">
-        <div class="overflow-hidden rounded-lg border">
+        <div v-if="loadingMerchants || table.getRowModel().rows.length > 0" class="overflow-hidden rounded-lg border">
           <Table>
             <TableHeader class="bg-muted sticky top-0 z-10">
               <TableRow
@@ -373,23 +427,7 @@ const table = useVueTable({
                 </TableRow>
               </template>
 
-              <TableRow v-else-if="!table.getRowModel().rows.length">
-                <TableCell :col-span="columns.length" class="p-8">
-                  <Empty class="min-h-[200px] rounded-xl border border-dashed bg-muted/20">
-                    <EmptyHeader>
-                      <div class="flex size-12 items-center justify-center rounded-xl bg-muted text-muted-foreground">
-                        <SearchX class="size-5" />
-                      </div>
-                      <EmptyTitle>لا توجد نتائج مطابقة</EmptyTitle>
-                    </EmptyHeader>
-                    <EmptyContent>
-                      <EmptyDescription>جرّب تغيير البحث أو الفلاتر.</EmptyDescription>
-                    </EmptyContent>
-                  </Empty>
-                </TableCell>
-              </TableRow>
-
-              <template v-else>
+              <template>
                 <TableRow
                   v-for="row in table.getRowModel().rows"
                   :key="row.id"
@@ -408,9 +446,25 @@ const table = useVueTable({
           </Table>
         </div>
 
+        <!-- Empty state (outside table) -->
+        <Empty
+          v-if="!loadingMerchants && !table.getRowModel().rows.length"
+          class="min-h-[280px] rounded-xl border border-dashed bg-muted/20"
+        >
+          <EmptyHeader>
+            <div class="flex size-12 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+              <SearchX class="size-5" />
+            </div>
+            <EmptyTitle>لا توجد نتائج مطابقة</EmptyTitle>
+          </EmptyHeader>
+          <EmptyContent>
+            <EmptyDescription>جرّب تغيير البحث أو الفلاتر.</EmptyDescription>
+          </EmptyContent>
+        </Empty>
+
         <!-- Pagination -->
         <div class="flex items-center justify-between px-2">
-          <p class="text-sm text-muted-foreground">{{ table.getFilteredRowModel().rows.length }} تاجر</p>
+          <p class="text-sm text-muted-foreground">{{ table.getFilteredSelectedRowModel().rows.length }} من {{ table.getFilteredRowModel().rows.length }} تاجر محدد</p>
           <div class="flex items-center gap-4">
             <p class="text-sm font-medium whitespace-nowrap">
               صفحة {{ table.getState().pagination.pageIndex + 1 }} من {{ table.getPageCount() }}

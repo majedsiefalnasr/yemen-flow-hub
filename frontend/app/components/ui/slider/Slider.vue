@@ -34,7 +34,7 @@ const forwarded = useForwardPropsEmits(delegatedProps, emits)
         data-slot="slider-range"
         :data-horizontal="props.orientation !== 'vertical' ? '' : undefined"
         :data-vertical="props.orientation === 'vertical' ? '' : undefined"
-        class="bg-blue-600 absolute select-none data-horizontal:h-full data-vertical:w-full"
+        class="bg-primary absolute select-none data-horizontal:h-full data-vertical:w-full"
       />
     </SliderTrack>
 

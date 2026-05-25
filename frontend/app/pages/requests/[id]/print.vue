@@ -129,8 +129,8 @@ onBeforeUnmount(clearPrintTimer)
   position: sticky;
   top: 0;
   z-index: 10;
-  background: #ffffff;
-  border-bottom: 1px solid #cccccc;
+  background: var(--background);
+  border-bottom: 1px solid var(--border);
   padding: 12px 24px;
 }
 
@@ -148,23 +148,23 @@ onBeforeUnmount(clearPrintTimer)
   align-items: center;
   gap: 6px;
   font-size: 14px;
-  color: #6c757d;
+  color: var(--muted-foreground);
   text-decoration: none;
   padding: 6px 12px;
   border-radius: 8px;
-  border: 1px solid #cccccc;
+  border: 1px solid var(--border);
   transition: background-color 120ms ease;
 }
 
 .back-link:hover {
-  background-color: #f5f5f7;
+  background-color: var(--muted);
 }
 
 .controls-title {
   flex: 1;
   font-size: 15px;
   font-weight: 600;
-  color: #1c222b;
+  color: var(--foreground);
   margin: 0;
   text-align: right;
 }
@@ -174,8 +174,8 @@ onBeforeUnmount(clearPrintTimer)
   align-items: center;
   gap: 6px;
   padding: 8px 18px;
-  background-color: #0066cc;
-  color: #ffffff;
+  background-color: var(--primary);
+  color: var(--primary-foreground);
   border: none;
   border-radius: 16px;
   font-size: 14px;
@@ -201,11 +201,11 @@ onBeforeUnmount(clearPrintTimer)
   align-items: center;
   padding: 64px;
   font-size: 15px;
-  color: #6c757d;
+  color: var(--muted-foreground);
 }
 
 .state-message--error {
-  color: #c62828;
+  color: var(--destructive);
 }
 
 /* ─── Print body ─── */

@@ -1,5 +1,5 @@
-/* Inter — headings & Latin text */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap');
-
-/* IBM Plex Sans Arabic — body copy, form labels, table data, Arabic text */
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@100;200;300;400;500;600;700&display=swap');
+/*
+ * Google Fonts imports live at the top of main.css.
+ * Keeping this file import-free prevents PostCSS from expanding @import rules
+ * after Tailwind/shadcn output, which triggers Vite's @import ordering warning.
+ */

@@ -1,0 +1,422 @@
+import { defineStore } from 'pinia'
+
+export type ThemeMode = 'system' | 'light' | 'dark'
+export type FontFamily = string
+export type LayoutMode = 'boxed' | 'full'
+export type FontSource = 'google' | 'fallback'
+export type AutoplayPreference = 'system' | 'enabled' | 'disabled'
+
+export interface GoogleFontOption {
+  value: string
+  label: string
+  category: string
+  subsets: string[]
+  variants: string[]
+  source: FontSource
+}
+
+interface BrandingChannels {
+  securityQuestionnaires: boolean
+  emails: boolean
+  vendorReports: boolean
+}
+
+interface ThemingState {
+  mode: ThemeMode
+  font: FontFamily
+  layout: LayoutMode
+  brandColor: string
+  brandLogoName: string
+  brandingPublished: boolean
+  brandingChannels: BrandingChannels
+  shortcutsRequireModifier: boolean
+  highContrast: boolean
+  autoplayVideos: AutoplayPreference
+  openLinksInDesktop: boolean
+  fontOptions: GoogleFontOption[]
+  fontsLoading: boolean
+  fontsError: string | null
+  fontSource: FontSource
+  isLoading: boolean
+}
+
+const STORAGE_KEY = 'appearance-settings-cache'
+const PINNED_FONT_FAMILIES = ['IBM Plex Sans Arabic', 'Cairo', 'Tajawal', 'Inter']
+
+const LEGACY_FONT_KEYS: Record<string, string> = {
+  inter: 'Inter',
+  cairo: 'Cairo',
+  almarai: 'Almarai',
+  amiri: 'Amiri',
+  'ibm-plex-sans-arabic': 'IBM Plex Sans Arabic',
+  'noto-sans-arabic': 'Noto Sans Arabic',
+  tajawal: 'Tajawal',
+  lato: 'Lato',
+  'josefin-sans': 'Josefin Sans',
+  montserrat: 'Montserrat',
+  nunito: 'Nunito',
+  'open-sans': 'Open Sans',
+  poppins: 'Poppins',
+  raleway: 'Raleway',
+  roboto: 'Roboto',
+  'source-sans-3': 'Source Sans 3',
+  lora: 'Lora',
+  merriweather: 'Merriweather',
+  'playfair-display': 'Playfair Display',
+}
+
+const FALLBACK_FONT_OPTIONS: GoogleFontOption[] = [
+  { value: 'IBM Plex Sans Arabic', label: 'IBM Plex Sans Arabic', category: 'Arabic', subsets: ['arabic', 'latin'], variants: ['regular', '500', '600', '700'], source: 'fallback' },
+  { value: 'Cairo', label: 'Cairo', category: 'Arabic', subsets: ['arabic', 'latin'], variants: ['regular', '500', '600', '700'], source: 'fallback' },
+  { value: 'Tajawal', label: 'Tajawal', category: 'Arabic', subsets: ['arabic', 'latin'], variants: ['regular', '500', '700'], source: 'fallback' },
+  { value: 'Inter', label: 'Inter', category: 'Sans Serif', subsets: ['latin'], variants: ['regular', '500', '600', '700'], source: 'fallback' },
+  { value: 'Almarai', label: 'Almarai', category: 'Arabic', subsets: ['arabic'], variants: ['regular', '700'], source: 'fallback' },
+  { value: 'Amiri', label: 'Amiri', category: 'Arabic Serif', subsets: ['arabic'], variants: ['regular', '700'], source: 'fallback' },
+  { value: 'Noto Sans Arabic', label: 'Noto Sans Arabic', category: 'Arabic', subsets: ['arabic', 'latin'], variants: ['regular', '500', '600', '700'], source: 'fallback' },
+  { value: 'Lato', label: 'Lato', category: 'Sans Serif', subsets: ['latin'], variants: ['regular', '700'], source: 'fallback' },
+  { value: 'Josefin Sans', label: 'Josefin Sans', category: 'Sans Serif', subsets: ['latin'], variants: ['regular', '600', '700'], source: 'fallback' },
+  { value: 'Montserrat', label: 'Montserrat', category: 'Sans Serif', subsets: ['latin'], variants: ['regular', '500', '600', '700'], source: 'fallback' },
+  { value: 'Nunito', label: 'Nunito', category: 'Sans Serif', subsets: ['latin'], variants: ['regular', '600', '700'], source: 'fallback' },
+  { value: 'Open Sans', label: 'Open Sans', category: 'Sans Serif', subsets: ['latin'], variants: ['regular', '500', '600', '700'], source: 'fallback' },
+  { value: 'Poppins', label: 'Poppins', category: 'Sans Serif', subsets: ['latin'], variants: ['regular', '500', '600', '700'], source: 'fallback' },
+  { value: 'Raleway', label: 'Raleway', category: 'Sans Serif', subsets: ['latin'], variants: ['regular', '500', '600', '700'], source: 'fallback' },
+  { value: 'Roboto', label: 'Roboto', category: 'Sans Serif', subsets: ['latin'], variants: ['regular', '500', '700'], source: 'fallback' },
+  { value: 'Source Sans 3', label: 'Source Sans 3', category: 'Sans Serif', subsets: ['latin'], variants: ['regular', '500', '600', '700'], source: 'fallback' },
+  { value: 'Lora', label: 'Lora', category: 'Serif', subsets: ['latin'], variants: ['regular', '600', '700'], source: 'fallback' },
+  { value: 'Merriweather', label: 'Merriweather', category: 'Serif', subsets: ['latin'], variants: ['regular', '700'], source: 'fallback' },
+  { value: 'Playfair Display', label: 'Playfair Display', category: 'Serif', subsets: ['latin'], variants: ['regular', '600', '700'], source: 'fallback' },
+]
+
+interface GoogleFontsApiItem {
+  family: string
+  category?: string
+  subsets?: string[]
+  variants?: string[]
+}
+
+function normalizeFontFamily(font: string | null | undefined): string {
+  if (!font) return 'IBM Plex Sans Arabic'
+  const trimmed = font.trim()
+  const legacy = LEGACY_FONT_KEYS[trimmed.toLowerCase()]
+  return legacy || trimmed
+}
+
+function uniqueByFamily(fonts: GoogleFontOption[]): GoogleFontOption[] {
+  const seen = new Set<string>()
+  return fonts.filter((font) => {
+    const key = font.value.toLowerCase()
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+}
+
+function categoryLabel(category: string | undefined, subsets: string[] = []): string {
+  if (subsets.includes('arabic')) {
+    return category === 'serif' ? 'Arabic Serif' : 'Arabic'
+  }
+  if (!category) return 'Sans Serif'
+  return category
+    .split(' ')
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ')
+}
+
+function sanitizeBrandColor(color: string): string {
+  return /^#[0-9a-f]{6}$/i.test(color) ? color : '#0066cc'
+}
+
+export const useThemingStore = defineStore('theming', {
+  state: (): ThemingState => ({
+    mode: 'system',
+    font: 'IBM Plex Sans Arabic',
+    layout: 'full',
+    brandColor: '#0066cc',
+    brandLogoName: '',
+    brandingPublished: true,
+    brandingChannels: {
+      securityQuestionnaires: false,
+      emails: true,
+      vendorReports: true,
+    },
+    shortcutsRequireModifier: true,
+    highContrast: false,
+    autoplayVideos: 'system',
+    openLinksInDesktop: true,
+    fontOptions: FALLBACK_FONT_OPTIONS,
+    fontsLoading: false,
+    fontsError: null,
+    fontSource: 'fallback',
+    isLoading: false,
+  }),
+
+  getters: {
+    isDark: (state) => {
+      if (state.mode === 'system') {
+        return typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches
+      }
+      return state.mode === 'dark'
+    },
+
+    pinnedFonts: (state) => {
+      const pinned = PINNED_FONT_FAMILIES
+        .map((family) => state.fontOptions.find(font => font.value === family))
+        .filter(Boolean) as GoogleFontOption[]
+      return pinned.length ? pinned : state.fontOptions.slice(0, 4)
+    },
+
+    searchableFonts: (state) => {
+      return state.fontOptions.filter(font => !PINNED_FONT_FAMILIES.includes(font.value))
+    },
+
+    selectedFontLabel: (state) => {
+      const family = normalizeFontFamily(state.font)
+      return state.fontOptions.find(font => font.value === family)?.label || family
+    },
+  },
+
+  actions: {
+    async loadGoogleFonts() {
+      if (this.fontsLoading) return
+
+      const config = useRuntimeConfig()
+      const apiKey = String(config.public.googleFontsApiKey || '')
+
+      if (!apiKey) {
+        this.fontOptions = FALLBACK_FONT_OPTIONS
+        this.fontSource = 'fallback'
+        this.fontsError = 'Google Fonts API key is not configured'
+        return
+      }
+
+      this.fontsLoading = true
+      this.fontsError = null
+
+      try {
+        const response = await fetch(`https://www.googleapis.com/webfonts/v1/webfonts?sort=popularity&key=${encodeURIComponent(apiKey)}`)
+        if (!response.ok) {
+          throw new Error(`Google Fonts API returned ${response.status}`)
+        }
+
+        const payload = await response.json() as { items?: GoogleFontsApiItem[] }
+        const fonts = (payload.items || []).map<GoogleFontOption>((item) => ({
+          value: item.family,
+          label: item.family,
+          category: categoryLabel(item.category, item.subsets),
+          subsets: item.subsets || [],
+          variants: item.variants || [],
+          source: 'google',
+        }))
+
+        this.fontOptions = uniqueByFamily([
+          ...FALLBACK_FONT_OPTIONS.map(font => ({ ...font, source: 'google' as FontSource })),
+          ...fonts,
+        ])
+        this.fontSource = 'google'
+      } catch (error) {
+        console.error('Failed to load Google Fonts catalog:', error)
+        this.fontOptions = FALLBACK_FONT_OPTIONS
+        this.fontSource = 'fallback'
+        this.fontsError = 'Failed to load Google Fonts catalog'
+      } finally {
+        this.fontsLoading = false
+      }
+    },
+
+    setMode(mode: ThemeMode) {
+      this.mode = mode
+      this.applyTheme()
+      this.persistToCache()
+    },
+
+    setFont(font: FontFamily) {
+      this.font = normalizeFontFamily(font)
+      this.applyFont()
+      this.persistToCache()
+    },
+
+    setLayout(layout: LayoutMode) {
+      this.layout = layout
+      this.persistToCache()
+    },
+
+    setBrandColor(color: string) {
+      this.brandColor = sanitizeBrandColor(color)
+      this.applyBranding()
+      this.persistToCache()
+    },
+
+    setBrandLogoName(name: string) {
+      this.brandLogoName = name
+      this.persistToCache()
+    },
+
+    setBrandingPublished(value: boolean) {
+      this.brandingPublished = value
+      this.persistToCache()
+    },
+
+    setBrandingChannel(channel: keyof BrandingChannels, value: boolean) {
+      this.brandingChannels[channel] = value
+      this.persistToCache()
+    },
+
+    setShortcutsRequireModifier(value: boolean) {
+      this.shortcutsRequireModifier = value
+      this.persistToCache()
+    },
+
+    setHighContrast(value: boolean) {
+      this.highContrast = value
+      this.applyHighContrast()
+      this.persistToCache()
+    },
+
+    setAutoplayVideos(value: AutoplayPreference) {
+      this.autoplayVideos = value
+      this.persistToCache()
+    },
+
+    setOpenLinksInDesktop(value: boolean) {
+      this.openLinksInDesktop = value
+      this.persistToCache()
+    },
+
+    applyTheme() {
+      if (typeof document === 'undefined') return
+
+      const html = document.documentElement
+      if (this.isDark) {
+        html.classList.add('dark')
+      } else {
+        html.classList.remove('dark')
+      }
+    },
+
+    applyFont() {
+      if (typeof document === 'undefined') return
+
+      this.font = normalizeFontFamily(this.font)
+
+      const existingLink = document.getElementById('theming-font-link')
+      if (existingLink) {
+        existingLink.remove()
+      }
+
+      const fontStack = this.getFontStack()
+      document.documentElement.style.setProperty('--font-sans', fontStack)
+      document.documentElement.style.setProperty('--font-heading', fontStack)
+      document.documentElement.style.setProperty('--font-section', fontStack)
+
+      const link = document.createElement('link')
+      link.id = 'theming-font-link'
+      link.rel = 'stylesheet'
+      link.href = `https://fonts.googleapis.com/css2?family=${this.getCss2FamilyParam()}&display=swap`
+      document.head.appendChild(link)
+    },
+
+    applyBranding() {
+      if (typeof document === 'undefined') return
+
+      const color = sanitizeBrandColor(this.brandColor)
+      const root = document.documentElement
+      root.style.setProperty('--brand-color', color)
+      root.style.setProperty('--primary', color)
+      root.style.setProperty('--ring', color)
+    },
+
+    applyHighContrast() {
+      if (typeof document === 'undefined') return
+      document.documentElement.classList.toggle('high-contrast', this.highContrast)
+    },
+
+    getFontStack(): string {
+      const family = normalizeFontFamily(this.font)
+      const selected = this.fontOptions.find(font => font.value === family)
+      const serifFallback = selected?.category.toLowerCase().includes('serif') ? 'serif' : 'sans-serif'
+      return `'${family}', 'IBM Plex Sans Arabic', 'Inter Variable', system-ui, -apple-system, ${serifFallback}`
+    },
+
+    getCss2FamilyParam(): string {
+      const family = normalizeFontFamily(this.font)
+      const selected = this.fontOptions.find(font => font.value === family)
+      const weights = (selected?.variants || [])
+        .map(variant => variant === 'regular' ? '400' : variant)
+        .filter(variant => /^\d+$/.test(variant))
+      const supportedWeights = ['400', '500', '600', '700'].filter(weight => weights.length === 0 || weights.includes(weight))
+      const encodedFamily = family.trim().replace(/\s+/g, '+')
+
+      if (!supportedWeights.length) {
+        return encodedFamily
+      }
+
+      return `${encodedFamily}:wght@${supportedWeights.join(';')}`
+    },
+
+    async loadSettings() {
+      if (typeof window === 'undefined') return
+
+      this.isLoading = true
+
+      try {
+        this.loadFromCache()
+        // loadGoogleFonts() is deferred — called lazily when the font combobox opens
+        this.applyTheme()
+        this.applyFont()
+        this.applyBranding()
+        this.applyHighContrast()
+      } finally {
+        this.isLoading = false
+      }
+    },
+
+    persistToCache() {
+      if (typeof localStorage === 'undefined') return
+
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({
+          mode: this.mode,
+          font: this.font,
+          layout: this.layout,
+          brandColor: this.brandColor,
+          brandLogoName: this.brandLogoName,
+          brandingPublished: this.brandingPublished,
+          brandingChannels: this.brandingChannels,
+          shortcutsRequireModifier: this.shortcutsRequireModifier,
+          highContrast: this.highContrast,
+          autoplayVideos: this.autoplayVideos,
+          openLinksInDesktop: this.openLinksInDesktop,
+        }),
+      )
+    },
+
+    loadFromCache() {
+      if (typeof localStorage === 'undefined') return
+
+      const cached = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('theming-settings-cache')
+      if (!cached) return
+
+      try {
+        const parsed = JSON.parse(cached)
+        this.mode = parsed.mode || 'system'
+        this.font = normalizeFontFamily(parsed.font || 'IBM Plex Sans Arabic')
+        this.layout = parsed.layout === 'boxy' || parsed.layout === 'boxed' ? 'boxed' : 'full'
+        this.brandColor = sanitizeBrandColor(parsed.brandColor || '#0066cc')
+        this.brandLogoName = parsed.brandLogoName || ''
+        this.brandingPublished = parsed.brandingPublished ?? true
+        this.brandingChannels = {
+          securityQuestionnaires: parsed.brandingChannels?.securityQuestionnaires ?? false,
+          emails: parsed.brandingChannels?.emails ?? true,
+          vendorReports: parsed.brandingChannels?.vendorReports ?? true,
+        }
+        this.shortcutsRequireModifier = parsed.shortcutsRequireModifier ?? true
+        this.highContrast = parsed.highContrast ?? false
+        this.autoplayVideos = parsed.autoplayVideos || 'system'
+        this.openLinksInDesktop = parsed.openLinksInDesktop ?? true
+      } catch (error) {
+        console.error('Failed to load appearance cache:', error)
+      }
+    },
+  },
+})

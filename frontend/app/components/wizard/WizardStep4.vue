@@ -131,10 +131,10 @@ const formattedAmount = computed(() => {
       </CardContent>
     </Card>
 
-    <Card class="border-gray-200 bg-blue-600/10">
+    <Card class="border-gray-200 bg-primary/10">
       <CardHeader>
         <div class="flex items-center gap-2">
-          <ShieldCheck class="h-5 w-5 text-blue-600" />
+          <ShieldCheck class="h-5 w-5 text-primary" />
           <CardTitle class="text-gray-900">إقرار بصحة البيانات</CardTitle>
         </div>
       </CardHeader>

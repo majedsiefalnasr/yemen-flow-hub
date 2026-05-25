@@ -150,7 +150,13 @@ const generalSettings = reactive({ ...originalGeneralSettings })
 // ── Lifecycle ─────────────────────────────────────────────────────────────────
 onMounted(() => {
   themingStore.loadSettings()
-  themingStore.loadGoogleFonts()
+})
+
+// Lazy-load Google Fonts only when the font combobox is first opened
+watch(fontPickerOpen, (opened) => {
+  if (opened && themingStore.fontSource === 'fallback' && !themingStore.fontsLoading) {
+    themingStore.loadGoogleFonts()
+  }
 })
 
 // ── Dirty watchers ────────────────────────────────────────────────────────────
@@ -305,7 +311,7 @@ async function saveGeneralAndBrandingSettings() {
               </FieldGroup>
               <FieldGroup>
                 <FieldLabel>المنطقة الزمنية</FieldLabel>
-                <Select v-model="generalSettings.timeZone">
+                <Select v-model="generalSettings.timeZone" class="w-full">
                   <SelectTrigger class="w-full">
                     <SelectValue placeholder="اختر المنطقة الزمنية" />
                   </SelectTrigger>
@@ -526,10 +532,6 @@ async function saveGeneralAndBrandingSettings() {
                   <Command>
                     <CommandInput class="h-9" placeholder="ابحث عن خط..." />
                     <CommandList>
-                      <div v-if="themingStore.fontsLoading" class="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground">
-                        <Loader2 class="h-4 w-4 animate-spin" />
-                        جاري تحميل الخطوط...
-                      </div>
                       <CommandEmpty>لا توجد نتائج.</CommandEmpty>
                       <CommandGroup heading="الخطوط الأساسية">
                         <CommandItem
@@ -547,18 +549,25 @@ async function saveGeneralAndBrandingSettings() {
                       </CommandGroup>
                       <CommandSeparator />
                       <CommandGroup heading="جميع الخطوط">
-                        <CommandItem
-                          v-for="font in themingStore.searchableFonts"
-                          :key="font.value"
-                          :value="font.value"
-                          @select="(ev) => selectFont(ev.detail.value as string)"
-                        >
-                          <div class="flex min-w-0 flex-col">
-                            <span class="truncate">{{ font.label }}</span>
-                            <span class="truncate text-xs text-muted-foreground">{{ font.category }}</span>
-                          </div>
-                          <Check :class="cn('ms-auto h-4 w-4', themingStore.font === font.value ? 'opacity-100' : 'opacity-0')" />
-                        </CommandItem>
+                        <!-- Loader shown while Google Fonts are being fetched -->
+                        <div v-if="themingStore.fontsLoading" class="flex items-center gap-2 px-2 py-3 text-sm text-muted-foreground">
+                          <Loader2 class="h-4 w-4 animate-spin" />
+                          جاري تحميل قائمة الخطوط...
+                        </div>
+                        <template v-else>
+                          <CommandItem
+                            v-for="font in themingStore.searchableFonts"
+                            :key="font.value"
+                            :value="font.value"
+                            @select="(ev) => selectFont(ev.detail.value as string)"
+                          >
+                            <div class="flex min-w-0 flex-col">
+                              <span class="truncate">{{ font.label }}</span>
+                              <span class="truncate text-xs text-muted-foreground">{{ font.category }}</span>
+                            </div>
+                            <Check :class="cn('ms-auto h-4 w-4', themingStore.font === font.value ? 'opacity-100' : 'opacity-0')" />
+                          </CommandItem>
+                        </template>
                       </CommandGroup>
                     </CommandList>
                   </Command>

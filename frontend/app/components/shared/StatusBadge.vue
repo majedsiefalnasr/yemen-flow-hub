@@ -9,47 +9,42 @@ const props = defineProps<{
 }>()
 
 const badge = computed(() => getBusinessStatus(props.status, props.role))
-
-const badgeStyle = computed(() => ({
-  backgroundColor: `${badge.value.color}1a`,
-  borderColor: `${badge.value.color}33`,
-  color: badge.value.color,
-}))
 </script>
 
 <template>
-  <span class="inline-flex items-center gap-1.25 h-6 px-2.5 rounded-md border text-xs font-medium whitespace-nowrap leading-none" dir="rtl" role="img" :style="badgeStyle" :aria-label="badge.label">
+  <span class="inline-flex items-center gap-1.5 whitespace-nowrap" dir="rtl" role="img" :aria-label="badge.label">
     <svg
-      class="flex-shrink-0"
-      width="14"
-      height="14"
+      class="shrink-0"
+      :style="{ color: badge.color }"
+      width="15"
+      height="15"
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      stroke-width="2"
+      stroke-width="2.5"
       stroke-linecap="round"
       stroke-linejoin="round"
       aria-hidden="true"
     >
-      <!-- file -->
+      <!-- file (draft) -->
       <template v-if="badge.icon === 'file'">
         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
         <polyline points="14 2 14 8 20 8" />
       </template>
 
-      <!-- rotate-ccw (returned/correction) -->
+      <!-- rotate-ccw (returned / correction) -->
       <template v-else-if="badge.icon === 'rotate-ccw'">
         <polyline points="1 4 1 10 7 10" />
         <path d="M3.51 15a9 9 0 1 0 .49-3.75" />
       </template>
 
-      <!-- clock (pending/submitted) -->
+      <!-- clock (pending / submitted / waiting) -->
       <template v-else-if="badge.icon === 'clock'">
         <circle cx="12" cy="12" r="10" />
         <polyline points="12 6 12 12 16 14" />
       </template>
 
-      <!-- check-circle (approved/completed) -->
+      <!-- check-circle (approved / completed) -->
       <template v-else-if="badge.icon === 'check-circle'">
         <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
         <polyline points="22 4 12 14.01 9 11.01" />
@@ -85,7 +80,7 @@ const badgeStyle = computed(() => ({
         <line x1="9" y1="15" x2="12" y2="15" />
       </template>
 
-      <!-- lock (closed/immutable) -->
+      <!-- lock (closed / immutable) -->
       <template v-else-if="badge.icon === 'lock'">
         <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
         <path d="M7 11V7a5 5 0 0 1 10 0v4" />
@@ -98,11 +93,11 @@ const badgeStyle = computed(() => ({
         <polyline points="9 15 11 17 15 13" />
       </template>
 
-      <!-- fallback: circle -->
+      <!-- fallback -->
       <template v-else>
         <circle cx="12" cy="12" r="10" />
       </template>
     </svg>
-    <span>{{ badge.label }}</span>
+    <span class="text-sm font-medium text-foreground">{{ badge.label }}</span>
   </span>
 </template>

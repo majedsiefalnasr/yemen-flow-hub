@@ -27,7 +27,7 @@ function formatAmount(v: number): string {
         <span class="w-12 text-xs font-semibold text-gray-900 flex-shrink-0 text-end">{{ item.currency }}</span>
         <div class="flex-1 h-3 bg-gray-50 rounded-full overflow-hidden">
           <div
-            class="h-full bg-blue-600 rounded-full transition-all duration-500"
+            class="h-full bg-primary rounded-full transition-all duration-500"
             :style="{ width: `${(item.amount / maxAmount) * 100}%`, minWidth: item.amount > 0 ? '2px' : '0' }"
           />
         </div>

@@ -7,7 +7,7 @@
 <style>
 .print-shell {
   min-height: 100vh;
-  background-color: #f5f5f7;
+  background-color: var(--muted);
 }
 
 @media print {

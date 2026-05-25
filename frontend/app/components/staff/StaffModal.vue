@@ -206,7 +206,7 @@ const onSubmit = handleSubmit((values) => {
                 id="staff-role"
                 v-model="role"
                 v-bind="roleAttrs"
-                class="h-9 px-3 border border-gray-200 rounded-md bg-white text-sm text-gray-900 outline-none focus-visible:ring-1 focus-visible:ring-blue-600"
+                class="h-9 px-3 border border-gray-200 rounded-md bg-white text-sm text-gray-900 outline-none focus-visible:ring-1 focus-visible:ring-primary"
                 :class="{ 'border-destructive': errors.role }"
               >
                 <option :value="undefined" disabled>اختر الدور</option>

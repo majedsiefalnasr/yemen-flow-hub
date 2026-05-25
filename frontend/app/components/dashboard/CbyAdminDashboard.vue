@@ -124,7 +124,7 @@ onMounted(() => { store.loadStats() })
           </CardHeader>
           <CardContent>
             <div class="text-3xl font-bold">{{ stats.most_active_banks.length }}</div>
-            <p class="text-xs text-gray-600 mt-1">البنوك النشطة</p>
+            <p class="text-xs text-muted-foreground mt-1">البنوك النشطة</p>
           </CardContent>
         </Card>
 
@@ -134,7 +134,7 @@ onMounted(() => { store.loadStats() })
           </CardHeader>
           <CardContent>
             <div class="text-3xl font-bold">{{ stats.total }}</div>
-            <p class="text-xs text-gray-600 mt-1">إجمالي الطلبات</p>
+            <p class="text-xs text-muted-foreground mt-1">إجمالي الطلبات</p>
           </CardContent>
         </Card>
 
@@ -144,7 +144,7 @@ onMounted(() => { store.loadStats() })
           </CardHeader>
           <CardContent>
             <div class="text-3xl font-bold text-amber-600">{{ stats.in_process }}</div>
-            <p class="text-xs text-gray-600 mt-1">قيد المراجعة</p>
+            <p class="text-xs text-muted-foreground mt-1">قيد المراجعة</p>
           </CardContent>
         </Card>
 
@@ -154,7 +154,7 @@ onMounted(() => { store.loadStats() })
           </CardHeader>
           <CardContent>
             <div class="text-3xl font-bold text-green-700">{{ stats.approved }}</div>
-            <p class="text-xs text-gray-600 mt-1">الطلبات المعتمدة</p>
+            <p class="text-xs text-muted-foreground mt-1">الطلبات المعتمدة</p>
           </CardContent>
         </Card>
       </div>
@@ -175,19 +175,19 @@ onMounted(() => { store.loadStats() })
           <Button variant="outline" class="h-auto flex flex-col items-start justify-start p-4" @click="router.push('/reports')">
             <TrendingUp class="size-5 mb-2" />
             <span class="text-sm font-semibold">التقارير</span>
-            <span class="text-xs text-gray-600">تحليلات وإحصاءات</span>
+            <span class="text-xs text-muted-foreground">تحليلات وإحصاءات</span>
           </Button>
 
           <Button variant="outline" class="h-auto flex flex-col items-start justify-start p-4" @click="router.push('/admin/cby-staff')">
             <Users class="size-5 mb-2" />
             <span class="text-sm font-semibold">مستخدمو النظام</span>
-            <span class="text-xs text-gray-600">إدارة الصلاحيات</span>
+            <span class="text-xs text-muted-foreground">إدارة الصلاحيات</span>
           </Button>
 
           <Button variant="outline" class="h-auto flex flex-col items-start justify-start p-4" @click="router.push('/audit')">
             <AlertCircle class="size-5 mb-2" />
             <span class="text-sm font-semibold">الإشعارات</span>
-            <span class="text-xs text-gray-600">آخر أحداث المنصة</span>
+            <span class="text-xs text-muted-foreground">آخر أحداث المنصة</span>
           </Button>
         </div>
       </section>
@@ -202,17 +202,17 @@ onMounted(() => { store.loadStats() })
           </CardHeader>
           <CardContent class="flex flex-col gap-3">
             <svg :viewBox="`0 0 ${CHART_W} ${CHART_H}`" class="w-full h-24" role="img" aria-label="مخطط الطلبات الشهرية" preserveAspectRatio="none">
-              <polygon :points="buildArea(monthlyRequests as MonthlyEntry[], 'submitted')" fill="currentColor" class="text-blue-600" opacity="0.08" />
-              <polyline :points="buildLine(monthlyRequests as MonthlyEntry[], 'submitted')" fill="none" stroke="currentColor" class="text-blue-600" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
+              <polygon :points="buildArea(monthlyRequests as MonthlyEntry[], 'submitted')" fill="currentColor" class="text-primary" opacity="0.08" />
+              <polyline :points="buildLine(monthlyRequests as MonthlyEntry[], 'submitted')" fill="none" stroke="currentColor" class="text-primary" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
               <polygon :points="buildArea(monthlyRequests as MonthlyEntry[], 'approved')" fill="currentColor" class="text-green-700" opacity="0.08" />
               <polyline :points="buildLine(monthlyRequests as MonthlyEntry[], 'approved')" fill="none" stroke="currentColor" class="text-green-700" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="4 2" />
             </svg>
-            <div class="flex justify-between px-3 text-xs text-gray-600">
+            <div class="flex justify-between px-3 text-xs text-muted-foreground">
               <span v-for="e in (monthlyRequests as MonthlyEntry[])" :key="e.month">{{ monthLabel(e.month) }}</span>
             </div>
             <div class="flex gap-4">
               <Badge variant="secondary" class="w-fit">
-                <span class="size-2 rounded-full bg-blue-600 mr-2" />
+                <span class="size-2 rounded-full bg-primary mr-2" />
                 مُقدَّم
               </Badge>
               <Badge variant="secondary" class="w-fit">
@@ -243,7 +243,7 @@ onMounted(() => { store.loadStats() })
             <ul class="flex flex-col gap-2">
               <li v-for="entry in (categoryDistribution as CategoryEntry[])" :key="entry.label" class="flex items-center gap-2 text-xs">
                 <span class="size-2 rounded-full flex-shrink-0" :style="{ background: entry.color }" />
-                <span class="text-gray-900">{{ entry.label }}</span>
+                <span class="text-foreground">{{ entry.label }}</span>
                 <Badge variant="secondary">{{ Math.round(entry.count / (categoryDistribution as CategoryEntry[]).reduce((s, e) => s + e.count, 0) * 100) }}%</Badge>
               </li>
             </ul>
@@ -260,7 +260,7 @@ onMounted(() => { store.loadStats() })
             <Button variant="link" size="sm" @click="router.push('/requests')">عرض الكل</Button>
           </CardHeader>
           <CardContent>
-            <div v-if="!stats.recent_requests?.length" class="py-6 text-center text-sm text-gray-600" role="status">
+            <div v-if="!stats.recent_requests?.length" class="py-6 text-center text-sm text-muted-foreground" role="status">
               لا توجد طلبات بعد
             </div>
             <Table v-else>
@@ -282,10 +282,10 @@ onMounted(() => { store.loadStats() })
                   <TableCell class="text-right"><StatusBadge :status="req.status" :role="UserRole.CBY_ADMIN" /></TableCell>
                   <TableCell class="text-right">
                     <div class="flex items-center gap-2 min-w-24">
-                      <div class="flex-1 h-1.5 bg-gray-50 rounded-full overflow-hidden">
-                        <div class="h-full rounded-full bg-blue-600" :style="{ width: `${getRequestProgress(req.status)}%` }" />
+                      <div class="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                        <div class="h-full rounded-full bg-primary" :style="{ width: `${getRequestProgress(req.status)}%` }" />
                       </div>
-                      <span class="text-xs text-gray-600 whitespace-nowrap">{{ getRequestProgress(req.status) }}%</span>
+                      <span class="text-xs text-muted-foreground whitespace-nowrap">{{ getRequestProgress(req.status) }}%</span>
                     </div>
                   </TableCell>
                   <TableCell class="text-right">
@@ -305,13 +305,13 @@ onMounted(() => { store.loadStats() })
           <CardContent class="space-y-6">
             <!-- Duplicate suppliers -->
             <div class="space-y-2">
-              <h3 class="text-xs font-semibold text-gray-600">فاتورة مكررة خارجياً</h3>
+              <h3 class="text-xs font-semibold text-muted-foreground">فاتورة مكررة خارجياً</h3>
               <div v-if="!stats.compliance_alerts.duplicate_suppliers.length" class="flex items-center gap-2 text-xs text-green-700">
                 <CheckCircle2 class="size-4" />
                 لا توجد تنبيهات
               </div>
               <ul v-else class="space-y-1">
-                <li v-for="item in stats.compliance_alerts.duplicate_suppliers" :key="item.supplier_name" class="flex items-center justify-between p-2 bg-gray-50 rounded text-xs">
+                <li v-for="item in stats.compliance_alerts.duplicate_suppliers" :key="item.supplier_name" class="flex items-center justify-between p-2 bg-muted rounded text-xs">
                   <span>{{ item.supplier_name }}</span>
                   <Badge variant="secondary">{{ item.count }} طلب</Badge>
                 </li>
@@ -320,7 +320,7 @@ onMounted(() => { store.loadStats() })
 
             <!-- High amount requests -->
             <div class="space-y-2 border-t pt-4">
-              <h3 class="text-xs font-semibold text-gray-600">طلبات بمبالغ مرتفعة</h3>
+              <h3 class="text-xs font-semibold text-muted-foreground">طلبات بمبالغ مرتفعة</h3>
               <div v-if="!stats.compliance_alerts.high_amount_requests.length" class="flex items-center gap-2 text-xs text-green-700">
                 <CheckCircle2 class="size-4" />
                 لا توجد تنبيهات
@@ -329,12 +329,12 @@ onMounted(() => { store.loadStats() })
                 <li
                   v-for="req in stats.compliance_alerts.high_amount_requests"
                   :key="req.id"
-                  class="flex items-center justify-between gap-2 p-2 bg-gray-50 rounded text-xs cursor-pointer hover:bg-gray-50/80"
+                  class="flex items-center justify-between gap-2 p-2 bg-muted rounded text-xs cursor-pointer hover:bg-muted/80"
                   @click="router.push(`/requests/${req.id}`)"
                 >
                   <div>
                     <div class="font-mono">{{ req.reference_number }}</div>
-                    <div class="text-gray-600">{{ req.bank_name }}</div>
+                    <div class="text-muted-foreground">{{ req.bank_name }}</div>
                   </div>
                   <Badge variant="destructive" class="whitespace-nowrap">{{ new Intl.NumberFormat('en-US', { style: 'currency', currency: req.currency, maximumFractionDigits: 0 }).format(req.amount) }}</Badge>
                 </li>
@@ -343,7 +343,7 @@ onMounted(() => { store.loadStats() })
 
             <!-- Stale requests -->
             <div class="space-y-2 border-t pt-4">
-              <h3 class="text-xs font-semibold text-gray-600">طلبات معلقة &gt; 14 يوم</h3>
+              <h3 class="text-xs font-semibold text-muted-foreground">طلبات معلقة &gt; 14 يوم</h3>
               <div v-if="!stats.compliance_alerts.stale_pending_requests.length" class="flex items-center gap-2 text-xs text-green-700">
                 <CheckCircle2 class="size-4" />
                 لا توجد تنبيهات
@@ -352,12 +352,12 @@ onMounted(() => { store.loadStats() })
                 <li
                   v-for="req in stats.compliance_alerts.stale_pending_requests"
                   :key="req.id"
-                  class="flex items-center justify-between gap-2 p-2 bg-gray-50 rounded text-xs cursor-pointer hover:bg-gray-50/80"
+                  class="flex items-center justify-between gap-2 p-2 bg-muted rounded text-xs cursor-pointer hover:bg-muted/80"
                   @click="router.push(`/requests/${req.id}`)"
                 >
                   <div>
                     <div class="font-mono">{{ req.reference_number }}</div>
-                    <div class="text-gray-600">{{ req.bank_name }}</div>
+                    <div class="text-muted-foreground">{{ req.bank_name }}</div>
                   </div>
                   <Badge variant="secondary">{{ formatUpdatedAt(req.updated_at) }}</Badge>
                 </li>
@@ -366,15 +366,15 @@ onMounted(() => { store.loadStats() })
 
             <!-- Most active banks -->
             <div v-if="stats.most_active_banks.length" class="space-y-2 border-t pt-4">
-              <h3 class="text-xs font-semibold text-gray-600">أنشط البنوك</h3>
+              <h3 class="text-xs font-semibold text-muted-foreground">أنشط البنوك</h3>
               <ul class="space-y-2">
                 <li v-for="(bank, index) in stats.most_active_banks" :key="bank.bank_id" class="flex items-center gap-2">
                   <Badge class="size-6 flex items-center justify-center rounded-full p-0">{{ index + 1 }}</Badge>
                   <span class="text-xs truncate w-20">{{ bank.bank_name }}</span>
-                  <div class="flex-1 h-1.5 bg-gray-50 rounded-full overflow-hidden">
-                    <div class="h-full rounded-full bg-blue-600" :style="{ width: `${Math.round(bank.request_count / (stats.most_active_banks[0]?.request_count || 1) * 100)}%` }" />
+                  <div class="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                    <div class="h-full rounded-full bg-primary" :style="{ width: `${Math.round(bank.request_count / (stats.most_active_banks[0]?.request_count || 1) * 100)}%` }" />
                   </div>
-                  <span class="text-xs text-gray-600 whitespace-nowrap">{{ bank.request_count }}</span>
+                  <span class="text-xs text-muted-foreground whitespace-nowrap">{{ bank.request_count }}</span>
                 </li>
               </ul>
             </div>

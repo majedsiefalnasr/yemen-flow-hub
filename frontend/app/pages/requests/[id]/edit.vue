@@ -169,13 +169,13 @@ async function handleSubmit(data: RequestFormData) {
 .page-title {
   font-size: 28px;
   font-weight: 500;
-  color: var(--color-text-blue-600, #1d1d1f);
+  color: var(--foreground);
   margin: 0;
 }
 
 .back-link {
   font-size: 14px;
-  color: #0071e3;
+  color: var(--color-brand);
   text-decoration: none;
 }
 
@@ -184,8 +184,8 @@ async function handleSubmit(data: RequestFormData) {
 }
 
 .state-card {
-  background: var(--color-surface, #fff);
-  border: 1px solid var(--color-border, #d2d2d7);
+  background: var(--background);
+  border: 1px solid var(--border);
   border-radius: 12px;
   padding: 48px 32px;
   display: flex;
@@ -197,7 +197,7 @@ async function handleSubmit(data: RequestFormData) {
 
 .state-text {
   font-size: 15px;
-  color: var(--color-text-secondary, #6e6e73);
+  color: var(--muted-foreground);
 }
 
 .toast {
@@ -208,22 +208,22 @@ async function handleSubmit(data: RequestFormData) {
 }
 
 .toast--success {
-  background: #e9f9ef;
-  color: #1a7a3a;
-  border: 1px solid #34c759;
+  background: color-mix(in srgb, var(--color-success) 10%, var(--background));
+  color: var(--color-success);
+  border: 1px solid color-mix(in srgb, var(--color-success) 40%, transparent);
 }
 
 .toast--error {
-  background: #fff0f0;
-  color: #c0392b;
-  border: 1px solid #ff3b30;
+  background: color-mix(in srgb, var(--destructive) 8%, var(--background));
+  color: var(--destructive);
+  border: 1px solid color-mix(in srgb, var(--destructive) 40%, transparent);
 }
 
 .btn-primary {
   height: 44px;
   padding: 0 24px;
-  background: #0071e3;
-  color: #fff;
+  background: var(--primary);
+  color: var(--primary-foreground);
   border: none;
   border-radius: 12px;
   font-size: 15px;
@@ -246,8 +246,8 @@ async function handleSubmit(data: RequestFormData) {
   height: 44px;
   padding: 0 20px;
   background: transparent;
-  color: var(--color-text-blue-600, #1d1d1f);
-  border: 1px solid var(--color-border, #d2d2d7);
+  color: var(--foreground);
+  border: 1px solid var(--border);
   border-radius: 12px;
   font-size: 15px;
   font-family: inherit;
@@ -259,6 +259,6 @@ async function handleSubmit(data: RequestFormData) {
 }
 
 .btn-secondary:hover {
-  border-color: #0071e3;
+  border-color: var(--primary);
 }
 </style>

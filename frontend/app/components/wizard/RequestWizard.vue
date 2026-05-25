@@ -125,16 +125,16 @@ const isSubmitDisabled = computed(() => !wizard.acknowledged.value || wizard.sub
   <div class="flex flex-col gap-6" dir="rtl">
     <!-- Breadcrumb -->
     <nav class="flex items-center gap-1.5 text-xs text-gray-600 font-family-arabic" aria-label="مسار التنقل">
-      <NuxtLink to="/" class="text-gray-600 hover:text-blue-600-blue hover:underline transition-colors">الرئيسية</NuxtLink>
+      <NuxtLink to="/" class="text-gray-600 hover:text-primary hover:underline transition-colors">الرئيسية</NuxtLink>
       <span class="text-border">/</span>
-      <NuxtLink to="/requests" class="text-gray-600 hover:text-blue-600-blue hover:underline transition-colors">الطلبات</NuxtLink>
+      <NuxtLink to="/requests" class="text-gray-600 hover:text-primary hover:underline transition-colors">الطلبات</NuxtLink>
       <span class="text-border">/</span>
-      <span class="text-blue-600-text font-medium">طلب جديد</span>
+      <span class="text-foreground font-medium">طلب جديد</span>
     </nav>
 
     <!-- Page title -->
     <div class="flex flex-col gap-1">
-      <h1 class="text-2xl font-bold text-blue-600-text font-cairo">تقديم طلب تمويل واردات جديد</h1>
+      <h1 class="text-2xl font-bold text-foreground font-cairo">تقديم طلب تمويل واردات جديد</h1>
       <p class="text-sm text-gray-600 font-family-arabic">املأ البيانات بدقة وأرفق المستندات المطلوبة</p>
     </div>
 
@@ -144,7 +144,7 @@ const isSubmitDisabled = computed(() => !wizard.acknowledged.value || wizard.sub
       :class="{
         'bg-green-50/10 text-green-700 border border-green-200': toast.type === 'success',
         'bg-red-700/10 text-red-700 border border-destructive': toast.type === 'error',
-        'bg-blue-600/10 text-blue-600 border border-gray-200': toast.type === 'info',
+        'bg-primary/10 text-primary border border-gray-200': toast.type === 'info',
       }"
       class="px-4 py-3 rounded-md text-sm font-medium font-family-arabic"
       role="status"
@@ -208,7 +208,7 @@ const isSubmitDisabled = computed(() => !wizard.acknowledged.value || wizard.sub
         <button
           v-if="!isFirstStep"
           type="button"
-          class="h-10 px-5 border border-gray-200 rounded-2xl bg-transparent text-blue-600-text hover:border-primary-blue hover:text-blue-600-blue disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium text-sm whitespace-nowrap"
+          class="h-10 px-5 border border-gray-200 rounded-2xl bg-transparent text-foreground hover:border-primary hover:text-primary disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium text-sm whitespace-nowrap"
           :disabled="wizard.saving.value || wizard.submitting.value"
           @click="wizard.prevStep"
         >
@@ -219,7 +219,7 @@ const isSubmitDisabled = computed(() => !wizard.acknowledged.value || wizard.sub
         <!-- Save draft -->
         <button
           type="button"
-          class="h-10 px-5 border border-gray-200 rounded-2xl bg-transparent text-blue-600-text hover:border-primary-blue hover:text-blue-600-blue disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium text-sm whitespace-nowrap ml-auto"
+          class="h-10 px-5 border border-gray-200 rounded-2xl bg-transparent text-foreground hover:border-primary hover:text-primary disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium text-sm whitespace-nowrap ml-auto"
           :disabled="wizard.saving.value || wizard.submitting.value"
           @click="handleSaveDraft"
         >
@@ -231,7 +231,7 @@ const isSubmitDisabled = computed(() => !wizard.acknowledged.value || wizard.sub
         <button
           v-if="!isLastStep"
           type="button"
-          class="h-10 px-6 bg-blue-600-blue text-white rounded-2xl border-none font-medium text-sm whitespace-nowrap hover:opacity-90 disabled:bg-gray-50 disabled:text-gray-600 disabled:cursor-not-allowed transition-all"
+          class="h-10 px-6 bg-primary text-primary-foreground rounded-2xl border-none font-medium text-sm whitespace-nowrap hover:opacity-90 disabled:bg-gray-50 disabled:text-gray-600 disabled:cursor-not-allowed transition-all"
           :disabled="wizard.saving.value"
           @click="handleNext"
         >
@@ -240,7 +240,7 @@ const isSubmitDisabled = computed(() => !wizard.acknowledged.value || wizard.sub
         <button
           v-else
           type="button"
-          class="h-10 px-6 bg-blue-600-blue text-white rounded-2xl border-none font-medium text-sm whitespace-nowrap hover:opacity-90 disabled:bg-gray-50 disabled:text-gray-600 disabled:cursor-not-allowed transition-all"
+          class="h-10 px-6 bg-primary text-primary-foreground rounded-2xl border-none font-medium text-sm whitespace-nowrap hover:opacity-90 disabled:bg-gray-50 disabled:text-gray-600 disabled:cursor-not-allowed transition-all"
           :disabled="isSubmitDisabled"
           @click="handleSubmit"
         >

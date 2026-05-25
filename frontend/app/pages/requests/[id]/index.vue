@@ -12,6 +12,7 @@ import {
   AlertDialogTitle,
 } from '../../../components/ui/alert-dialog'
 import { Button } from '../../../components/ui/button'
+import { Skeleton } from '../../../components/ui/skeleton'
 import { useRequests } from '../../../composables/useRequests'
 import { useAuthStore } from '../../../stores/auth.store'
 import { useRequestsStore } from '../../../stores/requests.store'
@@ -562,21 +563,22 @@ async function handleCloneConfirm() {
 <template>
   <div class="detail-page" dir="rtl">
     <!-- Loading skeleton -->
-    <div v-if="requestsStore.loadingRequest" class="skeleton-container" aria-busy="true" aria-label="جارٍ التحميل">
-      <div class="skeleton skeleton--title" />
-      <div class="skeleton skeleton--line" />
-      <div class="skeleton skeleton--line skeleton--short" />
+    <div v-if="requestsStore.loadingRequest" class="mx-auto w-full max-w-7xl px-4 space-y-3" aria-busy="true" aria-label="جارٍ التحميل">
+      <Skeleton class="h-8 w-64" />
+      <Skeleton class="h-5 w-full" />
+      <Skeleton class="h-5 w-2/3" />
     </div>
 
     <template v-else-if="request">
-      <!-- Breadcrumbs -->
-      <nav class="breadcrumbs" aria-label="مسار التنقل">
-        <NuxtLink to="/dashboard" class="breadcrumb-link">الرئيسية</NuxtLink>
-        <span class="breadcrumb-sep" aria-hidden="true">/</span>
-        <NuxtLink to="/requests" class="breadcrumb-link">الطلبات</NuxtLink>
-        <span class="breadcrumb-sep" aria-hidden="true">/</span>
-        <span class="breadcrumb-current">{{ request.reference_number }}</span>
-      </nav>
+      <div class="mx-auto w-full max-w-7xl px-4">
+        <!-- Breadcrumbs -->
+        <nav class="breadcrumbs" aria-label="مسار التنقل">
+          <NuxtLink to="/dashboard" class="breadcrumb-link">الرئيسية</NuxtLink>
+          <span class="breadcrumb-sep" aria-hidden="true">/</span>
+          <NuxtLink to="/requests" class="breadcrumb-link">الطلبات</NuxtLink>
+          <span class="breadcrumb-sep" aria-hidden="true">/</span>
+          <span class="breadcrumb-current">{{ request.reference_number }}</span>
+        </nav>
 
       <!-- Page header -->
       <div class="page-header">
@@ -709,7 +711,7 @@ async function handleCloneConfirm() {
                   <tbody>
                     <tr v-for="warn in duplicateWarnings" :key="warn.id">
                       <td>
-                        <NuxtLink v-if="warn.id" :to="`/requests/${warn.id}`" style="color: #0066cc;" class="font-mono text-xs">
+                        <NuxtLink v-if="warn.id" :to="`/requests/${warn.id}`" style="color: var(--primary);" class="font-mono text-xs">
                           {{ warn.reference_number ?? '—' }}
                         </NuxtLink>
                         <span v-else class="font-mono text-xs">{{ warn.reference_number ?? '—' }}</span>
@@ -717,7 +719,7 @@ async function handleCloneConfirm() {
                       <td class="text-sm">{{ warn.bank_name ?? '—' }}</td>
                       <td class="text-sm font-mono">{{ warn.amount?.toLocaleString('ar') ?? '—' }}</td>
                       <td class="text-sm">{{ warn.currency ?? '—' }}</td>
-                      <td class="text-xs" style="color: #6c757d;">
+                      <td class="text-xs text-muted-foreground">
                         {{ warn.created_at ? new Date(warn.created_at).toLocaleDateString('ar-YE') : '—' }}
                       </td>
                     </tr>
@@ -928,10 +930,10 @@ async function handleCloneConfirm() {
               <div class="card">
                 <h2 class="card-title">مسار سير العمل</h2>
 
-                <div v-if="requestsStore.loadingHistory" class="history-loading" aria-busy="true">
-                  <div class="skeleton skeleton--line" />
-                  <div class="skeleton skeleton--line" />
-                  <div class="skeleton skeleton--line skeleton--short" />
+                <div v-if="requestsStore.loadingHistory" class="space-y-3" aria-busy="true">
+                  <Skeleton class="h-5 w-full" />
+                  <Skeleton class="h-5 w-full" />
+                  <Skeleton class="h-5 w-2/3" />
                 </div>
 
                 <p v-else-if="requestsStore.historyError" class="history-error" role="alert">
@@ -948,9 +950,9 @@ async function handleCloneConfirm() {
               <div id="audit-trail" class="card">
                 <h2 class="card-title">سجل الأحداث</h2>
 
-                <div v-if="requestsStore.loadingHistory" class="history-loading" aria-busy="true">
-                  <div class="skeleton skeleton--line" />
-                  <div class="skeleton skeleton--line" />
+                <div v-if="requestsStore.loadingHistory" class="space-y-3" aria-busy="true">
+                  <Skeleton class="h-5 w-full" />
+                  <Skeleton class="h-5 w-full" />
                 </div>
 
                 <p v-else-if="requestsStore.historyError" class="history-error" role="alert">
@@ -1050,6 +1052,7 @@ async function handleCloneConfirm() {
           </NuxtLink>
         </aside>
       </div>
+      </div>
     </template>
 
     <AlertDialog :open="showCloneDialog" @update:open="handleCloneDialogOpenChange">
@@ -1080,7 +1083,7 @@ async function handleCloneConfirm() {
   flex-direction: column;
   gap: 0;
   min-height: 100%;
-  padding: 24px;
+  padding: 24px 0;
   direction: rtl;
 }
 
@@ -1090,26 +1093,30 @@ async function handleCloneConfirm() {
   align-items: center;
   gap: 6px;
   margin-bottom: 16px;
-  font-size: 13px;
+  font-size: 12px;
+  color: var(--muted-foreground);
+  padding: 0 16px;
 }
 
 .breadcrumb-link {
-  color: #6c757d;
+  color: var(--muted-foreground);
   text-decoration: none;
   transition: color 0.15s;
+  font-weight: 500;
 }
 
 .breadcrumb-link:hover {
-  color: #0066cc;
+  color: var(--primary);
 }
 
 .breadcrumb-sep {
-  color: #cccccc;
+  color: var(--border);
+  opacity: 0.5;
 }
 
 .breadcrumb-current {
-  color: #1c222b;
-  font-weight: 500;
+  color: var(--foreground);
+  font-weight: 600;
 }
 
 /* Page header */
@@ -1118,14 +1125,15 @@ async function handleCloneConfirm() {
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 20px;
+  margin-bottom: 24px;
   flex-wrap: wrap;
+  padding: 0 16px;
 }
 
 .page-header__main {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
 }
 
 .page-header__actions {
@@ -1136,23 +1144,26 @@ async function handleCloneConfirm() {
 }
 
 .page-title {
-  font-size: 22px;
+  font-size: 24px;
   font-weight: 700;
-  color: #1c222b;
+  color: var(--foreground);
   margin: 0;
+  letter-spacing: -0.5px;
 }
 
 .page-subtitle {
-  font-size: 14px;
-  color: #6c757d;
+  font-size: 13px;
+  color: var(--muted-foreground);
   margin: 0;
   display: flex;
   align-items: center;
   gap: 6px;
+  font-weight: 500;
 }
 
 .subtitle-dot {
-  color: #cccccc;
+  color: var(--border);
+  opacity: 0.5;
 }
 
 .print-btn {
@@ -1161,20 +1172,20 @@ async function handleCloneConfirm() {
   gap: 6px;
   height: 36px;
   padding: 0 14px;
-  border: 1px solid #cccccc;
-  border-radius: 16px;
-  background: #ffffff;
-  color: #1c222b;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--background);
+  color: var(--foreground);
   font-size: 13px;
   font-weight: 500;
   text-decoration: none;
   cursor: pointer;
-  transition: border-color 0.15s, background 0.15s;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
 }
 
 .print-btn:hover {
-  border-color: #0066cc;
-  color: #0066cc;
+  border-color: var(--primary);
+  color: var(--primary);
 }
 
 .download-btn {
@@ -1183,19 +1194,19 @@ async function handleCloneConfirm() {
   gap: 6px;
   height: 36px;
   padding: 0 14px;
-  border: 1px solid #cccccc;
-  border-radius: 16px;
-  background: #ffffff;
-  color: #1c222b;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--background);
+  color: var(--foreground);
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
-  transition: border-color 0.15s, background 0.15s;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
 }
 
 .download-btn:hover:not(:disabled) {
-  border-color: #0066cc;
-  color: #0066cc;
+  border-color: var(--primary);
+  color: var(--primary);
 }
 
 .download-btn:disabled {
@@ -1207,8 +1218,9 @@ async function handleCloneConfirm() {
 .detail-layout {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 20px;
+  gap: 24px;
   align-items: start;
+  padding: 0 16px;
 }
 
 @media (min-width: 1024px) {
@@ -1220,26 +1232,27 @@ async function handleCloneConfirm() {
 .detail-main {
   display: flex;
   flex-direction: column;
-  gap: 0;
+  gap: 16px;
   min-width: 0;
 }
 
 /* Banners */
 .banner-area {
-  margin-bottom: 12px;
+  margin-bottom: 16px;
 }
 
 .support-return-hint {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 16px;
-  background: #f0f6ff;
-  border: 1px solid #0066cc33;
+  padding: 12px 16px;
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--primary) 20%, transparent);
   border-radius: 12px;
-  color: #004499;
-  font-size: 14px;
-  margin-bottom: 12px;
+  color: var(--primary);
+  font-size: 13px;
+  margin-bottom: 16px;
+  font-weight: 500;
 }
 
 .support-return-hint__icon {
@@ -1249,7 +1262,7 @@ async function handleCloneConfirm() {
 
 .support-return-hint__comment {
   font-size: 13px;
-  color: #004499;
+  color: var(--primary);
   font-weight: 400;
 }
 
@@ -1257,7 +1270,7 @@ async function handleCloneConfirm() {
   margin-inline-start: auto;
   border: 0;
   background: transparent;
-  color: #0066cc;
+  color: var(--primary);
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
@@ -1265,15 +1278,15 @@ async function handleCloneConfirm() {
 }
 
 .support-return-hint__link:hover {
-  color: #004499;
+  color: var(--primary);
 }
 
 .dup-widget {
-  border: 1px solid #f57f1755;
+  border: 1px solid color-mix(in srgb, var(--warning) 33%, transparent);
   border-radius: 12px;
   overflow: hidden;
-  background: #fffbf0;
-  margin-bottom: 12px;
+  background: color-mix(in srgb, var(--warning) 6%, var(--background));
+  margin-bottom: 16px;
 }
 
 .dup-widget-header {
@@ -1281,40 +1294,48 @@ async function handleCloneConfirm() {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: 10px 16px;
-  background: #fff8e1;
-  border-bottom: 1px solid #f57f1733;
+  padding: 12px 16px;
+  background: color-mix(in srgb, var(--warning) 12%, var(--background));
+  border-bottom: 1px solid color-mix(in srgb, var(--warning) 20%, transparent);
 }
 
 .dup-widget-heading {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 
 .dup-badge {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
-  color: #ffffff;
-  background: #f57f17;
+  color: var(--background);
+  background: var(--warning);
   border-radius: 6px;
-  padding: 2px 8px;
+  padding: 3px 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.2px;
 }
 
 .dup-widget-title {
   font-size: 13px;
   font-weight: 600;
-  color: #7c5700;
+  color: color-mix(in srgb, var(--warning) 70%, var(--foreground));
+  letter-spacing: -0.2px;
 }
 
 .dup-widget-toggle {
   border: none;
   background: none;
-  color: #7c5700;
+  color: color-mix(in srgb, var(--warning) 70%, var(--foreground));
   cursor: pointer;
   font-size: 12px;
   font-weight: 600;
   padding: 0;
+  transition: opacity 0.15s;
+}
+
+.dup-widget-toggle:hover {
+  opacity: 0.8;
 }
 
 .dup-widget-body {
@@ -1327,8 +1348,9 @@ async function handleCloneConfirm() {
 
 .dup-widget-summary {
   font-size: 13px;
-  color: #6c757d;
+  color: var(--muted-foreground);
   margin: 0;
+  font-weight: 500;
 }
 
 .claim-error-banner {
@@ -1336,17 +1358,18 @@ async function handleCloneConfirm() {
   align-items: center;
   gap: 10px;
   padding: 12px 16px;
-  background: #fff0ef;
-  border: 1px solid #ff3b3033;
+  background: color-mix(in srgb, var(--destructive) 8%, var(--background));
+  border: 1px solid color-mix(in srgb, var(--destructive) 20%, transparent);
   border-radius: 12px;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
-  color: #c62828;
+  color: var(--destructive);
 }
 
 .claim-error-icon {
   display: flex;
   flex-shrink: 0;
+  color: var(--destructive);
 }
 
 /* Inline voting panel */
@@ -1358,8 +1381,9 @@ async function handleCloneConfirm() {
 .tab-nav {
   display: flex;
   gap: 4px;
-  border-bottom: 1px solid #cccccc;
+  border-bottom: 1px solid var(--border);
   overflow-x: auto;
+  margin-top: 20px;
 }
 
 .tab-btn {
@@ -1369,20 +1393,21 @@ async function handleCloneConfirm() {
   border: none;
   border-bottom: 2px solid transparent;
   font-size: 14px;
-  color: #6c757d;
+  color: var(--muted-foreground);
   cursor: pointer;
   white-space: nowrap;
   transition: color 0.15s, border-color 0.15s;
+  font-weight: 500;
 }
 
 .tab-btn--active {
-  color: #0066cc;
-  border-bottom-color: #0066cc;
+  color: var(--primary);
+  border-bottom-color: var(--primary);
   font-weight: 600;
 }
 
 .tab-btn:hover:not(.tab-btn--active) {
-  color: #1c222b;
+  color: var(--foreground);
 }
 
 /* Tab content */
@@ -1398,8 +1423,8 @@ async function handleCloneConfirm() {
 
 /* Cards */
 .card {
-  background: #ffffff;
-  border: 1px solid #cccccc;
+  background: var(--background);
+  border: 1px solid var(--border);
   border-radius: 12px;
   padding: 20px;
 }
@@ -1412,8 +1437,9 @@ async function handleCloneConfirm() {
 .card-title {
   font-size: 15px;
   font-weight: 600;
-  color: #1c222b;
+  color: var(--foreground);
   margin: 0 0 16px 0;
+  letter-spacing: -0.3px;
 }
 
 /* Detail grid — Lovable field order, 2 columns */
@@ -1421,42 +1447,41 @@ async function handleCloneConfirm() {
   display: grid;
   grid-template-columns: 1fr 1fr;
   margin: 0;
+  gap: 16px 12px;
 }
 
 .detail-row {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 12px 0;
-  border-bottom: 1px solid #f5f5f7;
-}
-
-.detail-row:nth-last-child(-n+2) {
+  gap: 6px;
+  padding: 0;
   border-bottom: none;
 }
 
 .detail-row--customs {
-  border-inline-start: 2px solid #6c757d;
+  border-inline-start: 2px solid var(--muted-foreground);
   padding-inline-start: 10px;
 }
 
 .detail-label {
   font-size: 11px;
-  color: #6c757d;
-  font-weight: 500;
+  color: var(--muted-foreground);
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.3px;
+  letter-spacing: 0.4px;
+  opacity: 0.7;
 }
 
 .detail-value {
   font-size: 14px;
-  color: #1c222b;
+  color: var(--foreground);
   word-break: break-word;
   font-weight: 500;
+  line-height: 1.5;
 }
 
 .detail-value--approved {
-  color: #1b5e20;
+  color: var(--success);
   font-weight: 600;
 }
 
@@ -1484,18 +1509,18 @@ async function handleCloneConfirm() {
   justify-content: center;
   height: 36px;
   padding: 0 14px;
-  border: 1px solid #0066cc;
-  border-radius: 16px;
+  border: 1px solid var(--primary);
+  border-radius: 12px;
   background: transparent;
-  color: #0066cc;
+  color: var(--primary);
   font-size: 13px;
   font-weight: 500;
   text-decoration: none;
-  transition: background 0.15s;
+  transition: background 0.15s, opacity 0.15s;
 }
 
 .customs-preview-link:hover {
-  background: #f0f7ff;
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
 }
 
 .customs-download {
@@ -1505,9 +1530,9 @@ async function handleCloneConfirm() {
   height: 36px;
   padding: 0 16px;
   border: 0;
-  border-radius: 16px;
-  background: #0066cc;
-  color: #ffffff;
+  border-radius: 12px;
+  background: var(--primary);
+  color: var(--primary-foreground);
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
@@ -1524,23 +1549,19 @@ async function handleCloneConfirm() {
 }
 
 .docs-error {
-  color: #c62828;
+  color: var(--destructive);
   font-size: 13px;
   text-align: center;
   padding: 12px 0 0;
-}
-
-.history-loading {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  font-weight: 500;
 }
 
 .history-error {
-  color: #c62828;
+  color: var(--destructive);
   font-size: 13px;
   text-align: center;
   padding: 24px 0;
+  font-weight: 500;
 }
 
 /* Right rail */
@@ -1553,8 +1574,8 @@ async function handleCloneConfirm() {
 }
 
 .rail-card {
-  background: #ffffff;
-  border: 1px solid #cccccc;
+  background: var(--background);
+  border: 1px solid var(--border);
   border-radius: 12px;
   padding: 16px;
 }
@@ -1566,8 +1587,9 @@ async function handleCloneConfirm() {
 .rail-card__title {
   font-size: 13px;
   font-weight: 600;
-  color: #1c222b;
+  color: var(--foreground);
   margin: 0 0 12px 0;
+  letter-spacing: -0.2px;
 }
 
 /* Quick info list */
@@ -1593,8 +1615,8 @@ async function handleCloneConfirm() {
   width: 28px;
   height: 28px;
   border-radius: 8px;
-  background: #e8f0fb;
-  color: #0066cc;
+  background: color-mix(in srgb, var(--primary) 10%, transparent);
+  color: var(--primary);
   flex-shrink: 0;
   margin-top: 1px;
 }
@@ -1608,15 +1630,19 @@ async function handleCloneConfirm() {
 
 .quick-info-label {
   font-size: 11px;
-  color: #6c757d;
-  font-weight: 500;
+  color: var(--muted-foreground);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  opacity: 0.7;
 }
 
 .quick-info-value {
   font-size: 13px;
-  color: #1c222b;
+  color: var(--foreground);
   font-weight: 500;
   word-break: break-word;
+  line-height: 1.4;
 }
 
 /* Back link in rail */
@@ -1625,51 +1651,19 @@ async function handleCloneConfirm() {
   align-items: center;
   gap: 6px;
   padding: 12px 16px;
-  background: #ffffff;
-  border: 1px solid #cccccc;
+  background: var(--background);
+  border: 1px solid var(--border);
   border-radius: 12px;
-  color: #6c757d;
+  color: var(--muted-foreground);
   font-size: 13px;
   text-decoration: none;
-  transition: color 0.15s, border-color 0.15s;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+  font-weight: 500;
 }
 
 .rail-back-link:hover {
-  color: #0066cc;
-  border-color: #0066cc;
-}
-
-/* Skeleton */
-.skeleton-container {
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.skeleton {
-  background: #e5e5ea;
-  border-radius: 6px;
-  animation: pulse 1.4s ease-in-out infinite;
-}
-
-.skeleton--title {
-  height: 28px;
-  width: 240px;
-}
-
-.skeleton--line {
-  height: 18px;
-  width: 100%;
-}
-
-.skeleton--short {
-  width: 60%;
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+  color: var(--primary);
+  border-color: var(--primary);
 }
 
 @media (max-width: 600px) {
@@ -1727,10 +1721,10 @@ async function handleCloneConfirm() {
   gap: 6px;
   height: 36px;
   padding: 0 14px;
-  border: 1px solid #0066cc;
-  border-radius: 16px;
-  background: #ffffff;
-  color: #0066cc;
+  border: 1px solid var(--primary);
+  border-radius: 12px;
+  background: var(--background);
+  color: var(--primary);
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
@@ -1738,8 +1732,8 @@ async function handleCloneConfirm() {
 }
 
 .clone-btn:hover:not(:disabled) {
-  background: #0066cc;
-  color: #ffffff;
+  background: var(--primary);
+  color: var(--primary-foreground);
 }
 
 .clone-btn:disabled {
@@ -1749,13 +1743,15 @@ async function handleCloneConfirm() {
 
 .clone-dialog__body {
   font-size: 14px;
-  color: #6c757d;
+  color: var(--muted-foreground);
   line-height: 1.6;
+  font-weight: 500;
 }
 
 .clone-dialog__error {
   font-size: 13px;
-  color: #c62828;
+  color: var(--destructive);
+  font-weight: 500;
 }
 
 .clone-dialog__actions {

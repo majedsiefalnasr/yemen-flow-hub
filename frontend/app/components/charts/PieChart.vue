@@ -35,7 +35,7 @@ const slices = computed(() => {
     <template v-else>
       <div class="w-44 h-44">
         <svg viewBox="0 0 42 42" class="w-full h-full" aria-label="مخطط دائري">
-          <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#f5f5f7" stroke-width="3" />
+          <circle cx="21" cy="21" r="15.9155" fill="none" :stroke="'var(--muted)'" stroke-width="3" />
           <circle
             v-for="(slice, i) in slices"
             :key="i"
@@ -48,10 +48,10 @@ const slices = computed(() => {
             :stroke-dasharray="`${slice.pct} ${100 - slice.pct}`"
             :stroke-dashoffset="25 - slice.offset"
           />
-          <text x="21" y="20.5" text-anchor="middle" font-size="5" font-weight="600" fill="#1c222b">
+          <text x="21" y="20.5" text-anchor="middle" font-size="5" font-weight="600" :fill="'var(--foreground)'"
             {{ total.toLocaleString('ar-EG') }}
           </text>
-          <text x="21" y="25" text-anchor="middle" font-size="3.5" fill="#6c757d">إجمالي</text>
+          <text x="21" y="25" text-anchor="middle" font-size="3.5" :fill="'var(--muted-foreground)'">إجمالي</text>
         </svg>
       </div>
       <div class="flex flex-col gap-2 w-full">

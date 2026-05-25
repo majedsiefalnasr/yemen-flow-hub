@@ -9,7 +9,7 @@
 <style scoped>
 .auth-shell {
   min-height: 100vh;
-  background-color: var(--color-background);
+  background-color: var(--background);
   display: flex;
   align-items: center;
   justify-content: center;

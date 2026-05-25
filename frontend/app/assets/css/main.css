@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Tajawal:wght@400;500;700&display=swap');
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn-vue/tailwind.css";
@@ -36,6 +37,13 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  /* Project-specific tokens */
+  --color-brand: var(--brand-color);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
+  --color-locked: var(--locked);
+  --color-voting: var(--voting);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -43,8 +51,12 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+  --font-sans: 'IBM Plex Sans Arabic', 'Inter Variable', system-ui, -apple-system, sans-serif;
+  --font-heading: 'Cairo', 'IBM Plex Sans Arabic', system-ui, sans-serif;
+  --font-section: 'Tajawal', 'IBM Plex Sans Arabic', system-ui, sans-serif;
 }
 
+/* ─── Default shadcn-vue new-york/neutral theme ─── */
 :root {
   --radius: 0.625rem;
   --background: oklch(1 0 0);
@@ -53,7 +65,7 @@
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.486 0.203 258.7);
+  --primary: oklch(0.205 0 0);
   --primary-foreground: oklch(0.985 0 0);
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
@@ -72,12 +84,23 @@
   --chart-5: oklch(0.769 0.188 70.08);
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.486 0.203 258.7);
+  --sidebar-primary: oklch(0.205 0 0);
   --sidebar-primary-foreground: oklch(0.985 0 0);
   --sidebar-accent: oklch(0.97 0 0);
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+
+  /* Project-specific tokens — override these to theme the app */
+  --brand-color: #0066cc;
+  --success: #1b5e20;
+  --warning: #f57f17;
+  --info: #32ade6;
+  --locked: #8e8e93;
+  --voting: #5856d6;
+  --font-sans: 'IBM Plex Sans Arabic', 'Inter', system-ui, -apple-system, sans-serif;
+  --font-heading: 'Cairo', 'IBM Plex Sans Arabic', system-ui, sans-serif;
+  --font-section: 'Tajawal', 'IBM Plex Sans Arabic', system-ui, sans-serif;
 }
 
 .dark {
@@ -87,7 +110,7 @@
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.205 0 0);
   --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.68 0.15 258.7);
+  --primary: oklch(0.922 0 0);
   --primary-foreground: oklch(0.205 0 0);
   --secondary: oklch(0.269 0 0);
   --secondary-foreground: oklch(0.985 0 0);
@@ -106,12 +129,40 @@
   --chart-5: oklch(0.645 0.246 16.439);
   --sidebar: oklch(0.205 0 0);
   --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.68 0.15 258.7);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
   --sidebar-primary-foreground: oklch(0.985 0 0);
   --sidebar-accent: oklch(0.269 0 0);
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+
+  /* Project-specific tokens — dark overrides */
+  --success: #81c784;
+  --warning: #ffb74d;
+  --info: #32ade6;
+  --locked: #a8b0ba;
+  --voting: #7b79e8;
+}
+
+.high-contrast {
+  --foreground: #000000;
+  --background: #ffffff;
+  --card-foreground: #000000;
+  --muted-foreground: #343a40;
+  --border: #111111;
+  --input: #111111;
+  --ring: #000000;
+}
+
+.dark.high-contrast {
+  --foreground: #ffffff;
+  --background: #000000;
+  --card: #050505;
+  --card-foreground: #ffffff;
+  --muted-foreground: #f1f3f5;
+  --border: #ffffff;
+  --input: #ffffff;
+  --ring: #ffffff;
 }
 
 @layer base {
@@ -121,5 +172,26 @@
 
   body {
     @apply bg-background text-foreground;
+    font-family: var(--font-sans);
   }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
+  .cn-font-heading {
+    font-family: var(--font-heading);
+  }
+}
+
+.content-layout.layout-boxed {
+  max-width: 1200px;
+  margin-inline: auto;
+  width: 100%;
+}
+
+.content-layout.layout-full {
+  max-width: none;
 }

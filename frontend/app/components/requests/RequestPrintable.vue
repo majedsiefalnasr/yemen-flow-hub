@@ -70,7 +70,7 @@ const fields = computed(() => [
     <header class="flex items-start justify-between gap-4 mb-2">
       <div class="flex flex-col gap-1">
         <h1 class="font-bold text-2xl text-gray-900 m-0">طلب تمويل واردات</h1>
-        <span class="text-blue-600 font-semibold text-base">{{ request.reference_number }}</span>
+        <span class="text-primary font-semibold text-base">{{ request.reference_number }}</span>
       </div>
       <span class="text-sm font-semibold px-3 py-1 rounded-full border border-gray-200 text-gray-900 bg-gray-50 whitespace-nowrap flex-shrink-0 print:border-black print:bg-transparent print:text-black">{{ statusLabel(request.status) }}</span>
     </header>
@@ -97,7 +97,7 @@ const fields = computed(() => [
 
     <!-- ─── Section 3: Wizard fields ─── -->
     <section aria-label="تفاصيل الطلب">
-      <h2 class="font-bold text-base text-blue-600 mb-3 m-0">تفاصيل الطلب</h2>
+      <h2 class="font-bold text-base text-primary mb-3 m-0">تفاصيل الطلب</h2>
       <div class="grid grid-cols-2 gap-y-2.5 gap-x-6">
         <div v-for="field in fields" :key="field.label" class="flex flex-col gap-0.5">
           <span class="text-xs text-gray-600 font-semibold">{{ field.label }}</span>
@@ -110,7 +110,7 @@ const fields = computed(() => [
 
     <!-- ─── Section 4: Documents ─── -->
     <section aria-label="المستندات المرفقة">
-      <h2 class="font-bold text-base text-blue-600 mb-3 m-0">المستندات المرفقة</h2>
+      <h2 class="font-bold text-base text-primary mb-3 m-0">المستندات المرفقة</h2>
       <p v-if="documents.length === 0" class="text-sm text-gray-600 text-center py-4">لا توجد مستندات مرفقة.</p>
       <table v-else class="w-full border-collapse text-sm">
         <thead>
@@ -134,7 +134,7 @@ const fields = computed(() => [
 
     <!-- ─── Section 5: Workflow timeline ─── -->
     <section aria-label="مسار سير العمل">
-      <h2 class="font-bold text-base text-blue-600 mb-3 m-0">مسار سير العمل</h2>
+      <h2 class="font-bold text-base text-primary mb-3 m-0">مسار سير العمل</h2>
       <p v-if="workflowEntries.length === 0" class="text-sm text-gray-600 text-center py-4">لا توجد مراحل مسجّلة بعد.</p>
       <ol v-else class="list-none p-0 m-0 flex flex-col gap-2.5 print:break-inside-avoid">
         <li v-for="entry in workflowEntries" :key="entry.id" class="workflow-entry grid grid-cols-[1.4fr_1fr_auto] gap-3 items-center p-3 border border-gray-200 rounded-3xl bg-gray-50 print:bg-transparent">
@@ -149,7 +149,7 @@ const fields = computed(() => [
 
     <!-- ─── Section 6: Audit timeline ─── -->
     <section aria-label="سجل الأحداث" class="print:break-inside-avoid">
-      <h2 class="font-bold text-base text-blue-600 mb-3 m-0">سجل الأحداث</h2>
+      <h2 class="font-bold text-base text-primary mb-3 m-0">سجل الأحداث</h2>
       <AuditTimeline :entries="sortedHistory" />
     </section>
   </div>

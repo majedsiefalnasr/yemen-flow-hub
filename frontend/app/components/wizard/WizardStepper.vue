@@ -41,7 +41,7 @@ function handleStepClick(index: number): void {
             class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border-2 transition-all"
             :class="{
               'border-gray-200 bg-white': stepStatuses[index] === 'future',
-              'border-primary bg-blue-600 shadow-lg shadow-blue-600/20': stepStatuses[index] === 'active',
+              'border-primary bg-primary shadow-lg shadow-primary/20': stepStatuses[index] === 'active',
               'border-green-200 bg-green-50': stepStatuses[index] === 'completed',
             }"
           >
@@ -65,7 +65,7 @@ function handleStepClick(index: number): void {
             class="text-xs transition-colors"
             :class="{
               'text-gray-600 font-normal': stepStatuses[index] === 'future',
-              'text-blue-600 font-semibold': stepStatuses[index] === 'active',
+              'text-primary font-semibold': stepStatuses[index] === 'active',
               'text-green-700 font-normal': stepStatuses[index] === 'completed',
             }"
             :class="{ 'hover:underline': stepStatuses[index] === 'completed' }"

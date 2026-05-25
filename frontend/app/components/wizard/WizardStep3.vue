@@ -115,7 +115,7 @@ function getFileError(key: WizardDocumentKey): string | null {
         :key="zone.key"
         class="relative min-h-36 p-5 border-2 border-dashed rounded-lg transition-colors"
         :class="{
-          'border-primary bg-blue-600/10': dragOver === zone.key,
+          'border-primary bg-primary/10': dragOver === zone.key,
           'border-green-600 bg-green-50/10': getZoneFile(zone.key) && !getFileError(zone.key),
           'border-destructive bg-red-700/10': getFileError(zone.key),
           'border-gray-200 bg-gray-50': !dragOver && !getZoneFile(zone.key),
@@ -127,7 +127,7 @@ function getFileError(key: WizardDocumentKey): string | null {
         <!-- Badge -->
         <span
           class="absolute top-2 start-2 text-xs font-normal rounded-full px-2 py-1"
-          :class="zone.required ? 'bg-red-700/10 text-red-700 border border-destructive' : 'bg-blue-600/10 text-blue-600 border border-gray-200'"
+          :class="zone.required ? 'bg-red-700/10 text-red-700 border border-destructive' : 'bg-primary/10 text-primary border border-gray-200'"
         >
           {{ zone.required ? 'إلزامي' : 'اختياري' }}
         </span>
@@ -160,7 +160,7 @@ function getFileError(key: WizardDocumentKey): string | null {
         <!-- Idle / error state -->
         <template v-else>
           <div class="flex flex-col items-center justify-center h-full gap-3">
-            <Upload class="h-6 w-6 text-gray-600" :class="{ 'text-blue-600': dragOver === zone.key }" />
+            <Upload class="h-6 w-6 text-gray-600" :class="{ 'text-primary': dragOver === zone.key }" />
             <p class="font-semibold text-gray-900">{{ zone.title }}</p>
             <p v-if="getZoneFile(zone.key)" class="text-sm text-gray-900 break-words">{{ getZoneFile(zone.key)!.name }}</p>
             <p class="text-xs text-gray-600">{{ zone.required ? 'إلزامي' : 'اختياري' }} — PDF ({{ MAX_SIZE_MB }}MB)</p>

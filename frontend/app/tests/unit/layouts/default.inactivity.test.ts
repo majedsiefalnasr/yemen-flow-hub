@@ -25,13 +25,6 @@ vi.mock('../../../components/layout/AppSidebar.vue', () => ({
   },
 }))
 
-vi.mock('../../../components/layout/AppHeader.vue', () => ({
-  default: {
-    emits: ['toggle-mobile-menu'],
-    template: '<header class="header-stub" />',
-  },
-}))
-
 describe('default layout inactivity integration', () => {
   beforeEach(() => {
     sidebarState.collapsed = false

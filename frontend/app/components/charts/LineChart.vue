@@ -63,7 +63,7 @@ const yTicks = computed(() => {
         :y1="tick.y"
         :x2="width - padRight"
         :y2="tick.y"
-        stroke="#e5e7eb"
+        :stroke="'var(--border)'"
         stroke-width="1"
       />
       <text
@@ -73,7 +73,7 @@ const yTicks = computed(() => {
         :y="tick.y + 4"
         text-anchor="end"
         font-size="10"
-        fill="#6c757d"
+        :fill="'var(--muted-foreground)'"
       >{{ tick.label }}</text>
       <polyline
         v-for="s in series"
@@ -102,7 +102,7 @@ const yTicks = computed(() => {
         :y="height - 8"
         text-anchor="middle"
         font-size="10"
-        fill="#6c757d"
+        :fill="'var(--muted-foreground)'"
       >{{ label }}</text>
     </svg>
     <div class="flex gap-4 justify-center flex-wrap">

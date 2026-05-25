@@ -1,7 +1,10 @@
 <script setup lang="ts">
-import { AlertTriangle, ChevronLeft, Download, FilePlus2, Filter, Lock, Search, Vote } from 'lucide-vue-next'
-import StatusBadge from '@/components/shared/StatusBadge.vue'
-import { RequestStatus, UserRole } from '@/types/enums'
+import type { VisibilityState } from '@tanstack/vue-table'
+import { computed, onMounted, ref } from 'vue'
+import { ChevronDown, Columns3, Download, FilePlus2, Printer, Search, X } from 'lucide-vue-next'
+import PageHeader from '@/components/layout/PageHeader.vue'
+import RequestsDataTable from '@/components/requests/RequestsDataTable.vue'
+import { UserRole } from '@/types/enums'
 import {
   ROLE_BUCKETS,
   BANK_ROLES,
@@ -12,6 +15,28 @@ import { useAuthStore } from '@/stores/auth.store'
 import { useRequestsStore } from '@/stores/requests.store'
 import { useBanks } from '@/composables/useBanks'
 import type { Bank } from '@/types/models'
+import {
+  Tabs,
+  TabsList,
+  TabsTrigger,
+} from '@/components/ui/tabs'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
 const authStore = useAuthStore()
 const store = useRequestsStore()
@@ -20,8 +45,17 @@ const { fetchBanks } = useBanks()
 const user = computed(() => authStore.user)
 const filter = ref('all')
 const query = ref('')
-const bankFilter = ref<number | 'all'>('all')
+const bankFilter = ref('all')
 const banks = ref<Bank[]>([])
+
+// Column visibility — owned here so the dropdown can live alongside the search bar
+const columnVisibility = ref<VisibilityState>({})
+const hidableColumns = [
+  { id: 'merchant', label: 'التاجر / البنك' },
+  { id: 'goods_description', label: 'نوع البضاعة' },
+  { id: 'amount', label: 'المبلغ' },
+  { id: 'status', label: 'الحالة' },
+]
 
 onMounted(async () => {
   await store.loadRequests({ per_page: 200 })
@@ -37,13 +71,23 @@ const roleBuckets = computed((): StageBucket[] => {
 
 const isBankScoped = computed(() => user.value ? BANK_ROLES.includes(user.value.role) : false)
 const showBankFilter = computed(() => user.value ? CBY_BANK_FILTER_ROLES.includes(user.value.role) : false)
+const tabOptions = computed(() => [
+  { key: 'all', label: 'الكل', count: countForBucket('all') },
+  ...roleBuckets.value.map(bucket => ({
+    key: bucket.key,
+    label: bucket.label,
+    count: countForBucket(bucket.key),
+  })),
+])
 
 const filteredRequests = computed(() => {
   return store.requests.filter((req) => {
     const bucketMatches = filter.value === 'all'
       || roleBuckets.value.find(b => b.key === filter.value)?.statuses.includes(req.status)
 
-    const bankMatches = isBankScoped.value || bankFilter.value === 'all' || req.bank_id === bankFilter.value
+    const bankMatches = isBankScoped.value
+      || bankFilter.value === 'all'
+      || String(req.bank_id) === bankFilter.value
 
     const q = query.value.trim().toLowerCase()
     const queryMatches = !q
@@ -61,307 +105,166 @@ function countForBucket(key: string) {
   return store.requests.filter(r => bucket?.statuses.includes(r.status)).length
 }
 
+function isColumnVisible(id: string) {
+  return columnVisibility.value[id] !== false
+}
+
+function toggleColumn(id: string, value: boolean) {
+  columnVisibility.value = { ...columnVisibility.value, [id]: value }
+}
+
 const canCreateRequest = computed(() => user.value?.role === UserRole.DATA_ENTRY)
+
+const selectedCount = ref(0)
+const dataTableRef = ref<{ clearSelection: () => void } | null>(null)
+
+function openRequest(id: number) {
+  navigateTo(`/requests/${id}`)
+}
+
+function clearBulkSelection() {
+  dataTableRef.value?.clearSelection()
+}
 </script>
 
 <template>
   <div v-if="user">
-    <!-- Page header -->
-    <div class="mb-6 flex flex-wrap items-start justify-between gap-4">
-      <div>
-        <nav class="mb-1.5 flex items-center gap-1 text-xs text-gray-600">
-          <NuxtLink to="/" class="hover:text-gray-900">الرئيسية</NuxtLink>
-          <span>/</span>
-          <span>الطلبات</span>
-        </nav>
-        <h1 class="text-2xl font-bold tracking-tight">
-          طلبات تمويل الواردات
-        </h1>
-        <p class="mt-1 text-sm text-gray-600">
-          {{ isBankScoped ? 'طلبات جهتك فقط' : 'جميع الطلبات المقدمة عبر المنصة مع حالاتها ومراحل المعالجة' }}
-        </p>
-      </div>
-      <div class="flex items-center gap-2">
-        <Button variant="outline" size="sm">
-          <Download class="ms-1.5 h-4 w-4" />
-          تصدير
-        </Button>
-        <Button v-if="canCreateRequest" as="a" href="/requests/new" size="sm">
-          <FilePlus2 class="ms-1.5 h-4 w-4" />
-          طلب جديد
-        </Button>
-      </div>
-    </div>
+    <PageHeader
+      title="طلبات تمويل الواردات"
+      :subtitle="isBankScoped ? 'طلبات جهتك فقط' : 'جميع الطلبات المقدمة عبر المنصة مع حالاتها ومراحل المعالجة'"
+      :breadcrumbs="[{ label: 'الرئيسية', to: '/' }, { label: 'الطلبات' }]"
+    />
 
-    <!-- Filter tabs -->
-    <div class="mb-4 flex items-center gap-0 border-b border-gray-200">
-      <button
-        type="button"
-        :class="[
-          'flex items-center gap-1.5 border-b-2 px-4 py-2.5 text-sm font-medium transition-colors',
-          filter === 'all'
-            ? 'border-primary text-blue-600'
-            : 'border-transparent text-gray-600 hover:text-gray-900',
-        ]"
-        @click="filter = 'all'"
-      >
-        الكل
-        <span
-          :class="[
-            'rounded-full px-1.5 py-0.5 text-[11px] tabular-nums leading-none',
-            filter === 'all' ? 'bg-blue-600/10 text-blue-600' : 'bg-gray-50 text-gray-600',
-          ]"
-        >
-          {{ countForBucket('all') }}
-        </span>
-      </button>
-      <button
-        v-for="bucket in roleBuckets"
-        :key="bucket.key"
-        type="button"
-        :class="[
-          'flex items-center gap-1.5 border-b-2 px-4 py-2.5 text-sm font-medium transition-colors',
-          filter === bucket.key
-            ? 'border-primary text-blue-600'
-            : 'border-transparent text-gray-600 hover:text-gray-900',
-        ]"
-        @click="filter = bucket.key"
-      >
-        {{ bucket.label }}
-        <span
-          :class="[
-            'rounded-full px-1.5 py-0.5 text-[11px] tabular-nums leading-none',
-            filter === bucket.key ? 'bg-blue-600/10 text-blue-600' : 'bg-gray-50 text-gray-600',
-          ]"
-        >
-          {{ countForBucket(bucket.key) }}
-        </span>
-      </button>
-    </div>
-
-    <!-- Search + filters row -->
-    <div class="mb-4 flex flex-wrap items-center gap-2">
-      <div class="relative min-w-[240px] flex-1">
-        <Search class="absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-600" />
-        <Input
-          v-model="query"
-          placeholder="بحث برقم الطلب، التاجر، أو رقم الفاتورة..."
-          class="h-9 pe-10 text-sm"
-        />
-      </div>
-      <Select v-if="showBankFilter" v-model="bankFilter">
-        <SelectTrigger class="h-9 w-48 text-sm">
-          <SelectValue placeholder="جميع البنوك" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">
-            جميع البنوك
-          </SelectItem>
-          <SelectItem v-for="bank in banks" :key="bank.id" :value="bank.id">
-            {{ bank.name_ar }}
-          </SelectItem>
-        </SelectContent>
-      </Select>
-      <Button variant="outline" size="sm" class="h-9 gap-1.5 text-sm">
-        <Filter class="h-3.5 w-3.5" />
-        فلاتر
-      </Button>
-    </div>
-
-    <!-- Table -->
-    <div class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-      <div class="overflow-x-auto">
-        <Table class="w-full min-w-[700px]">
-          <TableHeader>
-            <TableRow class="border-b bg-gray-50/30 hover:bg-gray-50/30">
-              <TableHead class="px-4 py-3 text-xs font-medium text-gray-600">
-                المرجع
-              </TableHead>
-              <TableHead class="px-4 py-3 text-xs font-medium text-gray-600">
-                التاجر / البنك
-              </TableHead>
-              <TableHead class="px-4 py-3 text-xs font-medium text-gray-600">
-                نوع البضاعة
-              </TableHead>
-              <TableHead class="px-4 py-3 text-xs font-medium text-gray-600">
-                المبلغ
-              </TableHead>
-              <TableHead class="px-4 py-3 text-xs font-medium text-gray-600">
-                الحالة
-              </TableHead>
-              <TableHead class="w-8 px-2 py-3" />
-            </TableRow>
-          </TableHeader>
-
-          <TableBody>
-            <!-- Skeleton loading -->
-            <template v-if="store.loadingList">
-              <TableRow v-for="i in 7" :key="i">
-                <TableCell class="px-4 py-4">
-                  <div class="mb-1.5 h-3.5 w-32 animate-pulse rounded bg-gray-50" />
-                  <div class="h-3 w-20 animate-pulse rounded bg-gray-50/60" />
-                </TableCell>
-                <TableCell class="px-4 py-4">
-                  <div class="mb-1.5 h-3.5 w-36 animate-pulse rounded bg-gray-50" />
-                  <div class="h-3 w-24 animate-pulse rounded bg-gray-50/60" />
-                </TableCell>
-                <TableCell class="px-4 py-4">
-                  <div class="h-3.5 w-24 animate-pulse rounded bg-gray-50" />
-                </TableCell>
-                <TableCell class="px-4 py-4">
-                  <div class="h-3.5 w-24 animate-pulse rounded bg-gray-50" />
-                </TableCell>
-                <TableCell class="px-4 py-4">
-                  <div class="h-5 w-24 animate-pulse rounded-full bg-gray-50" />
-                </TableCell>
-                <TableCell class="px-2 py-4">
-                  <div class="h-4 w-4 animate-pulse rounded bg-gray-50/40" />
-                </TableCell>
-              </TableRow>
-            </template>
-
-            <!-- Empty state -->
-            <TableRow v-else-if="filteredRequests.length === 0">
-              <TableCell colspan="6" class="py-16 text-center">
-                <div class="flex flex-col items-center gap-3 text-gray-600">
-                  <svg
-                    class="h-12 w-12 opacity-25"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="1.25"
-                    aria-hidden="true"
-                  >
-                    <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a1 1 0 0 1 .707.293l5.414 5.414a1 1 0 0 1 .293.707V19a2 2 0 0 1-2 2z" />
-                  </svg>
-                  <div>
-                    <p class="text-sm font-medium">
-                      لا توجد طلبات مطابقة
-                    </p>
-                    <p v-if="query || filter !== 'all'" class="mt-0.5 text-xs">
-                      جرّب تغيير الفلاتر أو البحث بكلمة مختلفة
-                    </p>
-                  </div>
-                </div>
-              </TableCell>
-            </TableRow>
-
-            <!-- Data rows -->
-            <template v-else>
-              <TableRow
-                v-for="req in filteredRequests"
-                :key="req.id"
-                class="cursor-pointer border-t transition-colors hover:bg-gray-50/40"
-                @click="navigateTo(`/requests/${req.id}`)"
-              >
-                <!-- Reference -->
-                <TableCell class="px-4 py-3.5">
-                  <div class="flex flex-wrap items-center gap-1.5">
-                    <span class="font-mono text-[13px] font-semibold text-blue-600">
-                      {{ req.reference_number }}
-                    </span>
-                    <span
-                      v-if="req.duplicate_warnings?.length"
-                      class="inline-flex items-center gap-0.5 rounded-full bg-red-700/10 px-1.5 py-0.5 text-[10px] font-medium text-red-700"
-                    >
-                      <AlertTriangle class="h-2.5 w-2.5" />
-                      مكرر
-                    </span>
-                    <span
-                      v-if="req.status === RequestStatus.EXECUTIVE_VOTING_OPEN && (user.role === UserRole.EXECUTIVE_MEMBER || user.role === UserRole.COMMITTEE_DIRECTOR)"
-                      class="inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-medium"
-                      style="background: rgba(88,86,214,0.1); color: #5856d6;"
-                    >
-                      <Vote class="h-2.5 w-2.5" />
-                      التصويت مفتوح
-                    </span>
-                    <span
-                      v-if="req.is_claimed && !req.is_claimed_by_me && user.role === UserRole.SUPPORT_COMMITTEE"
-                      class="inline-flex items-center gap-0.5 rounded-full bg-amber-50/100/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-600"
-                    >
-                      <Lock class="h-2.5 w-2.5" />
-                      محجوز: {{ req.claimed_by?.name ?? '—' }}
-                    </span>
-                    <span
-                      v-else-if="req.is_claimed_by_me"
-                      class="inline-flex items-center gap-0.5 rounded-full bg-amber-50/100/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-600"
-                    >
-                      <Lock class="h-2.5 w-2.5" />
-                      محجوز لك
-                    </span>
-                  </div>
-                  <div v-if="req.invoice_number" class="mt-0.5 text-[11px] text-gray-600">
-                    {{ req.invoice_number }}
-                  </div>
-                </TableCell>
-
-                <!-- Merchant / Bank -->
-                <TableCell class="px-4 py-3.5">
-                  <div class="truncate text-sm font-medium text-gray-900">
-                    {{ req.merchant?.name ?? '—' }}
-                  </div>
-                  <div class="truncate text-xs text-gray-600">
-                    {{ req.bank_name ?? '—' }}
-                  </div>
-                </TableCell>
-
-                <!-- Goods type -->
-                <TableCell class="px-4 py-3.5">
-                  <span class="line-clamp-1 max-w-[180px] text-sm text-gray-600">
-                    {{ req.goods_description ?? '—' }}
-                  </span>
-                </TableCell>
-
-                <!-- Amount -->
-                <TableCell class="whitespace-nowrap px-4 py-3.5">
-                  <span class="font-mono text-sm font-semibold tabular-nums text-gray-900">
-                    {{ req.amount.toLocaleString('en-US') }}
-                  </span>
-                  <span class="ms-1 text-xs text-gray-600">{{ req.currency }}</span>
-                </TableCell>
-
-                <!-- Status badge -->
-                <TableCell class="px-4 py-3.5">
-                  <StatusBadge :status="req.status" :role="user.role" />
-                </TableCell>
-
-                <!-- Row chevron -->
-                <TableCell class="px-2 py-3.5">
-                  <ChevronLeft class="h-4 w-4 text-gray-600/40" />
-                </TableCell>
-              </TableRow>
-            </template>
-          </TableBody>
-        </Table>
-      </div>
-
-      <!-- Pagination -->
-      <div
-        v-if="store.meta && store.meta.last_page > 1"
-        class="flex items-center justify-between border-t px-4 py-3"
-      >
-        <span class="text-xs text-gray-600">
-          {{ store.meta.total }} طلب — صفحة {{ store.meta.current_page }} من {{ store.meta.last_page }}
-        </span>
-        <div class="flex gap-2">
-          <Button
-            variant="outline"
+    <Tabs v-model="filter" class="flex w-full flex-col gap-4">
+      <!-- Row 1: tabs (left) + page actions (right) -->
+      <div class="flex items-center justify-between gap-4">
+        <!-- Mobile: select dropdown -->
+        <Label for="stage-selector" class="sr-only">المرحلة</Label>
+        <Select v-model="filter">
+          <SelectTrigger
+            id="stage-selector"
+            class="w-fit md:hidden"
             size="sm"
-            :disabled="!store.hasPrevPage || store.loadingList"
-            @click="store.prevPage()"
           >
-            السابق
+            <SelectValue placeholder="اختر المرحلة" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem v-for="tab in tabOptions" :key="tab.key" :value="tab.key">
+              {{ tab.label }} ({{ tab.count }})
+            </SelectItem>
+          </SelectContent>
+        </Select>
+
+        <!-- Desktop: tab pills -->
+        <TabsList class="hidden h-auto gap-1 rounded-full bg-muted p-1 md:flex">
+          <TabsTrigger
+            v-for="tab in tabOptions"
+            :key="tab.key"
+            :value="tab.key"
+            class="h-7 gap-1.5 rounded-full px-3 text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm"
+          >
+            {{ tab.label }}
+            <Badge
+              variant="secondary"
+              class="h-5 min-w-5 rounded-full px-1 text-xs"
+            >
+              {{ tab.count }}
+            </Badge>
+          </TabsTrigger>
+        </TabsList>
+
+        <!-- Export + New request -->
+        <div class="flex items-center gap-2">
+          <Button variant="outline" size="sm" class="h-8">
+            <Download class="h-4 w-4" />
+            <span class="hidden lg:inline">تصدير</span>
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            :disabled="!store.hasNextPage || store.loadingList"
-            @click="store.nextPage()"
-          >
-            التالي
+          <Button v-if="canCreateRequest" as="a" href="/requests/new" size="sm" class="h-8">
+            <FilePlus2 class="h-4 w-4" />
+            <span class="hidden lg:inline">طلب جديد</span>
           </Button>
         </div>
       </div>
-    </div>
+
+      <!-- Row 2: bulk toolbar (when selected) OR search + columns (default) -->
+      <div v-if="selectedCount > 0" class="flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2">
+        <span class="text-sm font-medium text-primary">{{ selectedCount }} محدد</span>
+        <div class="mx-2 h-4 w-px bg-border" />
+        <Button variant="outline" size="sm" class="h-7 gap-1.5 text-xs">
+          <Download class="h-3.5 w-3.5" />
+          تصدير
+        </Button>
+        <Button variant="outline" size="sm" class="h-7 gap-1.5 text-xs">
+          <Printer class="h-3.5 w-3.5" />
+          طباعة
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          class="ms-auto h-7 gap-1 text-xs text-muted-foreground"
+          @click="clearBulkSelection"
+        >
+          <X class="h-3.5 w-3.5" />
+          إلغاء التحديد
+        </Button>
+      </div>
+
+      <div v-else class="flex flex-wrap items-center gap-2">
+        <div class="relative min-w-[220px] flex-1">
+          <Search class="absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            v-model="query"
+            placeholder="بحث برقم الطلب، التاجر، أو رقم الفاتورة..."
+            class="h-8 rounded-md pe-9 text-sm"
+          />
+        </div>
+
+        <Select v-if="showBankFilter" v-model="bankFilter">
+          <SelectTrigger class="h-8 w-full rounded-md text-sm sm:w-48">
+            <SelectValue placeholder="جميع البنوك" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">جميع البنوك</SelectItem>
+            <SelectItem v-for="bank in banks" :key="bank.id" :value="String(bank.id)">
+              {{ bank.name_ar }}
+            </SelectItem>
+          </SelectContent>
+        </Select>
+
+        <!-- Customize columns -->
+        <DropdownMenu>
+          <DropdownMenuTrigger as-child>
+            <Button variant="outline" size="sm" class="ms-auto h-8">
+              <Columns3 class="h-4 w-4" />
+              <span class="hidden lg:inline">تخصيص الأعمدة</span>
+              <ChevronDown class="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" class="w-52">
+            <DropdownMenuCheckboxItem
+              v-for="col in hidableColumns"
+              :key="col.id"
+              :model-value="isColumnVisible(col.id)"
+              @update:model-value="(v) => toggleColumn(col.id, !!v)"
+            >
+              {{ col.label }}
+            </DropdownMenuCheckboxItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
+      <!-- Table -->
+      <RequestsDataTable
+        v-if="user"
+        ref="dataTableRef"
+        :data="filteredRequests"
+        :loading="store.loadingList"
+        :role="user.role"
+        :column-visibility="columnVisibility"
+        @row-click="openRequest"
+        @update:column-visibility="v => columnVisibility = v"
+        @update:selected-count="count => selectedCount = count"
+      />
+    </Tabs>
   </div>
 </template>

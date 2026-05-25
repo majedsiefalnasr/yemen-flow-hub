@@ -217,7 +217,7 @@ const onSubmit = handleSubmit((values) => {
                   id="bank-id"
                   v-model="bank_id"
                   v-bind="bankIdAttrs"
-                  class="h-9 px-3 border border-gray-200 rounded-md bg-white text-sm text-gray-900 outline-none focus-visible:ring-1 focus-visible:ring-blue-600"
+                  class="h-9 px-3 border border-gray-200 rounded-md bg-white text-sm text-gray-900 outline-none focus-visible:ring-1 focus-visible:ring-primary"
                   :class="{ 'border-destructive': errors.bank_id }"
                 >
                   <option value="">اختر البنك</option>
@@ -320,7 +320,7 @@ const onSubmit = handleSubmit((values) => {
                 id="business-type"
                 v-model="business_type"
                 v-bind="businessTypeAttrs"
-                class="h-9 px-3 border border-gray-200 rounded-md bg-white text-sm text-gray-900 outline-none focus-visible:ring-1 focus-visible:ring-blue-600"
+                class="h-9 px-3 border border-gray-200 rounded-md bg-white text-sm text-gray-900 outline-none focus-visible:ring-1 focus-visible:ring-primary"
               >
                 <option value="">اختر القطاع</option>
                 <option v-for="opt in BUSINESS_TYPE_OPTIONS" :key="opt.value" :value="opt.value">
@@ -338,7 +338,7 @@ const onSubmit = handleSubmit((values) => {
                 id="merchant-status"
                 v-model="is_active"
                 v-bind="isActiveAttrs"
-                class="h-9 px-3 border border-gray-200 rounded-md bg-white text-sm text-gray-900 outline-none focus-visible:ring-1 focus-visible:ring-blue-600"
+                class="h-9 px-3 border border-gray-200 rounded-md bg-white text-sm text-gray-900 outline-none focus-visible:ring-1 focus-visible:ring-primary"
               >
                 <option value="true">نشط</option>
                 <option value="false">موقوف</option>

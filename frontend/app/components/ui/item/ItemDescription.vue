@@ -11,7 +11,7 @@ const props = defineProps<{
   <p
     data-slot="item-description"
     :class="cn(
-      'text-gray-600 text-start text-sm leading-normal group-data-[size=xs]/item:text-xs line-clamp-2 font-normal [&>a]:underline [&>a]:underline-offset-4 [&>a:hover]:text-blue-600',
+      'text-gray-600 text-start text-sm leading-normal group-data-[size=xs]/item:text-xs line-clamp-2 font-normal [&>a]:underline [&>a]:underline-offset-4 [&>a:hover]:text-primary',
       props.class,
     )"
   >

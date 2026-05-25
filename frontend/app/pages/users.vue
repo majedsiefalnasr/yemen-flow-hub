@@ -1,5 +1,20 @@
 <script setup lang="ts">
-import { ref, reactive, computed, watch, onMounted } from 'vue'
+import type { ColumnDef, VisibilityState } from '@tanstack/vue-table'
+import {
+  FlexRender,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  useVueTable,
+} from '@tanstack/vue-table'
+import { ref, reactive, computed, watch, onMounted, h } from 'vue'
+import {
+  AlertTriangle,
+  ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
+  Download, MoreHorizontal, Plus, Printer, Search, SearchX, X,
+} from 'lucide-vue-next'
+import PageHeader from '@/components/layout/PageHeader.vue'
 import { UserRole } from '../types/enums'
 import type { User, Bank } from '../types/models'
 import { useUsers } from '../composables/useUsers'
@@ -7,6 +22,49 @@ import { useBanks } from '../composables/useBanks'
 import { useAuthStore } from '../stores/auth.store'
 import { ROLE_LABELS, BANK_ROLES, CBY_ROLES, BANK_ADMIN_MANAGED_ROLES } from '../constants/workflow'
 import type { CreateUserPayload, UpdateUserPayload } from '../composables/useUsers'
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Switch } from '@/components/ui/switch'
+import { Field, FieldDescription, FieldLabel } from '@/components/ui/field'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+} from '@/components/ui/empty'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Checkbox } from '@/components/ui/checkbox'
 
 definePageMeta({
   middleware: 'role',
@@ -21,6 +79,7 @@ const users = ref<User[]>([])
 const banks = ref<Bank[]>([])
 const loading = ref(false)
 const error = ref<string | null>(null)
+const query = ref('')
 
 const showModal = ref(false)
 const editingUser = ref<User | null>(null)
@@ -192,362 +251,372 @@ function bankLabel(user: User): string {
   return user.bank_name_ar ?? 'CBY'
 }
 
+const rowSelection = ref<Record<string, boolean>>({})
+const selectedCount = computed(() => Object.values(rowSelection.value).filter(Boolean).length)
+
+function clearSelection() {
+  table.resetRowSelection()
+}
+
+const filteredUsers = computed(() => {
+  const q = query.value.trim().toLowerCase()
+  if (!q) return users.value
+  return users.value.filter(u =>
+    u.name.toLowerCase().includes(q)
+    || u.email.toLowerCase().includes(q)
+    || (ROLE_LABELS[u.role] ?? u.role).toLowerCase().includes(q),
+  )
+})
+
+function activeStatusCell(isActive: boolean, activeLabel = 'نشط', inactiveLabel = 'غير نشط') {
+  const color = isActive ? 'var(--color-success)' : 'var(--color-locked)'
+  const label = isActive ? activeLabel : inactiveLabel
+  const paths = isActive
+    ? [
+        h('path', { d: 'M22 11.08V12a10 10 0 1 1-5.93-9.14' }),
+        h('polyline', { points: '22 4 12 14.01 9 11.01' }),
+      ]
+    : [
+        h('circle', { cx: '12', cy: '12', r: '10' }),
+        h('line', { x1: '15', y1: '9', x2: '9', y2: '15' }),
+        h('line', { x1: '9', y1: '9', x2: '15', y2: '15' }),
+      ]
+  return h('span', { class: 'inline-flex items-center gap-1.5 whitespace-nowrap' }, [
+    h('svg', {
+      class: 'shrink-0', style: { color }, width: 15, height: 15,
+      viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor',
+      'stroke-width': '2.5', 'stroke-linecap': 'round', 'stroke-linejoin': 'round',
+    }, paths),
+    h('span', { class: 'text-sm font-medium text-foreground' }, label),
+  ])
+}
+
+const columns: ColumnDef<User>[] = [
+  {
+    id: 'select',
+    header: ({ table }) =>
+      h(Checkbox, {
+        'modelValue': table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() ? 'indeterminate' : false),
+        'onUpdate:modelValue': (v: boolean | 'indeterminate') => table.toggleAllPageRowsSelected(!!v),
+        'aria-label': 'تحديد الكل',
+      }),
+    cell: ({ row }) =>
+      h('div', { onClick: (e: Event) => e.stopPropagation() }, [
+        h(Checkbox, {
+          'modelValue': row.getIsSelected(),
+          'onUpdate:modelValue': (v: boolean | 'indeterminate') => row.toggleSelected(!!v),
+          'aria-label': 'تحديد المستخدم',
+        }),
+      ]),
+    enableSorting: false,
+    enableHiding: false,
+  },
+  {
+    accessorKey: 'name',
+    header: 'الاسم',
+    cell: ({ row }) => h('div', { class: 'flex flex-col gap-0.5' }, [
+      h('span', { class: 'text-sm font-medium' }, row.original.name),
+      h('span', { class: 'font-mono text-xs text-muted-foreground', dir: 'ltr' }, row.original.email),
+    ]),
+  },
+  {
+    accessorKey: 'role',
+    header: 'الدور',
+    cell: ({ row }) => h(Badge, { variant: 'outline' }, () => ROLE_LABELS[row.original.role] ?? row.original.role),
+  },
+  {
+    id: 'organization',
+    header: 'الجهة',
+    cell: ({ row }) => h('span', { class: 'text-sm text-muted-foreground' }, bankLabel(row.original)),
+  },
+  {
+    accessorKey: 'is_active',
+    header: 'الحالة',
+    cell: ({ row }) => activeStatusCell(row.original.is_active),
+  },
+  {
+    id: 'actions',
+    enableHiding: false,
+    cell: ({ row }) => {
+      const user = row.original
+      return h(DropdownMenu, {}, {
+        default: () => [
+          h(DropdownMenuTrigger, { asChild: true }, {
+            default: () => h(Button, {
+              variant: 'ghost', size: 'icon', class: 'h-8 w-8',
+            }, {
+              default: () => [
+                h('span', { class: 'sr-only' }, 'فتح القائمة'),
+                h(MoreHorizontal, { class: 'h-4 w-4' }),
+              ],
+            }),
+          }),
+          h(DropdownMenuContent, { align: 'end' }, {
+            default: () => [
+              h(DropdownMenuItem, { onClick: () => openEdit(user) }, () => 'تعديل'),
+            ],
+          }),
+        ],
+      })
+    },
+  },
+]
+
+const table = useVueTable({
+  get data() { return filteredUsers.value },
+  columns,
+  getCoreRowModel: getCoreRowModel(),
+  getPaginationRowModel: getPaginationRowModel(),
+  getSortedRowModel: getSortedRowModel(),
+  getFilteredRowModel: getFilteredRowModel(),
+  onRowSelectionChange: updater =>
+    rowSelection.value = typeof updater === 'function' ? updater(rowSelection.value) : updater,
+  state: {
+    get rowSelection() { return rowSelection.value },
+  },
+  initialState: { pagination: { pageSize: 20 } },
+})
+
 onMounted(loadData)
 </script>
 
 <template>
-  <div class="page">
-    <div class="page-header">
-      <h1 class="page-title">{{ isBankAdmin ? 'مستخدمو البنك' : 'مستخدمو النظام' }}</h1>
-      <button class="btn-primary" @click="openCreate">
-        + إضافة مستخدم
-      </button>
+  <div class="flex flex-col gap-6">
+    <PageHeader
+      :title="isBankAdmin ? 'مستخدمو البنك' : 'مستخدمو النظام'"
+      :subtitle="isBankAdmin ? 'إدارة مستخدمي البنك' : 'إدارة مستخدمي النظام'"
+      :breadcrumbs="[{ label: 'الرئيسية', to: '/' }, { label: isBankAdmin ? 'مستخدمو البنك' : 'مستخدمو النظام' }]"
+    >
+      <template #actions>
+        <Button size="sm" class="h-8" @click="openCreate">
+          <Plus class="h-4 w-4" />
+          <span class="hidden lg:inline">إضافة مستخدم</span>
+        </Button>
+      </template>
+    </PageHeader>
+
+    <!-- Error State -->
+    <Alert v-if="error" variant="destructive">
+      <AlertTriangle class="h-4 w-4" />
+      <AlertDescription>{{ error }}</AlertDescription>
+    </Alert>
+
+    <!-- Toolbar: bulk (when selected) OR search (default) -->
+    <div v-if="selectedCount > 0" class="flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2">
+      <span class="text-sm font-medium text-primary">{{ selectedCount }} محدد</span>
+      <div class="mx-2 h-4 w-px bg-border" />
+      <Button variant="outline" size="sm" class="h-7 gap-1.5 text-xs">
+        <Download class="h-3.5 w-3.5" />
+        تصدير
+      </Button>
+      <Button variant="outline" size="sm" class="h-7 gap-1.5 text-xs">
+        <Printer class="h-3.5 w-3.5" />
+        طباعة
+      </Button>
+      <Button
+        variant="ghost"
+        size="sm"
+        class="ms-auto h-7 gap-1 text-xs text-muted-foreground"
+        @click="clearSelection"
+      >
+        <X class="h-3.5 w-3.5" />
+        إلغاء التحديد
+      </Button>
     </div>
 
-    <div v-if="loading" class="state-message">جارٍ التحميل…</div>
-
-    <div v-else-if="error" class="state-message state-error">{{ error }}</div>
-
-    <div v-else class="card">
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>الاسم</th>
-            <th>البريد الإلكتروني</th>
-            <th>الدور</th>
-            <th>الجهة</th>
-            <th>الحالة</th>
-            <th>إجراءات</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-if="users.length === 0">
-            <td colspan="6" class="empty-row">لا يوجد مستخدمون مسجّلون.</td>
-          </tr>
-          <tr v-for="user in users" :key="user.id">
-            <td>{{ user.name }}</td>
-            <td class="email-cell">{{ user.email }}</td>
-            <td>
-              <span class="badge badge-role">{{ ROLE_LABELS[user.role] ?? user.role }}</span>
-            </td>
-            <td>{{ bankLabel(user) }}</td>
-            <td>
-              <span :class="['badge', user.is_active ? 'badge-active' : 'badge-inactive']">
-                {{ user.is_active ? 'نشط' : 'موقوف' }}
-              </span>
-            </td>
-            <td>
-              <button class="btn-edit" @click="openEdit(user)">تعديل</button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+    <div v-else class="flex items-center gap-2">
+      <div class="relative min-w-[220px] flex-1">
+        <Search class="absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          v-model="query"
+          placeholder="بحث بالاسم أو البريد أو الدور..."
+          class="h-8 rounded-md pe-9 text-sm"
+        />
+      </div>
     </div>
 
-    <!-- Modal -->
-    <div v-if="showModal" class="modal-backdrop" @click.self="closeModal">
-      <div class="modal" dir="rtl">
-        <h2 class="modal-title">{{ editingUser ? 'تعديل بيانات المستخدم' : 'إضافة مستخدم جديد' }}</h2>
+    <!-- Table -->
+    <div class="relative flex flex-col gap-4 overflow-auto">
+      <div v-if="loading || table.getRowModel().rows.length > 0" class="overflow-hidden rounded-lg border">
+        <Table>
+          <TableHeader class="bg-muted sticky top-0 z-10">
+            <TableRow
+              v-for="headerGroup in table.getHeaderGroups()"
+              :key="headerGroup.id"
+              class="hover:bg-transparent"
+            >
+              <TableHead
+                v-for="header in headerGroup.headers"
+                :key="header.id"
+                class="h-10 px-4 text-sm font-medium text-foreground"
+              >
+                <FlexRender
+                  v-if="!header.isPlaceholder"
+                  :render="header.column.columnDef.header"
+                  :props="header.getContext()"
+                />
+              </TableHead>
+            </TableRow>
+          </TableHeader>
 
-        <div v-if="formError" class="form-error-banner">{{ formError }}</div>
+          <TableBody>
+            <template v-if="loading">
+              <TableRow v-for="i in 8" :key="i">
+                <TableCell class="px-4 py-3">
+                  <div class="flex flex-col gap-1.5">
+                    <Skeleton class="h-4 w-36" />
+                    <Skeleton class="h-3 w-48" />
+                  </div>
+                </TableCell>
+                <TableCell class="px-4 py-3"><Skeleton class="h-5 w-20 rounded-full" /></TableCell>
+                <TableCell class="px-4 py-3"><Skeleton class="h-4 w-28" /></TableCell>
+                <TableCell class="px-4 py-3"><Skeleton class="h-4 w-16" /></TableCell>
+                <TableCell class="px-4 py-3"><Skeleton class="h-8 w-8 rounded-md" /></TableCell>
+              </TableRow>
+            </template>
 
-        <div class="form-field">
-          <label class="form-label">الاسم <span class="required">*</span></label>
-          <input v-model="form.name" class="form-input" :class="{ error: formErrors.name }" type="text" placeholder="الاسم الكامل">
-          <span v-if="formErrors.name" class="field-error">{{ formErrors.name }}</span>
-        </div>
+            <template>
+              <TableRow
+                v-for="row in table.getRowModel().rows"
+                :key="row.id"
+                class="transition-colors hover:bg-muted/30"
+              >
+                <TableCell
+                  v-for="cell in row.getVisibleCells()"
+                  :key="cell.id"
+                  class="px-4 py-3 align-middle"
+                >
+                  <FlexRender :render="cell.column.columnDef.cell" :props="cell.getContext()" />
+                </TableCell>
+              </TableRow>
+            </template>
+          </TableBody>
+        </Table>
+      </div>
 
-        <div class="form-field">
-          <label class="form-label">البريد الإلكتروني <span class="required">*</span></label>
-          <input v-model="form.email" class="form-input" :class="{ error: formErrors.email }" type="email" placeholder="example@bank.ye">
-          <span v-if="formErrors.email" class="field-error">{{ formErrors.email }}</span>
-        </div>
+      <!-- Empty state (outside table) -->
+      <Empty
+        v-if="!loading && !table.getRowModel().rows.length"
+        class="min-h-[280px] rounded-xl border border-dashed bg-muted/20"
+      >
+        <EmptyHeader>
+          <div class="flex size-12 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+            <SearchX class="size-5" />
+          </div>
+          <EmptyTitle>لا توجد نتائج</EmptyTitle>
+        </EmptyHeader>
+        <EmptyContent>
+          <EmptyDescription>جرّب تغيير البحث لعرض المستخدمين.</EmptyDescription>
+        </EmptyContent>
+      </Empty>
 
-        <div class="form-field">
-          <label class="form-label">كلمة المرور {{ editingUser ? '(اتركها فارغة للإبقاء على الحالية)' : '*' }}</label>
-          <input v-model="form.password" class="form-input" :class="{ error: formErrors.password }" type="password" placeholder="8 أحرف على الأقل">
-          <span v-if="formErrors.password" class="field-error">{{ formErrors.password }}</span>
-        </div>
-
-        <div class="form-field">
-          <label class="form-label">الدور الوظيفي <span class="required">*</span></label>
-          <select v-model="form.role" class="form-input" :class="{ error: formErrors.role }">
-            <option value="" disabled>اختر الدور</option>
-            <option v-for="role in allowedRoles" :key="role" :value="role">
-              {{ ROLE_LABELS[role] }}
-            </option>
-          </select>
-          <span v-if="formErrors.role" class="field-error">{{ formErrors.role }}</span>
-        </div>
-
-        <div v-if="isBankRole" class="form-field">
-          <label class="form-label">البنك <span class="required">*</span></label>
-          <select v-model="form.bank_id" class="form-input" :class="{ error: formErrors.bank_id }">
-            <option :value="null" disabled>اختر البنك</option>
-            <option v-for="bank in banks" :key="bank.id" :value="bank.id">
-              {{ bank.name_ar }}
-            </option>
-          </select>
-          <span v-if="formErrors.bank_id" class="field-error">{{ formErrors.bank_id }}</span>
-        </div>
-
-        <div class="form-field form-field-inline">
-          <label class="form-label">نشط</label>
-          <input v-model="form.is_active" type="checkbox" class="form-checkbox">
-        </div>
-
-        <div class="modal-actions">
-          <button class="btn-secondary" :disabled="saving" @click="closeModal">إلغاء</button>
-          <button class="btn-primary" :disabled="saving" @click="saveUser">
-            {{ saving ? 'جارٍ الحفظ…' : 'حفظ' }}
-          </button>
+      <!-- Pagination -->
+      <div class="flex items-center justify-between px-2">
+        <p class="text-sm text-muted-foreground">
+          {{ table.getFilteredSelectedRowModel().rows.length }} من {{ table.getFilteredRowModel().rows.length }} مستخدم محدد
+        </p>
+        <div class="flex items-center gap-4">
+          <p class="text-sm font-medium whitespace-nowrap">
+            صفحة {{ table.getState().pagination.pageIndex + 1 }} من {{ table.getPageCount() }}
+          </p>
+          <div class="flex items-center gap-1">
+            <Button
+              variant="outline" size="icon" class="hidden h-8 w-8 lg:flex"
+              :disabled="!table.getCanPreviousPage()" @click="table.setPageIndex(0)"
+            >
+              <span class="sr-only">الصفحة الأولى</span>
+              <ChevronsRight class="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline" size="icon" class="h-8 w-8"
+              :disabled="!table.getCanPreviousPage()" @click="table.previousPage()"
+            >
+              <span class="sr-only">الصفحة السابقة</span>
+              <ChevronRight class="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline" size="icon" class="h-8 w-8"
+              :disabled="!table.getCanNextPage()" @click="table.nextPage()"
+            >
+              <span class="sr-only">الصفحة التالية</span>
+              <ChevronLeft class="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline" size="icon" class="hidden h-8 w-8 lg:flex"
+              :disabled="!table.getCanNextPage()" @click="table.setPageIndex(table.getPageCount() - 1)"
+            >
+              <span class="sr-only">الصفحة الأخيرة</span>
+              <ChevronsLeft class="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </div>
     </div>
+
+    <!-- Dialog Modal -->
+    <Dialog :open="showModal" @update:open="(open) => !open && closeModal()">
+      <DialogContent class="sm:max-w-[420px]" dir="rtl">
+        <DialogHeader>
+          <DialogTitle>{{ editingUser ? 'تعديل بيانات المستخدم' : 'إضافة مستخدم جديد' }}</DialogTitle>
+        </DialogHeader>
+
+        <Alert v-if="formError" variant="destructive">
+          <AlertTriangle class="h-4 w-4" />
+          <AlertDescription>{{ formError }}</AlertDescription>
+        </Alert>
+
+        <div class="flex flex-col gap-4">
+          <Field :data-invalid="!!formErrors.name">
+            <FieldLabel>الاسم <span class="text-destructive">*</span></FieldLabel>
+            <Input v-model="form.name" :aria-invalid="!!formErrors.name" placeholder="الاسم الكامل" type="text" />
+            <FieldDescription v-if="formErrors.name" class="text-destructive">{{ formErrors.name }}</FieldDescription>
+          </Field>
+
+          <Field :data-invalid="!!formErrors.email">
+            <FieldLabel>البريد الإلكتروني <span class="text-destructive">*</span></FieldLabel>
+            <Input v-model="form.email" :aria-invalid="!!formErrors.email" placeholder="example@bank.ye" type="email" />
+            <FieldDescription v-if="formErrors.email" class="text-destructive">{{ formErrors.email }}</FieldDescription>
+          </Field>
+
+          <Field :data-invalid="!!formErrors.password">
+            <FieldLabel>كلمة المرور {{ editingUser ? '(اتركها فارغة للإبقاء على الحالية)' : '*' }}</FieldLabel>
+            <Input v-model="form.password" :aria-invalid="!!formErrors.password" placeholder="8 أحرف على الأقل" type="password" />
+            <FieldDescription v-if="formErrors.password" class="text-destructive">{{ formErrors.password }}</FieldDescription>
+          </Field>
+
+          <Field :data-invalid="!!formErrors.role">
+            <FieldLabel>الدور الوظيفي <span class="text-destructive">*</span></FieldLabel>
+            <Select v-model="form.role">
+              <SelectTrigger :aria-invalid="!!formErrors.role"><SelectValue placeholder="اختر الدور" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem v-for="role in allowedRoles" :key="role" :value="role">{{ ROLE_LABELS[role] }}</SelectItem>
+              </SelectContent>
+            </Select>
+            <FieldDescription v-if="formErrors.role" class="text-destructive">{{ formErrors.role }}</FieldDescription>
+          </Field>
+
+          <Field v-if="isBankRole" :data-invalid="!!formErrors.bank_id">
+            <FieldLabel>البنك <span class="text-destructive">*</span></FieldLabel>
+            <Select v-model="form.bank_id">
+              <SelectTrigger :aria-invalid="!!formErrors.bank_id"><SelectValue placeholder="اختر البنك" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem v-for="bank in banks" :key="bank.id" :value="bank.id">{{ bank.name_ar }}</SelectItem>
+              </SelectContent>
+            </Select>
+            <FieldDescription v-if="formErrors.bank_id" class="text-destructive">{{ formErrors.bank_id }}</FieldDescription>
+          </Field>
+
+          <Field class="flex items-center gap-3">
+            <FieldLabel class="flex-1">نشط</FieldLabel>
+            <Switch v-model:checked="form.is_active" />
+          </Field>
+        </div>
+
+        <DialogFooter class="gap-2">
+          <Button variant="outline" :disabled="saving" @click="closeModal">إلغاء</Button>
+          <Button :disabled="saving" @click="saveUser">{{ saving ? 'جارٍ الحفظ…' : 'حفظ' }}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   </div>
 </template>
-
-<style scoped>
-.page {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
-
-.page-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.page-title {
-  font-size: 28px;
-  font-weight: 500;
-  color: var(--color-text-blue-600);
-  margin: 0;
-}
-
-.card {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-card);
-  overflow: hidden;
-}
-
-.data-table {
-  width: 100%;
-  border-collapse: collapse;
-  direction: rtl;
-}
-
-.data-table th,
-.data-table td {
-  padding: 14px 16px;
-  text-align: right;
-  font-size: 14px;
-}
-
-.data-table th {
-  background: #f5f5f7;
-  color: var(--color-text-secondary);
-  font-weight: 500;
-  border-bottom: 1px solid var(--color-border);
-}
-
-.data-table td {
-  border-bottom: 1px solid var(--color-border);
-  color: var(--color-text-blue-600);
-}
-
-.data-table tr:last-child td {
-  border-bottom: none;
-}
-
-.email-cell {
-  direction: ltr;
-  text-align: right;
-  font-size: 13px;
-  color: var(--color-text-secondary);
-}
-
-.empty-row {
-  text-align: center !important;
-  color: var(--color-text-secondary);
-  padding: 32px !important;
-}
-
-.badge {
-  display: inline-block;
-  padding: 4px 10px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 500;
-}
-
-.badge-role {
-  background: #f0f0f3;
-  color: #6e6e73;
-}
-
-.badge-active {
-  background: #e6f9ec;
-  color: #1a7a35;
-}
-
-.badge-inactive {
-  background: #f0f0f3;
-  color: #8e8e93;
-}
-
-.btn-primary {
-  height: 44px;
-  padding: 0 20px;
-  background: #0071e3;
-  color: #fff;
-  border: none;
-  border-radius: 12px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-}
-
-.btn-primary:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.btn-secondary {
-  height: 44px;
-  padding: 0 20px;
-  background: transparent;
-  color: var(--color-text-blue-600);
-  border: 1px solid var(--color-border);
-  border-radius: 12px;
-  font-size: 14px;
-  cursor: pointer;
-}
-
-.btn-secondary:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.btn-edit {
-  padding: 6px 14px;
-  background: transparent;
-  color: #0071e3;
-  border: 1px solid #0071e3;
-  border-radius: 8px;
-  font-size: 13px;
-  cursor: pointer;
-}
-
-.state-message {
-  text-align: center;
-  color: var(--color-text-secondary);
-  padding: 32px;
-}
-
-.state-error {
-  color: #ff3b30;
-}
-
-/* Modal */
-.modal-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.4);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 100;
-}
-
-.modal {
-  background: var(--color-surface);
-  border-radius: 16px;
-  padding: 32px;
-  width: 480px;
-  max-width: 90vw;
-  max-height: 90vh;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.modal-title {
-  font-size: 20px;
-  font-weight: 500;
-  color: var(--color-text-blue-600);
-  margin: 0;
-}
-
-.form-field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.form-field-inline {
-  flex-direction: row;
-  align-items: center;
-  gap: 12px;
-}
-
-.form-label {
-  font-size: 13px;
-  color: #6e6e73;
-}
-
-.required {
-  color: #ff3b30;
-}
-
-.form-input {
-  height: 44px;
-  padding: 0 12px;
-  border: 1px solid #d2d2d7;
-  border-radius: 12px;
-  font-size: 14px;
-  color: var(--color-text-blue-600);
-  background: var(--color-surface);
-  outline: none;
-  direction: inherit;
-}
-
-.form-input:focus {
-  border-color: #0071e3;
-}
-
-.form-input.error {
-  border-color: #ff3b30;
-}
-
-.form-checkbox {
-  width: 18px;
-  height: 18px;
-  cursor: pointer;
-}
-
-.field-error {
-  font-size: 12px;
-  color: #ff3b30;
-}
-
-.form-error-banner {
-  background: #fff0ef;
-  border: 1px solid #ff3b30;
-  border-radius: 8px;
-  padding: 10px 14px;
-  font-size: 13px;
-  color: #ff3b30;
-}
-
-.modal-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-  margin-top: 4px;
-}
-</style>

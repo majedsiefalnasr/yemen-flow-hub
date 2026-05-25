@@ -228,7 +228,7 @@ async function triggerDownload() {
 /* ─── Page shell ───────────────────────────────────────────────────────────── */
 .preview-page {
   min-height: 100vh;
-  background: #f5f5f7;
+  background: var(--muted);
   padding: 24px;
   font-family: 'IBM Plex Sans Arabic', 'Inter', sans-serif;
   direction: rtl;
@@ -243,8 +243,8 @@ async function triggerDownload() {
   gap: 12px;
   margin-bottom: 16px;
   padding: 12px 16px;
-  background: #ffffff;
-  border: 1px solid #cccccc;
+  background: var(--background);
+  border: 1px solid var(--border);
   border-radius: 12px;
 }
 
@@ -254,7 +254,7 @@ async function triggerDownload() {
 }
 
 .back-link {
-  color: #0066cc;
+  color: var(--primary);
   text-decoration: none;
   font-size: 14px;
 }
@@ -278,39 +278,39 @@ async function triggerDownload() {
 }
 
 .btn-primary {
-  background: #0066cc;
-  color: #ffffff;
+  background: var(--primary);
+  color: var(--primary-foreground);
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: #0059b3;
+  background: color-mix(in srgb, var(--primary) 85%, black);
 }
 
 .btn-secondary {
-  background: #f5f5f7;
-  color: #1c222b;
-  border: 1px solid #cccccc;
+  background: var(--muted);
+  color: var(--foreground);
+  border: 1px solid var(--border);
 }
 
 .btn-secondary:hover {
-  background: #e8e8ed;
+  background: var(--accent);
 }
 
 .download-error {
   width: 100%;
-  color: #ff3b30;
+  color: var(--destructive);
   font-size: 13px;
   margin: 0;
 }
 
 /* ─── Watermark banner ─────────────────────────────────────────────────────── */
 .preview-watermark {
-  background: #fff9e6;
-  border: 1px solid #ff9f0a;
+  background: color-mix(in srgb, var(--color-warning) 10%, var(--background));
+  border: 1px solid color-mix(in srgb, var(--color-warning) 40%, transparent);
   border-radius: 8px;
   padding: 10px 16px;
   font-size: 13px;
-  color: #7a4a00;
+  color: var(--color-warning);
   margin-bottom: 20px;
   text-align: center;
 }
@@ -324,14 +324,14 @@ async function triggerDownload() {
   justify-content: center;
   padding: 80px 24px;
   gap: 12px;
-  color: #6e6e73;
+  color: var(--muted-foreground);
 }
 
 .loading-spinner {
   width: 32px;
   height: 32px;
-  border: 3px solid #cccccc;
-  border-top-color: #0066cc;
+  border: 3px solid var(--border);
+  border-top-color: var(--primary);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
@@ -343,7 +343,7 @@ async function triggerDownload() {
 .empty-title {
   font-size: 18px;
   font-weight: 600;
-  color: #1c222b;
+  color: var(--foreground);
   margin: 0;
 }
 
@@ -354,8 +354,8 @@ async function triggerDownload() {
 
 /* ─── Declaration content ──────────────────────────────────────────────────── */
 .customs-preview-content {
-  background: #ffffff;
-  border: 1px solid #cccccc;
+  background: var(--background);
+  border: 1px solid var(--border);
   border-radius: 12px;
   padding: 40px;
   max-width: 860px;
@@ -367,32 +367,32 @@ async function triggerDownload() {
   text-align: center;
   margin-bottom: 24px;
   padding-bottom: 16px;
-  border-bottom: 2px solid #1c222b;
+  border-bottom: 2px solid var(--foreground);
 }
 
 .decl-logo {
   width: 64px;
   height: 64px;
-  border: 1px solid #8e8e93;
+  border: 1px solid var(--color-locked);
   border-radius: 8px;
   margin: 0 auto 10px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 12px;
-  color: #6e6e73;
+  color: var(--muted-foreground);
 }
 
 .decl-title {
   font-size: 22px;
   font-weight: 700;
-  color: #1c222b;
+  color: var(--foreground);
   margin: 6px 0 4px;
 }
 
 .decl-subtitle {
   font-size: 14px;
-  color: #6e6e73;
+  color: var(--muted-foreground);
   margin: 0;
 }
 
@@ -404,7 +404,7 @@ async function triggerDownload() {
 .decl-meta p {
   margin: 4px 0;
   font-size: 14px;
-  color: #1c222b;
+  color: var(--foreground);
 }
 
 /* Tables */
@@ -417,31 +417,31 @@ async function triggerDownload() {
 
 .decl-table th,
 .decl-table td {
-  border: 1px solid #1c222b;
+  border: 1px solid var(--foreground);
   padding: 8px 12px;
   vertical-align: top;
   text-align: right;
 }
 
 .decl-table th {
-  background: #f5f5f7;
+  background: var(--muted);
   width: 30%;
   font-weight: 600;
-  color: #1c222b;
+  color: var(--foreground);
 }
 
 .decl-table td {
-  color: #1c222b;
+  color: var(--foreground);
 }
 
 /* Notice */
 .decl-notice {
-  border: 1px solid #1c222b;
+  border: 1px solid var(--foreground);
   padding: 12px 16px;
   margin: 16px 0;
-  background: #fafafa;
+  background: var(--card);
   font-size: 13px;
-  color: #1c222b;
+  color: var(--foreground);
   line-height: 1.6;
   border-radius: 4px;
 }
@@ -458,7 +458,7 @@ async function triggerDownload() {
   flex: 1;
   text-align: center;
   font-size: 13px;
-  color: #1c222b;
+  color: var(--foreground);
 }
 
 .signature-block p {
@@ -471,7 +471,7 @@ async function triggerDownload() {
 
 .signature-line {
   margin-top: 32px;
-  border-top: 1px solid #1c222b;
+  border-top: 1px solid var(--foreground);
   width: 80%;
   margin-inline: auto;
 }
@@ -498,7 +498,7 @@ async function triggerDownload() {
   }
 
   .preview-page {
-    background: #ffffff;
+    background: white;
     padding: 0;
   }
 

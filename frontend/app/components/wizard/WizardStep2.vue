@@ -178,7 +178,7 @@ const errorCount = computed(() => Object.keys(props.errors).length)
       <div class="flex flex-col gap-2">
         <Label for="customs-office" class="text-sm">
           الجمارك المختصة
-          <span v-if="autoFillChip" class="inline-block text-xs font-normal bg-blue-600/10 text-blue-600 border border-gray-200 rounded-full px-2 py-1 ms-2" aria-live="polite">تم التعبئة التلقائية</span>
+          <span v-if="autoFillChip" class="inline-block text-xs font-normal bg-primary/10 text-primary border border-gray-200 rounded-full px-2 py-1 ms-2" aria-live="polite">تم التعبئة التلقائية</span>
         </Label>
         <Select
           :model-value="modelValue.customs_office || ''"

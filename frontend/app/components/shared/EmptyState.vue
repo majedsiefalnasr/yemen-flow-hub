@@ -13,7 +13,7 @@ const props = withDefaults(defineProps<{
 <template>
   <div class="flex flex-col items-center justify-center py-20 px-6 gap-4" :data-empty-state-variant="props.variant">
     <div class="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center flex-shrink-0">
-      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#8e8e93" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--color-locked)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
         <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
         <circle cx="9" cy="7" r="4" />
         <polyline points="16 11 18 13 22 9" />
