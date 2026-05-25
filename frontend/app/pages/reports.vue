@@ -62,7 +62,7 @@ function heatOpacity(rowIndex: number, colIndex: number) {
   return (0.15 + ((Math.sin(rowIndex * 1.7 + colIndex * 1.3) + 1) / 2) * 0.85).toFixed(2)
 }
 
-const colors = ['bg-blue-600', 'bg-info', 'bg-amber-50', 'bg-red-700', 'bg-purple-600', 'bg-emerald-600']
+const colors = ['bg-primary', 'bg-info', 'bg-amber-50', 'bg-red-700', 'bg-purple-600', 'bg-emerald-600']
 
 const monthlyChartConfig = { requests: { label: 'طلبات' }, approvals: { label: 'مُعتمد' } }
 const categoryChartConfig = { value: { label: 'النسبة' } }
@@ -100,7 +100,7 @@ const categoryChartConfig = { value: { label: 'النسبة' } }
         :key="kpi.label"
         class="border-0 p-4 shadow"
       >
-        <div class="text-xs text-gray-600">
+        <div class="text-xs text-muted-foreground">
           {{ kpi.label }}
         </div>
         <div class="mt-1 flex items-end justify-between">
@@ -125,7 +125,7 @@ const categoryChartConfig = { value: { label: 'النسبة' } }
         </h3>
         <ChartContainer
           :config="monthlyChartConfig"
-          class="h-[300px] rounded-lg border bg-gray-50/10 p-4"
+          class="h-[300px] rounded-lg border bg-muted/10 p-4"
         >
           <div
             v-if="monthly.length > 0"
@@ -138,7 +138,7 @@ const categoryChartConfig = { value: { label: 'النسبة' } }
             >
               <div class="flex flex-1 items-end justify-center gap-2">
                 <div
-                  class="w-5 rounded-t-md bg-blue-600"
+                  class="w-5 rounded-t-md bg-primary"
                   :style="{ height: `${(month.total / monthlyMax) * 100}%` }"
                   :title="`طلبات: ${month.total}`"
                 />
@@ -148,20 +148,20 @@ const categoryChartConfig = { value: { label: 'النسبة' } }
                   :title="`مُعتمد: ${month.approved}`"
                 />
               </div>
-              <div class="text-center text-[11px] text-gray-600">
+              <div class="text-center text-[11px] text-muted-foreground">
                 {{ month.month }}
               </div>
             </div>
           </div>
           <div
             v-else
-            class="flex h-full items-center justify-center text-sm text-gray-600"
+            class="flex h-full items-center justify-center text-sm text-muted-foreground"
           >
             لا توجد بيانات
           </div>
         </ChartContainer>
-        <div class="mt-3 flex items-center gap-4 text-xs text-gray-600">
-          <span class="inline-flex items-center gap-1"><span class="h-2.5 w-2.5 rounded bg-blue-600" />طلبات</span>
+        <div class="mt-3 flex items-center gap-4 text-xs text-muted-foreground">
+          <span class="inline-flex items-center gap-1"><span class="h-2.5 w-2.5 rounded bg-primary" />طلبات</span>
           <span class="inline-flex items-center gap-1"><span class="h-2.5 w-2.5 rounded bg-green-50" />مُعتمد</span>
         </div>
       </Card>
@@ -184,13 +184,13 @@ const categoryChartConfig = { value: { label: 'النسبة' } }
               <span class="font-semibold">{{ Math.round((item.count / categoryTotal) * 100) }}%</span>
             </div>
             <Progress
-              :class="['h-2', colors[index % colors.length] === 'bg-blue-600' ? '[&_[data-slot=progress-indicator]]:bg-blue-600' : '[&_[data-slot=progress-indicator]]:bg-info']"
+              :class="['h-2', colors[index % colors.length] === 'bg-primary' ? '[&_[data-slot=progress-indicator]]:bg-primary' : '[&_[data-slot=progress-indicator]]:bg-info']"
               :model-value="(item.count / categoryTotal) * 100"
             />
           </div>
           <div
             v-if="categoryDist.length === 0"
-            class="py-4 text-center text-xs text-gray-600"
+            class="py-4 text-center text-xs text-muted-foreground"
           >
             لا توجد بيانات
           </div>
@@ -212,11 +212,11 @@ const categoryChartConfig = { value: { label: 'النسبة' } }
               class="h-3 [&_[data-slot=progress-indicator]]:bg-info"
               :model-value="(item.amount / maxAmount) * 100"
             />
-            <span class="text-start text-xs text-gray-600">{{ item.amount.toLocaleString('en-US') }}</span>
+            <span class="text-start text-xs text-muted-foreground">{{ item.amount.toLocaleString('en-US') }}</span>
           </div>
           <div
             v-if="amountByCurrency.length === 0"
-            class="py-4 text-center text-xs text-gray-600"
+            class="py-4 text-center text-xs text-muted-foreground"
           >
             لا توجد بيانات
           </div>
@@ -241,7 +241,7 @@ const categoryChartConfig = { value: { label: 'النسبة' } }
             <div
               v-for="col in heatCols"
               :key="col"
-              class="text-center text-[10px] text-gray-600"
+              class="text-center text-[10px] text-muted-foreground"
             >
               {{ col }}:00
             </div>
@@ -250,7 +250,7 @@ const categoryChartConfig = { value: { label: 'النسبة' } }
               v-for="(row, rowIndex) in heatRows"
               :key="row"
             >
-              <div class="py-2 ps-2 text-[11px] text-gray-600">
+              <div class="py-2 ps-2 text-[11px] text-muted-foreground">
                 {{ row }}
               </div>
               <div
@@ -264,7 +264,7 @@ const categoryChartConfig = { value: { label: 'النسبة' } }
             </template>
           </div>
         </div>
-        <div class="mt-3 flex items-center gap-2 text-[10px] text-gray-600">
+        <div class="mt-3 flex items-center gap-2 text-[10px] text-muted-foreground">
           أقل
           <div
             v-for="opacity in [0.15, 0.35, 0.55, 0.75, 0.95]"
@@ -293,7 +293,7 @@ const categoryChartConfig = { value: { label: 'النسبة' } }
 
       <div class="overflow-x-auto">
         <Table class="w-full min-w-[720px] text-sm">
-          <TableHeader class="border-b text-end text-xs text-gray-600">
+          <TableHeader class="border-b text-end text-xs text-muted-foreground">
             <TableRow>
               <TableHead class="py-2.5">
                 اسم التقرير
@@ -310,25 +310,25 @@ const categoryChartConfig = { value: { label: 'النسبة' } }
               <TableHead class="py-2.5">
                 الحالة
               </TableHead>
-              <TableHead class="sticky start-0 z-10 bg-white py-2.5 shadow-[6px_0_8px_-6px_rgba(0,0,0,0.12)]" />
+              <TableHead class="sticky start-0 z-10 bg-background py-2.5 shadow-[6px_0_8px_-6px_rgba(0,0,0,0.12)]" />
             </TableRow>
           </TableHeader>
           <TableBody>
             <TableRow
               v-for="report in scheduledReports"
               :key="report[0]"
-              class="border-b last:border-0 hover:bg-gray-50/30"
+              class="border-b last:border-0 hover:bg-muted/30"
             >
               <TableCell class="py-3 font-medium">
                 {{ report[0] }}
               </TableCell>
-              <TableCell class="py-3 text-xs text-gray-600">
+              <TableCell class="py-3 text-xs text-muted-foreground">
                 {{ report[1] }}
               </TableCell>
               <TableCell class="py-3 text-xs">
                 {{ report[2] }}
               </TableCell>
-              <TableCell class="py-3 text-xs text-gray-600">
+              <TableCell class="py-3 text-xs text-muted-foreground">
                 {{ report[3] }}
               </TableCell>
               <TableCell class="py-3">
@@ -336,7 +336,7 @@ const categoryChartConfig = { value: { label: 'النسبة' } }
                   {{ report[4] }}
                 </Badge>
               </TableCell>
-              <TableCell class="sticky start-0 z-10 bg-white py-3 shadow-[6px_0_8px_-6px_rgba(0,0,0,0.12)]">
+              <TableCell class="sticky start-0 z-10 bg-background py-3 shadow-[6px_0_8px_-6px_rgba(0,0,0,0.12)]">
                 <Button
                   size="sm"
                   variant="ghost"

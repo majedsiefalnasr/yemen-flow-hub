@@ -47,7 +47,7 @@ const issued = computed(() =>
         <div class="space-y-3">
           <div
             v-if="ready.length === 0"
-            class="text-sm text-gray-600"
+            class="text-sm text-muted-foreground"
           >
             لا توجد طلبات جاهزة حالياً.
           </div>
@@ -65,7 +65,7 @@ const issued = computed(() =>
               <div class="font-mono text-sm font-semibold">
                 {{ request.reference_number }}
               </div>
-              <div class="truncate text-xs text-gray-600">
+              <div class="truncate text-xs text-muted-foreground">
                 {{ request.merchant?.name }} · {{ request.port_of_entry }}
               </div>
             </div>
@@ -90,7 +90,7 @@ const issued = computed(() =>
         <div class="space-y-3">
           <div
             v-if="issued.length === 0"
-            class="text-sm text-gray-600"
+            class="text-sm text-muted-foreground"
           >
             لم تُصدَر أي بيانات بعد.
           </div>
@@ -104,7 +104,7 @@ const issued = computed(() =>
               <div class="font-mono text-sm font-semibold">
                 {{ request.customs_declaration?.declaration_number ?? request.reference_number }}
               </div>
-              <div class="truncate text-xs text-gray-600">
+              <div class="truncate text-xs text-muted-foreground">
                 {{ request.merchant?.name }}
               </div>
             </div>

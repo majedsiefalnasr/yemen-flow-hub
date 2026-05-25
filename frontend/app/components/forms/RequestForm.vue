@@ -127,7 +127,7 @@ const onSubmit = handleSubmit((v) => {
   <form class="flex flex-col gap-6" dir="rtl" novalidate @submit.prevent="onSubmit">
 
     <!-- Importer / Merchant Section -->
-    <section class="border border-gray-200 rounded-md p-6 flex flex-col gap-6">
+    <section class="border border-border rounded-md p-6 flex flex-col gap-6">
       <h2 class="text-base font-semibold">بيانات المستورد</h2>
 
       <div class="flex flex-col gap-2">
@@ -177,7 +177,7 @@ const onSubmit = handleSubmit((v) => {
     </section>
 
     <!-- Supplier / Exporter Section -->
-    <section class="border border-gray-200 rounded-md p-6 flex flex-col gap-6">
+    <section class="border border-border rounded-md p-6 flex flex-col gap-6">
       <h2 class="text-base font-semibold">بيانات المورد / المُصدِّر</h2>
 
       <div class="flex flex-col gap-2">
@@ -199,7 +199,7 @@ const onSubmit = handleSubmit((v) => {
     </section>
 
     <!-- Goods Section -->
-    <section class="border border-gray-200 rounded-md p-6 flex flex-col gap-6">
+    <section class="border border-border rounded-md p-6 flex flex-col gap-6">
       <h2 class="text-base font-semibold">بيانات البضائع</h2>
 
       <div class="flex flex-col gap-2">
@@ -238,7 +238,7 @@ const onSubmit = handleSubmit((v) => {
     </section>
 
     <!-- Financial Section -->
-    <section class="border border-gray-200 rounded-md p-6 flex flex-col gap-6">
+    <section class="border border-border rounded-md p-6 flex flex-col gap-6">
       <h2 class="text-base font-semibold">البيانات المالية</h2>
 
       <div class="flex flex-col gap-6 sm:flex-row">
@@ -334,7 +334,7 @@ const onSubmit = handleSubmit((v) => {
       </div>
     </section>
 
-    <section class="border border-gray-200 rounded-md p-6 flex flex-col gap-6">
+    <section class="border border-border rounded-md p-6 flex flex-col gap-6">
       <h2 class="text-base font-semibold">بيانات الشحنة والفاتورة</h2>
 
       <div class="flex flex-col gap-6 sm:flex-row">
@@ -436,7 +436,7 @@ const onSubmit = handleSubmit((v) => {
     </section>
 
     <!-- Notes Section -->
-    <section class="border border-gray-200 rounded-md p-6 flex flex-col gap-6">
+    <section class="border border-border rounded-md p-6 flex flex-col gap-6">
       <h2 class="text-base font-semibold">ملاحظات</h2>
 
       <div class="flex flex-col gap-2">

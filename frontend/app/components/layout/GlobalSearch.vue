@@ -103,12 +103,12 @@ onBeforeUnmount(() => {
 <template>
   <div ref="wrapperRef" class="relative w-full max-w-sm" :class="{ 'block': props.mobile, 'hidden max-md:hidden': !props.mobile }">
     <!-- Input -->
-    <div class="flex items-center gap-2 rounded-md border border-gray-200 bg-background px-3 py-2">
-      <Search class="h-4 w-4 flex-shrink-0 text-gray-600" />
+    <div class="flex items-center gap-2 rounded-md border border-border bg-background px-3 py-2">
+      <Search class="h-4 w-4 flex-shrink-0 text-muted-foreground" />
       <input
         ref="inputRef"
         type="search"
-        class="flex-1 border-none bg-transparent text-sm outline-none placeholder:text-gray-600"
+        class="flex-1 border-none bg-transparent text-sm outline-none placeholder:text-muted-foreground"
         placeholder="بحث..."
         aria-label="بحث في النظام"
         autocomplete="off"
@@ -118,41 +118,41 @@ onBeforeUnmount(() => {
         @focus="onFocus"
         @keydown="onKeydown"
       />
-      <Loader2 v-if="loading" class="h-4 w-4 flex-shrink-0 animate-spin text-blue-600" aria-hidden="true" />
+      <Loader2 v-if="loading" class="h-4 w-4 flex-shrink-0 animate-spin text-primary" aria-hidden="true" />
     </div>
 
     <!-- Dropdown -->
     <div
       v-if="showDropdown"
-      class="absolute top-full start-0 z-50 mt-1 w-full max-h-96 overflow-y-auto rounded-lg border border-gray-200 bg-background shadow-lg"
+      class="absolute top-full start-0 z-50 mt-1 w-full max-h-96 overflow-y-auto rounded-lg border border-border bg-background shadow-lg"
       role="listbox"
       aria-label="نتائج البحث"
     >
 
       <!-- Recent searches (when query is empty) -->
       <template v-if="inputValue.length === 0 && recentSearches.length > 0">
-        <div class="px-3 py-2 text-xs font-semibold uppercase text-gray-600">عمليات البحث الأخيرة</div>
+        <div class="px-3 py-2 text-xs font-semibold uppercase text-muted-foreground">عمليات البحث الأخيرة</div>
         <button
           v-for="term in recentSearches"
           :key="term"
-          class="flex w-full items-center gap-2.5 px-3 py-2 text-start transition-colors hover:bg-gray-50"
+          class="flex w-full items-center gap-2.5 px-3 py-2 text-start transition-colors hover:bg-muted/50"
           type="button"
           @click="selectRecent(term)"
         >
-          <Clock class="h-4 w-4 flex-shrink-0 text-gray-600" />
-          <span class="text-sm text-gray-900">{{ term }}</span>
+          <Clock class="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+          <span class="text-sm text-foreground">{{ term }}</span>
         </button>
       </template>
 
       <!-- Results (when query ≥ 2 chars) -->
       <template v-else-if="inputValue.length >= 2">
         <!-- Filter chips -->
-        <div v-if="hasResults" class="flex flex-wrap gap-1.5 border-b border-gray-200 px-3 py-2">
+        <div v-if="hasResults" class="flex flex-wrap gap-1.5 border-b border-border px-3 py-2">
           <button
             v-for="chip in availableChips"
             :key="chip.key"
             class="rounded-full border text-xs px-2.5 py-1 transition-all"
-            :class="activeFilter === chip.key ? 'border-primary bg-blue-600 text-blue-600-foreground' : 'border-gray-200 bg-transparent text-gray-900 hover:bg-gray-50'"
+            :class="activeFilter === chip.key ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-transparent text-foreground hover:bg-muted/50'"
             type="button"
             @click="activeFilter = chip.key"
           >
@@ -162,80 +162,80 @@ onBeforeUnmount(() => {
 
         <!-- Requests group -->
         <template v-if="filteredResults.requests.length > 0">
-          <div class="px-3 py-2 text-xs font-semibold uppercase text-gray-600">الطلبات</div>
+          <div class="px-3 py-2 text-xs font-semibold uppercase text-muted-foreground">الطلبات</div>
           <button
             v-for="req in filteredResults.requests"
             :key="req.id"
-            class="flex w-full items-center gap-2.5 px-3 py-2 text-start transition-colors hover:bg-gray-50"
+            class="flex w-full items-center gap-2.5 px-3 py-2 text-start transition-colors hover:bg-muted/50"
             type="button"
             @click="navigateTo(`/requests/${req.id}`)"
           >
-            <FileText class="h-4 w-4 flex-shrink-0 text-gray-600" />
+            <FileText class="h-4 w-4 flex-shrink-0 text-muted-foreground" />
             <div class="min-w-0 flex-1">
-              <div class="text-sm font-medium text-gray-900">{{ req.reference_number }}</div>
-              <div class="truncate text-xs text-gray-600">{{ req.supplier_name }}</div>
+              <div class="text-sm font-medium text-foreground">{{ req.reference_number }}</div>
+              <div class="truncate text-xs text-muted-foreground">{{ req.supplier_name }}</div>
             </div>
           </button>
         </template>
 
         <!-- Users group -->
         <template v-if="filteredResults.users.length > 0">
-          <div class="px-3 py-2 text-xs font-semibold uppercase text-gray-600">المستخدمون</div>
+          <div class="px-3 py-2 text-xs font-semibold uppercase text-muted-foreground">المستخدمون</div>
           <button
             v-for="user in filteredResults.users"
             :key="user.id"
-            class="flex w-full items-center gap-2.5 px-3 py-2 text-start transition-colors hover:bg-gray-50"
+            class="flex w-full items-center gap-2.5 px-3 py-2 text-start transition-colors hover:bg-muted/50"
             type="button"
             @click="navigateTo('/users')"
           >
-            <User class="h-4 w-4 flex-shrink-0 text-gray-600" />
+            <User class="h-4 w-4 flex-shrink-0 text-muted-foreground" />
             <div class="min-w-0 flex-1">
-              <div class="text-sm font-medium text-gray-900">{{ user.name }}</div>
-              <div class="truncate text-xs text-gray-600">{{ user.role_label }}</div>
+              <div class="text-sm font-medium text-foreground">{{ user.name }}</div>
+              <div class="truncate text-xs text-muted-foreground">{{ user.role_label }}</div>
             </div>
           </button>
         </template>
 
         <!-- Banks group -->
         <template v-if="filteredResults.banks.length > 0">
-          <div class="px-3 py-2 text-xs font-semibold uppercase text-gray-600">البنوك</div>
+          <div class="px-3 py-2 text-xs font-semibold uppercase text-muted-foreground">البنوك</div>
           <button
             v-for="bank in filteredResults.banks"
             :key="bank.id"
-            class="flex w-full items-center gap-2.5 px-3 py-2 text-start transition-colors hover:bg-gray-50"
+            class="flex w-full items-center gap-2.5 px-3 py-2 text-start transition-colors hover:bg-muted/50"
             type="button"
             @click="navigateTo('/banks')"
           >
-            <Building2 class="h-4 w-4 flex-shrink-0 text-gray-600" />
+            <Building2 class="h-4 w-4 flex-shrink-0 text-muted-foreground" />
             <div class="min-w-0 flex-1">
-              <div class="text-sm font-medium text-gray-900">{{ bank.name }}</div>
-              <div class="truncate text-xs text-gray-600">{{ bank.code }}</div>
+              <div class="text-sm font-medium text-foreground">{{ bank.name }}</div>
+              <div class="truncate text-xs text-muted-foreground">{{ bank.code }}</div>
             </div>
           </button>
         </template>
 
         <!-- Customs group -->
         <template v-if="filteredResults.customs.length > 0">
-          <div class="px-3 py-2 text-xs font-semibold uppercase text-gray-600">البيانات الجمركية</div>
+          <div class="px-3 py-2 text-xs font-semibold uppercase text-muted-foreground">البيانات الجمركية</div>
           <button
             v-for="customs in filteredResults.customs"
             :key="customs.id"
-            class="flex w-full items-center gap-2.5 px-3 py-2 text-start transition-colors hover:bg-gray-50"
+            class="flex w-full items-center gap-2.5 px-3 py-2 text-start transition-colors hover:bg-muted/50"
             type="button"
             @click="navigateTo(`/requests/${customs.request_id}`)"
           >
-            <Stamp class="h-4 w-4 flex-shrink-0 text-gray-600" />
+            <Stamp class="h-4 w-4 flex-shrink-0 text-muted-foreground" />
             <div class="min-w-0 flex-1">
-              <div class="text-sm font-medium text-gray-900">{{ customs.declaration_number }}</div>
-              <div class="truncate text-xs text-gray-600">{{ customs.reference_number }}</div>
+              <div class="text-sm font-medium text-foreground">{{ customs.declaration_number }}</div>
+              <div class="truncate text-xs text-muted-foreground">{{ customs.reference_number }}</div>
             </div>
           </button>
         </template>
 
         <!-- Empty state -->
         <div v-if="!hasResults && !loading" class="flex flex-col items-center gap-2 px-4 py-6 text-center">
-          <Search class="h-6 w-6 opacity-30 text-gray-600" />
-          <span class="text-sm text-gray-600">لا توجد نتائج لـ «{{ inputValue }}»</span>
+          <Search class="h-6 w-6 opacity-30 text-muted-foreground" />
+          <span class="text-sm text-muted-foreground">لا توجد نتائج لـ «{{ inputValue }}»</span>
         </div>
       </template>
     </div>

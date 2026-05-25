@@ -59,14 +59,14 @@ function submit() {
       class="space-y-4"
     >
       <div
-        class="cursor-pointer rounded-xl border-2 border-dashed border-gray-200 p-8 text-center hover:border-primary/40 hover:bg-blue-600/5"
+        class="cursor-pointer rounded-xl border-2 border-dashed border-border p-8 text-center hover:border-primary/40 hover:bg-primary/5"
         @click="fileInput?.click()"
       >
-        <FileText class="mx-auto mb-3 h-10 w-10 text-gray-600/50" />
+        <FileText class="mx-auto mb-3 h-10 w-10 text-muted-foreground/50" />
         <div class="text-sm font-medium">
           {{ file ? file.name : 'اختر ملف PDF للسويفت' }}
         </div>
-        <div class="mt-1 text-xs text-gray-600">
+        <div class="mt-1 text-xs text-muted-foreground">
           PDF · حد أقصى 10MB
         </div>
         <input

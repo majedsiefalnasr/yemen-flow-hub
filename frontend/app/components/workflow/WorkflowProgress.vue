@@ -81,26 +81,26 @@ const completedAll = computed(() =>
           v-if="index < steps.length - 1"
           :class="cn(
             'absolute end-[11px] top-7 h-[calc(100%-1.25rem)] w-px',
-            completedAll || index < currentIndex ? 'bg-gray-900/80' : 'bg-border',
+            completedAll || index < currentIndex ? 'bg-foreground/80' : 'bg-border',
           )"
         />
 
         <div class="relative z-10 grid h-[22px] w-[22px] shrink-0 place-items-center">
           <span
             v-if="completedAll || index < currentIndex"
-            class="grid h-[22px] w-[22px] place-items-center rounded-full bg-gray-900 text-white"
+            class="grid h-[22px] w-[22px] place-items-center rounded-full bg-foreground text-background"
           >
             <Check class="h-3 w-3" :stroke-width="3" />
           </span>
           <span
             v-else-if="index === currentIndex"
-            class="grid h-[22px] w-[22px] place-items-center rounded-full bg-gray-900 ring-4 ring-foreground/15"
+            class="grid h-[22px] w-[22px] place-items-center rounded-full bg-foreground ring-4 ring-foreground/15"
           >
             <span class="h-2 w-2 rounded-full bg-background" />
           </span>
           <span
             v-else
-            class="h-[22px] w-[22px] rounded-full border-2 border-gray-200 bg-gray-50/40"
+            class="h-[22px] w-[22px] rounded-full border-2 border-border bg-muted/40"
           />
         </div>
 
@@ -108,7 +108,7 @@ const completedAll = computed(() =>
           <div
             :class="cn(
               'text-sm leading-snug',
-              index === currentIndex ? 'font-semibold text-gray-900' : index < currentIndex ? 'text-gray-900' : 'text-gray-600',
+              index === currentIndex ? 'font-semibold text-foreground' : index < currentIndex ? 'text-foreground' : 'text-muted-foreground',
             )"
           >
             {{ step.label }}
@@ -117,7 +117,7 @@ const completedAll = computed(() =>
             v-if="!compact"
             :class="cn(
               'mt-0.5 text-[11px] leading-tight',
-              index === currentIndex ? 'text-blue-600' : index < currentIndex ? 'text-green-700' : 'text-gray-600/70',
+              index === currentIndex ? 'text-primary' : index < currentIndex ? 'text-green-700' : 'text-muted-foreground/70',
             )"
           >
             {{ index === currentIndex ? 'المرحلة الحالية' : index < currentIndex ? 'مكتملة' : 'بانتظار' }}

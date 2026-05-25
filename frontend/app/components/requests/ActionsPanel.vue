@@ -679,9 +679,9 @@ async function dispatchAction(action: string, reason?: string) {
                   <p class="text-sm font-medium text-red-700">رافض</p>
                   <p class="text-lg font-bold text-red-700">{{ votingStore.votingDetail.tally.reject_count }}</p>
                 </div>
-                <div class="bg-gray-50 p-2 rounded">
-                  <p class="text-sm font-medium text-gray-900">ممتنع</p>
-                  <p class="text-lg font-bold text-gray-600">{{ votingStore.votingDetail.tally.abstain_count + votingStore.votingDetail.tally.auto_abstain_count }}</p>
+                <div class="bg-muted p-2 rounded">
+                  <p class="text-sm font-medium text-foreground">ممتنع</p>
+                  <p class="text-lg font-bold text-muted-foreground">{{ votingStore.votingDetail.tally.abstain_count + votingStore.votingDetail.tally.auto_abstain_count }}</p>
                 </div>
               </div>
 
@@ -763,9 +763,9 @@ async function dispatchAction(action: string, reason?: string) {
           <p class="text-sm font-medium text-red-700">رافض</p>
           <p class="text-lg font-bold text-red-700">{{ votingStore.votingDetail.tally.reject_count }}</p>
         </div>
-        <div class="bg-gray-50 p-2 rounded">
-          <p class="text-sm font-medium text-gray-900">ممتنع</p>
-          <p class="text-lg font-bold text-gray-600">{{ votingStore.votingDetail.tally.abstain_count + votingStore.votingDetail.tally.auto_abstain_count }}</p>
+        <div class="bg-muted p-2 rounded">
+          <p class="text-sm font-medium text-foreground">ممتنع</p>
+          <p class="text-lg font-bold text-muted-foreground">{{ votingStore.votingDetail.tally.abstain_count + votingStore.votingDetail.tally.auto_abstain_count }}</p>
         </div>
       </div>
       <Button

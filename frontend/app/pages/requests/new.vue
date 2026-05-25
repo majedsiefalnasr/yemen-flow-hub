@@ -269,7 +269,7 @@ const canCreate = computed(() =>
             <div
               :class="[
                 'grid h-10 w-10 place-items-center rounded-full text-sm font-semibold transition-colors',
-                index < step ? 'bg-green-50 text-green-700-foreground' : index === step ? 'bg-blue-600 text-blue-600-foreground ring-4 ring-primary/15' : 'bg-gray-50 text-gray-600',
+                index < step ? 'bg-green-50 text-green-700-foreground' : index === step ? 'bg-primary text-primary-foreground ring-4 ring-primary/15' : 'bg-muted text-muted-foreground',
               ]"
             >
               <Check v-if="index < step" class="h-5 w-5" />
@@ -278,7 +278,7 @@ const canCreate = computed(() =>
             <div
               :class="[
                 'mt-2 max-w-[110px] text-xs',
-                index === step ? 'font-semibold text-gray-900' : 'text-gray-600',
+                index === step ? 'font-semibold text-foreground' : 'text-muted-foreground',
               ]"
             >
               {{ label }}
@@ -286,7 +286,7 @@ const canCreate = computed(() =>
           </div>
           <div
             v-if="index < STEPS.length - 1"
-            :class="['mx-2 h-0.5 flex-1 transition-colors', index < step ? 'bg-green-50' : 'bg-gray-50']"
+            :class="['mx-2 h-0.5 flex-1 transition-colors', index < step ? 'bg-green-50' : 'bg-muted']"
           />
         </div>
       </div>
@@ -321,7 +321,7 @@ const canCreate = computed(() =>
                 </SelectItem>
               </SelectContent>
             </Select>
-            <p v-if="merchants.length === 0" class="text-xs text-gray-600">
+            <p v-if="merchants.length === 0" class="text-xs text-muted-foreground">
               يجب إضافة تجار أولاً من شاشة سجل التجار.
             </p>
           </div>
@@ -449,7 +449,7 @@ const canCreate = computed(() =>
             :key="doc.name"
             :class="[
               'rounded-xl border-2 border-dashed p-5 transition-colors',
-              uploads[doc.name] ? 'border-green-200/40 bg-green-50/5' : 'border-gray-200 hover:border-accent/40',
+              uploads[doc.name] ? 'border-green-200/40 bg-green-50/5' : 'border-border hover:border-accent/40',
             ]"
           >
             <Input
@@ -465,7 +465,7 @@ const canCreate = computed(() =>
                 <div
                   :class="[
                     'grid h-11 w-11 place-items-center rounded-lg',
-                    uploads[doc.name] ? 'bg-green-50/15 text-green-700' : 'bg-gray-50 text-gray-600',
+                    uploads[doc.name] ? 'bg-green-50/15 text-green-700' : 'bg-muted text-muted-foreground',
                   ]"
                 >
                   <FileCheck2 v-if="uploads[doc.name]" class="h-5 w-5" />
@@ -473,7 +473,7 @@ const canCreate = computed(() =>
                 </div>
                 <div>
                   <div class="text-sm font-medium">{{ doc.name }}</div>
-                  <div class="text-xs text-gray-600">
+                  <div class="text-xs text-muted-foreground">
                     {{ doc.required ? 'مطلوب' : 'اختياري' }} · PDF فقط (حد أقصى 10MB)
                   </div>
                 </div>
@@ -533,12 +533,12 @@ const canCreate = computed(() =>
       <div v-else class="space-y-6">
         <h3 class="font-semibold">مراجعة الطلب قبل الإرسال</h3>
 
-        <div class="space-y-5 rounded-xl border bg-gray-50/30 p-6">
+        <div class="space-y-5 rounded-xl border bg-muted/30 p-6">
           <div>
             <div class="mb-3 border-b pb-2 text-sm font-medium">بيانات الطلب</div>
             <div class="grid gap-x-8 gap-y-2 text-sm md:grid-cols-2">
               <div v-for="[key, value] in reviewRows.request" :key="key" class="flex justify-between gap-4">
-                <span class="text-gray-600">{{ key }}</span>
+                <span class="text-muted-foreground">{{ key }}</span>
                 <span class="font-medium">{{ value }}</span>
               </div>
             </div>
@@ -548,7 +548,7 @@ const canCreate = computed(() =>
             <div class="mb-3 border-b pb-2 text-sm font-medium">بيانات المورد والشحنة</div>
             <div class="grid gap-x-8 gap-y-2 text-sm md:grid-cols-2">
               <div v-for="[key, value] in reviewRows.shipment" :key="key" class="flex justify-between gap-4">
-                <span class="text-gray-600">{{ key }}</span>
+                <span class="text-muted-foreground">{{ key }}</span>
                 <span class="font-medium">{{ value }}</span>
               </div>
             </div>
@@ -575,7 +575,7 @@ const canCreate = computed(() =>
           <ShieldCheck class="mt-0.5 h-5 w-5 shrink-0 text-info" />
           <div class="text-sm">
             <div class="font-medium">إقرار وتعهد</div>
-            <p class="mt-1 text-xs leading-relaxed text-gray-600">
+            <p class="mt-1 text-xs leading-relaxed text-muted-foreground">
               أُقر بأن جميع البيانات والمستندات المقدمة صحيحة وكاملة، وسيتم إخضاع الطلب للتدقيق الآلي للتحقق من الفواتير المكررة والامتثال.
             </p>
           </div>
@@ -621,9 +621,9 @@ const canCreate = computed(() =>
             v-else-if="preview.mime.startsWith('image/')"
             :src="preview.url"
             :alt="preview.name"
-            class="max-h-[70vh] w-full rounded-md bg-gray-50 object-contain"
+            class="max-h-[70vh] w-full rounded-md bg-muted object-contain"
           >
-          <div v-else class="p-6 text-center text-sm text-gray-600">
+          <div v-else class="p-6 text-center text-sm text-muted-foreground">
             لا يمكن المعاينة داخل المتصفح.
           </div>
         </template>

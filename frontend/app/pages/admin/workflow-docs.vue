@@ -143,7 +143,7 @@ async function toggleActive(item: DocumentType) {
     <Card class="divide-y border-0 shadow">
       <div
         v-if="docTypes.length === 0"
-        class="p-8 text-center text-sm text-gray-600"
+        class="p-8 text-center text-sm text-muted-foreground"
       >
         لا توجد أنواع مستندات.
       </div>
@@ -156,7 +156,7 @@ async function toggleActive(item: DocumentType) {
           <div class="text-sm font-medium">
             {{ item.name_ar }}
           </div>
-          <div class="mt-0.5 flex items-center gap-2 text-xs text-gray-600">
+          <div class="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
             <Badge
               variant="outline"
               class="font-mono text-[10px]"
@@ -183,7 +183,7 @@ async function toggleActive(item: DocumentType) {
         <Button
           variant="ghost"
           size="icon"
-          class="text-gray-600"
+          class="text-muted-foreground"
           disabled
           title="الحذف غير متاح عبر الواجهة"
         >

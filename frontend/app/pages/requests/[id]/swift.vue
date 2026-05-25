@@ -77,7 +77,7 @@ async function handleUpload(file: File, swiftReference: string) {
 
     <div class="grid gap-6 lg:grid-cols-3">
       <Card class="border-0 p-6 shadow lg:col-span-2">
-        <div class="mb-4 flex items-center gap-2 text-sm text-gray-600">
+        <div class="mb-4 flex items-center gap-2 text-sm text-muted-foreground">
           <Lock class="h-4 w-4" />
           البيانات أدناه للاطلاع فقط ولا يمكن تعديلها في هذه المرحلة
         </div>
@@ -100,13 +100,13 @@ async function handleUpload(file: File, swiftReference: string) {
               :key="key"
               class="space-y-1"
             >
-              <Label class="text-xs text-gray-600">
+              <Label class="text-xs text-muted-foreground">
                 {{ key }}
               </Label>
               <Input
                 :model-value="value"
                 readonly
-                class="bg-gray-50/40"
+                class="bg-muted/40"
               />
             </div>
           </div>
@@ -130,11 +130,11 @@ async function handleUpload(file: File, swiftReference: string) {
     v-else
     class="border-0 p-8 text-center shadow"
   >
-    <Lock class="mx-auto h-10 w-10 text-gray-600" />
+    <Lock class="mx-auto h-10 w-10 text-muted-foreground" />
     <h2 class="mt-4 text-lg font-bold">
       غير مصرح
     </h2>
-    <p class="mt-1 text-sm text-gray-600">
+    <p class="mt-1 text-sm text-muted-foreground">
       لا تملك صلاحية رفع السويفت لهذا الطلب، أو الطلب ليس في مرحلة اعتماد المساندة.
     </p>
     <Button

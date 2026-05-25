@@ -240,9 +240,9 @@ function formatDate(iso: string | null): string {
   <div class="flex flex-col gap-0" dir="rtl">
     <!-- Loading state -->
     <div v-if="loading" class="flex flex-col gap-3 py-2" aria-busy="true" aria-label="جارٍ تحميل المستندات">
-      <div class="w-full h-4 bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 rounded animate-pulse" />
-      <div class="w-full h-4 bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 rounded animate-pulse" />
-      <div class="w-3/5 h-4 bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 rounded animate-pulse" />
+      <div class="w-full h-4 bg-gradient-to-r from-muted via-border to-muted rounded animate-pulse" />
+      <div class="w-full h-4 bg-gradient-to-r from-muted via-border to-muted rounded animate-pulse" />
+      <div class="w-3/5 h-4 bg-gradient-to-r from-muted via-border to-muted rounded animate-pulse" />
     </div>
 
     <!-- Error state -->
@@ -252,12 +252,12 @@ function formatDate(iso: string | null): string {
     </Alert>
 
     <!-- Empty state -->
-    <p v-else-if="!hasContent" class="text-sm text-gray-600 mt-2">لا توجد مستندات بعد.</p>
+    <p v-else-if="!hasContent" class="text-sm text-muted-foreground mt-2">لا توجد مستندات بعد.</p>
 
     <!-- Checklist summary badge -->
     <template v-else>
       <div class="flex items-center justify-between gap-2 mb-2.5">
-        <span class="text-xs text-gray-600">قائمة المستندات</span>
+        <span class="text-xs text-muted-foreground">قائمة المستندات</span>
         <div v-if="missingRequiredCount > 0" class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-red-700/10 text-red-700 text-xs font-semibold">
           <AlertCircle class="w-3 h-3" aria-hidden="true" />
           ينقص {{ missingRequiredCount }} مستند مطلوب
@@ -281,13 +281,13 @@ function formatDate(iso: string | null): string {
             :class="{
               'border-green-200 bg-green-50/10': !!row.doc,
               'border-destructive bg-red-700/10': !row.doc && row.requirement.required,
-              'border-gray-200 bg-gray-50': !row.doc && !row.requirement.required,
+              'border-border bg-muted': !row.doc && !row.requirement.required,
             }"
           >
             <!-- Left: status icon box -->
             <div
               class="flex-shrink-0 w-7 h-7 rounded-md flex items-center justify-center text-sm"
-              :class="row.doc ? 'bg-green-50/10 text-green-700' : 'bg-gray-50 text-gray-600'"
+              :class="row.doc ? 'bg-green-50/10 text-green-700' : 'bg-muted text-muted-foreground'"
             >
               <svg v-if="row.doc" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
                 <polyline points="20 6 9 17 4 12" />
@@ -300,11 +300,11 @@ function formatDate(iso: string | null): string {
             <!-- Center: labels -->
             <div class="flex flex-col gap-0.5 flex-1 min-w-0">
               <div class="flex items-center gap-1.5">
-                <span class="text-xs font-semibold text-gray-900">{{ row.requirement.label }}</span>
+                <span class="text-xs font-semibold text-foreground">{{ row.requirement.label }}</span>
               </div>
               <template v-if="row.doc">
-                <span class="text-xs font-medium text-gray-900 break-all">{{ row.doc.original_filename }}</span>
-                <span class="text-xs text-gray-600">
+                <span class="text-xs font-medium text-foreground break-all">{{ row.doc.original_filename }}</span>
+                <span class="text-xs text-muted-foreground">
                   {{ formatFileSize(row.doc.size_bytes) }}
                   · {{ formatDate(row.doc.uploaded_at) }}
                   <template v-if="row.doc.uploaded_by_name"> · {{ row.doc.uploaded_by_name }}</template>
@@ -313,7 +313,7 @@ function formatDate(iso: string | null): string {
                   {{ downloadErrors[row.doc.id] }}
                 </span>
               </template>
-              <span v-else class="text-xs text-gray-600">{{ row.requirement.required ? 'لم يُرفع بعد' : 'لم يُرفع' }}</span>
+              <span v-else class="text-xs text-muted-foreground">{{ row.requirement.required ? 'لم يُرفع بعد' : 'لم يُرفع' }}</span>
             </div>
 
             <!-- Right: badge + download -->
@@ -344,10 +344,10 @@ function formatDate(iso: string | null): string {
             </div>
             <div class="flex flex-col gap-0.5 flex-1 min-w-0">
               <div class="flex items-center gap-1.5">
-                <span class="text-xs font-semibold text-gray-900">{{ row.doc.type === 'SWIFT' ? 'مستند SWIFT' : 'مستند طلب' }}</span>
+                <span class="text-xs font-semibold text-foreground">{{ row.doc.type === 'SWIFT' ? 'مستند SWIFT' : 'مستند طلب' }}</span>
               </div>
-              <span class="text-xs font-medium text-gray-900 break-all">{{ row.doc.original_filename }}</span>
-              <span class="text-xs text-gray-600">
+              <span class="text-xs font-medium text-foreground break-all">{{ row.doc.original_filename }}</span>
+              <span class="text-xs text-muted-foreground">
                 {{ formatFileSize(row.doc.size_bytes) }}
                 · {{ formatDate(row.doc.uploaded_at) }}
                 <template v-if="row.doc.uploaded_by_name"> · {{ row.doc.uploaded_by_name }}</template>
@@ -381,10 +381,10 @@ function formatDate(iso: string | null): string {
             </div>
             <div class="flex flex-col gap-0.5 flex-1 min-w-0">
               <div class="flex items-center gap-1.5">
-                <span class="text-xs font-semibold text-gray-900">بيان جمركي</span>
+                <span class="text-xs font-semibold text-foreground">بيان جمركي</span>
               </div>
-              <span class="text-xs font-medium text-gray-900">{{ row.customs.declaration_number }}</span>
-              <span class="text-xs text-gray-600">{{ formatDate(row.customs.issued_at) }}</span>
+              <span class="text-xs font-medium text-foreground">{{ row.customs.declaration_number }}</span>
+              <span class="text-xs text-muted-foreground">{{ formatDate(row.customs.issued_at) }}</span>
               <span v-if="customsDownloadError" class="text-xs text-red-700" role="alert">
                 {{ customsDownloadError }}
               </span>
@@ -436,7 +436,7 @@ function formatDate(iso: string | null): string {
         </Alert>
       </template>
 
-      <p v-else-if="showLockedNote" class="text-xs text-gray-600 flex items-center gap-1" role="note">
+      <p v-else-if="showLockedNote" class="text-xs text-muted-foreground flex items-center gap-1" role="note">
         🔒 مقفل — لا يمكن تعديل المستندات
       </p>
     </div>
