@@ -7,6 +7,7 @@ use App\Enums\UserRole;
 use App\Http\Resources\ImportRequestResource;
 use App\Models\Bank;
 use App\Models\ImportRequest;
+use App\Models\RequestVote;
 use App\Models\User;
 use App\Support\ApiResponse;
 use Carbon\CarbonImmutable;
@@ -35,7 +36,7 @@ class DashboardController extends Controller
             $user->hasRole(UserRole::BANK_ADMIN)          => $this->bankAdminStats($user),
             $user->hasRole(UserRole::SUPPORT_COMMITTEE)   => $this->supportCommitteeStats($user),
             $user->hasRole(UserRole::SWIFT_OFFICER)       => $this->swiftOfficerStats($user),
-            $user->hasRole(UserRole::EXECUTIVE_MEMBER)    => $this->executiveMemberStats(),
+            $user->hasRole(UserRole::EXECUTIVE_MEMBER)    => $this->executiveMemberStats($user),
             $user->hasRole(UserRole::COMMITTEE_DIRECTOR)  => $this->committeeDirectorStats(),
             $user->hasRole(UserRole::CBY_ADMIN)           => $this->cbyadminStats(),
             default                                       => ApiResponse::success([], 'Dashboard stats retrieved.'),
@@ -274,6 +275,13 @@ class DashboardController extends Controller
             ->whereIn('status', [RequestStatus::SUBMITTED->value, RequestStatus::BANK_REVIEW->value])
             ->orderBy('updated_at')
             ->limit(50)
+            ->with(['bank', 'creator'])
+            ->get();
+
+        $downstreamQueue = (clone $base)
+            ->whereIn('status', array_map(fn ($s) => $s->value, $atCbyStatuses))
+            ->orderByDesc('updated_at')
+            ->limit(5)
             ->with(['bank'])
             ->get();
 
@@ -283,6 +291,7 @@ class DashboardController extends Controller
             'returned_by_support' => $returnedBySupport,
             'approved_completed'  => $approvedCompleted,
             'review_queue'        => ImportRequestResource::collection($reviewQueue)->resolve(),
+            'downstream_queue'    => ImportRequestResource::collection($downstreamQueue)->resolve(),
         ], 'Dashboard stats retrieved.');
     }
 
@@ -376,7 +385,7 @@ class DashboardController extends Controller
         ], 'Dashboard stats retrieved.');
     }
 
-    private function executiveVotingStats(): array
+    private function executiveVotingStats(User $user): array
     {
         $waitingForVotingOpen = ImportRequest::query()
             ->where('status', RequestStatus::WAITING_FOR_VOTING_OPEN->value)
@@ -411,12 +420,20 @@ class DashboardController extends Controller
             ->whereIn('status', [
                 RequestStatus::WAITING_FOR_VOTING_OPEN->value,
                 RequestStatus::EXECUTIVE_VOTING_OPEN->value,
+                RequestStatus::EXECUTIVE_VOTING_CLOSED->value,
             ])
             ->orderBy('updated_at')
             ->orderBy('id')
             ->limit(50)
-            ->with(['bank'])
+            ->with(['bank', 'votes'])
             ->get();
+
+        $pendingMyVote = $votingQueue
+            ->filter(fn (ImportRequest $request) =>
+                $request->status === RequestStatus::EXECUTIVE_VOTING_OPEN
+                && ! $request->votes->contains('user_id', $user->id)
+            )
+            ->count();
 
         return [
             'waiting_for_voting_open' => $waitingForVotingOpen,
@@ -424,14 +441,15 @@ class DashboardController extends Controller
             'decisions_approved'      => $decisionsApproved,
             'decisions_rejected'      => $decisionsRejected,
             'finalized_decisions'     => $finalizedDecisions,
-            'voting_queue'            => ImportRequestResource::collection($votingQueue)->toArray(request()),
+            'pending_my_vote'         => $pendingMyVote,
+            'voting_queue'            => $this->votingQueueResource($votingQueue, $user),
         ];
     }
 
     // EXECUTIVE_MEMBER: global CBY view — no org scope
-    private function executiveMemberStats(): \Illuminate\Http\JsonResponse
+    private function executiveMemberStats(User $user): \Illuminate\Http\JsonResponse
     {
-        return ApiResponse::success($this->executiveVotingStats(), 'Dashboard stats retrieved.');
+        return ApiResponse::success($this->executiveVotingStats($user), 'Dashboard stats retrieved.');
     }
 
     // COMMITTEE_DIRECTOR: global CBY view — no org scope
@@ -445,9 +463,42 @@ class DashboardController extends Controller
             ->with(['bank'])
             ->get();
 
-        return ApiResponse::success(array_merge($this->executiveVotingStats(), [
+        return ApiResponse::success(array_merge($this->executiveVotingStats(request()->user()), [
             'customs_declaration_pending' => ImportRequestResource::collection($customsDeclarationPending)->toArray(request()),
         ]), 'Dashboard stats retrieved.');
+    }
+
+    private function votingQueueResource($requests, User $user): array
+    {
+        $totalVoters = User::query()
+            ->where('role', UserRole::EXECUTIVE_MEMBER->value)
+            ->where('is_active', true)
+            ->count();
+
+        return collect(ImportRequestResource::collection($requests)->toArray(request()))
+            ->map(function (array $item, int $index) use ($requests, $user, $totalVoters) {
+                /** @var ImportRequest $request */
+                $request = $requests->values()->get($index);
+                $myVote = $request->votes->firstWhere('user_id', $user->id);
+
+                return [
+                    ...$item,
+                    'my_vote' => $this->dashboardVoteValue($myVote),
+                    'votes_cast' => $request->votes->count(),
+                    'total_voters' => $totalVoters,
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    private function dashboardVoteValue(?RequestVote $vote): ?string
+    {
+        return match ($vote?->vote?->value) {
+            'APPROVE' => 'approve',
+            'REJECT' => 'reject',
+            default => null,
+        };
     }
 
     // CBY_ADMIN: full-system visibility across all banks

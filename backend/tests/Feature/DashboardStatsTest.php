@@ -1015,7 +1015,8 @@ class DashboardStatsTest extends TestCase
 
         $this->assertContains(RequestStatus::WAITING_FOR_VOTING_OPEN->value, $statuses);
         $this->assertContains(RequestStatus::EXECUTIVE_VOTING_OPEN->value, $statuses);
-        $this->assertCount(2, $queue);
+        $this->assertContains(RequestStatus::EXECUTIVE_VOTING_CLOSED->value, $statuses);
+        $this->assertCount(3, $queue);
     }
 
     // ─── COMMITTEE_DIRECTOR stats ─────────────────────────────────────────────
