@@ -104,3 +104,82 @@ Story 9.2 produced the initial matrix. Story 12.1 appends rows for the four Tier
 | **Baseline screenshot** | Not captured in repository at review time (`docs/ui-parity/screenshots/12-1/baseline/executive-detail.png` absent) |
 | **After screenshot** | Not captured in repository at review time (`docs/ui-parity/screenshots/12-1/after/executive-detail.png` absent) |
 | **Implementation diff** | Story 12.1 — `frontend/app/components/banners/VotingPendingBanner.vue` (new); `frontend/app/components/banners/VotedConfirmationBanner.vue` (new); `frontend/app/pages/requests/[id]/index.vue`: banner selection; `frontend/app/components/voting/VotingPanel.vue`: vote masking during EXECUTIVE_VOTING_OPEN |
+
+---
+
+## Story 12.2 — Tier 2 Administrative Roles UX Uplift
+
+### CBY_ADMIN — Dashboard
+
+| Leg | Evidence |
+|-----|----------|
+| **Spec citation** | `docs/user-view/cby-admin.md#Dashboard` — "إشراف فقط" read-only chip; global toolbar (date-range + bank-filter + refresh + last-updated + Export PDF); 6-KPI strategic strip (Active Workflow / SLA Violations / Open Voting / FX Pending / Bank Risk Alerts / System Availability) with mini sparklines, period-delta, severity coloring, drilldown; Workflow Pressure Map (Stage / Active Count / Avg Age / SLA Risk / Trend); Executive Voting Oversight (per-session member list not numeric quorum, no action buttons); Bank Risk Intelligence sortable table; Compliance & Audit Signals cards; Critical Events feed; no generic Recent Requests table |
+| **Baseline screenshot** | Not captured at story start (`docs/ui-parity/screenshots/12-2/baseline/cby-admin-dashboard.png` absent) |
+| **After screenshot** | `docs/ui-parity/screenshots/12-2/after/cby-admin-dashboard.png` (pending dev-browser capture) |
+| **Implementation diff** | Story 12.2 — `frontend/app/components/dashboard/CbyAdminDashboard.vue`: full governance rewrite; added oversight chip, global toolbar, 6-KPI strip with sparklines, Workflow Pressure Map, Executive Voting Oversight, Bank Risk Intelligence, Compliance Signal cards, Critical Events feed; removed generic Recent Requests table |
+
+---
+
+### CBY_ADMIN — Requests List
+
+| Leg | Evidence |
+|-----|----------|
+| **Spec citation** | `docs/user-view/cby-admin.md#Requests List` — Smart Summary Bar of operational exceptions (clickable); operational tabs (Active / Needs Attention / Executive Voting / FX Pending / Rejected / Completed / All Requests); Saved Views; dual status representation (business badge + muted internal enum); intelligence columns (SLA State / Voting State / FX State / Risk Flags); Actions View-only (View Request / Open Timeline / Open Audit View) |
+| **Baseline screenshot** | Not captured at story start (`docs/ui-parity/screenshots/12-2/baseline/cby-admin-requests.png` absent) |
+| **After screenshot** | `docs/ui-parity/screenshots/12-2/after/cby-admin-requests.png` (pending dev-browser capture) |
+| **Implementation diff** | Story 12.2 — `frontend/app/constants/workflow.ts`: ROLE_BUCKETS[CBY_ADMIN] rewritten to 6 operational tabs (active/needs_attention/executive_voting/fx_pending/rejected/completed); `frontend/app/pages/requests/index.vue`: added `cbySmartSummary` computed (needs_attention + voting + fx_pending + stalled counts) rendered as clickable filter chips below header for CBY_ADMIN only; Actions column already View-only via generic dropdown (View + Print only for non-draft non-bank-reviewer flows); intelligence columns deferred — require backend SLA/voting/risk fields not in current `GET /api/requests` response (zero-backend-change constraint) |
+
+---
+
+### CBY_ADMIN — Admin Pages (entities, cby-staff, workflow-docs, roles)
+
+| Leg | Evidence |
+|-----|----------|
+| **Spec citation** | `docs/user-view/cby-admin.md#Entities`, `#CBY Staff Management`, `#Document Rules`, `#Permissions Reference` — density/micro-copy/empty-state alignment; CBY staff role allowlist (CBY roles + SWIFT_OFFICER provisioning); no workflow action affordances on any admin surface |
+| **Baseline screenshot** | Not captured at story start (`docs/ui-parity/screenshots/12-2/baseline/cby-admin-entities.png` absent) |
+| **After screenshot** | `docs/ui-parity/screenshots/12-2/after/cby-admin-cby-staff.png` (pending dev-browser capture) |
+| **Implementation diff** | Story 12.2 — `frontend/app/pages/admin/entities.vue`, `cby-staff.vue`, `workflow-docs.vue`, `roles.vue`: density/micro-copy/empty-state polish; no workflow affordances; cby-staff role allowlist enforced at modal level |
+
+---
+
+### BANK_ADMIN — Dashboard
+
+| Leg | Evidence |
+|-----|----------|
+| **Spec citation** | `docs/user-view/bank-admin.md#Dashboard` — "إدارة وعرض" read-only oversight chip; header toolbar (date-range + refresh + last-updated + Export Bank Summary PDF); 4-KPI grid (Total gray / In Process blue / Approved-Completed green / Rejected rose with left-border when % > threshold), all clickable; conditional Operational Health strip (hidden when no risks); 4-card quick actions (Reports = primary blue); Monthly Trend dual-line SVG; Recent Bank Requests table (max 8 rows, read-only) |
+| **Baseline screenshot** | Not captured at story start (`docs/ui-parity/screenshots/12-2/baseline/bank-admin-dashboard.png` absent) |
+| **After screenshot** | `docs/ui-parity/screenshots/12-2/after/bank-admin-dashboard.png` (pending dev-browser capture) |
+| **Implementation diff** | Story 12.2 — `frontend/app/components/dashboard/BankAdminDashboard.vue`: added oversight chip, header toolbar, corrected KPI order and colors, added conditional Operational Health strip, fixed quick-actions Reports=primary-blue, enhanced Monthly Trend with dual lines and hover tooltips |
+
+---
+
+### BANK_ADMIN — Requests List
+
+| Leg | Evidence |
+|-----|----------|
+| **Spec citation** | `docs/user-view/bank-admin.md#Requests List` — operational stage tabs (pending / at_cby / swift_fx / completed / rejected / all); read-only oversight chip; Saved Views; data table with Created By role chip + Current Owner role chip + Age in Stage + Last Activity; Actions View-only |
+| **Baseline screenshot** | Not captured at story start (`docs/ui-parity/screenshots/12-2/baseline/bank-admin-requests.png` absent) |
+| **After screenshot** | `docs/ui-parity/screenshots/12-2/after/bank-admin-requests.png` (pending dev-browser capture) |
+| **Implementation diff** | Story 12.2 — `frontend/app/constants/workflow.ts`: ROLE_BUCKETS[BANK_ADMIN] updated to add swift_fx bucket and DRAFT_REJECTED_INTERNAL to pending |
+
+---
+
+### BANK_ADMIN — Request Detail
+
+| Leg | Evidence |
+|-----|----------|
+| **Spec citation** | `docs/user-view/bank-admin.md#Request Detail` — ActionsPanel empty of decision buttons; informational sentence "الطلب حالياً في مرحلة [stage] — المسؤول: [role]"; DRAFT requests by admin → "تعديل الطلب" + "حذف المسودة"; Documents tab external FX PDF locked row with tooltip; no SegregationBlockedBanner |
+| **Baseline screenshot** | Not captured at story start (`docs/ui-parity/screenshots/12-2/baseline/bank-admin-detail.png` absent) |
+| **After screenshot** | `docs/ui-parity/screenshots/12-2/after/bank-admin-detail.png` (pending dev-browser capture) |
+| **Implementation diff** | Story 12.2 — `frontend/app/pages/requests/[id]/index.vue`: BANK_ADMIN ActionsPanel shows informational sentence only (no buttons), with DRAFT self-authored exception; FX PDF locked row with tooltip; SegregationBlockedBanner excluded for this role |
+
+---
+
+### BANK_ADMIN — Staff Page
+
+| Leg | Evidence |
+|-----|----------|
+| **Spec citation** | `docs/user-view/bank-admin.md#Staff` — Access Health summary row (Active / MFA enabled % / Suspended / BANK_REVIEWER coverage / Recent role changes / Recent permission denials) with clickable filter cards; filter toolbar (Search / Role / Status / MFA / Last-login range / Clear); data table per spec; StaffModal role allowlist DATA_ENTRY + BANK_REVIEWER only (SWIFT_OFFICER and CBY roles absent) |
+| **Baseline screenshot** | Not captured at story start (`docs/ui-parity/screenshots/12-2/baseline/bank-admin-staff.png` absent) |
+| **After screenshot** | `docs/ui-parity/screenshots/12-2/after/bank-admin-staff.png` (pending dev-browser capture) |
+| **Implementation diff** | Story 12.2 — `frontend/app/pages/staff.vue`: added Access Health summary row with clickable filter cards; enhanced filter toolbar; `frontend/app/components/staff/StaffModal.vue`: role allowlist already enforced via BANK_ADMIN_MANAGED_ROLES constant |
