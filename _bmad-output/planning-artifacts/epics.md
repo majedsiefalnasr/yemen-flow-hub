@@ -3303,3 +3303,141 @@ So that role-surface regressions and lifecycle handoff regressions are caught be
 - Browser-based verification is used for UI flows.
 
 **Out of scope:** Load/performance testing and production monitoring.
+
+---
+
+## Epic 12: Role-Driven UX/UI Enhancement
+
+**Purpose:** Bring the shipped frontend up to the per-role operational-posture fidelity specified in `docs/user-view/`. Epic 7 delivered role-distinct dashboards; Epic 10 transplanted Lovable pages; Epic 11.1 enforced what is rendered per role; this epic enforces *how the visible surface should look, feel, and behave* per role's operational posture.
+
+**Decision date:** 2026-05-25
+
+**Source authorities:**
+1. `docs/user-view/*.md` — final authority for per-role operational posture, dashboard structure, page interaction patterns, KPI semantics, density, micro-copy, status presentation, empty/loading/error states, and RTL behaviour.
+2. `roles-reference.md` — non-visibility and visibility contract (must remain consistent with Epic 11.1 matrix).
+3. `testing-playbook.md` — role smoke and lifecycle assertions.
+4. `DESIGN.md` — visual token constraints (typography, colour, spacing, motion). New UX must compose existing tokens; no new tokens introduced by this epic.
+5. Existing lovable/ screenshots and current frontend screens — parity-evidence visual baselines (Epic 9 triplet rule).
+
+**Correction rules:**
+- Compose existing shadcn-vue components and `DESIGN.md` tokens. Do not introduce new design primitives.
+- Every story produces the Epic 9 parity-evidence triplet: spec citation + visual reference + diff.
+- Operational-posture uplift must not loosen Epic 11.1 non-visibility contracts.
+- External FX completion surfaces (Director + SWIFT) use whatever terminology currently ships in production code at story start; do not introduce terminology divergence between the spec and the deployed copy.
+- Use `/ui-ux-pro-max` during dev for design intelligence; do not invent new styles.
+
+**Common technical requirements for all Epic 12 stories:**
+- Run SocratiCode before modifying existing files: `codebase_search`, then `codebase_symbol` and `codebase_impact` for touched components.
+- Use browser verification (dev-browser) for UI-facing changes.
+- Add Vitest role-specific assertions and Playwright visual baselines per surface.
+- Update `docs/ui-parity/parity-matrix.md` (Story 9.2 artefact) with triplets for each touched surface.
+- Keep `_bmad-output/implementation-artifacts/`, `_bmad-output/test-artifacts/`, and `graphify-out/` local-only and unstaged.
+
+---
+
+### Story 12.1: Tier 1 — High-Traffic Operational Roles UX Uplift
+
+As a daily operational user (DATA_ENTRY, BANK_REVIEWER, SUPPORT_COMMITTEE, or EXECUTIVE_MEMBER),
+I want my dashboard and primary work surfaces to embody my role's operational posture as specified in `docs/user-view/<role>.md`,
+So that the product feels like a focused work surface tuned to my job rather than a generic admin console.
+
+**Source authority:**
+- `docs/user-view/data-entry.md`
+- `docs/user-view/bank-reviewer.md`
+- `docs/user-view/support-committee.md`
+- `docs/user-view/executive-member.md`
+- `roles-reference.md` (non-visibility cross-check)
+- `frontend/app/pages/dashboard.vue` and role-specific dashboard components
+- `frontend/app/pages/requests/index.vue` and `frontend/app/pages/requests/[id]/index.vue`
+- Wizard, ActionsPanel, DocumentChecklist, VotingPanel, support claim, and inactivity-banner components
+
+**Targets:**
+- DATA_ENTRY: task-oriented intake surface; simplified business-status presentation; returned-queue prominence; document checklist density and validation tone per spec.
+- BANK_REVIEWER: review-gate posture; submitted queue prominence; clear separation between self-bank visibility and CBY downstream tracking; ActionsPanel decision affordances per spec.
+- SUPPORT_COMMITTEE: claim-aware presence posture; queue ↔ claim distinction; claim-by-me / claim-by-other / unclaimed visual states; release/heartbeat surface cues per spec.
+- EXECUTIVE_MEMBER: voting-focused posture; voting queue + closed-decisions framing; vote affordances and justification flow per spec.
+
+**Acceptance criteria:**
+- Each of the four roles' dashboard surfaces match the spec for: KPI set, KPI ordering, density, empty/loading/error states, micro-copy, primary CTA presence, and quick-action set.
+- Request-list surface per role matches spec for: tab/filter set, default tab, status-label presentation (simplified business labels for DATA_ENTRY), bulk action visibility, and empty-state copy.
+- Request-detail surface per role matches spec for: tab order, ActionsPanel rendering rules, document checklist scoping, support-claim presence states (SUPPORT only), voting panel framing (EXECUTIVE only).
+- Status presentation: DATA_ENTRY sees simplified business labels; other three roles see canonical workflow labels.
+- Non-visibility holds: no SWIFT, no FX, no admin, no governance surfaces leak into these four roles.
+- Parity-evidence triplet recorded per surface in `docs/ui-parity/parity-matrix.md`.
+- Vitest role-specific assertions cover spec micro-copy, KPI presence/order, density classes.
+- Playwright baselines updated for the four dashboards and four request-detail variants.
+- `/ui-ux-pro-max` invoked during dev; design rationale captured in the story validation report.
+
+**Out of scope:** Tier 2 admin roles, Tier 3 finalization roles, backend changes, new design tokens, FX terminology (deferred to 11.2 and 12.3).
+
+---
+
+### Story 12.2: Tier 2 — Administrative Roles UX Uplift
+
+As an administrator (CBY_ADMIN or BANK_ADMIN),
+I want my dashboard and admin surfaces to embody the oversight/governance posture specified in `docs/user-view/<role>.md`,
+So that I quickly answer platform-health and bank-operations questions rather than navigating an operator console.
+
+**Source authority:**
+- `docs/user-view/cby-admin.md` (85 KB — the most detailed spec)
+- `docs/user-view/bank-admin.md`
+- `roles-reference.md` (CBY_ADMIN read-only oversight contract; BANK_ADMIN bank-internal authority contract)
+- `frontend/app/pages/dashboard.vue` and admin-role dashboard components
+- `frontend/app/pages/admin/*.vue` (entities, cby-staff, workflow-docs, roles)
+- `frontend/app/pages/staff.vue` (BANK_ADMIN staff management)
+- Reports and audit surfaces (CBY_ADMIN)
+
+**Targets:**
+- CBY_ADMIN dashboard: strategic governance surface — KPI strip (system-health, bottleneck, risk, executive-decision-delay, compliance-anomaly metrics), bank filter + date filter toolbar, export Executive Summary PDF, no New Request CTA, "إشراف فقط" read-only oversight badge.
+- CBY_ADMIN admin surfaces (entities, cby-staff, workflow-docs, roles): governance tone, full-bank visibility, density and micro-copy per spec, no workflow action affordances leak into oversight pages.
+- BANK_ADMIN dashboard: bank-internal operations posture — bank-scoped KPIs, sparkline trend, quick-action, recent requests table.
+- BANK_ADMIN staff management: bank-scoped staff CRUD, role assignment limited to BANK_REVIEWER / DATA_ENTRY / SWIFT_OFFICER, deactivation flow.
+
+**Acceptance criteria:**
+- CBY_ADMIN dashboard renders the governance KPI strip and toolbar per spec; no operational action buttons leak.
+- CBY_ADMIN admin pages match spec density, micro-copy, and empty/loading/error states.
+- BANK_ADMIN dashboard renders bank-scoped KPIs and recent-requests table per spec.
+- BANK_ADMIN staff management enforces bank-scoped role allowlist and matches spec for modal/dialog tone.
+- Non-visibility holds: CBY_ADMIN must not see workflow action buttons; BANK_ADMIN must not see CBY-side admin surfaces.
+- Parity-evidence triplet recorded per surface.
+- Vitest assertions cover oversight-badge presence, action-button absence, role-allowlist.
+- Playwright baselines updated for the two dashboards and key admin pages.
+- `/ui-ux-pro-max` invoked during dev.
+
+**Out of scope:** Tier 1 operational roles, Tier 3 finalization roles, backend changes, new analytics endpoints (reuse existing `GET /api/dashboard/stats` and reports).
+
+---
+
+### Story 12.3: Tier 3 — Lifecycle Finalization Roles UX Uplift
+
+As a lifecycle-finalization user (COMMITTEE_DIRECTOR or SWIFT_OFFICER),
+I want my dashboard and stage-specific surfaces to embody the role-specific finalization posture specified in `docs/user-view/<role>.md`,
+So that voting lifecycle management, external FX completion, and SWIFT + FX-confirmation-request upload feel like first-class workflows rather than generic detail pages.
+
+**Source authority:**
+- `docs/user-view/committee-director.md`
+- `docs/user-view/swift-officer.md`
+- `roles-reference.md` (Director governance authority; SWIFT scope)
+- Current shipped status enum, document model, API naming, and PDF generation as deployed at story start
+- `frontend/app/pages/dashboard.vue` and finalization-role dashboard components
+- VotingPanel, ActionsPanel director controls, finalization completion surfaces, SWIFT upload page
+
+**Targets:**
+- COMMITTEE_DIRECTOR dashboard: governance + lifecycle posture — voting-open queue, voting-closed-awaiting-finalize queue, finalization workload after SWIFT upload, recent finalized decisions, decision-delay metric.
+- COMMITTEE_DIRECTOR request-detail: voting-session controls (open/close), tie-break affordance, override-and-finalize affordance with justification, finalization completion affordances (download generated PDF, upload signed/stamped PDF) using whatever terminology currently ships.
+- SWIFT_OFFICER dashboard: focused upload queue posture — SUPPORT_APPROVED queue, post-SWIFT awaiting queue, uploads completed today.
+- SWIFT_OFFICER request-detail: SWIFT upload affordance and any FX-confirmation-request upload affordance that currently ships, gated to SUPPORT_APPROVED status.
+
+**Acceptance criteria:**
+- COMMITTEE_DIRECTOR dashboard surfaces the voting lifecycle queues and post-SWIFT finalization workload per spec.
+- VotingPanel + ActionsPanel director controls match spec tone, density, and confirmation flows.
+- Finalization completion surfaces (Director side) use whatever terminology currently ships in production code; no terminology divergence between spec citations and deployed copy.
+- SWIFT_OFFICER dashboard surfaces SWIFT-relevant queues only; no voting / finalization / admin surfaces leak.
+- SWIFT upload and any post-SWIFT upload surfaces (SWIFT side) match spec.
+- Non-visibility holds per `roles-reference.md`.
+- Parity-evidence triplet recorded per surface.
+- Vitest assertions cover director-only and SWIFT-only affordance presence/absence; terminology assertions reference the currently-shipping copy, not future migration targets.
+- Playwright baselines updated for the two dashboards and finalization request-detail variants.
+- `/ui-ux-pro-max` invoked during dev.
+
+**Out of scope:** Tier 1 operational roles, Tier 2 administrative roles, backend changes, any external FX terminology migration (out of Epic 12's scope).

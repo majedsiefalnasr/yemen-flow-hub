@@ -8,7 +8,7 @@
     {
       "name": "workflow-and-business-rules",
       "path": "docs/01-workflow-and-business-rules.md",
-      "description": "Complete workflow lifecycle: all 18 status transitions, business rules per stage, role responsibilities, and simplified status mapping for Data Entry users"
+      "description": "Complete workflow lifecycle: all 22 canonical status transitions (including BANK_RETURNED, BANK_REJECTED, SUPPORT_RETURNED, FX_CONFIRMATION_PENDING), business rules per stage, role responsibilities, and simplified status mapping for Data Entry users"
     },
     {
       "name": "system-architecture",
@@ -23,7 +23,7 @@
     {
       "name": "frontend-guide",
       "path": "docs/04-frontend-guide.md",
-      "description": "Frontend architecture: Nuxt 4 project structure, composable patterns, store conventions, RTL rules, role-aware UI rules, and component anti-patterns"
+      "description": "Frontend architecture: Nuxt 4 project structure, composable patterns, store conventions, RTL rules, role-aware UI rules, per-role UX authority (docs/user-view/), parity-evidence triplet rule, operational density composition, and component anti-patterns"
     },
     {
       "name": "backend-guide",
@@ -41,9 +41,49 @@
       "description": "Visual design system: color tokens, typography scale, spacing grid, component radius/sizing rules, RTL layout conventions, and status color semantics"
     },
     {
+      "name": "user-view-data-entry",
+      "path": "docs/user-view/data-entry.md",
+      "description": "DATA_ENTRY role UX authority: operational posture, dashboard structure, KPI semantics, page interactions, banner variants, status presentation, density, micro-copy, RTL rules, and non-visibility enforcement"
+    },
+    {
+      "name": "user-view-bank-reviewer",
+      "path": "docs/user-view/bank-reviewer.md",
+      "description": "BANK_REVIEWER role UX authority: review queue structure, approval/return/reject action surfaces, self-review guard UI, downstream tracking visibility, and non-visibility rules"
+    },
+    {
+      "name": "user-view-bank-admin",
+      "path": "docs/user-view/bank-admin.md",
+      "description": "BANK_ADMIN role UX authority: bank-level KPI grid, monthly trend chart, staff management surface, role allowlist (DATA_ENTRY + BANK_REVIEWER only), and oversight-without-claim-authority posture"
+    },
+    {
+      "name": "user-view-swift-officer",
+      "path": "docs/user-view/swift-officer.md",
+      "description": "SWIFT_OFFICER role UX authority: focused upload-queue dashboard, two-pill document indicator, /requests/[id]/swift dedicated page with locked-data summary panel + 3-section form, disabled-with-specific-reason submit gate, and distraction-free density principle"
+    },
+    {
+      "name": "user-view-support-committee",
+      "path": "docs/user-view/support-committee.md",
+      "description": "SUPPORT_COMMITTEE role UX authority: support claim lifecycle (15-min TTL, 60s heartbeat), claim-state row tinting (mine/others/unclaimed), claim error banners, dashboard claim KPIs, and review action panel"
+    },
+    {
+      "name": "user-view-executive-member",
+      "path": "docs/user-view/executive-member.md",
+      "description": "EXECUTIVE_MEMBER role UX authority: voting queue dashboard, VotingPanel structure, vote masking rule (votes hidden until session closure), pending-vote banners, voted-confirmation banners, and forbidden-actions list (no close/finalize/tie-break/override)"
+    },
+    {
+      "name": "user-view-committee-director",
+      "path": "docs/user-view/committee-director.md",
+      "description": "COMMITTEE_DIRECTOR role UX authority: composite action-required strip (ReadyToClose/TieBreak/FXReady), 4-KPI governance grid, Voting Lifecycle table with Director action columns, FX Queue table, extended VotingPanel (close/finalize/tie-break modal/override), and Director-exclusive تأكيد المصارفة tab with 3-step FX completion sequence"
+    },
+    {
+      "name": "user-view-cby-admin",
+      "path": "docs/user-view/cby-admin.md",
+      "description": "CBY_ADMIN role UX authority: 6-KPI governance strip, Workflow Pressure Map, Executive Voting Oversight (view-only, no controls), Bank Risk Intelligence table, Compliance & Audit Signals, Critical Events feed, Smart Summary Bar on /requests, and oversight-only posture (no operational claim authority)"
+    },
+    {
       "name": "planning-epics",
       "path": "_bmad-output/planning-artifacts/epics.md",
-      "description": "Full epic and story breakdown: all planned features, acceptance criteria, and implementation scope for the entire Yemen Flow Hub platform"
+      "description": "Full epic and story breakdown: all planned features through Epic 12 (Role-Driven UX/UI Enhancement), acceptance criteria, and implementation scope for the entire Yemen Flow Hub platform"
     },
     {
       "name": "project-context",

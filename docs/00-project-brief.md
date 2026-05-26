@@ -4,7 +4,7 @@
 
 Yemen Flow Hub is an internal regulatory workflow platform for the Central Bank of Yemen (CBY) used to manage and review commercial bank import financing requests.
 
-The platform digitizes the full import financing lifecycle from initial bank submission to final customs declaration issuance.
+The platform digitizes the full import financing lifecycle from initial bank submission to final external FX confirmation issuance.
 
 The system is not public-facing and is intended only for:
 
@@ -32,7 +32,7 @@ With a centralized digital workflow that provides:
 - Full audit tracking
 - Executive committee voting
 - SWIFT document management
-- Customs declaration issuance
+- External FX confirmation issuance
 
 ---
 
@@ -75,6 +75,16 @@ Responsible for:
 Responsible for:
 
 - Uploading SWIFT document after CBY support approval
+- Uploading the FX confirmation request document
+- Operating only inside the SWIFT upload queue for their bank
+
+#### Bank Admin
+
+Responsible for:
+
+- Managing bank-level staff accounts (Data Entry, Bank Reviewer)
+- Monitoring bank-level KPIs and operational health
+- Oversight without operational claim authority over individual requests
 
 ---
 
@@ -84,7 +94,7 @@ Responsible for:
 
 - Reviewing requests
 - Voting on requests
-- Issuing customs declarations
+- Completing the external FX confirmation lifecycle
 - Monitoring workflow compliance
 
 ### CBY Roles
@@ -113,9 +123,18 @@ Responsible for:
 - Opening executive voting sessions
 - Closing executive voting sessions
 - Participating in voting
-- Resolving tied voting decisions
+- Resolving tied voting decisions through an explicit tie-break action with a mandatory written reason
 - Finalizing executive decisions
-- Issuing customs declarations
+- Completing the external FX confirmation lifecycle (download, external sign/stamp, re-upload)
+
+#### CBY Admin
+
+Responsible for:
+
+- Full system visibility across all banks
+- Managing CBY staff, banks, and role assignments
+- Audit log review and operational reporting
+- Workflow governance oversight without participating in approvals, claims, votes, SWIFT uploads, or FX confirmation actions
 
 ---
 
@@ -146,9 +165,9 @@ Important rule:
 
 The reviewer can:
 
-- Approve the request
-- Reject the request before approval
-- Return it to Data Entry for modification before approval
+- Approve the request → `BANK_APPROVED`
+- Return the request to Data Entry for correction → `BANK_RETURNED` (editable, can be resubmitted)
+- Reject the request outright → `BANK_REJECTED` (terminal, no re-submission)
 
 After approval:
 
@@ -158,8 +177,9 @@ After approval:
 
 Requests only become editable again if:
 
-- Support Committee rejects the request
-- Bank Reviewer returns it to Data Entry
+- Bank Reviewer returns the request to Data Entry (`BANK_RETURNED`)
+- Support Committee returns the request to the bank (`SUPPORT_RETURNED`)
+- Support Committee rejects the request and the Bank Reviewer routes it back to Data Entry
 
 ---
 
@@ -178,11 +198,15 @@ Possible outcomes:
 
 ### Approved
 
-The request moves to the SWIFT upload stage.
+The request moves to the SWIFT upload stage (`SUPPORT_APPROVED` → `WAITING_FOR_SWIFT`).
+
+### Returned
+
+The Support Committee can return the request to the originating bank for correction (`SUPPORT_RETURNED`). The request becomes editable again at the bank side without re-running internal bank review.
 
 ### Rejected
 
-The request returns to the Bank Reviewer.
+The request returns to the Bank Reviewer (`SUPPORT_REJECTED`).
 
 The Bank Reviewer can:
 
@@ -231,7 +255,7 @@ Voting rules:
 - Voting can be closed at any time by the Director
 - Members who did not vote before closure become AUTO_ABSTAIN_TIMEOUT
 - AUTO_ABSTAIN_TIMEOUT differs from manual abstain
-- Director vote resolves ties
+- Tied decisions are resolved through an explicit Director tie-break action (modal with mandatory written reason and approve/reject choice) — not by automatic vote precedence
 
 If rejected:
 
@@ -251,16 +275,22 @@ After executive approval:
 
 ---
 
-## Stage 7 — Customs Declaration Issuance
+## Stage 7 — External FX Confirmation
 
-The Committee Director issues the official customs declaration document.
+After SWIFT upload, the request enters `FX_CONFIRMATION_PENDING` and ownership passes to the Committee Director, who completes the external FX confirmation lifecycle:
 
-The declaration:
+1. Download the system-generated external FX confirmation PDF (pre-populated from request data)
+2. Sign and stamp the document externally
+3. Re-upload the signed PDF to the platform
 
-- Is generated as printable RTL PDF
+On re-upload, the request transitions to the legacy `CUSTOMS_DECLARATION_ISSUED` status and then `COMPLETED`. The final artifact:
+
+- Is generated as a printable RTL PDF
 - Contains official approval information
 - Finalizes the request lifecycle
 - Becomes a permanent immutable workflow artifact
+
+`CUSTOMS_DECLARATION_ISSUED` is legacy terminology retained for backwards compatibility until the FX confirmation migration is fully complete. New UI copy must use external FX confirmation language (`تأكيد مصارفة خارجية`).
 
 ---
 
@@ -337,7 +367,7 @@ They can monitor:
 - SWIFT status
 - Executive voting progress
 - Final decisions
-- Customs declaration issuance
+- External FX confirmation issuance
 
 ---
 
@@ -381,7 +411,7 @@ Committee Director can:
 
 - Manage voting sessions
 - Finalize executive decisions
-- Issue customs declarations
+- Complete the external FX confirmation lifecycle (download, external sign/stamp, re-upload)
 
 ---
 
@@ -420,7 +450,8 @@ Locked stages include:
 - SWIFT Upload
 - Executive Voting
 - Final Decision
-- Customs Declaration
+- FX Confirmation Pending
+- Completion (legacy: Customs Declaration Issued)
 
 ---
 
@@ -450,7 +481,7 @@ Bank Reviewers can monitor:
 - SWIFT stage
 - Executive voting
 - Final result
-- Customs declaration issuance
+- External FX confirmation issuance
 
 ### Support Committee
 
@@ -475,7 +506,7 @@ Decision logic:
 
 - Committee Director controls voting sessions
 - Director participates in voting
-- Director resolves ties
+- Director resolves ties through an explicit tie-break action with a mandatory written reason
 - No quorum requirement exists
 - Executive rejection is terminal
 
@@ -523,7 +554,7 @@ Decision logic:
 - Queue-based dashboards
 - Organization-scoped visibility
 - Voting session governance
-- Customs declaration generation
+- External FX confirmation generation
 - Arabic RTL interface
 - Secure internal authentication
 

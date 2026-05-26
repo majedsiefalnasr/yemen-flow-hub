@@ -109,18 +109,17 @@ git commit -m "feat(voting): ..."
 
 All implementation decisions must follow these docs in order of authority:
 
-1. `roles-reference.md` — production role responsibilities, visibility, dashboard surfaces, and role-specific non-visibility rules
-2. `testing-playbook.md` — role smoke tests, lifecycle handoff tests, document access checks, and end-to-end QA expectations
-3. `docs/01-workflow-and-business-rules.md` — Workflow stages, business rules, status enums
-4. `docs/03-database-and-models.md` — Canonical status/role enums, table schemas
-5. `docs/06-api-reference.md` — API contracts, endpoint conventions
-6. `docs/05-backend-guide.md` — Backend architecture, security rules
-7. `docs/04-frontend-guide.md` — Frontend architecture, UI rules
-8. `docs/02-system-architecture.md` — Overall architecture
-9. `DESIGN.md` — Visual design system (colors, typography, layout)
-10. `AI-ENGINEERING-PROMPT.md` — Full engineering context and anti-patterns
+1. `docs/user-view/*.md` — enterprise-grade per-role UX specifications (operational posture, dashboard structure, page interaction patterns, status presentation, density, micro-copy, RTL, non-visibility)
+2. `docs/01-workflow-and-business-rules.md` — Workflow stages, business rules, status enums
+3. `docs/03-database-and-models.md` — Canonical status/role enums, table schemas
+4. `docs/06-api-reference.md` — API contracts, endpoint conventions
+5. `docs/05-backend-guide.md` — Backend architecture, security rules
+6. `docs/04-frontend-guide.md` — Frontend architecture, UI rules
+7. `docs/02-system-architecture.md` — Overall architecture
+8. `DESIGN.md` — Visual design system (colors, typography, layout)
+9. `AI-ENGINEERING-PROMPT.md` — Full engineering context and anti-patterns
 
-`roles-reference.md` and `testing-playbook.md` intentionally supersede older customs-declaration terminology. Where older docs or code say "customs declaration" for the final Director workflow, align new work to external FX confirmation (`تأكيد مصارفة خارجية`) and the `FX_CONFIRMATION_PENDING` handoff unless a correction story explicitly preserves a legacy alias during migration.
+`docs/user-view/*.md` intentionally supersedes older customs-declaration terminology. Where older docs or code say "customs declaration" for the final Director workflow, align new work to external FX confirmation (`تأكيد مصارفة خارجية`) and the `FX_CONFIRMATION_PENDING` handoff unless a correction story explicitly preserves a legacy alias during migration.
 
 **lovable/** is a Nuxt 4 + Vue + shadcn-vue prototype used as the UI source. Pages, components, and layouts are being transplanted into `frontend/` and wired to real Laravel APIs; until that work completes, treat Lovable as the visual reference for any new UI.
 
@@ -133,11 +132,14 @@ DRAFT
 DRAFT_REJECTED_INTERNAL
 SUBMITTED
 BANK_REVIEW
+BANK_RETURNED
+BANK_REJECTED
 BANK_APPROVED
 SUPPORT_REVIEW_PENDING
 SUPPORT_REVIEW_IN_PROGRESS
 SUPPORT_APPROVED
 SUPPORT_REJECTED
+SUPPORT_RETURNED
 WAITING_FOR_SWIFT
 SWIFT_UPLOADED
 WAITING_FOR_VOTING_OPEN
@@ -149,6 +151,8 @@ FX_CONFIRMATION_PENDING
 CUSTOMS_DECLARATION_ISSUED
 COMPLETED
 ```
+
+`BANK_RETURNED` (Story 8.1) is the editable state when a Bank Reviewer returns a submitted request to Data Entry for correction. `SUPPORT_RETURNED` (Story 8.2) is the editable state when the Support Committee returns an approved bank request to the originating bank for correction. `BANK_REJECTED` (Story 8.3) is the terminal state when a Bank Reviewer rejects a request outright (no re-submission path).
 
 `CUSTOMS_DECLARATION_ISSUED` is legacy terminology retained only until the external FX confirmation migration is completed. New stories must not introduce additional customs-facing UI copy for the Director completion workflow.
 
@@ -182,7 +186,7 @@ CBY_ADMIN
 
 ### Always Do
 - Enforce organization-scoped visibility at the database query level
-- Start role UI decisions from `roles-reference.md`: operational queue first, supporting metrics second, least privilege on uncertainty
+- Start role UI decisions from the relevant `docs/user-view/{role}.md`: operational queue first, supporting metrics second, least privilege on uncertainty
 - Log every workflow transition to both `request_stage_history` and `audit_logs`
 - Include `role` (at time of action) in every audit log entry
 - Wrap external FX confirmation generation/completion in a single database transaction

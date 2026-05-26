@@ -109,6 +109,60 @@ Backend authorization remains the source of truth.
 
 ---
 
+## Per-Role UX Authority
+
+Role-specific UI decisions (operational posture, dashboard structure, KPI semantics, banner variants, density, micro-copy, status presentation, non-visibility rules) are governed by the per-role specifications in `docs/user-view/`.
+
+Authority order for any role-specific UI decision:
+
+1. `docs/user-view/{role}.md` — the canonical per-role UX spec (8 files: data-entry, bank-reviewer, bank-admin, swift-officer, support-committee, executive-member, committee-director, cby-admin)
+2. This document — generic frontend conventions
+
+When `docs/user-view/` and a generic UI pattern in this document disagree, `docs/user-view/` wins for that role.
+
+`docs/user-view/` covers, per role:
+
+- Operational posture (work mode, primary surface, status language, visual density, decision tone)
+- Sidebar navigation set
+- Per-page structure (dashboard, requests list, request detail, role-specific pages)
+- KPI cards (sources, colors, click-throughs)
+- Banner variants and conditions
+- Action panel behavior per status
+- Forbidden actions / non-visibility enforcement
+- Cross-role handoffs
+
+UI work must start from the relevant `docs/user-view/{role}.md` rather than inventing role surfaces from scratch.
+
+---
+
+## Parity-Evidence Requirement
+
+Every UI story must declare a parity-evidence triplet for each surface it changes:
+
+1. **Spec citation** — line reference into `docs/user-view/{role}.md` (or the Lovable prototype path) showing the intended design
+2. **Visual reference** — screenshot of the current state (or the Lovable prototype rendering) for before/after comparison
+3. **Implementation diff** — the actual code change that brings the surface into parity
+
+Parity status for each surface is tracked in `docs/ui-parity/parity-matrix.md` with one of: PASS, MINOR, MAJOR, MISSING, SKIP.
+
+This is enforced by the BMad workflow gate established in Story 9.1. UI changes without a parity-evidence triplet fail the gate.
+
+---
+
+## Operational Density Composition
+
+All roles share the same component library, but role surfaces compose differently based on operational posture:
+
+| Posture | Roles | Density | Characteristics |
+| ------- | ----- | ------- | --------------- |
+| Distraction-free / low-density | SWIFT_OFFICER | Low | Focused upload work; minimal navigation; locked-data summaries; single-purpose pages |
+| Operational queue density | DATA_ENTRY, BANK_REVIEWER, SUPPORT_COMMITTEE, EXECUTIVE_MEMBER | Medium | Queue-first; action-required strips; 3–4 KPI cards; primary work table |
+| Governance / lifecycle density | COMMITTEE_DIRECTOR, CBY_ADMIN, BANK_ADMIN | High | Composite action strips (multi-row); 4–6 KPI grids; multiple queue/intelligence tables; oversight without operational claim authority |
+
+Density is a property of the role's spec — not of the component library. The same `KpiCard`, `ActionRequiredStrip`, and `WorkflowProgress` components serve all three postures by composition. Do not fork components per role.
+
+---
+
 # Suggested Project Structure
 
 ```text
