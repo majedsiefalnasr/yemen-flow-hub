@@ -417,7 +417,18 @@ export interface StageBucket {
   key: string
   label: string
   statuses: RequestStatus[]
-  matches?: (request: { status: RequestStatus; created_by?: number | null; is_claimed_by_me?: boolean; claimed_by?: { id: number; name: string } | null; my_vote?: 'approve' | 'reject' | null }, currentUserId?: number | null) => boolean
+  matches?: (
+    request: {
+      status: RequestStatus
+      created_by?: number | null
+      is_claimed_by_me?: boolean
+      claimed_by?: { id: number; name: string } | null
+      my_vote?: 'approve' | 'reject' | null
+      ready_to_close?: boolean
+      is_tie?: boolean
+    },
+    currentUserId?: number | null
+  ) => boolean
 }
 
 /** Role-aware stage buckets — production reimplementation of Lovable bucketsFor() */
@@ -450,8 +461,10 @@ export const ROLE_BUCKETS: Partial<Record<UserRole, StageBucket[]>> = {
     { key: 'rejected', label: 'مرفوض', statuses: [RequestStatus.SUPPORT_REJECTED, RequestStatus.EXECUTIVE_REJECTED, RequestStatus.BANK_REJECTED] },
   ],
   [UserRole.SWIFT_OFFICER]: [
-    { key: 'pending_swift', label: 'انتظار رفع SWIFT', statuses: [RequestStatus.BANK_APPROVED, RequestStatus.SUPPORT_APPROVED, RequestStatus.WAITING_FOR_SWIFT] },
-    { key: 'swift_done', label: 'تم رفع SWIFT', statuses: [RequestStatus.SWIFT_UPLOADED] },
+    { key: 'pending_swift', label: 'بانتظار رفع السويفت', statuses: [RequestStatus.EXECUTIVE_APPROVED, RequestStatus.WAITING_FOR_SWIFT] },
+    { key: 'swift_done', label: 'تم رفع السويفت', statuses: [RequestStatus.SWIFT_UPLOADED, RequestStatus.WAITING_FOR_VOTING_OPEN] },
+    { key: 'completed', label: 'مكتمل', statuses: [RequestStatus.CUSTOMS_DECLARATION_ISSUED, RequestStatus.COMPLETED] },
+    { key: 'rejected', label: 'رُفض قبل السويفت', statuses: [RequestStatus.EXECUTIVE_REJECTED, RequestStatus.SUPPORT_REJECTED, RequestStatus.BANK_REJECTED] },
   ],
   // Spec order: waiting (unclaimed) first, my_claims, in_progress, approved, rejected, all
   [UserRole.SUPPORT_COMMITTEE]: [
@@ -499,12 +512,22 @@ export const ROLE_BUCKETS: Partial<Record<UserRole, StageBucket[]>> = {
     { key: 'post_approval', label: 'ما بعد الاعتماد', statuses: [RequestStatus.WAITING_FOR_SWIFT, RequestStatus.SWIFT_UPLOADED, RequestStatus.CUSTOMS_DECLARATION_ISSUED, RequestStatus.COMPLETED] },
   ],
   [UserRole.COMMITTEE_DIRECTOR]: [
-    { key: 'pending_open', label: 'انتظار فتح التصويت', statuses: [RequestStatus.WAITING_FOR_VOTING_OPEN] },
-    { key: 'voting_open', label: 'التصويت مفتوح', statuses: [RequestStatus.EXECUTIVE_VOTING_OPEN] },
-    { key: 'voting_closed', label: 'التصويت مغلق', statuses: [RequestStatus.EXECUTIVE_VOTING_CLOSED] },
-    { key: 'approved', label: 'موافقة', statuses: [RequestStatus.EXECUTIVE_APPROVED] },
-    { key: 'customs', label: 'البيان الجمركي', statuses: [RequestStatus.CUSTOMS_DECLARATION_ISSUED, RequestStatus.COMPLETED] },
-    { key: 'rejected', label: 'مرفوض', statuses: [RequestStatus.EXECUTIVE_REJECTED] },
+    {
+      key: 'ready_to_close',
+      label: 'جاهزة للإغلاق',
+      statuses: [RequestStatus.EXECUTIVE_VOTING_OPEN],
+      matches: request => request.status === RequestStatus.EXECUTIVE_VOTING_OPEN && request.ready_to_close === true,
+    },
+    { key: 'ready_to_finalize', label: 'جاهزة للإصدار النهائي', statuses: [RequestStatus.EXECUTIVE_VOTING_CLOSED] },
+    {
+      key: 'tie_break',
+      label: 'تعادل — يحتاج حسماً',
+      statuses: [RequestStatus.EXECUTIVE_VOTING_OPEN],
+      matches: request => request.status === RequestStatus.EXECUTIVE_VOTING_OPEN && request.is_tie === true,
+    },
+    { key: 'fx_pending', label: 'بانتظار تأكيد المصارفة', statuses: [RequestStatus.EXECUTIVE_APPROVED] },
+    { key: 'active_voting', label: 'تصويت نشط', statuses: [RequestStatus.EXECUTIVE_VOTING_OPEN] },
+    { key: 'finalized', label: 'مُنهاة', statuses: [RequestStatus.EXECUTIVE_APPROVED, RequestStatus.EXECUTIVE_REJECTED] },
   ],
   // Operational tabs (not internal workflow stages) — per docs/user-view/cby-admin.md#Requests List
   [UserRole.CBY_ADMIN]: [

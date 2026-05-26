@@ -51,7 +51,7 @@ const id = Number(Array.isArray(rawId) ? rawId[0] : rawId)
 
 const votingStore = useVotingStore()
 
-type TabKey = 'overview' | 'documents' | 'parties'
+type TabKey = 'overview' | 'documents' | 'parties' | 'fx_confirmation'
 const activeTab = ref<TabKey>('overview')
 
 const VOTING_STAGE_STATUSES = new Set([
@@ -84,11 +84,22 @@ const showVotingPanelInline = computed(() =>
   && VOTING_STAGE_STATUSES.has(request.value.status),
 )
 
-const tabs = computed((): Array<{ key: TabKey; label: string }> => [
-  { key: 'overview', label: 'المعلومات' },
-  { key: 'documents', label: 'الوثائق' },
-  { key: 'parties', label: 'الأطراف' },
-])
+const showDirectorFxTab = computed(() =>
+  userRole.value === UserRole.COMMITTEE_DIRECTOR
+  && request.value?.status === RequestStatus.EXECUTIVE_APPROVED,
+)
+
+const tabs = computed((): Array<{ key: TabKey; label: string }> => {
+  const base: Array<{ key: TabKey; label: string }> = [
+    { key: 'overview', label: 'المعلومات' },
+    { key: 'documents', label: 'الوثائق' },
+    { key: 'parties', label: 'الأطراف' },
+  ]
+  if (showDirectorFxTab.value) {
+    base.push({ key: 'fx_confirmation', label: 'تأكيد المصارفة' })
+  }
+  return base
+})
 
 const isEditable = computed(() => {
   const s = request.value?.status
@@ -145,11 +156,81 @@ const lockedBannerVariant = computed((): LockedBannerVariant | null => {
 })
 
 const isLocked = computed(() => lockedBannerVariant.value !== null)
+const isCommitteeDirector = computed(() => userRole.value === UserRole.COMMITTEE_DIRECTOR)
+const isSwiftOfficer = computed(() => userRole.value === UserRole.SWIFT_OFFICER)
 const isReturnedForCorrection = computed(() =>
   request.value?.status === RequestStatus.DRAFT_REJECTED_INTERNAL,
 )
 const isBankReturned = computed(() => request.value?.status === RequestStatus.BANK_RETURNED)
 const isSupportReturned = computed(() => request.value?.status === RequestStatus.SUPPORT_RETURNED)
+
+const showDirectorVotingActiveBanner = computed(() =>
+  isCommitteeDirector.value
+  && request.value?.status === RequestStatus.EXECUTIVE_VOTING_OPEN
+  && request.value?.ready_to_close !== true
+  && request.value?.is_tie !== true,
+)
+
+const showDirectorReadyToCloseBanner = computed(() =>
+  isCommitteeDirector.value
+  && request.value?.status === RequestStatus.EXECUTIVE_VOTING_OPEN
+  && request.value?.ready_to_close === true,
+)
+
+const showDirectorTieBreakBanner = computed(() =>
+  isCommitteeDirector.value
+  && request.value?.status === RequestStatus.EXECUTIVE_VOTING_OPEN
+  && request.value?.is_tie === true,
+)
+
+const showDirectorReadyToFinalizeBanner = computed(() =>
+  isCommitteeDirector.value && request.value?.status === RequestStatus.EXECUTIVE_VOTING_CLOSED,
+)
+
+const showDirectorFxReadyBanner = computed(() =>
+  isCommitteeDirector.value && request.value?.status === RequestStatus.EXECUTIVE_APPROVED,
+)
+
+const SWIFT_READY_STATUSES = new Set([
+  RequestStatus.EXECUTIVE_APPROVED,
+  RequestStatus.WAITING_FOR_SWIFT,
+])
+const SWIFT_COMPLETED_STATUSES = new Set([
+  RequestStatus.SWIFT_UPLOADED,
+  RequestStatus.WAITING_FOR_VOTING_OPEN,
+])
+
+const showSwiftPreApprovalLockedBanner = computed(() =>
+  isSwiftOfficer.value
+  && !!request.value
+  && !SWIFT_READY_STATUSES.has(request.value.status)
+  && !SWIFT_COMPLETED_STATUSES.has(request.value.status)
+  && !TERMINAL_STATUSES.has(request.value.status),
+)
+
+const showSwiftReadyBanner = computed(() =>
+  isSwiftOfficer.value && request.value?.status === RequestStatus.WAITING_FOR_SWIFT,
+)
+
+const showSwiftAwaitingEnableBanner = computed(() =>
+  isSwiftOfficer.value && request.value?.status === RequestStatus.EXECUTIVE_APPROVED,
+)
+
+const showSwiftCompletedBanner = computed(() =>
+  isSwiftOfficer.value
+  && !!request.value
+  && SWIFT_COMPLETED_STATUSES.has(request.value.status),
+)
+
+const showSwiftUploadShortcut = computed(() =>
+  isSwiftOfficer.value && request.value?.status === RequestStatus.WAITING_FOR_SWIFT,
+)
+
+const showSwiftFxLockedRow = computed(() =>
+  isSwiftOfficer.value
+  && !!request.value
+  && (SWIFT_COMPLETED_STATUSES.has(request.value.status) || request.value.status === RequestStatus.EXECUTIVE_APPROVED),
+)
 
 /** Chip shown to bank reviewer when a SUBMITTED request was previously support-returned */
 const supportReturnHint = computed(() => {
@@ -213,7 +294,6 @@ const STATUS_RESPONSIBLE_ROLE: Partial<Record<RequestStatus, UserRole>> = {
   [RequestStatus.EXECUTIVE_VOTING_CLOSED]: UserRole.COMMITTEE_DIRECTOR,
   [RequestStatus.EXECUTIVE_APPROVED]: UserRole.COMMITTEE_DIRECTOR,
   [RequestStatus.EXECUTIVE_REJECTED]: UserRole.DATA_ENTRY,
-  [RequestStatus.FX_CONFIRMATION_PENDING]: UserRole.COMMITTEE_DIRECTOR,
   [RequestStatus.CUSTOMS_DECLARATION_ISSUED]: UserRole.COMMITTEE_DIRECTOR,
   [RequestStatus.COMPLETED]: UserRole.CBY_ADMIN,
   [RequestStatus.BANK_REJECTED]: UserRole.DATA_ENTRY,
@@ -262,11 +342,28 @@ const hasActions = computed(() => {
   return bankReviewerAction || dataEntryAction || supportAction || directorVotingAction || directorCustomsAction
 })
 
+const showSwiftActionCard = computed(() =>
+  isSwiftOfficer.value
+  && !!request.value
+  && (
+    request.value.status === RequestStatus.EXECUTIVE_APPROVED
+    || request.value.status === RequestStatus.WAITING_FOR_SWIFT
+    || SWIFT_COMPLETED_STATUSES.has(request.value.status)
+  ),
+)
+
 // Downloading state per document id
 const downloadingIds = ref<Set<number>>(new Set())
 const downloadErrors = ref<Record<number, string>>({})
 const customsDownloadError = ref('')
 const checklistCustomsDownloadError = ref('')
+const fxTemplateChecksum = ref<string | null>(null)
+const fxSignedFile = ref<File | null>(null)
+const fxSignedChecksum = ref<string | null>(null)
+const fxFlowError = ref('')
+const fxFlowSuccess = ref(false)
+const fxGeneratingTemplate = ref(false)
+const fxCompleting = ref(false)
 
 // Claim lifecycle for SUPPORT_COMMITTEE
 const {
@@ -509,6 +606,90 @@ async function handleDownloadCustoms(customsId: number, declarationNumber: strin
   }
 }
 
+async function fileSha256(file: File): Promise<string> {
+  const buffer = await file.arrayBuffer()
+  const digest = await crypto.subtle.digest('SHA-256', buffer)
+  return Array.from(new Uint8Array(digest))
+    .map(byte => byte.toString(16).padStart(2, '0'))
+    .join('')
+}
+
+function triggerFxSignedUpload() {
+  const input = document.getElementById('fx-signed-upload') as HTMLInputElement | null
+  input?.click()
+}
+
+async function handleFxSignedFileChange(event: Event) {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
+  if (!file) return
+
+  if (file.type !== 'application/pdf') {
+    fxFlowError.value = 'يرجى رفع ملف PDF فقط.'
+    target.value = ''
+    return
+  }
+
+  fxFlowError.value = ''
+  fxSignedFile.value = file
+  fxSignedChecksum.value = await fileSha256(file)
+}
+
+async function handleDownloadFxTemplate() {
+  fxFlowError.value = ''
+  fxGeneratingTemplate.value = true
+
+  try {
+    const declaration = await generateCustomsDeclaration(id)
+    const blob = await downloadCustomsBlob(declaration.id)
+
+    const bytes = await blob.arrayBuffer()
+    const digest = await crypto.subtle.digest('SHA-256', bytes)
+    fxTemplateChecksum.value = Array.from(new Uint8Array(digest))
+      .map(byte => byte.toString(16).padStart(2, '0'))
+      .join('')
+
+    const url = URL.createObjectURL(blob)
+    const anchor = document.createElement('a')
+    anchor.href = url
+    anchor.download = `fx-confirmation-${declaration.declaration_number}.pdf`
+    document.body.appendChild(anchor)
+    anchor.click()
+    anchor.remove()
+    URL.revokeObjectURL(url)
+  }
+  catch (error: unknown) {
+    const message = error instanceof Error ? error.message : ''
+    fxFlowError.value = message || 'تعذّر تحميل نموذج تأكيد المصارفة.'
+  }
+  finally {
+    fxGeneratingTemplate.value = false
+  }
+}
+
+async function handleCompleteFxConfirmation() {
+  if (!fxSignedFile.value) {
+    fxFlowError.value = 'يجب رفع النموذج الموقّع قبل الإتمام.'
+    return
+  }
+
+  fxFlowError.value = ''
+  fxCompleting.value = true
+
+  try {
+    await requestsStore.issueCustomsDeclaration(id)
+    fxFlowSuccess.value = true
+    await onActionCompleted()
+  }
+  catch (error: unknown) {
+    const message = error instanceof Error ? error.message : ''
+    fxFlowError.value = message || 'تعذّر إتمام تأكيد المصارفة.'
+  }
+  finally {
+    fxCompleting.value = false
+  }
+}
+
 async function handleUploadDocument(file: File) {
   try {
     await requestsStore.uploadDocument(id, file)
@@ -562,6 +743,10 @@ function formatAmount(amount: number, currency: string): string {
   return `${amount.toLocaleString('ar-YE')} ${currency}`
 }
 
+function scrollToActionPanel() {
+  document.querySelector('.rail-card--actions')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
+
 function actorLabel(
   user: { id: number; name: string } | null | undefined,
   id?: number | null,
@@ -596,7 +781,11 @@ const showCloneButton = computed(() => {
 const showCloneDialog = ref(false)
 const cloneLoading = ref(false)
 const cloneError = ref('')
-const { cloneRequest } = useRequests()
+const {
+  cloneRequest,
+  generateCustomsDeclaration,
+  downloadCustomsDeclaration: downloadCustomsBlob,
+} = useRequests()
 
 function openCloneDialog() {
   cloneError.value = ''
@@ -715,9 +904,78 @@ async function handleCloneConfirm() {
         <div class="detail-main">
           <!-- Banners -->
           <div
-            v-if="isSegregationBlocked || claimError || showActiveReviewBanner || showClaimedByOthersBanner || showUnclaimedBanner || showVotingPendingBanner || showVotedConfirmationBanner || isLocked || isReturnedForCorrection || isBankReturned || isSupportReturned"
+            v-if="showDirectorVotingActiveBanner || showDirectorReadyToCloseBanner || showDirectorTieBreakBanner || showDirectorReadyToFinalizeBanner || showDirectorFxReadyBanner || showSwiftPreApprovalLockedBanner || showSwiftAwaitingEnableBanner || showSwiftReadyBanner || showSwiftCompletedBanner || isSegregationBlocked || claimError || showActiveReviewBanner || showClaimedByOthersBanner || showUnclaimedBanner || showVotingPendingBanner || showVotedConfirmationBanner || isLocked || isReturnedForCorrection || isBankReturned || isSupportReturned"
             class="banner-area"
           >
+            <div
+              v-if="showDirectorVotingActiveBanner"
+              class="rounded-lg border border-[#5856d6]/30 bg-[#5856d6]/10 px-4 py-3 text-[#5856d6]"
+            >
+              جلسة التصويت نشطة — {{ request.votes_cast ?? 0 }} / {{ request.total_voters ?? 0 }} صوتوا.
+            </div>
+            <div
+              v-else-if="showDirectorReadyToCloseBanner"
+              class="rounded-lg border border-[#5856d6]/30 bg-[#5856d6]/10 px-4 py-3 text-[#5856d6] flex items-center justify-between gap-3"
+            >
+              <span>جميع الأعضاء صوتوا — يمكن إغلاق الجلسة الآن.</span>
+              <button class="text-xs font-semibold underline" @click="scrollToActionPanel">
+                إغلاق الجلسة
+              </button>
+            </div>
+            <div
+              v-else-if="showDirectorTieBreakBanner"
+              class="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-amber-800 flex items-center justify-between gap-3"
+            >
+              <span>تعادل في التصويت — يتطلب حسم المدير.</span>
+              <button class="text-xs font-semibold underline" @click="scrollToActionPanel">
+                حسم التعادل
+              </button>
+            </div>
+            <div
+              v-else-if="showDirectorReadyToFinalizeBanner"
+              class="rounded-lg border border-[#5856d6]/30 bg-[#5856d6]/10 px-4 py-3 text-[#5856d6] flex items-center justify-between gap-3"
+            >
+              <span>الجلسة مغلقة — جاهز للإصدار النهائي.</span>
+              <button class="text-xs font-semibold underline" @click="scrollToActionPanel">
+                إصدار القرار النهائي
+              </button>
+            </div>
+            <div
+              v-else-if="showDirectorFxReadyBanner"
+              class="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-amber-800 flex items-center justify-between gap-3"
+            >
+              <span>جاهز لإتمام تأكيد المصارفة الخارجية.</span>
+              <button class="text-xs font-semibold underline" @click="onTabChange('fx_confirmation')">
+                ابدأ التأكيد
+              </button>
+            </div>
+            <div
+              v-else-if="showSwiftPreApprovalLockedBanner"
+              class="rounded-lg border border-[#8e8e93]/40 bg-[#8e8e93]/10 px-4 py-3 text-[#3f3f46]"
+            >
+              هذا الطلب لم يصل بعد مرحلة السويفت. لا يمكن رفع الوثائق حتى يكتمل اعتماد اللجنة التنفيذية.
+            </div>
+            <div
+              v-else-if="showSwiftReadyBanner"
+              class="rounded-lg border border-[#32ade6]/40 bg-[#32ade6]/10 px-4 py-3 text-[#0b6f94] flex items-center justify-between gap-3"
+            >
+              <span>الطلب جاهز لرفع وثائق السويفت.</span>
+              <NuxtLink :to="`/requests/${id}/swift`" class="text-xs font-semibold underline">
+                ابدأ الرفع
+              </NuxtLink>
+            </div>
+            <div
+              v-else-if="showSwiftAwaitingEnableBanner"
+              class="rounded-lg border border-[#8e8e93]/40 bg-[#8e8e93]/10 px-4 py-3 text-[#3f3f46]"
+            >
+              في انتظار الإتاحة — سيتم تفعيل رفع وثائق السويفت بعد الانتقال لمرحلة الانتظار.
+            </div>
+            <div
+              v-else-if="showSwiftCompletedBanner"
+              class="rounded-lg border border-[#8e8e93]/40 bg-[#8e8e93]/10 px-4 py-3 text-[#3f3f46]"
+            >
+              تم تسليم السويفت — انتقلت المسؤولية إلى مدير اللجنة التنفيذية لإتمام تأكيد المصارفة الخارجية.
+            </div>
             <SegregationBlockedBanner v-if="isSegregationBlocked" />
             <div v-else-if="claimError" class="claim-error-banner" role="alert" aria-live="assertive">
               <span class="claim-error-icon" aria-hidden="true">
@@ -957,7 +1215,16 @@ async function handleCloneConfirm() {
             <!-- الوثائق tab -->
             <section v-else-if="activeTab === 'documents'" class="tab-panel" role="tabpanel" aria-label="الوثائق">
               <div class="card">
-                <h2 class="card-title">المستندات المرفوعة</h2>
+                <div class="flex items-center justify-between gap-3 mb-3">
+                  <h2 class="card-title">المستندات المرفوعة</h2>
+                  <NuxtLink
+                    v-if="showSwiftUploadShortcut"
+                    :to="`/requests/${id}/swift`"
+                    class="text-xs font-semibold text-[#32ade6] underline"
+                  >
+                    رفع وثائق السويفت
+                  </NuxtLink>
+                </div>
                 <DocumentChecklist
                   :documents="requestsStore.documents"
                   :customs-declaration="request.customs_declaration ?? null"
@@ -975,6 +1242,78 @@ async function handleCloneConfirm() {
                   @download-customs="handleDownloadCustoms"
                   @upload="handleUploadDocument"
                 />
+                <div
+                  v-if="showSwiftFxLockedRow"
+                  class="mt-3 flex items-center justify-between gap-2 rounded-lg border border-[#8e8e93]/40 bg-[#8e8e93]/10 px-3 py-2 text-[#3f3f46]"
+                >
+                  <div class="flex items-center gap-2">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                    </svg>
+                    <span class="text-xs font-medium">نموذج تأكيد المصارفة الخارجية</span>
+                  </div>
+                  <span class="text-xs" title="مخصص لمدير اللجنة التنفيذية.">مقيّد</span>
+                </div>
+              </div>
+            </section>
+
+            <section
+              v-else-if="activeTab === 'fx_confirmation' && showDirectorFxTab"
+              class="tab-panel"
+              role="tabpanel"
+              aria-label="تأكيد المصارفة"
+            >
+              <div class="card space-y-4">
+                <h2 class="card-title">تأكيد المصارفة الخارجية</h2>
+
+                <div class="rounded-lg border border-border p-3 space-y-2">
+                  <p class="text-sm font-semibold">الخطوة 1 — تحميل نموذج التأكيد</p>
+                  <p class="text-xs text-muted-foreground">قم بتنزيل النموذج النظامي المولّد للطلب الحالي.</p>
+                  <Button
+                    :disabled="fxGeneratingTemplate"
+                    class="bg-primary text-white"
+                    @click="handleDownloadFxTemplate"
+                  >
+                    {{ fxGeneratingTemplate ? 'جارٍ التحميل…' : 'تحميل نموذج تأكيد المصارفة الخارجية' }}
+                  </Button>
+                  <p v-if="fxTemplateChecksum" class="text-xs text-muted-foreground break-all">
+                    SHA-256: {{ fxTemplateChecksum }}
+                  </p>
+                </div>
+
+                <div class="rounded-lg border border-border p-3 space-y-2 bg-muted">
+                  <p class="text-sm font-semibold">الخطوة 2 — التوقيع الخارجي</p>
+                  <p class="text-xs text-muted-foreground">قم بتوقيع وختم النموذج خارجياً ثم ارفعه في الخطوة التالية.</p>
+                </div>
+
+                <div class="rounded-lg border border-border p-3 space-y-3">
+                  <p class="text-sm font-semibold">الخطوة 3 — رفع النموذج الموقّع والإتمام</p>
+                  <input
+                    id="fx-signed-upload"
+                    type="file"
+                    accept="application/pdf"
+                    class="sr-only"
+                    @change="handleFxSignedFileChange"
+                  >
+                  <div class="flex items-center gap-2">
+                    <Button variant="outline" @click="triggerFxSignedUpload">اختيار PDF موقّع</Button>
+                    <span class="text-xs text-muted-foreground" v-if="!fxSignedFile">لم يتم اختيار ملف بعد</span>
+                    <span class="text-xs text-foreground" v-else>{{ fxSignedFile.name }}</span>
+                  </div>
+                  <p v-if="fxSignedChecksum" class="text-xs text-muted-foreground break-all">
+                    SHA-256: {{ fxSignedChecksum }}
+                  </p>
+                  <Button
+                    :disabled="!fxSignedFile || fxCompleting"
+                    class="bg-green-600 text-white hover:bg-green-700"
+                    @click="handleCompleteFxConfirmation"
+                  >
+                    {{ fxCompleting ? 'جارٍ الإتمام…' : 'إتمام تأكيد المصارفة' }}
+                  </Button>
+                  <p v-if="fxFlowError" class="text-xs text-red-700">{{ fxFlowError }}</p>
+                  <p v-if="fxFlowSuccess" class="text-xs text-green-700">تم إتمام تأكيد المصارفة بنجاح.</p>
+                </div>
               </div>
             </section>
 
@@ -1085,6 +1424,25 @@ async function handleCloneConfirm() {
               :user-role="userRole"
               @action-completed="onActionCompleted"
             />
+          </div>
+
+          <div v-if="showSwiftActionCard" class="rail-card">
+            <p class="rail-card__title">إجراءات السويفت</p>
+            <template v-if="request.status === RequestStatus.WAITING_FOR_SWIFT">
+              <NuxtLink :to="`/requests/${id}/swift`" class="text-sm font-semibold text-[#32ade6] underline">
+                رفع وثائق السويفت
+              </NuxtLink>
+            </template>
+            <template v-else-if="request.status === RequestStatus.EXECUTIVE_APPROVED">
+              <p class="text-sm text-muted-foreground" title="سيتم التفعيل عند انتقال الطلب لمرحلة انتظار السويفت.">
+                في انتظار الإتاحة
+              </p>
+            </template>
+            <template v-else>
+              <p class="text-sm text-muted-foreground">
+                تم تسليم السويفت — لا توجد إجراءات إضافية في هذه المرحلة.
+              </p>
+            </template>
           </div>
 
           <!-- BANK_ADMIN: read-only informational status panel (no decision buttons) -->

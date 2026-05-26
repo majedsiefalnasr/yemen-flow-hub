@@ -138,6 +138,12 @@ export interface ImportRequest {
   updated_at: string
   documents?: RequestDocument[]
   duplicate_warnings?: DuplicateWarning[]
+  votes_cast?: number
+  total_voters?: number
+  ready_to_close?: boolean
+  is_tie?: boolean
+  has_swift_document?: boolean
+  has_fx_request_document?: boolean
 }
 
 export interface DuplicateWarning {

@@ -132,6 +132,7 @@ function toggleColumn(id: string, value: boolean) {
 const canCreateRequest = computed(() => user.value?.role === UserRole.DATA_ENTRY)
 
 const isCbyAdmin = computed(() => user.value?.role === UserRole.CBY_ADMIN)
+const isDirector = computed(() => user.value?.role === UserRole.COMMITTEE_DIRECTOR)
 
 const cbySmartSummary = computed(() => {
   if (!isCbyAdmin.value) return []
@@ -158,6 +159,29 @@ const cbySmartSummary = computed(() => {
   if (fxPending > 0) items.push({ label: 'انتظار تأكيد المصارفة', count: fxPending, tab: 'fx_pending', color: '#ff3b30' })
   if (stalledCount > 0) items.push({ label: 'طلبات متوقفة > 48 ساعة', count: stalledCount, tab: 'active', color: '#ff9f0a' })
   return items
+})
+
+const directorSmartSummary = computed(() => {
+  if (!isDirector.value) return []
+  const reqs = filteredRequests.value
+  const activeVoting = reqs.filter(r => r.status === 'EXECUTIVE_VOTING_OPEN').length
+  const pendingTieBreak = reqs.filter(r => r.status === 'EXECUTIVE_VOTING_OPEN' && r.is_tie).length
+  const pendingFx = reqs.filter(r => r.status === 'EXECUTIVE_APPROVED').length
+
+  const now = Date.now()
+  const weekAgo = now - (7 * 24 * 60 * 60 * 1000)
+  const finalizedThisWeek = reqs.filter((r) => {
+    if (!(r.status === 'EXECUTIVE_APPROVED' || r.status === 'EXECUTIVE_REJECTED')) return false
+    const updated = new Date(r.updated_at).getTime()
+    return !Number.isNaN(updated) && updated >= weekAgo
+  }).length
+
+  return [
+    { key: 'active_voting', label: 'جلسات نشطة', count: activeVoting, color: '#5856d6' },
+    { key: 'tie_break', label: 'تعادل يحتاج حسماً', count: pendingTieBreak, color: '#ff9f0a' },
+    { key: 'fx_pending', label: 'بانتظار تأكيد المصارفة', count: pendingFx, color: '#ff9f0a' },
+    { key: 'finalized', label: 'مُنهاة هذا الأسبوع', count: finalizedThisWeek, color: '#34c759' },
+  ]
 })
 
 const selectedCount = ref(0)
@@ -208,6 +232,26 @@ watch(filter, (tab) => {
         class="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-sm font-medium transition-colors hover:bg-muted/60 cursor-pointer"
         :style="{ borderColor: item.color, color: item.color }"
         @click="filter = item.tab"
+      >
+        <span class="font-bold">{{ item.count }}</span>
+        {{ item.label }}
+      </button>
+    </div>
+
+    <!-- COMMITTEE_DIRECTOR: Smart Summary Bar -->
+    <div
+      v-if="isDirector"
+      class="mb-4 flex flex-wrap gap-2"
+      role="region"
+      aria-label="ملخص الحوكمة"
+      data-testid="director-smart-summary"
+    >
+      <button
+        v-for="item in directorSmartSummary"
+        :key="item.key"
+        class="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-sm font-medium transition-colors hover:bg-muted/60 cursor-pointer"
+        :style="{ borderColor: item.color, color: item.color }"
+        @click="filter = item.key"
       >
         <span class="font-bold">{{ item.count }}</span>
         {{ item.label }}

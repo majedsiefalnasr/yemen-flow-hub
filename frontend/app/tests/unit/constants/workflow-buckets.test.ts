@@ -76,7 +76,6 @@ describe('ROLE_BUCKETS', () => {
 
   it('SUPPORT_COMMITTEE buckets cover claim lifecycle statuses', () => {
     const allStatuses = ROLE_BUCKETS[UserRole.SUPPORT_COMMITTEE]!.flatMap(b => b.statuses)
-    expect(allStatuses).toContain(RequestStatus.BANK_APPROVED)
     expect(allStatuses).toContain(RequestStatus.SUPPORT_REVIEW_PENDING)
     expect(allStatuses).toContain(RequestStatus.SUPPORT_REVIEW_IN_PROGRESS)
     expect(allStatuses).toContain(RequestStatus.SUPPORT_APPROVED)
@@ -93,32 +92,34 @@ describe('ROLE_BUCKETS', () => {
     expect(allStatuses).toContain(RequestStatus.EXECUTIVE_REJECTED)
   })
 
-  it('SWIFT_OFFICER buckets cover the full SWIFT queue lifecycle', () => {
+  it('SWIFT_OFFICER buckets cover post-voting SWIFT and finalization lifecycle', () => {
     const allStatuses = ROLE_BUCKETS[UserRole.SWIFT_OFFICER]!.flatMap(b => b.statuses)
-    expect(allStatuses).toContain(RequestStatus.BANK_APPROVED)
-    expect(allStatuses).toContain(RequestStatus.SUPPORT_APPROVED)
+    expect(allStatuses).toContain(RequestStatus.EXECUTIVE_APPROVED)
     expect(allStatuses).toContain(RequestStatus.WAITING_FOR_SWIFT)
     expect(allStatuses).toContain(RequestStatus.SWIFT_UPLOADED)
-    expect(allStatuses.length).toBe(4)
-  })
-
-  it('COMMITTEE_DIRECTOR buckets cover voting-open, customs, and rejected states', () => {
-    const allStatuses = ROLE_BUCKETS[UserRole.COMMITTEE_DIRECTOR]!.flatMap(b => b.statuses)
     expect(allStatuses).toContain(RequestStatus.WAITING_FOR_VOTING_OPEN)
-    expect(allStatuses).toContain(RequestStatus.EXECUTIVE_VOTING_OPEN)
-    expect(allStatuses).toContain(RequestStatus.EXECUTIVE_VOTING_CLOSED)
-    expect(allStatuses).toContain(RequestStatus.EXECUTIVE_APPROVED)
     expect(allStatuses).toContain(RequestStatus.CUSTOMS_DECLARATION_ISSUED)
     expect(allStatuses).toContain(RequestStatus.COMPLETED)
     expect(allStatuses).toContain(RequestStatus.EXECUTIVE_REJECTED)
+    expect(allStatuses).toContain(RequestStatus.SUPPORT_REJECTED)
+    expect(allStatuses).toContain(RequestStatus.BANK_REJECTED)
+    expect(allStatuses.length).toBe(9)
   })
 
-  it('BANK_RETURNED is in BANK_REVIEWER returned_to_intake bucket', () => {
+  it('COMMITTEE_DIRECTOR buckets cover voting lifecycle, tie-break, and finalization states', () => {
+    const allStatuses = ROLE_BUCKETS[UserRole.COMMITTEE_DIRECTOR]!.flatMap(b => b.statuses)
+    expect(allStatuses).toContain(RequestStatus.EXECUTIVE_VOTING_OPEN)
+    expect(allStatuses).toContain(RequestStatus.EXECUTIVE_VOTING_CLOSED)
+    expect(allStatuses).toContain(RequestStatus.EXECUTIVE_APPROVED)
+    expect(allStatuses).toContain(RequestStatus.EXECUTIVE_REJECTED)
+  })
+
+  it('BANK_RETURNED is in BANK_REVIEWER bank_returned bucket', () => {
     const allStatuses = ROLE_BUCKETS[UserRole.BANK_REVIEWER]!.flatMap(b => b.statuses)
     expect(allStatuses).toContain(RequestStatus.BANK_RETURNED)
-    const bucket = ROLE_BUCKETS[UserRole.BANK_REVIEWER]!.find(b => b.key === 'returned_to_intake')
+    const bucket = ROLE_BUCKETS[UserRole.BANK_REVIEWER]!.find(b => b.key === 'bank_returned')
     expect(bucket).toBeDefined()
-    expect(bucket!.label).toBe('بحاجة تعديل')
+    expect(bucket!.label).toBe('أُعيد للمدخل من البنك')
     expect(bucket!.statuses).toContain(RequestStatus.BANK_RETURNED)
   })
 

@@ -208,6 +208,28 @@ const columns: ColumnDef<ImportRequest>[] = [
     cell: ({ row }) => h(StatusBadge, { status: row.original.status, role: props.role }),
   },
   {
+    id: 'swift_documents',
+    header: 'المستندات',
+    cell: ({ row }) => {
+      if (props.role !== UserRole.SWIFT_OFFICER) {
+        return h('span', { class: 'text-xs text-muted-foreground' }, '—')
+      }
+
+      const request = row.original
+      const swiftDone = request.has_swift_document === true
+      const fxDone = request.has_fx_request_document === true
+      const pillClass = (active: boolean) =>
+        active
+          ? 'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-green-50 text-green-700 border border-green-200'
+          : 'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-muted text-muted-foreground border border-border'
+
+      return h('div', { class: 'flex items-center gap-1.5' }, [
+        h('span', { class: pillClass(swiftDone) }, 'السويفت'),
+        h('span', { class: pillClass(fxDone) }, 'طلب تأكيد المصارفة'),
+      ])
+    },
+  },
+  {
     id: 'actions',
     enableHiding: false,
     cell: ({ row }) => {
@@ -249,6 +271,20 @@ const columns: ColumnDef<ImportRequest>[] = [
           class: className,
           onClick: (e: Event) => { e.stopPropagation(); router.push(`/requests/${request.id}`) },
         }, () => label)
+      }
+
+      if (props.role === UserRole.SWIFT_OFFICER) {
+        const canUpload = request.status === RequestStatus.WAITING_FOR_SWIFT
+        return h(Button, {
+          variant: canUpload ? 'default' : 'outline',
+          size: 'sm',
+          class: canUpload ? 'h-8 text-xs bg-info text-white hover:bg-info/90' : 'h-8 text-xs',
+          onClick: (e: Event) => {
+            e.stopPropagation()
+            if (canUpload) router.push(`/requests/${request.id}/swift`)
+            else router.push(`/requests/${request.id}`)
+          },
+        }, () => (canUpload ? 'رفع' : 'عرض'))
       }
 
       return h(DropdownMenu, {}, {

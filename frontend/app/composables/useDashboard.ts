@@ -67,6 +67,13 @@ export interface ExecutiveDashboardStats {
   pending_my_vote?: number
   voting_queue: VotingQueueItem[]
   customs_declaration_pending?: ImportRequest[]
+  sessions_ready_to_close?: number
+  sessions_with_tie?: number
+  fx_confirmation_pending?: number
+  finalized_approved?: number
+  finalized_rejected?: number
+  voting_lifecycle_queue?: VotingQueueItem[]
+  fx_confirmation_queue?: ImportRequest[]
 }
 
 export interface CbyAdminComplianceAlerts {

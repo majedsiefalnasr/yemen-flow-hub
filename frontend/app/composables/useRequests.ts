@@ -20,8 +20,29 @@ export interface RequestsFilter {
   per_page?: number
 }
 
+export interface SwiftUploadPayload {
+  swiftReference?: string
+  swiftFile?: File
+  fxRequestFile?: File
+  // legacy fallback
+  file?: File
+}
+
 export function useRequests() {
   const { get, post, put } = useApi()
+
+  function getXsrfToken(): string | null {
+    if (!process.client) return null
+    const raw = document.cookie
+      .split(';')
+      .map(cookie => cookie.trim())
+      .find(cookie => cookie.startsWith('XSRF-TOKEN='))
+      ?.split('=')
+      .slice(1)
+      .join('=')
+
+    return raw ? decodeURIComponent(raw) : null
+  }
 
   async function fetchRequests(
     filter: RequestsFilter = {},
@@ -81,11 +102,16 @@ export function useRequests() {
     const form = new FormData()
     form.append('file', file)
     form.append('label', label)
+    const xsrfToken = getXsrfToken()
     await $fetch(`/api/requests/${requestId}/documents`, {
       method: 'POST',
       baseURL,
       credentials: 'include',
       body: form,
+      headers: {
+        Accept: 'application/json',
+        ...(xsrfToken ? { 'X-XSRF-TOKEN': xsrfToken } : {}),
+      },
     })
   }
 
@@ -105,17 +131,35 @@ export function useRequests() {
     return response.data.documents ?? []
   }
 
-  async function uploadSwift(requestId: number, file: File): Promise<void> {
+  async function uploadSwift(requestId: number, payload: SwiftUploadPayload): Promise<void> {
     const config = useRuntimeConfig()
     const baseURL = config.public.apiBase as string
     const form = new FormData()
-    form.append('file', file)
+
+    if (payload.file) {
+      // Legacy API mode
+      form.append('file', payload.file)
+    }
+    else {
+      if (payload.swiftReference) form.append('swift_reference', payload.swiftReference)
+      if (payload.swiftFile) {
+        form.append('swift_file', payload.swiftFile)
+        // Backward compatibility: some backend paths still require the legacy single `file` key.
+        form.append('file', payload.swiftFile)
+      }
+      if (payload.fxRequestFile) form.append('fx_request_file', payload.fxRequestFile)
+    }
+
+    const xsrfToken = getXsrfToken()
     await $fetch(`/api/workflow/${requestId}/swift-upload`, {
       method: 'POST',
       baseURL,
       credentials: 'include',
       body: form,
-      headers: { Accept: 'application/json' },
+      headers: {
+        Accept: 'application/json',
+        ...(xsrfToken ? { 'X-XSRF-TOKEN': xsrfToken } : {}),
+      },
     })
   }
 

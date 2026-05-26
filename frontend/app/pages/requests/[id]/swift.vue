@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import PageHeader from '@/components/layout/PageHeader.vue'
 import SwiftUploadForm from '@/components/workflow/SwiftUploadForm.vue'
-import { Lock } from 'lucide-vue-next'
+import { AlertTriangle, Lock, RefreshCw } from 'lucide-vue-next'
 import { cn } from '@/lib/utils'
 import { RequestStatus, UserRole } from '@/types/enums'
 import { getBusinessStatus, ROUTE_ROLE_MAP } from '@/constants/workflow'
@@ -18,54 +18,81 @@ const router = useRouter()
 const authStore = useAuthStore()
 const user = computed(() => authStore.user)
 const { fetchRequest, uploadSwift } = useRequests()
-const uploading = ref(false)
 
+const loading = ref(true)
+const uploading = ref(false)
 const request = ref<import('@/types/models').ImportRequest | null>(null)
+const lockedStateError = ref('')
+const uploadError = ref('')
+const completed = ref(false)
+
+async function loadRequest(): Promise<void> {
+  loading.value = true
+  try {
+    request.value = await fetchRequest(Number(route.params.id))
+  }
+  finally {
+    loading.value = false
+  }
+}
 
 onMounted(async () => {
-  const id = Number(route.params.id)
-  if (!id) return
-  try {
-    request.value = await fetchRequest(id)
-  }
-  catch { /* handled by showing locked state */ }
+  await loadRequest()
 })
 
-const allowed = computed(() => {
-  if (!request.value || !user.value) return false
-  const swiftRoles = [UserRole.SWIFT_OFFICER]
-  if (!swiftRoles.includes(user.value.role)) return false
-  return (
-    request.value.status === RequestStatus.WAITING_FOR_SWIFT
-    || request.value.status === RequestStatus.SWIFT_UPLOADED
-  )
-})
+const hasSwiftRole = computed(() => user.value?.role === UserRole.SWIFT_OFFICER)
+const isWaitingForSwift = computed(() => request.value?.status === RequestStatus.WAITING_FOR_SWIFT)
+
+const canAccessPage = computed(() => hasSwiftRole.value && !!request.value)
+const canUpload = computed(() => canAccessPage.value && isWaitingForSwift.value)
 
 const statusLabel = computed(() => {
   if (!request.value || !user.value) return ''
   return getBusinessStatus(request.value.status, user.value.role).label
 })
 
-async function handleUpload(file: File, swiftReference: string) {
+const deniedMessage = computed(() => {
+  if (!request.value || !user.value) return 'غير متاح حالياً.'
+  if (user.value.role !== UserRole.SWIFT_OFFICER) return 'هذه الصفحة مخصصة لموظفي السويفت بالبنك.'
+  if (request.value.status !== RequestStatus.WAITING_FOR_SWIFT) return 'هذا الطلب ليس في مرحلة السويفت.'
+  return 'غير متاح حالياً.'
+})
+
+async function handleUpload(payload: { swiftReference: string; swiftFile: File; fxRequestFile: File }): Promise<void> {
   if (!request.value) return
+
+  lockedStateError.value = ''
+  uploadError.value = ''
   uploading.value = true
   try {
-    await uploadSwift(request.value.id, file)
-    request.value = await fetchRequest(request.value.id)
+    await uploadSwift(request.value.id, payload)
+    completed.value = true
+    await loadRequest()
   }
-  catch { /* errors surfaced by API layer */ }
+  catch (error: unknown) {
+    const message = error instanceof Error ? error.message : ''
+    if (message.includes('WORKFLOW_LOCKED_STATE') || message.includes('403')) {
+      lockedStateError.value = 'تم تغيير حالة الطلب أثناء العمل. حدّث الصفحة للمتابعة.'
+    }
+    else {
+      uploadError.value = message || 'تعذّر تسليم وثائق السويفت. حاول مرة أخرى.'
+    }
+  }
   finally {
     uploading.value = false
   }
-  void swiftReference
 }
 </script>
 
 <template>
-  <div v-if="request && user && allowed">
+  <div v-if="loading" class="p-6">
+    <div class="h-8 w-64 animate-pulse rounded bg-muted" />
+  </div>
+
+  <div v-else-if="request && canAccessPage">
     <PageHeader
-      title="إرفاق وثيقة السويفت"
-      :subtitle="`الطلب ${request.reference_number} · بيانات الطلب مقفلة — يُسمح فقط برفع وثيقة السويفت`"
+      title="تسليم وثائق السويفت"
+      subtitle="صفحة تنفيذ متخصصة لوثائق السويفت وطلب تأكيد المصارفة الخارجية"
       :breadcrumbs="[
         { label: 'الرئيسية', to: '/' },
         { label: 'الطلبات', to: '/requests' },
@@ -80,74 +107,117 @@ async function handleUpload(file: File, swiftReference: string) {
       </template>
     </PageHeader>
 
-    <div class="grid gap-6 lg:grid-cols-3">
-      <Card class="border-0 p-6 shadow lg:col-span-2">
-        <div class="mb-4 flex items-center gap-2 text-sm text-muted-foreground">
-          <Lock class="h-4 w-4" />
-          البيانات أدناه للاطلاع فقط ولا يمكن تعديلها في هذه المرحلة
-        </div>
-
-        <fieldset
-          disabled
-          class="space-y-4 opacity-90"
-        >
-          <div class="grid gap-4 md:grid-cols-2">
-            <div
-              v-for="[key, value] in [
-                ['التاجر', request.merchant?.name ?? '—'],
-                ['البنك', request.bank_name ?? '—'],
-                ['المبلغ', `${request.amount.toLocaleString('en-US')} ${request.currency}`],
-                ['نوع البضاعة', request.goods_description],
-                ['المورد', request.supplier_name],
-                ['رقم الفاتورة', request.invoice_number ?? '—'],
-                ['الميناء', request.port_of_entry],
-              ]"
-              :key="key"
-              class="space-y-1"
-            >
-              <Label class="text-xs text-muted-foreground">
-                {{ key }}
-              </Label>
-              <Input
-                :model-value="value"
-                readonly
-                class="bg-muted/40"
-              />
+    <div class="grid gap-6 lg:grid-cols-[0.95fr_1.35fr]">
+      <aside class="sticky top-4 h-fit rounded-2xl border border-border bg-background p-5">
+        <h2 class="mb-4 text-sm font-semibold">ملخص بيانات الطلب (مقفلة)</h2>
+        <div class="space-y-3 text-sm">
+          <div class="flex items-start gap-2">
+            <Lock class="mt-0.5 h-4 w-4 text-muted-foreground" />
+            <div>
+              <p class="text-xs text-muted-foreground">المرجع</p>
+              <p class="font-mono">{{ request.reference_number }}</p>
             </div>
           </div>
-        </fieldset>
+          <div class="flex items-start gap-2">
+            <Lock class="mt-0.5 h-4 w-4 text-muted-foreground" />
+            <div>
+              <p class="text-xs text-muted-foreground">التاجر</p>
+              <p>{{ request.merchant?.name ?? '—' }}</p>
+            </div>
+          </div>
+          <div class="flex items-start gap-2">
+            <Lock class="mt-0.5 h-4 w-4 text-muted-foreground" />
+            <div>
+              <p class="text-xs text-muted-foreground">المورد</p>
+              <p>{{ request.supplier_name }}</p>
+            </div>
+          </div>
+          <div class="flex items-start gap-2">
+            <Lock class="mt-0.5 h-4 w-4 text-muted-foreground" />
+            <div>
+              <p class="text-xs text-muted-foreground">المبلغ</p>
+              <p class="font-mono">{{ request.amount.toLocaleString('en-US') }} {{ request.currency }}</p>
+            </div>
+          </div>
+          <div class="flex items-start gap-2">
+            <Lock class="mt-0.5 h-4 w-4 text-muted-foreground" />
+            <div>
+              <p class="text-xs text-muted-foreground">شروط الدفع</p>
+              <p>{{ request.payment_terms ?? '—' }}</p>
+            </div>
+          </div>
+          <div class="flex items-start gap-2">
+            <Lock class="mt-0.5 h-4 w-4 text-muted-foreground" />
+            <div>
+              <p class="text-xs text-muted-foreground">رقم/تاريخ الفاتورة</p>
+              <p>{{ request.invoice_number ?? '—' }} / {{ request.invoice_date ?? '—' }}</p>
+            </div>
+          </div>
+          <div class="flex items-start gap-2">
+            <Lock class="mt-0.5 h-4 w-4 text-muted-foreground" />
+            <div>
+              <p class="text-xs text-muted-foreground">ميناء الوصول</p>
+              <p>{{ request.arrival_port ?? request.port_of_entry ?? '—' }}</p>
+            </div>
+          </div>
+          <div class="flex items-start gap-2">
+            <Lock class="mt-0.5 h-4 w-4 text-muted-foreground" />
+            <div>
+              <p class="text-xs text-muted-foreground">رقم بوليصة الشحن</p>
+              <p>{{ request.bl_number ?? '—' }}</p>
+            </div>
+          </div>
+        </div>
 
-        <div class="mt-6 space-y-4 border-t pt-6">
-          <h3 class="font-semibold">
-            رفع وثيقة السويفت
-          </h3>
+        <Button variant="outline" class="mt-5 w-full" @click="router.push(`/requests/${request.id}`)">
+          عرض كامل بيانات الطلب
+        </Button>
+      </aside>
+
+      <section class="rounded-2xl border border-border bg-background p-5">
+        <div v-if="lockedStateError" class="mb-4 rounded-xl border border-amber-300 bg-amber-50/30 p-3 text-amber-700">
+          <div class="flex items-center gap-2">
+            <AlertTriangle class="h-4 w-4" />
+            <span class="text-sm">{{ lockedStateError }}</span>
+          </div>
+          <Button variant="outline" size="sm" class="mt-2" @click="loadRequest">
+            <RefreshCw class="ms-1 h-4 w-4" />
+            تحديث الصفحة
+          </Button>
+        </div>
+
+        <div v-if="uploadError" class="mb-4 rounded-xl border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">
+          {{ uploadError }}
+        </div>
+
+        <div v-if="completed" class="rounded-xl border border-green-300 bg-green-50/40 p-4">
+          <p class="text-sm font-semibold text-green-700">تم تسليم وثائق السويفت بنجاح</p>
+          <Button class="mt-3 bg-info text-white hover:bg-info/90" @click="router.push('/requests?tab=pending_swift')">
+            العودة إلى الطابور
+          </Button>
+        </div>
+
+        <div v-else-if="canUpload">
           <SwiftUploadForm
             :request="request"
             :uploading="uploading"
             @upload="handleUpload"
           />
         </div>
-      </Card>
+
+        <div v-else class="rounded-xl border border-border bg-muted/20 p-5 text-sm text-muted-foreground">
+          تم تسليم السويفت بالفعل أو أن الطلب لم يعد في مرحلة الرفع.
+        </div>
+      </section>
     </div>
   </div>
 
-  <Card
-    v-else
-    class="border-0 p-8 text-center shadow"
-  >
+  <Card v-else class="border-0 p-8 text-center shadow">
     <Lock class="mx-auto h-10 w-10 text-muted-foreground" />
-    <h2 class="mt-4 text-lg font-bold">
-      غير مصرح
-    </h2>
-    <p class="mt-1 text-sm text-muted-foreground">
-      لا تملك صلاحية رفع السويفت لهذا الطلب، أو الطلب ليس في مرحلة اعتماد المساندة.
-    </p>
-    <Button
-      class="mt-4"
-      variant="outline"
-      @click="router.push(request ? `/requests/${request.id}` : '/requests')"
-    >
-      العودة للطلب
+    <h2 class="mt-4 text-lg font-bold">غير متاح حالياً</h2>
+    <p class="mt-1 text-sm text-muted-foreground">{{ deniedMessage }}</p>
+    <Button class="mt-4" variant="outline" @click="router.push('/requests')">
+      العودة
     </Button>
   </Card>
 </template>
