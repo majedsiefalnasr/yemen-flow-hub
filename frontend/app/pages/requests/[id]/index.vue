@@ -20,7 +20,7 @@ import { useRequestsStore } from '../../../stores/requests.store'
 import { useVotingStore } from '../../../stores/voting.store'
 import { useClaimLifecycle } from '../../../composables/useClaimLifecycle'
 import { canDownloadCustoms } from '../../../composables/useDocumentPermissions'
-import { STATUS_LABELS } from '../../../constants/workflow'
+import { STATUS_LABELS, ROLE_LABELS } from '../../../constants/workflow'
 import StatusBadge from '../../../components/shared/StatusBadge.vue'
 import LockedBanner from '../../../components/banners/LockedBanner.vue'
 import CorrectionBanner from '../../../components/banners/CorrectionBanner.vue'
@@ -194,6 +194,48 @@ const showDuplicateWidget = computed(() =>
 )
 
 const duplicateWidgetFull = computed(() => FULL_DUPLICATE_ROLES.has(userRole.value))
+
+// Maps current status → the role currently responsible (for BANK_ADMIN read-only panel)
+const STATUS_RESPONSIBLE_ROLE: Partial<Record<RequestStatus, UserRole>> = {
+  [RequestStatus.SUBMITTED]: UserRole.BANK_REVIEWER,
+  [RequestStatus.BANK_REVIEW]: UserRole.BANK_REVIEWER,
+  [RequestStatus.BANK_RETURNED]: UserRole.DATA_ENTRY,
+  [RequestStatus.BANK_APPROVED]: UserRole.SUPPORT_COMMITTEE,
+  [RequestStatus.SUPPORT_REVIEW_PENDING]: UserRole.SUPPORT_COMMITTEE,
+  [RequestStatus.SUPPORT_REVIEW_IN_PROGRESS]: UserRole.SUPPORT_COMMITTEE,
+  [RequestStatus.SUPPORT_APPROVED]: UserRole.SWIFT_OFFICER,
+  [RequestStatus.SUPPORT_REJECTED]: UserRole.DATA_ENTRY,
+  [RequestStatus.SUPPORT_RETURNED]: UserRole.DATA_ENTRY,
+  [RequestStatus.WAITING_FOR_SWIFT]: UserRole.SWIFT_OFFICER,
+  [RequestStatus.SWIFT_UPLOADED]: UserRole.EXECUTIVE_MEMBER,
+  [RequestStatus.WAITING_FOR_VOTING_OPEN]: UserRole.COMMITTEE_DIRECTOR,
+  [RequestStatus.EXECUTIVE_VOTING_OPEN]: UserRole.EXECUTIVE_MEMBER,
+  [RequestStatus.EXECUTIVE_VOTING_CLOSED]: UserRole.COMMITTEE_DIRECTOR,
+  [RequestStatus.EXECUTIVE_APPROVED]: UserRole.COMMITTEE_DIRECTOR,
+  [RequestStatus.EXECUTIVE_REJECTED]: UserRole.DATA_ENTRY,
+  [RequestStatus.FX_CONFIRMATION_PENDING]: UserRole.COMMITTEE_DIRECTOR,
+  [RequestStatus.CUSTOMS_DECLARATION_ISSUED]: UserRole.COMMITTEE_DIRECTOR,
+  [RequestStatus.COMPLETED]: UserRole.CBY_ADMIN,
+  [RequestStatus.BANK_REJECTED]: UserRole.DATA_ENTRY,
+}
+
+const bankAdminInfoText = computed(() => {
+  if (!request.value) return ''
+  const stage = STATUS_LABELS[request.value.status] ?? request.value.status
+  const responsibleRole = STATUS_RESPONSIBLE_ROLE[request.value.status]
+  const roleLabel = responsibleRole ? ROLE_LABELS[responsibleRole] : '—'
+  return `الطلب حالياً في مرحلة ${stage} — المسؤول: ${roleLabel}`
+})
+
+// BANK_ADMIN sees a read-only informational panel instead of action buttons
+// Exception: own-DRAFT requests get "تعديل" + "حذف" (handled via canEdit/hasActions)
+const showBankAdminInfoPanel = computed(() => {
+  if (!request.value || userRole.value !== UserRole.BANK_ADMIN) return false
+  const s = request.value.status
+  // Own-draft exception: DATA_ENTRY/BANK_ADMIN edit path handles this
+  if ((s === RequestStatus.DRAFT || s === RequestStatus.DRAFT_REJECTED_INTERNAL) && request.value.created_by === auth.user?.id) return false
+  return true
+})
 
 // Mirror ActionsPanel's showAnyActions to conditionally show the rail actions card
 const hasActions = computed(() => {
@@ -872,6 +914,20 @@ async function handleCloneConfirm() {
                     >
                       {{ requestsStore.downloadingCustoms ? 'جارٍ التحميل…' : 'تحميل PDF' }}
                     </button>
+                    <!-- BANK_ADMIN: locked FX PDF row — visible but not downloadable -->
+                    <span
+                      v-else-if="userRole === UserRole.BANK_ADMIN"
+                      class="customs-download-locked"
+                      :title="'تحميل PDF مخصص لمسؤول البنك المركزي والمديرين الموافقين فقط'"
+                      aria-disabled="true"
+                      data-testid="fx-pdf-locked"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                      </svg>
+                      تحميل PDF (مقيّد)
+                    </span>
                   </div>
                 </div>
                 <dl class="detail-grid">
@@ -1029,6 +1085,12 @@ async function handleCloneConfirm() {
               :user-role="userRole"
               @action-completed="onActionCompleted"
             />
+          </div>
+
+          <!-- BANK_ADMIN: read-only informational status panel (no decision buttons) -->
+          <div v-if="showBankAdminInfoPanel" class="rail-card">
+            <p class="rail-card__title">حالة الطلب</p>
+            <p class="text-sm text-muted-foreground leading-relaxed">{{ bankAdminInfoText }}</p>
           </div>
 
           <!-- Quick info -->
@@ -1589,6 +1651,21 @@ async function handleCloneConfirm() {
 .customs-download:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.customs-download-locked {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 16px;
+  border-radius: 12px;
+  background: #f5f5f7;
+  color: #8e8e93;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: not-allowed;
+  user-select: none;
 }
 
 .docs-error {

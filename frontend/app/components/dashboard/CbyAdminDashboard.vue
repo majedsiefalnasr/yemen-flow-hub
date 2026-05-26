@@ -1,90 +1,186 @@
+// @parity-exempt — dashboard sub-component; parity evidence captured at dashboards/cby-admin page level
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import {
+  Activity,
+  AlertTriangle,
+  Vote,
+  DollarSign,
+  ShieldAlert,
+  Server,
+  TrendingUp,
+  TrendingDown,
+  Minus,
+  RefreshCw,
+  Download,
+  CalendarDays,
+  Building2,
+  ChevronUp,
+  ChevronDown,
+  AlertCircle,
+  CheckCircle2,
+  Clock,
+} from 'lucide-vue-next'
 import { useDashboardStore } from '../../stores/dashboard.store'
-import { UserRole } from '../../types/enums'
-import type { CbyAdminDashboardStats } from '../../composables/useDashboard'
-import StatusBadge from '../shared/StatusBadge.vue'
-import { getRequestProgress } from '../../utils/requestProgress'
-import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
+import type {
+  CbyAdminDashboardStats,
+  CbyAdminKpi,
+  CbyAdminWorkflowPressureRow,
+  CbyAdminVotingSession,
+  CbyAdminBankRiskRow,
+  CbyAdminComplianceSignal,
+  CbyAdminCriticalEvent,
+} from '../../composables/useDashboard'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { AlertCircle, FileText, Users, Clock, CheckCircle2, TrendingUp } from 'lucide-vue-next'
 
 const router = useRouter()
 const store = useDashboardStore()
-
 const stats = computed(() => store.stats as CbyAdminDashboardStats | null)
-const monthlyRequests = computed(() => stats.value?.monthly_requests ?? [])
-const categoryDistribution = computed(() => stats.value?.category_distribution ?? [])
-const hasChartContent = computed(() => monthlyRequests.value.length > 0 || categoryDistribution.value.length > 0)
+const lastRefreshed = ref(new Date())
 
-function formatAmount(amount: number, currency: string): string {
-  return new Intl.NumberFormat('ar-YE', { style: 'currency', currency, minimumFractionDigits: 0 }).format(amount)
+function refresh() {
+  lastRefreshed.value = new Date()
+  store.loadStats()
 }
 
-function formatUpdatedAt(iso: string | null): string {
-  if (!iso) return '—'
-  return new Intl.DateTimeFormat('ar-YE', { year: 'numeric', month: 'short', day: 'numeric' }).format(new Date(iso))
+function formatTime(d: Date): string {
+  return new Intl.DateTimeFormat('ar-YE', { hour: '2-digit', minute: '2-digit' }).format(d)
 }
 
-interface MonthlyEntry { month: string; submitted: number; approved: number }
-const CHART_W = 600
-const CHART_H = 100
-const PAD = 12
+function formatDateShort(iso: string): string {
+  return new Intl.DateTimeFormat('ar-YE', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(iso))
+}
 
-function buildLine(entries: MonthlyEntry[], key: keyof MonthlyEntry): string {
-  if (!entries.length) return ''
-  const vals = entries.map(e => Number(e[key]))
+// ── KPI config ─────────────────────────────────────────────────────────────
+interface KpiConfig {
+  key: keyof CbyAdminDashboardStats
+  label: string
+  icon: typeof Activity
+  drilldown: string
+}
+
+const KPI_CONFIGS: KpiConfig[] = [
+  { key: 'active_workflow_requests', label: 'طلبات نشطة في الدورة', icon: Activity, drilldown: '/requests?tab=active' },
+  { key: 'sla_violations', label: 'انتهاكات SLA', icon: AlertTriangle, drilldown: '/requests?tab=needs_attention' },
+  { key: 'open_voting_sessions', label: 'جلسات تصويت مفتوحة', icon: Vote, drilldown: '/requests?tab=executive_voting' },
+  { key: 'fx_confirmation_pending', label: 'تأكيد مصارفة معلّق', icon: DollarSign, drilldown: '/requests?tab=fx_pending' },
+  { key: 'bank_risk_alerts', label: 'تنبيهات مخاطر البنوك', icon: ShieldAlert, drilldown: '/reports' },
+  { key: 'system_availability', label: 'توفّر النظام %', icon: Server, drilldown: '/audit' },
+]
+
+function resolvedKpi(key: keyof CbyAdminDashboardStats): CbyAdminKpi {
+  const raw = stats.value?.[key]
+  if (raw && typeof raw === 'object' && 'value' in raw) return raw as CbyAdminKpi
+  const fallbackValue = typeof raw === 'number' ? raw : 0
+  return { value: fallbackValue, delta: 0, severity: 'blue', sparkline: [], drilldown_route: '/requests' }
+}
+
+function severityColor(severity: CbyAdminKpi['severity']): string {
+  return {
+    red: '#ff3b30',
+    amber: '#ff9f0a',
+    green: '#34c759',
+    blue: '#0066cc',
+  }[severity]
+}
+
+function severityBg(severity: CbyAdminKpi['severity']): string {
+  return {
+    red: 'bg-red-50',
+    amber: 'bg-amber-50',
+    green: 'bg-green-50',
+    blue: 'bg-blue-50',
+  }[severity]
+}
+
+// Mini sparkline SVG path
+const SPARK_W = 80
+const SPARK_H = 28
+const SPARK_PAD = 3
+
+function buildSparkLine(entries: Array<{ value: number }>): string {
+  if (entries.length < 2) return ''
+  const vals = entries.map(e => e.value)
   const max = Math.max(...vals, 1)
-  const step = (CHART_W - PAD * 2) / Math.max(entries.length - 1, 1)
+  const min = Math.min(...vals, 0)
+  const range = max - min || 1
+  const step = (SPARK_W - SPARK_PAD * 2) / Math.max(entries.length - 1, 1)
   return entries.map((e, i) => {
-    const x = PAD + i * step
-    const y = PAD + (1 - Number(e[key]) / max) * (CHART_H - PAD * 2)
+    const x = SPARK_PAD + i * step
+    const y = SPARK_PAD + (1 - (e.value - min) / range) * (SPARK_H - SPARK_PAD * 2)
     return `${x.toFixed(1)},${y.toFixed(1)}`
   }).join(' ')
 }
 
-function buildArea(entries: MonthlyEntry[], key: keyof MonthlyEntry): string {
-  if (!entries.length) return ''
-  const vals = entries.map(e => Number(e[key]))
-  const max = Math.max(...vals, 1)
-  const step = (CHART_W - PAD * 2) / Math.max(entries.length - 1, 1)
-  const pts = entries.map((e, i) => {
-    const x = PAD + i * step
-    const y = PAD + (1 - Number(e[key]) / max) * (CHART_H - PAD * 2)
-    return `${x.toFixed(1)},${y.toFixed(1)}`
+// ── SLA risk helpers ────────────────────────────────────────────────────────
+function slaRiskColor(risk: CbyAdminWorkflowPressureRow['sla_risk']): string {
+  return { low: '#34c759', medium: '#ff9f0a', high: '#ff3b30' }[risk]
+}
+
+function slaRiskLabel(risk: CbyAdminWorkflowPressureRow['sla_risk']): string {
+  return { low: 'منخفض', medium: 'متوسط', high: 'مرتفع' }[risk]
+}
+
+function trendIcon(trend: CbyAdminWorkflowPressureRow['trend']) {
+  return { up: TrendingUp, stable: Minus, down: TrendingDown }[trend]
+}
+
+function trendColor(trend: CbyAdminWorkflowPressureRow['trend']): string {
+  return { up: '#ff3b30', stable: '#8e8e93', down: '#34c759' }[trend]
+}
+
+// ── Compliance signals ──────────────────────────────────────────────────────
+function signalSeverityIcon(severity: CbyAdminComplianceSignal['severity']) {
+  return { red: AlertTriangle, amber: AlertCircle, blue: Activity }[severity]
+}
+
+// ── Bank risk sort ──────────────────────────────────────────────────────────
+const riskSortKey = ref<keyof CbyAdminBankRiskRow>('risk_score')
+const riskSortDesc = ref(true)
+
+const sortedBankRisk = computed((): CbyAdminBankRiskRow[] => {
+  const rows = stats.value?.bank_risk_intelligence ?? []
+  return [...rows].sort((a, b) => {
+    const av = a[riskSortKey.value] as number
+    const bv = b[riskSortKey.value] as number
+    return riskSortDesc.value ? bv - av : av - bv
   })
-  const bottom = CHART_H - PAD
-  const lastX = (PAD + (entries.length - 1) * step).toFixed(1)
-  return `${PAD},${bottom} ${pts.join(' ')} ${lastX},${bottom}`
+})
+
+function toggleRiskSort(key: keyof CbyAdminBankRiskRow) {
+  if (riskSortKey.value === key) riskSortDesc.value = !riskSortDesc.value
+  else { riskSortKey.value = key; riskSortDesc.value = true }
 }
 
-function monthLabel(ym: string): string {
-  const [y, m] = ym.split('-')
-  return new Intl.DateTimeFormat('ar-YE', { month: 'short' }).format(new Date(Number(y), Number(m) - 1, 1))
+// ── Critical events ─────────────────────────────────────────────────────────
+const GOVERNANCE_EVENT_ICONS: Record<string, typeof Activity> = {
+  voting_finalized: CheckCircle2,
+  fx_completed: DollarSign,
+  role_changed: ShieldAlert,
+  security_login: AlertTriangle,
+  entity_activated: Building2,
+  document_rule_modified: AlertCircle,
 }
 
-interface CategoryEntry { label: string; count: number; color: string }
+function eventIcon(event_type: string) {
+  return GOVERNANCE_EVENT_ICONS[event_type] ?? Activity
+}
 
-function buildDonutPath(entries: CategoryEntry[], index: number, cx: number, cy: number, r: number): string {
-  const total = entries.reduce((s, e) => s + e.count, 0)
-  if (!total) return ''
-  let startAngle = -Math.PI / 2
-  for (let i = 0; i < index; i++) {
-    startAngle += (entries[i]!.count / total) * 2 * Math.PI
-  }
-  const angle = (entries[index]!.count / total) * 2 * Math.PI
-  const endAngle = startAngle + angle
-  const x1 = cx + r * Math.cos(startAngle)
-  const y1 = cy + r * Math.sin(startAngle)
-  const x2 = cx + r * Math.cos(endAngle)
-  const y2 = cy + r * Math.sin(endAngle)
-  const largeArc = angle > Math.PI ? 1 : 0
-  return `M ${cx} ${cy} L ${x1.toFixed(2)} ${y1.toFixed(2)} A ${r} ${r} 0 ${largeArc} 1 ${x2.toFixed(2)} ${y2.toFixed(2)} Z`
+function formatDuration(hours: number): string {
+  if (hours < 24) return `${Math.round(hours)} س`
+  return `${Math.round(hours / 24)} ي`
+}
+
+function riskScoreColor(score: number): string {
+  if (score >= 70) return '#ff3b30'
+  if (score >= 40) return '#ff9f0a'
+  return '#34c759'
 }
 
 onMounted(() => { store.loadStats() })
@@ -92,19 +188,55 @@ onMounted(() => { store.loadStats() })
 
 <template>
   <div class="flex flex-col gap-6" dir="rtl">
-    <!-- Loading state -->
-    <div v-if="store.loading" class="grid grid-cols-4 gap-4 md:grid-cols-2 sm:grid-cols-1" aria-busy="true" aria-label="جارٍ تحميل الإحصائيات">
-      <Card v-for="n in 4" :key="n" aria-hidden="true">
-        <CardHeader class="pb-3">
-          <Skeleton class="h-3 w-2/5" />
-        </CardHeader>
-        <CardContent>
-          <Skeleton class="h-8 w-1/2" />
-        </CardContent>
-      </Card>
+
+    <!-- Global toolbar -->
+    <div class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-muted/30 px-4 py-3">
+      <div class="flex items-center gap-2">
+        <Badge variant="outline" class="gap-1 rounded-full px-3 py-1 text-xs font-medium text-muted-foreground border-border">
+          <ShieldAlert class="size-3" aria-hidden="true" />
+          إشراف فقط
+        </Badge>
+      </div>
+      <div class="flex flex-wrap items-center gap-2">
+        <Button variant="ghost" size="sm" class="h-8 gap-1.5 text-xs" @click="refresh">
+          <RefreshCw class="size-3.5" aria-hidden="true" />
+          تحديث
+        </Button>
+        <span class="text-xs text-muted-foreground">
+          <Clock class="inline size-3 me-1" aria-hidden="true" />
+          آخر تحديث: {{ formatTime(lastRefreshed) }}
+        </span>
+        <Button variant="ghost" size="sm" class="h-8 gap-1.5 text-xs">
+          <CalendarDays class="size-3.5" aria-hidden="true" />
+          النطاق الزمني
+        </Button>
+        <Button variant="ghost" size="sm" class="h-8 gap-1.5 text-xs">
+          <Building2 class="size-3.5" aria-hidden="true" />
+          فلترة البنوك
+        </Button>
+        <Button variant="outline" size="sm" class="h-8 gap-1.5 text-xs">
+          <Download class="size-3.5" aria-hidden="true" />
+          تصدير PDF تنفيذي
+        </Button>
+      </div>
     </div>
 
-    <!-- Error state -->
+    <!-- Loading skeleton -->
+    <div v-if="store.loading" aria-busy="true" aria-label="جارٍ تحميل الإحصائيات" class="flex flex-col gap-6">
+      <div class="grid grid-cols-6 max-xl:grid-cols-3 max-md:grid-cols-2 gap-4">
+        <Card v-for="n in 6" :key="n" class="border-0 shadow" aria-hidden="true">
+          <CardContent class="p-4">
+            <Skeleton class="h-3 w-3/5 mb-3" />
+            <Skeleton class="h-8 w-1/3 mb-2" />
+            <Skeleton class="h-5 w-full" />
+          </CardContent>
+        </Card>
+      </div>
+      <Skeleton class="h-40 w-full rounded-xl" />
+      <Skeleton class="h-32 w-full rounded-xl" />
+    </div>
+
+    <!-- Error -->
     <Alert v-else-if="store.error" variant="destructive" role="alert">
       <AlertCircle class="size-4" />
       <AlertDescription class="flex items-center justify-between">
@@ -114,279 +246,261 @@ onMounted(() => { store.loadStats() })
     </Alert>
 
     <template v-else-if="stats">
-      <!-- KPI grid -->
-      <div class="grid grid-cols-4 gap-4 md:grid-cols-2 sm:grid-cols-1">
-        <Card>
-          <CardHeader class="pb-3">
-            <div class="flex items-center justify-between">
-              <CardTitle class="text-sm font-medium">بنوك مشاركة</CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div class="text-3xl font-bold">{{ stats.most_active_banks.length }}</div>
-            <p class="text-xs text-muted-foreground mt-1">البنوك النشطة</p>
-          </CardContent>
-        </Card>
 
-        <Card>
-          <CardHeader class="pb-3">
-            <CardTitle class="text-sm font-medium">كل الطلبات</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div class="text-3xl font-bold">{{ stats.total }}</div>
-            <p class="text-xs text-muted-foreground mt-1">إجمالي الطلبات</p>
-          </CardContent>
-        </Card>
+      <!-- 6-KPI Strategic Governance Strip -->
+      <section aria-label="مؤشرات أداء النظام">
+        <div class="grid grid-cols-6 max-xl:grid-cols-3 max-md:grid-cols-2 gap-4">
+          <Card
+            v-for="config in KPI_CONFIGS"
+            :key="config.key"
+            class="border-0 shadow cursor-pointer transition-shadow hover:shadow-md"
+            :class="severityBg(resolvedKpi(config.key).severity)"
+            @click="router.push(resolvedKpi(config.key).drilldown_route || config.drilldown)"
+          >
+            <CardContent class="p-4 flex flex-col gap-2">
+              <!-- Icon + label -->
+              <div class="flex items-center justify-between gap-1">
+                <span class="text-xs font-medium text-foreground/80 leading-tight">{{ config.label }}</span>
+                <component
+                  :is="config.icon"
+                  class="size-4 flex-shrink-0"
+                  :style="{ color: severityColor(resolvedKpi(config.key).severity) }"
+                  aria-hidden="true"
+                />
+              </div>
 
-        <Card>
-          <CardHeader class="pb-3">
-            <CardTitle class="text-sm font-medium">طلبات معلقة</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div class="text-3xl font-bold text-amber-600">{{ stats.in_process }}</div>
-            <p class="text-xs text-muted-foreground mt-1">قيد المراجعة</p>
-          </CardContent>
-        </Card>
+              <!-- Value + delta -->
+              <div class="flex items-baseline gap-2">
+                <span class="text-2xl font-bold" :style="{ color: severityColor(resolvedKpi(config.key).severity) }">
+                  {{ resolvedKpi(config.key).value.toLocaleString('ar-YE') }}
+                </span>
+                <span
+                  v-if="resolvedKpi(config.key).delta !== 0"
+                  class="text-xs"
+                  :class="resolvedKpi(config.key).delta > 0 ? 'text-red-600' : 'text-green-700'"
+                >
+                  {{ resolvedKpi(config.key).delta > 0 ? '+' : '' }}{{ resolvedKpi(config.key).delta }}
+                </span>
+              </div>
 
-        <Card>
-          <CardHeader class="pb-3">
-            <CardTitle class="text-sm font-medium">معتمدة</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div class="text-3xl font-bold text-green-700">{{ stats.approved }}</div>
-            <p class="text-xs text-muted-foreground mt-1">الطلبات المعتمدة</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <!-- Quick actions -->
-      <section aria-labelledby="qa-heading">
-        <h2 id="qa-heading" class="text-sm font-semibold mb-4 flex items-center gap-2">
-          <TrendingUp class="size-4" />
-          إجراءات سريعة
-        </h2>
-        <div class="grid grid-cols-4 gap-3 md:grid-cols-2 sm:grid-cols-1">
-          <Button variant="default" class="h-auto flex flex-col items-start justify-start p-4" @click="router.push('/requests')">
-            <FileText class="size-5 mb-2" />
-            <span class="text-sm font-semibold">سجل الطلبات</span>
-            <span class="text-xs opacity-80">كل طلبات المنصة</span>
-          </Button>
-
-          <Button variant="outline" class="h-auto flex flex-col items-start justify-start p-4" @click="router.push('/reports')">
-            <TrendingUp class="size-5 mb-2" />
-            <span class="text-sm font-semibold">التقارير</span>
-            <span class="text-xs text-muted-foreground">تحليلات وإحصاءات</span>
-          </Button>
-
-          <Button variant="outline" class="h-auto flex flex-col items-start justify-start p-4" @click="router.push('/admin/cby-staff')">
-            <Users class="size-5 mb-2" />
-            <span class="text-sm font-semibold">مستخدمو النظام</span>
-            <span class="text-xs text-muted-foreground">إدارة الصلاحيات</span>
-          </Button>
-
-          <Button variant="outline" class="h-auto flex flex-col items-start justify-start p-4" @click="router.push('/audit')">
-            <AlertCircle class="size-5 mb-2" />
-            <span class="text-sm font-semibold">الإشعارات</span>
-            <span class="text-xs text-muted-foreground">آخر أحداث المنصة</span>
-          </Button>
+              <!-- Mini sparkline -->
+              <svg
+                v-if="resolvedKpi(config.key).sparkline.length >= 2"
+                :viewBox="`0 0 ${SPARK_W} ${SPARK_H}`"
+                :width="SPARK_W"
+                :height="SPARK_H"
+                class="w-full"
+                preserveAspectRatio="none"
+                aria-hidden="true"
+              >
+                <polyline
+                  :points="buildSparkLine(resolvedKpi(config.key).sparkline)"
+                  fill="none"
+                  :stroke="severityColor(resolvedKpi(config.key).severity)"
+                  stroke-width="1.5"
+                  stroke-linejoin="round"
+                  stroke-linecap="round"
+                  opacity="0.7"
+                />
+              </svg>
+              <div v-else class="h-7" aria-hidden="true" />
+            </CardContent>
+          </Card>
         </div>
       </section>
 
-      <!-- Charts row: monthly trend + category distribution -->
-      <div v-if="hasChartContent" class="grid grid-cols-2fr-1fr gap-4 lg:grid-cols-1">
-        <!-- Monthly trend chart -->
-        <Card v-if="monthlyRequests.length" aria-labelledby="trend-heading">
-          <CardHeader>
-            <CardTitle id="trend-heading">حركة الطلبات الشهرية</CardTitle>
-            <CardDescription>مُقدَّم مقابل مُعتمَد</CardDescription>
-          </CardHeader>
-          <CardContent class="flex flex-col gap-3">
-            <svg :viewBox="`0 0 ${CHART_W} ${CHART_H}`" class="w-full h-24" role="img" aria-label="مخطط الطلبات الشهرية" preserveAspectRatio="none">
-              <polygon :points="buildArea(monthlyRequests as MonthlyEntry[], 'submitted')" fill="currentColor" class="text-primary" opacity="0.08" />
-              <polyline :points="buildLine(monthlyRequests as MonthlyEntry[], 'submitted')" fill="none" stroke="currentColor" class="text-primary" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
-              <polygon :points="buildArea(monthlyRequests as MonthlyEntry[], 'approved')" fill="currentColor" class="text-green-700" opacity="0.08" />
-              <polyline :points="buildLine(monthlyRequests as MonthlyEntry[], 'approved')" fill="none" stroke="currentColor" class="text-green-700" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="4 2" />
-            </svg>
-            <div class="flex justify-between px-3 text-xs text-muted-foreground">
-              <span v-for="e in (monthlyRequests as MonthlyEntry[])" :key="e.month">{{ monthLabel(e.month) }}</span>
-            </div>
-            <div class="flex gap-4">
-              <Badge variant="secondary" class="w-fit">
-                <span class="size-2 rounded-full bg-primary mr-2" />
-                مُقدَّم
-              </Badge>
-              <Badge variant="secondary" class="w-fit">
-                <span class="size-2 rounded-full bg-green-50 mr-2" />
-                مُعتمَد
-              </Badge>
-            </div>
-          </CardContent>
-        </Card>
+      <!-- Workflow Pressure Map -->
+      <Card v-if="stats.workflow_pressure_map?.length" class="border-0 shadow" aria-labelledby="pressure-heading">
+        <CardHeader class="pb-3">
+          <CardTitle id="pressure-heading" class="text-sm font-semibold">خريطة ضغط سير العمل</CardTitle>
+          <CardDescription class="text-xs">المراحل النشطة وحالة SLA — انقر لتصفية الطلبات حسب المرحلة</CardDescription>
+        </CardHeader>
+        <CardContent class="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead class="text-right text-xs">المرحلة</TableHead>
+                <TableHead class="text-right text-xs">طلبات نشطة</TableHead>
+                <TableHead class="text-right text-xs">متوسط العمر</TableHead>
+                <TableHead class="text-right text-xs">مخاطر SLA</TableHead>
+                <TableHead class="text-right text-xs">الاتجاه</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <TableRow
+                v-for="row in stats.workflow_pressure_map"
+                :key="row.stage"
+                class="cursor-pointer transition-colors"
+                :class="row.sla_risk === 'high' ? 'bg-red-50/60 hover:bg-red-50' : row.sla_risk === 'medium' ? 'bg-amber-50/40 hover:bg-amber-50' : 'hover:bg-muted/40'"
+                @click="router.push(`/requests?stage=${row.stage}`)"
+              >
+                <TableCell class="text-right text-xs font-medium py-2.5">{{ row.stage_label }}</TableCell>
+                <TableCell class="text-right text-xs py-2.5">
+                  <span class="font-semibold" :style="{ color: slaRiskColor(row.sla_risk) }">{{ row.active_count }}</span>
+                </TableCell>
+                <TableCell class="text-right text-xs py-2.5">{{ formatDuration(row.avg_age_hours) }}</TableCell>
+                <TableCell class="text-right py-2.5">
+                  <Badge class="text-[10px] px-1.5 py-0 rounded-full border-0 font-medium" :style="{ backgroundColor: `${slaRiskColor(row.sla_risk)}20`, color: slaRiskColor(row.sla_risk) }">
+                    {{ slaRiskLabel(row.sla_risk) }}
+                  </Badge>
+                </TableCell>
+                <TableCell class="text-right py-2.5">
+                  <component :is="trendIcon(row.trend)" class="size-4" :style="{ color: trendColor(row.trend) }" aria-hidden="true" />
+                </TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
 
-        <!-- Category distribution donut -->
-        <Card v-if="categoryDistribution.length" aria-labelledby="cat-heading">
-          <CardHeader>
-            <CardTitle id="cat-heading">توزيع فئات الواردات</CardTitle>
-            <CardDescription>حسب نوع البضاعة</CardDescription>
+      <!-- Two-column: Executive Voting Oversight + Bank Risk Intelligence -->
+      <div class="grid grid-cols-2 max-lg:grid-cols-1 gap-6">
+
+        <!-- Executive Voting Oversight -->
+        <Card class="border-0 shadow" aria-labelledby="voting-oversight-heading">
+          <CardHeader class="pb-3">
+            <CardTitle id="voting-oversight-heading" class="text-sm font-semibold">الإشراف على التصويت التنفيذي</CardTitle>
+            <CardDescription class="text-xs">جلسات التصويت المفتوحة — قراءة فقط</CardDescription>
           </CardHeader>
-          <CardContent class="flex items-center gap-6">
-            <svg viewBox="0 0 100 100" class="size-24 flex-shrink-0" role="img" aria-label="توزيع فئات الواردات">
-              <circle cx="50" cy="50" r="38" fill="hsl(var(--muted))" />
-              <path
-                v-for="(entry, i) in (categoryDistribution as CategoryEntry[])"
-                :key="entry.label"
-                :d="buildDonutPath(categoryDistribution as CategoryEntry[], i, 50, 50, 38)"
-                :fill="entry.color"
-              />
-              <circle cx="50" cy="50" r="25" fill="white" />
-            </svg>
-            <ul class="flex flex-col gap-2">
-              <li v-for="entry in (categoryDistribution as CategoryEntry[])" :key="entry.label" class="flex items-center gap-2 text-xs">
-                <span class="size-2 rounded-full flex-shrink-0" :style="{ background: entry.color }" />
-                <span class="text-foreground">{{ entry.label }}</span>
-                <Badge variant="secondary">{{ Math.round(entry.count / (categoryDistribution as CategoryEntry[]).reduce((s, e) => s + e.count, 0) * 100) }}%</Badge>
+          <CardContent>
+            <div v-if="!stats.executive_voting_sessions?.length" class="py-8 text-center text-sm text-muted-foreground" role="status">
+              <CheckCircle2 class="size-6 mx-auto mb-2 text-green-600" aria-hidden="true" />
+              لا توجد جلسات تصويت مفتوحة
+            </div>
+            <ul v-else class="flex flex-col gap-3">
+              <li
+                v-for="session in stats.executive_voting_sessions"
+                :key="session.id"
+                class="flex flex-col gap-1.5 rounded-lg border border-border p-3 cursor-pointer hover:border-primary/40 transition-colors"
+                @click="router.push(`/requests/${session.id}`)"
+              >
+                <div class="flex items-center justify-between gap-2">
+                  <span class="font-mono text-xs text-primary">{{ session.reference_number }}</span>
+                  <span class="text-xs text-muted-foreground">{{ formatDateShort(session.opened_at) }}</span>
+                </div>
+                <div class="flex items-center justify-between gap-2">
+                  <span class="text-xs text-foreground">{{ session.bank_name }}</span>
+                  <span class="text-xs font-medium">{{ new Intl.NumberFormat('en-US', { style: 'currency', currency: session.currency, maximumFractionDigits: 0 }).format(session.amount) }}</span>
+                </div>
+                <div v-if="session.waiting_for.length" class="text-xs text-amber-700">
+                  <span class="font-medium">بانتظار: </span>{{ session.waiting_for.join('، ') }}
+                </div>
               </li>
             </ul>
           </CardContent>
         </Card>
-      </div>
 
-      <!-- Two-column: أحدث الطلبات + أنشط البنوك -->
-      <div class="grid grid-cols-2 gap-4 lg:grid-cols-1">
-        <!-- أحدث الطلبات -->
-        <Card aria-labelledby="recent-heading">
-          <CardHeader class="flex flex-row items-center justify-between">
-            <CardTitle id="recent-heading">أحدث الطلبات</CardTitle>
-            <Button variant="link" size="sm" @click="router.push('/requests')">عرض الكل</Button>
+        <!-- Bank Risk Intelligence -->
+        <Card class="border-0 shadow" aria-labelledby="bank-risk-heading">
+          <CardHeader class="pb-3">
+            <CardTitle id="bank-risk-heading" class="text-sm font-semibold">استخبارات مخاطر البنوك</CardTitle>
+            <CardDescription class="text-xs">انقر على العمود للفرز</CardDescription>
           </CardHeader>
-          <CardContent>
-            <div v-if="!stats.recent_requests?.length" class="py-6 text-center text-sm text-muted-foreground" role="status">
-              لا توجد طلبات بعد
+          <CardContent class="p-0">
+            <div v-if="!sortedBankRisk.length" class="py-8 text-center text-sm text-muted-foreground" role="status">
+              لا توجد بيانات مخاطر
             </div>
             <Table v-else>
               <TableHeader>
                 <TableRow>
-                  <TableHead class="text-right">المرجع</TableHead>
-                  <TableHead class="text-right">البنك</TableHead>
-                  <TableHead class="text-right">المبلغ</TableHead>
-                  <TableHead class="text-right">الحالة</TableHead>
-                  <TableHead class="text-right">التقدم</TableHead>
-                  <TableHead class="text-right">إجراء</TableHead>
+                  <TableHead class="text-right text-xs cursor-pointer" @click="toggleRiskSort('bank_name')">البنك</TableHead>
+                  <TableHead class="text-right text-xs cursor-pointer" @click="toggleRiskSort('request_volume')">
+                    الحجم
+                    <component :is="riskSortKey === 'request_volume' ? (riskSortDesc ? ChevronDown : ChevronUp) : Minus" class="inline size-3 ms-1" aria-hidden="true" />
+                  </TableHead>
+                  <TableHead class="text-right text-xs cursor-pointer" @click="toggleRiskSort('approval_rate')">
+                    معدل القبول
+                    <component :is="riskSortKey === 'approval_rate' ? (riskSortDesc ? ChevronDown : ChevronUp) : Minus" class="inline size-3 ms-1" aria-hidden="true" />
+                  </TableHead>
+                  <TableHead class="text-right text-xs cursor-pointer" @click="toggleRiskSort('risk_score')">
+                    المخاطر
+                    <component :is="riskSortKey === 'risk_score' ? (riskSortDesc ? ChevronDown : ChevronUp) : Minus" class="inline size-3 ms-1" aria-hidden="true" />
+                  </TableHead>
+                  <TableHead class="text-right text-xs">تنبيهات</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                <TableRow v-for="req in stats.recent_requests" :key="req.id" @click="router.push(`/requests/${req.id}`)" class="cursor-pointer">
-                  <TableCell class="text-right font-mono text-sm">{{ req.reference_number }}</TableCell>
-                  <TableCell class="text-right">{{ req.bank_name ?? '—' }}</TableCell>
-                  <TableCell class="text-right ltr tabular-nums">{{ formatAmount(req.amount, req.currency) }}</TableCell>
-                  <TableCell class="text-right"><StatusBadge :status="req.status" :role="UserRole.CBY_ADMIN" /></TableCell>
-                  <TableCell class="text-right">
-                    <div class="flex items-center gap-2 min-w-24">
-                      <div class="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
-                        <div class="h-full rounded-full bg-primary" :style="{ width: `${getRequestProgress(req.status)}%` }" />
-                      </div>
-                      <span class="text-xs text-muted-foreground whitespace-nowrap">{{ getRequestProgress(req.status) }}%</span>
-                    </div>
+                <TableRow
+                  v-for="row in sortedBankRisk"
+                  :key="row.bank_id"
+                  class="cursor-pointer hover:bg-muted/40 transition-colors"
+                  @click="router.push(`/requests?bank=${row.bank_id}`)"
+                >
+                  <TableCell class="text-right text-xs font-medium py-2">{{ row.bank_name }}</TableCell>
+                  <TableCell class="text-right text-xs py-2">{{ row.request_volume }}</TableCell>
+                  <TableCell class="text-right text-xs py-2">{{ row.approval_rate }}%</TableCell>
+                  <TableCell class="text-right py-2">
+                    <span class="text-xs font-bold" :style="{ color: riskScoreColor(row.risk_score) }">{{ row.risk_score }}</span>
                   </TableCell>
-                  <TableCell class="text-right">
-                    <Button variant="outline" size="sm" @click.stop="router.push(`/requests/${req.id}`)">عرض</Button>
+                  <TableCell class="text-right py-2">
+                    <Badge v-if="row.alerts > 0" class="text-[10px] px-1.5 rounded-full border-0" style="background:#ff3b3020;color:#ff3b30">{{ row.alerts }}</Badge>
+                    <CheckCircle2 v-else class="size-3.5 text-green-600" aria-hidden="true" />
                   </TableCell>
                 </TableRow>
               </TableBody>
             </Table>
           </CardContent>
         </Card>
+      </div>
 
-        <!-- Compliance alerts & Most active banks -->
-        <Card aria-labelledby="banks-heading">
-          <CardHeader>
-            <CardTitle id="banks-heading">تصنيف الامتثال</CardTitle>
-          </CardHeader>
-          <CardContent class="space-y-6">
-            <!-- Duplicate suppliers -->
-            <div class="space-y-2">
-              <h3 class="text-xs font-semibold text-muted-foreground">فاتورة مكررة خارجياً</h3>
-              <div v-if="!stats.compliance_alerts.duplicate_suppliers.length" class="flex items-center gap-2 text-xs text-green-700">
-                <CheckCircle2 class="size-4" />
-                لا توجد تنبيهات
+      <!-- Compliance & Audit Signals -->
+      <section v-if="stats.compliance_signals?.length" aria-labelledby="signals-heading">
+        <h2 id="signals-heading" class="text-sm font-semibold mb-3">إشارات الامتثال والتدقيق</h2>
+        <div class="grid grid-cols-3 max-lg:grid-cols-2 max-md:grid-cols-1 gap-4">
+          <button
+            v-for="signal in stats.compliance_signals"
+            :key="signal.id"
+            class="flex flex-col items-start gap-2 p-4 rounded-xl border text-start cursor-pointer transition-all hover:shadow-md"
+            :class="signal.severity === 'red' ? 'border-red-200 bg-red-50' : signal.severity === 'amber' ? 'border-amber-200 bg-amber-50' : 'border-blue-200 bg-blue-50'"
+            @click="router.push(signal.link_route)"
+          >
+            <div class="flex items-center gap-2">
+              <component :is="signalSeverityIcon(signal.severity)" class="size-4" :style="{ color: severityColor(signal.severity) }" aria-hidden="true" />
+              <span class="text-xs font-semibold" :style="{ color: severityColor(signal.severity) }">{{ signal.title }}</span>
+            </div>
+            <p class="text-xs text-foreground/80 leading-relaxed">{{ signal.description }}</p>
+            <span class="text-[10px] text-muted-foreground">{{ formatDateShort(signal.created_at) }}</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- Critical Events Feed -->
+      <Card v-if="stats.critical_events?.length" class="border-0 shadow" aria-labelledby="events-heading">
+        <CardHeader class="pb-2">
+          <CardTitle id="events-heading" class="text-sm font-semibold">الأحداث الحرجة</CardTitle>
+          <CardDescription class="text-xs">أحداث الحوكمة والأمان عالية الأولوية فقط</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ul class="flex flex-col divide-y divide-border" role="list">
+            <li
+              v-for="event in stats.critical_events"
+              :key="event.id"
+              class="flex items-start gap-3 py-2.5 first:pt-0 last:pb-0"
+            >
+              <component :is="eventIcon(event.event_type)" class="size-4 flex-shrink-0 mt-0.5 text-muted-foreground" aria-hidden="true" />
+              <div class="flex-1 min-w-0">
+                <p class="text-xs text-foreground leading-snug">{{ event.summary }}</p>
+                <span class="text-[10px] text-muted-foreground">{{ event.actor_name }} · {{ formatDateShort(event.created_at) }}</span>
               </div>
-              <ul v-else class="space-y-1">
-                <li v-for="item in stats.compliance_alerts.duplicate_suppliers" :key="item.supplier_name" class="flex items-center justify-between p-2 bg-muted rounded text-xs">
-                  <span>{{ item.supplier_name }}</span>
-                  <Badge variant="secondary">{{ item.count }} طلب</Badge>
-                </li>
-              </ul>
-            </div>
+              <button
+                v-if="event.link_route"
+                class="text-[10px] text-primary hover:underline flex-shrink-0 cursor-pointer"
+                @click="router.push(event.link_route)"
+              >
+                عرض
+              </button>
+            </li>
+          </ul>
+        </CardContent>
+      </Card>
 
-            <!-- High amount requests -->
-            <div class="space-y-2 border-t pt-4">
-              <h3 class="text-xs font-semibold text-muted-foreground">طلبات بمبالغ مرتفعة</h3>
-              <div v-if="!stats.compliance_alerts.high_amount_requests.length" class="flex items-center gap-2 text-xs text-green-700">
-                <CheckCircle2 class="size-4" />
-                لا توجد تنبيهات
-              </div>
-              <ul v-else class="space-y-1">
-                <li
-                  v-for="req in stats.compliance_alerts.high_amount_requests"
-                  :key="req.id"
-                  class="flex items-center justify-between gap-2 p-2 bg-muted rounded text-xs cursor-pointer hover:bg-muted/80"
-                  @click="router.push(`/requests/${req.id}`)"
-                >
-                  <div>
-                    <div class="font-mono">{{ req.reference_number }}</div>
-                    <div class="text-muted-foreground">{{ req.bank_name }}</div>
-                  </div>
-                  <Badge variant="destructive" class="whitespace-nowrap">{{ new Intl.NumberFormat('en-US', { style: 'currency', currency: req.currency, maximumFractionDigits: 0 }).format(req.amount) }}</Badge>
-                </li>
-              </ul>
-            </div>
-
-            <!-- Stale requests -->
-            <div class="space-y-2 border-t pt-4">
-              <h3 class="text-xs font-semibold text-muted-foreground">طلبات معلقة &gt; 14 يوم</h3>
-              <div v-if="!stats.compliance_alerts.stale_pending_requests.length" class="flex items-center gap-2 text-xs text-green-700">
-                <CheckCircle2 class="size-4" />
-                لا توجد تنبيهات
-              </div>
-              <ul v-else class="space-y-1">
-                <li
-                  v-for="req in stats.compliance_alerts.stale_pending_requests"
-                  :key="req.id"
-                  class="flex items-center justify-between gap-2 p-2 bg-muted rounded text-xs cursor-pointer hover:bg-muted/80"
-                  @click="router.push(`/requests/${req.id}`)"
-                >
-                  <div>
-                    <div class="font-mono">{{ req.reference_number }}</div>
-                    <div class="text-muted-foreground">{{ req.bank_name }}</div>
-                  </div>
-                  <Badge variant="secondary">{{ formatUpdatedAt(req.updated_at) }}</Badge>
-                </li>
-              </ul>
-            </div>
-
-            <!-- Most active banks -->
-            <div v-if="stats.most_active_banks.length" class="space-y-2 border-t pt-4">
-              <h3 class="text-xs font-semibold text-muted-foreground">أنشط البنوك</h3>
-              <ul class="space-y-2">
-                <li v-for="(bank, index) in stats.most_active_banks" :key="bank.bank_id" class="flex items-center gap-2">
-                  <Badge class="size-6 flex items-center justify-center rounded-full p-0">{{ index + 1 }}</Badge>
-                  <span class="text-xs truncate w-20">{{ bank.bank_name }}</span>
-                  <div class="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
-                    <div class="h-full rounded-full bg-primary" :style="{ width: `${Math.round(bank.request_count / (stats.most_active_banks[0]?.request_count || 1) * 100)}%` }" />
-                  </div>
-                  <span class="text-xs text-muted-foreground whitespace-nowrap">{{ bank.request_count }}</span>
-                </li>
-              </ul>
-            </div>
-          </CardContent>
-        </Card>
+      <!-- Empty state when no governance data yet -->
+      <div v-if="!stats.workflow_pressure_map?.length && !stats.executive_voting_sessions?.length && !stats.bank_risk_intelligence?.length" class="rounded-xl border border-dashed border-border p-8 text-center" role="status">
+        <Activity class="size-8 mx-auto mb-3 text-muted-foreground" aria-hidden="true" />
+        <p class="text-sm text-muted-foreground">لا توجد بيانات حوكمة للفترة المختارة</p>
+        <p class="text-xs text-muted-foreground mt-1">لا توجد بيانات للفترة المختارة</p>
       </div>
 
     </template>
   </div>
 </template>
-
-<style scoped>
-.grid-cols-2fr-1fr { grid-template-columns: 2fr 1fr; }
-@media (max-width: 900px) { .grid-cols-2fr-1fr { grid-template-columns: 1fr; } }
-</style>

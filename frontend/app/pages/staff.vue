@@ -118,6 +118,24 @@ const filteredStaff = computed(() => {
 const totalCount = computed(() => staff.value.length)
 const activeCount = computed(() => staff.value.filter(m => m.is_active).length)
 const inactiveCount = computed(() => staff.value.filter(m => !m.is_active).length)
+const bankReviewerCount = computed(() => staff.value.filter(m => m.role === UserRole.BANK_REVIEWER && m.is_active).length)
+
+// Access Health — clickable filter cards (BANK_ADMIN spec §Staff)
+const accessHealthFilter = ref<'active' | 'inactive' | 'bank_reviewer' | null>(null)
+
+function applyAccessHealthFilter(key: typeof accessHealthFilter.value) {
+  if (accessHealthFilter.value === key) {
+    accessHealthFilter.value = null
+    roleFilter.value = ''
+    statusFilter.value = ''
+  }
+  else {
+    accessHealthFilter.value = key
+    if (key === 'active') { statusFilter.value = 'active'; roleFilter.value = '' }
+    else if (key === 'inactive') { statusFilter.value = 'inactive'; roleFilter.value = '' }
+    else if (key === 'bank_reviewer') { roleFilter.value = UserRole.BANK_REVIEWER; statusFilter.value = '' }
+  }
+}
 
 const isEmpty = computed(() => !loading.value && !error.value && staff.value.length === 0)
 
@@ -386,48 +404,46 @@ onMounted(loadStaff)
       </template>
     </PageHeader>
 
-    <!-- KPI Cards -->
-    <div class="grid grid-cols-3 gap-4">
-      <Card class="border-0 p-4 shadow-sm">
-        <div class="flex items-center gap-3">
-          <div class="size-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.856-1.487M15 10a3 3 0 11-6 0 3 3 0 016 0zM6 20h12a6 6 0 006-6V4a6 6 0 00-6-6H6a6 6 0 00-6 6v10a6 6 0 006 6z" />
-            </svg>
-          </div>
-          <div>
-            <p class="text-sm text-muted-foreground">إجمالي الموظفين</p>
-            <p class="text-2xl font-bold tabular-nums">{{ totalCount }}</p>
-          </div>
-        </div>
-      </Card>
-      <Card class="border-0 p-4 shadow-sm">
-        <div class="flex items-center gap-3">
-          <div class="size-10 rounded-lg bg-green-50 flex items-center justify-center text-green-700">
-            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </div>
-          <div>
-            <p class="text-sm text-muted-foreground">نشط</p>
-            <p class="text-2xl font-bold tabular-nums">{{ activeCount }}</p>
-          </div>
-        </div>
-      </Card>
-      <Card class="border-0 p-4 shadow-sm">
-        <div class="flex items-center gap-3">
-          <div class="size-10 rounded-lg bg-red-50 flex items-center justify-center text-red-700">
-            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l-2-2m0 0l-2-2m2 2l2-2m-2 2l2 2m2-2l2 2" />
-            </svg>
-          </div>
-          <div>
-            <p class="text-sm text-muted-foreground">غير نشط</p>
-            <p class="text-2xl font-bold tabular-nums">{{ inactiveCount }}</p>
-          </div>
-        </div>
-      </Card>
-    </div>
+    <!-- Access Health Summary Row — clickable filter cards per spec -->
+    <section aria-label="ملخص صحة الوصول" class="grid grid-cols-4 max-lg:grid-cols-2 gap-3">
+      <button
+        class="flex flex-col items-start gap-1 p-4 rounded-xl border shadow-sm text-start transition-all cursor-pointer"
+        :class="accessHealthFilter === 'active' ? 'border-primary bg-primary/5' : 'border-border bg-background hover:border-primary/40 hover:shadow-md'"
+        :aria-pressed="accessHealthFilter === 'active'"
+        aria-label="عرض الموظفين النشطين"
+        @click="applyAccessHealthFilter('active')"
+      >
+        <span class="text-2xl font-bold" style="color:#34c759">{{ activeCount }}</span>
+        <span class="text-xs text-muted-foreground">موظف نشط</span>
+      </button>
+
+      <button
+        class="flex flex-col items-start gap-1 p-4 rounded-xl border shadow-sm text-start transition-all cursor-pointer"
+        :class="accessHealthFilter === 'inactive' ? 'border-destructive bg-red-50' : 'border-border bg-background hover:border-destructive/40 hover:shadow-md'"
+        :aria-pressed="accessHealthFilter === 'inactive'"
+        aria-label="عرض الموظفين الموقوفين"
+        @click="applyAccessHealthFilter('inactive')"
+      >
+        <span class="text-2xl font-bold" style="color:#ff3b30">{{ inactiveCount }}</span>
+        <span class="text-xs text-muted-foreground">موقوف</span>
+      </button>
+
+      <button
+        class="flex flex-col items-start gap-1 p-4 rounded-xl border shadow-sm text-start transition-all cursor-pointer"
+        :class="accessHealthFilter === 'bank_reviewer' ? 'border-primary bg-blue-50' : 'border-border bg-background hover:border-primary/40 hover:shadow-md'"
+        :aria-pressed="accessHealthFilter === 'bank_reviewer'"
+        aria-label="عرض مراجعي البنك النشطين"
+        @click="applyAccessHealthFilter('bank_reviewer')"
+      >
+        <span class="text-2xl font-bold" style="color:#0066cc">{{ bankReviewerCount }}</span>
+        <span class="text-xs text-muted-foreground">تغطية مراجع البنك</span>
+      </button>
+
+      <div class="flex flex-col items-start gap-1 p-4 rounded-xl border border-border bg-background shadow-sm">
+        <span class="text-2xl font-bold text-foreground">{{ totalCount }}</span>
+        <span class="text-xs text-muted-foreground">إجمالي الموظفين</span>
+      </div>
+    </section>
 
     <!-- Error -->
     <Alert v-if="error" variant="destructive">

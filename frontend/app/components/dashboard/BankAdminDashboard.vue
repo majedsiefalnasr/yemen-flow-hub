@@ -1,18 +1,42 @@
 // @parity-exempt — dashboard sub-component; parity evidence captured at dashboards/bank-admin page level
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { CheckCircle2, Clock, AlertCircle, FileText, Building2, Users, BarChart3, Zap } from 'lucide-vue-next'
+import {
+  FileText,
+  Building2,
+  Users,
+  BarChart3,
+  AlertCircle,
+  AlertTriangle,
+  ShieldAlert,
+  RefreshCw,
+  Download,
+  CalendarDays,
+  Clock,
+} from 'lucide-vue-next'
 import { useDashboardStore } from '../../stores/dashboard.store'
 import { UserRole } from '../../types/enums'
-import type { BankAdminDashboardStats, BankAdminMonthlyEntry } from '../../composables/useDashboard'
+import type { BankAdminDashboardStats, BankAdminDashboardStatsExtended, BankAdminMonthlyEntry } from '../../composables/useDashboard'
 import StatusBadge from '../shared/StatusBadge.vue'
 import { getRequestProgress } from '../../utils/requestProgress'
-import { Card, CardContent } from '../ui/card'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/card'
+import { Badge } from '../ui/badge'
+import { Button } from '../ui/button'
 
 const router = useRouter()
 const store = useDashboardStore()
-const stats = computed(() => store.stats as BankAdminDashboardStats | null)
+const stats = computed(() => store.stats as (BankAdminDashboardStats & BankAdminDashboardStatsExtended) | null)
+const lastRefreshed = ref(new Date())
+
+function refresh() {
+  lastRefreshed.value = new Date()
+  store.loadStats()
+}
+
+function formatTime(d: Date): string {
+  return new Intl.DateTimeFormat('ar-YE', { hour: '2-digit', minute: '2-digit' }).format(d)
+}
 
 function formatAmount(amount: number): string {
   return new Intl.NumberFormat('ar-YE', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(amount)
@@ -22,31 +46,38 @@ function formatDate(iso: string): string {
   return new Intl.DateTimeFormat('ar-YE', { year: 'numeric', month: 'short', day: 'numeric' }).format(new Date(iso))
 }
 
-// ── SVG sparkline ──────────────────────────────────────────────────────────
+function monthLabel(ym: string): string {
+  const [y, m] = ym.split('-')
+  return new Intl.DateTimeFormat('ar-YE', { month: 'short' }).format(new Date(Number(y), Number(m) - 1, 1))
+}
+
+// ── SVG dual-line trend chart ───────────────────────────────────────────────
 const CHART_W = 480
 const CHART_H = 80
 const PAD = 8
 
-function buildLine(entries: BankAdminMonthlyEntry[]): string {
+interface DualEntry { month: string; count: number; approved?: number }
+
+function buildLine(entries: DualEntry[], key: keyof DualEntry): string {
   if (!entries.length) return ''
-  const counts = entries.map(e => e.count)
-  const max = Math.max(...counts, 1)
+  const vals = entries.map(e => Number(e[key] ?? 0))
+  const max = Math.max(...vals, 1)
   const step = (CHART_W - PAD * 2) / Math.max(entries.length - 1, 1)
   return entries.map((e, i) => {
     const x = PAD + i * step
-    const y = PAD + (1 - e.count / max) * (CHART_H - PAD * 2)
+    const y = PAD + (1 - Number(e[key] ?? 0) / max) * (CHART_H - PAD * 2)
     return `${x.toFixed(1)},${y.toFixed(1)}`
   }).join(' ')
 }
 
-function buildArea(entries: BankAdminMonthlyEntry[]): string {
+function buildArea(entries: DualEntry[], key: keyof DualEntry): string {
   if (!entries.length) return ''
-  const counts = entries.map(e => e.count)
-  const max = Math.max(...counts, 1)
+  const vals = entries.map(e => Number(e[key] ?? 0))
+  const max = Math.max(...vals, 1)
   const step = (CHART_W - PAD * 2) / Math.max(entries.length - 1, 1)
   const pts = entries.map((e, i) => {
     const x = PAD + i * step
-    const y = PAD + (1 - e.count / max) * (CHART_H - PAD * 2)
+    const y = PAD + (1 - Number(e[key] ?? 0) / max) * (CHART_H - PAD * 2)
     return `${x.toFixed(1)},${y.toFixed(1)}`
   })
   const bottom = CHART_H - PAD
@@ -54,27 +85,78 @@ function buildArea(entries: BankAdminMonthlyEntry[]): string {
   return `${PAD},${bottom} ${pts.join(' ')} ${lastX},${bottom}`
 }
 
-function monthLabel(ym: string): string {
-  const [y, m] = ym.split('-')
-  return new Intl.DateTimeFormat('ar-YE', { month: 'short' }).format(new Date(Number(y), Number(m) - 1, 1))
-}
+const REJECTION_THRESHOLD = 20 // %
 
-function getKpiIconColor(variant: string): string {
-  const colors: Record<string, string> = {
-    green: 'text-green-700 bg-green-50/10',
-    indigo: 'text-indigo-600 bg-indigo-50',
-    amber: 'text-amber-600 bg-amber-50/10',
-    gray: 'text-muted-foreground bg-muted',
-  }
-  return colors[variant] || colors.gray
-}
+const rejectionRate = computed(() => {
+  if (!stats.value) return 0
+  const ext = stats.value as BankAdminDashboardStatsExtended
+  if (ext.rejection_rate !== undefined) return ext.rejection_rate
+  const total = stats.value.total || 1
+  return Math.round((stats.value.rejected / total) * 100)
+})
 
-const kpiConfig = computed(() => [
-  { icon: CheckCircle2, value: stats.value?.approved ?? 0, label: 'مُعتمد', variant: 'green' },
-  { icon: AlertCircle, value: stats.value?.pending ?? 0, label: 'مراجعة داخلية مُعلقة', variant: 'indigo' },
-  { icon: Clock, value: stats.value?.rejected ?? 0, label: 'مرفوض', variant: 'amber' },
-  { icon: FileText, value: stats.value?.total ?? 0, label: 'إجمالي طلبات البنك', variant: 'gray' },
-])
+const showHealthStrip = computed(() => {
+  if (!stats.value) return false
+  const ext = stats.value as BankAdminDashboardStatsExtended
+  return (
+    rejectionRate.value > REJECTION_THRESHOLD
+    || (ext.stalled_at_cby_count ?? 0) > 0
+    || ext.missing_bank_reviewer_coverage === true
+    || (ext.repeated_support_returns ?? 0) > 2
+    || ext.suspended_staff_with_active === true
+  )
+})
+
+const healthIssues = computed((): string[] => {
+  if (!stats.value) return []
+  const ext = stats.value as BankAdminDashboardStatsExtended
+  const issues: string[] = []
+  if (rejectionRate.value > REJECTION_THRESHOLD) issues.push(`معدل الرفض مرتفع: ${rejectionRate.value}%`)
+  if ((ext.stalled_at_cby_count ?? 0) > 0) issues.push(`${ext.stalled_at_cby_count} طلب متوقف لدى البنك المركزي`)
+  if (ext.missing_bank_reviewer_coverage) issues.push('لا يوجد مراجع بنك نشط لاستلام الطلبات')
+  if ((ext.repeated_support_returns ?? 0) > 2) issues.push(`${ext.repeated_support_returns} إعادة متكررة من لجنة المساندة`)
+  if (ext.suspended_staff_with_active) issues.push('موظف موقوف لديه مهام نشطة')
+  return issues
+})
+
+// KPI grid — spec order: Total / In Process / Approved-Completed / Rejected
+const kpiGrid = computed(() => {
+  if (!stats.value) return []
+  return [
+    {
+      value: stats.value.total,
+      label: 'إجمالي الطلبات',
+      color: '#8e8e93',
+      bg: 'bg-muted/60',
+      border: '',
+      tab: 'all',
+    },
+    {
+      value: stats.value.pending ?? stats.value.total - stats.value.approved - stats.value.rejected,
+      label: 'قيد المعالجة',
+      color: '#0066cc',
+      bg: 'bg-blue-50',
+      border: '',
+      tab: 'at_cby',
+    },
+    {
+      value: stats.value.approved,
+      label: 'مُعتمد ومكتمل',
+      color: '#34c759',
+      bg: 'bg-green-50',
+      border: '',
+      tab: 'completed',
+    },
+    {
+      value: stats.value.rejected,
+      label: 'مرفوض',
+      color: '#ff3b30',
+      bg: rejectionRate.value > REJECTION_THRESHOLD ? 'bg-red-50' : 'bg-muted/40',
+      border: rejectionRate.value > REJECTION_THRESHOLD ? 'border-s-[3px]' : '',
+      tab: 'rejected',
+    },
+  ]
+})
 
 onMounted(() => { store.loadStats() })
 </script>
@@ -82,18 +164,46 @@ onMounted(() => { store.loadStats() })
 <template>
   <div class="flex flex-col gap-6" dir="rtl">
 
+    <!-- Header toolbar -->
+    <div class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-muted/30 px-4 py-3">
+      <div class="flex items-center gap-2">
+        <Badge variant="outline" class="gap-1 rounded-full px-3 py-1 text-xs font-medium text-muted-foreground border-border">
+          <ShieldAlert class="size-3" aria-hidden="true" />
+          إدارة وعرض
+        </Badge>
+      </div>
+      <div class="flex flex-wrap items-center gap-2">
+        <Button variant="ghost" size="sm" class="h-8 gap-1.5 text-xs" @click="refresh">
+          <RefreshCw class="size-3.5" aria-hidden="true" />
+          تحديث
+        </Button>
+        <span class="text-xs text-muted-foreground">
+          <Clock class="inline size-3 me-1" aria-hidden="true" />
+          آخر تحديث: {{ formatTime(lastRefreshed) }}
+        </span>
+        <Button variant="ghost" size="sm" class="h-8 gap-1.5 text-xs">
+          <CalendarDays class="size-3.5" aria-hidden="true" />
+          النطاق الزمني
+        </Button>
+        <Button variant="outline" size="sm" class="h-8 gap-1.5 text-xs">
+          <Download class="size-3.5" aria-hidden="true" />
+          تصدير ملخص البنك
+        </Button>
+      </div>
+    </div>
+
     <!-- Skeleton -->
     <div v-if="store.loading" class="grid grid-cols-4 max-lg:grid-cols-2 max-md:grid-cols-1 gap-4" aria-busy="true" aria-label="جارٍ تحميل الإحصائيات">
-      <div v-for="n in 4" :key="n" class="border-0 p-4 shadow animate-pulse" aria-hidden="true">
-        <div class="h-3.5 w-15 bg-muted rounded mb-3" />
-        <div class="h-8 w-10 bg-muted rounded" />
+      <div v-for="n in 4" :key="n" class="border-0 p-4 shadow animate-pulse rounded-xl bg-muted/30" aria-hidden="true">
+        <div class="h-3.5 w-3/5 bg-muted rounded mb-3" />
+        <div class="h-8 w-1/3 bg-muted rounded" />
       </div>
     </div>
 
     <!-- Error -->
-    <Card v-else-if="store.error" class="border-l-4 border-destructive border-b border-border border-r bg-background" role="alert">
+    <Card v-else-if="store.error" class="border-l-4 border-destructive bg-background" role="alert">
       <CardContent class="pt-6 flex items-center gap-3">
-        <AlertCircle class="w-4.5 h-4.5 flex-shrink-0 text-red-700" aria-hidden="true" />
+        <AlertCircle class="size-4.5 flex-shrink-0 text-red-700" aria-hidden="true" />
         <span class="text-red-700 flex-1">{{ store.error }}</span>
         <button class="px-4 py-1.5 bg-background border border-destructive rounded-lg text-red-700 text-sm cursor-pointer hover:bg-red-700/10 transition-colors" @click="store.loadStats()">إعادة المحاولة</button>
       </CardContent>
@@ -101,115 +211,162 @@ onMounted(() => { store.loadStats() })
 
     <template v-else-if="stats">
 
-      <!-- KPI grid -->
-      <div class="grid grid-cols-4 max-lg:grid-cols-2 max-md:grid-cols-1 gap-4">
-        <template v-for="kpi in kpiConfig" :key="kpi.label">
-          <Card class="border-0 p-4 shadow flex flex-col gap-1.5" :class="{ 'border-s-4 border-s-warning': kpi.variant === 'amber' }">
-            <div class="h-9 w-9 rounded flex items-center justify-center flex-shrink-0" :class="getKpiIconColor(kpi.variant)">
-              <component :is="kpi.icon" class="h-5 w-5" aria-hidden="true" />
-            </div>
-            <span class="text-2xl font-semibold leading-none" :class="kpi.variant === 'amber' && kpi.value > 0 ? 'text-amber-600' : kpi.variant === 'green' ? 'text-green-700' : kpi.variant === 'indigo' ? 'text-indigo-600' : 'text-foreground'">
-              {{ kpi.value }}
-            </span>
-            <span class="text-xs text-muted-foreground">{{ kpi.label }}</span>
-          </Card>
-        </template>
+      <!-- 4-KPI grid -->
+      <div class="grid grid-cols-4 max-lg:grid-cols-2 max-md:grid-cols-1 gap-4" role="list" aria-label="مؤشرات أداء البنك">
+        <button
+          v-for="kpi in kpiGrid"
+          :key="kpi.label"
+          class="flex flex-col items-start gap-1.5 p-4 rounded-xl border border-border shadow transition-shadow hover:shadow-md cursor-pointer text-start"
+          :class="[kpi.bg, kpi.border]"
+          :style="kpi.border ? { borderInlineStartColor: '#ff3b30' } : {}"
+          role="listitem"
+          :aria-label="`${kpi.label}: ${kpi.value}`"
+          @click="router.push(`/requests?tab=${kpi.tab}`)"
+        >
+          <span class="text-2xl font-bold" :style="{ color: kpi.color }">{{ kpi.value }}</span>
+          <span class="text-xs text-muted-foreground">{{ kpi.label }}</span>
+        </button>
+      </div>
+
+      <!-- Conditional Operational Health strip -->
+      <div
+        v-if="showHealthStrip"
+        class="flex flex-col gap-2 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3"
+        role="alert"
+        aria-label="تنبيهات صحة التشغيل"
+      >
+        <div class="flex items-center gap-2">
+          <AlertTriangle class="size-4 text-amber-700 flex-shrink-0" aria-hidden="true" />
+          <span class="text-sm font-semibold text-amber-800">تنبيهات صحة التشغيل</span>
+        </div>
+        <ul class="flex flex-col gap-1 pe-6">
+          <li v-for="issue in healthIssues" :key="issue" class="text-xs text-amber-800">• {{ issue }}</li>
+        </ul>
       </div>
 
       <!-- Quick actions -->
       <section aria-labelledby="qa-heading">
-        <h2 id="qa-heading" class="flex items-center gap-2 text-sm font-semibold text-foreground mb-3">
-          <Zap class="h-4 w-4" aria-hidden="true" />
-          إجراءات سريعة
-        </h2>
+        <h2 id="qa-heading" class="flex items-center gap-2 text-sm font-semibold text-foreground mb-3 sr-only">إجراءات سريعة</h2>
         <div class="grid grid-cols-4 max-lg:grid-cols-2 max-md:grid-cols-1 gap-3">
-          <button class="flex flex-col items-start gap-1 p-4 bg-primary text-primary-foreground border-0 rounded-lg cursor-pointer hover:opacity-90 transition-colors" @click="router.push('/requests')">
-            <FileText class="h-5 w-5 flex-shrink-0 mb-1" aria-hidden="true" />
+          <button class="flex flex-col items-start gap-1 p-4 bg-background border border-border text-foreground rounded-xl cursor-pointer hover:border-primary hover:shadow-md transition-all" @click="router.push('/requests')">
+            <FileText class="size-5 flex-shrink-0 text-primary mb-1" aria-hidden="true" />
             <span class="text-sm font-semibold">طلبات البنك</span>
-            <span class="text-xs opacity-75">عرض جميع طلبات البنك</span>
+            <span class="text-xs text-muted-foreground">عرض جميع طلبات البنك</span>
           </button>
 
-          <button class="flex flex-col items-start gap-1 p-4 bg-background border border-border text-foreground rounded-lg cursor-pointer hover:border-primary hover:shadow-md transition-all" @click="router.push('/merchants')">
-            <Building2 class="h-5 w-5 flex-shrink-0 text-primary mb-1" aria-hidden="true" />
-            <span class="text-sm font-semibold">إدارة التجار</span>
+          <button class="flex flex-col items-start gap-1 p-4 bg-background border border-border text-foreground rounded-xl cursor-pointer hover:border-primary hover:shadow-md transition-all" @click="router.push('/merchants')">
+            <Building2 class="size-5 flex-shrink-0 text-primary mb-1" aria-hidden="true" />
+            <span class="text-sm font-semibold">التجار</span>
             <span class="text-xs text-muted-foreground">إدارة بيانات التجار</span>
           </button>
 
-          <button class="flex flex-col items-start gap-1 p-4 bg-background border border-border text-foreground rounded-lg cursor-pointer hover:border-primary hover:shadow-md transition-all" @click="router.push('/staff')">
-            <Users class="h-5 w-5 flex-shrink-0 text-primary mb-1" aria-hidden="true" />
-            <span class="text-sm font-semibold">مستخدمو البنك</span>
+          <button class="flex flex-col items-start gap-1 p-4 bg-background border border-border text-foreground rounded-xl cursor-pointer hover:border-primary hover:shadow-md transition-all" @click="router.push('/staff')">
+            <Users class="size-5 flex-shrink-0 text-primary mb-1" aria-hidden="true" />
+            <span class="text-sm font-semibold">الموظفون</span>
             <span class="text-xs text-muted-foreground">إدارة موظفي البنك</span>
           </button>
 
-          <button class="flex flex-col items-start gap-1 p-4 bg-background border border-border text-foreground rounded-lg cursor-pointer hover:border-primary hover:shadow-md transition-all" @click="router.push('/reports')">
-            <BarChart3 class="h-5 w-5 flex-shrink-0 text-primary mb-1" aria-hidden="true" />
+          <!-- Reports = primary blue per spec -->
+          <button class="flex flex-col items-start gap-1 p-4 bg-primary text-primary-foreground rounded-xl cursor-pointer hover:opacity-90 transition-opacity" @click="router.push('/reports')">
+            <BarChart3 class="size-5 flex-shrink-0 mb-1" aria-hidden="true" />
             <span class="text-sm font-semibold">التقارير</span>
-            <span class="text-xs text-muted-foreground">تقارير وتحليلات البنك</span>
+            <span class="text-xs opacity-75">تقارير وتحليلات البنك</span>
           </button>
         </div>
       </section>
 
-      <!-- Monthly chart -->
+      <!-- Monthly Trend SVG — dual lines: volume + approved-completed -->
       <Card v-if="stats.monthly_requests.length" class="border-0 shadow" aria-labelledby="chart-heading">
-        <CardContent class="p-4">
-          <h2 id="chart-heading" class="text-sm font-semibold text-foreground mb-2">حركة طلبات البنك الشهرية</h2>
-          <p class="text-xs text-muted-foreground mb-3">تتابع ملك الشهر المُقدَّم</p>
-          <div class="flex flex-col gap-1.5">
-            <svg
-              :viewBox="`0 0 ${CHART_W} ${CHART_H}`"
-              class="w-full h-20"
-              aria-label="مخطط الطلبات الشهرية"
-              role="img"
-              preserveAspectRatio="none"
-            >
-              <polygon :points="buildArea(stats.monthly_requests)" fill="currentColor" class="text-primary" opacity="0.08" />
-              <polyline
-                :points="buildLine(stats.monthly_requests)"
-                fill="none"
-                stroke="currentColor"
-                class="text-primary"
-                stroke-width="2"
-                stroke-linejoin="round"
-                stroke-linecap="round"
-              />
-            </svg>
-            <div class="flex justify-between px-2">
-              <span v-for="entry in stats.monthly_requests" :key="entry.month" class="text-xs text-muted-foreground">
-                {{ monthLabel(entry.month) }}
-              </span>
+        <CardHeader class="pb-1">
+          <CardTitle id="chart-heading" class="text-sm font-semibold">حركة طلبات البنك الشهرية</CardTitle>
+          <CardDescription class="text-xs">الحجم الكلي والمكتمل — {{ stats.monthly_requests.length }} أشهر</CardDescription>
+        </CardHeader>
+        <CardContent class="p-4 pt-2">
+          <svg
+            :viewBox="`0 0 ${CHART_W} ${CHART_H}`"
+            class="w-full h-20"
+            aria-label="مخطط الطلبات الشهرية"
+            role="img"
+            preserveAspectRatio="none"
+          >
+            <!-- Volume area fill (primary blue) -->
+            <polygon :points="buildArea(stats.monthly_requests as DualEntry[], 'count')" fill="#0066cc" opacity="0.08" />
+            <!-- Volume line -->
+            <polyline
+              :points="buildLine(stats.monthly_requests as DualEntry[], 'count')"
+              fill="none"
+              stroke="#0066cc"
+              stroke-width="2"
+              stroke-linejoin="round"
+              stroke-linecap="round"
+            />
+            <!-- Approved-completed line (dashed green) — only if field available -->
+            <polyline
+              v-if="(stats.monthly_requests as DualEntry[]).some(e => e.approved !== undefined)"
+              :points="buildLine(stats.monthly_requests as DualEntry[], 'approved')"
+              fill="none"
+              stroke="#34c759"
+              stroke-width="1.5"
+              stroke-dasharray="4 2"
+              stroke-linejoin="round"
+              stroke-linecap="round"
+            />
+          </svg>
+          <div class="flex justify-between px-2 mt-1">
+            <span v-for="entry in stats.monthly_requests" :key="(entry as BankAdminMonthlyEntry).month" class="text-xs text-muted-foreground">
+              {{ monthLabel((entry as BankAdminMonthlyEntry).month) }}
+            </span>
+          </div>
+          <div class="flex gap-4 mt-2">
+            <div class="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <span class="inline-block h-0.5 w-5 bg-primary rounded-full" />
+              الحجم الكلي
+            </div>
+            <div class="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <span class="inline-block h-0.5 w-5 rounded-full" style="background:#34c759;border-top:1px dashed #34c759" />
+              مكتمل ومعتمد
             </div>
           </div>
         </CardContent>
       </Card>
 
-      <!-- Recent requests -->
+      <!-- Recent Bank Requests — max 8 rows, read-only -->
       <Card class="border-0 shadow" aria-labelledby="recent-heading">
-        <CardContent class="p-4">
-          <div class="flex items-center justify-between mb-4">
-            <h2 id="recent-heading" class="text-sm font-semibold text-foreground">أحدث الطلبات</h2>
-            <a class="text-xs text-primary hover:underline transition-colors cursor-pointer" @click="router.push('/requests')">عرض الكل</a>
+        <CardHeader class="pb-2">
+          <div class="flex items-center justify-between">
+            <CardTitle id="recent-heading" class="text-sm font-semibold">أحدث طلبات البنك</CardTitle>
+            <button class="text-xs text-primary hover:underline cursor-pointer" @click="router.push('/requests')">عرض الكل</button>
           </div>
-
-          <div v-if="stats.recent_requests.length === 0" class="py-8 text-center text-sm text-muted-foreground" role="status">لا توجد طلبات بعد</div>
-
+        </CardHeader>
+        <CardContent class="p-0">
+          <div v-if="!stats.recent_requests.length" class="py-8 text-center text-sm text-muted-foreground" role="status">
+            لا توجد طلبات بعد
+          </div>
           <table v-else class="w-full border-collapse text-xs" role="table" aria-label="أحدث طلبات البنك">
             <thead>
               <tr class="border-b border-border">
-                <th scope="col" class="py-2 px-2 text-right font-medium text-muted-foreground">المرجع</th>
-                <th scope="col" class="py-2 px-2 text-right font-medium text-muted-foreground">التاجر</th>
-                <th scope="col" class="py-2 px-2 text-right font-medium text-muted-foreground">المبلغ</th>
-                <th scope="col" class="py-2 px-2 text-right font-medium text-muted-foreground">الحالة</th>
-                <th scope="col" class="py-2 px-2 text-right font-medium text-muted-foreground">التقدم</th>
-                <th scope="col" class="py-2 px-2 text-right font-medium text-muted-foreground">إجراء</th>
+                <th scope="col" class="py-2 px-3 text-right font-medium text-muted-foreground">المرجع</th>
+                <th scope="col" class="py-2 px-3 text-right font-medium text-muted-foreground">التاجر</th>
+                <th scope="col" class="py-2 px-3 text-right font-medium text-muted-foreground">المبلغ</th>
+                <th scope="col" class="py-2 px-3 text-right font-medium text-muted-foreground">الحالة</th>
+                <th scope="col" class="py-2 px-3 text-right font-medium text-muted-foreground">التقدم</th>
+                <th scope="col" class="py-2 px-3 text-right font-medium text-muted-foreground">إجراء</th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="req in stats.recent_requests" :key="req.id" class="border-t border-muted hover:bg-muted/50 cursor-pointer transition-colors">
-                <td class="py-2 px-2"><a class="font-mono text-primary hover:underline" :href="`/requests/${req.id}`" @click.prevent="router.push(`/requests/${req.id}`)">{{ req.reference_number }}</a></td>
-                <td class="py-2 px-2 text-foreground">{{ req.merchant?.name ?? req.supplier_name }}</td>
-                <td class="py-2 px-2 text-foreground direction-ltr font-tabular-nums">{{ formatAmount(req.amount) }} {{ req.currency }}</td>
-                <td class="py-2 px-2"><StatusBadge :status="req.status" :role="UserRole.BANK_ADMIN" /></td>
-                <td class="py-2 px-2">
+              <tr
+                v-for="req in stats.recent_requests.slice(0, 8)"
+                :key="req.id"
+                class="border-t border-muted hover:bg-muted/50 cursor-pointer transition-colors"
+                @click="router.push(`/requests/${req.id}`)"
+              >
+                <td class="py-2 px-3">
+                  <a class="font-mono text-primary hover:underline" :href="`/requests/${req.id}`" @click.prevent="router.push(`/requests/${req.id}`)">{{ req.reference_number }}</a>
+                </td>
+                <td class="py-2 px-3 text-foreground">{{ req.merchant?.name ?? req.supplier_name }}</td>
+                <td class="py-2 px-3 text-foreground direction-ltr font-tabular-nums">{{ formatAmount(req.amount) }} {{ req.currency }}</td>
+                <td class="py-2 px-3"><StatusBadge :status="req.status" :role="UserRole.BANK_ADMIN" /></td>
+                <td class="py-2 px-3">
                   <div class="flex items-center gap-2 min-w-24">
                     <div class="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
                       <div class="h-full bg-primary transition-all" :style="{ width: `${getRequestProgress(req.status)}%` }" />
@@ -217,7 +374,16 @@ onMounted(() => { store.loadStats() })
                     <span class="text-xs text-muted-foreground whitespace-nowrap">{{ getRequestProgress(req.status) }}%</span>
                   </div>
                 </td>
-                <td class="py-2 px-2"><button class="px-2 py-1 bg-background border border-border text-xs text-foreground rounded hover:border-primary hover:text-primary transition-colors" :aria-label="`عرض الطلب ${req.reference_number}`" @click.stop="router.push(`/requests/${req.id}`)">عرض</button></td>
+                <td class="py-2 px-3">
+                  <!-- read-only: no decision buttons -->
+                  <button
+                    class="px-2 py-1 bg-background border border-border text-xs text-foreground rounded hover:border-primary hover:text-primary transition-colors cursor-pointer"
+                    :aria-label="`عرض الطلب ${req.reference_number}`"
+                    @click.stop="router.push(`/requests/${req.id}`)"
+                  >
+                    عرض
+                  </button>
+                </td>
               </tr>
             </tbody>
           </table>

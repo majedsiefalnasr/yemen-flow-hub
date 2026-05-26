@@ -87,6 +87,67 @@ export interface CbyAdminCategoryEntry {
   color: string
 }
 
+export interface CbyAdminKpiSparkEntry {
+  period: string
+  value: number
+}
+
+export interface CbyAdminKpi {
+  value: number
+  delta: number
+  severity: 'red' | 'amber' | 'green' | 'blue'
+  sparkline: CbyAdminKpiSparkEntry[]
+  drilldown_route: string
+}
+
+export interface CbyAdminWorkflowPressureRow {
+  stage: string
+  stage_label: string
+  active_count: number
+  avg_age_hours: number
+  sla_risk: 'low' | 'medium' | 'high'
+  trend: 'up' | 'stable' | 'down'
+}
+
+export interface CbyAdminVotingSession {
+  id: number
+  reference_number: string
+  bank_name: string
+  amount: number
+  currency: string
+  opened_at: string
+  waiting_for: string[]
+}
+
+export interface CbyAdminBankRiskRow {
+  bank_id: number
+  bank_name: string
+  request_volume: number
+  approval_rate: number
+  avg_sla_hours: number
+  risk_score: number
+  alerts: number
+}
+
+export interface CbyAdminComplianceSignal {
+  id: string
+  type: 'sla_breach' | 'duplicate_invoice' | 'high_risk_bank' | 'stale_vote' | 'audit_anomaly'
+  title: string
+  description: string
+  severity: 'red' | 'amber' | 'blue'
+  link_route: string
+  created_at: string
+}
+
+export interface CbyAdminCriticalEvent {
+  id: number
+  event_type: string
+  summary: string
+  actor_name: string
+  created_at: string
+  link_route?: string
+}
+
 export interface CbyAdminDashboardStats {
   total: number
   approved: number
@@ -96,7 +157,28 @@ export interface CbyAdminDashboardStats {
   most_active_banks: Array<{ bank_id: number; bank_name: string; request_count: number }>
   monthly_requests?: CbyAdminMonthlyEntry[]
   category_distribution?: CbyAdminCategoryEntry[]
-  recent_requests?: ImportRequest[]
+  // governance KPIs
+  active_workflow_requests?: CbyAdminKpi
+  sla_violations?: CbyAdminKpi
+  open_voting_sessions?: CbyAdminKpi
+  fx_confirmation_pending?: CbyAdminKpi
+  bank_risk_alerts?: CbyAdminKpi
+  system_availability?: CbyAdminKpi
+  // governance panels
+  workflow_pressure_map?: CbyAdminWorkflowPressureRow[]
+  executive_voting_sessions?: CbyAdminVotingSession[]
+  bank_risk_intelligence?: CbyAdminBankRiskRow[]
+  compliance_signals?: CbyAdminComplianceSignal[]
+  critical_events?: CbyAdminCriticalEvent[]
+}
+
+export interface BankAdminDashboardStatsExtended extends BankAdminDashboardStats {
+  in_process?: number
+  rejection_rate?: number
+  stalled_at_cby_count?: number
+  missing_bank_reviewer_coverage?: boolean
+  repeated_support_returns?: number
+  suspended_staff_with_active?: boolean
 }
 
 export type DashboardStats = DataEntryDashboardStats | BankReviewerDashboardStats | BankAdminDashboardStats | SupportCommitteeDashboardStats | SwiftOfficerDashboardStats | ExecutiveDashboardStats | CbyAdminDashboardStats
