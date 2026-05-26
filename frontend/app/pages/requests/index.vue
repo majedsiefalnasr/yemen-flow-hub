@@ -131,6 +131,35 @@ function toggleColumn(id: string, value: boolean) {
 
 const canCreateRequest = computed(() => user.value?.role === UserRole.DATA_ENTRY)
 
+const isCbyAdmin = computed(() => user.value?.role === UserRole.CBY_ADMIN)
+
+const cbySmartSummary = computed(() => {
+  if (!isCbyAdmin.value) return []
+  const reqs = store.requests
+  const needsAttention = reqs.filter(r =>
+    roleBuckets.value.find(b => b.key === 'needs_attention')?.statuses.includes(r.status),
+  ).length
+  const voting = reqs.filter(r =>
+    roleBuckets.value.find(b => b.key === 'executive_voting')?.statuses.includes(r.status),
+  ).length
+  const fxPending = reqs.filter(r =>
+    roleBuckets.value.find(b => b.key === 'fx_pending')?.statuses.includes(r.status),
+  ).length
+  const now = Date.now()
+  const stalledCount = reqs.filter((r) => {
+    const updated = new Date(r.updated_at).getTime()
+    const ageDays = (now - updated) / (1000 * 60 * 60 * 24)
+    return ageDays > 2 && r.status !== 'COMPLETED' && r.status !== 'BANK_REJECTED'
+      && r.status !== 'SUPPORT_REJECTED' && r.status !== 'EXECUTIVE_REJECTED'
+  }).length
+  const items: Array<{ label: string; count: number; tab: string; color: string }> = []
+  if (needsAttention > 0) items.push({ label: 'يحتاج متابعة', count: needsAttention, tab: 'needs_attention', color: '#ff9f0a' })
+  if (voting > 0) items.push({ label: 'تصويت نشط', count: voting, tab: 'executive_voting', color: '#5856d6' })
+  if (fxPending > 0) items.push({ label: 'انتظار تأكيد المصارفة', count: fxPending, tab: 'fx_pending', color: '#ff3b30' })
+  if (stalledCount > 0) items.push({ label: 'طلبات متوقفة > 48 ساعة', count: stalledCount, tab: 'active', color: '#ff9f0a' })
+  return items
+})
+
 const selectedCount = ref(0)
 const dataTableRef = ref<{ clearSelection: () => void } | null>(null)
 
@@ -164,6 +193,26 @@ watch(filter, (tab) => {
       :subtitle="isBankScoped ? 'طلبات جهتك فقط' : 'جميع الطلبات المقدمة عبر المنصة مع حالاتها ومراحل المعالجة'"
       :breadcrumbs="[{ label: 'الرئيسية', to: '/' }, { label: 'الطلبات' }]"
     />
+
+    <!-- CBY_ADMIN: Smart Summary Bar — operational exceptions -->
+    <div
+      v-if="isCbyAdmin && cbySmartSummary.length > 0"
+      class="mb-4 flex flex-wrap gap-2"
+      role="region"
+      aria-label="ملخص استثنائي"
+      data-testid="cby-smart-summary"
+    >
+      <button
+        v-for="item in cbySmartSummary"
+        :key="item.tab"
+        class="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-sm font-medium transition-colors hover:bg-muted/60 cursor-pointer"
+        :style="{ borderColor: item.color, color: item.color }"
+        @click="filter = item.tab"
+      >
+        <span class="font-bold">{{ item.count }}</span>
+        {{ item.label }}
+      </button>
+    </div>
 
     <Tabs v-model="filter" class="flex w-full flex-col gap-4">
       <!-- Row 1: tabs (left) + page actions (right) -->
