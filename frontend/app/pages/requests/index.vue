@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { VisibilityState } from '@tanstack/vue-table'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { ChevronDown, Columns3, Download, FilePlus2, Printer, Search, X } from 'lucide-vue-next'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import RequestsDataTable from '@/components/requests/RequestsDataTable.vue'
@@ -47,6 +47,8 @@ definePageMeta({
 const authStore = useAuthStore()
 const store = useRequestsStore()
 const { fetchBanks } = useBanks()
+const route = useRoute()
+const router = useRouter()
 
 const user = computed(() => authStore.user)
 const filter = ref('all')
@@ -78,18 +80,26 @@ const roleBuckets = computed((): StageBucket[] => {
 const isBankScoped = computed(() => user.value ? BANK_ROLES.includes(user.value.role) : false)
 const showBankFilter = computed(() => user.value ? CBY_BANK_FILTER_ROLES.includes(user.value.role) : false)
 const tabOptions = computed(() => [
-  { key: 'all', label: 'الكل', count: countForBucket('all') },
   ...roleBuckets.value.map(bucket => ({
     key: bucket.key,
     label: bucket.label,
     count: countForBucket(bucket.key),
   })),
+  { key: 'all', label: 'الكل', count: countForBucket('all') },
 ])
+
+const tabKeys = computed(() => new Set(tabOptions.value.map(tab => tab.key)))
+
+function bucketMatchesRequest(bucket: StageBucket | undefined, req: typeof store.requests[number]): boolean {
+  if (!bucket) return false
+  if (bucket.matches) return bucket.matches(req, user.value?.id ?? null)
+  return bucket.statuses.includes(req.status)
+}
 
 const filteredRequests = computed(() => {
   return store.requests.filter((req) => {
     const bucketMatches = filter.value === 'all'
-      || roleBuckets.value.find(b => b.key === filter.value)?.statuses.includes(req.status)
+      || bucketMatchesRequest(roleBuckets.value.find(b => b.key === filter.value), req)
 
     const bankMatches = isBankScoped.value
       || bankFilter.value === 'all'
@@ -108,7 +118,7 @@ const filteredRequests = computed(() => {
 function countForBucket(key: string) {
   if (key === 'all') return store.requests.length
   const bucket = roleBuckets.value.find(b => b.key === key)
-  return store.requests.filter(r => bucket?.statuses.includes(r.status)).length
+  return store.requests.filter(r => bucketMatchesRequest(bucket, r)).length
 }
 
 function isColumnVisible(id: string) {
@@ -131,6 +141,20 @@ function openRequest(id: number) {
 function clearBulkSelection() {
   dataTableRef.value?.clearSelection()
 }
+
+function syncTabFromRoute() {
+  const tab = typeof route.query.tab === 'string' ? route.query.tab : 'all'
+  filter.value = tabKeys.value.has(tab) ? tab : 'all'
+}
+
+watch([() => route.query.tab, tabKeys], syncTabFromRoute, { immediate: true })
+
+watch(filter, (tab) => {
+  const nextQuery = { ...route.query }
+  if (tab === 'all') delete nextQuery.tab
+  else nextQuery.tab = tab
+  router.replace({ query: nextQuery })
+})
 </script>
 
 <template>

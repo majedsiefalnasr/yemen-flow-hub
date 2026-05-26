@@ -17,6 +17,7 @@ export interface BankReviewerDashboardStats {
   returned_by_support: number
   approved_completed: number
   review_queue: ImportRequest[]
+  downstream_queue?: ImportRequest[]
 }
 
 export interface BankAdminMonthlyEntry {

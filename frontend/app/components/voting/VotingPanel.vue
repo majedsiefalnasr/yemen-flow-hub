@@ -60,6 +60,7 @@ const COMMITTEE_SIZE = 6
 const totalMembers = computed(() => COMMITTEE_SIZE)
 const displayedVotes = computed<RequestVote[]>(() => votes.value.slice(0, COMMITTEE_SIZE))
 const notYetVotedCount = computed(() => Math.max(0, COMMITTEE_SIZE - displayedVotes.value.length))
+const revealVoteChoices = computed(() => !isSessionOpen.value)
 
 function tallyBarWidth(count: number): string {
   if (!totalMembers.value) return '0%'
@@ -82,6 +83,16 @@ function voteChipClasses(vote: VoteType): string {
     case VoteType.ABSTAIN: return 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-muted text-foreground'
     case VoteType.AUTO_ABSTAIN_TIMEOUT: return 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-muted text-foreground italic'
   }
+}
+
+function maskedVoteLabel(vote: VoteType): string {
+  return revealVoteChoices.value ? voteLabel(vote) : 'تم التصويت'
+}
+
+function maskedVoteChipClasses(vote: VoteType): string {
+  return revealVoteChoices.value
+    ? voteChipClasses(vote)
+    : 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#5856d6]/10 text-[#5856d6]'
 }
 
 function pendingVoteLabel(vote: VoteType): string {
@@ -248,7 +259,7 @@ onMounted(async () => {
                 <span v-if="v.is_director_override" class="inline-block mt-1 bg-amber-50/10 text-warning px-2 py-0.5 rounded text-xs font-medium">تجاوز المدير</span>
               </td>
               <td class="px-4 py-2.5">
-                <span :class="voteChipClasses(v.vote)">{{ voteLabel(v.vote) }}</span>
+                <span :class="maskedVoteChipClasses(v.vote)">{{ maskedVoteLabel(v.vote) }}</span>
               </td>
               <td class="px-4 py-2.5 text-xs text-muted-foreground font-mono">
                 {{ v.voted_at ? new Date(v.voted_at).toLocaleString('ar-YE') : '—' }}

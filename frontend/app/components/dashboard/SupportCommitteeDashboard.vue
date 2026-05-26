@@ -56,7 +56,7 @@ function getKpiIconColor(variant: string): string {
     amber: 'text-warning bg-warning/10',
     gray: 'text-muted-foreground bg-muted',
   }
-  return colors[variant] || colors.gray
+  return colors[variant] ?? colors.gray!
 }
 
 // Spec order: Waiting for Claim (amber) / Active by Me (indigo) / Claimed by Others (gray) / Recently Approved (green)

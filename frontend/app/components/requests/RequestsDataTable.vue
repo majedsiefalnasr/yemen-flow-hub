@@ -59,6 +59,7 @@ import {
 } from '@/components/ui/table'
 import { RequestStatus, UserRole } from '@/types/enums'
 import type { ImportRequest } from '@/types/models'
+import { useAuthStore } from '@/stores/auth.store'
 
 const props = defineProps<{
   data: ImportRequest[]
@@ -74,6 +75,8 @@ const emit = defineEmits<{
 }>()
 
 const router = useRouter()
+const authStore = useAuthStore()
+const currentUserId = computed(() => authStore.user?.id ?? null)
 
 const sorting = ref<SortingState>([])
 const columnFilters = ref<ColumnFiltersState>([])
@@ -156,6 +159,20 @@ const columns: ColumnDef<ImportRequest>[] = [
     },
   },
   {
+    id: 'created_by',
+    header: 'أنشأه',
+    cell: ({ row }) => {
+      const request = row.original
+      if (props.role !== UserRole.BANK_REVIEWER) {
+        return h('span', { class: 'text-xs text-muted-foreground' }, '—')
+      }
+      const isSelf = currentUserId.value != null && request.created_by === currentUserId.value
+      return h('span', {
+        class: isSelf ? 'text-sm font-semibold text-amber-600' : 'text-sm text-foreground',
+      }, isSelf ? 'أنا' : (request.created_by_user?.name ?? '—'))
+    },
+  },
+  {
     id: 'merchant',
     accessorFn: (row) => row.merchant?.name ?? '',
     header: 'التاجر / البنك',
@@ -196,6 +213,43 @@ const columns: ColumnDef<ImportRequest>[] = [
     cell: ({ row }) => {
       const request = row.original
       const isDraft = request.status === RequestStatus.DRAFT
+      const isBankReviewerSelf = props.role === UserRole.BANK_REVIEWER
+        && currentUserId.value != null
+        && request.created_by === currentUserId.value
+
+      if (props.role === UserRole.BANK_REVIEWER && (request.status === RequestStatus.SUBMITTED || request.status === RequestStatus.BANK_REVIEW)) {
+        if (isBankReviewerSelf) {
+          return h('span', {
+            class: 'inline-flex rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground cursor-not-allowed',
+            title: 'لا يمكنك مراجعة طلب أنشأته بنفسك',
+            'aria-label': 'لا يمكنك مراجعة طلب أنشأته بنفسك',
+          }, 'غير متاح')
+        }
+
+        return h(Button, {
+          variant: 'outline',
+          size: 'sm',
+          class: 'h-8 text-xs',
+          onClick: (e: Event) => { e.stopPropagation(); router.push(`/requests/${request.id}`) },
+        }, () => 'بدء المراجعة')
+      }
+
+      if (props.role === UserRole.SUPPORT_COMMITTEE) {
+        const mine = request.is_claimed_by_me || (currentUserId.value != null && request.claimed_by?.id === currentUserId.value)
+        const label = !request.claimed_by ? 'مطالبة' : mine ? 'متابعة' : 'عرض'
+        const className = !request.claimed_by
+          ? 'h-8 bg-[#5856d6] text-white hover:bg-[#5856d6]/90 text-xs'
+          : mine
+            ? 'h-8 border-[#5856d6] text-[#5856d6] hover:bg-[#5856d6]/10 text-xs'
+            : 'h-8 text-xs'
+
+        return h(Button, {
+          variant: !request.claimed_by ? 'default' : 'outline',
+          size: 'sm',
+          class: className,
+          onClick: (e: Event) => { e.stopPropagation(); router.push(`/requests/${request.id}`) },
+        }, () => label)
+      }
 
       return h(DropdownMenu, {}, {
         default: () => [
@@ -259,6 +313,14 @@ const table = useVueTable({
     get rowSelection() { return rowSelection.value },
   },
 })
+
+function supportCommitteeRowClass(request: ImportRequest): string {
+  if (props.role !== UserRole.SUPPORT_COMMITTEE) return 'hover:bg-muted/30'
+  const mine = request.is_claimed_by_me || (currentUserId.value != null && request.claimed_by?.id === currentUserId.value)
+  if (mine) return 'bg-[#5856d6]/8 hover:bg-[#5856d6]/12'
+  if (request.claimed_by) return 'bg-muted/40 hover:bg-muted/60'
+  return 'hover:bg-muted/30'
+}
 </script>
 
 <template>
@@ -315,11 +377,12 @@ const table = useVueTable({
 
           <!-- Data rows -->
           <template v-else>
-            <TableRow
-              v-for="row in table.getRowModel().rows"
-              :key="row.id"
-              class="cursor-pointer transition-colors hover:bg-muted/30"
-              :data-state="row.getIsSelected() ? 'selected' : undefined"
+	            <TableRow
+	              v-for="row in table.getRowModel().rows"
+	              :key="row.id"
+	              class="cursor-pointer transition-colors"
+	              :class="supportCommitteeRowClass(row.original)"
+	              :data-state="row.getIsSelected() ? 'selected' : undefined"
               @click="emit('rowClick', row.original.id)"
             >
               <TableCell

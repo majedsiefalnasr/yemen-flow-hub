@@ -77,7 +77,7 @@ function getKpiIconColor(variant: string): string {
     rose: 'text-rose-600 bg-rose-50/10',
     gray: 'text-muted-foreground bg-muted',
   }
-  return colors[variant] || colors.gray
+  return colors[variant] ?? colors.gray!
 }
 
 function isCreatedByCurrentUser(createdBy: number | null | undefined): boolean {
@@ -112,17 +112,17 @@ onMounted(() => { store.loadStats() })
       <!-- Action-required strip: SUPPORT_REJECTED requests waiting for bank-side decision -->
       <Card
         v-if="supportRejectedCount > 0"
-        class="border-0 border-s-4 border-s-amber-600 bg-amber-50/30 shadow-sm"
+        class="border-0 border-s-4 border-s-rose-600 bg-rose-50/30 shadow-sm"
         role="alert"
         aria-label="طلبات رُفضت من لجنة المساندة"
       >
         <CardContent class="pt-4 pb-4 flex items-center gap-3">
-          <AlertTriangle class="h-5 w-5 flex-shrink-0 text-amber-600" aria-hidden="true" />
+          <AlertTriangle class="h-5 w-5 flex-shrink-0 text-rose-600" aria-hidden="true" />
           <div class="flex-1 min-w-0">
             <span class="font-semibold text-foreground text-sm">{{ supportRejectedCount }} طلبات رفضتها لجنة المساندة وتنتظر قرارك</span>
           </div>
           <button
-            class="flex-shrink-0 px-3 py-1.5 bg-amber-600 text-white text-xs font-semibold rounded-xl hover:bg-amber-700 transition-colors"
+            class="flex-shrink-0 px-3 py-1.5 bg-rose-600 text-white text-xs font-semibold rounded-xl hover:bg-rose-700 transition-colors"
             @click="router.push('/requests?tab=support_rejected')"
           >
             اتخاذ القرار
@@ -224,14 +224,14 @@ onMounted(() => { store.loadStats() })
                     <a class="font-mono text-primary hover:underline" :href="`/requests/${req.id}`" @click.prevent="router.push(`/requests/${req.id}`)">{{ req.reference_number }}</a>
                   </td>
                   <td class="py-2 px-2 text-foreground">
-                    <span v-if="isCreatedByCurrentUser((req as any).created_by)" class="text-amber-600 font-medium">أنا</span>
-                    <span v-else>{{ (req as any).created_by_name ?? '—' }}</span>
+                    <span v-if="isCreatedByCurrentUser(req.created_by)" class="text-amber-600 font-medium">أنا</span>
+                    <span v-else>{{ req.created_by_user?.name ?? '—' }}</span>
                   </td>
                   <td class="py-2 px-2 text-foreground">{{ req.supplier_name }}</td>
                   <td class="py-2 px-2 text-foreground direction-ltr font-tabular-nums">{{ formatAmount(req.amount, req.currency) }}</td>
                   <td class="py-2 px-2"><StatusBadge :status="req.status" :role="UserRole.BANK_REVIEWER" /></td>
                   <td class="py-2 px-2">
-                    <template v-if="isCreatedByCurrentUser((req as any).created_by)">
+                    <template v-if="isCreatedByCurrentUser(req.created_by)">
                       <span
                         class="inline-flex px-2 py-1 bg-muted text-muted-foreground text-xs rounded cursor-not-allowed"
                         :title="'لا يمكنك مراجعة طلب أنشأته بنفسك'"

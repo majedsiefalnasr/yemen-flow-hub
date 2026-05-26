@@ -18,7 +18,7 @@ const hasAnyRequests = computed(() =>
   stats.value !== null && (
     (stats.value.completed ?? 0) > 0
     || (stats.value.under_cby_processing ?? 0) > 0
-    || (stats.value.returned ?? 0) > 0
+    || returnedCount.value > 0
     || (stats.value.draft ?? 0) > 0
     || (stats.value.recent_requests?.length ?? 0) > 0
     || (stats.value.draft_requests?.length ?? 0) > 0
@@ -30,7 +30,7 @@ const returnedCount = computed(() =>
   + (stats.value?.returned_requests?.length ?? 0),
 )
 
-const actionRequiredCount = computed(() => stats.value?.returned ?? 0)
+const actionRequiredCount = computed(() => returnedCount.value)
 
 function formatAmount(amount: number, currency: string): string {
   return new Intl.NumberFormat('ar-YE', { style: 'currency', currency, minimumFractionDigits: 0 }).format(amount)
@@ -43,7 +43,7 @@ function getKpiIconColor(variant: string): string {
     amber: 'text-amber-600 bg-amber-50/10',
     gray: 'text-muted-foreground bg-muted',
   }
-  return colors[variant] || colors.gray
+  return colors[variant] ?? colors.gray!
 }
 
 const kpiConfig = computed(() => [
@@ -63,9 +63,9 @@ const kpiConfig = computed(() => [
   },
   {
     icon: RotateCcw,
-    value: stats.value?.returned ?? 0,
+    value: returnedCount.value,
     label: 'بحاجة تعديل',
-    variant: (stats.value?.returned ?? 0) > 0 ? 'amber' : 'gray',
+    variant: returnedCount.value > 0 ? 'amber' : 'gray',
     tab: 'returned',
   },
   {

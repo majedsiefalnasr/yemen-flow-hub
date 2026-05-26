@@ -417,6 +417,7 @@ export interface StageBucket {
   key: string
   label: string
   statuses: RequestStatus[]
+  matches?: (request: { status: RequestStatus; created_by?: number | null; is_claimed_by_me?: boolean; claimed_by?: { id: number; name: string } | null; my_vote?: 'approve' | 'reject' | null }, currentUserId?: number | null) => boolean
 }
 
 /** Role-aware stage buckets — production reimplementation of Lovable bucketsFor() */
@@ -453,15 +454,41 @@ export const ROLE_BUCKETS: Partial<Record<UserRole, StageBucket[]>> = {
   // Spec order: waiting (unclaimed) first, my_claims, in_progress, approved, rejected, all
   [UserRole.SUPPORT_COMMITTEE]: [
     { key: 'waiting', label: 'انتظار المطالبة', statuses: [RequestStatus.SUPPORT_REVIEW_PENDING] },
-    { key: 'my_claims', label: 'أعمل عليها', statuses: [RequestStatus.SUPPORT_REVIEW_IN_PROGRESS] },
-    { key: 'in_progress', label: 'محجوزة لأعضاء آخرين', statuses: [RequestStatus.SUPPORT_REVIEW_IN_PROGRESS] },
+    {
+      key: 'my_claims',
+      label: 'أعمل عليها',
+      statuses: [RequestStatus.SUPPORT_REVIEW_IN_PROGRESS],
+      matches: (request, currentUserId) =>
+        request.status === RequestStatus.SUPPORT_REVIEW_IN_PROGRESS
+        && (request.is_claimed_by_me === true || (currentUserId != null && request.claimed_by?.id === currentUserId)),
+    },
+    {
+      key: 'in_progress',
+      label: 'محجوزة لأعضاء آخرين',
+      statuses: [RequestStatus.SUPPORT_REVIEW_IN_PROGRESS],
+      matches: (request, currentUserId) =>
+        request.status === RequestStatus.SUPPORT_REVIEW_IN_PROGRESS
+        && !!request.claimed_by
+        && request.is_claimed_by_me !== true
+        && request.claimed_by.id !== currentUserId,
+    },
     { key: 'approved', label: 'اعتُمدت', statuses: [RequestStatus.SUPPORT_APPROVED] },
     { key: 'rejected', label: 'مرفوض', statuses: [RequestStatus.SUPPORT_REJECTED] },
   ],
   // Spec order: pending_my_vote first (most actionable), voted_by_me, pending_open, voting_open, voting_closed, approved, rejected, post_approval, all
   [UserRole.EXECUTIVE_MEMBER]: [
-    { key: 'pending_my_vote', label: 'يحتاج صوتي', statuses: [RequestStatus.EXECUTIVE_VOTING_OPEN] },
-    { key: 'voted_by_me', label: 'صوّتُّ عليها', statuses: [RequestStatus.EXECUTIVE_VOTING_OPEN, RequestStatus.EXECUTIVE_VOTING_CLOSED, RequestStatus.EXECUTIVE_APPROVED, RequestStatus.EXECUTIVE_REJECTED] },
+    {
+      key: 'pending_my_vote',
+      label: 'يحتاج صوتي',
+      statuses: [RequestStatus.EXECUTIVE_VOTING_OPEN],
+      matches: request => request.status === RequestStatus.EXECUTIVE_VOTING_OPEN && !request.my_vote,
+    },
+    {
+      key: 'voted_by_me',
+      label: 'صوّتُّ عليها',
+      statuses: [RequestStatus.EXECUTIVE_VOTING_OPEN, RequestStatus.EXECUTIVE_VOTING_CLOSED, RequestStatus.EXECUTIVE_APPROVED, RequestStatus.EXECUTIVE_REJECTED],
+      matches: request => !!request.my_vote || [RequestStatus.EXECUTIVE_APPROVED, RequestStatus.EXECUTIVE_REJECTED].includes(request.status),
+    },
     { key: 'pending_open', label: 'بانتظار فتح التصويت', statuses: [RequestStatus.SUPPORT_APPROVED, RequestStatus.WAITING_FOR_VOTING_OPEN] },
     { key: 'voting_open', label: 'التصويت مفتوح', statuses: [RequestStatus.EXECUTIVE_VOTING_OPEN] },
     { key: 'voting_closed', label: 'التصويت مغلق', statuses: [RequestStatus.EXECUTIVE_VOTING_CLOSED] },

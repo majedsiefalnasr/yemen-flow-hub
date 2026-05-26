@@ -32,7 +32,14 @@ const sortedVotingQueue = computed((): VotingQueueItem[] => {
     if (req.status === RequestStatus.EXECUTIVE_VOTING_CLOSED) return 2
     return 3
   }
-  return [...q].sort((a, b) => priority(a) - priority(b))
+  return [...q].sort((a, b) => {
+    const priorityDiff = priority(a) - priority(b)
+    if (priorityDiff !== 0) return priorityDiff
+
+    const aTime = new Date(a.updated_at ?? a.created_at ?? 0).getTime()
+    const bTime = new Date(b.updated_at ?? b.created_at ?? 0).getTime()
+    return priority(a) === 0 ? aTime - bTime : bTime - aTime
+  })
 })
 
 // Rows where voting is open and I haven't voted — the most actionable
@@ -90,7 +97,7 @@ function getKpiIconColor(variant: string): string {
     rose: 'text-rose-600 bg-rose-50/10',
     gray: 'text-muted-foreground bg-muted',
   }
-  return colors[variant] ?? colors.gray
+  return colors[variant] ?? colors.gray!
 }
 
 function myVoteLabel(req: VotingQueueItem): { text: string; cls: string } {

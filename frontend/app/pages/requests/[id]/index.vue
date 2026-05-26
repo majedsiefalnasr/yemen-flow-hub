@@ -2,6 +2,7 @@
 import { ref, computed, nextTick, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { UserRole, RequestStatus } from '../../../types/enums'
+import { VoteType } from '../../../types/enums'
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -239,11 +240,15 @@ const isActiveReviewer = ref(false)
 
 const isSupportCommittee = computed(() => userRole.value === UserRole.SUPPORT_COMMITTEE)
 const isExecutiveMember = computed(() => userRole.value === UserRole.EXECUTIVE_MEMBER)
+const votingDetailLoadedForCurrentRequest = computed(() =>
+  votingStore.votingDetail?.request?.id === id,
+)
 
 // VotingPendingBanner: voting open, EXECUTIVE_MEMBER, not yet voted
 const showVotingPendingBanner = computed(() =>
   isExecutiveMember.value
   && request.value?.status === RequestStatus.EXECUTIVE_VOTING_OPEN
+  && votingDetailLoadedForCurrentRequest.value
   && !votingStore.votingDetail?.my_vote,
 )
 
@@ -251,6 +256,7 @@ const showVotingPendingBanner = computed(() =>
 const showVotedConfirmationBanner = computed(() =>
   isExecutiveMember.value
   && request.value?.status === RequestStatus.EXECUTIVE_VOTING_OPEN
+  && votingDetailLoadedForCurrentRequest.value
   && !!votingStore.votingDetail?.my_vote,
 )
 
@@ -288,6 +294,26 @@ async function handleClaimLost() {
   }
 }
 
+async function handleManualClaim() {
+  const claimed = await claimRequest(id)
+  if (!claimed || !isMounted) {
+    await requestsStore.loadRequest(id)
+    return
+  }
+
+  isActiveReviewer.value = true
+  startHeartbeat(id, handleSessionExpired, handleClaimLost)
+  await requestsStore.loadRequest(id)
+  syncActiveReviewState()
+}
+
+async function handleReleaseClaim() {
+  await releaseRequest(id)
+  isActiveReviewer.value = false
+  stopHeartbeat(id)
+  await requestsStore.loadRequest(id)
+}
+
 function syncActiveReviewState() {
   const req = requestsStore.currentRequest
   if (
@@ -320,41 +346,7 @@ onMounted(async () => {
   if (isSupportCommittee.value && requestsStore.currentRequest) {
     const req = requestsStore.currentRequest
 
-    if (req.can_be_claimed) {
-      const claimed = await claimRequest(id)
-
-      if (!isMounted) {
-        if (claimed) await releaseRequest(id)
-        return
-      }
-
-      if (claimed) {
-        isActiveReviewer.value = true
-        startHeartbeat(id, handleSessionExpired, handleClaimLost)
-
-        await requestsStore.loadRequest(id)
-
-        if (!isMounted) return
-
-        if (requestsStore.error || !requestsStore.currentRequest) {
-          isActiveReviewer.value = false
-          stopHeartbeat(id)
-          await releaseRequest(id)
-          await router.replace('/requests')
-          return
-        }
-      }
-      else {
-        await requestsStore.loadRequest(id)
-        if (!isMounted) return
-
-        if (sessionExpired.value) {
-          await handleSessionExpired()
-          return
-        }
-      }
-    }
-    else if (req.is_claimed && req.is_claimed_by_me) {
+    if (req.is_claimed && req.is_claimed_by_me) {
       const alive = await verifyClaimAlive(id)
 
       if (!isMounted) return
@@ -693,9 +685,14 @@ async function handleCloneConfirm() {
               </span>
               <span>{{ claimError }}</span>
             </div>
-            <ActiveReviewBanner v-else-if="showActiveReviewBanner" />
+            <ActiveReviewBanner
+              v-else-if="showActiveReviewBanner"
+              :claimed-until="request.claimed_until"
+              :heartbeat-active="showActiveReviewBanner"
+              @release="handleReleaseClaim"
+            />
             <ClaimedByOthersBanner v-else-if="showClaimedByOthersBanner" :claimer-name="request.claimed_by?.name ?? ''" />
-            <UnclaimedBanner v-else-if="showUnclaimedBanner" @claim="() => claimRequest(id).then(() => requestsStore.loadRequest(id))" />
+            <UnclaimedBanner v-else-if="showUnclaimedBanner" @claim="handleManualClaim" />
             <VotingPendingBanner
               v-else-if="showVotingPendingBanner"
               :votes-cast="votingStore.votingDetail?.tally?.total_cast"
@@ -703,7 +700,7 @@ async function handleCloneConfirm() {
             />
             <VotedConfirmationBanner
               v-else-if="showVotedConfirmationBanner"
-              :vote="votingStore.votingDetail!.my_vote!.vote === 'approve' ? 'approve' : 'reject'"
+              :vote="votingStore.votingDetail!.my_vote!.vote === VoteType.APPROVE ? 'approve' : 'reject'"
               :voted-at="votingStore.votingDetail?.my_vote?.voted_at"
             />
             <LockedBanner
