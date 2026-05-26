@@ -6,6 +6,7 @@ enum DocumentType: string
 {
     case REQUEST_DOC = 'REQUEST_DOC';
     case SWIFT = 'SWIFT';
+    case FX_REQUEST = 'FX_REQUEST';
     case CUSTOMS = 'CUSTOMS';
 
     public function label(): string
@@ -13,6 +14,7 @@ enum DocumentType: string
         return match ($this) {
             self::REQUEST_DOC => 'مستند الطلب / Request Document',
             self::SWIFT => 'وثيقة السويفت / SWIFT Document',
+            self::FX_REQUEST => 'طلب تأكيد المصارفة الخارجية / External FX Confirmation Request',
             self::CUSTOMS => 'البيان الجمركي / Customs Declaration',
         };
     }

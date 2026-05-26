@@ -48,6 +48,10 @@ class DocumentService
         return $document;
     }
 
+    /**
+     * Legacy single-file SWIFT upload flow.
+     * Kept for backward compatibility with older clients/tests while package mode rolls out.
+     */
     public function uploadSwift(ImportRequest $request, User $uploader, UploadedFile $file): RequestDocument
     {
         $this->assertFileValid($file);
@@ -74,6 +78,65 @@ class DocumentService
         $this->workflowService->transition($request->fresh(), 'swift_upload', $uploader);
 
         return $document;
+    }
+
+    public function uploadSwiftPackage(
+        ImportRequest $request,
+        User $uploader,
+        UploadedFile $swiftFile,
+        UploadedFile $fxRequestFile,
+        string $swiftReference
+    ): array
+    {
+        $this->assertFileValid($swiftFile);
+        $this->assertFileValid($fxRequestFile);
+
+        if ($request->status !== RequestStatus::WAITING_FOR_SWIFT) {
+            throw new DocumentException('SWIFT can only be uploaded when request is in WAITING_FOR_SWIFT status.');
+        }
+
+        if (!$uploader->hasPermission('swift.upload') || $uploader->bank_id !== $request->bank_id) {
+            throw new DocumentException('Only authorized bank users can upload SWIFT documents.');
+        }
+
+        if (RequestDocument::query()->where('request_id', $request->id)->where('type', 'SWIFT')->exists()) {
+            throw new DocumentException('SWIFT document already uploaded and cannot be replaced.');
+        }
+
+        if (RequestDocument::query()->where('request_id', $request->id)->where('type', 'FX_REQUEST')->exists()) {
+            throw new DocumentException('FX request document already uploaded and cannot be replaced.');
+        }
+
+        /** @var array{swift: RequestDocument, fx_request: RequestDocument} $documents */
+        $documents = DB::transaction(function () use ($request, $uploader, $swiftFile, $fxRequestFile, $swiftReference): array {
+            $swiftDocument = $this->storeDocument($request, $uploader, $swiftFile, 'SWIFT', "swift/{$request->id}");
+            $fxRequestDocument = $this->storeDocument($request, $uploader, $fxRequestFile, 'FX_REQUEST', "fx-request/{$request->id}");
+
+            $this->auditService->log(AuditAction::SWIFT_UPLOADED, $uploader, $swiftDocument, [
+                'request_id' => $request->id,
+                'type' => 'SWIFT',
+                'swift_reference' => $swiftReference,
+            ]);
+
+            $this->auditService->log(AuditAction::DOCUMENT_UPLOADED, $uploader, $fxRequestDocument, [
+                'request_id' => $request->id,
+                'type' => 'FX_REQUEST',
+                'swift_reference' => $swiftReference,
+            ]);
+
+            $this->workflowService->transition($request->fresh(), 'swift_upload', $uploader, null, [
+                'swift_reference' => $swiftReference,
+                'swift_document_id' => $swiftDocument->id,
+                'fx_request_document_id' => $fxRequestDocument->id,
+            ]);
+
+            return [
+                'swift' => $swiftDocument,
+                'fx_request' => $fxRequestDocument,
+            ];
+        });
+
+        return $documents;
     }
 
     public function download(RequestDocument $document, User $user): StreamedResponse

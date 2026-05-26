@@ -84,7 +84,7 @@ class ImportRequestController extends Controller
     private function buildIndexQuery(Request $request, bool $applyStatusFilter = true): Builder
     {
         $query = ImportRequest::query()
-            ->with(['bank', 'merchant', 'claimedByUser'])
+            ->with(['bank', 'merchant', 'claimedByUser', 'documents', 'votes'])
             ->forUser($request->user());
 
         return $this->applyIndexFilters($query, $request, $applyStatusFilter);

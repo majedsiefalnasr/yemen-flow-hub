@@ -369,11 +369,14 @@ class DashboardController extends Controller
             ->count();
 
         $swiftQueue = (clone $base)
-            ->where('status', RequestStatus::WAITING_FOR_SWIFT->value)
+            ->whereIn('status', [
+                RequestStatus::WAITING_FOR_SWIFT->value,
+                RequestStatus::SWIFT_UPLOADED->value,
+            ])
             ->orderBy('updated_at')
             ->orderBy('id')
             ->limit(50)
-            ->with(['bank'])
+            ->with(['bank', 'documents'])
             ->get();
 
         return ApiResponse::success([
@@ -455,16 +458,65 @@ class DashboardController extends Controller
     // COMMITTEE_DIRECTOR: global CBY view — no org scope
     private function committeeDirectorStats(): \Illuminate\Http\JsonResponse
     {
-        $customsDeclarationPending = ImportRequest::query()
+        $fxQueue = ImportRequest::query()
             ->where('status', RequestStatus::EXECUTIVE_APPROVED->value)
             ->orderBy('updated_at')
             ->orderBy('id')
             ->limit(50)
-            ->with(['bank'])
+            ->with(['bank', 'documents'])
             ->get();
 
-        return ApiResponse::success(array_merge($this->executiveVotingStats(request()->user()), [
-            'customs_declaration_pending' => ImportRequestResource::collection($customsDeclarationPending)->toArray(request()),
+        $votingQueue = ImportRequest::query()
+            ->whereIn('status', [
+                RequestStatus::EXECUTIVE_VOTING_OPEN->value,
+                RequestStatus::EXECUTIVE_VOTING_CLOSED->value,
+            ])
+            ->orderBy('updated_at')
+            ->orderBy('id')
+            ->limit(50)
+            ->with(['bank', 'votes'])
+            ->get();
+
+        $totalVoters = User::query()
+            ->where('role', UserRole::EXECUTIVE_MEMBER->value)
+            ->where('is_active', true)
+            ->count();
+
+        $sessionsReadyToClose = $votingQueue
+            ->filter(fn (ImportRequest $request) =>
+                $request->status === RequestStatus::EXECUTIVE_VOTING_OPEN
+                && $totalVoters > 0
+                && $request->votes->count() >= $totalVoters
+            )
+            ->count();
+
+        $sessionsWithTie = $votingQueue
+            ->filter(function (ImportRequest $request): bool {
+                if ($request->status !== RequestStatus::EXECUTIVE_VOTING_OPEN) {
+                    return false;
+                }
+
+                $approveCount = $request->votes->filter(fn (RequestVote $vote) => $vote->vote?->value === 'APPROVE')->count();
+                $rejectCount = $request->votes->filter(fn (RequestVote $vote) => $vote->vote?->value === 'REJECT')->count();
+
+                return $approveCount > 0 && $approveCount === $rejectCount;
+            })
+            ->count();
+
+        $executiveStats = $this->executiveVotingStats(request()->user());
+
+        return ApiResponse::success(array_merge($executiveStats, [
+            // Director-specific lifecycle counters
+            'sessions_ready_to_close' => $sessionsReadyToClose,
+            'sessions_with_tie' => $sessionsWithTie,
+            'fx_confirmation_pending' => $fxQueue->count(),
+            'finalized_approved' => $executiveStats['decisions_approved'] ?? 0,
+            'finalized_rejected' => $executiveStats['decisions_rejected'] ?? 0,
+            // Director-specific lifecycle queues
+            'voting_lifecycle_queue' => $this->votingQueueResource($votingQueue, request()->user()),
+            'fx_confirmation_queue' => ImportRequestResource::collection($fxQueue)->toArray(request()),
+            // Backward compatibility with existing frontend contract
+            'customs_declaration_pending' => ImportRequestResource::collection($fxQueue)->toArray(request()),
         ]), 'Dashboard stats retrieved.');
     }
 

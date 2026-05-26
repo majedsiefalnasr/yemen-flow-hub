@@ -7,12 +7,12 @@ use PHPUnit\Framework\TestCase;
 
 class DocumentTypeTest extends TestCase
 {
-    public function test_all_3_canonical_values_exist(): void
+    public function test_all_4_canonical_values_exist(): void
     {
-        $expected = ['REQUEST_DOC', 'SWIFT', 'CUSTOMS'];
+        $expected = ['REQUEST_DOC', 'SWIFT', 'FX_REQUEST', 'CUSTOMS'];
         $actual = array_column(DocumentType::cases(), 'value');
 
-        $this->assertCount(3, $actual);
+        $this->assertCount(4, $actual);
         foreach ($expected as $value) {
             $this->assertContains($value, $actual, "Missing DocumentType: {$value}");
         }

@@ -877,7 +877,7 @@ class DashboardStatsTest extends TestCase
             ->assertJsonPath('data.final_rejected', 1);
     }
 
-    public function test_swift_officer_queue_shows_only_waiting_for_swift(): void
+    public function test_swift_officer_queue_shows_waiting_and_uploaded(): void
     {
         $de    = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
         $swift = $this->makeUser(UserRole::SWIFT_OFFICER, $this->bank);
@@ -888,8 +888,11 @@ class DashboardStatsTest extends TestCase
 
         $response = $this->actingAs($swift)->getJson('/api/dashboard/stats')->assertOk();
         $queue    = $response->json('data.swift_queue');
-        $this->assertCount(1, $queue);
-        $this->assertSame(RequestStatus::WAITING_FOR_SWIFT->value, $queue[0]['status']);
+        $this->assertCount(2, $queue);
+
+        $statuses = collect($queue)->pluck('status')->all();
+        $this->assertContains(RequestStatus::WAITING_FOR_SWIFT->value, $statuses);
+        $this->assertContains(RequestStatus::SWIFT_UPLOADED->value, $statuses);
     }
 
     public function test_swift_officer_cannot_see_other_bank_requests(): void

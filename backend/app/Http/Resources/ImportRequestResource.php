@@ -3,12 +3,30 @@
 namespace App\Http\Resources;
 
 use App\Enums\RequestStatus;
+use App\Enums\UserRole;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\URL;
 
 class ImportRequestResource extends JsonResource
 {
+    private static ?int $executiveVotersCount = null;
+
+    private function executiveVotersCount(): int
+    {
+        if (self::$executiveVotersCount !== null) {
+            return self::$executiveVotersCount;
+        }
+
+        self::$executiveVotersCount = User::query()
+            ->where('role', UserRole::EXECUTIVE_MEMBER->value)
+            ->where('is_active', true)
+            ->count();
+
+        return self::$executiveVotersCount;
+    }
+
     public static function baseRelations(): array
     {
         return [
@@ -32,6 +50,7 @@ class ImportRequestResource extends JsonResource
         return [
             ...self::baseRelations(),
             'documents.uploader',
+            'votes',
             'issuedCustomsDeclaration.issuer',
         ];
     }
@@ -55,6 +74,15 @@ class ImportRequestResource extends JsonResource
 
     public function toArray(Request $request): array
     {
+        $votes = $this->relationLoaded('votes') ? $this->votes : collect();
+        $documents = $this->relationLoaded('documents') ? $this->documents : collect();
+        $totalVoters = $this->executiveVotersCount();
+        $votesCast = $votes->count();
+        $approveCount = $votes->filter(fn ($vote) => $vote->vote?->value === 'APPROVE')->count();
+        $rejectCount = $votes->filter(fn ($vote) => $vote->vote?->value === 'REJECT')->count();
+        $hasSwiftDocument = $documents->contains(fn ($document) => $document->type === 'SWIFT');
+        $hasFxRequestDocument = $documents->contains(fn ($document) => $document->type === 'FX_REQUEST');
+
         return [
             'id' => $this->id,
             'reference_number' => $this->reference_number,
@@ -162,6 +190,16 @@ class ImportRequestResource extends JsonResource
                     'download_url' => url("/api/documents/{$doc->id}/download"),
                 ])->values()->all();
             }),
+            'votes_cast' => $votesCast,
+            'total_voters' => $totalVoters,
+            'ready_to_close' => $this->status === RequestStatus::EXECUTIVE_VOTING_OPEN
+                && $totalVoters > 0
+                && $votesCast >= $totalVoters,
+            'is_tie' => $this->status === RequestStatus::EXECUTIVE_VOTING_OPEN
+                && $approveCount > 0
+                && $approveCount === $rejectCount,
+            'has_swift_document' => $hasSwiftDocument,
+            'has_fx_request_document' => $hasFxRequestDocument,
         ];
     }
 }

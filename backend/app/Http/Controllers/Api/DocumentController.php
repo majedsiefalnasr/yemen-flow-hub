@@ -93,7 +93,7 @@ class DocumentController extends Controller
     #[OA\Post(
         path: '/api/workflow/{importRequest}/swift-upload',
         tags: ['Documents'],
-        summary: 'Upload SWIFT document and trigger workflow transition',
+        summary: 'Upload SWIFT package (SWIFT + FX request) and trigger workflow transition',
         parameters: [
             new OA\Parameter(name: 'importRequest', in: 'path', required: true, schema: new OA\Schema(type: 'integer')),
         ],
@@ -102,8 +102,12 @@ class DocumentController extends Controller
             content: new OA\MediaType(
                 mediaType: 'multipart/form-data',
                 schema: new OA\Schema(
-                    required: ['file'],
-                    properties: [new OA\Property(property: 'file', type: 'string', format: 'binary')]
+                    required: ['swift_reference', 'swift_file', 'fx_request_file'],
+                    properties: [
+                        new OA\Property(property: 'swift_reference', type: 'string', maxLength: 191),
+                        new OA\Property(property: 'swift_file', type: 'string', format: 'binary'),
+                        new OA\Property(property: 'fx_request_file', type: 'string', format: 'binary'),
+                    ]
                 )
             )
         ),
@@ -111,15 +115,33 @@ class DocumentController extends Controller
     )]
     public function uploadSwift(UploadSwiftRequest $request, ImportRequest $importRequest)
     {
-        $document = $this->documentService->uploadSwift(
+        if ($request->hasFile('file')) {
+            $document = $this->documentService->uploadSwift(
+                $importRequest,
+                $request->user(),
+                $request->file('file')
+            );
+
+            $document->load('uploader');
+
+            return ApiResponse::success(new DocumentResource($document), 'SWIFT uploaded successfully.', 201);
+        }
+
+        $documents = $this->documentService->uploadSwiftPackage(
             $importRequest,
             $request->user(),
-            $request->file('file')
+            $request->file('swift_file'),
+            $request->file('fx_request_file'),
+            (string) $request->validated('swift_reference'),
         );
 
-        $document->load('uploader');
+        $documents['swift']->load('uploader');
+        $documents['fx_request']->load('uploader');
 
-        return ApiResponse::success(new DocumentResource($document), 'SWIFT uploaded successfully.', 201);
+        return ApiResponse::success([
+            'swift_document' => new DocumentResource($documents['swift']),
+            'fx_request_document' => new DocumentResource($documents['fx_request']),
+        ], 'SWIFT package uploaded successfully.', 201);
     }
 
     #[OA\Get(
