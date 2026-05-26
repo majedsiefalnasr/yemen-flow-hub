@@ -183,3 +183,61 @@ Story 9.2 produced the initial matrix. Story 12.1 appends rows for the four Tier
 | **Baseline screenshot** | Not captured at story start (`docs/ui-parity/screenshots/12-2/baseline/bank-admin-staff.png` absent) |
 | **After screenshot** | `docs/ui-parity/screenshots/12-2/after/bank-admin-staff.png` (pending dev-browser capture) |
 | **Implementation diff** | Story 12.2 — `frontend/app/pages/staff.vue`: added Access Health summary row with clickable filter cards; enhanced filter toolbar; `frontend/app/components/staff/StaffModal.vue`: role allowlist already enforced via BANK_ADMIN_MANAGED_ROLES constant |
+
+---
+
+## Story 12.3 — Tier 3 Lifecycle Finalization Roles UX Uplift
+
+### COMMITTEE_DIRECTOR — Dashboard
+
+| Leg | Evidence |
+|-----|----------|
+| **Spec citation** | `docs/user-view/committee-director.md#Dashboard` — composite action-required strip + governance KPI cards + voting lifecycle table + FX queue table |
+| **Baseline screenshot** | Not captured at story start (`docs/ui-parity/screenshots/12-3/baseline/director-dashboard.png` absent) |
+| **After screenshot** | `docs/ui-parity/screenshots/12-3/after/director-dashboard.png` |
+| **Implementation diff** | `frontend/app/components/dashboard/ExecutiveDashboard.vue` — Director-specific composite strip (`ready_to_close`, `tie_break`, `fx_pending`), 4 KPI governance cards, voting lifecycle table, and FX queue section |
+
+### COMMITTEE_DIRECTOR — Requests List
+
+| Leg | Evidence |
+|-----|----------|
+| **Spec citation** | `docs/user-view/committee-director.md#Requests List` — Director tab model and governance queue-first layout |
+| **Baseline screenshot** | Not captured at story start (`docs/ui-parity/screenshots/12-3/baseline/director-requests.png` absent) |
+| **After screenshot** | `docs/ui-parity/screenshots/12-3/after/director-requests.png` |
+| **Implementation diff** | `frontend/app/pages/requests/index.vue`, `frontend/app/constants/workflow.ts` — Director-aware tabs (`ready_to_close`, `ready_to_finalize`, `tie_break`, `fx_pending`, `active_voting`, `finalized`, `all`) and summary wiring |
+
+### COMMITTEE_DIRECTOR — Request Detail
+
+| Leg | Evidence |
+|-----|----------|
+| **Spec citation** | `docs/user-view/committee-director.md#Request Detail` — Director lifecycle summary surfaces, role gating, and no SWIFT upload controls |
+| **Baseline screenshot** | Not captured at story start (`docs/ui-parity/screenshots/12-3/baseline/director-request-detail.png` absent) |
+| **After screenshot** | `docs/ui-parity/screenshots/12-3/after/director-request-detail-fx.png` |
+| **Implementation diff** | `frontend/app/pages/requests/[id]/index.vue`, `frontend/app/components/voting/VotingPanel.vue`, `frontend/app/components/ActionsPanel.vue` — Director banner/timeline logic and lifecycle action gating |
+
+### SWIFT_OFFICER — Dashboard
+
+| Leg | Evidence |
+|-----|----------|
+| **Spec citation** | `docs/user-view/swift-officer.md#Dashboard` — action-required strip, SWIFT KPI set, queue table with two-pill document status |
+| **Baseline screenshot** | Not captured at story start (`docs/ui-parity/screenshots/12-3/baseline/swift-dashboard.png` absent) |
+| **After screenshot** | `docs/ui-parity/screenshots/12-3/after/swift-dashboard.png` |
+| **Implementation diff** | `frontend/app/components/dashboard/SwiftOfficerDashboard.vue` — pending strip, KPI cards, two-pill document indicator, SWIFT queue actions |
+
+### SWIFT_OFFICER — Requests List
+
+| Leg | Evidence |
+|-----|----------|
+| **Spec citation** | `docs/user-view/swift-officer.md#Requests List` — SWIFT-focused tabs with `pending_swift` first and queue-first navigation |
+| **Baseline screenshot** | Not captured at story start (`docs/ui-parity/screenshots/12-3/baseline/swift-requests.png` absent) |
+| **After screenshot** | `docs/ui-parity/screenshots/12-3/after/swift-requests.png` |
+| **Implementation diff** | `frontend/app/pages/requests/index.vue`, `frontend/app/constants/workflow.ts` — SWIFT-first tab order and role-bound lifecycle buckets |
+
+### SWIFT_OFFICER — Upload/Detail Gating
+
+| Leg | Evidence |
+|-----|----------|
+| **Spec citation** | `docs/user-view/swift-officer.md#Upload Page` and `#Request Detail` — locked-data panel, disabled submit reasoning, and post-upload locked informational state |
+| **Baseline screenshot** | Not captured at story start (`docs/ui-parity/screenshots/12-3/baseline/swift-upload.png` absent) |
+| **After screenshot** | `docs/ui-parity/screenshots/12-3/after/swift-upload-gate.png`, `docs/ui-parity/screenshots/12-3/after/swift-upload-denied.png` |
+| **Implementation diff** | `frontend/app/pages/requests/[id]/swift.vue`, `frontend/app/components/workflow/SwiftUploadForm.vue`, `frontend/app/pages/requests/[id]/index.vue` — locked summary, 3-section upload gate messages, and role/status lifecycle messaging |
