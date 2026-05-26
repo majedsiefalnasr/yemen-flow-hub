@@ -50,13 +50,21 @@ export interface SwiftOfficerDashboardStats {
   swift_queue: ImportRequest[]
 }
 
+export interface VotingQueueItem extends ImportRequest {
+  my_vote?: 'approve' | 'reject' | null
+  votes_cast?: number
+  total_voters?: number
+}
+
 export interface ExecutiveDashboardStats {
   waiting_for_voting_open: number
   active_voting_sessions: number
   decisions_approved: number
   decisions_rejected: number
   finalized_decisions: number
-  voting_queue: ImportRequest[]
+  // pending_my_vote: sessions where EXECUTIVE_VOTING_OPEN and I have not voted
+  pending_my_vote?: number
+  voting_queue: VotingQueueItem[]
   customs_declaration_pending?: ImportRequest[]
 }
 

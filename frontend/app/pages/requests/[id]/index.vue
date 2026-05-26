@@ -25,6 +25,10 @@ import LockedBanner from '../../../components/banners/LockedBanner.vue'
 import CorrectionBanner from '../../../components/banners/CorrectionBanner.vue'
 import ActiveReviewBanner from '../../../components/banners/ActiveReviewBanner.vue'
 import ClaimedByOthersBanner from '../../../components/banners/ClaimedByOthersBanner.vue'
+import SegregationBlockedBanner from '../../../components/banners/SegregationBlockedBanner.vue'
+import UnclaimedBanner from '../../../components/banners/UnclaimedBanner.vue'
+import VotingPendingBanner from '../../../components/banners/VotingPendingBanner.vue'
+import VotedConfirmationBanner from '../../../components/banners/VotedConfirmationBanner.vue'
 import ActionsPanel from '../../../components/requests/ActionsPanel.vue'
 import DocumentChecklist from '../../../components/requests/DocumentChecklist.vue'
 import VotingPanel from '../../../components/voting/VotingPanel.vue'
@@ -62,6 +66,14 @@ const EXECUTIVE_ROLES = new Set([UserRole.EXECUTIVE_MEMBER, UserRole.COMMITTEE_D
 const request = computed(() => requestsStore.currentRequest)
 const userRole = computed(() => auth.user?.role ?? UserRole.DATA_ENTRY)
 const canDownloadCustomsDeclaration = computed(() => canDownloadCustoms(userRole.value))
+
+// BANK_REVIEWER may not review requests they personally created (segregation of duties)
+const isSegregationBlocked = computed(() =>
+  userRole.value === UserRole.BANK_REVIEWER
+  && !!request.value
+  && !!auth.user
+  && request.value.created_by === auth.user.id,
+)
 const DRAFT_EDITOR_ROLES = new Set([UserRole.DATA_ENTRY, UserRole.BANK_ADMIN])
 
 // VotingPanel is shown inline above tabs for executive/director roles in voting stages
@@ -189,6 +201,7 @@ const hasActions = computed(() => {
   const role = userRole.value
   const bankReviewerAction
     = role === UserRole.BANK_REVIEWER
+    && !isSegregationBlocked.value
     && (s === RequestStatus.SUBMITTED || s === RequestStatus.BANK_REVIEW)
   const dataEntryAction
     = DRAFT_EDITOR_ROLES.has(role)
@@ -225,6 +238,21 @@ const {
 const isActiveReviewer = ref(false)
 
 const isSupportCommittee = computed(() => userRole.value === UserRole.SUPPORT_COMMITTEE)
+const isExecutiveMember = computed(() => userRole.value === UserRole.EXECUTIVE_MEMBER)
+
+// VotingPendingBanner: voting open, EXECUTIVE_MEMBER, not yet voted
+const showVotingPendingBanner = computed(() =>
+  isExecutiveMember.value
+  && request.value?.status === RequestStatus.EXECUTIVE_VOTING_OPEN
+  && !votingStore.votingDetail?.my_vote,
+)
+
+// VotedConfirmationBanner: EXECUTIVE_MEMBER has already cast vote on this session
+const showVotedConfirmationBanner = computed(() =>
+  isExecutiveMember.value
+  && request.value?.status === RequestStatus.EXECUTIVE_VOTING_OPEN
+  && !!votingStore.votingDetail?.my_vote,
+)
 
 const showActiveReviewBanner = computed(
   () => isSupportCommittee.value && isActiveReviewer.value,
@@ -234,6 +262,12 @@ const showClaimedByOthersBanner = computed(() => {
   if (!isSupportCommittee.value || isActiveReviewer.value) return false
   const req = request.value
   return !!req && req.is_claimed && !req.is_claimed_by_me
+})
+
+const showUnclaimedBanner = computed(() => {
+  if (!isSupportCommittee.value || isActiveReviewer.value) return false
+  const req = request.value
+  return !!req && req.status === RequestStatus.SUPPORT_REVIEW_PENDING && !req.is_claimed
 })
 
 // Destruction guard: set to false in onBeforeUnmount so any in-flight async
@@ -647,10 +681,11 @@ async function handleCloneConfirm() {
         <div class="detail-main">
           <!-- Banners -->
           <div
-            v-if="claimError || showActiveReviewBanner || showClaimedByOthersBanner || isLocked || isReturnedForCorrection || isBankReturned || isSupportReturned"
+            v-if="isSegregationBlocked || claimError || showActiveReviewBanner || showClaimedByOthersBanner || showUnclaimedBanner || showVotingPendingBanner || showVotedConfirmationBanner || isLocked || isReturnedForCorrection || isBankReturned || isSupportReturned"
             class="banner-area"
           >
-            <div v-if="claimError" class="claim-error-banner" role="alert" aria-live="assertive">
+            <SegregationBlockedBanner v-if="isSegregationBlocked" />
+            <div v-else-if="claimError" class="claim-error-banner" role="alert" aria-live="assertive">
               <span class="claim-error-icon" aria-hidden="true">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
@@ -660,6 +695,17 @@ async function handleCloneConfirm() {
             </div>
             <ActiveReviewBanner v-else-if="showActiveReviewBanner" />
             <ClaimedByOthersBanner v-else-if="showClaimedByOthersBanner" :claimer-name="request.claimed_by?.name ?? ''" />
+            <UnclaimedBanner v-else-if="showUnclaimedBanner" @claim="() => claimRequest(id).then(() => requestsStore.loadRequest(id))" />
+            <VotingPendingBanner
+              v-else-if="showVotingPendingBanner"
+              :votes-cast="votingStore.votingDetail?.tally?.total_cast"
+              :total-voters="votingStore.votingDetail?.total_members"
+            />
+            <VotedConfirmationBanner
+              v-else-if="showVotedConfirmationBanner"
+              :vote="votingStore.votingDetail!.my_vote!.vote === 'approve' ? 'approve' : 'reject'"
+              :voted-at="votingStore.votingDetail?.my_vote?.voted_at"
+            />
             <LockedBanner
               v-else-if="isLocked && lockedBannerVariant"
               :variant="lockedBannerVariant"

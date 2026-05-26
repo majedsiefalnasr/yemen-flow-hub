@@ -421,20 +421,24 @@ export interface StageBucket {
 
 /** Role-aware stage buckets — production reimplementation of Lovable bucketsFor() */
 export const ROLE_BUCKETS: Partial<Record<UserRole, StageBucket[]>> = {
+  // Spec order: returned first (most actionable), then draft, submitted, processing, completed, rejected, all
   [UserRole.DATA_ENTRY]: [
-    { key: 'draft', label: 'مسودة', statuses: [RequestStatus.DRAFT, RequestStatus.DRAFT_REJECTED_INTERNAL] },
-    { key: 'returned', label: 'مُعادة', statuses: [RequestStatus.BANK_RETURNED, RequestStatus.SUPPORT_RETURNED] },
+    { key: 'returned', label: 'مُعادة', statuses: [RequestStatus.BANK_RETURNED, RequestStatus.SUPPORT_RETURNED, RequestStatus.DRAFT_REJECTED_INTERNAL] },
+    { key: 'draft', label: 'مسودة', statuses: [RequestStatus.DRAFT] },
     { key: 'submitted', label: 'مقدّم', statuses: [RequestStatus.SUBMITTED, RequestStatus.BANK_REVIEW] },
     { key: 'processing', label: 'قيد المعالجة', statuses: [RequestStatus.BANK_APPROVED, RequestStatus.SUPPORT_REVIEW_PENDING, RequestStatus.SUPPORT_REVIEW_IN_PROGRESS, RequestStatus.SUPPORT_APPROVED, RequestStatus.WAITING_FOR_SWIFT, RequestStatus.SWIFT_UPLOADED, RequestStatus.WAITING_FOR_VOTING_OPEN, RequestStatus.EXECUTIVE_VOTING_OPEN, RequestStatus.EXECUTIVE_VOTING_CLOSED] },
     { key: 'completed', label: 'مكتمل', statuses: [RequestStatus.EXECUTIVE_APPROVED, RequestStatus.CUSTOMS_DECLARATION_ISSUED, RequestStatus.COMPLETED] },
     { key: 'rejected', label: 'مرفوض', statuses: [RequestStatus.SUPPORT_REJECTED, RequestStatus.EXECUTIVE_REJECTED, RequestStatus.BANK_REJECTED] },
   ],
+  // Spec order: pending, support_rejected, bank_returned, support_returned, at_cby, completed, rejected, all
   [UserRole.BANK_REVIEWER]: [
     { key: 'pending', label: 'قيد المراجعة', statuses: [RequestStatus.SUBMITTED, RequestStatus.BANK_REVIEW] },
-    { key: 'approved', label: 'موافقة البنك', statuses: [RequestStatus.BANK_APPROVED] },
-    { key: 'returned', label: 'مُعاد للتعديل', statuses: [RequestStatus.DRAFT_REJECTED_INTERNAL] },
-    { key: 'returned_to_intake', label: 'بحاجة تعديل', statuses: [RequestStatus.BANK_RETURNED] },
-    { key: 'rejected', label: 'مرفوض نهائياً', statuses: [RequestStatus.BANK_REJECTED] },
+    { key: 'support_rejected', label: 'رفض من المساندة', statuses: [RequestStatus.SUPPORT_REJECTED] },
+    { key: 'bank_returned', label: 'أُعيد للمدخل من البنك', statuses: [RequestStatus.BANK_RETURNED] },
+    { key: 'support_returned', label: 'أُعيد للمدخل من المساندة', statuses: [RequestStatus.SUPPORT_RETURNED] },
+    { key: 'at_cby', label: 'لدى البنك المركزي', statuses: [RequestStatus.BANK_APPROVED, RequestStatus.SUPPORT_REVIEW_PENDING, RequestStatus.SUPPORT_REVIEW_IN_PROGRESS, RequestStatus.SUPPORT_APPROVED, RequestStatus.WAITING_FOR_SWIFT, RequestStatus.SWIFT_UPLOADED, RequestStatus.WAITING_FOR_VOTING_OPEN, RequestStatus.EXECUTIVE_VOTING_OPEN, RequestStatus.EXECUTIVE_VOTING_CLOSED] },
+    { key: 'completed', label: 'مكتمل', statuses: [RequestStatus.EXECUTIVE_APPROVED, RequestStatus.CUSTOMS_DECLARATION_ISSUED, RequestStatus.COMPLETED] },
+    { key: 'rejected', label: 'مرفوض', statuses: [RequestStatus.BANK_REJECTED, RequestStatus.EXECUTIVE_REJECTED] },
   ],
   [UserRole.BANK_ADMIN]: [
     { key: 'pending', label: 'معلّق', statuses: [RequestStatus.SUBMITTED, RequestStatus.BANK_REVIEW, RequestStatus.BANK_RETURNED, RequestStatus.SUPPORT_RETURNED] },
@@ -446,18 +450,24 @@ export const ROLE_BUCKETS: Partial<Record<UserRole, StageBucket[]>> = {
     { key: 'pending_swift', label: 'انتظار رفع SWIFT', statuses: [RequestStatus.BANK_APPROVED, RequestStatus.SUPPORT_APPROVED, RequestStatus.WAITING_FOR_SWIFT] },
     { key: 'swift_done', label: 'تم رفع SWIFT', statuses: [RequestStatus.SWIFT_UPLOADED] },
   ],
+  // Spec order: waiting (unclaimed) first, my_claims, in_progress, approved, rejected, all
   [UserRole.SUPPORT_COMMITTEE]: [
-    { key: 'pending', label: 'انتظار المراجعة', statuses: [RequestStatus.BANK_APPROVED, RequestStatus.SUPPORT_REVIEW_PENDING] },
-    { key: 'in_progress', label: 'قيد المراجعة', statuses: [RequestStatus.SUPPORT_REVIEW_IN_PROGRESS] },
-    { key: 'approved', label: 'موافقة', statuses: [RequestStatus.SUPPORT_APPROVED] },
+    { key: 'waiting', label: 'انتظار المطالبة', statuses: [RequestStatus.SUPPORT_REVIEW_PENDING] },
+    { key: 'my_claims', label: 'أعمل عليها', statuses: [RequestStatus.SUPPORT_REVIEW_IN_PROGRESS] },
+    { key: 'in_progress', label: 'محجوزة لأعضاء آخرين', statuses: [RequestStatus.SUPPORT_REVIEW_IN_PROGRESS] },
+    { key: 'approved', label: 'اعتُمدت', statuses: [RequestStatus.SUPPORT_APPROVED] },
     { key: 'rejected', label: 'مرفوض', statuses: [RequestStatus.SUPPORT_REJECTED] },
   ],
+  // Spec order: pending_my_vote first (most actionable), voted_by_me, pending_open, voting_open, voting_closed, approved, rejected, post_approval, all
   [UserRole.EXECUTIVE_MEMBER]: [
-    { key: 'pending_open', label: 'انتظار فتح التصويت', statuses: [RequestStatus.SUPPORT_APPROVED, RequestStatus.WAITING_FOR_VOTING_OPEN] },
+    { key: 'pending_my_vote', label: 'يحتاج صوتي', statuses: [RequestStatus.EXECUTIVE_VOTING_OPEN] },
+    { key: 'voted_by_me', label: 'صوّتُّ عليها', statuses: [RequestStatus.EXECUTIVE_VOTING_OPEN, RequestStatus.EXECUTIVE_VOTING_CLOSED, RequestStatus.EXECUTIVE_APPROVED, RequestStatus.EXECUTIVE_REJECTED] },
+    { key: 'pending_open', label: 'بانتظار فتح التصويت', statuses: [RequestStatus.SUPPORT_APPROVED, RequestStatus.WAITING_FOR_VOTING_OPEN] },
     { key: 'voting_open', label: 'التصويت مفتوح', statuses: [RequestStatus.EXECUTIVE_VOTING_OPEN] },
     { key: 'voting_closed', label: 'التصويت مغلق', statuses: [RequestStatus.EXECUTIVE_VOTING_CLOSED] },
-    { key: 'approved', label: 'موافقة', statuses: [RequestStatus.EXECUTIVE_APPROVED] },
+    { key: 'approved', label: 'معتمد', statuses: [RequestStatus.EXECUTIVE_APPROVED] },
     { key: 'rejected', label: 'مرفوض', statuses: [RequestStatus.EXECUTIVE_REJECTED] },
+    { key: 'post_approval', label: 'ما بعد الاعتماد', statuses: [RequestStatus.WAITING_FOR_SWIFT, RequestStatus.SWIFT_UPLOADED, RequestStatus.CUSTOMS_DECLARATION_ISSUED, RequestStatus.COMPLETED] },
   ],
   [UserRole.COMMITTEE_DIRECTOR]: [
     { key: 'pending_open', label: 'انتظار فتح التصويت', statuses: [RequestStatus.WAITING_FOR_VOTING_OPEN] },

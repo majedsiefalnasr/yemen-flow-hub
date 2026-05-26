@@ -2,7 +2,7 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { CheckCircle2, Users, Clock, Mail, Zap, AlertCircle } from 'lucide-vue-next'
+import { CheckCircle2, Users, Clock, Mail, Zap, AlertCircle, AlarmClock } from 'lucide-vue-next'
 import { useDashboardStore } from '../../stores/dashboard.store'
 import { useAuthStore } from '../../stores/auth.store'
 import { UserRole } from '../../types/enums'
@@ -29,6 +29,14 @@ const stats = computed<SupportCommitteeDashboardStats | null>(() => {
 const queue = computed(() => stats.value?.support_queue ?? [])
 const currentUserId = computed(() => auth.user?.id ?? null)
 
+// Active claims = rows in queue currently claimed by me
+const myActiveClaims = computed(() =>
+  queue.value.filter(req => req.is_claimed_by_me || (currentUserId.value != null && req.claimed_by?.id === currentUserId.value)),
+)
+const hasActiveClaim = computed(() => myActiveClaims.value.length > 0)
+// Oldest active claim — first to appear in queue list (sorted by age by backend)
+const oldestActiveClaim = computed(() => myActiveClaims.value[0] ?? null)
+
 function formatAmount(amount: number, currency: string): string {
   return new Intl.NumberFormat('ar-YE', { style: 'currency', currency, minimumFractionDigits: 0 }).format(amount)
 }
@@ -51,11 +59,36 @@ function getKpiIconColor(variant: string): string {
   return colors[variant] || colors.gray
 }
 
+// Spec order: Waiting for Claim (amber) / Active by Me (indigo) / Claimed by Others (gray) / Recently Approved (green)
 const kpiConfig = computed(() => [
-  { icon: CheckCircle2, value: stats.value?.recently_approved ?? 0, label: 'اعتُمِدت مؤخراً', variant: 'green' },
-  { icon: Users, value: stats.value?.claimed_by_others ?? 0, label: 'محجوزة لأعضاء آخرين', variant: 'gray' },
-  { icon: Clock, value: stats.value?.active_by_me ?? 0, label: 'أعمل عليها الآن', variant: stats.value?.active_by_me ?? 0 > 0 ? 'indigo' : 'gray' },
-  { icon: Mail, value: stats.value?.waiting_for_claim ?? 0, label: 'بانتظار المطالبة', variant: stats.value?.waiting_for_claim ?? 0 > 0 ? 'amber' : 'gray' },
+  {
+    icon: Mail,
+    value: stats.value?.waiting_for_claim ?? 0,
+    label: 'بانتظار المطالبة',
+    variant: (stats.value?.waiting_for_claim ?? 0) > 0 ? 'amber' : 'gray',
+    tab: 'waiting',
+  },
+  {
+    icon: Clock,
+    value: stats.value?.active_by_me ?? 0,
+    label: 'أعمل عليها الآن',
+    variant: (stats.value?.active_by_me ?? 0) > 0 ? 'indigo' : 'gray',
+    tab: 'my_claims',
+  },
+  {
+    icon: Users,
+    value: stats.value?.claimed_by_others ?? 0,
+    label: 'محجوزة لأعضاء آخرين',
+    variant: 'gray',
+    tab: 'in_progress',
+  },
+  {
+    icon: CheckCircle2,
+    value: stats.value?.recently_approved ?? 0,
+    label: 'اعتُمِدت مؤخراً',
+    variant: 'green',
+    tab: 'approved',
+  },
 ])
 
 onMounted(() => { store.loadStats() })
@@ -83,14 +116,59 @@ onMounted(() => { store.loadStats() })
 
     <template v-else-if="stats">
 
-      <!-- KPI grid -->
+      <!-- Active-claim strip (highest priority, indigo) — hidden when no active claims -->
+      <Card
+        v-if="hasActiveClaim"
+        class="border-0 border-s-4 border-s-[#5856d6] bg-[#5856d6]/5 shadow-sm"
+        role="status"
+        aria-label="طلبات نشطة محجوزة باسمك"
+      >
+        <CardContent class="pt-4 pb-4 flex items-center gap-3">
+          <AlarmClock class="h-5 w-5 flex-shrink-0 text-[#5856d6]" aria-hidden="true" />
+          <div class="flex-1 min-w-0">
+            <span class="font-semibold text-foreground text-sm">لديك {{ myActiveClaims.length }} طلب نشط محجوز باسمك</span>
+            <p v-if="oldestActiveClaim" class="text-xs text-muted-foreground mt-0.5 truncate">
+              {{ oldestActiveClaim.reference_number }}
+            </p>
+          </div>
+          <button
+            v-if="oldestActiveClaim"
+            class="flex-shrink-0 px-3 py-1.5 bg-[#5856d6] text-white text-xs font-semibold rounded-xl hover:opacity-90 transition-opacity"
+            @click="router.push(`/requests/${oldestActiveClaim.id}`)"
+          >
+            متابعة المراجعة
+          </button>
+        </CardContent>
+      </Card>
+
+      <!-- KPI grid: 4 clickable cards — spec order: waiting / active / others / approved -->
       <div class="grid grid-cols-4 max-lg:grid-cols-2 max-md:grid-cols-1 gap-4">
         <template v-for="kpi in kpiConfig" :key="kpi.label">
-          <Card class="border-0 p-4 shadow flex flex-col gap-1.5" :class="{ 'border-s-4 border-s-warning': kpi.variant === 'amber', 'border-s-4 border-s-voting': kpi.variant === 'indigo' }">
+          <Card
+            class="border-0 p-4 shadow flex flex-col gap-1.5 cursor-pointer hover:shadow-md transition-shadow"
+            :class="{
+              'border-s-4 border-s-amber-600': kpi.variant === 'amber',
+              'border-s-4 border-s-[#5856d6]': kpi.variant === 'indigo',
+            }"
+            role="button"
+            tabindex="0"
+            :aria-label="`${kpi.label}: ${kpi.value}`"
+            @click="router.push(`/requests?tab=${kpi.tab}`)"
+            @keydown.enter="router.push(`/requests?tab=${kpi.tab}`)"
+            @keydown.space.prevent="router.push(`/requests?tab=${kpi.tab}`)"
+          >
             <div class="h-9 w-9 rounded flex items-center justify-center flex-shrink-0" :class="getKpiIconColor(kpi.variant)">
               <component :is="kpi.icon" class="h-5 w-5" aria-hidden="true" />
             </div>
-            <span class="text-2xl font-semibold leading-none" :class="kpi.variant === 'amber' && kpi.value > 0 ? 'text-warning' : kpi.variant === 'indigo' && kpi.value > 0 ? 'text-voting' : kpi.variant === 'green' ? 'text-success' : 'text-foreground'">
+            <span
+              class="text-2xl font-semibold leading-none"
+              :class="{
+                'text-amber-600': kpi.variant === 'amber' && kpi.value > 0,
+                'text-[#5856d6]': kpi.variant === 'indigo' && kpi.value > 0,
+                'text-green-700': kpi.variant === 'green',
+                'text-foreground': kpi.variant === 'gray' || kpi.value === 0,
+              }"
+            >
               {{ kpi.value }}
             </span>
             <span class="text-xs text-muted-foreground">{{ kpi.label }}</span>
@@ -105,13 +183,13 @@ onMounted(() => { store.loadStats() })
           إجراءات سريعة
         </h2>
         <div class="grid grid-cols-2 max-md:grid-cols-1 gap-3">
-          <button class="flex flex-col items-start gap-1 p-4 bg-primary text-primary-foreground border-0 rounded-lg cursor-pointer hover:hover:opacity-90 transition-colors" @click="router.push('/requests')">
+          <button class="flex flex-col items-start gap-1 p-4 bg-[#5856d6] text-white border-0 rounded-2xl cursor-pointer hover:opacity-90 transition-opacity" @click="router.push('/requests')">
             <Users class="h-5 w-5 flex-shrink-0 mb-1" aria-hidden="true" />
-            <span class="text-sm font-semibold">طابور المساندة</span>
-            <span class="text-xs opacity-75">{{ stats.waiting_for_claim }} طلب جاهز للمراجعة</span>
+            <span class="text-sm font-semibold">طابور المراجعة</span>
+            <span class="text-xs opacity-75">{{ stats.waiting_for_claim }} طلب بانتظار المطالبة</span>
           </button>
 
-          <button class="flex flex-col items-start gap-1 p-4 bg-background border border-border text-foreground rounded-lg cursor-pointer hover:border-primary hover:shadow-md transition-all" @click="router.push('/notifications')">
+          <button class="flex flex-col items-start gap-1 p-4 bg-background border border-border text-foreground rounded-2xl cursor-pointer hover:border-primary hover:shadow-md transition-all" @click="router.push('/notifications')">
             <Mail class="h-5 w-5 flex-shrink-0 text-primary mb-1" aria-hidden="true" />
             <span class="text-sm font-semibold">الإشعارات</span>
             <span class="text-xs text-muted-foreground">آخر تحديثات الطابور والقرارات</span>
@@ -119,7 +197,7 @@ onMounted(() => { store.loadStats() })
         </div>
       </section>
 
-      <!-- Support queue -->
+      <!-- Support queue table (max 8 rows) -->
       <Card class="border-0 shadow" aria-labelledby="queue-heading">
         <CardContent class="p-4">
           <div class="flex items-center justify-between mb-4">
@@ -127,7 +205,10 @@ onMounted(() => { store.loadStats() })
             <a class="text-xs text-primary hover:underline transition-colors cursor-pointer" @click="router.push('/requests')">عرض الكل</a>
           </div>
 
-          <div v-if="queue.length === 0" class="py-8 text-center text-sm text-muted-foreground" role="status">لا توجد طلبات في طابور لجنة الدعم حالياً</div>
+          <!-- Empty queue — healthy state -->
+          <div v-if="queue.length === 0" class="py-8 text-center text-sm text-muted-foreground" role="status">
+            لا توجد طلبات بانتظار المراجعة حالياً ✓
+          </div>
 
           <table v-else class="w-full border-collapse text-xs" role="table" aria-label="طابور عملي">
             <thead>
@@ -137,21 +218,24 @@ onMounted(() => { store.loadStats() })
                 <th scope="col" class="py-2 px-2 text-right font-medium text-muted-foreground">المبلغ</th>
                 <th scope="col" class="py-2 px-2 text-right font-medium text-muted-foreground">الحالة</th>
                 <th scope="col" class="py-2 px-2 text-right font-medium text-muted-foreground">الحجز</th>
-                <th scope="col" class="py-2 px-2 text-right font-medium text-muted-foreground">التقدم</th>
                 <th scope="col" class="py-2 px-2 text-right font-medium text-muted-foreground">إجراء</th>
               </tr>
             </thead>
             <tbody>
               <tr
-                v-for="req in queue"
+                v-for="req in queue.slice(0, 8)"
                 :key="req.id"
-                class="border-t border-muted hover:bg-muted/50 cursor-pointer transition-colors"
+                class="border-t border-muted transition-colors cursor-pointer"
                 :class="{
-                  'bg-primary/10 hover:bg-primary/10': req.is_claimed_by_me,
-                  'bg-amber-50/10 hover:bg-amber-50/10': !!req.claimed_by && !req.is_claimed_by_me,
+                  'bg-[#5856d6]/8 hover:bg-[#5856d6]/12': req.is_claimed_by_me || (currentUserId != null && req.claimed_by?.id === currentUserId),
+                  'bg-muted/40 hover:bg-muted/60': !!req.claimed_by && !req.is_claimed_by_me && req.claimed_by?.id !== currentUserId,
+                  'hover:bg-muted/30': !req.claimed_by,
                 }"
+                @click="router.push(`/requests/${req.id}`)"
               >
-                <td class="py-2 px-2"><a class="font-mono text-primary hover:underline" :href="`/requests/${req.id}`" @click.prevent="router.push(`/requests/${req.id}`)">{{ req.reference_number }}</a></td>
+                <td class="py-2 px-2">
+                  <a class="font-mono text-primary hover:underline" :href="`/requests/${req.id}`" @click.prevent="router.push(`/requests/${req.id}`)">{{ req.reference_number }}</a>
+                </td>
                 <td class="py-2 px-2 text-foreground">{{ req.supplier_name }}</td>
                 <td class="py-2 px-2 text-foreground direction-ltr font-tabular-nums">{{ formatAmount(req.amount, req.currency) }}</td>
                 <td class="py-2 px-2"><StatusBadge :status="req.status" :role="UserRole.SUPPORT_COMMITTEE" /></td>
@@ -159,23 +243,41 @@ onMounted(() => { store.loadStats() })
                   <span
                     class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium"
                     :class="{
-                      'bg-voting/10 text-voting': req.is_claimed_by_me,
-                      'bg-warning/10 text-warning': !!req.claimed_by && !req.is_claimed_by_me,
-                      'bg-muted text-foreground': !req.claimed_by,
+                      'bg-[#5856d6]/10 text-[#5856d6]': req.is_claimed_by_me || (currentUserId != null && req.claimed_by?.id === currentUserId),
+                      'bg-muted text-muted-foreground': !!req.claimed_by && !req.is_claimed_by_me && req.claimed_by?.id !== currentUserId,
+                      'bg-amber-50/50 text-amber-600': !req.claimed_by,
                     }"
                   >
                     {{ claimOwnerLabel(req) }}
                   </span>
                 </td>
-                <td class="py-2 px-2">
-                  <div class="flex items-center gap-2 min-w-24">
-                    <div class="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
-                      <div class="h-full transition-all" :style="{ width: `${getRequestProgress(req.status)}%`, backgroundColor: req.is_claimed_by_me ? 'var(--color-voting)' : 'var(--color-primary)' }" />
-                    </div>
-                    <span class="text-xs text-muted-foreground whitespace-nowrap">{{ getRequestProgress(req.status) }}%</span>
-                  </div>
+                <!-- Claim-state-dependent action button -->
+                <td class="py-2 px-2" @click.stop>
+                  <!-- Unclaimed: primary مطالبة -->
+                  <button
+                    v-if="!req.claimed_by"
+                    class="px-2 py-1 bg-[#5856d6] text-white text-xs font-semibold rounded hover:opacity-90 transition-opacity"
+                    @click="router.push(`/requests/${req.id}`)"
+                  >
+                    مطالبة
+                  </button>
+                  <!-- Claimed by me: outline متابعة -->
+                  <button
+                    v-else-if="req.is_claimed_by_me || (currentUserId != null && req.claimed_by?.id === currentUserId)"
+                    class="px-2 py-1 bg-background border border-[#5856d6] text-[#5856d6] text-xs font-semibold rounded hover:bg-[#5856d6]/10 transition-colors"
+                    @click="router.push(`/requests/${req.id}`)"
+                  >
+                    متابعة
+                  </button>
+                  <!-- Claimed by others: ghost عرض -->
+                  <button
+                    v-else
+                    class="px-2 py-1 bg-background border border-border text-xs text-foreground rounded hover:border-primary hover:text-primary transition-colors"
+                    @click="router.push(`/requests/${req.id}`)"
+                  >
+                    عرض
+                  </button>
                 </td>
-                <td class="py-2 px-2"><button class="px-2 py-1 bg-background border border-border text-xs text-foreground rounded hover:border-primary hover:text-primary transition-colors" :aria-label="`عرض الطلب ${req.reference_number}`" @click.stop="router.push(`/requests/${req.id}`)">عرض</button></td>
               </tr>
             </tbody>
           </table>
