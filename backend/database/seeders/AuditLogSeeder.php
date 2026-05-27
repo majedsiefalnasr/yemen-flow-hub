@@ -14,12 +14,12 @@ class AuditLogSeeder extends Seeder
     public function run(): void
     {
         User::query()->each(function (User $user): void {
-            // 4-12 historical login events spread across the last 45 days
-            $count = rand(4, 12);
+            // 6-18 historical login events spread across the last 180 days
+            $count = rand(6, 18);
             $latest = null;
 
             for ($i = 0; $i < $count; $i++) {
-                $at = now()->subDays(rand(1, 45))->subHours(rand(0, 23))->subMinutes(rand(0, 59));
+                $at = now()->subDays(rand(1, 180))->subHours(rand(0, 23))->subMinutes(rand(0, 59));
                 $ip = fake()->ipv4();
                 $ua = fake()->userAgent();
 

@@ -43,11 +43,11 @@ class RequestScenarioBuilder
             : 1;
     }
 
-    public function build(string $scenario, Bank $bank): ImportRequest
+    public function build(string $scenario, Bank $bank, ?Carbon $createdAt = null): ImportRequest
     {
         $data    = $this->scenarioConfig($scenario);
         $status  = $data['status'];
-        $timeline = $this->timelineForStatus($status);
+        $timeline = $this->timelineForStatus($status, $createdAt);
 
         $entries      = User::query()->where('bank_id', $bank->id)->where('role', UserRole::DATA_ENTRY->value)->get();
         $entry        = $entries->random();
@@ -120,6 +120,7 @@ class RequestScenarioBuilder
                 'status'               => $status,
                 'current_owner_role'   => $owner,
                 'voting_session_status' => $this->resolveVotingSessionStatus($scenario),
+                'eligible_voter_ids'    => $votingOpened ? $execs->pluck('id')->push($director->id)->toArray() : null,
                 // Claim
                 'claimed_by'       => $claimedBy,
                 'claimed_at'       => $claimedAt,
@@ -157,6 +158,10 @@ class RequestScenarioBuilder
 
         if ($this->reached(RequestStatus::SWIFT_UPLOADED, $status)) {
             $this->seedSwiftDoc($request, $swift, $timeline['swift_uploaded_at'] ?? now());
+        }
+
+        if ($scenario === 'executive_approved') {
+            $this->seedFxRequestDoc($request, $director, $timeline['executive_decided_at'] ?? now());
         }
 
         $this->seedHistory($scenario, $request, $entry, $reviewer, $support, $swift, $director, $timeline);
@@ -271,9 +276,9 @@ class RequestScenarioBuilder
     // Timeline
     // -------------------------------------------------------------------------
 
-    private function timelineForStatus(RequestStatus $status): array
+    private function timelineForStatus(RequestStatus $status, ?Carbon $baseDate = null): array
     {
-        $created         = now()->subDays(rand(20, 80));
+        $created = $baseDate ?? now()->subDays(rand(20, 80));
         $submitted       = $created->copy()->addDays(rand(1, 3));
         $bankApproved    = $submitted->copy()->addDays(rand(1, 3));
         $supportApproved = $bankApproved->copy()->addDays(rand(2, 5));
@@ -400,6 +405,24 @@ class RequestScenarioBuilder
             ]);
             $this->log(AuditAction::DOCUMENT_UPLOADED, $actor, $doc, ['request_id' => $request->id], $doc->created_at);
         }
+    }
+
+    private function seedFxRequestDoc(ImportRequest $request, User $actor, Carbon $at): void
+    {
+        $doc = RequestDocument::query()->create([
+            'request_id'        => $request->id,
+            'uploaded_by'       => $actor->id,
+            'type'              => 'FX_REQUEST',
+            'document_type_id'  => null,
+            'original_filename' => 'fx_confirmation_request.pdf',
+            'stored_path'       => "fx-request/{$request->id}/" . Str::uuid() . '.pdf',
+            'mime_type'         => 'application/pdf',
+            'size_bytes'        => rand(60 * 1024, 2 * 1024 * 1024),
+            'checksum'          => bin2hex(random_bytes(32)),
+            'created_at'        => $at,
+            'updated_at'        => $at,
+        ]);
+        $this->log(AuditAction::DOCUMENT_UPLOADED, $actor, $doc, ['request_id' => $request->id, 'type' => 'FX_REQUEST'], $at);
     }
 
     private function seedSwiftDoc(ImportRequest $request, User $actor, Carbon $at): void
