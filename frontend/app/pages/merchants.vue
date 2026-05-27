@@ -10,9 +10,9 @@ import {
 } from '@tanstack/vue-table'
 import { h } from 'vue'
 import {
-  Building2,
+  AlertTriangle, Building2,
   ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
-  Download, Edit, MoreHorizontal, Plus, Printer, Search, SearchX, X,
+  Download, Edit, MoreHorizontal, Plus, Printer, Search, SearchX, Shield, X,
 } from 'lucide-vue-next'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import MerchantDialog from '@/components/merchants/MerchantDialog.vue'
@@ -49,6 +49,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -118,10 +126,15 @@ const filtered = computed(() => {
   return scoped.value.filter((m) => {
     if (statusFilter.value !== 'all' && (statusFilter.value === 'active') !== m.is_active) return false
     if (isCbyAdmin.value && bankFilter.value !== 'all' && m.bank_id !== bankFilter.value) return false
+    if (isCbyAdmin.value && merchantTab.value === 'cross_bank' && !crossBankNames.value.has(m.name.trim().toLowerCase())) return false
+    if (isCbyAdmin.value && merchantTab.value === 'missing_data' && m.commercial_register && m.tax_number) return false
+    if (isCbyAdmin.value && merchantTab.value === 'inactive' && m.is_active) return false
     if (!q) return true
     return [m.name, m.commercial_register, m.tax_number, bankName(m.bank_id)].some(v => (v ?? '').toLowerCase().includes(q))
   })
 })
+
+const merchantTab = ref<'all' | 'cross_bank' | 'missing_data' | 'inactive'>('all')
 
 const stats = computed(() => ({
   total: scoped.value.length,
@@ -129,6 +142,26 @@ const stats = computed(() => ({
   suspended: scoped.value.filter(m => !m.is_active).length,
   incomplete: scoped.value.filter(m => !m.commercial_register || !m.tax_number).length,
 }))
+
+// CBY-Admin risk intelligence computeds
+const crossBankNames = computed(() => {
+  if (!isCbyAdmin.value) return new Set<string>()
+  const nameCount: Record<string, number> = {}
+  for (const m of merchants.value) {
+    const key = m.name.trim().toLowerCase()
+    nameCount[key] = (nameCount[key] ?? 0) + 1
+  }
+  return new Set(Object.entries(nameCount).filter(([, c]) => c > 1).map(([n]) => n))
+})
+
+const riskSummary = computed(() => {
+  if (!isCbyAdmin.value) return null
+  return {
+    crossBank: merchants.value.filter(m => crossBankNames.value.has(m.name.trim().toLowerCase())).length,
+    missingData: merchants.value.filter(m => !m.commercial_register || !m.tax_number).length,
+    inactive: merchants.value.filter(m => !m.is_active).length,
+  }
+})
 
 function merchantToForm(m: Merchant): MerchantFormData {
   return {
@@ -346,6 +379,52 @@ const table = useVueTable({
         <div class="mt-2 text-2xl font-bold tabular-nums">{{ stats.incomplete }}</div>
         <div class="text-xs text-muted-foreground">سجلات ناقصة</div>
       </Card>
+    </div>
+
+    <!-- CBY Admin: Smart summary bar -->
+    <div v-if="isCbyAdmin && riskSummary" class="mb-4 space-y-2">
+      <Card
+        v-if="riskSummary.crossBank > 0"
+        class="border-0 border-s-4 border-s-[var(--severity-amber)] bg-[var(--severity-amber)]/5 shadow-sm"
+        role="alert"
+      >
+        <div class="flex items-center gap-3 px-4 py-3">
+          <AlertTriangle class="h-4 w-4 shrink-0 text-[var(--severity-amber)]" aria-hidden="true" />
+          <span class="flex-1 text-sm font-medium">
+            {{ riskSummary.crossBank }} تاجر يظهر في أكثر من بنك — مراجعة مخاطر التكرار مطلوبة
+          </span>
+          <Button size="sm" variant="ghost" class="h-7 text-xs" @click="merchantTab = 'cross_bank'">
+            عرض
+          </Button>
+        </div>
+      </Card>
+      <Card
+        v-if="riskSummary.missingData > 0"
+        class="border-0 border-s-4 border-s-[var(--severity-amber)] bg-[var(--severity-amber)]/5 shadow-sm"
+        role="alert"
+      >
+        <div class="flex items-center gap-3 px-4 py-3">
+          <AlertTriangle class="h-4 w-4 shrink-0 text-[var(--severity-amber)]" aria-hidden="true" />
+          <span class="flex-1 text-sm font-medium">
+            {{ riskSummary.missingData }} تاجر ببيانات ناقصة (سجل تجاري أو رقم ضريبي)
+          </span>
+          <Button size="sm" variant="ghost" class="h-7 text-xs" @click="merchantTab = 'missing_data'">
+            عرض
+          </Button>
+        </div>
+      </Card>
+    </div>
+
+    <!-- CBY Admin: Risk tabs -->
+    <div v-if="isCbyAdmin" class="mb-4">
+      <Tabs :model-value="merchantTab" @update:model-value="v => merchantTab = v as typeof merchantTab.value">
+        <TabsList variant="line">
+          <TabsTrigger value="all">الكل ({{ scoped.length }})</TabsTrigger>
+          <TabsTrigger value="cross_bank">متعدد البنوك ({{ riskSummary?.crossBank ?? 0 }})</TabsTrigger>
+          <TabsTrigger value="missing_data">بيانات ناقصة ({{ stats.incomplete }})</TabsTrigger>
+          <TabsTrigger value="inactive">غير نشط ({{ stats.suspended }})</TabsTrigger>
+        </TabsList>
+      </Tabs>
     </div>
 
     <!-- Toolbar: bulk (when selected in table view) OR search + filters (default) -->
@@ -626,7 +705,105 @@ const table = useVueTable({
       />
     </Dialog>
 
-    <Dialog :open="Boolean(viewing)" @update:open="v => !v && (viewing = null)">
+    <!-- CBY Admin: Rich merchant profile drawer -->
+    <Sheet v-if="isCbyAdmin" :open="Boolean(viewing)" @update:open="v => !v && (viewing = null)">
+      <SheetContent v-if="viewing" side="left" dir="rtl" class="w-full sm:max-w-lg">
+        <SheetHeader class="pb-4">
+          <SheetTitle class="flex items-center gap-2 text-base">
+            <div class="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+              <Building2 class="h-4 w-4" />
+            </div>
+            {{ viewing.name }}
+          </SheetTitle>
+          <SheetDescription>ملف التاجر — عرض رقابي</SheetDescription>
+        </SheetHeader>
+
+        <div class="space-y-4 overflow-y-auto pb-6">
+          <!-- Status + risk signals -->
+          <div class="flex flex-wrap gap-2">
+            <Badge :class="viewing.is_active ? 'border-[var(--severity-green)]/30 bg-[var(--severity-green)]/10 text-[var(--severity-green)]' : 'border-[var(--severity-red)]/30 bg-[var(--severity-red)]/10 text-[var(--severity-red)]'" class="border">
+              {{ viewing.is_active ? 'نشط' : 'غير نشط' }}
+            </Badge>
+            <Badge
+              v-if="crossBankNames.has(viewing.name.trim().toLowerCase())"
+              class="border border-[var(--severity-amber)]/30 bg-[var(--severity-amber)]/10 text-[var(--severity-amber)]"
+            >
+              <AlertTriangle class="me-1 h-3 w-3" />
+              ظهور في أكثر من بنك
+            </Badge>
+            <Badge
+              v-if="!viewing.commercial_register || !viewing.tax_number"
+              class="border border-[var(--severity-amber)]/30 bg-[var(--severity-amber)]/10 text-[var(--severity-amber)]"
+            >
+              <AlertTriangle class="me-1 h-3 w-3" />
+              بيانات ناقصة
+            </Badge>
+          </div>
+
+          <!-- Basic info -->
+          <Card class="border p-4">
+            <h3 class="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">معلومات التسجيل</h3>
+            <div class="grid grid-cols-2 gap-3 text-sm">
+              <div class="space-y-0.5">
+                <div class="text-xs text-muted-foreground">السجل التجاري</div>
+                <div class="font-medium">{{ viewing.commercial_register ?? '—' }}</div>
+              </div>
+              <div class="space-y-0.5">
+                <div class="text-xs text-muted-foreground">الرقم الضريبي</div>
+                <div class="font-medium">{{ viewing.tax_number ?? '—' }}</div>
+              </div>
+              <div class="space-y-0.5">
+                <div class="text-xs text-muted-foreground">القطاع</div>
+                <div class="font-medium">{{ viewing.business_type ?? '—' }}</div>
+              </div>
+              <div class="space-y-0.5">
+                <div class="text-xs text-muted-foreground">عدد المعاملات</div>
+                <div class="font-bold tabular-nums">{{ viewing.transaction_count ?? 0 }}</div>
+              </div>
+              <div class="col-span-2 space-y-0.5">
+                <div class="text-xs text-muted-foreground">العنوان</div>
+                <div class="font-medium">{{ viewing.address ?? '—' }}</div>
+              </div>
+              <div class="space-y-0.5">
+                <div class="text-xs text-muted-foreground">هاتف</div>
+                <div class="font-medium">{{ viewing.phone ?? '—' }}</div>
+              </div>
+              <div class="space-y-0.5">
+                <div class="text-xs text-muted-foreground">البريد</div>
+                <div class="font-medium">{{ viewing.email ?? '—' }}</div>
+              </div>
+            </div>
+          </Card>
+
+          <!-- Associated banks -->
+          <Card class="border p-4">
+            <h3 class="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <Shield class="h-3.5 w-3.5" />
+              البنوك المرتبطة
+            </h3>
+            <div class="space-y-1.5 text-sm">
+              <div class="flex items-center justify-between">
+                <span class="font-medium">{{ bankName(viewing.bank_id) }}</span>
+                <Badge variant="secondary" class="text-xs">مسجّل</Badge>
+              </div>
+              <template v-if="crossBankNames.has(viewing.name.trim().toLowerCase())">
+                <div
+                  v-for="other in merchants.filter(m => m.id !== viewing?.id && m.name.trim().toLowerCase() === viewing?.name.trim().toLowerCase())"
+                  :key="other.id"
+                  class="flex items-center justify-between text-[var(--severity-amber)]"
+                >
+                  <span class="font-medium">{{ bankName(other.bank_id) }}</span>
+                  <Badge class="border-[var(--severity-amber)]/30 bg-[var(--severity-amber)]/10 text-[var(--severity-amber)] border text-xs">مكرر</Badge>
+                </div>
+              </template>
+            </div>
+          </Card>
+        </div>
+      </SheetContent>
+    </Sheet>
+
+    <!-- Bank Admin: Simple view dialog -->
+    <Dialog v-if="!isCbyAdmin" :open="Boolean(viewing)" @update:open="v => !v && (viewing = null)">
       <DialogContent v-if="viewing" class="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle class="flex items-center gap-2">
