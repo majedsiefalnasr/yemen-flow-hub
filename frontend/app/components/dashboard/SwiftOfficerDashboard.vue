@@ -59,17 +59,17 @@ onMounted(() => { store.loadStats() })
     <template v-else-if="stats">
       <div
         v-if="stats.pending_swift_upload > 0"
-        class="rounded-xl border border-amber-300 bg-amber-50/30 p-4"
+        class="rounded-xl border border-[var(--severity-amber)]/40 bg-[var(--severity-amber)]/5 p-4"
       >
         <div class="flex items-center gap-3">
-          <AlertTriangle class="h-5 w-5 text-amber-600" />
+          <AlertTriangle class="h-5 w-5 text-[var(--severity-amber)]" />
           <div class="min-w-0 flex-1">
             <p class="text-sm font-semibold text-foreground">{{ stats.pending_swift_upload }} طلبات بانتظار رفع وثائق السويفت</p>
             <p v-if="oldestPending" class="truncate text-xs text-muted-foreground">
               {{ oldestPending.reference_number }} • منذ {{ hoursInStage(oldestPending.updated_at) }} ساعة
             </p>
           </div>
-          <Button class="bg-amber-500 text-white hover:bg-amber-600" @click="router.push('/requests?tab=pending_swift')">
+          <Button class="bg-[var(--severity-amber)] text-white hover:opacity-90" @click="router.push('/requests?tab=pending_swift')">
             ابدأ الرفع
           </Button>
         </div>
@@ -77,34 +77,34 @@ onMounted(() => { store.loadStats() })
 
       <div class="grid grid-cols-4 gap-4 md:grid-cols-2 sm:grid-cols-1">
         <button class="rounded-xl border border-border bg-background p-4 text-start transition hover:shadow-sm" @click="router.push('/requests?tab=pending_swift')">
-          <div class="mb-2 inline-flex h-9 w-9 items-center justify-center rounded bg-amber-50 text-amber-700">
+          <div class="mb-2 inline-flex h-9 w-9 items-center justify-center rounded bg-[var(--severity-amber)]/10 text-[var(--severity-amber)]">
             <Clock3 class="h-5 w-5" />
           </div>
-          <p class="text-2xl font-semibold text-amber-700">{{ stats.pending_swift_upload }}</p>
+          <p class="text-2xl font-semibold text-[var(--severity-amber)]">{{ stats.pending_swift_upload }}</p>
           <p class="text-xs text-muted-foreground">بانتظار رفع السويفت</p>
         </button>
 
         <button class="rounded-xl border border-border bg-background p-4 text-start transition hover:shadow-sm" @click="router.push('/requests?tab=swift_done')">
-          <div class="mb-2 inline-flex h-9 w-9 items-center justify-center rounded bg-cyan-50 text-cyan-700">
+          <div class="mb-2 inline-flex h-9 w-9 items-center justify-center rounded bg-[var(--swift)]/10 text-[var(--swift)]">
             <UploadCloud class="h-5 w-5" />
           </div>
-          <p class="text-2xl font-semibold text-cyan-700">{{ stats.uploaded }}</p>
+          <p class="text-2xl font-semibold text-[var(--swift)]">{{ stats.uploaded }}</p>
           <p class="text-xs text-muted-foreground">تم رفع السويفت</p>
         </button>
 
         <button class="rounded-xl border border-border bg-background p-4 text-start transition hover:shadow-sm" @click="router.push('/requests?tab=completed')">
-          <div class="mb-2 inline-flex h-9 w-9 items-center justify-center rounded bg-green-50 text-green-700">
+          <div class="mb-2 inline-flex h-9 w-9 items-center justify-center rounded bg-[var(--severity-green)]/10 text-[var(--severity-green)]">
             <CheckCircle2 class="h-5 w-5" />
           </div>
-          <p class="text-2xl font-semibold text-green-700">{{ stats.final_approved }}</p>
+          <p class="text-2xl font-semibold text-[var(--severity-green)]">{{ stats.final_approved }}</p>
           <p class="text-xs text-muted-foreground">مكتمل</p>
         </button>
 
         <button class="rounded-xl border border-border bg-background p-4 text-start transition hover:shadow-sm" @click="router.push('/requests?tab=rejected')">
-          <div class="mb-2 inline-flex h-9 w-9 items-center justify-center rounded bg-rose-50 text-rose-700">
+          <div class="mb-2 inline-flex h-9 w-9 items-center justify-center rounded bg-[var(--severity-red)]/10 text-[var(--severity-red)]">
             <XCircle class="h-5 w-5" />
           </div>
-          <p class="text-2xl font-semibold text-rose-700">{{ stats.final_rejected }}</p>
+          <p class="text-2xl font-semibold text-[var(--severity-red)]">{{ stats.final_rejected }}</p>
           <p class="text-xs text-muted-foreground">رُفض من اللجنة</p>
         </button>
       </div>
@@ -143,13 +143,13 @@ onMounted(() => { store.loadStats() })
                 <td class="px-3 py-2">
                   <StatusBadge :status="req.status" :role="UserRole.SWIFT_OFFICER" />
                 </td>
-                <td class="px-3 py-2" :class="hoursInStage(req.updated_at) > 24 ? 'text-amber-700' : 'text-muted-foreground'">
+                <td class="px-3 py-2" :class="hoursInStage(req.updated_at) > 24 ? 'text-[var(--severity-amber)]' : 'text-muted-foreground'">
                   {{ hoursInStage(req.updated_at) }} ساعة
                 </td>
                 <td class="px-3 py-2">
                   <div class="flex items-center gap-1.5">
-                    <span :class="req.has_swift_document ? 'rounded-full border border-green-200 bg-green-50 px-2 py-0.5 text-green-700' : 'rounded-full border border-border bg-muted px-2 py-0.5 text-muted-foreground'">السويفت</span>
-                    <span :class="req.has_fx_request_document ? 'rounded-full border border-green-200 bg-green-50 px-2 py-0.5 text-green-700' : 'rounded-full border border-border bg-muted px-2 py-0.5 text-muted-foreground'">طلب تأكيد المصارفة</span>
+                    <span :class="req.has_swift_document ? 'rounded-full border border-[var(--severity-green)]/30 bg-[var(--severity-green)]/10 px-2 py-0.5 text-[var(--severity-green)]' : 'rounded-full border border-border bg-muted px-2 py-0.5 text-muted-foreground'">السويفت</span>
+                    <span :class="req.has_fx_request_document ? 'rounded-full border border-[var(--severity-green)]/30 bg-[var(--severity-green)]/10 px-2 py-0.5 text-[var(--severity-green)]' : 'rounded-full border border-border bg-muted px-2 py-0.5 text-muted-foreground'">طلب تأكيد المصارفة</span>
                   </div>
                 </td>
                 <td class="px-3 py-2">

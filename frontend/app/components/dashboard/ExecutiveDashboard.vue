@@ -94,7 +94,7 @@ onMounted(() => { store.loadStats() })
           <div class="flex flex-col gap-2">
             <button
               v-if="(stats.sessions_ready_to_close ?? 0) > 0"
-              class="flex items-center gap-3 rounded-lg border border-indigo-200 bg-indigo-50/40 px-3 py-2 text-right"
+              class="flex items-center gap-3 rounded-lg border border-[var(--voting)]/30 bg-[var(--voting)]/5 px-3 py-2 text-right"
               @click="router.push('/requests?tab=ready_to_close')"
             >
               <AlertTriangle class="h-4 w-4 text-[var(--voting)]" />
@@ -102,18 +102,18 @@ onMounted(() => { store.loadStats() })
             </button>
             <button
               v-if="(stats.sessions_with_tie ?? 0) > 0"
-              class="flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50/40 px-3 py-2 text-right"
+              class="flex items-center gap-3 rounded-lg border border-[var(--severity-amber)]/30 bg-[var(--severity-amber)]/5 px-3 py-2 text-right"
               @click="router.push('/requests?tab=tie_break')"
             >
-              <Scale class="h-4 w-4 text-amber-600" />
+              <Scale class="h-4 w-4 text-[var(--severity-amber)]" />
               <span class="text-sm">{{ stats.sessions_with_tie }} جلسات تصويت بتعادل — يتطلب حسماً</span>
             </button>
             <button
               v-if="(stats.fx_confirmation_pending ?? 0) > 0"
-              class="flex items-center gap-3 rounded-lg border border-green-200 bg-green-50/40 px-3 py-2 text-right"
+              class="flex items-center gap-3 rounded-lg border border-[var(--severity-green)]/30 bg-[var(--severity-green)]/5 px-3 py-2 text-right"
               @click="router.push('/requests?tab=fx_pending')"
             >
-              <FileCheck2 class="h-4 w-4 text-green-700" />
+              <FileCheck2 class="h-4 w-4 text-[var(--severity-green)]" />
               <span class="text-sm">{{ stats.fx_confirmation_pending }} طلبات جاهزة لإتمام تأكيد المصارفة الخارجية</span>
             </button>
           </div>
@@ -121,23 +121,23 @@ onMounted(() => { store.loadStats() })
 
         <div class="grid grid-cols-4 gap-4 max-lg:grid-cols-2 max-md:grid-cols-1">
           <button class="rounded-xl border border-border bg-background p-4 text-start hover:shadow-sm" @click="router.push('/requests?tab=active_voting')">
-            <div class="mb-2 inline-flex h-9 w-9 items-center justify-center rounded bg-indigo-50 text-[var(--voting)]"><Vote class="h-5 w-5" /></div>
+            <div class="mb-2 inline-flex h-9 w-9 items-center justify-center rounded bg-[var(--voting)]/10 text-[var(--voting)]"><Vote class="h-5 w-5" /></div>
             <p class="text-2xl font-semibold text-[var(--voting)]">{{ stats.active_voting_sessions }}</p>
             <p class="text-xs text-muted-foreground">جلسات التصويت النشطة</p>
           </button>
           <button class="rounded-xl border border-border bg-background p-4 text-start hover:shadow-sm" @click="router.push('/requests?tab=fx_pending')">
-            <div class="mb-2 inline-flex h-9 w-9 items-center justify-center rounded bg-amber-50 text-amber-700"><FileCheck2 class="h-5 w-5" /></div>
-            <p class="text-2xl font-semibold text-amber-700">{{ stats.fx_confirmation_pending ?? stats.decisions_approved }}</p>
+            <div class="mb-2 inline-flex h-9 w-9 items-center justify-center rounded bg-[var(--severity-amber)]/10 text-[var(--severity-amber)]"><FileCheck2 class="h-5 w-5" /></div>
+            <p class="text-2xl font-semibold text-[var(--severity-amber)]">{{ stats.fx_confirmation_pending ?? stats.decisions_approved }}</p>
             <p class="text-xs text-muted-foreground">بانتظار تأكيد المصارفة</p>
           </button>
           <button class="rounded-xl border border-border bg-background p-4 text-start hover:shadow-sm" @click="router.push('/requests?tab=finalized')">
-            <div class="mb-2 inline-flex h-9 w-9 items-center justify-center rounded bg-green-50 text-green-700"><CheckCircle2 class="h-5 w-5" /></div>
-            <p class="text-2xl font-semibold text-green-700">{{ stats.finalized_approved ?? stats.decisions_approved }}</p>
+            <div class="mb-2 inline-flex h-9 w-9 items-center justify-center rounded bg-[var(--severity-green)]/10 text-[var(--severity-green)]"><CheckCircle2 class="h-5 w-5" /></div>
+            <p class="text-2xl font-semibold text-[var(--severity-green)]">{{ stats.finalized_approved ?? stats.decisions_approved }}</p>
             <p class="text-xs text-muted-foreground">قرارات مُنهاة (اعتماد)</p>
           </button>
           <button class="rounded-xl border border-border bg-background p-4 text-start hover:shadow-sm" @click="router.push('/requests?tab=rejected')">
-            <div class="mb-2 inline-flex h-9 w-9 items-center justify-center rounded bg-rose-50 text-rose-700"><XCircle class="h-5 w-5" /></div>
-            <p class="text-2xl font-semibold text-rose-700">{{ stats.finalized_rejected ?? stats.decisions_rejected }}</p>
+            <div class="mb-2 inline-flex h-9 w-9 items-center justify-center rounded bg-[var(--severity-red)]/10 text-[var(--severity-red)]"><XCircle class="h-5 w-5" /></div>
+            <p class="text-2xl font-semibold text-[var(--severity-red)]">{{ stats.finalized_rejected ?? stats.decisions_rejected }}</p>
             <p class="text-xs text-muted-foreground">قرارات مُرفوضة</p>
           </button>
         </div>
@@ -197,7 +197,7 @@ onMounted(() => { store.loadStats() })
                   <td class="px-3 py-2 font-mono text-primary">{{ req.reference_number }}</td>
                   <td class="px-3 py-2">{{ req.merchant?.name ?? req.supplier_name }}</td>
                   <td class="px-3 py-2 font-mono">{{ formatAmount(req.amount, req.currency) }}</td>
-                  <td class="px-3 py-2" :class="ageHours(req.updated_at) > 24 ? 'text-amber-700' : 'text-muted-foreground'">{{ ageHours(req.updated_at) }} ساعة</td>
+                  <td class="px-3 py-2" :class="ageHours(req.updated_at) > 24 ? 'text-[var(--severity-amber)]' : 'text-muted-foreground'">{{ ageHours(req.updated_at) }} ساعة</td>
                   <td class="px-3 py-2">
                     <Button size="sm" variant="outline" @click="router.push(`/requests/${req.id}`)">إتمام التأكيد</Button>
                   </td>
@@ -211,7 +211,7 @@ onMounted(() => { store.loadStats() })
       <template v-else>
         <div
           v-if="pendingMyVoteCount > 0"
-          class="rounded-xl border border-indigo-300 bg-indigo-50/40 p-4"
+          class="rounded-xl border border-[var(--voting)]/40 bg-[var(--voting)]/5 p-4"
         >
           <div class="flex items-center gap-3">
             <Vote class="h-5 w-5 text-[var(--voting)]" />
@@ -231,11 +231,11 @@ onMounted(() => { store.loadStats() })
             <p class="text-xs text-muted-foreground">طابور التصويت</p>
           </button>
           <button class="rounded-xl border border-border bg-background p-4 text-start hover:shadow-sm" @click="router.push('/requests?tab=approved')">
-            <p class="text-2xl font-semibold text-green-700">{{ stats.decisions_approved }}</p>
+            <p class="text-2xl font-semibold text-[var(--severity-green)]">{{ stats.decisions_approved }}</p>
             <p class="text-xs text-muted-foreground">قرارات اعتماد</p>
           </button>
           <button class="rounded-xl border border-border bg-background p-4 text-start hover:shadow-sm" @click="router.push('/requests?tab=rejected')">
-            <p class="text-2xl font-semibold text-rose-700">{{ stats.decisions_rejected }}</p>
+            <p class="text-2xl font-semibold text-[var(--severity-red)]">{{ stats.decisions_rejected }}</p>
             <p class="text-xs text-muted-foreground">قرارات رفض</p>
           </button>
         </div>

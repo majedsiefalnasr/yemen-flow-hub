@@ -238,7 +238,7 @@ onMounted(() => { store.loadStats() })
                 <span
                   v-if="resolvedKpi(config.key).delta !== 0"
                   class="text-xs"
-                  :class="resolvedKpi(config.key).delta > 0 ? 'text-red-600' : 'text-green-700'"
+                  :class="resolvedKpi(config.key).delta > 0 ? 'text-[var(--severity-red)]' : 'text-[var(--severity-green)]'"
                 >
                   {{ resolvedKpi(config.key).delta > 0 ? '+' : '' }}{{ resolvedKpi(config.key).delta }}
                 </span>
@@ -292,7 +292,7 @@ onMounted(() => { store.loadStats() })
                 v-for="row in stats.workflow_pressure_map"
                 :key="row.stage"
                 class="cursor-pointer transition-colors"
-                :class="row.sla_risk === 'high' ? 'bg-red-50/60 hover:bg-red-50' : row.sla_risk === 'medium' ? 'bg-amber-50/40 hover:bg-amber-50' : 'hover:bg-muted/40'"
+                :class="row.sla_risk === 'high' ? 'bg-[var(--severity-red)]/5 hover:bg-[var(--severity-red)]/10' : row.sla_risk === 'medium' ? 'bg-[var(--severity-amber)]/5 hover:bg-[var(--severity-amber)]/10' : 'hover:bg-muted/40'"
                 @click="router.push(`/requests?stage=${row.stage}`)"
               >
                 <TableCell class="text-right text-xs font-medium py-2.5">{{ row.stage_label }}</TableCell>
@@ -325,7 +325,7 @@ onMounted(() => { store.loadStats() })
           </CardHeader>
           <CardContent>
             <div v-if="!stats.executive_voting_sessions?.length" class="py-8 text-center text-sm text-muted-foreground" role="status">
-              <CheckCircle2 class="size-6 mx-auto mb-2 text-green-600" aria-hidden="true" />
+              <CheckCircle2 class="size-6 mx-auto mb-2 text-[var(--severity-green)]" aria-hidden="true" />
               لا توجد جلسات تصويت مفتوحة
             </div>
             <ul v-else class="flex flex-col gap-3">
@@ -343,7 +343,7 @@ onMounted(() => { store.loadStats() })
                   <span class="text-xs text-foreground">{{ session.bank_name }}</span>
                   <span class="text-xs font-medium">{{ new Intl.NumberFormat('en-US', { style: 'currency', currency: session.currency, maximumFractionDigits: 0 }).format(session.amount) }}</span>
                 </div>
-                <div v-if="session.waiting_for.length" class="text-xs text-amber-700">
+                <div v-if="session.waiting_for.length" class="text-xs text-[var(--severity-amber)]">
                   <span class="font-medium">بانتظار: </span>{{ session.waiting_for.join('، ') }}
                 </div>
               </li>
@@ -395,7 +395,7 @@ onMounted(() => { store.loadStats() })
                   </TableCell>
                   <TableCell class="text-right py-2">
                     <Badge v-if="row.alerts > 0" class="text-[10px] px-1.5 rounded-full border-0" style="background:var(--severity-red)20;color:var(--severity-red)">{{ row.alerts }}</Badge>
-                    <CheckCircle2 v-else class="size-3.5 text-green-600" aria-hidden="true" />
+                    <CheckCircle2 v-else class="size-3.5 text-[var(--severity-green)]" aria-hidden="true" />
                   </TableCell>
                 </TableRow>
               </TableBody>
@@ -412,7 +412,7 @@ onMounted(() => { store.loadStats() })
             v-for="signal in stats.compliance_signals"
             :key="signal.id"
             class="flex flex-col items-start gap-2 p-4 rounded-xl border text-start cursor-pointer transition-all hover:shadow-md"
-            :class="signal.severity === 'red' ? 'border-red-200 bg-red-50' : signal.severity === 'amber' ? 'border-amber-200 bg-amber-50' : 'border-blue-200 bg-blue-50'"
+            :class="signal.severity === 'red' ? 'border-[var(--severity-red)]/30 bg-[var(--severity-red)]/5' : signal.severity === 'amber' ? 'border-[var(--severity-amber)]/30 bg-[var(--severity-amber)]/5' : 'border-primary/20 bg-primary/5'"
             @click="router.push(safeInternalPath(signal.link_route, '/audit'))"
           >
             <div class="flex items-center gap-2">

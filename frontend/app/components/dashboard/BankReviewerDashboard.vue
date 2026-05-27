@@ -72,10 +72,10 @@ function formatAmount(amount: number, currency: string): string {
 
 function getKpiIconColor(variant: string): string {
   const colors: Record<string, string> = {
-    green: 'text-green-700 bg-green-50/10',
+    green: 'text-[var(--severity-green)] bg-[var(--severity-green)]/10',
     blue: 'text-primary bg-primary/10',
-    amber: 'text-amber-600 bg-amber-50/10',
-    rose: 'text-rose-600 bg-rose-50/10',
+    amber: 'text-[var(--severity-amber)] bg-[var(--severity-amber)]/10',
+    rose: 'text-[var(--severity-red)] bg-[var(--severity-red)]/10',
     gray: 'text-muted-foreground bg-muted',
   }
   return colors[variant] ?? colors.gray!
@@ -113,17 +113,17 @@ onMounted(() => { store.loadStats() })
       <!-- Action-required strip: SUPPORT_REJECTED requests waiting for bank-side decision -->
       <Card
         v-if="supportRejectedCount > 0"
-        class="border-0 border-s-4 border-s-rose-600 bg-rose-50/30 shadow-sm"
+        class="border-0 border-s-4 border-s-[var(--severity-red)] bg-[var(--severity-red)]/5 shadow-sm"
         role="alert"
         aria-label="طلبات رُفضت من لجنة المساندة"
       >
         <CardContent class="pt-4 pb-4 flex items-center gap-3">
-          <AlertTriangle class="h-5 w-5 flex-shrink-0 text-rose-600" aria-hidden="true" />
+          <AlertTriangle class="h-5 w-5 flex-shrink-0 text-[var(--severity-red)]" aria-hidden="true" />
           <div class="flex-1 min-w-0">
             <span class="font-semibold text-foreground text-sm">{{ supportRejectedCount }} طلبات رفضتها لجنة المساندة وتنتظر قرارك</span>
           </div>
           <button
-            class="flex-shrink-0 px-3 py-1.5 bg-rose-600 text-white text-xs font-semibold rounded-xl hover:bg-rose-700 transition-colors"
+            class="flex-shrink-0 px-3 py-1.5 bg-[var(--severity-red)] text-white text-xs font-semibold rounded-xl hover:opacity-90 transition-opacity"
             @click="router.push('/requests?tab=support_rejected')"
           >
             اتخاذ القرار
@@ -137,8 +137,8 @@ onMounted(() => { store.loadStats() })
           <Card
             class="border-0 p-4 shadow flex flex-col gap-1.5 cursor-pointer hover:shadow-md transition-shadow"
             :class="{
-              'border-s-4 border-s-amber-600': kpi.variant === 'amber',
-              'border-s-4 border-s-rose-600': kpi.variant === 'rose',
+              'border-s-4 border-s-[var(--severity-amber)]': kpi.variant === 'amber',
+              'border-s-4 border-s-[var(--severity-red)]': kpi.variant === 'rose',
             }"
             role="button"
             tabindex="0"
@@ -153,9 +153,9 @@ onMounted(() => { store.loadStats() })
             <span
               class="text-2xl font-semibold leading-none"
               :class="
-                kpi.variant === 'amber' && kpi.value > 0 ? 'text-amber-600'
-                : kpi.variant === 'rose' && kpi.value > 0 ? 'text-rose-600'
-                : kpi.variant === 'green' ? 'text-green-700'
+                kpi.variant === 'amber' && kpi.value > 0 ? 'text-[var(--severity-amber)]'
+                : kpi.variant === 'rose' && kpi.value > 0 ? 'text-[var(--severity-red)]'
+                : kpi.variant === 'green' ? 'text-[var(--severity-green)]'
                 : 'text-foreground'
               "
             >
@@ -225,7 +225,7 @@ onMounted(() => { store.loadStats() })
                     <a class="font-mono text-primary hover:underline" :href="`/requests/${req.id}`" @click.stop.prevent="router.push(`/requests/${req.id}`)">{{ req.reference_number }}</a>
                   </td>
                   <td class="py-2 px-2 text-foreground">
-                    <span v-if="isCreatedByCurrentUser(req.created_by)" class="text-amber-600 font-medium">أنا</span>
+                    <span v-if="isCreatedByCurrentUser(req.created_by)" class="text-[var(--severity-amber)] font-medium">أنا</span>
                     <span v-else>{{ req.created_by_user?.name ?? '—' }}</span>
                   </td>
                   <td class="py-2 px-2 text-foreground">{{ req.supplier_name }}</td>

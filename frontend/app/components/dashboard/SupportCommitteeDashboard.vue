@@ -116,9 +116,9 @@ onMounted(() => { store.loadStats() })
     </div>
 
     <!-- Error -->
-    <Card v-else-if="store.error" class="border-l-4 border-destructive border-b border-border border-r bg-background" role="alert">
+    <Card v-else-if="store.error" class="border-0 border-s-4 border-s-[var(--severity-red)] bg-background" role="alert">
       <CardContent class="pt-6 flex items-center gap-3">
-        <AlertCircle class="w-4.5 h-4.5 flex-shrink-0 text-destructive" aria-hidden="true" />
+        <AlertCircle class="w-4.5 h-4.5 flex-shrink-0 text-[var(--severity-red)]" aria-hidden="true" />
         <span class="text-destructive flex-1">{{ store.error }}</span>
         <button class="px-4 py-1.5 bg-background border border-destructive rounded-lg text-destructive text-sm cursor-pointer hover:bg-destructive/10 transition-colors" @click="store.loadStats()">إعادة المحاولة</button>
       </CardContent>
@@ -157,7 +157,7 @@ onMounted(() => { store.loadStats() })
           <Card
             class="border-0 p-4 shadow flex flex-col gap-1.5 cursor-pointer hover:shadow-md transition-shadow"
             :class="{
-              'border-s-4 border-s-amber-600': kpi.variant === 'amber',
+              'border-s-4 border-s-[var(--severity-amber)]': kpi.variant === 'amber',
               'border-s-4 border-s-[var(--voting)]': kpi.variant === 'indigo',
             }"
             role="button"
@@ -173,9 +173,9 @@ onMounted(() => { store.loadStats() })
             <span
               class="text-2xl font-semibold leading-none"
               :class="{
-                'text-amber-600': kpi.variant === 'amber' && kpi.value > 0,
+                'text-[var(--severity-amber)]': kpi.variant === 'amber' && kpi.value > 0,
                 'text-[var(--voting)]': kpi.variant === 'indigo' && kpi.value > 0,
-                'text-green-700': kpi.variant === 'green',
+                'text-[var(--severity-green)]': kpi.variant === 'green',
                 'text-foreground': kpi.variant === 'gray' || kpi.value === 0,
               }"
             >
@@ -255,7 +255,7 @@ onMounted(() => { store.loadStats() })
                     :class="{
                       'bg-[var(--voting)]/10 text-[var(--voting)]': req.is_claimed_by_me || (currentUserId != null && req.claimed_by?.id === currentUserId),
                       'bg-muted text-muted-foreground': !!req.claimed_by && !req.is_claimed_by_me && req.claimed_by?.id !== currentUserId,
-                      'bg-amber-50/50 text-amber-600': !req.claimed_by,
+                      'bg-[var(--severity-amber)]/10 text-[var(--severity-amber)]': !req.claimed_by,
                     }"
                   >
                     {{ claimOwnerLabel(req) }}

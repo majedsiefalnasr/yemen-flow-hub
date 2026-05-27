@@ -15,11 +15,11 @@ const props = withDefaults(defineProps<{
 
 const variantColorClass = computed(() => {
   const colorMap: Record<string, string> = {
-    green: 'text-green-700',
-    amber: 'text-amber-600',
-    red: 'text-red-700',
-    indigo: 'text-indigo-600',
-    cyan: 'text-cyan-500',
+    green: 'text-[var(--severity-green)]',
+    amber: 'text-[var(--severity-amber)]',
+    red: 'text-[var(--severity-red)]',
+    indigo: 'text-[var(--voting)]',
+    cyan: 'text-[var(--swift)]',
     blue: 'text-primary',
   }
   return colorMap[props.variant] || 'text-foreground'

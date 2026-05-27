@@ -83,7 +83,7 @@ const kpiGrid = computed(() => {
       value: stats.value.pending ?? stats.value.total - stats.value.approved - stats.value.rejected,
       label: 'قيد المعالجة',
       color: 'var(--brand-color)',
-      bg: 'bg-blue-50',
+      bg: 'bg-primary/5',
       border: '',
       tab: 'at_cby',
     },
@@ -91,7 +91,7 @@ const kpiGrid = computed(() => {
       value: stats.value.approved,
       label: 'مُعتمد ومكتمل',
       color: 'var(--severity-green)',
-      bg: 'bg-green-50',
+      bg: 'bg-[var(--severity-green)]/5',
       border: '',
       tab: 'completed',
     },
@@ -99,7 +99,7 @@ const kpiGrid = computed(() => {
       value: stats.value.rejected,
       label: 'مرفوض',
       color: 'var(--severity-red)',
-      bg: rejectionRate.value > REJECTION_THRESHOLD ? 'bg-red-50' : 'bg-muted/40',
+      bg: rejectionRate.value > REJECTION_THRESHOLD ? 'bg-[var(--severity-red)]/5' : 'bg-muted/40',
       border: rejectionRate.value > REJECTION_THRESHOLD ? 'border-s-[3px]' : '',
       tab: 'rejected',
     },
@@ -149,11 +149,11 @@ onMounted(() => { store.loadStats() })
     </div>
 
     <!-- Error -->
-    <Card v-else-if="store.error" class="border-l-4 border-destructive bg-background" role="alert">
+    <Card v-else-if="store.error" class="border-0 border-s-4 border-s-[var(--severity-red)] bg-background" role="alert">
       <CardContent class="pt-6 flex items-center gap-3">
-        <AlertCircle class="size-4.5 flex-shrink-0 text-red-700" aria-hidden="true" />
-        <span class="text-red-700 flex-1">{{ store.error }}</span>
-        <button class="px-4 py-1.5 bg-background border border-destructive rounded-lg text-red-700 text-sm cursor-pointer hover:bg-red-700/10 transition-colors" @click="store.loadStats()">إعادة المحاولة</button>
+        <AlertCircle class="size-4.5 flex-shrink-0 text-[var(--severity-red)]" aria-hidden="true" />
+        <span class="text-[var(--severity-red)] flex-1">{{ store.error }}</span>
+        <button class="px-4 py-1.5 bg-background border border-[var(--severity-red)] rounded-lg text-[var(--severity-red)] text-sm cursor-pointer hover:bg-[var(--severity-red)]/10 transition-colors" @click="store.loadStats()">إعادة المحاولة</button>
       </CardContent>
     </Card>
 
@@ -179,16 +179,16 @@ onMounted(() => { store.loadStats() })
       <!-- Conditional Operational Health strip -->
       <div
         v-if="showHealthStrip"
-        class="flex flex-col gap-2 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3"
+        class="flex flex-col gap-2 rounded-xl border border-[var(--severity-amber)]/40 bg-[var(--severity-amber)]/5 px-4 py-3"
         role="alert"
         aria-label="تنبيهات صحة التشغيل"
       >
         <div class="flex items-center gap-2">
-          <AlertTriangle class="size-4 text-amber-700 flex-shrink-0" aria-hidden="true" />
-          <span class="text-sm font-semibold text-amber-800">تنبيهات صحة التشغيل</span>
+          <AlertTriangle class="size-4 text-[var(--severity-amber)] flex-shrink-0" aria-hidden="true" />
+          <span class="text-sm font-semibold text-[var(--severity-amber)]">تنبيهات صحة التشغيل</span>
         </div>
         <ul class="flex flex-col gap-1 pe-6">
-          <li v-for="issue in healthIssues" :key="issue" class="text-xs text-amber-800">• {{ issue }}</li>
+          <li v-for="issue in healthIssues" :key="issue" class="text-xs text-[var(--severity-amber)]">• {{ issue }}</li>
         </ul>
       </div>
 
