@@ -37,7 +37,7 @@ class DashboardController extends Controller
             $user->hasRole(UserRole::SUPPORT_COMMITTEE)   => $this->supportCommitteeStats($user),
             $user->hasRole(UserRole::SWIFT_OFFICER)       => $this->swiftOfficerStats($user),
             $user->hasRole(UserRole::EXECUTIVE_MEMBER)    => $this->executiveMemberStats($user),
-            $user->hasRole(UserRole::COMMITTEE_DIRECTOR)  => $this->committeeDirectorStats(),
+            $user->hasRole(UserRole::COMMITTEE_DIRECTOR)  => $this->committeeDirectorStats($user),
             $user->hasRole(UserRole::CBY_ADMIN)           => $this->cbyadminStats(),
             default                                       => ApiResponse::success([], 'Dashboard stats retrieved.'),
         };
@@ -282,7 +282,7 @@ class DashboardController extends Controller
             ->whereIn('status', array_map(fn ($s) => $s->value, $atCbyStatuses))
             ->orderByDesc('updated_at')
             ->limit(5)
-            ->with(['bank'])
+            ->with(['bank', 'creator'])
             ->get();
 
         return ApiResponse::success([
@@ -431,11 +431,12 @@ class DashboardController extends Controller
             ->with(['bank', 'votes'])
             ->get();
 
-        $pendingMyVote = $votingQueue
-            ->filter(fn (ImportRequest $request) =>
-                $request->status === RequestStatus::EXECUTIVE_VOTING_OPEN
-                && ! $request->votes->contains('user_id', $user->id)
-            )
+        // Count my pending sessions at the DB layer so the count is not capped by
+        // the voting_queue limit(50) above and is not affected by races between
+        // load('votes') and resource serialization.
+        $pendingMyVote = ImportRequest::query()
+            ->where('status', RequestStatus::EXECUTIVE_VOTING_OPEN->value)
+            ->whereDoesntHave('votes', fn ($q) => $q->where('user_id', $user->id))
             ->count();
 
         return [
@@ -456,7 +457,7 @@ class DashboardController extends Controller
     }
 
     // COMMITTEE_DIRECTOR: global CBY view — no org scope
-    private function committeeDirectorStats(): \Illuminate\Http\JsonResponse
+    private function committeeDirectorStats(User $user): \Illuminate\Http\JsonResponse
     {
         $fxQueue = ImportRequest::query()
             ->where('status', RequestStatus::EXECUTIVE_APPROVED->value)
@@ -477,17 +478,24 @@ class DashboardController extends Controller
             ->with(['bank', 'votes'])
             ->get();
 
-        $totalVoters = User::query()
+        // C6 (code review): "ready to close" uses each session's own
+        // eligible_voter_ids snapshot rather than the global active count so
+        // a member deactivated after voting doesn't make the Director think
+        // a session is short of votes when it actually has everyone.
+        $legacyTotalVoters = User::query()
             ->where('role', UserRole::EXECUTIVE_MEMBER->value)
             ->where('is_active', true)
             ->count();
 
         $sessionsReadyToClose = $votingQueue
-            ->filter(fn (ImportRequest $request) =>
-                $request->status === RequestStatus::EXECUTIVE_VOTING_OPEN
-                && $totalVoters > 0
-                && $request->votes->count() >= $totalVoters
-            )
+            ->filter(function (ImportRequest $request) use ($legacyTotalVoters): bool {
+                if ($request->status !== RequestStatus::EXECUTIVE_VOTING_OPEN) {
+                    return false;
+                }
+                $snapshot = is_array($request->eligible_voter_ids) ? $request->eligible_voter_ids : null;
+                $total = ($snapshot !== null && count($snapshot) > 0) ? count($snapshot) : $legacyTotalVoters;
+                return $total > 0 && $request->votes->count() >= $total;
+            })
             ->count();
 
         $sessionsWithTie = $votingQueue
@@ -503,7 +511,7 @@ class DashboardController extends Controller
             })
             ->count();
 
-        $executiveStats = $this->executiveVotingStats(request()->user());
+        $executiveStats = $this->executiveVotingStats($user);
 
         return ApiResponse::success(array_merge($executiveStats, [
             // Director-specific lifecycle counters
@@ -522,16 +530,27 @@ class DashboardController extends Controller
 
     private function votingQueueResource($requests, User $user): array
     {
-        $totalVoters = User::query()
+        // Fallback for sessions opened before the C6 migration shipped — those
+        // rows have a null eligible_voter_ids snapshot, so use the current
+        // active-member count as a best-effort denominator.
+        $legacyTotalVoters = User::query()
             ->where('role', UserRole::EXECUTIVE_MEMBER->value)
             ->where('is_active', true)
             ->count();
 
         return collect(ImportRequestResource::collection($requests)->toArray(request()))
-            ->map(function (array $item, int $index) use ($requests, $user, $totalVoters) {
+            ->map(function (array $item, int $index) use ($requests, $user, $legacyTotalVoters) {
                 /** @var ImportRequest $request */
                 $request = $requests->values()->get($index);
                 $myVote = $request->votes->firstWhere('user_id', $user->id);
+
+                // Per-session denominator: prefer the snapshot taken at session
+                // open. Falls back to the live count for legacy rows. Resolves
+                // code-review C6 (votes_cast > total_voters race).
+                $snapshot = is_array($request->eligible_voter_ids) ? $request->eligible_voter_ids : null;
+                $totalVoters = ($snapshot !== null && count($snapshot) > 0)
+                    ? count($snapshot)
+                    : $legacyTotalVoters;
 
                 return [
                     ...$item,

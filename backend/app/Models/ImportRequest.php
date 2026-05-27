@@ -60,6 +60,7 @@ class ImportRequest extends Model
         'customs_issued_at',
         'voting_opened_by',
         'voting_opened_at',
+        'eligible_voter_ids',
         'voting_closed_by',
         'voting_closed_at',
         'voting_session_status',
@@ -85,6 +86,7 @@ class ImportRequest extends Model
             'executive_decided_at' => 'datetime',
             'customs_issued_at' => 'datetime',
             'voting_opened_at' => 'datetime',
+            'eligible_voter_ids' => 'array',
             'voting_closed_at' => 'datetime',
             'final_decision_at' => 'datetime',
         ];

@@ -88,6 +88,18 @@ class VotingController extends Controller
 
         $updated = $this->workflowService->transition($importRequest, 'open_voting', $request->user());
 
+        // C6 (code review): snapshot the eligible-voter set at session-open
+        // time so later deactivations don't drop the dashboard denominator
+        // below `votes_cast`. Director is excluded from the eligible set —
+        // they vote only as a tie-break override, not as a regular member.
+        $eligibleIds = User::query()
+            ->where('role', UserRole::EXECUTIVE_MEMBER->value)
+            ->where('is_active', true)
+            ->pluck('id')
+            ->all();
+        $updated->eligible_voter_ids = $eligibleIds;
+        $updated->saveQuietly();
+
         return ApiResponse::success(new ImportRequestResource($updated->load(ImportRequestResource::baseRelations())), 'Voting session opened.');
     }
 
