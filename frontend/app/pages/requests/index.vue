@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { VisibilityState } from '@tanstack/vue-table'
 import { computed, onMounted, ref, watch } from 'vue'
-import { AlertCircle, ChevronDown, Columns3, Download, FilePlus2, Printer, Search, User, X } from 'lucide-vue-next'
+import { AlertCircle, ChevronDown, Columns3, Download, Eye, FilePlus2, Filter, Printer, Search, SlidersHorizontal, User, X } from 'lucide-vue-next'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import RequestsDataTable from '@/components/requests/RequestsDataTable.vue'
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -39,6 +39,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+  SheetFooter,
+  SheetClose,
+} from '@/components/ui/sheet'
+import { Separator } from '@/components/ui/separator'
+import StatusBadge from '@/components/shared/StatusBadge.vue'
+import type { ImportRequest } from '@/types/models'
 
 definePageMeta({
   middleware: ['auth', 'role'],
@@ -59,17 +71,80 @@ const banks = ref<Bank[]>([])
 
 // Column visibility — owned here so the dropdown can live alongside the search bar
 const columnVisibility = ref<VisibilityState>({})
-const hidableColumns = [
-  { id: 'merchant', label: 'التاجر / البنك' },
-  { id: 'goods_description', label: 'نوع البضاعة' },
-  { id: 'amount', label: 'المبلغ' },
-  { id: 'status', label: 'الحالة' },
-  { id: 'last_activity', label: 'النشاط الأخير' },
-]
+const hidableColumns = computed(() => {
+  const base = [
+    { id: 'merchant', label: 'التاجر / البنك' },
+    { id: 'goods_description', label: 'نوع البضاعة' },
+    { id: 'amount', label: 'المبلغ' },
+    { id: 'status', label: 'الحالة' },
+    { id: 'last_activity', label: 'النشاط الأخير' },
+  ]
+  if (isCbyAdmin.value) {
+    return [
+      ...base,
+      { id: 'cby_age', label: 'العمر' },
+      { id: 'cby_sla', label: 'SLA' },
+      { id: 'cby_voting', label: 'التصويت' },
+      { id: 'cby_fx', label: 'المصارفة' },
+      { id: 'cby_risk', label: 'المخاطر' },
+    ]
+  }
+  return base
+})
 
 // Created-by-me toggle — BANK_REVIEWER only
 const createdByMeOnly = ref(false)
 const isBankReviewer = computed(() => user.value?.role === UserRole.BANK_REVIEWER)
+
+// CBY Admin: advanced filters drawer
+const advancedFiltersOpen = ref(false)
+const advFilters = ref({
+  bank: 'all',
+  stage: '',
+  sla: '',
+  voting: '',
+  fx: '',
+  high_value: false,
+})
+
+function clearAdvancedFilters() {
+  advFilters.value = { bank: 'all', stage: '', sla: '', voting: '', fx: '', high_value: false }
+}
+
+const advancedFilterCount = computed(() => {
+  let n = 0
+  if (advFilters.value.bank !== 'all') n++
+  if (advFilters.value.stage) n++
+  if (advFilters.value.sla) n++
+  if (advFilters.value.voting) n++
+  if (advFilters.value.fx) n++
+  if (advFilters.value.high_value) n++
+  return n
+})
+
+// CBY Admin: quick preview drawer
+const previewRequest = ref<ImportRequest | null>(null)
+const previewOpen = ref(false)
+
+function openPreview(request: ImportRequest) {
+  previewRequest.value = request
+  previewOpen.value = true
+}
+
+function relativeAge(isoDate: string | null | undefined): string {
+  if (!isoDate) return '—'
+  const ms = Date.now() - new Date(isoDate).getTime()
+  const hrs = Math.floor(ms / 3600000)
+  if (hrs < 24) return `${hrs} ساعة`
+  return `${Math.floor(hrs / 24)} يوم`
+}
+
+function slaState(request: ImportRequest): { label: string; color: string } {
+  const hrs = (Date.now() - new Date(request.created_at).getTime()) / 3600000
+  if (hrs > 120) return { label: 'انتهاك SLA', color: 'var(--severity-red)' }
+  if (hrs > 72) return { label: 'خطر SLA', color: 'var(--severity-amber)' }
+  return { label: 'ضمن SLA', color: 'var(--severity-green)' }
+}
 
 onMounted(async () => {
   await store.loadRequests({ per_page: 200 })
@@ -120,7 +195,41 @@ const filteredRequests = computed(() => {
     const createdByMeMatches = !createdByMeOnly.value
       || req.created_by === user.value?.id
 
+    // CBY Admin advanced filters
+    let advBankMatches = true
+    let advStageMatches = true
+    let advSlaMatches = true
+    let advVotingMatches = true
+    let advFxMatches = true
+    let advHighValueMatches = true
+    if (isCbyAdmin.value) {
+      if (advFilters.value.bank !== 'all' && advFilters.value.bank) {
+        advBankMatches = String(req.bank_id) === advFilters.value.bank
+      }
+      if (advFilters.value.stage) {
+        advStageMatches = req.current_owner_role === advFilters.value.stage
+      }
+      if (advFilters.value.sla) {
+        const hrs = (Date.now() - new Date(req.created_at).getTime()) / 3600000
+        if (advFilters.value.sla === 'breach') advSlaMatches = hrs > 120
+        else if (advFilters.value.sla === 'risk') advSlaMatches = hrs > 72 && hrs <= 120
+        else if (advFilters.value.sla === 'ok') advSlaMatches = hrs <= 72
+      }
+      if (advFilters.value.voting) {
+        const hasVoting = req.voting_session_status != null
+        advVotingMatches = advFilters.value.voting === 'active' ? hasVoting : !hasVoting
+      }
+      if (advFilters.value.fx) {
+        const hasFx = req.has_fx_request_document === true
+        advFxMatches = advFilters.value.fx === 'uploaded' ? hasFx : !hasFx
+      }
+      if (advFilters.value.high_value) {
+        advHighValueMatches = req.amount >= 1_000_000
+      }
+    }
+
     return bucketMatches && bankMatches && queryMatches && createdByMeMatches
+      && advBankMatches && advStageMatches && advSlaMatches && advVotingMatches && advFxMatches && advHighValueMatches
   })
 })
 
@@ -201,6 +310,10 @@ const selectedCount = ref(0)
 const dataTableRef = ref<{ clearSelection: () => void } | null>(null)
 
 function openRequest(id: number) {
+  if (isCbyAdmin.value) {
+    const req = store.requests.find(r => r.id === id)
+    if (req) { openPreview(req); return }
+  }
   navigateTo(`/requests/${id}`)
 }
 
@@ -430,6 +543,21 @@ watch(createdByMeOnly, (val) => {
           <span class="hidden lg:inline">طلباتي فقط</span>
         </Button>
 
+        <!-- CBY Admin: advanced filters -->
+        <Button
+          v-if="isCbyAdmin"
+          :variant="advancedFilterCount > 0 ? 'default' : 'outline'"
+          size="sm"
+          class="h-8 gap-1.5"
+          @click="advancedFiltersOpen = true"
+        >
+          <SlidersHorizontal class="h-4 w-4" />
+          <span class="hidden lg:inline">فلاتر متقدمة</span>
+          <Badge v-if="advancedFilterCount > 0" variant="secondary" class="h-4 min-w-4 rounded-full px-1 text-[10px]">
+            {{ advancedFilterCount }}
+          </Badge>
+        </Button>
+
         <!-- Customize columns -->
         <DropdownMenu>
           <DropdownMenuTrigger as-child>
@@ -466,5 +594,192 @@ watch(createdByMeOnly, (val) => {
         @update:selected-count="count => selectedCount = count"
       />
     </Tabs>
+
+    <!-- CBY Admin: Advanced Filters Drawer -->
+    <Sheet v-if="isCbyAdmin" v-model:open="advancedFiltersOpen">
+      <SheetContent side="right" class="w-[360px] sm:w-[400px]">
+        <SheetHeader>
+          <SheetTitle>فلاتر متقدمة</SheetTitle>
+          <SheetDescription>تصفية سجل الطلبات الوطني</SheetDescription>
+        </SheetHeader>
+
+        <div class="mt-6 flex flex-col gap-5">
+          <div class="flex flex-col gap-2">
+            <Label>البنك</Label>
+            <Select v-model="advFilters.bank">
+              <SelectTrigger class="w-full">
+                <SelectValue placeholder="جميع البنوك" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">جميع البنوك</SelectItem>
+                <SelectItem v-for="bank in banks" :key="bank.id" :value="String(bank.id)">
+                  {{ bank.name_ar }}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div class="flex flex-col gap-2">
+            <Label>مرحلة سير العمل</Label>
+            <Select v-model="advFilters.stage">
+              <SelectTrigger class="w-full">
+                <SelectValue placeholder="جميع المراحل" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">جميع المراحل</SelectItem>
+                <SelectItem value="DATA_ENTRY">إدخال البيانات</SelectItem>
+                <SelectItem value="BANK_REVIEWER">مراجعة البنك</SelectItem>
+                <SelectItem value="SUPPORT_COMMITTEE">لجنة المساندة</SelectItem>
+                <SelectItem value="SWIFT_OFFICER">ضابط SWIFT</SelectItem>
+                <SelectItem value="EXECUTIVE_MEMBER">اللجنة التنفيذية</SelectItem>
+                <SelectItem value="COMMITTEE_DIRECTOR">مدير اللجنة</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div class="flex flex-col gap-2">
+            <Label>حالة SLA</Label>
+            <Select v-model="advFilters.sla">
+              <SelectTrigger class="w-full">
+                <SelectValue placeholder="جميع الحالات" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">جميع الحالات</SelectItem>
+                <SelectItem value="breach">انتهاك SLA (&gt;120 ساعة)</SelectItem>
+                <SelectItem value="risk">خطر SLA (72-120 ساعة)</SelectItem>
+                <SelectItem value="ok">ضمن SLA (&lt;72 ساعة)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div class="flex flex-col gap-2">
+            <Label>حالة التصويت</Label>
+            <Select v-model="advFilters.voting">
+              <SelectTrigger class="w-full">
+                <SelectValue placeholder="الكل" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">الكل</SelectItem>
+                <SelectItem value="active">تصويت نشط</SelectItem>
+                <SelectItem value="none">بدون تصويت</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div class="flex flex-col gap-2">
+            <Label>حالة المصارفة</Label>
+            <Select v-model="advFilters.fx">
+              <SelectTrigger class="w-full">
+                <SelectValue placeholder="الكل" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">الكل</SelectItem>
+                <SelectItem value="uploaded">مرفوع</SelectItem>
+                <SelectItem value="pending">لم يرفع</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div class="flex items-center gap-3 rounded-lg border px-3 py-2.5">
+            <input
+              id="high-value-toggle"
+              v-model="advFilters.high_value"
+              type="checkbox"
+              class="size-4 rounded accent-primary"
+            />
+            <Label for="high-value-toggle" class="cursor-pointer text-sm">قيمة عالية فقط (≥ 1,000,000)</Label>
+          </div>
+        </div>
+
+        <SheetFooter class="mt-6 flex gap-2">
+          <Button variant="outline" class="flex-1" @click="clearAdvancedFilters">
+            <X class="me-1.5 h-4 w-4" />
+            مسح الفلاتر
+          </Button>
+          <SheetClose as-child>
+            <Button class="flex-1">
+              <Filter class="me-1.5 h-4 w-4" />
+              تطبيق
+            </Button>
+          </SheetClose>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
+
+    <!-- CBY Admin: Quick Preview Drawer -->
+    <Sheet v-if="isCbyAdmin" v-model:open="previewOpen">
+      <SheetContent side="right" class="w-[480px] sm:w-[520px]">
+        <SheetHeader>
+          <SheetTitle class="flex items-center gap-2">
+            <span class="font-mono text-primary">{{ previewRequest?.reference_number ?? '—' }}</span>
+            <Badge variant="outline" class="text-xs">إشراف فقط</Badge>
+          </SheetTitle>
+          <SheetDescription>معاينة سريعة — للاطلاع على التفاصيل الكاملة افتح الطلب</SheetDescription>
+        </SheetHeader>
+
+        <div v-if="previewRequest" class="mt-4 flex flex-col gap-4 overflow-y-auto">
+          <!-- Status + SLA -->
+          <div class="flex items-center gap-3">
+            <StatusBadge :status="previewRequest.status" :role="UserRole.CBY_ADMIN" />
+            <Badge
+              class="text-xs"
+              :style="{ backgroundColor: `${slaState(previewRequest).color}20`, color: slaState(previewRequest).color, borderColor: `${slaState(previewRequest).color}40` }"
+            >
+              {{ slaState(previewRequest).label }}
+            </Badge>
+          </div>
+
+          <!-- Key fields -->
+          <div class="grid grid-cols-2 gap-3 rounded-lg border p-3 text-sm">
+            <div>
+              <p class="text-xs text-muted-foreground">البنك</p>
+              <p class="font-medium">{{ previewRequest.bank_name ?? '—' }}</p>
+            </div>
+            <div>
+              <p class="text-xs text-muted-foreground">التاجر</p>
+              <p class="font-medium">{{ previewRequest.merchant?.name ?? '—' }}</p>
+            </div>
+            <div>
+              <p class="text-xs text-muted-foreground">المبلغ</p>
+              <p class="font-mono font-semibold">{{ previewRequest.amount.toLocaleString('en-US') }} {{ previewRequest.currency }}</p>
+            </div>
+            <div>
+              <p class="text-xs text-muted-foreground">العمر</p>
+              <p class="font-medium">{{ relativeAge(previewRequest.created_at) }}</p>
+            </div>
+            <div>
+              <p class="text-xs text-muted-foreground">حالة التصويت</p>
+              <p class="font-medium">{{ previewRequest.voting_session_status ?? 'لا يوجد' }}</p>
+            </div>
+            <div>
+              <p class="text-xs text-muted-foreground">المصارفة</p>
+              <p class="font-medium">{{ previewRequest.has_fx_request_document ? 'مرفوع' : 'لم يرفع' }}</p>
+            </div>
+          </div>
+
+          <!-- Risk flags -->
+          <div v-if="(previewRequest.duplicate_warnings?.length ?? 0) > 0" class="rounded-lg border border-[var(--severity-amber)]/30 bg-[var(--severity-amber)]/5 p-3">
+            <p class="mb-1 text-xs font-semibold text-[var(--severity-amber)]">تحذيرات المخاطر</p>
+            <p class="text-xs text-muted-foreground">فاتورة مكررة — {{ previewRequest.duplicate_warnings?.length }} تطابق</p>
+          </div>
+
+          <Separator />
+
+          <!-- Actions -->
+          <div class="flex gap-2">
+            <Button
+              class="flex-1"
+              @click="navigateTo(`/requests/${previewRequest.id}`)"
+            >
+              <Eye class="me-1.5 h-4 w-4" />
+              فتح الطلب
+            </Button>
+            <SheetClose as-child>
+              <Button variant="outline">إغلاق</Button>
+            </SheetClose>
+          </div>
+        </div>
+      </SheetContent>
+    </Sheet>
   </div>
 </template>

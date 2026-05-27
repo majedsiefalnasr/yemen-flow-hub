@@ -9,15 +9,18 @@ import {
   useVueTable,
 } from '@tanstack/vue-table'
 import {
+  AlertTriangle,
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
+  Clock,
   Download,
   Lock,
   MoreHorizontal,
   Printer,
   SearchX,
+  Shield,
   TriangleAlert,
   Vote,
   X,
@@ -90,6 +93,16 @@ function relativeTime(isoDate: string | null | undefined): string {
   if (days < 30) return `منذ ${days} يوم`
   const months = Math.floor(days / 30)
   return `منذ ${months} شهر`
+}
+
+function ageHours(isoDate: string): number {
+  return (Date.now() - new Date(isoDate).getTime()) / 3600000
+}
+
+function slaInfo(ageH: number): { label: string; color: string } {
+  if (ageH > 120) return { label: 'انتهاك', color: 'var(--severity-red)' }
+  if (ageH > 72) return { label: 'خطر', color: 'var(--severity-amber)' }
+  return { label: 'طبيعي', color: 'var(--severity-green)' }
 }
 
 const sorting = ref<SortingState>([])
@@ -228,13 +241,76 @@ const columns: ColumnDef<ImportRequest>[] = [
     id: 'last_activity',
     header: 'النشاط الأخير',
     cell: ({ row }) => {
-      if (props.role !== UserRole.BANK_REVIEWER && props.role !== UserRole.BANK_ADMIN) {
+      const showFor = [UserRole.BANK_REVIEWER, UserRole.BANK_ADMIN, UserRole.CBY_ADMIN]
+      if (!showFor.includes(props.role)) {
         return h('span', { class: 'text-xs text-muted-foreground' }, '—')
       }
       return h('span', {
         class: 'text-xs text-muted-foreground tabular-nums',
         title: row.original.updated_at,
       }, relativeTime(row.original.updated_at))
+    },
+  },
+  // CBY Admin governance columns
+  {
+    id: 'cby_age',
+    header: 'العمر',
+    cell: ({ row }) => {
+      if (props.role !== UserRole.CBY_ADMIN) return h('span', { class: 'text-xs text-muted-foreground' }, '—')
+      const hrs = ageHours(row.original.created_at)
+      const days = Math.floor(hrs / 24)
+      const label = days > 0 ? `${days} يوم` : `${Math.floor(hrs)} س`
+      return h('span', { class: 'text-xs tabular-nums text-foreground' }, label)
+    },
+  },
+  {
+    id: 'cby_sla',
+    header: 'SLA',
+    cell: ({ row }) => {
+      if (props.role !== UserRole.CBY_ADMIN) return h('span', { class: 'text-xs text-muted-foreground' }, '—')
+      const { label, color } = slaInfo(ageHours(row.original.created_at))
+      return h('span', {
+        class: 'inline-flex items-center gap-1 text-xs font-medium',
+        style: { color },
+      }, [h(Clock, { class: 'size-3 flex-shrink-0' }), label])
+    },
+  },
+  {
+    id: 'cby_voting',
+    header: 'التصويت',
+    cell: ({ row }) => {
+      if (props.role !== UserRole.CBY_ADMIN) return h('span', { class: 'text-xs text-muted-foreground' }, '—')
+      const vs = row.original.voting_session_status
+      if (!vs) return h('span', { class: 'text-xs text-muted-foreground' }, '—')
+      return h('span', {
+        class: 'inline-flex items-center gap-1 text-xs',
+        style: { color: 'var(--voting)' },
+      }, [h(Vote, { class: 'size-3 flex-shrink-0' }), vs])
+    },
+  },
+  {
+    id: 'cby_fx',
+    header: 'المصارفة',
+    cell: ({ row }) => {
+      if (props.role !== UserRole.CBY_ADMIN) return h('span', { class: 'text-xs text-muted-foreground' }, '—')
+      const done = row.original.has_fx_request_document === true
+      return h('span', {
+        class: 'text-xs font-medium',
+        style: { color: done ? 'var(--severity-green)' : 'var(--severity-amber)' },
+      }, done ? 'مرفوع' : 'معلّق')
+    },
+  },
+  {
+    id: 'cby_risk',
+    header: 'المخاطر',
+    cell: ({ row }) => {
+      if (props.role !== UserRole.CBY_ADMIN) return h('span', { class: 'text-xs text-muted-foreground' }, '—')
+      const flags = row.original.duplicate_warnings?.length ?? 0
+      if (flags === 0) return h(Shield, { class: 'size-4 text-[var(--severity-green)]' })
+      return h('span', {
+        class: 'inline-flex items-center gap-1 text-xs font-semibold',
+        style: { color: 'var(--severity-amber)' },
+      }, [h(AlertTriangle, { class: 'size-3.5 flex-shrink-0' }), `${flags} تكرار`])
     },
   },
   {
