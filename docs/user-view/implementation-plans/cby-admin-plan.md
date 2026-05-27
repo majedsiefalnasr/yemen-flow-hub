@@ -78,11 +78,11 @@ Build a national platform oversight and administration workspace. CBY Admin has 
 ### 5. Merchants
 
 - [x] Build cross-bank merchant risk registry, not simple CRUD.
-- [ ] Add smart summary bar for duplicates, cross-bank merchants, repeated rejections, missing data, high-value merchants.
-- [ ] Add tabs: all, duplicates, high risk, missing data, high activity, inactive.
+- [x] Add smart summary bar for duplicates, cross-bank merchants, repeated rejections, missing data, high-value merchants.
+- [x] Add tabs: all, duplicates, high risk, missing data, high activity, inactive.
 - [x] Add search and filters by merchant, registry, tax ID, bank, status, risk.
 - [x] Table prioritizes banks, active/total requests, amount, rejection/return rate, duplicate risk, last activity, status.
-- [ ] Add merchant profile drawer with associated banks, request history, duplicate candidates, completeness, risk signals, audit.
+- [x] Add merchant profile drawer with associated banks, request history, duplicate candidates, completeness, risk signals, audit.
 - [x] Keep mutation actions secondary and audit-heavy.
 
 ### 6. Reports
