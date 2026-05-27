@@ -1,5 +1,10 @@
 # Yemen Flow Hub — Frontend Design System
 
+> **Relationship to root `DESIGN.md`:**
+> - Root `DESIGN.md` = **What** — design decisions, token values, spacing philosophy, component specs, role dashboard layouts. Read it for *why* something looks the way it does.
+> - This file = **How** — Tailwind/Vue code patterns that implement those decisions. Read it for *how to write* correct code.
+> - **No conflict.** They cover different layers. If a value here contradicts the root, the root wins — fix this file.
+
 ## Platform Character
 
 Institutional clarity. Government banking workflow. Desktop-first, RTL-first, Arabic-first. Every surface is a queue or a form. No gradients, no glassmorphism, no decorative chrome. The workflow is the product.
@@ -98,18 +103,19 @@ No italics. Emphasis via weight (`font-medium`, `font-semibold`) or color. No `f
 
 ## 4 — Border Radius
 
-The app uses Tailwind's theme radius tokens, mapped from the shadcn `--radius` base (0.625rem = 10px):
+The app uses Tailwind's theme radius tokens, mapped from the shadcn `--radius` base (0.625rem = 10px). Source of truth: root `DESIGN.md` section 4.
 
 | Token | Approx value | Usage |
 |---|---|---|
 | `rounded-sm` | 6px | Tight utility elements |
 | `rounded-md` | 8px | Inputs, textareas, selects |
-| `rounded-lg` | 10px | Standard cards, buttons |
+| `rounded-lg` | 10px | Standard cards (`shadow` cards), default buttons |
 | `rounded-xl` | 14px | Prominent cards, larger containers |
-| `rounded-2xl` | 18px | Quick-action tiles, modals |
+| `rounded-2xl` | 18px | Quick-action tiles |
+| `rounded-3xl` | 22px | Modals, dialogs (handled by shadcn Dialog internally) |
 | `rounded-full` | 9999px | Badges, avatars, status chips |
 
-Primary buttons use `rounded-lg` (shadcn default). Quick-action tiles use `rounded-2xl`.
+When in doubt, defer to root `DESIGN.md` for the canonical radius value. Never hardcode a `rounded-[Xpx]` arbitrary value.
 
 ---
 
