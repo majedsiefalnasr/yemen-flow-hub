@@ -55,35 +55,35 @@ Build a bank-side decisioning workspace for internal review, support-rejection f
 
 ### 4. Request Detail And Decisions
 
-- [ ] Header includes reference, canonical status, print, and audit snapshot link to activity tab.
-- [ ] Banner priority: SegregationBlocked, SupportRejected, Correction, Locked.
-- [ ] Use full lifecycle progress with return loops.
-- [ ] Tabs: overview, documents, parties, activity log.
-- [ ] Documents tab allows own-bank request docs, SWIFT, FX request, and external FX confirmation downloads when available.
-- [ ] Actions panel hides all decision buttons when current user created the request.
-- [ ] `SUBMITTED`: render start review primary action.
-- [ ] `BANK_REVIEW`: render approve, return, and terminal reject actions.
-- [ ] Approve dialog includes summary and optional note.
-- [ ] Return dialog requires reason with minimum length and optional flagged fields/documents.
-- [ ] Terminal reject dialog uses destructive treatment, explicit irreversible warning, and longer required reason.
-- [ ] `SUPPORT_REJECTED`: render keep rejected and return to Data Entry actions.
-- [ ] Other statuses render read-only explanation only.
-- [ ] Store reason text on workflow transition and ensure audit log receives actor role.
+- [x] Header includes reference, canonical status, print, and audit snapshot link to activity tab.
+- [x] Banner priority: SegregationBlocked, SupportRejected, Correction, Locked.
+- [x] Use full lifecycle progress with return loops.
+- [x] Tabs: overview, documents, parties, activity log.
+- [x] Documents tab allows own-bank request docs, SWIFT, FX request, and external FX confirmation downloads when available.
+- [x] Actions panel hides all decision buttons when current user created the request.
+- [x] `SUBMITTED`: render start review primary action.
+- [x] `BANK_REVIEW`: render approve, return, and terminal reject actions.
+- [x] Approve dialog includes summary and optional note.
+- [x] Return dialog requires reason with minimum length and optional flagged fields/documents.
+- [x] Terminal reject dialog uses destructive treatment, explicit irreversible warning, and longer required reason.
+- [x] `SUPPORT_REJECTED`: render keep rejected and return to Data Entry actions.
+- [x] Other statuses render read-only explanation only.
+- [x] Store reason text on workflow transition and ensure audit log receives actor role.
 
 ### 5. Notifications, Settings, Profile
 
-- [ ] Notifications include new bank-review submissions, corrected resubmissions, support outcomes, executive outcomes, SWIFT upload, FX completion, and forbidden-action audit alerts.
-- [ ] Exclude voting tally details, claim ownership transfers, and other-bank events.
-- [ ] Profile stats include reviews performed, approvals, returns, and terminal rejections.
-- [ ] Settings notification defaults are enabled for reviewer-relevant events.
+- [x] Notifications include new bank-review submissions, corrected resubmissions, support outcomes, executive outcomes, SWIFT upload, FX completion, and forbidden-action audit alerts.
+- [x] Exclude voting tally details, claim ownership transfers, and other-bank events.
+- [x] Profile stats include reviews performed, approvals, returns, and terminal rejections.
+- [x] Settings notification defaults are enabled for reviewer-relevant events.
 
 ### 6. Backend And Data Readiness
 
-- [ ] Confirm dashboard stats expose `pending_review`, `rejected_by_support` or compatible field, `at_cby`, `approved_completed`, `review_queue`, and `downstream_queue`.
-- [ ] Confirm request resources include `created_by_user`, stage age, last actor, support rejection reason, return reason, and document metadata.
-- [ ] Confirm bank reviewer workflow endpoints enforce own-bank scope and segregation.
-- [ ] Confirm terminal `BANK_REJECTED` cannot be reversed.
-- [ ] Confirm support-rejected keep/acknowledge behavior is represented if required by UI state.
+- [x] Confirm dashboard stats expose `pending_review`, `rejected_by_support` or compatible field, `at_cby`, `approved_completed`, `review_queue`, and `downstream_queue`.
+- [x] Confirm request resources include `created_by_user`, stage age, last actor, support rejection reason, return reason, and document metadata.
+- [x] Confirm bank reviewer workflow endpoints enforce own-bank scope and segregation.
+- [x] Confirm terminal `BANK_REJECTED` cannot be reversed.
+- [x] Confirm support-rejected keep/acknowledge behavior is represented if required by UI state.
 
 ## Tests List
 
