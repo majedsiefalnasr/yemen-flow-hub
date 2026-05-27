@@ -654,6 +654,37 @@ onMounted(loadStaff)
             لن يتمكن من تسجيل الدخول بعد ذلك.
           </AlertDialogDescription>
         </AlertDialogHeader>
+
+        <!-- Pre-check: workload impact by role -->
+        <div
+          v-if="deactivatingStaff?.role === UserRole.DATA_ENTRY"
+          class="rounded-md border border-[var(--severity-amber)]/40 bg-[var(--severity-amber)]/5 p-3 text-sm"
+          role="alert"
+          data-testid="deactivate-precheck-data-entry"
+        >
+          <p class="font-semibold text-[var(--severity-amber)]">
+            تحقق من المسودات النشطة
+          </p>
+          <p class="mt-1 text-xs text-foreground">
+            قد يكون لهذا الموظف طلبات في حالة مسودة أو مُعادة للتصحيح. بعد التعطيل، لن يتمكن من إتمامها.
+            تأكد من نقل مسؤولية هذه الطلبات قبل المتابعة.
+          </p>
+        </div>
+        <div
+          v-else-if="deactivatingStaff?.role === UserRole.BANK_REVIEWER"
+          class="rounded-md border border-[var(--severity-amber)]/40 bg-[var(--severity-amber)]/5 p-3 text-sm"
+          role="alert"
+          data-testid="deactivate-precheck-bank-reviewer"
+        >
+          <p class="font-semibold text-[var(--severity-amber)]">
+            تحقق من الطلبات قيد المراجعة
+          </p>
+          <p class="mt-1 text-xs text-foreground">
+            قد يكون لهذا المراجع طلبات قيد المراجعة حالياً. بعد التعطيل، لن يتمكن من إكمال مراجعتها.
+            تأكد من توفر مراجع آخر نشط يمكنه الاستمرار بهذه الطلبات.
+          </p>
+        </div>
+
         <AlertDialogFooter class="gap-2">
           <AlertDialogCancel :disabled="deactivating">إلغاء</AlertDialogCancel>
           <Button variant="destructive" :disabled="deactivating" @click="confirmDeactivate">

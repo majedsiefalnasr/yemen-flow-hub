@@ -43,6 +43,16 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -176,11 +186,60 @@ function merchantToForm(m: Merchant): MerchantFormData {
   }
 }
 
+// Duplicate confirmation state — holds pending form data until user confirms
+const duplicateWarningOpen = ref(false)
+const duplicateWarningReasons = ref<string[]>([])
+const pendingNewMerchant = ref<MerchantFormData | null>(null)
+
+function detectDuplicates(data: MerchantFormData): string[] {
+  const bankId = data.bank_id ?? user.value?.bank_id ?? null
+  const scopedMerchants = bankId
+    ? merchants.value.filter(m => m.bank_id === bankId)
+    : merchants.value
+  const reasons: string[] = []
+  const nameLower = data.name.trim().toLowerCase()
+  if (scopedMerchants.some(m => m.name.trim().toLowerCase() === nameLower)) {
+    reasons.push(`اسم التاجر "${data.name}" مسجّل مسبقاً لدى هذا البنك`)
+  }
+  if (data.commercial_register && scopedMerchants.some(m => m.commercial_register === data.commercial_register.trim())) {
+    reasons.push(`رقم السجل التجاري "${data.commercial_register}" مسجّل مسبقاً`)
+  }
+  if (data.tax_number && scopedMerchants.some(m => m.tax_number === data.tax_number.trim())) {
+    reasons.push(`الرقم الضريبي "${data.tax_number}" مسجّل مسبقاً`)
+  }
+  return reasons
+}
+
 async function saveNew(data: MerchantFormData) {
+  const warnings = detectDuplicates(data)
+  if (warnings.length > 0) {
+    duplicateWarningReasons.value = warnings
+    pendingNewMerchant.value = data
+    duplicateWarningOpen.value = true
+    return
+  }
+  await doCreateMerchant(data)
+}
+
+async function doCreateMerchant(data: MerchantFormData) {
   const created = await createMerchant({ ...data, bank_id: data.bank_id ?? undefined })
   merchants.value = [created, ...merchants.value]
   createOpen.value = false
   notify(`تم تسجيل التاجر "${created.name}"`)
+}
+
+async function confirmDuplicateAndSave() {
+  duplicateWarningOpen.value = false
+  if (pendingNewMerchant.value) {
+    await doCreateMerchant(pendingNewMerchant.value)
+    pendingNewMerchant.value = null
+  }
+}
+
+function cancelDuplicateSave() {
+  duplicateWarningOpen.value = false
+  pendingNewMerchant.value = null
+  duplicateWarningReasons.value = []
 }
 
 async function saveEdit(data: MerchantFormData) {
@@ -848,6 +907,40 @@ const table = useVueTable({
         </div>
       </DialogContent>
     </Dialog>
+
+    <!-- Duplicate merchant confirmation dialog -->
+    <AlertDialog v-model:open="duplicateWarningOpen">
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <div class="mb-2 flex items-center gap-2 text-[var(--severity-amber)]">
+            <AlertTriangle class="h-5 w-5 flex-shrink-0" aria-hidden="true" />
+            <span class="text-sm font-semibold">تحذير: احتمال تكرار بيانات</span>
+          </div>
+          <AlertDialogTitle>تاجر مشابه موجود مسبقاً</AlertDialogTitle>
+          <AlertDialogDescription class="space-y-2">
+            <p>تم اكتشاف تشابه مع سجلات تجار موجودة:</p>
+            <ul class="list-disc ps-4 text-xs text-foreground space-y-1">
+              <li v-for="reason in duplicateWarningReasons" :key="reason">{{ reason }}</li>
+            </ul>
+            <p class="text-xs text-muted-foreground">
+              يمكنك إلغاء العملية ومراجعة البيانات، أو تأكيد الإضافة إذا كان التاجر مختلفاً فعلاً.
+            </p>
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel @click="cancelDuplicateSave">
+            إلغاء — مراجعة البيانات
+          </AlertDialogCancel>
+          <AlertDialogAction
+            class="bg-[var(--severity-amber)] text-white hover:bg-[var(--severity-amber)]/90"
+            data-testid="duplicate-confirm-btn"
+            @click="confirmDuplicateAndSave"
+          >
+            تأكيد الإضافة رغم التشابه
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   </div>
 
   <div v-else>

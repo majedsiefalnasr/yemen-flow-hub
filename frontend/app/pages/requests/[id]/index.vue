@@ -244,6 +244,19 @@ const showSwiftFxLockedRow = computed(() =>
   && (SWIFT_COMPLETED_STATUSES.has(request.value.status) || request.value.status === RequestStatus.EXECUTIVE_APPROVED),
 )
 
+// BANK_ADMIN sees a locked placeholder row for the external FX confirmation PDF
+// once the request reaches the FX/completion stage — download is denied by policy
+const FX_STAGE_STATUSES = new Set([
+  RequestStatus.FX_CONFIRMATION_PENDING,
+  RequestStatus.CUSTOMS_DECLARATION_ISSUED,
+  RequestStatus.COMPLETED,
+])
+const showBankAdminFxLockedRow = computed(() =>
+  userRole.value === UserRole.BANK_ADMIN
+  && !!request.value
+  && FX_STAGE_STATUSES.has(request.value.status),
+)
+
 /** Chip shown to bank reviewer when a SUBMITTED request was previously support-returned */
 const supportReturnHint = computed(() => {
   if (userRole.value !== UserRole.BANK_REVIEWER) return null
@@ -1390,8 +1403,9 @@ async function handleCloneConfirm() {
                   @upload="handleUploadDocument"
                 />
                 <div
-                  v-if="showSwiftFxLockedRow"
+                  v-if="showSwiftFxLockedRow || showBankAdminFxLockedRow"
                   class="mt-3 flex items-center justify-between gap-2 rounded-lg border border-[var(--locked)]/40 bg-[var(--locked)]/10 px-3 py-2 text-[#3f3f46]"
+                  data-testid="fx-confirmation-locked-row"
                 >
                   <div class="flex items-center gap-2">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
@@ -1400,7 +1414,10 @@ async function handleCloneConfirm() {
                     </svg>
                     <span class="text-xs font-medium">نموذج تأكيد المصارفة الخارجية</span>
                   </div>
-                  <span class="text-xs" title="مخصص لمدير اللجنة التنفيذية.">مقيّد</span>
+                  <span
+                    class="text-xs"
+                    :title="showBankAdminFxLockedRow ? 'تحميل تأكيد المصارفة الخارجية مقيّد لأدوار CBY المختصة فقط.' : 'مخصص لمدير اللجنة التنفيذية.'"
+                  >مقيّد</span>
                 </div>
               </div>
             </section>
