@@ -929,6 +929,20 @@ async function handleCloneConfirm() {
             </svg>
             {{ requestsStore.downloadingCustoms ? 'جارٍ التحميل…' : 'تحميل البيان' }}
           </button>
+          <!-- Conditional edit shortcut for DATA_ENTRY / BANK_ADMIN in editable states -->
+          <Button
+            v-if="DRAFT_EDITOR_ROLES.has(userRole) && isEditable"
+            variant="outline"
+            size="sm"
+            data-testid="header-edit-btn"
+            @click="router.push(`/requests/${id}/edit`)"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" class="me-1.5">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+            </svg>
+            تعديل
+          </Button>
           <StatusBadge :status="request.status" :role="userRole" />
         </div>
       </div>
