@@ -19,9 +19,13 @@ This file is the authoritative reference for all AI tools (Claude Code, Cursor, 
 yemen-flow-hub/               ← Root repo (git@github.com:majedsiefalnasr/yemen-flow-hub.git)
 ├── backend/                  ← Laravel 11 API (git@github.com:ultimate-eg/yemen-flow-hub-backend.git)
 ├── frontend/                 ← Nuxt 4 app (git@github.com:ultimate-eg/yemen-flow-hub-frontend.git)
+│   ├── PRODUCT.md            ← Product identity, users, roles, operational posture, brand tone
+│   ├── DESIGN.md             ← Frontend design token rules, RTL patterns, color token usage
+│   ├── SHADCN.md             ← shadcn-vue component reference: recipes, imports, decision table
+│   └── CLAUDE.md             ← Frontend AI instructions (loads PRODUCT.md + DESIGN.md + SHADCN.md)
 ├── docs/                     ← Project documentation (source of truth)
 ├── lovable/                  ← Lovable Nuxt prototype (UI source — components being transplanted into frontend/)
-├── DESIGN.md                 ← Visual design system
+├── DESIGN.md                 ← Root visual design system (typography, spacing, elevation)
 ├── AI-ENGINEERING-PROMPT.md  ← Full engineering context
 └── AGENTS.md                 ← This file
 ```
@@ -116,8 +120,20 @@ All implementation decisions must follow these docs in order of authority:
 5. `docs/05-backend-guide.md` — Backend architecture, security rules
 6. `docs/04-frontend-guide.md` — Frontend architecture, UI rules
 7. `docs/02-system-architecture.md` — Overall architecture
-8. `DESIGN.md` — Visual design system (colors, typography, layout)
+8. `DESIGN.md` — Root visual design system (colors, typography, spacing, elevation)
 9. `AI-ENGINEERING-PROMPT.md` — Full engineering context and anti-patterns
+
+### Frontend-specific context files (mandatory for all frontend work)
+
+These three files are loaded automatically by `frontend/CLAUDE.md` and must be read before writing any Vue/Nuxt/Tailwind code:
+
+| File | Purpose |
+| ---- | ------- |
+| `frontend/PRODUCT.md` | Product identity, 8 roles and their daily tasks, operational posture, brand tone, anti-references |
+| `frontend/DESIGN.md` | Color token rules (semantic vars vs raw Tailwind), RTL border rule, skeleton/error/banner patterns |
+| `frontend/SHADCN.md` | Complete shadcn-vue reference: 30+ components with copy-paste recipes, import paths, decision table, 10 absolute rules |
+
+**Rule:** Any AI tool working on frontend code must treat these three files as equally authoritative as `docs/user-view/*.md` for UI decisions. Violations (raw `<button>`, raw `<table>`, `text-red-600` instead of `text-[var(--severity-red)]`, etc.) are the same class of error as using a wrong status enum.
 
 `docs/user-view/*.md` intentionally supersedes older customs-declaration terminology. Where older docs or code say "customs declaration" for the final Director workflow, align new work to external FX confirmation (`تأكيد مصارفة خارجية`) and the `FX_CONFIRMATION_PENDING` handoff unless a correction story explicitly preserves a legacy alias during migration.
 
