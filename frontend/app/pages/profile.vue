@@ -65,6 +65,13 @@ const stats = computed(() => {
       { label: 'نسبة الاعتماد', value: s.approval_percentage != null ? `${s.approval_percentage}%` : '—' },
     ]
   }
+  if (user.value?.role === UserRole.SWIFT_OFFICER) {
+    return [
+      { label: 'وثائق مرفوعة', value: s.swift_uploads ?? s.total ?? 0 },
+      { label: 'متوسط وقت الرفع', value: s.avg_time_to_upload_hours != null ? `${s.avg_time_to_upload_hours}س` : '—' },
+      { label: 'مكتمل', value: s.completed ?? 0 },
+    ]
+  }
   return [
     { label: 'إجمالي الطلبات', value: s.total },
     { label: 'قيد المعالجة', value: s.in_progress },

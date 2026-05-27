@@ -20,6 +20,9 @@ export interface ProfileStats {
   sessions_participated?: number
   avg_time_to_vote_hours?: number
   approval_percentage?: number
+  // SWIFT_OFFICER-specific fields (optional — backend populates per role)
+  swift_uploads?: number
+  avg_time_to_upload_hours?: number
 }
 
 export interface RecentActivity {
