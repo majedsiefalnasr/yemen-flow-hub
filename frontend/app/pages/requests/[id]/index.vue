@@ -398,8 +398,31 @@ const isActiveReviewer = ref(false)
 // call resolves; prevents duplicate POST/DELETE and the resulting orphan claim.
 const claimMutating = ref(false)
 
+const isCbyAdmin = computed(() => userRole.value === UserRole.CBY_ADMIN)
 const isSupportCommittee = computed(() => userRole.value === UserRole.SUPPORT_COMMITTEE)
 const isExecutiveMember = computed(() => userRole.value === UserRole.EXECUTIVE_MEMBER)
+
+// CBY Admin: derive blocker, SLA state, and age for intelligence panel
+const cbyAgeHours = computed(() => {
+  if (!request.value) return 0
+  return (Date.now() - new Date(request.value.created_at).getTime()) / 3600000
+})
+
+const cbySlaState = computed(() => {
+  const hrs = cbyAgeHours.value
+  if (hrs > 120) return { label: 'انتهاك SLA', color: 'var(--severity-red)' }
+  if (hrs > 72) return { label: 'خطر SLA', color: 'var(--severity-amber)' }
+  return { label: 'ضمن SLA', color: 'var(--severity-green)' }
+})
+
+const cbyBlockerText = computed(() => {
+  if (!request.value) return null
+  const s = request.value.status
+  const responsible = STATUS_RESPONSIBLE_ROLE[s]
+  if (!responsible) return null
+  const roleLabel = ROLE_LABELS[responsible] ?? responsible
+  return `قيد انتظار إجراء من: ${roleLabel}`
+})
 const votingDetailLoadedForCurrentRequest = computed(() =>
   votingStore.votingDetail?.request?.id === id,
 )
@@ -970,8 +993,39 @@ async function handleCloneConfirm() {
             </svg>
             سجل الأحداث
           </Button>
+          <!-- CBY Admin: oversight actions -->
+          <template v-if="isCbyAdmin">
+            <NuxtLink :to="`/audit?request=${id}`">
+              <Button variant="outline" size="sm" data-testid="cby-audit-view-btn">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" class="me-1.5">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+                </svg>
+                عرض التدقيق
+              </Button>
+            </NuxtLink>
+            <Button
+              variant="outline"
+              size="sm"
+              data-testid="cby-copy-link-btn"
+              @click="() => { navigator.clipboard?.writeText(window.location.href) }"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" class="me-1.5">
+                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+              </svg>
+              نسخ الرابط
+            </Button>
+          </template>
           <StatusBadge :status="request.status" :role="userRole" />
         </div>
+      </div>
+
+      <!-- CBY Admin oversight badge -->
+      <div v-if="isCbyAdmin" class="mb-3 flex items-center gap-2">
+        <span class="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/30 px-3 py-1 text-xs font-medium text-muted-foreground">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          إشراف فقط — لا صلاحيات تنفيذية
+        </span>
+        <span class="text-xs text-muted-foreground">{{ cbySlaState.label }}</span>
       </div>
 
       <!-- Two-column layout -->
@@ -1541,6 +1595,75 @@ async function handleCloneConfirm() {
                 تم تسليم السويفت — لا توجد إجراءات إضافية في هذه المرحلة.
               </p>
             </template>
+          </div>
+
+          <!-- CBY Admin: Current Blocker (highest priority) -->
+          <div
+            v-if="isCbyAdmin && cbyBlockerText"
+            class="rail-card"
+            style="border-right: 3px solid var(--severity-amber); background: color-mix(in srgb, var(--severity-amber) 5%, white)"
+          >
+            <p class="rail-card__title" style="color: var(--severity-amber)">العائق الحالي</p>
+            <p class="text-sm leading-relaxed">{{ cbyBlockerText }}</p>
+          </div>
+
+          <!-- CBY Admin: Intelligence Panel -->
+          <div v-if="isCbyAdmin" class="rail-card">
+            <p class="rail-card__title">لوحة الاستخبارات</p>
+            <ul class="quick-info-list">
+              <li class="quick-info-item">
+                <span class="quick-info-icon" aria-hidden="true">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                </span>
+                <div class="quick-info-content">
+                  <span class="quick-info-label">العمر</span>
+                  <span class="quick-info-value">
+                    {{ cbyAgeHours > 24 ? `${Math.floor(cbyAgeHours / 24)} يوم` : `${Math.floor(cbyAgeHours)} ساعة` }}
+                  </span>
+                </div>
+              </li>
+              <li class="quick-info-item">
+                <span class="quick-info-icon" aria-hidden="true">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                </span>
+                <div class="quick-info-content">
+                  <span class="quick-info-label">SLA</span>
+                  <span class="quick-info-value" :style="{ color: cbySlaState.color }">{{ cbySlaState.label }}</span>
+                </div>
+              </li>
+              <li class="quick-info-item">
+                <span class="quick-info-icon" aria-hidden="true">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                </span>
+                <div class="quick-info-content">
+                  <span class="quick-info-label">الممثل المسؤول</span>
+                  <span class="quick-info-value">{{ ROLE_LABELS[request.current_owner_role] ?? '—' }}</span>
+                </div>
+              </li>
+              <li v-if="(request.duplicate_warnings?.length ?? 0) > 0" class="quick-info-item">
+                <span class="quick-info-icon" aria-hidden="true" style="color: var(--severity-amber)">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                </span>
+                <div class="quick-info-content">
+                  <span class="quick-info-label">علامات المخاطر</span>
+                  <span class="quick-info-value" style="color: var(--severity-amber)">{{ request.duplicate_warnings?.length }} فاتورة مكررة</span>
+                </div>
+              </li>
+              <li class="quick-info-item">
+                <span class="quick-info-icon" aria-hidden="true">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                </span>
+                <div class="quick-info-content">
+                  <span class="quick-info-label">آخر نشاط</span>
+                  <span class="quick-info-value">{{ formatDate(request.updated_at) }}</span>
+                </div>
+              </li>
+            </ul>
+            <div class="mt-3 pt-3 border-t border-border">
+              <NuxtLink :to="`/audit?request=${id}`" class="text-xs text-primary hover:underline">
+                → عرض سجل التدقيق المرتبط
+              </NuxtLink>
+            </div>
           </div>
 
           <!-- BANK_ADMIN: read-only informational status panel (no decision buttons) -->
