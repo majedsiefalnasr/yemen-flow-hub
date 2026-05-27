@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { CheckCircle2, Clock, RotateCcw, FileText, Zap, Bell, AlertCircle, AlertTriangle } from 'lucide-vue-next'
+import { CheckCircle2, Clock, RotateCcw, FileText, PlusCircle, Zap, Bell, AlertCircle, AlertTriangle } from 'lucide-vue-next'
 import { useDashboardStore } from '../../stores/dashboard.store'
 import { useNotificationsStore } from '../../stores/notifications.store'
+import { useAuthStore } from '../../stores/auth.store'
 import { UserRole } from '../../types/enums'
 import type { DataEntryDashboardStats } from '../../composables/useDashboard'
 import StatusBadge from '../shared/StatusBadge.vue'
@@ -15,6 +16,9 @@ import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableR
 const router = useRouter()
 const store = useDashboardStore()
 const notificationsStore = useNotificationsStore()
+const authStore = useAuthStore()
+
+const authUser = computed(() => authStore.user)
 
 const stats = computed(() => store.stats as DataEntryDashboardStats | null)
 const unreadCount = computed(() => notificationsStore.unreadCount)
@@ -132,6 +136,18 @@ onMounted(() => {
     </template>
 
     <template v-else-if="stats">
+
+      <!-- Greeting header: user name + bank-scoped subtitle + primary CTA -->
+      <div class="flex items-center justify-between gap-4">
+        <div class="min-w-0">
+          <h1 class="text-lg font-semibold text-foreground truncate">مرحباً، {{ authUser?.name }}</h1>
+          <p v-if="authUser?.bank_name_ar" class="text-sm text-muted-foreground truncate">{{ authUser.bank_name_ar }}</p>
+        </div>
+        <Button class="flex-shrink-0" @click="router.push('/requests/new')">
+          <PlusCircle class="h-4 w-4 me-1.5" aria-hidden="true" />
+          طلب جديد
+        </Button>
+      </div>
 
       <!-- Action-required strip (above KPI grid, hidden when count = 0) -->
       <Card
