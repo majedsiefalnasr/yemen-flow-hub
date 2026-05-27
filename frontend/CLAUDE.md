@@ -1,4 +1,7 @@
 @../AGENTS.md
+@PRODUCT.md
+@DESIGN.md
+@SHADCN.md
 
 # Claude Code — Frontend
 
@@ -92,6 +95,19 @@ frontend/
 - Sidebar on the right side (280px expanded / 72px collapsed)
 - Action columns rightmost in all tables
 - No LTR layouts mirrored to RTL
+
+### shadcn-vue — MANDATORY component usage
+
+**All rules, recipes, and import paths are in `SHADCN.md`** (auto-loaded above via `@SHADCN.md`). Read it before writing any template code.
+
+Key rules in brief:
+- **No raw `<button>`** → `<Button>`
+- **No raw `<table>/<tr>/<td>`** → `<Table>/<TableRow>/<TableCell>` etc.
+- **No `animate-pulse` divs** → `<Skeleton>`
+- **No custom error divs** → `<Alert variant="destructive">`
+- **Quick-action tiles** (icon + title + desc stacked) → `<Card role="button" tabindex="0">` NOT `<Button>`
+- **Destructive confirmations** → `<AlertDialog>` NOT `<Dialog>`
+- **Import path**: always `from '@/components/ui/<name>'`
 
 ### Role-aware UI
 Frontend permissions are for UX only (hiding actions). Backend is the source of truth. Never trust frontend permission checks for security.
