@@ -12,6 +12,14 @@ export interface ProfileStats {
   // BANK_ADMIN-specific fields (optional — backend populates per role)
   staff_managed?: number
   merchants_managed?: number
+  // COMMITTEE_DIRECTOR-specific fields (optional — backend populates per role)
+  sessions_closed?: number
+  decisions_finalized?: number
+  fx_confirmations_completed?: number
+  // EXECUTIVE_MEMBER-specific fields (optional — backend populates per role)
+  sessions_participated?: number
+  avg_time_to_vote_hours?: number
+  approval_percentage?: number
 }
 
 export interface RecentActivity {

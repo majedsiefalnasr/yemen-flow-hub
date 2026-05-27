@@ -51,6 +51,20 @@ const stats = computed(() => {
       { label: 'مكتمل', value: s.completed ?? 0 },
     ]
   }
+  if (user.value?.role === UserRole.COMMITTEE_DIRECTOR) {
+    return [
+      { label: 'جلسات أُغلقت', value: s.sessions_closed ?? s.total ?? 0 },
+      { label: 'قرارات مُصدرة', value: s.decisions_finalized ?? s.completed ?? 0 },
+      { label: 'تأكيدات مصارفة', value: s.fx_confirmations_completed ?? 0 },
+    ]
+  }
+  if (user.value?.role === UserRole.EXECUTIVE_MEMBER) {
+    return [
+      { label: 'جلسات شارك بها', value: s.sessions_participated ?? s.total ?? 0 },
+      { label: 'متوسط وقت التصويت', value: s.avg_time_to_vote_hours != null ? `${s.avg_time_to_vote_hours}س` : '—' },
+      { label: 'نسبة الاعتماد', value: s.approval_percentage != null ? `${s.approval_percentage}%` : '—' },
+    ]
+  }
   return [
     { label: 'إجمالي الطلبات', value: s.total },
     { label: 'قيد المعالجة', value: s.in_progress },

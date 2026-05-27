@@ -528,14 +528,23 @@ export const ROLE_BUCKETS: Partial<Record<UserRole, StageBucket[]>> = {
     },
     { key: 'ready_to_finalize', label: 'جاهزة للإصدار النهائي', statuses: [RequestStatus.EXECUTIVE_VOTING_CLOSED] },
     {
+      key: 'pending_my_vote',
+      label: 'بانتظار صوتي',
+      statuses: [RequestStatus.EXECUTIVE_VOTING_OPEN],
+      matches: request => request.status === RequestStatus.EXECUTIVE_VOTING_OPEN && !request.my_vote,
+    },
+    {
       key: 'tie_break',
       label: 'تعادل — يحتاج حسماً',
       statuses: [RequestStatus.EXECUTIVE_VOTING_OPEN],
       matches: request => request.status === RequestStatus.EXECUTIVE_VOTING_OPEN && request.is_tie === true,
     },
+    { key: 'voting_open', label: 'تصويت نشط', statuses: [RequestStatus.EXECUTIVE_VOTING_OPEN] },
     { key: 'fx_pending', label: 'بانتظار تأكيد المصارفة', statuses: [RequestStatus.EXECUTIVE_APPROVED, RequestStatus.FX_CONFIRMATION_PENDING] },
-    { key: 'active_voting', label: 'تصويت نشط', statuses: [RequestStatus.EXECUTIVE_VOTING_OPEN] },
-    { key: 'finalized', label: 'مُنهاة', statuses: [RequestStatus.EXECUTIVE_APPROVED, RequestStatus.EXECUTIVE_REJECTED] },
+    { key: 'swift_in_progress', label: 'قيد SWIFT', statuses: [RequestStatus.WAITING_FOR_SWIFT, RequestStatus.SWIFT_UPLOADED] },
+    { key: 'approved', label: 'معتمد', statuses: [RequestStatus.EXECUTIVE_APPROVED] },
+    { key: 'completed', label: 'مكتمل', statuses: [RequestStatus.CUSTOMS_DECLARATION_ISSUED, RequestStatus.COMPLETED] },
+    { key: 'rejected', label: 'مرفوض', statuses: [RequestStatus.EXECUTIVE_REJECTED] },
   ],
   // Operational tabs (not internal workflow stages) — per docs/user-view/cby-admin.md#Requests List
   [UserRole.CBY_ADMIN]: [
