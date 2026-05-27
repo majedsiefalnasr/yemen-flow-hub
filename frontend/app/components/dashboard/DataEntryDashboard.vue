@@ -8,6 +8,9 @@ import { UserRole } from '../../types/enums'
 import type { DataEntryDashboardStats } from '../../composables/useDashboard'
 import StatusBadge from '../shared/StatusBadge.vue'
 import { Card, CardContent } from '../ui/card'
+import { Button } from '../ui/button'
+import { Skeleton } from '../ui/skeleton'
+import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from '../ui/table'
 
 const router = useRouter()
 const store = useDashboardStore()
@@ -102,9 +105,9 @@ onMounted(() => {
 
     <!-- Skeleton -->
     <div v-if="store.loading" class="grid grid-cols-4 max-lg:grid-cols-2 max-md:grid-cols-1 gap-4" aria-busy="true" aria-label="جارٍ تحميل الإحصائيات">
-      <div v-for="n in 4" :key="n" class="border-0 p-4 shadow animate-pulse" aria-hidden="true">
-        <div class="h-3.5 w-15 bg-muted rounded mb-3" />
-        <div class="h-8 w-10 bg-muted rounded" />
+      <div v-for="n in 4" :key="n" class="border-0 p-4 shadow" aria-hidden="true">
+        <Skeleton class="h-3.5 w-[60px] mb-3" />
+        <Skeleton class="h-8 w-[40px]" />
       </div>
     </div>
 
@@ -113,7 +116,9 @@ onMounted(() => {
       <CardContent class="pt-6 flex items-center gap-3">
         <AlertCircle class="w-4.5 h-4.5 flex-shrink-0 text-[var(--severity-red)]" aria-hidden="true" />
         <span class="text-[var(--severity-red)] flex-1">{{ store.error }}</span>
-        <button class="px-4 py-1.5 bg-background border border-destructive rounded-lg text-[var(--severity-red)] text-sm cursor-pointer hover:bg-destructive/10 transition-colors" @click="store.loadStats()">إعادة المحاولة</button>
+        <Button variant="outline" size="sm" class="text-[var(--severity-red)] border-destructive" @click="store.loadStats()">
+          إعادة المحاولة
+        </Button>
       </CardContent>
     </Card>
 
@@ -122,7 +127,7 @@ onMounted(() => {
       <div class="flex flex-col items-center justify-center py-20 gap-4 text-center">
         <FileText class="h-12 w-12 text-muted-foreground" aria-hidden="true" />
         <p class="text-sm text-muted-foreground">لم تبدأ بعد. ابدأ بأول طلب تمويل واردات.</p>
-        <button class="px-5 py-2.5 bg-primary text-primary-foreground rounded-2xl text-sm font-semibold hover:opacity-90 transition-opacity" @click="router.push('/requests/new')">+ طلب جديد</button>
+        <Button @click="router.push('/requests/new')">+ طلب جديد</Button>
       </div>
     </template>
 
@@ -147,12 +152,13 @@ onMounted(() => {
               </template>
             </p>
           </div>
-          <button
-            class="flex-shrink-0 px-3 py-1.5 bg-[var(--severity-amber)] text-white text-xs font-semibold rounded-xl hover:opacity-90 transition-opacity"
+          <Button
+            size="sm"
+            class="flex-shrink-0 bg-[var(--severity-amber)] text-white hover:opacity-90"
             @click="router.push('/requests?tab=returned')"
           >
             ابدأ التعديل
-          </button>
+          </Button>
         </CardContent>
       </Card>
 
@@ -195,37 +201,58 @@ onMounted(() => {
         </h2>
         <div class="grid grid-cols-3 max-md:grid-cols-1 gap-3">
           <!-- إنشاء طلب جديد -->
-          <button class="flex flex-col items-start gap-1 p-4 bg-primary text-primary-foreground border-0 rounded-2xl cursor-pointer hover:opacity-90 transition-opacity" @click="router.push('/requests/new')">
+          <Card
+            class="flex flex-col items-start gap-1 p-4 bg-primary text-primary-foreground border-0 rounded-2xl cursor-pointer hover:opacity-90 transition-opacity focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
+            role="button"
+            tabindex="0"
+            aria-label="إنشاء طلب جديد"
+            @click="router.push('/requests/new')"
+            @keydown.enter="router.push('/requests/new')"
+            @keydown.space.prevent="router.push('/requests/new')"
+          >
             <FileText class="h-5 w-5 flex-shrink-0 mb-1" aria-hidden="true" />
             <span class="text-sm font-semibold">إنشاء طلب جديد</span>
             <span class="text-xs opacity-75">لبدء طلب تمويل جديد</span>
-          </button>
+          </Card>
 
           <!-- متابعة طلباتي -->
-          <button class="flex flex-col items-start gap-1 p-4 bg-background border border-border text-foreground rounded-2xl cursor-pointer hover:border-primary hover:shadow-md transition-all" @click="router.push('/requests')">
+          <Card
+            class="flex flex-col items-start gap-1 p-4 bg-background border border-border text-foreground rounded-2xl cursor-pointer hover:border-primary hover:shadow-md transition-all focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
+            role="button"
+            tabindex="0"
+            aria-label="متابعة طلباتي"
+            @click="router.push('/requests')"
+            @keydown.enter="router.push('/requests')"
+            @keydown.space.prevent="router.push('/requests')"
+          >
             <FileText class="h-5 w-5 flex-shrink-0 text-primary mb-1" aria-hidden="true" />
             <span class="text-sm font-semibold">متابعة طلباتي</span>
             <span class="text-xs text-muted-foreground">كل ما قدّمت رأيناه</span>
-          </button>
+          </Card>
 
           <!-- الإشعارات — with unread badge -->
-          <button
-            class="relative flex flex-col items-start gap-1 p-4 bg-background border border-border text-foreground rounded-2xl cursor-pointer hover:border-primary hover:shadow-md transition-all"
+          <Card
+            class="relative flex flex-col items-start gap-1 p-4 bg-background border border-border text-foreground rounded-2xl cursor-pointer hover:border-primary hover:shadow-md transition-all focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
+            role="button"
+            tabindex="0"
+            aria-label="الإشعارات"
             @click="router.push('/notifications')"
+            @keydown.enter="router.push('/notifications')"
+            @keydown.space.prevent="router.push('/notifications')"
           >
             <div class="relative mb-1">
               <Bell class="h-5 w-5 flex-shrink-0 text-primary" aria-hidden="true" />
               <span
                 v-if="unreadCount > 0"
                 class="absolute -top-1.5 -end-1.5 min-w-4 h-4 px-0.5 bg-destructive text-white text-[10px] font-bold rounded-full flex items-center justify-center leading-none"
-                aria-label="`${unreadCount} إشعار غير مقروء`"
+                :aria-label="`${unreadCount} إشعار غير مقروء`"
               >
                 {{ unreadCount > 99 ? '99+' : unreadCount }}
               </span>
             </div>
             <span class="text-sm font-semibold">الإشعارات</span>
             <span class="text-xs text-muted-foreground">آخر التحديثات على طلباتك</span>
-          </button>
+          </Card>
         </div>
       </section>
 
@@ -237,42 +264,39 @@ onMounted(() => {
           <CardContent class="p-4">
             <div class="flex items-center justify-between mb-4">
               <h2 id="drafts-heading" class="text-sm font-semibold text-foreground">مسوداتي</h2>
-              <a class="text-xs text-primary hover:underline transition-colors cursor-pointer" @click="router.push('/requests?tab=draft')">عرض الكل</a>
+              <Button variant="link" size="sm" class="text-xs h-auto p-0" @click="router.push('/requests?tab=draft')">عرض الكل</Button>
             </div>
-            <table class="w-full border-collapse text-xs" role="table" aria-label="مسوداتي">
-              <thead>
-                <tr class="border-b border-border">
-                  <th scope="col" class="py-2 px-2 text-right font-medium text-muted-foreground">المرجع</th>
-                  <th scope="col" class="py-2 px-2 text-right font-medium text-muted-foreground">التاجر</th>
-                  <th scope="col" class="py-2 px-2 text-right font-medium text-muted-foreground">المبلغ</th>
-                  <th scope="col" class="py-2 px-2 text-right font-medium text-muted-foreground">إجراء</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr
+            <Table aria-label="مسوداتي">
+              <TableHeader>
+                <TableRow>
+                  <TableHead>المرجع</TableHead>
+                  <TableHead>التاجر</TableHead>
+                  <TableHead>المبلغ</TableHead>
+                  <TableHead>إجراء</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                <TableRow
                   v-for="req in stats.draft_requests.slice(0, 5)"
                   :key="req.id"
-                  class="border-t border-muted hover:bg-muted/50 cursor-pointer transition-colors"
+                  class="cursor-pointer"
                   @click="router.push(`/requests/${req.id}/edit`)"
                 >
-                  <td class="py-2 px-2">
+                  <TableCell>
                     <a class="font-mono text-primary hover:underline" :href="`/requests/${req.id}/edit`" @click.prevent="router.push(`/requests/${req.id}/edit`)">
                       {{ req.reference_number }}
                     </a>
-                  </td>
-                  <td class="py-2 px-2 text-foreground">{{ req.supplier_name }}</td>
-                  <td class="py-2 px-2 text-foreground direction-ltr font-tabular-nums">{{ formatAmount(req.amount, req.currency) }}</td>
-                  <td class="py-2 px-2">
-                    <button
-                      class="px-2 py-1 bg-primary text-primary-foreground text-xs rounded hover:opacity-90 transition-opacity"
-                      @click.stop="router.push(`/requests/${req.id}/edit`)"
-                    >
+                  </TableCell>
+                  <TableCell>{{ req.supplier_name }}</TableCell>
+                  <TableCell class="direction-ltr font-tabular-nums">{{ formatAmount(req.amount, req.currency) }}</TableCell>
+                  <TableCell>
+                    <Button size="sm" @click.stop="router.push(`/requests/${req.id}/edit`)">
                       متابعة
-                    </button>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
           </CardContent>
         </Card>
 
@@ -285,45 +309,44 @@ onMounted(() => {
           <CardContent class="p-4">
             <div class="flex items-center justify-between mb-4">
               <h2 id="recent-heading" class="text-sm font-semibold text-foreground">آخر نشاطي</h2>
-              <a class="text-xs text-primary hover:underline transition-colors cursor-pointer" @click="router.push('/requests')">عرض الكل</a>
+              <Button variant="link" size="sm" class="text-xs h-auto p-0" @click="router.push('/requests')">عرض الكل</Button>
             </div>
-            <div v-if="!stats.recent_requests?.length" class="py-6 text-center text-sm text-muted-foreground" role="status">لا توجد طلبات بعد</div>
-            <table v-else class="w-full border-collapse text-xs" role="table" aria-label="آخر نشاطي">
-              <thead>
-                <tr class="border-b border-border">
-                  <th scope="col" class="py-2 px-2 text-right font-medium text-muted-foreground">المرجع</th>
-                  <th scope="col" class="py-2 px-2 text-right font-medium text-muted-foreground">التاجر</th>
-                  <th scope="col" class="py-2 px-2 text-right font-medium text-muted-foreground">المبلغ</th>
-                  <th scope="col" class="py-2 px-2 text-right font-medium text-muted-foreground">الحالة</th>
-                  <th scope="col" class="py-2 px-2 text-right font-medium text-muted-foreground">إجراء</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr
+            <Table aria-label="آخر نشاطي">
+              <TableHeader>
+                <TableRow>
+                  <TableHead>المرجع</TableHead>
+                  <TableHead>التاجر</TableHead>
+                  <TableHead>المبلغ</TableHead>
+                  <TableHead>الحالة</TableHead>
+                  <TableHead>إجراء</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                <TableEmpty v-if="!stats.recent_requests?.length" :colspan="5">
+                  لا توجد طلبات بعد
+                </TableEmpty>
+                <TableRow
                   v-for="req in stats.recent_requests.slice(0, 5)"
                   :key="req.id"
-                  class="border-t border-muted hover:bg-muted/50 cursor-pointer transition-colors"
+                  class="cursor-pointer"
                   @click="router.push(`/requests/${req.id}`)"
                 >
-                  <td class="py-2 px-2">
+                  <TableCell>
                     <a class="font-mono text-primary hover:underline" :href="`/requests/${req.id}`" @click.prevent="router.push(`/requests/${req.id}`)">
                       {{ req.reference_number }}
                     </a>
-                  </td>
-                  <td class="py-2 px-2 text-foreground">{{ req.supplier_name }}</td>
-                  <td class="py-2 px-2 text-foreground direction-ltr font-tabular-nums">{{ formatAmount(req.amount, req.currency) }}</td>
-                  <td class="py-2 px-2"><StatusBadge :status="req.status" :role="UserRole.DATA_ENTRY" /></td>
-                  <td class="py-2 px-2">
-                    <button
-                      class="px-2 py-1 bg-background border border-border text-xs text-foreground rounded hover:border-primary hover:text-primary transition-colors"
-                      @click.stop="router.push(`/requests/${req.id}`)"
-                    >
+                  </TableCell>
+                  <TableCell>{{ req.supplier_name }}</TableCell>
+                  <TableCell class="direction-ltr font-tabular-nums">{{ formatAmount(req.amount, req.currency) }}</TableCell>
+                  <TableCell><StatusBadge :status="req.status" :role="UserRole.DATA_ENTRY" /></TableCell>
+                  <TableCell>
+                    <Button size="sm" variant="outline" @click.stop="router.push(`/requests/${req.id}`)">
                       عرض
-                    </button>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
           </CardContent>
         </Card>
 

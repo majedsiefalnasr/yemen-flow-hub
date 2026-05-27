@@ -1,6 +1,6 @@
 @../AGENTS.md
 @PRODUCT.md
-@DESIGN.md.md
+@DESIGN.md
 @SHADCN.md
 
 # Claude Code — Frontend

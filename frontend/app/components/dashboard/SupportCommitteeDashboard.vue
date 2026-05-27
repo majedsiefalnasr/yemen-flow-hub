@@ -10,6 +10,9 @@ import type { SupportCommitteeDashboardStats } from '../../composables/useDashbo
 import StatusBadge from '../shared/StatusBadge.vue'
 import { getRequestProgress } from '../../utils/requestProgress'
 import { Card, CardContent } from '../ui/card'
+import { Button } from '../ui/button'
+import { Skeleton } from '../ui/skeleton'
+import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from '../ui/table'
 
 const router = useRouter()
 const store = useDashboardStore()
@@ -109,9 +112,9 @@ onMounted(() => { store.loadStats() })
 
     <!-- Skeleton -->
     <div v-if="store.loading" class="grid grid-cols-4 max-lg:grid-cols-2 max-md:grid-cols-1 gap-4" aria-busy="true" aria-label="جارٍ تحميل الإحصائيات">
-      <div v-for="n in 4" :key="n" class="border-0 p-4 shadow animate-pulse" aria-hidden="true">
-        <div class="h-3.5 w-15 bg-muted rounded mb-3" />
-        <div class="h-8 w-10 bg-muted rounded" />
+      <div v-for="n in 4" :key="n" class="border-0 p-4 shadow" aria-hidden="true">
+        <Skeleton class="h-3.5 w-[60px] mb-3" />
+        <Skeleton class="h-8 w-[40px]" />
       </div>
     </div>
 
@@ -120,7 +123,9 @@ onMounted(() => { store.loadStats() })
       <CardContent class="pt-6 flex items-center gap-3">
         <AlertCircle class="w-4.5 h-4.5 flex-shrink-0 text-[var(--severity-red)]" aria-hidden="true" />
         <span class="text-destructive flex-1">{{ store.error }}</span>
-        <button class="px-4 py-1.5 bg-background border border-destructive rounded-lg text-destructive text-sm cursor-pointer hover:bg-destructive/10 transition-colors" @click="store.loadStats()">إعادة المحاولة</button>
+        <Button variant="outline" size="sm" class="text-destructive border-destructive" @click="store.loadStats()">
+          إعادة المحاولة
+        </Button>
       </CardContent>
     </Card>
 
@@ -141,13 +146,14 @@ onMounted(() => { store.loadStats() })
               {{ oldestActiveClaim.reference_number }}
             </p>
           </div>
-          <button
+          <Button
             v-if="oldestActiveClaim"
-            class="flex-shrink-0 px-3 py-1.5 bg-[var(--voting)] text-white text-xs font-semibold rounded-xl hover:opacity-90 transition-opacity"
+            size="sm"
+            class="flex-shrink-0 bg-[var(--voting)] text-white hover:opacity-90"
             @click="router.push(`/requests/${oldestActiveClaim.id}`)"
           >
             متابعة المراجعة
-          </button>
+          </Button>
         </CardContent>
       </Card>
 
@@ -193,17 +199,33 @@ onMounted(() => { store.loadStats() })
           إجراءات سريعة
         </h2>
         <div class="grid grid-cols-2 max-md:grid-cols-1 gap-3">
-          <button class="flex flex-col items-start gap-1 p-4 bg-[var(--voting)] text-white border-0 rounded-2xl cursor-pointer hover:opacity-90 transition-opacity" @click="router.push('/requests')">
+          <Card
+            class="flex flex-col items-start gap-1 p-4 bg-[var(--voting)] text-white border-0 rounded-2xl cursor-pointer hover:opacity-90 transition-opacity focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
+            role="button"
+            tabindex="0"
+            aria-label="طابور المراجعة"
+            @click="router.push('/requests')"
+            @keydown.enter="router.push('/requests')"
+            @keydown.space.prevent="router.push('/requests')"
+          >
             <Users class="h-5 w-5 flex-shrink-0 mb-1" aria-hidden="true" />
             <span class="text-sm font-semibold">طابور المراجعة</span>
             <span class="text-xs opacity-75">{{ stats.waiting_for_claim }} طلب بانتظار المطالبة</span>
-          </button>
+          </Card>
 
-          <button class="flex flex-col items-start gap-1 p-4 bg-background border border-border text-foreground rounded-2xl cursor-pointer hover:border-primary hover:shadow-md transition-all" @click="router.push('/notifications')">
+          <Card
+            class="flex flex-col items-start gap-1 p-4 bg-background border border-border text-foreground rounded-2xl cursor-pointer hover:border-primary hover:shadow-md transition-all focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
+            role="button"
+            tabindex="0"
+            aria-label="الإشعارات"
+            @click="router.push('/notifications')"
+            @keydown.enter="router.push('/notifications')"
+            @keydown.space.prevent="router.push('/notifications')"
+          >
             <Mail class="h-5 w-5 flex-shrink-0 text-primary mb-1" aria-hidden="true" />
             <span class="text-sm font-semibold">الإشعارات</span>
             <span class="text-xs text-muted-foreground">آخر تحديثات الطابور والقرارات</span>
-          </button>
+          </Card>
         </div>
       </section>
 
@@ -212,30 +234,28 @@ onMounted(() => { store.loadStats() })
         <CardContent class="p-4">
           <div class="flex items-center justify-between mb-4">
             <h2 id="queue-heading" class="text-sm font-semibold text-foreground">طابور عملي</h2>
-            <a class="text-xs text-primary hover:underline transition-colors cursor-pointer" @click="router.push('/requests')">عرض الكل</a>
+            <Button variant="link" size="sm" class="text-xs h-auto p-0" @click="router.push('/requests')">عرض الكل</Button>
           </div>
 
-          <!-- Empty queue — healthy state -->
-          <div v-if="queue.length === 0" class="py-8 text-center text-sm text-muted-foreground" role="status">
-            لا توجد طلبات بانتظار المراجعة حالياً ✓
-          </div>
-
-          <table v-else class="w-full border-collapse text-xs" role="table" aria-label="طابور عملي">
-            <thead>
-              <tr class="border-b border-border">
-                <th scope="col" class="py-2 px-2 text-right font-medium text-muted-foreground">المرجع</th>
-                <th scope="col" class="py-2 px-2 text-right font-medium text-muted-foreground">المورد</th>
-                <th scope="col" class="py-2 px-2 text-right font-medium text-muted-foreground">المبلغ</th>
-                <th scope="col" class="py-2 px-2 text-right font-medium text-muted-foreground">الحالة</th>
-                <th scope="col" class="py-2 px-2 text-right font-medium text-muted-foreground">الحجز</th>
-                <th scope="col" class="py-2 px-2 text-right font-medium text-muted-foreground">إجراء</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
+          <Table aria-label="طابور عملي">
+            <TableHeader>
+              <TableRow>
+                <TableHead>المرجع</TableHead>
+                <TableHead>المورد</TableHead>
+                <TableHead>المبلغ</TableHead>
+                <TableHead>الحالة</TableHead>
+                <TableHead>الحجز</TableHead>
+                <TableHead>إجراء</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <TableEmpty v-if="queue.length === 0" :colspan="6">
+                لا توجد طلبات بانتظار المراجعة حالياً ✓
+              </TableEmpty>
+              <TableRow
                 v-for="req in queue.slice(0, 8)"
                 :key="req.id"
-                class="border-t border-muted transition-colors cursor-pointer"
+                class="cursor-pointer"
                 :class="{
                   'bg-[var(--voting)]/8 hover:bg-[var(--voting)]/12': req.is_claimed_by_me || (currentUserId != null && req.claimed_by?.id === currentUserId),
                   'bg-muted/40 hover:bg-muted/60': !!req.claimed_by && !req.is_claimed_by_me && req.claimed_by?.id !== currentUserId,
@@ -243,13 +263,13 @@ onMounted(() => { store.loadStats() })
                 }"
                 @click="router.push(`/requests/${req.id}`)"
               >
-                <td class="py-2 px-2">
+                <TableCell>
                   <a class="font-mono text-primary hover:underline" :href="`/requests/${req.id}`" @click.prevent="router.push(`/requests/${req.id}`)">{{ req.reference_number }}</a>
-                </td>
-                <td class="py-2 px-2 text-foreground">{{ req.supplier_name }}</td>
-                <td class="py-2 px-2 text-foreground direction-ltr font-tabular-nums">{{ formatAmount(req.amount, req.currency) }}</td>
-                <td class="py-2 px-2"><StatusBadge :status="req.status" :role="UserRole.SUPPORT_COMMITTEE" /></td>
-                <td class="py-2 px-2">
+                </TableCell>
+                <TableCell>{{ req.supplier_name }}</TableCell>
+                <TableCell class="direction-ltr font-tabular-nums">{{ formatAmount(req.amount, req.currency) }}</TableCell>
+                <TableCell><StatusBadge :status="req.status" :role="UserRole.SUPPORT_COMMITTEE" /></TableCell>
+                <TableCell>
                   <span
                     class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium"
                     :class="{
@@ -260,37 +280,41 @@ onMounted(() => { store.loadStats() })
                   >
                     {{ claimOwnerLabel(req) }}
                   </span>
-                </td>
+                </TableCell>
                 <!-- Claim-state-dependent action button -->
-                <td class="py-2 px-2" @click.stop>
+                <TableCell @click.stop>
                   <!-- Unclaimed: primary مطالبة -->
-                  <button
+                  <Button
                     v-if="!req.claimed_by"
-                    class="px-2 py-1 bg-[var(--voting)] text-white text-xs font-semibold rounded hover:opacity-90 transition-opacity"
+                    size="sm"
+                    class="bg-[var(--voting)] text-white hover:opacity-90"
                     @click="router.push(`/requests/${req.id}`)"
                   >
                     مطالبة
-                  </button>
+                  </Button>
                   <!-- Claimed by me: outline متابعة -->
-                  <button
+                  <Button
                     v-else-if="req.is_claimed_by_me || (currentUserId != null && req.claimed_by?.id === currentUserId)"
-                    class="px-2 py-1 bg-background border border-[var(--voting)] text-[var(--voting)] text-xs font-semibold rounded hover:bg-[var(--voting)]/10 transition-colors"
+                    size="sm"
+                    variant="outline"
+                    class="border-[var(--voting)] text-[var(--voting)] hover:bg-[var(--voting)]/10"
                     @click="router.push(`/requests/${req.id}`)"
                   >
                     متابعة
-                  </button>
+                  </Button>
                   <!-- Claimed by others: ghost عرض -->
-                  <button
+                  <Button
                     v-else
-                    class="px-2 py-1 bg-background border border-border text-xs text-foreground rounded hover:border-primary hover:text-primary transition-colors"
+                    size="sm"
+                    variant="outline"
                     @click="router.push(`/requests/${req.id}`)"
                   >
                     عرض
-                  </button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+                  </Button>
+                </TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
 

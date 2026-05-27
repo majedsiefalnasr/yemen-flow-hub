@@ -33,6 +33,8 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/card'
 import { Badge } from '../ui/badge'
 import { Button } from '../ui/button'
+import { Skeleton } from '../ui/skeleton'
+import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from '../ui/table'
 
 const router = useRouter()
 const store = useDashboardStore()
@@ -142,9 +144,9 @@ onMounted(() => { store.loadStats() })
 
     <!-- Skeleton -->
     <div v-if="store.loading" class="grid grid-cols-4 max-lg:grid-cols-2 max-md:grid-cols-1 gap-4" aria-busy="true" aria-label="جارٍ تحميل الإحصائيات">
-      <div v-for="n in 4" :key="n" class="border-0 p-4 shadow animate-pulse rounded-xl bg-muted/30" aria-hidden="true">
-        <div class="h-3.5 w-3/5 bg-muted rounded mb-3" />
-        <div class="h-8 w-1/3 bg-muted rounded" />
+      <div v-for="n in 4" :key="n" class="border-0 p-4 shadow rounded-xl" aria-hidden="true">
+        <Skeleton class="h-3.5 w-3/5 mb-3" />
+        <Skeleton class="h-8 w-1/3" />
       </div>
     </div>
 
@@ -153,73 +155,112 @@ onMounted(() => { store.loadStats() })
       <CardContent class="pt-6 flex items-center gap-3">
         <AlertCircle class="size-4.5 flex-shrink-0 text-[var(--severity-red)]" aria-hidden="true" />
         <span class="text-[var(--severity-red)] flex-1">{{ store.error }}</span>
-        <button class="px-4 py-1.5 bg-background border border-[var(--severity-red)] rounded-lg text-[var(--severity-red)] text-sm cursor-pointer hover:bg-[var(--severity-red)]/10 transition-colors" @click="store.loadStats()">إعادة المحاولة</button>
+        <Button variant="outline" size="sm" class="text-[var(--severity-red)] border-[var(--severity-red)]" @click="store.loadStats()">
+          إعادة المحاولة
+        </Button>
       </CardContent>
     </Card>
 
     <template v-else-if="stats">
 
       <!-- 4-KPI grid -->
-      <div class="grid grid-cols-4 max-lg:grid-cols-2 max-md:grid-cols-1 gap-4" role="list" aria-label="مؤشرات أداء البنك">
-        <button
+      <div class="grid grid-cols-4 max-lg:grid-cols-2 max-md:grid-cols-1 gap-4" aria-label="مؤشرات أداء البنك">
+        <Card
           v-for="kpi in kpiGrid"
           :key="kpi.label"
-          class="flex flex-col items-start gap-1.5 p-4 rounded-xl border border-border shadow transition-shadow hover:shadow-md cursor-pointer text-start"
+          class="border-0 p-4 shadow flex flex-col items-start gap-1.5 cursor-pointer hover:shadow-md transition-shadow focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
           :class="[kpi.bg, kpi.border]"
           :style="kpi.border ? { borderInlineStartColor: 'var(--severity-red)' } : {}"
-          role="listitem"
+          role="button"
+          tabindex="0"
           :aria-label="`${kpi.label}: ${kpi.value}`"
           @click="router.push(`/requests?tab=${kpi.tab}`)"
+          @keydown.enter="router.push(`/requests?tab=${kpi.tab}`)"
+          @keydown.space.prevent="router.push(`/requests?tab=${kpi.tab}`)"
         >
           <span class="text-2xl font-bold" :style="{ color: kpi.color }">{{ kpi.value }}</span>
           <span class="text-xs text-muted-foreground">{{ kpi.label }}</span>
-        </button>
+        </Card>
       </div>
 
       <!-- Conditional Operational Health strip -->
-      <div
+      <Card
         v-if="showHealthStrip"
-        class="flex flex-col gap-2 rounded-xl border border-[var(--severity-amber)]/40 bg-[var(--severity-amber)]/5 px-4 py-3"
+        class="border-0 border-s-4 border-s-[var(--severity-amber)] bg-[var(--severity-amber)]/5 shadow-sm"
         role="alert"
         aria-label="تنبيهات صحة التشغيل"
       >
-        <div class="flex items-center gap-2">
-          <AlertTriangle class="size-4 text-[var(--severity-amber)] flex-shrink-0" aria-hidden="true" />
-          <span class="text-sm font-semibold text-[var(--severity-amber)]">تنبيهات صحة التشغيل</span>
-        </div>
-        <ul class="flex flex-col gap-1 pe-6">
-          <li v-for="issue in healthIssues" :key="issue" class="text-xs text-[var(--severity-amber)]">• {{ issue }}</li>
-        </ul>
-      </div>
+        <CardContent class="pt-4 pb-4">
+          <div class="flex items-center gap-2 mb-2">
+            <AlertTriangle class="size-4 text-[var(--severity-amber)] flex-shrink-0" aria-hidden="true" />
+            <span class="text-sm font-semibold text-[var(--severity-amber)]">تنبيهات صحة التشغيل</span>
+          </div>
+          <ul class="flex flex-col gap-1 pe-6">
+            <li v-for="issue in healthIssues" :key="issue" class="text-xs text-[var(--severity-amber)]">• {{ issue }}</li>
+          </ul>
+        </CardContent>
+      </Card>
 
       <!-- Quick actions -->
       <section aria-labelledby="qa-heading">
-        <h2 id="qa-heading" class="flex items-center gap-2 text-sm font-semibold text-foreground mb-3 sr-only">إجراءات سريعة</h2>
+        <h2 id="qa-heading" class="sr-only">إجراءات سريعة</h2>
         <div class="grid grid-cols-4 max-lg:grid-cols-2 max-md:grid-cols-1 gap-3">
-          <button class="flex flex-col items-start gap-1 p-4 bg-background border border-border text-foreground rounded-xl cursor-pointer hover:border-primary hover:shadow-md transition-all" @click="router.push('/requests')">
+          <Card
+            class="flex flex-col items-start gap-1 p-4 bg-background border border-border text-foreground rounded-xl cursor-pointer hover:border-primary hover:shadow-md transition-all focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
+            role="button"
+            tabindex="0"
+            aria-label="طلبات البنك"
+            @click="router.push('/requests')"
+            @keydown.enter="router.push('/requests')"
+            @keydown.space.prevent="router.push('/requests')"
+          >
             <FileText class="size-5 flex-shrink-0 text-primary mb-1" aria-hidden="true" />
             <span class="text-sm font-semibold">طلبات البنك</span>
             <span class="text-xs text-muted-foreground">عرض جميع طلبات البنك</span>
-          </button>
+          </Card>
 
-          <button class="flex flex-col items-start gap-1 p-4 bg-background border border-border text-foreground rounded-xl cursor-pointer hover:border-primary hover:shadow-md transition-all" @click="router.push('/merchants')">
+          <Card
+            class="flex flex-col items-start gap-1 p-4 bg-background border border-border text-foreground rounded-xl cursor-pointer hover:border-primary hover:shadow-md transition-all focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
+            role="button"
+            tabindex="0"
+            aria-label="التجار"
+            @click="router.push('/merchants')"
+            @keydown.enter="router.push('/merchants')"
+            @keydown.space.prevent="router.push('/merchants')"
+          >
             <Building2 class="size-5 flex-shrink-0 text-primary mb-1" aria-hidden="true" />
             <span class="text-sm font-semibold">التجار</span>
             <span class="text-xs text-muted-foreground">إدارة بيانات التجار</span>
-          </button>
+          </Card>
 
-          <button class="flex flex-col items-start gap-1 p-4 bg-background border border-border text-foreground rounded-xl cursor-pointer hover:border-primary hover:shadow-md transition-all" @click="router.push('/staff')">
+          <Card
+            class="flex flex-col items-start gap-1 p-4 bg-background border border-border text-foreground rounded-xl cursor-pointer hover:border-primary hover:shadow-md transition-all focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
+            role="button"
+            tabindex="0"
+            aria-label="الموظفون"
+            @click="router.push('/staff')"
+            @keydown.enter="router.push('/staff')"
+            @keydown.space.prevent="router.push('/staff')"
+          >
             <Users class="size-5 flex-shrink-0 text-primary mb-1" aria-hidden="true" />
             <span class="text-sm font-semibold">الموظفون</span>
             <span class="text-xs text-muted-foreground">إدارة موظفي البنك</span>
-          </button>
+          </Card>
 
           <!-- Reports = primary blue per spec -->
-          <button class="flex flex-col items-start gap-1 p-4 bg-primary text-primary-foreground rounded-xl cursor-pointer hover:opacity-90 transition-opacity" @click="router.push('/reports')">
+          <Card
+            class="flex flex-col items-start gap-1 p-4 bg-primary text-primary-foreground rounded-xl cursor-pointer hover:opacity-90 transition-opacity focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
+            role="button"
+            tabindex="0"
+            aria-label="التقارير"
+            @click="router.push('/reports')"
+            @keydown.enter="router.push('/reports')"
+            @keydown.space.prevent="router.push('/reports')"
+          >
             <BarChart3 class="size-5 flex-shrink-0 mb-1" aria-hidden="true" />
             <span class="text-sm font-semibold">التقارير</span>
             <span class="text-xs opacity-75">تقارير وتحليلات البنك</span>
-          </button>
+          </Card>
         </div>
       </section>
 
@@ -283,58 +324,58 @@ onMounted(() => { store.loadStats() })
         <CardHeader class="pb-2">
           <div class="flex items-center justify-between">
             <CardTitle id="recent-heading" class="text-sm font-semibold">أحدث طلبات البنك</CardTitle>
-            <button class="text-xs text-primary hover:underline cursor-pointer" @click="router.push('/requests')">عرض الكل</button>
+            <Button variant="link" size="sm" class="text-xs h-auto p-0" @click="router.push('/requests')">عرض الكل</Button>
           </div>
         </CardHeader>
         <CardContent class="p-0">
-          <div v-if="!stats.recent_requests.length" class="py-8 text-center text-sm text-muted-foreground" role="status">
-            لا توجد طلبات بعد
-          </div>
-          <table v-else class="w-full border-collapse text-xs" role="table" aria-label="أحدث طلبات البنك">
-            <thead>
-              <tr class="border-b border-border">
-                <th scope="col" class="py-2 px-3 text-right font-medium text-muted-foreground">المرجع</th>
-                <th scope="col" class="py-2 px-3 text-right font-medium text-muted-foreground">التاجر</th>
-                <th scope="col" class="py-2 px-3 text-right font-medium text-muted-foreground">المبلغ</th>
-                <th scope="col" class="py-2 px-3 text-right font-medium text-muted-foreground">الحالة</th>
-                <th scope="col" class="py-2 px-3 text-right font-medium text-muted-foreground">التقدم</th>
-                <th scope="col" class="py-2 px-3 text-right font-medium text-muted-foreground">إجراء</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
+          <Table aria-label="أحدث طلبات البنك">
+            <TableHeader>
+              <TableRow>
+                <TableHead>المرجع</TableHead>
+                <TableHead>التاجر</TableHead>
+                <TableHead>المبلغ</TableHead>
+                <TableHead>الحالة</TableHead>
+                <TableHead>التقدم</TableHead>
+                <TableHead>إجراء</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <TableEmpty v-if="!stats.recent_requests.length" :colspan="6">
+                لا توجد طلبات بعد
+              </TableEmpty>
+              <TableRow
                 v-for="req in stats.recent_requests.slice(0, 8)"
                 :key="req.id"
-                class="border-t border-muted hover:bg-muted/50 cursor-pointer transition-colors"
+                class="cursor-pointer"
                 @click="router.push(`/requests/${req.id}`)"
               >
-                <td class="py-2 px-3">
+                <TableCell>
                   <a class="font-mono text-primary hover:underline" :href="`/requests/${req.id}`" @click.prevent="router.push(`/requests/${req.id}`)">{{ req.reference_number }}</a>
-                </td>
-                <td class="py-2 px-3 text-foreground">{{ req.merchant?.name ?? req.supplier_name }}</td>
-                <td class="py-2 px-3 text-foreground direction-ltr font-tabular-nums">{{ formatAmount(req.amount) }} {{ req.currency }}</td>
-                <td class="py-2 px-3"><StatusBadge :status="req.status" :role="UserRole.BANK_ADMIN" /></td>
-                <td class="py-2 px-3">
+                </TableCell>
+                <TableCell>{{ req.merchant?.name ?? req.supplier_name }}</TableCell>
+                <TableCell class="direction-ltr font-tabular-nums">{{ formatAmount(req.amount) }} {{ req.currency }}</TableCell>
+                <TableCell><StatusBadge :status="req.status" :role="UserRole.BANK_ADMIN" /></TableCell>
+                <TableCell>
                   <div class="flex items-center gap-2 min-w-24">
                     <div class="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
                       <div class="h-full bg-primary transition-all" :style="{ width: `${getRequestProgress(req.status)}%` }" />
                     </div>
                     <span class="text-xs text-muted-foreground whitespace-nowrap">{{ getRequestProgress(req.status) }}%</span>
                   </div>
-                </td>
-                <td class="py-2 px-3">
-                  <!-- read-only: no decision buttons -->
-                  <button
-                    class="px-2 py-1 bg-background border border-border text-xs text-foreground rounded hover:border-primary hover:text-primary transition-colors cursor-pointer"
+                </TableCell>
+                <TableCell @click.stop>
+                  <Button
+                    size="sm"
+                    variant="outline"
                     :aria-label="`عرض الطلب ${req.reference_number}`"
-                    @click.stop="router.push(`/requests/${req.id}`)"
+                    @click="router.push(`/requests/${req.id}`)"
                   >
                     عرض
-                  </button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+                  </Button>
+                </TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
 

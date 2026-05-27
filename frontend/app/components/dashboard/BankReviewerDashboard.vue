@@ -10,6 +10,9 @@ import { STATUS_LABELS } from '../../constants/workflow'
 import type { BankReviewerDashboardStats } from '../../composables/useDashboard'
 import StatusBadge from '../shared/StatusBadge.vue'
 import { Card, CardContent } from '../ui/card'
+import { Button } from '../ui/button'
+import { Skeleton } from '../ui/skeleton'
+import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from '../ui/table'
 
 const router = useRouter()
 const store = useDashboardStore()
@@ -93,9 +96,9 @@ onMounted(() => { store.loadStats() })
 
     <!-- Skeleton -->
     <div v-if="store.loading" class="grid grid-cols-4 max-lg:grid-cols-2 max-md:grid-cols-1 gap-4" aria-busy="true" aria-label="جارٍ تحميل الإحصائيات">
-      <div v-for="n in 4" :key="n" class="border-0 p-4 shadow animate-pulse" aria-hidden="true">
-        <div class="h-3.5 w-15 bg-muted rounded mb-3" />
-        <div class="h-8 w-10 bg-muted rounded" />
+      <div v-for="n in 4" :key="n" class="border-0 p-4 shadow" aria-hidden="true">
+        <Skeleton class="h-3.5 w-[60px] mb-3" />
+        <Skeleton class="h-8 w-[40px]" />
       </div>
     </div>
 
@@ -104,7 +107,9 @@ onMounted(() => { store.loadStats() })
       <CardContent class="pt-6 flex items-center gap-3">
         <AlertCircle class="w-4.5 h-4.5 flex-shrink-0 text-[var(--severity-red)]" aria-hidden="true" />
         <span class="text-[var(--severity-red)] flex-1">{{ store.error }}</span>
-        <button class="px-4 py-1.5 bg-background border border-[var(--severity-red)] rounded-lg text-[var(--severity-red)] text-sm cursor-pointer hover:bg-[var(--severity-red)]/10 transition-colors" @click="store.loadStats()">إعادة المحاولة</button>
+        <Button variant="outline" size="sm" class="text-[var(--severity-red)] border-[var(--severity-red)]" @click="store.loadStats()">
+          إعادة المحاولة
+        </Button>
       </CardContent>
     </Card>
 
@@ -122,12 +127,13 @@ onMounted(() => { store.loadStats() })
           <div class="flex-1 min-w-0">
             <span class="font-semibold text-foreground text-sm">{{ supportRejectedCount }} طلبات رفضتها لجنة المساندة وتنتظر قرارك</span>
           </div>
-          <button
-            class="flex-shrink-0 px-3 py-1.5 bg-[var(--severity-red)] text-white text-xs font-semibold rounded-xl hover:opacity-90 transition-opacity"
+          <Button
+            size="sm"
+            class="flex-shrink-0 bg-[var(--severity-red)] text-white hover:opacity-90"
             @click="router.push('/requests?tab=support_rejected')"
           >
             اتخاذ القرار
-          </button>
+          </Button>
         </CardContent>
       </Card>
 
@@ -173,17 +179,33 @@ onMounted(() => { store.loadStats() })
           إجراءات سريعة
         </h2>
         <div class="grid grid-cols-2 max-md:grid-cols-1 gap-3">
-          <button class="flex flex-col items-start gap-1 p-4 bg-primary text-primary-foreground border-0 rounded-2xl cursor-pointer hover:opacity-90 transition-colors" @click="router.push('/requests?tab=pending')">
+          <Card
+            class="flex flex-col items-start gap-1 p-4 bg-primary text-primary-foreground border-0 rounded-2xl cursor-pointer hover:opacity-90 transition-opacity focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
+            role="button"
+            tabindex="0"
+            aria-label="طابور المراجعة"
+            @click="router.push('/requests?tab=pending')"
+            @keydown.enter="router.push('/requests?tab=pending')"
+            @keydown.space.prevent="router.push('/requests?tab=pending')"
+          >
             <Users class="h-5 w-5 flex-shrink-0 mb-1" aria-hidden="true" />
             <span class="text-sm font-semibold">طابور المراجعة</span>
             <span class="text-xs opacity-75">{{ stats.pending_review }} طلب بانتظار المراجعة</span>
-          </button>
+          </Card>
 
-          <button class="flex flex-col items-start gap-1 p-4 bg-background border border-border text-foreground rounded-2xl cursor-pointer hover:border-primary hover:shadow-md transition-all" @click="router.push('/requests')">
+          <Card
+            class="flex flex-col items-start gap-1 p-4 bg-background border border-border text-foreground rounded-2xl cursor-pointer hover:border-primary hover:shadow-md transition-all focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
+            role="button"
+            tabindex="0"
+            aria-label="كل طلبات البنك"
+            @click="router.push('/requests')"
+            @keydown.enter="router.push('/requests')"
+            @keydown.space.prevent="router.push('/requests')"
+          >
             <FileText class="h-5 w-5 flex-shrink-0 text-primary mb-1" aria-hidden="true" />
             <span class="text-sm font-semibold">كل طلبات البنك</span>
             <span class="text-xs text-muted-foreground">عرض سائر الطلبات كاملاً</span>
-          </button>
+          </Card>
         </div>
       </section>
 
@@ -191,7 +213,7 @@ onMounted(() => { store.loadStats() })
       <section aria-labelledby="queue-heading">
         <div class="flex items-center justify-between mb-4">
           <h2 id="queue-heading" class="text-sm font-semibold text-foreground">طابور المراجعة الحالي</h2>
-          <a class="text-xs text-primary hover:underline transition-colors cursor-pointer" @click="router.push('/requests?tab=pending')">عرض الكل</a>
+          <Button variant="link" size="sm" class="text-xs h-auto p-0" @click="router.push('/requests?tab=pending')">عرض الكل</Button>
         </div>
 
         <Card v-if="queue.length === 0" class="border-0 shadow">
@@ -203,35 +225,35 @@ onMounted(() => { store.loadStats() })
 
         <Card v-else class="border-0 shadow">
           <CardContent class="p-4">
-            <table class="w-full border-collapse text-xs" role="table" aria-label="طابور المراجعة الحالي">
-              <thead>
-                <tr class="border-b border-border">
-                  <th scope="col" class="py-2 px-2 text-right font-medium text-muted-foreground">المرجع</th>
-                  <th scope="col" class="py-2 px-2 text-right font-medium text-muted-foreground">أنشأه</th>
-                  <th scope="col" class="py-2 px-2 text-right font-medium text-muted-foreground">المورد</th>
-                  <th scope="col" class="py-2 px-2 text-right font-medium text-muted-foreground">المبلغ</th>
-                  <th scope="col" class="py-2 px-2 text-right font-medium text-muted-foreground">الحالة</th>
-                  <th scope="col" class="py-2 px-2 text-right font-medium text-muted-foreground">إجراء</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr
+            <Table aria-label="طابور المراجعة الحالي">
+              <TableHeader>
+                <TableRow>
+                  <TableHead>المرجع</TableHead>
+                  <TableHead>أنشأه</TableHead>
+                  <TableHead>المورد</TableHead>
+                  <TableHead>المبلغ</TableHead>
+                  <TableHead>الحالة</TableHead>
+                  <TableHead>إجراء</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                <TableRow
                   v-for="req in queue.slice(0, 8)"
                   :key="req.id"
-                  class="border-t border-muted hover:bg-muted/50 cursor-pointer transition-colors"
+                  class="cursor-pointer"
                   @click="router.push(`/requests/${req.id}`)"
                 >
-                  <td class="py-2 px-2">
+                  <TableCell>
                     <a class="font-mono text-primary hover:underline" :href="`/requests/${req.id}`" @click.stop.prevent="router.push(`/requests/${req.id}`)">{{ req.reference_number }}</a>
-                  </td>
-                  <td class="py-2 px-2 text-foreground">
+                  </TableCell>
+                  <TableCell>
                     <span v-if="isCreatedByCurrentUser(req.created_by)" class="text-[var(--severity-amber)] font-medium">أنا</span>
                     <span v-else>{{ req.created_by_user?.name ?? '—' }}</span>
-                  </td>
-                  <td class="py-2 px-2 text-foreground">{{ req.supplier_name }}</td>
-                  <td class="py-2 px-2 text-foreground direction-ltr font-tabular-nums">{{ formatAmount(req.amount, req.currency) }}</td>
-                  <td class="py-2 px-2"><StatusBadge :status="req.status" :role="UserRole.BANK_REVIEWER" /></td>
-                  <td class="py-2 px-2">
+                  </TableCell>
+                  <TableCell>{{ req.supplier_name }}</TableCell>
+                  <TableCell class="direction-ltr font-tabular-nums">{{ formatAmount(req.amount, req.currency) }}</TableCell>
+                  <TableCell><StatusBadge :status="req.status" :role="UserRole.BANK_REVIEWER" /></TableCell>
+                  <TableCell @click.stop>
                     <template v-if="isCreatedByCurrentUser(req.created_by)">
                       <span
                         class="inline-flex px-2 py-1 bg-muted text-muted-foreground text-xs rounded cursor-not-allowed"
@@ -242,18 +264,19 @@ onMounted(() => { store.loadStats() })
                       </span>
                     </template>
                     <template v-else>
-                      <button
-                        class="px-2 py-1 bg-background border border-border text-xs text-foreground rounded hover:border-primary hover:text-primary transition-colors"
+                      <Button
+                        size="sm"
+                        variant="outline"
                         :aria-label="`مراجعة الطلب ${req.reference_number}`"
-                        @click.stop="router.push(`/requests/${req.id}`)"
+                        @click="router.push(`/requests/${req.id}`)"
                       >
                         بدء المراجعة
-                      </button>
+                      </Button>
                     </template>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+                  </TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
           </CardContent>
         </Card>
       </section>
@@ -262,33 +285,37 @@ onMounted(() => { store.loadStats() })
       <section v-if="downstreamQueue.length > 0" aria-labelledby="downstream-heading">
         <div class="flex items-center justify-between mb-4">
           <h2 id="downstream-heading" class="text-sm font-semibold text-foreground">متابعة الطلبات لدى البنك المركزي</h2>
-          <a class="text-xs text-primary hover:underline transition-colors cursor-pointer" @click="router.push('/requests?tab=at_cby')">عرض الكل</a>
+          <Button variant="link" size="sm" class="text-xs h-auto p-0" @click="router.push('/requests?tab=at_cby')">عرض الكل</Button>
         </div>
         <Card class="border-0 shadow">
           <CardContent class="p-4">
-            <table class="w-full border-collapse text-xs" role="table" aria-label="متابعة الطلبات لدى البنك المركزي">
-              <thead>
-                <tr class="border-b border-border">
-                  <th scope="col" class="py-2 px-2 text-right font-medium text-muted-foreground">المرجع</th>
-                  <th scope="col" class="py-2 px-2 text-right font-medium text-muted-foreground">المرحلة الحالية</th>
-                  <th scope="col" class="py-2 px-2 text-right font-medium text-muted-foreground">الحالة</th>
-                  <th scope="col" class="py-2 px-2 text-right font-medium text-muted-foreground">إجراء</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr
+            <Table aria-label="متابعة الطلبات لدى البنك المركزي">
+              <TableHeader>
+                <TableRow>
+                  <TableHead>المرجع</TableHead>
+                  <TableHead>المرحلة الحالية</TableHead>
+                  <TableHead>الحالة</TableHead>
+                  <TableHead>إجراء</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                <TableRow
                   v-for="req in downstreamQueue.slice(0, 5)"
                   :key="req.id"
-                  class="border-t border-muted hover:bg-muted/50 cursor-pointer transition-colors"
+                  class="cursor-pointer"
                   @click="router.push(`/requests/${req.id}`)"
                 >
-                  <td class="py-2 px-2"><a class="font-mono text-primary hover:underline" :href="`/requests/${req.id}`" @click.stop.prevent="router.push(`/requests/${req.id}`)">{{ req.reference_number }}</a></td>
-                  <td class="py-2 px-2 text-foreground">{{ STATUS_LABELS[req.status] ?? '—' }}</td>
-                  <td class="py-2 px-2"><StatusBadge :status="req.status" :role="UserRole.BANK_REVIEWER" /></td>
-                  <td class="py-2 px-2"><button class="px-2 py-1 bg-background border border-border text-xs text-foreground rounded hover:border-primary hover:text-primary transition-colors" @click.stop="router.push(`/requests/${req.id}`)">عرض</button></td>
-                </tr>
-              </tbody>
-            </table>
+                  <TableCell>
+                    <a class="font-mono text-primary hover:underline" :href="`/requests/${req.id}`" @click.stop.prevent="router.push(`/requests/${req.id}`)">{{ req.reference_number }}</a>
+                  </TableCell>
+                  <TableCell>{{ STATUS_LABELS[req.status] ?? '—' }}</TableCell>
+                  <TableCell><StatusBadge :status="req.status" :role="UserRole.BANK_REVIEWER" /></TableCell>
+                  <TableCell @click.stop>
+                    <Button size="sm" variant="outline" @click="router.push(`/requests/${req.id}`)">عرض</Button>
+                  </TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
           </CardContent>
         </Card>
       </section>
