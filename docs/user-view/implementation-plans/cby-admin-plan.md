@@ -38,7 +38,7 @@ Build a national platform oversight and administration workspace. CBY Admin has 
 ### 2. Dashboard
 
 - [x] Build strategic oversight dashboard, not task inbox.
-- [ ] Header includes date range, bank filter, refresh, last-updated, and executive summary export.
+- [x] Header includes date range, bank filter, refresh, last-updated, and executive summary export.
 - [x] Add six KPI cards: active workflow requests, SLA violations, open executive voting, FX pending, bank risk alerts, system availability.
 - [x] Add workflow pressure map table/heatmap with active count, average age, SLA risk, and trend.
 - [x] Add executive voting oversight with waiting member names.
@@ -54,25 +54,25 @@ Build a national platform oversight and administration workspace. CBY Admin has 
 - [x] Add smart summary bar for SLA breaches, delayed voting, FX delays, and bank risk anomalies.
 - [x] Implement primary tabs: active, needs attention, executive voting, FX pending, rejected, completed, all requests.
 - [x] Add toolbar: search, export, refresh, saved views, column visibility.
-- [ ] Add advanced filters drawer with bank, workflow stage, exact status, date, amount, SLA, voting, pending member, FX, repeated support returns, high value.
+- [x] Add advanced filters drawer with bank, workflow stage, exact status, date, amount, SLA, voting, pending member, FX, repeated support returns, high value.
 - [x] Keep filter state URL-shareable.
-- [ ] Table columns: reference, bank, merchant, amount, current stage, age, SLA state, voting state, FX state, last activity, risk flags, view-only actions.
+- [x] Table columns: reference, bank, merchant, amount, current stage, age, SLA state, voting state, FX state, last activity, risk flags, view-only actions.
 - [x] Show business-friendly status badge plus muted internal enum metadata.
-- [ ] Add quick preview drawer with workflow timeline, blocker, latest docs, voting, FX progress, audit summary, risk flags.
+- [x] Add quick preview drawer with workflow timeline, blocker, latest docs, voting, FX progress, audit summary, risk flags.
 - [x] Do not render workflow action controls.
 
 ### 4. Request Detail
 
 - [x] Build read-only investigation detail.
-- [ ] Header shows request summary, bank, merchant, amount, status, exact enum metadata, age, SLA, risk flags, oversight badge.
-- [ ] Primary actions: export case file, open audit view, copy link.
-- [ ] Add Current Blocker panel as highest-priority detail component.
+- [x] Header shows request summary, bank, merchant, amount, status, exact enum metadata, age, SLA, risk flags, oversight badge.
+- [x] Primary actions: export case file, open audit view, copy link.
+- [x] Add Current Blocker panel as highest-priority detail component.
 - [x] Add updated workflow progress with returned loops and rejected branches.
 - [x] Tabs: overview, workflow timeline, documents, executive voting, FX confirmation, parties, audit trail.
 - [x] Documents tab shows document provenance and download-only actions where permitted.
 - [x] Executive Voting tab shows session state, pending members, votes per visibility policy, final outcome.
 - [x] FX tab tracks waiting for SWIFT, SWIFT uploaded, FX request uploaded, FX pending, completed.
-- [ ] Add right-side intelligence panel with owner role, blocker, SLA, age, pending actors, latest activity, risk flags, linked audit.
+- [x] Add right-side intelligence panel with owner role, blocker, SLA, age, pending actors, latest activity, risk flags, linked audit.
 - [x] No workflow controls anywhere.
 
 ### 5. Merchants
@@ -89,7 +89,7 @@ Build a national platform oversight and administration workspace. CBY Admin has 
 
 - [x] Build historical analysis page separate from live dashboard.
 - [x] Add global filters: date, bank, stage, goods category, currency, amount, risk, outcome.
-- [ ] Add tabs: executive summary, bank performance, workflow SLA, decisions/outcomes, executive voting, SWIFT and FX, compliance/risk.
+- [x] Add tabs: executive summary, bank performance, workflow SLA, decisions/outcomes, executive voting, SWIFT and FX, compliance/risk.
 - [x] Support PDF, Excel/CSV, and scheduled report actions.
 - [x] Exports must respect active filters and include multiple sheets where appropriate.
 - [x] Use trend, ranking, bar, heatmap, and funnel charts only where they answer a management question.
