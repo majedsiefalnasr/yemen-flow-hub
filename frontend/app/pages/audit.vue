@@ -28,6 +28,7 @@ import PageHeader from '@/components/layout/PageHeader.vue'
 import { ROUTE_ROLE_MAP } from '@/constants/workflow'
 import { useAudit } from '@/composables/useAudit'
 import type { AuditLog } from '@/types/models'
+import { Badge } from '@/components/ui/badge'
 import {
   Empty,
   EmptyContent,
@@ -96,6 +97,59 @@ const kpis = computed(() => [
   { label: 'فواتير مكررة', value: duplicates.value.length.toString(), icon: FileWarning, tone: 'text-red-700 bg-red-700/10' },
   { label: 'حالات مخاطر', value: risks.value.filter(r => r.level === 'عالية').length.toString(), icon: ShieldCheck, tone: 'text-red-700 bg-red-700/10' },
 ])
+
+// Smart summary bar computeds derived from loaded audit logs
+const smartSummary = computed(() => {
+  const logs = auditLogs.value
+  const denied = logs.filter(l => l.action === 'AUTHORIZATION_FAILURE')
+  const failedLogins = logs.filter(l => l.action === 'LOGIN_FAILED')
+  const roleChanges = logs.filter(l => l.action === 'USER_UPDATED' && l.metadata && (l.metadata as any).role_changed)
+  const docDownloads = logs.filter(l => l.action === 'DOCUMENT_DOWNLOADED')
+  return {
+    denied: denied.length,
+    failedLogins: failedLogins.length,
+    roleChanges: roleChanges.length,
+    docDownloads: docDownloads.length,
+  }
+})
+
+// Anomaly grouping: users with repeated denials or failed logins
+const anomalyGroups = computed(() => {
+  const logs = auditLogs.value
+  const groups: { type: string; actor: string; count: number; level: 'عالية' | 'متوسطة' }[] = []
+
+  // Repeated authorization failures by user
+  const denialsByUser: Record<string, number> = {}
+  for (const l of logs.filter(l => l.action === 'AUTHORIZATION_FAILURE')) {
+    const key = l.user?.name ?? `ID:${l.user_id}`
+    denialsByUser[key] = (denialsByUser[key] ?? 0) + 1
+  }
+  for (const [actor, count] of Object.entries(denialsByUser)) {
+    if (count >= 3) groups.push({ type: 'رفض متكرر للصلاحيات', actor, count, level: count >= 5 ? 'عالية' : 'متوسطة' })
+  }
+
+  // Repeated failed logins by user
+  const failsByUser: Record<string, number> = {}
+  for (const l of logs.filter(l => l.action === 'LOGIN_FAILED')) {
+    const key = l.user?.name ?? l.user_role ?? 'مجهول'
+    failsByUser[key] = (failsByUser[key] ?? 0) + 1
+  }
+  for (const [actor, count] of Object.entries(failsByUser)) {
+    if (count >= 3) groups.push({ type: 'محاولات دخول فاشلة متكررة', actor, count, level: count >= 5 ? 'عالية' : 'متوسطة' })
+  }
+
+  // Unusual document downloads (> 5 by same user)
+  const downloadsByUser: Record<string, number> = {}
+  for (const l of logs.filter(l => l.action === 'DOCUMENT_DOWNLOADED')) {
+    const key = l.user?.name ?? `ID:${l.user_id}`
+    downloadsByUser[key] = (downloadsByUser[key] ?? 0) + 1
+  }
+  for (const [actor, count] of Object.entries(downloadsByUser)) {
+    if (count >= 5) groups.push({ type: 'تحميل وثائق مكثف', actor, count, level: 'متوسطة' })
+  }
+
+  return groups.sort((a, b) => (a.level === 'عالية' ? -1 : 1) - (b.level === 'عالية' ? -1 : 1))
+})
 
 function formatDate(ts: string) {
   return new Date(ts).toLocaleString('ar-EG')
@@ -245,6 +299,46 @@ const table = useVueTable({
       :breadcrumbs="[{ label: 'الرئيسية', to: '/' }, { label: 'التدقيق والامتثال' }]"
     />
 
+    <!-- Smart summary bar -->
+    <div v-if="!loadingAudit" class="mb-4 space-y-2">
+      <Card
+        v-if="smartSummary.denied >= 3"
+        class="border-0 border-s-4 border-s-[var(--severity-red)] bg-[var(--severity-red)]/5 shadow-sm"
+        role="alert"
+      >
+        <div class="flex items-center gap-3 px-4 py-3">
+          <AlertTriangle class="h-4 w-4 shrink-0 text-[var(--severity-red)]" aria-hidden="true" />
+          <span class="flex-1 text-sm font-medium">
+            {{ smartSummary.denied }} محاولة وصول مرفوضة — مراجعة التفويض مطلوبة
+          </span>
+        </div>
+      </Card>
+      <Card
+        v-if="smartSummary.failedLogins >= 5"
+        class="border-0 border-s-4 border-s-[var(--severity-red)] bg-[var(--severity-red)]/5 shadow-sm"
+        role="alert"
+      >
+        <div class="flex items-center gap-3 px-4 py-3">
+          <AlertTriangle class="h-4 w-4 shrink-0 text-[var(--severity-red)]" aria-hidden="true" />
+          <span class="flex-1 text-sm font-medium">
+            {{ smartSummary.failedLogins }} محاولة دخول فاشلة — تحقق من الأنشطة المشبوهة
+          </span>
+        </div>
+      </Card>
+      <Card
+        v-if="smartSummary.roleChanges > 0"
+        class="border-0 border-s-4 border-s-[var(--severity-amber)] bg-[var(--severity-amber)]/5 shadow-sm"
+        role="alert"
+      >
+        <div class="flex items-center gap-3 px-4 py-3">
+          <AlertTriangle class="h-4 w-4 shrink-0 text-[var(--severity-amber)]" aria-hidden="true" />
+          <span class="flex-1 text-sm font-medium">
+            {{ smartSummary.roleChanges }} تغيير دور حساس — مراجعة الصلاحيات مطلوبة
+          </span>
+        </div>
+      </Card>
+    </div>
+
     <div class="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
       <Card
         v-for="kpi in kpis"
@@ -278,6 +372,12 @@ const table = useVueTable({
         </TabsTrigger>
         <TabsTrigger value="risk">
           مؤشرات المخاطر
+        </TabsTrigger>
+        <TabsTrigger value="anomalies">
+          الأنماط الشاذة
+          <Badge v-if="anomalyGroups.length > 0" class="ms-1.5 border-[var(--severity-red)]/30 bg-[var(--severity-red)]/10 text-[var(--severity-red)] border text-[10px]">
+            {{ anomalyGroups.length }}
+          </Badge>
         </TabsTrigger>
       </TabsList>
 
@@ -571,6 +671,54 @@ const table = useVueTable({
               </div>
               <Badge :variant="risk.level === 'عالية' ? 'destructive' : 'secondary'">
                 {{ risk.level }}
+              </Badge>
+            </div>
+          </div>
+        </Card>
+      </TabsContent>
+
+      <TabsContent value="anomalies" class="mt-4">
+        <Card class="border-0 p-5 shadow">
+          <h3 class="mb-1 font-semibold">
+            تجميع الأنماط الشاذة
+          </h3>
+          <p class="mb-4 text-xs text-muted-foreground">محاولات رفض متكررة، دخول فاشل، تحميل وثائق مكثف</p>
+
+          <Empty
+            v-if="anomalyGroups.length === 0"
+            class="min-h-[160px] rounded-xl border border-dashed bg-muted/20"
+          >
+            <EmptyHeader>
+              <EmptyTitle>لا توجد أنماط شاذة</EmptyTitle>
+            </EmptyHeader>
+            <EmptyContent>
+              <EmptyDescription>لم يُرصد أي نمط غير طبيعي في السجلات المحملة.</EmptyDescription>
+            </EmptyContent>
+          </Empty>
+
+          <div class="space-y-3">
+            <div
+              v-for="(group, idx) in anomalyGroups"
+              :key="idx"
+              class="flex items-center gap-3 rounded-lg border p-3"
+              :class="group.level === 'عالية' ? 'border-[var(--severity-red)]/30 bg-[var(--severity-red)]/5' : 'border-[var(--severity-amber)]/30 bg-[var(--severity-amber)]/5'"
+            >
+              <AlertTriangle
+                class="h-4 w-4 shrink-0"
+                :class="group.level === 'عالية' ? 'text-[var(--severity-red)]' : 'text-[var(--severity-amber)]'"
+              />
+              <div class="flex-1">
+                <div class="text-sm font-medium">{{ group.type }}</div>
+                <div class="text-xs text-muted-foreground">{{ group.actor }}</div>
+              </div>
+              <div class="text-sm font-bold tabular-nums">
+                {{ group.count }}×
+              </div>
+              <Badge
+                class="border text-xs"
+                :class="group.level === 'عالية' ? 'border-[var(--severity-red)]/30 bg-[var(--severity-red)]/10 text-[var(--severity-red)]' : 'border-[var(--severity-amber)]/30 bg-[var(--severity-amber)]/10 text-[var(--severity-amber)]'"
+              >
+                {{ group.level }}
               </Badge>
             </div>
           </div>
