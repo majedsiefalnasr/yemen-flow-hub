@@ -123,7 +123,7 @@ Build a national platform oversight and administration workspace. CBY Admin has 
 - [x] Entity profile shows workflow health, role coverage, risk/compliance, recent activity, linked requests.
 - [x] Document Rules page distinguishes uploaded, generated, generated plus re-uploaded, and template-based documents.
 - [x] Document Rules must represent SWIFT PDF, FX request PDF, FX request template, and external FX confirmation lifecycle.
-- [ ] Add impact preview before saving high-risk document-rule changes.
+- [x] Add impact preview before saving high-risk document-rule changes.
 - [x] Permissions Reference is read-only governance intelligence with role cards, ownership map, document authority matrix, critical rules, and surface access matrix.
 - [x] Settings are governance-sensitive with General, Security, Notifications, Workflow/SLA, Integrations, Audit/Compliance tabs.
 - [x] High-risk settings require confirmation, reason, re-auth if needed, and audit log.
@@ -136,7 +136,7 @@ Build a national platform oversight and administration workspace. CBY Admin has 
 - [x] Confirm audit API supports filters, stats, duplicates, risk indicators, and event detail metadata.
 - [x] Confirm user controller enforces CBY-only role assignment and critical-role protections.
 - [x] Confirm bank/entity controller exposes risk, missing roles, workflow health, and suspension impact.
-- [ ] Confirm document rules/template API supports lifecycle and impact preview needs or add backend stories.
+- [x] Confirm document rules/template API supports lifecycle and impact preview needs or add backend stories.
 - [x] Confirm reports endpoints support cross-bank filters, export formats, and scheduled report metadata if planned.
 
 ## Tests List

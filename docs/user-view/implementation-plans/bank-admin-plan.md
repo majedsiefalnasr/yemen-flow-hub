@@ -55,7 +55,7 @@ Build a bank-scoped administration workspace for staff, merchants, reports, and 
 - [x] Table shows Created By, Current Owner, Age in Stage, and View-only action.
 - [x] Request detail shares reviewer read-only layout but actions panel contains only current owner/stage text.
 - [x] For drafts created by current admin fallback, render edit draft and delete draft only.
-- [ ] Documents tab allows request docs, SWIFT, and FX request downloads but shows external FX confirmation as locked row.
+- [x] Documents tab allows request docs, SWIFT, and FX request downloads but shows external FX confirmation as locked row.
 - [x] Never render decision buttons or disabled workflow buttons.
 
 ### 4. Staff Management
@@ -67,7 +67,7 @@ Build a bank-scoped administration workspace for staff, merchants, reports, and 
 - [x] Restrict role select to `DATA_ENTRY` and `BANK_REVIEWER`.
 - [x] Do not render CBY roles or `SWIFT_OFFICER` as assignable.
 - [x] Use shadcn-vue Dialog for add/edit and AlertDialog for deactivation/reset/force logout.
-- [ ] Add deactivation pre-check UI showing active drafts or active reviews.
+- [x] Add deactivation pre-check UI showing active drafts or active reviews.
 - [x] Sensitive actions require confirmation and audit logging.
 
 ### 5. Merchant Registry
@@ -77,7 +77,7 @@ Build a bank-scoped administration workspace for staff, merchants, reports, and 
 - [x] Add filters: search, status, completeness.
 - [x] Table columns: name, registry number, tax ID, status, linked requests, last activity, completeness, actions.
 - [x] Add/edit dialog validates required fields and uniqueness within bank.
-- [ ] Duplicate warnings require explicit confirmation to proceed.
+- [x] Duplicate warnings require explicit confirmation to proceed.
 - [x] Empty state includes add merchant CTA.
 
 ### 6. Reports, Notifications, Settings, Profile
@@ -95,7 +95,7 @@ Build a bank-scoped administration workspace for staff, merchants, reports, and 
 - [x] Confirm staff list filters own bank and excludes CBY users.
 - [x] Confirm merchant CRUD is own-bank scoped and duplicate detection supports warning metadata.
 - [x] Confirm reports are bank-scoped for bank admins.
-- [ ] Confirm external FX confirmation download is denied to Bank Admin.
+- [x] Confirm external FX confirmation download is denied to Bank Admin.
 
 ## Tests List
 
