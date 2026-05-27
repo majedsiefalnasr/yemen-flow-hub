@@ -9,6 +9,9 @@ import WizardStep4 from './WizardStep4.vue'
 import { useRequestWizard } from '../../composables/useRequestWizard'
 import { useMerchants } from '../../composables/useMerchants'
 import { useAuthStore } from '../../stores/auth.store'
+import type { DuplicateWarning } from '../../types/models'
+import { Alert, AlertDescription } from '../ui/alert'
+import { AlertTriangle } from 'lucide-vue-next'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -23,6 +26,8 @@ const STEP_LABELS = [
 
 const toast = ref<{ message: string; type: 'success' | 'error' | 'info' } | null>(null)
 let toastTimer: ReturnType<typeof setTimeout> | null = null
+
+const duplicateWarnings = ref<DuplicateWarning[]>([])
 
 function showToast(message: string, type: 'success' | 'error' | 'info' = 'info'): void {
   if (toastTimer) clearTimeout(toastTimer)
@@ -97,6 +102,7 @@ async function handleNext(): Promise<void> {
 async function handleSaveDraft(): Promise<void> {
   const result = await wizard.saveDraft()
   if (result) {
+    duplicateWarnings.value = result.duplicate_warnings ?? []
     showToast('تم الحفظ كمسودة ✓', 'success')
   }
   else if (wizard.saveError.value) {
@@ -191,15 +197,27 @@ const isSubmitDisabled = computed(() => !wizard.acknowledged.value || wizard.sub
         @file-reset="wizard.resetUploadState"
         @update:model-value="(v) => { wizard.step3.value = v }"
       />
-      <WizardStep4
-        v-else-if="wizard.currentStep.value === 4"
-        :step1="wizard.step1.value"
-        :step2="wizard.step2.value"
-        :step3="wizard.step3.value"
-        :merchant-name="merchantName"
-        :acknowledged="wizard.acknowledged.value"
-        @update:acknowledged="(v) => { wizard.acknowledged.value = v }"
-      />
+      <template v-else-if="wizard.currentStep.value === 4">
+        <!-- Duplicate invoice soft warning — non-blocking, backend is authority -->
+        <Alert v-if="duplicateWarnings.length > 0" class="mb-4 border-[var(--severity-amber)] bg-[var(--severity-amber)]/5 text-[var(--severity-amber)]">
+          <AlertTriangle class="h-4 w-4" />
+          <AlertDescription class="text-foreground">
+            تحذير: رقم الفاتورة <span class="font-mono font-semibold">{{ wizard.step2.value.invoice_number }}</span>
+            مستخدم في
+            {{ duplicateWarnings.length === 1 ? 'طلب سابق' : `${duplicateWarnings.length} طلبات سابقة` }}
+            ({{ duplicateWarnings.map(w => w.reference_number).filter(Boolean).join('، ') || 'مرجع غير متاح' }}).
+            يمكنك المتابعة والإرسال إذا كانت الفاتورة صحيحة.
+          </AlertDescription>
+        </Alert>
+        <WizardStep4
+          :step1="wizard.step1.value"
+          :step2="wizard.step2.value"
+          :step3="wizard.step3.value"
+          :merchant-name="merchantName"
+          :acknowledged="wizard.acknowledged.value"
+          @update:acknowledged="(v) => { wizard.acknowledged.value = v }"
+        />
+      </template>
 
       <!-- Bottom navigation bar -->
       <div class="h-px bg-border my-6" aria-hidden="true" />
