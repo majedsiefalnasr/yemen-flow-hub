@@ -12,6 +12,12 @@ import {
 import { Button } from '../ui/button'
 import { Badge } from '../ui/badge'
 import { Alert, AlertDescription } from '../ui/alert'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '../ui/tooltip'
 
 const props = defineProps<{
   documents: RequestDocument[]
@@ -386,6 +392,25 @@ function formatDate(iso: string | null): string {
               >
                 {{ downloadingIds.has(row.doc.id) ? 'جارٍ التحميل…' : 'تحميل' }}
               </Button>
+              <!-- Lock indicator for DATA_ENTRY on downstream docs (SWIFT / FX) -->
+              <TooltipProvider v-else-if="userRole === UserRole.DATA_ENTRY && (row.doc.type === 'SWIFT' || row.doc.type === 'FX_REQUEST')">
+                <Tooltip>
+                  <TooltipTrigger as-child>
+                    <span
+                      class="inline-flex h-7 items-center gap-1 rounded-md border border-dashed border-[var(--color-border)] px-2 text-xs text-muted-foreground cursor-default select-none"
+                      aria-label="هذا المستند محجوب عن دورك"
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                      </svg>
+                      محجوب
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" class="max-w-[220px] text-center text-xs">
+                    هذا المستند يُعالَج من قِبل فريق CBY ولا يتاح للتنزيل في هذه المرحلة
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
           </li>
 

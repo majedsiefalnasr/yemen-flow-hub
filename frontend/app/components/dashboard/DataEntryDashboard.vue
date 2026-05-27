@@ -3,16 +3,18 @@ import { computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { CheckCircle2, Clock, RotateCcw, FileText, Zap, Bell, AlertCircle, AlertTriangle } from 'lucide-vue-next'
 import { useDashboardStore } from '../../stores/dashboard.store'
+import { useNotificationsStore } from '../../stores/notifications.store'
 import { UserRole } from '../../types/enums'
 import type { DataEntryDashboardStats } from '../../composables/useDashboard'
 import StatusBadge from '../shared/StatusBadge.vue'
-import { getBusinessStatus } from '../../constants/workflow'
 import { Card, CardContent } from '../ui/card'
 
 const router = useRouter()
 const store = useDashboardStore()
+const notificationsStore = useNotificationsStore()
 
 const stats = computed(() => store.stats as DataEntryDashboardStats | null)
+const unreadCount = computed(() => notificationsStore.unreadCount)
 
 const hasAnyRequests = computed(() =>
   stats.value !== null && (
@@ -34,15 +36,25 @@ const returnedCount = computed(() =>
 
 const actionRequiredCount = computed(() => returnedCount.value)
 
+// First returned request — used for the correction strip reference + reason snippet
+const firstReturnedRequest = computed(() => stats.value?.returned_requests?.[0] ?? null)
+const returnReasonSnippet = computed(() => {
+  const req = firstReturnedRequest.value
+  if (!req) return ''
+  // bank_return_comment for BANK_RETURNED; support_return_comment for SUPPORT_RETURNED
+  const reason = req.bank_return_comment ?? req.support_return_comment ?? req.notes ?? ''
+  return reason.length > 80 ? reason.slice(0, 80) + '…' : reason
+})
+
 function formatAmount(amount: number, currency: string): string {
   return new Intl.NumberFormat('ar-YE', { style: 'currency', currency, minimumFractionDigits: 0 }).format(amount)
 }
 
 function getKpiIconColor(variant: string): string {
   const colors: Record<string, string> = {
-    green: 'text-green-700 bg-green-50/10',
+    green: 'text-[var(--severity-green)] bg-[var(--severity-green)]/10',
     blue: 'text-primary bg-primary/10',
-    amber: 'text-amber-600 bg-amber-50/10',
+    amber: 'text-[var(--severity-amber)] bg-[var(--severity-amber)]/10',
     gray: 'text-muted-foreground bg-muted',
   }
   return colors[variant] ?? colors.gray!
@@ -79,7 +91,10 @@ const kpiConfig = computed(() => [
   },
 ])
 
-onMounted(() => { store.loadStats() })
+onMounted(() => {
+  store.loadStats()
+  notificationsStore.refreshUnreadCount()
+})
 </script>
 
 <template>
@@ -94,11 +109,11 @@ onMounted(() => { store.loadStats() })
     </div>
 
     <!-- Error -->
-    <Card v-else-if="store.error" class="border-l-4 border-destructive border-b border-border border-r bg-background" role="alert">
+    <Card v-else-if="store.error" class="border-destructive bg-background" role="alert">
       <CardContent class="pt-6 flex items-center gap-3">
-        <AlertCircle class="w-4.5 h-4.5 flex-shrink-0 text-red-700" aria-hidden="true" />
-        <span class="text-red-700 flex-1">{{ store.error }}</span>
-        <button class="px-4 py-1.5 bg-background border border-destructive rounded-lg text-red-700 text-sm cursor-pointer hover:bg-red-700/10 transition-colors" @click="store.loadStats()">إعادة المحاولة</button>
+        <AlertCircle class="w-4.5 h-4.5 flex-shrink-0 text-[var(--severity-red)]" aria-hidden="true" />
+        <span class="text-[var(--severity-red)] flex-1">{{ store.error }}</span>
+        <button class="px-4 py-1.5 bg-background border border-destructive rounded-lg text-[var(--severity-red)] text-sm cursor-pointer hover:bg-destructive/10 transition-colors" @click="store.loadStats()">إعادة المحاولة</button>
       </CardContent>
     </Card>
 
@@ -116,20 +131,24 @@ onMounted(() => { store.loadStats() })
       <!-- Action-required strip (above KPI grid, hidden when count = 0) -->
       <Card
         v-if="actionRequiredCount > 0"
-        class="border-0 border-s-4 border-s-amber-600 bg-amber-50/30 shadow-sm"
+        class="border-0 border-s-4 border-s-[var(--severity-amber)] bg-[var(--severity-amber)]/5 shadow-sm"
         role="alert"
         aria-label="طلبات تحتاج تعديل"
       >
         <CardContent class="pt-4 pb-4 flex items-center gap-3">
-          <AlertTriangle class="h-5 w-5 flex-shrink-0 text-amber-600" aria-hidden="true" />
+          <AlertTriangle class="h-5 w-5 flex-shrink-0 text-[var(--severity-amber)]" aria-hidden="true" />
           <div class="flex-1 min-w-0">
             <span class="font-semibold text-foreground text-sm">{{ actionRequiredCount }} طلبات تحتاج تعديل</span>
-            <p v-if="stats.returned_requests?.length" class="text-xs text-muted-foreground mt-0.5 truncate">
-              {{ stats.returned_requests[0]?.reference_number }}
+            <p v-if="firstReturnedRequest" class="text-xs text-muted-foreground mt-0.5">
+              <span class="font-mono text-foreground">{{ firstReturnedRequest.reference_number }}</span>
+              <template v-if="returnReasonSnippet">
+                <span class="mx-1.5 text-border">·</span>
+                <span class="truncate">{{ returnReasonSnippet }}</span>
+              </template>
             </p>
           </div>
           <button
-            class="flex-shrink-0 px-3 py-1.5 bg-amber-600 text-white text-xs font-semibold rounded-xl hover:bg-amber-700 transition-colors"
+            class="flex-shrink-0 px-3 py-1.5 bg-[var(--severity-amber)] text-white text-xs font-semibold rounded-xl hover:opacity-90 transition-opacity"
             @click="router.push('/requests?tab=returned')"
           >
             ابدأ التعديل
@@ -141,8 +160,8 @@ onMounted(() => { store.loadStats() })
       <div class="grid grid-cols-4 max-lg:grid-cols-2 max-md:grid-cols-1 gap-4">
         <template v-for="kpi in kpiConfig" :key="kpi.label">
           <Card
-            class="border-0 p-4 shadow flex flex-col gap-1.5 cursor-pointer hover:shadow-md transition-shadow"
-            :class="{ 'border-s-4 border-s-amber-600': kpi.variant === 'amber' }"
+            class="border-0 p-4 shadow flex flex-col gap-1.5 cursor-pointer hover:shadow-md transition-shadow focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
+            :class="{ 'border-s-4 border-s-[var(--severity-amber)]': kpi.variant === 'amber' && kpi.value > 0 }"
             role="button"
             tabindex="0"
             :aria-label="`${kpi.label}: ${kpi.value}`"
@@ -153,7 +172,14 @@ onMounted(() => { store.loadStats() })
             <div class="h-9 w-9 rounded flex items-center justify-center flex-shrink-0" :class="getKpiIconColor(kpi.variant)">
               <component :is="kpi.icon" class="h-5 w-5" aria-hidden="true" />
             </div>
-            <span class="text-2xl font-semibold leading-none" :class="kpi.variant === 'amber' && kpi.value > 0 ? 'text-amber-600' : kpi.variant === 'green' ? 'text-green-700' : 'text-foreground'">
+            <span
+              class="text-2xl font-semibold leading-none"
+              :class="{
+                'text-[var(--severity-amber)]': kpi.variant === 'amber' && kpi.value > 0,
+                'text-[var(--severity-green)]': kpi.variant === 'green',
+                'text-foreground': kpi.variant !== 'amber' && kpi.variant !== 'green',
+              }"
+            >
               {{ kpi.value }}
             </span>
             <span class="text-xs text-muted-foreground">{{ kpi.label }}</span>
@@ -169,7 +195,7 @@ onMounted(() => { store.loadStats() })
         </h2>
         <div class="grid grid-cols-3 max-md:grid-cols-1 gap-3">
           <!-- إنشاء طلب جديد -->
-          <button class="flex flex-col items-start gap-1 p-4 bg-primary text-primary-foreground border-0 rounded-2xl cursor-pointer hover:opacity-90 transition-colors" @click="router.push('/requests/new')">
+          <button class="flex flex-col items-start gap-1 p-4 bg-primary text-primary-foreground border-0 rounded-2xl cursor-pointer hover:opacity-90 transition-opacity" @click="router.push('/requests/new')">
             <FileText class="h-5 w-5 flex-shrink-0 mb-1" aria-hidden="true" />
             <span class="text-sm font-semibold">إنشاء طلب جديد</span>
             <span class="text-xs opacity-75">لبدء طلب تمويل جديد</span>
@@ -182,9 +208,21 @@ onMounted(() => { store.loadStats() })
             <span class="text-xs text-muted-foreground">كل ما قدّمت رأيناه</span>
           </button>
 
-          <!-- الإشعارات -->
-          <button class="flex flex-col items-start gap-1 p-4 bg-background border border-border text-foreground rounded-2xl cursor-pointer hover:border-primary hover:shadow-md transition-all" @click="router.push('/notifications')">
-            <Bell class="h-5 w-5 flex-shrink-0 text-primary mb-1" aria-hidden="true" />
+          <!-- الإشعارات — with unread badge -->
+          <button
+            class="relative flex flex-col items-start gap-1 p-4 bg-background border border-border text-foreground rounded-2xl cursor-pointer hover:border-primary hover:shadow-md transition-all"
+            @click="router.push('/notifications')"
+          >
+            <div class="relative mb-1">
+              <Bell class="h-5 w-5 flex-shrink-0 text-primary" aria-hidden="true" />
+              <span
+                v-if="unreadCount > 0"
+                class="absolute -top-1.5 -end-1.5 min-w-4 h-4 px-0.5 bg-destructive text-white text-[10px] font-bold rounded-full flex items-center justify-center leading-none"
+                aria-label="`${unreadCount} إشعار غير مقروء`"
+              >
+                {{ unreadCount > 99 ? '99+' : unreadCount }}
+              </span>
+            </div>
             <span class="text-sm font-semibold">الإشعارات</span>
             <span class="text-xs text-muted-foreground">آخر التحديثات على طلباتك</span>
           </button>
@@ -215,12 +253,23 @@ onMounted(() => { store.loadStats() })
                   v-for="req in stats.draft_requests.slice(0, 5)"
                   :key="req.id"
                   class="border-t border-muted hover:bg-muted/50 cursor-pointer transition-colors"
-                  @click="router.push(`/requests/${req.id}`)"
+                  @click="router.push(`/requests/${req.id}/edit`)"
                 >
-                  <td class="py-2 px-2"><a class="font-mono text-primary hover:underline" :href="`/requests/${req.id}`" @click.prevent="router.push(`/requests/${req.id}`)">{{ req.reference_number }}</a></td>
+                  <td class="py-2 px-2">
+                    <a class="font-mono text-primary hover:underline" :href="`/requests/${req.id}/edit`" @click.prevent="router.push(`/requests/${req.id}/edit`)">
+                      {{ req.reference_number }}
+                    </a>
+                  </td>
                   <td class="py-2 px-2 text-foreground">{{ req.supplier_name }}</td>
                   <td class="py-2 px-2 text-foreground direction-ltr font-tabular-nums">{{ formatAmount(req.amount, req.currency) }}</td>
-                  <td class="py-2 px-2"><button class="px-2 py-1 bg-background border border-border text-xs text-foreground rounded hover:border-primary hover:text-primary transition-colors" @click.stop="router.push(`/requests/${req.id}`)">متابعة</button></td>
+                  <td class="py-2 px-2">
+                    <button
+                      class="px-2 py-1 bg-primary text-primary-foreground text-xs rounded hover:opacity-90 transition-opacity"
+                      @click.stop="router.push(`/requests/${req.id}/edit`)"
+                    >
+                      متابعة
+                    </button>
+                  </td>
                 </tr>
               </tbody>
             </table>
@@ -228,7 +277,11 @@ onMounted(() => { store.loadStats() })
         </Card>
 
         <!-- آخر نشاطي (recent requests) -->
-        <Card class="border-0 shadow" :class="{ 'col-span-2 max-lg:col-span-1': !stats.draft_requests?.length }" aria-labelledby="recent-heading">
+        <Card
+          class="border-0 shadow"
+          :class="{ 'col-span-2 max-lg:col-span-1': !stats.draft_requests?.length }"
+          aria-labelledby="recent-heading"
+        >
           <CardContent class="p-4">
             <div class="flex items-center justify-between mb-4">
               <h2 id="recent-heading" class="text-sm font-semibold text-foreground">آخر نشاطي</h2>
@@ -252,11 +305,22 @@ onMounted(() => { store.loadStats() })
                   class="border-t border-muted hover:bg-muted/50 cursor-pointer transition-colors"
                   @click="router.push(`/requests/${req.id}`)"
                 >
-                  <td class="py-2 px-2"><a class="font-mono text-primary hover:underline" :href="`/requests/${req.id}`" @click.prevent="router.push(`/requests/${req.id}`)">{{ req.reference_number }}</a></td>
+                  <td class="py-2 px-2">
+                    <a class="font-mono text-primary hover:underline" :href="`/requests/${req.id}`" @click.prevent="router.push(`/requests/${req.id}`)">
+                      {{ req.reference_number }}
+                    </a>
+                  </td>
                   <td class="py-2 px-2 text-foreground">{{ req.supplier_name }}</td>
                   <td class="py-2 px-2 text-foreground direction-ltr font-tabular-nums">{{ formatAmount(req.amount, req.currency) }}</td>
                   <td class="py-2 px-2"><StatusBadge :status="req.status" :role="UserRole.DATA_ENTRY" /></td>
-                  <td class="py-2 px-2"><button class="px-2 py-1 bg-background border border-border text-xs text-foreground rounded hover:border-primary hover:text-primary transition-colors" @click.stop="router.push(`/requests/${req.id}`)">عرض</button></td>
+                  <td class="py-2 px-2">
+                    <button
+                      class="px-2 py-1 bg-background border border-border text-xs text-foreground rounded hover:border-primary hover:text-primary transition-colors"
+                      @click.stop="router.push(`/requests/${req.id}`)"
+                    >
+                      عرض
+                    </button>
+                  </td>
                 </tr>
               </tbody>
             </table>

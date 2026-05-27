@@ -1434,6 +1434,7 @@ async function handleCloneConfirm() {
                 <AuditTimeline
                   v-else
                   :entries="requestsStore.history"
+                  :user-role="userRole"
                 />
               </div>
             </section>

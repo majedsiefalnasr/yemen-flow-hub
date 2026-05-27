@@ -1,15 +1,27 @@
 <script setup lang="ts">
 import { Clock } from 'lucide-vue-next'
 import type { RequestStageHistory } from '@/types/models'
+import { UserRole } from '@/types/enums'
+import { STATUS_LABELS, DATA_ENTRY_STATUS_LABELS } from '@/constants/workflow'
 
 const props = withDefaults(defineProps<{
   entries: RequestStageHistory[]
   limit?: number
+  userRole?: UserRole | null
 }>(), {
   limit: 25,
+  userRole: null,
 })
 
 const visible = computed(() => props.entries.slice(0, props.limit))
+
+/** Resolve a raw status enum value to a human-readable Arabic label.
+ *  DATA_ENTRY sees simplified business labels; all other roles see the full label set. */
+function statusLabel(raw: string | null | undefined): string | null {
+  if (!raw) return null
+  const map = props.userRole === UserRole.DATA_ENTRY ? DATA_ENTRY_STATUS_LABELS : STATUS_LABELS
+  return (map as Record<string, string>)[raw] ?? raw
+}
 </script>
 
 <template>
@@ -43,7 +55,7 @@ const visible = computed(() => props.entries.slice(0, props.limit))
         <div class="mt-1 text-xs text-muted-foreground">
           {{ entry.performed_by?.name ?? 'غير معروف' }}
           <span v-if="entry.from_status && entry.to_status">
-            — من «{{ entry.from_status }}» إلى «{{ entry.to_status }}»
+            — من «{{ statusLabel(entry.from_status) }}» إلى «{{ statusLabel(entry.to_status) }}»
           </span>
         </div>
         <div

@@ -237,6 +237,12 @@ const columns: ColumnDef<ImportRequest>[] = [
     enableHiding: false,
     cell: ({ row }) => {
       const request = row.original
+      const isEditable = [
+        RequestStatus.DRAFT,
+        RequestStatus.BANK_RETURNED,
+        RequestStatus.SUPPORT_RETURNED,
+        RequestStatus.DRAFT_REJECTED_INTERNAL,
+      ].includes(request.status)
       const isDraft = request.status === RequestStatus.DRAFT
       const isBankReviewerSelf = props.role === UserRole.BANK_REVIEWER
         && currentUserId.value != null
@@ -311,7 +317,7 @@ const columns: ColumnDef<ImportRequest>[] = [
               h(DropdownMenuItem, {
                 onClick: (e: Event) => { e.stopPropagation(); router.push(`/requests/${request.id}`) },
               }, () => 'عرض'),
-              ...(isDraft
+              ...(isEditable
                 ? [h(DropdownMenuItem, {
                     onClick: (e: Event) => { e.stopPropagation(); router.push(`/requests/${request.id}/edit`) },
                   }, () => 'تعديل')]
