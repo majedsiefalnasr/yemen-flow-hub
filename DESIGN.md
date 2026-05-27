@@ -2,7 +2,7 @@
 
 > **Two-layer design system:**
 > - This file (`DESIGN.md`) = **What** — token values, spacing philosophy, component specs, role dashboard layouts. The design authority for all tools.
-> - `frontend/DESIGN.md.md` = **How** — Tailwind/Vue code patterns that implement this. Frontend AI reads both; this file wins on any conflict.
+> - `frontend/DESIGN.md` = **How** — Tailwind/Vue code patterns that implement this. Frontend AI reads both; this file wins on any conflict.
 
 ## Overview
 
