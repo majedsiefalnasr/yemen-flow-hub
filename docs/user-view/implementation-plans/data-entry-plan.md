@@ -29,16 +29,16 @@ Build a focused bank intake workspace for request drafting, correction, submissi
 
 ### 1. Role Surface And Navigation
 
-- [ ] Verify `ROLE_SURFACE_MATRIX.DATA_ENTRY` allows only dashboard, requests, new request, notifications, and settings.
-- [ ] Verify sidebar does not render admin, reports, merchants, staff, audit, SWIFT, voting, support-claim, or FX confirmation surfaces.
-- [ ] Keep `/requests/new` visible as the primary action only for Data Entry.
-- [ ] Ensure page route meta and `ROUTE_ROLE_MAP` reject direct access to role-forbidden pages.
-- [ ] Confirm profile is only available through the sidebar footer dropdown, not main navigation.
+- [x] Verify `ROLE_SURFACE_MATRIX.DATA_ENTRY` allows only dashboard, requests, new request, notifications, and settings.
+- [x] Verify sidebar does not render admin, reports, merchants, staff, audit, SWIFT, voting, support-claim, or FX confirmation surfaces.
+- [x] Keep `/requests/new` visible as the primary action only for Data Entry.
+- [x] Ensure page route meta and `ROUTE_ROLE_MAP` reject direct access to role-forbidden pages.
+- [x] Confirm profile is only available through the sidebar footer dropdown, not main navigation.
 
 ### 2. Dashboard
 
 - [x] Implement the dashboard as a task launcher, not an analytics page.
-- [ ] Show greeting, bank-scoped subtitle, and primary `+ طلب جديد` action.
+- [x] Show greeting, bank-scoped subtitle, and primary `+ طلب جديد` action.
 - [x] Add a conditional amber correction strip above KPIs for `BANK_RETURNED`, `SUPPORT_RETURNED`, and `DRAFT_REJECTED_INTERNAL`.
 - [x] Make the strip link to `/requests?tab=returned` and include first returned reference plus truncated reason.
 - [x] Build four clickable KPI cards: completed, under CBY processing, needs correction, drafts.
@@ -51,44 +51,44 @@ Build a focused bank intake workspace for request drafting, correction, submissi
 
 ### 3. Requests List
 
-- [ ] Keep the list bank-scoped and remove bank filter for this role.
-- [ ] Implement ordered tabs: returned, draft, submitted, processing, completed, rejected, all.
-- [ ] Keep `returned` first and sync tab with query param.
-- [ ] Use simplified business status labels from `DATA_ENTRY_STATUS_LABELS`.
-- [ ] Add toolbar search, column visibility, filter-scoped export, and `+ طلب جديد`.
-- [ ] Add selection toolbar with export selected, print selected, and clear selection only.
-- [ ] Do not render bulk submit, delete, edit, review, claim, vote, SWIFT, or FX actions.
-- [ ] Render contextual row action as edit only for returned/editable statuses.
-- [ ] Implement filtered-empty, no-data-empty, loading, and inline error states.
+- [x] Keep the list bank-scoped and remove bank filter for this role.
+- [x] Implement ordered tabs: returned, draft, submitted, processing, completed, rejected, all.
+- [x] Keep `returned` first and sync tab with query param.
+- [x] Use simplified business status labels from `DATA_ENTRY_STATUS_LABELS`.
+- [x] Add toolbar search, column visibility, filter-scoped export, and `+ طلب جديد`.
+- [x] Add selection toolbar with export selected, print selected, and clear selection only.
+- [x] Do not render bulk submit, delete, edit, review, claim, vote, SWIFT, or FX actions.
+- [x] Render contextual row action as edit only for returned/editable statuses.
+- [x] Implement filtered-empty, no-data-empty, loading, and inline error states.
 
 ### 4. New And Edit Request Wizard
 
-- [ ] Keep the four-step wizard: request data, supplier/shipment, required documents, review/submit.
-- [ ] Use VeeValidate/Zod schema ownership in existing wizard schema files.
-- [ ] Use shadcn-vue form composition and field-level errors close to controls.
-- [ ] Add merchant searchable select scoped to the user's bank.
+- [x] Keep the four-step wizard: request data, supplier/shipment, required documents, review/submit.
+- [x] Use VeeValidate/Zod schema ownership in existing wizard schema files.
+- [x] Use shadcn-vue form composition and field-level errors close to controls.
+- [x] Add merchant searchable select scoped to the user's bank.
 - [ ] Add duplicate invoice soft warning before submit while keeping backend authority.
-- [ ] Add document completion indicator and per-document upload cards.
-- [ ] Enforce PDF-only and 10 MB limit in UI before upload and preserve backend validation.
-- [ ] Implement inline upload errors per file slot and preserve successfully uploaded sibling files.
-- [ ] Add review step declaration checkbox that gates submit.
-- [ ] Add disabled-submit explanations for missing documents or declaration.
-- [ ] Persist draft safely at any step and never lose form input on network failure.
-- [ ] On returned edits, pin `CorrectionBanner` across all wizard steps.
-- [ ] On 403/409 while editing, freeze the form and show reload action.
+- [x] Add document completion indicator and per-document upload cards.
+- [x] Enforce PDF-only and 10 MB limit in UI before upload and preserve backend validation.
+- [x] Implement inline upload errors per file slot and preserve successfully uploaded sibling files.
+- [x] Add review step declaration checkbox that gates submit.
+- [x] Add disabled-submit explanations for missing documents or declaration.
+- [x] Persist draft safely at any step and never lose form input on network failure.
+- [x] On returned edits, pin `CorrectionBanner` across all wizard steps.
+- [x] On 403/409 while editing, freeze the form and show reload action.
 
 ### 5. Request Detail
 
-- [ ] Header includes reference, simplified status badge, print, and conditional edit button.
-- [ ] Render `CorrectionBanner` for returned/editable correction states.
-- [ ] Render `LockedBanner` for terminal or non-editable states.
-- [ ] Do not render active review, claim, voting, SWIFT, or FX controls.
-- [ ] Use business-language workflow progress and show return loops.
-- [ ] Provide tabs: overview, documents, parties, activity log.
-- [ ] Documents tab shows intake docs as downloadable and downstream documents as locked rows with explanatory tooltip.
-- [ ] Keep downstream documents visible as locked rows, not hidden, because this role tracks lifecycle but cannot download.
-- [ ] Actions panel shows edit/resubmit/submit only for editable states, read-only text for in-flight states, and empty panel for terminal states.
-- [ ] Activity log uses business phrases, not raw audit dump or raw enum names.
+- [x] Header includes reference, simplified status badge, print, and conditional edit button.
+- [x] Render `CorrectionBanner` for returned/editable correction states.
+- [x] Render `LockedBanner` for terminal or non-editable states.
+- [x] Do not render active review, claim, voting, SWIFT, or FX controls.
+- [x] Use business-language workflow progress and show return loops.
+- [x] Provide tabs: overview, documents, parties, activity log.
+- [x] Documents tab shows intake docs as downloadable and downstream documents as locked rows with explanatory tooltip.
+- [x] Keep downstream documents visible as locked rows, not hidden, because this role tracks lifecycle but cannot download.
+- [x] Actions panel shows edit/resubmit/submit only for editable states, read-only text for in-flight states, and empty panel for terminal states.
+- [x] Activity log uses business phrases, not raw audit dump or raw enum names.
 
 ### 6. Notifications, Settings, Profile
 
