@@ -46,7 +46,7 @@ Build a CBY-global governance and completion console for voting closure/finaliza
 - [x] Implement tabs: ready_to_close, ready_to_finalize, pending_my_vote, voting_open, fx_pending, swift_in_progress, approved, completed, rejected, all.
 - [x] Keep Director-actionable tabs first.
 - [x] Add search, bank filter, column visibility, export, saved views, and refresh.
-- [ ] Add Ready to Close and FX Document State columns.
+- [x] Add Ready to Close and FX Document State columns.
 - [x] Row actions route to vote, close, finalize, tie-break, or FX detail based on state.
 - [x] Keep filter state URL-shareable.
 
@@ -68,10 +68,10 @@ Build a CBY-global governance and completion console for voting closure/finaliza
 ### 5. FX Confirmation Completion
 
 - [x] Actions panel handles `FX_CONFIRMATION_PENDING` sequence: download generated PDF, upload signed/stamped PDF, complete.
-- [ ] Enforce sequential order in UI (three-step download→upload→complete; pending backend signed-upload endpoint).
-- [ ] Completion button disabled until signed PDF uploaded (pending backend signed-upload endpoint).
+- [x] Enforce sequential order in UI (three-step download→upload→complete; pending backend signed-upload endpoint).
+- [x] Completion button disabled until signed PDF uploaded (pending backend signed-upload endpoint).
 - [x] Confirmation modal clearly states request becomes completed and action is irreversible.
-- [ ] FX Confirmation tab shows mini lifecycle: generated, downloaded, signed, uploaded, completed.
+- [x] FX Confirmation tab shows mini lifecycle: generated, downloaded, signed, uploaded, completed.
 - [x] Documents tab includes every document including generated and signed external FX confirmation.
 - [x] `/customs` page shows Ready for Issuance and Completed columns.
 - [x] `/customs/[id]/print` and `/requests/{id}/customs-preview` use external FX terminology.
