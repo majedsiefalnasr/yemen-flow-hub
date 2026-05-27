@@ -19,6 +19,7 @@ const store = useDashboardStore()
 const auth = useAuthStore()
 
 const currentUserId = computed(() => auth.user?.id ?? null)
+const authUser = computed(() => auth.user)
 
 const stats = computed<BankReviewerDashboardStats | null>(() => {
   const raw = store.stats as Partial<BankReviewerDashboardStats> | null
@@ -114,6 +115,14 @@ onMounted(() => { store.loadStats() })
     </Card>
 
     <template v-else-if="stats">
+
+      <!-- Greeting header -->
+      <div class="flex items-center justify-between gap-4">
+        <div class="min-w-0">
+          <h1 class="text-lg font-semibold text-foreground truncate">مرحباً، {{ authUser?.name }}</h1>
+          <p v-if="authUser?.bank_name_ar" class="text-sm text-muted-foreground truncate">{{ authUser.bank_name_ar }} — مراجع الطلبات</p>
+        </div>
+      </div>
 
       <!-- Action-required strip: SUPPORT_REJECTED requests waiting for bank-side decision -->
       <Card

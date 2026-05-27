@@ -79,6 +79,19 @@ const router = useRouter()
 const authStore = useAuthStore()
 const currentUserId = computed(() => authStore.user?.id ?? null)
 
+function relativeTime(isoDate: string | null | undefined): string {
+  if (!isoDate) return '—'
+  const ms = Date.now() - new Date(isoDate).getTime()
+  const mins = Math.floor(ms / 60000)
+  if (mins < 60) return `منذ ${mins} دقيقة`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24) return `منذ ${hrs} ساعة`
+  const days = Math.floor(hrs / 24)
+  if (days < 30) return `منذ ${days} يوم`
+  const months = Math.floor(days / 30)
+  return `منذ ${months} شهر`
+}
+
 const sorting = ref<SortingState>([])
 const columnFilters = ref<ColumnFiltersState>([])
 const rowSelection = ref<Record<string, boolean>>({})
@@ -210,6 +223,19 @@ const columns: ColumnDef<ImportRequest>[] = [
     accessorKey: 'status',
     header: 'الحالة',
     cell: ({ row }) => h(StatusBadge, { status: row.original.status, role: props.role }),
+  },
+  {
+    id: 'last_activity',
+    header: 'النشاط الأخير',
+    cell: ({ row }) => {
+      if (props.role !== UserRole.BANK_REVIEWER && props.role !== UserRole.BANK_ADMIN) {
+        return h('span', { class: 'text-xs text-muted-foreground' }, '—')
+      }
+      return h('span', {
+        class: 'text-xs text-muted-foreground tabular-nums',
+        title: row.original.updated_at,
+      }, relativeTime(row.original.updated_at))
+    },
   },
   {
     id: 'swift_documents',

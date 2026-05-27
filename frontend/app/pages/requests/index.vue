@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { VisibilityState } from '@tanstack/vue-table'
 import { computed, onMounted, ref, watch } from 'vue'
-import { AlertCircle, ChevronDown, Columns3, Download, FilePlus2, Printer, Search, X } from 'lucide-vue-next'
+import { AlertCircle, ChevronDown, Columns3, Download, FilePlus2, Printer, Search, User, X } from 'lucide-vue-next'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import RequestsDataTable from '@/components/requests/RequestsDataTable.vue'
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -64,7 +64,12 @@ const hidableColumns = [
   { id: 'goods_description', label: 'نوع البضاعة' },
   { id: 'amount', label: 'المبلغ' },
   { id: 'status', label: 'الحالة' },
+  { id: 'last_activity', label: 'النشاط الأخير' },
 ]
+
+// Created-by-me toggle — BANK_REVIEWER only
+const createdByMeOnly = ref(false)
+const isBankReviewer = computed(() => user.value?.role === UserRole.BANK_REVIEWER)
 
 onMounted(async () => {
   await store.loadRequests({ per_page: 200 })
@@ -112,7 +117,10 @@ const filteredRequests = computed(() => {
       || (req.merchant?.name ?? '').toLowerCase().includes(q)
       || (req.invoice_number ?? '').toLowerCase().includes(q)
 
-    return bucketMatches && bankMatches && queryMatches
+    const createdByMeMatches = !createdByMeOnly.value
+      || req.created_by === user.value?.id
+
+    return bucketMatches && bankMatches && queryMatches && createdByMeMatches
   })
 })
 
@@ -230,6 +238,18 @@ watch(filter, (tab) => {
   const currentTab = typeof route.query.tab === 'string' ? route.query.tab : undefined
   const desiredTab = tab === 'all' ? undefined : tab
   if (currentTab === desiredTab) return
+  router.replace({ query: nextQuery })
+})
+
+// Sync created-by-me toggle with ?my=1 query param
+watch(() => route.query.my, (val) => {
+  createdByMeOnly.value = val === '1'
+}, { immediate: true })
+watch(createdByMeOnly, (val) => {
+  const nextQuery = { ...route.query }
+  if (val) nextQuery.my = '1'
+  else delete nextQuery.my
+  if ((route.query.my === '1') === val) return
   router.replace({ query: nextQuery })
 })
 </script>
@@ -387,6 +407,19 @@ watch(filter, (tab) => {
             </SelectItem>
           </SelectContent>
         </Select>
+
+        <!-- BANK_REVIEWER: Created-by-me toggle -->
+        <Button
+          v-if="isBankReviewer"
+          :variant="createdByMeOnly ? 'default' : 'outline'"
+          size="sm"
+          class="h-8 gap-1.5"
+          :aria-pressed="createdByMeOnly"
+          @click="createdByMeOnly = !createdByMeOnly"
+        >
+          <User class="h-4 w-4" />
+          <span class="hidden lg:inline">طلباتي فقط</span>
+        </Button>
 
         <!-- Customize columns -->
         <DropdownMenu>
