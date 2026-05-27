@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import type { VisibilityState } from '@tanstack/vue-table'
 import { computed, onMounted, ref, watch } from 'vue'
-import { ChevronDown, Columns3, Download, FilePlus2, Printer, Search, X } from 'lucide-vue-next'
+import { AlertCircle, ChevronDown, Columns3, Download, FilePlus2, Printer, Search, X } from 'lucide-vue-next'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import RequestsDataTable from '@/components/requests/RequestsDataTable.vue'
+import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { RequestStatus, UserRole } from '@/types/enums'
 import {
   ROLE_BUCKETS,
@@ -281,6 +282,16 @@ watch(filter, (tab) => {
       </button>
     </div>
 
+    <!-- Inline error state -->
+    <Alert v-if="store.error" variant="destructive" role="alert" class="mb-4">
+      <AlertCircle class="h-4 w-4" />
+      <AlertTitle>خطأ في تحميل الطلبات</AlertTitle>
+      <AlertDescription>{{ store.error }}</AlertDescription>
+      <AlertAction>
+        <Button variant="outline" size="sm" @click="store.loadRequests({ per_page: 200 })">إعادة المحاولة</Button>
+      </AlertAction>
+    </Alert>
+
     <Tabs v-model="filter" class="flex w-full flex-col gap-4">
       <!-- Row 1: tabs (left) + page actions (right) -->
       <div class="flex items-center justify-between gap-4">
@@ -405,6 +416,7 @@ watch(filter, (tab) => {
         ref="dataTableRef"
         :data="filteredRequests"
         :loading="store.loadingList"
+        :no-data="!store.loadingList && store.requests.length === 0"
         :role="user.role"
         :column-visibility="columnVisibility"
         @row-click="openRequest"

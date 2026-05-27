@@ -64,6 +64,7 @@ import { useAuthStore } from '@/stores/auth.store'
 const props = defineProps<{
   data: ImportRequest[]
   loading?: boolean
+  noData?: boolean
   role: UserRole
   columnVisibility?: VisibilityState
 }>()
@@ -452,11 +453,11 @@ function supportCommitteeRowClass(request: ImportRequest): string {
         <div class="flex size-12 items-center justify-center rounded-xl bg-muted text-muted-foreground">
           <SearchX class="size-5" />
         </div>
-        <EmptyTitle>لا توجد طلبات مطابقة</EmptyTitle>
+        <EmptyTitle>{{ noData ? 'لا توجد طلبات بعد' : 'لا توجد طلبات مطابقة' }}</EmptyTitle>
       </EmptyHeader>
       <EmptyContent>
         <EmptyDescription>
-          جرّب تغيير البحث أو الفلاتر لعرض الطلبات المتاحة.
+          {{ noData ? 'لم يتم تقديم أي طلبات حتى الآن.' : 'جرّب تغيير البحث أو الفلاتر لعرض الطلبات المتاحة.' }}
         </EmptyDescription>
       </EmptyContent>
     </Empty>
