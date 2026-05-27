@@ -98,11 +98,11 @@ Build a national platform oversight and administration workspace. CBY Admin has 
 
 - [x] Build security/compliance investigation center, not raw log dump.
 - [x] Add event categories: workflow, voting, documents, access/security, permissions, admin changes, system.
-- [ ] Add smart summary bar for permission denials, suspicious logins, sensitive role changes, high-risk document downloads, failed workflow attempts.
+- [x] Add smart summary bar for permission denials, suspicious logins, sensitive role changes, high-risk document downloads, failed workflow attempts.
 - [x] Add tabs: all, security, workflow, documents, permissions, admin changes, anomalies.
 - [x] Add filters: time, actor, role, bank, request, merchant, category, event type, severity, IP, device, outcome.
 - [x] Add compact events table and read-only event detail drawer.
-- [ ] Add anomaly grouping for repeated denials, failed logins, unusual downloads, role change followed by sensitive action.
+- [x] Add anomaly grouping for repeated denials, failed logins, unusual downloads, role change followed by sensitive action.
 - [x] Audit exports include filters, event IDs, generated-by, and timestamp.
 
 ### 8. CBY Staff Management
