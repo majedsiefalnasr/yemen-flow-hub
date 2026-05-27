@@ -67,7 +67,7 @@ Build a focused bank intake workspace for request drafting, correction, submissi
 - [x] Use VeeValidate/Zod schema ownership in existing wizard schema files.
 - [x] Use shadcn-vue form composition and field-level errors close to controls.
 - [x] Add merchant searchable select scoped to the user's bank.
-- [ ] Add duplicate invoice soft warning before submit while keeping backend authority.
+- [x] Add duplicate invoice soft warning before submit while keeping backend authority.
 - [x] Add document completion indicator and per-document upload cards.
 - [x] Enforce PDF-only and 10 MB limit in UI before upload and preserve backend validation.
 - [x] Implement inline upload errors per file slot and preserve successfully uploaded sibling files.
