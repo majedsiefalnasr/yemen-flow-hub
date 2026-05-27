@@ -1,74 +1,28 @@
 /**
  * BankAdminDashboard 12.2 — UX uplift logic tests.
- * Pure function tests, no component mounting.
+ *
+ * Helpers imported from the production module so test thresholds and chart
+ * geometry stay in lockstep with the component (resolves code-review C1).
+ * Tests previously declared local copies with drifted thresholds.
  */
 import { describe, it, expect } from 'vitest'
 import type { BankAdminDashboardStats, BankAdminDashboardStatsExtended } from '../../../composables/useDashboard'
+import {
+  CHART_W,
+  CHART_H,
+  CHART_PAD,
+  REJECTION_THRESHOLD,
+  REPEATED_SUPPORT_RETURNS_THRESHOLD,
+  buildLine,
+  buildArea,
+  calcRejectionRate,
+  calcShowHealthStrip,
+  calcHealthIssues,
+} from '../../../utils/bank-admin-helpers'
 
-// ── Constants and types mirrored from BankAdminDashboard.vue ─────────────────
+type StatsLike = (BankAdminDashboardStats & BankAdminDashboardStatsExtended) | null
 
-const REJECTION_THRESHOLD = 20 // %
-
-interface DualEntry { month: string; count: number; approved?: number }
-
-function buildLine(entries: DualEntry[], key: keyof DualEntry): string {
-  if (!entries.length) return ''
-  const W = 480, H = 80, pad = 8
-  const vals = entries.map(e => Number(e[key] ?? 0))
-  const max = Math.max(...vals, 1)
-  const step = (W - pad * 2) / Math.max(entries.length - 1, 1)
-  return entries.map((e, i) => {
-    const x = pad + i * step
-    const y = pad + (1 - Number(e[key] ?? 0) / max) * (H - pad * 2)
-    return `${x.toFixed(1)},${y.toFixed(1)}`
-  }).join(' ')
-}
-
-function buildArea(entries: DualEntry[], key: keyof DualEntry): string {
-  if (!entries.length) return ''
-  const W = 480, H = 80, pad = 8
-  const vals = entries.map(e => Number(e[key] ?? 0))
-  const max = Math.max(...vals, 1)
-  const step = (W - pad * 2) / Math.max(entries.length - 1, 1)
-  const pts = entries.map((e, i) => {
-    const x = pad + i * step
-    const y = pad + (1 - Number(e[key] ?? 0) / max) * (H - pad * 2)
-    return `${x.toFixed(1)},${y.toFixed(1)}`
-  })
-  const bottom = H - pad
-  const lastX = (pad + (entries.length - 1) * step).toFixed(1)
-  return `${pad},${bottom} ${pts.join(' ')} ${lastX},${bottom}`
-}
-
-function calcRejectionRate(stats: BankAdminDashboardStats, ext?: BankAdminDashboardStatsExtended): number {
-  if (ext?.rejection_rate !== undefined) return ext.rejection_rate
-  const base = stats.total || 1
-  return Math.round((stats.rejected / base) * 100)
-}
-
-function calcShowHealthStrip(stats: BankAdminDashboardStats, ext?: BankAdminDashboardStatsExtended): boolean {
-  const rr = calcRejectionRate(stats, ext)
-  return (
-    rr > REJECTION_THRESHOLD
-    || (ext?.stalled_at_cby_count ?? 0) > 0
-    || ext?.missing_bank_reviewer_coverage === true
-    || (ext?.repeated_support_returns ?? 0) > 0
-    || ext?.suspended_staff_with_active === true
-  )
-}
-
-function calcHealthIssues(stats: BankAdminDashboardStats, ext?: BankAdminDashboardStatsExtended): string[] {
-  const issues: string[] = []
-  const rr = calcRejectionRate(stats, ext)
-  if (rr > REJECTION_THRESHOLD) issues.push(`معدل الرفض مرتفع: ${rr}%`)
-  if ((ext?.stalled_at_cby_count ?? 0) > 0) issues.push(`طلبات متوقفة لدى البنك المركزي: ${ext!.stalled_at_cby_count}`)
-  if (ext?.missing_bank_reviewer_coverage) issues.push('لا يوجد مراجع بنكي نشط')
-  if ((ext?.repeated_support_returns ?? 0) > 0) issues.push(`إعادات متكررة من لجنة الدعم: ${ext!.repeated_support_returns}`)
-  if (ext?.suspended_staff_with_active) issues.push('موظفون موقوفون لديهم طلبات نشطة')
-  return issues
-}
-
-function makeStats(overrides: Partial<BankAdminDashboardStats> = {}): BankAdminDashboardStats {
+function makeStats(overrides: Partial<BankAdminDashboardStats & BankAdminDashboardStatsExtended> = {}): BankAdminDashboardStats & BankAdminDashboardStatsExtended {
   return {
     total: 100,
     pending: 20,
@@ -81,36 +35,43 @@ function makeStats(overrides: Partial<BankAdminDashboardStats> = {}): BankAdminD
   }
 }
 
-// ── REJECTION_THRESHOLD constant ──────────────────────────────────────────────
+// ── Threshold constants ───────────────────────────────────────────────────────
 
-describe('BankAdminDashboard 12.2 — REJECTION_THRESHOLD', () => {
-  it('threshold is 20%', () => {
+describe('BankAdminDashboard 12.2 — threshold constants', () => {
+  it('REJECTION_THRESHOLD is 20%', () => {
     expect(REJECTION_THRESHOLD).toBe(20)
+  })
+
+  it('REPEATED_SUPPORT_RETURNS_THRESHOLD is 2', () => {
+    expect(REPEATED_SUPPORT_RETURNS_THRESHOLD).toBe(2)
   })
 })
 
 // ── calcRejectionRate ─────────────────────────────────────────────────────────
 
 describe('BankAdminDashboard 12.2 — calcRejectionRate()', () => {
-  it('uses ext.rejection_rate when provided', () => {
-    const stats = makeStats({ total: 100, rejected: 5 })
-    const ext: BankAdminDashboardStatsExtended = { ...stats, rejection_rate: 35 }
-    expect(calcRejectionRate(stats, ext)).toBe(35)
+  it('uses stats.rejection_rate when provided', () => {
+    const stats = makeStats({ total: 100, rejected: 5, rejection_rate: 35 })
+    expect(calcRejectionRate(stats)).toBe(35)
   })
 
-  it('calculates from stats when ext.rejection_rate is absent', () => {
+  it('calculates from stats.rejected/total when rejection_rate is absent', () => {
     const stats = makeStats({ total: 100, rejected: 25 })
     expect(calcRejectionRate(stats)).toBe(25)
   })
 
-  it('calculates correctly with fractional result (rounds)', () => {
+  it('rounds fractional rates', () => {
     const stats = makeStats({ total: 3, rejected: 1 })
     expect(calcRejectionRate(stats)).toBe(33)
   })
 
-  it('handles total=0 without divide-by-zero (clamps to 1)', () => {
+  it('handles total=0 without divide-by-zero', () => {
     const stats = makeStats({ total: 0, rejected: 0 })
     expect(calcRejectionRate(stats)).toBe(0)
+  })
+
+  it('returns 0 for null stats', () => {
+    expect(calcRejectionRate(null as StatsLike)).toBe(0)
   })
 })
 
@@ -127,47 +88,51 @@ describe('BankAdminDashboard 12.2 — calcShowHealthStrip()', () => {
     expect(calcShowHealthStrip(stats)).toBe(true)
   })
 
-  it('shown when ext.rejection_rate exceeds threshold', () => {
-    const stats = makeStats({ total: 100, rejected: 5 })
-    const ext: BankAdminDashboardStatsExtended = { ...stats, rejection_rate: 30 }
-    expect(calcShowHealthStrip(stats, ext)).toBe(true)
+  it('shown when rejection_rate field exceeds threshold even with low absolute', () => {
+    const stats = makeStats({ total: 100, rejected: 5, rejection_rate: 30 })
+    expect(calcShowHealthStrip(stats)).toBe(true)
   })
 
   it('shown when stalled_at_cby_count > 0', () => {
-    const stats = makeStats({ total: 100, rejected: 5 })
-    const ext: BankAdminDashboardStatsExtended = { ...stats, stalled_at_cby_count: 3 }
-    expect(calcShowHealthStrip(stats, ext)).toBe(true)
+    const stats = makeStats({ total: 100, rejected: 5, stalled_at_cby_count: 3 })
+    expect(calcShowHealthStrip(stats)).toBe(true)
   })
 
   it('shown when missing_bank_reviewer_coverage is true', () => {
-    const stats = makeStats({ total: 100, rejected: 5 })
-    const ext: BankAdminDashboardStatsExtended = { ...stats, missing_bank_reviewer_coverage: true }
-    expect(calcShowHealthStrip(stats, ext)).toBe(true)
+    const stats = makeStats({ total: 100, rejected: 5, missing_bank_reviewer_coverage: true })
+    expect(calcShowHealthStrip(stats)).toBe(true)
   })
 
-  it('shown when repeated_support_returns > 0', () => {
-    const stats = makeStats({ total: 100, rejected: 5 })
-    const ext: BankAdminDashboardStatsExtended = { ...stats, repeated_support_returns: 2 }
-    expect(calcShowHealthStrip(stats, ext)).toBe(true)
+  it(`shown when repeated_support_returns exceeds threshold (> ${REPEATED_SUPPORT_RETURNS_THRESHOLD})`, () => {
+    const stats = makeStats({ total: 100, rejected: 5, repeated_support_returns: REPEATED_SUPPORT_RETURNS_THRESHOLD + 1 })
+    expect(calcShowHealthStrip(stats)).toBe(true)
+  })
+
+  it(`hidden when repeated_support_returns is at threshold (= ${REPEATED_SUPPORT_RETURNS_THRESHOLD})`, () => {
+    const stats = makeStats({ total: 100, rejected: 5, repeated_support_returns: REPEATED_SUPPORT_RETURNS_THRESHOLD })
+    expect(calcShowHealthStrip(stats)).toBe(false)
   })
 
   it('shown when suspended_staff_with_active is true', () => {
-    const stats = makeStats({ total: 100, rejected: 5 })
-    const ext: BankAdminDashboardStatsExtended = { ...stats, suspended_staff_with_active: true }
-    expect(calcShowHealthStrip(stats, ext)).toBe(true)
+    const stats = makeStats({ total: 100, rejected: 5, suspended_staff_with_active: true })
+    expect(calcShowHealthStrip(stats)).toBe(true)
   })
 
-  it('hidden when all ext fields are default-falsy', () => {
-    const stats = makeStats({ total: 100, rejected: 5 })
-    const ext: BankAdminDashboardStatsExtended = {
-      ...stats,
+  it('hidden when all extension fields are default-falsy', () => {
+    const stats = makeStats({
+      total: 100,
+      rejected: 5,
       rejection_rate: 10,
       stalled_at_cby_count: 0,
       missing_bank_reviewer_coverage: false,
       repeated_support_returns: 0,
       suspended_staff_with_active: false,
-    }
-    expect(calcShowHealthStrip(stats, ext)).toBe(false)
+    })
+    expect(calcShowHealthStrip(stats)).toBe(false)
+  })
+
+  it('returns false for null stats', () => {
+    expect(calcShowHealthStrip(null as StatsLike)).toBe(false)
   })
 })
 
@@ -186,29 +151,43 @@ describe('BankAdminDashboard 12.2 — calcHealthIssues()', () => {
   })
 
   it('includes stalled count issue when stalled_at_cby_count > 0', () => {
-    const stats = makeStats({ total: 100, rejected: 5 })
-    const ext: BankAdminDashboardStatsExtended = { ...stats, stalled_at_cby_count: 4 }
-    const issues = calcHealthIssues(stats, ext)
-    expect(issues.some(i => i.includes('متوقفة لدى البنك المركزي'))).toBe(true)
+    const stats = makeStats({ total: 100, rejected: 5, stalled_at_cby_count: 4 })
+    const issues = calcHealthIssues(stats)
+    expect(issues.some(i => i.includes('متوقف لدى البنك المركزي'))).toBe(true)
   })
 
-  it('includes missing reviewer issue when missing_bank_reviewer_coverage', () => {
-    const stats = makeStats({ total: 100, rejected: 5 })
-    const ext: BankAdminDashboardStatsExtended = { ...stats, missing_bank_reviewer_coverage: true }
-    const issues = calcHealthIssues(stats, ext)
-    expect(issues.some(i => i.includes('مراجع بنكي'))).toBe(true)
+  it('includes missing reviewer issue when coverage is missing', () => {
+    const stats = makeStats({ total: 100, rejected: 5, missing_bank_reviewer_coverage: true })
+    const issues = calcHealthIssues(stats)
+    expect(issues.some(i => i.includes('مراجع بنك'))).toBe(true)
   })
 
-  it('includes multiple issues simultaneously', () => {
-    const stats = makeStats({ total: 100, rejected: 30 })
-    const ext: BankAdminDashboardStatsExtended = {
-      ...stats,
+  it('includes repeated-returns issue when above threshold', () => {
+    const stats = makeStats({ total: 100, rejected: 5, repeated_support_returns: REPEATED_SUPPORT_RETURNS_THRESHOLD + 1 })
+    const issues = calcHealthIssues(stats)
+    expect(issues.some(i => i.includes('إعادة متكررة'))).toBe(true)
+  })
+
+  it('includes suspended-staff issue when flagged', () => {
+    const stats = makeStats({ total: 100, rejected: 5, suspended_staff_with_active: true })
+    const issues = calcHealthIssues(stats)
+    expect(issues.some(i => i.includes('موظف موقوف'))).toBe(true)
+  })
+
+  it('collects multiple issues simultaneously', () => {
+    const stats = makeStats({
+      total: 100,
+      rejected: 30,
       rejection_rate: 30,
       missing_bank_reviewer_coverage: true,
       suspended_staff_with_active: true,
-    }
-    const issues = calcHealthIssues(stats, ext)
+    })
+    const issues = calcHealthIssues(stats)
     expect(issues.length).toBeGreaterThanOrEqual(3)
+  })
+
+  it('returns empty array for null stats', () => {
+    expect(calcHealthIssues(null as StatsLike)).toHaveLength(0)
   })
 })
 
@@ -225,21 +204,21 @@ describe('BankAdminDashboard 12.2 — buildLine()', () => {
   })
 
   it('returns 6 pairs for 6-month data', () => {
-    const entries: DualEntry[] = Array.from({ length: 6 }, (_, i) => ({
+    const entries = Array.from({ length: 6 }, (_, i) => ({
       month: `2026-0${i + 1}`,
       count: i + 1,
     }))
     expect(buildLine(entries, 'count').split(' ')).toHaveLength(6)
   })
 
-  it('first point x starts at pad (8)', () => {
-    const entries: DualEntry[] = [{ month: '2026-01', count: 5 }, { month: '2026-02', count: 8 }]
+  it(`first point x starts at pad (${CHART_PAD})`, () => {
+    const entries = [{ month: '2026-01', count: 5 }, { month: '2026-02', count: 8 }]
     const firstX = Number(buildLine(entries, 'count').split(' ')[0]!.split(',')[0])
-    expect(firstX).toBeCloseTo(8, 1)
+    expect(firstX).toBeCloseTo(CHART_PAD, 1)
   })
 
   it('does not produce NaN for all-zero values', () => {
-    const entries: DualEntry[] = [
+    const entries = [
       { month: '2026-01', count: 0 },
       { month: '2026-02', count: 0 },
     ]
@@ -247,7 +226,7 @@ describe('BankAdminDashboard 12.2 — buildLine()', () => {
   })
 
   it('approved line uses approved field', () => {
-    const entries: DualEntry[] = [
+    const entries = [
       { month: '2026-01', count: 10, approved: 7 },
       { month: '2026-02', count: 8, approved: 6 },
     ]
@@ -265,21 +244,31 @@ describe('BankAdminDashboard 12.2 — buildArea()', () => {
   })
 
   it('area polygon starts at bottom-left corner (pad, H - pad)', () => {
-    const entries: DualEntry[] = [
+    const entries = [
       { month: '2026-01', count: 5 },
       { month: '2026-02', count: 8 },
     ]
     const polygon = buildArea(entries, 'count')
-    expect(polygon.startsWith('8,72')).toBe(true) // pad=8, H-pad=72
+    expect(polygon.startsWith(`${CHART_PAD},${CHART_H - CHART_PAD}`)).toBe(true)
   })
 
   it('area polygon closes at bottom-right', () => {
-    const entries: DualEntry[] = [
+    const entries = [
       { month: '2026-01', count: 5 },
       { month: '2026-02', count: 8 },
     ]
     const polygon = buildArea(entries, 'count')
-    expect(polygon.endsWith(',72')).toBe(true) // ends at H - pad = 72
+    expect(polygon.endsWith(`,${CHART_H - CHART_PAD}`)).toBe(true)
+  })
+
+  it('chart width geometry matches CHART_W constant', () => {
+    const entries = [
+      { month: '2026-01', count: 5 },
+      { month: '2026-02', count: 8 },
+    ]
+    // last point's x is CHART_W - CHART_PAD
+    const polygon = buildArea(entries, 'count')
+    expect(polygon).toContain(`${(CHART_W - CHART_PAD).toFixed(1)},`)
   })
 })
 

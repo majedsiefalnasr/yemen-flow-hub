@@ -25,13 +25,18 @@ const votingQueue = computed<VotingQueueItem[]>(() =>
 
 const fxQueue = computed<ImportRequest[]>(() => stats.value?.fx_confirmation_queue ?? [])
 
+// Single source of truth for "pending my vote" — used by KPI count, oldest-row
+// drilldown, and the row-action label. Keeps the rule consistent across surfaces.
+function isPendingMyVote(req: VotingQueueItem): boolean {
+  return req.status === RequestStatus.EXECUTIVE_VOTING_OPEN && !req.my_vote
+}
+
 const pendingMyVoteCount = computed(() =>
-  stats.value?.pending_my_vote
-  ?? votingQueue.value.filter(r => r.status === RequestStatus.EXECUTIVE_VOTING_OPEN && !r.my_vote).length,
+  stats.value?.pending_my_vote ?? votingQueue.value.filter(isPendingMyVote).length,
 )
 
 const oldestPendingVote = computed(() =>
-  votingQueue.value.find(r => r.status === RequestStatus.EXECUTIVE_VOTING_OPEN && !r.my_vote) ?? null,
+  votingQueue.value.find(isPendingMyVote) ?? null,
 )
 
 function formatAmount(amount: number, currency: string): string {
@@ -46,7 +51,7 @@ function ageHours(value?: string): number {
 }
 
 function rowAction(req: VotingQueueItem): string {
-  if (req.status === RequestStatus.EXECUTIVE_VOTING_OPEN && !req.my_vote) return 'تصويت'
+  if (isPendingMyVote(req)) return 'تصويت'
   if (req.status === RequestStatus.EXECUTIVE_VOTING_OPEN && req.ready_to_close) return 'إغلاق الجلسة'
   if (req.status === RequestStatus.EXECUTIVE_VOTING_OPEN && req.is_tie) return 'حسم التعادل'
   if (req.status === RequestStatus.EXECUTIVE_VOTING_CLOSED) return 'إصدار نهائي'
@@ -92,7 +97,7 @@ onMounted(() => { store.loadStats() })
               class="flex items-center gap-3 rounded-lg border border-indigo-200 bg-indigo-50/40 px-3 py-2 text-right"
               @click="router.push('/requests?tab=ready_to_close')"
             >
-              <AlertTriangle class="h-4 w-4 text-[#5856d6]" />
+              <AlertTriangle class="h-4 w-4 text-[var(--voting)]" />
               <span class="text-sm">{{ stats.sessions_ready_to_close }} جلسات تصويت اكتملت وتنتظر الإغلاق</span>
             </button>
             <button
@@ -116,8 +121,8 @@ onMounted(() => { store.loadStats() })
 
         <div class="grid grid-cols-4 gap-4 max-lg:grid-cols-2 max-md:grid-cols-1">
           <button class="rounded-xl border border-border bg-background p-4 text-start hover:shadow-sm" @click="router.push('/requests?tab=active_voting')">
-            <div class="mb-2 inline-flex h-9 w-9 items-center justify-center rounded bg-indigo-50 text-[#5856d6]"><Vote class="h-5 w-5" /></div>
-            <p class="text-2xl font-semibold text-[#5856d6]">{{ stats.active_voting_sessions }}</p>
+            <div class="mb-2 inline-flex h-9 w-9 items-center justify-center rounded bg-indigo-50 text-[var(--voting)]"><Vote class="h-5 w-5" /></div>
+            <p class="text-2xl font-semibold text-[var(--voting)]">{{ stats.active_voting_sessions }}</p>
             <p class="text-xs text-muted-foreground">جلسات التصويت النشطة</p>
           </button>
           <button class="rounded-xl border border-border bg-background p-4 text-start hover:shadow-sm" @click="router.push('/requests?tab=fx_pending')">
@@ -209,12 +214,12 @@ onMounted(() => { store.loadStats() })
           class="rounded-xl border border-indigo-300 bg-indigo-50/40 p-4"
         >
           <div class="flex items-center gap-3">
-            <Vote class="h-5 w-5 text-[#5856d6]" />
+            <Vote class="h-5 w-5 text-[var(--voting)]" />
             <div class="min-w-0 flex-1">
               <p class="text-sm font-semibold">{{ pendingMyVoteCount }} جلسات تصويت تنتظر صوتك</p>
               <p v-if="oldestPendingVote" class="truncate text-xs text-muted-foreground">{{ oldestPendingVote.reference_number }}</p>
             </div>
-            <Button class="bg-[#5856d6] text-white hover:bg-[#5856d6]/90" @click="oldestPendingVote && router.push(`/requests/${oldestPendingVote.id}`)">
+            <Button class="bg-[var(--voting)] text-white hover:bg-[var(--voting)]/90" @click="oldestPendingVote && router.push(`/requests/${oldestPendingVote.id}`)">
               ابدأ التصويت
             </Button>
           </div>
@@ -222,7 +227,7 @@ onMounted(() => { store.loadStats() })
 
         <div class="grid grid-cols-3 gap-4 max-lg:grid-cols-2 max-md:grid-cols-1">
           <button class="rounded-xl border border-border bg-background p-4 text-start hover:shadow-sm" @click="router.push('/requests?tab=pending_my_vote')">
-            <p class="text-2xl font-semibold text-[#5856d6]">{{ pendingMyVoteCount }}</p>
+            <p class="text-2xl font-semibold text-[var(--voting)]">{{ pendingMyVoteCount }}</p>
             <p class="text-xs text-muted-foreground">طابور التصويت</p>
           </button>
           <button class="rounded-xl border border-border bg-background p-4 text-start hover:shadow-sm" @click="router.push('/requests?tab=approved')">

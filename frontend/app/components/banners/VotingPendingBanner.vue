@@ -10,14 +10,14 @@ defineProps<{
 </script>
 
 <template>
-  <Alert dir="rtl" class="flex items-center gap-3 border-[#5856d6]/30 bg-[#5856d6]/5">
-    <Vote class="h-5 w-5 flex-shrink-0 text-[#5856d6]" aria-hidden="true" />
+  <Alert dir="rtl" class="flex items-center gap-3 border-[var(--voting)]/30 bg-[var(--voting)]/5">
+    <Vote class="h-5 w-5 flex-shrink-0 text-[var(--voting)]" aria-hidden="true" />
     <AlertDescription class="flex-1 text-sm font-medium text-foreground">
-      <span class="font-semibold text-[#5856d6]">صوتك مطلوب على هذه الجلسة</span>
+      <span class="font-semibold text-[var(--voting)]">صوتك مطلوب على هذه الجلسة</span>
       <span v-if="votesCast != null && totalVoters != null" class="text-muted-foreground font-normal ms-2">
         — {{ votesCast }}/{{ totalVoters }} صوتوا حتى الآن
       </span>
     </AlertDescription>
-    <Badge class="flex-shrink-0 bg-[#5856d6] text-white hover:bg-[#5856d6]">قيد التصويت</Badge>
+    <Badge class="flex-shrink-0 bg-[var(--voting)] text-white hover:bg-[var(--voting)]">قيد التصويت</Badge>
   </Alert>
 </template>

@@ -278,6 +278,8 @@ const duplicateWidgetFull = computed(() => FULL_DUPLICATE_ROLES.has(userRole.val
 
 // Maps current status → the role currently responsible (for BANK_ADMIN read-only panel)
 const STATUS_RESPONSIBLE_ROLE: Partial<Record<RequestStatus, UserRole>> = {
+  [RequestStatus.DRAFT]: UserRole.DATA_ENTRY,
+  [RequestStatus.DRAFT_REJECTED_INTERNAL]: UserRole.DATA_ENTRY,
   [RequestStatus.SUBMITTED]: UserRole.BANK_REVIEWER,
   [RequestStatus.BANK_REVIEW]: UserRole.BANK_REVIEWER,
   [RequestStatus.BANK_RETURNED]: UserRole.DATA_ENTRY,
@@ -294,6 +296,10 @@ const STATUS_RESPONSIBLE_ROLE: Partial<Record<RequestStatus, UserRole>> = {
   [RequestStatus.EXECUTIVE_VOTING_CLOSED]: UserRole.COMMITTEE_DIRECTOR,
   [RequestStatus.EXECUTIVE_APPROVED]: UserRole.COMMITTEE_DIRECTOR,
   [RequestStatus.EXECUTIVE_REJECTED]: UserRole.DATA_ENTRY,
+  // FX_CONFIRMATION_PENDING and CUSTOMS_DECLARATION_ISSUED both sit in the
+  // Director's external-FX completion phase (Story 3.6 / Epic 11). Verify
+  // against docs/01-workflow-and-business-rules.md when ownership changes.
+  [RequestStatus.FX_CONFIRMATION_PENDING]: UserRole.COMMITTEE_DIRECTOR,
   [RequestStatus.CUSTOMS_DECLARATION_ISSUED]: UserRole.COMMITTEE_DIRECTOR,
   [RequestStatus.COMPLETED]: UserRole.CBY_ADMIN,
   [RequestStatus.BANK_REJECTED]: UserRole.DATA_ENTRY,
@@ -376,6 +382,9 @@ const {
   sessionExpired,
 } = useClaimLifecycle()
 const isActiveReviewer = ref(false)
+// Local guard against double-clicks on "مطالبة" / "إفراج" before the previous
+// call resolves; prevents duplicate POST/DELETE and the resulting orphan claim.
+const claimMutating = ref(false)
 
 const isSupportCommittee = computed(() => userRole.value === UserRole.SUPPORT_COMMITTEE)
 const isExecutiveMember = computed(() => userRole.value === UserRole.EXECUTIVE_MEMBER)
@@ -434,23 +443,47 @@ async function handleClaimLost() {
 }
 
 async function handleManualClaim() {
-  const claimed = await claimRequest(id)
-  if (!claimed || !isMounted) {
-    await requestsStore.loadRequest(id)
-    return
-  }
+  if (claimMutating.value) return
+  claimMutating.value = true
+  try {
+    const claimed = await claimRequest(id)
+    if (!isMounted) return
+    if (!claimed) {
+      await requestsStore.loadRequest(id)
+      return
+    }
 
-  isActiveReviewer.value = true
-  startHeartbeat(id, handleSessionExpired, handleClaimLost)
-  await requestsStore.loadRequest(id)
-  syncActiveReviewState()
+    isActiveReviewer.value = true
+    startHeartbeat(id, handleSessionExpired, handleClaimLost)
+    await requestsStore.loadRequest(id)
+    if (!isMounted) return
+    syncActiveReviewState()
+  }
+  finally {
+    claimMutating.value = false
+  }
 }
 
 async function handleReleaseClaim() {
-  await releaseRequest(id)
-  isActiveReviewer.value = false
-  stopHeartbeat(id)
-  await requestsStore.loadRequest(id)
+  if (claimMutating.value) return
+  claimMutating.value = true
+  try {
+    // Only mutate local state once the server confirms release. If the request
+    // fails (network, 5xx) the user retains the claim until TTL and the UI
+    // still reflects that — no orphan ghost state.
+    const released = await releaseRequest(id)
+    if (!isMounted) return
+    if (!released) {
+      await requestsStore.loadRequest(id)
+      return
+    }
+    isActiveReviewer.value = false
+    stopHeartbeat(id)
+    await requestsStore.loadRequest(id)
+  }
+  finally {
+    claimMutating.value = false
+  }
 }
 
 function syncActiveReviewState() {
@@ -951,7 +984,7 @@ async function handleCloneConfirm() {
             </div>
             <div
               v-else-if="showSwiftPreApprovalLockedBanner"
-              class="rounded-lg border border-[#8e8e93]/40 bg-[#8e8e93]/10 px-4 py-3 text-[#3f3f46]"
+              class="rounded-lg border border-[var(--locked)]/40 bg-[var(--locked)]/10 px-4 py-3 text-[#3f3f46]"
             >
               هذا الطلب لم يصل بعد مرحلة السويفت. لا يمكن رفع الوثائق حتى يكتمل اعتماد اللجنة التنفيذية.
             </div>
@@ -966,13 +999,13 @@ async function handleCloneConfirm() {
             </div>
             <div
               v-else-if="showSwiftAwaitingEnableBanner"
-              class="rounded-lg border border-[#8e8e93]/40 bg-[#8e8e93]/10 px-4 py-3 text-[#3f3f46]"
+              class="rounded-lg border border-[var(--locked)]/40 bg-[var(--locked)]/10 px-4 py-3 text-[#3f3f46]"
             >
               في انتظار الإتاحة — سيتم تفعيل رفع وثائق السويفت بعد الانتقال لمرحلة الانتظار.
             </div>
             <div
               v-else-if="showSwiftCompletedBanner"
-              class="rounded-lg border border-[#8e8e93]/40 bg-[#8e8e93]/10 px-4 py-3 text-[#3f3f46]"
+              class="rounded-lg border border-[var(--locked)]/40 bg-[var(--locked)]/10 px-4 py-3 text-[#3f3f46]"
             >
               تم تسليم السويفت — انتقلت المسؤولية إلى مدير اللجنة التنفيذية لإتمام تأكيد المصارفة الخارجية.
             </div>
@@ -1175,7 +1208,7 @@ async function handleCloneConfirm() {
                     <!-- BANK_ADMIN: locked FX PDF row — visible but not downloadable -->
                     <span
                       v-else-if="userRole === UserRole.BANK_ADMIN"
-                      class="customs-download-locked"
+                      class="fx-pdf-locked"
                       :title="'تحميل PDF مخصص لمسؤول البنك المركزي والمديرين الموافقين فقط'"
                       aria-disabled="true"
                       data-testid="fx-pdf-locked"
@@ -1244,7 +1277,7 @@ async function handleCloneConfirm() {
                 />
                 <div
                   v-if="showSwiftFxLockedRow"
-                  class="mt-3 flex items-center justify-between gap-2 rounded-lg border border-[#8e8e93]/40 bg-[#8e8e93]/10 px-3 py-2 text-[#3f3f46]"
+                  class="mt-3 flex items-center justify-between gap-2 rounded-lg border border-[var(--locked)]/40 bg-[var(--locked)]/10 px-3 py-2 text-[#3f3f46]"
                 >
                   <div class="flex items-center gap-2">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
@@ -2011,7 +2044,7 @@ async function handleCloneConfirm() {
   cursor: not-allowed;
 }
 
-.customs-download-locked {
+.fx-pdf-locked {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -2019,7 +2052,7 @@ async function handleCloneConfirm() {
   padding: 0 16px;
   border-radius: 12px;
   background: #f5f5f7;
-  color: #8e8e93;
+  color: var(--locked);
   font-size: 13px;
   font-weight: 600;
   cursor: not-allowed;

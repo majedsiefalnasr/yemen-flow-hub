@@ -53,7 +53,11 @@ export function useClaimLifecycle() {
     }
   }
 
-  async function releaseRequest(id: number): Promise<void> {
+  // Returns true if the server confirmed the release; false on network/server
+  // failure. Callers may still treat release as best-effort (TTL=15min recovers
+  // a missed release) but at the call site they can choose to delay local state
+  // mutation until the server confirms.
+  async function releaseRequest(id: number): Promise<boolean> {
     isReleasing.value = true
     try {
       const config = useRuntimeConfig()
@@ -63,12 +67,14 @@ export function useClaimLifecycle() {
         baseURL,
         credentials: 'include',
       })
+      return true
     }
     catch (err: unknown) {
       // Best-effort release — TTL auto-expire recovers missed releases.
       if (import.meta.dev) {
         console.warn('[useClaimLifecycle] releaseRequest failed (best-effort):', httpStatus(err), err)
       }
+      return false
     }
     finally {
       isReleasing.value = false

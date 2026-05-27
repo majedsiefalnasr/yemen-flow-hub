@@ -32,6 +32,19 @@ import type {
   CbyAdminComplianceSignal,
   CbyAdminCriticalEvent,
 } from '../../composables/useDashboard'
+import {
+  SPARK_W,
+  SPARK_H,
+  resolvedKpi as resolveKpi,
+  severityColor,
+  severityBg,
+  buildSparkLine,
+  slaRiskColor,
+  slaRiskLabel,
+  trendColor,
+  riskScoreColor,
+  formatDuration,
+} from '../../utils/cby-admin-helpers'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -44,9 +57,20 @@ const store = useDashboardStore()
 const stats = computed(() => store.stats as CbyAdminDashboardStats | null)
 const lastRefreshed = ref(new Date())
 
-function refresh() {
-  lastRefreshed.value = new Date()
-  store.loadStats()
+// Only mark "last refreshed" once the fetch resolves so the timestamp tracks
+// the data the user actually sees, not the moment they clicked.
+async function refresh() {
+  await store.loadStats()
+  if (!store.error) lastRefreshed.value = new Date()
+}
+
+// Guard backend-provided URLs so a poisoned API payload cannot redirect the
+// user off-route. Anything not starting with a single `/` falls back to the
+// static drilldown defined in KPI_CONFIGS.
+function safeInternalPath(route: string | undefined, fallback: string): string {
+  if (typeof route !== 'string') return fallback
+  if (!route.startsWith('/') || route.startsWith('//')) return fallback
+  return route
 }
 
 function formatTime(d: Date): string {
@@ -74,65 +98,13 @@ const KPI_CONFIGS: KpiConfig[] = [
   { key: 'system_availability', label: 'توفّر النظام %', icon: Server, drilldown: '/audit' },
 ]
 
+// Bind resolvedKpi to the local stats ref so call sites stay terse.
 function resolvedKpi(key: keyof CbyAdminDashboardStats): CbyAdminKpi {
-  const raw = stats.value?.[key]
-  if (raw && typeof raw === 'object' && 'value' in raw) return raw as CbyAdminKpi
-  const fallbackValue = typeof raw === 'number' ? raw : 0
-  return { value: fallbackValue, delta: 0, severity: 'blue', sparkline: [], drilldown_route: '/requests' }
-}
-
-function severityColor(severity: CbyAdminKpi['severity']): string {
-  return {
-    red: '#ff3b30',
-    amber: '#ff9f0a',
-    green: '#34c759',
-    blue: '#0066cc',
-  }[severity]
-}
-
-function severityBg(severity: CbyAdminKpi['severity']): string {
-  return {
-    red: 'bg-red-50',
-    amber: 'bg-amber-50',
-    green: 'bg-green-50',
-    blue: 'bg-blue-50',
-  }[severity]
-}
-
-// Mini sparkline SVG path
-const SPARK_W = 80
-const SPARK_H = 28
-const SPARK_PAD = 3
-
-function buildSparkLine(entries: Array<{ value: number }>): string {
-  if (entries.length < 2) return ''
-  const vals = entries.map(e => e.value)
-  const max = Math.max(...vals, 1)
-  const min = Math.min(...vals, 0)
-  const range = max - min || 1
-  const step = (SPARK_W - SPARK_PAD * 2) / Math.max(entries.length - 1, 1)
-  return entries.map((e, i) => {
-    const x = SPARK_PAD + i * step
-    const y = SPARK_PAD + (1 - (e.value - min) / range) * (SPARK_H - SPARK_PAD * 2)
-    return `${x.toFixed(1)},${y.toFixed(1)}`
-  }).join(' ')
-}
-
-// ── SLA risk helpers ────────────────────────────────────────────────────────
-function slaRiskColor(risk: CbyAdminWorkflowPressureRow['sla_risk']): string {
-  return { low: '#34c759', medium: '#ff9f0a', high: '#ff3b30' }[risk]
-}
-
-function slaRiskLabel(risk: CbyAdminWorkflowPressureRow['sla_risk']): string {
-  return { low: 'منخفض', medium: 'متوسط', high: 'مرتفع' }[risk]
+  return resolveKpi(stats.value, key)
 }
 
 function trendIcon(trend: CbyAdminWorkflowPressureRow['trend']) {
   return { up: TrendingUp, stable: Minus, down: TrendingDown }[trend]
-}
-
-function trendColor(trend: CbyAdminWorkflowPressureRow['trend']): string {
-  return { up: '#ff3b30', stable: '#8e8e93', down: '#34c759' }[trend]
 }
 
 // ── Compliance signals ──────────────────────────────────────────────────────
@@ -170,17 +142,6 @@ const GOVERNANCE_EVENT_ICONS: Record<string, typeof Activity> = {
 
 function eventIcon(event_type: string) {
   return GOVERNANCE_EVENT_ICONS[event_type] ?? Activity
-}
-
-function formatDuration(hours: number): string {
-  if (hours < 24) return `${Math.round(hours)} س`
-  return `${Math.round(hours / 24)} ي`
-}
-
-function riskScoreColor(score: number): string {
-  if (score >= 70) return '#ff3b30'
-  if (score >= 40) return '#ff9f0a'
-  return '#34c759'
 }
 
 onMounted(() => { store.loadStats() })
@@ -255,7 +216,7 @@ onMounted(() => { store.loadStats() })
             :key="config.key"
             class="border-0 shadow cursor-pointer transition-shadow hover:shadow-md"
             :class="severityBg(resolvedKpi(config.key).severity)"
-            @click="router.push(resolvedKpi(config.key).drilldown_route || config.drilldown)"
+            @click="router.push(safeInternalPath(resolvedKpi(config.key).drilldown_route, config.drilldown))"
           >
             <CardContent class="p-4 flex flex-col gap-2">
               <!-- Icon + label -->
@@ -433,7 +394,7 @@ onMounted(() => { store.loadStats() })
                     <span class="text-xs font-bold" :style="{ color: riskScoreColor(row.risk_score) }">{{ row.risk_score }}</span>
                   </TableCell>
                   <TableCell class="text-right py-2">
-                    <Badge v-if="row.alerts > 0" class="text-[10px] px-1.5 rounded-full border-0" style="background:#ff3b3020;color:#ff3b30">{{ row.alerts }}</Badge>
+                    <Badge v-if="row.alerts > 0" class="text-[10px] px-1.5 rounded-full border-0" style="background:var(--severity-red)20;color:var(--severity-red)">{{ row.alerts }}</Badge>
                     <CheckCircle2 v-else class="size-3.5 text-green-600" aria-hidden="true" />
                   </TableCell>
                 </TableRow>
@@ -452,7 +413,7 @@ onMounted(() => { store.loadStats() })
             :key="signal.id"
             class="flex flex-col items-start gap-2 p-4 rounded-xl border text-start cursor-pointer transition-all hover:shadow-md"
             :class="signal.severity === 'red' ? 'border-red-200 bg-red-50' : signal.severity === 'amber' ? 'border-amber-200 bg-amber-50' : 'border-blue-200 bg-blue-50'"
-            @click="router.push(signal.link_route)"
+            @click="router.push(safeInternalPath(signal.link_route, '/audit'))"
           >
             <div class="flex items-center gap-2">
               <component :is="signalSeverityIcon(signal.severity)" class="size-4" :style="{ color: severityColor(signal.severity) }" aria-hidden="true" />
@@ -485,7 +446,7 @@ onMounted(() => { store.loadStats() })
               <button
                 v-if="event.link_route"
                 class="text-[10px] text-primary hover:underline flex-shrink-0 cursor-pointer"
-                @click="router.push(event.link_route)"
+                @click="router.push(safeInternalPath(event.link_route, '/audit'))"
               >
                 عرض
               </button>

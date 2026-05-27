@@ -1,6 +1,9 @@
 /**
  * CbyAdminDashboard 12.2 — governance uplift logic tests.
- * Pure function tests, no component mounting.
+ *
+ * Pure function tests, no component mounting. Helpers imported directly from
+ * the production module so any future drift in semantics is caught here.
+ * Resolves code-review finding C1 (test reimplementation drift).
  */
 import { describe, it, expect } from 'vitest'
 import type {
@@ -11,50 +14,15 @@ import type {
   CbyAdminComplianceSignal,
   CbyAdminCriticalEvent,
 } from '../../../composables/useDashboard'
-
-// ── Helpers mirrored from CbyAdminDashboard.vue ──────────────────────────────
-
-function makeKpi(overrides: Partial<CbyAdminKpi> = {}): CbyAdminKpi {
-  return { value: 0, delta: 0, severity: 'healthy', sparkline: [], drilldown_route: '', ...overrides }
-}
-
-function resolvedKpi(stats: CbyAdminDashboardStats, key: keyof CbyAdminDashboardStats): CbyAdminKpi {
-  const kpi = stats[key] as CbyAdminKpi | undefined
-  if (kpi && typeof kpi === 'object' && 'value' in kpi) return kpi
-  return makeKpi()
-}
-
-function buildSparkLine(entries: Array<{ value: number }>): string {
-  if (entries.length < 2) return ''
-  const W = 80, H = 28, pad = 4
-  const vals = entries.map(e => e.value)
-  const max = Math.max(...vals, 1)
-  const step = (W - pad * 2) / (entries.length - 1)
-  return entries.map((e, i) => {
-    const x = pad + i * step
-    const y = pad + (1 - e.value / max) * (H - pad * 2)
-    return `${x.toFixed(1)},${y.toFixed(1)}`
-  }).join(' ')
-}
-
-function riskScoreColor(score: number): string {
-  if (score <= 33) return '#34c759'
-  if (score <= 66) return '#ff9f0a'
-  return '#ff3b30'
-}
-
-function severityBg(severity: string): string {
-  if (severity === 'critical') return 'bg-red-50'
-  if (severity === 'attention') return 'bg-amber-50'
-  return ''
-}
-
-function severityColor(severity: string): string {
-  if (severity === 'critical') return '#ff3b30'
-  if (severity === 'attention') return '#ff9f0a'
-  if (severity === 'healthy') return '#34c759'
-  return '#0066cc'
-}
+import {
+  SPARK_PAD,
+  makeKpi,
+  resolvedKpi,
+  buildSparkLine,
+  riskScoreColor,
+  severityBg,
+  severityColor,
+} from '../../../utils/cby-admin-helpers'
 
 function makeBaseStats(overrides: Partial<CbyAdminDashboardStats> = {}): CbyAdminDashboardStats {
   return {
@@ -71,19 +39,19 @@ function makeBaseStats(overrides: Partial<CbyAdminDashboardStats> = {}): CbyAdmi
 // ── resolvedKpi ───────────────────────────────────────────────────────────────
 
 describe('CbyAdminDashboard 12.2 — resolvedKpi()', () => {
-  it('returns zero-fallback when KPI key is missing from stats', () => {
+  it('returns zero-fallback with blue severity when KPI key is missing', () => {
     const stats = makeBaseStats()
     const result = resolvedKpi(stats, 'active_workflow_requests')
     expect(result.value).toBe(0)
-    expect(result.severity).toBe('healthy')
+    expect(result.severity).toBe('blue')
     expect(result.sparkline).toHaveLength(0)
   })
 
   it('returns actual KPI when key is present', () => {
-    const kpi = makeKpi({ value: 42, delta: 5, severity: 'attention' })
+    const kpi = makeKpi({ value: 42, delta: 5, severity: 'amber' })
     const stats = makeBaseStats({ active_workflow_requests: kpi })
     expect(resolvedKpi(stats, 'active_workflow_requests').value).toBe(42)
-    expect(resolvedKpi(stats, 'active_workflow_requests').severity).toBe('attention')
+    expect(resolvedKpi(stats, 'active_workflow_requests').severity).toBe('amber')
   })
 
   it('returns fallback for sla_violations when absent', () => {
@@ -91,11 +59,11 @@ describe('CbyAdminDashboard 12.2 — resolvedKpi()', () => {
     expect(resolvedKpi(stats, 'sla_violations').value).toBe(0)
   })
 
-  it('returns actual sla_violations KPI', () => {
-    const kpi = makeKpi({ value: 7, severity: 'critical' })
+  it('returns actual sla_violations KPI with red severity', () => {
+    const kpi = makeKpi({ value: 7, severity: 'red' })
     const stats = makeBaseStats({ sla_violations: kpi })
     expect(resolvedKpi(stats, 'sla_violations').value).toBe(7)
-    expect(resolvedKpi(stats, 'sla_violations').severity).toBe('critical')
+    expect(resolvedKpi(stats, 'sla_violations').severity).toBe('red')
   })
 
   it('returns fallback for system_availability when absent', () => {
@@ -104,9 +72,24 @@ describe('CbyAdminDashboard 12.2 — resolvedKpi()', () => {
   })
 
   it('returns open_voting_sessions KPI when present', () => {
-    const kpi = makeKpi({ value: 3, severity: 'attention' })
+    const kpi = makeKpi({ value: 3, severity: 'amber' })
     const stats = makeBaseStats({ open_voting_sessions: kpi })
     expect(resolvedKpi(stats, 'open_voting_sessions').value).toBe(3)
+  })
+
+  it('treats a plain numeric value (legacy shape) as fallback with blue severity', () => {
+    // Some KPI keys can arrive as a bare number in legacy/partial backend
+    // responses. resolvedKpi should still produce a CbyAdminKpi.
+    const stats = { ...makeBaseStats(), system_availability: 99 as unknown as CbyAdminKpi }
+    const result = resolvedKpi(stats, 'system_availability')
+    expect(result.value).toBe(99)
+    expect(result.severity).toBe('blue')
+  })
+
+  it('tolerates null stats argument', () => {
+    const result = resolvedKpi(null, 'sla_violations')
+    expect(result.value).toBe(0)
+    expect(result.severity).toBe('blue')
   })
 })
 
@@ -131,10 +114,10 @@ describe('CbyAdminDashboard 12.2 — buildSparkLine()', () => {
     expect(buildSparkLine(entries).split(' ')).toHaveLength(6)
   })
 
-  it('first point starts at left pad (x = 4)', () => {
+  it(`first point starts at left pad (x = ${SPARK_PAD})`, () => {
     const pts = buildSparkLine([{ value: 5 }, { value: 8 }, { value: 3 }])
     const firstX = Number(pts.split(' ')[0]!.split(',')[0])
-    expect(firstX).toBeCloseTo(4, 1)
+    expect(firstX).toBeCloseTo(SPARK_PAD, 1)
   })
 
   it('does not produce NaN for all-zero values (max clamped to 1)', () => {
@@ -147,50 +130,58 @@ describe('CbyAdminDashboard 12.2 — buildSparkLine()', () => {
     const entries = [{ value: 100 }, { value: 0 }]
     const pts = buildSparkLine(entries)
     const firstY = Number(pts.split(' ')[0]!.split(',')[1])
-    expect(firstY).toBeCloseTo(4, 0) // y = pad when value = max
+    expect(firstY).toBeCloseTo(SPARK_PAD, 0)
   })
 })
 
 // ── riskScoreColor ────────────────────────────────────────────────────────────
 
 describe('CbyAdminDashboard 12.2 — riskScoreColor()', () => {
-  it('returns green (#34c759) for score ≤ 33', () => {
-    expect(riskScoreColor(0)).toBe('#34c759')
-    expect(riskScoreColor(33)).toBe('#34c759')
+  it('returns the severity-red token for score ≥ 70', () => {
+    expect(riskScoreColor(70)).toBe('var(--severity-red)')
+    expect(riskScoreColor(100)).toBe('var(--severity-red)')
   })
 
-  it('returns amber (#ff9f0a) for score 34–66', () => {
-    expect(riskScoreColor(34)).toBe('#ff9f0a')
-    expect(riskScoreColor(66)).toBe('#ff9f0a')
+  it('returns the severity-amber token for score 40–69', () => {
+    expect(riskScoreColor(40)).toBe('var(--severity-amber)')
+    expect(riskScoreColor(69)).toBe('var(--severity-amber)')
   })
 
-  it('returns red (#ff3b30) for score > 66', () => {
-    expect(riskScoreColor(67)).toBe('#ff3b30')
-    expect(riskScoreColor(100)).toBe('#ff3b30')
+  it('returns the severity-green token for score < 40', () => {
+    expect(riskScoreColor(0)).toBe('var(--severity-green)')
+    expect(riskScoreColor(39)).toBe('var(--severity-green)')
   })
 })
 
 // ── severityBg & severityColor ────────────────────────────────────────────────
 
 describe('CbyAdminDashboard 12.2 — severity helpers', () => {
-  it('critical severity → red bg and red color', () => {
-    expect(severityBg('critical')).toBe('bg-red-50')
-    expect(severityColor('critical')).toBe('#ff3b30')
+  it('red severity → red bg class and severity-red token', () => {
+    expect(severityBg('red')).toBe('bg-red-50')
+    expect(severityColor('red')).toBe('var(--severity-red)')
   })
 
-  it('attention severity → amber bg and amber color', () => {
-    expect(severityBg('attention')).toBe('bg-amber-50')
-    expect(severityColor('attention')).toBe('#ff9f0a')
+  it('amber severity → amber bg class and severity-amber token', () => {
+    expect(severityBg('amber')).toBe('bg-amber-50')
+    expect(severityColor('amber')).toBe('var(--severity-amber)')
   })
 
-  it('healthy severity → no bg class and green color', () => {
-    expect(severityBg('healthy')).toBe('')
-    expect(severityColor('healthy')).toBe('#34c759')
+  it('green severity → green bg class and severity-green token', () => {
+    expect(severityBg('green')).toBe('bg-green-50')
+    expect(severityColor('green')).toBe('var(--severity-green)')
   })
 
-  it('unknown severity → no bg class and blue color', () => {
-    expect(severityBg('unknown')).toBe('')
-    expect(severityColor('unknown')).toBe('#0066cc')
+  it('blue severity → blue bg class and brand-color token', () => {
+    expect(severityBg('blue')).toBe('bg-blue-50')
+    expect(severityColor('blue')).toBe('var(--brand-color)')
+  })
+
+  it('unknown severity → empty bg class and brand-color fallback', () => {
+    // The TypeScript type-system rules these out at compile time, but the
+    // helpers must still be defensive at runtime against malformed backend
+    // payloads (resolves code-review H12).
+    expect(severityBg('unknown' as 'red')).toBe('')
+    expect(severityColor('unknown' as 'red')).toBe('var(--brand-color)')
   })
 })
 
@@ -217,7 +208,7 @@ describe('CbyAdminDashboard 12.2 — governance stats optional fields', () => {
   })
 
   it('all 6 KPI slots can be populated', () => {
-    const kpi = makeKpi({ value: 10, severity: 'attention' })
+    const kpi = makeKpi({ value: 10, severity: 'amber' })
     const stats = makeBaseStats({
       active_workflow_requests: kpi,
       sla_violations: kpi,
@@ -235,49 +226,57 @@ describe('CbyAdminDashboard 12.2 — governance stats optional fields', () => {
     }
   })
 
-  it('workflow_pressure_map rows carry sla_risk field', () => {
+  it('workflow_pressure_map rows carry sla_risk and trend fields', () => {
     const row: CbyAdminWorkflowPressureRow = {
       stage: 'BANK_REVIEW',
       stage_label: 'مراجعة البنك',
-      count: 12,
-      avg_days: 3.5,
-      sla_risk: 'attention',
+      active_count: 12,
+      avg_age_hours: 84,
+      sla_risk: 'medium',
+      trend: 'up',
     }
-    expect(row.sla_risk).toBe('attention')
+    expect(row.sla_risk).toBe('medium')
+    expect(row.trend).toBe('up')
   })
 
   it('executive_voting_session carries waiting_for member list', () => {
     const session: CbyAdminVotingSession = {
-      request_id: 5,
+      id: 5,
       reference_number: 'YFH-2026-000005',
-      total_members: 4,
-      votes_cast: 2,
+      bank_name: 'بنك اليمن المركزي',
+      amount: 250000,
+      currency: 'USD',
+      opened_at: '2026-05-26T10:00:00.000000Z',
       waiting_for: ['Ahmed', 'Sara'],
     }
     expect(session.waiting_for).toHaveLength(2)
     expect(session.waiting_for[0]).toBe('Ahmed')
   })
 
-  it('compliance_signal carries link_path for drilldown', () => {
+  it('compliance_signal carries link_route for drilldown', () => {
     const signal: CbyAdminComplianceSignal = {
-      key: 'duplicate_suppliers',
-      label: 'موردون مكررون',
-      count: 3,
-      severity: 'attention',
-      link_path: '/requests?flag=duplicate_suppliers',
+      id: 'dup-suppliers-2026-05-26',
+      type: 'duplicate_invoice',
+      title: 'موردون مكررون',
+      description: 'تم رصد 3 مطابقات لفواتير من موردين متطابقين خلال 30 يوماً',
+      severity: 'amber',
+      link_route: '/requests?flag=duplicate_suppliers',
+      created_at: '2026-05-26T08:30:00.000000Z',
     }
-    expect(signal.link_path).toContain('duplicate_suppliers')
+    expect(signal.link_route).toContain('duplicate_suppliers')
+    expect(signal.severity).toBe('amber')
   })
 
-  it('critical_event carries occurred_at timestamp', () => {
+  it('critical_event carries event_type and summary', () => {
     const event: CbyAdminCriticalEvent = {
       id: 1,
-      type: 'sla_breach',
-      message: 'تجاوز SLA في مرحلة المراجعة',
-      occurred_at: '2026-05-26T10:00:00.000000Z',
-      severity: 'critical',
+      event_type: 'voting_finalized',
+      summary: 'تم اعتماد جلسة تصويت YFH-2026-000005 بقرار نهائي',
+      actor_name: 'لجنة التنفيذية',
+      created_at: '2026-05-26T10:00:00.000000Z',
+      link_route: '/requests/5',
     }
-    expect(event.occurred_at).toBeTruthy()
-    expect(event.severity).toBe('critical')
+    expect(event.event_type).toBe('voting_finalized')
+    expect(event.summary).toContain('YFH-2026')
   })
 })

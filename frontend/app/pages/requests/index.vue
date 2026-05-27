@@ -4,7 +4,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { ChevronDown, Columns3, Download, FilePlus2, Printer, Search, X } from 'lucide-vue-next'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import RequestsDataTable from '@/components/requests/RequestsDataTable.vue'
-import { UserRole } from '@/types/enums'
+import { RequestStatus, UserRole } from '@/types/enums'
 import {
   ROLE_BUCKETS,
   BANK_ROLES,
@@ -150,37 +150,40 @@ const cbySmartSummary = computed(() => {
   const stalledCount = reqs.filter((r) => {
     const updated = new Date(r.updated_at).getTime()
     const ageDays = (now - updated) / (1000 * 60 * 60 * 24)
-    return ageDays > 2 && r.status !== 'COMPLETED' && r.status !== 'BANK_REJECTED'
-      && r.status !== 'SUPPORT_REJECTED' && r.status !== 'EXECUTIVE_REJECTED'
+    return ageDays > 2
+      && r.status !== RequestStatus.COMPLETED
+      && r.status !== RequestStatus.BANK_REJECTED
+      && r.status !== RequestStatus.SUPPORT_REJECTED
+      && r.status !== RequestStatus.EXECUTIVE_REJECTED
   }).length
   const items: Array<{ label: string; count: number; tab: string; color: string }> = []
-  if (needsAttention > 0) items.push({ label: 'يحتاج متابعة', count: needsAttention, tab: 'needs_attention', color: '#ff9f0a' })
+  if (needsAttention > 0) items.push({ label: 'يحتاج متابعة', count: needsAttention, tab: 'needs_attention', color: 'var(--severity-amber)' })
   if (voting > 0) items.push({ label: 'تصويت نشط', count: voting, tab: 'executive_voting', color: '#5856d6' })
-  if (fxPending > 0) items.push({ label: 'انتظار تأكيد المصارفة', count: fxPending, tab: 'fx_pending', color: '#ff3b30' })
-  if (stalledCount > 0) items.push({ label: 'طلبات متوقفة > 48 ساعة', count: stalledCount, tab: 'active', color: '#ff9f0a' })
+  if (fxPending > 0) items.push({ label: 'انتظار تأكيد المصارفة', count: fxPending, tab: 'fx_pending', color: 'var(--severity-red)' })
+  if (stalledCount > 0) items.push({ label: 'طلبات متوقفة > 48 ساعة', count: stalledCount, tab: 'active', color: 'var(--severity-amber)' })
   return items
 })
 
 const directorSmartSummary = computed(() => {
   if (!isDirector.value) return []
   const reqs = filteredRequests.value
-  const activeVoting = reqs.filter(r => r.status === 'EXECUTIVE_VOTING_OPEN').length
-  const pendingTieBreak = reqs.filter(r => r.status === 'EXECUTIVE_VOTING_OPEN' && r.is_tie).length
-  const pendingFx = reqs.filter(r => r.status === 'EXECUTIVE_APPROVED').length
+  const activeVoting = reqs.filter(r => r.status === RequestStatus.EXECUTIVE_VOTING_OPEN).length
+  const pendingTieBreak = reqs.filter(r => r.status === RequestStatus.EXECUTIVE_VOTING_OPEN && r.is_tie).length
+  const pendingFx = reqs.filter(r => r.status === RequestStatus.EXECUTIVE_APPROVED).length
 
   const now = Date.now()
   const weekAgo = now - (7 * 24 * 60 * 60 * 1000)
   const finalizedThisWeek = reqs.filter((r) => {
-    if (!(r.status === 'EXECUTIVE_APPROVED' || r.status === 'EXECUTIVE_REJECTED')) return false
+    if (!(r.status === RequestStatus.EXECUTIVE_APPROVED || r.status === RequestStatus.EXECUTIVE_REJECTED)) return false
     const updated = new Date(r.updated_at).getTime()
     return !Number.isNaN(updated) && updated >= weekAgo
   }).length
 
   return [
     { key: 'active_voting', label: 'جلسات نشطة', count: activeVoting, color: '#5856d6' },
-    { key: 'tie_break', label: 'تعادل يحتاج حسماً', count: pendingTieBreak, color: '#ff9f0a' },
-    { key: 'fx_pending', label: 'بانتظار تأكيد المصارفة', count: pendingFx, color: '#ff9f0a' },
-    { key: 'finalized', label: 'مُنهاة هذا الأسبوع', count: finalizedThisWeek, color: '#34c759' },
+    { key: 'tie_break', label: 'تعادل يحتاج حسماً', count: pendingTieBreak, color: 'var(--severity-amber)' },
+    { key: 'fx_pending', label: 'بانتظار تأكيد المصارفة', count: pendingFx, color: 'var(--severity-amber)' },
+    { key: 'finalized', label: 'مُنهاة هذا الأسبوع', count: finalizedThisWeek, color: 'var(--severity-green)' },
   ]
 })
 
@@ -195,9 +198,24 @@ function clearBulkSelection() {
   dataTableRef.value?.clearSelection()
 }
 
+// Soft-migration for deep-links built before the Story 12.2 bucket rename.
+// Old keys point at the closest current bucket so a bookmarked URL still lands
+// somewhere meaningful instead of silently collapsing to "all".
+const LEGACY_TAB_ALIASES: Record<string, string> = {
+  bank_stage: 'active',
+  support_stage: 'active',
+  swift_stage: 'active',
+  voting_stage: 'executive_voting',
+}
+
 function syncTabFromRoute() {
-  const tab = typeof route.query.tab === 'string' ? route.query.tab : 'all'
-  filter.value = tabKeys.value.has(tab) ? tab : 'all'
+  // Wait for ROLE_BUCKETS to resolve so a deep-link like ?tab=needs_attention
+  // is not silently dropped to "all" on the first render before tabOptions
+  // populates.
+  if (tabKeys.value.size === 0) return
+  const raw = typeof route.query.tab === 'string' ? route.query.tab : 'all'
+  const resolved = tabKeys.value.has(raw) ? raw : LEGACY_TAB_ALIASES[raw] ?? 'all'
+  if (filter.value !== resolved) filter.value = resolved
 }
 
 watch([() => route.query.tab, tabKeys], syncTabFromRoute, { immediate: true })
@@ -206,6 +224,11 @@ watch(filter, (tab) => {
   const nextQuery = { ...route.query }
   if (tab === 'all') delete nextQuery.tab
   else nextQuery.tab = tab
+  // Skip the replace if the query is already in sync — otherwise the route
+  // → filter → route watchers chase each other on every navigation.
+  const currentTab = typeof route.query.tab === 'string' ? route.query.tab : undefined
+  const desiredTab = tab === 'all' ? undefined : tab
+  if (currentTab === desiredTab) return
   router.replace({ query: nextQuery })
 })
 </script>

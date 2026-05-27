@@ -34,8 +34,18 @@ const myActiveClaims = computed(() =>
   queue.value.filter(req => req.is_claimed_by_me || (currentUserId.value != null && req.claimed_by?.id === currentUserId.value)),
 )
 const hasActiveClaim = computed(() => myActiveClaims.value.length > 0)
-// Oldest active claim — first to appear in queue list (sorted by age by backend)
-const oldestActiveClaim = computed(() => myActiveClaims.value[0] ?? null)
+// Oldest active claim — frontend defends the "oldest first" ordering so we
+// don't silently break if backend ordering changes (claim age is the source
+// of truth, not list position).
+const oldestActiveClaim = computed(() => {
+  const claims = [...myActiveClaims.value]
+  claims.sort((a, b) => {
+    const at = a.claimed_at ? new Date(a.claimed_at).getTime() : Number.POSITIVE_INFINITY
+    const bt = b.claimed_at ? new Date(b.claimed_at).getTime() : Number.POSITIVE_INFINITY
+    return at - bt
+  })
+  return claims[0] ?? null
+})
 
 function formatAmount(amount: number, currency: string): string {
   return new Intl.NumberFormat('ar-YE', { style: 'currency', currency, minimumFractionDigits: 0 }).format(amount)
@@ -119,12 +129,12 @@ onMounted(() => { store.loadStats() })
       <!-- Active-claim strip (highest priority, indigo) — hidden when no active claims -->
       <Card
         v-if="hasActiveClaim"
-        class="border-0 border-s-4 border-s-[#5856d6] bg-[#5856d6]/5 shadow-sm"
+        class="border-0 border-s-4 border-s-[var(--voting)] bg-[var(--voting)]/5 shadow-sm"
         role="status"
         aria-label="طلبات نشطة محجوزة باسمك"
       >
         <CardContent class="pt-4 pb-4 flex items-center gap-3">
-          <AlarmClock class="h-5 w-5 flex-shrink-0 text-[#5856d6]" aria-hidden="true" />
+          <AlarmClock class="h-5 w-5 flex-shrink-0 text-[var(--voting)]" aria-hidden="true" />
           <div class="flex-1 min-w-0">
             <span class="font-semibold text-foreground text-sm">لديك {{ myActiveClaims.length }} طلب نشط محجوز باسمك</span>
             <p v-if="oldestActiveClaim" class="text-xs text-muted-foreground mt-0.5 truncate">
@@ -133,7 +143,7 @@ onMounted(() => { store.loadStats() })
           </div>
           <button
             v-if="oldestActiveClaim"
-            class="flex-shrink-0 px-3 py-1.5 bg-[#5856d6] text-white text-xs font-semibold rounded-xl hover:opacity-90 transition-opacity"
+            class="flex-shrink-0 px-3 py-1.5 bg-[var(--voting)] text-white text-xs font-semibold rounded-xl hover:opacity-90 transition-opacity"
             @click="router.push(`/requests/${oldestActiveClaim.id}`)"
           >
             متابعة المراجعة
@@ -148,7 +158,7 @@ onMounted(() => { store.loadStats() })
             class="border-0 p-4 shadow flex flex-col gap-1.5 cursor-pointer hover:shadow-md transition-shadow"
             :class="{
               'border-s-4 border-s-amber-600': kpi.variant === 'amber',
-              'border-s-4 border-s-[#5856d6]': kpi.variant === 'indigo',
+              'border-s-4 border-s-[var(--voting)]': kpi.variant === 'indigo',
             }"
             role="button"
             tabindex="0"
@@ -164,7 +174,7 @@ onMounted(() => { store.loadStats() })
               class="text-2xl font-semibold leading-none"
               :class="{
                 'text-amber-600': kpi.variant === 'amber' && kpi.value > 0,
-                'text-[#5856d6]': kpi.variant === 'indigo' && kpi.value > 0,
+                'text-[var(--voting)]': kpi.variant === 'indigo' && kpi.value > 0,
                 'text-green-700': kpi.variant === 'green',
                 'text-foreground': kpi.variant === 'gray' || kpi.value === 0,
               }"
@@ -183,7 +193,7 @@ onMounted(() => { store.loadStats() })
           إجراءات سريعة
         </h2>
         <div class="grid grid-cols-2 max-md:grid-cols-1 gap-3">
-          <button class="flex flex-col items-start gap-1 p-4 bg-[#5856d6] text-white border-0 rounded-2xl cursor-pointer hover:opacity-90 transition-opacity" @click="router.push('/requests')">
+          <button class="flex flex-col items-start gap-1 p-4 bg-[var(--voting)] text-white border-0 rounded-2xl cursor-pointer hover:opacity-90 transition-opacity" @click="router.push('/requests')">
             <Users class="h-5 w-5 flex-shrink-0 mb-1" aria-hidden="true" />
             <span class="text-sm font-semibold">طابور المراجعة</span>
             <span class="text-xs opacity-75">{{ stats.waiting_for_claim }} طلب بانتظار المطالبة</span>
@@ -227,7 +237,7 @@ onMounted(() => { store.loadStats() })
                 :key="req.id"
                 class="border-t border-muted transition-colors cursor-pointer"
                 :class="{
-                  'bg-[#5856d6]/8 hover:bg-[#5856d6]/12': req.is_claimed_by_me || (currentUserId != null && req.claimed_by?.id === currentUserId),
+                  'bg-[var(--voting)]/8 hover:bg-[var(--voting)]/12': req.is_claimed_by_me || (currentUserId != null && req.claimed_by?.id === currentUserId),
                   'bg-muted/40 hover:bg-muted/60': !!req.claimed_by && !req.is_claimed_by_me && req.claimed_by?.id !== currentUserId,
                   'hover:bg-muted/30': !req.claimed_by,
                 }"
@@ -243,7 +253,7 @@ onMounted(() => { store.loadStats() })
                   <span
                     class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium"
                     :class="{
-                      'bg-[#5856d6]/10 text-[#5856d6]': req.is_claimed_by_me || (currentUserId != null && req.claimed_by?.id === currentUserId),
+                      'bg-[var(--voting)]/10 text-[var(--voting)]': req.is_claimed_by_me || (currentUserId != null && req.claimed_by?.id === currentUserId),
                       'bg-muted text-muted-foreground': !!req.claimed_by && !req.is_claimed_by_me && req.claimed_by?.id !== currentUserId,
                       'bg-amber-50/50 text-amber-600': !req.claimed_by,
                     }"
@@ -256,7 +266,7 @@ onMounted(() => { store.loadStats() })
                   <!-- Unclaimed: primary مطالبة -->
                   <button
                     v-if="!req.claimed_by"
-                    class="px-2 py-1 bg-[#5856d6] text-white text-xs font-semibold rounded hover:opacity-90 transition-opacity"
+                    class="px-2 py-1 bg-[var(--voting)] text-white text-xs font-semibold rounded hover:opacity-90 transition-opacity"
                     @click="router.push(`/requests/${req.id}`)"
                   >
                     مطالبة
@@ -264,7 +274,7 @@ onMounted(() => { store.loadStats() })
                   <!-- Claimed by me: outline متابعة -->
                   <button
                     v-else-if="req.is_claimed_by_me || (currentUserId != null && req.claimed_by?.id === currentUserId)"
-                    class="px-2 py-1 bg-background border border-[#5856d6] text-[#5856d6] text-xs font-semibold rounded hover:bg-[#5856d6]/10 transition-colors"
+                    class="px-2 py-1 bg-background border border-[var(--voting)] text-[var(--voting)] text-xs font-semibold rounded hover:bg-[var(--voting)]/10 transition-colors"
                     @click="router.push(`/requests/${req.id}`)"
                   >
                     متابعة

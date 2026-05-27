@@ -163,7 +163,10 @@ const columns: ColumnDef<ImportRequest>[] = [
     header: 'أنشأه',
     cell: ({ row }) => {
       const request = row.original
-      if (props.role !== UserRole.BANK_REVIEWER) {
+      // Story 12.2 AC 12: BANK_ADMIN sees the Created By chip too. Other roles
+      // (CBY-side, SUPPORT, EXECUTIVE) get an em-dash — they don't act on the
+      // creator identity from this surface.
+      if (props.role !== UserRole.BANK_REVIEWER && props.role !== UserRole.BANK_ADMIN) {
         return h('span', { class: 'text-xs text-muted-foreground' }, '—')
       }
       const isSelf = currentUserId.value != null && request.created_by === currentUserId.value
@@ -260,9 +263,9 @@ const columns: ColumnDef<ImportRequest>[] = [
         const mine = request.is_claimed_by_me || (currentUserId.value != null && request.claimed_by?.id === currentUserId.value)
         const label = !request.claimed_by ? 'مطالبة' : mine ? 'متابعة' : 'عرض'
         const className = !request.claimed_by
-          ? 'h-8 bg-[#5856d6] text-white hover:bg-[#5856d6]/90 text-xs'
+          ? 'h-8 bg-[var(--voting)] text-white hover:bg-[var(--voting)]/90 text-xs'
           : mine
-            ? 'h-8 border-[#5856d6] text-[#5856d6] hover:bg-[#5856d6]/10 text-xs'
+            ? 'h-8 border-[var(--voting)] text-[var(--voting)] hover:bg-[var(--voting)]/10 text-xs'
             : 'h-8 text-xs'
 
         return h(Button, {
@@ -353,7 +356,7 @@ const table = useVueTable({
 function supportCommitteeRowClass(request: ImportRequest): string {
   if (props.role !== UserRole.SUPPORT_COMMITTEE) return 'hover:bg-muted/30'
   const mine = request.is_claimed_by_me || (currentUserId.value != null && request.claimed_by?.id === currentUserId.value)
-  if (mine) return 'bg-[#5856d6]/8 hover:bg-[#5856d6]/12'
+  if (mine) return 'bg-[var(--voting)]/8 hover:bg-[var(--voting)]/12'
   if (request.claimed_by) return 'bg-muted/40 hover:bg-muted/60'
   return 'hover:bg-muted/30'
 }
@@ -413,12 +416,12 @@ function supportCommitteeRowClass(request: ImportRequest): string {
 
           <!-- Data rows -->
           <template v-else>
-	            <TableRow
-	              v-for="row in table.getRowModel().rows"
-	              :key="row.id"
-	              class="cursor-pointer transition-colors"
-	              :class="supportCommitteeRowClass(row.original)"
-	              :data-state="row.getIsSelected() ? 'selected' : undefined"
+            <TableRow
+              v-for="row in table.getRowModel().rows"
+              :key="row.id"
+              class="cursor-pointer transition-colors"
+              :class="supportCommitteeRowClass(row.original)"
+              :data-state="row.getIsSelected() ? 'selected' : undefined"
               @click="emit('rowClick', row.original.id)"
             >
               <TableCell

@@ -20,6 +20,16 @@ import { UserRole } from '../../types/enums'
 import type { BankAdminDashboardStats, BankAdminDashboardStatsExtended, BankAdminMonthlyEntry } from '../../composables/useDashboard'
 import StatusBadge from '../shared/StatusBadge.vue'
 import { getRequestProgress } from '../../utils/requestProgress'
+import {
+  CHART_W,
+  CHART_H,
+  REJECTION_THRESHOLD,
+  buildLine,
+  buildArea,
+  calcRejectionRate,
+  calcShowHealthStrip,
+  calcHealthIssues,
+} from '../../utils/bank-admin-helpers'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/card'
 import { Badge } from '../ui/badge'
 import { Button } from '../ui/button'
@@ -29,9 +39,11 @@ const store = useDashboardStore()
 const stats = computed(() => store.stats as (BankAdminDashboardStats & BankAdminDashboardStatsExtended) | null)
 const lastRefreshed = ref(new Date())
 
-function refresh() {
-  lastRefreshed.value = new Date()
-  store.loadStats()
+// Only mark "last refreshed" once the fetch resolves so the timestamp tracks
+// the data the user actually sees, not the moment they clicked refresh.
+async function refresh() {
+  await store.loadStats()
+  if (!store.error) lastRefreshed.value = new Date()
 }
 
 function formatTime(d: Date): string {
@@ -51,73 +63,9 @@ function monthLabel(ym: string): string {
   return new Intl.DateTimeFormat('ar-YE', { month: 'short' }).format(new Date(Number(y), Number(m) - 1, 1))
 }
 
-// ── SVG dual-line trend chart ───────────────────────────────────────────────
-const CHART_W = 480
-const CHART_H = 80
-const PAD = 8
-
-interface DualEntry { month: string; count: number; approved?: number }
-
-function buildLine(entries: DualEntry[], key: keyof DualEntry): string {
-  if (!entries.length) return ''
-  const vals = entries.map(e => Number(e[key] ?? 0))
-  const max = Math.max(...vals, 1)
-  const step = (CHART_W - PAD * 2) / Math.max(entries.length - 1, 1)
-  return entries.map((e, i) => {
-    const x = PAD + i * step
-    const y = PAD + (1 - Number(e[key] ?? 0) / max) * (CHART_H - PAD * 2)
-    return `${x.toFixed(1)},${y.toFixed(1)}`
-  }).join(' ')
-}
-
-function buildArea(entries: DualEntry[], key: keyof DualEntry): string {
-  if (!entries.length) return ''
-  const vals = entries.map(e => Number(e[key] ?? 0))
-  const max = Math.max(...vals, 1)
-  const step = (CHART_W - PAD * 2) / Math.max(entries.length - 1, 1)
-  const pts = entries.map((e, i) => {
-    const x = PAD + i * step
-    const y = PAD + (1 - Number(e[key] ?? 0) / max) * (CHART_H - PAD * 2)
-    return `${x.toFixed(1)},${y.toFixed(1)}`
-  })
-  const bottom = CHART_H - PAD
-  const lastX = (PAD + (entries.length - 1) * step).toFixed(1)
-  return `${PAD},${bottom} ${pts.join(' ')} ${lastX},${bottom}`
-}
-
-const REJECTION_THRESHOLD = 20 // %
-
-const rejectionRate = computed(() => {
-  if (!stats.value) return 0
-  const ext = stats.value as BankAdminDashboardStatsExtended
-  if (ext.rejection_rate !== undefined) return ext.rejection_rate
-  const total = stats.value.total || 1
-  return Math.round((stats.value.rejected / total) * 100)
-})
-
-const showHealthStrip = computed(() => {
-  if (!stats.value) return false
-  const ext = stats.value as BankAdminDashboardStatsExtended
-  return (
-    rejectionRate.value > REJECTION_THRESHOLD
-    || (ext.stalled_at_cby_count ?? 0) > 0
-    || ext.missing_bank_reviewer_coverage === true
-    || (ext.repeated_support_returns ?? 0) > 2
-    || ext.suspended_staff_with_active === true
-  )
-})
-
-const healthIssues = computed((): string[] => {
-  if (!stats.value) return []
-  const ext = stats.value as BankAdminDashboardStatsExtended
-  const issues: string[] = []
-  if (rejectionRate.value > REJECTION_THRESHOLD) issues.push(`معدل الرفض مرتفع: ${rejectionRate.value}%`)
-  if ((ext.stalled_at_cby_count ?? 0) > 0) issues.push(`${ext.stalled_at_cby_count} طلب متوقف لدى البنك المركزي`)
-  if (ext.missing_bank_reviewer_coverage) issues.push('لا يوجد مراجع بنك نشط لاستلام الطلبات')
-  if ((ext.repeated_support_returns ?? 0) > 2) issues.push(`${ext.repeated_support_returns} إعادة متكررة من لجنة المساندة`)
-  if (ext.suspended_staff_with_active) issues.push('موظف موقوف لديه مهام نشطة')
-  return issues
-})
+const rejectionRate = computed(() => calcRejectionRate(stats.value))
+const showHealthStrip = computed(() => calcShowHealthStrip(stats.value))
+const healthIssues = computed(() => calcHealthIssues(stats.value))
 
 // KPI grid — spec order: Total / In Process / Approved-Completed / Rejected
 const kpiGrid = computed(() => {
@@ -126,7 +74,7 @@ const kpiGrid = computed(() => {
     {
       value: stats.value.total,
       label: 'إجمالي الطلبات',
-      color: '#8e8e93',
+      color: 'var(--locked)',
       bg: 'bg-muted/60',
       border: '',
       tab: 'all',
@@ -134,7 +82,7 @@ const kpiGrid = computed(() => {
     {
       value: stats.value.pending ?? stats.value.total - stats.value.approved - stats.value.rejected,
       label: 'قيد المعالجة',
-      color: '#0066cc',
+      color: 'var(--brand-color)',
       bg: 'bg-blue-50',
       border: '',
       tab: 'at_cby',
@@ -142,7 +90,7 @@ const kpiGrid = computed(() => {
     {
       value: stats.value.approved,
       label: 'مُعتمد ومكتمل',
-      color: '#34c759',
+      color: 'var(--severity-green)',
       bg: 'bg-green-50',
       border: '',
       tab: 'completed',
@@ -150,7 +98,7 @@ const kpiGrid = computed(() => {
     {
       value: stats.value.rejected,
       label: 'مرفوض',
-      color: '#ff3b30',
+      color: 'var(--severity-red)',
       bg: rejectionRate.value > REJECTION_THRESHOLD ? 'bg-red-50' : 'bg-muted/40',
       border: rejectionRate.value > REJECTION_THRESHOLD ? 'border-s-[3px]' : '',
       tab: 'rejected',
@@ -218,7 +166,7 @@ onMounted(() => { store.loadStats() })
           :key="kpi.label"
           class="flex flex-col items-start gap-1.5 p-4 rounded-xl border border-border shadow transition-shadow hover:shadow-md cursor-pointer text-start"
           :class="[kpi.bg, kpi.border]"
-          :style="kpi.border ? { borderInlineStartColor: '#ff3b30' } : {}"
+          :style="kpi.border ? { borderInlineStartColor: 'var(--severity-red)' } : {}"
           role="listitem"
           :aria-label="`${kpi.label}: ${kpi.value}`"
           @click="router.push(`/requests?tab=${kpi.tab}`)"
@@ -290,12 +238,12 @@ onMounted(() => { store.loadStats() })
             preserveAspectRatio="none"
           >
             <!-- Volume area fill (primary blue) -->
-            <polygon :points="buildArea(stats.monthly_requests as DualEntry[], 'count')" fill="#0066cc" opacity="0.08" />
+            <polygon :points="buildArea(stats.monthly_requests as DualEntry[], 'count')" fill="var(--brand-color)" opacity="0.08" />
             <!-- Volume line -->
             <polyline
               :points="buildLine(stats.monthly_requests as DualEntry[], 'count')"
               fill="none"
-              stroke="#0066cc"
+              stroke="var(--brand-color)"
               stroke-width="2"
               stroke-linejoin="round"
               stroke-linecap="round"
@@ -305,7 +253,7 @@ onMounted(() => { store.loadStats() })
               v-if="(stats.monthly_requests as DualEntry[]).some(e => e.approved !== undefined)"
               :points="buildLine(stats.monthly_requests as DualEntry[], 'approved')"
               fill="none"
-              stroke="#34c759"
+              stroke="var(--severity-green)"
               stroke-width="1.5"
               stroke-dasharray="4 2"
               stroke-linejoin="round"
@@ -323,7 +271,7 @@ onMounted(() => { store.loadStats() })
               الحجم الكلي
             </div>
             <div class="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <span class="inline-block h-0.5 w-5 rounded-full" style="background:#34c759;border-top:1px dashed #34c759" />
+              <span class="inline-block h-0.5 w-5 rounded-full" style="background:var(--severity-green);border-top:1px dashed var(--severity-green)" />
               مكتمل ومعتمد
             </div>
           </div>

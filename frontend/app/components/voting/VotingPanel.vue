@@ -3,6 +3,7 @@
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { AlertCircle } from 'lucide-vue-next'
 import { useVotingStore } from '../../stores/voting.store'
+import { useAuthStore } from '../../stores/auth.store'
 import { VoteType, RequestStatus, UserRole } from '../../types/enums'
 import type { RequestVote } from '../../types/models'
 import { Button } from '../ui/button'
@@ -15,6 +16,8 @@ const props = defineProps<{
 }>()
 
 const votingStore = useVotingStore()
+const authStore = useAuthStore()
+const currentUserId = computed(() => authStore.user?.id ?? null)
 let isMounted = true
 onBeforeUnmount(() => { isMounted = false })
 
@@ -85,14 +88,21 @@ function voteChipClasses(vote: VoteType): string {
   }
 }
 
-function maskedVoteLabel(vote: VoteType): string {
-  return revealVoteChoices.value ? voteLabel(vote) : 'تم التصويت'
+// During open voting we mask other members' choices to preserve secret-ballot.
+// The current viewer's OWN vote is always revealed so they can verify what they
+// cast without waiting for session closure.
+function isOwnVote(voter: RequestVote): boolean {
+  return currentUserId.value != null && voter.user_id === currentUserId.value
 }
 
-function maskedVoteChipClasses(vote: VoteType): string {
-  return revealVoteChoices.value
-    ? voteChipClasses(vote)
-    : 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#5856d6]/10 text-[#5856d6]'
+function maskedVoteLabel(voter: RequestVote): string {
+  if (revealVoteChoices.value || isOwnVote(voter)) return voteLabel(voter.vote)
+  return 'تم التصويت'
+}
+
+function maskedVoteChipClasses(voter: RequestVote): string {
+  if (revealVoteChoices.value || isOwnVote(voter)) return voteChipClasses(voter.vote)
+  return 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#5856d6]/10 text-[#5856d6]'
 }
 
 function pendingVoteLabel(vote: VoteType): string {
@@ -259,7 +269,7 @@ onMounted(async () => {
                 <span v-if="v.is_director_override" class="inline-block mt-1 bg-amber-50/10 text-warning px-2 py-0.5 rounded text-xs font-medium">تجاوز المدير</span>
               </td>
               <td class="px-4 py-2.5">
-                <span :class="maskedVoteChipClasses(v.vote)">{{ maskedVoteLabel(v.vote) }}</span>
+                <span :class="maskedVoteChipClasses(v)">{{ maskedVoteLabel(v) }}</span>
               </td>
               <td class="px-4 py-2.5 text-xs text-muted-foreground font-mono">
                 {{ v.voted_at ? new Date(v.voted_at).toLocaleString('ar-YE') : '—' }}

@@ -25,20 +25,35 @@ const remainingLabel = computed(() => {
   return `متبقي ${minutes}:${seconds} من 15:00`
 })
 
+// Skip ticks while the page is hidden so background tabs don't burn CPU/battery
+// keeping a countdown alive that no one is watching. The first visibility change
+// catches up the displayed time.
+function tick() {
+  if (typeof document === 'undefined' || document.visibilityState === 'visible') {
+    now.value = Date.now()
+  }
+}
+
 onMounted(() => {
-  timer = setInterval(() => { now.value = Date.now() }, 1000)
+  timer = setInterval(tick, 1000)
+  if (typeof document !== 'undefined') {
+    document.addEventListener('visibilitychange', tick)
+  }
 })
 
 onBeforeUnmount(() => {
   if (timer) clearInterval(timer)
+  if (typeof document !== 'undefined') {
+    document.removeEventListener('visibilitychange', tick)
+  }
 })
 </script>
 
 <template>
-  <Alert dir="rtl" class="flex items-center gap-3 border-[#5856d6]/30 bg-[#5856d6]/5">
-    <AlarmClock class="h-5 w-5 flex-shrink-0 text-[#5856d6]" aria-hidden="true" />
+  <Alert dir="rtl" class="flex items-center gap-3 border-[var(--voting)]/30 bg-[var(--voting)]/5">
+    <AlarmClock class="h-5 w-5 flex-shrink-0 text-[var(--voting)]" aria-hidden="true" />
     <AlertDescription class="flex-1 text-sm font-medium text-foreground">
-      <span class="font-semibold text-[#5856d6]">أنت المراجع النشط — الطلب محجوز لك حالياً</span>
+      <span class="font-semibold text-[var(--voting)]">أنت المراجع النشط — الطلب محجوز لك حالياً</span>
       <span class="mx-2 text-muted-foreground">·</span>
       <span class="text-muted-foreground">{{ remainingLabel }}</span>
     </AlertDescription>
@@ -51,11 +66,11 @@ onBeforeUnmount(() => {
       heartbeat
     </span>
     <button
-      class="flex-shrink-0 px-3 py-1.5 bg-background border border-[#5856d6]/30 text-[#5856d6] text-xs font-semibold rounded-xl hover:bg-[#5856d6]/10 transition-colors"
+      class="flex-shrink-0 px-3 py-1.5 bg-background border border-[var(--voting)]/30 text-[var(--voting)] text-xs font-semibold rounded-xl hover:bg-[var(--voting)]/10 transition-colors"
       @click="$emit('release')"
     >
       تحرير الحجز
     </button>
-    <Badge class="flex-shrink-0 bg-[#5856d6] text-white hover:bg-[#5856d6]">مراجعة نشطة</Badge>
+    <Badge class="flex-shrink-0 bg-[var(--voting)] text-white hover:bg-[var(--voting)]">مراجعة نشطة</Badge>
   </Alert>
 </template>

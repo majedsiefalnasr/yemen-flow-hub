@@ -6,6 +6,7 @@ import { CheckCircle2, Clock, RotateCcw, AlertTriangle, AlertCircle, Users, File
 import { useDashboardStore } from '../../stores/dashboard.store'
 import { useAuthStore } from '../../stores/auth.store'
 import { UserRole } from '../../types/enums'
+import { STATUS_LABELS } from '../../constants/workflow'
 import type { BankReviewerDashboardStats } from '../../composables/useDashboard'
 import StatusBadge from '../shared/StatusBadge.vue'
 import { Card, CardContent } from '../ui/card'
@@ -25,12 +26,12 @@ const stats = computed<BankReviewerDashboardStats | null>(() => {
     returned_by_support: raw.returned_by_support ?? 0,
     approved_completed: raw.approved_completed ?? 0,
     review_queue: Array.isArray(raw.review_queue) ? raw.review_queue : [],
-    downstream_queue: Array.isArray((raw as any).downstream_queue) ? (raw as any).downstream_queue : [],
+    downstream_queue: Array.isArray(raw.downstream_queue) ? raw.downstream_queue : [],
   }
 })
 
 const queue = computed(() => stats.value?.review_queue ?? [])
-const downstreamQueue = computed(() => (stats.value as any)?.downstream_queue ?? [])
+const downstreamQueue = computed(() => stats.value?.downstream_queue ?? [])
 const supportRejectedCount = computed(() => stats.value?.returned_by_support ?? 0)
 
 // Spec order: Pending Review (amber) / Rejected by Support (rose) / At CBY (blue) / Approved-Completed (green)
@@ -221,7 +222,7 @@ onMounted(() => { store.loadStats() })
                   @click="router.push(`/requests/${req.id}`)"
                 >
                   <td class="py-2 px-2">
-                    <a class="font-mono text-primary hover:underline" :href="`/requests/${req.id}`" @click.prevent="router.push(`/requests/${req.id}`)">{{ req.reference_number }}</a>
+                    <a class="font-mono text-primary hover:underline" :href="`/requests/${req.id}`" @click.stop.prevent="router.push(`/requests/${req.id}`)">{{ req.reference_number }}</a>
                   </td>
                   <td class="py-2 px-2 text-foreground">
                     <span v-if="isCreatedByCurrentUser(req.created_by)" class="text-amber-600 font-medium">أنا</span>
@@ -281,8 +282,8 @@ onMounted(() => { store.loadStats() })
                   class="border-t border-muted hover:bg-muted/50 cursor-pointer transition-colors"
                   @click="router.push(`/requests/${req.id}`)"
                 >
-                  <td class="py-2 px-2"><a class="font-mono text-primary hover:underline" :href="`/requests/${req.id}`" @click.prevent="router.push(`/requests/${req.id}`)">{{ req.reference_number }}</a></td>
-                  <td class="py-2 px-2 text-foreground">{{ req.stage_label ?? '—' }}</td>
+                  <td class="py-2 px-2"><a class="font-mono text-primary hover:underline" :href="`/requests/${req.id}`" @click.stop.prevent="router.push(`/requests/${req.id}`)">{{ req.reference_number }}</a></td>
+                  <td class="py-2 px-2 text-foreground">{{ STATUS_LABELS[req.status] ?? '—' }}</td>
                   <td class="py-2 px-2"><StatusBadge :status="req.status" :role="UserRole.BANK_REVIEWER" /></td>
                   <td class="py-2 px-2"><button class="px-2 py-1 bg-background border border-border text-xs text-foreground rounded hover:border-primary hover:text-primary transition-colors" @click.stop="router.push(`/requests/${req.id}`)">عرض</button></td>
                 </tr>

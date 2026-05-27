@@ -25,9 +25,11 @@ const hasAnyRequests = computed(() =>
   ),
 )
 
+// Prefer the backend's aggregate `returned` count when present; only fall back
+// to `returned_requests.length` (a sample slice, max 5) when the aggregate is
+// unset. Adding the two double-counted the same items in the action strip.
 const returnedCount = computed(() =>
-  (stats.value?.returned ?? 0)
-  + (stats.value?.returned_requests?.length ?? 0),
+  stats.value?.returned ?? stats.value?.returned_requests?.length ?? 0,
 )
 
 const actionRequiredCount = computed(() => returnedCount.value)

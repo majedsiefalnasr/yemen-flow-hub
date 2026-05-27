@@ -137,21 +137,25 @@ describe('useClaimLifecycle — releaseRequest', () => {
     vi.useRealTimers()
   })
 
-  it('calls DELETE endpoint on release', async () => {
+  it('calls DELETE endpoint on release and resolves true on success', async () => {
     mockFetch.mockResolvedValueOnce({})
     const { releaseRequest } = useClaimLifecycle()
-    await releaseRequest(42)
+    const result = await releaseRequest(42)
 
     expect(mockFetch).toHaveBeenCalledWith(
       '/api/workflow/42/claim-support-review',
       expect.objectContaining({ method: 'DELETE' }),
     )
+    expect(result).toBe(true)
   })
 
-  it('does not throw if release fails (best-effort)', async () => {
+  it('does not throw if release fails (best-effort) and resolves false', async () => {
+    // Per code-review H6: releaseRequest signals failure via a boolean return
+    // so the page can choose whether to mutate local state. Failures are still
+    // swallowed (TTL=15min auto-recovery is the safety net).
     mockFetch.mockRejectedValueOnce(new Error('network'))
     const { releaseRequest } = useClaimLifecycle()
-    await expect(releaseRequest(42)).resolves.toBeUndefined()
+    await expect(releaseRequest(42)).resolves.toBe(false)
   })
 
   it('resets isReleasing to false after success', async () => {

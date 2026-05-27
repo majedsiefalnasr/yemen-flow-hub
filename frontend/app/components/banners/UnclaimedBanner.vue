@@ -14,7 +14,7 @@ defineEmits<{
       هذا الطلب جاهز للمطالبة — لم يُحجز بعد من أي عضو
     </AlertDescription>
     <button
-      class="flex-shrink-0 px-3 py-1.5 bg-[#5856d6] text-white text-xs font-semibold rounded-xl hover:opacity-90 transition-opacity"
+      class="flex-shrink-0 px-3 py-1.5 bg-[var(--voting)] text-white text-xs font-semibold rounded-xl hover:opacity-90 transition-opacity"
       @click="$emit('claim')"
     >
       مطالبة بالطلب

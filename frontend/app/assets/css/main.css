@@ -44,6 +44,9 @@
   --color-info: var(--info);
   --color-locked: var(--locked);
   --color-voting: var(--voting);
+  --color-severity-red: var(--severity-red);
+  --color-severity-amber: var(--severity-amber);
+  --color-severity-green: var(--severity-green);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -98,6 +101,11 @@
   --info: #32ade6;
   --locked: #8e8e93;
   --voting: #5856d6;
+  /* Severity palette — saturated indicators used by KPI strips, status chips,
+     row highlights. Values come from the documented palette (DESIGN.md). */
+  --severity-red: #ff3b30;
+  --severity-amber: #ff9f0a;
+  --severity-green: #34c759;
   --font-sans: 'IBM Plex Sans Arabic', 'Inter', system-ui, -apple-system, sans-serif;
   --font-heading: 'Cairo', 'IBM Plex Sans Arabic', system-ui, sans-serif;
   --font-section: 'Tajawal', 'IBM Plex Sans Arabic', system-ui, sans-serif;

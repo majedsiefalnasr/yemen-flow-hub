@@ -413,7 +413,7 @@ onMounted(loadStaff)
         aria-label="عرض الموظفين النشطين"
         @click="applyAccessHealthFilter('active')"
       >
-        <span class="text-2xl font-bold" style="color:#34c759">{{ activeCount }}</span>
+        <span class="text-2xl font-bold" style="color:var(--severity-green)">{{ activeCount }}</span>
         <span class="text-xs text-muted-foreground">موظف نشط</span>
       </button>
 
@@ -424,7 +424,7 @@ onMounted(loadStaff)
         aria-label="عرض الموظفين الموقوفين"
         @click="applyAccessHealthFilter('inactive')"
       >
-        <span class="text-2xl font-bold" style="color:#ff3b30">{{ inactiveCount }}</span>
+        <span class="text-2xl font-bold" style="color:var(--severity-red)">{{ inactiveCount }}</span>
         <span class="text-xs text-muted-foreground">موقوف</span>
       </button>
 
@@ -435,11 +435,18 @@ onMounted(loadStaff)
         aria-label="عرض مراجعي البنك النشطين"
         @click="applyAccessHealthFilter('bank_reviewer')"
       >
-        <span class="text-2xl font-bold" style="color:#0066cc">{{ bankReviewerCount }}</span>
+        <span class="text-2xl font-bold" style="color:var(--brand-color)">{{ bankReviewerCount }}</span>
         <span class="text-xs text-muted-foreground">تغطية مراجع البنك</span>
       </button>
 
-      <div class="flex flex-col items-start gap-1 p-4 rounded-xl border border-border bg-background shadow-sm">
+      <!-- Total is informational, not a toggle — render as non-interactive so
+           screen readers don't announce it as a button alongside the three
+           filter toggles. -->
+      <div
+        class="flex flex-col items-start gap-1 p-4 rounded-xl border border-border bg-background shadow-sm"
+        role="group"
+        aria-label="إجمالي الموظفين"
+      >
         <span class="text-2xl font-bold text-foreground">{{ totalCount }}</span>
         <span class="text-xs text-muted-foreground">إجمالي الموظفين</span>
       </div>
