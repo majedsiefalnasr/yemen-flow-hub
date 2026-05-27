@@ -2,7 +2,7 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { CheckCircle2, Users, Clock, Mail, Zap, AlertCircle, AlarmClock } from 'lucide-vue-next'
+import { CheckCircle2, Users, Clock, Mail, Zap, AlertCircle, AlarmClock, Globe } from 'lucide-vue-next'
 import { useDashboardStore } from '../../stores/dashboard.store'
 import { useAuthStore } from '../../stores/auth.store'
 import { UserRole } from '../../types/enums'
@@ -11,6 +11,7 @@ import StatusBadge from '../shared/StatusBadge.vue'
 import { getRequestProgress } from '../../utils/requestProgress'
 import { Card, CardContent } from '../ui/card'
 import { Button } from '../ui/button'
+import { Badge } from '../ui/badge'
 import { Skeleton } from '../ui/skeleton'
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from '../ui/table'
 
@@ -109,6 +110,14 @@ onMounted(() => { store.loadStats() })
 
 <template>
   <div class="flex flex-col gap-6" dir="rtl">
+
+    <!-- CBY-global scope chip -->
+    <div class="mb-2">
+      <Badge variant="outline" class="gap-1.5 rounded-full px-3 py-1 text-xs font-medium text-muted-foreground border-border">
+        <Globe class="size-3" aria-hidden="true" />
+        نطاق عبر البنوك
+      </Badge>
+    </div>
 
     <!-- Skeleton -->
     <div v-if="store.loading" class="grid grid-cols-4 max-lg:grid-cols-2 max-md:grid-cols-1 gap-4" aria-busy="true" aria-label="جارٍ تحميل الإحصائيات">
