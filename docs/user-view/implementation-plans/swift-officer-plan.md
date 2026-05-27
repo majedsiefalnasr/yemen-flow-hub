@@ -22,16 +22,16 @@ Build a narrow bank-side upload workspace for post-executive-approval SWIFT and 
 
 ### 1. Role Surface And Navigation
 
-- [ ] Verify sidebar renders dashboard, requests, notifications, and settings only.
-- [ ] Hide operations/admin/report/audit surfaces.
-- [ ] Ensure no non-SWIFT role can access the upload form route.
-- [ ] Keep SWIFT upload controls gated by both role and status.
-- [ ] Keep all data own-bank scoped.
+- [x] Verify sidebar renders dashboard, requests, notifications, and settings only.
+- [x] Hide operations/admin/report/audit surfaces.
+- [x] Ensure no non-SWIFT role can access the upload form route.
+- [x] Keep SWIFT upload controls gated by both role and status.
+- [x] Keep all data own-bank scoped.
 
 ### 2. Dashboard
 
 - [x] Build focused upload queue, not analytics.
-- [ ] Header includes bank SWIFT officer subtitle and no primary page action.
+- [x] Header includes bank SWIFT officer subtitle and no primary page action.
 - [x] Add pending SWIFT strip when `pending_swift_upload > 0`.
 - [x] Add KPI cards: pending upload, uploaded, completed, executive rejected.
 - [x] Add SWIFT queue table sorted oldest in `WAITING_FOR_SWIFT` first.
@@ -42,54 +42,54 @@ Build a narrow bank-side upload workspace for post-executive-approval SWIFT and 
 
 ### 3. Requests List
 
-- [ ] Implement tabs: pending_swift, swift_done, completed, rejected, all.
-- [ ] Keep pending_swift first.
-- [ ] Add search, column visibility, export, and refresh.
-- [ ] Do not render bulk upload.
-- [ ] Table shows documents two-pill indicator, age in stage, and upload/view action.
-- [ ] Use full canonical statuses.
+- [x] Implement tabs: pending_swift, swift_done, completed, rejected, all.
+- [x] Keep pending_swift first.
+- [x] Add search, column visibility, export, and refresh.
+- [x] Do not render bulk upload.
+- [x] Table shows documents two-pill indicator, age in stage, and upload/view action.
+- [x] Use full canonical statuses.
 
 ### 4. Request Detail
 
-- [ ] Render PreApprovalLocked, SwiftReady, SwiftCompleted, and Locked banner states.
-- [ ] Do not render correction, claim, voting, or support controls.
-- [ ] Tabs: overview, documents, parties, activity log.
-- [ ] Overview is read-only; no editable fields.
-- [ ] Documents tab shows request docs plus SWIFT/FX request document rows and locks external FX confirmation.
-- [ ] Add upload shortcut only when status is `WAITING_FOR_SWIFT`.
-- [ ] Actions panel links to `/requests/{id}/swift` only for `WAITING_FOR_SWIFT`.
-- [ ] For `SWIFT_UPLOADED` or `FX_CONFIRMATION_PENDING`, render handoff text to Director.
+- [x] Render PreApprovalLocked, SwiftReady, SwiftCompleted, and Locked banner states.
+- [x] Do not render correction, claim, voting, or support controls.
+- [x] Tabs: overview, documents, parties, activity log.
+- [x] Overview is read-only; no editable fields.
+- [x] Documents tab shows request docs plus SWIFT/FX request document rows and locks external FX confirmation.
+- [x] Add upload shortcut only when status is `WAITING_FOR_SWIFT`.
+- [x] Actions panel links to `/requests/{id}/swift` only for `WAITING_FOR_SWIFT`.
+- [x] For `SWIFT_UPLOADED` or `FX_CONFIRMATION_PENDING`, render handoff text to Director.
 
 ### 5. SWIFT Upload Page
 
-- [ ] Gate form to `SWIFT_OFFICER` and status `WAITING_FOR_SWIFT`; wrong role/status renders access-denied state with specific reason.
-- [ ] Header includes reference, locked-data subtitle, breadcrumbs, and status badge.
-- [ ] Add locked-data summary panel with lock icons on all labels.
-- [ ] Add SWIFT reference input with required validation and soft format warning.
-- [ ] Add SWIFT PDF upload drop zone.
-- [ ] Add FX confirmation request PDF upload drop zone.
-- [ ] Add template download button for FX confirmation request template.
-- [ ] Enforce PDF-only and 10 MB client-side before upload.
-- [ ] Preserve selected files on network failure where browser security allows.
-- [ ] Submit button stays disabled until reference plus both PDFs are present.
-- [ ] Disabled tooltip identifies the missing requirement.
-- [ ] On success, show confirmation state and route back to queue.
-- [ ] On 403/409 state change, keep form intact and show reload banner.
+- [x] Gate form to `SWIFT_OFFICER` and status `WAITING_FOR_SWIFT`; wrong role/status renders access-denied state with specific reason.
+- [x] Header includes reference, locked-data subtitle, breadcrumbs, and status badge.
+- [x] Add locked-data summary panel with lock icons on all labels.
+- [x] Add SWIFT reference input with required validation and soft format warning.
+- [x] Add SWIFT PDF upload drop zone.
+- [x] Add FX confirmation request PDF upload drop zone.
+- [x] Add template download button for FX confirmation request template.
+- [x] Enforce PDF-only and 10 MB client-side before upload.
+- [x] Preserve selected files on network failure where browser security allows.
+- [x] Submit button stays disabled until reference plus both PDFs are present.
+- [x] Disabled tooltip identifies the missing requirement.
+- [x] On success, show confirmation state and route back to queue.
+- [x] On 403/409 state change, keep form intact and show reload banner.
 
 ### 6. Notifications, Settings, Profile
 
-- [ ] Notifications include newly waiting SWIFT request, upload confirmation, FX completion, and template version update.
-- [ ] Exclude voting, claim, audit, other-bank, and intake-stage notifications.
-- [ ] Settings default SWIFT-relevant notifications on.
-- [ ] Profile stats include uploads and average time-to-upload after executive approval.
+- [x] Notifications include newly waiting SWIFT request, upload confirmation, FX completion, and template version update.
+- [x] Exclude voting, claim, audit, other-bank, and intake-stage notifications.
+- [x] Settings default SWIFT-relevant notifications on.
+- [x] Profile stats include uploads and average time-to-upload after executive approval.
 
 ### 7. Backend And Data Readiness
 
-- [ ] Confirm `DocumentService::uploadSwiftDocuments()` accepts SWIFT file, FX request file, and SWIFT reference in one transaction.
-- [ ] Confirm endpoint rejects single-file submit and non-PDF/oversized files.
-- [ ] Confirm transition advances to `SWIFT_UPLOADED` and downstream FX pending behavior matches docs.
-- [ ] Confirm `ImportRequestResource` exposes `has_swift_document`, `has_fx_request_document`, `swift_reference`, upload timestamps, and uploaded-by user.
-- [ ] Confirm template download endpoint exists or add it to document rules/template API before UI implementation.
+- [x] Confirm `DocumentService::uploadSwiftDocuments()` accepts SWIFT file, FX request file, and SWIFT reference in one transaction.
+- [x] Confirm endpoint rejects single-file submit and non-PDF/oversized files.
+- [x] Confirm transition advances to `SWIFT_UPLOADED` and downstream FX pending behavior matches docs.
+- [x] Confirm `ImportRequestResource` exposes `has_swift_document`, `has_fx_request_document`, `swift_reference`, upload timestamps, and uploaded-by user.
+- [x] Confirm template download endpoint exists or add it to document rules/template API before UI implementation.
 
 ## Tests List
 
