@@ -92,19 +92,19 @@ Build a focused bank intake workspace for request drafting, correction, submissi
 
 ### 6. Notifications, Settings, Profile
 
-- [ ] Notifications include returns, bank/support outcomes, final decision, completion, and inactivity warning.
-- [ ] Notifications exclude claim transfers, voting tallies, audit alerts, and SLA escalations.
-- [ ] Implement tabbed notification table with unread styling, bulk read/export/print, and linked request navigation.
-- [ ] Settings use existing six-tab structure and save/discard unsaved bar where practical.
-- [ ] Profile uses the three-column identity/security/stats layout with role and bank affiliation read-only.
+- [x] Notifications include returns, bank/support outcomes, final decision, completion, and inactivity warning.
+- [x] Notifications exclude claim transfers, voting tallies, audit alerts, and SLA escalations.
+- [x] Implement tabbed notification table with unread styling, bulk read/export/print, and linked request navigation.
+- [x] Settings use existing six-tab structure and save/discard unsaved bar where practical.
+- [x] Profile uses the three-column identity/security/stats layout with role and bank affiliation read-only.
 
 ### 7. Backend And Data Readiness
 
-- [ ] Confirm `/api/dashboard/stats` includes `draft`, `returned`, `under_cby_processing`, `completed`, `draft_requests`, `returned_requests`, and `recent_requests`.
-- [ ] Confirm `/api/requests` supports role bucket tabs through status filters or frontend filtering with bank-scoped data only.
-- [ ] Confirm `ImportRequestResource` exposes return reason, returning actor, timestamps, and flagged fields/documents if available.
-- [ ] Confirm document download policy allows intake documents only and denies SWIFT/FX/external FX for this role.
-- [ ] Confirm terminal mutation attempts return `WORKFLOW_IMMUTABLE_STATE` with HTTP 403.
+- [x] Confirm `/api/dashboard/stats` includes `draft`, `returned`, `under_cby_processing`, `completed`, `draft_requests`, `returned_requests`, and `recent_requests`.
+- [x] Confirm `/api/requests` supports role bucket tabs through status filters or frontend filtering with bank-scoped data only.
+- [x] Confirm `ImportRequestResource` exposes return reason, returning actor, timestamps, and flagged fields/documents if available.
+- [x] Confirm document download policy allows intake documents only and denies SWIFT/FX/external FX for this role.
+- [x] Confirm terminal mutation attempts return `WORKFLOW_IMMUTABLE_STATE` with HTTP 403.
 
 ## Tests List
 
