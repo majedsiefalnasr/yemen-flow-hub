@@ -24,7 +24,7 @@ Build a CBY-global voting workspace where each executive member can see active s
 - [x] Verify sidebar renders dashboard, requests, reports, notifications, and settings.
 - [x] Do not render support claims, SWIFT upload, FX completion, audit, staff, merchants, admin, close-session, finalize, tie-break, or override controls.
 - [x] Keep this role CBY-global.
-- [ ] Strongly surface MFA enrollment prompt in profile/settings if missing.
+- [x] Strongly surface MFA enrollment prompt in profile/settings if missing.
 
 ### 2. Dashboard
 

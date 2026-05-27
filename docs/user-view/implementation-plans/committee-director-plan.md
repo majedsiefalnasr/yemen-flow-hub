@@ -91,7 +91,7 @@ Build a CBY-global governance and completion console for voting closure/finaliza
 - [x] Confirm `VotingService::closeSession()` blocks until all active members have voted.
 - [x] Confirm `VotingService::finalizeDecision()` and override/tie-break paths are audited with Director role.
 - [x] Confirm approval finalization auto-chains to the SWIFT stage used by current workflow docs.
-- [ ] Identify gap: current customs endpoints generate/download generated PDF; signed re-upload and explicit three-step completion may need backend work if not already present.
+- [x] Identify gap: current customs endpoints generate/download generated PDF; signed re-upload and explicit three-step completion may need backend work if not already present.
 - [x] Confirm FX completion is wrapped in one transaction with row locking.
 - [x] Confirm external FX document download policy allows Director.
 

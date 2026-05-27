@@ -50,7 +50,7 @@ Build a CBY-global support review console centered on claim ownership. The user 
 - [x] Add bank filter, column visibility, export, refresh, and hide-claimed-by-others toggle.
 - [x] No bulk decisions.
 - [x] Table columns include bank, claim owner, age in stage, and claim-state action.
-- [ ] Persist hide-others and tab filters through query or user preferences.
+- [x] Persist hide-others and tab filters through query or user preferences.
 
 ### 4. Request Detail And Claim Lifecycle
 
