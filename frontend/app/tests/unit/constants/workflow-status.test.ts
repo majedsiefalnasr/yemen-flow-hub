@@ -14,7 +14,7 @@ import {
 } from '../../../constants/workflow'
 
 describe('STATUS_COLORS', () => {
-  it('covers all 18 RequestStatus values', () => {
+  it('covers all RequestStatus values', () => {
     const statuses = Object.values(RequestStatus)
     expect(Object.keys(STATUS_COLORS)).toHaveLength(statuses.length)
     for (const s of statuses) {
@@ -62,7 +62,7 @@ describe('STATUS_COLORS', () => {
 })
 
 describe('STATUS_ICONS', () => {
-  it('covers exactly 18 RequestStatus values', () => {
+  it('covers all RequestStatus values', () => {
     const statuses = Object.values(RequestStatus)
     expect(Object.keys(STATUS_ICONS)).toHaveLength(statuses.length)
     for (const s of statuses) {

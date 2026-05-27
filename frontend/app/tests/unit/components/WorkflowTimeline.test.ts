@@ -30,6 +30,7 @@ const WORKFLOW_STAGE_ORDER: RequestStatus[] = [
   RequestStatus.EXECUTIVE_APPROVED,
   RequestStatus.EXECUTIVE_REJECTED,
   RequestStatus.CUSTOMS_DECLARATION_ISSUED,
+  RequestStatus.FX_CONFIRMATION_PENDING,
   RequestStatus.COMPLETED,
 ]
 
@@ -109,8 +110,8 @@ const happyPathHistory: RequestStageHistory[] = [
 // ─── Stage classification — happy path ───────────────────────────────────────
 
 describe('WorkflowTimeline stage classification', () => {
-  it('covers all 21 canonical stages — none missing', () => {
-    expect(WORKFLOW_STAGE_ORDER).toHaveLength(21)
+  it('covers all 22 canonical stages — none missing', () => {
+    expect(WORKFLOW_STAGE_ORDER).toHaveLength(22)
     const all = Object.values(RequestStatus)
     for (const s of all) {
       expect(WORKFLOW_STAGE_ORDER).toContain(s)

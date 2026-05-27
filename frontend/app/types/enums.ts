@@ -1,4 +1,4 @@
-/** 21 canonical workflow states — must match backend RequestStatus exactly */
+/** 22 canonical workflow states — must match backend RequestStatus exactly */
 export enum RequestStatus {
   DRAFT = 'DRAFT',
   DRAFT_REJECTED_INTERNAL = 'DRAFT_REJECTED_INTERNAL',
@@ -19,7 +19,10 @@ export enum RequestStatus {
   EXECUTIVE_VOTING_CLOSED = 'EXECUTIVE_VOTING_CLOSED',
   EXECUTIVE_APPROVED = 'EXECUTIVE_APPROVED',
   EXECUTIVE_REJECTED = 'EXECUTIVE_REJECTED',
+  /** Legacy alias — preserved during migration to external FX confirmation terminology */
   CUSTOMS_DECLARATION_ISSUED = 'CUSTOMS_DECLARATION_ISSUED',
+  /** Post-Director-finalization state: SWIFT uploaded, Director signs/completes external FX confirmation */
+  FX_CONFIRMATION_PENDING = 'FX_CONFIRMATION_PENDING',
   COMPLETED = 'COMPLETED',
 }
 

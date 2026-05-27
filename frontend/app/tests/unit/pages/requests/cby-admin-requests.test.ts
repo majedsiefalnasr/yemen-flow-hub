@@ -176,6 +176,10 @@ describe('CBY_ADMIN ROLE_BUCKETS — completed bucket', () => {
     expect(bucket().statuses).toContain(RequestStatus.CUSTOMS_DECLARATION_ISSUED)
   })
 
+  it('includes FX_CONFIRMATION_PENDING', () => {
+    expect(bucket().statuses).toContain(RequestStatus.FX_CONFIRMATION_PENDING)
+  })
+
   it('includes COMPLETED', () => {
     expect(bucket().statuses).toContain(RequestStatus.COMPLETED)
   })

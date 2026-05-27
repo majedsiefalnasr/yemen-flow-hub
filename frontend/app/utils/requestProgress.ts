@@ -18,6 +18,7 @@ const REQUEST_PROGRESS: Record<RequestStatus, number> = {
   [RequestStatus.EXECUTIVE_APPROVED]: 97,
   [RequestStatus.EXECUTIVE_REJECTED]: 100,
   [RequestStatus.CUSTOMS_DECLARATION_ISSUED]: 100,
+  [RequestStatus.FX_CONFIRMATION_PENDING]: 98,
   [RequestStatus.COMPLETED]: 100,
   [RequestStatus.BANK_RETURNED]: 20,
   [RequestStatus.SUPPORT_RETURNED]: 60,

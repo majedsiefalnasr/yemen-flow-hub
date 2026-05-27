@@ -205,6 +205,7 @@ describe('SwiftUploadPage — wrong-status fallback (AC10)', () => {
     RequestStatus.EXECUTIVE_APPROVED,
     RequestStatus.EXECUTIVE_REJECTED,
     RequestStatus.CUSTOMS_DECLARATION_ISSUED,
+    RequestStatus.FX_CONFIRMATION_PENDING,
     RequestStatus.COMPLETED,
   ]
 

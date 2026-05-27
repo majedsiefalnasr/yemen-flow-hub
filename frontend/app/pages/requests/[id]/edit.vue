@@ -64,6 +64,7 @@ const lockedBannerVariant = computed<LockedBannerVariant>(() => {
     case RequestStatus.EXECUTIVE_APPROVED:
     case RequestStatus.EXECUTIVE_REJECTED:
     case RequestStatus.CUSTOMS_DECLARATION_ISSUED:
+    case RequestStatus.FX_CONFIRMATION_PENDING:
     case RequestStatus.COMPLETED:
       return 'readonly'
     default:

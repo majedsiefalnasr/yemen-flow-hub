@@ -15,6 +15,7 @@ describe('getRequestProgress', () => {
 
   it('marks completed lifecycle states as 100%', () => {
     expect(getRequestProgress(RequestStatus.CUSTOMS_DECLARATION_ISSUED)).toBe(100)
+    expect(getRequestProgress(RequestStatus.FX_CONFIRMATION_PENDING)).toBe(98)
     expect(getRequestProgress(RequestStatus.COMPLETED)).toBe(100)
   })
 })

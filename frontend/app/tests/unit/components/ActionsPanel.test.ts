@@ -281,6 +281,7 @@ describe('ActionsPanel — isLocked logic (post-patch)', () => {
     RequestStatus.EXECUTIVE_APPROVED,
     RequestStatus.EXECUTIVE_REJECTED,
     RequestStatus.CUSTOMS_DECLARATION_ISSUED,
+    RequestStatus.FX_CONFIRMATION_PENDING,
     RequestStatus.COMPLETED,
   ])
 
@@ -486,6 +487,7 @@ describe('ActionsPanel — isLocked excludes BANK_RETURNED', () => {
     RequestStatus.EXECUTIVE_APPROVED,
     RequestStatus.EXECUTIVE_REJECTED,
     RequestStatus.CUSTOMS_DECLARATION_ISSUED,
+    RequestStatus.FX_CONFIRMATION_PENDING,
     RequestStatus.COMPLETED,
   ])
 

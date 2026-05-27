@@ -31,6 +31,7 @@ const WORKFLOW_STAGE_ORDER: RequestStatus[] = [
   RequestStatus.EXECUTIVE_APPROVED,
   RequestStatus.EXECUTIVE_REJECTED,
   RequestStatus.CUSTOMS_DECLARATION_ISSUED,
+  RequestStatus.FX_CONFIRMATION_PENDING,
   RequestStatus.COMPLETED,
 ]
 

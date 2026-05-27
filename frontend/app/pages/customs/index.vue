@@ -24,7 +24,9 @@ onMounted(async () => {
 })
 
 const ready = computed(() =>
-  allRequests.value.filter(r => r.status === RequestStatus.EXECUTIVE_APPROVED),
+  allRequests.value.filter(r =>
+    r.status === RequestStatus.EXECUTIVE_APPROVED || r.status === RequestStatus.FX_CONFIRMATION_PENDING,
+  ),
 )
 
 const issued = computed(() =>

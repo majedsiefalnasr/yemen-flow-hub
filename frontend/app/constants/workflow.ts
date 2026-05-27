@@ -24,6 +24,7 @@ export const STATUS_COLORS: Record<RequestStatus, string> = {
   [RequestStatus.EXECUTIVE_APPROVED]: '#34c759',
   [RequestStatus.EXECUTIVE_REJECTED]: '#ff3b30',
   [RequestStatus.CUSTOMS_DECLARATION_ISSUED]: '#34c759',
+  [RequestStatus.FX_CONFIRMATION_PENDING]: '#32ade6',
   [RequestStatus.COMPLETED]: '#34c759',
 }
 
@@ -49,6 +50,7 @@ export const STATUS_ICONS: Record<RequestStatus, string> = {
   [RequestStatus.EXECUTIVE_APPROVED]: 'check-circle',
   [RequestStatus.EXECUTIVE_REJECTED]: 'x-circle',
   [RequestStatus.CUSTOMS_DECLARATION_ISSUED]: 'file-check',
+  [RequestStatus.FX_CONFIRMATION_PENDING]: 'stamp',
   [RequestStatus.COMPLETED]: 'check-circle',
 }
 
@@ -110,6 +112,7 @@ const DATA_ENTRY_REPRESENTATIVE_STATUS: Record<RequestStatus, RequestStatus> = {
   [RequestStatus.EXECUTIVE_APPROVED]: RequestStatus.COMPLETED,
   [RequestStatus.EXECUTIVE_REJECTED]: RequestStatus.EXECUTIVE_REJECTED,
   [RequestStatus.CUSTOMS_DECLARATION_ISSUED]: RequestStatus.COMPLETED,
+  [RequestStatus.FX_CONFIRMATION_PENDING]: RequestStatus.COMPLETED,
   [RequestStatus.COMPLETED]: RequestStatus.COMPLETED,
 }
 
@@ -208,6 +211,7 @@ export const ROLE_FILTER_STATUSES: Partial<Record<UserRole, RequestStatus[]>> = 
     RequestStatus.EXECUTIVE_APPROVED,
     RequestStatus.EXECUTIVE_REJECTED,
     RequestStatus.CUSTOMS_DECLARATION_ISSUED,
+    RequestStatus.FX_CONFIRMATION_PENDING,
     RequestStatus.COMPLETED,
   ],
   [UserRole.SWIFT_OFFICER]: [
@@ -234,6 +238,7 @@ export const ROLE_FILTER_STATUSES: Partial<Record<UserRole, RequestStatus[]>> = 
   [UserRole.COMMITTEE_DIRECTOR]: [
     RequestStatus.EXECUTIVE_APPROVED,
     RequestStatus.CUSTOMS_DECLARATION_ISSUED,
+    RequestStatus.FX_CONFIRMATION_PENDING,
     RequestStatus.COMPLETED,
   ],
   // CBY_ADMIN: not listed → all statuses shown in filter
@@ -354,6 +359,7 @@ export const DATA_ENTRY_STATUS_LABELS: Partial<Record<RequestStatus, string>> = 
   [RequestStatus.EXECUTIVE_APPROVED]: 'مكتمل',
   [RequestStatus.EXECUTIVE_REJECTED]: 'مرفوض نهائياً',
   [RequestStatus.CUSTOMS_DECLARATION_ISSUED]: 'مكتمل',
+  [RequestStatus.FX_CONFIRMATION_PENDING]: 'مكتمل',
   [RequestStatus.COMPLETED]: 'مكتمل',
   [RequestStatus.BANK_REJECTED]: 'مرفوض (البنك)',
 }
@@ -378,7 +384,8 @@ export const STATUS_LABELS: Record<RequestStatus, string> = {
   [RequestStatus.EXECUTIVE_VOTING_CLOSED]: 'التصويت مغلق',
   [RequestStatus.EXECUTIVE_APPROVED]: 'موافقة تنفيذية',
   [RequestStatus.EXECUTIVE_REJECTED]: 'رفض نهائي',
-  [RequestStatus.CUSTOMS_DECLARATION_ISSUED]: 'بيان جمركي صادر',
+  [RequestStatus.CUSTOMS_DECLARATION_ISSUED]: 'تأكيد المصارفة الخارجية صادر',
+  [RequestStatus.FX_CONFIRMATION_PENDING]: 'بانتظار تأكيد المصارفة الخارجية',
   [RequestStatus.COMPLETED]: 'مكتمل',
   [RequestStatus.BANK_REJECTED]: 'مرفوض (البنك)',
 }
@@ -404,6 +411,7 @@ export const STATUS_PROGRESS: Record<RequestStatus, number> = {
   [RequestStatus.EXECUTIVE_APPROVED]: 92,
   [RequestStatus.EXECUTIVE_REJECTED]: 92,
   [RequestStatus.CUSTOMS_DECLARATION_ISSUED]: 97,
+  [RequestStatus.FX_CONFIRMATION_PENDING]: 97,
   [RequestStatus.COMPLETED]: 100,
   [RequestStatus.BANK_REJECTED]: 25,
 }
@@ -439,7 +447,7 @@ export const ROLE_BUCKETS: Partial<Record<UserRole, StageBucket[]>> = {
     { key: 'draft', label: 'مسودة', statuses: [RequestStatus.DRAFT] },
     { key: 'submitted', label: 'مقدّم', statuses: [RequestStatus.SUBMITTED, RequestStatus.BANK_REVIEW] },
     { key: 'processing', label: 'قيد المعالجة', statuses: [RequestStatus.BANK_APPROVED, RequestStatus.SUPPORT_REVIEW_PENDING, RequestStatus.SUPPORT_REVIEW_IN_PROGRESS, RequestStatus.SUPPORT_APPROVED, RequestStatus.WAITING_FOR_SWIFT, RequestStatus.SWIFT_UPLOADED, RequestStatus.WAITING_FOR_VOTING_OPEN, RequestStatus.EXECUTIVE_VOTING_OPEN, RequestStatus.EXECUTIVE_VOTING_CLOSED] },
-    { key: 'completed', label: 'مكتمل', statuses: [RequestStatus.EXECUTIVE_APPROVED, RequestStatus.CUSTOMS_DECLARATION_ISSUED, RequestStatus.COMPLETED] },
+    { key: 'completed', label: 'مكتمل', statuses: [RequestStatus.EXECUTIVE_APPROVED, RequestStatus.CUSTOMS_DECLARATION_ISSUED, RequestStatus.FX_CONFIRMATION_PENDING, RequestStatus.COMPLETED] },
     { key: 'rejected', label: 'مرفوض', statuses: [RequestStatus.SUPPORT_REJECTED, RequestStatus.EXECUTIVE_REJECTED, RequestStatus.BANK_REJECTED] },
   ],
   // Spec order: pending, support_rejected, bank_returned, support_returned, at_cby, completed, rejected, all
@@ -449,7 +457,7 @@ export const ROLE_BUCKETS: Partial<Record<UserRole, StageBucket[]>> = {
     { key: 'bank_returned', label: 'أُعيد للمدخل من البنك', statuses: [RequestStatus.BANK_RETURNED] },
     { key: 'support_returned', label: 'أُعيد للمدخل من المساندة', statuses: [RequestStatus.SUPPORT_RETURNED] },
     { key: 'at_cby', label: 'لدى البنك المركزي', statuses: [RequestStatus.BANK_APPROVED, RequestStatus.SUPPORT_REVIEW_PENDING, RequestStatus.SUPPORT_REVIEW_IN_PROGRESS, RequestStatus.SUPPORT_APPROVED, RequestStatus.WAITING_FOR_SWIFT, RequestStatus.SWIFT_UPLOADED, RequestStatus.WAITING_FOR_VOTING_OPEN, RequestStatus.EXECUTIVE_VOTING_OPEN, RequestStatus.EXECUTIVE_VOTING_CLOSED] },
-    { key: 'completed', label: 'مكتمل', statuses: [RequestStatus.EXECUTIVE_APPROVED, RequestStatus.CUSTOMS_DECLARATION_ISSUED, RequestStatus.COMPLETED] },
+    { key: 'completed', label: 'مكتمل', statuses: [RequestStatus.EXECUTIVE_APPROVED, RequestStatus.CUSTOMS_DECLARATION_ISSUED, RequestStatus.FX_CONFIRMATION_PENDING, RequestStatus.COMPLETED] },
     { key: 'rejected', label: 'مرفوض', statuses: [RequestStatus.BANK_REJECTED, RequestStatus.EXECUTIVE_REJECTED] },
   ],
   // Spec order: pending (includes DRAFT_REJECTED_INTERNAL) / at_cby / swift_fx / completed / rejected / all
@@ -457,13 +465,13 @@ export const ROLE_BUCKETS: Partial<Record<UserRole, StageBucket[]>> = {
     { key: 'pending', label: 'معلّق', statuses: [RequestStatus.DRAFT_REJECTED_INTERNAL, RequestStatus.SUBMITTED, RequestStatus.BANK_REVIEW, RequestStatus.BANK_RETURNED, RequestStatus.SUPPORT_RETURNED] },
     { key: 'at_cby', label: 'لدى البنك المركزي', statuses: [RequestStatus.BANK_APPROVED, RequestStatus.SUPPORT_REVIEW_PENDING, RequestStatus.SUPPORT_REVIEW_IN_PROGRESS, RequestStatus.SUPPORT_APPROVED, RequestStatus.WAITING_FOR_SWIFT, RequestStatus.SWIFT_UPLOADED, RequestStatus.WAITING_FOR_VOTING_OPEN] },
     { key: 'swift_fx', label: 'SWIFT / تأكيد المصارفة', statuses: [RequestStatus.EXECUTIVE_VOTING_OPEN, RequestStatus.EXECUTIVE_VOTING_CLOSED, RequestStatus.EXECUTIVE_APPROVED] },
-    { key: 'completed', label: 'مكتمل', statuses: [RequestStatus.CUSTOMS_DECLARATION_ISSUED, RequestStatus.COMPLETED] },
+    { key: 'completed', label: 'مكتمل', statuses: [RequestStatus.CUSTOMS_DECLARATION_ISSUED, RequestStatus.FX_CONFIRMATION_PENDING, RequestStatus.COMPLETED] },
     { key: 'rejected', label: 'مرفوض', statuses: [RequestStatus.SUPPORT_REJECTED, RequestStatus.EXECUTIVE_REJECTED, RequestStatus.BANK_REJECTED] },
   ],
   [UserRole.SWIFT_OFFICER]: [
     { key: 'pending_swift', label: 'بانتظار رفع السويفت', statuses: [RequestStatus.EXECUTIVE_APPROVED, RequestStatus.WAITING_FOR_SWIFT] },
     { key: 'swift_done', label: 'تم رفع السويفت', statuses: [RequestStatus.SWIFT_UPLOADED, RequestStatus.WAITING_FOR_VOTING_OPEN] },
-    { key: 'completed', label: 'مكتمل', statuses: [RequestStatus.CUSTOMS_DECLARATION_ISSUED, RequestStatus.COMPLETED] },
+    { key: 'completed', label: 'مكتمل', statuses: [RequestStatus.CUSTOMS_DECLARATION_ISSUED, RequestStatus.FX_CONFIRMATION_PENDING, RequestStatus.COMPLETED] },
     { key: 'rejected', label: 'رُفض قبل السويفت', statuses: [RequestStatus.EXECUTIVE_REJECTED, RequestStatus.SUPPORT_REJECTED, RequestStatus.BANK_REJECTED] },
   ],
   // Spec order: waiting (unclaimed) first, my_claims, in_progress, approved, rejected, all
@@ -509,7 +517,7 @@ export const ROLE_BUCKETS: Partial<Record<UserRole, StageBucket[]>> = {
     { key: 'voting_closed', label: 'التصويت مغلق', statuses: [RequestStatus.EXECUTIVE_VOTING_CLOSED] },
     { key: 'approved', label: 'معتمد', statuses: [RequestStatus.EXECUTIVE_APPROVED] },
     { key: 'rejected', label: 'مرفوض', statuses: [RequestStatus.EXECUTIVE_REJECTED] },
-    { key: 'post_approval', label: 'ما بعد الاعتماد', statuses: [RequestStatus.WAITING_FOR_SWIFT, RequestStatus.SWIFT_UPLOADED, RequestStatus.CUSTOMS_DECLARATION_ISSUED, RequestStatus.COMPLETED] },
+    { key: 'post_approval', label: 'ما بعد الاعتماد', statuses: [RequestStatus.WAITING_FOR_SWIFT, RequestStatus.SWIFT_UPLOADED, RequestStatus.CUSTOMS_DECLARATION_ISSUED, RequestStatus.FX_CONFIRMATION_PENDING, RequestStatus.COMPLETED] },
   ],
   [UserRole.COMMITTEE_DIRECTOR]: [
     {
@@ -525,7 +533,7 @@ export const ROLE_BUCKETS: Partial<Record<UserRole, StageBucket[]>> = {
       statuses: [RequestStatus.EXECUTIVE_VOTING_OPEN],
       matches: request => request.status === RequestStatus.EXECUTIVE_VOTING_OPEN && request.is_tie === true,
     },
-    { key: 'fx_pending', label: 'بانتظار تأكيد المصارفة', statuses: [RequestStatus.EXECUTIVE_APPROVED] },
+    { key: 'fx_pending', label: 'بانتظار تأكيد المصارفة', statuses: [RequestStatus.EXECUTIVE_APPROVED, RequestStatus.FX_CONFIRMATION_PENDING] },
     { key: 'active_voting', label: 'تصويت نشط', statuses: [RequestStatus.EXECUTIVE_VOTING_OPEN] },
     { key: 'finalized', label: 'مُنهاة', statuses: [RequestStatus.EXECUTIVE_APPROVED, RequestStatus.EXECUTIVE_REJECTED] },
   ],
@@ -536,7 +544,7 @@ export const ROLE_BUCKETS: Partial<Record<UserRole, StageBucket[]>> = {
     { key: 'executive_voting', label: 'تصويت تنفيذي', statuses: [RequestStatus.WAITING_FOR_VOTING_OPEN, RequestStatus.EXECUTIVE_VOTING_OPEN, RequestStatus.EXECUTIVE_VOTING_CLOSED] },
     { key: 'fx_pending', label: 'تأكيد المصارفة', statuses: [RequestStatus.EXECUTIVE_APPROVED] },
     { key: 'rejected', label: 'مرفوض', statuses: [RequestStatus.BANK_REJECTED, RequestStatus.SUPPORT_REJECTED, RequestStatus.EXECUTIVE_REJECTED] },
-    { key: 'completed', label: 'مكتمل', statuses: [RequestStatus.CUSTOMS_DECLARATION_ISSUED, RequestStatus.COMPLETED] },
+    { key: 'completed', label: 'مكتمل', statuses: [RequestStatus.CUSTOMS_DECLARATION_ISSUED, RequestStatus.FX_CONFIRMATION_PENDING, RequestStatus.COMPLETED] },
   ],
 }
 

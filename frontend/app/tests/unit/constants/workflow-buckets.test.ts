@@ -99,11 +99,12 @@ describe('ROLE_BUCKETS', () => {
     expect(allStatuses).toContain(RequestStatus.SWIFT_UPLOADED)
     expect(allStatuses).toContain(RequestStatus.WAITING_FOR_VOTING_OPEN)
     expect(allStatuses).toContain(RequestStatus.CUSTOMS_DECLARATION_ISSUED)
+    expect(allStatuses).toContain(RequestStatus.FX_CONFIRMATION_PENDING)
     expect(allStatuses).toContain(RequestStatus.COMPLETED)
     expect(allStatuses).toContain(RequestStatus.EXECUTIVE_REJECTED)
     expect(allStatuses).toContain(RequestStatus.SUPPORT_REJECTED)
     expect(allStatuses).toContain(RequestStatus.BANK_REJECTED)
-    expect(allStatuses.length).toBe(9)
+    expect(allStatuses.length).toBe(10)
   })
 
   it('COMMITTEE_DIRECTOR buckets cover voting lifecycle, tie-break, and finalization states', () => {
@@ -112,6 +113,7 @@ describe('ROLE_BUCKETS', () => {
     expect(allStatuses).toContain(RequestStatus.EXECUTIVE_VOTING_CLOSED)
     expect(allStatuses).toContain(RequestStatus.EXECUTIVE_APPROVED)
     expect(allStatuses).toContain(RequestStatus.EXECUTIVE_REJECTED)
+    expect(allStatuses).toContain(RequestStatus.FX_CONFIRMATION_PENDING)
   })
 
   it('BANK_RETURNED is in BANK_REVIEWER bank_returned bucket', () => {
@@ -137,7 +139,7 @@ describe('ROLE_BUCKETS', () => {
     expect(keys).not.toContain('voting_stage')
   })
 
-  it('CBY_ADMIN buckets cover all 19 statuses across buckets', () => {
+  it('CBY_ADMIN buckets cover all non-bank-internal statuses across buckets', () => {
     const allStatuses = ROLE_BUCKETS[UserRole.CBY_ADMIN]!.flatMap(b => b.statuses)
     const allStatusValues = Object.values(RequestStatus)
     // DRAFT and DRAFT_REJECTED_INTERNAL are not included in CBY_ADMIN buckets

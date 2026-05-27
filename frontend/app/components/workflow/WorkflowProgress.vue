@@ -31,6 +31,7 @@ const RETURN_STATUSES: RequestStatus[] = [
 const TERMINAL_DONE: RequestStatus[] = [
   RequestStatus.COMPLETED,
   RequestStatus.CUSTOMS_DECLARATION_ISSUED,
+  RequestStatus.FX_CONFIRMATION_PENDING,
 ]
 
 const steps = computed(() => {

@@ -116,6 +116,7 @@ const TERMINAL_STATUSES = new Set([
   RequestStatus.SUPPORT_REJECTED,
   RequestStatus.EXECUTIVE_REJECTED,
   RequestStatus.CUSTOMS_DECLARATION_ISSUED,
+  RequestStatus.FX_CONFIRMATION_PENDING,
   RequestStatus.COMPLETED,
   RequestStatus.BANK_REJECTED,
 ])

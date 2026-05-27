@@ -59,6 +59,7 @@ function resolveBannerType(
     RequestStatus.EXECUTIVE_APPROVED,
     RequestStatus.EXECUTIVE_REJECTED,
     RequestStatus.CUSTOMS_DECLARATION_ISSUED,
+    RequestStatus.FX_CONFIRMATION_PENDING,
     RequestStatus.COMPLETED,
   ])
   if (lockedStatuses.has(req.status)) return 'locked'

@@ -120,7 +120,9 @@ const ACTION_LABELS: Record<string, string> = {
   VOTE_SUBMITTED: 'تسجيل تصويت',
   VOTING_SESSION_OPENED: 'فتح جلسة تصويت',
   VOTING_SESSION_CLOSED: 'إغلاق جلسة تصويت',
-  CUSTOMS_DECLARATION_ISSUED: 'إصدار بيان جمركي',
+  CUSTOMS_DECLARATION_ISSUED: 'إصدار تأكيد المصارفة الخارجية',
+  FX_CONFIRMATION_PENDING: 'بانتظار تأكيد المصارفة الخارجية',
+  FX_CONFIRMATION_COMPLETED: 'إتمام تأكيد المصارفة الخارجية',
 }
 
 function formatAction(action: string): string {

@@ -23,12 +23,13 @@ describe('RequestStatus', () => {
     'EXECUTIVE_APPROVED',
     'EXECUTIVE_REJECTED',
     'CUSTOMS_DECLARATION_ISSUED',
+    'FX_CONFIRMATION_PENDING',
     'COMPLETED',
   ]
 
-  it('has exactly 21 canonical status values', () => {
+  it('has exactly 22 canonical status values', () => {
     const values = Object.values(RequestStatus)
-    expect(values).toHaveLength(21)
+    expect(values).toHaveLength(22)
   })
 
   it.each(EXPECTED_STATUSES)('defines %s', (status) => {

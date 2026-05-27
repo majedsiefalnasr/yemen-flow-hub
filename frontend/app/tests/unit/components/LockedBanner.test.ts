@@ -77,6 +77,7 @@ const TERMINAL_STATUSES = new Set([
   RequestStatus.SUPPORT_REJECTED,
   RequestStatus.EXECUTIVE_REJECTED,
   RequestStatus.CUSTOMS_DECLARATION_ISSUED,
+  RequestStatus.FX_CONFIRMATION_PENDING,
   RequestStatus.COMPLETED,
   RequestStatus.BANK_REJECTED,
 ])
@@ -134,6 +135,10 @@ describe('LockedBanner — variant mapping from status', () => {
 
   it('CUSTOMS_DECLARATION_ISSUED → locked', () => {
     expect(lockedBannerVariant(UserRole.DATA_ENTRY, RequestStatus.CUSTOMS_DECLARATION_ISSUED)).toBe('locked')
+  })
+
+  it('FX_CONFIRMATION_PENDING → locked', () => {
+    expect(lockedBannerVariant(UserRole.DATA_ENTRY, RequestStatus.FX_CONFIRMATION_PENDING)).toBe('locked')
   })
 
   it('SUPPORT_REJECTED → locked', () => {

@@ -48,6 +48,7 @@ const LOCKED_STATUSES = new Set([
   RequestStatus.EXECUTIVE_APPROVED,
   RequestStatus.EXECUTIVE_REJECTED,
   RequestStatus.CUSTOMS_DECLARATION_ISSUED,
+  RequestStatus.FX_CONFIRMATION_PENDING,
   RequestStatus.COMPLETED,
 ])
 
