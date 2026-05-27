@@ -101,11 +101,18 @@ const showBankReviewerSupportRejectedActions = computed(() =>
 )
 
 const showDataEntryActions = computed(() =>
-  (props.userRole === UserRole.DATA_ENTRY || props.userRole === UserRole.BANK_ADMIN)
+  props.userRole === UserRole.DATA_ENTRY
   && (props.request.status === RequestStatus.DRAFT
     || props.request.status === RequestStatus.DRAFT_REJECTED_INTERNAL
     || props.request.status === RequestStatus.BANK_RETURNED
     || props.request.status === RequestStatus.SUPPORT_RETURNED),
+)
+
+// BANK_ADMIN: edit-only fallback for drafts they created; never sees BANK_RETURNED / SUPPORT_RETURNED actions
+const showBankAdminDraftActions = computed(() =>
+  props.userRole === UserRole.BANK_ADMIN
+  && (props.request.status === RequestStatus.DRAFT
+    || props.request.status === RequestStatus.DRAFT_REJECTED_INTERNAL),
 )
 
 const showSupportCommitteeActions = computed(() =>
@@ -140,6 +147,7 @@ const showAnyActions = computed(() =>
   showBankReviewerActions.value
   || showBankReviewerSupportRejectedActions.value
   || showDataEntryActions.value
+  || showBankAdminDraftActions.value
   || showSupportCommitteeActions.value
   || showDirectorVotingActions.value
   || showDirectorCustomsActions.value
@@ -686,6 +694,18 @@ async function dispatchAction(action: string, reason?: string) {
     <template v-if="showDataEntryActions && request.status === RequestStatus.SUPPORT_RETURNED">
       <NuxtLink :to="`/requests/${request.id}/edit`">
         <Button class="w-full">تعديل وإعادة تقديم</Button>
+      </NuxtLink>
+    </template>
+
+    <!-- BANK_ADMIN: DRAFT fallback — edit only, no submit -->
+    <template v-if="showBankAdminDraftActions && request.status === RequestStatus.DRAFT">
+      <NuxtLink :to="`/requests/${request.id}/edit`">
+        <Button class="w-full">تعديل المسودة</Button>
+      </NuxtLink>
+    </template>
+    <template v-if="showBankAdminDraftActions && request.status === RequestStatus.DRAFT_REJECTED_INTERNAL">
+      <NuxtLink :to="`/requests/${request.id}/edit`">
+        <Button class="w-full">تعديل المسودة</Button>
       </NuxtLink>
     </template>
 

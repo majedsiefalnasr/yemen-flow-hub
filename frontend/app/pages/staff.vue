@@ -340,6 +340,14 @@ const columns: ColumnDef<User>[] = [
     cell: ({ row }) => h('span', { class: 'text-sm text-muted-foreground' }, formatJoinDate(row.original.created_at)),
   },
   {
+    id: 'last_login',
+    header: 'آخر دخول',
+    cell: ({ row }) => {
+      const ts = row.original.last_login_at
+      return h('span', { class: 'text-xs text-muted-foreground' }, ts ? formatJoinDate(ts) : '—')
+    },
+  },
+  {
     id: 'actions',
     enableHiding: false,
     cell: ({ row }) => {

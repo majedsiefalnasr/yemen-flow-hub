@@ -9,6 +9,9 @@ export interface ProfileStats {
   approvals?: number
   returns?: number
   terminal_rejections?: number
+  // BANK_ADMIN-specific fields (optional — backend populates per role)
+  staff_managed?: number
+  merchants_managed?: number
 }
 
 export interface RecentActivity {

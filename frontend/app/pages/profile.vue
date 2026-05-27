@@ -44,6 +44,13 @@ const stats = computed(() => {
       { label: 'رفض نهائي', value: s.terminal_rejections ?? 0 },
     ]
   }
+  if (user.value?.role === UserRole.BANK_ADMIN) {
+    return [
+      { label: 'موظفون', value: s.staff_managed ?? s.total ?? 0 },
+      { label: 'تجار', value: s.merchants_managed ?? s.in_progress ?? 0 },
+      { label: 'مكتمل', value: s.completed ?? 0 },
+    ]
+  }
   return [
     { label: 'إجمالي الطلبات', value: s.total },
     { label: 'قيد المعالجة', value: s.in_progress },

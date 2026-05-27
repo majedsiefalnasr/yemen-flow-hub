@@ -127,6 +127,7 @@ const stats = computed(() => ({
   total: scoped.value.length,
   active: scoped.value.filter(m => m.is_active).length,
   suspended: scoped.value.filter(m => !m.is_active).length,
+  incomplete: scoped.value.filter(m => !m.commercial_register || !m.tax_number).length,
 }))
 
 function merchantToForm(m: Merchant): MerchantFormData {
@@ -316,7 +317,7 @@ const table = useVueTable({
     </PageHeader>
 
     <!-- KPI Cards -->
-    <div class="mb-6 grid grid-cols-3 gap-3">
+    <div class="mb-6 grid grid-cols-4 max-lg:grid-cols-2 gap-3">
       <Card class="border-0 p-4 shadow">
         <div class="grid h-9 w-9 place-items-center rounded-lg bg-primary/10 text-primary">
           <Building2 class="h-4 w-4" />
@@ -325,18 +326,25 @@ const table = useVueTable({
         <div class="text-xs text-muted-foreground">إجمالي</div>
       </Card>
       <Card class="border-0 p-4 shadow">
-        <div class="grid h-9 w-9 place-items-center rounded-lg bg-green-50/10 text-green-700">
+        <div class="grid h-9 w-9 place-items-center rounded-lg bg-[var(--severity-green)]/10 text-[var(--severity-green)]">
           <Building2 class="h-4 w-4" />
         </div>
         <div class="mt-2 text-2xl font-bold tabular-nums">{{ stats.active }}</div>
         <div class="text-xs text-muted-foreground">نشط</div>
       </Card>
       <Card class="border-0 p-4 shadow">
-        <div class="grid h-9 w-9 place-items-center rounded-lg bg-red-700/10 text-red-700">
+        <div class="grid h-9 w-9 place-items-center rounded-lg bg-[var(--severity-red)]/10 text-[var(--severity-red)]">
           <Building2 class="h-4 w-4" />
         </div>
         <div class="mt-2 text-2xl font-bold tabular-nums">{{ stats.suspended }}</div>
         <div class="text-xs text-muted-foreground">موقوف</div>
+      </Card>
+      <Card class="border-0 p-4 shadow">
+        <div class="grid h-9 w-9 place-items-center rounded-lg bg-[var(--severity-amber)]/10 text-[var(--severity-amber)]">
+          <Building2 class="h-4 w-4" />
+        </div>
+        <div class="mt-2 text-2xl font-bold tabular-nums">{{ stats.incomplete }}</div>
+        <div class="text-xs text-muted-foreground">سجلات ناقصة</div>
       </Card>
     </div>
 
