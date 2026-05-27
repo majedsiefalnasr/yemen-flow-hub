@@ -51,7 +51,7 @@ const id = Number(Array.isArray(rawId) ? rawId[0] : rawId)
 
 const votingStore = useVotingStore()
 
-type TabKey = 'overview' | 'documents' | 'parties' | 'fx_confirmation'
+type TabKey = 'overview' | 'documents' | 'parties' | 'activity_log' | 'fx_confirmation'
 const activeTab = ref<TabKey>('overview')
 
 const VOTING_STAGE_STATUSES = new Set([
@@ -94,6 +94,7 @@ const tabs = computed((): Array<{ key: TabKey; label: string }> => {
     { key: 'overview', label: 'المعلومات' },
     { key: 'documents', label: 'الوثائق' },
     { key: 'parties', label: 'الأطراف' },
+    { key: 'activity_log', label: 'سجل الأحداث' },
   ]
   if (showDirectorFxTab.value) {
     base.push({ key: 'fx_confirmation', label: 'تأكيد المصارفة' })
@@ -579,7 +580,7 @@ async function onTabChange(key: TabKey) {
   if (key === 'documents' && !requestsStore.documentsLoaded && !requestsStore.loadingDocuments) {
     await requestsStore.loadDocuments(id)
   }
-  if (key === 'parties' && !requestsStore.historyLoaded && !requestsStore.loadingHistory) {
+  if ((key === 'parties' || key === 'activity_log') && !requestsStore.historyLoaded && !requestsStore.loadingHistory) {
     await requestsStore.loadHistory(id)
   }
 }
@@ -591,7 +592,7 @@ async function onActionCompleted() {
   if (activeTab.value === 'documents') {
     await requestsStore.loadDocuments(id)
   }
-  if (activeTab.value === 'parties') {
+  if (activeTab.value === 'parties' || activeTab.value === 'activity_log') {
     await requestsStore.loadHistory(id)
   }
   if (showVotingPanelInline.value || votingStore.votingDetail) {
@@ -1419,6 +1420,10 @@ async function handleCloneConfirm() {
                 />
               </div>
 
+            </section>
+
+            <!-- Activity log tab -->
+            <section v-else-if="activeTab === 'activity_log'" class="tab-panel" role="tabpanel" aria-label="سجل الأحداث">
               <div id="audit-trail" class="card">
                 <h2 class="card-title">سجل الأحداث</h2>
 
