@@ -71,7 +71,7 @@ Build a CBY-global voting workspace where each executive member can see active s
 - [x] Notifications include new voting session, delayed vote reminder, session closed, final decision, high-value alert.
 - [x] Exclude claim, SWIFT, FX completion, and bank-side operational noise.
 - [x] Settings default voting notifications on and elevate MFA.
-- [ ] Profile stats include sessions participated, average time-to-vote, and approval percentage.
+- [x] Profile stats include sessions participated, average time-to-vote, and approval percentage.
 
 ### 6. Backend And Data Readiness
 
