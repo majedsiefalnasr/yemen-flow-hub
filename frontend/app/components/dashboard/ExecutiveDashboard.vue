@@ -2,13 +2,14 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { AlertTriangle, CheckCircle2, FileCheck2, Scale, Vote, XCircle } from 'lucide-vue-next'
+import { AlertTriangle, CheckCircle2, FileCheck2, Globe, Scale, Vote, XCircle } from 'lucide-vue-next'
 import { useDashboardStore } from '../../stores/dashboard.store'
 import { useAuthStore } from '../../stores/auth.store'
 import { RequestStatus, UserRole } from '../../types/enums'
 import type { ExecutiveDashboardStats, VotingQueueItem } from '../../composables/useDashboard'
 import type { ImportRequest } from '../../types/models'
 import StatusBadge from '../shared/StatusBadge.vue'
+import { Badge } from '../ui/badge'
 
 const router = useRouter()
 const store = useDashboardStore()
@@ -63,6 +64,15 @@ onMounted(() => { store.loadStats() })
 
 <template>
   <div class="flex flex-col gap-6" dir="rtl">
+
+    <!-- CBY-global scope chip -->
+    <div class="mb-2">
+      <Badge variant="outline" class="gap-1.5 rounded-full px-3 py-1 text-xs font-medium text-muted-foreground border-border">
+        <Globe class="size-3" aria-hidden="true" />
+        نطاق عبر البنوك
+      </Badge>
+    </div>
+
     <div v-if="store.loading" class="space-y-4" aria-busy="true">
       <div class="grid grid-cols-3 gap-4 max-lg:grid-cols-2 max-md:grid-cols-1">
         <div v-for="n in (isDirector ? 4 : 3)" :key="n" class="h-24 animate-pulse rounded-xl border border-border bg-muted" />
