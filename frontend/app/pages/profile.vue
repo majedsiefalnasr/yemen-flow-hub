@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, onMounted, watch } from 'vue'
 import PageHeader from '@/components/layout/PageHeader.vue'
-import { Activity, BadgeCheck, Building2, KeyRound, Mail, Phone, Save, Shield } from 'lucide-vue-next'
+import { Activity, AlertTriangle, BadgeCheck, Building2, KeyRound, Mail, Phone, Save, Shield } from 'lucide-vue-next'
 import { Card, CardContent } from '@/components/ui/card'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
@@ -89,6 +89,11 @@ async function saveProfile() {
 function requestPasswordReset() {
   notify('سيتم إرسال رابط إعادة التعيين إلى بريدك')
 }
+
+// Executive Member: surface MFA enrollment prompt prominently when MFA not yet enabled
+const showMfaEnrollmentPrompt = computed(() =>
+  user.value?.role === UserRole.EXECUTIVE_MEMBER && !user.value?.mfa_enabled,
+)
 
 function requestMfaActivation() {
   notify('تم إرسال طلب تفعيل المصادقة الثنائية')
@@ -214,6 +219,33 @@ function userInitials(n?: string) {
               disabled
               class="font-mono text-xs"
             />
+          </div>
+        </div>
+
+        <!-- Executive Member: prominent MFA enrollment prompt when MFA not enabled -->
+        <div
+          v-if="showMfaEnrollmentPrompt"
+          class="flex items-start gap-3 rounded-md border border-[var(--severity-amber)]/50 bg-[var(--severity-amber)]/8 p-4"
+          role="alert"
+          data-testid="mfa-enrollment-prompt"
+        >
+          <AlertTriangle class="mt-0.5 h-5 w-5 flex-shrink-0 text-[var(--severity-amber)]" aria-hidden="true" />
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-semibold text-[var(--severity-amber)]">
+              المصادقة الثنائية غير مفعّلة
+            </p>
+            <p class="mt-1 text-xs text-foreground leading-relaxed">
+              كعضو في اللجنة التنفيذية، يُلزمك النظام بتفعيل المصادقة الثنائية (MFA) لحماية جلسات التصويت.
+              لن تتمكن من التصويت في الجلسات القادمة حتى تُفعّل هذه الميزة.
+            </p>
+            <Button
+              size="sm"
+              class="mt-2 bg-[var(--severity-amber)] text-white hover:bg-[var(--severity-amber)]/90"
+              @click="requestMfaActivation"
+            >
+              <Shield class="ms-1 h-4 w-4" />
+              تفعيل المصادقة الثنائية الآن
+            </Button>
           </div>
         </div>
 

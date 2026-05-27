@@ -314,6 +314,54 @@ const columns: ColumnDef<ImportRequest>[] = [
     },
   },
   {
+    id: 'director_ready_to_close',
+    header: 'جاهز للإغلاق',
+    cell: ({ row }) => {
+      if (props.role !== UserRole.COMMITTEE_DIRECTOR) return h('span', { class: 'text-xs text-muted-foreground' }, '—')
+      const request = row.original
+      if (request.status !== RequestStatus.EXECUTIVE_VOTING_OPEN) return h('span', { class: 'text-xs text-muted-foreground' }, '—')
+      if (request.ready_to_close) {
+        return h('span', {
+          class: 'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium border',
+          style: { color: 'var(--severity-green)', backgroundColor: 'color-mix(in srgb, var(--severity-green) 10%, transparent)', borderColor: 'color-mix(in srgb, var(--severity-green) 30%, transparent)' },
+        }, [h(Vote, { class: 'size-3' }), 'جاهز'])
+      }
+      const cast = request.votes_cast ?? 0
+      const total = request.total_voters ?? 0
+      return h('span', {
+        class: 'text-xs text-muted-foreground',
+      }, total > 0 ? `${cast}/${total} أصوات` : 'قيد التصويت')
+    },
+  },
+  {
+    id: 'director_fx_state',
+    header: 'حالة المصارفة',
+    cell: ({ row }) => {
+      if (props.role !== UserRole.COMMITTEE_DIRECTOR) return h('span', { class: 'text-xs text-muted-foreground' }, '—')
+      const request = row.original
+      if (request.status === RequestStatus.FX_CONFIRMATION_PENDING) {
+        const hasFx = request.has_fx_request_document === true
+        if (hasFx) {
+          return h('span', {
+            class: 'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium border',
+            style: { color: 'var(--severity-green)', backgroundColor: 'color-mix(in srgb, var(--severity-green) 10%, transparent)', borderColor: 'color-mix(in srgb, var(--severity-green) 30%, transparent)' },
+          }, 'مرفوع')
+        }
+        return h('span', {
+          class: 'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium border',
+          style: { color: 'var(--severity-amber)', backgroundColor: 'color-mix(in srgb, var(--severity-amber) 10%, transparent)', borderColor: 'color-mix(in srgb, var(--severity-amber) 30%, transparent)' },
+        }, [h(Clock, { class: 'size-3' }), 'انتظار رفع'])
+      }
+      if (request.status === RequestStatus.CUSTOMS_DECLARATION_ISSUED || request.status === RequestStatus.COMPLETED) {
+        return h('span', {
+          class: 'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium border',
+          style: { color: 'var(--severity-green)', backgroundColor: 'color-mix(in srgb, var(--severity-green) 10%, transparent)', borderColor: 'color-mix(in srgb, var(--severity-green) 30%, transparent)' },
+        }, 'مكتمل')
+      }
+      return h('span', { class: 'text-xs text-muted-foreground' }, '—')
+    },
+  },
+  {
     id: 'swift_documents',
     header: 'المستندات',
     cell: ({ row }) => {

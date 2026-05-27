@@ -1431,6 +1431,79 @@ async function handleCloneConfirm() {
               <div class="card space-y-4">
                 <h2 class="card-title">تأكيد المصارفة الخارجية</h2>
 
+                <!-- FX lifecycle mini-strip -->
+                <ol
+                  class="flex items-center gap-0 rounded-lg border border-border overflow-hidden text-xs"
+                  aria-label="مراحل تأكيد المصارفة"
+                  data-testid="fx-lifecycle-strip"
+                >
+                  <!-- Step 1: Template generated (always true once tab is visible) -->
+                  <li class="flex flex-1 items-center gap-1.5 px-3 py-2 bg-[var(--severity-green)]/8 text-[var(--severity-green)]">
+                    <span class="h-4 w-4 flex-shrink-0 rounded-full bg-[var(--severity-green)] flex items-center justify-center text-white text-[10px] font-bold leading-none">1</span>
+                    <span class="font-medium">تم إنشاء النموذج</span>
+                  </li>
+                  <span class="h-6 w-px bg-border flex-shrink-0" aria-hidden="true" />
+
+                  <!-- Step 2: Template downloaded (fxTemplateChecksum set) -->
+                  <li
+                    class="flex flex-1 items-center gap-1.5 px-3 py-2"
+                    :class="fxTemplateChecksum
+                      ? 'bg-[var(--severity-green)]/8 text-[var(--severity-green)]'
+                      : 'bg-muted text-muted-foreground'"
+                  >
+                    <span
+                      class="h-4 w-4 flex-shrink-0 rounded-full flex items-center justify-center text-[10px] font-bold leading-none"
+                      :class="fxTemplateChecksum ? 'bg-[var(--severity-green)] text-white' : 'bg-muted-foreground/30 text-muted-foreground'"
+                    >2</span>
+                    <span class="font-medium">تم التنزيل</span>
+                  </li>
+                  <span class="h-6 w-px bg-border flex-shrink-0" aria-hidden="true" />
+
+                  <!-- Step 3: Signed externally (implicit — no backend signal, shown pending) -->
+                  <li
+                    class="flex flex-1 items-center gap-1.5 px-3 py-2"
+                    :class="(fxSignedFile || request?.has_fx_request_document)
+                      ? 'bg-[var(--severity-green)]/8 text-[var(--severity-green)]'
+                      : 'bg-muted text-muted-foreground'"
+                  >
+                    <span
+                      class="h-4 w-4 flex-shrink-0 rounded-full flex items-center justify-center text-[10px] font-bold leading-none"
+                      :class="(fxSignedFile || request?.has_fx_request_document) ? 'bg-[var(--severity-green)] text-white' : 'bg-muted-foreground/30 text-muted-foreground'"
+                    >3</span>
+                    <span class="font-medium">التوقيع الخارجي</span>
+                  </li>
+                  <span class="h-6 w-px bg-border flex-shrink-0" aria-hidden="true" />
+
+                  <!-- Step 4: Signed PDF uploaded (has_fx_request_document) -->
+                  <li
+                    class="flex flex-1 items-center gap-1.5 px-3 py-2"
+                    :class="request?.has_fx_request_document
+                      ? 'bg-[var(--severity-green)]/8 text-[var(--severity-green)]'
+                      : 'bg-muted text-muted-foreground'"
+                  >
+                    <span
+                      class="h-4 w-4 flex-shrink-0 rounded-full flex items-center justify-center text-[10px] font-bold leading-none"
+                      :class="request?.has_fx_request_document ? 'bg-[var(--severity-green)] text-white' : 'bg-muted-foreground/30 text-muted-foreground'"
+                    >4</span>
+                    <span class="font-medium">رُفع الموقّع</span>
+                  </li>
+                  <span class="h-6 w-px bg-border flex-shrink-0" aria-hidden="true" />
+
+                  <!-- Step 5: Completed -->
+                  <li
+                    class="flex flex-1 items-center gap-1.5 px-3 py-2"
+                    :class="(request?.status === RequestStatus.CUSTOMS_DECLARATION_ISSUED || request?.status === RequestStatus.COMPLETED)
+                      ? 'bg-[var(--severity-green)]/8 text-[var(--severity-green)]'
+                      : 'bg-muted text-muted-foreground'"
+                  >
+                    <span
+                      class="h-4 w-4 flex-shrink-0 rounded-full flex items-center justify-center text-[10px] font-bold leading-none"
+                      :class="(request?.status === RequestStatus.CUSTOMS_DECLARATION_ISSUED || request?.status === RequestStatus.COMPLETED) ? 'bg-[var(--severity-green)] text-white' : 'bg-muted-foreground/30 text-muted-foreground'"
+                    >5</span>
+                    <span class="font-medium">مكتمل</span>
+                  </li>
+                </ol>
+
                 <div class="rounded-lg border border-border p-3 space-y-2">
                   <p class="text-sm font-semibold">الخطوة 1 — تحميل نموذج التأكيد</p>
                   <p class="text-xs text-muted-foreground">قم بتنزيل النموذج النظامي المولّد للطلب الحالي.</p>

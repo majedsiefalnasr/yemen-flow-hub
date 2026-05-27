@@ -89,6 +89,13 @@ const hidableColumns = computed(() => {
       { id: 'cby_risk', label: 'المخاطر' },
     ]
   }
+  if (isDirector.value) {
+    return [
+      ...base,
+      { id: 'director_ready_to_close', label: 'جاهز للإغلاق' },
+      { id: 'director_fx_state', label: 'حالة المصارفة' },
+    ]
+  }
   return base
 })
 
@@ -195,6 +202,11 @@ const filteredRequests = computed(() => {
     const createdByMeMatches = !createdByMeOnly.value
       || req.created_by === user.value?.id
 
+    // Support Committee: hide requests already claimed by someone else
+    const hideOthersMatches = !hideOthers.value
+      || !req.is_claimed
+      || req.is_claimed_by_me === true
+
     // CBY Admin advanced filters
     let advBankMatches = true
     let advStageMatches = true
@@ -228,7 +240,7 @@ const filteredRequests = computed(() => {
       }
     }
 
-    return bucketMatches && bankMatches && queryMatches && createdByMeMatches
+    return bucketMatches && bankMatches && queryMatches && createdByMeMatches && hideOthersMatches
       && advBankMatches && advStageMatches && advSlaMatches && advVotingMatches && advFxMatches && advHighValueMatches
   })
 })
@@ -252,6 +264,10 @@ const canCreateRequest = computed(() => user.value?.role === UserRole.DATA_ENTRY
 const isCbyAdmin = computed(() => user.value?.role === UserRole.CBY_ADMIN)
 const isDirector = computed(() => user.value?.role === UserRole.COMMITTEE_DIRECTOR)
 const isBankAdmin = computed(() => user.value?.role === UserRole.BANK_ADMIN)
+const isSupportCommittee = computed(() => user.value?.role === UserRole.SUPPORT_COMMITTEE)
+
+// Support Committee: hide-claimed-by-others toggle — persisted via ?hide_others=1
+const hideOthers = ref(false)
 
 const cbySmartSummary = computed(() => {
   if (!isCbyAdmin.value) return []
@@ -364,6 +380,18 @@ watch(createdByMeOnly, (val) => {
   if (val) nextQuery.my = '1'
   else delete nextQuery.my
   if ((route.query.my === '1') === val) return
+  router.replace({ query: nextQuery })
+})
+
+// Sync hide-others toggle (Support Committee) with ?hide_others=1 query param
+watch(() => route.query.hide_others, (val) => {
+  hideOthers.value = val === '1'
+}, { immediate: true })
+watch(hideOthers, (val) => {
+  const nextQuery = { ...route.query }
+  if (val) nextQuery.hide_others = '1'
+  else delete nextQuery.hide_others
+  if ((route.query.hide_others === '1') === val) return
   router.replace({ query: nextQuery })
 })
 </script>
@@ -541,6 +569,20 @@ watch(createdByMeOnly, (val) => {
         >
           <User class="h-4 w-4" />
           <span class="hidden lg:inline">طلباتي فقط</span>
+        </Button>
+
+        <!-- SUPPORT_COMMITTEE: Hide-claimed-by-others toggle -->
+        <Button
+          v-if="isSupportCommittee"
+          :variant="hideOthers ? 'default' : 'outline'"
+          size="sm"
+          class="h-8 gap-1.5"
+          :aria-pressed="hideOthers"
+          data-testid="hide-others-toggle"
+          @click="hideOthers = !hideOthers"
+        >
+          <User class="h-4 w-4" />
+          <span class="hidden lg:inline">إخفاء المحجوزة</span>
         </Button>
 
         <!-- CBY Admin: advanced filters -->
