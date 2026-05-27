@@ -75,6 +75,14 @@ const isSegregationBlocked = computed(() =>
   && !!auth.user
   && request.value.created_by === auth.user.id,
 )
+
+// BANK_REVIEWER sees a dedicated follow-up banner when support has rejected the request
+const showBankReviewerSupportRejectedBanner = computed(() =>
+  userRole.value === UserRole.BANK_REVIEWER
+  && !isSegregationBlocked.value
+  && request.value?.status === RequestStatus.SUPPORT_REJECTED,
+)
+
 const DRAFT_EDITOR_ROLES = new Set([UserRole.DATA_ENTRY, UserRole.BANK_ADMIN])
 
 // VotingPanel is shown inline above tabs for executive/director roles in voting stages
@@ -148,6 +156,8 @@ const lockedBannerVariant = computed((): LockedBannerVariant | null => {
   if (!request.value) return null
   const s = request.value.status
   if (s === RequestStatus.BANK_REJECTED) return 'bank_rejected'
+  // BANK_REVIEWER handles SUPPORT_REJECTED via dedicated follow-up panel — not a locked state for them
+  if (userRole.value === UserRole.BANK_REVIEWER && s === RequestStatus.SUPPORT_REJECTED) return null
   if (TERMINAL_STATUSES.has(s)) return 'locked'
   if (userRole.value === UserRole.BANK_REVIEWER && ACTIONABLE_REVIEWER_STATUSES.has(s)) return null
   // Executive roles viewing voting stages have full access — no banner
@@ -333,7 +343,7 @@ const hasActions = computed(() => {
   const bankReviewerAction
     = role === UserRole.BANK_REVIEWER
     && !isSegregationBlocked.value
-    && (s === RequestStatus.SUBMITTED || s === RequestStatus.BANK_REVIEW)
+    && (s === RequestStatus.SUBMITTED || s === RequestStatus.BANK_REVIEW || s === RequestStatus.SUPPORT_REJECTED)
   const dataEntryAction
     = DRAFT_EDITOR_ROLES.has(role)
     && (s === RequestStatus.DRAFT || s === RequestStatus.DRAFT_REJECTED_INTERNAL || s === RequestStatus.BANK_RETURNED || s === RequestStatus.SUPPORT_RETURNED)
@@ -943,6 +953,23 @@ async function handleCloneConfirm() {
             </svg>
             تعديل
           </Button>
+          <!-- Audit snapshot link navigates to activity log tab -->
+          <Button
+            variant="ghost"
+            size="sm"
+            data-testid="header-audit-link-btn"
+            aria-label="انتقل إلى سجل الأحداث"
+            @click="onTabChange('activity_log')"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" class="me-1.5">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+              <line x1="16" y1="13" x2="8" y2="13" />
+              <line x1="16" y1="17" x2="8" y2="17" />
+              <polyline points="10 9 9 9 8 9" />
+            </svg>
+            سجل الأحداث
+          </Button>
           <StatusBadge :status="request.status" :role="userRole" />
         </div>
       </div>
@@ -953,7 +980,7 @@ async function handleCloneConfirm() {
         <div class="detail-main">
           <!-- Banners -->
           <div
-            v-if="showDirectorVotingActiveBanner || showDirectorReadyToCloseBanner || showDirectorTieBreakBanner || showDirectorReadyToFinalizeBanner || showDirectorFxReadyBanner || showSwiftPreApprovalLockedBanner || showSwiftAwaitingEnableBanner || showSwiftReadyBanner || showSwiftCompletedBanner || isSegregationBlocked || claimError || showActiveReviewBanner || showClaimedByOthersBanner || showUnclaimedBanner || showVotingPendingBanner || showVotedConfirmationBanner || isLocked || isReturnedForCorrection || isBankReturned || isSupportReturned"
+            v-if="showDirectorVotingActiveBanner || showDirectorReadyToCloseBanner || showDirectorTieBreakBanner || showDirectorReadyToFinalizeBanner || showDirectorFxReadyBanner || showSwiftPreApprovalLockedBanner || showSwiftAwaitingEnableBanner || showSwiftReadyBanner || showSwiftCompletedBanner || isSegregationBlocked || claimError || showActiveReviewBanner || showClaimedByOthersBanner || showUnclaimedBanner || showVotingPendingBanner || showVotedConfirmationBanner || showBankReviewerSupportRejectedBanner || isLocked || isReturnedForCorrection || isBankReturned || isSupportReturned"
             class="banner-area"
           >
             <div
@@ -1052,6 +1079,23 @@ async function handleCloneConfirm() {
               :vote="votingStore.votingDetail!.my_vote!.vote === VoteType.APPROVE ? 'approve' : 'reject'"
               :voted-at="votingStore.votingDetail?.my_vote?.voted_at"
             />
+            <!-- BANK_REVIEWER: support has rejected this request — follow-up decision required -->
+            <div
+              v-else-if="showBankReviewerSupportRejectedBanner"
+              class="rounded-lg border border-s-4 border-s-[var(--severity-amber)] bg-[var(--severity-amber)]/5 px-4 py-3 flex items-start gap-3"
+              role="alert"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="flex-shrink-0 text-[var(--severity-amber)] mt-0.5" aria-hidden="true">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                <line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
+              </svg>
+              <div class="flex-1 min-w-0">
+                <p class="font-semibold text-sm text-foreground">رُفض الطلب من لجنة المساندة</p>
+                <p class="text-xs text-muted-foreground mt-0.5">
+                  يجب اتخاذ قرار: إبقاء الرفض نهائياً أو إعادة الطلب للمدخل للتعديل وإعادة التقديم.
+                </p>
+              </div>
+            </div>
             <LockedBanner
               v-else-if="isLocked && lockedBannerVariant"
               :variant="lockedBannerVariant"

@@ -283,6 +283,48 @@ export const useRequestsStore = defineStore('requests', {
       }
     },
 
+    async bankReturnAfterSupportReject(id: number, reason?: string): Promise<void> {
+      if (this.performingAction) throw new Error('إجراء قيد التنفيذ بالفعل')
+      this.performingAction = true
+      this.error = null
+
+      try {
+        const { bankReturnAfterSupportReject } = useRequests()
+        this.currentRequest = await bankReturnAfterSupportReject(id, reason)
+      }
+      catch (err) {
+        if (import.meta.dev) {
+          console.error('[requests.store] bankReturnAfterSupportReject failed:', err)
+        }
+        this.error = 'تعذّر إعادة الطلب للمدخل.'
+        throw err
+      }
+      finally {
+        this.performingAction = false
+      }
+    },
+
+    async bankFinalizeRejection(id: number): Promise<void> {
+      if (this.performingAction) throw new Error('إجراء قيد التنفيذ بالفعل')
+      this.performingAction = true
+      this.error = null
+
+      try {
+        const { bankFinalizeRejection } = useRequests()
+        this.currentRequest = await bankFinalizeRejection(id)
+      }
+      catch (err) {
+        if (import.meta.dev) {
+          console.error('[requests.store] bankFinalizeRejection failed:', err)
+        }
+        this.error = 'تعذّر إتمام الرفض النهائي.'
+        throw err
+      }
+      finally {
+        this.performingAction = false
+      }
+    },
+
     async issueCustomsDeclaration(id: number): Promise<void> {
       if (this.issuingCustoms) throw new Error('إصدار البيان الجمركي قيد التنفيذ بالفعل')
       this.issuingCustoms = true

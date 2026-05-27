@@ -16,6 +16,17 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '../ui/dialog'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '../ui/alert-dialog'
 
 const props = defineProps<{
   request: ImportRequest
@@ -46,6 +57,14 @@ const showSupportReturnModal = ref(false)
 const supportReturnComment = ref('')
 const supportReturnCommentError = ref('')
 
+// Approve dialog state
+const showApproveModal = ref(false)
+const approveNote = ref('')
+
+// SUPPORT_REJECTED follow-up state
+const showSupportRejectedReturnModal = ref(false)
+const supportRejectedReturnReason = ref('')
+
 // Director session lifecycle state
 const showCloseConfirm = ref(false)
 const showOverrideModal = ref(false)
@@ -62,6 +81,10 @@ watch(() => props.request.status, () => {
   resetBankRejectTerminalModal()
   resetSupportReturnModal()
   resetDirectorState()
+  showApproveModal.value = false
+  approveNote.value = ''
+  showSupportRejectedReturnModal.value = false
+  supportRejectedReturnReason.value = ''
 })
 
 const performingAction = computed(() => requestsStore.performingAction)
@@ -70,6 +93,11 @@ const performingAction = computed(() => requestsStore.performingAction)
 const showBankReviewerActions = computed(() =>
   props.userRole === UserRole.BANK_REVIEWER
   && (props.request.status === RequestStatus.SUBMITTED || props.request.status === RequestStatus.BANK_REVIEW),
+)
+
+const showBankReviewerSupportRejectedActions = computed(() =>
+  props.userRole === UserRole.BANK_REVIEWER
+  && props.request.status === RequestStatus.SUPPORT_REJECTED,
 )
 
 const showDataEntryActions = computed(() =>
@@ -110,6 +138,7 @@ const showDirectorCustomsActions = computed(() =>
 
 const showAnyActions = computed(() =>
   showBankReviewerActions.value
+  || showBankReviewerSupportRejectedActions.value
   || showDataEntryActions.value
   || showSupportCommitteeActions.value
   || showDirectorVotingActions.value
@@ -136,8 +165,8 @@ function resetBankRejectTerminalModal() {
 
 async function handleBankRejectTerminalConfirm() {
   bankRejectTerminalCommentError.value = ''
-  if (bankRejectTerminalComment.value.trim().length < 3) {
-    bankRejectTerminalCommentError.value = 'سبب الرفض مطلوب ويجب أن يكون 3 أحرف على الأقل.'
+  if (bankRejectTerminalComment.value.trim().length < 20) {
+    bankRejectTerminalCommentError.value = 'سبب الرفض النهائي مطلوب ويجب أن يكون 20 حرفاً على الأقل.'
     return
   }
   actionError.value = ''
@@ -276,12 +305,43 @@ async function handleIssueCustomsDeclaration() {
   }
 }
 
-async function handleBeginReview() {
-  await dispatchAction('bank-review')
+async function handleApproveConfirm() {
+  const note = approveNote.value.trim()
+  await dispatchAction('bank-approve', note || undefined)
+  showApproveModal.value = false
+  approveNote.value = ''
 }
 
-async function handleApprove() {
-  await dispatchAction('bank-approve')
+async function handleFinalizeRejection() {
+  actionError.value = ''
+  try {
+    await requestsStore.bankFinalizeRejection(props.request.id)
+    emit('action-completed')
+  }
+  catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : ''
+    actionError.value = msg || 'تعذّر إتمام الرفض النهائي.'
+  }
+}
+
+async function handleSupportRejectedReturnConfirm() {
+  actionError.value = ''
+  try {
+    const reason = supportRejectedReturnReason.value.trim()
+    await requestsStore.bankReturnAfterSupportReject(props.request.id, reason || undefined)
+    showSupportRejectedReturnModal.value = false
+    supportRejectedReturnReason.value = ''
+    emit('action-completed')
+  }
+  catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : ''
+    actionError.value = msg || 'تعذّر إعادة الطلب للمدخل.'
+    showSupportRejectedReturnModal.value = false
+  }
+}
+
+async function handleBeginReview() {
+  await dispatchAction('bank-review')
 }
 
 async function handleSupportApprove() {
@@ -337,18 +397,50 @@ async function dispatchAction(action: string, reason?: string) {
       </Button>
     </template>
 
-    <!-- BANK_REVIEWER: BANK_REVIEW → approve, terminal reject, or return to intake -->
+    <!-- BANK_REVIEWER: BANK_REVIEW → approve (with dialog), terminal reject, or return to intake -->
     <template v-if="showBankReviewerActions && request.status === RequestStatus.BANK_REVIEW">
       <div class="flex gap-3 flex-row-reverse">
-        <Button
-          class="flex-1 bg-green-50 hover:bg-green-50"
-          :disabled="performingAction"
-          @click="handleApprove"
-        >
-          <Loader2 v-if="performingAction" class="h-4 w-4 me-2 animate-spin" />
-          {{ performingAction ? 'جارٍ التنفيذ…' : 'اعتماد' }}
-        </Button>
+        <!-- Approve: confirmation dialog with optional note -->
+        <Dialog v-model:open="showApproveModal">
+          <DialogTrigger as-child>
+            <Button
+              class="flex-1 bg-[var(--severity-green)]/10 text-[var(--severity-green)] hover:bg-[var(--severity-green)]/20 border border-[var(--severity-green)]/30"
+              :disabled="performingAction"
+            >
+              اعتماد
+            </Button>
+          </DialogTrigger>
+          <DialogContent class="max-w-md">
+            <DialogHeader>
+              <DialogTitle>تأكيد اعتماد الطلب</DialogTitle>
+              <DialogDescription>
+                الطلب: {{ request.reference_number }}
+              </DialogDescription>
+            </DialogHeader>
+            <div>
+              <label for="approve-note" class="text-sm font-medium">ملاحظة (اختياري)</label>
+              <Textarea
+                id="approve-note"
+                v-model="approveNote"
+                placeholder="أضف ملاحظة تُسجَّل في سجل الأحداث…"
+                class="mt-2 min-h-20"
+              />
+            </div>
+            <div class="flex gap-2 justify-end">
+              <Button variant="outline" @click="showApproveModal = false; approveNote = ''">إلغاء</Button>
+              <Button
+                class="bg-[var(--severity-green)] text-white hover:bg-[var(--severity-green)]/90"
+                :disabled="performingAction"
+                @click="handleApproveConfirm"
+              >
+                <Loader2 v-if="performingAction" class="h-4 w-4 me-2 animate-spin" />
+                {{ performingAction ? 'جارٍ التنفيذ…' : 'تأكيد الاعتماد' }}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
 
+        <!-- Terminal reject: destructive dialog with irreversible warning -->
         <Dialog v-model:open="showBankRejectTerminalModal">
           <DialogTrigger as-child>
             <Button
@@ -361,43 +453,38 @@ async function dispatchAction(action: string, reason?: string) {
           </DialogTrigger>
           <DialogContent class="max-w-md">
             <DialogHeader>
-              <DialogTitle class="text-red-700">تأكيد الرفض النهائي</DialogTitle>
-              <DialogDescription class="text-red-700">
-                تحذير: هذا الإجراء نهائي ولا يمكن التراجع عنه.
+              <DialogTitle class="text-destructive">رفض الطلب نهائياً</DialogTitle>
+              <DialogDescription class="text-destructive/80">
+                تحذير: هذا الإجراء لا يمكن التراجع عنه. بعد الرفض النهائي لن يتمكن أي طرف من استئناف الطلب أو إعادة تقديمه.
               </DialogDescription>
             </DialogHeader>
 
             <div class="space-y-4">
               <div>
                 <label for="bank-reject-terminal-comment" class="text-sm font-medium">
-                  سبب الرفض <span class="text-red-700">*</span>
+                  سبب الرفض النهائي <span class="text-destructive">*</span>
                 </label>
                 <Textarea
                   id="bank-reject-terminal-comment"
                   v-model="bankRejectTerminalComment"
-                  placeholder="اكتب سبب الرفض النهائي هنا…"
+                  placeholder="اكتب سبب الرفض النهائي هنا (20 حرفاً على الأقل)…"
                   class="mt-2 min-h-24"
                   :aria-invalid="!!bankRejectTerminalCommentError"
                 />
-                <p v-if="bankRejectTerminalCommentError" class="text-xs text-red-700 mt-1">
+                <p v-if="bankRejectTerminalCommentError" class="text-xs text-destructive mt-1">
                   {{ bankRejectTerminalCommentError }}
                 </p>
               </div>
 
               <div class="flex gap-2 justify-end">
-                <Button
-                  variant="outline"
-                  @click="resetBankRejectTerminalModal"
-                >
-                  إلغاء
-                </Button>
+                <Button variant="outline" @click="resetBankRejectTerminalModal">إلغاء</Button>
                 <Button
                   variant="destructive"
                   :disabled="performingAction"
                   @click="handleBankRejectTerminalConfirm"
                 >
                   <Loader2 v-if="performingAction" class="h-4 w-4 me-2 animate-spin" />
-                  {{ performingAction ? 'جارٍ التنفيذ…' : 'تأكيد الرفض' }}
+                  {{ performingAction ? 'جارٍ التنفيذ…' : 'تأكيد الرفض النهائي' }}
                 </Button>
               </div>
             </div>
@@ -600,6 +687,77 @@ async function dispatchAction(action: string, reason?: string) {
       <NuxtLink :to="`/requests/${request.id}/edit`">
         <Button class="w-full">تعديل وإعادة تقديم</Button>
       </NuxtLink>
+    </template>
+
+    <!-- BANK_REVIEWER: SUPPORT_REJECTED → keep rejected (finalize) or return to data entry -->
+    <template v-if="showBankReviewerSupportRejectedActions">
+      <div class="flex gap-3 flex-row-reverse">
+        <!-- Return to Data Entry: dialog with optional reason -->
+        <Dialog v-model:open="showSupportRejectedReturnModal">
+          <DialogTrigger as-child>
+            <Button variant="outline" class="flex-1" :disabled="performingAction">
+              إعادة للمدخل
+            </Button>
+          </DialogTrigger>
+          <DialogContent class="max-w-md">
+            <DialogHeader>
+              <DialogTitle>إعادة الطلب للمدخل للتعديل</DialogTitle>
+              <DialogDescription>
+                سيُعاد الطلب إلى موظف الإدخال لتصحيح المعلومات وإعادة التقديم.
+              </DialogDescription>
+            </DialogHeader>
+            <div>
+              <label for="support-rejected-return-reason" class="text-sm font-medium">ملاحظة (اختياري)</label>
+              <Textarea
+                id="support-rejected-return-reason"
+                v-model="supportRejectedReturnReason"
+                placeholder="أضف توجيهات أو ملاحظات للمدخل…"
+                class="mt-2 min-h-20"
+              />
+            </div>
+            <div class="flex gap-2 justify-end">
+              <Button
+                variant="outline"
+                @click="showSupportRejectedReturnModal = false; supportRejectedReturnReason = ''"
+              >
+                إلغاء
+              </Button>
+              <Button :disabled="performingAction" @click="handleSupportRejectedReturnConfirm">
+                <Loader2 v-if="performingAction" class="h-4 w-4 me-2 animate-spin" />
+                {{ performingAction ? 'جارٍ التنفيذ…' : 'تأكيد الإعادة' }}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <!-- Finalize rejection: irreversible AlertDialog confirmation -->
+        <AlertDialog>
+          <AlertDialogTrigger as-child>
+            <Button variant="destructive" class="flex-1" :disabled="performingAction">
+              إبقاء مرفوضاً
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>تأكيد إبقاء الطلب مرفوضاً</AlertDialogTitle>
+              <AlertDialogDescription>
+                سيصبح قرار رفض لجنة المساندة نهائياً ولا يمكن استئناف الطلب بعد ذلك.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>إلغاء</AlertDialogCancel>
+              <AlertDialogAction
+                class="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                :disabled="performingAction"
+                @click="handleFinalizeRejection"
+              >
+                <Loader2 v-if="performingAction" class="h-4 w-4 me-2 animate-spin" />
+                {{ performingAction ? 'جارٍ التنفيذ…' : 'تأكيد' }}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
     </template>
 
     <!-- COMMITTEE_DIRECTOR: EXECUTIVE_VOTING_OPEN → close session or override -->
