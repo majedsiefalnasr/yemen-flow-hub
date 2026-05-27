@@ -123,6 +123,82 @@ describe('ROLE_SURFACE_MATRIX — DATA_ENTRY forbidden surfaces (plan §1)', () 
   })
 })
 
+// ── BANK_REVIEWER allowed surfaces ───────────────────────────────────────────
+
+describe('ROLE_SURFACE_MATRIX — BANK_REVIEWER allowed surfaces', () => {
+  it('allows dashboard', () => {
+    expect(roleHasSurface(UserRole.BANK_REVIEWER, 'nav.dashboard')).toBe(true)
+  })
+
+  it('allows requests list', () => {
+    expect(roleHasSurface(UserRole.BANK_REVIEWER, 'nav.requests')).toBe(true)
+  })
+
+  it('allows notifications', () => {
+    expect(roleHasSurface(UserRole.BANK_REVIEWER, 'nav.notifications')).toBe(true)
+  })
+
+  it('allows settings', () => {
+    expect(roleHasSurface(UserRole.BANK_REVIEWER, 'nav.settings')).toBe(true)
+  })
+})
+
+// ── BANK_REVIEWER forbidden surfaces ─────────────────────────────────────────
+
+describe('ROLE_SURFACE_MATRIX — BANK_REVIEWER forbidden surfaces (plan §1)', () => {
+  it('cannot create new requests', () => {
+    expect(roleHasSurface(UserRole.BANK_REVIEWER, 'nav.new_request')).toBe(false)
+  })
+
+  it('cannot access SWIFT upload action', () => {
+    expect(roleHasSurface(UserRole.BANK_REVIEWER, 'action.swift_upload')).toBe(false)
+  })
+
+  it('cannot cast a vote', () => {
+    expect(roleHasSurface(UserRole.BANK_REVIEWER, 'action.voting.cast')).toBe(false)
+  })
+
+  it('cannot close or finalize voting', () => {
+    expect(roleHasSurface(UserRole.BANK_REVIEWER, 'action.voting.close_finalize')).toBe(false)
+  })
+
+  it('cannot complete external FX confirmation', () => {
+    expect(roleHasSurface(UserRole.BANK_REVIEWER, 'action.external_fx_confirmation.complete')).toBe(false)
+  })
+
+  it('cannot see staff nav', () => {
+    expect(roleHasSurface(UserRole.BANK_REVIEWER, 'nav.staff')).toBe(false)
+  })
+
+  it('cannot see merchants nav', () => {
+    expect(roleHasSurface(UserRole.BANK_REVIEWER, 'nav.merchants')).toBe(false)
+  })
+
+  it('cannot see reports nav', () => {
+    expect(roleHasSurface(UserRole.BANK_REVIEWER, 'nav.reports')).toBe(false)
+  })
+
+  it('cannot see audit nav', () => {
+    expect(roleHasSurface(UserRole.BANK_REVIEWER, 'nav.audit')).toBe(false)
+  })
+
+  it('cannot see external FX confirmation nav', () => {
+    expect(roleHasSurface(UserRole.BANK_REVIEWER, 'nav.external_fx_confirmation')).toBe(false)
+  })
+
+  it('cannot see admin entities nav', () => {
+    expect(roleHasSurface(UserRole.BANK_REVIEWER, 'nav.admin.entities')).toBe(false)
+  })
+
+  it('cannot see admin CBY staff nav', () => {
+    expect(roleHasSurface(UserRole.BANK_REVIEWER, 'nav.admin.cby_staff')).toBe(false)
+  })
+
+  it('cannot access support claim action', () => {
+    expect(roleHasSurface(UserRole.BANK_REVIEWER, 'action.support_claim')).toBe(false)
+  })
+})
+
 // ── DATA_ENTRY is the only role that can create new requests ─────────────────
 
 describe('nav.new_request surface — DATA_ENTRY exclusive', () => {

@@ -100,11 +100,11 @@ onMounted(() => { store.loadStats() })
     </div>
 
     <!-- Error -->
-    <Card v-else-if="store.error" class="border-l-4 border-destructive border-b border-border border-r bg-background" role="alert">
+    <Card v-else-if="store.error" class="border-0 border-s-4 border-s-[var(--severity-red)] bg-background" role="alert">
       <CardContent class="pt-6 flex items-center gap-3">
-        <AlertCircle class="w-4.5 h-4.5 flex-shrink-0 text-red-700" aria-hidden="true" />
-        <span class="text-red-700 flex-1">{{ store.error }}</span>
-        <button class="px-4 py-1.5 bg-background border border-destructive rounded-lg text-red-700 text-sm cursor-pointer hover:bg-red-700/10 transition-colors" @click="store.loadStats()">إعادة المحاولة</button>
+        <AlertCircle class="w-4.5 h-4.5 flex-shrink-0 text-[var(--severity-red)]" aria-hidden="true" />
+        <span class="text-[var(--severity-red)] flex-1">{{ store.error }}</span>
+        <button class="px-4 py-1.5 bg-background border border-[var(--severity-red)] rounded-lg text-[var(--severity-red)] text-sm cursor-pointer hover:bg-[var(--severity-red)]/10 transition-colors" @click="store.loadStats()">إعادة المحاولة</button>
       </CardContent>
     </Card>
 
