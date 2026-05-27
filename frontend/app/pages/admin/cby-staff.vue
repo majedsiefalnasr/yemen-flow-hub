@@ -10,7 +10,7 @@ import {
 } from '@tanstack/vue-table'
 import { h } from 'vue'
 import {
-  ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
+  AlertTriangle, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
   Download, MoreHorizontal, Plus, Printer, Search, SearchX, ShieldCheck, UserCog, X,
 } from 'lucide-vue-next'
 import PageHeader from '@/components/layout/PageHeader.vue'
@@ -40,6 +40,16 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import {
   Dialog,
   DialogContent,
@@ -92,6 +102,8 @@ const viewing = ref<User | null>(null)
 const saving = ref(false)
 const loading = ref(true)
 const staffUsers = ref<User[]>([])
+const deactivateTarget = ref<User | null>(null)
+const deactivateBlocked = ref<string | null>(null)
 
 const form = reactive<StaffForm>({
   name: '',
@@ -123,6 +135,13 @@ const stats = computed(() => ({
   inactive: staffUsers.value.filter(u => !u.is_active).length,
 }))
 
+const activeDirectors = computed(() =>
+  staffUsers.value.filter(u => u.role === UserRole.COMMITTEE_DIRECTOR && u.is_active),
+)
+const activeExecutiveMembers = computed(() =>
+  staffUsers.value.filter(u => u.role === UserRole.EXECUTIVE_MEMBER && u.is_active),
+)
+
 const rowSelection = ref<Record<string, boolean>>({})
 const selectedCount = computed(() => Object.values(rowSelection.value).filter(Boolean).length)
 
@@ -135,6 +154,16 @@ const formValid = computed(() =>
   && /\S+@\S+\.\S+/.test(form.email)
   && (Boolean(editing.value) || form.password.length >= 8),
 )
+
+const roleSelectHint = computed(() => {
+  if (form.role === UserRole.COMMITTEE_DIRECTOR) {
+    return 'مدير اللجنة حصري — لا يمكن الجمع بين هذا الدور وعضوية اللجنة التنفيذية على نفس الحساب.'
+  }
+  if (form.role === UserRole.EXECUTIVE_MEMBER) {
+    return 'عضو تنفيذي حصري — لا يمكن الجمع بين هذا الدور ومدير اللجنة على نفس الحساب.'
+  }
+  return null
+})
 
 function userInitials(name: string) {
   return name.split(' ').map(p => p[0]).join('').slice(0, 2)
@@ -204,8 +233,29 @@ async function saveStaff() {
   }
 }
 
-async function toggleActive(target: User) {
+function requestToggleActive(target: User) {
   if (!currentUser.value || target.id === currentUser.value.id) return
+  if (target.is_active) {
+    // Guard: block deactivating last active Director
+    if (target.role === UserRole.COMMITTEE_DIRECTOR && activeDirectors.value.length <= 1) {
+      deactivateBlocked.value = 'لا يمكن إلغاء تفعيل المدير الوحيد النشط. يجب أن يكون هناك مدير لجنة نشط واحد على الأقل في النظام في جميع الأوقات.'
+      return
+    }
+    // Guard: block deactivating last active Executive Member (would prevent quorum)
+    if (target.role === UserRole.EXECUTIVE_MEMBER && activeExecutiveMembers.value.length <= 1) {
+      deactivateBlocked.value = 'لا يمكن إلغاء تفعيل العضو التنفيذي الوحيد النشط. يجب الإبقاء على أعضاء تصويت كافين لضمان النصاب القانوني.'
+      return
+    }
+    deactivateBlocked.value = null
+    deactivateTarget.value = target
+  }
+  else {
+    void doToggleActive(target)
+  }
+}
+
+async function doToggleActive(target: User) {
+  deactivateTarget.value = null
   try {
     const payload: UpdateUserPayload = {
       name: target.name,
@@ -319,7 +369,7 @@ const columns: ColumnDef<User>[] = [
                     h(DropdownMenuSeparator),
                     h(DropdownMenuItem, {
                       class: staff.is_active ? 'text-destructive' : 'text-green-700',
-                      onClick: () => toggleActive(staff),
+                      onClick: () => requestToggleActive(staff),
                     }, () => staff.is_active ? 'إلغاء تفعيل' : 'تفعيل'),
                   ]
                 : []),
@@ -559,6 +609,10 @@ const table = useVueTable({
                 <SelectItem v-for="role in STAFF_ROLES" :key="role" :value="role">{{ ROLE_LABELS[role] }}</SelectItem>
               </SelectContent>
             </Select>
+            <p v-if="roleSelectHint" class="flex items-start gap-1.5 text-xs text-[var(--severity-amber)]">
+              <AlertTriangle class="mt-px h-3.5 w-3.5 shrink-0" />
+              {{ roleSelectHint }}
+            </p>
           </div>
         </div>
 
@@ -569,6 +623,49 @@ const table = useVueTable({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    <!-- Deactivation blocked: critical-role protection -->
+    <AlertDialog :open="Boolean(deactivateBlocked)" @update:open="value => !value && (deactivateBlocked = null)">
+      <AlertDialogContent dir="rtl">
+        <AlertDialogHeader>
+          <AlertDialogTitle class="flex items-center gap-2">
+            <AlertTriangle class="h-5 w-5 text-[var(--severity-red)]" />
+            لا يمكن إلغاء التفعيل
+          </AlertDialogTitle>
+          <AlertDialogDescription>{{ deactivateBlocked }}</AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel @click="deactivateBlocked = null">حسناً</AlertDialogCancel>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+
+    <!-- Deactivation confirmation with workload context -->
+    <AlertDialog :open="Boolean(deactivateTarget)" @update:open="value => !value && (deactivateTarget = null)">
+      <AlertDialogContent v-if="deactivateTarget" dir="rtl">
+        <AlertDialogHeader>
+          <AlertDialogTitle>تأكيد إلغاء التفعيل</AlertDialogTitle>
+          <AlertDialogDescription>
+            سيتم إلغاء تفعيل <strong>{{ deactivateTarget.name }}</strong>
+            ({{ ROLE_LABELS[deactivateTarget.role] }}).
+            <template v-if="deactivateTarget.role === UserRole.COMMITTEE_DIRECTOR">
+              <br class="mb-1" />
+              سيبقى {{ activeDirectors.length - 1 }} مدير نشط بعد هذا الإجراء.
+            </template>
+            <template v-else-if="deactivateTarget.role === UserRole.EXECUTIVE_MEMBER">
+              <br class="mb-1" />
+              سيبقى {{ activeExecutiveMembers.length - 1 }} عضو تنفيذي نشط بعد هذا الإجراء.
+            </template>
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel @click="deactivateTarget = null">إلغاء</AlertDialogCancel>
+          <AlertDialogAction class="bg-destructive text-destructive-foreground hover:bg-destructive/90" @click="doToggleActive(deactivateTarget)">
+            تأكيد الإلغاء
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
 
     <!-- View Dialog -->
     <Dialog :open="Boolean(viewing)" @update:open="value => !value && (viewing = null)">
