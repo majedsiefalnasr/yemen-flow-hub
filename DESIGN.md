@@ -1,5 +1,9 @@
 # Yemen Flow Hub — Apple-Inspired Design System
 
+> **Two-layer design system:**
+> - This file (`DESIGN.md`) = **What** — token values, spacing philosophy, component specs, role dashboard layouts. The design authority for all tools.
+> - `frontend/DESIGN.md.md` = **How** — Tailwind/Vue code patterns that implement this. Frontend AI reads both; this file wins on any conflict.
+
 ## Overview
 
 Yemen Flow Hub is a government banking workflow platform for the Central Bank of Yemen (CBY). The design system follows Apple's design philosophy adapted for institutional, Arabic-first context: **clarity through restraint, confidence through simplicity, authority through typography**.

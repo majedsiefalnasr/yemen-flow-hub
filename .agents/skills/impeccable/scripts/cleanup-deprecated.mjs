@@ -24,7 +24,7 @@ import { join, resolve } from 'node:path';
 // Skills that were renamed, merged, or folded in v2.0, v2.1, and v3.0.
 const DEPRECATED_NAMES = [
   // v2.0 renames
-  'frontend-design',    // renamed to impeccable
+  'DESIGN.md',    // renamed to impeccable
   'teach-impeccable',   // folded into /impeccable teach
   // v2.1 merges
   'arrange',            // renamed to layout

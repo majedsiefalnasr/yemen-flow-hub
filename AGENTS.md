@@ -20,9 +20,9 @@ yemen-flow-hub/               ← Root repo (git@github.com:majedsiefalnasr/yeme
 ├── backend/                  ← Laravel 11 API (git@github.com:ultimate-eg/yemen-flow-hub-backend.git)
 ├── frontend/                 ← Nuxt 4 app (git@github.com:ultimate-eg/yemen-flow-hub-frontend.git)
 │   ├── PRODUCT.md            ← Product identity, users, roles, operational posture, brand tone
-│   ├── DESIGN.md             ← Frontend design token rules, RTL patterns, color token usage
+│   ├── DESIGN.md.md    ← Frontend design token rules, RTL patterns, color token usage
 │   ├── SHADCN.md             ← shadcn-vue component reference: recipes, imports, decision table
-│   └── CLAUDE.md             ← Frontend AI instructions (loads PRODUCT.md + DESIGN.md + SHADCN.md)
+│   └── CLAUDE.md             ← Frontend AI instructions (loads PRODUCT.md + DESIGN.md.md + SHADCN.md)
 ├── docs/                     ← Project documentation (source of truth)
 ├── lovable/                  ← Lovable Nuxt prototype (UI source — components being transplanted into frontend/)
 ├── DESIGN.md                 ← Root visual design system (typography, spacing, elevation)
@@ -130,7 +130,7 @@ These three files are loaded automatically by `frontend/CLAUDE.md` and must be r
 | File | Purpose |
 | ---- | ------- |
 | `frontend/PRODUCT.md` | Product identity, 8 roles and their daily tasks, operational posture, brand tone, anti-references |
-| `frontend/DESIGN.md` | Color token rules (semantic vars vs raw Tailwind), RTL border rule, skeleton/error/banner patterns |
+| `frontend/DESIGN.md.md` | Color token rules (semantic vars vs raw Tailwind), RTL border rule, skeleton/error/banner patterns |
 | `frontend/SHADCN.md` | Complete shadcn-vue reference: 30+ components with copy-paste recipes, import paths, decision table, 10 absolute rules |
 
 **Rule:** Any AI tool working on frontend code must treat these three files as equally authoritative as `docs/user-view/*.md` for UI decisions. Violations (raw `<button>`, raw `<table>`, `text-red-600` instead of `text-[var(--severity-red)]`, etc.) are the same class of error as using a wrong status enum.
