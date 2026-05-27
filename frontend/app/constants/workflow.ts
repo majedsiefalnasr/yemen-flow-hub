@@ -567,6 +567,7 @@ export const ROUTE_ROLE_MAP: Record<string, UserRole[]> = {
   '/dashboard': rolesForSurface('nav.dashboard'),
   '/requests': rolesForSurface('nav.requests'),
   '/requests/new': rolesForSurface('nav.new_request'),
+  '/requests/:id/edit': [UserRole.DATA_ENTRY, UserRole.BANK_ADMIN],
   '/requests/:id/swift': rolesForSurface('action.swift_upload'),
   '/merchants': rolesForSurface('nav.merchants'),
   '/staff': rolesForSurface('nav.staff'),

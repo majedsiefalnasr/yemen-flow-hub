@@ -2,6 +2,7 @@
 import PageHeader from '@/components/layout/PageHeader.vue'
 import {
   Check,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Eye,
@@ -19,6 +20,19 @@ import { useAuthStore } from '@/stores/auth.store'
 import { useRequestsStore } from '@/stores/requests.store'
 import { useMerchants } from '@/composables/useMerchants'
 import type { Merchant } from '@/types/models'
+import { Checkbox } from '@/components/ui/checkbox'
+import {
+  Combobox,
+  ComboboxAnchor,
+  ComboboxEmpty,
+  ComboboxGroup,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxItemIndicator,
+  ComboboxList,
+  ComboboxTrigger,
+} from '@/components/ui/combobox'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 definePageMeta({
   middleware: ['auth', 'role'],
@@ -116,7 +130,25 @@ const previewOpen = computed({
   },
 })
 const saving = ref(false)
+const declared = ref(false)
 const merchants = ref<Merchant[]>([])
+const merchantSearch = ref('')
+
+const filteredMerchants = computed(() => {
+  const q = merchantSearch.value.trim().toLowerCase()
+  if (!q) return merchants.value
+  return merchants.value.filter(m => m.name.toLowerCase().includes(q))
+})
+
+const canSubmit = computed(() =>
+  requiredDocsMissing.value.length === 0 && declared.value,
+)
+
+const submitDisabledReason = computed(() => {
+  if (requiredDocsMissing.value.length > 0) return `يلزم رفع ${requiredDocsMissing.value.length} مستند إلزامي`
+  if (!declared.value) return 'يلزم تأكيد الإقرار قبل الإرسال'
+  return null
+})
 
 onMounted(async () => {
   merchants.value = await fetchMerchants()
@@ -158,8 +190,14 @@ function onFilePicked(name: string, event: Event) {
   const file = target.files?.[0]
   if (!file) return
 
+  if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+    toastError(`${name}: يُقبل ملف PDF فقط`)
+    target.value = ''
+    return
+  }
+
   if (file.size > 10 * 1024 * 1024) {
-    toastError('حجم الملف يتجاوز 10MB')
+    toastError(`${name}: حجم الملف يتجاوز 10MB`)
     target.value = ''
     return
   }
@@ -275,7 +313,7 @@ const canCreate = computed(() =>
             <div
               :class="[
                 'grid h-10 w-10 place-items-center rounded-full text-sm font-semibold transition-colors',
-                index < step ? 'bg-green-50 text-green-700-foreground' : index === step ? 'bg-primary text-primary-foreground ring-4 ring-primary/15' : 'bg-muted text-muted-foreground',
+                index < step ? 'bg-[var(--severity-green)]/15 text-[var(--severity-green)]' : index === step ? 'bg-primary text-primary-foreground ring-4 ring-primary/15' : 'bg-muted text-muted-foreground',
               ]"
             >
               <Check v-if="index < step" class="h-5 w-5" />
@@ -292,7 +330,7 @@ const canCreate = computed(() =>
           </div>
           <div
             v-if="index < STEPS.length - 1"
-            :class="['mx-2 h-0.5 flex-1 transition-colors', index < step ? 'bg-green-50' : 'bg-muted']"
+            :class="['mx-2 h-0.5 flex-1 transition-colors', index < step ? 'bg-[var(--severity-green)]/40' : 'bg-muted']"
           />
         </div>
       </div>
@@ -317,16 +355,25 @@ const canCreate = computed(() =>
 
           <div class="space-y-2">
             <Label>المستورد (التاجر)</Label>
-            <Select v-model="form.merchant_id">
-              <SelectTrigger>
-                <SelectValue :placeholder="merchants.length ? 'اختر التاجر' : 'لا يوجد تجار مسجلون'" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem v-for="merchant in merchants" :key="merchant.id" :value="merchant.id">
-                  {{ merchant.name }}
-                </SelectItem>
-              </SelectContent>
-            </Select>
+            <Combobox v-model="form.merchant_id" :display-value="(id) => merchants.find(m => m.id === id)?.name ?? ''">
+              <ComboboxAnchor class="w-full">
+                <ComboboxInput v-model="merchantSearch" :placeholder="merchants.length ? 'ابحث عن تاجر...' : 'لا يوجد تجار مسجلون'" class="w-full" />
+                <ComboboxTrigger>
+                  <ChevronDown class="h-4 w-4 text-muted-foreground" />
+                </ComboboxTrigger>
+              </ComboboxAnchor>
+              <ComboboxList>
+                <ComboboxEmpty>لا توجد نتائج</ComboboxEmpty>
+                <ComboboxGroup>
+                  <ComboboxItem v-for="merchant in filteredMerchants" :key="merchant.id" :value="merchant.id">
+                    {{ merchant.name }}
+                    <ComboboxItemIndicator>
+                      <Check class="h-4 w-4" />
+                    </ComboboxItemIndicator>
+                  </ComboboxItem>
+                </ComboboxGroup>
+              </ComboboxList>
+            </Combobox>
             <p v-if="merchants.length === 0" class="text-xs text-muted-foreground">
               يجب إضافة تجار أولاً من شاشة سجل التجار.
             </p>
@@ -444,7 +491,7 @@ const canCreate = computed(() =>
       <div v-else-if="step === 2" class="space-y-6">
         <div class="flex items-center justify-between">
           <h3 class="font-semibold">رفع الوثائق المطلوبة</h3>
-          <Badge v-if="requiredDocsMissing.length > 0" class="border-0 bg-amber-50/15 text-amber-600">
+          <Badge v-if="requiredDocsMissing.length > 0" class="border-0 bg-[var(--severity-amber)]/10 text-[var(--severity-amber)]">
             ينقص {{ requiredDocsMissing.length }} مستند
           </Badge>
         </div>
@@ -455,7 +502,7 @@ const canCreate = computed(() =>
             :key="doc.name"
             :class="[
               'rounded-xl border-2 border-dashed p-5 transition-colors',
-              uploads[doc.name] ? 'border-green-200/40 bg-green-50/5' : 'border-border hover:border-accent/40',
+              uploads[doc.name] ? 'border-[var(--severity-green)]/30 bg-[var(--severity-green)]/5' : 'border-border hover:border-accent/40',
             ]"
           >
             <Input
@@ -471,7 +518,7 @@ const canCreate = computed(() =>
                 <div
                   :class="[
                     'grid h-11 w-11 place-items-center rounded-lg',
-                    uploads[doc.name] ? 'bg-green-50/15 text-green-700' : 'bg-muted text-muted-foreground',
+                    uploads[doc.name] ? 'bg-[var(--severity-green)]/10 text-[var(--severity-green)]' : 'bg-muted text-muted-foreground',
                   ]"
                 >
                   <FileCheck2 v-if="uploads[doc.name]" class="h-5 w-5" />
@@ -489,10 +536,10 @@ const canCreate = computed(() =>
 
             <div
               v-if="uploads[doc.name]"
-              class="mt-4 flex items-center justify-between gap-2 border-t border-green-200/20 pt-4 text-xs"
+              class="mt-4 flex items-center justify-between gap-2 border-t border-[var(--severity-green)]/20 pt-4 text-xs"
             >
               <div class="flex min-w-0 items-center gap-2">
-                <FileText class="h-4 w-4 shrink-0 text-green-700" />
+                <FileText class="h-4 w-4 shrink-0 text-[var(--severity-green)]" />
                 <span class="truncate font-medium">{{ uploads[doc.name]?.fileName }}</span>
                 <Badge variant="secondary" class="gap-1 text-[10px]">
                   <ShieldCheck class="h-3 w-3" />
@@ -512,7 +559,7 @@ const canCreate = computed(() =>
                 <Button
                   size="icon"
                   variant="ghost"
-                  class="h-7 w-7 text-red-700"
+                  class="h-7 w-7 text-[var(--severity-red)]"
                   aria-label="حذف"
                   @click="removeUpload(doc.name)"
                 >
@@ -577,13 +624,24 @@ const canCreate = computed(() =>
           </div>
         </div>
 
-        <div class="flex items-start gap-3 rounded-lg border border-info/20 bg-info/5 p-4">
-          <ShieldCheck class="mt-0.5 h-5 w-5 shrink-0 text-info" />
-          <div class="text-sm">
+        <div
+          :class="[
+            'flex items-start gap-3 rounded-lg border p-4 transition-colors',
+            declared ? 'border-[var(--severity-green)]/30 bg-[var(--severity-green)]/5' : 'border-info/20 bg-info/5',
+          ]"
+        >
+          <ShieldCheck
+            :class="['mt-0.5 h-5 w-5 shrink-0', declared ? 'text-[var(--severity-green)]' : 'text-info']"
+          />
+          <div class="flex-1 text-sm">
             <div class="font-medium">إقرار وتعهد</div>
             <p class="mt-1 text-xs leading-relaxed text-muted-foreground">
               أُقر بأن جميع البيانات والمستندات المقدمة صحيحة وكاملة، وسيتم إخضاع الطلب للتدقيق الآلي للتحقق من الفواتير المكررة والامتثال.
             </p>
+            <div class="mt-3 flex items-center gap-2">
+              <Checkbox id="declaration" v-model:checked="declared" />
+              <Label for="declaration" class="cursor-pointer text-xs font-medium">أوافق على الإقرار والتعهد أعلاه</Label>
+            </div>
           </div>
         </div>
       </div>
@@ -603,10 +661,23 @@ const canCreate = computed(() =>
             التالي
             <ChevronLeft class="me-1 h-4 w-4" />
           </Button>
-          <Button v-else :disabled="saving" @click="persist(false)">
-            <Send class="ms-1 h-4 w-4" />
-            إرسال للمراجعة
-          </Button>
+          <template v-else>
+            <Tooltip v-if="submitDisabledReason">
+              <TooltipTrigger as-child>
+                <span tabindex="0">
+                  <Button :disabled="true" class="pointer-events-none">
+                    <Send class="ms-1 h-4 w-4" />
+                    إرسال للمراجعة
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>{{ submitDisabledReason }}</TooltipContent>
+            </Tooltip>
+            <Button v-else :disabled="saving" @click="persist(false)">
+              <Send class="ms-1 h-4 w-4" />
+              إرسال للمراجعة
+            </Button>
+          </template>
         </div>
       </div>
     </Card>

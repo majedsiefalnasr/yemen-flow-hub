@@ -1,17 +1,23 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { RefreshCw } from 'lucide-vue-next'
 import { UserRole, RequestStatus } from '../../../types/enums'
 import type { RequestFormData } from '../../../types/models'
 import { useRequestsStore } from '../../../stores/requests.store'
 import RequestForm from '../../../components/forms/RequestForm.vue'
+import CorrectionBanner from '../../../components/banners/CorrectionBanner.vue'
 import LockedBanner from '../../../components/banners/LockedBanner.vue'
-
-type LockedBannerVariant = 'locked' | 'readonly' | 'pending'
+import PageHeader from '../../../components/layout/PageHeader.vue'
+import { Alert, AlertDescription, AlertTitle, AlertAction } from '../../../components/ui/alert'
+import { Button } from '../../../components/ui/button'
+import { Card } from '../../../components/ui/card'
+import { Skeleton } from '../../../components/ui/skeleton'
+import { ROUTE_ROLE_MAP } from '../../../constants/workflow'
 
 definePageMeta({
-  middleware: ['auth'],
-  requiredRoles: [UserRole.DATA_ENTRY, UserRole.BANK_ADMIN],
+  middleware: ['auth', 'role'],
+  requiredRoles: ROUTE_ROLE_MAP['/requests/:id/edit'],
 })
 
 const route = useRoute()
@@ -20,18 +26,33 @@ const requestsStore = useRequestsStore()
 
 const rawId = route.params.id
 const id = Number(Array.isArray(rawId) ? rawId[0] : rawId)
-const toast = ref<{ message: string; type: 'success' | 'error' } | null>(null)
+
+const frozen = ref(false)
+const frozenReason = ref<string | null>(null)
+
+const request = computed(() => requestsStore.currentRequest)
 
 const isEditable = computed(() => {
-  const s = requestsStore.currentRequest?.status
-  return s === RequestStatus.DRAFT
+  const s = request.value?.status
+  return (
+    s === RequestStatus.DRAFT
     || s === RequestStatus.DRAFT_REJECTED_INTERNAL
     || s === RequestStatus.BANK_RETURNED
     || s === RequestStatus.SUPPORT_RETURNED
+  )
+})
+
+const correctionVariant = computed(() => {
+  switch (request.value?.status) {
+    case RequestStatus.BANK_RETURNED: return 'bank_returned' as const
+    case RequestStatus.SUPPORT_RETURNED: return 'support_returned' as const
+    case RequestStatus.DRAFT_REJECTED_INTERNAL: return 'draft_rejected' as const
+    default: return undefined
+  }
 })
 
 const initialValues = computed<Partial<RequestFormData> | undefined>(() => {
-  const r = requestsStore.currentRequest
+  const r = request.value
   if (!r) return undefined
   return {
     merchant_id: r.merchant?.id,
@@ -54,24 +75,6 @@ const initialValues = computed<Partial<RequestFormData> | undefined>(() => {
   }
 })
 
-const lockedBannerVariant = computed<LockedBannerVariant>(() => {
-  switch (requestsStore.currentRequest?.status) {
-    case RequestStatus.BANK_APPROVED:
-    case RequestStatus.SUPPORT_APPROVED:
-    case RequestStatus.SUPPORT_REJECTED:
-    case RequestStatus.SWIFT_UPLOADED:
-    case RequestStatus.EXECUTIVE_VOTING_CLOSED:
-    case RequestStatus.EXECUTIVE_APPROVED:
-    case RequestStatus.EXECUTIVE_REJECTED:
-    case RequestStatus.CUSTOMS_DECLARATION_ISSUED:
-    case RequestStatus.FX_CONFIRMATION_PENDING:
-    case RequestStatus.COMPLETED:
-      return 'readonly'
-    default:
-      return 'pending'
-  }
-})
-
 onMounted(async () => {
   if (Number.isNaN(id)) {
     await router.replace('/requests')
@@ -80,53 +83,83 @@ onMounted(async () => {
 
   await requestsStore.loadRequest(id)
 
-  if (requestsStore.error || !requestsStore.currentRequest) {
-    // Load failed — redirect to list; error already surfaced via toast if available
+  if (requestsStore.error || !request.value) {
     await router.replace('/requests')
     return
   }
 
   if (!isEditable.value) {
-    // Request exists but is not editable — redirect to detail page
     await router.replace(`/requests/${id}`)
   }
 })
 
 async function handleSubmit(data: RequestFormData) {
+  if (frozen.value) return
   try {
     await requestsStore.updateRequest(id, data)
-    toast.value = { message: 'تم تحديث الطلب بنجاح.', type: 'success' }
     await router.push(`/requests/${id}`)
   }
-  catch {
-    toast.value = { message: requestsStore.error ?? 'تعذّر تحديث الطلب.', type: 'error' }
+  catch (err: unknown) {
+    const status = (err as { response?: { status?: number } })?.response?.status
+    if (status === 403 || status === 409) {
+      frozen.value = true
+      frozenReason.value = status === 409
+        ? 'تغيّرت حالة الطلب أثناء التعديل. يرجى إعادة التحميل.'
+        : 'ليس لديك صلاحية تعديل هذا الطلب في الحالة الحالية.'
+    }
   }
+}
+
+function reload() {
+  frozen.value = false
+  frozenReason.value = null
+  requestsStore.loadRequest(id)
 }
 </script>
 
 <template>
-  <div class="edit-request-page" dir="rtl">
-    <div class="page-header">
-      <h1 class="page-title">تعديل الطلب</h1>
-      <NuxtLink to="/requests" class="back-link">← العودة إلى القائمة</NuxtLink>
-    </div>
+  <div>
+    <PageHeader
+      title="تعديل الطلب"
+      :breadcrumbs="[
+        { label: 'الرئيسية', to: '/' },
+        { label: 'الطلبات', to: '/requests' },
+        { label: 'تعديل' },
+      ]"
+    />
 
-    <!-- Loading state -->
-    <div v-if="requestsStore.loadingRequest" class="state-card">
-      <span class="state-text">جاري التحميل...</span>
-    </div>
+    <!-- Loading -->
+    <template v-if="requestsStore.loadingRequest">
+      <Card class="border-0 p-6 shadow space-y-4">
+        <Skeleton class="h-6 w-48" />
+        <Skeleton class="h-4 w-full" />
+        <Skeleton class="h-4 w-3/4" />
+      </Card>
+    </template>
 
-    <!-- Ready: form rendered only after request is loaded and confirmed editable -->
-    <template v-else-if="requestsStore.currentRequest && isEditable">
-      <!-- Toast notification -->
-      <div
-        v-if="toast"
-        class="toast"
-        :class="toast.type === 'success' ? 'toast--success' : 'toast--error'"
-        role="alert"
-      >
-        {{ toast.message }}
-      </div>
+    <!-- Frozen (403/409) -->
+    <Alert v-else-if="frozen" variant="destructive" role="alert" class="mb-4">
+      <AlertTitle>تعذّر حفظ التعديلات</AlertTitle>
+      <AlertDescription>{{ frozenReason }}</AlertDescription>
+      <AlertAction>
+        <Button variant="outline" size="sm" @click="reload">
+          <RefreshCw class="h-4 w-4 me-1.5" />
+          إعادة التحميل
+        </Button>
+      </AlertAction>
+    </Alert>
+
+    <!-- Editable wizard -->
+    <template v-else-if="request && isEditable">
+      <!-- CorrectionBanner pinned above the form for returned/rejected states -->
+      <CorrectionBanner
+        v-if="correctionVariant"
+        :variant="correctionVariant"
+        :reviewer-comment="request.reviewer_comment ?? null"
+        :support-comment="request.support_comment ?? null"
+        :rejection-reason="request.rejection_reason ?? null"
+        class="mb-4"
+      />
 
       <RequestForm
         :initial-values="initialValues"
@@ -134,132 +167,20 @@ async function handleSubmit(data: RequestFormData) {
         @submit="handleSubmit"
       >
         <template #actions>
-          <button
+          <Button
             type="submit"
-            class="btn-primary"
-            :disabled="requestsStore.saving"
+            :disabled="requestsStore.saving || frozen"
           >
-            {{ requestsStore.saving ? 'جاري الحفظ...' : 'حفظ التعديلات' }}
-          </button>
-          <NuxtLink to="/requests" class="btn-secondary">إلغاء</NuxtLink>
+            {{ requestsStore.saving ? 'جارٍ الحفظ...' : 'حفظ التعديلات' }}
+          </Button>
+          <Button variant="outline" @click="router.push('/requests')">إلغاء</Button>
         </template>
       </RequestForm>
     </template>
 
-    <!-- Locked state (should not normally render — onMounted redirects away) -->
-    <template v-else-if="requestsStore.currentRequest && !isEditable">
-      <LockedBanner :variant="lockedBannerVariant" />
+    <!-- Locked (should not normally render — onMounted redirects away) -->
+    <template v-else-if="request && !isEditable">
+      <LockedBanner variant="readonly" />
     </template>
   </div>
 </template>
-
-<style scoped>
-.edit-request-page {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-  max-width: 800px;
-}
-
-.page-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.page-title {
-  font-size: 28px;
-  font-weight: 500;
-  color: var(--foreground);
-  margin: 0;
-}
-
-.back-link {
-  font-size: 14px;
-  color: var(--color-brand);
-  text-decoration: none;
-}
-
-.back-link:hover {
-  text-decoration: underline;
-}
-
-.state-card {
-  background: var(--background);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 48px 32px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
-  text-align: center;
-}
-
-.state-text {
-  font-size: 15px;
-  color: var(--muted-foreground);
-}
-
-.toast {
-  padding: 12px 16px;
-  border-radius: 12px;
-  font-size: 15px;
-  font-weight: 500;
-}
-
-.toast--success {
-  background: color-mix(in srgb, var(--color-success) 10%, var(--background));
-  color: var(--color-success);
-  border: 1px solid color-mix(in srgb, var(--color-success) 40%, transparent);
-}
-
-.toast--error {
-  background: color-mix(in srgb, var(--destructive) 8%, var(--background));
-  color: var(--destructive);
-  border: 1px solid color-mix(in srgb, var(--destructive) 40%, transparent);
-}
-
-.btn-primary {
-  height: 44px;
-  padding: 0 24px;
-  background: var(--primary);
-  color: var(--primary-foreground);
-  border: none;
-  border-radius: 12px;
-  font-size: 15px;
-  font-weight: 500;
-  font-family: inherit;
-  cursor: pointer;
-  transition: opacity 100ms;
-}
-
-.btn-primary:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.btn-primary:not(:disabled):hover {
-  opacity: 0.9;
-}
-
-.btn-secondary {
-  height: 44px;
-  padding: 0 20px;
-  background: transparent;
-  color: var(--foreground);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  font-size: 15px;
-  font-family: inherit;
-  cursor: pointer;
-  text-decoration: none;
-  display: inline-flex;
-  align-items: center;
-  transition: border-color 100ms;
-}
-
-.btn-secondary:hover {
-  border-color: var(--primary);
-}
-</style>
