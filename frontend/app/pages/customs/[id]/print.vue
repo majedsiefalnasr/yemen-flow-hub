@@ -82,10 +82,10 @@ async function performIssue() {
   if (!request.value || !canIssueNow.value) return
   try {
     await store.issueCustomsDeclaration(request.value.id)
-    notify(`تم إصدار إذن بيان جمركي رقم ${request.value.customs_declaration?.declaration_number} بنجاح`)
+    notify(`تم إصدار تأكيد مصارفة خارجية رقم ${request.value.customs_declaration?.declaration_number} بنجاح`)
   }
   catch {
-    toastError('فشل إصدار إذن بيان جمركي')
+    toastError('فشل إصدار تأكيد مصارفة خارجية')
   }
   finally {
     confirmIssueOpen.value = false
@@ -102,13 +102,13 @@ async function performIssue() {
       v-if="!canView"
       class="mx-auto max-w-md p-8 text-center"
     >
-      <Card class="border-warning/30 bg-amber-50/5 p-8">
-        <Lock class="mx-auto mb-3 h-10 w-10 text-amber-600" />
+      <Card class="border-[var(--severity-amber)]/30 bg-[var(--severity-amber)]/5 p-8">
+        <Lock class="mx-auto mb-3 h-10 w-10 text-[var(--severity-amber)]" />
         <h2 class="mb-1 text-lg font-bold">
-          غير مصرح بمعاينة البيان
+          غير مصرح بمعاينة التأكيد
         </h2>
-        <p class="mb-4 text-sm text-gray-600">
-          معاينة وإصدار إذن بيان جمركي متاحة لأعضاء اللجنة التنفيذية أو إدارة المنصة فقط.
+        <p class="mb-4 text-sm text-muted-foreground">
+          معاينة وإصدار تأكيد مصارفة خارجية متاح لأعضاء اللجنة التنفيذية أو إدارة المنصة فقط.
         </p>
         <Button
           as="a"
@@ -128,9 +128,9 @@ async function performIssue() {
             <div class="min-w-0">
               <h1 class="flex items-center gap-2 text-lg font-bold">
                 <FileText class="h-5 w-5 text-accent" />
-                {{ issued ? 'إذن إصدار بيان جمركي' : 'معاينة إذن إصدار بيان جمركي' }}
+                {{ issued ? 'تأكيد مصارفة خارجية' : 'معاينة تأكيد مصارفة خارجية' }}
               </h1>
-              <p class="mt-0.5 text-xs text-gray-600">
+              <p class="mt-0.5 text-xs text-muted-foreground">
                 طلب {{ request.reference_number }} — {{ request.merchant?.name }}
               </p>
             </div>
@@ -158,21 +158,21 @@ async function performIssue() {
                 @click="confirmIssueOpen = true"
               >
                 <FileSignature class="ms-1 h-4 w-4" />
-                إصدار إذن بيان جمركي رسمياً
+                إصدار تأكيد مصارفة خارجية رسمياً
               </Button>
             </div>
           </div>
 
           <div
             v-if="issued"
-            class="mt-4 flex items-center gap-3 rounded-lg border border-green-200/30 bg-green-50/5 p-3"
+            class="mt-4 flex items-center gap-3 rounded-lg border border-[var(--severity-green)]/20 bg-[var(--severity-green)]/5 p-3"
           >
-            <CheckCircle2 class="h-5 w-5 shrink-0 text-green-700" />
+            <CheckCircle2 class="h-5 w-5 shrink-0 text-[var(--severity-green)]" />
             <div class="flex-1 text-sm">
-              <div class="font-semibold text-green-700">
-                تم إصدار إذن بيان جمركي بنجاح
+              <div class="font-semibold text-[var(--severity-green)]">
+                تم إصدار تأكيد مصارفة خارجية بنجاح
               </div>
-              <div class="text-xs text-gray-600">
+              <div class="text-xs text-muted-foreground">
                 رقم البيان
                 <span class="font-mono font-semibold">{{ request.customs_declaration?.declaration_number }}</span>
                 · بواسطة {{ request.customs_declaration?.issuer?.name ?? user?.name }}
@@ -183,14 +183,14 @@ async function performIssue() {
 
           <div
             v-else-if="stageBlocked"
-            class="mt-4 flex items-center gap-3 rounded-lg border border-warning/30 bg-amber-50/5 p-3"
+            class="mt-4 flex items-center gap-3 rounded-lg border border-[var(--severity-amber)]/30 bg-[var(--severity-amber)]/5 p-3"
           >
-            <AlertTriangle class="h-5 w-5 shrink-0 text-amber-600" />
+            <AlertTriangle class="h-5 w-5 shrink-0 text-[var(--severity-amber)]" />
             <div class="flex-1 text-sm">
               <div class="font-semibold">
-                لا يمكن إصدار إذن بيان جمركي حالياً
+                لا يمكن إصدار تأكيد مصارفة خارجية حالياً
               </div>
-              <div class="text-xs text-gray-600">
+              <div class="text-xs text-muted-foreground">
                 الطلب في مرحلة
                 <span class="font-medium">{{ stageStatus?.label }}</span>.
                 يجب اعتماد التصويت التنفيذي أولاً.
@@ -207,8 +207,8 @@ async function performIssue() {
               <div class="font-semibold">
                 جاهز للإصدار
               </div>
-              <div class="text-xs text-gray-600">
-                راجع المعاينة أدناه ثم اضغط "إصدار إذن بيان جمركي رسمياً" لتوقيع وإغلاق الطلب نهائياً.
+              <div class="text-xs text-muted-foreground">
+                راجع المعاينة أدناه ثم اضغط "إصدار تأكيد مصارفة خارجية رسمياً" لتوقيع وإغلاق الطلب نهائياً.
               </div>
             </div>
           </div>
@@ -218,11 +218,11 @@ async function performIssue() {
       <div class="overflow-hidden rounded-xl border bg-[oklch(0.22_0.02_260)] shadow print:hidden">
         <div class="flex items-center justify-between bg-[oklch(0.18_0.02_260)] px-4 py-2 text-xs text-white">
           <div class="flex items-center gap-2">
-            <FileText class="h-4 w-4 text-red-700" />
+            <FileText class="h-4 w-4 text-[var(--severity-red)]" />
             <span class="font-mono">{{ request.customs_declaration?.declaration_number ?? `DRAFT-${request.reference_number}` }}.pdf</span>
             <span
               v-if="issued"
-              class="inline-flex items-center gap-1 rounded bg-green-50/20 px-2 py-0.5 text-[10px] text-green-700"
+              class="inline-flex items-center gap-1 rounded bg-[var(--severity-green)]/10 px-2 py-0.5 text-[10px] text-[var(--severity-green)]"
             >
               <ShieldCheck class="h-3 w-3" />
               موقّع إلكترونياً
@@ -288,15 +288,15 @@ async function performIssue() {
           <DialogHeader>
             <DialogTitle class="flex items-center gap-2">
               <Stamp class="h-5 w-5 text-accent" />
-              تأكيد إصدار إذن بيان جمركي
+              تأكيد إصدار المصارفة الخارجية
             </DialogTitle>
             <DialogDescription class="space-y-2 text-start">
               <span class="block">
-                سيتم توقيع وإصدار إذن بيان جمركي للطلب
+                سيتم توقيع وإصدار تأكيد مصارفة خارجية للطلب
                 <span class="font-mono font-semibold">{{ request.reference_number }}</span>
                 بشكل نهائي ولن يمكن التراجع.
               </span>
-              <span class="block rounded border border-warning/30 bg-amber-50/10 p-2 text-xs text-amber-600-foreground">
+              <span class="block rounded border border-[var(--severity-amber)]/30 bg-[var(--severity-amber)]/5 p-2 text-xs text-foreground">
                 سيتم إكمال دورة الطلب وإغلاقها فور الإصدار.
               </span>
             </DialogDescription>
@@ -326,12 +326,12 @@ async function performIssue() {
     v-else-if="user"
     class="mx-auto max-w-md p-8 text-center"
   >
-    <Card class="border-destructive/30 bg-red-700/5 p-8">
-      <AlertTriangle class="mx-auto mb-3 h-10 w-10 text-red-700" />
+    <Card class="border-destructive/30 bg-[var(--severity-red)]/5 p-8">
+      <AlertTriangle class="mx-auto mb-3 h-10 w-10 text-[var(--severity-red)]" />
       <h2 class="mb-1 text-lg font-bold">
         الطلب غير موجود
       </h2>
-      <p class="mb-4 text-sm text-gray-600">
+      <p class="mb-4 text-sm text-muted-foreground">
         رقم الطلب {{ id }} غير معروف.
       </p>
       <Button
@@ -340,7 +340,7 @@ async function performIssue() {
         href="/customs"
       >
         <ArrowRight class="ms-1 h-4 w-4" />
-        العودة لطابور الجمارك
+        العودة لقائمة التأكيدات
       </Button>
     </Card>
   </div>

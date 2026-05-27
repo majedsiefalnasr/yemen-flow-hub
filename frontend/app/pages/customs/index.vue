@@ -39,15 +39,15 @@ const issued = computed(() =>
 <template>
   <div v-if="user">
     <PageHeader
-      title="إصدار إذن بيان جمركي"
-      subtitle="إصدار وطباعة البيانات الجمركية للطلبات المعتمدة من اللجنة التنفيذية"
-      :breadcrumbs="[{ label: 'الرئيسية', to: '/' }, { label: 'إذن إصدار بيان جمركي' }]"
+      title="إصدار تأكيد مصارفة خارجية"
+      subtitle="إصدار وطباعة تأكيدات المصارفة الخارجية للطلبات المعتمدة من اللجنة التنفيذية"
+      :breadcrumbs="[{ label: 'الرئيسية', to: '/' }, { label: 'تأكيد مصارفة خارجية' }]"
     />
 
     <div class="grid gap-6 lg:grid-cols-2">
       <Card class="border-0 p-5 shadow">
         <h3 class="mb-4 flex items-center gap-2 font-semibold">
-          <PackageCheck class="h-5 w-5 text-green-700" />
+          <PackageCheck class="h-5 w-5 text-[var(--severity-green)]" />
           طلبات جاهزة للإصدار ({{ ready.length }})
         </h3>
 
@@ -62,9 +62,9 @@ const issued = computed(() =>
           <div
             v-for="request in ready"
             :key="request.id"
-            class="flex items-center gap-3 rounded-lg border p-3 transition-colors hover:border-green-200/40"
+            class="flex items-center gap-3 rounded-lg border p-3 transition-colors hover:border-[var(--severity-green)]/20"
           >
-            <div class="grid h-11 w-11 place-items-center rounded-lg bg-green-50/10 text-green-700">
+            <div class="grid h-11 w-11 place-items-center rounded-lg bg-[var(--severity-green)]/10 text-[var(--severity-green)]">
               <Truck class="h-5 w-5" />
             </div>
 
@@ -83,7 +83,7 @@ const issued = computed(() =>
               :href="`/customs/${request.id}/print`"
             >
               <FileSignature class="ms-1 h-3.5 w-3.5" />
-              إصدار إذن بيان جمركي
+              إصدار تأكيد مصارفة خارجية
             </Button>
           </div>
         </div>
@@ -91,7 +91,7 @@ const issued = computed(() =>
 
       <Card class="border-0 p-5 shadow">
         <h3 class="mb-4 font-semibold">
-          بيانات صادرة مؤخراً ({{ issued.length }})
+          تأكيدات صادرة مؤخراً ({{ issued.length }})
         </h3>
 
         <div class="space-y-3">
@@ -99,7 +99,7 @@ const issued = computed(() =>
             v-if="issued.length === 0"
             class="text-sm text-muted-foreground"
           >
-            لم تُصدَر أي بيانات بعد.
+            لم تُصدَر أي تأكيدات بعد.
           </div>
 
           <div
