@@ -4,6 +4,11 @@ export interface ProfileStats {
   total: number
   in_progress: number
   completed: number
+  // BANK_REVIEWER-specific fields (optional — backend populates per role)
+  reviews_performed?: number
+  approvals?: number
+  returns?: number
+  terminal_rejections?: number
 }
 
 export interface RecentActivity {

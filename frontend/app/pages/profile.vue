@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ROLE_LABELS } from '@/constants/workflow'
+import { UserRole } from '@/types/enums'
 import { useAuthStore } from '@/stores/auth.store'
 import { useProfile } from '@/composables/useProfile'
 import { useToast } from '@/composables/use-toast'
@@ -35,6 +36,14 @@ watch(profile, (p) => {
 const stats = computed(() => {
   const s = profile.value?.stats
   if (!s) return []
+  if (user.value?.role === UserRole.BANK_REVIEWER) {
+    return [
+      { label: 'مراجعات', value: s.reviews_performed ?? s.total ?? 0 },
+      { label: 'اعتمادات', value: s.approvals ?? 0 },
+      { label: 'إعادات', value: s.returns ?? 0 },
+      { label: 'رفض نهائي', value: s.terminal_rejections ?? 0 },
+    ]
+  }
   return [
     { label: 'إجمالي الطلبات', value: s.total },
     { label: 'قيد المعالجة', value: s.in_progress },
@@ -91,7 +100,7 @@ function userInitials(n?: string) {
           {{ user.bank_name_ar }}
         </div>
 
-        <div class="mt-6 grid grid-cols-3 gap-3 border-t border-border pt-6">
+        <div class="mt-6 grid gap-3 border-t border-border pt-6" :class="stats.length === 4 ? 'grid-cols-4' : 'grid-cols-3'">
           <div
             v-for="stat in stats"
             :key="stat.label"
