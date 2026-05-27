@@ -17,7 +17,11 @@ class NotificationSeeder extends Seeder
      * Each request emits 1-3 notifications addressed to the role group that handled
      * (or currently owns) the request, mirroring what the live notification dispatcher
      * would emit. ~30% are pre-marked read to give the UI a mix.
+     *
+     * Cap: max 1 000 total rows so the notifications table stays demo-sized.
      */
+    private const MAX_TOTAL = 1000;
+
     public function run(): void
     {
         $requests = ImportRequest::query()->with('bank')->orderBy('id')->get();
@@ -29,17 +33,23 @@ class NotificationSeeder extends Seeder
         $usersByRole = User::query()->where('is_active', true)->get()->groupBy(fn (User $u) => $u->role?->value);
 
         $bulk = [];
-        $flush = function () use (&$bulk): void {
+        $totalInserted = 0;
+        $flush = function () use (&$bulk, &$totalInserted): void {
             if (empty($bulk)) {
                 return;
             }
             foreach (array_chunk($bulk, 500) as $chunk) {
                 DB::table('notifications')->insert($chunk);
+                $totalInserted += count($chunk);
             }
             $bulk = [];
         };
 
         foreach ($requests as $request) {
+            if ($totalInserted + count($bulk) >= self::MAX_TOTAL) {
+                break;
+            }
+
             $events = $this->eventsFor($request);
             foreach ($events as $event) {
                 $recipients = $this->recipients($event['audience'], $request, $usersByRole);
@@ -48,6 +58,9 @@ class NotificationSeeder extends Seeder
                 }
 
                 foreach ($recipients as $user) {
+                    if ($totalInserted + count($bulk) >= self::MAX_TOTAL) {
+                        break 3;
+                    }
                     $createdAt = ($event['at'] ?? now())->copy();
                     $readAt = fake()->boolean(30) ? $createdAt->copy()->addMinutes(rand(5, 720)) : null;
 
