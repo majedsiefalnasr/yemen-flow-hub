@@ -25,18 +25,18 @@ Build a bank-side decisioning workspace for internal review, support-rejection f
 
 ### 1. Role Surface And Navigation
 
-- [ ] Verify sidebar renders dashboard, requests, notifications, and settings only.
-- [ ] Remove primary new-request affordance from dashboard and nav.
-- [ ] Do not render staff, merchants, reports, audit, support claim, voting finalization, SWIFT upload, or FX completion controls.
-- [ ] Preserve own-bank scope across search, request list, detail, and documents.
+- [x] Verify sidebar renders dashboard, requests, notifications, and settings only.
+- [x] Remove primary new-request affordance from dashboard and nav.
+- [x] Do not render staff, merchants, reports, audit, support claim, voting finalization, SWIFT upload, or FX completion controls.
+- [x] Preserve own-bank scope across search, request list, detail, and documents.
 
 ### 2. Dashboard
 
-- [ ] Build decisioning launcher with greeting and bank reviewer subtitle.
+- [x] Build decisioning launcher with greeting and bank reviewer subtitle.
 - [x] Add highest-priority support-rejected strip for `SUPPORT_REJECTED` follow-up decisions.
 - [x] Add four clickable KPI cards: pending review, rejected by support, at CBY, approved/completed.
 - [x] Add quick actions: review queue and all bank requests.
-- [ ] Implement review queue table for `SUBMITTED` and `BANK_REVIEW`, sorted oldest first.
+- [x] Implement review queue table for `SUBMITTED` and `BANK_REVIEW`, sorted oldest first.
 - [x] Show submitter name and role chip in queue rows to make segregation visible.
 - [x] If current user created the request, hide decision navigation and show explanatory tooltip/note.
 - [x] Add downstream tracking table for recently approved requests in CBY stages.
@@ -44,14 +44,14 @@ Build a bank-side decisioning workspace for internal review, support-rejection f
 
 ### 3. Requests List
 
-- [ ] Implement tabs: pending, support_rejected, bank_returned, support_returned, at_cby, completed, rejected, all.
-- [ ] Keep pending and support_rejected first.
-- [ ] Use full canonical status labels, not simplified Data Entry labels.
-- [ ] Add toolbar search, column visibility, filter-scoped export, and created-by-me toggle.
-- [ ] Add selection toolbar for export/print/clear only.
-- [ ] Do not render bulk approve, reject, return, or review actions.
-- [ ] Show Created By, Age in Stage, Last Activity, and contextual row action.
-- [ ] Persist tab and created-by-me filters in URL query where practical.
+- [x] Implement tabs: pending, support_rejected, bank_returned, support_returned, at_cby, completed, rejected, all.
+- [x] Keep pending and support_rejected first.
+- [x] Use full canonical status labels, not simplified Data Entry labels.
+- [x] Add toolbar search, column visibility, filter-scoped export, and created-by-me toggle.
+- [x] Add selection toolbar for export/print/clear only.
+- [x] Do not render bulk approve, reject, return, or review actions.
+- [x] Show Created By, Age in Stage, Last Activity, and contextual row action.
+- [x] Persist tab and created-by-me filters in URL query where practical.
 
 ### 4. Request Detail And Decisions
 
