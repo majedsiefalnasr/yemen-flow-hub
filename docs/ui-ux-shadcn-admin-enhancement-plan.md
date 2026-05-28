@@ -520,10 +520,10 @@ Concrete mapping from template asset → Yemen Flow Hub Vue target. "Status" ref
 ### Phase 4: Page Header System
 
 - [x] Standardize `PageHeader.vue` props/slots: title, subtitle, breadcrumbs, primary action, secondary actions, toolbar, status summary, last updated.
-- [ ] Remove duplicate greeting/header blocks inside role dashboard subcomponents.
+- [x] Remove duplicate greeting/header blocks inside role dashboard subcomponents.
 - [ ] Add consistent refresh, export, date range, and bank/entity filters where role docs allow them.
-- [ ] Verify RTL alignment: primary actions should sit where Arabic scanning expects, and icon order must mirror.
-- [ ] Add compact behavior for `600px` width without hiding important workflow actions.
+- [x] Verify RTL alignment: primary actions should sit where Arabic scanning expects, and icon order must mirror.
+- [x] Add compact behavior for `600px` width without hiding important workflow actions.
 
 ### Phase 5: Dashboard Composition
 
