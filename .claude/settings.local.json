@@ -62,7 +62,15 @@
       "Bash(docker-compose *)",
       "Bash(kill 22451)",
       "Bash(kill 34184)",
-      "Skill(impeccable)"
+      "Skill(impeccable)",
+      "Bash(awk '/^## Tasklist/,/^## Tests List/' /Users/majedsiefalnasr/Documents/Work/Ultimate-Solutions-EGY/yemen-flow-hub/code/docs/user-view/implementation-plans/support-committee-plan.md)",
+      "Bash(awk '/^## Tasklist/,/^## Tests List/' /Users/majedsiefalnasr/Documents/Work/Ultimate-Solutions-EGY/yemen-flow-hub/code/docs/user-view/implementation-plans/executive-member-plan.md)",
+      "Bash(awk '/^## Tasklist/,/^## Tests List/' /Users/majedsiefalnasr/Documents/Work/Ultimate-Solutions-EGY/yemen-flow-hub/code/docs/user-view/implementation-plans/committee-director-plan.md)",
+      "Bash(tee /tmp/vitest-out.txt)",
+      "Bash(tee /tmp/inactivity.txt)",
+      "Bash(tee /tmp/vitest-out2.txt)",
+      "Bash(tee /tmp/vitest-out3.txt)",
+      "Bash(tee /tmp/vitest_out.txt)"
     ]
   }
 }

@@ -199,6 +199,7 @@ CBY_ADMIN
 - Do NOT use `CBY_ADMIN` as a workflow super-actor for Director, SWIFT, Support, Bank Reviewer, or Executive Member actions
 - Do NOT create `AI-PROTOTYPE-PROMPT.md` — that file lives only in the root repo
 - Do NOT modify anything inside `lovable/`
+- Do NOT replace shadcn-vue components with raw HTML to make tests pass. shadcn-vue components (Button, Dialog, Table, Select, etc.) are mandatory — see `frontend/SHADCN.md`. If a Vitest test fails because it cannot introspect a shadcn-vue component (e.g. Dialog content is teleported, Select options are not raw `<option>` tags), **skip or ignore that test** rather than downgrading the component to raw HTML.
 
 ### Always Do
 - Enforce organization-scoped visibility at the database query level
