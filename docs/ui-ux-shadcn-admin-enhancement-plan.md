@@ -466,7 +466,7 @@ Concrete mapping from template asset → Yemen Flow Hub Vue target. "Status" ref
 
 ### Phase 0: Baseline, Governance, And Evidence
 
-- [ ] Capture current Yemen Flow Hub screenshots for `/login`, `/dashboard`, `/requests`, `/requests/new`, `/settings`, error states, and all role dashboard variants.
+- [x] Capture current Yemen Flow Hub screenshots for `/login`, `/dashboard`, `/requests`, `/requests/new`, `/settings`, error states, and all role dashboard variants.
 - [x] Create a route inventory for the current frontend: shell, sidebar, page headers, dashboards, tables, forms, dialogs, errors, settings.
 - [x] Map every proposed UI change to one source of truth: `docs/user-view/*.md`, root `DESIGN.md`, `frontend/DESIGN.md`, or `frontend/SHADCN.md`.
 - [x] Confirm all changes use shadcn-vue components where applicable.
@@ -481,8 +481,8 @@ Concrete mapping from template asset → Yemen Flow Hub Vue target. "Status" ref
 - [x] Keep sidebar right-aligned by default and verify expanded, collapsed, mobile sheet, and keyboard toggle states.
 - [x] Improve active nav styling with project blue and full pill or contained active state from `DESIGN.md`, not template purple.
 - [x] Add nested sidebar groups for admin-only areas only if role docs justify them.
-- [ ] Add operational nav badges from real API counts only.
-- [ ] Add tests that forbidden nav entries are not mounted for each role.
+- [x] Add operational nav badges from real API counts only.
+- [x] Add tests that forbidden nav entries are not mounted for each role.
 - [x] Confirm shell nesting: sidebar and inset content are siblings under one provider; topbar lives inside the inset column (not above the whole viewport).
 - [x] Keep layout-config (fixed `side=right`, variant, collapsible) separate from runtime open/collapsed state; do not merge into one store.
 - [x] Adopt the `NavLink | NavCollapsible` + `NavGroup` discriminated-union nav model and add a `roles?`/`can?` field on each item.
@@ -498,7 +498,7 @@ Concrete mapping from template asset → Yemen Flow Hub Vue target. "Status" ref
 - [x] Add groups: الطلبات, الطوابير, الجهات, الموظفون, التدقيق, التقارير, الإعدادات, المساعدة.
 - [x] Add quick actions only when the active role and status allow them, for example new request for `DATA_ENTRY`.
 - [x] Support keyboard shortcut without conflicting with browser or Arabic input behavior.
-- [ ] Add tests proving forbidden routes/actions do not appear in command search.
+- [x] Add tests proving forbidden routes/actions do not appear in command search.
 - [x] Enforce a single source of truth: derive palette items from the same role-filtered nav config as the sidebar; never maintain a second hand-edited array (the template's key defect).
 - [x] Keep cmdk/reka substring filter; add Arabic-primary labels with optional English alias keywords for search matching.
 - [x] Keep the `SearchTrigger` input-styled button with a `⌘K`/`Ctrl K` hint in the topbar (mirror kbd to logical-end in RTL).
@@ -521,7 +521,7 @@ Concrete mapping from template asset → Yemen Flow Hub Vue target. "Status" ref
 
 - [x] Standardize `PageHeader.vue` props/slots: title, subtitle, breadcrumbs, primary action, secondary actions, toolbar, status summary, last updated.
 - [x] Remove duplicate greeting/header blocks inside role dashboard subcomponents.
-- [ ] Add consistent refresh, export, date range, and bank/entity filters where role docs allow them.
+- [x] Add consistent refresh, export, date range, and bank/entity filters where role docs allow them.
 - [x] Verify RTL alignment: primary actions should sit where Arabic scanning expects, and icon order must mirror.
 - [x] Add compact behavior for `600px` width without hiding important workflow actions.
 
@@ -558,13 +558,13 @@ Role dashboard checklist:
 - [x] Translate template faceted filters into shadcn-vue `Popover`, `Command`, `Checkbox`, `Badge`, and `Button` patterns.
 - [x] Add canonical enum filters: role, status, organization, category, date range, claim state, voting state, document state as applicable.
 - [x] Add column visibility for allowed columns only.
-- [ ] Ensure exports respect the same role-visible column model.
-- [ ] Add keyboard focus checks for search, filters, row actions, pagination, and column menu.
+- [x] Ensure exports respect the same role-visible column model.
+- [x] Add keyboard focus checks for search, filters, row actions, pagination, and column menu.
 - [x] Build one generic `DataTable.vue` with columns-as-prop and the full row-model stack; refuse the monolithic users-table structure (700-line inline anti-pattern).
 - [x] Extract the URL-sync derive/reverse-map logic into a `useTableQueryState` composable (typed parsers, per-key history mode, default-nulling of page/perPage).
 - [x] Build the six sub-components: `DataTableToolbar`, `DataTableFacetedFilter`, `DataTableViewOptions`, `DataTableColumnHeader`, `DataTablePagination`, `DataTableRowActions`.
 - [x] Use a labeled (Arabic) `columnLabels` map in view-options, not raw `column.id`.
-- [ ] Decide faceted-filter count source: for server-paginated queues, provide facet counts from the backend; do NOT show TanStack client-side per-page counts as if they were totals.
+- [x] Decide faceted-filter count source: for server-paginated queues, provide facet counts from the backend; do NOT show TanStack client-side per-page counts as if they were totals.
 - [x] Add a debounced search (`refDebounced`/`useDebounceFn`, 300ms) and `/` focus + `Esc` clear shortcuts with input/IME guards.
 - [x] Build a `useTableExport` composable: role-visible column projection + UTF-8 BOM for Arabic CSV; route audited exports through the backend where one exists.
 - [x] Support initial-hidden "advanced" columns (e.g. fee/country pattern) shown on demand via view-options.
@@ -574,13 +574,13 @@ Priority table surfaces:
 
 - [x] `RequestsDataTable.vue`
 - [x] `/requests`
-- [ ] `/merchants`
-- [ ] `/staff`
-- [ ] `/admin/cby-staff`
-- [ ] `/admin/entities`
-- [ ] `/admin/workflow-docs`
-- [ ] `/audit`
-- [ ] `/reports`
+- [x] `/merchants`
+- [x] `/staff`
+- [x] `/admin/cby-staff`
+- [x] `/admin/entities`
+- [x] `/admin/workflow-docs`
+- [x] `/audit`
+- [x] `/reports`
 
 ### Phase 7: Workflow Forms, Dialogs, And Action Surfaces
 
@@ -595,11 +595,11 @@ Priority table surfaces:
 
 - [x] Redesign `/login` using template layout clarity, but institutionalize it: CBY identity, formal Arabic copy, security posture, rate-limit/lockout help.
 - [x] Remove social-login, social-proof, marketing claims, gradients, and playful illustrations.
-- [ ] Add or refine reset password and future MFA screens with the same form rhythm.
-- [ ] Standardize `unauthorized`, `forbidden`, `not found`, `server error`, and `maintenance` pages with Arabic copy and clear next actions.
+- [x] Add or refine reset password and future MFA screens with the same form rhythm.
+- [x] Standardize `unauthorized`, `forbidden`, `not found`, `server error`, and `maintenance` pages with Arabic copy and clear next actions.
 - [x] Use shadcn-vue `Skeleton` for loading states.
 - [x] Use shadcn-vue `Alert` for inline errors.
-- [ ] Make empty states operational: queue clear, no matching filters, no assigned sessions, no active claims.
+- [x] Make empty states operational: queue clear, no matching filters, no assigned sessions, no active claims.
 - [ ] Build help/SOP pages from real role guidance, not generic FAQ text.
 - [x] Build one props-driven `ErrorState.vue` (code, icon, title, description, actions) for 401/403/404/500/503; wire to Nuxt `error.vue`/middleware.
 - [x] Error recovery actions must be role-safe: "back to dashboard" routes to the role's own dashboard, never a forbidden home; 403 keeps "contact administrator" guidance.
@@ -611,15 +611,15 @@ Priority table surfaces:
 
 ### Phase 9: RTL, Responsive, Accessibility, And Visual QA
 
-- [ ] Audit changed files for physical directions: `ml`, `mr`, `pl`, `pr`, `left`, `right`, `border-l`, `border-r`.
-- [ ] Replace with logical spacing and border utilities where possible.
+- [x] Audit changed files for physical directions: `ml`, `mr`, `pl`, `pr`, `left`, `right`, `border-l`, `border-r`.
+- [x] Replace with logical spacing and border utilities where possible.
 - [ ] Verify dropdown, popover, dialog, tooltip, table overflow, and mobile sheet alignment in RTL.
 - [ ] Test desktop `1440x1000`, desktop `1280x900`, tablet-width, and compact `600px` states.
 - [ ] Confirm mobile menus do not expose forbidden controls.
 - [ ] Validate color contrast for status badges, active nav, focus rings, and action strips.
 - [ ] Add Playwright visual checks for shell, sidebar, topbar, command palette, requests table, login, error pages, and one dashboard per role.
-- [ ] Add keyboard checks for command palette, sidebar toggle, filters, row action menus, dialogs, and pagination.
-- [ ] Run `npm run typecheck` and targeted Vitest/Playwright suites after each implementation phase.
+- [x] Add keyboard checks for command palette, sidebar toggle, filters, row action menus, dialogs, and pagination.
+- [x] Run `npm run typecheck` and targeted Vitest/Playwright suites after each implementation phase.
 
 ## Do Not Port
 
