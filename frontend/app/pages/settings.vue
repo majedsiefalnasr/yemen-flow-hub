@@ -60,6 +60,18 @@ definePageMeta({
 const themingStore = useThemingStore()
 const settingsStore = useSettingsStore()
 
+const settingsTabs = [
+  { value: 'general', label: 'عام', icon: Cog, dataTab: 'general', testId: 'tab-general' },
+  { value: 'workflow', label: 'سير العمل', icon: Workflow, dataTab: 'workflow', testId: 'tab-workflow' },
+  { value: 'email', label: 'البريد الإلكتروني', icon: Mail, dataTab: 'email', testId: 'tab-email' },
+  { value: 'notif', label: 'الإشعارات', icon: Bell, dataTab: 'notifications', testId: 'tab-notif' },
+  { value: 'security', label: 'الأمن', icon: ShieldAlert, dataTab: 'security', testId: 'tab-security' },
+] as const
+
+type SettingsTab = (typeof settingsTabs)[number]['value']
+
+const activeTab = ref<SettingsTab>('general')
+
 // ── Theming state ─────────────────────────────────────────────────────────────
 const fontPickerOpen = ref(false)
 const showEmailPassword = ref(false)
@@ -266,29 +278,55 @@ async function saveGeneralAndBrandingSettings() {
       :breadcrumbs="[{ label: 'الرئيسية', to: '/' }, { label: 'الإعدادات' }]"
     />
 
-    <Tabs default-value="general" class="space-y-6">
-      <TabsList class="h-auto flex-wrap gap-1 p-1">
-        <TabsTrigger value="general" data-tab="general" data-testid="tab-general" class="gap-1.5">
-          <Cog class="h-4 w-4" />
-          عام
-        </TabsTrigger>
-        <TabsTrigger value="workflow" data-tab="workflow" data-testid="tab-workflow" class="gap-1.5">
-          <Workflow class="h-4 w-4" />
-          سير العمل
-        </TabsTrigger>
-        <TabsTrigger value="email" data-tab="email" data-testid="tab-email" class="gap-1.5">
-          <Mail class="h-4 w-4" />
-          البريد الإلكتروني
-        </TabsTrigger>
-        <TabsTrigger value="notif" data-tab="notifications" data-testid="tab-notif" class="gap-1.5">
-          <Bell class="h-4 w-4" />
-          الإشعارات
-        </TabsTrigger>
-        <TabsTrigger value="security" data-tab="security" data-testid="tab-security" class="gap-1.5">
-          <ShieldAlert class="h-4 w-4" />
-          الأمن
-        </TabsTrigger>
-      </TabsList>
+    <div dir="rtl" class="flex flex-col gap-6 lg:flex-row">
+      <aside class="hidden lg:block lg:w-60 lg:shrink-0">
+        <nav class="flex flex-col gap-1 rounded-xl border border-border bg-card p-2">
+          <Button
+            v-for="tab in settingsTabs"
+            :key="tab.value"
+            type="button"
+            variant="ghost"
+            :class="cn(
+              'h-auto w-full justify-start gap-2 rounded-lg px-3 py-2.5 text-start',
+              activeTab === tab.value
+                ? 'bg-muted font-medium text-foreground hover:bg-muted'
+                : 'text-muted-foreground hover:text-foreground',
+            )"
+            :aria-current="activeTab === tab.value ? 'page' : undefined"
+            @click="activeTab = tab.value"
+          >
+            <component :is="tab.icon" class="size-4" />
+            {{ tab.label }}
+          </Button>
+        </nav>
+      </aside>
+
+      <div class="min-w-0 flex-1">
+        <Tabs v-model="activeTab" class="space-y-6">
+          <Select v-model="activeTab" class="sm:hidden">
+            <SelectTrigger class="w-full">
+              <SelectValue placeholder="اختر القسم" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem v-for="tab in settingsTabs" :key="tab.value" :value="tab.value">
+                {{ tab.label }}
+              </SelectItem>
+            </SelectContent>
+          </Select>
+
+          <TabsList class="hidden h-auto flex-wrap gap-1 p-1 sm:flex lg:hidden">
+            <TabsTrigger
+              v-for="tab in settingsTabs"
+              :key="tab.value"
+              :value="tab.value"
+              :data-tab="tab.dataTab"
+              :data-testid="tab.testId"
+              class="gap-1.5"
+            >
+              <component :is="tab.icon" class="h-4 w-4" />
+              {{ tab.label }}
+            </TabsTrigger>
+          </TabsList>
 
       <!-- ── General ─────────────────────────────────────────────────────── -->
       <TabsContent value="general" data-panel="general" class="space-y-6">
@@ -982,6 +1020,8 @@ async function saveGeneralAndBrandingSettings() {
           </CardContent>
         </Card>
       </TabsContent>
-    </Tabs>
+        </Tabs>
+      </div>
+    </div>
   </div>
 </template>

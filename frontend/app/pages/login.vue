@@ -1,9 +1,14 @@
 <script setup lang="ts">
 import { nextTick, ref, computed, watch, onBeforeUnmount } from 'vue'
+import { Loader2 } from 'lucide-vue-next'
 import { useForm } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/zod'
 import { z } from 'zod'
 import { useRouter, useRoute } from 'vue-router'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { useAuthStore } from '../stores/auth.store'
 import { ROLE_LABELS } from '../constants/workflow'
 import Icon from '../components/shared/Icon.vue'
@@ -169,22 +174,52 @@ onBeforeUnmount(clearOtpTimer)
           <div class="login-heading">
             <h2>تسجيل الدخول</h2>
           </div>
-          <div v-if="showInactivityBanner && !inactivityBannerDismissed" class="info-alert" role="status" aria-live="polite">
-            تم تسجيل خروجك بسبب عدم النشاط — يرجى تسجيل الدخول مرة أخرى
-          </div>
-          <div v-if="serverError" class="error-alert" role="alert" aria-live="assertive">{{ serverError }}</div>
+          <Alert v-if="showInactivityBanner && !inactivityBannerDismissed" role="status" aria-live="polite" class="mb-5">
+            <AlertDescription>
+              تم تسجيل خروجك بسبب عدم النشاط — يرجى تسجيل الدخول مرة أخرى
+            </AlertDescription>
+          </Alert>
+          <Alert v-if="serverError" variant="destructive" role="alert" aria-live="assertive" class="mb-5">
+            <AlertDescription>
+              {{ serverError }}
+            </AlertDescription>
+          </Alert>
           <form class="login-form" novalidate @submit.prevent="onSubmit">
             <div class="field-group">
-              <label for="email" class="field-label">البريد الإلكتروني</label>
-              <input id="email" v-model="email" v-bind="emailAttrs" type="email" class="field-input" :class="{ 'field-input--error': errors.email }" placeholder="user@example.com" autocomplete="email" dir="ltr">
-              <span v-if="errors.email" class="field-error">{{ errors.email }}</span>
+              <Label for="email">البريد الإلكتروني</Label>
+              <Input
+                id="email"
+                v-model="email"
+                v-bind="emailAttrs"
+                type="email"
+                placeholder="user@example.com"
+                autocomplete="email"
+                dir="ltr"
+                :aria-invalid="errors.email ? 'true' : undefined"
+              />
+              <p v-if="errors.email" class="mt-1 text-sm text-destructive">
+                {{ errors.email }}
+              </p>
             </div>
             <div class="field-group">
-              <label for="password" class="field-label">كلمة المرور</label>
-              <input id="password" v-model="password" v-bind="passwordAttrs" type="password" class="field-input" :class="{ 'field-input--error': errors.password }" placeholder="••••••••" autocomplete="current-password">
-              <span v-if="errors.password" class="field-error">{{ errors.password }}</span>
+              <Label for="password">كلمة المرور</Label>
+              <Input
+                id="password"
+                v-model="password"
+                v-bind="passwordAttrs"
+                type="password"
+                placeholder="••••••••"
+                autocomplete="current-password"
+                :aria-invalid="errors.password ? 'true' : undefined"
+              />
+              <p v-if="errors.password" class="mt-1 text-sm text-destructive">
+                {{ errors.password }}
+              </p>
             </div>
-            <button type="submit" class="submit-btn" :disabled="isLoading">{{ isLoading ? 'جارٍ تسجيل الدخول...' : 'متابعة' }}</button>
+            <Button type="submit" size="lg" class="w-full" :disabled="isLoading">
+              <Loader2 v-if="isLoading" class="size-4 animate-spin me-2" />
+              {{ isLoading ? 'جارٍ تسجيل الدخول...' : 'متابعة' }}
+            </Button>
           </form>
           <p class="mfa-footer-note">مصادقة متعددة العوامل (MFA) مفعّلة</p>
         </template>
@@ -194,7 +229,11 @@ onBeforeUnmount(clearOtpTimer)
             <h2 class="otp-title">رمز التحقق (OTP)</h2>
             <p class="otp-desc">أدخل الرمز المرسل إلى هاتفك المنتهي بـ {{ otpDestination }}</p>
           </div>
-          <div v-if="otpError" class="error-alert" role="alert" aria-live="assertive">{{ otpError }}</div>
+          <Alert v-if="otpError" variant="destructive" role="alert" aria-live="assertive" class="mb-5">
+            <AlertDescription>
+              {{ otpError }}
+            </AlertDescription>
+          </Alert>
           <div class="otp-cells" @paste.prevent="onOtpPaste">
             <input v-for="(_, i) in otpCells" :key="i" :ref="(el) => { if (el) otpCellRefs[i] = el as HTMLInputElement }" v-model="otpCells[i]" type="text" inputmode="numeric" maxlength="1" class="otp-cell" :class="{ 'otp-cell--error': otpError }" autocomplete="one-time-code" @keydown="onOtpKeydown(i, $event)">
           </div>
@@ -208,8 +247,13 @@ onBeforeUnmount(clearOtpTimer)
             <Icon name="lock" />
             <span>سيتم تسجيل دخولك بصلاحيات: <strong>{{ otpRoleLabel || 'مستخدم النظام' }}</strong></span>
           </div>
-          <button class="submit-btn" :disabled="isOtpLoading" @click="onOtpSubmit">{{ isOtpLoading ? 'جارٍ التحقق...' : 'تأكيد ودخول' }}</button>
-          <button type="button" class="back-link" @click="backToLogin">رجوع</button>
+          <Button size="lg" class="w-full" :disabled="isOtpLoading" @click="onOtpSubmit">
+            <Loader2 v-if="isOtpLoading" class="size-4 animate-spin me-2" />
+            {{ isOtpLoading ? 'جارٍ التحقق...' : 'تأكيد ودخول' }}
+          </Button>
+          <Button type="button" variant="ghost" class="mt-3 w-full" @click="backToLogin">
+            رجوع
+          </Button>
         </template>
       </div>
     </div>
@@ -230,18 +274,8 @@ onBeforeUnmount(clearOtpTimer)
 .login-form-col { background: var(--background); display: flex; align-items: center; justify-content: center; padding: 40px 24px; }
 .login-form-wrap { width: 100%; max-width: 420px; }
 .login-heading h2 { margin: 0 0 20px; font-size: 30px; font-weight: 700; color: var(--foreground); }
-.info-alert { background-color: color-mix(in srgb, var(--color-warning) 10%, var(--background)); border: 1px solid color-mix(in srgb, var(--color-warning) 40%, transparent); border-radius: 8px; color: var(--color-warning); font-size: 14px; padding: 12px 16px; margin-bottom: 20px; }
-.error-alert { background-color: color-mix(in srgb, var(--destructive) 8%, var(--background)); border: 1px solid color-mix(in srgb, var(--destructive) 40%, transparent); border-radius: 8px; color: var(--destructive); font-size: 14px; padding: 12px 16px; margin-bottom: 20px; }
 .login-form { display: flex; flex-direction: column; gap: 20px; }
 .field-group { display: flex; flex-direction: column; gap: 6px; }
-.field-label { font-size: 14px; font-weight: 500; color: var(--foreground); }
-.field-input { min-height: 44px; padding: 0 14px; border: 1px solid var(--border); border-radius: 12px; font-size: 15px; color: var(--foreground); background-color: var(--background); transition: border-color 120ms ease; width: 100%; box-sizing: border-box; }
-.field-input:focus { outline: none; border-width: 1.5px; border-color: var(--primary); }
-.field-input--error { border-color: var(--destructive); }
-.field-error { font-size: 13px; color: var(--destructive); }
-.submit-btn { display: flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 24px; background-color: var(--primary); color: var(--primary-foreground); border: none; border-radius: 16px; font-size: 15px; font-weight: 500; cursor: pointer; width: 100%; margin-top: 8px; transition: background-color 120ms ease; }
-.submit-btn:hover:not(:disabled) { background-color: color-mix(in srgb, var(--primary) 82%, black); }
-.submit-btn:disabled { opacity: 0.65; cursor: not-allowed; }
 .mfa-footer-note { font-size: 12px; color: var(--muted-foreground); text-align: center; margin: 20px 0 0; }
 .otp-heading { text-align: center; margin-bottom: 24px; }
 .otp-title { font-size: 24px; font-weight: 700; color: var(--foreground); margin: 0 0 8px; }
@@ -253,6 +287,5 @@ onBeforeUnmount(clearOtpTimer)
 .otp-timer { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted-foreground); margin-bottom: 12px; justify-content: center; }
 .otp-timer--expiring { color: var(--destructive); font-weight: 500; }
 .otp-role-card { display: flex; align-items: center; gap: 8px; border: 1px dashed var(--border); border-radius: 12px; padding: 12px; background: color-mix(in srgb, var(--muted) 40%, var(--background)); font-size: 13px; margin-bottom: 12px; }
-.back-link { display: block; width: 100%; margin-top: 12px; padding: 10px; background: none; border: none; color: var(--primary); font-size: 14px; text-align: center; cursor: pointer; text-decoration: underline; }
 @media (max-width: 1023px) { .login-page { grid-template-columns: 1fr; } .login-hero { display: none; } .login-form-col { padding: 24px 16px; } }
 </style>
