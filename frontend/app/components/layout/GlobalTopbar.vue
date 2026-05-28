@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Bell, LogOut, Moon, Settings, Sun, User } from 'lucide-vue-next'
 import { useRouter } from 'vue-router'
-import SearchForm from '@/components/SearchForm.vue'
+import CommandPalette from '@/components/CommandPalette.vue'
 import { ROLE_LABELS } from '@/constants/workflow'
 import { useAuthStore } from '@/stores/auth.store'
 import { useThemingStore } from '@/stores/theming.store'
@@ -61,7 +61,7 @@ async function handleLogout() {
     </div>
 
     <div class="flex flex-1 justify-center">
-      <SearchForm />
+      <CommandPalette />
     </div>
 
     <div class="flex min-w-0 flex-1 items-center justify-end gap-1.5">
