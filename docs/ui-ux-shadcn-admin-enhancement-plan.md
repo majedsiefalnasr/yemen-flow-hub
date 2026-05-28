@@ -466,29 +466,13 @@ Concrete mapping from template asset → Yemen Flow Hub Vue target. "Status" ref
 
 ### Phase 0: Baseline, Governance, And Evidence
 
-- [ ] Capture current Yemen Flow Hub screenshots for `/login`, `/dashboard`, `/requests`, `/requests/new`, `/settings`, error states, and all role dashboard variants.
-- [ ] Create a route inventory for the current frontend: shell, sidebar, page headers, dashboards, tables, forms, dialogs, errors, settings.
-- [ ] Map every proposed UI change to one source of truth: `docs/user-view/*.md`, root `DESIGN.md`, `frontend/DESIGN.md`, or `frontend/SHADCN.md`.
-- [ ] Confirm all changes use shadcn-vue components where applicable.
-- [ ] Confirm no work touches `lovable/`.
-- [ ] Confirm generated artifacts remain local-only: `graphify-out/`, `_bmad-output/implementation-artifacts/`, `_bmad-output/test-artifacts/`.
+- [x] Confirm all changes use shadcn-vue components where applicable.
+- [x] Confirm no work touches `lovable/`.
+- [x] Confirm generated artifacts remain local-only: `graphify-out/`, `_bmad-output/implementation-artifacts/`, `_bmad-output/test-artifacts/`.
 
 ### Phase 1: Shell, Sidebar, And Topbar
 
-- [ ] Refactor `AppShell.vue` to own global shell controls instead of scattering them across pages.
-- [ ] Add or formalize a `GlobalTopbar.vue` with sidebar trigger, command palette trigger, notification trigger, preferences/theme trigger, and user menu.
-- [ ] Keep page-specific title, breadcrumbs, and primary actions in `PageHeader.vue`.
-- [ ] Keep sidebar right-aligned by default and verify expanded, collapsed, mobile sheet, and keyboard toggle states.
-- [ ] Improve active nav styling with project blue and full pill or contained active state from `DESIGN.md`, not template purple.
-- [ ] Add nested sidebar groups for admin-only areas only if role docs justify them.
-- [ ] Add operational nav badges from real API counts only.
-- [ ] Add tests that forbidden nav entries are not mounted for each role.
-- [ ] Confirm shell nesting: sidebar and inset content are siblings under one provider; topbar lives inside the inset column (not above the whole viewport).
-- [ ] Keep layout-config (fixed `side=right`, variant, collapsible) separate from runtime open/collapsed state; do not merge into one store.
-- [ ] Adopt the `NavLink | NavCollapsible` + `NavGroup` discriminated-union nav model and add a `roles?`/`can?` field on each item.
-- [ ] Keep the 3-branch `NavGroup` render (leaf / inline-collapsible / collapsed-flyout-dropdown); mirror flyout side and chevron to logical-start in RTL.
-- [ ] Replace the violet→fuchsia gradient active-bar with a solid `--primary` (#0066cc) indicator for operational nav groups (requests, queues, audit, workflow); allow gradient bar for analytics/statistics nav groups (BANK_ADMIN oversight, CBY_ADMIN governance) via a `navGroupStyle?: 'analytics'` field on `NavGroup`. Mirror the indicator bar to the right edge in RTL (`absolute right-0`, `rounded-l-full`). Replace `badgeColor` enum with YFH semantic states.
-- [ ] Replace TeamSwitcher with a fixed org/bank identity header (no switcher for single-org roles; read-only scope indicator for CBY_ADMIN).
+- [x] Confirm shell nesting: sidebar and inset content are siblings under one provider; topbar lives inside the inset column (not above the whole viewport).
 - [x] Keep the NavUser logout AlertDialog confirm; drop "Upgrade to Pro"/"Billing"; preserve session/audit semantics.
 
 ### Phase 2: Role-Scoped Command Palette
@@ -644,6 +628,30 @@ Priority table surfaces:
 6. Auth/error/empty/loading/help polish.
 7. Safe preferences: density, contrast, reduced motion, sidebar state.
 8. RTL/responsive/accessibility hardening and Playwright visual baselines.
+
+## Backlog (Not Yet Implemented)
+
+### Phase 0 Remaining
+
+- [ ] Capture current Yemen Flow Hub screenshots for `/login`, `/dashboard`, `/requests`, `/requests/new`, `/settings`, error states, and all role dashboard variants.
+- [ ] Create a route inventory for the current frontend: shell, sidebar, page headers, dashboards, tables, forms, dialogs, errors, settings.
+- [ ] Map every proposed UI change to one source of truth: `docs/user-view/*.md`, root `DESIGN.md`, `frontend/DESIGN.md`, or `frontend/SHADCN.md`.
+
+### Phase 1 Remaining
+
+- [ ] Refactor `AppShell.vue` to own global shell controls instead of scattering them across pages.
+- [ ] Add or formalize a `GlobalTopbar.vue` with sidebar trigger, command palette trigger, notification trigger, preferences/theme trigger, and user menu.
+- [ ] Keep page-specific title, breadcrumbs, and primary actions in `PageHeader.vue`.
+- [ ] Keep sidebar right-aligned by default and verify expanded, collapsed, mobile sheet, and keyboard toggle states.
+- [ ] Improve active nav styling with project blue and full pill or contained active state from `DESIGN.md`, not template purple.
+- [ ] Add nested sidebar groups for admin-only areas only if role docs justify them.
+- [ ] Add operational nav badges from real API counts only.
+- [ ] Add tests that forbidden nav entries are not mounted for each role.
+- [ ] Keep layout-config (fixed `side=right`, variant, collapsible) separate from runtime open/collapsed state; do not merge into one store.
+- [ ] Adopt the `NavLink | NavCollapsible` + `NavGroup` discriminated-union nav model and add a `roles?`/`can?` field on each item.
+- [ ] Keep the 3-branch `NavGroup` render (leaf / inline-collapsible / collapsed-flyout-dropdown); mirror flyout side and chevron to logical-start in RTL.
+- [ ] Replace the violet→fuchsia gradient active-bar with a solid `--primary` (#0066cc) indicator for operational nav groups; allow gradient bar for analytics nav groups via `navGroupStyle?: 'analytics'`. Mirror indicator bar to right edge in RTL. Replace `badgeColor` enum with YFH semantic states.
+- [ ] Replace TeamSwitcher with a fixed org/bank identity header (no switcher for single-org roles; read-only scope indicator for CBY_ADMIN).
 
 ## Acceptance Checklist
 
