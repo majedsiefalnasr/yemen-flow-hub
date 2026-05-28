@@ -38,6 +38,22 @@ export default defineNuxtConfig({
         '@': fileURLToPath(new URL('./app', import.meta.url)),
       },
     },
+    optimizeDeps: {
+      include: [
+        '@tanstack/vue-table',
+        '@vee-validate/zod',
+        '@vue/devtools-core',
+        '@vue/devtools-kit',
+        'class-variance-authority',
+        'clsx',
+        'lucide-vue-next',
+        'reka-ui',
+        'tailwind-merge',
+        'vee-validate',
+        'vue-sonner',
+        'zod',
+      ],
+    },
   },
 
   css: [

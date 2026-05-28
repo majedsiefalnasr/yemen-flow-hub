@@ -1,11 +1,30 @@
 import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises'
+import { existsSync, readdirSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const targetPackageJsonPath = join(rootDir, 'node_modules', 'vue-router', 'package.json')
 const targetVolarDir = join(rootDir, 'node_modules', 'vue-router', 'dist', 'volar')
-const sourceVolarDir = join(rootDir, 'node_modules', 'nuxt', 'node_modules', 'vue-router', 'dist', 'volar')
+
+// npm layout: nuxt bundles its own vue-router
+const npmSourceVolarDir = join(rootDir, 'node_modules', 'nuxt', 'node_modules', 'vue-router', 'dist', 'volar')
+
+// pnpm layout: vue-router@5.x lives in the virtual store
+function findSourceVolarDir() {
+  if (existsSync(npmSourceVolarDir)) return npmSourceVolarDir
+
+  const pnpmDir = join(rootDir, 'node_modules', '.pnpm')
+  if (!existsSync(pnpmDir)) return null
+
+  for (const entry of readdirSync(pnpmDir)) {
+    if (!entry.startsWith('vue-router@5.')) continue
+    const candidate = join(pnpmDir, entry, 'node_modules', 'vue-router', 'dist', 'volar')
+    if (existsSync(candidate)) return candidate
+  }
+
+  return null
+}
 
 const volarEntrypoints = [
   {
@@ -23,6 +42,12 @@ const volarEntrypoints = [
 const packageJson = JSON.parse(await readFile(targetPackageJsonPath, 'utf8'))
 
 if (packageJson.exports?.['./volar/sfc-route-blocks']) {
+  process.exit(0)
+}
+
+const sourceVolarDir = findSourceVolarDir()
+if (!sourceVolarDir) {
+  console.warn('patch-vue-router-volar: could not find vue-router volar source — skipping patch')
   process.exit(0)
 }
 
