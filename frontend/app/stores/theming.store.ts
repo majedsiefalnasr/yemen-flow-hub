@@ -5,6 +5,11 @@ export type FontFamily = string
 export type LayoutMode = 'boxed' | 'full'
 export type FontSource = 'google' | 'fallback'
 export type AutoplayPreference = 'system' | 'enabled' | 'disabled'
+export type RadiusPreference = 'none' | 'sm' | 'md' | 'lg' | 'xl'
+export type SidebarVariant = 'sidebar' | 'floating' | 'inset'
+export type SidebarCollapsible = 'offcanvas' | 'icon' | 'none'
+export type DensityPreference = 'comfortable' | 'compact'
+export type ReducedMotionPreference = 'system' | 'always'
 
 export interface GoogleFontOption {
   value: string
@@ -38,6 +43,11 @@ interface ThemingState {
   fontsError: string | null
   fontSource: FontSource
   isLoading: boolean
+  radius: RadiusPreference
+  sidebarVariant: SidebarVariant
+  sidebarCollapsible: SidebarCollapsible
+  density: DensityPreference
+  reducedMotion: ReducedMotionPreference
 }
 
 const STORAGE_KEY = 'appearance-settings-cache'
@@ -148,6 +158,11 @@ export const useThemingStore = defineStore('theming', {
     fontsError: null,
     fontSource: 'fallback',
     isLoading: false,
+    radius: 'md',
+    sidebarVariant: 'inset',
+    sidebarCollapsible: 'icon',
+    density: 'comfortable',
+    reducedMotion: 'system',
   }),
 
   getters: {
@@ -172,6 +187,11 @@ export const useThemingStore = defineStore('theming', {
     selectedFontLabel: (state) => {
       const family = normalizeFontFamily(state.font)
       return state.fontOptions.find(font => font.value === family)?.label || family
+    },
+
+    prefersReducedMotion: (state): boolean => {
+      if (state.reducedMotion === 'always') return true
+      return typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
     },
   },
 
@@ -282,6 +302,33 @@ export const useThemingStore = defineStore('theming', {
       this.persistToCache()
     },
 
+    setRadius(value: RadiusPreference) {
+      this.radius = value
+      this.applyRadius()
+      this.persistToCache()
+    },
+
+    setSidebarVariant(value: SidebarVariant) {
+      this.sidebarVariant = value
+      this.persistToCache()
+    },
+
+    setSidebarCollapsible(value: SidebarCollapsible) {
+      this.sidebarCollapsible = value
+      this.persistToCache()
+    },
+
+    setDensity(value: DensityPreference) {
+      this.density = value
+      this.applyDensity()
+      this.persistToCache()
+    },
+
+    setReducedMotion(value: ReducedMotionPreference) {
+      this.reducedMotion = value
+      this.persistToCache()
+    },
+
     applyTheme() {
       if (typeof document === 'undefined') return
 
@@ -330,6 +377,23 @@ export const useThemingStore = defineStore('theming', {
       document.documentElement.classList.toggle('high-contrast', this.highContrast)
     },
 
+    applyRadius() {
+      if (typeof document === 'undefined') return
+      const radiusMap: Record<RadiusPreference, string> = {
+        none: '0rem',
+        sm: '0.25rem',
+        md: '0.5rem',
+        lg: '0.75rem',
+        xl: '1rem',
+      }
+      document.documentElement.style.setProperty('--radius', radiusMap[this.radius] ?? '0.5rem')
+    },
+
+    applyDensity() {
+      if (typeof document === 'undefined') return
+      document.documentElement.setAttribute('data-density', this.density)
+    },
+
     getFontStack(): string {
       const family = normalizeFontFamily(this.font)
       const selected = this.fontOptions.find(font => font.value === family)
@@ -365,6 +429,8 @@ export const useThemingStore = defineStore('theming', {
         this.applyFont()
         this.applyBranding()
         this.applyHighContrast()
+        this.applyRadius()
+        this.applyDensity()
       } finally {
         this.isLoading = false
       }
@@ -387,6 +453,11 @@ export const useThemingStore = defineStore('theming', {
           highContrast: this.highContrast,
           autoplayVideos: this.autoplayVideos,
           openLinksInDesktop: this.openLinksInDesktop,
+          radius: this.radius,
+          sidebarVariant: this.sidebarVariant,
+          sidebarCollapsible: this.sidebarCollapsible,
+          density: this.density,
+          reducedMotion: this.reducedMotion,
         }),
       )
     },
@@ -414,6 +485,11 @@ export const useThemingStore = defineStore('theming', {
         this.highContrast = parsed.highContrast ?? false
         this.autoplayVideos = parsed.autoplayVideos || 'system'
         this.openLinksInDesktop = parsed.openLinksInDesktop ?? true
+        this.radius = (['none', 'sm', 'md', 'lg', 'xl'] as RadiusPreference[]).includes(parsed.radius) ? parsed.radius : 'md'
+        this.sidebarVariant = (['sidebar', 'floating', 'inset'] as SidebarVariant[]).includes(parsed.sidebarVariant) ? parsed.sidebarVariant : 'inset'
+        this.sidebarCollapsible = (['offcanvas', 'icon', 'none'] as SidebarCollapsible[]).includes(parsed.sidebarCollapsible) ? parsed.sidebarCollapsible : 'icon'
+        this.density = (['comfortable', 'compact'] as DensityPreference[]).includes(parsed.density) ? parsed.density : 'comfortable'
+        this.reducedMotion = (['system', 'always'] as ReducedMotionPreference[]).includes(parsed.reducedMotion) ? parsed.reducedMotion : 'system'
       } catch (error) {
         console.error('Failed to load appearance cache:', error)
       }

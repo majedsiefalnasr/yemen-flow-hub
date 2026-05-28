@@ -1,6 +1,17 @@
 <script setup lang="ts">
 import { LogOut, Moon, MoreVertical, Settings, Sun, User } from 'lucide-vue-next'
 import { useRouter } from 'vue-router'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
   DropdownMenu,
@@ -117,10 +128,34 @@ function toggleTheme() {
 
           <DropdownMenuSeparator />
 
-          <DropdownMenuItem class="cursor-pointer text-destructive focus:text-destructive" @click="handleLogout">
-            <LogOut class="h-4 w-4" />
-            <span>تسجيل الخروج</span>
-          </DropdownMenuItem>
+          <AlertDialog>
+            <AlertDialogTrigger as-child>
+              <DropdownMenuItem
+                class="cursor-pointer text-destructive focus:text-destructive"
+                @select.prevent
+              >
+                <LogOut class="h-4 w-4" />
+                <span>تسجيل الخروج</span>
+              </DropdownMenuItem>
+            </AlertDialogTrigger>
+            <AlertDialogContent dir="rtl">
+              <AlertDialogHeader>
+                <AlertDialogTitle>تأكيد تسجيل الخروج</AlertDialogTitle>
+                <AlertDialogDescription>
+                  هل أنت متأكد أنك تريد تسجيل الخروج من النظام؟
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>إلغاء</AlertDialogCancel>
+                <AlertDialogAction
+                  class="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  @click="handleLogout"
+                >
+                  تسجيل الخروج
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </DropdownMenuContent>
       </DropdownMenu>
     </SidebarMenuItem>

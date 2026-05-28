@@ -17,7 +17,11 @@ const user = computed(() => authStore.user)
 <template>
   <div v-if="user" class="min-h-dvh bg-background text-foreground" dir="rtl">
     <SidebarProvider dir="rtl" class="flex-row">
-      <AppSidebar side="right" variant="inset" collapsible="icon" />
+      <AppSidebar
+        side="right"
+        :variant="themingStore.sidebarVariant"
+        :collapsible="themingStore.sidebarCollapsible"
+      />
       <SidebarInset>
         <GlobalTopbar />
 
