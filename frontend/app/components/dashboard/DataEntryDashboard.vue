@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { CheckCircle2, Clock, RotateCcw, FileText, PlusCircle, Zap, Bell, AlertCircle, AlertTriangle } from 'lucide-vue-next'
+import { CheckCircle2, Clock, RotateCcw, FileText, PlusCircle, Zap, Bell, AlertCircle } from 'lucide-vue-next'
 import { useDashboardStore } from '../../stores/dashboard.store'
 import { useNotificationsStore } from '../../stores/notifications.store'
 import { useAuthStore } from '../../stores/auth.store'
 import { UserRole } from '../../types/enums'
 import type { DataEntryDashboardStats } from '../../composables/useDashboard'
 import StatusBadge from '../shared/StatusBadge.vue'
+import ActionRequiredStrip from '../shared/ActionRequiredStrip.vue'
 import { Card, CardContent } from '../ui/card'
 import { Button } from '../ui/button'
 import { Skeleton } from '../ui/skeleton'
@@ -51,6 +52,12 @@ const returnReasonSnippet = computed(() => {
   // bank_return_comment for BANK_RETURNED; support_return_comment for SUPPORT_RETURNED
   const reason = req.bank_return_comment ?? req.support_return_comment ?? req.notes ?? ''
   return reason.length > 80 ? reason.slice(0, 80) + '…' : reason
+})
+
+const actionStripDetail = computed(() => {
+  if (!firstReturnedRequest.value) return undefined
+  const ref = firstReturnedRequest.value.reference_number
+  return returnReasonSnippet.value ? `${ref} · ${returnReasonSnippet.value}` : ref
 })
 
 function formatAmount(amount: number, currency: string): string {
@@ -138,33 +145,14 @@ onMounted(() => {
     <template v-else-if="stats">
 
       <!-- Action-required strip (above KPI grid, hidden when count = 0) -->
-      <Card
-        v-if="actionRequiredCount > 0"
-        class="border-0 border-s-4 border-s-[var(--severity-amber)] bg-[var(--severity-amber)]/5 shadow-sm"
-        role="alert"
-        aria-label="طلبات تحتاج تعديل"
-      >
-        <CardContent class="pt-4 pb-4 flex items-center gap-3">
-          <AlertTriangle class="h-5 w-5 flex-shrink-0 text-[var(--severity-amber)]" aria-hidden="true" />
-          <div class="flex-1 min-w-0">
-            <span class="font-semibold text-foreground text-sm">{{ actionRequiredCount }} طلبات تحتاج تعديل</span>
-            <p v-if="firstReturnedRequest" class="text-xs text-muted-foreground mt-0.5">
-              <span class="font-mono text-foreground">{{ firstReturnedRequest.reference_number }}</span>
-              <template v-if="returnReasonSnippet">
-                <span class="mx-1.5 text-border">·</span>
-                <span class="truncate">{{ returnReasonSnippet }}</span>
-              </template>
-            </p>
-          </div>
-          <Button
-            size="sm"
-            class="flex-shrink-0 bg-[var(--severity-amber)] text-white hover:opacity-90"
-            @click="router.push('/requests?tab=returned')"
-          >
-            ابدأ التعديل
-          </Button>
-        </CardContent>
-      </Card>
+      <ActionRequiredStrip
+        :count="actionRequiredCount"
+        message="طلبات تحتاج تعديل"
+        cta-label="ابدأ التعديل"
+        cta-route="/requests?tab=returned"
+        severity="amber"
+        :detail="actionStripDetail"
+      />
 
       <!-- KPI grid: 4 clickable cards -->
       <div class="grid grid-cols-4 max-lg:grid-cols-2 max-md:grid-cols-1 gap-4">

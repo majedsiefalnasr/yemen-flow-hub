@@ -2,13 +2,14 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { CheckCircle2, Clock, RotateCcw, AlertTriangle, AlertCircle, Users, FileText, Zap, XCircle } from 'lucide-vue-next'
+import { CheckCircle2, Clock, RotateCcw, AlertCircle, Users, FileText, Zap, XCircle } from 'lucide-vue-next'
 import { useDashboardStore } from '../../stores/dashboard.store'
 import { useAuthStore } from '../../stores/auth.store'
 import { UserRole } from '../../types/enums'
 import { STATUS_LABELS } from '../../constants/workflow'
 import type { BankReviewerDashboardStats } from '../../composables/useDashboard'
 import StatusBadge from '../shared/StatusBadge.vue'
+import ActionRequiredStrip from '../shared/ActionRequiredStrip.vue'
 import { Card, CardContent } from '../ui/card'
 import { Button } from '../ui/button'
 import { Skeleton } from '../ui/skeleton'
@@ -117,26 +118,13 @@ onMounted(() => { store.loadStats() })
     <template v-else-if="stats">
 
       <!-- Action-required strip: SUPPORT_REJECTED requests waiting for bank-side decision -->
-      <Card
-        v-if="supportRejectedCount > 0"
-        class="border-0 border-s-4 border-s-[var(--severity-red)] bg-[var(--severity-red)]/5 shadow-sm"
-        role="alert"
-        aria-label="طلبات رُفضت من لجنة المساندة"
-      >
-        <CardContent class="pt-4 pb-4 flex items-center gap-3">
-          <AlertTriangle class="h-5 w-5 flex-shrink-0 text-[var(--severity-red)]" aria-hidden="true" />
-          <div class="flex-1 min-w-0">
-            <span class="font-semibold text-foreground text-sm">{{ supportRejectedCount }} طلبات رفضتها لجنة المساندة وتنتظر قرارك</span>
-          </div>
-          <Button
-            size="sm"
-            class="flex-shrink-0 bg-[var(--severity-red)] text-white hover:opacity-90"
-            @click="router.push('/requests?tab=support_rejected')"
-          >
-            اتخاذ القرار
-          </Button>
-        </CardContent>
-      </Card>
+      <ActionRequiredStrip
+        :count="supportRejectedCount"
+        message="طلبات رفضتها لجنة المساندة وتنتظر قرارك"
+        cta-label="اتخاذ القرار"
+        cta-route="/requests?tab=support_rejected"
+        severity="red"
+      />
 
       <!-- KPI grid (4 cards): Pending Review / Rejected by Support / At CBY / Approved-Completed -->
       <div class="grid grid-cols-4 max-lg:grid-cols-2 max-md:grid-cols-1 gap-4">
