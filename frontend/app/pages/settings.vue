@@ -145,6 +145,7 @@ const originalGeneralSettings = {
   platformName: 'منصة إدارة وتمويل الواردات',
   authority: 'البنك المركزي اليمني',
   timeZone: 'GMT+3 (Arabia)',
+  language: 'ar',
 }
 
 const workflowSettings = reactive({ ...originalWorkflowSettings })
@@ -265,30 +266,30 @@ async function saveGeneralAndBrandingSettings() {
 
     <Tabs default-value="general" class="space-y-6">
       <TabsList class="h-auto flex-wrap gap-1 p-1">
-        <TabsTrigger value="general" class="gap-1.5">
+        <TabsTrigger value="general" data-tab="general" data-testid="tab-general" class="gap-1.5">
           <Cog class="h-4 w-4" />
           عام
         </TabsTrigger>
-        <TabsTrigger value="workflow" class="gap-1.5">
+        <TabsTrigger value="workflow" data-tab="workflow" data-testid="tab-workflow" class="gap-1.5">
           <Workflow class="h-4 w-4" />
           سير العمل
         </TabsTrigger>
-        <TabsTrigger value="email" class="gap-1.5">
+        <TabsTrigger value="email" data-tab="email" data-testid="tab-email" class="gap-1.5">
           <Mail class="h-4 w-4" />
-          البريد
+          البريد الإلكتروني
         </TabsTrigger>
-        <TabsTrigger value="notif" class="gap-1.5">
+        <TabsTrigger value="notif" data-tab="notifications" data-testid="tab-notif" class="gap-1.5">
           <Bell class="h-4 w-4" />
           الإشعارات
         </TabsTrigger>
-        <TabsTrigger value="security" class="gap-1.5">
+        <TabsTrigger value="security" data-tab="security" data-testid="tab-security" class="gap-1.5">
           <ShieldAlert class="h-4 w-4" />
           الأمن
         </TabsTrigger>
       </TabsList>
 
       <!-- ── General ─────────────────────────────────────────────────────── -->
-      <TabsContent value="general" class="space-y-6">
+      <TabsContent value="general" data-panel="general" class="space-y-6">
 
         <!-- Platform identity + visual branding -->
         <Card>
@@ -314,6 +315,20 @@ async function saveGeneralAndBrandingSettings() {
               <FieldGroup>
                 <FieldLabel>الجهة المشغّلة</FieldLabel>
                 <Input v-model="generalSettings.authority" placeholder="البنك المركزي اليمني" />
+              </FieldGroup>
+              <FieldGroup>
+                <FieldLabel>لغة الواجهة</FieldLabel>
+                <Select v-model="generalSettings.language" class="w-full">
+                  <SelectTrigger class="w-full">
+                    <SelectValue>
+                      <span>{{ generalSettings.language === 'ar' ? 'العربية' : 'English' }}</span>
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ar">العربية</SelectItem>
+                    <SelectItem value="en">English</SelectItem>
+                  </SelectContent>
+                </Select>
               </FieldGroup>
               <FieldGroup>
                 <FieldLabel>المنطقة الزمنية</FieldLabel>
@@ -681,7 +696,7 @@ async function saveGeneralAndBrandingSettings() {
       </TabsContent>
 
       <!-- ── Workflow ─────────────────────────────────────────────────────── -->
-      <TabsContent value="workflow" class="space-y-6">
+      <TabsContent value="workflow" data-panel="workflow" class="space-y-6">
         <Card>
           <CardHeader>
             <div class="flex items-center gap-3">
@@ -689,7 +704,7 @@ async function saveGeneralAndBrandingSettings() {
                 <Workflow class="h-4 w-4 text-primary" />
               </div>
               <div>
-                <CardTitle>إعدادات دورة الموافقة</CardTitle>
+                <CardTitle>إعدادات سير العمل</CardTitle>
                 <CardDescription>تكوين معاملات الموافقة، اللجان، وقواعد التصويت</CardDescription>
               </div>
             </div>
@@ -775,7 +790,7 @@ async function saveGeneralAndBrandingSettings() {
       </TabsContent>
 
       <!-- ── Email ───────────────────────────────────────────────────────── -->
-      <TabsContent value="email" class="space-y-6">
+      <TabsContent value="email" data-panel="email" class="space-y-6">
         <Card>
           <CardHeader>
             <div class="flex items-center gap-3">
@@ -783,8 +798,8 @@ async function saveGeneralAndBrandingSettings() {
                 <Server class="h-4 w-4 text-primary" />
               </div>
               <div>
-                <CardTitle>إعدادات SMTP</CardTitle>
-                <CardDescription>تكوين خادم البريد الصادر للإشعارات والمراسلات</CardDescription>
+                <CardTitle>إعدادات البريد الإلكتروني</CardTitle>
+                <CardDescription>تكوين خادم البريد الإلكتروني الصادر للإشعارات والمراسلات</CardDescription>
               </div>
             </div>
           </CardHeader>
@@ -866,7 +881,7 @@ async function saveGeneralAndBrandingSettings() {
       </TabsContent>
 
       <!-- ── Notifications ───────────────────────────────────────────────── -->
-      <TabsContent value="notif" class="space-y-6">
+      <TabsContent value="notif" data-panel="notifications" class="space-y-6">
         <Card>
           <CardHeader>
             <div class="flex items-center gap-3">
@@ -909,7 +924,7 @@ async function saveGeneralAndBrandingSettings() {
       </TabsContent>
 
       <!-- ── Security ────────────────────────────────────────────────────── -->
-      <TabsContent value="security" class="space-y-6">
+      <TabsContent value="security" data-panel="security" class="space-y-6">
         <Card>
           <CardHeader>
             <div class="flex items-center gap-3">
@@ -924,6 +939,18 @@ async function saveGeneralAndBrandingSettings() {
           </CardHeader>
           <Separator />
           <CardContent class="pt-6">
+            <!-- Account lockout thresholds (read-only enforcement values) -->
+            <div class="mb-4 grid grid-cols-2 gap-3">
+              <div class="rounded-lg border bg-muted/20 p-3">
+                <div class="text-xs text-muted-foreground">عتبة قفل الحساب</div>
+                <div data-testid="lockout-threshold" class="text-sm font-semibold">10 محاولات فاشلة</div>
+              </div>
+              <div class="rounded-lg border bg-muted/20 p-3">
+                <div class="text-xs text-muted-foreground">مدة القفل</div>
+                <div data-testid="lockout-duration" class="text-sm font-semibold">15 دقيقة</div>
+              </div>
+            </div>
+
             <div class="space-y-2">
               <div
                 v-for="item in securitySettings"
@@ -934,7 +961,10 @@ async function saveGeneralAndBrandingSettings() {
                   <Lock class="h-4 w-4 shrink-0 text-muted-foreground" />
                   <span class="text-sm">{{ item.label }}</span>
                 </div>
-                <Switch v-model="item.enabled" />
+                <Switch
+                  v-model="item.enabled"
+                  :data-testid="item.label.includes('MFA') || item.label.includes('مصادقة') ? 'security-switch-mfa' : undefined"
+                />
               </div>
             </div>
 

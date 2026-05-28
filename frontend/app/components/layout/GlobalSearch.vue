@@ -118,13 +118,13 @@ onBeforeUnmount(() => {
         @focus="onFocus"
         @keydown="onKeydown"
       />
-      <Loader2 v-if="loading" class="h-4 w-4 flex-shrink-0 animate-spin text-primary" aria-hidden="true" />
+      <Loader2 v-if="loading" class="search-spinner h-4 w-4 flex-shrink-0 animate-spin text-primary" aria-hidden="true" />
     </div>
 
     <!-- Dropdown -->
     <div
       v-if="showDropdown"
-      class="absolute top-full start-0 z-50 mt-1 w-full max-h-96 overflow-y-auto rounded-lg border border-border bg-background shadow-lg"
+      class="search-dropdown absolute top-full start-0 z-50 mt-1 w-full max-h-96 overflow-y-auto rounded-lg border border-border bg-background shadow-lg"
       role="listbox"
       aria-label="نتائج البحث"
     >
@@ -135,7 +135,7 @@ onBeforeUnmount(() => {
         <button
           v-for="term in recentSearches"
           :key="term"
-          class="flex w-full items-center gap-2.5 px-3 py-2 text-start transition-colors hover:bg-muted/50"
+          class="search-recent-item flex w-full items-center gap-2.5 px-3 py-2 text-start transition-colors hover:bg-muted/50"
           type="button"
           @click="selectRecent(term)"
         >
@@ -151,7 +151,7 @@ onBeforeUnmount(() => {
           <button
             v-for="chip in availableChips"
             :key="chip.key"
-            class="rounded-full border text-xs px-2.5 py-1 transition-all"
+            class="search-chip rounded-full border text-xs px-2.5 py-1 transition-all"
             :class="activeFilter === chip.key ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-transparent text-foreground hover:bg-muted/50'"
             type="button"
             @click="activeFilter = chip.key"
@@ -166,7 +166,7 @@ onBeforeUnmount(() => {
           <button
             v-for="req in filteredResults.requests"
             :key="req.id"
-            class="flex w-full items-center gap-2.5 px-3 py-2 text-start transition-colors hover:bg-muted/50"
+            class="search-result-item flex w-full items-center gap-2.5 px-3 py-2 text-start transition-colors hover:bg-muted/50"
             type="button"
             @click="navigateTo(`/requests/${req.id}`)"
           >
@@ -184,7 +184,7 @@ onBeforeUnmount(() => {
           <button
             v-for="user in filteredResults.users"
             :key="user.id"
-            class="flex w-full items-center gap-2.5 px-3 py-2 text-start transition-colors hover:bg-muted/50"
+            class="search-result-item flex w-full items-center gap-2.5 px-3 py-2 text-start transition-colors hover:bg-muted/50"
             type="button"
             @click="navigateTo('/users')"
           >
@@ -202,7 +202,7 @@ onBeforeUnmount(() => {
           <button
             v-for="bank in filteredResults.banks"
             :key="bank.id"
-            class="flex w-full items-center gap-2.5 px-3 py-2 text-start transition-colors hover:bg-muted/50"
+            class="search-result-item flex w-full items-center gap-2.5 px-3 py-2 text-start transition-colors hover:bg-muted/50"
             type="button"
             @click="navigateTo('/banks')"
           >
@@ -220,7 +220,7 @@ onBeforeUnmount(() => {
           <button
             v-for="customs in filteredResults.customs"
             :key="customs.id"
-            class="flex w-full items-center gap-2.5 px-3 py-2 text-start transition-colors hover:bg-muted/50"
+            class="search-result-item flex w-full items-center gap-2.5 px-3 py-2 text-start transition-colors hover:bg-muted/50"
             type="button"
             @click="navigateTo(`/requests/${customs.request_id}`)"
           >

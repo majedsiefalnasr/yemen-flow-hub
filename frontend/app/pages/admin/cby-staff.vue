@@ -18,6 +18,8 @@ import { ROLE_LABELS, CBY_ROLES, ROUTE_ROLE_MAP } from '@/constants/workflow'
 import { UserRole } from '@/types/enums'
 import type { User } from '@/types/models'
 import { useUsers, type CreateUserPayload, type UpdateUserPayload } from '@/composables/useUsers'
+import { useBanks } from '@/composables/useBanks'
+import type { Bank } from '@/types/models'
 import { useAuthStore } from '@/stores/auth.store'
 import {
   Table,
@@ -92,10 +94,13 @@ const STAFF_ROLES: UserRole[] = CBY_ROLES
 const authStore = useAuthStore()
 const currentUser = computed(() => authStore.user)
 const { fetchUsers, createUser, updateUser } = useUsers()
+const { fetchBanks } = useBanks()
 const { notify, error: toastError } = useToast()
 
 const query = ref('')
 const roleFilter = ref<'all' | UserRole>('all')
+const filterStatus = ref<'all' | 'active' | 'inactive'>('all')
+const filterBank = ref<'all' | string>('all')
 const createOpen = ref(false)
 const editing = ref<User | null>(null)
 const viewing = ref<User | null>(null)
@@ -112,20 +117,39 @@ const form = reactive<StaffForm>({
   password: '',
 })
 
+function resolveBankName(user: User): string {
+  if (user.bank_name_ar) return user.bank_name_ar
+  if (user.bank_name_en) return user.bank_name_en
+  if (user.bank_name) return user.bank_name
+  if (user.bank_id) {
+    const b = banksData.value.find(bk => bk.id === user.bank_id)
+    if (b) return b.name_ar || b.name_en || ''
+  }
+  return ''
+}
+
 onMounted(async () => {
   try {
-    const results = await fetchUsers({ per_page: 200 })
+    const [results, bankResults] = await Promise.all([
+      fetchUsers({ per_page: 200 }),
+      fetchBanks().catch(() => [] as Bank[]),
+    ])
     staffUsers.value = results.filter(u => STAFF_ROLES.includes(u.role))
+    banksData.value = bankResults
   }
   finally {
     loading.value = false
   }
 })
 
+const banksData = ref<Bank[]>([])
+
 const filtered = computed(() => {
   const q = query.value.trim().toLowerCase()
   return staffUsers.value
     .filter(u => roleFilter.value === 'all' || u.role === roleFilter.value)
+    .filter(u => filterStatus.value === 'all' || (filterStatus.value === 'active' ? u.is_active : !u.is_active))
+    .filter(u => filterBank.value === 'all' || String(u.bank_id) === filterBank.value)
     .filter(u => !q || u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q))
 })
 
@@ -338,12 +362,30 @@ const columns: ColumnDef<User>[] = [
     cell: ({ row }) => h(Badge, { variant: 'secondary' }, () => ROLE_LABELS[row.original.role]),
   },
   {
+    id: 'bank',
+    header: 'الجهة',
+    cell: ({ row }) => {
+      const name = resolveBankName(row.original)
+      return h('span', { class: 'text-sm text-muted-foreground' }, name || '—')
+    },
+  },
+  {
+    id: 'last_seen',
+    header: 'آخر ظهور',
+    cell: ({ row }) => {
+      const ts = row.original.last_login_at
+      if (!ts) return h('span', { class: 'text-sm text-muted-foreground', 'data-cell': 'last-seen' }, '—')
+      return h('span', { class: 'text-sm text-muted-foreground', 'data-cell': 'last-seen' }, new Date(ts).toLocaleDateString('ar-EG'))
+    },
+  },
+  {
     accessorKey: 'is_active',
     header: 'الحالة',
     cell: ({ row }) => activeStatusCell(row.original.is_active),
   },
   {
     id: 'actions',
+    header: 'الإجراءات',
     enableHiding: false,
     cell: ({ row }) => {
       const staff = row.original
@@ -405,7 +447,7 @@ const table = useVueTable({
       :breadcrumbs="[{ label: 'الرئيسية', to: '/' }, { label: 'مستخدمي النظام' }]"
     >
       <template #actions>
-        <Button size="sm" class="h-8" @click="openCreate">
+        <Button size="sm" class="btn-primary h-8" @click="openCreate">
           <Plus class="h-4 w-4" />
           <span class="hidden lg:inline">مستخدم جديد</span>
         </Button>
@@ -471,17 +513,44 @@ const table = useVueTable({
           placeholder="بحث بالاسم أو البريد..."
         />
       </div>
-      <Select v-model="roleFilter">
-        <SelectTrigger class="h-8 w-full rounded-md text-sm sm:w-56">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">كل الأدوار</SelectItem>
-          <SelectItem v-for="role in STAFF_ROLES" :key="role" :value="role">
-            {{ ROLE_LABELS[role] }}
-          </SelectItem>
-        </SelectContent>
-      </Select>
+      <div data-testid="filter-role">
+        <Select v-model="roleFilter">
+          <SelectTrigger class="h-8 w-full rounded-md text-sm sm:w-56">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">كل الأدوار</SelectItem>
+            <SelectItem v-for="r in STAFF_ROLES" :key="r" :value="r">
+              {{ ROLE_LABELS[r] }}
+            </SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <div data-testid="filter-bank">
+        <Select v-model="filterBank">
+          <SelectTrigger class="h-8 w-full rounded-md text-sm sm:w-48">
+            <SelectValue placeholder="كل الجهات" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">كل الجهات</SelectItem>
+            <SelectItem v-for="b in banksData" :key="b.id" :value="String(b.id)">
+              {{ b.name_ar }}
+            </SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <div data-testid="filter-status">
+        <Select v-model="filterStatus">
+          <SelectTrigger class="h-8 w-full rounded-md text-sm sm:w-40">
+            <SelectValue placeholder="كل الحالات" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">كل الحالات</SelectItem>
+            <SelectItem value="active">نشط</SelectItem>
+            <SelectItem value="inactive">غير نشط</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
     </div>
 
     <!-- Table -->
@@ -539,6 +608,7 @@ const table = useVueTable({
       <!-- Empty state (outside table) -->
       <Empty
         v-if="!loading && !table.getRowModel().rows.length"
+        data-empty-state-variant="cby-staff"
         class="min-h-[280px] rounded-xl border border-dashed bg-muted/20"
       >
         <EmptyHeader>

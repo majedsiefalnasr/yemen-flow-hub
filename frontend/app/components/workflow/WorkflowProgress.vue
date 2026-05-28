@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Check } from 'lucide-vue-next'
-import { ROLE_BUCKETS, STATUS_LABELS, getBusinessStatus } from '@/constants/workflow'
+import { ROLE_BUCKETS, STATUS_LABELS, getBusinessStatus, getStatusProgress } from '@/constants/workflow'
 import { RequestStatus, UserRole } from '@/types/enums'
 import { useAuthStore } from '@/stores/auth.store'
 import { cn } from '@/lib/utils'
@@ -46,12 +46,14 @@ const steps = computed(() => {
     .map(s => ({ key: s, label: STATUS_LABELS[s], statuses: [s] }))
 })
 
-const currentIndex = computed(() =>
-  steps.value.findIndex(step => step.statuses.includes(resolvedStatus.value)),
-)
+const currentIndex = computed(() => {
+  const idx = steps.value.findIndex(step => step.statuses.includes(resolvedStatus.value))
+  return idx === -1 ? 0 : idx
+})
 const completedAll = computed(() =>
   TERMINAL_DONE.includes(resolvedStatus.value) || currentIndex.value === steps.value.length - 1,
 )
+const progressPercent = computed(() => getStatusProgress(resolvedStatus.value, role.value))
 </script>
 
 <template>
@@ -60,6 +62,7 @@ const completedAll = computed(() =>
       <div class="text-sm font-semibold">
         سير العملية التنظيمية
       </div>
+      <span class="text-xs text-muted-foreground">{{ progressPercent }}%</span>
       <span
         v-if="RETURN_STATUSES.includes(resolvedStatus) || REJECT_STATUSES.includes(resolvedStatus)"
         :class="cn(

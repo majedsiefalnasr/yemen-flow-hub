@@ -12,7 +12,10 @@ vi.stubGlobal('navigateTo', navigateToMock)
 const refreshUnreadCountMock = vi.hoisted(() => vi.fn())
 vi.mock('../../../stores/notifications.store', () => ({
   useNotificationsStore: () => ({
+    get items() { return notificationsRef.value },
+    get unreadCount() { return notificationsRef.value.filter((n: any) => !n.read_at).length },
     refreshUnreadCount: refreshUnreadCountMock,
+    markAllRead: vi.fn(),
   }),
 }))
 

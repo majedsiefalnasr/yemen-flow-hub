@@ -1,7 +1,11 @@
 <script setup lang="ts">
-// AppShell in app.vue handles the full layout
+import { useInactivityTimer } from '~/composables/useInactivityTimer'
+import InactivityBanner from '~/components/layout/InactivityBanner.vue'
+
+const { isWarning, extend } = useInactivityTimer()
 </script>
 
 <template>
+  <InactivityBanner :visible="isWarning" @extend="extend" />
   <slot />
 </template>

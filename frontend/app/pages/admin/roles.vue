@@ -3,6 +3,10 @@ import PageHeader from '@/components/layout/PageHeader.vue'
 import { ROLE_LABELS, ALL_ROLES, ROUTE_ROLE_MAP } from '@/constants/workflow'
 import { UserRole } from '@/types/enums'
 import { useAuthStore } from '@/stores/auth.store'
+import { Card } from '@/components/ui/card'
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Badge } from '@/components/ui/badge'
 
 definePageMeta({
   middleware: ['auth', 'role'],
@@ -98,22 +102,30 @@ function hasPermission(role: UserRole, permission: Permission) {
 
 <template>
   <div v-if="currentUser?.role === UserRole.CBY_ADMIN">
+    <h1 class="page-title sr-only">مصفوفة الأدوار والصلاحيات</h1>
     <PageHeader
       title="مصفوفة الأدوار والصلاحيات"
       subtitle="عرض صلاحيات كل دور (للقراءة فقط في الوقت الحالي)"
       :breadcrumbs="[{ label: 'الرئيسية', to: '/' }, { label: 'الأدوار والصلاحيات' }]"
     />
 
+    <div class="mb-3 flex items-center gap-2">
+      <span class="read-only-badge inline-flex items-center rounded-full border bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
+        قراءة فقط
+      </span>
+    </div>
+
     <Card class="overflow-x-auto border-0 p-0 shadow">
       <Table class="w-full min-w-[640px] text-sm">
         <TableHeader class="bg-muted/40">
           <TableRow>
             <TableHead class="sticky end-0 min-w-[260px] bg-muted/40 p-3 text-end">
-              الصلاحية
+              الصلاحيات
             </TableHead>
             <TableHead
               v-for="role in ALL_ROLES"
               :key="role"
+              :data-role="role"
               class="min-w-[120px] p-3 text-center"
             >
               <div class="text-[11px] font-medium leading-tight">
@@ -126,6 +138,7 @@ function hasPermission(role: UserRole, permission: Permission) {
           <TableRow
             v-for="permission in ALL_PERMISSIONS"
             :key="permission.key"
+            :data-permission="permission.key"
             class="border-t hover:bg-muted/20"
           >
             <TableCell class="sticky end-0 bg-background p-3 font-medium">
@@ -143,6 +156,7 @@ function hasPermission(role: UserRole, permission: Permission) {
               class="p-3 text-center align-top"
             >
               <Checkbox
+                class="perm-checkbox"
                 :model-value="hasPermission(role, permission)"
                 disabled
               />

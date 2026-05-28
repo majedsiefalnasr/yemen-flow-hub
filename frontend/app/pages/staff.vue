@@ -312,7 +312,7 @@ const columns: ColumnDef<User>[] = [
     cell: ({ row }) => {
       const member = row.original
       return h('div', { class: 'flex items-center gap-3' }, [
-        h(Avatar, { class: 'size-8' }, {
+        h(Avatar, { class: 'avatar size-8' }, {
           default: () => h(AvatarFallback, {
             style: { background: getAvatarColor(member.id), color: 'white' },
           }, () => getAvatarInitials(member.name)),
@@ -371,7 +371,7 @@ const columns: ColumnDef<User>[] = [
                 ? [
                     h(DropdownMenuSeparator),
                     h(DropdownMenuItem, {
-                      class: 'text-destructive',
+                      class: 'btn-deactivate text-destructive',
                       onClick: () => openDeactivate(member),
                     }, () => 'إلغاء التفعيل'),
                   ]
@@ -399,6 +399,7 @@ onMounted(loadStaff)
 
 <template>
   <div class="flex flex-col gap-6">
+    <h1 class="page-title sr-only">موظفو الجهة</h1>
     <PageHeader
       title="موظفو الجهة"
       :subtitle="auth.user?.bank_name_ar ?? auth.user?.bank_name_en ?? 'إدارة موظفي البنك'"
@@ -421,7 +422,7 @@ onMounted(loadStaff)
         aria-label="عرض الموظفين النشطين"
         @click="applyAccessHealthFilter('active')"
       >
-        <span class="text-2xl font-bold" style="color:var(--severity-green)">{{ activeCount }}</span>
+        <span class="stat-value text-2xl font-bold" style="color:var(--severity-green)">{{ activeCount }}</span>
         <span class="text-xs text-muted-foreground">موظف نشط</span>
       </button>
 
@@ -432,7 +433,7 @@ onMounted(loadStaff)
         aria-label="عرض الموظفين الموقوفين"
         @click="applyAccessHealthFilter('inactive')"
       >
-        <span class="text-2xl font-bold" style="color:var(--severity-red)">{{ inactiveCount }}</span>
+        <span class="stat-value text-2xl font-bold" style="color:var(--severity-red)">{{ inactiveCount }}</span>
         <span class="text-xs text-muted-foreground">موقوف</span>
       </button>
 
@@ -455,7 +456,7 @@ onMounted(loadStaff)
         role="group"
         aria-label="إجمالي الموظفين"
       >
-        <span class="text-2xl font-bold text-foreground">{{ totalCount }}</span>
+        <span class="stat-value text-2xl font-bold text-foreground">{{ totalCount }}</span>
         <span class="text-xs text-muted-foreground">إجمالي الموظفين</span>
       </div>
     </section>
@@ -469,49 +470,49 @@ onMounted(loadStaff)
       </AlertDescription>
     </Alert>
 
+    <!-- Toolbar: search + filters (always visible when no error) -->
+    <div v-if="!error && !loading" class="flex flex-wrap items-center gap-2">
+      <div class="relative min-w-[220px] flex-1">
+        <Search class="absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          v-model="searchQuery"
+          placeholder="بحث بالاسم أو البريد الإلكتروني..."
+          class="search-input h-8 rounded-md pe-9 text-sm"
+        />
+      </div>
+
+      <Select v-model="roleFilter">
+        <SelectTrigger class="h-8 w-full rounded-md text-sm sm:w-44">
+          <SelectValue placeholder="جميع الأدوار" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="">جميع الأدوار</SelectItem>
+          <SelectItem value="DATA_ENTRY">{{ ROLE_LABELS[UserRole.DATA_ENTRY] }}</SelectItem>
+          <SelectItem value="BANK_REVIEWER">{{ ROLE_LABELS[UserRole.BANK_REVIEWER] }}</SelectItem>
+        </SelectContent>
+      </Select>
+
+      <Select v-model="statusFilter">
+        <SelectTrigger class="h-8 w-full rounded-md text-sm sm:w-40">
+          <SelectValue placeholder="جميع الحالات" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="">جميع الحالات</SelectItem>
+          <SelectItem value="active">نشط</SelectItem>
+          <SelectItem value="inactive">غير نشط</SelectItem>
+        </SelectContent>
+      </Select>
+    </div>
+
     <!-- Empty State (no staff at all) -->
-    <EmptyState v-else-if="isEmpty" variant="staff">
+    <EmptyState v-if="isEmpty" variant="staff">
       <Button @click="openCreate">
         <Plus class="ms-1 h-4 w-4" data-icon="inline-start" />
         إضافة أول موظف
       </Button>
     </EmptyState>
 
-    <template v-else>
-      <!-- Toolbar: search + filters -->
-      <div class="flex flex-wrap items-center gap-2">
-        <div class="relative min-w-[220px] flex-1">
-          <Search class="absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            v-model="searchQuery"
-            placeholder="بحث بالاسم أو البريد الإلكتروني..."
-            class="h-8 rounded-md pe-9 text-sm"
-          />
-        </div>
-
-        <Select v-model="roleFilter">
-          <SelectTrigger class="h-8 w-full rounded-md text-sm sm:w-44">
-            <SelectValue placeholder="جميع الأدوار" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="">جميع الأدوار</SelectItem>
-            <SelectItem value="DATA_ENTRY">{{ ROLE_LABELS[UserRole.DATA_ENTRY] }}</SelectItem>
-            <SelectItem value="BANK_REVIEWER">{{ ROLE_LABELS[UserRole.BANK_REVIEWER] }}</SelectItem>
-          </SelectContent>
-        </Select>
-
-        <Select v-model="statusFilter">
-          <SelectTrigger class="h-8 w-full rounded-md text-sm sm:w-40">
-            <SelectValue placeholder="جميع الحالات" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="">جميع الحالات</SelectItem>
-            <SelectItem value="active">نشط</SelectItem>
-            <SelectItem value="inactive">غير نشط</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
+    <template v-else-if="!error && !isEmpty">
       <!-- Table -->
       <div class="relative flex flex-col gap-4 overflow-auto">
         <div class="overflow-hidden rounded-lg border">
@@ -687,7 +688,7 @@ onMounted(loadStaff)
 
         <AlertDialogFooter class="gap-2">
           <AlertDialogCancel :disabled="deactivating">إلغاء</AlertDialogCancel>
-          <Button variant="destructive" :disabled="deactivating" @click="confirmDeactivate">
+          <Button variant="destructive" class="btn-danger" :disabled="deactivating" @click="confirmDeactivate">
             {{ deactivating ? 'جارٍ التعطيل…' : 'تعطيل' }}
           </Button>
         </AlertDialogFooter>

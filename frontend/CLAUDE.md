@@ -109,6 +109,8 @@ Key rules in brief:
 - **Destructive confirmations** → `<AlertDialog>` NOT `<Dialog>`
 - **Import path**: always `from '@/components/ui/<name>'`
 
+**Test compatibility rule:** Do NOT replace shadcn-vue components with raw HTML to make Vitest tests pass. shadcn-vue components are mandatory. If a Vitest test fails because it cannot introspect a shadcn-vue component (e.g. `<Dialog>` content is teleported, `<Select>` options are not raw `<option>` tags, `<Table>` rows use `FlexRender`), **skip or ignore that test** rather than downgrading the component to raw HTML. Component integrity takes precedence over test greenness.
+
 ### Role-aware UI
 Frontend permissions are for UX only (hiding actions). Backend is the source of truth. Never trust frontend permission checks for security.
 

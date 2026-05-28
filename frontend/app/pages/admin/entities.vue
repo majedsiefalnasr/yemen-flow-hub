@@ -114,6 +114,16 @@ const filtered = computed(() => {
   )
 })
 
+const stats = computed(() => ({
+  total: banks.value.length,
+  active: banks.value.filter(b => b.is_active).length,
+  inactive: banks.value.filter(b => !b.is_active).length,
+}))
+
+function bankInitials(nameAr: string): string {
+  return nameAr.trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('')
+}
+
 const emailValid = computed(() => !form.adminEmail.trim() || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.adminEmail.trim()))
 const formValid = computed(() =>
   form.name_ar.trim().length > 0
@@ -235,9 +245,7 @@ const columns: ColumnDef<Bank>[] = [
     cell: ({ row }) => {
       const bank = row.original
       return h('div', { class: 'flex items-center gap-2' }, [
-        h('div', { class: 'grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary' }, [
-          h(Building2, { class: 'h-4 w-4' }),
-        ]),
+        h('div', { class: 'bank-avatar grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary text-xs font-bold' }, bankInitials(bank.name_ar)),
         h('div', {}, [
           h('div', { class: 'text-sm font-medium' }, bank.name_ar),
           h('div', { class: 'text-xs text-muted-foreground' }, bank.name_en),
@@ -252,7 +260,7 @@ const columns: ColumnDef<Bank>[] = [
   },
   {
     accessorKey: 'code',
-    header: 'الكود',
+    header: 'الرمز',
     cell: ({ row }) => h('code', { class: 'rounded bg-muted px-2 py-0.5 text-xs font-mono' }, row.original.code),
   },
   {
@@ -262,6 +270,7 @@ const columns: ColumnDef<Bank>[] = [
   },
   {
     id: 'actions',
+    header: 'إجراءات',
     enableHiding: false,
     cell: ({ row }) => {
       const bank = row.original
@@ -307,18 +316,35 @@ const table = useVueTable({
 
 <template>
   <div v-if="currentUser?.role === UserRole.CBY_ADMIN">
+    <h1 class="page-title sr-only">إدارة البنوك التجارية</h1>
     <PageHeader
       title="إدارة البنوك التجارية"
       subtitle="إنشاء بنوك جديدة، عرض البيانات، تعديلها وتغيير حالة التفعيل"
       :breadcrumbs="[{ label: 'الرئيسية', to: '/' }, { label: 'إدارة البنوك' }]"
     >
       <template #actions>
-        <Button size="sm" class="h-8" @click="openCreate">
+        <Button size="sm" class="h-8 btn-primary" @click="openCreate">
           <Plus class="h-4 w-4" />
           <span class="hidden lg:inline">بنك جديد</span>
         </Button>
       </template>
     </PageHeader>
+
+    <!-- KPI Cards -->
+    <div class="mb-6 grid grid-cols-3 gap-3">
+      <div class="rounded-lg border bg-card p-4 shadow">
+        <div class="text-2xl font-bold tabular-nums">{{ stats.total }}</div>
+        <div class="text-xs text-muted-foreground">إجمالي البنوك</div>
+      </div>
+      <div class="rounded-lg border bg-card p-4 shadow">
+        <div class="text-2xl font-bold tabular-nums">{{ stats.active }}</div>
+        <div class="text-xs text-muted-foreground">نشط</div>
+      </div>
+      <div class="rounded-lg border bg-card p-4 shadow">
+        <div class="text-2xl font-bold tabular-nums">{{ stats.inactive }}</div>
+        <div class="text-xs text-muted-foreground">غير نشط</div>
+      </div>
+    </div>
 
     <!-- Toolbar: search -->
     <div class="mb-4 flex items-center gap-2">
@@ -377,7 +403,7 @@ const table = useVueTable({
 
             <TableRow v-else-if="!table.getRowModel().rows.length">
               <TableCell :col-span="columns.length" class="p-8">
-                <Empty class="min-h-[200px] rounded-xl border border-dashed bg-muted/20">
+                <Empty data-empty-state-variant="entities" class="min-h-[200px] rounded-xl border border-dashed bg-muted/20">
                   <EmptyHeader>
                     <div class="flex size-12 items-center justify-center rounded-xl bg-muted text-muted-foreground">
                       <SearchX class="size-5" />

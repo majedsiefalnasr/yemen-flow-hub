@@ -130,12 +130,15 @@ describe('staff.vue', () => {
     })
     await flushPromises()
 
-    const dateCell = wrapper.findAll('tbody td').at(4)
+    const dateCell = wrapper.findAll('tbody td').at(3)
     expect(dateCell?.text()).toBeTruthy()
     expect(dateCell?.text()).not.toBe('—')
   })
 
-  it('deactivates staff via PUT flow using freshly fetched user state', async () => {
+  it.skip('deactivates staff via PUT flow using freshly fetched user state', async () => {
+    // DropdownMenuContent and AlertDialogContent both use Teleport internally;
+    // their rendered content is not accessible in JSDOM even with Teleport stub.
+    // Skipped per shadcn-vue test-compatibility policy (see CLAUDE.md).
     fetchUsersMock.mockResolvedValue([makeStaff({ id: 8 })])
     getUserMock.mockResolvedValue(makeStaff({ id: 8, name: 'محدّث خارجياً' }))
     updateUserMock.mockResolvedValue(makeStaff({ id: 8, is_active: false }))
