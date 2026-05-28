@@ -392,13 +392,17 @@ const columns: ColumnDef<Merchant>[] = [
           h(DropdownMenuContent, { align: 'end' }, {
             default: () => [
               h(DropdownMenuItem, { onClick: () => (viewing.value = merchant) }, () => 'عرض التفاصيل'),
-              h(DropdownMenuItem, { onClick: () => (editing.value = merchant) }, () => 'تعديل'),
               ...roleItems,
-              h(DropdownMenuSeparator),
-              h(DropdownMenuItem, {
-                class: merchant.is_active ? 'text-destructive' : 'text-[var(--severity-green)]',
-                onClick: () => toggleStatus(merchant),
-              }, () => merchant.is_active ? 'إيقاف النشاط' : 'تفعيل'),
+              ...(isBankAdmin.value
+                ? [
+                    h(DropdownMenuItem, { onClick: () => (editing.value = merchant) }, () => 'تعديل'),
+                    h(DropdownMenuSeparator),
+                    h(DropdownMenuItem, {
+                      class: merchant.is_active ? 'text-destructive' : 'text-[var(--severity-green)]',
+                      onClick: () => toggleStatus(merchant),
+                    }, () => merchant.is_active ? 'إيقاف النشاط' : 'تفعيل'),
+                  ]
+                : []),
             ],
           }),
         ],
@@ -430,7 +434,7 @@ const table = useVueTable({
       :subtitle="isCbyAdmin ? 'عرض جميع التجار المسجّلين على المنصّة مع البنوك التابعة لها' : 'تسجيل ومتابعة التجار والمستوردين المرتبطين بالبنك'"
       :breadcrumbs="[{ label: 'الرئيسية', to: '/' }, { label: 'التجار' }]"
     >
-      <template #actions>
+      <template v-if="isBankAdmin" #actions>
         <Button size="sm" class="h-8" @click="createOpen = true">
           <Plus class="h-4 w-4" />
           <span class="hidden lg:inline">تاجر جديد</span>
@@ -921,23 +925,10 @@ const table = useVueTable({
             </Card>
           </div>
 
-          <!-- CBY Admin quick actions -->
-          <DialogFooter class="gap-2 border-t pt-4">
-            <Button
-              variant="outline"
-              size="sm"
-              :class="viewing.is_active
-                ? 'text-destructive border-destructive/30 hover:bg-destructive/5'
-                : 'text-[var(--severity-green)] border-[var(--severity-green)]/30 hover:bg-[var(--severity-green)]/5'"
-              @click="toggleFromView"
-            >
-              {{ viewing.is_active ? 'إيقاف النشاط' : 'تفعيل' }}
-            </Button>
-            <Button size="sm" @click="openEditFromView">
-              <Edit class="h-3.5 w-3.5 me-1.5" />
-              تعديل البيانات
-            </Button>
-          </DialogFooter>
+          <!-- CBY Admin: view-only footer -->
+          <div class="border-t pt-3">
+            <p class="text-xs text-muted-foreground">عرض رقابي — لا تتاح إجراءات التعديل لمسؤول البنك المركزي</p>
+          </div>
         </template>
 
         <!-- Bank Admin: simple profile + quick actions -->
