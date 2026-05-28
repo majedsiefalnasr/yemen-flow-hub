@@ -554,26 +554,26 @@ Role dashboard checklist:
 
 - [x] Create a reusable table toolbar inspired by the template: search, faceted filters, active filter chips, reset, column visibility, export, selected count.
 - [x] Create a Nuxt query-state composable for table filters and pagination.
-- [ ] Start with `RequestsDataTable.vue` and `/requests` because it is the core operational queue.
+- [x] Start with `RequestsDataTable.vue` and `/requests` because it is the core operational queue.
 - [x] Translate template faceted filters into shadcn-vue `Popover`, `Command`, `Checkbox`, `Badge`, and `Button` patterns.
-- [ ] Add canonical enum filters: role, status, organization, category, date range, claim state, voting state, document state as applicable.
+- [x] Add canonical enum filters: role, status, organization, category, date range, claim state, voting state, document state as applicable.
 - [x] Add column visibility for allowed columns only.
 - [ ] Ensure exports respect the same role-visible column model.
 - [ ] Add keyboard focus checks for search, filters, row actions, pagination, and column menu.
 - [x] Build one generic `DataTable.vue` with columns-as-prop and the full row-model stack; refuse the monolithic users-table structure (700-line inline anti-pattern).
 - [x] Extract the URL-sync derive/reverse-map logic into a `useTableQueryState` composable (typed parsers, per-key history mode, default-nulling of page/perPage).
 - [x] Build the six sub-components: `DataTableToolbar`, `DataTableFacetedFilter`, `DataTableViewOptions`, `DataTableColumnHeader`, `DataTablePagination`, `DataTableRowActions`.
-- [ ] Use a labeled (Arabic) `columnLabels` map in view-options, not raw `column.id`.
+- [x] Use a labeled (Arabic) `columnLabels` map in view-options, not raw `column.id`.
 - [ ] Decide faceted-filter count source: for server-paginated queues, provide facet counts from the backend; do NOT show TanStack client-side per-page counts as if they were totals.
 - [x] Add a debounced search (`refDebounced`/`useDebounceFn`, 300ms) and `/` focus + `Esc` clear shortcuts with input/IME guards.
 - [x] Build a `useTableExport` composable: role-visible column projection + UTF-8 BOM for Arabic CSV; route audited exports through the backend where one exists.
-- [ ] Support initial-hidden "advanced" columns (e.g. fee/country pattern) shown on demand via view-options.
+- [x] Support initial-hidden "advanced" columns (e.g. fee/country pattern) shown on demand via view-options.
 - [x] Row-action menu must role-gate every item and route destructive actions through `AlertDialog`; never render forbidden actions.
 
 Priority table surfaces:
 
-- [ ] `RequestsDataTable.vue`
-- [ ] `/requests`
+- [x] `RequestsDataTable.vue`
+- [x] `/requests`
 - [ ] `/merchants`
 - [ ] `/staff`
 - [ ] `/admin/cby-staff`
