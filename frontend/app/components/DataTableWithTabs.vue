@@ -162,11 +162,11 @@ const prevPage = () => {
           <TabsTrigger value="outline">Outline</TabsTrigger>
           <TabsTrigger value="past-performance">
             Past Performance
-            <Badge variant="secondary" class="ml-2">3</Badge>
+            <Badge variant="secondary" class="ms-2">3</Badge>
           </TabsTrigger>
           <TabsTrigger value="key-personnel">
             Key Personnel
-            <Badge variant="secondary" class="ml-2">2</Badge>
+            <Badge variant="secondary" class="ms-2">2</Badge>
           </TabsTrigger>
           <TabsTrigger value="focus-documents">Focus Documents</TabsTrigger>
         </TabsList>

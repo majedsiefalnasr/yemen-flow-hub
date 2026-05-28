@@ -35,11 +35,22 @@ export const REQUESTS_COLUMN_LABELS: Record<string, string> = {
   swift_documents: 'المستندات',
 }
 
-export const STATUS_FILTER_OPTIONS = Object.entries(STATUS_LABELS).map(([value, label]) => ({
-  label,
-  value,
-  color: STATUS_COLORS[value as RequestStatus],
-}))
+export function buildStatusFilterOptions(
+  backendCounts?: Partial<Record<RequestStatus, number>>,
+): Array<{ label: string; value: string; color: string; count?: number }> {
+  return Object.entries(STATUS_LABELS).map(([value, label]) => {
+    const status = value as RequestStatus
+    const count = backendCounts?.[status]
+    return {
+      label,
+      value,
+      color: STATUS_COLORS[status],
+      // Only expose authoritative backend facet totals.
+      // We intentionally avoid client-page counts to prevent misleading totals.
+      count: typeof count === 'number' ? count : undefined,
+    }
+  })
+}
 
 function relativeTime(isoDate: string | null | undefined): string {
   if (!isoDate) return '—'

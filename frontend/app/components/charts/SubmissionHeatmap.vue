@@ -54,7 +54,7 @@ function intensity(day: number, slot: number): number {
         {{ SLOT_LABELS[slot] }}
       </div>
       <template v-for="day in DAYS" :key="`day-${day}`">
-        <div class="text-xs text-foreground flex items-center justify-end pl-2">{{ DAY_LABELS[day] }}</div>
+        <div class="text-xs text-foreground flex items-center justify-end ps-2">{{ DAY_LABELS[day] }}</div>
         <div
           v-for="slot in SLOTS"
           :key="`cell-${day}-${slot}`"

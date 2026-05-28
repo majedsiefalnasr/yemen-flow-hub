@@ -18,6 +18,12 @@ definePageMeta({ layout: false, middleware: ['guest'] })
 const router = useRouter()
 const route = useRoute()
 const auth = useAuthStore()
+const nextPath = computed(() => {
+  const candidate = route.query.next
+  if (typeof candidate !== 'string') return '/dashboard'
+  if (!candidate.startsWith('/')) return '/dashboard'
+  return candidate
+})
 
 const showInactivityBanner = computed(() => route.query.reason === 'inactivity')
 const inactivityBannerDismissed = ref(false)
@@ -56,7 +62,7 @@ const onSubmit = handleSubmit(async (values) => {
       otpCellRefs.value[0]?.focus()
       return
     }
-    await router.push('/dashboard')
+    await router.push(nextPath.value)
   }
   catch (err: any) {
     serverError.value = err?.statusCode === 429
@@ -215,6 +221,14 @@ onBeforeUnmount(clearOtpTimer)
               <p v-if="errors.password" class="mt-1 text-sm text-destructive">
                 {{ errors.password }}
               </p>
+            </div>
+            <div class="flex justify-start">
+              <NuxtLink
+                to="/reset-password"
+                class="text-xs text-primary hover:underline"
+              >
+                نسيت كلمة المرور؟
+              </NuxtLink>
             </div>
             <Button type="submit" size="lg" class="w-full" :disabled="isLoading">
               <Loader2 v-if="isLoading" class="size-4 animate-spin me-2" />

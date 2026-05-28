@@ -1,7 +1,34 @@
 <script setup lang="ts">
-import { AlertTriangle, Plus, Trash2 } from 'lucide-vue-next'
+import type { ColumnDef, VisibilityState } from '@tanstack/vue-table'
+import {
+  FlexRender,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  useVueTable,
+} from '@tanstack/vue-table'
+import { h } from 'vue'
+import {
+  AlertTriangle,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  Download,
+  Plus,
+  Search,
+  SearchX,
+} from 'lucide-vue-next'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Switch } from '@/components/ui/switch'
+import { Input } from '@/components/ui/input'
 import PageHeader from '@/components/layout/PageHeader.vue'
+import { DataTableViewOptions } from '@/components/ui/data-table'
+import { useTableExport } from '@/composables/useTableExport'
+import { useTableKeyboard } from '@/composables/useTableKeyboard'
 import { ROUTE_ROLE_MAP } from '@/constants/workflow'
 import { UserRole } from '@/types/enums'
 import type { DocumentType } from '@/types/models'
@@ -16,10 +43,23 @@ definePageMeta({
 const authStore = useAuthStore()
 const currentUser = computed(() => authStore.user)
 const { fetchDocumentTypes, createDocumentType, updateDocumentType } = useDocumentTypes()
+const { exportToCSV } = useTableExport()
 const { notify, error: toastError } = useToast()
 
 const docTypes = ref<DocumentType[]>([])
+const loadingDocTypes = ref(false)
 const saving = ref(false)
+const query = ref('')
+const searchInputRef = ref<HTMLInputElement | null>(null)
+const columnVisibility = ref<VisibilityState>({
+  sort_order: false,
+})
+
+useTableKeyboard(searchInputRef, {
+  onEscape: () => {
+    query.value = ''
+  },
+})
 
 const draft = reactive<{ name_ar: string; name_en: string; slug: string; is_required: boolean }>({
   name_ar: '',
@@ -40,10 +80,25 @@ const impactPreview = ref<ImpactPreview | null>(null)
 const impactDialogOpen = ref(false)
 
 onMounted(async () => {
-  docTypes.value = await fetchDocumentTypes()
+  loadingDocTypes.value = true
+  try {
+    docTypes.value = await fetchDocumentTypes()
+  }
+  finally {
+    loadingDocTypes.value = false
+  }
 })
 
 const canAdd = computed(() => Boolean(draft.name_ar.trim() && draft.slug.trim()))
+const filteredDocTypes = computed(() => {
+  const q = query.value.trim().toLowerCase()
+  if (!q) return docTypes.value
+  return docTypes.value.filter(item =>
+    item.name_ar.toLowerCase().includes(q)
+    || item.name_en.toLowerCase().includes(q)
+    || item.slug.toLowerCase().includes(q),
+  )
+})
 
 async function addRule() {
   if (!canAdd.value) {
@@ -165,6 +220,103 @@ async function applyToggleActive(item: DocumentType) {
     toastError('فشل تحديث الحالة')
   }
 }
+
+const columns: ColumnDef<DocumentType>[] = [
+  {
+    id: 'document_type',
+    header: 'نوع المستند',
+    cell: ({ row }) =>
+      h('div', { class: 'min-w-[220px]' }, [
+        h('div', { class: 'text-sm font-medium' }, row.original.name_ar),
+        h('div', { class: 'mt-0.5 flex items-center gap-2 text-xs text-muted-foreground' }, [
+          h(Badge, {
+            variant: 'outline',
+            class: 'font-mono text-[10px]',
+          }, () => row.original.slug),
+          row.original.name_en ? h('span', {}, `· ${row.original.name_en}`) : null,
+        ]),
+      ]),
+  },
+  {
+    accessorKey: 'is_required',
+    header: 'الإلزام',
+    cell: ({ row }) =>
+      h('div', { class: 'flex items-center gap-2' }, [
+        h(Switch, {
+          modelValue: row.original.is_required,
+          'onUpdate:modelValue': () => requestToggleRequired(row.original),
+        }),
+        h('span', { class: 'text-xs' }, row.original.is_required ? 'مطلوب' : 'اختياري'),
+      ]),
+  },
+  {
+    accessorKey: 'is_active',
+    header: 'التفعيل',
+    cell: ({ row }) =>
+      h('div', { class: 'flex items-center gap-2' }, [
+        h(Switch, {
+          modelValue: row.original.is_active,
+          'onUpdate:modelValue': () => requestToggleActive(row.original),
+        }),
+        h('span', { class: 'text-xs' }, row.original.is_active ? 'مفعّل' : 'معطّل'),
+      ]),
+  },
+  {
+    accessorKey: 'sort_order',
+    header: 'الترتيب',
+    cell: ({ row }) =>
+      h('span', { class: 'text-sm tabular-nums text-muted-foreground' }, String(row.original.sort_order)),
+  },
+]
+
+const WORKFLOW_DOC_COLUMN_LABELS: Record<string, string> = {
+  document_type: 'نوع المستند',
+  is_required: 'الإلزام',
+  is_active: 'التفعيل',
+  sort_order: 'الترتيب',
+}
+
+const table = useVueTable({
+  get data() { return filteredDocTypes.value },
+  columns,
+  getCoreRowModel: getCoreRowModel(),
+  getPaginationRowModel: getPaginationRowModel(),
+  getSortedRowModel: getSortedRowModel(),
+  getFilteredRowModel: getFilteredRowModel(),
+  onColumnVisibilityChange: updater =>
+    columnVisibility.value = typeof updater === 'function' ? updater(columnVisibility.value) : updater,
+  state: {
+    get columnVisibility() { return columnVisibility.value },
+  },
+  initialState: {
+    pagination: { pageSize: 20 },
+  },
+})
+
+function exportCurrentRules() {
+  if (!filteredDocTypes.value.length) return
+  const stamp = new Date().toISOString().slice(0, 10)
+  exportToCSV(
+    filteredDocTypes.value as unknown as Record<string, unknown>[],
+    [
+      { key: 'name_ar', label: 'الاسم العربي' },
+      { key: 'name_en', label: 'الاسم الإنجليزي' },
+      { key: 'slug', label: 'المعرّف' },
+      {
+        key: 'is_required',
+        label: 'الإلزام',
+        format: (_value: unknown, row: DocumentType) => row.is_required ? 'مطلوب' : 'اختياري',
+      },
+      {
+        key: 'is_active',
+        label: 'التفعيل',
+        format: (_value: unknown, row: DocumentType) => row.is_active ? 'مفعّل' : 'معطّل',
+      },
+      { key: 'sort_order', label: 'الترتيب' },
+    ] as any,
+    `workflow-doc-types-${stamp}`,
+  )
+}
 </script>
 
 <template>
@@ -212,55 +364,149 @@ async function applyToggleActive(item: DocumentType) {
       </Button>
     </Card>
 
-    <Card class="divide-y border-0 shadow">
-      <div
-        v-if="docTypes.length === 0"
-        class="p-8 text-center text-sm text-muted-foreground"
-      >
-        لا توجد أنواع مستندات.
+    <div class="mb-3 flex items-center gap-2">
+      <div class="relative min-w-[240px] flex-1 max-w-md">
+        <Search class="absolute inset-e-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          ref="searchInputRef"
+          v-model="query"
+          class="h-8 rounded-md pe-9 text-sm"
+          placeholder="بحث بالاسم أو المعرّف..."
+        />
       </div>
-      <div
-        v-for="item in docTypes"
-        :key="item.id"
-        class="flex flex-wrap items-center gap-3 p-4"
+      <Button
+        variant="outline"
+        size="sm"
+        class="h-8 gap-1.5"
+        :disabled="filteredDocTypes.length === 0"
+        @click="exportCurrentRules"
       >
-        <div class="min-w-[200px] flex-1">
-          <div class="text-sm font-medium">
-            {{ item.name_ar }}
-          </div>
-          <div class="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
-            <Badge
-              variant="outline"
-              class="font-mono text-[10px]"
+        <Download class="h-4 w-4" />
+        تصدير
+      </Button>
+      <DataTableViewOptions
+        :table="table"
+        :column-labels="WORKFLOW_DOC_COLUMN_LABELS"
+      />
+    </div>
+
+    <Card class="border-0 shadow">
+      <div class="overflow-x-auto">
+        <Table class="w-full min-w-[760px]">
+          <TableHeader class="bg-muted/20">
+            <TableRow
+              v-for="headerGroup in table.getHeaderGroups()"
+              :key="headerGroup.id"
+              class="hover:bg-transparent"
             >
-              {{ item.slug }}
-            </Badge>
-            <span v-if="item.name_en">· {{ item.name_en }}</span>
+              <TableHead
+                v-for="header in headerGroup.headers"
+                :key="header.id"
+                class="h-10 px-4 text-xs font-medium text-foreground"
+              >
+                <FlexRender
+                  v-if="!header.isPlaceholder"
+                  :render="header.column.columnDef.header"
+                  :props="header.getContext()"
+                />
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            <template v-if="loadingDocTypes">
+              <TableRow v-for="i in 6" :key="i">
+                <TableCell class="px-4 py-3"><Skeleton class="h-4 w-48" /></TableCell>
+                <TableCell class="px-4 py-3"><Skeleton class="h-6 w-20" /></TableCell>
+                <TableCell class="px-4 py-3"><Skeleton class="h-6 w-20" /></TableCell>
+                <TableCell class="px-4 py-3"><Skeleton class="h-4 w-10" /></TableCell>
+              </TableRow>
+            </template>
+            <TableRow v-else-if="!table.getRowModel().rows.length">
+              <TableCell :col-span="columns.length" class="p-8">
+                <Empty class="min-h-[180px] rounded-xl border border-dashed bg-muted/20">
+                  <EmptyHeader>
+                    <div class="flex size-12 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+                      <SearchX class="size-5" />
+                    </div>
+                    <EmptyTitle>لا توجد أنواع مستندات مطابقة</EmptyTitle>
+                  </EmptyHeader>
+                  <EmptyContent>
+                    <EmptyDescription>جرّب تعديل معايير البحث لعرض النتائج.</EmptyDescription>
+                  </EmptyContent>
+                </Empty>
+              </TableCell>
+            </TableRow>
+            <template v-else>
+              <TableRow
+                v-for="row in table.getRowModel().rows"
+                :key="row.id"
+                class="hover:bg-muted/30"
+              >
+                <TableCell
+                  v-for="cell in row.getVisibleCells()"
+                  :key="cell.id"
+                  class="px-4 py-3"
+                >
+                  <FlexRender
+                    :render="cell.column.columnDef.cell"
+                    :props="cell.getContext()"
+                  />
+                </TableCell>
+              </TableRow>
+            </template>
+          </TableBody>
+        </Table>
+      </div>
+
+      <div class="flex items-center justify-between border-t px-4 py-3">
+        <p class="text-sm text-muted-foreground">{{ table.getFilteredRowModel().rows.length }} نوع</p>
+        <div class="flex items-center gap-4">
+          <p class="text-sm font-medium whitespace-nowrap">
+            صفحة {{ table.getState().pagination.pageIndex + 1 }} من {{ table.getPageCount() }}
+          </p>
+          <div class="flex items-center gap-1">
+            <Button
+              variant="outline"
+              size="icon"
+              class="hidden h-8 w-8 lg:flex"
+              :disabled="!table.getCanPreviousPage()"
+              @click="table.setPageIndex(0)"
+            >
+              <span class="sr-only">الصفحة الأولى</span>
+              <ChevronsRight class="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              class="h-8 w-8"
+              :disabled="!table.getCanPreviousPage()"
+              @click="table.previousPage()"
+            >
+              <span class="sr-only">الصفحة السابقة</span>
+              <ChevronRight class="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              class="h-8 w-8"
+              :disabled="!table.getCanNextPage()"
+              @click="table.nextPage()"
+            >
+              <span class="sr-only">الصفحة التالية</span>
+              <ChevronLeft class="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              class="hidden h-8 w-8 lg:flex"
+              :disabled="!table.getCanNextPage()"
+              @click="table.setPageIndex(table.getPageCount() - 1)"
+            >
+              <span class="sr-only">الصفحة الأخيرة</span>
+              <ChevronsLeft class="h-4 w-4" />
+            </Button>
           </div>
         </div>
-        <div class="flex items-center gap-2 px-2">
-          <Switch
-            :model-value="item.is_required"
-            @update:model-value="() => requestToggleRequired(item)"
-          />
-          <span class="text-xs">{{ item.is_required ? 'مطلوب' : 'اختياري' }}</span>
-        </div>
-        <div class="flex items-center gap-2 px-2">
-          <Switch
-            :model-value="item.is_active"
-            @update:model-value="() => requestToggleActive(item)"
-          />
-          <span class="text-xs">{{ item.is_active ? 'مفعّل' : 'معطّل' }}</span>
-        </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          class="text-muted-foreground"
-          disabled
-          title="الحذف غير متاح عبر الواجهة"
-        >
-          <Trash2 class="h-4 w-4" />
-        </Button>
       </div>
     </Card>
 

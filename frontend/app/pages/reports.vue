@@ -1,9 +1,22 @@
 <script setup lang="ts">
-import { Calendar, Download, FileSpreadsheet, FileText, Filter } from 'lucide-vue-next'
+import type { ColumnDef, VisibilityState } from '@tanstack/vue-table'
+import {
+  FlexRender,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  useVueTable,
+} from '@tanstack/vue-table'
+import { Calendar, ChevronLeft, ChevronRight, Download, FileSpreadsheet, FileText, Filter } from 'lucide-vue-next'
+import { h } from 'vue'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import { ROUTE_ROLE_MAP } from '@/constants/workflow'
 import { useReports } from '@/composables/useReports'
 import type { WorkflowReport } from '@/composables/useReports'
+import { useTableKeyboard } from '@/composables/useTableKeyboard'
+import { useTableExport } from '@/composables/useTableExport'
+import { DataTableViewOptions } from '@/components/ui/data-table'
 
 definePageMeta({
   middleware: ['auth', 'role'],
@@ -11,9 +24,21 @@ definePageMeta({
 })
 
 const { fetchWorkflowReport, exportReport } = useReports()
+const { exportToCSV } = useTableExport()
 
 const report = ref<WorkflowReport | null>(null)
 const loading = ref(true)
+const scheduleQuery = ref('')
+const scheduleSearchRef = ref<HTMLInputElement | null>(null)
+const scheduleColumnVisibility = ref<VisibilityState>({
+  recipients: false,
+})
+
+useTableKeyboard(scheduleSearchRef, {
+  onEscape: () => {
+    scheduleQuery.value = ''
+  },
+})
 
 onMounted(async () => {
   try {
@@ -53,12 +78,106 @@ const kpis = computed(() => [
 const amountByCurrency = computed(() => report.value?.amount_by_currency ?? [])
 const maxAmount = computed(() => Math.max(...amountByCurrency.value.map(item => item.amount), 1))
 
-const scheduledReports = [
-  ['تقرير أسبوعي للجنة التنفيذية', 'أسبوعي · الأحد 08:00', 'executive@cby.gov.ye', '27 أكتوبر', 'نشط'],
-  ['تقرير الفواتير المكررة', 'يومي · 22:00', 'audit@cby.gov.ye', 'اليوم 22:00', 'نشط'],
-  ['تحليل البنوك التجارية', 'شهري · 1 من الشهر', 'stats@cby.gov.ye', '1 أكتوبر', 'نشط'],
-  ['تقرير الإفراج الجمركي', 'أسبوعي · الخميس', 'customs@customs.gov.ye', '23 أكتوبر', 'متوقف'],
+type ScheduledReportRow = {
+  name: string
+  cadence: string
+  recipients: string
+  lastRun: string
+  status: 'نشط' | 'متوقف'
+}
+
+const scheduledReports: ScheduledReportRow[] = [
+  { name: 'تقرير أسبوعي للجنة التنفيذية', cadence: 'أسبوعي · الأحد 08:00', recipients: 'executive@cby.gov.ye', lastRun: '27 أكتوبر', status: 'نشط' },
+  { name: 'تقرير الفواتير المكررة', cadence: 'يومي · 22:00', recipients: 'audit@cby.gov.ye', lastRun: 'اليوم 22:00', status: 'نشط' },
+  { name: 'تحليل البنوك التجارية', cadence: 'شهري · 1 من الشهر', recipients: 'stats@cby.gov.ye', lastRun: '1 أكتوبر', status: 'نشط' },
+  { name: 'تقرير الإفراج الجمركي', cadence: 'أسبوعي · الخميس', recipients: 'customs@customs.gov.ye', lastRun: '23 أكتوبر', status: 'متوقف' },
 ]
+
+const filteredScheduledReports = computed(() => {
+  const q = scheduleQuery.value.trim().toLowerCase()
+  if (!q) return scheduledReports
+  return scheduledReports.filter(item =>
+    item.name.toLowerCase().includes(q)
+    || item.cadence.toLowerCase().includes(q)
+    || item.recipients.toLowerCase().includes(q),
+  )
+})
+
+const scheduledReportColumns: ColumnDef<ScheduledReportRow>[] = [
+  {
+    accessorKey: 'name',
+    header: 'اسم التقرير',
+    cell: ({ row }) => h('span', { class: 'font-medium' }, row.original.name),
+  },
+  {
+    accessorKey: 'cadence',
+    header: 'الفترة',
+    cell: ({ row }) => h('span', { class: 'text-xs text-muted-foreground' }, row.original.cadence),
+  },
+  {
+    accessorKey: 'recipients',
+    header: 'المستلمون',
+    cell: ({ row }) => h('span', { class: 'text-xs' }, row.original.recipients),
+  },
+  {
+    accessorKey: 'lastRun',
+    header: 'آخر تشغيل',
+    cell: ({ row }) => h('span', { class: 'text-xs text-muted-foreground' }, row.original.lastRun),
+  },
+  {
+    accessorKey: 'status',
+    header: 'الحالة',
+    cell: ({ row }) =>
+      h(Badge, { variant: row.original.status === 'نشط' ? 'secondary' : 'outline' }, () => row.original.status),
+  },
+  {
+    id: 'actions',
+    enableHiding: false,
+    cell: () =>
+      h(Button, { size: 'sm', variant: 'ghost' }, () => h(Download, { class: 'h-3.5 w-3.5' })),
+  },
+]
+
+const SCHEDULE_COLUMN_LABELS: Record<string, string> = {
+  name: 'اسم التقرير',
+  cadence: 'الفترة',
+  recipients: 'المستلمون',
+  lastRun: 'آخر تشغيل',
+  status: 'الحالة',
+}
+
+const scheduledReportsTable = useVueTable({
+  get data() { return filteredScheduledReports.value },
+  columns: scheduledReportColumns,
+  getCoreRowModel: getCoreRowModel(),
+  getPaginationRowModel: getPaginationRowModel(),
+  getSortedRowModel: getSortedRowModel(),
+  getFilteredRowModel: getFilteredRowModel(),
+  onColumnVisibilityChange: updater =>
+    scheduleColumnVisibility.value = typeof updater === 'function' ? updater(scheduleColumnVisibility.value) : updater,
+  state: {
+    get columnVisibility() { return scheduleColumnVisibility.value },
+  },
+  initialState: {
+    pagination: { pageSize: 5 },
+  },
+})
+
+function exportScheduledReports() {
+  if (!filteredScheduledReports.value.length) return
+  const stamp = new Date().toISOString().slice(0, 10)
+  exportToCSV(
+    filteredScheduledReports.value as unknown as Record<string, unknown>[],
+    [
+      { key: 'name', label: 'اسم التقرير' },
+      { key: 'cadence', label: 'الفترة' },
+      { key: 'recipients', label: 'المستلمون' },
+      { key: 'lastRun', label: 'آخر تشغيل' },
+      { key: 'status', label: 'الحالة' },
+    ] as const,
+    `scheduled-reports-${stamp}`,
+  )
+}
 
 function heatValue(rowIndex: number, colIndex: number) {
   return Math.round(((Math.sin(rowIndex * 1.7 + colIndex * 1.3) + 1) / 2) * 80)
@@ -301,71 +420,98 @@ const categoryChartConfig = { value: { label: 'النسبة' } }
             <h3 class="font-semibold">
               تقارير مجدولة
             </h3>
-        <Button
-          variant="outline"
-          size="sm"
-        >
-          <Filter class="ms-1 h-3.5 w-3.5" />
-          فلتر
-        </Button>
-      </div>
+            <div class="flex items-center gap-2">
+              <Button variant="outline" size="sm" @click="exportScheduledReports">
+                <Filter class="ms-1 h-3.5 w-3.5" />
+                تصدير
+              </Button>
+              <DataTableViewOptions
+                :table="scheduledReportsTable"
+                :column-labels="SCHEDULE_COLUMN_LABELS"
+              />
+            </div>
+          </div>
 
-      <div class="overflow-x-auto">
-        <Table class="w-full min-w-[720px] text-sm">
-          <TableHeader class="border-b text-end text-xs text-muted-foreground">
-            <TableRow>
-              <TableHead class="py-2.5">
-                اسم التقرير
-              </TableHead>
-              <TableHead class="py-2.5">
-                الفترة
-              </TableHead>
-              <TableHead class="py-2.5">
-                المستلمون
-              </TableHead>
-              <TableHead class="py-2.5">
-                آخر تشغيل
-              </TableHead>
-              <TableHead class="py-2.5">
-                الحالة
-              </TableHead>
-              <TableHead class="sticky start-0 z-10 bg-background py-2.5 shadow-[6px_0_8px_-6px_rgba(0,0,0,0.12)]" />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            <TableRow
-              v-for="report in scheduledReports"
-              :key="report[0]"
-              class="border-b last:border-0 hover:bg-muted/30"
-            >
-              <TableCell class="py-3 font-medium">
-                {{ report[0] }}
-              </TableCell>
-              <TableCell class="py-3 text-xs text-muted-foreground">
-                {{ report[1] }}
-              </TableCell>
-              <TableCell class="py-3 text-xs">
-                {{ report[2] }}
-              </TableCell>
-              <TableCell class="py-3 text-xs text-muted-foreground">
-                {{ report[3] }}
-              </TableCell>
-              <TableCell class="py-3">
-                <Badge :variant="report[4] === 'نشط' ? 'secondary' : 'outline'">
-                  {{ report[4] }}
-                </Badge>
-              </TableCell>
-              <TableCell class="sticky start-0 z-10 bg-background py-3 shadow-[6px_0_8px_-6px_rgba(0,0,0,0.12)]">
-                <Button
-                  size="sm"
-                  variant="ghost"
+          <div class="mb-3 flex items-center gap-2">
+            <Input
+              ref="scheduleSearchRef"
+              v-model="scheduleQuery"
+              class="h-8 max-w-sm"
+              placeholder="بحث في التقارير المجدولة..."
+            />
+          </div>
+
+          <div class="overflow-x-auto">
+            <Table class="w-full min-w-[720px] text-sm">
+              <TableHeader class="border-b text-end text-xs text-muted-foreground">
+                <TableRow
+                  v-for="headerGroup in scheduledReportsTable.getHeaderGroups()"
+                  :key="headerGroup.id"
                 >
-                  <Download class="h-3.5 w-3.5" />
-                </Button>
-              </TableCell>
-            </TableRow>
-          </TableBody>
-        </Table>
+                  <TableHead
+                    v-for="header in headerGroup.headers"
+                    :key="header.id"
+                    class="py-2.5"
+                  >
+                    <FlexRender
+                      v-if="!header.isPlaceholder"
+                      :render="header.column.columnDef.header"
+                      :props="header.getContext()"
+                    />
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                <TableRow
+                  v-for="row in scheduledReportsTable.getRowModel().rows"
+                  :key="row.id"
+                  class="border-b last:border-0 hover:bg-muted/30"
+                >
+                  <TableCell
+                    v-for="cell in row.getVisibleCells()"
+                    :key="cell.id"
+                    class="py-3"
+                  >
+                    <FlexRender
+                      :render="cell.column.columnDef.cell"
+                      :props="cell.getContext()"
+                    />
+                  </TableCell>
+                </TableRow>
+                <TableRow v-if="scheduledReportsTable.getRowModel().rows.length === 0">
+                  <TableCell :col-span="scheduledReportColumns.length" class="py-8 text-center text-muted-foreground">
+                    لا توجد نتائج مطابقة
+                  </TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          </div>
+
+          <div class="mt-3 flex items-center justify-between">
+            <p class="text-xs text-muted-foreground">{{ scheduledReportsTable.getFilteredRowModel().rows.length }} تقرير</p>
+            <div class="flex items-center gap-2 text-xs">
+              <Button
+                variant="outline"
+                size="icon"
+                class="h-7 w-7"
+                :disabled="!scheduledReportsTable.getCanPreviousPage()"
+                @click="scheduledReportsTable.previousPage()"
+              >
+                <span class="sr-only">الصفحة السابقة</span>
+                <ChevronRight class="h-3.5 w-3.5" />
+              </Button>
+              <span>صفحة {{ scheduledReportsTable.getState().pagination.pageIndex + 1 }} من {{ scheduledReportsTable.getPageCount() }}</span>
+              <Button
+                variant="outline"
+                size="icon"
+                class="h-7 w-7"
+                :disabled="!scheduledReportsTable.getCanNextPage()"
+                @click="scheduledReportsTable.nextPage()"
+              >
+                <span class="sr-only">الصفحة التالية</span>
+                <ChevronLeft class="h-3.5 w-3.5" />
+              </Button>
+            </div>
           </div>
         </Card>
       </TabsContent>

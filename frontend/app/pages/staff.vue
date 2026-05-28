@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ColumnDef } from '@tanstack/vue-table'
+import type { ColumnDef, VisibilityState } from '@tanstack/vue-table'
 import {
   FlexRender,
   getCoreRowModel,
@@ -12,7 +12,7 @@ import { ref, computed, onMounted, h } from 'vue'
 import {
   AlertTriangle,
   ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
-  MoreHorizontal, Plus, Search, SearchX,
+  Download, MoreHorizontal, Plus, Search, SearchX,
 } from 'lucide-vue-next'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import { UserRole } from '../types/enums'
@@ -23,6 +23,8 @@ import { ROLE_LABELS } from '../constants/workflow'
 import StaffModal from '../components/staff/StaffModal.vue'
 import EmptyState from '../components/shared/EmptyState.vue'
 import type { CreateUserPayload, UpdateUserPayload } from '../composables/useUsers'
+import { useTableExport } from '../composables/useTableExport'
+import { useTableKeyboard } from '../composables/useTableKeyboard'
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -68,6 +70,7 @@ import {
   EmptyTitle,
 } from '@/components/ui/empty'
 import { Skeleton } from '@/components/ui/skeleton'
+import { DataTableViewOptions } from '@/components/ui/data-table'
 
 definePageMeta({
   middleware: ['auth', 'role'],
@@ -75,6 +78,7 @@ definePageMeta({
 })
 
 const { fetchUsers, createUser, updateUser, getUser } = useUsers()
+const { exportToCSV } = useTableExport()
 const auth = useAuthStore()
 
 const staff = ref<User[]>([])
@@ -91,8 +95,18 @@ const deactivatingStaff = ref<User | null>(null)
 const deactivating = ref(false)
 
 const searchQuery = ref('')
+const searchInputRef = ref<HTMLInputElement | null>(null)
 const roleFilter = ref<UserRole | ''>('')
 const statusFilter = ref<'active' | 'inactive' | ''>('')
+const columnVisibility = ref<VisibilityState>({
+  last_login: false,
+})
+
+useTableKeyboard(searchInputRef, {
+  onEscape: () => {
+    searchQuery.value = ''
+  },
+})
 
 const filteredStaff = computed(() => {
   let list = staff.value
@@ -384,6 +398,14 @@ const columns: ColumnDef<User>[] = [
   },
 ]
 
+const STAFF_COLUMN_LABELS: Record<string, string> = {
+  member: 'الموظف',
+  role: 'الدور',
+  is_active: 'الحالة',
+  joined: 'تاريخ الانضمام',
+  last_login: 'آخر دخول',
+}
+
 const table = useVueTable({
   get data() { return filteredStaff.value },
   columns,
@@ -391,8 +413,50 @@ const table = useVueTable({
   getPaginationRowModel: getPaginationRowModel(),
   getSortedRowModel: getSortedRowModel(),
   getFilteredRowModel: getFilteredRowModel(),
+  onColumnVisibilityChange: updater =>
+    columnVisibility.value = typeof updater === 'function' ? updater(columnVisibility.value) : updater,
+  state: {
+    get columnVisibility() { return columnVisibility.value },
+  },
   initialState: { pagination: { pageSize: 20 } },
 })
+
+function buildExportFileName(): string {
+  const stamp = new Date().toISOString().slice(0, 10)
+  return `staff-filtered-${stamp}`
+}
+
+function exportCurrentStaff() {
+  if (!filteredStaff.value.length) return
+  exportToCSV(
+    filteredStaff.value as unknown as Record<string, unknown>[],
+    [
+      { key: 'name', label: 'الاسم' },
+      { key: 'email', label: 'البريد الإلكتروني' },
+      {
+        key: 'role',
+        label: 'الدور',
+        format: (_value: unknown, row: User) => ROLE_LABELS[row.role] ?? row.role,
+      },
+      {
+        key: 'is_active',
+        label: 'الحالة',
+        format: (_value: unknown, row: User) => row.is_active ? 'نشط' : 'غير نشط',
+      },
+      {
+        key: 'created_at',
+        label: 'تاريخ الانضمام',
+        format: (_value: unknown, row: User) => formatJoinDate(row.created_at),
+      },
+      {
+        key: 'last_login_at',
+        label: 'آخر دخول',
+        format: (_value: unknown, row: User) => formatJoinDate(row.last_login_at),
+      },
+    ] as any,
+    buildExportFileName(),
+  )
+}
 
 onMounted(loadStaff)
 </script>
@@ -475,6 +539,7 @@ onMounted(loadStaff)
       <div class="relative min-w-[220px] flex-1">
         <Search class="absolute inset-e-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
+          ref="searchInputRef"
           v-model="searchQuery"
           placeholder="بحث بالاسم أو البريد الإلكتروني..."
           class="search-input h-8 rounded-md pe-9 text-sm"
@@ -502,6 +567,22 @@ onMounted(loadStaff)
           <SelectItem value="inactive">غير نشط</SelectItem>
         </SelectContent>
       </Select>
+
+      <Button
+        variant="outline"
+        size="sm"
+        class="ms-auto h-8 gap-1.5"
+        :disabled="filteredStaff.length === 0"
+        @click="exportCurrentStaff"
+      >
+        <Download class="h-4 w-4" />
+        تصدير
+      </Button>
+
+      <DataTableViewOptions
+        :table="table"
+        :column-labels="STAFF_COLUMN_LABELS"
+      />
     </div>
 
     <!-- Empty State (no staff at all) -->

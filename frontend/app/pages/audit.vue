@@ -27,7 +27,10 @@ import { h } from 'vue'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import { ROUTE_ROLE_MAP } from '@/constants/workflow'
 import { useAudit } from '@/composables/useAudit'
+import { useTableExport } from '@/composables/useTableExport'
+import { useTableKeyboard } from '@/composables/useTableKeyboard'
 import type { AuditLog } from '@/types/models'
+import { DataTableViewOptions } from '@/components/ui/data-table'
 import { Badge } from '@/components/ui/badge'
 import {
   Empty,
@@ -59,8 +62,10 @@ definePageMeta({
 })
 
 const { fetchAuditLogs, fetchAuditStats, fetchDuplicates, fetchRiskIndicators } = useAudit()
+const { exportToCSV } = useTableExport()
 
 const query = ref('')
+const searchInputRef = ref<HTMLInputElement | null>(null)
 const loadingAudit = ref(true)
 const auditLogs = ref<AuditLog[]>([])
 const todayCount = ref(0)
@@ -187,8 +192,18 @@ function formatAction(action: string): string {
 const sorting = ref<SortingState>([])
 const columnFilters = ref<ColumnFiltersState>([])
 const rowSelection = ref<Record<string, boolean>>({})
+const columnVisibility = ref<VisibilityState>({
+  from_status: false,
+  to_status: false,
+})
 
 const selectedCount = computed(() => Object.values(rowSelection.value).filter(Boolean).length)
+
+useTableKeyboard(searchInputRef, {
+  onEscape: () => {
+    query.value = ''
+  },
+})
 
 function clearSelection() {
   table.resetRowSelection()
@@ -261,13 +276,63 @@ const columns: ColumnDef<AuditLog>[] = [
           }),
           h(DropdownMenuContent, { align: 'end' }, {
             default: () => [
-              h(DropdownMenuItem, {}, () => 'تصدير السجل'),
+              h(DropdownMenuItem, { onClick: () => exportAuditRows([row.original], 'single') }, () => 'تصدير السجل'),
             ],
           }),
         ],
       }),
   },
 ]
+
+const AUDIT_COLUMN_LABELS: Record<string, string> = {
+  user: 'المستخدم',
+  action: 'الإجراء',
+  from_status: 'من',
+  to_status: 'إلى',
+  created_at: 'التوقيت',
+}
+
+function buildAuditExportColumns() {
+  return [
+    {
+      key: 'user',
+      label: 'المستخدم',
+      format: (_value: unknown, row: AuditLog) => row.user?.name ?? 'غير معروف',
+    },
+    {
+      key: 'action',
+      label: 'الإجراء',
+      format: (_value: unknown, row: AuditLog) => formatAction(row.action),
+    },
+    { key: 'from_status', label: 'من' },
+    { key: 'to_status', label: 'إلى' },
+    {
+      key: 'created_at',
+      label: 'التوقيت',
+      format: (_value: unknown, row: AuditLog) => formatDate(row.created_at),
+    },
+    { key: 'ip_address', label: 'IP' },
+  ] as const
+}
+
+function exportAuditRows(rows: AuditLog[], suffix: 'filtered' | 'selected' | 'single') {
+  if (!rows.length) return
+  const stamp = new Date().toISOString().slice(0, 10)
+  exportToCSV(
+    rows as unknown as Record<string, unknown>[],
+    buildAuditExportColumns() as any,
+    `audit-logs-${suffix}-${stamp}`,
+  )
+}
+
+function exportSelectedAuditRows() {
+  const rows = table.getSelectedRowModel().rows.map(row => row.original)
+  if (rows.length > 0) {
+    exportAuditRows(rows, 'selected')
+    return
+  }
+  exportAuditRows(filteredAudits.value, 'filtered')
+}
 
 // ── Row expansion ─────────────────────────────────────────────────────────────
 const expandedLogs = ref(new Set<number>())
@@ -324,10 +389,13 @@ const table = useVueTable({
     sorting.value = typeof updater === 'function' ? updater(sorting.value) : updater,
   onRowSelectionChange: updater =>
     rowSelection.value = typeof updater === 'function' ? updater(rowSelection.value) : updater,
+  onColumnVisibilityChange: updater =>
+    columnVisibility.value = typeof updater === 'function' ? updater(columnVisibility.value) : updater,
   state: {
     get sorting() { return sorting.value },
     get columnFilters() { return columnFilters.value },
     get rowSelection() { return rowSelection.value },
+    get columnVisibility() { return columnVisibility.value },
   },
   initialState: {
     pagination: { pageSize: 20 },
@@ -433,7 +501,7 @@ const table = useVueTable({
         <div v-if="selectedCount > 0" class="mb-3 flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2">
           <span class="text-sm font-medium text-primary">{{ selectedCount }} محدد</span>
           <div class="mx-2 h-4 w-px bg-border" />
-          <Button variant="outline" size="sm" class="h-7 gap-1.5 text-xs">
+          <Button variant="outline" size="sm" class="h-7 gap-1.5 text-xs" @click="exportSelectedAuditRows">
             <Download class="h-3.5 w-3.5" />
             تصدير
           </Button>
@@ -455,11 +523,26 @@ const table = useVueTable({
         <div v-else class="mb-3 flex items-center gap-2">
           <div class="relative max-w-xs flex-1">
             <Input
+              ref="searchInputRef"
               v-model="query"
               class="h-8 rounded-md pe-9 text-sm"
               placeholder="بحث: مستخدم، إجراء..."
             />
           </div>
+          <Button
+            variant="outline"
+            size="sm"
+            class="h-8 gap-1.5"
+            :disabled="filteredAudits.length === 0"
+            @click="exportAuditRows(filteredAudits, 'filtered')"
+          >
+            <Download class="h-4 w-4" />
+            تصدير
+          </Button>
+          <DataTableViewOptions
+            :table="table"
+            :column-labels="AUDIT_COLUMN_LABELS"
+          />
         </div>
 
         <Card class="border-0 shadow">

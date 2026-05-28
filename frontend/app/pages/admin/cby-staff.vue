@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ColumnDef } from '@tanstack/vue-table'
+import type { ColumnDef, VisibilityState } from '@tanstack/vue-table'
 import {
   FlexRender,
   getCoreRowModel,
@@ -20,6 +20,8 @@ import { UserRole } from '@/types/enums'
 import type { User } from '@/types/models'
 import { useUsers, type CreateUserPayload, type UpdateUserPayload } from '@/composables/useUsers'
 import { useBanks } from '@/composables/useBanks'
+import { useTableExport } from '@/composables/useTableExport'
+import { useTableKeyboard } from '@/composables/useTableKeyboard'
 import type { Bank } from '@/types/models'
 import { useAuthStore } from '@/stores/auth.store'
 import {
@@ -77,6 +79,7 @@ import {
 } from '@/components/ui/empty'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Checkbox } from '@/components/ui/checkbox'
+import { DataTableViewOptions } from '@/components/ui/data-table'
 
 definePageMeta({
   middleware: ['auth', 'role'],
@@ -96,9 +99,11 @@ const authStore = useAuthStore()
 const currentUser = computed(() => authStore.user)
 const { fetchUsers, createUser, updateUser } = useUsers()
 const { fetchBanks } = useBanks()
+const { exportToCSV } = useTableExport()
 const { notify, error: toastError } = useToast()
 
 const query = ref('')
+const searchInputRef = ref<HTMLInputElement | null>(null)
 const roleFilter = ref<'all' | UserRole>('all')
 const filterStatus = ref<'all' | 'active' | 'inactive'>('all')
 const filterBank = ref<'all' | string>('all')
@@ -176,7 +181,17 @@ const activeExecutiveMembers = computed(() =>
 )
 
 const rowSelection = ref<Record<string, boolean>>({})
+const columnVisibility = ref<VisibilityState>({
+  bank: false,
+  last_seen: false,
+})
 const selectedCount = computed(() => Object.values(rowSelection.value).filter(Boolean).length)
+
+useTableKeyboard(searchInputRef, {
+  onEscape: () => {
+    query.value = ''
+  },
+})
 
 function clearSelection() {
   table.resetRowSelection()
@@ -451,6 +466,14 @@ const columns: ColumnDef<User>[] = [
   },
 ]
 
+const CBY_STAFF_COLUMN_LABELS: Record<string, string> = {
+  user: 'المستخدم',
+  role: 'الدور',
+  bank: 'الجهة',
+  last_seen: 'آخر ظهور',
+  is_active: 'الحالة',
+}
+
 const table = useVueTable({
   get data() { return filtered.value },
   columns,
@@ -460,11 +483,59 @@ const table = useVueTable({
   getFilteredRowModel: getFilteredRowModel(),
   onRowSelectionChange: updater =>
     rowSelection.value = typeof updater === 'function' ? updater(rowSelection.value) : updater,
+  onColumnVisibilityChange: updater =>
+    columnVisibility.value = typeof updater === 'function' ? updater(columnVisibility.value) : updater,
   state: {
     get rowSelection() { return rowSelection.value },
+    get columnVisibility() { return columnVisibility.value },
   },
   initialState: { pagination: { pageSize: 20 } },
 })
+
+const selectedUsers = computed(() => table.getSelectedRowModel().rows.map(row => row.original))
+
+function buildExportFileName(suffix: string): string {
+  const stamp = new Date().toISOString().slice(0, 10)
+  return `cby-staff-${suffix}-${stamp}`
+}
+
+function exportColumns() {
+  return [
+    { key: 'name', label: 'الاسم' },
+    { key: 'email', label: 'البريد الإلكتروني' },
+    {
+      key: 'role',
+      label: 'الدور',
+      format: (_value: unknown, row: User) => ROLE_LABELS[row.role] ?? row.role,
+    },
+    {
+      key: 'bank_id',
+      label: 'الجهة',
+      format: (_value: unknown, row: User) => resolveBankName(row),
+    },
+    {
+      key: 'is_active',
+      label: 'الحالة',
+      format: (_value: unknown, row: User) => row.is_active ? 'نشط' : 'غير نشط',
+    },
+    {
+      key: 'last_login_at',
+      label: 'آخر ظهور',
+      format: (_value: unknown, row: User) => row.last_login_at ? new Date(row.last_login_at).toLocaleDateString('ar-EG') : '—',
+    },
+  ] as const
+}
+
+function exportCurrentUsers() {
+  if (!filtered.value.length) return
+  exportToCSV(filtered.value as unknown as Record<string, unknown>[], exportColumns() as any, buildExportFileName('filtered'))
+}
+
+function exportSelectedUsers() {
+  const rows = selectedUsers.value.length > 0 ? selectedUsers.value : filtered.value
+  if (!rows.length) return
+  exportToCSV(rows as unknown as Record<string, unknown>[], exportColumns() as any, buildExportFileName('selected'))
+}
 </script>
 
 <template>
@@ -513,7 +584,7 @@ const table = useVueTable({
     <div v-if="selectedCount > 0" class="mb-4 flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2">
       <span class="text-sm font-medium text-primary">{{ selectedCount }} محدد</span>
       <div class="mx-2 h-4 w-px bg-border" />
-      <Button variant="outline" size="sm" class="h-7 gap-1.5 text-xs">
+      <Button variant="outline" size="sm" class="h-7 gap-1.5 text-xs" @click="exportSelectedUsers">
         <Download class="h-3.5 w-3.5" />
         تصدير
       </Button>
@@ -536,6 +607,7 @@ const table = useVueTable({
       <div class="relative min-w-[220px] flex-1">
         <Search class="absolute inset-e-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
+          ref="searchInputRef"
           v-model="query"
           class="h-8 rounded-md pe-9 text-sm"
           placeholder="بحث بالاسم أو البريد..."
@@ -579,6 +651,22 @@ const table = useVueTable({
           </SelectContent>
         </Select>
       </div>
+
+      <Button
+        variant="outline"
+        size="sm"
+        class="ms-auto h-8 gap-1.5"
+        :disabled="filtered.length === 0"
+        @click="exportCurrentUsers"
+      >
+        <Download class="h-4 w-4" />
+        تصدير
+      </Button>
+
+      <DataTableViewOptions
+        :table="table"
+        :column-labels="CBY_STAFF_COLUMN_LABELS"
+      />
     </div>
 
     <!-- Fetch error state -->

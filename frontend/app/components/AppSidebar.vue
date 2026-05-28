@@ -25,8 +25,11 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar'
 import NavUser from '@/components/NavUser.vue'
+import { buildOperationalNavBadges } from '@/composables/useNavBadges'
 import { NAV_ITEMS } from '@/constants/workflow'
 import { useAuthStore } from '@/stores/auth.store'
+import { useDashboardStore } from '@/stores/dashboard.store'
+import { useNotificationsStore } from '@/stores/notifications.store'
 import { ICONS } from '@/utils/icon-map'
 import type { UserRole } from '@/types/enums'
 
@@ -77,11 +80,48 @@ const props = withDefaults(defineProps<SidebarProps>(), {
 // ── State ─────────────────────────────────────────────────────────────
 
 const authStore = useAuthStore()
+const dashboardStore = useDashboardStore()
+const notificationsStore = useNotificationsStore()
 const route = useRoute()
 const { state } = useSidebar()
 const user = computed(() => authStore.user)
+const lastBadgeRole = ref<UserRole | null>(null)
 
 const brandInitial = computed(() => 'منصة الواردات'.trim().charAt(0))
+
+const navBadgesByRoute = computed(() =>
+  buildOperationalNavBadges({
+    role: user.value?.role ?? null,
+    stats: dashboardStore.stats,
+    unreadCount: notificationsStore.unreadCount,
+  }),
+)
+
+async function refreshOperationalBadges(forceDashboard = false) {
+  if (!user.value?.role) return
+
+  await notificationsStore.refreshUnreadCount()
+
+  const roleChanged = lastBadgeRole.value !== user.value.role
+  if (forceDashboard || roleChanged || !dashboardStore.stats) {
+    await dashboardStore.loadStats()
+    lastBadgeRole.value = user.value.role
+  }
+}
+
+onMounted(() => {
+  void refreshOperationalBadges(true)
+})
+
+watch(
+  () => user.value?.role,
+  (nextRole, prevRole) => {
+    if (!nextRole) return
+    if (nextRole === prevRole && lastBadgeRole.value === nextRole) return
+    lastBadgeRole.value = null
+    void refreshOperationalBadges(true)
+  },
+)
 
 // ── Nav construction ──────────────────────────────────────────────────
 
@@ -108,6 +148,7 @@ const navGroups = computed<NavGroupDef[]>(() => {
       url: item.route,
       icon: ICONS[item.icon] ?? Home,
       roles: item.roles,
+      badge: navBadgesByRoute.value[item.route],
     }))
 
   return NAV_GROUP_DEFS

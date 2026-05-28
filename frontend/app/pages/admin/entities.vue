@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ColumnDef } from '@tanstack/vue-table'
+import type { ColumnDef, VisibilityState } from '@tanstack/vue-table'
 import {
   FlexRender,
   getCoreRowModel,
@@ -12,13 +12,15 @@ import { h } from 'vue'
 import {
   Building2,
   ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
-  MoreHorizontal, Plus, Search, SearchX,
+  Download, MoreHorizontal, Plus, Search, SearchX,
 } from 'lucide-vue-next'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import { ROUTE_ROLE_MAP } from '@/constants/workflow'
 import { UserRole } from '@/types/enums'
 import type { Bank } from '@/types/models'
 import { useBanks, type CreateBankPayload, type UpdateBankPayload } from '@/composables/useBanks'
+import { useTableExport } from '@/composables/useTableExport'
+import { useTableKeyboard } from '@/composables/useTableKeyboard'
 import { useAuthStore } from '@/stores/auth.store'
 import {
   Table,
@@ -54,6 +56,7 @@ import {
   EmptyTitle,
 } from '@/components/ui/empty'
 import { Skeleton } from '@/components/ui/skeleton'
+import { DataTableViewOptions } from '@/components/ui/data-table'
 
 definePageMeta({
   middleware: ['auth', 'role'],
@@ -73,15 +76,24 @@ type EntityForm = {
 const authStore = useAuthStore()
 const currentUser = computed(() => authStore.user)
 const { fetchBanks, createBank, updateBank } = useBanks()
+const { exportToCSV } = useTableExport()
 const { notify, error: toastError } = useToast()
 
 const query = ref('')
+const searchInputRef = ref<HTMLInputElement | null>(null)
 const createOpen = ref(false)
 const editing = ref<Bank | null>(null)
 const viewing = ref<Bank | null>(null)
 const saving = ref(false)
 const banks = ref<Bank[]>([])
 const loadingBanks = ref(false)
+const columnVisibility = ref<VisibilityState>({})
+
+useTableKeyboard(searchInputRef, {
+  onEscape: () => {
+    query.value = ''
+  },
+})
 
 const form = reactive<EntityForm>({
   name_ar: '',
@@ -303,6 +315,13 @@ const columns: ColumnDef<Bank>[] = [
   },
 ]
 
+const ENTITY_COLUMN_LABELS: Record<string, string> = {
+  entity: 'الجهة',
+  license_number: 'رقم الترخيص',
+  code: 'الرمز',
+  is_active: 'الحالة',
+}
+
 const table = useVueTable({
   get data() { return filtered.value },
   columns,
@@ -310,8 +329,42 @@ const table = useVueTable({
   getPaginationRowModel: getPaginationRowModel(),
   getSortedRowModel: getSortedRowModel(),
   getFilteredRowModel: getFilteredRowModel(),
+  onColumnVisibilityChange: updater =>
+    columnVisibility.value = typeof updater === 'function' ? updater(columnVisibility.value) : updater,
+  state: {
+    get columnVisibility() { return columnVisibility.value },
+  },
   initialState: { pagination: { pageSize: 20 } },
 })
+
+function buildExportFileName(): string {
+  const stamp = new Date().toISOString().slice(0, 10)
+  return `entities-filtered-${stamp}`
+}
+
+function exportCurrentEntities() {
+  if (!filtered.value.length) return
+  exportToCSV(
+    filtered.value as unknown as Record<string, unknown>[],
+    [
+      { key: 'name_ar', label: 'الاسم العربي' },
+      { key: 'name_en', label: 'الاسم الإنجليزي' },
+      { key: 'code', label: 'الرمز' },
+      { key: 'license_number', label: 'رقم الترخيص' },
+      {
+        key: 'is_active',
+        label: 'الحالة',
+        format: (_value: unknown, row: Bank) => row.is_active ? 'نشط' : 'موقوف',
+      },
+      {
+        key: 'user_count',
+        label: 'عدد المستخدمين',
+        format: (_value: unknown, row: Bank) => String(row.user_count ?? 0),
+      },
+    ] as any,
+    buildExportFileName(),
+  )
+}
 </script>
 
 <template>
@@ -351,11 +404,26 @@ const table = useVueTable({
       <div class="relative min-w-[220px] flex-1 max-w-md">
         <Search class="absolute inset-e-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
+          ref="searchInputRef"
           v-model="query"
           class="h-8 rounded-md pe-9 text-sm"
           placeholder="بحث بالاسم أو رقم الترخيص أو الكود..."
         />
       </div>
+      <Button
+        variant="outline"
+        size="sm"
+        class="h-8 gap-1.5"
+        :disabled="filtered.length === 0"
+        @click="exportCurrentEntities"
+      >
+        <Download class="h-4 w-4" />
+        تصدير
+      </Button>
+      <DataTableViewOptions
+        :table="table"
+        :column-labels="ENTITY_COLUMN_LABELS"
+      />
     </div>
 
     <!-- Table -->

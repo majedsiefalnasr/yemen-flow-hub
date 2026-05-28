@@ -177,18 +177,18 @@ onMounted(async () => {
     </div>
 
     <!-- Error state -->
-    <Alert v-else-if="votingStore.voteError && !detail" class="border-l-4 border-l-red-600 bg-destructive/10 border-0">
+    <Alert v-else-if="votingStore.voteError && !detail" class="border-s-4 border-s-red-600 bg-destructive/10 border-0">
       <AlertCircle class="h-4 w-4 text-destructive" aria-hidden="true" />
       <AlertDescription class="text-destructive text-sm">
         {{ votingStore.voteError }}
-        <Button variant="outline" size="sm" class="ml-3 h-7" @click="votingStore.loadVotingDetail(requestId)">إعادة المحاولة</Button>
+        <Button variant="outline" size="sm" class="ms-3 h-7" @click="votingStore.loadVotingDetail(requestId)">إعادة المحاولة</Button>
       </AlertDescription>
     </Alert>
 
     <template v-else-if="detail">
 
       <!-- Final decision banner: EXECUTIVE_REJECTED -->
-      <Alert v-if="requestStatus === RequestStatus.EXECUTIVE_REJECTED" class="border-0 bg-destructive border-l-4 border-l-destructive">
+      <Alert v-if="requestStatus === RequestStatus.EXECUTIVE_REJECTED" class="border-0 bg-destructive border-s-4 border-s-destructive">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-destructive" aria-hidden="true">
           <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
           <path d="M7 11V7a5 5 0 0 1 10 0v4" />
@@ -202,7 +202,7 @@ onMounted(async () => {
       </div>
 
       <!-- Vote action error -->
-      <Alert v-if="voteError" class="border-l-4 border-l-red-600 bg-destructive/10 border-0">
+      <Alert v-if="voteError" class="border-s-4 border-s-red-600 bg-destructive/10 border-0">
         <AlertCircle class="h-4 w-4 text-destructive" aria-hidden="true" />
         <AlertDescription class="text-destructive text-sm">{{ voteError }}</AlertDescription>
       </Alert>
@@ -242,7 +242,7 @@ onMounted(async () => {
       </div>
 
       <!-- Tie-break notice -->
-      <Alert v-if="showTieBreak" class="border-l-4 border-l-amber-500 bg-amber-50/10 border-0">
+      <Alert v-if="showTieBreak" class="border-s-4 border-s-amber-500 bg-amber-50/10 border-0">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-warning" aria-hidden="true">
           <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
         </svg>
@@ -363,7 +363,7 @@ onMounted(async () => {
       </div>
 
       <!-- Already voted indicator -->
-      <Alert v-if="isSessionOpen && isVoter && detail.my_vote" class="border-0 bg-success/10/10 border-l-4 border-l-green-600">
+      <Alert v-if="isSessionOpen && isVoter && detail.my_vote" class="border-0 bg-success/10/10 border-s-4 border-s-green-600">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="text-success" aria-hidden="true">
           <polyline points="20 6 9 17 4 12" />
         </svg>
@@ -371,7 +371,7 @@ onMounted(async () => {
       </Alert>
 
       <!-- Locked state indicator -->
-      <Alert v-if="isLocked" class="border-0 bg-muted border-l-4 border-l-locked">
+      <Alert v-if="isLocked" class="border-0 bg-muted border-s-4 border-s-locked">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-locked)" stroke-width="2" aria-hidden="true">
           <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
           <path d="M7 11V7a5 5 0 0 1 10 0v4" />

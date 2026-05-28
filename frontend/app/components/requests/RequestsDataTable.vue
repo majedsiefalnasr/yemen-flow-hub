@@ -31,7 +31,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { REQUESTS_COLUMN_LABELS, STATUS_FILTER_OPTIONS, useRequestsColumns } from '@/composables/useRequestsColumns'
+import { buildStatusFilterOptions, REQUESTS_COLUMN_LABELS, useRequestsColumns } from '@/composables/useRequestsColumns'
 import { useAuthStore } from '@/stores/auth.store'
 import { UserRole } from '@/types/enums'
 import type { ImportRequest } from '@/types/models'
@@ -41,6 +41,10 @@ const props = defineProps<{
   loading?: boolean
   noData?: boolean
   role: UserRole
+  emptyState?: {
+    title: string
+    description: string
+  }
 }>()
 
 const emit = defineEmits<{
@@ -73,6 +77,8 @@ const { columns } = useRequestsColumns({
   currentUserId,
   onPreviewClick: request => emit('previewClick', request),
 })
+
+const statusFilterOptions = computed(() => buildStatusFilterOptions())
 
 const table = useVueTable({
   get data() { return props.data },
@@ -114,6 +120,7 @@ function supportCommitteeRowClass(request: ImportRequest): string {
 
 defineExpose({
   clearSelection: () => table.resetRowSelection(),
+  getSelectedRequestIds: () => table.getSelectedRowModel().rows.map(row => row.original.id),
   table,
 })
 </script>
@@ -125,7 +132,7 @@ defineExpose({
         v-if="table.getColumn('status')"
         :column="table.getColumn('status')!"
         title="الحالة"
-        :options="STATUS_FILTER_OPTIONS"
+        :options="statusFilterOptions"
       />
       <Button
         v-if="hasActiveFilters"
@@ -222,11 +229,11 @@ defineExpose({
         <div class="flex size-12 items-center justify-center rounded-xl bg-muted text-muted-foreground">
           <SearchX class="size-5" />
         </div>
-        <EmptyTitle>{{ noData ? 'لا توجد طلبات بعد' : 'لا توجد طلبات مطابقة' }}</EmptyTitle>
+        <EmptyTitle>{{ emptyState?.title ?? (noData ? 'لا توجد طلبات بعد' : 'لا توجد طلبات مطابقة') }}</EmptyTitle>
       </EmptyHeader>
       <EmptyContent>
         <EmptyDescription>
-          {{ noData ? 'لم يتم تقديم أي طلبات حتى الآن.' : 'جرّب تغيير البحث أو الفلاتر لعرض الطلبات المتاحة.' }}
+          {{ emptyState?.description ?? (noData ? 'لم يتم تقديم أي طلبات حتى الآن.' : 'جرّب تغيير البحث أو الفلاتر لعرض الطلبات المتاحة.') }}
         </EmptyDescription>
       </EmptyContent>
     </Empty>

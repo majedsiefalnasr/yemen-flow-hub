@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ColumnDef } from '@tanstack/vue-table'
+import type { ColumnDef, VisibilityState } from '@tanstack/vue-table'
 import {
   FlexRender,
   getCoreRowModel,
@@ -20,6 +20,8 @@ import type { MerchantFormData } from '@/components/merchants/MerchantDialog.vue
 import { useAuthStore } from '@/stores/auth.store'
 import { useMerchants } from '@/composables/useMerchants'
 import { useBanks } from '@/composables/useBanks'
+import { useTableExport } from '@/composables/useTableExport'
+import { useTableKeyboard } from '@/composables/useTableKeyboard'
 import { UserRole } from '@/types/enums'
 import { ROUTE_ROLE_MAP } from '@/constants/workflow'
 import type { Merchant } from '@/types/models'
@@ -77,6 +79,7 @@ import {
 } from '@/components/ui/empty'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Checkbox } from '@/components/ui/checkbox'
+import { DataTableViewOptions } from '@/components/ui/data-table'
 
 definePageMeta({
   middleware: ['auth', 'role'],
@@ -88,6 +91,7 @@ const authStore = useAuthStore()
 const user = computed(() => authStore.user)
 const { fetchMerchants, createMerchant, updateMerchant, suspendMerchant } = useMerchants()
 const { fetchBanks } = useBanks()
+const { exportToCSV } = useTableExport()
 const { notify } = useToast()
 
 const merchants = ref<Merchant[]>([])
@@ -250,7 +254,18 @@ async function saveEdit(data: MerchantFormData) {
 }
 
 const rowSelection = ref<Record<string, boolean>>({})
+const columnVisibility = ref<VisibilityState>({
+  business_type: false,
+  transactions: false,
+})
 const selectedCount = computed(() => Object.values(rowSelection.value).filter(Boolean).length)
+const searchInputRef = ref<HTMLInputElement | null>(null)
+
+useTableKeyboard(searchInputRef, {
+  onEscape: () => {
+    query.value = ''
+  },
+})
 
 function clearSelection() {
   table.resetRowSelection()
@@ -411,6 +426,16 @@ const columns: ColumnDef<Merchant>[] = [
   },
 ]
 
+const MERCHANT_COLUMN_LABELS: Record<string, string> = {
+  name: 'التاجر',
+  commercial_register: 'السجل التجاري',
+  tax_number: 'الرقم الضريبي',
+  business_type: 'القطاع',
+  bank: 'البنك',
+  is_active: 'الحالة',
+  transactions: 'المعاملات',
+}
+
 const table = useVueTable({
   get data() { return filtered.value },
   columns,
@@ -420,11 +445,56 @@ const table = useVueTable({
   getFilteredRowModel: getFilteredRowModel(),
   onRowSelectionChange: updater =>
     rowSelection.value = typeof updater === 'function' ? updater(rowSelection.value) : updater,
+  onColumnVisibilityChange: updater =>
+    columnVisibility.value = typeof updater === 'function' ? updater(columnVisibility.value) : updater,
   state: {
     get rowSelection() { return rowSelection.value },
+    get columnVisibility() { return columnVisibility.value },
   },
   initialState: { pagination: { pageSize: 20 } },
 })
+
+const selectedMerchants = computed(() => table.getSelectedRowModel().rows.map(row => row.original))
+
+function buildExportFileName(suffix: string): string {
+  const stamp = new Date().toISOString().slice(0, 10)
+  return `merchants-${suffix}-${stamp}`
+}
+
+function merchantExportColumns() {
+  return [
+    { key: 'name', label: 'التاجر' },
+    { key: 'commercial_register', label: 'السجل التجاري' },
+    { key: 'tax_number', label: 'الرقم الضريبي' },
+    { key: 'business_type', label: 'القطاع' },
+    {
+      key: 'bank_id',
+      label: 'البنك',
+      format: (_value: unknown, row: Merchant) => bankName(row.bank_id),
+    },
+    {
+      key: 'is_active',
+      label: 'الحالة',
+      format: (_value: unknown, row: Merchant) => row.is_active ? 'نشط' : 'موقوف',
+    },
+    {
+      key: 'transaction_count',
+      label: 'المعاملات',
+      format: (_value: unknown, row: Merchant) => String(row.transaction_count ?? 0),
+    },
+  ] as const
+}
+
+function exportCurrentMerchants() {
+  if (!filtered.value.length) return
+  exportToCSV(filtered.value as unknown as Record<string, unknown>[], merchantExportColumns() as any, buildExportFileName('filtered'))
+}
+
+function exportSelectedMerchants() {
+  const rows = selectedMerchants.value.length > 0 ? selectedMerchants.value : filtered.value
+  if (!rows.length) return
+  exportToCSV(rows as unknown as Record<string, unknown>[], merchantExportColumns() as any, buildExportFileName('selected'))
+}
 </script>
 
 <template>
@@ -536,7 +606,7 @@ const table = useVueTable({
     <div v-if="isCbyAdmin && selectedCount > 0" class="mb-4 flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2">
       <span class="text-sm font-medium text-primary">{{ selectedCount }} محدد</span>
       <div class="mx-2 h-4 w-px bg-border" />
-      <Button variant="outline" size="sm" class="h-7 gap-1.5 text-xs">
+      <Button variant="outline" size="sm" class="h-7 gap-1.5 text-xs" @click="exportSelectedMerchants">
         <Download class="h-3.5 w-3.5" />
         تصدير
       </Button>
@@ -559,6 +629,7 @@ const table = useVueTable({
       <div class="relative min-w-[220px] flex-1">
         <Search class="absolute inset-e-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
+          ref="searchInputRef"
           v-model="query"
           placeholder="بحث برقم السجل، الرقم الضريبي، أو الاسم..."
           class="h-8 rounded-md pe-9 text-sm"
@@ -595,6 +666,24 @@ const table = useVueTable({
           </TabsTrigger>
         </TabsList>
       </Tabs>
+
+      <Button
+        v-if="isCbyAdmin"
+        variant="outline"
+        size="sm"
+        class="ms-auto h-8 gap-1.5"
+        :disabled="filtered.length === 0"
+        @click="exportCurrentMerchants"
+      >
+        <Download class="h-4 w-4" />
+        تصدير
+      </Button>
+
+      <DataTableViewOptions
+        v-if="isCbyAdmin"
+        :table="table"
+        :column-labels="MERCHANT_COLUMN_LABELS"
+      />
     </div>
 
     <!-- CBY Admin: tanstack table view -->

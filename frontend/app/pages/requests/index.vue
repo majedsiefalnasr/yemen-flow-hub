@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import {
   AlertCircle, CheckCircle2, ClipboardList,
   Download, Edit, Eye, FilePlus2, Filter, Lock, Printer,
-  Search, SlidersHorizontal, Upload, User, Vote, X,
+  RefreshCw, Search, SlidersHorizontal, Upload, User, Vote, X,
 } from 'lucide-vue-next'
 import {
   Dialog,
@@ -15,6 +15,8 @@ import {
 } from '@/components/ui/dialog'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import RequestsDataTable from '@/components/requests/RequestsDataTable.vue'
+import { buildRequestsExportColumns } from '@/composables/useRequestsExport'
+import { buildRequestsEmptyState } from '@/composables/useRequestsEmptyState'
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { RequestStatus, UserRole } from '@/types/enums'
 import {
@@ -27,6 +29,7 @@ import {
 import { useAuthStore } from '@/stores/auth.store'
 import { useRequestsStore } from '@/stores/requests.store'
 import { useBanks } from '@/composables/useBanks'
+import { useTableKeyboard } from '@/composables/useTableKeyboard'
 import type { Bank } from '@/types/models'
 import {
   Tabs,
@@ -57,6 +60,7 @@ import {
 import { Separator } from '@/components/ui/separator'
 import StatusBadge from '@/components/shared/StatusBadge.vue'
 import type { ImportRequest } from '@/types/models'
+import { useTableExport } from '@/composables/useTableExport'
 
 definePageMeta({
   middleware: ['auth', 'role'],
@@ -68,11 +72,13 @@ const store = useRequestsStore()
 const { fetchBanks } = useBanks()
 const route = useRoute()
 const router = useRouter()
+const { exportToCSV } = useTableExport()
 
 const user = computed(() => authStore.user)
 const filter = ref('all')
 const { queryState, setQuery } = useTableQueryState({ search: '', tab: '', my: '', hide_others: '' })
 const bankFilter = ref('all')
+const dateRangeFilter = ref<'all' | 'today' | '7d' | '30d' | '90d'>('all')
 const banks = ref<Bank[]>([])
 
 // Created-by-me toggle — BANK_REVIEWER only
@@ -134,6 +140,8 @@ onMounted(async () => {
   if (user.value && CBY_BANK_FILTER_ROLES.includes(user.value.role)) {
     banks.value = await fetchBanks()
   }
+  await nextTick()
+  syncSearchInputRef()
 })
 
 const roleBuckets = computed((): StageBucket[] => {
@@ -154,9 +162,37 @@ const tabOptions = computed(() => [
 
 const tabKeys = computed(() => new Set(tabOptions.value.map(tab => tab.key)))
 const searchQuery = computed(() => typeof queryState.value.search === 'string' ? queryState.value.search : '')
+const searchInputContainerRef = ref<HTMLElement | null>(null)
+const searchInputRef = ref<HTMLInputElement | null>(null)
+
+function syncSearchInputRef() {
+  searchInputRef.value = searchInputContainerRef.value?.querySelector('input') ?? null
+}
 
 function handleSearchUpdate(value: string | number) {
   void setQuery({ search: String(value ?? '') })
+}
+
+function clearSearchQuery() {
+  void setQuery({ search: '' })
+}
+
+useTableKeyboard(searchInputRef, { onEscape: clearSearchQuery })
+
+function isWithinDateRange(isoDate: string): boolean {
+  if (dateRangeFilter.value === 'all') return true
+  const createdAt = new Date(isoDate)
+  if (Number.isNaN(createdAt.getTime())) return false
+
+  const now = new Date()
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  if (dateRangeFilter.value === 'today') {
+    return createdAt >= startOfToday
+  }
+
+  const days = dateRangeFilter.value === '7d' ? 7 : dateRangeFilter.value === '30d' ? 30 : 90
+  const cutoff = new Date(now.getTime() - days * 24 * 60 * 60 * 1000)
+  return createdAt >= cutoff
 }
 
 function bucketMatchesRequest(bucket: StageBucket | undefined, req: typeof store.requests[number]): boolean {
@@ -179,6 +215,7 @@ const filteredRequests = computed(() => {
       || req.reference_number.toLowerCase().includes(q)
       || (req.merchant?.name ?? '').toLowerCase().includes(q)
       || (req.invoice_number ?? '').toLowerCase().includes(q)
+    const dateMatches = isWithinDateRange(req.created_at)
 
     const createdByMeMatches = !createdByMeOnly.value
       || req.created_by === user.value?.id
@@ -221,7 +258,7 @@ const filteredRequests = computed(() => {
       }
     }
 
-    return bucketMatches && bankMatches && queryMatches && createdByMeMatches && hideOthersMatches
+    return bucketMatches && bankMatches && queryMatches && dateMatches && createdByMeMatches && hideOthersMatches
       && advBankMatches && advStageMatches && advSlaMatches && advVotingMatches && advFxMatches && advHighValueMatches
   })
 })
@@ -280,6 +317,18 @@ const cbySmartSummary = computed(() => {
   return items
 })
 
+const requestsEmptyState = computed(() => buildRequestsEmptyState({
+  role: user.value?.role,
+  tab: filter.value,
+  hasAnyRequests: store.requests.length > 0,
+  search: searchQuery.value,
+  bankFilter: bankFilter.value,
+  dateRangeFilter: dateRangeFilter.value,
+  createdByMeOnly: createdByMeOnly.value,
+  hideOthers: hideOthers.value,
+  advancedFilterCount: advancedFilterCount.value,
+}))
+
 const directorSmartSummary = computed(() => {
   if (!isDirector.value) return []
   const reqs = filteredRequests.value
@@ -304,7 +353,15 @@ const directorSmartSummary = computed(() => {
 })
 
 const selectedCount = ref(0)
-const dataTableRef = ref<{ clearSelection: () => void } | null>(null)
+const dataTableRef = ref<{
+  clearSelection: () => void
+  getSelectedRequestIds: () => number[]
+} | null>(null)
+
+const exportColumns = computed(() => {
+  if (!user.value) return []
+  return buildRequestsExportColumns(user.value.role)
+})
 
 function openRequest(id: number) {
   navigateTo(`/requests/${id}`)
@@ -312,6 +369,25 @@ function openRequest(id: number) {
 
 function clearBulkSelection() {
   dataTableRef.value?.clearSelection()
+}
+
+function buildExportFileName(suffix: string): string {
+  const stamp = new Date().toISOString().slice(0, 10)
+  return `requests-${suffix}-${stamp}`
+}
+
+function exportCurrentView() {
+  if (!filteredRequests.value.length || !exportColumns.value.length) return
+  exportToCSV(filteredRequests.value, exportColumns.value, buildExportFileName('filtered'))
+}
+
+function exportSelectedRows() {
+  const selectedIds = dataTableRef.value?.getSelectedRequestIds() ?? []
+  const rows = selectedIds.length
+    ? filteredRequests.value.filter(req => selectedIds.includes(req.id))
+    : filteredRequests.value
+  if (!rows.length || !exportColumns.value.length) return
+  exportToCSV(rows, exportColumns.value, buildExportFileName('selected'))
 }
 
 // Soft-migration for deep-links built before the Story 12.2 bucket rename.
@@ -370,6 +446,15 @@ watch(hideOthers, (val) => {
   else delete nextQuery.hide_others
   if ((route.query.hide_others === '1') === val) return
   router.replace({ query: nextQuery })
+})
+
+watch(selectedCount, async (count) => {
+  if (count > 0) {
+    searchInputRef.value = null
+    return
+  }
+  await nextTick()
+  syncSearchInputRef()
 })
 </script>
 
@@ -479,7 +564,23 @@ watch(hideOthers, (val) => {
 
         <!-- Export + New request -->
         <div class="flex items-center gap-2">
-          <Button variant="outline" size="sm" class="h-8">
+          <Button
+            variant="outline"
+            size="sm"
+            class="h-8"
+            :disabled="store.loadingList"
+            @click="store.loadRequests({ per_page: 200 })"
+          >
+            <RefreshCw class="h-4 w-4" :class="{ 'animate-spin': store.loadingList }" />
+            <span class="hidden lg:inline">تحديث</span>
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            class="h-8"
+            :disabled="filteredRequests.length === 0"
+            @click="exportCurrentView"
+          >
             <Download class="h-4 w-4" />
             <span class="hidden lg:inline">تصدير</span>
           </Button>
@@ -494,7 +595,7 @@ watch(hideOthers, (val) => {
       <div v-if="selectedCount > 0" class="flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2">
         <span class="text-sm font-medium text-primary">{{ selectedCount }} محدد</span>
         <div class="mx-2 h-4 w-px bg-border" />
-        <Button variant="outline" size="sm" class="h-7 gap-1.5 text-xs">
+        <Button variant="outline" size="sm" class="h-7 gap-1.5 text-xs" @click="exportSelectedRows">
           <Download class="h-3.5 w-3.5" />
           تصدير
         </Button>
@@ -514,7 +615,7 @@ watch(hideOthers, (val) => {
       </div>
 
       <div v-else class="flex flex-wrap items-center gap-2">
-        <div class="relative min-w-[220px] flex-1">
+        <div ref="searchInputContainerRef" class="relative min-w-[220px] flex-1">
           <Search class="absolute inset-e-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             :model-value="searchQuery"
@@ -533,6 +634,19 @@ watch(hideOthers, (val) => {
             <SelectItem v-for="bank in banks" :key="bank.id" :value="String(bank.id)">
               {{ bank.name_ar }}
             </SelectItem>
+          </SelectContent>
+        </Select>
+
+        <Select v-model="dateRangeFilter">
+          <SelectTrigger class="h-8 w-full rounded-md text-sm sm:w-44">
+            <SelectValue placeholder="كل الفترات" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">كل الفترات</SelectItem>
+            <SelectItem value="today">اليوم</SelectItem>
+            <SelectItem value="7d">آخر 7 أيام</SelectItem>
+            <SelectItem value="30d">آخر 30 يوم</SelectItem>
+            <SelectItem value="90d">آخر 90 يوم</SelectItem>
           </SelectContent>
         </Select>
 
@@ -587,6 +701,7 @@ watch(hideOthers, (val) => {
         :data="filteredRequests"
         :loading="store.loadingList"
         :no-data="!store.loadingList && store.requests.length === 0"
+        :empty-state="requestsEmptyState"
         :role="user.role"
         @row-click="openRequest"
         @preview-click="openPreview"

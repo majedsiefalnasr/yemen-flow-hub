@@ -260,7 +260,7 @@ function formatDate(iso: string | null): string {
     </div>
 
     <!-- Error state -->
-    <Alert v-else-if="error" class="border-l-4 border-l-red-600 bg-red-700/10 border-0">
+    <Alert v-else-if="error" class="border-s-4 border-s-red-600 bg-red-700/10 border-0">
       <AlertCircle class="h-4 w-4 text-red-700" aria-hidden="true" />
       <AlertDescription class="text-red-700 text-sm">{{ error }}</AlertDescription>
     </Alert>
@@ -468,11 +468,11 @@ function formatDate(iso: string | null): string {
         >
           {{ uploadingDocument ? 'جارٍ الرفع…' : 'رفع مستند' }}
         </Button>
-        <Alert v-if="fileTypeError" class="border-l-4 border-l-red-600 bg-red-700/10 border-0 w-full">
+        <Alert v-if="fileTypeError" class="border-s-4 border-s-red-600 bg-red-700/10 border-0 w-full">
           <AlertCircle class="h-4 w-4 text-red-700" aria-hidden="true" />
           <AlertDescription class="text-red-700 text-sm">{{ fileTypeError }}</AlertDescription>
         </Alert>
-        <Alert v-else-if="uploadError" class="border-l-4 border-l-red-600 bg-red-700/10 border-0 w-full">
+        <Alert v-else-if="uploadError" class="border-s-4 border-s-red-600 bg-red-700/10 border-0 w-full">
           <AlertCircle class="h-4 w-4 text-red-700" aria-hidden="true" />
           <AlertDescription class="text-red-700 text-sm">{{ uploadError }}</AlertDescription>
         </Alert>

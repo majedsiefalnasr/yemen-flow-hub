@@ -120,7 +120,7 @@ const showMfaEnrollmentPrompt = computed(() =>
 )
 
 function requestMfaActivation() {
-  notify('تم إرسال طلب تفعيل المصادقة الثنائية')
+  navigateTo('/mfa-setup')
 }
 
 function userInitials(n?: string) {
