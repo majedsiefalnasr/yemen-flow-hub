@@ -243,9 +243,29 @@ export const useThemingStore = defineStore('theming', {
       }
     },
 
-    setMode(mode: ThemeMode) {
+    setMode(mode: ThemeMode, event?: MouseEvent) {
       this.mode = mode
-      this.applyTheme()
+
+      if (
+        typeof document !== 'undefined'
+        && 'startViewTransition' in document
+        && !window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      ) {
+        const x = event?.clientX ?? window.innerWidth / 2
+        const y = event?.clientY ?? window.innerHeight / 2
+        document.documentElement.style.setProperty('--vt-x', `${x}px`)
+        document.documentElement.style.setProperty('--vt-y', `${y}px`)
+        document.documentElement.classList.add('circular-transition-active')
+        ;(document as any).startViewTransition(() => {
+          this.applyTheme()
+        })
+        setTimeout(() => {
+          document.documentElement.classList.remove('circular-transition-active')
+        }, 600)
+      } else {
+        this.applyTheme()
+      }
+
       this.persistToCache()
     },
 

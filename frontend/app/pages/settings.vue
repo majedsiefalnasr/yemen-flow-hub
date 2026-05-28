@@ -83,9 +83,11 @@ const selectedFont = computed(() =>
   themingStore.fontOptions.find(font => font.value === themingStore.font),
 )
 
+const lastClickEvent = ref<MouseEvent | undefined>(undefined)
+
 function updateThemeMode(value: unknown) {
   if (value === 'system' || value === 'light' || value === 'dark')
-    themingStore.setMode(value)
+    themingStore.setMode(value, lastClickEvent.value)
 }
 
 function selectFont(fontValue: string) {
@@ -441,7 +443,7 @@ async function saveGeneralAndBrandingSettings() {
                   :key="option.value"
                   class="min-w-0"
                 >
-                  <div class="relative">
+                  <div class="relative" @click="lastClickEvent = $event as MouseEvent">
                     <RadioGroupItem
                       :id="`theme-mode-${option.value}`"
                       :value="option.value"
