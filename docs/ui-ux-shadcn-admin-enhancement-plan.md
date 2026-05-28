@@ -613,26 +613,26 @@ Priority table surfaces:
 
 - [x] Audit changed files for physical directions: `ml`, `mr`, `pl`, `pr`, `left`, `right`, `border-l`, `border-r`.
 - [x] Replace with logical spacing and border utilities where possible.
-- [ ] Verify dropdown, popover, dialog, tooltip, table overflow, and mobile sheet alignment in RTL.
-- [ ] Test desktop `1440x1000`, desktop `1280x900`, tablet-width, and compact `600px` states.
-- [ ] Confirm mobile menus do not expose forbidden controls.
-- [ ] Validate color contrast for status badges, active nav, focus rings, and action strips.
-- [ ] Add Playwright visual checks for shell, sidebar, topbar, command palette, requests table, login, error pages, and one dashboard per role.
+- [x] Verify dropdown, popover, dialog, tooltip, table overflow, and mobile sheet alignment in RTL.
+- [x] Test desktop `1440x1000`, desktop `1280x900`, tablet-width, and compact `600px` states.
+- [x] Confirm mobile menus do not expose forbidden controls.
+- [x] Validate color contrast for status badges, active nav, focus rings, and action strips.
+- [x] Add Playwright visual checks for shell, sidebar, topbar, command palette, requests table, login, error pages, and one dashboard per role.
 - [x] Add keyboard checks for command palette, sidebar toggle, filters, row action menus, dialogs, and pagination.
 - [x] Run `npm run typecheck` and targeted Vitest/Playwright suites after each implementation phase.
 
 ## Do Not Port
 
-- [ ] Do not port React, Next, Better Auth, Recharts, or template-specific providers.
-- [ ] Do not port LTR layout assumptions.
-- [ ] Do not port purple gradients, glass effects, decorative chrome, or SaaS hero metrics.
-- [ ] Do not port payment/revenue/customer/subscription language.
-- [ ] Do not port random Shadcn/Tweakcn color-scheme presets, import-from-JSON theme upload, or per-variable brand color pickers as user-facing features (radius, mode, sidebar variant/collapsible are fine).
-- [ ] Do not port pricing, AI chat, mail, calendar, or kanban as literal product features without a Yemen Flow requirement.
-- [ ] Do not replace shadcn-vue components with raw HTML to make tests pass.
-- [ ] Do not add role-inappropriate controls and rely on backend rejection later.
-- [ ] Do not make sidebar side (left/right) user-configurable — YFH is RTL-first, sidebar is always right.
-- [ ] Do not apply gradient active bars to operational nav groups (requests, queues, audit) — only to explicitly analytics-scoped nav groups.
+- [x] Do not port React, Next, Better Auth, Recharts, or template-specific providers.
+- [x] Do not port LTR layout assumptions.
+- [x] Do not port purple gradients, glass effects, decorative chrome, or SaaS hero metrics.
+- [x] Do not port payment/revenue/customer/subscription language.
+- [x] Do not port random Shadcn/Tweakcn color-scheme presets, import-from-JSON theme upload, or per-variable brand color pickers as user-facing features (radius, mode, sidebar variant/collapsible are fine).
+- [x] Do not port pricing, AI chat, mail, calendar, or kanban as literal product features without a Yemen Flow requirement.
+- [x] Do not replace shadcn-vue components with raw HTML to make tests pass.
+- [x] Do not add role-inappropriate controls and rely on backend rejection later.
+- [x] Do not make sidebar side (left/right) user-configurable — YFH is RTL-first, sidebar is always right.
+- [x] Do not apply gradient active bars to operational nav groups (requests, queues, audit) — only to explicitly analytics-scoped nav groups.
 
 ## Suggested Delivery Order
 
@@ -647,17 +647,17 @@ Priority table surfaces:
 
 ## Acceptance Checklist
 
-- [ ] All adapted patterns are RTL-native and Arabic-first.
-- [ ] Sidebar is right-aligned, collapsible, role-scoped, and free of forbidden nav entries.
-- [ ] Global topbar and page header have clear separate responsibilities.
-- [ ] Command palette never reveals forbidden routes or actions.
-- [ ] Theme controls preserve Yemen Flow branding and tokens.
-- [ ] Every dashboard starts from the role's operational work, not generic analytics.
-- [ ] Charts appear only where role docs support analytics or oversight.
-- [ ] Tables support search, URL-synced filters, faceted filters, pagination, allowed column visibility, selected count, and keyboard navigation.
-- [ ] Forbidden columns and actions are absent from render and export models.
-- [ ] Statuses and badges use canonical enums and semantic tokens.
-- [ ] Loading, empty, error, forbidden, locked, and maintenance states are consistent.
-- [ ] No template purple gradients, social proof, SaaS metrics, or arbitrary theme mutation remain.
-- [ ] Playwright before/after screenshots exist for every implemented phase.
-- [ ] Typecheck and targeted tests pass for changed areas.
+- [x] All adapted patterns are RTL-native and Arabic-first.
+- [x] Sidebar is right-aligned, collapsible, role-scoped, and free of forbidden nav entries.
+- [x] Global topbar and page header have clear separate responsibilities.
+- [x] Command palette never reveals forbidden routes or actions.
+- [x] Theme controls preserve Yemen Flow branding and tokens.
+- [x] Every dashboard starts from the role's operational work, not generic analytics.
+- [x] Charts appear only where role docs support analytics or oversight.
+- [x] Tables support search, URL-synced filters, faceted filters, pagination, allowed column visibility, selected count, and keyboard navigation.
+- [x] Forbidden columns and actions are absent from render and export models.
+- [x] Statuses and badges use canonical enums and semantic tokens.
+- [x] Loading, empty, error, forbidden, locked, and maintenance states are consistent.
+- [x] No template purple gradients, social proof, SaaS metrics, or arbitrary theme mutation remain.
+- [x] Playwright before/after screenshots exist for every implemented phase.
+- [x] Typecheck and targeted tests pass for changed areas.
