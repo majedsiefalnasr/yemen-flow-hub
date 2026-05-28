@@ -505,16 +505,16 @@ Concrete mapping from template asset → Yemen Flow Hub Vue target. "Status" ref
 
 ### Phase 3: Appearance Settings — Layout, Radius, Mode, And Animation
 
-- [ ] **Mode toggle:** Light / Dark / System — already in `useThemingStore.setMode()`; wire the 2-button + system option UI in Appearance tab. Adopt `circular-transition.css` radial clip-path animation with `prefers-reduced-motion` fallback.
+- [x] **Mode toggle:** Light / Dark / System — already in `useThemingStore.setMode()`; wire the 2-button + system option UI in Appearance tab. Adopt `circular-transition.css` radial clip-path animation with `prefers-reduced-motion` fallback.
 - [x] **Radius selector:** Add `radius` field to `useThemingStore`; apply via `document.documentElement.style.setProperty('--radius', value)`. Build 5 visual swatches (None / SM / MD / LG / XL) showing corner-radius preview. Persist to localStorage cache.
 - [x] **Sidebar variant:** Add `sidebarVariant: 'sidebar' | 'floating' | 'inset'` to `useThemingStore`. Build 3 visual mini-swatches (translate `LayoutTab` div-based previews to Vue, using logical CSS `border-s`/`border-e` for RTL-correct swatch rendering). Wire reactively into `AppShell.vue` `variant` prop.
 - [x] **Sidebar collapsible mode:** Add `sidebarCollapsible: 'offcanvas' | 'icon' | 'none'` to `useThemingStore`. Build 3 visual swatches. Auto-collapse sidebar if switching to `icon` while currently expanded. Wire into `AppShell.vue` `collapsible` prop.
-- [ ] **Sidebar side:** Do NOT expose to users. Always `right` (RTL constraint). No swatch, no toggle in production.
-- [ ] **High contrast:** Already in `useThemingStore.setHighContrast()` — confirm the `high-contrast` CSS class has meaningful token overrides.
+- [x] **Sidebar side:** Do NOT expose to users. Always `right` (RTL constraint). No swatch, no toggle in production.
+- [x] **High contrast:** Already in `useThemingStore.setHighContrast()` — confirm the `high-contrast` CSS class has meaningful token overrides.
 - [x] **Reduced motion:** Respect `prefers-reduced-motion` OS setting. Add `reducedMotion: 'system' | 'always'` preference to store. Gate all animations (animated list, circular transition, sidebar slide) behind this check.
 - [x] **Density preference:** Add `density: 'comfortable' | 'compact'` to store; apply as `data-density` attribute on `<html>`; define compact overrides for table row height, card padding, and sidebar item height in CSS.
 - [x] **Animated list:** Build `AnimatedList.vue` using `@vueuse/motion` spring physics (scale + opacity enter/exit, `AnimatePresence` equivalent via `<TransitionGroup>`). Use on `/notifications` page and BANK_ADMIN/CBY_ADMIN activity feeds. Never on tables or workflow-critical surfaces. Disable when reduced motion is active.
-- [ ] **Reject:** Random Shadcn/Tweakcn color-scheme presets, import-from-JSON theme upload, brand color pickers, `snow-effect`. CBY brand is `#0066cc` — not user-selectable (CBY_ADMIN brand color field is the one exception if a future business requirement is documented).
+- [x] **Reject:** Random Shadcn/Tweakcn color-scheme presets, import-from-JSON theme upload, brand color pickers, `snow-effect`. CBY brand is `#0066cc` — not user-selectable (CBY_ADMIN brand color field is the one exception if a future business requirement is documented).
 - [x] Persist all new preferences (`sidebarVariant`, `sidebarCollapsible`, `radius`, `density`, `reducedMotion`) in the existing `persistToCache`/`loadFromCache` cycle.
 
 ### Phase 4: Page Header System
