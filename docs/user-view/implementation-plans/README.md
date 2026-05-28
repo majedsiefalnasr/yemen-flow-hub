@@ -40,12 +40,12 @@ The role plans intentionally follow `docs/user-view/*.md`, which describes the u
 
 Before implementing any role UI, create a small prerequisite story to reconcile the live code with that source of truth:
 
-- [ ] Add/verify `FX_CONFIRMATION_PENDING` in backend and frontend enums, labels, colors, icons, buckets, tests, API resources, and seed/test fixtures.
-- [ ] Update workflow transitions so support approval opens executive voting before SWIFT work, and executive approval sends the request to the SWIFT officer.
-- [ ] Update SWIFT upload so it moves the request to `FX_CONFIRMATION_PENDING`, not back into voting.
+- [x] Add/verify `FX_CONFIRMATION_PENDING` in backend and frontend enums, labels, colors, icons, buckets, tests, API resources, and seed/test fixtures.
+- [x] Update workflow transitions so support approval opens executive voting before SWIFT work, and executive approval sends the request to the SWIFT officer.
+- [x] Update SWIFT upload so it moves the request to `FX_CONFIRMATION_PENDING`, not back into voting.
 - [x] Replace new user-facing "customs declaration" copy with external FX confirmation copy while preserving `/customs` as a legacy route alias.
-- [ ] Split the existing generated-document behavior into the required Director sequence: download generated PDF, upload signed/stamped PDF, complete request.
-- [ ] Update backend and frontend tests around transition order, dashboard queues, request buckets, document permissions, and notifications before implementing the role pages.
+- [x] Split the existing generated-document behavior into the required Director sequence: download generated PDF, upload signed/stamped PDF, complete request.
+- [x] Update backend and frontend tests around transition order, dashboard queues, request buckets, document permissions, and notifications before implementing the role pages.
 
 ## Role Plan Files
 

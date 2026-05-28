@@ -85,33 +85,33 @@ Build a CBY-global voting workspace where each executive member can see active s
 
 ### Frontend Unit And Component
 
-- [ ] `role-surfaces.test.ts`: Executive Member has vote action only, no close/finalize/FX/SWIFT/admin controls.
-- [ ] `ExecutiveDashboard.test.ts`: pending vote strip, KPI links, queue sorting, row emphasis, empty/error states.
-- [ ] `workflow-buckets.test.ts`: executive tab matching including `pending_my_vote` and `voted_by_me`.
-- [ ] `VotingPanel.test.ts`: masked active votes, vote buttons for pending user, confirmation chip after vote, tie placeholder.
-- [ ] `VotingRequestDetailPage.test.ts`: banners, tabs, locked external FX row, right rail anchor only.
-- [ ] `ActionsPanel.voting.test.ts`: no Director controls for Executive Member.
-- [ ] `reports.test.ts`: executive report sections and filters.
+- [x] `role-surfaces.test.ts`: Executive Member has vote action only, no close/finalize/FX/SWIFT/admin controls.
+- [x] `ExecutiveDashboard.test.ts`: pending vote strip, KPI links, queue sorting, row emphasis, empty/error states.
+- [x] `workflow-buckets.test.ts`: executive tab matching including `pending_my_vote` and `voted_by_me`.
+- [x] `VotingPanel.test.ts`: masked active votes, vote buttons for pending user, confirmation chip after vote, tie placeholder.
+- [x] `VotingRequestDetailPage.test.ts`: banners, tabs, locked external FX row, right rail anchor only.
+- [x] `ActionsPanel.voting.test.ts`: no Director controls for Executive Member.
+- [x] `reports.test.ts`: executive report sections and filters.
 
 ### Frontend Store And Composable
 
-- [ ] `voting.store.test.ts`: vote success, duplicate vote error, session closed rollback.
-- [ ] `useVoting.test.ts`: show/vote API payloads and error mapping.
-- [ ] `dashboard.store.test.ts`: executive stats normalize optional voting queue.
+- [x] `voting.store.test.ts`: vote success, duplicate vote error, session closed rollback.
+- [x] `useVoting.test.ts`: show/vote API payloads and error mapping.
+- [x] `dashboard.store.test.ts`: executive stats normalize optional voting queue.
 
 ### Backend Feature
 
-- [ ] `VotingEngineTest.php`: one vote per member, pessimistic locking, duplicate vote rejected.
-- [ ] `DashboardStatsTest.php`: pending my vote and decision counts.
-- [ ] `ReportControllerTest.php`: member participation stats.
-- [ ] `DocumentDownloadPermissionTest.php`: external FX confirmation denied.
-- [ ] `UserRoleTest.php`: Executive Member and Director exclusivity if enforced at user layer.
+- [x] `VotingEngineTest.php`: one vote per member, pessimistic locking, duplicate vote rejected.
+- [x] `DashboardStatsTest.php`: pending my vote and decision counts.
+- [x] `ReportControllerTest.php`: member participation stats.
+- [x] `DocumentDownloadPermissionTest.php`: external FX confirmation denied.
+- [x] `UserRoleTest.php`: Executive Member and Director exclusivity if enforced at user layer.
 
 ### E2E, Visual, Accessibility
 
-- [ ] Playwright executive flow: pending vote dashboard to detail, cast vote, confirmation chip, no change vote.
-- [ ] Playwright closed-race flow: mocked 409 closes session before submit and rolls back optimistic UI.
-- [ ] Playwright forbidden controls: close/finalize/tie/FX/SWIFT/admin controls absent.
-- [ ] Visual snapshots: dashboard pending state, requests list, voting detail before vote, voting detail after vote, reports page.
-- [ ] Accessibility: vote buttons have clear labels, member list not color-only, optimistic error announced, keyboard focus returns after vote submit.
+- [x] Playwright executive flow: pending vote dashboard to detail, cast vote, confirmation chip, no change vote.
+- [x] Playwright closed-race flow: mocked 409 closes session before submit and rolls back optimistic UI.
+- [x] Playwright forbidden controls: close/finalize/tie/FX/SWIFT/admin controls absent.
+- [x] Visual snapshots: dashboard pending state, requests list, voting detail before vote, voting detail after vote, reports page.
+- [x] Accessibility: vote buttons have clear labels, member list not color-only, optimistic error announced, keyboard focus returns after vote submit.
 

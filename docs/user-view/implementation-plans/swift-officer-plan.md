@@ -95,32 +95,32 @@ Build a narrow bank-side upload workspace for post-executive-approval SWIFT and 
 
 ### Frontend Unit And Component
 
-- [ ] `role-surfaces.test.ts`: SWIFT role has only dashboard, requests, notifications, settings, and SWIFT upload action.
-- [ ] `SwiftOfficerDashboard.test.ts`: action strip, KPIs, two-pill document state, queue sorting, empty/error states.
-- [ ] `workflow-buckets.test.ts`: pending_swift and swift_done statuses.
-- [ ] `SwiftUploadPage.test.ts`: wrong role/status locked state, reference validation, two-document gate, disabled reasons, success state.
-- [ ] `SwiftUploadForm.test.ts` if separated: upload drop zones, PDF/size errors, retry state.
-- [ ] `DocumentChecklist.test.ts`: external FX confirmation locked for SWIFT officer.
-- [ ] `ActionsPanel.test.ts`: upload action only for `WAITING_FOR_SWIFT`.
+- [x] `role-surfaces.test.ts`: SWIFT role has only dashboard, requests, notifications, settings, and SWIFT upload action.
+- [x] `SwiftOfficerDashboard.test.ts`: action strip, KPIs, two-pill document state, queue sorting, empty/error states.
+- [x] `workflow-buckets.test.ts`: pending_swift and swift_done statuses.
+- [x] `SwiftUploadPage.test.ts`: wrong role/status locked state, reference validation, two-document gate, disabled reasons, success state.
+- [x] `SwiftUploadForm.test.ts` if separated: upload drop zones, PDF/size errors, retry state.
+- [x] `DocumentChecklist.test.ts`: external FX confirmation locked for SWIFT officer.
+- [x] `ActionsPanel.test.ts`: upload action only for `WAITING_FOR_SWIFT`.
 
 ### Frontend Store And Composable
 
-- [ ] `requests.store.upload.test.ts`: multipart upload includes both files and swift reference.
-- [ ] `useRequests.test.ts`: `swiftUpload` maps backend validation and 403/409 errors.
-- [ ] `dashboard.store.test.ts`: swift queue stats normalize.
+- [x] `requests.store.upload.test.ts`: multipart upload includes both files and swift reference.
+- [x] `useRequests.test.ts`: `swiftUpload` maps backend validation and 403/409 errors.
+- [x] `dashboard.store.test.ts`: swift queue stats normalize.
 
 ### Backend Feature
 
-- [ ] `SwiftUploadTest.php`: both PDFs required, reference required, PDF-only, max size, own-bank role enforcement.
-- [ ] `DocumentControllerTest.php`: multipart error payloads.
-- [ ] `WorkflowControllerTest.php`: SWIFT transition and immutable states.
-- [ ] `DocumentDownloadPermissionTest.php`: SWIFT officer denied external FX confirmation.
-- [ ] `DashboardStatsTest.php`: pending/uploaded/completed/rejected counts.
+- [x] `SwiftUploadTest.php`: both PDFs required, reference required, PDF-only, max size, own-bank role enforcement.
+- [x] `DocumentControllerTest.php`: multipart error payloads.
+- [x] `WorkflowControllerTest.php`: SWIFT transition and immutable states.
+- [x] `DocumentDownloadPermissionTest.php`: SWIFT officer denied external FX confirmation.
+- [x] `DashboardStatsTest.php`: pending/uploaded/completed/rejected counts.
 
 ### E2E, Visual, Accessibility
 
-- [ ] Playwright SWIFT flow: pending queue to upload page, missing requirement tooltips, upload both PDFs, success state.
-- [ ] Playwright forbidden role flow: non-SWIFT users cannot access `/requests/{id}/swift` form.
-- [ ] Visual snapshots: dashboard, requests list, upload page empty, upload page completed, access-denied state.
-- [ ] Accessibility: file inputs labelled, drop zones keyboard accessible, locked summary not mistaken as form inputs, no color-only document indicators.
+- [x] Playwright SWIFT flow: pending queue to upload page, missing requirement tooltips, upload both PDFs, success state.
+- [x] Playwright forbidden role flow: non-SWIFT users cannot access `/requests/{id}/swift` form.
+- [x] Visual snapshots: dashboard, requests list, upload page empty, upload page completed, access-denied state.
+- [x] Accessibility: file inputs labelled, drop zones keyboard accessible, locked summary not mistaken as form inputs, no color-only document indicators.
 

@@ -143,44 +143,44 @@ Build a national platform oversight and administration workspace. CBY Admin has 
 
 ### Frontend Unit And Component
 
-- [ ] `role-surfaces.test.ts`: CBY Admin has admin/oversight surfaces only and no workflow actor actions.
-- [ ] `CbyAdminDashboard.test.ts`: KPI severity, filter propagation, workflow pressure map, voting waiting names, risk signals.
-- [ ] `cby-admin-requests.test.ts`: smart summary, tabs, advanced drawer, status dual presentation, preview drawer, view-only actions.
-- [ ] `RequestDetailPage.test.ts`: blocker panel, investigation tabs, right intelligence panel, no action controls.
-- [ ] `merchants-page.test.ts`: cross-bank risk tabs, duplicate indicators, profile drawer.
-- [ ] `reports.test.ts`: report tabs, filters, export actions.
-- [ ] `audit.test.ts`: event categories, filters, details drawer, anomaly groups.
-- [ ] `CbyAdminPages.test.ts`: cby staff, entities, workflow docs, roles, settings route rendering.
-- [ ] `StaffModal12_2.test.ts`: CBY role constraints and Director/Executive exclusivity.
-- [ ] `settings.test.ts`: sensitive setting warning and unsaved changes bar.
+- [x] `role-surfaces.test.ts`: CBY Admin has admin/oversight surfaces only and no workflow actor actions.
+- [x] `CbyAdminDashboard.test.ts`: KPI severity, filter propagation, workflow pressure map, voting waiting names, risk signals.
+- [x] `cby-admin-requests.test.ts`: smart summary, tabs, advanced drawer, status dual presentation, preview drawer, view-only actions.
+- [x] `RequestDetailPage.test.ts`: blocker panel, investigation tabs, right intelligence panel, no action controls.
+- [x] `merchants-page.test.ts`: cross-bank risk tabs, duplicate indicators, profile drawer.
+- [x] `reports.test.ts`: report tabs, filters, export actions.
+- [x] `audit.test.ts`: event categories, filters, details drawer, anomaly groups.
+- [x] `CbyAdminPages.test.ts`: cby staff, entities, workflow docs, roles, settings route rendering.
+- [x] `StaffModal12_2.test.ts`: CBY role constraints and Director/Executive exclusivity.
+- [x] `settings.test.ts`: sensitive setting warning and unsaved changes bar.
 
 ### Frontend Store And Composable
 
-- [ ] `useAudit.test.ts`: filters, stats, risk indicators, pagination.
-- [ ] `useUsers.test.ts`: CBY role assignment errors and user filters.
-- [ ] `useBanks.test.ts`: entity filters and risk data.
-- [ ] `useDocumentTypes.test.ts`: document rules lifecycle fields and template data.
-- [ ] `useAdminSettings.test.ts`: high-risk setting update, reset, SMTP update.
-- [ ] `useReports.test.ts`: cross-bank filters and export paths.
-- [ ] `dashboard.store.test.ts`: CBY admin optional governance arrays normalize.
+- [x] `useAudit.test.ts`: filters, stats, risk indicators, pagination.
+- [x] `useUsers.test.ts`: CBY role assignment errors and user filters.
+- [x] `useBanks.test.ts`: entity filters and risk data.
+- [x] `useDocumentTypes.test.ts`: document rules lifecycle fields and template data.
+- [x] `useAdminSettings.test.ts`: high-risk setting update, reset, SMTP update.
+- [x] `useReports.test.ts`: cross-bank filters and export paths.
+- [x] `dashboard.store.test.ts`: CBY admin optional governance arrays normalize.
 
 ### Backend Feature
 
-- [ ] `CbyAdminDashboardStatsTest.php`: governance KPIs, workflow pressure, voting oversight, bank risk.
-- [ ] `AuditControllerTest.php`: filters, stats, duplicates, risk indicators.
-- [ ] `UserControllerTest.php`: CBY-only role assignment, Director/Executive exclusivity, critical-role deactivation blocks.
-- [ ] `BankControllerTest.php`: entity risk fields, missing role filters, suspension impact.
-- [ ] `DocumentTypeController` tests if added: lifecycle rules, templates, impact preview, audit logging.
-- [ ] `ReportControllerTest.php`: cross-bank report filters and exports.
-- [ ] `AdminSettingsControllerTest.php`: sensitive setting audit and validation.
-- [ ] `DocumentDownloadPermissionTest.php`: CBY Admin download-only authority, no upload/finalize.
+- [x] `CbyAdminDashboardStatsTest.php`: governance KPIs, workflow pressure, voting oversight, bank risk.
+- [x] `AuditControllerTest.php`: filters, stats, duplicates, risk indicators.
+- [x] `UserControllerTest.php`: CBY-only role assignment, Director/Executive exclusivity, critical-role deactivation blocks.
+- [x] `BankControllerTest.php`: entity risk fields, missing role filters, suspension impact.
+- [x] `DocumentTypeController` tests if added: lifecycle rules, templates, impact preview, audit logging.
+- [x] `ReportControllerTest.php`: cross-bank report filters and exports.
+- [x] `AdminSettingsControllerTest.php`: sensitive setting audit and validation.
+- [x] `DocumentDownloadPermissionTest.php`: CBY Admin download-only authority, no upload/finalize.
 
 ### E2E, Visual, Accessibility
 
-- [ ] Playwright CBY Admin oversight flow: dashboard filter to requests, preview drawer, request detail, audit link.
-- [ ] Playwright CBY staff flow: add CBY user, reject bank role, reject Director/Executive conflict, deactivation guard.
-- [ ] Playwright document rules flow: open rule, view impact preview, cancel dangerous change.
-- [ ] Playwright audit investigation flow: filter denied events, open detail drawer, export evidence.
-- [ ] Visual snapshots: dashboard, requests registry, request detail, audit, CBY staff, entities, document rules, roles reference, settings.
-- [ ] Accessibility: high-density tables keyboard navigable, filter drawers labelled, event drawers have titles, severity not color-only, no horizontal scroll at mobile fallback.
+- [x] Playwright CBY Admin oversight flow: dashboard filter to requests, preview drawer, request detail, audit link.
+- [x] Playwright CBY staff flow: add CBY user, reject bank role, reject Director/Executive conflict, deactivation guard.
+- [x] Playwright document rules flow: open rule, view impact preview, cancel dangerous change.
+- [x] Playwright audit investigation flow: filter denied events, open detail drawer, export evidence.
+- [x] Visual snapshots: dashboard, requests registry, request detail, audit, CBY staff, entities, document rules, roles reference, settings.
+- [x] Accessibility: high-density tables keyboard navigable, filter drawers labelled, event drawers have titles, severity not color-only, no horizontal scroll at mobile fallback.
 

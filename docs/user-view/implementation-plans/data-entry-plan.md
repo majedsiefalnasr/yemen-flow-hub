@@ -110,41 +110,41 @@ Build a focused bank intake workspace for request drafting, correction, submissi
 
 ### Frontend Unit And Component
 
-- [ ] `role-surfaces.test.ts`: Data Entry allowed and forbidden surfaces exactly match the plan.
-- [ ] `nav-items.test.ts`: sidebar renders only Data Entry nav items.
-- [ ] `DataEntryDashboard.test.ts`: correction strip priority, KPI links, draft table conditional rendering, no-request empty state, skeleton and error state.
-- [ ] `workflow-status.test.ts`: raw CBY status labels are not primary labels for Data Entry.
-- [ ] `workflow-buckets.test.ts`: returned tab includes bank/support/internal returns and sits first.
-- [ ] `RequestsListAdvancedFilters.test.ts`: query tab sync and clear-filter behavior.
-- [ ] `RequestWizard.test.ts` and wizard step tests: step validation, draft save, declaration gate, duplicate warning, disabled-submit messages.
-- [ ] `DocumentChecklist.test.ts`: Data Entry can download intake docs and sees locked rows for downstream docs.
-- [ ] `ActionsPanel.test.ts`: no review, claim, vote, SWIFT, or FX actions for any status.
-- [ ] `CorrectionBanner.test.ts` and `LockedBanner.test.ts`: returned and terminal states render correct CTAs or no CTAs.
+- [x] `role-surfaces.test.ts`: Data Entry allowed and forbidden surfaces exactly match the plan.
+- [x] `nav-items.test.ts`: sidebar renders only Data Entry nav items.
+- [x] `DataEntryDashboard.test.ts`: correction strip priority, KPI links, draft table conditional rendering, no-request empty state, skeleton and error state.
+- [x] `workflow-status.test.ts`: raw CBY status labels are not primary labels for Data Entry.
+- [x] `workflow-buckets.test.ts`: returned tab includes bank/support/internal returns and sits first.
+- [x] `RequestsListAdvancedFilters.test.ts`: query tab sync and clear-filter behavior.
+- [x] `RequestWizard.test.ts` and wizard step tests: step validation, draft save, declaration gate, duplicate warning, disabled-submit messages.
+- [x] `DocumentChecklist.test.ts`: Data Entry can download intake docs and sees locked rows for downstream docs.
+- [x] `ActionsPanel.test.ts`: no review, claim, vote, SWIFT, or FX actions for any status.
+- [x] `CorrectionBanner.test.ts` and `LockedBanner.test.ts`: returned and terminal states render correct CTAs or no CTAs.
 
 ### Frontend Store And Composable
 
-- [ ] `dashboard.store.test.ts`: Data Entry stats normalize missing arrays.
-- [ ] `requests.store.create-update.test.ts`: save draft, update draft, submit paths.
-- [ ] `requests.store.upload.test.ts`: PDF upload error and success handling.
-- [ ] `useRequestWizard.test.ts`: step persistence and server conflict handling.
-- [ ] `useDocumentPermissions.test.ts`: downstream downloads denied for Data Entry.
-- [ ] `useNotifications.test.ts`: Data Entry notification filters and unread count behavior.
+- [x] `dashboard.store.test.ts`: Data Entry stats normalize missing arrays.
+- [x] `requests.store.create-update.test.ts`: save draft, update draft, submit paths.
+- [x] `requests.store.upload.test.ts`: PDF upload error and success handling.
+- [x] `useRequestWizard.test.ts`: step persistence and server conflict handling.
+- [x] `useDocumentPermissions.test.ts`: downstream downloads denied for Data Entry.
+- [x] `useNotifications.test.ts`: Data Entry notification filters and unread count behavior.
 
 ### Backend Feature
 
-- [ ] `DashboardStatsTest.php`: Data Entry dashboard counts by simplified buckets and own-bank scope.
-- [ ] `ImportRequestControllerTest.php`: own-bank request index/show only.
-- [ ] `WizardFieldsTest.php`: draft, edit, submit validation.
-- [ ] `DuplicateInvoiceTest.php`: duplicate warning/validation data.
-- [ ] `DocumentControllerTest.php`: PDF-only and 10 MB validation.
-- [ ] `DocumentDownloadPermissionTest.php`: intake allowed and SWIFT/FX/external FX denied.
-- [ ] `WorkflowControllerTest.php`: submit and terminal immutable behavior.
+- [x] `DashboardStatsTest.php`: Data Entry dashboard counts by simplified buckets and own-bank scope.
+- [x] `ImportRequestControllerTest.php`: own-bank request index/show only.
+- [x] `WizardFieldsTest.php`: draft, edit, submit validation.
+- [x] `DuplicateInvoiceTest.php`: duplicate warning/validation data.
+- [x] `DocumentControllerTest.php`: PDF-only and 10 MB validation.
+- [x] `DocumentDownloadPermissionTest.php`: intake allowed and SWIFT/FX/external FX denied.
+- [x] `WorkflowControllerTest.php`: submit and terminal immutable behavior.
 
 ### E2E, Visual, Accessibility
 
-- [ ] Playwright Data Entry flow: login, empty dashboard, create draft, upload docs, submit, verify request becomes read-only.
-- [ ] Playwright returned correction flow: returned strip, edit wizard pinned correction banner, resubmit.
-- [ ] Playwright forbidden-surface sweep: direct URLs for audit/reports/staff/merchants/SWIFT/voting/FX are blocked and controls are not rendered.
-- [ ] Visual snapshots: dashboard, requests list, wizard step 3, request detail returned state, request detail terminal state.
-- [ ] Accessibility: keyboard wizard navigation, labelled inputs, visible focus, Arabic text fit at 375/768/1440 px, no color-only status indicators.
+- [x] Playwright Data Entry flow: login, empty dashboard, create draft, upload docs, submit, verify request becomes read-only.
+- [x] Playwright returned correction flow: returned strip, edit wizard pinned correction banner, resubmit.
+- [x] Playwright forbidden-surface sweep: direct URLs for audit/reports/staff/merchants/SWIFT/voting/FX are blocked and controls are not rendered.
+- [x] Visual snapshots: dashboard, requests list, wizard step 3, request detail returned state, request detail terminal state.
+- [x] Accessibility: keyboard wizard navigation, labelled inputs, visible focus, Arabic text fit at 375/768/1440 px, no color-only status indicators.
 

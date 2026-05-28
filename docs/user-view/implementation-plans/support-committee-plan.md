@@ -94,34 +94,34 @@ Build a CBY-global support review console centered on claim ownership. The user 
 
 ### Frontend Unit And Component
 
-- [ ] `role-surfaces.test.ts`: support role has no SWIFT, voting, FX, admin, staff, merchant controls.
-- [ ] `SupportCommitteeDashboard.test.ts`: active claim strip, KPI links, row tinting, queue actions, empty/error states.
-- [ ] `workflow-buckets.test.ts`: waiting, my_claims, and in_progress matching functions.
-- [ ] `ClaimBanners.test.ts`: active, others, unclaimed, heartbeat states, release action.
-- [ ] `RequestDetailClaimLogic.test.ts`: decision buttons hidden unless claimed by me.
-- [ ] `ActionsPanel.test.ts`: approve/return/reject/release only for `SUPPORT_REVIEW_IN_PROGRESS` claimed by me.
-- [ ] `DocumentChecklist.test.ts`: intake docs only for support.
+- [x] `role-surfaces.test.ts`: support role has no SWIFT, voting, FX, admin, staff, merchant controls.
+- [x] `SupportCommitteeDashboard.test.ts`: active claim strip, KPI links, row tinting, queue actions, empty/error states.
+- [x] `workflow-buckets.test.ts`: waiting, my_claims, and in_progress matching functions.
+- [x] `ClaimBanners.test.ts`: active, others, unclaimed, heartbeat states, release action.
+- [x] `RequestDetailClaimLogic.test.ts`: decision buttons hidden unless claimed by me.
+- [x] `ActionsPanel.test.ts`: approve/return/reject/release only for `SUPPORT_REVIEW_IN_PROGRESS` claimed by me.
+- [x] `DocumentChecklist.test.ts`: intake docs only for support.
 
 ### Frontend Store And Composable
 
-- [ ] `useClaimLifecycle.test.ts`: starts heartbeat, stops on unmount, handles failures, release, expiry, and 409.
-- [ ] `requests.store.workflow.test.ts`: support claim, release, approve, return, reject calls.
-- [ ] `dashboard.store.test.ts`: support queue arrays normalize.
-- [ ] `useNotifications.test.ts`: claim release notification priority.
+- [x] `useClaimLifecycle.test.ts`: starts heartbeat, stops on unmount, handles failures, release, expiry, and 409.
+- [x] `requests.store.workflow.test.ts`: support claim, release, approve, return, reject calls.
+- [x] `dashboard.store.test.ts`: support queue arrays normalize.
+- [x] `useNotifications.test.ts`: claim release notification priority.
 
 ### Backend Feature
 
-- [ ] `ClaimLifecycleTest.php`: atomic claim, 409 conflict, heartbeat, release, expiry command.
-- [ ] `WorkflowControllerTest.php`: support approve/return/reject requires valid claim.
-- [ ] `SupportReturnTest.php`: support return reason and notification.
-- [ ] `DashboardStatsTest.php`: waiting, active by me, claimed by others counts.
-- [ ] `DocumentDownloadPermissionTest.php`: support can access intake docs only.
+- [x] `ClaimLifecycleTest.php`: atomic claim, 409 conflict, heartbeat, release, expiry command.
+- [x] `WorkflowControllerTest.php`: support approve/return/reject requires valid claim.
+- [x] `SupportReturnTest.php`: support return reason and notification.
+- [x] `DashboardStatsTest.php`: waiting, active by me, claimed by others counts.
+- [x] `DocumentDownloadPermissionTest.php`: support can access intake docs only.
 
 ### E2E, Visual, Accessibility
 
-- [ ] Playwright support flow: claim unclaimed request, heartbeat indicator visible, approve.
-- [ ] Playwright conflict flow: request claimed by another member renders read-only detail and no decision buttons.
-- [ ] Playwright expiry flow with mocked 409 `CLAIM_EXPIRED`: modal offers queue and re-claim.
-- [ ] Visual snapshots: dashboard, requests list claim states, active review detail, claimed-by-others detail.
-- [ ] Accessibility: countdown announced without noisy live region spam, buttons labelled, claim state not color-only.
+- [x] Playwright support flow: claim unclaimed request, heartbeat indicator visible, approve.
+- [x] Playwright conflict flow: request claimed by another member renders read-only detail and no decision buttons.
+- [x] Playwright expiry flow with mocked 409 `CLAIM_EXPIRED`: modal offers queue and re-claim.
+- [x] Visual snapshots: dashboard, requests list claim states, active review detail, claimed-by-others detail.
+- [x] Accessibility: countdown announced without noisy live region spam, buttons labelled, claim state not color-only.
 

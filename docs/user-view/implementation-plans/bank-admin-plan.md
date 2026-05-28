@@ -101,36 +101,36 @@ Build a bank-scoped administration workspace for staff, merchants, reports, and 
 
 ### Frontend Unit And Component
 
-- [ ] `role-surfaces.test.ts`: Bank Admin allowed admin-lite bank surfaces only; forbidden workflow controls.
-- [ ] `BankAdminDashboard.test.ts`: KPI links, operational health strip conditions, chart/table states.
-- [ ] `bank-admin-requests.test.ts`: read-only request table, tabs, no decision controls.
-- [ ] `RequestDetailPage.test.ts`: read-only actions panel and locked external FX row.
-- [ ] `StaffPage.test.ts`: staff filters, role options restricted, workload column, deactivation warning.
-- [ ] `StaffModal.test.ts`: Data Entry/Bank Reviewer only, validation and server errors.
-- [ ] `merchants-page.test.ts` and merchant component tests: quality summary, duplicate warning, add/edit flows.
-- [ ] `reports.test.ts`: own-bank report filters and export actions.
+- [x] `role-surfaces.test.ts`: Bank Admin allowed admin-lite bank surfaces only; forbidden workflow controls.
+- [x] `BankAdminDashboard.test.ts`: KPI links, operational health strip conditions, chart/table states.
+- [x] `bank-admin-requests.test.ts`: read-only request table, tabs, no decision controls.
+- [x] `RequestDetailPage.test.ts`: read-only actions panel and locked external FX row.
+- [x] `StaffPage.test.ts`: staff filters, role options restricted, workload column, deactivation warning.
+- [x] `StaffModal.test.ts`: Data Entry/Bank Reviewer only, validation and server errors.
+- [x] `merchants-page.test.ts` and merchant component tests: quality summary, duplicate warning, add/edit flows.
+- [x] `reports.test.ts`: own-bank report filters and export actions.
 
 ### Frontend Store And Composable
 
-- [ ] `useUsers.test.ts`: bank-scoped user filters and role validation errors.
-- [ ] `useMerchants.test.ts`: duplicate warning and CRUD refresh behavior.
-- [ ] `useReports.test.ts`: bank report fetch and export path.
-- [ ] `dashboard.store.test.ts`: bank admin extended stats normalize optional fields.
+- [x] `useUsers.test.ts`: bank-scoped user filters and role validation errors.
+- [x] `useMerchants.test.ts`: duplicate warning and CRUD refresh behavior.
+- [x] `useReports.test.ts`: bank report fetch and export path.
+- [x] `dashboard.store.test.ts`: bank admin extended stats normalize optional fields.
 
 ### Backend Feature
 
-- [ ] `BankAdminStaffManagementTest.php`: role assignment restrictions, own-bank users, deactivation audit.
-- [ ] `MerchantControllerTest.php`: bank scoping, duplicate fields, CRUD validation.
-- [ ] `ReportControllerTest.php`: bank report scope and exports.
-- [ ] `DocumentDownloadPermissionTest.php`: Bank Admin denied external FX confirmation.
-- [ ] `ImportRequestControllerTest.php`: read-only portfolio scope.
-- [ ] `BankAdminRbacTest.php`: no workflow decision authority.
+- [x] `BankAdminStaffManagementTest.php`: role assignment restrictions, own-bank users, deactivation audit.
+- [x] `MerchantControllerTest.php`: bank scoping, duplicate fields, CRUD validation.
+- [x] `ReportControllerTest.php`: bank report scope and exports.
+- [x] `DocumentDownloadPermissionTest.php`: Bank Admin denied external FX confirmation.
+- [x] `ImportRequestControllerTest.php`: read-only portfolio scope.
+- [x] `BankAdminRbacTest.php`: no workflow decision authority.
 
 ### E2E, Visual, Accessibility
 
-- [ ] Playwright Bank Admin navigation: dashboard, staff, merchants, reports visible; workflow controls absent.
-- [ ] Playwright staff flow: add Data Entry, reject SWIFT/CBY role option, deactivate with impact warning.
-- [ ] Playwright merchant flow: add/edit merchant and duplicate warning.
-- [ ] Visual snapshots: dashboard, staff table, merchant table, reports page, read-only request detail.
-- [ ] Accessibility: Dialog labels, AlertDialog focus trap, tables keyboard navigable, management actions have accessible names.
+- [x] Playwright Bank Admin navigation: dashboard, staff, merchants, reports visible; workflow controls absent.
+- [x] Playwright staff flow: add Data Entry, reject SWIFT/CBY role option, deactivate with impact warning.
+- [x] Playwright merchant flow: add/edit merchant and duplicate warning.
+- [x] Visual snapshots: dashboard, staff table, merchant table, reports page, read-only request detail.
+- [x] Accessibility: Dialog labels, AlertDialog focus trap, tables keyboard navigable, management actions have accessible names.
 

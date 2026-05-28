@@ -99,37 +99,37 @@ Build a CBY-global governance and completion console for voting closure/finaliza
 
 ### Frontend Unit And Component
 
-- [ ] `role-surfaces.test.ts`: Director has close/finalize/external FX actions but no admin/IAM/SWIFT/support actions.
-- [ ] `ExecutiveDashboard.test.ts`: Director composite strip, voting lifecycle queue, FX queue, KPI links.
-- [ ] `workflow-buckets.test.ts`: Director buckets and ready-to-close matching.
-- [ ] `VotingPanel.test.ts`: close disabled with pending names, close enabled when all voted, finalize, tie-break, override policy.
-- [ ] `VotingRequestDetailPage.test.ts`: banner priority and Director controls.
-- [ ] `ActionsPanel.voting.test.ts`: Director-only controls absent for Executive Member.
-- [ ] `customs.queue.test.ts`: external FX queue labels, ready/completed columns, empty states.
-- [ ] `CustomsPreviewPage.test.ts` and `CustomsPrintPage.test.ts`: terminology and document state.
+- [x] `role-surfaces.test.ts`: Director has close/finalize/external FX actions but no admin/IAM/SWIFT/support actions.
+- [x] `ExecutiveDashboard.test.ts`: Director composite strip, voting lifecycle queue, FX queue, KPI links.
+- [x] `workflow-buckets.test.ts`: Director buckets and ready-to-close matching.
+- [x] `VotingPanel.test.ts`: close disabled with pending names, close enabled when all voted, finalize, tie-break, override policy.
+- [x] `VotingRequestDetailPage.test.ts`: banner priority and Director controls.
+- [x] `ActionsPanel.voting.test.ts`: Director-only controls absent for Executive Member.
+- [x] `customs.queue.test.ts`: external FX queue labels, ready/completed columns, empty states.
+- [x] `CustomsPreviewPage.test.ts` and `CustomsPrintPage.test.ts`: terminology and document state.
 
 ### Frontend Store And Composable
 
-- [ ] `voting.store.test.ts`: close, finalize, director override, error mapping.
-- [ ] `useVoting.test.ts`: pending member names and tie state parsing.
-- [ ] `useRequests.customs-preview.test.ts`: preview and download handling.
-- [ ] Add FX signed upload composable/store tests when backend endpoint exists.
+- [x] `voting.store.test.ts`: close, finalize, director override, error mapping.
+- [x] `useVoting.test.ts`: pending member names and tie state parsing.
+- [x] `useRequests.customs-preview.test.ts`: preview and download handling.
+- [x] Add FX signed upload composable/store tests when backend endpoint exists.
 
 ### Backend Feature
 
-- [ ] `VotingEngineTest.php`: cannot close before all votes; close after all; finalize non-tied; tie-break reason required; override audited if enabled.
-- [ ] `WorkflowVotingActorTest.php`: Director actor role recorded.
-- [ ] `CustomsDeclarationTest.php`: generated PDF, download audit, completion transaction.
-- [ ] Add signed external FX upload tests if endpoint is introduced.
-- [ ] `CustomsDownloadPermissionTest.php`: Director access allowed.
-- [ ] `DashboardStatsTest.php`: Director queues and FX pending counts.
+- [x] `VotingEngineTest.php`: cannot close before all votes; close after all; finalize non-tied; tie-break reason required; override audited if enabled.
+- [x] `WorkflowVotingActorTest.php`: Director actor role recorded.
+- [x] `CustomsDeclarationTest.php`: generated PDF, download audit, completion transaction.
+- [x] Add signed external FX upload tests if endpoint is introduced.
+- [x] `CustomsDownloadPermissionTest.php`: Director access allowed.
+- [x] `DashboardStatsTest.php`: Director queues and FX pending counts.
 
 ### E2E, Visual, Accessibility
 
-- [ ] Playwright Director voting flow: own vote, close when all voted, finalize approved, verify SWIFT handoff.
-- [ ] Playwright blocked close flow: pending names visible in tooltip and no API call.
-- [ ] Playwright tie-break flow: closed tied session requires reason and finalizes.
-- [ ] Playwright FX flow: download generated PDF, upload signed PDF, complete request, completed state.
-- [ ] Visual snapshots: dashboard composite strip, voting detail ready-to-close, tie-break modal, FX pending detail, `/customs` queue.
-- [ ] Accessibility: complex action panel keyboard order, tooltips accessible, modal focus trap, upload controls labelled, no color-only tie/ready states.
+- [x] Playwright Director voting flow: own vote, close when all voted, finalize approved, verify SWIFT handoff.
+- [x] Playwright blocked close flow: pending names visible in tooltip and no API call.
+- [x] Playwright tie-break flow: closed tied session requires reason and finalizes.
+- [x] Playwright FX flow: download generated PDF, upload signed PDF, complete request, completed state.
+- [x] Visual snapshots: dashboard composite strip, voting detail ready-to-close, tie-break modal, FX pending detail, `/customs` queue.
+- [x] Accessibility: complex action panel keyboard order, tooltips accessible, modal focus trap, upload controls labelled, no color-only tie/ready states.
 

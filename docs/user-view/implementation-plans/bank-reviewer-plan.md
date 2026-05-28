@@ -89,35 +89,35 @@ Build a bank-side decisioning workspace for internal review, support-rejection f
 
 ### Frontend Unit And Component
 
-- [ ] `role-surfaces.test.ts`: reviewer has no new request, admin, support, SWIFT, voting, or FX completion surfaces.
-- [ ] `BankReviewerDashboard.test.ts`: support-rejected strip, KPI links, review queue sort, downstream table visibility, empty/error states.
-- [ ] `workflow-buckets.test.ts`: reviewer tabs and statuses match the plan.
-- [ ] `RequestsListAdvancedFilters.test.ts`: created-by-me filter hides current user's submitted requests.
-- [ ] `RequestDetailPage.test.ts`: banner priority and canonical labels.
-- [ ] `ActionsPanel.test.ts`: start review, approve, return, terminal reject, support-rejected follow-up, and hidden actions under segregation.
-- [ ] `DocumentChecklist.test.ts`: reviewer document download authority.
-- [ ] `LockedBanner.test.ts`: terminal bank rejection uses irreversible language.
+- [x] `role-surfaces.test.ts`: reviewer has no new request, admin, support, SWIFT, voting, or FX completion surfaces.
+- [x] `BankReviewerDashboard.test.ts`: support-rejected strip, KPI links, review queue sort, downstream table visibility, empty/error states.
+- [x] `workflow-buckets.test.ts`: reviewer tabs and statuses match the plan.
+- [x] `RequestsListAdvancedFilters.test.ts`: created-by-me filter hides current user's submitted requests.
+- [x] `RequestDetailPage.test.ts`: banner priority and canonical labels.
+- [x] `ActionsPanel.test.ts`: start review, approve, return, terminal reject, support-rejected follow-up, and hidden actions under segregation.
+- [x] `DocumentChecklist.test.ts`: reviewer document download authority.
+- [x] `LockedBanner.test.ts`: terminal bank rejection uses irreversible language.
 
 ### Frontend Store And Composable
 
-- [ ] `requests.store.workflow.test.ts`: bank review, approve, return, terminal reject, support-rejected return calls.
-- [ ] `useRequests.workflow.test.ts`: API paths and error mapping for reviewer actions.
-- [ ] `dashboard.store.test.ts`: reviewer dashboard stats normalize optional arrays.
+- [x] `requests.store.workflow.test.ts`: bank review, approve, return, terminal reject, support-rejected return calls.
+- [x] `useRequests.workflow.test.ts`: API paths and error mapping for reviewer actions.
+- [x] `dashboard.store.test.ts`: reviewer dashboard stats normalize optional arrays.
 
 ### Backend Feature
 
-- [ ] `DashboardStatsTest.php`: reviewer queue, support-rejected count, downstream data.
-- [ ] `WorkflowControllerTest.php`: start review and approve transitions.
-- [ ] `BankReturnTest.php`: return reason and actor role.
-- [ ] `SupportReturnTest.php`: support rejected to bank reviewer follow-up path if applicable.
-- [ ] `DocumentDownloadPermissionTest.php`: reviewer own-bank document access.
-- [ ] `BankAdminRbacTest.php` or reviewer-specific RBAC test: reviewer cannot decide own created request.
+- [x] `DashboardStatsTest.php`: reviewer queue, support-rejected count, downstream data.
+- [x] `WorkflowControllerTest.php`: start review and approve transitions.
+- [x] `BankReturnTest.php`: return reason and actor role.
+- [x] `SupportReturnTest.php`: support rejected to bank reviewer follow-up path if applicable.
+- [x] `DocumentDownloadPermissionTest.php`: reviewer own-bank document access.
+- [x] `BankAdminRbacTest.php` or reviewer-specific RBAC test: reviewer cannot decide own created request.
 
 ### E2E, Visual, Accessibility
 
-- [ ] Playwright reviewer flow: pending queue, start review, return with reason, approve with confirmation.
-- [ ] Playwright segregation flow: request created by current user renders SegregationBlockedBanner and no decision buttons.
-- [ ] Playwright support-rejected follow-up: keep/return options and reason handling.
-- [ ] Visual snapshots: dashboard, requests list pending tab, request detail bank review, terminal reject dialog.
-- [ ] Accessibility: AlertDialog title/description, reason textarea labels, focus trap, keyboard cancel/confirm, no color-only destructive state.
+- [x] Playwright reviewer flow: pending queue, start review, return with reason, approve with confirmation.
+- [x] Playwright segregation flow: request created by current user renders SegregationBlockedBanner and no decision buttons.
+- [x] Playwright support-rejected follow-up: keep/return options and reason handling.
+- [x] Visual snapshots: dashboard, requests list pending tab, request detail bank review, terminal reject dialog.
+- [x] Accessibility: AlertDialog title/description, reason textarea labels, focus trap, keyboard cancel/confirm, no color-only destructive state.
 
