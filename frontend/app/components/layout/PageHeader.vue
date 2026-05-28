@@ -38,8 +38,8 @@ defineProps<{
       </template>
     </nav>
 
-    <div class="flex flex-wrap items-start justify-between gap-4">
-      <div class="min-w-0">
+    <div class="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center sm:gap-4">
+      <div class="min-w-0 flex-1">
         <div class="flex items-center gap-2">
           <h1 class="text-2xl font-bold tracking-tight">
             {{ title }}
@@ -59,7 +59,7 @@ defineProps<{
         </p>
       </div>
 
-      <div class="flex flex-wrap items-center gap-2">
+      <div class="flex shrink-0 flex-wrap items-center gap-2">
         <slot name="toolbar" />
         <slot name="actions" />
       </div>

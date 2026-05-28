@@ -6,6 +6,7 @@ import { useAuthStore } from '../stores/auth.store'
 import { UserRole } from '../types/enums'
 import { ROLE_LABELS, ROUTE_ROLE_MAP } from '../constants/workflow'
 import { Button } from '../components/ui/button'
+import PageHeader from '../components/layout/PageHeader.vue'
 import DataEntryDashboard from '../components/dashboard/DataEntryDashboard.vue'
 import BankReviewerDashboard from '../components/dashboard/BankReviewerDashboard.vue'
 import BankAdminDashboard from '../components/dashboard/BankAdminDashboard.vue'
@@ -48,22 +49,14 @@ const showNewRequestAction = computed(() =>
 <template>
   <div class="flex flex-col gap-6" dir="rtl">
     <!-- Page header -->
-    <div class="flex flex-wrap items-start justify-between gap-4">
-      <div class="flex flex-col gap-1">
-        <h1 class="text-2xl font-semibold tracking-tight sm:text-3xl">
-          أهلاً، {{ firstName }}
-        </h1>
-        <p class="text-sm text-muted-foreground">{{ roleSubtitle }}</p>
-      </div>
-      <Button
-        v-if="showNewRequestAction"
-        class="shrink-0"
-        @click="router.push('/requests/new')"
-      >
-        <FilePlus2 class="h-4 w-4" />
-        طلب جديد
-      </Button>
-    </div>
+    <PageHeader :title="`أهلاً، ${firstName}`" :subtitle="roleSubtitle">
+      <template v-if="showNewRequestAction" #actions>
+        <Button class="shrink-0" @click="router.push('/requests/new')">
+          <FilePlus2 class="h-4 w-4" />
+          طلب جديد
+        </Button>
+      </template>
+    </PageHeader>
 
     <!-- Role-specific dashboard body -->
     <DataEntryDashboard v-if="role === UserRole.DATA_ENTRY" />

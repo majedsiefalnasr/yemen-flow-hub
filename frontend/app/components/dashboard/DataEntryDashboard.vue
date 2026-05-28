@@ -137,18 +137,6 @@ onMounted(() => {
 
     <template v-else-if="stats">
 
-      <!-- Greeting header: user name + bank-scoped subtitle + primary CTA -->
-      <div class="flex items-center justify-between gap-4">
-        <div class="min-w-0">
-          <h1 class="text-lg font-semibold text-foreground truncate">مرحباً، {{ authUser?.name }}</h1>
-          <p v-if="authUser?.bank_name_ar" class="text-sm text-muted-foreground truncate">{{ authUser.bank_name_ar }}</p>
-        </div>
-        <Button class="flex-shrink-0" @click="router.push('/requests/new')">
-          <PlusCircle class="h-4 w-4 me-1.5" aria-hidden="true" />
-          طلب جديد
-        </Button>
-      </div>
-
       <!-- Action-required strip (above KPI grid, hidden when count = 0) -->
       <Card
         v-if="actionRequiredCount > 0"

@@ -116,14 +116,6 @@ onMounted(() => { store.loadStats() })
 
     <template v-else-if="stats">
 
-      <!-- Greeting header -->
-      <div class="flex items-center justify-between gap-4">
-        <div class="min-w-0">
-          <h1 class="text-lg font-semibold text-foreground truncate">مرحباً، {{ authUser?.name }}</h1>
-          <p v-if="authUser?.bank_name_ar" class="text-sm text-muted-foreground truncate">{{ authUser.bank_name_ar }} — مراجع الطلبات</p>
-        </div>
-      </div>
-
       <!-- Action-required strip: SUPPORT_REJECTED requests waiting for bank-side decision -->
       <Card
         v-if="supportRejectedCount > 0"
