@@ -493,15 +493,15 @@ Concrete mapping from template asset → Yemen Flow Hub Vue target. "Status" ref
 
 ### Phase 2: Role-Scoped Command Palette
 
-- [ ] Build `CommandPalette.vue` with shadcn-vue `Command` and `Dialog` patterns.
-- [ ] Source command entries from the same role-filtered nav and permission rules used by the sidebar.
-- [ ] Add groups: الطلبات, الطوابير, الجهات, الموظفون, التدقيق, التقارير, الإعدادات, المساعدة.
-- [ ] Add quick actions only when the active role and status allow them, for example new request for `DATA_ENTRY`.
-- [ ] Support keyboard shortcut without conflicting with browser or Arabic input behavior.
+- [x] Build `CommandPalette.vue` with shadcn-vue `Command` and `Dialog` patterns.
+- [x] Source command entries from the same role-filtered nav and permission rules used by the sidebar.
+- [x] Add groups: الطلبات, الطوابير, الجهات, الموظفون, التدقيق, التقارير, الإعدادات, المساعدة.
+- [x] Add quick actions only when the active role and status allow them, for example new request for `DATA_ENTRY`.
+- [x] Support keyboard shortcut without conflicting with browser or Arabic input behavior.
 - [ ] Add tests proving forbidden routes/actions do not appear in command search.
-- [ ] Enforce a single source of truth: derive palette items from the same role-filtered nav config as the sidebar; never maintain a second hand-edited array (the template's key defect).
-- [ ] Keep cmdk/reka substring filter; add Arabic-primary labels with optional English alias keywords for search matching.
-- [ ] Keep the `SearchTrigger` input-styled button with a `⌘K`/`Ctrl K` hint in the topbar (mirror kbd to logical-end in RTL).
+- [x] Enforce a single source of truth: derive palette items from the same role-filtered nav config as the sidebar; never maintain a second hand-edited array (the template's key defect).
+- [x] Keep cmdk/reka substring filter; add Arabic-primary labels with optional English alias keywords for search matching.
+- [x] Keep the `SearchTrigger` input-styled button with a `⌘K`/`Ctrl K` hint in the topbar (mirror kbd to logical-end in RTL).
 
 ### Phase 3: Appearance Settings — Layout, Radius, Mode, And Animation
 
