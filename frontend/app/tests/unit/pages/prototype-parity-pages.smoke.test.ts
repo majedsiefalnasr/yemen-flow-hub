@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { createSSRApp } from 'vue'
 import { createPinia } from 'pinia'
 import { renderToString } from 'vue/server-renderer'
@@ -26,10 +26,10 @@ vi.mock('../../../composables/useUsers', () => ({
 
 vi.mock('../../../stores/auth.store', () => ({
   useAuthStore: () => ({
-    user: { id: 1, bank_id: 1, role: 'BANK_ADMIN' },
-    currentRole: 'BANK_ADMIN',
-    isCbyAdmin: false,
-    isBankUser: true,
+    user: { id: 1, bank_id: null, role: 'CBY_ADMIN' },
+    currentRole: 'CBY_ADMIN',
+    isCbyAdmin: true,
+    isBankUser: false,
   }),
 }))
 
@@ -63,6 +63,7 @@ async function renderPage(component: unknown): Promise<string> {
 }
 
 describe('Story 5.7 page smoke tests', () => {
+  beforeEach(() => { vi.resetModules() })
   it('renders /merchants page shell', async () => {
     const page = await import('../../../pages/merchants.vue')
     const html = await renderPage(page.default)
@@ -78,7 +79,7 @@ describe('Story 5.7 page smoke tests', () => {
   it('renders /admin/workflow-docs page shell', async () => {
     const page = await import('../../../pages/admin/workflow-docs.vue')
     const html = await renderPage(page.default)
-    expect(html).toContain('قواعد المستندات')
+    expect(html).toContain('أنواع المستندات')
   })
 
   it('renders /staff page shell (BANK_ADMIN staff management)', async () => {

@@ -269,6 +269,50 @@ const columns: ColumnDef<AuditLog>[] = [
   },
 ]
 
+// ── Row expansion ─────────────────────────────────────────────────────────────
+const expandedLogs = ref(new Set<number>())
+
+function toggleLog(id: number) {
+  if (expandedLogs.value.has(id)) { expandedLogs.value.delete(id) }
+  else { expandedLogs.value.add(id) }
+  expandedLogs.value = new Set(expandedLogs.value)
+}
+
+function truncateUa(ua: string | null | undefined, max = 80): string {
+  if (!ua) return '—'
+  return ua.length > max ? ua.slice(0, max) + '…' : ua
+}
+
+type AuditLogMeta = { before?: Record<string, unknown>; after?: Record<string, unknown> } | null
+
+const MISSING_DIFF_VALUE = '—'
+const EMPTY_DIFF_VALUE = 'فارغ'
+
+function hasDiffValue(record: Record<string, unknown>, key: string): boolean {
+  return Object.prototype.hasOwnProperty.call(record, key)
+}
+
+function formatDiffValue(record: Record<string, unknown>, key: string): unknown {
+  if (!hasDiffValue(record, key)) return MISSING_DIFF_VALUE
+  const value = record[key]
+  return value === null ? EMPTY_DIFF_VALUE : value
+}
+
+function diffRows(meta: AuditLogMeta): Array<{ key: string; before: unknown; after: unknown }> {
+  if (!meta) return []
+  const before = (meta.before ?? {}) as Record<string, unknown>
+  const after = (meta.after ?? {}) as Record<string, unknown>
+  const keys = Array.from(new Set([...Object.keys(before), ...Object.keys(after)]))
+  return keys
+    .filter((key) => {
+      const bHas = hasDiffValue(before, key)
+      const aHas = hasDiffValue(after, key)
+      if (!bHas && !aHas) return false
+      return !bHas || !aHas || before[key] !== after[key]
+    })
+    .map(key => ({ key, before: formatDiffValue(before, key), after: formatDiffValue(after, key) }))
+}
+
 const table = useVueTable({
   get data() { return filteredAudits.value },
   columns,
@@ -463,23 +507,66 @@ const table = useVueTable({
                   </TableRow>
                 </template>
                 <template v-else>
-                  <TableRow
+                  <template
                     v-for="row in table.getRowModel().rows"
                     :key="row.id"
-                    class="border-t hover:bg-muted/30"
-                    :data-state="row.getIsSelected() ? 'selected' : undefined"
                   >
-                    <TableCell
-                      v-for="cell in row.getVisibleCells()"
-                      :key="cell.id"
-                      class="px-4 py-3"
+                    <TableRow
+                      data-testid="log-row"
+                      class="border-t cursor-pointer hover:bg-muted/30"
+                      :data-state="row.getIsSelected() ? 'selected' : undefined"
+                      @click="toggleLog(row.original.id)"
                     >
-                      <FlexRender
-                        :render="cell.column.columnDef.cell"
-                        :props="cell.getContext()"
-                      />
-                    </TableCell>
-                  </TableRow>
+                      <TableCell
+                        v-for="cell in row.getVisibleCells()"
+                        :key="cell.id"
+                        class="px-4 py-3"
+                      >
+                        <FlexRender
+                          :render="cell.column.columnDef.cell"
+                          :props="cell.getContext()"
+                        />
+                      </TableCell>
+                    </TableRow>
+                    <TableRow
+                      v-if="expandedLogs.has(row.original.id)"
+                      :key="`${row.id}-detail`"
+                      class="bg-muted/20"
+                    >
+                      <TableCell :col-span="columns.length" class="px-6 py-4">
+                        <div class="text-xs text-muted-foreground mb-2">
+                          <span class="font-medium">IP: </span>{{ row.original.ip_address ?? '—' }}
+                          <span class="mx-2">·</span>
+                          <span data-testid="log-ua-full">{{ truncateUa(row.original.user_agent) }}</span>
+                        </div>
+                        <template v-if="diffRows(row.original.metadata as AuditLogMeta).length > 0">
+                          <table data-testid="log-diff-table" class="w-full text-xs border rounded">
+                            <thead>
+                              <tr class="border-b bg-muted/40">
+                                <th class="px-3 py-1.5 text-start font-medium">الحقل</th>
+                                <th class="px-3 py-1.5 text-start font-medium">قبل</th>
+                                <th class="px-3 py-1.5 text-start font-medium">بعد</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              <tr
+                                v-for="dr in diffRows(row.original.metadata as AuditLogMeta)"
+                                :key="dr.key"
+                                class="border-b last:border-0"
+                              >
+                                <td class="px-3 py-1.5 font-mono">{{ dr.key }}</td>
+                                <td class="px-3 py-1.5 text-[var(--severity-red)]">{{ dr.before }}</td>
+                                <td class="px-3 py-1.5 text-[var(--severity-green)]">{{ dr.after }}</td>
+                              </tr>
+                            </tbody>
+                          </table>
+                        </template>
+                        <div v-else class="detail-empty text-xs text-muted-foreground">
+                          لا توجد تفاصيل إضافية
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  </template>
                 </template>
               </TableBody>
             </Table>

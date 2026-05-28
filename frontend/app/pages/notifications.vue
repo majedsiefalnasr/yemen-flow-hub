@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ColumnDef, ColumnFiltersState, SortingState, VisibilityState } from '@tanstack/vue-table'
+import { h } from 'vue'
 import type { Component } from 'vue'
 import {
   FlexRender,
@@ -150,7 +151,7 @@ function clearSelection() {
 
 async function openNotification(notification: Notification) {
   if (!notification.read_at) await markRead(notification.id)
-  if (notification.data?.request_id) {
+  if (notification.data?.type === 'claim_released' && notification.data?.request_id) {
     navigateTo(`/requests/${notification.data.request_id}`)
   }
 }
@@ -423,7 +424,7 @@ const table = useVueTable({
               <TableRow
                 v-for="row in table.getRowModel().rows"
                 :key="row.id"
-                class="cursor-pointer transition-colors hover:bg-muted/30"
+                class="notification-item cursor-pointer transition-colors hover:bg-muted/30"
                 :class="{ 'bg-primary/5': !row.original.read_at }"
                 :data-state="row.getIsSelected() ? 'selected' : undefined"
                 @click="openNotification(row.original)"
@@ -434,6 +435,18 @@ const table = useVueTable({
                   class="px-4 py-3 align-middle"
                 >
                   <FlexRender :render="cell.column.columnDef.cell" :props="cell.getContext()" />
+                </TableCell>
+                <TableCell class="px-2 py-3 align-middle" @click.stop>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    class="read-icon-btn h-7 w-7"
+                    :aria-label="row.original.read_at ? 'تعليم كغير مقروء' : 'تعليم كمقروء'"
+                    @click.stop="markRead(row.original.id)"
+                  >
+                    <Check v-if="!row.original.read_at" class="h-3.5 w-3.5" />
+                    <Undo2 v-else class="h-3.5 w-3.5" />
+                  </Button>
                 </TableCell>
               </TableRow>
             </template>

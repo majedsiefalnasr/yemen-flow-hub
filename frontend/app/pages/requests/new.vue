@@ -16,9 +16,11 @@ import {
 } from 'lucide-vue-next'
 import { UserRole } from '@/types/enums'
 import { ROUTE_ROLE_MAP } from '@/constants/workflow'
+import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth.store'
 import { useRequestsStore } from '@/stores/requests.store'
 import { useMerchants } from '@/composables/useMerchants'
+import { useRequests } from '@/composables/useRequests'
 import type { Merchant } from '@/types/models'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
@@ -112,7 +114,9 @@ const INITIAL: FormState = {
 const authStore = useAuthStore()
 const requestsStore = useRequestsStore()
 const { fetchMerchants } = useMerchants()
+const { cloneRequest } = useRequests()
 const router = useRouter()
+const route = useRoute()
 const { notify, error: toastError } = useToast()
 
 const user = computed(() => authStore.user)
@@ -133,6 +137,8 @@ const saving = ref(false)
 const declared = ref(false)
 const merchants = ref<Merchant[]>([])
 const merchantSearch = ref('')
+const cloneForbidden = ref(false)
+const cloningInProgress = ref(false)
 
 const filteredMerchants = computed(() => {
   const q = merchantSearch.value.trim().toLowerCase()
@@ -151,6 +157,26 @@ const submitDisabledReason = computed(() => {
 })
 
 onMounted(async () => {
+  const cloneOf = route.query.clone_of
+  if (cloneOf) {
+    const sourceId = Number(cloneOf)
+    window.history.replaceState(window.history.state, '', route.path)
+    cloningInProgress.value = true
+    try {
+      const newId = await cloneRequest(sourceId)
+      await navigateTo(`/requests/${newId}/edit`, { replace: true })
+    }
+    catch (err: any) {
+      if (err?.statusCode === 403) {
+        cloneForbidden.value = true
+      }
+    }
+    finally {
+      cloningInProgress.value = false
+    }
+    return
+  }
+
   merchants.value = await fetchMerchants()
   if (merchants.value.length > 0 && !form.merchant_id) {
     form.merchant_id = merchants.value[0]!.id
@@ -291,7 +317,23 @@ const canCreate = computed(() =>
 </script>
 
 <template>
-  <div v-if="user && canCreate">
+  <div v-if="cloneForbidden">
+    <PageHeader
+      title="غير مصرح بنسخ الطلب"
+      subtitle="ليس لديك صلاحية نسخ هذا الطلب."
+    />
+    <Card class="border-0 p-6 shadow">
+      <Button variant="outline" @click="router.push('/requests')">
+        العودة لقائمة الطلبات
+      </Button>
+    </Card>
+  </div>
+
+  <div v-else-if="cloningInProgress">
+    <PageHeader title="جارٍ إنشاء النسخة..." />
+  </div>
+
+  <div v-else-if="user && canCreate">
     <PageHeader
       title="تقديم طلب تمويل واردات جديد"
       subtitle="املأ البيانات بدقة وأرفق المستندات المطلوبة"

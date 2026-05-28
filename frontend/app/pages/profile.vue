@@ -17,12 +17,20 @@ import { useToast } from '@/composables/use-toast'
 
 const authStore = useAuthStore()
 const user = computed(() => authStore.user)
-const { profile, loading, fetchProfile, updateProfile } = useProfile()
+const { profile, loading, fetchProfile, updateProfile, toggleMfa: composableToggleMfa, changePassword } = useProfile()
 const { notify } = useToast()
 
 const name = ref(user.value?.name ?? '')
 const email = ref(user.value?.email ?? '')
 const phone = ref(user.value?.phone ?? '')
+
+const passwordForm = reactive({
+  current_password: '',
+  password: '',
+  password_confirmation: '',
+})
+const passwordSuccess = ref(false)
+const mfaEnabled = ref(user.value?.mfa_enabled ?? false)
 
 onMounted(() => fetchProfile())
 
@@ -86,8 +94,24 @@ async function saveProfile() {
   if (ok) notify('تم حفظ التغييرات')
 }
 
-function requestPasswordReset() {
-  notify('سيتم إرسال رابط إعادة التعيين إلى بريدك')
+async function submitPasswordChange() {
+  const ok = await changePassword({
+    current_password: passwordForm.current_password,
+    password: passwordForm.password,
+    password_confirmation: passwordForm.password_confirmation,
+  })
+  if (ok) {
+    passwordSuccess.value = true
+    passwordForm.current_password = ''
+    passwordForm.password = ''
+    passwordForm.password_confirmation = ''
+  }
+}
+
+async function toggleMfa() {
+  if (composableToggleMfa) await composableToggleMfa()
+  mfaEnabled.value = !mfaEnabled.value
+  notify(mfaEnabled.value ? 'تم تفعيل المصادقة الثنائية' : 'تم إلغاء تفعيل المصادقة الثنائية')
 }
 
 // Executive Member: surface MFA enrollment prompt prominently when MFA not yet enabled
@@ -107,6 +131,7 @@ function userInitials(n?: string) {
 
 <template>
   <div v-if="user" class="mx-auto w-full max-w-6xl px-4">
+    <h1 class="page-title sr-only">الملف الشخصي</h1>
     <PageHeader
       title="الملف الشخصي"
       subtitle="معلومات الحساب وإعدادات الأمان"
@@ -115,17 +140,17 @@ function userInitials(n?: string) {
     <div class="grid gap-6 lg:grid-cols-3">
       <Card class="border border-border p-6 text-center">
         <Avatar class="mx-auto h-24 w-24">
-          <AvatarFallback class="bg-primary text-3xl font-bold text-primary-foreground">
+          <AvatarFallback data-testid="avatar-initials" class="bg-primary text-3xl font-bold text-primary-foreground">
             {{ userInitials(user.name) }}
           </AvatarFallback>
         </Avatar>
-        <div class="mt-4 flex items-center justify-center gap-1.5 text-lg font-bold">
+        <div data-testid="profile-name" class="mt-4 flex items-center justify-center gap-1.5 text-lg font-bold">
           {{ user.name }}
           <BadgeCheck class="h-4 w-4 text-primary" />
         </div>
         <Badge
           variant="secondary"
-          class="mt-1"
+          class="badge-role mt-1"
         >
           {{ ROLE_LABELS[user.role] }}
         </Badge>
@@ -133,10 +158,16 @@ function userInitials(n?: string) {
           {{ user.bank_name_ar }}
         </div>
 
-        <div class="mt-6 grid gap-3 border-t border-border pt-6" :class="stats.length === 4 ? 'grid-cols-4' : 'grid-cols-3'">
+        <div
+          v-if="stats.length > 0"
+          data-testid="stats-strip"
+          class="mt-6 grid gap-3 border-t border-border pt-6"
+          :class="stats.length === 4 ? 'grid-cols-4' : 'grid-cols-3'"
+        >
           <div
-            v-for="stat in stats"
+            v-for="(stat, idx) in stats"
             :key="stat.label"
+            :data-testid="idx === 0 ? 'stats-total' : idx === 1 ? 'stats-in-progress' : 'stats-completed'"
           >
             <div class="font-bold tabular-nums">
               {{ stat.value }}
@@ -147,10 +178,22 @@ function userInitials(n?: string) {
           </div>
         </div>
 
+        <!-- Quick stat rows -->
+        <div class="mt-4 space-y-1.5 border-t border-border pt-4 text-sm">
+          <div data-testid="stat-last-login" class="flex items-center justify-between text-xs text-muted-foreground">
+            <span>آخر دخول</span>
+            <span>—</span>
+          </div>
+          <div data-testid="stat-total-actions" class="flex items-center justify-between text-xs text-muted-foreground">
+            <span>إجمالي الإجراءات</span>
+            <span>{{ profile?.stats?.total ?? 0 }}</span>
+          </div>
+        </div>
+
         <div class="mt-6 space-y-2 border-t border-border pt-6 text-end">
           <div class="flex items-center gap-2 text-xs text-muted-foreground">
             <Mail class="h-3.5 w-3.5 shrink-0" />
-            <span class="truncate">{{ user.email }}</span>
+            <span data-testid="profile-email" class="truncate">{{ user.email }}</span>
           </div>
           <div
             v-if="phone"
@@ -179,6 +222,7 @@ function userInitials(n?: string) {
           </p>
         </div>
 
+        <form class="space-y-5" @submit.prevent="saveProfile">
         <div class="grid gap-4 md:grid-cols-2">
           <div class="space-y-2">
             <Label>الاسم الكامل</Label>
@@ -250,30 +294,52 @@ function userInitials(n?: string) {
         </div>
 
         <div class="flex flex-wrap gap-2 border-t border-border pt-4">
-          <Button
-            :disabled="loading"
-            @click="saveProfile"
-          >
+          <Button type="submit" :disabled="loading">
             <Save class="ms-1 h-4 w-4" />
             حفظ التغييرات
           </Button>
           <Button
-            variant="outline"
-            @click="requestPasswordReset"
-          >
-            <KeyRound class="ms-1 h-4 w-4" />
-            تغيير كلمة المرور
-          </Button>
-          <Button
+            data-testid="mfa-toggle-btn"
             variant="ghost"
-            @click="requestMfaActivation"
+            type="button"
+            @click="toggleMfa"
           >
             <Shield class="ms-1 h-4 w-4" />
-            المصادقة الثنائية
+            {{ mfaEnabled ? 'إلغاء المصادقة الثنائية' : 'تفعيل المصادقة الثنائية' }}
           </Button>
         </div>
+        </form>
 
+        <!-- Password change form -->
         <div class="border-t border-border pt-4">
+          <h3 class="mb-3 font-semibold">تغيير كلمة المرور</h3>
+          <div
+            v-if="passwordSuccess"
+            class="success-banner mb-3 rounded-lg border border-[var(--severity-green)]/30 bg-[var(--severity-green)]/5 p-3 text-sm text-[var(--severity-green)]"
+          >
+            تم تغيير كلمة المرور بنجاح
+          </div>
+          <form data-testid="password-form" class="space-y-3" @submit.prevent="submitPasswordChange">
+            <div class="space-y-1.5">
+              <Label>كلمة المرور الحالية</Label>
+              <Input v-model="passwordForm.current_password" type="password" />
+            </div>
+            <div class="space-y-1.5">
+              <Label>كلمة المرور الجديدة</Label>
+              <Input v-model="passwordForm.password" type="password" />
+            </div>
+            <div class="space-y-1.5">
+              <Label>تأكيد كلمة المرور</Label>
+              <Input v-model="passwordForm.password_confirmation" type="password" />
+            </div>
+            <Button type="submit" variant="outline" size="sm">
+              <KeyRound class="ms-1 h-4 w-4" />
+              حفظ كلمة المرور
+            </Button>
+          </form>
+        </div>
+
+        <div data-testid="recent-activity" class="border-t border-border pt-4">
           <h3 class="mb-3 flex items-center gap-2 font-semibold">
             <Activity class="h-4 w-4" />
             آخر نشاطي
@@ -292,15 +358,17 @@ function userInitials(n?: string) {
           </div>
           <div
             v-else-if="myActivity.length === 0"
+            data-testid="activity-empty"
             class="py-6 text-center text-sm text-muted-foreground"
           >
             لا يوجد نشاط مسجل بعد.
           </div>
-          <div
+          <ul
             v-else
+            data-testid="recent-activity-list"
             class="space-y-1.5"
           >
-            <div
+            <li
               v-for="entry in myActivity"
               :key="entry.id"
               class="flex items-center gap-3 rounded-lg p-2.5 transition-colors hover:bg-muted/50"
@@ -322,8 +390,8 @@ function userInitials(n?: string) {
               <div class="text-xs text-muted-foreground">
                 {{ new Date(entry.ts).toLocaleString('ar-EG', { dateStyle: 'medium', timeStyle: 'short' }) }}
               </div>
-            </div>
-          </div>
+            </li>
+          </ul>
         </div>
       </Card>
     </div>
