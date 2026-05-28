@@ -10,9 +10,10 @@ import {
 } from '@tanstack/vue-table'
 import { h } from 'vue'
 import {
-  AlertTriangle, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
-  Download, MoreHorizontal, Plus, Printer, Search, SearchX, ShieldCheck, UserCog, X,
+  AlertCircle, AlertTriangle, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
+  Download, ExternalLink, MoreHorizontal, Plus, Printer, RefreshCw, Search, SearchX, ShieldCheck, UserCog, X,
 } from 'lucide-vue-next'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import { ROLE_LABELS, CBY_ROLES, ROUTE_ROLE_MAP } from '@/constants/workflow'
 import { UserRole } from '@/types/enums'
@@ -106,6 +107,7 @@ const editing = ref<User | null>(null)
 const viewing = ref<User | null>(null)
 const saving = ref(false)
 const loading = ref(true)
+const fetchError = ref(false)
 const staffUsers = ref<User[]>([])
 const deactivateTarget = ref<User | null>(null)
 const deactivateBlocked = ref<string | null>(null)
@@ -128,7 +130,9 @@ function resolveBankName(user: User): string {
   return ''
 }
 
-onMounted(async () => {
+async function loadStaff() {
+  loading.value = true
+  fetchError.value = false
   try {
     const [results, bankResults] = await Promise.all([
       fetchUsers({ per_page: 200 }),
@@ -137,10 +141,15 @@ onMounted(async () => {
     staffUsers.value = results.filter(u => STAFF_ROLES.includes(u.role))
     banksData.value = bankResults
   }
+  catch {
+    fetchError.value = true
+  }
   finally {
     loading.value = false
   }
-})
+}
+
+onMounted(loadStaff)
 
 const banksData = ref<Bank[]>([])
 
@@ -390,6 +399,19 @@ const columns: ColumnDef<User>[] = [
     cell: ({ row }) => {
       const staff = row.original
       const isSelf = staff.id === currentUser.value?.id
+      const roleNavItems: ReturnType<typeof h>[] = []
+      if (staff.role === UserRole.SUPPORT_COMMITTEE) {
+        roleNavItems.push(h(DropdownMenuItem, {
+          class: 'gap-1.5 text-primary',
+          onClick: () => navigateTo('/requests'),
+        }, () => [h(ExternalLink, { class: 'h-3.5 w-3.5' }), 'طابور المراجعة']))
+      }
+      else if (staff.role === UserRole.EXECUTIVE_MEMBER || staff.role === UserRole.COMMITTEE_DIRECTOR) {
+        roleNavItems.push(h(DropdownMenuItem, {
+          class: 'gap-1.5 text-[var(--voting)]',
+          onClick: () => navigateTo('/voting'),
+        }, () => [h(ExternalLink, { class: 'h-3.5 w-3.5' }), 'جلسات التصويت']))
+      }
       return h(DropdownMenu, {}, {
         default: () => [
           h(DropdownMenuTrigger, { asChild: true }, {
@@ -404,13 +426,14 @@ const columns: ColumnDef<User>[] = [
           }),
           h(DropdownMenuContent, { align: 'end' }, {
             default: () => [
-              h(DropdownMenuItem, { onClick: () => (viewing.value = staff) }, () => 'عرض'),
+              h(DropdownMenuItem, { onClick: () => (viewing.value = staff) }, () => 'عرض التفاصيل'),
               h(DropdownMenuItem, { onClick: () => openEdit(staff) }, () => 'تعديل'),
+              ...roleNavItems,
               ...(!isSelf
                 ? [
                     h(DropdownMenuSeparator),
                     h(DropdownMenuItem, {
-                      class: staff.is_active ? 'text-destructive' : 'text-green-700',
+                      class: staff.is_active ? 'text-destructive' : 'text-[var(--severity-green)]',
                       onClick: () => requestToggleActive(staff),
                     }, () => staff.is_active ? 'إلغاء تفعيل' : 'تفعيل'),
                   ]
@@ -553,11 +576,24 @@ const table = useVueTable({
       </div>
     </div>
 
+    <!-- Fetch error state -->
+    <Alert v-if="fetchError" variant="destructive" role="alert" class="mb-4">
+      <AlertCircle class="h-4 w-4" />
+      <AlertTitle>تعذّر تحميل المستخدمين</AlertTitle>
+      <AlertDescription class="flex items-center gap-3">
+        <span>حدث خطأ أثناء جلب البيانات. تحقق من الاتصال ثم أعد المحاولة.</span>
+        <Button variant="outline" size="sm" class="h-7 gap-1.5 text-xs" @click="loadStaff">
+          <RefreshCw class="h-3 w-3" />
+          إعادة المحاولة
+        </Button>
+      </AlertDescription>
+    </Alert>
+
     <!-- Table -->
-    <div class="relative flex flex-col gap-4 overflow-auto">
-      <div v-if="loading || table.getRowModel().rows.length > 0" class="overflow-hidden rounded-lg border">
-        <Table>
-          <TableHeader class="bg-muted sticky top-0 z-10">
+    <div v-if="!fetchError" class="relative flex flex-col gap-4">
+      <div v-if="loading || table.getRowModel().rows.length > 0" class="rounded-lg border overflow-x-auto">
+        <Table class="min-w-max w-full">
+          <TableHeader class="bg-muted sticky top-0 z-30">
             <TableRow
               v-for="headerGroup in table.getHeaderGroups()"
               :key="headerGroup.id"
@@ -566,7 +602,12 @@ const table = useVueTable({
               <TableHead
                 v-for="header in headerGroup.headers"
                 :key="header.id"
-                class="h-10 px-4 text-sm font-medium text-foreground"
+                :class="[
+                  'h-10 px-4 text-sm font-medium text-foreground',
+                  header.column.id === 'actions'
+                    ? 'sticky end-0 z-20 bg-muted border-s border-border'
+                    : '',
+                ]"
               >
                 <FlexRender
                   v-if="!header.isPlaceholder"
@@ -586,16 +627,21 @@ const table = useVueTable({
               </TableRow>
             </template>
 
-            <template>
+            <template v-else>
               <TableRow
                 v-for="row in table.getRowModel().rows"
                 :key="row.id"
-                class="transition-colors hover:bg-muted/30"
+                class="group/row transition-colors hover:bg-muted/30"
               >
                 <TableCell
                   v-for="cell in row.getVisibleCells()"
                   :key="cell.id"
-                  class="px-4 py-3 align-middle"
+                  :class="[
+                    'px-4 py-3 align-middle',
+                    cell.column.id === 'actions'
+                      ? 'sticky end-0 z-10 bg-background border-s border-border group-hover/row:bg-muted/30'
+                      : '',
+                  ]"
                 >
                   <FlexRender :render="cell.column.columnDef.cell" :props="cell.getContext()" />
                 </TableCell>
@@ -615,10 +661,14 @@ const table = useVueTable({
           <div class="flex size-12 items-center justify-center rounded-xl bg-muted text-muted-foreground">
             <SearchX class="size-5" />
           </div>
-          <EmptyTitle>لا توجد نتائج</EmptyTitle>
+          <EmptyTitle>
+            {{ staffUsers.length === 0 ? 'لا يوجد مستخدمون بعد' : 'لا توجد نتائج' }}
+          </EmptyTitle>
         </EmptyHeader>
         <EmptyContent>
-          <EmptyDescription>جرّب تغيير البحث أو فلتر الدور.</EmptyDescription>
+          <EmptyDescription>
+            {{ staffUsers.length === 0 ? 'ابدأ بإضافة مستخدم جديد باستخدام الزر أعلاه.' : 'جرّب تغيير البحث أو فلتر الدور.' }}
+          </EmptyDescription>
         </EmptyContent>
       </Empty>
 

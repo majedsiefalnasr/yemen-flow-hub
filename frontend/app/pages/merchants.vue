@@ -12,7 +12,7 @@ import { h } from 'vue'
 import {
   AlertTriangle, Building2,
   ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
-  Download, Edit, MoreHorizontal, Plus, Printer, Search, SearchX, Shield, X,
+  Download, Edit, ExternalLink, MoreHorizontal, Plus, Printer, Search, SearchX, Shield, X,
 } from 'lucide-vue-next'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import MerchantDialog from '@/components/merchants/MerchantDialog.vue'
@@ -56,16 +56,10 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from '@/components/ui/sheet'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   DropdownMenu,
@@ -89,6 +83,7 @@ definePageMeta({
   requiredRoles: ROUTE_ROLE_MAP['/merchants'],
 })
 
+const router = useRouter()
 const authStore = useAuthStore()
 const user = computed(() => authStore.user)
 const { fetchMerchants, createMerchant, updateMerchant, suspendMerchant } = useMerchants()
@@ -107,13 +102,17 @@ const viewing = ref<Merchant | null>(null)
 
 onMounted(async () => {
   loadingMerchants.value = true
-  const [merchantsResult, banksResult] = await Promise.allSettled([
-    fetchMerchants(),
-    fetchBanks(),
-  ])
-  if (merchantsResult.status === 'fulfilled') merchants.value = merchantsResult.value
-  if (banksResult.status === 'fulfilled') banks.value = banksResult.value
-  loadingMerchants.value = false
+  try {
+    const [merchantsResult, banksResult] = await Promise.allSettled([
+      fetchMerchants(),
+      fetchBanks(),
+    ])
+    if (merchantsResult.status === 'fulfilled') merchants.value = merchantsResult.value ?? []
+    if (banksResult.status === 'fulfilled') banks.value = banksResult.value ?? []
+  }
+  finally {
+    loadingMerchants.value = false
+  }
 })
 
 const isCbyAdmin = computed(() => user.value?.role === UserRole.CBY_ADMIN)
@@ -262,6 +261,20 @@ async function toggleStatus(merchant: Merchant) {
   merchants.value = merchants.value.map(m => m.id === updated.id ? updated : m)
 }
 
+function openEditFromView() {
+  if (viewing.value) {
+    editing.value = viewing.value
+    viewing.value = null
+  }
+}
+
+function toggleFromView() {
+  if (viewing.value) {
+    toggleStatus(viewing.value)
+    viewing.value = null
+  }
+}
+
 function activeStatusCell(isActive: boolean) {
   const color = isActive ? 'var(--color-success)' : 'var(--color-destructive)'
   const label = isActive ? 'نشط' : 'موقوف'
@@ -348,6 +361,17 @@ const columns: ColumnDef<Merchant>[] = [
     enableHiding: false,
     cell: ({ row }) => {
       const merchant = row.original
+      const roleItems = isBankAdmin.value
+        ? [h(DropdownMenuItem, {
+            class: 'gap-1.5 text-primary',
+            onClick: () => router.push('/requests/new'),
+          }, () => [h(ExternalLink, { class: 'h-3.5 w-3.5' }), 'إنشاء طلب تمويل'])]
+        : (isCbyAdmin.value && crossBankNames.value.has(merchant.name.trim().toLowerCase()))
+            ? [h(DropdownMenuItem, {
+                class: 'gap-1.5 text-[var(--severity-amber)]',
+                onClick: () => { merchantTab.value = 'cross_bank' },
+              }, () => [h(AlertTriangle, { class: 'h-3.5 w-3.5' }), 'عرض مخاطر التكرار'])]
+            : []
       return h(DropdownMenu, {}, {
         default: () => [
           h(DropdownMenuTrigger, { asChild: true }, {
@@ -362,13 +386,14 @@ const columns: ColumnDef<Merchant>[] = [
           }),
           h(DropdownMenuContent, { align: 'end' }, {
             default: () => [
-              h(DropdownMenuItem, { onClick: () => (viewing.value = merchant) }, () => 'عرض'),
+              h(DropdownMenuItem, { onClick: () => (viewing.value = merchant) }, () => 'عرض التفاصيل'),
               h(DropdownMenuItem, { onClick: () => (editing.value = merchant) }, () => 'تعديل'),
+              ...roleItems,
               h(DropdownMenuSeparator),
               h(DropdownMenuItem, {
-                class: merchant.is_active ? 'text-destructive' : 'text-green-700',
+                class: merchant.is_active ? 'text-destructive' : 'text-[var(--severity-green)]',
                 onClick: () => toggleStatus(merchant),
-              }, () => merchant.is_active ? 'إيقاف' : 'تفعيل'),
+              }, () => merchant.is_active ? 'إيقاف النشاط' : 'تفعيل'),
             ],
           }),
         ],
@@ -547,10 +572,10 @@ const table = useVueTable({
 
     <!-- CBY Admin: tanstack table view -->
     <template v-if="isCbyAdmin">
-      <div class="relative flex flex-col gap-4 overflow-auto">
-        <div v-if="loadingMerchants || table.getRowModel().rows.length > 0" class="overflow-hidden rounded-lg border">
-          <Table>
-            <TableHeader class="bg-muted sticky top-0 z-10">
+      <div class="relative flex flex-col gap-4">
+        <div v-if="loadingMerchants || table.getRowModel().rows.length > 0" class="rounded-lg border overflow-x-auto">
+          <Table class="min-w-max w-full">
+            <TableHeader class="bg-muted sticky top-0 z-30">
               <TableRow
                 v-for="headerGroup in table.getHeaderGroups()"
                 :key="headerGroup.id"
@@ -559,7 +584,12 @@ const table = useVueTable({
                 <TableHead
                   v-for="header in headerGroup.headers"
                   :key="header.id"
-                  class="h-10 px-4 text-sm font-medium text-foreground"
+                  :class="[
+                    'h-10 px-4 text-sm font-medium text-foreground',
+                    header.column.id === 'actions'
+                      ? 'sticky end-0 z-20 bg-muted border-s border-border'
+                      : '',
+                  ]"
                 >
                   <FlexRender
                     v-if="!header.isPlaceholder"
@@ -579,16 +609,21 @@ const table = useVueTable({
                 </TableRow>
               </template>
 
-              <template>
+              <template v-else>
                 <TableRow
                   v-for="row in table.getRowModel().rows"
                   :key="row.id"
-                  class="transition-colors hover:bg-muted/30"
+                  class="group/row transition-colors hover:bg-muted/30"
                 >
                   <TableCell
                     v-for="cell in row.getVisibleCells()"
                     :key="cell.id"
-                    class="px-4 py-3 align-middle"
+                    :class="[
+                      'px-4 py-3 align-middle',
+                      cell.column.id === 'actions'
+                        ? 'sticky end-0 z-10 bg-background border-s border-border group-hover/row:bg-muted/30'
+                        : '',
+                    ]"
                   >
                     <FlexRender :render="cell.column.columnDef.cell" :props="cell.getContext()" />
                   </TableCell>
@@ -607,10 +642,14 @@ const table = useVueTable({
             <div class="flex size-12 items-center justify-center rounded-xl bg-muted text-muted-foreground">
               <SearchX class="size-5" />
             </div>
-            <EmptyTitle>لا توجد نتائج مطابقة</EmptyTitle>
+            <EmptyTitle>
+              {{ merchants.length === 0 ? 'لا يوجد تجار مسجّلون بعد' : 'لا توجد نتائج مطابقة' }}
+            </EmptyTitle>
           </EmptyHeader>
           <EmptyContent>
-            <EmptyDescription>جرّب تغيير البحث أو الفلاتر.</EmptyDescription>
+            <EmptyDescription>
+              {{ merchants.length === 0 ? 'ابدأ بتسجيل أول تاجر باستخدام الزر أعلاه.' : 'جرّب تغيير البحث أو الفلاتر.' }}
+            </EmptyDescription>
           </EmptyContent>
         </Empty>
 
@@ -764,147 +803,175 @@ const table = useVueTable({
       />
     </Dialog>
 
-    <!-- CBY Admin: Rich merchant profile drawer -->
-    <Sheet v-if="isCbyAdmin" :open="Boolean(viewing)" @update:open="v => !v && (viewing = null)">
-      <SheetContent v-if="viewing" side="left" dir="rtl" class="w-full sm:max-w-lg">
-        <SheetHeader class="pb-4">
-          <SheetTitle class="flex items-center gap-2 text-base">
+    <!-- Unified quick-view Dialog (both roles) -->
+    <Dialog :open="Boolean(viewing)" @update:open="v => !v && (viewing = null)">
+      <DialogContent v-if="viewing" dir="rtl" :class="isCbyAdmin ? 'sm:max-w-2xl' : 'sm:max-w-lg'">
+        <DialogHeader class="pb-3">
+          <DialogTitle class="flex items-center gap-2 text-base">
             <div class="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
               <Building2 class="h-4 w-4" />
             </div>
             {{ viewing.name }}
-          </SheetTitle>
-          <SheetDescription>ملف التاجر — عرض رقابي</SheetDescription>
-        </SheetHeader>
-
-        <div class="space-y-4 overflow-y-auto pb-6">
-          <!-- Status + risk signals -->
-          <div class="flex flex-wrap gap-2">
-            <Badge :class="viewing.is_active ? 'border-[var(--severity-green)]/30 bg-[var(--severity-green)]/10 text-[var(--severity-green)]' : 'border-[var(--severity-red)]/30 bg-[var(--severity-red)]/10 text-[var(--severity-red)]'" class="border">
-              {{ viewing.is_active ? 'نشط' : 'غير نشط' }}
-            </Badge>
-            <Badge
-              v-if="crossBankNames.has(viewing.name.trim().toLowerCase())"
-              class="border border-[var(--severity-amber)]/30 bg-[var(--severity-amber)]/10 text-[var(--severity-amber)]"
-            >
-              <AlertTriangle class="me-1 h-3 w-3" />
-              ظهور في أكثر من بنك
-            </Badge>
-            <Badge
-              v-if="!viewing.commercial_register || !viewing.tax_number"
-              class="border border-[var(--severity-amber)]/30 bg-[var(--severity-amber)]/10 text-[var(--severity-amber)]"
-            >
-              <AlertTriangle class="me-1 h-3 w-3" />
-              بيانات ناقصة
-            </Badge>
-          </div>
-
-          <!-- Basic info -->
-          <Card class="border p-4">
-            <h3 class="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">معلومات التسجيل</h3>
-            <div class="grid grid-cols-2 gap-3 text-sm">
-              <div class="space-y-0.5">
-                <div class="text-xs text-muted-foreground">السجل التجاري</div>
-                <div class="font-medium">{{ viewing.commercial_register ?? '—' }}</div>
-              </div>
-              <div class="space-y-0.5">
-                <div class="text-xs text-muted-foreground">الرقم الضريبي</div>
-                <div class="font-medium">{{ viewing.tax_number ?? '—' }}</div>
-              </div>
-              <div class="space-y-0.5">
-                <div class="text-xs text-muted-foreground">القطاع</div>
-                <div class="font-medium">{{ viewing.business_type ?? '—' }}</div>
-              </div>
-              <div class="space-y-0.5">
-                <div class="text-xs text-muted-foreground">عدد المعاملات</div>
-                <div class="font-bold tabular-nums">{{ viewing.transaction_count ?? 0 }}</div>
-              </div>
-              <div class="col-span-2 space-y-0.5">
-                <div class="text-xs text-muted-foreground">العنوان</div>
-                <div class="font-medium">{{ viewing.address ?? '—' }}</div>
-              </div>
-              <div class="space-y-0.5">
-                <div class="text-xs text-muted-foreground">هاتف</div>
-                <div class="font-medium">{{ viewing.phone ?? '—' }}</div>
-              </div>
-              <div class="space-y-0.5">
-                <div class="text-xs text-muted-foreground">البريد</div>
-                <div class="font-medium">{{ viewing.email ?? '—' }}</div>
-              </div>
-            </div>
-          </Card>
-
-          <!-- Associated banks -->
-          <Card class="border p-4">
-            <h3 class="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              <Shield class="h-3.5 w-3.5" />
-              البنوك المرتبطة
-            </h3>
-            <div class="space-y-1.5 text-sm">
-              <div class="flex items-center justify-between">
-                <span class="font-medium">{{ bankName(viewing.bank_id) }}</span>
-                <Badge variant="secondary" class="text-xs">مسجّل</Badge>
-              </div>
-              <template v-if="crossBankNames.has(viewing.name.trim().toLowerCase())">
-                <div
-                  v-for="other in merchants.filter(m => m.id !== viewing?.id && m.name.trim().toLowerCase() === viewing?.name.trim().toLowerCase())"
-                  :key="other.id"
-                  class="flex items-center justify-between text-[var(--severity-amber)]"
-                >
-                  <span class="font-medium">{{ bankName(other.bank_id) }}</span>
-                  <Badge class="border-[var(--severity-amber)]/30 bg-[var(--severity-amber)]/10 text-[var(--severity-amber)] border text-xs">مكرر</Badge>
-                </div>
-              </template>
-            </div>
-          </Card>
-        </div>
-      </SheetContent>
-    </Sheet>
-
-    <!-- Bank Admin: Simple view dialog -->
-    <Dialog v-if="!isCbyAdmin" :open="Boolean(viewing)" @update:open="v => !v && (viewing = null)">
-      <DialogContent v-if="viewing" class="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle class="flex items-center gap-2">
-            <Building2 class="h-5 w-5" />
-            {{ viewing.name }}
           </DialogTitle>
-          <DialogDescription>تفاصيل التاجر — عرض فقط</DialogDescription>
+          <DialogDescription>
+            {{ isCbyAdmin ? 'ملف التاجر — عرض رقابي' : 'تفاصيل التاجر — عرض فقط' }}
+          </DialogDescription>
         </DialogHeader>
-        <div class="grid gap-3 py-2 text-sm sm:grid-cols-2">
-          <div class="space-y-0.5">
-            <div class="text-xs text-muted-foreground">السجل التجاري</div>
-            <div class="font-medium">{{ viewing.commercial_register ?? '—' }}</div>
+
+        <!-- CBY Admin: rich regulatory profile -->
+        <template v-if="isCbyAdmin">
+          <div class="max-h-[55vh] space-y-4 overflow-y-auto pb-1">
+            <!-- Status + risk signals -->
+            <div class="flex flex-wrap gap-2">
+              <Badge :class="viewing.is_active ? 'border border-[var(--severity-green)]/30 bg-[var(--severity-green)]/10 text-[var(--severity-green)]' : 'border border-[var(--severity-red)]/30 bg-[var(--severity-red)]/10 text-[var(--severity-red)]'">
+                {{ viewing.is_active ? 'نشط' : 'غير نشط' }}
+              </Badge>
+              <Badge
+                v-if="crossBankNames.has(viewing.name.trim().toLowerCase())"
+                class="border border-[var(--severity-amber)]/30 bg-[var(--severity-amber)]/10 text-[var(--severity-amber)]"
+              >
+                <AlertTriangle class="me-1 h-3 w-3" />
+                ظهور في أكثر من بنك
+              </Badge>
+              <Badge
+                v-if="!viewing.commercial_register || !viewing.tax_number"
+                class="border border-[var(--severity-amber)]/30 bg-[var(--severity-amber)]/10 text-[var(--severity-amber)]"
+              >
+                <AlertTriangle class="me-1 h-3 w-3" />
+                بيانات ناقصة
+              </Badge>
+            </div>
+
+            <!-- Registration info -->
+            <Card class="border p-4">
+              <h3 class="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">معلومات التسجيل</h3>
+              <div class="grid grid-cols-2 gap-3 text-sm">
+                <div class="space-y-0.5">
+                  <div class="text-xs text-muted-foreground">السجل التجاري</div>
+                  <div class="font-medium">{{ viewing.commercial_register ?? '—' }}</div>
+                </div>
+                <div class="space-y-0.5">
+                  <div class="text-xs text-muted-foreground">الرقم الضريبي</div>
+                  <div class="font-medium">{{ viewing.tax_number ?? '—' }}</div>
+                </div>
+                <div class="space-y-0.5">
+                  <div class="text-xs text-muted-foreground">القطاع</div>
+                  <div class="font-medium">{{ viewing.business_type ?? '—' }}</div>
+                </div>
+                <div class="space-y-0.5">
+                  <div class="text-xs text-muted-foreground">عدد المعاملات</div>
+                  <div class="font-bold tabular-nums">{{ viewing.transaction_count ?? 0 }}</div>
+                </div>
+                <div class="col-span-2 space-y-0.5">
+                  <div class="text-xs text-muted-foreground">العنوان</div>
+                  <div class="font-medium">{{ viewing.address ?? '—' }}</div>
+                </div>
+                <div class="space-y-0.5">
+                  <div class="text-xs text-muted-foreground">هاتف</div>
+                  <div class="font-medium">{{ viewing.phone ?? '—' }}</div>
+                </div>
+                <div class="space-y-0.5">
+                  <div class="text-xs text-muted-foreground">البريد</div>
+                  <div class="font-medium">{{ viewing.email ?? '—' }}</div>
+                </div>
+              </div>
+            </Card>
+
+            <!-- Associated banks -->
+            <Card class="border p-4">
+              <h3 class="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                <Shield class="h-3.5 w-3.5" />
+                البنوك المرتبطة
+              </h3>
+              <div class="space-y-1.5 text-sm">
+                <div class="flex items-center justify-between">
+                  <span class="font-medium">{{ bankName(viewing.bank_id) }}</span>
+                  <Badge variant="secondary" class="text-xs">مسجّل</Badge>
+                </div>
+                <template v-if="crossBankNames.has(viewing.name.trim().toLowerCase())">
+                  <div
+                    v-for="other in merchants.filter(m => m.id !== viewing?.id && m.name.trim().toLowerCase() === viewing?.name.trim().toLowerCase())"
+                    :key="other.id"
+                    class="flex items-center justify-between text-[var(--severity-amber)]"
+                  >
+                    <span class="font-medium">{{ bankName(other.bank_id) }}</span>
+                    <Badge class="border border-[var(--severity-amber)]/30 bg-[var(--severity-amber)]/10 text-[var(--severity-amber)] text-xs">مكرر</Badge>
+                  </div>
+                </template>
+              </div>
+            </Card>
           </div>
-          <div class="space-y-0.5">
-            <div class="text-xs text-muted-foreground">الرقم الضريبي</div>
-            <div class="font-medium">{{ viewing.tax_number ?? '—' }}</div>
+
+          <!-- CBY Admin quick actions -->
+          <DialogFooter class="gap-2 border-t pt-4">
+            <Button
+              variant="outline"
+              size="sm"
+              :class="viewing.is_active
+                ? 'text-destructive border-destructive/30 hover:bg-destructive/5'
+                : 'text-[var(--severity-green)] border-[var(--severity-green)]/30 hover:bg-[var(--severity-green)]/5'"
+              @click="toggleFromView"
+            >
+              {{ viewing.is_active ? 'إيقاف النشاط' : 'تفعيل' }}
+            </Button>
+            <Button size="sm" @click="openEditFromView">
+              <Edit class="h-3.5 w-3.5 me-1.5" />
+              تعديل البيانات
+            </Button>
+          </DialogFooter>
+        </template>
+
+        <!-- Bank Admin: simple profile + quick actions -->
+        <template v-else>
+          <div class="grid gap-3 py-1 text-sm sm:grid-cols-2">
+            <div class="space-y-0.5">
+              <div class="text-xs text-muted-foreground">السجل التجاري</div>
+              <div class="font-medium">{{ viewing.commercial_register ?? '—' }}</div>
+            </div>
+            <div class="space-y-0.5">
+              <div class="text-xs text-muted-foreground">الرقم الضريبي</div>
+              <div class="font-medium">{{ viewing.tax_number ?? '—' }}</div>
+            </div>
+            <div class="space-y-0.5">
+              <div class="text-xs text-muted-foreground">القطاع</div>
+              <div class="font-medium">{{ viewing.business_type ?? '—' }}</div>
+            </div>
+            <div class="space-y-0.5">
+              <div class="text-xs text-muted-foreground">الحالة</div>
+              <Badge :class="viewing.is_active ? 'bg-[var(--severity-green)]/10 text-[var(--severity-green)] border-[var(--severity-green)]/30 border' : 'bg-[var(--severity-red)]/10 text-[var(--severity-red)] border-[var(--severity-red)]/30 border'">
+                {{ viewing.is_active ? 'نشط' : 'موقوف' }}
+              </Badge>
+            </div>
+            <div class="space-y-0.5">
+              <div class="text-xs text-muted-foreground">البنك التابع له</div>
+              <div class="font-medium">{{ bankName(viewing.bank_id) }}</div>
+            </div>
+            <div class="space-y-0.5">
+              <div class="text-xs text-muted-foreground">عدد المعاملات</div>
+              <div class="font-semibold tabular-nums">{{ viewing.transaction_count ?? 0 }}</div>
+            </div>
+            <div class="space-y-0.5 sm:col-span-2">
+              <div class="text-xs text-muted-foreground">العنوان</div>
+              <div class="font-medium">{{ viewing.address ?? '—' }}</div>
+            </div>
+            <div class="space-y-0.5 sm:col-span-2">
+              <div class="text-xs text-muted-foreground">هاتف التواصل</div>
+              <div class="font-medium">{{ viewing.phone ?? '—' }}</div>
+            </div>
           </div>
-          <div class="space-y-0.5">
-            <div class="text-xs text-muted-foreground">القطاع</div>
-            <div class="font-medium">{{ viewing.business_type ?? '—' }}</div>
-          </div>
-          <div class="space-y-0.5">
-            <div class="text-xs text-muted-foreground">الحالة</div>
-            <div class="font-medium">{{ viewing.is_active ? 'نشط' : 'موقوف' }}</div>
-          </div>
-          <div class="space-y-0.5">
-            <div class="text-xs text-muted-foreground">البنك التابع له</div>
-            <div class="font-medium">{{ bankName(viewing.bank_id) }}</div>
-          </div>
-          <div class="space-y-0.5">
-            <div class="text-xs text-muted-foreground">عدد المعاملات</div>
-            <div class="font-medium">{{ viewing.transaction_count ?? 0 }}</div>
-          </div>
-          <div class="space-y-0.5 sm:col-span-2">
-            <div class="text-xs text-muted-foreground">العنوان</div>
-            <div class="font-medium">{{ viewing.address ?? '—' }}</div>
-          </div>
-          <div class="space-y-0.5 sm:col-span-2">
-            <div class="text-xs text-muted-foreground">هاتف التواصل</div>
-            <div class="font-medium">{{ viewing.phone ?? '—' }}</div>
-          </div>
-        </div>
+
+          <!-- Bank Admin quick actions -->
+          <DialogFooter class="gap-2 border-t pt-4">
+            <Button variant="outline" size="sm" @click="openEditFromView">
+              <Edit class="h-3.5 w-3.5 me-1.5" />
+              تعديل
+            </Button>
+            <Button size="sm" @click="() => { router.push('/requests/new'); viewing = null }">
+              <Plus class="h-3.5 w-3.5 me-1.5" />
+              إنشاء طلب تمويل
+            </Button>
+          </DialogFooter>
+        </template>
       </DialogContent>
     </Dialog>
 

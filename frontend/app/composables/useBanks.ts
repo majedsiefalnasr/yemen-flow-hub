@@ -32,7 +32,7 @@ export function useBanks() {
       return payload
     }
 
-    return payload.data
+    return payload.data ?? []
   }
 
   async function createBank(payload: CreateBankPayload): Promise<Bank> {
