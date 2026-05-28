@@ -1,19 +1,25 @@
 <script setup lang="ts">
-import { CheckCircle2 } from 'lucide-vue-next'
+import { AlertCircle, CheckCircle2 } from 'lucide-vue-next'
+
+type StepStatus = 'future' | 'active' | 'completed' | 'error'
 
 const props = defineProps<{
   steps: string[]
   currentStep: number
-  stepStatuses: Array<'future' | 'active' | 'completed'>
+  stepStatuses: StepStatus[]
 }>()
 
 const emit = defineEmits<{
   'step-click': [step: number]
 }>()
 
+function isStepClickable(status: StepStatus | undefined): boolean {
+  return status === 'completed' || status === 'error'
+}
+
 function handleStepClick(index: number): void {
   const status = props.stepStatuses[index]
-  if (status === 'completed') {
+  if (isStepClickable(status)) {
     emit('step-click', index + 1)
   }
 }
@@ -27,11 +33,11 @@ function handleStepClick(index: number): void {
         <div
           class="flex flex-col items-center gap-2 flex-shrink-0 min-w-24 transition-all"
           :class="{
-            'cursor-pointer': stepStatuses[index] === 'completed',
+            'cursor-pointer': isStepClickable(stepStatuses[index]),
           }"
           :aria-current="stepStatuses[index] === 'active' ? 'step' : undefined"
-          :role="stepStatuses[index] === 'completed' ? 'button' : undefined"
-          :tabindex="stepStatuses[index] === 'completed' ? 0 : undefined"
+          :role="isStepClickable(stepStatuses[index]) ? 'button' : undefined"
+          :tabindex="isStepClickable(stepStatuses[index]) ? 0 : undefined"
           @click="handleStepClick(index)"
           @keydown.enter="handleStepClick(index)"
           @keydown.space.prevent="handleStepClick(index)"
@@ -43,16 +49,16 @@ function handleStepClick(index: number): void {
               'border-gray-200 bg-white': stepStatuses[index] === 'future',
               'border-primary bg-primary shadow-lg shadow-primary/20': stepStatuses[index] === 'active',
               'border-green-200 bg-green-50': stepStatuses[index] === 'completed',
+              'border-destructive bg-destructive/10': stepStatuses[index] === 'error',
             }"
           >
-            <!-- Completed: checkmark icon -->
             <CheckCircle2 v-if="stepStatuses[index] === 'completed'" class="h-5 w-5 text-white" aria-hidden="true" />
-            <!-- Active / Future: number -->
+            <AlertCircle v-else-if="stepStatuses[index] === 'error'" class="h-5 w-5 text-destructive" aria-hidden="true" />
             <span
               v-else
               class="text-sm font-medium leading-none"
               :class="{
-                'text-gray-600': stepStatuses[index] === 'future',
+                'text-muted-foreground': stepStatuses[index] === 'future',
                 'text-white': stepStatuses[index] === 'active',
               }"
             >
@@ -64,11 +70,12 @@ function handleStepClick(index: number): void {
           <span
             class="text-xs transition-colors"
             :class="{
-              'text-gray-600 font-normal': stepStatuses[index] === 'future',
+              'text-muted-foreground font-normal': stepStatuses[index] === 'future',
               'text-primary font-semibold': stepStatuses[index] === 'active',
               'text-green-700 font-normal': stepStatuses[index] === 'completed',
+              'text-destructive font-medium': stepStatuses[index] === 'error',
+              'hover:underline': isStepClickable(stepStatuses[index]),
             }"
-            :class="{ 'hover:underline': stepStatuses[index] === 'completed' }"
           >
             {{ label }}
           </span>

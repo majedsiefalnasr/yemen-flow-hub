@@ -165,6 +165,15 @@ describe('useRequestWizard — navigation', () => {
     expect(wizard.stepStatuses.value[0]).toBe('completed')
     expect(wizard.stepStatuses.value[1]).toBe('active')
   })
+
+  it('marks a previous step as error when validation issues remain', () => {
+    const wizard = makeWizard()
+    fillStep1(wizard)
+    wizard.nextStep()
+    wizard.step1Errors.value = { goods_type: 'مطلوب' }
+    expect(wizard.stepStatuses.value[0]).toBe('error')
+    expect(wizard.stepStatuses.value[1]).toBe('active')
+  })
 })
 
 describe('useRequestWizard — step1 validation', () => {

@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { toast } from 'vue-sonner'
+import { AlertTriangle, Save, ChevronLeft, ChevronRight, Loader2 } from 'lucide-vue-next'
 import WizardStepper from './WizardStepper.vue'
 import WizardStep1 from './WizardStep1.vue'
 import WizardStep2 from './WizardStep2.vue'
@@ -11,7 +13,7 @@ import { useMerchants } from '../../composables/useMerchants'
 import { useAuthStore } from '../../stores/auth.store'
 import type { DuplicateWarning } from '../../types/models'
 import { Alert, AlertDescription } from '../ui/alert'
-import { AlertTriangle } from 'lucide-vue-next'
+import { Button } from '../ui/button'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -24,16 +26,7 @@ const STEP_LABELS = [
   'المراجعة والإرسال',
 ]
 
-const toast = ref<{ message: string; type: 'success' | 'error' | 'info' } | null>(null)
-let toastTimer: ReturnType<typeof setTimeout> | null = null
-
 const duplicateWarnings = ref<DuplicateWarning[]>([])
-
-function showToast(message: string, type: 'success' | 'error' | 'info' = 'info'): void {
-  if (toastTimer) clearTimeout(toastTimer)
-  toast.value = { message, type }
-  toastTimer = setTimeout(() => { toast.value = null }, 3500)
-}
 
 const wizard = useRequestWizard()
 
@@ -103,22 +96,22 @@ async function handleSaveDraft(): Promise<void> {
   const result = await wizard.saveDraft()
   if (result) {
     duplicateWarnings.value = result.duplicate_warnings ?? []
-    showToast('تم الحفظ كمسودة ✓', 'success')
+    toast.success('تم الحفظ كمسودة ✓')
   }
   else if (wizard.saveError.value) {
-    showToast(wizard.saveError.value, 'error')
+    toast.error(wizard.saveError.value)
   }
 }
 
 async function handleSubmit(): Promise<void> {
   const result = await wizard.submitRequest()
   if (result) {
-    showToast('تم إرسال الطلب بنجاح!', 'success')
+    toast.success('تم إرسال الطلب بنجاح!')
     await new Promise(r => setTimeout(r, 800))
     await router.push(`/requests/${result.id}`)
   }
   else if (wizard.submitError.value) {
-    showToast(wizard.submitError.value, 'error')
+    toast.error(wizard.submitError.value)
   }
 }
 
@@ -142,21 +135,6 @@ const isSubmitDisabled = computed(() => !wizard.acknowledged.value || wizard.sub
     <div class="flex flex-col gap-1">
       <h1 class="text-2xl font-bold text-foreground font-cairo">تقديم طلب تمويل واردات جديد</h1>
       <p class="text-sm text-gray-600 font-family-arabic">املأ البيانات بدقة وأرفق المستندات المطلوبة</p>
-    </div>
-
-    <!-- Toast -->
-    <div
-      v-if="toast"
-      :class="{
-        'bg-green-50/10 text-green-700 border border-green-200': toast.type === 'success',
-        'bg-red-700/10 text-red-700 border border-destructive': toast.type === 'error',
-        'bg-primary/10 text-primary border border-gray-200': toast.type === 'info',
-      }"
-      class="px-4 py-3 rounded-md text-sm font-medium font-family-arabic"
-      role="status"
-      aria-live="polite"
-    >
-      {{ toast.message }}
     </div>
 
     <!-- Stepper -->
@@ -223,48 +201,48 @@ const isSubmitDisabled = computed(() => !wizard.acknowledged.value || wizard.sub
       <div class="h-px bg-border my-6" aria-hidden="true" />
       <div class="flex items-center gap-3" role="toolbar" aria-label="تنقل خطوات الطلب">
         <!-- Previous -->
-        <button
+        <Button
           v-if="!isFirstStep"
-          type="button"
-          class="h-10 px-5 border border-gray-200 rounded-2xl bg-transparent text-foreground hover:border-primary hover:text-primary disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium text-sm whitespace-nowrap"
+          variant="outline"
           :disabled="wizard.saving.value || wizard.submitting.value"
           @click="wizard.prevStep"
         >
-          → السابق
-        </button>
+          <ChevronLeft class="h-4 w-4" />
+          السابق
+        </Button>
         <span v-else class="flex-shrink-0 w-20" />
 
         <!-- Save draft -->
-        <button
-          type="button"
-          class="h-10 px-5 border border-gray-200 rounded-2xl bg-transparent text-foreground hover:border-primary hover:text-primary disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium text-sm whitespace-nowrap ml-auto"
+        <Button
+          variant="outline"
+          class="ms-auto"
           :disabled="wizard.saving.value || wizard.submitting.value"
           @click="handleSaveDraft"
         >
+          <Save class="h-4 w-4 me-1" />
           <span v-if="wizard.saving.value">جارٍ الحفظ...</span>
-          <span v-else>💾 حفظ كمسودة</span>
-        </button>
+          <span v-else>حفظ كمسودة</span>
+        </Button>
 
         <!-- Next / Submit -->
-        <button
+        <Button
           v-if="!isLastStep"
-          type="button"
-          class="h-10 px-6 bg-primary text-primary-foreground rounded-2xl border-none font-medium text-sm whitespace-nowrap hover:opacity-90 disabled:bg-gray-50 disabled:text-gray-600 disabled:cursor-not-allowed transition-all"
           :disabled="wizard.saving.value"
           @click="handleNext"
         >
-          التالي ←
-        </button>
-        <button
+          التالي
+          <ChevronRight class="h-4 w-4" />
+        </Button>
+        <Button
           v-else
-          type="button"
-          class="h-10 px-6 bg-primary text-primary-foreground rounded-2xl border-none font-medium text-sm whitespace-nowrap hover:opacity-90 disabled:bg-gray-50 disabled:text-gray-600 disabled:cursor-not-allowed transition-all"
           :disabled="isSubmitDisabled"
           @click="handleSubmit"
         >
+          <Loader2 v-if="wizard.submitting.value" class="h-4 w-4 me-1 animate-spin" />
           <span v-if="wizard.submitting.value">جارٍ الإرسال...</span>
-          <span v-else>إرسال للمراجعة ←</span>
-        </button>
+          <span v-else>إرسال للمراجعة</span>
+          <ChevronRight v-if="!wizard.submitting.value" class="h-4 w-4" />
+        </Button>
       </div>
     </div>
   </div>

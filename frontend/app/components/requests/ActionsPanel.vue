@@ -309,7 +309,7 @@ async function handleIssueCustomsDeclaration() {
   }
   catch (err: unknown) {
     const msg = err instanceof Error ? err.message : ''
-    actionError.value = msg || 'تعذّر إصدار البيان الجمركي.'
+    actionError.value = msg || 'تعذّر إصدار تأكيد المصارفة الخارجية.'
   }
 }
 
@@ -462,12 +462,12 @@ async function dispatchAction(action: string, reason?: string) {
           <DialogContent class="max-w-md">
             <DialogHeader>
               <DialogTitle class="text-destructive">رفض الطلب نهائياً</DialogTitle>
-              <DialogDescription class="text-destructive/80">
-                تحذير: هذا الإجراء لا يمكن التراجع عنه. بعد الرفض النهائي لن يتمكن أي طرف من استئناف الطلب أو إعادة تقديمه.
-              </DialogDescription>
             </DialogHeader>
-
+ 
             <div class="space-y-4">
+              <div class="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+                تحذير: هذا الإجراء لا يمكن التراجع عنه. بعد الرفض النهائي لن يتمكن أي طرف من استئناف الطلب أو إعادة تقديمه.
+              </div>
               <div>
                 <label for="bank-reject-terminal-comment" class="text-sm font-medium">
                   سبب الرفض النهائي <span class="text-destructive">*</span>
@@ -578,8 +578,11 @@ async function dispatchAction(action: string, reason?: string) {
             <DialogHeader>
               <DialogTitle>رفض الطلب</DialogTitle>
             </DialogHeader>
-
+ 
             <div class="space-y-4">
+              <div class="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+                تحذير: رفض لجنة المساندة يوقف مسار الطلب. سيحتاج المراجع البنكي للبت في المرحلة التالية.
+              </div>
               <div>
                 <label for="reject-reason-support" class="text-sm font-medium">
                   سبب الرفض <span class="text-red-700">*</span>
@@ -789,8 +792,8 @@ async function dispatchAction(action: string, reason?: string) {
         لا يمكن الإغلاق قبل اكتمال تصويت جميع الأعضاء النشطين.
       </p>
       <div class="flex gap-3 flex-row-reverse">
-        <Dialog v-model:open="showCloseConfirm">
-          <DialogTrigger as-child>
+        <AlertDialog v-model:open="showCloseConfirm">
+          <AlertDialogTrigger as-child>
             <Button
               variant="destructive"
               class="flex-1"
@@ -798,33 +801,27 @@ async function dispatchAction(action: string, reason?: string) {
             >
               إغلاق جلسة التصويت
             </Button>
-          </DialogTrigger>
-          <DialogContent class="max-w-md">
-            <DialogHeader>
-              <DialogTitle>تأكيد إغلاق جلسة التصويت</DialogTitle>
-              <DialogDescription>
-                هل أنت متأكد؟ لن يتمكن الأعضاء من التصويت بعد ذلك.
-              </DialogDescription>
-            </DialogHeader>
-
-            <div class="flex gap-2 justify-end">
-              <Button
-                variant="outline"
-                @click="showCloseConfirm = false"
-              >
-                إلغاء
-              </Button>
-              <Button
-                variant="destructive"
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>تأكيد إغلاق جلسة التصويت</AlertDialogTitle>
+              <AlertDialogDescription>
+                هل أنت متأكد؟ لن يتمكن الأعضاء من التصويت بعد إغلاق الجلسة. هذا الإجراء لا يمكن التراجع عنه.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>إلغاء</AlertDialogCancel>
+              <AlertDialogAction
+                class="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 :disabled="votingStore.performingDirectorAction"
                 @click="handleCloseSession"
               >
                 <Loader2 v-if="votingStore.performingDirectorAction" class="h-4 w-4 me-2 animate-spin" />
                 {{ votingStore.performingDirectorAction ? 'جارٍ التنفيذ…' : 'تأكيد الإغلاق' }}
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         <Dialog v-model:open="showOverrideModal">
           <DialogTrigger as-child>
@@ -940,25 +937,64 @@ async function dispatchAction(action: string, reason?: string) {
           <p class="text-lg font-bold text-muted-foreground">{{ votingStore.votingDetail.tally.abstain_count + votingStore.votingDetail.tally.auto_abstain_count }}</p>
         </div>
       </div>
-      <Button
-        :disabled="votingStore.performingDirectorAction"
-        @click="handleFinalizeDecision"
-      >
-        <Loader2 v-if="votingStore.performingDirectorAction" class="h-4 w-4 me-2 animate-spin" />
-        {{ votingStore.performingDirectorAction ? 'جارٍ التنفيذ…' : 'إصدار القرار النهائي' }}
-      </Button>
+      <AlertDialog>
+        <AlertDialogTrigger as-child>
+          <Button :disabled="votingStore.performingDirectorAction">
+            إصدار القرار النهائي
+          </Button>
+        </AlertDialogTrigger>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>تأكيد إصدار القرار النهائي</AlertDialogTitle>
+            <AlertDialogDescription>
+              سيتم إصدار القرار النهائي بناءً على نتيجة التصويت. هذا الإجراء لا يمكن التراجع عنه.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+            <AlertDialogAction
+              :disabled="votingStore.performingDirectorAction"
+              @click="handleFinalizeDecision"
+            >
+              <Loader2 v-if="votingStore.performingDirectorAction" class="h-4 w-4 me-2 animate-spin" />
+              {{ votingStore.performingDirectorAction ? 'جارٍ التنفيذ…' : 'إصدار القرار' }}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </template>
 
-    <!-- COMMITTEE_DIRECTOR: EXECUTIVE_APPROVED → issue customs declaration -->
+    <!-- COMMITTEE_DIRECTOR: EXECUTIVE_APPROVED → issue FX confirmation -->
     <template v-if="showDirectorCustomsActions">
-      <Button
-        class="bg-green-50 hover:bg-green-50"
-        :disabled="requestsStore.issuingCustoms"
-        @click="handleIssueCustomsDeclaration"
-      >
-        <Loader2 v-if="requestsStore.issuingCustoms" class="h-4 w-4 me-2 animate-spin" />
-        {{ requestsStore.issuingCustoms ? 'جارٍ الإصدار…' : 'إصدار البيان الجمركي' }}
-      </Button>
+      <AlertDialog>
+        <AlertDialogTrigger as-child>
+          <Button
+            class="bg-[var(--severity-green)] text-white hover:bg-[var(--severity-green)]/90"
+            :disabled="requestsStore.issuingCustoms"
+          >
+            إصدار تأكيد المصارفة الخارجية
+          </Button>
+        </AlertDialogTrigger>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>تأكيد إصدار المصارفة الخارجية</AlertDialogTitle>
+            <AlertDialogDescription>
+              سيتم إصدار تأكيد المصارفة الخارجية وإتمام معالجة الطلب. هذا الإجراء لا يمكن التراجع عنه.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+            <AlertDialogAction
+              class="bg-[var(--severity-green)] text-white hover:bg-[var(--severity-green)]/90"
+              :disabled="requestsStore.issuingCustoms"
+              @click="handleIssueCustomsDeclaration"
+            >
+              <Loader2 v-if="requestsStore.issuingCustoms" class="h-4 w-4 me-2 animate-spin" />
+              {{ requestsStore.issuingCustoms ? 'جارٍ الإصدار…' : 'تأكيد الإصدار' }}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </template>
 
   </div>

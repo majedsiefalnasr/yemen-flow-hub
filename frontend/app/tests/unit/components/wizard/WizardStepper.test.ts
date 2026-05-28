@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 
-type StepStatus = 'future' | 'active' | 'completed'
+type StepStatus = 'future' | 'active' | 'completed' | 'error'
 
 // ── Logic extracted from WizardStepper ────────────────────────────────────────
 
@@ -14,7 +14,7 @@ function computeStepStatuses(currentStep: number, total: number): StepStatus[] {
 }
 
 function canClickStep(status: StepStatus): boolean {
-  return status === 'completed'
+  return status === 'completed' || status === 'error'
 }
 
 describe('WizardStepper — step statuses', () => {
@@ -42,6 +42,10 @@ describe('WizardStepper — step statuses', () => {
 describe('WizardStepper — click behaviour', () => {
   it('completed step is clickable', () => {
     expect(canClickStep('completed')).toBe(true)
+  })
+
+  it('error step remains clickable for revision', () => {
+    expect(canClickStep('error')).toBe(true)
   })
 
   it('active step is not clickable', () => {

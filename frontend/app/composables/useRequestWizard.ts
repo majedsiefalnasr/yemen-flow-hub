@@ -113,10 +113,20 @@ export function useRequestWizard() {
 
   const isDataEntry = computed(() => authStore.user?.role === 'DATA_ENTRY')
 
-  const stepStatuses = computed<Array<'future' | 'active' | 'completed'>>(() =>
-    [1, 2, 3, 4].map((n) => {
-      if (n < currentStep.value) return 'completed'
+  const stepStatuses = computed<Array<'future' | 'active' | 'completed' | 'error'>>(() =>
+    Array.from({ length: totalSteps }, (_, i) => {
+      const n = i + 1
       if (n === currentStep.value) return 'active'
+      if (n < currentStep.value) {
+        const stepHasErrors = n === 1
+          ? Object.keys(step1Errors.value).length > 0
+          : n === 2
+            ? Object.keys(step2Errors.value).length > 0
+            : n === 3
+              ? Object.keys(step3Errors.value).length > 0
+              : false
+        return stepHasErrors ? 'error' : 'completed'
+      }
       return 'future'
     }),
   )
