@@ -162,7 +162,18 @@ function dashboardStats(role: VisualRole) {
 
 // ─── API mock ─────────────────────────────────────────────────────────────────
 
+/**
+ * Sets up route mocks and injects the localStorage auth hint so the Nuxt auth
+ * plugin (`01.auth.client.ts`) finds `yfh-authenticated = '1'` and calls
+ * `/api/auth/me` (which we also mock) — bypassing the real login flow.
+ *
+ * Must be called BEFORE `page.goto()`.
+ */
 export async function mockApi(page: Page, role: VisualRole) {
+  // Inject the auth hint before any page scripts run.
+  await page.addInitScript(() => {
+    localStorage.setItem('yfh-authenticated', '1')
+  })
   const user = makeUser(role)
   const corsHeaders = {
     'access-control-allow-origin': 'http://localhost:3000',

@@ -71,7 +71,7 @@ test.describe('shell structure', () => {
   test('full shell at 1440×1000', async ({ page }) => {
     await page.setViewportSize(VIEWPORTS.desktop1440)
     await page.goto('/dashboard')
-    await page.waitForSelector('[data-testid="sidebar"], nav[aria-label], aside', { timeout: 15_000 })
+    await page.waitForSelector('[data-sidebar="sidebar"]', { timeout: 15_000 })
     await page.waitForLoadState('networkidle')
     await expect(page).toHaveScreenshot('shell-1440.png')
   })
