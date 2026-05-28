@@ -1,5 +1,13 @@
 <script setup lang="ts">
+import { useForm } from 'vee-validate'
+import { toTypedSchema } from '@vee-validate/zod'
+import { z } from 'zod'
 import type { Bank } from '@/types/models'
+import { FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/components/ui/form'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import { DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 
 const CATEGORIES = ['مواد غذائية', 'أدوية ومستلزمات طبية', 'مشتقات نفطية', 'قطع غيار', 'مواد بناء', 'إلكترونيات']
 
@@ -26,25 +34,43 @@ const emit = defineEmits<{
   save: [data: MerchantFormData]
 }>()
 
-const form = reactive<MerchantFormData>({
-  name: props.initial?.name ?? '',
-  commercial_register: props.initial?.commercial_register ?? '',
-  tax_number: props.initial?.tax_number ?? '',
-  address: props.initial?.address ?? '',
-  phone: props.initial?.phone ?? '',
-  business_type: props.initial?.business_type ?? CATEGORIES[0] ?? '',
-  is_active: props.initial?.is_active ?? true,
-  bank_id: props.initial?.bank_id ?? props.defaultBankId ?? null,
+const formSchema = toTypedSchema(z.object({
+  name: z.string().trim().min(1, 'اسم التاجر مطلوب'),
+  commercial_register: z.string().trim().min(1, 'رقم السجل التجاري مطلوب'),
+  tax_number: z.string().trim().min(1, 'الرقم الضريبي مطلوب'),
+  address: z.string().optional().default(''),
+  phone: z.string().optional().default(''),
+  business_type: z.string().optional().default(''),
+  is_active: z.string().default('active'),
+  bank_id: z.string().optional().default(''),
+}))
+
+const { handleSubmit, meta } = useForm({
+  validationSchema: formSchema,
+  initialValues: {
+    name: props.initial?.name ?? '',
+    commercial_register: props.initial?.commercial_register ?? '',
+    tax_number: props.initial?.tax_number ?? '',
+    address: props.initial?.address ?? '',
+    phone: props.initial?.phone ?? '',
+    business_type: props.initial?.business_type ?? CATEGORIES[0] ?? '',
+    is_active: (props.initial?.is_active ?? true) ? 'active' : 'suspended',
+    bank_id: props.initial?.bank_id?.toString() ?? props.defaultBankId?.toString() ?? '',
+  },
 })
 
-const valid = computed(() =>
-  Boolean(form.name.trim() && form.commercial_register.trim() && form.tax_number.trim() && form.bank_id),
-)
-
-function submit() {
-  if (!valid.value) return
-  emit('save', { ...form, name: form.name.trim(), commercial_register: form.commercial_register.trim(), tax_number: form.tax_number.trim() })
-}
+const submit = handleSubmit((values) => {
+  emit('save', {
+    name: values.name.trim(),
+    commercial_register: values.commercial_register.trim(),
+    tax_number: values.tax_number.trim(),
+    address: values.address ?? '',
+    phone: values.phone ?? '',
+    business_type: values.business_type ?? '',
+    is_active: values.is_active !== 'suspended',
+    bank_id: values.bank_id ? Number(values.bank_id) : null,
+  })
+})
 </script>
 
 <template>
@@ -54,106 +80,124 @@ function submit() {
       <DialogDescription>الحقول المعلّمة إلزامية.</DialogDescription>
     </DialogHeader>
 
-    <div class="grid gap-3 py-2 sm:grid-cols-2">
-      <div class="space-y-1.5">
-        <Label class="text-xs text-gray-600">اسم التاجر / الشركة</Label>
-        <Input
-          v-model="form.name"
-          placeholder="مثال: شركة الكميم للأدوية"
-        />
-      </div>
+    <form class="grid gap-3 py-2 sm:grid-cols-2" @submit.prevent="submit">
+      <!-- Name -->
+      <FormField name="name" v-slot="{ componentField }">
+        <FormItem>
+          <FormLabel class="text-xs">اسم التاجر / الشركة <span class="text-destructive">*</span></FormLabel>
+          <FormControl>
+            <Input v-bind="componentField" placeholder="مثال: شركة الكميم للأدوية" />
+          </FormControl>
+          <FormMessage />
+        </FormItem>
+      </FormField>
 
-      <div class="space-y-1.5">
-        <Label class="text-xs text-gray-600">رقم السجل التجاري</Label>
-        <Input
-          v-model="form.commercial_register"
-          placeholder="CR-12345"
-        />
-      </div>
+      <!-- Commercial register -->
+      <FormField name="commercial_register" v-slot="{ componentField }">
+        <FormItem>
+          <FormLabel class="text-xs">رقم السجل التجاري <span class="text-destructive">*</span></FormLabel>
+          <FormControl>
+            <Input v-bind="componentField" placeholder="CR-12345" />
+          </FormControl>
+          <FormMessage />
+        </FormItem>
+      </FormField>
 
-      <div class="space-y-1.5">
-        <Label class="text-xs text-gray-600">الرقم الضريبي</Label>
-        <Input
-          v-model="form.tax_number"
-          placeholder="4123456"
-        />
-      </div>
+      <!-- Tax number -->
+      <FormField name="tax_number" v-slot="{ componentField }">
+        <FormItem>
+          <FormLabel class="text-xs">الرقم الضريبي <span class="text-destructive">*</span></FormLabel>
+          <FormControl>
+            <Input v-bind="componentField" placeholder="4123456" />
+          </FormControl>
+          <FormMessage />
+        </FormItem>
+      </FormField>
 
-      <div class="space-y-1.5">
-        <Label class="text-xs text-gray-600">هاتف التواصل</Label>
-        <Input
-          v-model="form.phone"
-          placeholder="+9677..."
-        />
-      </div>
+      <!-- Phone -->
+      <FormField name="phone" v-slot="{ componentField }">
+        <FormItem>
+          <FormLabel class="text-xs">هاتف التواصل</FormLabel>
+          <FormControl>
+            <Input v-bind="componentField" placeholder="+9677..." />
+          </FormControl>
+          <FormMessage />
+        </FormItem>
+      </FormField>
 
-      <div class="space-y-1.5">
-        <Label class="text-xs text-gray-600">القطاع / النشاط</Label>
-        <Select v-model="form.business_type">
-          <SelectTrigger><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem
-              v-for="category in CATEGORIES"
-              :key="category"
-              :value="category"
-            >
-              {{ category }}
-            </SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+      <!-- Business type -->
+      <FormField name="business_type" v-slot="{ componentField }">
+        <FormItem>
+          <FormLabel class="text-xs">القطاع / النشاط</FormLabel>
+          <Select v-bind="componentField">
+            <FormControl>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+            </FormControl>
+            <SelectContent>
+              <SelectItem v-for="category in CATEGORIES" :key="category" :value="category">
+                {{ category }}
+              </SelectItem>
+            </SelectContent>
+          </Select>
+          <FormMessage />
+        </FormItem>
+      </FormField>
 
-      <div class="space-y-1.5">
-        <Label class="text-xs text-gray-600">الحالة</Label>
-        <Select :model-value="form.is_active ? 'active' : 'suspended'" @update:model-value="v => form.is_active = v === 'active'">
-          <SelectTrigger><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="active">
-              نشط
-            </SelectItem>
-            <SelectItem value="suspended">
-              موقوف
-            </SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+      <!-- Status -->
+      <FormField name="is_active" v-slot="{ componentField }">
+        <FormItem>
+          <FormLabel class="text-xs">الحالة</FormLabel>
+          <Select v-bind="componentField">
+            <FormControl>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+            </FormControl>
+            <SelectContent>
+              <SelectItem value="active">نشط</SelectItem>
+              <SelectItem value="suspended">موقوف</SelectItem>
+            </SelectContent>
+          </Select>
+          <FormMessage />
+        </FormItem>
+      </FormField>
 
-      <div class="space-y-1.5 sm:col-span-2">
-        <Label class="text-xs text-gray-600">البنك التابع له</Label>
-        <Select
-          :model-value="form.bank_id?.toString() ?? ''"
-          :disabled="lockBank"
-          @update:model-value="v => form.bank_id = v ? Number(v) : null"
-        >
-          <SelectTrigger><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem
-              v-for="bank in banks"
-              :key="bank.id"
-              :value="bank.id.toString()"
-            >
-              {{ bank.name_ar }}
-            </SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+      <!-- Bank -->
+      <FormField name="bank_id" v-slot="{ componentField }">
+        <FormItem class="sm:col-span-2">
+          <FormLabel class="text-xs">البنك التابع له</FormLabel>
+          <Select
+            :model-value="componentField.modelValue"
+            :disabled="lockBank"
+            @update:model-value="componentField['onUpdate:modelValue']"
+          >
+            <FormControl>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+            </FormControl>
+            <SelectContent>
+              <SelectItem v-for="bank in banks" :key="bank.id" :value="bank.id.toString()">
+                {{ bank.name_ar }}
+              </SelectItem>
+            </SelectContent>
+          </Select>
+          <FormMessage />
+        </FormItem>
+      </FormField>
 
-      <div class="space-y-1.5 sm:col-span-2">
-        <Label class="text-xs text-gray-600">العنوان</Label>
-        <Input
-          v-model="form.address"
-          placeholder="المدينة – الشارع"
-        />
-      </div>
-    </div>
+      <!-- Address -->
+      <FormField name="address" v-slot="{ componentField }">
+        <FormItem class="sm:col-span-2">
+          <FormLabel class="text-xs">العنوان</FormLabel>
+          <FormControl>
+            <Input v-bind="componentField" placeholder="المدينة – الشارع" />
+          </FormControl>
+          <FormMessage />
+        </FormItem>
+      </FormField>
 
-    <DialogFooter>
-      <Button
-        :disabled="!valid"
-        @click="submit"
-      >
-        {{ initial ? 'حفظ التعديلات' : 'حفظ التاجر' }}
-      </Button>
-    </DialogFooter>
+      <DialogFooter class="sm:col-span-2">
+        <Button type="submit" :disabled="!meta.valid">
+          {{ initial ? 'حفظ التعديلات' : 'حفظ التاجر' }}
+        </Button>
+      </DialogFooter>
+    </form>
   </DialogContent>
 </template>

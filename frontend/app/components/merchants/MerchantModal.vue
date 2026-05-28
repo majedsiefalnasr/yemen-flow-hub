@@ -13,8 +13,9 @@ import DialogOverlay from '@/components/ui/dialog/DialogOverlay.vue'
 import DialogTitle from '@/components/ui/dialog/DialogTitle.vue'
 import Button from '@/components/ui/button/Button.vue'
 import Input from '@/components/ui/input/Input.vue'
-import Label from '@/components/ui/label/Label.vue'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/components/ui/form'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 const BUSINESS_TYPE_OPTIONS = [
   { value: 'import', label: 'استيراد' },
@@ -67,24 +68,14 @@ const emit = defineEmits<{
 
 const {
   handleSubmit,
-  errors,
-  defineField,
   resetForm,
   meta,
   setFieldError,
+  values,
 } = useForm({
   validationSchema: schema,
   validateOnMount: true,
 })
-
-const [name, nameAttrs] = defineField('name')
-const [commercial_register, commercialRegisterAttrs] = defineField('commercial_register')
-const [tax_number, taxNumberAttrs] = defineField('tax_number')
-const [phone, phoneAttrs] = defineField('phone')
-const [address, addressAttrs] = defineField('address')
-const [business_type, businessTypeAttrs] = defineField('business_type')
-const [is_active, isActiveAttrs] = defineField('is_active')
-const [bank_id, bankIdAttrs] = defineField('bank_id')
 
 const isEditMode = computed(() => !!props.merchant)
 const isBankRequiredForCreate = computed(() => props.requiresBankSelection && !props.merchant)
@@ -92,7 +83,7 @@ const showLockedBankField = computed(() => !props.requiresBankSelection && !!pro
 const isSaveDisabled = computed(() => (
   props.saving
   || !meta.value.valid
-  || (isBankRequiredForCreate.value && !bank_id.value)
+  || (isBankRequiredForCreate.value && !values.bank_id)
 ))
 
 watch(() => props.merchant, (merchant) => {
@@ -130,13 +121,13 @@ watch(() => props.defaultBankId, (newValue) => {
   if (!props.merchant) {
     resetForm({
       values: {
-        name: name.value ?? '',
-        commercial_register: commercial_register.value ?? '',
-        tax_number: tax_number.value ?? '',
-        phone: phone.value ?? '',
-        address: address.value ?? '',
-        business_type: business_type.value ?? '',
-        is_active: is_active.value ?? 'true',
+        name: values.name ?? '',
+        commercial_register: values.commercial_register ?? '',
+        tax_number: values.tax_number ?? '',
+        phone: values.phone ?? '',
+        address: values.address ?? '',
+        business_type: values.business_type ?? '',
+        is_active: values.is_active ?? 'true',
         bank_id: newValue ? String(newValue) : '',
       },
     })
@@ -209,155 +200,129 @@ const onSubmit = handleSubmit((values) => {
           <div class="grid grid-cols-2 gap-4">
             <!-- Bank selector for CBY Admin creating a new merchant -->
             <template v-if="isBankRequiredForCreate">
-              <div class="col-span-2 flex flex-col gap-2">
-                <Label for="bank-id" class="text-xs text-gray-600 font-medium">
-                  البنك التابع له <span class="text-red-700">*</span>
-                </Label>
-                <select
-                  id="bank-id"
-                  v-model="bank_id"
-                  v-bind="bankIdAttrs"
-                  class="h-9 px-3 border border-gray-200 rounded-md bg-white text-sm text-gray-900 outline-none focus-visible:ring-1 focus-visible:ring-primary"
-                  :class="{ 'border-destructive': errors.bank_id }"
-                >
-                  <option value="">اختر البنك</option>
-                  <option v-for="bank in props.bankOptions" :key="bank.id" :value="String(bank.id)">
-                    {{ bank.name }}
-                  </option>
-                </select>
-                <span v-if="errors.bank_id" class="text-xs text-red-700" role="alert">{{ errors.bank_id }}</span>
-              </div>
+              <FormField name="bank_id" v-slot="{ componentField }">
+                <FormItem class="col-span-2">
+                  <FormLabel class="text-xs">البنك التابع له <span class="text-destructive">*</span></FormLabel>
+                  <Select v-bind="componentField">
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="اختر البنك" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem v-for="bank in props.bankOptions" :key="bank.id" :value="String(bank.id)">
+                        {{ bank.name }}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              </FormField>
             </template>
 
             <template v-else-if="showLockedBankField">
-              <div class="col-span-2 flex flex-col gap-2">
-                <Label for="locked-bank-name" class="text-xs text-gray-600 font-medium">
-                  البنك التابع له <span class="text-red-700">*</span>
-                </Label>
-                <Input
-                  id="locked-bank-name"
-                  :value="props.lockedBankName ?? ''"
-                  type="text"
-                  readonly
-                  disabled
-                  class="bg-gray-50 text-gray-600 cursor-not-allowed"
-                />
-                <span class="text-xs text-gray-600">مرتبط بالبنك المسجل على حسابك.</span>
-              </div>
+              <FormItem class="col-span-2">
+                <FormLabel class="text-xs">البنك التابع له <span class="text-destructive">*</span></FormLabel>
+                <FormControl>
+                  <Input :value="props.lockedBankName ?? ''" type="text" readonly disabled class="bg-gray-50 text-gray-600 cursor-not-allowed" />
+                </FormControl>
+                <p class="text-xs text-muted-foreground">مرتبط بالبنك المسجل على حسابك.</p>
+              </FormItem>
             </template>
 
             <!-- Name -->
-            <div class="col-span-2 flex flex-col gap-2">
-              <Label for="merchant-name" class="text-xs text-gray-600 font-medium">
-                اسم التاجر / الشركة <span class="text-red-700">*</span>
-              </Label>
-              <Input
-                id="merchant-name"
-                v-model="name"
-                v-bind="nameAttrs"
-                type="text"
-                placeholder="مثال: شركة الكميم للأدوية"
-                :class="{ 'border-destructive': errors.name }"
-              />
-              <span v-if="errors.name" class="text-xs text-red-700" role="alert">{{ errors.name }}</span>
-            </div>
+            <FormField name="name" v-slot="{ componentField }">
+              <FormItem class="col-span-2">
+                <FormLabel class="text-xs">اسم التاجر / الشركة <span class="text-destructive">*</span></FormLabel>
+                <FormControl>
+                  <Input v-bind="componentField" type="text" placeholder="مثال: شركة الكميم للأدوية" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            </FormField>
 
             <!-- Commercial register -->
-            <div class="flex flex-col gap-2">
-              <Label for="commercial-register" class="text-xs text-gray-600 font-medium">
-                رقم السجل التجاري <span class="text-red-700">*</span>
-              </Label>
-              <Input
-                id="commercial-register"
-                v-model="commercial_register"
-                v-bind="commercialRegisterAttrs"
-                type="text"
-                placeholder="CR-12345"
-                dir="ltr"
-                :class="{ 'border-destructive': errors.commercial_register }"
-              />
-              <span v-if="errors.commercial_register" class="text-xs text-red-700" role="alert">{{ errors.commercial_register }}</span>
-            </div>
+            <FormField name="commercial_register" v-slot="{ componentField }">
+              <FormItem>
+                <FormLabel class="text-xs">رقم السجل التجاري <span class="text-destructive">*</span></FormLabel>
+                <FormControl>
+                  <Input v-bind="componentField" type="text" placeholder="CR-12345" dir="ltr" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            </FormField>
 
             <!-- Tax number -->
-            <div class="flex flex-col gap-2">
-              <Label for="tax-number" class="text-xs text-gray-600 font-medium">
-                الرقم الضريبي <span class="text-red-700">*</span>
-              </Label>
-              <Input
-                id="tax-number"
-                v-model="tax_number"
-                v-bind="taxNumberAttrs"
-                type="text"
-                placeholder="4123456"
-                dir="ltr"
-                :class="{ 'border-destructive': errors.tax_number }"
-              />
-              <span v-if="errors.tax_number" class="text-xs text-red-700" role="alert">{{ errors.tax_number }}</span>
-            </div>
+            <FormField name="tax_number" v-slot="{ componentField }">
+              <FormItem>
+                <FormLabel class="text-xs">الرقم الضريبي <span class="text-destructive">*</span></FormLabel>
+                <FormControl>
+                  <Input v-bind="componentField" type="text" placeholder="4123456" dir="ltr" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            </FormField>
 
             <!-- Phone -->
-            <div class="flex flex-col gap-2">
-              <Label for="merchant-phone" class="text-xs text-gray-600 font-medium">
-                هاتف التواصل
-              </Label>
-              <Input
-                id="merchant-phone"
-                v-model="phone"
-                v-bind="phoneAttrs"
-                type="text"
-                placeholder="+9677…"
-                dir="ltr"
-              />
-            </div>
+            <FormField name="phone" v-slot="{ componentField }">
+              <FormItem>
+                <FormLabel class="text-xs">هاتف التواصل</FormLabel>
+                <FormControl>
+                  <Input v-bind="componentField" type="text" placeholder="+9677…" dir="ltr" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            </FormField>
 
             <!-- Business type -->
-            <div class="flex flex-col gap-2">
-              <Label for="business-type" class="text-xs text-gray-600 font-medium">
-                القطاع / النشاط
-              </Label>
-              <select
-                id="business-type"
-                v-model="business_type"
-                v-bind="businessTypeAttrs"
-                class="h-9 px-3 border border-gray-200 rounded-md bg-white text-sm text-gray-900 outline-none focus-visible:ring-1 focus-visible:ring-primary"
-              >
-                <option value="">اختر القطاع</option>
-                <option v-for="opt in BUSINESS_TYPE_OPTIONS" :key="opt.value" :value="opt.value">
-                  {{ opt.label }}
-                </option>
-              </select>
-            </div>
+            <FormField name="business_type" v-slot="{ componentField }">
+              <FormItem>
+                <FormLabel class="text-xs">القطاع / النشاط</FormLabel>
+                <Select v-bind="componentField">
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="اختر القطاع" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem v-for="opt in BUSINESS_TYPE_OPTIONS" :key="opt.value" :value="opt.value">
+                      {{ opt.label }}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            </FormField>
 
             <!-- Status — edit mode only -->
-            <div v-if="isEditMode" class="flex flex-col gap-2">
-              <Label for="merchant-status" class="text-xs text-gray-600 font-medium">
-                الحالة
-              </Label>
-              <select
-                id="merchant-status"
-                v-model="is_active"
-                v-bind="isActiveAttrs"
-                class="h-9 px-3 border border-gray-200 rounded-md bg-white text-sm text-gray-900 outline-none focus-visible:ring-1 focus-visible:ring-primary"
-              >
-                <option value="true">نشط</option>
-                <option value="false">موقوف</option>
-              </select>
-            </div>
+            <FormField v-if="isEditMode" name="is_active" v-slot="{ componentField }">
+              <FormItem>
+                <FormLabel class="text-xs">الحالة</FormLabel>
+                <Select v-bind="componentField">
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="true">نشط</SelectItem>
+                    <SelectItem value="false">موقوف</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            </FormField>
 
             <!-- Address -->
-            <div class="col-span-2 flex flex-col gap-2">
-              <Label for="address" class="text-xs text-gray-600 font-medium">
-                العنوان
-              </Label>
-              <Input
-                id="address"
-                v-model="address"
-                v-bind="addressAttrs"
-                type="text"
-                placeholder="المدينة – الشارع"
-              />
-            </div>
+            <FormField name="address" v-slot="{ componentField }">
+              <FormItem class="col-span-2">
+                <FormLabel class="text-xs">العنوان</FormLabel>
+                <FormControl>
+                  <Input v-bind="componentField" type="text" placeholder="المدينة – الشارع" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            </FormField>
           </div>
 
           <DialogFooter class="flex justify-end gap-3 pt-2">

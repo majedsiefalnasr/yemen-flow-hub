@@ -15,8 +15,9 @@ import DialogOverlay from '@/components/ui/dialog/DialogOverlay.vue'
 import DialogTitle from '@/components/ui/dialog/DialogTitle.vue'
 import Button from '@/components/ui/button/Button.vue'
 import Input from '@/components/ui/input/Input.vue'
-import Label from '@/components/ui/label/Label.vue'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/components/ui/form'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 const props = defineProps<{
   staff: User | null
@@ -65,20 +66,12 @@ const extendedSchema = computed(() => {
 
 const {
   handleSubmit,
-  errors,
-  defineField,
   resetForm,
   meta,
 } = useForm({
   validationSchema: extendedSchema,
   validateOnMount: true,
 })
-
-const [name, nameAttrs] = defineField('name')
-const [email, emailAttrs] = defineField('email')
-const [role, roleAttrs] = defineField('role')
-const [department, departmentAttrs] = defineField('department')
-const [password, passwordAttrs] = defineField('password')
 
 const isSaveDisabled = computed(() => props.saving || !meta.value.valid)
 
@@ -165,87 +158,70 @@ const onSubmit = handleSubmit((values) => {
         <form class="flex flex-col gap-5" @submit.prevent="onSubmit">
           <div class="grid grid-cols-2 gap-4">
             <!-- Name -->
-            <div class="col-span-2 flex flex-col gap-2">
-              <Label for="staff-name" class="text-xs text-muted-foreground font-medium">
-                الاسم الكامل <span class="text-destructive">*</span>
-              </Label>
-              <Input
-                id="staff-name"
-                v-model="name"
-                v-bind="nameAttrs"
-                type="text"
-                placeholder="الاسم الكامل للموظف"
-                :class="{ 'border-destructive': errors.name }"
-              />
-              <span v-if="errors.name" class="text-xs text-destructive" role="alert">{{ errors.name }}</span>
-            </div>
+            <FormField name="name" v-slot="{ componentField }">
+              <FormItem class="col-span-2">
+                <FormLabel class="text-xs">الاسم الكامل <span class="text-destructive">*</span></FormLabel>
+                <FormControl>
+                  <Input v-bind="componentField" type="text" placeholder="الاسم الكامل للموظف" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            </FormField>
 
             <!-- Email -->
-            <div class="col-span-2 flex flex-col gap-2">
-              <Label for="staff-email" class="text-xs text-muted-foreground font-medium">
-                البريد الإلكتروني <span class="text-destructive">*</span>
-              </Label>
-              <Input
-                id="staff-email"
-                v-model="email"
-                v-bind="emailAttrs"
-                type="email"
-                placeholder="email@bank.ye"
-                dir="ltr"
-                :class="{ 'border-destructive': errors.email }"
-              />
-              <span v-if="errors.email" class="text-xs text-destructive" role="alert">{{ errors.email }}</span>
-            </div>
+            <FormField name="email" v-slot="{ componentField }">
+              <FormItem class="col-span-2">
+                <FormLabel class="text-xs">البريد الإلكتروني <span class="text-destructive">*</span></FormLabel>
+                <FormControl>
+                  <Input v-bind="componentField" type="email" dir="ltr" placeholder="email@bank.ye" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            </FormField>
 
             <!-- Role -->
-            <div class="flex flex-col gap-2">
-              <Label for="staff-role" class="text-xs text-muted-foreground font-medium">
-                الدور الوظيفي <span class="text-destructive">*</span>
-              </Label>
-              <select
-                id="staff-role"
-                v-model="role"
-                v-bind="roleAttrs"
-                class="h-9 px-3 border border-border rounded-md bg-background text-sm text-foreground outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                :class="{ 'border-destructive': errors.role }"
-              >
-                <option :value="undefined" disabled>اختر الدور</option>
-                <option v-for="r in BANK_ADMIN_MANAGED_ROLES" :key="r" :value="r">
-                  {{ ROLE_LABELS[r] }}
-                </option>
-              </select>
-              <span v-if="errors.role" class="text-xs text-destructive" role="alert">{{ errors.role }}</span>
-            </div>
+            <FormField name="role" v-slot="{ componentField }">
+              <FormItem>
+                <FormLabel class="text-xs">الدور الوظيفي <span class="text-destructive">*</span></FormLabel>
+                <Select v-bind="componentField">
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="اختر الدور" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem v-for="r in BANK_ADMIN_MANAGED_ROLES" :key="r" :value="r">
+                      {{ ROLE_LABELS[r] }}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            </FormField>
 
             <!-- Department -->
-            <div class="flex flex-col gap-2">
-              <Label for="staff-department" class="text-xs text-muted-foreground font-medium">
-                القسم
-              </Label>
-              <Input
-                id="staff-department"
-                v-model="department"
-                v-bind="departmentAttrs"
-                type="text"
-                placeholder="القسم أو الإدارة (اختياري)"
-              />
-            </div>
+            <FormField name="department" v-slot="{ componentField }">
+              <FormItem>
+                <FormLabel class="text-xs">القسم</FormLabel>
+                <FormControl>
+                  <Input v-bind="componentField" type="text" placeholder="القسم أو الإدارة (اختياري)" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            </FormField>
 
             <!-- Password -->
-            <div class="col-span-2 flex flex-col gap-2">
-              <Label for="staff-password" class="text-xs text-muted-foreground font-medium">
-                {{ isEdit ? 'كلمة المرور (اتركها فارغة للإبقاء على الحالية)' : 'كلمة المرور الأولية *' }}
-              </Label>
-              <Input
-                id="staff-password"
-                v-model="password"
-                v-bind="passwordAttrs"
-                type="password"
-                placeholder="8 أحرف على الأقل"
-                :class="{ 'border-destructive': errors.password }"
-              />
-              <span v-if="errors.password" class="text-xs text-destructive" role="alert">{{ errors.password }}</span>
-            </div>
+            <FormField name="password" v-slot="{ componentField }">
+              <FormItem class="col-span-2">
+                <FormLabel class="text-xs">
+                  {{ isEdit ? 'كلمة المرور (اتركها فارغة للإبقاء على الحالية)' : 'كلمة المرور الأولية *' }}
+                </FormLabel>
+                <FormControl>
+                  <Input v-bind="componentField" type="password" placeholder="8 أحرف على الأقل" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            </FormField>
           </div>
 
           <DialogFooter class="flex justify-end gap-3 pt-2">
