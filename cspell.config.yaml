@@ -1,0 +1,25 @@
+version: "0.2"
+ignorePaths: []
+dictionaryDefinitions: []
+dictionaries: []
+words:
+  - decisioning
+  - gpgsign
+  - Laravel
+  - majedsiefalnasr
+  - rollups
+  - Tajawal
+  - Tasklist
+  - tasklists
+  - Touchpoints
+  - Unovis
+  - الإرياني
+  - الذبحاني
+  - الذيباني
+  - السويفت
+  - السياني
+  - الشرعبي
+  - الشميري
+  - عبدالملك
+ignoreWords: []
+import: []
