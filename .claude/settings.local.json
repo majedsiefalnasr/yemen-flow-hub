@@ -70,7 +70,9 @@
       "Bash(tee /tmp/inactivity.txt)",
       "Bash(tee /tmp/vitest-out2.txt)",
       "Bash(tee /tmp/vitest-out3.txt)",
-      "Bash(tee /tmp/vitest_out.txt)"
+      "Bash(tee /tmp/vitest_out.txt)",
+      "Bash(xargs cat)",
+      "Bash(pnpm exec *)"
     ]
   }
 }

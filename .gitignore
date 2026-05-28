@@ -23,3 +23,6 @@ Thumbs.db
 
 # Generated knowledge graph files
 graphify-out/
+
+# Shadcn Admin example project
+shadcn-admin/

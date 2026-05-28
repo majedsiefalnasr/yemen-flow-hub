@@ -3,23 +3,32 @@ ignorePaths: []
 dictionaryDefinitions: []
 dictionaries: []
 words:
+  - bmad
   - decisioning
   - gpgsign
+  - graphify
   - Laravel
+  - lucide
   - majedsiefalnasr
+  - reqs
   - rollups
+  - shadcn
   - Tajawal
+  - tanstack
   - Tasklist
   - tasklists
   - Touchpoints
   - Unovis
+  - worktrees
   - الإرياني
+  - الحوكمة
   - الذبحاني
   - الذيباني
   - السويفت
   - السياني
   - الشرعبي
   - الشميري
+  - الفلاتر
   - عبدالملك
 ignoreWords: []
 import: []
