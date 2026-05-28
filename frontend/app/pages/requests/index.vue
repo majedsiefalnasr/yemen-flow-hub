@@ -1,8 +1,7 @@
 <script setup lang="ts">
-import type { VisibilityState } from '@tanstack/vue-table'
 import { computed, onMounted, ref, watch } from 'vue'
 import {
-  AlertCircle, CheckCircle2, ChevronDown, ClipboardList, Columns3,
+  AlertCircle, CheckCircle2, ClipboardList,
   Download, Edit, Eye, FilePlus2, Filter, Lock, Printer,
   Search, SlidersHorizontal, Upload, User, Vote, X,
 } from 'lucide-vue-next'
@@ -40,12 +39,6 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import {
   Select,
   SelectContent,
   SelectItem,
@@ -78,39 +71,9 @@ const router = useRouter()
 
 const user = computed(() => authStore.user)
 const filter = ref('all')
-const query = ref('')
+const { queryState, setQuery } = useTableQueryState({ search: '', tab: '', my: '', hide_others: '' })
 const bankFilter = ref('all')
 const banks = ref<Bank[]>([])
-
-// Column visibility — owned here so the dropdown can live alongside the search bar
-const columnVisibility = ref<VisibilityState>({})
-const hidableColumns = computed(() => {
-  const base = [
-    { id: 'merchant', label: 'التاجر / البنك' },
-    { id: 'goods_description', label: 'نوع البضاعة' },
-    { id: 'amount', label: 'المبلغ' },
-    { id: 'status', label: 'الحالة' },
-    { id: 'last_activity', label: 'النشاط الأخير' },
-  ]
-  if (isCbyAdmin.value) {
-    return [
-      ...base,
-      { id: 'cby_age', label: 'العمر' },
-      { id: 'cby_sla', label: 'SLA' },
-      { id: 'cby_voting', label: 'التصويت' },
-      { id: 'cby_fx', label: 'المصارفة' },
-      { id: 'cby_risk', label: 'المخاطر' },
-    ]
-  }
-  if (isDirector.value) {
-    return [
-      ...base,
-      { id: 'director_ready_to_close', label: 'جاهز للإغلاق' },
-      { id: 'director_fx_state', label: 'حالة المصارفة' },
-    ]
-  }
-  return base
-})
 
 // Created-by-me toggle — BANK_REVIEWER only
 const createdByMeOnly = ref(false)
@@ -190,6 +153,11 @@ const tabOptions = computed(() => [
 ])
 
 const tabKeys = computed(() => new Set(tabOptions.value.map(tab => tab.key)))
+const searchQuery = computed(() => typeof queryState.value.search === 'string' ? queryState.value.search : '')
+
+function handleSearchUpdate(value: string | number) {
+  void setQuery({ search: String(value ?? '') })
+}
 
 function bucketMatchesRequest(bucket: StageBucket | undefined, req: typeof store.requests[number]): boolean {
   if (!bucket) return false
@@ -206,7 +174,7 @@ const filteredRequests = computed(() => {
       || bankFilter.value === 'all'
       || String(req.bank_id) === bankFilter.value
 
-    const q = query.value.trim().toLowerCase()
+    const q = searchQuery.value.toLowerCase()
     const queryMatches = !q
       || req.reference_number.toLowerCase().includes(q)
       || (req.merchant?.name ?? '').toLowerCase().includes(q)
@@ -262,14 +230,6 @@ function countForBucket(key: string) {
   if (key === 'all') return store.requests.length
   const bucket = roleBuckets.value.find(b => b.key === key)
   return store.requests.filter(r => bucketMatchesRequest(bucket, r)).length
-}
-
-function isColumnVisible(id: string) {
-  return columnVisibility.value[id] !== false
-}
-
-function toggleColumn(id: string, value: boolean) {
-  columnVisibility.value = { ...columnVisibility.value, [id]: value }
 }
 
 const canCreateRequest = computed(() => user.value?.role === UserRole.DATA_ENTRY)
@@ -557,9 +517,10 @@ watch(hideOthers, (val) => {
         <div class="relative min-w-[220px] flex-1">
           <Search class="absolute inset-e-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            v-model="query"
+            :model-value="searchQuery"
             placeholder="بحث برقم الطلب، التاجر، أو رقم الفاتورة..."
             class="h-8 rounded-md pe-9 text-sm"
+            @update:model-value="handleSearchUpdate"
           />
         </div>
 
@@ -617,26 +578,6 @@ watch(hideOthers, (val) => {
           </Badge>
         </Button>
 
-        <!-- Customize columns -->
-        <DropdownMenu>
-          <DropdownMenuTrigger as-child>
-            <Button variant="outline" size="sm" class="ms-auto h-8">
-              <Columns3 class="h-4 w-4" />
-              <span class="hidden lg:inline">تخصيص الأعمدة</span>
-              <ChevronDown class="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" class="w-52">
-            <DropdownMenuCheckboxItem
-              v-for="col in hidableColumns"
-              :key="col.id"
-              :model-value="isColumnVisible(col.id)"
-              @update:model-value="(v) => toggleColumn(col.id, !!v)"
-            >
-              {{ col.label }}
-            </DropdownMenuCheckboxItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
       </div>
 
       <!-- Table -->
@@ -647,10 +588,8 @@ watch(hideOthers, (val) => {
         :loading="store.loadingList"
         :no-data="!store.loadingList && store.requests.length === 0"
         :role="user.role"
-        :column-visibility="columnVisibility"
         @row-click="openRequest"
         @preview-click="openPreview"
-        @update:column-visibility="v => columnVisibility = v"
         @update:selected-count="count => selectedCount = count"
       />
     </Tabs>
@@ -744,7 +683,7 @@ watch(hideOthers, (val) => {
             <Checkbox
               id="high-value-toggle"
               :checked="advFilters.high_value"
-              @update:checked="(checked) => advFilters.high_value = checked === true"
+              @update:checked="(checked: boolean | 'indeterminate') => advFilters.high_value = checked === true"
             />
             <Label for="high-value-toggle" class="cursor-pointer text-sm">قيمة عالية فقط (≥ 1,000,000)</Label>
           </div>
