@@ -9,19 +9,51 @@ const props = defineProps<{
   }
 }>()
 
-const code = computed(() => props.error.statusCode ?? 500)
+const router = useRouter()
+
+function reload() {
+  if (import.meta.client) {
+    window.location.reload()
+  }
+}
+
+function goHome() {
+  clearError({ redirect: '/dashboard' })
+}
+
+function goBack() {
+  router.back()
+}
+
+const actions = computed(() => {
+  const code = props.error.statusCode ?? 500
+  const items: Array<{
+    label: string
+    variant: 'default' | 'outline' | 'ghost' | 'destructive'
+    onClick: () => void
+  }> = []
+
+  if (code !== 401) {
+    items.push({ label: 'العودة إلى لوحة التحكم', variant: 'default', onClick: goHome })
+  }
+  if (code === 500 || code === 503) {
+    items.push({ label: 'إعادة المحاولة', variant: 'outline', onClick: reload })
+  }
+  if (code !== 401) {
+    items.push({ label: 'العودة للخلف', variant: 'ghost', onClick: goBack })
+  }
+  if (code === 401) {
+    items.push({ label: 'تسجيل الدخول', variant: 'default', onClick: () => clearError({ redirect: '/login' }) })
+  }
+  return items
+})
 </script>
 
 <template>
-  <main
-    dir="rtl"
-    class="min-h-screen bg-background text-foreground"
-  >
+  <main class="min-h-screen bg-background" dir="rtl">
     <ErrorState
-      :code="code"
-      :show-retry="code >= 500"
-      back-to="/"
-      back-label="العودة للرئيسية"
+      :code="error.statusCode"
+      :actions="actions"
     />
   </main>
 </template>

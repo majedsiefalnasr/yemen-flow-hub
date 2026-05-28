@@ -1,65 +1,62 @@
-import type { ColumnDef } from '@tanstack/vue-table'
-
-interface ExportOptions<TData> {
-  filename?: string
-  /** Only export visible columns. Pass column definitions to resolve headers. */
-  columns?: ColumnDef<TData, unknown>[]
-  /** Columns to exclude from export by id */
-  excludeColumns?: string[]
+export interface ExportColumn<T> {
+  key: keyof T | string
+  label: string
+  format?: (value: unknown, row: T) => string
 }
 
-/**
- * Client-side CSV/JSON export for table data.
- * Prepends UTF-8 BOM (\uFEFF) to CSV for Arabic Excel compatibility.
- */
-export function useTableExport<TData extends Record<string, unknown>>() {
-  function exportCsv(rows: TData[], options: ExportOptions<TData> = {}) {
-    if (!rows.length) return
+export function useTableExport() {
+  function exportToCSV<T extends Record<string, unknown>>(
+    rows: T[],
+    columns: ExportColumn<T>[],
+    filename: string,
+  ) {
+    if (!import.meta.client || !rows.length) return
 
-    const { filename = 'export', excludeColumns = [] } = options
-
-    const firstRow = rows[0]
-    if (!firstRow) return
-    const keys = (Object.keys(firstRow) as string[]).filter(k => !excludeColumns.includes(k))
-
-    const escape = (val: unknown): string => {
-      const str = val === null || val === undefined ? '' : String(val)
-      // Wrap in quotes if contains comma, newline, or quote
-      if (/[,"\n\r]/.test(str)) return `"${str.replace(/"/g, '""')}"`
-      return str
-    }
-
-    const lines = [
-      keys.map(escape).join(','),
-      ...rows.map(row => keys.map(k => escape(row[k])).join(',')),
-    ]
+    const headers = columns.map(c => `"${c.label.replace(/"/g, '""')}"`).join(',')
+    const body = rows.map(row =>
+      columns.map((column) => {
+        const raw = column.key in row ? row[column.key as string] : undefined
+        const value = column.format ? column.format(raw, row) : (raw ?? '')
+        const normalized = String(value).replace(/"/g, '""')
+        return `"${normalized}"`
+      }).join(','),
+    ).join('\n')
 
     const bom = '\uFEFF'
-    const blob = new Blob([bom + lines.join('\n')], { type: 'text/csv;charset=utf-8;' })
-    triggerDownload(blob, `${filename}.csv`)
-  }
-
-  function exportJson(rows: TData[], options: ExportOptions<TData> = {}) {
-    if (!rows.length) return
-
-    const { filename = 'export', excludeColumns = [] } = options
-    const filtered = rows.map(row =>
-      Object.fromEntries(Object.entries(row).filter(([k]) => !excludeColumns.includes(k))),
-    )
-
-    const blob = new Blob([JSON.stringify(filtered, null, 2)], { type: 'application/json;charset=utf-8;' })
-    triggerDownload(blob, `${filename}.json`)
-  }
-
-  function triggerDownload(blob: Blob, filename: string) {
-    if (!import.meta.client) return
+    const content = `${bom}${headers}\n${body}`
+    const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = filename
-    a.click()
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `${filename}.csv`
+    link.click()
     URL.revokeObjectURL(url)
   }
 
-  return { exportCsv, exportJson }
+  function exportToJSON<T extends Record<string, unknown>>(
+    rows: T[],
+    columns: ExportColumn<T>[],
+    filename: string,
+  ) {
+    if (!import.meta.client || !rows.length) return
+
+    const data = rows.map(row =>
+      columns.reduce((acc, column) => {
+        const raw = column.key in row ? row[column.key as string] : undefined
+        acc[column.label] = column.format ? column.format(raw, row) : (raw ?? '')
+        return acc
+      }, {} as Record<string, unknown>),
+    )
+
+    const content = JSON.stringify(data, null, 2)
+    const blob = new Blob([content], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `${filename}.json`
+    link.click()
+    URL.revokeObjectURL(url)
+  }
+
+  return { exportToCSV, exportToJSON }
 }

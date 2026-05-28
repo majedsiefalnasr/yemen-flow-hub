@@ -1,96 +1,129 @@
 import { useRoute, useRouter } from 'vue-router'
 
-export interface TableQueryState {
-  search: string
-  page: number
-  pageSize: number
-  sort: string
-  sortDir: 'asc' | 'desc'
-  filters: Record<string, string[]>
+export interface TableQuerySchema {
+  search?: string
+  page?: number
+  perPage?: number
+  sortBy?: string
+  sortOrder?: 'asc' | 'desc'
+  [key: string]: string | number | string[] | undefined
 }
 
-const DEFAULT_PAGE_SIZE = 20
+const DEFAULT_PAGE = 1
+const DEFAULT_PER_PAGE = 20
 
-/**
- * Syncs table filter, sort, and pagination state to the URL query string.
- * Uses `replace` for search/filter changes (no history entry) and `push`
- * for explicit page navigation.
- */
-export function useTableQueryState(defaults?: Partial<TableQueryState>) {
+export function useTableQueryState(defaults: TableQuerySchema = {}) {
   const route = useRoute()
   const router = useRouter()
 
-  function getQuery() {
-    return route.query as Record<string, string | string[]>
+  function getQuery(): TableQuerySchema {
+    const q = route.query as Record<string, string | string[] | null | undefined>
+
+    return {
+      search: (q.search as string) || defaults.search || '',
+      page: q.page ? Number(q.page) : (defaults.page ?? DEFAULT_PAGE),
+      perPage: q.perPage ? Number(q.perPage) : (defaults.perPage ?? DEFAULT_PER_PAGE),
+      sortBy: (q.sortBy as string) || defaults.sortBy || '',
+      sortOrder: ((q.sortOrder as string) === 'asc' || (q.sortOrder as string) === 'desc')
+        ? (q.sortOrder as 'asc' | 'desc')
+        : (defaults.sortOrder ?? 'desc'),
+      ...Object.keys(defaults)
+        .filter(k => !['search', 'page', 'perPage', 'sortBy', 'sortOrder'].includes(k))
+        .reduce((acc, key) => {
+          const value = q[key]
+          if (value !== undefined && value !== null) {
+            if (Array.isArray(value)) {
+              acc[key] = value.filter((entry): entry is string => typeof entry === 'string')
+            } else {
+              acc[key] = typeof value === 'string' && value.includes(',') ? value.split(',') : value
+            }
+          } else if (defaults[key] !== undefined) {
+            acc[key] = defaults[key]
+          }
+          return acc
+        }, {} as TableQuerySchema),
+    }
   }
 
-  const search = computed({
-    get: () => String(getQuery().q ?? ''),
-    set: (val: string) => push({ q: val || undefined, page: undefined }),
-  })
+  const queryState = computed(() => getQuery())
 
-  const page = computed({
-    get: () => Number(getQuery().page ?? 1),
-    set: (val: number) => push({ page: val === 1 ? undefined : String(val) }, true),
-  })
+  async function setQuery(updates: Partial<TableQuerySchema>, mode: 'push' | 'replace' = 'replace') {
+    const current = getQuery()
+    const merged = { ...current, ...updates }
 
-  const pageSize = computed({
-    get: () => Number(getQuery().per_page ?? defaults?.pageSize ?? DEFAULT_PAGE_SIZE),
-    set: (val: number) => push({ per_page: val === DEFAULT_PAGE_SIZE ? undefined : String(val), page: undefined }),
-  })
-
-  const sort = computed({
-    get: () => String(getQuery().sort ?? defaults?.sort ?? ''),
-    set: (val: string) => push({ sort: val || undefined, page: undefined }),
-  })
-
-  const sortDir = computed({
-    get: (): 'asc' | 'desc' => (getQuery().dir === 'desc' ? 'desc' : 'asc'),
-    set: (val: 'asc' | 'desc') => push({ dir: val === 'asc' ? undefined : val, page: undefined }),
-  })
-
-  function getFilters(): Record<string, string[]> {
-    const result: Record<string, string[]> = {}
-    const q = getQuery()
-    for (const key in q) {
-      if (key.startsWith('f_')) {
-        const col = key.slice(2)
-        const val = q[key]
-        result[col] = Array.isArray(val) ? val : val ? [val] : []
+    const query: Record<string, string | undefined> = {}
+    for (const [key, value] of Object.entries(merged)) {
+      if (
+        value === undefined
+        || value === null
+        || value === ''
+        || (value === DEFAULT_PAGE && key === 'page')
+        || (value === DEFAULT_PER_PAGE && key === 'perPage')
+      ) {
+        query[key] = undefined
+      } else if (Array.isArray(value)) {
+        query[key] = value.length ? value.join(',') : undefined
+      } else {
+        query[key] = String(value)
       }
     }
-    return result
-  }
 
-  function setFilter(column: string, values: string[]) {
-    push({ [`f_${column}`]: values.length ? values : undefined, page: undefined })
-  }
-
-  function resetFilters() {
-    const toRemove: Record<string, undefined> = { q: undefined, page: undefined }
-    for (const key in getQuery()) {
-      if (key.startsWith('f_')) toRemove[key] = undefined
+    if (mode === 'push') {
+      await router.push({ query })
+    } else {
+      await router.replace({ query })
     }
-    push(toRemove)
   }
 
-  async function push(params: Record<string, string | string[] | undefined>, navigate = false) {
-    const query = { ...route.query, ...params }
-    // Remove undefined keys
-    for (const k in query) {
-      if (query[k] === undefined) delete query[k]
-    }
-    await (navigate ? router.push : router.replace)({ query })
+  async function setSearch(value: string) {
+    await setQuery({ search: value, page: 1 }, 'replace')
   }
+
+  async function setPage(page: number) {
+    await setQuery({ page }, 'push')
+  }
+
+  async function setPerPage(perPage: number) {
+    await setQuery({ perPage, page: 1 }, 'replace')
+  }
+
+  async function setSort(sortBy: string, sortOrder: 'asc' | 'desc') {
+    await setQuery({ sortBy, sortOrder }, 'replace')
+  }
+
+  async function setFilter(key: string, value: string | string[] | undefined) {
+    await setQuery({ [key]: value, page: 1 }, 'replace')
+  }
+
+  async function resetFilters() {
+    await setQuery({ ...defaults, page: 1 }, 'replace')
+  }
+
+  const hasActiveFilters = computed(() => {
+    const q = queryState.value
+    return Boolean(
+      q.search
+      || (q.page && q.page > 1)
+      || Object.keys(q)
+        .filter(key => !['page', 'perPage'].includes(key))
+        .some((key) => {
+          const value = q[key]
+          const defaultValue = defaults[key]
+          if (Array.isArray(value)) return value.length > 0
+          return value !== undefined && value !== '' && value !== defaultValue
+        }),
+    )
+  })
 
   return {
-    search,
-    page,
-    pageSize,
-    sort,
-    sortDir,
-    getFilters,
+    queryState,
+    setQuery,
+    setSearch,
+    setPage,
+    setPerPage,
+    setSort,
     setFilter,
     resetFilters,
+    hasActiveFilters,
   }
 }

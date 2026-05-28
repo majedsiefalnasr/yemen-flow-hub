@@ -1,4 +1,5 @@
 <script setup lang="ts" generic="TData">
+import type { Row } from '@tanstack/vue-table'
 import { MoreHorizontal } from 'lucide-vue-next'
 import {
   AlertDialog,
@@ -15,84 +16,97 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 
-export interface RowAction<T> {
+export interface RowAction<TData> {
   label: string
-  icon?: object
-  /** When true, shows a destructive confirmation dialog before calling onAction */
+  icon?: any
+  disabled?: boolean | ((row: Row<TData>) => boolean)
   destructive?: boolean
-  confirmTitle?: string
-  confirmDescription?: string
-  onAction: (row: T) => void | Promise<void>
+  hidden?: boolean | ((row: Row<TData>) => boolean)
+  confirm?: {
+    title: string
+    description: string
+    confirmLabel?: string
+    cancelLabel?: string
+  }
+  onClick: (row: Row<TData>) => void
 }
 
 const props = defineProps<{
-  row: TData
+  row: Row<TData>
   actions: RowAction<TData>[]
 }>()
 
+const showConfirm = ref(false)
 const pendingAction = ref<RowAction<TData> | null>(null)
-const confirmOpen = ref(false)
 
-function handleClick(action: RowAction<TData>) {
-  if (action.destructive) {
+const visibleActions = computed(() =>
+  props.actions.filter((action) => {
+    if (typeof action.hidden === 'function') return !action.hidden(props.row)
+    return !action.hidden
+  }),
+)
+
+function handleAction(action: RowAction<TData>) {
+  if (action.confirm) {
     pendingAction.value = action
-    confirmOpen.value = true
+    showConfirm.value = true
   } else {
-    action.onAction(props.row)
+    action.onClick(props.row)
   }
 }
 
-async function confirmDestructive() {
+function confirmAction() {
   if (pendingAction.value) {
-    await pendingAction.value.onAction(props.row)
+    pendingAction.value.onClick(props.row)
     pendingAction.value = null
   }
+  showConfirm.value = false
 }
 </script>
 
 <template>
-  <AlertDialog v-model:open="confirmOpen">
-    <DropdownMenu>
-      <DropdownMenuTrigger as-child>
-        <Button variant="ghost" size="icon" class="h-7 w-7 p-0">
-          <MoreHorizontal class="h-4 w-4" />
-          <span class="sr-only">إجراءات الصف</span>
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuLabel class="text-xs">إجراءات</DropdownMenuLabel>
-        <DropdownMenuSeparator />
+  <DropdownMenu>
+    <DropdownMenuTrigger as-child>
+      <Button
+        variant="ghost"
+        class="flex h-8 w-8 p-0 data-[state=open]:bg-muted"
+      >
+        <MoreHorizontal class="h-4 w-4" />
+        <span class="sr-only">فتح القائمة</span>
+      </Button>
+    </DropdownMenuTrigger>
+    <DropdownMenuContent align="end" class="w-[160px]">
+      <template v-for="(action, i) in visibleActions" :key="action.label">
+        <DropdownMenuSeparator v-if="i > 0 && visibleActions[i - 1]?.destructive !== action.destructive" />
         <DropdownMenuItem
-          v-for="action in actions"
-          :key="action.label"
-          :class="['text-xs cursor-pointer', action.destructive ? 'text-destructive focus:text-destructive' : '']"
-          @click="handleClick(action)"
+          :class="action.destructive ? 'text-destructive focus:text-destructive' : ''"
+          :disabled="typeof action.disabled === 'function' ? action.disabled(row) : action.disabled"
+          @click="handleAction(action)"
         >
-          <component :is="action.icon" v-if="action.icon" class="me-2 h-3.5 w-3.5" />
+          <component v-if="action.icon" :is="action.icon" class="me-2 h-4 w-4" />
           {{ action.label }}
         </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+      </template>
+    </DropdownMenuContent>
+  </DropdownMenu>
 
+  <AlertDialog v-model:open="showConfirm">
     <AlertDialogContent dir="rtl">
       <AlertDialogHeader>
-        <AlertDialogTitle>{{ pendingAction?.confirmTitle ?? 'تأكيد الإجراء' }}</AlertDialogTitle>
-        <AlertDialogDescription>
-          {{ pendingAction?.confirmDescription ?? 'هل أنت متأكد من تنفيذ هذا الإجراء؟ لا يمكن التراجع عنه.' }}
-        </AlertDialogDescription>
+        <AlertDialogTitle>{{ pendingAction?.confirm?.title }}</AlertDialogTitle>
+        <AlertDialogDescription>{{ pendingAction?.confirm?.description }}</AlertDialogDescription>
       </AlertDialogHeader>
       <AlertDialogFooter>
-        <AlertDialogCancel>إلغاء</AlertDialogCancel>
+        <AlertDialogCancel>{{ pendingAction?.confirm?.cancelLabel ?? 'إلغاء' }}</AlertDialogCancel>
         <AlertDialogAction
           class="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-          @click="confirmDestructive"
+          @click="confirmAction"
         >
-          تأكيد
+          {{ pendingAction?.confirm?.confirmLabel ?? 'تأكيد' }}
         </AlertDialogAction>
       </AlertDialogFooter>
     </AlertDialogContent>

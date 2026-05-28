@@ -12,95 +12,72 @@ import {
 
 defineProps<{
   table: Table<TData>
-  pageSizeOptions?: number[]
-  /** Override total when server-side */
-  totalRows?: number
 }>()
 </script>
 
 <template>
-  <div class="flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
-    <!-- Selection count -->
-    <div class="shrink-0">
-      <template v-if="table.getFilteredSelectedRowModel().rows.length > 0">
-        {{ table.getFilteredSelectedRowModel().rows.length }} من
-        {{ totalRows ?? table.getFilteredRowModel().rows.length }} محدد
-      </template>
-      <template v-else>
-        {{ totalRows ?? table.getFilteredRowModel().rows.length }} صف
-      </template>
+  <div class="flex items-center justify-between px-2">
+    <div class="flex-1 text-sm text-muted-foreground">
+      {{ table.getFilteredSelectedRowModel().rows.length }} من
+      {{ table.getFilteredRowModel().rows.length }} صف محدد
     </div>
-
-    <div class="flex items-center gap-4">
-      <!-- Rows per page -->
+    <div class="flex items-center gap-6 lg:gap-8">
       <div class="flex items-center gap-2">
-        <span class="hidden sm:inline">صفوف في الصفحة</span>
+        <p class="text-sm font-medium">الصفوف في الصفحة</p>
         <Select
-          :model-value="String(table.getState().pagination.pageSize)"
-          @update:model-value="table.setPageSize(Number($event))"
+          :model-value="`${table.getState().pagination.pageSize}`"
+          @update:model-value="(value) => table.setPageSize(Number(value))"
         >
-          <SelectTrigger class="h-7 w-16 text-xs">
-            <SelectValue />
+          <SelectTrigger class="h-8 w-[70px]">
+            <SelectValue :placeholder="`${table.getState().pagination.pageSize}`" />
           </SelectTrigger>
-          <SelectContent>
-            <SelectItem
-              v-for="size in (pageSizeOptions ?? [10, 20, 30, 50])"
-              :key="size"
-              :value="String(size)"
-              class="text-xs"
-            >
+          <SelectContent side="top">
+            <SelectItem v-for="size in [10, 20, 30, 40, 50]" :key="size" :value="`${size}`">
               {{ size }}
             </SelectItem>
           </SelectContent>
         </Select>
       </div>
-
-      <!-- Page info -->
-      <span class="shrink-0">
-        الصفحة {{ table.getState().pagination.pageIndex + 1 }} من {{ table.getPageCount() }}
-      </span>
-
-      <!-- Navigation -->
-      <div class="flex items-center gap-1">
+      <div class="flex w-[100px] items-center justify-center text-sm font-medium">
+        صفحة {{ table.getState().pagination.pageIndex + 1 }} من
+        {{ table.getPageCount() }}
+      </div>
+      <div class="flex items-center gap-2">
         <Button
           variant="outline"
-          size="icon"
-          class="h-7 w-7"
+          class="hidden h-8 w-8 p-0 lg:flex"
           :disabled="!table.getCanPreviousPage()"
           @click="table.setPageIndex(0)"
         >
-          <ChevronsRight class="h-4 w-4" />
           <span class="sr-only">الصفحة الأولى</span>
+          <ChevronsRight class="h-4 w-4" />
         </Button>
         <Button
           variant="outline"
-          size="icon"
-          class="h-7 w-7"
+          class="h-8 w-8 p-0"
           :disabled="!table.getCanPreviousPage()"
           @click="table.previousPage()"
         >
+          <span class="sr-only">الصفحة السابقة</span>
           <ChevronRight class="h-4 w-4" />
-          <span class="sr-only">السابق</span>
         </Button>
         <Button
           variant="outline"
-          size="icon"
-          class="h-7 w-7"
+          class="h-8 w-8 p-0"
           :disabled="!table.getCanNextPage()"
           @click="table.nextPage()"
         >
+          <span class="sr-only">الصفحة التالية</span>
           <ChevronLeft class="h-4 w-4" />
-          <span class="sr-only">التالي</span>
         </Button>
         <Button
           variant="outline"
-          size="icon"
-          class="h-7 w-7"
+          class="hidden h-8 w-8 p-0 lg:flex"
           :disabled="!table.getCanNextPage()"
-          @click="table.setPageIndex(table.getPageCount() - 1)"
+          @click="table.setPageIndex(Math.max(table.getPageCount() - 1, 0))"
         >
-          <ChevronsLeft class="h-4 w-4" />
           <span class="sr-only">الصفحة الأخيرة</span>
+          <ChevronsLeft class="h-4 w-4" />
         </Button>
       </div>
     </div>

@@ -380,7 +380,7 @@ export const useThemingStore = defineStore('theming', {
     applyRadius() {
       if (typeof document === 'undefined') return
       const radiusMap: Record<RadiusPreference, string> = {
-        none: '0rem',
+        none: '0px',
         sm: '0.25rem',
         md: '0.5rem',
         lg: '0.75rem',

@@ -25,7 +25,7 @@ export const REJECTION_THRESHOLD = 20
 // `repeated_support_returns` field semantics when wired up.
 export const REPEATED_SUPPORT_RETURNS_THRESHOLD = 2
 
-interface DualEntry { month: string; count: number; approved?: number }
+export interface DualEntry { month: string; count: number; approved?: number }
 
 export function buildLine(entries: DualEntry[], key: keyof DualEntry): string {
   if (!entries.length) return ''

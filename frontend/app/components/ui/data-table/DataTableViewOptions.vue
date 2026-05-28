@@ -1,6 +1,6 @@
 <script setup lang="ts" generic="TData">
 import type { Table } from '@tanstack/vue-table'
-import { SlidersHorizontal } from 'lucide-vue-next'
+import { Settings2 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -11,33 +11,35 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 
-const props = defineProps<{
+defineProps<{
   table: Table<TData>
-  /** Columns that cannot be hidden */
-  alwaysVisible?: string[]
+  columnLabels?: Record<string, string>
 }>()
 </script>
 
 <template>
   <DropdownMenu>
     <DropdownMenuTrigger as-child>
-      <Button variant="outline" size="sm" class="hidden h-8 lg:flex text-xs">
-        <SlidersHorizontal class="ms-1 h-3.5 w-3.5" />
+      <Button
+        variant="outline"
+        size="sm"
+        class="ms-auto hidden h-8 lg:flex"
+      >
+        <Settings2 class="me-2 h-4 w-4" />
         الأعمدة
       </Button>
     </DropdownMenuTrigger>
-    <DropdownMenuContent align="end" class="w-40">
-      <DropdownMenuLabel class="text-xs">تبديل الأعمدة</DropdownMenuLabel>
+    <DropdownMenuContent align="end" class="w-[150px]">
+      <DropdownMenuLabel>عرض الأعمدة</DropdownMenuLabel>
       <DropdownMenuSeparator />
       <DropdownMenuCheckboxItem
         v-for="column in table.getAllColumns().filter(col => col.getCanHide())"
         :key="column.id"
         :checked="column.getIsVisible()"
-        :disabled="props.alwaysVisible?.includes(column.id)"
-        class="text-xs"
-        @update:checked="column.toggleVisibility($event)"
+        class="capitalize"
+        @update:checked="(value: boolean | 'indeterminate') => column.toggleVisibility(value === true)"
       >
-        {{ (column.columnDef.meta as Record<string, unknown> | undefined)?.label ?? column.id }}
+        {{ columnLabels?.[column.id] ?? column.id }}
       </DropdownMenuCheckboxItem>
     </DropdownMenuContent>
   </DropdownMenu>

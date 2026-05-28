@@ -18,6 +18,7 @@ import {
 import { useDashboardStore } from '../../stores/dashboard.store'
 import { UserRole } from '../../types/enums'
 import type { BankAdminDashboardStats, BankAdminDashboardStatsExtended, BankAdminMonthlyEntry } from '../../composables/useDashboard'
+import type { DualEntry } from '../../utils/bank-admin-helpers'
 import StatusBadge from '../shared/StatusBadge.vue'
 import { getRequestProgress } from '../../utils/requestProgress'
 import {

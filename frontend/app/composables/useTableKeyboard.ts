@@ -1,35 +1,19 @@
-/**
- * Keyboard shortcuts for data tables:
- * - `/` — focus the search input
- * - `Escape` — clear the search input and blur
- */
-export function useTableKeyboard(searchInputRef: Ref<HTMLInputElement | null>) {
-  const themingStore = useThemingStore()
+import { useEventListener } from '@vueuse/core'
+import type { Ref } from 'vue'
 
-  function onKeydown(e: KeyboardEvent) {
-    const tag = (e.target as HTMLElement)?.tagName
-    const isEditing = ['INPUT', 'TEXTAREA', 'SELECT'].includes(tag)
+export function useTableKeyboard(searchRef: Ref<HTMLInputElement | null>) {
+  useEventListener('keydown', (e: KeyboardEvent) => {
+    const target = e.target as HTMLElement
+    const isTyping = ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) || target.isContentEditable
 
-    // `/` focuses search — only if not already editing and modifier not required or already held
-    if (e.key === '/' && !isEditing) {
-      const requiresModifier = themingStore.shortcutsRequireModifier
-      if (!requiresModifier || e.ctrlKey || e.metaKey) {
-        e.preventDefault()
-        searchInputRef.value?.focus()
-      }
+    if (e.key === '/' && !isTyping && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      e.preventDefault()
+      searchRef.value?.focus()
+      return
     }
 
-    // Escape clears search and blurs
-    if (e.key === 'Escape' && searchInputRef.value && document.activeElement === searchInputRef.value) {
-      const el = searchInputRef.value as HTMLInputElement
-      el.value = ''
-      el.dispatchEvent(new Event('input'))
-      el.blur()
+    if (e.key === 'Escape' && target === searchRef.value) {
+      searchRef.value.blur()
     }
-  }
-
-  onMounted(() => document.addEventListener('keydown', onKeydown))
-  onUnmounted(() => document.removeEventListener('keydown', onKeydown))
-
-  return { onKeydown }
+  })
 }

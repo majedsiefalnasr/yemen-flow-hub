@@ -1,99 +1,76 @@
 <script setup lang="ts">
-import { AlertTriangle, Home, Lock, RefreshCcw, ServerCrash, ShieldOff } from 'lucide-vue-next'
+import { computed } from 'vue'
+import { Ban, SearchX, ServerCrash, WifiOff } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 
-type ErrorCode = 401 | 403 | 404 | 500 | 503 | number
+interface ErrorAction {
+  label: string
+  variant?: 'default' | 'outline' | 'ghost' | 'destructive'
+  onClick: () => void
+}
 
 const props = withDefaults(defineProps<{
-  code?: ErrorCode
-  /** Override the default title */
+  code?: number | string
   title?: string
-  /** Override the default description */
   description?: string
-  /** Show or hide the "try again" action */
-  showRetry?: boolean
-  /** Redirect path for the primary "back to safety" action (defaults to /dashboard) */
-  backTo?: string
-  /** Label for the back action */
-  backLabel?: string
+  icon?: any
+  actions?: ErrorAction[]
 }>(), {
   code: 500,
-  showRetry: true,
-  backTo: '/dashboard',
 })
 
-const config = computed(() => {
-  const defaults: Record<number, { title: string; description: string; icon: typeof AlertTriangle }> = {
-    401: {
-      title: 'غير مصرح',
-      description: 'يجب تسجيل الدخول للوصول إلى هذه الصفحة.',
-      icon: Lock,
-    },
-    403: {
-      title: 'ممنوع الوصول',
-      description: 'ليس لديك صلاحية للوصول إلى هذا المورد.',
-      icon: ShieldOff,
-    },
-    404: {
-      title: 'الصفحة غير موجودة',
-      description: 'تعذر العثور على الصفحة المطلوبة. ربما تم نقلها أو حذفها.',
-      icon: AlertTriangle,
-    },
-    500: {
-      title: 'خطأ في الخادم',
-      description: 'حدث خطأ غير متوقع. يمكنك إعادة المحاولة أو العودة للوحة التحكم.',
-      icon: ServerCrash,
-    },
-    503: {
-      title: 'الخدمة غير متاحة',
-      description: 'الخدمة متوقفة مؤقتاً للصيانة. يُرجى المحاولة لاحقاً.',
-      icon: ServerCrash,
-    },
-  }
-  return defaults[props.code] ?? defaults[500]!
+const defaultIcon = computed(() => {
+  const code = Number(props.code)
+  if (code === 401) return WifiOff
+  if (code === 403) return Ban
+  if (code === 404) return SearchX
+  if (code === 503) return WifiOff
+  return ServerCrash
 })
 
-const resolvedTitle = computed(() => props.title ?? config.value!.title)
-const resolvedDescription = computed(() => props.description ?? config.value!.description)
-const IconComponent = computed(() => config.value!.icon)
-const backLabelResolved = computed(() => props.backLabel ?? 'العودة للوحة التحكم')
+const defaultTitle = computed(() => {
+  const code = Number(props.code)
+  if (code === 401) return 'غير مصرح'
+  if (code === 403) return 'ممنوع'
+  if (code === 404) return 'الصفحة غير موجودة'
+  if (code === 503) return 'الخدمة غير متاحة'
+  return 'حدث خطأ غير متوقع'
+})
 
-function reload() {
-  if (import.meta.client) window.location.reload()
-}
+const defaultDescription = computed(() => {
+  const code = Number(props.code)
+  if (code === 401) return 'يجب تسجيل الدخول للوصول إلى هذه الصفحة.'
+  if (code === 403) return 'ليس لديك صلاحية للوصول إلى هذه الصفحة. تواصل مع مدير النظام.'
+  if (code === 404) return 'الصفحة التي تبحث عنها غير موجودة أو تم نقلها.'
+  if (code === 503) return 'الخدمة غير متاحة حاليًا. يرجى المحاولة لاحقًا.'
+  return 'حدث خطأ في الخادم. يمكنك إعادة المحاولة أو العودة إلى لوحة التحكم.'
+})
+
+const resolvedIcon = computed(() => props.icon || defaultIcon.value)
+const resolvedTitle = computed(() => props.title || defaultTitle.value)
+const resolvedDescription = computed(() => props.description || defaultDescription.value)
 </script>
 
 <template>
-  <div class="grid min-h-[60vh] place-items-center p-6">
-    <section class="w-full max-w-md text-center">
-      <div class="mx-auto grid h-14 w-14 place-items-center rounded-full bg-destructive/10 text-destructive">
-        <component :is="IconComponent" class="h-7 w-7" />
-      </div>
-
-      <p class="mt-6 text-sm font-medium text-muted-foreground">
-        {{ code }}
-      </p>
-      <h2 class="mt-2 text-2xl font-bold">
-        {{ resolvedTitle }}
-      </h2>
-      <p class="mt-3 text-sm leading-7 text-muted-foreground">
-        {{ resolvedDescription }}
-      </p>
-
-      <div class="mt-6 flex flex-wrap justify-center gap-2">
-        <Button v-if="showRetry && code >= 500" @click="reload">
-          <RefreshCcw class="ms-1 h-4 w-4" />
-          إعادة المحاولة
-        </Button>
-        <Button :variant="showRetry && code >= 500 ? 'outline' : 'default'" as-child>
-          <NuxtLink :to="backTo">
-            <Home class="ms-1 h-4 w-4" />
-            {{ backLabelResolved }}
-          </NuxtLink>
-        </Button>
-      </div>
-
-      <slot />
-    </section>
+  <div class="flex min-h-[60vh] flex-col items-center justify-center gap-6 text-center" dir="rtl">
+    <div class="rounded-full bg-muted p-6">
+      <component :is="resolvedIcon" class="h-12 w-12 text-muted-foreground" />
+    </div>
+    <div v-if="code" class="text-7xl font-bold text-muted-foreground/30">{{ code }}</div>
+    <div class="space-y-2">
+      <h1 class="text-2xl font-bold tracking-tight">{{ resolvedTitle }}</h1>
+      <p class="max-w-sm text-sm text-muted-foreground">{{ resolvedDescription }}</p>
+    </div>
+    <div v-if="actions?.length" class="flex flex-wrap justify-center gap-2">
+      <Button
+        v-for="action in actions"
+        :key="action.label"
+        :variant="action.variant || 'default'"
+        @click="action.onClick"
+      >
+        {{ action.label }}
+      </Button>
+    </div>
+    <slot />
   </div>
 </template>

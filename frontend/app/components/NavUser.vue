@@ -43,6 +43,7 @@ const { isMobile } = useSidebar()
 const authStore = useAuthStore()
 const themingStore = useThemingStore()
 const router = useRouter()
+const showLogoutDialog = ref(false)
 
 const isDark = computed(() => themingStore.isDark)
 
@@ -51,6 +52,7 @@ function userInitials(name: string) {
 }
 
 async function handleLogout() {
+  showLogoutDialog.value = false
   await authStore.logout()
   await router.push('/login')
 }
@@ -128,36 +130,35 @@ function toggleTheme() {
 
           <DropdownMenuSeparator />
 
-          <AlertDialog>
-            <AlertDialogTrigger as-child>
-              <DropdownMenuItem
-                class="cursor-pointer text-destructive focus:text-destructive"
-                @select.prevent
-              >
-                <LogOut class="h-4 w-4" />
-                <span>تسجيل الخروج</span>
-              </DropdownMenuItem>
-            </AlertDialogTrigger>
-            <AlertDialogContent dir="rtl">
-              <AlertDialogHeader>
-                <AlertDialogTitle>تأكيد تسجيل الخروج</AlertDialogTitle>
-                <AlertDialogDescription>
-                  هل أنت متأكد أنك تريد تسجيل الخروج من النظام؟
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>إلغاء</AlertDialogCancel>
-                <AlertDialogAction
-                  class="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  @click="handleLogout"
-                >
-                  تسجيل الخروج
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+          <DropdownMenuItem
+            class="cursor-pointer text-destructive focus:text-destructive"
+            @click="showLogoutDialog = true"
+          >
+            <LogOut class="h-4 w-4" />
+            <span>تسجيل الخروج</span>
+          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
     </SidebarMenuItem>
   </SidebarMenu>
+
+  <AlertDialog v-model:open="showLogoutDialog">
+    <AlertDialogContent dir="rtl">
+      <AlertDialogHeader>
+        <AlertDialogTitle>تسجيل الخروج</AlertDialogTitle>
+        <AlertDialogDescription>
+          هل أنت متأكد من رغبتك في تسجيل الخروج من النظام؟ سيتم إنهاء جلستك الحالية.
+        </AlertDialogDescription>
+      </AlertDialogHeader>
+      <AlertDialogFooter>
+        <AlertDialogCancel>إلغاء</AlertDialogCancel>
+        <AlertDialogAction
+          class="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          @click="handleLogout"
+        >
+          تسجيل الخروج
+        </AlertDialogAction>
+      </AlertDialogFooter>
+    </AlertDialogContent>
+  </AlertDialog>
 </template>

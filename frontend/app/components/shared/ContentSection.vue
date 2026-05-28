@@ -1,20 +1,24 @@
 <script setup lang="ts">
-defineProps<{
-  /** Section heading */
+import { Separator } from '@/components/ui/separator'
+
+withDefaults(defineProps<{
   title?: string
-  /** Optional description below heading */
   description?: string
-}>()
+  maxWidth?: boolean
+}>(), {
+  maxWidth: true,
+})
 </script>
 
 <template>
-  <section class="space-y-4">
-    <div v-if="title || description" class="border-b pb-3">
-      <h3 v-if="title" class="text-base font-semibold">{{ title }}</h3>
-      <p v-if="description" class="mt-0.5 text-sm text-muted-foreground">{{ description }}</p>
+  <div class="space-y-6">
+    <div v-if="title || description">
+      <h3 v-if="title" class="text-lg font-medium">{{ title }}</h3>
+      <p v-if="description" class="text-sm text-muted-foreground">{{ description }}</p>
     </div>
-    <div>
+    <Separator />
+    <div :class="maxWidth ? 'max-w-xl' : ''">
       <slot />
     </div>
-  </section>
+  </div>
 </template>

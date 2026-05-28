@@ -1,47 +1,47 @@
 <script setup lang="ts">
 import { useThemingStore } from '@/stores/theming.store'
 
-withDefaults(defineProps<{
-  /** TransitionGroup tag */
-  tag?: string
-  /** CSS class applied to each entering item */
-  enterClass?: string
-  /** Duration in ms — ignored when reduced motion is active */
-  duration?: number
-}>(), {
-  tag: 'ul',
-  duration: 200,
-})
-
 const themingStore = useThemingStore()
-const reduced = computed(() => themingStore.prefersReducedMotion)
+
+defineProps<{
+  items?: unknown[]
+}>()
 </script>
 
 <template>
   <TransitionGroup
-    :tag="tag"
-    :name="reduced ? undefined : 'animated-list'"
-    :css="!reduced"
-    v-bind="$attrs"
+    tag="ul"
+    :name="themingStore.prefersReducedMotion ? '' : 'animated-list'"
+    class="space-y-2"
   >
     <slot />
   </TransitionGroup>
 </template>
 
 <style scoped>
-.animated-list-enter-active,
+.animated-list-enter-active {
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
 .animated-list-leave-active {
-  transition: opacity v-bind('`${duration}ms`') ease, transform v-bind('`${duration}ms`') ease;
+  transition: all 0.2s ease-in;
 }
 .animated-list-enter-from {
   opacity: 0;
-  transform: translateY(-4px);
+  transform: scale(0.9) translateY(-8px);
 }
 .animated-list-leave-to {
   opacity: 0;
-  transform: translateY(4px);
+  transform: scale(0.9);
 }
-.animated-list-move {
-  transition: transform v-bind('`${duration}ms`') ease;
+@media (prefers-reduced-motion: reduce) {
+  .animated-list-enter-active,
+  .animated-list-leave-active {
+    transition: none;
+  }
+  .animated-list-enter-from,
+  .animated-list-leave-to {
+    opacity: 1;
+    transform: none;
+  }
 }
 </style>

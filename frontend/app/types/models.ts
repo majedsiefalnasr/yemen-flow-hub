@@ -131,6 +131,7 @@ export interface ImportRequest {
   support_reviewer?: { id: number; name: string } | null
   claimed_by: { id: number; name: string } | null
   support_claimed_by?: { id: number; name: string } | null
+  claimed_at?: string | null
   claimed_until: string | null
   is_claimed: boolean
   is_claimed_by_me: boolean

@@ -1,60 +1,59 @@
 <script setup lang="ts" generic="TData">
 import type { Table } from '@tanstack/vue-table'
-import { Search, X } from 'lucide-vue-next'
-import { Input } from '@/components/ui/input'
+import { refDebounced } from '@vueuse/core'
+import { X } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 
-const props = defineProps<{
+defineProps<{
   table: Table<TData>
-  /** Column id to filter on (defaults to first string column) */
-  filterColumn?: string
-  placeholder?: string
+  searchColumn?: string
+  searchPlaceholder?: string
+  hasFilters?: boolean
 }>()
 
-const filterValue = ref('')
-const debouncedFilter = useDebounce(filterValue, 300)
+const emit = defineEmits<{
+  'update:search': [value: string]
+  reset: []
+}>()
 
-watch(debouncedFilter, (val) => {
-  if (props.filterColumn) {
-    props.table.getColumn(props.filterColumn)?.setFilterValue(val || undefined)
-  }
+const searchInput = ref('')
+const debouncedSearch = refDebounced(searchInput, 300)
+
+watch(debouncedSearch, (value) => {
+  emit('update:search', value)
 })
 
-const isFiltered = computed(() => props.table.getState().columnFilters.length > 0)
-
-function reset() {
-  filterValue.value = ''
-  props.table.resetColumnFilters()
+function resetFilters() {
+  searchInput.value = ''
+  emit('reset')
 }
+
+const searchRef = ref<InstanceType<typeof Input> | null>(null)
 </script>
 
 <template>
   <div class="flex flex-wrap items-center gap-2">
-    <div class="relative max-w-sm flex-1">
-      <Search class="absolute start-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+    <div class="relative min-w-[200px] max-w-sm flex-1">
       <Input
-        v-model="filterValue"
-        :placeholder="placeholder ?? 'بحث…'"
-        class="ps-8 h-8 w-full"
-        aria-label="بحث في الجدول"
+        ref="searchRef"
+        v-model="searchInput"
+        :placeholder="searchPlaceholder || 'بحث...'"
+        class="h-8 text-sm"
+        dir="rtl"
       />
     </div>
-
-    <!-- Faceted filter slots -->
     <slot name="filters" :table="table" />
-
     <Button
-      v-if="isFiltered"
+      v-if="hasFilters"
       variant="ghost"
       size="sm"
-      class="h-8 px-2 text-xs"
-      @click="reset"
+      class="h-8 px-2"
+      @click="resetFilters"
     >
-      مسح
-      <X class="ms-1 h-3.5 w-3.5" />
+      إعادة ضبط
+      <X class="me-1 h-4 w-4" />
     </Button>
-
-    <!-- View options slot -->
     <div class="ms-auto flex items-center gap-2">
       <slot name="actions" :table="table" />
     </div>

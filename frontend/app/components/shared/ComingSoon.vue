@@ -1,30 +1,27 @@
 <script setup lang="ts">
-import { Construction } from 'lucide-vue-next'
+import { Clock } from 'lucide-vue-next'
+import { Card, CardContent } from '@/components/ui/card'
 
-withDefaults(defineProps<{
-  /** Feature name shown in heading */
-  feature?: string
-  /** Optional description */
+defineProps<{
+  title?: string
   description?: string
-}>(), {
-  feature: 'هذه الميزة',
-  description: 'هذا القسم قيد التطوير وسيكون متاحاً قريباً.',
-})
+}>()
 </script>
 
 <template>
-  <div class="grid min-h-[40vh] place-items-center p-6 text-center">
-    <div>
-      <div class="mx-auto grid h-14 w-14 place-items-center rounded-full bg-muted text-muted-foreground">
-        <Construction class="h-7 w-7" />
-      </div>
-      <h3 class="mt-4 text-lg font-semibold">
-        {{ feature }} قادمة قريباً
-      </h3>
-      <p class="mt-2 text-sm text-muted-foreground">
-        {{ description }}
-      </p>
-      <slot />
-    </div>
+  <div class="flex min-h-[50vh] items-center justify-center" dir="rtl">
+    <Card class="max-w-sm border border-dashed text-center shadow-none">
+      <CardContent class="flex flex-col items-center gap-4 p-8">
+        <div class="rounded-full bg-muted p-4">
+          <Clock class="h-8 w-8 text-muted-foreground" />
+        </div>
+        <div>
+          <h2 class="text-lg font-semibold">{{ title || 'قريبًا' }}</h2>
+          <p class="mt-1 text-sm text-muted-foreground">
+            {{ description || 'هذه الصفحة قيد التطوير وستكون متاحة قريبًا.' }}
+          </p>
+        </div>
+      </CardContent>
+    </Card>
   </div>
 </template>
