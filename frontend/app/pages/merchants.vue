@@ -321,7 +321,12 @@ const columns: ColumnDef<Merchant>[] = [
   {
     accessorKey: 'name',
     header: 'التاجر',
-    cell: ({ row }) => h('span', { class: 'text-sm font-medium' }, row.original.name),
+    cell: ({ row }) => h('button', {
+      type: 'button',
+      class: 'text-sm font-medium text-start hover:underline underline-offset-2 cursor-pointer focus-visible:outline-none focus-visible:underline',
+      title: 'معاينة سريعة',
+      onClick: (e: Event) => { e.stopPropagation(); viewing.value = row.original },
+    }, row.original.name),
   },
   {
     accessorKey: 'commercial_register',
@@ -584,12 +589,10 @@ const table = useVueTable({
                 <TableHead
                   v-for="header in headerGroup.headers"
                   :key="header.id"
-                  :class="[
-                    'h-10 px-4 text-sm font-medium text-foreground',
-                    header.column.id === 'actions'
-                      ? 'sticky end-0 z-20 bg-muted border-s border-border'
-                      : '',
-                  ]"
+                  class="h-10 text-sm font-medium text-foreground"
+                  :class="header.column.id === 'actions'
+                    ? 'sticky end-0 z-20 bg-muted w-12 px-2'
+                    : 'px-4'"
                 >
                   <FlexRender
                     v-if="!header.isPlaceholder"
@@ -618,12 +621,10 @@ const table = useVueTable({
                   <TableCell
                     v-for="cell in row.getVisibleCells()"
                     :key="cell.id"
-                    :class="[
-                      'px-4 py-3 align-middle',
-                      cell.column.id === 'actions'
-                        ? 'sticky end-0 z-10 bg-background border-s border-border group-hover/row:bg-muted/30'
-                        : '',
-                    ]"
+                    class="py-3 align-middle"
+                    :class="cell.column.id === 'actions'
+                      ? 'sticky end-0 z-10 bg-background w-12 px-2 group-hover/row:bg-muted/30'
+                      : 'px-4'"
                   >
                     <FlexRender :render="cell.column.columnDef.cell" :props="cell.getContext()" />
                   </TableCell>

@@ -359,7 +359,12 @@ const columns: ColumnDef<User>[] = [
           default: () => h(AvatarFallback, { class: 'bg-gradient-hero text-xs font-bold text-white' }, () => userInitials(staff.name)),
         }),
         h('div', { class: 'flex flex-col gap-0.5' }, [
-          h('span', { class: 'text-sm font-medium' }, staff.name),
+          h('button', {
+            type: 'button',
+            class: 'text-sm font-medium text-start hover:underline underline-offset-2 cursor-pointer focus-visible:outline-none focus-visible:underline',
+            title: 'معاينة سريعة',
+            onClick: (e: Event) => { e.stopPropagation(); viewing.value = staff },
+          }, staff.name),
           h('span', { class: 'text-xs text-muted-foreground', dir: 'ltr' }, staff.email),
         ]),
       ])
@@ -394,7 +399,7 @@ const columns: ColumnDef<User>[] = [
   },
   {
     id: 'actions',
-    header: 'الإجراءات',
+    header: '',
     enableHiding: false,
     cell: ({ row }) => {
       const staff = row.original
@@ -602,12 +607,10 @@ const table = useVueTable({
               <TableHead
                 v-for="header in headerGroup.headers"
                 :key="header.id"
-                :class="[
-                  'h-10 px-4 text-sm font-medium text-foreground',
-                  header.column.id === 'actions'
-                    ? 'sticky end-0 z-20 bg-muted border-s border-border'
-                    : '',
-                ]"
+                class="h-10 text-sm font-medium text-foreground"
+                :class="header.column.id === 'actions'
+                  ? 'sticky end-0 z-20 bg-muted w-12 px-2'
+                  : 'px-4'"
               >
                 <FlexRender
                   v-if="!header.isPlaceholder"
@@ -636,12 +639,10 @@ const table = useVueTable({
                 <TableCell
                   v-for="cell in row.getVisibleCells()"
                   :key="cell.id"
-                  :class="[
-                    'px-4 py-3 align-middle',
-                    cell.column.id === 'actions'
-                      ? 'sticky end-0 z-10 bg-background border-s border-border group-hover/row:bg-muted/30'
-                      : '',
-                  ]"
+                  class="py-3 align-middle"
+                  :class="cell.column.id === 'actions'
+                    ? 'sticky end-0 z-10 bg-background w-12 px-2 group-hover/row:bg-muted/30'
+                    : 'px-4'"
                 >
                   <FlexRender :render="cell.column.columnDef.cell" :props="cell.getContext()" />
                 </TableCell>

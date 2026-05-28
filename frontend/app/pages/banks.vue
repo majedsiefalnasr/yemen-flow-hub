@@ -23,10 +23,13 @@ import type { CreateBankPayload, UpdateBankPayload } from '../composables/useBan
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { Badge } from '@/components/ui/badge'
+import { Separator } from '@/components/ui/separator'
 import {
   Table,
   TableBody,
@@ -72,6 +75,7 @@ const query = ref('')
 
 const showModal = ref(false)
 const editingBank = ref<Bank | null>(null)
+const viewingBank = ref<Bank | null>(null)
 const saving = ref(false)
 const formError = ref<string | null>(null)
 
@@ -259,7 +263,12 @@ const columns: ColumnDef<Bank>[] = [
     id: 'name',
     header: 'البنك',
     cell: ({ row }) => h('div', { class: 'flex flex-col gap-0.5' }, [
-      h('span', { class: 'text-sm font-medium' }, row.original.name_ar),
+      h('button', {
+        type: 'button',
+        class: 'text-sm font-medium text-start hover:underline underline-offset-2 cursor-pointer focus-visible:outline-none focus-visible:underline',
+        title: 'معاينة سريعة',
+        onClick: (e: Event) => { e.stopPropagation(); viewingBank.value = row.original },
+      }, row.original.name_ar),
       h('span', { class: 'text-xs text-muted-foreground', dir: 'ltr' }, row.original.name_en),
     ]),
   },
@@ -292,6 +301,7 @@ const columns: ColumnDef<Bank>[] = [
           }),
           h(DropdownMenuContent, { align: 'end' }, {
             default: () => [
+              h(DropdownMenuItem, { onClick: () => (viewingBank.value = bank) }, () => 'عرض'),
               h(DropdownMenuItem, { onClick: () => openEdit(bank) }, () => 'تعديل'),
             ],
           }),
@@ -375,10 +385,10 @@ onMounted(loadBanks)
     </div>
 
     <!-- Table -->
-    <div class="relative flex flex-col gap-4 overflow-auto">
-      <div v-if="loading || table.getRowModel().rows.length > 0" class="overflow-hidden rounded-lg border">
-        <Table>
-          <TableHeader class="bg-muted sticky top-0 z-10">
+    <div class="relative flex flex-col gap-4">
+      <div v-if="loading || table.getRowModel().rows.length > 0" class="rounded-lg border overflow-x-auto">
+        <Table class="min-w-max w-full">
+          <TableHeader class="bg-muted sticky top-0 z-30">
             <TableRow
               v-for="headerGroup in table.getHeaderGroups()"
               :key="headerGroup.id"
@@ -387,7 +397,10 @@ onMounted(loadBanks)
               <TableHead
                 v-for="header in headerGroup.headers"
                 :key="header.id"
-                class="h-10 px-4 text-sm font-medium text-foreground"
+                class="h-10 text-sm font-medium text-foreground"
+                :class="header.column.id === 'actions'
+                  ? 'sticky end-0 z-20 bg-muted w-12 px-2'
+                  : 'px-4'"
               >
                 <FlexRender
                   v-if="!header.isPlaceholder"
@@ -409,20 +422,23 @@ onMounted(loadBanks)
                 </TableCell>
                 <TableCell class="px-4 py-3"><Skeleton class="h-5 w-12 rounded" /></TableCell>
                 <TableCell class="px-4 py-3"><Skeleton class="h-4 w-16" /></TableCell>
-                <TableCell class="px-4 py-3"><Skeleton class="h-8 w-8 rounded-md" /></TableCell>
+                <TableCell class="px-4 py-3 w-12"><Skeleton class="h-8 w-8 rounded-md" /></TableCell>
               </TableRow>
             </template>
 
-            <template>
+            <template v-else>
               <TableRow
                 v-for="row in table.getRowModel().rows"
                 :key="row.id"
-                class="transition-colors hover:bg-muted/30"
+                class="group/row transition-colors hover:bg-muted/30"
               >
                 <TableCell
                   v-for="cell in row.getVisibleCells()"
                   :key="cell.id"
-                  class="px-4 py-3 align-middle"
+                  class="py-3 align-middle" 
+                  :class="cell.column.id === 'actions'
+                    ? 'sticky end-0 z-10 bg-background w-12 px-2 group-hover/row:bg-muted/30'
+                    : 'px-4'"
                 >
                   <FlexRender :render="cell.column.columnDef.cell" :props="cell.getContext()" />
                 </TableCell>
@@ -531,6 +547,46 @@ onMounted(loadBanks)
         <DialogFooter class="gap-2">
           <Button variant="outline" :disabled="saving" @click="closeModal">إلغاء</Button>
           <Button :disabled="saving" @click="saveBank">{{ saving ? 'جارٍ الحفظ…' : 'حفظ' }}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
+    <!-- Quick-view Dialog -->
+    <Dialog :open="Boolean(viewingBank)" @update:open="v => !v && (viewingBank = null)">
+      <DialogContent v-if="viewingBank" dir="rtl" class="sm:max-w-md">
+        <DialogHeader class="pb-2">
+          <DialogTitle class="flex items-center gap-2 text-base">
+            {{ viewingBank.name_ar }}
+          </DialogTitle>
+          <DialogDescription dir="ltr" class="text-xs">{{ viewingBank.name_en }}</DialogDescription>
+        </DialogHeader>
+
+        <div class="grid grid-cols-2 gap-x-4 gap-y-3 py-1 text-sm">
+          <div class="space-y-0.5">
+            <p class="text-xs text-muted-foreground">الرمز</p>
+            <code class="rounded bg-muted px-2 py-0.5 text-xs font-mono">{{ viewingBank.code }}</code>
+          </div>
+          <div class="space-y-0.5">
+            <p class="text-xs text-muted-foreground">الحالة</p>
+            <Badge :class="viewingBank.is_active ? 'bg-[var(--severity-green)]/10 text-[var(--severity-green)] border-[var(--severity-green)]/30 border' : 'bg-[var(--severity-red)]/10 text-[var(--severity-red)] border-[var(--severity-red)]/30 border'">
+              {{ viewingBank.is_active ? 'نشط' : 'موقوف' }}
+            </Badge>
+          </div>
+          <div v-if="viewingBank.license_number" class="space-y-0.5">
+            <p class="text-xs text-muted-foreground">رقم الترخيص</p>
+            <p class="font-medium">{{ viewingBank.license_number }}</p>
+          </div>
+          <div v-if="viewingBank.entity_type" class="space-y-0.5">
+            <p class="text-xs text-muted-foreground">نوع الجهة</p>
+            <p class="font-medium">{{ viewingBank.entity_type }}</p>
+          </div>
+        </div>
+
+        <Separator />
+
+        <DialogFooter class="gap-2">
+          <Button variant="outline" size="sm" @click="() => { viewingBank = null }">إغلاق</Button>
+          <Button size="sm" @click="() => { openEdit(viewingBank!); viewingBank = null }">تعديل البيانات</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

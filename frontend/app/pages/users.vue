@@ -25,10 +25,12 @@ import type { CreateUserPayload, UpdateUserPayload } from '../composables/useUse
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { Separator } from '@/components/ui/separator'
 import {
   Table,
   TableBody,
@@ -83,6 +85,7 @@ const query = ref('')
 
 const showModal = ref(false)
 const editingUser = ref<User | null>(null)
+const viewingUser = ref<User | null>(null)
 const saving = ref(false)
 const formError = ref<string | null>(null)
 
@@ -315,7 +318,12 @@ const columns: ColumnDef<User>[] = [
     accessorKey: 'name',
     header: 'الاسم',
     cell: ({ row }) => h('div', { class: 'flex flex-col gap-0.5' }, [
-      h('span', { class: 'text-sm font-medium' }, row.original.name),
+      h('button', {
+        type: 'button',
+        class: 'text-sm font-medium text-start hover:underline underline-offset-2 cursor-pointer focus-visible:outline-none focus-visible:underline',
+        title: 'معاينة سريعة',
+        onClick: (e: Event) => { e.stopPropagation(); viewingUser.value = row.original },
+      }, row.original.name),
       h('span', { class: 'font-mono text-xs text-muted-foreground', dir: 'ltr' }, row.original.email),
     ]),
   },
@@ -353,6 +361,7 @@ const columns: ColumnDef<User>[] = [
           }),
           h(DropdownMenuContent, { align: 'end' }, {
             default: () => [
+              h(DropdownMenuItem, { onClick: () => (viewingUser.value = user) }, () => 'عرض'),
               h(DropdownMenuItem, { onClick: () => openEdit(user) }, () => 'تعديل'),
             ],
           }),
@@ -436,10 +445,10 @@ onMounted(loadData)
     </div>
 
     <!-- Table -->
-    <div class="relative flex flex-col gap-4 overflow-auto">
-      <div v-if="loading || table.getRowModel().rows.length > 0" class="overflow-hidden rounded-lg border">
-        <Table>
-          <TableHeader class="bg-muted sticky top-0 z-10">
+    <div class="relative flex flex-col gap-4">
+      <div v-if="loading || table.getRowModel().rows.length > 0" class="rounded-lg border overflow-x-auto">
+        <Table class="min-w-max w-full">
+          <TableHeader class="bg-muted sticky top-0 z-30">
             <TableRow
               v-for="headerGroup in table.getHeaderGroups()"
               :key="headerGroup.id"
@@ -448,7 +457,10 @@ onMounted(loadData)
               <TableHead
                 v-for="header in headerGroup.headers"
                 :key="header.id"
-                class="h-10 px-4 text-sm font-medium text-foreground"
+                class="h-10 text-sm font-medium text-foreground"
+                :class="header.column.id === 'actions'
+                  ? 'sticky end-0 z-20 bg-muted w-12 px-2'
+                  : 'px-4'"
               >
                 <FlexRender
                   v-if="!header.isPlaceholder"
@@ -471,20 +483,23 @@ onMounted(loadData)
                 <TableCell class="px-4 py-3"><Skeleton class="h-5 w-20 rounded-full" /></TableCell>
                 <TableCell class="px-4 py-3"><Skeleton class="h-4 w-28" /></TableCell>
                 <TableCell class="px-4 py-3"><Skeleton class="h-4 w-16" /></TableCell>
-                <TableCell class="px-4 py-3"><Skeleton class="h-8 w-8 rounded-md" /></TableCell>
+                <TableCell class="px-4 py-3 w-12"><Skeleton class="h-8 w-8 rounded-md" /></TableCell>
               </TableRow>
             </template>
 
-            <template>
+            <template v-else>
               <TableRow
                 v-for="row in table.getRowModel().rows"
                 :key="row.id"
-                class="transition-colors hover:bg-muted/30"
+                class="group/row transition-colors hover:bg-muted/30"
               >
                 <TableCell
                   v-for="cell in row.getVisibleCells()"
                   :key="cell.id"
-                  class="px-4 py-3 align-middle"
+                  class="py-3 align-middle"
+                  :class="cell.column.id === 'actions'
+                    ? 'sticky end-0 z-10 bg-background w-12 px-2 group-hover/row:bg-muted/30'
+                    : 'px-4'"
                 >
                   <FlexRender :render="cell.column.columnDef.cell" :props="cell.getContext()" />
                 </TableCell>
@@ -615,6 +630,40 @@ onMounted(loadData)
         <DialogFooter class="gap-2">
           <Button variant="outline" :disabled="saving" @click="closeModal">إلغاء</Button>
           <Button :disabled="saving" @click="saveUser">{{ saving ? 'جارٍ الحفظ…' : 'حفظ' }}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
+    <!-- Quick-view Dialog -->
+    <Dialog :open="Boolean(viewingUser)" @update:open="v => !v && (viewingUser = null)">
+      <DialogContent v-if="viewingUser" dir="rtl" class="sm:max-w-md">
+        <DialogHeader class="pb-2">
+          <DialogTitle class="text-base">{{ viewingUser.name }}</DialogTitle>
+          <DialogDescription dir="ltr" class="text-xs">{{ viewingUser.email }}</DialogDescription>
+        </DialogHeader>
+
+        <div class="grid grid-cols-2 gap-x-4 gap-y-3 py-1 text-sm">
+          <div class="space-y-0.5">
+            <p class="text-xs text-muted-foreground">الدور</p>
+            <Badge variant="secondary" class="text-xs">{{ ROLE_LABELS[viewingUser.role] ?? viewingUser.role }}</Badge>
+          </div>
+          <div class="space-y-0.5">
+            <p class="text-xs text-muted-foreground">الحالة</p>
+            <Badge :class="viewingUser.is_active ? 'bg-[var(--severity-green)]/10 text-[var(--severity-green)] border-[var(--severity-green)]/30 border' : 'bg-[var(--severity-red)]/10 text-[var(--severity-red)] border-[var(--severity-red)]/30 border'">
+              {{ viewingUser.is_active ? 'نشط' : 'غير نشط' }}
+            </Badge>
+          </div>
+          <div v-if="viewingUser.bank_id" class="col-span-2 space-y-0.5">
+            <p class="text-xs text-muted-foreground">البنك التابع له</p>
+            <p class="font-medium">{{ bankLabel(viewingUser) }}</p>
+          </div>
+        </div>
+
+        <Separator />
+
+        <DialogFooter class="gap-2">
+          <Button variant="outline" size="sm" @click="() => { viewingUser = null }">إغلاق</Button>
+          <Button size="sm" @click="() => { openEdit(viewingUser!); viewingUser = null }">تعديل البيانات</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

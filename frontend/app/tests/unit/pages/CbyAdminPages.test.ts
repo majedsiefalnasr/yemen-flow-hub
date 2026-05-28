@@ -130,7 +130,7 @@ describe('/admin/cby-staff', () => {
   it('renders empty state when no users', async () => {
     const wrapper = await mountPage()
     expect(wrapper.find('[data-empty-state-variant="cby-staff"]').exists()).toBe(true)
-    expect(wrapper.text()).toContain('لا توجد نتائج')
+    expect(wrapper.text()).toContain('لا يوجد مستخدمون بعد')
   })
 
   it('renders user table with all required columns', async () => {
@@ -142,7 +142,7 @@ describe('/admin/cby-staff', () => {
     expect(headers).toContain('الجهة')
     expect(headers).toContain('الحالة')
     expect(headers).toContain('آخر ظهور')
-    expect(headers).toContain('الإجراءات')
+    expect(headers).toContain('')  // actions column has no header text (sticky compact column)
   })
 
   it('renders user row with name and status badge', async () => {

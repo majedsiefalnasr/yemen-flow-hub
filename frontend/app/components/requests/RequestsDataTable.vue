@@ -74,6 +74,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   rowClick: [requestId: number]
+  previewClick: [request: ImportRequest]
   'update:columnVisibility': [value: VisibilityState]
   'update:selectedCount': [count: number]
 }>()
@@ -176,7 +177,13 @@ const columns: ColumnDef<ImportRequest>[] = [
 
       return h('div', { class: 'flex flex-col gap-2' }, [
         h('div', { class: 'flex flex-wrap items-center gap-2' }, [
-          h('span', { class: 'font-mono text-base font-semibold text-primary' }, request.reference_number),
+          h('button', {
+            type: 'button',
+            class: 'font-mono text-base font-semibold text-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:underline cursor-pointer',
+            title: 'معاينة سريعة',
+            'aria-label': `معاينة الطلب ${request.reference_number}`,
+            onClick: (e: Event) => { e.stopPropagation(); emit('previewClick', request) },
+          }, request.reference_number),
           ...badges,
         ]),
         request.invoice_number
@@ -520,11 +527,11 @@ function supportCommitteeRowClass(request: ImportRequest): string {
 </script>
 
 <template>
-  <div class="relative flex flex-col gap-4 overflow-auto">
+  <div class="relative flex flex-col gap-4">
     <!-- Table (hidden when empty and not loading) -->
-    <div v-if="loading || table.getRowModel().rows.length > 0" class="overflow-hidden rounded-lg border">
-      <Table>
-        <TableHeader class="bg-muted sticky top-0 z-10">
+    <div v-if="loading || table.getRowModel().rows.length > 0" class="rounded-lg border overflow-x-auto">
+      <Table class="min-w-max w-full">
+        <TableHeader class="bg-muted sticky top-0 z-30">
           <TableRow
             v-for="headerGroup in table.getHeaderGroups()"
             :key="headerGroup.id"
@@ -534,7 +541,10 @@ function supportCommitteeRowClass(request: ImportRequest): string {
               v-for="header in headerGroup.headers"
               :key="header.id"
               :col-span="header.colSpan"
-              class="h-10 px-4 text-sm font-medium text-foreground"
+              class="h-10 text-sm font-medium text-foreground"
+              :class="header.column.id === 'actions'
+                ? 'sticky end-0 z-20 bg-muted w-12 px-2'
+                : 'px-4'"
             >
               <FlexRender
                 v-if="!header.isPlaceholder"
@@ -567,7 +577,7 @@ function supportCommitteeRowClass(request: ImportRequest): string {
               <TableCell class="px-4 py-3"><Skeleton class="h-4 w-24" /></TableCell>
               <TableCell class="px-4 py-3"><Skeleton class="h-4 w-24" /></TableCell>
               <TableCell class="px-4 py-3"><Skeleton class="h-6 w-24 rounded-md" /></TableCell>
-              <TableCell class="px-4 py-3"><Skeleton class="h-8 w-8 rounded-md" /></TableCell>
+              <TableCell class="px-2 py-3 w-12"><Skeleton class="h-8 w-8 rounded-md" /></TableCell>
             </TableRow>
           </template>
 
@@ -576,15 +586,17 @@ function supportCommitteeRowClass(request: ImportRequest): string {
             <TableRow
               v-for="row in table.getRowModel().rows"
               :key="row.id"
-              class="cursor-pointer transition-colors"
+              class="group/row transition-colors hover:bg-muted/30"
               :class="supportCommitteeRowClass(row.original)"
               :data-state="row.getIsSelected() ? 'selected' : undefined"
-              @click="emit('rowClick', row.original.id)"
             >
               <TableCell
                 v-for="cell in row.getVisibleCells()"
                 :key="cell.id"
-                class="px-4 py-3 align-middle"
+                class="py-3 align-middle"
+                :class="cell.column.id === 'actions'
+                  ? 'sticky end-0 z-10 bg-background w-12 px-2 group-hover/row:bg-muted/30'
+                  : 'px-4'"
               >
                 <FlexRender :render="cell.column.columnDef.cell" :props="cell.getContext()" />
               </TableCell>

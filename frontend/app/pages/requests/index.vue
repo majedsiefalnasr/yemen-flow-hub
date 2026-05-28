@@ -1,7 +1,19 @@
 <script setup lang="ts">
 import type { VisibilityState } from '@tanstack/vue-table'
 import { computed, onMounted, ref, watch } from 'vue'
-import { AlertCircle, ChevronDown, Columns3, Download, Eye, FilePlus2, Filter, Printer, Search, SlidersHorizontal, User, X } from 'lucide-vue-next'
+import {
+  AlertCircle, CheckCircle2, ChevronDown, ClipboardList, Columns3,
+  Download, Edit, Eye, FilePlus2, Filter, Lock, Printer,
+  Search, SlidersHorizontal, Upload, User, Vote, X,
+} from 'lucide-vue-next'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import RequestsDataTable from '@/components/requests/RequestsDataTable.vue'
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -129,7 +141,7 @@ const advancedFilterCount = computed(() => {
   return n
 })
 
-// CBY Admin: quick preview drawer
+// Quick preview dialog — available for all roles via reference-number click
 const previewRequest = ref<ImportRequest | null>(null)
 const previewOpen = ref(false)
 
@@ -265,6 +277,14 @@ const isCbyAdmin = computed(() => user.value?.role === UserRole.CBY_ADMIN)
 const isDirector = computed(() => user.value?.role === UserRole.COMMITTEE_DIRECTOR)
 const isBankAdmin = computed(() => user.value?.role === UserRole.BANK_ADMIN)
 const isSupportCommittee = computed(() => user.value?.role === UserRole.SUPPORT_COMMITTEE)
+const isDataEntry = computed(() => user.value?.role === UserRole.DATA_ENTRY)
+const isSwiftOfficer = computed(() => user.value?.role === UserRole.SWIFT_OFFICER)
+const isExecutiveMember = computed(() => user.value?.role === UserRole.EXECUTIVE_MEMBER)
+
+function formatDate(isoDate: string | null | undefined): string {
+  if (!isoDate) return '—'
+  return new Date(isoDate).toLocaleDateString('ar-EG', { year: 'numeric', month: 'short', day: 'numeric' })
+}
 
 // Support Committee: hide-claimed-by-others toggle — persisted via ?hide_others=1
 const hideOthers = ref(false)
@@ -326,10 +346,6 @@ const selectedCount = ref(0)
 const dataTableRef = ref<{ clearSelection: () => void } | null>(null)
 
 function openRequest(id: number) {
-  if (isCbyAdmin.value) {
-    const req = store.requests.find(r => r.id === id)
-    if (req) { openPreview(req); return }
-  }
   navigateTo(`/requests/${id}`)
 }
 
@@ -632,6 +648,7 @@ watch(hideOthers, (val) => {
         :role="user.role"
         :column-visibility="columnVisibility"
         @row-click="openRequest"
+        @preview-click="openPreview"
         @update:column-visibility="v => columnVisibility = v"
         @update:selected-count="count => selectedCount = count"
       />
@@ -748,80 +765,204 @@ watch(hideOthers, (val) => {
       </SheetContent>
     </Sheet>
 
-    <!-- CBY Admin: Quick Preview Drawer -->
-    <Sheet v-if="isCbyAdmin" v-model:open="previewOpen">
-      <SheetContent side="right" class="w-[480px] sm:w-[520px]">
-        <SheetHeader>
-          <SheetTitle class="flex items-center gap-2">
-            <span class="font-mono text-primary">{{ previewRequest?.reference_number ?? '—' }}</span>
-            <Badge variant="outline" class="text-xs">إشراف فقط</Badge>
-          </SheetTitle>
-          <SheetDescription>معاينة سريعة — للاطلاع على التفاصيل الكاملة افتح الطلب</SheetDescription>
-        </SheetHeader>
+    <!-- Quick Preview Dialog — all roles, triggered by reference-number click -->
+    <Dialog v-model:open="previewOpen">
+      <DialogContent v-if="previewRequest" dir="rtl" class="sm:max-w-lg">
+        <DialogHeader class="pb-2">
+          <DialogTitle class="flex items-center gap-2 text-base">
+            <span class="font-mono text-lg font-bold text-primary">{{ previewRequest.reference_number }}</span>
+            <Badge variant="outline" class="text-xs font-normal">معاينة سريعة</Badge>
+          </DialogTitle>
+          <DialogDescription class="text-xs">
+            انقر على الطلب في أي وقت للوصول إلى الصفحة الكاملة وجميع الإجراءات
+          </DialogDescription>
+        </DialogHeader>
 
-        <div v-if="previewRequest" class="mt-4 flex flex-col gap-4 overflow-y-auto">
-          <!-- Status + SLA -->
-          <div class="flex items-center gap-3">
-            <StatusBadge :status="previewRequest.status" :role="UserRole.CBY_ADMIN" />
-            <Badge
-              class="text-xs"
-              :style="{ backgroundColor: `${slaState(previewRequest).color}20`, color: slaState(previewRequest).color, borderColor: `${slaState(previewRequest).color}40` }"
-            >
-              {{ slaState(previewRequest).label }}
-            </Badge>
+        <!-- Status row -->
+        <div class="flex flex-wrap items-center gap-2 py-1">
+          <StatusBadge :status="previewRequest.status" :role="user!.role" />
+
+          <!-- SLA badge (CBY Admin / Director) -->
+          <Badge
+            v-if="isCbyAdmin || isDirector"
+            class="border text-xs"
+            :style="{
+              backgroundColor: `${slaState(previewRequest).color}18`,
+              color: slaState(previewRequest).color,
+              borderColor: `${slaState(previewRequest).color}38`,
+            }"
+          >
+            {{ slaState(previewRequest).label }}
+          </Badge>
+
+          <!-- Voting badge -->
+          <Badge
+            v-if="previewRequest.voting_session_status && (isExecutiveMember || isDirector || isCbyAdmin)"
+            class="border border-[var(--voting)]/30 bg-[var(--voting)]/10 text-[var(--voting)] text-xs"
+          >
+            <Vote class="me-1 h-3 w-3" />
+            {{ previewRequest.voting_session_status }}
+          </Badge>
+
+          <!-- Claim badge (Support Committee) -->
+          <Badge
+            v-if="isSupportCommittee && previewRequest.is_claimed"
+            class="border text-xs"
+            :class="previewRequest.is_claimed_by_me
+              ? 'border-[var(--severity-amber)]/30 bg-[var(--severity-amber)]/10 text-[var(--severity-amber)]'
+              : 'border-border bg-muted text-muted-foreground'"
+          >
+            <Lock class="me-1 h-3 w-3" />
+            {{ previewRequest.is_claimed_by_me ? 'محجوز لك' : 'محجوز' }}
+          </Badge>
+
+          <!-- Duplicate warning -->
+          <Badge
+            v-if="(previewRequest.duplicate_warnings?.length ?? 0) > 0"
+            variant="destructive"
+            class="rounded-full text-xs"
+          >
+            فاتورة مكررة
+          </Badge>
+        </div>
+
+        <Separator />
+
+        <!-- Key info grid -->
+        <div class="grid grid-cols-2 gap-x-4 gap-y-3 py-1 text-sm">
+          <div class="space-y-0.5">
+            <p class="text-xs text-muted-foreground">البنك</p>
+            <p class="font-medium">{{ previewRequest.bank_name ?? '—' }}</p>
+          </div>
+          <div class="space-y-0.5">
+            <p class="text-xs text-muted-foreground">التاجر</p>
+            <p class="font-medium">{{ previewRequest.merchant?.name ?? '—' }}</p>
+          </div>
+          <div class="space-y-0.5">
+            <p class="text-xs text-muted-foreground">المبلغ</p>
+            <p class="font-mono font-semibold">
+              {{ previewRequest.amount.toLocaleString('en-US') }}
+              <span class="text-muted-foreground">{{ previewRequest.currency }}</span>
+            </p>
+          </div>
+          <div class="space-y-0.5">
+            <p class="text-xs text-muted-foreground">تاريخ التقديم</p>
+            <p class="font-medium">{{ formatDate(previewRequest.created_at) }}</p>
           </div>
 
-          <!-- Key fields -->
-          <div class="grid grid-cols-2 gap-3 rounded-lg border p-3 text-sm">
-            <div>
-              <p class="text-xs text-muted-foreground">البنك</p>
-              <p class="font-medium">{{ previewRequest.bank_name ?? '—' }}</p>
-            </div>
-            <div>
-              <p class="text-xs text-muted-foreground">التاجر</p>
-              <p class="font-medium">{{ previewRequest.merchant?.name ?? '—' }}</p>
-            </div>
-            <div>
-              <p class="text-xs text-muted-foreground">المبلغ</p>
-              <p class="font-mono font-semibold">{{ previewRequest.amount.toLocaleString('en-US') }} {{ previewRequest.currency }}</p>
-            </div>
-            <div>
-              <p class="text-xs text-muted-foreground">العمر</p>
+          <!-- CBY Admin / Director extras -->
+          <template v-if="isCbyAdmin || isDirector">
+            <div class="space-y-0.5">
+              <p class="text-xs text-muted-foreground">عمر الطلب</p>
               <p class="font-medium">{{ relativeAge(previewRequest.created_at) }}</p>
             </div>
-            <div>
-              <p class="text-xs text-muted-foreground">حالة التصويت</p>
-              <p class="font-medium">{{ previewRequest.voting_session_status ?? 'لا يوجد' }}</p>
+            <div class="space-y-0.5">
+              <p class="text-xs text-muted-foreground">المصارفة الخارجية</p>
+              <p class="font-medium" :class="previewRequest.has_fx_request_document ? 'text-[var(--severity-green)]' : 'text-muted-foreground'">
+                {{ previewRequest.has_fx_request_document ? 'مرفوعة' : 'لم ترفع بعد' }}
+              </p>
             </div>
-            <div>
-              <p class="text-xs text-muted-foreground">المصارفة</p>
-              <p class="font-medium">{{ previewRequest.has_fx_request_document ? 'مرفوع' : 'لم يرفع' }}</p>
-            </div>
-          </div>
-
-          <!-- Risk flags -->
-          <div v-if="(previewRequest.duplicate_warnings?.length ?? 0) > 0" class="rounded-lg border border-[var(--severity-amber)]/30 bg-[var(--severity-amber)]/5 p-3">
-            <p class="mb-1 text-xs font-semibold text-[var(--severity-amber)]">تحذيرات المخاطر</p>
-            <p class="text-xs text-muted-foreground">فاتورة مكررة — {{ previewRequest.duplicate_warnings?.length }} تطابق</p>
-          </div>
-
-          <Separator />
-
-          <!-- Actions -->
-          <div class="flex gap-2">
-            <Button
-              class="flex-1"
-              @click="navigateTo(`/requests/${previewRequest.id}`)"
-            >
-              <Eye class="me-1.5 h-4 w-4" />
-              فتح الطلب
-            </Button>
-            <SheetClose as-child>
-              <Button variant="outline">إغلاق</Button>
-            </SheetClose>
-          </div>
+          </template>
         </div>
-      </SheetContent>
-    </Sheet>
+
+        <Separator />
+
+        <!-- Role-specific quick actions -->
+        <DialogFooter class="flex-wrap gap-2 sm:flex-nowrap">
+          <!-- DATA_ENTRY: edit if in editable state -->
+          <Button
+            v-if="isDataEntry && [RequestStatus.DRAFT, RequestStatus.BANK_RETURNED].includes(previewRequest.status as RequestStatus)"
+            size="sm"
+            @click="navigateTo(`/requests/${previewRequest.id}/edit`)"
+          >
+            <Edit class="me-1.5 h-3.5 w-3.5" />
+            تعديل الطلب
+          </Button>
+
+          <!-- BANK_REVIEWER: review action -->
+          <Button
+            v-if="isBankReviewer"
+            size="sm"
+            class="bg-[var(--severity-green)] text-white hover:bg-[var(--severity-green)]/90"
+            @click="navigateTo(`/requests/${previewRequest.id}`)"
+          >
+            <CheckCircle2 class="me-1.5 h-3.5 w-3.5" />
+            مراجعة واتخاذ قرار
+          </Button>
+
+          <!-- SUPPORT_COMMITTEE: claim if unclaimed -->
+          <Button
+            v-if="isSupportCommittee && !previewRequest.is_claimed"
+            size="sm"
+            class="bg-[var(--severity-amber)] text-white hover:bg-[var(--severity-amber)]/90"
+            @click="navigateTo(`/requests/${previewRequest.id}`)"
+          >
+            <Lock class="me-1.5 h-3.5 w-3.5" />
+            حجز ومراجعة
+          </Button>
+          <Button
+            v-else-if="isSupportCommittee && previewRequest.is_claimed_by_me"
+            size="sm"
+            @click="navigateTo(`/requests/${previewRequest.id}`)"
+          >
+            متابعة المراجعة
+          </Button>
+
+          <!-- SWIFT_OFFICER: upload if waiting -->
+          <Button
+            v-if="isSwiftOfficer && previewRequest.status === RequestStatus.WAITING_FOR_SWIFT"
+            size="sm"
+            class="bg-[var(--info)] text-white hover:bg-[var(--info)]/90"
+            @click="navigateTo(`/requests/${previewRequest.id}`)"
+          >
+            <Upload class="me-1.5 h-3.5 w-3.5" />
+            رفع وثيقة SWIFT
+          </Button>
+
+          <!-- EXECUTIVE_MEMBER: vote if session open -->
+          <Button
+            v-if="isExecutiveMember && previewRequest.status === RequestStatus.EXECUTIVE_VOTING_OPEN"
+            size="sm"
+            class="bg-[var(--voting)] text-white hover:bg-[var(--voting)]/90"
+            @click="navigateTo(`/requests/${previewRequest.id}`)"
+          >
+            <Vote class="me-1.5 h-3.5 w-3.5" />
+            التصويت الآن
+          </Button>
+
+          <!-- COMMITTEE_DIRECTOR: manage session -->
+          <Button
+            v-if="isDirector"
+            size="sm"
+            class="bg-[var(--voting)] text-white hover:bg-[var(--voting)]/90"
+            @click="navigateTo(`/requests/${previewRequest.id}`)"
+          >
+            <Vote class="me-1.5 h-3.5 w-3.5" />
+            {{ previewRequest.status === RequestStatus.EXECUTIVE_VOTING_OPEN ? 'إغلاق الجلسة' : 'فتح جلسة التصويت' }}
+          </Button>
+
+          <!-- CBY_ADMIN: audit trail shortcut -->
+          <Button
+            v-if="isCbyAdmin"
+            variant="outline"
+            size="sm"
+            @click="navigateTo(`/requests/${previewRequest.id}`)"
+          >
+            <ClipboardList class="me-1.5 h-3.5 w-3.5" />
+            سجل التدقيق
+          </Button>
+
+          <!-- Always: open full request -->
+          <Button
+            variant="outline"
+            size="sm"
+            @click="navigateTo(`/requests/${previewRequest.id}`)"
+          >
+            <Eye class="me-1.5 h-3.5 w-3.5" />
+            فتح الطلب الكامل
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   </div>
 </template>
