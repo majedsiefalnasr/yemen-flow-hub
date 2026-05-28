@@ -528,16 +528,16 @@ Concrete mapping from template asset → Yemen Flow Hub Vue target. "Status" ref
 ### Phase 5: Dashboard Composition
 
 - [x] Define a shared `DashboardKpiCard` contract: icon, label, value, semantic state, trend, SLA hint, drilldown route, loading state.
-- [ ] Define an `ActionRequiredStrip` component for urgent role work.
+- [x] Define an `ActionRequiredStrip` component for urgent role work.
 - [x] Define a `DashboardSection` component for consistent headings, helper text, and actions.
 - [ ] Keep operational roles queue-first: `DATA_ENTRY`, `BANK_REVIEWER`, `SUPPORT_COMMITTEE`, `SWIFT_OFFICER`, `EXECUTIVE_MEMBER`, `COMMITTEE_DIRECTOR`.
 - [ ] Add chart-backed sections first to `BANK_ADMIN` and `CBY_ADMIN`, where oversight and analytics are role-appropriate.
 - [ ] Use existing Vue chart components and project tokens.
 - [ ] Avoid generic SaaS cards, vanity metrics, gradients, and revenue language.
 - [x] Consolidate the five duplicated metric-card components into the single `DashboardKpiCard.vue` contract (the template copies the same card 5x).
-- [ ] Drive status badges from a config map keyed by canonical status enum → semantic token + icon + label (port the `transaction-columns.tsx` `statusConfig` pattern, with YFH enums).
+- [x] Drive status badges from a config map keyed by canonical status enum → semantic token + icon + label (port the `transaction-columns.tsx` `statusConfig` pattern, with YFH enums).
 - [x] Add a `DashboardSection.vue` wrapper for consistent section heading + helper text + actions, and reuse the `grid sm:grid-cols-2 lg:grid-cols-4` KPI rhythm.
-- [ ] Standardize on logical spacing utilities and container queries (`me-1`, `@container`) across cards; remove the template's `mr-1`/`lg:` inconsistency.
+- [x] Standardize on logical spacing utilities and container queries (`me-1`, `@container`) across cards; remove the template's `mr-1`/`lg:` inconsistency.
 
 Role dashboard checklist:
 
