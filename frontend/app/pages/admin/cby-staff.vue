@@ -534,7 +534,7 @@ const table = useVueTable({
 
     <div v-else class="mb-4 flex flex-wrap items-center gap-2">
       <div class="relative min-w-[220px] flex-1">
-        <Search class="absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Search class="absolute inset-e-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           v-model="query"
           class="h-8 rounded-md pe-9 text-sm"

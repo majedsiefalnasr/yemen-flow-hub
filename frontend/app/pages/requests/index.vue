@@ -36,6 +36,7 @@ import {
 } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
@@ -119,24 +120,24 @@ const isBankReviewer = computed(() => user.value?.role === UserRole.BANK_REVIEWE
 const advancedFiltersOpen = ref(false)
 const advFilters = ref({
   bank: 'all',
-  stage: '',
-  sla: '',
-  voting: '',
-  fx: '',
+  stage: 'all',
+  sla: 'all',
+  voting: 'all',
+  fx: 'all',
   high_value: false,
 })
 
 function clearAdvancedFilters() {
-  advFilters.value = { bank: 'all', stage: '', sla: '', voting: '', fx: '', high_value: false }
+  advFilters.value = { bank: 'all', stage: 'all', sla: 'all', voting: 'all', fx: 'all', high_value: false }
 }
 
 const advancedFilterCount = computed(() => {
   let n = 0
   if (advFilters.value.bank !== 'all') n++
-  if (advFilters.value.stage) n++
-  if (advFilters.value.sla) n++
-  if (advFilters.value.voting) n++
-  if (advFilters.value.fx) n++
+  if (advFilters.value.stage !== 'all') n++
+  if (advFilters.value.sla !== 'all') n++
+  if (advFilters.value.voting !== 'all') n++
+  if (advFilters.value.fx !== 'all') n++
   if (advFilters.value.high_value) n++
   return n
 })
@@ -180,12 +181,12 @@ const roleBuckets = computed((): StageBucket[] => {
 const isBankScoped = computed(() => user.value ? BANK_ROLES.includes(user.value.role) : false)
 const showBankFilter = computed(() => user.value ? CBY_BANK_FILTER_ROLES.includes(user.value.role) : false)
 const tabOptions = computed(() => [
+  { key: 'all', label: 'الكل', count: countForBucket('all') },
   ...roleBuckets.value.map(bucket => ({
     key: bucket.key,
     label: bucket.label,
     count: countForBucket(bucket.key),
   })),
-  { key: 'all', label: 'الكل', count: countForBucket('all') },
 ])
 
 const tabKeys = computed(() => new Set(tabOptions.value.map(tab => tab.key)))
@@ -230,20 +231,20 @@ const filteredRequests = computed(() => {
       if (advFilters.value.bank !== 'all' && advFilters.value.bank) {
         advBankMatches = String(req.bank_id) === advFilters.value.bank
       }
-      if (advFilters.value.stage) {
+      if (advFilters.value.stage !== 'all') {
         advStageMatches = req.current_owner_role === advFilters.value.stage
       }
-      if (advFilters.value.sla) {
+      if (advFilters.value.sla !== 'all') {
         const hrs = (Date.now() - new Date(req.created_at).getTime()) / 3600000
         if (advFilters.value.sla === 'breach') advSlaMatches = hrs > 120
         else if (advFilters.value.sla === 'risk') advSlaMatches = hrs > 72 && hrs <= 120
         else if (advFilters.value.sla === 'ok') advSlaMatches = hrs <= 72
       }
-      if (advFilters.value.voting) {
+      if (advFilters.value.voting !== 'all') {
         const hasVoting = req.voting_session_status != null
         advVotingMatches = advFilters.value.voting === 'active' ? hasVoting : !hasVoting
       }
-      if (advFilters.value.fx) {
+      if (advFilters.value.fx !== 'all') {
         const hasFx = req.has_fx_request_document === true
         advFxMatches = advFilters.value.fx === 'uploaded' ? hasFx : !hasFx
       }
@@ -478,7 +479,7 @@ watch(hideOthers, (val) => {
       </AlertAction>
     </Alert>
 
-    <Tabs v-model="filter" class="flex w-full flex-col gap-4">
+    <Tabs v-model="filter" dir="rtl" class="flex w-full flex-col gap-4">
       <!-- Row 1: tabs (left) + page actions (right) -->
       <div class="flex items-center justify-between gap-4">
         <!-- Mobile: select dropdown -->
@@ -554,7 +555,7 @@ watch(hideOthers, (val) => {
 
       <div v-else class="flex flex-wrap items-center gap-2">
         <div class="relative min-w-[220px] flex-1">
-          <Search class="absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Search class="absolute inset-e-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             v-model="query"
             placeholder="بحث برقم الطلب، التاجر، أو رقم الفاتورة..."
@@ -655,14 +656,14 @@ watch(hideOthers, (val) => {
     </Tabs>
 
     <!-- CBY Admin: Advanced Filters Drawer -->
-    <Sheet v-if="isCbyAdmin" v-model:open="advancedFiltersOpen">
+    <Sheet v-if="isCbyAdmin" v-model:open="advancedFiltersOpen" :modal="true">
       <SheetContent side="right" class="w-[360px] sm:w-[400px]">
         <SheetHeader>
           <SheetTitle>فلاتر متقدمة</SheetTitle>
           <SheetDescription>تصفية سجل الطلبات الوطني</SheetDescription>
         </SheetHeader>
 
-        <div class="mt-6 flex flex-col gap-5">
+        <div class="grid flex-1 auto-rows-min gap-5 px-1 sm:px-2">
           <div class="flex flex-col gap-2">
             <Label>البنك</Label>
             <Select v-model="advFilters.bank">
@@ -685,7 +686,7 @@ watch(hideOthers, (val) => {
                 <SelectValue placeholder="جميع المراحل" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">جميع المراحل</SelectItem>
+                <SelectItem value="all">جميع المراحل</SelectItem>
                 <SelectItem value="DATA_ENTRY">إدخال البيانات</SelectItem>
                 <SelectItem value="BANK_REVIEWER">مراجعة البنك</SelectItem>
                 <SelectItem value="SUPPORT_COMMITTEE">لجنة المساندة</SelectItem>
@@ -703,7 +704,7 @@ watch(hideOthers, (val) => {
                 <SelectValue placeholder="جميع الحالات" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">جميع الحالات</SelectItem>
+                <SelectItem value="all">جميع الحالات</SelectItem>
                 <SelectItem value="breach">انتهاك SLA (&gt;120 ساعة)</SelectItem>
                 <SelectItem value="risk">خطر SLA (72-120 ساعة)</SelectItem>
                 <SelectItem value="ok">ضمن SLA (&lt;72 ساعة)</SelectItem>
@@ -718,7 +719,7 @@ watch(hideOthers, (val) => {
                 <SelectValue placeholder="الكل" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">الكل</SelectItem>
+                <SelectItem value="all">الكل</SelectItem>
                 <SelectItem value="active">تصويت نشط</SelectItem>
                 <SelectItem value="none">بدون تصويت</SelectItem>
               </SelectContent>
@@ -732,7 +733,7 @@ watch(hideOthers, (val) => {
                 <SelectValue placeholder="الكل" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">الكل</SelectItem>
+                <SelectItem value="all">الكل</SelectItem>
                 <SelectItem value="uploaded">مرفوع</SelectItem>
                 <SelectItem value="pending">لم يرفع</SelectItem>
               </SelectContent>
@@ -740,25 +741,29 @@ watch(hideOthers, (val) => {
           </div>
 
           <div class="flex items-center gap-3 rounded-lg border px-3 py-2.5">
-            <input
+            <Checkbox
               id="high-value-toggle"
-              v-model="advFilters.high_value"
-              type="checkbox"
-              class="size-4 rounded accent-primary"
+              :checked="advFilters.high_value"
+              @update:checked="(checked) => advFilters.high_value = checked === true"
             />
             <Label for="high-value-toggle" class="cursor-pointer text-sm">قيمة عالية فقط (≥ 1,000,000)</Label>
           </div>
         </div>
 
-        <SheetFooter class="mt-6 flex gap-2">
-          <Button variant="outline" class="flex-1" @click="clearAdvancedFilters">
+        <SheetFooter class="mt-6">
+          <Button variant="outline" class="h-10" @click="clearAdvancedFilters">
             <X class="me-1.5 h-4 w-4" />
             مسح الفلاتر
           </Button>
           <SheetClose as-child>
-            <Button class="flex-1">
+            <Button class="h-10">
               <Filter class="me-1.5 h-4 w-4" />
               تطبيق
+            </Button>
+          </SheetClose>
+          <SheetClose as-child>
+            <Button variant="outline" class="h-10">
+              إغلاق
             </Button>
           </SheetClose>
         </SheetFooter>

@@ -506,12 +506,24 @@ const table = useVueTable({
 
     <!-- CBY Admin: Risk tabs -->
     <div v-if="isCbyAdmin" class="mb-4">
-      <Tabs :model-value="merchantTab" @update:model-value="v => merchantTab = v as typeof merchantTab.value">
-        <TabsList variant="line">
-          <TabsTrigger value="all">الكل ({{ scoped.length }})</TabsTrigger>
-          <TabsTrigger value="cross_bank">متعدد البنوك ({{ riskSummary?.crossBank ?? 0 }})</TabsTrigger>
-          <TabsTrigger value="missing_data">بيانات ناقصة ({{ stats.incomplete }})</TabsTrigger>
-          <TabsTrigger value="inactive">غير نشط ({{ stats.suspended }})</TabsTrigger>
+      <Tabs :model-value="merchantTab" dir="rtl" @update:model-value="v => merchantTab = v as typeof merchantTab.value">
+        <TabsList class="h-auto gap-1 rounded-full bg-muted p-1">
+          <TabsTrigger value="all" class="h-7 gap-1.5 rounded-full px-3 text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm">
+            الكل
+            <Badge variant="secondary" class="h-5 min-w-5 rounded-full px-1 text-xs">{{ scoped.length }}</Badge>
+          </TabsTrigger>
+          <TabsTrigger value="cross_bank" class="h-7 gap-1.5 rounded-full px-3 text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm">
+            متعدد البنوك
+            <Badge variant="secondary" class="h-5 min-w-5 rounded-full px-1 text-xs">{{ riskSummary?.crossBank ?? 0 }}</Badge>
+          </TabsTrigger>
+          <TabsTrigger value="missing_data" class="h-7 gap-1.5 rounded-full px-3 text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm">
+            بيانات ناقصة
+            <Badge variant="secondary" class="h-5 min-w-5 rounded-full px-1 text-xs">{{ stats.incomplete }}</Badge>
+          </TabsTrigger>
+          <TabsTrigger value="inactive" class="h-7 gap-1.5 rounded-full px-3 text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm">
+            غير نشط
+            <Badge variant="secondary" class="h-5 min-w-5 rounded-full px-1 text-xs">{{ stats.suspended }}</Badge>
+          </TabsTrigger>
         </TabsList>
       </Tabs>
     </div>
@@ -541,7 +553,7 @@ const table = useVueTable({
 
     <div v-else class="mb-4 flex flex-wrap items-center gap-2">
       <div class="relative min-w-[220px] flex-1">
-        <Search class="absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Search class="absolute inset-e-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           v-model="query"
           placeholder="بحث برقم السجل، الرقم الضريبي، أو الاسم..."
@@ -563,16 +575,22 @@ const table = useVueTable({
         </SelectContent>
       </Select>
 
-      <Select v-model="statusFilter">
-        <SelectTrigger class="h-8 w-full rounded-md text-sm sm:w-40">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">كل الحالات</SelectItem>
-          <SelectItem value="active">نشط فقط</SelectItem>
-          <SelectItem value="suspended">موقوف فقط</SelectItem>
-        </SelectContent>
-      </Select>
+      <Tabs v-model="statusFilter" dir="rtl" class="shrink-0">
+        <TabsList class="h-auto gap-1 rounded-full bg-muted p-1">
+          <TabsTrigger value="all" class="h-7 gap-1.5 rounded-full px-3 text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm">
+            الكل
+            <Badge variant="secondary" class="h-5 min-w-5 rounded-full px-1 text-xs">{{ stats.total }}</Badge>
+          </TabsTrigger>
+          <TabsTrigger value="active" class="h-7 gap-1.5 rounded-full px-3 text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm">
+            نشط
+            <Badge variant="secondary" class="h-5 min-w-5 rounded-full px-1 text-xs">{{ stats.active }}</Badge>
+          </TabsTrigger>
+          <TabsTrigger value="suspended" class="h-7 gap-1.5 rounded-full px-3 text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm">
+            موقوف
+            <Badge variant="secondary" class="h-5 min-w-5 rounded-full px-1 text-xs">{{ stats.suspended }}</Badge>
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
     </div>
 
     <!-- CBY Admin: tanstack table view -->

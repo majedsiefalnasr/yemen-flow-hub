@@ -435,7 +435,7 @@ onMounted(loadData)
 
     <div v-else class="flex items-center gap-2">
       <div class="relative min-w-[220px] flex-1">
-        <Search class="absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Search class="absolute inset-e-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           v-model="query"
           placeholder="بحث بالاسم أو البريد أو الدور..."
