@@ -584,21 +584,21 @@ Priority table surfaces:
 
 ### Phase 7: Workflow Forms, Dialogs, And Action Surfaces
 
-- [ ] Refine `RequestWizard` with stronger step hierarchy, completed/active/locked/error states, and document requirement clarity.
-- [ ] Use `AlertDialog` for irreversible workflow actions: bank rejection, support rejection, vote closure, final decision, external FX completion.
-- [ ] Prefer inline panels for correction reasons, review notes, and document guidance where interruption is not required.
-- [ ] Show disabled action reasons only when the action is role-appropriate but temporarily unavailable.
-- [ ] Do not render role-forbidden actions.
-- [ ] Validate all workflow action surfaces against canonical role and status enums.
+- [x] Refine `RequestWizard` with stronger step hierarchy, completed/active/locked/error states, and document requirement clarity.
+- [x] Use `AlertDialog` for irreversible workflow actions: bank rejection, support rejection, vote closure, final decision, external FX completion.
+- [x] Prefer inline panels for correction reasons, review notes, and document guidance where interruption is not required.
+- [x] Show disabled action reasons only when the action is role-appropriate but temporarily unavailable.
+- [x] Do not render role-forbidden actions.
+- [x] Validate all workflow action surfaces against canonical role and status enums.
 
 ### Phase 8: Auth, Error, Empty, Loading, And Help
 
-- [ ] Redesign `/login` using template layout clarity, but institutionalize it: CBY identity, formal Arabic copy, security posture, rate-limit/lockout help.
-- [ ] Remove social-login, social-proof, marketing claims, gradients, and playful illustrations.
+- [x] Redesign `/login` using template layout clarity, but institutionalize it: CBY identity, formal Arabic copy, security posture, rate-limit/lockout help.
+- [x] Remove social-login, social-proof, marketing claims, gradients, and playful illustrations.
 - [ ] Add or refine reset password and future MFA screens with the same form rhythm.
 - [ ] Standardize `unauthorized`, `forbidden`, `not found`, `server error`, and `maintenance` pages with Arabic copy and clear next actions.
-- [ ] Use shadcn-vue `Skeleton` for loading states.
-- [ ] Use shadcn-vue `Alert` for inline errors.
+- [x] Use shadcn-vue `Skeleton` for loading states.
+- [x] Use shadcn-vue `Alert` for inline errors.
 - [ ] Make empty states operational: queue clear, no matching filters, no assigned sessions, no active claims.
 - [ ] Build help/SOP pages from real role guidance, not generic FAQ text.
 - [x] Build one props-driven `ErrorState.vue` (code, icon, title, description, actions) for 401/403/404/500/503; wire to Nuxt `error.vue`/middleware.
@@ -607,7 +607,7 @@ Priority table surfaces:
 - [x] Add a `PasswordRequirements.vue` live checklist (Check/X, backend-matching rules, Arabic) for reset/MFA password fields.
 - [x] Add a neutral `ComingSoon.vue` (no gradient) for unbuilt admin routes during rollout.
 - [x] Add a `ContentSection.vue` wrapper (title + desc + separator + scroll body, `lg:max-w-xl`) for settings tabs.
-- [ ] Adopt the tri-modal responsive settings nav (aside list on lg, tabs on md, select on sm), mirrored RTL.
+- [x] Adopt the tri-modal responsive settings nav (aside list on lg, tabs on md, select on sm), mirrored RTL.
 
 ### Phase 9: RTL, Responsive, Accessibility, And Visual QA
 
