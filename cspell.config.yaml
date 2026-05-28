@@ -4,19 +4,24 @@ dictionaryDefinitions: []
 dictionaries: []
 words:
   - bmad
+  - customizer
   - decisioning
+  - drilldown
   - gpgsign
   - graphify
   - Laravel
   - lucide
   - majedsiefalnasr
+  - offcanvas
   - reqs
   - rollups
   - shadcn
+  - subcomponents
   - Tajawal
   - tanstack
   - Tasklist
   - tasklists
+  - topbar
   - Touchpoints
   - Unovis
   - worktrees
