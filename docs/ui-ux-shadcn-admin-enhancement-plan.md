@@ -530,10 +530,10 @@ Concrete mapping from template asset → Yemen Flow Hub Vue target. "Status" ref
 - [x] Define a shared `DashboardKpiCard` contract: icon, label, value, semantic state, trend, SLA hint, drilldown route, loading state.
 - [x] Define an `ActionRequiredStrip` component for urgent role work.
 - [x] Define a `DashboardSection` component for consistent headings, helper text, and actions.
-- [ ] Keep operational roles queue-first: `DATA_ENTRY`, `BANK_REVIEWER`, `SUPPORT_COMMITTEE`, `SWIFT_OFFICER`, `EXECUTIVE_MEMBER`, `COMMITTEE_DIRECTOR`.
-- [ ] Add chart-backed sections first to `BANK_ADMIN` and `CBY_ADMIN`, where oversight and analytics are role-appropriate.
-- [ ] Use existing Vue chart components and project tokens.
-- [ ] Avoid generic SaaS cards, vanity metrics, gradients, and revenue language.
+- [x] Keep operational roles queue-first: `DATA_ENTRY`, `BANK_REVIEWER`, `SUPPORT_COMMITTEE`, `SWIFT_OFFICER`, `EXECUTIVE_MEMBER`, `COMMITTEE_DIRECTOR`.
+- [x] Add chart-backed sections first to `BANK_ADMIN` and `CBY_ADMIN`, where oversight and analytics are role-appropriate.
+- [x] Use existing Vue chart components and project tokens.
+- [x] Avoid generic SaaS cards, vanity metrics, gradients, and revenue language.
 - [x] Consolidate the five duplicated metric-card components into the single `DashboardKpiCard.vue` contract (the template copies the same card 5x).
 - [x] Drive status badges from a config map keyed by canonical status enum → semantic token + icon + label (port the `transaction-columns.tsx` `statusConfig` pattern, with YFH enums).
 - [x] Add a `DashboardSection.vue` wrapper for consistent section heading + helper text + actions, and reuse the `grid sm:grid-cols-2 lg:grid-cols-4` KPI rhythm.
@@ -541,14 +541,14 @@ Concrete mapping from template asset → Yemen Flow Hub Vue target. "Status" ref
 
 Role dashboard checklist:
 
-- [ ] `DATA_ENTRY`: drafts, returned corrections, submitted requests, new request CTA.
-- [ ] `BANK_REVIEWER`: review queue, segregation-of-duties blocked state, returned/rejected follow-up.
-- [ ] `BANK_ADMIN`: bank portfolio health, staff/merchant admin tasks, bank-scoped oversight.
-- [ ] `SUPPORT_COMMITTEE`: unclaimed queue, claimed by me, claimed by others, heartbeat and TTL visibility.
-- [ ] `SWIFT_OFFICER`: pending SWIFT upload queue, two-document completion gate, upload errors.
-- [ ] `EXECUTIVE_MEMBER`: assigned sessions, voted sessions, pending vote age.
-- [ ] `COMMITTEE_DIRECTOR`: open/close voting, tie resolution, final decision, FX confirmation pending.
-- [ ] `CBY_ADMIN`: governance, SLA, bank risk, audit anomalies, platform health.
+- [x] `DATA_ENTRY`: drafts, returned corrections, submitted requests, new request CTA.
+- [x] `BANK_REVIEWER`: review queue, segregation-of-duties blocked state, returned/rejected follow-up.
+- [x] `BANK_ADMIN`: bank portfolio health, staff/merchant admin tasks, bank-scoped oversight.
+- [x] `SUPPORT_COMMITTEE`: unclaimed queue, claimed by me, claimed by others, heartbeat and TTL visibility.
+- [x] `SWIFT_OFFICER`: pending SWIFT upload queue, two-document completion gate, upload errors.
+- [x] `EXECUTIVE_MEMBER`: assigned sessions, voted sessions, pending vote age.
+- [x] `COMMITTEE_DIRECTOR`: open/close voting, tie resolution, final decision, FX confirmation pending.
+- [x] `CBY_ADMIN`: governance, SLA, bank risk, audit anomalies, platform health.
 
 ### Phase 6: Table System And Query-State Filters
 
@@ -603,7 +603,7 @@ Priority table surfaces:
 - [ ] Build help/SOP pages from real role guidance, not generic FAQ text.
 - [x] Build one props-driven `ErrorState.vue` (code, icon, title, description, actions) for 401/403/404/500/503; wire to Nuxt `error.vue`/middleware.
 - [x] Error recovery actions must be role-safe: "back to dashboard" routes to the role's own dashboard, never a forbidden home; 403 keeps "contact administrator" guidance.
-- [ ] Standardize create/edit on the VeeValidate+Zod+`Form`-primitives pattern in a centered `Dialog` (not a Sheet); use the two-column paired-Select grid layout.
+- [x] Standardize create/edit on the VeeValidate+Zod+`Form`-primitives pattern in a centered `Dialog` (not a Sheet); use the two-column paired-Select grid layout.
 - [x] Add a `PasswordRequirements.vue` live checklist (Check/X, backend-matching rules, Arabic) for reset/MFA password fields.
 - [x] Add a neutral `ComingSoon.vue` (no gradient) for unbuilt admin routes during rollout.
 - [x] Add a `ContentSection.vue` wrapper (title + desc + separator + scroll body, `lg:max-w-xl`) for settings tabs.
