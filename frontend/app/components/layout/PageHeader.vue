@@ -1,8 +1,5 @@
 <script setup lang="ts">
 import { ChevronLeft } from 'lucide-vue-next'
-import { SidebarTrigger } from '@/components/ui/sidebar'
-import { Separator } from '@/components/ui/separator'
-import SearchForm from '@/components/SearchForm.vue'
 
 type Breadcrumb = {
   label: string
@@ -17,36 +14,28 @@ defineProps<{
 </script>
 
 <template>
-  <div class="mb-6 pt-4">
-    <!-- Trigger row: sidebar toggler + breadcrumb trail + search -->
-    <div class="mb-3 flex items-center gap-2">
-      <SidebarTrigger class="-ms-1 shrink-0" aria-label="تبديل الشريط الجانبي" />
-      <Separator orientation="vertical" class="h-4 data-[orientation=vertical]:h-4" />
-      <nav
-        v-if="breadcrumbs?.length"
-        class="flex min-w-0 flex-1 items-center gap-1 text-xs text-muted-foreground"
-        aria-label="مسار التنقل"
+  <div class="mb-6 pt-2">
+    <nav
+      v-if="breadcrumbs?.length"
+      class="mb-3 flex min-w-0 items-center gap-1 text-xs text-muted-foreground"
+      aria-label="مسار التنقل"
+    >
+      <template
+        v-for="(breadcrumb, index) in breadcrumbs"
+        :key="`${breadcrumb.label}-${index}`"
       >
-        <template
-          v-for="(breadcrumb, index) in breadcrumbs"
-          :key="`${breadcrumb.label}-${index}`"
+        <ChevronLeft v-if="index > 0" class="h-3 w-3 shrink-0 opacity-50" aria-hidden="true" />
+        <NuxtLink
+          v-if="breadcrumb.to"
+          :to="breadcrumb.to"
+          class="truncate transition-colors hover:text-foreground"
         >
-          <ChevronLeft v-if="index > 0" class="h-3 w-3 shrink-0 opacity-50" aria-hidden="true" />
-          <NuxtLink
-            v-if="breadcrumb.to"
-            :to="breadcrumb.to"
-            class="truncate transition-colors hover:text-foreground"
-          >
-            {{ breadcrumb.label }}
-          </NuxtLink>
-          <span v-else class="truncate font-medium text-foreground">{{ breadcrumb.label }}</span>
-        </template>
-      </nav>
-      <div v-else class="flex-1" />
-      <SearchForm />
-    </div>
+          {{ breadcrumb.label }}
+        </NuxtLink>
+        <span v-else class="truncate font-medium text-foreground">{{ breadcrumb.label }}</span>
+      </template>
+    </nav>
 
-    <!-- Title + actions row -->
     <div class="flex flex-wrap items-start justify-between gap-4">
       <div>
         <h1 class="text-2xl font-bold tracking-tight">

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { AlertTriangle } from 'lucide-vue-next'
 import AppSidebar from '@/components/AppSidebar.vue'
+import GlobalTopbar from '@/components/layout/GlobalTopbar.vue'
 import { useAuthStore } from '@/stores/auth.store'
 import { useThemingStore } from '@/stores/theming.store'
 import {
@@ -15,11 +16,12 @@ const user = computed(() => authStore.user)
 
 <template>
   <div v-if="user" class="min-h-dvh bg-background text-foreground" dir="rtl">
-    <SidebarProvider>
-      <AppSidebar />
+    <SidebarProvider dir="rtl" class="flex-row">
+      <AppSidebar side="right" variant="inset" collapsible="icon" />
       <SidebarInset>
-        <!-- Main Content — no topbar; SidebarTrigger lives in each PageHeader -->
-        <main class="flex flex-1 flex-col overflow-auto p-4 pt-2">
+        <GlobalTopbar />
+
+        <main class="flex flex-1 flex-col overflow-auto p-4 pt-4">
           <div
             :class="[
               'content-layout w-full',

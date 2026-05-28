@@ -9,12 +9,23 @@ defineOptions({
 })
 
 const props = withDefaults(defineProps<SidebarProps>(), {
-  side: 'left',
+  side: 'right',
   variant: 'sidebar',
   collapsible: 'offcanvas',
 })
 
 const { isMobile, state, openMobile, setOpenMobile } = useSidebar()
+
+const sidebarPositionStyle = computed(() => {
+  const hiddenOffset = 'calc(var(--sidebar-width) * -1)'
+  const offset = state.value === 'collapsed' && props.collapsible === 'offcanvas'
+    ? hiddenOffset
+    : '0px'
+
+  return props.side === 'right'
+    ? { right: offset }
+    : { left: offset }
+})
 </script>
 
 <template>
@@ -74,15 +85,13 @@ const { isMobile, state, openMobile, setOpenMobile } = useSidebar()
       :data-side="side"
       :class="cn(
         'fixed inset-y-0 z-10 hidden h-svh w-(--sidebar-width) transition-[left,right,width] duration-200 ease-linear md:flex',
-        side === 'left'
-          ? 'start-0 group-data-[collapsible=offcanvas]:start-[calc(var(--sidebar-width)*-1)]'
-          : 'end-0 group-data-[collapsible=offcanvas]:end-[calc(var(--sidebar-width)*-1)]',
         // Adjust the padding for floating and inset variants.
         variant === 'floating' || variant === 'inset'
           ? 'p-2 group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)+(--spacing(4))+2px)]'
           : 'group-data-[collapsible=icon]:w-(--sidebar-width-icon) group-data-[side=left]:border-e group-data-[side=right]:border-s',
         props.class,
       )"
+      :style="sidebarPositionStyle"
       v-bind="$attrs"
     >
       <div

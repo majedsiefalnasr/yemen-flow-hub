@@ -25,37 +25,59 @@ const open = ref(false)
 const authStore = useAuthStore()
 const router = useRouter()
 
-const { meta_k } = useMagicKeys()
+const { meta_k, ctrl_k } = useMagicKeys()
+const commandShortcutPressed = computed(() => Boolean(meta_k?.value || ctrl_k?.value))
 
-whenever(meta_k, () => {
+whenever(commandShortcutPressed, () => {
   open.value = true
 })
 
-const quickActions = computed(() => {
+const shortcutByRoute: Record<string, string> = {
+  '/dashboard': 'D',
+  '/requests': 'R',
+  '/requests/new': 'N',
+  '/merchants': 'M',
+  '/staff': 'F',
+  '/customs': 'X',
+  '/reports': 'T',
+  '/audit': 'A',
+  '/notifications': 'I',
+  '/admin/entities': 'B',
+  '/admin/cby-staff': 'U',
+  '/admin/workflow-docs': 'W',
+  '/admin/roles': 'P',
+  '/settings': 'S',
+}
+
+const commandGroupByRoute: Array<{ heading: string, routes: string[] }> = [
+  { heading: 'الطلبات والطوابير', routes: ['/dashboard', '/requests', '/requests/new', '/customs'] },
+  { heading: 'الإدارة', routes: ['/merchants', '/staff', '/admin/entities', '/admin/cby-staff', '/admin/workflow-docs', '/admin/roles'] },
+  { heading: 'التدقيق والتقارير', routes: ['/reports', '/audit'] },
+  { heading: 'المساعدة والإعدادات', routes: ['/notifications', '/settings'] },
+]
+
+const allowedActions = computed(() => {
   const user = authStore.user
   if (!user) return []
-  const shortcutByRoute: Record<string, string> = {
-    '/requests': 'R',
-    '/requests/new': 'N',
-    '/merchants': 'M',
-    '/admin/entities': 'B',
-    '/admin/cby-staff': 'U',
-    '/reports': 'T',
-    '/notifications': 'I',
-    '/settings': 'S',
-    '/customs': 'X',
-  }
 
   return NAV_ITEMS
     .filter(item => item.roles.includes(user.role))
-    .filter(item => shortcutByRoute[item.route])
     .map(item => ({
       title: item.label,
       url: item.route,
       icon: ICONS[item.icon] ?? ICONS.search,
-      shortcut: shortcutByRoute[item.route],
+      shortcut: shortcutByRoute[item.route] ?? '',
     }))
 })
+
+const commandGroups = computed(() =>
+  commandGroupByRoute
+    .map(group => ({
+      heading: group.heading,
+      actions: allowedActions.value.filter(action => group.routes.includes(action.url)),
+    }))
+    .filter(group => group.actions.length > 0),
+)
 
 function navigateTo(path: string) {
   router.push(path)
@@ -89,16 +111,20 @@ function handleSelect(path: string) {
         <CommandInput placeholder="ابحث أو اختر إجراء..." />
         <CommandList>
           <CommandEmpty>لم يتم العثور على نتائج.</CommandEmpty>
-          <CommandGroup heading="الإجراءات السريعة">
+          <CommandGroup
+            v-for="group in commandGroups"
+            :key="group.heading"
+            :heading="group.heading"
+          >
             <CommandItem
-              v-for="action in quickActions"
+              v-for="action in group.actions"
               :key="action.url"
-              :value="action.title"
+              :value="`${group.heading} ${action.title}`"
               @select="handleSelect(action.url)"
             >
               <component :is="action.icon" class="h-4 w-4" />
               <span>{{ action.title }}</span>
-              <CommandShortcut>⌘{{ action.shortcut }}</CommandShortcut>
+              <CommandShortcut v-if="action.shortcut">⌘{{ action.shortcut }}</CommandShortcut>
             </CommandItem>
           </CommandGroup>
         </CommandList>

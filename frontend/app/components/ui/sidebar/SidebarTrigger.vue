@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { HTMLAttributes } from 'vue'
 
-import { PanelLeftIcon } from 'lucide-vue-next'
+import { PanelRightIcon } from 'lucide-vue-next'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { useSidebar } from './utils'
@@ -22,7 +22,7 @@ const { toggleSidebar } = useSidebar()
     :class="cn('', props.class)"
     @click="toggleSidebar"
   >
-    <PanelLeftIcon class="rtl:rotate-180" />
-    <span class="sr-only">Toggle Sidebar</span>
+    <PanelRightIcon />
+    <span class="sr-only">تبديل الشريط الجانبي</span>
   </Button>
 </template>

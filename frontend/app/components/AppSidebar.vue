@@ -22,10 +22,13 @@ import { NAV_ITEMS } from '@/constants/workflow'
 import { ICONS } from '@/utils/icon-map'
 
 const props = withDefaults(defineProps<SidebarProps>(), {
+  side: 'right',
+  variant: 'inset',
   collapsible: 'icon',
 })
 
 const authStore = useAuthStore()
+const route = useRoute()
 const user = computed(() => authStore.user)
 
 // Derive sidebar brand initial from the platform name first letter
@@ -68,6 +71,10 @@ const userData = computed(() => ({
   email: user.value?.email ?? 'user@example.com',
   avatar: '/avatars/default.jpg',
 }))
+
+function isActiveRoute(url: string) {
+  return route.path === url || (url !== '/dashboard' && route.path.startsWith(`${url}/`))
+}
 </script>
 
 <template>
@@ -90,7 +97,12 @@ const userData = computed(() => ({
         <SidebarGroupContent>
           <SidebarMenu>
             <SidebarMenuItem v-for="item in group.items" :key="item.url">
-              <SidebarMenuButton as-child>
+              <SidebarMenuButton
+                as-child
+                :is-active="isActiveRoute(item.url)"
+                :tooltip="item.title"
+                class="data-[active=true]:bg-primary data-[active=true]:font-semibold data-[active=true]:text-primary-foreground data-[active=true]:hover:bg-primary/90 data-[active=true]:hover:text-primary-foreground [&[data-active=true]_svg]:text-primary-foreground"
+              >
                 <NuxtLink :to="item.url" class="flex items-center gap-2">
                   <component :is="item.icon" class="h-4 w-4" />
                   <span>{{ item.title }}</span>
