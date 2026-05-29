@@ -215,15 +215,30 @@ CBY_ADMIN
 
 ## AI Tool Usage
 
-### dev-browser (Browser Automation)
-Use [dev-browser](https://github.com/SawyerHood/dev-browser) whenever browser interaction is needed — UI verification, screenshot capture, navigating the running app, or testing frontend flows. Prefer it over manual curl or fetch for anything that requires a real browser context.
+### playwright-cli (Browser Automation)
+Use `playwright-cli` whenever browser interaction is needed — UI verification, screenshot capture, navigating the running app, or testing frontend flows. Prefer it over manual curl or fetch for anything that requires a real browser context.
 
 ```bash
-# Launch or connect to the dev-browser MCP server as configured in the project
-# Then use its tools: navigate, screenshot, click, fill, evaluate, etc.
+# Open a browser session
+playwright-cli open
+
+# Navigate and inspect
+playwright-cli goto http://localhost:3000/login
+playwright-cli snapshot
+
+# Interact
+playwright-cli click e15
+playwright-cli fill e9 "user@example.com"
+playwright-cli press Enter
+
+# Capture evidence
+playwright-cli screenshot --filename=login.png
+
+# Close session
+playwright-cli close
 ```
 
-All AI tools (Claude Code, Cursor, Codex, GitHub Copilot) must use dev-browser when browser access is required. Do not skip browser verification for UI-facing stories.
+All AI tools (Claude Code, Cursor, Codex, GitHub Copilot) must use `playwright-cli` when browser access is required. Do not skip browser verification for UI-facing stories.
 
 ---
 
