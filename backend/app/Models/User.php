@@ -20,15 +20,19 @@ class User extends Authenticatable
         'email',
         'phone',
         'password',
+        'pin_code_hash',
+        'pin_enabled',
         'role',
         'bank_id',
         'is_active',
         'mfa_enabled',
+        'totp_secret',
+        'totp_enabled',
         'last_login_at',
         'user_preferences',
     ];
 
-    protected $hidden = ['password', 'remember_token'];
+    protected $hidden = ['password', 'remember_token', 'totp_secret', 'pin_code_hash'];
 
     protected function casts(): array
     {
@@ -38,6 +42,8 @@ class User extends Authenticatable
             'role' => UserRole::class,
             'is_active' => 'boolean',
             'mfa_enabled' => 'boolean',
+            'totp_enabled' => 'boolean',
+            'pin_enabled' => 'boolean',
             'last_login_at' => 'datetime',
             'user_preferences' => 'array',
         ];

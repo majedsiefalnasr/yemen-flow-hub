@@ -84,8 +84,10 @@ class AuthController extends Controller
         // Success: clear only the per-email failure counter; IP window decays naturally
         RateLimiter::clear($failKey);
 
-        // MFA gate: generate OTP and return requires_mfa signal without creating session
-        if (config('mfa.enabled', false)) {
+        // MFA gate:
+        // - system-level MFA switch
+        // - OR user already configured authenticator (TOTP) and must verify code on login
+        if (config('mfa.enabled', false) || $this->mfaService->hasTotpConfigured($user)) {
             $this->mfaService->generate($email);
             $challengeId = $this->mfaService->getChallengeId($email);
             if ($challengeId === null) {
@@ -98,6 +100,54 @@ class AuthController extends Controller
                 'challenge_id' => $challengeId,
             ], 'OTP sent. Complete MFA to continue.');
         }
+
+        return $this->issueSession($request, $user);
+    }
+
+    public function loginWithPin(Request $request)
+    {
+        $request->validate([
+            'email' => ['required', 'string', 'email'],
+            'pin' => ['required', 'string', 'size:6', 'regex:/^[0-9]{6}$/'],
+        ]);
+
+        $ip = $request->ip();
+        $email = $request->string('email')->lower()->toString();
+        $pin = $request->string('pin')->toString();
+        $failKey = 'login_pin_fail:' . $email;
+
+        if (RateLimiter::tooManyAttempts($failKey, self::LOCKOUT_THRESHOLD)) {
+            $this->logFailedLogin($email, 'PIN_LOCKED', $ip);
+            return ApiResponse::lockedOut();
+        }
+
+        $user = User::query()->where('email', $email)->first();
+
+        if ($user && !$user->is_active) {
+            $this->logFailedLogin($email, 'INACTIVE', $ip);
+            return ApiResponse::forbidden('Account is inactive.');
+        }
+
+        if ($user && (!$user->pin_enabled || !$user->pin_code_hash)) {
+            RateLimiter::hit($failKey, self::LOCKOUT_MINUTES * 60);
+            $this->logFailedLogin($email, 'PIN_NOT_CONFIGURED', $ip);
+            throw ValidationException::withMessages([
+                'pin' => ['لا يوجد رمز PIN مفعّل لهذا الحساب. استخدم كلمة المرور ثم أنشئ PIN من الملف الشخصي.'],
+            ]);
+        }
+
+        if (
+            !$user
+            || !Hash::check($pin, $user->pin_code_hash)
+        ) {
+            RateLimiter::hit($failKey, self::LOCKOUT_MINUTES * 60);
+            $this->logFailedLogin($email, 'WRONG_PIN', $ip);
+            throw ValidationException::withMessages([
+                'pin' => ['رمز PIN غير صحيح. يرجى المحاولة مرة أخرى.'],
+            ]);
+        }
+
+        RateLimiter::clear($failKey);
 
         return $this->issueSession($request, $user);
     }

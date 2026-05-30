@@ -24,6 +24,8 @@ class UserResource extends JsonResource
             'last_seen_at' => $this->last_login_at?->toISOString(),
             'is_active' => (bool) $this->is_active,
             'mfa_enabled' => (bool) $this->mfa_enabled,
+            'totp_enabled' => (bool) $this->totp_enabled,
+            'pin_enabled' => (bool) $this->pin_enabled,
             'created_at' => $this->created_at?->toISOString(),
         ];
     }

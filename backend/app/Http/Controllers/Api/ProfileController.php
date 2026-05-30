@@ -10,6 +10,7 @@ use App\Http\Resources\UserResource;
 use App\Models\AuditLog;
 use App\Models\ImportRequest;
 use App\Services\Audit\AuditService;
+use App\Services\Auth\MfaService;
 use App\Services\Settings\AdminSettingsService;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
@@ -22,6 +23,7 @@ class ProfileController extends Controller
     public function __construct(
         private readonly AuditService $auditService,
         private readonly AdminSettingsService $settingsService,
+        private readonly MfaService $mfaService,
     ) {
     }
 
@@ -102,6 +104,60 @@ class ProfileController extends Controller
         return ApiResponse::success(new UserResource($user->loadMissing('bank')), 'Profile updated.');
     }
 
+    public function setPin(Request $request)
+    {
+        $validated = $request->validate([
+            'new_pin' => ['required', 'string', 'size:6', 'regex:/^[0-9]{6}$/'],
+            'current_pin' => ['nullable', 'string', 'size:6', 'regex:/^[0-9]{6}$/'],
+        ]);
+
+        /** @var \App\Models\User $user */
+        $user = $request->user();
+
+        if ($user->pin_enabled) {
+            $currentPin = $validated['current_pin'] ?? null;
+            if (!$currentPin || !$user->pin_code_hash || !Hash::check($currentPin, $user->pin_code_hash)) {
+                return ApiResponse::error('رمز PIN الحالي غير صحيح.', [], 422);
+            }
+        }
+
+        $user->pin_code_hash = Hash::make($validated['new_pin']);
+        $user->pin_enabled = true;
+        $user->save();
+
+        return ApiResponse::success(
+            (new UserResource($user->loadMissing('bank')))->resolve(),
+            'تم حفظ رمز PIN بنجاح.'
+        );
+    }
+
+    public function disablePin(Request $request)
+    {
+        $validated = $request->validate([
+            'current_pin' => ['required', 'string', 'size:6', 'regex:/^[0-9]{6}$/'],
+        ]);
+
+        /** @var \App\Models\User $user */
+        $user = $request->user();
+
+        if (!$user->pin_enabled || !$user->pin_code_hash) {
+            return ApiResponse::error('رمز PIN غير مفعّل.', [], 422);
+        }
+
+        if (!Hash::check($validated['current_pin'], $user->pin_code_hash)) {
+            return ApiResponse::error('رمز PIN الحالي غير صحيح.', [], 422);
+        }
+
+        $user->pin_code_hash = null;
+        $user->pin_enabled = false;
+        $user->save();
+
+        return ApiResponse::success(
+            (new UserResource($user->loadMissing('bank')))->resolve(),
+            'تم تعطيل رمز PIN.'
+        );
+    }
+
     #[OA\Post(
         path: '/api/profile/mfa/toggle',
         tags: ['Profile'],
@@ -143,8 +199,112 @@ class ProfileController extends Controller
         );
     }
 
+    /**
+     * Initiate TOTP authenticator setup.
+     * Returns an otpauth:// provisioning URI and the base32 secret.
+     * The frontend renders the URI as a QR code; the secret is shown for manual entry.
+     * The secret is stored in Redis cache for 10 minutes pending verification.
+     */
+    public function setupTotp(Request $request)
+    {
+        /** @var \App\Models\User $user */
+        $user = $request->user();
+
+        $secret = $this->mfaService->generateTotpSecret($user->email);
+        $uri    = $this->mfaService->getTotpProvisioningUri($user->email, $secret);
+
+        return ApiResponse::success([
+            'provisioning_uri' => $uri,
+            'secret'           => $secret,
+        ]);
+    }
+
+    /**
+     * Verify a TOTP code entered by the user during setup.
+     * On success, saves the secret to the user and marks TOTP as enabled.
+     */
+    public function verifyTotpSetup(Request $request)
+    {
+        $request->validate(['code' => 'required|string|size:6']);
+
+        /** @var \App\Models\User $user */
+        $user = $request->user();
+
+        $secret = $this->mfaService->verifyTotpSetup($user->email, $request->input('code'));
+
+        if (!$secret) {
+            return ApiResponse::error('الرمز غير صحيح أو انتهت صلاحيته. تأكد من التوقيت ثم أعد المحاولة.', [], 422);
+        }
+
+        $user->totp_secret  = $secret;
+        $user->totp_enabled = true;
+        $user->mfa_enabled  = true;
+        $user->save();
+
+        return ApiResponse::success(
+            (new UserResource($user->loadMissing('bank')))->resolve(),
+            'تم تفعيل تطبيق المصادقة بنجاح.'
+        );
+    }
+
+    /**
+     * Disable TOTP authenticator after verifying the current code.
+     */
+    public function disableTotp(Request $request)
+    {
+        $request->validate(['code' => 'required|string|size:6']);
+
+        /** @var \App\Models\User $user */
+        $user = $request->user();
+
+        if (!$user->totp_enabled || !$user->totp_secret) {
+            return ApiResponse::error('تطبيق المصادقة غير مفعّل.', [], 422);
+        }
+
+        if (!$this->mfaService->verifyTotp($user->totp_secret, $request->input('code'))) {
+            return ApiResponse::error('رمز التحقق غير صحيح.', [], 422);
+        }
+
+        $user->totp_secret  = null;
+        $user->totp_enabled = false;
+        $user->save();
+
+        return ApiResponse::success(
+            (new UserResource($user->loadMissing('bank')))->resolve(),
+            'تم تعطيل تطبيق المصادقة.'
+        );
+    }
+
+    /**
+     * Disable TOTP using password as fallback (no authenticator code required).
+     * Used when the user has lost access to their authenticator app.
+     */
+    public function disableTotpWithPassword(Request $request)
+    {
+        $request->validate(['password' => 'required|string']);
+
+        /** @var \App\Models\User $user */
+        $user = $request->user();
+
+        if (!$user->totp_enabled || !$user->totp_secret) {
+            return ApiResponse::error('تطبيق المصادقة غير مفعّل.', [], 422);
+        }
+
+        if (!Hash::check($request->input('password'), $user->password)) {
+            return ApiResponse::error('كلمة المرور غير صحيحة.', [], 422);
+        }
+
+        $user->totp_secret  = null;
+        $user->totp_enabled = false;
+        $user->save();
+
+        return ApiResponse::success(
+            (new UserResource($user->loadMissing('bank')))->resolve(),
+            'تم تعطيل تطبيق المصادقة.'
+        );
+    }
+
     #[OA\Post(
-        path: '/api/profile/change-password',
         tags: ['Profile'],
         summary: 'Change authenticated user password',
         requestBody: new OA\RequestBody(
@@ -222,10 +382,10 @@ class ProfileController extends Controller
         return [
             'total'       => (clone $query)->count(),
             'in_progress' => (clone $query)
-                ->whereIn('current_status', $inProgressStatuses)
+                ->whereIn('status', $inProgressStatuses)
                 ->count(),
             'completed'   => (clone $query)
-                ->where('current_status', RequestStatus::COMPLETED->value)
+                ->where('status', RequestStatus::COMPLETED->value)
                 ->count(),
         ];
     }

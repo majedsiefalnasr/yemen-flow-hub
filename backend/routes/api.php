@@ -24,6 +24,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::prefix('auth')->group(function () {
     Route::post('login', [AuthController::class, 'login'])->middleware('throttle:5,1');
+    Route::post('login-pin', [AuthController::class, 'loginWithPin'])->middleware('throttle:10,1');
     Route::post('verify-otp', [AuthController::class, 'verifyOtp'])->middleware('throttle:10,1');
     Route::middleware('auth:sanctum')->group(function () {
         Route::post('logout', [AuthController::class, 'logout']);
@@ -35,7 +36,13 @@ Route::prefix('auth')->group(function () {
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('profile', [ProfileController::class, 'show']);
     Route::put('profile', [ProfileController::class, 'update']);
+    Route::post('profile/pin', [ProfileController::class, 'setPin'])->middleware('throttle:10,1');
+    Route::delete('profile/pin', [ProfileController::class, 'disablePin'])->middleware('throttle:10,1');
     Route::post('profile/mfa/toggle', [ProfileController::class, 'toggleMfa']);
+    Route::post('profile/mfa/setup', [ProfileController::class, 'setupTotp']);
+    Route::post('profile/mfa/setup/verify', [ProfileController::class, 'verifyTotpSetup']);
+    Route::post('profile/mfa/disable', [ProfileController::class, 'disableTotp']);
+    Route::post('profile/mfa/disable-with-password', [ProfileController::class, 'disableTotpWithPassword']);
     Route::post('profile/change-password', [ProfileController::class, 'changePassword'])->middleware('throttle:3,60');
     Route::get('settings', [SettingsController::class, 'show']);
     Route::put('settings', [SettingsController::class, 'update']);

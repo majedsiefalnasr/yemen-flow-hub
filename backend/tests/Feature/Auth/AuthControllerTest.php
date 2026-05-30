@@ -387,6 +387,24 @@ class AuthControllerTest extends TestCase
         $response->assertJsonPath('data.requires_mfa', false);
     }
 
+    public function test_login_requires_mfa_when_user_has_totp_configured_even_if_global_mfa_disabled(): void
+    {
+        config(['mfa.enabled' => false]);
+        $this->makeUser([
+            'totp_enabled' => true,
+            'totp_secret' => 'JBSWY3DPEHPK3PXP',
+        ]);
+
+        $response = $this->postJson('/api/auth/login', [
+            'email' => 'test@example.com',
+            'password' => 'password',
+        ]);
+
+        $response->assertStatus(200);
+        $response->assertJsonPath('data.requires_mfa', true);
+        $this->assertNotEmpty($response->json('data.challenge_id'));
+    }
+
     // --- MFA: verify-otp success ---
 
     public function test_verify_otp_completes_login_with_correct_code(): void
@@ -491,6 +509,42 @@ class AuthControllerTest extends TestCase
             'challenge_id' => $challengeId,
         ]);
         $response->assertStatus(429);
+    }
+
+    public function test_login_pin_authenticates_with_correct_pin(): void
+    {
+        $this->makeUser([
+            'email' => 'pin@example.com',
+            'pin_enabled' => true,
+            'pin_code_hash' => Hash::make('125812'),
+        ]);
+
+        $response = $this->postJson('/api/auth/login-pin', [
+            'email' => 'pin@example.com',
+            'pin' => '125812',
+        ]);
+
+        $response->assertStatus(200);
+        $response->assertJsonPath('success', true);
+        $response->assertJsonPath('data.user.email', 'pin@example.com');
+        $response->assertJsonPath('data.requires_mfa', false);
+    }
+
+    public function test_login_pin_returns_422_for_wrong_pin(): void
+    {
+        $this->makeUser([
+            'email' => 'pin@example.com',
+            'pin_enabled' => true,
+            'pin_code_hash' => Hash::make('125812'),
+        ]);
+
+        $response = $this->postJson('/api/auth/login-pin', [
+            'email' => 'pin@example.com',
+            'pin' => '000000',
+        ]);
+
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors(['pin']);
     }
 
     public function test_switch_demo_role_returns_403_when_feature_disabled(): void
