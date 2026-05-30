@@ -12,7 +12,7 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <Alert v-if="visible" role="status" aria-live="polite" dir="rtl" class="sticky top-0 z-50 flex items-center justify-between gap-4 border-b border-warning bg-amber-50/10">
+  <Alert v-if="visible" role="status" aria-live="polite"  class="sticky top-0 z-50 flex items-center justify-between gap-4 border-b border-warning bg-amber-50/10">
     <AlertDescription class="flex-1 text-sm font-medium text-amber-600">
       أنت على وشك الخروج بسبب عدم النشاط — يرجى التفاعل للبقاء
     </AlertDescription>

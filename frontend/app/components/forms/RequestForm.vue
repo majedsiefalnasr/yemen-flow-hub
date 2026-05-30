@@ -124,7 +124,7 @@ const onSubmit = handleSubmit((v) => {
 </script>
 
 <template>
-  <form class="flex flex-col gap-6" dir="rtl" novalidate @submit.prevent="onSubmit">
+  <form class="flex flex-col gap-6"  novalidate @submit.prevent="onSubmit">
 
     <!-- Importer / Merchant Section -->
     <section class="border border-border rounded-md p-6 flex flex-col gap-6">

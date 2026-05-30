@@ -791,7 +791,7 @@ function exportSelectedUsers() {
       :open="createOpen || Boolean(editing)"
       @update:open="value => !value && closeForm()"
     >
-      <DialogContent dir="rtl" class="sm:max-w-md">
+      <DialogContent  class="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{{ editing ? 'تعديل بيانات المستخدم' : 'إضافة مستخدم نظام' }}</DialogTitle>
           <DialogDescription>مستخدمو البنك المركزي فقط (لجان وإدارة النظام).</DialogDescription>
@@ -804,11 +804,11 @@ function exportSelectedUsers() {
           </div>
           <div class="space-y-1.5">
             <Label>البريد الإلكتروني *</Label>
-            <Input v-model="form.email" type="email" dir="ltr" />
+            <Input v-model="form.email" type="email"  />
           </div>
           <div class="space-y-1.5">
             <Label>{{ editing ? 'كلمة المرور (اتركها فارغة للإبقاء على الحالية)' : 'كلمة المرور *' }}</Label>
-            <Input v-model="form.password" type="password" dir="ltr" :placeholder="editing ? '••••••••' : 'كلمة مرور قوية'" />
+            <Input v-model="form.password" type="password"  :placeholder="editing ? '••••••••' : 'كلمة مرور قوية'" />
           </div>
           <div class="space-y-1.5">
             <Label>الدور *</Label>
@@ -835,7 +835,7 @@ function exportSelectedUsers() {
 
     <!-- Deactivation blocked: critical-role protection -->
     <AlertDialog :open="Boolean(deactivateBlocked)" @update:open="value => !value && (deactivateBlocked = null)">
-      <AlertDialogContent dir="rtl">
+      <AlertDialogContent >
         <AlertDialogHeader>
           <AlertDialogTitle class="flex items-center gap-2">
             <AlertTriangle class="h-5 w-5 text-[var(--severity-red)]" />
@@ -851,7 +851,7 @@ function exportSelectedUsers() {
 
     <!-- Deactivation confirmation with workload context -->
     <AlertDialog :open="Boolean(deactivateTarget)" @update:open="value => !value && (deactivateTarget = null)">
-      <AlertDialogContent v-if="deactivateTarget" dir="rtl">
+      <AlertDialogContent v-if="deactivateTarget" >
         <AlertDialogHeader>
           <AlertDialogTitle>تأكيد إلغاء التفعيل</AlertDialogTitle>
           <AlertDialogDescription>
@@ -878,7 +878,7 @@ function exportSelectedUsers() {
 
     <!-- View Dialog -->
     <Dialog :open="Boolean(viewing)" @update:open="value => !value && (viewing = null)">
-      <DialogContent v-if="viewing" dir="rtl" class="sm:max-w-md">
+      <DialogContent v-if="viewing"  class="sm:max-w-md">
         <DialogHeader>
           <DialogTitle class="flex items-center gap-2">
             <UserCog class="h-5 w-5 text-primary" />

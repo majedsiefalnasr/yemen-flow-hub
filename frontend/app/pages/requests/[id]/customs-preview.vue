@@ -97,7 +97,7 @@ async function triggerDownload() {
 </script>
 
 <template>
-  <div class="preview-page" dir="rtl">
+  <div class="preview-page" >
     <!-- Loading -->
     <div v-if="loading" class="preview-loading" aria-busy="true" aria-label="جارٍ التحميل">
       <div class="loading-spinner" />

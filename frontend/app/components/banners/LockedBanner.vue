@@ -36,7 +36,7 @@ const config = VARIANT_CONFIG[props.variant]
 </script>
 
 <template>
-  <Alert :variant="config.variant" dir="rtl" class="flex items-start gap-3">
+  <Alert :variant="config.variant"  class="flex items-start gap-3">
     <component :is="config.icon" class="h-5 w-5 flex-shrink-0 mt-0.5" aria-hidden="true" />
     <div class="flex flex-col gap-1 flex-1">
       <AlertDescription class="text-sm font-medium">{{ config.message }}</AlertDescription>

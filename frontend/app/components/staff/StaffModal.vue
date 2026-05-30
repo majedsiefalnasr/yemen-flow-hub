@@ -134,7 +134,7 @@ const onSubmit = handleSubmit((values) => {
       <DialogOverlay class="modal-backdrop" @click="requestClose" />
       <DialogContent
         class="modal"
-        dir="rtl"
+        
         :aria-label="isEdit ? 'تعديل بيانات الموظف' : 'إضافة موظف جديد'"
       >
         <DialogHeader class="modal-header">
@@ -173,7 +173,7 @@ const onSubmit = handleSubmit((values) => {
               <FormItem class="col-span-2">
                 <FormLabel class="text-xs">البريد الإلكتروني <span class="text-destructive">*</span></FormLabel>
                 <FormControl>
-                  <Input v-bind="componentField" type="email" dir="ltr" placeholder="email@bank.ye" />
+                  <Input v-bind="componentField" type="email" placeholder="email@bank.ye" />
                 </FormControl>
                 <FormMessage />
               </FormItem>

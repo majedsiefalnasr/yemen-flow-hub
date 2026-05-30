@@ -95,7 +95,7 @@ function confirmAction() {
   </DropdownMenu>
 
   <AlertDialog v-model:open="showConfirm">
-    <AlertDialogContent dir="rtl">
+    <AlertDialogContent >
       <AlertDialogHeader>
         <AlertDialogTitle>{{ pendingAction?.confirm?.title }}</AlertDialogTitle>
         <AlertDialogDescription>{{ pendingAction?.confirm?.description }}</AlertDialogDescription>

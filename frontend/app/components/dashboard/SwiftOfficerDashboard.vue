@@ -51,7 +51,7 @@ onMounted(() => { store.loadStats() })
 </script>
 
 <template>
-  <div class="flex flex-col gap-6" dir="rtl">
+  <div class="flex flex-col gap-6" >
 
     <!-- Skeleton -->
     <div v-if="store.loading" class="grid grid-cols-4 gap-4 md:grid-cols-2 sm:grid-cols-1" aria-busy="true">

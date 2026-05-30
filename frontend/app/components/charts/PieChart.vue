@@ -30,7 +30,7 @@ const slices = computed(() => {
 </script>
 
 <template>
-  <div class="flex flex-col items-center gap-4" dir="rtl">
+  <div class="flex flex-col items-center gap-4" >
     <div v-if="!data.length || total === 0" class="h-44 flex items-center justify-center text-gray-600 text-sm">لا توجد بيانات</div>
     <template v-else>
       <div class="w-44 h-44">

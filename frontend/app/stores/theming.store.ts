@@ -159,7 +159,7 @@ export const useThemingStore = defineStore('theming', {
     fontSource: 'fallback',
     isLoading: false,
     radius: 'md',
-    sidebarVariant: 'inset',
+    sidebarVariant: 'sidebar',
     sidebarCollapsible: 'icon',
     density: 'comfortable',
     reducedMotion: 'system',
@@ -506,7 +506,7 @@ export const useThemingStore = defineStore('theming', {
         this.autoplayVideos = parsed.autoplayVideos || 'system'
         this.openLinksInDesktop = parsed.openLinksInDesktop ?? true
         this.radius = (['none', 'sm', 'md', 'lg', 'xl'] as RadiusPreference[]).includes(parsed.radius) ? parsed.radius : 'md'
-        this.sidebarVariant = (['sidebar', 'floating', 'inset'] as SidebarVariant[]).includes(parsed.sidebarVariant) ? parsed.sidebarVariant : 'inset'
+        this.sidebarVariant = (['sidebar', 'floating', 'inset'] as SidebarVariant[]).includes(parsed.sidebarVariant) ? parsed.sidebarVariant : 'sidebar'
         this.sidebarCollapsible = (['offcanvas', 'icon', 'none'] as SidebarCollapsible[]).includes(parsed.sidebarCollapsible) ? parsed.sidebarCollapsible : 'icon'
         this.density = (['comfortable', 'compact'] as DensityPreference[]).includes(parsed.density) ? parsed.density : 'comfortable'
         this.reducedMotion = (['system', 'always'] as ReducedMotionPreference[]).includes(parsed.reducedMotion) ? parsed.reducedMotion : 'system'

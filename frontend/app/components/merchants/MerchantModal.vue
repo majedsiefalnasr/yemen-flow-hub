@@ -171,7 +171,7 @@ const onSubmit = handleSubmit((values) => {
       <DialogOverlay class="modal-backdrop" @click="requestClose" />
       <DialogContent
         class="modal"
-        dir="rtl"
+        
         :aria-label="isEditMode ? 'تعديل بيانات التاجر' : 'تسجيل تاجر جديد'"
       >
         <DialogHeader class="flex items-start justify-between">

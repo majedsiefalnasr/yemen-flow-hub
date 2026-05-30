@@ -12,7 +12,7 @@ const badge = computed(() => getBusinessStatus(props.status, props.role))
 </script>
 
 <template>
-  <span class="inline-flex items-center gap-1.5 whitespace-nowrap" dir="rtl" role="img" :aria-label="badge.label">
+  <span class="inline-flex items-center gap-1.5 whitespace-nowrap"  role="img" :aria-label="badge.label">
     <svg
       class="shrink-0"
       :style="{ color: badge.color }"

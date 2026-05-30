@@ -292,17 +292,18 @@ const isMac = computed(() => {
 <template>
   <!-- Search trigger button in topbar -->
   <Button
-    variant="ghost"
+    variant="outline"
     size="sm"
-    class="h-7 gap-1.5 rounded-md px-2 text-muted-foreground hover:text-foreground"
+    class="h-9 w-full justify-between gap-2 rounded-lg border-input bg-background/80 px-3 text-muted-foreground hover:bg-muted/40 hover:text-foreground"
     aria-label="البحث وإجراءات سريعة"
     @click="open = true"
   >
-    <Search class="h-4 w-4" />
-    <span class="hidden text-sm sm:inline">ابحث أو اختر إجراء...</span>
-    <div class="hidden items-center gap-0.5 sm:flex">
-      <Kbd class="h-5 px-1 text-[10px]">{{ isMac ? '⌘' : 'Ctrl' }}</Kbd>
-      <Kbd class="h-5 px-1 text-[10px]">K</Kbd>
+    <span class="flex min-w-0 items-center gap-2">
+      <Search class="h-4 w-4 shrink-0" />
+      <span class="truncate text-sm">ابحث أو اختر إجراء...</span>
+    </span>
+    <div class="hidden items-center gap-0.5 sm:flex" dir="ltr">
+      <Kbd class="h-5 px-1 text-[10px]">{{ isMac ? '⌘' : 'Ctrl' }} K</Kbd>
     </div>
   </Button>
 
@@ -311,6 +312,7 @@ const isMac = computed(() => {
     v-model:open="open"
     title="البحث وتصفح المنصة"
     description="ابحث عن أي صفحة أو إجراء متاح لدورك"
+    command-class="[&_[data-slot=command-input-wrapper]]:px-3 [&_[data-slot=command-input-wrapper]]:pt-3 [&_[data-slot=command-input-wrapper]]:pb-2 [&_[data-slot=command-list]]:max-h-80 [&_[data-slot=command-list]]:px-2 [&_[data-slot=command-list]]:pb-2 [&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:py-2 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group-heading]]:text-xs [&_[cmdk-input-wrapper]_svg]:h-5 [&_[cmdk-input-wrapper]_svg]:w-5 [&_[cmdk-input]]:h-12 [&_[cmdk-item]]:cursor-pointer [&_[cmdk-item]]:rounded-lg [&_[cmdk-item]]:px-3 [&_[cmdk-item]]:py-3.5 [&_[cmdk-item]]:transition-colors [&_[cmdk-item]:hover]:bg-sidebar-accent [&_[cmdk-item]:hover]:text-sidebar-accent-foreground [&_[cmdk-item][data-highlighted]]:bg-sidebar-accent [&_[cmdk-item][data-highlighted]]:text-sidebar-accent-foreground [&_[cmdk-item]_svg]:h-5 [&_[cmdk-item]_svg]:w-5"
   >
     <CommandInput placeholder="ابحث أو اختر إجراء..." />
     <CommandList>
@@ -333,9 +335,8 @@ const isMac = computed(() => {
             />
             <span>{{ action.title }}</span>
             <CommandShortcut v-if="action.shortcut">
-              <span class="flex items-center gap-0.5">
-                <Kbd class="h-4 px-1 text-[9px]">{{ isMac ? '⌘' : 'Ctrl' }}</Kbd>
-                <Kbd class="h-4 px-1 text-[9px]">{{ action.shortcut }}</Kbd>
+              <span class="flex items-center gap-0.5" dir="ltr">
+                <Kbd class="h-4 px-1 text-[9px]">{{ isMac ? '⌘' : 'Ctrl' }}{{ action.shortcut }}</Kbd>
               </span>
             </CommandShortcut>
           </CommandItem>

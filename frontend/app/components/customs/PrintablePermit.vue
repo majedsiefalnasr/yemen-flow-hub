@@ -12,7 +12,7 @@ defineProps<{
 
 <template>
   <div
-    dir="rtl"
+    
     :class="cn(
       'relative mx-auto shadow print:m-0 print:shadow-none',
       'bg-white text-gray-900 print:bg-white print:text-black'

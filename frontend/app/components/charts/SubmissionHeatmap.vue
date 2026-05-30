@@ -46,7 +46,7 @@ function intensity(day: number, slot: number): number {
 </script>
 
 <template>
-  <div class="flex flex-col gap-3" dir="rtl">
+  <div class="flex flex-col gap-3" >
     <div v-if="!data.length" class="h-40 flex items-center justify-center text-muted-foreground text-sm">لا توجد بيانات</div>
     <div v-else class="grid gap-1" style="grid-template-columns: 5rem repeat(6, 1fr)">
       <div />

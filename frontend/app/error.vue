@@ -50,7 +50,7 @@ const actions = computed(() => {
 </script>
 
 <template>
-  <main class="min-h-screen bg-background" dir="rtl">
+  <main class="min-h-screen bg-background">
     <ErrorState
       :code="error.statusCode"
       :actions="actions"

@@ -92,7 +92,7 @@ const errorCount = computed(() => Object.keys(props.errors).length)
 </script>
 
 <template>
-  <div class="flex flex-col gap-6" dir="rtl">
+  <div class="flex flex-col gap-6" >
     <!-- Error banner -->
     <Alert v-if="errorCount > 0" variant="destructive">
       <AlertTriangle class="h-4 w-4" />

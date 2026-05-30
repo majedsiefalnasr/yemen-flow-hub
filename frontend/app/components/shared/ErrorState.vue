@@ -52,7 +52,7 @@ const resolvedDescription = computed(() => props.description || defaultDescripti
 </script>
 
 <template>
-  <div class="flex min-h-[60vh] flex-col items-center justify-center gap-6 text-center" dir="rtl">
+  <div class="flex min-h-[60vh] flex-col items-center justify-center gap-6 text-center" >
     <div class="rounded-full bg-muted p-6">
       <component :is="resolvedIcon" class="h-12 w-12 text-muted-foreground" />
     </div>

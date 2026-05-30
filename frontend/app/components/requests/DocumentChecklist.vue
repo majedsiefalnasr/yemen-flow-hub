@@ -251,7 +251,7 @@ function formatDate(iso: string | null): string {
 </script>
 
 <template>
-  <div class="flex flex-col gap-0" dir="rtl">
+  <div class="flex flex-col gap-0" >
     <!-- Loading state -->
     <div v-if="loading" class="flex flex-col gap-3 py-2" aria-busy="true" aria-label="جارٍ تحميل المستندات">
       <div class="w-full h-4 bg-gradient-to-r from-muted via-border to-muted rounded animate-pulse" />

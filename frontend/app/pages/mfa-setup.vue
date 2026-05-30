@@ -50,7 +50,7 @@ const onSubmit = handleSubmit(async () => {
 </script>
 
 <template>
-  <div class="mx-auto w-full max-w-4xl px-4 py-6" dir="rtl">
+  <div class="mx-auto w-full max-w-4xl px-4 py-6" >
     <div class="mb-4 flex items-center gap-2">
       <ShieldCheck class="size-5 text-primary" />
       <h1 class="text-xl font-semibold">إعداد المصادقة متعددة العوامل</h1>
@@ -87,7 +87,7 @@ const onSubmit = handleSubmit(async () => {
               id="mfa-phone"
               v-model="phone"
               v-bind="phoneAttrs"
-              dir="ltr"
+              
               placeholder="+9677..."
               :aria-invalid="errors.phone ? 'true' : undefined"
             />
@@ -102,7 +102,7 @@ const onSubmit = handleSubmit(async () => {
               v-bind="codeAttrs"
               inputmode="numeric"
               maxlength="6"
-              dir="ltr"
+              
               placeholder="123456"
               :aria-invalid="errors.code ? 'true' : undefined"
             />

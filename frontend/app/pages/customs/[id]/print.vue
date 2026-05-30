@@ -283,7 +283,7 @@ async function performIssue() {
       <Dialog v-model:open="confirmIssueOpen">
         <DialogContent
           class="sm:max-w-md"
-          dir="rtl"
+          
         >
           <DialogHeader>
             <DialogTitle class="flex items-center gap-2">

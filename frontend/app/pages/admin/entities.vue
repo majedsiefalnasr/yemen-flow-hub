@@ -534,7 +534,7 @@ function exportCurrentEntities() {
       :open="createOpen || Boolean(editing)"
       @update:open="value => !value && closeForm()"
     >
-      <DialogContent dir="rtl" class="sm:max-w-md">
+      <DialogContent  class="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{{ editing ? 'تعديل بيانات البنك' : 'إضافة بنك جديد' }}</DialogTitle>
         </DialogHeader>
@@ -546,15 +546,15 @@ function exportCurrentEntities() {
           </div>
           <div class="space-y-1.5">
             <Label>اسم البنك (إنجليزي)</Label>
-            <Input v-model="form.name_en" dir="ltr" />
+            <Input v-model="form.name_en"  />
           </div>
           <div class="space-y-1.5">
             <Label>كود البنك *</Label>
-            <Input v-model="form.code" dir="ltr" placeholder="YBRD" />
+            <Input v-model="form.code"  placeholder="YBRD" />
           </div>
           <div class="space-y-1.5">
             <Label>رقم الترخيص</Label>
-            <Input v-model="form.license_number" dir="ltr" placeholder="BNK-004" />
+            <Input v-model="form.license_number"  placeholder="BNK-004" />
           </div>
           <div class="space-y-1.5">
             <Label>الحالة</Label>
@@ -574,7 +574,7 @@ function exportCurrentEntities() {
               </div>
               <div class="space-y-1.5">
                 <Label>البريد الإلكتروني للمدير *</Label>
-                <Input v-model="form.adminEmail" type="email" dir="ltr" placeholder="admin@bank.ye" />
+                <Input v-model="form.adminEmail" type="email"  placeholder="admin@bank.ye" />
                 <p v-if="!emailValid" class="text-xs text-destructive">صيغة البريد غير صحيحة</p>
               </div>
             </div>
@@ -591,7 +591,7 @@ function exportCurrentEntities() {
 
     <!-- View Dialog -->
     <Dialog :open="Boolean(viewing)" @update:open="value => !value && (viewing = null)">
-      <DialogContent v-if="viewing" dir="rtl" class="sm:max-w-md">
+      <DialogContent v-if="viewing"  class="sm:max-w-md">
         <DialogHeader>
           <DialogTitle class="flex items-center gap-2">
             <Building2 class="h-5 w-5 text-primary" />

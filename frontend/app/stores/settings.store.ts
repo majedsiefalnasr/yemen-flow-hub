@@ -1,12 +1,12 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
-import type { UserPreferences } from '@/types/models'
+import { ref } from 'vue'
 
 interface SettingSection {
   [key: string]: any
 }
 
 interface SectionDirtyState {
+  userProfile: boolean
   workflow: boolean
   email: boolean
   notif: boolean
@@ -14,6 +14,10 @@ interface SectionDirtyState {
   general: boolean
   userAppearance: boolean
   userNotifications: boolean
+  bankProfile: boolean
+  bankSwift: boolean
+  bankNotifications: boolean
+  bankSecurity: boolean
   theming: {
     appearance: boolean
     branding: boolean
@@ -27,6 +31,7 @@ export const useSettingsStore = defineStore('settings', () => {
   const saving = ref(false)
 
   const dirtyState = ref<SectionDirtyState>({
+    userProfile: false,
     workflow: false,
     email: false,
     notif: false,
@@ -34,6 +39,10 @@ export const useSettingsStore = defineStore('settings', () => {
     general: false,
     userAppearance: false,
     userNotifications: false,
+    bankProfile: false,
+    bankSwift: false,
+    bankNotifications: false,
+    bankSecurity: false,
     theming: {
       appearance: false,
       branding: false,
@@ -41,34 +50,59 @@ export const useSettingsStore = defineStore('settings', () => {
     },
   })
 
-  const originalValues = ref<Record<string, any>>({})
-  const currentValues = ref<Record<string, any>>({})
+  const originalValues = ref<Record<string, string>>({})
+  const currentValues = ref<Record<string, string>>({})
+
+  const sectionKey = (section: string, subsection?: string) => subsection ? `${section}.${subsection}` : section
+  const serialize = (data: SettingSection) => JSON.stringify(data)
+
+  const setDirtyFlag = (section: string, dirty: boolean, subsection?: string) => {
+    const target = dirtyState.value[section as keyof SectionDirtyState]
+    if (subsection) {
+      if (typeof target === 'object') {
+        (target as Record<string, boolean>)[subsection] = dirty
+      }
+      return
+    }
+    if (typeof target === 'boolean') {
+      dirtyState.value[section as keyof SectionDirtyState] = dirty as never
+    }
+  }
 
   const isSectionDirty = (section: string, subsection?: string) => {
+    const target = dirtyState.value[section as keyof SectionDirtyState]
     if (subsection) {
-      return dirtyState.value[section as keyof SectionDirtyState]?.[subsection] ?? false
+      return typeof target === 'object' ? (target as Record<string, boolean>)[subsection] ?? false : false
     }
-    return dirtyState.value[section as keyof SectionDirtyState] ?? false
+    return typeof target === 'boolean' ? target : false
   }
 
   const markSectionDirty = (section: string, subsection?: string) => {
-    if (subsection) {
-      if (typeof dirtyState.value[section as keyof SectionDirtyState] === 'object') {
-        (dirtyState.value[section as keyof SectionDirtyState] as any)[subsection] = true
-      }
-    } else {
-      dirtyState.value[section as keyof SectionDirtyState] = true
-    }
+    setDirtyFlag(section, true, subsection)
   }
 
-  const markSectionClean = (section: string, subsection?: string) => {
-    if (subsection) {
-      if (typeof dirtyState.value[section as keyof SectionDirtyState] === 'object') {
-        (dirtyState.value[section as keyof SectionDirtyState] as any)[subsection] = false
-      }
-    } else {
-      dirtyState.value[section as keyof SectionDirtyState] = false
+  const markSectionClean = (section: string, subsection?: string, data?: SettingSection) => {
+    if (data) {
+      const key = sectionKey(section, subsection)
+      const snapshot = serialize(data)
+      originalValues.value[key] = snapshot
+      currentValues.value[key] = snapshot
     }
+    setDirtyFlag(section, false, subsection)
+  }
+
+  const trackSectionState = (section: string, data: SettingSection, subsection?: string) => {
+    const key = sectionKey(section, subsection)
+    const serialized = serialize(data)
+    currentValues.value[key] = serialized
+
+    if (!(key in originalValues.value)) {
+      originalValues.value[key] = serialized
+      setDirtyFlag(section, false, subsection)
+      return
+    }
+
+    setDirtyFlag(section, originalValues.value[key] !== serialized, subsection)
   }
 
   const saveSection = async (section: string, data: SettingSection, subsection?: string) => {
@@ -85,7 +119,7 @@ export const useSettingsStore = defineStore('settings', () => {
         data,
       }
 
-      const response = await $fetch('/api/settings/save-section', {
+      await $fetch('/api/settings/save-section', {
         method: 'POST',
         baseURL,
         credentials: 'include',
@@ -96,7 +130,7 @@ export const useSettingsStore = defineStore('settings', () => {
         body: payload,
       })
 
-      markSectionClean(section, subsection)
+      markSectionClean(section, subsection, data)
       return true
     } catch (err: any) {
       error.value = err.data?.message || 'Failed to save settings'
@@ -113,13 +147,12 @@ export const useSettingsStore = defineStore('settings', () => {
   }
 
   const resetSection = (section: string, subsection?: string) => {
-    if (subsection) {
-      if (typeof dirtyState.value[section as keyof SectionDirtyState] === 'object') {
-        (dirtyState.value[section as keyof SectionDirtyState] as any)[subsection] = false
-      }
-    } else {
-      dirtyState.value[section as keyof SectionDirtyState] = false
+    const key = sectionKey(section, subsection)
+    const current = currentValues.value[key]
+    if (current !== undefined) {
+      originalValues.value[key] = current
     }
+    setDirtyFlag(section, false, subsection)
   }
 
   return {
@@ -130,6 +163,7 @@ export const useSettingsStore = defineStore('settings', () => {
     isSectionDirty,
     markSectionDirty,
     markSectionClean,
+    trackSectionState,
     saveSection,
     setSectionValue,
     resetSection,

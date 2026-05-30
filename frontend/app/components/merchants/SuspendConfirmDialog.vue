@@ -40,7 +40,7 @@ function requestClose() {
     <div class="fixed inset-0 flex items-center justify-center z-50">
       <DialogContent
         class="max-w-md flex flex-col items-center text-center gap-4 p-8"
-        dir="rtl"
+        
         :aria-label="title"
       >
         <div

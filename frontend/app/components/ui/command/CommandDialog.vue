@@ -10,6 +10,7 @@ const props = withDefaults(defineProps<DialogRootProps & {
   title?: string
   description?: string
   class?: HTMLAttributes['class']
+  commandClass?: HTMLAttributes['class']
   showCloseButton?: boolean
 }>(), {
   title: 'Command Palette',
@@ -31,7 +32,7 @@ const forwarded = useForwardPropsEmits(props, emits)
         <DialogTitle>{{ title }}</DialogTitle>
         <DialogDescription>{{ description }}</DialogDescription>
       </DialogHeader>
-      <Command>
+      <Command :class="props.commandClass">
         <slot v-bind="slotProps" />
       </Command>
     </DialogContent>

@@ -106,7 +106,7 @@ function getFileError(key: WizardDocumentKey): string | null {
 </script>
 
 <template>
-  <div class="flex flex-col gap-6" dir="rtl">
+  <div class="flex flex-col gap-6" >
     <h2 class="text-2xl font-bold">رفع الوثائق المطلوبة</h2>
 
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">

@@ -47,7 +47,7 @@ const showNewRequestAction = computed(() =>
 </script>
 
 <template>
-  <div class="flex flex-col gap-6" dir="rtl">
+  <div class="flex flex-col gap-6" >
     <!-- Page header -->
     <PageHeader :title="`أهلاً، ${firstName}`" :subtitle="roleSubtitle">
       <template v-if="showNewRequestAction" #actions>

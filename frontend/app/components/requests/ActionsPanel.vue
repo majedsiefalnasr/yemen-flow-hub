@@ -386,7 +386,7 @@ async function dispatchAction(action: string, reason?: string) {
 </script>
 
 <template>
-  <div v-if="showAnyActions" class="space-y-4" dir="rtl" role="region" aria-label="لوحة الإجراءات">
+  <div v-if="showAnyActions" class="space-y-4"  role="region" aria-label="لوحة الإجراءات">
     <!-- Error alert -->
     <Alert v-if="actionError" class="border-s-4 border-s-red-600 bg-red-700/10">
       <AlertCircle class="h-4 w-4 text-red-700" />

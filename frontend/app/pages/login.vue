@@ -25,12 +25,16 @@ import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { useAuthStore } from '../stores/auth.store'
+import { useOrgStore } from '../stores/org.store'
 import { ROLE_LABELS } from '../constants/workflow'
 import { useSavedAccounts, getDeviceInfo } from '../composables/useSavedAccounts'
 import { useProfile } from '../composables/useProfile'
 import LoginSavedAccountCard from '../components/auth/LoginSavedAccountCard.vue'
 
 definePageMeta({ layout: false, middleware: ['guest'] })
+
+const orgStore = useOrgStore()
+orgStore.loadSettings()
 
 function copyToClipboard(text: string) {
   if (import.meta.client) {
@@ -68,6 +72,7 @@ function goBack() {
 const router = useRouter()
 const route = useRoute()
 const auth = useAuthStore()
+const pageDir = computed<'rtl' | 'ltr'>(() => auth.preferredLanguage === 'en' ? 'ltr' : 'rtl')
 
 const nextPath = computed(() => {
   const candidate = route.query.next
@@ -487,28 +492,7 @@ watch(step, (newStep) => {
 </script>
 
 <template>
-  <div class="login-page" dir="rtl">
-    <!-- ─── Hero panel (left on desktop) ──────────────────────────────────── -->
-    <div class="login-hero" aria-hidden="true">
-      <div>
-        <div class="hero-brand">
-          <div class="hero-monogram">ب.م</div>
-          <div>
-            <p class="hero-brand-ar">البنك المركزي اليمني</p>
-            <p class="hero-brand-en">Central Bank of Yemen</p>
-          </div>
-        </div>
-      </div>
-      <div class="hero-main">
-        <h1>منصة إدارة ومراجعة طلبات تمويل الواردات</h1>
-        <p>
-          نظام موحّد لإدارة التقديم، المراجعة البنكية، مراجعة الدعم، رفع SWIFT،
-          التصويت التنفيذي، وإصدار تأكيد الصرف الخارجي.
-        </p>
-      </div>
-      <p class="hero-iso">ISO 27001 compliant | Secure institutional workflow</p>
-    </div>
-
+  <div class="login-page" :dir="pageDir">
     <!-- ─── Form panel (right on desktop) ─────────────────────────────────── -->
     <div class="login-form-col">
       <div ref="formPanelRef" class="login-form-wrap">
@@ -530,7 +514,7 @@ watch(step, (newStep) => {
         <template v-if="step === 'account-select'">
           <div class="step-header">
             <h2 class="step-title">تسجيل الدخول</h2>
-            <p class="step-desc">البنك المركزي اليمني — منصة الواردات</p>
+            <p class="step-desc">{{ orgStore.authority }} — {{ orgStore.platformName }}</p>
           </div>
 
           <!-- Email form — always visible and auto-focused -->
@@ -544,7 +528,7 @@ watch(step, (newStep) => {
                 type="email"
                 placeholder="user@cby.gov.ye"
                 autocomplete="email"
-                dir="ltr"
+                
                 class="h-11 bg-muted/30"
                 :aria-invalid="emailSubmitAttempted && emailForm.errors.value.email ? 'true' : undefined"
               />
@@ -611,7 +595,7 @@ watch(step, (newStep) => {
             <AlertDescription>{{ pinError }}</AlertDescription>
           </Alert>
 
-          <div class="otp-wrap" :class="{ 'pin-shake': pinShake }" dir="ltr">
+          <div class="otp-wrap" :class="{ 'pin-shake': pinShake }" >
             <InputOTP
               v-model="pinValue"
               :maxlength="6"
@@ -688,7 +672,7 @@ watch(step, (newStep) => {
           />
           <div v-else-if="pendingEmail" class="email-chip mb-5">
             <span class="text-xs text-muted-foreground">البريد الإلكتروني</span>
-            <span class="text-sm font-medium" dir="ltr">{{ pendingEmail }}</span>
+            <span class="text-sm font-medium" >{{ pendingEmail }}</span>
           </div>
 
           <Alert v-if="serverError" variant="destructive" role="alert" aria-live="assertive" class="mb-4">
@@ -787,7 +771,7 @@ watch(step, (newStep) => {
             <AlertDescription>{{ authenticatorError }}</AlertDescription>
           </Alert>
 
-          <div class="otp-wrap" dir="ltr">
+          <div class="otp-wrap" >
             <InputOTP
               v-model="authenticatorCode"
               :maxlength="6"
@@ -857,7 +841,7 @@ watch(step, (newStep) => {
               <Label class="text-sm font-medium">
                 {{ createPinStage === 'enter' ? 'رمز PIN الجديد' : 'تأكيد رمز PIN' }}
               </Label>
-              <div class="otp-wrap" dir="ltr">
+              <div class="otp-wrap" >
                 <InputOTP
                   v-if="createPinStage === 'enter'"
                   v-model="newPin"
@@ -955,7 +939,7 @@ watch(step, (newStep) => {
             </div>
 
             <div v-if="authSetupSecret" class="flex items-center gap-2 rounded-md border bg-muted/40 px-3 py-2 w-full max-w-xs">
-              <code class="text-xs font-mono text-foreground/70 tracking-widest select-all flex-1 text-center" dir="ltr">
+              <code class="text-xs font-mono text-foreground/70 tracking-widest select-all flex-1 text-center" >
                 {{ authSetupSecret }}
               </code>
               <button
@@ -986,7 +970,7 @@ watch(step, (newStep) => {
             <Label class="text-sm font-medium">
               أدخل الرمز من تطبيق المصادقة للتحقق
             </Label>
-            <div class="otp-wrap" dir="ltr">
+            <div class="otp-wrap" >
               <InputOTP
                 v-model="authSetupCode"
                 :maxlength="6"
@@ -1053,7 +1037,7 @@ watch(step, (newStep) => {
           <div v-if="auth.user" class="email-chip mb-5 flex-col items-start gap-0.5 py-3">
             <span class="text-xs text-muted-foreground">الحساب الذي سيتم حفظه</span>
             <span class="text-sm font-semibold">{{ auth.user.name }}</span>
-            <span class="text-xs text-muted-foreground" dir="ltr">{{ auth.user.email }}</span>
+            <span class="text-xs text-muted-foreground" >{{ auth.user.email }}</span>
           </div>
 
           <div class="flex flex-col gap-3">
@@ -1169,9 +1153,33 @@ watch(step, (newStep) => {
         <!-- Footer -->
         <div class="login-footer">
           <Building2 class="size-3.5 shrink-0" aria-hidden="true" />
-          البنك المركزي اليمني — منصة الواردات v3.0
+          البنك المركزي اليمني — {{ orgStore.platformName }} v3.0
         </div>
       </div>
+    </div>
+
+    <!-- ─── Hero panel (left on desktop) ──────────────────────────────────── -->
+    <div class="login-hero" aria-hidden="true">
+      <div>
+        <div class="hero-brand">
+          <div v-if="orgStore.brandLogoDataUrl" class="hero-monogram-logo">
+            <img :src="orgStore.brandLogoDataUrl" alt="Logo" class="h-full w-full object-contain" />
+          </div>
+          <div v-else class="hero-monogram">ب.م</div>
+          <div>
+            <p class="hero-brand-ar">{{ orgStore.authority }}</p>
+            <p class="hero-brand-en">Central Bank of Yemen</p>
+          </div>
+        </div>
+      </div>
+      <div class="hero-main">
+        <h1>منصة إدارة ومراجعة طلبات تمويل الواردات</h1>
+        <p>
+          نظام موحّد لإدارة التقديم، المراجعة البنكية، مراجعة الدعم، رفع SWIFT،
+          التصويت التنفيذي، وإصدار تأكيد الصرف الخارجي.
+        </p>
+      </div>
+      <p class="hero-iso">ISO 27001 compliant | Secure institutional workflow</p>
     </div>
   </div>
 </template>
@@ -1211,6 +1219,18 @@ watch(step, (newStep) => {
   place-items: center;
   font-size: 24px;
   font-weight: 700;
+  flex-shrink: 0;
+}
+
+.hero-monogram-logo {
+  height: 56px;
+  width: 56px;
+  border-radius: 16px;
+  background: rgb(255 255 255 / 10%);
+  border: 1px solid rgb(255 255 255 / 20%);
+  overflow: hidden;
+  display: grid;
+  place-items: center;
   flex-shrink: 0;
 }
 
@@ -1300,9 +1320,6 @@ watch(step, (newStep) => {
   transition: color 120ms ease;
 }
 
-.back-btn:hover {
-  color: var(--foreground);
-}
 
 /* ── OTP / PIN wrapper (forces LTR slot order) ───────────────────────────── */
 .otp-wrap {
@@ -1423,7 +1440,6 @@ watch(step, (newStep) => {
 @media (max-width: 1023px) {
   .login-page { grid-template-columns: 1fr; }
   .login-hero { display: none; }
-  .login-form-col { padding: 24px 16px; align-items: flex-start; padding-top: 48px; }
 }
 
 @media (max-width: 480px) {

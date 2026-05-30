@@ -65,7 +65,7 @@ const fields = computed(() => [
 </script>
 
 <template>
-  <div class="max-w-[900px] mx-auto bg-white text-gray-900 p-6 print:p-0 print:max-w-full" dir="rtl">
+  <div class="max-w-[900px] mx-auto bg-white text-gray-900 p-6 print:p-0 print:max-w-full" >
     <!-- ─── Section 1: Title + reference + status ─── -->
     <header class="flex items-start justify-between gap-4 mb-2">
       <div class="flex flex-col gap-1">

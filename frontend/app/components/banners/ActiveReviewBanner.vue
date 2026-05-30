@@ -50,7 +50,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <Alert dir="rtl" class="flex items-center gap-3 border-[var(--voting)]/30 bg-[var(--voting)]/5">
+  <Alert  class="flex items-center gap-3 border-[var(--voting)]/30 bg-[var(--voting)]/5">
     <AlarmClock class="h-5 w-5 flex-shrink-0 text-[var(--voting)]" aria-hidden="true" />
     <AlertDescription class="flex-1 text-sm font-medium text-foreground">
       <span class="font-semibold text-[var(--voting)]">أنت المراجع النشط — الطلب محجوز لك حالياً</span>

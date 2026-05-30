@@ -13,7 +13,7 @@ withDefaults(defineProps<{
 </script>
 
 <template>
-  <Alert variant="destructive" dir="rtl" class="flex items-start gap-3 border-warning bg-amber-50/10">
+  <Alert variant="destructive"  class="flex items-start gap-3 border-warning bg-amber-50/10">
     <AlertTriangle class="h-5 w-5 flex-shrink-0 mt-0.5 text-amber-600" aria-hidden="true" />
     <div class="flex flex-col gap-1 flex-1">
       <AlertDescription v-if="variant === 'bank_returned'" class="text-sm font-medium">

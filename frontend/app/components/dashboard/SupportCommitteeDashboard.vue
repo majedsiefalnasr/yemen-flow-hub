@@ -109,7 +109,7 @@ onMounted(() => { store.loadStats() })
 </script>
 
 <template>
-  <div class="flex flex-col gap-6" dir="rtl">
+  <div class="flex flex-col gap-6" >
 
     <!-- CBY-global scope chip -->
     <div class="mb-2">

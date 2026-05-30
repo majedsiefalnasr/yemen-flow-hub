@@ -63,7 +63,7 @@ const onSubmit = handleSubmit(async () => {
 </script>
 
 <template>
-  <main class="min-h-screen bg-background px-4 py-10" dir="rtl">
+  <main class="min-h-screen bg-background px-4 py-10" >
     <div class="mx-auto w-full max-w-md">
       <Card>
         <CardHeader>
@@ -87,7 +87,7 @@ const onSubmit = handleSubmit(async () => {
                 v-model="email"
                 v-bind="emailAttrs"
                 type="email"
-                dir="ltr"
+                
                 :aria-invalid="errors.email ? 'true' : undefined"
               />
               <p v-if="errors.email" class="text-xs text-destructive">{{ errors.email }}</p>
@@ -101,7 +101,7 @@ const onSubmit = handleSubmit(async () => {
                 v-bind="otpAttrs"
                 inputmode="numeric"
                 maxlength="6"
-                dir="ltr"
+                
                 placeholder="123456"
                 :aria-invalid="errors.otp ? 'true' : undefined"
               />

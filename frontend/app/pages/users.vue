@@ -570,7 +570,7 @@ onMounted(loadData)
 
     <!-- Dialog Modal -->
     <Dialog :open="showModal" @update:open="(open) => !open && closeModal()">
-      <DialogContent class="sm:max-w-[420px]" dir="rtl">
+      <DialogContent class="sm:max-w-[420px]" >
         <DialogHeader>
           <DialogTitle>{{ editingUser ? 'تعديل بيانات المستخدم' : 'إضافة مستخدم جديد' }}</DialogTitle>
         </DialogHeader>
@@ -636,10 +636,10 @@ onMounted(loadData)
 
     <!-- Quick-view Dialog -->
     <Dialog :open="Boolean(viewingUser)" @update:open="v => !v && (viewingUser = null)">
-      <DialogContent v-if="viewingUser" dir="rtl" class="sm:max-w-md">
+      <DialogContent v-if="viewingUser"  class="sm:max-w-md">
         <DialogHeader class="pb-2">
           <DialogTitle class="text-base">{{ viewingUser.name }}</DialogTitle>
-          <DialogDescription dir="ltr" class="text-xs">{{ viewingUser.email }}</DialogDescription>
+          <DialogDescription  class="text-xs">{{ viewingUser.email }}</DialogDescription>
         </DialogHeader>
 
         <div class="grid grid-cols-2 gap-x-4 gap-y-3 py-1 text-sm">

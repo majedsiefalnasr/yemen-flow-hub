@@ -41,7 +41,7 @@ const formattedAmount = computed(() => {
 </script>
 
 <template>
-  <div class="flex flex-col gap-6" dir="rtl">
+  <div class="flex flex-col gap-6" >
     <h2 class="text-2xl font-bold">مراجعة الطلب قبل الإرسال</h2>
 
     <Card>

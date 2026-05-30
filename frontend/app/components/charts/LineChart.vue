@@ -53,7 +53,7 @@ const yTicks = computed(() => {
 </script>
 
 <template>
-  <div class="flex flex-col gap-3" dir="rtl">
+  <div class="flex flex-col gap-3" >
     <div v-if="!series.length || !labels.length || series.some((s) => s.values.length !== labels.length)" class="h-44 flex items-center justify-center text-gray-600 text-sm">لا توجد بيانات</div>
     <svg v-else :viewBox="`0 0 ${width} ${height}`" class="w-full h-auto overflow-visible" aria-label="مخطط خطي">
       <line

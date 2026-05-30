@@ -127,7 +127,6 @@ function submit(): void {
       </label>
       <Input
         v-model="swiftReference"
-        dir="ltr"
         placeholder="مثال: UETR-2026-ABC123456789"
       />
       <p v-if="referencePatternWarning" class="text-xs text-amber-600">{{ referencePatternWarning }}</p>

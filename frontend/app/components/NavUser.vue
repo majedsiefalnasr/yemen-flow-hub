@@ -30,7 +30,6 @@ import {
 } from '@/components/ui/sidebar'
 import { useAuthStore } from '@/stores/auth.store'
 import { useThemingStore } from '@/stores/theming.store'
-import { UserRole } from '@/types/enums'
 
 interface User {
   name: string
@@ -47,9 +46,7 @@ const router = useRouter()
 const showLogoutDialog = ref(false)
 
 const isDark = computed(() => themingStore.isDark)
-const settingsRoute = computed(() =>
-  authStore.user?.role === UserRole.CBY_ADMIN ? '/settings/system' : '/settings/user',
-)
+const settingsRoute = '/settings'
 
 function userInitials(name: string) {
   return name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()
@@ -114,7 +111,7 @@ function toggleTheme() {
 
           <DropdownMenuGroup>
             <DropdownMenuItem as-child>
-              <NuxtLink to="/settings/user?tab=profile" class="flex cursor-pointer items-center gap-2">
+              <NuxtLink to="/settings?section=profile" class="flex cursor-pointer items-center gap-2">
                 <User class="h-4 w-4" />
                 <span>الملف الشخصي</span>
               </NuxtLink>
@@ -147,7 +144,7 @@ function toggleTheme() {
   </SidebarMenu>
 
   <AlertDialog v-model:open="showLogoutDialog">
-    <AlertDialogContent dir="rtl">
+    <AlertDialogContent>
       <AlertDialogHeader>
         <AlertDialogTitle>تسجيل الخروج</AlertDialogTitle>
         <AlertDialogDescription>

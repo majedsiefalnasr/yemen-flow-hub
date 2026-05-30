@@ -15,7 +15,7 @@ function formatTime(iso: string | null | undefined): string {
 </script>
 
 <template>
-  <Alert dir="rtl" class="flex items-center gap-3 border-border bg-muted/30">
+  <Alert  class="flex items-center gap-3 border-border bg-muted/30">
     <CheckCircle2 class="h-5 w-5 flex-shrink-0 text-muted-foreground" aria-hidden="true" />
     <AlertDescription class="flex-1 text-sm font-medium text-foreground">
       <span v-if="votedAt">صوّتت {{ formatTime(votedAt) }} — </span>

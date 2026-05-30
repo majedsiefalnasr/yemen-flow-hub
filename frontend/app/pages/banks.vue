@@ -509,7 +509,7 @@ onMounted(loadBanks)
 
     <!-- Dialog Modal -->
     <Dialog v-model:open="showModal" @update:open="(open) => !open && closeModal()">
-      <DialogContent class="sm:max-w-[420px]" dir="rtl">
+      <DialogContent class="sm:max-w-[420px]" >
         <DialogHeader>
           <DialogTitle>{{ editingBank ? 'تعديل بيانات البنك' : 'إضافة بنك جديد' }}</DialogTitle>
         </DialogHeader>
@@ -553,12 +553,12 @@ onMounted(loadBanks)
 
     <!-- Quick-view Dialog -->
     <Dialog :open="Boolean(viewingBank)" @update:open="v => !v && (viewingBank = null)">
-      <DialogContent v-if="viewingBank" dir="rtl" class="sm:max-w-md">
+      <DialogContent v-if="viewingBank"  class="sm:max-w-md">
         <DialogHeader class="pb-2">
           <DialogTitle class="flex items-center gap-2 text-base">
             {{ viewingBank.name_ar }}
           </DialogTitle>
-          <DialogDescription dir="ltr" class="text-xs">{{ viewingBank.name_en }}</DialogDescription>
+          <DialogDescription  class="text-xs">{{ viewingBank.name_en }}</DialogDescription>
         </DialogHeader>
 
         <div class="grid grid-cols-2 gap-x-4 gap-y-3 py-1 text-sm">

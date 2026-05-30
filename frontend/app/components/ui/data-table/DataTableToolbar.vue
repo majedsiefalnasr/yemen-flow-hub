@@ -40,7 +40,7 @@ const searchRef = ref<InstanceType<typeof Input> | null>(null)
         v-model="searchInput"
         :placeholder="searchPlaceholder || 'بحث...'"
         class="h-8 text-sm"
-        dir="rtl"
+        
       />
     </div>
     <slot name="filters" :table="table" />

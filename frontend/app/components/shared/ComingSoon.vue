@@ -9,7 +9,7 @@ defineProps<{
 </script>
 
 <template>
-  <div class="flex min-h-[50vh] items-center justify-center" dir="rtl">
+  <div class="flex min-h-[50vh] items-center justify-center" >
     <Card class="max-w-sm border border-dashed text-center shadow-none">
       <CardContent class="flex flex-col items-center gap-4 p-8">
         <div class="rounded-full bg-muted p-4">

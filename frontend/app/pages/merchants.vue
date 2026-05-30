@@ -580,7 +580,7 @@ function exportSelectedMerchants() {
 
     <!-- CBY Admin: Risk tabs -->
     <div v-if="isCbyAdmin" class="mb-4">
-      <Tabs :model-value="merchantTab" dir="rtl" @update:model-value="v => merchantTab = v as typeof merchantTab.value">
+      <Tabs :model-value="merchantTab"  @update:model-value="v => merchantTab = v as typeof merchantTab.value">
         <TabsList class="h-auto gap-1 rounded-full bg-muted p-1">
           <TabsTrigger value="all" class="h-7 gap-1.5 rounded-full px-3 text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm">
             الكل
@@ -650,7 +650,7 @@ function exportSelectedMerchants() {
         </SelectContent>
       </Select>
 
-      <Tabs v-model="statusFilter" dir="rtl" class="shrink-0">
+      <Tabs v-model="statusFilter"  class="shrink-0">
         <TabsList class="h-auto gap-1 rounded-full bg-muted p-1">
           <TabsTrigger value="all" class="h-7 gap-1.5 rounded-full px-3 text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm">
             الكل
@@ -917,7 +917,7 @@ function exportSelectedMerchants() {
 
     <!-- Unified quick-view Dialog (both roles) -->
     <Dialog :open="Boolean(viewing)" @update:open="v => !v && (viewing = null)">
-      <DialogContent v-if="viewing" dir="rtl" :class="isCbyAdmin ? 'sm:max-w-2xl' : 'sm:max-w-lg'">
+      <DialogContent v-if="viewing"  :class="isCbyAdmin ? 'sm:max-w-2xl' : 'sm:max-w-lg'">
         <DialogHeader class="pb-3">
           <DialogTitle class="flex items-center gap-2 text-base">
             <div class="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">

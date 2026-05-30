@@ -338,12 +338,12 @@ function exportCurrentRules() {
         />
         <Input
           v-model="draft.name_en"
-          dir="ltr"
+          
           placeholder="Name in English"
         />
         <Input
           v-model="draft.slug"
-          dir="ltr"
+          
           placeholder="المعرّف (slug) *"
         />
         <div class="flex items-center gap-2 rounded-md border px-3">

@@ -32,7 +32,7 @@ function businessTypeLabel(type: string | null | undefined): string {
 </script>
 
 <template>
-  <Card dir="rtl" class="hover:shadow-md transition-shadow">
+  <Card  class="hover:shadow-md transition-shadow">
     <!-- Header: icon tile + status badge -->
     <div class="flex items-start justify-between gap-3 pb-3 border-b border-gray-200">
       <div class="w-12 h-12 rounded-lg bg-primary/10 text-primary flex items-center justify-center flex-shrink-0" aria-hidden="true">

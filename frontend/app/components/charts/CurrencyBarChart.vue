@@ -20,7 +20,7 @@ function formatAmount(v: number): string {
 </script>
 
 <template>
-  <div class="flex flex-col gap-2" dir="rtl">
+  <div class="flex flex-col gap-2" >
     <div v-if="!data.length" class="h-28 flex items-center justify-center text-gray-600 text-sm">لا توجد بيانات</div>
     <div v-else class="flex flex-col gap-3" role="list" aria-label="مخطط تمويل العملات">
       <div v-for="item in data" :key="item.currency" class="flex items-center gap-2.5" role="listitem">

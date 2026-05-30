@@ -899,7 +899,7 @@ async function handleCloneConfirm() {
 </script>
 
 <template>
-  <div class="detail-page" dir="rtl">
+  <div class="detail-page" >
     <!-- Loading skeleton -->
     <div v-if="requestsStore.loadingRequest" class="mx-auto w-full max-w-7xl px-4 space-y-3" aria-busy="true" aria-label="جارٍ التحميل">
       <Skeleton class="h-8 w-64" />
@@ -1239,7 +1239,7 @@ async function handleCloneConfirm() {
           </div>
 
           <!-- Bank reviewer chip: re-submitted after support return (AC10) -->
-          <div v-if="supportReturnHint" class="support-return-hint" role="note" dir="rtl">
+          <div v-if="supportReturnHint" class="support-return-hint" role="note" >
             <span class="support-return-hint__icon" aria-hidden="true">🔄</span>
             <span class="support-return-hint__text">إعادة بعد عودة من المساندة</span>
             <span v-if="supportReturnHint.comment" class="support-return-hint__comment">— {{ supportReturnHint.comment }}</span>
@@ -1830,7 +1830,7 @@ async function handleCloneConfirm() {
     </template>
 
     <AlertDialog :open="showCloneDialog" @update:open="handleCloneDialogOpenChange">
-      <AlertDialogContent dir="rtl">
+      <AlertDialogContent >
         <AlertDialogHeader>
           <AlertDialogTitle>نسخ وإعادة إرسال</AlertDialogTitle>
           <AlertDialogDescription class="clone-dialog__body">

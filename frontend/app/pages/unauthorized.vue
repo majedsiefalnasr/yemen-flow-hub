@@ -17,7 +17,7 @@ const nextPath = computed(() => {
 </script>
 
 <template>
-  <main class="min-h-screen bg-background px-4" dir="rtl">
+  <main class="min-h-screen bg-background px-4" >
     <ErrorState
       :code="401"
       title="الجلسة غير متاحة"

@@ -1,16 +1,10 @@
 <script setup lang="ts">
 import type { Component } from 'vue'
-import { ChevronLeft, Home } from 'lucide-vue-next'
+import { Building2, Home, Settings } from 'lucide-vue-next'
 import type { SidebarProps } from '@/components/ui/sidebar'
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible'
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
@@ -18,20 +12,17 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarMenuSub,
-  SidebarMenuSubButton,
-  SidebarMenuSubItem,
   SidebarRail,
   useSidebar,
 } from '@/components/ui/sidebar'
-import NavUser from '@/components/NavUser.vue'
 import { buildOperationalNavBadges } from '@/composables/useNavBadges'
 import { NAV_ITEMS } from '@/constants/workflow'
 import { useAuthStore } from '@/stores/auth.store'
 import { useDashboardStore } from '@/stores/dashboard.store'
 import { useNotificationsStore } from '@/stores/notifications.store'
+import { useOrgStore } from '@/stores/org.store'
 import { ICONS } from '@/utils/icon-map'
-import type { UserRole } from '@/types/enums'
+import { UserRole } from '@/types/enums'
 
 // ── Discriminated-union nav model ─────────────────────────────────────
 
@@ -48,16 +39,7 @@ export type NavLink = {
   badge?: number
 }
 
-export type NavCollapsible = {
-  type: 'collapsible'
-  title: string
-  icon: Component
-  roles?: UserRole[]
-  can?: () => boolean
-  items: NavLink[]
-}
-
-export type NavGroupItem = NavLink | NavCollapsible
+export type NavGroupItem = NavLink
 
 export type NavGroupDef = {
   title: string
@@ -73,7 +55,7 @@ export type NavGroupDef = {
 
 const props = withDefaults(defineProps<SidebarProps>(), {
   side: 'right',
-  variant: 'inset',
+  variant: 'sidebar',
   collapsible: 'icon',
 })
 
@@ -82,12 +64,13 @@ const props = withDefaults(defineProps<SidebarProps>(), {
 const authStore = useAuthStore()
 const dashboardStore = useDashboardStore()
 const notificationsStore = useNotificationsStore()
+const orgStore = useOrgStore()
 const route = useRoute()
-const { state } = useSidebar()
+const { state, setOpen } = useSidebar()
 const user = computed(() => authStore.user)
 const lastBadgeRole = ref<UserRole | null>(null)
 
-const brandInitial = computed(() => 'منصة الواردات'.trim().charAt(0))
+const brandInitial = computed(() => orgStore.platformName.trim().charAt(0))
 
 const navBadgesByRoute = computed(() =>
   buildOperationalNavBadges({
@@ -110,6 +93,7 @@ async function refreshOperationalBadges(forceDashboard = false) {
 }
 
 onMounted(() => {
+  orgStore.loadSettings()
   void refreshOperationalBadges(true)
 })
 
@@ -123,6 +107,17 @@ watch(
   },
 )
 
+watch(
+  () => props.collapsible,
+  (value) => {
+    if (value === 'none') {
+      // A fixed sidebar must stay expanded; avoid persisting icon/offcanvas state.
+      setOpen(true)
+    }
+  },
+  { immediate: true },
+)
+
 // ── Nav construction ──────────────────────────────────────────────────
 
 const NAV_GROUP_DEFS: Array<{ title: string; routes: string[]; navGroupStyle?: 'operational' | 'analytics' }> = [
@@ -133,7 +128,7 @@ const NAV_GROUP_DEFS: Array<{ title: string; routes: string[]; navGroupStyle?: '
     routes: ['/merchants', '/staff', '/banks', '/reports', '/audit', '/admin/entities', '/admin/cby-staff', '/admin/workflow-docs', '/admin/roles'],
     navGroupStyle: 'analytics',
   },
-  { title: 'الأخرى', routes: ['/settings', '/settings/system', '/settings/user'] },
+  { title: 'الأخرى', routes: ['/settings'] },
 ]
 
 const navGroups = computed<NavGroupDef[]>(() => {
@@ -151,20 +146,43 @@ const navGroups = computed<NavGroupDef[]>(() => {
       badge: navBadgesByRoute.value[item.route],
     }))
 
+  // Role-specific organization settings link
+  const configLink = ((): NavLink | null => {
+    if (role === UserRole.CBY_ADMIN) {
+      return {
+        type: 'link',
+        title: 'إعدادات المؤسسة',
+        icon: Settings,
+        roles: [UserRole.CBY_ADMIN],
+        url: '/organization?section=general',
+      }
+    }
+    if (role === UserRole.BANK_ADMIN) {
+      return {
+        type: 'link',
+        title: 'إعدادات البنك',
+        icon: Building2,
+        roles: [UserRole.BANK_ADMIN],
+        url: '/organization?section=profile',
+      }
+    }
+    return null
+  })()
+
   return NAV_GROUP_DEFS
-    .map(group => ({
-      title: group.title,
-      navGroupStyle: group.navGroupStyle,
-      items: allowedLinks.filter(link => group.routes.includes(link.url)) as NavGroupItem[],
-    }))
+    .map(group => {
+      const baseItems = allowedLinks.filter(link => group.routes.includes(link.url)) as NavGroupItem[]
+      const items: NavGroupItem[] = configLink && group.title === 'الأخرى'
+        ? [...baseItems, configLink]
+        : baseItems
+      return {
+        title: group.title,
+        navGroupStyle: group.navGroupStyle,
+        items,
+      }
+    })
     .filter(group => group.items.length > 0)
 })
-
-const userData = computed(() => ({
-  name: user.value?.name ?? 'المستخدم',
-  email: user.value?.email ?? 'user@example.com',
-  avatar: '/avatars/default.jpg',
-}))
 
 // ── Helpers ───────────────────────────────────────────────────────────
 
@@ -172,28 +190,19 @@ function isActiveRoute(url: string) {
   return route.path === url || (url !== '/dashboard' && route.path.startsWith(`${url}/`))
 }
 
-function isCollapsibleActive(item: NavCollapsible) {
-  return item.items.some(sub => isActiveRoute(sub.url))
-}
-
-/** Active indicator bar class — analytics groups get a gradient per DESIGN.md */
-function activeIndicatorClass(navGroupStyle?: 'operational' | 'analytics') {
-  return navGroupStyle === 'analytics'
-    ? 'bg-gradient-to-b from-indigo-500 to-purple-500'
-    : 'bg-primary'
-}
 </script>
 
 <template>
   <Sidebar v-bind="props">
     <SidebarHeader>
       <div class="flex items-center gap-3">
-        <div class="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-primary text-sm font-bold text-primary-foreground">
-          {{ brandInitial }}
+        <div class="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-lg bg-primary text-sm font-bold text-primary-foreground">
+          <img v-if="orgStore.brandLogoDataUrl" :src="orgStore.brandLogoDataUrl" alt="Logo" class="h-full w-full object-contain" />
+          <span v-else>{{ brandInitial }}</span>
         </div>
         <div v-if="state === 'expanded'" class="min-w-0 flex-1">
-          <div class="truncate text-sm font-semibold leading-none">منصة الواردات</div>
-          <div class="mt-1 truncate text-xs text-muted-foreground">البنك المركزي اليمني</div>
+          <div class="truncate text-sm font-semibold leading-none">{{ orgStore.platformName }}</div>
+          <div class="mt-1 truncate text-xs text-muted-foreground">{{ orgStore.authority }}</div>
         </div>
       </div>
     </SidebarHeader>
@@ -203,22 +212,15 @@ function activeIndicatorClass(navGroupStyle?: 'operational' | 'analytics') {
         <SidebarGroupLabel>{{ group.title }}</SidebarGroupLabel>
         <SidebarGroupContent>
           <SidebarMenu>
-            <template v-for="item in group.items" :key="item.type === 'link' ? item.url : item.title">
-
-              <!-- Branch 1: Leaf link ─────────────────────────────── -->
-              <SidebarMenuItem v-if="item.type === 'link'">
+            <template v-for="item in group.items" :key="item.url">
+              <SidebarMenuItem>
                 <SidebarMenuButton
                   as-child
                   :is-active="isActiveRoute(item.url)"
                   :tooltip="state === 'collapsed' ? item.title : undefined"
-                  class="data-[active=true]:bg-primary data-[active=true]:font-semibold data-[active=true]:text-primary-foreground data-[active=true]:hover:bg-primary/90 data-[active=true]:hover:text-primary-foreground [&[data-active=true]_svg]:text-primary-foreground"
+                  class="data-[active=true]:bg-sidebar-accent data-[active=true]:font-semibold data-[active=true]:text-sidebar-accent-foreground"
                 >
-                  <NuxtLink :to="item.url" class="relative flex items-center gap-2">
-                    <span
-                      v-if="isActiveRoute(item.url)"
-                      :class="['pointer-events-none absolute inset-y-1 end-0 w-1 rounded-s-full', activeIndicatorClass(group.navGroupStyle)]"
-                      aria-hidden="true"
-                    />
+                  <NuxtLink :to="item.url" class="flex items-center gap-2">
                     <component :is="item.icon" class="h-4 w-4" />
                     <span>{{ item.title }}</span>
                     <span
@@ -230,55 +232,12 @@ function activeIndicatorClass(navGroupStyle?: 'operational' | 'analytics') {
                   </NuxtLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>
-
-              <!-- Branch 2: Inline collapsible (sidebar open)        -->
-              <!-- Branch 3: Collapsed-flyout via tooltip (sidebar icon mode) -->
-              <Collapsible
-                v-else-if="item.type === 'collapsible'"
-                as-child
-                :default-open="isCollapsibleActive(item)"
-                class="group/collapsible"
-              >
-                <SidebarMenuItem>
-                  <CollapsibleTrigger as-child>
-                    <SidebarMenuButton
-                      :is-active="isCollapsibleActive(item)"
-                      :tooltip="state === 'collapsed' ? item.title : undefined"
-                      class="data-[active=true]:bg-primary/10 data-[active=true]:font-semibold data-[active=true]:text-primary"
-                    >
-                      <component :is="item.icon" class="h-4 w-4" />
-                      <span>{{ item.title }}</span>
-                      <!-- ChevronLeft (→ in RTL) rotates to ↓ when open -->
-                      <ChevronLeft
-                        class="ms-auto h-4 w-4 transition-transform duration-200 group-data-[state=open]/collapsible:-rotate-90"
-                      />
-                    </SidebarMenuButton>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <SidebarMenuSub>
-                      <SidebarMenuSubItem v-for="sub in item.items" :key="sub.url">
-                        <SidebarMenuSubButton as-child :is-active="isActiveRoute(sub.url)">
-                          <NuxtLink :to="sub.url" class="flex items-center gap-2">
-                            <component v-if="sub.icon" :is="sub.icon" class="h-3.5 w-3.5" />
-                            <span>{{ sub.title }}</span>
-                          </NuxtLink>
-                        </SidebarMenuSubButton>
-                      </SidebarMenuSubItem>
-                    </SidebarMenuSub>
-                  </CollapsibleContent>
-                </SidebarMenuItem>
-              </Collapsible>
-
             </template>
           </SidebarMenu>
         </SidebarGroupContent>
       </SidebarGroup>
     </SidebarContent>
 
-    <SidebarFooter v-if="user">
-      <NavUser :user="userData" />
-    </SidebarFooter>
-
-    <SidebarRail />
+    <SidebarRail v-if="props.collapsible !== 'none'" />
   </Sidebar>
 </template>

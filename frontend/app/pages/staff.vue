@@ -728,7 +728,7 @@ onMounted(loadStaff)
 
     <!-- Deactivate Dialog -->
     <AlertDialog :open="showDeactivateConfirm" @update:open="(v) => !v && closeDeactivate()">
-      <AlertDialogContent dir="rtl">
+      <AlertDialogContent >
         <AlertDialogHeader>
           <AlertDialogTitle>تأكيد إلغاء التفعيل</AlertDialogTitle>
           <AlertDialogDescription>

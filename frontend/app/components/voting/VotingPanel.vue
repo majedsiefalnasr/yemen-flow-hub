@@ -167,7 +167,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="flex flex-col gap-6 p-6 direction-rtl" dir="rtl">
+  <div class="flex flex-col gap-6 p-6 direction-rtl" >
 
     <!-- Loading state -->
     <div v-if="votingStore.loadingDetail" class="flex flex-col gap-3" aria-busy="true">
@@ -323,7 +323,7 @@ onMounted(async () => {
             rows="3"
             placeholder="اكتب سبب الرفض هنا…"
             :aria-invalid="!!justificationError"
-            dir="rtl"
+            
           />
           <p v-if="justificationError" class="text-xs text-destructive">{{ justificationError }}</p>
         </div>
@@ -337,7 +337,7 @@ onMounted(async () => {
             class="p-2.5 border border-border rounded-lg text-sm font-normal text-foreground resize-none focus:outline-none focus:border-indigo-600"
             rows="2"
             placeholder="أضف ملاحظة اختيارية…"
-            dir="rtl"
+            
           />
         </div>
 

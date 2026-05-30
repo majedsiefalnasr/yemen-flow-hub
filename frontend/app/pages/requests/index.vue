@@ -524,7 +524,7 @@ watch(selectedCount, async (count) => {
       </AlertAction>
     </Alert>
 
-    <Tabs v-model="filter" dir="rtl" class="flex w-full flex-col gap-4">
+    <Tabs v-model="filter"  class="flex w-full flex-col gap-4">
       <!-- Row 1: tabs (left) + page actions (right) -->
       <div class="flex items-center justify-between gap-4">
         <!-- Mobile: select dropdown -->
@@ -826,7 +826,7 @@ watch(selectedCount, async (count) => {
 
     <!-- Quick Preview Dialog — all roles, triggered by reference-number click -->
     <Dialog v-model:open="previewOpen">
-      <DialogContent v-if="previewRequest" dir="rtl" class="sm:max-w-lg">
+      <DialogContent v-if="previewRequest"  class="sm:max-w-lg">
         <DialogHeader class="pb-2">
           <DialogTitle class="flex items-center gap-2 text-base">
             <span class="font-mono text-lg font-bold text-primary">{{ previewRequest.reference_number }}</span>

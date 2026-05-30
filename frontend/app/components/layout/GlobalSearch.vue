@@ -112,7 +112,7 @@ onBeforeUnmount(() => {
         placeholder="بحث..."
         aria-label="بحث في النظام"
         autocomplete="off"
-        dir="rtl"
+        
         :value="inputValue"
         @input="onInput"
         @focus="onFocus"

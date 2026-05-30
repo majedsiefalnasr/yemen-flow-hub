@@ -75,7 +75,7 @@ onBeforeUnmount(clearPrintTimer)
 </script>
 
 <template>
-  <div class="print-page" dir="rtl">
+  <div class="print-page" >
     <!-- Controls bar — hidden on print -->
     <div class="print-controls no-print">
       <div class="controls-inner">

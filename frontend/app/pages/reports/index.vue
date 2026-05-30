@@ -204,7 +204,7 @@ const statusRows = computed(() => {
 </script>
 
 <template>
-  <div class="reports-page" dir="rtl">
+  <div class="reports-page" >
     <!-- Page Header -->
     <div class="page-header">
       <div class="header-text">

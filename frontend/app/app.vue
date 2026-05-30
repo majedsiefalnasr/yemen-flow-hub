@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import AppShell from '@/components/layout/AppShell.vue'
-import { Toaster } from 'vue-sonner'
+import 'vue-sonner/style.css'
+import { Toaster } from '@/components/ui/sonner'
 import { ConfigProvider } from 'reka-ui'
 import { useAuthStore } from '@/stores/auth.store'
 import { useThemingStore } from '@/stores/theming.store'
@@ -9,6 +10,9 @@ const route = useRoute()
 const authStore = useAuthStore()
 const themingStore = useThemingStore()
 const user = computed(() => authStore.user)
+const appDir = computed<'rtl' | 'ltr'>(() => authStore.preferredLanguage === 'en' ? 'ltr' : 'rtl')
+const toasterPosition = computed<'bottom-left' | 'bottom-right'>(() =>
+  appDir.value === 'rtl' ? 'bottom-left' : 'bottom-right')
 let mediaQuery: MediaQueryList | null = null
 const applySystemTheme = () => {
   if (themingStore.mode === 'system') {
@@ -32,8 +36,8 @@ onUnmounted(() => {
 
 useHead({
   htmlAttrs: {
-    lang: 'ar',
-    dir: 'rtl',
+    lang: computed(() => authStore.preferredLanguage === 'en' ? 'en' : 'ar'),
+    dir: appDir,
     class: computed(() => themingStore.isDark ? 'dark' : ''),
   },
   titleTemplate: (titleChunk) => titleChunk
@@ -55,10 +59,10 @@ const showShell = computed(() => route.path !== '/login' && Boolean(user.value))
 </script>
 
 <template>
-  <ConfigProvider dir="rtl">
+  <ConfigProvider :dir="appDir">
     <NuxtLoadingIndicator color="var(--primary)" />
     <NuxtRouteAnnouncer />
-    <Toaster />
+    <Toaster :position="toasterPosition" rich-colors />
 
     <AppShell v-if="showShell">
       <NuxtLayout>

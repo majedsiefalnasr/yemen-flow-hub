@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { Bell, LogOut, Moon, Settings, Sun, User } from 'lucide-vue-next'
+import { useMediaQuery } from '@vueuse/core'
+import { LogOut, Moon, Settings, Sun, User } from 'lucide-vue-next'
 import { useRouter } from 'vue-router'
 import CommandPalette from '@/components/CommandPalette.vue'
 import { ROLE_LABELS } from '@/constants/workflow'
@@ -24,11 +25,13 @@ const themingStore = useThemingStore()
 const router = useRouter()
 
 const user = computed(() => authStore.user)
+const isMobile = useMediaQuery('(max-width: 768px)')
 const roleLabel = computed(() => {
   const role = user.value?.role
   return role ? ROLE_LABELS[role] : 'مستخدم'
 })
 const isDark = computed(() => themingStore.isDark)
+const canToggleSidebar = computed(() => isMobile.value || themingStore.sidebarCollapsible !== 'none')
 const displayName = computed(() => user.value?.name ?? 'المستخدم')
 const displayEmail = computed(() => user.value?.email ?? '')
 
@@ -48,55 +51,20 @@ async function handleLogout() {
 
 <template>
   <header
-    class="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-3 border-b bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/85 sm:px-6"
+    class="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-3 border-b bg-background/95 px-4 backdrop-blur supports-backdrop-filter:bg-background/85 sm:px-6"
     aria-label="الشريط العلوي"
   >
     <div class="flex min-w-0 flex-1 items-center gap-2">
-      <SidebarTrigger class="-ms-1 shrink-0" aria-label="تبديل الشريط الجانبي" />
-      <Separator orientation="vertical" class="h-4 data-[orientation=vertical]:h-4" />
-      <div class="hidden min-w-0 flex-col leading-tight sm:flex">
-        <span class="truncate text-xs text-muted-foreground">مساحة العمل الحالية</span>
-        <span class="truncate text-sm font-semibold text-foreground">{{ roleLabel }}</span>
+      <template v-if="canToggleSidebar">
+        <SidebarTrigger class="-ms-1 shrink-0" aria-label="تبديل الشريط الجانبي" />
+        <Separator orientation="vertical" class="h-4 data-[orientation=vertical]:h-4" />
+      </template>
+      <div class="min-w-0 w-full max-w-2xs">
+        <CommandPalette />
       </div>
     </div>
 
-    <div class="flex flex-1 justify-center">
-      <CommandPalette />
-    </div>
-
-    <div class="flex min-w-0 flex-1 items-center justify-end gap-1.5">
-      <Button
-        variant="ghost"
-        size="icon-sm"
-        aria-label="تبديل المظهر"
-        @click="toggleTheme"
-      >
-        <Sun v-if="isDark" class="h-4 w-4" />
-        <Moon v-else class="h-4 w-4" />
-      </Button>
-
-      <Button
-        variant="ghost"
-        size="icon-sm"
-        aria-label="الإشعارات"
-        as-child
-      >
-        <NuxtLink to="/notifications">
-          <Bell class="h-4 w-4" />
-        </NuxtLink>
-      </Button>
-
-      <Button
-        variant="ghost"
-        size="icon-sm"
-        aria-label="الإعدادات"
-        as-child
-      >
-        <NuxtLink to="/settings">
-          <Settings class="h-4 w-4" />
-        </NuxtLink>
-      </Button>
-
+    <div class="flex min-w-0 items-center justify-end gap-1.5">
       <DropdownMenu>
         <DropdownMenuTrigger as-child>
           <Button
@@ -110,7 +78,10 @@ async function handleLogout() {
                 {{ userInitials(displayName) }}
               </AvatarFallback>
             </Avatar>
-            <span class="hidden max-w-28 truncate text-sm font-medium lg:inline">{{ displayName }}</span>
+            <span class="hidden min-w-0 flex-col text-start leading-tight sm:flex">
+              <span class="max-w-28 truncate text-sm font-medium">{{ displayName }}</span>
+              <span class="max-w-28 truncate text-xs text-muted-foreground">{{ roleLabel }}</span>
+            </span>
           </Button>
         </DropdownMenuTrigger>
 

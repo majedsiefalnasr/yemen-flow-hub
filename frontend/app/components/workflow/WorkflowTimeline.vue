@@ -169,7 +169,7 @@ function connectorClasses(isDone: boolean): string {
 </script>
 
 <template>
-  <div class="flex flex-col py-2 px-0 relative" dir="rtl" role="list" aria-label="مسار سير العمل">
+  <div class="flex flex-col py-2 px-0 relative"  role="list" aria-label="مسار سير العمل">
     <div
       v-for="(stage, idx) in stages"
       :key="stage.status"

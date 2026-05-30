@@ -327,24 +327,24 @@ onMounted(async () => {
             <div class="two-col-grid">
               <div class="field-group">
                 <label class="field-label">الخادم (Host)</label>
-                <input v-model="smtpForm.host" type="text" class="form-input" placeholder="smtp.example.com" dir="ltr" />
+                <input v-model="smtpForm.host" type="text" class="form-input" placeholder="smtp.example.com"  />
               </div>
               <div class="field-group">
                 <label class="field-label">المنفذ (Port)</label>
-                <input v-model.number="smtpForm.port" type="number" class="form-input" placeholder="587" dir="ltr" />
+                <input v-model.number="smtpForm.port" type="number" class="form-input" placeholder="587"  />
               </div>
               <div class="field-group">
                 <label class="field-label">اسم المستخدم</label>
-                <input v-model="smtpForm.username" type="text" class="form-input" dir="ltr" />
+                <input v-model="smtpForm.username" type="text" class="form-input"  />
               </div>
               <div class="field-group">
                 <label class="field-label">كلمة المرور</label>
-                <input v-model="smtpForm.password" type="password" class="form-input" dir="ltr" placeholder="••••••••" />
+                <input v-model="smtpForm.password" type="password" class="form-input"  placeholder="••••••••" />
               </div>
             </div>
             <div class="field-group">
               <label class="field-label">قالب البريد</label>
-              <textarea v-model="smtpForm.template" class="form-input form-textarea" dir="ltr" rows="3" />
+              <textarea v-model="smtpForm.template" class="form-input form-textarea"  rows="3" />
             </div>
 
             <div v-if="smtpError" class="error-banner">{{ smtpError }}</div>

@@ -13,7 +13,7 @@ function reloadPage() {
 </script>
 
 <template>
-  <main class="min-h-screen bg-background px-4" dir="rtl">
+  <main class="min-h-screen bg-background px-4" >
     <ErrorState
       :code="503"
       title="المنصة قيد الصيانة"

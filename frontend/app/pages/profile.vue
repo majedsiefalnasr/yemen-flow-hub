@@ -780,7 +780,7 @@ async function confirmMfaDisable() {
 
         <!-- MFA Setup / Disable Dialog -->
         <Dialog v-model:open="mfaDialogOpen">
-          <DialogContent class="max-w-sm" dir="rtl">
+          <DialogContent class="max-w-sm" >
             <!-- ── Disable verify ── -->
             <template v-if="mfaDialogStage === 'disable-verify'">
               <DialogHeader>
@@ -792,7 +792,7 @@ async function confirmMfaDisable() {
               <div v-if="mfaSetupError" class="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive" role="alert">
                 {{ mfaSetupError }}
               </div>
-              <div class="flex justify-center py-2" dir="ltr">
+              <div class="flex justify-center py-2" >
                 <InputOTP v-model="mfaVerifyCode" :maxlength="6" :disabled="isMfaActionLoading" @complete="confirmMfaDisable">
                   <InputOTPGroup>
                     <InputOTPSlot v-for="i in 6" :key="i" :index="i - 1" class="size-11 text-xl font-bold" />
@@ -918,7 +918,7 @@ async function confirmMfaDisable() {
                 <div class="w-full rounded-lg border border-border bg-muted/30 px-3 py-2">
                   <p class="mb-1 text-[10px] text-muted-foreground">المفتاح السري (للإدخال اليدوي)</p>
                   <div class="flex items-center justify-between gap-2">
-                    <code class="text-xs font-mono tracking-widest" dir="ltr">{{ liveMfaSecret ?? '…' }}</code>
+                    <code class="text-xs font-mono tracking-widest" >{{ liveMfaSecret ?? '…' }}</code>
                     <Button type="button" variant="ghost" size="sm" class="h-7 px-2" :disabled="!liveMfaSecret" @click="copyMfaSecret">
                       <Copy class="h-3.5 w-3.5" />
                     </Button>
@@ -947,7 +947,7 @@ async function confirmMfaDisable() {
               <div v-if="mfaSetupError" class="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive" role="alert">
                 {{ mfaSetupError }}
               </div>
-              <div class="flex justify-center py-2" dir="ltr">
+              <div class="flex justify-center py-2" >
                 <InputOTP v-model="mfaVerifyCode" :maxlength="6" :disabled="isMfaActionLoading" @complete="confirmMfaSetup">
                   <InputOTPGroup>
                     <InputOTPSlot v-for="i in 6" :key="i" :index="i - 1" class="size-11 text-xl font-bold" />
@@ -969,7 +969,7 @@ async function confirmMfaDisable() {
 
         <!-- PIN Dialog -->
         <Dialog v-model:open="pinDialogOpen">
-          <DialogContent ref="pinDialogContentRef" class="max-w-sm" dir="rtl">
+          <DialogContent ref="pinDialogContentRef" class="max-w-sm" >
             <DialogHeader>
               <DialogTitle>
                 {{
@@ -999,7 +999,7 @@ async function confirmMfaDisable() {
               {{ pinError }}
             </div>
 
-            <div class="flex justify-center py-2" dir="ltr">
+            <div class="flex justify-center py-2" >
               <!-- Current PIN (for change/disable) -->
               <InputOTP
                 v-if="pinDialogMode === 'disable' || (pinDialogMode === 'change' && pinDialogStage === 'current')"

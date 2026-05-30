@@ -15,8 +15,8 @@ const user = computed(() => authStore.user)
 </script>
 
 <template>
-  <div v-if="user" class="min-h-dvh bg-background text-foreground" dir="rtl">
-    <SidebarProvider dir="rtl" class="flex-row">
+  <div v-if="user" class="min-h-dvh bg-background text-foreground" >
+    <SidebarProvider  class="flex-row">
       <AppSidebar
         side="right"
         :variant="themingStore.sidebarVariant"
