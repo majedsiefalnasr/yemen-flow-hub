@@ -2976,7 +2976,7 @@ So that compliance-grade session-timeout behavior is visible and predictable.
 
 **Common technical requirements for all Epic 9 stories:**
 - Run SocratiCode before modifying existing files: `codebase_symbol` / `codebase_search`, then `codebase_impact` for touched components.
-- Use dev-browser to capture both lovable and current-app screenshots at matching viewports (desktop 1440×900 and mobile 390×844).
+- Use playwright-cli to capture both lovable and current-app screenshots at matching viewports (desktop 1440×900 and mobile 390×844).
 - Commit frontend changes to frontend team repo and root monorepo; commit any backend changes to backend team repo and root monorepo.
 - After code changes, run targeted Vitest + Playwright tests and `graphify update .`.
 
@@ -3003,7 +3003,7 @@ So that "1:1 with lovable" stops being an aspirational doc rule and becomes a st
 - `CLAUDE.md` (root) — mirror the same line update.
 - `docs/04-frontend-guide.md` — add a new top-level section "Visual Parity Workflow" pointing all UI work to the parity workflow doc and the BMad gate.
 - `DESIGN.md` — add a "Source of truth" note: when DESIGN.md tokens conflict with `lovable/screenshots/` rendered values, update DESIGN.md to match the screenshot.
-- New: `docs/ui-parity/clone-page-workflow.md` — codify the per-page port procedure (open lovable file → both apps in dev-browser at matched viewport → screenshot lovable → screenshot current → produce side-by-side composite → port markup → re-wire composables → re-screenshot → commit triplet → user sign-off).
+- New: `docs/ui-parity/clone-page-workflow.md` — codify the per-page port procedure (open lovable file → both apps in playwright-cli at matched viewport → screenshot lovable → screenshot current → produce side-by-side composite → port markup → re-wire composables → re-screenshot → commit triplet → user sign-off).
 
 *CI/CD gate (optional but recommended):*
 - A new `frontend/scripts/check-parity-evidence.ts` script that, given a list of changed Vue files, asserts each has a corresponding evidence triplet under `_bmad-output/parity-evidence/`. Wired as a pre-push hook or CI step. Failures block merge.
@@ -3328,7 +3328,7 @@ So that role-surface regressions and lifecycle handoff regressions are caught be
 
 **Common technical requirements for all Epic 12 stories:**
 - Run SocratiCode before modifying existing files: `codebase_search`, then `codebase_symbol` and `codebase_impact` for touched components.
-- Use browser verification (dev-browser) for UI-facing changes.
+- Use browser verification (playwright-cli) for UI-facing changes.
 - Add Vitest role-specific assertions and Playwright visual baselines per surface.
 - Update `docs/ui-parity/parity-matrix.md` (Story 9.2 artefact) with triplets for each touched surface.
 - Keep `_bmad-output/implementation-artifacts/`, `_bmad-output/test-artifacts/`, and `graphify-out/` local-only and unstaged.

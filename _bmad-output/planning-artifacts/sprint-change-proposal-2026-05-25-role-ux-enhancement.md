@@ -176,7 +176,7 @@ Insert after the existing Epic 11 section (after line 3304):
 
 **Common technical requirements for all Epic 12 stories:**
 - Run SocratiCode before modifying existing files: `codebase_search`, then `codebase_symbol` and `codebase_impact` for touched components.
-- Use browser verification (dev-browser) for UI-facing changes.
+- Use browser verification (playwright-cli) for UI-facing changes.
 - Add Vitest role-specific assertions and Playwright visual baselines per surface.
 - Update `docs/ui-parity/parity-matrix.md` (Story 9.2 artefact) with triplets for each touched surface.
 - Keep `_bmad-output/implementation-artifacts/`, `_bmad-output/test-artifacts/`, and `graphify-out/` local-only and unstaged.
