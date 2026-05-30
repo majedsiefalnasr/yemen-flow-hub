@@ -11,8 +11,7 @@ const authStore = useAuthStore()
 const themingStore = useThemingStore()
 const user = computed(() => authStore.user)
 const appDir = computed<'rtl' | 'ltr'>(() => authStore.preferredLanguage === 'en' ? 'ltr' : 'rtl')
-const toasterPosition = computed<'bottom-left' | 'bottom-right'>(() =>
-  appDir.value === 'rtl' ? 'bottom-left' : 'bottom-right')
+const toasterPosition = 'top-center'
 let mediaQuery: MediaQueryList | null = null
 const applySystemTheme = () => {
   if (themingStore.mode === 'system') {

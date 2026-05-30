@@ -121,26 +121,9 @@ describe('CommandPalette role safety', () => {
     }
   })
 
-  it('supports keyboard "/" shortcut outside inputs and ignores it while typing', () => {
+  it('does not register "/" keyboard shortcut (reserved for table search inputs)', () => {
     const wrapper = mountForRole(UserRole.DATA_ENTRY)
-    expect(keydownHandler).toBeTruthy()
-
-    const preventDefault = vi.fn()
-    keydownHandler?.({
-      key: '/',
-      target: document.body,
-      preventDefault,
-    } as unknown as KeyboardEvent)
-    expect(preventDefault).toHaveBeenCalledTimes(1)
-
-    const input = document.createElement('input')
-    const preventDefaultInsideInput = vi.fn()
-    keydownHandler?.({
-      key: '/',
-      target: input,
-      preventDefault: preventDefaultInsideInput,
-    } as unknown as KeyboardEvent)
-    expect(preventDefaultInsideInput).not.toHaveBeenCalled()
+    expect(keydownHandler).toBeNull()
 
     wrapper.unmount()
   })

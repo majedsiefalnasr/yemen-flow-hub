@@ -271,7 +271,7 @@ export const NAV_ITEMS: NavItem[] = [
     roles: rolesForSurface('nav.new_request'),
   },
   {
-    label: 'إدارة التجار',
+    label: 'التجار',
     route: NAV_SURFACE_ROUTES['nav.merchants'],
     icon: 'building',
     roles: rolesForSurface('nav.merchants'),
@@ -313,7 +313,7 @@ export const NAV_ITEMS: NavItem[] = [
     roles: rolesForSurface('nav.admin.cby_staff'),
   },
   {
-    label: 'الكيانات',
+    label: 'البنوك',
     route: NAV_SURFACE_ROUTES['nav.admin.entities'],
     icon: 'landmark',
     roles: rolesForSurface('nav.admin.entities'),
@@ -578,6 +578,7 @@ export const ROUTE_ROLE_MAP: Record<string, UserRole[]> = {
   '/admin': [UserRole.CBY_ADMIN],
   '/admin/cby-staff': rolesForSurface('nav.admin.cby_staff'),
   '/admin/entities': rolesForSurface('nav.admin.entities'),
+  '/admin/banks': rolesForSurface('nav.admin.entities'),
   '/admin/roles': rolesForSurface('nav.admin.roles'),
   '/admin/workflow-docs': rolesForSurface('nav.admin.workflow_docs'),
   '/settings': rolesForSurface('nav.settings'),

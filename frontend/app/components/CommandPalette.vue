@@ -65,18 +65,6 @@ whenever(computed(() => Boolean(meta_k?.value || ctrl_k?.value)), () => {
   open.value = true
 })
 
-// "/" → focus search (guarded: skip when inside input/textarea/contenteditable)
-if (typeof window !== 'undefined') {
-  useEventListener('keydown', (e: KeyboardEvent) => {
-    if (e.key !== '/') return
-    const tag = (e.target as HTMLElement).tagName.toLowerCase()
-    const editable = (e.target as HTMLElement).isContentEditable
-    if (tag === 'input' || tag === 'textarea' || editable) return
-    e.preventDefault()
-    open.value = true
-  })
-}
-
 // ── Keyboard shortcuts per route ──────────────────────────────────────
 
 const shortcutByRoute: Record<string, string> = {
@@ -89,7 +77,7 @@ const shortcutByRoute: Record<string, string> = {
   '/reports': 'T',
   '/audit': 'A',
   '/notifications': 'I',
-  '/admin/entities': 'B',
+  '/admin/banks': 'B',
   '/admin/cby-staff': 'U',
   '/admin/workflow-docs': 'W',
   '/admin/roles': 'P',
@@ -108,7 +96,7 @@ const aliasesByRoute: Record<string, string> = {
   '/reports': 'reports analytics charts',
   '/audit': 'audit logs compliance',
   '/notifications': 'notifications alerts',
-  '/admin/entities': 'entities organizations institutions',
+  '/admin/banks': 'banks بنوك organizations institutions',
   '/admin/cby-staff': 'cby staff admin users',
   '/admin/workflow-docs': 'workflow documents rules',
   '/admin/roles': 'roles permissions access',
@@ -222,7 +210,7 @@ const QUICK_ACTIONS: Partial<Record<UserRole, PaletteAction[]>> = {
 const GROUP_DEFS: Array<{ heading: string; routes: string[] }> = [
   { heading: 'الطلبات', routes: ['/requests', '/requests/new'] },
   { heading: 'الطوابير', routes: ['/dashboard', '/customs'] },
-  { heading: 'الجهات والمستخدمون', routes: ['/merchants', '/staff', '/admin/entities', '/admin/cby-staff'] },
+  { heading: 'الجهات والمستخدمون', routes: ['/merchants', '/staff', '/admin/banks', '/admin/cby-staff'] },
   { heading: 'التدقيق والتقارير', routes: ['/audit', '/reports'] },
   { heading: 'الإعدادات والإدارة', routes: ['/settings', '/admin/workflow-docs', '/admin/roles'] },
   { heading: 'المساعدة والإشعارات', routes: ['/notifications'] },

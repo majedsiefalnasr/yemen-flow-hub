@@ -23,13 +23,13 @@ describe('role middleware', () => {
     const middleware = (await import('../../../middleware/role')).default
 
     middleware({
-      path: '/admin/entities',
+      path: '/admin/banks',
       meta: { requiredRoles: [UserRole.CBY_ADMIN] },
     } as any, {} as any)
 
     expect(navigateTo).toHaveBeenCalledWith({
       path: '/forbidden',
-      query: { path: '/admin/entities' },
+      query: { path: '/admin/banks' },
     })
   })
 
@@ -38,7 +38,7 @@ describe('role middleware', () => {
     const middleware = (await import('../../../middleware/role')).default
 
     const result = middleware({
-      path: '/admin/entities',
+      path: '/admin/banks',
       meta: { requiredRoles: [UserRole.CBY_ADMIN] },
     } as any, {} as any)
 

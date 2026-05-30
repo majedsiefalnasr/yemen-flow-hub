@@ -1,6 +1,6 @@
 <script setup lang="ts" generic="TData">
 import type { Table } from '@tanstack/vue-table'
-import { Settings2 } from 'lucide-vue-next'
+import { Columns3 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -25,7 +25,7 @@ defineProps<{
         size="sm"
         class="ms-auto hidden h-8 lg:flex"
       >
-        <Settings2 class="me-2 h-4 w-4" />
+        <Columns3 class="me-2 h-4 w-4" />
         الأعمدة
       </Button>
     </DropdownMenuTrigger>
@@ -35,9 +35,9 @@ defineProps<{
       <DropdownMenuCheckboxItem
         v-for="column in table.getAllColumns().filter(col => col.getCanHide())"
         :key="column.id"
-        :checked="column.getIsVisible()"
+        :model-value="column.getIsVisible()"
         class="capitalize"
-        @update:checked="(value: boolean | 'indeterminate') => column.toggleVisibility(value === true)"
+        @update:model-value="(value: boolean) => column.toggleVisibility(value)"
       >
         {{ columnLabels?.[column.id] ?? column.id }}
       </DropdownMenuCheckboxItem>

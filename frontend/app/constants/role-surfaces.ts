@@ -272,7 +272,7 @@ export const NAV_SURFACE_ROUTES: Record<
   'nav.reports': '/reports',
   'nav.audit': '/audit',
   'nav.notifications': '/notifications',
-  'nav.admin.entities': '/admin/entities',
+  'nav.admin.entities': '/admin/banks',
   'nav.admin.cby_staff': '/admin/cby-staff',
   'nav.admin.workflow_docs': '/admin/workflow-docs',
   'nav.admin.roles': '/admin/roles',

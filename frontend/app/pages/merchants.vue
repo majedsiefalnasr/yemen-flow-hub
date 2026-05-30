@@ -500,7 +500,7 @@ function exportSelectedMerchants() {
 <template>
   <div v-if="user && canManage">
     <PageHeader
-      title="إدارة التجار"
+      title="التجار"
       :subtitle="isCbyAdmin ? 'عرض جميع التجار المسجّلين على المنصّة مع البنوك التابعة لها' : 'تسجيل ومتابعة التجار والمستوردين المرتبطين بالبنك'"
       :breadcrumbs="[{ label: 'الرئيسية', to: '/' }, { label: 'التجار' }]"
     >
@@ -1111,11 +1111,11 @@ function exportSelectedMerchants() {
 
   <div v-else>
     <PageHeader
-      title="إدارة التجار"
+      title="التجار"
       subtitle="هذه الصفحة متاحة لمسؤول النظام أو مسؤول البنك فقط."
     />
     <Card class="border-0 p-6 shadow">
-      <div class="text-sm text-muted-foreground">لا تملك صلاحية إدارة التجار.</div>
+      <div class="text-sm text-muted-foreground">لا تملك صلاحية الوصول إلى التجار.</div>
     </Card>
   </div>
 </template>

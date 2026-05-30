@@ -42,7 +42,7 @@ const shortcutByRoute: Record<string, string> = {
   '/reports': 'T',
   '/audit': 'A',
   '/notifications': 'I',
-  '/admin/entities': 'B',
+  '/admin/banks': 'B',
   '/admin/cby-staff': 'U',
   '/admin/workflow-docs': 'W',
   '/admin/roles': 'P',
@@ -51,7 +51,7 @@ const shortcutByRoute: Record<string, string> = {
 
 const commandGroupByRoute: Array<{ heading: string, routes: string[] }> = [
   { heading: 'الطلبات والطوابير', routes: ['/dashboard', '/requests', '/requests/new', '/customs'] },
-  { heading: 'الإدارة', routes: ['/merchants', '/staff', '/admin/entities', '/admin/cby-staff', '/admin/workflow-docs', '/admin/roles'] },
+  { heading: 'الإدارة', routes: ['/merchants', '/staff', '/admin/banks', '/admin/cby-staff', '/admin/workflow-docs', '/admin/roles'] },
   { heading: 'التدقيق والتقارير', routes: ['/reports', '/audit'] },
   { heading: 'المساعدة والإعدادات', routes: ['/notifications', '/settings'] },
 ]

@@ -125,7 +125,7 @@ const NAV_GROUP_DEFS: Array<{ title: string; routes: string[]; navGroupStyle?: '
   { title: 'العمليات', routes: ['/requests/new', '/customs'], navGroupStyle: 'operational' },
   {
     title: 'الإدارة',
-    routes: ['/merchants', '/staff', '/banks', '/reports', '/audit', '/admin/entities', '/admin/cby-staff', '/admin/workflow-docs', '/admin/roles'],
+    routes: ['/merchants', '/staff', '/banks', '/reports', '/audit', '/admin/banks', '/admin/cby-staff', '/admin/workflow-docs', '/admin/roles'],
     navGroupStyle: 'analytics',
   },
   { title: 'الأخرى', routes: ['/settings'] },

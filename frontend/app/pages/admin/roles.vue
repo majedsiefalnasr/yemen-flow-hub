@@ -75,7 +75,7 @@ const ALL_PERMISSIONS: Permission[] = [
   },
   {
     key: 'merchants.manage',
-    label: 'إدارة التجار',
+    label: 'التجار',
     roles: [UserRole.BANK_ADMIN, UserRole.CBY_ADMIN],
   },
   {

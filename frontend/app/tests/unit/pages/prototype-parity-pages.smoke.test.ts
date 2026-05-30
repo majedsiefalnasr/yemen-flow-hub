@@ -67,7 +67,7 @@ describe('Story 5.7 page smoke tests', () => {
   it('renders /merchants page shell', async () => {
     const page = await import('../../../pages/merchants.vue')
     const html = await renderPage(page.default)
-    expect(html).toContain('إدارة التجار')
+    expect(html).toContain('التجار')
   })
 
   it('renders /audit page shell', async () => {
@@ -92,8 +92,8 @@ describe('Story 5.7 page smoke tests', () => {
     const cbystaffHtml = await renderPage((await import('../../../pages/admin/cby-staff.vue')).default)
     expect(cbystaffHtml).toContain('مستخدمي النظام')
 
-    const entitiesHtml = await renderPage((await import('../../../pages/admin/entities.vue')).default)
-    expect(entitiesHtml).toContain('إدارة البنوك التجارية')
+    const banksHtml = await renderPage((await import('../../../pages/admin/banks.vue')).default)
+    expect(banksHtml).toContain('إدارة البنوك التجارية')
 
     const rolesHtml = await renderPage((await import('../../../pages/admin/roles.vue')).default)
     expect(rolesHtml).toContain('مصفوفة الأدوار والصلاحيات')
