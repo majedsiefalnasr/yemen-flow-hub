@@ -22,12 +22,15 @@ interface VerifyOtpResponseData {
   requires_mfa: false
 }
 
+const ACCESS_TOKEN_STORAGE_KEY = 'yfh-api-token'
+
 function clearAuthState(store: { user: AuthUser | null; isAuthenticated: boolean }) {
   store.user = null
   store.isAuthenticated = false
 
   if (process.client) {
     localStorage.removeItem('yfh-authenticated')
+    localStorage.removeItem(ACCESS_TOKEN_STORAGE_KEY)
   }
 }
 
@@ -83,6 +86,27 @@ export const useAuthStore = defineStore('auth', {
   },
 
   actions: {
+    getAccessToken(): string | null {
+      if (!process.client) return null
+      return localStorage.getItem(ACCESS_TOKEN_STORAGE_KEY)
+    },
+
+    getAuthorizationHeader(): string | null {
+      const token = this.getAccessToken()
+      return token ? `Bearer ${token}` : null
+    },
+
+    persistAuthMode(data: { mode?: 'cookie' | 'token'; token?: string | null }) {
+      if (!process.client) return
+
+      if (data.mode === 'token' && data.token) {
+        localStorage.setItem(ACCESS_TOKEN_STORAGE_KEY, data.token)
+      }
+      else {
+        localStorage.removeItem(ACCESS_TOKEN_STORAGE_KEY)
+      }
+    },
+
     getXsrfToken(): string | null {
       if (!process.client) return null
       const raw = document.cookie
@@ -142,6 +166,42 @@ export const useAuthStore = defineStore('auth', {
 
       this.user = response.data.user!
       this.isAuthenticated = true
+      this.persistAuthMode({ mode: response.data.mode, token: response.data.token })
+      if (process.client) {
+        localStorage.setItem('yfh-authenticated', '1')
+      }
+    },
+
+    async loginWithPin(email: string, pin: string): Promise<void> {
+      const config = useRuntimeConfig()
+      const baseURL = config.public.apiBase as string
+
+      await $fetch('/sanctum/csrf-cookie', {
+        baseURL,
+        credentials: 'include',
+      })
+
+      const xsrfToken = this.getXsrfToken()
+
+      const response = await $fetch<ApiResponse<LoginResponseData>>('/api/auth/login-pin', {
+        method: 'POST',
+        baseURL,
+        credentials: 'include',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+          ...(xsrfToken ? { 'X-XSRF-TOKEN': xsrfToken } : {}),
+        },
+        body: { email, pin },
+      })
+
+      if (!response.data.user?.is_active) {
+        throw { statusCode: 403, data: { success: false, message: 'حسابك موقوف. يرجى التواصل مع المسؤول.' } }
+      }
+
+      this.user = response.data.user
+      this.isAuthenticated = true
+      this.persistAuthMode({ mode: response.data.mode, token: response.data.token })
       if (process.client) {
         localStorage.setItem('yfh-authenticated', '1')
       }
@@ -170,6 +230,7 @@ export const useAuthStore = defineStore('auth', {
 
       this.user = response.data.user
       this.isAuthenticated = true
+      this.persistAuthMode({ mode: response.data.mode, token: response.data.token })
       if (process.client) {
         localStorage.setItem('yfh-authenticated', '1')
       }
@@ -199,6 +260,7 @@ export const useAuthStore = defineStore('auth', {
 
       this.user = response.data.user
       this.isAuthenticated = true
+      this.persistAuthMode({ mode: response.data.mode, token: response.data.token })
       if (process.client) {
         localStorage.setItem('yfh-authenticated', '1')
       }
@@ -210,12 +272,14 @@ export const useAuthStore = defineStore('auth', {
 
       try {
         const xsrfToken = this.getXsrfToken()
+        const authHeader = this.getAuthorizationHeader()
         await $fetch('/api/auth/logout', {
           method: 'POST',
           baseURL,
           credentials: 'include',
           headers: {
             Accept: 'application/json',
+            ...(authHeader ? { Authorization: authHeader } : {}),
             ...(xsrfToken ? { 'X-XSRF-TOKEN': xsrfToken } : {}),
           },
         })
@@ -233,10 +297,14 @@ export const useAuthStore = defineStore('auth', {
       const baseURL = config.public.apiBase as string
 
       try {
+        const authHeader = this.getAuthorizationHeader()
         const response = await $fetch<ApiResponse<AuthUser>>('/api/auth/me', {
           baseURL,
           credentials: 'include',
-          headers: { Accept: 'application/json' },
+          headers: {
+            Accept: 'application/json',
+            ...(authHeader ? { Authorization: authHeader } : {}),
+          },
         })
         if (!response.data.is_active) {
           clearAuthState(this)
@@ -256,12 +324,14 @@ export const useAuthStore = defineStore('auth', {
 
       try {
         const xsrfToken = this.getXsrfToken()
+        const authHeader = this.getAuthorizationHeader()
         await $fetch('/api/auth/logout', {
           method: 'POST',
           baseURL,
           credentials: 'include',
           headers: {
             Accept: 'application/json',
+            ...(authHeader ? { Authorization: authHeader } : {}),
             ...(xsrfToken ? { 'X-XSRF-TOKEN': xsrfToken } : {}),
           },
         })

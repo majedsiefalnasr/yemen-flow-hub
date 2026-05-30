@@ -44,6 +44,8 @@ export interface AuthUser {
   is_active: boolean
   mfa_enabled?: boolean
   mfa_required?: boolean
+  totp_enabled?: boolean
+  pin_enabled?: boolean
   stats?: ProfileStats
   recent_activity?: RecentActivity[]
 }

@@ -11,6 +11,7 @@ import {
   useForwardPropsEmits,
 } from 'reka-ui'
 import { cn } from '@/lib/utils'
+import { focusPopupFirstInput } from '@/lib/focus-modal'
 import { Button } from '@/components/ui/button'
 import DialogOverlay from './DialogOverlay.vue'
 
@@ -34,6 +35,7 @@ const forwarded = useForwardPropsEmits(delegatedProps, emits)
     <DialogContent
       data-slot="dialog-content"
       v-bind="{ ...$attrs, ...forwarded }"
+      @open-auto-focus="focusPopupFirstInput"
       :class="cn('bg-popover text-popover-foreground data-open:animate-in data-closed:animate-out data-closed:fade-out-0 data-open:fade-in-0 data-closed:zoom-out-95 data-open:zoom-in-95 ring-foreground/10 grid max-w-[calc(100%-2rem)] gap-4 rounded-xl p-4 text-sm ring-1 duration-100 sm:max-w-sm fixed top-1/2 start-1/2 z-50 w-full -translate-x-1/2 rtl:translate-x-1/2 -translate-y-1/2 outline-none', props.class)"
     >
       <slot />

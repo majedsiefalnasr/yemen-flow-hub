@@ -208,6 +208,33 @@ describe('useAuthStore', () => {
     })
   })
 
+  describe('loginWithPin()', () => {
+    it('sets user and isAuthenticated on successful PIN login', async () => {
+      mockFetch.mockResolvedValueOnce(null) // CSRF cookie prefetch
+      mockFetch.mockResolvedValueOnce({
+        success: true,
+        message: 'OK',
+        data: { user: DEMO_USER, token: null, token_type: null, mode: 'cookie', requires_mfa: false },
+      })
+
+      const store = useAuthStore()
+      await store.loginWithPin('ahmed@bank.ye', '125812')
+
+      expect(store.isAuthenticated).toBe(true)
+      expect(store.user).toEqual(DEMO_USER)
+    })
+
+    it('throws and keeps state unauthenticated when PIN login fails', async () => {
+      mockFetch.mockResolvedValueOnce(null) // CSRF cookie prefetch
+      mockFetch.mockRejectedValueOnce({ data: { message: 'رمز PIN غير صحيح. يرجى المحاولة مرة أخرى.' } })
+
+      const store = useAuthStore()
+      await expect(store.loginWithPin('ahmed@bank.ye', '000000')).rejects.toBeDefined()
+      expect(store.isAuthenticated).toBe(false)
+      expect(store.user).toBeNull()
+    })
+  })
+
   describe('logout()', () => {
     it('clears user and isAuthenticated after logout', async () => {
       // First login

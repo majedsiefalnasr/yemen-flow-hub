@@ -110,7 +110,7 @@ function toggleTheme() {
 
           <DropdownMenuGroup>
             <DropdownMenuItem as-child>
-              <NuxtLink to="/profile" class="flex cursor-pointer items-center gap-2">
+              <NuxtLink to="/settings?tab=profile" class="flex cursor-pointer items-center gap-2">
                 <User class="h-4 w-4" />
                 <span>الملف الشخصي</span>
               </NuxtLink>

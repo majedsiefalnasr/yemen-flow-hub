@@ -23,6 +23,7 @@ import {
   ShieldAlert,
   Square,
   Sun,
+  UserRound,
   Workflow,
 } from 'lucide-vue-next'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -51,6 +52,7 @@ import { cn } from '@/lib/utils'
 import { ROUTE_ROLE_MAP } from '@/constants/workflow'
 import { useThemingStore, type AutoplayPreference, type LayoutMode, type ThemeMode } from '@/stores/theming.store'
 import { useSettingsStore } from '@/stores/settings.store'
+import ProfilePage from '@/pages/profile.vue'
 
 definePageMeta({
   middleware: ['auth', 'role'],
@@ -59,18 +61,26 @@ definePageMeta({
 
 const themingStore = useThemingStore()
 const settingsStore = useSettingsStore()
+const route = useRoute()
+const router = useRouter()
 
 const settingsTabs = [
+  { value: 'profile', label: 'الملف الشخصي', icon: UserRound, dataTab: 'profile', testId: 'tab-profile' },
   { value: 'general', label: 'عام', icon: Cog, dataTab: 'general', testId: 'tab-general' },
-  { value: 'workflow', label: 'سير العمل', icon: Workflow, dataTab: 'workflow', testId: 'tab-workflow' },
-  { value: 'email', label: 'البريد الإلكتروني', icon: Mail, dataTab: 'email', testId: 'tab-email' },
-  { value: 'notif', label: 'الإشعارات', icon: Bell, dataTab: 'notifications', testId: 'tab-notif' },
   { value: 'security', label: 'الأمن', icon: ShieldAlert, dataTab: 'security', testId: 'tab-security' },
+  { value: 'notif', label: 'الإشعارات', icon: Bell, dataTab: 'notifications', testId: 'tab-notif' },
+  { value: 'email', label: 'البريد الإلكتروني', icon: Mail, dataTab: 'email', testId: 'tab-email' },
+  { value: 'workflow', label: 'سير العمل', icon: Workflow, dataTab: 'workflow', testId: 'tab-workflow' },
 ] as const
 
 type SettingsTab = (typeof settingsTabs)[number]['value']
 
-const activeTab = ref<SettingsTab>('general')
+const activeTab = ref<SettingsTab>('profile')
+
+function normalizeTab(raw: unknown): SettingsTab | null {
+  if (typeof raw !== 'string') return null
+  return settingsTabs.some(tab => tab.value === raw) ? (raw as SettingsTab) : null
+}
 
 // ── Theming state ─────────────────────────────────────────────────────────────
 const fontPickerOpen = ref(false)
@@ -171,6 +181,21 @@ const generalSettings = reactive({ ...originalGeneralSettings })
 // ── Lifecycle ─────────────────────────────────────────────────────────────────
 onMounted(() => {
   themingStore.loadSettings()
+  const urlTab = normalizeTab(route.query.tab)
+  if (urlTab) activeTab.value = urlTab
+})
+
+watch(() => route.query.tab, (rawTab) => {
+  const urlTab = normalizeTab(rawTab)
+  if (urlTab && urlTab !== activeTab.value) {
+    activeTab.value = urlTab
+  }
+})
+
+watch(activeTab, async (tab) => {
+  const current = normalizeTab(route.query.tab)
+  if (current === tab) return
+  await router.replace({ query: { ...route.query, tab } })
 })
 
 // Lazy-load Google Fonts only when the font combobox is first opened
@@ -327,6 +352,11 @@ async function saveGeneralAndBrandingSettings() {
               {{ tab.label }}
             </TabsTrigger>
           </TabsList>
+
+      <!-- ── General ─────────────────────────────────────────────────────── -->
+      <TabsContent value="profile" data-panel="profile" class="space-y-6">
+        <ProfilePage :embedded="true" />
+      </TabsContent>
 
       <!-- ── General ─────────────────────────────────────────────────────── -->
       <TabsContent value="general" data-panel="general" class="space-y-6">

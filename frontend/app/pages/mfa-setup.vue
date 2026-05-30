@@ -114,7 +114,7 @@ const onSubmit = handleSubmit(async () => {
               <Loader2 v-if="isSubmitting" class="me-2 size-4 animate-spin" />
               {{ isSubmitting ? 'جارٍ الحفظ...' : 'تفعيل المصادقة الثنائية' }}
             </Button>
-            <Button type="button" variant="outline" class="h-10" @click="navigateTo('/profile')">
+            <Button type="button" variant="outline" class="h-10" @click="navigateTo('/settings?tab=profile')">
               العودة للملف الشخصي
             </Button>
           </div>

@@ -61,8 +61,12 @@ const showShell = computed(() => route.path !== '/login' && Boolean(user.value))
     <Toaster />
 
     <AppShell v-if="showShell">
-      <NuxtPage />
+      <NuxtLayout>
+        <NuxtPage />
+      </NuxtLayout>
     </AppShell>
-    <NuxtPage v-else />
+    <NuxtLayout v-else>
+      <NuxtPage />
+    </NuxtLayout>
   </ConfigProvider>
 </template>
