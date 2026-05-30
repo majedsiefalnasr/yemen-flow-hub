@@ -133,7 +133,7 @@ const NAV_GROUP_DEFS: Array<{ title: string; routes: string[]; navGroupStyle?: '
     routes: ['/merchants', '/staff', '/banks', '/reports', '/audit', '/admin/entities', '/admin/cby-staff', '/admin/workflow-docs', '/admin/roles'],
     navGroupStyle: 'analytics',
   },
-  { title: 'الأخرى', routes: ['/settings'] },
+  { title: 'الأخرى', routes: ['/settings', '/settings/system', '/settings/user'] },
 ]
 
 const navGroups = computed<NavGroupDef[]>(() => {

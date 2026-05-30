@@ -12,6 +12,8 @@ interface SectionDirtyState {
   notif: boolean
   security: boolean
   general: boolean
+  userAppearance: boolean
+  userNotifications: boolean
   theming: {
     appearance: boolean
     branding: boolean
@@ -30,6 +32,8 @@ export const useSettingsStore = defineStore('settings', () => {
     notif: false,
     security: false,
     general: false,
+    userAppearance: false,
+    userNotifications: false,
     theming: {
       appearance: false,
       branding: false,

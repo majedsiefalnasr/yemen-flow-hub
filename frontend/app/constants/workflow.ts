@@ -560,7 +560,7 @@ export const CBY_BANK_FILTER_ROLES: UserRole[] = [
 export const CURRENCY_OPTIONS = ['USD', 'EUR', 'SAR', 'AED', 'CNY'] as const
 
 /** Routes that require authentication (all except login) */
-export const PROTECTED_ROUTES = ['/dashboard', '/requests', '/voting', '/customs', '/audit', '/reports', '/notifications', '/admin', '/bank', '/settings', '/merchants', '/staff']
+export const PROTECTED_ROUTES = ['/dashboard', '/requests', '/voting', '/customs', '/audit', '/reports', '/notifications', '/admin', '/bank', '/settings', '/settings/system', '/settings/user', '/merchants', '/staff']
 
 /** Route → allowed roles mapping for role middleware */
 export const ROUTE_ROLE_MAP: Record<string, UserRole[]> = {
@@ -581,6 +581,8 @@ export const ROUTE_ROLE_MAP: Record<string, UserRole[]> = {
   '/admin/roles': rolesForSurface('nav.admin.roles'),
   '/admin/workflow-docs': rolesForSurface('nav.admin.workflow_docs'),
   '/settings': rolesForSurface('nav.settings'),
+  '/settings/system': [UserRole.CBY_ADMIN],
+  '/settings/user': rolesForSurface('nav.settings'),
 }
 
 const ROUTE_ROLE_ENTRIES = Object.entries(ROUTE_ROLE_MAP).map(([pattern, roles]) => {
