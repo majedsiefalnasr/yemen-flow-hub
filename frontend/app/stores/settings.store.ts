@@ -110,8 +110,7 @@ export const useSettingsStore = defineStore('settings', () => {
     error.value = null
 
     try {
-      const config = useRuntimeConfig()
-      const baseURL = config.public.apiBase as string
+      const { post } = useApi()
 
       const payload = {
         section,
@@ -119,16 +118,7 @@ export const useSettingsStore = defineStore('settings', () => {
         data,
       }
 
-      await $fetch('/api/settings/save-section', {
-        method: 'POST',
-        baseURL,
-        credentials: 'include',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
-        body: payload,
-      })
+      await post('/api/settings/save-section', payload)
 
       markSectionClean(section, subsection, data)
       return true
