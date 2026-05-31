@@ -44,10 +44,22 @@ class UserController extends Controller
                 fn ($q) => $q->where('bank_id', request('bank_id'))
             )
             ->when(request()->has('is_active'), fn ($q) => $q->where('is_active', filter_var(request('is_active'), FILTER_VALIDATE_BOOL)))
+            ->when(request()->filled('search'), function ($q) {
+                $s = request('search');
+                $q->where(fn ($x) => $x->where('name', 'like', "%{$s}%")->orWhere('email', 'like', "%{$s}%"));
+            })
             ->latest('id')
             ->paginate($perPage);
 
-        return ApiResponse::success(UserResource::collection($users), 'Users retrieved.');
+        return ApiResponse::success([
+            'data' => UserResource::collection($users->getCollection())->resolve(),
+            'meta' => [
+                'current_page' => $users->currentPage(),
+                'last_page'    => $users->lastPage(),
+                'per_page'     => $users->perPage(),
+                'total'        => $users->total(),
+            ],
+        ], 'Users retrieved.');
     }
 
     #[OA\Post(

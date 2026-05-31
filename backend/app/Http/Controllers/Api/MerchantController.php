@@ -15,7 +15,7 @@ class MerchantController extends Controller
     public function index()
     {
         $this->authorize('viewAny', Merchant::class);
-        $perPage = min(max((int) request('per_page', 20), 1), 100);
+        $perPage = min(max((int) request('per_page', 20), 1), 200);
 
         $query = Merchant::query()
             ->with('bank')
@@ -29,7 +29,17 @@ class MerchantController extends Controller
             })
             ->latest('id');
 
-        return ApiResponse::success(MerchantResource::collection($query->paginate($perPage)), 'Merchants retrieved.');
+        $merchants = $query->paginate($perPage);
+
+        return ApiResponse::success([
+            'data' => MerchantResource::collection($merchants->getCollection())->resolve(),
+            'meta' => [
+                'current_page' => $merchants->currentPage(),
+                'last_page'    => $merchants->lastPage(),
+                'per_page'     => $merchants->perPage(),
+                'total'        => $merchants->total(),
+            ],
+        ], 'Merchants retrieved.');
     }
 
     #[OA\Post(

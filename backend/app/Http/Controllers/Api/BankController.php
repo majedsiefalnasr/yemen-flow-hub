@@ -30,12 +30,27 @@ class BankController extends Controller
         $this->authorize('viewAny', Bank::class);
         $actor = request()->user();
 
+        $perPage = max(1, min(request()->integer('per_page', 20), 200));
         $banks = Bank::query()
             ->when($actor->isBankUser(), fn ($q) => $q->where('id', $actor->bank_id))
+            ->when(request()->filled('search'), function ($q) {
+                $s = request('search');
+                $q->where(fn ($x) => $x->where('name_ar', 'like', "%{$s}%")
+                    ->orWhere('name_en', 'like', "%{$s}%")
+                    ->orWhere('code', 'like', "%{$s}%"));
+            })
             ->latest('id')
-            ->paginate(20);
+            ->paginate($perPage);
 
-        return ApiResponse::success(BankResource::collection($banks), 'Banks retrieved.');
+        return ApiResponse::success([
+            'data' => BankResource::collection($banks->getCollection())->resolve(),
+            'meta' => [
+                'current_page' => $banks->currentPage(),
+                'last_page'    => $banks->lastPage(),
+                'per_page'     => $banks->perPage(),
+                'total'        => $banks->total(),
+            ],
+        ], 'Banks retrieved.');
     }
 
     #[OA\Post(

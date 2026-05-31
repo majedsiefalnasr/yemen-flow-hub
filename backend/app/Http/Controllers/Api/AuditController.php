@@ -71,7 +71,7 @@ class AuditController extends Controller
             ->when(request()->filled('from_date'), fn ($q) => $q->whereDate('created_at', '>=', request('from_date')))
             ->when(request()->filled('to_date'), fn ($q) => $q->whereDate('created_at', '<=', request('to_date')))
             ->latest('id')
-            ->paginate(30);
+            ->paginate(max(1, min(request()->integer('per_page', 30), 100)));
 
         return ApiResponse::success([
             'data' => AuditLogResource::collection($items)->resolve(),
