@@ -1,6 +1,12 @@
 <script setup lang="ts" generic="TData, TValue">
-import type { ColumnDef, ColumnFiltersState, PaginationState, RowSelectionState, SortingState, VisibilityState } from '@tanstack/vue-table'
-import type { Ref } from 'vue'
+import type {
+  ColumnDef,
+  ColumnFiltersState,
+  PaginationState,
+  RowSelectionState,
+  SortingState,
+  VisibilityState,
+} from '@tanstack/vue-table'
 import {
   FlexRender,
   getCoreRowModel,
@@ -12,6 +18,7 @@ import {
   useVueTable,
 } from '@tanstack/vue-table'
 import { useVModel } from '@vueuse/core'
+import type { Ref } from 'vue'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   Table,
@@ -21,17 +28,23 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { valueUpdater } from '@/components/ui/table/utils'
 
 const props = withDefaults(defineProps<{
   data: TData[]
   columns: ColumnDef<TData, TValue>[]
   loading?: boolean
+  /**
+   * For server-side pagination: total number of pages the server reports.
+   * When provided, manualPagination is enabled and TanStack will not slice data.
+   * Omit (or -1) for client-side pagination.
+   */
   pageCount?: number
-  pagination?: { pageIndex: number; pageSize: number }
+  pagination?: PaginationState
   sorting?: SortingState
   columnFilters?: ColumnFiltersState
   columnVisibility?: VisibilityState
-  rowSelection?: Record<string, boolean>
+  rowSelection?: RowSelectionState
   rowClass?: string | ((row: TData) => string)
   isRowExpanded?: (row: TData) => boolean
 }>(), {
@@ -40,40 +53,53 @@ const props = withDefaults(defineProps<{
 })
 
 const emit = defineEmits<{
+  'update:pagination': [value: PaginationState]
   'update:sorting': [value: SortingState]
   'update:columnFilters': [value: ColumnFiltersState]
   'update:columnVisibility': [value: VisibilityState]
-  'update:rowSelection': [value: Record<string, boolean>]
-  'update:pagination': [value: { pageIndex: number; pageSize: number }]
+  'update:rowSelection': [value: RowSelectionState]
   'row-click': [value: TData]
 }>()
 
-const sorting = useVModel(props, 'sorting', emit, { defaultValue: [] as SortingState, passive: true }) as Ref<SortingState>
-const columnFilters = useVModel(props, 'columnFilters', emit, { defaultValue: [] as ColumnFiltersState, passive: true }) as Ref<ColumnFiltersState>
-const columnVisibility = useVModel(props, 'columnVisibility', emit, { defaultValue: {} as VisibilityState, passive: true }) as Ref<VisibilityState>
-const rowSelection = useVModel(props, 'rowSelection', emit, { defaultValue: {} as RowSelectionState, passive: true }) as Ref<RowSelectionState>
-const pagination = useVModel(props, 'pagination', emit, { defaultValue: { pageIndex: 0, pageSize: 20 } as PaginationState, passive: true }) as Ref<PaginationState>
+// Each state is a ref. The parent can control it via v-model props,
+// or leave it uncontrolled and TanStack manages it internally.
+const pagination = useVModel(props, 'pagination', emit, {
+  defaultValue: { pageIndex: 0, pageSize: 20 } as PaginationState,
+}) as Ref<PaginationState>
 
-function resolveHeaderClass(meta?: unknown) {
-  return (meta as { headerClass?: string } | undefined)?.headerClass
-}
+const sorting = useVModel(props, 'sorting', emit, {
+  defaultValue: [] as SortingState,
+  passive: true,
+}) as Ref<SortingState>
 
-function resolveCellClass(meta?: unknown) {
-  return (meta as { cellClass?: string } | undefined)?.cellClass
-}
+const columnFilters = useVModel(props, 'columnFilters', emit, {
+  defaultValue: [] as ColumnFiltersState,
+  passive: true,
+}) as Ref<ColumnFiltersState>
 
-function resolveRowClass(row: TData) {
-  if (typeof props.rowClass === 'function') return props.rowClass(row)
-  return props.rowClass ?? ''
-}
+const columnVisibility = useVModel(props, 'columnVisibility', emit, {
+  defaultValue: {} as VisibilityState,
+  passive: true,
+}) as Ref<VisibilityState>
+
+const rowSelection = useVModel(props, 'rowSelection', emit, {
+  defaultValue: {} as RowSelectionState,
+  passive: true,
+}) as Ref<RowSelectionState>
+
+// Server-side mode is decided once at init. In server-side mode the server
+// already returns exactly the rows for the current page, so we must NOT register
+// getPaginationRowModel — it would slice the already-paginated data down to
+// pageSize. In client-side mode we register it so TanStack slices locally.
+const isServerSide = props.pageCount !== -1
 
 const table = useVueTable({
   get data() { return props.data },
   get columns() { return props.columns },
   get pageCount() { return props.pageCount },
-  manualPagination: props.pageCount !== -1,
-  manualSorting: props.pageCount !== -1,
-  manualFiltering: props.pageCount !== -1,
+  manualPagination: isServerSide,
+  manualSorting: isServerSide,
+  manualFiltering: isServerSide,
   state: {
     get sorting() { return sorting.value },
     get columnFilters() { return columnFilters.value },
@@ -83,31 +109,34 @@ const table = useVueTable({
   },
   getCoreRowModel: getCoreRowModel(),
   getFilteredRowModel: getFilteredRowModel(),
-  getPaginationRowModel: getPaginationRowModel(),
+  // Only slice client-side. Server-side data arrives pre-paginated.
+  ...(isServerSide ? {} : { getPaginationRowModel: getPaginationRowModel() }),
   getSortedRowModel: getSortedRowModel(),
   getFacetedRowModel: getFacetedRowModel(),
   getFacetedUniqueValues: getFacetedUniqueValues(),
-  onSortingChange: (updater) => {
-    sorting.value = typeof updater === 'function' ? updater(sorting.value) : updater
-    emit('update:sorting', sorting.value)
-  },
-  onColumnFiltersChange: (updater) => {
-    columnFilters.value = typeof updater === 'function' ? updater(columnFilters.value) : updater
-    emit('update:columnFilters', columnFilters.value)
-  },
-  onColumnVisibilityChange: (updater) => {
-    columnVisibility.value = typeof updater === 'function' ? updater(columnVisibility.value) : updater
-    emit('update:columnVisibility', columnVisibility.value)
-  },
-  onRowSelectionChange: (updater) => {
-    rowSelection.value = typeof updater === 'function' ? updater(rowSelection.value) : updater
-    emit('update:rowSelection', rowSelection.value)
-  },
+  onSortingChange: updater => valueUpdater(updater, sorting),
+  onColumnFiltersChange: updater => valueUpdater(updater, columnFilters),
+  onColumnVisibilityChange: updater => valueUpdater(updater, columnVisibility),
+  onRowSelectionChange: updater => valueUpdater(updater, rowSelection),
   onPaginationChange: (updater) => {
-    pagination.value = typeof updater === 'function' ? updater(pagination.value) : updater
-    emit('update:pagination', pagination.value)
+    const next = typeof updater === 'function' ? updater(pagination.value) : updater
+    emit('update:pagination', next)
+    pagination.value = next
   },
 })
+
+function resolveHeaderClass(meta: unknown) {
+  return (meta as { headerClass?: string } | undefined)?.headerClass
+}
+
+function resolveCellClass(meta: unknown) {
+  return (meta as { cellClass?: string } | undefined)?.cellClass
+}
+
+function resolveRowClass(row: TData) {
+  if (typeof props.rowClass === 'function') return props.rowClass(row)
+  return props.rowClass ?? ''
+}
 
 defineExpose({ table })
 </script>
@@ -116,7 +145,6 @@ defineExpose({ table })
   <div class="space-y-4">
     <slot name="toolbar" :table="table" />
 
-    <!-- Table — only rendered when loading or rows exist -->
     <div v-if="loading || table.getRowModel().rows.length > 0" class="rounded-lg border overflow-x-auto">
       <Table class="min-w-full">
         <TableHeader>
@@ -138,6 +166,7 @@ defineExpose({ table })
             </TableHead>
           </TableRow>
         </TableHeader>
+
         <TableBody>
           <template v-if="loading">
             <TableRow v-for="i in 5" :key="i">
@@ -146,6 +175,7 @@ defineExpose({ table })
               </TableCell>
             </TableRow>
           </template>
+
           <template v-else>
             <template v-for="row in table.getRowModel().rows" :key="row.id">
               <TableRow
@@ -165,9 +195,10 @@ defineExpose({ table })
                   />
                 </TableCell>
               </TableRow>
-              <TableRow v-if="props.isRowExpanded?.(row.original)" class="bg-muted/20">
+
+              <TableRow v-if="isRowExpanded?.(row.original)" class="bg-muted/20">
                 <TableCell :colspan="row.getVisibleCells().length" class="px-6 py-4">
-                  <slot name="row-expanded" :row="row.original" :colspan="row.getVisibleCells().length" />
+                  <slot name="row-expanded" :row="row.original" />
                 </TableCell>
               </TableRow>
             </template>
@@ -176,7 +207,6 @@ defineExpose({ table })
       </Table>
     </div>
 
-    <!-- Empty state — rendered outside the table when not loading and no rows -->
     <template v-else>
       <slot name="empty">
         <div class="flex min-h-[200px] items-center justify-center rounded-lg border border-dashed text-sm text-muted-foreground">
