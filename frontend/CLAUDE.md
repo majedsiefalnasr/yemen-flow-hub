@@ -201,6 +201,10 @@ Before modifying any composable, store, or service:
 2. `codebase_flow` — trace how data flows
 3. `codebase_impact` — check what would break
 
+## Browser Automation
+
+For UI validation and browser interactions, use `playwright-cli`. Keep the `playwright-cli` command prefix permanently allowlisted in local tool permissions to avoid repeated approval prompts during frontend verification.
+
 ## Docs Reference
 
 Full rules in `../docs/` and `../AGENTS.md`. Key files:
