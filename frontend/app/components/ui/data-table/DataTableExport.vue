@@ -26,17 +26,17 @@ const props = withDefaults(defineProps<{
    */
   exportColumns?: ExportColumn<TData>[]
   /**
-   * Respect visible table columns when exporting explicit `exportColumns`.
-   * Requires `columnId` in export column config when key differs from table id.
+   * Filter out hidden columns when explicit exportColumns are provided.
+   * Requires columnId on export column when the key differs from the table column id.
    */
   respectColumnVisibility?: boolean
-  /** Labels for auto-detected columns. Falls back to column id. */
+  /** Human-readable labels for auto-detected columns. Falls back to column id. */
   columnLabels?: Record<string, string>
-  /** Formats to offer in the dropdown menu. */
+  /** Which export formats to show. Defaults to all five. */
   formats?: ExportFormat[]
 }>(), {
   filename: 'export',
-  formats: () => ['csv', 'tsv', 'json', 'excel', 'pdf'],
+  formats: () => ['csv', 'tsv', 'json', 'excel', 'pdf'] as ExportFormat[],
   respectColumnVisibility: false,
 })
 
@@ -46,15 +46,13 @@ const resolvedColumns = computed<ExportColumn<TData>[]>(() => {
   if (props.exportColumns) {
     if (!props.respectColumnVisibility) return props.exportColumns
 
-    const visibleColumnIds = new Set(props.table.getVisibleLeafColumns().map(column => column.id))
-    return props.exportColumns.filter((column) => {
-      const explicitColumnId = column.columnId?.trim()
-      if (explicitColumnId) return visibleColumnIds.has(explicitColumnId)
-      return true
+    const visibleIds = new Set(props.table.getVisibleLeafColumns().map(col => col.id))
+    return props.exportColumns.filter((col) => {
+      const id = col.columnId?.trim()
+      return id ? visibleIds.has(id) : true
     })
   }
 
-  // Auto-detect from visible accessor columns
   return props.table
     .getAllColumns()
     .filter(col => col.getIsVisible() && col.getCanHide() && typeof col.accessorFn !== 'undefined')
@@ -76,46 +74,22 @@ const formatLabel: Record<ExportFormat, string> = {
   pdf: 'PDF',
 }
 
-const exportOptions = computed(() => {
-  const requestedFormats = (props.formats.length ? props.formats : ['csv', 'tsv', 'json', 'excel', 'pdf']) as ExportFormat[]
-  return requestedFormats.map(format => ({
-    id: format,
-    format,
-    label: formatLabel[format],
-  }))
-})
-
 function doExport(format: ExportFormat) {
   const rows = getRows()
   const cols = resolvedColumns.value
   const name = props.filename
 
-  if (format === 'csv') {
-    exportToCSV(rows, cols, name)
-    return
+  switch (format) {
+    case 'csv': exportToCSV(rows, cols, name); break
+    case 'tsv': exportToTSV(rows, cols, name); break
+    case 'excel': exportToExcel(rows, cols, name); break
+    case 'pdf': exportToPDF(rows, cols, name); break
+    default: exportToJSON(rows, cols, name)
   }
-
-  if (format === 'tsv') {
-    exportToTSV(rows, cols, name)
-    return
-  }
-
-  if (format === 'excel') {
-    exportToExcel(rows, cols, name)
-    return
-  }
-
-  if (format === 'pdf') {
-    exportToPDF(rows, cols, name)
-    return
-  }
-
-  exportToJSON(rows, cols, name)
 }
 
-const canExport = computed(() =>
-  resolvedColumns.value.length > 0
-  && getRows().length > 0,
+const canExport = computed(
+  () => resolvedColumns.value.length > 0 && getRows().length > 0,
 )
 </script>
 
@@ -137,12 +111,12 @@ const canExport = computed(() =>
       <DropdownMenuSeparator />
       <DropdownMenuGroup>
         <DropdownMenuItem
-          v-for="option in exportOptions"
-          :key="option.id"
+          v-for="format in formats"
+          :key="format"
           :disabled="!canExport"
-          @click="doExport(option.format)"
+          @click="doExport(format)"
         >
-          <span>{{ option.label }}</span>
+          {{ formatLabel[format] }}
         </DropdownMenuItem>
       </DropdownMenuGroup>
     </DropdownMenuContent>

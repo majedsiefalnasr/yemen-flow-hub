@@ -217,7 +217,6 @@ describe('VotingPanel — Tiebreak Notice Styling (AC7 — heavier amber emphasi
         padding: '14px 16px',
         background: '#fff8e1',
         border: '1.5px solid #f57f17',
-        borderLeft: '4px solid #f57f17',
         fontWeight: '600',
         color: '#7c4a00',
       }
@@ -252,12 +251,6 @@ describe('VotingPanel — Tiebreak Notice Styling (AC7 — heavier amber emphasi
     const notice = createTiebreakNotice()
     notice.isVotesTied.value = true
     expect(notice.tiebreakNoticeStyle.value.border).toBe('1.5px solid #f57f17')
-  })
-
-  it('applies left accent border: 4px solid #f57f17', () => {
-    const notice = createTiebreakNotice()
-    notice.isVotesTied.value = true
-    expect(notice.tiebreakNoticeStyle.value.borderLeft).toBe('4px solid #f57f17')
   })
 
   it('applies correct font-weight: 600 (heavier)', () => {

@@ -113,7 +113,7 @@ onMounted(() => { store.loadStats() })
     </div>
 
     <!-- Error -->
-    <Card v-else-if="store.error" class="border-0 border-s-4 border-s-[var(--severity-red)] bg-background" role="alert">
+    <Card v-else-if="store.error" class="border-0 border-[var(--severity-red)] bg-background" role="alert">
       <CardContent class="pt-6 flex items-center gap-3">
         <span class="text-destructive flex-1">{{ store.error }}</span>
         <Button variant="outline" size="sm" class="text-destructive border-destructive" @click="store.loadStats()">
@@ -127,7 +127,7 @@ onMounted(() => { store.loadStats() })
       <!-- Action strip — pending uploads -->
       <Card
         v-if="stats.pending_swift_upload > 0"
-        class="border-0 border-s-4 border-s-[var(--severity-amber)] bg-[var(--severity-amber)]/5 shadow-sm"
+        class="border-0 border-[var(--severity-amber)] bg-[var(--severity-amber)]/5 shadow-sm"
         role="alert"
       >
         <CardContent class="pt-4 pb-4 flex items-center gap-3">

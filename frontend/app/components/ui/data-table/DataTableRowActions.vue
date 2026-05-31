@@ -22,7 +22,7 @@ import {
 
 export interface RowAction<TData> {
   label: string
-  icon?: any
+  icon?: unknown
   disabled?: boolean | ((row: Row<TData>) => boolean)
   destructive?: boolean
   hidden?: boolean | ((row: Row<TData>) => boolean)
@@ -50,20 +50,24 @@ const visibleActions = computed(() =>
   }),
 )
 
+function isDisabled(action: RowAction<TData>) {
+  if (typeof action.disabled === 'function') return action.disabled(props.row)
+  return action.disabled ?? false
+}
+
 function handleAction(action: RowAction<TData>) {
   if (action.confirm) {
     pendingAction.value = action
     showConfirm.value = true
-  } else {
+  }
+  else {
     action.onClick(props.row)
   }
 }
 
 function confirmAction() {
-  if (pendingAction.value) {
-    pendingAction.value.onClick(props.row)
-    pendingAction.value = null
-  }
+  pendingAction.value?.onClick(props.row)
+  pendingAction.value = null
   showConfirm.value = false
 }
 </script>
@@ -81,13 +85,15 @@ function confirmAction() {
     </DropdownMenuTrigger>
     <DropdownMenuContent align="end" class="w-[160px]">
       <template v-for="(action, i) in visibleActions" :key="action.label">
-        <DropdownMenuSeparator v-if="i > 0 && visibleActions[i - 1]?.destructive !== action.destructive" />
+        <DropdownMenuSeparator
+          v-if="i > 0 && visibleActions[i - 1]?.destructive !== action.destructive"
+        />
         <DropdownMenuItem
           :class="action.destructive ? 'text-destructive focus:text-destructive' : ''"
-          :disabled="typeof action.disabled === 'function' ? action.disabled(row) : action.disabled"
+          :disabled="isDisabled(action)"
           @click="handleAction(action)"
         >
-          <component v-if="action.icon" :is="action.icon" class="me-2 h-4 w-4" />
+          <component :is="action.icon" v-if="action.icon" class="me-2 h-4 w-4" />
           {{ action.label }}
         </DropdownMenuItem>
       </template>
@@ -95,7 +101,7 @@ function confirmAction() {
   </DropdownMenu>
 
   <AlertDialog v-model:open="showConfirm">
-    <AlertDialogContent >
+    <AlertDialogContent>
       <AlertDialogHeader>
         <AlertDialogTitle>{{ pendingAction?.confirm?.title }}</AlertDialogTitle>
         <AlertDialogDescription>{{ pendingAction?.confirm?.description }}</AlertDialogDescription>

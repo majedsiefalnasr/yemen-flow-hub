@@ -73,7 +73,6 @@ async function handleLogout() {
             aria-label="قائمة المستخدم"
           >
             <Avatar class="h-7 w-7 rounded-lg">
-              <AvatarImage src="/avatars/default.jpg" :alt="displayName" />
               <AvatarFallback class="rounded-lg text-[11px]">
                 {{ userInitials(displayName) }}
               </AvatarFallback>
@@ -89,7 +88,6 @@ async function handleLogout() {
           <DropdownMenuLabel class="p-0 font-normal">
             <div class="flex items-center gap-2 px-1 py-1.5 text-start text-sm">
               <Avatar class="h-9 w-9 rounded-lg">
-                <AvatarImage src="/avatars/default.jpg" :alt="displayName" />
                 <AvatarFallback class="rounded-lg">
                   {{ userInitials(displayName) }}
                 </AvatarFallback>

@@ -11,9 +11,7 @@ const props = defineProps<{
   searchColumn?: string
   searchPlaceholder?: string
   hasFilters?: boolean
-  /** Hide the search input entirely */
   hideSearch?: boolean
-  /** Selected rows count — shows bulk toolbar row below search when > 0 */
   selectedCount?: number
 }>()
 
@@ -29,16 +27,13 @@ const searchInput = ref('')
 const debouncedSearch = refDebounced(searchInput, 300)
 const searchRef = ref<InstanceType<typeof Input> | null>(null)
 
-watch(debouncedSearch, (value) => {
-  emit('update:search', value)
-})
+watch(debouncedSearch, value => emit('update:search', value))
 
 function resetFilters() {
   searchInput.value = ''
   emit('reset')
 }
 
-// Focus search on "/" keypress (skip when already in an input/textarea).
 if (typeof document !== 'undefined') {
   useEventListener(document, 'keydown', (e: KeyboardEvent) => {
     if (props.hideSearch) return
@@ -54,15 +49,13 @@ if (typeof document !== 'undefined') {
 
 <template>
   <div class="flex flex-col gap-2">
-    <!-- Search + filters + actions row -->
     <div class="flex flex-wrap items-center gap-2">
-      <!-- Search -->
       <div v-if="!hideSearch" class="relative min-w-[180px] max-w-sm flex-1">
         <Search class="absolute start-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
         <Input
           ref="searchRef"
           v-model="searchInput"
-          :placeholder="searchPlaceholder || 'بحث...'"
+          :placeholder="searchPlaceholder ?? 'بحث...'"
           class="h-8 ps-8 pe-9 text-sm"
         />
         <kbd
@@ -73,10 +66,8 @@ if (typeof document !== 'undefined') {
         </kbd>
       </div>
 
-      <!-- Faceted filters -->
       <slot name="filters" :table="table" />
 
-      <!-- Reset filters -->
       <Button
         v-if="hasFilters"
         variant="ghost"
@@ -88,13 +79,11 @@ if (typeof document !== 'undefined') {
         <X class="me-1 h-4 w-4" />
       </Button>
 
-      <!-- Right-aligned actions: View, Export, etc. -->
       <div class="ms-auto flex items-center gap-2">
         <slot name="actions" :table="table" />
       </div>
     </div>
 
-    <!-- Bulk selection row — shown below search when rows are selected -->
     <template v-if="(selectedCount ?? 0) > 0">
       <Separator />
       <div class="flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-1.5">

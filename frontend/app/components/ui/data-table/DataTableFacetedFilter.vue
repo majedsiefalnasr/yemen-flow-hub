@@ -25,7 +25,7 @@ const props = defineProps<{
   options: Array<{
     label: string
     value: string
-    icon?: any
+    icon?: unknown
     count?: number
   }>
 }>()
@@ -33,7 +33,7 @@ const props = defineProps<{
 const selectedValues = computed(() => {
   const filterValue = props.column.getFilterValue()
   if (!filterValue) return new Set<string>()
-  if (Array.isArray(filterValue)) return new Set<string>(filterValue.map(value => String(value)))
+  if (Array.isArray(filterValue)) return new Set<string>(filterValue.map(v => String(v)))
   return new Set<string>([String(filterValue)])
 })
 
@@ -41,7 +41,8 @@ function toggleOption(value: string) {
   const current = new Set(selectedValues.value)
   if (current.has(value)) {
     current.delete(value)
-  } else {
+  }
+  else {
     current.add(value)
   }
   const values = Array.from(current)
@@ -56,19 +57,12 @@ function clearFilters() {
 <template>
   <Popover>
     <PopoverTrigger as-child>
-      <Button
-        variant="outline"
-        size="sm"
-        class="h-8 border-dashed"
-      >
+      <Button variant="outline" size="sm" class="h-8 border-dashed">
         <PlusCircle class="me-2 h-4 w-4" />
         {{ title }}
         <template v-if="selectedValues.size > 0">
           <Separator orientation="vertical" class="mx-2 h-4" />
-          <Badge
-            variant="secondary"
-            class="rounded-sm px-1 font-normal lg:hidden"
-          >
+          <Badge variant="secondary" class="rounded-sm px-1 font-normal lg:hidden">
             {{ selectedValues.size }}
           </Badge>
           <div class="hidden space-x-1 lg:flex">
@@ -84,13 +78,14 @@ function clearFilters() {
                 variant="secondary"
                 class="rounded-sm px-1 font-normal"
               >
-                {{ options.find(option => option.value === value)?.label ?? value }}
+                {{ options.find(o => o.value === value)?.label ?? value }}
               </Badge>
             </template>
           </div>
         </template>
       </Button>
     </PopoverTrigger>
+
     <PopoverContent class="w-[200px] p-0" align="start">
       <Command>
         <CommandInput :placeholder="title" />
@@ -110,7 +105,7 @@ function clearFilters() {
               >
                 <Check v-if="selectedValues.has(option.value)" class="h-3 w-3" />
               </div>
-              <component v-if="option.icon" :is="option.icon" class="h-4 w-4 text-muted-foreground" />
+              <component :is="option.icon" v-if="option.icon" class="h-4 w-4 text-muted-foreground" />
               <span>{{ option.label }}</span>
               <span
                 v-if="option.count !== undefined"
@@ -120,6 +115,7 @@ function clearFilters() {
               </span>
             </CommandItem>
           </CommandGroup>
+
           <template v-if="selectedValues.size > 0">
             <CommandSeparator />
             <CommandGroup>

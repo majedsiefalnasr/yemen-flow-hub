@@ -21,6 +21,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Progress } from '@/components/ui/progress'
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
@@ -53,7 +54,6 @@ type LoginStep =
   | 'authenticator-setup'
   | 'save-account'
   | 'create-pin'
-  | 'trust-device'
 
 const step = ref<LoginStep>('account-select')
 const stepHistory = ref<LoginStep[]>([])
@@ -73,6 +73,17 @@ const router = useRouter()
 const route = useRoute()
 const auth = useAuthStore()
 const pageDir = computed<'rtl' | 'ltr'>(() => auth.preferredLanguage === 'en' ? 'ltr' : 'rtl')
+
+const STEP_PROGRESS: Partial<Record<LoginStep, number>> = {
+  'pin': 65,
+  'pin-reset': 20,
+  'password': 35,
+  'authenticator': 75,
+  'authenticator-setup': 70,
+  'save-account': 88,
+  'create-pin': 94,
+}
+const loginProgress = computed(() => STEP_PROGRESS[step.value] ?? 0)
 
 const nextPath = computed(() => {
   const candidate = route.query.next
@@ -337,22 +348,6 @@ async function handleCreatePinSubmit() {
   }
 }
 
-// ─── Step: trust-device ───────────────────────────────────────────────────────
-const isTrustLoading = ref(false)
-
-async function handleTrustDevice(trust: boolean) {
-  isTrustLoading.value = true
-  try {
-    if (trust) {
-      // TODO: Persist trusted device token via backend: POST /api/auth/trust-device
-      // The account was already saved in the save-account step.
-    }
-    await router.push(nextPath.value)
-  }
-  finally {
-    isTrustLoading.value = false
-  }
-}
 
 // ─── Step: authenticator-setup ────────────────────────────────────────────────
 const isAuthSetupLoading = ref(false)
@@ -424,7 +419,6 @@ async function handleSaveAccount(save: boolean) {
   isSaveAccountLoading.value = true
   try {
     if (save && auth.user) {
-      // TODO: Persist trusted device token via backend: POST /api/auth/trust-device
       addAccount({
         id: crypto.randomUUID(),
         name: auth.user.name,
@@ -496,6 +490,11 @@ watch(step, (newStep) => {
     <!-- ─── Form panel (right on desktop) ─────────────────────────────────── -->
     <div class="login-form-col">
       <div ref="formPanelRef" class="login-form-wrap">
+        <!-- Step progress — hidden on first step -->
+        <div v-if="step !== 'account-select'" class="mb-6">
+          <Progress :model-value="loginProgress" class="h-1" />
+        </div>
+
         <!-- Inactivity banner -->
         <Alert
           v-if="showInactivityBanner && !inactivityBannerDismissed"
@@ -573,10 +572,10 @@ watch(step, (newStep) => {
              STEP: pin
              ══════════════════════════════════════════════════════════════════ -->
         <template v-else-if="step === 'pin'">
-          <button type="button" class="back-btn" @click="goBack">
+          <Button type="button" variant="ghost" size="sm" class="-ms-2 mb-5 gap-1 text-muted-foreground" @click="goBack">
             <ChevronRight class="size-4" />
             رجوع
-          </button>
+          </Button>
 
           <div class="step-header">
             <h2 class="step-title">رمز PIN</h2>
@@ -653,10 +652,10 @@ watch(step, (newStep) => {
              STEP: password
              ══════════════════════════════════════════════════════════════════ -->
         <template v-else-if="step === 'password'">
-          <button type="button" class="back-btn" @click="goBack">
+          <Button type="button" variant="ghost" size="sm" class="-ms-2 mb-5 gap-1 text-muted-foreground" @click="goBack">
             <ChevronRight class="size-4" />
             رجوع
-          </button>
+          </Button>
 
           <div class="step-header">
             <h2 class="step-title">كلمة المرور</h2>
@@ -704,9 +703,11 @@ watch(step, (newStep) => {
                   class="h-11 bg-muted/30 ps-10"
                   :aria-invalid="passwordSubmitAttempted && passwordForm.errors.value.password ? 'true' : undefined"
                 />
-                <button
+                <Button
                   type="button"
-                  class="pw-toggle"
+                  variant="ghost"
+                  size="icon"
+                  class="absolute start-3 top-1/2 h-7 w-7 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                   :aria-label="showPassword ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور'"
                   @click="showPassword = !showPassword"
                 >
@@ -720,7 +721,7 @@ watch(step, (newStep) => {
                     <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
                     <circle cx="12" cy="12" r="3" />
                   </svg>
-                </button>
+                </Button>
               </div>
               <p
                 v-if="passwordSubmitAttempted && passwordForm.errors.value.password"
@@ -742,10 +743,10 @@ watch(step, (newStep) => {
              STEP: authenticator
              ══════════════════════════════════════════════════════════════════ -->
         <template v-else-if="step === 'authenticator'">
-          <button type="button" class="back-btn" @click="goBack">
+          <Button type="button" variant="ghost" size="sm" class="-ms-2 mb-5 gap-1 text-muted-foreground" @click="goBack">
             <ChevronRight class="size-4" />
             رجوع
-          </button>
+          </Button>
 
           <div class="step-header">
             <h2 class="step-title">رمز التحقق</h2>
@@ -754,12 +755,10 @@ watch(step, (newStep) => {
             </p>
           </div>
 
-          <div class="info-banner mb-5">
-            <Smartphone class="size-4 text-primary shrink-0" />
-            <p class="text-sm text-muted-foreground">
-              الرمز يتجدد كل 30 ثانية — أدخله فور ظهوره لضمان صلاحيته
-            </p>
-          </div>
+          <Alert class="mb-5">
+            <Smartphone class="h-4 w-4" />
+            <AlertDescription>الرمز يتجدد كل 30 ثانية — أدخله فور ظهوره لضمان صلاحيته</AlertDescription>
+          </Alert>
 
           <Alert
             v-if="authenticatorError"
@@ -825,12 +824,10 @@ watch(step, (newStep) => {
             </p>
           </div>
 
-          <div class="info-banner mb-6">
-            <KeyRound class="size-4 text-primary shrink-0" />
-            <p class="text-sm text-muted-foreground">
-              بعد إنشاء رمز PIN يمكنك تسجيل الدخول بسرعة دون الحاجة إلى كلمة المرور أو تطبيق المصادقة في كل مرة.
-            </p>
-          </div>
+          <Alert class="mb-6">
+            <KeyRound class="h-4 w-4" />
+            <AlertDescription>بعد إنشاء رمز PIN يمكنك تسجيل الدخول بسرعة دون الحاجة إلى كلمة المرور أو تطبيق المصادقة في كل مرة.</AlertDescription>
+          </Alert>
 
           <Alert v-if="createPinError" variant="destructive" role="alert" aria-live="assertive" class="mb-4">
             <AlertDescription>{{ createPinError }}</AlertDescription>
@@ -897,7 +894,7 @@ watch(step, (newStep) => {
               size="sm"
               class="text-xs text-muted-foreground"
               :disabled="isCreatePinLoading"
-              @click="pushStep('trust-device')"
+              @click="router.push(nextPath.value)"
             >
               تخطي في الوقت الحالي
             </Button>
@@ -915,12 +912,10 @@ watch(step, (newStep) => {
             </p>
           </div>
 
-          <div class="info-banner mb-5">
-            <ShieldCheck class="size-4 text-primary shrink-0 mt-0.5" />
-            <p class="text-sm text-muted-foreground">
-              استخدم Microsoft Authenticator أو Google Authenticator — ستحتاجه عند كل تسجيل دخول بكلمة المرور
-            </p>
-          </div>
+          <Alert class="mb-5">
+            <ShieldCheck class="h-4 w-4" />
+            <AlertDescription>استخدم Microsoft Authenticator أو Google Authenticator — ستحتاجه عند كل تسجيل دخول بكلمة المرور</AlertDescription>
+          </Alert>
 
           <!-- QR code from backend TOTP provisioning URI -->
           <div class="flex flex-col items-center gap-3 mb-5">
@@ -942,14 +937,16 @@ watch(step, (newStep) => {
               <code class="text-xs font-mono text-foreground/70 tracking-widest select-all flex-1 text-center" >
                 {{ authSetupSecret }}
               </code>
-              <button
+              <Button
                 type="button"
-                class="text-muted-foreground hover:text-foreground transition-colors"
+                variant="ghost"
+                size="icon"
+                class="h-7 w-7 text-muted-foreground"
                 aria-label="نسخ المفتاح السري"
                 @click="copyToClipboard(authSetupSecret!)"
               >
                 <Copy class="size-3.5" />
-              </button>
+              </Button>
             </div>
             <p class="text-xs text-muted-foreground text-center">
               لا يمكنك مسح الرمز؟ أدخل المفتاح يدوياً في التطبيق
@@ -1018,20 +1015,20 @@ watch(step, (newStep) => {
              ══════════════════════════════════════════════════════════════════ -->
         <template v-else-if="step === 'save-account'">
           <div class="step-header">
-            <CheckCircle2 class="size-8 text-green-500 mb-2" />
+            <CheckCircle2 class="size-8 text-[var(--severity-green)] mb-2" />
             <h2 class="step-title">تم تسجيل الدخول بنجاح</h2>
             <p class="step-desc">
               هل تريد حفظ بيانات الدخول على هذا الجهاز للدخول السريع في المرات القادمة؟
             </p>
           </div>
 
-          <div class="info-banner mb-5">
-            <ShieldCheck class="size-4 text-primary shrink-0 mt-0.5" />
-            <div class="text-sm text-muted-foreground space-y-1">
+          <Alert class="mb-5">
+            <ShieldCheck class="h-4 w-4" />
+            <AlertDescription class="space-y-1">
               <p>سيظهر اسمك في قائمة الحسابات عند فتح النظام على هذا الجهاز.</p>
-              <p class="text-xs">يمكنك إنشاء رمز PIN في الخطوة التالية للدخول بدون كلمة مرور.</p>
-            </div>
-          </div>
+              <p class="text-xs text-muted-foreground">يمكنك إنشاء رمز PIN في الخطوة التالية للدخول بدون كلمة مرور.</p>
+            </AlertDescription>
+          </Alert>
 
           <!-- Account preview -->
           <div v-if="auth.user" class="email-chip mb-5 flex-col items-start gap-0.5 py-3">
@@ -1069,59 +1066,13 @@ watch(step, (newStep) => {
         </template>
 
         <!-- ══════════════════════════════════════════════════════════════════
-             STEP: trust-device
-             ══════════════════════════════════════════════════════════════════ -->
-        <template v-else-if="step === 'trust-device'">
-          <div class="step-header">
-            <h2 class="step-title">الوثوق بهذا الجهاز؟</h2>
-            <p class="step-desc">يمكنك الآن استخدام رمز PIN للدخول السريع في المرات القادمة</p>
-          </div>
-
-          <div class="info-banner mb-6">
-            <ShieldCheck class="size-4 text-primary shrink-0 mt-0.5" />
-            <div class="space-y-1.5 text-sm text-muted-foreground">
-              <p>
-                تم إنشاء رمز PIN بنجاح. عند تمييز هذا الجهاز كموثوق ستتمكن من تسجيل الدخول برمز PIN دون الحاجة إلى كلمة المرور وتطبيق المصادقة في كل مرة.
-              </p>
-              <p class="text-xs">
-                تأكد من أن هذا جهازك الشخصي وليس جهازاً مشتركاً.
-              </p>
-            </div>
-          </div>
-
-          <div class="flex flex-col gap-3">
-            <Button
-              type="button"
-              size="lg"
-              class="w-full"
-              :disabled="isTrustLoading"
-              @click="handleTrustDevice(true)"
-            >
-              <Loader2 v-if="isTrustLoading" class="size-4 animate-spin me-2" />
-              <CheckCircle2 v-else class="size-4 me-2" />
-              نعم، الوثوق بهذا الجهاز
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="lg"
-              class="w-full"
-              :disabled="isTrustLoading"
-              @click="handleTrustDevice(false)"
-            >
-              لا، الدخول الآن
-            </Button>
-          </div>
-        </template>
-
-        <!-- ══════════════════════════════════════════════════════════════════
              STEP: pin-reset
              ══════════════════════════════════════════════════════════════════ -->
         <template v-else-if="step === 'pin-reset'">
-          <button type="button" class="back-btn" @click="goBack">
+          <Button type="button" variant="ghost" size="sm" class="-ms-2 mb-5 gap-1 text-muted-foreground" @click="goBack">
             <ChevronRight class="size-4" />
             رجوع
-          </button>
+          </Button>
 
           <div class="step-header">
             <h2 class="step-title">إعادة تعيين رمز PIN</h2>
@@ -1129,12 +1080,10 @@ watch(step, (newStep) => {
           </div>
 
           <div class="space-y-4">
-            <div class="info-banner">
-              <KeyRound class="size-4 text-primary shrink-0" />
-              <p class="text-sm text-muted-foreground">
-                إذا نسيت PIN: استخدم كلمة المرور الآن، وبعد الدخول افتح الملف الشخصي وأعد تعيين رمز PIN.
-              </p>
-            </div>
+            <Alert>
+              <KeyRound class="h-4 w-4" />
+              <AlertDescription>إذا نسيت PIN: استخدم كلمة المرور الآن، وبعد الدخول افتح الملف الشخصي وأعد تعيين رمز PIN.</AlertDescription>
+            </Alert>
             <Button
               type="button"
               size="lg"
@@ -1305,21 +1254,6 @@ watch(step, (newStep) => {
   line-height: 1.5;
 }
 
-/* ── Back button ─────────────────────────────────────────────────────────── */
-.back-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  margin-bottom: 20px;
-  padding: 0;
-  border: none;
-  background: none;
-  font-size: 13px;
-  color: var(--muted-foreground);
-  cursor: pointer;
-  transition: color 120ms ease;
-}
-
 
 /* ── OTP / PIN wrapper (forces LTR slot order) ───────────────────────────── */
 .otp-wrap {
@@ -1338,21 +1272,6 @@ watch(step, (newStep) => {
   justify-content: center;
 }
 
-/* ── Info / benefit banner ───────────────────────────────────────────────── */
-.info-banner {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 12px 14px;
-  background: color-mix(in srgb, var(--muted) 30%, var(--background));
-}
-
-.info-banner--warning {
-  border-color: rgb(217 119 6 / 30%);
-  background: rgb(255 251 235 / 60%);
-}
 
 /* ── Email chip (shows email during password step) ───────────────────────── */
 .email-chip {
@@ -1365,39 +1284,7 @@ watch(step, (newStep) => {
   background: color-mix(in srgb, var(--muted) 25%, var(--background));
 }
 
-/* ── Password field toggle button ────────────────────────────────────────── */
-.pw-toggle {
-  position: absolute;
-  inset-inline-start: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  border: none;
-  background: none;
-  padding: 4px;
-  color: var(--muted-foreground);
-  cursor: pointer;
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: color 120ms ease;
-}
 
-.pw-toggle:hover {
-  color: var(--foreground);
-}
-
-/* ── MFA footer note ─────────────────────────────────────────────────────── */
-.mfa-footer-note {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  font-size: 12px;
-  color: var(--muted-foreground);
-  text-align: center;
-  margin-top: 20px;
-}
 
 /* ── Page footer ─────────────────────────────────────────────────────────── */
 .login-footer {
@@ -1411,16 +1298,6 @@ watch(step, (newStep) => {
   text-align: center;
 }
 
-/* ── QR code placeholder ─────────────────────────────────────────────────── */
-.qr-placeholder {
-  width: 160px;
-  height: 160px;
-  border: 2px dashed var(--border);
-  border-radius: 16px;
-  background: color-mix(in srgb, var(--muted) 30%, var(--background));
-  display: grid;
-  place-items: center;
-}
 
 /* ── PIN shake animation (wrong PIN feedback) ────────────────────────────── */
 @keyframes shake {

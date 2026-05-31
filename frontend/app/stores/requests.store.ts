@@ -33,9 +33,13 @@ export const useRequestsStore = defineStore('requests', {
     saving: false,
     error: null as string | null,
     meta: null as PaginationMeta | null,
+    /** Aggregate status counts from a lightweight stats request — accurate across all pages */
+    statsMeta: null as PaginationMeta | null,
+    loadingStats: false,
     currentFilter: {} as RequestsFilter,
     /** Sequence counter — only the latest in-flight request commits its results */
     _loadToken: 0,
+    _statsToken: 0,
   }),
 
   getters: {
@@ -392,6 +396,29 @@ export const useRequestsStore = defineStore('requests', {
       }
       finally {
         this.loadingHistory = false
+      }
+    },
+
+    /** Lightweight stats-only request — fetches per_page:1 with_status_totals:1 for accurate aggregate counts */
+    async loadStats(filter: RequestsFilter = {}): Promise<void> {
+      const token = ++this._statsToken
+      this.loadingStats = true
+      try {
+        const { fetchRequests } = useRequests()
+        const result = await fetchRequests({
+          ...filter,
+          per_page: 1,
+          page: 1,
+          with_status_totals: true,
+        })
+        if (token !== this._statsToken) return
+        this.statsMeta = result.meta
+      }
+      catch {
+        // Stats are non-critical — silently ignore errors
+      }
+      finally {
+        if (token === this._statsToken) this.loadingStats = false
       }
     },
 

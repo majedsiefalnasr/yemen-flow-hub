@@ -843,7 +843,8 @@ const bankBreakdownColumns: ColumnDef<{
   height: 100%;
   background: var(--color-primary);
   border-radius: 5px;
-  transition: width 0.3s ease;
+  transition: transform 0.3s ease;
+  transform-origin: center left;
   min-width: 2px;
 }
 

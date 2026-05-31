@@ -200,7 +200,7 @@ onMounted(() => { store.loadStats() })
     </div>
 
     <!-- Error -->
-    <Card v-else-if="store.error" class="border-0 border-s-4 border-s-[var(--severity-red)] bg-background" role="alert">
+    <Card v-else-if="store.error" class="border-0 border-[var(--severity-red)] bg-background" role="alert">
       <CardContent class="pt-6 flex items-center gap-3">
         <AlertCircle class="w-4.5 h-4.5 flex-shrink-0 text-[var(--severity-red)]" aria-hidden="true" />
         <span class="text-destructive flex-1">{{ store.error }}</span>
@@ -215,7 +215,7 @@ onMounted(() => { store.loadStats() })
       <!-- Active-claim strip (highest priority, indigo) — hidden when no active claims -->
       <Card
         v-if="hasActiveClaim"
-        class="border-0 border-s-4 border-s-[var(--voting)] bg-[var(--voting)]/5 shadow-sm"
+        class="border-0 border-[var(--voting)] bg-[var(--voting)]/5 shadow-sm"
         role="status"
         aria-label="طلبات نشطة محجوزة باسمك"
       >

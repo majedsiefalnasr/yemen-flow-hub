@@ -20,7 +20,7 @@ defineProps<{
 
 <style scoped>
 .animated-list-enter-active {
-  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .animated-list-leave-active {
   transition: all 0.2s ease-in;

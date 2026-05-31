@@ -18,6 +18,8 @@ export interface RequestsFilter {
   claim_filter?: 'all' | 'available' | 'mine' | ''
   page?: number
   per_page?: number
+  /** Request status_totals aggregate in the response meta */
+  with_status_totals?: boolean
 }
 
 export interface SwiftUploadPayload {
@@ -69,6 +71,7 @@ export function useRequests() {
     if (filter.claim_filter) params.set('claim_filter', filter.claim_filter)
     if (filter.page) params.set('page', String(filter.page))
     if (filter.per_page) params.set('per_page', String(filter.per_page))
+    if (filter.with_status_totals) params.set('with_status_totals', '1')
 
     const query = params.toString()
     const path = query ? `/api/requests?${query}` : '/api/requests'

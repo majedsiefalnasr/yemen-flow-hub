@@ -7,7 +7,8 @@ import { useRequestsStore } from '../../stores/requests.store'
 import { useVotingStore } from '../../stores/voting.store'
 import { Button } from '../ui/button'
 import { Textarea } from '../ui/textarea'
-import { Alert, AlertDescription } from '../ui/alert'
+import { Alert, AlertDescription, AlertTitle } from '../ui/alert'
+import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip'
 import {
   Dialog,
   DialogContent,
@@ -388,21 +389,22 @@ async function dispatchAction(action: string, reason?: string) {
 <template>
   <div v-if="showAnyActions" class="space-y-4"  role="region" aria-label="لوحة الإجراءات">
     <!-- Error alert -->
-    <Alert v-if="actionError" class="border-s-4 border-s-red-600 bg-[var(--color-surface-error)]">
+    <Alert v-if="actionError" class="border-[var(--severity-red)] bg-[var(--color-surface-error)]">
       <AlertCircle class="h-4 w-4 text-[var(--color-text-error)]" />
       <AlertDescription class="text-[var(--color-text-error)]">{{ actionError }}</AlertDescription>
     </Alert>
 
     <!-- BANK_REVIEWER: SUBMITTED → begin review -->
     <template v-if="showBankReviewerActions && request.status === RequestStatus.SUBMITTED">
-      <Button
-        class="w-full"
-        :disabled="performingAction"
-        @click="handleBeginReview"
-      >
-        <Loader2 v-if="performingAction" class="h-4 w-4 me-2 animate-spin" />
-        {{ performingAction ? 'جارٍ التنفيذ…' : 'البدء بالمراجعة' }}
-      </Button>
+      <Tooltip>
+        <TooltipTrigger as-child>
+          <Button class="w-full" :disabled="performingAction" @click="handleBeginReview">
+            <Loader2 v-if="performingAction" class="h-4 w-4 me-2 animate-spin" />
+            {{ performingAction ? 'جارٍ التنفيذ…' : 'البدء بالمراجعة' }}
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent><p>نقل الطلب إلى قيد المراجعة البنكية — يمكنك الموافقة أو الرفض أو الإعادة بعد ذلك</p></TooltipContent>
+      </Tooltip>
     </template>
 
     <!-- BANK_REVIEWER: BANK_REVIEW → approve (with dialog), terminal reject, or return to intake -->
@@ -465,9 +467,10 @@ async function dispatchAction(action: string, reason?: string) {
             </DialogHeader>
  
             <div class="space-y-4">
-              <div class="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
-                تحذير: هذا الإجراء لا يمكن التراجع عنه. بعد الرفض النهائي لن يتمكن أي طرف من استئناف الطلب أو إعادة تقديمه.
-              </div>
+              <Alert variant="destructive">
+                <AlertTitle>تحذير: إجراء لا يمكن التراجع عنه</AlertTitle>
+                <AlertDescription>بعد الرفض النهائي لن يتمكن أي طرف من استئناف الطلب أو إعادة تقديمه.</AlertDescription>
+              </Alert>
               <div>
                 <label for="bank-reject-terminal-comment" class="text-sm font-medium">
                   سبب الرفض النهائي <span class="text-destructive">*</span>
@@ -580,9 +583,10 @@ async function dispatchAction(action: string, reason?: string) {
             </DialogHeader>
  
             <div class="space-y-4">
-              <div class="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
-                تحذير: رفض لجنة المساندة يوقف مسار الطلب. سيحتاج المراجع البنكي للبت في المرحلة التالية.
-              </div>
+              <Alert variant="destructive">
+                <AlertTitle>تحذير</AlertTitle>
+                <AlertDescription>رفض لجنة المساندة يوقف مسار الطلب. سيحتاج المراجع البنكي للبت في المرحلة التالية.</AlertDescription>
+              </Alert>
               <div>
                 <label for="reject-reason-support" class="text-sm font-medium">
                   سبب الرفض <span class="text-[var(--color-text-error)]">*</span>
@@ -824,14 +828,18 @@ async function dispatchAction(action: string, reason?: string) {
         </AlertDialog>
 
         <Dialog v-model:open="showOverrideModal">
-          <DialogTrigger as-child>
-            <Button
-              class="flex-1 bg-[var(--severity-amber)]/15 hover:bg-[var(--severity-amber)]/25 text-foreground"
-              :disabled="votingStore.performingDirectorAction"
-            >
-              تجاوز مدير اللجنة
-            </Button>
-          </DialogTrigger>
+          <Tooltip>
+            <TooltipTrigger as-child>
+              <Button
+                class="flex-1 bg-[var(--severity-amber)]/15 hover:bg-[var(--severity-amber)]/25 text-foreground"
+                :disabled="votingStore.performingDirectorAction"
+                @click="showOverrideModal = true"
+              >
+                تجاوز مدير اللجنة
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent><p>حسم التعادل أو تجاوز نتيجة التصويت — يتطلب قراراً ومبرراً مكتوبين، يُسجَّل في سجل التدقيق</p></TooltipContent>
+          </Tooltip>
           <DialogContent class="max-w-md">
             <DialogHeader>
               <DialogTitle>تجاوز مدير اللجنة</DialogTitle>

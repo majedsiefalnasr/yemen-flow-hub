@@ -188,7 +188,7 @@ onMounted(() => { store.loadStats() })
     </div>
 
     <!-- Error -->
-    <Card v-else-if="store.error" class="border-0 border-s-4 border-s-[var(--severity-red)] bg-background" role="alert">
+    <Card v-else-if="store.error" class="border-0 border-[var(--severity-red)] bg-background" role="alert">
       <CardContent class="pt-6 flex items-center gap-3">
         <AlertCircle class="size-4.5 flex-shrink-0 text-[var(--severity-red)]" aria-hidden="true" />
         <span class="text-[var(--severity-red)] flex-1">{{ store.error }}</span>
@@ -224,7 +224,7 @@ onMounted(() => { store.loadStats() })
       <!-- Conditional Operational Health strip -->
       <Card
         v-if="showHealthStrip"
-        class="border-0 border-s-4 border-s-[var(--severity-amber)] bg-[var(--severity-amber)]/5 shadow-sm"
+        class="border-0 border-[var(--severity-amber)] bg-[var(--severity-amber)]/5 shadow-sm"
         role="alert"
         aria-label="تنبيهات صحة التشغيل"
       >

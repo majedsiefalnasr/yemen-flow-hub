@@ -47,7 +47,7 @@ const trendBadgeClass = computed(() => {
   return 'bg-muted text-muted-foreground'
 })
 
-const borderClass = computed(() => props.highlighted ? 'border-s-4' : '')
+const borderClass = computed(() => props.highlighted ? 'border' : '')
 const borderColorClass = computed(() => props.highlighted ? stateColorClass.value.replace('text-', 'border-') : '')
 </script>
 

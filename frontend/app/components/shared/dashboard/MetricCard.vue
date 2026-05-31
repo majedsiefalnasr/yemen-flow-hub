@@ -68,7 +68,7 @@ function onCardClick(event: MouseEvent | KeyboardEvent) {
       class="border-0 p-4 shadow flex flex-col gap-1.5 transition-all"
       :class="[
         clickable ? 'cursor-pointer hover:shadow-md focus-visible:outline-none' : '',
-        active ? 'ring-2 ring-ring ring-offset-0' : '',
+        active ? 'ring-2 ring-[var(--brand-color)] ring-offset-0' : '',
       ]"
       :role="clickable ? 'button' : undefined"
       :tabindex="clickable ? 0 : undefined"

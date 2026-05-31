@@ -13,6 +13,7 @@ import {
 
 defineProps<{
   table: Table<TData>
+  /** Human-readable label for each column id. Falls back to the column id. */
   columnLabels?: Record<string, string>
 }>()
 </script>
@@ -20,11 +21,7 @@ defineProps<{
 <template>
   <DropdownMenu>
     <DropdownMenuTrigger as-child>
-      <Button
-        variant="outline"
-        size="sm"
-        class="ms-auto h-8 flex"
-      >
+      <Button variant="outline" size="sm" class="ms-auto h-8 flex">
         <Columns3 class="me-2 h-4 w-4" />
         الأعمدة
       </Button>

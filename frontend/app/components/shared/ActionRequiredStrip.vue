@@ -38,10 +38,10 @@ const severityToken = computed(() => {
 
 const borderClass = computed(() => {
   const map = {
-    amber: 'border-s-[var(--severity-amber)]',
-    red: 'border-s-[var(--severity-red)]',
+    amber: 'border-[var(--severity-amber)]',
+    red: 'border-[var(--severity-red)]',
     blue: 'border-s-primary',
-    indigo: 'border-s-[var(--voting)]',
+    indigo: 'border-[var(--voting)]',
   }
   return map[props.severity]
 })
@@ -78,7 +78,7 @@ const computedAriaLabel = computed(() =>
 <template>
   <Card
     v-if="count > 0"
-    class="border-0 border-s-4 shadow-sm"
+    class="border-0 shadow-sm"
     :class="[borderClass, bgClass]"
     role="alert"
     :aria-label="computedAriaLabel"

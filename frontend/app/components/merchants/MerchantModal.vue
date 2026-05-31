@@ -191,7 +191,7 @@ const onSubmit = handleSubmit((values) => {
           </button>
         </DialogHeader>
 
-        <Alert v-if="props.serverError" class="border-s-4 border-s-red-600 bg-[var(--color-surface-error)] border-0" role="alert">
+        <Alert v-if="props.serverError" class="border-red-600 bg-[var(--color-surface-error)] border-0" role="alert">
           <AlertCircle class="h-4 w-4 text-[var(--color-text-error)]" aria-hidden="true" />
           <AlertDescription class="text-[var(--color-text-error)] text-sm">{{ props.serverError }}</AlertDescription>
         </Alert>

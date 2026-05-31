@@ -1052,13 +1052,13 @@ async function handleCloneConfirm() {
           >
             <div
               v-if="showDirectorVotingActiveBanner"
-              class="rounded-lg border border-[#5856d6]/30 bg-[#5856d6]/10 px-4 py-3 text-[#5856d6]"
+              class="rounded-lg border border-[color-mix(in_srgb,var(--voting)_24%,transparent)] bg-[color-mix(in_srgb,var(--voting)_7%,var(--background))] px-4 py-3 text-[color-mix(in_srgb,var(--voting)_78%,var(--foreground))]"
             >
               جلسة التصويت نشطة — {{ request.votes_cast ?? 0 }} / {{ request.total_voters ?? 0 }} صوتوا.
             </div>
             <div
               v-else-if="showDirectorReadyToCloseBanner"
-              class="rounded-lg border border-[#5856d6]/30 bg-[#5856d6]/10 px-4 py-3 text-[#5856d6] flex items-center justify-between gap-3"
+              class="rounded-lg border border-[color-mix(in_srgb,var(--voting)_24%,transparent)] bg-[color-mix(in_srgb,var(--voting)_7%,var(--background))] px-4 py-3 text-[color-mix(in_srgb,var(--voting)_78%,var(--foreground))] flex items-center justify-between gap-3"
             >
               <span>جميع الأعضاء صوتوا — يمكن إغلاق الجلسة الآن.</span>
               <button class="text-xs font-semibold underline" @click="scrollToActionPanel">
@@ -1076,7 +1076,7 @@ async function handleCloneConfirm() {
             </div>
             <div
               v-else-if="showDirectorReadyToFinalizeBanner"
-              class="rounded-lg border border-[#5856d6]/30 bg-[#5856d6]/10 px-4 py-3 text-[#5856d6] flex items-center justify-between gap-3"
+              class="rounded-lg border border-[color-mix(in_srgb,var(--voting)_24%,transparent)] bg-[color-mix(in_srgb,var(--voting)_7%,var(--background))] px-4 py-3 text-[color-mix(in_srgb,var(--voting)_78%,var(--foreground))] flex items-center justify-between gap-3"
             >
               <span>الجلسة مغلقة — جاهز للإصدار النهائي.</span>
               <button class="text-xs font-semibold underline" @click="scrollToActionPanel">
@@ -1094,13 +1094,13 @@ async function handleCloneConfirm() {
             </div>
             <div
               v-else-if="showSwiftPreApprovalLockedBanner"
-              class="rounded-lg border border-[var(--locked)]/40 bg-[var(--locked)]/10 px-4 py-3 text-[#3f3f46]"
+              class="rounded-lg border border-[var(--locked)]/35 bg-[color-mix(in_srgb,var(--locked)_8%,var(--background))] px-4 py-3 text-[color-mix(in_srgb,var(--locked)_65%,var(--foreground))]"
             >
               هذا الطلب لم يصل بعد مرحلة السويفت. لا يمكن رفع الوثائق حتى يكتمل اعتماد اللجنة التنفيذية.
             </div>
             <div
               v-else-if="showSwiftReadyBanner"
-              class="rounded-lg border border-[#32ade6]/40 bg-[#32ade6]/10 px-4 py-3 text-[#0b6f94] flex items-center justify-between gap-3"
+              class="rounded-lg border border-[color-mix(in_srgb,var(--swift)_26%,transparent)] bg-[color-mix(in_srgb,var(--swift)_7%,var(--background))] px-4 py-3 text-[color-mix(in_srgb,var(--swift)_72%,var(--foreground))] flex items-center justify-between gap-3"
             >
               <span>الطلب جاهز لرفع وثائق السويفت.</span>
               <NuxtLink :to="`/requests/${id}/swift`" class="text-xs font-semibold underline">
@@ -1109,13 +1109,13 @@ async function handleCloneConfirm() {
             </div>
             <div
               v-else-if="showSwiftAwaitingEnableBanner"
-              class="rounded-lg border border-[var(--locked)]/40 bg-[var(--locked)]/10 px-4 py-3 text-[#3f3f46]"
+              class="rounded-lg border border-[var(--locked)]/35 bg-[color-mix(in_srgb,var(--locked)_8%,var(--background))] px-4 py-3 text-[color-mix(in_srgb,var(--locked)_65%,var(--foreground))]"
             >
               في انتظار الإتاحة — سيتم تفعيل رفع وثائق السويفت بعد الانتقال لمرحلة الانتظار.
             </div>
             <div
               v-else-if="showSwiftCompletedBanner"
-              class="rounded-lg border border-[var(--locked)]/40 bg-[var(--locked)]/10 px-4 py-3 text-[#3f3f46]"
+              class="rounded-lg border border-[var(--locked)]/35 bg-[color-mix(in_srgb,var(--locked)_8%,var(--background))] px-4 py-3 text-[color-mix(in_srgb,var(--locked)_65%,var(--foreground))]"
             >
               تم تسليم السويفت — انتقلت المسؤولية إلى مدير اللجنة التنفيذية لإتمام تأكيد المصارفة الخارجية.
             </div>
@@ -1149,7 +1149,7 @@ async function handleCloneConfirm() {
             <!-- BANK_REVIEWER: support has rejected this request — follow-up decision required -->
             <div
               v-else-if="showBankReviewerSupportRejectedBanner"
-              class="rounded-lg border border-s-4 border-s-[var(--severity-amber)] bg-[var(--severity-amber)]/5 px-4 py-3 flex items-start gap-3"
+              class="rounded-lg border border-[var(--severity-amber)] bg-[var(--severity-amber)]/5 px-4 py-3 flex items-start gap-3"
               role="alert"
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="flex-shrink-0 text-[var(--severity-amber)] mt-0.5" aria-hidden="true">
@@ -1404,7 +1404,7 @@ async function handleCloneConfirm() {
                 />
                 <div
                   v-if="showSwiftFxLockedRow || showBankAdminFxLockedRow"
-                  class="mt-3 flex items-center justify-between gap-2 rounded-lg border border-[var(--locked)]/40 bg-[var(--locked)]/10 px-3 py-2 text-[#3f3f46]"
+                  class="mt-3 flex items-center justify-between gap-2 rounded-lg border border-[var(--locked)]/35 bg-[color-mix(in_srgb,var(--locked)_8%,var(--background))] px-3 py-2 text-[color-mix(in_srgb,var(--locked)_65%,var(--foreground))]"
                   data-testid="fx-confirmation-locked-row"
                 >
                   <div class="flex items-center gap-2">
@@ -1691,7 +1691,7 @@ async function handleCloneConfirm() {
           <div
             v-if="isCbyAdmin && cbyBlockerText"
             class="rail-card"
-            style="border-right: 3px solid var(--severity-amber); background: color-mix(in srgb, var(--severity-amber) 5%, white)"
+            style="border: 1px solid color-mix(in srgb, var(--severity-amber) 35%, transparent); background: color-mix(in srgb, var(--severity-amber) 5%, var(--background))"
           >
             <p class="rail-card__title" style="color: var(--severity-amber)">العائق الحالي</p>
             <p class="text-sm leading-relaxed">{{ cbyBlockerText }}</p>
@@ -1992,9 +1992,9 @@ async function handleCloneConfirm() {
 .detail-layout {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 24px;
+  gap: clamp(20px, 2.4vw, 32px);
   align-items: start;
-  padding: 0 16px;
+  padding-inline: clamp(12px, 2vw, 24px);
 }
 
 @media (min-width: 1024px) {
@@ -2006,7 +2006,7 @@ async function handleCloneConfirm() {
 .detail-main {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: clamp(16px, 1.6vw, 24px);
   min-width: 0;
 }
 
@@ -2157,7 +2157,7 @@ async function handleCloneConfirm() {
   gap: 4px;
   border-bottom: 1px solid var(--border);
   overflow-x: auto;
-  margin-top: 20px;
+  margin-top: 16px;
 }
 
 .tab-btn {
@@ -2186,21 +2186,21 @@ async function handleCloneConfirm() {
 
 /* Tab content */
 .tab-content {
-  padding-top: 16px;
+  padding-top: 20px;
 }
 
 .tab-panel {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 20px;
 }
 
 /* Cards */
 .card {
   background: var(--background);
   border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 20px;
+  border-radius: 18px;
+  padding: 24px;
 }
 
 .card--no-padding {
@@ -2221,7 +2221,7 @@ async function handleCloneConfirm() {
   display: grid;
   grid-template-columns: 1fr 1fr;
   margin: 0;
-  gap: 16px 12px;
+  gap: 20px 16px;
 }
 
 .detail-row {
@@ -2233,8 +2233,10 @@ async function handleCloneConfirm() {
 }
 
 .detail-row--customs {
-  border-inline-start: 2px solid var(--muted-foreground);
-  padding-inline-start: 10px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--muted) 80%, var(--background));
+  padding: 10px 12px;
 }
 
 .detail-label {
@@ -2357,7 +2359,7 @@ async function handleCloneConfirm() {
 .detail-rail {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
   position: sticky;
   top: 24px;
 }
@@ -2365,8 +2367,8 @@ async function handleCloneConfirm() {
 .rail-card {
   background: var(--background);
   border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 16px;
+  border-radius: 18px;
+  padding: 20px;
 }
 
 .rail-card--actions {
@@ -2455,7 +2457,7 @@ async function handleCloneConfirm() {
   border-color: var(--primary);
 }
 
-@media (max-width: 600px) {
+@media (max-width: 640px) {
   .detail-page {
     padding: 16px;
   }

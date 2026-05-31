@@ -22,6 +22,7 @@ const props = defineProps<{
   <div v-if="!column.getCanSort()" :class="cn('flex items-center gap-2', props.class)">
     {{ title }}
   </div>
+
   <div v-else :class="cn('flex items-center gap-2', props.class)">
     <DropdownMenu>
       <DropdownMenuTrigger as-child>
