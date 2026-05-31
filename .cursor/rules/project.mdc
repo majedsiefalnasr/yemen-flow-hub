@@ -33,3 +33,6 @@ Always fetch current library docs via:
 npx ctx7@latest library "<name>" "<question>"
 npx ctx7@latest docs <id> "<question>"
 ```
+
+## Browser Automation
+Use `playwright-cli` for browser interactions and UI verification. Keep command prefixes that start with `playwright-cli` permanently allowlisted in local approvals.

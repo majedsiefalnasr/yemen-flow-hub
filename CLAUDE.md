@@ -52,6 +52,10 @@ npx ctx7@latest library "<library name>" "<question>"
 npx ctx7@latest docs <id> "<question>"
 ```
 
+## Browser Automation
+
+When browser interaction is required, use `playwright-cli` commands. Keep the `playwright-cli` command prefix permanently allowlisted in local tool permissions so repeated UI verification does not require per-command approvals.
+
 ## Key Files
 
 - `AGENTS.md` — Single file of truth for all AI tools

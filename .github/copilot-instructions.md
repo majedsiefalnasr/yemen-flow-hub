@@ -20,6 +20,7 @@ Backend and frontend also each have their own team repos. Every change to `backe
 - Docs in `docs/` override all Copilot suggestions about workflow or business logic
 - Use Context7 CLI for library documentation: `npx ctx7@latest library "<name>" "<question>"`
 - Use SocratiCode MCP for codebase exploration before suggesting changes
+- For browser automation and UI verification, use `playwright-cli`; keep command prefixes that start with `playwright-cli` allowlisted in local approvals.
 - Never add or commit generated artifacts from `graphify-out/`, `_bmad-output/implementation-artifacts/`, or `_bmad-output/test-artifacts/`. Keep them local only.
 
 ## graphify
