@@ -121,6 +121,10 @@ Before modifying any service or model:
 2. Check what calls it: `codebase_flow`
 3. Assess impact: `codebase_impact`
 
+## Browser Automation
+
+When backend work needs browser-based verification (integration paths, auth/session behavior, UI-linked APIs), use `playwright-cli` and keep the `playwright-cli` command prefix permanently allowlisted in local tool permissions.
+
 ## Docs Reference
 
 Full rules in `../docs/` and `../AGENTS.md`. Key files:
