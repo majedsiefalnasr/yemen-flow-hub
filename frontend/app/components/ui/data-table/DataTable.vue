@@ -96,7 +96,10 @@ const isServerSide = props.pageCount !== -1
 const table = useVueTable({
   get data() { return props.data },
   get columns() { return props.columns },
-  get pageCount() { return props.pageCount },
+  // Only feed TanStack an explicit pageCount in server-side mode. In client-side
+  // mode leave it undefined so TanStack derives the page count from the row model;
+  // passing -1 would make getPageCount() return -1 (e.g. "صفحة 1 من -1").
+  get pageCount() { return props.pageCount === -1 ? undefined : props.pageCount },
   manualPagination: isServerSide,
   manualSorting: isServerSide,
   manualFiltering: isServerSide,
