@@ -64,6 +64,8 @@ export default defineNuxtConfig({
     public: {
       apiBase: process.env.NUXT_PUBLIC_API_BASE || 'http://localhost:8000',
       demoMode: process.env.NUXT_PUBLIC_DEMO_MODE === 'true',
+      visualBypass: process.env.NUXT_PUBLIC_VISUAL_BYPASS === 'true',
+      visualBypassRole: process.env.NUXT_PUBLIC_VISUAL_BYPASS_ROLE || 'CBY_ADMIN',
       googleFontsApiKey: process.env.NUXT_PUBLIC_GOOGLE_FONTS_API_KEY || '',
       inactivityTimeoutMs: Number(process.env.NUXT_PUBLIC_INACTIVITY_TIMEOUT_MS) || 900_000,
       inactivityWarningMs: Number(process.env.NUXT_PUBLIC_INACTIVITY_WARNING_MS) || 120_000,

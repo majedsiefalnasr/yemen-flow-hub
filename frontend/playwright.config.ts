@@ -1,5 +1,7 @@
 import { defineConfig, devices } from '@playwright/test'
 
+const useExistingServerOnly = process.env['PLAYWRIGHT_USE_EXISTING_SERVER'] === '1'
+
 export default defineConfig({
   snapshotDir: './tests/screenshots',
   expect: {
@@ -15,14 +17,16 @@ export default defineConfig({
   // environment baselines were captured in (DEVTOOLS_MASK targets Nuxt
   // devtools elements that only exist in dev). In CI, Playwright owns the
   // process lifecycle; locally we reuse a running dev server if one exists.
-  webServer: {
-    command: 'npm run dev',
-    url: 'http://localhost:3000',
-    reuseExistingServer: !process.env['CI'],
-    timeout: 180_000,
-    stdout: 'ignore',
-    stderr: 'pipe',
-  },
+  webServer: useExistingServerOnly
+    ? undefined
+    : {
+        command: 'npm run dev',
+        url: 'http://localhost:3000',
+        reuseExistingServer: !process.env['CI'],
+        timeout: 180_000,
+        stdout: 'ignore',
+        stderr: 'pipe',
+      },
   projects: [
     // ── Existing e2e suite (unchanged behaviour) ───────────────────────────
     {

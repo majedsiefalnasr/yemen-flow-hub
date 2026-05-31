@@ -9,6 +9,11 @@ declare module '#app' {
 }
 
 export default defineNuxtRouteMiddleware((to) => {
+  const config = useRuntimeConfig()
+  if (config.public.visualBypass) {
+    return
+  }
+
   const auth = useAuthStore()
   const requiredRoles = (to.meta.requiredRoles as UserRole[] | undefined) ?? resolveRouteRoles(to.path)
 

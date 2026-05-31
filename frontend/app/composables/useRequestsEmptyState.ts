@@ -2,14 +2,8 @@ import { UserRole } from '@/types/enums'
 
 export interface RequestsEmptyStateInput {
   role?: UserRole
-  tab: string
   hasAnyRequests: boolean
-  search: string
-  bankFilter: string
-  dateRangeFilter: 'all' | 'today' | '7d' | '30d' | '90d'
-  createdByMeOnly: boolean
-  hideOthers: boolean
-  advancedFilterCount: number
+  hasActiveFilters: boolean
 }
 
 export interface RequestsEmptyState {
@@ -18,19 +12,29 @@ export interface RequestsEmptyState {
 }
 
 export function buildRequestsEmptyState(input: RequestsEmptyStateInput): RequestsEmptyState {
-  const hasQueryFilters
-    = Boolean(input.search.trim())
-      || input.bankFilter !== 'all'
-      || input.dateRangeFilter !== 'all'
-      || input.createdByMeOnly
-      || input.hideOthers
-      || input.advancedFilterCount > 0
-
   if (!input.hasAnyRequests) {
+    if (input.role === UserRole.DATA_ENTRY) {
+      return {
+        title: 'لا توجد طلبات بعد',
+        description: 'لم تقدّم أي طلبات تمويل حتى الآن. استخدم زر "طلب جديد" لبدء أول طلب.',
+      }
+    }
+    if (input.role === UserRole.BANK_REVIEWER) {
+      return {
+        title: 'الطابور فارغ حالياً',
+        description: 'لا توجد طلبات بانتظار مراجعتك. ستظهر هنا عند تقديمها من مدخلي البيانات.',
+      }
+    }
+    if (input.role === UserRole.BANK_ADMIN) {
+      return {
+        title: 'لا توجد طلبات لجهتك بعد',
+        description: 'لم يقدّم موظفو بنكك أي طلبات تمويل حتى الآن.',
+      }
+    }
     if (input.role === UserRole.SUPPORT_COMMITTEE) {
       return {
         title: 'لا توجد طلبات دعم حالياً',
-        description: 'لم تصل أي طلبات إلى لجنة الدعم بعد.',
+        description: 'لم تصل أي طلبات إلى لجنة الدعم بعد. ستظهر هنا عند اعتمادها من البنوك.',
       }
     }
     if (input.role === UserRole.EXECUTIVE_MEMBER) {
@@ -39,10 +43,22 @@ export function buildRequestsEmptyState(input: RequestsEmptyStateInput): Request
         description: 'لم يتم فتح جلسات تصويت تتطلب مشاركتك حالياً.',
       }
     }
+    if (input.role === UserRole.COMMITTEE_DIRECTOR) {
+      return {
+        title: 'لا توجد طلبات في مرحلة التصويت',
+        description: 'لم تصل أي طلبات إلى مرحلة التصويت التنفيذي حتى الآن.',
+      }
+    }
     if (input.role === UserRole.SWIFT_OFFICER) {
       return {
         title: 'لا توجد طلبات بانتظار السويفت',
         description: 'لم تصل طلبات تحتاج رفع مستندات السويفت حتى الآن.',
+      }
+    }
+    if (input.role === UserRole.CBY_ADMIN) {
+      return {
+        title: 'لا توجد طلبات في النظام',
+        description: 'لم يتم تقديم أي طلبات تمويل عبر المنصة حتى الآن.',
       }
     }
     return {
@@ -51,36 +67,34 @@ export function buildRequestsEmptyState(input: RequestsEmptyStateInput): Request
     }
   }
 
-  if (input.role === UserRole.SUPPORT_COMMITTEE && input.tab === 'my_claims') {
+  if (input.hasActiveFilters) {
     return {
-      title: 'لا توجد مطالبات نشطة لك',
-      description: 'لم تقم بمطالبة أي طلب حالياً. يمكنك المطالبة من طابور الانتظار.',
+      title: 'لا توجد طلبات مطابقة',
+      description: 'جرّب تخفيف معايير البحث أو إعادة ضبط الفلاتر لعرض المزيد من الطلبات.',
     }
   }
 
-  if (input.role === UserRole.SUPPORT_COMMITTEE && input.tab === 'waiting') {
+  if (input.role === UserRole.SUPPORT_COMMITTEE) {
     return {
-      title: 'لا توجد طلبات غير محجوزة',
-      description: 'كل الطلبات الحالية إما محجوزة أو خارج هذا الطابور.',
+      title: 'الطابور فارغ — أنجزت المهمة',
+      description: 'لا توجد طلبات في انتظار مراجعتك حالياً.',
     }
   }
-
-  if (input.role === UserRole.EXECUTIVE_MEMBER && input.tab === 'pending_my_vote') {
+  if (input.role === UserRole.EXECUTIVE_MEMBER) {
     return {
       title: 'لا توجد جلسات مخصصة لتصويتك',
       description: 'لا توجد جلسات مفتوحة تتطلب تصويتك حالياً.',
     }
   }
-
-  if (hasQueryFilters) {
+  if (input.role === UserRole.SWIFT_OFFICER) {
     return {
-      title: 'لا توجد طلبات مطابقة',
-      description: 'جرّب تخفيف معايير البحث أو إعادة ضبط الفلاتر.',
+      title: 'لا توجد طلبات بانتظار السويفت',
+      description: 'كل الطلبات معالجة حالياً أو لم تصل بعد إلى هذه المرحلة.',
     }
   }
 
   return {
     title: 'لا توجد طلبات في هذا الطابور',
-    description: 'لا توجد عناصر حالية ضمن المرحلة المختارة.',
+    description: 'لا توجد عناصر ضمن المرحلة المختارة حالياً.',
   }
 }

@@ -1,6 +1,11 @@
 import { useAuthStore } from '../stores/auth.store'
 
 export default defineNuxtRouteMiddleware((to) => {
+  const config = useRuntimeConfig()
+  if (config.public.visualBypass) {
+    return
+  }
+
   const auth = useAuthStore()
 
   if (!auth.isAuthenticated) {
