@@ -348,14 +348,14 @@ function savePersonalNotifications() {
                   :class="themingStore.mode === option.value ? 'border-2 border-primary ring-2 ring-primary/20' : 'border-border'"
                   @click="selectTheme(option.value, $event)"
                 >
-                  <div class="relative h-24 w-full" :class="option.value === 'dark' ? 'bg-[#111827]' : 'bg-muted/30'">
+                  <div class="relative h-24 w-full" :class="option.value === 'dark' ? 'bg-[#111827]' : option.value === 'light' ? 'bg-[#f3f4f6]' : 'bg-[#d1d5db]'">
                     <template v-if="option.value === 'light'">
-                      <div class="absolute inset-y-0 start-0 w-10 bg-card border-e border-border flex flex-col gap-1 p-1.5">
-                        <div class="h-1.5 w-full rounded bg-muted" />
-                        <div class="h-1.5 w-3/4 rounded bg-primary/40" />
-                        <div class="h-1.5 w-full rounded bg-muted" />
+                      <div class="absolute inset-y-0 start-0 w-10 bg-[#ffffff] border-e border-[#e5e7eb] flex flex-col gap-1 p-1.5">
+                        <div class="h-1.5 w-full rounded bg-[#e5e7eb]" />
+                        <div class="h-1.5 w-3/4 rounded bg-[#0066cc]/40" />
+                        <div class="h-1.5 w-full rounded bg-[#e5e7eb]" />
                       </div>
-                      <div class="absolute inset-y-2 start-12 end-2 rounded bg-white border border-[#e5e7eb] p-2">
+                      <div class="absolute inset-y-2 start-12 end-2 rounded bg-[#ffffff] border border-[#e5e7eb] p-2">
                         <div class="h-3 rounded bg-[#f1f3f5]" />
                         <div class="mt-2 h-2 rounded bg-[#f1f3f5]" />
                         <div class="mt-1.5 h-2 rounded bg-[#f1f3f5]" />
@@ -364,7 +364,7 @@ function savePersonalNotifications() {
                     <template v-else-if="option.value === 'dark'">
                       <div class="absolute inset-y-0 start-0 w-10 bg-[#0f1218] border-e border-white/10 flex flex-col gap-1 p-1.5">
                         <div class="h-1.5 w-full rounded bg-[#343a44]" />
-                        <div class="h-1.5 w-3/4 rounded bg-primary/70" />
+                        <div class="h-1.5 w-3/4 rounded bg-[#0066cc]/70" />
                         <div class="h-1.5 w-full rounded bg-[#343a44]" />
                       </div>
                       <div class="absolute inset-y-2 start-12 end-2 rounded bg-[#151820] border border-white/10 p-2">
@@ -374,17 +374,19 @@ function savePersonalNotifications() {
                       </div>
                     </template>
                     <template v-else>
-                      <div class="absolute inset-y-0 start-0 w-10 bg-card border-e border-border flex flex-col gap-1 p-1.5">
-                        <div class="h-1.5 w-full rounded bg-muted" />
-                        <div class="h-1.5 w-3/4 rounded bg-primary/40" />
-                        <div class="h-1.5 w-full rounded bg-muted" />
+                      <!-- system: left half light, right half dark -->
+                      <div class="absolute inset-y-0 start-0 w-10 overflow-hidden flex flex-col gap-1 p-1.5" style="background: linear-gradient(to left, #0f1218 50%, #ffffff 50%); border-inline-end: 1px solid #9ca3af;">
+                        <div class="h-1.5 w-full rounded" style="background: linear-gradient(to left, #343a44 50%, #e5e7eb 50%)" />
+                        <div class="h-1.5 w-3/4 rounded bg-[#0066cc]/50" />
+                        <div class="h-1.5 w-full rounded" style="background: linear-gradient(to left, #343a44 50%, #e5e7eb 50%)" />
                       </div>
-                      <div class="absolute inset-y-2 start-12 end-2 overflow-hidden rounded border border-[#e5e7eb] bg-white">
+                      <div class="absolute inset-y-2 start-12 end-2 overflow-hidden rounded border border-[#9ca3af]">
+                        <div class="absolute inset-y-0 start-0 w-1/2 bg-[#ffffff]" />
                         <div class="absolute inset-y-0 end-0 w-1/2 bg-[#151820]" />
                         <div class="relative p-2">
-                          <div class="h-3 rounded bg-[#f1f3f5]" />
-                          <div class="mt-2 h-2 rounded bg-[#2a2e3a]" />
-                          <div class="mt-1.5 h-2 rounded bg-[#f1f3f5]" />
+                          <div class="h-3 rounded" style="background: linear-gradient(to left, #2a2e3a 50%, #f1f3f5 50%)" />
+                          <div class="mt-2 h-2 rounded" style="background: linear-gradient(to left, #2a2e3a 50%, #f1f3f5 50%)" />
+                          <div class="mt-1.5 h-2 rounded" style="background: linear-gradient(to left, #2a2e3a 50%, #f1f3f5 50%)" />
                         </div>
                       </div>
                     </template>
