@@ -65,6 +65,7 @@ const emit = defineEmits<{
 // or leave it uncontrolled and TanStack manages it internally.
 const pagination = useVModel(props, 'pagination', emit, {
   defaultValue: { pageIndex: 0, pageSize: 20 } as PaginationState,
+  passive: true,
 }) as Ref<PaginationState>
 
 const sorting = useVModel(props, 'sorting', emit, {
@@ -121,11 +122,10 @@ const table = useVueTable({
   onColumnFiltersChange: updater => valueUpdater(updater, columnFilters),
   onColumnVisibilityChange: updater => valueUpdater(updater, columnVisibility),
   onRowSelectionChange: updater => valueUpdater(updater, rowSelection),
-  onPaginationChange: (updater) => {
-    const next = typeof updater === 'function' ? updater(pagination.value) : updater
-    emit('update:pagination', next)
-    pagination.value = next
-  },
+  // passive useVModel updates the local ref AND emits update:pagination, so
+  // uncontrolled tables keep their page size locally while controlled tables
+  // (URL-driven) still receive the event.
+  onPaginationChange: updater => valueUpdater(updater, pagination),
 })
 
 function resolveHeaderClass(meta: unknown) {
