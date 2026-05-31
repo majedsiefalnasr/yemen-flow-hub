@@ -28,13 +28,12 @@ const MERCHANT_FIXTURE = {
   created_at: '2026-05-01T00:00:00.000Z',
 }
 
+// Real API shape: MerchantController returns a ResourceCollection, whose pagination
+// meta is stripped by ApiResponse — so `data` is a flat array of merchants.
 const PAGINATED_RESPONSE = {
   success: true,
   message: 'OK',
-  data: {
-    data: [MERCHANT_FIXTURE, { ...MERCHANT_FIXTURE, id: 2, name: 'مؤسسة النور' }],
-    meta: { current_page: 1, last_page: 1, per_page: 100, total: 2 },
-  },
+  data: [MERCHANT_FIXTURE, { ...MERCHANT_FIXTURE, id: 2, name: 'مؤسسة النور' }],
 }
 
 describe('useMerchants — fetchMerchants', () => {
@@ -44,11 +43,11 @@ describe('useMerchants — fetchMerchants', () => {
     mockPut.mockReset()
   })
 
-  it('calls GET /api/merchants?per_page=100 by default', async () => {
+  it('calls GET /api/merchants?per_page=200 by default', async () => {
     mockGet.mockResolvedValueOnce(PAGINATED_RESPONSE)
     const { fetchMerchants } = useMerchants()
     await fetchMerchants()
-    expect(mockGet).toHaveBeenCalledWith('/api/merchants?per_page=100')
+    expect(mockGet).toHaveBeenCalledWith('/api/merchants?per_page=200')
   })
 
   it('appends search filter to query string', async () => {
@@ -65,7 +64,7 @@ describe('useMerchants — fetchMerchants', () => {
     expect(mockGet).toHaveBeenCalledWith(expect.stringContaining('bank_id=3'))
   })
 
-  it('returns the merchant array from paginated response', async () => {
+  it('returns the merchant array from the flat-array response', async () => {
     mockGet.mockResolvedValueOnce(PAGINATED_RESPONSE)
     const { fetchMerchants } = useMerchants()
     const result = await fetchMerchants()
@@ -73,12 +72,19 @@ describe('useMerchants — fetchMerchants', () => {
     expect(result[0]?.name).toBe('شركة الأمل للتجارة')
   })
 
-  it('returns empty array when response data is empty', async () => {
+  it('also unwraps a wrapped { data, meta } response defensively', async () => {
     mockGet.mockResolvedValueOnce({
       success: true,
       message: 'OK',
-      data: { data: [], meta: { current_page: 1, last_page: 1, per_page: 100, total: 0 } },
+      data: { data: [MERCHANT_FIXTURE], meta: { current_page: 1, last_page: 1, per_page: 200, total: 1 } },
     })
+    const { fetchMerchants } = useMerchants()
+    const result = await fetchMerchants()
+    expect(result).toHaveLength(1)
+  })
+
+  it('returns empty array when response data is empty', async () => {
+    mockGet.mockResolvedValueOnce({ success: true, message: 'OK', data: [] })
     const { fetchMerchants } = useMerchants()
     const result = await fetchMerchants()
     expect(result).toEqual([])

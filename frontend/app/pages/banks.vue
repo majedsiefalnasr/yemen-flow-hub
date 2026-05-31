@@ -1,9 +1,8 @@
 <script setup lang="ts">
-import type { ColumnDef } from '@tanstack/vue-table'
-import { computed, ref, reactive, onMounted, h } from 'vue'
+import type { ColumnDef, PaginationState } from '@tanstack/vue-table'
+import { computed, ref, reactive, watch, onMounted, h } from 'vue'
 import {
   AlertTriangle,
-  ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
   Download, MoreHorizontal, Plus, Printer, Search, SearchX, X,
 } from 'lucide-vue-next'
 import PageHeader from '@/components/layout/PageHeader.vue'
@@ -23,6 +22,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import DataTable from '@/components/ui/data-table/DataTable.vue'
+import { DataTablePagination } from '@/components/ui/data-table'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
@@ -48,11 +48,12 @@ definePageMeta({
   requiredRoles: [UserRole.CBY_ADMIN, UserRole.BANK_ADMIN],
 })
 
-const { fetchBanks, createBank, updateBank } = useBanks()
+const { fetchBanksPaginated, createBank, updateBank } = useBanks()
 const auth = useAuthStore()
 const isBankAdmin = computed(() => auth.user?.role === UserRole.BANK_ADMIN)
 
 const banks = ref<Bank[]>([])
+const banksMeta = ref<{ last_page: number; total: number } | null>(null)
 const loading = ref(false)
 const error = ref<string | null>(null)
 const query = ref('')
@@ -79,11 +80,19 @@ const form = reactive<BankForm>({
 
 const formErrors = reactive<Partial<Record<keyof BankForm, string>>>({})
 
+// Server-side paginated load (same pattern as the requests page).
 async function loadBanks() {
   loading.value = true
   error.value = null
   try {
-    banks.value = await fetchBanks()
+    const q = query.value.trim()
+    const result = await fetchBanksPaginated({
+      page: urlBankPage.value,
+      per_page: urlBankPageSize.value,
+      ...(q ? { search: q } : {}),
+    })
+    banks.value = result.data
+    banksMeta.value = { last_page: result.meta.last_page, total: result.meta.total }
   }
   catch {
     error.value = 'تعذّر تحميل قائمة البنوك.'
@@ -149,9 +158,7 @@ async function saveBank() {
             code: form.code.trim().toUpperCase(),
             is_active: form.is_active,
           }
-      const updated = await updateBank(editingBank.value.id, payload)
-      const idx = banks.value.findIndex(b => b.id === updated.id)
-      if (idx !== -1) banks.value[idx] = updated
+      await updateBank(editingBank.value.id, payload)
     }
     else {
       const payload: CreateBankPayload = {
@@ -161,10 +168,10 @@ async function saveBank() {
         code: form.code.trim().toUpperCase(),
         is_active: form.is_active,
       }
-      const created = await createBank(payload)
-      banks.value.unshift(created)
+      await createBank(payload)
     }
     closeModal()
+    await loadBanks()
   }
   catch (err: unknown) {
     const e = err as { data?: { errors?: Record<string, string[]>, message?: string } }
@@ -190,14 +197,40 @@ function clearSelection() {
   rowSelection.value = {}
 }
 
-const filteredBanks = computed(() => {
-  const q = query.value.trim().toLowerCase()
-  if (!q) return banks.value
-  return banks.value.filter(b =>
-    b.name_ar.toLowerCase().includes(q)
-    || b.name_en.toLowerCase().includes(q)
-    || b.code.toLowerCase().includes(q),
-  )
+// URL-driven client-side pagination (same UX as the requests page).
+const DEFAULT_BANK_PAGE_SIZE = 20
+const route = useRoute()
+const router = useRouter()
+const urlBankPage = computed(() => Number(route.query.page ?? 1))
+const urlBankPageSize = computed(() => Number(route.query.perPage ?? DEFAULT_BANK_PAGE_SIZE))
+
+const bankPagination = computed<PaginationState>(() => ({
+  pageIndex: urlBankPage.value - 1,
+  pageSize: urlBankPageSize.value,
+}))
+
+function onBankPaginationChange(updater: PaginationState | ((old: PaginationState) => PaginationState)) {
+  const next = typeof updater === 'function' ? updater(bankPagination.value) : updater
+  router.push({
+    query: {
+      ...route.query,
+      page: next.pageIndex === 0 ? undefined : String(next.pageIndex + 1),
+      perPage: next.pageSize === DEFAULT_BANK_PAGE_SIZE ? undefined : String(next.pageSize),
+    },
+  })
+}
+
+// Re-fetch from the server whenever the page or page size changes.
+watch([urlBankPage, urlBankPageSize], () => loadBanks())
+
+// Debounced server-side search — resets to page 1 via the URL.
+let bankSearchTimeout: ReturnType<typeof setTimeout> | null = null
+watch(query, () => {
+  if (bankSearchTimeout) clearTimeout(bankSearchTimeout)
+  bankSearchTimeout = setTimeout(() => {
+    if (urlBankPage.value !== 1) router.push({ query: { ...route.query, page: undefined } })
+    else loadBanks()
+  }, 350)
 })
 
 function activeStatusCell(isActive: boolean, activeLabel = 'نشط', inactiveLabel = 'موقوف') {
@@ -356,10 +389,13 @@ onMounted(loadBanks)
     <!-- Table -->
     <div class="relative flex flex-col gap-4">
       <DataTable
-        :data="filteredBanks"
+        :data="banks"
         :columns="columns"
         :loading="loading"
+        :page-count="banksMeta?.last_page ?? 1"
+        :pagination="bankPagination"
         :row-selection="rowSelection"
+        @update:pagination="onBankPaginationChange"
         @update:row-selection="(v) => rowSelection = v"
         :row-class="'group/row'"
       >
@@ -377,47 +413,8 @@ onMounted(loadBanks)
           </Empty>
         </template>
         <template #pagination="{ table }">
-          <div class="flex items-center justify-between px-2">
-          <p class="text-sm text-muted-foreground">
-            {{ selectedCount }} من {{ filteredBanks.length }} بنك محدد
-          </p>
-          <div class="flex items-center gap-4">
-            <p class="text-sm font-medium whitespace-nowrap">
-              صفحة {{ table.getState().pagination.pageIndex + 1 }} من {{ table.getPageCount() }}
-            </p>
-            <div class="flex items-center gap-1">
-              <Button
-                variant="outline" size="icon" class="hidden h-8 w-8 lg:flex"
-                :disabled="!table.getCanPreviousPage()" @click="table.setPageIndex(0)"
-              >
-                <span class="sr-only">الصفحة الأولى</span>
-                <ChevronsRight class="h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline" size="icon" class="h-8 w-8"
-                :disabled="!table.getCanPreviousPage()" @click="table.previousPage()"
-              >
-                <span class="sr-only">الصفحة السابقة</span>
-                <ChevronRight class="h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline" size="icon" class="h-8 w-8"
-                :disabled="!table.getCanNextPage()" @click="table.nextPage()"
-              >
-                <span class="sr-only">الصفحة التالية</span>
-                <ChevronLeft class="h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline" size="icon" class="hidden h-8 w-8 lg:flex"
-                :disabled="!table.getCanNextPage()" @click="table.setPageIndex(table.getPageCount() - 1)"
-              >
-                <span class="sr-only">الصفحة الأخيرة</span>
-                <ChevronsLeft class="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        </div>
-      </template>
+          <DataTablePagination :table="table" :total-rows="banksMeta?.total" />
+        </template>
       </DataTable>
     </div>
 

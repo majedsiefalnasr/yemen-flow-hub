@@ -7,6 +7,7 @@ export interface AuditFilters {
   from_date?: string
   to_date?: string
   page?: number
+  per_page?: number
 }
 
 export interface AuditStats {
@@ -49,6 +50,7 @@ export function useAudit() {
     if (filters.from_date) params.set('from_date', filters.from_date)
     if (filters.to_date) params.set('to_date', filters.to_date)
     if (filters.page) params.set('page', String(filters.page))
+    if (filters.per_page) params.set('per_page', String(filters.per_page))
     const query = params.toString()
     const path = query ? `/api/audit?${query}` : '/api/audit'
     const response = await get<ApiResponse<PaginatedResponse<AuditLog>>>(path)

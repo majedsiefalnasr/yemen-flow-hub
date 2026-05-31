@@ -1,6 +1,12 @@
 import type { ApiResponse, Bank, PaginatedResponse } from '../types/models'
 import { useApi } from './useApi'
 
+export interface FetchBanksParams {
+  page?: number
+  per_page?: number
+  search?: string
+}
+
 export interface CreateBankPayload {
   name?: string
   name_ar: string
@@ -24,15 +30,20 @@ export interface UpdateBankPayload {
 export function useBanks() {
   const { get, post, put } = useApi()
 
+  // Returns all banks (used for dropdowns / selectors that need the full set).
   async function fetchBanks(): Promise<Bank[]> {
-    const response = await get<ApiResponse<Bank[] | PaginatedResponse<Bank>>>('/api/banks')
-    const payload = response.data
+    const response = await get<ApiResponse<PaginatedResponse<Bank>>>('/api/banks?per_page=200')
+    return response.data.data ?? []
+  }
 
-    if (Array.isArray(payload)) {
-      return payload
-    }
-
-    return payload.data ?? []
+  // Server-side paginated fetch (same shape the requests page consumes).
+  async function fetchBanksPaginated(params: FetchBanksParams = {}): Promise<PaginatedResponse<Bank>> {
+    const qs = new URLSearchParams()
+    if (params.page) qs.set('page', String(params.page))
+    if (params.per_page) qs.set('per_page', String(params.per_page))
+    if (params.search) qs.set('search', params.search)
+    const response = await get<ApiResponse<PaginatedResponse<Bank>>>(`/api/banks?${qs.toString()}`)
+    return response.data
   }
 
   async function createBank(payload: CreateBankPayload): Promise<Bank> {
@@ -45,5 +56,5 @@ export function useBanks() {
     return response.data
   }
 
-  return { fetchBanks, createBank, updateBank }
+  return { fetchBanks, fetchBanksPaginated, createBank, updateBank }
 }

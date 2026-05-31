@@ -7,6 +7,8 @@ export interface FetchUsersParams {
   bank_id?: number
   is_active?: boolean
   per_page?: number
+  page?: number
+  search?: string
 }
 
 export interface CreateUserPayload {
@@ -48,6 +50,20 @@ export function useUsers() {
     return payload.data ?? []
   }
 
+  // Server-side paginated fetch (same shape the requests page consumes).
+  async function fetchUsersPaginated(params: FetchUsersParams = {}): Promise<PaginatedResponse<User>> {
+    const query = new URLSearchParams()
+    if (params.role) query.set('role', params.role)
+    if (params.bank_id !== undefined) query.set('bank_id', String(params.bank_id))
+    if (params.is_active !== undefined) query.set('is_active', String(params.is_active))
+    if (params.per_page !== undefined) query.set('per_page', String(params.per_page))
+    if (params.page !== undefined) query.set('page', String(params.page))
+    if (params.search) query.set('search', params.search)
+
+    const response = await get<ApiResponse<PaginatedResponse<User>>>(`/api/users?${query.toString()}`)
+    return response.data
+  }
+
   async function createUser(payload: CreateUserPayload): Promise<User> {
     const response = await post<ApiResponse<User>>('/api/users', payload)
     return response.data
@@ -63,5 +79,5 @@ export function useUsers() {
     return response.data
   }
 
-  return { fetchUsers, createUser, updateUser, getUser }
+  return { fetchUsers, fetchUsersPaginated, createUser, updateUser, getUser }
 }

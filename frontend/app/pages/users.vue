@@ -1,16 +1,8 @@
 <script setup lang="ts">
-import type { ColumnDef, VisibilityState } from '@tanstack/vue-table'
-import {
-  getCoreRowModel,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
-  useVueTable,
-} from '@tanstack/vue-table'
+import type { ColumnDef, PaginationState } from '@tanstack/vue-table'
 import { ref, reactive, computed, watch, onMounted, h } from 'vue'
 import {
   AlertTriangle,
-  ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
   Download, MoreHorizontal, Plus, Printer, Search, SearchX, X,
 } from 'lucide-vue-next'
 import PageHeader from '@/components/layout/PageHeader.vue'
@@ -30,9 +22,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Separator } from '@/components/ui/separator'
-import {
-  DataTableViewOptions,
-} from '@/components/ui/data-table'
+import { DataTablePagination } from '@/components/ui/data-table'
 import DataTable from '@/components/ui/data-table/DataTable.vue'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -67,11 +57,12 @@ definePageMeta({
   requiredRoles: [UserRole.CBY_ADMIN, UserRole.BANK_ADMIN],
 })
 
-const { fetchUsers, createUser, updateUser } = useUsers()
+const { fetchUsersPaginated, createUser, updateUser } = useUsers()
 const { fetchBanks } = useBanks()
 const auth = useAuthStore()
 
 const users = ref<User[]>([])
+const usersMeta = ref<{ last_page: number; total: number } | null>(null)
 const banks = ref<Bank[]>([])
 const loading = ref(false)
 const error = ref<string | null>(null)
@@ -116,13 +107,19 @@ watch(() => form.role, (newRole) => {
   }
 })
 
-async function loadData() {
+// Server-side paginated load (same pattern as the requests page).
+async function loadUsers() {
   loading.value = true
   error.value = null
   try {
-    const [usersData, banksData] = await Promise.all([fetchUsers(), fetchBanks()])
-    users.value = usersData
-    banks.value = banksData
+    const q = query.value.trim()
+    const result = await fetchUsersPaginated({
+      page: urlUserPage.value,
+      per_page: urlUserPageSize.value,
+      ...(q ? { search: q } : {}),
+    })
+    users.value = result.data
+    usersMeta.value = { last_page: result.meta.last_page, total: result.meta.total }
   }
   catch {
     error.value = 'تعذّر تحميل البيانات.'
@@ -130,6 +127,12 @@ async function loadData() {
   finally {
     loading.value = false
   }
+}
+
+async function loadData() {
+  // Banks are loaded once for the form's bank selector; users page-by-page.
+  banks.value = await fetchBanks().catch(() => [])
+  await loadUsers()
 }
 
 function openCreate() {
@@ -207,9 +210,7 @@ async function saveUser() {
         is_active: form.is_active,
       }
       if (form.password) payload.password = form.password
-      const updated = await updateUser(editingUser.value.id, payload)
-      const idx = users.value.findIndex(u => u.id === updated.id)
-      if (idx !== -1) users.value[idx] = updated
+      await updateUser(editingUser.value.id, payload)
     }
     else {
       const payload: CreateUserPayload = {
@@ -220,10 +221,10 @@ async function saveUser() {
         bank_id: isBankAdmin.value ? auth.user?.bank_id ?? null : form.bank_id,
         is_active: form.is_active,
       }
-      const created = await createUser(payload)
-      users.value.unshift(created)
+      await createUser(payload)
     }
     closeModal()
+    await loadUsers()
   }
   catch (err: unknown) {
     const e = err as { data?: { errors?: Record<string, string[]>, message?: string } }
@@ -252,17 +253,43 @@ const rowSelection = ref<Record<string, boolean>>({})
 const selectedCount = computed(() => Object.values(rowSelection.value).filter(Boolean).length)
 
 function clearSelection() {
-  table.resetRowSelection()
+  rowSelection.value = {}
 }
 
-const filteredUsers = computed(() => {
-  const q = query.value.trim().toLowerCase()
-  if (!q) return users.value
-  return users.value.filter(u =>
-    u.name.toLowerCase().includes(q)
-    || u.email.toLowerCase().includes(q)
-    || (ROLE_LABELS[u.role] ?? u.role).toLowerCase().includes(q),
-  )
+// URL-driven client-side pagination (same UX as the requests page).
+const DEFAULT_USER_PAGE_SIZE = 20
+const route = useRoute()
+const router = useRouter()
+const urlUserPage = computed(() => Number(route.query.page ?? 1))
+const urlUserPageSize = computed(() => Number(route.query.perPage ?? DEFAULT_USER_PAGE_SIZE))
+
+const userPagination = computed<PaginationState>(() => ({
+  pageIndex: urlUserPage.value - 1,
+  pageSize: urlUserPageSize.value,
+}))
+
+function onUserPaginationChange(updater: PaginationState | ((old: PaginationState) => PaginationState)) {
+  const next = typeof updater === 'function' ? updater(userPagination.value) : updater
+  router.push({
+    query: {
+      ...route.query,
+      page: next.pageIndex === 0 ? undefined : String(next.pageIndex + 1),
+      perPage: next.pageSize === DEFAULT_USER_PAGE_SIZE ? undefined : String(next.pageSize),
+    },
+  })
+}
+
+// Re-fetch from the server whenever the page or page size changes.
+watch([urlUserPage, urlUserPageSize], () => loadUsers())
+
+// Debounced server-side search — resets to page 1 via the URL.
+let userSearchTimeout: ReturnType<typeof setTimeout> | null = null
+watch(query, () => {
+  if (userSearchTimeout) clearTimeout(userSearchTimeout)
+  userSearchTimeout = setTimeout(() => {
+    if (urlUserPage.value !== 1) router.push({ query: { ...route.query, page: undefined } })
+    else loadUsers()
+  }, 350)
 })
 
 function activeStatusCell(isActive: boolean, activeLabel = 'نشط', inactiveLabel = 'غير نشط') {
@@ -365,21 +392,6 @@ const columns: ColumnDef<User>[] = [
   },
 ]
 
-const table = useVueTable({
-  get data() { return filteredUsers.value },
-  columns,
-  getCoreRowModel: getCoreRowModel(),
-  getPaginationRowModel: getPaginationRowModel(),
-  getSortedRowModel: getSortedRowModel(),
-  getFilteredRowModel: getFilteredRowModel(),
-  onRowSelectionChange: updater =>
-    rowSelection.value = typeof updater === 'function' ? updater(rowSelection.value) : updater,
-  state: {
-    get rowSelection() { return rowSelection.value },
-  },
-  initialState: { pagination: { pageSize: 20 } },
-})
-
 onMounted(loadData)
 </script>
 
@@ -441,71 +453,33 @@ onMounted(loadData)
     <!-- Table -->
     <div class="relative flex flex-col gap-4">
       <DataTable
-        :data="filteredUsers"
+        :data="users"
         :columns="columns"
         :loading="loading"
+        :page-count="usersMeta?.last_page ?? 1"
+        :pagination="userPagination"
         :row-selection="rowSelection"
+        @update:pagination="onUserPaginationChange"
         @update:row-selection="(v) => rowSelection = v"
         :row-class="'group/row'"
-      />
-
-      <!-- Empty state (outside table) -->
-      <Empty
-        v-if="!loading && !filteredUsers.length"
-        class="min-h-[280px] rounded-xl border border-dashed bg-muted/20"
       >
-        <EmptyHeader>
-          <div class="flex size-12 items-center justify-center rounded-xl bg-muted text-muted-foreground">
-            <SearchX class="size-5" />
-          </div>
-          <EmptyTitle>لا توجد نتائج</EmptyTitle>
-        </EmptyHeader>
-        <EmptyContent>
-          <EmptyDescription>جرّب تغيير البحث لعرض المستخدمين.</EmptyDescription>
-        </EmptyContent>
-      </Empty>
-
-      <!-- Pagination -->
-      <div class="flex items-center justify-between px-2">
-        <p class="text-sm text-muted-foreground">
-          {{ table.getFilteredSelectedRowModel().rows.length }} من {{ table.getFilteredRowModel().rows.length }} مستخدم محدد
-        </p>
-        <div class="flex items-center gap-4">
-          <p class="text-sm font-medium whitespace-nowrap">
-            صفحة {{ table.getState().pagination.pageIndex + 1 }} من {{ table.getPageCount() }}
-          </p>
-          <div class="flex items-center gap-1">
-            <Button
-              variant="outline" size="icon" class="hidden h-8 w-8 lg:flex"
-              :disabled="!table.getCanPreviousPage()" @click="table.setPageIndex(0)"
-            >
-              <span class="sr-only">الصفحة الأولى</span>
-              <ChevronsRight class="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline" size="icon" class="h-8 w-8"
-              :disabled="!table.getCanPreviousPage()" @click="table.previousPage()"
-            >
-              <span class="sr-only">الصفحة السابقة</span>
-              <ChevronRight class="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline" size="icon" class="h-8 w-8"
-              :disabled="!table.getCanNextPage()" @click="table.nextPage()"
-            >
-              <span class="sr-only">الصفحة التالية</span>
-              <ChevronLeft class="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline" size="icon" class="hidden h-8 w-8 lg:flex"
-              :disabled="!table.getCanNextPage()" @click="table.setPageIndex(table.getPageCount() - 1)"
-            >
-              <span class="sr-only">الصفحة الأخيرة</span>
-              <ChevronsLeft class="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      </div>
+        <template #empty>
+          <Empty class="min-h-[280px] rounded-xl border border-dashed bg-muted/20">
+            <EmptyHeader>
+              <div class="flex size-12 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+                <SearchX class="size-5" />
+              </div>
+              <EmptyTitle>لا توجد نتائج</EmptyTitle>
+            </EmptyHeader>
+            <EmptyContent>
+              <EmptyDescription>جرّب تغيير البحث لعرض المستخدمين.</EmptyDescription>
+            </EmptyContent>
+          </Empty>
+        </template>
+        <template #pagination="{ table }">
+          <DataTablePagination :table="table" :total-rows="usersMeta?.total" />
+        </template>
+      </DataTable>
     </div>
 
     <!-- Dialog Modal -->

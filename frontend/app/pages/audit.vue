@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ColumnDef, ColumnFiltersState, SortingState, VisibilityState } from '@tanstack/vue-table'
+import type { ColumnDef, ColumnFiltersState, PaginationState, SortingState, VisibilityState } from '@tanstack/vue-table'
 import {
   Activity,
   AlertTriangle,
@@ -22,7 +22,7 @@ import { useAudit } from '@/composables/useAudit'
 import { useTableExport } from '@/composables/useTableExport'
 import { useTableKeyboard } from '@/composables/useTableKeyboard'
 import type { AuditLog } from '@/types/models'
-import { DataTableViewOptions } from '@/components/ui/data-table'
+import { DataTablePagination, DataTableViewOptions } from '@/components/ui/data-table'
 import DataTable from '@/components/ui/data-table/DataTable.vue'
 import MetricCard from '@/components/shared/dashboard/MetricCard.vue'
 import MetricGrid from '@/components/shared/dashboard/MetricGrid.vue'
@@ -59,23 +59,64 @@ definePageMeta({
 
 const { fetchAuditLogs, fetchAuditStats, fetchDuplicates, fetchRiskIndicators } = useAudit()
 const { exportToCSV } = useTableExport()
+const route = useRoute()
+const router = useRouter()
 
+const DEFAULT_AUDIT_PAGE_SIZE = 30
 const query = ref('')
 const searchInputRef = ref<HTMLInputElement | null>(null)
 const loadingAudit = ref(true)
 const auditLogs = ref<AuditLog[]>([])
+const auditMeta = ref<{ last_page: number; total: number; per_page: number } | null>(null)
 const todayCount = ref(0)
 const duplicates = ref<{ invoice_number: string; banks: string[]; requests: { id: number; reference_number: string }[] }[]>([])
 const risks = ref<{ title: string; body: string; level: 'عالية' | 'متوسطة' | 'منخفضة' }[]>([])
 
+const urlAuditPage = computed(() => Number(route.query.page ?? 1))
+const urlAuditPageSize = computed(() => Number(route.query.perPage ?? DEFAULT_AUDIT_PAGE_SIZE))
+
+const auditPagination = computed<PaginationState>(() => ({
+  pageIndex: urlAuditPage.value - 1,
+  pageSize: urlAuditPageSize.value,
+}))
+
+function onAuditPaginationChange(updater: PaginationState | ((old: PaginationState) => PaginationState)) {
+  const next = typeof updater === 'function' ? updater(auditPagination.value) : updater
+  router.push({
+    query: {
+      ...route.query,
+      page: next.pageIndex === 0 ? undefined : String(next.pageIndex + 1),
+      perPage: next.pageSize === DEFAULT_AUDIT_PAGE_SIZE ? undefined : String(next.pageSize),
+    },
+  })
+}
+
+async function loadAuditLogs() {
+  loadingAudit.value = true
+  try {
+    const result = await fetchAuditLogs({ page: urlAuditPage.value, per_page: urlAuditPageSize.value })
+    auditLogs.value = result.data
+    auditMeta.value = { last_page: result.meta.last_page, total: result.meta.total, per_page: result.meta.per_page }
+  }
+  catch {}
+  finally {
+    loadingAudit.value = false
+  }
+}
+
+watch([urlAuditPage, urlAuditPageSize], () => loadAuditLogs())
+
 onMounted(async () => {
   const [logsResult, statsResult, dupsResult, risksResult] = await Promise.allSettled([
-    fetchAuditLogs(),
+    fetchAuditLogs({ page: urlAuditPage.value, per_page: urlAuditPageSize.value }),
     fetchAuditStats(),
     fetchDuplicates(),
     fetchRiskIndicators(),
   ])
-  if (logsResult.status === 'fulfilled') auditLogs.value = logsResult.value.data
+  if (logsResult.status === 'fulfilled') {
+    auditLogs.value = logsResult.value.data
+    auditMeta.value = { last_page: logsResult.value.meta.last_page, total: logsResult.value.meta.total, per_page: logsResult.value.meta.per_page }
+  }
   if (statsResult.status === 'fulfilled') todayCount.value = statsResult.value.today_count
   if (dupsResult.status === 'fulfilled') duplicates.value = dupsResult.value
   if (risksResult.status === 'fulfilled') risks.value = risksResult.value
@@ -199,7 +240,6 @@ const columnVisibility = ref<VisibilityState>({
   from_status: false,
   to_status: false,
 })
-const pagination = ref({ pageIndex: 0, pageSize: 20 })
 const auditDataTableRef = ref<any>(null)
 
 const selectedCount = computed(() => Object.values(rowSelection.value).filter(Boolean).length)
@@ -397,7 +437,7 @@ function diffRows(meta: AuditLogMeta): Array<{ key: string; before: unknown; aft
     <div v-if="!loadingAudit" class="mb-4 space-y-2">
       <Card
         v-if="smartSummary.denied >= 3"
-        class="border-0 border-s-4 border-s-[var(--severity-red)] bg-[var(--severity-red)]/5 shadow-sm"
+        class="border-0 border-[var(--severity-red)] bg-[var(--severity-red)]/5 shadow-sm"
         role="alert"
       >
         <div class="flex items-center gap-3 px-4 py-3">
@@ -409,7 +449,7 @@ function diffRows(meta: AuditLogMeta): Array<{ key: string; before: unknown; aft
       </Card>
       <Card
         v-if="smartSummary.failedLogins >= 5"
-        class="border-0 border-s-4 border-s-[var(--severity-red)] bg-[var(--severity-red)]/5 shadow-sm"
+        class="border-0 border-[var(--severity-red)] bg-[var(--severity-red)]/5 shadow-sm"
         role="alert"
       >
         <div class="flex items-center gap-3 px-4 py-3">
@@ -421,7 +461,7 @@ function diffRows(meta: AuditLogMeta): Array<{ key: string; before: unknown; aft
       </Card>
       <Card
         v-if="smartSummary.roleChanges > 0"
-        class="border-0 border-s-4 border-s-[var(--severity-amber)] bg-[var(--severity-amber)]/5 shadow-sm"
+        class="border-0 border-[var(--severity-amber)] bg-[var(--severity-amber)]/5 shadow-sm"
         role="alert"
       >
         <div class="flex items-center gap-3 px-4 py-3">
@@ -517,21 +557,22 @@ function diffRows(meta: AuditLogMeta): Array<{ key: string; before: unknown; aft
         <Card class="border-0 p-4 shadow">
           <DataTable
             ref="auditDataTableRef"
-            :data="filteredAudits"
+            :data="auditLogs"
             :columns="columns"
             :loading="loadingAudit"
+            :page-count="auditMeta?.last_page ?? 1"
+            :pagination="auditPagination"
             :sorting="sorting"
             :column-filters="columnFilters"
             :row-selection="rowSelection"
             :column-visibility="columnVisibility"
-            :pagination="pagination"
             :is-row-expanded="(row) => expandedLogs.has(row.id)"
             row-class="border-t hover:bg-muted/30"
+            @update:pagination="onAuditPaginationChange"
             @update:sorting="(v) => sorting = v"
             @update:column-filters="(v) => columnFilters = v"
             @update:row-selection="(v) => rowSelection = v"
             @update:column-visibility="(v) => columnVisibility = v"
-            @update:pagination="(v) => pagination = v"
             @row-click="(row) => toggleLog(row.id)"
           >
             <template #toolbar="{ table }">
@@ -588,50 +629,7 @@ function diffRows(meta: AuditLogMeta): Array<{ key: string; before: unknown; aft
               </div>
             </template>
             <template #pagination="{ table }">
-              <div class="flex items-center justify-between border-t px-4 py-3">
-                <p class="text-sm text-muted-foreground">
-                  {{ filteredAudits.length }} سجل
-                </p>
-                <div class="flex items-center gap-6">
-                  <div class="hidden items-center gap-2 lg:flex">
-                    <Label for="audit-rows-per-page" class="text-sm font-medium whitespace-nowrap">الصفوف لكل صفحة</Label>
-                    <Select
-                      :model-value="`${table.getState().pagination.pageSize}`"
-                      @update:model-value="(v) => table.setPageSize(Number(v))"
-                    >
-                      <SelectTrigger id="audit-rows-per-page" size="sm" class="w-16">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent side="top">
-                        <SelectItem v-for="size in ['10', '20', '30', '50']" :key="size" :value="size">
-                          {{ size }}
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <p class="text-sm font-medium whitespace-nowrap">
-                    صفحة {{ table.getState().pagination.pageIndex + 1 }} من {{ table.getPageCount() }}
-                  </p>
-                  <div class="flex items-center gap-1">
-                    <Button variant="outline" size="icon" class="hidden h-8 w-8 lg:flex" :disabled="!table.getCanPreviousPage()" @click="table.setPageIndex(0)">
-                      <span class="sr-only">الصفحة الأولى</span>
-                      <ChevronsRight class="h-4 w-4" />
-                    </Button>
-                    <Button variant="outline" size="icon" class="h-8 w-8" :disabled="!table.getCanPreviousPage()" @click="table.previousPage()">
-                      <span class="sr-only">الصفحة السابقة</span>
-                      <ChevronRight class="h-4 w-4" />
-                    </Button>
-                    <Button variant="outline" size="icon" class="h-8 w-8" :disabled="!table.getCanNextPage()" @click="table.nextPage()">
-                      <span class="sr-only">الصفحة التالية</span>
-                      <ChevronLeft class="h-4 w-4" />
-                    </Button>
-                    <Button variant="outline" size="icon" class="hidden h-8 w-8 lg:flex" :disabled="!table.getCanNextPage()" @click="table.setPageIndex(table.getPageCount() - 1)">
-                      <span class="sr-only">الصفحة الأخيرة</span>
-                      <ChevronsLeft class="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              </div>
+              <DataTablePagination :table="table" :total-rows="auditMeta?.total" />
             </template>
           </DataTable>
         </Card>

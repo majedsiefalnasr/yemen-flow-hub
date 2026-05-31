@@ -26,11 +26,15 @@ describe('useBanks', () => {
   })
 
   describe('fetchBanks()', () => {
-    it('calls GET /api/banks and returns the data array', async () => {
-      mockGet.mockResolvedValueOnce({ success: true, message: 'OK', data: [BANK_FIXTURE] })
+    it('calls GET /api/banks with per_page=200 and returns the data array', async () => {
+      mockGet.mockResolvedValueOnce({
+        success: true,
+        message: 'OK',
+        data: { data: [BANK_FIXTURE], meta: { current_page: 1, last_page: 1, per_page: 200, total: 1 } },
+      })
       const { fetchBanks } = useBanks()
       const result = await fetchBanks()
-      expect(mockGet).toHaveBeenCalledWith('/api/banks')
+      expect(mockGet).toHaveBeenCalledWith('/api/banks?per_page=200')
       expect(result).toEqual([BANK_FIXTURE])
     })
 
@@ -38,22 +42,6 @@ describe('useBanks', () => {
       mockGet.mockRejectedValueOnce(new Error('Network error'))
       const { fetchBanks } = useBanks()
       await expect(fetchBanks()).rejects.toThrow('Network error')
-    })
-
-    it('unwraps paginated bank payloads', async () => {
-      mockGet.mockResolvedValueOnce({
-        success: true,
-        message: 'OK',
-        data: {
-          data: [BANK_FIXTURE],
-          meta: { current_page: 1, last_page: 1, per_page: 20, total: 1 },
-        },
-      })
-
-      const { fetchBanks } = useBanks()
-      const result = await fetchBanks()
-
-      expect(result).toEqual([BANK_FIXTURE])
     })
   })
 

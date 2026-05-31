@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ColumnDef, ColumnFiltersState, VisibilityState } from '@tanstack/vue-table'
+import type { ColumnDef, ColumnFiltersState, PaginationState, VisibilityState } from '@tanstack/vue-table'
 import {
   getCoreRowModel,
   getFacetedRowModel,
@@ -78,6 +78,7 @@ definePageMeta({
 })
 
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
 const user = computed(() => authStore.user)
 const { fetchMerchants, createMerchant, updateMerchant, suspendMerchant } = useMerchants()
@@ -93,6 +94,26 @@ const columnFilters = ref<ColumnFiltersState>([])
 const createOpen = ref(false)
 const editing = ref<Merchant | null>(null)
 const viewing = ref<Merchant | null>(null)
+
+const DEFAULT_MERCHANT_PAGE_SIZE = 20
+const urlMerchantPage = computed(() => Number(route.query.page ?? 1))
+const urlMerchantPageSize = computed(() => Number(route.query.perPage ?? DEFAULT_MERCHANT_PAGE_SIZE))
+
+const merchantPagination = computed<PaginationState>(() => ({
+  pageIndex: urlMerchantPage.value - 1,
+  pageSize: urlMerchantPageSize.value,
+}))
+
+function onMerchantPaginationChange(updater: PaginationState | ((old: PaginationState) => PaginationState)) {
+  const next = typeof updater === 'function' ? updater(merchantPagination.value) : updater
+  router.push({
+    query: {
+      ...route.query,
+      page: next.pageIndex === 0 ? undefined : String(next.pageIndex + 1),
+      perPage: next.pageSize === DEFAULT_MERCHANT_PAGE_SIZE ? undefined : String(next.pageSize),
+    },
+  })
+}
 
 onMounted(async () => {
   loadingMerchants.value = true
@@ -466,12 +487,15 @@ const table = useVueTable({
     (rowSelection.value = typeof updater === 'function' ? updater(rowSelection.value) : updater),
   onColumnVisibilityChange: updater =>
     (columnVisibility.value = typeof updater === 'function' ? updater(columnVisibility.value) : updater),
+  onPaginationChange: (updater) => {
+    onMerchantPaginationChange(updater as PaginationState | ((old: PaginationState) => PaginationState))
+  },
   state: {
     get columnFilters() { return columnFilters.value },
     get rowSelection() { return rowSelection.value },
     get columnVisibility() { return columnVisibility.value },
+    get pagination() { return merchantPagination.value },
   },
-  initialState: { pagination: { pageSize: 20 } },
 })
 
 function handleReset() {
@@ -549,7 +573,7 @@ function exportSelectedRows() {
     <div v-if="isCbyAdmin && riskSummary" class="mb-4 space-y-2">
       <Card
         v-if="riskSummary.crossBank > 0"
-        class="border-0 border-s-4 border-s-[var(--severity-amber)] bg-[var(--severity-amber)]/5 shadow-sm"
+        class="border-0 border-[var(--severity-amber)] bg-[var(--severity-amber)]/5 shadow-sm"
         role="alert"
       >
         <div class="flex items-center gap-3 px-4 py-3">
@@ -561,7 +585,7 @@ function exportSelectedRows() {
       </Card>
       <Card
         v-if="riskSummary.missingData > 0"
-        class="border-0 border-s-4 border-s-[var(--severity-amber)] bg-[var(--severity-amber)]/5 shadow-sm"
+        class="border-0 border-[var(--severity-amber)] bg-[var(--severity-amber)]/5 shadow-sm"
         role="alert"
       >
         <div class="flex items-center gap-3 px-4 py-3">
@@ -580,9 +604,11 @@ function exportSelectedRows() {
           :data="preFiltered"
           :columns="columns"
           :loading="loadingMerchants"
+          :pagination="merchantPagination"
           :column-filters="columnFilters"
           :column-visibility="columnVisibility"
           :row-selection="rowSelection"
+          @update:pagination="onMerchantPaginationChange"
           @update:column-filters="(v) => columnFilters = v"
           @update:column-visibility="(v) => columnVisibility = v"
           @update:row-selection="(v) => rowSelection = v"
