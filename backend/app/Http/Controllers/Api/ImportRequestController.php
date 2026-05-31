@@ -54,6 +54,7 @@ class ImportRequestController extends Controller
                 'gte:amount_min',
             )],
             'assigned_reviewer_id'  => ['nullable', 'integer'],
+            'per_page'              => ['nullable', 'integer', 'min:1', 'max:100'],
         ]);
 
         $statusTotals = $this->buildIndexQuery($request, false)
@@ -64,7 +65,8 @@ class ImportRequestController extends Controller
             ->map(fn ($count) => (int) $count)
             ->all();
 
-        $paginator = $this->buildIndexQuery($request)->paginate(20);
+        $perPage = max(1, min($request->integer('per_page', 20), 100));
+        $paginator = $this->buildIndexQuery($request)->paginate($perPage);
 
         return ApiResponse::success(
             [

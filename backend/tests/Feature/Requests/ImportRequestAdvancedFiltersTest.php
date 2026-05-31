@@ -157,6 +157,50 @@ class ImportRequestAdvancedFiltersTest extends TestCase
             ->assertOk();
     }
 
+    // ── per_page pagination size ──────────────────────────────────────────────
+
+    public function test_index_defaults_to_20_per_page(): void
+    {
+        for ($i = 0; $i < 25; $i++) {
+            $this->makeRequest($this->bank, $this->dataEntry);
+        }
+
+        $this->actingAs($this->cbyadmin)
+            ->getJson('/api/requests')
+            ->assertOk()
+            ->assertJsonPath('data.meta.per_page', 20)
+            ->assertJsonCount(20, 'data.data');
+    }
+
+    public function test_index_respects_per_page_param(): void
+    {
+        for ($i = 0; $i < 60; $i++) {
+            $this->makeRequest($this->bank, $this->dataEntry);
+        }
+
+        $this->actingAs($this->cbyadmin)
+            ->getJson('/api/requests?per_page=50')
+            ->assertOk()
+            ->assertJsonPath('data.meta.per_page', 50)
+            ->assertJsonCount(50, 'data.data');
+    }
+
+    public function test_index_clamps_per_page_to_100(): void
+    {
+        $this->actingAs($this->cbyadmin)
+            ->getJson('/api/requests?per_page=500')
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['per_page']);
+    }
+
+    public function test_index_rejects_zero_per_page(): void
+    {
+        $this->actingAs($this->cbyadmin)
+            ->getJson('/api/requests?per_page=0')
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['per_page']);
+    }
+
     // ── AC-1 / AC-3: created_from / created_to filter ────────────────────────
 
     public function test_created_from_filters_out_older_requests(): void
