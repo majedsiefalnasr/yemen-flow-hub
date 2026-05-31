@@ -176,13 +176,13 @@ const onSubmit = handleSubmit((values) => {
       >
         <DialogHeader class="flex items-start justify-between">
           <div>
-            <DialogTitle class="text-xl font-semibold text-gray-900">
+            <DialogTitle class="text-xl font-semibold text-[var(--color-text-primary)]">
               {{ isEditMode ? 'تعديل بيانات التاجر' : 'تسجيل تاجر جديد' }}
             </DialogTitle>
-            <p class="text-xs text-gray-600 mt-1">الحقول المعلّمة بـ * إلزامية.</p>
+            <p class="text-xs text-[var(--color-text-subtle)] mt-1">الحقول المعلّمة بـ * إلزامية.</p>
           </div>
           <button
-            class="text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed text-lg leading-none p-1"
+            class="text-[var(--color-text-subtle)] hover:text-[var(--color-text-primary)] disabled:opacity-50 disabled:cursor-not-allowed text-lg leading-none p-1"
             aria-label="إغلاق"
             :disabled="props.saving"
             @click="requestClose"
@@ -191,9 +191,9 @@ const onSubmit = handleSubmit((values) => {
           </button>
         </DialogHeader>
 
-        <Alert v-if="props.serverError" class="border-s-4 border-s-red-600 bg-red-700/10 border-0" role="alert">
-          <AlertCircle class="h-4 w-4 text-red-700" aria-hidden="true" />
-          <AlertDescription class="text-red-700 text-sm">{{ props.serverError }}</AlertDescription>
+        <Alert v-if="props.serverError" class="border-s-4 border-s-red-600 bg-[var(--color-surface-error)] border-0" role="alert">
+          <AlertCircle class="h-4 w-4 text-[var(--color-text-error)]" aria-hidden="true" />
+          <AlertDescription class="text-[var(--color-text-error)] text-sm">{{ props.serverError }}</AlertDescription>
         </Alert>
 
         <form class="flex flex-col gap-5" @submit.prevent="onSubmit">
@@ -224,7 +224,7 @@ const onSubmit = handleSubmit((values) => {
               <FormItem class="col-span-2">
                 <FormLabel class="text-xs">البنك التابع له <span class="text-destructive">*</span></FormLabel>
                 <FormControl>
-                  <Input :value="props.lockedBankName ?? ''" type="text" readonly disabled class="bg-gray-50 text-gray-600 cursor-not-allowed" />
+                  <Input :value="props.lockedBankName ?? ''" type="text" readonly disabled class="bg-[var(--color-surface-subtle)] text-[var(--color-text-subtle)] cursor-not-allowed" />
                 </FormControl>
                 <p class="text-xs text-muted-foreground">مرتبط بالبنك المسجل على حسابك.</p>
               </FormItem>

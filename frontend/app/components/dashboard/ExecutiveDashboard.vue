@@ -1,6 +1,7 @@
 // @parity-exempt — dashboard sub-component; parity evidence captured at dashboards/executive page level
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import type { ColumnDef } from '@tanstack/vue-table'
+import { computed, h, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { AlertTriangle, CheckCircle2, FileCheck2, Globe, Scale, Vote, XCircle } from 'lucide-vue-next'
 import { useDashboardStore } from '../../stores/dashboard.store'
@@ -10,6 +11,10 @@ import type { ExecutiveDashboardStats, VotingQueueItem } from '../../composables
 import type { ImportRequest } from '../../types/models'
 import StatusBadge from '../shared/StatusBadge.vue'
 import { Badge } from '../ui/badge'
+import { Button } from '../ui/button'
+import DataTable from '../ui/data-table/DataTable.vue'
+import MetricCard from '../shared/dashboard/MetricCard.vue'
+import MetricGrid from '../shared/dashboard/MetricGrid.vue'
 
 const router = useRouter()
 const store = useDashboardStore()
@@ -58,6 +63,35 @@ function rowAction(req: VotingQueueItem): string {
   if (req.status === RequestStatus.EXECUTIVE_VOTING_CLOSED) return 'إصدار نهائي'
   return 'عرض'
 }
+
+const votingQueueColumns: ColumnDef<VotingQueueItem>[] = [
+  { accessorKey: 'reference_number', header: 'المرجع', cell: ({ row }) => h('span', { class: 'font-mono text-primary' }, row.original.reference_number) },
+  { id: 'merchant', header: 'التاجر', cell: ({ row }) => h('span', row.original.merchant?.name ?? row.original.supplier_name ?? '—') },
+  { id: 'amount', header: 'المبلغ', cell: ({ row }) => h('span', { class: 'font-mono' }, formatAmount(row.original.amount, row.original.currency)) },
+  { id: 'votes', header: 'الأصوات', cell: ({ row }) => h('span', `${row.original.votes_cast ?? 0} / ${row.original.total_voters ?? 0}`) },
+  { id: 'status', header: 'الحالة', cell: ({ row }) => h(StatusBadge as any, { status: row.original.status, role: UserRole.COMMITTEE_DIRECTOR }) },
+  {
+    id: 'action',
+    header: 'إجراء المدير',
+    cell: ({ row }) => h(Button, { size: 'sm', variant: 'outline', onClick: (e: Event) => { e.stopPropagation(); router.push(`/requests/${row.original.id}`) } }, () => rowAction(row.original)),
+  },
+]
+
+const fxQueueColumns: ColumnDef<ImportRequest>[] = [
+  { accessorKey: 'reference_number', header: 'المرجع', cell: ({ row }) => h('span', { class: 'font-mono text-primary' }, row.original.reference_number) },
+  { id: 'merchant', header: 'التاجر', cell: ({ row }) => h('span', row.original.merchant?.name ?? row.original.supplier_name ?? '—') },
+  { id: 'amount', header: 'المبلغ', cell: ({ row }) => h('span', { class: 'font-mono' }, formatAmount(row.original.amount, row.original.currency)) },
+  {
+    id: 'age',
+    header: 'العمر',
+    cell: ({ row }) => h('span', { class: ageHours(row.original.updated_at) > 24 ? 'text-[var(--severity-amber)]' : 'text-muted-foreground' }, `${ageHours(row.original.updated_at)} ساعة`),
+  },
+  {
+    id: 'action',
+    header: 'إجراء',
+    cell: ({ row }) => h(Button, { size: 'sm', variant: 'outline', onClick: (e: Event) => { e.stopPropagation(); router.push(`/requests/${row.original.id}`) } }, () => 'إتمام التأكيد'),
+  },
+]
 
 onMounted(() => { store.loadStats() })
 </script>
@@ -129,58 +163,50 @@ onMounted(() => { store.loadStats() })
           </div>
         </div>
 
-        <div class="grid grid-cols-4 gap-4 max-lg:grid-cols-2 max-md:grid-cols-1">
-          <button class="rounded-xl border border-border bg-background p-4 text-start hover:shadow-sm" @click="router.push('/requests?tab=active_voting')">
-            <div class="mb-2 inline-flex h-9 w-9 items-center justify-center rounded bg-[var(--voting)]/10 text-[var(--voting)]"><Vote class="h-5 w-5" /></div>
-            <p class="text-2xl font-semibold text-[var(--voting)]">{{ stats.active_voting_sessions }}</p>
-            <p class="text-xs text-muted-foreground">جلسات التصويت النشطة</p>
-          </button>
-          <button class="rounded-xl border border-border bg-background p-4 text-start hover:shadow-sm" @click="router.push('/requests?tab=fx_pending')">
-            <div class="mb-2 inline-flex h-9 w-9 items-center justify-center rounded bg-[var(--severity-amber)]/10 text-[var(--severity-amber)]"><FileCheck2 class="h-5 w-5" /></div>
-            <p class="text-2xl font-semibold text-[var(--severity-amber)]">{{ stats.fx_confirmation_pending ?? stats.decisions_approved }}</p>
-            <p class="text-xs text-muted-foreground">بانتظار تأكيد المصارفة</p>
-          </button>
-          <button class="rounded-xl border border-border bg-background p-4 text-start hover:shadow-sm" @click="router.push('/requests?tab=finalized')">
-            <div class="mb-2 inline-flex h-9 w-9 items-center justify-center rounded bg-[var(--severity-green)]/10 text-[var(--severity-green)]"><CheckCircle2 class="h-5 w-5" /></div>
-            <p class="text-2xl font-semibold text-[var(--severity-green)]">{{ stats.finalized_approved ?? stats.decisions_approved }}</p>
-            <p class="text-xs text-muted-foreground">قرارات مُنهاة (اعتماد)</p>
-          </button>
-          <button class="rounded-xl border border-border bg-background p-4 text-start hover:shadow-sm" @click="router.push('/requests?tab=rejected')">
-            <div class="mb-2 inline-flex h-9 w-9 items-center justify-center rounded bg-[var(--severity-red)]/10 text-[var(--severity-red)]"><XCircle class="h-5 w-5" /></div>
-            <p class="text-2xl font-semibold text-[var(--severity-red)]">{{ stats.finalized_rejected ?? stats.decisions_rejected }}</p>
-            <p class="text-xs text-muted-foreground">قرارات مُرفوضة</p>
-          </button>
-        </div>
+        <MetricGrid :columns="4">
+          <MetricCard
+            label="جلسات التصويت النشطة"
+            :value="stats.active_voting_sessions"
+            :icon="Vote"
+            tone="voting"
+            :highlighted="stats.active_voting_sessions > 0"
+            @click="router.push('/requests?tab=active_voting')"
+          />
+          <MetricCard
+            label="بانتظار تأكيد المصارفة"
+            :value="stats.fx_confirmation_pending ?? stats.decisions_approved"
+            :icon="FileCheck2"
+            tone="warning"
+            :highlighted="(stats.fx_confirmation_pending ?? stats.decisions_approved) > 0"
+            @click="router.push('/requests?tab=fx_pending')"
+          />
+          <MetricCard
+            label="قرارات مُنهاة (اعتماد)"
+            :value="stats.finalized_approved ?? stats.decisions_approved"
+            :icon="CheckCircle2"
+            tone="success"
+            @click="router.push('/requests?tab=finalized')"
+          />
+          <MetricCard
+            label="قرارات مُرفوضة"
+            :value="stats.finalized_rejected ?? stats.decisions_rejected"
+            :icon="XCircle"
+            tone="danger"
+            :highlighted="(stats.finalized_rejected ?? stats.decisions_rejected) > 0"
+            @click="router.push('/requests?tab=rejected')"
+          />
+        </MetricGrid>
 
         <section class="rounded-xl border border-border bg-background">
           <div class="border-b border-border px-4 py-3">
             <h2 class="text-sm font-semibold">جلسات التصويت — نظرة عامة</h2>
           </div>
-          <div class="overflow-x-auto">
-            <table class="w-full text-xs">
-              <thead>
-                <tr class="bg-muted/40">
-                  <th class="px-3 py-2 text-right">المرجع</th>
-                  <th class="px-3 py-2 text-right">التاجر</th>
-                  <th class="px-3 py-2 text-right">المبلغ</th>
-                  <th class="px-3 py-2 text-right">الأصوات</th>
-                  <th class="px-3 py-2 text-right">الحالة</th>
-                  <th class="px-3 py-2 text-right">إجراء المدير</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="req in votingQueue" :key="req.id" class="border-t border-border hover:bg-muted/20">
-                  <td class="px-3 py-2 font-mono text-primary">{{ req.reference_number }}</td>
-                  <td class="px-3 py-2">{{ req.merchant?.name ?? req.supplier_name }}</td>
-                  <td class="px-3 py-2 font-mono">{{ formatAmount(req.amount, req.currency) }}</td>
-                  <td class="px-3 py-2">{{ req.votes_cast ?? 0 }} / {{ req.total_voters ?? 0 }}</td>
-                  <td class="px-3 py-2"><StatusBadge :status="req.status" :role="UserRole.COMMITTEE_DIRECTOR" /></td>
-                  <td class="px-3 py-2">
-                    <Button size="sm" variant="outline" @click="router.push(`/requests/${req.id}`)">{{ rowAction(req) }}</Button>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+          <div class="p-4">
+            <DataTable
+              :data="votingQueue"
+              :columns="votingQueueColumns"
+              @row-click="(row) => router.push(`/requests/${row.id}`)"
+            />
           </div>
         </section>
 
@@ -191,29 +217,12 @@ onMounted(() => { store.loadStats() })
           <div v-if="fxQueue.length === 0" class="p-8 text-center text-sm text-muted-foreground">
             لا توجد طلبات في انتظار تأكيد المصارفة ✓
           </div>
-          <div v-else class="overflow-x-auto">
-            <table class="w-full text-xs">
-              <thead>
-                <tr class="bg-muted/40">
-                  <th class="px-3 py-2 text-right">المرجع</th>
-                  <th class="px-3 py-2 text-right">التاجر</th>
-                  <th class="px-3 py-2 text-right">المبلغ</th>
-                  <th class="px-3 py-2 text-right">العمر</th>
-                  <th class="px-3 py-2 text-right">إجراء</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="req in fxQueue" :key="req.id" class="border-t border-border hover:bg-muted/20">
-                  <td class="px-3 py-2 font-mono text-primary">{{ req.reference_number }}</td>
-                  <td class="px-3 py-2">{{ req.merchant?.name ?? req.supplier_name }}</td>
-                  <td class="px-3 py-2 font-mono">{{ formatAmount(req.amount, req.currency) }}</td>
-                  <td class="px-3 py-2" :class="ageHours(req.updated_at) > 24 ? 'text-[var(--severity-amber)]' : 'text-muted-foreground'">{{ ageHours(req.updated_at) }} ساعة</td>
-                  <td class="px-3 py-2">
-                    <Button size="sm" variant="outline" @click="router.push(`/requests/${req.id}`)">إتمام التأكيد</Button>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+          <div v-else class="p-4">
+            <DataTable
+              :data="fxQueue"
+              :columns="fxQueueColumns"
+              @row-click="(row) => router.push(`/requests/${row.id}`)"
+            />
           </div>
         </section>
       </template>
@@ -235,20 +244,31 @@ onMounted(() => { store.loadStats() })
           </div>
         </div>
 
-        <div class="grid grid-cols-3 gap-4 max-lg:grid-cols-2 max-md:grid-cols-1">
-          <button class="rounded-xl border border-border bg-background p-4 text-start hover:shadow-sm" @click="router.push('/requests?tab=pending_my_vote')">
-            <p class="text-2xl font-semibold text-[var(--voting)]">{{ pendingMyVoteCount }}</p>
-            <p class="text-xs text-muted-foreground">طابور التصويت</p>
-          </button>
-          <button class="rounded-xl border border-border bg-background p-4 text-start hover:shadow-sm" @click="router.push('/requests?tab=approved')">
-            <p class="text-2xl font-semibold text-[var(--severity-green)]">{{ stats.decisions_approved }}</p>
-            <p class="text-xs text-muted-foreground">قرارات اعتماد</p>
-          </button>
-          <button class="rounded-xl border border-border bg-background p-4 text-start hover:shadow-sm" @click="router.push('/requests?tab=rejected')">
-            <p class="text-2xl font-semibold text-[var(--severity-red)]">{{ stats.decisions_rejected }}</p>
-            <p class="text-xs text-muted-foreground">قرارات رفض</p>
-          </button>
-        </div>
+        <MetricGrid :columns="3">
+          <MetricCard
+            label="طابور التصويت"
+            :value="pendingMyVoteCount"
+            :icon="Vote"
+            tone="voting"
+            :highlighted="pendingMyVoteCount > 0"
+            @click="router.push('/requests?tab=pending_my_vote')"
+          />
+          <MetricCard
+            label="قرارات اعتماد"
+            :value="stats.decisions_approved"
+            :icon="CheckCircle2"
+            tone="success"
+            @click="router.push('/requests?tab=approved')"
+          />
+          <MetricCard
+            label="قرارات رفض"
+            :value="stats.decisions_rejected"
+            :icon="XCircle"
+            tone="danger"
+            :highlighted="stats.decisions_rejected > 0"
+            @click="router.push('/requests?tab=rejected')"
+          />
+        </MetricGrid>
       </template>
     </template>
   </div>

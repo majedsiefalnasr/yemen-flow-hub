@@ -197,7 +197,7 @@ onMounted(async () => {
       </Alert>
 
       <!-- Final decision badge -->
-      <div v-if="isFinalized" class="text-center py-4 px-4 rounded-lg font-bold text-2xl" :class="requestStatus === RequestStatus.EXECUTIVE_APPROVED ? 'bg-success/10/10 text-success border border-green-200' : 'bg-destructive/10 text-destructive border border-destructive'">
+      <div v-if="isFinalized" class="text-center py-4 px-4 rounded-lg font-bold text-2xl" :class="requestStatus === RequestStatus.EXECUTIVE_APPROVED ? 'bg-success/10/10 text-success border border-[var(--color-border-success)]' : 'bg-destructive/10 text-destructive border border-destructive'">
         {{ requestStatus === RequestStatus.EXECUTIVE_APPROVED ? 'معتمد' : 'مرفوض' }}
       </div>
 
@@ -242,7 +242,7 @@ onMounted(async () => {
       </div>
 
       <!-- Tie-break notice -->
-      <Alert v-if="showTieBreak" class="border-s-4 border-s-amber-500 bg-amber-50/10 border-0">
+      <Alert v-if="showTieBreak" class="border-s-4 border-s-amber-500 bg-[var(--color-surface-warning)] border-0">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-warning" aria-hidden="true">
           <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
         </svg>
@@ -266,7 +266,7 @@ onMounted(async () => {
             <tr v-for="v in displayedVotes" :key="v.id" class="border-t border-border h-11 hover:bg-muted">
               <td class="px-4 py-2.5 text-sm text-foreground">
                 <span class="block">{{ v.user_name ?? '—' }}</span>
-                <span v-if="v.is_director_override" class="inline-block mt-1 bg-amber-50/10 text-warning px-2 py-0.5 rounded text-xs font-medium">تجاوز المدير</span>
+                <span v-if="v.is_director_override" class="inline-block mt-1 bg-[var(--color-surface-warning)] text-warning px-2 py-0.5 rounded text-xs font-medium">تجاوز المدير</span>
               </td>
               <td class="px-4 py-2.5">
                 <span :class="maskedVoteChipClasses(v)">{{ maskedVoteLabel(v) }}</span>

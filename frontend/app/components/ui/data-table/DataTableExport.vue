@@ -125,7 +125,7 @@ const canExport = computed(() =>
       <Button
         variant="outline"
         size="sm"
-        class="ms-auto hidden h-8 lg:flex"
+        class="ms-auto h-8 flex"
         :disabled="!canExport"
       >
         <Download class="me-2 h-4 w-4" />

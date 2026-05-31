@@ -1,13 +1,5 @@
 <script setup lang="ts">
 import type { ColumnDef, VisibilityState } from '@tanstack/vue-table'
-import {
-  FlexRender,
-  getCoreRowModel,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
-  useVueTable,
-} from '@tanstack/vue-table'
 import { Calendar, ChevronLeft, ChevronRight, Download, FileSpreadsheet, FileText, Filter } from 'lucide-vue-next'
 import { h } from 'vue'
 import PageHeader from '@/components/layout/PageHeader.vue'
@@ -17,6 +9,9 @@ import type { WorkflowReport } from '@/composables/useReports'
 import { useTableKeyboard } from '@/composables/useTableKeyboard'
 import { useTableExport } from '@/composables/useTableExport'
 import { DataTableViewOptions } from '@/components/ui/data-table'
+import DataTable from '@/components/ui/data-table/DataTable.vue'
+import MetricCard from '@/components/shared/dashboard/MetricCard.vue'
+import MetricGrid from '@/components/shared/dashboard/MetricGrid.vue'
 
 definePageMeta({
   middleware: ['auth', 'role'],
@@ -33,6 +28,7 @@ const scheduleSearchRef = ref<HTMLInputElement | null>(null)
 const scheduleColumnVisibility = ref<VisibilityState>({
   recipients: false,
 })
+const schedulePagination = ref({ pageIndex: 0, pageSize: 5 })
 
 useTableKeyboard(scheduleSearchRef, {
   onEscape: () => {
@@ -146,23 +142,6 @@ const SCHEDULE_COLUMN_LABELS: Record<string, string> = {
   status: 'الحالة',
 }
 
-const scheduledReportsTable = useVueTable({
-  get data() { return filteredScheduledReports.value },
-  columns: scheduledReportColumns,
-  getCoreRowModel: getCoreRowModel(),
-  getPaginationRowModel: getPaginationRowModel(),
-  getSortedRowModel: getSortedRowModel(),
-  getFilteredRowModel: getFilteredRowModel(),
-  onColumnVisibilityChange: updater =>
-    scheduleColumnVisibility.value = typeof updater === 'function' ? updater(scheduleColumnVisibility.value) : updater,
-  state: {
-    get columnVisibility() { return scheduleColumnVisibility.value },
-  },
-  initialState: {
-    pagination: { pageSize: 5 },
-  },
-})
-
 function exportScheduledReports() {
   if (!filteredScheduledReports.value.length) return
   const stamp = new Date().toISOString().slice(0, 10)
@@ -187,10 +166,60 @@ function heatOpacity(rowIndex: number, colIndex: number) {
   return (0.15 + ((Math.sin(rowIndex * 1.7 + colIndex * 1.3) + 1) / 2) * 0.85).toFixed(2)
 }
 
-const colors = ['bg-primary', 'bg-info', 'bg-amber-50', 'bg-red-700', 'bg-purple-600', 'bg-emerald-600']
+const colors = ['bg-primary', 'bg-info', 'bg-[var(--color-surface-warning)]', 'bg-[var(--severity-red)]', 'bg-purple-600', 'bg-emerald-600']
 
 const monthlyChartConfig = { requests: { label: 'طلبات' }, approvals: { label: 'مُعتمد' } }
 const categoryChartConfig = { value: { label: 'النسبة' } }
+
+type BankBreakdownRow = {
+  bank_id?: number
+  bank_name: string
+  total: number
+  approved?: number
+  rejected?: number
+  total_value?: number
+}
+
+const bankBreakdownRows = computed<BankBreakdownRow[]>(() => report.value?.bank_breakdown ?? [])
+const bankBreakdownColumns: ColumnDef<BankBreakdownRow>[] = [
+  { accessorKey: 'bank_name', header: 'البنك', cell: ({ row }) => h('span', { class: 'font-medium' }, row.original.bank_name) },
+  { accessorKey: 'total', header: 'إجمالي الطلبات', cell: ({ row }) => h('span', { class: 'tabular-nums' }, row.original.total) },
+  { accessorKey: 'approved', header: 'مُعتمد', cell: ({ row }) => h('span', { class: 'tabular-nums text-[var(--severity-green)]' }, row.original.approved ?? '—') },
+  { accessorKey: 'rejected', header: 'مرفوض', cell: ({ row }) => h('span', { class: 'tabular-nums text-[var(--severity-red)]' }, row.original.rejected ?? '—') },
+  {
+    id: 'approval_rate',
+    header: 'نسبة الاعتماد',
+    cell: ({ row }) => h('span', { class: 'tabular-nums' }, row.original.total > 0 && row.original.approved != null ? `${Math.round((row.original.approved / row.original.total) * 100)}%` : '—'),
+  },
+  { accessorKey: 'total_value', header: 'قيمة التمويل', cell: ({ row }) => h('span', { class: 'tabular-nums text-muted-foreground' }, (row.original.total_value ?? 0).toLocaleString('en-US')) },
+]
+
+type VotingAnalyticsRow = {
+  user_id: number
+  name: string
+  sessions: number
+  approvals: number
+  rejections: number
+  avg_hours?: number | null
+}
+
+const votingAnalyticsRows = computed<VotingAnalyticsRow[]>(() => report.value?.voting_analytics ?? [])
+const votingAnalyticsColumns: ColumnDef<VotingAnalyticsRow>[] = [
+  { accessorKey: 'name', header: 'العضو', cell: ({ row }) => h('span', { class: 'font-medium' }, row.original.name) },
+  { accessorKey: 'sessions', header: 'جلسات شارك بها', cell: ({ row }) => h('span', { class: 'tabular-nums' }, row.original.sessions) },
+  { accessorKey: 'approvals', header: 'أصوات الاعتماد', cell: ({ row }) => h('span', { class: 'tabular-nums text-[var(--severity-green)]' }, row.original.approvals) },
+  { accessorKey: 'rejections', header: 'أصوات الرفض', cell: ({ row }) => h('span', { class: 'tabular-nums text-[var(--severity-red)]' }, row.original.rejections) },
+  {
+    id: 'approval_rate',
+    header: 'نسبة الاعتماد',
+    cell: ({ row }) => h('span', { class: 'tabular-nums' }, row.original.sessions > 0 ? `${Math.round((row.original.approvals / row.original.sessions) * 100)}%` : '—'),
+  },
+  {
+    accessorKey: 'avg_hours',
+    header: 'متوسط وقت التصويت',
+    cell: ({ row }) => h('span', { class: 'tabular-nums text-muted-foreground' }, row.original.avg_hours != null ? `${row.original.avg_hours}س` : '—'),
+  },
+]
 </script>
 
 <template>
@@ -219,28 +248,17 @@ const categoryChartConfig = { value: { label: 'النسبة' } }
       </template>
     </PageHeader>
 
-    <div class="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-5">
-      <Card
-        v-for="kpi in kpis"
-        :key="kpi.label"
-        class="border-0 p-4 shadow"
-      >
-        <div class="text-xs text-muted-foreground">
-          {{ kpi.label }}
-        </div>
-        <div class="mt-1 flex items-end justify-between">
-          <div class="text-xl font-bold">
-            {{ loading ? '—' : kpi.value }}
-          </div>
-          <Badge
-            v-if="kpi.summary"
-            variant="secondary"
-            class="text-[10px]"
-          >
-            {{ kpi.summary }}
-          </Badge>
-        </div>
-      </Card>
+    <div class="mb-6">
+      <MetricGrid :columns="5">
+        <MetricCard
+          v-for="kpi in kpis"
+          :key="kpi.label"
+          :label="kpi.label"
+          :value="loading ? '—' : kpi.value"
+          :previous-label="kpi.summary || undefined"
+          :clickable="false"
+        />
+      </MetricGrid>
     </div>
 
     <Tabs default-value="executive_summary" class="mb-4">
@@ -281,7 +299,7 @@ const categoryChartConfig = { value: { label: 'النسبة' } }
                   :title="`طلبات: ${month.total}`"
                 />
                 <div
-                  class="w-5 rounded-t-md bg-green-50"
+                  class="w-5 rounded-t-md bg-[var(--color-surface-success)]"
                   :style="{ height: `${(month.approved / monthlyMax) * 100}%` }"
                   :title="`مُعتمد: ${month.approved}`"
                 />
@@ -300,7 +318,7 @@ const categoryChartConfig = { value: { label: 'النسبة' } }
         </ChartContainer>
         <div class="mt-3 flex items-center gap-4 text-xs text-muted-foreground">
           <span class="inline-flex items-center gap-1"><span class="h-2.5 w-2.5 rounded bg-primary" />طلبات</span>
-          <span class="inline-flex items-center gap-1"><span class="h-2.5 w-2.5 rounded bg-green-50" />مُعتمد</span>
+          <span class="inline-flex items-center gap-1"><span class="h-2.5 w-2.5 rounded bg-[var(--color-surface-success)]" />مُعتمد</span>
         </div>
       </Card>
 
@@ -425,10 +443,6 @@ const categoryChartConfig = { value: { label: 'النسبة' } }
                 <Filter class="ms-1 h-3.5 w-3.5" />
                 تصدير
               </Button>
-              <DataTableViewOptions
-                :table="scheduledReportsTable"
-                :column-labels="SCHEDULE_COLUMN_LABELS"
-              />
             </div>
           </div>
 
@@ -441,78 +455,52 @@ const categoryChartConfig = { value: { label: 'النسبة' } }
             />
           </div>
 
-          <div class="overflow-x-auto">
-            <Table class="w-full min-w-[720px] text-sm">
-              <TableHeader class="border-b text-end text-xs text-muted-foreground">
-                <TableRow
-                  v-for="headerGroup in scheduledReportsTable.getHeaderGroups()"
-                  :key="headerGroup.id"
+          <DataTable
+            :data="filteredScheduledReports"
+            :columns="scheduledReportColumns"
+            :column-visibility="scheduleColumnVisibility"
+            :pagination="schedulePagination"
+            @update:column-visibility="(v) => scheduleColumnVisibility = v"
+            @update:pagination="(v) => schedulePagination = v"
+          >
+            <template #toolbar="{ table }">
+              <div class="mb-3 flex items-center justify-between gap-2">
+                <p class="text-xs text-muted-foreground">{{ filteredScheduledReports.length }} تقرير</p>
+                <DataTableViewOptions
+                  :table="table"
+                  :column-labels="SCHEDULE_COLUMN_LABELS"
+                />
+              </div>
+            </template>
+            <template #empty>
+              لا توجد نتائج مطابقة
+            </template>
+            <template #pagination="{ table }">
+              <div class="mt-3 flex items-center justify-end gap-2 text-xs">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  class="h-7 w-7"
+                  :disabled="!table.getCanPreviousPage()"
+                  @click="table.previousPage()"
                 >
-                  <TableHead
-                    v-for="header in headerGroup.headers"
-                    :key="header.id"
-                    class="py-2.5"
-                  >
-                    <FlexRender
-                      v-if="!header.isPlaceholder"
-                      :render="header.column.columnDef.header"
-                      :props="header.getContext()"
-                    />
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                <TableRow
-                  v-for="row in scheduledReportsTable.getRowModel().rows"
-                  :key="row.id"
-                  class="border-b last:border-0 hover:bg-muted/30"
+                  <span class="sr-only">الصفحة السابقة</span>
+                  <ChevronRight class="h-3.5 w-3.5" />
+                </Button>
+                <span>صفحة {{ table.getState().pagination.pageIndex + 1 }} من {{ table.getPageCount() }}</span>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  class="h-7 w-7"
+                  :disabled="!table.getCanNextPage()"
+                  @click="table.nextPage()"
                 >
-                  <TableCell
-                    v-for="cell in row.getVisibleCells()"
-                    :key="cell.id"
-                    class="py-3"
-                  >
-                    <FlexRender
-                      :render="cell.column.columnDef.cell"
-                      :props="cell.getContext()"
-                    />
-                  </TableCell>
-                </TableRow>
-                <TableRow v-if="scheduledReportsTable.getRowModel().rows.length === 0">
-                  <TableCell :col-span="scheduledReportColumns.length" class="py-8 text-center text-muted-foreground">
-                    لا توجد نتائج مطابقة
-                  </TableCell>
-                </TableRow>
-              </TableBody>
-            </Table>
-          </div>
-
-          <div class="mt-3 flex items-center justify-between">
-            <p class="text-xs text-muted-foreground">{{ scheduledReportsTable.getFilteredRowModel().rows.length }} تقرير</p>
-            <div class="flex items-center gap-2 text-xs">
-              <Button
-                variant="outline"
-                size="icon"
-                class="h-7 w-7"
-                :disabled="!scheduledReportsTable.getCanPreviousPage()"
-                @click="scheduledReportsTable.previousPage()"
-              >
-                <span class="sr-only">الصفحة السابقة</span>
-                <ChevronRight class="h-3.5 w-3.5" />
-              </Button>
-              <span>صفحة {{ scheduledReportsTable.getState().pagination.pageIndex + 1 }} من {{ scheduledReportsTable.getPageCount() }}</span>
-              <Button
-                variant="outline"
-                size="icon"
-                class="h-7 w-7"
-                :disabled="!scheduledReportsTable.getCanNextPage()"
-                @click="scheduledReportsTable.nextPage()"
-              >
-                <span class="sr-only">الصفحة التالية</span>
-                <ChevronLeft class="h-3.5 w-3.5" />
-              </Button>
-            </div>
-          </div>
+                  <span class="sr-only">الصفحة التالية</span>
+                  <ChevronLeft class="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </template>
+          </DataTable>
         </Card>
       </TabsContent>
 
@@ -520,42 +508,7 @@ const categoryChartConfig = { value: { label: 'النسبة' } }
       <TabsContent value="bank_performance" class="mt-4">
         <Card class="border-0 p-5 shadow">
           <h3 class="mb-4 font-semibold">أداء البنوك</h3>
-          <div class="overflow-x-auto">
-            <Table class="w-full min-w-[600px] text-sm">
-              <TableHeader>
-                <TableRow>
-                  <TableHead>البنك</TableHead>
-                  <TableHead>إجمالي الطلبات</TableHead>
-                  <TableHead>مُعتمد</TableHead>
-                  <TableHead>مرفوض</TableHead>
-                  <TableHead>نسبة الاعتماد</TableHead>
-                  <TableHead>قيمة التمويل</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                <template v-if="loading">
-                  <TableRow v-for="i in 5" :key="i">
-                    <TableCell v-for="j in 6" :key="j"><Skeleton class="h-4 w-full" /></TableCell>
-                  </TableRow>
-                </template>
-                <template v-else-if="(report?.bank_breakdown ?? []).length > 0">
-                  <TableRow v-for="bank in (report?.bank_breakdown ?? [])" :key="bank.bank_id ?? bank.bank_name">
-                    <TableCell class="font-medium">{{ bank.bank_name }}</TableCell>
-                    <TableCell class="tabular-nums">{{ bank.total }}</TableCell>
-                    <TableCell class="text-[var(--severity-green)] tabular-nums">{{ bank.approved ?? '—' }}</TableCell>
-                    <TableCell class="text-[var(--severity-red)] tabular-nums">{{ bank.rejected ?? '—' }}</TableCell>
-                    <TableCell class="tabular-nums">{{ bank.total > 0 && bank.approved != null ? Math.round((bank.approved / bank.total) * 100) + '%' : '—' }}</TableCell>
-                    <TableCell class="tabular-nums text-muted-foreground">{{ (bank.total_value ?? 0).toLocaleString('en-US') }}</TableCell>
-                  </TableRow>
-                </template>
-                <template v-else>
-                  <TableRow>
-                    <TableCell colspan="6" class="py-8 text-center text-muted-foreground">لا توجد بيانات</TableCell>
-                  </TableRow>
-                </template>
-              </TableBody>
-            </Table>
-          </div>
+          <DataTable :data="bankBreakdownRows" :columns="bankBreakdownColumns" :loading="loading" />
         </Card>
       </TabsContent>
 
@@ -630,42 +583,9 @@ const categoryChartConfig = { value: { label: 'النسبة' } }
       <TabsContent value="voting" class="mt-4">
         <Card class="border-0 p-5 shadow">
           <h3 class="mb-4 font-semibold">تحليل التصويت التنفيذي</h3>
-          <div class="overflow-x-auto">
-            <Table class="w-full text-sm">
-              <TableHeader>
-                <TableRow>
-                  <TableHead>العضو</TableHead>
-                  <TableHead>جلسات شارك بها</TableHead>
-                  <TableHead>أصوات الاعتماد</TableHead>
-                  <TableHead>أصوات الرفض</TableHead>
-                  <TableHead>نسبة الاعتماد</TableHead>
-                  <TableHead>متوسط وقت التصويت</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                <template v-if="loading">
-                  <TableRow v-for="i in 4" :key="i">
-                    <TableCell v-for="j in 6" :key="j"><Skeleton class="h-4 w-full" /></TableCell>
-                  </TableRow>
-                </template>
-                <template v-else-if="(report?.voting_analytics ?? []).length > 0">
-                  <TableRow v-for="member in (report?.voting_analytics ?? [])" :key="member.user_id">
-                    <TableCell class="font-medium">{{ member.name }}</TableCell>
-                    <TableCell class="tabular-nums">{{ member.sessions }}</TableCell>
-                    <TableCell class="text-[var(--severity-green)] tabular-nums">{{ member.approvals }}</TableCell>
-                    <TableCell class="text-[var(--severity-red)] tabular-nums">{{ member.rejections }}</TableCell>
-                    <TableCell class="tabular-nums">{{ member.sessions > 0 ? Math.round((member.approvals / member.sessions) * 100) + '%' : '—' }}</TableCell>
-                    <TableCell class="tabular-nums text-muted-foreground">{{ member.avg_hours != null ? member.avg_hours + 'س' : '—' }}</TableCell>
-                  </TableRow>
-                </template>
-                <template v-else>
-                  <TableRow>
-                    <TableCell colspan="6" class="py-8 text-center text-muted-foreground">لا توجد بيانات تصويت</TableCell>
-                  </TableRow>
-                </template>
-              </TableBody>
-            </Table>
-          </div>
+          <DataTable :data="votingAnalyticsRows" :columns="votingAnalyticsColumns" :loading="loading">
+            <template #empty>لا توجد بيانات تصويت</template>
+          </DataTable>
         </Card>
       </TabsContent>
 

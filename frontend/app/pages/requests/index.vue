@@ -1,10 +1,25 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import type { ColumnFiltersState, VisibilityState } from '@tanstack/vue-table'
+import {
+  getCoreRowModel,
+  getFacetedRowModel,
+  getFacetedUniqueValues,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  useVueTable,
+} from '@tanstack/vue-table'
 import {
   AlertCircle, CheckCircle2, ClipboardList,
-  Download, Edit, Eye, FilePlus2, Filter, Lock, Printer,
-  RefreshCw, Search, SlidersHorizontal, Upload, User, Vote, X,
+  Edit, Eye, FilePlus2, Lock, RefreshCw, SearchX, Vote, Upload,
 } from 'lucide-vue-next'
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+} from '@/components/ui/empty'
 import {
   Dialog,
   DialogContent,
@@ -14,53 +29,38 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import PageHeader from '@/components/layout/PageHeader.vue'
-import RequestsDataTable from '@/components/requests/RequestsDataTable.vue'
 import { buildRequestsExportColumns } from '@/composables/useRequestsExport'
 import { buildRequestsEmptyState } from '@/composables/useRequestsEmptyState'
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { RequestStatus, UserRole } from '@/types/enums'
 import {
-  ROLE_BUCKETS,
   BANK_ROLES,
   CBY_BANK_FILTER_ROLES,
   ROUTE_ROLE_MAP,
-  type StageBucket,
+  STATUS_LABELS,
 } from '@/constants/workflow'
 import { useAuthStore } from '@/stores/auth.store'
 import { useRequestsStore } from '@/stores/requests.store'
 import { useBanks } from '@/composables/useBanks'
-import { useTableKeyboard } from '@/composables/useTableKeyboard'
+import { useRequestsColumns, buildStatusFilterOptions } from '@/composables/useRequestsColumns'
 import type { Bank } from '@/types/models'
-import {
-  Tabs,
-  TabsList,
-  TabsTrigger,
-} from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-  SheetFooter,
-  SheetClose,
-} from '@/components/ui/sheet'
 import { Separator } from '@/components/ui/separator'
 import StatusBadge from '@/components/shared/StatusBadge.vue'
+import MetricCard from '@/components/shared/dashboard/MetricCard.vue'
+import MetricGrid from '@/components/shared/dashboard/MetricGrid.vue'
 import type { ImportRequest } from '@/types/models'
 import { useTableExport } from '@/composables/useTableExport'
+import {
+  DataTable,
+  DataTableExport,
+  DataTableFacetedFilter,
+  DataTablePagination,
+  DataTableToolbar,
+  DataTableViewOptions,
+} from '@/components/ui/data-table'
+import { REQUESTS_COLUMN_LABELS } from '@/composables/useRequestsColumns'
 
 definePageMeta({
   middleware: ['auth', 'role'],
@@ -70,46 +70,24 @@ definePageMeta({
 const authStore = useAuthStore()
 const store = useRequestsStore()
 const { fetchBanks } = useBanks()
-const route = useRoute()
-const router = useRouter()
 const { exportToCSV } = useTableExport()
 
 const user = computed(() => authStore.user)
-const filter = ref('all')
-const { queryState, setQuery } = useTableQueryState({ search: '', tab: '', my: '', hide_others: '' })
-const bankFilter = ref('all')
-const dateRangeFilter = ref<'all' | 'today' | '7d' | '30d' | '90d'>('all')
+const query = ref('')
+const columnFilters = ref<ColumnFiltersState>([])
+const columnVisibility = ref<VisibilityState>({
+  last_activity: false,
+  cby_age: false,
+  cby_sla: false,
+  cby_voting: false,
+  cby_fx: false,
+  cby_risk: false,
+  director_ready_to_close: false,
+  director_fx_state: false,
+  swift_documents: false,
+})
+const rowSelection = ref<Record<string, boolean>>({})
 const banks = ref<Bank[]>([])
-
-// Created-by-me toggle — BANK_REVIEWER only
-const createdByMeOnly = ref(false)
-const isBankReviewer = computed(() => user.value?.role === UserRole.BANK_REVIEWER)
-
-// CBY Admin: advanced filters drawer
-const advancedFiltersOpen = ref(false)
-const advFilters = ref({
-  bank: 'all',
-  stage: 'all',
-  sla: 'all',
-  voting: 'all',
-  fx: 'all',
-  high_value: false,
-})
-
-function clearAdvancedFilters() {
-  advFilters.value = { bank: 'all', stage: 'all', sla: 'all', voting: 'all', fx: 'all', high_value: false }
-}
-
-const advancedFilterCount = computed(() => {
-  let n = 0
-  if (advFilters.value.bank !== 'all') n++
-  if (advFilters.value.stage !== 'all') n++
-  if (advFilters.value.sla !== 'all') n++
-  if (advFilters.value.voting !== 'all') n++
-  if (advFilters.value.fx !== 'all') n++
-  if (advFilters.value.high_value) n++
-  return n
-})
 
 // Quick preview dialog — available for all roles via reference-number click
 const previewRequest = ref<ImportRequest | null>(null)
@@ -120,6 +98,212 @@ function openPreview(request: ImportRequest) {
   previewOpen.value = true
 }
 
+const isCbyAdmin = computed(() => user.value?.role === UserRole.CBY_ADMIN)
+const isDirector = computed(() => user.value?.role === UserRole.COMMITTEE_DIRECTOR)
+const isBankAdmin = computed(() => user.value?.role === UserRole.BANK_ADMIN)
+const isSupportCommittee = computed(() => user.value?.role === UserRole.SUPPORT_COMMITTEE)
+const isDataEntry = computed(() => user.value?.role === UserRole.DATA_ENTRY)
+const isSwiftOfficer = computed(() => user.value?.role === UserRole.SWIFT_OFFICER)
+const isExecutiveMember = computed(() => user.value?.role === UserRole.EXECUTIVE_MEMBER)
+const isBankScoped = computed(() => user.value ? BANK_ROLES.includes(user.value.role) : false)
+const showBankFilter = computed(() => user.value ? CBY_BANK_FILTER_ROLES.includes(user.value.role) : false)
+const canCreateRequest = computed(() => user.value?.role === UserRole.DATA_ENTRY)
+
+const currentUserId = computed(() => authStore.user?.id ?? null)
+
+const { columns } = useRequestsColumns({
+  role: computed(() => user.value?.role ?? UserRole.DATA_ENTRY),
+  currentUserId,
+  onPreviewClick: openPreview,
+})
+
+onMounted(async () => {
+  await store.loadRequests({ per_page: 200 })
+  if (user.value && CBY_BANK_FILTER_ROLES.includes(user.value.role)) {
+    banks.value = await fetchBanks()
+  }
+})
+
+// Pre-filter by search query — TanStack handles column filters
+const filteredRequests = computed(() => {
+  const q = query.value.trim().toLowerCase()
+  if (!q) return store.requests
+  return store.requests.filter(req =>
+    req.reference_number.toLowerCase().includes(q)
+    || (req.merchant?.name ?? '').toLowerCase().includes(q)
+    || (req.invoice_number ?? '').toLowerCase().includes(q),
+  )
+})
+
+const hasActiveFilters = computed(() =>
+  columnFilters.value.length > 0 || query.value.trim().length > 0,
+)
+
+const selectedCount = computed(() => Object.values(rowSelection.value).filter(Boolean).length)
+
+// KPIs computed from ALL store requests (not filtered — for accurate totals)
+const requestKpis = computed(() => {
+  const rows = store.requests
+  const total = rows.length
+  const approved = rows.filter(req => [RequestStatus.BANK_APPROVED, RequestStatus.EXECUTIVE_APPROVED, RequestStatus.COMPLETED].includes(req.status)).length
+  const rejected = rows.filter(req => [RequestStatus.BANK_REJECTED, RequestStatus.EXECUTIVE_REJECTED, RequestStatus.SUPPORT_REJECTED].includes(req.status)).length
+  const pending = Math.max(total - approved - rejected, 0)
+  const approvalRate = total > 0 ? Math.round((approved / total) * 100) : 0
+  return { total, approved, pending, rejected, approvalRate }
+})
+
+const cbySmartSummary = computed(() => {
+  if (!isCbyAdmin.value) return []
+  const reqs = store.requests
+  const needsAttention = reqs.filter(r =>
+    [RequestStatus.DRAFT_REJECTED_INTERNAL, RequestStatus.BANK_RETURNED, RequestStatus.SUPPORT_RETURNED, RequestStatus.SUPPORT_REJECTED].includes(r.status),
+  ).length
+  const voting = reqs.filter(r =>
+    [RequestStatus.WAITING_FOR_VOTING_OPEN, RequestStatus.EXECUTIVE_VOTING_OPEN, RequestStatus.EXECUTIVE_VOTING_CLOSED].includes(r.status),
+  ).length
+  const fxPending = reqs.filter(r => r.status === RequestStatus.EXECUTIVE_APPROVED).length
+  const now = Date.now()
+  const stalledCount = reqs.filter((r) => {
+    const updated = new Date(r.updated_at).getTime()
+    const ageDays = (now - updated) / (1000 * 60 * 60 * 24)
+    return ageDays > 2
+      && r.status !== RequestStatus.COMPLETED
+      && r.status !== RequestStatus.BANK_REJECTED
+      && r.status !== RequestStatus.SUPPORT_REJECTED
+      && r.status !== RequestStatus.EXECUTIVE_REJECTED
+  }).length
+  const items: Array<{ label: string; count: number; statuses: RequestStatus[]; color: string }> = []
+  if (needsAttention > 0) items.push({ label: 'يحتاج متابعة', count: needsAttention, statuses: [RequestStatus.DRAFT_REJECTED_INTERNAL, RequestStatus.BANK_RETURNED, RequestStatus.SUPPORT_RETURNED, RequestStatus.SUPPORT_REJECTED], color: 'var(--severity-amber)' })
+  if (voting > 0) items.push({ label: 'تصويت نشط', count: voting, statuses: [RequestStatus.WAITING_FOR_VOTING_OPEN, RequestStatus.EXECUTIVE_VOTING_OPEN, RequestStatus.EXECUTIVE_VOTING_CLOSED], color: '#5856d6' })
+  if (fxPending > 0) items.push({ label: 'انتظار تأكيد المصارفة', count: fxPending, statuses: [RequestStatus.EXECUTIVE_APPROVED], color: 'var(--severity-red)' })
+  if (stalledCount > 0) items.push({ label: 'طلبات متوقفة > 48 ساعة', count: stalledCount, statuses: [RequestStatus.SUBMITTED, RequestStatus.BANK_REVIEW, RequestStatus.BANK_APPROVED, RequestStatus.SUPPORT_REVIEW_PENDING], color: 'var(--severity-amber)' })
+  return items
+})
+
+const directorSmartSummary = computed(() => {
+  if (!isDirector.value) return []
+  const reqs = store.requests
+  const activeVoting = reqs.filter(r => r.status === RequestStatus.EXECUTIVE_VOTING_OPEN).length
+  const pendingTieBreak = reqs.filter(r => r.status === RequestStatus.EXECUTIVE_VOTING_OPEN && r.is_tie).length
+  const pendingFx = reqs.filter(r => r.status === RequestStatus.EXECUTIVE_APPROVED).length
+  const now = Date.now()
+  const weekAgo = now - (7 * 24 * 60 * 60 * 1000)
+  const finalizedThisWeek = reqs.filter((r) => {
+    if (!(r.status === RequestStatus.EXECUTIVE_APPROVED || r.status === RequestStatus.EXECUTIVE_REJECTED)) return false
+    const updated = new Date(r.updated_at).getTime()
+    return !Number.isNaN(updated) && updated >= weekAgo
+  }).length
+  return [
+    { key: 'active_voting', label: 'جلسات نشطة', count: activeVoting, statuses: [RequestStatus.EXECUTIVE_VOTING_OPEN], color: '#5856d6' },
+    { key: 'tie_break', label: 'تعادل يحتاج حسماً', count: pendingTieBreak, statuses: [RequestStatus.EXECUTIVE_VOTING_OPEN], color: 'var(--severity-amber)' },
+    { key: 'fx_pending', label: 'بانتظار تأكيد المصارفة', count: pendingFx, statuses: [RequestStatus.EXECUTIVE_APPROVED], color: 'var(--severity-amber)' },
+    { key: 'finalized', label: 'مُنهاة هذا الأسبوع', count: finalizedThisWeek, statuses: [RequestStatus.EXECUTIVE_APPROVED, RequestStatus.EXECUTIVE_REJECTED], color: 'var(--severity-green)' },
+  ]
+})
+
+// Status filter options built from STATUS_LABELS
+const statusFilterOptions = computed(() => buildStatusFilterOptions())
+
+// Bank filter options for roles that see bank filter
+const bankFilterOptions = computed(() =>
+  banks.value.map(b => ({ label: b.name_ar || b.name_en || '', value: String(b.id) })),
+)
+
+const table = useVueTable({
+  get data() { return filteredRequests.value },
+  columns,
+  getCoreRowModel: getCoreRowModel(),
+  getPaginationRowModel: getPaginationRowModel(),
+  getSortedRowModel: getSortedRowModel(),
+  getFilteredRowModel: getFilteredRowModel(),
+  getFacetedRowModel: getFacetedRowModel(),
+  getFacetedUniqueValues: getFacetedUniqueValues(),
+  onColumnFiltersChange: updater =>
+    (columnFilters.value = typeof updater === 'function' ? updater(columnFilters.value) : updater),
+  onColumnVisibilityChange: updater =>
+    (columnVisibility.value = typeof updater === 'function' ? updater(columnVisibility.value) : updater),
+  onRowSelectionChange: updater =>
+    (rowSelection.value = typeof updater === 'function' ? updater(rowSelection.value) : updater),
+  state: {
+    get columnFilters() { return columnFilters.value },
+    get columnVisibility() { return columnVisibility.value },
+    get rowSelection() { return rowSelection.value },
+  },
+  initialState: { pagination: { pageSize: 20 } },
+})
+
+function handleReset() {
+  query.value = ''
+  table.resetColumnFilters()
+}
+
+function clearBulkSelection() {
+  table.resetRowSelection()
+}
+
+function openRequest(id: number) {
+  navigateTo(`/requests/${id}`)
+}
+
+const exportColumns = computed(() => {
+  if (!user.value) return []
+  return buildRequestsExportColumns(user.value.role)
+})
+
+function buildExportFilename(): string {
+  return `requests-${new Date().toISOString().slice(0, 10)}`
+}
+
+function exportSelectedRows() {
+  const rows = table.getFilteredSelectedRowModel().rows.map(row => row.original)
+  if (!rows.length || !exportColumns.value.length) return
+  exportToCSV(rows, exportColumns.value, `${buildExportFilename()}-selected`)
+}
+
+// MetricCard quick-filter handlers
+const pendingStatuses: RequestStatus[] = [
+  RequestStatus.SUBMITTED,
+  RequestStatus.BANK_REVIEW,
+  RequestStatus.BANK_RETURNED,
+  RequestStatus.SUPPORT_RETURNED,
+  RequestStatus.DRAFT_REJECTED_INTERNAL,
+  RequestStatus.BANK_APPROVED,
+  RequestStatus.SUPPORT_REVIEW_PENDING,
+  RequestStatus.SUPPORT_REVIEW_IN_PROGRESS,
+  RequestStatus.SUPPORT_APPROVED,
+  RequestStatus.WAITING_FOR_SWIFT,
+  RequestStatus.SWIFT_UPLOADED,
+  RequestStatus.WAITING_FOR_VOTING_OPEN,
+  RequestStatus.EXECUTIVE_VOTING_OPEN,
+  RequestStatus.EXECUTIVE_VOTING_CLOSED,
+  RequestStatus.FX_CONFIRMATION_PENDING,
+]
+
+function filterByApproved() {
+  table.getColumn('status')?.setFilterValue([
+    RequestStatus.BANK_APPROVED,
+    RequestStatus.EXECUTIVE_APPROVED,
+    RequestStatus.COMPLETED,
+  ])
+}
+
+function filterByPending() {
+  table.getColumn('status')?.setFilterValue(pendingStatuses)
+}
+
+function filterByRejected() {
+  table.getColumn('status')?.setFilterValue([
+    RequestStatus.BANK_REJECTED,
+    RequestStatus.EXECUTIVE_REJECTED,
+    RequestStatus.SUPPORT_REJECTED,
+  ])
+}
+
+function filterBySmartSummary(statuses: RequestStatus[]) {
+  table.getColumn('status')?.setFilterValue(statuses)
+}
+
+// Preview dialog helpers
 function relativeAge(isoDate: string | null | undefined): string {
   if (!isoDate) return '—'
   const ms = Date.now() - new Date(isoDate).getTime()
@@ -135,327 +319,16 @@ function slaState(request: ImportRequest): { label: string; color: string } {
   return { label: 'ضمن SLA', color: 'var(--severity-green)' }
 }
 
-onMounted(async () => {
-  await store.loadRequests({ per_page: 200 })
-  if (user.value && CBY_BANK_FILTER_ROLES.includes(user.value.role)) {
-    banks.value = await fetchBanks()
-  }
-  await nextTick()
-  syncSearchInputRef()
-})
-
-const roleBuckets = computed((): StageBucket[] => {
-  if (!user.value) return []
-  return ROLE_BUCKETS[user.value.role] ?? []
-})
-
-const isBankScoped = computed(() => user.value ? BANK_ROLES.includes(user.value.role) : false)
-const showBankFilter = computed(() => user.value ? CBY_BANK_FILTER_ROLES.includes(user.value.role) : false)
-const tabOptions = computed(() => [
-  { key: 'all', label: 'الكل', count: countForBucket('all') },
-  ...roleBuckets.value.map(bucket => ({
-    key: bucket.key,
-    label: bucket.label,
-    count: countForBucket(bucket.key),
-  })),
-])
-
-const tabKeys = computed(() => new Set(tabOptions.value.map(tab => tab.key)))
-const searchQuery = computed(() => typeof queryState.value.search === 'string' ? queryState.value.search : '')
-const searchInputContainerRef = ref<HTMLElement | null>(null)
-const searchInputRef = ref<HTMLInputElement | null>(null)
-
-function syncSearchInputRef() {
-  searchInputRef.value = searchInputContainerRef.value?.querySelector('input') ?? null
-}
-
-function handleSearchUpdate(value: string | number) {
-  void setQuery({ search: String(value ?? '') })
-}
-
-function clearSearchQuery() {
-  void setQuery({ search: '' })
-}
-
-useTableKeyboard(searchInputRef, { onEscape: clearSearchQuery })
-
-function isWithinDateRange(isoDate: string): boolean {
-  if (dateRangeFilter.value === 'all') return true
-  const createdAt = new Date(isoDate)
-  if (Number.isNaN(createdAt.getTime())) return false
-
-  const now = new Date()
-  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  if (dateRangeFilter.value === 'today') {
-    return createdAt >= startOfToday
-  }
-
-  const days = dateRangeFilter.value === '7d' ? 7 : dateRangeFilter.value === '30d' ? 30 : 90
-  const cutoff = new Date(now.getTime() - days * 24 * 60 * 60 * 1000)
-  return createdAt >= cutoff
-}
-
-function bucketMatchesRequest(bucket: StageBucket | undefined, req: typeof store.requests[number]): boolean {
-  if (!bucket) return false
-  if (bucket.matches) return bucket.matches(req, user.value?.id ?? null)
-  return bucket.statuses.includes(req.status)
-}
-
-const filteredRequests = computed(() => {
-  return store.requests.filter((req) => {
-    const bucketMatches = filter.value === 'all'
-      || bucketMatchesRequest(roleBuckets.value.find(b => b.key === filter.value), req)
-
-    const bankMatches = isBankScoped.value
-      || bankFilter.value === 'all'
-      || String(req.bank_id) === bankFilter.value
-
-    const q = searchQuery.value.toLowerCase()
-    const queryMatches = !q
-      || req.reference_number.toLowerCase().includes(q)
-      || (req.merchant?.name ?? '').toLowerCase().includes(q)
-      || (req.invoice_number ?? '').toLowerCase().includes(q)
-    const dateMatches = isWithinDateRange(req.created_at)
-
-    const createdByMeMatches = !createdByMeOnly.value
-      || req.created_by === user.value?.id
-
-    // Support Committee: hide requests already claimed by someone else
-    const hideOthersMatches = !hideOthers.value
-      || !req.is_claimed
-      || req.is_claimed_by_me === true
-
-    // CBY Admin advanced filters
-    let advBankMatches = true
-    let advStageMatches = true
-    let advSlaMatches = true
-    let advVotingMatches = true
-    let advFxMatches = true
-    let advHighValueMatches = true
-    if (isCbyAdmin.value) {
-      if (advFilters.value.bank !== 'all' && advFilters.value.bank) {
-        advBankMatches = String(req.bank_id) === advFilters.value.bank
-      }
-      if (advFilters.value.stage !== 'all') {
-        advStageMatches = req.current_owner_role === advFilters.value.stage
-      }
-      if (advFilters.value.sla !== 'all') {
-        const hrs = (Date.now() - new Date(req.created_at).getTime()) / 3600000
-        if (advFilters.value.sla === 'breach') advSlaMatches = hrs > 120
-        else if (advFilters.value.sla === 'risk') advSlaMatches = hrs > 72 && hrs <= 120
-        else if (advFilters.value.sla === 'ok') advSlaMatches = hrs <= 72
-      }
-      if (advFilters.value.voting !== 'all') {
-        const hasVoting = req.voting_session_status != null
-        advVotingMatches = advFilters.value.voting === 'active' ? hasVoting : !hasVoting
-      }
-      if (advFilters.value.fx !== 'all') {
-        const hasFx = req.has_fx_request_document === true
-        advFxMatches = advFilters.value.fx === 'uploaded' ? hasFx : !hasFx
-      }
-      if (advFilters.value.high_value) {
-        advHighValueMatches = req.amount >= 1_000_000
-      }
-    }
-
-    return bucketMatches && bankMatches && queryMatches && dateMatches && createdByMeMatches && hideOthersMatches
-      && advBankMatches && advStageMatches && advSlaMatches && advVotingMatches && advFxMatches && advHighValueMatches
-  })
-})
-
-function countForBucket(key: string) {
-  if (key === 'all') return store.requests.length
-  const bucket = roleBuckets.value.find(b => b.key === key)
-  return store.requests.filter(r => bucketMatchesRequest(bucket, r)).length
-}
-
-const canCreateRequest = computed(() => user.value?.role === UserRole.DATA_ENTRY)
-
-const isCbyAdmin = computed(() => user.value?.role === UserRole.CBY_ADMIN)
-const isDirector = computed(() => user.value?.role === UserRole.COMMITTEE_DIRECTOR)
-const isBankAdmin = computed(() => user.value?.role === UserRole.BANK_ADMIN)
-const isSupportCommittee = computed(() => user.value?.role === UserRole.SUPPORT_COMMITTEE)
-const isDataEntry = computed(() => user.value?.role === UserRole.DATA_ENTRY)
-const isSwiftOfficer = computed(() => user.value?.role === UserRole.SWIFT_OFFICER)
-const isExecutiveMember = computed(() => user.value?.role === UserRole.EXECUTIVE_MEMBER)
-
 function formatDate(isoDate: string | null | undefined): string {
   if (!isoDate) return '—'
   return new Date(isoDate).toLocaleDateString('ar-EG', { year: 'numeric', month: 'short', day: 'numeric' })
 }
 
-// Support Committee: hide-claimed-by-others toggle — persisted via ?hide_others=1
-const hideOthers = ref(false)
-
-const cbySmartSummary = computed(() => {
-  if (!isCbyAdmin.value) return []
-  const reqs = store.requests
-  const needsAttention = reqs.filter(r =>
-    roleBuckets.value.find(b => b.key === 'needs_attention')?.statuses.includes(r.status),
-  ).length
-  const voting = reqs.filter(r =>
-    roleBuckets.value.find(b => b.key === 'executive_voting')?.statuses.includes(r.status),
-  ).length
-  const fxPending = reqs.filter(r =>
-    roleBuckets.value.find(b => b.key === 'fx_pending')?.statuses.includes(r.status),
-  ).length
-  const now = Date.now()
-  const stalledCount = reqs.filter((r) => {
-    const updated = new Date(r.updated_at).getTime()
-    const ageDays = (now - updated) / (1000 * 60 * 60 * 24)
-    return ageDays > 2
-      && r.status !== RequestStatus.COMPLETED
-      && r.status !== RequestStatus.BANK_REJECTED
-      && r.status !== RequestStatus.SUPPORT_REJECTED
-      && r.status !== RequestStatus.EXECUTIVE_REJECTED
-  }).length
-  const items: Array<{ label: string; count: number; tab: string; color: string }> = []
-  if (needsAttention > 0) items.push({ label: 'يحتاج متابعة', count: needsAttention, tab: 'needs_attention', color: 'var(--severity-amber)' })
-  if (voting > 0) items.push({ label: 'تصويت نشط', count: voting, tab: 'executive_voting', color: '#5856d6' })
-  if (fxPending > 0) items.push({ label: 'انتظار تأكيد المصارفة', count: fxPending, tab: 'fx_pending', color: 'var(--severity-red)' })
-  if (stalledCount > 0) items.push({ label: 'طلبات متوقفة > 48 ساعة', count: stalledCount, tab: 'active', color: 'var(--severity-amber)' })
-  return items
-})
-
 const requestsEmptyState = computed(() => buildRequestsEmptyState({
   role: user.value?.role,
-  tab: filter.value,
   hasAnyRequests: store.requests.length > 0,
-  search: searchQuery.value,
-  bankFilter: bankFilter.value,
-  dateRangeFilter: dateRangeFilter.value,
-  createdByMeOnly: createdByMeOnly.value,
-  hideOthers: hideOthers.value,
-  advancedFilterCount: advancedFilterCount.value,
+  hasActiveFilters: hasActiveFilters.value,
 }))
-
-const directorSmartSummary = computed(() => {
-  if (!isDirector.value) return []
-  const reqs = filteredRequests.value
-  const activeVoting = reqs.filter(r => r.status === RequestStatus.EXECUTIVE_VOTING_OPEN).length
-  const pendingTieBreak = reqs.filter(r => r.status === RequestStatus.EXECUTIVE_VOTING_OPEN && r.is_tie).length
-  const pendingFx = reqs.filter(r => r.status === RequestStatus.EXECUTIVE_APPROVED).length
-
-  const now = Date.now()
-  const weekAgo = now - (7 * 24 * 60 * 60 * 1000)
-  const finalizedThisWeek = reqs.filter((r) => {
-    if (!(r.status === RequestStatus.EXECUTIVE_APPROVED || r.status === RequestStatus.EXECUTIVE_REJECTED)) return false
-    const updated = new Date(r.updated_at).getTime()
-    return !Number.isNaN(updated) && updated >= weekAgo
-  }).length
-
-  return [
-    { key: 'active_voting', label: 'جلسات نشطة', count: activeVoting, color: '#5856d6' },
-    { key: 'tie_break', label: 'تعادل يحتاج حسماً', count: pendingTieBreak, color: 'var(--severity-amber)' },
-    { key: 'fx_pending', label: 'بانتظار تأكيد المصارفة', count: pendingFx, color: 'var(--severity-amber)' },
-    { key: 'finalized', label: 'مُنهاة هذا الأسبوع', count: finalizedThisWeek, color: 'var(--severity-green)' },
-  ]
-})
-
-const selectedCount = ref(0)
-const dataTableRef = ref<{
-  clearSelection: () => void
-  getSelectedRequestIds: () => number[]
-} | null>(null)
-
-const exportColumns = computed(() => {
-  if (!user.value) return []
-  return buildRequestsExportColumns(user.value.role)
-})
-
-function openRequest(id: number) {
-  navigateTo(`/requests/${id}`)
-}
-
-function clearBulkSelection() {
-  dataTableRef.value?.clearSelection()
-}
-
-function buildExportFileName(suffix: string): string {
-  const stamp = new Date().toISOString().slice(0, 10)
-  return `requests-${suffix}-${stamp}`
-}
-
-function exportCurrentView() {
-  if (!filteredRequests.value.length || !exportColumns.value.length) return
-  exportToCSV(filteredRequests.value, exportColumns.value, buildExportFileName('filtered'))
-}
-
-function exportSelectedRows() {
-  const selectedIds = dataTableRef.value?.getSelectedRequestIds() ?? []
-  const rows = selectedIds.length
-    ? filteredRequests.value.filter(req => selectedIds.includes(req.id))
-    : filteredRequests.value
-  if (!rows.length || !exportColumns.value.length) return
-  exportToCSV(rows, exportColumns.value, buildExportFileName('selected'))
-}
-
-// Soft-migration for deep-links built before the Story 12.2 bucket rename.
-// Old keys point at the closest current bucket so a bookmarked URL still lands
-// somewhere meaningful instead of silently collapsing to "all".
-const LEGACY_TAB_ALIASES: Record<string, string> = {
-  bank_stage: 'active',
-  support_stage: 'active',
-  swift_stage: 'active',
-  voting_stage: 'executive_voting',
-}
-
-function syncTabFromRoute() {
-  // Wait for ROLE_BUCKETS to resolve so a deep-link like ?tab=needs_attention
-  // is not silently dropped to "all" on the first render before tabOptions
-  // populates.
-  if (tabKeys.value.size === 0) return
-  const raw = typeof route.query.tab === 'string' ? route.query.tab : 'all'
-  const resolved = tabKeys.value.has(raw) ? raw : LEGACY_TAB_ALIASES[raw] ?? 'all'
-  if (filter.value !== resolved) filter.value = resolved
-}
-
-watch([() => route.query.tab, tabKeys], syncTabFromRoute, { immediate: true })
-
-watch(filter, (tab) => {
-  const nextQuery = { ...route.query }
-  if (tab === 'all') delete nextQuery.tab
-  else nextQuery.tab = tab
-  // Skip the replace if the query is already in sync — otherwise the route
-  // → filter → route watchers chase each other on every navigation.
-  const currentTab = typeof route.query.tab === 'string' ? route.query.tab : undefined
-  const desiredTab = tab === 'all' ? undefined : tab
-  if (currentTab === desiredTab) return
-  router.replace({ query: nextQuery })
-})
-
-// Sync created-by-me toggle with ?my=1 query param
-watch(() => route.query.my, (val) => {
-  createdByMeOnly.value = val === '1'
-}, { immediate: true })
-watch(createdByMeOnly, (val) => {
-  const nextQuery = { ...route.query }
-  if (val) nextQuery.my = '1'
-  else delete nextQuery.my
-  if ((route.query.my === '1') === val) return
-  router.replace({ query: nextQuery })
-})
-
-// Sync hide-others toggle (Support Committee) with ?hide_others=1 query param
-watch(() => route.query.hide_others, (val) => {
-  hideOthers.value = val === '1'
-}, { immediate: true })
-watch(hideOthers, (val) => {
-  const nextQuery = { ...route.query }
-  if (val) nextQuery.hide_others = '1'
-  else delete nextQuery.hide_others
-  if ((route.query.hide_others === '1') === val) return
-  router.replace({ query: nextQuery })
-})
-
-watch(selectedCount, async (count) => {
-  if (count > 0) {
-    searchInputRef.value = null
-    return
-  }
-  await nextTick()
-  syncSearchInputRef()
-})
 </script>
 
 <template>
@@ -464,12 +337,31 @@ watch(selectedCount, async (count) => {
       title="طلبات تمويل الواردات"
       :subtitle="isBankScoped ? 'طلبات جهتك فقط' : 'جميع الطلبات المقدمة عبر المنصة مع حالاتها ومراحل المعالجة'"
       :breadcrumbs="[{ label: 'الرئيسية', to: '/' }, { label: 'الطلبات' }]"
-    />
+    >
+      <template #actions>
+        <Button
+          variant="outline"
+          size="sm"
+          class="h-8"
+          :disabled="store.loadingList"
+          @click="store.loadRequests({ per_page: 200 })"
+        >
+          <RefreshCw class="h-4 w-4" :class="{ 'animate-spin': store.loadingList }" />
+          <span class="hidden lg:inline">تحديث</span>
+        </Button>
+        <Button v-if="canCreateRequest" as="a" href="/requests/new" size="sm" class="h-8">
+          <FilePlus2 class="h-4 w-4" />
+          <span class="hidden lg:inline">طلب جديد</span>
+        </Button>
+      </template>
+    </PageHeader>
 
     <!-- BANK_ADMIN: read-only oversight chip -->
     <div v-if="isBankAdmin" class="mb-4">
       <Badge variant="outline" class="gap-1 rounded-full px-3 py-1 text-xs font-medium text-muted-foreground border-border">
-        <svg class="size-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+        <svg class="size-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+        </svg>
         إدارة وعرض فقط
       </Badge>
     </div>
@@ -484,10 +376,10 @@ watch(selectedCount, async (count) => {
     >
       <button
         v-for="item in cbySmartSummary"
-        :key="item.tab"
+        :key="item.label"
         class="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-sm font-medium transition-colors hover:bg-muted/60 cursor-pointer"
         :style="{ borderColor: item.color, color: item.color }"
-        @click="filter = item.tab"
+        @click="filterBySmartSummary(item.statuses)"
       >
         <span class="font-bold">{{ item.count }}</span>
         {{ item.label }}
@@ -507,7 +399,7 @@ watch(selectedCount, async (count) => {
         :key="item.key"
         class="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-sm font-medium transition-colors hover:bg-muted/60 cursor-pointer"
         :style="{ borderColor: item.color, color: item.color }"
-        @click="filter = item.key"
+        @click="filterBySmartSummary(item.statuses)"
       >
         <span class="font-bold">{{ item.count }}</span>
         {{ item.label }}
@@ -524,309 +416,122 @@ watch(selectedCount, async (count) => {
       </AlertAction>
     </Alert>
 
-    <Tabs v-model="filter"  class="flex w-full flex-col gap-4">
-      <!-- Row 1: tabs (left) + page actions (right) -->
-      <div class="flex items-center justify-between gap-4">
-        <!-- Mobile: select dropdown -->
-        <Label for="stage-selector" class="sr-only">المرحلة</Label>
-        <Select v-model="filter">
-          <SelectTrigger
-            id="stage-selector"
-            class="w-fit md:hidden"
-            size="sm"
-          >
-            <SelectValue placeholder="اختر المرحلة" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem v-for="tab in tabOptions" :key="tab.key" :value="tab.key">
-              {{ tab.label }} ({{ tab.count }})
-            </SelectItem>
-          </SelectContent>
-        </Select>
+    <!-- KPI Cards — clicking sets a column filter -->
+    <div class="mb-6">
+      <MetricGrid :columns="4">
+        <MetricCard
+          label="إجمالي الطلبات"
+          :value="requestKpis.total"
+          :icon="ClipboardList"
+          description="المعروض حسب الفلاتر"
+          :active="columnFilters.length === 0"
+          @click="table.resetColumnFilters()"
+        />
+        <MetricCard
+          label="معتمدة"
+          :value="requestKpis.approved"
+          :icon="CheckCircle2"
+          tone="success"
+          :description="`معدل اعتماد ${requestKpis.approvalRate}%`"
+          :active="columnFilters.some(f => f.id === 'status' && Array.isArray(f.value) && f.value.includes('COMPLETED'))"
+          @click="filterByApproved"
+        />
+        <MetricCard
+          label="قيد المعالجة"
+          :value="requestKpis.pending"
+          :icon="Lock"
+          tone="warning"
+          description="بانتظار الإجراء"
+          :active="columnFilters.some(f => f.id === 'status' && Array.isArray(f.value) && f.value.includes('SUBMITTED'))"
+          @click="filterByPending"
+        />
+        <MetricCard
+          label="مرفوضة"
+          :value="requestKpis.rejected"
+          :icon="AlertCircle"
+          tone="danger"
+          description="تحتاج متابعة"
+          :active="columnFilters.some(f => f.id === 'status' && Array.isArray(f.value) && f.value.includes('BANK_REJECTED'))"
+          @click="filterByRejected"
+        />
+      </MetricGrid>
+    </div>
 
-        <!-- Desktop: tab pills -->
-        <TabsList class="hidden h-auto gap-1 rounded-full bg-muted p-1 md:flex">
-          <TabsTrigger
-            v-for="tab in tabOptions"
-            :key="tab.key"
-            :value="tab.key"
-            class="h-7 gap-1.5 rounded-full px-3 text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm"
-          >
-            {{ tab.label }}
-            <Badge
-              variant="secondary"
-              class="h-5 min-w-5 rounded-full px-1 text-xs"
-            >
-              {{ tab.count }}
-            </Badge>
-          </TabsTrigger>
-        </TabsList>
-
-        <!-- Export + New request -->
-        <div class="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            class="h-8"
-            :disabled="store.loadingList"
-            @click="store.loadRequests({ per_page: 200 })"
-          >
-            <RefreshCw class="h-4 w-4" :class="{ 'animate-spin': store.loadingList }" />
-            <span class="hidden lg:inline">تحديث</span>
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            class="h-8"
-            :disabled="filteredRequests.length === 0"
-            @click="exportCurrentView"
-          >
-            <Download class="h-4 w-4" />
-            <span class="hidden lg:inline">تصدير</span>
-          </Button>
-          <Button v-if="canCreateRequest" as="a" href="/requests/new" size="sm" class="h-8">
-            <FilePlus2 class="h-4 w-4" />
-            <span class="hidden lg:inline">طلب جديد</span>
-          </Button>
-        </div>
-      </div>
-
-      <!-- Row 2: bulk toolbar (when selected) OR search + columns (default) -->
-      <div v-if="selectedCount > 0" class="flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2">
-        <span class="text-sm font-medium text-primary">{{ selectedCount }} محدد</span>
-        <div class="mx-2 h-4 w-px bg-border" />
-        <Button variant="outline" size="sm" class="h-7 gap-1.5 text-xs" @click="exportSelectedRows">
-          <Download class="h-3.5 w-3.5" />
-          تصدير
-        </Button>
-        <Button variant="outline" size="sm" class="h-7 gap-1.5 text-xs">
-          <Printer class="h-3.5 w-3.5" />
-          طباعة
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          class="ms-auto h-7 gap-1 text-xs text-muted-foreground"
-          @click="clearBulkSelection"
-        >
-          <X class="h-3.5 w-3.5" />
-          إلغاء التحديد
-        </Button>
-      </div>
-
-      <div v-else class="flex flex-wrap items-center gap-2">
-        <div ref="searchInputContainerRef" class="relative min-w-[220px] flex-1">
-          <Search class="absolute inset-e-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            :model-value="searchQuery"
-            placeholder="بحث برقم الطلب، التاجر، أو رقم الفاتورة..."
-            class="h-8 rounded-md pe-9 text-sm"
-            @update:model-value="handleSearchUpdate"
-          />
-        </div>
-
-        <Select v-if="showBankFilter" v-model="bankFilter">
-          <SelectTrigger class="h-8 w-full rounded-md text-sm sm:w-48">
-            <SelectValue placeholder="جميع البنوك" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">جميع البنوك</SelectItem>
-            <SelectItem v-for="bank in banks" :key="bank.id" :value="String(bank.id)">
-              {{ bank.name_ar }}
-            </SelectItem>
-          </SelectContent>
-        </Select>
-
-        <Select v-model="dateRangeFilter">
-          <SelectTrigger class="h-8 w-full rounded-md text-sm sm:w-44">
-            <SelectValue placeholder="كل الفترات" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">كل الفترات</SelectItem>
-            <SelectItem value="today">اليوم</SelectItem>
-            <SelectItem value="7d">آخر 7 أيام</SelectItem>
-            <SelectItem value="30d">آخر 30 يوم</SelectItem>
-            <SelectItem value="90d">آخر 90 يوم</SelectItem>
-          </SelectContent>
-        </Select>
-
-        <!-- BANK_REVIEWER: Created-by-me toggle -->
-        <Button
-          v-if="isBankReviewer"
-          :variant="createdByMeOnly ? 'default' : 'outline'"
-          size="sm"
-          class="h-8 gap-1.5"
-          :aria-pressed="createdByMeOnly"
-          @click="createdByMeOnly = !createdByMeOnly"
-        >
-          <User class="h-4 w-4" />
-          <span class="hidden lg:inline">طلباتي فقط</span>
-        </Button>
-
-        <!-- SUPPORT_COMMITTEE: Hide-claimed-by-others toggle -->
-        <Button
-          v-if="isSupportCommittee"
-          :variant="hideOthers ? 'default' : 'outline'"
-          size="sm"
-          class="h-8 gap-1.5"
-          :aria-pressed="hideOthers"
-          data-testid="hide-others-toggle"
-          @click="hideOthers = !hideOthers"
-        >
-          <User class="h-4 w-4" />
-          <span class="hidden lg:inline">إخفاء المحجوزة</span>
-        </Button>
-
-        <!-- CBY Admin: advanced filters -->
-        <Button
-          v-if="isCbyAdmin"
-          :variant="advancedFilterCount > 0 ? 'default' : 'outline'"
-          size="sm"
-          class="h-8 gap-1.5"
-          @click="advancedFiltersOpen = true"
-        >
-          <SlidersHorizontal class="h-4 w-4" />
-          <span class="hidden lg:inline">فلاتر متقدمة</span>
-          <Badge v-if="advancedFilterCount > 0" variant="secondary" class="h-4 min-w-4 rounded-full px-1 text-[10px]">
-            {{ advancedFilterCount }}
-          </Badge>
-        </Button>
-
-      </div>
-
-      <!-- Table -->
-      <RequestsDataTable
-        v-if="user"
-        ref="dataTableRef"
+    <!-- Table -->
+    <div class="relative flex flex-col gap-4">
+      <DataTable
         :data="filteredRequests"
+        :columns="columns"
         :loading="store.loadingList"
-        :no-data="!store.loadingList && store.requests.length === 0"
-        :empty-state="requestsEmptyState"
-        :role="user.role"
-        @row-click="openRequest"
-        @preview-click="openPreview"
-        @update:selected-count="count => selectedCount = count"
-      />
-    </Tabs>
-
-    <!-- CBY Admin: Advanced Filters Drawer -->
-    <Sheet v-if="isCbyAdmin" v-model:open="advancedFiltersOpen" :modal="true">
-      <SheetContent side="right" class="w-[360px] sm:w-[400px]">
-        <SheetHeader>
-          <SheetTitle>فلاتر متقدمة</SheetTitle>
-          <SheetDescription>تصفية سجل الطلبات الوطني</SheetDescription>
-        </SheetHeader>
-
-        <div class="grid flex-1 auto-rows-min gap-5 px-1 sm:px-2">
-          <div class="flex flex-col gap-2">
-            <Label>البنك</Label>
-            <Select v-model="advFilters.bank">
-              <SelectTrigger class="w-full">
-                <SelectValue placeholder="جميع البنوك" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">جميع البنوك</SelectItem>
-                <SelectItem v-for="bank in banks" :key="bank.id" :value="String(bank.id)">
-                  {{ bank.name_ar }}
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div class="flex flex-col gap-2">
-            <Label>مرحلة سير العمل</Label>
-            <Select v-model="advFilters.stage">
-              <SelectTrigger class="w-full">
-                <SelectValue placeholder="جميع المراحل" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">جميع المراحل</SelectItem>
-                <SelectItem value="DATA_ENTRY">إدخال البيانات</SelectItem>
-                <SelectItem value="BANK_REVIEWER">مراجعة البنك</SelectItem>
-                <SelectItem value="SUPPORT_COMMITTEE">لجنة المساندة</SelectItem>
-                <SelectItem value="SWIFT_OFFICER">ضابط SWIFT</SelectItem>
-                <SelectItem value="EXECUTIVE_MEMBER">اللجنة التنفيذية</SelectItem>
-                <SelectItem value="COMMITTEE_DIRECTOR">مدير اللجنة</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div class="flex flex-col gap-2">
-            <Label>حالة SLA</Label>
-            <Select v-model="advFilters.sla">
-              <SelectTrigger class="w-full">
-                <SelectValue placeholder="جميع الحالات" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">جميع الحالات</SelectItem>
-                <SelectItem value="breach">انتهاك SLA (&gt;120 ساعة)</SelectItem>
-                <SelectItem value="risk">خطر SLA (72-120 ساعة)</SelectItem>
-                <SelectItem value="ok">ضمن SLA (&lt;72 ساعة)</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div class="flex flex-col gap-2">
-            <Label>حالة التصويت</Label>
-            <Select v-model="advFilters.voting">
-              <SelectTrigger class="w-full">
-                <SelectValue placeholder="الكل" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">الكل</SelectItem>
-                <SelectItem value="active">تصويت نشط</SelectItem>
-                <SelectItem value="none">بدون تصويت</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div class="flex flex-col gap-2">
-            <Label>حالة المصارفة</Label>
-            <Select v-model="advFilters.fx">
-              <SelectTrigger class="w-full">
-                <SelectValue placeholder="الكل" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">الكل</SelectItem>
-                <SelectItem value="uploaded">مرفوع</SelectItem>
-                <SelectItem value="pending">لم يرفع</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div class="flex items-center gap-3 rounded-lg border px-3 py-2.5">
-            <Checkbox
-              id="high-value-toggle"
-              :checked="advFilters.high_value"
-              @update:checked="(checked: boolean | 'indeterminate') => advFilters.high_value = checked === true"
-            />
-            <Label for="high-value-toggle" class="cursor-pointer text-sm">قيمة عالية فقط (≥ 1,000,000)</Label>
-          </div>
-        </div>
-
-        <SheetFooter class="mt-6">
-          <Button variant="outline" class="h-10" @click="clearAdvancedFilters">
-            <X class="me-1.5 h-4 w-4" />
-            مسح الفلاتر
-          </Button>
-          <SheetClose as-child>
-            <Button class="h-10">
-              <Filter class="me-1.5 h-4 w-4" />
-              تطبيق
-            </Button>
-          </SheetClose>
-          <SheetClose as-child>
-            <Button variant="outline" class="h-10">
-              إغلاق
-            </Button>
-          </SheetClose>
-        </SheetFooter>
-      </SheetContent>
-    </Sheet>
+        :column-filters="columnFilters"
+        :column-visibility="columnVisibility"
+        :row-selection="rowSelection"
+        @update:column-filters="(v) => columnFilters = v"
+        @update:column-visibility="(v) => columnVisibility = v"
+        @update:row-selection="(v) => rowSelection = v"
+        @row-click="(row) => openRequest((row as ImportRequest).id)"
+      >
+        <template #toolbar="{ table }">
+          <DataTableToolbar
+            :table="table"
+            search-placeholder="بحث برقم الطلب، التاجر، أو رقم الفاتورة..."
+            :has-filters="hasActiveFilters"
+            :selected-count="selectedCount"
+            @update:search="v => query = v"
+            @reset="handleReset"
+            @export-selected="exportSelectedRows"
+            @clear-selection="clearBulkSelection"
+          >
+            <template #filters>
+              <DataTableFacetedFilter
+                v-if="table.getColumn('status')"
+                :column="table.getColumn('status')!"
+                title="الحالة"
+                :options="statusFilterOptions"
+              />
+              <DataTableFacetedFilter
+                v-if="showBankFilter && table.getColumn('merchant') && bankFilterOptions.length > 0"
+                :column="table.getColumn('merchant')!"
+                title="البنك"
+                :options="bankFilterOptions"
+              />
+            </template>
+            <template #actions>
+              <DataTableViewOptions :table="table" :column-labels="REQUESTS_COLUMN_LABELS" />
+              <DataTableExport
+                :table="(table as any)"
+                :export-columns="(exportColumns as any)"
+                :filename="buildExportFilename()"
+                :formats="['csv', 'tsv', 'json', 'excel', 'pdf']"
+                :respect-column-visibility="true"
+              />
+            </template>
+          </DataTableToolbar>
+        </template>
+        <template #empty>
+          <Empty class="min-h-[280px] rounded-xl border border-dashed bg-muted/20">
+            <EmptyHeader>
+              <div class="flex size-12 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+                <SearchX class="size-5" />
+              </div>
+              <EmptyTitle>{{ requestsEmptyState?.title ?? 'لا توجد طلبات مطابقة' }}</EmptyTitle>
+            </EmptyHeader>
+            <EmptyContent>
+              <EmptyDescription>
+                {{ requestsEmptyState?.description ?? 'جرّب تغيير البحث أو الفلاتر لعرض الطلبات المتاحة.' }}
+              </EmptyDescription>
+            </EmptyContent>
+          </Empty>
+        </template>
+        <template #pagination="{ table }">
+          <DataTablePagination :table="table" />
+        </template>
+      </DataTable>
+    </div>
 
     <!-- Quick Preview Dialog — all roles, triggered by reference-number click -->
     <Dialog v-model:open="previewOpen">
-      <DialogContent v-if="previewRequest"  class="sm:max-w-lg">
+      <DialogContent v-if="previewRequest" class="sm:max-w-lg">
         <DialogHeader class="pb-2">
           <DialogTitle class="flex items-center gap-2 text-base">
             <span class="font-mono text-lg font-bold text-primary">{{ previewRequest.reference_number }}</span>
@@ -940,7 +645,7 @@ watch(selectedCount, async (count) => {
 
           <!-- BANK_REVIEWER: review action -->
           <Button
-            v-if="isBankReviewer"
+            v-if="user?.role === UserRole.BANK_REVIEWER"
             size="sm"
             class="bg-[var(--severity-green)] text-white hover:bg-[var(--severity-green)]/90"
             @click="navigateTo(`/requests/${previewRequest.id}`)"

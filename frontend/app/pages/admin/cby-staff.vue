@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import type { ColumnDef, VisibilityState } from '@tanstack/vue-table'
+import type { ColumnDef, ColumnFiltersState, VisibilityState } from '@tanstack/vue-table'
 import {
-  FlexRender,
   getCoreRowModel,
+  getFacetedRowModel,
+  getFacetedUniqueValues,
   getFilteredRowModel,
   getPaginationRowModel,
   getSortedRowModel,
@@ -10,8 +11,7 @@ import {
 } from '@tanstack/vue-table'
 import { h } from 'vue'
 import {
-  AlertCircle, AlertTriangle, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
-  Download, ExternalLink, MoreHorizontal, Plus, Printer, RefreshCw, Search, SearchX, ShieldCheck, UserCog, X,
+  AlertCircle, AlertTriangle, ExternalLink, MoreHorizontal, Plus, RefreshCw, SearchX, ShieldCheck, UserCog,
 } from 'lucide-vue-next'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import PageHeader from '@/components/layout/PageHeader.vue'
@@ -21,22 +21,14 @@ import type { User } from '@/types/models'
 import { useUsers, type CreateUserPayload, type UpdateUserPayload } from '@/composables/useUsers'
 import { useBanks } from '@/composables/useBanks'
 import { useTableExport } from '@/composables/useTableExport'
-import { useTableKeyboard } from '@/composables/useTableKeyboard'
 import type { Bank } from '@/types/models'
 import { useAuthStore } from '@/stores/auth.store'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Input } from '@/components/ui/input'
 import { Card } from '@/components/ui/card'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Label } from '@/components/ui/label'
+import { Input } from '@/components/ui/input'
 import {
   Select,
   SelectContent,
@@ -44,7 +36,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Label } from '@/components/ui/label'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -77,9 +68,17 @@ import {
   EmptyHeader,
   EmptyTitle,
 } from '@/components/ui/empty'
-import { Skeleton } from '@/components/ui/skeleton'
 import { Checkbox } from '@/components/ui/checkbox'
-import { DataTableViewOptions } from '@/components/ui/data-table'
+import {
+  DataTable,
+  DataTableExport,
+  DataTableFacetedFilter,
+  DataTablePagination,
+  DataTableToolbar,
+  DataTableViewOptions,
+} from '@/components/ui/data-table'
+import MetricCard from '@/components/shared/dashboard/MetricCard.vue'
+import MetricGrid from '@/components/shared/dashboard/MetricGrid.vue'
 
 definePageMeta({
   middleware: ['auth', 'role'],
@@ -103,10 +102,7 @@ const { exportToCSV } = useTableExport()
 const { notify, error: toastError } = useToast()
 
 const query = ref('')
-const searchInputRef = ref<HTMLInputElement | null>(null)
-const roleFilter = ref<'all' | UserRole>('all')
-const filterStatus = ref<'all' | 'active' | 'inactive'>('all')
-const filterBank = ref<'all' | string>('all')
+const columnFilters = ref<ColumnFiltersState>([])
 const createOpen = ref(false)
 const editing = ref<User | null>(null)
 const viewing = ref<User | null>(null)
@@ -116,6 +112,7 @@ const fetchError = ref(false)
 const staffUsers = ref<User[]>([])
 const deactivateTarget = ref<User | null>(null)
 const deactivateBlocked = ref<string | null>(null)
+const banksData = ref<Bank[]>([])
 
 const form = reactive<StaffForm>({
   name: '',
@@ -156,15 +153,14 @@ async function loadStaff() {
 
 onMounted(loadStaff)
 
-const banksData = ref<Bank[]>([])
-
+// Pre-filter by search query — search column filtering handled here,
+// faceted column filters handled by TanStack
 const filtered = computed(() => {
   const q = query.value.trim().toLowerCase()
-  return staffUsers.value
-    .filter(u => roleFilter.value === 'all' || u.role === roleFilter.value)
-    .filter(u => filterStatus.value === 'all' || (filterStatus.value === 'active' ? u.is_active : !u.is_active))
-    .filter(u => filterBank.value === 'all' || String(u.bank_id) === filterBank.value)
-    .filter(u => !q || u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q))
+  if (!q) return staffUsers.value
+  return staffUsers.value.filter(u =>
+    u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q),
+  )
 })
 
 const stats = computed(() => ({
@@ -187,11 +183,9 @@ const columnVisibility = ref<VisibilityState>({
 })
 const selectedCount = computed(() => Object.values(rowSelection.value).filter(Boolean).length)
 
-useTableKeyboard(searchInputRef, {
-  onEscape: () => {
-    query.value = ''
-  },
-})
+const hasActiveFilters = computed(() =>
+  columnFilters.value.length > 0 || query.value.trim().length > 0,
+)
 
 function clearSelection() {
   table.resetRowSelection()
@@ -284,12 +278,10 @@ async function saveStaff() {
 function requestToggleActive(target: User) {
   if (!currentUser.value || target.id === currentUser.value.id) return
   if (target.is_active) {
-    // Guard: block deactivating last active Director
     if (target.role === UserRole.COMMITTEE_DIRECTOR && activeDirectors.value.length <= 1) {
       deactivateBlocked.value = 'لا يمكن إلغاء تفعيل المدير الوحيد النشط. يجب أن يكون هناك مدير لجنة نشط واحد على الأقل في النظام في جميع الأوقات.'
       return
     }
-    // Guard: block deactivating last active Executive Member (would prevent quorum)
     if (target.role === UserRole.EXECUTIVE_MEMBER && activeExecutiveMembers.value.length <= 1) {
       deactivateBlocked.value = 'لا يمكن إلغاء تفعيل العضو التنفيذي الوحيد النشط. يجب الإبقاء على أعضاء تصويت كافين لضمان النصاب القانوني.'
       return
@@ -388,11 +380,13 @@ const columns: ColumnDef<User>[] = [
   {
     accessorKey: 'role',
     header: 'الدور',
+    filterFn: (row, _id, value: string[]) => value.includes(row.original.role),
     cell: ({ row }) => h(Badge, { variant: 'secondary' }, () => ROLE_LABELS[row.original.role]),
   },
   {
     id: 'bank',
     header: 'الجهة',
+    filterFn: (row, _id, value: string[]) => value.includes(String(row.original.bank_id)),
     cell: ({ row }) => {
       const name = resolveBankName(row.original)
       return h('span', { class: 'text-sm text-muted-foreground' }, name || '—')
@@ -410,6 +404,7 @@ const columns: ColumnDef<User>[] = [
   {
     accessorKey: 'is_active',
     header: 'الحالة',
+    filterFn: (row, _id, value: string[]) => value.includes(String(row.original.is_active)),
     cell: ({ row }) => activeStatusCell(row.original.is_active),
   },
   {
@@ -474,6 +469,40 @@ const CBY_STAFF_COLUMN_LABELS: Record<string, string> = {
   is_active: 'الحالة',
 }
 
+const roleFilterOptions = STAFF_ROLES.map(r => ({ label: ROLE_LABELS[r], value: r }))
+const statusFilterOptions = [
+  { label: 'نشط', value: 'true' },
+  { label: 'غير نشط', value: 'false' },
+]
+const bankFilterOptions = computed(() =>
+  banksData.value.map(b => ({ label: b.name_ar || b.name_en, value: String(b.id) })),
+)
+
+const exportCols = [
+  { key: 'name', label: 'الاسم' },
+  { key: 'email', label: 'البريد الإلكتروني' },
+  {
+    key: 'role',
+    label: 'الدور',
+    format: (_value: unknown, row: User) => ROLE_LABELS[row.role] ?? row.role,
+  },
+  {
+    key: 'bank_id',
+    label: 'الجهة',
+    format: (_value: unknown, row: User) => resolveBankName(row),
+  },
+  {
+    key: 'is_active',
+    label: 'الحالة',
+    format: (_value: unknown, row: User) => row.is_active ? 'نشط' : 'غير نشط',
+  },
+  {
+    key: 'last_login_at',
+    label: 'آخر ظهور',
+    format: (_value: unknown, row: User) => row.last_login_at ? new Date(row.last_login_at).toLocaleDateString('ar-EG') : '—',
+  },
+]
+
 const table = useVueTable({
   get data() { return filtered.value },
   columns,
@@ -481,60 +510,39 @@ const table = useVueTable({
   getPaginationRowModel: getPaginationRowModel(),
   getSortedRowModel: getSortedRowModel(),
   getFilteredRowModel: getFilteredRowModel(),
+  getFacetedRowModel: getFacetedRowModel(),
+  getFacetedUniqueValues: getFacetedUniqueValues(),
+  onColumnFiltersChange: updater =>
+    (columnFilters.value = typeof updater === 'function' ? updater(columnFilters.value) : updater),
   onRowSelectionChange: updater =>
-    rowSelection.value = typeof updater === 'function' ? updater(rowSelection.value) : updater,
+    (rowSelection.value = typeof updater === 'function' ? updater(rowSelection.value) : updater),
   onColumnVisibilityChange: updater =>
-    columnVisibility.value = typeof updater === 'function' ? updater(columnVisibility.value) : updater,
+    (columnVisibility.value = typeof updater === 'function' ? updater(columnVisibility.value) : updater),
   state: {
+    get columnFilters() { return columnFilters.value },
     get rowSelection() { return rowSelection.value },
     get columnVisibility() { return columnVisibility.value },
   },
   initialState: { pagination: { pageSize: 20 } },
 })
 
-const selectedUsers = computed(() => table.getSelectedRowModel().rows.map(row => row.original))
-
-function buildExportFileName(suffix: string): string {
-  const stamp = new Date().toISOString().slice(0, 10)
-  return `cby-staff-${suffix}-${stamp}`
+function handleReset() {
+  query.value = ''
+  table.resetColumnFilters()
 }
 
-function exportColumns() {
-  return [
-    { key: 'name', label: 'الاسم' },
-    { key: 'email', label: 'البريد الإلكتروني' },
-    {
-      key: 'role',
-      label: 'الدور',
-      format: (_value: unknown, row: User) => ROLE_LABELS[row.role] ?? row.role,
-    },
-    {
-      key: 'bank_id',
-      label: 'الجهة',
-      format: (_value: unknown, row: User) => resolveBankName(row),
-    },
-    {
-      key: 'is_active',
-      label: 'الحالة',
-      format: (_value: unknown, row: User) => row.is_active ? 'نشط' : 'غير نشط',
-    },
-    {
-      key: 'last_login_at',
-      label: 'آخر ظهور',
-      format: (_value: unknown, row: User) => row.last_login_at ? new Date(row.last_login_at).toLocaleDateString('ar-EG') : '—',
-    },
-  ] as const
+function buildExportFilename(): string {
+  return `cby-staff-${new Date().toISOString().slice(0, 10)}`
 }
 
-function exportCurrentUsers() {
-  if (!filtered.value.length) return
-  exportToCSV(filtered.value as unknown as Record<string, unknown>[], exportColumns() as any, buildExportFileName('filtered'))
-}
-
-function exportSelectedUsers() {
-  const rows = selectedUsers.value.length > 0 ? selectedUsers.value : filtered.value
+function exportSelectedRows() {
+  const rows = table.getFilteredSelectedRowModel().rows.map(row => row.original)
   if (!rows.length) return
-  exportToCSV(rows as unknown as Record<string, unknown>[], exportColumns() as any, buildExportFileName('selected'))
+  exportToCSV(
+    rows as unknown as Record<string, unknown>[],
+    exportCols as any,
+    `${buildExportFilename()}-selected`,
+  )
 }
 </script>
 
@@ -553,120 +561,33 @@ function exportSelectedUsers() {
       </template>
     </PageHeader>
 
-    <!-- KPI Cards -->
-    <div class="mb-6 grid grid-cols-3 gap-3">
-      <Card class="border-0 p-4 shadow">
-        <div class="grid h-9 w-9 place-items-center rounded-lg bg-primary/10 text-primary">
-          <UserCog class="h-4 w-4" />
-        </div>
-        <div class="mt-2 text-2xl font-bold tabular-nums">{{ stats.total }}</div>
-        <div class="text-xs text-muted-foreground">إجمالي المستخدمين</div>
-      </Card>
-      <Card class="border-0 p-4 shadow">
-        <div class="grid h-9 w-9 place-items-center rounded-lg bg-green-50/10 text-green-700">
-          <ShieldCheck class="h-4 w-4" />
-        </div>
-        <div class="mt-2 text-2xl font-bold tabular-nums">{{ stats.active }}</div>
-        <div class="text-xs text-muted-foreground">نشط</div>
-      </Card>
-      <Card class="border-0 p-4 shadow">
-        <div class="grid h-9 w-9 place-items-center rounded-lg bg-red-700/10 text-red-700">
-          <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-          </svg>
-        </div>
-        <div class="mt-2 text-2xl font-bold tabular-nums">{{ stats.inactive }}</div>
-        <div class="text-xs text-muted-foreground">غير نشط</div>
-      </Card>
-    </div>
-
-    <!-- Toolbar: bulk (when selected) OR search + role filter (default) -->
-    <div v-if="selectedCount > 0" class="mb-4 flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2">
-      <span class="text-sm font-medium text-primary">{{ selectedCount }} محدد</span>
-      <div class="mx-2 h-4 w-px bg-border" />
-      <Button variant="outline" size="sm" class="h-7 gap-1.5 text-xs" @click="exportSelectedUsers">
-        <Download class="h-3.5 w-3.5" />
-        تصدير
-      </Button>
-      <Button variant="outline" size="sm" class="h-7 gap-1.5 text-xs">
-        <Printer class="h-3.5 w-3.5" />
-        طباعة
-      </Button>
-      <Button
-        variant="ghost"
-        size="sm"
-        class="ms-auto h-7 gap-1 text-xs text-muted-foreground"
-        @click="clearSelection"
-      >
-        <X class="h-3.5 w-3.5" />
-        إلغاء التحديد
-      </Button>
-    </div>
-
-    <div v-else class="mb-4 flex flex-wrap items-center gap-2">
-      <div class="relative min-w-[220px] flex-1">
-        <Search class="absolute inset-e-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          ref="searchInputRef"
-          v-model="query"
-          class="h-8 rounded-md pe-9 text-sm"
-          placeholder="بحث بالاسم أو البريد..."
+    <!-- KPI Cards — clicking sets column filters -->
+    <div class="mb-6">
+      <MetricGrid :columns="3">
+        <MetricCard
+          label="إجمالي المستخدمين"
+          :value="stats.total"
+          :icon="UserCog"
+          :active="columnFilters.length === 0"
+          @click="table.resetColumnFilters()"
         />
-      </div>
-      <div data-testid="filter-role">
-        <Select v-model="roleFilter">
-          <SelectTrigger class="h-8 w-full rounded-md text-sm sm:w-56">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">كل الأدوار</SelectItem>
-            <SelectItem v-for="r in STAFF_ROLES" :key="r" :value="r">
-              {{ ROLE_LABELS[r] }}
-            </SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-      <div data-testid="filter-bank">
-        <Select v-model="filterBank">
-          <SelectTrigger class="h-8 w-full rounded-md text-sm sm:w-48">
-            <SelectValue placeholder="كل الجهات" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">كل الجهات</SelectItem>
-            <SelectItem v-for="b in banksData" :key="b.id" :value="String(b.id)">
-              {{ b.name_ar }}
-            </SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-      <div data-testid="filter-status">
-        <Select v-model="filterStatus">
-          <SelectTrigger class="h-8 w-full rounded-md text-sm sm:w-40">
-            <SelectValue placeholder="كل الحالات" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">كل الحالات</SelectItem>
-            <SelectItem value="active">نشط</SelectItem>
-            <SelectItem value="inactive">غير نشط</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      <Button
-        variant="outline"
-        size="sm"
-        class="ms-auto h-8 gap-1.5"
-        :disabled="filtered.length === 0"
-        @click="exportCurrentUsers"
-      >
-        <Download class="h-4 w-4" />
-        تصدير
-      </Button>
-
-      <DataTableViewOptions
-        :table="table"
-        :column-labels="CBY_STAFF_COLUMN_LABELS"
-      />
+        <MetricCard
+          label="نشط"
+          :value="stats.active"
+          :icon="ShieldCheck"
+          tone="success"
+          :active="columnFilters.some(f => f.id === 'is_active' && Array.isArray(f.value) && f.value.includes('true') && f.value.length === 1)"
+          @click="table.getColumn('is_active')?.setFilterValue(['true'])"
+        />
+        <MetricCard
+          label="غير نشط"
+          :value="stats.inactive"
+          :icon="AlertCircle"
+          tone="danger"
+          :active="columnFilters.some(f => f.id === 'is_active' && Array.isArray(f.value) && f.value.includes('false') && f.value.length === 1)"
+          @click="table.getColumn('is_active')?.setFilterValue(['false'])"
+        />
+      </MetricGrid>
     </div>
 
     <!-- Fetch error state -->
@@ -684,106 +605,87 @@ function exportSelectedUsers() {
 
     <!-- Table -->
     <div v-if="!fetchError" class="relative flex flex-col gap-4">
-      <div v-if="loading || table.getRowModel().rows.length > 0" class="rounded-lg border overflow-x-auto">
-        <Table class="min-w-max w-full">
-          <TableHeader class="bg-muted sticky top-0 z-30">
-            <TableRow
-              v-for="headerGroup in table.getHeaderGroups()"
-              :key="headerGroup.id"
-              class="hover:bg-transparent"
-            >
-              <TableHead
-                v-for="header in headerGroup.headers"
-                :key="header.id"
-                class="h-10 text-sm font-medium text-foreground"
-                :class="header.column.id === 'actions'
-                  ? 'sticky end-0 z-20 bg-muted w-12 px-2'
-                  : 'px-4'"
-              >
-                <FlexRender
-                  v-if="!header.isPlaceholder"
-                  :render="header.column.columnDef.header"
-                  :props="header.getContext()"
-                />
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-
-          <TableBody>
-            <template v-if="loading">
-              <TableRow v-for="i in 6" :key="`skel-${i}`">
-                <TableCell v-for="col in columns" :key="col.id ?? (col as any).accessorKey" class="px-4 py-3">
-                  <Skeleton class="h-4 w-full" />
-                </TableCell>
-              </TableRow>
-            </template>
-
-            <template v-else>
-              <TableRow
-                v-for="row in table.getRowModel().rows"
-                :key="row.id"
-                class="group/row transition-colors hover:bg-muted/30"
-              >
-                <TableCell
-                  v-for="cell in row.getVisibleCells()"
-                  :key="cell.id"
-                  class="py-3 align-middle"
-                  :class="cell.column.id === 'actions'
-                    ? 'sticky end-0 z-10 bg-background w-12 px-2 group-hover/row:bg-muted/30'
-                    : 'px-4'"
-                >
-                  <FlexRender :render="cell.column.columnDef.cell" :props="cell.getContext()" />
-                </TableCell>
-              </TableRow>
-            </template>
-          </TableBody>
-        </Table>
-      </div>
-
-      <!-- Empty state (outside table) -->
-      <Empty
-        v-if="!loading && !table.getRowModel().rows.length"
-        data-empty-state-variant="cby-staff"
-        class="min-h-[280px] rounded-xl border border-dashed bg-muted/20"
+      <DataTable
+        :data="filtered"
+        :columns="columns"
+        :loading="loading"
+        :column-filters="columnFilters"
+        :column-visibility="columnVisibility"
+        :row-selection="rowSelection"
+        @update:column-filters="(v) => columnFilters = v"
+        @update:column-visibility="(v) => columnVisibility = v"
+        @update:row-selection="(v) => rowSelection = v"
+        row-class="group/row"
       >
-        <EmptyHeader>
-          <div class="flex size-12 items-center justify-center rounded-xl bg-muted text-muted-foreground">
-            <SearchX class="size-5" />
-          </div>
-          <EmptyTitle>
-            {{ staffUsers.length === 0 ? 'لا يوجد مستخدمون بعد' : 'لا توجد نتائج' }}
-          </EmptyTitle>
-        </EmptyHeader>
-        <EmptyContent>
-          <EmptyDescription>
-            {{ staffUsers.length === 0 ? 'ابدأ بإضافة مستخدم جديد باستخدام الزر أعلاه.' : 'جرّب تغيير البحث أو فلتر الدور.' }}
-          </EmptyDescription>
-        </EmptyContent>
-      </Empty>
-
-      <!-- Pagination -->
-      <div class="flex items-center justify-between px-2">
-        <p class="text-sm text-muted-foreground">{{ table.getFilteredSelectedRowModel().rows.length }} من {{ table.getFilteredRowModel().rows.length }} مستخدم محدد</p>
-        <div class="flex items-center gap-4">
-          <p class="text-sm font-medium whitespace-nowrap">
-            صفحة {{ table.getState().pagination.pageIndex + 1 }} من {{ table.getPageCount() }}
-          </p>
-          <div class="flex items-center gap-1">
-            <Button variant="outline" size="icon" class="hidden h-8 w-8 lg:flex" :disabled="!table.getCanPreviousPage()" @click="table.setPageIndex(0)">
-              <span class="sr-only">الصفحة الأولى</span><ChevronsRight class="h-4 w-4" />
-            </Button>
-            <Button variant="outline" size="icon" class="h-8 w-8" :disabled="!table.getCanPreviousPage()" @click="table.previousPage()">
-              <span class="sr-only">الصفحة السابقة</span><ChevronRight class="h-4 w-4" />
-            </Button>
-            <Button variant="outline" size="icon" class="h-8 w-8" :disabled="!table.getCanNextPage()" @click="table.nextPage()">
-              <span class="sr-only">الصفحة التالية</span><ChevronLeft class="h-4 w-4" />
-            </Button>
-            <Button variant="outline" size="icon" class="hidden h-8 w-8 lg:flex" :disabled="!table.getCanNextPage()" @click="table.setPageIndex(table.getPageCount() - 1)">
-              <span class="sr-only">الصفحة الأخيرة</span><ChevronsLeft class="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      </div>
+        <template #toolbar="{ table }">
+          <DataTableToolbar
+            :table="table"
+            search-placeholder="بحث بالاسم أو البريد..."
+            :has-filters="hasActiveFilters"
+            :selected-count="selectedCount"
+            @update:search="v => query = v"
+            @reset="handleReset"
+            @export-selected="exportSelectedRows"
+            @clear-selection="clearSelection"
+          >
+            <template #filters>
+              <DataTableFacetedFilter
+                v-if="table.getColumn('role')"
+                :column="table.getColumn('role')!"
+                title="الدور"
+                :options="roleFilterOptions"
+              />
+              <DataTableFacetedFilter
+                v-if="table.getColumn('is_active')"
+                :column="table.getColumn('is_active')!"
+                title="الحالة"
+                :options="statusFilterOptions"
+              />
+              <DataTableFacetedFilter
+                v-if="table.getColumn('bank') && bankFilterOptions.length > 0"
+                :column="table.getColumn('bank')!"
+                title="الجهة"
+                :options="bankFilterOptions"
+              />
+            </template>
+            <template #actions>
+              <DataTableViewOptions :table="table" :column-labels="CBY_STAFF_COLUMN_LABELS" />
+              <DataTableExport
+                :table="(table as any)"
+                :export-columns="(exportCols as any)"
+                :filename="buildExportFilename()"
+                :formats="['csv', 'tsv', 'json', 'excel', 'pdf']"
+                :respect-column-visibility="true"
+              />
+            </template>
+          </DataTableToolbar>
+        </template>
+        <template #empty>
+          <Empty
+            data-empty-state-variant="cby-staff"
+            class="min-h-[280px] rounded-xl border border-dashed bg-muted/20"
+          >
+            <EmptyHeader>
+              <div class="flex size-12 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+                <SearchX class="size-5" />
+              </div>
+              <EmptyTitle>
+                {{ staffUsers.length === 0 ? 'لا يوجد مستخدمو نظام بعد' : 'لا توجد نتائج مطابقة' }}
+              </EmptyTitle>
+            </EmptyHeader>
+            <EmptyContent>
+              <EmptyDescription>
+                {{ staffUsers.length === 0
+                  ? 'ابدأ بإضافة أول مستخدم للبنك المركزي باستخدام زر "مستخدم جديد" أعلاه.'
+                  : 'جرّب تغيير البحث أو إزالة فلتر الدور أو الجهة أو الحالة.' }}
+              </EmptyDescription>
+            </EmptyContent>
+          </Empty>
+        </template>
+        <template #pagination="{ table }">
+          <DataTablePagination :table="table" />
+        </template>
+      </DataTable>
     </div>
 
     <!-- Create / Edit Dialog -->
@@ -791,7 +693,7 @@ function exportSelectedUsers() {
       :open="createOpen || Boolean(editing)"
       @update:open="value => !value && closeForm()"
     >
-      <DialogContent  class="sm:max-w-md">
+      <DialogContent class="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{{ editing ? 'تعديل بيانات المستخدم' : 'إضافة مستخدم نظام' }}</DialogTitle>
           <DialogDescription>مستخدمو البنك المركزي فقط (لجان وإدارة النظام).</DialogDescription>
@@ -804,11 +706,11 @@ function exportSelectedUsers() {
           </div>
           <div class="space-y-1.5">
             <Label>البريد الإلكتروني *</Label>
-            <Input v-model="form.email" type="email"  />
+            <Input v-model="form.email" type="email" />
           </div>
           <div class="space-y-1.5">
             <Label>{{ editing ? 'كلمة المرور (اتركها فارغة للإبقاء على الحالية)' : 'كلمة المرور *' }}</Label>
-            <Input v-model="form.password" type="password"  :placeholder="editing ? '••••••••' : 'كلمة مرور قوية'" />
+            <Input v-model="form.password" type="password" :placeholder="editing ? '••••••••' : 'كلمة مرور قوية'" />
           </div>
           <div class="space-y-1.5">
             <Label>الدور *</Label>
@@ -835,7 +737,7 @@ function exportSelectedUsers() {
 
     <!-- Deactivation blocked: critical-role protection -->
     <AlertDialog :open="Boolean(deactivateBlocked)" @update:open="value => !value && (deactivateBlocked = null)">
-      <AlertDialogContent >
+      <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle class="flex items-center gap-2">
             <AlertTriangle class="h-5 w-5 text-[var(--severity-red)]" />
@@ -851,7 +753,7 @@ function exportSelectedUsers() {
 
     <!-- Deactivation confirmation with workload context -->
     <AlertDialog :open="Boolean(deactivateTarget)" @update:open="value => !value && (deactivateTarget = null)">
-      <AlertDialogContent v-if="deactivateTarget" >
+      <AlertDialogContent v-if="deactivateTarget">
         <AlertDialogHeader>
           <AlertDialogTitle>تأكيد إلغاء التفعيل</AlertDialogTitle>
           <AlertDialogDescription>
@@ -878,7 +780,7 @@ function exportSelectedUsers() {
 
     <!-- View Dialog -->
     <Dialog :open="Boolean(viewing)" @update:open="value => !value && (viewing = null)">
-      <DialogContent v-if="viewing"  class="sm:max-w-md">
+      <DialogContent v-if="viewing" class="sm:max-w-md">
         <DialogHeader>
           <DialogTitle class="flex items-center gap-2">
             <UserCog class="h-5 w-5 text-primary" />

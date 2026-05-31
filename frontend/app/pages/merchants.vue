@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import type { ColumnDef, VisibilityState } from '@tanstack/vue-table'
+import type { ColumnDef, ColumnFiltersState, VisibilityState } from '@tanstack/vue-table'
 import {
-  FlexRender,
   getCoreRowModel,
+  getFacetedRowModel,
+  getFacetedUniqueValues,
   getFilteredRowModel,
   getPaginationRowModel,
   getSortedRowModel,
@@ -11,8 +12,7 @@ import {
 import { h } from 'vue'
 import {
   AlertTriangle, Building2,
-  ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
-  Download, Edit, ExternalLink, MoreHorizontal, Plus, Printer, Search, SearchX, Shield, X,
+  Edit, ExternalLink, MoreHorizontal, Plus, SearchX, Shield,
 } from 'lucide-vue-next'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import MerchantDialog from '@/components/merchants/MerchantDialog.vue'
@@ -21,29 +21,12 @@ import { useAuthStore } from '@/stores/auth.store'
 import { useMerchants } from '@/composables/useMerchants'
 import { useBanks } from '@/composables/useBanks'
 import { useTableExport } from '@/composables/useTableExport'
-import { useTableKeyboard } from '@/composables/useTableKeyboard'
 import { UserRole } from '@/types/enums'
 import { ROUTE_ROLE_MAP } from '@/constants/workflow'
 import type { Merchant } from '@/types/models'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Input } from '@/components/ui/input'
 import { Card } from '@/components/ui/card'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -62,7 +45,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -79,7 +61,16 @@ import {
 } from '@/components/ui/empty'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Checkbox } from '@/components/ui/checkbox'
-import { DataTableViewOptions } from '@/components/ui/data-table'
+import {
+  DataTable,
+  DataTableExport,
+  DataTableFacetedFilter,
+  DataTablePagination,
+  DataTableToolbar,
+  DataTableViewOptions,
+} from '@/components/ui/data-table'
+import MetricCard from '@/components/shared/dashboard/MetricCard.vue'
+import MetricGrid from '@/components/shared/dashboard/MetricGrid.vue'
 
 definePageMeta({
   middleware: ['auth', 'role'],
@@ -98,8 +89,7 @@ const merchants = ref<Merchant[]>([])
 const banks = ref<import('@/types/models').Bank[]>([])
 const loadingMerchants = ref(false)
 const query = ref('')
-const statusFilter = ref<'all' | 'active' | 'suspended'>('all')
-const bankFilter = ref<number | 'all'>('all')
+const columnFilters = ref<ColumnFiltersState>([])
 const createOpen = ref(false)
 const editing = ref<Merchant | null>(null)
 const viewing = ref<Merchant | null>(null)
@@ -134,20 +124,23 @@ const scoped = computed(() => {
   return merchants.value
 })
 
+// CBY Admin: pre-filter by search; TanStack handles faceted column filters
+const preFiltered = computed(() => {
+  const q = query.value.trim().toLowerCase()
+  if (!q) return scoped.value
+  return scoped.value.filter(m =>
+    [m.name, m.commercial_register, m.tax_number, bankName(m.bank_id)].some(v => (v ?? '').toLowerCase().includes(q)),
+  )
+})
+
+// Bank Admin: pre-filter by search (no TanStack table for Bank Admin)
 const filtered = computed(() => {
   const q = query.value.trim().toLowerCase()
   return scoped.value.filter((m) => {
-    if (statusFilter.value !== 'all' && (statusFilter.value === 'active') !== m.is_active) return false
-    if (isCbyAdmin.value && bankFilter.value !== 'all' && m.bank_id !== bankFilter.value) return false
-    if (isCbyAdmin.value && merchantTab.value === 'cross_bank' && !crossBankNames.value.has(m.name.trim().toLowerCase())) return false
-    if (isCbyAdmin.value && merchantTab.value === 'missing_data' && m.commercial_register && m.tax_number) return false
-    if (isCbyAdmin.value && merchantTab.value === 'inactive' && m.is_active) return false
     if (!q) return true
     return [m.name, m.commercial_register, m.tax_number, bankName(m.bank_id)].some(v => (v ?? '').toLowerCase().includes(q))
   })
 })
-
-const merchantTab = ref<'all' | 'cross_bank' | 'missing_data' | 'inactive'>('all')
 
 const stats = computed(() => ({
   total: scoped.value.length,
@@ -189,7 +182,7 @@ function merchantToForm(m: Merchant): MerchantFormData {
   }
 }
 
-// Duplicate confirmation state — holds pending form data until user confirms
+// Duplicate confirmation state
 const duplicateWarningOpen = ref(false)
 const duplicateWarningReasons = ref<string[]>([])
 const pendingNewMerchant = ref<MerchantFormData | null>(null)
@@ -259,13 +252,10 @@ const columnVisibility = ref<VisibilityState>({
   transactions: false,
 })
 const selectedCount = computed(() => Object.values(rowSelection.value).filter(Boolean).length)
-const searchInputRef = ref<HTMLInputElement | null>(null)
 
-useTableKeyboard(searchInputRef, {
-  onEscape: () => {
-    query.value = ''
-  },
-})
+const hasActiveFilters = computed(() =>
+  columnFilters.value.length > 0 || query.value.trim().length > 0,
+)
 
 function clearSelection() {
   table.resetRowSelection()
@@ -279,13 +269,6 @@ async function toggleStatus(merchant: Merchant) {
 function openEditFromView() {
   if (viewing.value) {
     editing.value = viewing.value
-    viewing.value = null
-  }
-}
-
-function toggleFromView() {
-  if (viewing.value) {
-    toggleStatus(viewing.value)
     viewing.value = null
   }
 }
@@ -361,6 +344,7 @@ const columns: ColumnDef<Merchant>[] = [
   {
     id: 'bank',
     header: 'البنك التابع له',
+    filterFn: (row, _id, value: string[]) => value.includes(String(row.original.bank_id)),
     cell: ({ row }) => h(Badge, { variant: 'outline', class: 'font-normal' }, () => [
       h(Building2, { class: 'ms-1 h-3 w-3' }),
       bankName(row.original.bank_id),
@@ -369,6 +353,7 @@ const columns: ColumnDef<Merchant>[] = [
   {
     accessorKey: 'is_active',
     header: 'الحالة',
+    filterFn: (row, _id, value: string[]) => value.includes(String(row.original.is_active)),
     cell: ({ row }) => activeStatusCell(row.original.is_active),
   },
   {
@@ -389,7 +374,7 @@ const columns: ColumnDef<Merchant>[] = [
         : (isCbyAdmin.value && crossBankNames.value.has(merchant.name.trim().toLowerCase()))
             ? [h(DropdownMenuItem, {
                 class: 'gap-1.5 text-[var(--severity-amber)]',
-                onClick: () => { merchantTab.value = 'cross_bank' },
+                onClick: () => { table.getColumn('is_active')?.setFilterValue(undefined) },
               }, () => [h(AlertTriangle, { class: 'h-3.5 w-3.5' }), 'عرض مخاطر التكرار'])]
             : []
       return h(DropdownMenu, {}, {
@@ -436,64 +421,76 @@ const MERCHANT_COLUMN_LABELS: Record<string, string> = {
   transactions: 'المعاملات',
 }
 
+const statusFilterOptions = [
+  { label: 'نشط', value: 'true' },
+  { label: 'موقوف', value: 'false' },
+]
+const bankFilterOptions = computed(() =>
+  banks.value.map(b => ({ label: b.name_ar || b.name_en, value: String(b.id) })),
+)
+
+const exportCols = [
+  { key: 'name', label: 'التاجر' },
+  { key: 'commercial_register', label: 'السجل التجاري' },
+  { key: 'tax_number', label: 'الرقم الضريبي' },
+  { key: 'business_type', label: 'القطاع' },
+  {
+    key: 'bank_id',
+    label: 'البنك',
+    format: (_value: unknown, row: Merchant) => bankName(row.bank_id),
+  },
+  {
+    key: 'is_active',
+    label: 'الحالة',
+    format: (_value: unknown, row: Merchant) => row.is_active ? 'نشط' : 'موقوف',
+  },
+  {
+    key: 'transaction_count',
+    label: 'المعاملات',
+    format: (_value: unknown, row: Merchant) => String(row.transaction_count ?? 0),
+  },
+] as const
+
 const table = useVueTable({
-  get data() { return filtered.value },
+  get data() { return preFiltered.value },
   columns,
   getCoreRowModel: getCoreRowModel(),
   getPaginationRowModel: getPaginationRowModel(),
   getSortedRowModel: getSortedRowModel(),
   getFilteredRowModel: getFilteredRowModel(),
+  getFacetedRowModel: getFacetedRowModel(),
+  getFacetedUniqueValues: getFacetedUniqueValues(),
+  onColumnFiltersChange: updater =>
+    (columnFilters.value = typeof updater === 'function' ? updater(columnFilters.value) : updater),
   onRowSelectionChange: updater =>
-    rowSelection.value = typeof updater === 'function' ? updater(rowSelection.value) : updater,
+    (rowSelection.value = typeof updater === 'function' ? updater(rowSelection.value) : updater),
   onColumnVisibilityChange: updater =>
-    columnVisibility.value = typeof updater === 'function' ? updater(columnVisibility.value) : updater,
+    (columnVisibility.value = typeof updater === 'function' ? updater(columnVisibility.value) : updater),
   state: {
+    get columnFilters() { return columnFilters.value },
     get rowSelection() { return rowSelection.value },
     get columnVisibility() { return columnVisibility.value },
   },
   initialState: { pagination: { pageSize: 20 } },
 })
 
-const selectedMerchants = computed(() => table.getSelectedRowModel().rows.map(row => row.original))
-
-function buildExportFileName(suffix: string): string {
-  const stamp = new Date().toISOString().slice(0, 10)
-  return `merchants-${suffix}-${stamp}`
+function handleReset() {
+  query.value = ''
+  table.resetColumnFilters()
 }
 
-function merchantExportColumns() {
-  return [
-    { key: 'name', label: 'التاجر' },
-    { key: 'commercial_register', label: 'السجل التجاري' },
-    { key: 'tax_number', label: 'الرقم الضريبي' },
-    { key: 'business_type', label: 'القطاع' },
-    {
-      key: 'bank_id',
-      label: 'البنك',
-      format: (_value: unknown, row: Merchant) => bankName(row.bank_id),
-    },
-    {
-      key: 'is_active',
-      label: 'الحالة',
-      format: (_value: unknown, row: Merchant) => row.is_active ? 'نشط' : 'موقوف',
-    },
-    {
-      key: 'transaction_count',
-      label: 'المعاملات',
-      format: (_value: unknown, row: Merchant) => String(row.transaction_count ?? 0),
-    },
-  ] as const
+function buildExportFilename(): string {
+  return `merchants-${new Date().toISOString().slice(0, 10)}`
 }
 
-function exportCurrentMerchants() {
-  if (!filtered.value.length) return
-  exportToCSV(filtered.value as unknown as Record<string, unknown>[], merchantExportColumns() as any, buildExportFileName('filtered'))
-}
-
-function exportSelectedMerchants() {
-  const rows = selectedMerchants.value.length > 0 ? selectedMerchants.value : filtered.value
+function exportSelectedRows() {
+  const rows = table.getFilteredSelectedRowModel().rows.map(row => row.original)
   if (!rows.length) return
-  exportToCSV(rows as unknown as Record<string, unknown>[], merchantExportColumns() as any, buildExportFileName('selected'))
+  exportToCSV(
+    rows as unknown as Record<string, unknown>[],
+    exportCols as any,
+    `${buildExportFilename()}-selected`,
+  )
 }
 </script>
 
@@ -513,35 +510,39 @@ function exportSelectedMerchants() {
     </PageHeader>
 
     <!-- KPI Cards -->
-    <div class="mb-6 grid grid-cols-4 max-lg:grid-cols-2 gap-3">
-      <Card class="border-0 p-4 shadow">
-        <div class="grid h-9 w-9 place-items-center rounded-lg bg-primary/10 text-primary">
-          <Building2 class="h-4 w-4" />
-        </div>
-        <div class="mt-2 text-2xl font-bold tabular-nums">{{ stats.total }}</div>
-        <div class="text-xs text-muted-foreground">إجمالي</div>
-      </Card>
-      <Card class="border-0 p-4 shadow">
-        <div class="grid h-9 w-9 place-items-center rounded-lg bg-[var(--severity-green)]/10 text-[var(--severity-green)]">
-          <Building2 class="h-4 w-4" />
-        </div>
-        <div class="mt-2 text-2xl font-bold tabular-nums">{{ stats.active }}</div>
-        <div class="text-xs text-muted-foreground">نشط</div>
-      </Card>
-      <Card class="border-0 p-4 shadow">
-        <div class="grid h-9 w-9 place-items-center rounded-lg bg-[var(--severity-red)]/10 text-[var(--severity-red)]">
-          <Building2 class="h-4 w-4" />
-        </div>
-        <div class="mt-2 text-2xl font-bold tabular-nums">{{ stats.suspended }}</div>
-        <div class="text-xs text-muted-foreground">موقوف</div>
-      </Card>
-      <Card class="border-0 p-4 shadow">
-        <div class="grid h-9 w-9 place-items-center rounded-lg bg-[var(--severity-amber)]/10 text-[var(--severity-amber)]">
-          <Building2 class="h-4 w-4" />
-        </div>
-        <div class="mt-2 text-2xl font-bold tabular-nums">{{ stats.incomplete }}</div>
-        <div class="text-xs text-muted-foreground">سجلات ناقصة</div>
-      </Card>
+    <div class="mb-6">
+      <MetricGrid :columns="4">
+        <MetricCard
+          label="إجمالي"
+          :value="stats.total"
+          :icon="Building2"
+          :active="columnFilters.length === 0"
+          @click="table.resetColumnFilters()"
+        />
+        <MetricCard
+          label="نشط"
+          :value="stats.active"
+          :icon="Building2"
+          tone="success"
+          :active="columnFilters.some(f => f.id === 'is_active' && Array.isArray(f.value) && f.value.includes('true') && f.value.length === 1)"
+          @click="table.getColumn('is_active')?.setFilterValue(['true'])"
+        />
+        <MetricCard
+          label="موقوف"
+          :value="stats.suspended"
+          :icon="Building2"
+          tone="danger"
+          :active="columnFilters.some(f => f.id === 'is_active' && Array.isArray(f.value) && f.value.includes('false') && f.value.length === 1)"
+          @click="table.getColumn('is_active')?.setFilterValue(['false'])"
+        />
+        <MetricCard
+          label="سجلات ناقصة"
+          :value="stats.incomplete"
+          :icon="Building2"
+          tone="warning"
+          :clickable="false"
+        />
+      </MetricGrid>
     </div>
 
     <!-- CBY Admin: Smart summary bar -->
@@ -556,9 +557,6 @@ function exportSelectedMerchants() {
           <span class="flex-1 text-sm font-medium">
             {{ riskSummary.crossBank }} تاجر يظهر في أكثر من بنك — مراجعة مخاطر التكرار مطلوبة
           </span>
-          <Button size="sm" variant="ghost" class="h-7 text-xs" @click="merchantTab = 'cross_bank'">
-            عرض
-          </Button>
         </div>
       </Card>
       <Card
@@ -571,223 +569,85 @@ function exportSelectedMerchants() {
           <span class="flex-1 text-sm font-medium">
             {{ riskSummary.missingData }} تاجر ببيانات ناقصة (سجل تجاري أو رقم ضريبي)
           </span>
-          <Button size="sm" variant="ghost" class="h-7 text-xs" @click="merchantTab = 'missing_data'">
-            عرض
-          </Button>
         </div>
       </Card>
-    </div>
-
-    <!-- CBY Admin: Risk tabs -->
-    <div v-if="isCbyAdmin" class="mb-4">
-      <Tabs :model-value="merchantTab"  @update:model-value="v => merchantTab = v as typeof merchantTab.value">
-        <TabsList class="h-auto gap-1 rounded-full bg-muted p-1">
-          <TabsTrigger value="all" class="h-7 gap-1.5 rounded-full px-3 text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm">
-            الكل
-            <Badge variant="secondary" class="h-5 min-w-5 rounded-full px-1 text-xs">{{ scoped.length }}</Badge>
-          </TabsTrigger>
-          <TabsTrigger value="cross_bank" class="h-7 gap-1.5 rounded-full px-3 text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm">
-            متعدد البنوك
-            <Badge variant="secondary" class="h-5 min-w-5 rounded-full px-1 text-xs">{{ riskSummary?.crossBank ?? 0 }}</Badge>
-          </TabsTrigger>
-          <TabsTrigger value="missing_data" class="h-7 gap-1.5 rounded-full px-3 text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm">
-            بيانات ناقصة
-            <Badge variant="secondary" class="h-5 min-w-5 rounded-full px-1 text-xs">{{ stats.incomplete }}</Badge>
-          </TabsTrigger>
-          <TabsTrigger value="inactive" class="h-7 gap-1.5 rounded-full px-3 text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm">
-            غير نشط
-            <Badge variant="secondary" class="h-5 min-w-5 rounded-full px-1 text-xs">{{ stats.suspended }}</Badge>
-          </TabsTrigger>
-        </TabsList>
-      </Tabs>
-    </div>
-
-    <!-- Toolbar: bulk (when selected in table view) OR search + filters (default) -->
-    <div v-if="isCbyAdmin && selectedCount > 0" class="mb-4 flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2">
-      <span class="text-sm font-medium text-primary">{{ selectedCount }} محدد</span>
-      <div class="mx-2 h-4 w-px bg-border" />
-      <Button variant="outline" size="sm" class="h-7 gap-1.5 text-xs" @click="exportSelectedMerchants">
-        <Download class="h-3.5 w-3.5" />
-        تصدير
-      </Button>
-      <Button variant="outline" size="sm" class="h-7 gap-1.5 text-xs">
-        <Printer class="h-3.5 w-3.5" />
-        طباعة
-      </Button>
-      <Button
-        variant="ghost"
-        size="sm"
-        class="ms-auto h-7 gap-1 text-xs text-muted-foreground"
-        @click="clearSelection"
-      >
-        <X class="h-3.5 w-3.5" />
-        إلغاء التحديد
-      </Button>
-    </div>
-
-    <div v-else class="mb-4 flex flex-wrap items-center gap-2">
-      <div class="relative min-w-[220px] flex-1">
-        <Search class="absolute inset-e-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          ref="searchInputRef"
-          v-model="query"
-          placeholder="بحث برقم السجل، الرقم الضريبي، أو الاسم..."
-          class="h-8 rounded-md pe-9 text-sm"
-        />
-      </div>
-
-      <Select
-        v-if="isCbyAdmin"
-        :model-value="bankFilter === 'all' ? 'all' : bankFilter.toString()"
-        @update:model-value="v => bankFilter = v === 'all' ? 'all' : Number(v)"
-      >
-        <SelectTrigger class="h-8 w-full rounded-md text-sm sm:w-48">
-          <SelectValue placeholder="البنك" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">كل البنوك</SelectItem>
-          <SelectItem v-for="bank in banks" :key="bank.id" :value="bank.id.toString()">{{ bank.name_ar }}</SelectItem>
-        </SelectContent>
-      </Select>
-
-      <Tabs v-model="statusFilter"  class="shrink-0">
-        <TabsList class="h-auto gap-1 rounded-full bg-muted p-1">
-          <TabsTrigger value="all" class="h-7 gap-1.5 rounded-full px-3 text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm">
-            الكل
-            <Badge variant="secondary" class="h-5 min-w-5 rounded-full px-1 text-xs">{{ stats.total }}</Badge>
-          </TabsTrigger>
-          <TabsTrigger value="active" class="h-7 gap-1.5 rounded-full px-3 text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm">
-            نشط
-            <Badge variant="secondary" class="h-5 min-w-5 rounded-full px-1 text-xs">{{ stats.active }}</Badge>
-          </TabsTrigger>
-          <TabsTrigger value="suspended" class="h-7 gap-1.5 rounded-full px-3 text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm">
-            موقوف
-            <Badge variant="secondary" class="h-5 min-w-5 rounded-full px-1 text-xs">{{ stats.suspended }}</Badge>
-          </TabsTrigger>
-        </TabsList>
-      </Tabs>
-
-      <Button
-        v-if="isCbyAdmin"
-        variant="outline"
-        size="sm"
-        class="ms-auto h-8 gap-1.5"
-        :disabled="filtered.length === 0"
-        @click="exportCurrentMerchants"
-      >
-        <Download class="h-4 w-4" />
-        تصدير
-      </Button>
-
-      <DataTableViewOptions
-        v-if="isCbyAdmin"
-        :table="table"
-        :column-labels="MERCHANT_COLUMN_LABELS"
-      />
     </div>
 
     <!-- CBY Admin: tanstack table view -->
     <template v-if="isCbyAdmin">
       <div class="relative flex flex-col gap-4">
-        <div v-if="loadingMerchants || table.getRowModel().rows.length > 0" class="rounded-lg border overflow-x-auto">
-          <Table class="min-w-max w-full">
-            <TableHeader class="bg-muted sticky top-0 z-30">
-              <TableRow
-                v-for="headerGroup in table.getHeaderGroups()"
-                :key="headerGroup.id"
-                class="hover:bg-transparent"
-              >
-                <TableHead
-                  v-for="header in headerGroup.headers"
-                  :key="header.id"
-                  class="h-10 text-sm font-medium text-foreground"
-                  :class="header.column.id === 'actions'
-                    ? 'sticky end-0 z-20 bg-muted w-12 px-2'
-                    : 'px-4'"
-                >
-                  <FlexRender
-                    v-if="!header.isPlaceholder"
-                    :render="header.column.columnDef.header"
-                    :props="header.getContext()"
-                  />
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-
-            <TableBody>
-              <template v-if="loadingMerchants">
-                <TableRow v-for="i in 8" :key="`skel-${i}`">
-                  <TableCell v-for="col in columns" :key="col.id ?? (col as any).accessorKey" class="px-4 py-3">
-                    <Skeleton class="h-4 w-full" />
-                  </TableCell>
-                </TableRow>
-              </template>
-
-              <template v-else>
-                <TableRow
-                  v-for="row in table.getRowModel().rows"
-                  :key="row.id"
-                  class="group/row transition-colors hover:bg-muted/30"
-                >
-                  <TableCell
-                    v-for="cell in row.getVisibleCells()"
-                    :key="cell.id"
-                    class="py-3 align-middle"
-                    :class="cell.column.id === 'actions'
-                      ? 'sticky end-0 z-10 bg-background w-12 px-2 group-hover/row:bg-muted/30'
-                      : 'px-4'"
-                  >
-                    <FlexRender :render="cell.column.columnDef.cell" :props="cell.getContext()" />
-                  </TableCell>
-                </TableRow>
-              </template>
-            </TableBody>
-          </Table>
-        </div>
-
-        <!-- Empty state (outside table) -->
-        <Empty
-          v-if="!loadingMerchants && !table.getRowModel().rows.length"
-          class="min-h-[280px] rounded-xl border border-dashed bg-muted/20"
+        <DataTable
+          :data="preFiltered"
+          :columns="columns"
+          :loading="loadingMerchants"
+          :column-filters="columnFilters"
+          :column-visibility="columnVisibility"
+          :row-selection="rowSelection"
+          @update:column-filters="(v) => columnFilters = v"
+          @update:column-visibility="(v) => columnVisibility = v"
+          @update:row-selection="(v) => rowSelection = v"
+          row-class="group/row"
         >
-          <EmptyHeader>
-            <div class="flex size-12 items-center justify-center rounded-xl bg-muted text-muted-foreground">
-              <SearchX class="size-5" />
-            </div>
-            <EmptyTitle>
-              {{ merchants.length === 0 ? 'لا يوجد تجار مسجّلون بعد' : 'لا توجد نتائج مطابقة' }}
-            </EmptyTitle>
-          </EmptyHeader>
-          <EmptyContent>
-            <EmptyDescription>
-              {{ merchants.length === 0 ? 'ابدأ بتسجيل أول تاجر باستخدام الزر أعلاه.' : 'جرّب تغيير البحث أو الفلاتر.' }}
-            </EmptyDescription>
-          </EmptyContent>
-        </Empty>
-
-        <!-- Pagination -->
-        <div class="flex items-center justify-between px-2">
-          <p class="text-sm text-muted-foreground">{{ table.getFilteredSelectedRowModel().rows.length }} من {{ table.getFilteredRowModel().rows.length }} تاجر محدد</p>
-          <div class="flex items-center gap-4">
-            <p class="text-sm font-medium whitespace-nowrap">
-              صفحة {{ table.getState().pagination.pageIndex + 1 }} من {{ table.getPageCount() }}
-            </p>
-            <div class="flex items-center gap-1">
-              <Button variant="outline" size="icon" class="hidden h-8 w-8 lg:flex" :disabled="!table.getCanPreviousPage()" @click="table.setPageIndex(0)">
-                <span class="sr-only">الصفحة الأولى</span><ChevronsRight class="h-4 w-4" />
-              </Button>
-              <Button variant="outline" size="icon" class="h-8 w-8" :disabled="!table.getCanPreviousPage()" @click="table.previousPage()">
-                <span class="sr-only">الصفحة السابقة</span><ChevronRight class="h-4 w-4" />
-              </Button>
-              <Button variant="outline" size="icon" class="h-8 w-8" :disabled="!table.getCanNextPage()" @click="table.nextPage()">
-                <span class="sr-only">الصفحة التالية</span><ChevronLeft class="h-4 w-4" />
-              </Button>
-              <Button variant="outline" size="icon" class="hidden h-8 w-8 lg:flex" :disabled="!table.getCanNextPage()" @click="table.setPageIndex(table.getPageCount() - 1)">
-                <span class="sr-only">الصفحة الأخيرة</span><ChevronsLeft class="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        </div>
+          <template #toolbar="{ table }">
+            <DataTableToolbar
+              :table="table"
+              search-placeholder="بحث برقم السجل، الرقم الضريبي، أو الاسم..."
+              :has-filters="hasActiveFilters"
+              :selected-count="selectedCount"
+              @update:search="v => query = v"
+              @reset="handleReset"
+              @export-selected="exportSelectedRows"
+              @clear-selection="clearSelection"
+            >
+              <template #filters>
+                <DataTableFacetedFilter
+                  v-if="table.getColumn('is_active')"
+                  :column="table.getColumn('is_active')!"
+                  title="الحالة"
+                  :options="statusFilterOptions"
+                />
+                <DataTableFacetedFilter
+                  v-if="table.getColumn('bank') && bankFilterOptions.length > 0"
+                  :column="table.getColumn('bank')!"
+                  title="البنك"
+                  :options="bankFilterOptions"
+                />
+              </template>
+              <template #actions>
+                <DataTableViewOptions :table="table" :column-labels="MERCHANT_COLUMN_LABELS" />
+                <DataTableExport
+                  :table="(table as any)"
+                  :export-columns="(exportCols as any)"
+                  :filename="buildExportFilename()"
+                  :formats="['csv', 'tsv', 'json', 'excel', 'pdf']"
+                  :respect-column-visibility="true"
+                />
+              </template>
+            </DataTableToolbar>
+          </template>
+          <template #empty>
+            <Empty class="min-h-[280px] rounded-xl border border-dashed bg-muted/20">
+              <EmptyHeader>
+                <div class="flex size-12 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+                  <SearchX class="size-5" />
+                </div>
+                <EmptyTitle>
+                  {{ merchants.length === 0 ? 'لا يوجد تجار مسجّلون بعد' : 'لا توجد تجار مطابقون' }}
+                </EmptyTitle>
+              </EmptyHeader>
+              <EmptyContent>
+                <EmptyDescription>
+                  {{ merchants.length === 0
+                    ? (isCbyAdmin ? 'لم يتم تسجيل أي تجار عبر البنوك حتى الآن.' : 'ابدأ بتسجيل أول تاجر أو مستورد باستخدام زر "تاجر جديد" أعلاه.')
+                    : 'جرّب إزالة فلتر الحالة أو البنك، أو تغيير نص البحث.' }}
+                </EmptyDescription>
+              </EmptyContent>
+            </Empty>
+          </template>
+          <template #pagination="{ table }">
+            <DataTablePagination :table="table" />
+          </template>
+        </DataTable>
       </div>
     </template>
 
@@ -823,12 +683,14 @@ function exportSelectedMerchants() {
                   <SearchX class="size-5" />
                 </div>
                 <EmptyTitle>
-                  {{ merchants.length === 0 ? 'لا يوجد تجار مسجّلون بعد' : 'لا توجد نتائج مطابقة' }}
+                  {{ merchants.length === 0 ? 'لا يوجد تجار مسجّلون بعد' : 'لا توجد تجار مطابقون' }}
                 </EmptyTitle>
               </EmptyHeader>
               <EmptyContent>
                 <EmptyDescription>
-                  {{ merchants.length === 0 ? 'ابدأ بتسجيل أول تاجر باستخدام الزر أعلاه.' : 'جرّب تغيير البحث أو الفلاتر.' }}
+                  {{ merchants.length === 0
+                    ? 'ابدأ بتسجيل أول تاجر أو مستورد باستخدام زر "تاجر جديد" أعلاه.'
+                    : 'جرّب تغيير البحث أو فلتر الحالة لعرض المزيد من التجار.' }}
                 </EmptyDescription>
               </EmptyContent>
             </Empty>
@@ -846,7 +708,7 @@ function exportSelectedMerchants() {
               <div class="grid h-12 w-12 place-items-center rounded-xl bg-primary text-primary-foreground">
                 <Building2 class="h-6 w-6" />
               </div>
-              <Badge :class="merchant.is_active ? 'border-0 bg-green-50/15 text-green-700' : 'border-0 bg-red-700/15 text-red-700'">
+              <Badge :class="merchant.is_active ? 'border-0 bg-[var(--color-surface-success)] text-[var(--color-text-success)]' : 'border-0 bg-[var(--color-surface-error)] text-[var(--color-text-error)]'">
                 {{ merchant.is_active ? 'نشط' : 'موقوف' }}
               </Badge>
             </div>
@@ -917,7 +779,7 @@ function exportSelectedMerchants() {
 
     <!-- Unified quick-view Dialog (both roles) -->
     <Dialog :open="Boolean(viewing)" @update:open="v => !v && (viewing = null)">
-      <DialogContent v-if="viewing"  :class="isCbyAdmin ? 'sm:max-w-2xl' : 'sm:max-w-lg'">
+      <DialogContent v-if="viewing" :class="isCbyAdmin ? 'sm:max-w-2xl' : 'sm:max-w-lg'">
         <DialogHeader class="pb-3">
           <DialogTitle class="flex items-center gap-2 text-base">
             <div class="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">

@@ -20,7 +20,7 @@ function formatTime(iso: string | null | undefined): string {
     <AlertDescription class="flex-1 text-sm font-medium text-foreground">
       <span v-if="votedAt">صوّتت {{ formatTime(votedAt) }} — </span>
       <span v-else>لقد صوّتت — </span>
-      <span :class="vote === 'approve' ? 'text-green-700 font-semibold' : 'text-rose-600 font-semibold'">
+      <span :class="vote === 'approve' ? 'text-[var(--color-text-success)] font-semibold' : 'text-rose-600 font-semibold'">
         {{ vote === 'approve' ? 'اعتمدت' : 'رفضت' }}
       </span>
     </AlertDescription>

@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type { ColumnDef, VisibilityState } from '@tanstack/vue-table'
 import {
-  FlexRender,
   getCoreRowModel,
   getFilteredRowModel,
   getPaginationRowModel,
@@ -32,13 +31,9 @@ import {
 } from '@/components/ui/dialog'
 import { Separator } from '@/components/ui/separator'
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
+  DataTableViewOptions,
+} from '@/components/ui/data-table'
+import DataTable from '@/components/ui/data-table/DataTable.vue'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -65,7 +60,6 @@ import {
   EmptyHeader,
   EmptyTitle,
 } from '@/components/ui/empty'
-import { Skeleton } from '@/components/ui/skeleton'
 import { Checkbox } from '@/components/ui/checkbox'
 
 definePageMeta({
@@ -446,72 +440,18 @@ onMounted(loadData)
 
     <!-- Table -->
     <div class="relative flex flex-col gap-4">
-      <div v-if="loading || table.getRowModel().rows.length > 0" class="rounded-lg border overflow-x-auto">
-        <Table class="min-w-max w-full">
-          <TableHeader class="bg-muted sticky top-0 z-30">
-            <TableRow
-              v-for="headerGroup in table.getHeaderGroups()"
-              :key="headerGroup.id"
-              class="hover:bg-transparent"
-            >
-              <TableHead
-                v-for="header in headerGroup.headers"
-                :key="header.id"
-                class="h-10 text-sm font-medium text-foreground"
-                :class="header.column.id === 'actions'
-                  ? 'sticky end-0 z-20 bg-muted w-12 px-2'
-                  : 'px-4'"
-              >
-                <FlexRender
-                  v-if="!header.isPlaceholder"
-                  :render="header.column.columnDef.header"
-                  :props="header.getContext()"
-                />
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-
-          <TableBody>
-            <template v-if="loading">
-              <TableRow v-for="i in 8" :key="i">
-                <TableCell class="px-4 py-3">
-                  <div class="flex flex-col gap-1.5">
-                    <Skeleton class="h-4 w-36" />
-                    <Skeleton class="h-3 w-48" />
-                  </div>
-                </TableCell>
-                <TableCell class="px-4 py-3"><Skeleton class="h-5 w-20 rounded-full" /></TableCell>
-                <TableCell class="px-4 py-3"><Skeleton class="h-4 w-28" /></TableCell>
-                <TableCell class="px-4 py-3"><Skeleton class="h-4 w-16" /></TableCell>
-                <TableCell class="px-4 py-3 w-12"><Skeleton class="h-8 w-8 rounded-md" /></TableCell>
-              </TableRow>
-            </template>
-
-            <template v-else>
-              <TableRow
-                v-for="row in table.getRowModel().rows"
-                :key="row.id"
-                class="group/row transition-colors hover:bg-muted/30"
-              >
-                <TableCell
-                  v-for="cell in row.getVisibleCells()"
-                  :key="cell.id"
-                  class="py-3 align-middle"
-                  :class="cell.column.id === 'actions'
-                    ? 'sticky end-0 z-10 bg-background w-12 px-2 group-hover/row:bg-muted/30'
-                    : 'px-4'"
-                >
-                  <FlexRender :render="cell.column.columnDef.cell" :props="cell.getContext()" />
-                </TableCell>
-              </TableRow>
-            </template>
-          </TableBody>
-        </Table>
-      </div>
+      <DataTable
+        :data="filteredUsers"
+        :columns="columns"
+        :loading="loading"
+        :row-selection="rowSelection"
+        @update:row-selection="(v) => rowSelection = v"
+        :row-class="'group/row'"
+      />
 
       <!-- Empty state (outside table) -->
       <Empty
-        v-if="!loading && !table.getRowModel().rows.length"
+        v-if="!loading && !filteredUsers.length"
         class="min-h-[280px] rounded-xl border border-dashed bg-muted/20"
       >
         <EmptyHeader>

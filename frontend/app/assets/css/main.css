@@ -47,6 +47,20 @@
   --color-severity-red: var(--severity-red);
   --color-severity-amber: var(--severity-amber);
   --color-severity-green: var(--severity-green);
+  /* Semantic aliases — these bridge CSS vars → Tailwind color utilities.
+     Pattern: text-[var(--color-text-error)] in components. */
+  --color-ui-text-error:    var(--color-text-error);
+  --color-ui-text-success:  var(--color-text-success);
+  --color-ui-text-warning:  var(--color-text-warning);
+  --color-ui-text-subtle:   var(--color-text-subtle);
+  --color-ui-text-strong:   var(--color-text-primary);
+  --color-ui-surface-error:   var(--color-surface-error);
+  --color-ui-surface-success: var(--color-surface-success);
+  --color-ui-surface-warning: var(--color-surface-warning);
+  --color-ui-surface-subtle:  var(--color-surface-subtle);
+  --color-ui-border-error:   var(--color-border-error);
+  --color-ui-border-success: var(--color-border-success);
+  --color-ui-border-warning: var(--color-border-warning);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -95,20 +109,61 @@
   --sidebar-ring: oklch(0.708 0 0);
 
   /* Project-specific tokens — override these to theme the app */
-  --brand-color: #0066cc;
-  --success: #1b5e20;
-  --warning: #f57f17;
-  --info: #32ade6;
-  --locked: #8e8e93;
-  --voting: #5856d6;
-  /* Severity palette — saturated indicators used by KPI strips, status chips,
-     row highlights. Values come from the documented palette (DESIGN.md). */
-  --severity-red: #ff3b30;
-  --severity-amber: #ff9f0a;
-  --severity-green: #34c759;
+  /* --brand-color-base is the source of truth set by CBY Admin.
+     --brand-color is what the app consumes; dark mode overrides it via color-mix.
+     --primary and --ring track --brand-color so buttons/focus rings stay branded. */
+  --brand-color-base: #0066cc;
+  --brand-color: var(--brand-color-base);
+  --primary: var(--brand-color);
+  --primary-foreground: oklch(0.985 0 0);
+  --ring: var(--brand-color);
+  /* These are the source-of-truth base values. Dark mode derives from them. */
+  --success-base:        #1b5e20;
+  --warning-base:        #f57f17;
+  --info-base:           #32ade6;
+  --locked-base:         #8e8e93;
+  --voting-base:         #5856d6;
+  --severity-red-base:   #ff3b30;
+  --severity-amber-base: #ff9f0a;
+  --severity-green-base: #34c759;
+
+  /* Consumed tokens — in light mode, same as base */
+  --success:        var(--success-base);
+  --warning:        var(--warning-base);
+  --info:           var(--info-base);
+  --locked:         var(--locked-base);
+  --voting:         var(--voting-base);
+  --severity-red:   var(--severity-red-base);
+  --severity-amber: var(--severity-amber-base);
+  --severity-green: var(--severity-green-base);
   --font-sans: 'IBM Plex Sans Arabic', 'Inter', system-ui, -apple-system, sans-serif;
   --font-heading: 'Cairo', 'IBM Plex Sans Arabic', system-ui, sans-serif;
   --font-section: 'Tajawal', 'IBM Plex Sans Arabic', system-ui, sans-serif;
+
+  /* ── Semantic UI color aliases ───────────────────────────────────────────────
+     Use these throughout all components instead of raw Tailwind color classes
+     (e.g. text-red-700, bg-green-50, text-gray-600, bg-amber-50).
+     Values use oklch() consistent with the shadcn-vue palette.
+     Each variable has a dark override in the .dark block below.
+  */
+
+  /* Text — readable on light bg */
+  --color-text-error:    oklch(0.396 0.141 25.7);    /* #c62828 equivalent — errors, required * */
+  --color-text-success:  oklch(0.44 0.13 143.8);     /* #2e7d32 equivalent — approved/completed */
+  --color-text-warning:  oklch(0.54 0.17 47.5);      /* #e65100 equivalent — amber banners */
+  --color-text-subtle:   oklch(0.556 0 0);            /* = --muted-foreground (shadcn canonical) */
+  --color-text-primary:  oklch(0.145 0 0);            /* = --foreground (shadcn canonical) */
+
+  /* Surface tints — light wash behind colored content */
+  --color-surface-error:   oklch(0.971 0.013 17.4);  /* very light red tint */
+  --color-surface-success: oklch(0.971 0.013 145);   /* very light green tint */
+  --color-surface-warning: oklch(0.971 0.022 77);    /* very light amber tint */
+  --color-surface-subtle:  oklch(0.97 0 0);           /* = --muted (shadcn canonical) */
+
+  /* Border tints — subtle colored borders */
+  --color-border-error:   oklch(0.85 0.055 22);
+  --color-border-success: oklch(0.85 0.055 143);
+  --color-border-warning: oklch(0.85 0.07 77);
 }
 
 .dark {
@@ -118,8 +173,11 @@
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.205 0 0);
   --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
+  /* Brand: --brand-color lifts lightness in dark mode via color-mix.
+     --primary and --ring follow it; --primary-foreground is always white on brand colors. */
+  --primary: var(--brand-color);
+  --primary-foreground: oklch(0.985 0 0);
+  --ring: var(--brand-color);
   --secondary: oklch(0.269 0 0);
   --secondary-foreground: oklch(0.985 0 0);
   --muted: oklch(0.269 0 0);
@@ -144,12 +202,37 @@
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
 
-  /* Project-specific tokens — dark overrides */
-  --success: #81c784;
-  --warning: #ffb74d;
-  --info: #32ade6;
-  --locked: #a8b0ba;
-  --voting: #7b79e8;
+  /* Project-specific tokens — dark mode derivations.
+     Each color is computed from its *-base via color-mix in oklch.
+     This means CBY Admin only sets the base; dark mode adapts automatically.
+     Mixing with white in oklch lifts lightness while preserving hue exactly.
+     --primary tracks --brand-color so branded buttons/links stay consistent. */
+  --brand-color:    color-mix(in oklch, var(--brand-color-base)    60%, white 40%);
+  --primary:        var(--brand-color);
+  --success:        color-mix(in oklch, var(--success-base)        55%, white 45%);
+  --warning:        color-mix(in oklch, var(--warning-base)        60%, white 40%);
+  --info:           color-mix(in oklch, var(--info-base)           70%, white 30%);
+  --locked:         color-mix(in oklch, var(--locked-base)         60%, white 40%);
+  --voting:         color-mix(in oklch, var(--voting-base)         60%, white 40%);
+  --severity-red:   color-mix(in oklch, var(--severity-red-base)   70%, white 30%);
+  --severity-amber: color-mix(in oklch, var(--severity-amber-base) 70%, white 30%);
+  --severity-green: color-mix(in oklch, var(--severity-green-base) 70%, white 30%);
+
+  /* Semantic UI color aliases — dark overrides (oklch for dark mode) */
+  --color-text-error:    oklch(0.704 0.191 22.2);    /* = --destructive dark (bright readable red) */
+  --color-text-success:  oklch(0.696 0.17 162.5);   /* bright readable green on dark */
+  --color-text-warning:  oklch(0.769 0.17 70.1);    /* bright readable amber on dark */
+  --color-text-subtle:   oklch(0.708 0 0);            /* = --muted-foreground dark */
+  --color-text-primary:  oklch(0.985 0 0);            /* = --foreground dark */
+
+  --color-surface-error:   oklch(0.22 0.05 22);      /* deep dark red tint */
+  --color-surface-success: oklch(0.22 0.05 143);     /* deep dark green tint */
+  --color-surface-warning: oklch(0.22 0.05 77);      /* deep dark amber tint */
+  --color-surface-subtle:  oklch(0.269 0 0);          /* = --muted dark */
+
+  --color-border-error:   oklch(0.42 0.1 22);
+  --color-border-success: oklch(0.42 0.1 143);
+  --color-border-warning: oklch(0.42 0.1 77);
 }
 
 .high-contrast {

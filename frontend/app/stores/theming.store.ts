@@ -387,8 +387,11 @@ export const useThemingStore = defineStore('theming', {
 
       const color = sanitizeBrandColor(this.brandColor)
       const root = document.documentElement
-      root.style.setProperty('--brand-color', color)
-      root.style.setProperty('--primary', color)
+      // Only set the base token — CSS derives --brand-color and --primary
+      // automatically for both light and dark mode via color-mix()
+      root.style.setProperty('--brand-color-base', color)
+      root.style.removeProperty('--primary')
+      root.style.removeProperty('--primary-foreground')
       root.style.setProperty('--ring', color)
     },
 

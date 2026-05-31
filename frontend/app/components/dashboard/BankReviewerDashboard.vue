@@ -1,6 +1,8 @@
 // @parity-evidence: Story 12.1 — docs/user-view/bank-reviewer.md#Dashboard
 <script setup lang="ts">
+import type { ColumnDef } from '@tanstack/vue-table'
 import { computed, onMounted } from 'vue'
+import { h } from 'vue'
 import { useRouter } from 'vue-router'
 import { CheckCircle2, Clock, RotateCcw, AlertCircle, Users, FileText, Zap, XCircle } from 'lucide-vue-next'
 import { useDashboardStore } from '../../stores/dashboard.store'
@@ -13,7 +15,9 @@ import ActionRequiredStrip from '../shared/ActionRequiredStrip.vue'
 import { Card, CardContent } from '../ui/card'
 import { Button } from '../ui/button'
 import { Skeleton } from '../ui/skeleton'
-import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from '../ui/table'
+import DataTable from '../ui/data-table/DataTable.vue'
+import MetricCard from '../shared/dashboard/MetricCard.vue'
+import MetricGrid from '../shared/dashboard/MetricGrid.vue'
 
 const router = useRouter()
 const store = useDashboardStore()
@@ -75,20 +79,98 @@ function formatAmount(amount: number, currency: string): string {
   return new Intl.NumberFormat('ar-YE', { style: 'currency', currency, minimumFractionDigits: 0 }).format(amount)
 }
 
-function getKpiIconColor(variant: string): string {
-  const colors: Record<string, string> = {
-    green: 'text-[var(--severity-green)] bg-[var(--severity-green)]/10',
-    blue: 'text-primary bg-primary/10',
-    amber: 'text-[var(--severity-amber)] bg-[var(--severity-amber)]/10',
-    rose: 'text-[var(--severity-red)] bg-[var(--severity-red)]/10',
-    gray: 'text-muted-foreground bg-muted',
-  }
-  return colors[variant] ?? colors.gray!
-}
-
 function isCreatedByCurrentUser(createdBy: number | null | undefined): boolean {
   return currentUserId.value !== null && createdBy === currentUserId.value
 }
+
+type ReviewerQueueRow = NonNullable<BankReviewerDashboardStats['review_queue']>[number]
+type DownstreamQueueRow = NonNullable<BankReviewerDashboardStats['downstream_queue']>[number]
+
+const reviewQueueColumns: ColumnDef<ReviewerQueueRow>[] = [
+  {
+    accessorKey: 'reference_number',
+    header: 'المرجع',
+    cell: ({ row }) => h('a', {
+      class: 'font-mono text-primary hover:underline',
+      href: `/requests/${row.original.id}`,
+      onClick: (event: MouseEvent) => {
+        event.preventDefault()
+        event.stopPropagation()
+        router.push(`/requests/${row.original.id}`)
+      },
+    }, row.original.reference_number),
+  },
+  {
+    id: 'created_by',
+    header: 'أنشأه',
+    cell: ({ row }) => isCreatedByCurrentUser(row.original.created_by)
+      ? h('span', { class: 'text-[var(--severity-amber)] font-medium' }, 'أنا')
+      : h('span', row.original.created_by_user?.name ?? '—'),
+  },
+  { accessorKey: 'supplier_name', header: 'المورد' },
+  {
+    id: 'amount',
+    header: 'المبلغ',
+    cell: ({ row }) => h('span', { class: 'direction-ltr font-tabular-nums' }, formatAmount(row.original.amount, row.original.currency)),
+  },
+  {
+    id: 'status',
+    header: 'الحالة',
+    cell: ({ row }) => h(StatusBadge, { status: row.original.status, role: UserRole.BANK_REVIEWER }),
+  },
+  {
+    id: 'actions',
+    header: 'إجراء',
+    cell: ({ row }) => {
+      if (isCreatedByCurrentUser(row.original.created_by)) {
+        return h('span', {
+          class: 'inline-flex px-2 py-1 bg-muted text-muted-foreground text-xs rounded cursor-not-allowed',
+          title: 'لا يمكنك مراجعة طلب أنشأته بنفسك',
+          'aria-label': 'لا يمكنك مراجعة طلب أنشأته بنفسك',
+          onClick: (event: MouseEvent) => event.stopPropagation(),
+        }, 'غير متاح')
+      }
+      return h(Button, {
+        size: 'sm',
+        variant: 'outline',
+        onClick: (event: MouseEvent) => {
+          event.stopPropagation()
+          router.push(`/requests/${row.original.id}`)
+        },
+      }, () => 'بدء المراجعة')
+    },
+  },
+]
+
+const downstreamQueueColumns: ColumnDef<DownstreamQueueRow>[] = [
+  {
+    accessorKey: 'reference_number',
+    header: 'المرجع',
+    cell: ({ row }) => h('a', {
+      class: 'font-mono text-primary hover:underline',
+      href: `/requests/${row.original.id}`,
+      onClick: (event: MouseEvent) => {
+        event.preventDefault()
+        event.stopPropagation()
+        router.push(`/requests/${row.original.id}`)
+      },
+    }, row.original.reference_number),
+  },
+  { id: 'stage', header: 'المرحلة الحالية', cell: ({ row }) => h('span', STATUS_LABELS[row.original.status] ?? '—') },
+  { id: 'status', header: 'الحالة', cell: ({ row }) => h(StatusBadge, { status: row.original.status, role: UserRole.BANK_REVIEWER }) },
+  {
+    id: 'actions',
+    header: 'إجراء',
+    cell: ({ row }) => h(Button, {
+      size: 'sm',
+      variant: 'outline',
+      onClick: (event: MouseEvent) => {
+        event.stopPropagation()
+        router.push(`/requests/${row.original.id}`)
+      },
+    }, () => 'عرض'),
+  },
+]
 
 onMounted(() => { store.loadStats() })
 </script>
@@ -127,39 +209,26 @@ onMounted(() => { store.loadStats() })
       />
 
       <!-- KPI grid (4 cards): Pending Review / Rejected by Support / At CBY / Approved-Completed -->
-      <div class="grid grid-cols-4 max-lg:grid-cols-2 max-md:grid-cols-1 gap-4">
-        <template v-for="kpi in kpiConfig" :key="kpi.label">
-          <Card
-            class="border-0 p-4 shadow flex flex-col gap-1.5 cursor-pointer hover:shadow-md transition-shadow"
-            :class="{
-              'border-s-4 border-s-[var(--severity-amber)]': kpi.variant === 'amber',
-              'border-s-4 border-s-[var(--severity-red)]': kpi.variant === 'rose',
-            }"
-            role="button"
-            tabindex="0"
-            :aria-label="`${kpi.label}: ${kpi.value}`"
-            @click="router.push(`/requests?tab=${kpi.tab}`)"
-            @keydown.enter="router.push(`/requests?tab=${kpi.tab}`)"
-            @keydown.space.prevent="router.push(`/requests?tab=${kpi.tab}`)"
-          >
-            <div class="h-9 w-9 rounded flex items-center justify-center flex-shrink-0" :class="getKpiIconColor(kpi.variant)">
-              <component :is="kpi.icon" class="h-5 w-5" aria-hidden="true" />
-            </div>
-            <span
-              class="text-2xl font-semibold leading-none"
-              :class="
-                kpi.variant === 'amber' && kpi.value > 0 ? 'text-[var(--severity-amber)]'
-                : kpi.variant === 'rose' && kpi.value > 0 ? 'text-[var(--severity-red)]'
-                : kpi.variant === 'green' ? 'text-[var(--severity-green)]'
-                : 'text-foreground'
-              "
-            >
-              {{ kpi.value }}
-            </span>
-            <span class="text-xs text-muted-foreground">{{ kpi.label }}</span>
-          </Card>
-        </template>
-      </div>
+      <MetricGrid :columns="4">
+        <MetricCard
+          v-for="kpi in kpiConfig"
+          :key="kpi.label"
+          :label="kpi.label"
+          :value="kpi.value"
+          :icon="kpi.icon"
+          :tone="
+            kpi.variant === 'amber' && kpi.value > 0
+              ? 'warning'
+              : kpi.variant === 'rose' && kpi.value > 0
+                ? 'danger'
+                : kpi.variant === 'green'
+                  ? 'success'
+                  : 'default'
+          "
+          :highlighted="(kpi.variant === 'amber' || kpi.variant === 'rose') && kpi.value > 0"
+          @click="router.push(`/requests?tab=${kpi.tab}`)"
+        />
+      </MetricGrid>
 
       <!-- Quick actions -->
       <section aria-labelledby="qa-heading">
@@ -214,58 +283,11 @@ onMounted(() => { store.loadStats() })
 
         <Card v-else class="border-0 shadow">
           <CardContent class="p-4">
-            <Table aria-label="طابور المراجعة الحالي">
-              <TableHeader>
-                <TableRow>
-                  <TableHead>المرجع</TableHead>
-                  <TableHead>أنشأه</TableHead>
-                  <TableHead>المورد</TableHead>
-                  <TableHead>المبلغ</TableHead>
-                  <TableHead>الحالة</TableHead>
-                  <TableHead>إجراء</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                <TableRow
-                  v-for="req in queue.slice(0, 8)"
-                  :key="req.id"
-                  class="cursor-pointer"
-                  @click="router.push(`/requests/${req.id}`)"
-                >
-                  <TableCell>
-                    <a class="font-mono text-primary hover:underline" :href="`/requests/${req.id}`" @click.stop.prevent="router.push(`/requests/${req.id}`)">{{ req.reference_number }}</a>
-                  </TableCell>
-                  <TableCell>
-                    <span v-if="isCreatedByCurrentUser(req.created_by)" class="text-[var(--severity-amber)] font-medium">أنا</span>
-                    <span v-else>{{ req.created_by_user?.name ?? '—' }}</span>
-                  </TableCell>
-                  <TableCell>{{ req.supplier_name }}</TableCell>
-                  <TableCell class="direction-ltr font-tabular-nums">{{ formatAmount(req.amount, req.currency) }}</TableCell>
-                  <TableCell><StatusBadge :status="req.status" :role="UserRole.BANK_REVIEWER" /></TableCell>
-                  <TableCell @click.stop>
-                    <template v-if="isCreatedByCurrentUser(req.created_by)">
-                      <span
-                        class="inline-flex px-2 py-1 bg-muted text-muted-foreground text-xs rounded cursor-not-allowed"
-                        :title="'لا يمكنك مراجعة طلب أنشأته بنفسك'"
-                        aria-label="لا يمكنك مراجعة طلب أنشأته بنفسك"
-                      >
-                        غير متاح
-                      </span>
-                    </template>
-                    <template v-else>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        :aria-label="`مراجعة الطلب ${req.reference_number}`"
-                        @click="router.push(`/requests/${req.id}`)"
-                      >
-                        بدء المراجعة
-                      </Button>
-                    </template>
-                  </TableCell>
-                </TableRow>
-              </TableBody>
-            </Table>
+            <DataTable
+              :data="queue.slice(0, 8)"
+              :columns="reviewQueueColumns"
+              @row-click="(row) => router.push(`/requests/${row.id}`)"
+            />
           </CardContent>
         </Card>
       </section>
@@ -278,33 +300,11 @@ onMounted(() => { store.loadStats() })
         </div>
         <Card class="border-0 shadow">
           <CardContent class="p-4">
-            <Table aria-label="متابعة الطلبات لدى البنك المركزي">
-              <TableHeader>
-                <TableRow>
-                  <TableHead>المرجع</TableHead>
-                  <TableHead>المرحلة الحالية</TableHead>
-                  <TableHead>الحالة</TableHead>
-                  <TableHead>إجراء</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                <TableRow
-                  v-for="req in downstreamQueue.slice(0, 5)"
-                  :key="req.id"
-                  class="cursor-pointer"
-                  @click="router.push(`/requests/${req.id}`)"
-                >
-                  <TableCell>
-                    <a class="font-mono text-primary hover:underline" :href="`/requests/${req.id}`" @click.stop.prevent="router.push(`/requests/${req.id}`)">{{ req.reference_number }}</a>
-                  </TableCell>
-                  <TableCell>{{ STATUS_LABELS[req.status] ?? '—' }}</TableCell>
-                  <TableCell><StatusBadge :status="req.status" :role="UserRole.BANK_REVIEWER" /></TableCell>
-                  <TableCell @click.stop>
-                    <Button size="sm" variant="outline" @click="router.push(`/requests/${req.id}`)">عرض</Button>
-                  </TableCell>
-                </TableRow>
-              </TableBody>
-            </Table>
+            <DataTable
+              :data="downstreamQueue.slice(0, 5)"
+              :columns="downstreamQueueColumns"
+              @row-click="(row) => router.push(`/requests/${row.id}`)"
+            />
           </CardContent>
         </Card>
       </section>

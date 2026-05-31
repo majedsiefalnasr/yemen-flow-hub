@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import type { ColumnDef } from '@tanstack/vue-table'
+import { computed, h, onMounted, ref } from 'vue'
 import { useAuthStore } from '../../stores/auth.store'
 import { useReportsStore } from '../../stores/reports.store'
 import { UserRole } from '../../types/enums'
@@ -7,6 +8,13 @@ import LineChart from '../../components/charts/LineChart.vue'
 import PieChart from '../../components/charts/PieChart.vue'
 import CurrencyBarChart from '../../components/charts/CurrencyBarChart.vue'
 import SubmissionHeatmap from '../../components/charts/SubmissionHeatmap.vue'
+import MetricCard from '../../components/shared/dashboard/MetricCard.vue'
+import MetricGrid from '../../components/shared/dashboard/MetricGrid.vue'
+import AnalyticsCard from '../../components/shared/dashboard/AnalyticsCard.vue'
+import TimeSeriesChartCard from '../../components/shared/dashboard/TimeSeriesChartCard.vue'
+import BreakdownChartCard from '../../components/shared/dashboard/BreakdownChartCard.vue'
+import RankedListCard from '../../components/shared/dashboard/RankedListCard.vue'
+import DataTable from '@/components/ui/data-table/DataTable.vue'
 
 const REPORTING_ROLES = [
   UserRole.CBY_ADMIN,
@@ -201,6 +209,37 @@ const statusRows = computed(() => {
   const counts = store.workflowReport?.counts_by_status ?? {}
   return Object.entries(counts).map(([status, count]) => ({ status, count }))
 })
+
+const statusColumns: ColumnDef<{ status: string, count: number }>[] = [
+  {
+    accessorKey: 'status',
+    header: 'الحالة',
+    cell: ({ row }) => h('span', { class: 'font-medium' }, row.original.status),
+  },
+  {
+    accessorKey: 'count',
+    header: 'العدد',
+    cell: ({ row }) => h('span', { class: 'tabular-nums' }, row.original.count),
+  },
+]
+
+const bankBreakdownRows = computed(() => store.bankReport?.per_bank ?? [])
+const bankBreakdownColumns: ColumnDef<{
+  bank_id: number
+  bank_name: string
+  total_requests: number
+  approved_count: number
+  rejected_count: number
+  pending_count: number
+  approval_rate: number
+}>[] = [
+  { accessorKey: 'bank_name', header: 'البنك', cell: ({ row }) => h('span', { class: 'font-medium' }, row.original.bank_name) },
+  { accessorKey: 'total_requests', header: 'إجمالي الطلبات', cell: ({ row }) => h('span', { class: 'tabular-nums' }, row.original.total_requests) },
+  { accessorKey: 'approved_count', header: 'المعتمدة', cell: ({ row }) => h('span', { class: 'tabular-nums text-[var(--severity-green)]' }, row.original.approved_count) },
+  { accessorKey: 'rejected_count', header: 'المرفوضة', cell: ({ row }) => h('span', { class: 'tabular-nums text-[var(--severity-red)]' }, row.original.rejected_count) },
+  { accessorKey: 'pending_count', header: 'المعلقة', cell: ({ row }) => h('span', { class: 'tabular-nums' }, row.original.pending_count) },
+  { accessorKey: 'approval_rate', header: 'نسبة الاعتماد', cell: ({ row }) => h('span', { class: 'tabular-nums' }, `${row.original.approval_rate}%`) },
+]
 </script>
 
 <template>
@@ -336,94 +375,50 @@ const statusRows = computed(() => {
 
     <template v-else>
       <!-- 5-KPI Strip -->
-      <div v-if="kpiData" class="kpi-strip" data-testid="kpi-cards">
-        <div class="kpi-card">
-          <div class="kpi-icon kpi-icon-blue">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-          </div>
-          <div class="kpi-content">
-            <div class="kpi-label">إجمالي الطلبات</div>
-            <div class="kpi-value">{{ kpiData.totalRequests.toLocaleString('ar-EG') }}</div>
-          </div>
-        </div>
-        <div class="kpi-card">
-          <div class="kpi-icon kpi-icon-green">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-          </div>
-          <div class="kpi-content">
-            <div class="kpi-label">إجمالي قيمة التمويل</div>
-            <div class="kpi-value">
-              {{ kpiData.totalFinancingValue != null ? formatFinancing(kpiData.totalFinancingValue) : '—' }}
-            </div>
-          </div>
-        </div>
-        <div class="kpi-card">
-          <div class="kpi-icon kpi-icon-indigo">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-          </div>
-          <div class="kpi-content">
-            <div class="kpi-label">متوسط وقت المعالجة</div>
-            <div class="kpi-value">
-              {{ kpiData.avgProcessingHours != null ? `${kpiData.avgProcessingHours} ساعة` : '—' }}
-            </div>
-          </div>
-        </div>
-        <div class="kpi-card">
-          <div class="kpi-icon kpi-icon-cyan">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-          </div>
-          <div class="kpi-content">
-            <div class="kpi-label">معدل الاعتماد</div>
-            <div class="kpi-value">{{ kpiData.approvalRate }}%</div>
-          </div>
-        </div>
-        <div class="kpi-card">
-          <div class="kpi-icon kpi-icon-orange">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-          </div>
-          <div class="kpi-content">
-            <div class="kpi-label">الفواتير المكررة</div>
-            <div class="kpi-value">
-              {{ kpiData.duplicateInvoiceCount != null ? kpiData.duplicateInvoiceCount : '—' }}
-            </div>
-          </div>
-        </div>
+      <div v-if="kpiData" data-testid="kpi-cards">
+        <MetricGrid :columns="5">
+          <MetricCard label="إجمالي الطلبات" :value="kpiData.totalRequests.toLocaleString('ar-EG')" :clickable="false" />
+          <MetricCard label="إجمالي قيمة التمويل" :value="kpiData.totalFinancingValue != null ? formatFinancing(kpiData.totalFinancingValue) : '—'" tone="success" :clickable="false" />
+          <MetricCard label="متوسط وقت المعالجة" :value="kpiData.avgProcessingHours != null ? `${kpiData.avgProcessingHours} ساعة` : '—'" tone="voting" :clickable="false" />
+          <MetricCard label="معدل الاعتماد" :value="`${kpiData.approvalRate}%`" tone="info" :clickable="false" />
+          <MetricCard label="الفواتير المكررة" :value="kpiData.duplicateInvoiceCount != null ? kpiData.duplicateInvoiceCount : '—'" tone="warning" :clickable="false" />
+        </MetricGrid>
       </div>
 
       <!-- Charts: Row 1 — Line + Pie -->
       <div v-if="hasChartData" class="charts-row">
-        <div class="section-card chart-lg" data-testid="line-chart">
-          <h2 class="section-title">تطور أحجام الطلبات</h2>
-          <p class="section-subtitle">أحجام الطلبات الشهرية خلال آخر 12 شهرًا</p>
+        <TimeSeriesChartCard
+          title="تطور أحجام الطلبات"
+          description="أحجام الطلبات الشهرية خلال آخر 12 شهرًا"
+          :has-data="lineChartSeries.length > 0"
+          card-class="section-card chart-lg"
+          data-testid="line-chart"
+        >
           <LineChart
-            v-if="lineChartSeries.length"
             :labels="lineChartLabels"
             :series="lineChartSeries"
           />
-          <div v-else class="chart-empty-msg">لا توجد بيانات للفترة المحددة</div>
-        </div>
-        <div class="section-card chart-sm" data-testid="pie-chart">
-          <h2 class="section-title">التوزيع حسب الفئة</h2>
-          <PieChart
-            v-if="pieChartData.length"
-            :data="pieChartData"
-          />
-          <div v-else class="chart-empty-msg">لا توجد بيانات للفترة المحددة</div>
-        </div>
+        </TimeSeriesChartCard>
+        <BreakdownChartCard
+          title="التوزيع حسب الفئة"
+          :has-data="pieChartData.length > 0"
+          card-class="section-card chart-sm"
+          data-testid="pie-chart"
+        >
+          <PieChart :data="pieChartData" />
+        </BreakdownChartCard>
       </div>
 
       <!-- Charts: Row 2 — Currency Bar + Bank Volume -->
       <div v-if="hasChartData" class="charts-row">
-        <div class="section-card chart-lg">
-          <h2 class="section-title">قيمة التمويل بالعملة</h2>
-          <CurrencyBarChart
-            v-if="currencyBarData.length"
-            :data="currencyBarData"
-          />
-          <div v-else class="chart-empty-msg">لا توجد بيانات للفترة المحددة</div>
-        </div>
-        <div v-if="bankChartData.length" class="section-card chart-sm">
-          <h2 class="section-title">حجم الطلبات حسب البنك</h2>
+        <BreakdownChartCard
+          title="قيمة التمويل بالعملة"
+          :has-data="currencyBarData.length > 0"
+          card-class="section-card chart-lg"
+        >
+          <CurrencyBarChart :data="currencyBarData" />
+        </BreakdownChartCard>
+        <RankedListCard v-if="bankChartData.length" title="حجم الطلبات حسب البنك" card-class="section-card chart-sm">
           <div class="bar-chart" role="list" aria-label="مخطط طلبات البنوك">
             <div
               v-for="bank in bankChartData"
@@ -438,92 +433,40 @@ const statusRows = computed(() => {
               <span class="bar-value">{{ bank.total }}</span>
             </div>
           </div>
-        </div>
+        </RankedListCard>
       </div>
 
       <!-- Heatmap (full width) -->
-      <div v-if="hasChartData" class="section-card" data-testid="heatmap">
-        <h2 class="section-title">خريطة حرارية: كثافة التقديم خلال الأسبوع</h2>
-        <p class="section-subtitle">أنماط تقديم الطلبات حسب اليوم والوقت</p>
+      <TimeSeriesChartCard
+        v-if="hasChartData"
+        title="خريطة حرارية: كثافة التقديم خلال الأسبوع"
+        description="أنماط تقديم الطلبات حسب اليوم والوقت"
+        :has-data="true"
+        card-class="section-card"
+        data-testid="heatmap"
+      >
         <SubmissionHeatmap :data="heatmapData" />
-      </div>
+      </TimeSeriesChartCard>
 
       <!-- Workflow Report: Status Breakdown Table -->
-      <div v-if="store.workflowReport && statusRows.length" class="section-card">
-        <h2 class="section-title">توزيع الطلبات حسب الحالة</h2>
-        <table class="report-table">
-          <thead>
-            <tr>
-              <th>الحالة</th>
-              <th>العدد</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="row in statusRows" :key="row.status">
-              <td>{{ row.status }}</td>
-              <td>{{ row.count }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      <AnalyticsCard v-if="store.workflowReport && statusRows.length" title="توزيع الطلبات حسب الحالة" card-class="section-card" content-class="p-0">
+        <DataTable :data="statusRows" :columns="statusColumns" />
+      </AnalyticsCard>
 
       <!-- Bank Report: Per-bank cross-bank breakdown (CBY Admin) -->
-      <div v-if="store.bankReport?.per_bank" class="section-card">
-        <h2 class="section-title">إحصاءات البنوك</h2>
-        <table class="report-table">
-          <thead>
-            <tr>
-              <th>البنك</th>
-              <th>إجمالي الطلبات</th>
-              <th>المعتمدة</th>
-              <th>المرفوضة</th>
-              <th>المعلقة</th>
-              <th>نسبة الاعتماد</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="b in store.bankReport.per_bank" :key="b.bank_id">
-              <td>{{ b.bank_name }}</td>
-              <td>{{ b.total_requests }}</td>
-              <td>{{ b.approved_count }}</td>
-              <td>{{ b.rejected_count }}</td>
-              <td>{{ b.pending_count }}</td>
-              <td>{{ b.approval_rate }}%</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      <AnalyticsCard v-if="store.bankReport?.per_bank" title="إحصاءات البنوك" card-class="section-card" content-class="p-0">
+        <DataTable :data="bankBreakdownRows" :columns="bankBreakdownColumns" />
+      </AnalyticsCard>
 
       <!-- Bank Report: Own-bank summary (bank users) -->
-      <div v-else-if="store.bankReport && isBankUser" class="section-card">
-        <h2 class="section-title">إحصاءات بنكك</h2>
-        <div class="kpi-strip">
-          <div class="kpi-card">
-            <div class="kpi-content">
-              <div class="kpi-label">إجمالي الطلبات</div>
-              <div class="kpi-value">{{ store.bankReport.total_requests }}</div>
-            </div>
-          </div>
-          <div class="kpi-card">
-            <div class="kpi-content">
-              <div class="kpi-label">الطلبات المعتمدة</div>
-              <div class="kpi-value" style="color: var(--success)">{{ store.bankReport.approved_count }}</div>
-            </div>
-          </div>
-          <div class="kpi-card">
-            <div class="kpi-content">
-              <div class="kpi-label">الطلبات المرفوضة</div>
-              <div class="kpi-value" style="color: var(--destructive)">{{ store.bankReport.rejected_count }}</div>
-            </div>
-          </div>
-          <div class="kpi-card">
-            <div class="kpi-content">
-              <div class="kpi-label">متوسط وقت المعالجة</div>
-              <div class="kpi-value">{{ store.bankReport.avg_processing_hours }} ساعة</div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <AnalyticsCard v-else-if="store.bankReport && isBankUser" title="إحصاءات بنكك" card-class="section-card">
+        <MetricGrid :columns="4">
+          <MetricCard label="إجمالي الطلبات" :value="store.bankReport.total_requests" :clickable="false" />
+          <MetricCard label="الطلبات المعتمدة" :value="store.bankReport.approved_count" tone="success" :clickable="false" />
+          <MetricCard label="الطلبات المرفوضة" :value="store.bankReport.rejected_count" tone="danger" :clickable="false" />
+          <MetricCard label="متوسط وقت المعالجة" :value="`${store.bankReport.avg_processing_hours} ساعة`" :clickable="false" />
+        </MetricGrid>
+      </AnalyticsCard>
 
       <!-- Empty State -->
       <div v-if="!store.workflowReport && !store.bankReport && !store.error" class="empty-state">

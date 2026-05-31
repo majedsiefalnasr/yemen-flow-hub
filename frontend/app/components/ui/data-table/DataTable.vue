@@ -32,6 +32,8 @@ const props = withDefaults(defineProps<{
   columnFilters?: ColumnFiltersState
   columnVisibility?: VisibilityState
   rowSelection?: Record<string, boolean>
+  rowClass?: string | ((row: TData) => string)
+  isRowExpanded?: (row: TData) => boolean
 }>(), {
   loading: false,
   pageCount: -1,
@@ -58,6 +60,11 @@ function resolveHeaderClass(meta?: unknown) {
 
 function resolveCellClass(meta?: unknown) {
   return (meta as { cellClass?: string } | undefined)?.cellClass
+}
+
+function resolveRowClass(row: TData) {
+  if (typeof props.rowClass === 'function') return props.rowClass(row)
+  return props.rowClass ?? ''
 }
 
 const table = useVueTable({
@@ -108,8 +115,10 @@ defineExpose({ table })
 <template>
   <div class="space-y-4">
     <slot name="toolbar" :table="table" />
-    <div class="rounded-lg border">
-      <Table>
+
+    <!-- Table — only rendered when loading or rows exist -->
+    <div v-if="loading || table.getRowModel().rows.length > 0" class="rounded-lg border overflow-x-auto">
+      <Table class="min-w-full">
         <TableHeader>
           <TableRow
             v-for="headerGroup in table.getHeaderGroups()"
@@ -137,38 +146,45 @@ defineExpose({ table })
               </TableCell>
             </TableRow>
           </template>
-          <template v-else-if="table.getRowModel().rows.length">
-            <TableRow
-              v-for="row in table.getRowModel().rows"
-              :key="row.id"
-              :data-state="row.getIsSelected() ? 'selected' : undefined"
-              class="cursor-pointer transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted"
-              @click="emit('row-click', row.original)"
-            >
-              <TableCell
-                v-for="cell in row.getVisibleCells()"
-                :key="cell.id"
-                :class="resolveCellClass(cell.column.columnDef.meta)"
-              >
-                <FlexRender
-                  :render="cell.column.columnDef.cell"
-                  :props="cell.getContext()"
-                />
-              </TableCell>
-            </TableRow>
-          </template>
           <template v-else>
-            <TableRow>
-              <TableCell :colspan="columns.length" class="h-32 text-center text-muted-foreground">
-                <slot name="empty">
-                  لا توجد بيانات
-                </slot>
-              </TableCell>
-            </TableRow>
+            <template v-for="row in table.getRowModel().rows" :key="row.id">
+              <TableRow
+                :data-state="row.getIsSelected() ? 'selected' : undefined"
+                class="cursor-pointer transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted"
+                :class="resolveRowClass(row.original)"
+                @click="emit('row-click', row.original)"
+              >
+                <TableCell
+                  v-for="cell in row.getVisibleCells()"
+                  :key="cell.id"
+                  :class="resolveCellClass(cell.column.columnDef.meta)"
+                >
+                  <FlexRender
+                    :render="cell.column.columnDef.cell"
+                    :props="cell.getContext()"
+                  />
+                </TableCell>
+              </TableRow>
+              <TableRow v-if="props.isRowExpanded?.(row.original)" class="bg-muted/20">
+                <TableCell :colspan="row.getVisibleCells().length" class="px-6 py-4">
+                  <slot name="row-expanded" :row="row.original" :colspan="row.getVisibleCells().length" />
+                </TableCell>
+              </TableRow>
+            </template>
           </template>
         </TableBody>
       </Table>
     </div>
+
+    <!-- Empty state — rendered outside the table when not loading and no rows -->
+    <template v-else>
+      <slot name="empty">
+        <div class="flex min-h-[200px] items-center justify-center rounded-lg border border-dashed text-sm text-muted-foreground">
+          لا توجد بيانات
+        </div>
+      </slot>
+    </template>
+
     <slot name="pagination" :table="table" />
   </div>
 </template>

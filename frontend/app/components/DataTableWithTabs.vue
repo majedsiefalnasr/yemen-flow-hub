@@ -205,7 +205,7 @@ const prevPage = () => {
     <!-- Outline tab with table -->
     <TabsContent
       value="outline"
-      class="flex flex-col gap-4 px-4 lg:px-6 overflow-auto"
+      class="flex flex-col gap-4 px-4 lg:px-6"
     >
       <!-- Data table -->
       <div class="rounded-lg border overflow-auto">

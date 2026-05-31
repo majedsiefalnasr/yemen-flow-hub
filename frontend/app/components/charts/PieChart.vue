@@ -31,7 +31,7 @@ const slices = computed(() => {
 
 <template>
   <div class="flex flex-col items-center gap-4" >
-    <div v-if="!data.length || total === 0" class="h-44 flex items-center justify-center text-gray-600 text-sm">لا توجد بيانات</div>
+    <div v-if="!data.length || total === 0" class="h-44 flex items-center justify-center text-[var(--color-text-subtle)] text-sm">لا توجد بيانات</div>
     <template v-else>
       <div class="w-44 h-44">
         <svg viewBox="0 0 42 42" class="w-full h-full" aria-label="مخطط دائري">
@@ -53,10 +53,10 @@ const slices = computed(() => {
         </svg>
       </div>
       <div class="flex flex-col gap-2 w-full">
-        <div v-for="slice in slices" :key="slice.label" class="flex items-center gap-2 text-sm text-gray-900">
+        <div v-for="slice in slices" :key="slice.label" class="flex items-center gap-2 text-sm text-[var(--color-text-primary)]">
           <span class="w-2.5 h-2.5 rounded-full flex-shrink-0" :style="{ background: slice.color }" />
           <span class="flex-1">{{ slice.label }}</span>
-          <span class="text-xs text-gray-600 font-tabular-nums">{{ slice.pct.toFixed(1) }}%</span>
+          <span class="text-xs text-[var(--color-text-subtle)] font-tabular-nums">{{ slice.pct.toFixed(1) }}%</span>
         </div>
       </div>
     </template>

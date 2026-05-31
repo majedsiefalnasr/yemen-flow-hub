@@ -16,7 +16,7 @@ const forwardedProps = useForwardProps(delegatedProps)
     data-slot="dropdown-menu-label"
     :data-inset="inset ? '' : undefined"
     v-bind="forwardedProps"
-    :class="cn('text-gray-600 px-1.5 py-1 text-xs font-medium data-inset:ps-7', props.class)"
+    :class="cn('text-muted-foreground px-1.5 py-1 text-xs font-medium data-inset:ps-7', props.class)"
   >
     <slot />
   </DropdownMenuLabel>

@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type { ColumnDef, ColumnFiltersState, VisibilityState } from '@tanstack/vue-table'
 import {
-  FlexRender,
   getCoreRowModel,
   getFacetedRowModel,
   getFacetedUniqueValues,
@@ -17,15 +16,8 @@ import { ROUTE_ROLE_MAP } from '@/constants/workflow'
 import { UserRole } from '@/types/enums'
 import type { Bank } from '@/types/models'
 import { useBanks, type CreateBankPayload, type UpdateBankPayload } from '@/composables/useBanks'
+import { useTableExport } from '@/composables/useTableExport'
 import { useAuthStore } from '@/stores/auth.store'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -45,8 +37,8 @@ import {
   EmptyHeader,
   EmptyTitle,
 } from '@/components/ui/empty'
-import { Skeleton } from '@/components/ui/skeleton'
 import {
+  DataTable,
   DataTableColumnHeader,
   DataTableExport,
   DataTableFacetedFilter,
@@ -56,6 +48,8 @@ import {
   DataTableViewOptions,
   type RowAction,
 } from '@/components/ui/data-table'
+import MetricCard from '@/components/shared/dashboard/MetricCard.vue'
+import MetricGrid from '@/components/shared/dashboard/MetricGrid.vue'
 
 definePageMeta({
   middleware: ['auth', 'role'],
@@ -381,7 +375,6 @@ const table = useVueTable({
   },
   initialState: { pagination: { pageSize: 20 } },
 })
-const hasRows = computed(() => table.getRowModel().rows.length > 0)
 const noBanks = computed(() => !loadingBanks.value && banks.value.length === 0)
 
 function handleReset() {
@@ -434,137 +427,99 @@ function printSelectedRows() {
       </template>
     </PageHeader>
 
-    <!-- KPI Cards -->
-    <div class="mb-6 grid grid-cols-3 gap-3">
-      <div class="rounded-lg border bg-card p-4 shadow">
-        <div class="text-2xl font-bold tabular-nums">{{ stats.total }}</div>
-        <div class="text-xs text-muted-foreground">إجمالي البنوك</div>
-      </div>
-      <div class="rounded-lg border bg-card p-4 shadow">
-        <div class="text-2xl font-bold tabular-nums">{{ stats.active }}</div>
-        <div class="text-xs text-muted-foreground">نشط</div>
-      </div>
-      <div class="rounded-lg border bg-card p-4 shadow">
-        <div class="text-2xl font-bold tabular-nums">{{ stats.inactive }}</div>
-        <div class="text-xs text-muted-foreground">غير نشط</div>
-      </div>
-    </div>
-
-    <!-- Toolbar -->
-    <div class="mb-4">
-      <DataTableToolbar
-        :table="table"
-        search-placeholder="بحث بالاسم أو الكود أو رقم الترخيص..."
-        :has-filters="hasActiveFilters"
-        :selected-count="selectedCount"
-        @update:search="v => query = v"
-        @reset="handleReset"
-        @export-selected="exportSelectedRows"
-        @print-selected="printSelectedRows"
-        @clear-selection="clearBulkSelection"
-      >
-        <template #filters>
-          <DataTableFacetedFilter
-            v-if="table.getColumn('is_active')"
-            :column="table.getColumn('is_active')!"
-            title="الحالة"
-            :options="statusOptions"
-          />
-        </template>
-        <template #actions>
-          <DataTableViewOptions :table="table" :column-labels="BANK_COLUMN_LABELS" />
-          <!-- Cast needed: Bank doesn't carry an index signature required by Record<string, unknown> -->
-          <DataTableExport
-            :table="(table as any)"
-            :export-columns="(exportColumns as any)"
-            :filename="buildExportFilename()"
-            :formats="['csv', 'tsv', 'json', 'excel', 'pdf']"
-            :respect-column-visibility="true"
-          />
-        </template>
-      </DataTableToolbar>
+    <!-- KPI Cards — clicking sets the is_active column filter -->
+    <div class="mb-6">
+      <MetricGrid :columns="3">
+        <MetricCard
+          label="إجمالي البنوك"
+          :value="stats.total"
+          :icon="Building2"
+          :active="columnFilters.length === 0"
+          @click="table.resetColumnFilters()"
+        />
+        <MetricCard
+          label="نشط"
+          :value="stats.active"
+          :icon="Building2"
+          tone="success"
+          :active="columnFilters.some(f => f.id === 'is_active' && Array.isArray(f.value) && f.value.includes('true') && f.value.length === 1)"
+          @click="table.getColumn('is_active')?.setFilterValue(['true'])"
+        />
+        <MetricCard
+          label="غير نشط"
+          :value="stats.inactive"
+          :icon="Building2"
+          tone="danger"
+          :active="columnFilters.some(f => f.id === 'is_active' && Array.isArray(f.value) && f.value.includes('false') && f.value.length === 1)"
+          @click="table.getColumn('is_active')?.setFilterValue(['false'])"
+        />
+      </MetricGrid>
     </div>
 
     <!-- Table -->
-    <div class="relative flex flex-col gap-4 overflow-auto">
-      <div v-if="loadingBanks || hasRows" class="overflow-hidden rounded-lg border">
-        <Table>
-          <TableHeader class="bg-muted sticky top-0 z-10">
-            <TableRow
-              v-for="headerGroup in table.getHeaderGroups()"
-              :key="headerGroup.id"
-              class="hover:bg-transparent"
-            >
-              <TableHead
-                v-for="header in headerGroup.headers"
-                :key="header.id"
-                class="h-10 px-4 text-sm font-medium text-foreground"
-              >
-                <FlexRender
-                  v-if="!header.isPlaceholder"
-                  :render="header.column.columnDef.header"
-                  :props="header.getContext()"
-                />
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-
-          <TableBody>
-            <template v-if="loadingBanks">
-              <TableRow v-for="i in 6" :key="i">
-                <TableCell class="px-4 py-3"><Skeleton class="h-4 w-4 rounded-sm" /></TableCell>
-                <TableCell class="px-4 py-3">
-                  <div class="flex items-center gap-2">
-                    <Skeleton class="h-8 w-8 rounded-lg" />
-                    <div class="flex flex-col gap-1.5">
-                      <Skeleton class="h-4 w-40" />
-                      <Skeleton class="h-3 w-32" />
-                    </div>
-                  </div>
-                </TableCell>
-                <TableCell class="px-4 py-3"><Skeleton class="h-4 w-24" /></TableCell>
-                <TableCell class="px-4 py-3"><Skeleton class="h-5 w-12 rounded" /></TableCell>
-                <TableCell class="px-4 py-3"><Skeleton class="h-4 w-16" /></TableCell>
-                <TableCell class="px-4 py-3"><Skeleton class="h-8 w-8 rounded-md" /></TableCell>
-              </TableRow>
-            </template>
-            <template v-else>
-              <TableRow
-                v-for="row in table.getRowModel().rows"
-                :key="row.id"
-                class="transition-colors hover:bg-muted/30"
-              >
-                <TableCell
-                  v-for="cell in row.getVisibleCells()"
-                  :key="cell.id"
-                  class="px-4 py-3 align-middle"
-                >
-                  <FlexRender :render="cell.column.columnDef.cell" :props="cell.getContext()" />
-                </TableCell>
-              </TableRow>
-            </template>
-          </TableBody>
-        </Table>
-      </div>
-
-      <Empty
-        v-if="!loadingBanks && !hasRows"
-        class="min-h-[280px] rounded-xl border border-dashed bg-muted/20"
+    <div class="relative flex flex-col gap-4">
+      <DataTable
+        :data="filtered"
+        :columns="columns"
+        :loading="loadingBanks"
+        :column-visibility="columnVisibility"
+        :column-filters="columnFilters"
+        :row-selection="rowSelection"
+        @update:column-visibility="(v) => columnVisibility = v"
+        @update:column-filters="(v) => columnFilters = v"
+        @update:row-selection="(v) => rowSelection = v"
       >
-        <EmptyHeader>
-          <div class="flex size-12 items-center justify-center rounded-xl bg-muted text-muted-foreground">
-            <SearchX class="size-5" />
-          </div>
-          <EmptyTitle>{{ noBanks ? 'لا توجد بنوك بعد' : 'لا توجد نتائج' }}</EmptyTitle>
-        </EmptyHeader>
-        <EmptyContent>
-          <EmptyDescription>
-            {{ noBanks ? 'لم تتم إضافة أي بنوك حتى الآن.' : 'جرّب تغيير البحث أو الفلاتر لعرض البنوك.' }}
-          </EmptyDescription>
-        </EmptyContent>
-      </Empty>
-
-      <DataTablePagination v-if="hasRows" :table="table" />
+        <template #toolbar="{ table }">
+          <DataTableToolbar
+            :table="table"
+            search-placeholder="بحث بالاسم أو الكود أو رقم الترخيص..."
+            :has-filters="hasActiveFilters"
+            :selected-count="selectedCount"
+            @update:search="v => query = v"
+            @reset="handleReset"
+            @export-selected="exportSelectedRows"
+            @print-selected="printSelectedRows"
+            @clear-selection="clearBulkSelection"
+          >
+            <template #filters>
+              <DataTableFacetedFilter
+                v-if="table.getColumn('is_active')"
+                :column="table.getColumn('is_active')!"
+                title="الحالة"
+                :options="statusOptions"
+              />
+            </template>
+            <template #actions>
+              <DataTableViewOptions :table="table" :column-labels="BANK_COLUMN_LABELS" />
+              <DataTableExport
+                :table="(table as any)"
+                :export-columns="(exportColumns as any)"
+                :filename="buildExportFilename()"
+                :formats="['csv', 'tsv', 'json', 'excel', 'pdf']"
+                :respect-column-visibility="true"
+              />
+            </template>
+          </DataTableToolbar>
+        </template>
+        <template #empty>
+          <Empty class="min-h-[280px] rounded-xl border border-dashed bg-muted/20">
+            <EmptyHeader>
+              <div class="flex size-12 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+                <SearchX class="size-5" />
+              </div>
+              <EmptyTitle>{{ noBanks ? 'لا توجد بنوك مسجّلة بعد' : 'لا توجد بنوك مطابقة' }}</EmptyTitle>
+            </EmptyHeader>
+            <EmptyContent>
+              <EmptyDescription>
+                {{ noBanks ? 'ابدأ بإضافة أول بنك تجاري باستخدام زر "بنك جديد" أعلاه.' : 'جرّب تغيير البحث أو إزالة فلتر الحالة لعرض المزيد من البنوك.' }}
+              </EmptyDescription>
+            </EmptyContent>
+          </Empty>
+        </template>
+        <template #pagination="{ table }">
+          <DataTablePagination :table="table" />
+        </template>
+      </DataTable>
     </div>
 
     <!-- Create / Edit Dialog -->

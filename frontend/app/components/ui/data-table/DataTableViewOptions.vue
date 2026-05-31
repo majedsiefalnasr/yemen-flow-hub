@@ -23,7 +23,7 @@ defineProps<{
       <Button
         variant="outline"
         size="sm"
-        class="ms-auto hidden h-8 lg:flex"
+        class="ms-auto h-8 flex"
       >
         <Columns3 class="me-2 h-4 w-4" />
         الأعمدة

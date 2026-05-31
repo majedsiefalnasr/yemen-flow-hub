@@ -25,10 +25,10 @@ const user = computed(() => authStore.user)
       <SidebarInset>
         <GlobalTopbar />
 
-        <main class="flex flex-1 flex-col overflow-auto p-4 pt-4">
+        <main class="flex flex-1 flex-col min-w-0 p-4 pt-4">
           <div
             :class="[
-              'content-layout w-full',
+              'content-layout w-full min-w-0',
               themingStore.layout === 'boxed' ? 'layout-boxed' : 'layout-full',
             ]"
           >
@@ -39,7 +39,7 @@ const user = computed(() => authStore.user)
         <!-- Footer -->
         <footer class="flex flex-wrap items-center justify-between gap-2 border-t px-4 py-3 text-[10px] text-muted-foreground sm:px-6 sm:text-xs">
           <div>© 2025 البنك المركزي اليمني</div>
-          <div class="flex shrink-0 items-center gap-2 text-amber-600 dark:text-amber-400">
+          <div class="flex shrink-0 items-center gap-2 text-[var(--color-text-warning)] dark:text-amber-400">
             <AlertTriangle class="h-3.5 w-3.5" />
             بيئة عرض توضيحي
           </div>

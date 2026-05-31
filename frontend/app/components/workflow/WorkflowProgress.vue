@@ -57,7 +57,7 @@ const progressPercent = computed(() => getStatusProgress(resolvedStatus.value, r
 </script>
 
 <template>
-  <div class="rounded-2xl border bg-white p-5 shadow">
+  <div class="rounded-2xl border bg-card p-5 shadow">
     <div class="mb-4 flex items-center justify-between">
       <div class="text-sm font-semibold">
         سير العملية التنظيمية
@@ -67,8 +67,8 @@ const progressPercent = computed(() => getStatusProgress(resolvedStatus.value, r
         v-if="RETURN_STATUSES.includes(resolvedStatus) || REJECT_STATUSES.includes(resolvedStatus)"
         :class="cn(
           'rounded-full px-2 py-0.5 text-[10px] font-medium',
-          RETURN_STATUSES.includes(resolvedStatus) && 'bg-amber-50/15 text-amber-600',
-          REJECT_STATUSES.includes(resolvedStatus) && 'bg-red-700/15 text-red-700',
+          RETURN_STATUSES.includes(resolvedStatus) && 'bg-[var(--severity-amber)]/15 text-[var(--severity-amber)]',
+          REJECT_STATUSES.includes(resolvedStatus) && 'bg-[var(--severity-red)]/15 text-[var(--severity-red)]',
         )"
       >
         {{ RETURN_STATUSES.includes(resolvedStatus) ? 'مُعاد للتعديل' : 'مرفوض' }}
@@ -121,7 +121,7 @@ const progressPercent = computed(() => getStatusProgress(resolvedStatus.value, r
             v-if="!compact"
             :class="cn(
               'mt-0.5 text-[11px] leading-tight',
-              index === currentIndex ? 'text-primary' : index < currentIndex ? 'text-green-700' : 'text-muted-foreground/70',
+              index === currentIndex ? 'text-primary' : index < currentIndex ? 'text-[var(--severity-green)]' : 'text-muted-foreground/70',
             )"
           >
             {{ index === currentIndex ? 'المرحلة الحالية' : index < currentIndex ? 'مكتملة' : 'بانتظار' }}

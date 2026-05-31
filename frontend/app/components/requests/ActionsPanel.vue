@@ -388,9 +388,9 @@ async function dispatchAction(action: string, reason?: string) {
 <template>
   <div v-if="showAnyActions" class="space-y-4"  role="region" aria-label="لوحة الإجراءات">
     <!-- Error alert -->
-    <Alert v-if="actionError" class="border-s-4 border-s-red-600 bg-red-700/10">
-      <AlertCircle class="h-4 w-4 text-red-700" />
-      <AlertDescription class="text-red-700">{{ actionError }}</AlertDescription>
+    <Alert v-if="actionError" class="border-s-4 border-s-red-600 bg-[var(--color-surface-error)]">
+      <AlertCircle class="h-4 w-4 text-[var(--color-text-error)]" />
+      <AlertDescription class="text-[var(--color-text-error)]">{{ actionError }}</AlertDescription>
     </Alert>
 
     <!-- BANK_REVIEWER: SUBMITTED → begin review -->
@@ -517,7 +517,7 @@ async function dispatchAction(action: string, reason?: string) {
             <div class="space-y-4">
               <div>
                 <label for="bank-return-comment" class="text-sm font-medium">
-                  سبب الإعادة <span class="text-red-700">*</span>
+                  سبب الإعادة <span class="text-[var(--color-text-error)]">*</span>
                 </label>
                 <Textarea
                   id="bank-return-comment"
@@ -526,7 +526,7 @@ async function dispatchAction(action: string, reason?: string) {
                   class="mt-2 min-h-24"
                   :aria-invalid="!!bankReturnCommentError"
                 />
-                <p v-if="bankReturnCommentError" class="text-xs text-red-700 mt-1">
+                <p v-if="bankReturnCommentError" class="text-xs text-[var(--color-text-error)] mt-1">
                   {{ bankReturnCommentError }}
                 </p>
               </div>
@@ -556,7 +556,7 @@ async function dispatchAction(action: string, reason?: string) {
     <template v-if="showSupportCommitteeActions">
       <div class="flex gap-3 flex-row-reverse">
         <Button
-          class="flex-1 bg-green-50 hover:bg-green-50"
+          class="flex-1 bg-[var(--color-surface-success)] hover:bg-[var(--color-surface-success)]"
           :disabled="performingAction"
           @click="handleSupportApprove"
         >
@@ -585,7 +585,7 @@ async function dispatchAction(action: string, reason?: string) {
               </div>
               <div>
                 <label for="reject-reason-support" class="text-sm font-medium">
-                  سبب الرفض <span class="text-red-700">*</span>
+                  سبب الرفض <span class="text-[var(--color-text-error)]">*</span>
                 </label>
                 <Textarea
                   id="reject-reason-support"
@@ -594,7 +594,7 @@ async function dispatchAction(action: string, reason?: string) {
                   class="mt-2 min-h-24"
                   :aria-invalid="!!rejectReasonError"
                 />
-                <p v-if="rejectReasonError" class="text-xs text-red-700 mt-1">
+                <p v-if="rejectReasonError" class="text-xs text-[var(--color-text-error)] mt-1">
                   {{ rejectReasonError }}
                 </p>
               </div>
@@ -637,7 +637,7 @@ async function dispatchAction(action: string, reason?: string) {
             <div class="space-y-4">
               <div>
                 <label for="support-return-comment" class="text-sm font-medium">
-                  سبب الإعادة <span class="text-red-700">*</span>
+                  سبب الإعادة <span class="text-[var(--color-text-error)]">*</span>
                 </label>
                 <Textarea
                   id="support-return-comment"
@@ -646,7 +646,7 @@ async function dispatchAction(action: string, reason?: string) {
                   class="mt-2 min-h-24"
                   :aria-invalid="!!supportReturnCommentError"
                 />
-                <p v-if="supportReturnCommentError" class="text-xs text-red-700 mt-1">
+                <p v-if="supportReturnCommentError" class="text-xs text-[var(--color-text-error)] mt-1">
                   {{ supportReturnCommentError }}
                 </p>
               </div>
@@ -787,7 +787,7 @@ async function dispatchAction(action: string, reason?: string) {
     <template v-if="showDirectorVotingActions && request.status === RequestStatus.EXECUTIVE_VOTING_OPEN">
       <p
         v-if="!allExecutiveVotesCast"
-        class="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-700"
+        class="rounded-md border border-[var(--severity-amber)]/40 bg-[var(--severity-amber)]/10 px-3 py-2 text-xs text-[var(--severity-amber)]"
       >
         لا يمكن الإغلاق قبل اكتمال تصويت جميع الأعضاء النشطين.
       </p>
@@ -826,7 +826,7 @@ async function dispatchAction(action: string, reason?: string) {
         <Dialog v-model:open="showOverrideModal">
           <DialogTrigger as-child>
             <Button
-              class="flex-1 bg-amber-50/100 hover:bg-amber-50"
+              class="flex-1 bg-[var(--severity-amber)]/15 hover:bg-[var(--severity-amber)]/25 text-foreground"
               :disabled="votingStore.performingDirectorAction"
             >
               تجاوز مدير اللجنة
@@ -840,13 +840,13 @@ async function dispatchAction(action: string, reason?: string) {
             <div class="space-y-4">
               <!-- Current tally snapshot -->
               <div v-if="votingStore.votingDetail?.tally" class="grid grid-cols-3 gap-2 text-center">
-                <div class="bg-green-50/10 p-2 rounded">
-                  <p class="text-sm font-medium text-green-700">موافق</p>
-                  <p class="text-lg font-bold text-green-700">{{ votingStore.votingDetail.tally.approve_count }}</p>
+                <div class="bg-[var(--severity-green)]/10 p-2 rounded">
+                  <p class="text-sm font-medium text-[var(--severity-green)]">موافق</p>
+                  <p class="text-lg font-bold text-[var(--severity-green)]">{{ votingStore.votingDetail.tally.approve_count }}</p>
                 </div>
-                <div class="bg-red-700/10 p-2 rounded">
-                  <p class="text-sm font-medium text-red-700">رافض</p>
-                  <p class="text-lg font-bold text-red-700">{{ votingStore.votingDetail.tally.reject_count }}</p>
+                <div class="bg-[var(--severity-red)]/10 p-2 rounded">
+                  <p class="text-sm font-medium text-[var(--severity-red)]">رافض</p>
+                  <p class="text-lg font-bold text-[var(--severity-red)]">{{ votingStore.votingDetail.tally.reject_count }}</p>
                 </div>
                 <div class="bg-muted p-2 rounded">
                   <p class="text-sm font-medium text-foreground">ممتنع</p>
@@ -856,7 +856,7 @@ async function dispatchAction(action: string, reason?: string) {
 
               <!-- Decision selection -->
               <div class="space-y-2">
-                <p class="text-sm font-medium">القرار <span class="text-red-700">*</span></p>
+                <p class="text-sm font-medium">القرار <span class="text-[var(--color-text-error)]">*</span></p>
                 <div class="space-y-2">
                   <label class="flex items-center gap-2 cursor-pointer">
                     <input
@@ -879,13 +879,13 @@ async function dispatchAction(action: string, reason?: string) {
                     <span class="text-sm">رفض</span>
                   </label>
                 </div>
-                <p v-if="overrideDecisionError" class="text-xs text-red-700">{{ overrideDecisionError }}</p>
+                <p v-if="overrideDecisionError" class="text-xs text-[var(--severity-red)]">{{ overrideDecisionError }}</p>
               </div>
 
               <!-- Justification -->
               <div>
                 <label for="override-justification" class="text-sm font-medium">
-                  المبرر <span class="text-red-700">*</span>
+                  المبرر <span class="text-[var(--severity-red)]">*</span>
                 </label>
                 <Textarea
                   id="override-justification"
@@ -894,7 +894,7 @@ async function dispatchAction(action: string, reason?: string) {
                   class="mt-2 min-h-24"
                   :aria-invalid="!!overrideJustificationError"
                 />
-                <p v-if="overrideJustificationError" class="text-xs text-red-700 mt-1">
+                <p v-if="overrideJustificationError" class="text-xs text-[var(--severity-red)] mt-1">
                   {{ overrideJustificationError }}
                 </p>
               </div>
@@ -907,7 +907,7 @@ async function dispatchAction(action: string, reason?: string) {
                   إلغاء
                 </Button>
                 <Button
-                  class="bg-amber-50/100 hover:bg-amber-50"
+                  class="bg-[var(--severity-amber)]/15 hover:bg-[var(--severity-amber)]/25 text-foreground"
                   :disabled="votingStore.performingDirectorAction"
                   @click="handleDirectorOverride"
                 >
@@ -924,13 +924,13 @@ async function dispatchAction(action: string, reason?: string) {
     <!-- COMMITTEE_DIRECTOR: EXECUTIVE_VOTING_CLOSED → finalize decision -->
     <template v-if="showDirectorVotingActions && request.status === RequestStatus.EXECUTIVE_VOTING_CLOSED">
       <div v-if="votingStore.votingDetail?.tally" class="grid grid-cols-3 gap-2 text-center">
-        <div class="bg-green-50/10 p-2 rounded">
-          <p class="text-sm font-medium text-green-700">موافق</p>
-          <p class="text-lg font-bold text-green-700">{{ votingStore.votingDetail.tally.approve_count }}</p>
+        <div class="bg-[var(--color-surface-success)] p-2 rounded">
+          <p class="text-sm font-medium text-[var(--color-text-success)]">موافق</p>
+          <p class="text-lg font-bold text-[var(--color-text-success)]">{{ votingStore.votingDetail.tally.approve_count }}</p>
         </div>
-        <div class="bg-red-700/10 p-2 rounded">
-          <p class="text-sm font-medium text-red-700">رافض</p>
-          <p class="text-lg font-bold text-red-700">{{ votingStore.votingDetail.tally.reject_count }}</p>
+        <div class="bg-[var(--color-surface-error)] p-2 rounded">
+          <p class="text-sm font-medium text-[var(--color-text-error)]">رافض</p>
+          <p class="text-lg font-bold text-[var(--color-text-error)]">{{ votingStore.votingDetail.tally.reject_count }}</p>
         </div>
         <div class="bg-muted p-2 rounded">
           <p class="text-sm font-medium text-foreground">ممتنع</p>

@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import type { ColumnDef, VisibilityState } from '@tanstack/vue-table'
+import type { ColumnDef, ColumnFiltersState, VisibilityState } from '@tanstack/vue-table'
 import {
-  FlexRender,
   getCoreRowModel,
+  getFacetedRowModel,
+  getFacetedUniqueValues,
   getFilteredRowModel,
   getPaginationRowModel,
   getSortedRowModel,
@@ -10,10 +11,10 @@ import {
 } from '@tanstack/vue-table'
 import { ref, computed, onMounted, h } from 'vue'
 import {
-  AlertTriangle,
-  ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
-  Download, MoreHorizontal, Plus, Search, SearchX,
+  AlertTriangle, CheckCircle2, MoreHorizontal, Plus, SearchX, ShieldCheck, Users,
 } from 'lucide-vue-next'
+import MetricCard from '@/components/shared/dashboard/MetricCard.vue'
+import MetricGrid from '@/components/shared/dashboard/MetricGrid.vue'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import { UserRole } from '../types/enums'
 import type { ApiError, User } from '../types/models'
@@ -24,7 +25,6 @@ import StaffModal from '../components/staff/StaffModal.vue'
 import EmptyState from '../components/shared/EmptyState.vue'
 import type { CreateUserPayload, UpdateUserPayload } from '../composables/useUsers'
 import { useTableExport } from '../composables/useTableExport'
-import { useTableKeyboard } from '../composables/useTableKeyboard'
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -34,26 +34,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Input } from '@/components/ui/input'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Card } from '@/components/ui/card'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import {
   DropdownMenu,
@@ -69,8 +52,14 @@ import {
   EmptyHeader,
   EmptyTitle,
 } from '@/components/ui/empty'
-import { Skeleton } from '@/components/ui/skeleton'
-import { DataTableViewOptions } from '@/components/ui/data-table'
+import {
+  DataTable,
+  DataTableExport,
+  DataTableFacetedFilter,
+  DataTablePagination,
+  DataTableToolbar,
+  DataTableViewOptions,
+} from '@/components/ui/data-table'
 
 definePageMeta({
   middleware: ['auth', 'role'],
@@ -94,64 +83,34 @@ const showDeactivateConfirm = ref(false)
 const deactivatingStaff = ref<User | null>(null)
 const deactivating = ref(false)
 
-const searchQuery = ref('')
-const searchInputRef = ref<HTMLInputElement | null>(null)
-const roleFilter = ref<UserRole | ''>('')
-const statusFilter = ref<'active' | 'inactive' | ''>('')
+const query = ref('')
+const columnFilters = ref<ColumnFiltersState>([])
 const columnVisibility = ref<VisibilityState>({
   last_login: false,
 })
 
-useTableKeyboard(searchInputRef, {
-  onEscape: () => {
-    searchQuery.value = ''
-  },
-})
+// Access Health — active-highlight visual state
+const accessHealthFilter = ref<'active' | 'inactive' | 'bank_reviewer' | null>(null)
 
-const filteredStaff = computed(() => {
-  let list = staff.value
-  const q = searchQuery.value.trim().toLowerCase()
-  if (q) {
-    list = list.filter(m =>
-      m.name.toLowerCase().includes(q)
-      || m.email.toLowerCase().includes(q),
-    )
-  }
-  if (roleFilter.value) {
-    list = list.filter(m => m.role === roleFilter.value)
-  }
-  if (statusFilter.value === 'active') {
-    list = list.filter(m => m.is_active)
-  }
-  else if (statusFilter.value === 'inactive') {
-    list = list.filter(m => !m.is_active)
-  }
-  return list
-})
+const hasActiveFilters = computed(() =>
+  columnFilters.value.length > 0 || query.value.trim().length > 0,
+)
 
 const totalCount = computed(() => staff.value.length)
 const activeCount = computed(() => staff.value.filter(m => m.is_active).length)
 const inactiveCount = computed(() => staff.value.filter(m => !m.is_active).length)
 const bankReviewerCount = computed(() => staff.value.filter(m => m.role === UserRole.BANK_REVIEWER && m.is_active).length)
 
-// Access Health — clickable filter cards (BANK_ADMIN spec §Staff)
-const accessHealthFilter = ref<'active' | 'inactive' | 'bank_reviewer' | null>(null)
-
-function applyAccessHealthFilter(key: typeof accessHealthFilter.value) {
-  if (accessHealthFilter.value === key) {
-    accessHealthFilter.value = null
-    roleFilter.value = ''
-    statusFilter.value = ''
-  }
-  else {
-    accessHealthFilter.value = key
-    if (key === 'active') { statusFilter.value = 'active'; roleFilter.value = '' }
-    else if (key === 'inactive') { statusFilter.value = 'inactive'; roleFilter.value = '' }
-    else if (key === 'bank_reviewer') { roleFilter.value = UserRole.BANK_REVIEWER; statusFilter.value = '' }
-  }
-}
-
 const isEmpty = computed(() => !loading.value && !error.value && staff.value.length === 0)
+
+// Pre-filter by search query — TanStack handles column filters
+const filteredStaff = computed(() => {
+  const q = query.value.trim().toLowerCase()
+  if (!q) return staff.value
+  return staff.value.filter(m =>
+    m.name.toLowerCase().includes(q) || m.email.toLowerCase().includes(q),
+  )
+})
 
 function getAvatarInitials(name: string): string {
   return name.trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase()
@@ -341,11 +300,13 @@ const columns: ColumnDef<User>[] = [
   {
     accessorKey: 'role',
     header: 'الدور',
+    filterFn: (row, _id, value: string[]) => value.includes(row.original.role),
     cell: ({ row }) => h(Badge, { variant: 'outline' }, () => ROLE_LABELS[row.original.role] ?? row.original.role),
   },
   {
     accessorKey: 'is_active',
     header: 'الحالة',
+    filterFn: (row, _id, value: string[]) => value.includes(String(row.original.is_active)),
     cell: ({ row }) => activeStatusCell(row.original.is_active),
   },
   {
@@ -406,6 +367,40 @@ const STAFF_COLUMN_LABELS: Record<string, string> = {
   last_login: 'آخر دخول',
 }
 
+const roleFilterOptions = [
+  { label: ROLE_LABELS[UserRole.DATA_ENTRY], value: UserRole.DATA_ENTRY },
+  { label: ROLE_LABELS[UserRole.BANK_REVIEWER], value: UserRole.BANK_REVIEWER },
+]
+const statusFilterOptions = [
+  { label: 'نشط', value: 'true' },
+  { label: 'غير نشط', value: 'false' },
+]
+
+const exportCols = [
+  { key: 'name', label: 'الاسم' },
+  { key: 'email', label: 'البريد الإلكتروني' },
+  {
+    key: 'role',
+    label: 'الدور',
+    format: (_value: unknown, row: User) => ROLE_LABELS[row.role] ?? row.role,
+  },
+  {
+    key: 'is_active',
+    label: 'الحالة',
+    format: (_value: unknown, row: User) => row.is_active ? 'نشط' : 'غير نشط',
+  },
+  {
+    key: 'created_at',
+    label: 'تاريخ الانضمام',
+    format: (_value: unknown, row: User) => formatJoinDate(row.created_at),
+  },
+  {
+    key: 'last_login_at',
+    label: 'آخر دخول',
+    format: (_value: unknown, row: User) => formatJoinDate(row.last_login_at),
+  },
+]
+
 const table = useVueTable({
   get data() { return filteredStaff.value },
   columns,
@@ -413,49 +408,48 @@ const table = useVueTable({
   getPaginationRowModel: getPaginationRowModel(),
   getSortedRowModel: getSortedRowModel(),
   getFilteredRowModel: getFilteredRowModel(),
+  getFacetedRowModel: getFacetedRowModel(),
+  getFacetedUniqueValues: getFacetedUniqueValues(),
+  onColumnFiltersChange: updater =>
+    (columnFilters.value = typeof updater === 'function' ? updater(columnFilters.value) : updater),
   onColumnVisibilityChange: updater =>
-    columnVisibility.value = typeof updater === 'function' ? updater(columnVisibility.value) : updater,
+    (columnVisibility.value = typeof updater === 'function' ? updater(columnVisibility.value) : updater),
   state: {
+    get columnFilters() { return columnFilters.value },
     get columnVisibility() { return columnVisibility.value },
   },
   initialState: { pagination: { pageSize: 20 } },
 })
 
-function buildExportFileName(): string {
-  const stamp = new Date().toISOString().slice(0, 10)
-  return `staff-filtered-${stamp}`
+function handleReset() {
+  query.value = ''
+  accessHealthFilter.value = null
+  table.resetColumnFilters()
 }
 
-function exportCurrentStaff() {
-  if (!filteredStaff.value.length) return
-  exportToCSV(
-    filteredStaff.value as unknown as Record<string, unknown>[],
-    [
-      { key: 'name', label: 'الاسم' },
-      { key: 'email', label: 'البريد الإلكتروني' },
-      {
-        key: 'role',
-        label: 'الدور',
-        format: (_value: unknown, row: User) => ROLE_LABELS[row.role] ?? row.role,
-      },
-      {
-        key: 'is_active',
-        label: 'الحالة',
-        format: (_value: unknown, row: User) => row.is_active ? 'نشط' : 'غير نشط',
-      },
-      {
-        key: 'created_at',
-        label: 'تاريخ الانضمام',
-        format: (_value: unknown, row: User) => formatJoinDate(row.created_at),
-      },
-      {
-        key: 'last_login_at',
-        label: 'آخر دخول',
-        format: (_value: unknown, row: User) => formatJoinDate(row.last_login_at),
-      },
-    ] as any,
-    buildExportFileName(),
-  )
+function buildExportFilename(): string {
+  return `staff-${new Date().toISOString().slice(0, 10)}`
+}
+
+function applyAccessHealthFilter(key: typeof accessHealthFilter.value) {
+  if (accessHealthFilter.value === key) {
+    // Toggle off — clear filters
+    accessHealthFilter.value = null
+    table.resetColumnFilters()
+  }
+  else {
+    accessHealthFilter.value = key
+    table.resetColumnFilters()
+    if (key === 'active') {
+      table.getColumn('is_active')?.setFilterValue(['true'])
+    }
+    else if (key === 'inactive') {
+      table.getColumn('is_active')?.setFilterValue(['false'])
+    }
+    else if (key === 'bank_reviewer') {
+      table.getColumn('role')?.setFilterValue([UserRole.BANK_REVIEWER])
+    }
+  }
 }
 
 onMounted(loadStaff)
@@ -477,53 +471,42 @@ onMounted(loadStaff)
       </template>
     </PageHeader>
 
-    <!-- Access Health Summary Row — clickable filter cards per spec -->
-    <section aria-label="ملخص صحة الوصول" class="grid grid-cols-4 max-lg:grid-cols-2 gap-3">
-      <button
-        class="flex flex-col items-start gap-1 p-4 rounded-xl border shadow-sm text-start transition-all cursor-pointer"
-        :class="accessHealthFilter === 'active' ? 'border-primary bg-primary/5' : 'border-border bg-background hover:border-primary/40 hover:shadow-md'"
-        :aria-pressed="accessHealthFilter === 'active'"
-        aria-label="عرض الموظفين النشطين"
-        @click="applyAccessHealthFilter('active')"
-      >
-        <span class="stat-value text-2xl font-bold" style="color:var(--severity-green)">{{ activeCount }}</span>
-        <span class="text-xs text-muted-foreground">موظف نشط</span>
-      </button>
-
-      <button
-        class="flex flex-col items-start gap-1 p-4 rounded-xl border shadow-sm text-start transition-all cursor-pointer"
-        :class="accessHealthFilter === 'inactive' ? 'border-destructive bg-red-50' : 'border-border bg-background hover:border-destructive/40 hover:shadow-md'"
-        :aria-pressed="accessHealthFilter === 'inactive'"
-        aria-label="عرض الموظفين الموقوفين"
-        @click="applyAccessHealthFilter('inactive')"
-      >
-        <span class="stat-value text-2xl font-bold" style="color:var(--severity-red)">{{ inactiveCount }}</span>
-        <span class="text-xs text-muted-foreground">موقوف</span>
-      </button>
-
-      <button
-        class="flex flex-col items-start gap-1 p-4 rounded-xl border shadow-sm text-start transition-all cursor-pointer"
-        :class="accessHealthFilter === 'bank_reviewer' ? 'border-primary bg-blue-50' : 'border-border bg-background hover:border-primary/40 hover:shadow-md'"
-        :aria-pressed="accessHealthFilter === 'bank_reviewer'"
-        aria-label="عرض مراجعي البنك النشطين"
-        @click="applyAccessHealthFilter('bank_reviewer')"
-      >
-        <span class="text-2xl font-bold" style="color:var(--brand-color)">{{ bankReviewerCount }}</span>
-        <span class="text-xs text-muted-foreground">تغطية مراجع البنك</span>
-      </button>
-
-      <!-- Total is informational, not a toggle — render as non-interactive so
-           screen readers don't announce it as a button alongside the three
-           filter toggles. -->
-      <div
-        class="flex flex-col items-start gap-1 p-4 rounded-xl border border-border bg-background shadow-sm"
-        role="group"
-        aria-label="إجمالي الموظفين"
-      >
-        <span class="stat-value text-2xl font-bold text-foreground">{{ totalCount }}</span>
-        <span class="text-xs text-muted-foreground">إجمالي الموظفين</span>
-      </div>
-    </section>
+    <!-- Access Health Cards — clicking sets column filters -->
+    <div class="mb-6">
+      <MetricGrid :columns="4">
+        <MetricCard
+          label="إجمالي الموظفين"
+          :value="totalCount"
+          :icon="Users"
+          :active="columnFilters.length === 0"
+          @click="applyAccessHealthFilter(null)"
+        />
+        <MetricCard
+          label="موظف نشط"
+          :value="activeCount"
+          :icon="CheckCircle2"
+          tone="success"
+          :active="accessHealthFilter === 'active'"
+          @click="applyAccessHealthFilter('active')"
+        />
+        <MetricCard
+          label="موقوف"
+          :value="inactiveCount"
+          :icon="AlertTriangle"
+          tone="danger"
+          :active="accessHealthFilter === 'inactive'"
+          @click="applyAccessHealthFilter('inactive')"
+        />
+        <MetricCard
+          label="تغطية مراجع البنك"
+          :value="bankReviewerCount"
+          :icon="ShieldCheck"
+          tone="info"
+          :active="accessHealthFilter === 'bank_reviewer'"
+          @click="applyAccessHealthFilter('bank_reviewer')"
+        />
+      </MetricGrid>
+    </div>
 
     <!-- Error -->
     <Alert v-if="error" variant="destructive">
@@ -533,57 +516,6 @@ onMounted(loadStaff)
         <Button variant="outline" size="sm" @click="loadStaff">إعادة المحاولة</Button>
       </AlertDescription>
     </Alert>
-
-    <!-- Toolbar: search + filters (always visible when no error) -->
-    <div v-if="!error && !loading" class="flex flex-wrap items-center gap-2">
-      <div class="relative min-w-[220px] flex-1">
-        <Search class="absolute inset-e-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          ref="searchInputRef"
-          v-model="searchQuery"
-          placeholder="بحث بالاسم أو البريد الإلكتروني..."
-          class="search-input h-8 rounded-md pe-9 text-sm"
-        />
-      </div>
-
-      <Select v-model="roleFilter">
-        <SelectTrigger class="h-8 w-full rounded-md text-sm sm:w-44">
-          <SelectValue placeholder="جميع الأدوار" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="">جميع الأدوار</SelectItem>
-          <SelectItem value="DATA_ENTRY">{{ ROLE_LABELS[UserRole.DATA_ENTRY] }}</SelectItem>
-          <SelectItem value="BANK_REVIEWER">{{ ROLE_LABELS[UserRole.BANK_REVIEWER] }}</SelectItem>
-        </SelectContent>
-      </Select>
-
-      <Select v-model="statusFilter">
-        <SelectTrigger class="h-8 w-full rounded-md text-sm sm:w-40">
-          <SelectValue placeholder="جميع الحالات" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="">جميع الحالات</SelectItem>
-          <SelectItem value="active">نشط</SelectItem>
-          <SelectItem value="inactive">غير نشط</SelectItem>
-        </SelectContent>
-      </Select>
-
-      <Button
-        variant="outline"
-        size="sm"
-        class="ms-auto h-8 gap-1.5"
-        :disabled="filteredStaff.length === 0"
-        @click="exportCurrentStaff"
-      >
-        <Download class="h-4 w-4" />
-        تصدير
-      </Button>
-
-      <DataTableViewOptions
-        :table="table"
-        :column-labels="STAFF_COLUMN_LABELS"
-      />
-    </div>
 
     <!-- Empty State (no staff at all) -->
     <EmptyState v-if="isEmpty" variant="staff">
@@ -595,124 +527,73 @@ onMounted(loadStaff)
 
     <template v-else-if="!error && !isEmpty">
       <!-- Table -->
-      <div class="relative flex flex-col gap-4 overflow-auto">
-        <div class="overflow-hidden rounded-lg border">
-          <Table>
-            <TableHeader class="bg-muted sticky top-0 z-10">
-              <TableRow
-                v-for="headerGroup in table.getHeaderGroups()"
-                :key="headerGroup.id"
-                class="hover:bg-transparent"
-              >
-                <TableHead
-                  v-for="header in headerGroup.headers"
-                  :key="header.id"
-                  class="h-10 px-4 text-sm font-medium text-foreground"
-                >
-                  <FlexRender
-                    v-if="!header.isPlaceholder"
-                    :render="header.column.columnDef.header"
-                    :props="header.getContext()"
-                  />
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-
-            <TableBody>
-              <template v-if="loading">
-                <TableRow v-for="i in 6" :key="i">
-                  <TableCell class="px-4 py-3">
-                    <div class="flex items-center gap-3">
-                      <Skeleton class="size-8 rounded-full" />
-                      <div class="flex flex-col gap-1.5">
-                        <Skeleton class="h-4 w-32" />
-                        <Skeleton class="h-3 w-44" />
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell class="px-4 py-3"><Skeleton class="h-5 w-24 rounded-full" /></TableCell>
-                  <TableCell class="px-4 py-3"><Skeleton class="h-4 w-16" /></TableCell>
-                  <TableCell class="px-4 py-3"><Skeleton class="h-4 w-24" /></TableCell>
-                  <TableCell class="px-4 py-3"><Skeleton class="h-8 w-8 rounded-md" /></TableCell>
-                </TableRow>
+      <div class="relative flex flex-col gap-4">
+        <DataTable
+          :data="filteredStaff"
+          :columns="columns"
+          :loading="loading"
+          :column-filters="columnFilters"
+          :column-visibility="columnVisibility"
+          @update:column-filters="(v) => columnFilters = v"
+          @update:column-visibility="(v) => columnVisibility = v"
+        >
+          <template #toolbar="{ table }">
+            <DataTableToolbar
+              :table="table"
+              search-placeholder="بحث بالاسم أو البريد الإلكتروني..."
+              :has-filters="hasActiveFilters"
+              @update:search="v => query = v"
+              @reset="handleReset"
+            >
+              <template #filters>
+                <DataTableFacetedFilter
+                  v-if="table.getColumn('role')"
+                  :column="table.getColumn('role')!"
+                  title="الدور"
+                  :options="roleFilterOptions"
+                />
+                <DataTableFacetedFilter
+                  v-if="table.getColumn('is_active')"
+                  :column="table.getColumn('is_active')!"
+                  title="الحالة"
+                  :options="statusFilterOptions"
+                />
               </template>
-
-              <TableRow v-else-if="!table.getRowModel().rows.length">
-                <TableCell :col-span="columns.length" class="p-8">
-                  <Empty class="min-h-[200px] rounded-xl border border-dashed bg-muted/20">
-                    <EmptyHeader>
-                      <div class="flex size-12 items-center justify-center rounded-xl bg-muted text-muted-foreground">
-                        <SearchX class="size-5" />
-                      </div>
-                      <EmptyTitle>لا توجد نتائج مطابقة</EmptyTitle>
-                    </EmptyHeader>
-                    <EmptyContent>
-                      <EmptyDescription>جرّب تغيير البحث أو الفلاتر.</EmptyDescription>
-                    </EmptyContent>
-                  </Empty>
-                </TableCell>
-              </TableRow>
-
-              <template v-else>
-                <TableRow
-                  v-for="row in table.getRowModel().rows"
-                  :key="row.id"
-                  class="transition-colors hover:bg-muted/30"
-                >
-                  <TableCell
-                    v-for="cell in row.getVisibleCells()"
-                    :key="cell.id"
-                    class="px-4 py-3 align-middle"
-                  >
-                    <FlexRender :render="cell.column.columnDef.cell" :props="cell.getContext()" />
-                  </TableCell>
-                </TableRow>
+              <template #actions>
+                <DataTableViewOptions :table="table" :column-labels="STAFF_COLUMN_LABELS" />
+                <DataTableExport
+                  :table="(table as any)"
+                  :export-columns="(exportCols as any)"
+                  :filename="buildExportFilename()"
+                  :formats="['csv', 'tsv', 'json', 'excel', 'pdf']"
+                  :respect-column-visibility="true"
+                />
               </template>
-            </TableBody>
-          </Table>
-        </div>
-
-        <!-- Pagination -->
-        <div class="flex items-center justify-between px-2">
-          <p class="text-sm text-muted-foreground">
-            {{ table.getFilteredRowModel().rows.length }} موظف
-          </p>
-          <div class="flex items-center gap-4">
-            <p class="text-sm font-medium whitespace-nowrap">
-              صفحة {{ table.getState().pagination.pageIndex + 1 }} من {{ table.getPageCount() }}
-            </p>
-            <div class="flex items-center gap-1">
-              <Button
-                variant="outline" size="icon" class="hidden h-8 w-8 lg:flex"
-                :disabled="!table.getCanPreviousPage()" @click="table.setPageIndex(0)"
-              >
-                <span class="sr-only">الصفحة الأولى</span>
-                <ChevronsRight class="h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline" size="icon" class="h-8 w-8"
-                :disabled="!table.getCanPreviousPage()" @click="table.previousPage()"
-              >
-                <span class="sr-only">الصفحة السابقة</span>
-                <ChevronRight class="h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline" size="icon" class="h-8 w-8"
-                :disabled="!table.getCanNextPage()" @click="table.nextPage()"
-              >
-                <span class="sr-only">الصفحة التالية</span>
-                <ChevronLeft class="h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline" size="icon" class="hidden h-8 w-8 lg:flex"
-                :disabled="!table.getCanNextPage()" @click="table.setPageIndex(table.getPageCount() - 1)"
-              >
-                <span class="sr-only">الصفحة الأخيرة</span>
-                <ChevronsLeft class="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        </div>
+            </DataTableToolbar>
+          </template>
+          <template #empty>
+            <Empty class="min-h-[200px] rounded-xl border border-dashed bg-muted/20">
+              <EmptyHeader>
+                <div class="flex size-12 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+                  <SearchX class="size-5" />
+                </div>
+                <EmptyTitle>
+                  {{ staff.length === 0 ? 'لا يوجد موظفون مسجّلون بعد' : 'لا توجد نتائج مطابقة' }}
+                </EmptyTitle>
+              </EmptyHeader>
+              <EmptyContent>
+                <EmptyDescription>
+                  {{ staff.length === 0
+                    ? 'ابدأ بإضافة أول موظف في بنكك باستخدام زر "موظف جديد" أعلاه.'
+                    : 'جرّب تغيير البحث أو إزالة فلتر الدور أو الحالة.' }}
+                </EmptyDescription>
+              </EmptyContent>
+            </Empty>
+          </template>
+          <template #pagination="{ table }">
+            <DataTablePagination :table="table" />
+          </template>
+        </DataTable>
       </div>
     </template>
 
@@ -728,7 +609,7 @@ onMounted(loadStaff)
 
     <!-- Deactivate Dialog -->
     <AlertDialog :open="showDeactivateConfirm" @update:open="(v) => !v && closeDeactivate()">
-      <AlertDialogContent >
+      <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>تأكيد إلغاء التفعيل</AlertDialogTitle>
           <AlertDialogDescription>

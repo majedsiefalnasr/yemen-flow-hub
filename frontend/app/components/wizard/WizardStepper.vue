@@ -26,7 +26,7 @@ function handleStepClick(index: number): void {
 </script>
 
 <template>
-  <div  role="navigation" aria-label="خطوات الطلب" class="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+  <div  role="navigation" aria-label="خطوات الطلب" class="rounded-lg border border-border bg-card p-6 shadow-sm">
     <div class="flex items-center justify-center gap-0">
       <template v-for="(label, index) in steps" :key="index">
         <!-- Step -->
@@ -46,9 +46,9 @@ function handleStepClick(index: number): void {
           <div
             class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border-2 transition-all"
             :class="{
-              'border-gray-200 bg-white': stepStatuses[index] === 'future',
+              'border-border bg-card': stepStatuses[index] === 'future',
               'border-primary bg-primary shadow-lg shadow-primary/20': stepStatuses[index] === 'active',
-              'border-green-200 bg-green-50': stepStatuses[index] === 'completed',
+              'border-[var(--color-border-success)] bg-[var(--color-surface-success)]': stepStatuses[index] === 'completed',
               'border-destructive bg-destructive/10': stepStatuses[index] === 'error',
             }"
           >
@@ -72,7 +72,7 @@ function handleStepClick(index: number): void {
             :class="{
               'text-muted-foreground font-normal': stepStatuses[index] === 'future',
               'text-primary font-semibold': stepStatuses[index] === 'active',
-              'text-green-700 font-normal': stepStatuses[index] === 'completed',
+              'text-[var(--color-text-success)] font-normal': stepStatuses[index] === 'completed',
               'text-destructive font-medium': stepStatuses[index] === 'error',
               'hover:underline': isStepClickable(stepStatuses[index]),
             }"
@@ -87,7 +87,7 @@ function handleStepClick(index: number): void {
           class="h-0.5 flex-1 min-w-6 transition-colors"
           :class="{
             'bg-border': stepStatuses[index] !== 'completed',
-            'bg-green-50': stepStatuses[index] === 'completed',
+            'bg-[var(--color-surface-success)]': stepStatuses[index] === 'completed',
           }"
           aria-hidden="true"
         />

@@ -51,28 +51,28 @@ const formattedAmount = computed(() => {
       <CardContent>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div v-if="step1.goods_type">
-            <p class="text-xs text-gray-600">نوع الواردات</p>
-            <p class="text-sm font-medium text-gray-900">{{ step1.goods_type }}</p>
+            <p class="text-xs text-[var(--color-text-subtle)]">نوع الواردات</p>
+            <p class="text-sm font-medium text-[var(--color-text-primary)]">{{ step1.goods_type }}</p>
           </div>
           <div>
-            <p class="text-xs text-gray-600">المستورد</p>
-            <p class="text-sm font-medium text-gray-900">{{ merchantName || '—' }}</p>
+            <p class="text-xs text-[var(--color-text-subtle)]">المستورد</p>
+            <p class="text-sm font-medium text-[var(--color-text-primary)]">{{ merchantName || '—' }}</p>
           </div>
           <div v-if="step1.amount">
-            <p class="text-xs text-gray-600">مبلغ التمويل</p>
-            <p class="text-sm font-medium text-gray-900">{{ formattedAmount }}</p>
+            <p class="text-xs text-[var(--color-text-subtle)]">مبلغ التمويل</p>
+            <p class="text-sm font-medium text-[var(--color-text-primary)]">{{ formattedAmount }}</p>
           </div>
           <div v-if="step1.payment_terms">
-            <p class="text-xs text-gray-600">شروط الدفع</p>
-            <p class="text-sm font-medium text-gray-900">{{ PAYMENT_LABELS[step1.payment_terms] ?? step1.payment_terms }}</p>
+            <p class="text-xs text-[var(--color-text-subtle)]">شروط الدفع</p>
+            <p class="text-sm font-medium text-[var(--color-text-primary)]">{{ PAYMENT_LABELS[step1.payment_terms] ?? step1.payment_terms }}</p>
           </div>
           <div v-if="step1.due_date">
-            <p class="text-xs text-gray-600">تاريخ الاستحقاق</p>
-            <p class="text-sm font-medium text-gray-900">{{ step1.due_date }}</p>
+            <p class="text-xs text-[var(--color-text-subtle)]">تاريخ الاستحقاق</p>
+            <p class="text-sm font-medium text-[var(--color-text-primary)]">{{ step1.due_date }}</p>
           </div>
           <div v-if="step1.notes" class="sm:col-span-2">
-            <p class="text-xs text-gray-600">ملاحظات</p>
-            <p class="text-sm font-medium text-gray-900">{{ step1.notes }}</p>
+            <p class="text-xs text-[var(--color-text-subtle)]">ملاحظات</p>
+            <p class="text-sm font-medium text-[var(--color-text-primary)]">{{ step1.notes }}</p>
           </div>
         </div>
       </CardContent>
@@ -85,32 +85,32 @@ const formattedAmount = computed(() => {
       <CardContent>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <p class="text-xs text-gray-600">المورد</p>
-            <p class="text-sm font-medium text-gray-900">{{ step2.supplier_name || '—' }}</p>
+            <p class="text-xs text-[var(--color-text-subtle)]">المورد</p>
+            <p class="text-sm font-medium text-[var(--color-text-primary)]">{{ step2.supplier_name || '—' }}</p>
           </div>
           <div v-if="step2.origin_country">
-            <p class="text-xs text-gray-600">بلد المنشأ</p>
-            <p class="text-sm font-medium text-gray-900">{{ step2.origin_country }}</p>
+            <p class="text-xs text-[var(--color-text-subtle)]">بلد المنشأ</p>
+            <p class="text-sm font-medium text-[var(--color-text-primary)]">{{ step2.origin_country }}</p>
           </div>
           <div v-if="step2.invoice_number">
-            <p class="text-xs text-gray-600">رقم الفاتورة</p>
-            <p class="text-sm font-medium text-gray-900">{{ step2.invoice_number }}</p>
+            <p class="text-xs text-[var(--color-text-subtle)]">رقم الفاتورة</p>
+            <p class="text-sm font-medium text-[var(--color-text-primary)]">{{ step2.invoice_number }}</p>
           </div>
           <div v-if="step2.invoice_date">
-            <p class="text-xs text-gray-600">تاريخ الفاتورة</p>
-            <p class="text-sm font-medium text-gray-900">{{ step2.invoice_date }}</p>
+            <p class="text-xs text-[var(--color-text-subtle)]">تاريخ الفاتورة</p>
+            <p class="text-sm font-medium text-[var(--color-text-primary)]">{{ step2.invoice_date }}</p>
           </div>
           <div v-if="step2.arrival_port">
-            <p class="text-xs text-gray-600">ميناء الوصول</p>
-            <p class="text-sm font-medium text-gray-900">{{ step2.arrival_port }}</p>
+            <p class="text-xs text-[var(--color-text-subtle)]">ميناء الوصول</p>
+            <p class="text-sm font-medium text-[var(--color-text-primary)]">{{ step2.arrival_port }}</p>
           </div>
           <div v-if="step2.bl_number">
-            <p class="text-xs text-gray-600">رقم بوليصة الشحن</p>
-            <p class="text-sm font-medium text-gray-900">{{ step2.bl_number }}</p>
+            <p class="text-xs text-[var(--color-text-subtle)]">رقم بوليصة الشحن</p>
+            <p class="text-sm font-medium text-[var(--color-text-primary)]">{{ step2.bl_number }}</p>
           </div>
           <div v-if="step2.customs_office">
-            <p class="text-xs text-gray-600">الجمارك المختصة</p>
-            <p class="text-sm font-medium text-gray-900">{{ step2.customs_office }}</p>
+            <p class="text-xs text-[var(--color-text-subtle)]">الجمارك المختصة</p>
+            <p class="text-sm font-medium text-[var(--color-text-primary)]">{{ step2.customs_office }}</p>
           </div>
         </div>
       </CardContent>
@@ -123,19 +123,19 @@ const formattedAmount = computed(() => {
       <CardContent>
         <ul class="flex flex-col gap-2">
           <li v-for="doc in uploadedDocs" :key="doc.key" class="flex items-center gap-3">
-            <CheckCircle2 class="h-5 w-5 text-green-700 flex-shrink-0" />
-            <span class="text-sm text-gray-600 min-w-36">{{ doc.label }}</span>
-            <span class="text-sm font-medium text-gray-900">{{ doc.name }}</span>
+            <CheckCircle2 class="h-5 w-5 text-[var(--color-text-success)] flex-shrink-0" />
+            <span class="text-sm text-[var(--color-text-subtle)] min-w-36">{{ doc.label }}</span>
+            <span class="text-sm font-medium text-[var(--color-text-primary)]">{{ doc.name }}</span>
           </li>
         </ul>
       </CardContent>
     </Card>
 
-    <Card class="border-gray-200 bg-primary/10">
+    <Card class="border-border bg-primary/10">
       <CardHeader>
         <div class="flex items-center gap-2">
           <ShieldCheck class="h-5 w-5 text-primary" />
-          <CardTitle class="text-gray-900">إقرار بصحة البيانات</CardTitle>
+          <CardTitle class="text-[var(--color-text-primary)]">إقرار بصحة البيانات</CardTitle>
         </div>
       </CardHeader>
       <CardContent>
@@ -144,7 +144,7 @@ const formattedAmount = computed(() => {
             :checked="acknowledged"
             @update:checked="emit('update:acknowledged', $event)"
           />
-          <Label class="text-sm text-gray-900 leading-relaxed cursor-pointer">
+          <Label class="text-sm text-[var(--color-text-primary)] leading-relaxed cursor-pointer">
             أُقر بأن جميع البيانات والمستندات المقدمة صحيحة وكاملة، وأتحمل المسؤولية القانونية عن أي بيانات غير دقيقة أو مستندات مزوّرة، وفقاً للوائح البنك المركزي اليمني.
           </Label>
         </div>

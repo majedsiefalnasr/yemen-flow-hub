@@ -1,6 +1,8 @@
 // @parity-exempt — dashboard sub-component; parity evidence captured at dashboards/support-committee page level
 <script setup lang="ts">
+import type { ColumnDef } from '@tanstack/vue-table'
 import { computed, onMounted } from 'vue'
+import { h } from 'vue'
 import { useRouter } from 'vue-router'
 import { CheckCircle2, Users, Clock, Mail, Zap, AlertCircle, AlarmClock, Globe } from 'lucide-vue-next'
 import { useDashboardStore } from '../../stores/dashboard.store'
@@ -13,7 +15,9 @@ import { Card, CardContent } from '../ui/card'
 import { Button } from '../ui/button'
 import { Badge } from '../ui/badge'
 import { Skeleton } from '../ui/skeleton'
-import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from '../ui/table'
+import DataTable from '../ui/data-table/DataTable.vue'
+import MetricCard from '../shared/dashboard/MetricCard.vue'
+import MetricGrid from '../shared/dashboard/MetricGrid.vue'
 
 const router = useRouter()
 const store = useDashboardStore()
@@ -63,15 +67,83 @@ function claimOwnerLabel(req: SupportCommitteeDashboardStats['support_queue'][nu
   return req.claimed_by.name
 }
 
-function getKpiIconColor(variant: string): string {
-  const colors: Record<string, string> = {
-    green: 'text-success bg-success/10',
-    indigo: 'text-voting bg-voting/10',
-    amber: 'text-warning bg-warning/10',
-    gray: 'text-muted-foreground bg-muted',
-  }
-  return colors[variant] ?? colors.gray!
-}
+type SupportQueueRow = NonNullable<SupportCommitteeDashboardStats['support_queue']>[number]
+
+const supportQueueColumns: ColumnDef<SupportQueueRow>[] = [
+  {
+    accessorKey: 'reference_number',
+    header: 'المرجع',
+    cell: ({ row }) => h('a', {
+      class: 'font-mono text-primary hover:underline',
+      href: `/requests/${row.original.id}`,
+      onClick: (event: MouseEvent) => {
+        event.preventDefault()
+        event.stopPropagation()
+        router.push(`/requests/${row.original.id}`)
+      },
+    }, row.original.reference_number),
+  },
+  { accessorKey: 'supplier_name', header: 'المورد' },
+  {
+    id: 'amount',
+    header: 'المبلغ',
+    cell: ({ row }) => h('span', { class: 'direction-ltr font-tabular-nums' }, formatAmount(row.original.amount, row.original.currency)),
+  },
+  {
+    id: 'status',
+    header: 'الحالة',
+    cell: ({ row }) => h(StatusBadge, { status: row.original.status, role: UserRole.SUPPORT_COMMITTEE }),
+  },
+  {
+    id: 'claim',
+    header: 'الحجز',
+    cell: ({ row }) => h('span', {
+      class: [
+        'inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium',
+        row.original.is_claimed_by_me || (currentUserId.value != null && row.original.claimed_by?.id === currentUserId.value)
+          ? 'bg-[var(--voting)]/10 text-[var(--voting)]'
+          : row.original.claimed_by
+            ? 'bg-muted text-muted-foreground'
+            : 'bg-[var(--severity-amber)]/10 text-[var(--severity-amber)]',
+      ],
+    }, claimOwnerLabel(row.original)),
+  },
+  {
+    id: 'actions',
+    header: 'إجراء',
+    cell: ({ row }) => {
+      if (!row.original.claimed_by) {
+        return h(Button, {
+          size: 'sm',
+          class: 'bg-[var(--voting)] text-white hover:opacity-90',
+          onClick: (event: MouseEvent) => {
+            event.stopPropagation()
+            router.push(`/requests/${row.original.id}`)
+          },
+        }, () => 'مطالبة')
+      }
+      if (row.original.is_claimed_by_me || (currentUserId.value != null && row.original.claimed_by?.id === currentUserId.value)) {
+        return h(Button, {
+          size: 'sm',
+          variant: 'outline',
+          class: 'border-[var(--voting)] text-[var(--voting)] hover:bg-[var(--voting)]/10',
+          onClick: (event: MouseEvent) => {
+            event.stopPropagation()
+            router.push(`/requests/${row.original.id}`)
+          },
+        }, () => 'متابعة')
+      }
+      return h(Button, {
+        size: 'sm',
+        variant: 'outline',
+        onClick: (event: MouseEvent) => {
+          event.stopPropagation()
+          router.push(`/requests/${row.original.id}`)
+        },
+      }, () => 'عرض')
+    },
+  },
+]
 
 // Spec order: Waiting for Claim (amber) / Active by Me (indigo) / Claimed by Others (gray) / Recently Approved (green)
 const kpiConfig = computed(() => [
@@ -167,39 +239,26 @@ onMounted(() => { store.loadStats() })
       </Card>
 
       <!-- KPI grid: 4 clickable cards — spec order: waiting / active / others / approved -->
-      <div class="grid grid-cols-4 max-lg:grid-cols-2 max-md:grid-cols-1 gap-4">
-        <template v-for="kpi in kpiConfig" :key="kpi.label">
-          <Card
-            class="border-0 p-4 shadow flex flex-col gap-1.5 cursor-pointer hover:shadow-md transition-shadow"
-            :class="{
-              'border-s-4 border-s-[var(--severity-amber)]': kpi.variant === 'amber',
-              'border-s-4 border-s-[var(--voting)]': kpi.variant === 'indigo',
-            }"
-            role="button"
-            tabindex="0"
-            :aria-label="`${kpi.label}: ${kpi.value}`"
-            @click="router.push(`/requests?tab=${kpi.tab}`)"
-            @keydown.enter="router.push(`/requests?tab=${kpi.tab}`)"
-            @keydown.space.prevent="router.push(`/requests?tab=${kpi.tab}`)"
-          >
-            <div class="h-9 w-9 rounded flex items-center justify-center flex-shrink-0" :class="getKpiIconColor(kpi.variant)">
-              <component :is="kpi.icon" class="h-5 w-5" aria-hidden="true" />
-            </div>
-            <span
-              class="text-2xl font-semibold leading-none"
-              :class="{
-                'text-[var(--severity-amber)]': kpi.variant === 'amber' && kpi.value > 0,
-                'text-[var(--voting)]': kpi.variant === 'indigo' && kpi.value > 0,
-                'text-[var(--severity-green)]': kpi.variant === 'green',
-                'text-foreground': kpi.variant === 'gray' || kpi.value === 0,
-              }"
-            >
-              {{ kpi.value }}
-            </span>
-            <span class="text-xs text-muted-foreground">{{ kpi.label }}</span>
-          </Card>
-        </template>
-      </div>
+      <MetricGrid :columns="4">
+        <MetricCard
+          v-for="kpi in kpiConfig"
+          :key="kpi.label"
+          :label="kpi.label"
+          :value="kpi.value"
+          :icon="kpi.icon"
+          :tone="
+            kpi.variant === 'amber' && kpi.value > 0
+              ? 'warning'
+              : kpi.variant === 'indigo' && kpi.value > 0
+                ? 'voting'
+                : kpi.variant === 'green'
+                  ? 'success'
+                  : 'default'
+          "
+          :highlighted="(kpi.variant === 'amber' || kpi.variant === 'indigo') && kpi.value > 0"
+          @click="router.push(`/requests?tab=${kpi.tab}`)"
+        />
+      </MetricGrid>
 
       <!-- Quick actions -->
       <section aria-labelledby="qa-heading">
@@ -246,84 +305,9 @@ onMounted(() => { store.loadStats() })
             <Button variant="link" size="sm" class="text-xs h-auto p-0" @click="router.push('/requests')">عرض الكل</Button>
           </div>
 
-          <Table aria-label="طابور عملي">
-            <TableHeader>
-              <TableRow>
-                <TableHead>المرجع</TableHead>
-                <TableHead>المورد</TableHead>
-                <TableHead>المبلغ</TableHead>
-                <TableHead>الحالة</TableHead>
-                <TableHead>الحجز</TableHead>
-                <TableHead>إجراء</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              <TableEmpty v-if="queue.length === 0" :colspan="6">
-                لا توجد طلبات بانتظار المراجعة حالياً ✓
-              </TableEmpty>
-              <TableRow
-                v-for="req in queue.slice(0, 8)"
-                :key="req.id"
-                class="cursor-pointer"
-                :class="{
-                  'bg-[var(--voting)]/8 hover:bg-[var(--voting)]/12': req.is_claimed_by_me || (currentUserId != null && req.claimed_by?.id === currentUserId),
-                  'bg-muted/40 hover:bg-muted/60': !!req.claimed_by && !req.is_claimed_by_me && req.claimed_by?.id !== currentUserId,
-                  'hover:bg-muted/30': !req.claimed_by,
-                }"
-                @click="router.push(`/requests/${req.id}`)"
-              >
-                <TableCell>
-                  <a class="font-mono text-primary hover:underline" :href="`/requests/${req.id}`" @click.prevent="router.push(`/requests/${req.id}`)">{{ req.reference_number }}</a>
-                </TableCell>
-                <TableCell>{{ req.supplier_name }}</TableCell>
-                <TableCell class="direction-ltr font-tabular-nums">{{ formatAmount(req.amount, req.currency) }}</TableCell>
-                <TableCell><StatusBadge :status="req.status" :role="UserRole.SUPPORT_COMMITTEE" /></TableCell>
-                <TableCell>
-                  <span
-                    class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium"
-                    :class="{
-                      'bg-[var(--voting)]/10 text-[var(--voting)]': req.is_claimed_by_me || (currentUserId != null && req.claimed_by?.id === currentUserId),
-                      'bg-muted text-muted-foreground': !!req.claimed_by && !req.is_claimed_by_me && req.claimed_by?.id !== currentUserId,
-                      'bg-[var(--severity-amber)]/10 text-[var(--severity-amber)]': !req.claimed_by,
-                    }"
-                  >
-                    {{ claimOwnerLabel(req) }}
-                  </span>
-                </TableCell>
-                <!-- Claim-state-dependent action button -->
-                <TableCell @click.stop>
-                  <!-- Unclaimed: primary مطالبة -->
-                  <Button
-                    v-if="!req.claimed_by"
-                    size="sm"
-                    class="bg-[var(--voting)] text-white hover:opacity-90"
-                    @click="router.push(`/requests/${req.id}`)"
-                  >
-                    مطالبة
-                  </Button>
-                  <!-- Claimed by me: outline متابعة -->
-                  <Button
-                    v-else-if="req.is_claimed_by_me || (currentUserId != null && req.claimed_by?.id === currentUserId)"
-                    size="sm"
-                    variant="outline"
-                    class="border-[var(--voting)] text-[var(--voting)] hover:bg-[var(--voting)]/10"
-                    @click="router.push(`/requests/${req.id}`)"
-                  >
-                    متابعة
-                  </Button>
-                  <!-- Claimed by others: ghost عرض -->
-                  <Button
-                    v-else
-                    size="sm"
-                    variant="outline"
-                    @click="router.push(`/requests/${req.id}`)"
-                  >
-                    عرض
-                  </Button>
-                </TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
+          <DataTable :data="queue.slice(0, 8)" :columns="supportQueueColumns" @row-click="(row) => router.push(`/requests/${row.id}`)">
+            <template #empty>لا توجد طلبات بانتظار المراجعة حالياً ✓</template>
+          </DataTable>
         </CardContent>
       </Card>
 

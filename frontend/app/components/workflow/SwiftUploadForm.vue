@@ -129,7 +129,7 @@ function submit(): void {
         v-model="swiftReference"
         placeholder="مثال: UETR-2026-ABC123456789"
       />
-      <p v-if="referencePatternWarning" class="text-xs text-amber-600">{{ referencePatternWarning }}</p>
+      <p v-if="referencePatternWarning" class="text-xs text-[var(--color-text-warning)]">{{ referencePatternWarning }}</p>
       <p class="text-xs text-muted-foreground">أدخل المرجع الصادر من نظام SWIFT بالبنك.</p>
     </section>
 

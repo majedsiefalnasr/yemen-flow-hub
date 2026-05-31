@@ -1,6 +1,8 @@
 // @parity-exempt — dashboard sub-component; parity evidence captured at dashboards/swift-officer page level
 <script setup lang="ts">
+import type { ColumnDef } from '@tanstack/vue-table'
 import { computed, onMounted } from 'vue'
+import { h } from 'vue'
 import { useRouter } from 'vue-router'
 import { AlertTriangle, CheckCircle2, Clock3, UploadCloud, XCircle } from 'lucide-vue-next'
 import { useDashboardStore } from '../../stores/dashboard.store'
@@ -10,7 +12,9 @@ import { UserRole } from '../../types/enums'
 import { Card, CardContent } from '../ui/card'
 import { Button } from '../ui/button'
 import { Skeleton } from '../ui/skeleton'
-import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from '../ui/table'
+import DataTable from '../ui/data-table/DataTable.vue'
+import MetricCard from '../shared/dashboard/MetricCard.vue'
+import MetricGrid from '../shared/dashboard/MetricGrid.vue'
 
 const router = useRouter()
 const store = useDashboardStore()
@@ -46,6 +50,56 @@ function hoursInStage(updatedAt: string): number {
   if (Number.isNaN(updated)) return 0
   return Math.max(0, Math.floor((Date.now() - updated) / (1000 * 60 * 60)))
 }
+
+type SwiftQueueRow = NonNullable<SwiftOfficerDashboardStats['swift_queue']>[number]
+
+const swiftQueueColumns: ColumnDef<SwiftQueueRow>[] = [
+  { accessorKey: 'reference_number', header: 'المرجع', cell: ({ row }) => h('span', { class: 'font-mono text-primary' }, row.original.reference_number) },
+  { id: 'merchant', header: 'التاجر', cell: ({ row }) => h('span', row.original.merchant?.name ?? '—') },
+  { id: 'amount', header: 'المبلغ', cell: ({ row }) => h('span', { class: 'font-mono' }, formatAmount(row.original.amount, row.original.currency)) },
+  { id: 'status', header: 'الحالة', cell: ({ row }) => h(StatusBadge, { status: row.original.status, role: UserRole.SWIFT_OFFICER }) },
+  {
+    id: 'age',
+    header: 'العمر بالمرحلة',
+    cell: ({ row }) => h('span', {
+      class: hoursInStage(row.original.updated_at) > 24 ? 'text-[var(--severity-amber)]' : 'text-muted-foreground',
+    }, `${hoursInStage(row.original.updated_at)} ساعة`),
+  },
+  {
+    id: 'docs',
+    header: 'المستندات',
+    cell: ({ row }) => h('div', { class: 'flex items-center gap-1.5' }, [
+      h('span', {
+        class: row.original.has_swift_document ? 'rounded-full border border-[var(--severity-green)]/30 bg-[var(--severity-green)]/10 px-2 py-0.5 text-xs text-[var(--severity-green)]' : 'rounded-full border border-border bg-muted px-2 py-0.5 text-xs text-muted-foreground',
+      }, 'السويفت'),
+      h('span', {
+        class: row.original.has_fx_request_document ? 'rounded-full border border-[var(--severity-green)]/30 bg-[var(--severity-green)]/10 px-2 py-0.5 text-xs text-[var(--severity-green)]' : 'rounded-full border border-border bg-muted px-2 py-0.5 text-xs text-muted-foreground',
+      }, 'طلب تأكيد المصارفة'),
+    ]),
+  },
+  {
+    id: 'actions',
+    header: 'إجراء',
+    cell: ({ row }) => h('div', { class: 'flex items-center gap-2' }, [
+      h(Button, {
+        size: 'sm',
+        class: 'bg-[var(--info)] text-white hover:opacity-90',
+        onClick: (event: MouseEvent) => {
+          event.stopPropagation()
+          router.push(`/requests/${row.original.id}/swift`)
+        },
+      }, () => 'رفع وثائق السويفت'),
+      h(Button, {
+        size: 'sm',
+        variant: 'outline',
+        onClick: (event: MouseEvent) => {
+          event.stopPropagation()
+          router.push(`/requests/${row.original.id}`)
+        },
+      }, () => 'تحميل النموذج'),
+    ]),
+  },
+]
 
 onMounted(() => { store.loadStats() })
 </script>
@@ -95,71 +149,38 @@ onMounted(() => { store.loadStats() })
       </Card>
 
       <!-- KPI grid: 4 clickable cards -->
-      <div class="grid grid-cols-4 gap-4 md:grid-cols-2 sm:grid-cols-1">
-        <Card
-          class="border-0 p-4 shadow flex flex-col gap-1.5 cursor-pointer hover:shadow-md transition-shadow focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
-          role="button"
-          tabindex="0"
-          :aria-label="`بانتظار رفع السويفت: ${stats.pending_swift_upload}`"
+      <MetricGrid :columns="4">
+        <MetricCard
+          label="بانتظار رفع السويفت"
+          :value="stats.pending_swift_upload"
+          :icon="Clock3"
+          tone="warning"
+          :highlighted="stats.pending_swift_upload > 0"
           @click="router.push('/requests?tab=pending_swift')"
-          @keydown.enter="router.push('/requests?tab=pending_swift')"
-          @keydown.space.prevent="router.push('/requests?tab=pending_swift')"
-        >
-          <div class="mb-2 h-9 w-9 flex items-center justify-center rounded bg-[var(--severity-amber)]/10 text-[var(--severity-amber)]">
-            <Clock3 class="h-5 w-5" aria-hidden="true" />
-          </div>
-          <p class="text-2xl font-semibold text-[var(--severity-amber)]">{{ stats.pending_swift_upload }}</p>
-          <p class="text-xs text-muted-foreground">بانتظار رفع السويفت</p>
-        </Card>
-
-        <Card
-          class="border-0 p-4 shadow flex flex-col gap-1.5 cursor-pointer hover:shadow-md transition-shadow focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
-          role="button"
-          tabindex="0"
-          :aria-label="`تم رفع السويفت: ${stats.uploaded}`"
+        />
+        <MetricCard
+          label="تم رفع السويفت"
+          :value="stats.uploaded"
+          :icon="UploadCloud"
+          tone="info"
           @click="router.push('/requests?tab=swift_done')"
-          @keydown.enter="router.push('/requests?tab=swift_done')"
-          @keydown.space.prevent="router.push('/requests?tab=swift_done')"
-        >
-          <div class="mb-2 h-9 w-9 flex items-center justify-center rounded bg-[var(--info)]/10 text-[var(--info)]">
-            <UploadCloud class="h-5 w-5" aria-hidden="true" />
-          </div>
-          <p class="text-2xl font-semibold text-[var(--info)]">{{ stats.uploaded }}</p>
-          <p class="text-xs text-muted-foreground">تم رفع السويفت</p>
-        </Card>
-
-        <Card
-          class="border-0 p-4 shadow flex flex-col gap-1.5 cursor-pointer hover:shadow-md transition-shadow focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
-          role="button"
-          tabindex="0"
-          :aria-label="`مكتمل: ${stats.final_approved}`"
+        />
+        <MetricCard
+          label="مكتمل"
+          :value="stats.final_approved"
+          :icon="CheckCircle2"
+          tone="success"
           @click="router.push('/requests?tab=completed')"
-          @keydown.enter="router.push('/requests?tab=completed')"
-          @keydown.space.prevent="router.push('/requests?tab=completed')"
-        >
-          <div class="mb-2 h-9 w-9 flex items-center justify-center rounded bg-[var(--severity-green)]/10 text-[var(--severity-green)]">
-            <CheckCircle2 class="h-5 w-5" aria-hidden="true" />
-          </div>
-          <p class="text-2xl font-semibold text-[var(--severity-green)]">{{ stats.final_approved }}</p>
-          <p class="text-xs text-muted-foreground">مكتمل</p>
-        </Card>
-
-        <Card
-          class="border-0 p-4 shadow flex flex-col gap-1.5 cursor-pointer hover:shadow-md transition-shadow focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
-          role="button"
-          tabindex="0"
-          :aria-label="`رُفض من اللجنة: ${stats.final_rejected}`"
+        />
+        <MetricCard
+          label="رُفض من اللجنة"
+          :value="stats.final_rejected"
+          :icon="XCircle"
+          tone="danger"
+          :highlighted="stats.final_rejected > 0"
           @click="router.push('/requests?tab=rejected')"
-          @keydown.enter="router.push('/requests?tab=rejected')"
-          @keydown.space.prevent="router.push('/requests?tab=rejected')"
-        >
-          <div class="mb-2 h-9 w-9 flex items-center justify-center rounded bg-[var(--severity-red)]/10 text-[var(--severity-red)]">
-            <XCircle class="h-5 w-5" aria-hidden="true" />
-          </div>
-          <p class="text-2xl font-semibold text-[var(--severity-red)]">{{ stats.final_rejected }}</p>
-          <p class="text-xs text-muted-foreground">رُفض من اللجنة</p>
-        </Card>
-      </div>
+        />
+      </MetricGrid>
 
       <!-- SWIFT queue table -->
       <Card class="border-0 shadow" aria-labelledby="swift-queue-heading">
@@ -168,57 +189,9 @@ onMounted(() => { store.loadStats() })
             <h2 id="swift-queue-heading" class="text-sm font-semibold text-foreground">طابور السويفت</h2>
           </div>
 
-          <Table aria-label="طابور السويفت">
-            <TableHeader>
-              <TableRow>
-                <TableHead>المرجع</TableHead>
-                <TableHead>التاجر</TableHead>
-                <TableHead>المبلغ</TableHead>
-                <TableHead>الحالة</TableHead>
-                <TableHead>العمر بالمرحلة</TableHead>
-                <TableHead>المستندات</TableHead>
-                <TableHead>إجراء</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              <TableEmpty v-if="queue.length === 0" :colspan="7">
-                لا توجد طلبات بانتظار رفع السويفت حالياً ✓
-              </TableEmpty>
-              <TableRow
-                v-for="req in queue"
-                :key="req.id"
-                class="hover:bg-muted/20"
-              >
-                <TableCell class="font-mono text-primary">{{ req.reference_number }}</TableCell>
-                <TableCell>{{ req.merchant?.name ?? '—' }}</TableCell>
-                <TableCell class="font-mono">{{ formatAmount(req.amount, req.currency) }}</TableCell>
-                <TableCell>
-                  <StatusBadge :status="req.status" :role="UserRole.SWIFT_OFFICER" />
-                </TableCell>
-                <TableCell
-                  :class="hoursInStage(req.updated_at) > 24 ? 'text-[var(--severity-amber)]' : 'text-muted-foreground'"
-                >
-                  {{ hoursInStage(req.updated_at) }} ساعة
-                </TableCell>
-                <TableCell>
-                  <div class="flex items-center gap-1.5">
-                    <span :class="req.has_swift_document ? 'rounded-full border border-[var(--severity-green)]/30 bg-[var(--severity-green)]/10 px-2 py-0.5 text-xs text-[var(--severity-green)]' : 'rounded-full border border-border bg-muted px-2 py-0.5 text-xs text-muted-foreground'">السويفت</span>
-                    <span :class="req.has_fx_request_document ? 'rounded-full border border-[var(--severity-green)]/30 bg-[var(--severity-green)]/10 px-2 py-0.5 text-xs text-[var(--severity-green)]' : 'rounded-full border border-border bg-muted px-2 py-0.5 text-xs text-muted-foreground'">طلب تأكيد المصارفة</span>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div class="flex items-center gap-2">
-                    <Button size="sm" class="bg-[var(--info)] text-white hover:opacity-90" @click="router.push(`/requests/${req.id}/swift`)">
-                      رفع وثائق السويفت
-                    </Button>
-                    <Button size="sm" variant="outline" @click="router.push(`/requests/${req.id}`)">
-                      تحميل النموذج
-                    </Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
+          <DataTable :data="queue" :columns="swiftQueueColumns">
+            <template #empty>لا توجد طلبات بانتظار رفع السويفت حالياً ✓</template>
+          </DataTable>
         </CardContent>
       </Card>
 

@@ -1067,7 +1067,7 @@ async function handleCloneConfirm() {
             </div>
             <div
               v-else-if="showDirectorTieBreakBanner"
-              class="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-amber-800 flex items-center justify-between gap-3"
+              class="rounded-lg border border-[var(--color-border-warning)] bg-[var(--color-surface-warning)] px-4 py-3 text-[var(--color-text-warning)] flex items-center justify-between gap-3"
             >
               <span>تعادل في التصويت — يتطلب حسم المدير.</span>
               <button class="text-xs font-semibold underline" @click="scrollToActionPanel">
@@ -1085,7 +1085,7 @@ async function handleCloneConfirm() {
             </div>
             <div
               v-else-if="showDirectorFxReadyBanner"
-              class="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-amber-800 flex items-center justify-between gap-3"
+              class="rounded-lg border border-[var(--color-border-warning)] bg-[var(--color-surface-warning)] px-4 py-3 text-[var(--color-text-warning)] flex items-center justify-between gap-3"
             >
               <span>جاهز لإتمام تأكيد المصارفة الخارجية.</span>
               <button class="text-xs font-semibold underline" @click="onTabChange('fx_confirmation')">
@@ -1548,8 +1548,8 @@ async function handleCloneConfirm() {
                   >
                     {{ fxCompleting ? 'جارٍ الإتمام…' : 'إتمام تأكيد المصارفة' }}
                   </Button>
-                  <p v-if="fxFlowError" class="text-xs text-red-700">{{ fxFlowError }}</p>
-                  <p v-if="fxFlowSuccess" class="text-xs text-green-700">تم إتمام تأكيد المصارفة بنجاح.</p>
+                  <p v-if="fxFlowError" class="text-xs text-[var(--color-text-error)]">{{ fxFlowError }}</p>
+                  <p v-if="fxFlowSuccess" class="text-xs text-[var(--color-text-success)]">تم إتمام تأكيد المصارفة بنجاح.</p>
                 </div>
               </div>
             </section>

@@ -1,12 +1,14 @@
 <script setup lang="ts">
+import { h } from 'vue'
+import { createColumnHelper } from '@tanstack/vue-table'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import { ROLE_LABELS, ALL_ROLES, ROUTE_ROLE_MAP } from '@/constants/workflow'
 import { UserRole } from '@/types/enums'
 import { useAuthStore } from '@/stores/auth.store'
 import { Card } from '@/components/ui/card'
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
+import DataTable from '@/components/ui/data-table/DataTable.vue'
 
 definePageMeta({
   middleware: ['auth', 'role'],
@@ -17,6 +19,12 @@ type Permission = {
   key: string
   label: string
   roles: UserRole[]
+}
+
+type PermissionRow = {
+  key: string
+  label: string
+  roleMap: Record<UserRole, boolean>
 }
 
 const authStore = useAuthStore()
@@ -98,6 +106,53 @@ const ALL_PERMISSIONS: Permission[] = [
 function hasPermission(role: UserRole, permission: Permission) {
   return permission.roles.includes(role)
 }
+
+const permissionRows = computed<PermissionRow[]>(() => ALL_PERMISSIONS.map(permission => ({
+  key: permission.key,
+  label: permission.label,
+  roleMap: ALL_ROLES.reduce((acc, role) => {
+    acc[role] = hasPermission(role, permission)
+    return acc
+  }, {} as Record<UserRole, boolean>),
+})))
+
+const columnHelper = createColumnHelper<PermissionRow>()
+
+const columns = computed(() => ([
+  columnHelper.accessor('label', {
+    id: 'permission',
+    header: () => h('span', 'الصلاحيات'),
+    cell: ({ row }) => h(
+      'div',
+      { class: 'font-medium' },
+      [
+        row.original.label,
+        h(Badge, { variant: 'outline', class: 'me-2 font-mono text-[9px]' }, () => row.original.key),
+      ],
+    ),
+    enableSorting: false,
+    meta: {
+      headerClass: 'min-w-[260px] bg-muted/40 p-3 text-end',
+      cellClass: 'p-3 align-top',
+    },
+  }),
+  ...ALL_ROLES.map(role => columnHelper.display({
+    id: role,
+    header: () => h('div', { class: 'text-[11px] font-medium leading-tight text-center' }, ROLE_LABELS[role]),
+    cell: ({ row }) => h('div', { class: 'flex justify-center p-1' }, [
+      h(Checkbox, {
+        class: 'perm-checkbox',
+        modelValue: row.original.roleMap[role],
+        disabled: true,
+      }),
+    ]),
+    enableSorting: false,
+    meta: {
+      headerClass: 'min-w-[120px] p-3 text-center',
+      cellClass: 'p-2 text-center align-top',
+    },
+  })),
+]))
 </script>
 
 <template>
@@ -116,54 +171,11 @@ function hasPermission(role: UserRole, permission: Permission) {
     </div>
 
     <Card class="overflow-x-auto border-0 p-0 shadow">
-      <Table class="w-full min-w-[640px] text-sm">
-        <TableHeader class="bg-muted/40">
-          <TableRow>
-            <TableHead class="sticky end-0 min-w-[260px] bg-muted/40 p-3 text-end">
-              الصلاحيات
-            </TableHead>
-            <TableHead
-              v-for="role in ALL_ROLES"
-              :key="role"
-              :data-role="role"
-              class="min-w-[120px] p-3 text-center"
-            >
-              <div class="text-[11px] font-medium leading-tight">
-                {{ ROLE_LABELS[role] }}
-              </div>
-            </TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          <TableRow
-            v-for="permission in ALL_PERMISSIONS"
-            :key="permission.key"
-            :data-permission="permission.key"
-            class="border-t hover:bg-muted/20"
-          >
-            <TableCell class="sticky end-0 bg-background p-3 font-medium">
-              {{ permission.label }}
-              <Badge
-                variant="outline"
-                class="me-2 font-mono text-[9px]"
-              >
-                {{ permission.key }}
-              </Badge>
-            </TableCell>
-            <TableCell
-              v-for="role in ALL_ROLES"
-              :key="`${role}-${permission.key}`"
-              class="p-3 text-center align-top"
-            >
-              <Checkbox
-                class="perm-checkbox"
-                :model-value="hasPermission(role, permission)"
-                disabled
-              />
-            </TableCell>
-          </TableRow>
-        </TableBody>
-      </Table>
+      <DataTable
+        :data="permissionRows"
+        :columns="columns"
+        row-class="hover:bg-muted/20 cursor-default"
+      />
     </Card>
   </div>
 </template>

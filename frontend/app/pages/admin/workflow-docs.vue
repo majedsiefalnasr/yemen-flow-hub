@@ -1,13 +1,5 @@
 <script setup lang="ts">
 import type { ColumnDef, VisibilityState } from '@tanstack/vue-table'
-import {
-  FlexRender,
-  getCoreRowModel,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
-  useVueTable,
-} from '@tanstack/vue-table'
 import { h } from 'vue'
 import {
   AlertTriangle,
@@ -27,6 +19,7 @@ import { Switch } from '@/components/ui/switch'
 import { Input } from '@/components/ui/input'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import { DataTableViewOptions } from '@/components/ui/data-table'
+import DataTable from '@/components/ui/data-table/DataTable.vue'
 import { useTableExport } from '@/composables/useTableExport'
 import { useTableKeyboard } from '@/composables/useTableKeyboard'
 import { ROUTE_ROLE_MAP } from '@/constants/workflow'
@@ -276,23 +269,6 @@ const WORKFLOW_DOC_COLUMN_LABELS: Record<string, string> = {
   sort_order: 'الترتيب',
 }
 
-const table = useVueTable({
-  get data() { return filteredDocTypes.value },
-  columns,
-  getCoreRowModel: getCoreRowModel(),
-  getPaginationRowModel: getPaginationRowModel(),
-  getSortedRowModel: getSortedRowModel(),
-  getFilteredRowModel: getFilteredRowModel(),
-  onColumnVisibilityChange: updater =>
-    columnVisibility.value = typeof updater === 'function' ? updater(columnVisibility.value) : updater,
-  state: {
-    get columnVisibility() { return columnVisibility.value },
-  },
-  initialState: {
-    pagination: { pageSize: 20 },
-  },
-})
-
 function exportCurrentRules() {
   if (!filteredDocTypes.value.length) return
   const stamp = new Date().toISOString().slice(0, 10)
@@ -384,130 +360,90 @@ function exportCurrentRules() {
         <Download class="h-4 w-4" />
         تصدير
       </Button>
-      <DataTableViewOptions
-        :table="table"
-        :column-labels="WORKFLOW_DOC_COLUMN_LABELS"
-      />
     </div>
 
-    <Card class="border-0 shadow">
-      <div class="overflow-x-auto">
-        <Table class="w-full min-w-[760px]">
-          <TableHeader class="bg-muted/20">
-            <TableRow
-              v-for="headerGroup in table.getHeaderGroups()"
-              :key="headerGroup.id"
-              class="hover:bg-transparent"
-            >
-              <TableHead
-                v-for="header in headerGroup.headers"
-                :key="header.id"
-                class="h-10 px-4 text-xs font-medium text-foreground"
-              >
-                <FlexRender
-                  v-if="!header.isPlaceholder"
-                  :render="header.column.columnDef.header"
-                  :props="header.getContext()"
-                />
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            <template v-if="loadingDocTypes">
-              <TableRow v-for="i in 6" :key="i">
-                <TableCell class="px-4 py-3"><Skeleton class="h-4 w-48" /></TableCell>
-                <TableCell class="px-4 py-3"><Skeleton class="h-6 w-20" /></TableCell>
-                <TableCell class="px-4 py-3"><Skeleton class="h-6 w-20" /></TableCell>
-                <TableCell class="px-4 py-3"><Skeleton class="h-4 w-10" /></TableCell>
-              </TableRow>
-            </template>
-            <TableRow v-else-if="!table.getRowModel().rows.length">
-              <TableCell :col-span="columns.length" class="p-8">
-                <Empty class="min-h-[180px] rounded-xl border border-dashed bg-muted/20">
-                  <EmptyHeader>
-                    <div class="flex size-12 items-center justify-center rounded-xl bg-muted text-muted-foreground">
-                      <SearchX class="size-5" />
-                    </div>
-                    <EmptyTitle>لا توجد أنواع مستندات مطابقة</EmptyTitle>
-                  </EmptyHeader>
-                  <EmptyContent>
-                    <EmptyDescription>جرّب تعديل معايير البحث لعرض النتائج.</EmptyDescription>
-                  </EmptyContent>
-                </Empty>
-              </TableCell>
-            </TableRow>
-            <template v-else>
-              <TableRow
-                v-for="row in table.getRowModel().rows"
-                :key="row.id"
-                class="hover:bg-muted/30"
-              >
-                <TableCell
-                  v-for="cell in row.getVisibleCells()"
-                  :key="cell.id"
-                  class="px-4 py-3"
-                >
-                  <FlexRender
-                    :render="cell.column.columnDef.cell"
-                    :props="cell.getContext()"
-                  />
-                </TableCell>
-              </TableRow>
-            </template>
-          </TableBody>
-        </Table>
-      </div>
-
-      <div class="flex items-center justify-between border-t px-4 py-3">
-        <p class="text-sm text-muted-foreground">{{ table.getFilteredRowModel().rows.length }} نوع</p>
-        <div class="flex items-center gap-4">
-          <p class="text-sm font-medium whitespace-nowrap">
-            صفحة {{ table.getState().pagination.pageIndex + 1 }} من {{ table.getPageCount() }}
-          </p>
-          <div class="flex items-center gap-1">
-            <Button
-              variant="outline"
-              size="icon"
-              class="hidden h-8 w-8 lg:flex"
-              :disabled="!table.getCanPreviousPage()"
-              @click="table.setPageIndex(0)"
-            >
-              <span class="sr-only">الصفحة الأولى</span>
-              <ChevronsRight class="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              class="h-8 w-8"
-              :disabled="!table.getCanPreviousPage()"
-              @click="table.previousPage()"
-            >
-              <span class="sr-only">الصفحة السابقة</span>
-              <ChevronRight class="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              class="h-8 w-8"
-              :disabled="!table.getCanNextPage()"
-              @click="table.nextPage()"
-            >
-              <span class="sr-only">الصفحة التالية</span>
-              <ChevronLeft class="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              class="hidden h-8 w-8 lg:flex"
-              :disabled="!table.getCanNextPage()"
-              @click="table.setPageIndex(table.getPageCount() - 1)"
-            >
-              <span class="sr-only">الصفحة الأخيرة</span>
-              <ChevronsLeft class="h-4 w-4" />
-            </Button>
+    <Card class="border-0 shadow p-4">
+      <DataTable
+        :data="filteredDocTypes"
+        :columns="columns"
+        :loading="loadingDocTypes"
+        :column-visibility="columnVisibility"
+        @update:column-visibility="(v) => columnVisibility = v"
+      >
+        <template #toolbar="{ table }">
+          <div class="mb-2 flex justify-end">
+            <DataTableViewOptions
+              :table="table"
+              :column-labels="WORKFLOW_DOC_COLUMN_LABELS"
+            />
           </div>
-        </div>
-      </div>
+        </template>
+        <template #empty>
+          <Empty class="min-h-[180px] rounded-xl border border-dashed bg-muted/20">
+            <EmptyHeader>
+              <div class="flex size-12 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+                <SearchX class="size-5" />
+              </div>
+              <EmptyTitle>لا توجد أنواع مستندات مطابقة</EmptyTitle>
+            </EmptyHeader>
+            <EmptyContent>
+              <EmptyDescription>جرّب تعديل معايير البحث لعرض النتائج.</EmptyDescription>
+            </EmptyContent>
+          </Empty>
+        </template>
+        <template #pagination="{ table }">
+          <div class="flex items-center justify-between border-t px-4 py-3">
+            <p class="text-sm text-muted-foreground">{{ filteredDocTypes.length }} نوع</p>
+            <div class="flex items-center gap-4">
+              <p class="text-sm font-medium whitespace-nowrap">
+                صفحة {{ table.getState().pagination.pageIndex + 1 }} من {{ table.getPageCount() }}
+              </p>
+              <div class="flex items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  class="hidden h-8 w-8 lg:flex"
+                  :disabled="!table.getCanPreviousPage()"
+                  @click="table.setPageIndex(0)"
+                >
+                  <span class="sr-only">الصفحة الأولى</span>
+                  <ChevronsRight class="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  class="h-8 w-8"
+                  :disabled="!table.getCanPreviousPage()"
+                  @click="table.previousPage()"
+                >
+                  <span class="sr-only">الصفحة السابقة</span>
+                  <ChevronRight class="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  class="h-8 w-8"
+                  :disabled="!table.getCanNextPage()"
+                  @click="table.nextPage()"
+                >
+                  <span class="sr-only">الصفحة التالية</span>
+                  <ChevronLeft class="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  class="hidden h-8 w-8 lg:flex"
+                  :disabled="!table.getCanNextPage()"
+                  @click="table.setPageIndex(table.getPageCount() - 1)"
+                >
+                  <span class="sr-only">الصفحة الأخيرة</span>
+                  <ChevronsLeft class="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
+        </template>
+      </DataTable>
     </Card>
 
     <!-- Impact preview dialog for high-risk document rule changes -->

@@ -1,13 +1,5 @@
 <script setup lang="ts">
-import type { ColumnDef, VisibilityState } from '@tanstack/vue-table'
-import {
-  FlexRender,
-  getCoreRowModel,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
-  useVueTable,
-} from '@tanstack/vue-table'
+import type { ColumnDef } from '@tanstack/vue-table'
 import { computed, ref, reactive, onMounted, h } from 'vue'
 import {
   AlertTriangle,
@@ -30,14 +22,7 @@ import {
 } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
+import DataTable from '@/components/ui/data-table/DataTable.vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
@@ -56,7 +41,6 @@ import {
   EmptyHeader,
   EmptyTitle,
 } from '@/components/ui/empty'
-import { Skeleton } from '@/components/ui/skeleton'
 import { Checkbox } from '@/components/ui/checkbox'
 
 definePageMeta({
@@ -203,7 +187,7 @@ const rowSelection = ref<Record<string, boolean>>({})
 const selectedCount = computed(() => Object.values(rowSelection.value).filter(Boolean).length)
 
 function clearSelection() {
-  table.resetRowSelection()
+  rowSelection.value = {}
 }
 
 const filteredBanks = computed(() => {
@@ -311,21 +295,6 @@ const columns: ColumnDef<Bank>[] = [
   },
 ]
 
-const table = useVueTable({
-  get data() { return filteredBanks.value },
-  columns,
-  getCoreRowModel: getCoreRowModel(),
-  getPaginationRowModel: getPaginationRowModel(),
-  getSortedRowModel: getSortedRowModel(),
-  getFilteredRowModel: getFilteredRowModel(),
-  onRowSelectionChange: updater =>
-    rowSelection.value = typeof updater === 'function' ? updater(rowSelection.value) : updater,
-  state: {
-    get rowSelection() { return rowSelection.value },
-  },
-  initialState: { pagination: { pageSize: 20 } },
-})
-
 onMounted(loadBanks)
 </script>
 
@@ -386,125 +355,70 @@ onMounted(loadBanks)
 
     <!-- Table -->
     <div class="relative flex flex-col gap-4">
-      <div v-if="loading || table.getRowModel().rows.length > 0" class="rounded-lg border overflow-x-auto">
-        <Table class="min-w-max w-full">
-          <TableHeader class="bg-muted sticky top-0 z-30">
-            <TableRow
-              v-for="headerGroup in table.getHeaderGroups()"
-              :key="headerGroup.id"
-              class="hover:bg-transparent"
-            >
-              <TableHead
-                v-for="header in headerGroup.headers"
-                :key="header.id"
-                class="h-10 text-sm font-medium text-foreground"
-                :class="header.column.id === 'actions'
-                  ? 'sticky end-0 z-20 bg-muted w-12 px-2'
-                  : 'px-4'"
-              >
-                <FlexRender
-                  v-if="!header.isPlaceholder"
-                  :render="header.column.columnDef.header"
-                  :props="header.getContext()"
-                />
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-
-          <TableBody>
-            <template v-if="loading">
-              <TableRow v-for="i in 6" :key="i">
-                <TableCell class="px-4 py-3">
-                  <div class="flex flex-col gap-1.5">
-                    <Skeleton class="h-4 w-48" />
-                    <Skeleton class="h-3 w-36" />
-                  </div>
-                </TableCell>
-                <TableCell class="px-4 py-3"><Skeleton class="h-5 w-12 rounded" /></TableCell>
-                <TableCell class="px-4 py-3"><Skeleton class="h-4 w-16" /></TableCell>
-                <TableCell class="px-4 py-3 w-12"><Skeleton class="h-8 w-8 rounded-md" /></TableCell>
-              </TableRow>
-            </template>
-
-            <template v-else>
-              <TableRow
-                v-for="row in table.getRowModel().rows"
-                :key="row.id"
-                class="group/row transition-colors hover:bg-muted/30"
-              >
-                <TableCell
-                  v-for="cell in row.getVisibleCells()"
-                  :key="cell.id"
-                  class="py-3 align-middle" 
-                  :class="cell.column.id === 'actions'
-                    ? 'sticky end-0 z-10 bg-background w-12 px-2 group-hover/row:bg-muted/30'
-                    : 'px-4'"
-                >
-                  <FlexRender :render="cell.column.columnDef.cell" :props="cell.getContext()" />
-                </TableCell>
-              </TableRow>
-            </template>
-          </TableBody>
-        </Table>
-      </div>
-
-      <!-- Empty state (outside table) -->
-      <Empty
-        v-if="!loading && !table.getRowModel().rows.length"
-        class="min-h-[280px] rounded-xl border border-dashed bg-muted/20"
+      <DataTable
+        :data="filteredBanks"
+        :columns="columns"
+        :loading="loading"
+        :row-selection="rowSelection"
+        @update:row-selection="(v) => rowSelection = v"
+        :row-class="'group/row'"
       >
-        <EmptyHeader>
-          <div class="flex size-12 items-center justify-center rounded-xl bg-muted text-muted-foreground">
-            <SearchX class="size-5" />
-          </div>
-          <EmptyTitle>لا توجد نتائج</EmptyTitle>
-        </EmptyHeader>
-        <EmptyContent>
-          <EmptyDescription>جرّب تغيير البحث لعرض البنوك.</EmptyDescription>
-        </EmptyContent>
-      </Empty>
-
-      <!-- Pagination -->
-      <div class="flex items-center justify-between px-2">
-        <p class="text-sm text-muted-foreground">
-          {{ table.getFilteredSelectedRowModel().rows.length }} من {{ table.getFilteredRowModel().rows.length }} بنك محدد
-        </p>
-        <div class="flex items-center gap-4">
-          <p class="text-sm font-medium whitespace-nowrap">
-            صفحة {{ table.getState().pagination.pageIndex + 1 }} من {{ table.getPageCount() }}
+        <template #empty>
+          <Empty class="min-h-[280px] rounded-xl border border-dashed bg-muted/20">
+            <EmptyHeader>
+              <div class="flex size-12 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+                <SearchX class="size-5" />
+              </div>
+              <EmptyTitle>لا توجد نتائج</EmptyTitle>
+            </EmptyHeader>
+            <EmptyContent>
+              <EmptyDescription>جرّب تغيير البحث لعرض البنوك.</EmptyDescription>
+            </EmptyContent>
+          </Empty>
+        </template>
+        <template #pagination="{ table }">
+          <div class="flex items-center justify-between px-2">
+          <p class="text-sm text-muted-foreground">
+            {{ selectedCount }} من {{ filteredBanks.length }} بنك محدد
           </p>
-          <div class="flex items-center gap-1">
-            <Button
-              variant="outline" size="icon" class="hidden h-8 w-8 lg:flex"
-              :disabled="!table.getCanPreviousPage()" @click="table.setPageIndex(0)"
-            >
-              <span class="sr-only">الصفحة الأولى</span>
-              <ChevronsRight class="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline" size="icon" class="h-8 w-8"
-              :disabled="!table.getCanPreviousPage()" @click="table.previousPage()"
-            >
-              <span class="sr-only">الصفحة السابقة</span>
-              <ChevronRight class="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline" size="icon" class="h-8 w-8"
-              :disabled="!table.getCanNextPage()" @click="table.nextPage()"
-            >
-              <span class="sr-only">الصفحة التالية</span>
-              <ChevronLeft class="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline" size="icon" class="hidden h-8 w-8 lg:flex"
-              :disabled="!table.getCanNextPage()" @click="table.setPageIndex(table.getPageCount() - 1)"
-            >
-              <span class="sr-only">الصفحة الأخيرة</span>
-              <ChevronsLeft class="h-4 w-4" />
-            </Button>
+          <div class="flex items-center gap-4">
+            <p class="text-sm font-medium whitespace-nowrap">
+              صفحة {{ table.getState().pagination.pageIndex + 1 }} من {{ table.getPageCount() }}
+            </p>
+            <div class="flex items-center gap-1">
+              <Button
+                variant="outline" size="icon" class="hidden h-8 w-8 lg:flex"
+                :disabled="!table.getCanPreviousPage()" @click="table.setPageIndex(0)"
+              >
+                <span class="sr-only">الصفحة الأولى</span>
+                <ChevronsRight class="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline" size="icon" class="h-8 w-8"
+                :disabled="!table.getCanPreviousPage()" @click="table.previousPage()"
+              >
+                <span class="sr-only">الصفحة السابقة</span>
+                <ChevronRight class="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline" size="icon" class="h-8 w-8"
+                :disabled="!table.getCanNextPage()" @click="table.nextPage()"
+              >
+                <span class="sr-only">الصفحة التالية</span>
+                <ChevronLeft class="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline" size="icon" class="hidden h-8 w-8 lg:flex"
+                :disabled="!table.getCanNextPage()" @click="table.setPageIndex(table.getPageCount() - 1)"
+              >
+                <span class="sr-only">الصفحة الأخيرة</span>
+                <ChevronsLeft class="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </div>
-      </div>
+      </template>
+      </DataTable>
     </div>
 
     <!-- Dialog Modal -->

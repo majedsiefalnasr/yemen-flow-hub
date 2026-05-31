@@ -260,9 +260,9 @@ function formatDate(iso: string | null): string {
     </div>
 
     <!-- Error state -->
-    <Alert v-else-if="error" class="border-s-4 border-s-red-600 bg-red-700/10 border-0">
-      <AlertCircle class="h-4 w-4 text-red-700" aria-hidden="true" />
-      <AlertDescription class="text-red-700 text-sm">{{ error }}</AlertDescription>
+    <Alert v-else-if="error" class="border-s-4 border-s-[var(--severity-red)] bg-[var(--severity-red)]/10 border-0">
+      <AlertCircle class="h-4 w-4 text-[var(--severity-red)]" aria-hidden="true" />
+      <AlertDescription class="text-[var(--severity-red)] text-sm">{{ error }}</AlertDescription>
     </Alert>
 
     <!-- Empty state -->
@@ -272,11 +272,11 @@ function formatDate(iso: string | null): string {
     <template v-else>
       <div class="flex items-center justify-between gap-2 mb-2.5">
         <span class="text-xs text-muted-foreground">قائمة المستندات</span>
-        <div v-if="missingRequiredCount > 0" class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-red-700/10 text-red-700 text-xs font-semibold">
+        <div v-if="missingRequiredCount > 0" class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[var(--severity-red)]/10 text-[var(--severity-red)] text-xs font-semibold">
           <AlertCircle class="w-3 h-3" aria-hidden="true" />
           ينقص {{ missingRequiredCount }} مستند مطلوب
         </div>
-        <div v-else class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-green-50/10 text-green-700 text-xs font-semibold">
+        <div v-else class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[var(--severity-green)]/10 text-[var(--severity-green)] text-xs font-semibold">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
             <polyline points="20 6 9 17 4 12" />
           </svg>
@@ -293,15 +293,15 @@ function formatDate(iso: string | null): string {
             v-if="row.kind === 'staged'"
             class="flex items-start gap-2.5 p-3 rounded-lg border"
             :class="{
-              'border-green-200 bg-green-50/10': !!row.doc,
-              'border-destructive bg-red-700/10': !row.doc && row.requirement.required,
+              'border-[var(--severity-green)]/30 bg-[var(--severity-green)]/5': !!row.doc,
+              'border-destructive bg-[var(--severity-red)]/10': !row.doc && row.requirement.required,
               'border-border bg-muted': !row.doc && !row.requirement.required,
             }"
           >
             <!-- Left: status icon box -->
             <div
               class="flex-shrink-0 w-7 h-7 rounded-md flex items-center justify-center text-sm"
-              :class="row.doc ? 'bg-green-50/10 text-green-700' : 'bg-muted text-muted-foreground'"
+              :class="row.doc ? 'bg-[var(--severity-green)]/10 text-[var(--severity-green)]' : 'bg-muted text-muted-foreground'"
             >
               <svg v-if="row.doc" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
                 <polyline points="20 6 9 17 4 12" />
@@ -323,7 +323,7 @@ function formatDate(iso: string | null): string {
                   · {{ formatDate(row.doc.uploaded_at) }}
                   <template v-if="row.doc.uploaded_by_name"> · {{ row.doc.uploaded_by_name }}</template>
                 </span>
-                <span v-if="downloadErrors[row.doc.id]" class="text-xs text-red-700" role="alert">
+                <span v-if="downloadErrors[row.doc.id]" class="text-xs text-[var(--severity-red)]" role="alert">
                   {{ downloadErrors[row.doc.id] }}
                 </span>
               </template>
@@ -350,8 +350,8 @@ function formatDate(iso: string | null): string {
           </li>
 
           <!-- Extra uploaded docs -->
-          <li v-else-if="row.kind === 'extra'" class="flex items-start gap-2.5 p-3 rounded-lg border border-green-200 bg-green-50/10">
-            <div class="flex-shrink-0 w-7 h-7 rounded-md flex items-center justify-center bg-green-50/10 text-green-700">
+          <li v-else-if="row.kind === 'extra'" class="flex items-start gap-2.5 p-3 rounded-lg border border-[var(--severity-green)]/30 bg-[var(--severity-green)]/5">
+            <div class="flex-shrink-0 w-7 h-7 rounded-md flex items-center justify-center bg-[var(--severity-green)]/10 text-[var(--severity-green)]">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
                 <polyline points="20 6 9 17 4 12" />
               </svg>
@@ -374,7 +374,7 @@ function formatDate(iso: string | null): string {
                 · {{ formatDate(row.doc.uploaded_at) }}
                 <template v-if="row.doc.uploaded_by_name"> · {{ row.doc.uploaded_by_name }}</template>
               </span>
-              <span v-if="downloadErrors[row.doc.id]" class="text-xs text-red-700" role="alert">
+              <span v-if="downloadErrors[row.doc.id]" class="text-xs text-[var(--severity-red)]" role="alert">
                 {{ downloadErrors[row.doc.id] }}
               </span>
             </div>
@@ -415,8 +415,8 @@ function formatDate(iso: string | null): string {
           </li>
 
           <!-- Customs declaration row -->
-          <li v-else-if="row.kind === 'customs'" class="flex items-start gap-2.5 p-3 rounded-lg border border-green-200 bg-green-50/10">
-            <div class="flex-shrink-0 w-7 h-7 rounded-md flex items-center justify-center bg-green-50/10 text-green-700">
+          <li v-else-if="row.kind === 'customs'" class="flex items-start gap-2.5 p-3 rounded-lg border border-[var(--severity-green)]/30 bg-[var(--severity-green)]/5">
+            <div class="flex-shrink-0 w-7 h-7 rounded-md flex items-center justify-center bg-[var(--severity-green)]/10 text-[var(--severity-green)]">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
                 <polyline points="20 6 9 17 4 12" />
               </svg>
@@ -427,7 +427,7 @@ function formatDate(iso: string | null): string {
               </div>
               <span class="text-xs font-medium text-foreground">{{ row.customs.declaration_number }}</span>
               <span class="text-xs text-muted-foreground">{{ formatDate(row.customs.issued_at) }}</span>
-              <span v-if="customsDownloadError" class="text-xs text-red-700" role="alert">
+              <span v-if="customsDownloadError" class="text-xs text-[var(--severity-red)]" role="alert">
                 {{ customsDownloadError }}
               </span>
             </div>
@@ -468,13 +468,13 @@ function formatDate(iso: string | null): string {
         >
           {{ uploadingDocument ? 'جارٍ الرفع…' : 'رفع مستند' }}
         </Button>
-        <Alert v-if="fileTypeError" class="border-s-4 border-s-red-600 bg-red-700/10 border-0 w-full">
-          <AlertCircle class="h-4 w-4 text-red-700" aria-hidden="true" />
-          <AlertDescription class="text-red-700 text-sm">{{ fileTypeError }}</AlertDescription>
+        <Alert v-if="fileTypeError" class="border-s-4 border-s-[var(--severity-red)] bg-[var(--severity-red)]/10 border-0 w-full">
+          <AlertCircle class="h-4 w-4 text-[var(--severity-red)]" aria-hidden="true" />
+          <AlertDescription class="text-[var(--severity-red)] text-sm">{{ fileTypeError }}</AlertDescription>
         </Alert>
-        <Alert v-else-if="uploadError" class="border-s-4 border-s-red-600 bg-red-700/10 border-0 w-full">
-          <AlertCircle class="h-4 w-4 text-red-700" aria-hidden="true" />
-          <AlertDescription class="text-red-700 text-sm">{{ uploadError }}</AlertDescription>
+        <Alert v-else-if="uploadError" class="border-s-4 border-s-[var(--severity-red)] bg-[var(--severity-red)]/10 border-0 w-full">
+          <AlertCircle class="h-4 w-4 text-[var(--severity-red)]" aria-hidden="true" />
+          <AlertDescription class="text-[var(--severity-red)] text-sm">{{ uploadError }}</AlertDescription>
         </Alert>
       </template>
 

@@ -1,14 +1,6 @@
 <script setup lang="ts">
 import type { ColumnDef, ColumnFiltersState, SortingState, VisibilityState } from '@tanstack/vue-table'
 import {
-  FlexRender,
-  getCoreRowModel,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
-  useVueTable,
-} from '@tanstack/vue-table'
-import {
   Activity,
   AlertTriangle,
   ChevronLeft,
@@ -31,6 +23,11 @@ import { useTableExport } from '@/composables/useTableExport'
 import { useTableKeyboard } from '@/composables/useTableKeyboard'
 import type { AuditLog } from '@/types/models'
 import { DataTableViewOptions } from '@/components/ui/data-table'
+import DataTable from '@/components/ui/data-table/DataTable.vue'
+import MetricCard from '@/components/shared/dashboard/MetricCard.vue'
+import MetricGrid from '@/components/shared/dashboard/MetricGrid.vue'
+import RankedListCard from '@/components/shared/dashboard/RankedListCard.vue'
+import InsightsTabsCard from '@/components/shared/dashboard/InsightsTabsCard.vue'
 import { Badge } from '@/components/ui/badge'
 import {
   Empty,
@@ -39,7 +36,6 @@ import {
   EmptyHeader,
   EmptyTitle,
 } from '@/components/ui/empty'
-import { Skeleton } from '@/components/ui/skeleton'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
   DropdownMenu,
@@ -98,10 +94,17 @@ const filteredAudits = computed(() => {
 
 const kpis = computed(() => [
   { label: 'نشاطات اليوم', value: todayCount.value.toString(), icon: Activity, tone: 'text-info bg-info/10' },
-  { label: 'تنبيهات مفتوحة', value: risks.value.length.toString(), icon: AlertTriangle, tone: 'text-amber-600 bg-amber-50/10' },
-  { label: 'فواتير مكررة', value: duplicates.value.length.toString(), icon: FileWarning, tone: 'text-red-700 bg-red-700/10' },
-  { label: 'حالات مخاطر', value: risks.value.filter(r => r.level === 'عالية').length.toString(), icon: ShieldCheck, tone: 'text-red-700 bg-red-700/10' },
+  { label: 'تنبيهات مفتوحة', value: risks.value.length.toString(), icon: AlertTriangle, tone: 'text-[var(--color-text-warning)] bg-[var(--color-surface-warning)]' },
+  { label: 'فواتير مكررة', value: duplicates.value.length.toString(), icon: FileWarning, tone: 'text-[var(--color-text-error)] bg-[var(--color-surface-error)]' },
+  { label: 'حالات مخاطر', value: risks.value.filter(r => r.level === 'عالية').length.toString(), icon: ShieldCheck, tone: 'text-[var(--color-text-error)] bg-[var(--color-surface-error)]' },
 ])
+
+function kpiToneFromClass(tone: string): 'default' | 'info' | 'warning' | 'danger' {
+  if (tone.includes('text-red')) return 'danger'
+  if (tone.includes('text-amber')) return 'warning'
+  if (tone.includes('text-info')) return 'info'
+  return 'default'
+}
 
 // Smart summary bar computeds derived from loaded audit logs
 const smartSummary = computed(() => {
@@ -196,6 +199,8 @@ const columnVisibility = ref<VisibilityState>({
   from_status: false,
   to_status: false,
 })
+const pagination = ref({ pageIndex: 0, pageSize: 20 })
+const auditDataTableRef = ref<any>(null)
 
 const selectedCount = computed(() => Object.values(rowSelection.value).filter(Boolean).length)
 
@@ -206,7 +211,7 @@ useTableKeyboard(searchInputRef, {
 })
 
 function clearSelection() {
-  table.resetRowSelection()
+  rowSelection.value = {}
 }
 
 const columns: ColumnDef<AuditLog>[] = [
@@ -326,7 +331,7 @@ function exportAuditRows(rows: AuditLog[], suffix: 'filtered' | 'selected' | 'si
 }
 
 function exportSelectedAuditRows() {
-  const rows = table.getSelectedRowModel().rows.map(row => row.original)
+  const rows = auditDataTableRef.value?.table?.getSelectedRowModel?.().rows?.map((row: any) => row.original) ?? []
   if (rows.length > 0) {
     exportAuditRows(rows, 'selected')
     return
@@ -378,29 +383,6 @@ function diffRows(meta: AuditLogMeta): Array<{ key: string; before: unknown; aft
     .map(key => ({ key, before: formatDiffValue(before, key), after: formatDiffValue(after, key) }))
 }
 
-const table = useVueTable({
-  get data() { return filteredAudits.value },
-  columns,
-  getCoreRowModel: getCoreRowModel(),
-  getPaginationRowModel: getPaginationRowModel(),
-  getSortedRowModel: getSortedRowModel(),
-  getFilteredRowModel: getFilteredRowModel(),
-  onSortingChange: updater =>
-    sorting.value = typeof updater === 'function' ? updater(sorting.value) : updater,
-  onRowSelectionChange: updater =>
-    rowSelection.value = typeof updater === 'function' ? updater(rowSelection.value) : updater,
-  onColumnVisibilityChange: updater =>
-    columnVisibility.value = typeof updater === 'function' ? updater(columnVisibility.value) : updater,
-  state: {
-    get sorting() { return sorting.value },
-    get columnFilters() { return columnFilters.value },
-    get rowSelection() { return rowSelection.value },
-    get columnVisibility() { return columnVisibility.value },
-  },
-  initialState: {
-    pagination: { pageSize: 20 },
-  },
-})
 </script>
 
 <template>
@@ -451,27 +433,18 @@ const table = useVueTable({
       </Card>
     </div>
 
-    <div class="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
-      <Card
-        v-for="kpi in kpis"
-        :key="kpi.label"
-        class="flex items-center gap-3 border-0 p-4 shadow"
-      >
-        <div :class="['grid h-11 w-11 place-items-center rounded-xl', kpi.tone]">
-          <component
-            :is="kpi.icon"
-            class="h-5 w-5"
-          />
-        </div>
-        <div>
-          <div class="text-xs text-muted-foreground">
-            {{ kpi.label }}
-          </div>
-          <div class="text-xl font-bold">
-            {{ kpi.value }}
-          </div>
-        </div>
-      </Card>
+    <div class="mb-6">
+      <MetricGrid :columns="4">
+        <MetricCard
+          v-for="kpi in kpis"
+          :key="kpi.label"
+          :label="kpi.label"
+          :value="kpi.value"
+          :icon="kpi.icon"
+          :tone="kpiToneFromClass(kpi.tone)"
+          :clickable="false"
+        />
+      </MetricGrid>
     </div>
 
     <Tabs default-value="logs">
@@ -539,207 +512,128 @@ const table = useVueTable({
             <Download class="h-4 w-4" />
             تصدير
           </Button>
-          <DataTableViewOptions
-            :table="table"
-            :column-labels="AUDIT_COLUMN_LABELS"
-          />
         </div>
 
-        <Card class="border-0 shadow">
-          <!-- Table (hidden when empty and not loading) -->
-          <div v-if="loadingAudit || table.getRowModel().rows.length > 0" class="overflow-x-auto">
-            <Table class="w-full min-w-[760px] text-sm">
-              <TableHeader>
-                <TableRow
-                  v-for="headerGroup in table.getHeaderGroups()"
-                  :key="headerGroup.id"
-                  class="hover:bg-transparent"
-                >
-                  <TableHead
-                    v-for="header in headerGroup.headers"
-                    :key="header.id"
-                    class="h-10 px-4 text-xs font-medium text-foreground"
-                  >
-                    <FlexRender
-                      v-if="!header.isPlaceholder"
-                      :render="header.column.columnDef.header"
-                      :props="header.getContext()"
-                    />
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                <template v-if="loadingAudit">
-                  <TableRow
-                    v-for="i in 8"
-                    :key="i"
-                  >
-                    <TableCell class="px-4 py-3">
-                      <Skeleton class="size-4 rounded-sm" />
-                    </TableCell>
-                    <TableCell
-                      v-for="j in 5"
-                      :key="j"
-                      class="px-4 py-3"
+        <Card class="border-0 p-4 shadow">
+          <DataTable
+            ref="auditDataTableRef"
+            :data="filteredAudits"
+            :columns="columns"
+            :loading="loadingAudit"
+            :sorting="sorting"
+            :column-filters="columnFilters"
+            :row-selection="rowSelection"
+            :column-visibility="columnVisibility"
+            :pagination="pagination"
+            :is-row-expanded="(row) => expandedLogs.has(row.id)"
+            row-class="border-t hover:bg-muted/30"
+            @update:sorting="(v) => sorting = v"
+            @update:column-filters="(v) => columnFilters = v"
+            @update:row-selection="(v) => rowSelection = v"
+            @update:column-visibility="(v) => columnVisibility = v"
+            @update:pagination="(v) => pagination = v"
+            @row-click="(row) => toggleLog(row.id)"
+          >
+            <template #toolbar="{ table }">
+              <div class="flex justify-end">
+                <DataTableViewOptions
+                  :table="table"
+                  :column-labels="AUDIT_COLUMN_LABELS"
+                />
+              </div>
+            </template>
+            <template #empty>
+              <Empty class="min-h-[200px] rounded-xl border border-dashed bg-muted/20">
+                <EmptyHeader>
+                  <div class="flex size-12 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+                    <SearchX class="size-5" />
+                  </div>
+                  <EmptyTitle>لا توجد سجلات مطابقة</EmptyTitle>
+                </EmptyHeader>
+                <EmptyContent>
+                  <EmptyDescription>جرّب تغيير نص البحث.</EmptyDescription>
+                </EmptyContent>
+              </Empty>
+            </template>
+            <template #row-expanded="{ row }">
+              <div class="text-xs text-muted-foreground mb-2">
+                <span class="font-medium">IP: </span>{{ row.ip_address ?? '—' }}
+                <span class="mx-2">·</span>
+                <span data-testid="log-ua-full">{{ truncateUa(row.user_agent) }}</span>
+              </div>
+              <template v-if="diffRows(row.metadata as AuditLogMeta).length > 0">
+                <table data-testid="log-diff-table" class="w-full text-xs border rounded">
+                  <thead>
+                    <tr class="border-b bg-muted/40">
+                      <th class="px-3 py-1.5 text-start font-medium">الحقل</th>
+                      <th class="px-3 py-1.5 text-start font-medium">قبل</th>
+                      <th class="px-3 py-1.5 text-start font-medium">بعد</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr
+                      v-for="dr in diffRows(row.metadata as AuditLogMeta)"
+                      :key="dr.key"
+                      class="border-b last:border-0"
                     >
-                      <Skeleton class="h-4 w-full rounded" />
-                    </TableCell>
-                    <TableCell class="px-4 py-3">
-                      <Skeleton class="h-8 w-8 rounded-md" />
-                    </TableCell>
-                  </TableRow>
-                </template>
-                <template v-else>
-                  <template
-                    v-for="row in table.getRowModel().rows"
-                    :key="row.id"
-                  >
-                    <TableRow
-                      data-testid="log-row"
-                      class="border-t cursor-pointer hover:bg-muted/30"
-                      :data-state="row.getIsSelected() ? 'selected' : undefined"
-                      @click="toggleLog(row.original.id)"
+                      <td class="px-3 py-1.5 font-mono">{{ dr.key }}</td>
+                      <td class="px-3 py-1.5 text-[var(--severity-red)]">{{ dr.before }}</td>
+                      <td class="px-3 py-1.5 text-[var(--severity-green)]">{{ dr.after }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </template>
+              <div v-else class="detail-empty text-xs text-muted-foreground">
+                لا توجد تفاصيل إضافية
+              </div>
+            </template>
+            <template #pagination="{ table }">
+              <div class="flex items-center justify-between border-t px-4 py-3">
+                <p class="text-sm text-muted-foreground">
+                  {{ filteredAudits.length }} سجل
+                </p>
+                <div class="flex items-center gap-6">
+                  <div class="hidden items-center gap-2 lg:flex">
+                    <Label for="audit-rows-per-page" class="text-sm font-medium whitespace-nowrap">الصفوف لكل صفحة</Label>
+                    <Select
+                      :model-value="`${table.getState().pagination.pageSize}`"
+                      @update:model-value="(v) => table.setPageSize(Number(v))"
                     >
-                      <TableCell
-                        v-for="cell in row.getVisibleCells()"
-                        :key="cell.id"
-                        class="px-4 py-3"
-                      >
-                        <FlexRender
-                          :render="cell.column.columnDef.cell"
-                          :props="cell.getContext()"
-                        />
-                      </TableCell>
-                    </TableRow>
-                    <TableRow
-                      v-if="expandedLogs.has(row.original.id)"
-                      :key="`${row.id}-detail`"
-                      class="bg-muted/20"
-                    >
-                      <TableCell :col-span="columns.length" class="px-6 py-4">
-                        <div class="text-xs text-muted-foreground mb-2">
-                          <span class="font-medium">IP: </span>{{ row.original.ip_address ?? '—' }}
-                          <span class="mx-2">·</span>
-                          <span data-testid="log-ua-full">{{ truncateUa(row.original.user_agent) }}</span>
-                        </div>
-                        <template v-if="diffRows(row.original.metadata as AuditLogMeta).length > 0">
-                          <table data-testid="log-diff-table" class="w-full text-xs border rounded">
-                            <thead>
-                              <tr class="border-b bg-muted/40">
-                                <th class="px-3 py-1.5 text-start font-medium">الحقل</th>
-                                <th class="px-3 py-1.5 text-start font-medium">قبل</th>
-                                <th class="px-3 py-1.5 text-start font-medium">بعد</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              <tr
-                                v-for="dr in diffRows(row.original.metadata as AuditLogMeta)"
-                                :key="dr.key"
-                                class="border-b last:border-0"
-                              >
-                                <td class="px-3 py-1.5 font-mono">{{ dr.key }}</td>
-                                <td class="px-3 py-1.5 text-[var(--severity-red)]">{{ dr.before }}</td>
-                                <td class="px-3 py-1.5 text-[var(--severity-green)]">{{ dr.after }}</td>
-                              </tr>
-                            </tbody>
-                          </table>
-                        </template>
-                        <div v-else class="detail-empty text-xs text-muted-foreground">
-                          لا توجد تفاصيل إضافية
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  </template>
-                </template>
-              </TableBody>
-            </Table>
-          </div>
-
-          <!-- Empty state (outside table) -->
-          <div v-if="!loadingAudit && !table.getRowModel().rows.length" class="p-8">
-            <Empty class="min-h-[200px] rounded-xl border border-dashed bg-muted/20">
-              <EmptyHeader>
-                <div class="flex size-12 items-center justify-center rounded-xl bg-muted text-muted-foreground">
-                  <SearchX class="size-5" />
+                      <SelectTrigger id="audit-rows-per-page" size="sm" class="w-16">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent side="top">
+                        <SelectItem v-for="size in ['10', '20', '30', '50']" :key="size" :value="size">
+                          {{ size }}
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <p class="text-sm font-medium whitespace-nowrap">
+                    صفحة {{ table.getState().pagination.pageIndex + 1 }} من {{ table.getPageCount() }}
+                  </p>
+                  <div class="flex items-center gap-1">
+                    <Button variant="outline" size="icon" class="hidden h-8 w-8 lg:flex" :disabled="!table.getCanPreviousPage()" @click="table.setPageIndex(0)">
+                      <span class="sr-only">الصفحة الأولى</span>
+                      <ChevronsRight class="h-4 w-4" />
+                    </Button>
+                    <Button variant="outline" size="icon" class="h-8 w-8" :disabled="!table.getCanPreviousPage()" @click="table.previousPage()">
+                      <span class="sr-only">الصفحة السابقة</span>
+                      <ChevronRight class="h-4 w-4" />
+                    </Button>
+                    <Button variant="outline" size="icon" class="h-8 w-8" :disabled="!table.getCanNextPage()" @click="table.nextPage()">
+                      <span class="sr-only">الصفحة التالية</span>
+                      <ChevronLeft class="h-4 w-4" />
+                    </Button>
+                    <Button variant="outline" size="icon" class="hidden h-8 w-8 lg:flex" :disabled="!table.getCanNextPage()" @click="table.setPageIndex(table.getPageCount() - 1)">
+                      <span class="sr-only">الصفحة الأخيرة</span>
+                      <ChevronsLeft class="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
-                <EmptyTitle>لا توجد سجلات مطابقة</EmptyTitle>
-              </EmptyHeader>
-              <EmptyContent>
-                <EmptyDescription>جرّب تغيير نص البحث.</EmptyDescription>
-              </EmptyContent>
-            </Empty>
-          </div>
-
-          <div class="flex items-center justify-between border-t px-4 py-3">
-            <p class="text-sm text-muted-foreground">
-              {{ table.getFilteredRowModel().rows.length }} سجل
-            </p>
-            <div class="flex items-center gap-6">
-              <div class="hidden items-center gap-2 lg:flex">
-                <Label for="audit-rows-per-page" class="text-sm font-medium whitespace-nowrap">الصفوف لكل صفحة</Label>
-                <Select
-                  :model-value="`${table.getState().pagination.pageSize}`"
-                  @update:model-value="(v) => table.setPageSize(Number(v))"
-                >
-                  <SelectTrigger id="audit-rows-per-page" size="sm" class="w-16">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent side="top">
-                    <SelectItem v-for="size in ['10', '20', '30', '50']" :key="size" :value="size">
-                      {{ size }}
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
               </div>
-
-              <p class="text-sm font-medium whitespace-nowrap">
-                صفحة {{ table.getState().pagination.pageIndex + 1 }} من {{ table.getPageCount() }}
-              </p>
-
-              <div class="flex items-center gap-1">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  class="hidden h-8 w-8 lg:flex"
-                  :disabled="!table.getCanPreviousPage()"
-                  @click="table.setPageIndex(0)"
-                >
-                  <span class="sr-only">الصفحة الأولى</span>
-                  <ChevronsRight class="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  class="h-8 w-8"
-                  :disabled="!table.getCanPreviousPage()"
-                  @click="table.previousPage()"
-                >
-                  <span class="sr-only">الصفحة السابقة</span>
-                  <ChevronRight class="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  class="h-8 w-8"
-                  :disabled="!table.getCanNextPage()"
-                  @click="table.nextPage()"
-                >
-                  <span class="sr-only">الصفحة التالية</span>
-                  <ChevronLeft class="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  class="hidden h-8 w-8 lg:flex"
-                  :disabled="!table.getCanNextPage()"
-                  @click="table.setPageIndex(table.getPageCount() - 1)"
-                >
-                  <span class="sr-only">الصفحة الأخيرة</span>
-                  <ChevronsLeft class="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          </div>
+            </template>
+          </DataTable>
         </Card>
       </TabsContent>
 
@@ -750,9 +644,9 @@ const table = useVueTable({
         <Card class="border-0 p-5 shadow">
           <div
             v-if="duplicates.length > 0"
-            class="mb-4 flex items-center gap-2 rounded-lg border border-destructive/30 bg-red-700/10 p-3"
+            class="mb-4 flex items-center gap-2 rounded-lg border border-destructive/30 bg-[var(--color-surface-error)] p-3"
           >
-            <AlertTriangle class="h-5 w-5 text-red-700" />
+            <AlertTriangle class="h-5 w-5 text-[var(--color-text-error)]" />
             <div class="text-sm">
               <span class="font-semibold">تم اكتشاف {{ duplicates.length }} حالات</span>
               لفواتير مكررة بحاجة لمراجعة عاجلة.
@@ -798,14 +692,8 @@ const table = useVueTable({
         </Card>
       </TabsContent>
 
-      <TabsContent
-        value="risk"
-        class="mt-4"
-      >
-        <Card class="border-0 p-5 shadow">
-          <h3 class="mb-4 font-semibold">
-            مؤشرات المخاطر النشطة
-          </h3>
+      <TabsContent value="risk" class="mt-4">
+        <RankedListCard title="مؤشرات المخاطر النشطة" content-class="p-5">
 
           <Empty
             v-if="risks.length === 0"
@@ -828,7 +716,7 @@ const table = useVueTable({
               <ShieldCheck
                 :class="[
                   'mt-0.5 h-5 w-5',
-                  risk.level === 'عالية' ? 'text-red-700' : risk.level === 'متوسطة' ? 'text-amber-600' : 'text-info',
+                  risk.level === 'عالية' ? 'text-[var(--color-text-error)]' : risk.level === 'متوسطة' ? 'text-[var(--color-text-warning)]' : 'text-info',
                 ]"
               />
               <div class="flex-1">
@@ -844,15 +732,15 @@ const table = useVueTable({
               </Badge>
             </div>
           </div>
-        </Card>
+        </RankedListCard>
       </TabsContent>
 
       <TabsContent value="anomalies" class="mt-4">
-        <Card class="border-0 p-5 shadow">
-          <h3 class="mb-1 font-semibold">
-            تجميع الأنماط الشاذة
-          </h3>
-          <p class="mb-4 text-xs text-muted-foreground">محاولات رفض متكررة، دخول فاشل، تحميل وثائق مكثف</p>
+        <InsightsTabsCard
+          title="تجميع الأنماط الشاذة"
+          description="محاولات رفض متكررة، دخول فاشل، تحميل وثائق مكثف"
+          content-class="p-5"
+        >
 
           <Empty
             v-if="anomalyGroups.length === 0"
@@ -892,7 +780,11 @@ const table = useVueTable({
               </Badge>
             </div>
           </div>
-        </Card>
+          <template #aside>
+            <MetricCard label="أنماط عالية" :value="anomalyGroups.filter(g => g.level === 'عالية').length" tone="danger" :clickable="false" />
+            <MetricCard label="إجمالي التجميعات" :value="anomalyGroups.length" tone="warning" :clickable="false" />
+          </template>
+        </InsightsTabsCard>
       </TabsContent>
     </Tabs>
   </div>

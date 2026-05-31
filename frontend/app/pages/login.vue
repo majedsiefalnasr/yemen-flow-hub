@@ -1325,6 +1325,7 @@ watch(step, (newStep) => {
 .otp-wrap {
   display: flex;
   justify-content: center;
+  direction: ltr;
 }
 
 /* ── Role note under authenticator input ─────────────────────────────────── */

@@ -8,8 +8,8 @@ defineEmits<{
 </script>
 
 <template>
-  <Alert  class="flex items-center gap-3 border-amber-200 bg-amber-50/20">
-    <AlertTriangle class="h-5 w-5 flex-shrink-0 text-amber-600" aria-hidden="true" />
+  <Alert  class="flex items-center gap-3 border-[var(--color-border-warning)] bg-[var(--color-surface-warning)]">
+    <AlertTriangle class="h-5 w-5 flex-shrink-0 text-[var(--color-text-warning)]" aria-hidden="true" />
     <AlertDescription class="flex-1 text-sm font-medium text-foreground">
       هذا الطلب جاهز للمطالبة — لم يُحجز بعد من أي عضو
     </AlertDescription>

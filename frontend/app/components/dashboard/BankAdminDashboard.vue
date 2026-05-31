@@ -1,6 +1,8 @@
 // @parity-exempt — dashboard sub-component; parity evidence captured at dashboards/bank-admin page level
 <script setup lang="ts">
+import type { ColumnDef } from '@tanstack/vue-table'
 import { computed, onMounted, ref } from 'vue'
+import { h } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   FileText,
@@ -10,10 +12,8 @@ import {
   AlertCircle,
   AlertTriangle,
   ShieldAlert,
-  RefreshCw,
   Download,
   CalendarDays,
-  Clock,
 } from 'lucide-vue-next'
 import { useDashboardStore } from '../../stores/dashboard.store'
 import { UserRole } from '../../types/enums'
@@ -35,7 +35,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui
 import { Badge } from '../ui/badge'
 import { Button } from '../ui/button'
 import { Skeleton } from '../ui/skeleton'
-import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from '../ui/table'
+import DataTable from '../ui/data-table/DataTable.vue'
+import MetricCard from '../shared/dashboard/MetricCard.vue'
+import MetricGrid from '../shared/dashboard/MetricGrid.vue'
+import DashboardToolbar from '../shared/dashboard/DashboardToolbar.vue'
 
 const router = useRouter()
 const store = useDashboardStore()
@@ -109,6 +112,50 @@ const kpiGrid = computed(() => {
   ]
 })
 
+type BankRecentRow = NonNullable<BankAdminDashboardStatsExtended['recent_requests']>[number]
+
+const bankRecentColumns: ColumnDef<BankRecentRow>[] = [
+  {
+    accessorKey: 'reference_number',
+    header: 'المرجع',
+    cell: ({ row }) => h('a', {
+      class: 'font-mono text-primary hover:underline',
+      href: `/requests/${row.original.id}`,
+      onClick: (event: MouseEvent) => {
+        event.preventDefault()
+        event.stopPropagation()
+        router.push(`/requests/${row.original.id}`)
+      },
+    }, row.original.reference_number),
+  },
+  { id: 'merchant', header: 'التاجر', cell: ({ row }) => h('span', row.original.merchant?.name ?? row.original.supplier_name) },
+  { id: 'amount', header: 'المبلغ', cell: ({ row }) => h('span', { class: 'direction-ltr font-tabular-nums' }, `${formatAmount(row.original.amount)} ${row.original.currency}`) },
+  { id: 'status', header: 'الحالة', cell: ({ row }) => h(StatusBadge, { status: row.original.status, role: UserRole.BANK_ADMIN }) },
+  {
+    id: 'progress',
+    header: 'التقدم',
+    cell: ({ row }) => h('div', { class: 'flex items-center gap-2 min-w-24' }, [
+      h('div', { class: 'flex-1 h-1.5 bg-muted rounded-full overflow-hidden' }, [
+        h('div', { class: 'h-full bg-primary transition-all', style: { width: `${getRequestProgress(row.original.status)}%` } }),
+      ]),
+      h('span', { class: 'text-xs text-muted-foreground whitespace-nowrap' }, `${getRequestProgress(row.original.status)}%`),
+    ]),
+  },
+  {
+    id: 'actions',
+    header: 'إجراء',
+    cell: ({ row }) => h(Button, {
+      size: 'sm',
+      variant: 'outline',
+      'aria-label': `عرض الطلب ${row.original.reference_number}`,
+      onClick: (event: MouseEvent) => {
+        event.stopPropagation()
+        router.push(`/requests/${row.original.id}`)
+      },
+    }, () => 'عرض'),
+  },
+]
+
 onMounted(() => { store.loadStats() })
 </script>
 
@@ -116,32 +163,21 @@ onMounted(() => { store.loadStats() })
   <div class="flex flex-col gap-6" >
 
     <!-- Header toolbar -->
-    <div class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-muted/30 px-4 py-3">
-      <div class="flex items-center gap-2">
-        <Badge variant="outline" class="gap-1 rounded-full px-3 py-1 text-xs font-medium text-muted-foreground border-border">
-          <ShieldAlert class="size-3" aria-hidden="true" />
-          إدارة وعرض
-        </Badge>
-      </div>
-      <div class="flex flex-wrap items-center gap-2">
-        <Button variant="ghost" size="sm" class="h-8 gap-1.5 text-xs" @click="refresh">
-          <RefreshCw class="size-3.5" aria-hidden="true" />
-          تحديث
-        </Button>
-        <span class="text-xs text-muted-foreground">
-          <Clock class="inline size-3 me-1" aria-hidden="true" />
-          آخر تحديث: {{ formatTime(lastRefreshed) }}
-        </span>
-        <Button variant="ghost" size="sm" class="h-8 gap-1.5 text-xs">
-          <CalendarDays class="size-3.5" aria-hidden="true" />
-          النطاق الزمني
-        </Button>
-        <Button variant="outline" size="sm" class="h-8 gap-1.5 text-xs">
-          <Download class="size-3.5" aria-hidden="true" />
-          تصدير ملخص البنك
-        </Button>
-      </div>
-    </div>
+    <DashboardToolbar
+      badge-label="إدارة وعرض"
+      :badge-icon="ShieldAlert"
+      :last-updated="formatTime(lastRefreshed)"
+      @refresh="refresh"
+    >
+      <Button variant="ghost" size="sm" class="h-8 gap-1.5 text-xs">
+        <CalendarDays class="size-3.5" aria-hidden="true" />
+        النطاق الزمني
+      </Button>
+      <Button variant="outline" size="sm" class="h-8 gap-1.5 text-xs">
+        <Download class="size-3.5" aria-hidden="true" />
+        تصدير ملخص البنك
+      </Button>
+    </DashboardToolbar>
 
     <!-- Skeleton -->
     <div v-if="store.loading" class="grid grid-cols-4 max-lg:grid-cols-2 max-md:grid-cols-1 gap-4" aria-busy="true" aria-label="جارٍ تحميل الإحصائيات">
@@ -165,24 +201,25 @@ onMounted(() => { store.loadStats() })
     <template v-else-if="stats">
 
       <!-- 4-KPI grid -->
-      <div class="grid grid-cols-4 max-lg:grid-cols-2 max-md:grid-cols-1 gap-4" aria-label="مؤشرات أداء البنك">
-        <Card
+      <MetricGrid :columns="4" aria-label="مؤشرات أداء البنك">
+        <MetricCard
           v-for="kpi in kpiGrid"
           :key="kpi.label"
-          class="border-0 p-4 shadow flex flex-col items-start gap-1.5 cursor-pointer hover:shadow-md transition-shadow focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
-          :class="[kpi.bg, kpi.border]"
-          :style="kpi.border ? { borderInlineStartColor: 'var(--severity-red)' } : {}"
-          role="button"
-          tabindex="0"
-          :aria-label="`${kpi.label}: ${kpi.value}`"
+          :label="kpi.label"
+          :value="kpi.value"
+          :tone="
+            kpi.tab === 'completed'
+              ? 'success'
+              : kpi.tab === 'rejected' && rejectionRate > REJECTION_THRESHOLD
+                ? 'danger'
+                : kpi.tab === 'at_cby'
+                  ? 'info'
+                  : 'default'
+          "
+          :highlighted="kpi.tab === 'rejected' && rejectionRate > REJECTION_THRESHOLD"
           @click="router.push(`/requests?tab=${kpi.tab}`)"
-          @keydown.enter="router.push(`/requests?tab=${kpi.tab}`)"
-          @keydown.space.prevent="router.push(`/requests?tab=${kpi.tab}`)"
-        >
-          <span class="text-2xl font-bold" :style="{ color: kpi.color }">{{ kpi.value }}</span>
-          <span class="text-xs text-muted-foreground">{{ kpi.label }}</span>
-        </Card>
-      </div>
+        />
+      </MetricGrid>
 
       <!-- Conditional Operational Health strip -->
       <Card
@@ -329,54 +366,9 @@ onMounted(() => { store.loadStats() })
           </div>
         </CardHeader>
         <CardContent class="p-0">
-          <Table aria-label="أحدث طلبات البنك">
-            <TableHeader>
-              <TableRow>
-                <TableHead>المرجع</TableHead>
-                <TableHead>التاجر</TableHead>
-                <TableHead>المبلغ</TableHead>
-                <TableHead>الحالة</TableHead>
-                <TableHead>التقدم</TableHead>
-                <TableHead>إجراء</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              <TableEmpty v-if="!stats.recent_requests.length" :colspan="6">
-                لا توجد طلبات بعد
-              </TableEmpty>
-              <TableRow
-                v-for="req in stats.recent_requests.slice(0, 8)"
-                :key="req.id"
-                class="cursor-pointer"
-                @click="router.push(`/requests/${req.id}`)"
-              >
-                <TableCell>
-                  <a class="font-mono text-primary hover:underline" :href="`/requests/${req.id}`" @click.prevent="router.push(`/requests/${req.id}`)">{{ req.reference_number }}</a>
-                </TableCell>
-                <TableCell>{{ req.merchant?.name ?? req.supplier_name }}</TableCell>
-                <TableCell class="direction-ltr font-tabular-nums">{{ formatAmount(req.amount) }} {{ req.currency }}</TableCell>
-                <TableCell><StatusBadge :status="req.status" :role="UserRole.BANK_ADMIN" /></TableCell>
-                <TableCell>
-                  <div class="flex items-center gap-2 min-w-24">
-                    <div class="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
-                      <div class="h-full bg-primary transition-all" :style="{ width: `${getRequestProgress(req.status)}%` }" />
-                    </div>
-                    <span class="text-xs text-muted-foreground whitespace-nowrap">{{ getRequestProgress(req.status) }}%</span>
-                  </div>
-                </TableCell>
-                <TableCell @click.stop>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    :aria-label="`عرض الطلب ${req.reference_number}`"
-                    @click="router.push(`/requests/${req.id}`)"
-                  >
-                    عرض
-                  </Button>
-                </TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
+          <DataTable :data="stats.recent_requests.slice(0, 8)" :columns="bankRecentColumns" @row-click="(row) => router.push(`/requests/${row.id}`)">
+            <template #empty>لا توجد طلبات بعد</template>
+          </DataTable>
         </CardContent>
       </Card>
 

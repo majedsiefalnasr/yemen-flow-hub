@@ -65,14 +65,14 @@ const fields = computed(() => [
 </script>
 
 <template>
-  <div class="max-w-[900px] mx-auto bg-white text-gray-900 p-6 print:p-0 print:max-w-full" >
+  <div class="max-w-[900px] mx-auto bg-white text-[var(--color-text-primary)] p-6 print:p-0 print:max-w-full" >
     <!-- ─── Section 1: Title + reference + status ─── -->
     <header class="flex items-start justify-between gap-4 mb-2">
       <div class="flex flex-col gap-1">
-        <h1 class="font-bold text-2xl text-gray-900 m-0">طلب تمويل واردات</h1>
+        <h1 class="font-bold text-2xl text-[var(--color-text-primary)] m-0">طلب تمويل واردات</h1>
         <span class="text-primary font-semibold text-base">{{ request.reference_number }}</span>
       </div>
-      <span class="text-sm font-semibold px-3 py-1 rounded-full border border-gray-200 text-gray-900 bg-gray-50 whitespace-nowrap flex-shrink-0 print:border-black print:bg-transparent print:text-black">{{ statusLabel(request.status) }}</span>
+      <span class="text-sm font-semibold px-3 py-1 rounded-full border border-border text-[var(--color-text-primary)] bg-gray-50 whitespace-nowrap flex-shrink-0 print:border-black print:bg-transparent print:text-black">{{ statusLabel(request.status) }}</span>
     </header>
 
     <div class="h-px bg-border my-4" />
@@ -80,16 +80,16 @@ const fields = computed(() => [
     <!-- ─── Section 2: Bank / user / date ─── -->
     <section class="flex flex-col gap-1.5" aria-label="بيانات الطلب">
       <div class="flex gap-2 text-sm">
-        <span class="font-semibold w-36 text-gray-600">البنك:</span>
-        <span class="text-gray-900">{{ request.bank_name ?? '—' }}</span>
+        <span class="font-semibold w-36 text-[var(--color-text-subtle)]">البنك:</span>
+        <span class="text-[var(--color-text-primary)]">{{ request.bank_name ?? '—' }}</span>
       </div>
       <div class="flex gap-2 text-sm">
-        <span class="font-semibold w-36 text-gray-600">مقدّم الطلب:</span>
-        <span class="text-gray-900">{{ actorName(request.created_by_user) }}</span>
+        <span class="font-semibold w-36 text-[var(--color-text-subtle)]">مقدّم الطلب:</span>
+        <span class="text-[var(--color-text-primary)]">{{ actorName(request.created_by_user) }}</span>
       </div>
       <div class="flex gap-2 text-sm">
-        <span class="font-semibold w-36 text-gray-600">تاريخ الإنشاء:</span>
-        <span class="text-gray-900">{{ formatDate(request.created_at) }}</span>
+        <span class="font-semibold w-36 text-[var(--color-text-subtle)]">تاريخ الإنشاء:</span>
+        <span class="text-[var(--color-text-primary)]">{{ formatDate(request.created_at) }}</span>
       </div>
     </section>
 
@@ -100,8 +100,8 @@ const fields = computed(() => [
       <h2 class="font-bold text-base text-primary mb-3 m-0">تفاصيل الطلب</h2>
       <div class="grid grid-cols-2 gap-y-2.5 gap-x-6">
         <div v-for="field in fields" :key="field.label" class="flex flex-col gap-0.5">
-          <span class="text-xs text-gray-600 font-semibold">{{ field.label }}</span>
-          <span class="text-sm text-gray-900">{{ field.value }}</span>
+          <span class="text-xs text-[var(--color-text-subtle)] font-semibold">{{ field.label }}</span>
+          <span class="text-sm text-[var(--color-text-primary)]">{{ field.value }}</span>
         </div>
       </div>
     </section>
@@ -111,20 +111,20 @@ const fields = computed(() => [
     <!-- ─── Section 4: Documents ─── -->
     <section aria-label="المستندات المرفقة">
       <h2 class="font-bold text-base text-primary mb-3 m-0">المستندات المرفقة</h2>
-      <p v-if="documents.length === 0" class="text-sm text-gray-600 text-center py-4">لا توجد مستندات مرفقة.</p>
+      <p v-if="documents.length === 0" class="text-sm text-[var(--color-text-subtle)] text-center py-4">لا توجد مستندات مرفقة.</p>
       <table v-else class="w-full border-collapse text-sm">
         <thead>
           <tr>
-            <th class="text-right py-2 px-2.5 border border-gray-200 bg-gray-50 font-semibold text-gray-900 print:bg-border">اسم الملف</th>
-            <th class="text-right py-2 px-2.5 border border-gray-200 bg-gray-50 font-semibold text-gray-900 print:bg-border">تاريخ الرفع</th>
-            <th class="text-right py-2 px-2.5 border border-gray-200 bg-gray-50 font-semibold text-gray-900 print:bg-border">رُفع بواسطة</th>
+            <th class="text-right py-2 px-2.5 border border-border bg-gray-50 font-semibold text-[var(--color-text-primary)] print:bg-border">اسم الملف</th>
+            <th class="text-right py-2 px-2.5 border border-border bg-gray-50 font-semibold text-[var(--color-text-primary)] print:bg-border">تاريخ الرفع</th>
+            <th class="text-right py-2 px-2.5 border border-border bg-gray-50 font-semibold text-[var(--color-text-primary)] print:bg-border">رُفع بواسطة</th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="doc in documents" :key="doc.id">
-            <td class="text-right py-2 px-2.5 border border-gray-200 text-gray-900">{{ doc.original_filename }}</td>
-            <td class="text-right py-2 px-2.5 border border-gray-200 text-gray-900">{{ formatDate(doc.uploaded_at) }}</td>
-            <td class="text-right py-2 px-2.5 border border-gray-200 text-gray-900">{{ doc.uploaded_by_name ?? '—' }}</td>
+            <td class="text-right py-2 px-2.5 border border-border text-[var(--color-text-primary)]">{{ doc.original_filename }}</td>
+            <td class="text-right py-2 px-2.5 border border-border text-[var(--color-text-primary)]">{{ formatDate(doc.uploaded_at) }}</td>
+            <td class="text-right py-2 px-2.5 border border-border text-[var(--color-text-primary)]">{{ doc.uploaded_by_name ?? '—' }}</td>
           </tr>
         </tbody>
       </table>
@@ -135,12 +135,12 @@ const fields = computed(() => [
     <!-- ─── Section 5: Workflow timeline ─── -->
     <section aria-label="مسار سير العمل">
       <h2 class="font-bold text-base text-primary mb-3 m-0">مسار سير العمل</h2>
-      <p v-if="workflowEntries.length === 0" class="text-sm text-gray-600 text-center py-4">لا توجد مراحل مسجّلة بعد.</p>
+      <p v-if="workflowEntries.length === 0" class="text-sm text-[var(--color-text-subtle)] text-center py-4">لا توجد مراحل مسجّلة بعد.</p>
       <ol v-else class="list-none p-0 m-0 flex flex-col gap-2.5 print:break-inside-avoid">
-        <li v-for="entry in workflowEntries" :key="entry.id" class="workflow-entry grid grid-cols-[1.4fr_1fr_auto] gap-3 items-center p-3 border border-gray-200 rounded-3xl bg-gray-50 print:bg-transparent">
-          <span class="text-sm font-semibold text-gray-900">{{ entry.statusLabel }}</span>
-          <span class="text-xs text-gray-600">{{ entry.actor }}</span>
-          <span class="text-xs text-gray-600 whitespace-nowrap">{{ entry.timestamp }}</span>
+        <li v-for="entry in workflowEntries" :key="entry.id" class="workflow-entry grid grid-cols-[1.4fr_1fr_auto] gap-3 items-center p-3 border border-border rounded-3xl bg-gray-50 print:bg-transparent">
+          <span class="text-sm font-semibold text-[var(--color-text-primary)]">{{ entry.statusLabel }}</span>
+          <span class="text-xs text-[var(--color-text-subtle)]">{{ entry.actor }}</span>
+          <span class="text-xs text-[var(--color-text-subtle)] whitespace-nowrap">{{ entry.timestamp }}</span>
         </li>
       </ol>
     </section>

@@ -164,7 +164,7 @@ function stageBodyClasses(state: StageState): string {
 }
 
 function connectorClasses(isDone: boolean): string {
-  return `w-0.5 h-5 flex-shrink-0 -mr-[5.5px] mb-0 ${isDone ? 'bg-green-50' : 'bg-border'}`
+  return `w-0.5 h-5 flex-shrink-0 -mr-[5.5px] mb-0 ${isDone ? 'bg-[var(--color-surface-success)]' : 'bg-border'}`
 }
 </script>
 
@@ -188,7 +188,7 @@ function connectorClasses(isDone: boolean): string {
         <!-- Node icon -->
         <div class="w-5 h-5 flex-shrink-0 flex items-center justify-center" aria-hidden="true">
           <!-- Completed: green checkmark -->
-          <svg v-if="stage.state === 'completed'" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-green-700" role="img" aria-label="مكتمل">
+          <svg v-if="stage.state === 'completed'" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-[var(--color-text-success)]" role="img" aria-label="مكتمل">
             <polyline points="20 6 9 17 4 12" />
           </svg>
           <!-- Terminal (EXECUTIVE_REJECTED): lock icon -->

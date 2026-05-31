@@ -123,10 +123,10 @@ const isSubmitDisabled = computed(() => !wizard.acknowledged.value || wizard.sub
 <template>
   <div class="flex flex-col gap-6" >
     <!-- Breadcrumb -->
-    <nav class="flex items-center gap-1.5 text-xs text-gray-600 font-family-arabic" aria-label="مسار التنقل">
-      <NuxtLink to="/" class="text-gray-600 hover:text-primary hover:underline transition-colors">الرئيسية</NuxtLink>
+    <nav class="flex items-center gap-1.5 text-xs text-[var(--color-text-subtle)] font-family-arabic" aria-label="مسار التنقل">
+      <NuxtLink to="/" class="text-[var(--color-text-subtle)] hover:text-primary hover:underline transition-colors">الرئيسية</NuxtLink>
       <span class="text-border">/</span>
-      <NuxtLink to="/requests" class="text-gray-600 hover:text-primary hover:underline transition-colors">الطلبات</NuxtLink>
+      <NuxtLink to="/requests" class="text-[var(--color-text-subtle)] hover:text-primary hover:underline transition-colors">الطلبات</NuxtLink>
       <span class="text-border">/</span>
       <span class="text-foreground font-medium">طلب جديد</span>
     </nav>
@@ -134,7 +134,7 @@ const isSubmitDisabled = computed(() => !wizard.acknowledged.value || wizard.sub
     <!-- Page title -->
     <div class="flex flex-col gap-1">
       <h1 class="text-2xl font-bold text-foreground font-cairo">تقديم طلب تمويل واردات جديد</h1>
-      <p class="text-sm text-gray-600 font-family-arabic">املأ البيانات بدقة وأرفق المستندات المطلوبة</p>
+      <p class="text-sm text-[var(--color-text-subtle)] font-family-arabic">املأ البيانات بدقة وأرفق المستندات المطلوبة</p>
     </div>
 
     <!-- Stepper -->
@@ -146,7 +146,7 @@ const isSubmitDisabled = computed(() => !wizard.acknowledged.value || wizard.sub
     />
 
     <!-- Step content card -->
-    <div class="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
+    <div class="bg-card border border-border rounded-2xl p-6 shadow-sm">
       <WizardStep1
         v-if="wizard.currentStep.value === 1"
         v-model="wizard.step1.value"

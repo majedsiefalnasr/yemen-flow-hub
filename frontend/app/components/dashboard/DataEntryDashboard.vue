@@ -1,5 +1,7 @@
 <script setup lang="ts">
+import type { ColumnDef } from '@tanstack/vue-table'
 import { computed, onMounted } from 'vue'
+import { h } from 'vue'
 import { useRouter } from 'vue-router'
 import { CheckCircle2, Clock, RotateCcw, FileText, PlusCircle, Zap, Bell, AlertCircle } from 'lucide-vue-next'
 import { useDashboardStore } from '../../stores/dashboard.store'
@@ -12,7 +14,9 @@ import ActionRequiredStrip from '../shared/ActionRequiredStrip.vue'
 import { Card, CardContent } from '../ui/card'
 import { Button } from '../ui/button'
 import { Skeleton } from '../ui/skeleton'
-import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from '../ui/table'
+import DataTable from '../ui/data-table/DataTable.vue'
+import MetricCard from '../shared/dashboard/MetricCard.vue'
+import MetricGrid from '../shared/dashboard/MetricGrid.vue'
 
 const router = useRouter()
 const store = useDashboardStore()
@@ -64,15 +68,76 @@ function formatAmount(amount: number, currency: string): string {
   return new Intl.NumberFormat('ar-YE', { style: 'currency', currency, minimumFractionDigits: 0 }).format(amount)
 }
 
-function getKpiIconColor(variant: string): string {
-  const colors: Record<string, string> = {
-    green: 'text-[var(--severity-green)] bg-[var(--severity-green)]/10',
-    blue: 'text-primary bg-primary/10',
-    amber: 'text-[var(--severity-amber)] bg-[var(--severity-amber)]/10',
-    gray: 'text-muted-foreground bg-muted',
-  }
-  return colors[variant] ?? colors.gray!
-}
+type DraftRow = NonNullable<DataEntryDashboardStats['draft_requests']>[number]
+type RecentRow = NonNullable<DataEntryDashboardStats['recent_requests']>[number]
+
+const draftColumns: ColumnDef<DraftRow>[] = [
+  {
+    accessorKey: 'reference_number',
+    header: 'المرجع',
+    cell: ({ row }) => h('a', {
+      class: 'font-mono text-primary hover:underline',
+      href: `/requests/${row.original.id}/edit`,
+      onClick: (event: MouseEvent) => {
+        event.preventDefault()
+        event.stopPropagation()
+        router.push(`/requests/${row.original.id}/edit`)
+      },
+    }, row.original.reference_number),
+  },
+  { accessorKey: 'supplier_name', header: 'التاجر' },
+  {
+    id: 'amount',
+    header: 'المبلغ',
+    cell: ({ row }) => h('span', { class: 'direction-ltr font-tabular-nums' }, formatAmount(row.original.amount, row.original.currency)),
+  },
+  {
+    id: 'actions',
+    header: 'إجراء',
+    cell: ({ row }) => h(Button, {
+      size: 'sm',
+      onClick: (event: MouseEvent) => {
+        event.stopPropagation()
+        router.push(`/requests/${row.original.id}/edit`)
+      },
+    }, () => 'متابعة'),
+  },
+]
+
+const recentColumns: ColumnDef<RecentRow>[] = [
+  {
+    accessorKey: 'reference_number',
+    header: 'المرجع',
+    cell: ({ row }) => h('a', {
+      class: 'font-mono text-primary hover:underline',
+      href: `/requests/${row.original.id}`,
+      onClick: (event: MouseEvent) => {
+        event.preventDefault()
+        event.stopPropagation()
+        router.push(`/requests/${row.original.id}`)
+      },
+    }, row.original.reference_number),
+  },
+  { accessorKey: 'supplier_name', header: 'التاجر' },
+  {
+    id: 'amount',
+    header: 'المبلغ',
+    cell: ({ row }) => h('span', { class: 'direction-ltr font-tabular-nums' }, formatAmount(row.original.amount, row.original.currency)),
+  },
+  { id: 'status', header: 'الحالة', cell: ({ row }) => h(StatusBadge, { status: row.original.status, role: UserRole.DATA_ENTRY }) },
+  {
+    id: 'actions',
+    header: 'إجراء',
+    cell: ({ row }) => h(Button, {
+      size: 'sm',
+      variant: 'outline',
+      onClick: (event: MouseEvent) => {
+        event.stopPropagation()
+        router.push(`/requests/${row.original.id}`)
+      },
+    }, () => 'عرض'),
+  },
+]
 
 const kpiConfig = computed(() => [
   {
@@ -155,35 +220,18 @@ onMounted(() => {
       />
 
       <!-- KPI grid: 4 clickable cards -->
-      <div class="grid grid-cols-4 max-lg:grid-cols-2 max-md:grid-cols-1 gap-4">
-        <template v-for="kpi in kpiConfig" :key="kpi.label">
-          <Card
-            class="border-0 p-4 shadow flex flex-col gap-1.5 cursor-pointer hover:shadow-md transition-shadow focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
-            :class="{ 'border-s-4 border-s-[var(--severity-amber)]': kpi.variant === 'amber' && kpi.value > 0 }"
-            role="button"
-            tabindex="0"
-            :aria-label="`${kpi.label}: ${kpi.value}`"
-            @click="router.push(`/requests?tab=${kpi.tab}`)"
-            @keydown.enter="router.push(`/requests?tab=${kpi.tab}`)"
-            @keydown.space.prevent="router.push(`/requests?tab=${kpi.tab}`)"
-          >
-            <div class="h-9 w-9 rounded flex items-center justify-center flex-shrink-0" :class="getKpiIconColor(kpi.variant)">
-              <component :is="kpi.icon" class="h-5 w-5" aria-hidden="true" />
-            </div>
-            <span
-              class="text-2xl font-semibold leading-none"
-              :class="{
-                'text-[var(--severity-amber)]': kpi.variant === 'amber' && kpi.value > 0,
-                'text-[var(--severity-green)]': kpi.variant === 'green',
-                'text-foreground': kpi.variant !== 'amber' && kpi.variant !== 'green',
-              }"
-            >
-              {{ kpi.value }}
-            </span>
-            <span class="text-xs text-muted-foreground">{{ kpi.label }}</span>
-          </Card>
-        </template>
-      </div>
+      <MetricGrid :columns="4">
+        <MetricCard
+          v-for="kpi in kpiConfig"
+          :key="kpi.label"
+          :label="kpi.label"
+          :value="kpi.value"
+          :icon="kpi.icon"
+          :tone="kpi.variant === 'amber' && kpi.value > 0 ? 'warning' : kpi.variant === 'green' ? 'success' : 'default'"
+          :highlighted="kpi.variant === 'amber' && kpi.value > 0"
+          @click="router.push(`/requests?tab=${kpi.tab}`)"
+        />
+      </MetricGrid>
 
       <!-- Quick actions -->
       <section aria-labelledby="qa-heading">
@@ -258,37 +306,11 @@ onMounted(() => {
               <h2 id="drafts-heading" class="text-sm font-semibold text-foreground">مسوداتي</h2>
               <Button variant="link" size="sm" class="text-xs h-auto p-0" @click="router.push('/requests?tab=draft')">عرض الكل</Button>
             </div>
-            <Table aria-label="مسوداتي">
-              <TableHeader>
-                <TableRow>
-                  <TableHead>المرجع</TableHead>
-                  <TableHead>التاجر</TableHead>
-                  <TableHead>المبلغ</TableHead>
-                  <TableHead>إجراء</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                <TableRow
-                  v-for="req in stats.draft_requests.slice(0, 5)"
-                  :key="req.id"
-                  class="cursor-pointer"
-                  @click="router.push(`/requests/${req.id}/edit`)"
-                >
-                  <TableCell>
-                    <a class="font-mono text-primary hover:underline" :href="`/requests/${req.id}/edit`" @click.prevent="router.push(`/requests/${req.id}/edit`)">
-                      {{ req.reference_number }}
-                    </a>
-                  </TableCell>
-                  <TableCell>{{ req.supplier_name }}</TableCell>
-                  <TableCell class="direction-ltr font-tabular-nums">{{ formatAmount(req.amount, req.currency) }}</TableCell>
-                  <TableCell>
-                    <Button size="sm" @click.stop="router.push(`/requests/${req.id}/edit`)">
-                      متابعة
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              </TableBody>
-            </Table>
+            <DataTable
+              :data="stats.draft_requests.slice(0, 5)"
+              :columns="draftColumns"
+              @row-click="(row) => router.push(`/requests/${row.id}/edit`)"
+            />
           </CardContent>
         </Card>
 
@@ -303,42 +325,13 @@ onMounted(() => {
               <h2 id="recent-heading" class="text-sm font-semibold text-foreground">آخر نشاطي</h2>
               <Button variant="link" size="sm" class="text-xs h-auto p-0" @click="router.push('/requests')">عرض الكل</Button>
             </div>
-            <Table aria-label="آخر نشاطي">
-              <TableHeader>
-                <TableRow>
-                  <TableHead>المرجع</TableHead>
-                  <TableHead>التاجر</TableHead>
-                  <TableHead>المبلغ</TableHead>
-                  <TableHead>الحالة</TableHead>
-                  <TableHead>إجراء</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                <TableEmpty v-if="!stats.recent_requests?.length" :colspan="5">
-                  لا توجد طلبات بعد
-                </TableEmpty>
-                <TableRow
-                  v-for="req in stats.recent_requests.slice(0, 5)"
-                  :key="req.id"
-                  class="cursor-pointer"
-                  @click="router.push(`/requests/${req.id}`)"
-                >
-                  <TableCell>
-                    <a class="font-mono text-primary hover:underline" :href="`/requests/${req.id}`" @click.prevent="router.push(`/requests/${req.id}`)">
-                      {{ req.reference_number }}
-                    </a>
-                  </TableCell>
-                  <TableCell>{{ req.supplier_name }}</TableCell>
-                  <TableCell class="direction-ltr font-tabular-nums">{{ formatAmount(req.amount, req.currency) }}</TableCell>
-                  <TableCell><StatusBadge :status="req.status" :role="UserRole.DATA_ENTRY" /></TableCell>
-                  <TableCell>
-                    <Button size="sm" variant="outline" @click.stop="router.push(`/requests/${req.id}`)">
-                      عرض
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              </TableBody>
-            </Table>
+            <DataTable
+              :data="stats.recent_requests.slice(0, 5)"
+              :columns="recentColumns"
+              @row-click="(row) => router.push(`/requests/${row.id}`)"
+            >
+              <template #empty>لا توجد طلبات بعد</template>
+            </DataTable>
           </CardContent>
         </Card>
 

@@ -57,7 +57,7 @@ const errorCount = computed(() => Object.keys(props.errors).length)
       <div class="flex flex-col gap-2">
         <Label for="supplier-name" class="text-sm">
           اسم المورد
-          <span class="text-red-700">*</span>
+          <span class="text-[var(--color-text-error)]">*</span>
         </Label>
         <Input
           id="supplier-name"
@@ -68,14 +68,14 @@ const errorCount = computed(() => Object.keys(props.errors).length)
           placeholder="مثال: Cargill Trading Inc."
           @input="update('supplier_name', ($event.target as HTMLInputElement).value)"
         />
-        <p v-if="errors.supplier_name" class="text-sm text-red-700">{{ errors.supplier_name }}</p>
+        <p v-if="errors.supplier_name" class="text-sm text-[var(--color-text-error)]">{{ errors.supplier_name }}</p>
       </div>
 
       <!-- بلد المنشأ -->
       <div class="flex flex-col gap-2">
         <Label for="origin-country" class="text-sm">
           بلد المنشأ
-          <span class="text-red-700">*</span>
+          <span class="text-[var(--color-text-error)]">*</span>
         </Label>
         <Select
           :model-value="modelValue.origin_country || ''"
@@ -89,14 +89,14 @@ const errorCount = computed(() => Object.keys(props.errors).length)
             <SelectItem v-for="c in COUNTRIES" :key="c" :value="c">{{ c }}</SelectItem>
           </SelectContent>
         </Select>
-        <p v-if="errors.origin_country" class="text-sm text-red-700">{{ errors.origin_country }}</p>
+        <p v-if="errors.origin_country" class="text-sm text-[var(--color-text-error)]">{{ errors.origin_country }}</p>
       </div>
 
       <!-- رقم الفاتورة -->
       <div class="flex flex-col gap-2">
         <Label for="invoice-number" class="text-sm">
           رقم الفاتورة
-          <span class="text-red-700">*</span>
+          <span class="text-[var(--color-text-error)]">*</span>
         </Label>
         <Input
           id="invoice-number"
@@ -107,14 +107,14 @@ const errorCount = computed(() => Object.keys(props.errors).length)
           placeholder="INV-2025-XXXX"
           @input="update('invoice_number', ($event.target as HTMLInputElement).value)"
         />
-        <p v-if="errors.invoice_number" class="text-sm text-red-700">{{ errors.invoice_number }}</p>
+        <p v-if="errors.invoice_number" class="text-sm text-[var(--color-text-error)]">{{ errors.invoice_number }}</p>
       </div>
 
       <!-- تاريخ الفاتورة -->
       <div class="flex flex-col gap-2">
         <Label for="invoice-date" class="text-sm">
           تاريخ الفاتورة
-          <span class="text-red-700">*</span>
+          <span class="text-[var(--color-text-error)]">*</span>
         </Label>
         <Input
           id="invoice-date"
@@ -124,14 +124,14 @@ const errorCount = computed(() => Object.keys(props.errors).length)
           :value="modelValue.invoice_date ?? ''"
           @input="update('invoice_date', ($event.target as HTMLInputElement).value)"
         />
-        <p v-if="errors.invoice_date" class="text-sm text-red-700">{{ errors.invoice_date }}</p>
+        <p v-if="errors.invoice_date" class="text-sm text-[var(--color-text-error)]">{{ errors.invoice_date }}</p>
       </div>
 
       <!-- ميناء الوصول -->
       <div class="flex flex-col gap-2">
         <Label for="arrival-port" class="text-sm">
           ميناء الوصول
-          <span class="text-red-700">*</span>
+          <span class="text-[var(--color-text-error)]">*</span>
         </Label>
         <Select
           :model-value="modelValue.arrival_port || ''"
@@ -145,7 +145,7 @@ const errorCount = computed(() => Object.keys(props.errors).length)
             <SelectItem v-for="p in ARRIVAL_PORTS" :key="p" :value="p">{{ p }}</SelectItem>
           </SelectContent>
         </Select>
-        <p v-if="errors.arrival_port" class="text-sm text-red-700">{{ errors.arrival_port }}</p>
+        <p v-if="errors.arrival_port" class="text-sm text-[var(--color-text-error)]">{{ errors.arrival_port }}</p>
       </div>
 
       <!-- ميناء الشحن (optional) -->
@@ -178,7 +178,7 @@ const errorCount = computed(() => Object.keys(props.errors).length)
       <div class="flex flex-col gap-2">
         <Label for="customs-office" class="text-sm">
           الجمارك المختصة
-          <span v-if="autoFillChip" class="inline-block text-xs font-normal bg-primary/10 text-primary border border-gray-200 rounded-full px-2 py-1 ms-2" aria-live="polite">تم التعبئة التلقائية</span>
+          <span v-if="autoFillChip" class="inline-block text-xs font-normal bg-primary/10 text-primary border border-border rounded-full px-2 py-1 ms-2" aria-live="polite">تم التعبئة التلقائية</span>
         </Label>
         <Select
           :model-value="modelValue.customs_office || ''"

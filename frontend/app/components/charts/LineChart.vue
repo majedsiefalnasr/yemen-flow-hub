@@ -54,7 +54,7 @@ const yTicks = computed(() => {
 
 <template>
   <div class="flex flex-col gap-3" >
-    <div v-if="!series.length || !labels.length || series.some((s) => s.values.length !== labels.length)" class="h-44 flex items-center justify-center text-gray-600 text-sm">لا توجد بيانات</div>
+    <div v-if="!series.length || !labels.length || series.some((s) => s.values.length !== labels.length)" class="h-44 flex items-center justify-center text-[var(--color-text-subtle)] text-sm">لا توجد بيانات</div>
     <svg v-else :viewBox="`0 0 ${width} ${height}`" class="w-full h-auto overflow-visible" aria-label="مخطط خطي">
       <line
         v-for="tick in yTicks"
@@ -106,7 +106,7 @@ const yTicks = computed(() => {
       >{{ label }}</text>
     </svg>
     <div class="flex gap-4 justify-center flex-wrap">
-      <div v-for="s in series" :key="`leg-${s.label}`" class="flex items-center gap-1.5 text-sm text-gray-900">
+      <div v-for="s in series" :key="`leg-${s.label}`" class="flex items-center gap-1.5 text-sm text-[var(--color-text-primary)]">
         <span class="w-2.5 h-2.5 rounded-full flex-shrink-0" :style="{ background: s.color }" />
         <span>{{ s.label }}</span>
       </div>

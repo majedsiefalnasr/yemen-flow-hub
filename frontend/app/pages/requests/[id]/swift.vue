@@ -175,7 +175,7 @@ async function handleUpload(payload: { swiftReference: string; swiftFile: File; 
       </aside>
 
       <section class="rounded-2xl border border-border bg-background p-5">
-        <div v-if="lockedStateError" class="mb-4 rounded-xl border border-amber-300 bg-amber-50/30 p-3 text-amber-700">
+        <div v-if="lockedStateError" class="mb-4 rounded-xl border border-[var(--color-border-warning)] bg-[var(--color-surface-warning)] p-3 text-[var(--color-text-warning)]">
           <div class="flex items-center gap-2">
             <AlertTriangle class="h-4 w-4" />
             <span class="text-sm">{{ lockedStateError }}</span>
@@ -190,8 +190,8 @@ async function handleUpload(payload: { swiftReference: string; swiftFile: File; 
           {{ uploadError }}
         </div>
 
-        <div v-if="completed" class="rounded-xl border border-green-300 bg-green-50/40 p-4">
-          <p class="text-sm font-semibold text-green-700">تم تسليم وثائق السويفت بنجاح</p>
+        <div v-if="completed" class="rounded-xl border border-[var(--color-border-success)] bg-[var(--color-surface-success)] p-4">
+          <p class="text-sm font-semibold text-[var(--color-text-success)]">تم تسليم وثائق السويفت بنجاح</p>
           <Button class="mt-3 bg-info text-white hover:bg-info/90" @click="router.push('/requests?tab=pending_swift')">
             العودة إلى الطابور
           </Button>
