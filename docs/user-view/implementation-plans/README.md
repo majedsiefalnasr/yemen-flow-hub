@@ -57,6 +57,7 @@ Before implementing any role UI, create a small prerequisite story to reconcile 
 - `executive-member-plan.md`
 - `committee-director-plan.md`
 - `cby-admin-plan.md`
+- `shared-dashboard-components-plan.md`
 
 ## Shared Test Matrix
 
