@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { FileSignature, PackageCheck, Truck } from 'lucide-vue-next'
+import { CheckCircle2, FileSignature, PackageCheck, Truck } from 'lucide-vue-next'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import { RequestStatus } from '@/types/enums'
 import type { ImportRequest } from '@/types/models'
@@ -90,7 +90,8 @@ const issued = computed(() =>
       </Card>
 
       <Card class="border-0 p-5 shadow">
-        <h3 class="mb-4 font-semibold">
+        <h3 class="mb-4 flex items-center gap-2 font-semibold">
+          <CheckCircle2 class="h-5 w-5 text-[var(--severity-green)]" />
           تأكيدات صادرة مؤخراً ({{ issued.length }})
         </h3>
 

@@ -25,12 +25,12 @@ import { Progress } from '@/components/ui/progress'
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
-import { useAuthStore } from '../stores/auth.store'
-import { useOrgStore } from '../stores/org.store'
-import { ROLE_LABELS } from '../constants/workflow'
-import { useSavedAccounts, getDeviceInfo } from '../composables/useSavedAccounts'
-import { useProfile } from '../composables/useProfile'
-import LoginSavedAccountCard from '../components/auth/LoginSavedAccountCard.vue'
+import { useAuthStore } from '@/stores/auth.store'
+import { useOrgStore } from '@/stores/org.store'
+import { ROLE_LABELS } from '@/constants/workflow'
+import { useSavedAccounts, getDeviceInfo } from '@/composables/useSavedAccounts'
+import { useProfile } from '@/composables/useProfile'
+import LoginSavedAccountCard from '@/components/auth/LoginSavedAccountCard.vue'
 
 definePageMeta({ layout: false, middleware: ['guest'] })
 
@@ -75,6 +75,7 @@ const auth = useAuthStore()
 const pageDir = computed<'rtl' | 'ltr'>(() => auth.preferredLanguage === 'en' ? 'ltr' : 'rtl')
 
 const STEP_PROGRESS: Partial<Record<LoginStep, number>> = {
+  'account-select': 10,
   'pin': 65,
   'pin-reset': 20,
   'password': 35,
@@ -337,11 +338,11 @@ async function handleCreatePinSubmit() {
     const ok = await setPin(newPin.value)
     if (!ok) throw new Error('pin-save-failed')
     if (email) setPINStatus(email, true)
-    toast.success('تم إنشاء رمز PIN بنجاح — يمكنك الآن تسجيل الدخول بسرعة في المرات القادمة')
+    toast.success('تم إنشاء رمز PIN بنجاح. يمكنك الآن تسجيل الدخول بسرعة في المرات القادمة.')
     await router.push(nextPath.value)
   }
   catch {
-    createPinError.value = 'حدث خطأ أثناء حفظ رمز PIN. يرجى المحاولة مرة أخرى.'
+    createPinError.value = 'تعذر حفظ رمز PIN الآن. أعد المحاولة بعد قليل.'
   }
   finally {
     isCreatePinLoading.value = false
@@ -374,7 +375,7 @@ async function loadAuthSetup() {
     authSetupSecret.value = data.secret
   }
   catch {
-    authSetupError.value = 'تعذر تحميل رمز الإعداد. يرجى المحاولة مرة أخرى.'
+    authSetupError.value = 'تعذر تحميل رمز الإعداد الآن. أعد المحاولة بعد قليل.'
   }
   finally {
     isAuthSetupLoading.value = false
@@ -392,7 +393,7 @@ async function handleAuthenticatorSetupSubmit() {
     const ok = await verifyTotpSetup(authSetupCode.value)
     if (!ok) throw new Error('invalid')
     // TOTP is now set up — proceed to save-account offer
-    toast.success('تم إعداد المصادقة الثنائية بنجاح — حسابك محمي الآن')
+    toast.success('تم إعداد المصادقة الثنائية بنجاح. حسابك محمي الآن.')
     await navigateAfterAuth()
   }
   catch {
@@ -492,7 +493,7 @@ watch(step, (newStep) => {
       <div ref="formPanelRef" class="login-form-wrap">
         <!-- Step progress — hidden on first step -->
         <div v-if="step !== 'account-select'" class="mb-6">
-          <Progress :model-value="loginProgress" class="h-1" />
+          <Progress :model-value="loginProgress" class="h-1" aria-label="تقدم تسجيل الدخول" />
         </div>
 
         <!-- Inactivity banner -->
@@ -503,7 +504,7 @@ watch(step, (newStep) => {
           class="mb-5"
         >
           <AlertDescription>
-            تم تسجيل خروجك بسبب عدم النشاط — يرجى تسجيل الدخول مرة أخرى
+            تم تسجيل خروجك بسبب عدم النشاط. سجل الدخول مرة أخرى للمتابعة.
           </AlertDescription>
         </Alert>
 
@@ -513,7 +514,7 @@ watch(step, (newStep) => {
         <template v-if="step === 'account-select'">
           <div class="step-header">
             <h2 class="step-title">تسجيل الدخول</h2>
-            <p class="step-desc">{{ orgStore.authority }} — {{ orgStore.platformName }}</p>
+            <p class="step-desc">{{ orgStore.authority }}، {{ orgStore.platformName }}</p>
           </div>
 
           <!-- Email form — always visible and auto-focused -->
@@ -757,7 +758,7 @@ watch(step, (newStep) => {
 
           <Alert class="mb-5">
             <Smartphone class="h-4 w-4" />
-            <AlertDescription>الرمز يتجدد كل 30 ثانية — أدخله فور ظهوره لضمان صلاحيته</AlertDescription>
+            <AlertDescription>يتجدد الرمز كل 30 ثانية، لذا أدخله فور ظهوره لضمان صلاحيته.</AlertDescription>
           </Alert>
 
           <Alert
@@ -908,13 +909,13 @@ watch(step, (newStep) => {
           <div class="step-header">
             <h2 class="step-title">ربط تطبيق المصادقة</h2>
             <p class="step-desc">
-              خطوة أمان إضافية — امسح الرمز لربط حسابك بتطبيق المصادقة
+              خطوة أمان إضافية، امسح الرمز لربط حسابك بتطبيق المصادقة
             </p>
           </div>
 
           <Alert class="mb-5">
             <ShieldCheck class="h-4 w-4" />
-            <AlertDescription>استخدم Microsoft Authenticator أو Google Authenticator — ستحتاجه عند كل تسجيل دخول بكلمة المرور</AlertDescription>
+            <AlertDescription>استخدم Microsoft Authenticator أو Google Authenticator. ستحتاج إلى التطبيق عند كل تسجيل دخول بكلمة المرور.</AlertDescription>
           </Alert>
 
           <!-- QR code from backend TOTP provisioning URI -->
@@ -929,7 +930,7 @@ watch(step, (newStep) => {
               <div v-else class="w-44 h-44 flex flex-col items-center justify-center gap-2 text-muted-foreground">
                 <Loader2 v-if="isAuthSetupLoading" class="size-8 animate-spin" />
                 <QrCode v-else class="size-16 opacity-30" />
-                <span class="text-xs">{{ isAuthSetupLoading ? 'جارٍ التحميل…' : 'تعذر تحميل الرمز' }}</span>
+                <span class="text-xs">{{ isAuthSetupLoading ? 'جارٍ تحميل الرمز…' : 'تعذر تحميل الرمز' }}</span>
               </div>
             </div>
 
@@ -1005,7 +1006,7 @@ watch(step, (newStep) => {
               :disabled="isAuthSetupLoading"
               @click="skipAuthenticatorSetup"
             >
-              تخطي — سأقوم بالإعداد لاحقاً
+              التخطي والإعداد لاحقاً
             </Button>
           </div>
         </template>
@@ -1102,7 +1103,7 @@ watch(step, (newStep) => {
         <!-- Footer -->
         <div class="login-footer">
           <Building2 class="size-3.5 shrink-0" aria-hidden="true" />
-          البنك المركزي اليمني — {{ orgStore.platformName }} v3.0
+          البنك المركزي اليمني، {{ orgStore.platformName }} v3.0
         </div>
       </div>
     </div>

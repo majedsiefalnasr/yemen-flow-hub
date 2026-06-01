@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import type { ColumnFiltersState, PaginationState, VisibilityState } from '@tanstack/vue-table'
+import { toast } from 'vue-sonner'
 import {
-  AlertCircle, CheckCircle2, ClipboardList, Download, Loader2,
-  Edit, Eye, FilePlus2, Lock, RefreshCw, SearchX, Vote, Upload,
+  AlertCircle, CheckCircle2, ClipboardList, Download,
+  Eye, FilePlus2, Lock, RefreshCw, SearchX, Vote, Upload,
 } from 'lucide-vue-next'
 import {
   Empty,
@@ -11,14 +12,6 @@ import {
   EmptyHeader,
   EmptyTitle,
 } from '@/components/ui/empty'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import { buildRequestsExportColumns } from '@/composables/useRequestsExport'
 import { buildRequestsEmptyState } from '@/composables/useRequestsEmptyState'
@@ -28,7 +21,6 @@ import {
   BANK_ROLES,
   CBY_BANK_FILTER_ROLES,
   ROUTE_ROLE_MAP,
-  STATUS_LABELS,
 } from '@/constants/workflow'
 import { useAuthStore } from '@/stores/auth.store'
 import { useRequestsStore } from '@/stores/requests.store'
@@ -37,11 +29,7 @@ import type { RequestsFilter } from '@/composables/useRequests'
 import { useRequests } from '@/composables/useRequests'
 import { useRequestsColumns, buildStatusFilterOptions } from '@/composables/useRequestsColumns'
 import type { Bank } from '@/types/models'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Separator } from '@/components/ui/separator'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import StatusBadge from '@/components/shared/StatusBadge.vue'
 import MetricCard from '@/components/shared/dashboard/MetricCard.vue'
 import MetricGrid from '@/components/shared/dashboard/MetricGrid.vue'
 import type { ImportRequest } from '@/types/models'
@@ -90,22 +78,6 @@ const columnVisibility = ref<VisibilityState>({
 const rowSelection = ref<Record<string, boolean>>({})
 const banks = ref<Bank[]>([])
 
-// Quick preview dialog — available for all roles via reference-number click
-const previewRequest = ref<ImportRequest | null>(null)
-const previewOpen = ref(false)
-
-function openPreview(request: ImportRequest) {
-  previewRequest.value = request
-  previewOpen.value = true
-}
-
-const isCbyAdmin = computed(() => user.value?.role === UserRole.CBY_ADMIN)
-const isDirector = computed(() => user.value?.role === UserRole.COMMITTEE_DIRECTOR)
-const isBankAdmin = computed(() => user.value?.role === UserRole.BANK_ADMIN)
-const isSupportCommittee = computed(() => user.value?.role === UserRole.SUPPORT_COMMITTEE)
-const isDataEntry = computed(() => user.value?.role === UserRole.DATA_ENTRY)
-const isSwiftOfficer = computed(() => user.value?.role === UserRole.SWIFT_OFFICER)
-const isExecutiveMember = computed(() => user.value?.role === UserRole.EXECUTIVE_MEMBER)
 const isBankScoped = computed(() => user.value ? BANK_ROLES.includes(user.value.role) : false)
 const showBankFilter = computed(() => user.value ? CBY_BANK_FILTER_ROLES.includes(user.value.role) : false)
 const canCreateRequest = computed(() => user.value?.role === UserRole.DATA_ENTRY)
@@ -115,7 +87,6 @@ const currentUserId = computed(() => authStore.user?.id ?? null)
 const { columns } = useRequestsColumns({
   role: computed(() => user.value?.role ?? UserRole.DATA_ENTRY),
   currentUserId,
-  onPreviewClick: openPreview,
 })
 
 // ── URL-driven pagination (same pattern as shadcn-admin tasks table) ──────────
@@ -232,7 +203,7 @@ const roleKpiCards = computed(() => {
     case UserRole.DATA_ENTRY:
       return [
         { label: 'مسودات', value: count(RequestStatus.DRAFT, RequestStatus.DRAFT_REJECTED_INTERNAL), icon: FilePlus2, description: 'لم تُقدَّم بعد', active: isActive(RequestStatus.DRAFT, RequestStatus.DRAFT_REJECTED_INTERNAL), onClick: on(RequestStatus.DRAFT, RequestStatus.DRAFT_REJECTED_INTERNAL) },
-        { label: 'بانتظار المراجعة', value: count(RequestStatus.SUBMITTED, RequestStatus.BANK_REVIEW), icon: ClipboardList, description: 'مُقدَّمة في الانتظار', tone: 'warning' as const, active: isActive(RequestStatus.SUBMITTED, RequestStatus.BANK_REVIEW), onClick: on(RequestStatus.SUBMITTED, RequestStatus.BANK_REVIEW) },
+        { label: 'بانتظار المراجعة', value: count(RequestStatus.SUBMITTED, RequestStatus.BANK_REVIEW), icon: ClipboardList, description: 'مقدمة وتنتظر المراجعة', tone: 'warning' as const, active: isActive(RequestStatus.SUBMITTED, RequestStatus.BANK_REVIEW), onClick: on(RequestStatus.SUBMITTED, RequestStatus.BANK_REVIEW) },
         { label: 'مكتملة', value: count(RequestStatus.COMPLETED), icon: CheckCircle2, description: 'اكتملت المعالجة', tone: 'success' as const, active: isActive(RequestStatus.COMPLETED), onClick: on(RequestStatus.COMPLETED) },
         { label: 'تحتاج تصحيح', value: count(RequestStatus.BANK_RETURNED, RequestStatus.SUPPORT_RETURNED), icon: AlertCircle, description: 'أُعيدت للتعديل', tone: 'danger' as const, active: isActive(RequestStatus.BANK_RETURNED, RequestStatus.SUPPORT_RETURNED), onClick: on(RequestStatus.BANK_RETURNED, RequestStatus.SUPPORT_RETURNED) },
       ]
@@ -241,14 +212,14 @@ const roleKpiCards = computed(() => {
       return [
         { label: 'بانتظار المراجعة', value: count(RequestStatus.SUBMITTED), icon: ClipboardList, description: 'جديدة لم تُراجَع', tone: 'warning' as const, active: isActive(RequestStatus.SUBMITTED), onClick: on(RequestStatus.SUBMITTED) },
         { label: 'قيد المراجعة', value: count(RequestStatus.BANK_REVIEW), icon: Eye, description: 'بدأت مراجعتها', tone: 'warning' as const, active: isActive(RequestStatus.BANK_REVIEW), onClick: on(RequestStatus.BANK_REVIEW) },
-        { label: 'تم اعتمادها', value: count(RequestStatus.BANK_APPROVED), icon: CheckCircle2, description: 'اعتُمدت بنكياً', tone: 'success' as const, active: isActive(RequestStatus.BANK_APPROVED), onClick: on(RequestStatus.BANK_APPROVED) },
-        { label: 'مرفوضة نهائياً', value: count(RequestStatus.BANK_REJECTED), icon: AlertCircle, description: 'رُفضت بشكل نهائي', tone: 'danger' as const, active: isActive(RequestStatus.BANK_REJECTED), onClick: on(RequestStatus.BANK_REJECTED) },
+        { label: 'تم اعتمادها', value: count(RequestStatus.BANK_APPROVED), icon: CheckCircle2, description: 'اعتمدها البنك', tone: 'success' as const, active: isActive(RequestStatus.BANK_APPROVED), onClick: on(RequestStatus.BANK_APPROVED) },
+        { label: 'مرفوضة نهائياً', value: count(RequestStatus.BANK_REJECTED), icon: AlertCircle, description: 'رفضها البنك نهائياً', tone: 'danger' as const, active: isActive(RequestStatus.BANK_REJECTED), onClick: on(RequestStatus.BANK_REJECTED) },
       ]
 
     case UserRole.SWIFT_OFFICER:
       return [
         { label: 'بانتظار SWIFT', value: count(RequestStatus.WAITING_FOR_SWIFT), icon: Upload, description: 'تحتاج رفع الوثيقة', tone: 'warning' as const, active: isActive(RequestStatus.WAITING_FOR_SWIFT), onClick: on(RequestStatus.WAITING_FOR_SWIFT) },
-        { label: 'تم رفع SWIFT', value: count(RequestStatus.SWIFT_UPLOADED), icon: CheckCircle2, description: 'رُفعت الوثيقة بنجاح', tone: 'success' as const, active: isActive(RequestStatus.SWIFT_UPLOADED), onClick: on(RequestStatus.SWIFT_UPLOADED) },
+        { label: 'تم رفع SWIFT', value: count(RequestStatus.SWIFT_UPLOADED), icon: CheckCircle2, description: 'تم رفع الوثيقة بنجاح', tone: 'success' as const, active: isActive(RequestStatus.SWIFT_UPLOADED), onClick: on(RequestStatus.SWIFT_UPLOADED) },
         { label: 'مراحل التصويت', value: count(RequestStatus.WAITING_FOR_VOTING_OPEN, RequestStatus.EXECUTIVE_VOTING_OPEN, RequestStatus.EXECUTIVE_VOTING_CLOSED), icon: Lock, description: 'ما بعد SWIFT', active: isActive(RequestStatus.WAITING_FOR_VOTING_OPEN, RequestStatus.EXECUTIVE_VOTING_OPEN, RequestStatus.EXECUTIVE_VOTING_CLOSED), onClick: on(RequestStatus.WAITING_FOR_VOTING_OPEN, RequestStatus.EXECUTIVE_VOTING_OPEN, RequestStatus.EXECUTIVE_VOTING_CLOSED) },
         { label: 'مكتملة', value: count(RequestStatus.COMPLETED), icon: CheckCircle2, description: 'اكتملت المعالجة', tone: 'success' as const, active: isActive(RequestStatus.COMPLETED), onClick: on(RequestStatus.COMPLETED) },
       ]
@@ -258,15 +229,15 @@ const roleKpiCards = computed(() => {
         { label: 'بانتظار الحجز', value: count(RequestStatus.SUPPORT_REVIEW_PENDING), icon: ClipboardList, description: 'متاحة للمطالبة', tone: 'warning' as const, active: isActive(RequestStatus.SUPPORT_REVIEW_PENDING), onClick: on(RequestStatus.SUPPORT_REVIEW_PENDING) },
         { label: 'قيد المراجعة', value: count(RequestStatus.SUPPORT_REVIEW_IN_PROGRESS), icon: Eye, description: 'محجوزة حالياً', tone: 'warning' as const, active: isActive(RequestStatus.SUPPORT_REVIEW_IN_PROGRESS), onClick: on(RequestStatus.SUPPORT_REVIEW_IN_PROGRESS) },
         { label: 'تم اعتمادها', value: count(RequestStatus.SUPPORT_APPROVED), icon: CheckCircle2, description: 'اعتمدتها اللجنة', tone: 'success' as const, active: isActive(RequestStatus.SUPPORT_APPROVED), onClick: on(RequestStatus.SUPPORT_APPROVED) },
-        { label: 'مرفوضة أو مُعادة', value: count(RequestStatus.SUPPORT_REJECTED, RequestStatus.SUPPORT_RETURNED), icon: AlertCircle, description: 'رُفضت أو أُعيدت', tone: 'danger' as const, active: isActive(RequestStatus.SUPPORT_REJECTED, RequestStatus.SUPPORT_RETURNED), onClick: on(RequestStatus.SUPPORT_REJECTED, RequestStatus.SUPPORT_RETURNED) },
+        { label: 'مرفوضة أو معادة', value: count(RequestStatus.SUPPORT_REJECTED, RequestStatus.SUPPORT_RETURNED), icon: AlertCircle, description: 'رفضتها اللجنة أو أعادتها', tone: 'danger' as const, active: isActive(RequestStatus.SUPPORT_REJECTED, RequestStatus.SUPPORT_RETURNED), onClick: on(RequestStatus.SUPPORT_REJECTED, RequestStatus.SUPPORT_RETURNED) },
       ]
 
     case UserRole.EXECUTIVE_MEMBER:
       return [
         { label: 'جلسات مفتوحة', value: count(RequestStatus.EXECUTIVE_VOTING_OPEN), icon: Vote, description: 'تصويت مفتوح حالياً', tone: 'warning' as const, active: isActive(RequestStatus.EXECUTIVE_VOTING_OPEN), onClick: on(RequestStatus.EXECUTIVE_VOTING_OPEN) },
         { label: 'جلسات مغلقة', value: count(RequestStatus.EXECUTIVE_VOTING_CLOSED), icon: Lock, description: 'انتهى التصويت', active: isActive(RequestStatus.EXECUTIVE_VOTING_CLOSED), onClick: on(RequestStatus.EXECUTIVE_VOTING_CLOSED) },
-        { label: 'قرارات معتمدة', value: count(RequestStatus.EXECUTIVE_APPROVED, RequestStatus.COMPLETED), icon: CheckCircle2, description: 'اعتُمد تنفيذياً', tone: 'success' as const, active: isActive(RequestStatus.EXECUTIVE_APPROVED, RequestStatus.COMPLETED), onClick: on(RequestStatus.EXECUTIVE_APPROVED, RequestStatus.COMPLETED) },
-        { label: 'قرارات مرفوضة', value: count(RequestStatus.EXECUTIVE_REJECTED), icon: AlertCircle, description: 'رُفض تنفيذياً', tone: 'danger' as const, active: isActive(RequestStatus.EXECUTIVE_REJECTED), onClick: on(RequestStatus.EXECUTIVE_REJECTED) },
+        { label: 'قرارات معتمدة', value: count(RequestStatus.EXECUTIVE_APPROVED, RequestStatus.COMPLETED), icon: CheckCircle2, description: 'اعتمدتها اللجنة التنفيذية', tone: 'success' as const, active: isActive(RequestStatus.EXECUTIVE_APPROVED, RequestStatus.COMPLETED), onClick: on(RequestStatus.EXECUTIVE_APPROVED, RequestStatus.COMPLETED) },
+        { label: 'قرارات مرفوضة', value: count(RequestStatus.EXECUTIVE_REJECTED), icon: AlertCircle, description: 'رفضتها اللجنة التنفيذية', tone: 'danger' as const, active: isActive(RequestStatus.EXECUTIVE_REJECTED), onClick: on(RequestStatus.EXECUTIVE_REJECTED) },
       ]
 
     case UserRole.COMMITTEE_DIRECTOR:
@@ -285,7 +256,7 @@ const roleKpiCards = computed(() => {
         { label: 'إجمالي الطلبات', value: total, icon: ClipboardList, description: 'جميع طلبات الجهة', active: noFilter, onClick: resetAll },
         { label: 'قيد المعالجة', value: count(...pendingStatuses), icon: Lock, description: 'بانتظار الإجراء', tone: 'warning' as const, active: isStatusFilterActive(pendingStatuses), onClick: filterByPending },
         { label: 'معدل الاعتماد', value: approvalRate, icon: CheckCircle2, description: `${approved} من ${total} معتمدة`, tone: 'success' as const, active: isActive(RequestStatus.BANK_APPROVED, RequestStatus.EXECUTIVE_APPROVED, RequestStatus.COMPLETED), onClick: filterByApproved },
-        { label: 'مرفوضة', value: rejected, icon: AlertCircle, description: 'رُفضت في أي مرحلة', tone: 'danger' as const, active: isActive(RequestStatus.BANK_REJECTED, RequestStatus.EXECUTIVE_REJECTED, RequestStatus.SUPPORT_REJECTED), onClick: filterByRejected },
+        { label: 'مرفوضة', value: rejected, icon: AlertCircle, description: 'تم رفضها في إحدى المراحل', tone: 'danger' as const, active: isActive(RequestStatus.BANK_REJECTED, RequestStatus.EXECUTIVE_REJECTED, RequestStatus.SUPPORT_REJECTED), onClick: filterByRejected },
       ]
     }
 
@@ -352,55 +323,29 @@ function exportSelectedRows() {
 // ── Smart export ─────────────────────────────────────────────────────────────
 const exportLoading = ref(false)
 
-const exportScopeOptions = computed(() => [
-  {
-    value: 'page' as const,
-    label: 'الصفحة الحالية',
-    detail: `${store.requests.length.toLocaleString('ar-EG')} صف مُحمَّل`,
-  },
-  {
-    value: 'filtered' as const,
-    label: hasActiveFilters.value ? 'جميع النتائج المطابقة' : 'جميع البيانات (الفلتر الحالي)',
-    detail: `${(store.statsMeta?.total ?? store.meta?.total ?? '...').toLocaleString?.() ?? '...'} صف`,
-  },
-  {
-    value: 'all' as const,
-    label: 'جميع البيانات (بدون فلاتر)',
-    detail: `${(store.totalCount).toLocaleString('ar-EG')} صف إجمالي`,
-  },
-])
-
-const exportScope = ref<'page' | 'filtered' | 'all'>('filtered')
-const exportFormat = ref<'csv' | 'excel' | 'json'>('csv')
-const exportDialogOpen = ref(false)
-
-async function doExport() {
+async function doExport(scope: 'page' | 'filtered' | 'all', format: 'csv' | 'excel' | 'json') {
   if (!exportColumns.value.length) return
   exportLoading.value = true
   try {
     let rows: ImportRequest[] = []
-
-    if (exportScope.value === 'page') {
+    if (scope === 'page') {
       rows = store.requests
     }
     else {
       const { fetchRequests } = useRequests()
-      const filter: RequestsFilter = exportScope.value === 'filtered'
+      const filter: RequestsFilter = scope === 'filtered'
         ? { ...buildFilter({ page: 1, pageSize: 10000 }) }
         : { per_page: 10000, page: 1 }
       const result = await fetchRequests(filter)
       rows = result.data
     }
-
     const filename = buildExportFilename()
-    if (exportFormat.value === 'csv') exportToCSV(rows, exportColumns.value, filename)
-    else if (exportFormat.value === 'excel') exportToExcel(rows, exportColumns.value, filename)
+    if (format === 'csv') exportToCSV(rows, exportColumns.value, filename)
+    else if (format === 'excel') exportToExcel(rows, exportColumns.value, filename)
     else exportToJSON(rows, exportColumns.value, filename)
-
-    exportDialogOpen.value = false
   }
   catch {
-    // Error handled by user-visible loading state
+    toast.error('تعذّر التصدير. تحقق من اتصالك وأعد المحاولة.')
   }
   finally {
     exportLoading.value = false
@@ -452,27 +397,6 @@ function isStatusFilterActive(statuses: RequestStatus[]): boolean {
   return statuses.some(s => (f.value as RequestStatus[]).includes(s))
 }
 
-// Preview dialog helpers
-function relativeAge(isoDate: string | null | undefined): string {
-  if (!isoDate) return '—'
-  const ms = Date.now() - new Date(isoDate).getTime()
-  const hrs = Math.floor(ms / 3600000)
-  if (hrs < 24) return `${hrs} ساعة`
-  return `${Math.floor(hrs / 24)} يوم`
-}
-
-function slaState(request: ImportRequest): { label: string; color: string } {
-  const hrs = (Date.now() - new Date(request.created_at).getTime()) / 3600000
-  if (hrs > 120) return { label: 'انتهاك SLA', color: 'var(--severity-red)' }
-  if (hrs > 72) return { label: 'خطر SLA', color: 'var(--severity-amber)' }
-  return { label: 'ضمن SLA', color: 'var(--severity-green)' }
-}
-
-function formatDate(isoDate: string | null | undefined): string {
-  if (!isoDate) return '—'
-  return new Date(isoDate).toLocaleDateString('ar-EG', { year: 'numeric', month: 'short', day: 'numeric' })
-}
-
 const requestsEmptyState = computed(() => buildRequestsEmptyState({
   role: user.value?.role,
   hasAnyRequests: store.requests.length > 0,
@@ -484,7 +408,7 @@ const requestsEmptyState = computed(() => buildRequestsEmptyState({
   <div v-if="user">
     <PageHeader
       title="طلبات تمويل الواردات"
-      :subtitle="isBankScoped ? 'طلبات جهتك فقط' : 'جميع الطلبات المقدمة عبر المنصة مع حالاتها ومراحل المعالجة'"
+      :subtitle="isBankScoped ? 'طلبات جهتك، للعرض والإدارة فقط' : 'جميع الطلبات المقدمة عبر المنصة'"
       :breadcrumbs="[{ label: 'الرئيسية', to: '/' }, { label: 'الطلبات' }]"
     >
       <template #actions>
@@ -495,24 +419,14 @@ const requestsEmptyState = computed(() => buildRequestsEmptyState({
           @click="store.loadRequests(buildFilter())"
         >
           <RefreshCw class="h-4 w-4" :class="{ 'animate-spin': store.loadingList }" />
-          <span class="hidden lg:inline">تحديث</span>
+          تحديث
         </Button>
         <Button v-if="canCreateRequest" as="a" href="/requests/new" size="sm">
           <FilePlus2 class="h-4 w-4" />
-          <span class="hidden lg:inline">طلب جديد</span>
+          إنشاء طلب
         </Button>
       </template>
     </PageHeader>
-
-    <!-- BANK_ADMIN: read-only oversight chip -->
-    <div v-if="isBankAdmin" class="mb-4">
-      <Badge variant="outline" class="gap-1 rounded-full px-3 py-1 text-xs font-medium text-muted-foreground border-border">
-        <svg class="size-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-        </svg>
-        إدارة وعرض فقط
-      </Badge>
-    </div>
 
     <!-- Inline error state -->
     <Alert v-if="store.error" variant="destructive" role="alert" class="mb-4">
@@ -525,7 +439,7 @@ const requestsEmptyState = computed(() => buildRequestsEmptyState({
     </Alert>
 
     <!-- Role-specific KPI cards — clicking sets a status filter -->
-    <div class="mb-4">
+    <div class="mb-8">
       <MetricGrid :columns="4">
         <MetricCard
           v-for="card in roleKpiCards"
@@ -588,33 +502,23 @@ const requestsEmptyState = computed(() => buildRequestsEmptyState({
               <DataTableViewOptions :table="table" :column-labels="REQUESTS_COLUMN_LABELS" />
               <DropdownMenu>
                 <DropdownMenuTrigger as-child>
-                  <Button variant="outline" size="sm" class="flex" :disabled="!exportColumns.length">
+                  <Button variant="outline" size="sm" :disabled="!exportColumns.length || exportLoading">
                     <Download class="me-2 h-4 w-4" />
                     تصدير
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" class="w-64">
-                  <DropdownMenuLabel>نطاق التصدير</DropdownMenuLabel>
+                <DropdownMenuContent align="end" class="w-56">
+                  <DropdownMenuLabel>الصفحة الحالية: {{ store.requests.length.toLocaleString('ar-EG') }} صف</DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem @click="exportScope = 'page'; exportDialogOpen = true">
-                    <div class="space-y-0.5">
-                      <p class="text-sm font-medium">الصفحة الحالية</p>
-                      <p class="text-xs text-muted-foreground">{{ store.requests.length.toLocaleString('ar-EG') }} صف</p>
-                    </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem @click="exportScope = 'filtered'; exportDialogOpen = true">
-                    <div class="space-y-0.5">
-                      <p class="text-sm font-medium">{{ hasActiveFilters ? 'جميع النتائج المطابقة' : 'جميع البيانات' }}</p>
-                      <p class="text-xs text-muted-foreground">{{ (store.statsMeta?.total ?? store.meta?.total ?? '...').toLocaleString?.() ?? '...' }} صف</p>
-                    </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator v-if="hasActiveFilters" />
-                  <DropdownMenuItem v-if="hasActiveFilters" @click="exportScope = 'all'; exportDialogOpen = true">
-                    <div class="space-y-0.5">
-                      <p class="text-sm font-medium">جميع البيانات (بدون فلاتر)</p>
-                      <p class="text-xs text-muted-foreground">{{ store.totalCount.toLocaleString('ar-EG') }} صف إجمالي</p>
-                    </div>
-                  </DropdownMenuItem>
+                  <DropdownMenuItem @click="doExport('page', 'csv')">CSV</DropdownMenuItem>
+                  <DropdownMenuItem @click="doExport('page', 'excel')">Excel</DropdownMenuItem>
+                  <DropdownMenuItem @click="doExport('page', 'json')">JSON</DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel>{{ hasActiveFilters ? 'نتائج الفلتر' : 'جميع البيانات' }}: {{ (store.statsMeta?.total ?? store.meta?.total ?? '...').toLocaleString?.() ?? '...' }} صف</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem @click="doExport('filtered', 'csv')">CSV</DropdownMenuItem>
+                  <DropdownMenuItem @click="doExport('filtered', 'excel')">Excel</DropdownMenuItem>
+                  <DropdownMenuItem @click="doExport('filtered', 'json')">JSON</DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </template>
@@ -641,266 +545,5 @@ const requestsEmptyState = computed(() => buildRequestsEmptyState({
       </DataTable>
     </div>
 
-    <!-- Export format dialog — shown after user picks scope from dropdown -->
-    <Dialog v-model:open="exportDialogOpen">
-      <DialogContent class="max-w-xs">
-        <DialogHeader>
-          <DialogTitle>اختر صيغة التصدير</DialogTitle>
-          <DialogDescription>
-            {{ exportScopeOptions.find(s => s.value === exportScope)?.label }}
-            — {{ exportScopeOptions.find(s => s.value === exportScope)?.detail }}
-          </DialogDescription>
-        </DialogHeader>
-        <div class="flex gap-2 pt-1">
-          <Button
-            v-for="fmt in [{ value: 'csv', label: 'CSV' }, { value: 'excel', label: 'Excel' }, { value: 'json', label: 'JSON' }]"
-            :key="fmt.value"
-            variant="outline"
-            size="sm"
-            class="flex-1"
-            :class="exportFormat === fmt.value ? 'border-primary bg-primary/5 font-semibold' : ''"
-            @click="exportFormat = fmt.value as 'csv' | 'excel' | 'json'"
-          >
-            {{ fmt.label }}
-          </Button>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" @click="exportDialogOpen = false">إلغاء</Button>
-          <Button :disabled="exportLoading" @click="doExport">
-            <Loader2 v-if="exportLoading" class="h-4 w-4 me-2 animate-spin" />
-            {{ exportLoading ? 'جارٍ التصدير...' : 'تصدير' }}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-
-    <!-- Quick Preview Dialog — all roles, triggered by reference-number click -->
-    <Dialog v-model:open="previewOpen">
-      <DialogContent v-if="previewRequest" class="sm:max-w-lg">
-        <DialogHeader class="pb-2">
-          <DialogTitle class="flex items-center gap-2 text-base">
-            <span class="font-mono text-lg font-bold text-primary">{{ previewRequest.reference_number }}</span>
-            <Badge variant="outline" class="text-xs font-normal">معاينة سريعة</Badge>
-          </DialogTitle>
-          <DialogDescription class="text-xs">
-            انقر على الطلب في أي وقت للوصول إلى الصفحة الكاملة وجميع الإجراءات
-          </DialogDescription>
-        </DialogHeader>
-
-        <!-- Status row -->
-        <div class="flex flex-wrap items-center gap-2 py-1">
-          <StatusBadge :status="previewRequest.status" :role="user!.role" />
-
-          <!-- SLA badge (CBY Admin / Director) -->
-          <Tooltip v-if="isCbyAdmin || isDirector">
-            <TooltipTrigger as-child>
-              <Badge
-                class="border text-xs"
-                :style="{
-                  backgroundColor: `${slaState(previewRequest).color}18`,
-                  color: slaState(previewRequest).color,
-                  borderColor: `${slaState(previewRequest).color}38`,
-                }"
-              >
-                {{ slaState(previewRequest).label }}
-              </Badge>
-            </TooltipTrigger>
-            <TooltipContent><p>وقت المعالجة: أقل من 72 ساعة ضمن SLA — 72 إلى 120 في خطر — أكثر من 120 انتهاك</p></TooltipContent>
-          </Tooltip>
-
-          <!-- Voting badge -->
-          <Badge
-            v-if="previewRequest.voting_session_status && (isExecutiveMember || isDirector || isCbyAdmin)"
-            class="border border-[var(--voting)]/30 bg-[var(--voting)]/10 text-[var(--voting)] text-xs"
-          >
-            <Vote class="me-1 h-3 w-3" />
-            {{ previewRequest.voting_session_status }}
-          </Badge>
-
-          <!-- Claim badge (Support Committee) -->
-          <Badge
-            v-if="isSupportCommittee && previewRequest.is_claimed"
-            class="border text-xs"
-            :class="previewRequest.is_claimed_by_me
-              ? 'border-[var(--severity-amber)]/30 bg-[var(--severity-amber)]/10 text-[var(--severity-amber)]'
-              : 'border-border bg-muted text-muted-foreground'"
-          >
-            <Lock class="me-1 h-3 w-3" />
-            {{ previewRequest.is_claimed_by_me ? 'محجوز لك' : 'محجوز' }}
-          </Badge>
-
-          <!-- Duplicate warning -->
-          <Badge
-            v-if="(previewRequest.duplicate_warnings?.length ?? 0) > 0"
-            variant="destructive"
-            class="rounded-full text-xs"
-          >
-            فاتورة مكررة
-          </Badge>
-        </div>
-
-        <Separator />
-
-        <!-- Key info grid -->
-        <div class="grid grid-cols-2 gap-x-4 gap-y-3 py-1 text-sm">
-          <div class="space-y-0.5">
-            <p class="text-xs text-muted-foreground">البنك</p>
-            <p class="font-medium">{{ previewRequest.bank_name ?? '—' }}</p>
-          </div>
-          <div class="space-y-0.5">
-            <p class="text-xs text-muted-foreground">التاجر</p>
-            <p class="font-medium">{{ previewRequest.merchant?.name ?? '—' }}</p>
-          </div>
-          <div class="space-y-0.5">
-            <p class="text-xs text-muted-foreground">المبلغ</p>
-            <p class="font-mono font-semibold">
-              {{ previewRequest.amount.toLocaleString('en-US') }}
-              <span class="text-muted-foreground">{{ previewRequest.currency }}</span>
-            </p>
-          </div>
-          <div class="space-y-0.5">
-            <p class="text-xs text-muted-foreground">تاريخ التقديم</p>
-            <p class="font-medium">{{ formatDate(previewRequest.created_at) }}</p>
-          </div>
-
-          <!-- CBY Admin / Director extras -->
-          <template v-if="isCbyAdmin || isDirector">
-            <div class="space-y-0.5">
-              <p class="text-xs text-muted-foreground">عمر الطلب</p>
-              <p class="font-medium">{{ relativeAge(previewRequest.created_at) }}</p>
-            </div>
-            <div class="space-y-0.5">
-              <p class="text-xs text-muted-foreground">المصارفة الخارجية</p>
-              <p class="font-medium" :class="previewRequest.has_fx_request_document ? 'text-[var(--severity-green)]' : 'text-muted-foreground'">
-                {{ previewRequest.has_fx_request_document ? 'مرفوعة' : 'لم ترفع بعد' }}
-              </p>
-            </div>
-          </template>
-        </div>
-
-        <Separator />
-
-        <!-- Role-specific quick actions -->
-        <DialogFooter class="flex-wrap gap-2 sm:flex-nowrap">
-          <!-- DATA_ENTRY: edit if in editable state -->
-          <Tooltip v-if="isDataEntry && [RequestStatus.DRAFT, RequestStatus.BANK_RETURNED].includes(previewRequest.status as RequestStatus)">
-            <TooltipTrigger as-child>
-              <Button size="sm" @click="navigateTo(`/requests/${previewRequest.id}/edit`)">
-                <Edit class="me-1.5 h-3.5 w-3.5" />
-                تعديل الطلب
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent><p>تعديل بيانات الطلب قبل إعادة التقديم</p></TooltipContent>
-          </Tooltip>
-
-          <!-- BANK_REVIEWER: review action -->
-          <Tooltip v-if="user?.role === UserRole.BANK_REVIEWER">
-            <TooltipTrigger as-child>
-              <Button
-                size="sm"
-                class="bg-[var(--severity-green)] text-white hover:bg-[var(--severity-green)]/90"
-                @click="navigateTo(`/requests/${previewRequest.id}`)"
-              >
-                <CheckCircle2 class="me-1.5 h-3.5 w-3.5" />
-                مراجعة واتخاذ قرار
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent><p>مراجعة محتوى الطلب والموافقة أو الرفض أو إعادته للمدخل</p></TooltipContent>
-          </Tooltip>
-
-          <!-- SUPPORT_COMMITTEE: claim if unclaimed -->
-          <Tooltip v-if="isSupportCommittee && !previewRequest.is_claimed">
-            <TooltipTrigger as-child>
-              <Button
-                size="sm"
-                class="bg-[var(--severity-amber)] text-white hover:bg-[var(--severity-amber)]/90"
-                @click="navigateTo(`/requests/${previewRequest.id}`)"
-              >
-                <Lock class="me-1.5 h-3.5 w-3.5" />
-                حجز ومراجعة
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent><p>حجز الطلب لمراجعته — مهلة 15 دقيقة قبل انتهاء الحجز تلقائياً</p></TooltipContent>
-          </Tooltip>
-          <Button
-            v-else-if="isSupportCommittee && previewRequest.is_claimed_by_me"
-            size="sm"
-            @click="navigateTo(`/requests/${previewRequest.id}`)"
-          >
-            متابعة المراجعة
-          </Button>
-
-          <!-- SWIFT_OFFICER: upload if waiting -->
-          <Tooltip v-if="isSwiftOfficer && previewRequest.status === RequestStatus.WAITING_FOR_SWIFT">
-            <TooltipTrigger as-child>
-              <Button
-                size="sm"
-                class="bg-[var(--info)] text-white hover:bg-[var(--info)]/90"
-                @click="navigateTo(`/requests/${previewRequest.id}`)"
-              >
-                <Upload class="me-1.5 h-3.5 w-3.5" />
-                رفع وثيقة SWIFT
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent><p>رفع وثيقة SWIFT بصيغة PDF — مطلوب لاستكمال مسار الطلب</p></TooltipContent>
-          </Tooltip>
-
-          <!-- EXECUTIVE_MEMBER: vote if session open -->
-          <Tooltip v-if="isExecutiveMember && previewRequest.status === RequestStatus.EXECUTIVE_VOTING_OPEN">
-            <TooltipTrigger as-child>
-              <Button
-                size="sm"
-                class="bg-[var(--voting)] text-white hover:bg-[var(--voting)]/90"
-                @click="navigateTo(`/requests/${previewRequest.id}`)"
-              >
-                <Vote class="me-1.5 h-3.5 w-3.5" />
-                التصويت الآن
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent><p>تسجيل تصويتك على هذا الطلب — الجلسة مفتوحة حالياً</p></TooltipContent>
-          </Tooltip>
-
-          <!-- COMMITTEE_DIRECTOR: manage session -->
-          <Tooltip v-if="isDirector">
-            <TooltipTrigger as-child>
-              <Button
-                size="sm"
-                class="bg-[var(--voting)] text-white hover:bg-[var(--voting)]/90"
-                @click="navigateTo(`/requests/${previewRequest.id}`)"
-              >
-                <Vote class="me-1.5 h-3.5 w-3.5" />
-                {{ previewRequest.status === RequestStatus.EXECUTIVE_VOTING_OPEN ? 'إغلاق الجلسة' : 'فتح جلسة التصويت' }}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent><p>{{ previewRequest.status === RequestStatus.EXECUTIVE_VOTING_OPEN ? 'إغلاق جلسة التصويت وإصدار النتيجة' : 'فتح جلسة تصويت جديدة للجنة التنفيذية' }}</p></TooltipContent>
-          </Tooltip>
-
-          <!-- CBY_ADMIN: audit trail shortcut -->
-          <Tooltip v-if="isCbyAdmin">
-            <TooltipTrigger as-child>
-              <Button
-                variant="outline"
-                size="sm"
-                @click="navigateTo(`/requests/${previewRequest.id}`)"
-              >
-                <ClipboardList class="me-1.5 h-3.5 w-3.5" />
-                سجل التدقيق
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent><p>عرض سجل التدقيق والتاريخ الكامل لهذا الطلب</p></TooltipContent>
-          </Tooltip>
-
-          <!-- Always: open full request -->
-          <Button
-            variant="outline"
-            size="sm"
-            @click="navigateTo(`/requests/${previewRequest.id}`)"
-          >
-            <Eye class="me-1.5 h-3.5 w-3.5" />
-            فتح الطلب الكامل
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
   </div>
 </template>

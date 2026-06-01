@@ -26,7 +26,7 @@ export const REQUESTS_COLUMN_LABELS: Record<string, string> = {
   status: 'الحالة',
   last_activity: 'النشاط الأخير',
   cby_age: 'العمر',
-  cby_sla: 'SLA',
+  cby_sla: 'الالتزام بالمعيار',
   cby_voting: 'التصويت',
   cby_fx: 'المصارفة',
   cby_risk: 'المخاطر',
@@ -78,7 +78,7 @@ function slaInfo(ageH: number): { label: string; color: string } {
 export function useRequestsColumns(opts: {
   role: Ref<UserRole>
   currentUserId: ComputedRef<number | null>
-  onPreviewClick: (req: ImportRequest) => void
+  onPreviewClick?: (req: ImportRequest) => void
 }): { columns: ColumnDef<ImportRequest>[] } {
   const router = useRouter()
   const { role, currentUserId, onPreviewClick } = opts
@@ -143,11 +143,11 @@ export function useRequestsColumns(opts: {
             h('button', {
               type: 'button',
               class: 'font-mono text-base font-semibold text-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:underline cursor-pointer',
-              title: 'معاينة سريعة',
-              'aria-label': `معاينة الطلب ${request.reference_number}`,
+              'aria-label': `فتح الطلب ${request.reference_number}`,
               onClick: (event: Event) => {
                 event.stopPropagation()
-                onPreviewClick(request)
+                if (onPreviewClick) onPreviewClick(request)
+                else router.push(`/requests/${request.id}`)
               },
             }, request.reference_number),
             ...badges,

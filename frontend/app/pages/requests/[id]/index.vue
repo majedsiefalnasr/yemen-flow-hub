@@ -1,8 +1,27 @@
 <script setup lang="ts">
 import { ref, computed, nextTick, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { UserRole, RequestStatus } from '../../../types/enums'
-import { VoteType } from '../../../types/enums'
+import { UserRole, RequestStatus, VoteType } from '@/types/enums'
+import {
+  ChevronRight,
+  ClipboardList,
+  Copy,
+  FilePen,
+  Link,
+  Lock,
+  Printer,
+  RotateCcw,
+  ShieldCheck,
+} from 'lucide-vue-next'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -11,31 +30,31 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '../../../components/ui/alert-dialog'
-import { Button } from '../../../components/ui/button'
-import { Skeleton } from '../../../components/ui/skeleton'
-import { useRequests } from '../../../composables/useRequests'
-import { useAuthStore } from '../../../stores/auth.store'
-import { useRequestsStore } from '../../../stores/requests.store'
-import { useVotingStore } from '../../../stores/voting.store'
-import { useClaimLifecycle } from '../../../composables/useClaimLifecycle'
-import { canDownloadCustoms } from '../../../composables/useDocumentPermissions'
-import { STATUS_LABELS, ROLE_LABELS } from '../../../constants/workflow'
-import StatusBadge from '../../../components/shared/StatusBadge.vue'
-import LockedBanner from '../../../components/banners/LockedBanner.vue'
-import CorrectionBanner from '../../../components/banners/CorrectionBanner.vue'
-import ActiveReviewBanner from '../../../components/banners/ActiveReviewBanner.vue'
-import ClaimedByOthersBanner from '../../../components/banners/ClaimedByOthersBanner.vue'
-import SegregationBlockedBanner from '../../../components/banners/SegregationBlockedBanner.vue'
-import UnclaimedBanner from '../../../components/banners/UnclaimedBanner.vue'
-import VotingPendingBanner from '../../../components/banners/VotingPendingBanner.vue'
-import VotedConfirmationBanner from '../../../components/banners/VotedConfirmationBanner.vue'
-import ActionsPanel from '../../../components/requests/ActionsPanel.vue'
-import DocumentChecklist from '../../../components/requests/DocumentChecklist.vue'
-import VotingPanel from '../../../components/voting/VotingPanel.vue'
-import WorkflowTimeline from '../../../components/workflow/WorkflowTimeline.vue'
-import AuditTimeline from '../../../components/workflow/AuditTimeline.vue'
-import WorkflowProgress from '../../../components/workflow/WorkflowProgress.vue'
+} from '@/components/ui/alert-dialog'
+import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
+import { useRequests } from '@/composables/useRequests'
+import { useAuthStore } from '@/stores/auth.store'
+import { useRequestsStore } from '@/stores/requests.store'
+import { useVotingStore } from '@/stores/voting.store'
+import { useClaimLifecycle } from '@/composables/useClaimLifecycle'
+import { canDownloadCustoms } from '@/composables/useDocumentPermissions'
+import { STATUS_LABELS, ROLE_LABELS } from '@/constants/workflow'
+import StatusBadge from '@/components/shared/StatusBadge.vue'
+import LockedBanner from '@/components/banners/LockedBanner.vue'
+import CorrectionBanner from '@/components/banners/CorrectionBanner.vue'
+import ActiveReviewBanner from '@/components/banners/ActiveReviewBanner.vue'
+import ClaimedByOthersBanner from '@/components/banners/ClaimedByOthersBanner.vue'
+import SegregationBlockedBanner from '@/components/banners/SegregationBlockedBanner.vue'
+import UnclaimedBanner from '@/components/banners/UnclaimedBanner.vue'
+import VotingPendingBanner from '@/components/banners/VotingPendingBanner.vue'
+import VotedConfirmationBanner from '@/components/banners/VotedConfirmationBanner.vue'
+import ActionsPanel from '@/components/requests/ActionsPanel.vue'
+import DocumentChecklist from '@/components/requests/DocumentChecklist.vue'
+import VotingPanel from '@/components/voting/VotingPanel.vue'
+import WorkflowTimeline from '@/components/workflow/WorkflowTimeline.vue'
+import AuditTimeline from '@/components/workflow/AuditTimeline.vue'
+import WorkflowProgress from '@/components/workflow/WorkflowProgress.vue'
 
 definePageMeta({
   middleware: ['auth'],
@@ -334,8 +353,8 @@ const bankAdminInfoText = computed(() => {
   if (!request.value) return ''
   const stage = STATUS_LABELS[request.value.status] ?? request.value.status
   const responsibleRole = STATUS_RESPONSIBLE_ROLE[request.value.status]
-  const roleLabel = responsibleRole ? ROLE_LABELS[responsibleRole] : '—'
-  return `الطلب حالياً في مرحلة ${stage} — المسؤول: ${roleLabel}`
+  const roleLabel = responsibleRole ? ROLE_LABELS[responsibleRole] : 'غير محدد'
+  return `الطلب حاليا في مرحلة ${stage}، والمسؤول عنها: ${roleLabel}`
 })
 
 // BANK_ADMIN sees a read-only informational panel instead of action buttons
@@ -670,7 +689,7 @@ async function downloadCustomsDeclaration() {
     )
   }
   catch {
-    customsDownloadError.value = 'تعذّر تحميل البيان الجمركي.'
+    customsDownloadError.value = 'تعذر تنزيل البيان الجمركي الآن. أعد المحاولة بعد قليل.'
   }
 }
 
@@ -683,7 +702,7 @@ async function handleDownloadCustoms(customsId: number, declarationNumber: strin
     )
   }
   catch {
-    checklistCustomsDownloadError.value = 'تعذّر تحميل البيان الجمركي.'
+    checklistCustomsDownloadError.value = 'تعذر تنزيل البيان الجمركي الآن. أعد المحاولة بعد قليل.'
   }
 }
 
@@ -741,7 +760,7 @@ async function handleDownloadFxTemplate() {
   }
   catch (error: unknown) {
     const message = error instanceof Error ? error.message : ''
-    fxFlowError.value = message || 'تعذّر تحميل نموذج تأكيد المصارفة.'
+    fxFlowError.value = message || 'تعذر تنزيل نموذج تأكيد المصارفة الآن. أعد المحاولة بعد قليل.'
   }
   finally {
     fxGeneratingTemplate.value = false
@@ -764,7 +783,7 @@ async function handleCompleteFxConfirmation() {
   }
   catch (error: unknown) {
     const message = error instanceof Error ? error.message : ''
-    fxFlowError.value = message || 'تعذّر إتمام تأكيد المصارفة.'
+    fxFlowError.value = message || 'تعذر إتمام تأكيد المصارفة الآن. أعد المحاولة بعد قليل.'
   }
   finally {
     fxCompleting.value = false
@@ -802,7 +821,7 @@ async function downloadDocument(docId: number, filename: string) {
     URL.revokeObjectURL(url)
   }
   catch {
-    downloadErrors.value = { ...downloadErrors.value, [docId]: 'تعذّر تحميل الملف.' }
+    downloadErrors.value = { ...downloadErrors.value, [docId]: 'تعذر تنزيل الملف الآن. أعد المحاولة بعد قليل.' }
   }
   finally {
     const next = new Set(downloadingIds.value)
@@ -812,7 +831,7 @@ async function downloadDocument(docId: number, filename: string) {
 }
 
 function formatDate(iso: string | null): string {
-  if (!iso) return '—'
+  if (!iso) return 'غير متاح'
   return new Date(iso).toLocaleDateString('ar-YE', {
     year: 'numeric',
     month: 'long',
@@ -833,7 +852,7 @@ function actorLabel(
   id?: number | null,
 ): string {
   if (user?.name) return user.name
-  if (id === null || id === undefined) return '—'
+  if (id === null || id === undefined) return 'غير متاح'
   return `#${id}`
 }
 
@@ -890,7 +909,7 @@ async function handleCloneConfirm() {
     await navigateTo(`/requests/${newId}/edit`)
   }
   catch {
-    cloneError.value = 'تعذّر إنشاء النسخة. يرجى المحاولة مرة أخرى.'
+    cloneError.value = 'تعذر إنشاء النسخة الآن. أعد المحاولة بعد قليل.'
   }
   finally {
     cloneLoading.value = false
@@ -909,14 +928,13 @@ async function handleCloneConfirm() {
 
     <template v-else-if="request">
       <div class="mx-auto w-full max-w-7xl px-4">
-        <!-- Breadcrumbs -->
-        <nav class="breadcrumbs" aria-label="مسار التنقل">
-          <NuxtLink to="/dashboard" class="breadcrumb-link">الرئيسية</NuxtLink>
-          <span class="breadcrumb-sep" aria-hidden="true">/</span>
-          <NuxtLink to="/requests" class="breadcrumb-link">الطلبات</NuxtLink>
-          <span class="breadcrumb-sep" aria-hidden="true">/</span>
-          <span class="breadcrumb-current">{{ request.reference_number }}</span>
-        </nav>
+        <!-- Back button -->
+        <Button type="button" variant="ghost" size="sm" class="-ms-2 mb-5 gap-1 text-muted-foreground" as-child>
+          <NuxtLink to="/requests">
+            <ChevronRight class="size-4" />
+            رجوع
+          </NuxtLink>
+        </Button>
 
       <!-- Page header -->
       <div class="page-header">
@@ -935,47 +953,7 @@ async function handleCloneConfirm() {
           </p>
         </div>
         <div class="page-header__actions">
-          <!-- AC5: Print button navigates to /requests/{id}/print -->
-          <NuxtLink
-            :to="`/requests/${id}/print`"
-            class="print-btn"
-            data-testid="print-request-btn"
-            aria-label="طباعة الطلب"
-          >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-              <polyline points="6 9 6 2 18 2 18 9" />
-              <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
-              <rect x="6" y="14" width="12" height="8" />
-            </svg>
-            طباعة
-          </NuxtLink>
-          <button
-            v-if="showCloneButton"
-            class="clone-btn"
-            :disabled="cloneLoading"
-            data-testid="clone-request-btn"
-            @click="openCloneDialog"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-              <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-            </svg>
-            نسخ وإعادة إرسال
-          </button>
-          <button
-            v-if="request.customs_declaration && canDownloadCustomsDeclaration"
-            class="download-btn"
-            :disabled="requestsStore.downloadingCustoms"
-            @click="downloadCustomsDeclaration"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-              <polyline points="7 10 12 15 17 10" />
-              <line x1="12" y1="15" x2="12" y2="3" />
-            </svg>
-            {{ requestsStore.downloadingCustoms ? 'جارٍ التحميل…' : 'تحميل البيان' }}
-          </button>
-          <!-- Conditional edit shortcut for DATA_ENTRY / BANK_ADMIN in editable states -->
+          <StatusBadge :status="request.status" :role="userRole" />
           <Button
             v-if="DRAFT_EDITOR_ROLES.has(userRole) && isEditable"
             variant="outline"
@@ -983,52 +961,62 @@ async function handleCloneConfirm() {
             data-testid="header-edit-btn"
             @click="router.push(`/requests/${id}/edit`)"
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" class="me-1.5">
-              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-            </svg>
+            <FilePen class="h-3.5 w-3.5" />
             تعديل
           </Button>
-          <!-- Audit snapshot link navigates to activity log tab -->
           <Button
-            variant="ghost"
+            v-if="showCloneButton"
+            variant="outline"
+            size="sm"
+            :disabled="cloneLoading"
+            data-testid="clone-request-btn"
+            @click="openCloneDialog"
+          >
+            <Copy class="h-3.5 w-3.5" />
+            نسخ وإعادة إرسال
+          </Button>
+          <Button
+            v-if="request.customs_declaration && canDownloadCustomsDeclaration"
+            variant="outline"
+            size="sm"
+            :disabled="requestsStore.downloadingCustoms"
+            @click="downloadCustomsDeclaration"
+          >
+            {{ requestsStore.downloadingCustoms ? 'جارٍ التنزيل…' : 'تنزيل البيان' }}
+          </Button>
+          <Button variant="outline" size="sm" as-child data-testid="print-request-btn">
+            <NuxtLink :to="`/requests/${id}/print`" aria-label="طباعة الطلب">
+              <Printer class="h-3.5 w-3.5" />
+              طباعة
+            </NuxtLink>
+          </Button>
+          <Button
+            variant="outline"
             size="sm"
             data-testid="header-audit-link-btn"
             aria-label="انتقل إلى سجل الأحداث"
             @click="onTabChange('activity_log')"
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" class="me-1.5">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-              <polyline points="14 2 14 8 20 8" />
-              <line x1="16" y1="13" x2="8" y2="13" />
-              <line x1="16" y1="17" x2="8" y2="17" />
-              <polyline points="10 9 9 9 8 9" />
-            </svg>
+            <ClipboardList class="h-3.5 w-3.5" />
             سجل الأحداث
           </Button>
-          <!-- CBY Admin: oversight actions -->
           <template v-if="isCbyAdmin">
-            <NuxtLink :to="`/audit?request=${id}`">
-              <Button variant="outline" size="sm" data-testid="cby-audit-view-btn">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" class="me-1.5">
-                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
-                </svg>
-                عرض التدقيق
-              </Button>
-            </NuxtLink>
+            <Button variant="outline" size="sm" as-child data-testid="cby-audit-view-btn">
+              <NuxtLink :to="`/audit?request=${id}`">
+                <ShieldCheck class="h-3.5 w-3.5" />
+                التدقيق
+              </NuxtLink>
+            </Button>
             <Button
               variant="outline"
               size="sm"
               data-testid="cby-copy-link-btn"
               @click="() => { navigator.clipboard?.writeText(window.location.href) }"
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" class="me-1.5">
-                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
-              </svg>
+              <Link class="h-3.5 w-3.5" />
               نسخ الرابط
             </Button>
           </template>
-          <StatusBadge :status="request.status" :role="userRole" />
         </div>
       </div>
 
@@ -1036,7 +1024,7 @@ async function handleCloneConfirm() {
       <div v-if="isCbyAdmin" class="mb-3 flex items-center gap-2">
         <span class="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/30 px-3 py-1 text-xs font-medium text-muted-foreground">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-          إشراف فقط — لا صلاحيات تنفيذية
+          إشراف فقط، ولا توجد صلاحيات تنفيذية
         </span>
         <span class="text-xs text-muted-foreground">{{ cbySlaState.label }}</span>
       </div>
@@ -1052,55 +1040,47 @@ async function handleCloneConfirm() {
           >
             <div
               v-if="showDirectorVotingActiveBanner"
-              class="rounded-lg border border-[color-mix(in_srgb,var(--voting)_24%,transparent)] bg-[color-mix(in_srgb,var(--voting)_7%,var(--background))] px-4 py-3 text-[color-mix(in_srgb,var(--voting)_78%,var(--foreground))]"
+              class="rounded-lg border border-[color-mix(in_srgb,var(--voting)_24%,transparent)] bg-[color-mix(in_srgb,var(--voting)_7%,var(--background))] text-[color-mix(in_srgb,var(--voting)_78%,var(--foreground))]"
             >
-              جلسة التصويت نشطة — {{ request.votes_cast ?? 0 }} / {{ request.total_voters ?? 0 }} صوتوا.
+              جلسة التصويت نشطة، وقد صوّت {{ request.votes_cast ?? 0 }} من أصل {{ request.total_voters ?? 0 }}.
             </div>
             <div
               v-else-if="showDirectorReadyToCloseBanner"
-              class="rounded-lg border border-[color-mix(in_srgb,var(--voting)_24%,transparent)] bg-[color-mix(in_srgb,var(--voting)_7%,var(--background))] px-4 py-3 text-[color-mix(in_srgb,var(--voting)_78%,var(--foreground))] flex items-center justify-between gap-3"
+              class="rounded-lg border border-[color-mix(in_srgb,var(--voting)_24%,transparent)] bg-[color-mix(in_srgb,var(--voting)_7%,var(--background))] text-[color-mix(in_srgb,var(--voting)_78%,var(--foreground))] flex items-center justify-between gap-3"
             >
-              <span>جميع الأعضاء صوتوا — يمكن إغلاق الجلسة الآن.</span>
-              <button class="text-xs font-semibold underline" @click="scrollToActionPanel">
-                إغلاق الجلسة
-              </button>
+              <span>صوّت جميع الأعضاء، ويمكن إغلاق الجلسة الآن.</span>
+              <Button variant="ghost" size="sm" class="h-auto p-0 text-xs font-semibold underline" @click="scrollToActionPanel">إغلاق الجلسة</Button>
             </div>
             <div
               v-else-if="showDirectorTieBreakBanner"
-              class="rounded-lg border border-[var(--color-border-warning)] bg-[var(--color-surface-warning)] px-4 py-3 text-[var(--color-text-warning)] flex items-center justify-between gap-3"
+              class="rounded-lg border border-[color-mix(in_srgb,var(--severity-amber)_30%,transparent)] bg-[color-mix(in_srgb,var(--severity-amber)_7%,var(--background))] text-[color-mix(in_srgb,var(--severity-amber)_80%,var(--foreground))] flex items-center justify-between gap-3"
             >
-              <span>تعادل في التصويت — يتطلب حسم المدير.</span>
-              <button class="text-xs font-semibold underline" @click="scrollToActionPanel">
-                حسم التعادل
-              </button>
+              <span>حدث تعادل في التصويت، ويتطلب حسم المدير.</span>
+              <Button variant="ghost" size="sm" class="h-auto p-0 text-xs font-semibold underline" @click="scrollToActionPanel">حسم التعادل</Button>
             </div>
             <div
               v-else-if="showDirectorReadyToFinalizeBanner"
-              class="rounded-lg border border-[color-mix(in_srgb,var(--voting)_24%,transparent)] bg-[color-mix(in_srgb,var(--voting)_7%,var(--background))] px-4 py-3 text-[color-mix(in_srgb,var(--voting)_78%,var(--foreground))] flex items-center justify-between gap-3"
+              class="rounded-lg border border-[color-mix(in_srgb,var(--voting)_24%,transparent)] bg-[color-mix(in_srgb,var(--voting)_7%,var(--background))] text-[color-mix(in_srgb,var(--voting)_78%,var(--foreground))] flex items-center justify-between gap-3"
             >
-              <span>الجلسة مغلقة — جاهز للإصدار النهائي.</span>
-              <button class="text-xs font-semibold underline" @click="scrollToActionPanel">
-                إصدار القرار النهائي
-              </button>
+              <span>أغلقت الجلسة، والطلب جاهز للإصدار النهائي.</span>
+              <Button variant="ghost" size="sm" class="h-auto p-0 text-xs font-semibold underline" @click="scrollToActionPanel">إصدار القرار النهائي</Button>
             </div>
             <div
               v-else-if="showDirectorFxReadyBanner"
-              class="rounded-lg border border-[var(--color-border-warning)] bg-[var(--color-surface-warning)] px-4 py-3 text-[var(--color-text-warning)] flex items-center justify-between gap-3"
+              class="rounded-lg border border-[color-mix(in_srgb,var(--severity-amber)_30%,transparent)] bg-[color-mix(in_srgb,var(--severity-amber)_7%,var(--background))] text-[color-mix(in_srgb,var(--severity-amber)_80%,var(--foreground))] flex items-center justify-between gap-3"
             >
               <span>جاهز لإتمام تأكيد المصارفة الخارجية.</span>
-              <button class="text-xs font-semibold underline" @click="onTabChange('fx_confirmation')">
-                ابدأ التأكيد
-              </button>
+              <Button variant="ghost" size="sm" class="h-auto p-0 text-xs font-semibold underline" @click="onTabChange('fx_confirmation')">ابدأ التأكيد</Button>
             </div>
             <div
               v-else-if="showSwiftPreApprovalLockedBanner"
-              class="rounded-lg border border-[var(--locked)]/35 bg-[color-mix(in_srgb,var(--locked)_8%,var(--background))] px-4 py-3 text-[color-mix(in_srgb,var(--locked)_65%,var(--foreground))]"
+              class="rounded-lg border border-[var(--locked)]/35 bg-[color-mix(in_srgb,var(--locked)_8%,var(--background))] text-[color-mix(in_srgb,var(--locked)_65%,var(--foreground))]"
             >
               هذا الطلب لم يصل بعد مرحلة السويفت. لا يمكن رفع الوثائق حتى يكتمل اعتماد اللجنة التنفيذية.
             </div>
             <div
               v-else-if="showSwiftReadyBanner"
-              class="rounded-lg border border-[color-mix(in_srgb,var(--swift)_26%,transparent)] bg-[color-mix(in_srgb,var(--swift)_7%,var(--background))] px-4 py-3 text-[color-mix(in_srgb,var(--swift)_72%,var(--foreground))] flex items-center justify-between gap-3"
+              class="rounded-lg border border-[color-mix(in_srgb,var(--swift)_26%,transparent)] bg-[color-mix(in_srgb,var(--swift)_7%,var(--background))] text-[color-mix(in_srgb,var(--swift)_72%,var(--foreground))] flex items-center justify-between gap-3"
             >
               <span>الطلب جاهز لرفع وثائق السويفت.</span>
               <NuxtLink :to="`/requests/${id}/swift`" class="text-xs font-semibold underline">
@@ -1109,15 +1089,15 @@ async function handleCloneConfirm() {
             </div>
             <div
               v-else-if="showSwiftAwaitingEnableBanner"
-              class="rounded-lg border border-[var(--locked)]/35 bg-[color-mix(in_srgb,var(--locked)_8%,var(--background))] px-4 py-3 text-[color-mix(in_srgb,var(--locked)_65%,var(--foreground))]"
+              class="rounded-lg border border-[var(--locked)]/35 bg-[color-mix(in_srgb,var(--locked)_8%,var(--background))] text-[color-mix(in_srgb,var(--locked)_65%,var(--foreground))]"
             >
-              في انتظار الإتاحة — سيتم تفعيل رفع وثائق السويفت بعد الانتقال لمرحلة الانتظار.
+              في انتظار الإتاحة، وسيُفعَّل رفع وثائق السويفت بعد الانتقال إلى مرحلة الانتظار.
             </div>
             <div
               v-else-if="showSwiftCompletedBanner"
-              class="rounded-lg border border-[var(--locked)]/35 bg-[color-mix(in_srgb,var(--locked)_8%,var(--background))] px-4 py-3 text-[color-mix(in_srgb,var(--locked)_65%,var(--foreground))]"
+              class="rounded-lg border border-[var(--locked)]/35 bg-[color-mix(in_srgb,var(--locked)_8%,var(--background))] text-[color-mix(in_srgb,var(--locked)_65%,var(--foreground))]"
             >
-              تم تسليم السويفت — انتقلت المسؤولية إلى مدير اللجنة التنفيذية لإتمام تأكيد المصارفة الخارجية.
+              تم تسليم السويفت، وانتقلت المسؤولية إلى مدير اللجنة التنفيذية لإتمام تأكيد المصارفة الخارجية.
             </div>
             <SegregationBlockedBanner v-if="isSegregationBlocked" />
             <div v-else-if="claimError" class="claim-error-banner" role="alert" aria-live="assertive">
@@ -1149,7 +1129,7 @@ async function handleCloneConfirm() {
             <!-- BANK_REVIEWER: support has rejected this request — follow-up decision required -->
             <div
               v-else-if="showBankReviewerSupportRejectedBanner"
-              class="rounded-lg border border-[var(--severity-amber)] bg-[var(--severity-amber)]/5 px-4 py-3 flex items-start gap-3"
+              class="rounded-lg border border-[var(--severity-amber)] bg-[var(--severity-amber)]/5 flex items-start gap-3"
               role="alert"
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="flex-shrink-0 text-[var(--severity-amber)] mt-0.5" aria-hidden="true">
@@ -1188,46 +1168,47 @@ async function handleCloneConfirm() {
                 <span class="dup-badge" data-testid="dup-badge">مكرر</span>
                 <span class="dup-widget-title">فواتير مكررة ({{ duplicateWarnings.length }})</span>
               </div>
-              <button
-                type="button"
-                class="dup-widget-toggle"
+              <Button
+                variant="ghost"
+                size="sm"
+                class="dup-widget-toggle h-auto p-0"
                 :aria-expanded="duplicateWidgetExpanded"
                 data-testid="dup-widget-toggle"
                 @click="duplicateWidgetExpanded = !duplicateWidgetExpanded"
               >
                 {{ duplicateWidgetExpanded ? 'إخفاء التفاصيل' : 'إظهار التفاصيل' }}
-              </button>
+              </Button>
             </div>
             <div v-if="duplicateWidgetExpanded" class="dup-widget-body" data-testid="dup-widget-body">
               <!-- Full view: CBY_ADMIN and SUPPORT_COMMITTEE -->
               <template v-if="duplicateWidgetFull">
-                <table class="data-table dup-widget-table">
-                  <thead>
-                    <tr>
-                      <th>الرقم المرجعي</th>
-                      <th>البنك</th>
-                      <th>المبلغ</th>
-                      <th>العملة</th>
-                      <th>التاريخ</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr v-for="warn in duplicateWarnings" :key="warn.id">
-                      <td>
-                        <NuxtLink v-if="warn.id" :to="`/requests/${warn.id}`" style="color: var(--primary);" class="font-mono text-xs">
+                <Table class="dup-widget-table">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead class="text-right">الرقم المرجعي</TableHead>
+                      <TableHead class="text-right">البنك</TableHead>
+                      <TableHead class="text-right">المبلغ</TableHead>
+                      <TableHead class="text-right">العملة</TableHead>
+                      <TableHead class="text-right">التاريخ</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    <TableRow v-for="warn in duplicateWarnings" :key="warn.id">
+                      <TableCell>
+                        <NuxtLink v-if="warn.id" :to="`/requests/${warn.id}`" class="font-mono text-xs text-primary hover:underline">
                           {{ warn.reference_number ?? '—' }}
                         </NuxtLink>
                         <span v-else class="font-mono text-xs">{{ warn.reference_number ?? '—' }}</span>
-                      </td>
-                      <td class="text-sm">{{ warn.bank_name ?? '—' }}</td>
-                      <td class="text-sm font-mono">{{ warn.amount?.toLocaleString('ar') ?? '—' }}</td>
-                      <td class="text-sm">{{ warn.currency ?? '—' }}</td>
-                      <td class="text-xs text-muted-foreground">
+                      </TableCell>
+                      <TableCell class="text-sm">{{ warn.bank_name ?? '—' }}</TableCell>
+                      <TableCell class="text-sm font-mono">{{ warn.amount?.toLocaleString('ar') ?? '—' }}</TableCell>
+                      <TableCell class="text-sm">{{ warn.currency ?? '—' }}</TableCell>
+                      <TableCell class="text-xs text-muted-foreground">
                         {{ warn.created_at ? new Date(warn.created_at).toLocaleDateString('ar-YE') : '—' }}
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
+                      </TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
               </template>
               <!-- Restricted view: BANK_REVIEWER / BANK_ADMIN — count + bank names only -->
               <template v-else>
@@ -1239,13 +1220,13 @@ async function handleCloneConfirm() {
           </div>
 
           <!-- Bank reviewer chip: re-submitted after support return (AC10) -->
-          <div v-if="supportReturnHint" class="support-return-hint" role="note" >
-            <span class="support-return-hint__icon" aria-hidden="true">🔄</span>
+          <div v-if="supportReturnHint" class="support-return-hint" role="note">
+            <RotateCcw class="h-4 w-4 flex-shrink-0" aria-hidden="true" />
             <span class="support-return-hint__text">إعادة بعد عودة من المساندة</span>
-            <span v-if="supportReturnHint.comment" class="support-return-hint__comment">— {{ supportReturnHint.comment }}</span>
-            <button type="button" class="support-return-hint__link" @click="openSupportReturnHistory">
+            <span v-if="supportReturnHint.comment" class="support-return-hint__comment">، {{ supportReturnHint.comment }}</span>
+            <Button variant="ghost" size="sm" class="ms-auto h-auto p-0 text-primary underline text-xs font-semibold" @click="openSupportReturnHistory">
               عرض التعليق في السجل
-            </button>
+            </Button>
           </div>
 
           <!-- VotingPanel inline for executive roles in voting stages -->
@@ -1257,24 +1238,20 @@ async function handleCloneConfirm() {
             />
           </div>
 
-          <!-- Tab navigation -->
-          <nav class="tab-nav" role="tablist" aria-label="تبويبات تفاصيل الطلب">
-            <button
-              v-for="tab in tabs"
-              :key="tab.key"
-              role="tab"
-              :aria-selected="activeTab === tab.key"
-              :class="['tab-btn', { 'tab-btn--active': activeTab === tab.key }]"
-              @click="onTabChange(tab.key)"
-            >
-              {{ tab.label }}
-            </button>
-          </nav>
+          <!-- Tab navigation + panels -->
+          <Tabs :model-value="activeTab" class="mt-6" dir="rtl" @update:model-value="v => onTabChange(v as TabKey)">
+            <TabsList>
+              <TabsTrigger
+                v-for="tab in tabs"
+                :key="tab.key"
+                :value="tab.key"
+              >
+                {{ tab.label }}
+              </TabsTrigger>
+            </TabsList>
 
-          <!-- Tab panels -->
-          <div class="tab-content">
             <!-- المعلومات tab -->
-            <section v-if="activeTab === 'overview'" class="tab-panel" role="tabpanel" aria-label="المعلومات">
+            <TabsContent value="overview" class="tab-panel mt-5" role="tabpanel" aria-label="المعلومات">
               <div class="card">
                 <h2 class="card-title">بيانات الطلب</h2>
                 <dl class="detail-grid">
@@ -1317,35 +1294,36 @@ async function handleCloneConfirm() {
                 <div class="customs-card__header">
                   <h2 class="card-title customs-card__title">البيان الجمركي</h2>
                   <div class="customs-card__actions">
-                    <a
+                    <Button
                       v-if="[UserRole.COMMITTEE_DIRECTOR, UserRole.CBY_ADMIN, UserRole.BANK_REVIEWER].includes(userRole)"
-                      :href="`/requests/${id}/customs-preview`"
-                      class="customs-preview-link"
+                      variant="outline"
+                      size="sm"
+                      as-child
                     >
-                      معاينة البيان
-                    </a>
-                    <button
+                      <NuxtLink :to="`/requests/${id}/customs-preview`">معاينة البيان</NuxtLink>
+                    </Button>
+                    <Button
                       v-if="canDownloadCustomsDeclaration"
-                      class="customs-download"
+                      size="sm"
                       :disabled="requestsStore.downloadingCustoms"
                       @click="downloadCustomsDeclaration"
                     >
-                      {{ requestsStore.downloadingCustoms ? 'جارٍ التحميل…' : 'تحميل PDF' }}
-                    </button>
-                    <!-- BANK_ADMIN: locked FX PDF row — visible but not downloadable -->
-                    <span
+                      {{ requestsStore.downloadingCustoms ? 'جارٍ التنزيل…' : 'تنزيل PDF' }}
+                    </Button>
+                    <!-- BANK_ADMIN: locked PDF — visible but not downloadable -->
+                    <Button
                       v-else-if="userRole === UserRole.BANK_ADMIN"
-                      class="fx-pdf-locked"
-                      :title="'تحميل PDF مخصص لمسؤول البنك المركزي والمديرين الموافقين فقط'"
+                      variant="outline"
+                      size="sm"
+                      disabled
+                      class="text-muted-foreground"
+                      :title="'تنزيل PDF مخصص لمسؤول البنك المركزي والمديرين الموافقين فقط'"
                       aria-disabled="true"
                       data-testid="fx-pdf-locked"
                     >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                        <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                      </svg>
-                      تحميل PDF (مقيّد)
-                    </span>
+                      <Lock class="h-3 w-3" aria-hidden="true" />
+                      تنزيل PDF (مقيد)
+                    </Button>
                   </div>
                 </div>
                 <dl class="detail-grid">
@@ -1370,20 +1348,22 @@ async function handleCloneConfirm() {
                   {{ customsDownloadError }}
                 </p>
               </div>
-            </section>
+            </TabsContent>
 
             <!-- الوثائق tab -->
-            <section v-else-if="activeTab === 'documents'" class="tab-panel" role="tabpanel" aria-label="الوثائق">
+            <TabsContent value="documents" class="tab-panel mt-5" role="tabpanel" aria-label="الوثائق">
               <div class="card">
                 <div class="flex items-center justify-between gap-3 mb-3">
                   <h2 class="card-title">المستندات المرفوعة</h2>
-                  <NuxtLink
+                  <Button
                     v-if="showSwiftUploadShortcut"
-                    :to="`/requests/${id}/swift`"
-                    class="text-xs font-semibold text-[#32ade6] underline"
+                    variant="ghost"
+                    size="sm"
+                    as-child
+                    class="text-[var(--info)] hover:text-[var(--info)]"
                   >
-                    رفع وثائق السويفت
-                  </NuxtLink>
+                    <NuxtLink :to="`/requests/${id}/swift`">رفع وثائق السويفت</NuxtLink>
+                  </Button>
                 </div>
                 <DocumentChecklist
                   :documents="requestsStore.documents"
@@ -1416,15 +1396,16 @@ async function handleCloneConfirm() {
                   </div>
                   <span
                     class="text-xs"
-                    :title="showBankAdminFxLockedRow ? 'تحميل تأكيد المصارفة الخارجية مقيّد لأدوار CBY المختصة فقط.' : 'مخصص لمدير اللجنة التنفيذية.'"
+                    :title="showBankAdminFxLockedRow ? 'تنزيل تأكيد المصارفة الخارجية مقيد لأدوار CBY المختصة فقط.' : 'مخصص لمدير اللجنة التنفيذية.'"
                   >مقيّد</span>
                 </div>
               </div>
-            </section>
+            </TabsContent>
 
-            <section
-              v-else-if="activeTab === 'fx_confirmation' && showDirectorFxTab"
-              class="tab-panel"
+            <TabsContent
+              v-if="showDirectorFxTab"
+              value="fx_confirmation"
+              class="tab-panel mt-5"
               role="tabpanel"
               aria-label="تأكيد المصارفة"
             >
@@ -1505,14 +1486,14 @@ async function handleCloneConfirm() {
                 </ol>
 
                 <div class="rounded-lg border border-border p-3 space-y-2">
-                  <p class="text-sm font-semibold">الخطوة 1 — تحميل نموذج التأكيد</p>
-                  <p class="text-xs text-muted-foreground">قم بتنزيل النموذج النظامي المولّد للطلب الحالي.</p>
+                  <p class="text-sm font-semibold">الخطوة 1: تنزيل نموذج التأكيد</p>
+                  <p class="text-xs text-muted-foreground">نزّل النموذج النظامي المولد للطلب الحالي.</p>
                   <Button
                     :disabled="fxGeneratingTemplate"
                     class="bg-primary text-white"
                     @click="handleDownloadFxTemplate"
                   >
-                    {{ fxGeneratingTemplate ? 'جارٍ التحميل…' : 'تحميل نموذج تأكيد المصارفة الخارجية' }}
+                    {{ fxGeneratingTemplate ? 'جارٍ التنزيل…' : 'تنزيل نموذج تأكيد المصارفة الخارجية' }}
                   </Button>
                   <p v-if="fxTemplateChecksum" class="text-xs text-muted-foreground break-all">
                     SHA-256: {{ fxTemplateChecksum }}
@@ -1520,12 +1501,12 @@ async function handleCloneConfirm() {
                 </div>
 
                 <div class="rounded-lg border border-border p-3 space-y-2 bg-muted">
-                  <p class="text-sm font-semibold">الخطوة 2 — التوقيع الخارجي</p>
+                  <p class="text-sm font-semibold">الخطوة 2: التوقيع الخارجي</p>
                   <p class="text-xs text-muted-foreground">قم بتوقيع وختم النموذج خارجياً ثم ارفعه في الخطوة التالية.</p>
                 </div>
 
                 <div class="rounded-lg border border-border p-3 space-y-3">
-                  <p class="text-sm font-semibold">الخطوة 3 — رفع النموذج الموقّع والإتمام</p>
+                  <p class="text-sm font-semibold">الخطوة 3: رفع النموذج الموقع وإتمام الطلب</p>
                   <input
                     id="fx-signed-upload"
                     type="file"
@@ -1543,19 +1524,19 @@ async function handleCloneConfirm() {
                   </p>
                   <Button
                     :disabled="!fxSignedFile || fxCompleting"
-                    class="bg-green-600 text-white hover:bg-green-700"
+                    class="bg-[var(--severity-green)] text-white hover:bg-[var(--severity-green)]/90"
                     @click="handleCompleteFxConfirmation"
                   >
                     {{ fxCompleting ? 'جارٍ الإتمام…' : 'إتمام تأكيد المصارفة' }}
                   </Button>
-                  <p v-if="fxFlowError" class="text-xs text-[var(--color-text-error)]">{{ fxFlowError }}</p>
-                  <p v-if="fxFlowSuccess" class="text-xs text-[var(--color-text-success)]">تم إتمام تأكيد المصارفة بنجاح.</p>
+                  <p v-if="fxFlowError" class="text-xs text-[var(--severity-red)]">{{ fxFlowError }}</p>
+                  <p v-if="fxFlowSuccess" class="text-xs text-[var(--severity-green)]">تم إتمام تأكيد المصارفة بنجاح.</p>
                 </div>
               </div>
-            </section>
+            </TabsContent>
 
             <!-- الأطراف tab: actors + workflow timeline + audit trail -->
-            <section v-else-if="activeTab === 'parties'" class="tab-panel" role="tabpanel" aria-label="الأطراف">
+            <TabsContent value="parties" class="tab-panel mt-5" role="tabpanel" aria-label="الأطراف">
               <div class="card">
                 <h2 class="card-title">فريق العمل</h2>
                 <dl class="detail-grid">
@@ -1621,11 +1602,10 @@ async function handleCloneConfirm() {
                   :history="requestsStore.history"
                 />
               </div>
-
-            </section>
+            </TabsContent>
 
             <!-- Activity log tab -->
-            <section v-else-if="activeTab === 'activity_log'" class="tab-panel" role="tabpanel" aria-label="سجل الأحداث">
+            <TabsContent value="activity_log" class="tab-panel mt-5" role="tabpanel" aria-label="سجل الأحداث">
               <div id="audit-trail" class="card">
                 <h2 class="card-title">سجل الأحداث</h2>
 
@@ -1644,8 +1624,8 @@ async function handleCloneConfirm() {
                   :user-role="userRole"
                 />
               </div>
-            </section>
-          </div>
+            </TabsContent>
+          </Tabs>
         </div>
 
         <!-- Right rail (1/3) -->
@@ -1671,29 +1651,24 @@ async function handleCloneConfirm() {
           <div v-if="showSwiftActionCard" class="rail-card">
             <p class="rail-card__title">إجراءات السويفت</p>
             <template v-if="request.status === RequestStatus.WAITING_FOR_SWIFT">
-              <NuxtLink :to="`/requests/${id}/swift`" class="text-sm font-semibold text-[#32ade6] underline">
-                رفع وثائق السويفت
-              </NuxtLink>
+              <Button variant="ghost" size="sm" as-child class="text-[var(--info)] hover:text-[var(--info)] ps-0">
+                <NuxtLink :to="`/requests/${id}/swift`">رفع وثائق السويفت</NuxtLink>
+              </Button>
             </template>
             <template v-else-if="request.status === RequestStatus.EXECUTIVE_APPROVED">
-              <p class="text-sm text-muted-foreground" title="سيتم التفعيل عند انتقال الطلب لمرحلة انتظار السويفت.">
-                في انتظار الإتاحة
-              </p>
+              <p class="text-sm text-muted-foreground">في انتظار الإتاحة</p>
             </template>
             <template v-else>
-              <p class="text-sm text-muted-foreground">
-                تم تسليم السويفت — لا توجد إجراءات إضافية في هذه المرحلة.
-              </p>
+              <p class="text-sm text-muted-foreground">تم تسليم السويفت، ولا توجد إجراءات إضافية.</p>
             </template>
           </div>
 
           <!-- CBY Admin: Current Blocker (highest priority) -->
           <div
             v-if="isCbyAdmin && cbyBlockerText"
-            class="rail-card"
-            style="border: 1px solid color-mix(in srgb, var(--severity-amber) 35%, transparent); background: color-mix(in srgb, var(--severity-amber) 5%, var(--background))"
+            class="rail-card border-[color-mix(in_srgb,var(--severity-amber)_35%,transparent)] bg-[color-mix(in_srgb,var(--severity-amber)_5%,var(--background))]"
           >
-            <p class="rail-card__title" style="color: var(--severity-amber)">العائق الحالي</p>
+            <p class="rail-card__title text-[var(--severity-amber)]">العائق الحالي</p>
             <p class="text-sm leading-relaxed">{{ cbyBlockerText }}</p>
           </div>
 
@@ -1750,9 +1725,9 @@ async function handleCloneConfirm() {
               </li>
             </ul>
             <div class="mt-3 pt-3 border-t border-border">
-              <NuxtLink :to="`/audit?request=${id}`" class="text-xs text-primary hover:underline">
-                → عرض سجل التدقيق المرتبط
-              </NuxtLink>
+              <Button variant="ghost" size="sm" as-child class="h-auto p-0 text-xs text-primary">
+                <NuxtLink :to="`/audit?request=${id}`">عرض سجل التدقيق المرتبط</NuxtLink>
+              </Button>
             </div>
           </div>
 
@@ -1817,13 +1792,6 @@ async function handleCloneConfirm() {
             </ul>
           </div>
 
-          <!-- Back link -->
-          <NuxtLink to="/requests" class="rail-back-link">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-              <polyline points="15 18 9 12 15 6" />
-            </svg>
-            العودة إلى قائمة الطلبات
-          </NuxtLink>
         </aside>
       </div>
       </div>
@@ -1861,38 +1829,6 @@ async function handleCloneConfirm() {
   direction: rtl;
 }
 
-/* Breadcrumbs */
-.breadcrumbs {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 16px;
-  font-size: 12px;
-  color: var(--muted-foreground);
-  padding: 0 16px;
-}
-
-.breadcrumb-link {
-  color: var(--muted-foreground);
-  text-decoration: none;
-  transition: color 0.15s;
-  font-weight: 500;
-}
-
-.breadcrumb-link:hover {
-  color: var(--primary);
-}
-
-.breadcrumb-sep {
-  color: var(--border);
-  opacity: 0.5;
-}
-
-.breadcrumb-current {
-  color: var(--foreground);
-  font-weight: 600;
-}
-
 /* Page header */
 .page-header {
   display: flex;
@@ -1901,7 +1837,6 @@ async function handleCloneConfirm() {
   gap: 12px;
   margin-bottom: 24px;
   flex-wrap: wrap;
-  padding: 0 16px;
 }
 
 .page-header__main {
@@ -1940,53 +1875,6 @@ async function handleCloneConfirm() {
   opacity: 0.5;
 }
 
-.print-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 36px;
-  padding: 0 14px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--background);
-  color: var(--foreground);
-  font-size: 13px;
-  font-weight: 500;
-  text-decoration: none;
-  cursor: pointer;
-  transition: border-color 0.15s, background 0.15s, color 0.15s;
-}
-
-.print-btn:hover {
-  border-color: var(--primary);
-  color: var(--primary);
-}
-
-.download-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 36px;
-  padding: 0 14px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--background);
-  color: var(--foreground);
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: border-color 0.15s, background 0.15s, color 0.15s;
-}
-
-.download-btn:hover:not(:disabled) {
-  border-color: var(--primary);
-  color: var(--primary);
-}
-
-.download-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
 
 /* Two-column layout */
 .detail-layout {
@@ -1994,7 +1882,6 @@ async function handleCloneConfirm() {
   grid-template-columns: 1fr;
   gap: clamp(20px, 2.4vw, 32px);
   align-items: start;
-  padding-inline: clamp(12px, 2vw, 24px);
 }
 
 @media (min-width: 1024px) {
@@ -2006,15 +1893,12 @@ async function handleCloneConfirm() {
 .detail-main {
   display: flex;
   flex-direction: column;
-  gap: clamp(16px, 1.6vw, 24px);
   min-width: 0;
+  position: sticky;
+  top: 90px;
 }
 
 /* Banners */
-.banner-area {
-  margin-bottom: 16px;
-}
-
 .support-return-hint {
   display: flex;
   align-items: center;
@@ -2029,30 +1913,10 @@ async function handleCloneConfirm() {
   font-weight: 500;
 }
 
-.support-return-hint__icon {
-  font-size: 16px;
-  flex-shrink: 0;
-}
-
 .support-return-hint__comment {
   font-size: 13px;
   color: var(--primary);
   font-weight: 400;
-}
-
-.support-return-hint__link {
-  margin-inline-start: auto;
-  border: 0;
-  background: transparent;
-  color: var(--primary);
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  text-decoration: underline;
-}
-
-.support-return-hint__link:hover {
-  color: var(--primary);
 }
 
 .dup-widget {
@@ -2098,18 +1962,9 @@ async function handleCloneConfirm() {
 }
 
 .dup-widget-toggle {
-  border: none;
-  background: none;
   color: color-mix(in srgb, var(--warning) 70%, var(--foreground));
-  cursor: pointer;
   font-size: 12px;
   font-weight: 600;
-  padding: 0;
-  transition: opacity 0.15s;
-}
-
-.dup-widget-toggle:hover {
-  opacity: 0.8;
 }
 
 .dup-widget-body {
@@ -2151,44 +2006,7 @@ async function handleCloneConfirm() {
   margin-bottom: 16px;
 }
 
-/* Tabs */
-.tab-nav {
-  display: flex;
-  gap: 4px;
-  border-bottom: 1px solid var(--border);
-  overflow-x: auto;
-  margin-top: 16px;
-}
-
-.tab-btn {
-  height: 44px;
-  padding: 0 16px;
-  background: none;
-  border: none;
-  border-bottom: 2px solid transparent;
-  font-size: 14px;
-  color: var(--muted-foreground);
-  cursor: pointer;
-  white-space: nowrap;
-  transition: color 0.15s, border-color 0.15s;
-  font-weight: 500;
-}
-
-.tab-btn--active {
-  color: var(--primary);
-  border-bottom-color: var(--primary);
-  font-weight: 600;
-}
-
-.tab-btn:hover:not(.tab-btn--active) {
-  color: var(--foreground);
-}
-
-/* Tab content */
-.tab-content {
-  padding-top: 20px;
-}
-
+/* Tab panels */
 .tab-panel {
   display: flex;
   flex-direction: column;
@@ -2279,65 +2097,6 @@ async function handleCloneConfirm() {
   gap: 8px;
 }
 
-.customs-preview-link {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: 36px;
-  padding: 0 14px;
-  border: 1px solid var(--primary);
-  border-radius: 12px;
-  background: transparent;
-  color: var(--primary);
-  font-size: 13px;
-  font-weight: 500;
-  text-decoration: none;
-  transition: background 0.15s, opacity 0.15s;
-}
-
-.customs-preview-link:hover {
-  background: color-mix(in srgb, var(--primary) 8%, transparent);
-}
-
-.customs-download {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: 36px;
-  padding: 0 16px;
-  border: 0;
-  border-radius: 12px;
-  background: var(--primary);
-  color: var(--primary-foreground);
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: opacity 0.15s;
-}
-
-.customs-download:hover:not(:disabled) {
-  opacity: 0.88;
-}
-
-.customs-download:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.fx-pdf-locked {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 36px;
-  padding: 0 16px;
-  border-radius: 12px;
-  background: #f5f5f7;
-  color: var(--locked);
-  font-size: 13px;
-  font-weight: 600;
-  cursor: not-allowed;
-  user-select: none;
-}
 
 .docs-error {
   color: var(--destructive);
@@ -2361,7 +2120,7 @@ async function handleCloneConfirm() {
   flex-direction: column;
   gap: 16px;
   position: sticky;
-  top: 24px;
+  top: 90px;
 }
 
 .rail-card {
@@ -2436,26 +2195,6 @@ async function handleCloneConfirm() {
   line-height: 1.4;
 }
 
-/* Back link in rail */
-.rail-back-link {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 12px 16px;
-  background: var(--background);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  color: var(--muted-foreground);
-  font-size: 13px;
-  text-decoration: none;
-  transition: color 0.15s, border-color 0.15s, background 0.15s;
-  font-weight: 500;
-}
-
-.rail-back-link:hover {
-  color: var(--primary);
-  border-color: var(--primary);
-}
 
 @media (max-width: 640px) {
   .detail-page {
@@ -2464,11 +2203,6 @@ async function handleCloneConfirm() {
 
   .detail-grid {
     grid-template-columns: 1fr;
-  }
-
-  .customs-card__header {
-    align-items: stretch;
-    flex-direction: column;
   }
 
   .page-header {
@@ -2482,11 +2216,7 @@ async function handleCloneConfirm() {
 
 @media print {
   .breadcrumbs,
-  .download-btn,
-  .tab-nav,
   .banner-area,
-  .customs-download,
-  .customs-preview-link,
   .detail-rail {
     display: none !important;
   }
@@ -2496,7 +2226,6 @@ async function handleCloneConfirm() {
   }
 
   .detail-page,
-  .tab-content,
   .tab-panel,
   .card {
     border: 0;
@@ -2505,32 +2234,6 @@ async function handleCloneConfirm() {
   }
 }
 
-/* Clone button */
-.clone-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 36px;
-  padding: 0 14px;
-  border: 1px solid var(--primary);
-  border-radius: 12px;
-  background: var(--background);
-  color: var(--primary);
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s;
-}
-
-.clone-btn:hover:not(:disabled) {
-  background: var(--primary);
-  color: var(--primary-foreground);
-}
-
-.clone-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
 
 .clone-dialog__body {
   font-size: 14px;

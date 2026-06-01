@@ -4,19 +4,19 @@ import { computed, onMounted } from 'vue'
 import { h } from 'vue'
 import { useRouter } from 'vue-router'
 import { CheckCircle2, Clock, RotateCcw, FileText, PlusCircle, Zap, Bell, AlertCircle } from 'lucide-vue-next'
-import { useDashboardStore } from '../../stores/dashboard.store'
-import { useNotificationsStore } from '../../stores/notifications.store'
-import { useAuthStore } from '../../stores/auth.store'
-import { UserRole } from '../../types/enums'
-import type { DataEntryDashboardStats } from '../../composables/useDashboard'
-import StatusBadge from '../shared/StatusBadge.vue'
-import ActionRequiredStrip from '../shared/ActionRequiredStrip.vue'
-import { Card, CardContent } from '../ui/card'
-import { Button } from '../ui/button'
-import { Skeleton } from '../ui/skeleton'
-import DataTable from '../ui/data-table/DataTable.vue'
-import MetricCard from '../shared/dashboard/MetricCard.vue'
-import MetricGrid from '../shared/dashboard/MetricGrid.vue'
+import { useDashboardStore } from '@/stores/dashboard.store'
+import { useNotificationsStore } from '@/stores/notifications.store'
+import { useAuthStore } from '@/stores/auth.store'
+import { UserRole } from '@/types/enums'
+import type { DataEntryDashboardStats } from '@/composables/useDashboard'
+import StatusBadge from '@/components/shared/StatusBadge.vue'
+import ActionRequiredStrip from '@/components/shared/ActionRequiredStrip.vue'
+import { Card, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
+import DataTable from '@/components/ui/data-table/DataTable.vue'
+import MetricCard from '@/components/shared/dashboard/MetricCard.vue'
+import MetricGrid from '@/components/shared/dashboard/MetricGrid.vue'
 
 const router = useRouter()
 const store = useDashboardStore()
@@ -143,7 +143,7 @@ const kpiConfig = computed(() => [
   {
     icon: CheckCircle2,
     value: stats.value?.completed ?? 0,
-    label: 'مكتمل / صدر التأكيد',
+    label: 'مكتمل',
     variant: 'green',
     tab: 'completed',
   },
@@ -203,7 +203,7 @@ onMounted(() => {
       <div class="flex flex-col items-center justify-center py-20 gap-4 text-center">
         <FileText class="h-12 w-12 text-muted-foreground" aria-hidden="true" />
         <p class="text-sm text-muted-foreground">لم تبدأ بعد. ابدأ بأول طلب تمويل واردات.</p>
-        <Button @click="router.push('/requests/new')">+ طلب جديد</Button>
+        <Button @click="router.push('/requests/new')">طلب جديد</Button>
       </div>
     </template>
 
@@ -241,58 +241,46 @@ onMounted(() => {
         </h2>
         <div class="grid grid-cols-3 max-md:grid-cols-1 gap-3">
           <!-- إنشاء طلب جديد -->
-          <Card
-            class="flex flex-col items-start gap-1 p-4 bg-primary text-primary-foreground border-0 rounded-2xl cursor-pointer hover:opacity-90 transition-opacity focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
-            role="button"
-            tabindex="0"
+          <NuxtLink
+            to="/requests/new"
+            class="flex flex-col items-start gap-1 p-4 bg-primary text-primary-foreground border-0 rounded-2xl hover:opacity-90 transition-opacity focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
             aria-label="إنشاء طلب جديد"
-            @click="router.push('/requests/new')"
-            @keydown.enter="router.push('/requests/new')"
-            @keydown.space.prevent="router.push('/requests/new')"
           >
             <FileText class="h-5 w-5 flex-shrink-0 mb-1" aria-hidden="true" />
             <span class="text-sm font-semibold">إنشاء طلب جديد</span>
             <span class="text-xs opacity-75">لبدء طلب تمويل جديد</span>
-          </Card>
+          </NuxtLink>
 
           <!-- متابعة طلباتي -->
-          <Card
-            class="flex flex-col items-start gap-1 p-4 bg-background border border-border text-foreground rounded-2xl cursor-pointer hover:border-primary hover:shadow-md transition-all focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
-            role="button"
-            tabindex="0"
+          <NuxtLink
+            to="/requests"
+            class="flex flex-col items-start gap-1 p-4 bg-background border border-border text-foreground rounded-2xl hover:border-primary hover:shadow-md transition-all focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
             aria-label="متابعة طلباتي"
-            @click="router.push('/requests')"
-            @keydown.enter="router.push('/requests')"
-            @keydown.space.prevent="router.push('/requests')"
           >
             <FileText class="h-5 w-5 flex-shrink-0 text-primary mb-1" aria-hidden="true" />
             <span class="text-sm font-semibold">متابعة طلباتي</span>
-            <span class="text-xs text-muted-foreground">كل ما قدّمت رأيناه</span>
-          </Card>
+            <span class="text-xs text-muted-foreground">استعراض جميع طلباتك المُقدَّمة</span>
+          </NuxtLink>
 
           <!-- الإشعارات — with unread badge -->
-          <Card
-            class="relative flex flex-col items-start gap-1 p-4 bg-background border border-border text-foreground rounded-2xl cursor-pointer hover:border-primary hover:shadow-md transition-all focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
-            role="button"
-            tabindex="0"
-            aria-label="الإشعارات"
-            @click="router.push('/notifications')"
-            @keydown.enter="router.push('/notifications')"
-            @keydown.space.prevent="router.push('/notifications')"
+          <NuxtLink
+            to="/notifications"
+            class="relative flex flex-col items-start gap-1 p-4 bg-background border border-border text-foreground rounded-2xl hover:border-primary hover:shadow-md transition-all focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
+            :aria-label="unreadCount > 0 ? `الإشعارات — ${unreadCount} غير مقروء` : 'الإشعارات'"
           >
             <div class="relative mb-1">
               <Bell class="h-5 w-5 flex-shrink-0 text-primary" aria-hidden="true" />
               <span
                 v-if="unreadCount > 0"
                 class="absolute -top-1.5 -end-1.5 min-w-4 h-4 px-0.5 bg-destructive text-white text-[10px] font-bold rounded-full flex items-center justify-center leading-none"
-                :aria-label="`${unreadCount} إشعار غير مقروء`"
+                aria-hidden="true"
               >
                 {{ unreadCount > 99 ? '99+' : unreadCount }}
               </span>
             </div>
             <span class="text-sm font-semibold">الإشعارات</span>
             <span class="text-xs text-muted-foreground">آخر التحديثات على طلباتك</span>
-          </Card>
+          </NuxtLink>
         </div>
       </section>
 
