@@ -3,6 +3,7 @@ import { ref, computed, nextTick, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { UserRole, RequestStatus, VoteType } from '@/types/enums'
 import {
+  ChevronLeft,
   ChevronRight,
   ClipboardList,
   Copy,
@@ -86,6 +87,12 @@ const EXECUTIVE_ROLES = new Set([UserRole.EXECUTIVE_MEMBER, UserRole.COMMITTEE_D
 const request = computed(() => requestsStore.currentRequest)
 const userRole = computed(() => auth.user?.role ?? UserRole.DATA_ENTRY)
 const canDownloadCustomsDeclaration = computed(() => canDownloadCustoms(userRole.value))
+
+// Prev/next navigation within the loaded list page
+const listIds = computed(() => requestsStore.listIds)
+const listPosition = computed(() => listIds.value.indexOf(id))
+const prevRequestId = computed(() => listPosition.value > 0 ? listIds.value[listPosition.value - 1] : null)
+const nextRequestId = computed(() => listPosition.value > -1 && listPosition.value < listIds.value.length - 1 ? listIds.value[listPosition.value + 1] : null)
 
 // BANK_REVIEWER may not review requests they personally created (segregation of duties)
 const isSegregationBlocked = computed(() =>
@@ -928,13 +935,46 @@ async function handleCloneConfirm() {
 
     <template v-else-if="request">
       <div class="mx-auto w-full max-w-7xl px-4">
-        <!-- Back button -->
-        <Button type="button" variant="ghost" size="sm" class="-ms-2 mb-5 gap-1 text-muted-foreground" as-child>
-          <NuxtLink to="/requests">
-            <ChevronRight class="size-4" />
-            رجوع
-          </NuxtLink>
-        </Button>
+        <!-- Navigation row: back + prev/next -->
+        <div class="mb-5 flex items-center justify-between">
+          <Button type="button" variant="ghost" size="sm" class="-ms-2 gap-1 text-muted-foreground" as-child>
+            <NuxtLink to="/requests">
+              <ChevronRight class="size-4" />
+              رجوع
+            </NuxtLink>
+          </Button>
+
+          <!-- Prev / position / next — only visible when this request is in the loaded list -->
+          <div v-if="listPosition > -1" class="flex items-center gap-1" role="navigation" aria-label="التنقل بين الطلبات">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              class="gap-1 text-muted-foreground"
+              :disabled="!prevRequestId"
+              :aria-label="prevRequestId ? `الطلب السابق` : 'لا يوجد طلب سابق'"
+              @click="prevRequestId && router.push(`/requests/${prevRequestId}`)"
+            >
+              <ChevronRight class="size-4" />
+              <span class="text-xs">السابق</span>
+            </Button>
+            <span class="select-none px-1 text-xs tabular-nums text-muted-foreground">
+              {{ listPosition + 1 }} / {{ listIds.length }}
+            </span>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              class="gap-1 text-muted-foreground"
+              :disabled="!nextRequestId"
+              :aria-label="nextRequestId ? `الطلب التالي` : 'لا يوجد طلب تالٍ'"
+              @click="nextRequestId && router.push(`/requests/${nextRequestId}`)"
+            >
+              <span class="text-xs">التالي</span>
+              <ChevronLeft class="size-4" />
+            </Button>
+          </div>
+        </div>
 
       <!-- Page header -->
       <div class="page-header">

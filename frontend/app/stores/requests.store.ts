@@ -52,6 +52,9 @@ export const useRequestsStore = defineStore('requests', {
     currentPage: (state): number => state.meta?.current_page ?? 1,
 
     totalCount: (state): number => state.meta?.total ?? 0,
+
+    /** Ordered IDs of the currently loaded list page — used for prev/next detail navigation */
+    listIds: (state): number[] => state.requests.map(r => r.id),
   },
 
   actions: {
