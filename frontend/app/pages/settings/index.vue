@@ -1,24 +1,39 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { toast } from 'vue-sonner'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import {
   Bell,
   Check,
+  CheckCircle2,
   ChevronsUpDown,
   Columns2,
+  Copy,
+  KeyRound,
+  Laptop,
   Loader2,
+  Lock,
   Maximize2,
   Monitor,
+  MonitorSmartphone,
   Moon,
   PanelLeft,
   PanelLeftClose,
   PanelLeftDashed,
+  QrCode,
+  Shield,
+  ShieldAlert,
+  ShieldCheck,
   Sliders,
+  Smartphone,
   Square,
   Sun,
+  Tablet,
+  Trash2,
   UserRound,
+  X,
 } from 'lucide-vue-next'
+import { renderSVG } from 'uqr'
 import { Separator } from '@/components/ui/separator'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -34,6 +49,15 @@ import {
   CommandSeparator,
 } from '@/components/ui/command'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp'
 import { cn } from '@/lib/utils'
 import { UserRole } from '@/types/enums'
 import {
@@ -47,6 +71,8 @@ import {
 } from '@/stores/theming.store'
 import { useSettingsStore } from '@/stores/settings.store'
 import { useAuthStore } from '@/stores/auth.store'
+import { useProfile } from '@/composables/useProfile'
+import { useSavedAccounts } from '@/composables/useSavedAccounts'
 
 definePageMeta({ middleware: ['auth'] })
 useHead({ title: 'إعداداتي' })
@@ -60,7 +86,7 @@ const user = computed(() => authStore.user)
 
 // ── Role labels ────────────────────────────────────────────────────────────────
 const ROLE_LABELS: Record<string, string> = {
-  [UserRole.DATA_ENTRY]: 'مُدخل بيانات',
+  [UserRole.DATA_ENTRY]: 'مدخل بيانات',
   [UserRole.BANK_REVIEWER]: 'مراجع بنكي',
   [UserRole.BANK_ADMIN]: 'مدير البنك',
   [UserRole.SWIFT_OFFICER]: 'مسؤول سويفت',
@@ -75,6 +101,7 @@ const userTabs = [
   { value: 'profile', label: 'الملف الشخصي', icon: UserRound, dataTab: 'profile', testId: 'tab-profile' },
   { value: 'appearance', label: 'المظهر الشخصي', icon: Sliders, dataTab: 'appearance', testId: 'tab-appearance' },
   { value: 'notif', label: 'التنبيهات', icon: Bell, dataTab: 'notifications', testId: 'tab-notif' },
+  { value: 'security', label: 'الأمان', icon: ShieldAlert, dataTab: 'security', testId: 'tab-security' },
 ] as const
 
 type UserTab = (typeof userTabs)[number]['value']
@@ -84,6 +111,245 @@ const activeSection = computed<UserTab>(() => normalizeSection(route.query.secti
 function normalizeSection(raw: unknown): UserTab | null {
   if (typeof raw !== 'string') return null
   return userTabs.some(t => t.value === raw) ? (raw as UserTab) : null
+}
+
+// ── Security (password / MFA / PIN) ───────────────────────────────────────────
+const { toggleMfa: composableToggleMfa, setupTotp, verifyTotpSetup, disableTotp, disableTotpWithPassword, setPin: savePinOnServer, disablePin: disablePinOnServer, changePassword } = useProfile()
+const { accounts, removeAccount, getPINStatus, setPINStatus } = useSavedAccounts()
+
+const passwordForm = reactive({ current_password: '', password: '', password_confirmation: '' })
+const passwordSuccess = ref(false)
+const passwordError = ref<string | null>(null)
+const passwordSaving = ref(false)
+
+const mfaEnabled = ref(user.value?.mfa_enabled ?? false)
+const totpEnabled = ref(user.value?.totp_enabled ?? false)
+
+async function submitPasswordChange() {
+  passwordError.value = null
+  passwordSaving.value = true
+  try {
+    const ok = await changePassword({
+      current_password: passwordForm.current_password,
+      password: passwordForm.password,
+      password_confirmation: passwordForm.password_confirmation,
+    })
+    if (ok) {
+      passwordSuccess.value = true
+      passwordForm.current_password = ''
+      passwordForm.password = ''
+      passwordForm.password_confirmation = ''
+      toast.success('تم تغيير كلمة المرور بنجاح')
+    }
+    else {
+      passwordError.value = 'تعذر تغيير كلمة المرور. تحقق من كلمة المرور الحالية.'
+    }
+  }
+  catch {
+    passwordError.value = 'حدث خطأ غير متوقع. أعد المحاولة.'
+  }
+  finally {
+    passwordSaving.value = false
+  }
+}
+
+// ── PIN management ─────────────────────────────────────────────────────────────
+const hasPIN = ref(Boolean(user.value?.pin_enabled) || getPINStatus(user.value?.email ?? ''))
+
+type PinDialogMode = 'create' | 'change' | 'disable'
+const pinDialogOpen = ref(false)
+const pinDialogMode = ref<PinDialogMode>('create')
+const pinDialogStage = ref<'current' | 'new' | 'confirm'>('new')
+const pinCurrent = ref('')
+const pinNew = ref('')
+const pinConfirm = ref('')
+const pinError = ref<string | null>(null)
+const isPinSaving = ref(false)
+type PinDialogContentRef = HTMLElement | { $el?: HTMLElement } | null
+const pinDialogContentRef = ref<PinDialogContentRef>(null)
+
+function resolvePinDialogRoot(contentRef: PinDialogContentRef): HTMLElement | null {
+  if (!contentRef) return null
+  if (contentRef instanceof HTMLElement) return contentRef
+  if ((contentRef as any).$el instanceof HTMLElement) return (contentRef as any).$el
+  return null
+}
+
+function focusPinInput() {
+  nextTick(() => {
+    requestAnimationFrame(() => {
+      const root = resolvePinDialogRoot(pinDialogContentRef.value)
+        ?? document.querySelector<HTMLElement>('[data-slot="dialog-content"][data-state="open"]')
+      const input = root?.querySelector<HTMLInputElement>(
+        'input[data-input-otp], input:not([type=hidden]):not([disabled])',
+      )
+      input?.focus()
+    })
+  })
+}
+
+function openPinDialog(mode: PinDialogMode) {
+  pinDialogMode.value = mode
+  pinDialogStage.value = mode === 'change' ? 'current' : 'new'
+  pinCurrent.value = ''
+  pinNew.value = ''
+  pinConfirm.value = ''
+  pinError.value = null
+  pinDialogOpen.value = true
+  focusPinInput()
+}
+
+watch(pinNew, (val) => {
+  if (val.length === 6 && pinDialogStage.value === 'new') pinDialogStage.value = 'confirm'
+})
+
+watch(pinCurrent, (val) => {
+  if (val.length === 6 && pinDialogStage.value === 'current') pinDialogStage.value = 'new'
+})
+
+watch(pinDialogStage, () => { focusPinInput() })
+
+async function submitPinAction() {
+  pinError.value = null
+  if (pinDialogMode.value === 'disable') {
+    if (pinCurrent.value.length < 6) { pinError.value = 'الرجاء إدخال رمز PIN الحالي'; return }
+    isPinSaving.value = true
+    try {
+      const ok = await disablePinOnServer(pinCurrent.value)
+      if (!ok) throw new Error('invalid-pin')
+      setPINStatus(user.value?.email ?? '', false)
+      hasPIN.value = false
+      pinDialogOpen.value = false
+      toast.success('تم تعطيل رمز PIN بنجاح')
+    }
+    catch { pinError.value = 'رمز PIN الحالي غير صحيح' }
+    finally { isPinSaving.value = false }
+    return
+  }
+  if (pinNew.value.length < 6 || pinConfirm.value.length < 6) {
+    pinError.value = 'الرجاء إدخال رمز PIN المكوّن من 6 أرقام في كلا الحقلين'; return
+  }
+  if (pinNew.value !== pinConfirm.value) {
+    pinError.value = 'رمز PIN غير متطابق. يرجى المحاولة مرة أخرى.'; pinConfirm.value = ''; return
+  }
+  isPinSaving.value = true
+  try {
+    const currentPin = pinDialogMode.value === 'change' ? pinCurrent.value : undefined
+    const ok = await savePinOnServer(pinNew.value, currentPin)
+    if (!ok) throw new Error('pin-save-failed')
+    setPINStatus(user.value?.email ?? '', true)
+    hasPIN.value = true
+    pinDialogOpen.value = false
+    toast.success(pinDialogMode.value === 'create' ? 'تم إنشاء رمز PIN بنجاح' : 'تم تغيير رمز PIN بنجاح')
+  }
+  catch { pinError.value = 'تعذر حفظ رمز PIN الآن. أعد المحاولة بعد قليل.' }
+  finally { isPinSaving.value = false }
+}
+
+function removeTrustedDevice(id: string) {
+  removeAccount(id)
+  toast.success('تم إزالة الجهاز الموثوق')
+}
+
+// ── MFA / Authenticator setup ──────────────────────────────────────────────────
+type MfaDialogStage = 'intro' | 'scan' | 'verify' | 'disable-verify' | 'disable-with-password'
+
+const mfaDialogOpen = ref(false)
+const mfaDialogStage = ref<MfaDialogStage>('intro')
+const mfaVerifyCode = ref('')
+const mfaSetupError = ref<string | null>(null)
+const isMfaActionLoading = ref(false)
+const liveMfaSecret = ref<string | null>(null)
+const liveMfaUri = ref<string | null>(null)
+const mfaDisablePassword = ref('')
+
+const mfaQrSvg = computed(() => {
+  if (!liveMfaUri.value) return null
+  return renderSVG(liveMfaUri.value, { ecc: 'M' })
+})
+
+function openMfaSetup() {
+  mfaDialogStage.value = 'intro'
+  mfaVerifyCode.value = ''
+  mfaSetupError.value = null
+  liveMfaSecret.value = null
+  liveMfaUri.value = null
+  mfaDialogOpen.value = true
+}
+
+function openMfaDisable() {
+  mfaDialogStage.value = 'disable-verify'
+  mfaVerifyCode.value = ''
+  mfaDisablePassword.value = ''
+  mfaSetupError.value = null
+  mfaDialogOpen.value = true
+}
+
+async function confirmMfaDisableWithPassword() {
+  if (!mfaDisablePassword.value) { mfaSetupError.value = 'الرجاء إدخال كلمة المرور'; return }
+  isMfaActionLoading.value = true
+  mfaSetupError.value = null
+  try {
+    const ok = await disableTotpWithPassword(mfaDisablePassword.value)
+    if (!ok) throw new Error('invalid')
+    totpEnabled.value = false
+    mfaEnabled.value = false
+    mfaDialogOpen.value = false
+    toast.success('تم تعطيل تطبيق المصادقة')
+  }
+  catch { mfaSetupError.value = 'كلمة المرور غير صحيحة.'; mfaDisablePassword.value = '' }
+  finally { isMfaActionLoading.value = false }
+}
+
+function copyMfaSecret() {
+  if (import.meta.client && liveMfaSecret.value)
+    window.navigator.clipboard?.writeText(liveMfaSecret.value)
+}
+
+async function loadTotpSetup() {
+  isMfaActionLoading.value = true
+  mfaSetupError.value = null
+  try {
+    const data = await setupTotp()
+    if (!data) throw new Error()
+    liveMfaSecret.value = data.secret
+    liveMfaUri.value = data.provisioning_uri
+    mfaDialogStage.value = 'scan'
+  }
+  catch { mfaSetupError.value = 'تعذر تحميل رمز QR الآن. أعد المحاولة بعد قليل.' }
+  finally { isMfaActionLoading.value = false }
+}
+
+async function confirmMfaSetup() {
+  if (mfaVerifyCode.value.length < 6) { mfaSetupError.value = 'الرجاء إدخال الرمز المكوّن من 6 أرقام'; return }
+  isMfaActionLoading.value = true
+  mfaSetupError.value = null
+  try {
+    const ok = await verifyTotpSetup(mfaVerifyCode.value)
+    if (!ok) throw new Error('invalid')
+    totpEnabled.value = true
+    mfaEnabled.value = true
+    mfaDialogOpen.value = false
+    toast.success('تم تفعيل تطبيق المصادقة بنجاح')
+  }
+  catch { mfaSetupError.value = 'الرمز غير صحيح. تحقق من تطبيق المصادقة وحاول مجدداً.'; mfaVerifyCode.value = '' }
+  finally { isMfaActionLoading.value = false }
+}
+
+async function confirmMfaDisable() {
+  if (mfaVerifyCode.value.length < 6) { mfaSetupError.value = 'الرجاء إدخال رمز التحقق لتأكيد التعطيل'; return }
+  isMfaActionLoading.value = true
+  mfaSetupError.value = null
+  try {
+    const ok = await disableTotp(mfaVerifyCode.value)
+    if (!ok) throw new Error('invalid')
+    totpEnabled.value = false
+    mfaEnabled.value = false
+    mfaDialogOpen.value = false
+    toast.success('تم تعطيل تطبيق المصادقة')
+  }
+  catch { mfaSetupError.value = 'رمز التحقق غير صحيح.'; mfaVerifyCode.value = '' }
+  finally { isMfaActionLoading.value = false }
 }
 
 // ── Profile form ───────────────────────────────────────────────────────────────
@@ -238,7 +504,7 @@ function savePersonalNotifications() {
   <div>
     <PageHeader
       title="إعداداتي"
-      subtitle="تفضيلاتك الشخصية — تؤثر على تجربتك فقط ولا تمسّ بقية المستخدمين"
+      subtitle="تفضيلاتك الشخصية، وتؤثر على تجربتك فقط ولا تمس بقية المستخدمين"
       :breadcrumbs="[{ label: 'الرئيسية', to: '/' }, { label: 'إعداداتي' }]"
     />
 
@@ -738,6 +1004,347 @@ function savePersonalNotifications() {
                 حفظ المظهر الشخصي
               </Button>
             </div>
+          </section>
+
+          <!-- ── Security ───────────────────────────────────────────────────── -->
+          <section v-if="activeSection === 'security'" data-panel="security" class="space-y-6">
+            <div>
+              <h3 class="text-lg font-medium">الأمان</h3>
+              <p class="text-sm text-muted-foreground">إدارة كلمة المرور، المصادقة الثنائية، ورمز PIN.</p>
+            </div>
+            <Separator />
+
+            <!-- Password change -->
+            <section class="space-y-4">
+              <div>
+                <h4 class="text-sm font-medium">تغيير كلمة المرور</h4>
+                <p class="mt-0.5 text-xs text-muted-foreground">يُنصح بتغيير كلمة المرور بانتظام لحماية حسابك.</p>
+              </div>
+              <div
+                v-if="passwordSuccess"
+                class="max-w-md rounded-lg border border-[var(--severity-green)]/30 bg-[var(--severity-green)]/5 p-3 text-sm text-[var(--severity-green)]"
+              >
+                تم تغيير كلمة المرور بنجاح
+              </div>
+              <div
+                v-if="passwordError"
+                class="max-w-md rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive"
+                role="alert"
+              >
+                {{ passwordError }}
+              </div>
+              <form class="max-w-md space-y-3" @submit.prevent="submitPasswordChange">
+                <div class="space-y-1.5">
+                  <Label for="sec-current-password">كلمة المرور الحالية</Label>
+                  <Input id="sec-current-password" v-model="passwordForm.current_password" type="password" />
+                </div>
+                <div class="space-y-1.5">
+                  <Label for="sec-new-password">كلمة المرور الجديدة</Label>
+                  <Input id="sec-new-password" v-model="passwordForm.password" type="password" />
+                </div>
+                <div class="space-y-1.5">
+                  <Label for="sec-confirm-password">تأكيد كلمة المرور</Label>
+                  <Input id="sec-confirm-password" v-model="passwordForm.password_confirmation" type="password" />
+                </div>
+                <Button type="submit" variant="outline" size="sm" :disabled="passwordSaving">
+                  <Loader2 v-if="passwordSaving" class="ms-2 h-4 w-4 animate-spin" />
+                  <KeyRound v-else class="ms-2 h-4 w-4" />
+                  حفظ كلمة المرور
+                </Button>
+              </form>
+            </section>
+
+            <Separator />
+
+            <!-- MFA / Authenticator -->
+            <section class="space-y-4">
+              <div>
+                <h4 class="text-sm font-medium flex items-center gap-2">
+                  <Shield class="h-4 w-4" />
+                  تطبيق المصادقة الثنائية
+                </h4>
+                <p class="mt-0.5 text-xs text-muted-foreground">
+                  يُستخدم تطبيق Microsoft Authenticator أو Google Authenticator لتوليد رموز تحقق مؤقتة.
+                </p>
+              </div>
+              <div class="max-w-md">
+                <div v-if="totpEnabled || mfaEnabled" class="flex items-center justify-between rounded-lg border border-[var(--severity-green)]/30 bg-[var(--severity-green)]/5 p-3">
+                  <div class="flex items-center gap-2">
+                    <ShieldCheck class="h-4 w-4 text-[var(--severity-green)] shrink-0" />
+                    <span class="text-sm font-medium text-[var(--severity-green)]">تطبيق المصادقة مفعّل</span>
+                  </div>
+                  <Button type="button" variant="ghost" size="sm" class="text-destructive hover:text-destructive text-xs" @click="openMfaDisable">
+                    <X class="ms-1 h-3.5 w-3.5" />
+                    تعطيل
+                  </Button>
+                </div>
+                <div v-else class="rounded-lg border border-border bg-muted/20 p-3">
+                  <div class="flex items-center gap-2 mb-2">
+                    <Lock class="h-4 w-4 text-muted-foreground shrink-0" />
+                    <span class="text-sm text-muted-foreground">تطبيق المصادقة غير مفعّل</span>
+                  </div>
+                  <Button type="button" variant="outline" size="sm" @click="openMfaSetup">
+                    <QrCode class="ms-1 h-4 w-4" />
+                    إعداد تطبيق المصادقة
+                  </Button>
+                </div>
+              </div>
+            </section>
+
+            <Separator />
+
+            <!-- PIN -->
+            <section class="space-y-4">
+              <div>
+                <h4 class="text-sm font-medium flex items-center gap-2">
+                  <KeyRound class="h-4 w-4" />
+                  رمز PIN للدخول السريع
+                </h4>
+                <p class="mt-0.5 text-xs text-muted-foreground">
+                  رمز مكوّن من 6 أرقام يتيح لك تسجيل الدخول بسرعة من الأجهزة الموثوقة.
+                </p>
+              </div>
+              <div class="max-w-md">
+                <div v-if="hasPIN" class="flex items-center gap-2 mb-3">
+                  <CheckCircle2 class="h-4 w-4 text-[var(--severity-green)] shrink-0" />
+                  <span class="text-sm text-[var(--severity-green)]">رمز PIN مفعّل</span>
+                </div>
+                <div v-else class="flex items-center gap-2 mb-3">
+                  <Lock class="h-4 w-4 text-muted-foreground shrink-0" />
+                  <span class="text-sm text-muted-foreground">لم يتم إنشاء رمز PIN بعد</span>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                  <Button v-if="!hasPIN" type="button" variant="outline" size="sm" @click="openPinDialog('create')">
+                    <KeyRound class="ms-1 h-4 w-4" />
+                    إنشاء رمز PIN
+                  </Button>
+                  <template v-else>
+                    <Button type="button" variant="outline" size="sm" @click="openPinDialog('change')">
+                      <KeyRound class="ms-1 h-4 w-4" />
+                      تغيير رمز PIN
+                    </Button>
+                    <Button type="button" variant="ghost" size="sm" class="text-destructive hover:text-destructive" @click="openPinDialog('disable')">
+                      <X class="ms-1 h-4 w-4" />
+                      تعطيل رمز PIN
+                    </Button>
+                  </template>
+                </div>
+              </div>
+            </section>
+
+            <Separator />
+
+            <!-- Trusted Devices -->
+            <section class="space-y-4">
+              <div>
+                <h4 class="text-sm font-medium flex items-center gap-2">
+                  <MonitorSmartphone class="h-4 w-4" />
+                  الأجهزة الموثوقة
+                </h4>
+                <p class="mt-0.5 text-xs text-muted-foreground">
+                  الأجهزة التي حفظت بيانات دخولك للوصول السريع برمز PIN.
+                </p>
+              </div>
+              <div v-if="accounts.length === 0" class="text-sm text-muted-foreground py-2">
+                لا توجد أجهزة موثوقة مسجّلة حتى الآن.
+              </div>
+              <ul v-else class="max-w-md space-y-2">
+                <li v-for="device in accounts" :key="device.id" class="rounded-lg border border-border p-3">
+                  <div class="flex items-start gap-3">
+                    <div class="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-muted">
+                      <Smartphone v-if="device.deviceInfo?.deviceType === 'mobile'" class="h-4 w-4 text-muted-foreground" />
+                      <Tablet v-else-if="device.deviceInfo?.deviceType === 'tablet'" class="h-4 w-4 text-muted-foreground" />
+                      <Laptop v-else class="h-4 w-4 text-muted-foreground" />
+                    </div>
+                    <div class="flex-1 min-w-0 space-y-1">
+                      <p class="text-sm font-medium truncate">{{ device.name }}</p>
+                      <div class="flex flex-wrap gap-x-3 gap-y-0.5">
+                        <span v-if="device.deviceInfo?.browser" class="flex items-center gap-1 text-xs text-muted-foreground">
+                          <MonitorSmartphone class="h-3 w-3" />
+                          {{ device.deviceInfo.browser }}
+                        </span>
+                        <span v-if="device.deviceInfo?.os" class="text-xs text-muted-foreground">{{ device.deviceInfo.os }}</span>
+                      </div>
+                      <div class="flex flex-wrap gap-x-3 gap-y-0.5">
+                        <span v-if="device.deviceInfo?.lastLoginAt" class="text-[10px] text-muted-foreground/70">
+                          آخر دخول: {{ new Date(device.deviceInfo.lastLoginAt).toLocaleString('ar-EG', { dateStyle: 'medium', timeStyle: 'short' }) }}
+                        </span>
+                        <span class="text-[10px] text-muted-foreground/70">
+                          الثقة منذ: {{ new Date(device.trustedAt).toLocaleDateString('ar-EG', { dateStyle: 'medium' }) }}
+                        </span>
+                      </div>
+                    </div>
+                    <Button type="button" variant="ghost" size="sm" class="text-destructive hover:text-destructive shrink-0" :aria-label="`إزالة جهاز ${device.name}`" @click="removeTrustedDevice(device.id)">
+                      <Trash2 class="h-4 w-4" />
+                    </Button>
+                  </div>
+                </li>
+              </ul>
+            </section>
+
+            <!-- MFA Dialog -->
+            <Dialog v-model:open="mfaDialogOpen">
+              <DialogContent class="max-w-sm">
+                <template v-if="mfaDialogStage === 'disable-verify'">
+                  <DialogHeader>
+                    <DialogTitle>تعطيل تطبيق المصادقة</DialogTitle>
+                    <DialogDescription>أدخل الرمز الحالي من تطبيق المصادقة للتأكيد</DialogDescription>
+                  </DialogHeader>
+                  <div v-if="mfaSetupError" class="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive" role="alert">{{ mfaSetupError }}</div>
+                  <div class="flex justify-center py-2">
+                    <InputOTP v-model="mfaVerifyCode" :maxlength="6" :disabled="isMfaActionLoading" @complete="confirmMfaDisable">
+                      <InputOTPGroup>
+                        <InputOTPSlot v-for="i in 6" :key="i" :index="i - 1" class="size-11 text-xl font-bold" />
+                      </InputOTPGroup>
+                    </InputOTP>
+                  </div>
+                  <DialogFooter class="flex-col gap-2 sm:flex-col">
+                    <div class="flex flex-row-reverse gap-2">
+                      <Button type="button" variant="destructive" :disabled="isMfaActionLoading || mfaVerifyCode.length < 6" @click="confirmMfaDisable">
+                        <X class="ms-1 h-4 w-4" />تعطيل
+                      </Button>
+                      <Button type="button" variant="outline" :disabled="isMfaActionLoading" @click="mfaDialogOpen = false">إلغاء</Button>
+                    </div>
+                    <Button type="button" variant="ghost" size="sm" class="text-muted-foreground text-xs" @click="() => { mfaSetupError = null; mfaDialogStage = 'disable-with-password' }">
+                      لا أملك وصولاً إلى تطبيق المصادقة
+                    </Button>
+                  </DialogFooter>
+                </template>
+
+                <template v-else-if="mfaDialogStage === 'disable-with-password'">
+                  <DialogHeader>
+                    <DialogTitle>تعطيل المصادقة بكلمة المرور</DialogTitle>
+                    <DialogDescription>أدخل كلمة المرور الخاصة بحسابك لتعطيل تطبيق المصادقة</DialogDescription>
+                  </DialogHeader>
+                  <div v-if="mfaSetupError" class="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive" role="alert">{{ mfaSetupError }}</div>
+                  <div class="space-y-2 py-2">
+                    <Label for="mfa-disable-pwd">كلمة المرور</Label>
+                    <Input id="mfa-disable-pwd" v-model="mfaDisablePassword" type="password" :disabled="isMfaActionLoading" placeholder="أدخل كلمة مرورك" autofocus @keydown.enter="confirmMfaDisableWithPassword" />
+                  </div>
+                  <DialogFooter class="flex-row-reverse gap-2 sm:flex-row-reverse">
+                    <Button type="button" variant="destructive" :disabled="isMfaActionLoading || !mfaDisablePassword" @click="confirmMfaDisableWithPassword">
+                      <X class="ms-1 h-4 w-4" />تعطيل
+                    </Button>
+                    <Button type="button" variant="outline" :disabled="isMfaActionLoading" @click="() => { mfaSetupError = null; mfaDialogStage = 'disable-verify' }">رجوع</Button>
+                  </DialogFooter>
+                </template>
+
+                <template v-else-if="mfaDialogStage === 'intro'">
+                  <DialogHeader>
+                    <DialogTitle>إعداد تطبيق المصادقة</DialogTitle>
+                    <DialogDescription>سيضاف تطبيق مصادقة لحماية حسابك برمز تحقق مؤقت يتغير كل 30 ثانية</DialogDescription>
+                  </DialogHeader>
+                  <div class="space-y-3 py-2 text-sm text-muted-foreground">
+                    <p>الخطوات:</p>
+                    <ol class="list-decimal list-inside space-y-1 text-sm">
+                      <li>افتح تطبيق <strong>Microsoft Authenticator</strong> أو <strong>Google Authenticator</strong></li>
+                      <li>امسح رمز QR أو أدخل المفتاح يدوياً</li>
+                      <li>أدخل الرمز المكوّن من 6 أرقام للتأكيد</li>
+                    </ol>
+                  </div>
+                  <div v-if="mfaSetupError" class="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive" role="alert">{{ mfaSetupError }}</div>
+                  <DialogFooter class="flex-row-reverse gap-2 sm:flex-row-reverse">
+                    <Button type="button" :disabled="isMfaActionLoading" @click="loadTotpSetup">
+                      <span v-if="isMfaActionLoading" class="flex items-center gap-2">
+                        <span class="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />جارٍ التحميل…
+                      </span>
+                      <span v-else>التالي</span>
+                    </Button>
+                    <Button type="button" variant="outline" @click="mfaDialogOpen = false">إلغاء</Button>
+                  </DialogFooter>
+                </template>
+
+                <template v-else-if="mfaDialogStage === 'scan'">
+                  <DialogHeader>
+                    <DialogTitle>امسح رمز QR</DialogTitle>
+                    <DialogDescription>امسح الرمز بتطبيق المصادقة أو أدخل المفتاح السري يدوياً</DialogDescription>
+                  </DialogHeader>
+                  <div class="flex flex-col items-center gap-3 py-2">
+                    <div class="rounded-xl border-2 border-border bg-white p-2 shadow-sm" style="line-height:0">
+                      <!-- eslint-disable-next-line vue/no-v-html -->
+                      <div v-if="mfaQrSvg" v-html="mfaQrSvg" class="w-40 h-40 [&>svg]:w-full [&>svg]:h-full [&>svg]:block" />
+                      <div v-else class="w-40 h-40 flex items-center justify-center text-muted-foreground text-xs">جارٍ تحميل الرمز…</div>
+                    </div>
+                    <div class="w-full rounded-lg border border-border bg-muted/30 px-3 py-2">
+                      <p class="mb-1 text-[10px] text-muted-foreground">المفتاح السري (للإدخال اليدوي)</p>
+                      <div class="flex items-center justify-between gap-2">
+                        <code class="text-xs font-mono tracking-widest">{{ liveMfaSecret ?? '…' }}</code>
+                        <Button type="button" variant="ghost" size="sm" class="h-7 px-2" :disabled="!liveMfaSecret" @click="copyMfaSecret">
+                          <Copy class="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                  <DialogFooter class="flex-row-reverse gap-2 sm:flex-row-reverse">
+                    <Button type="button" @click="mfaDialogStage = 'verify'">متابعة إدخال رمز التحقق</Button>
+                    <Button type="button" variant="outline" @click="mfaDialogStage = 'intro'">رجوع</Button>
+                  </DialogFooter>
+                </template>
+
+                <template v-else-if="mfaDialogStage === 'verify'">
+                  <DialogHeader>
+                    <DialogTitle>تأكيد الإعداد</DialogTitle>
+                    <DialogDescription>أدخل الرمز المكوّن من 6 أرقام الظاهر في تطبيق المصادقة</DialogDescription>
+                  </DialogHeader>
+                  <div v-if="mfaSetupError" class="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive" role="alert">{{ mfaSetupError }}</div>
+                  <div class="flex justify-center py-2">
+                    <InputOTP v-model="mfaVerifyCode" :maxlength="6" :disabled="isMfaActionLoading" @complete="confirmMfaSetup">
+                      <InputOTPGroup>
+                        <InputOTPSlot v-for="i in 6" :key="i" :index="i - 1" class="size-11 text-xl font-bold" />
+                      </InputOTPGroup>
+                    </InputOTP>
+                  </div>
+                  <DialogFooter class="flex-row-reverse gap-2 sm:flex-row-reverse">
+                    <Button type="button" :disabled="isMfaActionLoading || mfaVerifyCode.length < 6" @click="confirmMfaSetup">تفعيل</Button>
+                    <Button type="button" variant="outline" :disabled="isMfaActionLoading" @click="mfaDialogStage = 'scan'">رجوع</Button>
+                  </DialogFooter>
+                </template>
+              </DialogContent>
+            </Dialog>
+
+            <!-- PIN Dialog -->
+            <Dialog v-model:open="pinDialogOpen">
+              <DialogContent ref="pinDialogContentRef" class="max-w-sm">
+                <DialogHeader>
+                  <DialogTitle>
+                    {{ pinDialogMode === 'create' ? 'إنشاء رمز PIN' : pinDialogMode === 'change' ? 'تغيير رمز PIN' : 'تعطيل رمز PIN' }}
+                  </DialogTitle>
+                  <DialogDescription>
+                    {{
+                      pinDialogMode === 'disable' ? 'أدخل رمز PIN الحالي للتأكيد على تعطيله'
+                      : pinDialogMode === 'change' && pinDialogStage === 'current' ? 'أدخل رمز PIN الحالي أولاً'
+                      : pinDialogStage === 'new' ? 'أدخل رمز PIN الجديد المكوّن من 6 أرقام'
+                      : 'أعد إدخال رمز PIN للتأكيد'
+                    }}
+                  </DialogDescription>
+                </DialogHeader>
+                <div v-if="pinError" class="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive" role="alert">{{ pinError }}</div>
+                <div class="flex justify-center py-2">
+                  <InputOTP v-if="pinDialogMode === 'disable' || (pinDialogMode === 'change' && pinDialogStage === 'current')" v-model="pinCurrent" :maxlength="6" :disabled="isPinSaving">
+                    <InputOTPGroup>
+                      <InputOTPSlot v-for="i in 6" :key="i" :index="i - 1" class="size-11 text-xl font-bold" />
+                    </InputOTPGroup>
+                  </InputOTP>
+                  <InputOTP v-else-if="pinDialogStage === 'new'" v-model="pinNew" :maxlength="6" :disabled="isPinSaving">
+                    <InputOTPGroup>
+                      <InputOTPSlot v-for="i in 6" :key="i" :index="i - 1" class="size-11 text-xl font-bold" />
+                    </InputOTPGroup>
+                  </InputOTP>
+                  <InputOTP v-else v-model="pinConfirm" :maxlength="6" :disabled="isPinSaving" @complete="submitPinAction">
+                    <InputOTPGroup>
+                      <InputOTPSlot v-for="i in 6" :key="i" :index="i - 1" class="size-11 text-xl font-bold" />
+                    </InputOTPGroup>
+                  </InputOTP>
+                </div>
+                <DialogFooter class="flex-row-reverse gap-2 sm:flex-row-reverse">
+                  <Button type="button" :disabled="isPinSaving" @click="submitPinAction">
+                    <KeyRound class="ms-1 h-4 w-4" />
+                    {{ pinDialogMode === 'disable' ? 'تعطيل' : pinDialogStage !== 'confirm' ? 'التالي' : 'حفظ' }}
+                  </Button>
+                  <Button type="button" variant="outline" :disabled="isPinSaving" @click="pinDialogOpen = false">إلغاء</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </section>
 
           <!-- ── Personal Notifications ────────────────────────────────────────────────── -->
