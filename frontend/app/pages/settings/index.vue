@@ -1201,7 +1201,7 @@ function savePersonalNotifications() {
                     </InputOTP>
                   </div>
                   <DialogFooter class="flex-col gap-2 sm:flex-col">
-                    <div class="flex gap-2">
+                    <div class="flex flex-row-reverse gap-2">
                       <Button type="button" variant="destructive" :disabled="isMfaActionLoading || mfaVerifyCode.length < 6" @click="confirmMfaDisable">
                         <X class="ms-1 h-4 w-4" />تعطيل
                       </Button>
@@ -1223,7 +1223,7 @@ function savePersonalNotifications() {
                     <Label for="mfa-disable-pwd">كلمة المرور</Label>
                     <Input id="mfa-disable-pwd" v-model="mfaDisablePassword" type="password" :disabled="isMfaActionLoading" placeholder="أدخل كلمة مرورك" autofocus @keydown.enter="confirmMfaDisableWithPassword" />
                   </div>
-                  <DialogFooter class="gap-2 sm:flex-row-reverse">
+                  <DialogFooter class="gap-2">
                     <Button type="button" variant="destructive" :disabled="isMfaActionLoading || !mfaDisablePassword" @click="confirmMfaDisableWithPassword">
                       <X class="ms-1 h-4 w-4" />تعطيل
                     </Button>
@@ -1245,7 +1245,7 @@ function savePersonalNotifications() {
                     </ol>
                   </div>
                   <div v-if="mfaSetupError" class="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive" role="alert">{{ mfaSetupError }}</div>
-                  <DialogFooter class="gap-2 sm:flex-row-reverse">
+                  <DialogFooter class="gap-2">
                     <Button type="button" :disabled="isMfaActionLoading" @click="loadTotpSetup">
                       <span v-if="isMfaActionLoading" class="flex items-center gap-2">
                         <span class="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />جارٍ التحميل…
@@ -1277,7 +1277,7 @@ function savePersonalNotifications() {
                       </div>
                     </div>
                   </div>
-                  <DialogFooter class="gap-2 sm:flex-row-reverse">
+                  <DialogFooter class="gap-2">
                     <Button type="button" @click="mfaDialogStage = 'verify'">متابعة إدخال رمز التحقق</Button>
                     <Button type="button" variant="outline" @click="mfaDialogStage = 'intro'">رجوع</Button>
                   </DialogFooter>
@@ -1289,14 +1289,14 @@ function savePersonalNotifications() {
                     <DialogDescription>أدخل الرمز المكوّن من 6 أرقام الظاهر في تطبيق المصادقة</DialogDescription>
                   </DialogHeader>
                   <div v-if="mfaSetupError" class="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive" role="alert">{{ mfaSetupError }}</div>
-                  <div class="flex justify-center py-2" dir="ltr">
+                  <div class="flex justify-center py-2">
                     <InputOTP v-model="mfaVerifyCode" :maxlength="6" :disabled="isMfaActionLoading" @complete="confirmMfaSetup">
                       <InputOTPGroup>
                         <InputOTPSlot v-for="i in 6" :key="i" :index="i - 1" class="size-11 text-xl font-bold" />
                       </InputOTPGroup>
                     </InputOTP>
                   </div>
-                  <DialogFooter class="gap-2 sm:flex-row-reverse">
+                  <DialogFooter class="gap-2">
                     <Button type="button" :disabled="isMfaActionLoading || mfaVerifyCode.length < 6" @click="confirmMfaSetup">تفعيل</Button>
                     <Button type="button" variant="outline" :disabled="isMfaActionLoading" @click="mfaDialogStage = 'scan'">رجوع</Button>
                   </DialogFooter>
@@ -1321,7 +1321,7 @@ function savePersonalNotifications() {
                   </DialogDescription>
                 </DialogHeader>
                 <div v-if="pinError" class="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive" role="alert">{{ pinError }}</div>
-                <div class="flex justify-center py-2" dir="ltr">
+                <div class="flex justify-center py-2">
                   <InputOTP v-if="pinDialogMode === 'disable' || (pinDialogMode === 'change' && pinDialogStage === 'current')" v-model="pinCurrent" :maxlength="6" :disabled="isPinSaving">
                     <InputOTPGroup>
                       <InputOTPSlot v-for="i in 6" :key="i" :index="i - 1" class="size-11 text-xl font-bold" />
@@ -1338,7 +1338,7 @@ function savePersonalNotifications() {
                     </InputOTPGroup>
                   </InputOTP>
                 </div>
-                <DialogFooter class="gap-2 sm:flex-row-reverse">
+                <DialogFooter class="gap-2">
                   <Button type="button" :disabled="isPinSaving" @click="submitPinAction">
                     <KeyRound class="ms-1 h-4 w-4" />
                     {{ pinDialogMode === 'disable' ? 'تعطيل' : pinDialogStage !== 'confirm' ? 'التالي' : 'حفظ' }}

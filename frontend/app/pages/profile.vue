@@ -87,22 +87,22 @@ const stats = computed(() => {
   }
   if (user.value?.role === UserRole.COMMITTEE_DIRECTOR) {
     return [
-      { label: 'جلسات أُغلقت', value: s.sessions_closed ?? s.total ?? 0 },
-      { label: 'قرارات مُصدرة', value: s.decisions_finalized ?? s.completed ?? 0 },
+      { label: 'جلسات أغلقت', value: s.sessions_closed ?? s.total ?? 0 },
+      { label: 'قرارات مصدرة', value: s.decisions_finalized ?? s.completed ?? 0 },
       { label: 'تأكيدات مصارفة', value: s.fx_confirmations_completed ?? 0 },
     ]
   }
   if (user.value?.role === UserRole.EXECUTIVE_MEMBER) {
     return [
       { label: 'جلسات شارك بها', value: s.sessions_participated ?? s.total ?? 0 },
-      { label: 'متوسط وقت التصويت', value: s.avg_time_to_vote_hours != null ? `${s.avg_time_to_vote_hours}س` : '—' },
-      { label: 'نسبة الاعتماد', value: s.approval_percentage != null ? `${s.approval_percentage}%` : '—' },
+      { label: 'متوسط وقت التصويت', value: s.avg_time_to_vote_hours != null ? `${s.avg_time_to_vote_hours}س` : 'غير متاح' },
+      { label: 'نسبة الاعتماد', value: s.approval_percentage != null ? `${s.approval_percentage}%` : 'غير متاحة' },
     ]
   }
   if (user.value?.role === UserRole.SWIFT_OFFICER) {
     return [
       { label: 'وثائق مرفوعة', value: s.swift_uploads ?? s.total ?? 0 },
-      { label: 'متوسط وقت الرفع', value: s.avg_time_to_upload_hours != null ? `${s.avg_time_to_upload_hours}س` : '—' },
+      { label: 'متوسط وقت الرفع', value: s.avg_time_to_upload_hours != null ? `${s.avg_time_to_upload_hours}س` : 'غير متاح' },
       { label: 'مكتمل', value: s.completed ?? 0 },
     ]
   }
@@ -263,7 +263,7 @@ async function submitPinAction() {
     notify(pinDialogMode.value === 'create' ? 'تم إنشاء رمز PIN بنجاح' : 'تم تغيير رمز PIN بنجاح')
   }
   catch {
-    pinError.value = 'حدث خطأ أثناء حفظ رمز PIN. يرجى المحاولة مرة أخرى.'
+    pinError.value = 'تعذر حفظ رمز PIN الآن. أعد المحاولة بعد قليل.'
   }
   finally {
     isPinSaving.value = false
@@ -354,7 +354,7 @@ async function loadTotpSetup() {
     mfaDialogStage.value = 'scan'
   }
   catch {
-    mfaSetupError.value = 'تعذر تحميل رمز QR. يرجى المحاولة مرة أخرى.'
+    mfaSetupError.value = 'تعذر تحميل رمز QR الآن. أعد المحاولة بعد قليل.'
   }
   finally {
     isMfaActionLoading.value = false
@@ -464,7 +464,7 @@ async function confirmMfaDisable() {
         <div class="mt-4 space-y-1.5 border-t border-border pt-4 text-sm">
           <div data-testid="stat-last-login" class="flex items-center justify-between text-xs text-muted-foreground">
             <span>آخر دخول</span>
-            <span>—</span>
+            <span>غير متاح</span>
           </div>
           <div data-testid="stat-total-actions" class="flex items-center justify-between text-xs text-muted-foreground">
             <span>إجمالي الإجراءات</span>
@@ -844,7 +844,7 @@ async function confirmMfaDisable() {
                   @keydown.enter="confirmMfaDisableWithPassword"
                 />
               </div>
-              <DialogFooter class="flex-row-reverse gap-2 sm:flex-row-reverse">
+              <DialogFooter class="gap-2">
                 <Button
                   type="button"
                   variant="destructive"
@@ -870,7 +870,7 @@ async function confirmMfaDisable() {
               <DialogHeader>
                 <DialogTitle>إعداد تطبيق المصادقة</DialogTitle>
                 <DialogDescription>
-                  سيُضاف طبق مصادقة لحماية حسابك برمز تحقق مؤقت يتغير كل 30 ثانية
+                  سيضاف تطبيق مصادقة لحماية حسابك برمز تحقق مؤقت يتغير كل 30 ثانية
                 </DialogDescription>
               </DialogHeader>
               <div class="space-y-3 py-2 text-sm text-muted-foreground">
@@ -884,7 +884,7 @@ async function confirmMfaDisable() {
               <div v-if="mfaSetupError" class="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive" role="alert">
                 {{ mfaSetupError }}
               </div>
-              <DialogFooter class="flex-row-reverse gap-2 sm:flex-row-reverse">
+              <DialogFooter class="gap-2">
                 <Button type="button" :disabled="isMfaActionLoading" @click="loadTotpSetup">
                   <span v-if="isMfaActionLoading" class="flex items-center gap-2">
                     <span class="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
@@ -926,9 +926,9 @@ async function confirmMfaDisable() {
                 </div>
               </div>
 
-              <DialogFooter class="flex-row-reverse gap-2 sm:flex-row-reverse">
+              <DialogFooter class="gap-2">
                 <Button type="button" @click="mfaDialogStage = 'verify'">
-                  تم — إدخال رمز التحقق
+                  متابعة إدخال رمز التحقق
                 </Button>
                 <Button type="button" variant="outline" @click="mfaDialogStage = 'intro'">
                   رجوع
@@ -954,7 +954,7 @@ async function confirmMfaDisable() {
                   </InputOTPGroup>
                 </InputOTP>
               </div>
-              <DialogFooter class="flex-row-reverse gap-2 sm:flex-row-reverse">
+              <DialogFooter class="gap-2">
                 <Button type="button" :disabled="isMfaActionLoading || mfaVerifyCode.length < 6" @click="confirmMfaSetup">
                   <BadgeCheck class="ms-1 h-4 w-4" />
                   تفعيل
@@ -1038,7 +1038,7 @@ async function confirmMfaDisable() {
               </InputOTP>
             </div>
 
-            <DialogFooter class="flex-row-reverse gap-2 sm:flex-row-reverse">
+            <DialogFooter class="gap-2">
               <Button
                 type="button"
                 :disabled="isPinSaving"
