@@ -115,7 +115,10 @@ function normalizeSection(raw: unknown): UserTab | null {
 
 // ── Security (password / MFA / PIN) ───────────────────────────────────────────
 const { toggleMfa: composableToggleMfa, setupTotp, verifyTotpSetup, disableTotp, disableTotpWithPassword, setPin: savePinOnServer, disablePin: disablePinOnServer, changePassword } = useProfile()
-const { accounts, removeAccount, getPINStatus, setPINStatus } = useSavedAccounts()
+const { accounts: allAccounts, removeAccount, getPINStatus, setPINStatus } = useSavedAccounts()
+const currentUserDevices = computed(() =>
+  allAccounts.value.filter(a => a.email.trim().toLowerCase() === (user.value?.email ?? '').trim().toLowerCase()),
+)
 
 const passwordForm = reactive({ current_password: '', password: '', password_confirmation: '' })
 const passwordSuccess = ref(false)
@@ -1145,11 +1148,11 @@ function savePersonalNotifications() {
                   الأجهزة التي حفظت بيانات دخولك للوصول السريع برمز PIN.
                 </p>
               </div>
-              <div v-if="accounts.length === 0" class="text-sm text-muted-foreground py-2">
+              <div v-if="currentUserDevices.length === 0" class="text-sm text-muted-foreground py-2">
                 لا توجد أجهزة موثوقة مسجّلة حتى الآن.
               </div>
               <ul v-else class="max-w-md space-y-2">
-                <li v-for="device in accounts" :key="device.id" class="rounded-lg border border-border p-3">
+                <li v-for="device in currentUserDevices" :key="device.id" class="rounded-lg border border-border p-3">
                   <div class="flex items-start gap-3">
                     <div class="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-muted">
                       <Smartphone v-if="device.deviceInfo?.deviceType === 'mobile'" class="h-4 w-4 text-muted-foreground" />
