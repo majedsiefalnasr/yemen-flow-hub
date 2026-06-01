@@ -792,7 +792,7 @@ async function confirmMfaDisable() {
               <div v-if="mfaSetupError" class="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive" role="alert">
                 {{ mfaSetupError }}
               </div>
-              <div class="flex justify-center py-2" >
+              <div class="flex justify-center py-2" dir="ltr">
                 <InputOTP v-model="mfaVerifyCode" :maxlength="6" :disabled="isMfaActionLoading" @complete="confirmMfaDisable">
                   <InputOTPGroup>
                     <InputOTPSlot v-for="i in 6" :key="i" :index="i - 1" class="size-11 text-xl font-bold" />
@@ -947,7 +947,7 @@ async function confirmMfaDisable() {
               <div v-if="mfaSetupError" class="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive" role="alert">
                 {{ mfaSetupError }}
               </div>
-              <div class="flex justify-center py-2" >
+              <div class="flex justify-center py-2" dir="ltr">
                 <InputOTP v-model="mfaVerifyCode" :maxlength="6" :disabled="isMfaActionLoading" @complete="confirmMfaSetup">
                   <InputOTPGroup>
                     <InputOTPSlot v-for="i in 6" :key="i" :index="i - 1" class="size-11 text-xl font-bold" />
