@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { CheckCircle2, FileSignature, PackageCheck, Truck } from 'lucide-vue-next'
+import { CheckCircle2, FileSignature, PackageCheck, RefreshCw, Truck } from 'lucide-vue-next'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import { RequestStatus } from '@/types/enums'
 import type { ImportRequest } from '@/types/models'
 import { getBusinessStatus, ROUTE_ROLE_MAP } from '@/constants/workflow'
 import { useAuthStore } from '@/stores/auth.store'
 import { useRequests } from '@/composables/useRequests'
+import { Skeleton } from '@/components/ui/skeleton'
 
 definePageMeta({
   middleware: ['auth', 'role'],
@@ -16,24 +17,71 @@ const authStore = useAuthStore()
 const user = computed(() => authStore.user)
 const { fetchRequests } = useRequests()
 
-const allRequests = ref<ImportRequest[]>([])
+// Ready for issuance — EXECUTIVE_APPROVED or FX_CONFIRMATION_PENDING
+// These should be few at any given time; fetch all with a high per_page
+const ready = ref<ImportRequest[]>([])
+const loadingReady = ref(false)
+const readyError = ref<string | null>(null)
 
-onMounted(async () => {
-  const result = await fetchRequests({ per_page: 200 })
-  allRequests.value = result.data
+// Issued — CUSTOMS_DECLARATION_ISSUED or COMPLETED — paginated with load-more
+const issued = ref<ImportRequest[]>([])
+const loadingIssued = ref(false)
+const issuedError = ref<string | null>(null)
+const issuedPage = ref(1)
+const issuedHasMore = ref(false)
+const ISSUED_PER_PAGE = 20
+
+async function fetchReady() {
+  loadingReady.value = true
+  readyError.value = null
+  try {
+    const result = await fetchRequests({
+      status: [RequestStatus.EXECUTIVE_APPROVED, RequestStatus.FX_CONFIRMATION_PENDING],
+      per_page: 50,
+    })
+    ready.value = result.data
+  }
+  catch {
+    readyError.value = 'تعذّر تحميل الطلبات الجاهزة.'
+  }
+  finally {
+    loadingReady.value = false
+  }
+}
+
+async function fetchIssued(page: number) {
+  loadingIssued.value = true
+  issuedError.value = null
+  try {
+    const result = await fetchRequests({
+      status: [RequestStatus.CUSTOMS_DECLARATION_ISSUED, RequestStatus.COMPLETED],
+      per_page: ISSUED_PER_PAGE,
+      page,
+    })
+    if (page === 1) {
+      issued.value = result.data
+    }
+    else {
+      issued.value.push(...result.data)
+    }
+    issuedPage.value = result.meta.current_page
+    issuedHasMore.value = result.meta.current_page < result.meta.last_page
+  }
+  catch {
+    issuedError.value = 'تعذّر تحميل التأكيدات الصادرة.'
+  }
+  finally {
+    loadingIssued.value = false
+  }
+}
+
+async function loadMoreIssued() {
+  await fetchIssued(issuedPage.value + 1)
+}
+
+onMounted(() => {
+  Promise.all([fetchReady(), fetchIssued(1)])
 })
-
-const ready = computed(() =>
-  allRequests.value.filter(r =>
-    r.status === RequestStatus.EXECUTIVE_APPROVED || r.status === RequestStatus.FX_CONFIRMATION_PENDING,
-  ),
-)
-
-const issued = computed(() =>
-  allRequests.value.filter(r =>
-    r.status === RequestStatus.CUSTOMS_DECLARATION_ISSUED || r.status === RequestStatus.COMPLETED,
-  ),
-)
 </script>
 
 <template>
@@ -45,20 +93,37 @@ const issued = computed(() =>
     />
 
     <div class="grid gap-6 lg:grid-cols-2">
+      <!-- Ready for issuance -->
       <Card class="border-0 p-5 shadow">
         <h3 class="mb-4 flex items-center gap-2 font-semibold">
           <PackageCheck class="h-5 w-5 text-[var(--severity-green)]" />
-          طلبات جاهزة للإصدار ({{ ready.length }})
+          طلبات جاهزة للإصدار
+          <span v-if="!loadingReady" class="text-muted-foreground font-normal">({{ ready.length }})</span>
         </h3>
 
-        <div class="space-y-3">
-          <div
-            v-if="ready.length === 0"
-            class="text-sm text-muted-foreground"
-          >
-            لا توجد طلبات جاهزة حالياً.
-          </div>
+        <!-- Loading skeleton -->
+        <div v-if="loadingReady" class="space-y-3" aria-busy="true" aria-label="جارٍ التحميل">
+          <Skeleton class="h-16 w-full rounded-lg" />
+          <Skeleton class="h-16 w-full rounded-lg" />
+          <Skeleton class="h-16 w-3/4 rounded-lg" />
+        </div>
 
+        <!-- Error state -->
+        <div v-else-if="readyError" class="flex items-center justify-between rounded-lg border border-[var(--severity-red)]/30 bg-[var(--severity-red)]/5 px-3 py-3 text-sm text-[var(--severity-red)]" role="alert">
+          <span>{{ readyError }}</span>
+          <Button variant="ghost" size="sm" class="gap-1" @click="fetchReady">
+            <RefreshCw class="h-3.5 w-3.5" />
+            إعادة المحاولة
+          </Button>
+        </div>
+
+        <!-- Empty -->
+        <div v-else-if="ready.length === 0" class="text-sm text-muted-foreground">
+          لا توجد طلبات جاهزة حالياً.
+        </div>
+
+        <!-- List -->
+        <div v-else class="space-y-3">
           <div
             v-for="request in ready"
             :key="request.id"
@@ -89,20 +154,37 @@ const issued = computed(() =>
         </div>
       </Card>
 
+      <!-- Recently issued -->
       <Card class="border-0 p-5 shadow">
         <h3 class="mb-4 flex items-center gap-2 font-semibold">
           <CheckCircle2 class="h-5 w-5 text-[var(--severity-green)]" />
-          تأكيدات صادرة مؤخراً ({{ issued.length }})
+          تأكيدات صادرة مؤخراً
+          <span v-if="!loadingIssued || issued.length > 0" class="text-muted-foreground font-normal">({{ issued.length }}{{ issuedHasMore ? '+' : '' }})</span>
         </h3>
 
-        <div class="space-y-3">
-          <div
-            v-if="issued.length === 0"
-            class="text-sm text-muted-foreground"
-          >
-            لم تُصدَر أي تأكيدات بعد.
-          </div>
+        <!-- Loading skeleton (first load only) -->
+        <div v-if="loadingIssued && issued.length === 0" class="space-y-3" aria-busy="true" aria-label="جارٍ التحميل">
+          <Skeleton class="h-14 w-full rounded-lg" />
+          <Skeleton class="h-14 w-full rounded-lg" />
+          <Skeleton class="h-14 w-2/3 rounded-lg" />
+        </div>
 
+        <!-- Error state (first load) -->
+        <div v-else-if="issuedError && issued.length === 0" class="flex items-center justify-between rounded-lg border border-[var(--severity-red)]/30 bg-[var(--severity-red)]/5 px-3 py-3 text-sm text-[var(--severity-red)]" role="alert">
+          <span>{{ issuedError }}</span>
+          <Button variant="ghost" size="sm" class="gap-1" @click="fetchIssued(1)">
+            <RefreshCw class="h-3.5 w-3.5" />
+            إعادة المحاولة
+          </Button>
+        </div>
+
+        <!-- Empty -->
+        <div v-else-if="!loadingIssued && issued.length === 0" class="text-sm text-muted-foreground">
+          لم تُصدَر أي تأكيدات بعد.
+        </div>
+
+        <!-- List -->
+        <div v-else class="space-y-3">
           <div
             v-for="request in issued"
             :key="request.id"
@@ -128,6 +210,29 @@ const issued = computed(() =>
               :href="`/customs/${request.id}/print`"
             >
               عرض/طباعة
+            </Button>
+          </div>
+
+          <!-- Load-more error (for subsequent pages) -->
+          <div v-if="issuedError && issued.length > 0" class="flex items-center justify-between rounded-lg border border-[var(--severity-red)]/30 bg-[var(--severity-red)]/5 px-3 py-2 text-sm text-[var(--severity-red)]" role="alert">
+            <span>{{ issuedError }}</span>
+            <Button variant="ghost" size="sm" class="gap-1" @click="loadMoreIssued">
+              <RefreshCw class="h-3.5 w-3.5" />
+              إعادة المحاولة
+            </Button>
+          </div>
+
+          <!-- Load more -->
+          <div v-if="issuedHasMore && !issuedError" class="pt-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              class="w-full text-muted-foreground"
+              :disabled="loadingIssued"
+              @click="loadMoreIssued"
+            >
+              <RefreshCw v-if="loadingIssued" class="h-3.5 w-3.5 animate-spin" />
+              {{ loadingIssued ? 'جارٍ التحميل…' : 'تحميل المزيد' }}
             </Button>
           </div>
         </div>

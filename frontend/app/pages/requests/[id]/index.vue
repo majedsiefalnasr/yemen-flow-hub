@@ -1410,7 +1410,7 @@ async function handleCloneConfirm() {
                   :customs-declaration="request.customs_declaration ?? null"
                   :user-role="userRole"
                   :request-status="request.status"
-                  :loading="requestsStore.loadingDocuments"
+                  :loading="requestsStore.loadingDocuments || !requestsStore.documentsLoaded"
                   :error="requestsStore.documentsError"
                   :uploading-document="requestsStore.uploading"
                   :upload-error="requestsStore.uploadError"
@@ -1654,7 +1654,7 @@ async function handleCloneConfirm() {
               <div class="card">
                 <h2 class="card-title">مسار سير العمل</h2>
 
-                <div v-if="requestsStore.loadingHistory" class="space-y-3" aria-busy="true">
+                <div v-if="requestsStore.loadingHistory || !requestsStore.historyLoaded" class="space-y-3" aria-busy="true">
                   <Skeleton class="h-5 w-full" />
                   <Skeleton class="h-5 w-full" />
                   <Skeleton class="h-5 w-2/3" />
@@ -1677,7 +1677,7 @@ async function handleCloneConfirm() {
               <div id="audit-trail" class="card">
                 <h2 class="card-title">سجل الأحداث</h2>
 
-                <div v-if="requestsStore.loadingHistory" class="space-y-3" aria-busy="true">
+                <div v-if="requestsStore.loadingHistory || !requestsStore.historyLoaded" class="space-y-3" aria-busy="true">
                   <Skeleton class="h-5 w-full" />
                   <Skeleton class="h-5 w-full" />
                 </div>
