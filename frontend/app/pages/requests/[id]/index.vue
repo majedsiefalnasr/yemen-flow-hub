@@ -1501,8 +1501,8 @@ async function handleCloneConfirm() {
                 </div>
 
                 <div class="rounded-lg border border-border p-3 space-y-2 bg-muted">
-                  <p class="text-sm font-semibold">الخطوة 2: التوقيع الخارجي</p>
-                  <p class="text-xs text-muted-foreground">قم بتوقيع وختم النموذج خارجياً ثم ارفعه في الخطوة التالية.</p>
+                  <p class="text-sm font-semibold">الخطوة 2: الطباعة والتوقيع الخارجي</p>
+                  <p class="text-xs text-muted-foreground">اطبع النموذج، وقّعه وختمه ورقياً، ثم امسحه ضوئياً بصيغة PDF واحفظه لرفعه في الخطوة التالية.</p>
                 </div>
 
                 <div class="rounded-lg border border-border p-3 space-y-3">
@@ -1529,8 +1529,36 @@ async function handleCloneConfirm() {
                   >
                     {{ fxCompleting ? 'جارٍ الإتمام…' : 'إتمام تأكيد المصارفة' }}
                   </Button>
-                  <p v-if="fxFlowError" class="text-xs text-[var(--severity-red)]">{{ fxFlowError }}</p>
-                  <p v-if="fxFlowSuccess" class="text-xs text-[var(--severity-green)]">تم إتمام تأكيد المصارفة بنجاح.</p>
+                  <div v-if="fxFlowError" class="flex items-start gap-2 rounded-md border border-[var(--severity-red)]/20 bg-[var(--severity-red)]/5 p-2.5">
+                    <p class="flex-1 text-xs text-[var(--severity-red)]">{{ fxFlowError }}</p>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      class="h-auto shrink-0 p-0 text-xs font-semibold text-[var(--severity-red)] hover:text-[var(--severity-red)]"
+                      @click="handleCompleteFxConfirmation"
+                    >
+                      إعادة المحاولة
+                    </Button>
+                  </div>
+                  <div
+                    v-if="fxFlowSuccess"
+                    class="rounded-md border border-[var(--severity-green)]/20 bg-[var(--severity-green)]/5 p-3 space-y-1.5"
+                  >
+                    <p class="text-sm font-semibold text-[var(--severity-green)]">
+                      تم إتمام تأكيد المصارفة بنجاح
+                    </p>
+                    <p class="text-xs text-muted-foreground">
+                      انتقل الطلب إلى حالة الإغلاق. يمكنك العودة إلى قائمة الطلبات لمتابعة الطلبات الأخرى.
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      class="mt-1"
+                      @click="router.push('/requests')"
+                    >
+                      العودة إلى قائمة الطلبات
+                    </Button>
+                  </div>
                 </div>
               </div>
             </TabsContent>
