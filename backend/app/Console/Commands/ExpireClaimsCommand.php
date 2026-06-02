@@ -14,35 +14,54 @@ use Illuminate\Support\Facades\DB;
 class ExpireClaimsCommand extends Command
 {
     protected $signature = 'workflow:expire-claims';
-    protected $description = 'Release support review claims whose TTL has expired';
+    protected $description = 'Release support and bank review claims whose TTL has expired, and unblock requests stuck without a TTL';
 
     public function handle(WorkflowService $workflowService, ClaimReleaseNotifier $claimReleaseNotifier): void
     {
-        $expiredIds = ImportRequest::query()
-            ->where('status', RequestStatus::SUPPORT_REVIEW_IN_PROGRESS)
-            ->where('claim_expires_at', '<', now())
-            ->pluck('id');
-
-        if ($expiredIds->isEmpty()) {
-            return;
-        }
-
-        $systemActor = User::query()
-            ->where('role', UserRole::CBY_ADMIN)
-            ->first();
+        $systemActor = User::query()->where('role', UserRole::CBY_ADMIN)->first();
 
         if (!$systemActor) {
             $this->error('No CBY_ADMIN user found — cannot expire claims. Seed a system CBY_ADMIN user.');
             return;
         }
 
+        // Expire support committee claims whose TTL has passed
+        $this->expireByStatus(
+            RequestStatus::SUPPORT_REVIEW_IN_PROGRESS,
+            'support_release',
+            $systemActor,
+            $workflowService,
+            $claimReleaseNotifier
+        );
+
+        // Expire bank reviewer claims whose TTL has passed (transitions BANK_REVIEW → SUBMITTED)
+        $this->expireByStatus(
+            RequestStatus::BANK_REVIEW,
+            'bank_claim_release',
+            $systemActor,
+            $workflowService,
+            $claimReleaseNotifier
+        );
+    }
+
+    private function expireByStatus(
+        RequestStatus $status,
+        string $releaseAction,
+        User $systemActor,
+        WorkflowService $workflowService,
+        ClaimReleaseNotifier $claimReleaseNotifier
+    ): void {
+        $expiredIds = ImportRequest::query()
+            ->where('status', $status)
+            ->whereNotNull('claim_expires_at')
+            ->where('claim_expires_at', '<', now())
+            ->pluck('id');
+
         foreach ($expiredIds as $id) {
             try {
-                // Re-fetch with lockForUpdate inside a transaction so a concurrent heartbeat
-                // cannot extend the TTL between our initial scan and the actual release.
-                DB::transaction(function () use ($id, $systemActor, $workflowService, $claimReleaseNotifier): void {
+                DB::transaction(function () use ($id, $status, $releaseAction, $systemActor, $workflowService, $claimReleaseNotifier): void {
                     $request = ImportRequest::query()->lockForUpdate()->find($id);
-                    if (!$request || $request->status !== RequestStatus::SUPPORT_REVIEW_IN_PROGRESS) {
+                    if (!$request || $request->status !== $status) {
                         return;
                     }
                     if ($request->claim_expires_at === null || $request->claim_expires_at->isFuture()) {
@@ -50,7 +69,7 @@ class ExpireClaimsCommand extends Command
                     }
                     $updated = $workflowService->transition(
                         $request,
-                        'support_release',
+                        $releaseAction,
                         $systemActor,
                         null,
                         ['auto_finalized' => true, 'auto_expire' => true]
@@ -58,7 +77,7 @@ class ExpireClaimsCommand extends Command
                     $claimReleaseNotifier->dispatch($updated, 'ttl_expired');
                 });
             } catch (\Throwable $e) {
-                $this->error("Failed to expire claim for request {$id}: {$e->getMessage()}");
+                $this->error("Failed to expire claim for request {$id} ({$releaseAction}): {$e->getMessage()}");
             }
         }
     }

@@ -15,7 +15,11 @@ class SaveSettingsSectionRequest extends FormRequest
     {
         return [
             'section' => 'required|string|in:workflow,email,security,general,theming,notif',
+            'subsection' => 'nullable|string|in:appearance,branding,accessibility',
             'data' => 'required|array',
+            'data.brandColor' => 'sometimes|string|regex:/^#[0-9a-fA-F]{6}$/',
+            'data.brandLogoName' => 'sometimes|nullable|string|max:255',
+            'data.brandLogoDataUrl' => 'sometimes|nullable|string|max:3000000',
         ];
     }
 
@@ -31,7 +35,8 @@ class SaveSettingsSectionRequest extends FormRequest
 
     public function isSystemSection(): bool
     {
-        return in_array($this->input('section'), ['workflow', 'email', 'security', 'general']);
+        return in_array($this->input('section'), ['workflow', 'email', 'security', 'general'], true)
+            || ($this->input('section') === 'theming' && in_array($this->input('subsection'), ['appearance', 'branding'], true));
     }
 
     public function isUserSection(): bool

@@ -2,8 +2,8 @@
 
 namespace App\Services\Settings;
 
+use App\Models\SystemSetting;
 use App\Models\User;
-use Illuminate\Support\Arr;
 
 class UserPreferencesService
 {
@@ -14,6 +14,16 @@ class UserPreferencesService
         'page_size' => 25,
         'default_filters' => [],
         'notification_preferences' => [],
+        'theming' => [
+            'mode' => 'system',
+            'font' => 'IBM Plex Sans Arabic',
+            'layout' => 'full',
+            'sidebarVariant' => 'sidebar',
+            'sidebarCollapsible' => 'icon',
+            'radius' => 'md',
+            'density' => 'comfortable',
+            'reducedMotion' => 'system',
+        ],
     ];
 
     public function getDefaults(): array
@@ -21,42 +31,83 @@ class UserPreferencesService
         return self::DEFAULTS;
     }
 
+    private function getSystemTheming(): array
+    {
+        $stored = SystemSetting::getValueByKey('settings.theming', []);
+
+        if (isset($stored['appearance']) && is_array($stored['appearance'])) {
+            $stored = array_merge($stored, $stored['appearance']);
+            unset($stored['appearance']);
+        }
+
+        return array_merge(
+            self::DEFAULTS['theming'],
+            $this->validateThemingSection(is_array($stored) ? $stored : [])
+        );
+    }
+
     public function getForUser(User $user): array
     {
         $stored = $user->user_preferences ?? [];
-        return array_merge(self::DEFAULTS, $stored);
+        $merged = array_merge(self::DEFAULTS, $stored);
+        $merged['theming'] = array_merge(
+            $this->getSystemTheming(),
+            is_array($stored['theming'] ?? null) ? $stored['theming'] : []
+        );
+
+        return $merged;
     }
 
     public function updateForUser(User $user, array $preferences): array
     {
         $preferences = $this->validatePreferences($preferences);
-        $merged = array_merge($this->getForUser($user), $preferences);
+        $merged = array_merge($user->user_preferences ?? [], $preferences);
         $user->user_preferences = $merged;
         $user->save();
-        return $merged;
+        return $this->getForUser($user);
     }
 
     public function resetForUser(User $user): array
     {
         $user->user_preferences = null;
         $user->save();
-        return self::DEFAULTS;
+        return $this->getForUser($user);
     }
 
     public function saveSection(User $user, string $section, array $data): array
     {
         $current = $this->getForUser($user);
+        $stored = $user->user_preferences ?? [];
 
         if ($section === 'theming') {
-            $validated = $this->validateThemingSection($data);
+            $base = $this->getSystemTheming();
+            $overrides = is_array($stored['theming'] ?? null) ? $stored['theming'] : [];
+            $validated = array_merge($overrides, $this->validateThemingSection($data));
+            $validated = array_filter(
+                $validated,
+                static fn ($value, $key) => !array_key_exists($key, $base) || $base[$key] !== $value,
+                ARRAY_FILTER_USE_BOTH
+            );
         } elseif ($section === 'notif') {
             $validated = $this->validateNotificationSection($data);
         } else {
             $validated = $data;
         }
 
-        $current[$section] = $validated;
-        $user->user_preferences = $current;
+        if ($section === 'theming' && $validated === []) {
+            unset($stored[$section]);
+        } else {
+            $stored[$section] = $validated;
+        }
+
+        if ($stored === []) {
+            $stored = null;
+        }
+
+        $current[$section] = $section === 'theming'
+            ? array_merge($this->getSystemTheming(), $validated)
+            : $validated;
+        $user->user_preferences = $stored;
         $user->save();
 
         return $current;
@@ -110,6 +161,34 @@ class UserPreferencesService
             if (in_array($data['mode'], ['light', 'dark', 'system'], true)) {
                 $validated['mode'] = $data['mode'];
             }
+        }
+
+        if (isset($data['font']) && is_string($data['font']) && trim($data['font']) !== '') {
+            $validated['font'] = trim($data['font']);
+        }
+
+        if (isset($data['layout']) && in_array($data['layout'], ['boxed', 'full'], true)) {
+            $validated['layout'] = $data['layout'];
+        }
+
+        if (isset($data['sidebarVariant']) && in_array($data['sidebarVariant'], ['sidebar', 'floating', 'inset'], true)) {
+            $validated['sidebarVariant'] = $data['sidebarVariant'];
+        }
+
+        if (isset($data['sidebarCollapsible']) && in_array($data['sidebarCollapsible'], ['offcanvas', 'icon', 'none'], true)) {
+            $validated['sidebarCollapsible'] = $data['sidebarCollapsible'];
+        }
+
+        if (isset($data['radius']) && in_array($data['radius'], ['none', 'sm', 'md', 'lg', 'xl'], true)) {
+            $validated['radius'] = $data['radius'];
+        }
+
+        if (isset($data['density']) && in_array($data['density'], ['comfortable', 'compact'], true)) {
+            $validated['density'] = $data['density'];
+        }
+
+        if (isset($data['reducedMotion']) && in_array($data['reducedMotion'], ['system', 'always'], true)) {
+            $validated['reducedMotion'] = $data['reducedMotion'];
         }
 
         if (isset($data['appearance']) && is_array($data['appearance'])) {

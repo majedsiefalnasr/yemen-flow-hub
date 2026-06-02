@@ -30,6 +30,7 @@ class User extends Authenticatable
         'totp_enabled',
         'last_login_at',
         'user_preferences',
+        'avatar_variant',
     ];
 
     protected $hidden = ['password', 'remember_token', 'totp_secret', 'pin_code_hash'];

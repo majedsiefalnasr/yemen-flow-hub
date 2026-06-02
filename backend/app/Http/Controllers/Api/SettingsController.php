@@ -23,6 +23,22 @@ class SettingsController extends Controller
     }
 
     #[OA\Get(
+        path: '/api/settings/public',
+        tags: ['Settings'],
+        summary: 'Get public system branding and general settings',
+        responses: [
+            new OA\Response(response: 200, description: 'Public system settings retrieved'),
+        ]
+    )]
+    public function publicSettings()
+    {
+        return ApiResponse::success(
+            $this->systemSettingsService->getPublicSettings(),
+            'Public system settings retrieved.'
+        );
+    }
+
+    #[OA\Get(
         path: '/api/settings',
         tags: ['Settings'],
         summary: 'Get authenticated user preferences with defaults',
@@ -35,6 +51,7 @@ class SettingsController extends Controller
     {
         $user = $request->user();
         $preferences = $this->preferencesService->getForUser($user);
+        $preferences['system'] = $this->systemSettingsService->getPublicSettings();
 
         return ApiResponse::success($preferences, 'User preferences retrieved.');
     }
@@ -128,11 +145,12 @@ class SettingsController extends Controller
     {
         $user = $request->user();
         $section = $request->input('section');
+        $subsection = $request->input('subsection');
         $data = $request->input('data');
 
         try {
             if ($request->isSystemSection()) {
-                $result = $this->systemSettingsService->saveSection($user, $section, $data);
+                $result = $this->systemSettingsService->saveSection($user, $section, $data, $subsection);
             } else {
                 $result = $this->preferencesService->saveSection($user, $section, $data);
                 $this->auditService->log(

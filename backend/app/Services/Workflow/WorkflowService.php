@@ -71,6 +71,16 @@ class WorkflowService
             );
         }
 
+        // Enforce bank-claim ownership: if a claim exists and belongs to someone else, block.
+        // Backwards-compatible: if claimed_by is null (pre-claim system), allow any bank reviewer.
+        if (in_array($action, ['bank_approve', 'bank_reject', 'bank_return_to_intake', 'bank_reject_terminal'], true)
+            && $request->claimed_by !== null
+            && $request->claimed_by !== $actor->id) {
+            throw new UnauthorizedTransitionException(
+                'هذا الطلب محجوز بواسطة مراجع آخر. / This request is claimed by another reviewer.'
+            );
+        }
+
         if ($action === 'submit') {
             $this->assertSubmitReadiness($request);
         }
@@ -82,6 +92,14 @@ class WorkflowService
         // Allow release of expired claims (isClaimed() returns false when TTL has passed)
         if ($action === 'support_release' && !$request->isClaimed() && !$request->isClaimExpired()) {
             throw new InvalidTransitionException('الطلب غير محجوز. / Request is not currently claimed.');
+        }
+
+        // Allow CBY_ADMIN to force-release an expired bank claim
+        if ($action === 'bank_claim_release'
+            && $request->claimed_by !== null
+            && $request->claimed_by !== $actor->id
+            && !$autoFinalize) {
+            throw new UnauthorizedTransitionException('لا يمكنك تحرير حجز لا تملكه. / You do not hold this claim.');
         }
 
         DB::transaction(function () use ($request, $action, $actor, $reason, $transitionMetadata, $toStatus, $newOwnerRole): void {
@@ -362,18 +380,35 @@ class WorkflowService
     private function applyClaimDbSideEffects(ImportRequest $request, string $action, User $actor): void
     {
         $ttlMinutes = (int) config('workflow.support_claim_ttl_minutes', 15);
+        $claimFields = [
+            'claimed_by'       => $actor->id,
+            'claimed_at'       => now(),
+            'claim_expires_at' => now()->addMinutes($ttlMinutes),
+        ];
+        $releaseFields = [
+            'claimed_by'       => null,
+            'claimed_at'       => null,
+            'claim_expires_at' => null,
+        ];
 
         match ($action) {
-            'support_claim' => $request->forceFill([
-                'claimed_by' => $actor->id,
-                'claimed_at' => now(),
-                'claim_expires_at' => now()->addMinutes($ttlMinutes),
-            ]),
-            'support_release', 'support_approve', 'support_reject', 'support_return_to_intake' => $request->forceFill([
-                'claimed_by' => null,
-                'claimed_at' => null,
-                'claim_expires_at' => null,
-            ]),
+            // Claim (set holder + TTL)
+            'support_claim',
+            'bank_begin_review'
+                => $request->forceFill($claimFields),
+
+            // Release (clear holder + TTL)
+            'support_release',
+            'support_approve',
+            'support_reject',
+            'support_return_to_intake',
+            'bank_claim_release',
+            'bank_approve',
+            'bank_reject',
+            'bank_return_to_intake',
+            'bank_reject_terminal'
+                => $request->forceFill($releaseFields),
+
             default => null,
         };
     }
@@ -381,11 +416,18 @@ class WorkflowService
     private function applyClaimCacheEffects(ImportRequest $request, string $action, User $actor): void
     {
         $ttlMinutes = (int) config('workflow.support_claim_ttl_minutes', 15);
-        $cacheKey = "support_claim:{$request->id}";
+        $supportKey = "support_claim:{$request->id}";
+        $bankKey    = "bank_claim:{$request->id}";
 
         match ($action) {
-            'support_claim' => Cache::put($cacheKey, $actor->id, now()->addMinutes($ttlMinutes)),
-            'support_release', 'support_approve', 'support_reject', 'support_return_to_intake' => Cache::forget($cacheKey),
+            'support_claim'
+                => Cache::put($supportKey, $actor->id, now()->addMinutes($ttlMinutes)),
+            'support_release', 'support_approve', 'support_reject', 'support_return_to_intake'
+                => Cache::forget($supportKey),
+            'bank_begin_review'
+                => Cache::put($bankKey, $actor->id, now()->addMinutes($ttlMinutes)),
+            'bank_claim_release', 'bank_approve', 'bank_reject', 'bank_return_to_intake', 'bank_reject_terminal'
+                => Cache::forget($bankKey),
             default => null,
         };
     }

@@ -33,9 +33,12 @@ Route::prefix('auth')->group(function () {
     });
 });
 
+Route::get('settings/public', [SettingsController::class, 'publicSettings']);
+
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('profile', [ProfileController::class, 'show']);
     Route::put('profile', [ProfileController::class, 'update']);
+    Route::put('profile/avatar', [ProfileController::class, 'updateAvatar']);
     Route::post('profile/pin', [ProfileController::class, 'setPin'])->middleware('throttle:10,1');
     Route::delete('profile/pin', [ProfileController::class, 'disablePin'])->middleware('throttle:10,1');
     Route::post('profile/mfa/toggle', [ProfileController::class, 'toggleMfa']);
@@ -75,6 +78,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::post('workflow/{importRequest}/submit', [WorkflowController::class, 'submit'])->name('workflow.submit');
     Route::post('workflow/{importRequest}/bank-review', [WorkflowController::class, 'bankBeginReview'])->name('workflow.bank-review');
+    Route::post('workflow/{importRequest}/claim-bank-review', [WorkflowController::class, 'claimBankReview'])->name('workflow.claim-bank-review');
+    Route::delete('workflow/{importRequest}/claim-bank-review', [WorkflowController::class, 'bankClaimRelease'])->name('workflow.bank-claim-release');
+    Route::post('workflow/{importRequest}/claim-bank-review/heartbeat', [WorkflowController::class, 'bankClaimHeartbeat'])->name('workflow.bank-claim-heartbeat');
     Route::post('workflow/{importRequest}/bank-approve', [WorkflowController::class, 'bankApprove'])->name('workflow.bank-approve');
     Route::post('workflow/{importRequest}/bank-reject', [WorkflowController::class, 'bankReject'])->name('workflow.bank-reject');
     Route::post('workflow/{importRequest}/return-to-entry', [WorkflowController::class, 'returnToEntry'])->name('workflow.return-to-entry');

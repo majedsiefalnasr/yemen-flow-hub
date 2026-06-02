@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\AvatarVariant;
 use App\Enums\UserRole;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Enum;
@@ -41,6 +42,7 @@ class UpdateUserRequest extends ApiFormRequest
             'role' => ['required', new Enum(UserRole::class)],
             'bank_id' => ['nullable', 'integer', 'exists:banks,id'],
             'is_active' => ['required', 'boolean'],
+            'avatar_variant' => ['nullable', Rule::in(AvatarVariant::values())],
         ];
     }
 

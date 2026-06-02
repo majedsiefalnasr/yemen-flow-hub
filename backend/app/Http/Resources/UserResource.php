@@ -26,6 +26,7 @@ class UserResource extends JsonResource
             'mfa_enabled' => (bool) $this->mfa_enabled,
             'totp_enabled' => (bool) $this->totp_enabled,
             'pin_enabled' => (bool) $this->pin_enabled,
+            'avatar_variant' => $this->avatar_variant ?? 'beam',
             'created_at' => $this->created_at?->toISOString(),
         ];
     }

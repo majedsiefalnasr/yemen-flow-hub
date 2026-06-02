@@ -22,6 +22,14 @@ class TransitionMap
                 'roles' => [UserRole::BANK_REVIEWER],
                 'next_owner' => UserRole::BANK_REVIEWER,
             ],
+            // Release bank review claim: returns request to SUBMITTED queue if the reviewer
+            // navigates away, their session expires, or the TTL auto-expires.
+            'bank_claim_release' => [
+                'from' => [RequestStatus::BANK_REVIEW],
+                'to' => RequestStatus::SUBMITTED,
+                'roles' => [UserRole::BANK_REVIEWER, UserRole::CBY_ADMIN],
+                'next_owner' => UserRole::BANK_REVIEWER,
+            ],
             'bank_approve' => [
                 'from' => [RequestStatus::BANK_REVIEW],
                 'to' => RequestStatus::BANK_APPROVED,

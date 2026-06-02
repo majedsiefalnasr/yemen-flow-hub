@@ -11,12 +11,31 @@ use Illuminate\Auth\Access\AuthorizationException;
 
 class SystemSettingsService
 {
+    private const DEFAULT_GENERAL = [
+        'platformName' => 'منصة إدارة وتمويل الواردات',
+        'authority' => 'البنك المركزي اليمني',
+        'language' => 'ar',
+        'timeZone' => 'GMT+3',
+    ];
+
+    private const DEFAULT_BRANDING = [
+        'brandColor' => '#0066cc',
+        'brandLogoName' => 'yemen-emblem.svg',
+        'brandLogoDataUrl' => '/brand/yemen-emblem.svg',
+        'brandingPublished' => true,
+        'brandingChannels' => [
+            'securityQuestionnaires' => false,
+            'emails' => true,
+            'vendorReports' => true,
+        ],
+    ];
+
     public function __construct(
         private readonly AuditService $auditService
     ) {
     }
 
-    public function saveSection(User $user, string $section, array $data): array
+    public function saveSection(User $user, string $section, array $data, ?string $subsection = null): array
     {
         // Check authorization
         if (!$user->hasRole(UserRole::CBY_ADMIN)) {
@@ -24,11 +43,12 @@ class SystemSettingsService
         }
 
         // Save to system_settings table
-        $key = "settings.{$section}";
+        $key = $this->settingKey($section, $subsection);
+        $value = $this->normalizeSectionData($section, $data, $subsection);
         $setting = SystemSetting::updateOrCreate(
             ['key' => $key],
             [
-                'value' => $data,
+                'value' => $value,
                 'updated_by' => $user->id,
             ]
         );
@@ -41,7 +61,8 @@ class SystemSettingsService
             [
                 'type' => 'system',
                 'section' => $section,
-                'changes' => $data,
+                'subsection' => $subsection,
+                'changes' => $value,
             ]
         );
 
@@ -49,6 +70,60 @@ class SystemSettingsService
             'key' => $setting->key,
             'value' => $setting->value,
             'updated_by' => $setting->updated_by,
+            'updated_at' => $setting->updated_at?->toJSON(),
         ];
+    }
+
+    public function getPublicSettings(): array
+    {
+        $settings = SystemSetting::query()
+            ->whereIn('key', ['settings.general', 'settings.theming', 'settings.branding'])
+            ->get()
+            ->keyBy('key');
+
+        $version = $settings
+            ->pluck('updated_at')
+            ->filter()
+            ->sortDesc()
+            ->first();
+
+        return [
+            'version' => $version?->toJSON() ?? 'defaults-v1',
+            'general' => array_merge(
+                self::DEFAULT_GENERAL,
+                $this->arrayValue($settings->get('settings.general')?->value)
+            ),
+            'branding' => array_merge(
+                self::DEFAULT_BRANDING,
+                $this->arrayValue($settings->get('settings.branding')?->value)
+            ),
+        ];
+    }
+
+    private function settingKey(string $section, ?string $subsection): string
+    {
+        if ($section === 'theming' && $subsection === 'branding') {
+            return 'settings.branding';
+        }
+
+        return "settings.{$section}";
+    }
+
+    private function normalizeSectionData(string $section, array $data, ?string $subsection): array
+    {
+        if ($section === 'general') {
+            return array_merge(self::DEFAULT_GENERAL, $data);
+        }
+
+        if ($section === 'theming' && $subsection === 'branding') {
+            return array_merge(self::DEFAULT_BRANDING, $data);
+        }
+
+        return $data;
+    }
+
+    private function arrayValue(mixed $value): array
+    {
+        return is_array($value) ? $value : [];
     }
 }

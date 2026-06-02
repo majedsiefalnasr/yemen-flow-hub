@@ -111,15 +111,16 @@ class ReportController extends Controller
             $dayOfWeek = 'DAYOFWEEK(created_at)';
             $hour      = 'HOUR(created_at)';
         }
+        $timeSlot = "FLOOR({$hour} / 2) * 2";
 
         $heatmapRows = $base()
             ->selectRaw("{$dayOfWeek} as day_of_week")
-            ->selectRaw("FLOOR({$hour} / 2) * 2 as time_slot")
+            ->selectRaw("{$timeSlot} as time_slot")
             ->selectRaw('COUNT(*) as count')
             ->whereRaw("{$hour} >= 8 AND {$hour} < 20");
         $this->applyDateFilter($heatmapRows, $fromDate, $toDate);
         $heatmapData = $heatmapRows
-            ->groupByRaw("{$dayOfWeek}, FLOOR({$hour} / 2)")
+            ->groupByRaw("{$dayOfWeek}, {$timeSlot}")
             ->orderBy('day_of_week')->orderBy('time_slot')
             ->get()
             ->map(fn ($r) => [
@@ -807,11 +808,24 @@ class ReportController extends Controller
 
     private function streamPdf(string $view, array $data, string $filename)
     {
-        $pdf = app('dompdf.wrapper')->loadView($view, $data);
-        $pdf->getDomPDF()->set_option('isPhpEnabled', false);
-        $pdf->getDomPDF()->set_option('isRemoteEnabled', false);
+        $previousCompiledPath = config('view.compiled');
+        $fallbackCompiledPath = storage_path('framework/views');
 
-        return response($pdf->output(), 200, [
+        if (!is_string($previousCompiledPath) || $previousCompiledPath === '' || !is_dir($previousCompiledPath)) {
+            app('files')->ensureDirectoryExists($fallbackCompiledPath);
+            config(['view.compiled' => $fallbackCompiledPath]);
+        }
+
+        try {
+            $pdf = app('dompdf.wrapper')->loadView($view, $data);
+            $pdf->getDomPDF()->set_option('isPhpEnabled', false);
+            $pdf->getDomPDF()->set_option('isRemoteEnabled', false);
+            $output = $pdf->output();
+        } finally {
+            config(['view.compiled' => $previousCompiledPath]);
+        }
+
+        return response($output, 200, [
             'Content-Type'        => 'application/pdf',
             'Content-Disposition' => "attachment; filename=\"{$filename}\"",
         ]);

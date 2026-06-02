@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Enums\AuditAction;
+use App\Enums\AvatarVariant;
 use App\Enums\RequestStatus;
 use App\Enums\UserRole;
 use App\Http\Requests\ChangePasswordRequest;
@@ -90,6 +91,7 @@ class ProfileController extends Controller
             'name'  => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', Rule::unique('users')->ignore($user->id)],
             'phone' => ['nullable', 'regex:/^\+?[1-9]\d{1,14}$/'],
+            'avatar_variant' => ['nullable', Rule::in(AvatarVariant::values())],
         ]);
 
         $user->fill($validated)->save();
@@ -102,6 +104,34 @@ class ProfileController extends Controller
         );
 
         return ApiResponse::success(new UserResource($user->loadMissing('bank')), 'Profile updated.');
+    }
+
+    /**
+     * Avatar-only update. Lives outside `update()` so the UI can persist a
+     * picker change instantly (no name/email validation, no MFA gating) and so
+     * audit logs can attribute the change to a dedicated action key.
+     */
+    public function updateAvatar(Request $request)
+    {
+        $user = $request->user();
+
+        $validated = $request->validate([
+            'avatar_variant' => ['nullable', Rule::in(AvatarVariant::values())],
+        ]);
+
+        if (array_key_exists('avatar_variant', $validated)) {
+            $user->avatar_variant = $validated['avatar_variant'] ?? 'beam';
+        }
+        $user->save();
+
+        $this->auditService->log(
+            AuditAction::SETTINGS_UPDATED,
+            $user,
+            $user,
+            ['fields' => array_keys($validated), 'scope' => 'avatar']
+        );
+
+        return ApiResponse::success(new UserResource($user->loadMissing('bank')), 'Avatar updated.');
     }
 
     public function setPin(Request $request)

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\RequestStatus;
 use App\Enums\UserRole;
 use App\Exceptions\VotingException;
 use App\Http\Requests\BankRejectTerminalRequest;
@@ -15,6 +16,7 @@ use App\Services\Voting\VotingService;
 use App\Services\Workflow\WorkflowService;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use OpenApi\Attributes as OA;
@@ -34,10 +36,104 @@ class WorkflowController extends Controller
         return $this->run($request, $importRequest, 'submit');
     }
 
-    #[OA\Post(path: '/api/workflow/{importRequest}/bank-review', tags: ['Workflow'], summary: 'Bank begin review (SUBMITTED → BANK_REVIEW)', parameters: [new OA\Parameter(name: 'importRequest', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], requestBody: new OA\RequestBody(required: false, content: new OA\JsonContent(properties: [new OA\Property(property: 'reason', type: 'string', maxLength: 2000)])), responses: [new OA\Response(response: 200, description: 'Transition applied')])]
+    #[OA\Post(path: '/api/workflow/{importRequest}/bank-review', tags: ['Workflow'], summary: 'Bank begin review (SUBMITTED → BANK_REVIEW) — legacy non-atomic path; prefer claim-bank-review', parameters: [new OA\Parameter(name: 'importRequest', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], responses: [new OA\Response(response: 200, description: 'Transition applied')])]
     public function bankBeginReview(WorkflowActionRequest $request, ImportRequest $importRequest)
     {
         return $this->run($request, $importRequest, 'bank_begin_review');
+    }
+
+    #[OA\Post(path: '/api/workflow/{importRequest}/claim-bank-review', tags: ['Workflow'], summary: 'Atomically claim a SUBMITTED request for bank review (409 if already claimed)', parameters: [new OA\Parameter(name: 'importRequest', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], responses: [new OA\Response(response: 200, description: 'Claim acquired or resumed'), new OA\Response(response: 409, description: 'Already claimed by another reviewer')])]
+    public function claimBankReview(WorkflowActionRequest $request, ImportRequest $importRequest)
+    {
+        $this->authorize('view', $importRequest);
+
+        return DB::transaction(function () use ($request, $importRequest) {
+            $locked = ImportRequest::query()
+                ->where('id', $importRequest->id)
+                ->lockForUpdate()
+                ->first();
+
+            // Already in BANK_REVIEW claimed by someone else
+            if ($locked->status === RequestStatus::BANK_REVIEW && $locked->isClaimed() && $locked->claimed_by !== $request->user()->id) {
+                $holder = $locked->claimedByUser;
+                return ApiResponse::error(
+                    "هذا الطلب محجوز حالياً بواسطة {$holder?->name}. / This request is currently claimed by {$holder?->name}.",
+                    [],
+                    409
+                );
+            }
+
+            // Already in BANK_REVIEW claimed by me — resume
+            if ($locked->status === RequestStatus::BANK_REVIEW && $locked->claimed_by === $request->user()->id) {
+                return ApiResponse::success(
+                    new ImportRequestResource($locked->load(ImportRequestResource::baseRelations())),
+                    'Claim resumed.'
+                );
+            }
+
+            $updated = $this->workflowService->transition(
+                $locked,
+                'bank_begin_review',
+                $request->user()
+            );
+
+            return ApiResponse::success(
+                new ImportRequestResource($updated->load(ImportRequestResource::baseRelations())),
+                'Claim acquired.'
+            );
+        });
+    }
+
+    #[OA\Delete(path: '/api/workflow/{importRequest}/claim-bank-review', tags: ['Workflow'], summary: 'Release bank review claim (BANK_REVIEW → SUBMITTED)', parameters: [new OA\Parameter(name: 'importRequest', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], responses: [new OA\Response(response: 200, description: 'Claim released'), new OA\Response(response: 403, description: 'Not the claim holder')])]
+    public function bankClaimRelease(WorkflowActionRequest $request, ImportRequest $importRequest)
+    {
+        $this->authorize('view', $importRequest);
+
+        $actor = $request->user();
+        $isCbyAdmin = $actor->role === UserRole::CBY_ADMIN;
+
+        if (!$isCbyAdmin && $importRequest->claimed_by !== $actor->id) {
+            return ApiResponse::forbidden('لا يمكنك تحرير حجز لا تملكه. / You do not hold this claim.');
+        }
+
+        $updated = $this->workflowService->transition($importRequest, 'bank_claim_release', $actor);
+
+        return ApiResponse::success(
+            new ImportRequestResource($updated->load(ImportRequestResource::baseRelations())),
+            'Claim released.'
+        );
+    }
+
+    #[OA\Post(path: '/api/workflow/{importRequest}/claim-bank-review/heartbeat', tags: ['Workflow'], summary: 'Extend bank review claim TTL by 15 minutes', parameters: [new OA\Parameter(name: 'importRequest', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], responses: [new OA\Response(response: 200, description: 'Claim extended'), new OA\Response(response: 403, description: 'Not the claim holder')])]
+    public function bankClaimHeartbeat(Request $request, ImportRequest $importRequest)
+    {
+        $this->authorize('view', $importRequest);
+
+        if ($importRequest->claimed_by !== $request->user()->id) {
+            return ApiResponse::forbidden('You do not hold this claim.');
+        }
+
+        if ($importRequest->status !== RequestStatus::BANK_REVIEW) {
+            return ApiResponse::forbidden('Request is not in bank review status.');
+        }
+
+        $ttlMinutes = (int) config('workflow.support_claim_ttl_minutes', 15);
+        $expiresAt = now()->addMinutes($ttlMinutes);
+        $cacheKey = "bank_claim:{$importRequest->id}";
+
+        App::instance('workflow.transition.active', true);
+        try {
+            $importRequest->forceFill(['claim_expires_at' => $expiresAt])->save();
+        } finally {
+            App::offsetUnset('workflow.transition.active');
+        }
+
+        Cache::put($cacheKey, $request->user()->id, $expiresAt);
+
+        return ApiResponse::success(
+            ['claimed_until' => $expiresAt->toISOString()],
+            'Claim extended.'
+        );
     }
 
     #[OA\Post(path: '/api/workflow/{importRequest}/bank-approve', tags: ['Workflow'], summary: 'Bank approve request', parameters: [new OA\Parameter(name: 'importRequest', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], requestBody: new OA\RequestBody(required: false, content: new OA\JsonContent(properties: [new OA\Property(property: 'reason', type: 'string', maxLength: 2000)])), responses: [new OA\Response(response: 200, description: 'Transition applied')])]
