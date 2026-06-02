@@ -5,9 +5,6 @@ import PageHeader from '@/components/layout/PageHeader.vue'
 import {
   Bell,
   Building2,
-  Check,
-  ChevronsUpDown,
-  Columns2,
   Cog,
   Eye,
   EyeOff,
@@ -17,20 +14,12 @@ import {
   Loader2,
   Lock,
   Mail,
-  Maximize2,
-  Monitor,
-  Moon,
   Network,
-  PanelLeft,
-  PanelLeftClose,
-  PanelLeftDashed,
   Palette,
   Phone,
   Save,
   Server,
   ShieldAlert,
-  Square,
-  Sun,
   Workflow,
 } from 'lucide-vue-next'
 import { Separator } from '@/components/ui/separator'
@@ -43,27 +32,9 @@ import { Switch } from '@/components/ui/switch'
 import { Badge } from '@/components/ui/badge'
 import { Field, FieldContent, FieldDescription, FieldGroup, FieldLabel, FieldTitle } from '@/components/ui/field'
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select'
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-  CommandSeparator,
-} from '@/components/ui/command'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { cn } from '@/lib/utils'
 import { UserRole } from '@/types/enums'
-import {
-  useThemingStore,
-  type DensityPreference,
-  type LayoutMode,
-  type RadiusPreference,
-  type SidebarCollapsible,
-  type SidebarVariant,
-  type ThemeMode,
-} from '@/stores/theming.store'
+import { cn } from '@/lib/utils'
+import { useThemingStore } from '@/stores/theming.store'
 import { useSettingsStore } from '@/stores/settings.store'
 import { useOrgStore } from '@/stores/org.store'
 import { useAuthStore } from '@/stores/auth.store'
@@ -88,7 +59,6 @@ const isBankAdmin = computed(() => authStore.user?.role === UserRole.BANK_ADMIN)
 const cbyTabs = [
   { value: 'general', label: 'عام', icon: Cog },
   { value: 'branding', label: 'العلامة التجارية', icon: Palette },
-  { value: 'appearance', label: 'المظهر الافتراضي', icon: Monitor },
   { value: 'security', label: 'الأمن', icon: ShieldAlert },
   { value: 'notif', label: 'الإشعارات', icon: Bell },
   { value: 'email', label: 'البريد الإلكتروني', icon: Mail },
@@ -114,58 +84,7 @@ const activeSection = computed<AnyTab>(() => {
   return (valid ? raw : currentTabs.value[0].value) as AnyTab
 })
 
-// ── Theming helpers ────────────────────────────────────────────────────────────
-const fontPickerOpen = ref(false)
 const showEmailPassword = ref(false)
-
-const themeOptions: Array<{ value: ThemeMode, label: string, description: string, icon: typeof Sun }> = [
-  { value: 'dark', label: 'داكن', description: 'واجهة منخفضة السطوع', icon: Moon },
-  { value: 'light', label: 'فاتح', description: 'واجهة عالية الوضوح', icon: Sun },
-  { value: 'system', label: 'النظام', description: 'حسب إعداد الجهاز', icon: Monitor },
-]
-
-const layoutOptions: Array<{ value: LayoutMode, label: string, description: string, icon: typeof Maximize2 }> = [
-  { value: 'full', label: 'كامل العرض', description: 'استخدام كامل مساحة العمل', icon: Maximize2 },
-  { value: 'boxed', label: 'محدود العرض', description: 'محتوى مركزي للقراءة الهادئة', icon: Square },
-]
-
-const sidebarVariantOptions: Array<{ value: SidebarVariant, label: string, description: string, icon: typeof PanelLeft }> = [
-  { value: 'sidebar', label: 'ثابت', description: 'شريط جانبي أرضي مدمج', icon: PanelLeft },
-  { value: 'floating', label: 'عائم', description: 'شريط مرتفع بظل خفيف', icon: PanelLeftDashed },
-  { value: 'inset', label: 'مضمّن', description: 'محتوى غارق داخل الصفحة', icon: Columns2 },
-]
-
-const sidebarCollapsibleOptions: Array<{ value: SidebarCollapsible, label: string, description: string, icon: typeof PanelLeft }> = [
-  { value: 'offcanvas', label: 'خارج الشاشة', description: 'يختفي الشريط الجانبي تماماً عند الطي', icon: PanelLeftClose },
-  { value: 'icon', label: 'أيقونات فقط', description: 'يتقلص إلى أيقونات مع الحفاظ على المساحة', icon: PanelLeft },
-  { value: 'none', label: 'ثابت دائماً', description: 'لا يمكن طي الشريط الجانبي', icon: PanelLeft },
-]
-
-const radiusOptions: Array<{ value: RadiusPreference, label: string, previewRadius: string }> = [
-  { value: 'none', label: 'بدون', previewRadius: '0px' },
-  { value: 'sm', label: 'صغير', previewRadius: '0.25rem' },
-  { value: 'md', label: 'متوسط', previewRadius: '0.5rem' },
-  { value: 'lg', label: 'كبير', previewRadius: '0.75rem' },
-  { value: 'xl', label: 'كبير جداً', previewRadius: '1rem' },
-]
-
-const densityOptions: Array<{ value: DensityPreference, label: string, description: string }> = [
-  { value: 'comfortable', label: 'مريح', description: 'تباعد واسع بين العناصر' },
-  { value: 'compact', label: 'مضغوط', description: 'عرض أكثر معلومات في مساحة أقل' },
-]
-
-function selectTheme(mode: ThemeMode, event: MouseEvent) {
-  themingStore.setMode(mode, event)
-}
-
-function updateLayout(layout: LayoutMode) {
-  themingStore.setLayout(layout)
-}
-
-function selectFont(fontValue: string) {
-  themingStore.setFont(fontValue)
-  fontPickerOpen.value = false
-}
 
 // ── Brand color — local pending state, apply ONLY on save ─────────────────────
 const pendingBrandColor = ref(themingStore.brandColor)
@@ -299,17 +218,6 @@ const generalPayload = computed(() => ({
   timeZone: generalSettings.timeZone,
 }))
 
-const appearancePayload = computed(() => ({
-  mode: themingStore.mode,
-  font: themingStore.font,
-  layout: themingStore.layout,
-  sidebarVariant: themingStore.sidebarVariant,
-  sidebarCollapsible: themingStore.sidebarCollapsible,
-  radius: themingStore.radius,
-  density: themingStore.density,
-  reducedMotion: themingStore.reducedMotion,
-}))
-
 const brandingPayload = computed(() => ({
   brandColor: pendingBrandColor.value,
   brandLogoName: orgStore.brandLogoName,
@@ -370,6 +278,8 @@ onMounted(async () => {
   await themingStore.loadSettings()
   generalSettings.platformName = orgStore.platformName
   generalSettings.authority = orgStore.authority
+  generalSettings.language = orgStore.language
+  generalSettings.timeZone = orgStore.timeZone
   pendingBrandColor.value = themingStore.brandColor
   pendingBrandColorText.value = themingStore.brandColor
   settingsStore.markSectionClean('general', undefined, generalPayload.value)
@@ -377,17 +287,11 @@ onMounted(async () => {
   settingsStore.markSectionClean('email', undefined, emailPayload.value)
   settingsStore.markSectionClean('notif', undefined, notifPayload.value)
   settingsStore.markSectionClean('security', undefined, securityPayload.value)
-  settingsStore.markSectionClean('theming', 'appearance', appearancePayload.value)
   settingsStore.markSectionClean('theming', 'branding', brandingPayload.value)
   settingsStore.markSectionClean('bankProfile', undefined, bankProfilePayload.value)
   settingsStore.markSectionClean('bankSwift', undefined, bankSwiftPayload.value)
   settingsStore.markSectionClean('bankNotifications', undefined, bankNotificationsPayload.value)
   settingsStore.markSectionClean('bankSecurity', undefined, bankSecurityPayload.value)
-})
-
-watch(fontPickerOpen, (opened) => {
-  if (opened && themingStore.fontSource === 'fallback' && !themingStore.fontsLoading)
-    themingStore.loadGoogleFonts()
 })
 
 // ── Dirty watchers ─────────────────────────────────────────────────────────────
@@ -396,7 +300,6 @@ watch(emailPayload, value => settingsStore.trackSectionState('email', value), { 
 watch(notifPayload, value => settingsStore.trackSectionState('notif', value), { deep: true })
 watch(securityPayload, value => settingsStore.trackSectionState('security', value), { deep: true })
 watch(generalPayload, value => settingsStore.trackSectionState('general', value), { deep: true })
-watch(appearancePayload, value => settingsStore.trackSectionState('theming', value, 'appearance'), { deep: true })
 watch(brandingPayload, value => settingsStore.trackSectionState('theming', value, 'branding'), { deep: true })
 watch(bankProfilePayload, value => settingsStore.trackSectionState('bankProfile', value), { deep: true })
 watch(bankSwiftPayload, value => settingsStore.trackSectionState('bankSwift', value), { deep: true })
@@ -449,18 +352,6 @@ async function saveBrandingSettings() {
     await themingStore.loadFromServer()
     themingStore.publishSystemSettingsSync()
     toast.success('تم حفظ إعدادات الهوية البصرية بنجاح')
-  }
-  else {
-    toast.error(settingsStore.error || 'فشل حفظ الإعدادات')
-  }
-}
-
-async function saveDefaultAppearance() {
-  const ok = await settingsStore.saveSection('theming', appearancePayload.value, 'appearance')
-  if (ok) {
-    await themingStore.loadFromServer()
-    themingStore.publishSystemSettingsSync()
-    toast.success('تم حفظ إعدادات المظهر الافتراضي بنجاح')
   }
   else {
     toast.error(settingsStore.error || 'فشل حفظ الإعدادات')
@@ -742,418 +633,7 @@ async function saveBankSecurity() {
             </div>
           </section>
 
-          <!-- ═══════════════════════════════════════════════════════════════ -->
-          <!-- CBY: Default Appearance                                         -->
-          <!-- ═══════════════════════════════════════════════════════════════ -->
-          <section v-if="isCBYAdmin && activeSection === 'appearance'" class="space-y-6">
-            <div>
-              <h3 class="text-lg font-medium">المظهر الافتراضي للنظام</h3>
-              <p class="text-sm text-muted-foreground">القيم الافتراضية التي يرثها كل مستخدم لم يُخصّص مظهره بعد</p>
-            </div>
-            <Separator />
 
-            <!-- Theme mode -->
-            <section class="space-y-4">
-              <div>
-                <h4 class="text-sm font-medium">وضع الثيم الافتراضي</h4>
-                <p class="mt-0.5 text-xs text-muted-foreground">يُطبَّق على المستخدمين الجدد أو من لم يختاروا وضعاً بعد.</p>
-              </div>
-              <div class="grid gap-3 sm:grid-cols-3">
-                <button
-                  v-for="option in themeOptions"
-                  :key="option.value"
-                  type="button"
-                  class="flex cursor-pointer flex-col overflow-hidden rounded-xl border text-start transition-all hover:shadow-sm"
-                  :class="themingStore.mode === option.value ? 'border-2 border-primary ring-2 ring-primary/20' : 'border-border'"
-                  @click="selectTheme(option.value, $event)"
-                >
-                  <div class="relative h-24 w-full" :class="option.value === 'dark' ? 'bg-[#111827]' : 'bg-muted/30'">
-                    <template v-if="option.value === 'light'">
-                      <div class="absolute inset-y-0 start-0 w-10 bg-card border-e border-border flex flex-col gap-1 p-1.5">
-                        <div class="h-1.5 w-full rounded bg-muted" />
-                        <div class="h-1.5 w-3/4 rounded bg-primary/40" />
-                        <div class="h-1.5 w-full rounded bg-muted" />
-                      </div>
-                      <div class="absolute inset-y-2 start-12 end-2 rounded bg-white border border-[#e5e7eb] p-2">
-                        <div class="h-3 rounded bg-[#f1f3f5]" />
-                        <div class="mt-2 h-2 rounded bg-[#f1f3f5]" />
-                        <div class="mt-1.5 h-2 rounded bg-[#f1f3f5]" />
-                      </div>
-                    </template>
-                    <template v-else-if="option.value === 'dark'">
-                      <div class="absolute inset-y-0 start-0 w-10 bg-[#0f1218] border-e border-white/10 flex flex-col gap-1 p-1.5">
-                        <div class="h-1.5 w-full rounded bg-[#343a44]" />
-                        <div class="h-1.5 w-3/4 rounded bg-primary/70" />
-                        <div class="h-1.5 w-full rounded bg-[#343a44]" />
-                      </div>
-                      <div class="absolute inset-y-2 start-12 end-2 rounded bg-[#151820] border border-white/10 p-2">
-                        <div class="h-3 rounded bg-[#2a2e3a]" />
-                        <div class="mt-2 h-2 rounded bg-[#2a2e3a]" />
-                        <div class="mt-1.5 h-2 rounded bg-[#2a2e3a]" />
-                      </div>
-                    </template>
-                    <template v-else>
-                      <div class="absolute inset-y-0 start-0 w-10 bg-card border-e border-border flex flex-col gap-1 p-1.5">
-                        <div class="h-1.5 w-full rounded bg-muted" />
-                        <div class="h-1.5 w-3/4 rounded bg-primary/40" />
-                        <div class="h-1.5 w-full rounded bg-muted" />
-                      </div>
-                      <div class="absolute inset-y-2 start-12 end-2 overflow-hidden rounded border border-[#e5e7eb] bg-white">
-                        <div class="absolute inset-y-0 end-0 w-1/2 bg-[#151820]" />
-                        <div class="relative p-2">
-                          <div class="h-3 rounded bg-[#f1f3f5]" />
-                          <div class="mt-2 h-2 rounded bg-[#2a2e3a]" />
-                          <div class="mt-1.5 h-2 rounded bg-[#f1f3f5]" />
-                        </div>
-                      </div>
-                    </template>
-                    <span
-                      v-if="themingStore.mode === option.value"
-                      class="absolute bottom-3 start-3 flex size-5 items-center justify-center rounded-full bg-primary text-primary-foreground"
-                    >
-                      <Check class="h-3 w-3" />
-                    </span>
-                  </div>
-                  <div class="flex items-center gap-2 border-t border-border px-3 py-2">
-                    <component :is="option.icon" class="h-4 w-4 shrink-0 text-muted-foreground" />
-                    <div class="min-w-0">
-                      <p class="text-sm font-medium">{{ option.label }}</p>
-                      <p class="truncate text-xs text-muted-foreground">{{ option.description }}</p>
-                    </div>
-                  </div>
-                </button>
-              </div>
-            </section>
-
-            <Separator />
-
-            <!-- Font picker -->
-            <div class="space-y-3">
-              <Label class="text-sm font-medium">الخط الافتراضي</Label>
-              <Popover v-model:open="fontPickerOpen">
-                <PopoverTrigger as-child>
-                  <Button variant="outline" role="combobox" :aria-expanded="fontPickerOpen" class="h-10 w-full justify-between">
-                    <span class="truncate">{{ themingStore.selectedFontLabel || 'اختر خطاً...' }}</span>
-                    <ChevronsUpDown class="h-4 w-4 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent class="w-[var(--reka-popover-trigger-width)] p-0">
-                  <Command>
-                    <CommandInput class="h-9" placeholder="ابحث عن خط..." />
-                    <CommandList>
-                      <CommandEmpty>لا توجد نتائج.</CommandEmpty>
-                      <CommandGroup heading="الخطوط الأساسية">
-                        <CommandItem
-                          v-for="font in themingStore.pinnedFonts"
-                          :key="font.value"
-                          :value="font.value"
-                          @select="(ev) => selectFont(ev.detail.value as string)"
-                        >
-                          <div class="flex min-w-0 flex-col">
-                            <span class="truncate">{{ font.label }}</span>
-                            <span class="truncate text-xs text-muted-foreground">{{ font.category }}</span>
-                          </div>
-                          <Check :class="cn('ms-auto h-4 w-4', themingStore.font === font.value ? 'opacity-100' : 'opacity-0')" />
-                        </CommandItem>
-                      </CommandGroup>
-                      <CommandSeparator />
-                      <CommandGroup heading="جميع الخطوط">
-                        <div v-if="themingStore.fontsLoading" class="flex items-center gap-2 px-2 py-3 text-sm text-muted-foreground">
-                          <Loader2 class="h-4 w-4 animate-spin" />جاري تحميل قائمة الخطوط...
-                        </div>
-                        <template v-else>
-                          <CommandItem
-                            v-for="font in themingStore.searchableFonts"
-                            :key="font.value"
-                            :value="font.value"
-                            @select="(ev) => selectFont(ev.detail.value as string)"
-                          >
-                            <div class="flex min-w-0 flex-col">
-                              <span class="truncate">{{ font.label }}</span>
-                              <span class="truncate text-xs text-muted-foreground">{{ font.category }}</span>
-                            </div>
-                            <Check :class="cn('ms-auto h-4 w-4', themingStore.font === font.value ? 'opacity-100' : 'opacity-0')" />
-                          </CommandItem>
-                        </template>
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
-            </div>
-
-            <Separator />
-
-            <!-- Layout mode -->
-            <section class="space-y-4">
-              <div>
-                <h4 class="text-sm font-medium">تخطيط العرض الافتراضي</h4>
-                <p class="mt-0.5 text-xs text-muted-foreground">كيفية توزيع المحتوى الرئيسي على الشاشة.</p>
-              </div>
-              <div class="grid gap-3 sm:grid-cols-2">
-                <button
-                  v-for="option in layoutOptions"
-                  :key="option.value"
-                  type="button"
-                  class="flex cursor-pointer flex-col overflow-hidden rounded-xl border text-start transition-all hover:shadow-sm"
-                  :class="themingStore.layout === option.value ? 'border-2 border-primary ring-2 ring-primary/20' : 'border-border'"
-                  @click="updateLayout(option.value)"
-                >
-                  <div class="relative h-24 w-full bg-muted/30">
-                    <template v-if="option.value === 'full'">
-                      <div class="absolute inset-y-0 start-0 w-10 bg-card border-e border-border flex flex-col gap-1 p-1.5">
-                        <div class="h-1.5 w-full rounded bg-muted" />
-                        <div class="h-1.5 w-3/4 rounded bg-primary/40" />
-                        <div class="h-1.5 w-full rounded bg-muted" />
-                      </div>
-                      <div class="absolute inset-y-2 start-12 end-2 rounded bg-card border border-border p-2">
-                        <div class="h-full rounded bg-muted/60" />
-                      </div>
-                    </template>
-                    <template v-else>
-                      <div class="absolute inset-y-0 start-0 w-10 bg-card border-e border-border flex flex-col gap-1 p-1.5">
-                        <div class="h-1.5 w-full rounded bg-muted" />
-                        <div class="h-1.5 w-3/4 rounded bg-primary/40" />
-                        <div class="h-1.5 w-full rounded bg-muted" />
-                      </div>
-                      <div class="absolute inset-y-2 start-12 end-2 rounded bg-card border border-border p-2">
-                        <div class="h-full rounded border border-dashed border-primary/50 bg-muted/40 mx-4" />
-                      </div>
-                    </template>
-                    <span
-                      v-if="themingStore.layout === option.value"
-                      class="absolute bottom-3 start-3 flex size-5 items-center justify-center rounded-full bg-primary text-primary-foreground"
-                    >
-                      <Check class="h-3 w-3" />
-                    </span>
-                  </div>
-                  <div class="flex items-center gap-2 border-t border-border px-3 py-2">
-                    <component :is="option.icon" class="h-4 w-4 shrink-0 text-muted-foreground" />
-                    <div class="min-w-0">
-                      <p class="text-sm font-medium">{{ option.label }}</p>
-                      <p class="truncate text-xs text-muted-foreground">{{ option.description }}</p>
-                    </div>
-                  </div>
-                </button>
-              </div>
-            </section>
-
-            <Separator />
-
-            <!-- Sidebar variant -->
-            <section class="space-y-4">
-              <div>
-                <h4 class="text-sm font-medium">نمط الشريط الجانبي الافتراضي</h4>
-                <p class="mt-0.5 text-xs text-muted-foreground">كيف يظهر الشريط الجانبي افتراضياً بالنسبة لمنطقة المحتوى.</p>
-              </div>
-              <div class="grid gap-3 sm:grid-cols-3">
-                <button
-                  v-for="option in sidebarVariantOptions"
-                  :key="option.value"
-                  type="button"
-                  class="flex cursor-pointer flex-col overflow-hidden rounded-xl border text-start transition-all hover:shadow-sm"
-                  :class="themingStore.sidebarVariant === option.value ? 'border-2 border-primary ring-2 ring-primary/20' : 'border-border'"
-                  @click="themingStore.setSidebarVariant(option.value)"
-                >
-                  <div class="relative h-24 w-full bg-muted/30">
-                    <template v-if="option.value === 'sidebar'">
-                      <div class="absolute inset-y-0 start-0 w-10 bg-card border-e border-border flex flex-col gap-1 p-1.5">
-                        <div class="h-1.5 w-full rounded bg-muted" />
-                        <div class="h-1.5 w-3/4 rounded bg-primary/40" />
-                        <div class="h-1.5 w-full rounded bg-muted" />
-                      </div>
-                      <div class="absolute inset-y-2 start-12 end-2 rounded bg-card border border-border" />
-                    </template>
-                    <template v-else-if="option.value === 'floating'">
-                      <div class="absolute inset-y-1.5 start-1.5 w-10 rounded-md bg-card shadow-md flex flex-col gap-1 p-1.5">
-                        <div class="h-1.5 w-full rounded bg-muted" />
-                        <div class="h-1.5 w-3/4 rounded bg-primary/40" />
-                        <div class="h-1.5 w-full rounded bg-muted" />
-                      </div>
-                      <div class="absolute inset-y-2 start-14 end-2 rounded bg-card border border-border" />
-                    </template>
-                    <template v-else>
-                      <div class="absolute inset-0 bg-card border-e border-b border-border/50">
-                        <div class="absolute inset-y-0 start-0 w-10 flex flex-col gap-1 p-1.5 border-e border-border/30">
-                          <div class="h-1.5 w-full rounded bg-muted" />
-                          <div class="h-1.5 w-3/4 rounded bg-primary/40" />
-                        </div>
-                        <div class="absolute inset-2 start-12 rounded-md bg-muted/40 border border-border/30" />
-                      </div>
-                    </template>
-                    <span
-                      v-if="themingStore.sidebarVariant === option.value"
-                      class="absolute bottom-3 start-3 flex size-5 items-center justify-center rounded-full bg-primary text-primary-foreground"
-                    >
-                      <Check class="h-3 w-3" />
-                    </span>
-                  </div>
-                  <div class="flex items-center gap-2 border-t border-border px-3 py-2">
-                    <component :is="option.icon" class="h-4 w-4 shrink-0 text-muted-foreground" />
-                    <div class="min-w-0">
-                      <p class="text-sm font-medium">{{ option.label }}</p>
-                      <p class="truncate text-xs text-muted-foreground">{{ option.description }}</p>
-                    </div>
-                  </div>
-                </button>
-              </div>
-            </section>
-
-            <Separator />
-
-            <!-- Sidebar collapsible -->
-            <section class="space-y-4">
-              <div>
-                <h4 class="text-sm font-medium">سلوك طي الشريط الجانبي الافتراضي</h4>
-                <p class="mt-0.5 text-xs text-muted-foreground">كيف يتصرف الشريط عند الضغط على زر الطي.</p>
-              </div>
-              <div class="grid gap-3 sm:grid-cols-3">
-                <button
-                  v-for="option in sidebarCollapsibleOptions"
-                  :key="option.value"
-                  type="button"
-                  class="flex cursor-pointer flex-col overflow-hidden rounded-xl border text-start transition-all hover:shadow-sm"
-                  :class="themingStore.sidebarCollapsible === option.value ? 'border-2 border-primary ring-2 ring-primary/20' : 'border-border'"
-                  @click="themingStore.setSidebarCollapsible(option.value)"
-                >
-                  <div class="relative h-24 w-full bg-muted/30">
-                    <template v-if="option.value === 'offcanvas'">
-                      <div class="absolute inset-2 rounded bg-card border border-border" />
-                      <div class="absolute top-3 start-3 flex size-5 items-center justify-center rounded-sm bg-primary/10">
-                        <PanelLeftClose class="h-3 w-3 text-primary/60" />
-                      </div>
-                    </template>
-                    <template v-else-if="option.value === 'icon'">
-                      <div class="absolute inset-y-0 start-0 w-6 bg-card border-e border-border flex flex-col items-center gap-1 py-2">
-                        <div class="size-2 rounded-sm bg-primary/40" />
-                        <div class="size-2 rounded-sm bg-muted" />
-                        <div class="size-2 rounded-sm bg-muted" />
-                      </div>
-                      <div class="absolute inset-y-2 start-8 end-2 rounded bg-card border border-border" />
-                    </template>
-                    <template v-else>
-                      <div class="absolute inset-y-0 start-0 w-10 bg-card border-e border-border flex flex-col gap-1 p-1.5">
-                        <div class="h-1.5 w-full rounded bg-muted" />
-                        <div class="h-1.5 w-3/4 rounded bg-primary/40" />
-                        <div class="h-1.5 w-full rounded bg-muted" />
-                      </div>
-                      <div class="absolute inset-y-2 start-12 end-2 rounded bg-card border border-border" />
-                      <div class="absolute top-2 start-10 -ms-0.5 h-4 w-px bg-border" />
-                    </template>
-                    <span
-                      v-if="themingStore.sidebarCollapsible === option.value"
-                      class="absolute bottom-3 start-3 flex size-5 items-center justify-center rounded-full bg-primary text-primary-foreground"
-                    >
-                      <Check class="h-3 w-3" />
-                    </span>
-                  </div>
-                  <div class="flex items-center gap-2 border-t border-border px-3 py-2">
-                    <component :is="option.icon" class="h-4 w-4 shrink-0 text-muted-foreground" />
-                    <div class="min-w-0">
-                      <p class="text-sm font-medium">{{ option.label }}</p>
-                      <p class="truncate text-xs text-muted-foreground">{{ option.description }}</p>
-                    </div>
-                  </div>
-                </button>
-              </div>
-            </section>
-
-            <Separator />
-
-            <!-- Radius -->
-            <section class="space-y-4">
-              <div>
-                <h4 class="text-sm font-medium">نصف قطر الحواف الافتراضي</h4>
-                <p class="mt-0.5 text-xs text-muted-foreground">درجة استدارة حواف المكونات مثل الأزرار والبطاقات.</p>
-              </div>
-              <div class="grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
-                <button
-                  v-for="opt in radiusOptions"
-                  :key="opt.value"
-                  type="button"
-                  class="flex cursor-pointer flex-col overflow-hidden rounded-xl border text-start transition-all hover:shadow-sm"
-                  :class="themingStore.radius === opt.value ? 'border-2 border-primary ring-2 ring-primary/20' : 'border-border'"
-                  @click="themingStore.setRadius(opt.value)"
-                >
-                  <div class="relative flex h-24 w-full items-center justify-center bg-muted/30">
-                    <div class="h-10 w-14 border border-border bg-card" :style="{ borderRadius: opt.previewRadius }" />
-                    <span
-                      v-if="themingStore.radius === opt.value"
-                      class="absolute bottom-3 start-3 flex size-5 items-center justify-center rounded-full bg-primary text-primary-foreground"
-                    >
-                      <Check class="h-3 w-3" />
-                    </span>
-                  </div>
-                  <div class="flex items-center gap-2 border-t border-border px-3 py-2">
-                    <span class="text-sm font-medium">{{ opt.label }}</span>
-                  </div>
-                </button>
-              </div>
-            </section>
-
-            <Separator />
-
-            <!-- Density -->
-            <section class="space-y-4">
-              <div>
-                <h4 class="text-sm font-medium">كثافة العرض الافتراضية</h4>
-                <p class="mt-0.5 text-xs text-muted-foreground">مقدار التباعد بين عناصر الواجهة.</p>
-              </div>
-              <div class="grid gap-3 sm:grid-cols-2">
-                <button
-                  v-for="opt in densityOptions"
-                  :key="opt.value"
-                  type="button"
-                  class="flex cursor-pointer flex-col overflow-hidden rounded-xl border text-start transition-all hover:shadow-sm"
-                  :class="themingStore.density === opt.value ? 'border-2 border-primary ring-2 ring-primary/20' : 'border-border'"
-                  @click="themingStore.setDensity(opt.value)"
-                >
-                  <div class="relative h-24 w-full bg-muted/30">
-                    <div class="absolute inset-y-0 start-0 w-10 bg-card border-e border-border flex flex-col gap-1 p-1.5">
-                      <div class="h-1.5 w-full rounded bg-muted" />
-                      <div class="h-1.5 w-3/4 rounded bg-primary/40" />
-                      <div class="h-1.5 w-full rounded bg-muted" />
-                    </div>
-                    <div class="absolute inset-y-2 start-12 end-2 rounded bg-card border border-border p-2">
-                      <div v-if="opt.value === 'comfortable'" class="flex flex-col gap-2">
-                        <div class="h-2 rounded bg-muted/80" />
-                        <div class="h-2 rounded bg-muted/80" />
-                        <div class="h-2 rounded bg-muted/80" />
-                      </div>
-                      <div v-else class="flex flex-col gap-1">
-                        <div class="h-2 rounded bg-muted/80" />
-                        <div class="h-2 rounded bg-muted/80" />
-                        <div class="h-2 rounded bg-muted/80" />
-                        <div class="h-2 rounded bg-muted/80" />
-                      </div>
-                    </div>
-                    <span
-                      v-if="themingStore.density === opt.value"
-                      class="absolute bottom-3 start-3 flex size-5 items-center justify-center rounded-full bg-primary text-primary-foreground"
-                    >
-                      <Check class="h-3 w-3" />
-                    </span>
-                  </div>
-                  <div class="flex items-center gap-2 border-t border-border px-3 py-2">
-                    <div class="min-w-0">
-                      <p class="text-sm font-medium">{{ opt.label }}</p>
-                      <p class="truncate text-xs text-muted-foreground">{{ opt.description }}</p>
-                    </div>
-                  </div>
-                </button>
-              </div>
-            </section>
-
-            <div class="flex justify-end">
-              <Button
-                :disabled="!settingsStore.isSectionDirty('theming', 'appearance') || settingsStore.saving"
-                @click="saveDefaultAppearance"
-              >
-                <Loader2 v-if="settingsStore.saving" class="ms-2 h-4 w-4 animate-spin" />
-                حفظ المظهر الافتراضي
-              </Button>
-            </div>
-          </section>
 
           <!-- ═══════════════════════════════════════════════════════════════ -->
           <!-- CBY: Security                                                   -->

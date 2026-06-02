@@ -48,20 +48,20 @@ export const useReportsStore = defineStore('reports', {
       this.filters = { ...filters }
     },
 
-    loadPresetsFromStorage(): void {
+    async loadPresetsFromStorage(): Promise<void> {
       const { loadPresets } = useReports()
-      this.presets = loadPresets()
+      this.presets = await loadPresets()
     },
 
-    savePreset(name: string): void {
+    async savePreset(name: string): Promise<void> {
       const { savePreset } = useReports()
-      const preset = savePreset(name, this.filters)
+      const preset = await savePreset(name, this.filters)
       this.presets = [...this.presets, preset]
     },
 
-    deletePreset(id: string): void {
+    async deletePreset(id: string): Promise<void> {
       const { deletePreset } = useReports()
-      deletePreset(id)
+      await deletePreset(id)
       this.presets = this.presets.filter((p) => p.id !== id)
     },
 

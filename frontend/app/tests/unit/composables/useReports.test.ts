@@ -3,8 +3,11 @@ import { vi, describe, it, expect, beforeEach } from 'vitest'
 const mockGet = vi.fn()
 const mockFetch = vi.fn()
 
+const mockPost = vi.fn()
+const mockDel = vi.fn()
+
 vi.mock('../../../composables/useApi', () => ({
-  useApi: () => ({ get: mockGet }),
+  useApi: () => ({ get: mockGet, post: mockPost, del: mockDel }),
 }))
 
 vi.stubGlobal('$fetch', mockFetch)
@@ -247,70 +250,49 @@ describe('useReports — WorkflowReport new 7.8 fields', () => {
   })
 })
 
-// localStorage stub for node environment
-const localStorageStore: Map<string, string> = new Map()
-const localStorageStub = {
-  getItem: (key: string) => localStorageStore.get(key) ?? null,
-  setItem: (key: string, value: string) => { localStorageStore.set(key, value) },
-  removeItem: (key: string) => { localStorageStore.delete(key) },
-  clear: () => { localStorageStore.clear() },
-}
-vi.stubGlobal('localStorage', localStorageStub)
-
-describe('useReports — preset management', () => {
-  const STORAGE_KEY = 'reports_presets'
-
+describe('useReports — preset management (API-backed)', () => {
   beforeEach(() => {
-    localStorageStore.clear()
+    mockGet.mockReset()
+    mockPost.mockReset()
+    mockDel.mockReset()
   })
 
-  it('loadPresets returns empty array when nothing stored', () => {
+  it('loadPresets returns data from API', async () => {
+    const stored = [{ id: '1', name: 'Q1', filter: {}, createdAt: '2026-01-01T00:00:00.000Z' }]
+    mockGet.mockResolvedValue({ data: stored })
     const { loadPresets } = useReports()
-    expect(loadPresets()).toEqual([])
+    const result = await loadPresets()
+    expect(mockGet).toHaveBeenCalledWith('/api/report-presets')
+    expect(result).toEqual(stored)
   })
 
-  it('savePreset stores a preset and returns it', () => {
-    const { savePreset, loadPresets } = useReports()
-    const preset = savePreset('Q1 2026', { fromDate: '2026-01-01', toDate: '2026-03-31' })
+  it('loadPresets returns empty array on API error', async () => {
+    mockGet.mockRejectedValue(new Error('network'))
+    const { loadPresets } = useReports()
+    expect(await loadPresets()).toEqual([])
+  })
 
+  it('savePreset posts to API and returns preset', async () => {
+    mockPost.mockResolvedValue({ data: [] })
+    const { savePreset } = useReports()
+    const preset = await savePreset('Q1 2026', { fromDate: '2026-01-01', toDate: '2026-03-31' })
+    expect(mockPost).toHaveBeenCalledWith('/api/report-presets', expect.objectContaining({ name: 'Q1 2026' }))
     expect(preset.name).toBe('Q1 2026')
     expect(preset.filter.fromDate).toBe('2026-01-01')
     expect(preset.id).toBeTruthy()
-
-    const stored = loadPresets()
-    expect(stored).toHaveLength(1)
-    expect(stored[0]!.name).toBe('Q1 2026')
   })
 
-  it('savePreset truncates name at 50 chars', () => {
+  it('savePreset truncates name at 50 chars', async () => {
+    mockPost.mockResolvedValue({ data: [] })
     const { savePreset } = useReports()
-    const longName = 'a'.repeat(60)
-    const preset = savePreset(longName, {})
+    const preset = await savePreset('a'.repeat(60), {})
     expect(preset.name).toHaveLength(50)
   })
 
-  it('deletePreset removes the preset by id', () => {
-    const { savePreset, deletePreset, loadPresets } = useReports()
-    const p1 = savePreset('Preset 1', {})
-    const p2 = savePreset('Preset 2', {})
-
-    deletePreset(p1.id)
-
-    const remaining = loadPresets()
-    expect(remaining).toHaveLength(1)
-    expect(remaining[0]!.id).toBe(p2.id)
-  })
-
-  it('deletePreset on non-existent id leaves presets unchanged', () => {
-    const { savePreset, deletePreset, loadPresets } = useReports()
-    savePreset('Keep', {})
-    deletePreset('non-existent-id')
-    expect(loadPresets()).toHaveLength(1)
-  })
-
-  it('loadPresets returns empty array on corrupt localStorage', () => {
-    localStorageStub.setItem(STORAGE_KEY, '{invalid json!!!}')
-    const { loadPresets } = useReports()
-    expect(loadPresets()).toEqual([])
+  it('deletePreset calls DELETE endpoint', async () => {
+    mockDel.mockResolvedValue({ data: [] })
+    const { deletePreset } = useReports()
+    await deletePreset('abc-123')
+    expect(mockDel).toHaveBeenCalledWith('/api/report-presets/abc-123')
   })
 })

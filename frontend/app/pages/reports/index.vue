@@ -55,7 +55,7 @@ const presetName = ref('')
 const showPresetForm = ref(false)
 
 onMounted(async () => {
-  store.loadPresetsFromStorage()
+  await store.loadPresetsFromStorage()
   await loadReports()
 })
 
@@ -84,9 +84,9 @@ function loadPreset(preset: typeof store.presets[0]) {
   toDate.value = preset.filter.toDate ?? ''
 }
 
-function handleSavePreset() {
+async function handleSavePreset() {
   if (!presetName.value.trim()) return
-  store.savePreset(presetName.value.trim())
+  await store.savePreset(presetName.value.trim())
   presetName.value = ''
   showPresetForm.value = false
 }

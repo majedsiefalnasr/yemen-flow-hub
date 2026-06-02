@@ -17,6 +17,16 @@ export default defineNuxtPlugin(async () => {
   await auth.fetchUser()
   if (auth.isAuthenticated) {
     await auth.fetchUserPreferences()
-    useThemingStore().applyAppearanceSettings(auth.userPreferences?.theming)
+    const theming = useThemingStore()
+    theming.applyAppearanceSettings(auth.userPreferences?.theming)
+    // Push state to DOM so the app shell renders with the correct
+    // user theme. Without this, loadSettings()'s loadFromCache() can
+    // briefly overwrite the state and useHead() would read stale values.
+    theming.applyTheme()
+    theming.applyFont()
+    theming.applyBranding()
+    theming.applyHighContrast()
+    theming.applyRadius()
+    theming.applyDensity()
   }
 })

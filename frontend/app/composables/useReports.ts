@@ -58,10 +58,8 @@ export interface ReportPreset {
   createdAt: string
 }
 
-const PRESETS_KEY = 'reports_presets'
-
 export function useReports() {
-  const { get } = useApi()
+  const { get, post, del } = useApi()
   const config = useRuntimeConfig()
   const baseURL = config.public.apiBase as string
 
@@ -111,32 +109,28 @@ export function useReports() {
     URL.revokeObjectURL(objectUrl)
   }
 
-  function loadPresets(): ReportPreset[] {
+  async function loadPresets(): Promise<ReportPreset[]> {
     try {
-      const raw = localStorage.getItem(PRESETS_KEY)
-      if (!raw) return []
-      return JSON.parse(raw) as ReportPreset[]
+      const response = await get<ApiResponse<ReportPreset[]>>('/api/report-presets')
+      return response.data ?? []
     } catch {
       return []
     }
   }
 
-  function savePreset(name: string, filter: ReportFilter): ReportPreset {
-    const presets = loadPresets()
+  async function savePreset(name: string, filter: ReportFilter): Promise<ReportPreset> {
     const preset: ReportPreset = {
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       name: name.slice(0, 50),
       filter,
       createdAt: new Date().toISOString(),
     }
-    presets.push(preset)
-    localStorage.setItem(PRESETS_KEY, JSON.stringify(presets))
+    await post<ApiResponse<ReportPreset[]>>('/api/report-presets', preset)
     return preset
   }
 
-  function deletePreset(id: string): void {
-    const presets = loadPresets().filter((p) => p.id !== id)
-    localStorage.setItem(PRESETS_KEY, JSON.stringify(presets))
+  async function deletePreset(id: string): Promise<void> {
+    await del(`/api/report-presets/${id}`)
   }
 
   return {

@@ -174,7 +174,7 @@ export const useThemingStore = defineStore('theming', {
   state: (): ThemingState => ({
     mode: 'system',
     font: 'IBM Plex Sans Arabic',
-    layout: 'full',
+    layout: 'boxed',
     brandColor: '#0066cc',
     brandLogoName: '',
     brandingPublished: true,

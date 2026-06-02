@@ -10,6 +10,8 @@ export const DEFAULT_BRAND_LOGO_NAME = 'yemen-emblem.svg'
 interface SystemGeneralSettings {
   platformName?: string
   authority?: string
+  language?: string
+  timeZone?: string
 }
 
 interface SystemBrandingSettings {
@@ -20,6 +22,8 @@ interface SystemBrandingSettings {
 interface OrgCache {
   platformName?: string
   authority?: string
+  language?: string
+  timeZone?: string
   brandLogoDataUrl?: string
   brandLogoName?: string
   systemVersion?: string
@@ -28,6 +32,8 @@ interface OrgCache {
 export const useOrgStore = defineStore('org', () => {
   const platformName = ref(DEFAULT_PLATFORM_NAME)
   const authority = ref(DEFAULT_AUTHORITY)
+  const language = ref('ar')
+  const timeZone = ref('GMT+3')
   const brandLogoDataUrl = ref<string>(DEFAULT_BRAND_LOGO_URL)
   const brandLogoName = ref<string>(DEFAULT_BRAND_LOGO_NAME)
   const systemVersion = ref<string>('defaults-v1')
@@ -40,6 +46,8 @@ export const useOrgStore = defineStore('org', () => {
       const parsed = JSON.parse(cached) as OrgCache
       platformName.value = parsed.platformName || DEFAULT_PLATFORM_NAME
       authority.value = parsed.authority || DEFAULT_AUTHORITY
+      language.value = parsed.language || 'ar'
+      timeZone.value = parsed.timeZone || 'GMT+3'
       brandLogoDataUrl.value = parsed.brandLogoDataUrl || DEFAULT_BRAND_LOGO_URL
       brandLogoName.value = parsed.brandLogoName || DEFAULT_BRAND_LOGO_NAME
       systemVersion.value = parsed.systemVersion || 'defaults-v1'
@@ -52,6 +60,8 @@ export const useOrgStore = defineStore('org', () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
       platformName: platformName.value,
       authority: authority.value,
+      language: language.value,
+      timeZone: timeZone.value,
       brandLogoDataUrl: brandLogoDataUrl.value,
       brandLogoName: brandLogoName.value,
       systemVersion: systemVersion.value,
@@ -85,10 +95,10 @@ export const useOrgStore = defineStore('org', () => {
     branding?: SystemBrandingSettings,
     version?: string,
   ) {
-    if (version && version === systemVersion.value) return
-
     platformName.value = general?.platformName || DEFAULT_PLATFORM_NAME
     authority.value = general?.authority || DEFAULT_AUTHORITY
+    language.value = general?.language || 'ar'
+    timeZone.value = general?.timeZone || 'GMT+3'
     brandLogoName.value = branding?.brandLogoName || DEFAULT_BRAND_LOGO_NAME
     brandLogoDataUrl.value = branding?.brandLogoDataUrl || DEFAULT_BRAND_LOGO_URL
     systemVersion.value = version || 'defaults-v1'
@@ -98,6 +108,8 @@ export const useOrgStore = defineStore('org', () => {
   return {
     platformName,
     authority,
+    language,
+    timeZone,
     brandLogoDataUrl,
     brandLogoName,
     systemVersion,

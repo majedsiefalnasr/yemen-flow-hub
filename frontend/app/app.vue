@@ -41,6 +41,27 @@ onBeforeMount(() => {
   themingStore.loadSettings()
 })
 
+// On a new device loadSettings() runs before login (no auth hint) so it
+// falls back to /api/settings/public with no user preferences. Re-run once
+// the user becomes authenticated — covers both new devices (isAuthenticated
+// transitions false→true after login) and saved devices that reach the watch
+// with an expired session that is then refreshed via PIN login.
+watch(() => authStore.isAuthenticated, (authenticated) => {
+  if (authenticated) {
+    themingStore.loadSettings()
+  }
+})
+
+// For saved devices whose session was still valid when the app loaded, the
+// auth plugin set isAuthenticated=true before this watch was registered, so
+// the watch above misses that initial transition. Drive a fresh server load
+// here once the component has mounted and the plugin is guaranteed done.
+onMounted(() => {
+  if (authStore.isAuthenticated) {
+    themingStore.loadSettings()
+  }
+})
+
 onMounted(() => {
   mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
   mediaQuery.addEventListener('change', applySystemTheme)
