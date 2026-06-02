@@ -20,11 +20,6 @@ backend/.phpunit.cache
 frontend/.nuxt
 frontend/.output
 
-# ── Lovable prototype ─────────────────────────────────────────────────────────
-# Reference-only UI prototype — NOT part of the shipped product.
-# Duplicates patterns, incorrect business logic, and must not influence the index.
-lovable
-
 # ── BMAD framework internals ──────────────────────────────────────────────────
 # Framework templates, scripts, and skill bundles — not project source code.
 # Custom BMAD config (_bmad/custom/, _bmad/config.toml) is also excluded because

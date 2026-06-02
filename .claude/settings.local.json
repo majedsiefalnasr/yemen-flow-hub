@@ -66,7 +66,10 @@
       "Skill(playwright-cli)",
       "WebFetch(domain:impeccable.style)",
       "Bash(xargs cat -n)",
-      "Bash(xargs ls -la)"
+      "Bash(xargs ls -la)",
+      "Bash(IMPECCABLE_CONTEXT_DIR=frontend node .claude/skills/impeccable/scripts/load-context.mjs)",
+      "Bash(rtk find *)",
+      "Bash(rtk docker *)"
     ]
   }
 }

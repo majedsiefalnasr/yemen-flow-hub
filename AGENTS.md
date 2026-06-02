@@ -24,7 +24,6 @@ yemen-flow-hub/               ← Root repo (git@github.com:majedsiefalnasr/yeme
 │   ├── SHADCN.md             ← shadcn-vue component reference: recipes, imports, decision table
 │   └── CLAUDE.md             ← Frontend AI instructions (loads PRODUCT.md + DESIGN.md + SHADCN.md)
 ├── docs/                     ← Project documentation (source of truth)
-├── lovable/                  ← Lovable Nuxt prototype (UI source — components being transplanted into frontend/)
 ├── DESIGN.md                 ← Root visual design system (typography, spacing, elevation)
 ├── AI-ENGINEERING-PROMPT.md  ← Full engineering context
 └── AGENTS.md                 ← This file
@@ -137,7 +136,7 @@ These three files are loaded automatically by `frontend/CLAUDE.md` and must be r
 
 `docs/user-view/*.md` intentionally supersedes older customs-declaration terminology. Where older docs or code say "customs declaration" for the final Director workflow, align new work to external FX confirmation (`تأكيد مصارفة خارجية`) and the `FX_CONFIRMATION_PENDING` handoff unless a correction story explicitly preserves a legacy alias during migration.
 
-**lovable/** is a Nuxt 4 + Vue + shadcn-vue prototype used as the UI source. Pages, components, and layouts are being transplanted into `frontend/` and wired to real Laravel APIs; until that work completes, treat Lovable as the visual reference for any new UI.
+The UI prototype phase is complete. The shipped `frontend/` code is now the visual source of truth, governed by `DESIGN.md`, `frontend/DESIGN.md`, `frontend/SHADCN.md`, and `docs/user-view/*.md`. New UI must match the patterns already built in `frontend/` and the tokens in `DESIGN.md`; there is no separate prototype to clone from.
 
 ---
 
@@ -198,7 +197,6 @@ CBY_ADMIN
 - Do NOT render role-inappropriate UI controls and rely on backend rejection later; role-forbidden surfaces should not be mounted/rendered
 - Do NOT use `CBY_ADMIN` as a workflow super-actor for Director, SWIFT, Support, Bank Reviewer, or Executive Member actions
 - Do NOT create `AI-PROTOTYPE-PROMPT.md` — that file lives only in the root repo
-- Do NOT modify anything inside `lovable/`
 - Do NOT replace shadcn-vue components with raw HTML to make tests pass. shadcn-vue components (Button, Dialog, Table, Select, etc.) are mandatory — see `frontend/SHADCN.md`. If a Vitest test fails because it cannot introspect a shadcn-vue component (e.g. Dialog content is teleported, Select options are not raw `<option>` tags), **skip or ignore that test** rather than downgrading the component to raw HTML.
 
 ### Always Do

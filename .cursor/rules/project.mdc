@@ -11,7 +11,6 @@ Read `AGENTS.md` at the root before taking any action. It is the single file of 
 ## This Repo Scope
 - Tracks: `docs/`, `DESIGN.md`, `AI-ENGINEERING-PROMPT.md`, `AGENTS.md`, root configs
 - Does NOT contain runnable app code
-- `lovable/` is a read-only reference prototype — never modify it
 
 ## Git
 Root monorepo remote: `git@github.com:majedsiefalnasr/yemen-flow-hub.git`

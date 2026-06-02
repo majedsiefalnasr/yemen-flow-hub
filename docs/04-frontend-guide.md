@@ -135,17 +135,15 @@ UI work must start from the relevant `docs/user-view/{role}.md` rather than inve
 
 ---
 
-## Parity-Evidence Requirement
+## Design Consistency Requirement
 
-Every UI story must declare a parity-evidence triplet for each surface it changes:
+The UI prototype phase is complete. The shipped `frontend/` code is the visual source of truth. Every UI story must keep new and changed surfaces consistent with what is already built and with the design authority:
 
-1. **Spec citation** — line reference into `docs/user-view/{role}.md` (or the Lovable prototype path) showing the intended design
-2. **Visual reference** — screenshot of the current state (or the Lovable prototype rendering) for before/after comparison
-3. **Implementation diff** — the actual code change that brings the surface into parity
+1. **Spec citation** — line reference into `docs/user-view/{role}.md` showing the intended operational posture and layout for the surface
+2. **Token compliance** — every color, spacing, radius, shadow, and font drawn from `DESIGN.md` / `frontend/DESIGN.md`; no raw Tailwind color scales or hardcoded hex (see `frontend/SHADCN.md`)
+3. **Pattern reuse** — the surface composes existing `frontend/` components and matches sibling pages of the same role rather than inventing new affordances
 
-Parity status for each surface is tracked in `docs/ui-parity/parity-matrix.md` with one of: PASS, MINOR, MAJOR, MISSING, SKIP.
-
-This is enforced by the BMad workflow gate established in Story 9.1. UI changes without a parity-evidence triplet fail the gate.
+Screenshots for visual-regression of specific stories live under `docs/ui-parity/screenshots/` and are produced by the e2e gate specs (e.g. `frontend/tests/e2e/story-12-3-gates.spec.ts`). They capture the current app, not a separate prototype.
 
 ---
 

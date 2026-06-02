@@ -1,9 +1,6 @@
 # Claude Code agent worktrees — ephemeral, never commit
 .claude/worktrees/
 
-# Lovable prototype — reference only, not committed to root
-lovable/
-
 # BMad output — exclude only truly transient artifacts
 _bmad-output/implementation-artifacts/
 _bmad-output/test-artifacts/

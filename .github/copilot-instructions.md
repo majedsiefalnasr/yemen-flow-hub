@@ -16,7 +16,6 @@ Backend and frontend also each have their own team repos. Every change to `backe
 - Commit format: `type(scope): description`
 
 ## Key Rules
-- `lovable/` is read-only reference code — never suggest modifying it
 - Docs in `docs/` override all Copilot suggestions about workflow or business logic
 - Use Context7 CLI for library documentation: `npx ctx7@latest library "<name>" "<question>"`
 - Use SocratiCode MCP for codebase exploration before suggesting changes

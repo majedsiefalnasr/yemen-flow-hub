@@ -62,7 +62,6 @@ When browser interaction is required, use `playwright-cli` commands. Keep the `p
 - `docs/` — Authoritative project documentation
 - `DESIGN.md` — Visual design system
 - `AI-ENGINEERING-PROMPT.md` — Full engineering context
-- `lovable/` — Nuxt 4 + Vue + shadcn-vue prototype. UI source being transplanted into `frontend/` and wired to real Laravel APIs.
 
 ## graphify
 

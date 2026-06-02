@@ -30,7 +30,6 @@ Use these sources in order when implementing:
 - Preserve URL-shareable filters through query params for role queues, request registries, reports, audit, and admin investigations.
 - Use `useApi()` and existing stores/composables before creating new fetch logic.
 - Backend changes must keep organization scope at query level and all workflow transitions through `WorkflowService::transition()`.
-- Keep `lovable/` untouched.
 
 ## Required Alignment Before Implementation
 

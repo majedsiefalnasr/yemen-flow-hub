@@ -1,219 +1,269 @@
-# Yemen Flow Hub — Apple-Inspired Design System
+# Yemen Flow Hub — Design System
 
 > **Two-layer design system:**
 > - This file (`DESIGN.md`) = **What** — token values, spacing philosophy, component specs, role dashboard layouts. The design authority for all tools.
 > - `frontend/DESIGN.md` = **How** — Tailwind/Vue code patterns that implement this. Frontend AI reads both; this file wins on any conflict.
+>
+> **Source of truth:** This document is generated from and kept in sync with the shipped frontend code, primarily `frontend/app/assets/css/main.css` (token definitions) and `frontend/app/components/ui/` (shadcn-vue "new-york" component layer). Where a value here disagrees with `main.css`, `main.css` is correct and this file should be corrected.
 
 ## Overview
 
-Yemen Flow Hub is a government banking workflow platform for the Central Bank of Yemen (CBY). The design system follows Apple's design philosophy adapted for institutional, Arabic-first context: **clarity through restraint, confidence through simplicity, authority through typography**.
+Yemen Flow Hub is a government banking workflow platform for the Central Bank of Yemen (CBY). The design system is institutional and Arabic-first: **clarity through restraint, confidence through density, authority through structure**.
 
-The design is **RTL-first, workflow-centric, and desktop-focused** with responsive degradation at ≤ 600px. Unlike consumer product design, every surface prioritizes *content density* for workflow context. There are no gradients, no glassmorphism, no decorative chrome — only what the transaction requires.
+The design is **RTL-first, workflow-centric, and desktop-focused** with responsive degradation at ≤ 600px. Unlike consumer product design, every surface prioritizes *operational density*: each screen is a queue or a form. There are no gradients, no glassmorphism, no decorative chrome, only what the transaction requires.
 
-**Platform aesthetic:** Institutional clarity. Single accent color (#0066cc). Two-font system (Inter for Latin, IBM Plex Sans Arabic for Arabic). Pill-shaped primary CTAs. Minimal elevation (card shadows only). Generous whitespace between major sections. 17px body text. Tight headline tracking. The entire system rests on five foundations:
+**Platform aesthetic:** Institutional clarity built on the shadcn-vue **new-york / neutral** base with Tailwind CSS v4. A single, themeable brand accent (default `#0066cc`, set by CBY Admin). A four-font Arabic-first system (Cairo headings, Tajawal sections, IBM Plex Sans Arabic body, Inter for Latin). Compact controls (32px default button height) tuned for operators processing dozens of requests. One subtle card shadow. Generous gaps between sections. The system rests on five foundations:
 
-1. **Color:** Single primary blue #0066cc, near-black text #1d1d1f, white/parchment surfaces, semantic status triplets
-2. **Typography:** Inter Variable (headings) + IBM Plex Sans Arabic (body), 17px base body, tight tracking on display sizes
-3. **Spacing:** 8px base unit, 80px major section breaks, 24px card padding
-4. **Shapes:** Pill primary buttons (9999px), 18px card radius, 8px utility buttons, 24px modals
-5. **Elevation:** One subtle card shadow only — no stacked shadows, no backdrop blur except sticky bars
+1. **Color:** A themeable brand accent plus a dual semantic system — muted institutional status colors (`--success`, `--warning`) and brighter iOS-style severity colors (`--severity-green/amber/red`), all OKLCH, all with automatic dark-mode derivations.
+2. **Typography:** Four loaded families. Cairo (headings) + Tajawal (sections) + IBM Plex Sans Arabic (body) + Inter (Latin), Arabic-first fallback stack.
+3. **Spacing:** 8px base unit; `gap-6` between dashboard sections; `p-4` compact cards / `p-6` full-page cards.
+4. **Shapes:** One radius scale derived from `--radius: 0.625rem` (10px). `rounded-lg` = 10px on buttons and standard cards. No pill buttons; badges use `rounded-4xl`.
+5. **Elevation:** One shadow at rest (`shadow`), one on hover (`shadow-md`). No stacked shadows.
+
+**Key Characteristics:**
+- Themeable: CBY Admin sets `--brand-color-base`; primary, ring, and links track it.
+- Four theme modes: light, dark, high-contrast, dark.high-contrast.
+- Compact density mode (`data-density='compact'`) shrinks tables, inputs, buttons, and cards.
+- Dark mode is derived, not hand-tuned: severity/status colors are computed from light base values via `color-mix` in OKLCH.
 
 ---
 
 ## 1 — Color Palette
 
-Yemen Flow Hub uses Apple's minimal color vocabulary adapted for institutional authority. Every token has a clear purpose. No hex value appears inline in code — all colors are CSS custom properties referenced as `var(--color-name)`.
+All colors are CSS custom properties defined in `frontend/app/assets/css/main.css`. **No hex value appears inline in component code, and raw Tailwind color scales (`text-gray-*`, `bg-blue-500`, `text-red-600`) are forbidden.** Always use the semantic token or its Tailwind utility (`text-foreground`, `bg-primary`, `text-[var(--severity-red)]`).
 
-### Core Surfaces
+### Core shadcn-vue Surfaces (OKLCH, neutral base)
 
-| Token | Hex | Usage | Light mode | Dark mode |
-|---|---|---|---|---|
-| `--background` | #ffffff | Page canvas | oklch(1 0 0) | oklch(0.09 0.012 258) |
-| `--foreground` | #1d1d1f | Primary text | oklch(0.141 0 0) | oklch(0.94 0 0) |
-| `--card` | #ffffff | Card background | oklch(1 0 0) | oklch(0.13 0.015 258) |
-| `--card-foreground` | #1d1d1f | Card text | oklch(0.141 0 0) | oklch(0.94 0 0) |
-| `--muted` | #f5f5f7 | Alternate rows | oklch(0.961 0 286) | oklch(0.16 0.015 258) |
-| `--muted-foreground` | #7a7a7a | Secondary text | oklch(0.48 0 0) | oklch(0.68 0 0) |
-| `--border` | #cccccc | Divider lines | oklch(0.8 0 0) | oklch(0.22 0.015 258) |
-| `--input` | #cccccc | Input border | oklch(0.8 0 0) | oklch(0.22 0.015 258) |
-| `--ring` | #0066cc | Focus outline | oklch(0.486 0.203 258.7) | oklch(0.68 0.15 258.7) |
+| Token | Light (OKLCH) | Dark (OKLCH) | Usage |
+|---|---|---|---|
+| `--background` | `oklch(1 0 0)` | `oklch(0.145 0 0)` | Page canvas |
+| `--foreground` | `oklch(0.145 0 0)` | `oklch(0.985 0 0)` | Primary text (near-black, not pure) |
+| `--card` / `--popover` | `oklch(1 0 0)` | `oklch(0.205 0 0)` | Card / popover surface |
+| `--muted` | `oklch(0.97 0 0)` | `oklch(0.269 0 0)` | Alternate rows, subtle fills |
+| `--muted-foreground` | `oklch(0.556 0 0)` | `oklch(0.708 0 0)` | Secondary text, disabled |
+| `--secondary` | `oklch(0.97 0 0)` | `oklch(0.269 0 0)` | Secondary button surface |
+| `--accent` | `oklch(0.97 0 0)` | `oklch(0.269 0 0)` | Hover highlight on ghost/menu items |
+| `--border` / `--input` | `oklch(0.922 0 0)` | `oklch(1 0 0 / 10–15%)` | Dividers, card/input borders |
+| `--ring` | tracks `--brand-color` | tracks `--brand-color` | Focus outline |
+| `--destructive` | `oklch(0.577 0.245 27.3)` | `oklch(0.704 0.191 22.2)` | Destructive actions and errors |
 
-### Primary Accent
+### Brand Accent (themeable)
 
-| Token | Hex | Usage |
+| Token | Value | Usage |
 |---|---|---|
-| `--primary` | #0066cc | All interactive elements |
-| `--primary-foreground` | #ffffff | Text on primary background |
+| `--brand-color-base` | `#0066cc` (default) | Source of truth, set by CBY Admin in settings |
+| `--brand-color` | `var(--brand-color-base)`; dark = `color-mix(... 60%, white 40%)` | What the app consumes |
+| `--primary` | tracks `--brand-color` | All primary CTAs, active nav, links |
+| `--primary-foreground` | `oklch(0.985 0 0)` (white) | Text on primary |
+| `--ring` | tracks `--brand-color` | Focus rings stay branded |
 
-### Semantic Status Triplets (text / background / border)
+**The Themeable Brand Rule.** The brand accent is never hardcoded. CBY Admin sets `--brand-color-base` once; `--primary`, `--ring`, and links derive from it, and dark mode lifts its lightness automatically via `color-mix`. Never write `#0066cc` (or any literal accent) in a component, the only exception is fixed theme-preview thumbnails in settings.
 
-| Status | Text | Background | Border | Usage |
-|---|---|---|---|---|
-| Success | #1b5e20 | #f1f8f4 | #c8e6c9 | Approved, completed |
-| Error | #c62828 | #ffebee | #ffcdd2 | Rejected, failed |
-| Warning | #f57f17 | #fff8e1 | #ffe082 | At-risk, pending |
-| Info | #0d47a1 | #e3f2fd | #bbdefb | Informational |
-| Voting | #5856d6 | rgba(88,86,214,0.08) | rgba(88,86,214,0.25) | Executive voting |
-| SWIFT | #32ade6 | rgba(50,173,230,0.08) | rgba(50,173,230,0.25) | SWIFT upload |
-| Locked | #8e8e93 | #f5f5f5 | #d1d1d6 | Immutable state |
+### Dual Semantic System
 
-### Sidebar-Specific Tokens
+The app ships **two parallel status vocabularies**. Pick by context.
+
+**Institutional status (muted, formal)** — for workflow status text and badges:
+
+| Token | Light | Dark (derived) | Usage |
+|---|---|---|---|
+| `--success` | `#1b5e20` | `color-mix(... 55%, white)` | Approved, completed |
+| `--warning` | `#f57f17` | `color-mix(... 60%, white)` | At-risk, pending |
+| `--info` / `--swift` | `#32ade6` | `color-mix(... 70%, white)` | SWIFT, informational |
+| `--locked` | `#8e8e93` | `color-mix(... 60%, white)` | Immutable / locked states |
+| `--voting` | `#5856d6` | `color-mix(... 60%, white)` | Executive voting sessions |
+
+**Severity (brighter, iOS-derived)** — for action-required banners, severity emphasis, alert accents:
+
+| Token | Light | Dark (derived) | Usage |
+|---|---|---|---|
+| `--severity-green` | `#34c759` | `color-mix(... 70%, white)` | Strong success emphasis |
+| `--severity-amber` | `#ff9f0a` | `color-mix(... 70%, white)` | Action-required banners |
+| `--severity-red` | `#ff3b30` | `color-mix(... 70%, white)` | High-severity error accents |
+
+**Semantic UI aliases (triplets)** — text / surface tint / border, all OKLCH, each with a dark override:
+
+| Role | Text | Surface tint | Border |
+|---|---|---|---|
+| Error | `--color-text-error` | `--color-surface-error` | `--color-border-error` |
+| Success | `--color-text-success` | `--color-surface-success` | `--color-border-success` |
+| Warning | `--color-text-warning` | `--color-surface-warning` | `--color-border-warning` |
+| Subtle | `--color-text-subtle` (= muted-foreground) | `--color-surface-subtle` (= muted) | — |
+
+### Sidebar Tokens
 
 | Token | Light | Dark | Usage |
 |---|---|---|---|
-| `--sidebar` | #ffffff | #111827 | Sidebar background |
-| `--sidebar-foreground` | #1d1d1f | #e8eaed | Sidebar text |
-| `--sidebar-primary` | #0066cc | #4da6ff | Active nav item |
-| `--sidebar-accent` | #e3f2fd | #1a3a5c | Hover state |
-| `--sidebar-border` | #cccccc | #2d3748 | Sidebar divider |
+| `--sidebar` | `oklch(0.985 0 0)` | `oklch(0.205 0 0)` | Sidebar background |
+| `--sidebar-foreground` | `oklch(0.145 0 0)` | `oklch(0.985 0 0)` | Sidebar text |
+| `--sidebar-primary` | tracks neutral primary | `oklch(0.488 0.243 264)` | Active nav indicator |
+| `--sidebar-accent` | `oklch(0.97 0 0)` | `oklch(0.269 0 0)` | Hover state |
+| `--sidebar-border` | `oklch(0.922 0 0)` | `oklch(1 0 0 / 10%)` | Sidebar divider |
+
+### Chart Tokens
+
+Five chart colors (`--chart-1` … `--chart-5`) with distinct light/dark OKLCH values, used only on BANK_ADMIN and CBY_ADMIN analytics surfaces.
 
 ### Rules
 
-- **No decoration via color.** Every colored element has semantic meaning.
-- **Contrast minimum:** 7:1 for primary text on background; 4.5:1 for secondary.
-- **No color-only status.** Every status badge combines color + text + icon.
-- **Border rule:** Use `--border` (#cccccc) for passive dividers only. Use `--primary` for active focus rings.
+- **No decoration via color.** Every colored element carries semantic meaning.
+- **No color-only status.** Every status badge combines color + text + icon (`DESIGN.md §24`).
+- **Border rule:** `--border` for passive dividers; `--ring` (brand) for active focus.
+- **The Derived-Dark Rule.** Never hand-author a dark-mode hex for status/severity colors. Set the light base; dark mode is computed via `color-mix` in OKLCH so hue is preserved and lightness lifts. If you find yourself writing a `.dark` override for a severity color, you are duplicating what `color-mix` already does.
 
 ---
 
 ## 2 — Typography
 
-Yemen Flow Hub uses two fonts:
-- **Inter Variable** — Latin text and headings, screen-optimized
-- **IBM Plex Sans Arabic** — Arabic body copy, RTL-optimized
+Four font families load via Google Fonts (`display=swap`), imported at the top of `main.css`:
 
-Fallback stack: `IBM Plex Sans Arabic, Inter Variable, system-ui, -apple-system, sans-serif` (Arabic-first, reflecting RTL default).
+- **Cairo** — page headlines and section headings (`font-heading`; auto-applied to `h1`–`h6`)
+- **Tajawal** — subheadings, navigation labels (`font-section`)
+- **IBM Plex Sans Arabic** — body copy, form fields, table content (`font-sans`, default)
+- **Inter** — Latin strings and numbers in LTR context (via the fallback stack)
 
-### Typographic Hierarchy
+Fallback stack (Arabic-first): `'IBM Plex Sans Arabic', 'Inter', system-ui, -apple-system, sans-serif`.
 
-| Token | Font | Size | Weight | Line Height | Letter Spacing | Usage |
-|---|---|---|---|---|---|
-| `display` | Inter | 56px | 600 | 68px | -0.02em | Page headline (CBY Admin overview) |
-| `headline-lg` | Inter | 40px | 600 | 48px | -0.01em | Section headline |
-| `headline-md` | Inter | 28px | 600 | 36px | 0 | Subsection header |
-| `title-lg` | IBM Plex Sans Arabic | 20px | 700 | 28px | 0 | Card title, form section |
-| `body-lg` | IBM Plex Sans Arabic | 18px | 400 | 28px | 0.02em | Large body (queue lists) |
-| `body` | IBM Plex Sans Arabic | 17px | 400 | 26px | 0.02em | Default paragraph text |
-| `label-md` | IBM Plex Sans Arabic | 14px | 600 | 20px | 0.01em | Button text, form labels |
-| `label-sm` | IBM Plex Sans Arabic | 12px | 500 | 16px | 0.03em | Captions, badges |
-| `caption` | IBM Plex Sans Arabic | 12px | 400 | 16px | 0.02em | Secondary captions |
-| `fine-print` | IBM Plex Sans Arabic | 11px | 400 | 16px | 0 | Footer copy, disclaimers |
+### Hierarchy
+
+Product UI uses a fixed rem scale, not fluid clamps. Density favors compact sizes; emphasis comes from weight and color, not large type.
+
+| Role | Font | Size | Weight | Usage |
+|---|---|---|---|---|
+| Page headline | Cairo | `text-2xl`–`text-3xl` | 600–700 | Dashboard / page title |
+| Section heading | Cairo | `text-lg`–`text-xl` | 600 | Card titles, form section headers |
+| Subheading / nav | Tajawal | `text-sm` | 500–600 | Sidebar items, secondary headers |
+| Body (default) | IBM Plex Sans Arabic | `text-sm` (14px) | 400 | Dashboard tables, dense UI |
+| Body (form) | IBM Plex Sans Arabic | `text-base` (16px) | 400 | Form content, reading surfaces |
+| Label / button | IBM Plex Sans Arabic | `text-sm` | 500 (`font-medium`) | Button text, form labels |
+| Caption / badge | IBM Plex Sans Arabic | `text-xs` (12px) | 400–500 | Captions, badge text, table meta |
 
 ### Rules
 
-- **Headline letter-spacing.** Display, headline-lg, and headline-md use negative tracking to create Apple "tight" headline feel.
-- **Body at 17px, not 16px.** The extra pixel gives intentional reading pace.
-- **Weight 600 for labels and small emphasis.** Weight 700 is absent except where buttons need extra weight.
-- **No italics.** Emphasis uses weight (400 → 600) or color, never slant.
-- **Font loading:** Both fonts loaded via Google Fonts with `display=swap`.
+- **The Three-Weight Rule.** Body ladder is 400 / 500 / 600. Avoid `font-bold` (700) on body text; reserve 700 for headings only.
+- **No italics.** Emphasis uses weight (`font-medium`, `font-semibold`) or color, never slant.
+- **Headings are Cairo automatically.** `h1`–`h6` and `.cn-font-heading` map to `font-heading` in the base layer. Don't restate the family on every heading.
+- **Compact body by default.** Dense operational surfaces (tables, queues) run at `text-sm`; only reading-oriented form surfaces step up to `text-base`.
 
 ---
 
 ## 3 — Layout & Spacing
 
-Spacing reflects Apple's principle: **generous whitespace makes content breathe**.
+### Spacing Scale (8px base)
 
-### Spacing Scale
-
-| Token | Value | Usage |
+| Tailwind | Value | Usage |
 |---|---|---|
-| `xs` | 4px | Icon-to-text gap (rare) |
-| `sm` | 8px | Internal card spacing |
-| `md` | 12px | Form field vertical spacing |
-| `lg` | 24px | Card padding, section gutters |
-| `xl` | 40px | Major section separation |
-| `2xl` | 64px | Hero-level separation |
+| `gap-1` / `p-1` | 4px | Icon-to-text gap (rare) |
+| `gap-2` / `p-2` | 8px | Internal tight spacing |
+| `gap-3` / `p-3` | 12px | Field spacing |
+| `gap-4` / `p-4` | 16px | Compact queue card padding, dashboard section gaps |
+| `gap-6` / `p-6` | 24px | Full-page card padding, section separation |
 
 ### Container & Grid
 
-- **Max content width:** 1600px, centered with padding
-- **Grid:** 12-column base, gutters 24px
-- **Container padding:** 24px desktop / 16px tablet / 12px mobile
-- **Card padding:** Always 24px (lg)
-- **Section vertical spacing:** 64px top/bottom between major sections
+- **Content layout:** `.layout-boxed` caps at **1200px** (centered); `.layout-full` is unbounded. Chosen per surface, not globally fixed.
+- **Card padding:** `p-4` (16px) for compact queue cards; `p-6` (24px) for full-page cards.
+- **Section gap:** `gap-6` between dashboard sections.
+- **Card grids:** `grid-cols-4` → `max-lg:grid-cols-2` → `max-md:grid-cols-1`.
 
 ### Sidebar & Header
 
-- **Sidebar width (expanded):** 280px, right-aligned (RTL)
-- **Sidebar width (collapsed):** 72px, icons only
-- **Header height:** 56px fixed
-- **Nav item padding:** 8px horizontal (sm), 12px vertical (md)
+- **Sidebar (expanded):** 280px, right-aligned (RTL).
+- **Sidebar (collapsed):** 72px, icons only.
+- **Nav item height:** ~48px; padding 8px horizontal, 12px vertical.
+
+### Density Modes
+
+A first-class `data-density='compact'` mode (set on `:root`) tightens the whole app:
+- Table heads → 2rem tall, `text-xs`; cells → `0.375rem 0.5rem`, `text-[0.8125rem]`.
+- Inputs / select triggers → 1.875rem (30px) tall.
+- Default buttons → 1.875rem (30px) tall.
+- Cards → reduced gap and vertical padding (0.75rem).
+
+Default (comfortable) density uses the component sizes in §6–§7.
 
 ### Whitespace Philosophy
 
-Like Apple's museum gallery principle: *the workflow is the exhibit*. Every major section begins with 64px of breathing room above its headline. Cards don't feel crowded; the nearest content is always 24px away. Modals and popovers follow the same rule: 40px padding between content and modal edge.
+The workflow is the exhibit. Major dashboard sections are separated by `gap-6`; cards keep content ~16–24px from their edges. The platform is dense by design (operators process many requests), so whitespace clarifies grouping rather than creating drama.
 
 ---
 
 ## 4 — Border Radius Scale
 
-Radius follows Apple's grammar: pill for actions, larger radius for containers, smaller radius for utility.
+One scale, derived from `--radius: 0.625rem` (10px) in `main.css`. **Never hardcode arbitrary `rounded-[Xpx]` values.**
 
-| Token | Value | Applied to |
-|---|---|---|
-| `sm` | 8px | Utility buttons, nav items, small badges |
-| `md` | 12px | Form inputs, selects, small modals |
-| `lg` | 18px | Standard cards, buttons, larger containers |
-| `xl` | 24px | Modals, large feature cards, dialogs |
-| `pill` | 9999px | Primary CTAs, status badges, search inputs |
+| Token | Formula | Approx | Applied to |
+|---|---|---|---|
+| `rounded-sm` | `--radius * 0.6` | 6px | Tight utility elements |
+| `rounded-md` | `--radius * 0.8` | 8px | Inputs, textareas, selects, small buttons |
+| `rounded-lg` | `--radius` | 10px | **Buttons, standard cards** (default) |
+| `rounded-xl` | `--radius * 1.4` | 14px | Prominent cards, larger containers |
+| `rounded-2xl` | `--radius * 1.8` | 18px | Quick-action tiles |
+| `rounded-3xl` | `--radius * 2.2` | 22px | Modals, dialogs (shadcn internal) |
+| `rounded-4xl` | `--radius * 2.6` | 26px | **Badges, status chips** |
+| `rounded-full` | — | 9999px | Avatars |
 
 ### Rules
 
-- **Primary buttons are always pill-shaped.** The 9999px radius is the visual "click me" signal.
-- **Cards use `lg` (18px), modals use `xl` (24px).**
-- **Utility buttons stay compact at `sm` (8px).**
-- **Never use radius < 8px.** Minimum is 8px for readability and touch target.
+- **Buttons are `rounded-lg` (10px), not pill.** This is the shipped shadcn-vue new-york default. Do not pill primary buttons.
+- **Badges use `rounded-4xl`**, giving a near-pill chip without a literal 9999px radius.
+- **Cards `rounded-lg`/`rounded-xl`; modals are handled by shadcn Dialog internally.**
 
 ---
 
 ## 5 — Elevation & Shadows
 
-Yemen Flow Hub uses **one shadow only**: the card shadow, `0 1px 3px rgba(0, 0, 0, 0.08)`. No stacking shadows.
+Two shadow levels only. No stacked shadows. Depth comes mostly from surface color change (`background` → `card` → `muted`).
 
-| Component | Shadow |
+| Component | Class |
 |---|---|
-| Card (default) | 0 1px 3px rgba(0, 0, 0, 0.08) |
-| Card (hover) | 0 4px 12px rgba(0, 0, 0, 0.10) |
-| Modal / Popover | 0 16px 40px rgba(0, 0, 0, 0.12) |
-| Sticky bar (AppHeader) | backdrop-filter: blur(4px) only |
+| Card (default) | `shadow` |
+| Card (hover) | `shadow-md` |
+| Modal / Sheet / Popover | handled by shadcn Dialog/Sheet internally |
 
-### Philosophy
-
-Elevation comes from *surface color change* (white → parchment → muted), not shadows. Shadows appear only where a card hovers above content or a popover floats. The single drop-shadow on cards gives them weight without distracting from content.
+**The Two-Level Rule.** A surface is flat or it has the single resting `shadow`; on hover it lifts to `shadow-md`. Nothing stacks. If a design needs more than two elevation states, the problem is layout, not shadow.
 
 ---
 
 ## 6 — Buttons
 
-Buttons follow Apple's two-button grammar: pill for primary actions, rounded-rect for utility.
+Buttons use the shadcn-vue new-york `buttonVariants`. They are compact and `rounded-lg`, tuned for dense operator workflows. **State/workflow tokens (voting, severity, locked) are never button colors** — buttons use only the variants below.
 
-### Button Variants
+### Variants
 
-| Variant | Background | Text | Border | Height | Padding | Radius | Usage |
-|---|---|---|---|---|---|---|---|
-| **primary** | #0066cc | white | none | 44px | 16–24px | pill | Main CTA |
-| **primary-hover** | #0052a3 | white | none | 44px | 16–24px | pill | Hover state |
-| **secondary** | transparent | #0066cc | 1px #0066cc | 44px | 16–24px | pill | Alternative CTA |
-| **ghost** | transparent | #0066cc | none | 40px | 12–20px | sm | Tertiary action |
-| **destructive** | #d32f2f | white | none | 44px | 16–24px | pill | High-risk action |
-| **icon** | transparent | #7a7a7a | none | 40px | 8px | sm | Icon-only buttons |
-| **disabled** | #e9ecef | #9aa0a6 | none | 44px | 16–24px | pill | Disabled state |
+| Variant | Treatment |
+|---|---|
+| `default` | `bg-primary text-primary-foreground`; hover `bg-primary/80` |
+| `outline` | `border-border bg-background`; hover `bg-muted` |
+| `secondary` | `bg-secondary text-secondary-foreground`; hover `bg-secondary/80` |
+| `ghost` | transparent; hover `bg-muted text-foreground` |
+| `destructive` | **tinted, not solid**: `bg-destructive/10 text-destructive`; hover `bg-destructive/20` |
+| `link` | `text-primary` with underline on hover |
 
-### Typography & Interaction
+### Sizes
 
-- **Label font:** label-md (14px, 600 weight)
-- **Hover:** Slightly darker bg
-- **Focus:** Ring 2px solid #0066cc with 0.2 alpha outer ring
-- **Active/press:** Scale 0.95 (micro-interaction)
-- **Transition:** 150ms ease all
+| Size | Height | Radius | Notes |
+|---|---|---|---|
+| `default` | `h-8` (32px) | `rounded-lg` | Standard action |
+| `sm` | `h-7` (28px) | `rounded-md` (≤12px) | Row actions, secondary |
+| `xs` | `h-6` (24px) | `rounded-md` (≤10px) | Inline / compact |
+| `lg` | `h-9` (36px) | `rounded-lg` | Prominent CTAs |
+| `icon` | `size-8` (32px) | `rounded-lg` | Icon-only (always `aria-label`) |
+| `icon-sm` / `icon-xs` / `icon-lg` | 28 / 24 / 36px | scaled | Icon-only at matching scale |
+
+### Interaction
+
+- **Focus:** `focus-visible:ring-3 ring-ring/50` + `border-ring` (brand).
+- **Active:** `active:translate-y-px` (subtle press; not `scale`).
+- **Disabled:** `pointer-events-none opacity-50`.
+- **Transition:** `transition-all`, ~150ms.
 
 ### Rules
 
-- **Pill is action, rectangle is utility.** Primary buttons are always pill. Secondary buttons are pill. Ghost/icon buttons use `sm` (8px) radius.
-- **Button size matters.** 44px tall (mobile-friendly), never smaller than 40px.
-- **Never nest buttons.** One clear CTA per surface (except Cancel alongside a primary).
-- **Disabled state is clear.** Muted bg + muted text, always lower contrast.
-- **State colors are not button colors.** Workflow/state tokens such as voting indigo, SWIFT cyan, locked gray, success green, and warning amber are for cards, badges, banners, icons, borders, state text, and similar display surfaces. Buttons use only the standard action palette: primary/default, destructive/error, warning, secondary, outline, ghost, link, and disabled.
+- **No pill buttons.** Buttons are `rounded-lg` (10px).
+- **Destructive is tinted.** The destructive variant is a soft `bg-destructive/10`, not a solid red fill.
+- **One clear CTA per surface** (Cancel may sit alongside a primary).
+- **State colors are not button colors.** `--voting`, `--swift`, `--severity-*`, `--locked` are for badges, banners, status text, icons, and borders, never `class="bg-[var(--voting)]"` on a button.
 
 ---
 
@@ -221,68 +271,42 @@ Buttons follow Apple's two-button grammar: pill for primary actions, rounded-rec
 
 ### Text Input / Textarea / Select
 
-- **Height:** 44px (touch target minimum)
-- **Background:** White (#ffffff)
-- **Border:** 1px #cccccc, `border-border` class
-- **Radius:** md (12px)
-- **Padding:** 12px horizontal, 12px vertical
-- **Font:** body (17px)
-- **Focus:** Border #0066cc, `box-shadow: 0 0 0 3px rgba(0,102,204,0.1)`
-- **Placeholder:** Muted foreground (#7a7a7a)
-- **Disabled:** Bg #e9ecef, text #9aa0a6, border #d0d0d0
-- **Error:** Border #d32f2f, bg white (no tint)
+- **Background:** `bg-input/30`, **border:** `border-input`, **radius:** `rounded-md` (8px).
+- **Focus:** `focus-visible:border-ring focus-visible:ring-ring/50` (brand ring).
+- **Disabled:** reduced opacity, `muted` treatment.
+- **Error:** `aria-invalid` drives `border-destructive` + `ring-destructive/20`.
+- **Compact density:** height collapses to 1.875rem (30px).
 
-### Search Input
+### Wizard / Stepper
 
-- **Special case:** Pill-shaped (rounded-pill, 24px height)
-- **Icon position:** Leading icon at 14px opacity, muted color
-- **Clear button:** Icon button on trailing side
+Uses shadcn `Stepper` (`StepperItem` / `StepperTrigger` / `StepperIndicator` / `StepperSeparator`):
+- Completed → filled indicator; active → brand ring; future → muted outline.
 
-### Multi-Select / Tags Input
+### Search
 
-- **Chips:** Pill-shaped (rounded-pill), 32px height, padding 8px 12px
-- **Remove icon:** Hover action on each chip
-- **Background:** #f5f5f7 (muted), dark text
-- **Border:** 1px #d0d0d0
-
-### Wizard / Step Indicator
-
-Four-step horizontal stepper with circular step nodes:
-- **Completed step:** Green checkmark in circle
-- **Active step:** Blue circle with outer ring
-- **Future step:** Gray outline circle
-- **Skipped/locked:** Gray circle with lock icon
-- **Connector lines:** 2px between steps, gray (future) or green (completed)
+`InputGroup` + `InputGroupAddon` with a leading `Search` icon; trailing clear button via `InputGroupButton`.
 
 ---
 
 ## 8 — Sidebar & Navigation
 
-### Sidebar Container
+### Container
 
-- **Width (expanded):** 280px
-- **Width (collapsed):** 72px (icons only)
-- **Background:** White (sidebar) / #111827 (dark)
-- **Border:** 1px #cccccc right border (rtl: left border in RTL)
-- **Header:** 56px, white bg, centered CBY logo (40px icon)
-- **Collapse/expand toggle:** Bottom of sidebar, chevron icon
+- **Width:** 280px expanded / 72px collapsed (icons only).
+- **Background:** `--sidebar`; **border:** `--sidebar-border` on the inline-end edge (RTL: left edge).
+- **Header:** CBY logo, ~56px.
 
 ### Navigation Items
 
-- **Height:** 48px
-- **Padding:** 8px horizontal (sm), 12px vertical (md)
-- **Font:** label-md (14px, 600)
-- **Icon:** 20px, left of text (rtl: right)
-- **Idle state:** Muted text (#7a7a7a)
-- **Hover state:** Bg #f5f5f7 (muted), text #0066cc
-- **Active state:** Bg #0066cc (primary), text white, full-width pill with rounded-lg (18px)
+- **Font:** Tajawal (`font-section`), `text-sm`, 500–600.
+- **Icon:** 20px, leading (RTL: trailing).
+- **Idle:** `--sidebar-foreground`.
+- **Hover:** `--sidebar-accent` background.
+- **Active:** `--sidebar-primary` indicator (solid brand by default; see `AppSidebar.vue` for `operational` vs alternate active styles).
 
 ### User Section
 
-- **Position:** Bottom of sidebar
-- **Content:** Avatar (40px, rounded-full) + name + role (label-sm) + dropdown chevron
-- **Dropdown:** Profile, settings, logout
-- **Avatar bg:** Primary (#0066cc)
+Avatar + name + role at the sidebar bottom with a dropdown (profile, settings, theme toggle, logout).
 
 ---
 
@@ -290,106 +314,84 @@ Four-step horizontal stepper with circular step nodes:
 
 ### Standard Card
 
-- **Background:** White / dark-mode card bg
-- **Border:** 1px #cccccc
-- **Radius:** lg (18px)
-- **Padding:** 24px (lg)
-- **Shadow:** 0 1px 3px rgba(0,0,0,0.08)
-- **Hover shadow:** 0 4px 12px rgba(0,0,0,0.10), 200ms transition
+- **Surface:** `bg-card text-card-foreground`, `ring-border` hairline.
+- **Radius:** `rounded-lg`/`rounded-xl`.
+- **Padding:** `p-4` (compact) or `p-6` (full-page).
+- **Shadow:** `shadow` at rest, `shadow-md` on hover.
+- Cards default to `border-0` with the `ring-border` hairline doing the edge (see `Card.vue`).
 
-### Stat Card (KPI)
+### KPI / Stat Card
 
-- **Grid layout:** 4 columns (desktop), responsive to 2 (tablet), 1 (mobile)
-- **Height:** 180px
-- **Content:** Top-aligned icon (40px) + number (headline-md) + label (label-sm)
-- **Bg:** White, same card styling as standard
+Clickable `Card role="button" tabindex="0"` that navigates to a filtered list. Icon tile (`size-9`, tinted with a severity/status token at /10) + value (`text-2xl font-semibold`) + label (`text-xs text-muted-foreground`). Keyboard-activatable (Enter / Space).
 
-### List Item Card
+### Quick-Action Tile
 
-- **Height:** 52px (table row height)
-- **Padding:** 12px 16px
-- **Hover:** Bg #f5f5f7
-- **Selected:** Inset 2px #0066cc box-shadow + border
-- **Border:** 1px #cccccc between rows, no outer border
+Multi-line icon + title + description → `Card role="button"`, **not** `Button` (Button can't hold stacked slot content). Primary tile uses `bg-primary text-primary-foreground`.
+
+### List Item / Table Row
+
+Row height ~52px (comfortable) or compressed under compact density. Hover `bg-muted`. No zebra striping.
 
 ### Modal / Dialog
 
-- **Background:** White / dark-mode bg
-- **Radius:** xl (24px)
-- **Padding:** 40px
-- **Shadow:** 0 16px 40px rgba(0,0,0,0.12)
-- **Backdrop:** rgba(12,18,26,0.4) with blur(4px)
-- **Z-index:** 40+
+shadcn `Dialog` / `AlertDialog`. Radius and backdrop handled internally. **`AlertDialog` is mandatory for destructive confirmations** (reject, delete, revoke claim); `Dialog` is for forms and non-destructive modals.
+
+**The No-Nested-Card Rule.** A card never contains another card. Use `Separator`, spacing, or a muted sub-surface instead.
 
 ---
 
 ## 10 — Status Badge System
 
-Badges communicate state at a glance using **consistent styling**:
+Badges use shadcn `Badge` (`badgeVariants`):
 
-- **Shape:** Pill (rounded-pill / 9999px)
-- **Height:** 24px
-- **Padding:** 4px 12px
-- **Font:** label-sm (12px, 500)
-- **Border:** 1px, semantic color at ~50% opacity
-- **Text:** Semantic status color (success, error, warning, etc.)
-- **Bg:** Semantic status bg (10% opacity of status color)
+- **Shape:** `rounded-4xl` (chip), height `h-5` (20px), padding `px-2 py-0.5`.
+- **Font:** `text-xs font-medium`.
+- **Variants:** `default` (brand), `secondary` (muted), `destructive` (red), `outline`.
+- **Custom semantic chips:** when `StatusBadge` is not appropriate, tint with a token at /10 plus a /30 border, e.g. voting: `bg-[var(--voting)]/10 text-[var(--voting)] border border-[var(--voting)]/30`.
 
-**Examples:**
-- Success: Text #1b5e20, bg #f1f8f4, border #c8e6c9
-- Error: Text #c62828, bg #ffebee, border #ffcdd2
-- Locked: Text #8e8e93, bg #f5f5f5, border #d1d1d6
+Always prefer the role-aware `<StatusBadge :status :role />` over hand-built chips.
 
 ---
 
 ## 11 — Workflow Timeline & Stage Rail
 
-The right panel of the request detail shows an 18-stage vertical rail:
+The request detail page shows the workflow progression (see `WorkflowProgress.vue` / `WorkflowTimeline.vue`):
 
-- **Completed stage:** Green filled checkmark in circle
-- **Current stage:** Blue circle with outer ring
-- **Future stage:** Gray outline circle
-- **Terminal/locked stage:** Gray circle with lock icon
-- **Skipped stage:** Gray dashed circle
-- **Connector lines:** 2px line between stages, green (past) or gray (future)
+- **Completed stage:** filled brand/success indicator.
+- **Current stage:** brand ring.
+- **Future stage:** muted outline.
+- **Terminal / locked stage:** `--locked` treatment with lock icon.
+- **Connector lines:** 2px, success/brand (past) or muted (future).
 
-The rail is non-interactive; it's purely informational. The main workflow interaction happens via ActionsPanel buttons on the left.
+The rail is informational and non-interactive. Workflow actions happen via the ActionsPanel.
 
 ---
 
 ## 12 — Tables & Data Grids
 
-- **Background:** White / dark-mode card
-- **Header row:** label-md, text #7a7a7a, border-bottom #cccccc
-- **Data row:** body-lg, text #1d1d1f
-- **Row height:** 52px
-- **Cell padding:** 16px horizontal, 12px vertical
-- **Border:** 1px #cccccc between rows, no outer border
-- **Hover row:** Bg #f5f5f7
-- **Selected row:** Inset left 2px #0066cc box-shadow
-- **Striping:** No zebra striping (modern design avoids it)
-- **Pagination:** Previous/Next buttons + page count, centered below table
+shadcn `Table` primitives, or TanStack `useVueTable` + shadcn primitives for sortable/filterable/paginated grids (reference: `RequestsDataTable.vue`).
 
-### Sorting & Filtering
-
-- **Sort indicator:** Icon (up/down arrow) in header cell, muted until active
-- **Active sort:** #0066cc arrow, reverse on click
-- **Filter bar:** Horizontal strip above table, chips for active filters, clear button right-aligned
+- **Header:** `text-muted-foreground`, bottom border.
+- **Row:** `text-sm`; hover `bg-muted`; no zebra striping.
+- **Selected row:** brand inset accent.
+- **Empty state:** `TableEmpty` (in-table) or `Empty` component, phrased positively for healthy empty queues.
+- **Compact density:** smaller head/cell padding and font (see §3).
+- **Mobile:** horizontal scroll inside an `overflow-x-auto` wrapper; never vertical-truncate.
 
 ---
 
 ## 13 — Request Detail Page Layout
 
-The request detail page uses a **65/35 split**:
+Two-column layout (see `pages/requests/[id]/index.vue`, `WorkflowProgress.vue`):
 
-- **Left panel (65%):** Four tabs — {معلومات} / {وثائق} / {أطراف} / {تصويت}
-  - معلومات: Request form fields read-only or editable (role-dependent)
-  - وثائق: Document upload/download, checkmarks for required docs
-  - أطراف: Actors involved (submitted_by, reviewed_by, etc.) with timestamps
-  - تصويت: Voting panel (if status is EXECUTIVE_VOTING_OPEN or EXECUTIVE_VOTING_CLOSED)
-- **Right panel (35%):** 18-stage workflow rail + ActionsPanel (role-dependent actions)
+- **Main column:** Tabs — {المعلومات} / {الوثائق} / {الأطراف} / {التصويت}
+  - المعلومات: request fields (read-only or editable by role).
+  - الوثائق: document checklist with required-doc indicators; PDF-only.
+  - الأطراف: actors (submitted_by, reviewed_by, …) with timestamps.
+  - التصويت: voting panel when status is `EXECUTIVE_VOTING_OPEN` / `EXECUTIVE_VOTING_CLOSED`.
+- **Side column:** workflow progress rail + ActionsPanel (role- and status-dependent actions).
 
-The ActionsPanel shows contextual buttons: Submit, Approve, Reject, Claim Support Review, etc. — always based on current status and user role.
+ActionsPanel renders only the actions valid for the current status and role: Submit, Approve, Reject, Return, Claim Support Review, Open/Close Voting, etc.
 
 ---
 
@@ -397,252 +399,164 @@ The ActionsPanel shows contextual buttons: Submit, Approve, Reject, Claim Suppor
 
 ### Bell Dropdown
 
-- **Width:** 320px
-- **Content:** Last 5 notifications
-- **Unread indicator:** Blue dot (unread) / gray (read)
-- **Timestamp:** Relative format (2h ago)
-- **Mark all read:** Link bottom-right
+~320px wide, last few notifications, unread dot, relative timestamps, "mark all read" action.
 
 ### Notifications Page
 
-- **Layout:** Table with columns: unread-indicator / timestamp / message / action
-- **Unread visual:** Left 2px #0066cc border + bg #f5f5f7
-- **Filter tabs:** All / Unread / Archive
-- **No notifications:** Empty state with icon + "No notifications"
+Table: unread indicator / timestamp / message / action. Unread rows carry a subtle brand emphasis. Filter tabs (All / Unread). Empty state via `Empty`.
 
 ---
 
 ## 15 — Dashboard Layouts (Role-Specific)
 
-Each role dashboard has a unique layout and content type.
+Every role dashboard leads with its **primary operational queue**; supporting numbers are secondary. Charts appear only on BANK_ADMIN and CBY_ADMIN.
 
-### DATA_ENTRY Dashboard
-- **KPI strip:** 4 cards (requests created, awaiting review, approved, pending customs)
-- **Quick actions:** 3 buttons (New request, View template, Download report)
-- **Alert banner:** Amber strip if pending documents
-- **Queues:** My Requests (paginated table), Recent Approvals (table)
+- **DATA_ENTRY:** KPI strip (created / awaiting review / approved / pending FX) + quick actions + amber action banner (pending docs) + My Requests and Recent Approvals queues.
+- **BANK_REVIEWER:** KPI strip (pending review / today / quota / approval rate) + Awaiting Review queue. No charts.
+- **SUPPORT_COMMITTEE:** KPI strip (pending / claimed / resolved / avg time) + claim-enabled queue. No charts.
+- **SWIFT_OFFICER:** KPI strip (pending upload / uploaded / failed / monthly) + Awaiting Upload queue + upload action. No charts.
+- **COMMITTEE_DIRECTOR:** KPI strip (pending votes / open sessions / avg vote time) + voting queue. No charts.
+- **EXECUTIVE_MEMBER:** KPI strip (assigned / voted / pending) + My Voting Sessions. No charts.
+- **BANK_ADMIN:** KPI strip (5) + quick actions + **line chart** (monthly volume) + **bar chart** (by category) + recent requests. Charts use `--chart-*`.
+- **CBY_ADMIN:** KPI strip (4) + quick actions (6) + **donut / line / bar / heatmap** analytics + widget row.
 
-### BANK_REVIEWER Dashboard
-- **KPI strip:** 4 cards (pending review, today's reviewed, monthly quota, approval rate)
-- **Queue:** Awaiting Review (table, clickable rows → request detail)
-- **No charts**
-
-### SUPPORT_COMMITTEE Dashboard
-- **KPI strip:** 4 cards (pending, claimed, resolved, average review time)
-- **Queue:** Support Review Queue (table with "اطّلاع" claim button)
-- **No charts**
-
-### SWIFT_OFFICER Dashboard
-- **KPI strip:** 4 cards (pending SWIFT upload, uploaded, failed, monthly total)
-- **Queue:** Awaiting SWIFT Upload (table, upload button)
-- **Upload form:** Modal with file input, preview, submit
-
-### COMMITTEE_DIRECTOR Dashboard
-- **KPI strip:** 3 cards (pending votes, open sessions, avg vote time)
-- **Voting queue:** Table with session info, vote counts, open session button
-- **No charts**
-
-### EXECUTIVE_MEMBER Dashboard
-- **KPI strip:** 3 cards (assigned votes, voted, pending)
-- **Queue:** My Voting Sessions (table with vote status icons)
-- **No charts**
-
-### BANK_ADMIN Dashboard
-- **KPI strip:** 5 cards (monthly requests, avg processing time, approval rate, pending vendors, active users)
-- **Quick actions:** 4 buttons (Add staff, Manage merchants, View audit, Download report)
-- **Charts:**
-  - **Line chart (monthly volume):** Last 12 months, Y-axis count, X-axis month (Arabic labels)
-  - **Bar chart (by category):** Stacked or grouped, 6–8 categories
-- **Recent requests:** Table (10 rows, paginated)
-
-### CBY_ADMIN Dashboard
-- **KPI strip:** 4 cards (total requests, avg processing time, success rate, pending review)
-- **Quick actions:** 6 buttons (Manage banks, Manage staff, Audit log, Settings, Reports, Export)
-- **Charts:**
-  - **Donut chart (by import category):** 5–8 categories, legend right
-  - **Line chart (monthly trend):** 12 months, trend line with area fill
-  - **Bar chart (customs ports activity):** Top 5 ports by volume
-  - **Heatmap (submission volume by hour/day):** Intensity color scale
-- **Widget row:** Two-column layout with KPI cards or mini charts below main content
+**The Operational-First Rule.** No shared analytics dashboard visible to all roles equally. No charts or vanity metrics on operational dashboards (only BANK_ADMIN and CBY_ADMIN earn charts).
 
 ---
 
 ## 16 — Merchants Page (BANK_ADMIN)
 
-- **Layout:** Card grid, 2 columns (tablet: 1)
-- **Card content:** Merchant name / logo / status chip (نشط / مُوقَف) / actions (edit, delete, suspend)
-- **Add merchant:** Button top-right, modal form
-- **Status chip:** Pill-shaped, success (green) / muted (gray) based on is_active
+Card grid (2-col → 1-col). Each card: merchant name / status chip (نشط / مُوقَف) / actions. Add via `Dialog` form. Suspend via `AlertDialog`.
 
 ---
 
 ## 17 — Roles & Users Page (CBY_ADMIN)
 
-- **Layout:** Table
-- **Columns:** Username / Email / Role / Status / Last Login / Actions
-- **Add user:** Button top-right, modal with form
-- **Edit/Delete:** Dropdown menu per row
-- **Status:** Active / Inactive (green / muted badge)
+Table: Username / Email / Role / Status / Last Login / Actions. Add via `Dialog`. Row actions via `DropdownMenu`. Status badge (active / inactive).
 
 ---
 
 ## 18 — Audit & Compliance Page (CBY_ADMIN)
 
-- **KPI strip:** 4 cards (total audit records, critical issues, resolved issues, pending review)
-- **Tabs:**
-  1. **Activity log:** Table with user / action / timestamp / details / status
-  2. **Duplicate invoices:** Table with detected duplicates, "مكرر" badge, actions (merge, archive)
-  3. **Risk indicators:** Card grid showing risk severity (critical / high / medium / low) with counts
+KPI strip + tabs: Activity log (table), Duplicate invoices (with مكرر badge), Risk indicators (severity card grid). Uses `--severity-*` for risk emphasis.
 
 ---
 
-## 19 — Settings Page (CBY_ADMIN)
+## 19 — Settings (CBY_ADMIN)
 
-- **Sidebar nav:** 5 tabs (workflow, email, notifications, security, general)
-- **Workflow tab:** Configurable workflow stages, role permissions, status rules
-- **Email tab:** SMTP config (host, port, user, password)
-- **Notifications tab:** Global toggles for each notification type
-- **Security tab:** MFA enforcement, lockout policy, session timeouts, demo mode toggle
-- **General tab:** Platform name, timezone, language, logo upload
+Multi-tab settings: workflow, email (SMTP), notifications, security (MFA, lockout, session timeout, demo mode), appearance, general. The appearance tab includes **fixed theme-preview thumbnails** that legitimately use literal hex (they must depict each theme regardless of the active theme) and the brand-color picker that sets `--brand-color-base`.
 
 ---
 
-## 20 — Profile Page (All Roles)
+## 20 — Profile (All Roles)
 
-- **Layout:** Two-column (left form, right card)
-- **Left panel:** Editable form (name, email, phone, role read-only)
-- **Right panel:** Profile card with avatar, role badge, creation date, last login
-- **Actions:** Save button, Change password, Enable MFA
-- **Activity list:** Recent actions (transactions, logins, settings changes)
+Two-column: editable form (name, email, phone; role read-only) + profile card (avatar, role badge, dates, MFA). Recent activity list.
 
 ---
 
 ## 21 — Authentication Pages
 
-### Login Page
-- **Layout:** Two-column, 40% form + 60% hero panel
-- **Hero panel:** Bg #0066cc (primary), white text, CBY logo, tagline
-- **Form:** Email input + password input + "Remember me" checkbox + Login button + "Forgot password?" link
-- **Typography:** headline-lg for logo, body for form labels
+### Login
 
-### OTP Page
-- **Layout:** Same as login
-- **Form:** 6 individual OTP cells (each 60px × 60px, centered, monospace font)
-- **Label:** "Enter the 6-digit code sent to your email"
-- **Resend link:** Countdown timer + "Resend code" button
+Two-column: form + brand hero panel (`bg-primary`, white text, CBY logo). Saved-account cards for quick re-login. Email + password + remember-me + login. Forgot-password link.
 
-### Demo Mode Controls
-- Demo mode enabled: Add a "RoleSwitcher" dropdown in the user menu for testing all roles (backend flag)
-- Production mode: No role switcher visible
+### OTP / MFA
+
+Six OTP cells, "enter the 6-digit code" prompt, resend countdown. `MfaService` backs verification (Redis).
+
+### Demo Mode
+
+When the backend `demoMode` flag is on, a `RoleSwitcher` appears in the user menu for testing all roles. Hidden in production.
 
 ---
 
-## 22 — Dark Mode
+## 22 — Theme Modes
 
-Dark mode is a first-class concern, supported across all surfaces using CSS custom properties.
+Four modes, all driven by CSS custom properties; no per-component dark logic.
 
-| Component | Light | Dark |
+| Mode | Class on `<html>` | Notes |
 |---|---|---|
-| Background | #ffffff | #0c121a |
-| Surface (card) | #ffffff | #1a2332 |
-| Foreground text | #1d1d1f | #f0f0f0 |
-| Secondary text | #7a7a7a | #a8adb5 |
-| Border | #cccccc | #2d3748 |
-| Primary button | #0066cc | #4da6ff (brighter on dark) |
-| Sidebar bg | #ffffff | #111827 |
-| Muted bg | #f5f5f7 | #16202b |
+| Light | (none) | Default |
+| Dark | `.dark` | Surfaces darken; brand + severity colors derive via `color-mix` |
+| High contrast | `.high-contrast` | Pure black/white text, heavy borders, for accessibility |
+| Dark + high contrast | `.dark.high-contrast` | White-on-black, white borders |
 
-**Toggle:** Sun/moon icon in user header dropdown. Saved to localStorage under `theme-preference`.
+**Toggle:** sun/moon in the user menu, with a circular `view-transition` reveal (disabled under `prefers-reduced-motion`). Preference persists to `localStorage`.
 
 ---
 
 ## 23 — Motion & Transitions
 
-All state changes use **150ms ease** by default. No springs, bounces, or parallax.
+State-conveying motion only. No decorative choreography, no bounce, no parallax.
 
-| Transition | Duration | Easing | Example |
-|---|---|---|---|
-| Button press | 150ms | ease | Hover state, active state |
-| Card elevation | 200ms | ease | Hover shadow on card |
-| Sidebar collapse | 200ms | ease-in-out | Sidebar width animation |
-| Modal appear | 120ms | ease | Backdrop fade-in |
-| Dropdown open/close | 150ms | ease | Popover fade + 4px slide |
-| Focus ring | 150ms | ease | Focus outline appearance |
+| Transition | Approx | Notes |
+|---|---|---|
+| Button / control state | ~150ms | `transition-all` |
+| Card elevation | ~200ms | `shadow` → `shadow-md` |
+| Dark/light toggle | 500ms | Circular `view-transition` clip-path reveal, `cubic-bezier(0.4,0,0.2,1)` |
+| Focus ring | ~150ms | Brand ring appearance |
+
+`prefers-reduced-motion: reduce` disables the view-transition animation entirely.
 
 ---
 
 ## 24 — Accessibility
 
-- **Contrast:** 7:1 minimum for primary text; 4.5:1 for secondary
-- **Focus ring:** Always visible, 2px solid #0066cc with 2px offset
-- **ARIA labels:** All icons, badges, and interactive elements require descriptive labels
-- **Status indicators:** Never color-only; always combine color + text + icon
-- **Keyboard navigation:** Full support, no focus trap
-- **RTL support:** `dir="rtl"` on `<html>`, all layout mirrors for RTL languages
-- **Touch targets:** Minimum 44px × 44px for all buttons
-- **Font size:** Minimum 12px (fine-print), 14px for all body-related text
+- **Contrast:** target 7:1 for primary text, 4.5:1 for secondary; high-contrast modes exceed this.
+- **Focus ring:** always visible, brand `--ring`, 3px.
+- **Status is never color-only:** always color + text + icon.
+- **ARIA:** icons, badges, and interactive elements carry descriptive labels (icon-only buttons require `aria-label`).
+- **Keyboard:** full navigation; clickable KPI cards are Enter/Space-activatable.
+- **RTL:** `dir="rtl"` on `<html>`; layout mirrors via inline-start/end utilities (`border-s-*`, `ps-*`, `me-*`).
+- **Touch targets:** comfortable controls meet target sizes; compact density is opt-in for power users at desks.
 
 ---
 
 ## 25 — Responsive Behavior
 
-### Breakpoints
+Desktop-first with structural (not fluid-typographic) responsiveness.
 
-| Name | Width | Layout Changes |
-|---|---|---|
-| Small phone | ≤ 419px | Single-column, sidebar collapses, header condenses |
-| Phone | 420–640px | Single-column, padding reduces to 12px, font scales down |
-| Tablet portrait | 641–834px | Sidebar still visible but icons-only, content padding 16px |
-| Tablet landscape | 834–1023px | Sidebar expands, 2-column grids become possible |
-| Desktop | 1024–1600px | Full layout, max-width 1600px content |
+| Breakpoint | Behavior |
+|---|---|
+| ≤ 419px | Single column; sidebar collapses to hamburger; header condenses |
+| 420–640px | Single column; reduced padding |
+| 641–834px | Sidebar icons-only; content padding tightens |
+| 834–1023px | Sidebar expands; 2-column grids possible |
+| ≥ 1024px | Full layout |
 
-### Collapsing Strategy
-
-- **Sidebar:** Full width (280px) → collapsed (72px icons) → hamburger menu (≤834px)
-- **Hero typography:** 56px → 40px → 28px as screen narrows
-- **Card grids:** 4-column → 3-column → 2-column → 1-column (desktop → phone)
-- **Request detail split:** 65/35 → 100% stacked (single-column on ≤640px)
-- **Table:** Horizontal scroll on mobile, no vertical scroll
-- **Modal:** Full viewport with small padding (≤640px)
+Collapsing: card grids `grid-cols-4` → `max-lg:grid-cols-2` → `max-md:grid-cols-1`; request detail two-column → stacked; wide tables scroll horizontally inside `overflow-x-auto`.
 
 ---
 
 ## 26 — Design Do's and Don'ts
 
 ### Do
-✓ Use `--primary` (#0066cc) for every interactive element — links, buttons, focus rings, badges  
-✓ Set headlines in the `display` or `headline-lg` token with tight letter-spacing  
-✓ Run body copy at 17px — the extra pixel is intentional  
-✓ Pill all primary buttons and status badges (rounded-pill)  
-✓ Keep card radius at 18px (lg) and modal at 24px (xl)  
-✓ Apply the single card shadow (`0 1px 3px rgba(0,0,0,0.08)`) generously — it clarifies depth  
-✓ Use `transform: scale(0.95)` as the active state on all buttons  
-✓ Color semantic states consistently: success (green), error (red), warning (amber), locked (gray)  
-✓ Load fonts via Google Fonts with `display=swap`  
-✓ Reference all colors via CSS custom properties, never hardcode hex  
+- **Do** reference colors via tokens / Tailwind utilities (`text-foreground`, `bg-primary`, `text-[var(--severity-red)]`).
+- **Do** set the brand once via `--brand-color-base`; let `--primary`, `--ring`, and links track it.
+- **Do** set light base values for status/severity colors and let dark mode derive via `color-mix`.
+- **Do** keep buttons `rounded-lg` (10px) and badges `rounded-4xl`.
+- **Do** use the single resting `shadow`, lifting to `shadow-md` on hover.
+- **Do** use `active:translate-y-px` as the button press feedback.
+- **Do** use shadcn-vue components (`Button`, `Table`, `Badge`, `Alert`, `Skeleton`, `Empty`, `AlertDialog`) instead of raw HTML.
+- **Do** lead every role dashboard with its operational queue.
+- **Do** mirror layout for RTL with inline-start/end utilities.
 
 ### Don't
-✗ Don't introduce a second accent color; every action signal is #0066cc  
-✗ Don't use gradients as backgrounds or decorative effects  
-✗ Don't stack shadows (e.g., multiple drop-shadows on one element)  
-✗ Don't set button radius smaller than pill (8px minimum for utility)  
-✗ Don't use weight 500 or 700 for body text — ladder is 400 / 600 / 700 only  
-✗ Don't tighten body line-height below 26px — the editorial pace is intentional  
-✗ Don't apply border-radius to full-bleed hero sections (tiles are rectangular)  
-✗ Don't use color alone to communicate state (always add text or icon)  
-✗ Don't exceed 44px button height on desktop; 40px for compact utility buttons  
-✗ Don't load more than two fonts per category (one for Latin, one for Arabic)  
+- **Don't** hardcode hex in components (the only exception: fixed theme-preview thumbnails in settings).
+- **Don't** use raw Tailwind color scales (`text-red-600`, `bg-indigo-50`, `text-gray-500`).
+- **Don't** pill buttons; the new-york default is `rounded-lg`.
+- **Don't** hand-author `.dark` overrides for severity/status colors; `color-mix` already derives them.
+- **Don't** use workflow/state tokens (`--voting`, `--swift`, `--severity-*`, `--locked`) as button background colors.
+- **Don't** stack shadows or invent a third elevation level.
+- **Don't** nest a card inside a card.
+- **Don't** put charts, KPIs, or shared analytics on operational dashboards (only BANK_ADMIN and CBY_ADMIN earn charts).
+- **Don't** use gradients, glassmorphism, or decorative animation; this is an institutional tool, not consumer fintech.
+- **Don't** use color alone to communicate state; always add text or icon.
 
 ---
 
 ## Summary: Three Layers
 
-Yemen Flow Hub follows a three-layer design architecture:
-
-1. **shadcn-vue base layer:** Semantic CSS custom properties (`--primary`, `--border`, `--ring`, etc.) and primitive components (Button, Card, Input, etc.). These are untouched.
-
-2. **Design.md (this document):** Token definitions, component specs, layout rules, and institutional patterns. Every color, font, radius, and shadow is named here as the source of truth.
-
-3. **Custom component layer:** Page-specific and role-specific customization using the design tokens defined in layer 2. No raw Tailwind color scales (no `text-gray-*`, `bg-blue-*`, etc.). Always `text-muted-foreground`, `bg-primary`, etc.
-
-This structure ensures consistency, maintainability, and rapid iteration. Change a token in the design system → the entire app updates instantly.
+1. **shadcn-vue base (new-york / neutral):** semantic CSS custom properties (`--primary`, `--border`, `--ring`, …) and primitive components in `frontend/app/components/ui/`. Untouched.
+2. **This document + `main.css`:** token values, the themeable brand, the dual semantic system, dark/high-contrast derivations, density, and the layout/component specs above. The source of truth.
+3. **Custom component layer:** page- and role-specific UI built from layer-2 tokens. No raw Tailwind color scales, no hardcoded hex. Change a token in `main.css` → the whole app updates.
