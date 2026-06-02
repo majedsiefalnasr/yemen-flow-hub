@@ -77,7 +77,7 @@ class SystemSettingsService
     public function getPublicSettings(): array
     {
         $settings = SystemSetting::query()
-            ->whereIn('key', ['settings.general', 'settings.theming', 'settings.branding'])
+            ->whereIn('key', ['settings.general', 'settings.branding'])
             ->get()
             ->keyBy('key');
 

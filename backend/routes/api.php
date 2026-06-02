@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\MerchantController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\ReportController;
+use App\Http\Controllers\Api\ReportPresetsController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\VotingController;
 use App\Http\Controllers\Api\SearchController;
@@ -136,4 +137,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('reports/bank', [ReportController::class, 'bank']);
     Route::get('reports/workflow/export', [ReportController::class, 'exportWorkflow']);
     Route::get('reports/bank/export', [ReportController::class, 'exportBank']);
+    Route::get('report-presets', [ReportPresetsController::class, 'index']);
+    Route::post('report-presets', [ReportPresetsController::class, 'store']);
+    Route::delete('report-presets/{id}', [ReportPresetsController::class, 'destroy']);
 });

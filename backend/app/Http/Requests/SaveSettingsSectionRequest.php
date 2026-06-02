@@ -36,7 +36,7 @@ class SaveSettingsSectionRequest extends FormRequest
     public function isSystemSection(): bool
     {
         return in_array($this->input('section'), ['workflow', 'email', 'security', 'general'], true)
-            || ($this->input('section') === 'theming' && in_array($this->input('subsection'), ['appearance', 'branding'], true));
+            || ($this->input('section') === 'theming' && $this->input('subsection') === 'branding');
     }
 
     public function isUserSection(): bool

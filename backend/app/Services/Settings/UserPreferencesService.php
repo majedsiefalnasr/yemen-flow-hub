@@ -17,7 +17,7 @@ class UserPreferencesService
         'theming' => [
             'mode' => 'system',
             'font' => 'IBM Plex Sans Arabic',
-            'layout' => 'full',
+            'layout' => 'boxed',
             'sidebarVariant' => 'sidebar',
             'sidebarCollapsible' => 'icon',
             'radius' => 'md',
