@@ -213,6 +213,7 @@ Buttons follow Apple's two-button grammar: pill for primary actions, rounded-rec
 - **Button size matters.** 44px tall (mobile-friendly), never smaller than 40px.
 - **Never nest buttons.** One clear CTA per surface (except Cancel alongside a primary).
 - **Disabled state is clear.** Muted bg + muted text, always lower contrast.
+- **State colors are not button colors.** Workflow/state tokens such as voting indigo, SWIFT cyan, locked gray, success green, and warning amber are for cards, badges, banners, icons, borders, state text, and similar display surfaces. Buttons use only the standard action palette: primary/default, destructive/error, warning, secondary, outline, ghost, link, and disabled.
 
 ---
 

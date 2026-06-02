@@ -342,6 +342,8 @@ Full rules in `DESIGN.md`. Key values:
 
 Platform is **desktop-first** with responsive degradation at ≤ 600px. RTL is the default direction.
 
+State colors such as Voting Indigo, SWIFT Cyan, Locked Gray, Success Text, Error Text, and Warning Text are for non-interactive state surfaces only: cards, badges, banners, status text, icons, borders, and similar indicators. Do **not** use workflow/state tokens like `var(--voting)` as custom button colors. Buttons must use the standard action palette: default/primary, destructive/error, warning, secondary, outline, ghost, link, or disabled.
+
 ## graphify
 
 This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
