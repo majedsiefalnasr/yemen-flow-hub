@@ -175,7 +175,7 @@ function submit(): void {
         <h3 class="text-sm font-semibold">طلب تأكيد المصارفة الخارجية</h3>
         <Button type="button" variant="outline" size="sm" disabled>
           <Download class="ms-1 h-4 w-4" />
-          تحميل النموذج الفارغ
+          تنزيل النموذج الفارغ
         </Button>
       </div>
       <p class="text-xs text-muted-foreground">النموذج الرسمي المعبأ والمختوم من البنك (PDF).</p>
@@ -218,7 +218,7 @@ function submit(): void {
     <div class="space-y-2">
       <Button
         :disabled="!canSubmit || uploading"
-        class="w-full bg-info text-white hover:bg-info/90"
+        class="w-full"
         @click="submit"
       >
         <CheckCircle2 class="ms-1 h-4 w-4" />

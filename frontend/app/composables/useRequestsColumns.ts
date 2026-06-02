@@ -389,17 +389,14 @@ export function useRequestsColumns(opts: {
         }
 
         if (role.value === UserRole.SUPPORT_COMMITTEE) {
+          // Claim is automatic on open — no manual claim button in the list.
           const mine = request.is_claimed_by_me || (currentUserId.value != null && request.claimed_by?.id === currentUserId.value)
-          const label = !request.claimed_by ? 'مطالبة' : mine ? 'متابعة' : 'عرض'
-          const className = !request.claimed_by
-            ? 'h-8 bg-[var(--voting)] text-white hover:bg-[var(--voting)]/90 text-xs'
-            : mine
-              ? 'h-8 border-[var(--voting)] text-[var(--voting)] hover:bg-[var(--voting)]/10 text-xs'
-              : 'h-8 text-xs'
+          const claimedByOther = !!request.claimed_by && !mine
+          const label = mine ? 'متابعة' : claimedByOther ? 'عرض' : 'فتح'
           return h(Button, {
-            variant: !request.claimed_by ? 'default' : 'outline',
+            variant: mine ? 'outline' : 'ghost',
             size: 'sm',
-            class: className,
+            class: 'h-8 text-xs',
             onClick: (event: Event) => {
               event.stopPropagation()
               router.push(`/requests/${request.id}`)
@@ -412,12 +409,42 @@ export function useRequestsColumns(opts: {
           return h(Button, {
             variant: canUpload ? 'default' : 'outline',
             size: 'sm',
-            class: canUpload ? 'h-8 text-xs bg-info text-white hover:bg-info/90' : 'h-8 text-xs',
+            class: 'h-8 text-xs',
             onClick: (event: Event) => {
               event.stopPropagation()
               router.push(canUpload ? `/requests/${request.id}/swift` : `/requests/${request.id}`)
             },
           }, () => (canUpload ? 'رفع' : 'عرض'))
+        }
+
+        if (role.value === UserRole.EXECUTIVE_MEMBER) {
+          const isVotingOpen = request.status === RequestStatus.EXECUTIVE_VOTING_OPEN
+          return h(Button, {
+            variant: isVotingOpen ? 'default' : 'outline',
+            size: 'sm',
+            class: 'h-8 text-xs',
+            onClick: (event: Event) => {
+              event.stopPropagation()
+              router.push(`/requests/${request.id}`)
+            },
+          }, () => (isVotingOpen ? 'تصويت' : 'عرض'))
+        }
+
+        if (role.value === UserRole.COMMITTEE_DIRECTOR) {
+          const isReadyToClose = request.status === RequestStatus.EXECUTIVE_VOTING_OPEN && request.ready_to_close
+          const isFxPending = request.status === RequestStatus.FX_CONFIRMATION_PENDING
+            || (request.status === RequestStatus.EXECUTIVE_APPROVED)
+          const label = isReadyToClose ? 'إغلاق الجلسة' : isFxPending ? 'تأكيد المصارفة' : 'عرض'
+          const isActionable = isReadyToClose || isFxPending
+          return h(Button, {
+            variant: isActionable ? 'default' : 'outline',
+            size: 'sm',
+            class: 'h-8 text-xs',
+            onClick: (event: Event) => {
+              event.stopPropagation()
+              router.push(`/requests/${request.id}`)
+            },
+          }, () => label)
         }
 
         return h(DropdownMenu, {}, {

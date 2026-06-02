@@ -2,6 +2,11 @@ import { defineStore } from 'pinia'
 import type { AuthUser, ApiResponse, UserPreferences } from '../types/models'
 import { ROLE_LABELS } from '../constants/workflow'
 import { UserRole } from '../types/enums'
+import {
+  AVATAR_VARIANTS,
+  persistUserAvatar,
+  type AvatarVariant,
+} from '../composables/useUserAvatar'
 
 interface LoginResponseData {
   user?: AuthUser
@@ -40,6 +45,21 @@ function resolveMfaRoleLabel(data: LoginResponseData): string | undefined {
   }
 
   return data.user ? (ROLE_LABELS[data.user.role] ?? data.user.role) : undefined
+}
+
+/**
+ * Mirror the authoritative avatar variant from the backend into the per-identity
+ * localStorage cache. This keeps surfaces that read the cache directly — most
+ * notably the saved-account cards on the login page — in lockstep with the
+ * server even when the user (or an admin) changed the variant from a different
+ * device or session.
+ */
+function syncAvatarCache(user: AuthUser | undefined | null): void {
+  if (!process.client || !user?.email) return
+  const variant = user.avatar_variant
+  if (typeof variant !== 'string') return
+  if (!(AVATAR_VARIANTS as readonly string[]).includes(variant)) return
+  persistUserAvatar(user.email, { variant: variant as AvatarVariant })
 }
 
 export const useAuthStore = defineStore('auth', {
@@ -167,6 +187,7 @@ export const useAuthStore = defineStore('auth', {
       this.user = response.data.user!
       this.isAuthenticated = true
       this.persistAuthMode({ mode: response.data.mode, token: response.data.token })
+      syncAvatarCache(this.user)
       if (process.client) {
         localStorage.setItem('yfh-authenticated', '1')
       }
@@ -202,6 +223,7 @@ export const useAuthStore = defineStore('auth', {
       this.user = response.data.user
       this.isAuthenticated = true
       this.persistAuthMode({ mode: response.data.mode, token: response.data.token })
+      syncAvatarCache(this.user)
       if (process.client) {
         localStorage.setItem('yfh-authenticated', '1')
       }
@@ -231,6 +253,7 @@ export const useAuthStore = defineStore('auth', {
       this.user = response.data.user
       this.isAuthenticated = true
       this.persistAuthMode({ mode: response.data.mode, token: response.data.token })
+      syncAvatarCache(this.user)
       if (process.client) {
         localStorage.setItem('yfh-authenticated', '1')
       }
@@ -261,6 +284,7 @@ export const useAuthStore = defineStore('auth', {
       this.user = response.data.user
       this.isAuthenticated = true
       this.persistAuthMode({ mode: response.data.mode, token: response.data.token })
+      syncAvatarCache(this.user)
       if (process.client) {
         localStorage.setItem('yfh-authenticated', '1')
       }
@@ -312,6 +336,7 @@ export const useAuthStore = defineStore('auth', {
         }
         this.user = response.data
         this.isAuthenticated = true
+        syncAvatarCache(this.user)
       }
       catch {
         clearAuthState(this)
@@ -358,6 +383,7 @@ export const useAuthStore = defineStore('auth', {
         if (response.data.is_active) {
           this.user = response.data
           this.isAuthenticated = true
+          syncAvatarCache(this.user)
         }
       }
       catch {

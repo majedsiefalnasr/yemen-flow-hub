@@ -384,6 +384,34 @@ async function dispatchAction(action: string, reason?: string) {
     actionError.value = msg || 'تعذّر تنفيذ الإجراء. يرجى المحاولة مرة أخرى.'
   }
 }
+
+/**
+ * Trigger the contextually-primary action for the current role + status.
+ * Used by the keyboard shortcut system (Ctrl+Enter).
+ */
+function triggerPrimaryAction() {
+  if (performingAction.value) return
+  if (showBankReviewerActions.value && props.request.status === RequestStatus.SUBMITTED) {
+    handleBeginReview()
+  }
+  else if (showBankReviewerActions.value && props.request.status === RequestStatus.BANK_REVIEW) {
+    showApproveModal.value = true
+  }
+  else if (showSupportCommitteeActions.value) {
+    handleSupportApprove()
+  }
+  else if (showDirectorVotingActions.value && props.request.status === RequestStatus.EXECUTIVE_VOTING_OPEN) {
+    handleCloseSession()
+  }
+  else if (showDirectorVotingActions.value && props.request.status === RequestStatus.EXECUTIVE_VOTING_CLOSED) {
+    handleFinalizeDecision()
+  }
+  else if (showDirectorCustomsActions.value) {
+    handleIssueCustomsDeclaration()
+  }
+}
+
+defineExpose({ triggerPrimaryAction })
 </script>
 
 <template>
@@ -403,7 +431,7 @@ async function dispatchAction(action: string, reason?: string) {
             {{ performingAction ? 'جارٍ التنفيذ…' : 'البدء بالمراجعة' }}
           </Button>
         </TooltipTrigger>
-        <TooltipContent><p>نقل الطلب إلى قيد المراجعة البنكية — يمكنك الموافقة أو الرفض أو الإعادة بعد ذلك</p></TooltipContent>
+        <TooltipContent><p>نقل الطلب إلى قيد المراجعة البنكية — يمكنك الموافقة أو الرفض أو الإعادة بعد ذلك</p><p class="text-xs text-muted-foreground mt-1">Ctrl+Enter</p></TooltipContent>
       </Tooltip>
     </template>
 
@@ -414,7 +442,7 @@ async function dispatchAction(action: string, reason?: string) {
         <Dialog v-model:open="showApproveModal">
           <DialogTrigger as-child>
             <Button
-              class="flex-1 bg-[var(--severity-green)]/10 text-[var(--severity-green)] hover:bg-[var(--severity-green)]/20 border border-[var(--severity-green)]/30"
+              class="flex-1"
               :disabled="performingAction"
             >
               اعتماد
@@ -439,7 +467,6 @@ async function dispatchAction(action: string, reason?: string) {
             <div class="flex gap-2 justify-end">
               <Button variant="outline" @click="showApproveModal = false; approveNote = ''">إلغاء</Button>
               <Button
-                class="bg-[var(--severity-green)] text-white hover:bg-[var(--severity-green)]/90"
                 :disabled="performingAction"
                 @click="handleApproveConfirm"
               >
@@ -559,7 +586,7 @@ async function dispatchAction(action: string, reason?: string) {
     <template v-if="showSupportCommitteeActions">
       <div class="flex gap-3 flex-row-reverse">
         <Button
-          class="flex-1 bg-[var(--color-surface-success)] hover:bg-[var(--color-surface-success)]"
+          class="flex-1"
           :disabled="performingAction"
           @click="handleSupportApprove"
         >
@@ -831,7 +858,8 @@ async function dispatchAction(action: string, reason?: string) {
           <Tooltip>
             <TooltipTrigger as-child>
               <Button
-                class="flex-1 bg-[var(--severity-amber)]/15 hover:bg-[var(--severity-amber)]/25 text-foreground"
+                variant="outline"
+                class="flex-1"
                 :disabled="votingStore.performingDirectorAction"
                 @click="showOverrideModal = true"
               >
@@ -915,7 +943,6 @@ async function dispatchAction(action: string, reason?: string) {
                   إلغاء
                 </Button>
                 <Button
-                  class="bg-[var(--severity-amber)]/15 hover:bg-[var(--severity-amber)]/25 text-foreground"
                   :disabled="votingStore.performingDirectorAction"
                   @click="handleDirectorOverride"
                 >
@@ -977,7 +1004,6 @@ async function dispatchAction(action: string, reason?: string) {
       <AlertDialog>
         <AlertDialogTrigger as-child>
           <Button
-            class="bg-[var(--severity-green)] text-white hover:bg-[var(--severity-green)]/90"
             :disabled="requestsStore.issuingCustoms"
           >
             إصدار تأكيد المصارفة الخارجية
@@ -993,7 +1019,6 @@ async function dispatchAction(action: string, reason?: string) {
           <AlertDialogFooter>
             <AlertDialogCancel>إلغاء</AlertDialogCancel>
             <AlertDialogAction
-              class="bg-[var(--severity-green)] text-white hover:bg-[var(--severity-green)]/90"
               :disabled="requestsStore.issuingCustoms"
               @click="handleIssueCustomsDeclaration"
             >

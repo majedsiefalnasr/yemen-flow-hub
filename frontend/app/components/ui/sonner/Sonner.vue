@@ -10,9 +10,23 @@ import {
   XIcon,
 } from 'lucide-vue-next'
 import { Toaster as Sonner } from 'vue-sonner'
+import { computed } from 'vue'
 import { cn } from '@/lib/utils'
 
 const props = defineProps<ToasterProps>()
+
+const forwardedProps = computed(() => {
+  const { toastOptions: _toastOptions, ...rest } = props
+  return rest
+})
+
+const toastOptions = computed(() => ({
+  ...props.toastOptions,
+  classes: {
+    ...props.toastOptions?.classes,
+    toast: cn('rounded-2xl', props.toastOptions?.classes?.toast),
+  },
+}))
 </script>
 
 <template>
@@ -24,12 +38,8 @@ const props = defineProps<ToasterProps>()
       '--normal-border': 'var(--border)',
       '--border-radius': 'var(--radius)',
     }"
-    :toast-options="{
-      classes: {
-        toast: 'rounded-2xl',
-      },
-    }"
-    v-bind="props"
+    :toast-options="toastOptions"
+    v-bind="forwardedProps"
   >
     <template #success-icon>
       <CircleCheckIcon class="size-4" />

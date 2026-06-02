@@ -30,20 +30,20 @@ const defaultIcon = computed(() => {
 
 const defaultTitle = computed(() => {
   const code = Number(props.code)
-  if (code === 401) return 'غير مصرح'
-  if (code === 403) return 'ممنوع'
+  if (code === 401) return 'تسجيل الدخول مطلوب'
+  if (code === 403) return 'لا تملك صلاحية الوصول'
   if (code === 404) return 'الصفحة غير موجودة'
   if (code === 503) return 'الخدمة غير متاحة'
-  return 'حدث خطأ غير متوقع'
+  return 'تعذر فتح الصفحة'
 })
 
 const defaultDescription = computed(() => {
   const code = Number(props.code)
-  if (code === 401) return 'يجب تسجيل الدخول للوصول إلى هذه الصفحة.'
-  if (code === 403) return 'ليس لديك صلاحية للوصول إلى هذه الصفحة. تواصل مع مدير النظام.'
+  if (code === 401) return 'سجل الدخول أولاً للوصول إلى هذه الصفحة.'
+  if (code === 403) return 'لا تملك صلاحية الوصول إلى هذه الصفحة. تواصل مع مدير النظام إذا كنت تحتاج هذا الإجراء.'
   if (code === 404) return 'الصفحة التي تبحث عنها غير موجودة أو تم نقلها.'
-  if (code === 503) return 'الخدمة غير متاحة حاليًا. يرجى المحاولة لاحقًا.'
-  return 'حدث خطأ في الخادم. يمكنك إعادة المحاولة أو العودة إلى لوحة التحكم.'
+  if (code === 503) return 'الخدمة غير متاحة حاليا. أعد المحاولة بعد قليل.'
+  return 'تعذر فتح الصفحة بسبب خطأ في الخادم. أعد المحاولة أو ارجع إلى لوحة التحكم.'
 })
 
 const resolvedIcon = computed(() => props.icon || defaultIcon.value)
@@ -52,7 +52,7 @@ const resolvedDescription = computed(() => props.description || defaultDescripti
 </script>
 
 <template>
-  <div class="flex min-h-[60vh] flex-col items-center justify-center gap-6 text-center" >
+  <div class="flex min-h-screen flex-col items-center justify-center gap-6 text-center" >
     <div class="rounded-full bg-muted p-6">
       <component :is="resolvedIcon" class="h-12 w-12 text-muted-foreground" />
     </div>

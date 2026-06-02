@@ -1,7 +1,7 @@
 <script setup lang="ts" generic="TData">
 import type { Table } from '@tanstack/vue-table'
 import { refDebounced, useEventListener } from '@vueuse/core'
-import { Download, Printer, Search, X } from 'lucide-vue-next'
+import { Search, X } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
@@ -18,9 +18,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   'update:search': [value: string]
   reset: []
-  exportSelected: []
   clearSelection: []
-  printSelected: []
 }>()
 
 const searchInput = ref('')
@@ -89,14 +87,7 @@ if (typeof document !== 'undefined') {
       <div class="flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-1.5">
         <span class="text-sm font-medium text-primary">{{ selectedCount }} محدد</span>
         <div class="mx-2 h-4 w-px bg-border" />
-        <Button variant="outline" size="sm" class="h-7 gap-1.5 text-xs" @click="emit('exportSelected')">
-          <Download class="size-3.5" />
-          تصدير
-        </Button>
-        <Button variant="outline" size="sm" class="h-7 gap-1.5 text-xs" @click="emit('printSelected')">
-          <Printer class="size-3.5" />
-          طباعة
-        </Button>
+        <slot name="bulk-actions" />
         <Button
           variant="ghost"
           size="sm"

@@ -5,6 +5,8 @@ import { useAuthStore } from '../../stores/auth.store'
 import { useRouter } from 'nuxt/app'
 import Icon from '../../components/shared/Icon.vue'
 import PageHeader from '../../components/layout/PageHeader.vue'
+import LoadErrorAlert from '../../components/shared/LoadErrorAlert.vue'
+import { Skeleton } from '@/components/ui/skeleton'
 import type { IconName } from '../../utils/icon-map'
 
 definePageMeta({
@@ -110,7 +112,11 @@ onMounted(async () => {
     />
 
     <!-- Loading -->
-    <div v-if="loading" class="state-loading">جارٍ التحميل…</div>
+    <div v-if="loading" class="space-y-4" aria-busy="true" aria-label="جارٍ تحميل الإعدادات">
+      <Skeleton class="h-10 w-full max-w-xl rounded-lg" />
+      <Skeleton class="h-48 w-full rounded-xl" />
+      <Skeleton class="h-48 w-full rounded-xl" />
+    </div>
 
     <template v-else>
       <!-- Tab nav -->
@@ -129,8 +135,13 @@ onMounted(async () => {
         </button>
       </nav>
 
-      <!-- Error banner -->
-      <div v-if="error" class="error-banner">{{ error }}</div>
+      <LoadErrorAlert
+        v-if="error"
+        class="mb-4"
+        :message="error"
+        title="تعذّر تحميل الإعدادات"
+        @retry="fetchSettings()"
+      />
 
       <!-- Tab panels -->
       <div class="tab-content">
@@ -347,7 +358,13 @@ onMounted(async () => {
               <textarea v-model="smtpForm.template" class="form-input form-textarea"  rows="3" />
             </div>
 
-            <div v-if="smtpError" class="error-banner">{{ smtpError }}</div>
+            <LoadErrorAlert
+              v-if="smtpError"
+              class="mb-3"
+              :message="smtpError"
+              title="تعذّر حفظ إعدادات البريد"
+              :show-retry="false"
+            />
             <div v-if="smtpSuccess" class="success-banner">تم حفظ إعدادات SMTP بنجاح</div>
 
             <div class="form-actions">
@@ -759,15 +776,6 @@ onMounted(async () => {
 }
 
 /* Banners */
-.error-banner {
-  background: color-mix(in srgb, var(--destructive) 8%, var(--background));
-  border: 1px solid color-mix(in srgb, var(--destructive) 40%, transparent);
-  border-radius: 8px;
-  padding: 10px 14px;
-  font-size: 13px;
-  color: var(--destructive);
-}
-
 .success-banner {
   background: color-mix(in srgb, var(--color-success) 10%, var(--background));
   border: 1px solid color-mix(in srgb, var(--color-success) 40%, transparent);

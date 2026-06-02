@@ -117,7 +117,7 @@ async function addRule() {
     notify('تمت إضافة نوع المستند')
   }
   catch {
-    toastError('حدث خطأ')
+    toastError('تعذر حفظ نوع المستند. أعد المحاولة بعد قليل.')
   }
   finally {
     saving.value = false
@@ -392,7 +392,7 @@ function exportCurrentRules() {
           </Empty>
         </template>
         <template #pagination="{ table }">
-          <div class="flex items-center justify-between border-t px-4 py-3">
+          <div class="flex items-center justify-between border-t">
             <p class="text-sm text-muted-foreground">{{ filteredDocTypes.length }} نوع</p>
             <div class="flex items-center gap-4">
               <p class="text-sm font-medium whitespace-nowrap">
@@ -467,7 +467,6 @@ function exportCurrentRules() {
             إلغاء — لا تغيير
           </AlertDialogCancel>
           <AlertDialogAction
-            class="bg-[var(--severity-amber)] text-white hover:bg-[var(--severity-amber)]/90"
             @click="confirmImpactChange"
           >
             تأكيد التغيير

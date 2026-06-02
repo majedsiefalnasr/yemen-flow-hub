@@ -11,7 +11,7 @@ import {
 } from '@tanstack/vue-table'
 import { h } from 'vue'
 import {
-  AlertCircle, AlertTriangle, ExternalLink, MoreHorizontal, Plus, RefreshCw, SearchX, ShieldCheck, UserCog,
+  AlertCircle, AlertTriangle, Archive, ExternalLink, MoreHorizontal, Plus, PowerOff, RefreshCw, SearchX, ShieldCheck, UserCog, Zap,
 } from 'lucide-vue-next'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import PageHeader from '@/components/layout/PageHeader.vue'
@@ -26,7 +26,6 @@ import { useAuthStore } from '@/stores/auth.store'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import {
@@ -71,6 +70,7 @@ import {
 import { Checkbox } from '@/components/ui/checkbox'
 import {
   DataTable,
+  DataTableBulkExport,
   DataTableExport,
   DataTableFacetedFilter,
   DataTablePagination,
@@ -79,6 +79,9 @@ import {
 } from '@/components/ui/data-table'
 import MetricCard from '@/components/shared/dashboard/MetricCard.vue'
 import MetricGrid from '@/components/shared/dashboard/MetricGrid.vue'
+import AvatarPicker from '@/components/shared/AvatarPicker.vue'
+import BoringAvatar from '@/components/shared/BoringAvatar.vue'
+import { DEFAULT_AVATAR_VARIANT, persistUserAvatar, readUserAvatar, type AvatarVariant } from '@/composables/useUserAvatar'
 
 definePageMeta({
   middleware: ['auth', 'role'],
@@ -98,7 +101,7 @@ const authStore = useAuthStore()
 const currentUser = computed(() => authStore.user)
 const { fetchUsers, createUser, updateUser } = useUsers()
 const { fetchBanks } = useBanks()
-const { exportToCSV } = useTableExport()
+const { exportToCSV, exportToExcel, exportToJSON } = useTableExport()
 const { notify, error: toastError } = useToast()
 
 const query = ref('')
@@ -120,6 +123,8 @@ const form = reactive<StaffForm>({
   role: UserRole.SUPPORT_COMMITTEE,
   password: '',
 })
+
+const avatarVariant = ref<AvatarVariant>(DEFAULT_AVATAR_VARIANT)
 
 function resolveBankName(user: User): string {
   if (user.bank_name_ar) return user.bank_name_ar
@@ -199,23 +204,26 @@ const formValid = computed(() =>
 
 const roleSelectHint = computed(() => {
   if (form.role === UserRole.COMMITTEE_DIRECTOR) {
-    return 'مدير اللجنة حصري — لا يمكن الجمع بين هذا الدور وعضوية اللجنة التنفيذية على نفس الحساب.'
+    return 'هذا الدور مخصص لمدير اللجنة فقط. لا يمكن جمعه مع عضوية اللجنة التنفيذية على الحساب نفسه.'
   }
   if (form.role === UserRole.EXECUTIVE_MEMBER) {
-    return 'عضو تنفيذي حصري — لا يمكن الجمع بين هذا الدور ومدير اللجنة على نفس الحساب.'
+    return 'هذا الدور مخصص لعضو اللجنة التنفيذية فقط. لا يمكن جمعه مع دور مدير اللجنة على الحساب نفسه.'
   }
   return null
 })
-
-function userInitials(name: string) {
-  return name.split(' ').map(p => p[0]).join('').slice(0, 2)
-}
 
 function resetForm(initial?: User) {
   form.name = initial?.name ?? ''
   form.email = initial?.email ?? ''
   form.role = initial?.role ?? UserRole.SUPPORT_COMMITTEE
   form.password = ''
+  if (initial?.email) {
+    const stored = readUserAvatar(initial.email)
+    avatarVariant.value = (initial.avatar_variant as AvatarVariant | undefined) ?? stored.variant
+  }
+  else {
+    avatarVariant.value = DEFAULT_AVATAR_VARIANT
+  }
 }
 
 function openCreate() {
@@ -246,10 +254,19 @@ async function saveStaff() {
         role: form.role,
         bank_id: null,
         is_active: editing.value.is_active,
+        avatar_variant: avatarVariant.value,
         ...(form.password ? { password: form.password } : {}),
       }
       const updated = await updateUser(editing.value.id, payload)
       staffUsers.value = staffUsers.value.map(u => u.id === editing.value!.id ? updated : u)
+      persistUserAvatar(updated.email, { variant: avatarVariant.value })
+      // When the admin is editing their own row, mirror the new variant onto
+      // the auth store so surfaces that read `auth.user.avatar_variant`
+      // (topbar, NavUser sidebar, profile screen) refresh immediately without
+      // waiting for a page reload to re-fetch the user.
+      if (authStore.user && authStore.user.id === updated.id) {
+        authStore.user = { ...authStore.user, ...updated, avatar_variant: avatarVariant.value }
+      }
       notify('تم حفظ التعديلات')
     }
     else {
@@ -260,15 +277,17 @@ async function saveStaff() {
         role: form.role,
         bank_id: null,
         is_active: true,
+        avatar_variant: avatarVariant.value,
       }
       const created = await createUser(payload)
       staffUsers.value = [...staffUsers.value, created]
+      persistUserAvatar(created.email, { variant: avatarVariant.value })
       notify(`تمت إضافة ${created.name}`)
     }
     closeForm()
   }
   catch {
-    toastError('حدث خطأ، يرجى المحاولة مجدداً')
+    toastError('تعذر حفظ بيانات الموظف. أعد المحاولة بعد قليل.')
   }
   finally {
     saving.value = false
@@ -362,8 +381,13 @@ const columns: ColumnDef<User>[] = [
     cell: ({ row }) => {
       const staff = row.original
       return h('div', { class: 'flex items-center gap-2' }, [
-        h(Avatar, { size: 'sm' }, {
-          default: () => h(AvatarFallback, { class: 'bg-gradient-hero text-xs font-bold text-white' }, () => userInitials(staff.name)),
+        h(BoringAvatar, {
+          name: staff.name || staff.email,
+          identity: staff.email,
+          variant: (staff.avatar_variant as AvatarVariant | undefined) ?? undefined,
+          size: 32,
+          square: true,
+          class: 'size-8 shrink-0 overflow-hidden rounded-md',
         }),
         h('div', { class: 'flex flex-col gap-0.5' }, [
           h('button', {
@@ -535,14 +559,63 @@ function buildExportFilename(): string {
   return `cby-staff-${new Date().toISOString().slice(0, 10)}`
 }
 
-function exportSelectedRows() {
-  const rows = table.getFilteredSelectedRowModel().rows.map(row => row.original)
+function getSelectedUsers(): User[] {
+  return table.getFilteredSelectedRowModel().rows.map(r => r.original)
+}
+
+function bulkExportCSV() {
+  const rows = getSelectedUsers()
   if (!rows.length) return
-  exportToCSV(
-    rows as unknown as Record<string, unknown>[],
-    exportCols as any,
-    `${buildExportFilename()}-selected`,
-  )
+  exportToCSV(rows as unknown as Record<string, unknown>[], exportCols as any, `${buildExportFilename()}-selected`)
+}
+
+function bulkExportExcel() {
+  const rows = getSelectedUsers()
+  if (!rows.length) return
+  exportToExcel(rows as unknown as Record<string, unknown>[], exportCols as any, `${buildExportFilename()}-selected`)
+}
+
+function bulkExportJSON() {
+  const rows = getSelectedUsers()
+  if (!rows.length) return
+  exportToJSON(rows as unknown as Record<string, unknown>[], exportCols as any, `${buildExportFilename()}-selected`)
+}
+
+const bulkToggling = ref(false)
+async function bulkToggleStatus(activate: boolean) {
+  const rows = getSelectedUsers().filter(u => u.is_active !== activate && u.id !== currentUser.value?.id)
+  if (!rows.length) return
+  bulkToggling.value = true
+  try {
+    await Promise.all(rows.map(u => doToggleActive(u)))
+    clearSelection()
+    notify(activate ? `تم تفعيل ${rows.length} مستخدم` : `تم إلغاء تفعيل ${rows.length} مستخدم`)
+  }
+  catch {
+    toastError('فشل تغيير الحالة لبعض المستخدمين')
+  }
+  finally {
+    bulkToggling.value = false
+  }
+}
+
+const archiveConfirmOpen = ref(false)
+const archiving = ref(false)
+async function bulkArchive() {
+  const rows = getSelectedUsers().filter(u => u.id !== currentUser.value?.id)
+  if (!rows.length) return
+  archiving.value = true
+  try {
+    await Promise.all(rows.filter(u => u.is_active).map(u => doToggleActive(u)))
+    clearSelection()
+    notify(`تم أرشفة ${rows.length} مستخدم`)
+  }
+  catch {
+    toastError('فشل أرشفة بعض المستخدمين')
+  }
+  finally {
+    archiving.value = false
+  }
 }
 </script>
 
@@ -625,9 +698,23 @@ function exportSelectedRows() {
             :selected-count="selectedCount"
             @update:search="v => query = v"
             @reset="handleReset"
-            @export-selected="exportSelectedRows"
             @clear-selection="clearSelection"
           >
+            <template #bulk-actions>
+              <DataTableBulkExport @csv="bulkExportCSV" @excel="bulkExportExcel" @json="bulkExportJSON" />
+              <Button variant="outline" size="sm" class="h-7 gap-1.5 text-xs" :disabled="bulkToggling" @click="bulkToggleStatus(true)">
+                <Zap class="size-3.5" />
+                تفعيل
+              </Button>
+              <Button variant="outline" size="sm" class="h-7 gap-1.5 text-xs" :disabled="bulkToggling" @click="bulkToggleStatus(false)">
+                <PowerOff class="size-3.5" />
+                إلغاء تفعيل
+              </Button>
+              <Button variant="outline" size="sm" class="h-7 gap-1.5 text-xs text-destructive hover:text-destructive" :disabled="archiving" @click="archiveConfirmOpen = true">
+                <Archive class="size-3.5" />
+                أرشفة
+              </Button>
+            </template>
             <template #filters>
               <DataTableFacetedFilter
                 v-if="table.getColumn('role')"
@@ -700,6 +787,14 @@ function exportSelectedRows() {
         </DialogHeader>
 
         <div class="space-y-3 py-2">
+          <div class="rounded-lg border border-border bg-muted/20 p-3">
+            <AvatarPicker
+              v-model="avatarVariant"
+              :seed="form.email || form.name || 'new-user'"
+              :size="44"
+              label="مظهر الصورة الرمزية"
+            />
+          </div>
           <div class="space-y-1.5">
             <Label>الاسم *</Label>
             <Input v-model="form.name" />
@@ -808,5 +903,20 @@ function exportSelectedRows() {
         </div>
       </DialogContent>
     </Dialog>
+
+    <AlertDialog v-model:open="archiveConfirmOpen">
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>تأكيد أرشفة المستخدمين المحددين</AlertDialogTitle>
+          <AlertDialogDescription>
+            سيتم إلغاء تفعيل {{ selectedCount }} مستخدم وأرشفته. يمكن إعادة تفعيله لاحقاً.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>إلغاء</AlertDialogCancel>
+          <AlertDialogAction @click="bulkArchive">تأكيد الأرشفة</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   </div>
 </template>

@@ -71,9 +71,9 @@ function requestClose() {
           </Button>
           <Button
             type="button"
+            :variant="isSuspend ? 'destructive' : 'default'"
             :disabled="props.submitting"
             class="flex-1"
-            :class="isSuspend ? 'bg-destructive hover:opacity-90 text-white' : 'bg-[var(--severity-green)] hover:opacity-90 text-white'"
             @click="emit('confirm')"
           >
             {{ confirmLabel }}

@@ -30,6 +30,11 @@ import { useOrgStore } from '@/stores/org.store'
 import { ROLE_LABELS } from '@/constants/workflow'
 import { useSavedAccounts, getDeviceInfo } from '@/composables/useSavedAccounts'
 import { useProfile } from '@/composables/useProfile'
+import {
+  AVATAR_VARIANTS,
+  persistUserAvatar,
+  type AvatarVariant,
+} from '@/composables/useUserAvatar'
 import LoginSavedAccountCard from '@/components/auth/LoginSavedAccountCard.vue'
 
 definePageMeta({ layout: false, middleware: ['guest'] })
@@ -428,7 +433,16 @@ async function handleSaveAccount(save: boolean) {
         bankName: auth.user.bank_name_ar ?? auth.user.bank_name_en ?? 'البنك المركزي اليمني',
         trustedAt: new Date().toISOString(),
         deviceInfo: getDeviceInfo(),
+        avatarVariant: auth.user.avatar_variant ?? null,
       })
+      // Seed the per-identity avatar cache so the saved-account card stays in
+      // sync with the backend even if the snapshot above ever drifts (e.g. the
+      // admin updates this user's avatar from a different session).
+      const backendVariant = auth.user.avatar_variant
+      if (typeof backendVariant === 'string'
+        && (AVATAR_VARIANTS as readonly string[]).includes(backendVariant)) {
+        persistUserAvatar(auth.user.email, { variant: backendVariant as AvatarVariant })
+      }
       setPINStatus(auth.user.email, auth.user.pin_enabled === true)
       if (auth.user.pin_enabled) {
         await router.push(nextPath.value)
@@ -895,7 +909,7 @@ watch(step, (newStep) => {
               size="sm"
               class="text-xs text-muted-foreground"
               :disabled="isCreatePinLoading"
-              @click="router.push(nextPath.value)"
+              @click="router.push(nextPath)"
             >
               تخطي في الوقت الحالي
             </Button>
@@ -1139,7 +1153,11 @@ watch(step, (newStep) => {
 .login-page {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  min-height: 100vh;
+  /* 100dvh tracks the visible viewport on mobile (handles browser chrome).
+     `min-height` lets the grid grow when the form column is taller than the
+     viewport so the page itself becomes scrollable instead of clipping the
+     top of a flex-centered card. */
+  min-height: 100dvh;
   background-color: var(--background);
 }
 
@@ -1151,6 +1169,13 @@ watch(step, (newStep) => {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  /* Keep the hero pinned in the viewport while the form column scrolls past
+     it on short screens — the hero is decorative, so we never need to scroll
+     into it. Falls back to a normal block on browsers without sticky. */
+  position: sticky;
+  top: 0;
+  align-self: start;
+  height: 100dvh;
 }
 
 .hero-brand {
@@ -1175,9 +1200,6 @@ watch(step, (newStep) => {
 .hero-monogram-logo {
   height: 56px;
   width: 56px;
-  border-radius: 16px;
-  background: rgb(255 255 255 / 10%);
-  border: 1px solid rgb(255 255 255 / 20%);
   overflow: hidden;
   display: grid;
   place-items: center;
@@ -1224,16 +1246,20 @@ watch(step, (newStep) => {
 /* ── Form panel ──────────────────────────────────────────────────────────── */
 .login-form-col {
   background: var(--background);
+  /* A flex column with `margin: auto` on the inner wrap gives us free vertical
+     centering when there's room AND graceful overflow when the form (or the
+     saved-account list) is taller than the viewport: the auto margins simply
+     collapse to zero and the column grows, pushing the page scroll instead of
+     clipping content the way `align-items: center` + `overflow-y: auto` did. */
   display: flex;
-  align-items: center;
-  justify-content: center;
+  flex-direction: column;
   padding: 40px 24px;
-  overflow-y: auto;
 }
 
 .login-form-wrap {
   width: 100%;
   max-width: 420px;
+  margin: auto;
 }
 
 /* ── Step header ─────────────────────────────────────────────────────────── */
@@ -1318,7 +1344,13 @@ watch(step, (newStep) => {
 /* ── Responsive ──────────────────────────────────────────────────────────── */
 @media (max-width: 1023px) {
   .login-page { grid-template-columns: 1fr; }
-  .login-hero { display: none; }
+  .login-hero {
+    display: none;
+    /* Reset the sticky pinning when the hero is hidden so it never reserves
+       layout space on narrow viewports. */
+    position: static;
+    height: auto;
+  }
 }
 
 @media (max-width: 480px) {

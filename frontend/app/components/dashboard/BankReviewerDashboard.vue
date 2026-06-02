@@ -55,7 +55,7 @@ const kpiConfig = computed(() => [
   {
     icon: XCircle,
     value: stats.value?.returned_by_support ?? 0,
-    label: 'رُفض من المساندة',
+    label: 'مرفوض من لجنة المساندة',
     variant: (stats.value?.returned_by_support ?? 0) > 0 ? 'rose' : 'gray',
     tab: 'support_rejected',
   },
@@ -191,7 +191,7 @@ onMounted(() => { store.loadStats() })
       <CardContent class="pt-6 flex items-center gap-3">
         <AlertCircle class="w-4.5 h-4.5 flex-shrink-0 text-[var(--severity-red)]" aria-hidden="true" />
         <span class="text-[var(--severity-red)] flex-1">{{ store.error }}</span>
-        <Button variant="outline" size="sm" class="text-[var(--severity-red)] border-[var(--severity-red)]" @click="store.loadStats()">
+        <Button variant="outline" size="sm" class="text-destructive border-destructive" @click="store.loadStats()">
           إعادة المحاولة
         </Button>
       </CardContent>
@@ -262,7 +262,7 @@ onMounted(() => { store.loadStats() })
           >
             <FileText class="h-5 w-5 flex-shrink-0 text-primary mb-1" aria-hidden="true" />
             <span class="text-sm font-semibold">كل طلبات البنك</span>
-            <span class="text-xs text-muted-foreground">عرض سائر الطلبات كاملاً</span>
+            <span class="text-xs text-muted-foreground">عرض جميع طلبات البنك</span>
           </Card>
         </div>
       </section>
@@ -277,19 +277,15 @@ onMounted(() => { store.loadStats() })
         <Card v-if="queue.length === 0" class="border-0 shadow">
           <CardContent class="pt-16 pb-16 flex flex-col items-center gap-3 text-center">
             <CheckCircle2 class="h-7 w-7 text-muted-foreground" aria-hidden="true" />
-            <p class="text-sm text-muted-foreground m-0">لا توجد طلبات في طابور المراجعة حالياً ✓</p>
+            <p class="text-sm text-muted-foreground m-0">لا توجد طلبات في طابور المراجعة حالياً</p>
           </CardContent>
         </Card>
 
-        <Card v-else class="border-0 shadow">
-          <CardContent class="p-4">
             <DataTable
               :data="queue.slice(0, 8)"
               :columns="reviewQueueColumns"
               @row-click="(row) => router.push(`/requests/${row.id}`)"
             />
-          </CardContent>
-        </Card>
       </section>
 
       <!-- Downstream tracking table (max 5 rows, hidden when empty) -->
@@ -298,15 +294,11 @@ onMounted(() => { store.loadStats() })
           <h2 id="downstream-heading" class="text-sm font-semibold text-foreground">متابعة الطلبات لدى البنك المركزي</h2>
           <Button variant="link" size="sm" class="text-xs h-auto p-0" @click="router.push('/requests?tab=at_cby')">عرض الكل</Button>
         </div>
-        <Card class="border-0 shadow">
-          <CardContent class="p-4">
             <DataTable
               :data="downstreamQueue.slice(0, 5)"
               :columns="downstreamQueueColumns"
               @row-click="(row) => router.push(`/requests/${row.id}`)"
             />
-          </CardContent>
-        </Card>
       </section>
 
     </template>

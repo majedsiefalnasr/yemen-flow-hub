@@ -115,7 +115,6 @@ const supportQueueColumns: ColumnDef<SupportQueueRow>[] = [
       if (!row.original.claimed_by) {
         return h(Button, {
           size: 'sm',
-          class: 'bg-[var(--voting)] text-white hover:opacity-90',
           onClick: (event: MouseEvent) => {
             event.stopPropagation()
             router.push(`/requests/${row.original.id}`)
@@ -126,7 +125,6 @@ const supportQueueColumns: ColumnDef<SupportQueueRow>[] = [
         return h(Button, {
           size: 'sm',
           variant: 'outline',
-          class: 'border-[var(--voting)] text-[var(--voting)] hover:bg-[var(--voting)]/10',
           onClick: (event: MouseEvent) => {
             event.stopPropagation()
             router.push(`/requests/${row.original.id}`)
@@ -219,7 +217,7 @@ onMounted(() => { store.loadStats() })
         role="status"
         aria-label="طلبات نشطة محجوزة باسمك"
       >
-        <CardContent class="pt-4 pb-4 flex items-center gap-3">
+        <CardContent class="flex items-center gap-3">
           <AlarmClock class="h-5 w-5 flex-shrink-0 text-[var(--voting)]" aria-hidden="true" />
           <div class="flex-1 min-w-0">
             <span class="font-semibold text-foreground text-sm">لديك {{ myActiveClaims.length }} طلب نشط محجوز باسمك</span>
@@ -230,7 +228,7 @@ onMounted(() => { store.loadStats() })
           <Button
             v-if="oldestActiveClaim"
             size="sm"
-            class="flex-shrink-0 bg-[var(--voting)] text-white hover:opacity-90"
+            class="flex-shrink-0"
             @click="router.push(`/requests/${oldestActiveClaim.id}`)"
           >
             متابعة المراجعة
@@ -301,12 +299,12 @@ onMounted(() => { store.loadStats() })
       <Card class="border-0 shadow" aria-labelledby="queue-heading">
         <CardContent class="p-4">
           <div class="flex items-center justify-between mb-4">
-            <h2 id="queue-heading" class="text-sm font-semibold text-foreground">طابور عملي</h2>
+            <h2 id="queue-heading" class="text-sm font-semibold text-foreground">طابور المراجعة</h2>
             <Button variant="link" size="sm" class="text-xs h-auto p-0" @click="router.push('/requests')">عرض الكل</Button>
           </div>
 
           <DataTable :data="queue.slice(0, 8)" :columns="supportQueueColumns" @row-click="(row) => router.push(`/requests/${row.id}`)">
-            <template #empty>لا توجد طلبات بانتظار المراجعة حالياً ✓</template>
+            <template #empty>لا توجد طلبات بانتظار المراجعة حالياً</template>
           </DataTable>
         </CardContent>
       </Card>

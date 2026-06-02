@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import PageHeader from '@/components/layout/PageHeader.vue'
 import SwiftUploadForm from '@/components/workflow/SwiftUploadForm.vue'
-import { AlertTriangle, Lock, RefreshCw } from 'lucide-vue-next'
+import { Lock } from 'lucide-vue-next'
 import { cn } from '@/lib/utils'
 import { RequestStatus, UserRole } from '@/types/enums'
 import { getBusinessStatus, ROUTE_ROLE_MAP } from '@/constants/workflow'
 import { useAuthStore } from '@/stores/auth.store'
 import { useRequests } from '@/composables/useRequests'
+import { Skeleton } from '@/components/ui/skeleton'
+import LoadErrorAlert from '@/components/shared/LoadErrorAlert.vue'
 
 definePageMeta({
   middleware: ['auth', 'role'],
@@ -20,6 +22,7 @@ const user = computed(() => authStore.user)
 const { fetchRequest, uploadSwift } = useRequests()
 
 const loading = ref(true)
+const loadError = ref<string | null>(null)
 const uploading = ref(false)
 const request = ref<import('@/types/models').ImportRequest | null>(null)
 const lockedStateError = ref('')
@@ -28,8 +31,13 @@ const completed = ref(false)
 
 async function loadRequest(): Promise<void> {
   loading.value = true
+  loadError.value = null
   try {
     request.value = await fetchRequest(Number(route.params.id))
+  }
+  catch {
+    loadError.value = 'تعذّر تحميل بيانات الطلب. تحقق من الاتصال وأعد المحاولة.'
+    request.value = null
   }
   finally {
     loading.value = false
@@ -85,8 +93,17 @@ async function handleUpload(payload: { swiftReference: string; swiftFile: File; 
 </script>
 
 <template>
-  <div v-if="loading" class="p-6">
-    <div class="h-8 w-64 animate-pulse rounded bg-muted" />
+  <div v-if="loading" class="p-6" aria-busy="true" aria-label="جارٍ التحميل">
+    <Skeleton class="h-8 w-64 rounded" />
+    <Skeleton class="mt-4 h-48 w-full rounded-xl" />
+  </div>
+
+  <div v-else-if="loadError" class="p-6">
+    <LoadErrorAlert
+      :message="loadError"
+      title="تعذّر تحميل الطلب"
+      @retry="loadRequest()"
+    />
   </div>
 
   <div v-else-if="request && canAccessPage">
@@ -175,24 +192,26 @@ async function handleUpload(payload: { swiftReference: string; swiftFile: File; 
       </aside>
 
       <section class="rounded-2xl border border-border bg-background p-5">
-        <div v-if="lockedStateError" class="mb-4 rounded-xl border border-[var(--color-border-warning)] bg-[var(--color-surface-warning)] p-3 text-[var(--color-text-warning)]">
-          <div class="flex items-center gap-2">
-            <AlertTriangle class="h-4 w-4" />
-            <span class="text-sm">{{ lockedStateError }}</span>
-          </div>
-          <Button variant="outline" size="sm" class="mt-2" @click="loadRequest">
-            <RefreshCw class="ms-1 h-4 w-4" />
-            تحديث الصفحة
-          </Button>
-        </div>
+        <LoadErrorAlert
+          v-if="lockedStateError"
+          class="mb-4"
+          :message="lockedStateError"
+          title="تغيّرت حالة الطلب"
+          retry-label="تحديث الصفحة"
+          @retry="loadRequest"
+        />
 
-        <div v-if="uploadError" class="mb-4 rounded-xl border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">
-          {{ uploadError }}
-        </div>
+        <LoadErrorAlert
+          v-if="uploadError"
+          class="mb-4"
+          :message="uploadError"
+          title="تعذّر تسليم الوثائق"
+          :show-retry="false"
+        />
 
         <div v-if="completed" class="rounded-xl border border-[var(--color-border-success)] bg-[var(--color-surface-success)] p-4">
           <p class="text-sm font-semibold text-[var(--color-text-success)]">تم تسليم وثائق السويفت بنجاح</p>
-          <Button class="mt-3 bg-info text-white hover:bg-info/90" @click="router.push('/requests?tab=pending_swift')">
+          <Button class="mt-3" @click="router.push('/requests?tab=pending_swift')">
             العودة إلى الطابور
           </Button>
         </div>

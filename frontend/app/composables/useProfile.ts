@@ -47,12 +47,53 @@ export const useProfile = () => {
     }
   }
 
-  const updateProfile = async (data: { name: string; email: string; phone?: string }): Promise<boolean> => {
+  const updateProfile = async (data: {
+    name: string
+    email: string
+    phone?: string
+    avatar_variant?: string
+  }): Promise<boolean> => {
     loading.value = true
     error.value = null
+    const body = {
+      ...data,
+      name: data.name.trim(),
+      email: data.email.trim(),
+      phone: data.phone?.replace(/\s+/g, '') || null,
+    }
 
     try {
       const response = await $fetch<ApiResponse<AuthUser>>('/api/profile', {
+        method: 'PUT',
+        baseURL,
+        credentials: 'include',
+        headers: { Accept: 'application/json', 'Content-Type': 'application/json', ...xsrfHeaders() },
+        body,
+      })
+      profile.value = response.data
+      if (auth.user) auth.user = response.data
+      return true
+    }
+    catch (err: any) {
+      error.value = err.data?.message || 'Failed to update profile'
+      return false
+    }
+    finally {
+      loading.value = false
+    }
+  }
+
+  /**
+   * Persist only avatar preferences. Used by the picker for instant feedback
+   * so the user does not have to press a save button after changing variant
+   * or colour.
+   */
+  const updateAvatar = async (data: {
+    avatar_variant?: string
+  }): Promise<boolean> => {
+    error.value = null
+    try {
+      const response = await $fetch<ApiResponse<AuthUser>>('/api/profile/avatar', {
         method: 'PUT',
         baseURL,
         credentials: 'include',
@@ -63,11 +104,8 @@ export const useProfile = () => {
       return true
     }
     catch (err: any) {
-      error.value = err.data?.message || 'Failed to update profile'
+      error.value = err.data?.message || 'Failed to update avatar'
       return false
-    }
-    finally {
-      loading.value = false
     }
   }
 
@@ -254,6 +292,7 @@ export const useProfile = () => {
     error,
     fetchProfile,
     updateProfile,
+    updateAvatar,
     toggleMfa,
     setupTotp,
     verifyTotpSetup,

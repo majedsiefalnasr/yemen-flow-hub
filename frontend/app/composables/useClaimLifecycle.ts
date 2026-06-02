@@ -13,7 +13,38 @@ function httpStatus(err: unknown): number | undefined {
   return (err as FetchError)?.response?.status
 }
 
-export function useClaimLifecycle() {
+function getXsrfToken(): string | null {
+  if (!import.meta.client) return null
+  const raw = document.cookie
+    .split(';')
+    .map(c => c.trim())
+    .find(c => c.startsWith('XSRF-TOKEN='))
+    ?.split('=')
+    .slice(1)
+    .join('=')
+  return raw ? decodeURIComponent(raw) : null
+}
+
+function claimHeaders(): Record<string, string> {
+  const token = getXsrfToken()
+  return {
+    Accept: 'application/json',
+    ...(token ? { 'X-XSRF-TOKEN': token } : {}),
+  }
+}
+
+/**
+ * Generic claim lifecycle composable.
+ * Pass `claimEndpoint` to target a specific claim route (e.g. 'claim-bank-review').
+ * Defaults to 'claim-support-review' to keep existing call-sites unchanged.
+ *
+ * Backend endpoints required per role:
+ *   SUPPORT_COMMITTEE  → claim-support-review          (exists)
+ *   BANK_REVIEWER      → claim-bank-review             (TODO: backend)
+ *   COMMITTEE_DIRECTOR → claim-director-review         (TODO: backend)
+ *   EXECUTIVE_MEMBER   → claim-executive-review        (TODO: backend)
+ */
+export function useClaimLifecycle(claimEndpoint = 'claim-support-review') {
   const isClaiming = ref(false)
   const isReleasing = ref(false)
   const claimError = ref<string | null>(null)
@@ -27,10 +58,11 @@ export function useClaimLifecycle() {
     try {
       const config = useRuntimeConfig()
       const baseURL = config.public.apiBase as string
-      await $fetch(`/api/workflow/${id}/claim-support-review`, {
+      await $fetch(`/api/workflow/${id}/${claimEndpoint}`, {
         method: 'POST',
         baseURL,
         credentials: 'include',
+        headers: claimHeaders(),
       })
       return true
     }
@@ -62,10 +94,11 @@ export function useClaimLifecycle() {
     try {
       const config = useRuntimeConfig()
       const baseURL = config.public.apiBase as string
-      await $fetch(`/api/workflow/${id}/claim-support-review`, {
+      await $fetch(`/api/workflow/${id}/${claimEndpoint}`, {
         method: 'DELETE',
         baseURL,
         credentials: 'include',
+        headers: claimHeaders(),
       })
       return true
     }
@@ -88,10 +121,11 @@ export function useClaimLifecycle() {
     try {
       const config = useRuntimeConfig()
       const baseURL = config.public.apiBase as string
-      await $fetch(`/api/workflow/${id}/claim-support-review/heartbeat`, {
+      await $fetch(`/api/workflow/${id}/${claimEndpoint}/heartbeat`, {
         method: 'POST',
         baseURL,
         credentials: 'include',
+        headers: claimHeaders(),
       })
       return true
     }
@@ -121,10 +155,11 @@ export function useClaimLifecycle() {
       try {
         const config = useRuntimeConfig()
         const baseURL = config.public.apiBase as string
-        await $fetch(`/api/workflow/${id}/claim-support-review/heartbeat`, {
+        await $fetch(`/api/workflow/${id}/${claimEndpoint}/heartbeat`, {
           method: 'POST',
           baseURL,
           credentials: 'include',
+          headers: claimHeaders(),
         })
       }
       catch (err: unknown) {

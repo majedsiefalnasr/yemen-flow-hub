@@ -7,6 +7,14 @@ import { getBusinessStatus, ROUTE_ROLE_MAP } from '@/constants/workflow'
 import { useAuthStore } from '@/stores/auth.store'
 import { useRequests } from '@/composables/useRequests'
 import { Skeleton } from '@/components/ui/skeleton'
+import LoadErrorAlert from '@/components/shared/LoadErrorAlert.vue'
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+} from '@/components/ui/empty'
 
 definePageMeta({
   middleware: ['auth', 'role'],
@@ -87,10 +95,37 @@ onMounted(() => {
 <template>
   <div v-if="user">
     <PageHeader
-      title="إصدار تأكيد مصارفة خارجية"
+      title="تأكيد المصارفة الخارجية"
       subtitle="إصدار وطباعة تأكيدات المصارفة الخارجية للطلبات المعتمدة من اللجنة التنفيذية"
-      :breadcrumbs="[{ label: 'الرئيسية', to: '/' }, { label: 'تأكيد مصارفة خارجية' }]"
+      :breadcrumbs="[{ label: 'الرئيسية', to: '/' }, { label: 'تأكيد المصارفة الخارجية' }]"
     />
+
+    <Card class="mb-6 border-0 bg-primary/5 p-5 shadow" role="note" aria-labelledby="fx-confirmation-steps">
+      <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div class="min-w-0">
+          <h2 id="fx-confirmation-steps" class="text-sm font-semibold text-foreground">
+            مسار إتمام التأكيد
+          </h2>
+          <p class="mt-1 text-sm text-muted-foreground">
+            هذه الصفحة تحتفظ بعنوان URL القديم فقط. جميع الإجراءات هنا تخص تأكيد المصارفة الخارجية.
+          </p>
+        </div>
+        <ol class="grid flex-1 gap-3 text-sm sm:grid-cols-3" aria-label="خطوات تأكيد المصارفة الخارجية">
+          <li class="rounded-lg border border-primary/15 bg-background px-3 py-2">
+            <span class="block text-xs font-semibold text-primary">1. تحميل النموذج</span>
+            <span class="text-muted-foreground">مراجعة ملف التأكيد المولد من بيانات الطلب.</span>
+          </li>
+          <li class="rounded-lg border border-primary/15 bg-background px-3 py-2">
+            <span class="block text-xs font-semibold text-primary">2. التوقيع والختم</span>
+            <span class="text-muted-foreground">توقيع المستند خارج النظام حسب إجراء اللجنة.</span>
+          </li>
+          <li class="rounded-lg border border-primary/15 bg-background px-3 py-2">
+            <span class="block text-xs font-semibold text-primary">3. الإتمام</span>
+            <span class="text-muted-foreground">إصدار النسخة النهائية وحفظها كأثر تدقيق دائم.</span>
+          </li>
+        </ol>
+      </div>
+    </Card>
 
     <div class="grid gap-6 lg:grid-cols-2">
       <!-- Ready for issuance -->
@@ -109,18 +144,23 @@ onMounted(() => {
         </div>
 
         <!-- Error state -->
-        <div v-else-if="readyError" class="flex items-center justify-between rounded-lg border border-[var(--severity-red)]/30 bg-[var(--severity-red)]/5 px-3 py-3 text-sm text-[var(--severity-red)]" role="alert">
-          <span>{{ readyError }}</span>
-          <Button variant="ghost" size="sm" class="gap-1" @click="fetchReady">
-            <RefreshCw class="h-3.5 w-3.5" />
-            إعادة المحاولة
-          </Button>
-        </div>
+        <LoadErrorAlert
+          v-else-if="readyError"
+          :message="readyError"
+          title="تعذّر تحميل طلبات الإصدار"
+          @retry="fetchReady"
+        />
 
         <!-- Empty -->
-        <div v-else-if="ready.length === 0" class="text-sm text-muted-foreground">
-          لا توجد طلبات جاهزة حالياً.
-        </div>
+        <Empty v-else-if="ready.length === 0" class="py-6">
+          <EmptyHeader>
+            <PackageCheck class="h-8 w-8 text-muted-foreground/50" />
+          </EmptyHeader>
+          <EmptyContent>
+            <EmptyTitle>لا توجد طلبات جاهزة</EmptyTitle>
+            <EmptyDescription>لا توجد طلبات معتمدة بانتظار إصدار تأكيد المصارفة حالياً.</EmptyDescription>
+          </EmptyContent>
+        </Empty>
 
         <!-- List -->
         <div v-else class="space-y-3">
@@ -170,18 +210,23 @@ onMounted(() => {
         </div>
 
         <!-- Error state (first load) -->
-        <div v-else-if="issuedError && issued.length === 0" class="flex items-center justify-between rounded-lg border border-[var(--severity-red)]/30 bg-[var(--severity-red)]/5 px-3 py-3 text-sm text-[var(--severity-red)]" role="alert">
-          <span>{{ issuedError }}</span>
-          <Button variant="ghost" size="sm" class="gap-1" @click="fetchIssued(1)">
-            <RefreshCw class="h-3.5 w-3.5" />
-            إعادة المحاولة
-          </Button>
-        </div>
+        <LoadErrorAlert
+          v-else-if="issuedError && issued.length === 0"
+          :message="issuedError"
+          title="تعذّر تحميل التأكيدات الصادرة"
+          @retry="fetchIssued(1)"
+        />
 
         <!-- Empty -->
-        <div v-else-if="!loadingIssued && issued.length === 0" class="text-sm text-muted-foreground">
-          لم تُصدَر أي تأكيدات بعد.
-        </div>
+        <Empty v-else-if="!loadingIssued && issued.length === 0" class="py-6">
+          <EmptyHeader>
+            <CheckCircle2 class="h-8 w-8 text-muted-foreground/50" />
+          </EmptyHeader>
+          <EmptyContent>
+            <EmptyTitle>لا توجد تأكيدات بعد</EmptyTitle>
+            <EmptyDescription>لم تُصدَر أي تأكيدات مصارفة خارجية حتى الآن.</EmptyDescription>
+          </EmptyContent>
+        </Empty>
 
         <!-- List -->
         <div v-else class="space-y-3">
@@ -214,13 +259,12 @@ onMounted(() => {
           </div>
 
           <!-- Load-more error (for subsequent pages) -->
-          <div v-if="issuedError && issued.length > 0" class="flex items-center justify-between rounded-lg border border-[var(--severity-red)]/30 bg-[var(--severity-red)]/5 px-3 py-2 text-sm text-[var(--severity-red)]" role="alert">
-            <span>{{ issuedError }}</span>
-            <Button variant="ghost" size="sm" class="gap-1" @click="loadMoreIssued">
-              <RefreshCw class="h-3.5 w-3.5" />
-              إعادة المحاولة
-            </Button>
-          </div>
+          <LoadErrorAlert
+            v-if="issuedError && issued.length > 0"
+            :message="issuedError"
+            title="تعذّر تحميل المزيد"
+            @retry="loadMoreIssued"
+          />
 
           <!-- Load more -->
           <div v-if="issuedHasMore && !issuedError" class="pt-1">

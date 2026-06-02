@@ -80,7 +80,7 @@ const errorCount = computed(() => Object.keys(props.errors).length)
         <Select
           :model-value="modelValue.origin_country || ''"
           :disabled="loading"
-          @update:model-value="(val) => update('origin_country', val)"
+          @update:model-value="(val) => update('origin_country', String(val ?? ''))"
         >
           <SelectTrigger id="origin-country" :class="{ 'border-destructive': errors.origin_country }">
             <SelectValue placeholder="اختر بلد المنشأ..." />
@@ -136,7 +136,7 @@ const errorCount = computed(() => Object.keys(props.errors).length)
         <Select
           :model-value="modelValue.arrival_port || ''"
           :disabled="loading"
-          @update:model-value="(val) => { update('arrival_port', val); onPortChange(val) }"
+          @update:model-value="(val) => { const port = String(val ?? ''); update('arrival_port', port); onPortChange(port) }"
         >
           <SelectTrigger id="arrival-port" :class="{ 'border-destructive': errors.arrival_port }">
             <SelectValue placeholder="اختر ميناء الوصول..." />
@@ -183,7 +183,7 @@ const errorCount = computed(() => Object.keys(props.errors).length)
         <Select
           :model-value="modelValue.customs_office || ''"
           :disabled="loading"
-          @update:model-value="(val) => update('customs_office', val)"
+          @update:model-value="(val) => update('customs_office', String(val ?? ''))"
         >
           <SelectTrigger id="customs-office">
             <SelectValue placeholder="اختر الجمارك المختصة..." />
@@ -198,4 +198,3 @@ const errorCount = computed(() => Object.keys(props.errors).length)
     </div>
   </div>
 </template>
-

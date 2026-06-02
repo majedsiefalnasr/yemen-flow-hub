@@ -2,8 +2,15 @@ import { UserRole } from '@/types/enums'
 
 export interface RequestsEmptyStateInput {
   role?: UserRole
+  tab?: string
   hasAnyRequests: boolean
-  hasActiveFilters: boolean
+  hasActiveFilters?: boolean
+  search?: string
+  bankFilter?: string
+  dateRangeFilter?: string
+  createdByMeOnly?: boolean
+  hideOthers?: boolean
+  advancedFilterCount?: number
 }
 
 export interface RequestsEmptyState {
@@ -12,6 +19,16 @@ export interface RequestsEmptyState {
 }
 
 export function buildRequestsEmptyState(input: RequestsEmptyStateInput): RequestsEmptyState {
+  const hasActiveFilters = input.hasActiveFilters
+    ?? Boolean(
+      input.search?.trim()
+      || (input.bankFilter && input.bankFilter !== 'all')
+      || (input.dateRangeFilter && input.dateRangeFilter !== 'all')
+      || input.createdByMeOnly
+      || input.hideOthers
+      || (input.advancedFilterCount ?? 0) > 0,
+    )
+
   if (!input.hasAnyRequests) {
     if (input.role === UserRole.DATA_ENTRY) {
       return {
@@ -67,7 +84,7 @@ export function buildRequestsEmptyState(input: RequestsEmptyStateInput): Request
     }
   }
 
-  if (input.hasActiveFilters) {
+  if (hasActiveFilters) {
     return {
       title: 'لا توجد طلبات مطابقة',
       description: 'جرّب تخفيف معايير البحث أو إعادة ضبط الفلاتر لعرض المزيد من الطلبات.',
@@ -75,12 +92,24 @@ export function buildRequestsEmptyState(input: RequestsEmptyStateInput): Request
   }
 
   if (input.role === UserRole.SUPPORT_COMMITTEE) {
+    if (input.tab === 'my_claims') {
+      return {
+        title: 'لا توجد مطالبات نشطة',
+        description: 'لا توجد طلبات محجوزة باسمك حالياً.',
+      }
+    }
     return {
       title: 'الطابور فارغ — أنجزت المهمة',
       description: 'لا توجد طلبات في انتظار مراجعتك حالياً.',
     }
   }
   if (input.role === UserRole.EXECUTIVE_MEMBER) {
+    if (input.tab === 'pending_my_vote') {
+      return {
+        title: 'لا توجد جلسات مخصصة لتصويتك',
+        description: 'لا توجد جلسات مفتوحة تتطلب تصويتك حالياً.',
+      }
+    }
     return {
       title: 'لا توجد جلسات مخصصة لتصويتك',
       description: 'لا توجد جلسات مفتوحة تتطلب تصويتك حالياً.',

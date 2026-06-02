@@ -2,8 +2,13 @@
 import { X } from 'lucide-vue-next'
 import { computed } from 'vue'
 import type { SavedAccount } from '~/composables/useSavedAccounts'
-import { getAvatarColor, getInitials } from '~/composables/useSavedAccounts'
-import { Avatar, AvatarFallback } from '~/components/ui/avatar'
+import BoringAvatar from '~/components/shared/BoringAvatar.vue'
+import {
+  AVATAR_VARIANTS,
+  DEFAULT_AVATAR_VARIANT,
+  tryReadUserAvatar,
+  type AvatarVariant,
+} from '~/composables/useUserAvatar'
 import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
 import { ROLE_LABELS } from '~/constants/workflow'
@@ -20,9 +25,24 @@ const emit = defineEmits<{
   remove: []
 }>()
 
-const initials = computed(() => getInitials(props.account.name))
-const avatarBg = computed(() => getAvatarColor(props.account.id))
 const roleLabel = computed(() => ROLE_LABELS[props.account.role] ?? props.account.role)
+
+function isKnownVariant(value: unknown): value is AvatarVariant {
+  return typeof value === 'string' && (AVATAR_VARIANTS as readonly string[]).includes(value)
+}
+
+// Prefer the latest per-identity avatar cache (kept in sync whenever an admin
+// or the user themselves edits the avatar on this device). The snapshot stored
+// on the saved-account record is only a fallback for the case where this
+// device has never written a per-identity preference for this email — without
+// this lookup the card would freeze on the variant captured at the moment the
+// account was first saved.
+const avatarVariant = computed<AvatarVariant>(() => {
+  const cached = tryReadUserAvatar(props.account.email)
+  if (cached && isKnownVariant(cached.variant)) return cached.variant
+  if (isKnownVariant(props.account.avatarVariant)) return props.account.avatarVariant
+  return DEFAULT_AVATAR_VARIANT
+})
 </script>
 
 <template>
@@ -36,14 +56,14 @@ const roleLabel = computed(() => ROLE_LABELS[props.account.role] ?? props.accoun
     :aria-pressed="selected"
     @click="emit('select')"
   >
-    <Avatar size="lg" class="shrink-0">
-      <AvatarFallback
-        class="text-sm font-semibold text-white"
-        :style="{ backgroundColor: avatarBg }"
-      >
-        {{ initials }}
-      </AvatarFallback>
-    </Avatar>
+    <BoringAvatar
+      :name="account.name || account.email"
+      :identity="account.email"
+      :variant="avatarVariant"
+      :size="40"
+      class="shrink-0 overflow-hidden rounded-full"
+      data-testid="saved-account-avatar"
+    />
 
     <div class="min-w-0 flex-1 text-start">
       <p class="truncate text-sm font-semibold text-foreground leading-tight">

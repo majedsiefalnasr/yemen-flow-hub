@@ -4,10 +4,12 @@ import 'vue-sonner/style.css'
 import { Toaster } from '@/components/ui/sonner'
 import { ConfigProvider } from 'reka-ui'
 import { useAuthStore } from '@/stores/auth.store'
+import { DEFAULT_BRAND_LOGO_URL, useOrgStore } from '@/stores/org.store'
 import { useThemingStore } from '@/stores/theming.store'
 
 const route = useRoute()
 const authStore = useAuthStore()
+const orgStore = useOrgStore()
 const themingStore = useThemingStore()
 const user = computed(() => authStore.user)
 const appDir = computed<'rtl' | 'ltr'>(() => authStore.preferredLanguage === 'en' ? 'ltr' : 'rtl')
@@ -18,6 +20,21 @@ const applySystemTheme = () => {
     themingStore.applyTheme()
   }
 }
+const platformName = computed(() => orgStore.platformName.trim() || 'منصة إدارة وتمويل الواردات')
+const authorityName = computed(() => orgStore.authority.trim() || 'البنك المركزي اليمني')
+const fullAppTitle = computed(() => `${platformName.value} — ${authorityName.value}`)
+const seoDescription = computed(() =>
+  `${platformName.value} منصة مؤسسية لإدارة ومراجعة طلبات تمويل الواردات لدى ${authorityName.value}.`,
+)
+const faviconHref = computed(() => orgStore.brandLogoDataUrl || DEFAULT_BRAND_LOGO_URL)
+const faviconType = computed(() => {
+  const href = faviconHref.value
+  if (href.startsWith('data:image/png')) return 'image/png'
+  if (href.startsWith('data:image/jpeg')) return 'image/jpeg'
+  if (href.endsWith('.png')) return 'image/png'
+  if (href.endsWith('.jpg') || href.endsWith('.jpeg')) return 'image/jpeg'
+  return 'image/svg+xml'
+})
 
 // Initialize persisted user/system theme before the app shell renders.
 onBeforeMount(() => {
@@ -33,15 +50,29 @@ onUnmounted(() => {
   mediaQuery?.removeEventListener('change', applySystemTheme)
 })
 
-useHead({
+useHead(() => ({
   htmlAttrs: {
-    lang: computed(() => authStore.preferredLanguage === 'en' ? 'en' : 'ar'),
-    dir: appDir,
-    class: computed(() => themingStore.isDark ? 'dark' : ''),
+    lang: authStore.preferredLanguage === 'en' ? 'en' : 'ar',
+    dir: appDir.value,
+    class: themingStore.isDark ? 'dark' : '',
   },
   titleTemplate: (titleChunk) => titleChunk
-    ? `${titleChunk} — منصة إدارة وتمويل الواردات`
-    : 'منصة إدارة وتمويل الواردات — البنك المركزي اليمني',
+    ? `${titleChunk} — ${platformName.value}`
+    : fullAppTitle.value,
+  link: [
+    {
+      key: 'favicon',
+      rel: 'icon',
+      type: faviconType.value,
+      href: faviconHref.value,
+    },
+    {
+      key: 'shortcut-icon',
+      rel: 'shortcut icon',
+      type: faviconType.value,
+      href: faviconHref.value,
+    },
+  ],
   meta: [
     {
       name: 'viewport',
@@ -49,10 +80,58 @@ useHead({
     },
     {
       name: 'description',
-      content: 'منصة رقمية لإدارة ومراجعة طلبات تمويل الواردات للبنك المركزي اليمني',
+      content: seoDescription.value,
+    },
+    {
+      name: 'application-name',
+      content: platformName.value,
+    },
+    {
+      name: 'apple-mobile-web-app-title',
+      content: platformName.value,
+    },
+    {
+      name: 'theme-color',
+      content: themingStore.brandColor,
+    },
+    {
+      property: 'og:site_name',
+      content: platformName.value,
+    },
+    {
+      property: 'og:title',
+      content: fullAppTitle.value,
+    },
+    {
+      property: 'og:description',
+      content: seoDescription.value,
+    },
+    {
+      property: 'og:type',
+      content: 'website',
+    },
+    {
+      property: 'og:image',
+      content: faviconHref.value,
+    },
+    {
+      name: 'twitter:card',
+      content: 'summary',
+    },
+    {
+      name: 'twitter:title',
+      content: fullAppTitle.value,
+    },
+    {
+      name: 'twitter:description',
+      content: seoDescription.value,
+    },
+    {
+      name: 'twitter:image',
+      content: faviconHref.value,
     },
   ],
-})
+}))
 
 const showShell = computed(() => route.path !== '/login' && Boolean(user.value))
 </script>

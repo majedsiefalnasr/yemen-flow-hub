@@ -3,7 +3,7 @@ import type { ColumnDef, PaginationState } from '@tanstack/vue-table'
 import { ref, reactive, computed, watch, onMounted, h } from 'vue'
 import {
   AlertTriangle,
-  Download, MoreHorizontal, Plus, Printer, Search, SearchX, X,
+  MoreHorizontal, Plus, Search, SearchX, X,
 } from 'lucide-vue-next'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import { UserRole } from '../types/enums'
@@ -13,6 +13,9 @@ import { useBanks } from '../composables/useBanks'
 import { useAuthStore } from '../stores/auth.store'
 import { ROLE_LABELS, BANK_ROLES, CBY_ROLES, BANK_ADMIN_MANAGED_ROLES } from '../constants/workflow'
 import type { CreateUserPayload, UpdateUserPayload } from '../composables/useUsers'
+import AvatarPicker from '../components/shared/AvatarPicker.vue'
+import BoringAvatar from '../components/shared/BoringAvatar.vue'
+import { DEFAULT_AVATAR_VARIANT, persistUserAvatar, readUserAvatar, type AvatarVariant } from '../composables/useUserAvatar'
 import {
   Dialog,
   DialogContent,
@@ -92,6 +95,8 @@ const form = reactive<UserForm>({
   is_active: true,
 })
 
+const avatarVariant = ref<AvatarVariant>(DEFAULT_AVATAR_VARIANT)
+
 const formErrors = reactive<Partial<Record<keyof UserForm, string>>>({})
 
 const isBankAdmin = computed(() => auth.user?.role === UserRole.BANK_ADMIN)
@@ -122,7 +127,7 @@ async function loadUsers() {
     usersMeta.value = { last_page: result.meta.last_page, total: result.meta.total }
   }
   catch {
-    error.value = 'تعذّر تحميل البيانات.'
+    error.value = 'تعذر تحميل بيانات المستخدمين الآن. أعد المحاولة بعد قليل.'
   }
   finally {
     loading.value = false
@@ -143,6 +148,7 @@ function openCreate() {
   form.role = isBankAdmin.value ? UserRole.DATA_ENTRY : ''
   form.bank_id = isBankAdmin.value ? auth.user?.bank_id ?? null : null
   form.is_active = true
+  avatarVariant.value = DEFAULT_AVATAR_VARIANT
   clearErrors()
   showModal.value = true
 }
@@ -155,6 +161,8 @@ function openEdit(user: User) {
   form.role = user.role
   form.bank_id = isBankAdmin.value ? auth.user?.bank_id ?? null : user.bank_id
   form.is_active = user.is_active
+  const stored = readUserAvatar(user.email)
+  avatarVariant.value = (user.avatar_variant as AvatarVariant | undefined) ?? stored.variant
   clearErrors()
   showModal.value = true
 }
@@ -208,9 +216,16 @@ async function saveUser() {
         role: form.role as UserRole,
         bank_id: isBankAdmin.value ? auth.user?.bank_id ?? null : form.bank_id,
         is_active: form.is_active,
+        avatar_variant: avatarVariant.value,
       }
       if (form.password) payload.password = form.password
-      await updateUser(editingUser.value.id, payload)
+      const updated = await updateUser(editingUser.value.id, payload)
+      persistUserAvatar(form.email.trim(), { variant: avatarVariant.value })
+      // Patch the auth store when the admin is editing their own row so the
+      // topbar / sidebar avatar refresh without a full page reload.
+      if (auth.user && auth.user.id === updated.id) {
+        auth.user = { ...auth.user, ...updated, avatar_variant: avatarVariant.value }
+      }
     }
     else {
       const payload: CreateUserPayload = {
@@ -220,8 +235,10 @@ async function saveUser() {
         role: form.role as UserRole,
         bank_id: isBankAdmin.value ? auth.user?.bank_id ?? null : form.bank_id,
         is_active: form.is_active,
+        avatar_variant: avatarVariant.value,
       }
       await createUser(payload)
+      persistUserAvatar(form.email.trim(), { variant: avatarVariant.value })
     }
     closeModal()
     await loadUsers()
@@ -237,7 +254,7 @@ async function saveUser() {
       if (errs.bank_id?.[0]) formErrors.bank_id = errs.bank_id[0]
     }
     else {
-      formError.value = e.data?.message ?? 'حدث خطأ أثناء الحفظ.'
+      formError.value = e.data?.message ?? 'تعذر حفظ بيانات المستخدم. راجع الحقول ثم أعد المحاولة.'
     }
   }
   finally {
@@ -338,14 +355,24 @@ const columns: ColumnDef<User>[] = [
   {
     accessorKey: 'name',
     header: 'الاسم',
-    cell: ({ row }) => h('div', { class: 'flex flex-col gap-0.5' }, [
-      h('button', {
-        type: 'button',
-        class: 'text-sm font-medium text-start hover:underline underline-offset-2 cursor-pointer focus-visible:outline-none focus-visible:underline',
-        title: 'معاينة سريعة',
-        onClick: (e: Event) => { e.stopPropagation(); viewingUser.value = row.original },
-      }, row.original.name),
-      h('span', { class: 'font-mono text-xs text-muted-foreground', dir: 'ltr' }, row.original.email),
+    cell: ({ row }) => h('div', { class: 'flex items-center gap-3' }, [
+      h(BoringAvatar, {
+        name: row.original.name || row.original.email,
+        identity: row.original.email,
+        variant: (row.original.avatar_variant as AvatarVariant | undefined) ?? undefined,
+        size: 32,
+        square: true,
+        class: 'size-8 shrink-0 overflow-hidden rounded-md',
+      }),
+      h('div', { class: 'flex min-w-0 flex-col gap-0.5' }, [
+        h('button', {
+          type: 'button',
+          class: 'text-sm font-medium text-start hover:underline underline-offset-2 cursor-pointer focus-visible:outline-none focus-visible:underline',
+          title: 'معاينة سريعة',
+          onClick: (e: Event) => { e.stopPropagation(); viewingUser.value = row.original },
+        }, row.original.name),
+        h('span', { class: 'font-mono text-xs text-muted-foreground truncate', dir: 'ltr' }, row.original.email),
+      ]),
     ]),
   },
   {
@@ -420,14 +447,6 @@ onMounted(loadData)
     <div v-if="selectedCount > 0" class="flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2">
       <span class="text-sm font-medium text-primary">{{ selectedCount }} محدد</span>
       <div class="mx-2 h-4 w-px bg-border" />
-      <Button variant="outline" size="sm" class="h-7 gap-1.5 text-xs">
-        <Download class="h-3.5 w-3.5" />
-        تصدير
-      </Button>
-      <Button variant="outline" size="sm" class="h-7 gap-1.5 text-xs">
-        <Printer class="h-3.5 w-3.5" />
-        طباعة
-      </Button>
       <Button
         variant="ghost"
         size="sm"
@@ -493,6 +512,15 @@ onMounted(loadData)
           <AlertTriangle class="h-4 w-4" />
           <AlertDescription>{{ formError }}</AlertDescription>
         </Alert>
+
+        <div class="rounded-lg border border-border bg-muted/20 p-3">
+          <AvatarPicker
+            v-model="avatarVariant"
+            :seed="form.email || form.name || 'new-user'"
+            :size="44"
+            label="مظهر الصورة الرمزية"
+          />
+        </div>
 
         <div class="flex flex-col gap-4">
           <Field :data-invalid="!!formErrors.name">

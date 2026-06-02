@@ -39,26 +39,32 @@ describe('useNotificationsStore — refreshUnreadCount', () => {
     setActivePinia(createPinia())
     vi.resetAllMocks()
     mockUnreadCount.value = 0
+    mockNotifications.value = []
   })
 
-  it('updates unreadCount from composable and sets lastFetched', async () => {
-    mockFetchUnreadCount.mockResolvedValueOnce(undefined)
-    mockUnreadCount.value = 7
+  it('updates unreadCount from loaded notification rows and sets lastFetched', async () => {
+    mockNotifications.value = [
+      { id: '1', read_at: null },
+      { id: '2', read_at: '2026-06-01T10:00:00.000Z' },
+      { id: '3', read_at: null },
+    ]
+    mockFetchNotifications.mockResolvedValueOnce(undefined)
 
     const store = useNotificationsStore()
     await store.refreshUnreadCount()
 
-    expect(store.unreadCount).toBe(7)
+    expect(store.unreadCount).toBe(2)
+    expect(store.items).toEqual(mockNotifications.value)
     expect(store.lastFetched).toBeInstanceOf(Date)
   })
 
-  it('calls fetchUnreadCount', async () => {
-    mockFetchUnreadCount.mockResolvedValueOnce(undefined)
+  it('fetches the first notifications page for badge parity', async () => {
+    mockFetchNotifications.mockResolvedValueOnce(undefined)
 
     const store = useNotificationsStore()
     await store.refreshUnreadCount()
 
-    expect(mockFetchUnreadCount).toHaveBeenCalledOnce()
+    expect(mockFetchNotifications).toHaveBeenCalledWith(1)
   })
 })
 
@@ -88,14 +94,30 @@ describe('useNotificationsStore — recent items', () => {
     vi.resetAllMocks()
   })
 
-  it('fetchRecent updates items and unread count', async () => {
+  it('fetchRecent updates items and derives unread count from loaded rows', async () => {
     const store = useNotificationsStore()
-    mockNotifications.value = [{ id: '1', read_at: null }]
+    mockNotifications.value = [
+      { id: '1', read_at: null },
+      { id: '2', read_at: '2026-06-01T10:00:00.000Z' },
+      { id: '3', read_at: null },
+    ]
     mockUnreadCount.value = 3
     mockFetchNotifications.mockResolvedValueOnce(undefined)
     await store.fetchRecent()
-    expect(store.items).toEqual([{ id: '1', read_at: null }])
-    expect(store.unreadCount).toBe(3)
+    expect(store.items).toEqual(mockNotifications.value)
+    expect(store.unreadCount).toBe(2)
+  })
+
+  it('setItems derives unread count from loaded rows instead of stale API counts', () => {
+    const store = useNotificationsStore()
+
+    store.setItems([
+      { id: '1', read_at: null },
+      { id: '2', read_at: '2026-06-01T10:00:00.000Z' },
+      { id: '3', read_at: '2026-06-01T10:05:00.000Z' },
+    ] as any, 15)
+
+    expect(store.unreadCount).toBe(1)
   })
 
   it('markAllRead sets unread count to 0 and marks items', async () => {

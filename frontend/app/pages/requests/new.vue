@@ -16,7 +16,8 @@ import {
 } from 'lucide-vue-next'
 import { UserRole } from '@/types/enums'
 import { ROUTE_ROLE_MAP } from '@/constants/workflow'
-import { useRoute, useRouter } from 'vue-router'
+import type { NavigationGuardNext } from 'vue-router'
+import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth.store'
 import { useRequestsStore } from '@/stores/requests.store'
 import { useMerchants } from '@/composables/useMerchants'
@@ -35,6 +36,16 @@ import {
   ComboboxTrigger,
 } from '@/components/ui/combobox'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 definePageMeta({
   middleware: ['auth', 'role'],
@@ -124,6 +135,18 @@ const step = ref(0)
 const form = reactive<FormState>({ ...INITIAL })
 const uploads = ref<Record<string, UploadedDoc>>({})
 const preview = ref<{ name: string, mime: string, url: string } | null>(null)
+
+// True once the user has started filling the form (used for nav guard)
+const isDirty = computed(() =>
+  step.value > 0
+  || Object.keys(uploads.value).length > 0
+  || form.amount !== ''
+  || form.supplier_name !== ''
+  || form.notes !== '',
+)
+const submitted = ref(false)
+const showLeaveDialog = ref(false)
+const pendingLeaveNext = ref<NavigationGuardNext | null>(null)
 const previewOpen = computed({
   get: () => Boolean(preview.value),
   set: (value: boolean) => {
@@ -182,6 +205,35 @@ onMounted(async () => {
     form.merchant_id = merchants.value[0]!.id
   }
 })
+
+// Nav guard: warn before leaving with unsaved form data
+onBeforeRouteLeave((_to, _from, next) => {
+  if (!isDirty.value || submitted.value) return next()
+  pendingLeaveNext.value = next
+  showLeaveDialog.value = true
+})
+
+function cancelLeave() {
+  pendingLeaveNext.value?.(false)
+  pendingLeaveNext.value = null
+  showLeaveDialog.value = false
+}
+
+function confirmLeave() {
+  submitted.value = true
+  pendingLeaveNext.value?.()
+  pendingLeaveNext.value = null
+  showLeaveDialog.value = false
+}
+
+function onBeforeUnload(e: BeforeUnloadEvent) {
+  if (isDirty.value && !submitted.value) {
+    e.preventDefault()
+    e.returnValue = ''
+  }
+}
+onMounted(() => window.addEventListener('beforeunload', onBeforeUnload))
+onUnmounted(() => window.removeEventListener('beforeunload', onBeforeUnload))
 
 const docSpecs = computed(() => {
   const isOilOrMed = form.goods_description === 'مشتقات نفطية' || form.goods_description === 'أدوية ومستلزمات طبية'
@@ -280,11 +332,12 @@ async function persist(asDraft: boolean) {
       payment_terms: form.payment_terms || undefined,
       due_date: form.due_date || undefined,
     })
+    submitted.value = true
     notify(asDraft ? 'تم حفظ المسودة' : 'تم تقديم الطلب للمراجعة الداخلية')
     router.push('/requests')
   }
   catch {
-    toastError('حدث خطأ أثناء حفظ الطلب')
+    toastError('تعذر حفظ الطلب. راجع الحقول ثم أعد المحاولة.')
   }
   finally {
     saving.value = false
@@ -293,21 +346,21 @@ async function persist(asDraft: boolean) {
 
 const selectedMerchantName = computed(() => {
   const m = merchants.value.find(m => m.id === form.merchant_id)
-  return m?.name ?? '—'
+  return m?.name ?? 'غير محدد'
 })
 
 const reviewRows = computed(() => ({
   request: [
-    ['نوع الواردات', form.goods_description || '—'],
+    ['نوع الواردات', form.goods_description || 'غير محدد'],
     ['المستورد', selectedMerchantName.value],
     ['مبلغ التمويل', `${Number(form.amount || 0).toLocaleString('en-US')} ${form.currency}`],
-    ['شروط الدفع', form.payment_terms || '—'],
+    ['شروط الدفع', form.payment_terms || 'غير محددة'],
   ],
   shipment: [
-    ['المورد', form.supplier_name || '—'],
-    ['رقم الفاتورة', form.invoice_number || '—'],
-    ['ميناء الوصول', form.arrival_port || '—'],
-    ['البلد', form.origin_country || '—'],
+    ['المورد', form.supplier_name || 'غير محدد'],
+    ['رقم الفاتورة', form.invoice_number || 'غير محدد'],
+    ['ميناء الوصول', form.arrival_port || 'غير محدد'],
+    ['البلد', form.origin_country || 'غير محدد'],
   ],
 }))
 
@@ -397,7 +450,7 @@ const canCreate = computed(() =>
 
           <div class="space-y-2">
             <Label>المستورد (التاجر)</Label>
-            <Combobox v-model="form.merchant_id" :display-value="(id) => merchants.find(m => m.id === id)?.name ?? ''">
+            <Combobox v-model="form.merchant_id" :display-value="(id: unknown) => merchants.find(m => m.id === Number(id))?.name ?? ''">
               <ComboboxAnchor class="w-full">
                 <ComboboxInput v-model="merchantSearch" :placeholder="merchants.length ? 'ابحث عن تاجر...' : 'لا يوجد تجار مسجلون'" class="w-full" />
                 <ComboboxTrigger>
@@ -601,7 +654,7 @@ const canCreate = computed(() =>
                 <Button
                   size="icon"
                   variant="ghost"
-                  class="h-7 w-7 text-[var(--severity-red)]"
+                  class="h-7 w-7 text-destructive hover:text-destructive"
                   aria-label="حذف"
                   @click="removeUpload(doc.name)"
                 >
@@ -748,12 +801,29 @@ const canCreate = computed(() =>
         </template>
       </DialogContent>
     </Dialog>
+
+    <AlertDialog :open="showLeaveDialog" @update:open="value => { if (!value) cancelLeave() }">
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>مغادرة الطلب الجديد؟</AlertDialogTitle>
+          <AlertDialogDescription>
+            لديك بيانات أو مستندات غير محفوظة. إذا غادرت الآن ستفقد آخر التغييرات غير المحفوظة.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel @click="cancelLeave">البقاء في الصفحة</AlertDialogCancel>
+          <AlertDialogAction class="bg-destructive text-destructive-foreground hover:bg-destructive/90" @click="confirmLeave">
+            مغادرة بدون حفظ
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   </div>
 
   <div v-else>
     <PageHeader
       title="غير مصرح بإنشاء طلب"
-      subtitle="هذه الصفحة متاحة لمُدخِل البيانات أو مسؤول البنك فقط."
+      subtitle="هذه الصفحة متاحة لمدخل البيانات أو مسؤول البنك فقط."
     />
     <Card class="border-0 p-6 shadow">
       <Button variant="outline" @click="router.push('/requests')">

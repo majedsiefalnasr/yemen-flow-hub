@@ -113,7 +113,7 @@ const errorCount = computed(() => Object.keys(props.errors).length)
         <Select
           :model-value="modelValue.goods_type || ''"
           :disabled="loading"
-          @update:model-value="(val) => update('goods_type', val)"
+          @update:model-value="(val) => update('goods_type', String(val ?? ''))"
         >
           <SelectTrigger id="goods-type" :class="{ 'border-destructive': errors.goods_type }">
             <SelectValue placeholder="اختر نوع الواردات..." />
@@ -149,7 +149,7 @@ const errorCount = computed(() => Object.keys(props.errors).length)
             <AlertTriangle class="h-4 w-4" />
             <AlertDescription>
               <div class="flex items-center justify-between gap-2">
-                <span>تعذّر تحميل قائمة التجار.</span>
+                <span>تعذر تحميل قائمة التجار الآن. أعد المحاولة بعد قليل.</span>
                 <Button
                   type="button"
                   variant="outline"
@@ -177,7 +177,7 @@ const errorCount = computed(() => Object.keys(props.errors).length)
               @update:model-value="(val) => update('merchant_id', val ? Number(val) : null)"
             >
               <SelectTrigger id="merchant" :class="{ 'border-destructive': errors.merchant_id }">
-                <SelectValue :placeholder="merchantsLoading ? 'جاري التحميل...' : 'اختر المستورد...'" />
+                <SelectValue :placeholder="merchantsLoading ? 'جارٍ تحميل القائمة...' : 'اختر المستورد'" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem v-for="m in filteredMerchants" :key="m.id" :value="String(m.id)">
@@ -219,7 +219,7 @@ const errorCount = computed(() => Object.keys(props.errors).length)
         <Select
           :model-value="modelValue.currency || ''"
           :disabled="loading"
-          @update:model-value="(val) => update('currency', val)"
+          @update:model-value="(val) => update('currency', String(val ?? '') as WizardStep1Data['currency'])"
         >
           <SelectTrigger id="currency" :class="{ 'border-destructive': errors.currency }">
             <SelectValue :placeholder="modelValue.currency" />
@@ -242,7 +242,7 @@ const errorCount = computed(() => Object.keys(props.errors).length)
         <Select
           :model-value="modelValue.payment_terms || ''"
           :disabled="loading"
-          @update:model-value="(val) => update('payment_terms', val)"
+          @update:model-value="(val) => update('payment_terms', String(val ?? '') as WizardStep1Data['payment_terms'])"
         >
           <SelectTrigger id="payment-terms" :class="{ 'border-destructive': errors.payment_terms }">
             <SelectValue placeholder="اختر شروط الدفع..." />

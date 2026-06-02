@@ -16,6 +16,12 @@ export interface SavedAccount {
   department?: string
   trustedAt: string
   deviceInfo?: DeviceInfo
+  /**
+   * boring-avatars variant chosen by the user. Stored locally so the saved-
+   * account card can render the same avatar the user will see post-login,
+   * without an extra network round-trip.
+   */
+  avatarVariant?: string | null
 }
 
 const STORAGE_KEY = 'yfh-saved-accounts'

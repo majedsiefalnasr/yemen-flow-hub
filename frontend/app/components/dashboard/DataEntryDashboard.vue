@@ -192,7 +192,7 @@ onMounted(() => {
       <CardContent class="pt-6 flex items-center gap-3">
         <AlertCircle class="w-4.5 h-4.5 flex-shrink-0 text-[var(--severity-red)]" aria-hidden="true" />
         <span class="text-[var(--severity-red)] flex-1">{{ store.error }}</span>
-        <Button variant="outline" size="sm" class="text-[var(--severity-red)] border-destructive" @click="store.loadStats()">
+        <Button variant="outline" size="sm" class="text-destructive border-destructive" @click="store.loadStats()">
           إعادة المحاولة
         </Button>
       </CardContent>

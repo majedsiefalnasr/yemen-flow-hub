@@ -55,7 +55,7 @@ const onSubmit = handleSubmit(async () => {
     await new Promise(resolve => setTimeout(resolve, 500))
     isDone.value = true
   } catch {
-    serverError.value = 'تعذر تحديث كلمة المرور حالياً. حاول مرة أخرى.'
+    serverError.value = 'تعذر تحديث كلمة المرور الآن. تحقق من رمز التحقق ثم أعد المحاولة.'
   } finally {
     isSubmitting.value = false
   }

@@ -61,7 +61,7 @@ const showNewRequestAction = computed(() =>
         @click="router.push('/requests/new')"
       >
         <FilePlus2 class="h-4 w-4" />
-        طلب جديد
+        إنشاء طلب
       </Button>
     </div>
 

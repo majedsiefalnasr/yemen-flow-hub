@@ -10,7 +10,6 @@ import {
   Download,
   FileWarning,
   MoreHorizontal,
-  Printer,
   SearchX,
   ShieldCheck,
   X,
@@ -22,13 +21,14 @@ import { useAudit } from '@/composables/useAudit'
 import { useTableExport } from '@/composables/useTableExport'
 import { useTableKeyboard } from '@/composables/useTableKeyboard'
 import type { AuditLog } from '@/types/models'
-import { DataTablePagination, DataTableViewOptions } from '@/components/ui/data-table'
+import { DataTableBulkExport, DataTablePagination, DataTableViewOptions } from '@/components/ui/data-table'
 import DataTable from '@/components/ui/data-table/DataTable.vue'
 import MetricCard from '@/components/shared/dashboard/MetricCard.vue'
 import MetricGrid from '@/components/shared/dashboard/MetricGrid.vue'
 import RankedListCard from '@/components/shared/dashboard/RankedListCard.vue'
 import InsightsTabsCard from '@/components/shared/dashboard/InsightsTabsCard.vue'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import {
   Empty,
   EmptyContent,
@@ -51,6 +51,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
+import LoadErrorAlert from '@/components/shared/LoadErrorAlert.vue'
 
 definePageMeta({
   middleware: ['auth', 'role'],
@@ -58,7 +59,7 @@ definePageMeta({
 })
 
 const { fetchAuditLogs, fetchAuditStats, fetchDuplicates, fetchRiskIndicators } = useAudit()
-const { exportToCSV } = useTableExport()
+const { exportToCSV, exportToExcel, exportToJSON } = useTableExport()
 const route = useRoute()
 const router = useRouter()
 
@@ -66,6 +67,7 @@ const DEFAULT_AUDIT_PAGE_SIZE = 30
 const query = ref('')
 const searchInputRef = ref<HTMLInputElement | null>(null)
 const loadingAudit = ref(true)
+const auditLoadError = ref<string | null>(null)
 const auditLogs = ref<AuditLog[]>([])
 const auditMeta = ref<{ last_page: number; total: number; per_page: number } | null>(null)
 const todayCount = ref(0)
@@ -93,12 +95,15 @@ function onAuditPaginationChange(updater: PaginationState | ((old: PaginationSta
 
 async function loadAuditLogs() {
   loadingAudit.value = true
+  auditLoadError.value = null
   try {
     const result = await fetchAuditLogs({ page: urlAuditPage.value, per_page: urlAuditPageSize.value })
     auditLogs.value = result.data
     auditMeta.value = { last_page: result.meta.last_page, total: result.meta.total, per_page: result.meta.per_page }
   }
-  catch {}
+  catch {
+    auditLoadError.value = 'تعذّر تحميل سجل التدقيق. تحقق من الاتصال وأعد المحاولة.'
+  }
   finally {
     loadingAudit.value = false
   }
@@ -116,6 +121,9 @@ onMounted(async () => {
   if (logsResult.status === 'fulfilled') {
     auditLogs.value = logsResult.value.data
     auditMeta.value = { last_page: logsResult.value.meta.last_page, total: logsResult.value.meta.total, per_page: logsResult.value.meta.per_page }
+  }
+  else {
+    auditLoadError.value = 'تعذّر تحميل سجل التدقيق. تحقق من الاتصال وأعد المحاولة.'
   }
   if (statsResult.status === 'fulfilled') todayCount.value = statsResult.value.today_count
   if (dupsResult.status === 'fulfilled') duplicates.value = dupsResult.value
@@ -360,23 +368,24 @@ function buildAuditExportColumns() {
   ] as const
 }
 
-function exportAuditRows(rows: AuditLog[], suffix: 'filtered' | 'selected' | 'single') {
+function exportAuditRows(rows: AuditLog[], suffix: 'filtered' | 'selected' | 'single', format: 'csv' | 'excel' | 'json' = 'csv') {
   if (!rows.length) return
   const stamp = new Date().toISOString().slice(0, 10)
-  exportToCSV(
-    rows as unknown as Record<string, unknown>[],
-    buildAuditExportColumns() as any,
-    `audit-logs-${suffix}-${stamp}`,
-  )
+  const filename = `audit-logs-${suffix}-${stamp}`
+  const cols = buildAuditExportColumns() as any
+  const data = rows as unknown as Record<string, unknown>[]
+  if (format === 'csv') exportToCSV(data, cols, filename)
+  else if (format === 'excel') exportToExcel(data, cols, filename)
+  else exportToJSON(data, cols, filename)
 }
 
-function exportSelectedAuditRows() {
+function exportSelectedAuditRows(format: 'csv' | 'excel' | 'json' = 'csv') {
   const rows = auditDataTableRef.value?.table?.getSelectedRowModel?.().rows?.map((row: any) => row.original) ?? []
   if (rows.length > 0) {
-    exportAuditRows(rows, 'selected')
+    exportAuditRows(rows, 'selected', format)
     return
   }
-  exportAuditRows(filteredAudits.value, 'filtered')
+  exportAuditRows(filteredAudits.value, 'filtered', format)
 }
 
 // ── Row expansion ─────────────────────────────────────────────────────────────
@@ -433,14 +442,22 @@ function diffRows(meta: AuditLogMeta): Array<{ key: string; before: unknown; aft
       :breadcrumbs="[{ label: 'الرئيسية', to: '/' }, { label: 'التدقيق والامتثال' }]"
     />
 
+    <LoadErrorAlert
+      v-if="auditLoadError"
+      class="mb-4"
+      :message="auditLoadError"
+      title="تعذّر تحميل سجل التدقيق"
+      @retry="loadAuditLogs()"
+    />
+
     <!-- Smart summary bar -->
-    <div v-if="!loadingAudit" class="mb-4 space-y-2">
+    <div v-if="!loadingAudit && !auditLoadError" class="mb-4 space-y-2">
       <Card
         v-if="smartSummary.denied >= 3"
         class="border-0 border-[var(--severity-red)] bg-[var(--severity-red)]/5 shadow-sm"
         role="alert"
       >
-        <div class="flex items-center gap-3 px-4 py-3">
+        <div class="flex items-center gap-3 px-4">
           <AlertTriangle class="h-4 w-4 shrink-0 text-[var(--severity-red)]" aria-hidden="true" />
           <span class="flex-1 text-sm font-medium">
             {{ smartSummary.denied }} محاولة وصول مرفوضة — مراجعة التفويض مطلوبة
@@ -452,7 +469,7 @@ function diffRows(meta: AuditLogMeta): Array<{ key: string; before: unknown; aft
         class="border-0 border-[var(--severity-red)] bg-[var(--severity-red)]/5 shadow-sm"
         role="alert"
       >
-        <div class="flex items-center gap-3 px-4 py-3">
+        <div class="flex items-center gap-3 px-4">
           <AlertTriangle class="h-4 w-4 shrink-0 text-[var(--severity-red)]" aria-hidden="true" />
           <span class="flex-1 text-sm font-medium">
             {{ smartSummary.failedLogins }} محاولة دخول فاشلة — تحقق من الأنشطة المشبوهة
@@ -473,7 +490,7 @@ function diffRows(meta: AuditLogMeta): Array<{ key: string; before: unknown; aft
       </Card>
     </div>
 
-    <div class="mb-6">
+    <div v-if="!auditLoadError" class="mb-6">
       <MetricGrid :columns="4">
         <MetricCard
           v-for="kpi in kpis"
@@ -487,7 +504,7 @@ function diffRows(meta: AuditLogMeta): Array<{ key: string; before: unknown; aft
       </MetricGrid>
     </div>
 
-    <Tabs default-value="logs">
+    <Tabs v-if="!auditLoadError" default-value="logs">
       <TabsList>
         <TabsTrigger value="logs">
           سجل النشاط
@@ -514,14 +531,7 @@ function diffRows(meta: AuditLogMeta): Array<{ key: string; before: unknown; aft
         <div v-if="selectedCount > 0" class="mb-3 flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2">
           <span class="text-sm font-medium text-primary">{{ selectedCount }} محدد</span>
           <div class="mx-2 h-4 w-px bg-border" />
-          <Button variant="outline" size="sm" class="h-7 gap-1.5 text-xs" @click="exportSelectedAuditRows">
-            <Download class="h-3.5 w-3.5" />
-            تصدير
-          </Button>
-          <Button variant="outline" size="sm" class="h-7 gap-1.5 text-xs">
-            <Printer class="h-3.5 w-3.5" />
-            طباعة
-          </Button>
+          <DataTableBulkExport @csv="exportSelectedAuditRows('csv')" @excel="exportSelectedAuditRows('excel')" @json="exportSelectedAuditRows('json')" />
           <Button
             variant="ghost"
             size="sm"

@@ -12,9 +12,11 @@ import type { ImportRequest } from '../../types/models'
 import StatusBadge from '../shared/StatusBadge.vue'
 import { Badge } from '../ui/badge'
 import { Button } from '../ui/button'
+import { Skeleton } from '../ui/skeleton'
 import DataTable from '../ui/data-table/DataTable.vue'
 import MetricCard from '../shared/dashboard/MetricCard.vue'
 import MetricGrid from '../shared/dashboard/MetricGrid.vue'
+import LoadErrorAlert from '../shared/LoadErrorAlert.vue'
 
 const router = useRouter()
 const store = useDashboardStore()
@@ -109,25 +111,28 @@ onMounted(() => { store.loadStats() })
 
     <div v-if="store.loading" class="space-y-4" aria-busy="true">
       <div class="grid grid-cols-3 gap-4 max-lg:grid-cols-2 max-md:grid-cols-1">
-        <div v-for="n in (isDirector ? 4 : 3)" :key="n" class="h-24 animate-pulse rounded-xl border border-border bg-muted" />
+        <Skeleton v-for="n in (isDirector ? 4 : 3)" :key="n" class="h-24 rounded-xl" />
       </div>
       <div v-if="isDirector" class="rounded-xl border border-border bg-background">
-        <div class="h-10 animate-pulse border-b border-border bg-muted/50" />
+        <Skeleton class="h-10 rounded-none border-b border-border" />
         <div class="space-y-2 p-3">
-          <div v-for="n in 4" :key="`voting-skel-${n}`" class="h-8 animate-pulse rounded bg-muted" />
+          <Skeleton v-for="n in 4" :key="`voting-skel-${n}`" class="h-8 rounded" />
         </div>
       </div>
       <div v-if="isDirector" class="rounded-xl border border-border bg-background">
-        <div class="h-10 animate-pulse border-b border-border bg-muted/50" />
+        <Skeleton class="h-10 rounded-none border-b border-border" />
         <div class="space-y-2 p-3">
-          <div v-for="n in 4" :key="`fx-skel-${n}`" class="h-8 animate-pulse rounded bg-muted" />
+          <Skeleton v-for="n in 4" :key="`fx-skel-${n}`" class="h-8 rounded" />
         </div>
       </div>
     </div>
 
-    <div v-else-if="store.error" class="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-destructive">
-      {{ store.error }}
-    </div>
+    <LoadErrorAlert
+      v-else-if="store.error"
+      :message="store.error"
+      title="تعذّر تحميل لوحة التصويت"
+      @retry="store.loadStats()"
+    />
 
     <template v-else-if="stats">
       <template v-if="isDirector">
@@ -136,30 +141,33 @@ onMounted(() => { store.loadStats() })
           class="rounded-xl border border-border bg-background p-3"
         >
           <div class="flex flex-col gap-2">
-            <button
+            <Button
               v-if="(stats.sessions_ready_to_close ?? 0) > 0"
-              class="flex items-center gap-3 rounded-lg border border-[var(--voting)]/30 bg-[var(--voting)]/5 px-3 py-2 text-right"
+              variant="outline"
+              class="h-auto justify-start gap-3 px-3 py-2 text-start"
               @click="router.push('/requests?tab=ready_to_close')"
             >
-              <AlertTriangle class="h-4 w-4 text-[var(--voting)]" />
+              <AlertTriangle class="h-4 w-4" />
               <span class="text-sm">{{ stats.sessions_ready_to_close }} جلسات تصويت اكتملت وتنتظر الإغلاق</span>
-            </button>
-            <button
+            </Button>
+            <Button
               v-if="(stats.sessions_with_tie ?? 0) > 0"
-              class="flex items-center gap-3 rounded-lg border border-[var(--severity-amber)]/30 bg-[var(--severity-amber)]/5 px-3 py-2 text-right"
+              variant="outline"
+              class="h-auto justify-start gap-3 px-3 py-2 text-start"
               @click="router.push('/requests?tab=tie_break')"
             >
-              <Scale class="h-4 w-4 text-[var(--severity-amber)]" />
-              <span class="text-sm">{{ stats.sessions_with_tie }} جلسات تصويت بتعادل — يتطلب حسماً</span>
-            </button>
-            <button
+              <Scale class="h-4 w-4" />
+              <span class="text-sm">{{ stats.sessions_with_tie }} جلسات تصويت بتعادل، تتطلب حسماً</span>
+            </Button>
+            <Button
               v-if="(stats.fx_confirmation_pending ?? 0) > 0"
-              class="flex items-center gap-3 rounded-lg border border-[var(--severity-green)]/30 bg-[var(--severity-green)]/5 px-3 py-2 text-right"
+              variant="outline"
+              class="h-auto justify-start gap-3 px-3 py-2 text-start"
               @click="router.push('/requests?tab=fx_pending')"
             >
-              <FileCheck2 class="h-4 w-4 text-[var(--severity-green)]" />
+              <FileCheck2 class="h-4 w-4" />
               <span class="text-sm">{{ stats.fx_confirmation_pending }} طلبات جاهزة لإتمام تأكيد المصارفة الخارجية</span>
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -181,7 +189,7 @@ onMounted(() => { store.loadStats() })
             @click="router.push('/requests?tab=fx_pending')"
           />
           <MetricCard
-            label="قرارات مُنهاة (اعتماد)"
+            label="قرارات مُعتمدة نهائياً"
             :value="stats.finalized_approved ?? stats.decisions_approved"
             :icon="CheckCircle2"
             tone="success"
@@ -238,7 +246,7 @@ onMounted(() => { store.loadStats() })
               <p class="text-sm font-semibold">{{ pendingMyVoteCount }} جلسات تصويت تنتظر صوتك</p>
               <p v-if="oldestPendingVote" class="truncate text-xs text-muted-foreground">{{ oldestPendingVote.reference_number }}</p>
             </div>
-            <Button class="bg-[var(--voting)] text-white hover:bg-[var(--voting)]/90" @click="oldestPendingVote && router.push(`/requests/${oldestPendingVote.id}`)">
+            <Button @click="oldestPendingVote && router.push(`/requests/${oldestPendingVote.id}`)">
               ابدأ التصويت
             </Button>
           </div>

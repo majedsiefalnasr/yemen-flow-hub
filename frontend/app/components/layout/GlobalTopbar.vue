@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { useMediaQuery } from '@vueuse/core'
 import { LogOut, Moon, Settings, Sun, User } from 'lucide-vue-next'
+import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import CommandPalette from '@/components/CommandPalette.vue'
+import BoringAvatar from '@/components/shared/BoringAvatar.vue'
 import { ROLE_LABELS } from '@/constants/workflow'
 import { useAuthStore } from '@/stores/auth.store'
 import { useThemingStore } from '@/stores/theming.store'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { DEFAULT_AVATAR_VARIANT, type AvatarVariant } from '@/composables/useUserAvatar'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -30,18 +32,17 @@ const roleLabel = computed(() => {
   const role = user.value?.role
   return role ? ROLE_LABELS[role] : 'مستخدم'
 })
-const isDark = computed(() => themingStore.isDark)
 const canToggleSidebar = computed(() => isMobile.value || themingStore.sidebarCollapsible !== 'none')
 const displayName = computed(() => user.value?.name ?? 'المستخدم')
 const displayEmail = computed(() => user.value?.email ?? '')
 
-function userInitials(name: string) {
-  return name.split(' ').map(part => part[0]).filter(Boolean).slice(0, 2).join('').toUpperCase()
-}
-
-function toggleTheme() {
-  themingStore.setMode(isDark.value ? 'light' : 'dark')
-}
+const avatarIdentity = computed(() => user.value?.email || user.value?.name || 'user')
+const avatarVariant = computed<AvatarVariant>(() => {
+  const value = user.value?.avatar_variant
+  return (value && ['marble', 'beam', 'pixel', 'sunset', 'ring', 'bauhaus'].includes(value))
+    ? (value as AvatarVariant)
+    : DEFAULT_AVATAR_VARIANT
+})
 
 async function handleLogout() {
   await authStore.logout()
@@ -72,11 +73,15 @@ async function handleLogout() {
             class="h-9 gap-2 rounded-lg px-2"
             aria-label="قائمة المستخدم"
           >
-            <Avatar class="h-7 w-7 rounded-lg">
-              <AvatarFallback class="rounded-lg text-[11px]">
-                {{ userInitials(displayName) }}
-              </AvatarFallback>
-            </Avatar>
+            <BoringAvatar
+              :name="displayName"
+              :identity="avatarIdentity"
+              :variant="avatarVariant"
+              :size="48"
+              square
+              class="size-7 overflow-hidden rounded-lg"
+              data-testid="topbar-user-avatar"
+            />
             <span class="hidden min-w-0 flex-col text-start leading-tight sm:flex">
               <span class="max-w-28 truncate text-sm font-medium">{{ displayName }}</span>
               <span class="max-w-28 truncate text-xs text-muted-foreground">{{ roleLabel }}</span>
@@ -87,11 +92,14 @@ async function handleLogout() {
         <DropdownMenuContent class="w-64 rounded-lg" align="end" side="bottom" :side-offset="8">
           <DropdownMenuLabel class="p-0 font-normal">
             <div class="flex items-center gap-2 px-1 py-1.5 text-start text-sm">
-              <Avatar class="h-9 w-9 rounded-lg">
-                <AvatarFallback class="rounded-lg">
-                  {{ userInitials(displayName) }}
-                </AvatarFallback>
-              </Avatar>
+              <BoringAvatar
+                :name="displayName"
+                :identity="avatarIdentity"
+                :variant="avatarVariant"
+                :size="36"
+                square
+                class="h-12 w-12 overflow-hidden rounded-lg"
+              />
               <div class="grid min-w-0 flex-1 leading-tight">
                 <span class="truncate font-medium">{{ displayName }}</span>
                 <span class="truncate text-xs text-muted-foreground">{{ displayEmail }}</span>
@@ -104,7 +112,7 @@ async function handleLogout() {
 
           <DropdownMenuGroup>
             <DropdownMenuItem as-child>
-              <NuxtLink to="/settings?tab=profile" class="flex cursor-pointer items-center gap-2">
+              <NuxtLink to="/settings?section=profile" class="flex cursor-pointer items-center gap-2">
                 <User class="h-4 w-4" />
                 <span>الملف الشخصي</span>
               </NuxtLink>
@@ -114,11 +122,6 @@ async function handleLogout() {
                 <Settings class="h-4 w-4" />
                 <span>الإعدادات</span>
               </NuxtLink>
-            </DropdownMenuItem>
-            <DropdownMenuItem class="cursor-pointer" @click="toggleTheme">
-              <Sun v-if="isDark" class="h-4 w-4" />
-              <Moon v-else class="h-4 w-4" />
-              <span>{{ isDark ? 'الوضع المضيء' : 'الوضع الداكن' }}</span>
             </DropdownMenuItem>
           </DropdownMenuGroup>
 

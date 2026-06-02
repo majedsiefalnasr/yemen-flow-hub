@@ -63,6 +63,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
   DataTable,
+  DataTableBulkExport,
   DataTableExport,
   DataTableFacetedFilter,
   DataTablePagination,
@@ -83,7 +84,7 @@ const authStore = useAuthStore()
 const user = computed(() => authStore.user)
 const { fetchMerchants, createMerchant, updateMerchant, suspendMerchant } = useMerchants()
 const { fetchBanks } = useBanks()
-const { exportToCSV } = useTableExport()
+const { exportToCSV, exportToExcel, exportToJSON } = useTableExport()
 const { notify } = useToast()
 
 const merchants = ref<Merchant[]>([])
@@ -507,14 +508,13 @@ function buildExportFilename(): string {
   return `merchants-${new Date().toISOString().slice(0, 10)}`
 }
 
-function exportSelectedRows() {
+function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
   const rows = table.getFilteredSelectedRowModel().rows.map(row => row.original)
   if (!rows.length) return
-  exportToCSV(
-    rows as unknown as Record<string, unknown>[],
-    exportCols as any,
-    `${buildExportFilename()}-selected`,
-  )
+  const filename = `${buildExportFilename()}-selected`
+  if (format === 'csv') exportToCSV(rows as unknown as Record<string, unknown>[], exportCols as any, filename)
+  else if (format === 'excel') exportToExcel(rows as unknown as Record<string, unknown>[], exportCols as any, filename)
+  else exportToJSON(rows as unknown as Record<string, unknown>[], exportCols as any, filename)
 }
 </script>
 
@@ -576,7 +576,7 @@ function exportSelectedRows() {
         class="border-0 border-[var(--severity-amber)] bg-[var(--severity-amber)]/5 shadow-sm"
         role="alert"
       >
-        <div class="flex items-center gap-3 px-4 py-3">
+        <div class="flex items-center gap-3 px-4">
           <AlertTriangle class="h-4 w-4 shrink-0 text-[var(--severity-amber)]" aria-hidden="true" />
           <span class="flex-1 text-sm font-medium">
             {{ riskSummary.crossBank }} تاجر يظهر في أكثر من بنك — مراجعة مخاطر التكرار مطلوبة
@@ -588,7 +588,7 @@ function exportSelectedRows() {
         class="border-0 border-[var(--severity-amber)] bg-[var(--severity-amber)]/5 shadow-sm"
         role="alert"
       >
-        <div class="flex items-center gap-3 px-4 py-3">
+        <div class="flex items-center gap-3 px-4">
           <AlertTriangle class="h-4 w-4 shrink-0 text-[var(--severity-amber)]" aria-hidden="true" />
           <span class="flex-1 text-sm font-medium">
             {{ riskSummary.missingData }} تاجر ببيانات ناقصة (سجل تجاري أو رقم ضريبي)
@@ -622,9 +622,11 @@ function exportSelectedRows() {
               :selected-count="selectedCount"
               @update:search="v => query = v"
               @reset="handleReset"
-              @export-selected="exportSelectedRows"
               @clear-selection="clearSelection"
             >
+              <template #bulk-actions>
+                <DataTableBulkExport @csv="exportSelectedRows('csv')" @excel="exportSelectedRows('excel')" @json="exportSelectedRows('json')" />
+              </template>
               <template #filters>
                 <DataTableFacetedFilter
                   v-if="table.getColumn('is_active')"
@@ -986,7 +988,6 @@ function exportSelectedRows() {
             إلغاء — مراجعة البيانات
           </AlertDialogCancel>
           <AlertDialogAction
-            class="bg-[var(--severity-amber)] text-white hover:bg-[var(--severity-amber)]/90"
             data-testid="duplicate-confirm-btn"
             @click="confirmDuplicateAndSave"
           >

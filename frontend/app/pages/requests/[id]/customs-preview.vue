@@ -88,7 +88,7 @@ async function triggerDownload() {
     URL.revokeObjectURL(url)
   }
   catch {
-    downloadError.value = 'تعذّر تحميل ملف PDF الرسمي.'
+    downloadError.value = 'تعذر تنزيل ملف PDF الرسمي الآن. أعد المحاولة بعد قليل.'
   }
   finally {
     downloading.value = false
@@ -101,7 +101,7 @@ async function triggerDownload() {
     <!-- Loading -->
     <div v-if="loading" class="preview-loading" aria-busy="true" aria-label="جارٍ التحميل">
       <div class="loading-spinner" />
-      <p>جارٍ تحميل البيان الجمركي…</p>
+      <p>جارٍ تنزيل البيان الجمركي…</p>
     </div>
 
     <!-- 404 — no declaration -->
@@ -113,8 +113,8 @@ async function triggerDownload() {
 
     <!-- Other error -->
     <div v-else-if="!loading && !declaration && errorStatus !== 404" class="preview-empty">
-      <p class="empty-title">حدث خطأ</p>
-      <p class="empty-body">تعذّر تحميل البيان الجمركي. يرجى المحاولة مرة أخرى.</p>
+      <p class="empty-title">تعذر فتح البيان الجمركي</p>
+      <p class="empty-body">تعذر تنزيل البيان الجمركي الآن. ارجع إلى الطلب ثم أعد المحاولة بعد قليل.</p>
       <a :href="`/requests/${requestId}`" class="back-link">← العودة إلى الطلب</a>
     </div>
 
@@ -130,7 +130,7 @@ async function triggerDownload() {
             :disabled="downloading"
             @click="triggerDownload"
           >
-            {{ downloading ? 'جارٍ التحميل…' : 'تحميل PDF الرسمي' }}
+            {{ downloading ? 'جارٍ التنزيل…' : 'تنزيل PDF الرسمي' }}
           </button>
         </div>
         <p v-if="downloadError" class="download-error" role="alert">{{ downloadError }}</p>
@@ -138,7 +138,7 @@ async function triggerDownload() {
 
       <!-- Watermark / notice banner (shown in preview, hidden in print output) -->
       <div class="preview-watermark no-print" role="note">
-        معاينة تشغيلية — ملف PDF الرسمي هو الوثيقة القانونية المعتمدة
+        معاينة تشغيلية، وملف PDF الرسمي هو الوثيقة القانونية المعتمدة
       </div>
 
       <!-- Declaration content (printed) -->

@@ -62,12 +62,12 @@ async function resolveDataEntryMerchant(): Promise<void> {
     merchantName.value = ''
     merchantResolutionError.value = merchants.length === 0
       ? 'لا يوجد تاجر نشط مرتبط بحساب إدخال البيانات هذا.'
-      : 'تعذّر تحديد التاجر تلقائياً لهذا الحساب. يرجى التواصل مع مسؤول البنك.'
+      : 'تعذر تحديد التاجر تلقائيا لهذا الحساب. تواصل مع مسؤول البنك لإكمال الربط.'
   }
   catch {
     wizard.step1.value.merchant_id = null
     merchantName.value = ''
-    merchantResolutionError.value = 'تعذّر تحميل بيانات التاجر المرتبط بالحساب. حاول مرة أخرى لاحقاً.'
+    merchantResolutionError.value = 'تعذر تحميل بيانات التاجر المرتبط بالحساب الآن. أعد المحاولة بعد قليل.'
   }
 }
 
@@ -96,7 +96,7 @@ async function handleSaveDraft(): Promise<void> {
   const result = await wizard.saveDraft()
   if (result) {
     duplicateWarnings.value = result.duplicate_warnings ?? []
-    toast.success('تم الحفظ كمسودة ✓')
+    toast.success('تم حفظ الطلب كمسودة بنجاح.')
   }
   else if (wizard.saveError.value) {
     toast.error(wizard.saveError.value)

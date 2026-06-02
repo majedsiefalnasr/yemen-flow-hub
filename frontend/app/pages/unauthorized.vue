@@ -20,8 +20,8 @@ const nextPath = computed(() => {
   <main class="min-h-screen bg-background px-4" >
     <ErrorState
       :code="401"
-      title="الجلسة غير متاحة"
-      description="يلزم تسجيل الدخول للمتابعة إلى الصفحة المطلوبة."
+      title="تسجيل الدخول مطلوب"
+      description="سجل الدخول أولاً ثم ارجع إلى الصفحة المطلوبة."
       :actions="[
         {
           label: 'الانتقال إلى تسجيل الدخول',

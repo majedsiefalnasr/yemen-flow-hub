@@ -50,16 +50,20 @@ These must be referenced as `text-[var(--token)]`, `bg-[var(--token)]/10`, etc.
 
 ### Token usage rules
 
+State tokens are for non-interactive presentation: cards, badges, banners, status text, icons, borders, and state backgrounds. Do not use workflow/state tokens like `--voting`, `--swift`, `--severity-amber`, or `--severity-green` as custom button colors. Buttons must use the standard shadcn/action palette: default/primary, destructive/error, warning where the component system provides it, outline, secondary, ghost, or link.
+
 ```vue
 <!-- ✅ CORRECT — semantic tokens -->
 <span class="text-[var(--severity-red)]">رُفض</span>
 <div class="bg-[var(--voting)]/10 text-[var(--voting)]">جلسة تصويت</div>
 <div class="border-s-4 border-s-[var(--severity-amber)]">تحذير</div>
+<Button size="sm">ابدأ</Button>
 
 <!-- ❌ WRONG — raw Tailwind color scale -->
 <span class="text-red-600">رُفض</span>
 <div class="bg-indigo-50 text-indigo-600">جلسة تصويت</div>
 <div class="border-l-4 border-amber-500">تحذير</div>
+<Button class="bg-[var(--voting)] text-white">بدء التصويت</Button>
 ```
 
 ### RTL border rule
@@ -216,7 +220,7 @@ Action-required banners above the KPI grid use `Card` with start border:
       <span class="font-semibold text-foreground text-sm">{{ count }} طلبات تحتاج إجراء</span>
       <p class="text-xs text-muted-foreground mt-0.5 truncate">{{ detail }}</p>
     </div>
-    <Button size="sm" class="bg-[var(--severity-amber)] text-white hover:opacity-90 flex-shrink-0" @click="...">
+    <Button size="sm" class="flex-shrink-0" @click="...">
       ابدأ
     </Button>
   </CardContent>

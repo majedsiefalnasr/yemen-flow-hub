@@ -187,7 +187,8 @@ const navGroups = computed<NavGroupDef[]>(() => {
 // ── Helpers ───────────────────────────────────────────────────────────
 
 function isActiveRoute(url: string) {
-  return route.path === url || (url !== '/dashboard' && route.path.startsWith(`${url}/`))
+  const path = url.split('?')[0] ?? url
+  return route.path === path || (path !== '/dashboard' && route.path.startsWith(`${path}/`))
 }
 
 </script>
@@ -196,7 +197,7 @@ function isActiveRoute(url: string) {
   <Sidebar v-bind="props">
     <SidebarHeader>
       <div class="flex items-center gap-3">
-        <div class="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-lg bg-primary text-sm font-bold text-primary-foreground">
+        <div class="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-lg text-sm font-bold">
           <img v-if="orgStore.brandLogoDataUrl" :src="orgStore.brandLogoDataUrl" alt="Logo" class="h-full w-full object-contain" />
           <span v-else>{{ brandInitial }}</span>
         </div>

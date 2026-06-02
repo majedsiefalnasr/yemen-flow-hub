@@ -34,7 +34,7 @@ const ROLE_SUBTITLES: Record<UserRole, string> = {
   [UserRole.SUPPORT_COMMITTEE]: 'عضو لجنة المساندة',
   [UserRole.EXECUTIVE_MEMBER]: 'عضو اللجنة التنفيذية',
   [UserRole.COMMITTEE_DIRECTOR]: 'مدير اللجنة التنفيذية',
-  [UserRole.CBY_ADMIN]: 'مسؤول (CBY)',
+  [UserRole.CBY_ADMIN]: 'مسؤول البنك المركزي اليمني',
 }
 
 const roleSubtitle = computed(() =>
@@ -53,7 +53,7 @@ const showNewRequestAction = computed(() =>
       <template v-if="showNewRequestAction" #actions>
         <Button class="shrink-0" @click="router.push('/requests/new')">
           <FilePlus2 class="h-4 w-4" />
-          طلب جديد
+          إنشاء طلب
         </Button>
       </template>
     </PageHeader>

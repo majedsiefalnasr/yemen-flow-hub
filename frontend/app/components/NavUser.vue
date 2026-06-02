@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { LogOut, Moon, MoreVertical, Settings, Sun, User } from 'lucide-vue-next'
+import { LogOut, MoreVertical, Settings, User } from 'lucide-vue-next'
+import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   AlertDialog,
@@ -10,9 +11,8 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import BoringAvatar from '@/components/shared/BoringAvatar.vue'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,37 +29,39 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar'
 import { useAuthStore } from '@/stores/auth.store'
-import { useThemingStore } from '@/stores/theming.store'
+import {
+  DEFAULT_AVATAR_VARIANT,
+  type AvatarVariant,
+} from '@/composables/useUserAvatar'
 
 interface User {
   name: string
   email: string
-  avatar: string
+  avatar?: string
+  avatar_variant?: string | null
 }
 
-defineProps<{ user: User }>()
+const props = defineProps<{ user: User }>()
 
 const { isMobile } = useSidebar()
 const authStore = useAuthStore()
-const themingStore = useThemingStore()
 const router = useRouter()
 const showLogoutDialog = ref(false)
 
-const isDark = computed(() => themingStore.isDark)
 const settingsRoute = '/settings'
 
-function userInitials(name: string) {
-  return name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()
-}
+const avatarIdentity = computed(() => props.user.email || props.user.name || 'user')
+const avatarVariant = computed<AvatarVariant>(() => {
+  const value = props.user.avatar_variant
+  return (value && ['marble', 'beam', 'pixel', 'sunset', 'ring', 'bauhaus'].includes(value))
+    ? (value as AvatarVariant)
+    : DEFAULT_AVATAR_VARIANT
+})
 
 async function handleLogout() {
   showLogoutDialog.value = false
   await authStore.logout()
   await router.push('/login')
-}
-
-function toggleTheme() {
-  themingStore.setMode(isDark.value ? 'light' : 'dark')
 }
 </script>
 
@@ -72,12 +74,15 @@ function toggleTheme() {
             size="lg"
             class="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
           >
-            <Avatar class="h-8 w-8 rounded-lg">
-              <AvatarImage :src="user.avatar" :alt="user.name" />
-              <AvatarFallback class="rounded-lg">
-                {{ userInitials(user.name) }}
-              </AvatarFallback>
-            </Avatar>
+            <BoringAvatar
+              :name="user.name || avatarIdentity"
+              :identity="avatarIdentity"
+              :variant="avatarVariant"
+              :size="32"
+              square
+              class="h-8 w-8 overflow-hidden rounded-lg"
+              data-testid="nav-user-avatar"
+            />
             <div class="grid flex-1 text-start text-sm leading-tight">
               <span class="truncate font-medium">{{ user.name }}</span>
               <span class="truncate text-xs text-muted-foreground">{{ user.email }}</span>
@@ -94,12 +99,14 @@ function toggleTheme() {
         >
           <DropdownMenuLabel class="p-0 font-normal">
             <div class="flex items-center gap-2 px-1 py-1.5 text-start text-sm">
-              <Avatar class="h-8 w-8 rounded-lg">
-                <AvatarImage :src="user.avatar" :alt="user.name" />
-                <AvatarFallback class="rounded-lg">
-                  {{ userInitials(user.name) }}
-                </AvatarFallback>
-              </Avatar>
+              <BoringAvatar
+                :name="user.name || avatarIdentity"
+                :identity="avatarIdentity"
+                :variant="avatarVariant"
+                :size="32"
+                square
+                class="h-8 w-8 overflow-hidden rounded-lg"
+              />
               <div class="grid flex-1 text-start text-sm leading-tight">
                 <span class="truncate font-medium">{{ user.name }}</span>
                 <span class="truncate text-xs text-muted-foreground">{{ user.email }}</span>
@@ -121,11 +128,6 @@ function toggleTheme() {
                 <Settings class="h-4 w-4" />
                 <span>الإعدادات</span>
               </NuxtLink>
-            </DropdownMenuItem>
-            <DropdownMenuItem class="cursor-pointer" @click="toggleTheme">
-              <Sun v-if="isDark" class="h-4 w-4" />
-              <Moon v-else class="h-4 w-4" />
-              <span>{{ isDark ? 'الوضع المضيء' : 'الوضع الداكن' }}</span>
             </DropdownMenuItem>
           </DropdownMenuGroup>
 

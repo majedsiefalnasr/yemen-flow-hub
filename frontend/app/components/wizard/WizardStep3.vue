@@ -146,7 +146,7 @@ function getFileError(key: WizardDocumentKey): string | null {
                 type="button"
                 variant="ghost"
                 size="sm"
-                class="h-5 w-5 p-0 text-[var(--color-text-error)] hover:text-[var(--color-text-error)]"
+                class="h-5 w-5 p-0 text-destructive hover:text-destructive"
                 :aria-label="`إزالة ${zone.title}`"
                 :disabled="loading"
                 @click="removeFile(zone.key)"
@@ -193,4 +193,3 @@ function getFileError(key: WizardDocumentKey): string | null {
     </div>
   </div>
 </template>
-

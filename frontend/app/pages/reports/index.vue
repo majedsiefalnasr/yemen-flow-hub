@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ColumnDef } from '@tanstack/vue-table'
 import { computed, h, onMounted, ref } from 'vue'
+import { CalendarDays, X } from 'lucide-vue-next'
 import { useAuthStore } from '../../stores/auth.store'
 import { useReportsStore } from '../../stores/reports.store'
 import { UserRole } from '../../types/enums'
@@ -15,6 +16,9 @@ import TimeSeriesChartCard from '../../components/shared/dashboard/TimeSeriesCha
 import BreakdownChartCard from '../../components/shared/dashboard/BreakdownChartCard.vue'
 import RankedListCard from '../../components/shared/dashboard/RankedListCard.vue'
 import DataTable from '@/components/ui/data-table/DataTable.vue'
+import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 
 const REPORTING_ROLES = [
   UserRole.CBY_ADMIN,
@@ -256,39 +260,42 @@ const bankBreakdownColumns: ColumnDef<{
         <p class="page-subtitle">مؤشرات الأداء، التحليل الإحصائي، والتقارير القابلة للتصدير</p>
       </div>
       <div class="header-actions">
-        <button class="btn btn-outline btn-icon" :disabled="store.loading" aria-label="تحديد الفترة الزمنية">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>
+        <Button variant="outline" :disabled="store.loading" aria-label="تحديد الفترة الزمنية">
+          <CalendarDays class="h-4 w-4" aria-hidden="true" />
           الفترة
-        </button>
-        <button
-          class="btn btn-outline"
+        </Button>
+        <Button
+          variant="outline"
           :disabled="store.exportLoading"
           @click="isCbyUser ? handleExportWorkflow('pdf') : handleExportBank('pdf')"
         >
           تصدير PDF
-        </button>
-        <button
-          class="btn btn-outline"
+        </Button>
+        <Button
+          variant="outline"
           :disabled="store.exportLoading"
           @click="isCbyUser ? handleExportWorkflow('excel') : handleExportBank('excel')"
         >
           تصدير Excel
-        </button>
+        </Button>
       </div>
     </div>
 
     <!-- Error State -->
-    <div v-if="store.error" class="error-banner" role="alert">
-      <span>{{ store.error }}</span>
-      <button class="btn btn-sm" @click="retry">إعادة المحاولة</button>
-    </div>
+    <Alert v-if="store.error" variant="destructive" role="alert">
+      <AlertTitle>تعذر تحميل التقارير</AlertTitle>
+      <AlertDescription>{{ store.error }}</AlertDescription>
+      <AlertAction>
+        <Button variant="outline" size="sm" @click="retry">إعادة المحاولة</Button>
+      </AlertAction>
+    </Alert>
 
     <!-- Filter Bar -->
     <div class="filter-card">
       <div class="filter-row">
         <div class="filter-group">
           <label class="filter-label" for="from-date">من تاريخ</label>
-          <input
+          <Input
             id="from-date"
             v-model="fromDate"
             type="date"
@@ -297,7 +304,7 @@ const bankBreakdownColumns: ColumnDef<{
         </div>
         <div class="filter-group">
           <label class="filter-label" for="to-date">إلى تاريخ</label>
-          <input
+          <Input
             id="to-date"
             v-model="toDate"
             type="date"
@@ -305,12 +312,12 @@ const bankBreakdownColumns: ColumnDef<{
           />
         </div>
         <div class="filter-actions">
-          <button class="btn btn-primary" :disabled="store.loading" @click="applyFilters">
+          <Button :disabled="store.loading" @click="applyFilters">
             تطبيق
-          </button>
-          <button class="btn btn-outline" :disabled="store.loading" @click="clearFilters">
+          </Button>
+          <Button variant="outline" :disabled="store.loading" @click="clearFilters">
             مسح
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -318,31 +325,34 @@ const bankBreakdownColumns: ColumnDef<{
       <div class="presets-row">
         <div v-if="store.presets.length" class="presets-list">
           <span class="presets-label">الفلاتر المحفوظة:</span>
-          <button
+          <Button
             v-for="preset in store.presets"
             :key="preset.id"
-            class="preset-chip"
+            variant="secondary"
+            size="sm"
+            class="gap-1 rounded-full"
             @click="loadPreset(preset)"
           >
             {{ preset.name }}
             <span
-              class="preset-delete"
-              role="button"
+              class="inline-flex h-4 w-4 items-center justify-center rounded-full text-muted-foreground hover:text-foreground"
               aria-label="حذف الفلتر"
               @click.stop="store.deletePreset(preset.id)"
-            >×</span>
-          </button>
+            >
+              <X class="h-3 w-3" aria-hidden="true" />
+            </span>
+          </Button>
         </div>
         <div class="save-preset">
-          <button
+          <Button
             v-if="!showPresetForm"
-            class="btn btn-ghost"
+            variant="ghost"
             @click="showPresetForm = true"
           >
             حفظ الفلتر الحالي
-          </button>
+          </Button>
           <div v-else class="preset-form">
-            <input
+            <Input
               v-model="presetName"
               type="text"
               class="filter-input preset-name-input"
@@ -350,8 +360,8 @@ const bankBreakdownColumns: ColumnDef<{
               maxlength="50"
               @keydown.enter="handleSavePreset"
             />
-            <button class="btn btn-primary btn-sm" @click="handleSavePreset">حفظ</button>
-            <button class="btn btn-ghost btn-sm" @click="showPresetForm = false">إلغاء</button>
+            <Button size="sm" @click="handleSavePreset">حفظ</Button>
+            <Button variant="ghost" size="sm" @click="showPresetForm = false">إلغاء</Button>
           </div>
         </div>
       </div>
@@ -557,19 +567,6 @@ const bankBreakdownColumns: ColumnDef<{
 .btn-ghost { background: transparent; color: var(--primary); }
 .btn-sm { padding: 4px 10px; font-size: 13px; }
 .btn-icon { padding: 8px 12px; }
-
-/* ─── Error ─────────────────────────────────────────────────── */
-.error-banner {
-  background: color-mix(in srgb, var(--destructive) 8%, var(--background));
-  border: 1px solid color-mix(in srgb, var(--destructive) 40%, transparent);
-  border-radius: 12px;
-  padding: 12px 16px;
-  color: var(--destructive);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
 
 /* ─── Filter Card ────────────────────────────────────────────── */
 .filter-card {

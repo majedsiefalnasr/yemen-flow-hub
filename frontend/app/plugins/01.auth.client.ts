@@ -1,4 +1,5 @@
 import { useAuthStore } from '../stores/auth.store'
+import { useThemingStore } from '../stores/theming.store'
 
 export default defineNuxtPlugin(async () => {
   const config = useRuntimeConfig()
@@ -14,4 +15,8 @@ export default defineNuxtPlugin(async () => {
 
   const auth = useAuthStore()
   await auth.fetchUser()
+  if (auth.isAuthenticated) {
+    await auth.fetchUserPreferences()
+    useThemingStore().applyAppearanceSettings(auth.userPreferences?.theming)
+  }
 })

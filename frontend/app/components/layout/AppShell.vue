@@ -12,6 +12,13 @@ import {
 const authStore = useAuthStore()
 const themingStore = useThemingStore()
 const user = computed(() => authStore.user)
+
+const insetRef = ref<{ $el: HTMLElement } | null>(null)
+const route = useRoute()
+
+watch(() => route.path, () => {
+  insetRef.value?.$el?.scrollTo({ top: 0 })
+})
 </script>
 
 <template>
@@ -22,10 +29,10 @@ const user = computed(() => authStore.user)
         :variant="themingStore.sidebarVariant"
         :collapsible="themingStore.sidebarCollapsible"
       />
-      <SidebarInset>
+      <SidebarInset ref="insetRef">
         <GlobalTopbar />
 
-        <main class="flex flex-1 flex-col min-w-0 p-4 pt-4">
+        <main class="flex flex-1 flex-col min-w-0 p-4 py-12">
           <div
             :class="[
               'content-layout w-full min-w-0',
@@ -37,13 +44,13 @@ const user = computed(() => authStore.user)
         </main>
 
         <!-- Footer -->
-        <footer class="flex flex-wrap items-center justify-between gap-2 border-t px-4 py-3 text-[10px] text-muted-foreground sm:px-6 sm:text-xs">
+        <!-- <footer class="flex flex-wrap items-center justify-between gap-2 border-t text-[10px] text-muted-foreground sm:px-6 sm:text-xs">
           <div>© 2025 البنك المركزي اليمني</div>
           <div class="flex shrink-0 items-center gap-2 text-[var(--color-text-warning)] dark:text-amber-400">
             <AlertTriangle class="h-3.5 w-3.5" />
             بيئة عرض توضيحي
           </div>
-        </footer>
+        </footer> -->
       </SidebarInset>
     </SidebarProvider>
   </div>

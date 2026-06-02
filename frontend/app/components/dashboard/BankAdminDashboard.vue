@@ -72,6 +72,8 @@ function monthLabel(ym: string): string {
 const rejectionRate = computed(() => calcRejectionRate(stats.value))
 const showHealthStrip = computed(() => calcShowHealthStrip(stats.value))
 const healthIssues = computed(() => calcHealthIssues(stats.value))
+const monthlyRequests = computed(() => stats.value?.monthly_requests ?? [])
+const recentRequests = computed(() => stats.value?.recent_requests ?? [])
 
 // KPI grid — spec order: Total / In Process / Approved-Completed / Rejected
 const kpiGrid = computed(() => {
@@ -192,7 +194,7 @@ onMounted(() => { store.loadStats() })
       <CardContent class="pt-6 flex items-center gap-3">
         <AlertCircle class="size-4.5 flex-shrink-0 text-[var(--severity-red)]" aria-hidden="true" />
         <span class="text-[var(--severity-red)] flex-1">{{ store.error }}</span>
-        <Button variant="outline" size="sm" class="text-[var(--severity-red)] border-[var(--severity-red)]" @click="store.loadStats()">
+        <Button variant="outline" size="sm" class="text-destructive border-destructive" @click="store.loadStats()">
           إعادة المحاولة
         </Button>
       </CardContent>
@@ -228,7 +230,7 @@ onMounted(() => { store.loadStats() })
         role="alert"
         aria-label="تنبيهات صحة التشغيل"
       >
-        <CardContent class="pt-4 pb-4">
+        <CardContent>
           <div class="flex items-center gap-2 mb-2">
             <AlertTriangle class="size-4 text-[var(--severity-amber)] flex-shrink-0" aria-hidden="true" />
             <span class="text-sm font-semibold text-[var(--severity-amber)]">تنبيهات صحة التشغيل</span>
@@ -303,10 +305,10 @@ onMounted(() => { store.loadStats() })
       </section>
 
       <!-- Monthly Trend SVG — dual lines: volume + approved-completed -->
-      <Card v-if="stats.monthly_requests.length" class="border-0 shadow" aria-labelledby="chart-heading">
+      <Card v-if="monthlyRequests.length" class="border-0 shadow" aria-labelledby="chart-heading">
         <CardHeader class="pb-1">
           <CardTitle id="chart-heading" class="text-sm font-semibold">حركة طلبات البنك الشهرية</CardTitle>
-          <CardDescription class="text-xs">الحجم الكلي والمكتمل — {{ stats.monthly_requests.length }} أشهر</CardDescription>
+          <CardDescription class="text-xs">الحجم الكلي والمكتمل ({{ monthlyRequests.length }} أشهر)</CardDescription>
         </CardHeader>
         <CardContent class="p-4 pt-2">
           <svg
@@ -317,10 +319,10 @@ onMounted(() => { store.loadStats() })
             preserveAspectRatio="none"
           >
             <!-- Volume area fill (primary blue) -->
-            <polygon :points="buildArea(stats.monthly_requests as DualEntry[], 'count')" fill="var(--brand-color)" opacity="0.08" />
+            <polygon :points="buildArea(monthlyRequests as DualEntry[], 'count')" fill="var(--brand-color)" opacity="0.08" />
             <!-- Volume line -->
             <polyline
-              :points="buildLine(stats.monthly_requests as DualEntry[], 'count')"
+              :points="buildLine(monthlyRequests as DualEntry[], 'count')"
               fill="none"
               stroke="var(--brand-color)"
               stroke-width="2"
@@ -329,8 +331,8 @@ onMounted(() => { store.loadStats() })
             />
             <!-- Approved-completed line (dashed green) — only if field available -->
             <polyline
-              v-if="(stats.monthly_requests as DualEntry[]).some(e => e.approved !== undefined)"
-              :points="buildLine(stats.monthly_requests as DualEntry[], 'approved')"
+              v-if="(monthlyRequests as DualEntry[]).some(e => e.approved !== undefined)"
+              :points="buildLine(monthlyRequests as DualEntry[], 'approved')"
               fill="none"
               stroke="var(--severity-green)"
               stroke-width="1.5"
@@ -340,7 +342,7 @@ onMounted(() => { store.loadStats() })
             />
           </svg>
           <div class="flex justify-between px-2 mt-1">
-            <span v-for="entry in stats.monthly_requests" :key="(entry as BankAdminMonthlyEntry).month" class="text-xs text-muted-foreground">
+            <span v-for="entry in monthlyRequests" :key="(entry as BankAdminMonthlyEntry).month" class="text-xs text-muted-foreground">
               {{ monthLabel((entry as BankAdminMonthlyEntry).month) }}
             </span>
           </div>
@@ -366,7 +368,7 @@ onMounted(() => { store.loadStats() })
           </div>
         </CardHeader>
         <CardContent class="p-0">
-          <DataTable :data="stats.recent_requests.slice(0, 8)" :columns="bankRecentColumns" @row-click="(row) => router.push(`/requests/${row.id}`)">
+          <DataTable :data="recentRequests.slice(0, 8)" :columns="bankRecentColumns" @row-click="(row) => router.push(`/requests/${row.id}`)">
             <template #empty>لا توجد طلبات بعد</template>
           </DataTable>
         </CardContent>

@@ -163,6 +163,7 @@ export interface CbyAdminDashboardStats {
   compliance_alerts: CbyAdminComplianceAlerts
   most_active_banks: Array<{ bank_id: number; bank_name: string; request_count: number }>
   monthly_requests?: CbyAdminMonthlyEntry[]
+  recent_requests?: ImportRequest[]
   category_distribution?: CbyAdminCategoryEntry[]
   // governance KPIs
   active_workflow_requests?: CbyAdminKpi

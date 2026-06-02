@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useForm } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/zod'
 import { z } from 'zod'
@@ -18,6 +18,8 @@ import Input from '@/components/ui/input/Input.vue'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/components/ui/form'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import AvatarPicker from '@/components/shared/AvatarPicker.vue'
+import { DEFAULT_AVATAR_VARIANT, readUserAvatar, type AvatarVariant } from '@/composables/useUserAvatar'
 
 const props = defineProps<{
   staff: User | null
@@ -32,6 +34,7 @@ const emit = defineEmits<{
     role: UserRole
     department: string
     password?: string
+    avatar_variant: AvatarVariant
   }]
   close: []
 }>()
@@ -75,6 +78,8 @@ const {
 
 const isSaveDisabled = computed(() => props.saving || !meta.value.valid)
 
+const avatarVariant = ref<AvatarVariant>(DEFAULT_AVATAR_VARIANT)
+
 watch(() => props.staff, (staff) => {
   if (staff) {
     resetForm({
@@ -86,6 +91,8 @@ watch(() => props.staff, (staff) => {
         password: '',
       },
     })
+    const stored = readUserAvatar(staff.email)
+    avatarVariant.value = (staff.avatar_variant as AvatarVariant | undefined) ?? stored.variant
   }
   else {
     resetForm({
@@ -97,6 +104,7 @@ watch(() => props.staff, (staff) => {
         password: '',
       },
     })
+    avatarVariant.value = DEFAULT_AVATAR_VARIANT
   }
 }, { immediate: true })
 
@@ -117,11 +125,13 @@ const onSubmit = handleSubmit((values) => {
     role: UserRole
     department: string
     password?: string
+    avatar_variant: AvatarVariant
   } = {
     name: values.name.trim(),
     email: values.email.trim(),
     role: values.role as UserRole,
     department: values.department?.trim() ?? '',
+    avatar_variant: avatarVariant.value,
   }
   if (values.password) data.password = values.password
   emit('save', data)
@@ -154,6 +164,15 @@ const onSubmit = handleSubmit((values) => {
           <AlertCircle class="h-4 w-4" aria-hidden="true" />
           <AlertDescription>{{ props.serverError }}</AlertDescription>
         </Alert>
+
+        <div class="rounded-lg border border-border bg-muted/20 p-3">
+          <AvatarPicker
+            v-model="avatarVariant"
+            :seed="staff?.email || staff?.name || 'new-user'"
+            :size="44"
+            label="مظهر الصورة الرمزية"
+          />
+        </div>
 
         <form class="flex flex-col gap-5" @submit.prevent="onSubmit">
           <div class="grid grid-cols-2 gap-4">

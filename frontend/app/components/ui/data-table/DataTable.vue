@@ -141,6 +141,25 @@ function resolveRowClass(row: TData) {
   return props.rowClass ?? ''
 }
 
+// Both columns are utility columns rendered as compact, centered, content-width
+// cells (checkbox on the right in RTL, row actions on the left).
+function isCompactColumn(columnId: string) {
+  return columnId === 'select' || columnId === 'actions'
+}
+
+// The actions column stays pinned to the inline-end edge of the scroll container
+// (visual left in RTL) so row actions remain reachable while wide tables scroll
+// horizontally. A translucent background plus backdrop-blur keeps the cells
+// underneath legible without fully covering them.
+function isStickyEndColumn(columnId: string) {
+  return columnId === 'actions'
+}
+
+const STICKY_END_HEAD = 'sticky end-0 z-20 bg-background/70 backdrop-blur-md'
+const STICKY_END_CELL = [
+  'sticky end-0 z-10',
+].join(' ')
+
 defineExpose({ table })
 </script>
 
@@ -159,13 +178,34 @@ defineExpose({ table })
               v-for="header in headerGroup.headers"
               :key="header.id"
               :data-pinned="header.column.getIsPinned()"
-              :class="resolveHeaderClass(header.column.columnDef.meta)"
+              :class="[
+                isCompactColumn(header.column.id) ? 'w-px' : '',
+                isStickyEndColumn(header.column.id) ? STICKY_END_HEAD : '',
+                resolveHeaderClass(header.column.columnDef.meta),
+              ]"
             >
-              <FlexRender
-                v-if="!header.isPlaceholder"
-                :render="header.column.columnDef.header"
-                :props="header.getContext()"
-              />
+              <template v-if="!header.isPlaceholder">
+                <!-- Actions column intentionally renders an empty header. -->
+                <div
+                  v-if="isStickyEndColumn(header.column.id)"
+                  class="flex items-center justify-center px-2"
+                  aria-hidden="true"
+                />
+                <div
+                  v-else-if="isCompactColumn(header.column.id)"
+                  class="flex items-center justify-center px-2"
+                >
+                  <FlexRender
+                    :render="header.column.columnDef.header"
+                    :props="header.getContext()"
+                  />
+                </div>
+                <FlexRender
+                  v-else
+                  :render="header.column.columnDef.header"
+                  :props="header.getContext()"
+                />
+              </template>
             </TableHead>
           </TableRow>
         </TableHeader>
@@ -183,16 +223,30 @@ defineExpose({ table })
             <template v-for="row in table.getRowModel().rows" :key="row.id">
               <TableRow
                 :data-state="row.getIsSelected() ? 'selected' : undefined"
-                class="cursor-pointer transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted"
+                class="group/row transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted"
                 :class="resolveRowClass(row.original)"
                 @click="emit('row-click', row.original)"
               >
                 <TableCell
                   v-for="cell in row.getVisibleCells()"
                   :key="cell.id"
-                  :class="resolveCellClass(cell.column.columnDef.meta)"
+                  :class="[
+                    isCompactColumn(cell.column.id) ? 'w-px' : '',
+                    isStickyEndColumn(cell.column.id) ? STICKY_END_CELL : '',
+                    resolveCellClass(cell.column.columnDef.meta),
+                  ]"
                 >
+                  <div
+                    v-if="isCompactColumn(cell.column.id)"
+                    class="flex items-center justify-center px-4"
+                  >
+                    <FlexRender
+                      :render="cell.column.columnDef.cell"
+                      :props="cell.getContext()"
+                    />
+                  </div>
                   <FlexRender
+                    v-else
                     :render="cell.column.columnDef.cell"
                     :props="cell.getContext()"
                   />

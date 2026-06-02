@@ -1,5 +1,6 @@
 import { ref } from 'vue'
 import type { Notification, PaginatedResponse, ApiResponse } from '../types/models'
+import { useApi } from './useApi'
 
 interface NotificationPagination {
   currentPage: number
@@ -9,8 +10,7 @@ interface NotificationPagination {
 }
 
 export const useNotifications = () => {
-  const config = useRuntimeConfig()
-  const baseURL = config.public.apiBase as string
+  const { get, post } = useApi()
 
   const notifications = ref<Notification[]>([])
   const unreadCount = ref(0)
@@ -28,19 +28,23 @@ export const useNotifications = () => {
     error.value = null
 
     try {
-      const response = await $fetch<ApiResponse<PaginatedResponse<Notification>>>('/api/notifications', {
-        baseURL,
-        credentials: 'include',
-        headers: { Accept: 'application/json' },
+      const response = await get<ApiResponse<PaginatedResponse<Notification> | Notification[]>>('/api/notifications', {
         query: { page },
       })
 
-      notifications.value = response.data.data
-      pagination.value = {
-        currentPage: response.data.meta.current_page,
-        lastPage: response.data.meta.last_page,
-        perPage: response.data.meta.per_page,
-        total: response.data.meta.total,
+      // Backend returns either paginated { data: [...], meta: {...} } or a flat array
+      const payload = response.data
+      if (Array.isArray(payload)) {
+        notifications.value = payload
+      }
+      else {
+        notifications.value = payload.data
+        pagination.value = {
+          currentPage: payload.meta.current_page,
+          lastPage: payload.meta.last_page,
+          perPage: payload.meta.per_page,
+          total: payload.meta.total,
+        }
       }
     }
     catch (err: any) {
@@ -53,11 +57,7 @@ export const useNotifications = () => {
 
   const fetchUnreadCount = async () => {
     try {
-      const response = await $fetch<ApiResponse<{ count: number }>>('/api/notifications/unread-count', {
-        baseURL,
-        credentials: 'include',
-        headers: { Accept: 'application/json' },
-      })
+      const response = await get<ApiResponse<{ count: number }>>('/api/notifications/unread-count')
       unreadCount.value = response.data.count
     }
     catch {
@@ -67,12 +67,7 @@ export const useNotifications = () => {
 
   const markRead = async (id: string): Promise<boolean> => {
     try {
-      await $fetch(`/api/notifications/${id}/read`, {
-        method: 'POST',
-        baseURL,
-        credentials: 'include',
-        headers: { Accept: 'application/json' },
-      })
+      await post(`/api/notifications/${id}/read`)
 
       const notif = notifications.value.find(n => n.id === id)
       if (notif && !notif.read_at) {
@@ -92,12 +87,7 @@ export const useNotifications = () => {
 
   const markAllRead = async (): Promise<boolean> => {
     try {
-      await $fetch('/api/notifications/read-all', {
-        method: 'POST',
-        baseURL,
-        credentials: 'include',
-        headers: { Accept: 'application/json' },
-      })
+      await post('/api/notifications/read-all')
 
       const now = new Date().toISOString()
       notifications.value.forEach((n) => {

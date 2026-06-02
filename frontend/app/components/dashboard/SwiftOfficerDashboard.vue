@@ -83,7 +83,6 @@ const swiftQueueColumns: ColumnDef<SwiftQueueRow>[] = [
     cell: ({ row }) => h('div', { class: 'flex items-center gap-2' }, [
       h(Button, {
         size: 'sm',
-        class: 'bg-[var(--info)] text-white hover:opacity-90',
         onClick: (event: MouseEvent) => {
           event.stopPropagation()
           router.push(`/requests/${row.original.id}/swift`)
@@ -96,7 +95,7 @@ const swiftQueueColumns: ColumnDef<SwiftQueueRow>[] = [
           event.stopPropagation()
           router.push(`/requests/${row.original.id}`)
         },
-      }, () => 'تحميل النموذج'),
+      }, () => 'عرض الطلب'),
     ]),
   },
 ]
@@ -130,7 +129,7 @@ onMounted(() => { store.loadStats() })
         class="border-0 border-[var(--severity-amber)] bg-[var(--severity-amber)]/5 shadow-sm"
         role="alert"
       >
-        <CardContent class="pt-4 pb-4 flex items-center gap-3">
+        <CardContent class="flex items-center gap-3">
           <AlertTriangle class="h-5 w-5 flex-shrink-0 text-[var(--severity-amber)]" aria-hidden="true" />
           <div class="min-w-0 flex-1">
             <p class="text-sm font-semibold text-foreground">{{ stats.pending_swift_upload }} طلبات بانتظار رفع وثائق السويفت</p>
@@ -140,7 +139,7 @@ onMounted(() => { store.loadStats() })
           </div>
           <Button
             size="sm"
-            class="flex-shrink-0 bg-[var(--severity-amber)] text-white hover:opacity-90"
+            class="flex-shrink-0"
             @click="router.push('/requests?tab=pending_swift')"
           >
             ابدأ الرفع
@@ -173,7 +172,7 @@ onMounted(() => { store.loadStats() })
           @click="router.push('/requests?tab=completed')"
         />
         <MetricCard
-          label="رُفض من اللجنة"
+          label="مرفوض من اللجنة"
           :value="stats.final_rejected"
           :icon="XCircle"
           tone="danger"
@@ -190,7 +189,7 @@ onMounted(() => { store.loadStats() })
           </div>
 
           <DataTable :data="queue" :columns="swiftQueueColumns">
-            <template #empty>لا توجد طلبات بانتظار رفع السويفت حالياً ✓</template>
+            <template #empty>لا توجد طلبات بانتظار رفع وثائق السويفت حالياً</template>
           </DataTable>
         </CardContent>
       </Card>

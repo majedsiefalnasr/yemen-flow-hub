@@ -1,6 +1,15 @@
 <script setup lang="ts">
-import { Check } from 'lucide-vue-next'
-import { ROLE_BUCKETS, STATUS_LABELS, getBusinessStatus, getStatusProgress } from '@/constants/workflow'
+import { Check, Circle, Dot } from 'lucide-vue-next'
+import { Button } from '@/components/ui/button'
+import {
+  Stepper,
+  StepperDescription,
+  StepperItem,
+  StepperSeparator,
+  StepperTitle,
+  StepperTrigger,
+} from '@/components/ui/stepper'
+import { ROLE_BUCKETS, STATUS_LABELS, getStatusProgress } from '@/constants/workflow'
 import { RequestStatus, UserRole } from '@/types/enums'
 import { useAuthStore } from '@/stores/auth.store'
 import { cn } from '@/lib/utils'
@@ -10,6 +19,10 @@ const props = withDefaults(defineProps<{
   currentStatus?: RequestStatus
   compact?: boolean
   userRole?: UserRole
+  /** Pass `request.is_claimed_by_me` so the SUPPORT_COMMITTEE stepper shows
+   *  only the step that applies: "أعمل عليها" when true, "محجوزة لأعضاء آخرين"
+   *  when false. When undefined the component falls back to showing both. */
+  isClaimedByMe?: boolean
 }>(), {
   compact: false,
 })
@@ -33,101 +46,197 @@ const TERMINAL_DONE: RequestStatus[] = [
   RequestStatus.CUSTOMS_DECLARATION_ISSUED,
   RequestStatus.FX_CONFIRMATION_PENDING,
 ]
+const COMPLETED_STATUSES = new Set<RequestStatus>([
+  RequestStatus.COMPLETED,
+  RequestStatus.CUSTOMS_DECLARATION_ISSUED,
+  RequestStatus.FX_CONFIRMATION_PENDING,
+  RequestStatus.EXECUTIVE_APPROVED,
+])
 
 const steps = computed(() => {
+  const currentStatus = resolvedStatus.value
+  const isRejected = REJECT_STATUSES.includes(currentStatus)
   const buckets = ROLE_BUCKETS[role.value]
   if (buckets) {
     return buckets
-      .filter(b => !b.statuses.every(s => REJECT_STATUSES.includes(s) || RETURN_STATUSES.includes(s)))
-      .map(b => ({ key: b.key, label: b.label, statuses: b.statuses }))
+      .filter((b) => {
+        const isBranchOnly = b.statuses.every(s => REJECT_STATUSES.includes(s) || RETURN_STATUSES.includes(s))
+        const isCompletedOnly = b.statuses.every(s => COMPLETED_STATUSES.has(s))
+        if (isRejected && isCompletedOnly) return false
+        // For SUPPORT_COMMITTEE: my_claims and in_progress are mutually exclusive.
+        // When isClaimedByMe is defined, show only the applicable step.
+        if (props.isClaimedByMe !== undefined) {
+          if (b.key === 'my_claims' && !props.isClaimedByMe) return false
+          if (b.key === 'in_progress' && props.isClaimedByMe) return false
+        }
+        return !isBranchOnly || b.statuses.includes(currentStatus)
+      })
+      .map((b, i) => ({ step: i + 1, key: b.key, label: b.label, statuses: b.statuses }))
   }
   return Object.values(RequestStatus)
-    .filter(s => !REJECT_STATUSES.includes(s) && !RETURN_STATUSES.includes(s))
-    .map(s => ({ key: s, label: STATUS_LABELS[s], statuses: [s] }))
+    .filter((s) => {
+      if (isRejected && COMPLETED_STATUSES.has(s)) return false
+      return s === currentStatus || (!REJECT_STATUSES.includes(s) && !RETURN_STATUSES.includes(s))
+    })
+    .map((s, i) => ({ step: i + 1, key: s, label: STATUS_LABELS[s], statuses: [s] }))
 })
 
-const currentIndex = computed(() => {
-  const idx = steps.value.findIndex(step => step.statuses.includes(resolvedStatus.value))
-  return idx === -1 ? 0 : idx
+const currentStepValue = computed(() => {
+  const idx = steps.value.findIndex(s => s.statuses.includes(resolvedStatus.value))
+  if (idx === -1) return 1
+  // If all done, mark last step active
+  if (TERMINAL_DONE.includes(resolvedStatus.value)) return steps.value.length
+  return idx + 1
 })
-const completedAll = computed(() =>
-  TERMINAL_DONE.includes(resolvedStatus.value) || currentIndex.value === steps.value.length - 1,
-)
+
 const progressPercent = computed(() => getStatusProgress(resolvedStatus.value, role.value))
+
+const statusChip = computed(() => {
+  if (RETURN_STATUSES.includes(resolvedStatus.value))
+    return { label: 'معاد للتعديل', class: 'bg-[var(--severity-amber)]/15 text-[var(--severity-amber)]' }
+  if (REJECT_STATUSES.includes(resolvedStatus.value))
+    return { label: 'مرفوض', class: 'bg-[var(--severity-red)]/15 text-[var(--severity-red)]' }
+  return null
+})
+
+function activeDescription(status: RequestStatus): { label: string, class: string } {
+  if (REJECT_STATUSES.includes(status)) {
+    return { label: 'توقف المسار بالرفض', class: 'text-[var(--severity-red)]' }
+  }
+  if (RETURN_STATUSES.includes(status)) {
+    return { label: 'بانتظار تصحيح البيانات', class: 'text-[var(--severity-amber)]' }
+  }
+  if (status === RequestStatus.COMPLETED || status === RequestStatus.CUSTOMS_DECLARATION_ISSUED) {
+    return { label: 'اكتمل المسار بنجاح', class: 'text-[var(--severity-green)]' }
+  }
+  if (status === RequestStatus.FX_CONFIRMATION_PENDING) {
+    return { label: 'بانتظار تأكيد المصارفة الخارجية', class: 'text-[var(--info)]' }
+  }
+  if (
+    status === RequestStatus.SUPPORT_REVIEW_PENDING
+    || status === RequestStatus.WAITING_FOR_SWIFT
+    || status === RequestStatus.WAITING_FOR_VOTING_OPEN
+  ) {
+    return { label: 'بانتظار إجراء من الجهة المسؤولة', class: 'text-[var(--severity-amber)]' }
+  }
+  if (
+    status === RequestStatus.BANK_REVIEW
+    || status === RequestStatus.SUPPORT_REVIEW_IN_PROGRESS
+    || status === RequestStatus.EXECUTIVE_VOTING_OPEN
+    || status === RequestStatus.EXECUTIVE_VOTING_CLOSED
+  ) {
+    return { label: 'قيد المعالجة الآن', class: 'text-primary' }
+  }
+  if (
+    status === RequestStatus.BANK_APPROVED
+    || status === RequestStatus.SUPPORT_APPROVED
+    || status === RequestStatus.EXECUTIVE_APPROVED
+    || status === RequestStatus.SWIFT_UPLOADED
+  ) {
+    return { label: 'اكتملت هذه المرحلة', class: 'text-[var(--severity-green)]' }
+  }
+  return { label: 'بانتظار المتابعة', class: 'text-muted-foreground' }
+}
+
+function activeIconClass(status: RequestStatus): string {
+  if (REJECT_STATUSES.includes(status)) return 'border-[var(--severity-red)] bg-[var(--severity-red)] text-white ring-[var(--severity-red)]/35'
+  if (RETURN_STATUSES.includes(status)) return 'border-[var(--severity-amber)] bg-[var(--severity-amber)] text-white ring-[var(--severity-amber)]/35'
+  if (status === RequestStatus.COMPLETED || status === RequestStatus.CUSTOMS_DECLARATION_ISSUED) {
+    return 'border-[var(--severity-green)] bg-[var(--severity-green)] text-white ring-[var(--severity-green)]/35'
+  }
+  if (status === RequestStatus.FX_CONFIRMATION_PENDING || status === RequestStatus.SWIFT_UPLOADED) {
+    return 'border-[var(--info)] bg-[var(--info)] text-white ring-[var(--info)]/35'
+  }
+  if (
+    status === RequestStatus.SUPPORT_REVIEW_PENDING
+    || status === RequestStatus.WAITING_FOR_SWIFT
+    || status === RequestStatus.WAITING_FOR_VOTING_OPEN
+  ) {
+    return 'border-[var(--severity-amber)] bg-[var(--severity-amber)] text-white ring-[var(--severity-amber)]/35'
+  }
+  if (
+    status === RequestStatus.BANK_APPROVED
+    || status === RequestStatus.SUPPORT_APPROVED
+    || status === RequestStatus.EXECUTIVE_APPROVED
+  ) {
+    return 'border-[var(--severity-green)] bg-[var(--severity-green)] text-white ring-[var(--severity-green)]/35'
+  }
+  return 'border-primary bg-primary text-primary-foreground ring-primary/35'
+}
+
+function stepDescription(state: string): { label: string, class: string } {
+  if (state === 'active') return activeDescription(resolvedStatus.value)
+  if (state === 'completed') return { label: 'مكتملة', class: 'text-[var(--severity-green)]' }
+  return { label: 'بانتظار', class: 'text-muted-foreground/60' }
+}
+
+function stepIconClass(state: string): string {
+  if (state === 'active') return activeIconClass(resolvedStatus.value)
+  return ''
+}
 </script>
 
 <template>
-  <div class="rounded-2xl border bg-card p-5 shadow">
+  <div>
     <div class="mb-4 flex items-center justify-between">
-      <div class="text-sm font-semibold">
-        سير العملية التنظيمية
+      <span class="text-sm font-semibold">مسار الطلب</span>
+      <div class="flex items-center gap-2">
+        <span
+          v-if="statusChip"
+          :class="cn('rounded-full px-2 py-0.5 text-[10px] font-medium', statusChip.class)"
+        >
+          {{ statusChip.label }}
+        </span>
+        <span class="text-xs text-muted-foreground">{{ progressPercent }}%</span>
       </div>
-      <span class="text-xs text-muted-foreground">{{ progressPercent }}%</span>
-      <span
-        v-if="RETURN_STATUSES.includes(resolvedStatus) || REJECT_STATUSES.includes(resolvedStatus)"
-        :class="cn(
-          'rounded-full px-2 py-0.5 text-[10px] font-medium',
-          RETURN_STATUSES.includes(resolvedStatus) && 'bg-[var(--severity-amber)]/15 text-[var(--severity-amber)]',
-          REJECT_STATUSES.includes(resolvedStatus) && 'bg-[var(--severity-red)]/15 text-[var(--severity-red)]',
-        )"
-      >
-        {{ RETURN_STATUSES.includes(resolvedStatus) ? 'مُعاد للتعديل' : 'مرفوض' }}
-      </span>
     </div>
 
-    <ol class="relative">
-      <li
-        v-for="(step, index) in steps"
-        :key="step.key"
-        :class="cn('relative flex items-start gap-3', index < steps.length - 1 && 'pb-5', index === currentIndex && 'wp-step--current')"
+    <Stepper
+      :model-value="currentStepValue"
+      orientation="vertical"
+      class="flex w-full flex-col justify-start gap-4"
+    >
+      <StepperItem
+        v-for="s in steps"
+        :key="s.key"
+        v-slot="{ state }"
+        class="relative flex w-full items-start gap-4"
+        :step="s.step"
       >
-        <span
-          v-if="index < steps.length - 1"
-          :class="cn(
-            'absolute end-[11px] top-7 h-[calc(100%-1.25rem)] w-px',
-            completedAll || index < currentIndex ? 'bg-foreground/80' : 'bg-border',
-          )"
+        <StepperSeparator
+          v-if="s.step !== steps[steps.length - 1]?.step"
+          class="absolute inset-s-[17px] top-[36px] block h-[110%] w-0.5 shrink-0 rounded-full bg-muted group-data-[state=completed]:bg-primary"
         />
 
-        <div class="relative z-10 grid h-[22px] w-[22px] shrink-0 place-items-center">
-          <span
-            v-if="completedAll || index < currentIndex"
-            class="grid h-[22px] w-[22px] place-items-center rounded-full bg-foreground text-background"
+        <StepperTrigger as-child>
+          <Button
+            :variant="state === 'completed' || state === 'active' ? 'default' : 'outline'"
+            size="icon"
+            class="z-10 rounded-full shrink-0 size-9 pointer-events-none"
+            :class="[state === 'active' && 'ring-2 ring-offset-2 ring-offset-background', stepIconClass(state)]"
           >
-            <Check class="h-3 w-3" :stroke-width="3" />
-          </span>
-          <span
-            v-else-if="index === currentIndex"
-            class="grid h-[22px] w-[22px] place-items-center rounded-full bg-foreground ring-4 ring-foreground/15"
-          >
-            <span class="h-2 w-2 rounded-full bg-background" />
-          </span>
-          <span
-            v-else
-            class="h-[22px] w-[22px] rounded-full border-2 border-border bg-muted/40"
-          />
-        </div>
+            <Check v-if="state === 'completed'" class="size-4" />
+            <Circle v-else-if="state === 'active'" class="size-4" />
+            <Dot v-else class="size-4" />
+          </Button>
+        </StepperTrigger>
 
-        <div class="-mt-0.5 flex-1">
-          <div
-            :class="cn(
-              'text-sm leading-snug',
-              index === currentIndex ? 'font-semibold text-foreground' : index < currentIndex ? 'text-foreground' : 'text-muted-foreground',
-            )"
+        <div class="flex flex-col gap-0.5 pt-1.5">
+          <StepperTitle
+            :class="[state === 'active' ? 'font-semibold text-foreground' : state === 'completed' ? 'text-foreground' : 'font-normal text-muted-foreground']"
+            class="text-sm leading-snug"
           >
-            {{ step.label }}
-          </div>
-          <div
+            {{ s.label }}
+          </StepperTitle>
+          <StepperDescription
             v-if="!compact"
-            :class="cn(
-              'mt-0.5 text-[11px] leading-tight',
-              index === currentIndex ? 'text-primary' : index < currentIndex ? 'text-[var(--severity-green)]' : 'text-muted-foreground/70',
-            )"
+            :class="stepDescription(state).class"
+            class="text-[11px]"
           >
-            {{ index === currentIndex ? 'المرحلة الحالية' : index < currentIndex ? 'مكتملة' : 'بانتظار' }}
-          </div>
+            {{ stepDescription(state).label }}
+          </StepperDescription>
         </div>
-      </li>
-    </ol>
+      </StepperItem>
+    </Stepper>
   </div>
 </template>

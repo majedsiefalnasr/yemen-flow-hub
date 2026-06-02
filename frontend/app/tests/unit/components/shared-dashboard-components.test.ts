@@ -1,9 +1,14 @@
 // @vitest-environment jsdom
 import { mount } from '@vue/test-utils'
+import { markRaw } from 'vue'
 import { describe, expect, it } from 'vitest'
 import AnalyticsCard from '../../../components/shared/dashboard/AnalyticsCard.vue'
 import MetricCard from '../../../components/shared/dashboard/MetricCard.vue'
 import { analyticsStateFixtures, metricFixtures } from '../fixtures/shared-dashboard'
+
+const TestIcon = markRaw({
+  template: '<svg aria-hidden="true" />',
+})
 
 describe('shared dashboard components', () => {
   it('MetricCard emits click on mouse and keyboard interaction', async () => {
@@ -41,6 +46,7 @@ describe('shared dashboard components', () => {
         label: metricFixtures.negative.label,
         value: metricFixtures.negative.value,
         tone: metricFixtures.negative.tone,
+        icon: TestIcon,
       },
     })
 
@@ -59,9 +65,9 @@ describe('shared dashboard components', () => {
       },
     })
 
-    expect(wrapper.get('[data-testid="act"]').exists()).toBe(true)
-    expect(wrapper.get('[data-testid="body"]').exists()).toBe(true)
-    expect(wrapper.get('[data-testid="footer"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="act"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="body"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="footer"]').exists()).toBe(true)
   })
 
   it('AnalyticsCard supports loading/empty/error states', () => {

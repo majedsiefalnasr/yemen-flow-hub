@@ -342,8 +342,8 @@ export const NAV_ITEMS: NavItem[] = [
 export const DATA_ENTRY_STATUS_LABELS: Partial<Record<RequestStatus, string>> = {
   [RequestStatus.DRAFT]: 'مسودة',
   [RequestStatus.DRAFT_REJECTED_INTERNAL]: 'معاد للتعديل',
-  [RequestStatus.BANK_RETURNED]: 'مُعادة',
-  [RequestStatus.SUPPORT_RETURNED]: 'مُعادة',
+  [RequestStatus.BANK_RETURNED]: 'معادة',
+  [RequestStatus.SUPPORT_RETURNED]: 'معادة',
   [RequestStatus.SUBMITTED]: 'مقدّم للمراجعة',
   [RequestStatus.BANK_REVIEW]: 'مقدّم للمراجعة',
   [RequestStatus.BANK_APPROVED]: 'قيد معالجة CBY',
@@ -367,14 +367,14 @@ export const DATA_ENTRY_STATUS_LABELS: Partial<Record<RequestStatus, string>> = 
 /** Full internal status labels for bank/CBY roles */
 export const STATUS_LABELS: Record<RequestStatus, string> = {
   [RequestStatus.DRAFT]: 'مسودة',
-  [RequestStatus.DRAFT_REJECTED_INTERNAL]: 'مُعاد للتعديل',
-  [RequestStatus.SUBMITTED]: 'مُقدَّم',
+  [RequestStatus.DRAFT_REJECTED_INTERNAL]: 'معاد للتعديل',
+  [RequestStatus.SUBMITTED]: 'مقدم',
   [RequestStatus.BANK_REVIEW]: 'قيد مراجعة البنك',
   [RequestStatus.BANK_RETURNED]: 'إعادة للمدخل',
   [RequestStatus.SUPPORT_RETURNED]: 'إعادة من المساندة',
   [RequestStatus.BANK_APPROVED]: 'موافقة البنك',
-  [RequestStatus.SUPPORT_REVIEW_PENDING]: 'انتظار لجنة الدعم',
-  [RequestStatus.SUPPORT_REVIEW_IN_PROGRESS]: 'قيد مراجعة الدعم',
+  [RequestStatus.SUPPORT_REVIEW_PENDING]: 'بانتظار المراجعة',
+  [RequestStatus.SUPPORT_REVIEW_IN_PROGRESS]: 'قيد المراجعة',
   [RequestStatus.SUPPORT_APPROVED]: 'موافقة لجنة الدعم',
   [RequestStatus.SUPPORT_REJECTED]: 'رفض لجنة الدعم',
   [RequestStatus.WAITING_FOR_SWIFT]: 'انتظار رفع SWIFT',
@@ -443,7 +443,7 @@ export interface StageBucket {
 export const ROLE_BUCKETS: Partial<Record<UserRole, StageBucket[]>> = {
   // Spec order: returned first (most actionable), then draft, submitted, processing, completed, rejected, all
   [UserRole.DATA_ENTRY]: [
-    { key: 'returned', label: 'مُعادة', statuses: [RequestStatus.BANK_RETURNED, RequestStatus.SUPPORT_RETURNED, RequestStatus.DRAFT_REJECTED_INTERNAL] },
+    { key: 'returned', label: 'معادة', statuses: [RequestStatus.BANK_RETURNED, RequestStatus.SUPPORT_RETURNED, RequestStatus.DRAFT_REJECTED_INTERNAL] },
     { key: 'draft', label: 'مسودة', statuses: [RequestStatus.DRAFT] },
     { key: 'submitted', label: 'مقدّم', statuses: [RequestStatus.SUBMITTED, RequestStatus.BANK_REVIEW] },
     { key: 'processing', label: 'قيد معالجة CBY', statuses: [RequestStatus.BANK_APPROVED, RequestStatus.SUPPORT_REVIEW_PENDING, RequestStatus.SUPPORT_REVIEW_IN_PROGRESS, RequestStatus.SUPPORT_APPROVED, RequestStatus.WAITING_FOR_SWIFT, RequestStatus.SWIFT_UPLOADED, RequestStatus.WAITING_FOR_VOTING_OPEN, RequestStatus.EXECUTIVE_VOTING_OPEN, RequestStatus.EXECUTIVE_VOTING_CLOSED] },
@@ -476,7 +476,7 @@ export const ROLE_BUCKETS: Partial<Record<UserRole, StageBucket[]>> = {
   ],
   // Spec order: waiting (unclaimed) first, my_claims, in_progress, approved, rejected, all
   [UserRole.SUPPORT_COMMITTEE]: [
-    { key: 'waiting', label: 'انتظار المطالبة', statuses: [RequestStatus.SUPPORT_REVIEW_PENDING] },
+    { key: 'waiting', label: 'بانتظار المراجعة', statuses: [RequestStatus.SUPPORT_REVIEW_PENDING] },
     {
       key: 'my_claims',
       label: 'أعمل عليها',
@@ -529,13 +529,13 @@ export const ROLE_BUCKETS: Partial<Record<UserRole, StageBucket[]>> = {
     { key: 'ready_to_finalize', label: 'جاهزة للإصدار النهائي', statuses: [RequestStatus.EXECUTIVE_VOTING_CLOSED] },
     {
       key: 'tie_break',
-      label: 'تعادل — يحتاج حسماً',
+      label: 'تعادل يحتاج إلى حسم',
       statuses: [RequestStatus.EXECUTIVE_VOTING_OPEN],
       matches: (request: any) => request.status === RequestStatus.EXECUTIVE_VOTING_OPEN && request.is_tie === true,
     },
     { key: 'fx_pending', label: 'بانتظار تأكيد المصارفة', statuses: [RequestStatus.EXECUTIVE_APPROVED, RequestStatus.FX_CONFIRMATION_PENDING] },
     { key: 'active_voting', label: 'تصويت نشط', statuses: [RequestStatus.EXECUTIVE_VOTING_OPEN] },
-    { key: 'finalized', label: 'مُنجز', statuses: [RequestStatus.EXECUTIVE_APPROVED, RequestStatus.EXECUTIVE_REJECTED, RequestStatus.CUSTOMS_DECLARATION_ISSUED, RequestStatus.COMPLETED] },
+    { key: 'finalized', label: 'منجز', statuses: [RequestStatus.EXECUTIVE_APPROVED, RequestStatus.EXECUTIVE_REJECTED, RequestStatus.CUSTOMS_DECLARATION_ISSUED, RequestStatus.COMPLETED] },
   ],
   // Operational tabs (not internal workflow stages) — per docs/user-view/cby-admin.md#Requests List
   [UserRole.CBY_ADMIN]: [
@@ -545,6 +545,35 @@ export const ROLE_BUCKETS: Partial<Record<UserRole, StageBucket[]>> = {
     { key: 'fx_pending', label: 'تأكيد المصارفة', statuses: [RequestStatus.EXECUTIVE_APPROVED] },
     { key: 'rejected', label: 'مرفوض', statuses: [RequestStatus.BANK_REJECTED, RequestStatus.SUPPORT_REJECTED, RequestStatus.EXECUTIVE_REJECTED] },
     { key: 'completed', label: 'مكتمل', statuses: [RequestStatus.CUSTOMS_DECLARATION_ISSUED, RequestStatus.FX_CONFIRMATION_PENDING, RequestStatus.COMPLETED] },
+  ],
+}
+
+/**
+ * Default "attention-needed" statuses per role — applied as the initial filter
+ * when the user lands on /requests with no explicit status filter in the URL.
+ * Roles not listed here (DATA_ENTRY, BANK_ADMIN, CBY_ADMIN) see all requests
+ * by default because their queue is already organisation-scoped by the backend.
+ */
+export const ROLE_ATTENTION_STATUSES: Partial<Record<UserRole, RequestStatus[]>> = {
+  [UserRole.BANK_REVIEWER]: [
+    RequestStatus.SUBMITTED,
+    RequestStatus.BANK_REVIEW,
+  ],
+  [UserRole.SWIFT_OFFICER]: [
+    RequestStatus.WAITING_FOR_SWIFT,
+  ],
+  [UserRole.SUPPORT_COMMITTEE]: [
+    RequestStatus.SUPPORT_REVIEW_PENDING,
+    RequestStatus.SUPPORT_REVIEW_IN_PROGRESS,
+  ],
+  [UserRole.EXECUTIVE_MEMBER]: [
+    RequestStatus.EXECUTIVE_VOTING_OPEN,
+  ],
+  [UserRole.COMMITTEE_DIRECTOR]: [
+    RequestStatus.EXECUTIVE_VOTING_OPEN,
+    RequestStatus.EXECUTIVE_VOTING_CLOSED,
+    RequestStatus.EXECUTIVE_APPROVED,
+    RequestStatus.FX_CONFIRMATION_PENDING,
   ],
 }
 

@@ -18,6 +18,7 @@ export interface CreateUserPayload {
   role: UserRole
   bank_id: number | null
   is_active: boolean
+  avatar_variant?: string
 }
 
 export interface UpdateUserPayload {
@@ -27,6 +28,7 @@ export interface UpdateUserPayload {
   role: UserRole
   bank_id: number | null
   is_active: boolean
+  avatar_variant?: string
 }
 
 export function useUsers() {

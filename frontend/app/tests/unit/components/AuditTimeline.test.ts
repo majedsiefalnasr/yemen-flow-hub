@@ -22,29 +22,32 @@ function entryColor(entry: RequestStageHistory): string {
 // F5: ACTION_LABELS is now module-scope in the component; mirror that here
 const ACTION_LABELS: Record<string, string> = {
   submit: 'تقديم الطلب',
-  bank_approve: 'موافقة البنك',
-  bank_reject: 'رفض البنك',
-  return_to_entry: 'إعادة إلى المُدخل',
-  support_claim: 'حجز المراجعة',
-  support_release: 'إلغاء الحجز',
-  support_approve: 'موافقة لجنة الدعم',
+  bank_begin_review: 'بدء مراجعة البنك',
+  bank_approve: 'اعتماد البنك',
+  bank_reject: 'إعادة الطلب للتعديل',
+  bank_return_to_intake: 'إرجاع الطلب للمدخل',
+  bank_reject_terminal: 'رفض نهائي من البنك',
+  return_to_entry: 'إرجاع الطلب للمدخل',
+  bank_return_after_support_reject: 'إرجاع الطلب بعد رفض لجنة الدعم',
+  bank_finalize_rejection: 'تثبيت رفض لجنة الدعم',
+  support_claim: 'مطالبة لجنة الدعم بالطلب',
+  support_release: 'إفراج لجنة الدعم عن الطلب',
+  support_approve: 'اعتماد لجنة الدعم',
   support_reject: 'رفض لجنة الدعم',
-  swift_upload: 'رفع مستند SWIFT',
-  start_voting: 'فتح جلسة التصويت',
-  close_voting: 'إغلاق جلسة التصويت',
-  cast_vote: 'تسجيل تصويت',
-  finalize_approved: 'اعتماد نهائي — موافقة',
-  finalize_rejected: 'اعتماد نهائي — رفض',
-  override_approved: 'تجاوز — موافقة',
-  override_rejected: 'تجاوز — رفض',
-  issue_customs: 'إصدار البيان الجمركي',
-  complete: 'إتمام الطلب',
-  claim_expire: 'انتهاء صلاحية الحجز',
-  document_upload: 'رفع مستند',
+  support_return_to_intake: 'إرجاع الطلب للمدخل من لجنة الدعم',
+  move_to_support_queue: 'إحالة الطلب إلى لجنة الدعم',
+  move_to_swift_queue: 'إحالة الطلب إلى رفع SWIFT',
+  swift_upload: 'رفع وثائق SWIFT',
+  open_voting: 'فتح التصويت التنفيذي',
+  close_voting: 'إغلاق التصويت التنفيذي',
+  finalize_approved: 'اعتماد القرار التنفيذي',
+  finalize_rejected: 'رفض القرار التنفيذي',
+  issue_customs: 'إصدار تأكيد المصارفة الخارجية',
+  complete: 'إكمال الطلب',
 }
 
 function actionLabel(action: string): string {
-  return ACTION_LABELS[action] ?? action
+  return ACTION_LABELS[action] ?? 'إجراء مسجل'
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -108,34 +111,37 @@ describe('AuditTimeline actionLabel', () => {
   it('maps all known action keys to Arabic labels', () => {
     const cases: [string, string][] = [
       ['submit', 'تقديم الطلب'],
-      ['bank_approve', 'موافقة البنك'],
-      ['bank_reject', 'رفض البنك'],
-      ['return_to_entry', 'إعادة إلى المُدخل'],
-      ['support_claim', 'حجز المراجعة'],
-      ['support_release', 'إلغاء الحجز'],
-      ['support_approve', 'موافقة لجنة الدعم'],
+      ['bank_begin_review', 'بدء مراجعة البنك'],
+      ['bank_approve', 'اعتماد البنك'],
+      ['bank_reject', 'إعادة الطلب للتعديل'],
+      ['bank_return_to_intake', 'إرجاع الطلب للمدخل'],
+      ['bank_reject_terminal', 'رفض نهائي من البنك'],
+      ['return_to_entry', 'إرجاع الطلب للمدخل'],
+      ['bank_return_after_support_reject', 'إرجاع الطلب بعد رفض لجنة الدعم'],
+      ['bank_finalize_rejection', 'تثبيت رفض لجنة الدعم'],
+      ['support_claim', 'مطالبة لجنة الدعم بالطلب'],
+      ['support_release', 'إفراج لجنة الدعم عن الطلب'],
+      ['support_approve', 'اعتماد لجنة الدعم'],
       ['support_reject', 'رفض لجنة الدعم'],
-      ['swift_upload', 'رفع مستند SWIFT'],
-      ['start_voting', 'فتح جلسة التصويت'],
-      ['close_voting', 'إغلاق جلسة التصويت'],
-      ['cast_vote', 'تسجيل تصويت'],
-      ['finalize_approved', 'اعتماد نهائي — موافقة'],
-      ['finalize_rejected', 'اعتماد نهائي — رفض'],
-      ['override_approved', 'تجاوز — موافقة'],
-      ['override_rejected', 'تجاوز — رفض'],
-      ['issue_customs', 'إصدار البيان الجمركي'],
-      ['complete', 'إتمام الطلب'],
-      ['claim_expire', 'انتهاء صلاحية الحجز'],
-      ['document_upload', 'رفع مستند'],
+      ['support_return_to_intake', 'إرجاع الطلب للمدخل من لجنة الدعم'],
+      ['move_to_support_queue', 'إحالة الطلب إلى لجنة الدعم'],
+      ['move_to_swift_queue', 'إحالة الطلب إلى رفع SWIFT'],
+      ['swift_upload', 'رفع وثائق SWIFT'],
+      ['open_voting', 'فتح التصويت التنفيذي'],
+      ['close_voting', 'إغلاق التصويت التنفيذي'],
+      ['finalize_approved', 'اعتماد القرار التنفيذي'],
+      ['finalize_rejected', 'رفض القرار التنفيذي'],
+      ['issue_customs', 'إصدار تأكيد المصارفة الخارجية'],
+      ['complete', 'إكمال الطلب'],
     ]
     for (const [key, label] of cases) {
       expect(actionLabel(key)).toBe(label)
     }
   })
 
-  it('falls back to the raw action key for unknown actions', () => {
-    expect(actionLabel('some_unknown_action')).toBe('some_unknown_action')
-    expect(actionLabel('')).toBe('')
+  it('falls back to a localized generic label for unknown actions', () => {
+    expect(actionLabel('some_unknown_action')).toBe('إجراء مسجل')
+    expect(actionLabel('')).toBe('إجراء مسجل')
   })
 })
 

@@ -16,7 +16,7 @@ const emit = defineEmits<{
     <AlertDescription class="flex-1 text-sm font-medium text-[var(--color-text-warning)]">
       أنت على وشك الخروج بسبب عدم النشاط — يرجى التفاعل للبقاء
     </AlertDescription>
-    <Button size="sm" class="flex-shrink-0 bg-[var(--color-surface-warning)] text-white hover:opacity-90" @click="emit('extend')">
+    <Button size="sm" class="flex-shrink-0" @click="emit('extend')">
       متابعة الجلسة
     </Button>
   </Alert>

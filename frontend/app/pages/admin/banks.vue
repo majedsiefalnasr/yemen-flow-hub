@@ -10,7 +10,7 @@ import {
   useVueTable,
 } from '@tanstack/vue-table'
 import { h } from 'vue'
-import { Building2, Plus, SearchX } from 'lucide-vue-next'
+import { Archive, Building2, Plus, PowerOff, SearchX, Zap } from 'lucide-vue-next'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import { ROUTE_ROLE_MAP } from '@/constants/workflow'
 import { UserRole } from '@/types/enums'
@@ -39,6 +39,7 @@ import {
 } from '@/components/ui/empty'
 import {
   DataTable,
+  DataTableBulkExport,
   DataTableColumnHeader,
   DataTableExport,
   DataTableFacetedFilter,
@@ -48,6 +49,7 @@ import {
   DataTableViewOptions,
   type RowAction,
 } from '@/components/ui/data-table'
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import MetricCard from '@/components/shared/dashboard/MetricCard.vue'
 import MetricGrid from '@/components/shared/dashboard/MetricGrid.vue'
 
@@ -69,7 +71,7 @@ type BankForm = {
 const authStore = useAuthStore()
 const currentUser = computed(() => authStore.user)
 const { fetchBanks, createBank, updateBank } = useBanks()
-const { exportToCSV, exportToPDF } = useTableExport()
+const { exportToCSV, exportToExcel, exportToJSON, exportToPDF } = useTableExport()
 const { notify, error: toastError } = useToast()
 
 const query = ref('')
@@ -209,7 +211,7 @@ async function saveBank() {
     closeForm()
   }
   catch {
-    toastError('حدث خطأ، يرجى المحاولة مجدداً')
+    toastError('تعذر حفظ بيانات البنك. أعد المحاولة بعد قليل.')
   }
   finally {
     saving.value = false
@@ -390,24 +392,64 @@ function clearBulkSelection() {
   table.resetRowSelection()
 }
 
-function exportSelectedRows() {
-  const rows = table.getFilteredSelectedRowModel().rows.map(row => row.original)
-  if (!rows.length) return
-  exportToCSV(
-    rows as unknown as Record<string, unknown>[],
-    exportColumns as any,
-    `${buildExportFilename()}-selected`,
-  )
+function getSelectedBanks(): Bank[] {
+  return table.getFilteredSelectedRowModel().rows.map(r => r.original)
 }
 
-function printSelectedRows() {
-  const rows = table.getFilteredSelectedRowModel().rows.map(row => row.original)
+function bulkExportCSV() {
+  const rows = getSelectedBanks()
   if (!rows.length) return
-  exportToPDF(
-    rows as unknown as Record<string, unknown>[],
-    exportColumns as any,
-    `${buildExportFilename()}-selected`,
-  )
+  exportToCSV(rows as unknown as Record<string, unknown>[], exportColumns as any, `${buildExportFilename()}-selected`)
+}
+
+function bulkExportExcel() {
+  const rows = getSelectedBanks()
+  if (!rows.length) return
+  exportToExcel(rows as unknown as Record<string, unknown>[], exportColumns as any, `${buildExportFilename()}-selected`)
+}
+
+function bulkExportJSON() {
+  const rows = getSelectedBanks()
+  if (!rows.length) return
+  exportToJSON(rows as unknown as Record<string, unknown>[], exportColumns as any, `${buildExportFilename()}-selected`)
+}
+
+const bulkToggling = ref(false)
+async function bulkToggleStatus(activate: boolean) {
+  const rows = getSelectedBanks().filter(b => b.is_active !== activate)
+  if (!rows.length) return
+  bulkToggling.value = true
+  try {
+    await Promise.all(rows.map(b => toggleStatus(b)))
+    clearBulkSelection()
+    notify(activate ? `تم تفعيل ${rows.length} بنك` : `تم إيقاف ${rows.length} بنك`)
+  }
+  catch {
+    toastError('فشل تغيير الحالة لبعض البنوك')
+  }
+  finally {
+    bulkToggling.value = false
+  }
+}
+
+const archiveConfirmOpen = ref(false)
+const archiving = ref(false)
+async function bulkArchive() {
+  const rows = getSelectedBanks()
+  if (!rows.length) return
+  archiving.value = true
+  try {
+    // Archive = deactivate (no hard-delete in this system)
+    await Promise.all(rows.filter(b => b.is_active).map(b => toggleStatus(b)))
+    clearBulkSelection()
+    notify(`تم أرشفة ${rows.length} بنك`)
+  }
+  catch {
+    toastError('فشل أرشفة بعض البنوك')
+  }
+  finally {
+    archiving.value = false
+  }
 }
 </script>
 
@@ -477,10 +519,23 @@ function printSelectedRows() {
             :selected-count="selectedCount"
             @update:search="v => query = v"
             @reset="handleReset"
-            @export-selected="exportSelectedRows"
-            @print-selected="printSelectedRows"
             @clear-selection="clearBulkSelection"
           >
+            <template #bulk-actions>
+              <DataTableBulkExport @csv="bulkExportCSV" @excel="bulkExportExcel" @json="bulkExportJSON" />
+              <Button variant="outline" size="sm" class="h-7 gap-1.5 text-xs" :disabled="bulkToggling" @click="bulkToggleStatus(true)">
+                <Zap class="size-3.5" />
+                تفعيل
+              </Button>
+              <Button variant="outline" size="sm" class="h-7 gap-1.5 text-xs" :disabled="bulkToggling" @click="bulkToggleStatus(false)">
+                <PowerOff class="size-3.5" />
+                إيقاف
+              </Button>
+              <Button variant="outline" size="sm" class="h-7 gap-1.5 text-xs text-destructive hover:text-destructive" :disabled="archiving" @click="archiveConfirmOpen = true">
+                <Archive class="size-3.5" />
+                أرشفة
+              </Button>
+            </template>
             <template #filters>
               <DataTableFacetedFilter
                 v-if="table.getColumn('is_active')"
@@ -616,5 +671,20 @@ function printSelectedRows() {
         </div>
       </DialogContent>
     </Dialog>
+
+    <AlertDialog v-model:open="archiveConfirmOpen">
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>تأكيد أرشفة البنوك المحددة</AlertDialogTitle>
+          <AlertDialogDescription>
+            سيتم إيقاف تفعيل {{ selectedCount }} بنك وأرشفته. يمكن إعادة تفعيله لاحقاً.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>إلغاء</AlertDialogCancel>
+          <AlertDialogAction @click="bulkArchive">تأكيد الأرشفة</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   </div>
 </template>

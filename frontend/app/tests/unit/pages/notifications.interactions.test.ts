@@ -10,11 +10,15 @@ const navigateToMock = vi.hoisted(() => vi.fn())
 vi.stubGlobal('navigateTo', navigateToMock)
 
 const refreshUnreadCountMock = vi.hoisted(() => vi.fn())
+const setItemsMock = vi.hoisted(() => vi.fn())
+const decrementUnreadMock = vi.hoisted(() => vi.fn())
 vi.mock('../../../stores/notifications.store', () => ({
   useNotificationsStore: () => ({
     get items() { return notificationsRef.value },
     get unreadCount() { return notificationsRef.value.filter((n: any) => !n.read_at).length },
     refreshUnreadCount: refreshUnreadCountMock,
+    setItems: setItemsMock,
+    decrementUnread: decrementUnreadMock,
     markAllRead: vi.fn(),
   }),
 }))
@@ -24,6 +28,7 @@ const paginationRef = ref({ currentPage: 1, lastPage: 1, perPage: 20, total: 0 }
 const loadingRef = ref(false)
 const errorRef = ref<string | null>(null)
 const fetchNotificationsMock = vi.hoisted(() => vi.fn())
+const fetchUnreadCountMock = vi.hoisted(() => vi.fn())
 const markReadMock = vi.hoisted(() => vi.fn())
 const markAllReadMock = vi.hoisted(() => vi.fn())
 
@@ -33,7 +38,9 @@ vi.mock('../../../composables/useNotifications', () => ({
     get pagination() { return paginationRef },
     get loading() { return loadingRef },
     get error() { return errorRef },
+    get unreadCount() { return ref(notificationsRef.value.filter((n: any) => !n.read_at).length) },
     fetchNotifications: fetchNotificationsMock,
+    fetchUnreadCount: fetchUnreadCountMock,
     markRead: markReadMock,
     markAllRead: markAllReadMock,
   }),
@@ -50,12 +57,13 @@ describe('notifications page interactions', () => {
     paginationRef.value = { currentPage: 1, lastPage: 1, perPage: 20, total: 0 }
     loadingRef.value = false
     errorRef.value = null
+    fetchUnreadCountMock.mockResolvedValue(undefined)
     fetchNotificationsMock.mockResolvedValue(undefined)
     markReadMock.mockResolvedValue(true)
     markAllReadMock.mockResolvedValue(true)
   })
 
-  it('navigates to the request detail for claim_released notifications', async () => {
+  it('opens a summary dialog and marks a claim_released notification as read', async () => {
     notificationsRef.value = [{
       id: 'n-claim',
       type: 'App\\Notifications\\ClaimReleasedNotification',
@@ -76,8 +84,12 @@ describe('notifications page interactions', () => {
     await flushPromises()
 
     await wrapper.find('.notification-item').trigger('click')
+    await flushPromises()
 
-    expect(navigateToMock).toHaveBeenCalledWith('/requests/42')
+    expect(markReadMock).toHaveBeenCalledWith('n-claim')
+    expect(decrementUnreadMock).toHaveBeenCalled()
+    expect(navigateToMock).not.toHaveBeenCalled()
+    expect(notificationsRef.value[0]!.read_at).not.toBeNull()
   })
 
   it('does not navigate when marking a notification as read', async () => {

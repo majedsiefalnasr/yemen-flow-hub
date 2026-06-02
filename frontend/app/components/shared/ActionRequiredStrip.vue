@@ -83,7 +83,7 @@ const computedAriaLabel = computed(() =>
     role="alert"
     :aria-label="computedAriaLabel"
   >
-    <CardContent class="flex items-center gap-3 pb-4 pt-4">
+    <CardContent class="flex items-center gap-3">
       <component
         :is="IconComponent"
         class="h-5 w-5 shrink-0"

@@ -46,6 +46,7 @@ export interface AuthUser {
   mfa_required?: boolean
   totp_enabled?: boolean
   pin_enabled?: boolean
+  avatar_variant?: string | null
   stats?: ProfileStats
   recent_activity?: RecentActivity[]
 }
@@ -57,6 +58,7 @@ export interface UserPreferences {
   page_size: number
   default_filters: Record<string, any>
   notification_preferences: Record<string, any>
+  theming?: Record<string, any>
 }
 
 export interface Bank {
@@ -250,6 +252,7 @@ export interface User {
   last_login_at?: string | null
   last_seen_at?: string | null
   is_active: boolean
+  avatar_variant?: string | null
   created_at?: string | null
 }
 
@@ -335,10 +338,13 @@ export type NotificationType =
   | 'claim_released'
 
 export interface NotificationData {
-  type: NotificationType
-  message: string
-  request_id: number | null
-  reference_number: string | null
+  type?: NotificationType
+  message?: string
+  message_ar?: string
+  message_en?: string
+  request_id?: number | null
+  reference_number?: string | null
+  request_reference?: string | null
   reason?: 'manual' | 'ttl_expired' | null
   released_by_user_id?: number | null
   released_by_name?: string | null

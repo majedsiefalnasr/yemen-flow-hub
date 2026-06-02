@@ -1,12 +1,15 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest'
 
 const mockFetch = vi.fn()
+const mockAuth = vi.hoisted(() => ({
+  user: null as any,
+}))
 vi.stubGlobal('$fetch', mockFetch)
 vi.stubGlobal('useRuntimeConfig', () => ({ public: { apiBase: 'http://localhost' } }))
 
 // useAuthStore is imported by useProfile — stub it
 vi.mock('../../../stores/auth.store', () => ({
-  useAuthStore: () => ({ user: null }),
+  useAuthStore: () => mockAuth,
 }))
 
 const { useProfile } = await import('../../../composables/useProfile')
@@ -28,7 +31,10 @@ const SAMPLE_PROFILE = {
 }
 
 describe('useProfile — fetchProfile()', () => {
-  beforeEach(() => vi.resetAllMocks())
+  beforeEach(() => {
+    vi.resetAllMocks()
+    mockAuth.user = null
+  })
 
   it('sets profile on success', async () => {
     mockFetch.mockResolvedValueOnce({ success: true, data: SAMPLE_PROFILE })
@@ -47,7 +53,10 @@ describe('useProfile — fetchProfile()', () => {
 })
 
 describe('useProfile — updateProfile()', () => {
-  beforeEach(() => vi.resetAllMocks())
+  beforeEach(() => {
+    vi.resetAllMocks()
+    mockAuth.user = null
+  })
 
   it('sends PUT /api/profile with name, email, phone', async () => {
     mockFetch.mockResolvedValueOnce({ success: true, data: { ...SAMPLE_PROFILE, name: 'علي سالم' } })
@@ -60,6 +69,37 @@ describe('useProfile — updateProfile()', () => {
     }))
   })
 
+  it('normalizes phone before saving', async () => {
+    mockFetch.mockResolvedValueOnce({ success: true, data: { ...SAMPLE_PROFILE, phone: null } })
+    const { updateProfile } = useProfile()
+    const result = await updateProfile({ name: ' علي سالم ', email: ' ali@cby.gov.ye ', phone: ' +967 77 000 111 ' })
+    expect(result).toBe(true)
+    expect(mockFetch).toHaveBeenCalledWith('/api/profile', expect.objectContaining({
+      method: 'PUT',
+      body: { name: 'علي سالم', email: 'ali@cby.gov.ye', phone: '+96777000111' },
+    }))
+  })
+
+  it('normalizes blank phone to null before saving', async () => {
+    mockFetch.mockResolvedValueOnce({ success: true, data: { ...SAMPLE_PROFILE, phone: null } })
+    const { updateProfile } = useProfile()
+    const result = await updateProfile({ name: 'علي سالم', email: 'ali@cby.gov.ye', phone: '   ' })
+    expect(result).toBe(true)
+    expect(mockFetch).toHaveBeenCalledWith('/api/profile', expect.objectContaining({
+      body: expect.objectContaining({ phone: null }),
+    }))
+  })
+
+  it('refreshes the shared auth user after saving', async () => {
+    mockAuth.user = { ...SAMPLE_PROFILE }
+    const updated = { ...SAMPLE_PROFILE, name: 'علي سالم', avatar_variant: 'ring' }
+    mockFetch.mockResolvedValueOnce({ success: true, data: updated })
+    const { updateProfile } = useProfile()
+    const result = await updateProfile({ name: 'علي سالم', email: SAMPLE_PROFILE.email, avatar_variant: 'ring' })
+    expect(result).toBe(true)
+    expect(mockAuth.user).toEqual(updated)
+  })
+
   it('returns false and sets error on API failure', async () => {
     mockFetch.mockRejectedValueOnce({ data: { message: 'Validation failed' } })
     const { error, updateProfile } = useProfile()
@@ -70,7 +110,10 @@ describe('useProfile — updateProfile()', () => {
 })
 
 describe('useProfile — toggleMfa()', () => {
-  beforeEach(() => vi.resetAllMocks())
+  beforeEach(() => {
+    vi.resetAllMocks()
+    mockAuth.user = null
+  })
 
   it('sends POST /api/profile/mfa/toggle and updates profile', async () => {
     mockFetch.mockResolvedValueOnce({ success: true, data: { ...SAMPLE_PROFILE, mfa_enabled: false } })

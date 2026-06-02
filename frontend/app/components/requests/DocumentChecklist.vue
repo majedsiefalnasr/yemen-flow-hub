@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { AlertCircle } from 'lucide-vue-next'
+import { Skeleton } from '../ui/skeleton'
 import type { RequestDocument, CustomsDeclarationSummary } from '../../types/models'
 import { UserRole, RequestStatus } from '../../types/enums'
 import {
@@ -254,9 +255,9 @@ function formatDate(iso: string | null): string {
   <div class="flex flex-col gap-0" >
     <!-- Loading state -->
     <div v-if="loading" class="flex flex-col gap-3 py-2" aria-busy="true" aria-label="جارٍ تحميل المستندات">
-      <div class="w-full h-4 bg-gradient-to-r from-muted via-border to-muted rounded animate-pulse" />
-      <div class="w-full h-4 bg-gradient-to-r from-muted via-border to-muted rounded animate-pulse" />
-      <div class="w-3/5 h-4 bg-gradient-to-r from-muted via-border to-muted rounded animate-pulse" />
+      <Skeleton class="h-12 w-full rounded-lg" />
+      <Skeleton class="h-12 w-full rounded-lg" />
+      <Skeleton class="h-12 w-3/5 rounded-lg" />
     </div>
 
     <!-- Error state -->
@@ -291,12 +292,7 @@ function formatDate(iso: string | null): string {
           <!-- Staged requirement row -->
           <li
             v-if="row.kind === 'staged'"
-            class="flex items-start gap-2.5 p-3 rounded-lg border"
-            :class="{
-              'border-[var(--severity-green)]/30 bg-[var(--severity-green)]/5': !!row.doc,
-              'border-destructive bg-[var(--severity-red)]/10': !row.doc && row.requirement.required,
-              'border-border bg-muted': !row.doc && !row.requirement.required,
-            }"
+            class="flex items-start gap-2.5 p-3 rounded-lg border border-border"
           >
             <!-- Left: status icon box -->
             <div
@@ -341,16 +337,16 @@ function formatDate(iso: string | null): string {
                 size="sm"
                 :disabled="downloadingIds.has(row.doc.id)"
                 class="h-7 text-xs px-3 whitespace-nowrap"
-                :aria-label="`تحميل ${row.doc.original_filename}`"
+                :aria-label="`تنزيل ${row.doc.original_filename}`"
                 @click="emit('download', row.doc.id, row.doc.original_filename)"
               >
-                {{ downloadingIds.has(row.doc.id) ? 'جارٍ التحميل…' : 'تحميل' }}
+                {{ downloadingIds.has(row.doc.id) ? 'جارٍ التنزيل…' : 'تنزيل' }}
               </Button>
             </div>
           </li>
 
           <!-- Extra uploaded docs -->
-          <li v-else-if="row.kind === 'extra'" class="flex items-start gap-2.5 p-3 rounded-lg border border-[var(--severity-green)]/30 bg-[var(--severity-green)]/5">
+          <li v-else-if="row.kind === 'extra'" class="flex items-start gap-2.5 p-3 rounded-lg border border-border">
             <div class="flex-shrink-0 w-7 h-7 rounded-md flex items-center justify-center bg-[var(--severity-green)]/10 text-[var(--severity-green)]">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
                 <polyline points="20 6 9 17 4 12" />
@@ -379,18 +375,18 @@ function formatDate(iso: string | null): string {
               </span>
             </div>
             <div class="flex flex-col items-end gap-1.5 flex-shrink-0 pt-0.5">
-              <Badge v-if="row.doc.type === 'SWIFT'" class="bg-cyan-500 text-white text-xs">SWIFT</Badge>
-              <Badge v-else-if="row.doc.type === 'FX_REQUEST'" class="bg-violet-600 text-white text-xs">FX</Badge>
+              <Badge v-if="row.doc.type === 'SWIFT'" class="bg-[var(--info)]/15 text-[var(--info)] border-[var(--info)]/30 border text-xs">SWIFT</Badge>
+              <Badge v-else-if="row.doc.type === 'FX_REQUEST'" class="bg-[var(--voting)]/10 text-[var(--voting)] border-[var(--voting)]/30 border text-xs">FX</Badge>
               <Button
                 v-if="canDownloadDocument(userRole, row.doc.type)"
                 variant="outline"
                 size="sm"
                 :disabled="downloadingIds.has(row.doc.id)"
                 class="h-7 text-xs px-3 whitespace-nowrap"
-                :aria-label="`تحميل ${row.doc.original_filename}`"
+                :aria-label="`تنزيل ${row.doc.original_filename}`"
                 @click="emit('download', row.doc.id, row.doc.original_filename)"
               >
-                {{ downloadingIds.has(row.doc.id) ? 'جارٍ التحميل…' : 'تحميل' }}
+                {{ downloadingIds.has(row.doc.id) ? 'جارٍ التنزيل…' : 'تنزيل' }}
               </Button>
               <!-- Lock indicator for DATA_ENTRY on downstream docs (SWIFT / FX) -->
               <TooltipProvider v-else-if="userRole === UserRole.DATA_ENTRY && (row.doc.type === 'SWIFT' || row.doc.type === 'FX_REQUEST')">
@@ -415,7 +411,7 @@ function formatDate(iso: string | null): string {
           </li>
 
           <!-- Customs declaration row -->
-          <li v-else-if="row.kind === 'customs'" class="flex items-start gap-2.5 p-3 rounded-lg border border-[var(--severity-green)]/30 bg-[var(--severity-green)]/5">
+          <li v-else-if="row.kind === 'customs'" class="flex items-start gap-2.5 p-3 rounded-lg border border-border">
             <div class="flex-shrink-0 w-7 h-7 rounded-md flex items-center justify-center bg-[var(--severity-green)]/10 text-[var(--severity-green)]">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
                 <polyline points="20 6 9 17 4 12" />
@@ -438,10 +434,10 @@ function formatDate(iso: string | null): string {
                 size="sm"
                 :disabled="customsDownloading"
                 class="h-7 text-xs px-3 whitespace-nowrap"
-                aria-label="تحميل البيان الجمركي"
+                aria-label="تنزيل البيان الجمركي"
                 @click="emit('download-customs', row.customs.id, row.customs.declaration_number)"
               >
-                {{ customsDownloading ? 'جارٍ التحميل…' : 'تحميل' }}
+                {{ customsDownloading ? 'جارٍ التنزيل…' : 'تنزيل' }}
               </Button>
             </div>
           </li>
@@ -479,7 +475,7 @@ function formatDate(iso: string | null): string {
       </template>
 
       <p v-else-if="showLockedNote" class="text-xs text-muted-foreground flex items-center gap-1" role="note">
-        🔒 مقفل — لا يمكن تعديل المستندات
+        🔒 المستندات مقفلة، ولا يمكن تعديلها الآن
       </p>
     </div>
   </div>

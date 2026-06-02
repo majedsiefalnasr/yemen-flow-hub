@@ -20,6 +20,7 @@ import { RequestStatus, UserRole } from '@/types/enums'
 import {
   BANK_ROLES,
   CBY_BANK_FILTER_ROLES,
+  ROLE_ATTENTION_STATUSES,
   ROUTE_ROLE_MAP,
 } from '@/constants/workflow'
 import { useAuthStore } from '@/stores/auth.store'
@@ -44,6 +45,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import {
   DataTable,
+  DataTableBulkExport,
   DataTableFacetedFilter,
   DataTablePagination,
   DataTableToolbar,
@@ -116,6 +118,17 @@ function onPaginationChange(updater: PaginationState | ((old: PaginationState) =
   })
 }
 
+/**
+ * Returns the attention-needed statuses for the current role, or undefined if
+ * the role sees all requests by default (DATA_ENTRY, BANK_ADMIN, CBY_ADMIN).
+ * Used as the initial status filter when no explicit filter is set.
+ */
+const roleAttentionStatuses = computed((): RequestStatus[] | undefined => {
+  const role = user.value?.role
+  if (!role) return undefined
+  return ROLE_ATTENTION_STATUSES[role]
+})
+
 function buildFilter(overrides?: { page?: number; pageSize?: number }): RequestsFilter {
   const filter: RequestsFilter = {
     per_page: overrides?.pageSize ?? urlPageSize.value,
@@ -124,8 +137,13 @@ function buildFilter(overrides?: { page?: number; pageSize?: number }): Requests
   const q = query.value.trim()
   if (q) filter.search = q
   const statusCol = columnFilters.value.find(f => f.id === 'status')
-  if (statusCol && Array.isArray(statusCol.value) && statusCol.value.length > 0)
+  if (statusCol && Array.isArray(statusCol.value) && statusCol.value.length > 0) {
     filter.status = statusCol.value as RequestStatus[]
+  }
+  else if (roleAttentionStatuses.value) {
+    // No explicit status filter — fall back to attention-needed statuses for this role.
+    filter.status = roleAttentionStatuses.value
+  }
   const merchantCol = columnFilters.value.find(f => f.id === 'merchant')
   if (merchantCol && Array.isArray(merchantCol.value) && merchantCol.value.length > 0)
     filter.bank_id = parseInt(merchantCol.value[0] as string)
@@ -175,9 +193,20 @@ onMounted(async () => {
 })
 
 
-const hasActiveFilters = computed(() =>
-  columnFilters.value.length > 0 || query.value.trim().length > 0,
-)
+// Consider filters "active" only when the user has explicitly set something beyond the role default.
+const hasActiveFilters = computed(() => {
+  if (query.value.trim().length > 0) return true
+  if (columnFilters.value.length === 0) return false
+  // Check if the status filter differs from the role default
+  const statusCol = columnFilters.value.find(f => f.id === 'status')
+  const defaults = roleAttentionStatuses.value
+  if (!statusCol || !Array.isArray(statusCol.value)) {
+    return columnFilters.value.some(f => f.id !== 'status')
+  }
+  const active = statusCol.value as RequestStatus[]
+  if (!defaults || active.length !== defaults.length) return true
+  return active.some((s, i) => s !== defaults[i]) || columnFilters.value.some(f => f.id !== 'status')
+})
 
 const selectedCount = computed(() => Object.values(rowSelection.value).filter(Boolean).length)
 
@@ -226,7 +255,7 @@ const roleKpiCards = computed(() => {
 
     case UserRole.SUPPORT_COMMITTEE:
       return [
-        { label: 'بانتظار الحجز', value: count(RequestStatus.SUPPORT_REVIEW_PENDING), icon: ClipboardList, description: 'متاحة للمطالبة', tone: 'warning' as const, active: isActive(RequestStatus.SUPPORT_REVIEW_PENDING), onClick: on(RequestStatus.SUPPORT_REVIEW_PENDING) },
+        { label: 'انتظار لجنة الدعم', value: count(RequestStatus.SUPPORT_REVIEW_PENDING), icon: ClipboardList, description: 'متاحة للمراجعة', tone: 'warning' as const, active: isActive(RequestStatus.SUPPORT_REVIEW_PENDING), onClick: on(RequestStatus.SUPPORT_REVIEW_PENDING) },
         { label: 'قيد المراجعة', value: count(RequestStatus.SUPPORT_REVIEW_IN_PROGRESS), icon: Eye, description: 'محجوزة حالياً', tone: 'warning' as const, active: isActive(RequestStatus.SUPPORT_REVIEW_IN_PROGRESS), onClick: on(RequestStatus.SUPPORT_REVIEW_IN_PROGRESS) },
         { label: 'تم اعتمادها', value: count(RequestStatus.SUPPORT_APPROVED), icon: CheckCircle2, description: 'اعتمدتها اللجنة', tone: 'success' as const, active: isActive(RequestStatus.SUPPORT_APPROVED), onClick: on(RequestStatus.SUPPORT_APPROVED) },
         { label: 'مرفوضة أو معادة', value: count(RequestStatus.SUPPORT_REJECTED, RequestStatus.SUPPORT_RETURNED), icon: AlertCircle, description: 'رفضتها اللجنة أو أعادتها', tone: 'danger' as const, active: isActive(RequestStatus.SUPPORT_REJECTED, RequestStatus.SUPPORT_RETURNED), onClick: on(RequestStatus.SUPPORT_REJECTED, RequestStatus.SUPPORT_RETURNED) },
@@ -311,13 +340,16 @@ function buildExportFilename(): string {
   return `requests-${new Date().toISOString().slice(0, 10)}`
 }
 
-function exportSelectedRows() {
+function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
   const selectedIndices = Object.entries(rowSelection.value)
     .filter(([, v]) => v)
     .map(([k]) => parseInt(k))
   const rows = store.requests.filter((_, i) => selectedIndices.includes(i))
   if (!rows.length || !exportColumns.value.length) return
-  exportToCSV(rows, exportColumns.value, `${buildExportFilename()}-selected`)
+  const filename = `${buildExportFilename()}-selected`
+  if (format === 'csv') exportToCSV(rows, exportColumns.value, filename)
+  else if (format === 'excel') exportToExcel(rows as unknown as Record<string, unknown>[], exportColumns.value as any, filename)
+  else exportToJSON(rows as unknown as Record<string, unknown>[], exportColumns.value as any, filename)
 }
 
 // ── Smart export ─────────────────────────────────────────────────────────────
@@ -340,9 +372,11 @@ async function doExport(scope: 'page' | 'filtered' | 'all', format: 'csv' | 'exc
       rows = result.data
     }
     const filename = buildExportFilename()
-    if (format === 'csv') exportToCSV(rows, exportColumns.value, filename)
-    else if (format === 'excel') exportToExcel(rows, exportColumns.value, filename)
-    else exportToJSON(rows, exportColumns.value, filename)
+    const exportRows = rows as unknown as Record<string, unknown>[]
+    const columns = exportColumns.value as unknown as Parameters<typeof exportToCSV<Record<string, unknown>>>[1]
+    if (format === 'csv') exportToCSV(exportRows, columns, filename)
+    else if (format === 'excel') exportToExcel(exportRows, columns, filename)
+    else exportToJSON(exportRows, columns, filename)
   }
   catch {
     toast.error('تعذّر التصدير. تحقق من اتصالك وأعد المحاولة.')
@@ -408,7 +442,7 @@ const requestsEmptyState = computed(() => buildRequestsEmptyState({
   <div v-if="user">
     <PageHeader
       title="طلبات تمويل الواردات"
-      :subtitle="isBankScoped ? 'طلبات جهتك، للعرض والإدارة فقط' : 'جميع الطلبات المقدمة عبر المنصة'"
+      :subtitle="isBankScoped ? 'طلبات جهتك، للعرض والإدارة فقط' : roleAttentionStatuses ? 'الطلبات التي تتطلب إجراءً منك' : 'جميع الطلبات المقدمة عبر المنصة'"
       :breadcrumbs="[{ label: 'الرئيسية', to: '/' }, { label: 'الطلبات' }]"
     >
       <template #actions>
@@ -481,9 +515,11 @@ const requestsEmptyState = computed(() => buildRequestsEmptyState({
             :selected-count="selectedCount"
             @update:search="v => query = v"
             @reset="handleReset"
-            @export-selected="exportSelectedRows"
             @clear-selection="clearBulkSelection"
           >
+            <template #bulk-actions>
+              <DataTableBulkExport @csv="exportSelectedRows('csv')" @excel="exportSelectedRows('excel')" @json="exportSelectedRows('json')" />
+            </template>
             <template #filters>
               <DataTableFacetedFilter
                 v-if="table.getColumn('status')"

@@ -1,5 +1,15 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { Check, Circle, Dot, Lock } from 'lucide-vue-next'
+import { Button } from '@/components/ui/button'
+import {
+  Stepper,
+  StepperDescription,
+  StepperItem,
+  StepperSeparator,
+  StepperTitle,
+  StepperTrigger,
+} from '@/components/ui/stepper'
 import { RequestStatus } from '../../types/enums'
 import { STATUS_LABELS } from '../../constants/workflow'
 import type { RequestStageHistory } from '../../types/models'
@@ -9,7 +19,6 @@ const props = defineProps<{
   history: RequestStageHistory[]
 }>()
 
-/** Ordered list of all 21 canonical workflow stages */
 const WORKFLOW_STAGE_ORDER: RequestStatus[] = [
   RequestStatus.DRAFT,
   RequestStatus.DRAFT_REJECTED_INTERNAL,
@@ -35,11 +44,6 @@ const WORKFLOW_STAGE_ORDER: RequestStatus[] = [
   RequestStatus.COMPLETED,
 ]
 
-/**
- * Branch/rejection states that must not show a green "completed" checkmark
- * unless the request actually visited them (present in history).
- * These are side-branches off the happy path, not linear progressions.
- */
 const BRANCH_STATUSES = new Set<RequestStatus>([
   RequestStatus.DRAFT_REJECTED_INTERNAL,
   RequestStatus.BANK_RETURNED,
@@ -49,179 +53,131 @@ const BRANCH_STATUSES = new Set<RequestStatus>([
   RequestStatus.BANK_REJECTED,
 ])
 
-/** Dead-end terminal statuses — no further actions possible. */
 const TERMINAL_STATUSES = new Set<RequestStatus>([
   RequestStatus.EXECUTIVE_REJECTED,
   RequestStatus.BANK_REJECTED,
 ])
 
-const currentIndex = computed(
-  () => WORKFLOW_STAGE_ORDER.indexOf(props.currentStatus),
-)
+const currentIndex = computed(() => WORKFLOW_STAGE_ORDER.indexOf(props.currentStatus))
 
-/** History sorted ascending by created_at — defensive regardless of API sort order. */
 const sortedHistory = computed(() =>
   [...props.history].sort((a, b) => a.created_at.localeCompare(b.created_at)),
 )
 
-/** Set of statuses the request actually visited, derived from history. */
 const visitedStatuses = computed(() =>
   new Set(sortedHistory.value.map(e => e.to_status).filter(Boolean)),
 )
 
-/** History entry that transitioned INTO the current status (most recent). */
 const currentEntry = computed(() =>
   [...sortedHistory.value].reverse().find(e => e.to_status === props.currentStatus) ?? null,
 )
 
-type StageState = 'completed' | 'current' | 'future' | 'terminal' | 'skipped'
+type ExtraState = 'terminal' | 'skipped' | null
 
 interface StageItem {
   status: RequestStatus
   label: string
-  state: StageState
+  stepNumber: number
+  extraState: ExtraState
   entry: RequestStageHistory | null
 }
 
 const stages = computed((): StageItem[] => {
   const knownIndex = currentIndex.value
-
   return WORKFLOW_STAGE_ORDER.map((status, idx) => {
     const isCurrent = status === props.currentStatus
-    const isTerminal = TERMINAL_STATUSES.has(status) && isCurrent
+    let extraState: ExtraState = null
 
-    let state: StageState
+    if (TERMINAL_STATUSES.has(status) && isCurrent) extraState = 'terminal'
+    else if (
+      knownIndex !== -1
+      && idx < knownIndex
+      && BRANCH_STATUSES.has(status)
+      && !visitedStatuses.value.has(status)
+    ) extraState = 'skipped'
 
-    if (isTerminal) {
-      state = 'terminal'
+    return {
+      status,
+      label: STATUS_LABELS[status],
+      stepNumber: idx + 1,
+      extraState,
+      entry: isCurrent ? currentEntry.value : null,
     }
-    else if (isCurrent) {
-      state = 'current'
-    }
-    else if (knownIndex === -1) {
-      // currentStatus not in WORKFLOW_STAGE_ORDER — treat all as future
-      state = 'future'
-    }
-    else if (idx < knownIndex) {
-      if (BRANCH_STATUSES.has(status) && !visitedStatuses.value.has(status)) {
-        // Branch stage the request never visited — show as skipped, not completed
-        state = 'skipped'
-      }
-      else {
-        state = 'completed'
-      }
-    }
-    else {
-      state = 'future'
-    }
-
-    const entry = isCurrent ? currentEntry.value : null
-
-    return { status, label: STATUS_LABELS[status], state, entry }
   })
 })
 
+// Stepper model value: 1-based index of current step
+const stepperValue = computed(() => currentIndex.value + 1)
+
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('ar-YE', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
+    year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
   })
-}
-
-function stageItemClasses(state: StageState): string {
-  const baseClasses = 'relative flex flex-col'
-  const stateMap: Record<StageState, string> = {
-    completed: '',
-    current: '',
-    future: '',
-    terminal: '',
-    skipped: '',
-  }
-  return `${baseClasses} ${stateMap[state]}`
-}
-
-function stageLabelClasses(state: StageState): string {
-  const baseClasses = 'text-sm font-medium'
-  const stateMap: Record<StageState, string> = {
-    completed: 'text-foreground',
-    current: 'text-primary font-bold',
-    future: 'text-muted-foreground font-normal',
-    terminal: 'text-muted-foreground font-bold',
-    skipped: 'text-muted-foreground font-normal italic',
-  }
-  return `${baseClasses} ${stateMap[state]}`
-}
-
-function stageBodyClasses(state: StageState): string {
-  const baseClasses = 'flex items-start gap-3 py-1'
-  if (state === 'current' || state === 'terminal') {
-    return `${baseClasses} bg-muted/50 rounded-lg p-2 -mx-3`
-  }
-  return baseClasses
-}
-
-function connectorClasses(isDone: boolean): string {
-  return `w-0.5 h-5 flex-shrink-0 -mr-[5.5px] mb-0 ${isDone ? 'bg-[var(--color-surface-success)]' : 'bg-border'}`
 }
 </script>
 
 <template>
-  <div class="flex flex-col py-2 px-0 relative"  role="list" aria-label="مسار سير العمل">
-    <div
-      v-for="(stage, idx) in stages"
+  <Stepper
+    :model-value="stepperValue"
+    orientation="vertical"
+    class="flex w-full flex-col justify-start gap-4"
+    aria-label="مسار سير العمل"
+  >
+    <StepperItem
+      v-for="stage in stages"
       :key="stage.status"
-      :class="stageItemClasses(stage.state)"
-      role="listitem"
-      :aria-current="stage.state === 'current' || stage.state === 'terminal' ? 'step' : undefined"
+      v-slot="{ state }"
+      class="relative flex w-full items-start gap-4"
+      :step="stage.stepNumber"
     >
-      <!-- Connector line (except for first item) -->
-      <div
-        v-if="idx > 0"
-        :class="connectorClasses(stage.state === 'completed' || stage.state === 'current' || stage.state === 'terminal')"
-        aria-hidden="true"
+      <StepperSeparator
+        v-if="stage.stepNumber !== stages[stages.length - 1]?.stepNumber"
+        class="absolute inset-s-[12px] top-[20px] block h-[110%] w-0.5 shrink-0 rounded-full bg-muted group-data-[state=completed]:bg-primary"
       />
 
-      <div :class="stageBodyClasses(stage.state)">
-        <!-- Node icon -->
-        <div class="w-5 h-5 flex-shrink-0 flex items-center justify-center" aria-hidden="true">
-          <!-- Completed: green checkmark -->
-          <svg v-if="stage.state === 'completed'" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-[var(--color-text-success)]" role="img" aria-label="مكتمل">
-            <polyline points="20 6 9 17 4 12" />
-          </svg>
-          <!-- Terminal (EXECUTIVE_REJECTED): lock icon -->
-          <svg v-else-if="stage.state === 'terminal'" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-muted-foreground" role="img" aria-label="نهائي">
-            <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-          </svg>
-          <!-- Skipped branch (not visited): dash -->
-          <span v-else-if="stage.state === 'skipped'" class="w-3 h-3 flex-shrink-0 rounded-full border-2 border-dashed border-border bg-transparent" aria-hidden="true" />
-          <!-- Current: filled circle -->
-          <span v-else-if="stage.state === 'current'" class="w-3 h-3 rounded-full bg-primary shadow-[0_0_0_3px_rgba(0,113,227,0.2)]" aria-hidden="true" />
-          <!-- Future: empty circle -->
-          <span v-else class="w-3 h-3 rounded-full border-2 border-border bg-transparent" aria-hidden="true" />
-        </div>
+      <StepperTrigger as-child>
+        <Button
+          :variant="state === 'completed' || state === 'active' ? 'default' : 'outline'"
+          size="icon"
+          class="z-10 rounded-full shrink-0 size-6 pointer-events-none"
+          :class="[state === 'active' && 'ring-2 ring-ring ring-offset-2 ring-offset-background']"
+        >
+          <Lock v-if="stage.extraState === 'terminal'" class="size-3.5" />
+          <Check v-else-if="state === 'completed'" class="size-3" />
+          <Circle v-else-if="state === 'active'" class="size-3" />
+          <Dot v-else class="size-3" />
+        </Button>
+      </StepperTrigger>
 
-        <!-- Stage content -->
-        <div class="flex flex-col gap-0.5 flex-1 pb-1">
-          <span :class="stageLabelClasses(stage.state)">{{ stage.label }}</span>
+      <div class="flex flex-col gap-0.5 pt-0.5 flex-1">
+        <StepperTitle
+          class="text-sm leading-snug"
+          :class="[
+            stage.extraState === 'skipped' ? 'italic text-muted-foreground font-normal' :
+            state === 'active' ? 'font-semibold text-foreground' :
+            state === 'completed' ? 'text-foreground' : 'font-normal text-muted-foreground',
+          ]"
+        >
+          {{ stage.label }}
+        </StepperTitle>
 
-          <!-- Current/terminal stage: show actor + timestamp from history -->
-          <template v-if="(stage.state === 'current' || stage.state === 'terminal') && stage.entry">
-            <span class="text-xs text-muted-foreground">
-              {{ stage.entry.performed_by?.name ?? `#${stage.entry.actor_id}` }}
-            </span>
-            <span class="text-xs text-muted-foreground">{{ formatDate(stage.entry.created_at) }}</span>
-          </template>
-
-          <!-- Terminal label — EXECUTIVE_REJECTED only (dead-end, no further actions) -->
-          <span v-if="stage.state === 'terminal'" class="text-xs font-semibold text-muted-foreground mt-0.5">
-            نهائي — لا إجراءات إضافية
+        <StepperDescription
+          v-if="state === 'active' && stage.entry"
+          class="flex flex-col gap-0.5"
+        >
+          <span class="text-xs text-muted-foreground">
+            {{ stage.entry.performed_by?.name ?? `#${stage.entry.actor_id}` }}
           </span>
-        </div>
+          <span class="text-xs text-muted-foreground">{{ formatDate(stage.entry.created_at) }}</span>
+        </StepperDescription>
+
+        <StepperDescription
+          v-if="stage.extraState === 'terminal'"
+          class="text-xs font-semibold text-muted-foreground"
+        >
+          نهائي — لا إجراءات إضافية
+        </StepperDescription>
       </div>
-    </div>
-  </div>
+    </StepperItem>
+  </Stepper>
 </template>

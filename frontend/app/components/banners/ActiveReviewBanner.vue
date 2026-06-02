@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { AlarmClock } from 'lucide-vue-next'
 import { Alert, AlertDescription } from '../ui/alert'
 import { Badge } from '../ui/badge'
+import { Button } from '../ui/button'
 
 const props = defineProps<{
   claimedUntil?: string | null
@@ -65,12 +66,14 @@ onBeforeUnmount(() => {
       />
       heartbeat
     </span>
-    <button
-      class="flex-shrink-0 px-3 py-1.5 bg-background border border-[var(--voting)]/30 text-[var(--voting)] text-xs font-semibold rounded-xl hover:bg-[var(--voting)]/10 transition-colors"
+    <Button
+      size="sm"
+      variant="outline"
+      class="flex-shrink-0"
       @click="$emit('release')"
     >
       تحرير الحجز
-    </button>
+    </Button>
     <Badge class="flex-shrink-0 bg-[var(--voting)] text-white hover:bg-[var(--voting)]">مراجعة نشطة</Badge>
   </Alert>
 </template>

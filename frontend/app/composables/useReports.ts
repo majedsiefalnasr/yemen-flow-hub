@@ -9,6 +9,7 @@ export interface ReportFilter {
 export interface WorkflowReport {
   counts_by_status: Record<string, number>
   counts_by_bank: Array<{ bank_id: number; bank_name: string; total: number }>
+  bank_breakdown?: Array<{ bank_id?: number; bank_name: string; total: number; approved?: number; rejected?: number; total_value?: number }>
   avg_time_per_stage_hours: Record<string, number>
   throughput: { completed: number; approved: number; rejected: number }
   // New in 7.8
@@ -18,6 +19,12 @@ export interface WorkflowReport {
   submission_heatmap: Array<{ day: number; slot: number; count: number }>
   total_financing_value: number
   duplicate_invoice_count: number
+  voting_analytics?: Array<{ user_id: number; name: string; sessions: number; approvals: number; rejections: number; avg_hours?: number | null }>
+  sla_performance?: Array<{ stage: string; avg_hours?: number | null; breach_rate?: number | null }>
+  swift_stats?: { uploaded?: number; avg_upload_hours?: number | null; pending?: number }
+  fx_stats?: { completed?: number; pending?: number }
+  compliance?: { on_time_rate?: number | null; sla_violations?: number; returned_count?: number }
+  audit_summary?: { total_events?: number; auth_failures?: number }
 }
 
 export interface BankReport {

@@ -19,7 +19,7 @@ export const requestFormSchema = z.object({
 
   goods_type: z.string().max(100, 'الاسم طويل جداً').optional(),
 
-  payment_terms: z.enum(['LC', 'TT', 'CAD']).or(z.literal('')).optional(),
+  payment_terms: z.enum(['LC', 'TT', 'CAD', 'OA']).or(z.literal('')).optional(),
 
   due_date: z.string()
     .refine((value) => value === '' || !Number.isNaN(Date.parse(value)), 'تاريخ غير صالح')

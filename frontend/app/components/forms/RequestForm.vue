@@ -30,7 +30,7 @@ const { handleSubmit, errors, setValues, values } = useForm({
     currency: (props.initialValues?.currency as Currency | undefined) ?? Currency.USD,
     amount: props.initialValues?.amount ?? undefined,
     goods_type: props.initialValues?.goods_type ?? '',
-    payment_terms: (props.initialValues?.payment_terms ?? '') as '' | 'LC' | 'TT' | 'CAD',
+    payment_terms: (props.initialValues?.payment_terms ?? '') as '' | 'LC' | 'TT' | 'CAD' | 'OA',
     due_date: props.initialValues?.due_date ?? '',
     supplier_name: props.initialValues?.supplier_name ?? '',
     goods_description: props.initialValues?.goods_description ?? '',
@@ -56,7 +56,7 @@ watch(
       currency: (next.currency as Currency | undefined) ?? Currency.USD,
       amount: next.amount ?? undefined,
       goods_type: next.goods_type ?? '',
-      payment_terms: (next.payment_terms ?? '') as '' | 'LC' | 'TT' | 'CAD',
+      payment_terms: (next.payment_terms ?? '') as '' | 'LC' | 'TT' | 'CAD' | 'OA',
       due_date: next.due_date ?? '',
       supplier_name: next.supplier_name ?? '',
       goods_description: next.goods_description ?? '',
@@ -141,7 +141,7 @@ const onSubmit = handleSubmit((v) => {
           <AlertTriangle class="h-4 w-4" />
           <AlertDescription>
             <div class="flex items-center justify-between gap-2">
-              <span>تعذّر تحميل قائمة التجار.</span>
+              <span>تعذر تحميل قائمة التجار الآن. أعد المحاولة بعد قليل.</span>
               <Button
                 type="button"
                 variant="outline"
@@ -163,7 +163,7 @@ const onSubmit = handleSubmit((v) => {
             @update:model-value="(val) => setValues({ merchant_id: val ? Number(val) : undefined })"
           >
             <SelectTrigger id="merchant-select" :class="{ 'border-destructive': errors.merchant_id }">
-              <SelectValue :placeholder="merchantsLoading ? 'جاري التحميل...' : 'اختر المستورد...'" />
+              <SelectValue :placeholder="merchantsLoading ? 'جارٍ تحميل القائمة...' : 'اختر المستورد'" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem v-for="m in merchants" :key="m.id" :value="String(m.id)">
@@ -192,7 +192,7 @@ const onSubmit = handleSubmit((v) => {
           :disabled="loading"
           :class="{ 'border-destructive': errors.supplier_name }"
           placeholder="أدخل اسم المورد"
-          @input="(e) => setValues({ supplier_name: (e.target as HTMLInputElement).value })"
+          @input="(e: Event) => setValues({ supplier_name: (e.target as HTMLInputElement).value })"
         />
         <p v-if="errors.supplier_name" class="text-sm text-[var(--color-text-error)]">{{ errors.supplier_name }}</p>
       </div>
@@ -214,7 +214,7 @@ const onSubmit = handleSubmit((v) => {
           :class="{ 'border-destructive': errors.goods_description }"
           placeholder="أدخل وصفاً تفصيلياً للبضائع"
           rows="3"
-          @input="(e) => setValues({ goods_description: (e.target as HTMLTextAreaElement).value })"
+          @input="(e: Event) => setValues({ goods_description: (e.target as HTMLTextAreaElement).value })"
         />
         <p v-if="errors.goods_description" class="text-sm text-[var(--color-text-error)]">{{ errors.goods_description }}</p>
       </div>
@@ -231,7 +231,7 @@ const onSubmit = handleSubmit((v) => {
           :disabled="loading"
           :class="{ 'border-destructive': errors.port_of_entry }"
           placeholder="مثال: ميناء عدن"
-          @input="(e) => setValues({ port_of_entry: (e.target as HTMLInputElement).value })"
+          @input="(e: Event) => setValues({ port_of_entry: (e.target as HTMLInputElement).value })"
         />
         <p v-if="errors.port_of_entry" class="text-sm text-[var(--color-text-error)]">{{ errors.port_of_entry }}</p>
       </div>
@@ -256,7 +256,7 @@ const onSubmit = handleSubmit((v) => {
             :disabled="loading"
             :class="{ 'border-destructive': errors.amount }"
             placeholder="0.00"
-            @input="(e) => setValues({ amount: Number((e.target as HTMLInputElement).value) || undefined })"
+            @input="(e: Event) => setValues({ amount: Number((e.target as HTMLInputElement).value) || undefined })"
           />
           <p v-if="errors.amount" class="text-sm text-[var(--color-text-error)]">{{ errors.amount }}</p>
         </div>
@@ -294,7 +294,7 @@ const onSubmit = handleSubmit((v) => {
             :disabled="loading"
             :class="{ 'border-destructive': errors.goods_type }"
             placeholder="مثال: مواد غذائية"
-            @input="(e) => setValues({ goods_type: (e.target as HTMLInputElement).value })"
+            @input="(e: Event) => setValues({ goods_type: (e.target as HTMLInputElement).value })"
           />
           <p v-if="errors.goods_type" class="text-sm text-[var(--color-text-error)]">{{ errors.goods_type }}</p>
         </div>
@@ -302,18 +302,19 @@ const onSubmit = handleSubmit((v) => {
         <div class="flex flex-col gap-2 flex-1">
           <Label for="payment-terms" class="text-sm">شروط الدفع</Label>
           <Select
-            :model-value="values.payment_terms || ''"
+            :model-value="values.payment_terms || '__none__'"
             :disabled="loading"
-            @update:model-value="(val) => setValues({ payment_terms: (val || '') as '' | 'LC' | 'TT' | 'CAD' })"
+            @update:model-value="(val) => setValues({ payment_terms: (val === '__none__' ? '' : val) as '' | 'LC' | 'TT' | 'CAD' | 'OA' })"
           >
             <SelectTrigger id="payment-terms" :class="{ 'border-destructive': errors.payment_terms }">
               <SelectValue placeholder="اختر شروط الدفع" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">بدون شروط</SelectItem>
+              <SelectItem value="__none__">بدون شروط</SelectItem>
               <SelectItem value="LC">LC</SelectItem>
               <SelectItem value="TT">TT</SelectItem>
               <SelectItem value="CAD">CAD</SelectItem>
+              <SelectItem value="OA">OA</SelectItem>
             </SelectContent>
           </Select>
           <p v-if="errors.payment_terms" class="text-sm text-[var(--color-text-error)]">{{ errors.payment_terms }}</p>
@@ -328,7 +329,7 @@ const onSubmit = handleSubmit((v) => {
           type="date"
           :disabled="loading"
           :class="{ 'border-destructive': errors.due_date }"
-          @input="(e) => setValues({ due_date: (e.target as HTMLInputElement).value })"
+          @input="(e: Event) => setValues({ due_date: (e.target as HTMLInputElement).value })"
         />
         <p v-if="errors.due_date" class="text-sm text-[var(--color-text-error)]">{{ errors.due_date }}</p>
       </div>
@@ -346,7 +347,7 @@ const onSubmit = handleSubmit((v) => {
             type="text"
             :disabled="loading"
             :class="{ 'border-destructive': errors.invoice_number }"
-            @input="(e) => setValues({ invoice_number: (e.target as HTMLInputElement).value })"
+            @input="(e: Event) => setValues({ invoice_number: (e.target as HTMLInputElement).value })"
           />
           <p v-if="errors.invoice_number" class="text-sm text-[var(--color-text-error)]">{{ errors.invoice_number }}</p>
         </div>
@@ -359,7 +360,7 @@ const onSubmit = handleSubmit((v) => {
             type="date"
             :disabled="loading"
             :class="{ 'border-destructive': errors.invoice_date }"
-            @input="(e) => setValues({ invoice_date: (e.target as HTMLInputElement).value })"
+            @input="(e: Event) => setValues({ invoice_date: (e.target as HTMLInputElement).value })"
           />
           <p v-if="errors.invoice_date" class="text-sm text-[var(--color-text-error)]">{{ errors.invoice_date }}</p>
         </div>
@@ -374,7 +375,7 @@ const onSubmit = handleSubmit((v) => {
             type="text"
             :disabled="loading"
             :class="{ 'border-destructive': errors.origin_country }"
-            @input="(e) => setValues({ origin_country: (e.target as HTMLInputElement).value })"
+            @input="(e: Event) => setValues({ origin_country: (e.target as HTMLInputElement).value })"
           />
           <p v-if="errors.origin_country" class="text-sm text-[var(--color-text-error)]">{{ errors.origin_country }}</p>
         </div>
@@ -387,7 +388,7 @@ const onSubmit = handleSubmit((v) => {
             type="text"
             :disabled="loading"
             :class="{ 'border-destructive': errors.arrival_port }"
-            @input="(e) => setValues({ arrival_port: (e.target as HTMLInputElement).value })"
+            @input="(e: Event) => setValues({ arrival_port: (e.target as HTMLInputElement).value })"
           />
           <p v-if="errors.arrival_port" class="text-sm text-[var(--color-text-error)]">{{ errors.arrival_port }}</p>
         </div>
@@ -402,7 +403,7 @@ const onSubmit = handleSubmit((v) => {
             type="text"
             :disabled="loading"
             :class="{ 'border-destructive': errors.shipping_port }"
-            @input="(e) => setValues({ shipping_port: (e.target as HTMLInputElement).value })"
+            @input="(e: Event) => setValues({ shipping_port: (e.target as HTMLInputElement).value })"
           />
           <p v-if="errors.shipping_port" class="text-sm text-[var(--color-text-error)]">{{ errors.shipping_port }}</p>
         </div>
@@ -415,7 +416,7 @@ const onSubmit = handleSubmit((v) => {
             type="text"
             :disabled="loading"
             :class="{ 'border-destructive': errors.customs_office }"
-            @input="(e) => setValues({ customs_office: (e.target as HTMLInputElement).value })"
+            @input="(e: Event) => setValues({ customs_office: (e.target as HTMLInputElement).value })"
           />
           <p v-if="errors.customs_office" class="text-sm text-[var(--color-text-error)]">{{ errors.customs_office }}</p>
         </div>
@@ -429,7 +430,7 @@ const onSubmit = handleSubmit((v) => {
           type="text"
           :disabled="loading"
           :class="{ 'border-destructive': errors.bl_number }"
-          @input="(e) => setValues({ bl_number: (e.target as HTMLInputElement).value })"
+          @input="(e: Event) => setValues({ bl_number: (e.target as HTMLInputElement).value })"
         />
         <p v-if="errors.bl_number" class="text-sm text-[var(--color-text-error)]">{{ errors.bl_number }}</p>
       </div>
@@ -447,7 +448,7 @@ const onSubmit = handleSubmit((v) => {
           :disabled="loading"
           placeholder="أي ملاحظات إضافية (اختياري)"
           rows="3"
-          @input="(e) => setValues({ notes: (e.target as HTMLTextAreaElement).value })"
+          @input="(e: Event) => setValues({ notes: (e.target as HTMLTextAreaElement).value })"
         />
       </div>
     </section>
@@ -462,4 +463,3 @@ const onSubmit = handleSubmit((v) => {
     </div>
   </form>
 </template>
-

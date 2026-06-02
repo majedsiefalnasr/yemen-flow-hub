@@ -60,7 +60,7 @@ const onSubmit = handleSubmit(async () => {
     <Card>
       <CardHeader>
         <CardTitle>تأمين الحساب بخطوة تحقق إضافية</CardTitle>
-        <CardDescription>اتبع نفس نمط إدخال النماذج المعتمد داخل المنصة لإكمال تفعيل MFA.</CardDescription>
+        <CardDescription>أكمل الخطوات التالية لتفعيل المصادقة متعددة العوامل على حسابك.</CardDescription>
       </CardHeader>
       <CardContent>
         <Alert v-if="isDone" class="mb-4">
@@ -114,7 +114,7 @@ const onSubmit = handleSubmit(async () => {
               <Loader2 v-if="isSubmitting" class="me-2 size-4 animate-spin" />
               {{ isSubmitting ? 'جارٍ الحفظ...' : 'تفعيل المصادقة الثنائية' }}
             </Button>
-            <Button type="button" variant="outline" class="h-10" @click="navigateTo('/settings?tab=profile')">
+            <Button type="button" variant="outline" class="h-10" @click="navigateTo('/settings?section=profile')">
               العودة للملف الشخصي
             </Button>
           </div>

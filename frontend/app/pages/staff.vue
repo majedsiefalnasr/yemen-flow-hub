@@ -25,6 +25,8 @@ import StaffModal from '../components/staff/StaffModal.vue'
 import EmptyState from '../components/shared/EmptyState.vue'
 import type { CreateUserPayload, UpdateUserPayload } from '../composables/useUsers'
 import { useTableExport } from '../composables/useTableExport'
+import BoringAvatar from '../components/shared/BoringAvatar.vue'
+import { persistUserAvatar, type AvatarVariant } from '../composables/useUserAvatar'
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -37,7 +39,6 @@ import {
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -112,15 +113,6 @@ const filteredStaff = computed(() => {
   )
 })
 
-function getAvatarInitials(name: string): string {
-  return name.trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase()
-}
-
-function getAvatarColor(id: number): string {
-  const colors = ['var(--color-primary)', 'var(--color-voting)', 'var(--color-info)', 'var(--color-success)', 'var(--color-warning)', 'var(--color-destructive)']
-  return colors[id % colors.length]!
-}
-
 function getFirstApiErrorMessage(err: unknown): string | null {
   const data = (err as { data?: ApiError })?.data
   if (!data) return null
@@ -139,7 +131,7 @@ async function loadStaff() {
     staff.value = await fetchUsers()
   }
   catch {
-    error.value = 'تعذّر تحميل بيانات الموظفين.'
+    error.value = 'تعذر تحميل بيانات الموظفين الآن. أعد المحاولة بعد قليل.'
   }
   finally {
     loading.value = false
@@ -178,6 +170,7 @@ async function handleSave(data: {
   role: UserRole
   department: string
   password?: string
+  avatar_variant: AvatarVariant
 }) {
   saving.value = true
   serverError.value = null
@@ -195,11 +188,18 @@ async function handleSave(data: {
         role: data.role,
         bank_id: auth.user.bank_id,
         is_active: currentUser.is_active,
+        avatar_variant: data.avatar_variant,
       }
       if (data.password) payload.password = data.password
       const updated = await updateUser(editingStaff.value.id, payload)
       const idx = staff.value.findIndex(s => s.id === updated.id)
       if (idx !== -1) staff.value[idx] = updated
+      persistUserAvatar(updated.email, { variant: data.avatar_variant })
+      // Mirror onto the auth store so the topbar / sidebar avatar refresh
+      // immediately when a bank admin edits their own row.
+      if (auth.user && auth.user.id === updated.id) {
+        auth.user = { ...auth.user, ...updated, avatar_variant: data.avatar_variant }
+      }
     }
     else {
       const payload: CreateUserPayload = {
@@ -209,14 +209,16 @@ async function handleSave(data: {
         role: data.role,
         bank_id: auth.user.bank_id,
         is_active: true,
+        avatar_variant: data.avatar_variant,
       }
       const created = await createUser(payload)
       staff.value.unshift(created)
+      persistUserAvatar(created.email, { variant: data.avatar_variant })
     }
     closeModal()
   }
   catch (err: unknown) {
-    serverError.value = getFirstApiErrorMessage(err) ?? 'حدث خطأ أثناء الحفظ.'
+    serverError.value = getFirstApiErrorMessage(err) ?? 'تعذر حفظ بيانات الموظف. راجع الحقول ثم أعد المحاولة.'
   }
   finally {
     saving.value = false
@@ -285,10 +287,13 @@ const columns: ColumnDef<User>[] = [
     cell: ({ row }) => {
       const member = row.original
       return h('div', { class: 'flex items-center gap-3' }, [
-        h(Avatar, { class: 'avatar size-8' }, {
-          default: () => h(AvatarFallback, {
-            style: { background: getAvatarColor(member.id), color: 'white' },
-          }, () => getAvatarInitials(member.name)),
+        h(BoringAvatar, {
+          name: member.name || member.email,
+          identity: member.email,
+          variant: (member.avatar_variant as AvatarVariant | undefined) ?? undefined,
+          size: 32,
+          square: true,
+          class: 'avatar size-8 overflow-hidden rounded-md',
         }),
         h('div', {}, [
           h('p', { class: 'text-sm font-medium' }, member.name),

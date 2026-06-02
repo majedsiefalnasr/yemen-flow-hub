@@ -19,7 +19,7 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <div class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-muted/30 px-4 py-3">
+  <div class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-muted/30">
     <div class="flex items-center gap-2">
       <Badge
         v-if="badgeLabel"

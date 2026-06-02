@@ -3,7 +3,7 @@ import type { ColumnDef, PaginationState } from '@tanstack/vue-table'
 import { computed, ref, reactive, watch, onMounted, h } from 'vue'
 import {
   AlertTriangle,
-  Download, MoreHorizontal, Plus, Printer, Search, SearchX, X,
+  MoreHorizontal, Plus, Search, SearchX, X,
 } from 'lucide-vue-next'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import { UserRole } from '../types/enums'
@@ -95,7 +95,7 @@ async function loadBanks() {
     banksMeta.value = { last_page: result.meta.last_page, total: result.meta.total }
   }
   catch {
-    error.value = 'تعذّر تحميل قائمة البنوك.'
+    error.value = 'تعذر تحميل قائمة البنوك الآن. أعد المحاولة بعد قليل.'
   }
   finally {
     loading.value = false
@@ -182,7 +182,7 @@ async function saveBank() {
       if (errs.code?.[0]) formErrors.code = errs.code[0]
     }
     else {
-      formError.value = e.data?.message ?? 'حدث خطأ أثناء الحفظ.'
+      formError.value = e.data?.message ?? 'تعذر حفظ بيانات البنك. راجع الحقول ثم أعد المحاولة.'
     }
   }
   finally {
@@ -356,14 +356,6 @@ onMounted(loadBanks)
     <div v-if="selectedCount > 0" class="flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2">
       <span class="text-sm font-medium text-primary">{{ selectedCount }} محدد</span>
       <div class="mx-2 h-4 w-px bg-border" />
-      <Button variant="outline" size="sm" class="h-7 gap-1.5 text-xs">
-        <Download class="h-3.5 w-3.5" />
-        تصدير
-      </Button>
-      <Button variant="outline" size="sm" class="h-7 gap-1.5 text-xs">
-        <Printer class="h-3.5 w-3.5" />
-        طباعة
-      </Button>
       <Button
         variant="ghost"
         size="sm"

@@ -22,12 +22,12 @@ const VARIANT_CONFIG: Record<LockedBannerVariant, { icon: any; message: string; 
   },
   pending: {
     icon: Clock,
-    message: 'هذا الطلب قيد المراجعة — لا يمكن إجراء تعديلات حتى اكتمال المرحلة الحالية',
+    message: 'هذا الطلب قيد المراجعة، ولا يمكن تعديله حتى تكتمل المرحلة الحالية.',
     variant: 'default',
   },
   bank_rejected: {
     icon: Ban,
-    message: 'تم رفض هذا الطلب نهائياً من قِبَل البنك — لا يمكن اتخاذ أي إجراء',
+    message: 'رفض البنك هذا الطلب نهائيا، لذلك لا يمكن اتخاذ أي إجراء عليه.',
     variant: 'destructive',
   },
 }

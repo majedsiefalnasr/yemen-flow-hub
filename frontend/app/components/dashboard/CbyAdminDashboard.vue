@@ -302,7 +302,7 @@ onMounted(() => { store.loadStats() })
         <Card class="border-0 shadow" aria-labelledby="voting-oversight-heading">
           <CardHeader class="pb-3">
             <CardTitle id="voting-oversight-heading" class="text-sm font-semibold">الإشراف على التصويت التنفيذي</CardTitle>
-            <CardDescription class="text-xs">جلسات التصويت المفتوحة — قراءة فقط</CardDescription>
+            <CardDescription class="text-xs">جلسات التصويت المفتوحة (قراءة فقط)</CardDescription>
           </CardHeader>
           <CardContent>
             <div v-if="!stats.executive_voting_sessions?.length" class="py-8 text-center text-sm text-muted-foreground" role="status">
@@ -350,20 +350,20 @@ onMounted(() => { store.loadStats() })
       <section v-if="stats.compliance_signals?.length" aria-labelledby="signals-heading">
         <h2 id="signals-heading" class="text-sm font-semibold mb-3">إشارات الامتثال والتدقيق</h2>
         <div class="grid grid-cols-3 max-lg:grid-cols-2 max-md:grid-cols-1 gap-4">
-          <button
+          <Button
             v-for="signal in stats.compliance_signals"
             :key="signal.id"
-            class="flex flex-col items-start gap-2 p-4 rounded-xl border text-start cursor-pointer transition-all hover:shadow-md"
-            :class="signal.severity === 'red' ? 'border-[var(--severity-red)]/30 bg-[var(--severity-red)]/5' : signal.severity === 'amber' ? 'border-[var(--severity-amber)]/30 bg-[var(--severity-amber)]/5' : 'border-primary/20 bg-primary/5'"
+            variant="outline"
+            class="h-auto flex-col items-start gap-2 rounded-xl p-4 text-start transition-all hover:shadow-md"
             @click="router.push(safeInternalPath(signal.link_route, '/audit'))"
           >
             <div class="flex items-center gap-2">
-              <component :is="signalSeverityIcon(signal.severity)" class="size-4" :style="{ color: severityColor(signal.severity) }" aria-hidden="true" />
-              <span class="text-xs font-semibold" :style="{ color: severityColor(signal.severity) }">{{ signal.title }}</span>
+              <component :is="signalSeverityIcon(signal.severity)" class="size-4" aria-hidden="true" />
+              <span class="text-xs font-semibold">{{ signal.title }}</span>
             </div>
             <p class="text-xs text-foreground/80 leading-relaxed">{{ signal.description }}</p>
             <span class="text-[10px] text-muted-foreground">{{ formatDateShort(signal.created_at) }}</span>
-          </button>
+          </Button>
         </div>
       </section>
 
@@ -380,13 +380,15 @@ onMounted(() => { store.loadStats() })
                 <p class="text-xs text-foreground leading-snug">{{ event.summary }}</p>
                 <span class="text-[10px] text-muted-foreground">{{ event.actor_name }} · {{ formatDateShort(event.created_at) }}</span>
               </div>
-              <button
+              <Button
                 v-if="event.link_route"
-                class="text-[10px] text-primary hover:underline flex-shrink-0 cursor-pointer"
+                variant="link"
+                size="sm"
+                class="h-auto flex-shrink-0 p-0 text-[10px]"
                 @click="router.push(safeInternalPath(event.link_route, '/audit'))"
               >
                 عرض
-              </button>
+              </Button>
             </li>
           </ul>
       </RecentActivityCard>
@@ -395,7 +397,6 @@ onMounted(() => { store.loadStats() })
       <div v-if="!stats.workflow_pressure_map?.length && !stats.executive_voting_sessions?.length && !stats.bank_risk_intelligence?.length" class="rounded-xl border border-dashed border-border p-8 text-center" role="status">
         <Activity class="size-8 mx-auto mb-3 text-muted-foreground" aria-hidden="true" />
         <p class="text-sm text-muted-foreground">لا توجد بيانات حوكمة للفترة المختارة</p>
-        <p class="text-xs text-muted-foreground mt-1">لا توجد بيانات للفترة المختارة</p>
       </div>
 
     </template>

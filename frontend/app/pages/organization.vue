@@ -313,6 +313,9 @@ const appearancePayload = computed(() => ({
 const brandingPayload = computed(() => ({
   brandColor: pendingBrandColor.value,
   brandLogoName: orgStore.brandLogoName,
+  brandLogoDataUrl: orgStore.brandLogoDataUrl,
+  brandingPublished: themingStore.brandingPublished,
+  brandingChannels: themingStore.brandingChannels,
 }))
 
 const securityPayload = computed(() => ({
@@ -401,19 +404,33 @@ watch(bankNotificationsPayload, value => settingsStore.trackSectionState('bankNo
 watch(bankSecurityPayload, value => settingsStore.trackSectionState('bankSecurity', value), { deep: true })
 
 // ── CBY: Save handlers ─────────────────────────────────────────────────────────
-function saveGeneralSettings() {
-  orgStore.setPlatformName(generalSettings.platformName)
-  orgStore.setAuthority(generalSettings.authority)
-  toast.promise(settingsStore.saveSection('general', generalPayload.value), {
-    loading: 'جاري حفظ الإعدادات العامة...',
-    success: 'تم حفظ الإعدادات العامة بنجاح',
-    error: () => settingsStore.error || 'فشل حفظ الإعدادات. حاول مرة أخرى.',
-  })
+async function saveGeneralSettings() {
+  const ok = await settingsStore.saveSection('general', generalPayload.value)
+  if (ok) {
+    orgStore.setPlatformName(generalSettings.platformName)
+    orgStore.setAuthority(generalSettings.authority)
+    await themingStore.loadFromServer()
+    themingStore.publishSystemSettingsSync()
+    toast.success('تم حفظ الإعدادات العامة بنجاح')
+  }
+  else {
+    toast.error(settingsStore.error || 'فشل حفظ الإعدادات. حاول مرة أخرى.')
+  }
 }
 
 function handleCBYLogoFile(event: Event) {
   const file = (event.target as HTMLInputElement).files?.[0]
   if (!file) return
+  if (file.size > 2 * 1024 * 1024) {
+    toast.error('حجم الشعار يجب ألا يتجاوز 2 ميجابايت')
+    return
+  }
+  const supportedLogo = ['image/svg+xml', 'image/png', 'image/jpeg'].includes(file.type)
+    || /\.(svg|png|jpe?g)$/i.test(file.name)
+  if (!supportedLogo) {
+    toast.error('صيغة الشعار يجب أن تكون SVG أو PNG أو JPG')
+    return
+  }
   const reader = new FileReader()
   reader.onload = (e) => {
     const dataUrl = e.target?.result as string
@@ -428,14 +445,26 @@ async function saveBrandingSettings() {
   const ok = await settingsStore.saveSection('theming', {
     ...brandingPayload.value,
   }, 'branding')
-  if (ok) toast.success('تم حفظ إعدادات الهوية البصرية بنجاح')
-  else toast.error(settingsStore.error || 'فشل حفظ الإعدادات')
+  if (ok) {
+    await themingStore.loadFromServer()
+    themingStore.publishSystemSettingsSync()
+    toast.success('تم حفظ إعدادات الهوية البصرية بنجاح')
+  }
+  else {
+    toast.error(settingsStore.error || 'فشل حفظ الإعدادات')
+  }
 }
 
 async function saveDefaultAppearance() {
   const ok = await settingsStore.saveSection('theming', appearancePayload.value, 'appearance')
-  if (ok) toast.success('تم حفظ إعدادات المظهر الافتراضي بنجاح')
-  else toast.error(settingsStore.error || 'فشل حفظ الإعدادات')
+  if (ok) {
+    await themingStore.loadFromServer()
+    themingStore.publishSystemSettingsSync()
+    toast.success('تم حفظ إعدادات المظهر الافتراضي بنجاح')
+  }
+  else {
+    toast.error(settingsStore.error || 'فشل حفظ الإعدادات')
+  }
 }
 
 function saveCBYSecuritySettings() {
@@ -502,7 +531,7 @@ async function saveBankSecurity() {
   <div>
     <PageHeader
       :title="isCBYAdmin ? 'إعدادات المؤسسة' : 'إعدادات البنك'"
-      :subtitle="isCBYAdmin ? 'إعدادات المنصة التي تؤثر على جميع المستخدمين — يقتصر الوصول على مدير النظام' : 'إعدادات وتكوينات بنكك — تؤثر على جميع مستخدمي بنكك'"
+      :subtitle="isCBYAdmin ? 'إعدادات المنصة التي تؤثر على جميع المستخدمين، ويقتصر الوصول إليها على مدير النظام' : 'إعدادات وتكوينات البنك، وتؤثر على جميع مستخدميه'"
       :breadcrumbs="[{ label: 'الرئيسية', to: '/' }, { label: isCBYAdmin ? 'إعدادات المؤسسة' : 'إعدادات البنك' }]"
     />
 

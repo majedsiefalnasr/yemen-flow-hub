@@ -73,6 +73,8 @@ import { useSettingsStore } from '@/stores/settings.store'
 import { useAuthStore } from '@/stores/auth.store'
 import { useProfile } from '@/composables/useProfile'
 import { useSavedAccounts } from '@/composables/useSavedAccounts'
+import AvatarPicker from '@/components/shared/AvatarPicker.vue'
+import { persistUserAvatar, useUserAvatar } from '@/composables/useUserAvatar'
 
 definePageMeta({ middleware: ['auth'] })
 useHead({ title: 'إعداداتي' })
@@ -114,7 +116,7 @@ function normalizeSection(raw: unknown): UserTab | null {
 }
 
 // ── Security (password / MFA / PIN) ───────────────────────────────────────────
-const { toggleMfa: composableToggleMfa, setupTotp, verifyTotpSetup, disableTotp, disableTotpWithPassword, setPin: savePinOnServer, disablePin: disablePinOnServer, changePassword } = useProfile()
+const { toggleMfa: composableToggleMfa, setupTotp, verifyTotpSetup, disableTotp, disableTotpWithPassword, setPin: savePinOnServer, disablePin: disablePinOnServer, changePassword, updateProfile } = useProfile()
 const { accounts: allAccounts, removeAccount, getPINStatus, setPINStatus } = useSavedAccounts()
 const currentUserDevices = computed(() =>
   allAccounts.value.filter(a => a.email.trim().toLowerCase() === (user.value?.email ?? '').trim().toLowerCase()),
@@ -359,21 +361,58 @@ async function confirmMfaDisable() {
 const profileForm = reactive({ name: '', phone: '' })
 const profileSaving = ref(false)
 
+const avatarIdentity = computed(() => user.value?.email ?? user.value?.id?.toString() ?? '')
+const avatarPreviewSeed = computed(() => {
+  const draftName = profileForm.name.trim()
+  return draftName || user.value?.email || avatarIdentity.value || 'user'
+})
+const { variant: avatarVariantStored } = useUserAvatar(() => avatarIdentity.value)
+const avatarVariantDraft = ref(avatarVariantStored.value)
+
+watch(avatarVariantStored, (variant) => {
+  avatarVariantDraft.value = variant
+})
+
 onMounted(async () => {
   profileForm.name = authStore.user?.name ?? ''
   profileForm.phone = authStore.user?.phone ?? ''
   await themingStore.loadSettings()
+  await authStore.fetchUserPreferences()
+  themingStore.applyAppearanceSettings(authStore.userPreferences?.theming)
   settingsStore.markSectionClean('userProfile', undefined, profilePayload.value)
   settingsStore.markSectionClean('userAppearance', undefined, appearancePayload.value)
   settingsStore.markSectionClean('userNotifications', undefined, notificationsPayload.value)
 })
 
 async function saveProfile() {
+  if (!authStore.user) return
   profileSaving.value = true
-  const ok = await settingsStore.saveSection('userProfile', profilePayload.value)
+  // The profile section saves through `/api/profile` rather than the generic
+  // settings `save-section` endpoint because only the ProfileController is
+  // aware of `avatar_variant`. Going through `saveSection` would 422 on the
+  // unknown field and silently drop the avatar choice.
+  const ok = await updateProfile({
+    name: profileForm.name.trim(),
+    email: authStore.user.email,
+    phone: profileForm.phone.trim() || undefined,
+    avatar_variant: avatarVariantDraft.value,
+  })
   profileSaving.value = false
-  if (ok) toast.success('تم حفظ الملف الشخصي بنجاح')
-  else toast.error(settingsStore.error || 'فشل حفظ الإعدادات')
+  if (!ok) {
+    toast.error('فشل حفظ الإعدادات')
+    return
+  }
+  // Mirror the new variant onto the auth store + local-storage so the topbar,
+  // sidebar, and saved-account cards reflect the change immediately.
+  authStore.user = {
+    ...authStore.user,
+    name: profileForm.name.trim(),
+    phone: profileForm.phone.replace(/\s+/g, '') || null,
+    avatar_variant: avatarVariantDraft.value,
+  }
+  persistUserAvatar(avatarIdentity.value, { variant: avatarVariantDraft.value })
+  settingsStore.markSectionClean('userProfile', undefined, profilePayload.value)
+  toast.success('تم حفظ الملف الشخصي بنجاح')
 }
 
 // ── Appearance options ─────────────────────────────────────────────────────────
@@ -428,6 +467,7 @@ const personalNotifications = ref([
 const profilePayload = computed(() => ({
   name: profileForm.name.trim(),
   phone: profileForm.phone.trim(),
+  avatar_variant: avatarVariantDraft.value,
 }))
 
 const appearancePayload = computed(() => ({
@@ -482,8 +522,11 @@ function selectFont(fontValue: string) {
 }
 
 async function saveAppearance() {
-  const ok = await settingsStore.saveSection('userAppearance', appearancePayload.value)
+  const ok = await settingsStore.saveSection('theming', appearancePayload.value)
   if (ok) {
+    await authStore.fetchUserPreferences()
+    themingStore.applyAppearanceSettings(authStore.userPreferences?.theming)
+    settingsStore.markSectionClean('userAppearance', undefined, appearancePayload.value)
     toast.success('تم حفظ إعدادات المظهر الشخصي بنجاح')
   }
   else {
@@ -493,7 +536,7 @@ async function saveAppearance() {
 
 function savePersonalNotifications() {
   toast.promise(
-    settingsStore.saveSection('userNotifications', notificationsPayload.value),
+    settingsStore.saveSection('notif', notificationsPayload.value),
     {
       loading: 'جاري حفظ إعدادات التنبيهات...',
       success: 'تم حفظ إعدادات التنبيهات بنجاح',
@@ -561,6 +604,15 @@ function savePersonalNotifications() {
             <div>
               <h3 class="text-lg font-medium">الملف الشخصي</h3>
               <p class="text-sm text-muted-foreground">معلوماتك الشخصية المرتبطة بحسابك في المنصة.</p>
+            </div>
+            <Separator />
+            <div class="max-w-md">
+              <AvatarPicker
+                v-model="avatarVariantDraft"
+                :seed="avatarPreviewSeed"
+                label="مظهر الصورة الرمزية"
+                description="اختر التصميم الذي يناسبك. التغييرات تُحفظ عند الضغط على «حفظ»."
+              />
             </div>
             <Separator />
             <div class="max-w-md space-y-4">

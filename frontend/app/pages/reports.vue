@@ -12,6 +12,10 @@ import { DataTableViewOptions } from '@/components/ui/data-table'
 import DataTable from '@/components/ui/data-table/DataTable.vue'
 import MetricCard from '@/components/shared/dashboard/MetricCard.vue'
 import MetricGrid from '@/components/shared/dashboard/MetricGrid.vue'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import LoadErrorAlert from '@/components/shared/LoadErrorAlert.vue'
+import { Skeleton } from '@/components/ui/skeleton'
 
 definePageMeta({
   middleware: ['auth', 'role'],
@@ -23,6 +27,7 @@ const { exportToCSV } = useTableExport()
 
 const report = ref<WorkflowReport | null>(null)
 const loading = ref(true)
+const loadError = ref<string | null>(null)
 const scheduleQuery = ref('')
 const scheduleSearchRef = ref<HTMLInputElement | null>(null)
 const scheduleColumnVisibility = ref<VisibilityState>({
@@ -36,13 +41,23 @@ useTableKeyboard(scheduleSearchRef, {
   },
 })
 
-onMounted(async () => {
+async function loadReport() {
+  loading.value = true
+  loadError.value = null
   try {
     report.value = await fetchWorkflowReport()
+  }
+  catch {
+    loadError.value = 'تعذّر تحميل تقرير سير العمل. تحقق من الاتصال وأعد المحاولة.'
+    report.value = null
   }
   finally {
     loading.value = false
   }
+}
+
+onMounted(() => {
+  loadReport()
 })
 
 const total = computed(() => {
@@ -230,31 +245,48 @@ const votingAnalyticsColumns: ColumnDef<VotingAnalyticsRow>[] = [
       :breadcrumbs="[{ label: 'الرئيسية', to: '/' }, { label: 'التقارير' }]"
     >
       <template #actions>
-        <Button variant="outline">
+        <Button variant="outline" :disabled="loading || !!loadError">
           <Calendar class="ms-1 h-4 w-4" />
           الفترة: الكل
         </Button>
         <Button
           variant="outline"
+          :disabled="loading || !!loadError"
           @click="exportReport('workflow', 'pdf')"
         >
           <FileText class="ms-1 h-4 w-4" />
           PDF
         </Button>
-        <Button @click="exportReport('workflow', 'excel')">
+        <Button :disabled="loading || !!loadError" @click="exportReport('workflow', 'excel')">
           <FileSpreadsheet class="ms-1 h-4 w-4" />
           Excel
         </Button>
       </template>
     </PageHeader>
 
+    <LoadErrorAlert
+      v-if="loadError"
+      class="mb-4"
+      :message="loadError"
+      title="تعذّر تحميل التقرير"
+      @retry="loadReport()"
+    />
+
+    <div v-else-if="loading" class="mb-6 space-y-4" aria-busy="true" aria-label="جارٍ تحميل التقرير">
+      <div class="grid gap-4 md:grid-cols-5">
+        <Skeleton v-for="n in 5" :key="n" class="h-24 rounded-xl" />
+      </div>
+      <Skeleton class="h-64 w-full rounded-xl" />
+    </div>
+
+    <template v-else>
     <div class="mb-6">
       <MetricGrid :columns="5">
         <MetricCard
           v-for="kpi in kpis"
           :key="kpi.label"
           :label="kpi.label"
-          :value="loading ? '—' : kpi.value"
+          :value="kpi.value"
           :previous-label="kpi.summary || undefined"
           :clickable="false"
         />
@@ -661,5 +693,6 @@ const votingAnalyticsColumns: ColumnDef<VotingAnalyticsRow>[] = [
         </div>
       </TabsContent>
     </Tabs>
+    </template>
   </div>
 </template>

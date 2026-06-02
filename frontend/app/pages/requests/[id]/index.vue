@@ -8,6 +8,7 @@ import {
   ClipboardList,
   Copy,
   FilePen,
+  Keyboard,
   Link,
   Lock,
   Printer,
@@ -34,6 +35,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import LoadErrorAlert from '@/components/shared/LoadErrorAlert.vue'
 import { useRequests } from '@/composables/useRequests'
 import { useAuthStore } from '@/stores/auth.store'
 import { useRequestsStore } from '@/stores/requests.store'
@@ -56,6 +58,14 @@ import VotingPanel from '@/components/voting/VotingPanel.vue'
 import WorkflowTimeline from '@/components/workflow/WorkflowTimeline.vue'
 import AuditTimeline from '@/components/workflow/AuditTimeline.vue'
 import WorkflowProgress from '@/components/workflow/WorkflowProgress.vue'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog'
+import { useKeyboardShortcut } from '@/composables/useKeyboardShortcut'
 
 definePageMeta({
   middleware: ['auth'],
@@ -66,10 +76,40 @@ const router = useRouter()
 const auth = useAuthStore()
 const requestsStore = useRequestsStore()
 
-const rawId = route.params.id
-const id = Number(Array.isArray(rawId) ? rawId[0] : rawId)
+function parseRouteRequestId(): number {
+  const rawId = route.params.id
+  return Number(Array.isArray(rawId) ? rawId[0] : rawId)
+}
+
+const id = computed(() => parseRouteRequestId())
 
 const votingStore = useVotingStore()
+
+// Template ref for ActionsPanel to allow keyboard shortcut passthrough
+const actionsPanelRef = ref<InstanceType<typeof ActionsPanel> | null>(null)
+
+// Shortcut legend dialog
+const showShortcutLegend = ref(false)
+
+// Wire keyboard shortcuts for the detail page
+useKeyboardShortcut({
+  'ctrl+enter': {
+    description: 'تنفيذ الإجراء الرئيسي',
+    handler: () => actionsPanelRef.value?.triggerPrimaryAction(),
+  },
+  '?': {
+    description: 'عرض اختصارات لوحة المفاتيح',
+    handler: () => { showShortcutLegend.value = !showShortcutLegend.value },
+  },
+  'alt+arrowleft': {
+    description: 'الطلب التالي',
+    handler: () => { void navigateAdjacentRequest('next') },
+  },
+  'alt+arrowright': {
+    description: 'الطلب السابق',
+    handler: () => { void navigateAdjacentRequest('prev') },
+  },
+})
 
 type TabKey = 'overview' | 'documents' | 'parties' | 'activity_log' | 'fx_confirmation'
 const activeTab = ref<TabKey>('overview')
@@ -88,11 +128,60 @@ const request = computed(() => requestsStore.currentRequest)
 const userRole = computed(() => auth.user?.role ?? UserRole.DATA_ENTRY)
 const canDownloadCustomsDeclaration = computed(() => canDownloadCustoms(userRole.value))
 
-// Prev/next navigation within the loaded list page
+// Prev/next navigation within the loaded list page, with absolute pagination counts.
 const listIds = computed(() => requestsStore.listIds)
-const listPosition = computed(() => listIds.value.indexOf(id))
+const listPosition = computed(() => listIds.value.indexOf(id.value))
 const prevRequestId = computed(() => listPosition.value > 0 ? listIds.value[listPosition.value - 1] : null)
 const nextRequestId = computed(() => listPosition.value > -1 && listPosition.value < listIds.value.length - 1 ? listIds.value[listPosition.value + 1] : null)
+const navigationLoading = ref(false)
+const navigationPosition = computed(() => {
+  if (listPosition.value < 0) return null
+  const meta = requestsStore.meta
+  if (!meta) return listPosition.value + 1
+  return ((meta.current_page - 1) * meta.per_page) + listPosition.value + 1
+})
+const navigationTotal = computed(() => requestsStore.meta?.total ?? listIds.value.length)
+const hasPrevRequest = computed(() => Boolean(prevRequestId.value) || requestsStore.hasPrevPage)
+const hasNextRequest = computed(() => Boolean(nextRequestId.value) || requestsStore.hasNextPage)
+
+async function navigateAdjacentRequest(direction: 'prev' | 'next') {
+  if (navigationLoading.value) return
+
+  const adjacentId = direction === 'prev' ? prevRequestId.value : nextRequestId.value
+  if (adjacentId) {
+    await router.push(`/requests/${adjacentId}`)
+    return
+  }
+
+  const meta = requestsStore.meta
+  if (!meta) return
+
+  const targetPage = direction === 'prev' ? meta.current_page - 1 : meta.current_page + 1
+  if (targetPage < 1 || targetPage > meta.last_page) return
+
+  navigationLoading.value = true
+  try {
+    await requestsStore.loadRequests({
+      ...requestsStore.currentFilter,
+      page: targetPage,
+      per_page: meta.per_page,
+    })
+
+    const targetId = direction === 'prev'
+      ? requestsStore.listIds.at(-1)
+      : requestsStore.listIds[0]
+
+    if (targetId) await router.push(`/requests/${targetId}`)
+  }
+  finally {
+    navigationLoading.value = false
+  }
+}
+
+function copyCurrentLink() {
+  if (!import.meta.client) return
+  void navigator.clipboard?.writeText(window.location.href)
+}
 
 // BANK_REVIEWER may not review requests they personally created (segregation of duties)
 const isSegregationBlocked = computed(() =>
@@ -188,6 +277,12 @@ const lockedBannerVariant = computed((): LockedBannerVariant | null => {
   if (userRole.value === UserRole.BANK_REVIEWER && ACTIONABLE_REVIEWER_STATUSES.has(s)) return null
   // Executive roles viewing voting stages have full access — no banner
   if (EXECUTIVE_ROLES.has(userRole.value) && VOTING_STAGE_STATUSES.has(s)) return null
+  // SUPPORT_COMMITTEE with an active claim on this request is in working state — not locked/pending
+  if (
+    userRole.value === UserRole.SUPPORT_COMMITTEE
+    && s === RequestStatus.SUPPORT_REVIEW_IN_PROGRESS
+    && request.value?.is_claimed_by_me
+  ) return null
   if (READONLY_STATUSES.has(s)) return 'readonly'
   if (PENDING_STATUSES.has(s)) return 'pending'
   return null
@@ -432,13 +527,33 @@ const {
   claimError,
   sessionExpired,
 } = useClaimLifecycle()
+
+// Claim lifecycle for BANK_REVIEWER (separate instance, different endpoint)
+const {
+  claimRequest: claimBankRequest,
+  releaseRequest: releaseBankRequest,
+  verifyClaimAlive: verifyBankClaimAlive,
+  startHeartbeat: startBankHeartbeat,
+  stopHeartbeat: stopBankHeartbeat,
+  claimError: bankClaimError,
+  sessionExpired: bankSessionExpired,
+} = useClaimLifecycle('claim-bank-review')
+
 const isActiveReviewer = ref(false)
+const isBankActiveReviewer = ref(false)
 // Local guard against double-clicks on "مطالبة" / "إفراج" before the previous
 // call resolves; prevents duplicate POST/DELETE and the resulting orphan claim.
 const claimMutating = ref(false)
 
 const isCbyAdmin = computed(() => userRole.value === UserRole.CBY_ADMIN)
 const isSupportCommittee = computed(() => userRole.value === UserRole.SUPPORT_COMMITTEE)
+const isBankReviewer = computed(() => userRole.value === UserRole.BANK_REVIEWER)
+
+const claimErrorRetryable = computed(() => {
+  if (!claimError.value) return false
+  if (sessionExpired.value) return false
+  return !claimError.value.includes('محجوز')
+})
 const isExecutiveMember = computed(() => userRole.value === UserRole.EXECUTIVE_MEMBER)
 
 // CBY Admin: derive blocker, SLA state, and age for intelligence panel
@@ -463,7 +578,7 @@ const cbyBlockerText = computed(() => {
   return `قيد انتظار إجراء من: ${roleLabel}`
 })
 const votingDetailLoadedForCurrentRequest = computed(() =>
-  votingStore.votingDetail?.request?.id === id,
+  votingStore.votingDetail?.request?.id === id.value,
 )
 
 // VotingPendingBanner: voting open, EXECUTIVE_MEMBER, not yet voted
@@ -492,6 +607,8 @@ const showClaimedByOthersBanner = computed(() => {
   return !!req && req.is_claimed && !req.is_claimed_by_me
 })
 
+// Auto-claim replaces manual claim — this banner now shows only while the claim
+// call is in-flight (brief transitional state, no action button needed).
 const showUnclaimedBanner = computed(() => {
   if (!isSupportCommittee.value || isActiveReviewer.value) return false
   const req = request.value
@@ -504,15 +621,17 @@ let isMounted = false
 
 async function handleSessionExpired() {
   isActiveReviewer.value = false
-  stopHeartbeat(id)
+  const validId = Number.isNaN(id.value) ? (requestsStore.currentRequest?.id ?? null) : id.value
+  if (validId !== null) stopHeartbeat(validId)
   await navigateTo('/login')
 }
 
 async function handleClaimLost() {
   isActiveReviewer.value = false
-  stopHeartbeat(id)
-  if (isMounted) {
-    await requestsStore.loadRequest(id)
+  const validId = Number.isNaN(id.value) ? (requestsStore.currentRequest?.id ?? null) : id.value
+  if (validId !== null) stopHeartbeat(validId)
+  if (isMounted && validId !== null) {
+    await requestsStore.loadRequest(validId)
   }
 }
 
@@ -520,16 +639,16 @@ async function handleManualClaim() {
   if (claimMutating.value) return
   claimMutating.value = true
   try {
-    const claimed = await claimRequest(id)
+    const claimed = await claimRequest(id.value)
     if (!isMounted) return
     if (!claimed) {
-      await requestsStore.loadRequest(id)
+      await requestsStore.loadRequest(id.value)
       return
     }
 
     isActiveReviewer.value = true
-    startHeartbeat(id, handleSessionExpired, handleClaimLost)
-    await requestsStore.loadRequest(id)
+    startHeartbeat(id.value, handleSessionExpired, handleClaimLost)
+    await requestsStore.loadRequest(id.value)
     if (!isMounted) return
     syncActiveReviewState()
   }
@@ -545,15 +664,15 @@ async function handleReleaseClaim() {
     // Only mutate local state once the server confirms release. If the request
     // fails (network, 5xx) the user retains the claim until TTL and the UI
     // still reflects that — no orphan ghost state.
-    const released = await releaseRequest(id)
+    const released = await releaseRequest(id.value)
     if (!isMounted) return
     if (!released) {
-      await requestsStore.loadRequest(id)
+      await requestsStore.loadRequest(id.value)
       return
     }
     isActiveReviewer.value = false
-    stopHeartbeat(id)
-    await requestsStore.loadRequest(id)
+    stopHeartbeat(id.value)
+    await requestsStore.loadRequest(id.value)
   }
   finally {
     claimMutating.value = false
@@ -567,19 +686,19 @@ function syncActiveReviewState() {
     && (!req || req.status !== RequestStatus.SUPPORT_REVIEW_IN_PROGRESS || !req.is_claimed_by_me)
   ) {
     isActiveReviewer.value = false
-    stopHeartbeat(id)
+    stopHeartbeat(id.value)
   }
 }
 
 onMounted(async () => {
   isMounted = true
 
-  if (Number.isNaN(id)) {
+  if (Number.isNaN(id.value)) {
     await router.replace('/requests')
     return
   }
 
-  await requestsStore.loadRequest(id)
+  await requestsStore.loadRequest(id.value)
 
   if (!isMounted) return
 
@@ -588,21 +707,67 @@ onMounted(async () => {
     return
   }
 
+  // Auto-claim for BANK_REVIEWER on SUBMITTED requests
+  if (isBankReviewer.value && requestsStore.currentRequest) {
+    const req = requestsStore.currentRequest
+
+    if (req.is_claimed && req.is_claimed_by_me && req.status === RequestStatus.BANK_REVIEW) {
+      // Resume existing bank claim — verify TTL still alive
+      const alive = await verifyBankClaimAlive(id.value)
+      if (!isMounted) return
+      if (alive) {
+        isBankActiveReviewer.value = true
+        startBankHeartbeat(
+          id.value,
+          async () => { isBankActiveReviewer.value = false; await navigateTo('/login') },
+          async () => { isBankActiveReviewer.value = false; stopBankHeartbeat(id.value); if (isMounted) await requestsStore.loadRequest(id.value) },
+        )
+      }
+      else if (bankSessionExpired.value) {
+        await navigateTo('/login')
+        return
+      }
+    }
+    else if (req.status === RequestStatus.SUBMITTED) {
+      // Auto-claim: opens a SUBMITTED request — claim it atomically
+      const claimed = await claimBankRequest(id.value)
+      if (!isMounted) return
+      if (claimed) {
+        isBankActiveReviewer.value = true
+        startBankHeartbeat(
+          id.value,
+          async () => { isBankActiveReviewer.value = false; await navigateTo('/login') },
+          async () => { isBankActiveReviewer.value = false; stopBankHeartbeat(id.value); if (isMounted) await requestsStore.loadRequest(id.value) },
+        )
+        await requestsStore.loadRequest(id.value)
+      }
+      else if (bankSessionExpired.value) {
+        await navigateTo('/login')
+        return
+      }
+      else {
+        // Claimed by another reviewer — refresh to show current state
+        await requestsStore.loadRequest(id.value)
+      }
+    }
+  }
+
   // Auto-claim lifecycle for SUPPORT_COMMITTEE
   if (isSupportCommittee.value && requestsStore.currentRequest) {
     const req = requestsStore.currentRequest
 
     if (req.is_claimed && req.is_claimed_by_me) {
-      const alive = await verifyClaimAlive(id)
+      // Resume an existing claim — verify the Redis TTL is still alive.
+      const alive = await verifyClaimAlive(id.value)
 
       if (!isMounted) return
 
       if (alive) {
         isActiveReviewer.value = true
-        startHeartbeat(id, handleSessionExpired, handleClaimLost)
+        startHeartbeat(id.value, handleSessionExpired, handleClaimLost)
       }
       else {
-        await requestsStore.loadRequest(id)
+        await requestsStore.loadRequest(id.value)
         if (!isMounted) return
 
         if (sessionExpired.value) {
@@ -611,12 +776,33 @@ onMounted(async () => {
         }
       }
     }
+    else if (req.status === RequestStatus.SUPPORT_REVIEW_PENDING && !req.is_claimed) {
+      // Auto-claim: the request is unclaimed and this user opened it — claim silently.
+      const claimed = await claimRequest(id.value)
+      if (!isMounted) return
+
+      if (claimed) {
+        isActiveReviewer.value = true
+        startHeartbeat(id.value, handleSessionExpired, handleClaimLost)
+        await requestsStore.loadRequest(id.value)
+        if (!isMounted) return
+        syncActiveReviewState()
+      }
+      else if (sessionExpired.value) {
+        await handleSessionExpired()
+        return
+      }
+      else {
+        // Another user claimed it between page load and now — refresh to show correct state.
+        await requestsStore.loadRequest(id.value)
+      }
+    }
   }
 
   if (!isMounted) return
 
   if (activeTab.value === 'documents') {
-    await requestsStore.loadDocuments(id)
+    await requestsStore.loadDocuments(id.value)
   }
 
   // Pre-load voting detail for executive/director in voting stages
@@ -625,7 +811,7 @@ onMounted(async () => {
     && requestsStore.currentRequest
     && VOTING_STAGE_STATUSES.has(requestsStore.currentRequest.status)
   ) {
-    await votingStore.loadVotingDetail(id)
+    await votingStore.loadVotingDetail(id.value)
   }
 
   // Pre-load history for bank reviewers on SUBMITTED requests to detect resubmit-after-support-return
@@ -635,40 +821,98 @@ onMounted(async () => {
     && !requestsStore.historyLoaded
     && !requestsStore.loadingHistory
   ) {
-    await requestsStore.loadHistory(id)
+    await requestsStore.loadHistory(id.value)
+  }
+})
+
+watch(id, async (nextId, previousId) => {
+  if (!isMounted || nextId === previousId) return
+
+  // Always clean up the previous request's claim/heartbeat before navigating,
+  // regardless of where we are going (including NaN / non-request routes).
+  if (Number.isFinite(previousId) && previousId > 0) {
+    stopHeartbeat(previousId)
+    stopBankHeartbeat(previousId)
+    if (isActiveReviewer.value) {
+      releaseRequest(previousId)
+      isActiveReviewer.value = false
+    }
+    if (isBankActiveReviewer.value) {
+      releaseBankRequest(previousId)
+      isBankActiveReviewer.value = false
+    }
+  }
+
+  if (Number.isNaN(nextId)) {
+    await router.replace('/requests')
+    return
+  }
+
+  await requestsStore.loadRequest(nextId)
+  if (!isMounted) return
+
+  if (requestsStore.error || !requestsStore.currentRequest) {
+    await router.replace('/requests')
+    return
+  }
+
+  if (activeTab.value === 'documents') {
+    await requestsStore.loadDocuments(nextId)
+  }
+  if (activeTab.value === 'parties' || activeTab.value === 'activity_log') {
+    await requestsStore.loadHistory(nextId)
+  }
+  if (
+    EXECUTIVE_ROLES.has(userRole.value)
+    && requestsStore.currentRequest
+    && VOTING_STAGE_STATUSES.has(requestsStore.currentRequest.status)
+  ) {
+    await votingStore.loadVotingDetail(nextId)
   }
 })
 
 onBeforeUnmount(() => {
   isMounted = false
-  stopHeartbeat(id)
-  if (isActiveReviewer.value) {
-    releaseRequest(id)
+  // id.value may be NaN if the router already finalised navigation to a route
+  // without an :id param before Suspense unmounts this component. Fall back to
+  // the store's still-loaded request as the authoritative id source.
+  const validId = Number.isNaN(id.value)
+    ? (requestsStore.currentRequest?.id ?? null)
+    : id.value
+  if (validId !== null) {
+    stopHeartbeat(validId)
+    if (isActiveReviewer.value) {
+      releaseRequest(validId)
+    }
+    stopBankHeartbeat(validId)
+    if (isBankActiveReviewer.value) {
+      releaseBankRequest(validId)
+    }
   }
 })
 
 async function onTabChange(key: TabKey) {
   activeTab.value = key
   if (key === 'documents' && !requestsStore.documentsLoaded && !requestsStore.loadingDocuments) {
-    await requestsStore.loadDocuments(id)
+    await requestsStore.loadDocuments(id.value)
   }
   if ((key === 'parties' || key === 'activity_log') && !requestsStore.historyLoaded && !requestsStore.loadingHistory) {
-    await requestsStore.loadHistory(id)
+    await requestsStore.loadHistory(id.value)
   }
 }
 
 async function onActionCompleted() {
-  await requestsStore.loadRequest(id)
+  await requestsStore.loadRequest(id.value)
   customsDownloadError.value = ''
   syncActiveReviewState()
   if (activeTab.value === 'documents') {
-    await requestsStore.loadDocuments(id)
+    await requestsStore.loadDocuments(id.value)
   }
   if (activeTab.value === 'parties' || activeTab.value === 'activity_log') {
-    await requestsStore.loadHistory(id)
+    await requestsStore.loadHistory(id.value)
   }
   if (showVotingPanelInline.value || votingStore.votingDetail) {
-    await votingStore.loadVotingDetail(id)
+    await votingStore.loadVotingDetail(id.value)
   }
 }
 
@@ -747,7 +991,7 @@ async function handleDownloadFxTemplate() {
   fxGeneratingTemplate.value = true
 
   try {
-    const declaration = await generateCustomsDeclaration(id)
+    const declaration = await generateCustomsDeclaration(id.value)
     const blob = await downloadCustomsBlob(declaration.id)
 
     const bytes = await blob.arrayBuffer()
@@ -784,7 +1028,7 @@ async function handleCompleteFxConfirmation() {
   fxCompleting.value = true
 
   try {
-    await requestsStore.issueCustomsDeclaration(id)
+    await requestsStore.issueCustomsDeclaration(id.value)
     fxFlowSuccess.value = true
     await onActionCompleted()
   }
@@ -799,7 +1043,7 @@ async function handleCompleteFxConfirmation() {
 
 async function handleUploadDocument(file: File) {
   try {
-    await requestsStore.uploadDocument(id, file)
+    await requestsStore.uploadDocument(id.value, file)
   }
   catch {
     // uploadError is set on the store by the action
@@ -866,7 +1110,7 @@ function actorLabel(
 // Watch voting panel inline to pre-load voting detail when it becomes visible
 watch(showVotingPanelInline, async (visible) => {
   if (visible && !votingStore.votingDetail && !votingStore.loadingDetail) {
-    await votingStore.loadVotingDetail(id)
+    await votingStore.loadVotingDetail(id.value)
   }
 })
 
@@ -911,7 +1155,7 @@ async function handleCloneConfirm() {
   cloneLoading.value = true
   cloneError.value = ''
   try {
-    const newId = await cloneRequest(id)
+    const newId = await cloneRequest(id.value)
     showCloneDialog.value = false
     await navigateTo(`/requests/${newId}/edit`)
   }
@@ -951,24 +1195,24 @@ async function handleCloneConfirm() {
               variant="ghost"
               size="sm"
               class="gap-1 text-muted-foreground"
-              :disabled="!prevRequestId"
-              :aria-label="prevRequestId ? `الطلب السابق` : 'لا يوجد طلب سابق'"
-              @click="prevRequestId && router.push(`/requests/${prevRequestId}`)"
+              :disabled="!hasPrevRequest || navigationLoading"
+              :aria-label="hasPrevRequest ? `الطلب السابق` : 'لا يوجد طلب سابق'"
+              @click="navigateAdjacentRequest('prev')"
             >
               <ChevronRight class="size-4" />
               <span class="text-xs">السابق</span>
             </Button>
             <span class="select-none px-1 text-xs tabular-nums text-muted-foreground">
-              {{ listPosition + 1 }} / {{ listIds.length }}
+              {{ navigationPosition }} / {{ navigationTotal }}
             </span>
             <Button
               type="button"
               variant="ghost"
               size="sm"
               class="gap-1 text-muted-foreground"
-              :disabled="!nextRequestId"
-              :aria-label="nextRequestId ? `الطلب التالي` : 'لا يوجد طلب تالٍ'"
-              @click="nextRequestId && router.push(`/requests/${nextRequestId}`)"
+              :disabled="!hasNextRequest || navigationLoading"
+              :aria-label="hasNextRequest ? `الطلب التالي` : 'لا يوجد طلب تالٍ'"
+              @click="navigateAdjacentRequest('next')"
             >
               <span class="text-xs">التالي</span>
               <ChevronLeft class="size-4" />
@@ -1051,7 +1295,7 @@ async function handleCloneConfirm() {
               variant="outline"
               size="sm"
               data-testid="cby-copy-link-btn"
-              @click="() => { navigator.clipboard?.writeText(window.location.href) }"
+              @click="copyCurrentLink"
             >
               <Link class="h-3.5 w-3.5" />
               نسخ الرابط
@@ -1140,14 +1384,13 @@ async function handleCloneConfirm() {
               تم تسليم السويفت، وانتقلت المسؤولية إلى مدير اللجنة التنفيذية لإتمام تأكيد المصارفة الخارجية.
             </div>
             <SegregationBlockedBanner v-if="isSegregationBlocked" />
-            <div v-else-if="claimError" class="claim-error-banner" role="alert" aria-live="assertive">
-              <span class="claim-error-icon" aria-hidden="true">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
-                </svg>
-              </span>
-              <span>{{ claimError }}</span>
-            </div>
+            <LoadErrorAlert
+              v-else-if="claimError"
+              :message="claimError"
+              title="تعذّرت المطالبة بالمراجعة"
+              :show-retry="claimErrorRetryable"
+              @retry="handleManualClaim"
+            />
             <ActiveReviewBanner
               v-else-if="showActiveReviewBanner"
               :claimed-until="request.claimed_until"
@@ -1155,7 +1398,7 @@ async function handleCloneConfirm() {
               @release="handleReleaseClaim"
             />
             <ClaimedByOthersBanner v-else-if="showClaimedByOthersBanner" :claimer-name="request.claimed_by?.name ?? ''" />
-            <UnclaimedBanner v-else-if="showUnclaimedBanner" @claim="handleManualClaim" />
+            <UnclaimedBanner v-else-if="showUnclaimedBanner" />
             <VotingPendingBanner
               v-else-if="showVotingPendingBanner"
               :votes-cast="votingStore.votingDetail?.tally?.total_cast"
@@ -1400,7 +1643,6 @@ async function handleCloneConfirm() {
                     variant="ghost"
                     size="sm"
                     as-child
-                    class="text-[var(--info)] hover:text-[var(--info)]"
                   >
                     <NuxtLink :to="`/requests/${id}/swift`">رفع وثائق السويفت</NuxtLink>
                   </Button>
@@ -1564,7 +1806,6 @@ async function handleCloneConfirm() {
                   </p>
                   <Button
                     :disabled="!fxSignedFile || fxCompleting"
-                    class="bg-[var(--severity-green)] text-white hover:bg-[var(--severity-green)]/90"
                     @click="handleCompleteFxConfirmation"
                   >
                     {{ fxCompleting ? 'جارٍ الإتمام…' : 'إتمام تأكيد المصارفة' }}
@@ -1574,7 +1815,7 @@ async function handleCloneConfirm() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      class="h-auto shrink-0 p-0 text-xs font-semibold text-[var(--severity-red)] hover:text-[var(--severity-red)]"
+                      class="h-auto shrink-0 p-0 text-xs font-semibold text-destructive hover:text-destructive"
                       @click="handleCompleteFxConfirmation"
                     >
                       إعادة المحاولة
@@ -1703,6 +1944,7 @@ async function handleCloneConfirm() {
             <WorkflowProgress
               :current-status="request.status"
               :user-role="userRole"
+              :is-claimed-by-me="request.is_claimed_by_me ?? undefined"
             />
           </div>
 
@@ -1710,6 +1952,7 @@ async function handleCloneConfirm() {
           <div v-if="hasActions" class="rail-card rail-card--actions">
             <p class="rail-card__title">إجراءات متاحة لك</p>
             <ActionsPanel
+              ref="actionsPanelRef"
               :request="request"
               :user-role="userRole"
               @action-completed="onActionCompleted"
@@ -1719,7 +1962,7 @@ async function handleCloneConfirm() {
           <div v-if="showSwiftActionCard" class="rail-card">
             <p class="rail-card__title">إجراءات السويفت</p>
             <template v-if="request.status === RequestStatus.WAITING_FOR_SWIFT">
-              <Button variant="ghost" size="sm" as-child class="text-[var(--info)] hover:text-[var(--info)] ps-0">
+              <Button variant="ghost" size="sm" as-child class="ps-0">
                 <NuxtLink :to="`/requests/${id}/swift`">رفع وثائق السويفت</NuxtLink>
               </Button>
             </template>
@@ -1884,6 +2127,37 @@ async function handleCloneConfirm() {
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
+
+    <!-- Keyboard shortcut legend -->
+    <Dialog v-model:open="showShortcutLegend">
+      <DialogContent class="max-w-sm" dir="rtl">
+        <DialogHeader>
+          <DialogTitle class="flex items-center gap-2">
+            <Keyboard class="h-4 w-4" />
+            اختصارات لوحة المفاتيح
+          </DialogTitle>
+          <DialogDescription>اضغط أي مفتاح لإغلاق هذا النافذة</DialogDescription>
+        </DialogHeader>
+        <div class="space-y-2 text-sm">
+          <div class="flex items-center justify-between gap-4 rounded-md bg-muted/40 px-3 py-2">
+            <span class="text-muted-foreground">تنفيذ الإجراء الرئيسي</span>
+            <kbd class="rounded border bg-background px-2 py-0.5 font-mono text-xs">Ctrl+Enter</kbd>
+          </div>
+          <div class="flex items-center justify-between gap-4 rounded-md bg-muted/40 px-3 py-2">
+            <span class="text-muted-foreground">الطلب التالي في القائمة</span>
+            <kbd class="rounded border bg-background px-2 py-0.5 font-mono text-xs">Alt+←</kbd>
+          </div>
+          <div class="flex items-center justify-between gap-4 rounded-md bg-muted/40 px-3 py-2">
+            <span class="text-muted-foreground">الطلب السابق في القائمة</span>
+            <kbd class="rounded border bg-background px-2 py-0.5 font-mono text-xs">Alt+→</kbd>
+          </div>
+          <div class="flex items-center justify-between gap-4 rounded-md bg-muted/40 px-3 py-2">
+            <span class="text-muted-foreground">عرض/إخفاء هذه النافذة</span>
+            <kbd class="rounded border bg-background px-2 py-0.5 font-mono text-xs">?</kbd>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   </div>
 </template>
 
@@ -2048,25 +2322,6 @@ async function handleCloneConfirm() {
   color: var(--muted-foreground);
   margin: 0;
   font-weight: 500;
-}
-
-.claim-error-banner {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 16px;
-  background: color-mix(in srgb, var(--destructive) 8%, var(--background));
-  border: 1px solid color-mix(in srgb, var(--destructive) 20%, transparent);
-  border-radius: 12px;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--destructive);
-}
-
-.claim-error-icon {
-  display: flex;
-  flex-shrink: 0;
-  color: var(--destructive);
 }
 
 /* Inline voting panel */
