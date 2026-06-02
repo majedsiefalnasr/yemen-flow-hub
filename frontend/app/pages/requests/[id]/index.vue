@@ -2357,7 +2357,7 @@ async function handleCloneConfirm() {
   letter-spacing: -0.3px;
 }
 
-/* Detail grid — Lovable field order, 2 columns */
+/* Detail grid — canonical field order, 2 columns */
 .detail-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;

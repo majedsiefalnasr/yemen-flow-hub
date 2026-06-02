@@ -147,19 +147,6 @@ function isCompactColumn(columnId: string) {
   return columnId === 'select' || columnId === 'actions'
 }
 
-// The actions column stays pinned to the inline-end edge of the scroll container
-// (visual left in RTL) so row actions remain reachable while wide tables scroll
-// horizontally. A translucent background plus backdrop-blur keeps the cells
-// underneath legible without fully covering them.
-function isStickyEndColumn(columnId: string) {
-  return columnId === 'actions'
-}
-
-const STICKY_END_HEAD = 'sticky end-0 z-20 bg-background/70 backdrop-blur-md'
-const STICKY_END_CELL = [
-  'sticky end-0 z-10',
-].join(' ')
-
 defineExpose({ table })
 </script>
 
@@ -180,19 +167,13 @@ defineExpose({ table })
               :data-pinned="header.column.getIsPinned()"
               :class="[
                 isCompactColumn(header.column.id) ? 'w-px' : '',
-                isStickyEndColumn(header.column.id) ? STICKY_END_HEAD : '',
                 resolveHeaderClass(header.column.columnDef.meta),
               ]"
             >
               <template v-if="!header.isPlaceholder">
                 <!-- Actions column intentionally renders an empty header. -->
                 <div
-                  v-if="isStickyEndColumn(header.column.id)"
-                  class="flex items-center justify-center px-2"
-                  aria-hidden="true"
-                />
-                <div
-                  v-else-if="isCompactColumn(header.column.id)"
+                  v-if="isCompactColumn(header.column.id)"
                   class="flex items-center justify-center px-2"
                 >
                   <FlexRender
@@ -232,7 +213,6 @@ defineExpose({ table })
                   :key="cell.id"
                   :class="[
                     isCompactColumn(cell.column.id) ? 'w-px' : '',
-                    isStickyEndColumn(cell.column.id) ? STICKY_END_CELL : '',
                     resolveCellClass(cell.column.columnDef.meta),
                   ]"
                 >

@@ -301,6 +301,7 @@ const columns: ColumnDef<Bank>[] = [
   },
   {
     id: 'actions',
+    header: '',
     enableHiding: false,
     cell: ({ row }) => {
       const bank = row.original

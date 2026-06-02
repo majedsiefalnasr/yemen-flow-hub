@@ -164,7 +164,7 @@ defineExpose({
               :key="header.id"
               :col-span="header.colSpan"
               class="h-10 text-sm font-medium text-foreground"
-              :class="header.column.id === 'actions' ? 'sticky end-0 z-20 w-12 bg-muted px-2' : 'px-4'"
+              :class="header.column.id === 'actions' ? 'w-12 bg-muted px-2' : 'px-4'"
             >
               <FlexRender
                 v-if="!header.isPlaceholder"
@@ -211,7 +211,7 @@ defineExpose({
                 v-for="cell in row.getVisibleCells()"
                 :key="cell.id"
                 class="py-3 align-middle"
-                :class="cell.column.id === 'actions' ? 'sticky end-0 z-10 w-12 bg-background px-2 group-hover/row:bg-muted/30' : 'px-4'"
+                :class="cell.column.id === 'actions' ? 'w-12 bg-background px-2 group-hover/row:bg-muted/30' : 'px-4'"
               >
                 <FlexRender :render="cell.column.columnDef.cell" :props="cell.getContext()" />
               </TableCell>

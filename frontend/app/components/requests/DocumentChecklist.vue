@@ -16,7 +16,6 @@ import { Alert, AlertDescription } from '../ui/alert'
 import {
   Tooltip,
   TooltipContent,
-  TooltipProvider,
   TooltipTrigger,
 } from '../ui/tooltip'
 
@@ -389,7 +388,7 @@ function formatDate(iso: string | null): string {
                 {{ downloadingIds.has(row.doc.id) ? 'جارٍ التنزيل…' : 'تنزيل' }}
               </Button>
               <!-- Lock indicator for DATA_ENTRY on downstream docs (SWIFT / FX) -->
-              <TooltipProvider v-else-if="userRole === UserRole.DATA_ENTRY && (row.doc.type === 'SWIFT' || row.doc.type === 'FX_REQUEST')">
+              <template v-else-if="userRole === UserRole.DATA_ENTRY && (row.doc.type === 'SWIFT' || row.doc.type === 'FX_REQUEST')">
                 <Tooltip>
                   <TooltipTrigger as-child>
                     <span
@@ -406,7 +405,7 @@ function formatDate(iso: string | null): string {
                     هذا المستند يُعالَج من قِبل فريق CBY ولا يتاح للتنزيل في هذه المرحلة
                   </TooltipContent>
                 </Tooltip>
-              </TooltipProvider>
+              </template>
             </div>
           </li>
 

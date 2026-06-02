@@ -143,6 +143,7 @@ const scheduledReportColumns: ColumnDef<ScheduledReportRow>[] = [
   },
   {
     id: 'actions',
+    header: '',
     enableHiding: false,
     cell: () =>
       h(Button, { size: 'sm', variant: 'ghost' }, () => h(Download, { class: 'h-3.5 w-3.5' })),

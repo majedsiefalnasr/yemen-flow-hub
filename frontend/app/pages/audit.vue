@@ -309,6 +309,7 @@ const columns: ColumnDef<AuditLog>[] = [
   },
   {
     id: 'actions',
+    header: '',
     enableHiding: false,
     cell: ({ row }) =>
       h(DropdownMenu, {}, {

@@ -505,7 +505,6 @@ const requestsEmptyState = computed(() => buildRequestsEmptyState({
         @update:column-filters="(v) => columnFilters = v"
         @update:column-visibility="(v) => columnVisibility = v"
         @update:row-selection="(v) => rowSelection = v"
-        @row-click="(row) => openRequest((row as ImportRequest).id)"
       >
         <template #toolbar="{ table }">
           <DataTableToolbar

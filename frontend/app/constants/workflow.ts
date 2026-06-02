@@ -439,7 +439,7 @@ export interface StageBucket {
   ) => boolean
 }
 
-/** Role-aware stage buckets — production reimplementation of Lovable bucketsFor() */
+/** Role-aware stage buckets — maps each role to the stage buckets it sees. */
 export const ROLE_BUCKETS: Partial<Record<UserRole, StageBucket[]>> = {
   // Spec order: returned first (most actionable), then draft, submitted, processing, completed, rejected, all
   [UserRole.DATA_ENTRY]: [

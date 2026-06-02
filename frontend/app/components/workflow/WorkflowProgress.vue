@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Check, Circle, Dot } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import {
   Stepper,
   StepperDescription,
@@ -221,7 +222,24 @@ function stepIconClass(state: string): string {
           </Button>
         </StepperTrigger>
 
-        <div class="flex flex-col gap-0.5 pt-1.5">
+        <template v-if="compact">
+          <Tooltip>
+            <TooltipTrigger as-child>
+              <div class="flex flex-col gap-0.5 pt-1.5 cursor-default">
+                <StepperTitle
+                  :class="[state === 'active' ? 'font-semibold text-foreground' : state === 'completed' ? 'text-foreground' : 'font-normal text-muted-foreground']"
+                  class="text-sm leading-snug"
+                >
+                  {{ s.label }}
+                </StepperTitle>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="end" class="text-xs">
+              <p :class="stepDescription(state).class">{{ stepDescription(state).label }}</p>
+            </TooltipContent>
+          </Tooltip>
+        </template>
+        <div v-else class="flex flex-col gap-0.5 pt-1.5">
           <StepperTitle
             :class="[state === 'active' ? 'font-semibold text-foreground' : state === 'completed' ? 'text-foreground' : 'font-normal text-muted-foreground']"
             class="text-sm leading-snug"
@@ -229,7 +247,6 @@ function stepIconClass(state: string): string {
             {{ s.label }}
           </StepperTitle>
           <StepperDescription
-            v-if="!compact"
             :class="stepDescription(state).class"
             class="text-[11px]"
           >

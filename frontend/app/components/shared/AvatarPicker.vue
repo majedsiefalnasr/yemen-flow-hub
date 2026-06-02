@@ -83,7 +83,7 @@ function selectVariant(variant: AvatarVariant) {
         :data-variant="variant"
         :disabled="disabled"
         :class="cn(
-          'group relative grid place-items-center rounded-full transition-all overflow-hidden',
+          'group relative grid place-items-center rounded-full transition-all overflow-hidden cursor-pointer',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background',
           'disabled:cursor-not-allowed disabled:opacity-50',
           selectedVariant === variant

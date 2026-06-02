@@ -384,6 +384,7 @@ const columns: ColumnDef<Notification>[] = [
   },
   {
     id: 'actions',
+    header: '',
     enableHiding: false,
     cell: ({ row }) => {
       const n = row.original

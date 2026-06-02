@@ -184,12 +184,12 @@ onMounted(async () => {
       </Alert>
 
       <!-- Final decision badge -->
-      <div v-if="isFinalized" class="text-center py-4 px-4 rounded-lg font-bold text-2xl" :class="requestStatus === RequestStatus.EXECUTIVE_APPROVED ? 'bg-success/10/10 text-success border border-[var(--color-border-success)]' : 'bg-destructive/10 text-destructive border border-destructive'">
+      <div v-if="isFinalized" class="text-center py-4 px-4 rounded-lg font-bold text-2xl" :class="requestStatus === RequestStatus.EXECUTIVE_APPROVED ? 'bg-success/10 text-success border border-[var(--color-border-success)]' : 'bg-destructive/10 text-destructive border border-destructive'">
         {{ requestStatus === RequestStatus.EXECUTIVE_APPROVED ? 'معتمد' : 'مرفوض' }}
       </div>
 
       <!-- Vote action error -->
-      <Alert v-if="voteError" class="border-red-600 bg-destructive/10 border-0">
+      <Alert v-if="voteError" class="border border-destructive bg-destructive/10">
         <AlertCircle class="h-4 w-4 text-destructive" aria-hidden="true" />
         <AlertDescription class="text-destructive text-sm">{{ voteError }}</AlertDescription>
       </Alert>
@@ -229,7 +229,7 @@ onMounted(async () => {
       </div>
 
       <!-- Tie-break notice -->
-      <Alert v-if="showTieBreak" class="border-amber-500 bg-[var(--color-surface-warning)] border-0">
+      <Alert v-if="showTieBreak" class="border border-[var(--color-border-warning)] bg-[var(--color-surface-warning)]">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-warning" aria-hidden="true">
           <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
         </svg>
@@ -349,7 +349,7 @@ onMounted(async () => {
       </div>
 
       <!-- Already voted indicator -->
-      <Alert v-if="isSessionOpen && isVoter && detail.my_vote" class="border-0 bg-success/10/10 border-green-600">
+      <Alert v-if="isSessionOpen && isVoter && detail.my_vote" class="border border-[var(--color-border-success)] bg-success/10">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="text-success" aria-hidden="true">
           <polyline points="20 6 9 17 4 12" />
         </svg>

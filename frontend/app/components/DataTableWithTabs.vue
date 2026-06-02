@@ -238,7 +238,7 @@ const prevPage = () => {
               </TableHead>
 
               <!-- Actions column -->
-              <TableHead class="text-right">Actions</TableHead>
+              <TableHead />
             </TableRow>
           </TableHeader>
 

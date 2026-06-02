@@ -356,6 +356,7 @@ export function useRequestsColumns(opts: {
     },
     {
       id: 'actions',
+      header: '',
       enableHiding: false,
       cell: ({ row }) => {
         const request = row.original

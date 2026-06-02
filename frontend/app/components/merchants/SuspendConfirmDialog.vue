@@ -60,7 +60,7 @@ function requestClose() {
           {{ message }}
         </p>
 
-        <Alert v-if="props.error" class="border-red-600 bg-[var(--color-surface-error)] border-0 w-full" role="alert">
+        <Alert v-if="props.error" class="border border-[var(--color-border-error)] bg-[var(--color-surface-error)] w-full" role="alert">
           <AlertCircle class="h-4 w-4 text-[var(--color-text-error)]" aria-hidden="true" />
           <AlertDescription class="text-[var(--color-text-error)] text-sm">{{ props.error }}</AlertDescription>
         </Alert>

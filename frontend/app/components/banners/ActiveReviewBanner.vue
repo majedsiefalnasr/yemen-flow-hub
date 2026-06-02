@@ -4,6 +4,7 @@ import { AlarmClock } from 'lucide-vue-next'
 import { Alert, AlertDescription } from '../ui/alert'
 import { Badge } from '../ui/badge'
 import { Button } from '../ui/button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip'
 
 const props = defineProps<{
   claimedUntil?: string | null
@@ -58,14 +59,21 @@ onBeforeUnmount(() => {
       <span class="mx-2 text-muted-foreground">·</span>
       <span class="text-muted-foreground">{{ remainingLabel }}</span>
     </AlertDescription>
-    <span class="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-      <span
-        class="h-2 w-2 rounded-full"
-        :class="heartbeatActive ? 'bg-green-600 animate-pulse' : 'bg-muted-foreground'"
-        aria-hidden="true"
-      />
-      heartbeat
-    </span>
+    <Tooltip>
+      <TooltipTrigger as-child>
+        <span class="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+          <span
+            class="h-2 w-2 rounded-full"
+            :class="heartbeatActive ? 'bg-[var(--severity-green)] animate-pulse' : 'bg-muted-foreground'"
+            aria-hidden="true"
+          />
+          {{ heartbeatActive ? 'الاتصال نشط' : 'انقطع الاتصال' }}
+        </span>
+      </TooltipTrigger>
+      <TooltipContent>
+        <p>{{ heartbeatActive ? 'يُجدَّد حجزك تلقائياً كل دقيقة طالما الصفحة مفتوحة' : 'توقّف تجديد الحجز — قد يُحرَّر الطلب بعد انتهاء المهلة' }}</p>
+      </TooltipContent>
+    </Tooltip>
     <Button
       size="sm"
       variant="outline"

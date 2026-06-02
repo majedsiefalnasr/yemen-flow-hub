@@ -385,6 +385,7 @@ const columns: ColumnDef<Merchant>[] = [
   },
   {
     id: 'actions',
+    header: '',
     enableHiding: false,
     cell: ({ row }) => {
       const merchant = row.original

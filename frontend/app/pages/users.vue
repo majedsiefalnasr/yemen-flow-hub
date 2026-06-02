@@ -392,6 +392,7 @@ const columns: ColumnDef<User>[] = [
   },
   {
     id: 'actions',
+    header: '',
     enableHiding: false,
     cell: ({ row }) => {
       const user = row.original
