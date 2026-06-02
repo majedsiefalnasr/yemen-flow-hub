@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { useOrgStore } from '@/stores/org.store'
 
 export type ThemeMode = 'system' | 'light' | 'dark'
 export type FontFamily = string
@@ -26,6 +27,23 @@ interface BrandingChannels {
   vendorReports: boolean
 }
 
+interface BrandingSettings {
+  brandColor?: string
+  brandLogoName?: string | null
+  brandLogoDataUrl?: string | null
+  brandingPublished?: boolean
+  brandingChannels?: Partial<BrandingChannels>
+}
+
+interface SystemSettings {
+  version?: string
+  general?: {
+    platformName?: string
+    authority?: string
+  }
+  branding?: BrandingSettings
+}
+
 interface ThemingState {
   mode: ThemeMode
   font: FontFamily
@@ -50,7 +68,16 @@ interface ThemingState {
   reducedMotion: ReducedMotionPreference
 }
 
+type AppearanceSettings = Partial<Pick<
+  ThemingState,
+  'mode' | 'font' | 'layout' | 'radius' | 'sidebarVariant' | 'sidebarCollapsible' | 'density' | 'reducedMotion'
+>>
+
 const STORAGE_KEY = 'appearance-settings-cache'
+const SETTINGS_SYNC_EVENT = 'yfh-system-settings-sync'
+const USER_THEMING_DEBOUNCE_MS = 600
+let syncListenerRegistered = false
+let userThemingSaveTimer: ReturnType<typeof setTimeout> | null = null
 const PINNED_FONT_FAMILIES = ['IBM Plex Sans Arabic', 'Cairo', 'Tajawal', 'Inter']
 
 const LEGACY_FONT_KEYS: Record<string, string> = {
@@ -134,6 +161,13 @@ function categoryLabel(category: string | undefined, subsets: string[] = []): st
 
 function sanitizeBrandColor(color: string): string {
   return /^#[0-9a-f]{6}$/i.test(color) ? color : '#0066cc'
+}
+
+function hasAuthenticatedSessionHint(): boolean {
+  if (typeof localStorage === 'undefined') return false
+
+  return localStorage.getItem('yfh-authenticated') === '1'
+    || Boolean(localStorage.getItem('yfh-api-token'))
 }
 
 export const useThemingStore = defineStore('theming', {
@@ -267,17 +301,20 @@ export const useThemingStore = defineStore('theming', {
       }
 
       this.persistToCache()
+      this.queueUserThemingSave()
     },
 
     setFont(font: FontFamily) {
       this.font = normalizeFontFamily(font)
       this.applyFont()
       this.persistToCache()
+      this.queueUserThemingSave()
     },
 
     setLayout(layout: LayoutMode) {
       this.layout = layout
       this.persistToCache()
+      this.queueUserThemingSave()
     },
 
     setBrandColor(color: string) {
@@ -326,27 +363,32 @@ export const useThemingStore = defineStore('theming', {
       this.radius = value
       this.applyRadius()
       this.persistToCache()
+      this.queueUserThemingSave()
     },
 
     setSidebarVariant(value: SidebarVariant) {
       this.sidebarVariant = value
       this.persistToCache()
+      this.queueUserThemingSave()
     },
 
     setSidebarCollapsible(value: SidebarCollapsible) {
       this.sidebarCollapsible = value
       this.persistToCache()
+      this.queueUserThemingSave()
     },
 
     setDensity(value: DensityPreference) {
       this.density = value
       this.applyDensity()
       this.persistToCache()
+      this.queueUserThemingSave()
     },
 
     setReducedMotion(value: ReducedMotionPreference) {
       this.reducedMotion = value
       this.persistToCache()
+      this.queueUserThemingSave()
     },
 
     applyTheme() {
@@ -393,6 +435,31 @@ export const useThemingStore = defineStore('theming', {
       root.style.removeProperty('--primary')
       root.style.removeProperty('--primary-foreground')
       root.style.setProperty('--ring', color)
+    },
+
+    applySystemSettings(settings: SystemSettings | null | undefined) {
+      if (!settings) return
+
+      const branding = settings.branding || {}
+      if (typeof branding.brandColor === 'string') {
+        this.brandColor = sanitizeBrandColor(branding.brandColor)
+      }
+      if (typeof branding.brandLogoName === 'string') {
+        this.brandLogoName = branding.brandLogoName
+      }
+      if (typeof branding.brandingPublished === 'boolean') {
+        this.brandingPublished = branding.brandingPublished
+      }
+      if (branding.brandingChannels) {
+        this.brandingChannels = {
+          securityQuestionnaires: branding.brandingChannels.securityQuestionnaires ?? false,
+          emails: branding.brandingChannels.emails ?? true,
+          vendorReports: branding.brandingChannels.vendorReports ?? true,
+        }
+      }
+
+      useOrgStore().applySystemSettings(settings.general, branding, settings.version)
+      this.applyBranding()
     },
 
     applyHighContrast() {
@@ -444,9 +511,11 @@ export const useThemingStore = defineStore('theming', {
       if (typeof window === 'undefined') return
 
       this.isLoading = true
+      this.listenForSystemSettingsSync()
 
       try {
         this.loadFromCache()
+        await this.loadFromServer()
         // loadGoogleFonts() is deferred — called lazily when the font combobox opens
         this.applyTheme()
         this.applyFont()
@@ -456,6 +525,116 @@ export const useThemingStore = defineStore('theming', {
         this.applyDensity()
       } finally {
         this.isLoading = false
+      }
+    },
+
+    applyAppearanceSettings(settings: AppearanceSettings | null | undefined) {
+      if (!settings || typeof settings !== 'object') return
+
+      if (['system', 'light', 'dark'].includes(settings.mode ?? '')) {
+        this.mode = settings.mode as ThemeMode
+      }
+      if (typeof settings.font === 'string' && settings.font.trim()) {
+        this.font = normalizeFontFamily(settings.font)
+      }
+      if (settings.layout === 'boxed' || settings.layout === 'full') {
+        this.layout = settings.layout
+      }
+      if ((['none', 'sm', 'md', 'lg', 'xl'] as string[]).includes(settings.radius ?? '')) {
+        this.radius = settings.radius as RadiusPreference
+      }
+      if ((['sidebar', 'floating', 'inset'] as string[]).includes(settings.sidebarVariant ?? '')) {
+        this.sidebarVariant = settings.sidebarVariant as SidebarVariant
+      }
+      if ((['offcanvas', 'icon', 'none'] as string[]).includes(settings.sidebarCollapsible ?? '')) {
+        this.sidebarCollapsible = settings.sidebarCollapsible as SidebarCollapsible
+      }
+      if ((['comfortable', 'compact'] as string[]).includes(settings.density ?? '')) {
+        this.density = settings.density as DensityPreference
+      }
+      if ((['system', 'always'] as string[]).includes(settings.reducedMotion ?? '')) {
+        this.reducedMotion = settings.reducedMotion as ReducedMotionPreference
+      }
+    },
+
+    async loadFromServer() {
+      const config = useRuntimeConfig()
+      const baseURL = config.public.apiBase as string
+      const authenticated = hasAuthenticatedSessionHint()
+      const endpoint = authenticated ? '/api/settings' : '/api/settings/public'
+
+      try {
+        const response = await $fetch<{ data?: { theming?: AppearanceSettings, system?: SystemSettings } | SystemSettings }>(endpoint, {
+          baseURL,
+          credentials: 'include',
+          headers: { Accept: 'application/json' },
+        })
+        if (authenticated && response.data && 'system' in response.data) {
+          this.applyAppearanceSettings(response.data.theming)
+          this.applySystemSettings(response.data.system)
+        } else {
+          this.applySystemSettings(response.data as SystemSettings)
+        }
+        this.persistToCache()
+      } catch {
+        // Unauthenticated first paint or temporary API failure: keep the local
+        // cache fallback, but never treat cache as the source of truth.
+      }
+    },
+
+    /**
+     * Schedule a debounced write-through of the current user-level theming
+     * preferences to the backend. The localStorage cache has already been
+     * updated synchronously by the caller — this method is responsible for
+     * keeping the database (the source of truth) in lockstep so that the same
+     * preferences apply on every device the user signs in from.
+     *
+     * No-op when the user is unauthenticated (settings are local-only until a
+     * session exists). Failures are silent: the local change still applies and
+     * the next successful save will reconcile state.
+     */
+    queueUserThemingSave() {
+      if (typeof window === 'undefined') return
+      if (!hasAuthenticatedSessionHint()) return
+
+      if (userThemingSaveTimer) clearTimeout(userThemingSaveTimer)
+      userThemingSaveTimer = setTimeout(() => {
+        userThemingSaveTimer = null
+        void this.flushUserThemingSave()
+      }, USER_THEMING_DEBOUNCE_MS)
+    },
+
+    async flushUserThemingSave() {
+      if (typeof window === 'undefined') return
+      if (!hasAuthenticatedSessionHint()) return
+
+      const payload = {
+        mode: this.mode,
+        font: this.font,
+        layout: this.layout,
+        sidebarVariant: this.sidebarVariant,
+        sidebarCollapsible: this.sidebarCollapsible,
+        radius: this.radius,
+        density: this.density,
+        reducedMotion: this.reducedMotion,
+      }
+
+      try {
+        const config = useRuntimeConfig()
+        const baseURL = config.public.apiBase as string
+        await $fetch(`${baseURL}/api/settings/save-section`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { Accept: 'application/json' },
+          body: { section: 'theming', subsection: null, data: payload },
+        })
+      } catch (error) {
+        // The local cache still reflects the user's choice; the next
+        // successful save (or page reload) will reconcile the backend. We
+        // surface nothing here to avoid noisy toasts during rapid clicks.
+        if (import.meta.dev) {
+          console.warn('Failed to persist user theming preferences:', error)
+        }
       }
     },
 
@@ -516,6 +695,25 @@ export const useThemingStore = defineStore('theming', {
       } catch (error) {
         console.error('Failed to load appearance cache:', error)
       }
+    },
+
+    publishSystemSettingsSync() {
+      if (typeof window === 'undefined') return
+
+      const payload = JSON.stringify({ version: useOrgStore().systemVersion, at: Date.now() })
+      localStorage.setItem(SETTINGS_SYNC_EVENT, payload)
+      window.dispatchEvent(new StorageEvent('storage', { key: SETTINGS_SYNC_EVENT, newValue: payload }))
+    },
+
+    listenForSystemSettingsSync() {
+      if (typeof window === 'undefined' || syncListenerRegistered) return
+      syncListenerRegistered = true
+
+      window.addEventListener('storage', async (event) => {
+        if (event.key !== SETTINGS_SYNC_EVENT) return
+        await this.loadFromServer()
+        this.applyBranding()
+      })
     },
   },
 })
