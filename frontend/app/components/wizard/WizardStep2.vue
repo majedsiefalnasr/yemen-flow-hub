@@ -4,6 +4,7 @@ import type { WizardStep2Data } from '../../composables/useRequestWizard'
 import { ARRIVAL_PORTS } from '../../schemas/wizard.schema'
 import { Input } from '../ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select'
+import { useFormFieldNav } from '@/composables/useFormFieldNav'
 import {
   Field,
   FieldDescription,
@@ -45,6 +46,7 @@ function onPortChange(port: string): void {
   emit('arrival-port-change', port)
 }
 
+const { onFieldKeydown, enterKeyHint } = useFormFieldNav()
 </script>
 
 <template>
@@ -65,8 +67,10 @@ function onPortChange(port: string): void {
               :aria-invalid="!!errors.supplier_name"
               :class="{ 'border-destructive': errors.supplier_name }"
               :value="modelValue.supplier_name ?? ''"
+              :enterkeyhint="enterKeyHint"
               placeholder="مثال: Cargill Trading Inc."
               @input="update('supplier_name', ($event.target as HTMLInputElement).value)"
+              @keydown="onFieldKeydown"
             />
             <FieldError v-if="errors.supplier_name">{{ errors.supplier_name }}</FieldError>
           </Field>
@@ -106,10 +110,12 @@ function onPortChange(port: string): void {
                 type="text"
                 :disabled="loading"
                 :aria-invalid="!!errors.invoice_number"
-              :class="{ 'border-destructive': errors.invoice_number }"
+                :class="{ 'border-destructive': errors.invoice_number }"
                 :value="modelValue.invoice_number ?? ''"
+                :enterkeyhint="enterKeyHint"
                 placeholder="INV-2025-XXXX"
                 @input="update('invoice_number', ($event.target as HTMLInputElement).value)"
+                @keydown="onFieldKeydown"
               />
               <FieldError v-if="errors.invoice_number">{{ errors.invoice_number }}</FieldError>
             </Field>
@@ -164,8 +170,10 @@ function onPortChange(port: string): void {
                 type="text"
                 :disabled="loading"
                 :value="modelValue.shipping_port ?? ''"
+                :enterkeyhint="enterKeyHint"
                 placeholder="Port of Houston, USA"
                 @input="update('shipping_port', ($event.target as HTMLInputElement).value)"
+                @keydown="onFieldKeydown"
               />
               <FieldDescription>اختياري</FieldDescription>
             </Field>
@@ -177,8 +185,10 @@ function onPortChange(port: string): void {
                 type="text"
                 :disabled="loading"
                 :value="modelValue.bl_number ?? ''"
+                :enterkeyhint="enterKeyHint"
                 placeholder="BL-XXXX-XXXX"
                 @input="update('bl_number', ($event.target as HTMLInputElement).value)"
+                @keydown="onFieldKeydown"
               />
               <FieldDescription>اختياري</FieldDescription>
             </Field>

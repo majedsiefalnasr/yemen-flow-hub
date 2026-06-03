@@ -36,6 +36,9 @@ import {
 import { AlertTriangle, Check, ChevronsUpDown, Lock, RotateCcw } from 'lucide-vue-next'
 // Alert/AlertTriangle kept for merchant load error banner
 import { cn } from '@/lib/utils'
+import { useFormFieldNav } from '@/composables/useFormFieldNav'
+
+const { onFieldKeydown, enterKeyHint } = useFormFieldNav()
 
 const props = defineProps<{
   modelValue: WizardStep1Data
@@ -233,8 +236,10 @@ const notesLength = computed(() => props.modelValue.notes?.length ?? 0)
                 :aria-invalid="!!errors.amount"
                 :class="{ 'border-destructive': errors.amount }"
                 :value="modelValue.amount ?? ''"
+                :enterkeyhint="enterKeyHint"
                 placeholder="0"
                 @input="update('amount', Number(($event.target as HTMLInputElement).value) || null)"
+                @keydown="onFieldKeydown"
               />
               <FieldError v-if="errors.amount">{{ errors.amount }}</FieldError>
             </Field>

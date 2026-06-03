@@ -168,7 +168,7 @@ const isSubmitDisabled = computed(() => !wizard.acknowledged.value || wizard.sub
     />
 
     <!-- Step content card -->
-    <div class="bg-card border border-border rounded-2xl p-6 shadow-sm">
+    <div class="bg-card border border-border rounded-2xl p-6 shadow-sm" data-field-nav>
       <WizardStep1
         v-if="wizard.currentStep.value === 1"
         v-model="wizard.step1.value"
