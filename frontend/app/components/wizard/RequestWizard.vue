@@ -98,8 +98,11 @@ async function handleNext(): Promise<void> {
   emit('dirty')
   const ok = wizard.nextStep()
   if (!ok) {
-    await new Promise(r => setTimeout(r, 50))
-    document.querySelector('[role="alert"]')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    // Let Vue flush the error state into the DOM before scrolling
+    await new Promise(r => setTimeout(r, 60))
+    const firstInvalid = document.querySelector<HTMLElement>('[aria-invalid="true"], .border-destructive')
+    firstInvalid?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    firstInvalid?.focus({ preventScroll: true })
     return
   }
 
@@ -170,6 +173,7 @@ const isSubmitDisabled = computed(() => !wizard.acknowledged.value || wizard.sub
         v-if="wizard.currentStep.value === 1"
         v-model="wizard.step1.value"
         :errors="wizard.step1Errors.value"
+        @clear-error="wizard.clearStep1Error"
         :is-data-entry="wizard.isDataEntry.value"
         :data-entry-merchant-name="merchantName"
         :data-entry-merchants="dataEntryMerchants"
@@ -181,6 +185,7 @@ const isSubmitDisabled = computed(() => !wizard.acknowledged.value || wizard.sub
         v-else-if="wizard.currentStep.value === 2"
         v-model="wizard.step2.value"
         :errors="wizard.step2Errors.value"
+        @clear-error="wizard.clearStep2Error"
         :auto-fill-chip="wizard.autoFillChip.value"
         :loading="wizard.saving.value"
         @arrival-port-change="wizard.onArrivalPortChange"

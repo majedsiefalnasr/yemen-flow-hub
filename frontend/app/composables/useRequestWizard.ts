@@ -28,6 +28,7 @@ export interface WizardStep2Data {
 }
 
 export interface WizardStep3Data {
+  confirmation_request: File | null
   proforma_invoice: File | null
   commercial_register: File | null
   tax_card: File | null
@@ -35,6 +36,7 @@ export interface WizardStep3Data {
 }
 
 export interface WizardUploadState {
+  confirmation_request: 'idle' | 'uploading' | 'done' | 'error'
   proforma_invoice: 'idle' | 'uploading' | 'done' | 'error'
   commercial_register: 'idle' | 'uploading' | 'done' | 'error'
   tax_card: 'idle' | 'uploading' | 'done' | 'error'
@@ -44,6 +46,7 @@ export interface WizardUploadState {
 export type WizardDocumentKey = keyof WizardUploadState
 
 const DOCUMENT_LABELS: Record<WizardDocumentKey, string> = {
+  confirmation_request: 'طلب وثيقة التأكيد (مختوم)',
   proforma_invoice: 'الفاتورة الأولية',
   commercial_register: 'السجل التجاري',
   tax_card: 'البطاقة الضريبية',
@@ -51,6 +54,19 @@ const DOCUMENT_LABELS: Record<WizardDocumentKey, string> = {
 }
 
 const UPLOAD_ERROR_MESSAGE = 'تعذّر رفع الملف، يرجى إعادة المحاولة.'
+
+function getXsrfToken(): string | null {
+  if (!process.client) return null
+  const raw = document.cookie
+    .split(';')
+    .map(cookie => cookie.trim())
+    .find(cookie => cookie.startsWith('XSRF-TOKEN='))
+    ?.split('=')
+    .slice(1)
+    .join('=')
+
+  return raw ? decodeURIComponent(raw) : null
+}
 
 export function useRequestWizard() {
   const authStore = useAuthStore()
@@ -67,13 +83,14 @@ export function useRequestWizard() {
   const savedRequestId = ref<number | null>(null)
   const acknowledged = ref(false)
   const autoFillChip = ref(false)
+  const autoSavedForStep3 = ref(false)
 
   // Per-step form data
   const step1 = ref<WizardStep1Data>({
     goods_type: '',
     amount: null,
     currency: Currency.USD,
-    payment_terms: '',
+    payment_terms: 'LC',
     due_date: '',
     merchant_id: null,
     notes: '',
@@ -91,6 +108,7 @@ export function useRequestWizard() {
   })
 
   const step3 = ref<WizardStep3Data>({
+    confirmation_request: null,
     proforma_invoice: null,
     commercial_register: null,
     tax_card: null,
@@ -103,6 +121,7 @@ export function useRequestWizard() {
   const step3Errors = ref<Partial<Record<WizardDocumentKey, string>>>({})
 
   const uploadState = ref<WizardUploadState>({
+    confirmation_request: 'idle',
     proforma_invoice: 'idle',
     commercial_register: 'idle',
     tax_card: 'idle',
@@ -173,7 +192,7 @@ export function useRequestWizard() {
 
   function validateStep3(): boolean {
     const errs: typeof step3Errors.value = {}
-    const required: Array<WizardDocumentKey> = ['proforma_invoice', 'commercial_register', 'tax_card']
+    const required: Array<WizardDocumentKey> = ['confirmation_request', 'proforma_invoice', 'commercial_register', 'tax_card']
     for (const key of required) {
       if (!step3.value[key]) {
         errs[key] = `يرجى رفع ${DOCUMENT_LABELS[key]}`
@@ -289,6 +308,18 @@ export function useRequestWizard() {
     }
   }
 
+  async function ensureDraftSavedForStep3(): Promise<void> {
+    if (savedRequestId.value !== null) {
+      autoSavedForStep3.value = true
+      return
+    }
+
+    const result = await saveDraft()
+    if (result) {
+      autoSavedForStep3.value = true
+    }
+  }
+
   // ── Upload documents ───────────────────────────────────────────────────────
 
   async function uploadDocuments(requestId: number): Promise<WizardDocumentKey[]> {
@@ -312,11 +343,19 @@ export function useRequestWizard() {
           const form = new FormData()
           form.append('request_id', String(requestId))
           form.append('file', file)
+          if (key === 'confirmation_request') {
+            form.append('confirmation_request', '1')
+          }
+          const xsrfToken = getXsrfToken()
           await $fetch(`/api/documents/upload`, {
             method: 'POST',
             baseURL,
             credentials: 'include',
             body: form,
+            headers: {
+              Accept: 'application/json',
+              ...(xsrfToken ? { 'X-XSRF-TOKEN': xsrfToken } : {}),
+            },
           })
           uploadState.value[key] = 'done'
         }
@@ -384,6 +423,7 @@ export function useRequestWizard() {
     savedRequestId,
     acknowledged,
     autoFillChip,
+    autoSavedForStep3,
     // Form data
     step1,
     step2,
@@ -407,9 +447,20 @@ export function useRequestWizard() {
     validateStep1,
     validateStep2,
     validateStep3,
+    clearStep1Error: (key: keyof WizardStep1Data) => {
+      const next = { ...step1Errors.value }
+      delete next[key]
+      step1Errors.value = next
+    },
+    clearStep2Error: (key: keyof WizardStep2Data) => {
+      const next = { ...step2Errors.value }
+      delete next[key]
+      step2Errors.value = next
+    },
     resetUploadState,
     onArrivalPortChange,
     saveDraft,
+    ensureDraftSavedForStep3,
     submitRequest,
     buildPayload,
     DOCUMENT_LABELS,

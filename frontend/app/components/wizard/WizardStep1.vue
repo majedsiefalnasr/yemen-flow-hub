@@ -34,6 +34,7 @@ import {
   FieldSet,
 } from '../ui/field'
 import { AlertTriangle, Check, ChevronsUpDown, Lock, RotateCcw } from 'lucide-vue-next'
+// Alert/AlertTriangle kept for merchant load error banner
 import { cn } from '@/lib/utils'
 
 const props = defineProps<{
@@ -48,10 +49,12 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:modelValue': [value: WizardStep1Data]
+  'clear-error': [key: keyof WizardStep1Data]
 }>()
 
 function update<K extends keyof WizardStep1Data>(key: K, val: WizardStep1Data[K]): void {
   emit('update:modelValue', { ...props.modelValue, [key]: val })
+  if (props.errors[key]) emit('clear-error', key)
 }
 
 const CURRENCY_LABELS: Record<string, string> = {
@@ -117,19 +120,10 @@ function selectMerchant(merchantId: string) {
 }
 
 const notesLength = computed(() => props.modelValue.notes?.length ?? 0)
-const errorCount = computed(() => Object.keys(props.errors).length)
 </script>
 
 <template>
   <div class="flex flex-col gap-0">
-    <!-- Error banner -->
-    <Alert v-if="errorCount > 0" variant="destructive" class="mb-6">
-      <AlertTriangle class="h-4 w-4" />
-      <AlertDescription>
-        يوجد {{ errorCount }} {{ errorCount === 1 ? 'حقل يحتاج' : 'حقول تحتاج' }} إلى تصحيح قبل المتابعة.
-      </AlertDescription>
-    </Alert>
-
     <FieldGroup>
       <!-- Section 1: Basic request info -->
       <FieldSet>
@@ -145,7 +139,7 @@ const errorCount = computed(() => Object.keys(props.errors).length)
               :disabled="loading"
               @update:model-value="(val) => update('goods_type', String(val ?? ''))"
             >
-              <SelectTrigger id="goods-type" :class="{ 'border-destructive': errors.goods_type }">
+              <SelectTrigger id="goods-type" :class="{ 'border-destructive': errors.goods_type }" :aria-invalid="!!errors.goods_type">
                 <SelectValue placeholder="اختر نوع الواردات..." />
               </SelectTrigger>
               <SelectContent>
@@ -187,6 +181,7 @@ const errorCount = computed(() => Object.keys(props.errors).length)
                     role="combobox"
                     :aria-expanded="merchantOpen"
                     :disabled="merchantsLoading || loading"
+                    :aria-invalid="!!errors.merchant_id"
                     :class="cn(
                       'w-full justify-between font-normal',
                       errors.merchant_id ? 'border-destructive' : '',
@@ -235,6 +230,7 @@ const errorCount = computed(() => Object.keys(props.errors).length)
                 min="1000"
                 step="1"
                 :disabled="loading"
+                :aria-invalid="!!errors.amount"
                 :class="{ 'border-destructive': errors.amount }"
                 :value="modelValue.amount ?? ''"
                 placeholder="0"
@@ -250,7 +246,7 @@ const errorCount = computed(() => Object.keys(props.errors).length)
                 :disabled="loading"
                 @update:model-value="(val) => update('currency', String(val ?? '') as WizardStep1Data['currency'])"
               >
-                <SelectTrigger id="currency" :class="{ 'border-destructive': errors.currency }">
+                <SelectTrigger id="currency" :class="{ 'border-destructive': errors.currency }" :aria-invalid="!!errors.currency">
                   <SelectValue placeholder="اختر..." />
                 </SelectTrigger>
                 <SelectContent>
@@ -278,7 +274,7 @@ const errorCount = computed(() => Object.keys(props.errors).length)
               :disabled="loading"
               @update:model-value="(val) => update('payment_terms', String(val ?? '') as WizardStep1Data['payment_terms'])"
             >
-              <SelectTrigger id="payment-terms" :class="{ 'border-destructive': errors.payment_terms }">
+              <SelectTrigger id="payment-terms" :class="{ 'border-destructive': errors.payment_terms }" :aria-invalid="!!errors.payment_terms">
                 <SelectValue placeholder="اختر شروط الدفع..." />
               </SelectTrigger>
               <SelectContent>

@@ -344,6 +344,7 @@ async function downloadDocument(docId: number, filename: string) {
             :data-entry-merchant-name="merchantName"
             :data-entry-merchants="dataEntryMerchants"
             :loading="requestsStore.saving"
+            @clear-error="(k) => delete step1Errors[k]"
           />
 
           <Separator class="my-8" />
@@ -354,6 +355,7 @@ async function downloadDocument(docId: number, filename: string) {
             :errors="step2Errors"
             :auto-fill-chip="false"
             :loading="requestsStore.saving"
+            @clear-error="(k) => delete step2Errors[k]"
           />
 
           <Separator class="my-8" />

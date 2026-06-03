@@ -4,7 +4,6 @@ import type { WizardStep2Data } from '../../composables/useRequestWizard'
 import { ARRIVAL_PORTS } from '../../schemas/wizard.schema'
 import { Input } from '../ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select'
-import { Alert, AlertDescription } from '../ui/alert'
 import {
   Field,
   FieldDescription,
@@ -15,7 +14,6 @@ import {
   FieldSeparator,
   FieldSet,
 } from '../ui/field'
-import { AlertTriangle } from 'lucide-vue-next'
 
 const COUNTRIES = [
   'الولايات المتحدة', 'المملكة المتحدة', 'الصين', 'الهند', 'الإمارات العربية المتحدة',
@@ -35,29 +33,22 @@ const props = defineProps<{
 const emit = defineEmits<{
   'update:modelValue': [value: WizardStep2Data]
   'arrival-port-change': [port: string]
+  'clear-error': [key: keyof WizardStep2Data]
 }>()
 
 function update<K extends keyof WizardStep2Data>(key: K, val: WizardStep2Data[K]): void {
   emit('update:modelValue', { ...props.modelValue, [key]: val })
+  if (props.errors[key]) emit('clear-error', key)
 }
 
 function onPortChange(port: string): void {
   emit('arrival-port-change', port)
 }
 
-const errorCount = computed(() => Object.keys(props.errors).length)
 </script>
 
 <template>
   <div class="flex flex-col gap-0">
-    <!-- Error banner -->
-    <Alert v-if="errorCount > 0" variant="destructive" class="mb-6">
-      <AlertTriangle class="h-4 w-4" />
-      <AlertDescription>
-        يوجد {{ errorCount }} {{ errorCount === 1 ? 'حقل يحتاج' : 'حقول تحتاج' }} إلى تصحيح قبل المتابعة.
-      </AlertDescription>
-    </Alert>
-
     <FieldGroup>
       <!-- Section 1: Supplier -->
       <FieldSet>
@@ -71,6 +62,7 @@ const errorCount = computed(() => Object.keys(props.errors).length)
               id="supplier-name"
               type="text"
               :disabled="loading"
+              :aria-invalid="!!errors.supplier_name"
               :class="{ 'border-destructive': errors.supplier_name }"
               :value="modelValue.supplier_name ?? ''"
               placeholder="مثال: Cargill Trading Inc."
@@ -86,7 +78,7 @@ const errorCount = computed(() => Object.keys(props.errors).length)
               :disabled="loading"
               @update:model-value="(val) => update('origin_country', String(val ?? ''))"
             >
-              <SelectTrigger id="origin-country" :class="{ 'border-destructive': errors.origin_country }">
+              <SelectTrigger id="origin-country" :class="{ 'border-destructive': errors.origin_country }" :aria-invalid="!!errors.origin_country">
                 <SelectValue placeholder="اختر بلد المنشأ..." />
               </SelectTrigger>
               <SelectContent>
@@ -113,7 +105,8 @@ const errorCount = computed(() => Object.keys(props.errors).length)
                 id="invoice-number"
                 type="text"
                 :disabled="loading"
-                :class="{ 'border-destructive': errors.invoice_number }"
+                :aria-invalid="!!errors.invoice_number"
+              :class="{ 'border-destructive': errors.invoice_number }"
                 :value="modelValue.invoice_number ?? ''"
                 placeholder="INV-2025-XXXX"
                 @input="update('invoice_number', ($event.target as HTMLInputElement).value)"
@@ -127,7 +120,8 @@ const errorCount = computed(() => Object.keys(props.errors).length)
                 id="invoice-date"
                 type="date"
                 :disabled="loading"
-                :class="{ 'border-destructive': errors.invoice_date }"
+                :aria-invalid="!!errors.invoice_date"
+              :class="{ 'border-destructive': errors.invoice_date }"
                 :value="modelValue.invoice_date ?? ''"
                 @input="update('invoice_date', ($event.target as HTMLInputElement).value)"
               />
@@ -152,7 +146,7 @@ const errorCount = computed(() => Object.keys(props.errors).length)
               :disabled="loading"
               @update:model-value="(val) => { const port = String(val ?? ''); update('arrival_port', port); onPortChange(port) }"
             >
-              <SelectTrigger id="arrival-port" :class="{ 'border-destructive': errors.arrival_port }">
+              <SelectTrigger id="arrival-port" :class="{ 'border-destructive': errors.arrival_port }" :aria-invalid="!!errors.arrival_port">
                 <SelectValue placeholder="اختر ميناء الوصول..." />
               </SelectTrigger>
               <SelectContent>
