@@ -268,7 +268,9 @@ export function useRequestWizard() {
       notes: step1.value.notes || '',
       // Step 2 fields map onto existing + new backend fields
       supplier_name: step2.value.supplier_name,
-      goods_description: step2.value.supplier_name, // backward-compat: reuse supplier_name for goods_description
+      // goods_description maps to goods_type (the actual goods description)
+      // falling back to supplier_name if goods_type is empty
+      goods_description: step1.value.goods_type || step2.value.supplier_name,
       port_of_entry: step2.value.arrival_port || '',
       invoice_number: step2.value.invoice_number || null,
       invoice_date: step2.value.invoice_date || null,
