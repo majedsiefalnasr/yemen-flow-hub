@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, onMounted } from 'vue'
+import { computed, ref, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
 import { AlertTriangle, Save, ChevronLeft, ChevronRight, Loader2 } from 'lucide-vue-next'
@@ -106,6 +106,8 @@ async function handleNext(): Promise<void> {
     return
   }
 
+  scrollToStepper()
+
   if (wizard.currentStep.value === 3) {
     await wizard.ensureDraftSavedForStep3()
   }
@@ -140,32 +142,42 @@ async function handleSubmit(): Promise<void> {
 const isLastStep = computed(() => wizard.currentStep.value === wizard.totalSteps)
 const isFirstStep = computed(() => wizard.currentStep.value === 1)
 const isSubmitDisabled = computed(() => !wizard.acknowledged.value || wizard.submitting.value)
+
+const stepperRef = ref<HTMLElement | null>(null)
+
+function scrollToStepper(): void {
+  nextTick(() => {
+    stepperRef.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  })
+}
 </script>
 
 <template>
   <div class="flex flex-col gap-6 max-w-2xl mx-auto w-full">
     <!-- Breadcrumb -->
-    <nav class="flex items-center gap-1.5 text-xs text-[var(--color-text-subtle)] font-family-arabic" aria-label="مسار التنقل">
-      <NuxtLink to="/" class="text-[var(--color-text-subtle)] hover:text-primary hover:underline transition-colors">الرئيسية</NuxtLink>
+    <nav class="flex items-center gap-1.5 font-section text-xs leading-5 text-muted-foreground" aria-label="مسار التنقل">
+      <NuxtLink to="/" class="text-muted-foreground transition-colors hover:text-primary hover:underline">الرئيسية</NuxtLink>
       <span class="text-border">/</span>
-      <NuxtLink to="/requests" class="text-[var(--color-text-subtle)] hover:text-primary hover:underline transition-colors">الطلبات</NuxtLink>
+      <NuxtLink to="/requests" class="text-muted-foreground transition-colors hover:text-primary hover:underline">الطلبات</NuxtLink>
       <span class="text-border">/</span>
       <span class="text-foreground font-medium">طلب جديد</span>
     </nav>
 
     <!-- Page title -->
-    <div class="flex flex-col gap-1">
-      <h1 class="text-2xl font-bold text-foreground font-cairo">تقديم طلب تمويل واردات جديد</h1>
-      <p class="text-sm text-[var(--color-text-subtle)] font-family-arabic">املأ البيانات بدقة وأرفق المستندات المطلوبة</p>
+    <div class="flex max-w-[65ch] flex-col gap-1.5">
+      <h1 class="font-heading text-2xl font-semibold leading-tight text-foreground">تقديم طلب تمويل واردات جديد</h1>
+      <p class="text-sm leading-6 text-muted-foreground">املأ البيانات بدقة وأرفق المستندات المطلوبة</p>
     </div>
 
     <!-- Stepper -->
-    <WizardStepper
-      :steps="STEP_LABELS"
-      :current-step="wizard.currentStep.value"
-      :step-statuses="wizard.stepStatuses.value"
-      @step-click="wizard.goToStep"
-    />
+    <div ref="stepperRef">
+      <WizardStepper
+        :steps="STEP_LABELS"
+        :current-step="wizard.currentStep.value"
+        :step-statuses="wizard.stepStatuses.value"
+        @step-click="(s) => { wizard.goToStep(s); scrollToStepper() }"
+      />
+    </div>
 
     <!-- Step content card -->
     <div class="bg-card border border-border rounded-2xl p-6 shadow-sm" data-field-nav>
@@ -232,7 +244,7 @@ const isSubmitDisabled = computed(() => !wizard.acknowledged.value || wizard.sub
           v-if="!isFirstStep"
           variant="outline"
           :disabled="wizard.saving.value || wizard.submitting.value"
-          @click="wizard.prevStep"
+          @click="() => { wizard.prevStep(); scrollToStepper() }"
         >
           <ChevronRight class="h-4 w-4" />
           السابق
