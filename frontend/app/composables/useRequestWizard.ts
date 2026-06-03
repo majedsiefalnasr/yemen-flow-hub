@@ -381,15 +381,64 @@ export function useRequestWizard() {
         }
         catch (err: unknown) {
           uploadState.value[key] = 'error'
-          const isGone = err instanceof Error && err.message === 'FILE_GONE'
-          uploadErrors[key] = isGone
-            ? 'الملف لم يعد متاحاً. يرجى اختياره مجدداً.'
-            : UPLOAD_ERROR_MESSAGE
-          // Clear the stale File reference so the drop zone resets to idle
-          // and the user is forced to re-pick rather than retrying a gone file.
-          if (isGone) {
+
+          let userMessage = UPLOAD_ERROR_MESSAGE
+
+          if (err instanceof Error && err.message === 'FILE_GONE') {
+            userMessage = 'الملف لم يعد متاحاً. يرجى اختياره مجدداً.'
+            // Reset the drop zone — stale File can never succeed
             step3.value = { ...step3.value, [key]: null }
           }
+          else {
+            // ofetch FetchError: response body is in err.data
+            const data = (err as any)?.data
+            const status = (err as any)?.response?.status
+
+            if (status === 422) {
+              // Two possible 422 shapes:
+              // 1. Laravel validation: { errors: { file: ['The file must be...'] }, message: 'Validation failed.' }
+              // 2. DocumentException: { message: 'Unsupported file type.' | 'File exceeds...', errors: {} }
+              const fieldMsg: string | undefined = data?.errors?.file?.[0]
+              const serverMsg: string | undefined = data?.message
+              const raw = (fieldMsg ?? serverMsg ?? '').toLowerCase()
+
+              if (raw.includes('mime') || raw.includes('pdf') || raw.includes('type') || raw.includes('unsupported')) {
+                userMessage = 'نوع الملف غير مقبول. يُسمح بملفات PDF فقط.'
+              }
+              else if (raw.includes('max') || raw.includes('size') || raw.includes('kilobytes') || raw.includes('exceeds')) {
+                userMessage = 'حجم الملف يتجاوز الحد الأقصى المسموح به (10MB).'
+              }
+              else if (raw.includes('authorized') || raw.includes('permission') || raw.includes('only authorized')) {
+                userMessage = 'لا تملك صلاحية رفع هذا الملف.'
+              }
+              else if (raw.includes('editable') || raw.includes('locked')) {
+                userMessage = 'لا يمكن رفع مستندات في الوضع الحالي للطلب.'
+              }
+              else if (fieldMsg || serverMsg) {
+                // Unknown but specific server message — show it as-is
+                userMessage = fieldMsg ?? serverMsg!
+              }
+            }
+            else if (status === 403) {
+              const serverMsg: string | undefined = data?.message
+              const raw = (serverMsg ?? '').toLowerCase()
+              if (raw.includes('editable') || raw.includes('locked')) {
+                userMessage = 'لا يمكن رفع مستندات في الوضع الحالي للطلب.'
+              }
+              else {
+                userMessage = 'لا تملك صلاحية رفع هذا الملف في الوضع الحالي للطلب.'
+              }
+            }
+            else if (status === 409) {
+              userMessage = 'تعارض في حالة الطلب. حدّث الصفحة وأعد المحاولة.'
+            }
+            else if (status === 401) {
+              userMessage = 'انتهت جلستك. يرجى تسجيل الدخول مجدداً.'
+            }
+            // 5xx / network / unknown — fall through to generic UPLOAD_ERROR_MESSAGE
+          }
+
+          uploadErrors[key] = userMessage
           failedUploads.push(key)
         }
       }),
