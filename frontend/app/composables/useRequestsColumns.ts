@@ -126,10 +126,15 @@ export function useRequestsColumns(opts: {
             'التصويت مفتوح',
           ]))
         }
-        if (request.is_claimed && !request.is_claimed_by_me && role.value === UserRole.SUPPORT_COMMITTEE) {
+        const isBankReviewClaim = request.status === RequestStatus.BANK_REVIEW
+          && (role.value === UserRole.BANK_REVIEWER || role.value === UserRole.BANK_ADMIN || role.value === UserRole.CBY_ADMIN)
+        const isSupportClaim = request.is_claimed
+          && role.value === UserRole.SUPPORT_COMMITTEE
+
+        if ((isBankReviewClaim || isSupportClaim) && !request.is_claimed_by_me) {
           badges.push(h(Badge, { variant: 'secondary', class: 'rounded-full text-amber-700' }, () => [
             h(Lock, { class: 'size-3.5 me-1' }),
-            `محجوز: ${request.claimed_by?.name ?? '—'}`,
+            `قيد المراجعة: ${request.claimed_by?.name ?? '—'}`,
           ]))
         } else if (request.is_claimed_by_me) {
           badges.push(h(Badge, { variant: 'secondary', class: 'rounded-full text-amber-700' }, () => [

@@ -617,6 +617,13 @@ const showClaimedByOthersBanner = computed(() => {
   return !!req && req.is_claimed && !req.is_claimed_by_me
 })
 
+// BANK_REVIEWER viewing a BANK_REVIEW request they don't hold
+const showBankClaimedByOthersBanner = computed(() => {
+  if (!isBankReviewer.value || isBankActiveReviewer.value) return false
+  const req = request.value
+  return !!req && req.status === RequestStatus.BANK_REVIEW && !req.is_claimed_by_me
+})
+
 // Auto-claim replaces manual claim — this banner now shows only while the claim
 // call is in-flight (brief transitional state, no action button needed).
 const showUnclaimedBanner = computed(() => {
@@ -1337,7 +1344,7 @@ async function handleCloneConfirm() {
         <div class="detail-main">
           <!-- Banners -->
           <div
-            v-if="showDirectorVotingActiveBanner || showDirectorReadyToCloseBanner || showDirectorTieBreakBanner || showDirectorReadyToFinalizeBanner || showDirectorFxReadyBanner || showSwiftPreApprovalLockedBanner || showSwiftAwaitingEnableBanner || showSwiftReadyBanner || showSwiftCompletedBanner || isSegregationBlocked || claimError || showActiveReviewBanner || showClaimedByOthersBanner || showUnclaimedBanner || showVotingPendingBanner || showVotedConfirmationBanner || showBankReviewerSupportRejectedBanner || isLocked || isReturnedForCorrection || isBankReturned || isSupportReturned"
+            v-if="showDirectorVotingActiveBanner || showDirectorReadyToCloseBanner || showDirectorTieBreakBanner || showDirectorReadyToFinalizeBanner || showDirectorFxReadyBanner || showSwiftPreApprovalLockedBanner || showSwiftAwaitingEnableBanner || showSwiftReadyBanner || showSwiftCompletedBanner || isSegregationBlocked || claimError || showActiveReviewBanner || showClaimedByOthersBanner || showBankClaimedByOthersBanner || showUnclaimedBanner || showVotingPendingBanner || showVotedConfirmationBanner || showBankReviewerSupportRejectedBanner || isLocked || isReturnedForCorrection || isBankReturned || isSupportReturned"
             class="banner-area"
           >
             <div
@@ -1416,6 +1423,7 @@ async function handleCloneConfirm() {
               @release="handleReleaseClaim"
             />
             <ClaimedByOthersBanner v-else-if="showClaimedByOthersBanner" :claimer-name="request.claimed_by?.name ?? ''" />
+            <ClaimedByOthersBanner v-else-if="showBankClaimedByOthersBanner" :claimer-name="request.claimed_by?.name ?? ''" />
             <UnclaimedBanner v-else-if="showUnclaimedBanner" />
             <VotingPendingBanner
               v-else-if="showVotingPendingBanner"
