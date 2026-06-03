@@ -2,11 +2,30 @@
 
 namespace App\Http\Requests;
 
+use App\Models\ImportRequest;
+
 class UploadRequestDocumentRequest extends ApiFormRequest
 {
     public function authorize(): bool
     {
-        return true;
+        $user = $this->user();
+        if (!$user) {
+            return false;
+        }
+
+        // CBY users (no bank_id) are not permitted to upload request documents.
+        // Bank users must belong to the same bank as the request.
+        $requestId = $this->input('request_id');
+        if (!$requestId) {
+            return false;
+        }
+
+        $importRequest = ImportRequest::find((int) $requestId);
+        if (!$importRequest) {
+            return false;
+        }
+
+        return $user->bank_id !== null && $user->bank_id === $importRequest->bank_id;
     }
 
     public function rules(): array
@@ -14,6 +33,7 @@ class UploadRequestDocumentRequest extends ApiFormRequest
         return [
             'request_id' => ['required', 'integer', 'exists:import_requests,id'],
             'file' => ['required', 'file', 'mimetypes:application/pdf', 'max:10240'],
+            'confirmation_request' => ['sometimes', 'boolean'],
         ];
     }
 }

@@ -20,7 +20,9 @@ class RequestDocumentPolicy
 
         return match ($document->type) {
             'REQUEST_DOC' => $this->canDownloadRequestDoc($user, $requestBankId),
+            'CONFIRMATION_REQUEST' => $this->canDownloadRequestDoc($user, $requestBankId),
             'SWIFT' => $this->canDownloadSwift($user, $requestBankId),
+            'FX_REQUEST' => $this->canDownloadSwift($user, $requestBankId),
             default => false,
         };
     }
