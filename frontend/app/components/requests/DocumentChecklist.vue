@@ -144,11 +144,15 @@ const checklist = computed((): ChecklistRow[] => {
   const rows: ChecklistRow[] = []
 
   // Build a lookup: type → first matching uploaded doc
+  // REQUEST_DOC is the generic type stored by uploadRequestDocument(); it
+  // represents a commercial invoice uploaded by the bank's data-entry user.
   const uploadedByType = new Map<string, RequestDocument>()
   const extraDocs: RequestDocument[] = []
 
   for (const doc of props.documents) {
-    const t = doc.type ?? 'REQUEST_DOC'
+    const rawType = doc.type ?? 'REQUEST_DOC'
+    // Map the backend's generic REQUEST_DOC to the checklist's COMMERCIAL_INVOICE slot
+    const t = rawType === 'REQUEST_DOC' ? 'COMMERCIAL_INVOICE' : rawType
     const isStagedType = stageDocs.some(r => r.type === t)
     if (!isStagedType) {
       extraDocs.push(doc)

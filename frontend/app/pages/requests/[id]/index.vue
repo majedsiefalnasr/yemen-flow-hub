@@ -54,6 +54,7 @@ import VotingPendingBanner from '@/components/banners/VotingPendingBanner.vue'
 import VotedConfirmationBanner from '@/components/banners/VotedConfirmationBanner.vue'
 import ActionsPanel from '@/components/requests/ActionsPanel.vue'
 import DocumentChecklist from '@/components/requests/DocumentChecklist.vue'
+import FxConfirmationCard from '@/components/requests/FxConfirmationCard.vue'
 import VotingPanel from '@/components/voting/VotingPanel.vue'
 import WorkflowTimeline from '@/components/workflow/WorkflowTimeline.vue'
 import AuditTimeline from '@/components/workflow/AuditTimeline.vue'
@@ -209,7 +210,10 @@ const showVotingPanelInline = computed(() =>
 
 const showDirectorFxTab = computed(() =>
   userRole.value === UserRole.COMMITTEE_DIRECTOR
-  && request.value?.status === RequestStatus.EXECUTIVE_APPROVED,
+  && (
+    request.value?.status === RequestStatus.EXECUTIVE_APPROVED
+    || request.value?.status === RequestStatus.FX_CONFIRMATION_PENDING
+  ),
 )
 
 const tabs = computed((): Array<{ key: TabKey; label: string }> => {
@@ -488,11 +492,17 @@ const hasActions = computed(() => {
   const directorVotingAction
     = role === UserRole.COMMITTEE_DIRECTOR
     && DIRECTOR_VOTING_STATUSES.has(s)
-  const directorCustomsAction
-    = role === UserRole.COMMITTEE_DIRECTOR
-    && s === RequestStatus.EXECUTIVE_APPROVED
-  return bankReviewerAction || dataEntryAction || supportAction || directorVotingAction || directorCustomsAction
+  return bankReviewerAction || dataEntryAction || supportAction || directorVotingAction
 })
+
+const isDirectorCustomsPhase = computed(() =>
+  userRole.value === UserRole.COMMITTEE_DIRECTOR
+  && !!request.value
+  && (
+    request.value.status === RequestStatus.EXECUTIVE_APPROVED
+    || request.value.status === RequestStatus.FX_CONFIRMATION_PENDING
+  ),
+)
 
 const showSwiftActionCard = computed(() =>
   isSwiftOfficer.value
@@ -833,11 +843,15 @@ watch(id, async (nextId, previousId) => {
   if (Number.isFinite(previousId) && previousId > 0) {
     stopHeartbeat(previousId)
     stopBankHeartbeat(previousId)
-    if (isActiveReviewer.value) {
+    // Release support claim if active or if the request shows us as claimer
+    if (isActiveReviewer.value || (isSupportCommittee.value && requestsStore.currentRequest?.is_claimed_by_me)) {
       releaseRequest(previousId)
       isActiveReviewer.value = false
     }
-    if (isBankActiveReviewer.value) {
+    // Release bank reviewer claim: use isBankActiveReviewer OR fall back to
+    // the server-side is_claimed_by_me flag in case the local flag was never
+    // set (e.g. verifyBankClaimAlive returned false due to a transient error).
+    if (isBankActiveReviewer.value || (isBankReviewer.value && requestsStore.currentRequest?.is_claimed_by_me)) {
       releaseBankRequest(previousId)
       isBankActiveReviewer.value = false
     }
@@ -881,11 +895,11 @@ onBeforeUnmount(() => {
     : id.value
   if (validId !== null) {
     stopHeartbeat(validId)
-    if (isActiveReviewer.value) {
+    if (isActiveReviewer.value || (isSupportCommittee.value && requestsStore.currentRequest?.is_claimed_by_me)) {
       releaseRequest(validId)
     }
     stopBankHeartbeat(validId)
-    if (isBankActiveReviewer.value) {
+    if (isBankActiveReviewer.value || (isBankReviewer.value && requestsStore.currentRequest?.is_claimed_by_me)) {
       releaseBankRequest(validId)
     }
   }
@@ -991,8 +1005,7 @@ async function handleDownloadFxTemplate() {
   fxGeneratingTemplate.value = true
 
   try {
-    const declaration = await generateCustomsDeclaration(id.value)
-    const blob = await downloadCustomsBlob(declaration.id)
+    const blob = await downloadFxConfirmationTemplate(id.value)
 
     const bytes = await blob.arrayBuffer()
     const digest = await crypto.subtle.digest('SHA-256', bytes)
@@ -1003,7 +1016,7 @@ async function handleDownloadFxTemplate() {
     const url = URL.createObjectURL(blob)
     const anchor = document.createElement('a')
     anchor.href = url
-    anchor.download = `fx-confirmation-${declaration.declaration_number}.pdf`
+    anchor.download = `fx-confirmation-template-${request.value?.reference_number ?? id.value}.pdf`
     document.body.appendChild(anchor)
     anchor.click()
     anchor.remove()
@@ -1019,7 +1032,7 @@ async function handleDownloadFxTemplate() {
 }
 
 async function handleCompleteFxConfirmation() {
-  if (!fxSignedFile.value) {
+  if (request.value?.status !== RequestStatus.FX_CONFIRMATION_PENDING && !fxSignedFile.value) {
     fxFlowError.value = 'يجب رفع النموذج الموقّع قبل الإتمام.'
     return
   }
@@ -1028,6 +1041,9 @@ async function handleCompleteFxConfirmation() {
   fxCompleting.value = true
 
   try {
+    if (request.value?.status !== RequestStatus.FX_CONFIRMATION_PENDING && fxSignedFile.value) {
+      await requestsStore.uploadSignedFxDoc(id.value, fxSignedFile.value)
+    }
     await requestsStore.issueCustomsDeclaration(id.value)
     fxFlowSuccess.value = true
     await onActionCompleted()
@@ -1057,7 +1073,9 @@ async function downloadDocument(docId: number, filename: string) {
   delete downloadErrors.value[docId]
 
   try {
+    const config = useRuntimeConfig()
     const response = await $fetch<Blob>(`/api/documents/${docId}/download`, {
+      baseURL: config.public.apiBase as string,
       responseType: 'blob',
       credentials: 'include',
     })
@@ -1134,8 +1152,8 @@ const cloneLoading = ref(false)
 const cloneError = ref('')
 const {
   cloneRequest,
-  generateCustomsDeclaration,
   downloadCustomsDeclaration: downloadCustomsBlob,
+  downloadFxConfirmationTemplate,
 } = useRequests()
 
 function openCloneDialog() {
@@ -1805,7 +1823,7 @@ async function handleCloneConfirm() {
                     SHA-256: {{ fxSignedChecksum }}
                   </p>
                   <Button
-                    :disabled="!fxSignedFile || fxCompleting"
+                    :disabled="(request.status !== RequestStatus.FX_CONFIRMATION_PENDING && !fxSignedFile) || fxCompleting"
                     @click="handleCompleteFxConfirmation"
                   >
                     {{ fxCompleting ? 'جارٍ الإتمام…' : 'إتمام تأكيد المصارفة' }}
@@ -1972,6 +1990,13 @@ async function handleCloneConfirm() {
             <template v-else>
               <p class="text-sm text-muted-foreground">تم تسليم السويفت، ولا توجد إجراءات إضافية.</p>
             </template>
+          </div>
+
+          <div v-if="isDirectorCustomsPhase" class="rail-card">
+            <FxConfirmationCard
+              :request="request"
+              @action-completed="onActionCompleted"
+            />
           </div>
 
           <!-- CBY Admin: Current Blocker (highest priority) -->
