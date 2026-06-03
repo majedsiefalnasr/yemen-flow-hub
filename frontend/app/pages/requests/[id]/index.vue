@@ -481,7 +481,11 @@ const hasActions = computed(() => {
   const bankReviewerAction
     = role === UserRole.BANK_REVIEWER
     && !isSegregationBlocked.value
-    && (s === RequestStatus.SUBMITTED || s === RequestStatus.BANK_REVIEW || s === RequestStatus.SUPPORT_REJECTED)
+    && (
+      s === RequestStatus.SUBMITTED
+      || (s === RequestStatus.BANK_REVIEW && !!request.value?.is_claimed_by_me)
+      || s === RequestStatus.SUPPORT_REJECTED
+    )
   const dataEntryAction
     = DRAFT_EDITOR_ROLES.has(role)
     && (s === RequestStatus.DRAFT || s === RequestStatus.DRAFT_REJECTED_INTERNAL || s === RequestStatus.BANK_RETURNED || s === RequestStatus.SUPPORT_RETURNED)
@@ -635,6 +639,32 @@ const showUnclaimedBanner = computed(() => {
 // Destruction guard: set to false in onBeforeUnmount so any in-flight async
 // continuations after unmount do not mutate component state or start timers.
 let isMounted = false
+
+// Poll for claim state changes when another reviewer may have just claimed this
+// request. Fires every 15 s while the request is SUBMITTED or BANK_REVIEW and
+// the current user is not the claimer — so colleagues see the lock without refreshing.
+const CLAIM_POLL_STATUSES = new Set([RequestStatus.SUBMITTED, RequestStatus.BANK_REVIEW])
+let claimPollTimer: ReturnType<typeof setInterval> | null = null
+
+function startClaimPoll() {
+  stopClaimPoll()
+  claimPollTimer = setInterval(async () => {
+    if (!isMounted) return
+    const req = request.value
+    if (!req || !CLAIM_POLL_STATUSES.has(req.status) || req.is_claimed_by_me) {
+      stopClaimPoll()
+      return
+    }
+    await requestsStore.loadRequest(req.id)
+  }, 15_000)
+}
+
+function stopClaimPoll() {
+  if (claimPollTimer !== null) {
+    clearInterval(claimPollTimer)
+    claimPollTimer = null
+  }
+}
 
 async function handleSessionExpired() {
   isActiveReviewer.value = false
@@ -840,6 +870,12 @@ onMounted(async () => {
   ) {
     await requestsStore.loadHistory(id.value)
   }
+
+  // Start claim-state poll for bank reviewers watching a request they don't hold
+  if (isBankReviewer.value && requestsStore.currentRequest && !requestsStore.currentRequest.is_claimed_by_me) {
+    const s = requestsStore.currentRequest.status
+    if (CLAIM_POLL_STATUSES.has(s)) startClaimPoll()
+  }
 })
 
 watch(id, async (nextId, previousId) => {
@@ -890,6 +926,13 @@ watch(id, async (nextId, previousId) => {
   ) {
     await votingStore.loadVotingDetail(nextId)
   }
+
+  // Restart claim poll for the new request if applicable
+  stopClaimPoll()
+  if (isBankReviewer.value && requestsStore.currentRequest && !requestsStore.currentRequest.is_claimed_by_me) {
+    const s = requestsStore.currentRequest.status
+    if (CLAIM_POLL_STATUSES.has(s)) startClaimPoll()
+  }
 })
 
 onBeforeUnmount(() => {
@@ -900,6 +943,7 @@ onBeforeUnmount(() => {
   const validId = Number.isNaN(id.value)
     ? (requestsStore.currentRequest?.id ?? null)
     : id.value
+  stopClaimPoll()
   if (validId !== null) {
     stopHeartbeat(validId)
     if (isActiveReviewer.value || (isSupportCommittee.value && requestsStore.currentRequest?.is_claimed_by_me)) {

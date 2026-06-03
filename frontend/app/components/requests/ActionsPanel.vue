@@ -91,10 +91,13 @@ watch(() => props.request.status, () => {
 const performingAction = computed(() => requestsStore.performingAction)
 
 // Determine which panel to show
-const showBankReviewerActions = computed(() =>
-  props.userRole === UserRole.BANK_REVIEWER
-  && (props.request.status === RequestStatus.SUBMITTED || props.request.status === RequestStatus.BANK_REVIEW),
-)
+const showBankReviewerActions = computed(() => {
+  if (props.userRole !== UserRole.BANK_REVIEWER) return false
+  if (props.request.status === RequestStatus.SUBMITTED) return true
+  // BANK_REVIEW: only the reviewer who holds the claim may act
+  if (props.request.status === RequestStatus.BANK_REVIEW) return !!props.request.is_claimed_by_me
+  return false
+})
 
 const showBankReviewerSupportRejectedActions = computed(() =>
   props.userRole === UserRole.BANK_REVIEWER
@@ -140,8 +143,7 @@ const allExecutiveVotesCast = computed(() => {
 })
 
 const showDirectorCustomsActions = computed(() =>
-  props.userRole === UserRole.COMMITTEE_DIRECTOR
-  && props.request.status === RequestStatus.EXECUTIVE_APPROVED,
+  false,
 )
 
 const showAnyActions = computed(() =>
@@ -542,6 +544,9 @@ defineExpose({ triggerPrimaryAction })
           <DialogContent class="max-w-md">
             <DialogHeader>
               <DialogTitle>إعادة الطلب للمدخل</DialogTitle>
+              <DialogDescription>
+                سيعود الطلب إلى موظف الإدخال لتصحيح البيانات أو المستندات ثم إعادة إرساله للمراجعة البنكية.
+              </DialogDescription>
             </DialogHeader>
 
             <div class="space-y-4">
@@ -607,6 +612,9 @@ defineExpose({ triggerPrimaryAction })
           <DialogContent class="max-w-md">
             <DialogHeader>
               <DialogTitle>رفض الطلب</DialogTitle>
+              <DialogDescription>
+                سجّل سبب الرفض قبل إيقاف مسار الطلب لدى لجنة المساندة.
+              </DialogDescription>
             </DialogHeader>
  
             <div class="space-y-4">
@@ -663,6 +671,9 @@ defineExpose({ triggerPrimaryAction })
           <DialogContent class="max-w-md">
             <DialogHeader>
               <DialogTitle>إعادة الطلب للمدخل</DialogTitle>
+              <DialogDescription>
+                سيعود الطلب إلى موظف الإدخال لمعالجة ملاحظات لجنة المساندة ثم إعادة الإرسال.
+              </DialogDescription>
             </DialogHeader>
 
             <div class="space-y-4">
@@ -871,6 +882,9 @@ defineExpose({ triggerPrimaryAction })
           <DialogContent class="max-w-md">
             <DialogHeader>
               <DialogTitle>تجاوز مدير اللجنة</DialogTitle>
+              <DialogDescription>
+                اختر قرار التجاوز واكتب مبرراً واضحاً ليُسجّل في سجل التدقيق.
+              </DialogDescription>
             </DialogHeader>
 
             <div class="space-y-4">
@@ -993,37 +1007,6 @@ defineExpose({ triggerPrimaryAction })
             >
               <Loader2 v-if="votingStore.performingDirectorAction" class="h-4 w-4 me-2 animate-spin" />
               {{ votingStore.performingDirectorAction ? 'جارٍ التنفيذ…' : 'إصدار القرار' }}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </template>
-
-    <!-- COMMITTEE_DIRECTOR: EXECUTIVE_APPROVED → issue FX confirmation -->
-    <template v-if="showDirectorCustomsActions">
-      <AlertDialog>
-        <AlertDialogTrigger as-child>
-          <Button
-            :disabled="requestsStore.issuingCustoms"
-          >
-            إصدار تأكيد المصارفة الخارجية
-          </Button>
-        </AlertDialogTrigger>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>تأكيد إصدار المصارفة الخارجية</AlertDialogTitle>
-            <AlertDialogDescription>
-              سيتم إصدار تأكيد المصارفة الخارجية وإتمام معالجة الطلب. هذا الإجراء لا يمكن التراجع عنه.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>إلغاء</AlertDialogCancel>
-            <AlertDialogAction
-              :disabled="requestsStore.issuingCustoms"
-              @click="handleIssueCustomsDeclaration"
-            >
-              <Loader2 v-if="requestsStore.issuingCustoms" class="h-4 w-4 me-2 animate-spin" />
-              {{ requestsStore.issuingCustoms ? 'جارٍ الإصدار…' : 'تأكيد الإصدار' }}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
