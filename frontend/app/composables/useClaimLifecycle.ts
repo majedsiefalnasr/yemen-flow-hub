@@ -3,11 +3,15 @@ import { useRuntimeConfig } from '#app'
 import type { FetchError } from 'ofetch'
 
 const HEARTBEAT_INTERVAL_MS = 60_000
+const LOGOUT_IN_PROGRESS_STORAGE_KEY = 'yfh-logout-in-progress'
 
 // Module-level singleton registry: one active heartbeat per request id per browser tab.
 // Prevents duplicate intervals during Nuxt route transition overlaps where two component
 // instances of the same page coexist briefly.
 const activeHeartbeats = new Map<number, ReturnType<typeof setInterval>>()
+// Paired stop-flag setters: called before clearInterval so any in-flight fetch
+// that resolves after clearInterval knows not to invoke onClaimLost callbacks.
+const stopFlags = new Map<number, () => void>()
 
 function httpStatus(err: unknown): number | undefined {
   return (err as FetchError)?.response?.status
@@ -31,6 +35,11 @@ function claimHeaders(): Record<string, string> {
     Accept: 'application/json',
     ...(token ? { 'X-XSRF-TOKEN': token } : {}),
   }
+}
+
+function isLogoutInProgress(): boolean {
+  if (!import.meta.client) return false
+  return sessionStorage.getItem(LOGOUT_IN_PROGRESS_STORAGE_KEY) === '1'
 }
 
 /**
@@ -90,6 +99,8 @@ export function useClaimLifecycle(claimEndpoint = 'claim-support-review') {
   // a missed release) but at the call site they can choose to delay local state
   // mutation until the server confirms.
   async function releaseRequest(id: number): Promise<boolean> {
+    if (isLogoutInProgress()) return false
+
     isReleasing.value = true
     try {
       const config = useRuntimeConfig()
@@ -151,7 +162,17 @@ export function useClaimLifecycle(claimEndpoint = 'claim-support-review') {
     // Clear any existing heartbeat for this id (singleton enforcement)
     stopHeartbeat(id)
 
+    // intentionallyStopped is set true by stopHeartbeat so a tick that fires
+    // between clearInterval and the async fetch resolving does not trigger
+    // onClaimLost callbacks after the component has already torn down.
+    let intentionallyStopped = false
+
     const timer = setInterval(async () => {
+      if (intentionallyStopped || isLogoutInProgress()) {
+        stopHeartbeat(id)
+        return
+      }
+
       try {
         const config = useRuntimeConfig()
         const baseURL = config.public.apiBase as string
@@ -163,6 +184,10 @@ export function useClaimLifecycle(claimEndpoint = 'claim-support-review') {
         })
       }
       catch (err: unknown) {
+        // If stopHeartbeat was called while this fetch was in-flight (e.g. the
+        // component unmounted and released the claim), ignore the error silently.
+        if (intentionallyStopped) return
+
         const status = httpStatus(err)
 
         if (import.meta.dev) {
@@ -170,27 +195,33 @@ export function useClaimLifecycle(claimEndpoint = 'claim-support-review') {
         }
 
         if (status === 401) {
-          // Auth failure is not a transient error — stop heartbeat and notify caller
           stopHeartbeat(id)
           sessionExpired.value = true
           claimError.value = 'انتهت جلستك أثناء المراجعة. يرجى تسجيل الدخول مرة أخرى.'
           onSessionExpired?.()
         }
         else if (status === 403 || status === 404 || status === 409 || status === 422) {
-          // Claim ownership was lost or expired — stop local reviewer state and let the page reload.
+          // Claim ownership was lost or expired on the server side (not by us).
           stopHeartbeat(id)
           claimError.value = 'لم يعد الطلب محجوزاً باسمك.'
           onClaimLost?.()
         }
-        // For transient network errors or 5xx: stay silent — TTL handles missed beats
+        // Transient network errors or 5xx: stay silent — TTL handles missed beats
       }
     }, HEARTBEAT_INTERVAL_MS)
+
+    activeHeartbeats.set(id, timer)
+    stopFlags.set(id, () => { intentionallyStopped = true })
 
     activeHeartbeats.set(id, timer)
   }
 
   function stopHeartbeat(id?: number): void {
     if (id !== undefined) {
+      // Flip the intentionallyStopped flag first so any in-flight fetch that
+      // resolves after clearInterval does not invoke onClaimLost callbacks.
+      stopFlags.get(id)?.()
+      stopFlags.delete(id)
       const timer = activeHeartbeats.get(id)
       if (timer !== undefined) {
         clearInterval(timer)
@@ -198,7 +229,8 @@ export function useClaimLifecycle(claimEndpoint = 'claim-support-review') {
       }
     }
     else {
-      // Clear all (fallback for callers that don't track id)
+      stopFlags.forEach(fn => fn())
+      stopFlags.clear()
       activeHeartbeats.forEach((t) => clearInterval(t))
       activeHeartbeats.clear()
     }
