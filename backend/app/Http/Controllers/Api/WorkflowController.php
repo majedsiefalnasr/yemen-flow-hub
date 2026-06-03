@@ -92,6 +92,10 @@ class WorkflowController extends Controller
         $actor = $request->user();
         $isCbyAdmin = $actor->role === UserRole::CBY_ADMIN;
 
+        if ($importRequest->status !== RequestStatus::BANK_REVIEW) {
+            return ApiResponse::forbidden('يمكن تحرير الحجز فقط في مرحلة مراجعة البنك. / Claim can only be released while request is in BANK_REVIEW.');
+        }
+
         if (!$isCbyAdmin && $importRequest->claimed_by !== $actor->id) {
             return ApiResponse::forbidden('لا يمكنك تحرير حجز لا تملكه. / You do not hold this claim.');
         }
@@ -120,6 +124,10 @@ class WorkflowController extends Controller
         $ttlMinutes = (int) config('workflow.support_claim_ttl_minutes', 15);
         $expiresAt = now()->addMinutes($ttlMinutes);
         $cacheKey = "bank_claim:{$importRequest->id}";
+
+        if (!Cache::has($cacheKey)) {
+            return ApiResponse::error('انتهت صلاحية الحجز. / Claim has expired.', [], 409);
+        }
 
         App::instance('workflow.transition.active', true);
         try {
@@ -235,6 +243,10 @@ class WorkflowController extends Controller
         $expiresAt = now()->addMinutes($ttlMinutes);
         $cacheKey = "support_claim:{$importRequest->id}";
 
+        if (!Cache::has($cacheKey)) {
+            return ApiResponse::error('انتهت صلاحية الحجز. / Claim has expired.', [], 409);
+        }
+
         app()->instance('workflow.transition.active', true);
         try {
             $importRequest->forceFill(['claim_expires_at' => $expiresAt])->save();
@@ -290,11 +302,7 @@ class WorkflowController extends Controller
 
         $actor = $request->user();
         if ($actor->role !== UserRole::SUPPORT_COMMITTEE) {
-            return response()->json([
-                'success' => false,
-                'message' => 'هذا الإجراء متاح فقط للجنة المساندة. / This action is only available to support committee members.',
-                'error_code' => 'WORKFLOW_FORBIDDEN_ROLE',
-            ], 403);
+            return ApiResponse::forbidden('هذا الإجراء متاح فقط للجنة المساندة. / This action is only available to support committee members.', 'WORKFLOW_FORBIDDEN_ROLE');
         }
 
         if ($importRequest->claimed_by !== $actor->id) {

@@ -25,6 +25,12 @@ class UploadRequestDocumentRequest extends ApiFormRequest
             return false;
         }
 
+        // CBY staff (no bank_id) may upload to any request
+        if ($user->isCbyUser()) {
+            return true;
+        }
+
+        // Bank users must belong to the same bank as the request
         return $user->bank_id !== null && $user->bank_id === $importRequest->bank_id;
     }
 
