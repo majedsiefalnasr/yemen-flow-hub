@@ -9,16 +9,18 @@ import { Button } from '../ui/button'
 import { Input } from '../ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select'
 import {
-  Combobox,
-  ComboboxAnchor,
-  ComboboxInput,
-  ComboboxList,
-  ComboboxItem,
-  ComboboxEmpty,
-  ComboboxGroup,
-  ComboboxItemIndicator,
-  ComboboxTrigger,
-} from '../ui/combobox'
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '../ui/command'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '../ui/popover'
 import { Textarea } from '../ui/textarea'
 import { Alert, AlertDescription } from '../ui/alert'
 import {
@@ -32,6 +34,7 @@ import {
   FieldSet,
 } from '../ui/field'
 import { AlertTriangle, Check, ChevronsUpDown, Lock, RotateCcw } from 'lucide-vue-next'
+import { cn } from '@/lib/utils'
 
 const props = defineProps<{
   modelValue: WizardStep1Data
@@ -105,6 +108,14 @@ const isLockedSingleMerchant = computed(() =>
   && !props.dataEntryMerchantError,
 )
 
+const merchantOpen = ref(false)
+
+function selectMerchant(merchantId: string) {
+  const id = Number(merchantId)
+  update('merchant_id', id === props.modelValue.merchant_id ? null : id)
+  merchantOpen.value = false
+}
+
 const notesLength = computed(() => props.modelValue.notes?.length ?? 0)
 const errorCount = computed(() => Object.keys(props.errors).length)
 </script>
@@ -156,7 +167,7 @@ const errorCount = computed(() => Object.keys(props.errors).length)
               </div>
             </template>
 
-            <!-- Combobox for BANK_ADMIN or DATA_ENTRY with multiple merchants -->
+            <!-- Popover+Command combobox for BANK_ADMIN or multi-merchant DATA_ENTRY -->
             <template v-else>
               <Alert v-if="merchantsError" variant="destructive" class="mb-2">
                 <AlertTriangle class="h-4 w-4" />
@@ -167,40 +178,47 @@ const errorCount = computed(() => Object.keys(props.errors).length)
                   </Button>
                 </AlertDescription>
               </Alert>
-              <Combobox
-                v-else
-                :model-value="selectedMerchant"
-                by="id"
-                :disabled="merchantsLoading || loading"
-                @update:model-value="(m) => update('merchant_id', m?.id ?? null)"
-              >
-                <ComboboxAnchor :class="{ 'border-destructive': errors.merchant_id }">
-                  <ComboboxInput
+              <Popover v-else v-model:open="merchantOpen">
+                <PopoverTrigger as-child>
+                  <Button
                     id="merchant-combobox"
-                    :placeholder="merchantsLoading ? 'جارٍ تحميل القائمة...' : 'ابحث أو اختر المستورد...'"
-                    :display-value="(m: any) => m?.name ?? ''"
-                    class="w-full"
-                  />
-                  <ComboboxTrigger>
-                    <ChevronsUpDown class="h-4 w-4 text-muted-foreground" />
-                  </ComboboxTrigger>
-                </ComboboxAnchor>
-                <ComboboxList>
-                  <ComboboxEmpty>لا توجد نتائج</ComboboxEmpty>
-                  <ComboboxGroup>
-                    <ComboboxItem
-                      v-for="m in merchantOptions"
-                      :key="m.id"
-                      :value="m"
-                    >
-                      {{ m.name }}
-                      <ComboboxItemIndicator>
-                        <Check class="h-4 w-4" />
-                      </ComboboxItemIndicator>
-                    </ComboboxItem>
-                  </ComboboxGroup>
-                </ComboboxList>
-              </Combobox>
+                    type="button"
+                    variant="outline"
+                    role="combobox"
+                    :aria-expanded="merchantOpen"
+                    :disabled="merchantsLoading || loading"
+                    :class="cn(
+                      'w-full justify-between font-normal',
+                      errors.merchant_id ? 'border-destructive' : '',
+                      !selectedMerchant ? 'text-muted-foreground' : '',
+                    )"
+                  >
+                    {{ merchantsLoading ? 'جارٍ تحميل القائمة...' : (selectedMerchant?.name ?? 'ابحث أو اختر المستورد...') }}
+                    <ChevronsUpDown class="h-4 w-4 opacity-50 flex-shrink-0" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent class="w-[--radix-popover-trigger-width] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="ابحث عن تاجر..." class="h-9" />
+                    <CommandList>
+                      <CommandEmpty>لا توجد نتائج</CommandEmpty>
+                      <CommandGroup>
+                        <CommandItem
+                          v-for="m in merchantOptions"
+                          :key="m.id"
+                          :value="String(m.id)"
+                          @select="(ev) => selectMerchant(ev.detail.value as string)"
+                        >
+                          {{ m.name }}
+                          <Check
+                            :class="cn('ms-auto h-4 w-4', modelValue.merchant_id === m.id ? 'opacity-100' : 'opacity-0')"
+                          />
+                        </CommandItem>
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </template>
 
             <FieldDescription v-if="isDataEntry && dataEntryMerchantError">{{ dataEntryMerchantError }}</FieldDescription>
