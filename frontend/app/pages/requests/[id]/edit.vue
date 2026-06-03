@@ -334,7 +334,7 @@ async function downloadDocument(docId: number, filename: string) {
       </Alert>
 
       <!-- Form using wizard step components -->
-      <Card class="border-0 shadow">
+      <Card class="border-0 shadow max-w-2xl">
         <CardContent class="p-6">
           <!-- Step 1: basic info -->
           <WizardStep1

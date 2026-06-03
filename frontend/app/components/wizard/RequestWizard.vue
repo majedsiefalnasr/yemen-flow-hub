@@ -140,7 +140,7 @@ const isSubmitDisabled = computed(() => !wizard.acknowledged.value || wizard.sub
 </script>
 
 <template>
-  <div class="flex flex-col gap-6" >
+  <div class="flex flex-col gap-6 max-w-2xl mx-auto w-full">
     <!-- Breadcrumb -->
     <nav class="flex items-center gap-1.5 text-xs text-[var(--color-text-subtle)] font-family-arabic" aria-label="مسار التنقل">
       <NuxtLink to="/" class="text-[var(--color-text-subtle)] hover:text-primary hover:underline transition-colors">الرئيسية</NuxtLink>

@@ -8,6 +8,17 @@ import type { Merchant } from '../../types/models'
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select'
+import {
+  Combobox,
+  ComboboxAnchor,
+  ComboboxInput,
+  ComboboxList,
+  ComboboxItem,
+  ComboboxEmpty,
+  ComboboxGroup,
+  ComboboxItemIndicator,
+  ComboboxTrigger,
+} from '../ui/combobox'
 import { Textarea } from '../ui/textarea'
 import { Alert, AlertDescription } from '../ui/alert'
 import {
@@ -20,7 +31,7 @@ import {
   FieldSeparator,
   FieldSet,
 } from '../ui/field'
-import { AlertTriangle, Lock, RotateCcw } from 'lucide-vue-next'
+import { AlertTriangle, Check, ChevronsUpDown, Lock, RotateCcw } from 'lucide-vue-next'
 
 const props = defineProps<{
   modelValue: WizardStep1Data
@@ -54,10 +65,9 @@ const PAYMENT_LABELS: Record<string, string> = {
   CAD: 'CAD — نقداً عند التسليم',
 }
 
-const merchants = ref<Merchant[]>([])
+const bankMerchants = ref<Merchant[]>([])
 const merchantsLoading = ref(false)
 const merchantsError = ref(false)
-const merchantSearch = ref('')
 
 const { fetchMerchants } = useMerchants()
 
@@ -65,7 +75,7 @@ async function loadMerchants(): Promise<void> {
   merchantsLoading.value = true
   merchantsError.value = false
   try {
-    merchants.value = await fetchMerchants()
+    bankMerchants.value = await fetchMerchants()
   }
   catch {
     merchantsError.value = true
@@ -79,22 +89,20 @@ onMounted(() => {
   if (!props.isDataEntry) loadMerchants()
 })
 
-const filteredMerchants = computed(() => {
-  const q = merchantSearch.value.trim().toLowerCase()
-  const source = props.isDataEntry ? (props.dataEntryMerchants ?? []) : merchants.value
-  if (!q) return source
-  return source.filter(m => m.name.toLowerCase().includes(q))
-})
+const merchantOptions = computed(() =>
+  props.isDataEntry ? (props.dataEntryMerchants ?? []) : bankMerchants.value,
+)
 
-const selectedMerchantName = computed(() => {
-  if (props.isDataEntry && props.dataEntryMerchantName) return props.dataEntryMerchantName
-  if (!props.modelValue.merchant_id) return ''
-  const source = props.isDataEntry ? (props.dataEntryMerchants ?? []) : merchants.value
-  return source.find(m => m.id === props.modelValue.merchant_id)?.name ?? ''
-})
+const selectedMerchant = computed(() =>
+  merchantOptions.value.find(m => m.id === props.modelValue.merchant_id) ?? null,
+)
 
-const shouldLockDataEntryMerchant = computed(() =>
-  props.isDataEntry && Boolean(props.modelValue.merchant_id && selectedMerchantName.value && !props.dataEntryMerchantError),
+// Single merchant auto-lock for DATA_ENTRY
+const isLockedSingleMerchant = computed(() =>
+  props.isDataEntry
+  && merchantOptions.value.length === 1
+  && Boolean(props.modelValue.merchant_id)
+  && !props.dataEntryMerchantError,
 )
 
 const notesLength = computed(() => props.modelValue.notes?.length ?? 0)
@@ -138,51 +146,64 @@ const errorCount = computed(() => Object.keys(props.errors).length)
 
           <!-- المستورد -->
           <Field>
-            <FieldLabel for="merchant">المستورد (التاجر) <span class="text-destructive">*</span></FieldLabel>
+            <FieldLabel for="merchant-combobox">المستورد (التاجر) <span class="text-destructive">*</span></FieldLabel>
 
-            <!-- DATA_ENTRY: locked to one merchant -->
-            <template v-if="shouldLockDataEntryMerchant">
+            <!-- DATA_ENTRY: single merchant locked -->
+            <template v-if="isLockedSingleMerchant">
               <div class="flex items-center gap-2 h-10 px-3 border border-border rounded-md bg-muted text-muted-foreground">
                 <Lock class="h-4 w-4 flex-shrink-0" />
-                <span class="text-sm">{{ selectedMerchantName || 'لم يتم تحديد التاجر بعد' }}</span>
+                <span class="text-sm">{{ selectedMerchant?.name ?? 'لم يتم تحديد التاجر بعد' }}</span>
               </div>
-              <FieldDescription v-if="isDataEntry && dataEntryMerchantError">{{ dataEntryMerchantError }}</FieldDescription>
             </template>
 
-            <!-- DATA_ENTRY multiple / BANK_ADMIN -->
+            <!-- Combobox for BANK_ADMIN or DATA_ENTRY with multiple merchants -->
             <template v-else>
-              <FieldDescription v-if="isDataEntry && dataEntryMerchantError">{{ dataEntryMerchantError }}</FieldDescription>
-              <Alert v-if="!isDataEntry && merchantsError" variant="destructive" class="mb-2">
+              <Alert v-if="merchantsError" variant="destructive" class="mb-2">
                 <AlertTriangle class="h-4 w-4" />
                 <AlertDescription class="flex items-center justify-between gap-2">
-                  <span>تعذر تحميل قائمة التجار. أعد المحاولة بعد قليل.</span>
+                  <span>تعذر تحميل قائمة التجار. أعد المحاولة.</span>
                   <Button type="button" variant="outline" size="sm" class="whitespace-nowrap" @click="loadMerchants">
                     <RotateCcw class="h-3 w-3 me-1" />إعادة المحاولة
                   </Button>
                 </AlertDescription>
               </Alert>
-              <template v-else>
-                <Input
-                  v-model="merchantSearch"
-                  type="text"
-                  placeholder="ابحث عن تاجر..."
-                  :disabled="(!isDataEntry && merchantsLoading) || loading"
-                  class="mb-2"
-                />
-                <Select
-                  :model-value="String(modelValue.merchant_id ?? '')"
-                  :disabled="(!isDataEntry && merchantsLoading) || loading || filteredMerchants.length === 0"
-                  @update:model-value="(val) => update('merchant_id', val ? Number(val) : null)"
-                >
-                  <SelectTrigger id="merchant" :class="{ 'border-destructive': errors.merchant_id }">
-                    <SelectValue :placeholder="!isDataEntry && merchantsLoading ? 'جارٍ تحميل القائمة...' : 'اختر المستورد'" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem v-for="m in filteredMerchants" :key="m.id" :value="String(m.id)">{{ m.name }}</SelectItem>
-                  </SelectContent>
-                </Select>
-              </template>
+              <Combobox
+                v-else
+                :model-value="selectedMerchant"
+                by="id"
+                :disabled="merchantsLoading || loading"
+                @update:model-value="(m) => update('merchant_id', m?.id ?? null)"
+              >
+                <ComboboxAnchor :class="{ 'border-destructive': errors.merchant_id }">
+                  <ComboboxInput
+                    id="merchant-combobox"
+                    :placeholder="merchantsLoading ? 'جارٍ تحميل القائمة...' : 'ابحث أو اختر المستورد...'"
+                    :display-value="(m: any) => m?.name ?? ''"
+                    class="w-full"
+                  />
+                  <ComboboxTrigger>
+                    <ChevronsUpDown class="h-4 w-4 text-muted-foreground" />
+                  </ComboboxTrigger>
+                </ComboboxAnchor>
+                <ComboboxList>
+                  <ComboboxEmpty>لا توجد نتائج</ComboboxEmpty>
+                  <ComboboxGroup>
+                    <ComboboxItem
+                      v-for="m in merchantOptions"
+                      :key="m.id"
+                      :value="m"
+                    >
+                      {{ m.name }}
+                      <ComboboxItemIndicator>
+                        <Check class="h-4 w-4" />
+                      </ComboboxItemIndicator>
+                    </ComboboxItem>
+                  </ComboboxGroup>
+                </ComboboxList>
+              </Combobox>
             </template>
+
+            <FieldDescription v-if="isDataEntry && dataEntryMerchantError">{{ dataEntryMerchantError }}</FieldDescription>
             <FieldError v-if="errors.merchant_id">{{ errors.merchant_id }}</FieldError>
           </Field>
 
