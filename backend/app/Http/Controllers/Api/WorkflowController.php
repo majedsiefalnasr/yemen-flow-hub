@@ -239,6 +239,10 @@ class WorkflowController extends Controller
             return ApiResponse::forbidden('You do not hold this claim.');
         }
 
+        if ($importRequest->status !== RequestStatus::SUPPORT_REVIEW_IN_PROGRESS) {
+            return ApiResponse::forbidden('Request is not in support review status.');
+        }
+
         $ttlMinutes = (int) config('workflow.support_claim_ttl_minutes', 15);
         $expiresAt = now()->addMinutes($ttlMinutes);
         $cacheKey = "support_claim:{$importRequest->id}";
