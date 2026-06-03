@@ -283,6 +283,18 @@ export function useRequestWizard() {
   // ── Save draft ─────────────────────────────────────────────────────────────
 
   async function saveDraft(): Promise<ImportRequest | null> {
+    // Guard: the two fields the backend requires unconditionally are
+    // merchant_id and amount. Catching them here avoids a 422 round-trip
+    // and surfaces a clear message to the user instead of a generic error.
+    if (!step1.value.merchant_id || step1.value.merchant_id <= 0) {
+      saveError.value = 'يرجى اختيار المستورد أولاً قبل الحفظ.'
+      return null
+    }
+    if (!step1.value.amount || step1.value.amount < 1) {
+      saveError.value = 'يرجى إدخال مبلغ التمويل أولاً قبل الحفظ.'
+      return null
+    }
+
     saving.value = true
     saveError.value = null
     try {

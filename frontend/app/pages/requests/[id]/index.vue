@@ -1046,6 +1046,25 @@ async function handleFxSignedFileChange(event: Event) {
     return
   }
 
+  const FX_MAX_BYTES = 10 * 1024 * 1024
+  if (file.size > FX_MAX_BYTES) {
+    fxFlowError.value = 'حجم الملف يتجاوز الحد الأقصى المسموح به (10MB).'
+    target.value = ''
+    return
+  }
+
+  // Verify the file is still readable before storing the reference
+  try {
+    const slice = file.slice(0, 1)
+    const buf = await slice.arrayBuffer()
+    if (file.size > 0 && buf.byteLength === 0) throw new Error('gone')
+  }
+  catch {
+    fxFlowError.value = 'الملف غير متاح أو تالف. يرجى اختياره مجدداً.'
+    target.value = ''
+    return
+  }
+
   fxFlowError.value = ''
   fxSignedFile.value = file
   fxSignedChecksum.value = await fileSha256(file)
