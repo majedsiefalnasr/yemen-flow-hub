@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useRequestWizard } from '../../composables/useRequestWizard'
 import type { WizardStep3Data, WizardUploadState, WizardDocumentKey } from '../../composables/useRequestWizard'
 import { Button } from '../ui/button'
 import { Card, CardContent } from '../ui/card'
@@ -47,33 +48,22 @@ const ZONES: DocumentZone[] = [
   { key: 'extra_docs', title: 'مستندات إضافية', description: 'أي مستندات داعمة أخرى (اختياري)', required: false },
 ]
 
-const MAX_SIZE_MB = 10
-const ALLOWED_TYPES = ['application/pdf']
 const ALLOWED_EXTENSIONS = ['.pdf']
 
 const dragOver = ref<WizardDocumentKey | null>(null)
 const fileErrors = ref<Partial<Record<WizardDocumentKey, string>>>({})
 const { downloadConfirmationRequestTemplate } = useRequests()
+const { validateUploadFile } = useRequestWizard()
 
 function formatBytes(bytes: number): string {
   const mb = bytes / (1024 * 1024)
   return mb >= 1 ? `${mb.toFixed(1)} MB` : `${(bytes / 1024).toFixed(0)} KB`
 }
 
-function validateFile(file: File): string | null {
-  const lower = file.name.toLowerCase()
-  if (!ALLOWED_TYPES.includes(file.type) && !ALLOWED_EXTENSIONS.some(e => lower.endsWith(e))) {
-    return 'يجب أن يكون الملف بصيغة PDF فقط'
-  }
-  if (file.size > MAX_SIZE_MB * 1024 * 1024) {
-    return `حجم الملف يتجاوز الحد الأقصى (${MAX_SIZE_MB}MB)`
-  }
-  return null
-}
-
 function handleFileSelect(key: WizardDocumentKey, file: File | null): void {
+  if (props.loading) return
   if (!file) return
-  const err = validateFile(file)
+  const err = validateUploadFile(file)
   emit('file-reset', key)
   if (err) {
     fileErrors.value = { ...fileErrors.value, [key]: err }
@@ -92,11 +82,13 @@ function onInputChange(key: WizardDocumentKey, event: Event): void {
 function onDrop(key: WizardDocumentKey, event: DragEvent): void {
   dragOver.value = null
   event.preventDefault()
+  if (props.loading) return
   handleFileSelect(key, event.dataTransfer?.files?.[0] ?? null)
 }
 
 function onDragOver(key: WizardDocumentKey, event: DragEvent): void {
   event.preventDefault()
+  if (props.loading) return
   dragOver.value = key
 }
 
@@ -105,6 +97,7 @@ function onDragLeave(): void {
 }
 
 function removeFile(key: WizardDocumentKey): void {
+  if (props.loading) return
   fileErrors.value = { ...fileErrors.value, [key]: undefined }
   emit('file-reset', key)
   emit('update:modelValue', { ...props.modelValue, [key]: null })
@@ -139,6 +132,7 @@ async function downloadTemplate(): Promise<void> {
 }
 
 function triggerInput(key: WizardDocumentKey): void {
+  if (props.loading) return
   document.getElementById(`file-input-${key}`)?.click()
 }
 </script>
@@ -146,11 +140,11 @@ function triggerInput(key: WizardDocumentKey): void {
 <template>
   <div class="flex flex-col gap-0">
     <!-- Template download banner -->
-    <Card class="border-0 border-s-4 border-s-[var(--severity-amber)] bg-[var(--severity-amber)]/5 shadow-sm mb-6">
-      <CardContent class="pt-4 pb-4 flex items-start gap-3">
+    <Card class="mb-6 border border-[var(--severity-amber)]/30 bg-[var(--severity-amber)]/5 shadow-sm p-0" role="note">
+      <CardContent class="flex flex-col gap-3 p-4 sm:flex-row sm:items-start">
         <FileDown class="h-5 w-5 flex-shrink-0 text-[var(--severity-amber)] mt-0.5" aria-hidden="true" />
         <div class="flex-1 min-w-0">
-          <p class="font-semibold text-foreground text-sm">نموذج طلب وثيقة التأكيد — مطلوب قبل الإرسال</p>
+          <p class="font-semibold text-foreground text-sm">نموذج طلب وثيقة التأكيد: مطلوب قبل الإرسال</p>
           <p class="text-xs text-muted-foreground mt-1">
             حمّل النموذج المعبأ بالبيانات، اطبعه واختمه بختم البنك، ثم ارفعه في الحقل المخصص أدناه.
           </p>
@@ -160,6 +154,7 @@ function triggerInput(key: WizardDocumentKey): void {
           variant="outline"
           class="flex-shrink-0"
           :disabled="!templateReady || !requestId"
+          :aria-busy="!templateReady"
           @click="downloadTemplate"
         >
           <FileDown class="h-4 w-4 me-1" />
@@ -202,10 +197,12 @@ function triggerInput(key: WizardDocumentKey): void {
                   'border-primary bg-primary/5': dragOver === zone.key,
                   'border-[var(--severity-green)] bg-[var(--severity-green)]/5': getZoneFile(zone.key) && !getFileError(zone.key),
                   'border-destructive bg-destructive/5': getFileError(zone.key),
-                  'border-border bg-muted/30 hover:border-primary/50 hover:bg-primary/5': !dragOver && !getZoneFile(zone.key) && !getFileError(zone.key),
+                  'border-border bg-muted/30 hover:border-primary/50 hover:bg-primary/5': !loading && !dragOver && !getZoneFile(zone.key) && !getFileError(zone.key),
+                  'border-border bg-muted/30 opacity-60': loading && !dragOver && !getZoneFile(zone.key) && !getFileError(zone.key),
                 }"
                 role="button"
                 :aria-label="`رفع ${zone.title}`"
+                :aria-disabled="loading"
                 tabindex="0"
                 @dragover="onDragOver(zone.key, $event)"
                 @dragleave="onDragLeave"
@@ -231,7 +228,7 @@ function triggerInput(key: WizardDocumentKey): void {
                       اسحب وأفلت الملف هنا
                     </p>
                     <p class="text-xs text-muted-foreground mt-0.5">
-                      أو <span class="text-primary font-medium">اضغط للاختيار</span> — PDF فقط، حتى {{ MAX_SIZE_MB }}MB
+                      أو <span class="text-primary font-medium">اضغط للاختيار</span>، PDF فقط، حتى {{ MAX_SIZE_MB }}MB
                     </p>
                   </div>
                 </div>

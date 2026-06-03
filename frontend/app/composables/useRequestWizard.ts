@@ -322,6 +322,23 @@ export function useRequestWizard() {
 
   // ── Upload documents ───────────────────────────────────────────────────────
 
+  // Single source of truth for file validation rules — shared between the
+  // drop zone (WizardStep3) and the pre-upload guard below.
+  const UPLOAD_MAX_SIZE_MB = 10
+  const UPLOAD_ALLOWED_TYPES = ['application/pdf']
+  const UPLOAD_ALLOWED_EXTENSIONS = ['.pdf']
+
+  function validateUploadFile(file: File): string | null {
+    const lower = file.name.toLowerCase()
+    if (!UPLOAD_ALLOWED_TYPES.includes(file.type) && !UPLOAD_ALLOWED_EXTENSIONS.some(e => lower.endsWith(e))) {
+      return 'يجب أن يكون الملف بصيغة PDF فقط'
+    }
+    if (file.size > UPLOAD_MAX_SIZE_MB * 1024 * 1024) {
+      return `حجم الملف يتجاوز الحد الأقصى (${UPLOAD_MAX_SIZE_MB}MB)`
+    }
+    return null
+  }
+
   async function isFileStillReadable(file: File): Promise<boolean> {
     try {
       // Slice 1 byte — throws or returns empty ArrayBuffer if file was deleted
@@ -353,11 +370,19 @@ export function useRequestWizard() {
       entries.map(async ({ key, file }) => {
         uploadState.value[key] = 'uploading'
         try {
-          // Guard: verify the File object is still readable before uploading.
-          // A file deleted from disk after selection returns an unreadable blob.
+          // Guard 1: verify the File object is still readable.
           const readable = await isFileStillReadable(file)
           if (!readable) {
             throw new Error('FILE_GONE')
+          }
+
+          // Guard 2: re-run the same validation that runs at selection time.
+          // The file object may have changed (e.g. the user swapped the file
+          // on disk) between selection and submit. Catching this here avoids
+          // a round-trip to the server for something we can detect locally.
+          const localErr = validateUploadFile(file)
+          if (localErr) {
+            throw new Error(`INVALID:${localErr}`)
           }
 
           const form = new FormData()
@@ -386,7 +411,12 @@ export function useRequestWizard() {
 
           if (err instanceof Error && err.message === 'FILE_GONE') {
             userMessage = 'الملف لم يعد متاحاً. يرجى اختياره مجدداً.'
-            // Reset the drop zone — stale File can never succeed
+            step3.value = { ...step3.value, [key]: null }
+          }
+          else if (err instanceof Error && err.message.startsWith('INVALID:')) {
+            // Local re-validation failed — show the exact validation message
+            // and reset the drop zone so the user must re-pick a valid file.
+            userMessage = err.message.slice('INVALID:'.length)
             step3.value = { ...step3.value, [key]: null }
           }
           else {
@@ -524,6 +554,7 @@ export function useRequestWizard() {
     validateStep1,
     validateStep2,
     validateStep3,
+    validateUploadFile,
     clearStep1Error: (key: keyof WizardStep1Data) => {
       const next = { ...step1Errors.value }
       delete next[key]
