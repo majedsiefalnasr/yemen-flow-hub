@@ -322,6 +322,19 @@ export function useRequestWizard() {
 
   // ── Upload documents ───────────────────────────────────────────────────────
 
+  async function isFileStillReadable(file: File): Promise<boolean> {
+    try {
+      // Slice 1 byte — throws or returns empty ArrayBuffer if file was deleted
+      const slice = file.slice(0, 1)
+      const buf = await slice.arrayBuffer()
+      // A deleted file returns an empty buffer even though file.size > 0
+      return file.size === 0 || buf.byteLength > 0
+    }
+    catch {
+      return false
+    }
+  }
+
   async function uploadDocuments(requestId: number): Promise<WizardDocumentKey[]> {
     const config = useRuntimeConfig()
     const baseURL = config.public.apiBase as string
@@ -340,6 +353,13 @@ export function useRequestWizard() {
       entries.map(async ({ key, file }) => {
         uploadState.value[key] = 'uploading'
         try {
+          // Guard: verify the File object is still readable before uploading.
+          // A file deleted from disk after selection returns an unreadable blob.
+          const readable = await isFileStillReadable(file)
+          if (!readable) {
+            throw new Error('FILE_GONE')
+          }
+
           const form = new FormData()
           form.append('request_id', String(requestId))
           form.append('file', file)
@@ -359,9 +379,17 @@ export function useRequestWizard() {
           })
           uploadState.value[key] = 'done'
         }
-        catch {
+        catch (err: unknown) {
           uploadState.value[key] = 'error'
-          uploadErrors[key] = UPLOAD_ERROR_MESSAGE
+          const isGone = err instanceof Error && err.message === 'FILE_GONE'
+          uploadErrors[key] = isGone
+            ? 'الملف لم يعد متاحاً. يرجى اختياره مجدداً.'
+            : UPLOAD_ERROR_MESSAGE
+          // Clear the stale File reference so the drop zone resets to idle
+          // and the user is forced to re-pick rather than retrying a gone file.
+          if (isGone) {
+            step3.value = { ...step3.value, [key]: null }
+          }
           failedUploads.push(key)
         }
       }),
