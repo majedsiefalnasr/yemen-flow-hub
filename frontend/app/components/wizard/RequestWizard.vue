@@ -11,13 +11,19 @@ import WizardStep4 from './WizardStep4.vue'
 import { useRequestWizard } from '../../composables/useRequestWizard'
 import { useMerchants } from '../../composables/useMerchants'
 import { useAuthStore } from '../../stores/auth.store'
-import type { DuplicateWarning } from '../../types/models'
+import type { DuplicateWarning, Merchant } from '../../types/models'
 import { Alert, AlertDescription } from '../ui/alert'
 import { Button } from '../ui/button'
 
 const router = useRouter()
 const authStore = useAuthStore()
 const { fetchMerchants } = useMerchants()
+
+const emit = defineEmits<{
+  dirty: []
+  clean: []
+  submitted: []
+}>()
 
 const STEP_LABELS = [
   'بيانات الطلب',
@@ -32,6 +38,7 @@ const wizard = useRequestWizard()
 
 // Merchant name for Step 4 summary
 const merchantName = ref('')
+const dataEntryMerchants = ref<Merchant[]>([])
 const merchantResolutionError = ref<string | null>(null)
 
 async function resolveDataEntryMerchant(): Promise<void> {
@@ -41,6 +48,7 @@ async function resolveDataEntryMerchant(): Promise<void> {
       bank_id: authStore.user?.bank_id ?? undefined,
       is_active: true,
     })
+    dataEntryMerchants.value = merchants
 
     if (wizard.step1.value.merchant_id) {
       const currentMerchant = merchants.find(merchant => merchant.id === wizard.step1.value.merchant_id)
@@ -62,9 +70,10 @@ async function resolveDataEntryMerchant(): Promise<void> {
     merchantName.value = ''
     merchantResolutionError.value = merchants.length === 0
       ? 'لا يوجد تاجر نشط مرتبط بحساب إدخال البيانات هذا.'
-      : 'تعذر تحديد التاجر تلقائيا لهذا الحساب. تواصل مع مسؤول البنك لإكمال الربط.'
+      : 'اختر التاجر المرتبط بهذا الطلب من قائمة تجار البنك.'
   }
   catch {
+    dataEntryMerchants.value = []
     wizard.step1.value.merchant_id = null
     merchantName.value = ''
     merchantResolutionError.value = 'تعذر تحميل بيانات التاجر المرتبط بالحساب الآن. أعد المحاولة بعد قليل.'
@@ -77,28 +86,37 @@ onMounted(resolveDataEntryMerchant)
 async function refreshMerchantName(id: number | null): Promise<void> {
   if (!id) { merchantName.value = ''; return }
   try {
-    const merchants = await fetchMerchants()
+    const merchants = wizard.isDataEntry.value && dataEntryMerchants.value.length > 0
+      ? dataEntryMerchants.value
+      : await fetchMerchants()
     merchantName.value = merchants.find(m => m.id === id)?.name ?? ''
   }
   catch { merchantName.value = '' }
 }
 
 async function handleNext(): Promise<void> {
+  emit('dirty')
   const ok = wizard.nextStep()
   if (!ok) {
-    // Scroll to first error
     await new Promise(r => setTimeout(r, 50))
     document.querySelector('[role="alert"]')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    return
+  }
+
+  if (wizard.currentStep.value === 3) {
+    await wizard.ensureDraftSavedForStep3()
   }
 }
 
 async function handleSaveDraft(): Promise<void> {
+  emit('clean')
   const result = await wizard.saveDraft()
   if (result) {
     duplicateWarnings.value = result.duplicate_warnings ?? []
     toast.success('تم حفظ الطلب كمسودة بنجاح.')
   }
   else if (wizard.saveError.value) {
+    emit('dirty')
     toast.error(wizard.saveError.value)
   }
 }
@@ -106,6 +124,7 @@ async function handleSaveDraft(): Promise<void> {
 async function handleSubmit(): Promise<void> {
   const result = await wizard.submitRequest()
   if (result) {
+    emit('submitted')
     toast.success('تم إرسال الطلب بنجاح!')
     await new Promise(r => setTimeout(r, 800))
     await router.push(`/requests/${result.id}`)
@@ -153,6 +172,7 @@ const isSubmitDisabled = computed(() => !wizard.acknowledged.value || wizard.sub
         :errors="wizard.step1Errors.value"
         :is-data-entry="wizard.isDataEntry.value"
         :data-entry-merchant-name="merchantName"
+        :data-entry-merchants="dataEntryMerchants"
         :data-entry-merchant-error="merchantResolutionError"
         :loading="wizard.saving.value"
         @update:model-value="(v) => { wizard.step1.value = v; if (v.merchant_id) refreshMerchantName(v.merchant_id) }"
@@ -172,6 +192,8 @@ const isSubmitDisabled = computed(() => !wizard.acknowledged.value || wizard.sub
         :errors="wizard.step3Errors.value"
         :upload-state="wizard.uploadState.value"
         :loading="wizard.saving.value"
+        :request-id="wizard.savedRequestId.value"
+        :template-ready="wizard.autoSavedForStep3.value"
         @file-reset="wizard.resetUploadState"
         @update:model-value="(v) => { wizard.step3.value = v }"
       />
@@ -200,14 +222,14 @@ const isSubmitDisabled = computed(() => !wizard.acknowledged.value || wizard.sub
       <!-- Bottom navigation bar -->
       <div class="h-px bg-border my-6" aria-hidden="true" />
       <div class="flex items-center gap-3" role="toolbar" aria-label="تنقل خطوات الطلب">
-        <!-- Previous -->
+        <!-- Previous — ChevronRight points right = backward in RTL -->
         <Button
           v-if="!isFirstStep"
           variant="outline"
           :disabled="wizard.saving.value || wizard.submitting.value"
           @click="wizard.prevStep"
         >
-          <ChevronLeft class="h-4 w-4" />
+          <ChevronRight class="h-4 w-4" />
           السابق
         </Button>
         <span v-else class="flex-shrink-0 w-20" />
@@ -224,14 +246,14 @@ const isSubmitDisabled = computed(() => !wizard.acknowledged.value || wizard.sub
           <span v-else>حفظ كمسودة</span>
         </Button>
 
-        <!-- Next / Submit -->
+        <!-- Next — ChevronLeft points left = forward in RTL -->
         <Button
           v-if="!isLastStep"
           :disabled="wizard.saving.value"
           @click="handleNext"
         >
           التالي
-          <ChevronRight class="h-4 w-4" />
+          <ChevronLeft class="h-4 w-4" />
         </Button>
         <Button
           v-else
@@ -241,10 +263,9 @@ const isSubmitDisabled = computed(() => !wizard.acknowledged.value || wizard.sub
           <Loader2 v-if="wizard.submitting.value" class="h-4 w-4 me-1 animate-spin" />
           <span v-if="wizard.submitting.value">جارٍ الإرسال...</span>
           <span v-else>إرسال للمراجعة</span>
-          <ChevronRight v-if="!wizard.submitting.value" class="h-4 w-4" />
+          <ChevronLeft v-if="!wizard.submitting.value" class="h-4 w-4" />
         </Button>
       </div>
     </div>
   </div>
 </template>
-
