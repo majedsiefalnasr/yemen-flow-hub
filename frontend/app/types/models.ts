@@ -205,7 +205,7 @@ export interface CustomsDeclaration {
   signed_fx_doc_uploaded_by?: number | null
   has_signed_fx_doc?: boolean
   request: { id: number; reference_number: string; bank_name: string | null } | null
-  metadata: Record<string, unknown> | null
+  metadata: Record<string, any> | null
   download_url: string
   created_at: string
 }
@@ -332,7 +332,7 @@ export interface RequestStageHistory {
   performed_by: { id: number; name: string; role: string | null } | null
   action: string
   notes: string | null
-  metadata: Record<string, unknown> | null
+  metadata: Record<string, any> | null
   created_at: string
 }
 
@@ -427,7 +427,7 @@ export interface AuditLog {
   to_status: string | null
   ip_address: string | null
   user_agent?: string | null
-  metadata: Record<string, unknown> | null
+  metadata: Record<string, any> | null
   created_at: string
 }
 

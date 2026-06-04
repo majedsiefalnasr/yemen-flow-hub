@@ -8,7 +8,6 @@ import {
   Cog,
   Eye,
   EyeOff,
-  Globe,
   Image,
   KeyRound,
   Loader2,
@@ -16,9 +15,7 @@ import {
   Mail,
   Network,
   Palette,
-  Phone,
   Save,
-  Server,
   ShieldAlert,
   Workflow,
 } from 'lucide-vue-next'

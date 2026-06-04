@@ -1,10 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import {
-  step1Schema,
-  step2Schema,
-  step3Schema,
-  CUSTOMS_BY_PORT,
-} from '../../../schemas/wizard.schema'
+import { step1Schema, step2Schema, CUSTOMS_BY_PORT } from '../../../schemas/wizard.schema'
 
 // ── Step 1 schema ─────────────────────────────────────────────────────────────
 

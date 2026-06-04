@@ -3,13 +3,13 @@ import type { DashboardStats } from './useDashboard'
 
 type RouteBadgeMap = Partial<Record<string, number>>
 
-function asPositiveCount(value: unknown): number | undefined {
+function asPositiveCount(value: any): number | undefined {
   if (typeof value !== 'number' || !Number.isFinite(value)) return undefined
   const normalized = Math.max(0, Math.trunc(value))
   return normalized > 0 ? normalized : undefined
 }
 
-function sumPositiveCounts(...values: unknown[]): number | undefined {
+function sumPositiveCounts(...values: any[]): number | undefined {
   let total = 0
   for (const value of values) {
     total += asPositiveCount(value) ?? 0

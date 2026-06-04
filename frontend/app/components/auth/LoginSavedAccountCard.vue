@@ -27,7 +27,7 @@ const emit = defineEmits<{
 
 const roleLabel = computed(() => ROLE_LABELS[props.account.role] ?? props.account.role)
 
-function isKnownVariant(value: unknown): value is AvatarVariant {
+function isKnownVariant(value: any): value is AvatarVariant {
   return typeof value === 'string' && (AVATAR_VARIANTS as readonly string[]).includes(value)
 }
 

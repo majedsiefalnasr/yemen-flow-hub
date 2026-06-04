@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { computed } from 'vue'
 import type { WizardStep2Data } from '../../composables/useRequestWizard'
 import { ARRIVAL_PORTS } from '../../schemas/wizard.schema'
 import { Input } from '../ui/input'

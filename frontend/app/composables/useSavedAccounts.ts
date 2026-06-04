@@ -41,13 +41,13 @@ function normalizePin(pin: string): string {
     .slice(0, 6)
 }
 
-function parseStoredPinValue(value: unknown): string | null {
+function parseStoredPinValue(value: any): string | null {
   if (typeof value === 'string' || typeof value === 'number') {
     const normalized = normalizePin(String(value))
     return normalized.length > 0 ? normalized : null
   }
   if (!value || typeof value !== 'object') return null
-  const record = value as Record<string, unknown>
+  const record = value as Record<string, any>
   const candidate = record.pin ?? record.value ?? record.code
   if (typeof candidate === 'string' || typeof candidate === 'number') {
     const normalized = normalizePin(String(candidate))
@@ -186,11 +186,13 @@ export function useSavedAccounts() {
       const key = normalizeEmailKey(email)
       if (hasPIN) map[key] = true
       else {
-        delete map[key]
-        delete map[email]
+        Reflect.deleteProperty(map, key)
+        Reflect.deleteProperty(map, email)
       }
       localStorage.setItem(PIN_STATUS_KEY, JSON.stringify(map))
-    } catch {}
+    } catch {
+      // Local storage can be unavailable in private or restricted browser contexts.
+    }
   }
 
   /**
@@ -204,7 +206,9 @@ export function useSavedAccounts() {
       const map: Record<string, string> = raw ? (JSON.parse(raw) as Record<string, string>) : {}
       map[normalizeEmailKey(email)] = normalizePin(pin)
       localStorage.setItem(PIN_DATA_KEY, JSON.stringify(map))
-    } catch {}
+    } catch {
+      // Local storage can be unavailable in private or restricted browser contexts.
+    }
     setPINStatus(email, true)
   }
 
@@ -217,7 +221,7 @@ export function useSavedAccounts() {
     try {
       const raw = localStorage.getItem(PIN_DATA_KEY)
       if (!raw) return false
-      const map = JSON.parse(raw) as Record<string, unknown>
+      const map = JSON.parse(raw) as Record<string, any>
       const key = normalizeEmailKey(email)
       const storedPin = map[key] ?? findLegacyValueByNormalizedEmail(map, key)
       return parseStoredPinValue(storedPin) != null
@@ -235,7 +239,7 @@ export function useSavedAccounts() {
     try {
       const raw = localStorage.getItem(PIN_DATA_KEY)
       if (!raw) return false
-      const map = JSON.parse(raw) as Record<string, unknown>
+      const map = JSON.parse(raw) as Record<string, any>
       const key = normalizeEmailKey(email)
       const normalizedPin = normalizePin(pin)
       const storedPin = parseStoredPinValue(map[key] ?? findLegacyValueByNormalizedEmail(map, key))

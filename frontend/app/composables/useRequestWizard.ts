@@ -213,7 +213,7 @@ export function useRequestWizard() {
 
     if (step3Errors.value[key]) {
       const nextErrors = { ...step3Errors.value }
-      delete nextErrors[key]
+      Reflect.deleteProperty(nextErrors, key)
       step3Errors.value = nextErrors
     }
   }
@@ -318,7 +318,7 @@ export function useRequestWizard() {
         savedRequestId.value = result.id
       }
       return result
-    } catch (err: unknown) {
+    } catch (err: any) {
       saveError.value = 'تعذّر الحفظ كمسودة، يرجى المحاولة مجدداً.'
       if (import.meta.dev) console.error('[useRequestWizard] saveDraft failed:', err)
       return null
@@ -427,7 +427,7 @@ export function useRequestWizard() {
             },
           })
           uploadState.value[key] = 'done'
-        } catch (err: unknown) {
+        } catch (err: any) {
           uploadState.value[key] = 'error'
 
           let userMessage = UPLOAD_ERROR_MESSAGE
@@ -535,7 +535,7 @@ export function useRequestWizard() {
       const { performWorkflowAction } = useRequests()
       const submitted = await performWorkflowAction(reqId, 'submit')
       return submitted
-    } catch (err: unknown) {
+    } catch (err: any) {
       submitError.value = 'تعذّر إرسال الطلب، يرجى المحاولة مجدداً.'
       if (import.meta.dev) console.error('[useRequestWizard] submitRequest failed:', err)
       return null
@@ -582,12 +582,12 @@ export function useRequestWizard() {
     validateUploadFile,
     clearStep1Error: (key: keyof WizardStep1Data) => {
       const next = { ...step1Errors.value }
-      delete next[key]
+      Reflect.deleteProperty(next, key)
       step1Errors.value = next
     },
     clearStep2Error: (key: keyof WizardStep2Data) => {
       const next = { ...step2Errors.value }
-      delete next[key]
+      Reflect.deleteProperty(next, key)
       step2Errors.value = next
     },
     resetUploadState,

@@ -30,7 +30,6 @@ import { ROLE_LABELS } from '../constants/workflow'
 import StaffModal from '../components/staff/StaffModal.vue'
 import EmptyState from '../components/shared/EmptyState.vue'
 import type { CreateUserPayload, UpdateUserPayload } from '../composables/useUsers'
-import { useTableExport } from '../composables/useTableExport'
 import BoringAvatar from '../components/shared/BoringAvatar.vue'
 import { persistUserAvatar, type AvatarVariant } from '../composables/useUserAvatar'
 import {
@@ -74,7 +73,6 @@ definePageMeta({
 })
 
 const { fetchUsers, createUser, updateUser, getUser } = useUsers()
-const { exportToCSV } = useTableExport()
 const auth = useAuthStore()
 
 const staff = ref<User[]>([])
@@ -121,7 +119,7 @@ const filteredStaff = computed(() => {
   )
 })
 
-function getFirstApiErrorMessage(err: unknown): string | null {
+function getFirstApiErrorMessage(err: any): string | null {
   const data = (err as { data?: ApiError })?.data
   if (!data) return null
   if (data.errors) {
@@ -221,7 +219,7 @@ async function handleSave(data: {
       persistUserAvatar(created.email, { variant: data.avatar_variant })
     }
     closeModal()
-  } catch (err: unknown) {
+  } catch (err: any) {
     serverError.value =
       getFirstApiErrorMessage(err) ?? 'تعذر حفظ بيانات الموظف. راجع الحقول ثم أعد المحاولة.'
   } finally {
@@ -434,22 +432,22 @@ const exportCols = [
   {
     key: 'role',
     label: 'الدور',
-    format: (_value: unknown, row: User) => ROLE_LABELS[row.role] ?? row.role,
+    format: (_value: any, row: User) => ROLE_LABELS[row.role] ?? row.role,
   },
   {
     key: 'is_active',
     label: 'الحالة',
-    format: (_value: unknown, row: User) => (row.is_active ? 'نشط' : 'غير نشط'),
+    format: (_value: any, row: User) => (row.is_active ? 'نشط' : 'غير نشط'),
   },
   {
     key: 'created_at',
     label: 'تاريخ الانضمام',
-    format: (_value: unknown, row: User) => formatJoinDate(row.created_at),
+    format: (_value: any, row: User) => formatJoinDate(row.created_at),
   },
   {
     key: 'last_login_at',
     label: 'آخر دخول',
-    format: (_value: unknown, row: User) => formatJoinDate(row.last_login_at),
+    format: (_value: any, row: User) => formatJoinDate(row.last_login_at),
   },
 ]
 
@@ -593,9 +591,9 @@ onMounted(loadStaff)
           @update:column-filters="(v) => (columnFilters = v)"
           @update:column-visibility="(v) => (columnVisibility = v)"
         >
-          <template #toolbar="{ table }">
+          <template #toolbar="{ table: dataTable }">
             <DataTableToolbar
-              :table="table"
+              :table="dataTable"
               search-placeholder="بحث بالاسم أو البريد الإلكتروني..."
               :has-filters="hasActiveFilters"
               @update:search="(v) => (query = v)"
@@ -603,22 +601,22 @@ onMounted(loadStaff)
             >
               <template #filters>
                 <DataTableFacetedFilter
-                  v-if="table.getColumn('role')"
-                  :column="table.getColumn('role')!"
+                  v-if="dataTable.getColumn('role')"
+                  :column="dataTable.getColumn('role')!"
                   title="الدور"
                   :options="roleFilterOptions"
                 />
                 <DataTableFacetedFilter
-                  v-if="table.getColumn('is_active')"
-                  :column="table.getColumn('is_active')!"
+                  v-if="dataTable.getColumn('is_active')"
+                  :column="dataTable.getColumn('is_active')!"
                   title="الحالة"
                   :options="statusFilterOptions"
                 />
               </template>
               <template #actions>
-                <DataTableViewOptions :table="table" :column-labels="STAFF_COLUMN_LABELS" />
+                <DataTableViewOptions :table="dataTable" :column-labels="STAFF_COLUMN_LABELS" />
                 <DataTableExport
-                  :table="table as any"
+                  :table="dataTable as any"
                   :export-columns="exportCols as any"
                   :filename="buildExportFilename()"
                   :formats="['csv', 'tsv', 'json', 'excel', 'pdf']"
@@ -650,8 +648,8 @@ onMounted(loadStaff)
               </EmptyContent>
             </Empty>
           </template>
-          <template #pagination="{ table }">
-            <DataTablePagination :table="table" />
+          <template #pagination="{ table: dataTable }">
+            <DataTablePagination :table="dataTable" />
           </template>
         </DataTable>
       </div>

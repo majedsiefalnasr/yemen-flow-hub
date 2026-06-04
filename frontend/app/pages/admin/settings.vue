@@ -33,7 +33,6 @@ const {
   updateSetting,
   updateSmtpSettings,
   updateSecurityPolicy,
-  resetSetting,
 } = useAdminSettings()
 
 type TabId = 'workflow' | 'email' | 'security' | 'general'

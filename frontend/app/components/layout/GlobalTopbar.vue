@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useMediaQuery } from '@vueuse/core'
-import { LogOut, Moon, Settings, Sun, User } from 'lucide-vue-next'
+import { LogOut, Settings, User } from 'lucide-vue-next'
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import CommandPalette from '@/components/CommandPalette.vue'

@@ -9,10 +9,6 @@ import type {
 import {
   Activity,
   AlertTriangle,
-  ChevronLeft,
-  ChevronRight,
-  ChevronsLeft,
-  ChevronsRight,
   Download,
   FileWarning,
   MoreHorizontal,
@@ -53,14 +49,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { Label } from '@/components/ui/label'
+
 import LoadErrorAlert from '@/components/shared/LoadErrorAlert.vue'
 
 definePageMeta({
@@ -444,19 +433,19 @@ function buildAuditExportColumns() {
     {
       key: 'user',
       label: 'المستخدم',
-      format: (_value: unknown, row: AuditLog) => row.user?.name ?? 'غير معروف',
+      format: (_value: any, row: AuditLog) => row.user?.name ?? 'غير معروف',
     },
     {
       key: 'action',
       label: 'الإجراء',
-      format: (_value: unknown, row: AuditLog) => formatAction(row.action),
+      format: (_value: any, row: AuditLog) => formatAction(row.action),
     },
     { key: 'from_status', label: 'من' },
     { key: 'to_status', label: 'إلى' },
     {
       key: 'created_at',
       label: 'التوقيت',
-      format: (_value: unknown, row: AuditLog) => formatDate(row.created_at),
+      format: (_value: any, row: AuditLog) => formatDate(row.created_at),
     },
     { key: 'ip_address', label: 'IP' },
   ] as const
@@ -471,7 +460,7 @@ function exportAuditRows(
   const stamp = new Date().toISOString().slice(0, 10)
   const filename = `audit-logs-${suffix}-${stamp}`
   const cols = buildAuditExportColumns() as any
-  const data = rows as unknown as Record<string, unknown>[]
+  const data = rows as any as Record<string, any>[]
   if (format === 'csv') exportToCSV(data, cols, filename)
   else if (format === 'excel') exportToExcel(data, cols, filename)
   else exportToJSON(data, cols, filename)
@@ -505,25 +494,25 @@ function truncateUa(ua: string | null | undefined, max = 80): string {
   return ua.length > max ? ua.slice(0, max) + '…' : ua
 }
 
-type AuditLogMeta = { before?: Record<string, unknown>; after?: Record<string, unknown> } | null
+type AuditLogMeta = { before?: Record<string, any>; after?: Record<string, any> } | null
 
 const MISSING_DIFF_VALUE = '—'
 const EMPTY_DIFF_VALUE = 'فارغ'
 
-function hasDiffValue(record: Record<string, unknown>, key: string): boolean {
+function hasDiffValue(record: Record<string, any>, key: string): boolean {
   return Object.prototype.hasOwnProperty.call(record, key)
 }
 
-function formatDiffValue(record: Record<string, unknown>, key: string): unknown {
+function formatDiffValue(record: Record<string, any>, key: string): any {
   if (!hasDiffValue(record, key)) return MISSING_DIFF_VALUE
   const value = record[key]
   return value === null ? EMPTY_DIFF_VALUE : value
 }
 
-function diffRows(meta: AuditLogMeta): Array<{ key: string; before: unknown; after: unknown }> {
+function diffRows(meta: AuditLogMeta): Array<{ key: string; before: any; after: any }> {
   if (!meta) return []
-  const before = (meta.before ?? {}) as Record<string, unknown>
-  const after = (meta.after ?? {}) as Record<string, unknown>
+  const before = (meta.before ?? {}) as Record<string, any>
+  const after = (meta.after ?? {}) as Record<string, any>
   const keys = Array.from(new Set([...Object.keys(before), ...Object.keys(after)]))
   return keys
     .filter((key) => {

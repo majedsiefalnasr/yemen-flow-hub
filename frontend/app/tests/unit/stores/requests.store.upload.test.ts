@@ -3,7 +3,6 @@ import { setActivePinia, createPinia } from 'pinia'
 
 const mockUploadDocument = vi.fn()
 const mockFetchRequestDocuments = vi.fn()
-const mockLoadDocuments = vi.fn()
 
 vi.mock('../../../composables/useRequests', () => ({
   useRequests: () => ({

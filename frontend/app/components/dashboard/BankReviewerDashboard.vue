@@ -32,7 +32,6 @@ const store = useDashboardStore()
 const auth = useAuthStore()
 
 const currentUserId = computed(() => auth.user?.id ?? null)
-const authUser = computed(() => auth.user)
 
 const stats = computed<BankReviewerDashboardStats | null>(() => {
   const raw = store.stats as Partial<BankReviewerDashboardStats> | null

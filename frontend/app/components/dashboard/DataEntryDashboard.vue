@@ -2,19 +2,9 @@
 import type { ColumnDef } from '@tanstack/vue-table'
 import { computed, onMounted, h } from 'vue'
 import { useRouter } from 'vue-router'
-import {
-  CheckCircle2,
-  Clock,
-  RotateCcw,
-  FileText,
-  PlusCircle,
-  Zap,
-  Bell,
-  AlertCircle,
-} from 'lucide-vue-next'
+import { CheckCircle2, Clock, RotateCcw, FileText, Zap, Bell, AlertCircle } from 'lucide-vue-next'
 import { useDashboardStore } from '@/stores/dashboard.store'
 import { useNotificationsStore } from '@/stores/notifications.store'
-import { useAuthStore } from '@/stores/auth.store'
 import { UserRole } from '@/types/enums'
 import type { DataEntryDashboardStats } from '@/composables/useDashboard'
 import StatusBadge from '@/components/shared/StatusBadge.vue'
@@ -29,9 +19,6 @@ import MetricGrid from '@/components/shared/dashboard/MetricGrid.vue'
 const router = useRouter()
 const store = useDashboardStore()
 const notificationsStore = useNotificationsStore()
-const authStore = useAuthStore()
-
-const authUser = computed(() => authStore.user)
 
 const stats = computed(() => store.stats as DataEntryDashboardStats | null)
 const unreadCount = computed(() => notificationsStore.unreadCount)

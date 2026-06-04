@@ -149,7 +149,7 @@ async function confirmVote() {
     await votingStore.castVote(props.requestId, voteToSend, justification.value.trim() || undefined)
     if (!isMounted) return
     cancelVote()
-  } catch (err: unknown) {
+  } catch (err: any) {
     if (!isMounted) return
     const msg = err instanceof Error ? err.message : ''
     if (msg.includes('VOTING_SESSION_CLOSED')) {

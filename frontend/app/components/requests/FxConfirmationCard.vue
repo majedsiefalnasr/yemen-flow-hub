@@ -94,7 +94,7 @@ async function handleUpload(): Promise<void> {
     await requestsStore.uploadSignedFxDoc(props.request.id, signedFile.value)
     toast.success('تم رفع الوثيقة الموقعة بنجاح. يمكنك الآن إصدار التأكيد.')
     emit('action-completed')
-  } catch (error: unknown) {
+  } catch (error: any) {
     uploadError.value = error instanceof Error ? error.message : 'تعذر رفع الوثيقة.'
   }
 }
@@ -103,7 +103,7 @@ async function handleIssue(): Promise<void> {
   try {
     await requestsStore.issueCustomsDeclaration(props.request.id)
     emit('action-completed')
-  } catch (error: unknown) {
+  } catch (error: any) {
     toast.error(error instanceof Error ? error.message : 'تعذر إصدار التأكيد.')
   }
 }

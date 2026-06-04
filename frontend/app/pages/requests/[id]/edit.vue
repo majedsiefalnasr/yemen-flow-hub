@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import type { NavigationGuardNext } from 'vue-router'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { ChevronLeft, RefreshCw, Save } from 'lucide-vue-next'
@@ -250,7 +250,7 @@ async function handleSubmit() {
     if (isReturnedCorrection.value) await requestsStore.performAction(id, 'submit')
     submitted.value = true
     await router.push(`/requests/${id}`)
-  } catch (err: unknown) {
+  } catch (err: any) {
     const res = (err as any)?.response
     const status = res?.status
     if (status === 403 || status === 409) {
@@ -314,7 +314,7 @@ async function handleUploadDocument(file: File) {
 async function downloadDocument(docId: number, filename: string) {
   if (downloadingIds.value.has(docId)) return
   downloadingIds.value = new Set([...downloadingIds.value, docId])
-  delete downloadErrors.value[docId]
+  Reflect.deleteProperty(downloadErrors.value, docId)
   try {
     const config = useRuntimeConfig()
     const response = await $fetch<Blob>(`/api/documents/${docId}/download`, {

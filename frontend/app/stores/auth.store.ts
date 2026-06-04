@@ -156,12 +156,15 @@ export const useAuthStore = defineStore('auth', {
     async login(
       email: string,
       password: string,
-    ): Promise<{
-      requiresMfa: true
-      email: string
-      challengeId: string
-      roleLabel?: string
-    } | void> {
+    ): Promise<
+      | {
+          requiresMfa: true
+          email: string
+          challengeId: string
+          roleLabel?: string
+        }
+      | undefined
+    > {
       const config = useRuntimeConfig()
       const baseURL = config.public.apiBase as string
 

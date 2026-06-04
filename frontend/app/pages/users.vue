@@ -261,7 +261,7 @@ async function saveUser() {
     }
     closeModal()
     await loadUsers()
-  } catch (err: unknown) {
+  } catch (err: any) {
     const e = err as { data?: { errors?: Record<string, string[]>; message?: string } }
     if (e.data?.errors) {
       const errs = e.data.errors

@@ -573,17 +573,17 @@ const exportCols = [
   {
     key: 'bank_id',
     label: 'البنك',
-    format: (_value: unknown, row: Merchant) => bankName(row.bank_id),
+    format: (_value: any, row: Merchant) => bankName(row.bank_id),
   },
   {
     key: 'is_active',
     label: 'الحالة',
-    format: (_value: unknown, row: Merchant) => (row.is_active ? 'نشط' : 'موقوف'),
+    format: (_value: any, row: Merchant) => (row.is_active ? 'نشط' : 'موقوف'),
   },
   {
     key: 'transaction_count',
     label: 'المعاملات',
-    format: (_value: unknown, row: Merchant) => String(row.transaction_count ?? 0),
+    format: (_value: any, row: Merchant) => String(row.transaction_count ?? 0),
   },
 ] as const
 
@@ -640,10 +640,10 @@ function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
   if (!rows.length) return
   const filename = `${buildExportFilename()}-selected`
   if (format === 'csv')
-    exportToCSV(rows as unknown as Record<string, unknown>[], exportCols as any, filename)
+    exportToCSV(rows as any as Record<string, any>[], exportCols as any, filename)
   else if (format === 'excel')
-    exportToExcel(rows as unknown as Record<string, unknown>[], exportCols as any, filename)
-  else exportToJSON(rows as unknown as Record<string, unknown>[], exportCols as any, filename)
+    exportToExcel(rows as any as Record<string, any>[], exportCols as any, filename)
+  else exportToJSON(rows as any as Record<string, any>[], exportCols as any, filename)
 }
 </script>
 
@@ -763,9 +763,9 @@ function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
           @update:column-visibility="(v) => (columnVisibility = v)"
           @update:row-selection="(v) => (rowSelection = v)"
         >
-          <template #toolbar="{ table }">
+          <template #toolbar="{ table: dataTable }">
             <DataTableToolbar
-              :table="table"
+              :table="dataTable"
               search-placeholder="بحث برقم السجل، الرقم الضريبي، أو الاسم..."
               :has-filters="hasActiveFilters"
               :selected-count="selectedCount"
@@ -782,22 +782,22 @@ function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
               </template>
               <template #filters>
                 <DataTableFacetedFilter
-                  v-if="table.getColumn('is_active')"
-                  :column="table.getColumn('is_active')!"
+                  v-if="dataTable.getColumn('is_active')"
+                  :column="dataTable.getColumn('is_active')!"
                   title="الحالة"
                   :options="statusFilterOptions"
                 />
                 <DataTableFacetedFilter
-                  v-if="table.getColumn('bank') && bankFilterOptions.length > 0"
-                  :column="table.getColumn('bank')!"
+                  v-if="dataTable.getColumn('bank') && bankFilterOptions.length > 0"
+                  :column="dataTable.getColumn('bank')!"
                   title="البنك"
                   :options="bankFilterOptions"
                 />
               </template>
               <template #actions>
-                <DataTableViewOptions :table="table" :column-labels="MERCHANT_COLUMN_LABELS" />
+                <DataTableViewOptions :table="dataTable" :column-labels="MERCHANT_COLUMN_LABELS" />
                 <DataTableExport
-                  :table="table as any"
+                  :table="dataTable as any"
                   :export-columns="exportCols as any"
                   :filename="buildExportFilename()"
                   :formats="['csv', 'tsv', 'json', 'excel', 'pdf']"
@@ -831,8 +831,8 @@ function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
               </EmptyContent>
             </Empty>
           </template>
-          <template #pagination="{ table }">
-            <DataTablePagination :table="table" />
+          <template #pagination="{ table: dataTable }">
+            <DataTablePagination :table="dataTable" />
           </template>
         </DataTable>
       </div>

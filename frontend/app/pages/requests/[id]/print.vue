@@ -53,7 +53,7 @@ async function loadData() {
       printTimer = null
       triggerPrint()
     }, 300)
-  } catch (err: unknown) {
+  } catch (err: any) {
     const status =
       (err as { statusCode?: number; status?: number })?.statusCode ??
       (err as { statusCode?: number; status?: number })?.status

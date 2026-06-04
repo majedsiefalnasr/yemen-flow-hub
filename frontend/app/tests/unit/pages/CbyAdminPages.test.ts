@@ -116,16 +116,6 @@ function makeBank(overrides: Record<string, unknown> = {}) {
   }
 }
 
-// Helper: trigger a select change with a value
-async function setSelectValue(wrapper: ReturnType<typeof mount>, selector: string, value: string) {
-  const sel = wrapper.find(selector)
-  const el = sel.element as HTMLSelectElement
-  el.value = value
-  await sel.trigger('change')
-  await sel.trigger('input')
-  await flushPromises()
-}
-
 // ═══════════════════════════════════════════════════════════════════════════════
 // /admin/cby-staff
 // ═══════════════════════════════════════════════════════════════════════════════

@@ -128,14 +128,13 @@ type UserTab = (typeof userTabs)[number]['value']
 
 const activeSection = computed<UserTab>(() => normalizeSection(route.query.section) ?? 'profile')
 
-function normalizeSection(raw: unknown): UserTab | null {
+function normalizeSection(raw: any): UserTab | null {
   if (typeof raw !== 'string') return null
   return userTabs.some((t) => t.value === raw) ? (raw as UserTab) : null
 }
 
 // ── Security (password / MFA / PIN) ───────────────────────────────────────────
 const {
-  toggleMfa: composableToggleMfa,
   setupTotp,
   verifyTotpSetup,
   disableTotp,
@@ -1803,12 +1802,13 @@ function savePersonalNotifications() {
                       class="border-border rounded-xl border-2 bg-white p-2 shadow-sm"
                       style="line-height: 0"
                     >
-                      <!-- eslint-disable-next-line vue/no-v-html -->
+                      <!-- eslint-disable vue/no-v-html -->
                       <div
                         v-if="mfaQrSvg"
                         class="h-40 w-40 [&>svg]:block [&>svg]:h-full [&>svg]:w-full"
                         v-html="mfaQrSvg"
                       />
+                      <!-- eslint-enable vue/no-v-html -->
                       <div
                         v-else
                         class="text-muted-foreground flex h-40 w-40 items-center justify-center text-xs"

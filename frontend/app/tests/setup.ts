@@ -5,7 +5,7 @@ import { setActivePinia, createPinia } from 'pinia'
 // process.env.NODE_ENV is needed by createPinia and composables like useInactivityTimer
 // Must be set BEFORE beforeEach so Pinia can initialize
 if (typeof process === 'undefined') {
-  // @ts-ignore
+  // @ts-expect-error test setup installs a minimal process shim.
   globalThis.process = { env: { NODE_ENV: 'test' } }
 } else if (!process.env.NODE_ENV) {
   process.env.NODE_ENV = 'test'

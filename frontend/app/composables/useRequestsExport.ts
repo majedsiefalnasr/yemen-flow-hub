@@ -7,14 +7,14 @@ type RoleAwareExportColumn = ExportColumn<ImportRequest> & {
   roles?: UserRole[]
 }
 
-function formatDate(value: unknown): string {
+function formatDate(value: any): string {
   if (!value || typeof value !== 'string') return '—'
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return '—'
   return date.toLocaleDateString('ar-EG', { year: 'numeric', month: '2-digit', day: '2-digit' })
 }
 
-function formatAmount(_: unknown, row: ImportRequest): string {
+function formatAmount(_: any, row: ImportRequest): string {
   return new Intl.NumberFormat('ar-EG', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,

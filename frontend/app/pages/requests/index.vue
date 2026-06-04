@@ -213,7 +213,9 @@ onMounted(async () => {
     if (saved) {
       try {
         columnFilters.value = JSON.parse(saved)
-      } catch {}
+      } catch {
+        // Invalid saved filters should not block loading the request queue.
+      }
     }
   }
   await store.loadRequests(buildFilter())
@@ -668,10 +670,6 @@ function clearBulkSelection() {
   rowSelection.value = {}
 }
 
-function openRequest(id: number) {
-  navigateTo(`/requests/${id}`)
-}
-
 const exportColumns = computed(() => {
   if (!user.value) return []
   return buildRequestsExportColumns(user.value.role)
@@ -690,13 +688,8 @@ function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
   const filename = `${buildExportFilename()}-selected`
   if (format === 'csv') exportToCSV(rows, exportColumns.value, filename)
   else if (format === 'excel')
-    exportToExcel(
-      rows as unknown as Record<string, unknown>[],
-      exportColumns.value as any,
-      filename,
-    )
-  else
-    exportToJSON(rows as unknown as Record<string, unknown>[], exportColumns.value as any, filename)
+    exportToExcel(rows as any as Record<string, any>[], exportColumns.value as any, filename)
+  else exportToJSON(rows as any as Record<string, any>[], exportColumns.value as any, filename)
 }
 
 // ── Smart export ─────────────────────────────────────────────────────────────
@@ -719,9 +712,9 @@ async function doExport(scope: 'page' | 'filtered' | 'all', format: 'csv' | 'exc
       rows = result.data
     }
     const filename = buildExportFilename()
-    const exportRows = rows as unknown as Record<string, unknown>[]
-    const columns = exportColumns.value as unknown as Parameters<
-      typeof exportToCSV<Record<string, unknown>>
+    const exportRows = rows as any as Record<string, any>[]
+    const columns = exportColumns.value as any as Parameters<
+      typeof exportToCSV<Record<string, any>>
     >[1]
     if (format === 'csv') exportToCSV(exportRows, columns, filename)
     else if (format === 'excel') exportToExcel(exportRows, columns, filename)
@@ -780,10 +773,6 @@ function filterByRejected() {
       ],
     },
   ]
-}
-
-function filterBySmartSummary(statuses: RequestStatus[]) {
-  columnFilters.value = [{ id: 'status', value: statuses }]
 }
 
 function setStatusFilter(statuses: RequestStatus[]) {

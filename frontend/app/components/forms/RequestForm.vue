@@ -80,10 +80,6 @@ const merchantsError = ref(false)
 
 const { fetchMerchants } = useMerchants()
 
-function onCurrencyChange(event: Event) {
-  setValues({ currency: (event.target as HTMLSelectElement).value as Currency })
-}
-
 async function loadMerchants() {
   merchantsLoading.value = true
   merchantsError.value = false

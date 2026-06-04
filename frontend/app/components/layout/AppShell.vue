@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { AlertTriangle } from 'lucide-vue-next'
 import AppSidebar from '@/components/AppSidebar.vue'
 import GlobalTopbar from '@/components/layout/GlobalTopbar.vue'
 import { useAuthStore } from '@/stores/auth.store'

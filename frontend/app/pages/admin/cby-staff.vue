@@ -35,7 +35,6 @@ import { useTableExport } from '@/composables/useTableExport'
 import { useAuthStore } from '@/stores/auth.store'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Card } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import {
@@ -588,22 +587,22 @@ const exportCols = [
   {
     key: 'role',
     label: 'الدور',
-    format: (_value: unknown, row: User) => ROLE_LABELS[row.role] ?? row.role,
+    format: (_value: any, row: User) => ROLE_LABELS[row.role] ?? row.role,
   },
   {
     key: 'bank_id',
     label: 'الجهة',
-    format: (_value: unknown, row: User) => resolveBankName(row),
+    format: (_value: any, row: User) => resolveBankName(row),
   },
   {
     key: 'is_active',
     label: 'الحالة',
-    format: (_value: unknown, row: User) => (row.is_active ? 'نشط' : 'غير نشط'),
+    format: (_value: any, row: User) => (row.is_active ? 'نشط' : 'غير نشط'),
   },
   {
     key: 'last_login_at',
     label: 'آخر ظهور',
-    format: (_value: unknown, row: User) =>
+    format: (_value: any, row: User) =>
       row.last_login_at ? new Date(row.last_login_at).toLocaleDateString('ar-EG') : '—',
   },
 ]
@@ -657,7 +656,7 @@ function bulkExportCSV() {
   const rows = getSelectedUsers()
   if (!rows.length) return
   exportToCSV(
-    rows as unknown as Record<string, unknown>[],
+    rows as any as Record<string, any>[],
     exportCols as any,
     `${buildExportFilename()}-selected`,
   )
@@ -667,7 +666,7 @@ function bulkExportExcel() {
   const rows = getSelectedUsers()
   if (!rows.length) return
   exportToExcel(
-    rows as unknown as Record<string, unknown>[],
+    rows as any as Record<string, any>[],
     exportCols as any,
     `${buildExportFilename()}-selected`,
   )
@@ -677,7 +676,7 @@ function bulkExportJSON() {
   const rows = getSelectedUsers()
   if (!rows.length) return
   exportToJSON(
-    rows as unknown as Record<string, unknown>[],
+    rows as any as Record<string, any>[],
     exportCols as any,
     `${buildExportFilename()}-selected`,
   )
@@ -806,9 +805,9 @@ async function bulkArchive() {
         @update:column-visibility="(v) => (columnVisibility = v)"
         @update:row-selection="(v) => (rowSelection = v)"
       >
-        <template #toolbar="{ table }">
+        <template #toolbar="{ table: dataTable }">
           <DataTableToolbar
-            :table="table"
+            :table="dataTable"
             search-placeholder="بحث بالاسم أو البريد..."
             :has-filters="hasActiveFilters"
             :selected-count="selectedCount"
@@ -855,28 +854,28 @@ async function bulkArchive() {
             </template>
             <template #filters>
               <DataTableFacetedFilter
-                v-if="table.getColumn('role')"
-                :column="table.getColumn('role')!"
+                v-if="dataTable.getColumn('role')"
+                :column="dataTable.getColumn('role')!"
                 title="الدور"
                 :options="roleFilterOptions"
               />
               <DataTableFacetedFilter
-                v-if="table.getColumn('is_active')"
-                :column="table.getColumn('is_active')!"
+                v-if="dataTable.getColumn('is_active')"
+                :column="dataTable.getColumn('is_active')!"
                 title="الحالة"
                 :options="statusFilterOptions"
               />
               <DataTableFacetedFilter
-                v-if="table.getColumn('bank') && bankFilterOptions.length > 0"
-                :column="table.getColumn('bank')!"
+                v-if="dataTable.getColumn('bank') && bankFilterOptions.length > 0"
+                :column="dataTable.getColumn('bank')!"
                 title="الجهة"
                 :options="bankFilterOptions"
               />
             </template>
             <template #actions>
-              <DataTableViewOptions :table="table" :column-labels="CBY_STAFF_COLUMN_LABELS" />
+              <DataTableViewOptions :table="dataTable" :column-labels="CBY_STAFF_COLUMN_LABELS" />
               <DataTableExport
-                :table="table as any"
+                :table="dataTable as any"
                 :export-columns="exportCols as any"
                 :filename="buildExportFilename()"
                 :formats="['csv', 'tsv', 'json', 'excel', 'pdf']"
@@ -911,8 +910,8 @@ async function bulkArchive() {
             </EmptyContent>
           </Empty>
         </template>
-        <template #pagination="{ table }">
-          <DataTablePagination :table="table" />
+        <template #pagination="{ table: dataTable }">
+          <DataTablePagination :table="dataTable" />
         </template>
       </DataTable>
     </div>

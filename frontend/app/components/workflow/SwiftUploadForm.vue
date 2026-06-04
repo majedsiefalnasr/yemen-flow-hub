@@ -8,7 +8,7 @@ interface UploadedDocMeta {
   checksum: string
 }
 
-const props = defineProps<{
+defineProps<{
   request: ImportRequest
   uploading?: boolean
 }>()

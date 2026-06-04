@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect } from 'vitest'
 
 // Inline the composable logic so tests stay pure (no DOM/localStorage side effects in unit tests)
 const STORAGE_KEY = 'color-scheme'

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { mount } from '@vue/test-utils'
-import { computed, defineComponent, h, nextTick, ref } from 'vue'
+import { defineComponent, h, nextTick, ref } from 'vue'
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { NAV_ITEMS } from '../../../constants/workflow'
 import { roleHasSurface } from '../../../constants/role-surfaces'

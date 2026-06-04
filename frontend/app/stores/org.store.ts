@@ -51,7 +51,9 @@ export const useOrgStore = defineStore('org', () => {
       brandLogoDataUrl.value = parsed.brandLogoDataUrl || DEFAULT_BRAND_LOGO_URL
       brandLogoName.value = parsed.brandLogoName || DEFAULT_BRAND_LOGO_NAME
       systemVersion.value = parsed.systemVersion || 'defaults-v1'
-    } catch {}
+    } catch {
+      // Cached organization settings are optional; invalid cache falls back to defaults.
+    }
   }
 
   function persistToCache() {

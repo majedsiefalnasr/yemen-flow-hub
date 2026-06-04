@@ -396,12 +396,6 @@ const showSwiftFxLockedRow = computed(
       request.value.status === RequestStatus.EXECUTIVE_APPROVED),
 )
 
-const FX_STAGE_STATUSES = new Set([
-  RequestStatus.FX_CONFIRMATION_PENDING,
-  RequestStatus.CUSTOMS_DECLARATION_ISSUED,
-  RequestStatus.COMPLETED,
-])
-
 // Show the signed FX download row when: the signed doc exists AND the user can download it
 const showSignedFxDownloadRow = computed(
   () =>
@@ -409,9 +403,6 @@ const showSignedFxDownloadRow = computed(
     !!request.value.customs_declaration?.has_signed_fx_doc &&
     canDownloadSignedFx.value,
 )
-
-// Legacy locked placeholder — only for Swift officer who can never download it
-const showBankAdminFxLockedRow = computed(() => false)
 
 /** Chip shown to bank reviewer when a SUBMITTED request was previously support-returned */
 const supportReturnHint = computed(() => {
@@ -425,8 +416,6 @@ const supportReturnHint = computed(() => {
   if (!previousEntry || previousEntry.to_status !== RequestStatus.SUPPORT_RETURNED) return null
   return { comment: previousEntry.notes }
 })
-
-const canEdit = computed(() => DRAFT_EDITOR_ROLES.has(userRole.value) && isEditable.value)
 
 const DIRECTOR_VOTING_STATUSES = new Set([
   RequestStatus.WAITING_FOR_VOTING_OPEN,
@@ -636,7 +625,6 @@ const {
   verifyClaimAlive: verifyBankClaimAlive,
   startHeartbeat: startBankHeartbeat,
   stopHeartbeat: stopBankHeartbeat,
-  claimError: bankClaimError,
   sessionExpired: bankSessionExpired,
 } = useClaimLifecycle('claim-bank-review')
 
@@ -1255,7 +1243,7 @@ async function handleDownloadFxTemplate() {
     anchor.click()
     anchor.remove()
     URL.revokeObjectURL(url)
-  } catch (error: unknown) {
+  } catch (error: any) {
     const message = error instanceof Error ? error.message : ''
     fxFlowError.value = message || 'تعذر تنزيل نموذج تأكيد المصارفة الآن. أعد المحاولة بعد قليل.'
   } finally {
@@ -1279,7 +1267,7 @@ async function handleCompleteFxConfirmation() {
     await requestsStore.issueCustomsDeclaration(id.value)
     fxFlowSuccess.value = true
     await onActionCompleted()
-  } catch (error: unknown) {
+  } catch (error: any) {
     const message = error instanceof Error ? error.message : ''
     fxFlowError.value = message || 'تعذر إتمام تأكيد المصارفة الآن. أعد المحاولة بعد قليل.'
   } finally {
@@ -1299,7 +1287,7 @@ async function downloadDocument(docId: number, filename: string) {
   if (downloadingIds.value.has(docId)) return
 
   downloadingIds.value = new Set([...downloadingIds.value, docId])
-  delete downloadErrors.value[docId]
+  Reflect.deleteProperty(downloadErrors.value, docId)
 
   try {
     const config = useRuntimeConfig()
@@ -1379,11 +1367,7 @@ const showCloneButton = computed(() => {
 const showCloneDialog = ref(false)
 const cloneLoading = ref(false)
 const cloneError = ref('')
-const {
-  cloneRequest,
-  downloadCustomsDeclaration: downloadCustomsBlob,
-  downloadFxConfirmationTemplate,
-} = useRequests()
+const { cloneRequest, downloadFxConfirmationTemplate } = useRequests()
 
 function openCloneDialog() {
   cloneError.value = ''

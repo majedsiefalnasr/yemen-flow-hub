@@ -2,7 +2,6 @@
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { Search, Loader2, Clock, FileText, User, Building2, Stamp } from 'lucide-vue-next'
 import { useSearch } from '../../composables/useSearch'
-import { Input } from '../ui/input'
 import type { SearchEntityType } from '../../types/models'
 
 const router = useRouter()

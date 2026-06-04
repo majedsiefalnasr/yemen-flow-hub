@@ -79,7 +79,7 @@ async function handleUpload(payload: {
     await uploadSwift(request.value.id, payload)
     completed.value = true
     await loadRequest()
-  } catch (error: unknown) {
+  } catch (error: any) {
     const message = error instanceof Error ? error.message : ''
     if (message.includes('WORKFLOW_LOCKED_STATE') || message.includes('403')) {
       lockedStateError.value = 'تم تغيير حالة الطلب أثناء العمل. حدّث الصفحة للمتابعة.'

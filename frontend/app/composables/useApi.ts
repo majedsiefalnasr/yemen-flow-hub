@@ -25,7 +25,7 @@ export function useApi() {
     return method !== 'GET' && method !== 'HEAD'
   }
 
-  function isCsrfMismatch(err: unknown): boolean {
+  function isCsrfMismatch(err: any): boolean {
     if (typeof err !== 'object' || err === null) return false
     const candidate = err as {
       status?: number
@@ -116,12 +116,12 @@ export function useApi() {
     return apiFetch<T>(path, { ...options, method: 'DELETE' })
   }
 
-  function isApiError(err: unknown): err is { data: ApiError } {
+  function isApiError(err: any): err is { data: ApiError } {
     return (
       typeof err === 'object' &&
       err !== null &&
       'data' in err &&
-      typeof (err as { data: unknown }).data === 'object'
+      typeof (err as { data: any }).data === 'object'
     )
   }
 

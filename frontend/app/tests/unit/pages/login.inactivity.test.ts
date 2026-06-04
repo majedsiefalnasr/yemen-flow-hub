@@ -2,7 +2,7 @@
  * Login page — inactivity reason banner logic (AC5).
  * Tests the show/hide rule without component mounting.
  */
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { ref, computed } from 'vue'
 
 // ---------------------------------------------------------------------------
@@ -38,7 +38,8 @@ describe('Login page — inactivity reason banner (AC5)', () => {
 
   it('banner is dismissible: inactivityBannerDismissed hides it on submit', () => {
     const dismissed = ref(false)
-    const show = computed(() => 'inactivity' === 'inactivity' && !dismissed.value)
+    const reason = ref('inactivity')
+    const show = computed(() => reason.value === 'inactivity' && !dismissed.value)
     expect(show.value).toBe(true)
     dismissed.value = true
     expect(show.value).toBe(false)

@@ -230,10 +230,10 @@ function markSelectedUnread() {
     []) as NotificationTableRow[]
   const read = rows.map((row) => row.original).filter((notification) => notification.read_at)
   read.forEach((n) => {
-    n.read_at = null as unknown as string
+    n.read_at = null as any as string
     const storeItem = notificationsStore.items.find((item) => item.id === n.id)
     if (storeItem) {
-      storeItem.read_at = null as unknown as string
+      storeItem.read_at = null as any as string
       notificationsStore.incrementUnread()
     }
   })

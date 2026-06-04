@@ -25,17 +25,14 @@ import type {
   CbyAdminDashboardStats,
   CbyAdminKpi,
   CbyAdminWorkflowPressureRow,
-  CbyAdminVotingSession,
   CbyAdminBankRiskRow,
   CbyAdminComplianceSignal,
-  CbyAdminCriticalEvent,
 } from '../../composables/useDashboard'
 import {
   SPARK_W,
   SPARK_H,
   resolvedKpi as resolveKpi,
   severityColor,
-  severityBg,
   buildSparkLine,
   slaRiskColor,
   slaRiskLabel,

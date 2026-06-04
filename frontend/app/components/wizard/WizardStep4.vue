@@ -6,7 +6,7 @@ import type {
   WizardStep2Data,
   WizardStep3Data,
 } from '../../composables/useRequestWizard'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
 import { Checkbox } from '../ui/checkbox'
 import { Label } from '../ui/label'
 

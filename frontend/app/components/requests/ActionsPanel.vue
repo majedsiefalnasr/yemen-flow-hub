@@ -193,7 +193,7 @@ async function handleBankRejectTerminalConfirm() {
     await requestsStore.bankRejectTerminal(props.request.id, bankRejectTerminalComment.value.trim())
     resetBankRejectTerminalModal()
     emit('action-completed')
-  } catch (err: unknown) {
+  } catch (err: any) {
     const msg = err instanceof Error ? err.message : ''
     actionError.value = msg || 'تعذّر تنفيذ الرفض النهائي.'
     resetBankRejectTerminalModal()
@@ -217,7 +217,7 @@ async function handleBankReturnConfirm() {
     await requestsStore.bankReturn(props.request.id, bankReturnComment.value.trim())
     resetBankReturnModal()
     emit('action-completed')
-  } catch (err: unknown) {
+  } catch (err: any) {
     const msg = err instanceof Error ? err.message : ''
     actionError.value = msg || 'تعذّر إعادة الطلب للمدخل.'
     resetBankReturnModal()
@@ -235,7 +235,7 @@ async function handleSupportReturnConfirm() {
     await requestsStore.supportReturn(props.request.id, supportReturnComment.value.trim())
     resetSupportReturnModal()
     emit('action-completed')
-  } catch (err: unknown) {
+  } catch (err: any) {
     const msg = err instanceof Error ? err.message : ''
     actionError.value = msg || 'تعذّر إعادة الطلب للمدخل.'
     resetSupportReturnModal()
@@ -263,7 +263,7 @@ async function handleCloseSession() {
     await votingStore.closeSession(props.request.id)
     showCloseConfirm.value = false
     emit('action-completed')
-  } catch (err: unknown) {
+  } catch (err: any) {
     const msg = err instanceof Error ? err.message : ''
     actionError.value = msg || 'تعذّر إغلاق جلسة التصويت.'
     showCloseConfirm.value = false
@@ -275,7 +275,7 @@ async function handleFinalizeDecision() {
   try {
     await votingStore.finalizeDecision(props.request.id)
     emit('action-completed')
-  } catch (err: unknown) {
+  } catch (err: any) {
     const msg = err instanceof Error ? err.message : ''
     actionError.value = msg || 'تعذّر إصدار القرار النهائي.'
   }
@@ -303,7 +303,7 @@ async function handleDirectorOverride() {
     )
     resetDirectorState()
     emit('action-completed')
-  } catch (err: unknown) {
+  } catch (err: any) {
     const msg = err instanceof Error ? err.message : ''
     actionError.value = msg || 'تعذّر تنفيذ قرار التجاوز.'
     resetDirectorState()
@@ -315,7 +315,7 @@ async function handleIssueCustomsDeclaration() {
   try {
     await requestsStore.issueCustomsDeclaration(props.request.id)
     emit('action-completed')
-  } catch (err: unknown) {
+  } catch (err: any) {
     const msg = err instanceof Error ? err.message : ''
     actionError.value = msg || 'تعذّر إصدار تأكيد المصارفة الخارجية.'
   }
@@ -338,7 +338,7 @@ async function handleFinalizeRejection() {
   try {
     await requestsStore.bankFinalizeRejection(props.request.id)
     emit('action-completed')
-  } catch (err: unknown) {
+  } catch (err: any) {
     const msg = err instanceof Error ? err.message : ''
     actionError.value = msg || 'تعذّر إتمام الرفض النهائي.'
   }
@@ -352,7 +352,7 @@ async function handleSupportRejectedReturnConfirm() {
     showSupportRejectedReturnModal.value = false
     supportRejectedReturnReason.value = ''
     emit('action-completed')
-  } catch (err: unknown) {
+  } catch (err: any) {
     const msg = err instanceof Error ? err.message : ''
     actionError.value = msg || 'تعذّر إعادة الطلب للمدخل.'
     showSupportRejectedReturnModal.value = false
@@ -372,11 +372,6 @@ async function handleSupportApprove() {
   await dispatchAction('support-approve')
 }
 
-function handleRejectClick() {
-  showRejectForm.value = true
-  rejectReasonError.value = ''
-}
-
 async function handleRejectConfirm() {
   if (!rejectReason.value.trim()) {
     rejectReasonError.value = 'سبب الرفض مطلوب.'
@@ -393,7 +388,7 @@ async function dispatchAction(action: string, reason?: string) {
     await requestsStore.performAction(props.request.id, action, reason)
     resetRejectForm()
     emit('action-completed')
-  } catch (err: unknown) {
+  } catch (err: any) {
     const msg = err instanceof Error ? err.message : ''
     actionError.value = msg || 'تعذّر تنفيذ الإجراء. يرجى المحاولة مرة أخرى.'
   }

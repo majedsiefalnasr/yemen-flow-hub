@@ -1,6 +1,6 @@
 import { UserRole } from '../types/enums'
 
-type AnyRecord = Record<string, unknown>
+type AnyRecord = Record<string, any>
 
 function apiOk<T>(data: T) {
   return { success: true, message: 'OK', data }

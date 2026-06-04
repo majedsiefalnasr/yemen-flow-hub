@@ -14,7 +14,6 @@ import {
   FieldDescription,
   FieldError,
   FieldGroup,
-  FieldLabel,
   FieldLegend,
   FieldSeparator,
   FieldSet,
@@ -69,17 +68,6 @@ const SUPPORTING_ZONES: DocumentZone[] = [
     title: 'مستندات إضافية',
     description: 'أي مستندات داعمة أخرى (اختياري)',
     required: false,
-  },
-]
-
-// Kept for external validation — full ordered list including confirmation_request
-const ZONES: DocumentZone[] = [
-  ...SUPPORTING_ZONES,
-  {
-    key: 'confirmation_request',
-    title: 'طلب وثيقة التأكيد (مختوم)',
-    description: 'حمّل النموذج أدناه، اطبعه، اختمه بختم البنك ثم ارفعه هنا',
-    required: true,
   },
 ]
 
@@ -191,7 +179,7 @@ function triggerInput(key: WizardDocumentKey): void {
   <div class="flex flex-col gap-0">
     <!-- ① Supporting document zones (proforma, commercial register, tax card, extras) -->
     <FieldGroup>
-      <template v-for="(zone, idx) in SUPPORTING_ZONES" :key="zone.key">
+      <template v-for="zone in SUPPORTING_ZONES" :key="zone.key">
         <FieldSet>
           <div class="mb-1 flex items-center gap-2">
             <FieldLegend class="mb-0">{{ zone.title }}</FieldLegend>

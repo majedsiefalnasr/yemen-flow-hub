@@ -288,7 +288,7 @@ function exportCurrentRules() {
   if (!filteredDocTypes.value.length) return
   const stamp = new Date().toISOString().slice(0, 10)
   exportToCSV(
-    filteredDocTypes.value as unknown as Record<string, unknown>[],
+    filteredDocTypes.value as any as Record<string, any>[],
     [
       { key: 'name_ar', label: 'الاسم العربي' },
       { key: 'name_en', label: 'الاسم الإنجليزي' },
@@ -296,12 +296,12 @@ function exportCurrentRules() {
       {
         key: 'is_required',
         label: 'الإلزام',
-        format: (_value: unknown, row: DocumentType) => (row.is_required ? 'مطلوب' : 'اختياري'),
+        format: (_value: any, row: DocumentType) => (row.is_required ? 'مطلوب' : 'اختياري'),
       },
       {
         key: 'is_active',
         label: 'التفعيل',
-        format: (_value: unknown, row: DocumentType) => (row.is_active ? 'مفعّل' : 'معطّل'),
+        format: (_value: any, row: DocumentType) => (row.is_active ? 'مفعّل' : 'معطّل'),
       },
       { key: 'sort_order', label: 'الترتيب' },
     ] as any,

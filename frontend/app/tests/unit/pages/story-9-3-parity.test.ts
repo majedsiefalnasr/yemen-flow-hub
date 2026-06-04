@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { ref, computed } from 'vue'
 
 // ══════════════════════════════════════════════════════════════════════════════════
@@ -111,8 +111,6 @@ describe('OTP Countdown Timer (AC2 — auth/login-otp parity)', () => {
     timer.startOtpTimer()
     expect(timer.otpSecondsLeft.value).toBe(OTP_TTL)
     timer.clearOtpTimer()
-    // Manually decrement and verify no further countdown
-    const snap = timer.otpSecondsLeft.value
     // Note: in real implementation, interval would be cleared, so no auto-decrement
   })
 

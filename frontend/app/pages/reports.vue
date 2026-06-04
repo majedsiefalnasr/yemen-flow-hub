@@ -209,7 +209,7 @@ function exportScheduledReports() {
   if (!filteredScheduledReports.value.length) return
   const stamp = new Date().toISOString().slice(0, 10)
   exportToCSV(
-    filteredScheduledReports.value as unknown as Record<string, unknown>[],
+    filteredScheduledReports.value as any as Record<string, any>[],
     [
       { key: 'name', label: 'اسم التقرير' },
       { key: 'cadence', label: 'الفترة' },

@@ -36,7 +36,6 @@ import {
   calcHealthIssues,
 } from '../../utils/bank-admin-helpers'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/card'
-import { Badge } from '../ui/badge'
 import { Button } from '../ui/button'
 import { Skeleton } from '../ui/skeleton'
 import DataTable from '../ui/data-table/DataTable.vue'
@@ -67,14 +66,6 @@ function formatAmount(amount: number): string {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(amount)
-}
-
-function formatDate(iso: string): string {
-  return new Intl.DateTimeFormat('ar-YE', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  }).format(new Date(iso))
 }
 
 function monthLabel(ym: string): string {

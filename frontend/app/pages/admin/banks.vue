@@ -80,7 +80,7 @@ type BankForm = {
 const authStore = useAuthStore()
 const currentUser = computed(() => authStore.user)
 const { fetchBanks, createBank, updateBank } = useBanks()
-const { exportToCSV, exportToExcel, exportToJSON, exportToPDF } = useTableExport()
+const { exportToCSV, exportToExcel, exportToJSON } = useTableExport()
 const { notify, error: toastError } = useToast()
 
 const query = ref('')
@@ -315,7 +315,7 @@ const exportColumns = [
     key: 'is_active',
     columnId: 'is_active',
     label: 'الحالة',
-    format: (_v: unknown, row: Bank) => (row.is_active ? 'نشط' : 'موقوف'),
+    format: (_v: any, row: Bank) => (row.is_active ? 'نشط' : 'موقوف'),
   },
 ]
 
@@ -451,7 +451,7 @@ function bulkExportCSV() {
   const rows = getSelectedBanks()
   if (!rows.length) return
   exportToCSV(
-    rows as unknown as Record<string, unknown>[],
+    rows as any as Record<string, any>[],
     exportColumns as any,
     `${buildExportFilename()}-selected`,
   )
@@ -461,7 +461,7 @@ function bulkExportExcel() {
   const rows = getSelectedBanks()
   if (!rows.length) return
   exportToExcel(
-    rows as unknown as Record<string, unknown>[],
+    rows as any as Record<string, any>[],
     exportColumns as any,
     `${buildExportFilename()}-selected`,
   )
@@ -471,7 +471,7 @@ function bulkExportJSON() {
   const rows = getSelectedBanks()
   if (!rows.length) return
   exportToJSON(
-    rows as unknown as Record<string, unknown>[],
+    rows as any as Record<string, any>[],
     exportColumns as any,
     `${buildExportFilename()}-selected`,
   )
@@ -586,9 +586,9 @@ async function bulkArchive() {
         @update:column-filters="(v) => (columnFilters = v)"
         @update:row-selection="(v) => (rowSelection = v)"
       >
-        <template #toolbar="{ table }">
+        <template #toolbar="{ table: dataTable }">
           <DataTableToolbar
-            :table="table"
+            :table="dataTable"
             search-placeholder="بحث بالاسم أو الكود أو رقم الترخيص..."
             :has-filters="hasActiveFilters"
             :selected-count="selectedCount"
@@ -635,16 +635,16 @@ async function bulkArchive() {
             </template>
             <template #filters>
               <DataTableFacetedFilter
-                v-if="table.getColumn('is_active')"
-                :column="table.getColumn('is_active')!"
+                v-if="dataTable.getColumn('is_active')"
+                :column="dataTable.getColumn('is_active')!"
                 title="الحالة"
                 :options="statusOptions"
               />
             </template>
             <template #actions>
-              <DataTableViewOptions :table="table" :column-labels="BANK_COLUMN_LABELS" />
+              <DataTableViewOptions :table="dataTable" :column-labels="BANK_COLUMN_LABELS" />
               <DataTableExport
-                :table="table as any"
+                :table="dataTable as any"
                 :export-columns="exportColumns as any"
                 :filename="buildExportFilename()"
                 :formats="['csv', 'tsv', 'json', 'excel', 'pdf']"
@@ -676,8 +676,8 @@ async function bulkArchive() {
             </EmptyContent>
           </Empty>
         </template>
-        <template #pagination="{ table }">
-          <DataTablePagination :table="table" />
+        <template #pagination="{ table: dataTable }">
+          <DataTablePagination :table="dataTable" />
         </template>
       </DataTable>
     </div>

@@ -6,16 +6,16 @@ export interface ExportColumn<T> {
    */
   columnId?: string
   label: string
-  format?: (value: unknown, row: T) => string
+  format?: (value: any, row: T) => string
 }
 
 export function useTableExport() {
-  function escapeDelimitedValue(value: unknown) {
+  function escapeDelimitedValue(value: any) {
     const normalized = String(value ?? '').replace(/"/g, '""')
     return `"${normalized}"`
   }
 
-  function toDelimitedContent<T extends Record<string, unknown>>(
+  function toDelimitedContent<T extends Record<string, any>>(
     rows: T[],
     columns: ExportColumn<T>[],
     delimiter: ',' | '\t',
@@ -45,7 +45,7 @@ export function useTableExport() {
     URL.revokeObjectURL(url)
   }
 
-  function exportToCSV<T extends Record<string, unknown>>(
+  function exportToCSV<T extends Record<string, any>>(
     rows: T[],
     columns: ExportColumn<T>[],
     filename: string,
@@ -59,7 +59,7 @@ export function useTableExport() {
     downloadBlob(content, 'text/csv;charset=utf-8;', `${filename}.csv`)
   }
 
-  function exportToTSV<T extends Record<string, unknown>>(
+  function exportToTSV<T extends Record<string, any>>(
     rows: T[],
     columns: ExportColumn<T>[],
     filename: string,
@@ -72,7 +72,7 @@ export function useTableExport() {
     downloadBlob(content, 'text/tab-separated-values;charset=utf-8;', `${filename}.tsv`)
   }
 
-  function exportToJSON<T extends Record<string, unknown>>(
+  function exportToJSON<T extends Record<string, any>>(
     rows: T[],
     columns: ExportColumn<T>[],
     filename: string,
@@ -86,7 +86,7 @@ export function useTableExport() {
           acc[column.label] = column.format ? column.format(raw, row) : (raw ?? '')
           return acc
         },
-        {} as Record<string, unknown>,
+        {} as Record<string, any>,
       ),
     )
 
@@ -94,7 +94,7 @@ export function useTableExport() {
     downloadBlob(content, 'application/json', `${filename}.json`)
   }
 
-  function normalizeRowsForObjects<T extends Record<string, unknown>>(
+  function normalizeRowsForObjects<T extends Record<string, any>>(
     rows: T[],
     columns: ExportColumn<T>[],
   ) {
@@ -105,12 +105,12 @@ export function useTableExport() {
           acc[column.label] = column.format ? column.format(raw, row) : (raw ?? '')
           return acc
         },
-        {} as Record<string, unknown>,
+        {} as Record<string, any>,
       ),
     )
   }
 
-  function exportToExcel<T extends Record<string, unknown>>(
+  function exportToExcel<T extends Record<string, any>>(
     rows: T[],
     columns: ExportColumn<T>[],
     filename: string,
@@ -142,7 +142,7 @@ export function useTableExport() {
     downloadBlob(content, 'application/vnd.ms-excel;charset=utf-8;', `${filename}.xls`)
   }
 
-  function exportToPDF<T extends Record<string, unknown>>(
+  function exportToPDF<T extends Record<string, any>>(
     rows: T[],
     columns: ExportColumn<T>[],
     filename: string,

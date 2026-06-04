@@ -993,6 +993,7 @@ watch(step, (newStep) => {
           </Alert>
 
           <!-- QR code from backend TOTP provisioning URI -->
+          <!-- eslint-disable vue/no-v-html -->
           <div class="mb-5 flex flex-col items-center gap-3">
             <div
               class="border-border rounded-xl border-2 bg-white p-2 shadow-sm"
@@ -1071,6 +1072,7 @@ watch(step, (newStep) => {
               </InputOTP>
             </div>
           </div>
+          <!-- eslint-enable vue/no-v-html -->
 
           <div class="flex flex-col gap-2">
             <Button

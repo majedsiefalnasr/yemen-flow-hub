@@ -1,17 +1,13 @@
 <script setup lang="ts">
 import type { Component } from 'vue'
 import {
-  BookOpen,
-  Building2,
   FileCheck,
   FileText,
   Globe,
-  HelpCircle,
   Home,
   Landmark,
   PlusCircle,
   Search,
-  Settings,
   ShieldCheck,
   Stamp,
   Users,

@@ -24,7 +24,7 @@ const downloadError = ref('')
 onMounted(async () => {
   try {
     declaration.value = await fetchCustomsPreview(requestId)
-  } catch (err: unknown) {
+  } catch (err: any) {
     const status =
       (err as { statusCode?: number; status?: number })?.statusCode ??
       (err as { statusCode?: number; status?: number })?.status ??
@@ -40,7 +40,7 @@ onMounted(async () => {
 })
 
 const metadata = computed(() => {
-  const m = declaration.value?.metadata as Record<string, unknown> | null | undefined
+  const m = declaration.value?.metadata as Record<string, any> | null | undefined
   return m ?? {}
 })
 
@@ -61,7 +61,7 @@ function formatDate(iso: string | null | undefined): string {
   })
 }
 
-function formatAmount(amount: unknown, currency: unknown): string {
+function formatAmount(amount: any, currency: any): string {
   if (amount == null) return '—'
   return `${Number(amount).toLocaleString('ar-YE')} ${currency ?? ''}`
 }

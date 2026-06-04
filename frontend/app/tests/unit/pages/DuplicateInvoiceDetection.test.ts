@@ -1,6 +1,5 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
-import { RequestStatus, UserRole } from '../../../types/enums'
 import type { DuplicateWarning } from '../../../types/models'
 import { makeImportRequest } from '../fixtures/request-data'
 

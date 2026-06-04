@@ -4,7 +4,7 @@ import { useThemingStore } from '@/stores/theming.store'
 const themingStore = useThemingStore()
 
 defineProps<{
-  items?: unknown[]
+  items?: any[]
 }>()
 </script>
 

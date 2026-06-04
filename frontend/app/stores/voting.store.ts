@@ -69,7 +69,7 @@ export const useVotingStore = defineStore('voting', {
       try {
         const { castVote } = useVoting()
         this.votingDetail = await castVote(id, vote, justification)
-      } catch (err: unknown) {
+      } catch (err: any) {
         if (import.meta.dev) {
           console.error('[voting.store] castVote failed:', err)
         }
@@ -91,7 +91,7 @@ export const useVotingStore = defineStore('voting', {
         const updated = await openSession(id)
         this.votingDetail = null
         return updated
-      } catch (err: unknown) {
+      } catch (err: any) {
         if (import.meta.dev) {
           console.error('[voting.store] openSession failed:', err)
         }
@@ -113,7 +113,7 @@ export const useVotingStore = defineStore('voting', {
         const updated = await closeSession(id)
         this.votingDetail = null
         return updated
-      } catch (err: unknown) {
+      } catch (err: any) {
         if (import.meta.dev) {
           console.error('[voting.store] closeSession failed:', err)
         }
@@ -133,7 +133,7 @@ export const useVotingStore = defineStore('voting', {
       try {
         const { finalizeDecision } = useVoting()
         return await finalizeDecision(id)
-      } catch (err: unknown) {
+      } catch (err: any) {
         if (import.meta.dev) {
           console.error('[voting.store] finalizeDecision failed:', err)
         }
@@ -159,7 +159,7 @@ export const useVotingStore = defineStore('voting', {
         const updated = await directorOverride(id, decision, justification)
         this.votingDetail = null
         return updated
-      } catch (err: unknown) {
+      } catch (err: any) {
         if (import.meta.dev) {
           console.error('[voting.store] directorOverride failed:', err)
         }

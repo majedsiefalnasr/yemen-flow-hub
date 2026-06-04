@@ -13,7 +13,7 @@ const activeHeartbeats = new Map<number, ReturnType<typeof setInterval>>()
 // that resolves after clearInterval knows not to invoke onClaimLost callbacks.
 const stopFlags = new Map<number, () => void>()
 
-function httpStatus(err: unknown): number | undefined {
+function httpStatus(err: any): number | undefined {
   return (err as FetchError)?.response?.status
 }
 
@@ -74,7 +74,7 @@ export function useClaimLifecycle(claimEndpoint = 'claim-support-review') {
         headers: claimHeaders(),
       })
       return true
-    } catch (err: unknown) {
+    } catch (err: any) {
       const status = httpStatus(err)
       if (status === 409) {
         claimError.value = 'الطلب محجوز بواسطة مراجع آخر.'
@@ -108,7 +108,7 @@ export function useClaimLifecycle(claimEndpoint = 'claim-support-review') {
         headers: claimHeaders(),
       })
       return true
-    } catch (err: unknown) {
+    } catch (err: any) {
       // Best-effort release — TTL auto-expire recovers missed releases.
       if (import.meta.dev) {
         console.warn(
@@ -137,7 +137,7 @@ export function useClaimLifecycle(claimEndpoint = 'claim-support-review') {
         headers: claimHeaders(),
       })
       return true
-    } catch (err: unknown) {
+    } catch (err: any) {
       const status = httpStatus(err)
       if (status === 401 || status === 403) {
         sessionExpired.value = true
@@ -178,7 +178,7 @@ export function useClaimLifecycle(claimEndpoint = 'claim-support-review') {
           credentials: 'include',
           headers: claimHeaders(),
         })
-      } catch (err: unknown) {
+      } catch (err: any) {
         // If stopHeartbeat was called while this fetch was in-flight (e.g. the
         // component unmounted and released the claim), ignore the error silently.
         if (intentionallyStopped) return
