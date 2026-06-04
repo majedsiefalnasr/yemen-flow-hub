@@ -27,11 +27,16 @@ describe('OTP Countdown Timer (AC2 — auth/login-otp parity)', () => {
     }
 
     function clearOtpTimer() {
-      if (otpTimerHandle !== null) { clearInterval(otpTimerHandle); otpTimerHandle = null }
+      if (otpTimerHandle !== null) {
+        clearInterval(otpTimerHandle)
+        otpTimerHandle = null
+      }
     }
 
     const otpTimerDisplay = computed(() => {
-      const m = Math.floor(otpSecondsLeft.value / 60).toString().padStart(2, '0')
+      const m = Math.floor(otpSecondsLeft.value / 60)
+        .toString()
+        .padStart(2, '0')
       const s = (otpSecondsLeft.value % 60).toString().padStart(2, '0')
       return `${m}:${s}`
     })
@@ -44,7 +49,9 @@ describe('OTP Countdown Timer (AC2 — auth/login-otp parity)', () => {
       else clearOtpTimer()
     })
 
-    function getOtpTimerHandle() { return otpTimerHandle }
+    function getOtpTimerHandle() {
+      return otpTimerHandle
+    }
 
     return {
       otpStep,
@@ -147,7 +154,7 @@ describe('ExecutiveDashboard — Director Override KPI (AC3 — D6 director tile
     }))
 
     const displayDirectorOverrideCount = computed(() =>
-      isDirector.value ? (stats.value as any).director_override_count ?? 0 : null,
+      isDirector.value ? ((stats.value as any).director_override_count ?? 0) : null,
     )
 
     return {
@@ -282,12 +289,10 @@ describe('Request Detail — Customs Declaration Issuer Row (AC4)', () => {
       customs_declaration: null,
     })
 
-    const shouldShowCustomsIssuer = computed(() =>
-      !!request.value?.customs_declaration?.issuer,
-    )
+    const shouldShowCustomsIssuer = computed(() => !!request.value?.customs_declaration?.issuer)
 
-    const customsIssuerName = computed(() =>
-      request.value?.customs_declaration?.issuer?.name ?? null,
+    const customsIssuerName = computed(
+      () => request.value?.customs_declaration?.issuer?.name ?? null,
     )
 
     return {

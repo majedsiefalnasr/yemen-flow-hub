@@ -145,7 +145,7 @@ describe('SupportCommitteeDashboard — support queue status composition', () =>
       makeRequest({ id: 1, status: RequestStatus.SUPPORT_REVIEW_PENDING }),
       makeRequest({ id: 2, status: RequestStatus.SUPPORT_REVIEW_IN_PROGRESS }),
     ]
-    const statuses = queue.map(r => r.status)
+    const statuses = queue.map((r) => r.status)
     expect(statuses).toContain(RequestStatus.SUPPORT_REVIEW_PENDING)
     expect(statuses).toContain(RequestStatus.SUPPORT_REVIEW_IN_PROGRESS)
   })

@@ -9,7 +9,10 @@ const props = defineProps<{
   comment?: string
 }>()
 
-const VARIANT_CONFIG: Record<LockedBannerVariant, { icon: any; message: string; variant: 'default' | 'destructive' }> = {
+const VARIANT_CONFIG: Record<
+  LockedBannerVariant,
+  { icon: any; message: string; variant: 'default' | 'destructive' }
+> = {
   locked: {
     icon: Lock,
     message: 'هذا الطلب مقفل ولا يمكن اتخاذ أي إجراء عليه',
@@ -36,11 +39,13 @@ const config = VARIANT_CONFIG[props.variant]
 </script>
 
 <template>
-  <Alert :variant="config.variant"  class="flex items-start gap-3">
-    <component :is="config.icon" class="h-5 w-5 flex-shrink-0 mt-0.5" aria-hidden="true" />
-    <div class="flex flex-col gap-1 flex-1">
+  <Alert :variant="config.variant" class="flex items-start gap-3">
+    <component :is="config.icon" class="mt-0.5 h-5 w-5 flex-shrink-0" aria-hidden="true" />
+    <div class="flex flex-1 flex-col gap-1">
       <AlertDescription class="text-sm font-medium">{{ config.message }}</AlertDescription>
-      <p v-if="variant === 'bank_rejected' && comment" class="text-xs opacity-80 italic">{{ comment }}</p>
+      <p v-if="variant === 'bank_rejected' && comment" class="text-xs italic opacity-80">
+        {{ comment }}
+      </p>
     </div>
   </Alert>
 </template>

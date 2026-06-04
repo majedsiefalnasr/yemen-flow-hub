@@ -53,11 +53,14 @@ export const useAdminSettings = () => {
     error.value = null
 
     try {
-      const response = await $fetch<ApiResponse<AdminSettings & SecurityPolicies>>('/api/admin/settings', {
-        baseURL,
-        credentials: 'include',
-        headers: { Accept: 'application/json' },
-      })
+      const response = await $fetch<ApiResponse<AdminSettings & SecurityPolicies>>(
+        '/api/admin/settings',
+        {
+          baseURL,
+          credentials: 'include',
+          headers: { Accept: 'application/json' },
+        },
+      )
       const data = response.data
       settings.value = data as AdminSettings
       securityPolicies.value = {
@@ -68,12 +71,10 @@ export const useAdminSettings = () => {
         log_all_audit: data.log_all_audit ?? true,
         allow_external_access: data.allow_external_access ?? false,
       }
-    }
-    catch (err: any) {
+    } catch (err: any) {
       error.value = err.data?.message || 'Failed to load admin settings'
       settings.value = null
-    }
-    finally {
+    } finally {
       loading.value = false
     }
   }
@@ -87,8 +88,7 @@ export const useAdminSettings = () => {
         headers: { Accept: 'application/json' },
       })
       smtpSettings.value = response.data
-    }
-    catch (err: any) {
+    } catch (err: any) {
       error.value = err.data?.message || 'Failed to load SMTP settings'
     }
   }
@@ -105,8 +105,7 @@ export const useAdminSettings = () => {
       })
       smtpSettings.value = response.data
       return true
-    }
-    catch (err: any) {
+    } catch (err: any) {
       error.value = err.data?.message || 'Failed to update SMTP settings'
       return false
     }
@@ -115,11 +114,14 @@ export const useAdminSettings = () => {
   const fetchSecurityPolicies = async () => {
     error.value = null
     try {
-      const response = await $fetch<ApiResponse<AdminSettings & SecurityPolicies>>('/api/admin/settings', {
-        baseURL,
-        credentials: 'include',
-        headers: { Accept: 'application/json' },
-      })
+      const response = await $fetch<ApiResponse<AdminSettings & SecurityPolicies>>(
+        '/api/admin/settings',
+        {
+          baseURL,
+          credentials: 'include',
+          headers: { Accept: 'application/json' },
+        },
+      )
       const data = response.data
       securityPolicies.value = {
         mfa_required: data.mfa_required ?? false,
@@ -129,8 +131,7 @@ export const useAdminSettings = () => {
         log_all_audit: data.log_all_audit ?? true,
         allow_external_access: data.allow_external_access ?? false,
       }
-    }
-    catch (err: any) {
+    } catch (err: any) {
       error.value = err.data?.message || 'Failed to load security policies'
     }
   }
@@ -139,20 +140,22 @@ export const useAdminSettings = () => {
     pendingKeys.value.add(key)
     error.value = null
     try {
-      const response = await $fetch<ApiResponse<{ key: string; value: any }>>(`/api/admin/settings/${key}`, {
-        method: 'PUT',
-        baseURL,
-        credentials: 'include',
-        headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
-        body: { value },
-      })
+      const response = await $fetch<ApiResponse<{ key: string; value: any }>>(
+        `/api/admin/settings/${key}`,
+        {
+          method: 'PUT',
+          baseURL,
+          credentials: 'include',
+          headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+          body: { value },
+        },
+      )
       if (securityPolicies.value) {
         securityPolicies.value = { ...securityPolicies.value, [key]: response.data.value }
       }
       pendingKeys.value.delete(key)
       return true
-    }
-    catch (err: any) {
+    } catch (err: any) {
       error.value = err.data?.message || `Failed to update ${key}`
       pendingKeys.value.delete(key)
       return false
@@ -164,13 +167,16 @@ export const useAdminSettings = () => {
     error.value = null
 
     try {
-      const response = await $fetch<ApiResponse<{ key: string; value: any }>>(`/api/admin/settings/${key}`, {
-        method: 'PUT',
-        baseURL,
-        credentials: 'include',
-        headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
-        body: { value },
-      })
+      const response = await $fetch<ApiResponse<{ key: string; value: any }>>(
+        `/api/admin/settings/${key}`,
+        {
+          method: 'PUT',
+          baseURL,
+          credentials: 'include',
+          headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+          body: { value },
+        },
+      )
 
       if (settings.value) {
         settings.value = {
@@ -180,8 +186,7 @@ export const useAdminSettings = () => {
       }
       pendingKeys.value.delete(key)
       return true
-    }
-    catch (err: any) {
+    } catch (err: any) {
       error.value = err.data?.message || `Failed to update ${key}`
       pendingKeys.value.delete(key)
       return false
@@ -195,12 +200,15 @@ export const useAdminSettings = () => {
     error.value = null
 
     try {
-      const response = await $fetch<ApiResponse<{ key: string; value: any }>>(`/api/admin/settings/${key}/reset`, {
-        method: 'POST',
-        baseURL,
-        credentials: 'include',
-        headers: { Accept: 'application/json' },
-      })
+      const response = await $fetch<ApiResponse<{ key: string; value: any }>>(
+        `/api/admin/settings/${key}/reset`,
+        {
+          method: 'POST',
+          baseURL,
+          credentials: 'include',
+          headers: { Accept: 'application/json' },
+        },
+      )
 
       if (settings.value) {
         settings.value = {
@@ -210,8 +218,7 @@ export const useAdminSettings = () => {
       }
       pendingKeys.value.delete(key)
       return true
-    }
-    catch (err: any) {
+    } catch (err: any) {
       error.value = err.data?.message || `Failed to reset ${key}`
       pendingKeys.value.delete(key)
       return false

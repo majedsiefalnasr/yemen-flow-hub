@@ -95,7 +95,9 @@ describe('FxConfirmationCard', () => {
   it('keeps issue disabled on EXECUTIVE_APPROVED until upload succeeds', () => {
     const wrapper = mountCard()
 
-    const issueButton = wrapper.findAll('button').find(button => button.text().includes('إصدار وثيقة'))
+    const issueButton = wrapper
+      .findAll('button')
+      .find((button) => button.text().includes('إصدار وثيقة'))
     expect(issueButton?.attributes('disabled')).toBeDefined()
   })
 
@@ -103,7 +105,9 @@ describe('FxConfirmationCard', () => {
     const wrapper = mountCard(RequestStatus.FX_CONFIRMATION_PENDING)
 
     expect(wrapper.text()).toContain('تم رفع الوثيقة الموقعة في جلسة سابقة')
-    const issueButton = wrapper.findAll('button').find(button => button.text().includes('إصدار وثيقة'))
+    const issueButton = wrapper
+      .findAll('button')
+      .find((button) => button.text().includes('إصدار وثيقة'))
     expect(issueButton?.attributes('disabled')).toBeUndefined()
   })
 
@@ -147,10 +151,14 @@ describe('FxConfirmationCard', () => {
     })
     await input.trigger('change')
 
-    const uploadButton = wrapper.findAll('button').find(button => button.text().includes('رفع الوثيقة'))
+    const uploadButton = wrapper
+      .findAll('button')
+      .find((button) => button.text().includes('رفع الوثيقة'))
     await uploadButton?.trigger('click')
 
-    const issueButton = wrapper.findAll('button').find(button => button.text().includes('إصدار وثيقة'))
+    const issueButton = wrapper
+      .findAll('button')
+      .find((button) => button.text().includes('إصدار وثيقة'))
     expect(issueButton?.attributes('disabled')).toBeUndefined()
   })
 })

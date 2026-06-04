@@ -55,7 +55,7 @@ describe('useRequestsStore', () => {
   describe('loadRequests()', () => {
     it('sets loadingList to true while fetching and false after', async () => {
       let resolveFn!: (v: unknown) => void
-      mockFetchRequests.mockReturnValueOnce(new Promise(r => (resolveFn = r)))
+      mockFetchRequests.mockReturnValueOnce(new Promise((r) => (resolveFn = r)))
 
       const store = useRequestsStore()
       const promise = store.loadRequests()

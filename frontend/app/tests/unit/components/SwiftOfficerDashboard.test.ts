@@ -32,7 +32,11 @@ function getPendingHighlightClass(pending: number): string {
 }
 
 function formatAmountDisplay(amount: number, currency: string): string {
-  return new Intl.NumberFormat('ar-YE', { style: 'currency', currency, minimumFractionDigits: 0 }).format(amount)
+  return new Intl.NumberFormat('ar-YE', {
+    style: 'currency',
+    currency,
+    minimumFractionDigits: 0,
+  }).format(amount)
 }
 
 describe('SwiftOfficerDashboard — queue empty state', () => {
@@ -82,7 +86,7 @@ describe('SwiftOfficerDashboard — request rows', () => {
       swift_queue: [waitingReq],
     }
 
-    const queueStatuses = stats.swift_queue.map(r => r.status)
+    const queueStatuses = stats.swift_queue.map((r) => r.status)
     expect(queueStatuses).not.toContain(uploadedReq.status)
     expect(queueStatuses).toContain(RequestStatus.WAITING_FOR_SWIFT)
   })

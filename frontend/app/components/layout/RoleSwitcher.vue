@@ -56,15 +56,15 @@ async function switchRole(role: UserRole) {
 
     <div
       v-if="open"
-      class="absolute top-full start-0 z-50 mt-1 min-w-40 rounded-md border border-border bg-background p-1 shadow-md"
+      class="border-border bg-background absolute start-0 top-full z-50 mt-1 min-w-40 rounded-md border p-1 shadow-md"
       role="listbox"
       aria-label="اختر الدور"
     >
       <p v-if="error" class="px-3 py-2 text-xs text-[var(--color-text-error)]">{{ error }}</p>
       <button
-        v-for="([roleKey, label]) in roleOptions"
+        v-for="[roleKey, label] in roleOptions"
         :key="roleKey"
-        class="w-full rounded px-3 py-2 text-start text-sm text-foreground hover:bg-muted/50 disabled:cursor-wait disabled:opacity-50"
+        class="text-foreground hover:bg-muted/50 w-full rounded px-3 py-2 text-start text-sm disabled:cursor-wait disabled:opacity-50"
         :disabled="switching"
         role="option"
         @click="switchRole(roleKey)"

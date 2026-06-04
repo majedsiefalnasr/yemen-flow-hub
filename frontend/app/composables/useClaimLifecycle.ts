@@ -21,8 +21,8 @@ function getXsrfToken(): string | null {
   if (!import.meta.client) return null
   const raw = document.cookie
     .split(';')
-    .map(c => c.trim())
-    .find(c => c.startsWith('XSRF-TOKEN='))
+    .map((c) => c.trim())
+    .find((c) => c.startsWith('XSRF-TOKEN='))
     ?.split('=')
     .slice(1)
     .join('=')
@@ -74,22 +74,18 @@ export function useClaimLifecycle(claimEndpoint = 'claim-support-review') {
         headers: claimHeaders(),
       })
       return true
-    }
-    catch (err: unknown) {
+    } catch (err: unknown) {
       const status = httpStatus(err)
       if (status === 409) {
         claimError.value = 'الطلب محجوز بواسطة مراجع آخر.'
-      }
-      else if (status === 401 || status === 403) {
+      } else if (status === 401 || status === 403) {
         sessionExpired.value = true
         claimError.value = 'انتهت جلستك. يرجى تسجيل الدخول مرة أخرى.'
-      }
-      else {
+      } else {
         claimError.value = 'تعذّرت المطالبة بالطلب. يرجى المحاولة مرة أخرى.'
       }
       return false
-    }
-    finally {
+    } finally {
       isClaiming.value = false
     }
   }
@@ -112,15 +108,17 @@ export function useClaimLifecycle(claimEndpoint = 'claim-support-review') {
         headers: claimHeaders(),
       })
       return true
-    }
-    catch (err: unknown) {
+    } catch (err: unknown) {
       // Best-effort release — TTL auto-expire recovers missed releases.
       if (import.meta.dev) {
-        console.warn('[useClaimLifecycle] releaseRequest failed (best-effort):', httpStatus(err), err)
+        console.warn(
+          '[useClaimLifecycle] releaseRequest failed (best-effort):',
+          httpStatus(err),
+          err,
+        )
       }
       return false
-    }
-    finally {
+    } finally {
       isReleasing.value = false
     }
   }
@@ -139,14 +137,12 @@ export function useClaimLifecycle(claimEndpoint = 'claim-support-review') {
         headers: claimHeaders(),
       })
       return true
-    }
-    catch (err: unknown) {
+    } catch (err: unknown) {
       const status = httpStatus(err)
       if (status === 401 || status === 403) {
         sessionExpired.value = true
         claimError.value = 'انتهت جلستك. يرجى تسجيل الدخول مرة أخرى.'
-      }
-      else {
+      } else {
         // 404 = claim already expired, 422 = not the holder, any other error
         claimError.value = 'لم يعد الطلب محجوزاً باسمك.'
       }
@@ -182,8 +178,7 @@ export function useClaimLifecycle(claimEndpoint = 'claim-support-review') {
           credentials: 'include',
           headers: claimHeaders(),
         })
-      }
-      catch (err: unknown) {
+      } catch (err: unknown) {
         // If stopHeartbeat was called while this fetch was in-flight (e.g. the
         // component unmounted and released the claim), ignore the error silently.
         if (intentionallyStopped) return
@@ -199,8 +194,7 @@ export function useClaimLifecycle(claimEndpoint = 'claim-support-review') {
           sessionExpired.value = true
           claimError.value = 'انتهت جلستك أثناء المراجعة. يرجى تسجيل الدخول مرة أخرى.'
           onSessionExpired?.()
-        }
-        else if (status === 403 || status === 404 || status === 409 || status === 422) {
+        } else if (status === 403 || status === 404 || status === 409 || status === 422) {
           // Claim ownership was lost or expired on the server side (not by us).
           stopHeartbeat(id)
           claimError.value = 'لم يعد الطلب محجوزاً باسمك.'
@@ -211,7 +205,9 @@ export function useClaimLifecycle(claimEndpoint = 'claim-support-review') {
     }, HEARTBEAT_INTERVAL_MS)
 
     activeHeartbeats.set(id, timer)
-    stopFlags.set(id, () => { intentionallyStopped = true })
+    stopFlags.set(id, () => {
+      intentionallyStopped = true
+    })
 
     activeHeartbeats.set(id, timer)
   }
@@ -227,9 +223,8 @@ export function useClaimLifecycle(claimEndpoint = 'claim-support-review') {
         clearInterval(timer)
         activeHeartbeats.delete(id)
       }
-    }
-    else {
-      stopFlags.forEach(fn => fn())
+    } else {
+      stopFlags.forEach((fn) => fn())
       stopFlags.clear()
       activeHeartbeats.forEach((t) => clearInterval(t))
       activeHeartbeats.clear()

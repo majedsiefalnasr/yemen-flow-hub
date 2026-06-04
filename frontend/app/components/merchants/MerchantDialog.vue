@@ -4,12 +4,31 @@ import { toTypedSchema } from '@vee-validate/zod'
 import { z } from 'zod'
 import type { Bank } from '@/types/models'
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/components/ui/form'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import {
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 
-const CATEGORIES = ['مواد غذائية', 'أدوية ومستلزمات طبية', 'مشتقات نفطية', 'قطع غيار', 'مواد بناء', 'إلكترونيات']
+const CATEGORIES = [
+  'مواد غذائية',
+  'أدوية ومستلزمات طبية',
+  'مشتقات نفطية',
+  'قطع غيار',
+  'مواد بناء',
+  'إلكترونيات',
+]
 
 export interface MerchantFormData {
   name: string
@@ -34,16 +53,18 @@ const emit = defineEmits<{
   save: [data: MerchantFormData]
 }>()
 
-const formSchema = toTypedSchema(z.object({
-  name: z.string().trim().min(1, 'اسم التاجر مطلوب'),
-  commercial_register: z.string().trim().min(1, 'رقم السجل التجاري مطلوب'),
-  tax_number: z.string().trim().min(1, 'الرقم الضريبي مطلوب'),
-  address: z.string().optional().default(''),
-  phone: z.string().optional().default(''),
-  business_type: z.string().optional().default(''),
-  is_active: z.string().default('active'),
-  bank_id: z.string().optional().default(''),
-}))
+const formSchema = toTypedSchema(
+  z.object({
+    name: z.string().trim().min(1, 'اسم التاجر مطلوب'),
+    commercial_register: z.string().trim().min(1, 'رقم السجل التجاري مطلوب'),
+    tax_number: z.string().trim().min(1, 'الرقم الضريبي مطلوب'),
+    address: z.string().optional().default(''),
+    phone: z.string().optional().default(''),
+    business_type: z.string().optional().default(''),
+    is_active: z.string().default('active'),
+    bank_id: z.string().optional().default(''),
+  }),
+)
 
 const { handleSubmit, meta } = useForm({
   validationSchema: formSchema,
@@ -82,9 +103,11 @@ const submit = handleSubmit((values) => {
 
     <form class="grid gap-3 py-2 sm:grid-cols-2" @submit.prevent="submit">
       <!-- Name -->
-      <FormField name="name" v-slot="{ componentField }">
+      <FormField v-slot="{ componentField }" name="name">
         <FormItem>
-          <FormLabel class="text-xs">اسم التاجر / الشركة <span class="text-destructive">*</span></FormLabel>
+          <FormLabel class="text-xs"
+            >اسم التاجر / الشركة <span class="text-destructive">*</span></FormLabel
+          >
           <FormControl>
             <Input v-bind="componentField" placeholder="مثال: شركة الكميم للأدوية" />
           </FormControl>
@@ -93,9 +116,11 @@ const submit = handleSubmit((values) => {
       </FormField>
 
       <!-- Commercial register -->
-      <FormField name="commercial_register" v-slot="{ componentField }">
+      <FormField v-slot="{ componentField }" name="commercial_register">
         <FormItem>
-          <FormLabel class="text-xs">رقم السجل التجاري <span class="text-destructive">*</span></FormLabel>
+          <FormLabel class="text-xs"
+            >رقم السجل التجاري <span class="text-destructive">*</span></FormLabel
+          >
           <FormControl>
             <Input v-bind="componentField" placeholder="CR-12345" />
           </FormControl>
@@ -104,9 +129,11 @@ const submit = handleSubmit((values) => {
       </FormField>
 
       <!-- Tax number -->
-      <FormField name="tax_number" v-slot="{ componentField }">
+      <FormField v-slot="{ componentField }" name="tax_number">
         <FormItem>
-          <FormLabel class="text-xs">الرقم الضريبي <span class="text-destructive">*</span></FormLabel>
+          <FormLabel class="text-xs"
+            >الرقم الضريبي <span class="text-destructive">*</span></FormLabel
+          >
           <FormControl>
             <Input v-bind="componentField" placeholder="4123456" />
           </FormControl>
@@ -115,7 +142,7 @@ const submit = handleSubmit((values) => {
       </FormField>
 
       <!-- Phone -->
-      <FormField name="phone" v-slot="{ componentField }">
+      <FormField v-slot="{ componentField }" name="phone">
         <FormItem>
           <FormLabel class="text-xs">هاتف التواصل</FormLabel>
           <FormControl>
@@ -126,7 +153,7 @@ const submit = handleSubmit((values) => {
       </FormField>
 
       <!-- Business type -->
-      <FormField name="business_type" v-slot="{ componentField }">
+      <FormField v-slot="{ componentField }" name="business_type">
         <FormItem>
           <FormLabel class="text-xs">القطاع / النشاط</FormLabel>
           <Select v-bind="componentField">
@@ -144,7 +171,7 @@ const submit = handleSubmit((values) => {
       </FormField>
 
       <!-- Status -->
-      <FormField name="is_active" v-slot="{ componentField }">
+      <FormField v-slot="{ componentField }" name="is_active">
         <FormItem>
           <FormLabel class="text-xs">الحالة</FormLabel>
           <Select v-bind="componentField">
@@ -161,7 +188,7 @@ const submit = handleSubmit((values) => {
       </FormField>
 
       <!-- Bank -->
-      <FormField name="bank_id" v-slot="{ componentField }">
+      <FormField v-slot="{ componentField }" name="bank_id">
         <FormItem class="sm:col-span-2">
           <FormLabel class="text-xs">البنك التابع له</FormLabel>
           <Select
@@ -183,7 +210,7 @@ const submit = handleSubmit((values) => {
       </FormField>
 
       <!-- Address -->
-      <FormField name="address" v-slot="{ componentField }">
+      <FormField v-slot="{ componentField }" name="address">
         <FormItem class="sm:col-span-2">
           <FormLabel class="text-xs">العنوان</FormLabel>
           <FormControl>

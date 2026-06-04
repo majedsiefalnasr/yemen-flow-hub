@@ -20,13 +20,15 @@ const emit = defineEmits<{
 }>()
 
 const isSuspend = computed(() => props.merchant.is_active)
-const title = computed(() => isSuspend.value ? 'تأكيد تعليق التاجر' : 'تأكيد تفعيل التاجر')
+const title = computed(() => (isSuspend.value ? 'تأكيد تعليق التاجر' : 'تأكيد تفعيل التاجر'))
 const message = computed(() =>
   isSuspend.value
     ? `هل أنت متأكد من تعليق التاجر ${props.merchant.name}؟ لن يتمكن المستخدمون من اختياره في الطلبات الجديدة.`
-    : `هل أنت متأكد من تفعيل التاجر ${props.merchant.name}؟`
+    : `هل أنت متأكد من تفعيل التاجر ${props.merchant.name}؟`,
 )
-const confirmLabel = computed(() => props.submitting ? 'جارٍ التحديث…' : (isSuspend.value ? 'تعليق' : 'تفعيل'))
+const confirmLabel = computed(() =>
+  props.submitting ? 'جارٍ التحديث…' : isSuspend.value ? 'تعليق' : 'تفعيل',
+)
 
 function requestClose() {
   if (!props.submitting) {
@@ -36,37 +38,52 @@ function requestClose() {
 </script>
 
 <template>
-  <Dialog :open="true" @update:open="open => !open && requestClose()">
-    <div class="fixed inset-0 flex items-center justify-center z-50">
+  <Dialog :open="true" @update:open="(open) => !open && requestClose()">
+    <div class="fixed inset-0 z-50 flex items-center justify-center">
       <DialogContent
-        class="max-w-md flex flex-col items-center text-center gap-4 p-8"
-        
+        class="flex max-w-md flex-col items-center gap-4 p-8 text-center"
         :aria-label="title"
       >
         <div
-          class="w-14 h-14 rounded-full flex items-center justify-center flex-shrink-0"
-          :class="isSuspend ? 'bg-[var(--color-surface-warning)] text-[var(--color-text-warning)]' : 'bg-[var(--color-surface-success)] text-[var(--color-text-success)]'"
+          class="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-full"
+          :class="
+            isSuspend
+              ? 'bg-[var(--color-surface-warning)] text-[var(--color-text-warning)]'
+              : 'bg-[var(--color-surface-success)] text-[var(--color-text-success)]'
+          "
           aria-hidden="true"
         >
           <Pause v-if="isSuspend" :size="24" />
           <Play v-else :size="24" />
         </div>
 
-        <h3 class="font-heading text-base font-semibold leading-6 text-[var(--color-text-primary)]">
+        <h3 class="font-heading text-base leading-6 font-semibold text-[var(--color-text-primary)]">
           {{ title }}
         </h3>
 
-        <p class="text-sm text-[var(--color-text-subtle)] leading-relaxed">
+        <p class="text-sm leading-relaxed text-[var(--color-text-subtle)]">
           {{ message }}
         </p>
 
-        <Alert v-if="props.error" class="border border-[var(--color-border-error)] bg-[var(--color-surface-error)] w-full" role="alert">
+        <Alert
+          v-if="props.error"
+          class="w-full border border-[var(--color-border-error)] bg-[var(--color-surface-error)]"
+          role="alert"
+        >
           <AlertCircle class="h-4 w-4 text-[var(--color-text-error)]" aria-hidden="true" />
-          <AlertDescription class="text-[var(--color-text-error)] text-sm">{{ props.error }}</AlertDescription>
+          <AlertDescription class="text-sm text-[var(--color-text-error)]">{{
+            props.error
+          }}</AlertDescription>
         </Alert>
 
-        <DialogFooter class="flex gap-3 w-full pt-2">
-          <Button type="button" variant="outline" :disabled="props.submitting" class="flex-1" @click="requestClose">
+        <DialogFooter class="flex w-full gap-3 pt-2">
+          <Button
+            type="button"
+            variant="outline"
+            :disabled="props.submitting"
+            class="flex-1"
+            @click="requestClose"
+          >
             إلغاء
           </Button>
           <Button

@@ -15,7 +15,13 @@ import Button from '@/components/ui/button/Button.vue'
 import Input from '@/components/ui/input/Input.vue'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/components/ui/form'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
 const BUSINESS_TYPE_OPTIONS = [
   { value: 'import', label: 'استيراد' },
@@ -26,16 +32,18 @@ const BUSINESS_TYPE_OPTIONS = [
   { value: 'services', label: 'خدمات' },
 ]
 
-const schema = toTypedSchema(z.object({
-  name: z.string().trim().min(1, 'اسم التاجر مطلوب'),
-  commercial_register: z.string().trim().min(1, 'رقم السجل التجاري مطلوب'),
-  tax_number: z.string().trim().min(1, 'الرقم الضريبي مطلوب'),
-  phone: z.string().optional().default(''),
-  address: z.string().optional().default(''),
-  business_type: z.string().optional().default(''),
-  is_active: z.string().optional().default('true'),
-  bank_id: z.string().optional().default(''),
-}))
+const schema = toTypedSchema(
+  z.object({
+    name: z.string().trim().min(1, 'اسم التاجر مطلوب'),
+    commercial_register: z.string().trim().min(1, 'رقم السجل التجاري مطلوب'),
+    tax_number: z.string().trim().min(1, 'الرقم الضريبي مطلوب'),
+    phone: z.string().optional().default(''),
+    address: z.string().optional().default(''),
+    business_type: z.string().optional().default(''),
+    is_active: z.string().optional().default('true'),
+    bank_id: z.string().optional().default(''),
+  }),
+)
 
 interface BankOption {
   id: number
@@ -53,26 +61,22 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  save: [data: {
-    name: string
-    commercial_register: string
-    tax_number: string
-    phone: string | null
-    address: string | null
-    business_type: string | null
-    is_active: boolean | undefined
-    bank_id: number | null
-  }]
+  save: [
+    data: {
+      name: string
+      commercial_register: string
+      tax_number: string
+      phone: string | null
+      address: string | null
+      business_type: string | null
+      is_active: boolean | undefined
+      bank_id: number | null
+    },
+  ]
   close: []
 }>()
 
-const {
-  handleSubmit,
-  resetForm,
-  meta,
-  setFieldError,
-  values,
-} = useForm({
+const { handleSubmit, resetForm, meta, setFieldError, values } = useForm({
   validationSchema: schema,
   validateOnMount: true,
 })
@@ -80,59 +84,63 @@ const {
 const isEditMode = computed(() => !!props.merchant)
 const isBankRequiredForCreate = computed(() => props.requiresBankSelection && !props.merchant)
 const showLockedBankField = computed(() => !props.requiresBankSelection && !!props.lockedBankName)
-const isSaveDisabled = computed(() => (
-  props.saving
-  || !meta.value.valid
-  || (isBankRequiredForCreate.value && !values.bank_id)
-))
+const isSaveDisabled = computed(
+  () => props.saving || !meta.value.valid || (isBankRequiredForCreate.value && !values.bank_id),
+)
 
-watch(() => props.merchant, (merchant) => {
-  if (merchant) {
-    resetForm({
-      values: {
-        name: merchant.name,
-        commercial_register: merchant.commercial_register ?? '',
-        tax_number: merchant.tax_number ?? '',
-        phone: merchant.phone ?? '',
-        address: merchant.address ?? '',
-        business_type: merchant.business_type ?? '',
-        is_active: merchant.is_active ? 'true' : 'false',
-        bank_id: merchant.bank_id ? String(merchant.bank_id) : '',
-      },
-    })
-  }
-  else {
-    resetForm({
-      values: {
-        name: '',
-        commercial_register: '',
-        tax_number: '',
-        phone: '',
-        address: '',
-        business_type: '',
-        is_active: 'true',
-        bank_id: props.defaultBankId ? String(props.defaultBankId) : '',
-      },
-    })
-  }
-}, { immediate: true })
+watch(
+  () => props.merchant,
+  (merchant) => {
+    if (merchant) {
+      resetForm({
+        values: {
+          name: merchant.name,
+          commercial_register: merchant.commercial_register ?? '',
+          tax_number: merchant.tax_number ?? '',
+          phone: merchant.phone ?? '',
+          address: merchant.address ?? '',
+          business_type: merchant.business_type ?? '',
+          is_active: merchant.is_active ? 'true' : 'false',
+          bank_id: merchant.bank_id ? String(merchant.bank_id) : '',
+        },
+      })
+    } else {
+      resetForm({
+        values: {
+          name: '',
+          commercial_register: '',
+          tax_number: '',
+          phone: '',
+          address: '',
+          business_type: '',
+          is_active: 'true',
+          bank_id: props.defaultBankId ? String(props.defaultBankId) : '',
+        },
+      })
+    }
+  },
+  { immediate: true },
+)
 
-watch(() => props.defaultBankId, (newValue) => {
-  if (!props.merchant) {
-    resetForm({
-      values: {
-        name: values.name ?? '',
-        commercial_register: values.commercial_register ?? '',
-        tax_number: values.tax_number ?? '',
-        phone: values.phone ?? '',
-        address: values.address ?? '',
-        business_type: values.business_type ?? '',
-        is_active: values.is_active ?? 'true',
-        bank_id: newValue ? String(newValue) : '',
-      },
-    })
-  }
-})
+watch(
+  () => props.defaultBankId,
+  (newValue) => {
+    if (!props.merchant) {
+      resetForm({
+        values: {
+          name: values.name ?? '',
+          commercial_register: values.commercial_register ?? '',
+          tax_number: values.tax_number ?? '',
+          phone: values.phone ?? '',
+          address: values.address ?? '',
+          business_type: values.business_type ?? '',
+          is_active: values.is_active ?? 'true',
+          bank_id: newValue ? String(newValue) : '',
+        },
+      })
+    }
+  },
+)
 
 function requestClose() {
   if (!props.saving) {
@@ -171,7 +179,6 @@ const onSubmit = handleSubmit((values) => {
       <DialogOverlay class="modal-backdrop" @click="requestClose" />
       <DialogContent
         class="modal"
-        
         :aria-label="isEditMode ? 'تعديل بيانات التاجر' : 'تسجيل تاجر جديد'"
       >
         <DialogHeader class="flex items-start justify-between">
@@ -179,10 +186,12 @@ const onSubmit = handleSubmit((values) => {
             <DialogTitle class="text-xl font-semibold text-[var(--color-text-primary)]">
               {{ isEditMode ? 'تعديل بيانات التاجر' : 'تسجيل تاجر جديد' }}
             </DialogTitle>
-            <p class="text-xs text-[var(--color-text-subtle)] mt-1">الحقول المعلّمة بـ * إلزامية.</p>
+            <p class="mt-1 text-xs text-[var(--color-text-subtle)]">
+              الحقول المعلّمة بـ * إلزامية.
+            </p>
           </div>
           <button
-            class="text-[var(--color-text-subtle)] hover:text-[var(--color-text-primary)] disabled:opacity-50 disabled:cursor-not-allowed text-lg leading-none p-1"
+            class="p-1 text-lg leading-none text-[var(--color-text-subtle)] hover:text-[var(--color-text-primary)] disabled:cursor-not-allowed disabled:opacity-50"
             aria-label="إغلاق"
             :disabled="props.saving"
             @click="requestClose"
@@ -191,18 +200,26 @@ const onSubmit = handleSubmit((values) => {
           </button>
         </DialogHeader>
 
-        <Alert v-if="props.serverError" class="border border-[var(--color-border-error)] bg-[var(--color-surface-error)]" role="alert">
+        <Alert
+          v-if="props.serverError"
+          class="border border-[var(--color-border-error)] bg-[var(--color-surface-error)]"
+          role="alert"
+        >
           <AlertCircle class="h-4 w-4 text-[var(--color-text-error)]" aria-hidden="true" />
-          <AlertDescription class="text-[var(--color-text-error)] text-sm">{{ props.serverError }}</AlertDescription>
+          <AlertDescription class="text-sm text-[var(--color-text-error)]">{{
+            props.serverError
+          }}</AlertDescription>
         </Alert>
 
         <form class="flex flex-col gap-5" @submit.prevent="onSubmit">
           <div class="grid grid-cols-2 gap-4">
             <!-- Bank selector for CBY Admin creating a new merchant -->
             <template v-if="isBankRequiredForCreate">
-              <FormField name="bank_id" v-slot="{ componentField }">
+              <FormField v-slot="{ componentField }" name="bank_id">
                 <FormItem class="col-span-2">
-                  <FormLabel class="text-xs">البنك التابع له <span class="text-destructive">*</span></FormLabel>
+                  <FormLabel class="text-xs"
+                    >البنك التابع له <span class="text-destructive">*</span></FormLabel
+                  >
                   <Select v-bind="componentField">
                     <FormControl>
                       <SelectTrigger>
@@ -210,7 +227,11 @@ const onSubmit = handleSubmit((values) => {
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem v-for="bank in props.bankOptions" :key="bank.id" :value="String(bank.id)">
+                      <SelectItem
+                        v-for="bank in props.bankOptions"
+                        :key="bank.id"
+                        :value="String(bank.id)"
+                      >
                         {{ bank.name }}
                       </SelectItem>
                     </SelectContent>
@@ -222,29 +243,45 @@ const onSubmit = handleSubmit((values) => {
 
             <template v-else-if="showLockedBankField">
               <FormItem class="col-span-2">
-                <FormLabel class="text-xs">البنك التابع له <span class="text-destructive">*</span></FormLabel>
+                <FormLabel class="text-xs"
+                  >البنك التابع له <span class="text-destructive">*</span></FormLabel
+                >
                 <FormControl>
-                  <Input :value="props.lockedBankName ?? ''" type="text" readonly disabled class="bg-[var(--color-surface-subtle)] text-[var(--color-text-subtle)] cursor-not-allowed" />
+                  <Input
+                    :value="props.lockedBankName ?? ''"
+                    type="text"
+                    readonly
+                    disabled
+                    class="cursor-not-allowed bg-[var(--color-surface-subtle)] text-[var(--color-text-subtle)]"
+                  />
                 </FormControl>
-                <p class="text-xs text-muted-foreground">مرتبط بالبنك المسجل على حسابك.</p>
+                <p class="text-muted-foreground text-xs">مرتبط بالبنك المسجل على حسابك.</p>
               </FormItem>
             </template>
 
             <!-- Name -->
-            <FormField name="name" v-slot="{ componentField }">
+            <FormField v-slot="{ componentField }" name="name">
               <FormItem class="col-span-2">
-                <FormLabel class="text-xs">اسم التاجر / الشركة <span class="text-destructive">*</span></FormLabel>
+                <FormLabel class="text-xs"
+                  >اسم التاجر / الشركة <span class="text-destructive">*</span></FormLabel
+                >
                 <FormControl>
-                  <Input v-bind="componentField" type="text" placeholder="مثال: شركة الكميم للأدوية" />
+                  <Input
+                    v-bind="componentField"
+                    type="text"
+                    placeholder="مثال: شركة الكميم للأدوية"
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
             </FormField>
 
             <!-- Commercial register -->
-            <FormField name="commercial_register" v-slot="{ componentField }">
+            <FormField v-slot="{ componentField }" name="commercial_register">
               <FormItem>
-                <FormLabel class="text-xs">رقم السجل التجاري <span class="text-destructive">*</span></FormLabel>
+                <FormLabel class="text-xs"
+                  >رقم السجل التجاري <span class="text-destructive">*</span></FormLabel
+                >
                 <FormControl>
                   <Input v-bind="componentField" type="text" placeholder="CR-12345" dir="ltr" />
                 </FormControl>
@@ -253,9 +290,11 @@ const onSubmit = handleSubmit((values) => {
             </FormField>
 
             <!-- Tax number -->
-            <FormField name="tax_number" v-slot="{ componentField }">
+            <FormField v-slot="{ componentField }" name="tax_number">
               <FormItem>
-                <FormLabel class="text-xs">الرقم الضريبي <span class="text-destructive">*</span></FormLabel>
+                <FormLabel class="text-xs"
+                  >الرقم الضريبي <span class="text-destructive">*</span></FormLabel
+                >
                 <FormControl>
                   <Input v-bind="componentField" type="text" placeholder="4123456" dir="ltr" />
                 </FormControl>
@@ -264,7 +303,7 @@ const onSubmit = handleSubmit((values) => {
             </FormField>
 
             <!-- Phone -->
-            <FormField name="phone" v-slot="{ componentField }">
+            <FormField v-slot="{ componentField }" name="phone">
               <FormItem>
                 <FormLabel class="text-xs">هاتف التواصل</FormLabel>
                 <FormControl>
@@ -275,7 +314,7 @@ const onSubmit = handleSubmit((values) => {
             </FormField>
 
             <!-- Business type -->
-            <FormField name="business_type" v-slot="{ componentField }">
+            <FormField v-slot="{ componentField }" name="business_type">
               <FormItem>
                 <FormLabel class="text-xs">القطاع / النشاط</FormLabel>
                 <Select v-bind="componentField">
@@ -285,7 +324,11 @@ const onSubmit = handleSubmit((values) => {
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    <SelectItem v-for="opt in BUSINESS_TYPE_OPTIONS" :key="opt.value" :value="opt.value">
+                    <SelectItem
+                      v-for="opt in BUSINESS_TYPE_OPTIONS"
+                      :key="opt.value"
+                      :value="opt.value"
+                    >
                       {{ opt.label }}
                     </SelectItem>
                   </SelectContent>
@@ -295,7 +338,7 @@ const onSubmit = handleSubmit((values) => {
             </FormField>
 
             <!-- Status — edit mode only -->
-            <FormField v-if="isEditMode" name="is_active" v-slot="{ componentField }">
+            <FormField v-if="isEditMode" v-slot="{ componentField }" name="is_active">
               <FormItem>
                 <FormLabel class="text-xs">الحالة</FormLabel>
                 <Select v-bind="componentField">
@@ -314,7 +357,7 @@ const onSubmit = handleSubmit((values) => {
             </FormField>
 
             <!-- Address -->
-            <FormField name="address" v-slot="{ componentField }">
+            <FormField v-slot="{ componentField }" name="address">
               <FormItem class="col-span-2">
                 <FormLabel class="text-xs">العنوان</FormLabel>
                 <FormControl>
@@ -340,4 +383,3 @@ const onSubmit = handleSubmit((values) => {
     </div>
   </Dialog>
 </template>
-

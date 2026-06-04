@@ -29,10 +29,7 @@ describe('canDownloadDocument — SWIFT type', () => {
     UserRole.CBY_ADMIN,
   ] as const
 
-  const SWIFT_DENIED = [
-    UserRole.DATA_ENTRY,
-    UserRole.SUPPORT_COMMITTEE,
-  ] as const
+  const SWIFT_DENIED = [UserRole.DATA_ENTRY, UserRole.SUPPORT_COMMITTEE] as const
 
   it.each(SWIFT_ALLOWED)('returns true for allowed role %s', (role) => {
     expect(canDownloadDocument(role, 'SWIFT')).toBe(true)
@@ -53,10 +50,7 @@ describe('canDownloadDocument — FX_REQUEST type', () => {
     UserRole.CBY_ADMIN,
   ] as const
 
-  const FX_DENIED = [
-    UserRole.DATA_ENTRY,
-    UserRole.SUPPORT_COMMITTEE,
-  ] as const
+  const FX_DENIED = [UserRole.DATA_ENTRY, UserRole.SUPPORT_COMMITTEE] as const
 
   it.each(FX_ALLOWED)('returns true for allowed role %s', (role) => {
     expect(canDownloadDocument(role, 'FX_REQUEST')).toBe(true)
@@ -128,9 +122,7 @@ describe('canDownloadSignedFxDoc', () => {
     UserRole.CBY_ADMIN,
   ] as const
 
-  const SIGNED_FX_DENIED = [
-    UserRole.SWIFT_OFFICER,
-  ] as const
+  const SIGNED_FX_DENIED = [UserRole.SWIFT_OFFICER] as const
 
   it.each(SIGNED_FX_ALLOWED)('returns true for allowed role %s', (role) => {
     expect(canDownloadSignedFxDoc(role)).toBe(true)
@@ -188,10 +180,11 @@ describe('canUploadDocument — only DATA_ENTRY on DRAFT, DRAFT_REJECTED_INTERNA
 
   it('returns false for DATA_ENTRY on any other status', () => {
     const lockedStatuses = Object.values(RequestStatus).filter(
-      s => s !== RequestStatus.DRAFT
-        && s !== RequestStatus.DRAFT_REJECTED_INTERNAL
-        && s !== RequestStatus.BANK_RETURNED
-        && s !== RequestStatus.SUPPORT_RETURNED,
+      (s) =>
+        s !== RequestStatus.DRAFT &&
+        s !== RequestStatus.DRAFT_REJECTED_INTERNAL &&
+        s !== RequestStatus.BANK_RETURNED &&
+        s !== RequestStatus.SUPPORT_RETURNED,
     )
     for (const status of lockedStatuses) {
       expect(canUploadDocument(UserRole.DATA_ENTRY, status)).toBe(false)
@@ -199,14 +192,14 @@ describe('canUploadDocument — only DATA_ENTRY on DRAFT, DRAFT_REJECTED_INTERNA
   })
 
   it('returns false for non-DATA_ENTRY roles even on DRAFT', () => {
-    const nonDataEntry = Object.values(UserRole).filter(r => r !== UserRole.DATA_ENTRY)
+    const nonDataEntry = Object.values(UserRole).filter((r) => r !== UserRole.DATA_ENTRY)
     for (const role of nonDataEntry) {
       expect(canUploadDocument(role, RequestStatus.DRAFT)).toBe(false)
     }
   })
 
   it('returns false for non-DATA_ENTRY roles on DRAFT_REJECTED_INTERNAL', () => {
-    const nonDataEntry = Object.values(UserRole).filter(r => r !== UserRole.DATA_ENTRY)
+    const nonDataEntry = Object.values(UserRole).filter((r) => r !== UserRole.DATA_ENTRY)
     for (const role of nonDataEntry) {
       expect(canUploadDocument(role, RequestStatus.DRAFT_REJECTED_INTERNAL)).toBe(false)
     }
@@ -234,10 +227,11 @@ describe('isDocumentModificationLocked', () => {
 
   it('returns true for all other statuses', () => {
     const lockedStatuses = Object.values(RequestStatus).filter(
-      s => s !== RequestStatus.DRAFT
-        && s !== RequestStatus.DRAFT_REJECTED_INTERNAL
-        && s !== RequestStatus.BANK_RETURNED
-        && s !== RequestStatus.SUPPORT_RETURNED,
+      (s) =>
+        s !== RequestStatus.DRAFT &&
+        s !== RequestStatus.DRAFT_REJECTED_INTERNAL &&
+        s !== RequestStatus.BANK_RETURNED &&
+        s !== RequestStatus.SUPPORT_RETURNED,
     )
     for (const status of lockedStatuses) {
       expect(isDocumentModificationLocked(status)).toBe(true)
@@ -247,7 +241,7 @@ describe('isDocumentModificationLocked', () => {
   it('covers all 22 canonical statuses — exactly 4 are unlocked', () => {
     const allStatuses = Object.values(RequestStatus)
     expect(allStatuses).toHaveLength(22)
-    const locked = allStatuses.filter(s => isDocumentModificationLocked(s))
+    const locked = allStatuses.filter((s) => isDocumentModificationLocked(s))
     expect(locked).toHaveLength(18)
   })
 })

@@ -59,8 +59,7 @@ function handleAction(action: RowAction<TData>) {
   if (action.confirm) {
     pendingAction.value = action
     showConfirm.value = true
-  }
-  else {
+  } else {
     action.onClick(props.row)
   }
 }
@@ -75,10 +74,7 @@ function confirmAction() {
 <template>
   <DropdownMenu>
     <DropdownMenuTrigger as-child>
-      <Button
-        variant="ghost"
-        class="flex h-8 w-8 p-0 data-[state=open]:bg-muted"
-      >
+      <Button variant="ghost" class="data-[state=open]:bg-muted flex h-8 w-8 p-0">
         <MoreHorizontal class="h-4 w-4" />
         <span class="sr-only">فتح القائمة</span>
       </Button>

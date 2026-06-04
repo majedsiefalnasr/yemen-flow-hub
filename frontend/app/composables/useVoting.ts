@@ -15,7 +15,11 @@ export function useVoting() {
     return response.data
   }
 
-  async function castVote(id: number, vote: VoteType, justification?: string): Promise<VotingDetail> {
+  async function castVote(
+    id: number,
+    vote: VoteType,
+    justification?: string,
+  ): Promise<VotingDetail> {
     const body: Record<string, string> = { vote }
     if (justification !== undefined && justification.trim()) {
       body.justification = justification.trim()
@@ -35,12 +39,22 @@ export function useVoting() {
   }
 
   async function finalizeDecision(id: number): Promise<ImportRequest> {
-    const response = await post<ApiResponse<ImportRequest>>(`/api/workflow/${id}/finalize-decision`, {})
+    const response = await post<ApiResponse<ImportRequest>>(
+      `/api/workflow/${id}/finalize-decision`,
+      {},
+    )
     return response.data
   }
 
-  async function directorOverride(id: number, decision: 'APPROVE' | 'REJECT', justification: string): Promise<ImportRequest> {
-    const response = await post<ApiResponse<ImportRequest>>(`/api/voting/${id}/override`, { decision, justification })
+  async function directorOverride(
+    id: number,
+    decision: 'APPROVE' | 'REJECT',
+    justification: string,
+  ): Promise<ImportRequest> {
+    const response = await post<ApiResponse<ImportRequest>>(`/api/voting/${id}/override`, {
+      decision,
+      justification,
+    })
     return response.data
   }
 

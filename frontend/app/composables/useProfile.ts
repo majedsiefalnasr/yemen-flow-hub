@@ -3,12 +3,14 @@ import type { AuthUser, ApiResponse } from '../types/models'
 import { useAuthStore } from '../stores/auth.store'
 
 function getXsrfToken(): string | null {
-  if (!process.client) return null
+  if (!import.meta.client) return null
   const raw = document.cookie
     .split(';')
-    .map(c => c.trim())
-    .find(c => c.startsWith('XSRF-TOKEN='))
-    ?.split('=').slice(1).join('=')
+    .map((c) => c.trim())
+    .find((c) => c.startsWith('XSRF-TOKEN='))
+    ?.split('=')
+    .slice(1)
+    .join('=')
   return raw ? decodeURIComponent(raw) : null
 }
 
@@ -37,12 +39,10 @@ export const useProfile = () => {
         headers: { Accept: 'application/json' },
       })
       profile.value = response.data
-    }
-    catch (err: any) {
+    } catch (err: any) {
       error.value = err.data?.message || 'Failed to load profile'
       profile.value = null
-    }
-    finally {
+    } finally {
       loading.value = false
     }
   }
@@ -67,18 +67,20 @@ export const useProfile = () => {
         method: 'PUT',
         baseURL,
         credentials: 'include',
-        headers: { Accept: 'application/json', 'Content-Type': 'application/json', ...xsrfHeaders() },
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+          ...xsrfHeaders(),
+        },
         body,
       })
       profile.value = response.data
       if (auth.user) auth.user = response.data
       return true
-    }
-    catch (err: any) {
+    } catch (err: any) {
       error.value = err.data?.message || 'Failed to update profile'
       return false
-    }
-    finally {
+    } finally {
       loading.value = false
     }
   }
@@ -88,22 +90,23 @@ export const useProfile = () => {
    * so the user does not have to press a save button after changing variant
    * or colour.
    */
-  const updateAvatar = async (data: {
-    avatar_variant?: string
-  }): Promise<boolean> => {
+  const updateAvatar = async (data: { avatar_variant?: string }): Promise<boolean> => {
     error.value = null
     try {
       const response = await $fetch<ApiResponse<AuthUser>>('/api/profile/avatar', {
         method: 'PUT',
         baseURL,
         credentials: 'include',
-        headers: { Accept: 'application/json', 'Content-Type': 'application/json', ...xsrfHeaders() },
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+          ...xsrfHeaders(),
+        },
         body: data,
       })
       profile.value = response.data
       return true
-    }
-    catch (err: any) {
+    } catch (err: any) {
       error.value = err.data?.message || 'Failed to update avatar'
       return false
     }
@@ -121,8 +124,7 @@ export const useProfile = () => {
       })
       profile.value = response.data
       return true
-    }
-    catch (err: any) {
+    } catch (err: any) {
       error.value = err.data?.message || 'Failed to toggle MFA'
       return false
     }
@@ -135,15 +137,17 @@ export const useProfile = () => {
   const setupTotp = async (): Promise<{ provisioning_uri: string; secret: string } | null> => {
     error.value = null
     try {
-      const response = await $fetch<ApiResponse<{ provisioning_uri: string; secret: string }>>('/api/profile/mfa/setup', {
-        method: 'POST',
-        baseURL,
-        credentials: 'include',
-        headers: { Accept: 'application/json', ...xsrfHeaders() },
-      })
+      const response = await $fetch<ApiResponse<{ provisioning_uri: string; secret: string }>>(
+        '/api/profile/mfa/setup',
+        {
+          method: 'POST',
+          baseURL,
+          credentials: 'include',
+          headers: { Accept: 'application/json', ...xsrfHeaders() },
+        },
+      )
       return response.data
-    }
-    catch (err: any) {
+    } catch (err: any) {
       error.value = err.data?.message || 'Failed to initiate TOTP setup'
       return null
     }
@@ -160,14 +164,17 @@ export const useProfile = () => {
         method: 'POST',
         baseURL,
         credentials: 'include',
-        headers: { Accept: 'application/json', 'Content-Type': 'application/json', ...xsrfHeaders() },
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+          ...xsrfHeaders(),
+        },
         body: { code },
       })
       profile.value = response.data
       if (auth.user) auth.user.totp_enabled = true
       return true
-    }
-    catch (err: any) {
+    } catch (err: any) {
       error.value = err.data?.message || 'الرمز غير صحيح أو انتهت صلاحيته'
       return false
     }
@@ -183,14 +190,17 @@ export const useProfile = () => {
         method: 'POST',
         baseURL,
         credentials: 'include',
-        headers: { Accept: 'application/json', 'Content-Type': 'application/json', ...xsrfHeaders() },
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+          ...xsrfHeaders(),
+        },
         body: { code },
       })
       profile.value = response.data
       if (auth.user) auth.user.totp_enabled = false
       return true
-    }
-    catch (err: any) {
+    } catch (err: any) {
       error.value = err.data?.message || 'رمز التحقق غير صحيح'
       return false
     }
@@ -202,18 +212,24 @@ export const useProfile = () => {
   const disableTotpWithPassword = async (password: string): Promise<boolean> => {
     error.value = null
     try {
-      const response = await $fetch<ApiResponse<AuthUser>>('/api/profile/mfa/disable-with-password', {
-        method: 'POST',
-        baseURL,
-        credentials: 'include',
-        headers: { Accept: 'application/json', 'Content-Type': 'application/json', ...xsrfHeaders() },
-        body: { password },
-      })
+      const response = await $fetch<ApiResponse<AuthUser>>(
+        '/api/profile/mfa/disable-with-password',
+        {
+          method: 'POST',
+          baseURL,
+          credentials: 'include',
+          headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+            ...xsrfHeaders(),
+          },
+          body: { password },
+        },
+      )
       profile.value = response.data
       if (auth.user) auth.user.totp_enabled = false
       return true
-    }
-    catch (err: any) {
+    } catch (err: any) {
       error.value = err.data?.message || 'كلمة المرور غير صحيحة'
       return false
     }
@@ -226,14 +242,17 @@ export const useProfile = () => {
         method: 'POST',
         baseURL,
         credentials: 'include',
-        headers: { Accept: 'application/json', 'Content-Type': 'application/json', ...xsrfHeaders() },
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+          ...xsrfHeaders(),
+        },
         body: { new_pin: newPin, ...(currentPin ? { current_pin: currentPin } : {}) },
       })
       profile.value = response.data
       if (auth.user) auth.user.pin_enabled = true
       return true
-    }
-    catch (err: any) {
+    } catch (err: any) {
       error.value = err.data?.message || 'تعذر حفظ رمز PIN'
       return false
     }
@@ -246,14 +265,17 @@ export const useProfile = () => {
         method: 'DELETE',
         baseURL,
         credentials: 'include',
-        headers: { Accept: 'application/json', 'Content-Type': 'application/json', ...xsrfHeaders() },
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+          ...xsrfHeaders(),
+        },
         body: { current_pin: currentPin },
       })
       profile.value = response.data
       if (auth.user) auth.user.pin_enabled = false
       return true
-    }
-    catch (err: any) {
+    } catch (err: any) {
       error.value = err.data?.message || 'تعذر تعطيل رمز PIN'
       return false
     }
@@ -272,16 +294,18 @@ export const useProfile = () => {
         method: 'POST',
         baseURL,
         credentials: 'include',
-        headers: { Accept: 'application/json', 'Content-Type': 'application/json', ...xsrfHeaders() },
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+          ...xsrfHeaders(),
+        },
         body: data,
       })
       return true
-    }
-    catch (err: any) {
+    } catch (err: any) {
       error.value = err.data?.message || 'Failed to change password'
       return false
-    }
-    finally {
+    } finally {
       loading.value = false
     }
   }

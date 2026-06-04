@@ -1,5 +1,5 @@
 <template>
-  <div class="print-shell" >
+  <div class="print-shell">
     <slot />
   </div>
 </template>

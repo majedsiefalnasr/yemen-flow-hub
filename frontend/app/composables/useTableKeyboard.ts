@@ -15,7 +15,8 @@ export function useTableKeyboard(
     const target = e.target as HTMLElement | null
     if (!target) return
 
-    const isTyping = ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) || target.isContentEditable
+    const isTyping =
+      ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) || target.isContentEditable
 
     if (e.key === '/' && !isTyping && !e.ctrlKey && !e.metaKey && !e.altKey) {
       e.preventDefault()

@@ -39,7 +39,12 @@ function makeDeclaration(overrides: Partial<CustomsDeclaration> = {}): CustomsDe
     request_id: 42,
     declaration_number: 'CD-2026-000001',
     issued_by: 99,
-    issuer: { id: 99, name: 'مدير اللجنة', email: 'director@cby.ye', role: 'COMMITTEE_DIRECTOR' } as CustomsDeclaration['issuer'],
+    issuer: {
+      id: 99,
+      name: 'مدير اللجنة',
+      email: 'director@cby.ye',
+      role: 'COMMITTEE_DIRECTOR',
+    } as CustomsDeclaration['issuer'],
     issued_at: '2026-05-18T10:00:00.000000Z',
     request: { id: 42, reference_number: 'YFH-2026-000042', bank_name: 'بنك اليمن' },
     metadata: {
@@ -88,8 +93,7 @@ describe('CustomsPreviewPage — data loading logic', () => {
 
     try {
       await mockFetchCustomsPreview(42)
-    }
-    catch (e: unknown) {
+    } catch (e: unknown) {
       const status = (e as { statusCode?: number })?.statusCode
       if (status === 403) router.push('/dashboard')
     }
@@ -104,8 +108,7 @@ describe('CustomsPreviewPage — data loading logic', () => {
     let errorStatus: number | null = null
     try {
       await mockFetchCustomsPreview(42)
-    }
-    catch (e: unknown) {
+    } catch (e: unknown) {
       errorStatus = (e as { statusCode?: number })?.statusCode ?? 500
     }
 
@@ -207,8 +210,7 @@ describe('CustomsPreviewPage — customs authorization (AC12)', () => {
     let errorStatus: number | null = null
     try {
       await mockFetchCustomsPreview(42)
-    }
-    catch (e: unknown) {
+    } catch (e: unknown) {
       errorStatus = (e as { statusCode?: number })?.statusCode ?? 500
     }
 
@@ -221,8 +223,7 @@ describe('CustomsPreviewPage — customs authorization (AC12)', () => {
     let errorStatus: number | null = null
     try {
       await mockFetchCustomsPreview(42)
-    }
-    catch (e: unknown) {
+    } catch (e: unknown) {
       errorStatus = (e as { statusCode?: number })?.statusCode ?? 500
     }
 
@@ -289,8 +290,7 @@ describe('CustomsPreviewPage — download trigger', () => {
     let downloadError = ''
     try {
       await mockDownloadCustomsDeclaration(7)
-    }
-    catch {
+    } catch {
       downloadError = 'تعذّر تحميل ملف PDF الرسمي.'
     }
 

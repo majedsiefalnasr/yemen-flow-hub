@@ -129,11 +129,13 @@ function makeHistory(): RequestStageHistory[] {
   ]
 }
 
-function mountPrintable(options: {
-  request?: ImportRequest
-  documents?: RequestDocument[]
-  history?: RequestStageHistory[]
-} = {}) {
+function mountPrintable(
+  options: {
+    request?: ImportRequest
+    documents?: RequestDocument[]
+    history?: RequestStageHistory[]
+  } = {},
+) {
   return mount(RequestPrintable, {
     props: {
       request: options.request ?? makeRequest(),
@@ -146,7 +148,8 @@ function mountPrintable(options: {
           name: 'AuditTimelineStub',
           props: ['entries'],
           setup(props) {
-            return () => h('div', { 'data-testid': 'audit-timeline' }, String(props.entries?.length ?? 0))
+            return () =>
+              h('div', { 'data-testid': 'audit-timeline' }, String(props.entries?.length ?? 0))
           },
         }),
       },

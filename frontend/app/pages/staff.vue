@@ -11,7 +11,13 @@ import {
 } from '@tanstack/vue-table'
 import { ref, computed, onMounted, h } from 'vue'
 import {
-  AlertTriangle, CheckCircle2, MoreHorizontal, Plus, SearchX, ShieldCheck, Users,
+  AlertTriangle,
+  CheckCircle2,
+  MoreHorizontal,
+  Plus,
+  SearchX,
+  ShieldCheck,
+  Users,
 } from 'lucide-vue-next'
 import MetricCard from '@/components/shared/dashboard/MetricCard.vue'
 import MetricGrid from '@/components/shared/dashboard/MetricGrid.vue'
@@ -93,14 +99,16 @@ const columnVisibility = ref<VisibilityState>({
 // Access Health — active-highlight visual state
 const accessHealthFilter = ref<'active' | 'inactive' | 'bank_reviewer' | null>(null)
 
-const hasActiveFilters = computed(() =>
-  columnFilters.value.length > 0 || query.value.trim().length > 0,
+const hasActiveFilters = computed(
+  () => columnFilters.value.length > 0 || query.value.trim().length > 0,
 )
 
 const totalCount = computed(() => staff.value.length)
-const activeCount = computed(() => staff.value.filter(m => m.is_active).length)
-const inactiveCount = computed(() => staff.value.filter(m => !m.is_active).length)
-const bankReviewerCount = computed(() => staff.value.filter(m => m.role === UserRole.BANK_REVIEWER && m.is_active).length)
+const activeCount = computed(() => staff.value.filter((m) => m.is_active).length)
+const inactiveCount = computed(() => staff.value.filter((m) => !m.is_active).length)
+const bankReviewerCount = computed(
+  () => staff.value.filter((m) => m.role === UserRole.BANK_REVIEWER && m.is_active).length,
+)
 
 const isEmpty = computed(() => !loading.value && !error.value && staff.value.length === 0)
 
@@ -108,8 +116,8 @@ const isEmpty = computed(() => !loading.value && !error.value && staff.value.len
 const filteredStaff = computed(() => {
   const q = query.value.trim().toLowerCase()
   if (!q) return staff.value
-  return staff.value.filter(m =>
-    m.name.toLowerCase().includes(q) || m.email.toLowerCase().includes(q),
+  return staff.value.filter(
+    (m) => m.name.toLowerCase().includes(q) || m.email.toLowerCase().includes(q),
   )
 })
 
@@ -129,11 +137,9 @@ async function loadStaff() {
   error.value = null
   try {
     staff.value = await fetchUsers()
-  }
-  catch {
+  } catch {
     error.value = 'تعذر تحميل بيانات الموظفين الآن. أعد المحاولة بعد قليل.'
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -192,7 +198,7 @@ async function handleSave(data: {
       }
       if (data.password) payload.password = data.password
       const updated = await updateUser(editingStaff.value.id, payload)
-      const idx = staff.value.findIndex(s => s.id === updated.id)
+      const idx = staff.value.findIndex((s) => s.id === updated.id)
       if (idx !== -1) staff.value[idx] = updated
       persistUserAvatar(updated.email, { variant: data.avatar_variant })
       // Mirror onto the auth store so the topbar / sidebar avatar refresh
@@ -200,8 +206,7 @@ async function handleSave(data: {
       if (auth.user && auth.user.id === updated.id) {
         auth.user = { ...auth.user, ...updated, avatar_variant: data.avatar_variant }
       }
-    }
-    else {
+    } else {
       const payload: CreateUserPayload = {
         name: data.name,
         email: data.email,
@@ -216,11 +221,10 @@ async function handleSave(data: {
       persistUserAvatar(created.email, { variant: data.avatar_variant })
     }
     closeModal()
-  }
-  catch (err: unknown) {
-    serverError.value = getFirstApiErrorMessage(err) ?? 'تعذر حفظ بيانات الموظف. راجع الحقول ثم أعد المحاولة.'
-  }
-  finally {
+  } catch (err: unknown) {
+    serverError.value =
+      getFirstApiErrorMessage(err) ?? 'تعذر حفظ بيانات الموظف. راجع الحقول ثم أعد المحاولة.'
+  } finally {
     saving.value = false
   }
 }
@@ -239,22 +243,24 @@ async function confirmDeactivate() {
       is_active: false,
     }
     const updated = await updateUser(target.id, payload)
-    const idx = staff.value.findIndex(s => s.id === updated.id)
+    const idx = staff.value.findIndex((s) => s.id === updated.id)
     if (idx !== -1) staff.value[idx] = updated
     closeDeactivate()
-  }
-  catch {
+  } catch {
     closeDeactivate()
     await loadStaff()
-  }
-  finally {
+  } finally {
     deactivating.value = false
   }
 }
 
 function formatJoinDate(dateStr: string | null | undefined): string {
   if (!dateStr) return '—'
-  return new Date(dateStr).toLocaleDateString('ar-YE', { year: 'numeric', month: 'short', day: 'numeric' })
+  return new Date(dateStr).toLocaleDateString('ar-YE', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  })
 }
 
 function activeStatusCell(isActive: boolean) {
@@ -271,11 +277,22 @@ function activeStatusCell(isActive: boolean) {
         h('line', { x1: '9', y1: '9', x2: '15', y2: '15' }),
       ]
   return h('span', { class: 'inline-flex items-center gap-1.5 whitespace-nowrap' }, [
-    h('svg', {
-      class: 'shrink-0', style: { color }, width: 15, height: 15,
-      viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor',
-      'stroke-width': '2.5', 'stroke-linecap': 'round', 'stroke-linejoin': 'round',
-    }, paths),
+    h(
+      'svg',
+      {
+        class: 'shrink-0',
+        style: { color },
+        width: 15,
+        height: 15,
+        viewBox: '0 0 24 24',
+        fill: 'none',
+        stroke: 'currentColor',
+        'stroke-width': '2.5',
+        'stroke-linecap': 'round',
+        'stroke-linejoin': 'round',
+      },
+      paths,
+    ),
     h('span', { class: 'text-sm font-medium text-foreground' }, label),
   ])
 }
@@ -306,7 +323,8 @@ const columns: ColumnDef<User>[] = [
     accessorKey: 'role',
     header: 'الدور',
     filterFn: (row, _id, value: string[]) => value.includes(row.original.role),
-    cell: ({ row }) => h(Badge, { variant: 'outline' }, () => ROLE_LABELS[row.original.role] ?? row.original.role),
+    cell: ({ row }) =>
+      h(Badge, { variant: 'outline' }, () => ROLE_LABELS[row.original.role] ?? row.original.role),
   },
   {
     accessorKey: 'is_active',
@@ -317,7 +335,12 @@ const columns: ColumnDef<User>[] = [
   {
     id: 'joined',
     header: 'تاريخ الانضمام',
-    cell: ({ row }) => h('span', { class: 'text-sm text-muted-foreground' }, formatJoinDate(row.original.created_at)),
+    cell: ({ row }) =>
+      h(
+        'span',
+        { class: 'text-sm text-muted-foreground' },
+        formatJoinDate(row.original.created_at),
+      ),
   },
   {
     id: 'last_login',
@@ -333,34 +356,57 @@ const columns: ColumnDef<User>[] = [
     enableHiding: false,
     cell: ({ row }) => {
       const member = row.original
-      return h(DropdownMenu, {}, {
-        default: () => [
-          h(DropdownMenuTrigger, { asChild: true }, {
-            default: () => h(Button, {
-              variant: 'ghost', size: 'icon', class: 'h-8 w-8',
-            }, {
-              default: () => [
-                h('span', { class: 'sr-only' }, 'فتح القائمة'),
-                h(MoreHorizontal, { class: 'h-4 w-4' }),
-              ],
-            }),
-          }),
-          h(DropdownMenuContent, { align: 'end' }, {
-            default: () => [
-              h(DropdownMenuItem, { onClick: () => openEdit(member) }, () => 'تعديل'),
-              ...(member.is_active
-                ? [
-                    h(DropdownMenuSeparator),
-                    h(DropdownMenuItem, {
-                      class: 'btn-deactivate text-destructive',
-                      onClick: () => openDeactivate(member),
-                    }, () => 'إلغاء التفعيل'),
-                  ]
-                : []),
-            ],
-          }),
-        ],
-      })
+      return h(
+        DropdownMenu,
+        {},
+        {
+          default: () => [
+            h(
+              DropdownMenuTrigger,
+              { asChild: true },
+              {
+                default: () =>
+                  h(
+                    Button,
+                    {
+                      variant: 'ghost',
+                      size: 'icon',
+                      class: 'h-8 w-8',
+                    },
+                    {
+                      default: () => [
+                        h('span', { class: 'sr-only' }, 'فتح القائمة'),
+                        h(MoreHorizontal, { class: 'h-4 w-4' }),
+                      ],
+                    },
+                  ),
+              },
+            ),
+            h(
+              DropdownMenuContent,
+              { align: 'end' },
+              {
+                default: () => [
+                  h(DropdownMenuItem, { onClick: () => openEdit(member) }, () => 'تعديل'),
+                  ...(member.is_active
+                    ? [
+                        h(DropdownMenuSeparator),
+                        h(
+                          DropdownMenuItem,
+                          {
+                            class: 'btn-deactivate text-destructive',
+                            onClick: () => openDeactivate(member),
+                          },
+                          () => 'إلغاء التفعيل',
+                        ),
+                      ]
+                    : []),
+                ],
+              },
+            ),
+          ],
+        },
+      )
     },
   },
 ]
@@ -393,7 +439,7 @@ const exportCols = [
   {
     key: 'is_active',
     label: 'الحالة',
-    format: (_value: unknown, row: User) => row.is_active ? 'نشط' : 'غير نشط',
+    format: (_value: unknown, row: User) => (row.is_active ? 'نشط' : 'غير نشط'),
   },
   {
     key: 'created_at',
@@ -408,7 +454,9 @@ const exportCols = [
 ]
 
 const table = useVueTable({
-  get data() { return filteredStaff.value },
+  get data() {
+    return filteredStaff.value
+  },
   columns,
   getCoreRowModel: getCoreRowModel(),
   getPaginationRowModel: getPaginationRowModel(),
@@ -416,13 +464,18 @@ const table = useVueTable({
   getFilteredRowModel: getFilteredRowModel(),
   getFacetedRowModel: getFacetedRowModel(),
   getFacetedUniqueValues: getFacetedUniqueValues(),
-  onColumnFiltersChange: updater =>
+  onColumnFiltersChange: (updater) =>
     (columnFilters.value = typeof updater === 'function' ? updater(columnFilters.value) : updater),
-  onColumnVisibilityChange: updater =>
-    (columnVisibility.value = typeof updater === 'function' ? updater(columnVisibility.value) : updater),
+  onColumnVisibilityChange: (updater) =>
+    (columnVisibility.value =
+      typeof updater === 'function' ? updater(columnVisibility.value) : updater),
   state: {
-    get columnFilters() { return columnFilters.value },
-    get columnVisibility() { return columnVisibility.value },
+    get columnFilters() {
+      return columnFilters.value
+    },
+    get columnVisibility() {
+      return columnVisibility.value
+    },
   },
   initialState: { pagination: { pageSize: 20 } },
 })
@@ -442,17 +495,14 @@ function applyAccessHealthFilter(key: typeof accessHealthFilter.value) {
     // Toggle off — clear filters
     accessHealthFilter.value = null
     table.resetColumnFilters()
-  }
-  else {
+  } else {
     accessHealthFilter.value = key
     table.resetColumnFilters()
     if (key === 'active') {
       table.getColumn('is_active')?.setFilterValue(['true'])
-    }
-    else if (key === 'inactive') {
+    } else if (key === 'inactive') {
       table.getColumn('is_active')?.setFilterValue(['false'])
-    }
-    else if (key === 'bank_reviewer') {
+    } else if (key === 'bank_reviewer') {
       table.getColumn('role')?.setFilterValue([UserRole.BANK_REVIEWER])
     }
   }
@@ -540,15 +590,15 @@ onMounted(loadStaff)
           :loading="loading"
           :column-filters="columnFilters"
           :column-visibility="columnVisibility"
-          @update:column-filters="(v) => columnFilters = v"
-          @update:column-visibility="(v) => columnVisibility = v"
+          @update:column-filters="(v) => (columnFilters = v)"
+          @update:column-visibility="(v) => (columnVisibility = v)"
         >
           <template #toolbar="{ table }">
             <DataTableToolbar
               :table="table"
               search-placeholder="بحث بالاسم أو البريد الإلكتروني..."
               :has-filters="hasActiveFilters"
-              @update:search="v => query = v"
+              @update:search="(v) => (query = v)"
               @reset="handleReset"
             >
               <template #filters>
@@ -568,8 +618,8 @@ onMounted(loadStaff)
               <template #actions>
                 <DataTableViewOptions :table="table" :column-labels="STAFF_COLUMN_LABELS" />
                 <DataTableExport
-                  :table="(table as any)"
-                  :export-columns="(exportCols as any)"
+                  :table="table as any"
+                  :export-columns="exportCols as any"
                   :filename="buildExportFilename()"
                   :formats="['csv', 'tsv', 'json', 'excel', 'pdf']"
                   :respect-column-visibility="true"
@@ -578,9 +628,11 @@ onMounted(loadStaff)
             </DataTableToolbar>
           </template>
           <template #empty>
-            <Empty class="min-h-[200px] rounded-xl border border-dashed bg-muted/20">
+            <Empty class="bg-muted/20 min-h-[200px] rounded-xl border border-dashed">
               <EmptyHeader>
-                <div class="flex size-12 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+                <div
+                  class="bg-muted text-muted-foreground flex size-12 items-center justify-center rounded-xl"
+                >
                   <SearchX class="size-5" />
                 </div>
                 <EmptyTitle>
@@ -589,9 +641,11 @@ onMounted(loadStaff)
               </EmptyHeader>
               <EmptyContent>
                 <EmptyDescription>
-                  {{ staff.length === 0
-                    ? 'ابدأ بإضافة أول موظف في بنكك باستخدام زر "موظف جديد" أعلاه.'
-                    : 'جرّب تغيير البحث أو إزالة فلتر الدور أو الحالة.' }}
+                  {{
+                    staff.length === 0
+                      ? 'ابدأ بإضافة أول موظف في بنكك باستخدام زر "موظف جديد" أعلاه.'
+                      : 'جرّب تغيير البحث أو إزالة فلتر الدور أو الحالة.'
+                  }}
                 </EmptyDescription>
               </EmptyContent>
             </Empty>
@@ -619,8 +673,8 @@ onMounted(loadStaff)
         <AlertDialogHeader>
           <AlertDialogTitle>تأكيد إلغاء التفعيل</AlertDialogTitle>
           <AlertDialogDescription>
-            هل أنت متأكد من إلغاء تفعيل حساب <strong>{{ deactivatingStaff?.name }}</strong>؟
-            لن يتمكن من تسجيل الدخول بعد ذلك.
+            هل أنت متأكد من إلغاء تفعيل حساب <strong>{{ deactivatingStaff?.name }}</strong
+            >؟ لن يتمكن من تسجيل الدخول بعد ذلك.
           </AlertDialogDescription>
         </AlertDialogHeader>
 
@@ -631,12 +685,10 @@ onMounted(loadStaff)
           role="alert"
           data-testid="deactivate-precheck-data-entry"
         >
-          <p class="font-semibold text-[var(--severity-amber)]">
-            تحقق من المسودات النشطة
-          </p>
-          <p class="mt-1 text-xs text-foreground">
-            قد يكون لهذا الموظف طلبات في حالة مسودة أو مُعادة للتصحيح. بعد التعطيل، لن يتمكن من إتمامها.
-            تأكد من نقل مسؤولية هذه الطلبات قبل المتابعة.
+          <p class="font-semibold text-[var(--severity-amber)]">تحقق من المسودات النشطة</p>
+          <p class="text-foreground mt-1 text-xs">
+            قد يكون لهذا الموظف طلبات في حالة مسودة أو مُعادة للتصحيح. بعد التعطيل، لن يتمكن من
+            إتمامها. تأكد من نقل مسؤولية هذه الطلبات قبل المتابعة.
           </p>
         </div>
         <div
@@ -645,10 +697,8 @@ onMounted(loadStaff)
           role="alert"
           data-testid="deactivate-precheck-bank-reviewer"
         >
-          <p class="font-semibold text-[var(--severity-amber)]">
-            تحقق من الطلبات قيد المراجعة
-          </p>
-          <p class="mt-1 text-xs text-foreground">
+          <p class="font-semibold text-[var(--severity-amber)]">تحقق من الطلبات قيد المراجعة</p>
+          <p class="text-foreground mt-1 text-xs">
             قد يكون لهذا المراجع طلبات قيد المراجعة حالياً. بعد التعطيل، لن يتمكن من إكمال مراجعتها.
             تأكد من توفر مراجع آخر نشط يمكنه الاستمرار بهذه الطلبات.
           </p>
@@ -656,7 +706,12 @@ onMounted(loadStaff)
 
         <AlertDialogFooter class="gap-2">
           <AlertDialogCancel :disabled="deactivating">إلغاء</AlertDialogCancel>
-          <Button variant="destructive" class="btn-danger" :disabled="deactivating" @click="confirmDeactivate">
+          <Button
+            variant="destructive"
+            class="btn-danger"
+            :disabled="deactivating"
+            @click="confirmDeactivate"
+          >
             {{ deactivating ? 'جارٍ التعطيل…' : 'تعطيل' }}
           </Button>
         </AlertDialogFooter>

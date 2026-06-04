@@ -100,10 +100,28 @@ const ROLE_LABELS: Record<string, string> = {
 
 // ── Nav items ──────────────────────────────────────────────────────────────────
 const userTabs = [
-  { value: 'profile', label: 'الملف الشخصي', icon: UserRound, dataTab: 'profile', testId: 'tab-profile' },
-  { value: 'appearance', label: 'المظهر الشخصي', icon: Sliders, dataTab: 'appearance', testId: 'tab-appearance' },
+  {
+    value: 'profile',
+    label: 'الملف الشخصي',
+    icon: UserRound,
+    dataTab: 'profile',
+    testId: 'tab-profile',
+  },
+  {
+    value: 'appearance',
+    label: 'المظهر الشخصي',
+    icon: Sliders,
+    dataTab: 'appearance',
+    testId: 'tab-appearance',
+  },
   { value: 'notif', label: 'التنبيهات', icon: Bell, dataTab: 'notifications', testId: 'tab-notif' },
-  { value: 'security', label: 'الأمان', icon: ShieldAlert, dataTab: 'security', testId: 'tab-security' },
+  {
+    value: 'security',
+    label: 'الأمان',
+    icon: ShieldAlert,
+    dataTab: 'security',
+    testId: 'tab-security',
+  },
 ] as const
 
 type UserTab = (typeof userTabs)[number]['value']
@@ -112,14 +130,26 @@ const activeSection = computed<UserTab>(() => normalizeSection(route.query.secti
 
 function normalizeSection(raw: unknown): UserTab | null {
   if (typeof raw !== 'string') return null
-  return userTabs.some(t => t.value === raw) ? (raw as UserTab) : null
+  return userTabs.some((t) => t.value === raw) ? (raw as UserTab) : null
 }
 
 // ── Security (password / MFA / PIN) ───────────────────────────────────────────
-const { toggleMfa: composableToggleMfa, setupTotp, verifyTotpSetup, disableTotp, disableTotpWithPassword, setPin: savePinOnServer, disablePin: disablePinOnServer, changePassword, updateProfile } = useProfile()
+const {
+  toggleMfa: composableToggleMfa,
+  setupTotp,
+  verifyTotpSetup,
+  disableTotp,
+  disableTotpWithPassword,
+  setPin: savePinOnServer,
+  disablePin: disablePinOnServer,
+  changePassword,
+  updateProfile,
+} = useProfile()
 const { accounts: allAccounts, removeAccount, getPINStatus, setPINStatus } = useSavedAccounts()
 const currentUserDevices = computed(() =>
-  allAccounts.value.filter(a => a.email.trim().toLowerCase() === (user.value?.email ?? '').trim().toLowerCase()),
+  allAccounts.value.filter(
+    (a) => a.email.trim().toLowerCase() === (user.value?.email ?? '').trim().toLowerCase(),
+  ),
 )
 
 const passwordForm = reactive({ current_password: '', password: '', password_confirmation: '' })
@@ -145,15 +175,12 @@ async function submitPasswordChange() {
       passwordForm.password = ''
       passwordForm.password_confirmation = ''
       toast.success('تم تغيير كلمة المرور بنجاح')
-    }
-    else {
+    } else {
       passwordError.value = 'تعذر تغيير كلمة المرور. تحقق من كلمة المرور الحالية.'
     }
-  }
-  catch {
+  } catch {
     passwordError.value = 'حدث خطأ غير متوقع. أعد المحاولة.'
-  }
-  finally {
+  } finally {
     passwordSaving.value = false
   }
 }
@@ -183,8 +210,9 @@ function resolvePinDialogRoot(contentRef: PinDialogContentRef): HTMLElement | nu
 function focusPinInput() {
   nextTick(() => {
     requestAnimationFrame(() => {
-      const root = resolvePinDialogRoot(pinDialogContentRef.value)
-        ?? document.querySelector<HTMLElement>('[data-slot="dialog-content"][data-state="open"]')
+      const root =
+        resolvePinDialogRoot(pinDialogContentRef.value) ??
+        document.querySelector<HTMLElement>('[data-slot="dialog-content"][data-state="open"]')
       const input = root?.querySelector<HTMLInputElement>(
         'input[data-input-otp], input:not([type=hidden]):not([disabled])',
       )
@@ -212,12 +240,17 @@ watch(pinCurrent, (val) => {
   if (val.length === 6 && pinDialogStage.value === 'current') pinDialogStage.value = 'new'
 })
 
-watch(pinDialogStage, () => { focusPinInput() })
+watch(pinDialogStage, () => {
+  focusPinInput()
+})
 
 async function submitPinAction() {
   pinError.value = null
   if (pinDialogMode.value === 'disable') {
-    if (pinCurrent.value.length < 6) { pinError.value = 'الرجاء إدخال رمز PIN الحالي'; return }
+    if (pinCurrent.value.length < 6) {
+      pinError.value = 'الرجاء إدخال رمز PIN الحالي'
+      return
+    }
     isPinSaving.value = true
     try {
       const ok = await disablePinOnServer(pinCurrent.value)
@@ -226,16 +259,21 @@ async function submitPinAction() {
       hasPIN.value = false
       pinDialogOpen.value = false
       toast.success('تم تعطيل رمز PIN بنجاح')
+    } catch {
+      pinError.value = 'رمز PIN الحالي غير صحيح'
+    } finally {
+      isPinSaving.value = false
     }
-    catch { pinError.value = 'رمز PIN الحالي غير صحيح' }
-    finally { isPinSaving.value = false }
     return
   }
   if (pinNew.value.length < 6 || pinConfirm.value.length < 6) {
-    pinError.value = 'الرجاء إدخال رمز PIN المكوّن من 6 أرقام في كلا الحقلين'; return
+    pinError.value = 'الرجاء إدخال رمز PIN المكوّن من 6 أرقام في كلا الحقلين'
+    return
   }
   if (pinNew.value !== pinConfirm.value) {
-    pinError.value = 'رمز PIN غير متطابق. يرجى المحاولة مرة أخرى.'; pinConfirm.value = ''; return
+    pinError.value = 'رمز PIN غير متطابق. يرجى المحاولة مرة أخرى.'
+    pinConfirm.value = ''
+    return
   }
   isPinSaving.value = true
   try {
@@ -245,10 +283,14 @@ async function submitPinAction() {
     setPINStatus(user.value?.email ?? '', true)
     hasPIN.value = true
     pinDialogOpen.value = false
-    toast.success(pinDialogMode.value === 'create' ? 'تم إنشاء رمز PIN بنجاح' : 'تم تغيير رمز PIN بنجاح')
+    toast.success(
+      pinDialogMode.value === 'create' ? 'تم إنشاء رمز PIN بنجاح' : 'تم تغيير رمز PIN بنجاح',
+    )
+  } catch {
+    pinError.value = 'تعذر حفظ رمز PIN الآن. أعد المحاولة بعد قليل.'
+  } finally {
+    isPinSaving.value = false
   }
-  catch { pinError.value = 'تعذر حفظ رمز PIN الآن. أعد المحاولة بعد قليل.' }
-  finally { isPinSaving.value = false }
 }
 
 function removeTrustedDevice(id: string) {
@@ -291,7 +333,10 @@ function openMfaDisable() {
 }
 
 async function confirmMfaDisableWithPassword() {
-  if (!mfaDisablePassword.value) { mfaSetupError.value = 'الرجاء إدخال كلمة المرور'; return }
+  if (!mfaDisablePassword.value) {
+    mfaSetupError.value = 'الرجاء إدخال كلمة المرور'
+    return
+  }
   isMfaActionLoading.value = true
   mfaSetupError.value = null
   try {
@@ -301,9 +346,12 @@ async function confirmMfaDisableWithPassword() {
     mfaEnabled.value = false
     mfaDialogOpen.value = false
     toast.success('تم تعطيل تطبيق المصادقة')
+  } catch {
+    mfaSetupError.value = 'كلمة المرور غير صحيحة.'
+    mfaDisablePassword.value = ''
+  } finally {
+    isMfaActionLoading.value = false
   }
-  catch { mfaSetupError.value = 'كلمة المرور غير صحيحة.'; mfaDisablePassword.value = '' }
-  finally { isMfaActionLoading.value = false }
 }
 
 function copyMfaSecret() {
@@ -320,13 +368,18 @@ async function loadTotpSetup() {
     liveMfaSecret.value = data.secret
     liveMfaUri.value = data.provisioning_uri
     mfaDialogStage.value = 'scan'
+  } catch {
+    mfaSetupError.value = 'تعذر تحميل رمز QR الآن. أعد المحاولة بعد قليل.'
+  } finally {
+    isMfaActionLoading.value = false
   }
-  catch { mfaSetupError.value = 'تعذر تحميل رمز QR الآن. أعد المحاولة بعد قليل.' }
-  finally { isMfaActionLoading.value = false }
 }
 
 async function confirmMfaSetup() {
-  if (mfaVerifyCode.value.length < 6) { mfaSetupError.value = 'الرجاء إدخال الرمز المكوّن من 6 أرقام'; return }
+  if (mfaVerifyCode.value.length < 6) {
+    mfaSetupError.value = 'الرجاء إدخال الرمز المكوّن من 6 أرقام'
+    return
+  }
   isMfaActionLoading.value = true
   mfaSetupError.value = null
   try {
@@ -336,13 +389,19 @@ async function confirmMfaSetup() {
     mfaEnabled.value = true
     mfaDialogOpen.value = false
     toast.success('تم تفعيل تطبيق المصادقة بنجاح')
+  } catch {
+    mfaSetupError.value = 'الرمز غير صحيح. تحقق من تطبيق المصادقة وحاول مجدداً.'
+    mfaVerifyCode.value = ''
+  } finally {
+    isMfaActionLoading.value = false
   }
-  catch { mfaSetupError.value = 'الرمز غير صحيح. تحقق من تطبيق المصادقة وحاول مجدداً.'; mfaVerifyCode.value = '' }
-  finally { isMfaActionLoading.value = false }
 }
 
 async function confirmMfaDisable() {
-  if (mfaVerifyCode.value.length < 6) { mfaSetupError.value = 'الرجاء إدخال رمز التحقق لتأكيد التعطيل'; return }
+  if (mfaVerifyCode.value.length < 6) {
+    mfaSetupError.value = 'الرجاء إدخال رمز التحقق لتأكيد التعطيل'
+    return
+  }
   isMfaActionLoading.value = true
   mfaSetupError.value = null
   try {
@@ -352,9 +411,12 @@ async function confirmMfaDisable() {
     mfaEnabled.value = false
     mfaDialogOpen.value = false
     toast.success('تم تعطيل تطبيق المصادقة')
+  } catch {
+    mfaSetupError.value = 'رمز التحقق غير صحيح.'
+    mfaVerifyCode.value = ''
+  } finally {
+    isMfaActionLoading.value = false
   }
-  catch { mfaSetupError.value = 'رمز التحقق غير صحيح.'; mfaVerifyCode.value = '' }
-  finally { isMfaActionLoading.value = false }
 }
 
 // ── Profile form ───────────────────────────────────────────────────────────────
@@ -418,30 +480,70 @@ async function saveProfile() {
 // ── Appearance options ─────────────────────────────────────────────────────────
 const fontPickerOpen = ref(false)
 
-const themeOptions: Array<{ value: ThemeMode, label: string, description: string, icon: typeof Sun }> = [
+const themeOptions: Array<{
+  value: ThemeMode
+  label: string
+  description: string
+  icon: typeof Sun
+}> = [
   { value: 'dark', label: 'داكن', description: 'واجهة منخفضة السطوع', icon: Moon },
   { value: 'light', label: 'فاتح', description: 'واجهة عالية الوضوح', icon: Sun },
   { value: 'system', label: 'النظام', description: 'حسب إعداد الجهاز', icon: Monitor },
 ]
 
-const layoutOptions: Array<{ value: LayoutMode, label: string, description: string, icon: typeof Maximize2 }> = [
+const layoutOptions: Array<{
+  value: LayoutMode
+  label: string
+  description: string
+  icon: typeof Maximize2
+}> = [
   { value: 'full', label: 'كامل العرض', description: 'يستخدم كامل مساحة الشاشة', icon: Maximize2 },
-  { value: 'boxed', label: 'محدود العرض', description: 'محتوى مركزي للقراءة الهادئة', icon: Square },
+  {
+    value: 'boxed',
+    label: 'محدود العرض',
+    description: 'محتوى مركزي للقراءة الهادئة',
+    icon: Square,
+  },
 ]
 
-const sidebarVariantOptions: Array<{ value: SidebarVariant, label: string, description: string, icon: typeof PanelLeft }> = [
+const sidebarVariantOptions: Array<{
+  value: SidebarVariant
+  label: string
+  description: string
+  icon: typeof PanelLeft
+}> = [
   { value: 'sidebar', label: 'ثابت', description: 'شريط جانبي أرضي مدمج', icon: PanelLeft },
   { value: 'floating', label: 'عائم', description: 'شريط مرتفع بظل خفيف', icon: PanelLeftDashed },
   { value: 'inset', label: 'مضمّن', description: 'محتوى غارق داخل الصفحة', icon: Columns2 },
 ]
 
-const sidebarCollapsibleOptions: Array<{ value: SidebarCollapsible, label: string, description: string, icon: typeof PanelLeft }> = [
-  { value: 'offcanvas', label: 'خارج الشاشة', description: 'يختفي الشريط الجانبي تماماً عند الطي', icon: PanelLeftClose },
-  { value: 'icon', label: 'أيقونات فقط', description: 'يتقلص إلى أيقونات مع الحفاظ على المساحة', icon: PanelLeft },
-  { value: 'none', label: 'ثابت دائماً', description: 'لا يمكن طي الشريط الجانبي', icon: PanelLeft },
+const sidebarCollapsibleOptions: Array<{
+  value: SidebarCollapsible
+  label: string
+  description: string
+  icon: typeof PanelLeft
+}> = [
+  {
+    value: 'offcanvas',
+    label: 'خارج الشاشة',
+    description: 'يختفي الشريط الجانبي تماماً عند الطي',
+    icon: PanelLeftClose,
+  },
+  {
+    value: 'icon',
+    label: 'أيقونات فقط',
+    description: 'يتقلص إلى أيقونات مع الحفاظ على المساحة',
+    icon: PanelLeft,
+  },
+  {
+    value: 'none',
+    label: 'ثابت دائماً',
+    description: 'لا يمكن طي الشريط الجانبي',
+    icon: PanelLeft,
+  },
 ]
 
-const radiusOptions: Array<{ value: RadiusPreference, label: string, previewRadius: string }> = [
+const radiusOptions: Array<{ value: RadiusPreference; label: string; previewRadius: string }> = [
   { value: 'none', label: 'بدون', previewRadius: '0px' },
   { value: 'sm', label: 'صغير', previewRadius: '0.25rem' },
   { value: 'md', label: 'متوسط', previewRadius: '0.5rem' },
@@ -449,19 +551,49 @@ const radiusOptions: Array<{ value: RadiusPreference, label: string, previewRadi
   { value: 'xl', label: 'كبير جداً', previewRadius: '1rem' },
 ]
 
-const densityOptions: Array<{ value: DensityPreference, label: string, description: string }> = [
+const densityOptions: Array<{ value: DensityPreference; label: string; description: string }> = [
   { value: 'comfortable', label: 'مريح', description: 'تباعد واسع بين العناصر' },
   { value: 'compact', label: 'مضغوط', description: 'عرض أكثر معلومات في مساحة أقل' },
 ]
 
 // ── Personal notification prefs ────────────────────────────────────────────────
 const personalNotifications = ref([
-  { id: 'status_change', label: 'تغييرات حالة طلباتي', description: 'عند تحديث حالة أي طلب أشارك فيه', enabled: true },
-  { id: 'task_assigned', label: 'تكليف مهام جديدة', description: 'عند إسناد مهمة مراجعة أو تصويت إليّ', enabled: true },
-  { id: 'comments', label: 'التعليقات والملاحظات', description: 'عند إضافة تعليق على طلب مرتبط بي', enabled: true },
-  { id: 'deadlines', label: 'تذكيرات المواعيد النهائية', description: 'قبل 24 ساعة من انتهاء مهلة المراجعة', enabled: false },
-  { id: 'session_open', label: 'فتح جلسات التصويت', description: 'عند فتح جلسة تصويت جديدة', enabled: true },
-  { id: 'reports', label: 'التقارير الدورية', description: 'ملخص أسبوعي لنشاط العمل', enabled: false },
+  {
+    id: 'status_change',
+    label: 'تغييرات حالة طلباتي',
+    description: 'عند تحديث حالة أي طلب أشارك فيه',
+    enabled: true,
+  },
+  {
+    id: 'task_assigned',
+    label: 'تكليف مهام جديدة',
+    description: 'عند إسناد مهمة مراجعة أو تصويت إليّ',
+    enabled: true,
+  },
+  {
+    id: 'comments',
+    label: 'التعليقات والملاحظات',
+    description: 'عند إضافة تعليق على طلب مرتبط بي',
+    enabled: true,
+  },
+  {
+    id: 'deadlines',
+    label: 'تذكيرات المواعيد النهائية',
+    description: 'قبل 24 ساعة من انتهاء مهلة المراجعة',
+    enabled: false,
+  },
+  {
+    id: 'session_open',
+    label: 'فتح جلسات التصويت',
+    description: 'عند فتح جلسة تصويت جديدة',
+    enabled: true,
+  },
+  {
+    id: 'reports',
+    label: 'التقارير الدورية',
+    description: 'ملخص أسبوعي لنشاط العمل',
+    enabled: false,
+  },
 ])
 
 const profilePayload = computed(() => ({
@@ -482,7 +614,7 @@ const appearancePayload = computed(() => ({
 }))
 
 const notificationsPayload = computed(() => ({
-  settings: personalNotifications.value.map(item => ({
+  settings: personalNotifications.value.map((item) => ({
     id: item.id,
     enabled: item.enabled,
   })),
@@ -493,21 +625,17 @@ watch(fontPickerOpen, (opened) => {
     themingStore.loadGoogleFonts()
 })
 
-watch(
-  profilePayload,
-  value => settingsStore.trackSectionState('userProfile', value),
-  { deep: true },
-)
+watch(profilePayload, (value) => settingsStore.trackSectionState('userProfile', value), {
+  deep: true,
+})
 
-watch(
-  appearancePayload,
-  value => settingsStore.trackSectionState('userAppearance', value),
-  { deep: true },
-)
+watch(appearancePayload, (value) => settingsStore.trackSectionState('userAppearance', value), {
+  deep: true,
+})
 
 watch(
   notificationsPayload,
-  value => settingsStore.trackSectionState('userNotifications', value),
+  (value) => settingsStore.trackSectionState('userNotifications', value),
   { deep: true },
 )
 
@@ -528,21 +656,17 @@ async function saveAppearance() {
     themingStore.applyAppearanceSettings(authStore.userPreferences?.theming)
     settingsStore.markSectionClean('userAppearance', undefined, appearancePayload.value)
     toast.success('تم حفظ إعدادات المظهر الشخصي بنجاح')
-  }
-  else {
+  } else {
     toast.error(settingsStore.error || 'فشل حفظ الإعدادات')
   }
 }
 
 function savePersonalNotifications() {
-  toast.promise(
-    settingsStore.saveSection('notif', notificationsPayload.value),
-    {
-      loading: 'جاري حفظ إعدادات التنبيهات...',
-      success: 'تم حفظ إعدادات التنبيهات بنجاح',
-      error: () => settingsStore.error || 'فشل حفظ الإعدادات',
-    },
-  )
+  toast.promise(settingsStore.saveSection('notif', notificationsPayload.value), {
+    loading: 'جاري حفظ إعدادات التنبيهات...',
+    success: 'تم حفظ إعدادات التنبيهات بنجاح',
+    error: () => settingsStore.error || 'فشل حفظ الإعدادات',
+  })
 }
 </script>
 
@@ -554,7 +678,7 @@ function savePersonalNotifications() {
       :breadcrumbs="[{ label: 'الرئيسية', to: '/' }, { label: 'إعداداتي' }]"
     />
 
-    <div  class="flex flex-col gap-6 lg:flex-row">
+    <div class="flex flex-col gap-6 lg:flex-row">
       <!-- ── Desktop: left sidebar nav ───────────────────────────────────── -->
       <aside class="hidden lg:block lg:w-56 lg:shrink-0">
         <nav class="flex flex-col gap-1">
@@ -564,12 +688,14 @@ function savePersonalNotifications() {
             :to="{ path: '/settings', query: { section: tab.value } }"
             :data-tab="tab.dataTab"
             :data-testid="tab.testId"
-            :class="cn(
-              'flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm transition-colors',
-              activeSection === tab.value
-                ? 'bg-muted font-medium text-foreground'
-                : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground',
-            )"
+            :class="
+              cn(
+                'flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm transition-colors',
+                activeSection === tab.value
+                  ? 'bg-muted text-foreground font-medium'
+                  : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground',
+              )
+            "
             :aria-current="activeSection === tab.value ? 'page' : undefined"
           >
             <component :is="tab.icon" class="size-4 shrink-0" />
@@ -585,12 +711,14 @@ function savePersonalNotifications() {
             v-for="tab in userTabs"
             :key="tab.value"
             :to="{ path: '/settings', query: { section: tab.value } }"
-            :class="cn(
-              'flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-2 text-sm transition-colors',
-              activeSection === tab.value
-                ? 'bg-muted font-medium text-foreground'
-                : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground',
-            )"
+            :class="
+              cn(
+                'flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-sm whitespace-nowrap transition-colors',
+                activeSection === tab.value
+                  ? 'bg-muted text-foreground font-medium'
+                  : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground',
+              )
+            "
           >
             <component :is="tab.icon" class="size-4 shrink-0" />
             {{ tab.label }}
@@ -598,12 +726,15 @@ function savePersonalNotifications() {
         </div>
 
         <div class="space-y-6">
-
           <!-- ── Profile ──────────────────────────────────────────────────── -->
           <section v-if="activeSection === 'profile'" data-panel="profile" class="space-y-6">
             <div>
-              <h3 class="font-heading text-base font-semibold leading-6 text-foreground">الملف الشخصي</h3>
-              <p class="text-sm text-muted-foreground">معلوماتك الشخصية المرتبطة بحسابك في المنصة.</p>
+              <h3 class="font-heading text-foreground text-base leading-6 font-semibold">
+                الملف الشخصي
+              </h3>
+              <p class="text-muted-foreground text-sm">
+                معلوماتك الشخصية المرتبطة بحسابك في المنصة.
+              </p>
             </div>
             <Separator />
             <div class="max-w-md">
@@ -622,12 +753,12 @@ function savePersonalNotifications() {
               </div>
               <div class="space-y-2">
                 <Label for="profile-email">البريد الإلكتروني</Label>
-                <Input id="profile-email" :model-value="user?.email ?? ''"  disabled />
-                <p class="text-xs text-muted-foreground">لا يمكن تغيير البريد الإلكتروني من هنا.</p>
+                <Input id="profile-email" :model-value="user?.email ?? ''" disabled />
+                <p class="text-muted-foreground text-xs">لا يمكن تغيير البريد الإلكتروني من هنا.</p>
               </div>
               <div class="space-y-2">
                 <Label for="profile-phone">رقم الهاتف</Label>
-                <Input id="profile-phone" v-model="profileForm.phone"  placeholder="+9677..." />
+                <Input id="profile-phone" v-model="profileForm.phone" placeholder="+9677..." />
               </div>
               <div class="space-y-2">
                 <Label>الجهة</Label>
@@ -635,10 +766,17 @@ function savePersonalNotifications() {
               </div>
               <div class="space-y-2">
                 <Label>الدور الوظيفي</Label>
-                <Input :model-value="ROLE_LABELS[user?.role ?? ''] ?? (user?.role ?? '')" disabled />
+                <Input :model-value="ROLE_LABELS[user?.role ?? ''] ?? user?.role ?? ''" disabled />
               </div>
               <div class="flex justify-end">
-                <Button :disabled="!settingsStore.isSectionDirty('userProfile') || profileSaving || settingsStore.saving" @click="saveProfile">
+                <Button
+                  :disabled="
+                    !settingsStore.isSectionDirty('userProfile') ||
+                    profileSaving ||
+                    settingsStore.saving
+                  "
+                  @click="saveProfile"
+                >
                   <Loader2 v-if="profileSaving" class="ms-2 h-4 w-4 animate-spin" />
                   حفظ التغييرات
                 </Button>
@@ -649,16 +787,24 @@ function savePersonalNotifications() {
           <!-- ── Appearance ───────────────────────────────────────────────── -->
           <section v-if="activeSection === 'appearance'" data-panel="appearance" class="space-y-6">
             <div>
-              <h3 class="font-heading text-base font-semibold leading-6 text-foreground">المظهر الشخصي</h3>
-              <p class="text-sm text-muted-foreground">تخصيص واجهة المنصة لتناسب تفضيلاتك — لا تؤثر على المستخدمين الآخرين.</p>
+              <h3 class="font-heading text-foreground text-base leading-6 font-semibold">
+                المظهر الشخصي
+              </h3>
+              <p class="text-muted-foreground text-sm">
+                تخصيص واجهة المنصة لتناسب تفضيلاتك — لا تؤثر على المستخدمين الآخرين.
+              </p>
             </div>
             <Separator />
 
             <!-- Sub-section: Theme mode -->
             <section class="space-y-4">
               <div>
-                <h4 class="font-section text-sm font-semibold leading-5 text-foreground">وضع الثيم</h4>
-                <p class="mt-0.5 text-xs text-muted-foreground">اختر وضع عرض الواجهة المناسب لبيئة عملك.</p>
+                <h4 class="font-section text-foreground text-sm leading-5 font-semibold">
+                  وضع الثيم
+                </h4>
+                <p class="text-muted-foreground mt-0.5 text-xs">
+                  اختر وضع عرض الواجهة المناسب لبيئة عملك.
+                </p>
               </div>
               <div class="grid gap-3 sm:grid-cols-3">
                 <button
@@ -666,29 +812,50 @@ function savePersonalNotifications() {
                   :key="option.value"
                   type="button"
                   class="flex cursor-pointer flex-col overflow-hidden rounded-xl border text-start transition-all hover:shadow-sm"
-                  :class="themingStore.mode === option.value ? 'border-2 border-primary ring-2 ring-primary/20' : 'border-border'"
+                  :class="
+                    themingStore.mode === option.value
+                      ? 'border-primary ring-primary/20 border-2 ring-2'
+                      : 'border-border'
+                  "
                   @click="selectTheme(option.value, $event)"
                 >
-                  <div class="relative h-24 w-full" :class="option.value === 'dark' ? 'bg-[#111827]' : option.value === 'light' ? 'bg-[#f3f4f6]' : 'bg-[#d1d5db]'">
+                  <div
+                    class="relative h-24 w-full"
+                    :class="
+                      option.value === 'dark'
+                        ? 'bg-[#111827]'
+                        : option.value === 'light'
+                          ? 'bg-[#f3f4f6]'
+                          : 'bg-[#d1d5db]'
+                    "
+                  >
                     <template v-if="option.value === 'light'">
-                      <div class="absolute inset-y-0 start-0 w-10 bg-[#ffffff] border-e border-[#e5e7eb] flex flex-col gap-1 p-1.5">
+                      <div
+                        class="absolute inset-y-0 start-0 flex w-10 flex-col gap-1 border-e border-[#e5e7eb] bg-[#ffffff] p-1.5"
+                      >
                         <div class="h-1.5 w-full rounded bg-[#e5e7eb]" />
                         <div class="h-1.5 w-3/4 rounded bg-[#0066cc]/40" />
                         <div class="h-1.5 w-full rounded bg-[#e5e7eb]" />
                       </div>
-                      <div class="absolute inset-y-2 start-12 end-2 rounded bg-[#ffffff] border border-[#e5e7eb] p-2">
+                      <div
+                        class="absolute inset-y-2 start-12 end-2 rounded border border-[#e5e7eb] bg-[#ffffff] p-2"
+                      >
                         <div class="h-3 rounded bg-[#f1f3f5]" />
                         <div class="mt-2 h-2 rounded bg-[#f1f3f5]" />
                         <div class="mt-1.5 h-2 rounded bg-[#f1f3f5]" />
                       </div>
                     </template>
                     <template v-else-if="option.value === 'dark'">
-                      <div class="absolute inset-y-0 start-0 w-10 bg-[#0f1218] border-e border-white/10 flex flex-col gap-1 p-1.5">
+                      <div
+                        class="absolute inset-y-0 start-0 flex w-10 flex-col gap-1 border-e border-white/10 bg-[#0f1218] p-1.5"
+                      >
                         <div class="h-1.5 w-full rounded bg-[#343a44]" />
                         <div class="h-1.5 w-3/4 rounded bg-[#0066cc]/70" />
                         <div class="h-1.5 w-full rounded bg-[#343a44]" />
                       </div>
-                      <div class="absolute inset-y-2 start-12 end-2 rounded bg-[#151820] border border-white/10 p-2">
+                      <div
+                        class="absolute inset-y-2 start-12 end-2 rounded border border-white/10 bg-[#151820] p-2"
+                      >
                         <div class="h-3 rounded bg-[#2a2e3a]" />
                         <div class="mt-2 h-2 rounded bg-[#2a2e3a]" />
                         <div class="mt-1.5 h-2 rounded bg-[#2a2e3a]" />
@@ -696,33 +863,58 @@ function savePersonalNotifications() {
                     </template>
                     <template v-else>
                       <!-- system: left half light, right half dark -->
-                      <div class="absolute inset-y-0 start-0 w-10 overflow-hidden flex flex-col gap-1 p-1.5" style="background: linear-gradient(to left, #0f1218 50%, #ffffff 50%); border-inline-end: 1px solid #9ca3af;">
-                        <div class="h-1.5 w-full rounded" style="background: linear-gradient(to left, #343a44 50%, #e5e7eb 50%)" />
+                      <div
+                        class="absolute inset-y-0 start-0 flex w-10 flex-col gap-1 overflow-hidden p-1.5"
+                        style="
+                          background: linear-gradient(to left, #0f1218 50%, #ffffff 50%);
+                          border-inline-end: 1px solid #9ca3af;
+                        "
+                      >
+                        <div
+                          class="h-1.5 w-full rounded"
+                          style="background: linear-gradient(to left, #343a44 50%, #e5e7eb 50%)"
+                        />
                         <div class="h-1.5 w-3/4 rounded bg-[#0066cc]/50" />
-                        <div class="h-1.5 w-full rounded" style="background: linear-gradient(to left, #343a44 50%, #e5e7eb 50%)" />
+                        <div
+                          class="h-1.5 w-full rounded"
+                          style="background: linear-gradient(to left, #343a44 50%, #e5e7eb 50%)"
+                        />
                       </div>
-                      <div class="absolute inset-y-2 start-12 end-2 overflow-hidden rounded border border-[#9ca3af]">
+                      <div
+                        class="absolute inset-y-2 start-12 end-2 overflow-hidden rounded border border-[#9ca3af]"
+                      >
                         <div class="absolute inset-y-0 start-0 w-1/2 bg-[#ffffff]" />
                         <div class="absolute inset-y-0 end-0 w-1/2 bg-[#151820]" />
                         <div class="relative p-2">
-                          <div class="h-3 rounded" style="background: linear-gradient(to left, #2a2e3a 50%, #f1f3f5 50%)" />
-                          <div class="mt-2 h-2 rounded" style="background: linear-gradient(to left, #2a2e3a 50%, #f1f3f5 50%)" />
-                          <div class="mt-1.5 h-2 rounded" style="background: linear-gradient(to left, #2a2e3a 50%, #f1f3f5 50%)" />
+                          <div
+                            class="h-3 rounded"
+                            style="background: linear-gradient(to left, #2a2e3a 50%, #f1f3f5 50%)"
+                          />
+                          <div
+                            class="mt-2 h-2 rounded"
+                            style="background: linear-gradient(to left, #2a2e3a 50%, #f1f3f5 50%)"
+                          />
+                          <div
+                            class="mt-1.5 h-2 rounded"
+                            style="background: linear-gradient(to left, #2a2e3a 50%, #f1f3f5 50%)"
+                          />
                         </div>
                       </div>
                     </template>
                     <span
                       v-if="themingStore.mode === option.value"
-                      class="absolute bottom-3 start-3 flex size-5 items-center justify-center rounded-full bg-primary text-primary-foreground"
+                      class="bg-primary text-primary-foreground absolute start-3 bottom-3 flex size-5 items-center justify-center rounded-full"
                     >
                       <Check class="h-3 w-3" />
                     </span>
                   </div>
-                  <div class="flex items-center gap-2 border-t border-border px-3 py-2">
-                    <component :is="option.icon" class="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <div class="border-border flex items-center gap-2 border-t px-3 py-2">
+                    <component :is="option.icon" class="text-muted-foreground h-4 w-4 shrink-0" />
                     <div class="min-w-0">
-                      <p class="font-section text-sm font-semibold leading-5 text-foreground">{{ option.label }}</p>
-                      <p class="truncate text-xs text-muted-foreground">{{ option.description }}</p>
+                      <p class="font-section text-foreground text-sm leading-5 font-semibold">
+                        {{ option.label }}
+                      </p>
+                      <p class="text-muted-foreground truncate text-xs">{{ option.description }}</p>
                     </div>
                   </div>
                 </button>
@@ -734,13 +926,20 @@ function savePersonalNotifications() {
             <!-- Sub-section: Font -->
             <section class="space-y-4">
               <div>
-                <h4 class="font-section text-sm font-semibold leading-5 text-foreground">الخط</h4>
-                <p class="mt-0.5 text-xs text-muted-foreground">الخط المستخدم في واجهتك الشخصية.</p>
+                <h4 class="font-section text-foreground text-sm leading-5 font-semibold">الخط</h4>
+                <p class="text-muted-foreground mt-0.5 text-xs">الخط المستخدم في واجهتك الشخصية.</p>
               </div>
               <Popover v-model:open="fontPickerOpen">
                 <PopoverTrigger as-child>
-                  <Button variant="outline" role="combobox" :aria-expanded="fontPickerOpen" class="h-10 w-full max-w-sm justify-between">
-                    <span class="truncate">{{ themingStore.selectedFontLabel || 'اختر خطاً...' }}</span>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    :aria-expanded="fontPickerOpen"
+                    class="h-10 w-full max-w-sm justify-between"
+                  >
+                    <span class="truncate">{{
+                      themingStore.selectedFontLabel || 'اختر خطاً...'
+                    }}</span>
                     <ChevronsUpDown class="h-4 w-4 opacity-50" />
                   </Button>
                 </PopoverTrigger>
@@ -758,14 +957,26 @@ function savePersonalNotifications() {
                         >
                           <div class="flex min-w-0 flex-col">
                             <span class="truncate">{{ font.label }}</span>
-                            <span class="truncate text-xs text-muted-foreground">{{ font.category }}</span>
+                            <span class="text-muted-foreground truncate text-xs">{{
+                              font.category
+                            }}</span>
                           </div>
-                          <Check :class="cn('ms-auto h-4 w-4', themingStore.font === font.value ? 'opacity-100' : 'opacity-0')" />
+                          <Check
+                            :class="
+                              cn(
+                                'ms-auto h-4 w-4',
+                                themingStore.font === font.value ? 'opacity-100' : 'opacity-0',
+                              )
+                            "
+                          />
                         </CommandItem>
                       </CommandGroup>
                       <CommandSeparator />
                       <CommandGroup heading="جميع الخطوط">
-                        <div v-if="themingStore.fontsLoading" class="flex items-center gap-2 px-2 py-3 text-sm text-muted-foreground">
+                        <div
+                          v-if="themingStore.fontsLoading"
+                          class="text-muted-foreground flex items-center gap-2 px-2 py-3 text-sm"
+                        >
                           <Loader2 class="h-4 w-4 animate-spin" />جاري تحميل القائمة...
                         </div>
                         <template v-else>
@@ -777,9 +988,18 @@ function savePersonalNotifications() {
                           >
                             <div class="flex min-w-0 flex-col">
                               <span class="truncate">{{ font.label }}</span>
-                              <span class="truncate text-xs text-muted-foreground">{{ font.category }}</span>
+                              <span class="text-muted-foreground truncate text-xs">{{
+                                font.category
+                              }}</span>
                             </div>
-                            <Check :class="cn('ms-auto h-4 w-4', themingStore.font === font.value ? 'opacity-100' : 'opacity-0')" />
+                            <Check
+                              :class="
+                                cn(
+                                  'ms-auto h-4 w-4',
+                                  themingStore.font === font.value ? 'opacity-100' : 'opacity-0',
+                                )
+                              "
+                            />
                           </CommandItem>
                         </template>
                       </CommandGroup>
@@ -794,8 +1014,12 @@ function savePersonalNotifications() {
             <!-- Sub-section: Layout -->
             <section class="space-y-4">
               <div>
-                <h4 class="font-section text-sm font-semibold leading-5 text-foreground">تخطيط المحتوى</h4>
-                <p class="mt-0.5 text-xs text-muted-foreground">كيفية توزيع المحتوى الرئيسي على الشاشة.</p>
+                <h4 class="font-section text-foreground text-sm leading-5 font-semibold">
+                  تخطيط المحتوى
+                </h4>
+                <p class="text-muted-foreground mt-0.5 text-xs">
+                  كيفية توزيع المحتوى الرئيسي على الشاشة.
+                </p>
               </div>
               <div class="grid gap-3 sm:grid-cols-2">
                 <button
@@ -803,40 +1027,54 @@ function savePersonalNotifications() {
                   :key="option.value"
                   type="button"
                   class="flex cursor-pointer flex-col overflow-hidden rounded-xl border text-start transition-all hover:shadow-sm"
-                  :class="themingStore.layout === option.value ? 'border-2 border-primary ring-2 ring-primary/20' : 'border-border'"
+                  :class="
+                    themingStore.layout === option.value
+                      ? 'border-primary ring-primary/20 border-2 ring-2'
+                      : 'border-border'
+                  "
                   @click="themingStore.setLayout(option.value)"
                 >
-                  <div class="relative h-24 w-full bg-muted/30">
+                  <div class="bg-muted/30 relative h-24 w-full">
                     <template v-if="option.value === 'full'">
-                      <div class="absolute inset-y-0 start-0 w-10 bg-card border-e border-border flex flex-col gap-1 p-1.5">
-                        <div class="h-1.5 w-full rounded bg-muted" />
-                        <div class="h-1.5 w-3/4 rounded bg-primary/40" />
-                        <div class="h-1.5 w-full rounded bg-muted" />
+                      <div
+                        class="bg-card border-border absolute inset-y-0 start-0 flex w-10 flex-col gap-1 border-e p-1.5"
+                      >
+                        <div class="bg-muted h-1.5 w-full rounded" />
+                        <div class="bg-primary/40 h-1.5 w-3/4 rounded" />
+                        <div class="bg-muted h-1.5 w-full rounded" />
                       </div>
-                      <div class="absolute inset-y-2 start-12 end-2 rounded bg-card border border-border p-2">
-                        <div class="h-full rounded bg-muted/60" />
+                      <div
+                        class="bg-card border-border absolute inset-y-2 start-12 end-2 rounded border p-2"
+                      >
+                        <div class="bg-muted/60 h-full rounded" />
                       </div>
                     </template>
                     <template v-else>
-                      <div class="absolute inset-y-0 start-0 w-10 bg-card border-e border-border flex flex-col gap-1 p-1.5">
-                        <div class="h-1.5 w-full rounded bg-muted" />
-                        <div class="h-1.5 w-3/4 rounded bg-primary/40" />
-                        <div class="h-1.5 w-full rounded bg-muted" />
+                      <div
+                        class="bg-card border-border absolute inset-y-0 start-0 flex w-10 flex-col gap-1 border-e p-1.5"
+                      >
+                        <div class="bg-muted h-1.5 w-full rounded" />
+                        <div class="bg-primary/40 h-1.5 w-3/4 rounded" />
+                        <div class="bg-muted h-1.5 w-full rounded" />
                       </div>
-                      <div class="absolute inset-y-2 start-12 end-2 rounded bg-card border border-border p-2 mx-6" />
+                      <div
+                        class="bg-card border-border absolute inset-y-2 start-12 end-2 mx-6 rounded border p-2"
+                      />
                     </template>
                     <span
                       v-if="themingStore.layout === option.value"
-                      class="absolute bottom-3 start-3 flex size-5 items-center justify-center rounded-full bg-primary text-primary-foreground"
+                      class="bg-primary text-primary-foreground absolute start-3 bottom-3 flex size-5 items-center justify-center rounded-full"
                     >
                       <Check class="h-3 w-3" />
                     </span>
                   </div>
-                  <div class="flex items-center gap-2 border-t border-border px-3 py-2">
-                    <component :is="option.icon" class="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <div class="border-border flex items-center gap-2 border-t px-3 py-2">
+                    <component :is="option.icon" class="text-muted-foreground h-4 w-4 shrink-0" />
                     <div class="min-w-0">
-                      <p class="font-section text-sm font-semibold leading-5 text-foreground">{{ option.label }}</p>
-                      <p class="truncate text-xs text-muted-foreground">{{ option.description }}</p>
+                      <p class="font-section text-foreground text-sm leading-5 font-semibold">
+                        {{ option.label }}
+                      </p>
+                      <p class="text-muted-foreground truncate text-xs">{{ option.description }}</p>
                     </div>
                   </div>
                 </button>
@@ -848,8 +1086,12 @@ function savePersonalNotifications() {
             <!-- Sub-section: Sidebar variant -->
             <section class="space-y-4">
               <div>
-                <h4 class="font-section text-sm font-semibold leading-5 text-foreground">نمط الشريط الجانبي</h4>
-                <p class="mt-0.5 text-xs text-muted-foreground">كيف يظهر الشريط الجانبي بالنسبة لمنطقة المحتوى.</p>
+                <h4 class="font-section text-foreground text-sm leading-5 font-semibold">
+                  نمط الشريط الجانبي
+                </h4>
+                <p class="text-muted-foreground mt-0.5 text-xs">
+                  كيف يظهر الشريط الجانبي بالنسبة لمنطقة المحتوى.
+                </p>
               </div>
               <div class="grid gap-3 sm:grid-cols-3">
                 <button
@@ -857,47 +1099,65 @@ function savePersonalNotifications() {
                   :key="option.value"
                   type="button"
                   class="flex cursor-pointer flex-col overflow-hidden rounded-xl border text-start transition-all hover:shadow-sm"
-                  :class="themingStore.sidebarVariant === option.value ? 'border-2 border-primary ring-2 ring-primary/20' : 'border-border'"
+                  :class="
+                    themingStore.sidebarVariant === option.value
+                      ? 'border-primary ring-primary/20 border-2 ring-2'
+                      : 'border-border'
+                  "
                   @click="themingStore.setSidebarVariant(option.value)"
                 >
-                  <div class="relative h-24 w-full bg-muted/30">
+                  <div class="bg-muted/30 relative h-24 w-full">
                     <template v-if="option.value === 'sidebar'">
-                      <div class="absolute inset-y-0 start-0 w-10 bg-card border-e border-border flex flex-col gap-1 p-1.5">
-                        <div class="h-1.5 w-full rounded bg-muted" />
-                        <div class="h-1.5 w-3/4 rounded bg-primary/40" />
-                        <div class="h-1.5 w-full rounded bg-muted" />
+                      <div
+                        class="bg-card border-border absolute inset-y-0 start-0 flex w-10 flex-col gap-1 border-e p-1.5"
+                      >
+                        <div class="bg-muted h-1.5 w-full rounded" />
+                        <div class="bg-primary/40 h-1.5 w-3/4 rounded" />
+                        <div class="bg-muted h-1.5 w-full rounded" />
                       </div>
-                      <div class="absolute inset-y-2 start-12 end-2 rounded bg-card border border-border" />
+                      <div
+                        class="bg-card border-border absolute inset-y-2 start-12 end-2 rounded border"
+                      />
                     </template>
                     <template v-else-if="option.value === 'floating'">
-                      <div class="absolute inset-y-1.5 start-1.5 w-10 rounded-md bg-card shadow-md flex flex-col gap-1 p-1.5">
-                        <div class="h-1.5 w-full rounded bg-muted" />
-                        <div class="h-1.5 w-3/4 rounded bg-primary/40" />
-                        <div class="h-1.5 w-full rounded bg-muted" />
+                      <div
+                        class="bg-card absolute inset-y-1.5 start-1.5 flex w-10 flex-col gap-1 rounded-md p-1.5 shadow-md"
+                      >
+                        <div class="bg-muted h-1.5 w-full rounded" />
+                        <div class="bg-primary/40 h-1.5 w-3/4 rounded" />
+                        <div class="bg-muted h-1.5 w-full rounded" />
                       </div>
-                      <div class="absolute inset-y-2 start-14 end-2 rounded bg-card border border-border" />
+                      <div
+                        class="bg-card border-border absolute inset-y-2 start-14 end-2 rounded border"
+                      />
                     </template>
                     <template v-else>
-                      <div class="absolute inset-0 bg-card border-e border-b border-border/50">
-                        <div class="absolute inset-y-0 start-0 w-10 flex flex-col gap-1 p-1.5 border-e border-border/30">
-                          <div class="h-1.5 w-full rounded bg-muted" />
-                          <div class="h-1.5 w-3/4 rounded bg-primary/40" />
+                      <div class="bg-card border-border/50 absolute inset-0 border-e border-b">
+                        <div
+                          class="border-border/30 absolute inset-y-0 start-0 flex w-10 flex-col gap-1 border-e p-1.5"
+                        >
+                          <div class="bg-muted h-1.5 w-full rounded" />
+                          <div class="bg-primary/40 h-1.5 w-3/4 rounded" />
                         </div>
-                        <div class="absolute inset-2 start-12 rounded-md bg-muted/40 border border-border/30" />
+                        <div
+                          class="bg-muted/40 border-border/30 absolute inset-2 start-12 rounded-md border"
+                        />
                       </div>
                     </template>
                     <span
                       v-if="themingStore.sidebarVariant === option.value"
-                      class="absolute bottom-3 start-3 flex size-5 items-center justify-center rounded-full bg-primary text-primary-foreground"
+                      class="bg-primary text-primary-foreground absolute start-3 bottom-3 flex size-5 items-center justify-center rounded-full"
                     >
                       <Check class="h-3 w-3" />
                     </span>
                   </div>
-                  <div class="flex items-center gap-2 border-t border-border px-3 py-2">
-                    <component :is="option.icon" class="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <div class="border-border flex items-center gap-2 border-t px-3 py-2">
+                    <component :is="option.icon" class="text-muted-foreground h-4 w-4 shrink-0" />
                     <div class="min-w-0">
-                      <p class="font-section text-sm font-semibold leading-5 text-foreground">{{ option.label }}</p>
-                      <p class="truncate text-xs text-muted-foreground">{{ option.description }}</p>
+                      <p class="font-section text-foreground text-sm leading-5 font-semibold">
+                        {{ option.label }}
+                      </p>
+                      <p class="text-muted-foreground truncate text-xs">{{ option.description }}</p>
                     </div>
                   </div>
                 </button>
@@ -909,8 +1169,12 @@ function savePersonalNotifications() {
             <!-- Sub-section: Sidebar collapsible -->
             <section class="space-y-4">
               <div>
-                <h4 class="font-section text-sm font-semibold leading-5 text-foreground">سلوك طي الشريط الجانبي</h4>
-                <p class="mt-0.5 text-xs text-muted-foreground">كيف يتصرف الشريط عند الضغط على زر الطي.</p>
+                <h4 class="font-section text-foreground text-sm leading-5 font-semibold">
+                  سلوك طي الشريط الجانبي
+                </h4>
+                <p class="text-muted-foreground mt-0.5 text-xs">
+                  كيف يتصرف الشريط عند الضغط على زر الطي.
+                </p>
               </div>
               <div class="grid gap-3 sm:grid-cols-3">
                 <button
@@ -918,45 +1182,61 @@ function savePersonalNotifications() {
                   :key="option.value"
                   type="button"
                   class="flex cursor-pointer flex-col overflow-hidden rounded-xl border text-start transition-all hover:shadow-sm"
-                  :class="themingStore.sidebarCollapsible === option.value ? 'border-2 border-primary ring-2 ring-primary/20' : 'border-border'"
+                  :class="
+                    themingStore.sidebarCollapsible === option.value
+                      ? 'border-primary ring-primary/20 border-2 ring-2'
+                      : 'border-border'
+                  "
                   @click="themingStore.setSidebarCollapsible(option.value)"
                 >
-                  <div class="relative h-24 w-full bg-muted/30">
+                  <div class="bg-muted/30 relative h-24 w-full">
                     <template v-if="option.value === 'offcanvas'">
-                      <div class="absolute inset-2 rounded bg-card border border-border" />
-                      <div class="absolute top-3 start-3 flex size-5 items-center justify-center rounded-sm bg-primary/10">
-                        <PanelLeftClose class="h-3 w-3 text-primary/60" />
+                      <div class="bg-card border-border absolute inset-2 rounded border" />
+                      <div
+                        class="bg-primary/10 absolute start-3 top-3 flex size-5 items-center justify-center rounded-sm"
+                      >
+                        <PanelLeftClose class="text-primary/60 h-3 w-3" />
                       </div>
                     </template>
                     <template v-else-if="option.value === 'icon'">
-                      <div class="absolute inset-y-0 start-0 w-6 bg-card border-e border-border flex flex-col items-center gap-1 py-2">
-                        <div class="size-2 rounded-sm bg-primary/40" />
-                        <div class="size-2 rounded-sm bg-muted" />
-                        <div class="size-2 rounded-sm bg-muted" />
+                      <div
+                        class="bg-card border-border absolute inset-y-0 start-0 flex w-6 flex-col items-center gap-1 border-e py-2"
+                      >
+                        <div class="bg-primary/40 size-2 rounded-sm" />
+                        <div class="bg-muted size-2 rounded-sm" />
+                        <div class="bg-muted size-2 rounded-sm" />
                       </div>
-                      <div class="absolute inset-y-2 start-8 end-2 rounded bg-card border border-border" />
+                      <div
+                        class="bg-card border-border absolute inset-y-2 start-8 end-2 rounded border"
+                      />
                     </template>
                     <template v-else>
-                      <div class="absolute inset-y-0 start-0 w-10 bg-card border-e border-border flex flex-col gap-1 p-1.5">
-                        <div class="h-1.5 w-full rounded bg-muted" />
-                        <div class="h-1.5 w-3/4 rounded bg-primary/40" />
-                        <div class="h-1.5 w-full rounded bg-muted" />
+                      <div
+                        class="bg-card border-border absolute inset-y-0 start-0 flex w-10 flex-col gap-1 border-e p-1.5"
+                      >
+                        <div class="bg-muted h-1.5 w-full rounded" />
+                        <div class="bg-primary/40 h-1.5 w-3/4 rounded" />
+                        <div class="bg-muted h-1.5 w-full rounded" />
                       </div>
-                      <div class="absolute inset-y-2 start-12 end-2 rounded bg-card border border-border" />
-                      <div class="absolute top-2 start-10 -ms-0.5 h-4 w-px bg-border" />
+                      <div
+                        class="bg-card border-border absolute inset-y-2 start-12 end-2 rounded border"
+                      />
+                      <div class="bg-border absolute start-10 top-2 -ms-0.5 h-4 w-px" />
                     </template>
                     <span
                       v-if="themingStore.sidebarCollapsible === option.value"
-                      class="absolute bottom-3 start-3 flex size-5 items-center justify-center rounded-full bg-primary text-primary-foreground"
+                      class="bg-primary text-primary-foreground absolute start-3 bottom-3 flex size-5 items-center justify-center rounded-full"
                     >
                       <Check class="h-3 w-3" />
                     </span>
                   </div>
-                  <div class="flex items-center gap-2 border-t border-border px-3 py-2">
-                    <component :is="option.icon" class="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <div class="border-border flex items-center gap-2 border-t px-3 py-2">
+                    <component :is="option.icon" class="text-muted-foreground h-4 w-4 shrink-0" />
                     <div class="min-w-0">
-                      <p class="font-section text-sm font-semibold leading-5 text-foreground">{{ option.label }}</p>
-                      <p class="truncate text-xs text-muted-foreground">{{ option.description }}</p>
+                      <p class="font-section text-foreground text-sm leading-5 font-semibold">
+                        {{ option.label }}
+                      </p>
+                      <p class="text-muted-foreground truncate text-xs">{{ option.description }}</p>
                     </div>
                   </div>
                 </button>
@@ -968,8 +1248,12 @@ function savePersonalNotifications() {
             <!-- Sub-section: Radius -->
             <section class="space-y-4">
               <div>
-                <h4 class="font-section text-sm font-semibold leading-5 text-foreground">نصف قطر الحواف</h4>
-                <p class="mt-0.5 text-xs text-muted-foreground">درجة استدارة حواف المكونات كالأزرار والبطاقات.</p>
+                <h4 class="font-section text-foreground text-sm leading-5 font-semibold">
+                  نصف قطر الحواف
+                </h4>
+                <p class="text-muted-foreground mt-0.5 text-xs">
+                  درجة استدارة حواف المكونات كالأزرار والبطاقات.
+                </p>
               </div>
               <div class="grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
                 <button
@@ -977,20 +1261,29 @@ function savePersonalNotifications() {
                   :key="opt.value"
                   type="button"
                   class="flex cursor-pointer flex-col overflow-hidden rounded-xl border text-start transition-all hover:shadow-sm"
-                  :class="themingStore.radius === opt.value ? 'border-2 border-primary ring-2 ring-primary/20' : 'border-border'"
+                  :class="
+                    themingStore.radius === opt.value
+                      ? 'border-primary ring-primary/20 border-2 ring-2'
+                      : 'border-border'
+                  "
                   @click="themingStore.setRadius(opt.value)"
                 >
-                  <div class="relative flex h-24 w-full items-center justify-center bg-muted/30">
-                    <div class="h-10 w-14 border border-border bg-card" :style="{ borderRadius: opt.previewRadius }" />
+                  <div class="bg-muted/30 relative flex h-24 w-full items-center justify-center">
+                    <div
+                      class="border-border bg-card h-10 w-14 border"
+                      :style="{ borderRadius: opt.previewRadius }"
+                    />
                     <span
                       v-if="themingStore.radius === opt.value"
-                      class="absolute bottom-3 start-3 flex size-5 items-center justify-center rounded-full bg-primary text-primary-foreground"
+                      class="bg-primary text-primary-foreground absolute start-3 bottom-3 flex size-5 items-center justify-center rounded-full"
                     >
                       <Check class="h-3 w-3" />
                     </span>
                   </div>
-                  <div class="flex items-center gap-2 border-t border-border px-3 py-2">
-                    <span class="font-section text-sm font-semibold leading-5 text-foreground">{{ opt.label }}</span>
+                  <div class="border-border flex items-center gap-2 border-t px-3 py-2">
+                    <span class="font-section text-foreground text-sm leading-5 font-semibold">{{
+                      opt.label
+                    }}</span>
                   </div>
                 </button>
               </div>
@@ -1001,8 +1294,10 @@ function savePersonalNotifications() {
             <!-- Sub-section: Density -->
             <section class="space-y-4">
               <div>
-                <h4 class="font-section text-sm font-semibold leading-5 text-foreground">كثافة العرض</h4>
-                <p class="mt-0.5 text-xs text-muted-foreground">التباعد بين عناصر الواجهة.</p>
+                <h4 class="font-section text-foreground text-sm leading-5 font-semibold">
+                  كثافة العرض
+                </h4>
+                <p class="text-muted-foreground mt-0.5 text-xs">التباعد بين عناصر الواجهة.</p>
               </div>
               <div class="grid gap-3 sm:grid-cols-2">
                 <button
@@ -1010,39 +1305,49 @@ function savePersonalNotifications() {
                   :key="opt.value"
                   type="button"
                   class="flex cursor-pointer flex-col overflow-hidden rounded-xl border text-start transition-all hover:shadow-sm"
-                  :class="themingStore.density === opt.value ? 'border-2 border-primary ring-2 ring-primary/20' : 'border-border'"
+                  :class="
+                    themingStore.density === opt.value
+                      ? 'border-primary ring-primary/20 border-2 ring-2'
+                      : 'border-border'
+                  "
                   @click="themingStore.setDensity(opt.value)"
                 >
-                  <div class="relative h-24 w-full bg-muted/30">
-                    <div class="absolute inset-y-0 start-0 w-10 bg-card border-e border-border flex flex-col gap-1 p-1.5">
-                      <div class="h-1.5 w-full rounded bg-muted" />
-                      <div class="h-1.5 w-3/4 rounded bg-primary/40" />
-                      <div class="h-1.5 w-full rounded bg-muted" />
+                  <div class="bg-muted/30 relative h-24 w-full">
+                    <div
+                      class="bg-card border-border absolute inset-y-0 start-0 flex w-10 flex-col gap-1 border-e p-1.5"
+                    >
+                      <div class="bg-muted h-1.5 w-full rounded" />
+                      <div class="bg-primary/40 h-1.5 w-3/4 rounded" />
+                      <div class="bg-muted h-1.5 w-full rounded" />
                     </div>
-                    <div class="absolute inset-y-2 start-12 end-2 rounded bg-card border border-border p-2">
+                    <div
+                      class="bg-card border-border absolute inset-y-2 start-12 end-2 rounded border p-2"
+                    >
                       <div v-if="opt.value === 'comfortable'" class="flex flex-col gap-2">
-                        <div class="h-2 rounded bg-muted/80" />
-                        <div class="h-2 rounded bg-muted/80" />
-                        <div class="h-2 rounded bg-muted/80" />
+                        <div class="bg-muted/80 h-2 rounded" />
+                        <div class="bg-muted/80 h-2 rounded" />
+                        <div class="bg-muted/80 h-2 rounded" />
                       </div>
                       <div v-else class="flex flex-col gap-1">
-                        <div class="h-2 rounded bg-muted/80" />
-                        <div class="h-2 rounded bg-muted/80" />
-                        <div class="h-2 rounded bg-muted/80" />
-                        <div class="h-2 rounded bg-muted/80" />
+                        <div class="bg-muted/80 h-2 rounded" />
+                        <div class="bg-muted/80 h-2 rounded" />
+                        <div class="bg-muted/80 h-2 rounded" />
+                        <div class="bg-muted/80 h-2 rounded" />
                       </div>
                     </div>
                     <span
                       v-if="themingStore.density === opt.value"
-                      class="absolute bottom-3 start-3 flex size-5 items-center justify-center rounded-full bg-primary text-primary-foreground"
+                      class="bg-primary text-primary-foreground absolute start-3 bottom-3 flex size-5 items-center justify-center rounded-full"
                     >
                       <Check class="h-3 w-3" />
                     </span>
                   </div>
-                  <div class="flex items-center gap-2 border-t border-border px-3 py-2">
+                  <div class="border-border flex items-center gap-2 border-t px-3 py-2">
                     <div class="min-w-0">
-                      <p class="font-section text-sm font-semibold leading-5 text-foreground">{{ opt.label }}</p>
-                      <p class="truncate text-xs text-muted-foreground">{{ opt.description }}</p>
+                      <p class="font-section text-foreground text-sm leading-5 font-semibold">
+                        {{ opt.label }}
+                      </p>
+                      <p class="text-muted-foreground truncate text-xs">{{ opt.description }}</p>
                     </div>
                   </div>
                 </button>
@@ -1064,16 +1369,22 @@ function savePersonalNotifications() {
           <!-- ── Security ───────────────────────────────────────────────────── -->
           <section v-if="activeSection === 'security'" data-panel="security" class="space-y-6">
             <div>
-              <h3 class="font-heading text-base font-semibold leading-6 text-foreground">الأمان</h3>
-              <p class="text-sm text-muted-foreground">إدارة كلمة المرور، المصادقة الثنائية، ورمز PIN.</p>
+              <h3 class="font-heading text-foreground text-base leading-6 font-semibold">الأمان</h3>
+              <p class="text-muted-foreground text-sm">
+                إدارة كلمة المرور، المصادقة الثنائية، ورمز PIN.
+              </p>
             </div>
             <Separator />
 
             <!-- Password change -->
             <section class="space-y-4">
               <div>
-                <h4 class="font-section text-sm font-semibold leading-5 text-foreground">تغيير كلمة المرور</h4>
-                <p class="mt-0.5 text-xs text-muted-foreground">يُنصح بتغيير كلمة المرور بانتظام لحماية حسابك.</p>
+                <h4 class="font-section text-foreground text-sm leading-5 font-semibold">
+                  تغيير كلمة المرور
+                </h4>
+                <p class="text-muted-foreground mt-0.5 text-xs">
+                  يُنصح بتغيير كلمة المرور بانتظام لحماية حسابك.
+                </p>
               </div>
               <div
                 v-if="passwordSuccess"
@@ -1083,7 +1394,7 @@ function savePersonalNotifications() {
               </div>
               <div
                 v-if="passwordError"
-                class="max-w-md rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive"
+                class="border-destructive/40 bg-destructive/10 text-destructive max-w-md rounded-md border p-3 text-sm"
                 role="alert"
               >
                 {{ passwordError }}
@@ -1091,7 +1402,11 @@ function savePersonalNotifications() {
               <form class="max-w-md space-y-3" @submit.prevent="submitPasswordChange">
                 <div class="space-y-1.5">
                   <Label for="sec-current-password">كلمة المرور الحالية</Label>
-                  <Input id="sec-current-password" v-model="passwordForm.current_password" type="password" />
+                  <Input
+                    id="sec-current-password"
+                    v-model="passwordForm.current_password"
+                    type="password"
+                  />
                 </div>
                 <div class="space-y-1.5">
                   <Label for="sec-new-password">كلمة المرور الجديدة</Label>
@@ -1099,7 +1414,11 @@ function savePersonalNotifications() {
                 </div>
                 <div class="space-y-1.5">
                   <Label for="sec-confirm-password">تأكيد كلمة المرور</Label>
-                  <Input id="sec-confirm-password" v-model="passwordForm.password_confirmation" type="password" />
+                  <Input
+                    id="sec-confirm-password"
+                    v-model="passwordForm.password_confirmation"
+                    type="password"
+                  />
                 </div>
                 <Button type="submit" variant="outline" size="sm" :disabled="passwordSaving">
                   <Loader2 v-if="passwordSaving" class="ms-2 h-4 w-4 animate-spin" />
@@ -1114,29 +1433,43 @@ function savePersonalNotifications() {
             <!-- MFA / Authenticator -->
             <section class="space-y-4">
               <div>
-                <h4 class="font-section flex items-center gap-2 text-sm font-semibold leading-5 text-foreground">
+                <h4
+                  class="font-section text-foreground flex items-center gap-2 text-sm leading-5 font-semibold"
+                >
                   <Shield class="h-4 w-4" />
                   تطبيق المصادقة الثنائية
                 </h4>
-                <p class="mt-0.5 text-xs text-muted-foreground">
-                  يُستخدم تطبيق Microsoft Authenticator أو Google Authenticator لتوليد رموز تحقق مؤقتة.
+                <p class="text-muted-foreground mt-0.5 text-xs">
+                  يُستخدم تطبيق Microsoft Authenticator أو Google Authenticator لتوليد رموز تحقق
+                  مؤقتة.
                 </p>
               </div>
               <div class="max-w-md">
-                <div v-if="totpEnabled || mfaEnabled" class="flex items-center justify-between rounded-lg border border-[var(--severity-green)]/30 bg-[var(--severity-green)]/5 p-3">
+                <div
+                  v-if="totpEnabled || mfaEnabled"
+                  class="flex items-center justify-between rounded-lg border border-[var(--severity-green)]/30 bg-[var(--severity-green)]/5 p-3"
+                >
                   <div class="flex items-center gap-2">
-                    <ShieldCheck class="h-4 w-4 text-[var(--severity-green)] shrink-0" />
-                    <span class="text-sm font-medium text-[var(--severity-green)]">تطبيق المصادقة مفعّل</span>
+                    <ShieldCheck class="h-4 w-4 shrink-0 text-[var(--severity-green)]" />
+                    <span class="text-sm font-medium text-[var(--severity-green)]"
+                      >تطبيق المصادقة مفعّل</span
+                    >
                   </div>
-                  <Button type="button" variant="ghost" size="sm" class="text-destructive hover:text-destructive text-xs" @click="openMfaDisable">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    class="text-destructive hover:text-destructive text-xs"
+                    @click="openMfaDisable"
+                  >
                     <X class="ms-1 h-3.5 w-3.5" />
                     تعطيل
                   </Button>
                 </div>
-                <div v-else class="rounded-lg border border-border bg-muted/20 p-3">
-                  <div class="flex items-center gap-2 mb-2">
-                    <Lock class="h-4 w-4 text-muted-foreground shrink-0" />
-                    <span class="text-sm text-muted-foreground">تطبيق المصادقة غير مفعّل</span>
+                <div v-else class="border-border bg-muted/20 rounded-lg border p-3">
+                  <div class="mb-2 flex items-center gap-2">
+                    <Lock class="text-muted-foreground h-4 w-4 shrink-0" />
+                    <span class="text-muted-foreground text-sm">تطبيق المصادقة غير مفعّل</span>
                   </div>
                   <Button type="button" variant="outline" size="sm" @click="openMfaSetup">
                     <QrCode class="ms-1 h-4 w-4" />
@@ -1151,34 +1484,53 @@ function savePersonalNotifications() {
             <!-- PIN -->
             <section class="space-y-4">
               <div>
-                <h4 class="font-section flex items-center gap-2 text-sm font-semibold leading-5 text-foreground">
+                <h4
+                  class="font-section text-foreground flex items-center gap-2 text-sm leading-5 font-semibold"
+                >
                   <KeyRound class="h-4 w-4" />
                   رمز PIN للدخول السريع
                 </h4>
-                <p class="mt-0.5 text-xs text-muted-foreground">
+                <p class="text-muted-foreground mt-0.5 text-xs">
                   رمز مكوّن من 6 أرقام يتيح لك تسجيل الدخول بسرعة من الأجهزة الموثوقة.
                 </p>
               </div>
               <div class="max-w-md">
-                <div v-if="hasPIN" class="flex items-center gap-2 mb-3">
-                  <CheckCircle2 class="h-4 w-4 text-[var(--severity-green)] shrink-0" />
+                <div v-if="hasPIN" class="mb-3 flex items-center gap-2">
+                  <CheckCircle2 class="h-4 w-4 shrink-0 text-[var(--severity-green)]" />
                   <span class="text-sm text-[var(--severity-green)]">رمز PIN مفعّل</span>
                 </div>
-                <div v-else class="flex items-center gap-2 mb-3">
-                  <Lock class="h-4 w-4 text-muted-foreground shrink-0" />
-                  <span class="text-sm text-muted-foreground">لم يتم إنشاء رمز PIN بعد</span>
+                <div v-else class="mb-3 flex items-center gap-2">
+                  <Lock class="text-muted-foreground h-4 w-4 shrink-0" />
+                  <span class="text-muted-foreground text-sm">لم يتم إنشاء رمز PIN بعد</span>
                 </div>
                 <div class="flex flex-wrap gap-2">
-                  <Button v-if="!hasPIN" type="button" variant="outline" size="sm" @click="openPinDialog('create')">
+                  <Button
+                    v-if="!hasPIN"
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    @click="openPinDialog('create')"
+                  >
                     <KeyRound class="ms-1 h-4 w-4" />
                     إنشاء رمز PIN
                   </Button>
                   <template v-else>
-                    <Button type="button" variant="outline" size="sm" @click="openPinDialog('change')">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      @click="openPinDialog('change')"
+                    >
                       <KeyRound class="ms-1 h-4 w-4" />
                       تغيير رمز PIN
                     </Button>
-                    <Button type="button" variant="ghost" size="sm" class="text-destructive hover:text-destructive" @click="openPinDialog('disable')">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      class="text-destructive hover:text-destructive"
+                      @click="openPinDialog('disable')"
+                    >
                       <X class="ms-1 h-4 w-4" />
                       تعطيل رمز PIN
                     </Button>
@@ -1192,43 +1544,86 @@ function savePersonalNotifications() {
             <!-- Trusted Devices -->
             <section class="space-y-4">
               <div>
-                <h4 class="font-section flex items-center gap-2 text-sm font-semibold leading-5 text-foreground">
+                <h4
+                  class="font-section text-foreground flex items-center gap-2 text-sm leading-5 font-semibold"
+                >
                   <MonitorSmartphone class="h-4 w-4" />
                   الأجهزة الموثوقة
                 </h4>
-                <p class="mt-0.5 text-xs text-muted-foreground">
+                <p class="text-muted-foreground mt-0.5 text-xs">
                   الأجهزة التي حفظت بيانات دخولك للوصول السريع برمز PIN.
                 </p>
               </div>
-              <div v-if="currentUserDevices.length === 0" class="text-sm text-muted-foreground py-2">
+              <div
+                v-if="currentUserDevices.length === 0"
+                class="text-muted-foreground py-2 text-sm"
+              >
                 لا توجد أجهزة موثوقة مسجّلة حتى الآن.
               </div>
               <ul v-else class="max-w-md space-y-2">
-                <li v-for="device in currentUserDevices" :key="device.id" class="rounded-lg border border-border p-3">
+                <li
+                  v-for="device in currentUserDevices"
+                  :key="device.id"
+                  class="border-border rounded-lg border p-3"
+                >
                   <div class="flex items-start gap-3">
-                    <div class="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-muted">
-                      <Smartphone v-if="device.deviceInfo?.deviceType === 'mobile'" class="h-4 w-4 text-muted-foreground" />
-                      <Tablet v-else-if="device.deviceInfo?.deviceType === 'tablet'" class="h-4 w-4 text-muted-foreground" />
-                      <Laptop v-else class="h-4 w-4 text-muted-foreground" />
+                    <div
+                      class="bg-muted mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-lg"
+                    >
+                      <Smartphone
+                        v-if="device.deviceInfo?.deviceType === 'mobile'"
+                        class="text-muted-foreground h-4 w-4"
+                      />
+                      <Tablet
+                        v-else-if="device.deviceInfo?.deviceType === 'tablet'"
+                        class="text-muted-foreground h-4 w-4"
+                      />
+                      <Laptop v-else class="text-muted-foreground h-4 w-4" />
                     </div>
-                    <div class="flex-1 min-w-0 space-y-1">
+                    <div class="min-w-0 flex-1 space-y-1">
                       <div class="flex flex-wrap gap-x-3 gap-y-0.5">
-                        <span v-if="device.deviceInfo?.browser" class="flex items-center gap-1 text-xs text-muted-foreground">
+                        <span
+                          v-if="device.deviceInfo?.browser"
+                          class="text-muted-foreground flex items-center gap-1 text-xs"
+                        >
                           <MonitorSmartphone class="h-3 w-3" />
                           {{ device.deviceInfo.browser }}
                         </span>
-                        <span v-if="device.deviceInfo?.os" class="text-xs text-muted-foreground">{{ device.deviceInfo.os }}</span>
+                        <span v-if="device.deviceInfo?.os" class="text-muted-foreground text-xs">{{
+                          device.deviceInfo.os
+                        }}</span>
                       </div>
                       <div class="flex flex-wrap gap-x-3 gap-y-0.5">
-                        <span v-if="device.deviceInfo?.lastLoginAt" class="text-[10px] text-muted-foreground/70">
-                          آخر دخول: {{ new Date(device.deviceInfo.lastLoginAt).toLocaleString('ar-EG', { dateStyle: 'medium', timeStyle: 'short' }) }}
+                        <span
+                          v-if="device.deviceInfo?.lastLoginAt"
+                          class="text-muted-foreground/70 text-[10px]"
+                        >
+                          آخر دخول:
+                          {{
+                            new Date(device.deviceInfo.lastLoginAt).toLocaleString('ar-EG', {
+                              dateStyle: 'medium',
+                              timeStyle: 'short',
+                            })
+                          }}
                         </span>
-                        <span class="text-[10px] text-muted-foreground/70">
-                          الثقة منذ: {{ new Date(device.trustedAt).toLocaleDateString('ar-EG', { dateStyle: 'medium' }) }}
+                        <span class="text-muted-foreground/70 text-[10px]">
+                          الثقة منذ:
+                          {{
+                            new Date(device.trustedAt).toLocaleDateString('ar-EG', {
+                              dateStyle: 'medium',
+                            })
+                          }}
                         </span>
                       </div>
                     </div>
-                    <Button type="button" variant="ghost" size="sm" class="text-destructive hover:text-destructive shrink-0" :aria-label="`إزالة جهاز ${device.name}`" @click="removeTrustedDevice(device.id)">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      class="text-destructive hover:text-destructive shrink-0"
+                      :aria-label="`إزالة جهاز ${device.name}`"
+                      @click="removeTrustedDevice(device.id)"
+                    >
                       <Trash2 class="h-4 w-4" />
                     </Button>
                   </div>
@@ -1242,24 +1637,64 @@ function savePersonalNotifications() {
                 <template v-if="mfaDialogStage === 'disable-verify'">
                   <DialogHeader>
                     <DialogTitle>تعطيل تطبيق المصادقة</DialogTitle>
-                    <DialogDescription>أدخل الرمز الحالي من تطبيق المصادقة للتأكيد</DialogDescription>
+                    <DialogDescription
+                      >أدخل الرمز الحالي من تطبيق المصادقة للتأكيد</DialogDescription
+                    >
                   </DialogHeader>
-                  <div v-if="mfaSetupError" class="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive" role="alert">{{ mfaSetupError }}</div>
+                  <div
+                    v-if="mfaSetupError"
+                    class="border-destructive/40 bg-destructive/10 text-destructive rounded-md border p-3 text-sm"
+                    role="alert"
+                  >
+                    {{ mfaSetupError }}
+                  </div>
                   <div class="flex justify-center py-2" dir="ltr">
-                    <InputOTP v-model="mfaVerifyCode" :maxlength="6" :disabled="isMfaActionLoading" @complete="confirmMfaDisable">
+                    <InputOTP
+                      v-model="mfaVerifyCode"
+                      :maxlength="6"
+                      :disabled="isMfaActionLoading"
+                      @complete="confirmMfaDisable"
+                    >
                       <InputOTPGroup>
-                        <InputOTPSlot v-for="i in 6" :key="i" :index="i - 1" class="size-11 text-xl font-bold" />
+                        <InputOTPSlot
+                          v-for="i in 6"
+                          :key="i"
+                          :index="i - 1"
+                          class="size-11 text-xl font-bold"
+                        />
                       </InputOTPGroup>
                     </InputOTP>
                   </div>
                   <DialogFooter class="flex-col gap-2 sm:flex-col">
                     <div class="flex flex-row-reverse gap-2">
-                      <Button type="button" variant="destructive" :disabled="isMfaActionLoading || mfaVerifyCode.length < 6" @click="confirmMfaDisable">
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        :disabled="isMfaActionLoading || mfaVerifyCode.length < 6"
+                        @click="confirmMfaDisable"
+                      >
                         <X class="ms-1 h-4 w-4" />تعطيل
                       </Button>
-                      <Button type="button" variant="outline" :disabled="isMfaActionLoading" @click="mfaDialogOpen = false">إلغاء</Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        :disabled="isMfaActionLoading"
+                        @click="mfaDialogOpen = false"
+                        >إلغاء</Button
+                      >
                     </div>
-                    <Button type="button" variant="ghost" size="sm" class="text-muted-foreground text-xs" @click="() => { mfaSetupError = null; mfaDialogStage = 'disable-with-password' }">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      class="text-muted-foreground text-xs"
+                      @click="
+                        () => {
+                          mfaSetupError = null
+                          mfaDialogStage = 'disable-with-password'
+                        }
+                      "
+                    >
                       لا أملك وصولاً إلى تطبيق المصادقة
                     </Button>
                   </DialogFooter>
@@ -1268,89 +1703,195 @@ function savePersonalNotifications() {
                 <template v-else-if="mfaDialogStage === 'disable-with-password'">
                   <DialogHeader>
                     <DialogTitle>تعطيل المصادقة بكلمة المرور</DialogTitle>
-                    <DialogDescription>أدخل كلمة المرور الخاصة بحسابك لتعطيل تطبيق المصادقة</DialogDescription>
+                    <DialogDescription
+                      >أدخل كلمة المرور الخاصة بحسابك لتعطيل تطبيق المصادقة</DialogDescription
+                    >
                   </DialogHeader>
-                  <div v-if="mfaSetupError" class="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive" role="alert">{{ mfaSetupError }}</div>
+                  <div
+                    v-if="mfaSetupError"
+                    class="border-destructive/40 bg-destructive/10 text-destructive rounded-md border p-3 text-sm"
+                    role="alert"
+                  >
+                    {{ mfaSetupError }}
+                  </div>
                   <div class="space-y-2 py-2">
                     <Label for="mfa-disable-pwd">كلمة المرور</Label>
-                    <Input id="mfa-disable-pwd" v-model="mfaDisablePassword" type="password" :disabled="isMfaActionLoading" placeholder="أدخل كلمة مرورك" autofocus @keydown.enter="confirmMfaDisableWithPassword" />
+                    <Input
+                      id="mfa-disable-pwd"
+                      v-model="mfaDisablePassword"
+                      type="password"
+                      :disabled="isMfaActionLoading"
+                      placeholder="أدخل كلمة مرورك"
+                      autofocus
+                      @keydown.enter="confirmMfaDisableWithPassword"
+                    />
                   </div>
                   <DialogFooter class="gap-2">
-                    <Button type="button" variant="destructive" :disabled="isMfaActionLoading || !mfaDisablePassword" @click="confirmMfaDisableWithPassword">
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      :disabled="isMfaActionLoading || !mfaDisablePassword"
+                      @click="confirmMfaDisableWithPassword"
+                    >
                       <X class="ms-1 h-4 w-4" />تعطيل
                     </Button>
-                    <Button type="button" variant="outline" :disabled="isMfaActionLoading" @click="() => { mfaSetupError = null; mfaDialogStage = 'disable-verify' }">رجوع</Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      :disabled="isMfaActionLoading"
+                      @click="
+                        () => {
+                          mfaSetupError = null
+                          mfaDialogStage = 'disable-verify'
+                        }
+                      "
+                      >رجوع</Button
+                    >
                   </DialogFooter>
                 </template>
 
                 <template v-else-if="mfaDialogStage === 'intro'">
                   <DialogHeader>
                     <DialogTitle>إعداد تطبيق المصادقة</DialogTitle>
-                    <DialogDescription>سيضاف تطبيق مصادقة لحماية حسابك برمز تحقق مؤقت يتغير كل 30 ثانية</DialogDescription>
+                    <DialogDescription
+                      >سيضاف تطبيق مصادقة لحماية حسابك برمز تحقق مؤقت يتغير كل 30
+                      ثانية</DialogDescription
+                    >
                   </DialogHeader>
-                  <div class="space-y-3 py-2 text-sm text-muted-foreground">
+                  <div class="text-muted-foreground space-y-3 py-2 text-sm">
                     <p>الخطوات:</p>
-                    <ol class="list-decimal list-inside space-y-1 text-sm">
-                      <li>افتح تطبيق <strong>Microsoft Authenticator</strong> أو <strong>Google Authenticator</strong></li>
+                    <ol class="list-inside list-decimal space-y-1 text-sm">
+                      <li>
+                        افتح تطبيق <strong>Microsoft Authenticator</strong> أو
+                        <strong>Google Authenticator</strong>
+                      </li>
                       <li>امسح رمز QR أو أدخل المفتاح يدوياً</li>
                       <li>أدخل الرمز المكوّن من 6 أرقام للتأكيد</li>
                     </ol>
                   </div>
-                  <div v-if="mfaSetupError" class="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive" role="alert">{{ mfaSetupError }}</div>
+                  <div
+                    v-if="mfaSetupError"
+                    class="border-destructive/40 bg-destructive/10 text-destructive rounded-md border p-3 text-sm"
+                    role="alert"
+                  >
+                    {{ mfaSetupError }}
+                  </div>
                   <DialogFooter class="gap-2">
                     <Button type="button" :disabled="isMfaActionLoading" @click="loadTotpSetup">
                       <span v-if="isMfaActionLoading" class="flex items-center gap-2">
-                        <span class="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />جارٍ التحميل…
+                        <span
+                          class="border-primary h-4 w-4 animate-spin rounded-full border-2 border-t-transparent"
+                        />جارٍ التحميل…
                       </span>
                       <span v-else>التالي</span>
                     </Button>
-                    <Button type="button" variant="outline" @click="mfaDialogOpen = false">إلغاء</Button>
+                    <Button type="button" variant="outline" @click="mfaDialogOpen = false"
+                      >إلغاء</Button
+                    >
                   </DialogFooter>
                 </template>
 
                 <template v-else-if="mfaDialogStage === 'scan'">
                   <DialogHeader>
                     <DialogTitle>امسح رمز QR</DialogTitle>
-                    <DialogDescription>امسح الرمز بتطبيق المصادقة أو أدخل المفتاح السري يدوياً</DialogDescription>
+                    <DialogDescription
+                      >امسح الرمز بتطبيق المصادقة أو أدخل المفتاح السري يدوياً</DialogDescription
+                    >
                   </DialogHeader>
                   <div class="flex flex-col items-center gap-3 py-2">
-                    <div class="rounded-xl border-2 border-border bg-white p-2 shadow-sm" style="line-height:0">
+                    <div
+                      class="border-border rounded-xl border-2 bg-white p-2 shadow-sm"
+                      style="line-height: 0"
+                    >
                       <!-- eslint-disable-next-line vue/no-v-html -->
-                      <div v-if="mfaQrSvg" v-html="mfaQrSvg" class="w-40 h-40 [&>svg]:w-full [&>svg]:h-full [&>svg]:block" />
-                      <div v-else class="w-40 h-40 flex items-center justify-center text-muted-foreground text-xs">جارٍ تحميل الرمز…</div>
+                      <div
+                        v-if="mfaQrSvg"
+                        class="h-40 w-40 [&>svg]:block [&>svg]:h-full [&>svg]:w-full"
+                        v-html="mfaQrSvg"
+                      />
+                      <div
+                        v-else
+                        class="text-muted-foreground flex h-40 w-40 items-center justify-center text-xs"
+                      >
+                        جارٍ تحميل الرمز…
+                      </div>
                     </div>
-                    <div class="w-full rounded-lg border border-border bg-muted/30 px-3 py-2">
-                      <p class="mb-1 text-[10px] text-muted-foreground">المفتاح السري (للإدخال اليدوي)</p>
+                    <div class="border-border bg-muted/30 w-full rounded-lg border px-3 py-2">
+                      <p class="text-muted-foreground mb-1 text-[10px]">
+                        المفتاح السري (للإدخال اليدوي)
+                      </p>
                       <div class="flex items-center justify-between gap-2">
-                        <code class="text-xs font-mono tracking-widest">{{ liveMfaSecret ?? '…' }}</code>
-                        <Button type="button" variant="ghost" size="sm" class="h-7 px-2" :disabled="!liveMfaSecret" @click="copyMfaSecret">
+                        <code class="font-mono text-xs tracking-widest">{{
+                          liveMfaSecret ?? '…'
+                        }}</code>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          class="h-7 px-2"
+                          :disabled="!liveMfaSecret"
+                          @click="copyMfaSecret"
+                        >
                           <Copy class="h-3.5 w-3.5" />
                         </Button>
                       </div>
                     </div>
                   </div>
                   <DialogFooter class="gap-2">
-                    <Button type="button" @click="mfaDialogStage = 'verify'">متابعة إدخال رمز التحقق</Button>
-                    <Button type="button" variant="outline" @click="mfaDialogStage = 'intro'">رجوع</Button>
+                    <Button type="button" @click="mfaDialogStage = 'verify'"
+                      >متابعة إدخال رمز التحقق</Button
+                    >
+                    <Button type="button" variant="outline" @click="mfaDialogStage = 'intro'"
+                      >رجوع</Button
+                    >
                   </DialogFooter>
                 </template>
 
                 <template v-else-if="mfaDialogStage === 'verify'">
                   <DialogHeader>
                     <DialogTitle>تأكيد الإعداد</DialogTitle>
-                    <DialogDescription>أدخل الرمز المكوّن من 6 أرقام الظاهر في تطبيق المصادقة</DialogDescription>
+                    <DialogDescription
+                      >أدخل الرمز المكوّن من 6 أرقام الظاهر في تطبيق المصادقة</DialogDescription
+                    >
                   </DialogHeader>
-                  <div v-if="mfaSetupError" class="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive" role="alert">{{ mfaSetupError }}</div>
+                  <div
+                    v-if="mfaSetupError"
+                    class="border-destructive/40 bg-destructive/10 text-destructive rounded-md border p-3 text-sm"
+                    role="alert"
+                  >
+                    {{ mfaSetupError }}
+                  </div>
                   <div class="flex justify-center py-2" dir="ltr">
-                    <InputOTP v-model="mfaVerifyCode" :maxlength="6" :disabled="isMfaActionLoading" @complete="confirmMfaSetup">
+                    <InputOTP
+                      v-model="mfaVerifyCode"
+                      :maxlength="6"
+                      :disabled="isMfaActionLoading"
+                      @complete="confirmMfaSetup"
+                    >
                       <InputOTPGroup>
-                        <InputOTPSlot v-for="i in 6" :key="i" :index="i - 1" class="size-11 text-xl font-bold" />
+                        <InputOTPSlot
+                          v-for="i in 6"
+                          :key="i"
+                          :index="i - 1"
+                          class="size-11 text-xl font-bold"
+                        />
                       </InputOTPGroup>
                     </InputOTP>
                   </div>
                   <DialogFooter class="gap-2">
-                    <Button type="button" :disabled="isMfaActionLoading || mfaVerifyCode.length < 6" @click="confirmMfaSetup">تفعيل</Button>
-                    <Button type="button" variant="outline" :disabled="isMfaActionLoading" @click="mfaDialogStage = 'scan'">رجوع</Button>
+                    <Button
+                      type="button"
+                      :disabled="isMfaActionLoading || mfaVerifyCode.length < 6"
+                      @click="confirmMfaSetup"
+                      >تفعيل</Button
+                    >
+                    <Button
+                      type="button"
+                      variant="outline"
+                      :disabled="isMfaActionLoading"
+                      @click="mfaDialogStage = 'scan'"
+                      >رجوع</Button
+                    >
                   </DialogFooter>
                 </template>
               </DialogContent>
@@ -1361,41 +1902,102 @@ function savePersonalNotifications() {
               <DialogContent ref="pinDialogContentRef" class="max-w-sm">
                 <DialogHeader>
                   <DialogTitle>
-                    {{ pinDialogMode === 'create' ? 'إنشاء رمز PIN' : pinDialogMode === 'change' ? 'تغيير رمز PIN' : 'تعطيل رمز PIN' }}
+                    {{
+                      pinDialogMode === 'create'
+                        ? 'إنشاء رمز PIN'
+                        : pinDialogMode === 'change'
+                          ? 'تغيير رمز PIN'
+                          : 'تعطيل رمز PIN'
+                    }}
                   </DialogTitle>
                   <DialogDescription>
                     {{
-                      pinDialogMode === 'disable' ? 'أدخل رمز PIN الحالي للتأكيد على تعطيله'
-                      : pinDialogMode === 'change' && pinDialogStage === 'current' ? 'أدخل رمز PIN الحالي أولاً'
-                      : pinDialogStage === 'new' ? 'أدخل رمز PIN الجديد المكوّن من 6 أرقام'
-                      : 'أعد إدخال رمز PIN للتأكيد'
+                      pinDialogMode === 'disable'
+                        ? 'أدخل رمز PIN الحالي للتأكيد على تعطيله'
+                        : pinDialogMode === 'change' && pinDialogStage === 'current'
+                          ? 'أدخل رمز PIN الحالي أولاً'
+                          : pinDialogStage === 'new'
+                            ? 'أدخل رمز PIN الجديد المكوّن من 6 أرقام'
+                            : 'أعد إدخال رمز PIN للتأكيد'
                     }}
                   </DialogDescription>
                 </DialogHeader>
-                <div v-if="pinError" class="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive" role="alert">{{ pinError }}</div>
+                <div
+                  v-if="pinError"
+                  class="border-destructive/40 bg-destructive/10 text-destructive rounded-md border p-3 text-sm"
+                  role="alert"
+                >
+                  {{ pinError }}
+                </div>
                 <div class="flex justify-center py-2" dir="ltr">
-                  <InputOTP v-if="pinDialogMode === 'disable' || (pinDialogMode === 'change' && pinDialogStage === 'current')" v-model="pinCurrent" :maxlength="6" :disabled="isPinSaving">
+                  <InputOTP
+                    v-if="
+                      pinDialogMode === 'disable' ||
+                      (pinDialogMode === 'change' && pinDialogStage === 'current')
+                    "
+                    v-model="pinCurrent"
+                    :maxlength="6"
+                    :disabled="isPinSaving"
+                  >
                     <InputOTPGroup>
-                      <InputOTPSlot v-for="i in 6" :key="i" :index="i - 1" class="size-11 text-xl font-bold" />
+                      <InputOTPSlot
+                        v-for="i in 6"
+                        :key="i"
+                        :index="i - 1"
+                        class="size-11 text-xl font-bold"
+                      />
                     </InputOTPGroup>
                   </InputOTP>
-                  <InputOTP v-else-if="pinDialogStage === 'new'" v-model="pinNew" :maxlength="6" :disabled="isPinSaving">
+                  <InputOTP
+                    v-else-if="pinDialogStage === 'new'"
+                    v-model="pinNew"
+                    :maxlength="6"
+                    :disabled="isPinSaving"
+                  >
                     <InputOTPGroup>
-                      <InputOTPSlot v-for="i in 6" :key="i" :index="i - 1" class="size-11 text-xl font-bold" />
+                      <InputOTPSlot
+                        v-for="i in 6"
+                        :key="i"
+                        :index="i - 1"
+                        class="size-11 text-xl font-bold"
+                      />
                     </InputOTPGroup>
                   </InputOTP>
-                  <InputOTP v-else v-model="pinConfirm" :maxlength="6" :disabled="isPinSaving" @complete="submitPinAction">
+                  <InputOTP
+                    v-else
+                    v-model="pinConfirm"
+                    :maxlength="6"
+                    :disabled="isPinSaving"
+                    @complete="submitPinAction"
+                  >
                     <InputOTPGroup>
-                      <InputOTPSlot v-for="i in 6" :key="i" :index="i - 1" class="size-11 text-xl font-bold" />
+                      <InputOTPSlot
+                        v-for="i in 6"
+                        :key="i"
+                        :index="i - 1"
+                        class="size-11 text-xl font-bold"
+                      />
                     </InputOTPGroup>
                   </InputOTP>
                 </div>
                 <DialogFooter class="gap-2">
                   <Button type="button" :disabled="isPinSaving" @click="submitPinAction">
                     <KeyRound class="ms-1 h-4 w-4" />
-                    {{ pinDialogMode === 'disable' ? 'تعطيل' : pinDialogStage !== 'confirm' ? 'التالي' : 'حفظ' }}
+                    {{
+                      pinDialogMode === 'disable'
+                        ? 'تعطيل'
+                        : pinDialogStage !== 'confirm'
+                          ? 'التالي'
+                          : 'حفظ'
+                    }}
                   </Button>
-                  <Button type="button" variant="outline" :disabled="isPinSaving" @click="pinDialogOpen = false">إلغاء</Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    :disabled="isPinSaving"
+                    @click="pinDialogOpen = false"
+                    >إلغاء</Button
+                  >
                 </DialogFooter>
               </DialogContent>
             </Dialog>
@@ -1404,26 +2006,36 @@ function savePersonalNotifications() {
           <!-- ── Personal Notifications ────────────────────────────────────────────────── -->
           <section v-if="activeSection === 'notif'" data-panel="notifications" class="space-y-6">
             <div>
-              <h3 class="font-heading text-base font-semibold leading-6 text-foreground">إشعاراتي الشخصية</h3>
-              <p class="text-sm text-muted-foreground">اختر الأحداث التي تريد تلقّي إشعار عنها.</p>
+              <h3 class="font-heading text-foreground text-base leading-6 font-semibold">
+                إشعاراتي الشخصية
+              </h3>
+              <p class="text-muted-foreground text-sm">اختر الأحداث التي تريد تلقّي إشعار عنها.</p>
             </div>
             <Separator />
             <div class="space-y-2">
               <div
                 v-for="item in personalNotifications"
                 :key="item.id"
-                class="flex items-start justify-between gap-4 rounded-lg border border-border p-4 transition-colors hover:bg-muted/30"
+                class="border-border hover:bg-muted/30 flex items-start justify-between gap-4 rounded-lg border p-4 transition-colors"
               >
                 <div class="flex flex-col gap-0.5">
-                  <p class="font-section text-sm font-semibold leading-5 text-foreground">{{ item.label }}</p>
-                  <p class="text-xs text-muted-foreground">{{ item.description }}</p>
+                  <p class="font-section text-foreground text-sm leading-5 font-semibold">
+                    {{ item.label }}
+                  </p>
+                  <p class="text-muted-foreground text-xs">{{ item.description }}</p>
                 </div>
-                <Switch v-model="item.enabled" :data-testid="`notif-switch-${item.id}`" class="shrink-0" />
+                <Switch
+                  v-model="item.enabled"
+                  :data-testid="`notif-switch-${item.id}`"
+                  class="shrink-0"
+                />
               </div>
             </div>
             <div class="flex justify-end">
               <Button
-                :disabled="!settingsStore.isSectionDirty('userNotifications') || settingsStore.saving"
+                :disabled="
+                  !settingsStore.isSectionDirty('userNotifications') || settingsStore.saving
+                "
                 @click="savePersonalNotifications"
               >
                 <Loader2 v-if="settingsStore.saving" class="ms-2 h-4 w-4 animate-spin" />
@@ -1431,7 +2043,6 @@ function savePersonalNotifications() {
               </Button>
             </div>
           </section>
-
         </div>
       </div>
     </div>

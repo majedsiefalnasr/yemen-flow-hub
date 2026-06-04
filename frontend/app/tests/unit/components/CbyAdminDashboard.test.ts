@@ -2,7 +2,12 @@
  * CbyAdminDashboard logic tests — pure function tests without component mounting.
  */
 import { describe, it, expect } from 'vitest'
-import type { CbyAdminDashboardStats, CbyAdminComplianceAlerts, CbyAdminMonthlyEntry, CbyAdminCategoryEntry } from '../../../composables/useDashboard'
+import type {
+  CbyAdminDashboardStats,
+  CbyAdminComplianceAlerts,
+  CbyAdminMonthlyEntry,
+  CbyAdminCategoryEntry,
+} from '../../../composables/useDashboard'
 
 function makeStats(overrides: Partial<CbyAdminDashboardStats> = {}): CbyAdminDashboardStats {
   return {
@@ -82,13 +87,15 @@ describe('CbyAdminDashboard — compliance alerts detection', () => {
     const stats = makeStats({
       compliance_alerts: {
         duplicate_suppliers: [],
-        high_amount_requests: [{
-          id: 1,
-          reference_number: 'YFH-2026-000001',
-          amount: 1_500_000,
-          currency: 'USD',
-          bank_name: 'بنك اليمن',
-        }],
+        high_amount_requests: [
+          {
+            id: 1,
+            reference_number: 'YFH-2026-000001',
+            amount: 1_500_000,
+            currency: 'USD',
+            bank_name: 'بنك اليمن',
+          },
+        ],
         stale_pending_requests: [],
       },
     })
@@ -100,12 +107,14 @@ describe('CbyAdminDashboard — compliance alerts detection', () => {
       compliance_alerts: {
         duplicate_suppliers: [],
         high_amount_requests: [],
-        stale_pending_requests: [{
-          id: 2,
-          reference_number: 'YFH-2026-000002',
-          bank_name: 'بنك الخليج',
-          updated_at: '2026-04-01T00:00:00.000000Z',
-        }],
+        stale_pending_requests: [
+          {
+            id: 2,
+            reference_number: 'YFH-2026-000002',
+            bank_name: 'بنك الخليج',
+            updated_at: '2026-04-01T00:00:00.000000Z',
+          },
+        ],
       },
     })
     expect(hasComplianceAlerts(stats.compliance_alerts)).toBe(true)
@@ -176,19 +185,21 @@ const PAD = 12
 
 function buildLine(entries: CbyAdminMonthlyEntry[], key: keyof CbyAdminMonthlyEntry): string {
   if (!entries.length) return ''
-  const vals = entries.map(e => Number(e[key]))
+  const vals = entries.map((e) => Number(e[key]))
   const max = Math.max(...vals, 1)
   const step = (CHART_W - PAD * 2) / Math.max(entries.length - 1, 1)
-  return entries.map((e, i) => {
-    const x = PAD + i * step
-    const y = PAD + (1 - Number(e[key]) / max) * (CHART_H - PAD * 2)
-    return `${x.toFixed(1)},${y.toFixed(1)}`
-  }).join(' ')
+  return entries
+    .map((e, i) => {
+      const x = PAD + i * step
+      const y = PAD + (1 - Number(e[key]) / max) * (CHART_H - PAD * 2)
+      return `${x.toFixed(1)},${y.toFixed(1)}`
+    })
+    .join(' ')
 }
 
 function buildArea(entries: CbyAdminMonthlyEntry[], key: keyof CbyAdminMonthlyEntry): string {
   if (!entries.length) return ''
-  const vals = entries.map(e => Number(e[key]))
+  const vals = entries.map((e) => Number(e[key]))
   const max = Math.max(...vals, 1)
   const step = (CHART_W - PAD * 2) / Math.max(entries.length - 1, 1)
   const pts = entries.map((e, i) => {
@@ -201,7 +212,13 @@ function buildArea(entries: CbyAdminMonthlyEntry[], key: keyof CbyAdminMonthlyEn
   return `${PAD},${bottom} ${pts.join(' ')} ${lastX},${bottom}`
 }
 
-function buildDonutPath(entries: CbyAdminCategoryEntry[], index: number, cx: number, cy: number, r: number): string {
+function buildDonutPath(
+  entries: CbyAdminCategoryEntry[],
+  index: number,
+  cx: number,
+  cy: number,
+  r: number,
+): string {
   const total = entries.reduce((s, e) => s + e.count, 0)
   if (!total) return ''
   let startAngle = -Math.PI / 2
@@ -285,9 +302,7 @@ describe('CbyAdminDashboard — donut chart (buildDonutPath)', () => {
   ]
 
   it('returns empty string when total is zero', () => {
-    const empty: CbyAdminCategoryEntry[] = [
-      { label: 'USD', count: 0, color: '#0066cc' },
-    ]
+    const empty: CbyAdminCategoryEntry[] = [{ label: 'USD', count: 0, color: '#0066cc' }]
     expect(buildDonutPath(empty, 0, 50, 50, 38)).toBe('')
   })
 
@@ -327,9 +342,7 @@ describe('CbyAdminDashboard — optional fields graceful rendering', () => {
 
   it('stats with monthly_requests shows chart data', () => {
     const stats = makeStats({
-      monthly_requests: [
-        { month: '2026-05', submitted: 10, approved: 7 },
-      ],
+      monthly_requests: [{ month: '2026-05', submitted: 10, approved: 7 }],
     })
     expect(stats.monthly_requests).toHaveLength(1)
     expect(stats.monthly_requests![0]!.submitted).toBe(10)

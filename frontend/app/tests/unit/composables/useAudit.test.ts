@@ -129,8 +129,24 @@ describe('useAudit — new endpoints (Story 7.9)', () => {
       invoice_number: 'INV-001',
       banks: ['بنك التضامن', 'بنك سبأ'],
       requests: [
-        { id: 1, reference_number: 'YFH-2026-000001', bank_name: 'بنك التضامن', amount: 5000, currency: 'USD', created_at: '2026-05-18T10:00:00Z', status: 'DRAFT' },
-        { id: 2, reference_number: 'YFH-2026-000002', bank_name: 'بنك سبأ', amount: 5000, currency: 'USD', created_at: '2026-05-18T11:00:00Z', status: 'SUBMITTED' },
+        {
+          id: 1,
+          reference_number: 'YFH-2026-000001',
+          bank_name: 'بنك التضامن',
+          amount: 5000,
+          currency: 'USD',
+          created_at: '2026-05-18T10:00:00Z',
+          status: 'DRAFT',
+        },
+        {
+          id: 2,
+          reference_number: 'YFH-2026-000002',
+          bank_name: 'بنك سبأ',
+          amount: 5000,
+          currency: 'USD',
+          created_at: '2026-05-18T11:00:00Z',
+          status: 'SUBMITTED',
+        },
       ],
     }
     mockGet.mockResolvedValueOnce({

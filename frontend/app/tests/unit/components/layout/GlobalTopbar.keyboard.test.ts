@@ -93,10 +93,8 @@ describe('GlobalTopbar keyboard checks', () => {
 
     expect(sidebarToggle.exists()).toBe(true)
     expect(commandTrigger.exists()).toBe(true)
-
     ;(sidebarToggle.element as HTMLElement).focus()
     expect(document.activeElement).toBe(sidebarToggle.element)
-
     ;(commandTrigger.element as HTMLElement).focus()
     expect(document.activeElement).toBe(commandTrigger.element)
 

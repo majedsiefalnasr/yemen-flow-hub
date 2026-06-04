@@ -26,11 +26,7 @@ const props = defineProps<{
   <div v-else :class="cn('flex items-center gap-2', props.class)">
     <DropdownMenu>
       <DropdownMenuTrigger as-child>
-        <Button
-          variant="ghost"
-          size="sm"
-          class="-me-3 h-8 data-[state=open]:bg-accent"
-        >
+        <Button variant="ghost" size="sm" class="data-[state=open]:bg-accent -me-3 h-8">
           <span>{{ title }}</span>
           <ArrowDown v-if="column.getIsSorted() === 'desc'" class="ms-2 h-4 w-4" />
           <ArrowUp v-else-if="column.getIsSorted() === 'asc'" class="ms-2 h-4 w-4" />
@@ -39,16 +35,16 @@ const props = defineProps<{
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start">
         <DropdownMenuItem @click="column.toggleSorting(false)">
-          <ArrowUp class="me-2 h-3.5 w-3.5 text-muted-foreground/70" />
+          <ArrowUp class="text-muted-foreground/70 me-2 h-3.5 w-3.5" />
           تصاعدي
         </DropdownMenuItem>
         <DropdownMenuItem @click="column.toggleSorting(true)">
-          <ArrowDown class="me-2 h-3.5 w-3.5 text-muted-foreground/70" />
+          <ArrowDown class="text-muted-foreground/70 me-2 h-3.5 w-3.5" />
           تنازلي
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem @click="column.toggleVisibility(false)">
-          <EyeOff class="me-2 h-3.5 w-3.5 text-muted-foreground/70" />
+          <EyeOff class="text-muted-foreground/70 me-2 h-3.5 w-3.5" />
           إخفاء
         </DropdownMenuItem>
       </DropdownMenuContent>

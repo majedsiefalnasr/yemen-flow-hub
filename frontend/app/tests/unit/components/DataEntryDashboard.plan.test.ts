@@ -150,11 +150,22 @@ describe('DataEntryDashboard — correction strip links to /requests?tab=returne
 
   it('correction strip shows first returned reference number', () => {
     const stats: DataEntryDashboardStats = {
-      draft: 0, returned: 2, under_cby_processing: 0, completed: 0,
+      draft: 0,
+      returned: 2,
+      under_cby_processing: 0,
+      completed: 0,
       draft_requests: [],
       returned_requests: [
-        makeRequest({ id: 10, reference_number: 'YFH-2026-000010', status: RequestStatus.BANK_RETURNED }),
-        makeRequest({ id: 11, reference_number: 'YFH-2026-000011', status: RequestStatus.SUPPORT_RETURNED }),
+        makeRequest({
+          id: 10,
+          reference_number: 'YFH-2026-000010',
+          status: RequestStatus.BANK_RETURNED,
+        }),
+        makeRequest({
+          id: 11,
+          reference_number: 'YFH-2026-000011',
+          status: RequestStatus.SUPPORT_RETURNED,
+        }),
       ],
       recent_requests: [],
     }

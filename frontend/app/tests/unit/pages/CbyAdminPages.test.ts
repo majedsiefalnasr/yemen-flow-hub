@@ -6,7 +6,9 @@ import { UserRole } from '../../../types/enums'
 
 vi.stubGlobal('definePageMeta', vi.fn())
 vi.stubGlobal('navigateTo', vi.fn())
-vi.stubGlobal('useRuntimeConfig', () => ({ public: { apiBase: 'http://localhost', demoMode: false } }))
+vi.stubGlobal('useRuntimeConfig', () => ({
+  public: { apiBase: 'http://localhost', demoMode: false },
+}))
 
 // ─── Shared mocks ───────────────────────────────────────────────────────────
 
@@ -37,7 +39,13 @@ vi.mock('../../../composables/useBanks', () => ({
 
 vi.mock('../../../stores/auth.store', () => ({
   useAuthStore: () => ({
-    user: { id: 1, bank_id: null, role: UserRole.CBY_ADMIN, name: 'مدير النظام', email: 'admin@cby.gov.ye' },
+    user: {
+      id: 1,
+      bank_id: null,
+      role: UserRole.CBY_ADMIN,
+      name: 'مدير النظام',
+      email: 'admin@cby.gov.ye',
+    },
     isCbyAdmin: true,
     setUserPreferences: vi.fn(),
   }),
@@ -45,7 +53,13 @@ vi.mock('../../../stores/auth.store', () => ({
 
 vi.mock('../../../composables/useSettings', () => ({
   useSettings: () => ({
-    preferences: ref({ language: 'ar', dashboard_view: 'normal', table_density: 'normal', page_size: 25, notification_preferences: {} }),
+    preferences: ref({
+      language: 'ar',
+      dashboard_view: 'normal',
+      table_density: 'normal',
+      page_size: 25,
+      notification_preferences: {},
+    }),
     loading: ref(false),
     error: ref(null),
     fetchSettings: vi.fn(),
@@ -56,7 +70,12 @@ vi.mock('../../../composables/useSettings', () => ({
 
 vi.mock('../../../composables/useProfile', () => ({
   useProfile: () => ({
-    profile: ref({ name: 'مدير النظام', email: 'admin@cby.gov.ye', role: UserRole.CBY_ADMIN, bank_name_ar: null }),
+    profile: ref({
+      name: 'مدير النظام',
+      email: 'admin@cby.gov.ye',
+      role: UserRole.CBY_ADMIN,
+      bank_name_ar: null,
+    }),
     loading: ref(false),
     error: ref(null),
     fetchProfile: vi.fn(),
@@ -136,13 +155,13 @@ describe('/admin/cby-staff', () => {
   it('renders user table with all required columns', async () => {
     fetchUsersMock.mockResolvedValue([makeUser()])
     const wrapper = await mountPage()
-    const headers = wrapper.findAll('thead th').map(th => th.text())
+    const headers = wrapper.findAll('thead th').map((th) => th.text())
     expect(headers).toContain('المستخدم')
     expect(headers).toContain('الدور')
     expect(headers).toContain('الجهة')
     expect(headers).toContain('الحالة')
     expect(headers).toContain('آخر ظهور')
-    expect(headers).toContain('')  // actions column has no header text (sticky compact column)
+    expect(headers).toContain('') // actions column has no header text (sticky compact column)
   })
 
   it('renders user row with name and status badge', async () => {
@@ -199,8 +218,7 @@ describe('/admin/cby-staff', () => {
     // refs in script setup are exposed as raw refs on vm
     if (vm.filterRole && typeof vm.filterRole === 'object' && 'value' in vm.filterRole) {
       vm.filterRole.value = UserRole.CBY_ADMIN
-    }
-    else {
+    } else {
       vm.filterRole = UserRole.CBY_ADMIN
     }
     await flushPromises()
@@ -239,7 +257,10 @@ describe('/admin/cby-staff', () => {
     // Dialog uses Teleport; .modal selector not reachable in JSDOM. Skipped per policy.
     const wrapper = await mountPage()
     await wrapper.get('.btn-primary').trigger('click')
-    const options = wrapper.find('.modal select').findAll('option').map(o => o.element.value)
+    const options = wrapper
+      .find('.modal select')
+      .findAll('option')
+      .map((o) => o.element.value)
     expect(options).toContain(UserRole.CBY_ADMIN)
     expect(options).toContain(UserRole.BANK_ADMIN)
     expect(options).toContain(UserRole.DATA_ENTRY)
@@ -384,7 +405,7 @@ describe('/admin/entities', () => {
 
   it('renders correct column headers: الجهة, رقم الترخيص, الرمز, الحالة, إجراءات', async () => {
     const wrapper = await mountPage()
-    const headers = wrapper.findAll('thead th').map(th => th.text())
+    const headers = wrapper.findAll('thead th').map((th) => th.text())
     expect(headers).toContain('الجهة')
     expect(headers).toContain('رقم الترخيص')
     expect(headers).toContain('الرمز')
@@ -394,7 +415,7 @@ describe('/admin/entities', () => {
 
   it('does not render entity_type or user_count columns', async () => {
     const wrapper = await mountPage()
-    const headers = wrapper.findAll('thead th').map(th => th.text())
+    const headers = wrapper.findAll('thead th').map((th) => th.text())
     expect(headers).not.toContain('نوع الجهة')
     expect(headers).not.toContain('عدد المستخدمين')
   })
@@ -525,7 +546,7 @@ describe('/admin/roles', () => {
     const wrapper = await mountPage()
     const roleCols = wrapper.findAll('thead th[data-role]')
     expect(roleCols.length).toBe(8)
-    const roles = roleCols.map(th => th.attributes('data-role'))
+    const roles = roleCols.map((th) => th.attributes('data-role'))
     expect(roles).toContain('DATA_ENTRY')
     expect(roles).toContain('CBY_ADMIN')
     expect(roles).toContain('COMMITTEE_DIRECTOR')
@@ -537,7 +558,7 @@ describe('/admin/roles', () => {
     const wrapper = await mountPage()
     const checkboxes = wrapper.findAll('.perm-checkbox')
     expect(checkboxes.length).toBeGreaterThan(0)
-    checkboxes.forEach(cb => {
+    checkboxes.forEach((cb) => {
       expect((cb.element as HTMLInputElement).disabled).toBe(true)
     })
   })
@@ -597,13 +618,13 @@ describe('/settings — 6-tab layout', () => {
     const wrapper = await mountPage()
     const tabs = wrapper.findAll('[data-tab]')
     expect(tabs.length).toBe(5)
-    const tabIds = tabs.map(t => t.attributes('data-tab'))
+    const tabIds = tabs.map((t) => t.attributes('data-tab'))
     expect(tabIds).not.toContain('demo')
   })
 
   it('renders all expected tab labels', async () => {
     const wrapper = await mountPage()
-    const tabText = wrapper.findAll('[data-tab]').map(t => t.text())
+    const tabText = wrapper.findAll('[data-tab]').map((t) => t.text())
     expect(tabText).toContain('سير العمل')
     expect(tabText).toContain('البريد الإلكتروني')
     expect(tabText).toContain('الإشعارات')

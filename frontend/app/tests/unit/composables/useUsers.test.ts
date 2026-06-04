@@ -86,7 +86,9 @@ describe('useUsers', () => {
         per_page: 100,
       })
 
-      expect(mockGet).toHaveBeenCalledWith('/api/users?role=BANK_REVIEWER&bank_id=7&is_active=true&per_page=100')
+      expect(mockGet).toHaveBeenCalledWith(
+        '/api/users?role=BANK_REVIEWER&bank_id=7&is_active=true&per_page=100',
+      )
     })
   })
 
@@ -137,7 +139,10 @@ describe('useUsers', () => {
         is_active: true,
       }
       await updateUser(1, payload)
-      expect(mockPut).toHaveBeenCalledWith('/api/users/1', expect.objectContaining({ password: 'newpass123' }))
+      expect(mockPut).toHaveBeenCalledWith(
+        '/api/users/1',
+        expect.objectContaining({ password: 'newpass123' }),
+      )
     })
   })
 })

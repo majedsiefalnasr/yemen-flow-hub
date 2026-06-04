@@ -6,10 +6,7 @@ import { useAuthStore } from '@/stores/auth.store'
 import { NAV_ITEMS } from '@/constants/workflow'
 import { ICONS } from '@/utils/icon-map'
 import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogContent,
-} from '@/components/ui/dialog'
+import { Dialog, DialogContent } from '@/components/ui/dialog'
 import {
   Command,
   CommandEmpty,
@@ -49,9 +46,22 @@ const shortcutByRoute: Record<string, string> = {
   '/settings': 'S',
 }
 
-const commandGroupByRoute: Array<{ heading: string, routes: string[] }> = [
-  { heading: 'الطلبات والطوابير', routes: ['/dashboard', '/requests', '/requests/new', '/customs'] },
-  { heading: 'الإدارة', routes: ['/merchants', '/staff', '/admin/banks', '/admin/cby-staff', '/admin/workflow-docs', '/admin/roles'] },
+const commandGroupByRoute: Array<{ heading: string; routes: string[] }> = [
+  {
+    heading: 'الطلبات والطوابير',
+    routes: ['/dashboard', '/requests', '/requests/new', '/customs'],
+  },
+  {
+    heading: 'الإدارة',
+    routes: [
+      '/merchants',
+      '/staff',
+      '/admin/banks',
+      '/admin/cby-staff',
+      '/admin/workflow-docs',
+      '/admin/roles',
+    ],
+  },
   { heading: 'التدقيق والتقارير', routes: ['/reports', '/audit'] },
   { heading: 'المساعدة والإعدادات', routes: ['/notifications', '/settings'] },
 ]
@@ -60,23 +70,21 @@ const allowedActions = computed(() => {
   const user = authStore.user
   if (!user) return []
 
-  return NAV_ITEMS
-    .filter(item => item.roles.includes(user.role))
-    .map(item => ({
-      title: item.label,
-      url: item.route,
-      icon: ICONS[item.icon] ?? ICONS.search,
-      shortcut: shortcutByRoute[item.route] ?? '',
-    }))
+  return NAV_ITEMS.filter((item) => item.roles.includes(user.role)).map((item) => ({
+    title: item.label,
+    url: item.route,
+    icon: ICONS[item.icon] ?? ICONS.search,
+    shortcut: shortcutByRoute[item.route] ?? '',
+  }))
 })
 
 const commandGroups = computed(() =>
   commandGroupByRoute
-    .map(group => ({
+    .map((group) => ({
       heading: group.heading,
-      actions: allowedActions.value.filter(action => group.routes.includes(action.url)),
+      actions: allowedActions.value.filter((action) => group.routes.includes(action.url)),
     }))
-    .filter(group => group.actions.length > 0),
+    .filter((group) => group.actions.length > 0),
 )
 
 function navigateTo(path: string) {
@@ -93,7 +101,7 @@ function handleSelect(path: string) {
   <Button
     variant="ghost"
     size="sm"
-    class="h-7 gap-1.5 rounded-md px-2 text-muted-foreground hover:text-foreground"
+    class="text-muted-foreground hover:text-foreground h-7 gap-1.5 rounded-md px-2"
     aria-label="بحث ⌘K"
     @click="open = true"
   >
@@ -107,7 +115,9 @@ function handleSelect(path: string) {
 
   <Dialog v-model:open="open">
     <DialogContent class="overflow-hidden p-0 shadow-lg">
-      <Command class="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group-heading]]:text-xs [&_[cmdk-input-wrapper]_svg]:h-5 [&_[cmdk-input-wrapper]_svg]:w-5 [&_[cmdk-input]]:h-12 [&_[cmdk-item]]:px-2 [&_[cmdk-item]]:py-3 [&_[cmdk-item]_svg]:h-5 [&_[cmdk-item]_svg]:w-5">
+      <Command
+        class="[&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-medium [&_[cmdk-input-wrapper]_svg]:h-5 [&_[cmdk-input-wrapper]_svg]:w-5 [&_[cmdk-input]]:h-12 [&_[cmdk-item]]:px-2 [&_[cmdk-item]]:py-3 [&_[cmdk-item]_svg]:h-5 [&_[cmdk-item]_svg]:w-5"
+      >
         <CommandInput placeholder="ابحث أو اختر إجراء..." />
         <CommandList>
           <CommandEmpty>لم يتم العثور على نتائج.</CommandEmpty>

@@ -53,9 +53,21 @@ const yTicks = computed(() => {
 </script>
 
 <template>
-  <div class="flex flex-col gap-3" >
-    <div v-if="!series.length || !labels.length || series.some((s) => s.values.length !== labels.length)" class="h-44 flex items-center justify-center text-[var(--color-text-subtle)] text-sm">لا توجد بيانات</div>
-    <svg v-else :viewBox="`0 0 ${width} ${height}`" class="w-full h-auto overflow-visible" aria-label="مخطط خطي">
+  <div class="flex flex-col gap-3">
+    <div
+      v-if="
+        !series.length || !labels.length || series.some((s) => s.values.length !== labels.length)
+      "
+      class="flex h-44 items-center justify-center text-sm text-[var(--color-text-subtle)]"
+    >
+      لا توجد بيانات
+    </div>
+    <svg
+      v-else
+      :viewBox="`0 0 ${width} ${height}`"
+      class="h-auto w-full overflow-visible"
+      aria-label="مخطط خطي"
+    >
       <line
         v-for="tick in yTicks"
         :key="tick.label"
@@ -74,7 +86,9 @@ const yTicks = computed(() => {
         text-anchor="end"
         font-size="10"
         :fill="'var(--muted-foreground)'"
-      >{{ tick.label }}</text>
+      >
+        {{ tick.label }}
+      </text>
       <polyline
         v-for="s in series"
         :key="s.label"
@@ -103,11 +117,17 @@ const yTicks = computed(() => {
         text-anchor="middle"
         font-size="10"
         :fill="'var(--muted-foreground)'"
-      >{{ label }}</text>
+      >
+        {{ label }}
+      </text>
     </svg>
-    <div class="flex gap-4 justify-center flex-wrap">
-      <div v-for="s in series" :key="`leg-${s.label}`" class="flex items-center gap-1.5 text-sm text-[var(--color-text-primary)]">
-        <span class="w-2.5 h-2.5 rounded-full flex-shrink-0" :style="{ background: s.color }" />
+    <div class="flex flex-wrap justify-center gap-4">
+      <div
+        v-for="s in series"
+        :key="`leg-${s.label}`"
+        class="flex items-center gap-1.5 text-sm text-[var(--color-text-primary)]"
+      >
+        <span class="h-2.5 w-2.5 flex-shrink-0 rounded-full" :style="{ background: s.color }" />
         <span>{{ s.label }}</span>
       </div>
     </div>

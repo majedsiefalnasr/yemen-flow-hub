@@ -3,6 +3,9 @@
  */
 import { describe, it, expect } from 'vitest'
 
+// Variant mapping logic (mirrors detail page lockedBannerVariant computed)
+import { RequestStatus, UserRole } from '../../../types/enums'
+
 type LockedBannerVariant = 'locked' | 'readonly' | 'pending' | 'bank_rejected'
 
 const VARIANT_CONFIG: Record<LockedBannerVariant, { icon: string; message: string }> = {
@@ -58,20 +61,17 @@ describe('LockedBanner — variant config', () => {
   })
 
   it('all four variants have distinct messages', () => {
-    const messages = Object.values(VARIANT_CONFIG).map(c => c.message)
+    const messages = Object.values(VARIANT_CONFIG).map((c) => c.message)
     const unique = new Set(messages)
     expect(unique.size).toBe(4)
   })
 
   it('all four variants have distinct icons', () => {
-    const icons = Object.values(VARIANT_CONFIG).map(c => c.icon)
+    const icons = Object.values(VARIANT_CONFIG).map((c) => c.icon)
     const unique = new Set(icons)
     expect(unique.size).toBe(4)
   })
 })
-
-// Variant mapping logic (mirrors detail page lockedBannerVariant computed)
-import { RequestStatus, UserRole } from '../../../types/enums'
 
 const TERMINAL_STATUSES = new Set([
   RequestStatus.SUPPORT_REJECTED,
@@ -109,10 +109,7 @@ const VOTING_STAGE_STATUSES = new Set([
 ])
 
 const EXECUTIVE_ROLES = new Set([UserRole.EXECUTIVE_MEMBER, UserRole.COMMITTEE_DIRECTOR])
-const ACTIONABLE_REVIEWER_STATUSES = new Set([
-  RequestStatus.SUBMITTED,
-  RequestStatus.BANK_REVIEW,
-])
+const ACTIONABLE_REVIEWER_STATUSES = new Set([RequestStatus.SUBMITTED, RequestStatus.BANK_REVIEW])
 
 function lockedBannerVariant(role: UserRole, status: RequestStatus): LockedBannerVariant | null {
   if (status === RequestStatus.BANK_REJECTED) return 'bank_rejected'
@@ -130,15 +127,21 @@ describe('LockedBanner — variant mapping from status', () => {
   })
 
   it('EXECUTIVE_REJECTED → locked', () => {
-    expect(lockedBannerVariant(UserRole.DATA_ENTRY, RequestStatus.EXECUTIVE_REJECTED)).toBe('locked')
+    expect(lockedBannerVariant(UserRole.DATA_ENTRY, RequestStatus.EXECUTIVE_REJECTED)).toBe(
+      'locked',
+    )
   })
 
   it('CUSTOMS_DECLARATION_ISSUED → locked', () => {
-    expect(lockedBannerVariant(UserRole.DATA_ENTRY, RequestStatus.CUSTOMS_DECLARATION_ISSUED)).toBe('locked')
+    expect(lockedBannerVariant(UserRole.DATA_ENTRY, RequestStatus.CUSTOMS_DECLARATION_ISSUED)).toBe(
+      'locked',
+    )
   })
 
   it('FX_CONFIRMATION_PENDING → locked', () => {
-    expect(lockedBannerVariant(UserRole.DATA_ENTRY, RequestStatus.FX_CONFIRMATION_PENDING)).toBe('locked')
+    expect(lockedBannerVariant(UserRole.DATA_ENTRY, RequestStatus.FX_CONFIRMATION_PENDING)).toBe(
+      'locked',
+    )
   })
 
   it('SUPPORT_REJECTED → locked', () => {
@@ -146,7 +149,9 @@ describe('LockedBanner — variant mapping from status', () => {
   })
 
   it('BANK_REJECTED → bank_rejected', () => {
-    expect(lockedBannerVariant(UserRole.DATA_ENTRY, RequestStatus.BANK_REJECTED)).toBe('bank_rejected')
+    expect(lockedBannerVariant(UserRole.DATA_ENTRY, RequestStatus.BANK_REJECTED)).toBe(
+      'bank_rejected',
+    )
   })
 
   it('SUBMITTED → readonly', () => {
@@ -162,7 +167,9 @@ describe('LockedBanner — variant mapping from status', () => {
   })
 
   it('WAITING_FOR_SWIFT → readonly', () => {
-    expect(lockedBannerVariant(UserRole.DATA_ENTRY, RequestStatus.WAITING_FOR_SWIFT)).toBe('readonly')
+    expect(lockedBannerVariant(UserRole.DATA_ENTRY, RequestStatus.WAITING_FOR_SWIFT)).toBe(
+      'readonly',
+    )
   })
 
   it('SWIFT_UPLOADED → readonly', () => {
@@ -170,19 +177,27 @@ describe('LockedBanner — variant mapping from status', () => {
   })
 
   it('WAITING_FOR_VOTING_OPEN → readonly for DATA_ENTRY', () => {
-    expect(lockedBannerVariant(UserRole.DATA_ENTRY, RequestStatus.WAITING_FOR_VOTING_OPEN)).toBe('readonly')
+    expect(lockedBannerVariant(UserRole.DATA_ENTRY, RequestStatus.WAITING_FOR_VOTING_OPEN)).toBe(
+      'readonly',
+    )
   })
 
   it('EXECUTIVE_APPROVED → readonly for DATA_ENTRY', () => {
-    expect(lockedBannerVariant(UserRole.DATA_ENTRY, RequestStatus.EXECUTIVE_APPROVED)).toBe('readonly')
+    expect(lockedBannerVariant(UserRole.DATA_ENTRY, RequestStatus.EXECUTIVE_APPROVED)).toBe(
+      'readonly',
+    )
   })
 
   it('SUPPORT_REVIEW_PENDING → pending', () => {
-    expect(lockedBannerVariant(UserRole.DATA_ENTRY, RequestStatus.SUPPORT_REVIEW_PENDING)).toBe('pending')
+    expect(lockedBannerVariant(UserRole.DATA_ENTRY, RequestStatus.SUPPORT_REVIEW_PENDING)).toBe(
+      'pending',
+    )
   })
 
   it('SUPPORT_REVIEW_IN_PROGRESS → pending', () => {
-    expect(lockedBannerVariant(UserRole.DATA_ENTRY, RequestStatus.SUPPORT_REVIEW_IN_PROGRESS)).toBe('pending')
+    expect(lockedBannerVariant(UserRole.DATA_ENTRY, RequestStatus.SUPPORT_REVIEW_IN_PROGRESS)).toBe(
+      'pending',
+    )
   })
 
   it('SUPPORT_APPROVED → pending', () => {
@@ -190,11 +205,15 @@ describe('LockedBanner — variant mapping from status', () => {
   })
 
   it('EXECUTIVE_VOTING_OPEN → pending for DATA_ENTRY', () => {
-    expect(lockedBannerVariant(UserRole.DATA_ENTRY, RequestStatus.EXECUTIVE_VOTING_OPEN)).toBe('pending')
+    expect(lockedBannerVariant(UserRole.DATA_ENTRY, RequestStatus.EXECUTIVE_VOTING_OPEN)).toBe(
+      'pending',
+    )
   })
 
   it('EXECUTIVE_VOTING_CLOSED → pending for DATA_ENTRY', () => {
-    expect(lockedBannerVariant(UserRole.DATA_ENTRY, RequestStatus.EXECUTIVE_VOTING_CLOSED)).toBe('pending')
+    expect(lockedBannerVariant(UserRole.DATA_ENTRY, RequestStatus.EXECUTIVE_VOTING_CLOSED)).toBe(
+      'pending',
+    )
   })
 
   it('DRAFT → null (no banner)', () => {
@@ -202,37 +221,53 @@ describe('LockedBanner — variant mapping from status', () => {
   })
 
   it('DRAFT_REJECTED_INTERNAL → null (no banner, correction banner shows instead)', () => {
-    expect(lockedBannerVariant(UserRole.DATA_ENTRY, RequestStatus.DRAFT_REJECTED_INTERNAL)).toBeNull()
+    expect(
+      lockedBannerVariant(UserRole.DATA_ENTRY, RequestStatus.DRAFT_REJECTED_INTERNAL),
+    ).toBeNull()
   })
 })
 
 describe('LockedBanner — executive roles bypass voting stage banners', () => {
   it('EXECUTIVE_MEMBER viewing EXECUTIVE_VOTING_OPEN → null (no banner)', () => {
-    expect(lockedBannerVariant(UserRole.EXECUTIVE_MEMBER, RequestStatus.EXECUTIVE_VOTING_OPEN)).toBeNull()
+    expect(
+      lockedBannerVariant(UserRole.EXECUTIVE_MEMBER, RequestStatus.EXECUTIVE_VOTING_OPEN),
+    ).toBeNull()
   })
 
   it('COMMITTEE_DIRECTOR viewing EXECUTIVE_VOTING_OPEN → null', () => {
-    expect(lockedBannerVariant(UserRole.COMMITTEE_DIRECTOR, RequestStatus.EXECUTIVE_VOTING_OPEN)).toBeNull()
+    expect(
+      lockedBannerVariant(UserRole.COMMITTEE_DIRECTOR, RequestStatus.EXECUTIVE_VOTING_OPEN),
+    ).toBeNull()
   })
 
   it('COMMITTEE_DIRECTOR viewing EXECUTIVE_VOTING_CLOSED → null', () => {
-    expect(lockedBannerVariant(UserRole.COMMITTEE_DIRECTOR, RequestStatus.EXECUTIVE_VOTING_CLOSED)).toBeNull()
+    expect(
+      lockedBannerVariant(UserRole.COMMITTEE_DIRECTOR, RequestStatus.EXECUTIVE_VOTING_CLOSED),
+    ).toBeNull()
   })
 
   it('COMMITTEE_DIRECTOR viewing WAITING_FOR_VOTING_OPEN → null', () => {
-    expect(lockedBannerVariant(UserRole.COMMITTEE_DIRECTOR, RequestStatus.WAITING_FOR_VOTING_OPEN)).toBeNull()
+    expect(
+      lockedBannerVariant(UserRole.COMMITTEE_DIRECTOR, RequestStatus.WAITING_FOR_VOTING_OPEN),
+    ).toBeNull()
   })
 
   it('COMMITTEE_DIRECTOR viewing EXECUTIVE_REJECTED → locked (terminal state)', () => {
-    expect(lockedBannerVariant(UserRole.COMMITTEE_DIRECTOR, RequestStatus.EXECUTIVE_REJECTED)).toBe('locked')
+    expect(lockedBannerVariant(UserRole.COMMITTEE_DIRECTOR, RequestStatus.EXECUTIVE_REJECTED)).toBe(
+      'locked',
+    )
   })
 
   it('COMMITTEE_DIRECTOR viewing BANK_REJECTED → bank_rejected', () => {
-    expect(lockedBannerVariant(UserRole.COMMITTEE_DIRECTOR, RequestStatus.BANK_REJECTED)).toBe('bank_rejected')
+    expect(lockedBannerVariant(UserRole.COMMITTEE_DIRECTOR, RequestStatus.BANK_REJECTED)).toBe(
+      'bank_rejected',
+    )
   })
 
   it('BANK_REVIEWER viewing EXECUTIVE_VOTING_OPEN → pending (not executive)', () => {
-    expect(lockedBannerVariant(UserRole.BANK_REVIEWER, RequestStatus.EXECUTIVE_VOTING_OPEN)).toBe('pending')
+    expect(lockedBannerVariant(UserRole.BANK_REVIEWER, RequestStatus.EXECUTIVE_VOTING_OPEN)).toBe(
+      'pending',
+    )
   })
 
   it('BANK_REVIEWER viewing SUBMITTED → null (actionable stage)', () => {

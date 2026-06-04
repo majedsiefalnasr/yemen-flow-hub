@@ -20,14 +20,18 @@ export function useTableExport() {
     columns: ExportColumn<T>[],
     delimiter: ',' | '\t',
   ) {
-    const headers = columns.map(c => escapeDelimitedValue(c.label)).join(delimiter)
-    const body = rows.map(row =>
-      columns.map((column) => {
-        const raw = column.key in row ? row[column.key as string] : undefined
-        const value = column.format ? column.format(raw, row) : (raw ?? '')
-        return escapeDelimitedValue(value)
-      }).join(delimiter),
-    ).join('\n')
+    const headers = columns.map((c) => escapeDelimitedValue(c.label)).join(delimiter)
+    const body = rows
+      .map((row) =>
+        columns
+          .map((column) => {
+            const raw = column.key in row ? row[column.key as string] : undefined
+            const value = column.format ? column.format(raw, row) : (raw ?? '')
+            return escapeDelimitedValue(value)
+          })
+          .join(delimiter),
+      )
+      .join('\n')
     return { headers, body }
   }
 
@@ -75,12 +79,15 @@ export function useTableExport() {
   ) {
     if (!import.meta.client || !rows.length) return
 
-    const data = rows.map(row =>
-      columns.reduce((acc, column) => {
-        const raw = column.key in row ? row[column.key as string] : undefined
-        acc[column.label] = column.format ? column.format(raw, row) : (raw ?? '')
-        return acc
-      }, {} as Record<string, unknown>),
+    const data = rows.map((row) =>
+      columns.reduce(
+        (acc, column) => {
+          const raw = column.key in row ? row[column.key as string] : undefined
+          acc[column.label] = column.format ? column.format(raw, row) : (raw ?? '')
+          return acc
+        },
+        {} as Record<string, unknown>,
+      ),
     )
 
     const content = JSON.stringify(data, null, 2)
@@ -91,12 +98,15 @@ export function useTableExport() {
     rows: T[],
     columns: ExportColumn<T>[],
   ) {
-    return rows.map(row =>
-      columns.reduce((acc, column) => {
-        const raw = column.key in row ? row[column.key as string] : undefined
-        acc[column.label] = column.format ? column.format(raw, row) : (raw ?? '')
-        return acc
-      }, {} as Record<string, unknown>),
+    return rows.map((row) =>
+      columns.reduce(
+        (acc, column) => {
+          const raw = column.key in row ? row[column.key as string] : undefined
+          acc[column.label] = column.format ? column.format(raw, row) : (raw ?? '')
+          return acc
+        },
+        {} as Record<string, unknown>,
+      ),
     )
   }
 
@@ -108,13 +118,11 @@ export function useTableExport() {
     if (!import.meta.client || !rows.length) return
 
     const normalizedRows = normalizeRowsForObjects(rows, columns)
-    const headerHtml = columns
-      .map(column => `<th>${String(column.label)}</th>`)
-      .join('')
+    const headerHtml = columns.map((column) => `<th>${String(column.label)}</th>`).join('')
     const bodyHtml = normalizedRows
       .map((row) => {
         const cells = columns
-          .map(column => `<td>${String(row[column.label] ?? '')}</td>`)
+          .map((column) => `<td>${String(row[column.label] ?? '')}</td>`)
           .join('')
         return `<tr>${cells}</tr>`
       })
@@ -143,12 +151,18 @@ export function useTableExport() {
 
     const normalizedRows = normalizeRowsForObjects(rows, columns)
     const headerHtml = columns
-      .map(column => `<th style="border:1px solid #ccc;padding:6px;text-align:start">${String(column.label)}</th>`)
+      .map(
+        (column) =>
+          `<th style="border:1px solid #ccc;padding:6px;text-align:start">${String(column.label)}</th>`,
+      )
       .join('')
     const bodyHtml = normalizedRows
       .map((row) => {
         const cells = columns
-          .map(column => `<td style="border:1px solid #ccc;padding:6px">${String(row[column.label] ?? '')}</td>`)
+          .map(
+            (column) =>
+              `<td style="border:1px solid #ccc;padding:6px">${String(row[column.label] ?? '')}</td>`,
+          )
           .join('')
         return `<tr>${cells}</tr>`
       })

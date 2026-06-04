@@ -36,7 +36,7 @@ function statusLabel(status: string): string {
 }
 
 const workflowEntries = computed(() =>
-  sortedHistory.value.map(entry => ({
+  sortedHistory.value.map((entry) => ({
     id: entry.id,
     statusLabel: entry.to_status ? statusLabel(entry.to_status) : '—',
     actor: entry.performed_by?.name ?? `#${entry.actor_id}`,
@@ -65,91 +65,185 @@ const fields = computed(() => [
 </script>
 
 <template>
-  <div class="mx-auto max-w-[900px] bg-background p-6 text-foreground print:max-w-full print:bg-white print:p-0 print:text-black">
+  <div
+    class="bg-background text-foreground mx-auto max-w-[900px] p-6 print:max-w-full print:bg-white print:p-0 print:text-black"
+  >
     <!-- ─── Section 1: Title + reference + status ─── -->
     <header class="mb-2 flex items-start justify-between gap-4">
       <div class="flex min-w-0 flex-col gap-1">
-        <h1 class="m-0 font-heading text-2xl font-semibold leading-tight text-foreground print:text-black">طلب تمويل واردات</h1>
-        <span class="break-all text-base font-semibold leading-6 text-primary tabular-nums print:text-black">{{ request.reference_number }}</span>
+        <h1
+          class="font-heading text-foreground m-0 text-2xl leading-tight font-semibold print:text-black"
+        >
+          طلب تمويل واردات
+        </h1>
+        <span
+          class="text-primary text-base leading-6 font-semibold break-all tabular-nums print:text-black"
+          >{{ request.reference_number }}</span
+        >
       </div>
-      <span class="flex-shrink-0 whitespace-nowrap rounded-full border border-border bg-muted px-3 py-1 text-sm font-medium leading-5 text-foreground print:border-black print:bg-transparent print:text-black">{{ statusLabel(request.status) }}</span>
+      <span
+        class="border-border bg-muted text-foreground flex-shrink-0 rounded-full border px-3 py-1 text-sm leading-5 font-medium whitespace-nowrap print:border-black print:bg-transparent print:text-black"
+        >{{ statusLabel(request.status) }}</span
+      >
     </header>
 
-    <div class="h-px bg-border my-4" />
+    <div class="bg-border my-4 h-px" />
 
     <!-- ─── Section 2: Bank / user / date ─── -->
     <section class="flex flex-col gap-1.5" aria-label="بيانات الطلب">
       <div class="flex gap-2 text-sm leading-6">
-        <span class="w-36 font-section text-xs font-medium leading-6 text-muted-foreground print:text-black">البنك:</span>
-        <span class="min-w-0 break-words text-foreground print:text-black">{{ request.bank_name ?? '—' }}</span>
+        <span
+          class="font-section text-muted-foreground w-36 text-xs leading-6 font-medium print:text-black"
+          >البنك:</span
+        >
+        <span class="text-foreground min-w-0 break-words print:text-black">{{
+          request.bank_name ?? '—'
+        }}</span>
       </div>
       <div class="flex gap-2 text-sm leading-6">
-        <span class="w-36 font-section text-xs font-medium leading-6 text-muted-foreground print:text-black">مقدّم الطلب:</span>
-        <span class="min-w-0 break-words text-foreground print:text-black">{{ actorName(request.created_by_user) }}</span>
+        <span
+          class="font-section text-muted-foreground w-36 text-xs leading-6 font-medium print:text-black"
+          >مقدّم الطلب:</span
+        >
+        <span class="text-foreground min-w-0 break-words print:text-black">{{
+          actorName(request.created_by_user)
+        }}</span>
       </div>
       <div class="flex gap-2 text-sm leading-6">
-        <span class="w-36 font-section text-xs font-medium leading-6 text-muted-foreground print:text-black">تاريخ الإنشاء:</span>
-        <span class="min-w-0 break-words text-foreground print:text-black">{{ formatDate(request.created_at) }}</span>
+        <span
+          class="font-section text-muted-foreground w-36 text-xs leading-6 font-medium print:text-black"
+          >تاريخ الإنشاء:</span
+        >
+        <span class="text-foreground min-w-0 break-words print:text-black">{{
+          formatDate(request.created_at)
+        }}</span>
       </div>
     </section>
 
-    <div class="h-px bg-border my-4" />
+    <div class="bg-border my-4 h-px" />
 
     <!-- ─── Section 3: Wizard fields ─── -->
     <section aria-label="تفاصيل الطلب">
-      <h2 class="m-0 mb-3 font-heading text-base font-semibold leading-6 text-primary print:text-black">تفاصيل الطلب</h2>
-      <div class="grid grid-cols-2 gap-y-2.5 gap-x-6">
+      <h2
+        class="font-heading text-primary m-0 mb-3 text-base leading-6 font-semibold print:text-black"
+      >
+        تفاصيل الطلب
+      </h2>
+      <div class="grid grid-cols-2 gap-x-6 gap-y-2.5">
         <div v-for="field in fields" :key="field.label" class="flex min-w-0 flex-col gap-0.5">
-          <span class="font-section text-xs font-medium leading-5 text-muted-foreground print:text-black">{{ field.label }}</span>
-          <span class="break-words text-sm leading-6 text-foreground print:text-black">{{ field.value }}</span>
+          <span
+            class="font-section text-muted-foreground text-xs leading-5 font-medium print:text-black"
+            >{{ field.label }}</span
+          >
+          <span class="text-foreground text-sm leading-6 break-words print:text-black">{{
+            field.value
+          }}</span>
         </div>
       </div>
     </section>
 
-    <div class="h-px bg-border my-4" />
+    <div class="bg-border my-4 h-px" />
 
     <!-- ─── Section 4: Documents ─── -->
     <section aria-label="المستندات المرفقة">
-      <h2 class="m-0 mb-3 font-heading text-base font-semibold leading-6 text-primary print:text-black">المستندات المرفقة</h2>
-      <p v-if="documents.length === 0" class="py-4 text-center text-sm leading-6 text-muted-foreground print:text-black">لا توجد مستندات مرفقة.</p>
+      <h2
+        class="font-heading text-primary m-0 mb-3 text-base leading-6 font-semibold print:text-black"
+      >
+        المستندات المرفقة
+      </h2>
+      <p
+        v-if="documents.length === 0"
+        class="text-muted-foreground py-4 text-center text-sm leading-6 print:text-black"
+      >
+        لا توجد مستندات مرفقة.
+      </p>
       <table v-else class="w-full border-collapse text-sm">
         <thead>
           <tr>
-            <th class="border border-border bg-muted px-2.5 py-2 text-right font-section text-xs font-medium leading-5 text-foreground print:bg-border print:text-black">اسم الملف</th>
-            <th class="border border-border bg-muted px-2.5 py-2 text-right font-section text-xs font-medium leading-5 text-foreground print:bg-border print:text-black">تاريخ الرفع</th>
-            <th class="border border-border bg-muted px-2.5 py-2 text-right font-section text-xs font-medium leading-5 text-foreground print:bg-border print:text-black">رُفع بواسطة</th>
+            <th
+              class="border-border bg-muted font-section text-foreground print:bg-border border px-2.5 py-2 text-right text-xs leading-5 font-medium print:text-black"
+            >
+              اسم الملف
+            </th>
+            <th
+              class="border-border bg-muted font-section text-foreground print:bg-border border px-2.5 py-2 text-right text-xs leading-5 font-medium print:text-black"
+            >
+              تاريخ الرفع
+            </th>
+            <th
+              class="border-border bg-muted font-section text-foreground print:bg-border border px-2.5 py-2 text-right text-xs leading-5 font-medium print:text-black"
+            >
+              رُفع بواسطة
+            </th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="doc in documents" :key="doc.id">
-            <td class="break-all border border-border px-2.5 py-2 text-right leading-6 text-foreground print:text-black">{{ doc.original_filename }}</td>
-            <td class="border border-border px-2.5 py-2 text-right leading-6 text-foreground print:text-black">{{ formatDate(doc.uploaded_at) }}</td>
-            <td class="break-words border border-border px-2.5 py-2 text-right leading-6 text-foreground print:text-black">{{ doc.uploaded_by_name ?? '—' }}</td>
+            <td
+              class="border-border text-foreground border px-2.5 py-2 text-right leading-6 break-all print:text-black"
+            >
+              {{ doc.original_filename }}
+            </td>
+            <td
+              class="border-border text-foreground border px-2.5 py-2 text-right leading-6 print:text-black"
+            >
+              {{ formatDate(doc.uploaded_at) }}
+            </td>
+            <td
+              class="border-border text-foreground border px-2.5 py-2 text-right leading-6 break-words print:text-black"
+            >
+              {{ doc.uploaded_by_name ?? '—' }}
+            </td>
           </tr>
         </tbody>
       </table>
     </section>
 
-    <div class="h-px bg-border my-4" />
+    <div class="bg-border my-4 h-px" />
 
     <!-- ─── Section 5: Workflow timeline ─── -->
     <section aria-label="مسار سير العمل">
-      <h2 class="m-0 mb-3 font-heading text-base font-semibold leading-6 text-primary print:text-black">مسار سير العمل</h2>
-      <p v-if="workflowEntries.length === 0" class="py-4 text-center text-sm leading-6 text-muted-foreground print:text-black">لا توجد مراحل مسجّلة بعد.</p>
-      <ol v-else class="list-none p-0 m-0 flex flex-col gap-2.5 print:break-inside-avoid">
-        <li v-for="entry in workflowEntries" :key="entry.id" class="workflow-entry grid grid-cols-[1.4fr_1fr_auto] items-center gap-3 rounded-xl border border-border bg-muted p-3 print:bg-transparent">
-          <span class="break-words text-sm font-medium leading-6 text-foreground print:text-black">{{ entry.statusLabel }}</span>
-          <span class="break-words text-xs leading-5 text-muted-foreground print:text-black">{{ entry.actor }}</span>
-          <span class="whitespace-nowrap text-xs leading-5 text-muted-foreground tabular-nums print:text-black">{{ entry.timestamp }}</span>
+      <h2
+        class="font-heading text-primary m-0 mb-3 text-base leading-6 font-semibold print:text-black"
+      >
+        مسار سير العمل
+      </h2>
+      <p
+        v-if="workflowEntries.length === 0"
+        class="text-muted-foreground py-4 text-center text-sm leading-6 print:text-black"
+      >
+        لا توجد مراحل مسجّلة بعد.
+      </p>
+      <ol v-else class="m-0 flex list-none flex-col gap-2.5 p-0 print:break-inside-avoid">
+        <li
+          v-for="entry in workflowEntries"
+          :key="entry.id"
+          class="workflow-entry border-border bg-muted grid grid-cols-[1.4fr_1fr_auto] items-center gap-3 rounded-xl border p-3 print:bg-transparent"
+        >
+          <span
+            class="text-foreground text-sm leading-6 font-medium break-words print:text-black"
+            >{{ entry.statusLabel }}</span
+          >
+          <span class="text-muted-foreground text-xs leading-5 break-words print:text-black">{{
+            entry.actor
+          }}</span>
+          <span
+            class="text-muted-foreground text-xs leading-5 whitespace-nowrap tabular-nums print:text-black"
+            >{{ entry.timestamp }}</span
+          >
         </li>
       </ol>
     </section>
 
-    <div class="h-px bg-border my-4" />
+    <div class="bg-border my-4 h-px" />
 
     <!-- ─── Section 6: Audit timeline ─── -->
     <section aria-label="سجل الأحداث" class="print:break-inside-avoid">
-      <h2 class="m-0 mb-3 font-heading text-base font-semibold leading-6 text-primary print:text-black">سجل الأحداث</h2>
+      <h2
+        class="font-heading text-primary m-0 mb-3 text-base leading-6 font-semibold print:text-black"
+      >
+        سجل الأحداث
+      </h2>
       <AuditTimeline :entries="sortedHistory" />
     </section>
   </div>

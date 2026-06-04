@@ -16,13 +16,20 @@ function formatFileSize(bytes: number): string {
 function formatDate(iso: string | null | undefined): string {
   if (!iso) return '—'
   return new Date(iso).toLocaleString('ar-YE', {
-    year: 'numeric', month: 'short', day: 'numeric',
-    hour: '2-digit', minute: '2-digit',
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
   })
 }
 
 function formatAmount(amount: number, currency: string): string {
-  return new Intl.NumberFormat('ar-YE', { style: 'currency', currency, minimumFractionDigits: 0 }).format(amount)
+  return new Intl.NumberFormat('ar-YE', {
+    style: 'currency',
+    currency,
+    minimumFractionDigits: 0,
+  }).format(amount)
 }
 
 function isWaitingForSwift(request: Pick<ImportRequest, 'status'>): boolean {
@@ -30,7 +37,7 @@ function isWaitingForSwift(request: Pick<ImportRequest, 'status'>): boolean {
 }
 
 function isUploaded(documents: RequestDocument[] | undefined): boolean {
-  return !!(documents?.find(d => d.type === 'SWIFT'))
+  return !!documents?.find((d) => d.type === 'SWIFT')
 }
 
 function validatePdfFile(file: { type: string }): string | null {
@@ -40,7 +47,9 @@ function validatePdfFile(file: { type: string }): string | null {
   return null
 }
 
-function makeDoc(overrides: Partial<RequestDocument> & { uploaded_at?: string | null } = {}): RequestDocument {
+function makeDoc(
+  overrides: Partial<RequestDocument> & { uploaded_at?: string | null } = {},
+): RequestDocument {
   return {
     id: 1,
     type: 'SWIFT',

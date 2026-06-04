@@ -14,11 +14,7 @@ import {
 import { Button } from '../ui/button'
 import { Badge } from '../ui/badge'
 import { Alert, AlertDescription } from '../ui/alert'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '../ui/tooltip'
+import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip'
 
 const props = defineProps<{
   documents: RequestDocument[]
@@ -57,8 +53,18 @@ type DocRequirement = {
 }
 
 const BANK_WIZARD_DOCS: DocRequirement[] = [
-  { match: 'confirmation_request', matchBy: 'sub_type', label: 'طلب وثيقة التأكيد', required: true },
-  { match: 'proforma_invoice', matchBy: 'sub_type', label: 'الفاتورة الأولية (Proforma Invoice)', required: true },
+  {
+    match: 'confirmation_request',
+    matchBy: 'sub_type',
+    label: 'طلب وثيقة التأكيد',
+    required: true,
+  },
+  {
+    match: 'proforma_invoice',
+    matchBy: 'sub_type',
+    label: 'الفاتورة الأولية (Proforma Invoice)',
+    required: true,
+  },
   { match: 'commercial_register', matchBy: 'sub_type', label: 'السجل التجاري', required: true },
   { match: 'tax_card', matchBy: 'sub_type', label: 'البطاقة الضريبية', required: true },
 ]
@@ -88,9 +94,7 @@ const CBY_STAGE_STATUSES = new Set([
 
 function getStageDocs(status: RequestStatus): DocRequirement[] {
   // Bank wizard docs are always shown; CBY docs appear once the request leaves the bank.
-  return CBY_STAGE_STATUSES.has(status)
-    ? [...BANK_WIZARD_DOCS, ...CBY_DOCS]
-    : [...BANK_WIZARD_DOCS]
+  return CBY_STAGE_STATUSES.has(status) ? [...BANK_WIZARD_DOCS, ...CBY_DOCS] : [...BANK_WIZARD_DOCS]
 }
 
 function uploadedAtMs(doc: RequestDocument): number {
@@ -170,9 +174,7 @@ const hasContent = computed(() => checklist.value.length > 0)
 
 const missingRequiredCount = computed(
   () =>
-    checklist.value.filter(
-      r => r.kind === 'staged' && r.requirement.required && !r.doc,
-    ).length,
+    checklist.value.filter((r) => r.kind === 'staged' && r.requirement.required && !r.doc).length,
 )
 
 // ── Upload state ──────────────────────────────────────────────────────────────
@@ -229,33 +231,55 @@ function formatDate(iso: string | null): string {
 </script>
 
 <template>
-  <div class="flex flex-col gap-0" >
+  <div class="flex flex-col gap-0">
     <!-- Loading state -->
-    <div v-if="loading" class="flex flex-col gap-3 py-2" aria-busy="true" aria-label="جارٍ تحميل المستندات">
+    <div
+      v-if="loading"
+      class="flex flex-col gap-3 py-2"
+      aria-busy="true"
+      aria-label="جارٍ تحميل المستندات"
+    >
       <Skeleton class="h-12 w-full rounded-lg" />
       <Skeleton class="h-12 w-full rounded-lg" />
       <Skeleton class="h-12 w-3/5 rounded-lg" />
     </div>
 
     <!-- Error state -->
-    <Alert v-else-if="error" class="border-[var(--severity-red)] bg-[var(--severity-red)]/10 border-0">
+    <Alert
+      v-else-if="error"
+      class="border-0 border-[var(--severity-red)] bg-[var(--severity-red)]/10"
+    >
       <AlertCircle class="h-4 w-4 text-[var(--severity-red)]" aria-hidden="true" />
-      <AlertDescription class="text-[var(--severity-red)] text-sm">{{ error }}</AlertDescription>
+      <AlertDescription class="text-sm text-[var(--severity-red)]">{{ error }}</AlertDescription>
     </Alert>
 
     <!-- Empty state -->
-    <p v-else-if="!hasContent" class="text-sm text-muted-foreground mt-2">لا توجد مستندات بعد.</p>
+    <p v-else-if="!hasContent" class="text-muted-foreground mt-2 text-sm">لا توجد مستندات بعد.</p>
 
     <!-- Checklist summary badge -->
     <template v-else>
-      <div class="flex items-center justify-between gap-2 mb-2.5">
-        <span class="text-xs text-muted-foreground">قائمة المستندات</span>
-        <div v-if="missingRequiredCount > 0" class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[var(--severity-red)]/10 text-[var(--severity-red)] text-xs font-semibold">
-          <AlertCircle class="w-3 h-3" aria-hidden="true" />
+      <div class="mb-2.5 flex items-center justify-between gap-2">
+        <span class="text-muted-foreground text-xs">قائمة المستندات</span>
+        <div
+          v-if="missingRequiredCount > 0"
+          class="inline-flex items-center gap-1 rounded-full bg-[var(--severity-red)]/10 px-2.5 py-0.5 text-xs font-semibold text-[var(--severity-red)]"
+        >
+          <AlertCircle class="h-3 w-3" aria-hidden="true" />
           ينقص {{ missingRequiredCount }} مستند مطلوب
         </div>
-        <div v-else class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[var(--severity-green)]/10 text-[var(--severity-green)] text-xs font-semibold">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+        <div
+          v-else
+          class="inline-flex items-center gap-1 rounded-full bg-[var(--severity-green)]/10 px-2.5 py-0.5 text-xs font-semibold text-[var(--severity-green)]"
+        >
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.5"
+            aria-hidden="true"
+          >
             <polyline points="20 6 9 17 4 12" />
           </svg>
           مكتمل
@@ -263,67 +287,104 @@ function formatDate(iso: string | null): string {
       </div>
 
       <!-- Checklist rows -->
-      <ul class="flex flex-col gap-1.5 list-none m-0 p-0" aria-label="قائمة المستندات">
+      <ul class="m-0 flex list-none flex-col gap-1.5 p-0" aria-label="قائمة المستندات">
         <template v-for="(row, idx) in checklist" :key="idx">
-
           <!-- Staged requirement row -->
           <li
             v-if="row.kind === 'staged'"
-            class="flex items-start gap-2.5 p-3 rounded-lg border border-border"
+            class="border-border flex items-start gap-2.5 rounded-lg border p-3"
           >
             <!-- Left: status icon box -->
             <div
-              class="flex-shrink-0 w-7 h-7 rounded-md flex items-center justify-center text-sm"
-              :class="row.doc ? 'bg-[var(--severity-green)]/10 text-[var(--severity-green)]' : 'bg-muted text-muted-foreground'"
+              class="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md text-sm"
+              :class="
+                row.doc
+                  ? 'bg-[var(--severity-green)]/10 text-[var(--severity-green)]'
+                  : 'bg-muted text-muted-foreground'
+              "
             >
-              <svg v-if="row.doc" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+              <svg
+                v-if="row.doc"
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.5"
+                aria-hidden="true"
+              >
                 <polyline points="20 6 9 17 4 12" />
               </svg>
-              <svg v-else width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" />
+              <svg
+                v-else
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                aria-hidden="true"
+              >
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <polyline points="14 2 14 8 20 8" />
               </svg>
             </div>
 
             <!-- Center: labels -->
-            <div class="flex flex-col gap-0.5 flex-1 min-w-0">
+            <div class="flex min-w-0 flex-1 flex-col gap-0.5">
               <div class="flex items-center gap-1.5">
-                <span class="text-xs font-semibold text-foreground">{{ row.requirement.label }}</span>
+                <span class="text-foreground text-xs font-semibold">{{
+                  row.requirement.label
+                }}</span>
               </div>
               <template v-if="row.doc">
-                <span class="text-xs font-medium text-foreground break-all">{{ row.doc.original_filename }}</span>
-                <span class="text-xs text-muted-foreground">
+                <span class="text-foreground text-xs font-medium break-all">{{
+                  row.doc.original_filename
+                }}</span>
+                <span class="text-muted-foreground text-xs">
                   {{ formatFileSize(row.doc.size_bytes) }}
                   · {{ formatDate(row.doc.uploaded_at) }}
-                  <template v-if="row.doc.uploaded_by_name"> · {{ row.doc.uploaded_by_name }}</template>
+                  <template v-if="row.doc.uploaded_by_name">
+                    · {{ row.doc.uploaded_by_name }}</template
+                  >
                 </span>
-                <span v-if="downloadErrors[row.doc.id]" class="text-xs text-[var(--severity-red)]" role="alert">
+                <span
+                  v-if="downloadErrors[row.doc.id]"
+                  class="text-xs text-[var(--severity-red)]"
+                  role="alert"
+                >
                   {{ downloadErrors[row.doc.id] }}
                 </span>
               </template>
-              <span v-else class="text-xs text-muted-foreground">{{ row.requirement.required ? 'لم يُرفع بعد' : 'لم يُرفع' }}</span>
+              <span v-else class="text-muted-foreground text-xs">{{
+                row.requirement.required ? 'لم يُرفع بعد' : 'لم يُرفع'
+              }}</span>
             </div>
 
             <!-- Right: badge + download -->
-            <div class="flex flex-col items-end gap-1.5 flex-shrink-0 pt-0.5">
-              <Badge :variant="row.requirement.required ? 'destructive' : 'secondary'" class="text-xs">
+            <div class="flex flex-shrink-0 flex-col items-end gap-1.5 pt-0.5">
+              <Badge
+                :variant="row.requirement.required ? 'destructive' : 'secondary'"
+                class="text-xs"
+              >
                 {{ row.requirement.required ? 'مطلوب' : 'اختياري' }}
               </Badge>
               <ButtonGroup v-if="row.doc && canDownloadDocument(userRole, row.doc.type)">
                 <Button
                   variant="outline"
                   size="sm"
-                  class="h-7 text-xs px-3 whitespace-nowrap"
+                  class="h-7 px-3 text-xs whitespace-nowrap"
                   :aria-label="`عرض ${row.requirement.label}`"
                   @click="emit('view', row.doc.id, row.requirement.label)"
                 >
-                  <Eye class="h-3.5 w-3.5 me-1" aria-hidden="true" />
+                  <Eye class="me-1 h-3.5 w-3.5" aria-hidden="true" />
                   عرض
                 </Button>
                 <Button
                   variant="outline"
                   size="sm"
                   :disabled="downloadingIds.has(row.doc.id)"
-                  class="h-7 text-xs px-3 whitespace-nowrap"
+                  class="h-7 px-3 text-xs whitespace-nowrap"
                   :aria-label="`تنزيل ${row.doc.original_filename}`"
                   @click="emit('download', row.doc.id, row.doc.original_filename)"
                 >
@@ -334,52 +395,83 @@ function formatDate(iso: string | null): string {
           </li>
 
           <!-- Extra uploaded docs -->
-          <li v-else-if="row.kind === 'extra'" class="flex items-start gap-2.5 p-3 rounded-lg border border-border">
-            <div class="flex-shrink-0 w-7 h-7 rounded-md flex items-center justify-center bg-[var(--severity-green)]/10 text-[var(--severity-green)]">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+          <li
+            v-else-if="row.kind === 'extra'"
+            class="border-border flex items-start gap-2.5 rounded-lg border p-3"
+          >
+            <div
+              class="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md bg-[var(--severity-green)]/10 text-[var(--severity-green)]"
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.5"
+                aria-hidden="true"
+              >
                 <polyline points="20 6 9 17 4 12" />
               </svg>
             </div>
-            <div class="flex flex-col gap-0.5 flex-1 min-w-0">
+            <div class="flex min-w-0 flex-1 flex-col gap-0.5">
               <div class="flex items-center gap-1.5">
-                <span class="text-xs font-semibold text-foreground">
-                  {{ row.doc.title
-                    || (row.doc.type === 'SWIFT'
+                <span class="text-foreground text-xs font-semibold">
+                  {{
+                    row.doc.title ||
+                    (row.doc.type === 'SWIFT'
                       ? 'مستند SWIFT'
                       : row.doc.type === 'FX_REQUEST'
                         ? 'مستند طلب المصارفة الخارجية'
-                        : 'مستند إضافي') }}
+                        : 'مستند إضافي')
+                  }}
                 </span>
               </div>
-              <span class="text-xs font-medium text-foreground break-all">{{ row.doc.original_filename }}</span>
-              <span class="text-xs text-muted-foreground">
+              <span class="text-foreground text-xs font-medium break-all">{{
+                row.doc.original_filename
+              }}</span>
+              <span class="text-muted-foreground text-xs">
                 {{ formatFileSize(row.doc.size_bytes) }}
                 · {{ formatDate(row.doc.uploaded_at) }}
-                <template v-if="row.doc.uploaded_by_name"> · {{ row.doc.uploaded_by_name }}</template>
+                <template v-if="row.doc.uploaded_by_name">
+                  · {{ row.doc.uploaded_by_name }}</template
+                >
               </span>
-              <span v-if="downloadErrors[row.doc.id]" class="text-xs text-[var(--severity-red)]" role="alert">
+              <span
+                v-if="downloadErrors[row.doc.id]"
+                class="text-xs text-[var(--severity-red)]"
+                role="alert"
+              >
                 {{ downloadErrors[row.doc.id] }}
               </span>
             </div>
-            <div class="flex flex-col items-end gap-1.5 flex-shrink-0 pt-0.5">
-              <Badge v-if="row.doc.type === 'SWIFT'" class="bg-[var(--info)]/15 text-[var(--info)] border-[var(--info)]/30 border text-xs">SWIFT</Badge>
-              <Badge v-else-if="row.doc.type === 'FX_REQUEST'" class="bg-[var(--voting)]/10 text-[var(--voting)] border-[var(--voting)]/30 border text-xs">FX</Badge>
+            <div class="flex flex-shrink-0 flex-col items-end gap-1.5 pt-0.5">
+              <Badge
+                v-if="row.doc.type === 'SWIFT'"
+                class="border border-[var(--info)]/30 bg-[var(--info)]/15 text-xs text-[var(--info)]"
+                >SWIFT</Badge
+              >
+              <Badge
+                v-else-if="row.doc.type === 'FX_REQUEST'"
+                class="border border-[var(--voting)]/30 bg-[var(--voting)]/10 text-xs text-[var(--voting)]"
+                >FX</Badge
+              >
               <ButtonGroup v-if="canDownloadDocument(userRole, row.doc.type)">
                 <Button
                   variant="outline"
                   size="sm"
-                  class="h-7 text-xs px-3 whitespace-nowrap"
+                  class="h-7 px-3 text-xs whitespace-nowrap"
                   :aria-label="`عرض ${row.doc.title || row.doc.original_filename}`"
                   @click="emit('view', row.doc.id, row.doc.title || row.doc.original_filename)"
                 >
-                  <Eye class="h-3.5 w-3.5 me-1" aria-hidden="true" />
+                  <Eye class="me-1 h-3.5 w-3.5" aria-hidden="true" />
                   عرض
                 </Button>
                 <Button
                   variant="outline"
                   size="sm"
                   :disabled="downloadingIds.has(row.doc.id)"
-                  class="h-7 text-xs px-3 whitespace-nowrap"
+                  class="h-7 px-3 text-xs whitespace-nowrap"
                   :aria-label="`تنزيل ${row.doc.original_filename}`"
                   @click="emit('download', row.doc.id, row.doc.original_filename)"
                 >
@@ -387,15 +479,29 @@ function formatDate(iso: string | null): string {
                 </Button>
               </ButtonGroup>
               <!-- Lock indicator for DATA_ENTRY on downstream docs (SWIFT / FX) -->
-              <template v-else-if="userRole === UserRole.DATA_ENTRY && (row.doc.type === 'SWIFT' || row.doc.type === 'FX_REQUEST')">
+              <template
+                v-else-if="
+                  userRole === UserRole.DATA_ENTRY &&
+                  (row.doc.type === 'SWIFT' || row.doc.type === 'FX_REQUEST')
+                "
+              >
                 <Tooltip>
                   <TooltipTrigger as-child>
                     <span
-                      class="inline-flex h-7 items-center gap-1 rounded-md border border-dashed border-[var(--color-border)] px-2 text-xs text-muted-foreground cursor-default select-none"
+                      class="text-muted-foreground inline-flex h-7 cursor-default items-center gap-1 rounded-md border border-dashed border-[var(--color-border)] px-2 text-xs select-none"
                       aria-label="هذا المستند محجوب عن دورك"
                     >
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
-                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                      <svg
+                        width="12"
+                        height="12"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2.5"
+                        aria-hidden="true"
+                      >
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4" />
                       </svg>
                       محجوب
                     </span>
@@ -409,39 +515,60 @@ function formatDate(iso: string | null): string {
           </li>
 
           <!-- Customs declaration row -->
-          <li v-else-if="row.kind === 'customs'" class="flex items-start gap-2.5 p-3 rounded-lg border border-border">
-            <div class="flex-shrink-0 w-7 h-7 rounded-md flex items-center justify-center bg-[var(--severity-green)]/10 text-[var(--severity-green)]">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+          <li
+            v-else-if="row.kind === 'customs'"
+            class="border-border flex items-start gap-2.5 rounded-lg border p-3"
+          >
+            <div
+              class="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md bg-[var(--severity-green)]/10 text-[var(--severity-green)]"
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.5"
+                aria-hidden="true"
+              >
                 <polyline points="20 6 9 17 4 12" />
               </svg>
             </div>
-            <div class="flex flex-col gap-0.5 flex-1 min-w-0">
+            <div class="flex min-w-0 flex-1 flex-col gap-0.5">
               <div class="flex items-center gap-1.5">
-                <span class="text-xs font-semibold text-foreground">بيان جمركي</span>
+                <span class="text-foreground text-xs font-semibold">بيان جمركي</span>
               </div>
-              <span class="text-xs font-medium text-foreground">{{ row.customs.declaration_number }}</span>
-              <span class="text-xs text-muted-foreground">{{ formatDate(row.customs.issued_at) }}</span>
-              <span v-if="customsDownloadError" class="text-xs text-[var(--severity-red)]" role="alert">
+              <span class="text-foreground text-xs font-medium">{{
+                row.customs.declaration_number
+              }}</span>
+              <span class="text-muted-foreground text-xs">{{
+                formatDate(row.customs.issued_at)
+              }}</span>
+              <span
+                v-if="customsDownloadError"
+                class="text-xs text-[var(--severity-red)]"
+                role="alert"
+              >
                 {{ customsDownloadError }}
               </span>
             </div>
-            <div class="flex flex-col items-end gap-1.5 flex-shrink-0 pt-0.5">
+            <div class="flex flex-shrink-0 flex-col items-end gap-1.5 pt-0.5">
               <ButtonGroup v-if="canDownloadCustoms(userRole)">
                 <Button
                   variant="outline"
                   size="sm"
-                  class="h-7 text-xs px-3 whitespace-nowrap"
+                  class="h-7 px-3 text-xs whitespace-nowrap"
                   aria-label="عرض البيان الجمركي"
                   @click="emit('view-customs', row.customs.id, 'البيان الجمركي')"
                 >
-                  <Eye class="h-3.5 w-3.5 me-1" aria-hidden="true" />
+                  <Eye class="me-1 h-3.5 w-3.5" aria-hidden="true" />
                   عرض
                 </Button>
                 <Button
                   variant="outline"
                   size="sm"
                   :disabled="customsDownloading"
-                  class="h-7 text-xs px-3 whitespace-nowrap"
+                  class="h-7 px-3 text-xs whitespace-nowrap"
                   aria-label="تنزيل البيان الجمركي"
                   @click="emit('download-customs', row.customs.id, row.customs.declaration_number)"
                 >
@@ -450,7 +577,6 @@ function formatDate(iso: string | null): string {
               </ButtonGroup>
             </div>
           </li>
-
         </template>
       </ul>
     </template>
@@ -468,22 +594,36 @@ function formatDate(iso: string | null): string {
         />
         <Button
           :disabled="uploadingDocument || loading"
-          class="h-9 px-4 rounded-lg"
+          class="h-9 rounded-lg px-4"
           @click="triggerFileInput"
         >
           {{ uploadingDocument ? 'جارٍ الرفع…' : 'رفع مستند' }}
         </Button>
-        <Alert v-if="fileTypeError" class="border-[var(--severity-red)] bg-[var(--severity-red)]/10 border-0 w-full">
+        <Alert
+          v-if="fileTypeError"
+          class="w-full border-0 border-[var(--severity-red)] bg-[var(--severity-red)]/10"
+        >
           <AlertCircle class="h-4 w-4 text-[var(--severity-red)]" aria-hidden="true" />
-          <AlertDescription class="text-[var(--severity-red)] text-sm">{{ fileTypeError }}</AlertDescription>
+          <AlertDescription class="text-sm text-[var(--severity-red)]">{{
+            fileTypeError
+          }}</AlertDescription>
         </Alert>
-        <Alert v-else-if="uploadError" class="border-[var(--severity-red)] bg-[var(--severity-red)]/10 border-0 w-full">
+        <Alert
+          v-else-if="uploadError"
+          class="w-full border-0 border-[var(--severity-red)] bg-[var(--severity-red)]/10"
+        >
           <AlertCircle class="h-4 w-4 text-[var(--severity-red)]" aria-hidden="true" />
-          <AlertDescription class="text-[var(--severity-red)] text-sm">{{ uploadError }}</AlertDescription>
+          <AlertDescription class="text-sm text-[var(--severity-red)]">{{
+            uploadError
+          }}</AlertDescription>
         </Alert>
       </template>
 
-      <p v-else-if="showLockedNote" class="text-xs text-muted-foreground flex items-center gap-1" role="note">
+      <p
+        v-else-if="showLockedNote"
+        class="text-muted-foreground flex items-center gap-1 text-xs"
+        role="note"
+      >
         🔒 المستندات مقفلة، ولا يمكن تعديلها الآن
       </p>
     </div>

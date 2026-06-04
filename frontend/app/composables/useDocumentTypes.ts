@@ -32,7 +32,10 @@ export function useDocumentTypes() {
     return response.data
   }
 
-  async function updateDocumentType(id: number, payload: UpdateDocumentTypePayload): Promise<DocumentType> {
+  async function updateDocumentType(
+    id: number,
+    payload: UpdateDocumentTypePayload,
+  ): Promise<DocumentType> {
     const response = await put<ApiResponse<DocumentType>>(`/api/document-types/${id}`, payload)
     return response.data
   }

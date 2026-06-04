@@ -7,10 +7,12 @@ export type ToastItem = {
   variant: ToastVariant
 }
 
-type ToastInput = string | {
-  title: string
-  description?: string
-}
+type ToastInput =
+  | string
+  | {
+      title: string
+      description?: string
+    }
 
 function normalizeToast(input: ToastInput) {
   return typeof input === 'string' ? { title: input } : input
@@ -32,13 +34,21 @@ export function useToast() {
   }
 
   function dismiss(id: string) {
-    toasts.value = toasts.value.filter(toast => toast.id !== id)
+    toasts.value = toasts.value.filter((toast) => toast.id !== id)
   }
 
-  function notify(input: ToastInput) { return push(input) }
-  function notifyError(input: ToastInput) { return push(input, 'error') }
-  function notifySuccess(input: ToastInput) { return push(input, 'success') }
-  function notifyInfo(input: ToastInput) { return push(input, 'info') }
+  function notify(input: ToastInput) {
+    return push(input)
+  }
+  function notifyError(input: ToastInput) {
+    return push(input, 'error')
+  }
+  function notifySuccess(input: ToastInput) {
+    return push(input, 'success')
+  }
+  function notifyInfo(input: ToastInput) {
+    return push(input, 'info')
+  }
 
   return {
     toasts,

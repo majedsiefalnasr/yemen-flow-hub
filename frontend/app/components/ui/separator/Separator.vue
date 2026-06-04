@@ -5,9 +5,7 @@ import { reactiveOmit } from '@vueuse/core'
 import { Separator } from 'reka-ui'
 import { cn } from '@/lib/utils'
 
-const props = withDefaults(defineProps<
-  SeparatorProps & { class?: HTMLAttributes['class'] }
->(), {
+const props = withDefaults(defineProps<SeparatorProps & { class?: HTMLAttributes['class'] }>(), {
   orientation: 'horizontal',
   decorative: true,
 })
@@ -21,7 +19,7 @@ const delegatedProps = reactiveOmit(props, 'class')
     v-bind="delegatedProps"
     :class="
       cn(
-        'bg-border shrink-0 data-[orientation=horizontal]:h-px data-[orientation=horizontal]:w-full data-[orientation=vertical]:w-px me-2 data-[orientation=vertical]:h-4',
+        'bg-border me-2 shrink-0 data-[orientation=horizontal]:h-px data-[orientation=horizontal]:w-full data-[orientation=vertical]:h-4 data-[orientation=vertical]:w-px',
         props.class,
       )
     "

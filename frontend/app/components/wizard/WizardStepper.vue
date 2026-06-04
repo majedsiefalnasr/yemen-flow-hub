@@ -26,12 +26,12 @@ function handleStepClick(index: number): void {
 </script>
 
 <template>
-  <div  role="navigation" aria-label="خطوات الطلب" class="my-6">
+  <div role="navigation" aria-label="خطوات الطلب" class="my-6">
     <div class="flex items-center justify-center gap-0">
       <template v-for="(label, index) in steps" :key="index">
         <!-- Step -->
         <div
-          class="flex flex-col items-center gap-2 flex-shrink-0 min-w-24 transition-all"
+          class="flex min-w-24 flex-shrink-0 flex-col items-center gap-2 transition-all"
           :class="{
             'cursor-pointer': isStepClickable(stepStatuses[index]),
           }"
@@ -47,16 +47,26 @@ function handleStepClick(index: number): void {
             class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border-2 transition-all"
             :class="{
               'border-border bg-card': stepStatuses[index] === 'future',
-              'border-primary bg-primary shadow-lg shadow-primary/20': stepStatuses[index] === 'active',
-              'border-[var(--color-border-success)] bg-[var(--color-surface-success)]': stepStatuses[index] === 'completed',
+              'border-primary bg-primary shadow-primary/20 shadow-lg':
+                stepStatuses[index] === 'active',
+              'border-[var(--color-border-success)] bg-[var(--color-surface-success)]':
+                stepStatuses[index] === 'completed',
               'border-destructive bg-destructive/10': stepStatuses[index] === 'error',
             }"
           >
-            <CheckCircle2 v-if="stepStatuses[index] === 'completed'" class="h-5 w-5 text-white" aria-hidden="true" />
-            <AlertCircle v-else-if="stepStatuses[index] === 'error'" class="h-5 w-5 text-destructive" aria-hidden="true" />
+            <CheckCircle2
+              v-if="stepStatuses[index] === 'completed'"
+              class="h-5 w-5 text-white"
+              aria-hidden="true"
+            />
+            <AlertCircle
+              v-else-if="stepStatuses[index] === 'error'"
+              class="text-destructive h-5 w-5"
+              aria-hidden="true"
+            />
             <span
               v-else
-              class="text-sm font-medium leading-none"
+              class="text-sm leading-none font-medium"
               :class="{
                 'text-muted-foreground': stepStatuses[index] === 'future',
                 'text-white': stepStatuses[index] === 'active',
@@ -72,7 +82,7 @@ function handleStepClick(index: number): void {
             :class="{
               'text-muted-foreground font-normal': stepStatuses[index] === 'future',
               'text-primary font-semibold': stepStatuses[index] === 'active',
-              'text-[var(--color-text-success)] font-normal': stepStatuses[index] === 'completed',
+              'font-normal text-[var(--color-text-success)]': stepStatuses[index] === 'completed',
               'text-destructive font-medium': stepStatuses[index] === 'error',
               'hover:underline': isStepClickable(stepStatuses[index]),
             }"
@@ -84,7 +94,7 @@ function handleStepClick(index: number): void {
         <!-- Connector line (not after last step) -->
         <div
           v-if="index < steps.length - 1"
-          class="h-0.5 flex-1 min-w-6 transition-colors"
+          class="h-0.5 min-w-6 flex-1 transition-colors"
           :class="{
             'bg-border': stepStatuses[index] !== 'completed',
             'bg-[var(--color-surface-success)]': stepStatuses[index] === 'completed',

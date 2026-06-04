@@ -6,7 +6,10 @@
  * Tests previously declared local copies with drifted thresholds.
  */
 import { describe, it, expect } from 'vitest'
-import type { BankAdminDashboardStats, BankAdminDashboardStatsExtended } from '../../../composables/useDashboard'
+import type {
+  BankAdminDashboardStats,
+  BankAdminDashboardStatsExtended,
+} from '../../../composables/useDashboard'
 import {
   CHART_W,
   CHART_H,
@@ -22,7 +25,9 @@ import {
 
 type StatsLike = (BankAdminDashboardStats & BankAdminDashboardStatsExtended) | null
 
-function makeStats(overrides: Partial<BankAdminDashboardStats & BankAdminDashboardStatsExtended> = {}): BankAdminDashboardStats & BankAdminDashboardStatsExtended {
+function makeStats(
+  overrides: Partial<BankAdminDashboardStats & BankAdminDashboardStatsExtended> = {},
+): BankAdminDashboardStats & BankAdminDashboardStatsExtended {
   return {
     total: 100,
     pending: 20,
@@ -104,12 +109,20 @@ describe('BankAdminDashboard 12.2 — calcShowHealthStrip()', () => {
   })
 
   it(`shown when repeated_support_returns exceeds threshold (> ${REPEATED_SUPPORT_RETURNS_THRESHOLD})`, () => {
-    const stats = makeStats({ total: 100, rejected: 5, repeated_support_returns: REPEATED_SUPPORT_RETURNS_THRESHOLD + 1 })
+    const stats = makeStats({
+      total: 100,
+      rejected: 5,
+      repeated_support_returns: REPEATED_SUPPORT_RETURNS_THRESHOLD + 1,
+    })
     expect(calcShowHealthStrip(stats)).toBe(true)
   })
 
   it(`hidden when repeated_support_returns is at threshold (= ${REPEATED_SUPPORT_RETURNS_THRESHOLD})`, () => {
-    const stats = makeStats({ total: 100, rejected: 5, repeated_support_returns: REPEATED_SUPPORT_RETURNS_THRESHOLD })
+    const stats = makeStats({
+      total: 100,
+      rejected: 5,
+      repeated_support_returns: REPEATED_SUPPORT_RETURNS_THRESHOLD,
+    })
     expect(calcShowHealthStrip(stats)).toBe(false)
   })
 
@@ -147,31 +160,35 @@ describe('BankAdminDashboard 12.2 — calcHealthIssues()', () => {
   it('includes rejection rate issue when above threshold', () => {
     const stats = makeStats({ total: 100, rejected: 30 })
     const issues = calcHealthIssues(stats)
-    expect(issues.some(i => i.includes('معدل الرفض'))).toBe(true)
+    expect(issues.some((i) => i.includes('معدل الرفض'))).toBe(true)
   })
 
   it('includes stalled count issue when stalled_at_cby_count > 0', () => {
     const stats = makeStats({ total: 100, rejected: 5, stalled_at_cby_count: 4 })
     const issues = calcHealthIssues(stats)
-    expect(issues.some(i => i.includes('متوقف لدى البنك المركزي'))).toBe(true)
+    expect(issues.some((i) => i.includes('متوقف لدى البنك المركزي'))).toBe(true)
   })
 
   it('includes missing reviewer issue when coverage is missing', () => {
     const stats = makeStats({ total: 100, rejected: 5, missing_bank_reviewer_coverage: true })
     const issues = calcHealthIssues(stats)
-    expect(issues.some(i => i.includes('مراجع بنك'))).toBe(true)
+    expect(issues.some((i) => i.includes('مراجع بنك'))).toBe(true)
   })
 
   it('includes repeated-returns issue when above threshold', () => {
-    const stats = makeStats({ total: 100, rejected: 5, repeated_support_returns: REPEATED_SUPPORT_RETURNS_THRESHOLD + 1 })
+    const stats = makeStats({
+      total: 100,
+      rejected: 5,
+      repeated_support_returns: REPEATED_SUPPORT_RETURNS_THRESHOLD + 1,
+    })
     const issues = calcHealthIssues(stats)
-    expect(issues.some(i => i.includes('إعادة متكررة'))).toBe(true)
+    expect(issues.some((i) => i.includes('إعادة متكررة'))).toBe(true)
   })
 
   it('includes suspended-staff issue when flagged', () => {
     const stats = makeStats({ total: 100, rejected: 5, suspended_staff_with_active: true })
     const issues = calcHealthIssues(stats)
-    expect(issues.some(i => i.includes('موظف موقوف'))).toBe(true)
+    expect(issues.some((i) => i.includes('موظف موقوف'))).toBe(true)
   })
 
   it('collects multiple issues simultaneously', () => {
@@ -212,7 +229,10 @@ describe('BankAdminDashboard 12.2 — buildLine()', () => {
   })
 
   it(`first point x starts at pad (${CHART_PAD})`, () => {
-    const entries = [{ month: '2026-01', count: 5 }, { month: '2026-02', count: 8 }]
+    const entries = [
+      { month: '2026-01', count: 5 },
+      { month: '2026-02', count: 8 },
+    ]
     const firstX = Number(buildLine(entries, 'count').split(' ')[0]!.split(',')[0])
     expect(firstX).toBeCloseTo(CHART_PAD, 1)
   })

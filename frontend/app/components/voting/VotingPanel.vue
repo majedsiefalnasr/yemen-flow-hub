@@ -1,4 +1,5 @@
-// @parity-exempt — voting sub-component; parity evidence captured at requests/detail-voting page level
+// @parity-exempt — voting sub-component; parity evidence captured at requests/detail-voting page
+level
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { AlertCircle } from 'lucide-vue-next'
@@ -21,7 +22,9 @@ const votingStore = useVotingStore()
 const authStore = useAuthStore()
 const currentUserId = computed(() => authStore.user?.id ?? null)
 let isMounted = true
-onBeforeUnmount(() => { isMounted = false })
+onBeforeUnmount(() => {
+  isMounted = false
+})
 
 // Vote confirmation flow
 const pendingVote = ref<VoteType | null>(null)
@@ -35,19 +38,23 @@ const showTieBreak = computed(() => {
   if (!isSessionOpen.value || !tally.value) return false
   return tally.value.approve_count === tally.value.reject_count && tally.value.approve_count > 0
 })
-const isSessionClosed = computed(() => props.requestStatus === RequestStatus.EXECUTIVE_VOTING_CLOSED)
-const isFinalized = computed(() =>
-  props.requestStatus === RequestStatus.EXECUTIVE_APPROVED
-  || props.requestStatus === RequestStatus.EXECUTIVE_REJECTED,
+const isSessionClosed = computed(
+  () => props.requestStatus === RequestStatus.EXECUTIVE_VOTING_CLOSED,
+)
+const isFinalized = computed(
+  () =>
+    props.requestStatus === RequestStatus.EXECUTIVE_APPROVED ||
+    props.requestStatus === RequestStatus.EXECUTIVE_REJECTED,
 )
 const isLocked = computed(() => isSessionClosed.value || isFinalized.value)
 
-const isVoter = computed(() =>
-  props.userRole === UserRole.EXECUTIVE_MEMBER || props.userRole === UserRole.COMMITTEE_DIRECTOR,
+const isVoter = computed(
+  () =>
+    props.userRole === UserRole.EXECUTIVE_MEMBER || props.userRole === UserRole.COMMITTEE_DIRECTOR,
 )
 
-const canVote = computed(() =>
-  isSessionOpen.value && isVoter.value && !votingStore.votingDetail?.my_vote,
+const canVote = computed(
+  () => isSessionOpen.value && isVoter.value && !votingStore.votingDetail?.my_vote,
 )
 
 const detail = computed(() => votingStore.votingDetail)
@@ -64,19 +71,27 @@ function tallyBarWidth(count: number): string {
 
 function voteLabel(vote: VoteType): string {
   switch (vote) {
-    case VoteType.APPROVE: return 'موافقة'
-    case VoteType.REJECT: return 'رفض'
-    case VoteType.ABSTAIN: return 'امتناع'
-    case VoteType.AUTO_ABSTAIN_TIMEOUT: return 'غائب (أنهاه النظام تلقائيا)'
+    case VoteType.APPROVE:
+      return 'موافقة'
+    case VoteType.REJECT:
+      return 'رفض'
+    case VoteType.ABSTAIN:
+      return 'امتناع'
+    case VoteType.AUTO_ABSTAIN_TIMEOUT:
+      return 'غائب (أنهاه النظام تلقائيا)'
   }
 }
 
 function voteChipClasses(vote: VoteType): string {
   switch (vote) {
-    case VoteType.APPROVE: return 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-success/10 text-success'
-    case VoteType.REJECT: return 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-destructive/10 text-destructive'
-    case VoteType.ABSTAIN: return 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-muted text-foreground'
-    case VoteType.AUTO_ABSTAIN_TIMEOUT: return 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-muted text-foreground italic'
+    case VoteType.APPROVE:
+      return 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-success/10 text-success'
+    case VoteType.REJECT:
+      return 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-destructive/10 text-destructive'
+    case VoteType.ABSTAIN:
+      return 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-muted text-foreground'
+    case VoteType.AUTO_ABSTAIN_TIMEOUT:
+      return 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-muted text-foreground italic'
   }
 }
 
@@ -134,15 +149,13 @@ async function confirmVote() {
     await votingStore.castVote(props.requestId, voteToSend, justification.value.trim() || undefined)
     if (!isMounted) return
     cancelVote()
-  }
-  catch (err: unknown) {
+  } catch (err: unknown) {
     if (!isMounted) return
     const msg = err instanceof Error ? err.message : ''
     if (msg.includes('VOTING_SESSION_CLOSED')) {
       votingStore.$patch({ votingDetail: savedDetail })
       voteError.value = 'انتهت جلسة التصويت. تم إلغاء صوتك.'
-    }
-    else {
+    } else {
       voteError.value = msg || 'تعذر تسجيل التصويت الآن. أعد المحاولة بعد قليل.'
     }
     cancelVote()
@@ -155,10 +168,14 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="flex flex-col gap-6 p-6 direction-rtl" >
-
+  <div class="direction-rtl flex flex-col gap-6 p-6">
     <!-- Loading state -->
-    <div v-if="votingStore.loadingDetail" class="flex flex-col gap-3" aria-busy="true" aria-label="جارٍ تحميل بيانات التصويت">
+    <div
+      v-if="votingStore.loadingDetail"
+      class="flex flex-col gap-3"
+      aria-busy="true"
+      aria-label="جارٍ تحميل بيانات التصويت"
+    >
       <Skeleton class="h-5 w-full" />
       <Skeleton class="h-5 w-3/5" />
       <Skeleton class="h-5 w-full" />
@@ -173,92 +190,164 @@ onMounted(async () => {
     />
 
     <template v-else-if="detail">
-
       <!-- Final decision banner: EXECUTIVE_REJECTED -->
-      <Alert v-if="requestStatus === RequestStatus.EXECUTIVE_REJECTED" class="border-0 bg-destructive border-destructive">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-destructive" aria-hidden="true">
+      <Alert
+        v-if="requestStatus === RequestStatus.EXECUTIVE_REJECTED"
+        class="bg-destructive border-destructive border-0"
+      >
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          class="text-destructive"
+          aria-hidden="true"
+        >
           <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
           <path d="M7 11V7a5 5 0 0 1 10 0v4" />
         </svg>
-        <AlertDescription class="text-destructive text-sm">هذا قرار نهائي، ولا يمكن اتخاذ إجراءات إضافية.</AlertDescription>
+        <AlertDescription class="text-destructive text-sm"
+          >هذا قرار نهائي، ولا يمكن اتخاذ إجراءات إضافية.</AlertDescription
+        >
       </Alert>
 
       <!-- Final decision badge -->
-      <div v-if="isFinalized" class="text-center py-4 px-4 rounded-lg font-bold text-2xl" :class="requestStatus === RequestStatus.EXECUTIVE_APPROVED ? 'bg-success/10 text-success border border-[var(--color-border-success)]' : 'bg-destructive/10 text-destructive border border-destructive'">
+      <div
+        v-if="isFinalized"
+        class="rounded-lg px-4 py-4 text-center text-2xl font-bold"
+        :class="
+          requestStatus === RequestStatus.EXECUTIVE_APPROVED
+            ? 'bg-success/10 text-success border border-[var(--color-border-success)]'
+            : 'bg-destructive/10 text-destructive border-destructive border'
+        "
+      >
         {{ requestStatus === RequestStatus.EXECUTIVE_APPROVED ? 'معتمد' : 'مرفوض' }}
       </div>
 
       <!-- Vote action error -->
-      <Alert v-if="voteError" class="border border-destructive bg-destructive/10">
-        <AlertCircle class="h-4 w-4 text-destructive" aria-hidden="true" />
+      <Alert v-if="voteError" class="border-destructive bg-destructive/10 border">
+        <AlertCircle class="text-destructive h-4 w-4" aria-hidden="true" />
         <AlertDescription class="text-destructive text-sm">{{ voteError }}</AlertDescription>
       </Alert>
 
       <!-- Tally section -->
       <div v-if="tally" class="flex flex-col gap-3">
-        <h3 class="text-sm font-medium text-foreground">نتائج التصويت</h3>
+        <h3 class="text-foreground text-sm font-medium">نتائج التصويت</h3>
 
         <div class="flex flex-col gap-2.5">
           <!-- Approve bar -->
           <div class="flex items-center gap-3">
-            <span class="w-28 text-xs text-right text-voting font-medium flex-shrink-0">موافقة</span>
-            <div class="flex-1 h-2.5 bg-muted rounded-full overflow-hidden">
-              <div class="h-full bg-voting rounded-full transition-all" :style="{ width: tallyBarWidth(tally.approve_count) }" />
+            <span class="text-voting w-28 flex-shrink-0 text-right text-xs font-medium"
+              >موافقة</span
+            >
+            <div class="bg-muted h-2.5 flex-1 overflow-hidden rounded-full">
+              <div
+                class="bg-voting h-full rounded-full transition-all"
+                :style="{ width: tallyBarWidth(tally.approve_count) }"
+              />
             </div>
-            <span class="text-xs text-muted-foreground w-14 text-start flex-shrink-0">{{ tally.approve_count }} / {{ COMMITTEE_SIZE }}</span>
+            <span class="text-muted-foreground w-14 flex-shrink-0 text-start text-xs"
+              >{{ tally.approve_count }} / {{ COMMITTEE_SIZE }}</span
+            >
           </div>
 
           <!-- Reject bar -->
           <div class="flex items-center gap-3">
-            <span class="w-28 text-xs text-right text-destructive font-medium flex-shrink-0">رفض</span>
-            <div class="flex-1 h-2.5 bg-muted rounded-full overflow-hidden">
-              <div class="h-full bg-destructive rounded-full transition-all" :style="{ width: tallyBarWidth(tally.reject_count) }" />
+            <span class="text-destructive w-28 flex-shrink-0 text-right text-xs font-medium"
+              >رفض</span
+            >
+            <div class="bg-muted h-2.5 flex-1 overflow-hidden rounded-full">
+              <div
+                class="bg-destructive h-full rounded-full transition-all"
+                :style="{ width: tallyBarWidth(tally.reject_count) }"
+              />
             </div>
-            <span class="text-xs text-muted-foreground w-14 text-start flex-shrink-0">{{ tally.reject_count }} / {{ COMMITTEE_SIZE }}</span>
+            <span class="text-muted-foreground w-14 flex-shrink-0 text-start text-xs"
+              >{{ tally.reject_count }} / {{ COMMITTEE_SIZE }}</span
+            >
           </div>
 
           <!-- Abstain bar (manual + auto combined) -->
           <div class="flex items-center gap-3">
-            <span class="w-28 text-xs text-right text-muted-foreground font-medium flex-shrink-0">امتناع / غياب</span>
-            <div class="flex-1 h-2.5 bg-muted rounded-full overflow-hidden">
-              <div class="h-full bg-muted0 rounded-full transition-all" :style="{ width: tallyBarWidth(tally.abstain_count + tally.auto_abstain_count) }" />
+            <span class="text-muted-foreground w-28 flex-shrink-0 text-right text-xs font-medium"
+              >امتناع / غياب</span
+            >
+            <div class="bg-muted h-2.5 flex-1 overflow-hidden rounded-full">
+              <div
+                class="bg-muted0 h-full rounded-full transition-all"
+                :style="{ width: tallyBarWidth(tally.abstain_count + tally.auto_abstain_count) }"
+              />
             </div>
-            <span class="text-xs text-muted-foreground w-14 text-start flex-shrink-0">{{ tally.abstain_count + tally.auto_abstain_count }} / {{ COMMITTEE_SIZE }}</span>
+            <span class="text-muted-foreground w-14 flex-shrink-0 text-start text-xs"
+              >{{ tally.abstain_count + tally.auto_abstain_count }} / {{ COMMITTEE_SIZE }}</span
+            >
           </div>
         </div>
       </div>
 
       <!-- Tie-break notice -->
-      <Alert v-if="showTieBreak" class="border border-[var(--color-border-warning)] bg-[var(--color-surface-warning)]">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-warning" aria-hidden="true">
-          <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+      <Alert
+        v-if="showTieBreak"
+        class="border border-[var(--color-border-warning)] bg-[var(--color-surface-warning)]"
+      >
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          class="text-warning"
+          aria-hidden="true"
+        >
+          <circle cx="12" cy="12" r="10" />
+          <line x1="12" y1="8" x2="12" y2="12" />
+          <line x1="12" y1="16" x2="12.01" y2="16" />
         </svg>
-        <AlertDescription class="text-warning text-sm font-semibold">حدث تعادل، ويُحسم بترجيح صوت المدير.</AlertDescription>
+        <AlertDescription class="text-warning text-sm font-semibold"
+          >حدث تعادل، ويُحسم بترجيح صوت المدير.</AlertDescription
+        >
       </Alert>
 
       <!-- Member roster -->
       <div class="flex flex-col gap-3">
-        <h3 class="text-sm font-medium text-foreground">حالة أعضاء اللجنة</h3>
+        <h3 class="text-foreground text-sm font-medium">حالة أعضاء اللجنة</h3>
 
-        <table class="w-full border-collapse border border-border rounded-lg overflow-hidden">
+        <table class="border-border w-full border-collapse overflow-hidden rounded-lg border">
           <thead>
-            <tr class="bg-muted border-b border-border">
-              <th class="text-right px-4 py-2.5 text-xs font-medium text-muted-foreground">العضو</th>
-              <th class="text-right px-4 py-2.5 text-xs font-medium text-muted-foreground">الحالة</th>
-              <th class="text-right px-4 py-2.5 text-xs font-medium text-muted-foreground">وقت التصويت</th>
+            <tr class="bg-muted border-border border-b">
+              <th class="text-muted-foreground px-4 py-2.5 text-right text-xs font-medium">
+                العضو
+              </th>
+              <th class="text-muted-foreground px-4 py-2.5 text-right text-xs font-medium">
+                الحالة
+              </th>
+              <th class="text-muted-foreground px-4 py-2.5 text-right text-xs font-medium">
+                وقت التصويت
+              </th>
             </tr>
           </thead>
           <tbody>
             <!-- Voted member rows -->
-            <tr v-for="v in displayedVotes" :key="v.id" class="border-t border-border h-11 hover:bg-muted">
-              <td class="px-4 py-2.5 text-sm text-foreground">
+            <tr
+              v-for="v in displayedVotes"
+              :key="v.id"
+              class="border-border hover:bg-muted h-11 border-t"
+            >
+              <td class="text-foreground px-4 py-2.5 text-sm">
                 <span class="block">{{ v.user_name ?? 'غير متاح' }}</span>
-                <span v-if="v.is_director_override" class="inline-block mt-1 bg-[var(--color-surface-warning)] text-warning px-2 py-0.5 rounded text-xs font-medium">تجاوز المدير</span>
+                <span
+                  v-if="v.is_director_override"
+                  class="text-warning mt-1 inline-block rounded bg-[var(--color-surface-warning)] px-2 py-0.5 text-xs font-medium"
+                  >تجاوز المدير</span
+                >
               </td>
               <td class="px-4 py-2.5">
                 <span :class="maskedVoteChipClasses(v)">{{ maskedVoteLabel(v) }}</span>
               </td>
-              <td class="px-4 py-2.5 text-xs text-muted-foreground font-mono">
+              <td class="text-muted-foreground px-4 py-2.5 font-mono text-xs">
                 {{ v.voted_at ? new Date(v.voted_at).toLocaleString('ar-YE') : 'غير متاح' }}
               </td>
             </tr>
@@ -266,81 +355,105 @@ onMounted(async () => {
             <tr
               v-for="n in notYetVotedCount"
               :key="`pending-${n}`"
-              class="border-t border-border h-11 opacity-60"
+              class="border-border h-11 border-t opacity-60"
             >
-              <td class="px-4 py-2.5 text-xs text-muted-foreground italic">عضو اللجنة</td>
+              <td class="text-muted-foreground px-4 py-2.5 text-xs italic">عضو اللجنة</td>
               <td class="px-4 py-2.5">
-                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground border border-dashed border-border">لم يصوت بعد</span>
+                <span
+                  class="bg-muted text-muted-foreground border-border inline-flex items-center rounded-full border border-dashed px-2.5 py-0.5 text-xs font-medium"
+                  >لم يصوت بعد</span
+                >
               </td>
-              <td class="px-4 py-2.5 text-xs text-muted-foreground font-mono">غير متاح</td>
+              <td class="text-muted-foreground px-4 py-2.5 font-mono text-xs">غير متاح</td>
             </tr>
           </tbody>
         </table>
 
-        <div v-if="displayedVotes.length === 0 && notYetVotedCount === 0" class="text-center text-sm text-muted-foreground py-3">
+        <div
+          v-if="displayedVotes.length === 0 && notYetVotedCount === 0"
+          class="text-muted-foreground py-3 text-center text-sm"
+        >
           لا توجد أصوات مسجّلة بعد.
         </div>
       </div>
 
       <!-- Vote action buttons -->
       <div v-if="canVote && !pendingVote" class="flex flex-col gap-3">
-        <h3 class="text-sm font-medium text-foreground">صوّت الآن</h3>
-        <div class="flex gap-3 flex-row-reverse">
-          <Button @click="selectVote(VoteType.APPROVE)" class="flex-1 h-11">موافقة</Button>
-          <Button variant="destructive" @click="selectVote(VoteType.REJECT)" class="flex-1 h-11">رفض</Button>
-          <Button variant="outline" @click="selectVote(VoteType.ABSTAIN)" class="flex-1 h-11">امتناع</Button>
+        <h3 class="text-foreground text-sm font-medium">صوّت الآن</h3>
+        <div class="flex flex-row-reverse gap-3">
+          <Button class="h-11 flex-1" @click="selectVote(VoteType.APPROVE)">موافقة</Button>
+          <Button variant="destructive" class="h-11 flex-1" @click="selectVote(VoteType.REJECT)"
+            >رفض</Button
+          >
+          <Button variant="outline" class="h-11 flex-1" @click="selectVote(VoteType.ABSTAIN)"
+            >امتناع</Button
+          >
         </div>
       </div>
 
       <!-- Vote confirmation step -->
-      <div v-if="pendingVote" class="flex flex-col gap-3.5 bg-muted border border-border rounded-lg p-5">
-        <p class="text-sm text-foreground">
-          أنت على وشك التصويت بـ <strong>{{ pendingVoteLabel(pendingVote) }}</strong>. هل أنت متأكد؟
+      <div
+        v-if="pendingVote"
+        class="bg-muted border-border flex flex-col gap-3.5 rounded-lg border p-5"
+      >
+        <p class="text-foreground text-sm">
+          أنت على وشك التصويت بـ <strong>{{ pendingVoteLabel(pendingVote) }}</strong
+          >. هل أنت متأكد؟
         </p>
 
         <!-- Justification textarea (required for REJECT, optional for others) -->
         <div v-if="pendingVote === VoteType.REJECT" class="flex flex-col gap-1.5">
-          <label class="text-xs font-medium text-muted-foreground" for="vote-justification">
+          <label class="text-muted-foreground text-xs font-medium" for="vote-justification">
             سبب الرفض <span class="text-destructive" aria-hidden="true">*</span>
           </label>
           <textarea
             id="vote-justification"
             v-model="justification"
-            class="p-2.5 border border-border rounded-lg text-sm font-normal text-foreground resize-none focus:outline-none focus:border-indigo-600"
+            class="border-border text-foreground resize-none rounded-lg border p-2.5 text-sm font-normal focus:border-indigo-600 focus:outline-none"
             rows="3"
             placeholder="اكتب سبب الرفض هنا…"
             :aria-invalid="!!justificationError"
-            
           />
-          <p v-if="justificationError" class="text-xs text-destructive">{{ justificationError }}</p>
+          <p v-if="justificationError" class="text-destructive text-xs">{{ justificationError }}</p>
         </div>
 
         <!-- Optional justification for APPROVE / ABSTAIN -->
         <div v-else class="flex flex-col gap-1.5">
-          <label class="text-xs font-medium text-muted-foreground" for="vote-justification-opt">ملاحظة (اختيارية)</label>
+          <label class="text-muted-foreground text-xs font-medium" for="vote-justification-opt"
+            >ملاحظة (اختيارية)</label
+          >
           <textarea
             id="vote-justification-opt"
             v-model="justification"
-            class="p-2.5 border border-border rounded-lg text-sm font-normal text-foreground resize-none focus:outline-none focus:border-indigo-600"
+            class="border-border text-foreground resize-none rounded-lg border p-2.5 text-sm font-normal focus:border-indigo-600 focus:outline-none"
             rows="2"
             placeholder="أضف ملاحظة اختيارية…"
-            
           />
         </div>
 
-        <div class="flex gap-2.5 flex-row-reverse">
+        <div class="flex flex-row-reverse gap-2.5">
           <Button
             :disabled="votingStore.performingVote"
-            class="flex-1 h-11"
-            :variant="pendingVote === VoteType.REJECT ? 'destructive' : pendingVote === VoteType.ABSTAIN ? 'outline' : 'default'"
+            class="h-11 flex-1"
+            :variant="
+              pendingVote === VoteType.REJECT
+                ? 'destructive'
+                : pendingVote === VoteType.ABSTAIN
+                  ? 'outline'
+                  : 'default'
+            "
             @click="confirmVote"
           >
-            {{ votingStore.performingVote ? 'جارٍ التسجيل…' : `تأكيد ${pendingVoteLabel(pendingVote)}` }}
+            {{
+              votingStore.performingVote
+                ? 'جارٍ التسجيل…'
+                : `تأكيد ${pendingVoteLabel(pendingVote)}`
+            }}
           </Button>
           <Button
             variant="outline"
             :disabled="votingStore.performingVote"
-            class="flex-1 h-11"
+            class="h-11 flex-1"
             @click="cancelVote"
           >
             إلغاء
@@ -349,22 +462,46 @@ onMounted(async () => {
       </div>
 
       <!-- Already voted indicator -->
-      <Alert v-if="isSessionOpen && isVoter && detail.my_vote" class="border border-[var(--color-border-success)] bg-success/10">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="text-success" aria-hidden="true">
+      <Alert
+        v-if="isSessionOpen && isVoter && detail.my_vote"
+        class="bg-success/10 border border-[var(--color-border-success)]"
+      >
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.5"
+          class="text-success"
+          aria-hidden="true"
+        >
           <polyline points="20 6 9 17 4 12" />
         </svg>
-        <AlertDescription class="text-success text-sm">لقد صوّتت بـ <strong>{{ voteLabel(detail.my_vote.vote) }}</strong></AlertDescription>
+        <AlertDescription class="text-success text-sm"
+          >لقد صوّتت بـ <strong>{{ voteLabel(detail.my_vote.vote) }}</strong></AlertDescription
+        >
       </Alert>
 
       <!-- Locked state indicator -->
-      <Alert v-if="isLocked" class="border-0 bg-muted border-locked">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-locked)" stroke-width="2" aria-hidden="true">
+      <Alert v-if="isLocked" class="bg-muted border-locked border-0">
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="var(--color-locked)"
+          stroke-width="2"
+          aria-hidden="true"
+        >
           <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
           <path d="M7 11V7a5 5 0 0 1 10 0v4" />
         </svg>
-        <AlertDescription class="text-muted-foreground text-sm">جلسة التصويت {{ isSessionClosed ? 'مغلقة' : 'منتهية' }}، ولا يمكن التصويت الآن.</AlertDescription>
+        <AlertDescription class="text-muted-foreground text-sm"
+          >جلسة التصويت {{ isSessionClosed ? 'مغلقة' : 'منتهية' }}، ولا يمكن التصويت
+          الآن.</AlertDescription
+        >
       </Alert>
-
     </template>
   </div>
 </template>

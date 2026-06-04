@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { Circle } from 'lucide-vue-next'
-import { Clock } from 'lucide-vue-next'
+import { Circle, Clock } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import {
   Stepper,
@@ -14,14 +13,17 @@ import type { RequestStageHistory } from '@/types/models'
 import { UserRole } from '@/types/enums'
 import { STATUS_LABELS, DATA_ENTRY_STATUS_LABELS } from '@/constants/workflow'
 
-const props = withDefaults(defineProps<{
-  entries: RequestStageHistory[]
-  limit?: number
-  userRole?: UserRole | null
-}>(), {
-  limit: 25,
-  userRole: null,
-})
+const props = withDefaults(
+  defineProps<{
+    entries: RequestStageHistory[]
+    limit?: number
+    userRole?: UserRole | null
+  }>(),
+  {
+    limit: 25,
+    userRole: null,
+  },
+)
 
 const visible = computed(() => props.entries.slice(0, props.limit))
 
@@ -68,10 +70,7 @@ function entryNotes(entry: RequestStageHistory): string | null {
 </script>
 
 <template>
-  <div
-    v-if="visible.length === 0"
-    class="p-4 text-sm text-muted-foreground"
-  >
+  <div v-if="visible.length === 0" class="text-muted-foreground p-4 text-sm">
     لا توجد إجراءات مسجلة بعد.
   </div>
 
@@ -90,41 +89,38 @@ function entryNotes(entry: RequestStageHistory): string | null {
     >
       <StepperSeparator
         v-if="idx < visible.length - 1"
-        class="absolute inset-s-[12px] top-[20px] block h-[110%] w-0.5 shrink-0 rounded-full bg-muted group-data-[state=completed]:bg-primary"
+        class="bg-muted group-data-[state=completed]:bg-primary absolute inset-s-[12px] top-[20px] block h-[110%] w-0.5 shrink-0 rounded-full"
       />
 
       <StepperTrigger as-child>
         <Button
           :variant="state === 'completed' || state === 'active' ? 'default' : 'outline'"
           size="icon"
-          class="z-10 rounded-full shrink-0 size-6 pointer-events-none"
+          class="pointer-events-none z-10 size-6 shrink-0 rounded-full"
         >
           <Circle class="size-3" />
         </Button>
       </StepperTrigger>
 
-      <div class="flex flex-col gap-0.5 pt-0.5 flex-1">
+      <div class="flex flex-1 flex-col gap-0.5 pt-0.5">
         <div class="flex flex-wrap items-center justify-between gap-2">
           <StepperTitle class="text-sm font-semibold">
             {{ actionLabel(entry.action) }}
           </StepperTitle>
-          <div class="flex items-center gap-1 text-[11px] text-muted-foreground">
+          <div class="text-muted-foreground flex items-center gap-1 text-[11px]">
             <Clock class="h-3 w-3" />
             {{ new Date(entry.created_at).toLocaleString('ar-EG') }}
           </div>
         </div>
 
-        <StepperDescription class="text-xs text-muted-foreground">
+        <StepperDescription class="text-muted-foreground text-xs">
           {{ entry.performed_by?.name ?? 'غير معروف' }}
           <span v-if="entry.from_status && entry.to_status">
             — من «{{ statusLabel(entry.from_status) }}» إلى «{{ statusLabel(entry.to_status) }}»
           </span>
         </StepperDescription>
 
-        <div
-          v-if="entryNotes(entry)"
-          class="mt-1.5 rounded bg-muted/40 px-2 py-1 text-xs"
-        >
+        <div v-if="entryNotes(entry)" class="bg-muted/40 mt-1.5 rounded px-2 py-1 text-xs">
           {{ entryNotes(entry) }}
         </div>
       </div>

@@ -14,12 +14,12 @@ import { UserRole, RequestStatus } from '../types/enums'
 export function canDownloadDocument(role: UserRole, docType: string | null): boolean {
   if (docType === 'SWIFT' || docType === 'FX_REQUEST') {
     return (
-      role === UserRole.BANK_REVIEWER
-      || role === UserRole.BANK_ADMIN
-      || role === UserRole.SWIFT_OFFICER
-      || role === UserRole.EXECUTIVE_MEMBER
-      || role === UserRole.COMMITTEE_DIRECTOR
-      || role === UserRole.CBY_ADMIN
+      role === UserRole.BANK_REVIEWER ||
+      role === UserRole.BANK_ADMIN ||
+      role === UserRole.SWIFT_OFFICER ||
+      role === UserRole.EXECUTIVE_MEMBER ||
+      role === UserRole.COMMITTEE_DIRECTOR ||
+      role === UserRole.CBY_ADMIN
     )
   }
   // REQUEST_DOC or unknown type — all roles may attempt (bank scope enforced by backend)
@@ -32,9 +32,9 @@ export function canDownloadDocument(role: UserRole, docType: string | null): boo
  */
 export function canDownloadCustoms(role: UserRole): boolean {
   return (
-    role === UserRole.BANK_REVIEWER
-    || role === UserRole.COMMITTEE_DIRECTOR
-    || role === UserRole.CBY_ADMIN
+    role === UserRole.BANK_REVIEWER ||
+    role === UserRole.COMMITTEE_DIRECTOR ||
+    role === UserRole.CBY_ADMIN
   )
 }
 
@@ -46,13 +46,13 @@ export function canDownloadCustoms(role: UserRole): boolean {
  */
 export function canDownloadSignedFxDoc(role: UserRole): boolean {
   return (
-    role === UserRole.DATA_ENTRY
-    || role === UserRole.BANK_REVIEWER
-    || role === UserRole.BANK_ADMIN
-    || role === UserRole.SUPPORT_COMMITTEE
-    || role === UserRole.EXECUTIVE_MEMBER
-    || role === UserRole.COMMITTEE_DIRECTOR
-    || role === UserRole.CBY_ADMIN
+    role === UserRole.DATA_ENTRY ||
+    role === UserRole.BANK_REVIEWER ||
+    role === UserRole.BANK_ADMIN ||
+    role === UserRole.SUPPORT_COMMITTEE ||
+    role === UserRole.EXECUTIVE_MEMBER ||
+    role === UserRole.COMMITTEE_DIRECTOR ||
+    role === UserRole.CBY_ADMIN
   )
 }
 
@@ -63,9 +63,9 @@ export function canDownloadSignedFxDoc(role: UserRole): boolean {
  */
 export function canViewConfirmationRequestPreview(role: UserRole): boolean {
   return (
-    role === UserRole.BANK_REVIEWER
-    || role === UserRole.COMMITTEE_DIRECTOR
-    || role === UserRole.CBY_ADMIN
+    role === UserRole.BANK_REVIEWER ||
+    role === UserRole.COMMITTEE_DIRECTOR ||
+    role === UserRole.CBY_ADMIN
   )
 }
 
@@ -76,11 +76,11 @@ export function canViewConfirmationRequestPreview(role: UserRole): boolean {
  */
 export function canUploadDocument(role: UserRole, status: RequestStatus): boolean {
   return (
-    role === UserRole.DATA_ENTRY
-    && (status === RequestStatus.DRAFT
-      || status === RequestStatus.DRAFT_REJECTED_INTERNAL
-      || status === RequestStatus.BANK_RETURNED
-      || status === RequestStatus.SUPPORT_RETURNED)
+    role === UserRole.DATA_ENTRY &&
+    (status === RequestStatus.DRAFT ||
+      status === RequestStatus.DRAFT_REJECTED_INTERNAL ||
+      status === RequestStatus.BANK_RETURNED ||
+      status === RequestStatus.SUPPORT_RETURNED)
   )
 }
 
@@ -91,9 +91,9 @@ export function canUploadDocument(role: UserRole, status: RequestStatus): boolea
  */
 export function isDocumentModificationLocked(status: RequestStatus): boolean {
   return (
-    status !== RequestStatus.DRAFT
-    && status !== RequestStatus.DRAFT_REJECTED_INTERNAL
-    && status !== RequestStatus.BANK_RETURNED
-    && status !== RequestStatus.SUPPORT_RETURNED
+    status !== RequestStatus.DRAFT &&
+    status !== RequestStatus.DRAFT_REJECTED_INTERNAL &&
+    status !== RequestStatus.BANK_RETURNED &&
+    status !== RequestStatus.SUPPORT_RETURNED
   )
 }

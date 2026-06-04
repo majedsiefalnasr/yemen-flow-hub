@@ -1,5 +1,10 @@
 <script setup lang="ts">
-import type { ColumnDef, ColumnFiltersState, PaginationState, VisibilityState } from '@tanstack/vue-table'
+import type {
+  ColumnDef,
+  ColumnFiltersState,
+  PaginationState,
+  VisibilityState,
+} from '@tanstack/vue-table'
 import {
   getCoreRowModel,
   getFacetedRowModel,
@@ -11,8 +16,14 @@ import {
 } from '@tanstack/vue-table'
 import { h } from 'vue'
 import {
-  AlertTriangle, Building2,
-  Edit, ExternalLink, MoreHorizontal, Plus, SearchX, Shield,
+  AlertTriangle,
+  Building2,
+  Edit,
+  ExternalLink,
+  MoreHorizontal,
+  Plus,
+  SearchX,
+  Shield,
 } from 'lucide-vue-next'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import MerchantDialog from '@/components/merchants/MerchantDialog.vue'
@@ -98,14 +109,18 @@ const viewing = ref<Merchant | null>(null)
 
 const DEFAULT_MERCHANT_PAGE_SIZE = 20
 const urlMerchantPage = computed(() => Number(route.query.page ?? 1))
-const urlMerchantPageSize = computed(() => Number(route.query.perPage ?? DEFAULT_MERCHANT_PAGE_SIZE))
+const urlMerchantPageSize = computed(() =>
+  Number(route.query.perPage ?? DEFAULT_MERCHANT_PAGE_SIZE),
+)
 
 const merchantPagination = computed<PaginationState>(() => ({
   pageIndex: urlMerchantPage.value - 1,
   pageSize: urlMerchantPageSize.value,
 }))
 
-function onMerchantPaginationChange(updater: PaginationState | ((old: PaginationState) => PaginationState)) {
+function onMerchantPaginationChange(
+  updater: PaginationState | ((old: PaginationState) => PaginationState),
+) {
   const next = typeof updater === 'function' ? updater(merchantPagination.value) : updater
   router.push({
     query: {
@@ -125,8 +140,7 @@ onMounted(async () => {
     ])
     if (merchantsResult.status === 'fulfilled') merchants.value = merchantsResult.value ?? []
     if (banksResult.status === 'fulfilled') banks.value = banksResult.value ?? []
-  }
-  finally {
+  } finally {
     loadingMerchants.value = false
   }
 })
@@ -136,12 +150,12 @@ const isBankAdmin = computed(() => user.value?.role === UserRole.BANK_ADMIN)
 const canManage = computed(() => isBankAdmin.value || isCbyAdmin.value)
 
 function bankName(id?: number | null) {
-  return banks.value.find(b => b.id === id)?.name_ar ?? '—'
+  return banks.value.find((b) => b.id === id)?.name_ar ?? '—'
 }
 
 const scoped = computed(() => {
   if (isBankAdmin.value && user.value?.bank_id) {
-    return merchants.value.filter(m => m.bank_id === user.value?.bank_id)
+    return merchants.value.filter((m) => m.bank_id === user.value?.bank_id)
   }
   return merchants.value
 })
@@ -150,8 +164,10 @@ const scoped = computed(() => {
 const preFiltered = computed(() => {
   const q = query.value.trim().toLowerCase()
   if (!q) return scoped.value
-  return scoped.value.filter(m =>
-    [m.name, m.commercial_register, m.tax_number, bankName(m.bank_id)].some(v => (v ?? '').toLowerCase().includes(q)),
+  return scoped.value.filter((m) =>
+    [m.name, m.commercial_register, m.tax_number, bankName(m.bank_id)].some((v) =>
+      (v ?? '').toLowerCase().includes(q),
+    ),
   )
 })
 
@@ -160,15 +176,17 @@ const filtered = computed(() => {
   const q = query.value.trim().toLowerCase()
   return scoped.value.filter((m) => {
     if (!q) return true
-    return [m.name, m.commercial_register, m.tax_number, bankName(m.bank_id)].some(v => (v ?? '').toLowerCase().includes(q))
+    return [m.name, m.commercial_register, m.tax_number, bankName(m.bank_id)].some((v) =>
+      (v ?? '').toLowerCase().includes(q),
+    )
   })
 })
 
 const stats = computed(() => ({
   total: scoped.value.length,
-  active: scoped.value.filter(m => m.is_active).length,
-  suspended: scoped.value.filter(m => !m.is_active).length,
-  incomplete: scoped.value.filter(m => !m.commercial_register || !m.tax_number).length,
+  active: scoped.value.filter((m) => m.is_active).length,
+  suspended: scoped.value.filter((m) => !m.is_active).length,
+  incomplete: scoped.value.filter((m) => !m.commercial_register || !m.tax_number).length,
 }))
 
 // CBY-Admin risk intelligence computeds
@@ -179,15 +197,20 @@ const crossBankNames = computed(() => {
     const key = m.name.trim().toLowerCase()
     nameCount[key] = (nameCount[key] ?? 0) + 1
   }
-  return new Set(Object.entries(nameCount).filter(([, c]) => c > 1).map(([n]) => n))
+  return new Set(
+    Object.entries(nameCount)
+      .filter(([, c]) => c > 1)
+      .map(([n]) => n),
+  )
 })
 
 const riskSummary = computed(() => {
   if (!isCbyAdmin.value) return null
   return {
-    crossBank: merchants.value.filter(m => crossBankNames.value.has(m.name.trim().toLowerCase())).length,
-    missingData: merchants.value.filter(m => !m.commercial_register || !m.tax_number).length,
-    inactive: merchants.value.filter(m => !m.is_active).length,
+    crossBank: merchants.value.filter((m) => crossBankNames.value.has(m.name.trim().toLowerCase()))
+      .length,
+    missingData: merchants.value.filter((m) => !m.commercial_register || !m.tax_number).length,
+    inactive: merchants.value.filter((m) => !m.is_active).length,
   }
 })
 
@@ -212,17 +235,20 @@ const pendingNewMerchant = ref<MerchantFormData | null>(null)
 function detectDuplicates(data: MerchantFormData): string[] {
   const bankId = data.bank_id ?? user.value?.bank_id ?? null
   const scopedMerchants = bankId
-    ? merchants.value.filter(m => m.bank_id === bankId)
+    ? merchants.value.filter((m) => m.bank_id === bankId)
     : merchants.value
   const reasons: string[] = []
   const nameLower = data.name.trim().toLowerCase()
-  if (scopedMerchants.some(m => m.name.trim().toLowerCase() === nameLower)) {
+  if (scopedMerchants.some((m) => m.name.trim().toLowerCase() === nameLower)) {
     reasons.push(`اسم التاجر "${data.name}" مسجّل مسبقاً لدى هذا البنك`)
   }
-  if (data.commercial_register && scopedMerchants.some(m => m.commercial_register === data.commercial_register.trim())) {
+  if (
+    data.commercial_register &&
+    scopedMerchants.some((m) => m.commercial_register === data.commercial_register.trim())
+  ) {
     reasons.push(`رقم السجل التجاري "${data.commercial_register}" مسجّل مسبقاً`)
   }
-  if (data.tax_number && scopedMerchants.some(m => m.tax_number === data.tax_number.trim())) {
+  if (data.tax_number && scopedMerchants.some((m) => m.tax_number === data.tax_number.trim())) {
     reasons.push(`الرقم الضريبي "${data.tax_number}" مسجّل مسبقاً`)
   }
   return reasons
@@ -263,7 +289,7 @@ function cancelDuplicateSave() {
 async function saveEdit(data: MerchantFormData) {
   if (!editing.value) return
   const updated = await updateMerchant(editing.value.id, data)
-  merchants.value = merchants.value.map(m => m.id === updated.id ? updated : m)
+  merchants.value = merchants.value.map((m) => (m.id === updated.id ? updated : m))
   editing.value = null
   notify('تم تحديث بيانات التاجر')
 }
@@ -275,8 +301,8 @@ const columnVisibility = ref<VisibilityState>({
 })
 const selectedCount = computed(() => Object.values(rowSelection.value).filter(Boolean).length)
 
-const hasActiveFilters = computed(() =>
-  columnFilters.value.length > 0 || query.value.trim().length > 0,
+const hasActiveFilters = computed(
+  () => columnFilters.value.length > 0 || query.value.trim().length > 0,
 )
 
 function clearSelection() {
@@ -285,7 +311,7 @@ function clearSelection() {
 
 async function toggleStatus(merchant: Merchant) {
   const updated = await suspendMerchant(merchant.id, !merchant.is_active)
-  merchants.value = merchants.value.map(m => m.id === updated.id ? updated : m)
+  merchants.value = merchants.value.map((m) => (m.id === updated.id ? updated : m))
 }
 
 function openEditFromView() {
@@ -309,11 +335,22 @@ function activeStatusCell(isActive: boolean) {
         h('line', { x1: '9', y1: '9', x2: '15', y2: '15' }),
       ]
   return h('span', { class: 'inline-flex items-center gap-1.5 whitespace-nowrap' }, [
-    h('svg', {
-      class: 'shrink-0', style: { color }, width: 15, height: 15,
-      viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor',
-      'stroke-width': '2.5', 'stroke-linecap': 'round', 'stroke-linejoin': 'round',
-    }, paths),
+    h(
+      'svg',
+      {
+        class: 'shrink-0',
+        style: { color },
+        width: 15,
+        height: 15,
+        viewBox: '0 0 24 24',
+        fill: 'none',
+        stroke: 'currentColor',
+        'stroke-width': '2.5',
+        'stroke-linecap': 'round',
+        'stroke-linejoin': 'round',
+      },
+      paths,
+    ),
     h('span', { class: 'text-sm font-medium text-foreground' }, label),
   ])
 }
@@ -323,14 +360,17 @@ const columns: ColumnDef<Merchant>[] = [
     id: 'select',
     header: ({ table }) =>
       h(Checkbox, {
-        'modelValue': table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() ? 'indeterminate' : false),
-        'onUpdate:modelValue': (v: boolean | 'indeterminate') => table.toggleAllPageRowsSelected(!!v),
+        modelValue:
+          table.getIsAllPageRowsSelected() ||
+          (table.getIsSomePageRowsSelected() ? 'indeterminate' : false),
+        'onUpdate:modelValue': (v: boolean | 'indeterminate') =>
+          table.toggleAllPageRowsSelected(!!v),
         'aria-label': 'تحديد الكل',
       }),
     cell: ({ row }) =>
       h('div', { onClick: (e: Event) => e.stopPropagation() }, [
         h(Checkbox, {
-          'modelValue': row.getIsSelected(),
+          modelValue: row.getIsSelected(),
           'onUpdate:modelValue': (v: boolean | 'indeterminate') => row.toggleSelected(!!v),
           'aria-label': 'تحديد التاجر',
         }),
@@ -341,36 +381,57 @@ const columns: ColumnDef<Merchant>[] = [
   {
     accessorKey: 'name',
     header: 'التاجر',
-    cell: ({ row }) => h('button', {
-      type: 'button',
-      class: 'text-sm font-medium text-start hover:underline underline-offset-2 cursor-pointer focus-visible:outline-none focus-visible:underline',
-      title: 'معاينة سريعة',
-      onClick: (e: Event) => { e.stopPropagation(); viewing.value = row.original },
-    }, row.original.name),
+    cell: ({ row }) =>
+      h(
+        'button',
+        {
+          type: 'button',
+          class:
+            'text-sm font-medium text-start hover:underline underline-offset-2 cursor-pointer focus-visible:outline-none focus-visible:underline',
+          title: 'معاينة سريعة',
+          onClick: (e: Event) => {
+            e.stopPropagation()
+            viewing.value = row.original
+          },
+        },
+        row.original.name,
+      ),
   },
   {
     accessorKey: 'commercial_register',
     header: 'السجل التجاري',
-    cell: ({ row }) => h('span', { class: 'text-sm text-muted-foreground' }, row.original.commercial_register ?? '—'),
+    cell: ({ row }) =>
+      h(
+        'span',
+        { class: 'text-sm text-muted-foreground' },
+        row.original.commercial_register ?? '—',
+      ),
   },
   {
     accessorKey: 'tax_number',
     header: 'الرقم الضريبي',
-    cell: ({ row }) => h('span', { class: 'text-sm tabular-nums text-muted-foreground' }, row.original.tax_number ?? '—'),
+    cell: ({ row }) =>
+      h(
+        'span',
+        { class: 'text-sm tabular-nums text-muted-foreground' },
+        row.original.tax_number ?? '—',
+      ),
   },
   {
     accessorKey: 'business_type',
     header: 'القطاع',
-    cell: ({ row }) => h('span', { class: 'text-sm text-muted-foreground' }, row.original.business_type ?? '—'),
+    cell: ({ row }) =>
+      h('span', { class: 'text-sm text-muted-foreground' }, row.original.business_type ?? '—'),
   },
   {
     id: 'bank',
     header: 'البنك التابع له',
     filterFn: (row, _id, value: string[]) => value.includes(String(row.original.bank_id)),
-    cell: ({ row }) => h(Badge, { variant: 'outline', class: 'font-normal' }, () => [
-      h(Building2, { class: 'ms-1 h-3 w-3' }),
-      bankName(row.original.bank_id),
-    ]),
+    cell: ({ row }) =>
+      h(Badge, { variant: 'outline', class: 'font-normal' }, () => [
+        h(Building2, { class: 'ms-1 h-3 w-3' }),
+        bankName(row.original.bank_id),
+      ]),
   },
   {
     accessorKey: 'is_active',
@@ -381,7 +442,12 @@ const columns: ColumnDef<Merchant>[] = [
   {
     id: 'transactions',
     header: 'المعاملات',
-    cell: ({ row }) => h('span', { class: 'text-sm font-semibold tabular-nums' }, String(row.original.transaction_count ?? 0)),
+    cell: ({ row }) =>
+      h(
+        'span',
+        { class: 'text-sm font-semibold tabular-nums' },
+        String(row.original.transaction_count ?? 0),
+      ),
   },
   {
     id: 'actions',
@@ -390,46 +456,93 @@ const columns: ColumnDef<Merchant>[] = [
     cell: ({ row }) => {
       const merchant = row.original
       const roleItems = isBankAdmin.value
-        ? [h(DropdownMenuItem, {
-            class: 'gap-1.5 text-primary',
-            onClick: () => router.push('/requests/new'),
-          }, () => [h(ExternalLink, { class: 'h-3.5 w-3.5' }), 'إنشاء طلب تمويل'])]
-        : (isCbyAdmin.value && crossBankNames.value.has(merchant.name.trim().toLowerCase()))
-            ? [h(DropdownMenuItem, {
-                class: 'gap-1.5 text-[var(--severity-amber)]',
-                onClick: () => { table.getColumn('is_active')?.setFilterValue(undefined) },
-              }, () => [h(AlertTriangle, { class: 'h-3.5 w-3.5' }), 'عرض مخاطر التكرار'])]
-            : []
-      return h(DropdownMenu, {}, {
-        default: () => [
-          h(DropdownMenuTrigger, { asChild: true }, {
-            default: () => h(Button, {
-              variant: 'ghost', size: 'icon', class: 'h-8 w-8',
-            }, {
-              default: () => [
-                h('span', { class: 'sr-only' }, 'فتح القائمة'),
-                h(MoreHorizontal, { class: 'h-4 w-4' }),
-              ],
-            }),
-          }),
-          h(DropdownMenuContent, { align: 'end' }, {
-            default: () => [
-              h(DropdownMenuItem, { onClick: () => (viewing.value = merchant) }, () => 'عرض التفاصيل'),
-              ...roleItems,
-              ...(isBankAdmin.value
-                ? [
-                    h(DropdownMenuItem, { onClick: () => (editing.value = merchant) }, () => 'تعديل'),
-                    h(DropdownMenuSeparator),
-                    h(DropdownMenuItem, {
-                      class: merchant.is_active ? 'text-destructive' : 'text-[var(--severity-green)]',
-                      onClick: () => toggleStatus(merchant),
-                    }, () => merchant.is_active ? 'إيقاف النشاط' : 'تفعيل'),
-                  ]
-                : []),
-            ],
-          }),
-        ],
-      })
+        ? [
+            h(
+              DropdownMenuItem,
+              {
+                class: 'gap-1.5 text-primary',
+                onClick: () => router.push('/requests/new'),
+              },
+              () => [h(ExternalLink, { class: 'h-3.5 w-3.5' }), 'إنشاء طلب تمويل'],
+            ),
+          ]
+        : isCbyAdmin.value && crossBankNames.value.has(merchant.name.trim().toLowerCase())
+          ? [
+              h(
+                DropdownMenuItem,
+                {
+                  class: 'gap-1.5 text-[var(--severity-amber)]',
+                  onClick: () => {
+                    table.getColumn('is_active')?.setFilterValue(undefined)
+                  },
+                },
+                () => [h(AlertTriangle, { class: 'h-3.5 w-3.5' }), 'عرض مخاطر التكرار'],
+              ),
+            ]
+          : []
+      return h(
+        DropdownMenu,
+        {},
+        {
+          default: () => [
+            h(
+              DropdownMenuTrigger,
+              { asChild: true },
+              {
+                default: () =>
+                  h(
+                    Button,
+                    {
+                      variant: 'ghost',
+                      size: 'icon',
+                      class: 'h-8 w-8',
+                    },
+                    {
+                      default: () => [
+                        h('span', { class: 'sr-only' }, 'فتح القائمة'),
+                        h(MoreHorizontal, { class: 'h-4 w-4' }),
+                      ],
+                    },
+                  ),
+              },
+            ),
+            h(
+              DropdownMenuContent,
+              { align: 'end' },
+              {
+                default: () => [
+                  h(
+                    DropdownMenuItem,
+                    { onClick: () => (viewing.value = merchant) },
+                    () => 'عرض التفاصيل',
+                  ),
+                  ...roleItems,
+                  ...(isBankAdmin.value
+                    ? [
+                        h(
+                          DropdownMenuItem,
+                          { onClick: () => (editing.value = merchant) },
+                          () => 'تعديل',
+                        ),
+                        h(DropdownMenuSeparator),
+                        h(
+                          DropdownMenuItem,
+                          {
+                            class: merchant.is_active
+                              ? 'text-destructive'
+                              : 'text-[var(--severity-green)]',
+                            onClick: () => toggleStatus(merchant),
+                          },
+                          () => (merchant.is_active ? 'إيقاف النشاط' : 'تفعيل'),
+                        ),
+                      ]
+                    : []),
+                ],
+              },
+            ),
+          ],
+        },
+      )
     },
   },
 ]
@@ -449,7 +562,7 @@ const statusFilterOptions = [
   { label: 'موقوف', value: 'false' },
 ]
 const bankFilterOptions = computed(() =>
-  banks.value.map(b => ({ label: b.name_ar || b.name_en, value: String(b.id) })),
+  banks.value.map((b) => ({ label: b.name_ar || b.name_en, value: String(b.id) })),
 )
 
 const exportCols = [
@@ -465,7 +578,7 @@ const exportCols = [
   {
     key: 'is_active',
     label: 'الحالة',
-    format: (_value: unknown, row: Merchant) => row.is_active ? 'نشط' : 'موقوف',
+    format: (_value: unknown, row: Merchant) => (row.is_active ? 'نشط' : 'موقوف'),
   },
   {
     key: 'transaction_count',
@@ -475,7 +588,9 @@ const exportCols = [
 ] as const
 
 const table = useVueTable({
-  get data() { return preFiltered.value },
+  get data() {
+    return preFiltered.value
+  },
   columns,
   getCoreRowModel: getCoreRowModel(),
   getPaginationRowModel: getPaginationRowModel(),
@@ -483,20 +598,31 @@ const table = useVueTable({
   getFilteredRowModel: getFilteredRowModel(),
   getFacetedRowModel: getFacetedRowModel(),
   getFacetedUniqueValues: getFacetedUniqueValues(),
-  onColumnFiltersChange: updater =>
+  onColumnFiltersChange: (updater) =>
     (columnFilters.value = typeof updater === 'function' ? updater(columnFilters.value) : updater),
-  onRowSelectionChange: updater =>
+  onRowSelectionChange: (updater) =>
     (rowSelection.value = typeof updater === 'function' ? updater(rowSelection.value) : updater),
-  onColumnVisibilityChange: updater =>
-    (columnVisibility.value = typeof updater === 'function' ? updater(columnVisibility.value) : updater),
+  onColumnVisibilityChange: (updater) =>
+    (columnVisibility.value =
+      typeof updater === 'function' ? updater(columnVisibility.value) : updater),
   onPaginationChange: (updater) => {
-    onMerchantPaginationChange(updater as PaginationState | ((old: PaginationState) => PaginationState))
+    onMerchantPaginationChange(
+      updater as PaginationState | ((old: PaginationState) => PaginationState),
+    )
   },
   state: {
-    get columnFilters() { return columnFilters.value },
-    get rowSelection() { return rowSelection.value },
-    get columnVisibility() { return columnVisibility.value },
-    get pagination() { return merchantPagination.value },
+    get columnFilters() {
+      return columnFilters.value
+    },
+    get rowSelection() {
+      return rowSelection.value
+    },
+    get columnVisibility() {
+      return columnVisibility.value
+    },
+    get pagination() {
+      return merchantPagination.value
+    },
   },
 })
 
@@ -510,11 +636,13 @@ function buildExportFilename(): string {
 }
 
 function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
-  const rows = table.getFilteredSelectedRowModel().rows.map(row => row.original)
+  const rows = table.getFilteredSelectedRowModel().rows.map((row) => row.original)
   if (!rows.length) return
   const filename = `${buildExportFilename()}-selected`
-  if (format === 'csv') exportToCSV(rows as unknown as Record<string, unknown>[], exportCols as any, filename)
-  else if (format === 'excel') exportToExcel(rows as unknown as Record<string, unknown>[], exportCols as any, filename)
+  if (format === 'csv')
+    exportToCSV(rows as unknown as Record<string, unknown>[], exportCols as any, filename)
+  else if (format === 'excel')
+    exportToExcel(rows as unknown as Record<string, unknown>[], exportCols as any, filename)
   else exportToJSON(rows as unknown as Record<string, unknown>[], exportCols as any, filename)
 }
 </script>
@@ -523,7 +651,11 @@ function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
   <div v-if="user && canManage">
     <PageHeader
       title="التجار"
-      :subtitle="isCbyAdmin ? 'عرض جميع التجار المسجّلين على المنصّة مع البنوك التابعة لها' : 'تسجيل ومتابعة التجار والمستوردين المرتبطين بالبنك'"
+      :subtitle="
+        isCbyAdmin
+          ? 'عرض جميع التجار المسجّلين على المنصّة مع البنوك التابعة لها'
+          : 'تسجيل ومتابعة التجار والمستوردين المرتبطين بالبنك'
+      "
       :breadcrumbs="[{ label: 'الرئيسية', to: '/' }, { label: 'التجار' }]"
     >
       <template v-if="isBankAdmin" #actions>
@@ -549,7 +681,15 @@ function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
           :value="stats.active"
           :icon="Building2"
           tone="success"
-          :active="columnFilters.some(f => f.id === 'is_active' && Array.isArray(f.value) && f.value.includes('true') && f.value.length === 1)"
+          :active="
+            columnFilters.some(
+              (f) =>
+                f.id === 'is_active' &&
+                Array.isArray(f.value) &&
+                f.value.includes('true') &&
+                f.value.length === 1,
+            )
+          "
           @click="table.getColumn('is_active')?.setFilterValue(['true'])"
         />
         <MetricCard
@@ -557,7 +697,15 @@ function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
           :value="stats.suspended"
           :icon="Building2"
           tone="danger"
-          :active="columnFilters.some(f => f.id === 'is_active' && Array.isArray(f.value) && f.value.includes('false') && f.value.length === 1)"
+          :active="
+            columnFilters.some(
+              (f) =>
+                f.id === 'is_active' &&
+                Array.isArray(f.value) &&
+                f.value.includes('false') &&
+                f.value.length === 1,
+            )
+          "
           @click="table.getColumn('is_active')?.setFilterValue(['false'])"
         />
         <MetricCard
@@ -609,11 +757,11 @@ function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
           :column-filters="columnFilters"
           :column-visibility="columnVisibility"
           :row-selection="rowSelection"
-          @update:pagination="onMerchantPaginationChange"
-          @update:column-filters="(v) => columnFilters = v"
-          @update:column-visibility="(v) => columnVisibility = v"
-          @update:row-selection="(v) => rowSelection = v"
           row-class="group/row"
+          @update:pagination="onMerchantPaginationChange"
+          @update:column-filters="(v) => (columnFilters = v)"
+          @update:column-visibility="(v) => (columnVisibility = v)"
+          @update:row-selection="(v) => (rowSelection = v)"
         >
           <template #toolbar="{ table }">
             <DataTableToolbar
@@ -621,12 +769,16 @@ function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
               search-placeholder="بحث برقم السجل، الرقم الضريبي، أو الاسم..."
               :has-filters="hasActiveFilters"
               :selected-count="selectedCount"
-              @update:search="v => query = v"
+              @update:search="(v) => (query = v)"
               @reset="handleReset"
               @clear-selection="clearSelection"
             >
               <template #bulk-actions>
-                <DataTableBulkExport @csv="exportSelectedRows('csv')" @excel="exportSelectedRows('excel')" @json="exportSelectedRows('json')" />
+                <DataTableBulkExport
+                  @csv="exportSelectedRows('csv')"
+                  @excel="exportSelectedRows('excel')"
+                  @json="exportSelectedRows('json')"
+                />
               </template>
               <template #filters>
                 <DataTableFacetedFilter
@@ -645,8 +797,8 @@ function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
               <template #actions>
                 <DataTableViewOptions :table="table" :column-labels="MERCHANT_COLUMN_LABELS" />
                 <DataTableExport
-                  :table="(table as any)"
-                  :export-columns="(exportCols as any)"
+                  :table="table as any"
+                  :export-columns="exportCols as any"
                   :filename="buildExportFilename()"
                   :formats="['csv', 'tsv', 'json', 'excel', 'pdf']"
                   :respect-column-visibility="true"
@@ -655,9 +807,11 @@ function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
             </DataTableToolbar>
           </template>
           <template #empty>
-            <Empty class="min-h-[280px] rounded-xl border border-dashed bg-muted/20">
+            <Empty class="bg-muted/20 min-h-[280px] rounded-xl border border-dashed">
               <EmptyHeader>
-                <div class="flex size-12 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+                <div
+                  class="bg-muted text-muted-foreground flex size-12 items-center justify-center rounded-xl"
+                >
                   <SearchX class="size-5" />
                 </div>
                 <EmptyTitle>
@@ -666,9 +820,13 @@ function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
               </EmptyHeader>
               <EmptyContent>
                 <EmptyDescription>
-                  {{ merchants.length === 0
-                    ? (isCbyAdmin ? 'لم يتم تسجيل أي تجار عبر البنوك حتى الآن.' : 'ابدأ بتسجيل أول تاجر أو مستورد باستخدام زر "تاجر جديد" أعلاه.')
-                    : 'جرّب إزالة فلتر الحالة أو البنك، أو تغيير نص البحث.' }}
+                  {{
+                    merchants.length === 0
+                      ? isCbyAdmin
+                        ? 'لم يتم تسجيل أي تجار عبر البنوك حتى الآن.'
+                        : 'ابدأ بتسجيل أول تاجر أو مستورد باستخدام زر "تاجر جديد" أعلاه.'
+                      : 'جرّب إزالة فلتر الحالة أو البنك، أو تغيير نص البحث.'
+                  }}
                 </EmptyDescription>
               </EmptyContent>
             </Empty>
@@ -706,9 +864,11 @@ function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
         <!-- Empty state -->
         <template v-else-if="filtered.length === 0">
           <div class="col-span-full">
-            <Empty class="min-h-[240px] rounded-xl border border-dashed bg-muted/20">
+            <Empty class="bg-muted/20 min-h-[240px] rounded-xl border border-dashed">
               <EmptyHeader>
-                <div class="flex size-12 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+                <div
+                  class="bg-muted text-muted-foreground flex size-12 items-center justify-center rounded-xl"
+                >
                   <SearchX class="size-5" />
                 </div>
                 <EmptyTitle>
@@ -717,9 +877,11 @@ function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
               </EmptyHeader>
               <EmptyContent>
                 <EmptyDescription>
-                  {{ merchants.length === 0
-                    ? 'ابدأ بتسجيل أول تاجر أو مستورد باستخدام زر "تاجر جديد" أعلاه.'
-                    : 'جرّب تغيير البحث أو فلتر الحالة لعرض المزيد من التجار.' }}
+                  {{
+                    merchants.length === 0
+                      ? 'ابدأ بتسجيل أول تاجر أو مستورد باستخدام زر "تاجر جديد" أعلاه.'
+                      : 'جرّب تغيير البحث أو فلتر الحالة لعرض المزيد من التجار.'
+                  }}
                 </EmptyDescription>
               </EmptyContent>
             </Empty>
@@ -731,44 +893,76 @@ function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
           <Card
             v-for="merchant in filtered"
             :key="merchant.id"
-            class="flex flex-col border-0 p-5 shadow transition-shadow hover:shadow-soft"
+            class="hover:shadow-soft flex flex-col border-0 p-5 shadow transition-shadow"
           >
             <div class="mb-3 flex items-start justify-between">
-              <div class="grid h-12 w-12 place-items-center rounded-xl bg-primary text-primary-foreground">
+              <div
+                class="bg-primary text-primary-foreground grid h-12 w-12 place-items-center rounded-xl"
+              >
                 <Building2 class="h-6 w-6" />
               </div>
-              <Badge :class="merchant.is_active ? 'border-0 bg-[var(--color-surface-success)] text-[var(--color-text-success)]' : 'border-0 bg-[var(--color-surface-error)] text-[var(--color-text-error)]'">
+              <Badge
+                :class="
+                  merchant.is_active
+                    ? 'border-0 bg-[var(--color-surface-success)] text-[var(--color-text-success)]'
+                    : 'border-0 bg-[var(--color-surface-error)] text-[var(--color-text-error)]'
+                "
+              >
                 {{ merchant.is_active ? 'نشط' : 'موقوف' }}
               </Badge>
             </div>
-            <div class="font-heading text-base font-semibold leading-6 text-foreground">{{ merchant.name }}</div>
-            <div class="text-xs leading-5 text-muted-foreground">{{ merchant.business_type ?? '—' }}</div>
+            <div class="font-heading text-foreground text-base leading-6 font-semibold">
+              {{ merchant.name }}
+            </div>
+            <div class="text-muted-foreground text-xs leading-5">
+              {{ merchant.business_type ?? '—' }}
+            </div>
             <div class="mt-4 space-y-1.5 text-xs">
               <div class="flex justify-between gap-2">
-                <span class="font-section font-medium leading-5 text-muted-foreground">السجل التجاري</span>
-                <span class="font-medium leading-5 text-foreground">{{ merchant.commercial_register ?? '—' }}</span>
+                <span class="font-section text-muted-foreground leading-5 font-medium"
+                  >السجل التجاري</span
+                >
+                <span class="text-foreground leading-5 font-medium">{{
+                  merchant.commercial_register ?? '—'
+                }}</span>
               </div>
               <div class="flex justify-between gap-2">
-                <span class="font-section font-medium leading-5 text-muted-foreground">الرقم الضريبي</span>
-                <span class="font-medium leading-5 text-foreground">{{ merchant.tax_number ?? '—' }}</span>
+                <span class="font-section text-muted-foreground leading-5 font-medium"
+                  >الرقم الضريبي</span
+                >
+                <span class="text-foreground leading-5 font-medium">{{
+                  merchant.tax_number ?? '—'
+                }}</span>
               </div>
               <div class="flex justify-between gap-2">
-                <span class="font-section font-medium leading-5 text-muted-foreground">البنك</span>
-                <span class="font-medium leading-5 text-foreground">{{ bankName(merchant.bank_id) }}</span>
+                <span class="font-section text-muted-foreground leading-5 font-medium">البنك</span>
+                <span class="text-foreground leading-5 font-medium">{{
+                  bankName(merchant.bank_id)
+                }}</span>
               </div>
               <div class="flex justify-between gap-2">
-                <span class="font-section font-medium leading-5 text-muted-foreground">العنوان</span>
-                <span class="text-end font-medium leading-5 text-foreground">{{ merchant.address ?? '—' }}</span>
+                <span class="font-section text-muted-foreground leading-5 font-medium"
+                  >العنوان</span
+                >
+                <span class="text-foreground text-end leading-5 font-medium">{{
+                  merchant.address ?? '—'
+                }}</span>
               </div>
               <div class="flex justify-between gap-2">
-                <span class="font-section font-medium leading-5 text-muted-foreground">هاتف</span>
-                <span class="font-medium leading-5 text-foreground">{{ merchant.phone ?? '—' }}</span>
+                <span class="font-section text-muted-foreground leading-5 font-medium">هاتف</span>
+                <span class="text-foreground leading-5 font-medium">{{
+                  merchant.phone ?? '—'
+                }}</span>
               </div>
             </div>
             <div class="mt-auto flex items-center justify-between border-t pt-4">
               <div class="text-xs">
-                <span class="font-section font-medium leading-5 text-muted-foreground">المعاملات: </span>
-                <span class="font-semibold leading-5 tabular-nums text-foreground">{{ merchant.transaction_count ?? 0 }}</span>
+                <span class="font-section text-muted-foreground leading-5 font-medium"
+                  >المعاملات:
+                </span>
+                <span class="text-foreground leading-5 font-semibold tabular-nums">{{
+                  merchant.transaction_count ?? 0
+                }}</span>
               </div>
               <div class="flex gap-1">
                 <Button size="sm" variant="ghost" class="h-8" @click="toggleStatus(merchant)">
@@ -794,7 +988,7 @@ function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
       />
     </Dialog>
 
-    <Dialog :open="Boolean(editing)" @update:open="v => !v && (editing = null)">
+    <Dialog :open="Boolean(editing)" @update:open="(v) => !v && (editing = null)">
       <MerchantDialog
         v-if="editing"
         title="تعديل بيانات التاجر"
@@ -807,11 +1001,13 @@ function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
     </Dialog>
 
     <!-- Unified quick-view Dialog (both roles) -->
-    <Dialog :open="Boolean(viewing)" @update:open="v => !v && (viewing = null)">
+    <Dialog :open="Boolean(viewing)" @update:open="(v) => !v && (viewing = null)">
       <DialogContent v-if="viewing" :class="isCbyAdmin ? 'sm:max-w-2xl' : 'sm:max-w-lg'">
         <DialogHeader class="pb-3">
           <DialogTitle class="flex items-center gap-2 text-base">
-            <div class="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+            <div
+              class="bg-primary/10 text-primary grid h-9 w-9 shrink-0 place-items-center rounded-lg"
+            >
               <Building2 class="h-4 w-4" />
             </div>
             {{ viewing.name }}
@@ -826,7 +1022,13 @@ function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
           <div class="max-h-[55vh] space-y-4 overflow-y-auto pb-1">
             <!-- Status + risk signals -->
             <div class="flex flex-wrap gap-2">
-              <Badge :class="viewing.is_active ? 'border border-[var(--severity-green)]/30 bg-[var(--severity-green)]/10 text-[var(--severity-green)]' : 'border border-[var(--severity-red)]/30 bg-[var(--severity-red)]/10 text-[var(--severity-red)]'">
+              <Badge
+                :class="
+                  viewing.is_active
+                    ? 'border border-[var(--severity-green)]/30 bg-[var(--severity-green)]/10 text-[var(--severity-green)]'
+                    : 'border border-[var(--severity-red)]/30 bg-[var(--severity-red)]/10 text-[var(--severity-red)]'
+                "
+              >
                 {{ viewing.is_active ? 'نشط' : 'غير نشط' }}
               </Badge>
               <Badge
@@ -847,34 +1049,40 @@ function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
 
             <!-- Registration info -->
             <Card class="border p-4">
-              <h3 class="mb-3 font-section text-xs font-semibold uppercase tracking-wide text-muted-foreground">معلومات التسجيل</h3>
+              <h3
+                class="font-section text-muted-foreground mb-3 text-xs font-semibold tracking-wide uppercase"
+              >
+                معلومات التسجيل
+              </h3>
               <div class="grid grid-cols-2 gap-3 text-sm">
                 <div class="space-y-0.5">
-                  <div class="text-xs text-muted-foreground">السجل التجاري</div>
+                  <div class="text-muted-foreground text-xs">السجل التجاري</div>
                   <div class="font-medium">{{ viewing.commercial_register ?? '—' }}</div>
                 </div>
                 <div class="space-y-0.5">
-                  <div class="text-xs text-muted-foreground">الرقم الضريبي</div>
+                  <div class="text-muted-foreground text-xs">الرقم الضريبي</div>
                   <div class="font-medium">{{ viewing.tax_number ?? '—' }}</div>
                 </div>
                 <div class="space-y-0.5">
-                  <div class="text-xs text-muted-foreground">القطاع</div>
+                  <div class="text-muted-foreground text-xs">القطاع</div>
                   <div class="font-medium">{{ viewing.business_type ?? '—' }}</div>
                 </div>
                 <div class="space-y-0.5">
-                  <div class="text-xs text-muted-foreground">عدد المعاملات</div>
-                  <div class="font-semibold leading-5 tabular-nums text-foreground">{{ viewing.transaction_count ?? 0 }}</div>
+                  <div class="text-muted-foreground text-xs">عدد المعاملات</div>
+                  <div class="text-foreground leading-5 font-semibold tabular-nums">
+                    {{ viewing.transaction_count ?? 0 }}
+                  </div>
                 </div>
                 <div class="col-span-2 space-y-0.5">
-                  <div class="text-xs text-muted-foreground">العنوان</div>
+                  <div class="text-muted-foreground text-xs">العنوان</div>
                   <div class="font-medium">{{ viewing.address ?? '—' }}</div>
                 </div>
                 <div class="space-y-0.5">
-                  <div class="text-xs text-muted-foreground">هاتف</div>
+                  <div class="text-muted-foreground text-xs">هاتف</div>
                   <div class="font-medium">{{ viewing.phone ?? '—' }}</div>
                 </div>
                 <div class="space-y-0.5">
-                  <div class="text-xs text-muted-foreground">البريد</div>
+                  <div class="text-muted-foreground text-xs">البريد</div>
                   <div class="font-medium">{{ viewing.email ?? '—' }}</div>
                 </div>
               </div>
@@ -882,7 +1090,9 @@ function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
 
             <!-- Associated banks -->
             <Card class="border p-4">
-              <h3 class="mb-3 flex items-center gap-1.5 font-section text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <h3
+                class="font-section text-muted-foreground mb-3 flex items-center gap-1.5 text-xs font-semibold tracking-wide uppercase"
+              >
                 <Shield class="h-3.5 w-3.5" />
                 البنوك المرتبطة
               </h3>
@@ -893,12 +1103,19 @@ function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
                 </div>
                 <template v-if="crossBankNames.has(viewing.name.trim().toLowerCase())">
                   <div
-                    v-for="other in merchants.filter(m => m.id !== viewing?.id && m.name.trim().toLowerCase() === viewing?.name.trim().toLowerCase())"
+                    v-for="other in merchants.filter(
+                      (m) =>
+                        m.id !== viewing?.id &&
+                        m.name.trim().toLowerCase() === viewing?.name.trim().toLowerCase(),
+                    )"
                     :key="other.id"
                     class="flex items-center justify-between text-[var(--severity-amber)]"
                   >
                     <span class="font-medium">{{ bankName(other.bank_id) }}</span>
-                    <Badge class="border border-[var(--severity-amber)]/30 bg-[var(--severity-amber)]/10 text-[var(--severity-amber)] text-xs">مكرر</Badge>
+                    <Badge
+                      class="border border-[var(--severity-amber)]/30 bg-[var(--severity-amber)]/10 text-xs text-[var(--severity-amber)]"
+                      >مكرر</Badge
+                    >
                   </div>
                 </template>
               </div>
@@ -907,7 +1124,9 @@ function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
 
           <!-- CBY Admin: view-only footer -->
           <div class="border-t pt-3">
-            <p class="text-xs text-muted-foreground">عرض رقابي — لا تتاح إجراءات التعديل لمسؤول البنك المركزي</p>
+            <p class="text-muted-foreground text-xs">
+              عرض رقابي — لا تتاح إجراءات التعديل لمسؤول البنك المركزي
+            </p>
           </div>
         </template>
 
@@ -915,37 +1134,43 @@ function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
         <template v-else>
           <div class="grid gap-3 py-1 text-sm sm:grid-cols-2">
             <div class="space-y-0.5">
-              <div class="text-xs text-muted-foreground">السجل التجاري</div>
+              <div class="text-muted-foreground text-xs">السجل التجاري</div>
               <div class="font-medium">{{ viewing.commercial_register ?? '—' }}</div>
             </div>
             <div class="space-y-0.5">
-              <div class="text-xs text-muted-foreground">الرقم الضريبي</div>
+              <div class="text-muted-foreground text-xs">الرقم الضريبي</div>
               <div class="font-medium">{{ viewing.tax_number ?? '—' }}</div>
             </div>
             <div class="space-y-0.5">
-              <div class="text-xs text-muted-foreground">القطاع</div>
+              <div class="text-muted-foreground text-xs">القطاع</div>
               <div class="font-medium">{{ viewing.business_type ?? '—' }}</div>
             </div>
             <div class="space-y-0.5">
-              <div class="text-xs text-muted-foreground">الحالة</div>
-              <Badge :class="viewing.is_active ? 'bg-[var(--severity-green)]/10 text-[var(--severity-green)] border-[var(--severity-green)]/30 border' : 'bg-[var(--severity-red)]/10 text-[var(--severity-red)] border-[var(--severity-red)]/30 border'">
+              <div class="text-muted-foreground text-xs">الحالة</div>
+              <Badge
+                :class="
+                  viewing.is_active
+                    ? 'border border-[var(--severity-green)]/30 bg-[var(--severity-green)]/10 text-[var(--severity-green)]'
+                    : 'border border-[var(--severity-red)]/30 bg-[var(--severity-red)]/10 text-[var(--severity-red)]'
+                "
+              >
                 {{ viewing.is_active ? 'نشط' : 'موقوف' }}
               </Badge>
             </div>
             <div class="space-y-0.5">
-              <div class="text-xs text-muted-foreground">البنك التابع له</div>
+              <div class="text-muted-foreground text-xs">البنك التابع له</div>
               <div class="font-medium">{{ bankName(viewing.bank_id) }}</div>
             </div>
             <div class="space-y-0.5">
-              <div class="text-xs text-muted-foreground">عدد المعاملات</div>
+              <div class="text-muted-foreground text-xs">عدد المعاملات</div>
               <div class="font-semibold tabular-nums">{{ viewing.transaction_count ?? 0 }}</div>
             </div>
             <div class="space-y-0.5 sm:col-span-2">
-              <div class="text-xs text-muted-foreground">العنوان</div>
+              <div class="text-muted-foreground text-xs">العنوان</div>
               <div class="font-medium">{{ viewing.address ?? '—' }}</div>
             </div>
             <div class="space-y-0.5 sm:col-span-2">
-              <div class="text-xs text-muted-foreground">هاتف التواصل</div>
+              <div class="text-muted-foreground text-xs">هاتف التواصل</div>
               <div class="font-medium">{{ viewing.phone ?? '—' }}</div>
             </div>
           </div>
@@ -953,11 +1178,19 @@ function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
           <!-- Bank Admin quick actions -->
           <DialogFooter class="gap-2 border-t pt-4">
             <Button variant="outline" size="sm" @click="openEditFromView">
-              <Edit class="h-3.5 w-3.5 me-1.5" />
+              <Edit class="me-1.5 h-3.5 w-3.5" />
               تعديل
             </Button>
-            <Button size="sm" @click="() => { router.push('/requests/new'); viewing = null }">
-              <Plus class="h-3.5 w-3.5 me-1.5" />
+            <Button
+              size="sm"
+              @click="
+                () => {
+                  router.push('/requests/new')
+                  viewing = null
+                }
+              "
+            >
+              <Plus class="me-1.5 h-3.5 w-3.5" />
               إنشاء طلب تمويل
             </Button>
           </DialogFooter>
@@ -976,10 +1209,10 @@ function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
           <AlertDialogTitle>تاجر مشابه موجود مسبقاً</AlertDialogTitle>
           <AlertDialogDescription class="space-y-2">
             <p>تم اكتشاف تشابه مع سجلات تجار موجودة:</p>
-            <ul class="list-disc ps-4 text-xs text-foreground space-y-1">
+            <ul class="text-foreground list-disc space-y-1 ps-4 text-xs">
               <li v-for="reason in duplicateWarningReasons" :key="reason">{{ reason }}</li>
             </ul>
-            <p class="text-xs text-muted-foreground">
+            <p class="text-muted-foreground text-xs">
               يمكنك إلغاء العملية ومراجعة البيانات، أو تأكيد الإضافة إذا كان التاجر مختلفاً فعلاً.
             </p>
           </AlertDialogDescription>
@@ -988,10 +1221,7 @@ function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
           <AlertDialogCancel @click="cancelDuplicateSave">
             إلغاء — مراجعة البيانات
           </AlertDialogCancel>
-          <AlertDialogAction
-            data-testid="duplicate-confirm-btn"
-            @click="confirmDuplicateAndSave"
-          >
+          <AlertDialogAction data-testid="duplicate-confirm-btn" @click="confirmDuplicateAndSave">
             تأكيد الإضافة رغم التشابه
           </AlertDialogAction>
         </AlertDialogFooter>
@@ -1000,12 +1230,9 @@ function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
   </div>
 
   <div v-else>
-    <PageHeader
-      title="التجار"
-      subtitle="هذه الصفحة متاحة لمسؤول النظام أو مسؤول البنك فقط."
-    />
+    <PageHeader title="التجار" subtitle="هذه الصفحة متاحة لمسؤول النظام أو مسؤول البنك فقط." />
     <Card class="border-0 p-6 shadow">
-      <div class="text-sm text-muted-foreground">لا تملك صلاحية الوصول إلى التجار.</div>
+      <div class="text-muted-foreground text-sm">لا تملك صلاحية الوصول إلى التجار.</div>
     </Card>
   </div>
 </template>

@@ -4,9 +4,15 @@ const localStorageMock = (() => {
   let store: Record<string, string> = {}
   return {
     getItem: (key: string) => store[key] ?? null,
-    setItem: (key: string, value: string) => { store[key] = value },
-    removeItem: (key: string) => { delete store[key] },
-    clear: () => { store = {} },
+    setItem: (key: string, value: string) => {
+      store[key] = value
+    },
+    removeItem: (key: string) => {
+      delete store[key]
+    },
+    clear: () => {
+      store = {}
+    },
   }
 })()
 
@@ -51,11 +57,14 @@ describe('useSavedAccounts — PIN behavior', () => {
   })
 
   it('accepts legacy numeric and object PIN value formats', async () => {
-    localStorageMock.setItem('yfh-pin-data', JSON.stringify({
-      'admin@cby.gov.ye': 125812,
-      'legacy@cby.gov.ye': { pin: '125812' },
-      'legacy2@cby.gov.ye': { code: 125812 },
-    }))
+    localStorageMock.setItem(
+      'yfh-pin-data',
+      JSON.stringify({
+        'admin@cby.gov.ye': 125812,
+        'legacy@cby.gov.ye': { pin: '125812' },
+        'legacy2@cby.gov.ye': { code: 125812 },
+      }),
+    )
 
     const { useSavedAccounts } = await import('../../../composables/useSavedAccounts')
     const { verifyPIN, hasStoredPIN } = useSavedAccounts()

@@ -69,17 +69,24 @@ describe('useDocumentTypes — createDocumentType', () => {
       name_ar: 'الفاتورة التجارية',
       name_en: 'Commercial Invoice',
     })
-    expect(mockPost).toHaveBeenCalledWith('/api/document-types', expect.objectContaining({
-      slug: 'commercial_invoice',
-      name_ar: 'الفاتورة التجارية',
-    }))
+    expect(mockPost).toHaveBeenCalledWith(
+      '/api/document-types',
+      expect.objectContaining({
+        slug: 'commercial_invoice',
+        name_ar: 'الفاتورة التجارية',
+      }),
+    )
     expect(result.id).toBe(1)
   })
 
   it('propagates validation error on duplicate slug', async () => {
-    mockPost.mockRejectedValueOnce({ data: { errors: { slug: ['The slug has already been taken.'] } } })
+    mockPost.mockRejectedValueOnce({
+      data: { errors: { slug: ['The slug has already been taken.'] } },
+    })
     const { createDocumentType } = useDocumentTypes()
-    await expect(createDocumentType({ slug: 'commercial_invoice', name_ar: 'x', name_en: 'x' })).rejects.toBeTruthy()
+    await expect(
+      createDocumentType({ slug: 'commercial_invoice', name_ar: 'x', name_en: 'x' }),
+    ).rejects.toBeTruthy()
   })
 })
 
@@ -93,16 +100,21 @@ describe('useDocumentTypes — updateDocumentType', () => {
     mockPut.mockResolvedValueOnce({ success: true, data: updated })
     const { updateDocumentType } = useDocumentTypes()
     const result = await updateDocumentType(1, { ...DOC_TYPE_FIXTURE, is_active: false })
-    expect(mockPut).toHaveBeenCalledWith('/api/document-types/1', expect.objectContaining({
-      slug: 'commercial_invoice',
-      is_active: false,
-    }))
+    expect(mockPut).toHaveBeenCalledWith(
+      '/api/document-types/1',
+      expect.objectContaining({
+        slug: 'commercial_invoice',
+        is_active: false,
+      }),
+    )
     expect(result.is_active).toBe(false)
   })
 
   it('propagates 403 when user lacks docrules.manage permission', async () => {
     mockPut.mockRejectedValueOnce({ status: 403, data: { message: 'Forbidden' } })
     const { updateDocumentType } = useDocumentTypes()
-    await expect(updateDocumentType(1, { ...DOC_TYPE_FIXTURE, is_active: false })).rejects.toBeTruthy()
+    await expect(
+      updateDocumentType(1, { ...DOC_TYPE_FIXTURE, is_active: false }),
+    ).rejects.toBeTruthy()
   })
 })

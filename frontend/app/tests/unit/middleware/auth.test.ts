@@ -23,9 +23,12 @@ describe('auth middleware', () => {
     isAuthenticated.value = false
     const middleware = (await import('../../../middleware/auth')).default
 
-    middleware({
-      fullPath: '/requests?tab=active',
-    } as any, {} as any)
+    middleware(
+      {
+        fullPath: '/requests?tab=active',
+      } as any,
+      {} as any,
+    )
 
     expect(navigateTo).toHaveBeenCalledWith({
       path: '/unauthorized',
@@ -37,9 +40,12 @@ describe('auth middleware', () => {
     isAuthenticated.value = true
     const middleware = (await import('../../../middleware/auth')).default
 
-    const result = middleware({
-      fullPath: '/dashboard',
-    } as any, {} as any)
+    const result = middleware(
+      {
+        fullPath: '/dashboard',
+      } as any,
+      {} as any,
+    )
 
     expect(navigateTo).not.toHaveBeenCalled()
     expect(result).toBeUndefined()

@@ -133,7 +133,9 @@ describe('Story 8.6 — AC9: AdminSettings includes duplicate_invoice_policy', (
 // ─── AC8: DuplicateGroup type from useAudit ───────────────────────────────
 
 describe('Story 8.6 — AC8: DuplicateGroup shape from useAudit', () => {
-  beforeEach(() => { vi.resetAllMocks() })
+  beforeEach(() => {
+    vi.resetAllMocks()
+  })
 
   it('DuplicateGroup has invoice_number, banks[], requests[]', async () => {
     const mockGet = vi.fn()
@@ -143,8 +145,24 @@ describe('Story 8.6 — AC8: DuplicateGroup shape from useAudit', () => {
       invoice_number: 'INV-G1',
       banks: ['بنك التضامن', 'بنك سبأ'],
       requests: [
-        { id: 1, reference_number: 'YFH-2026-000001', bank_name: 'بنك التضامن', amount: 5000, currency: 'USD', created_at: '2026-05-01T00:00:00Z', status: 'DRAFT' },
-        { id: 2, reference_number: 'YFH-2026-000002', bank_name: 'بنك سبأ', amount: 5000, currency: 'USD', created_at: '2026-05-02T00:00:00Z', status: 'SUBMITTED' },
+        {
+          id: 1,
+          reference_number: 'YFH-2026-000001',
+          bank_name: 'بنك التضامن',
+          amount: 5000,
+          currency: 'USD',
+          created_at: '2026-05-01T00:00:00Z',
+          status: 'DRAFT',
+        },
+        {
+          id: 2,
+          reference_number: 'YFH-2026-000002',
+          bank_name: 'بنك سبأ',
+          amount: 5000,
+          currency: 'USD',
+          created_at: '2026-05-02T00:00:00Z',
+          status: 'SUBMITTED',
+        },
       ],
     }
 

@@ -10,7 +10,7 @@ import { ROLE_BUCKETS, CBY_BANK_FILTER_ROLES } from '../../../../constants/workf
 const CD_BUCKETS = ROLE_BUCKETS[UserRole.COMMITTEE_DIRECTOR]!
 
 function bucketByKey(key: string) {
-  return CD_BUCKETS.find(b => b.key === key)
+  return CD_BUCKETS.find((b) => b.key === key)
 }
 
 // ── Bucket existence ──────────────────────────────────────────────────────────
@@ -20,12 +20,24 @@ describe('COMMITTEE_DIRECTOR ROLE_BUCKETS — bucket existence', () => {
     expect(CD_BUCKETS).toHaveLength(6)
   })
 
-  it('has ready_to_close bucket', () => { expect(bucketByKey('ready_to_close')).toBeDefined() })
-  it('has ready_to_finalize bucket', () => { expect(bucketByKey('ready_to_finalize')).toBeDefined() })
-  it('has tie_break bucket', () => { expect(bucketByKey('tie_break')).toBeDefined() })
-  it('has fx_pending bucket', () => { expect(bucketByKey('fx_pending')).toBeDefined() })
-  it('has active_voting bucket', () => { expect(bucketByKey('active_voting')).toBeDefined() })
-  it('has finalized bucket', () => { expect(bucketByKey('finalized')).toBeDefined() })
+  it('has ready_to_close bucket', () => {
+    expect(bucketByKey('ready_to_close')).toBeDefined()
+  })
+  it('has ready_to_finalize bucket', () => {
+    expect(bucketByKey('ready_to_finalize')).toBeDefined()
+  })
+  it('has tie_break bucket', () => {
+    expect(bucketByKey('tie_break')).toBeDefined()
+  })
+  it('has fx_pending bucket', () => {
+    expect(bucketByKey('fx_pending')).toBeDefined()
+  })
+  it('has active_voting bucket', () => {
+    expect(bucketByKey('active_voting')).toBeDefined()
+  })
+  it('has finalized bucket', () => {
+    expect(bucketByKey('finalized')).toBeDefined()
+  })
 })
 
 // ── Tab ordering ──────────────────────────────────────────────────────────────
@@ -140,7 +152,9 @@ describe('COMMITTEE_DIRECTOR ROLE_BUCKETS — active_voting bucket', () => {
 
 describe('COMMITTEE_DIRECTOR ROLE_BUCKETS — ready_to_finalize bucket', () => {
   it('includes EXECUTIVE_VOTING_CLOSED', () => {
-    expect(bucketByKey('ready_to_finalize')!.statuses).toContain(RequestStatus.EXECUTIVE_VOTING_CLOSED)
+    expect(bucketByKey('ready_to_finalize')!.statuses).toContain(
+      RequestStatus.EXECUTIVE_VOTING_CLOSED,
+    )
   })
 })
 

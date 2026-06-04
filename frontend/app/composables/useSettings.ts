@@ -23,12 +23,10 @@ export const useSettings = () => {
       })
       preferences.value = response.data
       auth.setUserPreferences(response.data)
-    }
-    catch (err: any) {
+    } catch (err: any) {
       error.value = err.data?.message || 'Failed to load settings'
       preferences.value = null
-    }
-    finally {
+    } finally {
       loading.value = false
     }
   }
@@ -48,12 +46,10 @@ export const useSettings = () => {
       preferences.value = { ...preferences.value, ...response.data }
       auth.setUserPreferences({ ...preferences.value })
       return true
-    }
-    catch (err: any) {
+    } catch (err: any) {
       error.value = err.data?.message || 'Failed to update settings'
       return false
-    }
-    finally {
+    } finally {
       loading.value = false
     }
   }
@@ -72,12 +68,10 @@ export const useSettings = () => {
       preferences.value = { ...response.data }
       auth.setUserPreferences({ ...preferences.value })
       return true
-    }
-    catch (err: any) {
+    } catch (err: any) {
       error.value = err.data?.message || 'Failed to reset settings'
       return false
-    }
-    finally {
+    } finally {
       loading.value = false
     }
   }

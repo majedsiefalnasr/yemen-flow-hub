@@ -1,5 +1,10 @@
 import { defineStore } from 'pinia'
-import type { ImportRequest, RequestDocument, RequestFormData, RequestStageHistory } from '../types/models'
+import type {
+  ImportRequest,
+  RequestDocument,
+  RequestFormData,
+  RequestStageHistory,
+} from '../types/models'
 import type { RequestsFilter } from '../composables/useRequests'
 import { useRequests } from '../composables/useRequests'
 import { useAuthStore } from './auth.store'
@@ -55,15 +60,14 @@ export const useRequestsStore = defineStore('requests', {
     hasNextPage: (state): boolean =>
       state.meta !== null && state.meta.current_page < state.meta.last_page,
 
-    hasPrevPage: (state): boolean =>
-      state.meta !== null && state.meta.current_page > 1,
+    hasPrevPage: (state): boolean => state.meta !== null && state.meta.current_page > 1,
 
     currentPage: (state): number => state.meta?.current_page ?? 1,
 
     totalCount: (state): number => state.meta?.total ?? 0,
 
     /** Ordered IDs of the currently loaded list page — used for prev/next detail navigation */
-    listIds: (state): number[] => state.requests.map(r => r.id),
+    listIds: (state): number[] => state.requests.map((r) => r.id),
   },
 
   actions: {
@@ -80,8 +84,7 @@ export const useRequestsStore = defineStore('requests', {
         if (token !== this._loadToken) return
         this.requests = result.data
         this.meta = result.meta
-      }
-      catch (err) {
+      } catch (err) {
         if (token !== this._loadToken) return
         if (import.meta.dev && !isAuthTeardown()) {
           console.error('[requests.store] loadRequests failed:', err)
@@ -89,8 +92,7 @@ export const useRequestsStore = defineStore('requests', {
         this.error = isAuthTeardown() ? null : 'تعذّر تحميل قائمة الطلبات.'
         this.requests = []
         this.meta = null
-      }
-      finally {
+      } finally {
         if (token === this._loadToken) {
           this.loadingList = false
         }
@@ -115,14 +117,12 @@ export const useRequestsStore = defineStore('requests', {
       try {
         const { fetchRequest } = useRequests()
         this.currentRequest = await fetchRequest(id)
-      }
-      catch (err) {
+      } catch (err) {
         if (import.meta.dev && !isAuthTeardown()) {
           console.error('[requests.store] loadRequest failed:', err)
         }
         this.error = isAuthTeardown() ? null : 'تعذّر تحميل بيانات الطلب.'
-      }
-      finally {
+      } finally {
         this.loadingRequest = false
       }
     },
@@ -137,15 +137,13 @@ export const useRequestsStore = defineStore('requests', {
         const created = await createRequest(data)
         this.currentRequest = created
         return created.id
-      }
-      catch (err) {
+      } catch (err) {
         if (import.meta.dev) {
           console.error('[requests.store] createRequest failed:', err)
         }
         this.error = 'تعذّر إنشاء الطلب.'
         throw err
-      }
-      finally {
+      } finally {
         this.saving = false
       }
     },
@@ -159,15 +157,13 @@ export const useRequestsStore = defineStore('requests', {
         const { updateRequest } = useRequests()
         const updated = await updateRequest(id, data)
         this.currentRequest = updated
-      }
-      catch (err) {
+      } catch (err) {
         if (import.meta.dev) {
           console.error('[requests.store] updateRequest failed:', err)
         }
         this.error = 'تعذّر تحديث الطلب.'
         throw err
-      }
-      finally {
+      } finally {
         this.saving = false
       }
     },
@@ -179,15 +175,13 @@ export const useRequestsStore = defineStore('requests', {
       try {
         const { uploadDocument } = useRequests()
         await uploadDocument(id, file, file.name)
-      }
-      catch (err) {
+      } catch (err) {
         if (import.meta.dev) {
           console.error('[requests.store] uploadDocument failed:', err)
         }
         this.uploadError = 'تعذّر رفع المستند. يرجى المحاولة مرة أخرى.'
         throw err
-      }
-      finally {
+      } finally {
         this.uploading = false
       }
 
@@ -204,14 +198,12 @@ export const useRequestsStore = defineStore('requests', {
         const { fetchRequestDocuments } = useRequests()
         this.documents = await fetchRequestDocuments(id)
         this.documentsLoaded = true
-      }
-      catch (err) {
+      } catch (err) {
         if (import.meta.dev) {
           console.error('[requests.store] loadDocuments failed:', err)
         }
         this.documentsError = 'تعذّر تحميل المستندات. يرجى المحاولة مرة أخرى.'
-      }
-      finally {
+      } finally {
         this.loadingDocuments = false
       }
     },
@@ -225,15 +217,13 @@ export const useRequestsStore = defineStore('requests', {
         const { performWorkflowAction } = useRequests()
         const updated = await performWorkflowAction(id, action, reason)
         this.currentRequest = updated
-      }
-      catch (err) {
+      } catch (err) {
         if (import.meta.dev) {
           console.error('[requests.store] performAction failed:', err)
         }
         this.error = 'تعذّر تنفيذ الإجراء.'
         throw err
-      }
-      finally {
+      } finally {
         this.performingAction = false
       }
     },
@@ -246,15 +236,13 @@ export const useRequestsStore = defineStore('requests', {
       try {
         const { bankReturn } = useRequests()
         this.currentRequest = await bankReturn(id, comment)
-      }
-      catch (err) {
+      } catch (err) {
         if (import.meta.dev) {
           console.error('[requests.store] bankReturn failed:', err)
         }
         this.error = 'تعذّر إعادة الطلب للمدخل.'
         throw err
-      }
-      finally {
+      } finally {
         this.performingAction = false
       }
     },
@@ -267,15 +255,13 @@ export const useRequestsStore = defineStore('requests', {
       try {
         const { supportReturn } = useRequests()
         this.currentRequest = await supportReturn(id, comment)
-      }
-      catch (err) {
+      } catch (err) {
         if (import.meta.dev) {
           console.error('[requests.store] supportReturn failed:', err)
         }
         this.error = 'تعذّر إعادة الطلب للمدخل.'
         throw err
-      }
-      finally {
+      } finally {
         this.performingAction = false
       }
     },
@@ -288,15 +274,13 @@ export const useRequestsStore = defineStore('requests', {
       try {
         const { bankRejectTerminal } = useRequests()
         this.currentRequest = await bankRejectTerminal(id, comment)
-      }
-      catch (err) {
+      } catch (err) {
         if (import.meta.dev) {
           console.error('[requests.store] bankRejectTerminal failed:', err)
         }
         this.error = 'تعذّر تنفيذ الرفض النهائي.'
         throw err
-      }
-      finally {
+      } finally {
         this.performingAction = false
       }
     },
@@ -309,15 +293,13 @@ export const useRequestsStore = defineStore('requests', {
       try {
         const { bankReturnAfterSupportReject } = useRequests()
         this.currentRequest = await bankReturnAfterSupportReject(id, reason)
-      }
-      catch (err) {
+      } catch (err) {
         if (import.meta.dev) {
           console.error('[requests.store] bankReturnAfterSupportReject failed:', err)
         }
         this.error = 'تعذّر إعادة الطلب للمدخل.'
         throw err
-      }
-      finally {
+      } finally {
         this.performingAction = false
       }
     },
@@ -330,15 +312,13 @@ export const useRequestsStore = defineStore('requests', {
       try {
         const { bankFinalizeRejection } = useRequests()
         this.currentRequest = await bankFinalizeRejection(id)
-      }
-      catch (err) {
+      } catch (err) {
         if (import.meta.dev) {
           console.error('[requests.store] bankFinalizeRejection failed:', err)
         }
         this.error = 'تعذّر إتمام الرفض النهائي.'
         throw err
-      }
-      finally {
+      } finally {
         this.performingAction = false
       }
     },
@@ -352,15 +332,13 @@ export const useRequestsStore = defineStore('requests', {
         const { generateCustomsDeclaration, fetchRequest } = useRequests()
         await generateCustomsDeclaration(id)
         this.currentRequest = await fetchRequest(id)
-      }
-      catch (err) {
+      } catch (err) {
         if (import.meta.dev) {
           console.error('[requests.store] issueCustomsDeclaration failed:', err)
         }
         this.error = 'تعذّر إصدار البيان الجمركي.'
         throw err
-      }
-      finally {
+      } finally {
         this.issuingCustoms = false
       }
     },
@@ -375,20 +353,21 @@ export const useRequestsStore = defineStore('requests', {
         await uploadSignedFxConfirmation(id, file)
         this.signedFxUploaded = true
         this.currentRequest = await fetchRequest(id)
-      }
-      catch (err) {
+      } catch (err) {
         if (import.meta.dev) {
           console.error('[requests.store] uploadSignedFxDoc failed:', err)
         }
         this.error = 'تعذر رفع وثيقة المصارفة الموقعة.'
         throw err
-      }
-      finally {
+      } finally {
         this.uploadingSignedFx = false
       }
     },
 
-    async downloadCustomsDeclaration(customsDeclarationId: number, filename: string): Promise<void> {
+    async downloadCustomsDeclaration(
+      customsDeclarationId: number,
+      filename: string,
+    ): Promise<void> {
       if (this.downloadingCustoms) return
       this.downloadingCustoms = true
 
@@ -403,14 +382,12 @@ export const useRequestsStore = defineStore('requests', {
         anchor.click()
         anchor.remove()
         URL.revokeObjectURL(url)
-      }
-      catch (err) {
+      } catch (err) {
         if (import.meta.dev) {
           console.error('[requests.store] downloadCustomsDeclaration failed:', err)
         }
         throw err
-      }
-      finally {
+      } finally {
         this.downloadingCustoms = false
       }
     },
@@ -424,14 +401,12 @@ export const useRequestsStore = defineStore('requests', {
         const { fetchRequestHistory } = useRequests()
         this.history = await fetchRequestHistory(id)
         this.historyLoaded = true
-      }
-      catch (err) {
+      } catch (err) {
         if (import.meta.dev) {
           console.error('[requests.store] loadHistory failed:', err)
         }
         this.historyError = 'تعذّر تحميل سجل المراحل. يرجى المحاولة مرة أخرى.'
-      }
-      finally {
+      } finally {
         this.loadingHistory = false
       }
     },
@@ -450,11 +425,9 @@ export const useRequestsStore = defineStore('requests', {
         })
         if (token !== this._statsToken) return
         this.statsMeta = result.meta
-      }
-      catch {
+      } catch {
         // Stats are non-critical — silently ignore errors
-      }
-      finally {
+      } finally {
         if (token === this._statsToken) this.loadingStats = false
       }
     },

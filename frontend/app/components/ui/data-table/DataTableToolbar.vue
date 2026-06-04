@@ -25,7 +25,7 @@ const searchInput = ref('')
 const debouncedSearch = refDebounced(searchInput, 300)
 const searchRef = ref<InstanceType<typeof Input> | null>(null)
 
-watch(debouncedSearch, value => emit('update:search', value))
+watch(debouncedSearch, (value) => emit('update:search', value))
 
 function resetFilters() {
   searchInput.value = ''
@@ -48,8 +48,10 @@ if (typeof document !== 'undefined') {
 <template>
   <div class="flex flex-col gap-2">
     <div class="flex flex-wrap items-center gap-2">
-      <div v-if="!hideSearch" class="relative min-w-[180px] max-w-sm flex-1">
-        <Search class="absolute start-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+      <div v-if="!hideSearch" class="relative max-w-sm min-w-[180px] flex-1">
+        <Search
+          class="text-muted-foreground pointer-events-none absolute start-2.5 top-1/2 h-4 w-4 -translate-y-1/2"
+        />
         <Input
           ref="searchRef"
           v-model="searchInput"
@@ -57,7 +59,7 @@ if (typeof document !== 'undefined') {
           class="h-8 ps-8 pe-9 text-sm"
         />
         <kbd
-          class="pointer-events-none absolute end-2 top-1/2 -translate-y-1/2 hidden h-5 select-none items-center rounded border bg-muted px-1.5 font-mono text-[10px] text-muted-foreground sm:flex"
+          class="bg-muted text-muted-foreground pointer-events-none absolute end-2 top-1/2 hidden h-5 -translate-y-1/2 items-center rounded border px-1.5 font-mono text-[10px] select-none sm:flex"
           aria-hidden="true"
         >
           /
@@ -70,7 +72,7 @@ if (typeof document !== 'undefined') {
         v-if="hasFilters"
         variant="ghost"
         size="sm"
-        class="h-8 px-2 text-muted-foreground"
+        class="text-muted-foreground h-8 px-2"
         @click="resetFilters"
       >
         إعادة ضبط
@@ -84,14 +86,16 @@ if (typeof document !== 'undefined') {
 
     <template v-if="(selectedCount ?? 0) > 0">
       <Separator />
-      <div class="flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-1.5">
-        <span class="text-sm font-medium text-primary">{{ selectedCount }} محدد</span>
-        <div class="mx-2 h-4 w-px bg-border" />
+      <div
+        class="border-primary/20 bg-primary/5 flex items-center gap-2 rounded-lg border px-3 py-1.5"
+      >
+        <span class="text-primary text-sm font-medium">{{ selectedCount }} محدد</span>
+        <div class="bg-border mx-2 h-4 w-px" />
         <slot name="bulk-actions" />
         <Button
           variant="ghost"
           size="sm"
-          class="ms-auto h-7 gap-1 text-xs text-muted-foreground"
+          class="text-muted-foreground ms-auto h-7 gap-1 text-xs"
           @click="emit('clearSelection')"
         >
           <X class="size-3.5" />

@@ -63,7 +63,9 @@ async function renderPage(component: unknown): Promise<string> {
 }
 
 describe('Story 5.7 page smoke tests', () => {
-  beforeEach(() => { vi.resetModules() })
+  beforeEach(() => {
+    vi.resetModules()
+  })
   it('renders /merchants page shell', async () => {
     const page = await import('../../../pages/merchants.vue')
     const html = await renderPage(page.default)
@@ -89,7 +91,9 @@ describe('Story 5.7 page smoke tests', () => {
   })
 
   it('renders Story 6.5 admin pages with real content (not redirects)', async () => {
-    const cbystaffHtml = await renderPage((await import('../../../pages/admin/cby-staff.vue')).default)
+    const cbystaffHtml = await renderPage(
+      (await import('../../../pages/admin/cby-staff.vue')).default,
+    )
     expect(cbystaffHtml).toContain('مستخدمي النظام')
 
     const banksHtml = await renderPage((await import('../../../pages/admin/banks.vue')).default)

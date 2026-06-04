@@ -2,19 +2,22 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 
-withDefaults(defineProps<{
-  title: string
-  description?: string
-  contentClass?: string
-  cardClass?: string
-  state?: 'default' | 'loading' | 'empty' | 'error'
-  emptyText?: string
-  errorText?: string
-}>(), {
-  state: 'default',
-  emptyText: 'لا توجد بيانات',
-  errorText: 'تعذّر تحميل البيانات',
-})
+withDefaults(
+  defineProps<{
+    title: string
+    description?: string
+    contentClass?: string
+    cardClass?: string
+    state?: 'default' | 'loading' | 'empty' | 'error'
+    emptyText?: string
+    errorText?: string
+  }>(),
+  {
+    state: 'default',
+    emptyText: 'لا توجد بيانات',
+    errorText: 'تعذّر تحميل البيانات',
+  },
+)
 </script>
 
 <template>
@@ -41,7 +44,7 @@ withDefaults(defineProps<{
       </template>
       <template v-else-if="state === 'empty'">
         <slot name="empty">
-          <div class="py-8 text-center text-sm text-muted-foreground">{{ emptyText }}</div>
+          <div class="text-muted-foreground py-8 text-center text-sm">{{ emptyText }}</div>
         </slot>
       </template>
       <template v-else-if="state === 'error'">

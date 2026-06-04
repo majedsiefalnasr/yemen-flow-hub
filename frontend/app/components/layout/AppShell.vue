@@ -4,10 +4,7 @@ import AppSidebar from '@/components/AppSidebar.vue'
 import GlobalTopbar from '@/components/layout/GlobalTopbar.vue'
 import { useAuthStore } from '@/stores/auth.store'
 import { useThemingStore } from '@/stores/theming.store'
-import {
-  SidebarInset,
-  SidebarProvider,
-} from '@/components/ui/sidebar'
+import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
 
 const authStore = useAuthStore()
 const themingStore = useThemingStore()
@@ -16,14 +13,17 @@ const user = computed(() => authStore.user)
 const insetRef = ref<{ $el: HTMLElement } | null>(null)
 const route = useRoute()
 
-watch(() => route.path, () => {
-  insetRef.value?.$el?.scrollTo({ top: 0 })
-})
+watch(
+  () => route.path,
+  () => {
+    insetRef.value?.$el?.scrollTo({ top: 0 })
+  },
+)
 </script>
 
 <template>
-  <div v-if="user" class="min-h-dvh bg-background text-foreground" >
-    <SidebarProvider  class="flex-row">
+  <div v-if="user" class="bg-background text-foreground min-h-dvh">
+    <SidebarProvider class="flex-row">
       <AppSidebar
         side="right"
         :variant="themingStore.sidebarVariant"
@@ -32,7 +32,7 @@ watch(() => route.path, () => {
       <SidebarInset ref="insetRef">
         <GlobalTopbar />
 
-        <main class="flex flex-1 flex-col min-w-0 p-4 py-12">
+        <main class="flex min-w-0 flex-1 flex-col p-4 py-12">
           <div
             :class="[
               'content-layout w-full min-w-0',

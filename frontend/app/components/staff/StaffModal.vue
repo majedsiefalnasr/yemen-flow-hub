@@ -17,9 +17,19 @@ import Button from '@/components/ui/button/Button.vue'
 import Input from '@/components/ui/input/Input.vue'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/components/ui/form'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import AvatarPicker from '@/components/shared/AvatarPicker.vue'
-import { DEFAULT_AVATAR_VARIANT, readUserAvatar, type AvatarVariant } from '@/composables/useUserAvatar'
+import {
+  DEFAULT_AVATAR_VARIANT,
+  readUserAvatar,
+  type AvatarVariant,
+} from '@/composables/useUserAvatar'
 
 const props = defineProps<{
   staff: User | null
@@ -28,14 +38,16 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  save: [data: {
-    name: string
-    email: string
-    role: UserRole
-    department: string
-    password?: string
-    avatar_variant: AvatarVariant
-  }]
+  save: [
+    data: {
+      name: string
+      email: string
+      role: UserRole
+      department: string
+      password?: string
+      avatar_variant: AvatarVariant
+    },
+  ]
   close: []
 }>()
 
@@ -43,35 +55,46 @@ const isEdit = computed(() => props.staff !== null)
 
 const extendedSchema = computed(() => {
   if (isEdit.value) {
-    return toTypedSchema(z.object({
+    return toTypedSchema(
+      z.object({
+        name: z.string().trim().min(1, 'الاسم الكامل مطلوب'),
+        email: z
+          .string()
+          .trim()
+          .min(1, 'البريد الإلكتروني مطلوب')
+          .email('البريد الإلكتروني غير صحيح'),
+        role: z.enum([UserRole.DATA_ENTRY, UserRole.BANK_REVIEWER], {
+          errorMap: () => ({ message: 'يجب اختيار الدور الوظيفي' }),
+        }),
+        department: z.string().optional().default(''),
+        password: z
+          .string()
+          .default('')
+          .refine(
+            (value) => value.length === 0 || value.length >= 8,
+            'كلمة المرور يجب أن تكون 8 أحرف على الأقل',
+          ),
+      }),
+    )
+  }
+  return toTypedSchema(
+    z.object({
       name: z.string().trim().min(1, 'الاسم الكامل مطلوب'),
-      email: z.string().trim().min(1, 'البريد الإلكتروني مطلوب').email('البريد الإلكتروني غير صحيح'),
+      email: z
+        .string()
+        .trim()
+        .min(1, 'البريد الإلكتروني مطلوب')
+        .email('البريد الإلكتروني غير صحيح'),
       role: z.enum([UserRole.DATA_ENTRY, UserRole.BANK_REVIEWER], {
         errorMap: () => ({ message: 'يجب اختيار الدور الوظيفي' }),
       }),
       department: z.string().optional().default(''),
-      password: z.string().default('').refine(
-        value => value.length === 0 || value.length >= 8,
-        'كلمة المرور يجب أن تكون 8 أحرف على الأقل',
-      ),
-    }))
-  }
-  return toTypedSchema(z.object({
-    name: z.string().trim().min(1, 'الاسم الكامل مطلوب'),
-    email: z.string().trim().min(1, 'البريد الإلكتروني مطلوب').email('البريد الإلكتروني غير صحيح'),
-    role: z.enum([UserRole.DATA_ENTRY, UserRole.BANK_REVIEWER], {
-      errorMap: () => ({ message: 'يجب اختيار الدور الوظيفي' }),
+      password: z.string().min(8, 'كلمة المرور يجب أن تكون 8 أحرف على الأقل'),
     }),
-    department: z.string().optional().default(''),
-    password: z.string().min(8, 'كلمة المرور يجب أن تكون 8 أحرف على الأقل'),
-  }))
+  )
 })
 
-const {
-  handleSubmit,
-  resetForm,
-  meta,
-} = useForm({
+const { handleSubmit, resetForm, meta } = useForm({
   validationSchema: extendedSchema,
   validateOnMount: true,
 })
@@ -80,33 +103,36 @@ const isSaveDisabled = computed(() => props.saving || !meta.value.valid)
 
 const avatarVariant = ref<AvatarVariant>(DEFAULT_AVATAR_VARIANT)
 
-watch(() => props.staff, (staff) => {
-  if (staff) {
-    resetForm({
-      values: {
-        name: staff.name,
-        email: staff.email,
-        role: staff.role as UserRole.DATA_ENTRY | UserRole.BANK_REVIEWER,
-        department: '',
-        password: '',
-      },
-    })
-    const stored = readUserAvatar(staff.email)
-    avatarVariant.value = (staff.avatar_variant as AvatarVariant | undefined) ?? stored.variant
-  }
-  else {
-    resetForm({
-      values: {
-        name: '',
-        email: '',
-        role: undefined,
-        department: '',
-        password: '',
-      },
-    })
-    avatarVariant.value = DEFAULT_AVATAR_VARIANT
-  }
-}, { immediate: true })
+watch(
+  () => props.staff,
+  (staff) => {
+    if (staff) {
+      resetForm({
+        values: {
+          name: staff.name,
+          email: staff.email,
+          role: staff.role as UserRole.DATA_ENTRY | UserRole.BANK_REVIEWER,
+          department: '',
+          password: '',
+        },
+      })
+      const stored = readUserAvatar(staff.email)
+      avatarVariant.value = (staff.avatar_variant as AvatarVariant | undefined) ?? stored.variant
+    } else {
+      resetForm({
+        values: {
+          name: '',
+          email: '',
+          role: undefined,
+          department: '',
+          password: '',
+        },
+      })
+      avatarVariant.value = DEFAULT_AVATAR_VARIANT
+    }
+  },
+  { immediate: true },
+)
 
 function requestClose() {
   if (!props.saving) {
@@ -142,21 +168,22 @@ const onSubmit = handleSubmit((values) => {
   <Dialog :open="true" @update:open="onDialogOpenChange">
     <div class="modal-layer">
       <DialogOverlay class="modal-backdrop" @click="requestClose" />
-      <DialogContent
-        class="modal"
-        
-        :aria-label="isEdit ? 'تعديل بيانات الموظف' : 'إضافة موظف جديد'"
-      >
+      <DialogContent class="modal" :aria-label="isEdit ? 'تعديل بيانات الموظف' : 'إضافة موظف جديد'">
         <DialogHeader class="modal-header">
           <DialogTitle class="modal-title">
             {{ isEdit ? 'تعديل بيانات الموظف' : 'إضافة موظف جديد' }}
           </DialogTitle>
-          <button class="close-btn" aria-label="إغلاق" :disabled="props.saving" @click="requestClose">
+          <button
+            class="close-btn"
+            aria-label="إغلاق"
+            :disabled="props.saving"
+            @click="requestClose"
+          >
             ✕
           </button>
         </DialogHeader>
 
-        <p class="modal-description text-xs text-muted-foreground -mt-2">
+        <p class="modal-description text-muted-foreground -mt-2 text-xs">
           الفصل بين الإدخال والمراجعة الداخلية مفروض تلقائياً على نفس الطلب.
         </p>
 
@@ -165,7 +192,7 @@ const onSubmit = handleSubmit((values) => {
           <AlertDescription>{{ props.serverError }}</AlertDescription>
         </Alert>
 
-        <div class="rounded-lg border border-border bg-muted/20 p-3">
+        <div class="border-border bg-muted/20 rounded-lg border p-3">
           <AvatarPicker
             v-model="avatarVariant"
             :seed="staff?.email || staff?.name || 'new-user'"
@@ -177,9 +204,11 @@ const onSubmit = handleSubmit((values) => {
         <form class="flex flex-col gap-5" @submit.prevent="onSubmit">
           <div class="grid grid-cols-2 gap-4">
             <!-- Name -->
-            <FormField name="name" v-slot="{ componentField }">
+            <FormField v-slot="{ componentField }" name="name">
               <FormItem class="col-span-2">
-                <FormLabel class="text-xs">الاسم الكامل <span class="text-destructive">*</span></FormLabel>
+                <FormLabel class="text-xs"
+                  >الاسم الكامل <span class="text-destructive">*</span></FormLabel
+                >
                 <FormControl>
                   <Input v-bind="componentField" type="text" placeholder="الاسم الكامل للموظف" />
                 </FormControl>
@@ -188,9 +217,11 @@ const onSubmit = handleSubmit((values) => {
             </FormField>
 
             <!-- Email -->
-            <FormField name="email" v-slot="{ componentField }">
+            <FormField v-slot="{ componentField }" name="email">
               <FormItem class="col-span-2">
-                <FormLabel class="text-xs">البريد الإلكتروني <span class="text-destructive">*</span></FormLabel>
+                <FormLabel class="text-xs"
+                  >البريد الإلكتروني <span class="text-destructive">*</span></FormLabel
+                >
                 <FormControl>
                   <Input v-bind="componentField" type="email" placeholder="email@bank.ye" />
                 </FormControl>
@@ -199,9 +230,11 @@ const onSubmit = handleSubmit((values) => {
             </FormField>
 
             <!-- Role -->
-            <FormField name="role" v-slot="{ componentField }">
+            <FormField v-slot="{ componentField }" name="role">
               <FormItem>
-                <FormLabel class="text-xs">الدور الوظيفي <span class="text-destructive">*</span></FormLabel>
+                <FormLabel class="text-xs"
+                  >الدور الوظيفي <span class="text-destructive">*</span></FormLabel
+                >
                 <Select v-bind="componentField">
                   <FormControl>
                     <SelectTrigger>
@@ -219,21 +252,29 @@ const onSubmit = handleSubmit((values) => {
             </FormField>
 
             <!-- Department -->
-            <FormField name="department" v-slot="{ componentField }">
+            <FormField v-slot="{ componentField }" name="department">
               <FormItem>
                 <FormLabel class="text-xs">القسم</FormLabel>
                 <FormControl>
-                  <Input v-bind="componentField" type="text" placeholder="القسم أو الإدارة (اختياري)" />
+                  <Input
+                    v-bind="componentField"
+                    type="text"
+                    placeholder="القسم أو الإدارة (اختياري)"
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
             </FormField>
 
             <!-- Password -->
-            <FormField name="password" v-slot="{ componentField }">
+            <FormField v-slot="{ componentField }" name="password">
               <FormItem class="col-span-2">
                 <FormLabel class="text-xs">
-                  {{ isEdit ? 'كلمة المرور (اتركها فارغة للإبقاء على الحالية)' : 'كلمة المرور الأولية *' }}
+                  {{
+                    isEdit
+                      ? 'كلمة المرور (اتركها فارغة للإبقاء على الحالية)'
+                      : 'كلمة المرور الأولية *'
+                  }}
                 </FormLabel>
                 <FormControl>
                   <Input v-bind="componentField" type="password" placeholder="8 أحرف على الأقل" />

@@ -4,20 +4,23 @@ import { Minus, TrendingDown, TrendingUp } from 'lucide-vue-next'
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 
-const props = withDefaults(defineProps<{
-  label: string
-  value: number | string
-  icon?: any
-  state?: 'success' | 'warning' | 'danger' | 'info' | 'neutral' | 'default'
-  trend?: { direction: 'up' | 'down' | 'neutral'; value: string }
-  subLabel?: string
-  href?: string
-  /** @deprecated use state instead */
-  variant?: 'default' | 'green' | 'amber' | 'red' | 'indigo' | 'cyan' | 'blue'
-  highlighted?: boolean
-}>(), {
-  state: 'default',
-})
+const props = withDefaults(
+  defineProps<{
+    label: string
+    value: number | string
+    icon?: any
+    state?: 'success' | 'warning' | 'danger' | 'info' | 'neutral' | 'default'
+    trend?: { direction: 'up' | 'down' | 'neutral'; value: string }
+    subLabel?: string
+    href?: string
+    /** @deprecated use state instead */
+    variant?: 'default' | 'green' | 'amber' | 'red' | 'indigo' | 'cyan' | 'blue'
+    highlighted?: boolean
+  }>(),
+  {
+    state: 'default',
+  },
+)
 
 const stateColorClass = computed(() => {
   const stateMap: Record<string, string> = {
@@ -36,27 +39,35 @@ const stateColorClass = computed(() => {
     cyan: 'text-[var(--swift)]',
     blue: 'text-primary',
   }
-  if (props.variant && props.variant !== 'default') return legacyMap[props.variant] || 'text-foreground'
+  if (props.variant && props.variant !== 'default')
+    return legacyMap[props.variant] || 'text-foreground'
   return stateMap[props.state] || 'text-foreground'
 })
 
 const trendBadgeClass = computed(() => {
   if (!props.trend) return ''
-  if (props.trend.direction === 'up') return 'bg-[color-mix(in_srgb,var(--severity-green)_12%,transparent)] text-[var(--severity-green)]'
-  if (props.trend.direction === 'down') return 'bg-[color-mix(in_srgb,var(--severity-red)_12%,transparent)] text-[var(--severity-red)]'
+  if (props.trend.direction === 'up')
+    return 'bg-[color-mix(in_srgb,var(--severity-green)_12%,transparent)] text-[var(--severity-green)]'
+  if (props.trend.direction === 'down')
+    return 'bg-[color-mix(in_srgb,var(--severity-red)_12%,transparent)] text-[var(--severity-red)]'
   return 'bg-muted text-muted-foreground'
 })
 
-const borderClass = computed(() => props.highlighted ? 'border' : '')
-const borderColorClass = computed(() => props.highlighted ? stateColorClass.value.replace('text-', 'border-') : '')
+const borderClass = computed(() => (props.highlighted ? 'border' : ''))
+const borderColorClass = computed(() =>
+  props.highlighted ? stateColorClass.value.replace('text-', 'border-') : '',
+)
 </script>
 
 <template>
   <component :is="href ? 'a' : 'div'" :href="href" class="block">
-    <Card class="flex flex-col gap-2 border-0 p-4 shadow-card" :class="[borderClass, borderColorClass]">
+    <Card
+      class="shadow-card flex flex-col gap-2 border-0 p-4"
+      :class="[borderClass, borderColorClass]"
+    >
       <div class="flex items-start justify-between gap-2">
         <slot name="icon">
-          <component v-if="icon" :is="icon" class="h-5 w-5 text-muted-foreground" />
+          <component :is="icon" v-if="icon" class="text-muted-foreground h-5 w-5" />
         </slot>
         <Badge
           v-if="trend"
@@ -70,9 +81,9 @@ const borderColorClass = computed(() => props.highlighted ? stateColorClass.valu
           {{ trend.value }}
         </Badge>
       </div>
-      <span class="text-2xl font-semibold leading-none" :class="stateColorClass">{{ value }}</span>
-      <span class="text-xs text-muted-foreground">{{ label }}</span>
-      <span v-if="subLabel" class="text-xs text-muted-foreground/70">{{ subLabel }}</span>
+      <span class="text-2xl leading-none font-semibold" :class="stateColorClass">{{ value }}</span>
+      <span class="text-muted-foreground text-xs">{{ label }}</span>
+      <span v-if="subLabel" class="text-muted-foreground/70 text-xs">{{ subLabel }}</span>
     </Card>
   </component>
 </template>

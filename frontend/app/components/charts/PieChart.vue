@@ -30,12 +30,24 @@ const slices = computed(() => {
 </script>
 
 <template>
-  <div class="flex flex-col items-center gap-4" >
-    <div v-if="!data.length || total === 0" class="h-44 flex items-center justify-center text-[var(--color-text-subtle)] text-sm">لا توجد بيانات</div>
+  <div class="flex flex-col items-center gap-4">
+    <div
+      v-if="!data.length || total === 0"
+      class="flex h-44 items-center justify-center text-sm text-[var(--color-text-subtle)]"
+    >
+      لا توجد بيانات
+    </div>
     <template v-else>
-      <div class="w-44 h-44">
-        <svg viewBox="0 0 42 42" class="w-full h-full" aria-label="مخطط دائري">
-          <circle cx="21" cy="21" r="15.9155" fill="none" :stroke="'var(--muted)'" stroke-width="3" />
+      <div class="h-44 w-44">
+        <svg viewBox="0 0 42 42" class="h-full w-full" aria-label="مخطط دائري">
+          <circle
+            cx="21"
+            cy="21"
+            r="15.9155"
+            fill="none"
+            :stroke="'var(--muted)'"
+            stroke-width="3"
+          />
           <circle
             v-for="(slice, i) in slices"
             :key="i"
@@ -48,15 +60,41 @@ const slices = computed(() => {
             :stroke-dasharray="`${slice.pct} ${100 - slice.pct}`"
             :stroke-dashoffset="25 - slice.offset"
           />
-          <text x="21" y="20.5" text-anchor="middle" font-size="5" font-weight="600" :fill="'var(--foreground)'">{{ total.toLocaleString('ar-EG') }}</text>
-          <text x="21" y="25" text-anchor="middle" font-size="3.5" :fill="'var(--muted-foreground)'">إجمالي</text>
+          <text
+            x="21"
+            y="20.5"
+            text-anchor="middle"
+            font-size="5"
+            font-weight="600"
+            :fill="'var(--foreground)'"
+          >
+            {{ total.toLocaleString('ar-EG') }}
+          </text>
+          <text
+            x="21"
+            y="25"
+            text-anchor="middle"
+            font-size="3.5"
+            :fill="'var(--muted-foreground)'"
+          >
+            إجمالي
+          </text>
         </svg>
       </div>
-      <div class="flex flex-col gap-2 w-full">
-        <div v-for="slice in slices" :key="slice.label" class="flex items-center gap-2 text-sm text-[var(--color-text-primary)]">
-          <span class="w-2.5 h-2.5 rounded-full flex-shrink-0" :style="{ background: slice.color }" />
+      <div class="flex w-full flex-col gap-2">
+        <div
+          v-for="slice in slices"
+          :key="slice.label"
+          class="flex items-center gap-2 text-sm text-[var(--color-text-primary)]"
+        >
+          <span
+            class="h-2.5 w-2.5 flex-shrink-0 rounded-full"
+            :style="{ background: slice.color }"
+          />
           <span class="flex-1">{{ slice.label }}</span>
-          <span class="text-xs text-[var(--color-text-subtle)] font-tabular-nums">{{ slice.pct.toFixed(1) }}%</span>
+          <span class="font-tabular-nums text-xs text-[var(--color-text-subtle)]"
+            >{{ slice.pct.toFixed(1) }}%</span
+          >
         </div>
       </div>
     </template>

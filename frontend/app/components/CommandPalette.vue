@@ -61,9 +61,12 @@ const router = useRouter()
 
 // Cmd/Ctrl + K → open
 const { meta_k, ctrl_k } = useMagicKeys()
-whenever(computed(() => Boolean(meta_k?.value || ctrl_k?.value)), () => {
-  open.value = true
-})
+whenever(
+  computed(() => Boolean(meta_k?.value || ctrl_k?.value)),
+  () => {
+    open.value = true
+  },
+)
 
 // ── Keyboard shortcuts per route ──────────────────────────────────────
 
@@ -210,7 +213,10 @@ const QUICK_ACTIONS: Partial<Record<UserRole, PaletteAction[]>> = {
 const GROUP_DEFS: Array<{ heading: string; routes: string[] }> = [
   { heading: 'الطلبات', routes: ['/requests', '/requests/new'] },
   { heading: 'الطوابير', routes: ['/dashboard', '/customs'] },
-  { heading: 'الجهات والمستخدمون', routes: ['/merchants', '/staff', '/admin/banks', '/admin/cby-staff'] },
+  {
+    heading: 'الجهات والمستخدمون',
+    routes: ['/merchants', '/staff', '/admin/banks', '/admin/cby-staff'],
+  },
   { heading: 'التدقيق والتقارير', routes: ['/audit', '/reports'] },
   { heading: 'الإعدادات والإدارة', routes: ['/settings', '/admin/workflow-docs', '/admin/roles'] },
   { heading: 'المساعدة والإشعارات', routes: ['/notifications'] },
@@ -222,16 +228,14 @@ const allowedNavActions = computed<PaletteAction[]>(() => {
   const user = authStore.user
   if (!user) return []
 
-  return NAV_ITEMS
-    .filter(item => item.roles.includes(user.role))
-    .map(item => ({
-      id: `nav-${item.route}`,
-      title: item.label,
-      aliases: aliasesByRoute[item.route] ?? '',
-      url: item.route,
-      icon: ICONS[item.icon] ?? Globe,
-      shortcut: shortcutByRoute[item.route],
-    }))
+  return NAV_ITEMS.filter((item) => item.roles.includes(user.role)).map((item) => ({
+    id: `nav-${item.route}`,
+    title: item.label,
+    aliases: aliasesByRoute[item.route] ?? '',
+    url: item.route,
+    icon: ICONS[item.icon] ?? Globe,
+    shortcut: shortcutByRoute[item.route],
+  }))
 })
 
 const quickActions = computed<PaletteAction[]>(() => {
@@ -253,7 +257,7 @@ const paletteGroups = computed<PaletteGroup[]>(() => {
 
   // Navigation groups — filter to role-allowed routes
   for (const def of GROUP_DEFS) {
-    const actions = allowedNavActions.value.filter(a => def.routes.includes(a.url))
+    const actions = allowedNavActions.value.filter((a) => def.routes.includes(a.url))
     if (actions.length > 0) {
       groups.push({ heading: def.heading, actions })
     }
@@ -282,7 +286,7 @@ const isMac = computed(() => {
   <Button
     variant="outline"
     size="sm"
-    class="h-9 w-full justify-between gap-2 rounded-lg border-input bg-background/80 px-3 text-muted-foreground hover:bg-muted/40 hover:text-foreground"
+    class="border-input bg-background/80 text-muted-foreground hover:bg-muted/40 hover:text-foreground h-9 w-full justify-between gap-2 rounded-lg px-3"
     aria-label="البحث وإجراءات سريعة"
     @click="open = true"
   >
@@ -305,10 +309,7 @@ const isMac = computed(() => {
     <CommandInput placeholder="ابحث أو اختر إجراء..." />
     <CommandList>
       <CommandEmpty>لم يتم العثور على نتائج.</CommandEmpty>
-      <template
-        v-for="(group, index) in paletteGroups"
-        :key="group.heading"
-      >
+      <template v-for="(group, index) in paletteGroups" :key="group.heading">
         <CommandSeparator v-if="index > 0" />
         <CommandGroup :heading="group.heading">
           <CommandItem
@@ -319,12 +320,17 @@ const isMac = computed(() => {
           >
             <component
               :is="action.icon"
-              :class="['h-4 w-4 shrink-0', action.isQuickAction ? 'text-primary' : 'text-muted-foreground']"
+              :class="[
+                'h-4 w-4 shrink-0',
+                action.isQuickAction ? 'text-primary' : 'text-muted-foreground',
+              ]"
             />
             <span>{{ action.title }}</span>
             <CommandShortcut v-if="action.shortcut">
               <span class="flex items-center gap-0.5" dir="ltr">
-                <Kbd class="h-4 px-1 text-[9px]">{{ isMac ? '⌘' : 'Ctrl' }}{{ action.shortcut }}</Kbd>
+                <Kbd class="h-4 px-1 text-[9px]"
+                  >{{ isMac ? '⌘' : 'Ctrl' }}{{ action.shortcut }}</Kbd
+                >
               </span>
             </CommandShortcut>
           </CommandItem>

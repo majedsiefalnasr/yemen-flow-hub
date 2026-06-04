@@ -21,26 +21,23 @@ function makeRequest(overrides: Partial<ImportRequest> = {}): ImportRequest {
 // Pure functions extracted from ActionsPanel's computed logic
 function showBankReviewerActions(request: ImportRequest, userRole: UserRole): boolean {
   return (
-    userRole === UserRole.BANK_REVIEWER
-    && (request.status === RequestStatus.SUBMITTED || request.status === RequestStatus.BANK_REVIEW)
+    userRole === UserRole.BANK_REVIEWER &&
+    (request.status === RequestStatus.SUBMITTED || request.status === RequestStatus.BANK_REVIEW)
   )
 }
 
 function showDataEntryActions(request: ImportRequest, userRole: UserRole): boolean {
   return (
-    (userRole === UserRole.DATA_ENTRY || userRole === UserRole.BANK_ADMIN)
-    && (request.status === RequestStatus.DRAFT
-      || request.status === RequestStatus.DRAFT_REJECTED_INTERNAL
-      || request.status === RequestStatus.BANK_RETURNED
-      || request.status === RequestStatus.SUPPORT_RETURNED)
+    (userRole === UserRole.DATA_ENTRY || userRole === UserRole.BANK_ADMIN) &&
+    (request.status === RequestStatus.DRAFT ||
+      request.status === RequestStatus.DRAFT_REJECTED_INTERNAL ||
+      request.status === RequestStatus.BANK_RETURNED ||
+      request.status === RequestStatus.SUPPORT_RETURNED)
   )
 }
 
 function showBankReturnButton(request: ImportRequest, userRole: UserRole): boolean {
-  return (
-    userRole === UserRole.BANK_REVIEWER
-    && request.status === RequestStatus.BANK_REVIEW
-  )
+  return userRole === UserRole.BANK_REVIEWER && request.status === RequestStatus.BANK_REVIEW
 }
 
 function validateBankReturnComment(comment: string): string | null {
@@ -53,27 +50,31 @@ function showBankReturnedEditLink(request: ImportRequest, userRole: UserRole): b
 }
 
 function showSupportReturnedEditLink(request: ImportRequest, userRole: UserRole): boolean {
-  return showDataEntryActions(request, userRole) && request.status === RequestStatus.SUPPORT_RETURNED
+  return (
+    showDataEntryActions(request, userRole) && request.status === RequestStatus.SUPPORT_RETURNED
+  )
 }
 
 function showSupportCommitteeActions(request: ImportRequest, userRole: UserRole): boolean {
   return (
-    userRole === UserRole.SUPPORT_COMMITTEE
-    && request.status === RequestStatus.SUPPORT_REVIEW_IN_PROGRESS
-    && request.is_claimed_by_me
+    userRole === UserRole.SUPPORT_COMMITTEE &&
+    request.status === RequestStatus.SUPPORT_REVIEW_IN_PROGRESS &&
+    request.is_claimed_by_me
   )
 }
 
 function showDirectorCustomsActions(request: ImportRequest, userRole: UserRole): boolean {
-  return userRole === UserRole.COMMITTEE_DIRECTOR && request.status === RequestStatus.EXECUTIVE_APPROVED
+  return (
+    userRole === UserRole.COMMITTEE_DIRECTOR && request.status === RequestStatus.EXECUTIVE_APPROVED
+  )
 }
 
 function showAnyActions(request: ImportRequest, userRole: UserRole): boolean {
   return (
-    showBankReviewerActions(request, userRole)
-    || showDataEntryActions(request, userRole)
-    || showSupportCommitteeActions(request, userRole)
-    || showDirectorCustomsActions(request, userRole)
+    showBankReviewerActions(request, userRole) ||
+    showDataEntryActions(request, userRole) ||
+    showSupportCommitteeActions(request, userRole) ||
+    showDirectorCustomsActions(request, userRole)
   )
 }
 
@@ -94,7 +95,10 @@ function showEditDraft(request: ImportRequest, userRole: UserRole): boolean {
 }
 
 function showEditResubmit(request: ImportRequest, userRole: UserRole): boolean {
-  return showDataEntryActions(request, userRole) && request.status === RequestStatus.DRAFT_REJECTED_INTERNAL
+  return (
+    showDataEntryActions(request, userRole) &&
+    request.status === RequestStatus.DRAFT_REJECTED_INTERNAL
+  )
 }
 
 function editLinkTarget(requestId: number): string {
@@ -103,72 +107,127 @@ function editLinkTarget(requestId: number): string {
 
 describe('ActionsPanel — showBankReviewerActions', () => {
   it('true for BANK_REVIEWER + SUBMITTED', () => {
-    expect(showBankReviewerActions(makeRequest({ status: RequestStatus.SUBMITTED }), UserRole.BANK_REVIEWER)).toBe(true)
+    expect(
+      showBankReviewerActions(
+        makeRequest({ status: RequestStatus.SUBMITTED }),
+        UserRole.BANK_REVIEWER,
+      ),
+    ).toBe(true)
   })
 
   it('true for BANK_REVIEWER + BANK_REVIEW', () => {
-    expect(showBankReviewerActions(makeRequest({ status: RequestStatus.BANK_REVIEW }), UserRole.BANK_REVIEWER)).toBe(true)
+    expect(
+      showBankReviewerActions(
+        makeRequest({ status: RequestStatus.BANK_REVIEW }),
+        UserRole.BANK_REVIEWER,
+      ),
+    ).toBe(true)
   })
 
   it('false for BANK_REVIEWER + DRAFT (wrong status)', () => {
-    expect(showBankReviewerActions(makeRequest({ status: RequestStatus.DRAFT }), UserRole.BANK_REVIEWER)).toBe(false)
+    expect(
+      showBankReviewerActions(makeRequest({ status: RequestStatus.DRAFT }), UserRole.BANK_REVIEWER),
+    ).toBe(false)
   })
 
   it('false for DATA_ENTRY + SUBMITTED (wrong role)', () => {
-    expect(showBankReviewerActions(makeRequest({ status: RequestStatus.SUBMITTED }), UserRole.DATA_ENTRY)).toBe(false)
+    expect(
+      showBankReviewerActions(
+        makeRequest({ status: RequestStatus.SUBMITTED }),
+        UserRole.DATA_ENTRY,
+      ),
+    ).toBe(false)
   })
 
   it('false for BANK_REVIEWER + BANK_APPROVED (post-lock)', () => {
-    expect(showBankReviewerActions(makeRequest({ status: RequestStatus.BANK_APPROVED }), UserRole.BANK_REVIEWER)).toBe(false)
+    expect(
+      showBankReviewerActions(
+        makeRequest({ status: RequestStatus.BANK_APPROVED }),
+        UserRole.BANK_REVIEWER,
+      ),
+    ).toBe(false)
   })
 
   it('false for CBY_ADMIN + SUBMITTED', () => {
-    expect(showBankReviewerActions(makeRequest({ status: RequestStatus.SUBMITTED }), UserRole.CBY_ADMIN)).toBe(false)
+    expect(
+      showBankReviewerActions(makeRequest({ status: RequestStatus.SUBMITTED }), UserRole.CBY_ADMIN),
+    ).toBe(false)
   })
 })
 
 describe('ActionsPanel — showDataEntryActions', () => {
   it('true for DATA_ENTRY + DRAFT', () => {
-    expect(showDataEntryActions(makeRequest({ status: RequestStatus.DRAFT }), UserRole.DATA_ENTRY)).toBe(true)
+    expect(
+      showDataEntryActions(makeRequest({ status: RequestStatus.DRAFT }), UserRole.DATA_ENTRY),
+    ).toBe(true)
   })
 
   it('true for DATA_ENTRY + DRAFT_REJECTED_INTERNAL', () => {
-    expect(showDataEntryActions(makeRequest({ status: RequestStatus.DRAFT_REJECTED_INTERNAL }), UserRole.DATA_ENTRY)).toBe(true)
+    expect(
+      showDataEntryActions(
+        makeRequest({ status: RequestStatus.DRAFT_REJECTED_INTERNAL }),
+        UserRole.DATA_ENTRY,
+      ),
+    ).toBe(true)
   })
 
   it('false for DATA_ENTRY + SUBMITTED (not editable)', () => {
-    expect(showDataEntryActions(makeRequest({ status: RequestStatus.SUBMITTED }), UserRole.DATA_ENTRY)).toBe(false)
+    expect(
+      showDataEntryActions(makeRequest({ status: RequestStatus.SUBMITTED }), UserRole.DATA_ENTRY),
+    ).toBe(false)
   })
 
   it('true for DATA_ENTRY + SUPPORT_RETURNED', () => {
-    expect(showDataEntryActions(makeRequest({ status: RequestStatus.SUPPORT_RETURNED }), UserRole.DATA_ENTRY)).toBe(true)
+    expect(
+      showDataEntryActions(
+        makeRequest({ status: RequestStatus.SUPPORT_RETURNED }),
+        UserRole.DATA_ENTRY,
+      ),
+    ).toBe(true)
   })
 
   it('false for BANK_REVIEWER + DRAFT (wrong role)', () => {
-    expect(showDataEntryActions(makeRequest({ status: RequestStatus.DRAFT }), UserRole.BANK_REVIEWER)).toBe(false)
+    expect(
+      showDataEntryActions(makeRequest({ status: RequestStatus.DRAFT }), UserRole.BANK_REVIEWER),
+    ).toBe(false)
   })
 
   it('true for BANK_ADMIN + DRAFT', () => {
-    expect(showDataEntryActions(makeRequest({ status: RequestStatus.DRAFT }), UserRole.BANK_ADMIN)).toBe(true)
+    expect(
+      showDataEntryActions(makeRequest({ status: RequestStatus.DRAFT }), UserRole.BANK_ADMIN),
+    ).toBe(true)
   })
 
   it('false for DATA_ENTRY + BANK_APPROVED (locked)', () => {
-    expect(showDataEntryActions(makeRequest({ status: RequestStatus.BANK_APPROVED }), UserRole.DATA_ENTRY)).toBe(false)
+    expect(
+      showDataEntryActions(
+        makeRequest({ status: RequestStatus.BANK_APPROVED }),
+        UserRole.DATA_ENTRY,
+      ),
+    ).toBe(false)
   })
 })
 
 describe('ActionsPanel — showAnyActions (overall panel visibility)', () => {
   it('true for BANK_REVIEWER + SUBMITTED', () => {
-    expect(showAnyActions(makeRequest({ status: RequestStatus.SUBMITTED }), UserRole.BANK_REVIEWER)).toBe(true)
+    expect(
+      showAnyActions(makeRequest({ status: RequestStatus.SUBMITTED }), UserRole.BANK_REVIEWER),
+    ).toBe(true)
   })
 
   it('true for DATA_ENTRY + DRAFT', () => {
-    expect(showAnyActions(makeRequest({ status: RequestStatus.DRAFT }), UserRole.DATA_ENTRY)).toBe(true)
+    expect(showAnyActions(makeRequest({ status: RequestStatus.DRAFT }), UserRole.DATA_ENTRY)).toBe(
+      true,
+    )
   })
 
   it('false for CBY_ADMIN + any status', () => {
-    expect(showAnyActions(makeRequest({ status: RequestStatus.SUBMITTED }), UserRole.CBY_ADMIN)).toBe(false)
-    expect(showAnyActions(makeRequest({ status: RequestStatus.DRAFT }), UserRole.CBY_ADMIN)).toBe(false)
+    expect(
+      showAnyActions(makeRequest({ status: RequestStatus.SUBMITTED }), UserRole.CBY_ADMIN),
+    ).toBe(false)
+    expect(showAnyActions(makeRequest({ status: RequestStatus.DRAFT }), UserRole.CBY_ADMIN)).toBe(
+      false,
+    )
   })
 
   it('false for all roles on COMPLETED status', () => {
@@ -179,48 +238,98 @@ describe('ActionsPanel — showAnyActions (overall panel visibility)', () => {
 
   it('true only for COMMITTEE_DIRECTOR on EXECUTIVE_APPROVED status', () => {
     for (const role of Object.values(UserRole)) {
-      expect(showAnyActions(makeRequest({ status: RequestStatus.EXECUTIVE_APPROVED }), role)).toBe(role === UserRole.COMMITTEE_DIRECTOR)
+      expect(showAnyActions(makeRequest({ status: RequestStatus.EXECUTIVE_APPROVED }), role)).toBe(
+        role === UserRole.COMMITTEE_DIRECTOR,
+      )
     }
   })
 })
 
 describe('ActionsPanel — showDirectorCustomsActions', () => {
   it('true for COMMITTEE_DIRECTOR + EXECUTIVE_APPROVED', () => {
-    expect(showDirectorCustomsActions(makeRequest({ status: RequestStatus.EXECUTIVE_APPROVED }), UserRole.COMMITTEE_DIRECTOR)).toBe(true)
+    expect(
+      showDirectorCustomsActions(
+        makeRequest({ status: RequestStatus.EXECUTIVE_APPROVED }),
+        UserRole.COMMITTEE_DIRECTOR,
+      ),
+    ).toBe(true)
   })
 
   it('false for COMMITTEE_DIRECTOR after completion', () => {
-    expect(showDirectorCustomsActions(makeRequest({ status: RequestStatus.COMPLETED }), UserRole.COMMITTEE_DIRECTOR)).toBe(false)
+    expect(
+      showDirectorCustomsActions(
+        makeRequest({ status: RequestStatus.COMPLETED }),
+        UserRole.COMMITTEE_DIRECTOR,
+      ),
+    ).toBe(false)
   })
 
   it('false for non-director roles', () => {
-    expect(showDirectorCustomsActions(makeRequest({ status: RequestStatus.EXECUTIVE_APPROVED }), UserRole.EXECUTIVE_MEMBER)).toBe(false)
+    expect(
+      showDirectorCustomsActions(
+        makeRequest({ status: RequestStatus.EXECUTIVE_APPROVED }),
+        UserRole.EXECUTIVE_MEMBER,
+      ),
+    ).toBe(false)
   })
 })
 
 describe('ActionsPanel — specific button visibility', () => {
   it('showBeginReview only for BANK_REVIEWER + SUBMITTED', () => {
-    expect(showBeginReview(makeRequest({ status: RequestStatus.SUBMITTED }), UserRole.BANK_REVIEWER)).toBe(true)
-    expect(showBeginReview(makeRequest({ status: RequestStatus.BANK_REVIEW }), UserRole.BANK_REVIEWER)).toBe(false)
-    expect(showBeginReview(makeRequest({ status: RequestStatus.SUBMITTED }), UserRole.DATA_ENTRY)).toBe(false)
+    expect(
+      showBeginReview(makeRequest({ status: RequestStatus.SUBMITTED }), UserRole.BANK_REVIEWER),
+    ).toBe(true)
+    expect(
+      showBeginReview(makeRequest({ status: RequestStatus.BANK_REVIEW }), UserRole.BANK_REVIEWER),
+    ).toBe(false)
+    expect(
+      showBeginReview(makeRequest({ status: RequestStatus.SUBMITTED }), UserRole.DATA_ENTRY),
+    ).toBe(false)
   })
 
   it('showApproveReject only for BANK_REVIEWER + BANK_REVIEW', () => {
-    expect(showApproveReject(makeRequest({ status: RequestStatus.BANK_REVIEW }), UserRole.BANK_REVIEWER)).toBe(true)
-    expect(showApproveReject(makeRequest({ status: RequestStatus.SUBMITTED }), UserRole.BANK_REVIEWER)).toBe(false)
-    expect(showApproveReject(makeRequest({ status: RequestStatus.BANK_REVIEW }), UserRole.DATA_ENTRY)).toBe(false)
+    expect(
+      showApproveReject(makeRequest({ status: RequestStatus.BANK_REVIEW }), UserRole.BANK_REVIEWER),
+    ).toBe(true)
+    expect(
+      showApproveReject(makeRequest({ status: RequestStatus.SUBMITTED }), UserRole.BANK_REVIEWER),
+    ).toBe(false)
+    expect(
+      showApproveReject(makeRequest({ status: RequestStatus.BANK_REVIEW }), UserRole.DATA_ENTRY),
+    ).toBe(false)
   })
 
   it('showEditDraft only for DATA_ENTRY + DRAFT', () => {
-    expect(showEditDraft(makeRequest({ status: RequestStatus.DRAFT }), UserRole.DATA_ENTRY)).toBe(true)
-    expect(showEditDraft(makeRequest({ status: RequestStatus.DRAFT_REJECTED_INTERNAL }), UserRole.DATA_ENTRY)).toBe(false)
-    expect(showEditDraft(makeRequest({ status: RequestStatus.DRAFT }), UserRole.BANK_REVIEWER)).toBe(false)
+    expect(showEditDraft(makeRequest({ status: RequestStatus.DRAFT }), UserRole.DATA_ENTRY)).toBe(
+      true,
+    )
+    expect(
+      showEditDraft(
+        makeRequest({ status: RequestStatus.DRAFT_REJECTED_INTERNAL }),
+        UserRole.DATA_ENTRY,
+      ),
+    ).toBe(false)
+    expect(
+      showEditDraft(makeRequest({ status: RequestStatus.DRAFT }), UserRole.BANK_REVIEWER),
+    ).toBe(false)
   })
 
   it('showEditResubmit only for DATA_ENTRY + DRAFT_REJECTED_INTERNAL', () => {
-    expect(showEditResubmit(makeRequest({ status: RequestStatus.DRAFT_REJECTED_INTERNAL }), UserRole.DATA_ENTRY)).toBe(true)
-    expect(showEditResubmit(makeRequest({ status: RequestStatus.DRAFT }), UserRole.DATA_ENTRY)).toBe(false)
-    expect(showEditResubmit(makeRequest({ status: RequestStatus.DRAFT_REJECTED_INTERNAL }), UserRole.BANK_REVIEWER)).toBe(false)
+    expect(
+      showEditResubmit(
+        makeRequest({ status: RequestStatus.DRAFT_REJECTED_INTERNAL }),
+        UserRole.DATA_ENTRY,
+      ),
+    ).toBe(true)
+    expect(
+      showEditResubmit(makeRequest({ status: RequestStatus.DRAFT }), UserRole.DATA_ENTRY),
+    ).toBe(false)
+    expect(
+      showEditResubmit(
+        makeRequest({ status: RequestStatus.DRAFT_REJECTED_INTERNAL }),
+        UserRole.BANK_REVIEWER,
+      ),
+    ).toBe(false)
   })
 })
 
@@ -236,13 +345,33 @@ describe('ActionsPanel — edit link target', () => {
 
 describe('ActionsPanel — returned edit links', () => {
   it('shows bank-return edit link only for DATA_ENTRY + BANK_RETURNED', () => {
-    expect(showBankReturnedEditLink(makeRequest({ status: RequestStatus.BANK_RETURNED }), UserRole.DATA_ENTRY)).toBe(true)
-    expect(showBankReturnedEditLink(makeRequest({ status: RequestStatus.SUPPORT_RETURNED }), UserRole.DATA_ENTRY)).toBe(false)
+    expect(
+      showBankReturnedEditLink(
+        makeRequest({ status: RequestStatus.BANK_RETURNED }),
+        UserRole.DATA_ENTRY,
+      ),
+    ).toBe(true)
+    expect(
+      showBankReturnedEditLink(
+        makeRequest({ status: RequestStatus.SUPPORT_RETURNED }),
+        UserRole.DATA_ENTRY,
+      ),
+    ).toBe(false)
   })
 
   it('shows support-return edit link only for DATA_ENTRY + SUPPORT_RETURNED', () => {
-    expect(showSupportReturnedEditLink(makeRequest({ status: RequestStatus.SUPPORT_RETURNED }), UserRole.DATA_ENTRY)).toBe(true)
-    expect(showSupportReturnedEditLink(makeRequest({ status: RequestStatus.BANK_RETURNED }), UserRole.DATA_ENTRY)).toBe(false)
+    expect(
+      showSupportReturnedEditLink(
+        makeRequest({ status: RequestStatus.SUPPORT_RETURNED }),
+        UserRole.DATA_ENTRY,
+      ),
+    ).toBe(true)
+    expect(
+      showSupportReturnedEditLink(
+        makeRequest({ status: RequestStatus.BANK_RETURNED }),
+        UserRole.DATA_ENTRY,
+      ),
+    ).toBe(false)
   })
 })
 
@@ -388,7 +517,9 @@ describe('ActionsPanel — support reject action dispatch', () => {
 
 describe('ActionsPanel — CorrectionBanner trigger', () => {
   function showCorrectionBanner(status: RequestStatus): boolean {
-    return status === RequestStatus.DRAFT_REJECTED_INTERNAL || status === RequestStatus.BANK_RETURNED
+    return (
+      status === RequestStatus.DRAFT_REJECTED_INTERNAL || status === RequestStatus.BANK_RETURNED
+    )
   }
 
   it('shows correction banner for DRAFT_REJECTED_INTERNAL', () => {
@@ -416,19 +547,36 @@ describe('ActionsPanel — CorrectionBanner trigger', () => {
 
 describe('ActionsPanel — showBankReturnButton (BANK_REVIEWER + BANK_REVIEW)', () => {
   it('true for BANK_REVIEWER + BANK_REVIEW', () => {
-    expect(showBankReturnButton(makeRequest({ status: RequestStatus.BANK_REVIEW }), UserRole.BANK_REVIEWER)).toBe(true)
+    expect(
+      showBankReturnButton(
+        makeRequest({ status: RequestStatus.BANK_REVIEW }),
+        UserRole.BANK_REVIEWER,
+      ),
+    ).toBe(true)
   })
 
   it('false for BANK_REVIEWER + SUBMITTED (not yet in review)', () => {
-    expect(showBankReturnButton(makeRequest({ status: RequestStatus.SUBMITTED }), UserRole.BANK_REVIEWER)).toBe(false)
+    expect(
+      showBankReturnButton(
+        makeRequest({ status: RequestStatus.SUBMITTED }),
+        UserRole.BANK_REVIEWER,
+      ),
+    ).toBe(false)
   })
 
   it('false for DATA_ENTRY + BANK_REVIEW (wrong role)', () => {
-    expect(showBankReturnButton(makeRequest({ status: RequestStatus.BANK_REVIEW }), UserRole.DATA_ENTRY)).toBe(false)
+    expect(
+      showBankReturnButton(makeRequest({ status: RequestStatus.BANK_REVIEW }), UserRole.DATA_ENTRY),
+    ).toBe(false)
   })
 
   it('false for BANK_REVIEWER + BANK_RETURNED (already returned)', () => {
-    expect(showBankReturnButton(makeRequest({ status: RequestStatus.BANK_RETURNED }), UserRole.BANK_REVIEWER)).toBe(false)
+    expect(
+      showBankReturnButton(
+        makeRequest({ status: RequestStatus.BANK_RETURNED }),
+        UserRole.BANK_REVIEWER,
+      ),
+    ).toBe(false)
   })
 })
 
@@ -456,15 +604,30 @@ describe('ActionsPanel — validateBankReturnComment', () => {
 
 describe('ActionsPanel — DATA_ENTRY actions on BANK_RETURNED', () => {
   it('showDataEntryActions true for DATA_ENTRY + BANK_RETURNED', () => {
-    expect(showDataEntryActions(makeRequest({ status: RequestStatus.BANK_RETURNED }), UserRole.DATA_ENTRY)).toBe(true)
+    expect(
+      showDataEntryActions(
+        makeRequest({ status: RequestStatus.BANK_RETURNED }),
+        UserRole.DATA_ENTRY,
+      ),
+    ).toBe(true)
   })
 
   it('showBankReturnedEditLink true for DATA_ENTRY + BANK_RETURNED', () => {
-    expect(showBankReturnedEditLink(makeRequest({ status: RequestStatus.BANK_RETURNED }), UserRole.DATA_ENTRY)).toBe(true)
+    expect(
+      showBankReturnedEditLink(
+        makeRequest({ status: RequestStatus.BANK_RETURNED }),
+        UserRole.DATA_ENTRY,
+      ),
+    ).toBe(true)
   })
 
   it('showBankReturnedEditLink false for BANK_REVIEWER + BANK_RETURNED', () => {
-    expect(showBankReturnedEditLink(makeRequest({ status: RequestStatus.BANK_RETURNED }), UserRole.BANK_REVIEWER)).toBe(false)
+    expect(
+      showBankReturnedEditLink(
+        makeRequest({ status: RequestStatus.BANK_RETURNED }),
+        UserRole.BANK_REVIEWER,
+      ),
+    ).toBe(false)
   })
 
   it('edit link target is correct', () => {

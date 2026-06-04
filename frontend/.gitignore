@@ -27,3 +27,4 @@ node_modules/
 graphify-out/
 _bmad-output/implementation-artifacts/
 _bmad-output/test-artifacts/
+.playwright-cli/

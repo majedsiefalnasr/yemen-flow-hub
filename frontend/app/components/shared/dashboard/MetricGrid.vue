@@ -1,9 +1,12 @@
 <script setup lang="ts">
-const props = withDefaults(defineProps<{
-  columns?: 3 | 4 | 5 | 6
-}>(), {
-  columns: 4,
-})
+const props = withDefaults(
+  defineProps<{
+    columns?: 3 | 4 | 5 | 6
+  }>(),
+  {
+    columns: 4,
+  },
+)
 
 const columnsClassMap: Record<number, string> = {
   3: 'grid-cols-3 max-lg:grid-cols-2 max-md:grid-cols-1',
@@ -18,4 +21,3 @@ const columnsClassMap: Record<number, string> = {
     <slot />
   </div>
 </template>
-

@@ -40,7 +40,7 @@ function applyAccessHealthFilter(state: FilterState, key: AccessHealthKey): Filt
 }
 
 function bankReviewerCount(staff: User[]): number {
-  return staff.filter(m => m.role === UserRole.BANK_REVIEWER && m.is_active).length
+  return staff.filter((m) => m.role === UserRole.BANK_REVIEWER && m.is_active).length
 }
 
 function makeUser(overrides: Partial<User> = {}): User {

@@ -71,9 +71,12 @@ describe('useNotifications — fetchNotifications', () => {
     const { fetchNotifications } = useNotifications()
     await fetchNotifications(2)
 
-    expect(mockFetch).toHaveBeenCalledWith('/api/notifications', expect.objectContaining({
-      query: { page: 2 },
-    }))
+    expect(mockFetch).toHaveBeenCalledWith(
+      '/api/notifications',
+      expect.objectContaining({
+        query: { page: 2 },
+      }),
+    )
   })
 })
 
@@ -145,9 +148,12 @@ describe('useNotifications — markRead', () => {
     await fetchNotifications()
     await markRead('abc-123')
 
-    expect(mockFetch).toHaveBeenCalledWith('/api/notifications/abc-123/read', expect.objectContaining({
-      method: 'POST',
-    }))
+    expect(mockFetch).toHaveBeenCalledWith(
+      '/api/notifications/abc-123/read',
+      expect.objectContaining({
+        method: 'POST',
+      }),
+    )
   })
 
   it('does not decrement unread count if notification was already read', async () => {
@@ -189,7 +195,7 @@ describe('useNotifications — markAllRead', () => {
     await fetchNotifications()
     await markAllRead()
 
-    expect(notifications.value.every(n => n.read_at !== null)).toBe(true)
+    expect(notifications.value.every((n) => n.read_at !== null)).toBe(true)
     expect(unreadCount.value).toBe(0)
   })
 
@@ -204,8 +210,11 @@ describe('useNotifications — markAllRead', () => {
     await fetchNotifications()
     await markAllRead()
 
-    expect(mockFetch).toHaveBeenCalledWith('/api/notifications/read-all', expect.objectContaining({
-      method: 'POST',
-    }))
+    expect(mockFetch).toHaveBeenCalledWith(
+      '/api/notifications/read-all',
+      expect.objectContaining({
+        method: 'POST',
+      }),
+    )
   })
 })

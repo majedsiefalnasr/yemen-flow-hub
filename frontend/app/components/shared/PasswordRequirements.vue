@@ -20,7 +20,7 @@ const rules: Rule[] = [
 ]
 
 const checkedRules = computed(() =>
-  rules.map(rule => ({
+  rules.map((rule) => ({
     label: rule.label,
     passed: rule.test(props.password),
   })),

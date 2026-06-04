@@ -1,4 +1,12 @@
-import type { ApiResponse, CustomsDeclaration, ImportRequest, PaginatedResponse, RequestDocument, RequestFormData, RequestStageHistory } from '../types/models'
+import type {
+  ApiResponse,
+  CustomsDeclaration,
+  ImportRequest,
+  PaginatedResponse,
+  RequestDocument,
+  RequestFormData,
+  RequestStageHistory,
+} from '../types/models'
 import type { RequestStatus } from '../types/enums'
 import { useApi } from './useApi'
 
@@ -34,11 +42,11 @@ export function useRequests() {
   const { get, post, put } = useApi()
 
   function getXsrfToken(): string | null {
-    if (!process.client) return null
+    if (!import.meta.client) return null
     const raw = document.cookie
       .split(';')
-      .map(cookie => cookie.trim())
-      .find(cookie => cookie.startsWith('XSRF-TOKEN='))
+      .map((cookie) => cookie.trim())
+      .find((cookie) => cookie.startsWith('XSRF-TOKEN='))
       ?.split('=')
       .slice(1)
       .join('=')
@@ -53,10 +61,7 @@ export function useRequests() {
 
     if (filter.search) params.set('search', filter.search)
     if (filter.status) {
-      params.set(
-        'status',
-        Array.isArray(filter.status) ? filter.status.join(',') : filter.status,
-      )
+      params.set('status', Array.isArray(filter.status) ? filter.status.join(',') : filter.status)
     }
     if (filter.bank_id) params.set('bank_id', String(filter.bank_id))
     if (filter.currency) params.set('currency', filter.currency)
@@ -65,9 +70,12 @@ export function useRequests() {
     // Legacy aliases: only sent if new params absent
     if (!filter.created_from && filter.from_date) params.set('from_date', filter.from_date)
     if (!filter.created_to && filter.to_date) params.set('to_date', filter.to_date)
-    if (filter.amount_min !== '' && filter.amount_min !== undefined) params.set('amount_min', String(filter.amount_min))
-    if (filter.amount_max !== '' && filter.amount_max !== undefined) params.set('amount_max', String(filter.amount_max))
-    if (filter.assigned_reviewer_id) params.set('assigned_reviewer_id', String(filter.assigned_reviewer_id))
+    if (filter.amount_min !== '' && filter.amount_min !== undefined)
+      params.set('amount_min', String(filter.amount_min))
+    if (filter.amount_max !== '' && filter.amount_max !== undefined)
+      params.set('amount_max', String(filter.amount_max))
+    if (filter.assigned_reviewer_id)
+      params.set('assigned_reviewer_id', String(filter.assigned_reviewer_id))
     if (filter.claim_filter) params.set('claim_filter', filter.claim_filter)
     if (filter.page) params.set('page', String(filter.page))
     if (filter.per_page) params.set('per_page', String(filter.per_page))
@@ -95,11 +103,7 @@ export function useRequests() {
     return response.data
   }
 
-  async function uploadDocument(
-    requestId: number,
-    file: File,
-    label: string,
-  ): Promise<void> {
+  async function uploadDocument(requestId: number, file: File, label: string): Promise<void> {
     const config = useRuntimeConfig()
     const baseURL = config.public.apiBase as string
     const form = new FormData()
@@ -142,8 +146,7 @@ export function useRequests() {
     if (payload.file) {
       // Legacy API mode
       form.append('file', payload.file)
-    }
-    else {
+    } else {
       if (payload.swiftReference) form.append('swift_reference', payload.swiftReference)
       if (payload.swiftFile) {
         form.append('swift_file', payload.swiftFile)
@@ -167,7 +170,9 @@ export function useRequests() {
   }
 
   async function generateCustomsDeclaration(requestId: number): Promise<CustomsDeclaration> {
-    const response = await post<ApiResponse<CustomsDeclaration>>(`/api/customs/${requestId}/generate`)
+    const response = await post<ApiResponse<CustomsDeclaration>>(
+      `/api/customs/${requestId}/generate`,
+    )
     return response.data
   }
 
@@ -268,22 +273,31 @@ export function useRequests() {
   }
 
   async function fetchCustomsPreview(requestId: number): Promise<CustomsDeclaration> {
-    const response = await get<ApiResponse<CustomsDeclaration>>(`/api/requests/${requestId}/customs-preview`)
+    const response = await get<ApiResponse<CustomsDeclaration>>(
+      `/api/requests/${requestId}/customs-preview`,
+    )
     return response.data
   }
 
   async function bankReturn(id: number, comment: string): Promise<ImportRequest> {
-    const response = await post<ApiResponse<ImportRequest>>(`/api/workflow/${id}/bank-return`, { comment })
+    const response = await post<ApiResponse<ImportRequest>>(`/api/workflow/${id}/bank-return`, {
+      comment,
+    })
     return response.data
   }
 
   async function supportReturn(id: number, comment: string): Promise<ImportRequest> {
-    const response = await post<ApiResponse<ImportRequest>>(`/api/workflow/${id}/support-return`, { comment })
+    const response = await post<ApiResponse<ImportRequest>>(`/api/workflow/${id}/support-return`, {
+      comment,
+    })
     return response.data
   }
 
   async function bankRejectTerminal(id: number, comment: string): Promise<ImportRequest> {
-    const response = await post<ApiResponse<ImportRequest>>(`/api/workflow/${id}/bank-reject-terminal`, { comment })
+    const response = await post<ApiResponse<ImportRequest>>(
+      `/api/workflow/${id}/bank-reject-terminal`,
+      { comment },
+    )
     return response.data
   }
 

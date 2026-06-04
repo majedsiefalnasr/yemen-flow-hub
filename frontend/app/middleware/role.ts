@@ -15,7 +15,8 @@ export default defineNuxtRouteMiddleware((to) => {
   }
 
   const auth = useAuthStore()
-  const requiredRoles = (to.meta.requiredRoles as UserRole[] | undefined) ?? resolveRouteRoles(to.path)
+  const requiredRoles =
+    (to.meta.requiredRoles as UserRole[] | undefined) ?? resolveRouteRoles(to.path)
 
   if (!requiredRoles || requiredRoles.length === 0) return
 

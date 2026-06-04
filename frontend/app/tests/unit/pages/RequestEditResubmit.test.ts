@@ -86,10 +86,26 @@ function mountPage() {
         CorrectionBanner: true,
         LockedBanner: true,
         DocumentChecklist: true,
-        Alert: defineComponent({ setup(_, { slots }) { return () => h('div', slots.default?.()) } }),
-        AlertAction: defineComponent({ setup(_, { slots }) { return () => h('div', slots.default?.()) } }),
-        AlertDescription: defineComponent({ setup(_, { slots }) { return () => h('p', slots.default?.()) } }),
-        AlertTitle: defineComponent({ setup(_, { slots }) { return () => h('h2', slots.default?.()) } }),
+        Alert: defineComponent({
+          setup(_, { slots }) {
+            return () => h('div', slots.default?.())
+          },
+        }),
+        AlertAction: defineComponent({
+          setup(_, { slots }) {
+            return () => h('div', slots.default?.())
+          },
+        }),
+        AlertDescription: defineComponent({
+          setup(_, { slots }) {
+            return () => h('p', slots.default?.())
+          },
+        }),
+        AlertTitle: defineComponent({
+          setup(_, { slots }) {
+            return () => h('h2', slots.default?.())
+          },
+        }),
         AlertDialog: true,
         AlertDialogAction: true,
         AlertDialogCancel: true,
@@ -98,23 +114,52 @@ function mountPage() {
         AlertDialogFooter: true,
         AlertDialogHeader: true,
         AlertDialogTitle: true,
-        Card: defineComponent({ setup(_, { slots }) { return () => h('section', slots.default?.()) } }),
-        CardContent: defineComponent({ setup(_, { slots }) { return () => h('div', slots.default?.()) } }),
-        CardDescription: defineComponent({ setup(_, { slots }) { return () => h('p', slots.default?.()) } }),
-        CardHeader: defineComponent({ setup(_, { slots }) { return () => h('header', slots.default?.()) } }),
-        CardTitle: defineComponent({ setup(_, { slots }) { return () => h('h2', slots.default?.()) } }),
+        Card: defineComponent({
+          setup(_, { slots }) {
+            return () => h('section', slots.default?.())
+          },
+        }),
+        CardContent: defineComponent({
+          setup(_, { slots }) {
+            return () => h('div', slots.default?.())
+          },
+        }),
+        CardDescription: defineComponent({
+          setup(_, { slots }) {
+            return () => h('p', slots.default?.())
+          },
+        }),
+        CardHeader: defineComponent({
+          setup(_, { slots }) {
+            return () => h('header', slots.default?.())
+          },
+        }),
+        CardTitle: defineComponent({
+          setup(_, { slots }) {
+            return () => h('h2', slots.default?.())
+          },
+        }),
         Skeleton: true,
-        Button: defineComponent({ setup(_, { slots, attrs }) { return () => h('button', attrs, slots.default?.()) } }),
+        Button: defineComponent({
+          setup(_, { slots, attrs }) {
+            return () => h('button', attrs, slots.default?.())
+          },
+        }),
         RequestForm: defineComponent({
           emits: ['submit'],
           setup(_, { emit, slots }) {
-            return () => h('form', {
-              'data-testid': 'request-form',
-              onSubmit: (event: Event) => {
-                event.preventDefault()
-                emit('submit', FORM_DATA)
-              },
-            }, slots.actions?.())
+            return () =>
+              h(
+                'form',
+                {
+                  'data-testid': 'request-form',
+                  onSubmit: (event: Event) => {
+                    event.preventDefault()
+                    emit('submit', FORM_DATA)
+                  },
+                },
+                slots.actions?.(),
+              )
           },
         }),
       },
@@ -126,7 +171,10 @@ describe('request edit returned resubmit', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     routeState.params.id = '1343'
-    requestsStoreState.currentRequest = makeImportRequest({ id: 1343, status: RequestStatus.BANK_RETURNED })
+    requestsStoreState.currentRequest = makeImportRequest({
+      id: 1343,
+      status: RequestStatus.BANK_RETURNED,
+    })
     requestsStoreState.loadingRequest = false
     requestsStoreState.loadingDocuments = false
     requestsStoreState.documentsLoaded = true

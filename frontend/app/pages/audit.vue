@@ -1,5 +1,11 @@
 <script setup lang="ts">
-import type { ColumnDef, ColumnFiltersState, PaginationState, SortingState, VisibilityState } from '@tanstack/vue-table'
+import type {
+  ColumnDef,
+  ColumnFiltersState,
+  PaginationState,
+  SortingState,
+  VisibilityState,
+} from '@tanstack/vue-table'
 import {
   Activity,
   AlertTriangle,
@@ -21,7 +27,11 @@ import { useAudit } from '@/composables/useAudit'
 import { useTableExport } from '@/composables/useTableExport'
 import { useTableKeyboard } from '@/composables/useTableKeyboard'
 import type { AuditLog } from '@/types/models'
-import { DataTableBulkExport, DataTablePagination, DataTableViewOptions } from '@/components/ui/data-table'
+import {
+  DataTableBulkExport,
+  DataTablePagination,
+  DataTableViewOptions,
+} from '@/components/ui/data-table'
 import DataTable from '@/components/ui/data-table/DataTable.vue'
 import MetricCard from '@/components/shared/dashboard/MetricCard.vue'
 import MetricGrid from '@/components/shared/dashboard/MetricGrid.vue'
@@ -71,7 +81,13 @@ const auditLoadError = ref<string | null>(null)
 const auditLogs = ref<AuditLog[]>([])
 const auditMeta = ref<{ last_page: number; total: number; per_page: number } | null>(null)
 const todayCount = ref(0)
-const duplicates = ref<{ invoice_number: string; banks: string[]; requests: { id: number; reference_number: string }[] }[]>([])
+const duplicates = ref<
+  {
+    invoice_number: string
+    banks: string[]
+    requests: { id: number; reference_number: string }[]
+  }[]
+>([])
 const risks = ref<{ title: string; body: string; level: 'عالية' | 'متوسطة' | 'منخفضة' }[]>([])
 
 const urlAuditPage = computed(() => Number(route.query.page ?? 1))
@@ -82,7 +98,9 @@ const auditPagination = computed<PaginationState>(() => ({
   pageSize: urlAuditPageSize.value,
 }))
 
-function onAuditPaginationChange(updater: PaginationState | ((old: PaginationState) => PaginationState)) {
+function onAuditPaginationChange(
+  updater: PaginationState | ((old: PaginationState) => PaginationState),
+) {
   const next = typeof updater === 'function' ? updater(auditPagination.value) : updater
   router.push({
     query: {
@@ -97,14 +115,19 @@ async function loadAuditLogs() {
   loadingAudit.value = true
   auditLoadError.value = null
   try {
-    const result = await fetchAuditLogs({ page: urlAuditPage.value, per_page: urlAuditPageSize.value })
+    const result = await fetchAuditLogs({
+      page: urlAuditPage.value,
+      per_page: urlAuditPageSize.value,
+    })
     auditLogs.value = result.data
-    auditMeta.value = { last_page: result.meta.last_page, total: result.meta.total, per_page: result.meta.per_page }
-  }
-  catch {
+    auditMeta.value = {
+      last_page: result.meta.last_page,
+      total: result.meta.total,
+      per_page: result.meta.per_page,
+    }
+  } catch {
     auditLoadError.value = 'تعذّر تحميل سجل التدقيق. تحقق من الاتصال وأعد المحاولة.'
-  }
-  finally {
+  } finally {
     loadingAudit.value = false
   }
 }
@@ -120,9 +143,12 @@ onMounted(async () => {
   ])
   if (logsResult.status === 'fulfilled') {
     auditLogs.value = logsResult.value.data
-    auditMeta.value = { last_page: logsResult.value.meta.last_page, total: logsResult.value.meta.total, per_page: logsResult.value.meta.per_page }
-  }
-  else {
+    auditMeta.value = {
+      last_page: logsResult.value.meta.last_page,
+      total: logsResult.value.meta.total,
+      per_page: logsResult.value.meta.per_page,
+    }
+  } else {
     auditLoadError.value = 'تعذّر تحميل سجل التدقيق. تحقق من الاتصال وأعد المحاولة.'
   }
   if (statsResult.status === 'fulfilled') todayCount.value = statsResult.value.today_count
@@ -135,17 +161,38 @@ const filteredAudits = computed(() => {
   const q = query.value.trim()
   if (!q) return auditLogs.value
   const lower = q.toLowerCase()
-  return auditLogs.value.filter(entry =>
-    (entry.user?.name ?? '').toLowerCase().includes(lower)
-    || entry.action.toLowerCase().includes(lower),
+  return auditLogs.value.filter(
+    (entry) =>
+      (entry.user?.name ?? '').toLowerCase().includes(lower) ||
+      entry.action.toLowerCase().includes(lower),
   )
 })
 
 const kpis = computed(() => [
-  { label: 'نشاطات اليوم', value: todayCount.value.toString(), icon: Activity, tone: 'text-info bg-info/10' },
-  { label: 'تنبيهات مفتوحة', value: risks.value.length.toString(), icon: AlertTriangle, tone: 'text-[var(--color-text-warning)] bg-[var(--color-surface-warning)]' },
-  { label: 'فواتير مكررة', value: duplicates.value.length.toString(), icon: FileWarning, tone: 'text-[var(--color-text-error)] bg-[var(--color-surface-error)]' },
-  { label: 'حالات مخاطر', value: risks.value.filter(r => r.level === 'عالية').length.toString(), icon: ShieldCheck, tone: 'text-[var(--color-text-error)] bg-[var(--color-surface-error)]' },
+  {
+    label: 'نشاطات اليوم',
+    value: todayCount.value.toString(),
+    icon: Activity,
+    tone: 'text-info bg-info/10',
+  },
+  {
+    label: 'تنبيهات مفتوحة',
+    value: risks.value.length.toString(),
+    icon: AlertTriangle,
+    tone: 'text-[var(--color-text-warning)] bg-[var(--color-surface-warning)]',
+  },
+  {
+    label: 'فواتير مكررة',
+    value: duplicates.value.length.toString(),
+    icon: FileWarning,
+    tone: 'text-[var(--color-text-error)] bg-[var(--color-surface-error)]',
+  },
+  {
+    label: 'حالات مخاطر',
+    value: risks.value.filter((r) => r.level === 'عالية').length.toString(),
+    icon: ShieldCheck,
+    tone: 'text-[var(--color-text-error)] bg-[var(--color-surface-error)]',
+  },
 ])
 
 function kpiToneFromClass(tone: string): 'default' | 'info' | 'warning' | 'danger' {
@@ -158,10 +205,12 @@ function kpiToneFromClass(tone: string): 'default' | 'info' | 'warning' | 'dange
 // Smart summary bar computeds derived from loaded audit logs
 const smartSummary = computed(() => {
   const logs = auditLogs.value
-  const denied = logs.filter(l => l.action === 'AUTHORIZATION_FAILURE')
-  const failedLogins = logs.filter(l => l.action === 'LOGIN_FAILED')
-  const roleChanges = logs.filter(l => l.action === 'USER_UPDATED' && l.metadata && (l.metadata as any).role_changed)
-  const docDownloads = logs.filter(l => l.action === 'DOCUMENT_DOWNLOADED')
+  const denied = logs.filter((l) => l.action === 'AUTHORIZATION_FAILURE')
+  const failedLogins = logs.filter((l) => l.action === 'LOGIN_FAILED')
+  const roleChanges = logs.filter(
+    (l) => l.action === 'USER_UPDATED' && l.metadata && (l.metadata as any).role_changed,
+  )
+  const docDownloads = logs.filter((l) => l.action === 'DOCUMENT_DOWNLOADED')
   return {
     denied: denied.length,
     failedLogins: failedLogins.length,
@@ -177,27 +226,39 @@ const anomalyGroups = computed(() => {
 
   // Repeated authorization failures by user
   const denialsByUser: Record<string, number> = {}
-  for (const l of logs.filter(l => l.action === 'AUTHORIZATION_FAILURE')) {
+  for (const l of logs.filter((l) => l.action === 'AUTHORIZATION_FAILURE')) {
     const key = l.user?.name ?? `ID:${l.user_id}`
     denialsByUser[key] = (denialsByUser[key] ?? 0) + 1
   }
   for (const [actor, count] of Object.entries(denialsByUser)) {
-    if (count >= 3) groups.push({ type: 'رفض متكرر للصلاحيات', actor, count, level: count >= 5 ? 'عالية' : 'متوسطة' })
+    if (count >= 3)
+      groups.push({
+        type: 'رفض متكرر للصلاحيات',
+        actor,
+        count,
+        level: count >= 5 ? 'عالية' : 'متوسطة',
+      })
   }
 
   // Repeated failed logins by user
   const failsByUser: Record<string, number> = {}
-  for (const l of logs.filter(l => l.action === 'LOGIN_FAILED')) {
+  for (const l of logs.filter((l) => l.action === 'LOGIN_FAILED')) {
     const key = l.user?.name ?? l.user_role ?? 'مجهول'
     failsByUser[key] = (failsByUser[key] ?? 0) + 1
   }
   for (const [actor, count] of Object.entries(failsByUser)) {
-    if (count >= 3) groups.push({ type: 'محاولات دخول فاشلة متكررة', actor, count, level: count >= 5 ? 'عالية' : 'متوسطة' })
+    if (count >= 3)
+      groups.push({
+        type: 'محاولات دخول فاشلة متكررة',
+        actor,
+        count,
+        level: count >= 5 ? 'عالية' : 'متوسطة',
+      })
   }
 
   // Unusual document downloads (> 5 by same user)
   const downloadsByUser: Record<string, number> = {}
-  for (const l of logs.filter(l => l.action === 'DOCUMENT_DOWNLOADED')) {
+  for (const l of logs.filter((l) => l.action === 'DOCUMENT_DOWNLOADED')) {
     const key = l.user?.name ?? `ID:${l.user_id}`
     downloadsByUser[key] = (downloadsByUser[key] ?? 0) + 1
   }
@@ -267,14 +328,15 @@ const columns: ColumnDef<AuditLog>[] = [
     id: 'select',
     header: ({ table: t }) =>
       h(Checkbox, {
-        'modelValue': t.getIsAllPageRowsSelected() || (t.getIsSomePageRowsSelected() ? 'indeterminate' : false),
+        modelValue:
+          t.getIsAllPageRowsSelected() || (t.getIsSomePageRowsSelected() ? 'indeterminate' : false),
         'onUpdate:modelValue': (v: boolean | 'indeterminate') => t.toggleAllPageRowsSelected(!!v),
         'aria-label': 'تحديد الكل',
       }),
     cell: ({ row }) =>
       h('div', { onClick: (e: Event) => e.stopPropagation() }, [
         h(Checkbox, {
-          'modelValue': row.getIsSelected(),
+          modelValue: row.getIsSelected(),
           'onUpdate:modelValue': (v: boolean | 'indeterminate') => row.toggleSelected(!!v),
           'aria-label': 'تحديد السجل',
         }),
@@ -290,51 +352,82 @@ const columns: ColumnDef<AuditLog>[] = [
   {
     accessorKey: 'action',
     header: 'الإجراء',
-    cell: ({ row }) => h('span', { class: 'inline-flex items-center rounded-md border border-border bg-muted px-2 py-0.5 text-xs font-medium text-foreground' }, formatAction(row.original.action)),
+    cell: ({ row }) =>
+      h(
+        'span',
+        {
+          class:
+            'inline-flex items-center rounded-md border border-border bg-muted px-2 py-0.5 text-xs font-medium text-foreground',
+        },
+        formatAction(row.original.action),
+      ),
   },
   {
     accessorKey: 'from_status',
     header: 'من',
-    cell: ({ row }) => h('span', { class: 'text-xs text-muted-foreground' }, row.original.from_status ?? '—'),
+    cell: ({ row }) =>
+      h('span', { class: 'text-xs text-muted-foreground' }, row.original.from_status ?? '—'),
   },
   {
     accessorKey: 'to_status',
     header: 'إلى',
-    cell: ({ row }) => h('span', { class: 'text-xs text-muted-foreground' }, row.original.to_status ?? '—'),
+    cell: ({ row }) =>
+      h('span', { class: 'text-xs text-muted-foreground' }, row.original.to_status ?? '—'),
   },
   {
     accessorKey: 'created_at',
     header: 'التوقيت',
-    cell: ({ row }) => h('span', { class: 'text-xs text-muted-foreground' }, formatDate(row.original.created_at)),
+    cell: ({ row }) =>
+      h('span', { class: 'text-xs text-muted-foreground' }, formatDate(row.original.created_at)),
   },
   {
     id: 'actions',
     header: '',
     enableHiding: false,
     cell: ({ row }) =>
-      h(DropdownMenu, {}, {
-        default: () => [
-          h(DropdownMenuTrigger, { asChild: true }, {
-            default: () =>
-              h(Button, {
-                variant: 'ghost',
-                size: 'icon',
-                class: 'h-8 w-8',
-                onClick: (e: Event) => e.stopPropagation(),
-              }, {
+      h(
+        DropdownMenu,
+        {},
+        {
+          default: () => [
+            h(
+              DropdownMenuTrigger,
+              { asChild: true },
+              {
+                default: () =>
+                  h(
+                    Button,
+                    {
+                      variant: 'ghost',
+                      size: 'icon',
+                      class: 'h-8 w-8',
+                      onClick: (e: Event) => e.stopPropagation(),
+                    },
+                    {
+                      default: () => [
+                        h('span', { class: 'sr-only' }, 'فتح القائمة'),
+                        h(MoreHorizontal, { class: 'h-4 w-4' }),
+                      ],
+                    },
+                  ),
+              },
+            ),
+            h(
+              DropdownMenuContent,
+              { align: 'end' },
+              {
                 default: () => [
-                  h('span', { class: 'sr-only' }, 'فتح القائمة'),
-                  h(MoreHorizontal, { class: 'h-4 w-4' }),
+                  h(
+                    DropdownMenuItem,
+                    { onClick: () => exportAuditRows([row.original], 'single') },
+                    () => 'تصدير السجل',
+                  ),
                 ],
-              }),
-          }),
-          h(DropdownMenuContent, { align: 'end' }, {
-            default: () => [
-              h(DropdownMenuItem, { onClick: () => exportAuditRows([row.original], 'single') }, () => 'تصدير السجل'),
-            ],
-          }),
-        ],
-      }),
+              },
+            ),
+          ],
+        },
+      ),
   },
 ]
 
@@ -369,7 +462,11 @@ function buildAuditExportColumns() {
   ] as const
 }
 
-function exportAuditRows(rows: AuditLog[], suffix: 'filtered' | 'selected' | 'single', format: 'csv' | 'excel' | 'json' = 'csv') {
+function exportAuditRows(
+  rows: AuditLog[],
+  suffix: 'filtered' | 'selected' | 'single',
+  format: 'csv' | 'excel' | 'json' = 'csv',
+) {
   if (!rows.length) return
   const stamp = new Date().toISOString().slice(0, 10)
   const filename = `audit-logs-${suffix}-${stamp}`
@@ -381,7 +478,9 @@ function exportAuditRows(rows: AuditLog[], suffix: 'filtered' | 'selected' | 'si
 }
 
 function exportSelectedAuditRows(format: 'csv' | 'excel' | 'json' = 'csv') {
-  const rows = auditDataTableRef.value?.table?.getSelectedRowModel?.().rows?.map((row: any) => row.original) ?? []
+  const rows =
+    auditDataTableRef.value?.table?.getSelectedRowModel?.().rows?.map((row: any) => row.original) ??
+    []
   if (rows.length > 0) {
     exportAuditRows(rows, 'selected', format)
     return
@@ -393,8 +492,11 @@ function exportSelectedAuditRows(format: 'csv' | 'excel' | 'json' = 'csv') {
 const expandedLogs = ref(new Set<number>())
 
 function toggleLog(id: number) {
-  if (expandedLogs.value.has(id)) { expandedLogs.value.delete(id) }
-  else { expandedLogs.value.add(id) }
+  if (expandedLogs.value.has(id)) {
+    expandedLogs.value.delete(id)
+  } else {
+    expandedLogs.value.add(id)
+  }
   expandedLogs.value = new Set(expandedLogs.value)
 }
 
@@ -430,9 +532,12 @@ function diffRows(meta: AuditLogMeta): Array<{ key: string; before: unknown; aft
       if (!bHas && !aHas) return false
       return !bHas || !aHas || before[key] !== after[key]
     })
-    .map(key => ({ key, before: formatDiffValue(before, key), after: formatDiffValue(after, key) }))
+    .map((key) => ({
+      key,
+      before: formatDiffValue(before, key),
+      after: formatDiffValue(after, key),
+    }))
 }
-
 </script>
 
 <template>
@@ -507,36 +612,37 @@ function diffRows(meta: AuditLogMeta): Array<{ key: string; before: unknown; aft
 
     <Tabs v-if="!auditLoadError" default-value="logs">
       <TabsList>
-        <TabsTrigger value="logs">
-          سجل النشاط
-        </TabsTrigger>
-        <TabsTrigger value="duplicates">
-          الفواتير المكررة
-        </TabsTrigger>
-        <TabsTrigger value="risk">
-          مؤشرات المخاطر
-        </TabsTrigger>
+        <TabsTrigger value="logs"> سجل النشاط </TabsTrigger>
+        <TabsTrigger value="duplicates"> الفواتير المكررة </TabsTrigger>
+        <TabsTrigger value="risk"> مؤشرات المخاطر </TabsTrigger>
         <TabsTrigger value="anomalies">
           الأنماط الشاذة
-          <Badge v-if="anomalyGroups.length > 0" class="ms-1.5 border-[var(--severity-red)]/30 bg-[var(--severity-red)]/10 text-[var(--severity-red)] border text-[10px]">
+          <Badge
+            v-if="anomalyGroups.length > 0"
+            class="ms-1.5 border border-[var(--severity-red)]/30 bg-[var(--severity-red)]/10 text-[10px] text-[var(--severity-red)]"
+          >
             {{ anomalyGroups.length }}
           </Badge>
         </TabsTrigger>
       </TabsList>
 
-      <TabsContent
-        value="logs"
-        class="mt-4"
-      >
+      <TabsContent value="logs" class="mt-4">
         <!-- Bulk toolbar (when rows selected) OR search row (default) -->
-        <div v-if="selectedCount > 0" class="mb-3 flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2">
-          <span class="text-sm font-medium text-primary">{{ selectedCount }} محدد</span>
-          <div class="mx-2 h-4 w-px bg-border" />
-          <DataTableBulkExport @csv="exportSelectedAuditRows('csv')" @excel="exportSelectedAuditRows('excel')" @json="exportSelectedAuditRows('json')" />
+        <div
+          v-if="selectedCount > 0"
+          class="border-primary/20 bg-primary/5 mb-3 flex items-center gap-2 rounded-lg border px-3 py-2"
+        >
+          <span class="text-primary text-sm font-medium">{{ selectedCount }} محدد</span>
+          <div class="bg-border mx-2 h-4 w-px" />
+          <DataTableBulkExport
+            @csv="exportSelectedAuditRows('csv')"
+            @excel="exportSelectedAuditRows('excel')"
+            @json="exportSelectedAuditRows('json')"
+          />
           <Button
             variant="ghost"
             size="sm"
-            class="ms-auto h-7 gap-1 text-xs text-muted-foreground"
+            class="text-muted-foreground ms-auto h-7 gap-1 text-xs"
             @click="clearSelection"
           >
             <X class="h-3.5 w-3.5" />
@@ -580,24 +686,23 @@ function diffRows(meta: AuditLogMeta): Array<{ key: string; before: unknown; aft
             :is-row-expanded="(row) => expandedLogs.has(row.id)"
             row-class="border-t hover:bg-muted/30"
             @update:pagination="onAuditPaginationChange"
-            @update:sorting="(v) => sorting = v"
-            @update:column-filters="(v) => columnFilters = v"
-            @update:row-selection="(v) => rowSelection = v"
-            @update:column-visibility="(v) => columnVisibility = v"
+            @update:sorting="(v) => (sorting = v)"
+            @update:column-filters="(v) => (columnFilters = v)"
+            @update:row-selection="(v) => (rowSelection = v)"
+            @update:column-visibility="(v) => (columnVisibility = v)"
             @row-click="(row) => toggleLog(row.id)"
           >
             <template #toolbar="{ table }">
               <div class="flex justify-end">
-                <DataTableViewOptions
-                  :table="table"
-                  :column-labels="AUDIT_COLUMN_LABELS"
-                />
+                <DataTableViewOptions :table="table" :column-labels="AUDIT_COLUMN_LABELS" />
               </div>
             </template>
             <template #empty>
-              <Empty class="min-h-[200px] rounded-xl border border-dashed bg-muted/20">
+              <Empty class="bg-muted/20 min-h-[200px] rounded-xl border border-dashed">
                 <EmptyHeader>
-                  <div class="flex size-12 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+                  <div
+                    class="bg-muted text-muted-foreground flex size-12 items-center justify-center rounded-xl"
+                  >
                     <SearchX class="size-5" />
                   </div>
                   <EmptyTitle>لا توجد سجلات مطابقة</EmptyTitle>
@@ -608,15 +713,15 @@ function diffRows(meta: AuditLogMeta): Array<{ key: string; before: unknown; aft
               </Empty>
             </template>
             <template #row-expanded="{ row }">
-              <div class="text-xs text-muted-foreground mb-2">
+              <div class="text-muted-foreground mb-2 text-xs">
                 <span class="font-medium">IP: </span>{{ row.ip_address ?? '—' }}
                 <span class="mx-2">·</span>
                 <span data-testid="log-ua-full">{{ truncateUa(row.user_agent) }}</span>
               </div>
               <template v-if="diffRows(row.metadata as AuditLogMeta).length > 0">
-                <table data-testid="log-diff-table" class="w-full text-xs border rounded">
+                <table data-testid="log-diff-table" class="w-full rounded border text-xs">
                   <thead>
-                    <tr class="border-b bg-muted/40">
+                    <tr class="bg-muted/40 border-b">
                       <th class="px-3 py-1.5 text-start font-medium">الحقل</th>
                       <th class="px-3 py-1.5 text-start font-medium">قبل</th>
                       <th class="px-3 py-1.5 text-start font-medium">بعد</th>
@@ -635,7 +740,7 @@ function diffRows(meta: AuditLogMeta): Array<{ key: string; before: unknown; aft
                   </tbody>
                 </table>
               </template>
-              <div v-else class="detail-empty text-xs text-muted-foreground">
+              <div v-else class="detail-empty text-muted-foreground text-xs">
                 لا توجد تفاصيل إضافية
               </div>
             </template>
@@ -646,14 +751,11 @@ function diffRows(meta: AuditLogMeta): Array<{ key: string; before: unknown; aft
         </Card>
       </TabsContent>
 
-      <TabsContent
-        value="duplicates"
-        class="mt-4"
-      >
+      <TabsContent value="duplicates" class="mt-4">
         <Card class="border-0 p-5 shadow">
           <div
             v-if="duplicates.length > 0"
-            class="mb-4 flex items-center gap-2 rounded-lg border border-destructive/30 bg-[var(--color-surface-error)] p-3"
+            class="border-destructive/30 mb-4 flex items-center gap-2 rounded-lg border bg-[var(--color-surface-error)] p-3"
           >
             <AlertTriangle class="h-5 w-5 text-[var(--color-text-error)]" />
             <div class="text-sm">
@@ -664,7 +766,7 @@ function diffRows(meta: AuditLogMeta): Array<{ key: string; before: unknown; aft
 
           <Empty
             v-if="duplicates.length === 0"
-            class="min-h-[160px] rounded-xl border border-dashed bg-muted/20"
+            class="bg-muted/20 min-h-[160px] rounded-xl border border-dashed"
           >
             <EmptyHeader>
               <EmptyTitle>لا توجد فواتير مكررة</EmptyTitle>
@@ -678,21 +780,19 @@ function diffRows(meta: AuditLogMeta): Array<{ key: string; before: unknown; aft
             <div
               v-for="dup in duplicates"
               :key="dup.invoice_number"
-              class="rounded-lg border p-4 hover:border-destructive/40"
+              class="hover:border-destructive/40 rounded-lg border p-4"
             >
               <div class="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <div class="flex items-center gap-2">
-                    <Badge variant="destructive">
-                      مكرر
-                    </Badge>
+                    <Badge variant="destructive"> مكرر </Badge>
                     <span class="font-mono font-semibold">{{ dup.invoice_number }}</span>
                   </div>
-                  <div class="mt-1 text-xs text-muted-foreground">
+                  <div class="text-muted-foreground mt-1 text-xs">
                     البنوك: {{ dup.banks.join('، ') }}
                   </div>
                 </div>
-                <div class="text-start text-xs text-muted-foreground">
+                <div class="text-muted-foreground text-start text-xs">
                   {{ dup.requests.length }} طلبات مرتبطة
                 </div>
               </div>
@@ -703,10 +803,9 @@ function diffRows(meta: AuditLogMeta): Array<{ key: string; before: unknown; aft
 
       <TabsContent value="risk" class="mt-4">
         <RankedListCard title="مؤشرات المخاطر النشطة" content-class="p-5">
-
           <Empty
             v-if="risks.length === 0"
-            class="min-h-[160px] rounded-xl border border-dashed bg-muted/20"
+            class="bg-muted/20 min-h-[160px] rounded-xl border border-dashed"
           >
             <EmptyHeader>
               <EmptyTitle>لا توجد مؤشرات مخاطر</EmptyTitle>
@@ -725,14 +824,18 @@ function diffRows(meta: AuditLogMeta): Array<{ key: string; before: unknown; aft
               <ShieldCheck
                 :class="[
                   'mt-0.5 h-5 w-5',
-                  risk.level === 'عالية' ? 'text-[var(--color-text-error)]' : risk.level === 'متوسطة' ? 'text-[var(--color-text-warning)]' : 'text-info',
+                  risk.level === 'عالية'
+                    ? 'text-[var(--color-text-error)]'
+                    : risk.level === 'متوسطة'
+                      ? 'text-[var(--color-text-warning)]'
+                      : 'text-info',
                 ]"
               />
               <div class="flex-1">
                 <div class="text-sm font-medium">
                   {{ risk.title }}
                 </div>
-                <div class="text-xs text-muted-foreground">
+                <div class="text-muted-foreground text-xs">
                   {{ risk.body }}
                 </div>
               </div>
@@ -750,10 +853,9 @@ function diffRows(meta: AuditLogMeta): Array<{ key: string; before: unknown; aft
           description="محاولات رفض متكررة، دخول فاشل، تحميل وثائق مكثف"
           content-class="p-5"
         >
-
           <Empty
             v-if="anomalyGroups.length === 0"
-            class="min-h-[160px] rounded-xl border border-dashed bg-muted/20"
+            class="bg-muted/20 min-h-[160px] rounded-xl border border-dashed"
           >
             <EmptyHeader>
               <EmptyTitle>لا توجد أنماط شاذة</EmptyTitle>
@@ -768,30 +870,54 @@ function diffRows(meta: AuditLogMeta): Array<{ key: string; before: unknown; aft
               v-for="(group, idx) in anomalyGroups"
               :key="idx"
               class="flex items-center gap-3 rounded-lg border p-3"
-              :class="group.level === 'عالية' ? 'border-[var(--severity-red)]/30 bg-[var(--severity-red)]/5' : 'border-[var(--severity-amber)]/30 bg-[var(--severity-amber)]/5'"
+              :class="
+                group.level === 'عالية'
+                  ? 'border-[var(--severity-red)]/30 bg-[var(--severity-red)]/5'
+                  : 'border-[var(--severity-amber)]/30 bg-[var(--severity-amber)]/5'
+              "
             >
               <AlertTriangle
                 class="h-4 w-4 shrink-0"
-                :class="group.level === 'عالية' ? 'text-[var(--severity-red)]' : 'text-[var(--severity-amber)]'"
+                :class="
+                  group.level === 'عالية'
+                    ? 'text-[var(--severity-red)]'
+                    : 'text-[var(--severity-amber)]'
+                "
               />
               <div class="flex-1">
-                <div class="font-section text-sm font-semibold leading-5 text-foreground">{{ group.type }}</div>
-                <div class="text-xs leading-5 text-muted-foreground">{{ group.actor }}</div>
+                <div class="font-section text-foreground text-sm leading-5 font-semibold">
+                  {{ group.type }}
+                </div>
+                <div class="text-muted-foreground text-xs leading-5">{{ group.actor }}</div>
               </div>
-              <div class="text-sm font-semibold leading-5 tabular-nums text-foreground">
+              <div class="text-foreground text-sm leading-5 font-semibold tabular-nums">
                 {{ group.count }}×
               </div>
               <Badge
                 class="border text-xs"
-                :class="group.level === 'عالية' ? 'border-[var(--severity-red)]/30 bg-[var(--severity-red)]/10 text-[var(--severity-red)]' : 'border-[var(--severity-amber)]/30 bg-[var(--severity-amber)]/10 text-[var(--severity-amber)]'"
+                :class="
+                  group.level === 'عالية'
+                    ? 'border-[var(--severity-red)]/30 bg-[var(--severity-red)]/10 text-[var(--severity-red)]'
+                    : 'border-[var(--severity-amber)]/30 bg-[var(--severity-amber)]/10 text-[var(--severity-amber)]'
+                "
               >
                 {{ group.level }}
               </Badge>
             </div>
           </div>
           <template #aside>
-            <MetricCard label="أنماط عالية" :value="anomalyGroups.filter(g => g.level === 'عالية').length" tone="danger" :clickable="false" />
-            <MetricCard label="إجمالي التجميعات" :value="anomalyGroups.length" tone="warning" :clickable="false" />
+            <MetricCard
+              label="أنماط عالية"
+              :value="anomalyGroups.filter((g) => g.level === 'عالية').length"
+              tone="danger"
+              :clickable="false"
+            />
+            <MetricCard
+              label="إجمالي التجميعات"
+              :value="anomalyGroups.length"
+              tone="warning"
+              :clickable="false"
+            />
           </template>
         </InsightsTabsCard>
       </TabsContent>

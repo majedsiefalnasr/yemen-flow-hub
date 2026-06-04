@@ -5,24 +5,27 @@ import { AlertTriangle, Info } from 'lucide-vue-next'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 
-const props = withDefaults(defineProps<{
-  /** Number of items requiring action. Strip is hidden when 0. */
-  count: number
-  /** Primary message displayed in the strip (no count prefix needed — it's prepended automatically). */
-  message: string
-  /** Optional secondary detail line (e.g. reference number or reason snippet). */
-  detail?: string
-  /** CTA button label */
-  ctaLabel: string
-  /** Route to navigate to on CTA click */
-  ctaRoute: string
-  /** Semantic severity level — drives color tokens */
-  severity?: 'amber' | 'red' | 'blue' | 'indigo'
-  /** Override the accessible aria-label */
-  ariaLabel?: string
-}>(), {
-  severity: 'amber',
-})
+const props = withDefaults(
+  defineProps<{
+    /** Number of items requiring action. Strip is hidden when 0. */
+    count: number
+    /** Primary message displayed in the strip (no count prefix needed — it's prepended automatically). */
+    message: string
+    /** Optional secondary detail line (e.g. reference number or reason snippet). */
+    detail?: string
+    /** CTA button label */
+    ctaLabel: string
+    /** Route to navigate to on CTA click */
+    ctaRoute: string
+    /** Semantic severity level — drives color tokens */
+    severity?: 'amber' | 'red' | 'blue' | 'indigo'
+    /** Override the accessible aria-label */
+    ariaLabel?: string
+  }>(),
+  {
+    severity: 'amber',
+  },
+)
 
 const router = useRouter()
 
@@ -70,9 +73,7 @@ const IconComponent = computed(() =>
   props.severity === 'blue' || props.severity === 'indigo' ? Info : AlertTriangle,
 )
 
-const computedAriaLabel = computed(() =>
-  props.ariaLabel ?? `${props.count} ${props.message}`,
-)
+const computedAriaLabel = computed(() => props.ariaLabel ?? `${props.count} ${props.message}`)
 </script>
 
 <template>
@@ -91,8 +92,8 @@ const computedAriaLabel = computed(() =>
         aria-hidden="true"
       />
       <div class="min-w-0 flex-1">
-        <span class="text-sm font-semibold text-foreground">{{ count }} {{ message }}</span>
-        <p v-if="detail" class="mt-0.5 truncate text-xs text-muted-foreground">
+        <span class="text-foreground text-sm font-semibold">{{ count }} {{ message }}</span>
+        <p v-if="detail" class="text-muted-foreground mt-0.5 truncate text-xs">
           {{ detail }}
         </p>
       </div>

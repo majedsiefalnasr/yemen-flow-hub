@@ -71,13 +71,16 @@ function getStageState(
   return 'future'
 }
 
-function getCurrentEntry(history: RequestStageHistory[], currentStatus: RequestStatus): RequestStageHistory | null {
+function getCurrentEntry(
+  history: RequestStageHistory[],
+  currentStatus: RequestStatus,
+): RequestStageHistory | null {
   const sorted = [...history].sort((a, b) => a.created_at.localeCompare(b.created_at))
-  return [...sorted].reverse().find(e => e.to_status === currentStatus) ?? null
+  return [...sorted].reverse().find((e) => e.to_status === currentStatus) ?? null
 }
 
 function getVisitedStatuses(history: RequestStageHistory[]): Set<string> {
-  return new Set(history.map(e => e.to_status).filter(Boolean) as string[])
+  return new Set(history.map((e) => e.to_status).filter(Boolean) as string[])
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -102,9 +105,24 @@ const makeEntry = (overrides: Partial<RequestStageHistory> = {}): RequestStageHi
 /** Happy-path history: DRAFT → SUBMITTED → BANK_REVIEW → BANK_APPROVED */
 const happyPathHistory: RequestStageHistory[] = [
   makeEntry({ id: 1, from_status: null, to_status: 'DRAFT', created_at: '2026-05-01T08:00:00Z' }),
-  makeEntry({ id: 2, from_status: 'DRAFT', to_status: 'SUBMITTED', created_at: '2026-05-02T08:00:00Z' }),
-  makeEntry({ id: 3, from_status: 'SUBMITTED', to_status: 'BANK_REVIEW', created_at: '2026-05-03T08:00:00Z' }),
-  makeEntry({ id: 4, from_status: 'BANK_REVIEW', to_status: 'BANK_APPROVED', created_at: '2026-05-04T08:00:00Z' }),
+  makeEntry({
+    id: 2,
+    from_status: 'DRAFT',
+    to_status: 'SUBMITTED',
+    created_at: '2026-05-02T08:00:00Z',
+  }),
+  makeEntry({
+    id: 3,
+    from_status: 'SUBMITTED',
+    to_status: 'BANK_REVIEW',
+    created_at: '2026-05-03T08:00:00Z',
+  }),
+  makeEntry({
+    id: 4,
+    from_status: 'BANK_REVIEW',
+    to_status: 'BANK_APPROVED',
+    created_at: '2026-05-04T08:00:00Z',
+  }),
 ]
 
 // ─── Stage classification — happy path ───────────────────────────────────────
@@ -121,34 +139,63 @@ describe('WorkflowTimeline stage classification', () => {
   it('classifies the current status as "current"', () => {
     const visited = new Set<string>()
     expect(getStageState(RequestStatus.SUBMITTED, RequestStatus.SUBMITTED, visited)).toBe('current')
-    expect(getStageState(RequestStatus.BANK_APPROVED, RequestStatus.BANK_APPROVED, visited)).toBe('current')
+    expect(getStageState(RequestStatus.BANK_APPROVED, RequestStatus.BANK_APPROVED, visited)).toBe(
+      'current',
+    )
   })
 
   it('classifies linear stages before current as "completed"', () => {
     const visited = new Set<string>(['DRAFT', 'SUBMITTED', 'BANK_REVIEW', 'BANK_APPROVED'])
     expect(getStageState(RequestStatus.DRAFT, RequestStatus.SUBMITTED, visited)).toBe('completed')
-    expect(getStageState(RequestStatus.SUBMITTED, RequestStatus.BANK_REVIEW, visited)).toBe('completed')
-    expect(getStageState(RequestStatus.BANK_APPROVED, RequestStatus.SUPPORT_REVIEW_PENDING, visited)).toBe('completed')
+    expect(getStageState(RequestStatus.SUBMITTED, RequestStatus.BANK_REVIEW, visited)).toBe(
+      'completed',
+    )
+    expect(
+      getStageState(RequestStatus.BANK_APPROVED, RequestStatus.SUPPORT_REVIEW_PENDING, visited),
+    ).toBe('completed')
   })
 
   it('classifies stages after current as "future"', () => {
     const visited = new Set<string>(['DRAFT', 'SUBMITTED'])
-    expect(getStageState(RequestStatus.BANK_REVIEW, RequestStatus.SUBMITTED, visited)).toBe('future')
-    expect(getStageState(RequestStatus.EXECUTIVE_APPROVED, RequestStatus.BANK_APPROVED, visited)).toBe('future')
+    expect(getStageState(RequestStatus.BANK_REVIEW, RequestStatus.SUBMITTED, visited)).toBe(
+      'future',
+    )
+    expect(
+      getStageState(RequestStatus.EXECUTIVE_APPROVED, RequestStatus.BANK_APPROVED, visited),
+    ).toBe('future')
     expect(getStageState(RequestStatus.COMPLETED, RequestStatus.DRAFT, visited)).toBe('future')
   })
 
   it('DRAFT at index 0 has all other stages as future', () => {
     const visited = new Set<string>(['DRAFT'])
-    const states = WORKFLOW_STAGE_ORDER.map(s => getStageState(s, RequestStatus.DRAFT, visited))
+    const states = WORKFLOW_STAGE_ORDER.map((s) => getStageState(s, RequestStatus.DRAFT, visited))
     expect(states[0]).toBe('current')
-    states.slice(1).forEach(s => expect(s).toBe('future'))
+    states.slice(1).forEach((s) => expect(s).toBe('future'))
   })
 
   it('SUPPORT_REVIEW_IN_PROGRESS: SUPPORT_REVIEW_PENDING is completed, further stages are future', () => {
-    const visited = new Set<string>(['DRAFT', 'SUBMITTED', 'BANK_REVIEW', 'BANK_APPROVED', 'SUPPORT_REVIEW_PENDING', 'SUPPORT_REVIEW_IN_PROGRESS'])
-    expect(getStageState(RequestStatus.SUPPORT_REVIEW_PENDING, RequestStatus.SUPPORT_REVIEW_IN_PROGRESS, visited)).toBe('completed')
-    expect(getStageState(RequestStatus.SUPPORT_APPROVED, RequestStatus.SUPPORT_REVIEW_IN_PROGRESS, visited)).toBe('future')
+    const visited = new Set<string>([
+      'DRAFT',
+      'SUBMITTED',
+      'BANK_REVIEW',
+      'BANK_APPROVED',
+      'SUPPORT_REVIEW_PENDING',
+      'SUPPORT_REVIEW_IN_PROGRESS',
+    ])
+    expect(
+      getStageState(
+        RequestStatus.SUPPORT_REVIEW_PENDING,
+        RequestStatus.SUPPORT_REVIEW_IN_PROGRESS,
+        visited,
+      ),
+    ).toBe('completed')
+    expect(
+      getStageState(
+        RequestStatus.SUPPORT_APPROVED,
+        RequestStatus.SUPPORT_REVIEW_IN_PROGRESS,
+        visited,
+      ),
+    ).toBe('future')
   })
 })
 
@@ -157,44 +204,122 @@ describe('WorkflowTimeline stage classification', () => {
 describe('WorkflowTimeline branch state — skipped vs completed', () => {
   it('DRAFT_REJECTED_INTERNAL shows "skipped" on a happy-path request at BANK_APPROVED', () => {
     const visited = getVisitedStatuses(happyPathHistory)
-    expect(getStageState(RequestStatus.DRAFT_REJECTED_INTERNAL, RequestStatus.BANK_APPROVED, visited)).toBe('skipped')
+    expect(
+      getStageState(RequestStatus.DRAFT_REJECTED_INTERNAL, RequestStatus.BANK_APPROVED, visited),
+    ).toBe('skipped')
   })
 
   it('SUPPORT_REJECTED shows "skipped" on a request at WAITING_FOR_SWIFT (no rejection)', () => {
     const history = [
       ...happyPathHistory,
-      makeEntry({ id: 5, from_status: 'BANK_APPROVED', to_status: 'SUPPORT_REVIEW_PENDING', created_at: '2026-05-05T08:00:00Z' }),
-      makeEntry({ id: 6, from_status: 'SUPPORT_REVIEW_PENDING', to_status: 'SUPPORT_REVIEW_IN_PROGRESS', created_at: '2026-05-06T08:00:00Z' }),
-      makeEntry({ id: 7, from_status: 'SUPPORT_REVIEW_IN_PROGRESS', to_status: 'SUPPORT_APPROVED', created_at: '2026-05-07T08:00:00Z' }),
-      makeEntry({ id: 8, from_status: 'SUPPORT_APPROVED', to_status: 'WAITING_FOR_SWIFT', created_at: '2026-05-08T08:00:00Z' }),
+      makeEntry({
+        id: 5,
+        from_status: 'BANK_APPROVED',
+        to_status: 'SUPPORT_REVIEW_PENDING',
+        created_at: '2026-05-05T08:00:00Z',
+      }),
+      makeEntry({
+        id: 6,
+        from_status: 'SUPPORT_REVIEW_PENDING',
+        to_status: 'SUPPORT_REVIEW_IN_PROGRESS',
+        created_at: '2026-05-06T08:00:00Z',
+      }),
+      makeEntry({
+        id: 7,
+        from_status: 'SUPPORT_REVIEW_IN_PROGRESS',
+        to_status: 'SUPPORT_APPROVED',
+        created_at: '2026-05-07T08:00:00Z',
+      }),
+      makeEntry({
+        id: 8,
+        from_status: 'SUPPORT_APPROVED',
+        to_status: 'WAITING_FOR_SWIFT',
+        created_at: '2026-05-08T08:00:00Z',
+      }),
     ]
     const visited = getVisitedStatuses(history)
-    expect(getStageState(RequestStatus.SUPPORT_REJECTED, RequestStatus.WAITING_FOR_SWIFT, visited)).toBe('skipped')
+    expect(
+      getStageState(RequestStatus.SUPPORT_REJECTED, RequestStatus.WAITING_FOR_SWIFT, visited),
+    ).toBe('skipped')
   })
 
   it('DRAFT_REJECTED_INTERNAL shows "completed" when the request actually visited it', () => {
     const history = [
-      makeEntry({ id: 1, from_status: null, to_status: 'DRAFT', created_at: '2026-05-01T08:00:00Z' }),
-      makeEntry({ id: 2, from_status: 'DRAFT', to_status: 'SUBMITTED', created_at: '2026-05-02T08:00:00Z' }),
-      makeEntry({ id: 3, from_status: 'SUBMITTED', to_status: 'DRAFT_REJECTED_INTERNAL', created_at: '2026-05-03T08:00:00Z' }),
-      makeEntry({ id: 4, from_status: 'DRAFT_REJECTED_INTERNAL', to_status: 'SUBMITTED', created_at: '2026-05-04T08:00:00Z' }),
-      makeEntry({ id: 5, from_status: 'SUBMITTED', to_status: 'BANK_REVIEW', created_at: '2026-05-05T08:00:00Z' }),
+      makeEntry({
+        id: 1,
+        from_status: null,
+        to_status: 'DRAFT',
+        created_at: '2026-05-01T08:00:00Z',
+      }),
+      makeEntry({
+        id: 2,
+        from_status: 'DRAFT',
+        to_status: 'SUBMITTED',
+        created_at: '2026-05-02T08:00:00Z',
+      }),
+      makeEntry({
+        id: 3,
+        from_status: 'SUBMITTED',
+        to_status: 'DRAFT_REJECTED_INTERNAL',
+        created_at: '2026-05-03T08:00:00Z',
+      }),
+      makeEntry({
+        id: 4,
+        from_status: 'DRAFT_REJECTED_INTERNAL',
+        to_status: 'SUBMITTED',
+        created_at: '2026-05-04T08:00:00Z',
+      }),
+      makeEntry({
+        id: 5,
+        from_status: 'SUBMITTED',
+        to_status: 'BANK_REVIEW',
+        created_at: '2026-05-05T08:00:00Z',
+      }),
     ]
     const visited = getVisitedStatuses(history)
-    expect(getStageState(RequestStatus.DRAFT_REJECTED_INTERNAL, RequestStatus.BANK_REVIEW, visited)).toBe('completed')
+    expect(
+      getStageState(RequestStatus.DRAFT_REJECTED_INTERNAL, RequestStatus.BANK_REVIEW, visited),
+    ).toBe('completed')
   })
 
   it('EXECUTIVE_REJECTED shows "skipped" on a COMPLETED request (approved path)', () => {
     const history = [
       ...happyPathHistory,
-      makeEntry({ id: 5, from_status: 'BANK_APPROVED', to_status: 'SUPPORT_APPROVED', created_at: '2026-05-05T08:00:00Z' }),
-      makeEntry({ id: 6, from_status: 'SUPPORT_APPROVED', to_status: 'SWIFT_UPLOADED', created_at: '2026-05-06T08:00:00Z' }),
-      makeEntry({ id: 7, from_status: 'SWIFT_UPLOADED', to_status: 'EXECUTIVE_APPROVED', created_at: '2026-05-07T08:00:00Z' }),
-      makeEntry({ id: 8, from_status: 'EXECUTIVE_APPROVED', to_status: 'CUSTOMS_DECLARATION_ISSUED', created_at: '2026-05-08T08:00:00Z' }),
-      makeEntry({ id: 9, from_status: 'CUSTOMS_DECLARATION_ISSUED', to_status: 'COMPLETED', created_at: '2026-05-09T08:00:00Z' }),
+      makeEntry({
+        id: 5,
+        from_status: 'BANK_APPROVED',
+        to_status: 'SUPPORT_APPROVED',
+        created_at: '2026-05-05T08:00:00Z',
+      }),
+      makeEntry({
+        id: 6,
+        from_status: 'SUPPORT_APPROVED',
+        to_status: 'SWIFT_UPLOADED',
+        created_at: '2026-05-06T08:00:00Z',
+      }),
+      makeEntry({
+        id: 7,
+        from_status: 'SWIFT_UPLOADED',
+        to_status: 'EXECUTIVE_APPROVED',
+        created_at: '2026-05-07T08:00:00Z',
+      }),
+      makeEntry({
+        id: 8,
+        from_status: 'EXECUTIVE_APPROVED',
+        to_status: 'CUSTOMS_DECLARATION_ISSUED',
+        created_at: '2026-05-08T08:00:00Z',
+      }),
+      makeEntry({
+        id: 9,
+        from_status: 'CUSTOMS_DECLARATION_ISSUED',
+        to_status: 'COMPLETED',
+        created_at: '2026-05-09T08:00:00Z',
+      }),
     ]
     const visited = getVisitedStatuses(history)
-    expect(getStageState(RequestStatus.EXECUTIVE_REJECTED, RequestStatus.COMPLETED, visited)).toBe('skipped')
+    expect(getStageState(RequestStatus.EXECUTIVE_REJECTED, RequestStatus.COMPLETED, visited)).toBe(
+      'skipped',
+    )
   })
 })
 
@@ -203,12 +328,16 @@ describe('WorkflowTimeline branch state — skipped vs completed', () => {
 describe('WorkflowTimeline terminal state', () => {
   it('classifies EXECUTIVE_REJECTED as "terminal" when it is the current status', () => {
     const visited = new Set<string>(['EXECUTIVE_REJECTED'])
-    expect(getStageState(RequestStatus.EXECUTIVE_REJECTED, RequestStatus.EXECUTIVE_REJECTED, visited)).toBe('terminal')
+    expect(
+      getStageState(RequestStatus.EXECUTIVE_REJECTED, RequestStatus.EXECUTIVE_REJECTED, visited),
+    ).toBe('terminal')
   })
 
   it('classifies BANK_REJECTED as "terminal" when it is the current status', () => {
     const visited = new Set<string>(['BANK_REJECTED'])
-    expect(getStageState(RequestStatus.BANK_REJECTED, RequestStatus.BANK_REJECTED, visited)).toBe('terminal')
+    expect(getStageState(RequestStatus.BANK_REJECTED, RequestStatus.BANK_REJECTED, visited)).toBe(
+      'terminal',
+    )
   })
 
   it('COMPLETED is NOT terminal — it is a success "current" state', () => {
@@ -225,7 +354,7 @@ describe('WorkflowTimeline terminal state', () => {
 
   it('no other status is in the terminal set', () => {
     const nonTerminal = Object.values(RequestStatus).filter(
-      s => s !== RequestStatus.EXECUTIVE_REJECTED && s !== RequestStatus.BANK_REJECTED,
+      (s) => s !== RequestStatus.EXECUTIVE_REJECTED && s !== RequestStatus.BANK_REJECTED,
     )
     for (const s of nonTerminal) {
       expect(TERMINAL_STATUSES.has(s)).toBe(false)
@@ -234,24 +363,38 @@ describe('WorkflowTimeline terminal state', () => {
 
   it('EXECUTIVE_REJECTED is "future" when the request is at an earlier stage', () => {
     const visited = new Set<string>(['BANK_APPROVED'])
-    expect(getStageState(RequestStatus.EXECUTIVE_REJECTED, RequestStatus.BANK_APPROVED, visited)).toBe('future')
+    expect(
+      getStageState(RequestStatus.EXECUTIVE_REJECTED, RequestStatus.BANK_APPROVED, visited),
+    ).toBe('future')
   })
 
   it('EXECUTIVE_REJECTED is "skipped" on a COMPLETED (approved) request', () => {
-    const visited = new Set<string>(['DRAFT', 'SUBMITTED', 'BANK_APPROVED', 'EXECUTIVE_APPROVED', 'COMPLETED'])
-    expect(getStageState(RequestStatus.EXECUTIVE_REJECTED, RequestStatus.COMPLETED, visited)).toBe('skipped')
+    const visited = new Set<string>([
+      'DRAFT',
+      'SUBMITTED',
+      'BANK_APPROVED',
+      'EXECUTIVE_APPROVED',
+      'COMPLETED',
+    ])
+    expect(getStageState(RequestStatus.EXECUTIVE_REJECTED, RequestStatus.COMPLETED, visited)).toBe(
+      'skipped',
+    )
   })
 
   it('BANK_REJECTED is "skipped" when the request is at BANK_REVIEW (branch not taken)', () => {
     // BANK_REJECTED sits before BANK_REVIEW in WORKFLOW_STAGE_ORDER; since it
     // is a BRANCH_STATUS and was not visited, it shows as "skipped" — not "future".
     const visited = new Set<string>(['DRAFT', 'SUBMITTED', 'BANK_REVIEW'])
-    expect(getStageState(RequestStatus.BANK_REJECTED, RequestStatus.BANK_REVIEW, visited)).toBe('skipped')
+    expect(getStageState(RequestStatus.BANK_REJECTED, RequestStatus.BANK_REVIEW, visited)).toBe(
+      'skipped',
+    )
   })
 
   it('BANK_REJECTED is "skipped" on a BANK_APPROVED request (approved path)', () => {
     const visited = new Set<string>(['DRAFT', 'SUBMITTED', 'BANK_REVIEW', 'BANK_APPROVED'])
-    expect(getStageState(RequestStatus.BANK_REJECTED, RequestStatus.BANK_APPROVED, visited)).toBe('skipped')
+    expect(getStageState(RequestStatus.BANK_REJECTED, RequestStatus.BANK_APPROVED, visited)).toBe(
+      'skipped',
+    )
   })
 })
 
@@ -313,7 +456,7 @@ describe('WorkflowTimeline — unknown currentStatus guard', () => {
   it('treats all stages as "future" when currentStatus is not in the stage order', () => {
     const unknownStatus = 'UNKNOWN_STATUS' as RequestStatus
     const visited = new Set<string>()
-    const states = WORKFLOW_STAGE_ORDER.map(s => getStageState(s, unknownStatus, visited))
-    states.forEach(s => expect(s).toBe('future'))
+    const states = WORKFLOW_STAGE_ORDER.map((s) => getStageState(s, unknownStatus, visited))
+    states.forEach((s) => expect(s).toBe('future'))
   })
 })

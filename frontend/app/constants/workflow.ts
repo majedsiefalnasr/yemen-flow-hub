@@ -149,10 +149,7 @@ export const BANK_ROLES: UserRole[] = [
   UserRole.SWIFT_OFFICER,
 ]
 
-export const BANK_ADMIN_MANAGED_ROLES: UserRole[] = [
-  UserRole.DATA_ENTRY,
-  UserRole.BANK_REVIEWER,
-]
+export const BANK_ADMIN_MANAGED_ROLES: UserRole[] = [UserRole.DATA_ENTRY, UserRole.BANK_REVIEWER]
 
 export const CBY_ROLES: UserRole[] = [
   UserRole.SUPPORT_COMMITTEE,
@@ -435,7 +432,7 @@ export interface StageBucket {
       ready_to_close?: boolean
       is_tie?: boolean
     },
-    currentUserId?: number | null
+    currentUserId?: number | null,
   ) => boolean
 }
 
@@ -443,36 +440,192 @@ export interface StageBucket {
 export const ROLE_BUCKETS: Partial<Record<UserRole, StageBucket[]>> = {
   // Spec order: returned first (most actionable), then draft, submitted, processing, completed, rejected, all
   [UserRole.DATA_ENTRY]: [
-    { key: 'returned', label: 'معادة', statuses: [RequestStatus.BANK_RETURNED, RequestStatus.SUPPORT_RETURNED, RequestStatus.DRAFT_REJECTED_INTERNAL] },
+    {
+      key: 'returned',
+      label: 'معادة',
+      statuses: [
+        RequestStatus.BANK_RETURNED,
+        RequestStatus.SUPPORT_RETURNED,
+        RequestStatus.DRAFT_REJECTED_INTERNAL,
+      ],
+    },
     { key: 'draft', label: 'مسودة', statuses: [RequestStatus.DRAFT] },
-    { key: 'submitted', label: 'مقدّم', statuses: [RequestStatus.SUBMITTED, RequestStatus.BANK_REVIEW] },
-    { key: 'processing', label: 'قيد معالجة CBY', statuses: [RequestStatus.BANK_APPROVED, RequestStatus.SUPPORT_REVIEW_PENDING, RequestStatus.SUPPORT_REVIEW_IN_PROGRESS, RequestStatus.SUPPORT_APPROVED, RequestStatus.WAITING_FOR_SWIFT, RequestStatus.SWIFT_UPLOADED, RequestStatus.WAITING_FOR_VOTING_OPEN, RequestStatus.EXECUTIVE_VOTING_OPEN, RequestStatus.EXECUTIVE_VOTING_CLOSED] },
-    { key: 'completed', label: 'مكتمل', statuses: [RequestStatus.EXECUTIVE_APPROVED, RequestStatus.CUSTOMS_DECLARATION_ISSUED, RequestStatus.FX_CONFIRMATION_PENDING, RequestStatus.COMPLETED] },
-    { key: 'rejected', label: 'مرفوض', statuses: [RequestStatus.SUPPORT_REJECTED, RequestStatus.EXECUTIVE_REJECTED, RequestStatus.BANK_REJECTED] },
+    {
+      key: 'submitted',
+      label: 'مقدّم',
+      statuses: [RequestStatus.SUBMITTED, RequestStatus.BANK_REVIEW],
+    },
+    {
+      key: 'processing',
+      label: 'قيد معالجة CBY',
+      statuses: [
+        RequestStatus.BANK_APPROVED,
+        RequestStatus.SUPPORT_REVIEW_PENDING,
+        RequestStatus.SUPPORT_REVIEW_IN_PROGRESS,
+        RequestStatus.SUPPORT_APPROVED,
+        RequestStatus.WAITING_FOR_SWIFT,
+        RequestStatus.SWIFT_UPLOADED,
+        RequestStatus.WAITING_FOR_VOTING_OPEN,
+        RequestStatus.EXECUTIVE_VOTING_OPEN,
+        RequestStatus.EXECUTIVE_VOTING_CLOSED,
+      ],
+    },
+    {
+      key: 'completed',
+      label: 'مكتمل',
+      statuses: [
+        RequestStatus.EXECUTIVE_APPROVED,
+        RequestStatus.CUSTOMS_DECLARATION_ISSUED,
+        RequestStatus.FX_CONFIRMATION_PENDING,
+        RequestStatus.COMPLETED,
+      ],
+    },
+    {
+      key: 'rejected',
+      label: 'مرفوض',
+      statuses: [
+        RequestStatus.SUPPORT_REJECTED,
+        RequestStatus.EXECUTIVE_REJECTED,
+        RequestStatus.BANK_REJECTED,
+      ],
+    },
   ],
   // Spec order: pending, support_rejected, bank_returned, support_returned, at_cby, completed, rejected, all
   [UserRole.BANK_REVIEWER]: [
-    { key: 'pending', label: 'قيد المراجعة', statuses: [RequestStatus.SUBMITTED, RequestStatus.BANK_REVIEW] },
-    { key: 'support_rejected', label: 'رفض من المساندة', statuses: [RequestStatus.SUPPORT_REJECTED] },
-    { key: 'bank_returned', label: 'أُعيد للمدخل من البنك', statuses: [RequestStatus.BANK_RETURNED] },
-    { key: 'support_returned', label: 'أُعيد للمدخل من المساندة', statuses: [RequestStatus.SUPPORT_RETURNED] },
-    { key: 'at_cby', label: 'لدى البنك المركزي', statuses: [RequestStatus.BANK_APPROVED, RequestStatus.SUPPORT_REVIEW_PENDING, RequestStatus.SUPPORT_REVIEW_IN_PROGRESS, RequestStatus.SUPPORT_APPROVED, RequestStatus.WAITING_FOR_SWIFT, RequestStatus.SWIFT_UPLOADED, RequestStatus.WAITING_FOR_VOTING_OPEN, RequestStatus.EXECUTIVE_VOTING_OPEN, RequestStatus.EXECUTIVE_VOTING_CLOSED] },
-    { key: 'completed', label: 'مكتمل', statuses: [RequestStatus.EXECUTIVE_APPROVED, RequestStatus.CUSTOMS_DECLARATION_ISSUED, RequestStatus.FX_CONFIRMATION_PENDING, RequestStatus.COMPLETED] },
-    { key: 'rejected', label: 'مرفوض', statuses: [RequestStatus.BANK_REJECTED, RequestStatus.EXECUTIVE_REJECTED] },
+    {
+      key: 'pending',
+      label: 'قيد المراجعة',
+      statuses: [RequestStatus.SUBMITTED, RequestStatus.BANK_REVIEW],
+    },
+    {
+      key: 'support_rejected',
+      label: 'رفض من المساندة',
+      statuses: [RequestStatus.SUPPORT_REJECTED],
+    },
+    {
+      key: 'bank_returned',
+      label: 'أُعيد للمدخل من البنك',
+      statuses: [RequestStatus.BANK_RETURNED],
+    },
+    {
+      key: 'support_returned',
+      label: 'أُعيد للمدخل من المساندة',
+      statuses: [RequestStatus.SUPPORT_RETURNED],
+    },
+    {
+      key: 'at_cby',
+      label: 'لدى البنك المركزي',
+      statuses: [
+        RequestStatus.BANK_APPROVED,
+        RequestStatus.SUPPORT_REVIEW_PENDING,
+        RequestStatus.SUPPORT_REVIEW_IN_PROGRESS,
+        RequestStatus.SUPPORT_APPROVED,
+        RequestStatus.WAITING_FOR_SWIFT,
+        RequestStatus.SWIFT_UPLOADED,
+        RequestStatus.WAITING_FOR_VOTING_OPEN,
+        RequestStatus.EXECUTIVE_VOTING_OPEN,
+        RequestStatus.EXECUTIVE_VOTING_CLOSED,
+      ],
+    },
+    {
+      key: 'completed',
+      label: 'مكتمل',
+      statuses: [
+        RequestStatus.EXECUTIVE_APPROVED,
+        RequestStatus.CUSTOMS_DECLARATION_ISSUED,
+        RequestStatus.FX_CONFIRMATION_PENDING,
+        RequestStatus.COMPLETED,
+      ],
+    },
+    {
+      key: 'rejected',
+      label: 'مرفوض',
+      statuses: [RequestStatus.BANK_REJECTED, RequestStatus.EXECUTIVE_REJECTED],
+    },
   ],
   // Spec order: pending (includes DRAFT_REJECTED_INTERNAL) / at_cby / swift_fx / completed / rejected / all
   [UserRole.BANK_ADMIN]: [
-    { key: 'pending', label: 'معلّق', statuses: [RequestStatus.DRAFT_REJECTED_INTERNAL, RequestStatus.SUBMITTED, RequestStatus.BANK_REVIEW, RequestStatus.BANK_RETURNED, RequestStatus.SUPPORT_RETURNED] },
-    { key: 'at_cby', label: 'لدى البنك المركزي', statuses: [RequestStatus.BANK_APPROVED, RequestStatus.SUPPORT_REVIEW_PENDING, RequestStatus.SUPPORT_REVIEW_IN_PROGRESS, RequestStatus.SUPPORT_APPROVED, RequestStatus.WAITING_FOR_SWIFT, RequestStatus.SWIFT_UPLOADED, RequestStatus.WAITING_FOR_VOTING_OPEN] },
-    { key: 'swift_fx', label: 'SWIFT / تأكيد المصارفة', statuses: [RequestStatus.EXECUTIVE_VOTING_OPEN, RequestStatus.EXECUTIVE_VOTING_CLOSED, RequestStatus.EXECUTIVE_APPROVED] },
-    { key: 'completed', label: 'مكتمل', statuses: [RequestStatus.CUSTOMS_DECLARATION_ISSUED, RequestStatus.FX_CONFIRMATION_PENDING, RequestStatus.COMPLETED] },
-    { key: 'rejected', label: 'مرفوض', statuses: [RequestStatus.SUPPORT_REJECTED, RequestStatus.EXECUTIVE_REJECTED, RequestStatus.BANK_REJECTED] },
+    {
+      key: 'pending',
+      label: 'معلّق',
+      statuses: [
+        RequestStatus.DRAFT_REJECTED_INTERNAL,
+        RequestStatus.SUBMITTED,
+        RequestStatus.BANK_REVIEW,
+        RequestStatus.BANK_RETURNED,
+        RequestStatus.SUPPORT_RETURNED,
+      ],
+    },
+    {
+      key: 'at_cby',
+      label: 'لدى البنك المركزي',
+      statuses: [
+        RequestStatus.BANK_APPROVED,
+        RequestStatus.SUPPORT_REVIEW_PENDING,
+        RequestStatus.SUPPORT_REVIEW_IN_PROGRESS,
+        RequestStatus.SUPPORT_APPROVED,
+        RequestStatus.WAITING_FOR_SWIFT,
+        RequestStatus.SWIFT_UPLOADED,
+        RequestStatus.WAITING_FOR_VOTING_OPEN,
+      ],
+    },
+    {
+      key: 'swift_fx',
+      label: 'SWIFT / تأكيد المصارفة',
+      statuses: [
+        RequestStatus.EXECUTIVE_VOTING_OPEN,
+        RequestStatus.EXECUTIVE_VOTING_CLOSED,
+        RequestStatus.EXECUTIVE_APPROVED,
+      ],
+    },
+    {
+      key: 'completed',
+      label: 'مكتمل',
+      statuses: [
+        RequestStatus.CUSTOMS_DECLARATION_ISSUED,
+        RequestStatus.FX_CONFIRMATION_PENDING,
+        RequestStatus.COMPLETED,
+      ],
+    },
+    {
+      key: 'rejected',
+      label: 'مرفوض',
+      statuses: [
+        RequestStatus.SUPPORT_REJECTED,
+        RequestStatus.EXECUTIVE_REJECTED,
+        RequestStatus.BANK_REJECTED,
+      ],
+    },
   ],
   [UserRole.SWIFT_OFFICER]: [
-    { key: 'pending_swift', label: 'انتظار رفع SWIFT', statuses: [RequestStatus.EXECUTIVE_APPROVED, RequestStatus.WAITING_FOR_SWIFT] },
-    { key: 'swift_done', label: 'تم رفع السويفت', statuses: [RequestStatus.SWIFT_UPLOADED, RequestStatus.WAITING_FOR_VOTING_OPEN] },
-    { key: 'completed', label: 'مكتمل', statuses: [RequestStatus.CUSTOMS_DECLARATION_ISSUED, RequestStatus.FX_CONFIRMATION_PENDING, RequestStatus.COMPLETED] },
-    { key: 'rejected', label: 'رُفض قبل السويفت', statuses: [RequestStatus.EXECUTIVE_REJECTED, RequestStatus.SUPPORT_REJECTED, RequestStatus.BANK_REJECTED] },
+    {
+      key: 'pending_swift',
+      label: 'انتظار رفع SWIFT',
+      statuses: [RequestStatus.EXECUTIVE_APPROVED, RequestStatus.WAITING_FOR_SWIFT],
+    },
+    {
+      key: 'swift_done',
+      label: 'تم رفع السويفت',
+      statuses: [RequestStatus.SWIFT_UPLOADED, RequestStatus.WAITING_FOR_VOTING_OPEN],
+    },
+    {
+      key: 'completed',
+      label: 'مكتمل',
+      statuses: [
+        RequestStatus.CUSTOMS_DECLARATION_ISSUED,
+        RequestStatus.FX_CONFIRMATION_PENDING,
+        RequestStatus.COMPLETED,
+      ],
+    },
+    {
+      key: 'rejected',
+      label: 'رُفض قبل السويفت',
+      statuses: [
+        RequestStatus.EXECUTIVE_REJECTED,
+        RequestStatus.SUPPORT_REJECTED,
+        RequestStatus.BANK_REJECTED,
+      ],
+    },
   ],
   // Spec order: waiting (unclaimed) first, my_claims, in_progress, approved, rejected, all
   [UserRole.SUPPORT_COMMITTEE]: [
@@ -482,18 +635,19 @@ export const ROLE_BUCKETS: Partial<Record<UserRole, StageBucket[]>> = {
       label: 'أعمل عليها',
       statuses: [RequestStatus.SUPPORT_REVIEW_IN_PROGRESS],
       matches: (request, currentUserId) =>
-        request.status === RequestStatus.SUPPORT_REVIEW_IN_PROGRESS
-        && (request.is_claimed_by_me === true || (currentUserId != null && request.claimed_by?.id === currentUserId)),
+        request.status === RequestStatus.SUPPORT_REVIEW_IN_PROGRESS &&
+        (request.is_claimed_by_me === true ||
+          (currentUserId != null && request.claimed_by?.id === currentUserId)),
     },
     {
       key: 'in_progress',
       label: 'محجوزة لأعضاء آخرين',
       statuses: [RequestStatus.SUPPORT_REVIEW_IN_PROGRESS],
       matches: (request, currentUserId) =>
-        request.status === RequestStatus.SUPPORT_REVIEW_IN_PROGRESS
-        && !!request.claimed_by
-        && request.is_claimed_by_me !== true
-        && request.claimed_by.id !== currentUserId,
+        request.status === RequestStatus.SUPPORT_REVIEW_IN_PROGRESS &&
+        !!request.claimed_by &&
+        request.is_claimed_by_me !== true &&
+        request.claimed_by.id !== currentUserId,
     },
     { key: 'approved', label: 'اعتُمدت', statuses: [RequestStatus.SUPPORT_APPROVED] },
     { key: 'rejected', label: 'مرفوض', statuses: [RequestStatus.SUPPORT_REJECTED] },
@@ -504,47 +658,145 @@ export const ROLE_BUCKETS: Partial<Record<UserRole, StageBucket[]>> = {
       key: 'pending_my_vote',
       label: 'يحتاج صوتي',
       statuses: [RequestStatus.EXECUTIVE_VOTING_OPEN],
-      matches: request => request.status === RequestStatus.EXECUTIVE_VOTING_OPEN && !request.my_vote,
+      matches: (request) =>
+        request.status === RequestStatus.EXECUTIVE_VOTING_OPEN && !request.my_vote,
     },
     {
       key: 'voted_by_me',
       label: 'صوّتُّ عليها',
-      statuses: [RequestStatus.EXECUTIVE_VOTING_OPEN, RequestStatus.EXECUTIVE_VOTING_CLOSED, RequestStatus.EXECUTIVE_APPROVED, RequestStatus.EXECUTIVE_REJECTED],
-      matches: request => !!request.my_vote || [RequestStatus.EXECUTIVE_APPROVED, RequestStatus.EXECUTIVE_REJECTED].includes(request.status),
+      statuses: [
+        RequestStatus.EXECUTIVE_VOTING_OPEN,
+        RequestStatus.EXECUTIVE_VOTING_CLOSED,
+        RequestStatus.EXECUTIVE_APPROVED,
+        RequestStatus.EXECUTIVE_REJECTED,
+      ],
+      matches: (request) =>
+        !!request.my_vote ||
+        [RequestStatus.EXECUTIVE_APPROVED, RequestStatus.EXECUTIVE_REJECTED].includes(
+          request.status,
+        ),
     },
-    { key: 'pending_open', label: 'انتظار فتح التصويت', statuses: [RequestStatus.SUPPORT_APPROVED, RequestStatus.WAITING_FOR_VOTING_OPEN] },
+    {
+      key: 'pending_open',
+      label: 'انتظار فتح التصويت',
+      statuses: [RequestStatus.SUPPORT_APPROVED, RequestStatus.WAITING_FOR_VOTING_OPEN],
+    },
     { key: 'voting_open', label: 'التصويت مفتوح', statuses: [RequestStatus.EXECUTIVE_VOTING_OPEN] },
-    { key: 'voting_closed', label: 'التصويت مغلق', statuses: [RequestStatus.EXECUTIVE_VOTING_CLOSED] },
+    {
+      key: 'voting_closed',
+      label: 'التصويت مغلق',
+      statuses: [RequestStatus.EXECUTIVE_VOTING_CLOSED],
+    },
     { key: 'approved', label: 'معتمد', statuses: [RequestStatus.EXECUTIVE_APPROVED] },
     { key: 'rejected', label: 'مرفوض', statuses: [RequestStatus.EXECUTIVE_REJECTED] },
-    { key: 'post_approval', label: 'ما بعد الاعتماد', statuses: [RequestStatus.WAITING_FOR_SWIFT, RequestStatus.SWIFT_UPLOADED, RequestStatus.CUSTOMS_DECLARATION_ISSUED, RequestStatus.FX_CONFIRMATION_PENDING, RequestStatus.COMPLETED] },
+    {
+      key: 'post_approval',
+      label: 'ما بعد الاعتماد',
+      statuses: [
+        RequestStatus.WAITING_FOR_SWIFT,
+        RequestStatus.SWIFT_UPLOADED,
+        RequestStatus.CUSTOMS_DECLARATION_ISSUED,
+        RequestStatus.FX_CONFIRMATION_PENDING,
+        RequestStatus.COMPLETED,
+      ],
+    },
   ],
   [UserRole.COMMITTEE_DIRECTOR]: [
     {
       key: 'ready_to_close',
       label: 'جاهزة للإغلاق',
       statuses: [RequestStatus.EXECUTIVE_VOTING_OPEN],
-      matches: (request: any) => request.status === RequestStatus.EXECUTIVE_VOTING_OPEN && request.ready_to_close === true,
+      matches: (request: any) =>
+        request.status === RequestStatus.EXECUTIVE_VOTING_OPEN && request.ready_to_close === true,
     },
-    { key: 'ready_to_finalize', label: 'جاهزة للإصدار النهائي', statuses: [RequestStatus.EXECUTIVE_VOTING_CLOSED] },
+    {
+      key: 'ready_to_finalize',
+      label: 'جاهزة للإصدار النهائي',
+      statuses: [RequestStatus.EXECUTIVE_VOTING_CLOSED],
+    },
     {
       key: 'tie_break',
       label: 'تعادل يحتاج إلى حسم',
       statuses: [RequestStatus.EXECUTIVE_VOTING_OPEN],
-      matches: (request: any) => request.status === RequestStatus.EXECUTIVE_VOTING_OPEN && request.is_tie === true,
+      matches: (request: any) =>
+        request.status === RequestStatus.EXECUTIVE_VOTING_OPEN && request.is_tie === true,
     },
-    { key: 'fx_pending', label: 'بانتظار تأكيد المصارفة', statuses: [RequestStatus.EXECUTIVE_APPROVED, RequestStatus.FX_CONFIRMATION_PENDING] },
+    {
+      key: 'fx_pending',
+      label: 'بانتظار تأكيد المصارفة',
+      statuses: [RequestStatus.EXECUTIVE_APPROVED, RequestStatus.FX_CONFIRMATION_PENDING],
+    },
     { key: 'active_voting', label: 'تصويت نشط', statuses: [RequestStatus.EXECUTIVE_VOTING_OPEN] },
-    { key: 'finalized', label: 'منجز', statuses: [RequestStatus.EXECUTIVE_APPROVED, RequestStatus.EXECUTIVE_REJECTED, RequestStatus.CUSTOMS_DECLARATION_ISSUED, RequestStatus.COMPLETED] },
+    {
+      key: 'finalized',
+      label: 'منجز',
+      statuses: [
+        RequestStatus.EXECUTIVE_APPROVED,
+        RequestStatus.EXECUTIVE_REJECTED,
+        RequestStatus.CUSTOMS_DECLARATION_ISSUED,
+        RequestStatus.COMPLETED,
+      ],
+    },
   ],
   // Operational tabs (not internal workflow stages) — per docs/user-view/cby-admin.md#Requests List
   [UserRole.CBY_ADMIN]: [
-    { key: 'active', label: 'نشط', statuses: [RequestStatus.SUBMITTED, RequestStatus.BANK_REVIEW, RequestStatus.BANK_RETURNED, RequestStatus.BANK_APPROVED, RequestStatus.SUPPORT_REVIEW_PENDING, RequestStatus.SUPPORT_REVIEW_IN_PROGRESS, RequestStatus.SUPPORT_APPROVED, RequestStatus.SUPPORT_RETURNED, RequestStatus.WAITING_FOR_SWIFT, RequestStatus.SWIFT_UPLOADED, RequestStatus.WAITING_FOR_VOTING_OPEN, RequestStatus.EXECUTIVE_VOTING_OPEN, RequestStatus.EXECUTIVE_VOTING_CLOSED] },
-    { key: 'needs_attention', label: 'يحتاج متابعة', statuses: [RequestStatus.DRAFT_REJECTED_INTERNAL, RequestStatus.BANK_RETURNED, RequestStatus.SUPPORT_RETURNED, RequestStatus.SUPPORT_REJECTED] },
-    { key: 'executive_voting', label: 'تصويت تنفيذي', statuses: [RequestStatus.WAITING_FOR_VOTING_OPEN, RequestStatus.EXECUTIVE_VOTING_OPEN, RequestStatus.EXECUTIVE_VOTING_CLOSED] },
+    {
+      key: 'active',
+      label: 'نشط',
+      statuses: [
+        RequestStatus.SUBMITTED,
+        RequestStatus.BANK_REVIEW,
+        RequestStatus.BANK_RETURNED,
+        RequestStatus.BANK_APPROVED,
+        RequestStatus.SUPPORT_REVIEW_PENDING,
+        RequestStatus.SUPPORT_REVIEW_IN_PROGRESS,
+        RequestStatus.SUPPORT_APPROVED,
+        RequestStatus.SUPPORT_RETURNED,
+        RequestStatus.WAITING_FOR_SWIFT,
+        RequestStatus.SWIFT_UPLOADED,
+        RequestStatus.WAITING_FOR_VOTING_OPEN,
+        RequestStatus.EXECUTIVE_VOTING_OPEN,
+        RequestStatus.EXECUTIVE_VOTING_CLOSED,
+      ],
+    },
+    {
+      key: 'needs_attention',
+      label: 'يحتاج متابعة',
+      statuses: [
+        RequestStatus.DRAFT_REJECTED_INTERNAL,
+        RequestStatus.BANK_RETURNED,
+        RequestStatus.SUPPORT_RETURNED,
+        RequestStatus.SUPPORT_REJECTED,
+      ],
+    },
+    {
+      key: 'executive_voting',
+      label: 'تصويت تنفيذي',
+      statuses: [
+        RequestStatus.WAITING_FOR_VOTING_OPEN,
+        RequestStatus.EXECUTIVE_VOTING_OPEN,
+        RequestStatus.EXECUTIVE_VOTING_CLOSED,
+      ],
+    },
     { key: 'fx_pending', label: 'تأكيد المصارفة', statuses: [RequestStatus.EXECUTIVE_APPROVED] },
-    { key: 'rejected', label: 'مرفوض', statuses: [RequestStatus.BANK_REJECTED, RequestStatus.SUPPORT_REJECTED, RequestStatus.EXECUTIVE_REJECTED] },
-    { key: 'completed', label: 'مكتمل', statuses: [RequestStatus.CUSTOMS_DECLARATION_ISSUED, RequestStatus.FX_CONFIRMATION_PENDING, RequestStatus.COMPLETED] },
+    {
+      key: 'rejected',
+      label: 'مرفوض',
+      statuses: [
+        RequestStatus.BANK_REJECTED,
+        RequestStatus.SUPPORT_REJECTED,
+        RequestStatus.EXECUTIVE_REJECTED,
+      ],
+    },
+    {
+      key: 'completed',
+      label: 'مكتمل',
+      statuses: [
+        RequestStatus.CUSTOMS_DECLARATION_ISSUED,
+        RequestStatus.FX_CONFIRMATION_PENDING,
+        RequestStatus.COMPLETED,
+      ],
+    },
   ],
 }
 
@@ -555,20 +807,13 @@ export const ROLE_BUCKETS: Partial<Record<UserRole, StageBucket[]>> = {
  * by default because their queue is already organisation-scoped by the backend.
  */
 export const ROLE_ATTENTION_STATUSES: Partial<Record<UserRole, RequestStatus[]>> = {
-  [UserRole.BANK_REVIEWER]: [
-    RequestStatus.SUBMITTED,
-    RequestStatus.BANK_REVIEW,
-  ],
-  [UserRole.SWIFT_OFFICER]: [
-    RequestStatus.WAITING_FOR_SWIFT,
-  ],
+  [UserRole.BANK_REVIEWER]: [RequestStatus.SUBMITTED, RequestStatus.BANK_REVIEW],
+  [UserRole.SWIFT_OFFICER]: [RequestStatus.WAITING_FOR_SWIFT],
   [UserRole.SUPPORT_COMMITTEE]: [
     RequestStatus.SUPPORT_REVIEW_PENDING,
     RequestStatus.SUPPORT_REVIEW_IN_PROGRESS,
   ],
-  [UserRole.EXECUTIVE_MEMBER]: [
-    RequestStatus.EXECUTIVE_VOTING_OPEN,
-  ],
+  [UserRole.EXECUTIVE_MEMBER]: [RequestStatus.EXECUTIVE_VOTING_OPEN],
   [UserRole.COMMITTEE_DIRECTOR]: [
     RequestStatus.EXECUTIVE_VOTING_OPEN,
     RequestStatus.EXECUTIVE_VOTING_CLOSED,
@@ -589,7 +834,22 @@ export const CBY_BANK_FILTER_ROLES: UserRole[] = [
 export const CURRENCY_OPTIONS = ['USD', 'EUR', 'SAR', 'AED', 'CNY'] as const
 
 /** Routes that require authentication (all except login) */
-export const PROTECTED_ROUTES = ['/dashboard', '/requests', '/voting', '/customs', '/audit', '/reports', '/notifications', '/admin', '/bank', '/settings', '/settings/system', '/settings/bank', '/merchants', '/staff']
+export const PROTECTED_ROUTES = [
+  '/dashboard',
+  '/requests',
+  '/voting',
+  '/customs',
+  '/audit',
+  '/reports',
+  '/notifications',
+  '/admin',
+  '/bank',
+  '/settings',
+  '/settings/system',
+  '/settings/bank',
+  '/merchants',
+  '/staff',
+]
 
 /** Route → allowed roles mapping for role middleware */
 export const ROUTE_ROLE_MAP: Record<string, UserRole[]> = {

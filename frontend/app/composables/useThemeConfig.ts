@@ -14,9 +14,7 @@
 export const useThemeConfig = () => {
   const getCSSVariable = (varName: string): string => {
     if (typeof window === 'undefined') return ''
-    return getComputedStyle(document.documentElement)
-      .getPropertyValue(`--${varName}`)
-      .trim()
+    return getComputedStyle(document.documentElement).getPropertyValue(`--${varName}`).trim()
   }
 
   const colors = {

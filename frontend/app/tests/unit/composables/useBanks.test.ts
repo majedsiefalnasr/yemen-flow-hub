@@ -30,7 +30,10 @@ describe('useBanks', () => {
       mockGet.mockResolvedValueOnce({
         success: true,
         message: 'OK',
-        data: { data: [BANK_FIXTURE], meta: { current_page: 1, last_page: 1, per_page: 200, total: 1 } },
+        data: {
+          data: [BANK_FIXTURE],
+          meta: { current_page: 1, last_page: 1, per_page: 200, total: 1 },
+        },
       })
       const { fetchBanks } = useBanks()
       const result = await fetchBanks()
@@ -49,7 +52,12 @@ describe('useBanks', () => {
     it('calls POST /api/banks with the payload and returns the created bank', async () => {
       mockPost.mockResolvedValueOnce({ success: true, message: 'Created', data: BANK_FIXTURE })
       const { createBank } = useBanks()
-      const payload = { name_ar: 'البنك التجاري اليمني', name_en: 'Yemen Commercial Bank', code: 'YCB', is_active: true }
+      const payload = {
+        name_ar: 'البنك التجاري اليمني',
+        name_en: 'Yemen Commercial Bank',
+        code: 'YCB',
+        is_active: true,
+      }
       const result = await createBank(payload)
       expect(mockPost).toHaveBeenCalledWith('/api/banks', payload)
       expect(result).toEqual(BANK_FIXTURE)
@@ -61,7 +69,12 @@ describe('useBanks', () => {
       const updated = { ...BANK_FIXTURE, name_ar: 'اسم محدث' }
       mockPut.mockResolvedValueOnce({ success: true, message: 'Updated', data: updated })
       const { updateBank } = useBanks()
-      const payload = { name_ar: 'اسم محدث', name_en: 'Yemen Commercial Bank', code: 'YCB', is_active: true }
+      const payload = {
+        name_ar: 'اسم محدث',
+        name_en: 'Yemen Commercial Bank',
+        code: 'YCB',
+        is_active: true,
+      }
       const result = await updateBank(1, payload)
       expect(mockPut).toHaveBeenCalledWith('/api/banks/1', payload)
       expect(result).toEqual(updated)

@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest'
-import { step1Schema, step2Schema, step3Schema, CUSTOMS_BY_PORT } from '../../../schemas/wizard.schema'
+import {
+  step1Schema,
+  step2Schema,
+  step3Schema,
+  CUSTOMS_BY_PORT,
+} from '../../../schemas/wizard.schema'
 
 // ── Step 1 schema ─────────────────────────────────────────────────────────────
 
@@ -103,12 +108,14 @@ describe('step2Schema — valid', () => {
   })
 
   it('accepts optional fields as empty string', () => {
-    expect(step2Schema.safeParse({
-      ...VALID_STEP2,
-      shipping_port: '',
-      customs_office: '',
-      bl_number: '',
-    }).success).toBe(true)
+    expect(
+      step2Schema.safeParse({
+        ...VALID_STEP2,
+        shipping_port: '',
+        customs_office: '',
+        bl_number: '',
+      }).success,
+    ).toBe(true)
   })
 })
 

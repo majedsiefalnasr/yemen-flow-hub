@@ -5,12 +5,16 @@
  */
 import { describe, it, expect } from 'vitest'
 import { RequestStatus, UserRole } from '../../../../types/enums'
-import { ROLE_BUCKETS, DATA_ENTRY_STATUS_LABELS, CBY_BANK_FILTER_ROLES } from '../../../../constants/workflow'
+import {
+  ROLE_BUCKETS,
+  DATA_ENTRY_STATUS_LABELS,
+  CBY_BANK_FILTER_ROLES,
+} from '../../../../constants/workflow'
 
 const DE_BUCKETS = ROLE_BUCKETS[UserRole.DATA_ENTRY]!
 
 function bucketByKey(key: string) {
-  return DE_BUCKETS.find(b => b.key === key)
+  return DE_BUCKETS.find((b) => b.key === key)
 }
 
 // ── Bucket existence ──────────────────────────────────────────────────────────
@@ -236,19 +240,19 @@ describe('DATA_ENTRY ROLE_BUCKETS — no cross-bucket status overlap', () => {
 
 describe('DATA_ENTRY ROLE_BUCKETS — no CBY internal bucket keys', () => {
   it('does not expose support_stage as a bucket key', () => {
-    expect(DE_BUCKETS.map(b => b.key)).not.toContain('support_stage')
+    expect(DE_BUCKETS.map((b) => b.key)).not.toContain('support_stage')
   })
 
   it('does not expose voting_stage as a bucket key', () => {
-    expect(DE_BUCKETS.map(b => b.key)).not.toContain('voting_stage')
+    expect(DE_BUCKETS.map((b) => b.key)).not.toContain('voting_stage')
   })
 
   it('does not expose swift_stage as a bucket key', () => {
-    expect(DE_BUCKETS.map(b => b.key)).not.toContain('swift_stage')
+    expect(DE_BUCKETS.map((b) => b.key)).not.toContain('swift_stage')
   })
 
   it('does not expose fx_pending as a bucket key (CBY Director surface)', () => {
-    expect(DE_BUCKETS.map(b => b.key)).not.toContain('fx_pending')
+    expect(DE_BUCKETS.map((b) => b.key)).not.toContain('fx_pending')
   })
 })
 
@@ -268,7 +272,9 @@ describe('DATA_ENTRY_STATUS_LABELS — CBY internals hidden', () => {
   })
 
   it('SUPPORT_REVIEW_IN_PROGRESS maps to قيد معالجة CBY (hidden CBY internal)', () => {
-    expect(DATA_ENTRY_STATUS_LABELS[RequestStatus.SUPPORT_REVIEW_IN_PROGRESS]).toBe('قيد معالجة CBY')
+    expect(DATA_ENTRY_STATUS_LABELS[RequestStatus.SUPPORT_REVIEW_IN_PROGRESS]).toBe(
+      'قيد معالجة CBY',
+    )
   })
 
   it('EXECUTIVE_VOTING_OPEN maps to قيد معالجة CBY (voting hidden from DE)', () => {

@@ -19,42 +19,38 @@ defineProps<{
   <div class="mb-6 pt-2">
     <nav
       v-if="breadcrumbs?.length"
-      class="mb-3 flex min-w-0 items-center gap-1 text-xs text-muted-foreground"
+      class="text-muted-foreground mb-3 flex min-w-0 items-center gap-1 text-xs"
       aria-label="مسار التنقل"
     >
-      <template
-        v-for="(breadcrumb, index) in breadcrumbs"
-        :key="`${breadcrumb.label}-${index}`"
-      >
+      <template v-for="(breadcrumb, index) in breadcrumbs" :key="`${breadcrumb.label}-${index}`">
         <ChevronLeft v-if="index > 0" class="h-3 w-3 shrink-0 opacity-50" aria-hidden="true" />
         <NuxtLink
           v-if="breadcrumb.to"
           :to="breadcrumb.to"
-          class="truncate transition-colors hover:text-foreground"
+          class="hover:text-foreground truncate transition-colors"
         >
           {{ breadcrumb.label }}
         </NuxtLink>
-        <span v-else class="truncate font-medium text-foreground">{{ breadcrumb.label }}</span>
+        <span v-else class="text-foreground truncate font-medium">{{ breadcrumb.label }}</span>
       </template>
     </nav>
 
-    <div class="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center sm:gap-4">
+    <div
+      class="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center sm:gap-4"
+    >
       <div class="min-w-0 flex-1">
         <div class="flex items-center gap-2">
           <h1 class="text-2xl font-bold tracking-tight">
             {{ title }}
           </h1>
-          <span v-if="statusSummary" class="text-sm font-medium text-muted-foreground">
+          <span v-if="statusSummary" class="text-muted-foreground text-sm font-medium">
             ({{ statusSummary }})
           </span>
         </div>
-        <p
-          v-if="subtitle"
-          class="mt-1 text-sm text-muted-foreground"
-        >
+        <p v-if="subtitle" class="text-muted-foreground mt-1 text-sm">
           {{ subtitle }}
         </p>
-        <p v-if="lastUpdated" class="mt-1 text-xs text-muted-foreground/70">
+        <p v-if="lastUpdated" class="text-muted-foreground/70 mt-1 text-xs">
           آخر تحديث: {{ lastUpdated }}
         </p>
       </div>

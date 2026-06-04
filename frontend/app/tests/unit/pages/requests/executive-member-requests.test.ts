@@ -8,7 +8,7 @@ import { ROLE_BUCKETS, CBY_BANK_FILTER_ROLES } from '../../../../constants/workf
 const EM_BUCKETS = ROLE_BUCKETS[UserRole.EXECUTIVE_MEMBER]!
 
 function bucketByKey(key: string) {
-  return EM_BUCKETS.find(b => b.key === key)
+  return EM_BUCKETS.find((b) => b.key === key)
 }
 
 describe('EXECUTIVE_MEMBER ROLE_BUCKETS — bucket existence', () => {
@@ -16,27 +16,57 @@ describe('EXECUTIVE_MEMBER ROLE_BUCKETS — bucket existence', () => {
     expect(EM_BUCKETS).toHaveLength(8)
   })
 
-  it('has pending_my_vote bucket', () => { expect(bucketByKey('pending_my_vote')).toBeDefined() })
-  it('has voted_by_me bucket', () => { expect(bucketByKey('voted_by_me')).toBeDefined() })
-  it('has pending_open bucket', () => { expect(bucketByKey('pending_open')).toBeDefined() })
-  it('has voting_open bucket', () => { expect(bucketByKey('voting_open')).toBeDefined() })
-  it('has voting_closed bucket', () => { expect(bucketByKey('voting_closed')).toBeDefined() })
-  it('has approved bucket', () => { expect(bucketByKey('approved')).toBeDefined() })
-  it('has rejected bucket', () => { expect(bucketByKey('rejected')).toBeDefined() })
-  it('has post_approval bucket', () => { expect(bucketByKey('post_approval')).toBeDefined() })
+  it('has pending_my_vote bucket', () => {
+    expect(bucketByKey('pending_my_vote')).toBeDefined()
+  })
+  it('has voted_by_me bucket', () => {
+    expect(bucketByKey('voted_by_me')).toBeDefined()
+  })
+  it('has pending_open bucket', () => {
+    expect(bucketByKey('pending_open')).toBeDefined()
+  })
+  it('has voting_open bucket', () => {
+    expect(bucketByKey('voting_open')).toBeDefined()
+  })
+  it('has voting_closed bucket', () => {
+    expect(bucketByKey('voting_closed')).toBeDefined()
+  })
+  it('has approved bucket', () => {
+    expect(bucketByKey('approved')).toBeDefined()
+  })
+  it('has rejected bucket', () => {
+    expect(bucketByKey('rejected')).toBeDefined()
+  })
+  it('has post_approval bucket', () => {
+    expect(bucketByKey('post_approval')).toBeDefined()
+  })
 })
 
 describe('EXECUTIVE_MEMBER ROLE_BUCKETS — tab ordering (pending_my_vote first)', () => {
   it('pending_my_vote is first tab — most actionable', () => {
     expect(EM_BUCKETS[0]!.key).toBe('pending_my_vote')
   })
-  it('voted_by_me is second tab', () => { expect(EM_BUCKETS[1]!.key).toBe('voted_by_me') })
-  it('pending_open is third tab', () => { expect(EM_BUCKETS[2]!.key).toBe('pending_open') })
-  it('voting_open is fourth tab', () => { expect(EM_BUCKETS[3]!.key).toBe('voting_open') })
-  it('voting_closed is fifth tab', () => { expect(EM_BUCKETS[4]!.key).toBe('voting_closed') })
-  it('approved is sixth tab', () => { expect(EM_BUCKETS[5]!.key).toBe('approved') })
-  it('rejected is seventh tab', () => { expect(EM_BUCKETS[6]!.key).toBe('rejected') })
-  it('post_approval is eighth tab', () => { expect(EM_BUCKETS[7]!.key).toBe('post_approval') })
+  it('voted_by_me is second tab', () => {
+    expect(EM_BUCKETS[1]!.key).toBe('voted_by_me')
+  })
+  it('pending_open is third tab', () => {
+    expect(EM_BUCKETS[2]!.key).toBe('pending_open')
+  })
+  it('voting_open is fourth tab', () => {
+    expect(EM_BUCKETS[3]!.key).toBe('voting_open')
+  })
+  it('voting_closed is fifth tab', () => {
+    expect(EM_BUCKETS[4]!.key).toBe('voting_closed')
+  })
+  it('approved is sixth tab', () => {
+    expect(EM_BUCKETS[5]!.key).toBe('approved')
+  })
+  it('rejected is seventh tab', () => {
+    expect(EM_BUCKETS[6]!.key).toBe('rejected')
+  })
+  it('post_approval is eighth tab', () => {
+    expect(EM_BUCKETS[7]!.key).toBe('post_approval')
+  })
 })
 
 describe('EXECUTIVE_MEMBER ROLE_BUCKETS — pending_my_vote bucket (custom matcher)', () => {

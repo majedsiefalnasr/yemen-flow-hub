@@ -50,7 +50,7 @@ describe('WorkflowProgress', () => {
     })
 
     const currentStep = wrapper.get('[aria-current="true"]')
-    const stageLabels = wrapper.findAll('h4').map(label => label.text())
+    const stageLabels = wrapper.findAll('h4').map((label) => label.text())
     expect(currentStep.text()).toContain('مرفوض')
     expect(currentStep.text()).toContain('توقف المسار بالرفض')
     expect(currentStep.get('button').classes()).toContain('bg-[var(--severity-red)]')

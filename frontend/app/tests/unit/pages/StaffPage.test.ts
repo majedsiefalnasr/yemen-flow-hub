@@ -88,7 +88,7 @@ describe('staff.vue', () => {
     ])
     const wrapper = mount(staffPage, { global: { stubs: { Teleport: true } } })
     await flushPromises()
-    const statValues = wrapper.findAll('.stat-value').map(el => el.text())
+    const statValues = wrapper.findAll('.stat-value').map((el) => el.text())
     expect(statValues).toContain('3')
     expect(statValues).toContain('2')
     expect(statValues).toContain('1')
@@ -152,10 +152,13 @@ describe('staff.vue', () => {
     await flushPromises()
 
     expect(getUserMock).toHaveBeenCalledWith(8)
-    expect(updateUserMock).toHaveBeenCalledWith(8, expect.objectContaining({
-      name: 'محدّث خارجياً',
-      is_active: false,
-    }))
+    expect(updateUserMock).toHaveBeenCalledWith(
+      8,
+      expect.objectContaining({
+        name: 'محدّث خارجياً',
+        is_active: false,
+      }),
+    )
     expect(wrapper.text()).toContain('غير نشط')
   })
 })

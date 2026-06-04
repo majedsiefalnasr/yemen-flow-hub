@@ -15,8 +15,14 @@ const DEMO_ROLE_LABELS: Record<string, string> = {
 }
 
 const CANONICAL_ROLES = [
-  'DATA_ENTRY', 'BANK_REVIEWER', 'BANK_ADMIN', 'SWIFT_OFFICER',
-  'SUPPORT_COMMITTEE', 'EXECUTIVE_MEMBER', 'COMMITTEE_DIRECTOR', 'CBY_ADMIN',
+  'DATA_ENTRY',
+  'BANK_REVIEWER',
+  'BANK_ADMIN',
+  'SWIFT_OFFICER',
+  'SUPPORT_COMMITTEE',
+  'EXECUTIVE_MEMBER',
+  'COMMITTEE_DIRECTOR',
+  'CBY_ADMIN',
 ]
 
 describe('RoleSwitcher — role map', () => {
@@ -25,7 +31,7 @@ describe('RoleSwitcher — role map', () => {
   })
 
   it('covers all canonical roles', () => {
-    CANONICAL_ROLES.forEach(role => {
+    CANONICAL_ROLES.forEach((role) => {
       expect(DEMO_ROLE_LABELS).toHaveProperty(role)
     })
   })
@@ -71,7 +77,7 @@ describe('RoleSwitcher — visibility logic', () => {
 
 describe('RoleSwitcher — switch logic', () => {
   it('resolves labels for each role', () => {
-    CANONICAL_ROLES.forEach(role => {
+    CANONICAL_ROLES.forEach((role) => {
       const label = DEMO_ROLE_LABELS[role]
       expect(label).toBeDefined()
       expect(label?.length ?? 0).toBeGreaterThan(0)

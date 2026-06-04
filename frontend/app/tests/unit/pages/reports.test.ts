@@ -20,7 +20,8 @@ interface WorkflowReportStub {
 function computeKpiFromWorkflow(wr: WorkflowReportStub) {
   const counts = wr.counts_by_status
   const total = Object.values(counts).reduce((s, v) => s + v, 0)
-  const approvalRate = total > 0 ? Math.round(((wr.throughput.completed + wr.throughput.approved) / total) * 100) : 0
+  const approvalRate =
+    total > 0 ? Math.round(((wr.throughput.completed + wr.throughput.approved) / total) * 100) : 0
   return {
     totalRequests: total,
     totalFinancingValue: wr.total_financing_value,

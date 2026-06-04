@@ -16,7 +16,13 @@ import DocumentChecklist from '../../../components/requests/DocumentChecklist.vu
 import PageHeader from '../../../components/layout/PageHeader.vue'
 import { Alert, AlertDescription, AlertTitle, AlertAction } from '../../../components/ui/alert'
 import { Button } from '../../../components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../../components/ui/card'
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from '../../../components/ui/card'
 import { Separator } from '../../../components/ui/separator'
 import { Skeleton } from '../../../components/ui/skeleton'
 import { ROUTE_ROLE_MAP } from '../../../constants/workflow'
@@ -90,7 +96,11 @@ const merchantName = ref('')
 
 const isReturnedCorrection = computed(() => {
   const s = request.value?.status
-  return s === RequestStatus.DRAFT_REJECTED_INTERNAL || s === RequestStatus.BANK_RETURNED || s === RequestStatus.SUPPORT_RETURNED
+  return (
+    s === RequestStatus.DRAFT_REJECTED_INTERNAL ||
+    s === RequestStatus.BANK_RETURNED ||
+    s === RequestStatus.SUPPORT_RETURNED
+  )
 })
 
 const submitLabel = computed(() => {
@@ -101,15 +111,24 @@ const submitLabel = computed(() => {
 
 const isEditable = computed(() => {
   const s = request.value?.status
-  return s === RequestStatus.DRAFT || s === RequestStatus.DRAFT_REJECTED_INTERNAL || s === RequestStatus.BANK_RETURNED || s === RequestStatus.SUPPORT_RETURNED
+  return (
+    s === RequestStatus.DRAFT ||
+    s === RequestStatus.DRAFT_REJECTED_INTERNAL ||
+    s === RequestStatus.BANK_RETURNED ||
+    s === RequestStatus.SUPPORT_RETURNED
+  )
 })
 
 const correctionVariant = computed(() => {
   switch (request.value?.status) {
-    case RequestStatus.BANK_RETURNED: return 'bank_returned' as const
-    case RequestStatus.SUPPORT_RETURNED: return 'support_returned' as const
-    case RequestStatus.DRAFT_REJECTED_INTERNAL: return 'draft_rejected' as const
-    default: return undefined
+    case RequestStatus.BANK_RETURNED:
+      return 'bank_returned' as const
+    case RequestStatus.SUPPORT_RETURNED:
+      return 'support_returned' as const
+    case RequestStatus.DRAFT_REJECTED_INTERNAL:
+      return 'draft_rejected' as const
+    default:
+      return undefined
   }
 })
 
@@ -139,20 +158,33 @@ function populateFormFromRequest(): void {
 }
 
 onMounted(async () => {
-  if (Number.isNaN(id)) { await router.replace('/requests'); return }
+  if (Number.isNaN(id)) {
+    await router.replace('/requests')
+    return
+  }
 
   await requestsStore.loadRequest(id)
 
-  if (requestsStore.error || !request.value) { await router.replace('/requests'); return }
-  if (!isEditable.value) { await router.replace(`/requests/${id}`); return }
+  if (requestsStore.error || !request.value) {
+    await router.replace('/requests')
+    return
+  }
+  if (!isEditable.value) {
+    await router.replace(`/requests/${id}`)
+    return
+  }
 
   populateFormFromRequest()
 
   if (isDataEntry.value) {
     try {
-      dataEntryMerchants.value = await fetchMerchants({ bank_id: auth.user?.bank_id ?? undefined, is_active: true })
+      dataEntryMerchants.value = await fetchMerchants({
+        bank_id: auth.user?.bank_id ?? undefined,
+        is_active: true,
+      })
+    } catch {
+      /* non-fatal */
     }
-    catch { /* non-fatal */ }
   }
 
   formDirty.value = true
@@ -179,7 +211,10 @@ function confirmLeave() {
 }
 
 function onBeforeUnload(e: BeforeUnloadEvent) {
-  if (formDirty.value && !submitted.value) { e.preventDefault(); e.returnValue = '' }
+  if (formDirty.value && !submitted.value) {
+    e.preventDefault()
+    e.returnValue = ''
+  }
 }
 onMounted(() => window.addEventListener('beforeunload', onBeforeUnload))
 onUnmounted(() => window.removeEventListener('beforeunload', onBeforeUnload))
@@ -215,31 +250,48 @@ async function handleSubmit() {
     if (isReturnedCorrection.value) await requestsStore.performAction(id, 'submit')
     submitted.value = true
     await router.push(`/requests/${id}`)
-  }
-  catch (err: unknown) {
+  } catch (err: unknown) {
     const res = (err as any)?.response
     const status = res?.status
     if (status === 403 || status === 409) {
       frozen.value = true
-      frozenReason.value = status === 409
-        ? 'تغيرت حالة الطلب أثناء التعديل. حدّث البيانات ثم راجعها مرة أخرى.'
-        : 'لا تملك صلاحية تعديل هذا الطلب في حالته الحالية.'
-    }
-    else if (status === 422) {
+      frozenReason.value =
+        status === 409
+          ? 'تغيرت حالة الطلب أثناء التعديل. حدّث البيانات ثم راجعها مرة أخرى.'
+          : 'لا تملك صلاحية تعديل هذا الطلب في حالته الحالية.'
+    } else if (status === 422) {
       const fieldErrors = res?._data?.errors as Record<string, string[]> | undefined
       if (fieldErrors) {
         // Route field errors back to the correct step
-        const s1Keys: (keyof WizardStep1Data)[] = ['goods_type', 'amount', 'currency', 'payment_terms', 'due_date', 'merchant_id', 'notes']
-        const s2Keys: (keyof WizardStep2Data)[] = ['supplier_name', 'invoice_number', 'origin_country', 'invoice_date', 'arrival_port', 'shipping_port', 'customs_office', 'bl_number']
+        const s1Keys: (keyof WizardStep1Data)[] = [
+          'goods_type',
+          'amount',
+          'currency',
+          'payment_terms',
+          'due_date',
+          'merchant_id',
+          'notes',
+        ]
+        const s2Keys: (keyof WizardStep2Data)[] = [
+          'supplier_name',
+          'invoice_number',
+          'origin_country',
+          'invoice_date',
+          'arrival_port',
+          'shipping_port',
+          'customs_office',
+          'bl_number',
+        ]
         for (const [field, msgs] of Object.entries(fieldErrors)) {
           const msg = msgs[0] ?? ''
-          if (s1Keys.includes(field as any)) step1Errors.value = { ...step1Errors.value, [field]: msg }
-          else if (s2Keys.includes(field as any)) step2Errors.value = { ...step2Errors.value, [field]: msg }
+          if (s1Keys.includes(field as any))
+            step1Errors.value = { ...step1Errors.value, [field]: msg }
+          else if (s2Keys.includes(field as any))
+            step2Errors.value = { ...step2Errors.value, [field]: msg }
         }
       }
       saveError.value = res?._data?.message ?? 'البيانات المدخلة غير صالحة.'
-    }
-    else {
+    } else {
       saveError.value = 'تعذّر تحديث الطلب. حاول مرة أخرى.'
     }
   }
@@ -252,8 +304,11 @@ function reload() {
 }
 
 async function handleUploadDocument(file: File) {
-  try { await requestsStore.uploadDocument(id, file) }
-  catch { /* uploadError surfaced via store */ }
+  try {
+    await requestsStore.uploadDocument(id, file)
+  } catch {
+    /* uploadError surfaced via store */
+  }
 }
 
 async function downloadDocument(docId: number, filename: string) {
@@ -275,12 +330,13 @@ async function downloadDocument(docId: number, filename: string) {
     anchor.click()
     anchor.remove()
     URL.revokeObjectURL(url)
-  }
-  catch {
-    downloadErrors.value = { ...downloadErrors.value, [docId]: 'تعذر تنزيل الملف الآن. أعد المحاولة بعد قليل.' }
-  }
-  finally {
-    downloadingIds.value = new Set([...downloadingIds.value].filter(x => x !== docId))
+  } catch {
+    downloadErrors.value = {
+      ...downloadErrors.value,
+      [docId]: 'تعذر تنزيل الملف الآن. أعد المحاولة بعد قليل.',
+    }
+  } finally {
+    downloadingIds.value = new Set([...downloadingIds.value].filter((x) => x !== docId))
   }
 }
 </script>
@@ -298,7 +354,7 @@ async function downloadDocument(docId: number, filename: string) {
 
     <!-- Loading -->
     <template v-if="requestsStore.loadingRequest">
-      <Card class="border-0 p-6 shadow space-y-4">
+      <Card class="space-y-4 border-0 p-6 shadow">
         <Skeleton class="h-6 w-48" />
         <Skeleton class="h-4 w-full" />
         <Skeleton class="h-4 w-3/4" />
@@ -311,7 +367,7 @@ async function downloadDocument(docId: number, filename: string) {
       <AlertDescription>{{ frozenReason }}</AlertDescription>
       <AlertAction>
         <Button variant="outline" size="sm" @click="reload">
-          <RefreshCw class="h-4 w-4 me-1.5" />
+          <RefreshCw class="me-1.5 h-4 w-4" />
           تحديث البيانات
         </Button>
       </AlertAction>
@@ -334,7 +390,7 @@ async function downloadDocument(docId: number, filename: string) {
       </Alert>
 
       <!-- Form using wizard step components -->
-      <Card class="border-0 shadow max-w-2xl" data-field-nav>
+      <Card class="max-w-2xl border-0 shadow" data-field-nav>
         <CardContent class="p-6">
           <!-- Step 1: basic info -->
           <WizardStep1
@@ -366,11 +422,11 @@ async function downloadDocument(docId: number, filename: string) {
               :disabled="requestsStore.saving || requestsStore.performingAction || frozen"
               @click="handleSubmit"
             >
-              <Save class="h-4 w-4 me-1.5" />
+              <Save class="me-1.5 h-4 w-4" />
               {{ submitLabel }}
             </Button>
             <Button variant="outline" @click="router.push(`/requests/${id}`)">
-              <ChevronLeft class="h-4 w-4 me-1" />
+              <ChevronLeft class="me-1 h-4 w-4" />
               إلغاء والعودة
             </Button>
           </div>
@@ -378,7 +434,7 @@ async function downloadDocument(docId: number, filename: string) {
       </Card>
 
       <!-- Documents section -->
-      <Card class="border-0 shadow mt-4">
+      <Card class="mt-4 border-0 shadow">
         <CardHeader class="pb-2">
           <CardTitle class="text-sm font-semibold">المستندات المرفوعة</CardTitle>
           <CardDescription class="text-xs">

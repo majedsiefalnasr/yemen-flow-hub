@@ -20,20 +20,25 @@ const isSubmitting = ref(false)
 const isDone = ref(false)
 const serverError = ref<string | null>(null)
 
-const schema = toTypedSchema(z.object({
-  email: z.string().min(1, 'البريد الإلكتروني مطلوب').email('صيغة البريد الإلكتروني غير صحيحة'),
-  otp: z.string().regex(/^\d{6}$/, 'أدخل رمز التحقق المكوّن من 6 أرقام'),
-  password: z.string()
-    .min(8, 'كلمة المرور يجب أن تكون 8 أحرف على الأقل')
-    .regex(/[A-Z]/, 'يجب أن تحتوي كلمة المرور على حرف كبير')
-    .regex(/[a-z]/, 'يجب أن تحتوي كلمة المرور على حرف صغير')
-    .regex(/\d/, 'يجب أن تحتوي كلمة المرور على رقم')
-    .regex(/[^A-Z0-9]/i, 'يجب أن تحتوي كلمة المرور على رمز خاص'),
-  password_confirmation: z.string().min(1, 'تأكيد كلمة المرور مطلوب'),
-}).refine(values => values.password === values.password_confirmation, {
-  path: ['password_confirmation'],
-  message: 'تأكيد كلمة المرور غير مطابق',
-}))
+const schema = toTypedSchema(
+  z
+    .object({
+      email: z.string().min(1, 'البريد الإلكتروني مطلوب').email('صيغة البريد الإلكتروني غير صحيحة'),
+      otp: z.string().regex(/^\d{6}$/, 'أدخل رمز التحقق المكوّن من 6 أرقام'),
+      password: z
+        .string()
+        .min(8, 'كلمة المرور يجب أن تكون 8 أحرف على الأقل')
+        .regex(/[A-Z]/, 'يجب أن تحتوي كلمة المرور على حرف كبير')
+        .regex(/[a-z]/, 'يجب أن تحتوي كلمة المرور على حرف صغير')
+        .regex(/\d/, 'يجب أن تحتوي كلمة المرور على رقم')
+        .regex(/[^A-Z0-9]/i, 'يجب أن تحتوي كلمة المرور على رمز خاص'),
+      password_confirmation: z.string().min(1, 'تأكيد كلمة المرور مطلوب'),
+    })
+    .refine((values) => values.password === values.password_confirmation, {
+      path: ['password_confirmation'],
+      message: 'تأكيد كلمة المرور غير مطابق',
+    }),
+)
 
 const { handleSubmit, defineField, errors, values } = useForm({
   validationSchema: schema,
@@ -52,7 +57,7 @@ const onSubmit = handleSubmit(async () => {
   serverError.value = null
   try {
     // Backend endpoint will be wired in a dedicated story.
-    await new Promise(resolve => setTimeout(resolve, 500))
+    await new Promise((resolve) => setTimeout(resolve, 500))
     isDone.value = true
   } catch {
     serverError.value = 'تعذر تحديث كلمة المرور الآن. تحقق من رمز التحقق ثم أعد المحاولة.'
@@ -63,7 +68,7 @@ const onSubmit = handleSubmit(async () => {
 </script>
 
 <template>
-  <main class="min-h-screen bg-background px-4 py-10" >
+  <main class="bg-background min-h-screen px-4 py-10">
     <div class="mx-auto w-full max-w-md">
       <Card>
         <CardHeader>
@@ -76,7 +81,9 @@ const onSubmit = handleSubmit(async () => {
           </Alert>
 
           <Alert v-if="isDone" class="mb-4">
-            <AlertDescription>تم تحديث كلمة المرور بنجاح. يمكنك تسجيل الدخول الآن.</AlertDescription>
+            <AlertDescription
+              >تم تحديث كلمة المرور بنجاح. يمكنك تسجيل الدخول الآن.</AlertDescription
+            >
           </Alert>
 
           <form class="space-y-4" novalidate @submit.prevent="onSubmit">
@@ -87,10 +94,9 @@ const onSubmit = handleSubmit(async () => {
                 v-model="email"
                 v-bind="emailAttrs"
                 type="email"
-                
                 :aria-invalid="errors.email ? 'true' : undefined"
               />
-              <p v-if="errors.email" class="text-xs text-destructive">{{ errors.email }}</p>
+              <p v-if="errors.email" class="text-destructive text-xs">{{ errors.email }}</p>
             </div>
 
             <div class="space-y-2">
@@ -101,11 +107,10 @@ const onSubmit = handleSubmit(async () => {
                 v-bind="otpAttrs"
                 inputmode="numeric"
                 maxlength="6"
-                
                 placeholder="123456"
                 :aria-invalid="errors.otp ? 'true' : undefined"
               />
-              <p v-if="errors.otp" class="text-xs text-destructive">{{ errors.otp }}</p>
+              <p v-if="errors.otp" class="text-destructive text-xs">{{ errors.otp }}</p>
             </div>
 
             <div class="space-y-2">
@@ -118,7 +123,7 @@ const onSubmit = handleSubmit(async () => {
                 :aria-invalid="errors.password ? 'true' : undefined"
               />
               <PasswordRequirements :password="values.password ?? ''" />
-              <p v-if="errors.password" class="text-xs text-destructive">{{ errors.password }}</p>
+              <p v-if="errors.password" class="text-destructive text-xs">{{ errors.password }}</p>
             </div>
 
             <div class="space-y-2">
@@ -130,7 +135,9 @@ const onSubmit = handleSubmit(async () => {
                 type="password"
                 :aria-invalid="errors.password_confirmation ? 'true' : undefined"
               />
-              <p v-if="errors.password_confirmation" class="text-xs text-destructive">{{ errors.password_confirmation }}</p>
+              <p v-if="errors.password_confirmation" class="text-destructive text-xs">
+                {{ errors.password_confirmation }}
+              </p>
             </div>
 
             <div class="flex flex-wrap items-center gap-2 pt-2">

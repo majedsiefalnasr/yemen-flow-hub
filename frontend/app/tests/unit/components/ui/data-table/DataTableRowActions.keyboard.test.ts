@@ -59,19 +59,19 @@ describe('DataTableRowActions dialog keyboard checks', () => {
       },
     })
 
-    const actionItem = wrapper.findAll('button').find(button => button.text().includes('حذف'))
+    const actionItem = wrapper.findAll('button').find((button) => button.text().includes('حذف'))
     expect(actionItem).toBeTruthy()
     await actionItem!.trigger('click')
 
-    const cancelButton = wrapper.findAll('button').find(button => button.text().includes('إلغاء'))
-    const confirmButton = wrapper.findAll('button').find(button => button.text().includes('تأكيد'))
+    const cancelButton = wrapper.findAll('button').find((button) => button.text().includes('إلغاء'))
+    const confirmButton = wrapper
+      .findAll('button')
+      .find((button) => button.text().includes('تأكيد'))
 
     expect(cancelButton).toBeTruthy()
     expect(confirmButton).toBeTruthy()
-
     ;(cancelButton!.element as HTMLElement).focus()
     expect(document.activeElement).toBe(cancelButton!.element)
-
     ;(confirmButton!.element as HTMLElement).focus()
     expect(document.activeElement).toBe(confirmButton!.element)
 

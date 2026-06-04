@@ -10,6 +10,7 @@ Yemen Flow Hub Nuxt 4 frontend application.
 ## Git Scope
 
 Frontend code lives in **two repos simultaneously**:
+
 - **Frontend team repo** (`git@github.com:ultimate-eg/yemen-flow-hub-frontend.git`) — frontend team's standalone repo
 - **Root monorepo** (`git@github.com:majedsiefalnasr/yemen-flow-hub.git`) — tracked under `frontend/`
 
@@ -31,6 +32,7 @@ All commits must stay signed. Never use `--no-gpg-sign`, `--no-sign`, or `-c com
 Never add or commit generated artifacts from `graphify-out/`, `_bmad-output/implementation-artifacts/`, or `_bmad-output/test-artifacts/`. Keep them local only.
 
 Examples:
+
 - `feat(voting): add session open/close director controls`
 - `fix(support-queue): show heartbeat claim indicator`
 - `style(rtl): fix table alignment in request details`
@@ -47,9 +49,11 @@ Examples:
 ## Architecture Rules
 
 ### Never in components
+
 Business logic stays in composables, stores, and services. Components are presentation-only.
 
 ### Project structure
+
 ```
 frontend/
 ├── components/
@@ -90,6 +94,7 @@ frontend/
 ```
 
 ### RTL-first
+
 - `dir="rtl"` on `<html>`
 - All layouts default right-to-left
 - Sidebar on the right side (280px expanded / 72px collapsed)
@@ -101,6 +106,7 @@ frontend/
 **All rules, recipes, and import paths are in `SHADCN.md`** (auto-loaded above via `@SHADCN.md`). Read it before writing any template code.
 
 Key rules in brief:
+
 - **No raw `<button>`** → `<Button>`
 - **No raw `<table>/<tr>/<td>`** → `<Table>/<TableRow>/<TableCell>` etc.
 - **No `animate-pulse` divs** → `<Skeleton>`
@@ -112,28 +118,35 @@ Key rules in brief:
 **Test compatibility rule:** Do NOT replace shadcn-vue components with raw HTML to make Vitest tests pass. shadcn-vue components are mandatory. If a Vitest test fails because it cannot introspect a shadcn-vue component (e.g. `<Dialog>` content is teleported, `<Select>` options are not raw `<option>` tags, `<Table>` rows use `FlexRender`), **skip or ignore that test** rather than downgrading the component to raw HTML. Component integrity takes precedence over test greenness.
 
 ### Role-aware UI
+
 Frontend permissions are for UX only (hiding actions). Backend is the source of truth. Never trust frontend permission checks for security.
 
 ### Status handling
+
 - Internal statuses: use the canonical enum from `AGENTS.md` exactly
 - Data Entry users receive **simplified statuses** only (see mapping in `../docs/01-workflow-and-business-rules.md`)
 - Never show CBY internal workflow stages to Data Entry users
 - Status → simplified label mapping must be centralized in a single composable/constant
 
 ### Support claim heartbeat
+
 When a Support Committee user is on the active review page:
+
 - Send `POST /api/workflow/{id}/claim-support-review/heartbeat` every **60 seconds**
 - Stop on page leave / component unmount
 - On claim loss (API 409), redirect user back to queue with notification
 
 ### Read-only states
+
 Locked workflow states must visually communicate lock:
+
 - Disabled action buttons
 - Lock icon + "Locked" badge
 - `#f5f5f7` field backgrounds with `#8e8e93` text
 - Read-only banner at top of request
 
 ### Voting concurrency UI
+
 After submitting a vote, optimistically update the UI. If server returns `VOTING_SESSION_CLOSED`, revert and show notification.
 
 ## Design Tokens (from DESIGN.md)
@@ -143,9 +156,9 @@ After submitting a vote, optimistically update the UI. If server returns `VOTING
 const colors = {
   background: '#ffffff',
   surface: '#ffffff',
-  primaryText: '#1c222b',       // on-surface
-  secondaryText: '#6c757d',     // on-surface-variant
-  border: '#cccccc',            // outline-variant
+  primaryText: '#1c222b', // on-surface
+  secondaryText: '#6c757d', // on-surface-variant
+  border: '#cccccc', // outline-variant
   primaryBlue: '#0066cc',
   successText: '#1b5e20',
   errorText: '#c62828',
@@ -187,6 +200,7 @@ Container max: `1600px`. Sidebar: `280px` expanded / `72px` collapsed. Grid: `8p
 ## Context7 Usage
 
 Before writing Nuxt/Vue/Tailwind implementation:
+
 ```bash
 npx ctx7@latest library "Nuxt" "<your question>"
 npx ctx7@latest docs <id> "<your question>"
@@ -197,6 +211,7 @@ Use for: Nuxt 4, Vue 4, Tailwind v4, shadcn-vue, Pinia, VeeValidate, Zod.
 ## SocratiCode Usage
 
 Before modifying any composable, store, or service:
+
 1. `codebase_search` — find related code semantically
 2. `codebase_flow` — trace how data flows
 3. `codebase_impact` — check what would break
@@ -208,6 +223,7 @@ For UI validation and browser interactions, use `playwright-cli`. Keep the `play
 ## Docs Reference
 
 Full rules in `../docs/` and `../AGENTS.md`. Key files:
+
 - `../docs/01-workflow-and-business-rules.md` — workflow stages and simplified status mapping
 - `../docs/04-frontend-guide.md` — frontend architecture
 - `../docs/06-api-reference.md` — API contracts (endpoints, response shapes)

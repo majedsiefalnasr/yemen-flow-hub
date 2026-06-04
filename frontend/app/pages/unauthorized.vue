@@ -17,7 +17,7 @@ const nextPath = computed(() => {
 </script>
 
 <template>
-  <main class="min-h-screen bg-background px-4" >
+  <main class="bg-background min-h-screen px-4">
     <ErrorState
       :code="401"
       title="تسجيل الدخول مطلوب"
@@ -26,7 +26,10 @@ const nextPath = computed(() => {
         {
           label: 'الانتقال إلى تسجيل الدخول',
           variant: 'default',
-          onClick: () => navigateTo(`/login${nextPath && nextPath !== '/dashboard' ? `?next=${encodeURIComponent(nextPath)}` : ''}`),
+          onClick: () =>
+            navigateTo(
+              `/login${nextPath && nextPath !== '/dashboard' ? `?next=${encodeURIComponent(nextPath)}` : ''}`,
+            ),
         },
       ]"
     />

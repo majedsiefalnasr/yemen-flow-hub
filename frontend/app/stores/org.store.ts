@@ -51,21 +51,23 @@ export const useOrgStore = defineStore('org', () => {
       brandLogoDataUrl.value = parsed.brandLogoDataUrl || DEFAULT_BRAND_LOGO_URL
       brandLogoName.value = parsed.brandLogoName || DEFAULT_BRAND_LOGO_NAME
       systemVersion.value = parsed.systemVersion || 'defaults-v1'
-    }
-    catch {}
+    } catch {}
   }
 
   function persistToCache() {
     if (typeof localStorage === 'undefined') return
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({
-      platformName: platformName.value,
-      authority: authority.value,
-      language: language.value,
-      timeZone: timeZone.value,
-      brandLogoDataUrl: brandLogoDataUrl.value,
-      brandLogoName: brandLogoName.value,
-      systemVersion: systemVersion.value,
-    }))
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        platformName: platformName.value,
+        authority: authority.value,
+        language: language.value,
+        timeZone: timeZone.value,
+        brandLogoDataUrl: brandLogoDataUrl.value,
+        brandLogoName: brandLogoName.value,
+        systemVersion: systemVersion.value,
+      }),
+    )
   }
 
   function setPlatformName(name: string) {

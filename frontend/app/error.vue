@@ -43,17 +43,18 @@ const actions = computed(() => {
     items.push({ label: 'العودة للخلف', variant: 'ghost', onClick: goBack })
   }
   if (code === 401) {
-    items.push({ label: 'تسجيل الدخول', variant: 'default', onClick: () => clearError({ redirect: '/login' }) })
+    items.push({
+      label: 'تسجيل الدخول',
+      variant: 'default',
+      onClick: () => clearError({ redirect: '/login' }),
+    })
   }
   return items
 })
 </script>
 
 <template>
-  <main class="min-h-screen bg-background">
-    <ErrorState
-      :code="error.statusCode"
-      :actions="actions"
-    />
+  <main class="bg-background min-h-screen">
+    <ErrorState :code="error.statusCode" :actions="actions" />
   </main>
 </template>

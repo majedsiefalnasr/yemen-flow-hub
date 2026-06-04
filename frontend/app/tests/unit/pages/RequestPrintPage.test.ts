@@ -150,11 +150,24 @@ function mountPage() {
           name: 'RequestPrintableStub',
           props: ['request', 'history', 'documents'],
           setup(props) {
-            return () => h('div', { 'data-testid': 'request-printable' }, [
-              h('span', { 'data-testid': 'printable-ref' }, String(props.request?.reference_number ?? '')),
-              h('span', { 'data-testid': 'printable-history-size' }, String(props.history?.length ?? 0)),
-              h('span', { 'data-testid': 'printable-doc-count' }, String(props.documents?.length ?? 0)),
-            ])
+            return () =>
+              h('div', { 'data-testid': 'request-printable' }, [
+                h(
+                  'span',
+                  { 'data-testid': 'printable-ref' },
+                  String(props.request?.reference_number ?? ''),
+                ),
+                h(
+                  'span',
+                  { 'data-testid': 'printable-history-size' },
+                  String(props.history?.length ?? 0),
+                ),
+                h(
+                  'span',
+                  { 'data-testid': 'printable-doc-count' },
+                  String(props.documents?.length ?? 0),
+                ),
+              ])
           },
         }),
       },

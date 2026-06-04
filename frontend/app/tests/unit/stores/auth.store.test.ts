@@ -48,7 +48,17 @@ describe('useAuthStore', () => {
   describe('login()', () => {
     it('sets user and isAuthenticated on successful login', async () => {
       mockFetch.mockResolvedValueOnce(null) // CSRF cookie prefetch
-      mockFetch.mockResolvedValueOnce({ success: true, message: 'OK', data: { user: DEMO_USER, token: null, token_type: null, mode: 'cookie', requires_mfa: false } })
+      mockFetch.mockResolvedValueOnce({
+        success: true,
+        message: 'OK',
+        data: {
+          user: DEMO_USER,
+          token: null,
+          token_type: null,
+          mode: 'cookie',
+          requires_mfa: false,
+        },
+      })
 
       const store = useAuthStore()
       await store.login('ahmed@bank.ye', 'password123')
@@ -59,7 +69,17 @@ describe('useAuthStore', () => {
 
     it('currentRole returns the user role after login', async () => {
       mockFetch.mockResolvedValueOnce(null) // CSRF cookie prefetch
-      mockFetch.mockResolvedValueOnce({ success: true, message: 'OK', data: { user: DEMO_USER, token: null, token_type: null, mode: 'cookie', requires_mfa: false } })
+      mockFetch.mockResolvedValueOnce({
+        success: true,
+        message: 'OK',
+        data: {
+          user: DEMO_USER,
+          token: null,
+          token_type: null,
+          mode: 'cookie',
+          requires_mfa: false,
+        },
+      })
 
       const store = useAuthStore()
       await store.login('ahmed@bank.ye', 'password123')
@@ -69,7 +89,9 @@ describe('useAuthStore', () => {
 
     it('throws when API returns an error', async () => {
       mockFetch.mockResolvedValueOnce(null) // CSRF cookie prefetch
-      mockFetch.mockRejectedValueOnce({ data: { success: false, message: 'بيانات الدخول غير صحيحة' } })
+      mockFetch.mockRejectedValueOnce({
+        data: { success: false, message: 'بيانات الدخول غير صحيحة' },
+      })
 
       const store = useAuthStore()
       await expect(store.login('bad@bank.ye', 'wrong')).rejects.toBeDefined()
@@ -79,7 +101,17 @@ describe('useAuthStore', () => {
     it('throws when user is_active is false', async () => {
       const inactiveUser: AuthUser = { ...DEMO_USER, is_active: false }
       mockFetch.mockResolvedValueOnce(null) // CSRF cookie prefetch
-      mockFetch.mockResolvedValueOnce({ success: true, message: 'OK', data: { user: inactiveUser, token: null, token_type: null, mode: 'cookie', requires_mfa: false } })
+      mockFetch.mockResolvedValueOnce({
+        success: true,
+        message: 'OK',
+        data: {
+          user: inactiveUser,
+          token: null,
+          token_type: null,
+          mode: 'cookie',
+          requires_mfa: false,
+        },
+      })
 
       const store = useAuthStore()
       await expect(store.login('ahmed@bank.ye', 'password123')).rejects.toBeDefined()
@@ -97,7 +129,11 @@ describe('useAuthStore', () => {
       const store = useAuthStore()
       const result = await store.login('ahmed@bank.ye', 'password123')
 
-      expect(result).toEqual({ requiresMfa: true, email: 'ahmed@bank.ye', challengeId: 'challenge-1' })
+      expect(result).toEqual({
+        requiresMfa: true,
+        email: 'ahmed@bank.ye',
+        challengeId: 'challenge-1',
+      })
       expect(store.isAuthenticated).toBe(false)
       expect(store.user).toBeNull()
     })
@@ -174,7 +210,13 @@ describe('useAuthStore', () => {
       mockFetch.mockResolvedValueOnce({
         success: true,
         message: 'OK',
-        data: { user: DEMO_USER, token: null, token_type: null, mode: 'cookie', requires_mfa: false },
+        data: {
+          user: DEMO_USER,
+          token: null,
+          token_type: null,
+          mode: 'cookie',
+          requires_mfa: false,
+        },
       })
 
       const store = useAuthStore()
@@ -199,7 +241,13 @@ describe('useAuthStore', () => {
       mockFetch.mockResolvedValueOnce({
         success: true,
         message: 'OK',
-        data: { user: inactiveUser, token: null, token_type: null, mode: 'cookie', requires_mfa: false },
+        data: {
+          user: inactiveUser,
+          token: null,
+          token_type: null,
+          mode: 'cookie',
+          requires_mfa: false,
+        },
       })
 
       const store = useAuthStore()
@@ -214,7 +262,13 @@ describe('useAuthStore', () => {
       mockFetch.mockResolvedValueOnce({
         success: true,
         message: 'OK',
-        data: { user: DEMO_USER, token: null, token_type: null, mode: 'cookie', requires_mfa: false },
+        data: {
+          user: DEMO_USER,
+          token: null,
+          token_type: null,
+          mode: 'cookie',
+          requires_mfa: false,
+        },
       })
 
       const store = useAuthStore()
@@ -226,7 +280,9 @@ describe('useAuthStore', () => {
 
     it('throws and keeps state unauthenticated when PIN login fails', async () => {
       mockFetch.mockResolvedValueOnce(null) // CSRF cookie prefetch
-      mockFetch.mockRejectedValueOnce({ data: { message: 'رمز PIN غير صحيح. يرجى المحاولة مرة أخرى.' } })
+      mockFetch.mockRejectedValueOnce({
+        data: { message: 'رمز PIN غير صحيح. يرجى المحاولة مرة أخرى.' },
+      })
 
       const store = useAuthStore()
       await expect(store.loginWithPin('ahmed@bank.ye', '000000')).rejects.toBeDefined()
@@ -239,7 +295,11 @@ describe('useAuthStore', () => {
     it('clears user and isAuthenticated after logout', async () => {
       // First login
       mockFetch.mockResolvedValueOnce(null) // CSRF cookie prefetch
-      mockFetch.mockResolvedValueOnce({ success: true, message: 'OK', data: { user: DEMO_USER, token: null, token_type: null, mode: 'cookie' } })
+      mockFetch.mockResolvedValueOnce({
+        success: true,
+        message: 'OK',
+        data: { user: DEMO_USER, token: null, token_type: null, mode: 'cookie' },
+      })
       const store = useAuthStore()
       await store.login('ahmed@bank.ye', 'password123')
       expect(store.isAuthenticated).toBe(true)
@@ -254,7 +314,11 @@ describe('useAuthStore', () => {
 
     it('clears state even if API call fails', async () => {
       mockFetch.mockResolvedValueOnce(null) // CSRF cookie prefetch
-      mockFetch.mockResolvedValueOnce({ success: true, message: 'OK', data: { user: DEMO_USER, token: null, token_type: null, mode: 'cookie' } })
+      mockFetch.mockResolvedValueOnce({
+        success: true,
+        message: 'OK',
+        data: { user: DEMO_USER, token: null, token_type: null, mode: 'cookie' },
+      })
       const store = useAuthStore()
       await store.login('ahmed@bank.ye', 'password123')
 
@@ -302,7 +366,17 @@ describe('useAuthStore', () => {
   describe('isBankUser / isCbyUser getters', () => {
     it('DATA_ENTRY is a bank user', async () => {
       mockFetch.mockResolvedValueOnce(null) // CSRF cookie prefetch
-      mockFetch.mockResolvedValueOnce({ success: true, message: 'OK', data: { user: DEMO_USER, token: null, token_type: null, mode: 'cookie', requires_mfa: false } })
+      mockFetch.mockResolvedValueOnce({
+        success: true,
+        message: 'OK',
+        data: {
+          user: DEMO_USER,
+          token: null,
+          token_type: null,
+          mode: 'cookie',
+          requires_mfa: false,
+        },
+      })
       const store = useAuthStore()
       await store.login('ahmed@bank.ye', 'password123')
 
@@ -313,7 +387,17 @@ describe('useAuthStore', () => {
     it('CBY_ADMIN is a CBY user', async () => {
       const cbyadmin: AuthUser = { ...DEMO_USER, role: UserRole.CBY_ADMIN, bank_id: null }
       mockFetch.mockResolvedValueOnce(null) // CSRF cookie prefetch
-      mockFetch.mockResolvedValueOnce({ success: true, message: 'OK', data: { user: cbyadmin, token: null, token_type: null, mode: 'cookie', requires_mfa: false } })
+      mockFetch.mockResolvedValueOnce({
+        success: true,
+        message: 'OK',
+        data: {
+          user: cbyadmin,
+          token: null,
+          token_type: null,
+          mode: 'cookie',
+          requires_mfa: false,
+        },
+      })
       const store = useAuthStore()
       await store.login('admin@cby.ye', 'password123')
 

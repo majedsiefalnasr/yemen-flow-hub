@@ -140,7 +140,10 @@ describe('requestFormSchema — goods_description', () => {
   })
 
   it('accepts multi-line goods description', () => {
-    const result = requestFormSchema.safeParse({ ...VALID, goods_description: 'Line 1\nLine 2\nLine 3' })
+    const result = requestFormSchema.safeParse({
+      ...VALID,
+      goods_description: 'Line 1\nLine 2\nLine 3',
+    })
     expect(result.success).toBe(true)
   })
 })

@@ -8,27 +8,30 @@ import {
   type AvatarVariant,
 } from '@/composables/useUserAvatar'
 
-const props = withDefaults(defineProps<{
-  /** Seed for the generator. Use a stable identifier (email, id, or full name). */
-  name: string
-  /**
-   * Explicit variant override. When omitted, the variant is resolved from the
-   * persisted preference keyed by `identity` (or by `name` as a fallback).
-   */
-  variant?: AvatarVariant
-  /**
-   * Identity used to look up the persisted preference. Defaults to `name` so
-   * the component is usable with a single prop for casual list rendering.
-   */
-  identity?: string
-  /** Render size in px. */
-  size?: number
-  /** Whether to render square (true) or circular (false, default). */
-  square?: boolean
-}>(), {
-  size: 40,
-  square: false,
-})
+const props = withDefaults(
+  defineProps<{
+    /** Seed for the generator. Use a stable identifier (email, id, or full name). */
+    name: string
+    /**
+     * Explicit variant override. When omitted, the variant is resolved from the
+     * persisted preference keyed by `identity` (or by `name` as a fallback).
+     */
+    variant?: AvatarVariant
+    /**
+     * Identity used to look up the persisted preference. Defaults to `name` so
+     * the component is usable with a single prop for casual list rendering.
+     */
+    identity?: string
+    /** Render size in px. */
+    size?: number
+    /** Whether to render square (true) or circular (false, default). */
+    square?: boolean
+  }>(),
+  {
+    size: 40,
+    square: false,
+  },
+)
 
 const resolvedVariant = computed<AvatarVariant>(() => {
   if (props.variant) return props.variant

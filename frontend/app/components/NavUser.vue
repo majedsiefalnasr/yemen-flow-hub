@@ -29,10 +29,7 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar'
 import { useAuthStore } from '@/stores/auth.store'
-import {
-  DEFAULT_AVATAR_VARIANT,
-  type AvatarVariant,
-} from '@/composables/useUserAvatar'
+import { DEFAULT_AVATAR_VARIANT, type AvatarVariant } from '@/composables/useUserAvatar'
 
 interface User {
   name: string
@@ -53,7 +50,7 @@ const settingsRoute = '/settings'
 const avatarIdentity = computed(() => props.user.email || props.user.name || 'user')
 const avatarVariant = computed<AvatarVariant>(() => {
   const value = props.user.avatar_variant
-  return (value && ['marble', 'beam', 'pixel', 'sunset', 'ring', 'bauhaus'].includes(value))
+  return value && ['marble', 'beam', 'pixel', 'sunset', 'ring', 'bauhaus'].includes(value)
     ? (value as AvatarVariant)
     : DEFAULT_AVATAR_VARIANT
 })
@@ -85,7 +82,7 @@ async function handleLogout() {
             />
             <div class="grid flex-1 text-start text-sm leading-tight">
               <span class="truncate font-medium">{{ user.name }}</span>
-              <span class="truncate text-xs text-muted-foreground">{{ user.email }}</span>
+              <span class="text-muted-foreground truncate text-xs">{{ user.email }}</span>
             </div>
             <MoreVertical class="ms-auto h-4 w-4" />
           </SidebarMenuButton>
@@ -109,7 +106,7 @@ async function handleLogout() {
               />
               <div class="grid flex-1 text-start text-sm leading-tight">
                 <span class="truncate font-medium">{{ user.name }}</span>
-                <span class="truncate text-xs text-muted-foreground">{{ user.email }}</span>
+                <span class="text-muted-foreground truncate text-xs">{{ user.email }}</span>
               </div>
             </div>
           </DropdownMenuLabel>
@@ -118,7 +115,10 @@ async function handleLogout() {
 
           <DropdownMenuGroup>
             <DropdownMenuItem as-child>
-              <NuxtLink to="/settings?section=profile" class="flex cursor-pointer items-center gap-2">
+              <NuxtLink
+                to="/settings?section=profile"
+                class="flex cursor-pointer items-center gap-2"
+              >
                 <User class="h-4 w-4" />
                 <span>الملف الشخصي</span>
               </NuxtLink>
@@ -134,7 +134,7 @@ async function handleLogout() {
           <DropdownMenuSeparator />
 
           <DropdownMenuItem
-            class="cursor-pointer text-destructive focus:text-destructive"
+            class="text-destructive focus:text-destructive cursor-pointer"
             @click="showLogoutDialog = true"
           >
             <LogOut class="h-4 w-4" />

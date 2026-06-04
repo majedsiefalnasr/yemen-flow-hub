@@ -18,17 +18,19 @@ const forwarded = useForwardPropsEmits(delegatedProps, emits)
     v-slot="{ modelValue }"
     data-slot="slider"
     :data-vertical="props.orientation === 'vertical' ? '' : undefined"
-    :class="cn(
-      'data-vertical:min-h-40 relative flex w-full touch-none items-center select-none data-disabled:opacity-50 data-vertical:h-full data-vertical:w-auto data-vertical:flex-col',
-      props.class,
-    )"
+    :class="
+      cn(
+        'relative flex w-full touch-none items-center select-none data-disabled:opacity-50 data-vertical:h-full data-vertical:min-h-40 data-vertical:w-auto data-vertical:flex-col',
+        props.class,
+      )
+    "
     v-bind="forwarded"
   >
     <SliderTrack
       data-slot="slider-track"
       :data-horizontal="props.orientation !== 'vertical' ? '' : undefined"
       :data-vertical="props.orientation === 'vertical' ? '' : undefined"
-      class="bg-muted rounded-full data-horizontal:h-1 data-vertical:w-1 relative grow overflow-hidden data-horizontal:w-full data-vertical:h-full"
+      class="bg-muted relative grow overflow-hidden rounded-full data-horizontal:h-1 data-horizontal:w-full data-vertical:h-full data-vertical:w-1"
     >
       <SliderRange
         data-slot="slider-range"
@@ -43,7 +45,7 @@ const forwarded = useForwardPropsEmits(delegatedProps, emits)
       :key="key"
       data-slot="slider-thumb"
       :data-vertical="props.orientation === 'vertical' ? '' : undefined"
-      class="border-ring ring-ring/50 relative size-3 rounded-full border bg-white transition-[color,box-shadow] after:absolute after:-inset-2 hover:ring-3 focus-visible:ring-3 focus-visible:outline-hidden active:ring-3 block shrink-0 select-none disabled:pointer-events-none disabled:opacity-50"
+      class="border-ring ring-ring/50 relative block size-3 shrink-0 rounded-full border bg-white transition-[color,box-shadow] select-none after:absolute after:-inset-2 hover:ring-3 focus-visible:ring-3 focus-visible:outline-hidden active:ring-3 disabled:pointer-events-none disabled:opacity-50"
     />
   </SliderRoot>
 </template>

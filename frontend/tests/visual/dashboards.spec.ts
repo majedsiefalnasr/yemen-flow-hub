@@ -35,7 +35,10 @@ for (const { role, label } of ROLES) {
     )
     await page.waitForLoadState('networkidle')
     // Mask dynamic timestamps so screenshots are deterministic
-    await page.addStyleTag({ content: 'time, [data-testid="timestamp"], .text-muted-foreground:not([class*="badge"]) { color: transparent !important; }' })
+    await page.addStyleTag({
+      content:
+        'time, [data-testid="timestamp"], .text-muted-foreground:not([class*="badge"]) { color: transparent !important; }',
+    })
     await expect(page).toHaveScreenshot(`dashboard-${label}.png`)
   })
 }

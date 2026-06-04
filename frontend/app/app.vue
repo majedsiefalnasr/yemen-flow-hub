@@ -12,7 +12,7 @@ const authStore = useAuthStore()
 const orgStore = useOrgStore()
 const themingStore = useThemingStore()
 const user = computed(() => authStore.user)
-const appDir = computed<'rtl' | 'ltr'>(() => authStore.preferredLanguage === 'en' ? 'ltr' : 'rtl')
+const appDir = computed<'rtl' | 'ltr'>(() => (authStore.preferredLanguage === 'en' ? 'ltr' : 'rtl'))
 const toasterPosition = 'top-center'
 let mediaQuery: MediaQueryList | null = null
 const applySystemTheme = () => {
@@ -23,8 +23,9 @@ const applySystemTheme = () => {
 const platformName = computed(() => orgStore.platformName.trim() || 'منصة إدارة وتمويل الواردات')
 const authorityName = computed(() => orgStore.authority.trim() || 'البنك المركزي اليمني')
 const fullAppTitle = computed(() => `${platformName.value} — ${authorityName.value}`)
-const seoDescription = computed(() =>
-  `${platformName.value} منصة مؤسسية لإدارة ومراجعة طلبات تمويل الواردات لدى ${authorityName.value}.`,
+const seoDescription = computed(
+  () =>
+    `${platformName.value} منصة مؤسسية لإدارة ومراجعة طلبات تمويل الواردات لدى ${authorityName.value}.`,
 )
 const faviconHref = computed(() => orgStore.brandLogoDataUrl || DEFAULT_BRAND_LOGO_URL)
 const faviconType = computed(() => {
@@ -46,11 +47,14 @@ onBeforeMount(() => {
 // the user becomes authenticated — covers both new devices (isAuthenticated
 // transitions false→true after login) and saved devices that reach the watch
 // with an expired session that is then refreshed via PIN login.
-watch(() => authStore.isAuthenticated, (authenticated) => {
-  if (authenticated) {
-    themingStore.loadSettings()
-  }
-})
+watch(
+  () => authStore.isAuthenticated,
+  (authenticated) => {
+    if (authenticated) {
+      themingStore.loadSettings()
+    }
+  },
+)
 
 // For saved devices whose session was still valid when the app loaded, the
 // auth plugin set isAuthenticated=true before this watch was registered, so
@@ -77,9 +81,8 @@ useHead(() => ({
     dir: appDir.value,
     class: themingStore.isDark ? 'dark' : '',
   },
-  titleTemplate: (titleChunk) => titleChunk
-    ? `${titleChunk} — ${platformName.value}`
-    : fullAppTitle.value,
+  titleTemplate: (titleChunk) =>
+    titleChunk ? `${titleChunk} — ${platformName.value}` : fullAppTitle.value,
   link: [
     {
       key: 'favicon',

@@ -24,7 +24,7 @@ function makeMerchant(overrides: Partial<Merchant> = {}): Merchant {
 }
 
 function mapBankOptions(banks: Bank[]) {
-  return banks.map(bank => ({
+  return banks.map((bank) => ({
     id: bank.id,
     name: `${bank.name_ar || bank.name_en}${bank.is_active ? '' : ' (موقوف)'}`,
   }))
@@ -34,16 +34,17 @@ function filterMerchants(merchants: Merchant[], searchQuery: string, bankFilter 
   let list = merchants
   if (searchQuery.trim()) {
     const q = searchQuery.trim().toLowerCase()
-    list = list.filter(m =>
-      m.name.toLowerCase().includes(q)
-      || (m.commercial_register ?? '').toLowerCase().includes(q)
-      || (m.tax_number ?? '').toLowerCase().includes(q)
-      || (m.bank_name ?? '').toLowerCase().includes(q),
+    list = list.filter(
+      (m) =>
+        m.name.toLowerCase().includes(q) ||
+        (m.commercial_register ?? '').toLowerCase().includes(q) ||
+        (m.tax_number ?? '').toLowerCase().includes(q) ||
+        (m.bank_name ?? '').toLowerCase().includes(q),
     )
   }
 
   if (bankFilter) {
-    list = list.filter(m => String(m.bank_id) === bankFilter)
+    list = list.filter((m) => String(m.bank_id) === bankFilter)
   }
 
   return list
@@ -65,20 +66,27 @@ describe('merchants page bank options', () => {
 
 describe('merchants page filtering', () => {
   it('matches bank_name in the search box', () => {
-    const results = filterMerchants([
-      makeMerchant({ id: 1, bank_id: 1, bank_name: 'بنك اليمن الدولي', name: 'شركة الأمل' }),
-      makeMerchant({ id: 2, bank_id: 2, bank_name: 'بنك السلام', name: 'مؤسسة النور' }),
-    ], 'السلام')
+    const results = filterMerchants(
+      [
+        makeMerchant({ id: 1, bank_id: 1, bank_name: 'بنك اليمن الدولي', name: 'شركة الأمل' }),
+        makeMerchant({ id: 2, bank_id: 2, bank_name: 'بنك السلام', name: 'مؤسسة النور' }),
+      ],
+      'السلام',
+    )
 
     expect(results).toHaveLength(1)
     expect(results[0]?.bank_name).toBe('بنك السلام')
   })
 
   it('can filter down to merchants from an inactive bank by bank id', () => {
-    const results = filterMerchants([
-      makeMerchant({ id: 1, bank_id: 1, bank_name: 'بنك اليمن الدولي' }),
-      makeMerchant({ id: 2, bank_id: 2, bank_name: 'بنك السلام' }),
-    ], '', '2')
+    const results = filterMerchants(
+      [
+        makeMerchant({ id: 1, bank_id: 1, bank_name: 'بنك اليمن الدولي' }),
+        makeMerchant({ id: 2, bank_id: 2, bank_name: 'بنك السلام' }),
+      ],
+      '',
+      '2',
+    )
 
     expect(results).toHaveLength(1)
     expect(results[0]?.id).toBe(2)

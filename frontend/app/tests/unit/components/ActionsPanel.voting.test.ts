@@ -38,90 +38,131 @@ function showAnyActions(
   status: RequestStatus,
   isClaimedByMe: boolean,
 ): boolean {
-  const bankReviewer = userRole === UserRole.BANK_REVIEWER
-    && (status === RequestStatus.SUBMITTED || status === RequestStatus.BANK_REVIEW)
-  const dataEntry = userRole === UserRole.DATA_ENTRY
-    && (status === RequestStatus.DRAFT || status === RequestStatus.DRAFT_REJECTED_INTERNAL)
-  const support = userRole === UserRole.SUPPORT_COMMITTEE
-    && status === RequestStatus.SUPPORT_REVIEW_IN_PROGRESS
-    && isClaimedByMe
+  const bankReviewer =
+    userRole === UserRole.BANK_REVIEWER &&
+    (status === RequestStatus.SUBMITTED || status === RequestStatus.BANK_REVIEW)
+  const dataEntry =
+    userRole === UserRole.DATA_ENTRY &&
+    (status === RequestStatus.DRAFT || status === RequestStatus.DRAFT_REJECTED_INTERNAL)
+  const support =
+    userRole === UserRole.SUPPORT_COMMITTEE &&
+    status === RequestStatus.SUPPORT_REVIEW_IN_PROGRESS &&
+    isClaimedByMe
   const director = showDirectorVotingActions(userRole, status)
   return bankReviewer || dataEntry || support || director
 }
 
-function validateOverride(decision: 'APPROVE' | 'REJECT' | null, justification: string): { decisionError: string, justificationError: string } {
+function validateOverride(
+  decision: 'APPROVE' | 'REJECT' | null,
+  justification: string,
+): { decisionError: string; justificationError: string } {
   let decisionError = ''
   let justificationError = ''
   if (!decision) decisionError = 'يجب اختيار قرار (موافقة أو رفض).'
-  if (justification.trim().length < 10) justificationError = 'المبرر مطلوب ويجب أن يكون 10 أحرف على الأقل.'
+  if (justification.trim().length < 10)
+    justificationError = 'المبرر مطلوب ويجب أن يكون 10 أحرف على الأقل.'
   return { decisionError, justificationError }
 }
 
 describe('ActionsPanel — showDirectorVotingActions', () => {
   it('does NOT show director action buttons for WAITING_FOR_VOTING_OPEN', () => {
-    expect(showDirectorVotingActions(UserRole.COMMITTEE_DIRECTOR, RequestStatus.WAITING_FOR_VOTING_OPEN)).toBe(false)
+    expect(
+      showDirectorVotingActions(UserRole.COMMITTEE_DIRECTOR, RequestStatus.WAITING_FOR_VOTING_OPEN),
+    ).toBe(false)
   })
 
   it('shows director actions for COMMITTEE_DIRECTOR on EXECUTIVE_VOTING_OPEN', () => {
-    expect(showDirectorVotingActions(UserRole.COMMITTEE_DIRECTOR, RequestStatus.EXECUTIVE_VOTING_OPEN)).toBe(true)
+    expect(
+      showDirectorVotingActions(UserRole.COMMITTEE_DIRECTOR, RequestStatus.EXECUTIVE_VOTING_OPEN),
+    ).toBe(true)
   })
 
   it('shows director actions for COMMITTEE_DIRECTOR on EXECUTIVE_VOTING_CLOSED', () => {
-    expect(showDirectorVotingActions(UserRole.COMMITTEE_DIRECTOR, RequestStatus.EXECUTIVE_VOTING_CLOSED)).toBe(true)
+    expect(
+      showDirectorVotingActions(UserRole.COMMITTEE_DIRECTOR, RequestStatus.EXECUTIVE_VOTING_CLOSED),
+    ).toBe(true)
   })
 
   it('does NOT show director actions for EXECUTIVE_MEMBER', () => {
-    expect(showDirectorVotingActions(UserRole.EXECUTIVE_MEMBER, RequestStatus.EXECUTIVE_VOTING_OPEN)).toBe(false)
+    expect(
+      showDirectorVotingActions(UserRole.EXECUTIVE_MEMBER, RequestStatus.EXECUTIVE_VOTING_OPEN),
+    ).toBe(false)
   })
 
   it('does NOT show director actions for BANK_REVIEWER', () => {
-    expect(showDirectorVotingActions(UserRole.BANK_REVIEWER, RequestStatus.WAITING_FOR_VOTING_OPEN)).toBe(false)
+    expect(
+      showDirectorVotingActions(UserRole.BANK_REVIEWER, RequestStatus.WAITING_FOR_VOTING_OPEN),
+    ).toBe(false)
   })
 
   it('does NOT show director actions for COMMITTEE_DIRECTOR on non-voting status', () => {
-    expect(showDirectorVotingActions(UserRole.COMMITTEE_DIRECTOR, RequestStatus.EXECUTIVE_APPROVED)).toBe(false)
+    expect(
+      showDirectorVotingActions(UserRole.COMMITTEE_DIRECTOR, RequestStatus.EXECUTIVE_APPROVED),
+    ).toBe(false)
   })
 
   it('does NOT show director actions for COMMITTEE_DIRECTOR on EXECUTIVE_REJECTED', () => {
-    expect(showDirectorVotingActions(UserRole.COMMITTEE_DIRECTOR, RequestStatus.EXECUTIVE_REJECTED)).toBe(false)
+    expect(
+      showDirectorVotingActions(UserRole.COMMITTEE_DIRECTOR, RequestStatus.EXECUTIVE_REJECTED),
+    ).toBe(false)
   })
 })
 
 describe('ActionsPanel — showAnyActions includes director voting', () => {
   it('returns false for director on WAITING_FOR_VOTING_OPEN (manual open is hidden)', () => {
-    expect(showAnyActions(UserRole.COMMITTEE_DIRECTOR, RequestStatus.WAITING_FOR_VOTING_OPEN, false)).toBe(false)
+    expect(
+      showAnyActions(UserRole.COMMITTEE_DIRECTOR, RequestStatus.WAITING_FOR_VOTING_OPEN, false),
+    ).toBe(false)
   })
 
   it('returns true for director on EXECUTIVE_VOTING_OPEN', () => {
-    expect(showAnyActions(UserRole.COMMITTEE_DIRECTOR, RequestStatus.EXECUTIVE_VOTING_OPEN, false)).toBe(true)
+    expect(
+      showAnyActions(UserRole.COMMITTEE_DIRECTOR, RequestStatus.EXECUTIVE_VOTING_OPEN, false),
+    ).toBe(true)
   })
 
   it('returns true for director on EXECUTIVE_VOTING_CLOSED', () => {
-    expect(showAnyActions(UserRole.COMMITTEE_DIRECTOR, RequestStatus.EXECUTIVE_VOTING_CLOSED, false)).toBe(true)
+    expect(
+      showAnyActions(UserRole.COMMITTEE_DIRECTOR, RequestStatus.EXECUTIVE_VOTING_CLOSED, false),
+    ).toBe(true)
   })
 
   it('returns false for director on EXECUTIVE_APPROVED (terminal)', () => {
-    expect(showAnyActions(UserRole.COMMITTEE_DIRECTOR, RequestStatus.EXECUTIVE_APPROVED, false)).toBe(false)
+    expect(
+      showAnyActions(UserRole.COMMITTEE_DIRECTOR, RequestStatus.EXECUTIVE_APPROVED, false),
+    ).toBe(false)
   })
 })
 
 describe('ActionsPanel — director status-specific controls', () => {
   it('does not expose open session controls on WAITING_FOR_VOTING_OPEN', () => {
     const req = makeRequest({ status: RequestStatus.WAITING_FOR_VOTING_OPEN })
-    expect(showDirectorVotingActions(UserRole.COMMITTEE_DIRECTOR, req.status)
-      && req.status === RequestStatus.WAITING_FOR_VOTING_OPEN).toBe(false)
+    expect(
+      showDirectorVotingActions(UserRole.COMMITTEE_DIRECTOR, req.status) &&
+        req.status === RequestStatus.WAITING_FOR_VOTING_OPEN,
+    ).toBe(false)
   })
 
   it('shows close/override buttons only for EXECUTIVE_VOTING_OPEN', () => {
-    const req = makeRequest({ status: RequestStatus.EXECUTIVE_VOTING_OPEN, voting_session_status: VotingSessionStatus.OPEN })
-    expect(showDirectorVotingActions(UserRole.COMMITTEE_DIRECTOR, req.status)
-      && req.status === RequestStatus.EXECUTIVE_VOTING_OPEN).toBe(true)
+    const req = makeRequest({
+      status: RequestStatus.EXECUTIVE_VOTING_OPEN,
+      voting_session_status: VotingSessionStatus.OPEN,
+    })
+    expect(
+      showDirectorVotingActions(UserRole.COMMITTEE_DIRECTOR, req.status) &&
+        req.status === RequestStatus.EXECUTIVE_VOTING_OPEN,
+    ).toBe(true)
   })
 
   it('shows finalize button only for EXECUTIVE_VOTING_CLOSED', () => {
-    const req = makeRequest({ status: RequestStatus.EXECUTIVE_VOTING_CLOSED, voting_session_status: VotingSessionStatus.CLOSED })
-    expect(showDirectorVotingActions(UserRole.COMMITTEE_DIRECTOR, req.status)
-      && req.status === RequestStatus.EXECUTIVE_VOTING_CLOSED).toBe(true)
+    const req = makeRequest({
+      status: RequestStatus.EXECUTIVE_VOTING_CLOSED,
+      voting_session_status: VotingSessionStatus.CLOSED,
+    })
+    expect(
+      showDirectorVotingActions(UserRole.COMMITTEE_DIRECTOR, req.status) &&
+        req.status === RequestStatus.EXECUTIVE_VOTING_CLOSED,
+    ).toBe(true)
   })
 })
 
@@ -142,13 +183,19 @@ describe('ActionsPanel — director override validation', () => {
   })
 
   it('passes validation with APPROVE decision and sufficient justification', () => {
-    const { decisionError, justificationError } = validateOverride('APPROVE', 'المستندات كاملة ومتوافقة مع اللوائح')
+    const { decisionError, justificationError } = validateOverride(
+      'APPROVE',
+      'المستندات كاملة ومتوافقة مع اللوائح',
+    )
     expect(decisionError).toBe('')
     expect(justificationError).toBe('')
   })
 
   it('passes validation with REJECT decision and sufficient justification', () => {
-    const { decisionError, justificationError } = validateOverride('REJECT', 'مخالفة صريحة للوائح البنك المركزي')
+    const { decisionError, justificationError } = validateOverride(
+      'REJECT',
+      'مخالفة صريحة للوائح البنك المركزي',
+    )
     expect(decisionError).toBe('')
     expect(justificationError).toBe('')
   })

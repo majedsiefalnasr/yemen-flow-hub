@@ -42,13 +42,11 @@ function simulateOtpKeydown(
   if (key === 'Backspace') {
     if (updated[index]) {
       updated[index] = ''
-    }
-    else if (index > 0) {
+    } else if (index > 0) {
       updated[index - 1] = ''
       nextFocus = index - 1
     }
-  }
-  else if (/^\d$/.test(key)) {
+  } else if (/^\d$/.test(key)) {
     updated[index] = key
     if (index < 5) nextFocus = index + 1
   }
@@ -158,7 +156,11 @@ describe('Login page — MFA flow via auth store', () => {
     const store = useAuthStore()
     const result = await store.login('ahmed@bank.ye', 'password123')
 
-    expect(result).toMatchObject({ requiresMfa: true, email: 'ahmed@bank.ye', challengeId: 'challenge-1' })
+    expect(result).toMatchObject({
+      requiresMfa: true,
+      email: 'ahmed@bank.ye',
+      challengeId: 'challenge-1',
+    })
     expect(store.isAuthenticated).toBe(false)
   })
 

@@ -4,7 +4,10 @@
 import { describe, it, expect } from 'vitest'
 import { UserRole, RequestStatus } from '../../../types/enums'
 import type { ImportRequest } from '../../../types/models'
-import type { BankAdminDashboardStats, BankAdminMonthlyEntry } from '../../../composables/useDashboard'
+import type {
+  BankAdminDashboardStats,
+  BankAdminMonthlyEntry,
+} from '../../../composables/useDashboard'
 import { makeImportRequest } from '../fixtures/request-data'
 
 function makeRequest(overrides: Partial<ImportRequest> = {}): ImportRequest {
@@ -38,7 +41,10 @@ function makeStats(overrides: Partial<BankAdminDashboardStats> = {}): BankAdminD
 // ── Logic helpers mirrored from BankAdminDashboard.vue ──────────────────────
 
 function formatAmount(amount: number): string {
-  return new Intl.NumberFormat('ar-YE', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(amount)
+  return new Intl.NumberFormat('ar-YE', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount)
 }
 
 function shouldShowEmptyState(stats: BankAdminDashboardStats): boolean {
@@ -55,7 +61,7 @@ const CHART_PAD = 8
 
 function buildSparklinePoints(entries: BankAdminMonthlyEntry[]): string {
   if (!entries.length) return ''
-  const counts = entries.map(e => e.count)
+  const counts = entries.map((e) => e.count)
   const max = Math.max(...counts, 1)
   const step = (CHART_W - CHART_PAD * 2) / Math.max(entries.length - 1, 1)
   return entries
@@ -71,7 +77,13 @@ function buildSparklinePoints(entries: BankAdminMonthlyEntry[]): string {
 
 describe('BankAdminDashboard — KPI display', () => {
   it('reads all 5 KPI values from stats', () => {
-    const stats = makeStats({ total: 10, pending: 3, approved: 5, rejected: 2, total_financed_amount: 50000 })
+    const stats = makeStats({
+      total: 10,
+      pending: 3,
+      approved: 5,
+      rejected: 2,
+      total_financed_amount: 50000,
+    })
     expect(stats.total).toBe(10)
     expect(stats.pending).toBe(3)
     expect(stats.approved).toBe(5)
@@ -173,7 +185,7 @@ describe('BankAdminDashboard — monthly chart', () => {
       { month: '2026-02', count: 10 },
     ]
     const pts = buildSparklinePoints(entries)
-    const points = pts.split(' ').map(p => p.split(',').map(Number))
+    const points = pts.split(' ').map((p) => p.split(',').map(Number))
     // max count (10) should produce y = CHART_PAD (top)
     expect(points[1]![1]).toBeCloseTo(CHART_PAD, 1)
     // zero count should produce y = CHART_H - CHART_PAD (bottom)

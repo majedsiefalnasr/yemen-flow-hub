@@ -1,12 +1,12 @@
 import { expect, test } from '@playwright/test'
 
 type Role = 'COMMITTEE_DIRECTOR' | 'SWIFT_OFFICER'
-type Status
-  = | 'EXECUTIVE_VOTING_OPEN'
-    | 'EXECUTIVE_VOTING_CLOSED'
-    | 'FX_CONFIRMATION_PENDING'
-    | 'WAITING_FOR_SWIFT'
-    | 'SWIFT_UPLOADED'
+type Status =
+  | 'EXECUTIVE_VOTING_OPEN'
+  | 'EXECUTIVE_VOTING_CLOSED'
+  | 'FX_CONFIRMATION_PENDING'
+  | 'WAITING_FOR_SWIFT'
+  | 'SWIFT_UPLOADED'
 
 function apiResponse<T>(data: T) {
   return { success: true, message: 'OK', data }
@@ -33,7 +33,10 @@ function makeRequest(id: number, status: Status) {
     bank_name: 'البنك اليمني للإنشاء والتعمير',
     merchant: { id: 91, name: 'شركة التاجر الذهبي', commercial_register: 'CR-1001' },
     status,
-    current_owner_role: status === 'WAITING_FOR_SWIFT' || status === 'SWIFT_UPLOADED' ? 'SWIFT_OFFICER' : 'COMMITTEE_DIRECTOR',
+    current_owner_role:
+      status === 'WAITING_FOR_SWIFT' || status === 'SWIFT_UPLOADED'
+        ? 'SWIFT_OFFICER'
+        : 'COMMITTEE_DIRECTOR',
     currency: 'USD',
     amount: 145000,
     supplier_name: 'Global Supplier Co.',
@@ -111,7 +114,10 @@ async function mockApi(page: Parameters<typeof test>[0]['page'], role: Role) {
     'access-control-allow-credentials': 'true',
   }
 
-  const fulfillJson = async (route: Parameters<Parameters<typeof page.route>[1]>[0], body: unknown) => {
+  const fulfillJson = async (
+    route: Parameters<Parameters<typeof page.route>[1]>[0],
+    body: unknown,
+  ) => {
     await route.fulfill({
       status: 200,
       headers: {
@@ -152,37 +158,49 @@ async function mockApi(page: Parameters<typeof test>[0]['page'], role: Role) {
     }
 
     if (path === '/api/auth/login') {
-      await fulfillJson(route, apiResponse({ user, token: null, token_type: null, mode: 'cookie', requires_mfa: false }))
+      await fulfillJson(
+        route,
+        apiResponse({ user, token: null, token_type: null, mode: 'cookie', requires_mfa: false }),
+      )
       return
     }
 
     if (path === '/api/dashboard/stats') {
-      const data = role === 'COMMITTEE_DIRECTOR'
-        ? {
-            active_voting_sessions: 2,
-            fx_confirmation_pending: 1,
-            finalized_approved: 3,
-            finalized_rejected: 1,
-            sessions_ready_to_close: 1,
-            sessions_with_tie: 1,
-            voting_lifecycle_queue: [
-              { ...makeRequest(9201, 'EXECUTIVE_VOTING_OPEN'), votes_cast: 6, total_voters: 6, my_vote: null, ready_to_close: true, is_tie: true },
-            ],
-            fx_confirmation_queue: [directorRequest],
-          }
-        : {
-            pending_swift_upload: 1,
-            uploaded: 1,
-            final_approved: 2,
-            final_rejected: 1,
-            swift_queue: [swiftWaitingRequest, swiftDoneRequest],
-          }
+      const data =
+        role === 'COMMITTEE_DIRECTOR'
+          ? {
+              active_voting_sessions: 2,
+              fx_confirmation_pending: 1,
+              finalized_approved: 3,
+              finalized_rejected: 1,
+              sessions_ready_to_close: 1,
+              sessions_with_tie: 1,
+              voting_lifecycle_queue: [
+                {
+                  ...makeRequest(9201, 'EXECUTIVE_VOTING_OPEN'),
+                  votes_cast: 6,
+                  total_voters: 6,
+                  my_vote: null,
+                  ready_to_close: true,
+                  is_tie: true,
+                },
+              ],
+              fx_confirmation_queue: [directorRequest],
+            }
+          : {
+              pending_swift_upload: 1,
+              uploaded: 1,
+              final_approved: 2,
+              final_rejected: 1,
+              swift_queue: [swiftWaitingRequest, swiftDoneRequest],
+            }
       await fulfillJson(route, apiResponse(data))
       return
     }
 
     if (path === '/api/requests') {
-      const items = role === 'COMMITTEE_DIRECTOR' ? [directorRequest] : [swiftWaitingRequest, swiftDoneRequest]
+      const items =
+        role === 'COMMITTEE_DIRECTOR' ? [directorRequest] : [swiftWaitingRequest, swiftDoneRequest]
       await fulfillJson(
         route,
         apiResponse({
@@ -214,7 +232,16 @@ async function mockApi(page: Parameters<typeof test>[0]['page'], role: Role) {
     }
 
     if (path.includes('/api/voting/')) {
-      await fulfillJson(route, apiResponse({ request: directorRequest, tally: { approve_count: 3, reject_count: 3, abstain_count: 0, auto_abstain_count: 0 }, votes: [], total_members: 6, my_vote: null }))
+      await fulfillJson(
+        route,
+        apiResponse({
+          request: directorRequest,
+          tally: { approve_count: 3, reject_count: 3, abstain_count: 0, auto_abstain_count: 0 },
+          votes: [],
+          total_members: 6,
+          my_vote: null,
+        }),
+      )
       return
     }
 
@@ -238,22 +265,34 @@ test.describe('Story 12-3 gate verification', () => {
     await expect(page.getByText(/جلسات تصويت بتعادل — يتطلب حسماً/)).toBeVisible()
     await expect(page.getByText('قائمة انتظار تأكيد المصارفة الخارجية')).toBeVisible()
     await expect(page.getByText('طابور السويفت')).toHaveCount(0)
-    await page.screenshot({ path: '../docs/ui-parity/screenshots/12-3/after/director-dashboard.png', fullPage: true })
+    await page.screenshot({
+      path: '../docs/ui-parity/screenshots/12-3/after/director-dashboard.png',
+      fullPage: true,
+    })
 
-    await page.getByRole('link', { name: /طلبات التمويل/ }).first().click()
+    await page
+      .getByRole('link', { name: /طلبات التمويل/ })
+      .first()
+      .click()
     await expect(page).toHaveURL(/\/requests/)
     await expect(page.getByRole('tab', { name: 'جاهزة للإغلاق' })).toBeVisible()
     await expect(page.getByRole('tab', { name: 'جاهزة للإصدار النهائي' })).toBeVisible()
     await expect(page.getByRole('tab', { name: 'تعادل — يحتاج حسماً' })).toBeVisible()
     await expect(page.getByRole('tab', { name: 'بانتظار تأكيد المصارفة' })).toBeVisible()
-    await page.screenshot({ path: '../docs/ui-parity/screenshots/12-3/after/director-requests.png', fullPage: true })
+    await page.screenshot({
+      path: '../docs/ui-parity/screenshots/12-3/after/director-requests.png',
+      fullPage: true,
+    })
 
     await page.getByText('YFH-2026-009001').first().click()
     await expect(page).toHaveURL(/\/requests\/9001/)
     await expect(page.getByRole('tab', { name: 'المعلومات' })).toBeVisible()
     await expect(page.getByText('بانتظار تأكيد المصارفة')).toBeVisible()
     await expect(page.getByText('رفع وثائق السويفت')).toHaveCount(0)
-    await page.screenshot({ path: '../docs/ui-parity/screenshots/12-3/after/director-request-detail-fx.png', fullPage: true })
+    await page.screenshot({
+      path: '../docs/ui-parity/screenshots/12-3/after/director-request-detail-fx.png',
+      fullPage: true,
+    })
   })
 
   test('SWIFT Officer role surfaces, submit gate, and denied state', async ({ page }) => {
@@ -261,14 +300,23 @@ test.describe('Story 12-3 gate verification', () => {
     await loginAs(page, 'swift@ybrd.com.ye')
     await expect(page.getByText(/طلبات بانتظار رفع وثائق السويفت/)).toBeVisible()
     await expect(page.getByText('طلب تأكيد المصارفة').first()).toBeVisible()
-    await page.screenshot({ path: '../docs/ui-parity/screenshots/12-3/after/swift-dashboard.png', fullPage: true })
+    await page.screenshot({
+      path: '../docs/ui-parity/screenshots/12-3/after/swift-dashboard.png',
+      fullPage: true,
+    })
 
-    await page.getByRole('link', { name: /طلبات التمويل/ }).first().click()
+    await page
+      .getByRole('link', { name: /طلبات التمويل/ })
+      .first()
+      .click()
     await expect(page).toHaveURL(/\/requests/)
     await expect(page.getByRole('tab', { name: 'بانتظار رفع السويفت' })).toBeVisible()
     await expect(page.getByRole('tab', { name: 'تم رفع السويفت' })).toBeVisible()
     await expect(page.getByRole('tab', { name: 'مكتمل' })).toBeVisible()
-    await page.screenshot({ path: '../docs/ui-parity/screenshots/12-3/after/swift-requests.png', fullPage: true })
+    await page.screenshot({
+      path: '../docs/ui-parity/screenshots/12-3/after/swift-requests.png',
+      fullPage: true,
+    })
 
     await page.getByText('YFH-2026-009101').first().click()
     await expect(page).toHaveURL(/\/requests\/9101/)
@@ -277,14 +325,27 @@ test.describe('Story 12-3 gate verification', () => {
     await expect(page.getByText('ملخص بيانات الطلب (مقفلة)')).toBeVisible()
     await expect(page.getByRole('button', { name: 'تسليم وثائق السويفت' })).toBeDisabled()
     await expect(page.getByText('أدخل رقم مرجع السويفت أولاً')).toBeVisible()
-    await page.screenshot({ path: '../docs/ui-parity/screenshots/12-3/after/swift-upload-gate.png', fullPage: true })
+    await page.screenshot({
+      path: '../docs/ui-parity/screenshots/12-3/after/swift-upload-gate.png',
+      fullPage: true,
+    })
 
     await page.goBack()
     await expect(page).toHaveURL(/\/requests\/9101/)
-    await page.getByRole('link', { name: /طلبات التمويل/ }).first().click()
+    await page
+      .getByRole('link', { name: /طلبات التمويل/ })
+      .first()
+      .click()
     await page.getByText('YFH-2026-009102').first().click()
     await expect(page).toHaveURL(/\/requests\/9102/)
-    await expect(page.getByText('تم تسليم السويفت — انتقلت المسؤولية إلى مدير اللجنة التنفيذية لإتمام تأكيد المصارفة الخارجية.')).toBeVisible()
-    await page.screenshot({ path: '../docs/ui-parity/screenshots/12-3/after/swift-upload-denied.png', fullPage: true })
+    await expect(
+      page.getByText(
+        'تم تسليم السويفت — انتقلت المسؤولية إلى مدير اللجنة التنفيذية لإتمام تأكيد المصارفة الخارجية.',
+      ),
+    ).toBeVisible()
+    await page.screenshot({
+      path: '../docs/ui-parity/screenshots/12-3/after/swift-upload-denied.png',
+      fullPage: true,
+    })
   })
 })

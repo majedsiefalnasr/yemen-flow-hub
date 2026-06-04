@@ -31,7 +31,11 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { buildStatusFilterOptions, REQUESTS_COLUMN_LABELS, useRequestsColumns } from '@/composables/useRequestsColumns'
+import {
+  buildStatusFilterOptions,
+  REQUESTS_COLUMN_LABELS,
+  useRequestsColumns,
+} from '@/composables/useRequestsColumns'
 import { useAuthStore } from '@/stores/auth.store'
 import { UserRole } from '@/types/enums'
 import type { ImportRequest } from '@/types/models'
@@ -75,36 +79,50 @@ const columnVisibility = ref<VisibilityState>({ ...initialVisibility })
 const { columns } = useRequestsColumns({
   role: computed(() => props.role),
   currentUserId,
-  onPreviewClick: request => emit('previewClick', request),
+  onPreviewClick: (request) => emit('previewClick', request),
 })
 
 const statusFilterOptions = computed(() => buildStatusFilterOptions())
 
 const table = useVueTable({
-  get data() { return props.data },
+  get data() {
+    return props.data
+  },
   columns,
   getCoreRowModel: getCoreRowModel(),
   getFilteredRowModel: getFilteredRowModel(),
   getPaginationRowModel: getPaginationRowModel(),
   getSortedRowModel: getSortedRowModel(),
-  onSortingChange: updater => sorting.value = typeof updater === 'function' ? updater(sorting.value) : updater,
-  onColumnFiltersChange: updater => columnFilters.value = typeof updater === 'function' ? updater(columnFilters.value) : updater,
-  onColumnVisibilityChange: updater => {
-    columnVisibility.value = typeof updater === 'function' ? updater(columnVisibility.value) : updater
+  onSortingChange: (updater) =>
+    (sorting.value = typeof updater === 'function' ? updater(sorting.value) : updater),
+  onColumnFiltersChange: (updater) =>
+    (columnFilters.value = typeof updater === 'function' ? updater(columnFilters.value) : updater),
+  onColumnVisibilityChange: (updater) => {
+    columnVisibility.value =
+      typeof updater === 'function' ? updater(columnVisibility.value) : updater
   },
-  onRowSelectionChange: updater => rowSelection.value = typeof updater === 'function' ? updater(rowSelection.value) : updater,
+  onRowSelectionChange: (updater) =>
+    (rowSelection.value = typeof updater === 'function' ? updater(rowSelection.value) : updater),
   state: {
-    get sorting() { return sorting.value },
-    get columnFilters() { return columnFilters.value },
-    get columnVisibility() { return columnVisibility.value },
-    get rowSelection() { return rowSelection.value },
+    get sorting() {
+      return sorting.value
+    },
+    get columnFilters() {
+      return columnFilters.value
+    },
+    get columnVisibility() {
+      return columnVisibility.value
+    },
+    get rowSelection() {
+      return rowSelection.value
+    },
   },
 })
 
 const selectedCount = computed(() => Object.values(rowSelection.value).filter(Boolean).length)
 const hasActiveFilters = computed(() => columnFilters.value.length > 0)
 
-watch(selectedCount, count => emit('update:selectedCount', count))
+watch(selectedCount, (count) => emit('update:selectedCount', count))
 
 function resetFilters() {
   columnFilters.value = []
@@ -112,7 +130,9 @@ function resetFilters() {
 
 function supportCommitteeRowClass(request: ImportRequest): string {
   if (props.role !== UserRole.SUPPORT_COMMITTEE) return 'hover:bg-muted/30'
-  const mine = request.is_claimed_by_me || (currentUserId.value != null && request.claimed_by?.id === currentUserId.value)
+  const mine =
+    request.is_claimed_by_me ||
+    (currentUserId.value != null && request.claimed_by?.id === currentUserId.value)
   if (mine) return 'bg-[var(--voting)]/8 hover:bg-[var(--voting)]/12'
   if (request.claimed_by) return 'bg-muted/40 hover:bg-muted/60'
   return 'hover:bg-muted/30'
@@ -120,7 +140,7 @@ function supportCommitteeRowClass(request: ImportRequest): string {
 
 defineExpose({
   clearSelection: () => table.resetRowSelection(),
-  getSelectedRequestIds: () => table.getSelectedRowModel().rows.map(row => row.original.id),
+  getSelectedRequestIds: () => table.getSelectedRowModel().rows.map((row) => row.original.id),
   table,
 })
 </script>
@@ -138,7 +158,7 @@ defineExpose({
         v-if="hasActiveFilters"
         variant="ghost"
         size="sm"
-        class="h-8 px-2 text-muted-foreground"
+        class="text-muted-foreground h-8 px-2"
         @click="resetFilters"
       >
         إعادة ضبط
@@ -151,9 +171,12 @@ defineExpose({
       />
     </div>
 
-    <div v-if="loading || table.getRowModel().rows.length > 0" class="overflow-x-auto rounded-lg border">
-      <Table class="min-w-max w-full">
-        <TableHeader class="sticky top-0 z-30 bg-muted">
+    <div
+      v-if="loading || table.getRowModel().rows.length > 0"
+      class="overflow-x-auto rounded-lg border"
+    >
+      <Table class="w-full min-w-max">
+        <TableHeader class="bg-muted sticky top-0 z-30">
           <TableRow
             v-for="headerGroup in table.getHeaderGroups()"
             :key="headerGroup.id"
@@ -163,8 +186,8 @@ defineExpose({
               v-for="header in headerGroup.headers"
               :key="header.id"
               :col-span="header.colSpan"
-              class="h-10 text-sm font-medium text-foreground"
-              :class="header.column.id === 'actions' ? 'w-12 bg-muted px-2' : 'px-4'"
+              class="text-foreground h-10 text-sm font-medium"
+              :class="header.column.id === 'actions' ? 'bg-muted w-12 px-2' : 'px-4'"
             >
               <FlexRender
                 v-if="!header.isPlaceholder"
@@ -211,7 +234,11 @@ defineExpose({
                 v-for="cell in row.getVisibleCells()"
                 :key="cell.id"
                 class="py-3 align-middle"
-                :class="cell.column.id === 'actions' ? 'w-12 bg-background px-2 group-hover/row:bg-muted/30' : 'px-4'"
+                :class="
+                  cell.column.id === 'actions'
+                    ? 'bg-background group-hover/row:bg-muted/30 w-12 px-2'
+                    : 'px-4'
+                "
               >
                 <FlexRender :render="cell.column.columnDef.cell" :props="cell.getContext()" />
               </TableCell>
@@ -223,17 +250,26 @@ defineExpose({
 
     <Empty
       v-if="!loading && !table.getRowModel().rows.length"
-      class="min-h-[280px] rounded-xl border border-dashed bg-muted/20"
+      class="bg-muted/20 min-h-[280px] rounded-xl border border-dashed"
     >
       <EmptyHeader>
-        <div class="flex size-12 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+        <div
+          class="bg-muted text-muted-foreground flex size-12 items-center justify-center rounded-xl"
+        >
           <SearchX class="size-5" />
         </div>
-        <EmptyTitle>{{ emptyState?.title ?? (noData ? 'لا توجد طلبات بعد' : 'لا توجد طلبات مطابقة') }}</EmptyTitle>
+        <EmptyTitle>{{
+          emptyState?.title ?? (noData ? 'لا توجد طلبات بعد' : 'لا توجد طلبات مطابقة')
+        }}</EmptyTitle>
       </EmptyHeader>
       <EmptyContent>
         <EmptyDescription>
-          {{ emptyState?.description ?? (noData ? 'لم يتم تقديم أي طلبات حتى الآن.' : 'جرّب تغيير البحث أو الفلاتر لعرض الطلبات المتاحة.') }}
+          {{
+            emptyState?.description ??
+            (noData
+              ? 'لم يتم تقديم أي طلبات حتى الآن.'
+              : 'جرّب تغيير البحث أو الفلاتر لعرض الطلبات المتاحة.')
+          }}
         </EmptyDescription>
       </EmptyContent>
     </Empty>

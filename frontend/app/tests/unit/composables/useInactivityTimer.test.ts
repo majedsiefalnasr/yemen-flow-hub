@@ -11,7 +11,11 @@ vi.stubGlobal('useRuntimeConfig', () => ({
 }))
 // Stub process.client only — do NOT replace the whole process object
 // (pinia reads process.env.NODE_ENV; replacing process breaks it)
-Object.defineProperty(globalThis.process, 'client', { value: false, configurable: true, writable: true })
+Object.defineProperty(globalThis.process, 'client', {
+  value: false,
+  configurable: true,
+  writable: true,
+})
 
 // Mock the auth store
 const mockForceLogout = vi.fn()

@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { NAV_SURFACE_ROUTES, ROLE_SURFACE_MATRIX, roleHasSurface, rolesForSurface } from '../../../constants/role-surfaces'
+import {
+  NAV_SURFACE_ROUTES,
+  ROLE_SURFACE_MATRIX,
+  roleHasSurface,
+  rolesForSurface,
+} from '../../../constants/role-surfaces'
 import { UserRole } from '../../../types/enums'
 
 describe('ROLE_SURFACE_MATRIX', () => {
@@ -19,7 +24,9 @@ describe('ROLE_SURFACE_MATRIX', () => {
     expect(roleHasSurface(UserRole.SUPPORT_COMMITTEE, 'action.voting.cast')).toBe(false)
     expect(roleHasSurface(UserRole.EXECUTIVE_MEMBER, 'action.voting.close_finalize')).toBe(false)
     expect(roleHasSurface(UserRole.COMMITTEE_DIRECTOR, 'action.voting.close_finalize')).toBe(true)
-    expect(roleHasSurface(UserRole.CBY_ADMIN, 'action.external_fx_confirmation.complete')).toBe(false)
+    expect(roleHasSurface(UserRole.CBY_ADMIN, 'action.external_fx_confirmation.complete')).toBe(
+      false,
+    )
   })
 
   it('maps navigation routes from surfaces consistently', () => {
@@ -79,11 +86,15 @@ describe('ROLE_SURFACE_MATRIX — DATA_ENTRY forbidden surfaces (plan §1)', () 
   })
 
   it('cannot complete external FX confirmation', () => {
-    expect(roleHasSurface(UserRole.DATA_ENTRY, 'action.external_fx_confirmation.complete')).toBe(false)
+    expect(roleHasSurface(UserRole.DATA_ENTRY, 'action.external_fx_confirmation.complete')).toBe(
+      false,
+    )
   })
 
   it('cannot download external FX confirmation document', () => {
-    expect(roleHasSurface(UserRole.DATA_ENTRY, 'action.external_fx_confirmation.download')).toBe(false)
+    expect(roleHasSurface(UserRole.DATA_ENTRY, 'action.external_fx_confirmation.download')).toBe(
+      false,
+    )
   })
 
   it('cannot see external FX confirmation nav route (/customs)', () => {
@@ -163,7 +174,9 @@ describe('ROLE_SURFACE_MATRIX — BANK_REVIEWER forbidden surfaces (plan §1)', 
   })
 
   it('cannot complete external FX confirmation', () => {
-    expect(roleHasSurface(UserRole.BANK_REVIEWER, 'action.external_fx_confirmation.complete')).toBe(false)
+    expect(roleHasSurface(UserRole.BANK_REVIEWER, 'action.external_fx_confirmation.complete')).toBe(
+      false,
+    )
   })
 
   it('cannot see staff nav', () => {
@@ -268,11 +281,15 @@ describe('ROLE_SURFACE_MATRIX — BANK_ADMIN forbidden surfaces (plan §1)', () 
   })
 
   it('cannot complete external FX confirmation', () => {
-    expect(roleHasSurface(UserRole.BANK_ADMIN, 'action.external_fx_confirmation.complete')).toBe(false)
+    expect(roleHasSurface(UserRole.BANK_ADMIN, 'action.external_fx_confirmation.complete')).toBe(
+      false,
+    )
   })
 
   it('cannot download external FX confirmation document', () => {
-    expect(roleHasSurface(UserRole.BANK_ADMIN, 'action.external_fx_confirmation.download')).toBe(false)
+    expect(roleHasSurface(UserRole.BANK_ADMIN, 'action.external_fx_confirmation.download')).toBe(
+      false,
+    )
   })
 
   it('cannot access support claim action', () => {
@@ -336,7 +353,9 @@ describe('ROLE_SURFACE_MATRIX — SWIFT_OFFICER forbidden surfaces (plan §1)', 
   })
 
   it('cannot complete external FX confirmation', () => {
-    expect(roleHasSurface(UserRole.SWIFT_OFFICER, 'action.external_fx_confirmation.complete')).toBe(false)
+    expect(roleHasSurface(UserRole.SWIFT_OFFICER, 'action.external_fx_confirmation.complete')).toBe(
+      false,
+    )
   })
 
   it('cannot create new requests', () => {
@@ -400,7 +419,9 @@ describe('ROLE_SURFACE_MATRIX — SUPPORT_COMMITTEE forbidden surfaces (plan §1
   })
 
   it('cannot complete external FX confirmation', () => {
-    expect(roleHasSurface(UserRole.SUPPORT_COMMITTEE, 'action.external_fx_confirmation.complete')).toBe(false)
+    expect(
+      roleHasSurface(UserRole.SUPPORT_COMMITTEE, 'action.external_fx_confirmation.complete'),
+    ).toBe(false)
   })
 
   it('cannot create new requests', () => {
@@ -452,7 +473,9 @@ describe('ROLE_SURFACE_MATRIX — EXECUTIVE_MEMBER forbidden surfaces (plan §1)
   })
 
   it('cannot complete external FX confirmation', () => {
-    expect(roleHasSurface(UserRole.EXECUTIVE_MEMBER, 'action.external_fx_confirmation.complete')).toBe(false)
+    expect(
+      roleHasSurface(UserRole.EXECUTIVE_MEMBER, 'action.external_fx_confirmation.complete'),
+    ).toBe(false)
   })
 
   it('cannot access support claim action', () => {
@@ -488,7 +511,9 @@ describe('ROLE_SURFACE_MATRIX — COMMITTEE_DIRECTOR allowed surfaces', () => {
   })
 
   it('allows external FX confirmation download', () => {
-    expect(roleHasSurface(UserRole.COMMITTEE_DIRECTOR, 'action.external_fx_confirmation.download')).toBe(true)
+    expect(
+      roleHasSurface(UserRole.COMMITTEE_DIRECTOR, 'action.external_fx_confirmation.download'),
+    ).toBe(true)
   })
 })
 
@@ -496,7 +521,9 @@ describe('ROLE_SURFACE_MATRIX — COMMITTEE_DIRECTOR allowed surfaces', () => {
 
 describe('ROLE_SURFACE_MATRIX — COMMITTEE_DIRECTOR action surfaces', () => {
   it('can complete external FX confirmation (Director is the sole actor for this surface)', () => {
-    expect(roleHasSurface(UserRole.COMMITTEE_DIRECTOR, 'action.external_fx_confirmation.complete')).toBe(true)
+    expect(
+      roleHasSurface(UserRole.COMMITTEE_DIRECTOR, 'action.external_fx_confirmation.complete'),
+    ).toBe(true)
   })
 })
 
@@ -556,7 +583,9 @@ describe('ROLE_SURFACE_MATRIX — CBY_ADMIN allowed surfaces', () => {
 
 describe('ROLE_SURFACE_MATRIX — CBY_ADMIN forbidden surfaces (plan §1)', () => {
   it('cannot complete external FX confirmation (Director-only)', () => {
-    expect(roleHasSurface(UserRole.CBY_ADMIN, 'action.external_fx_confirmation.complete')).toBe(false)
+    expect(roleHasSurface(UserRole.CBY_ADMIN, 'action.external_fx_confirmation.complete')).toBe(
+      false,
+    )
   })
 
   it('cannot cast a vote', () => {

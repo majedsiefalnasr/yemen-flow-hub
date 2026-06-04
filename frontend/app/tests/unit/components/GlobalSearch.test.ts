@@ -73,16 +73,20 @@ const SAMPLE_RESULTS = {
       is_active: true,
     },
   ],
-  banks: [
-    { id: 3, name: 'Bank Alpha', code: 'YCBA', is_active: true },
-  ],
+  banks: [{ id: 3, name: 'Bank Alpha', code: 'YCBA', is_active: true }],
   customs: [
-    { id: 4, declaration_number: 'DECL-001', issued_at: null, request_id: 5, reference_number: 'REF-005' },
+    {
+      id: 4,
+      declaration_number: 'DECL-001',
+      issued_at: null,
+      request_id: 5,
+      reference_number: 'REF-005',
+    },
   ],
 }
 
 async function state() {
-  return (await import('../../../composables/useSearch') as any).__searchTestState
+  return ((await import('../../../composables/useSearch')) as any).__searchTestState
 }
 
 async function resetState() {
@@ -144,7 +148,10 @@ describe('GlobalSearch', () => {
     const wrapper = mount(GlobalSearch)
 
     await wrapper.get('input').setValue('alpha')
-    await wrapper.findAll('button.search-chip').find(button => button.text() === 'المستخدمون')!.trigger('click')
+    await wrapper
+      .findAll('button.search-chip')
+      .find((button) => button.text() === 'المستخدمون')!
+      .trigger('click')
     await nextTick()
 
     expect(wrapper.text()).toContain('Ahmed')
@@ -193,7 +200,10 @@ describe('GlobalSearch', () => {
     expect(mockPush).toHaveBeenCalledWith('/requests/1')
 
     await wrapper.get('input').setValue('alpha')
-    await wrapper.findAll('button.search-chip').find(button => button.text() === 'البيانات الجمركية')!.trigger('click')
+    await wrapper
+      .findAll('button.search-chip')
+      .find((button) => button.text() === 'البيانات الجمركية')!
+      .trigger('click')
     await wrapper.find('button.search-result-item').trigger('click')
 
     expect(mockPush).toHaveBeenCalledWith('/requests/5')

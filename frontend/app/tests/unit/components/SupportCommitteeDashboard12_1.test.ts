@@ -31,8 +31,9 @@ function makeRequest(overrides: Partial<ImportRequest> = {}): ImportRequest {
 // --- Active-claim strip logic ---
 
 function myActiveClaims(queue: ImportRequest[], currentUserId: number): ImportRequest[] {
-  return queue.filter(req =>
-    req.is_claimed_by_me || (req.claimed_by != null && req.claimed_by.id === currentUserId),
+  return queue.filter(
+    (req) =>
+      req.is_claimed_by_me || (req.claimed_by != null && req.claimed_by.id === currentUserId),
   )
 }
 
@@ -78,8 +79,16 @@ type KpiEntry = { label: string; variant: string; tab: string }
 
 function buildKpiConfig(stats: SupportCommitteeDashboardStats): KpiEntry[] {
   return [
-    { label: 'بانتظار المطالبة', variant: (stats.waiting_for_claim ?? 0) > 0 ? 'amber' : 'gray', tab: 'waiting' },
-    { label: 'أعمل عليها الآن', variant: (stats.active_by_me ?? 0) > 0 ? 'indigo' : 'gray', tab: 'my_claims' },
+    {
+      label: 'بانتظار المطالبة',
+      variant: (stats.waiting_for_claim ?? 0) > 0 ? 'amber' : 'gray',
+      tab: 'waiting',
+    },
+    {
+      label: 'أعمل عليها الآن',
+      variant: (stats.active_by_me ?? 0) > 0 ? 'indigo' : 'gray',
+      tab: 'my_claims',
+    },
     { label: 'محجوزة لأعضاء آخرين', variant: 'gray', tab: 'in_progress' },
     { label: 'اعتُمِدت مؤخراً', variant: 'green', tab: 'approved' },
   ]
@@ -87,7 +96,10 @@ function buildKpiConfig(stats: SupportCommitteeDashboardStats): KpiEntry[] {
 
 describe('SupportCommitteeDashboard 12.1 — KPI spec order', () => {
   const stats: SupportCommitteeDashboardStats = {
-    waiting_for_claim: 5, active_by_me: 1, claimed_by_others: 3, recently_approved: 2,
+    waiting_for_claim: 5,
+    active_by_me: 1,
+    claimed_by_others: 3,
+    recently_approved: 2,
     support_queue: [],
   }
   const kpis = buildKpiConfig(stats)
@@ -117,7 +129,10 @@ describe('SupportCommitteeDashboard 12.1 — KPI spec order', () => {
 
   it('waiting KPI variant is gray when count is 0', () => {
     const zeroStats: SupportCommitteeDashboardStats = {
-      waiting_for_claim: 0, active_by_me: 0, claimed_by_others: 0, recently_approved: 0,
+      waiting_for_claim: 0,
+      active_by_me: 0,
+      claimed_by_others: 0,
+      recently_approved: 0,
       support_queue: [],
     }
     expect(buildKpiConfig(zeroStats)[0]?.variant).toBe('gray')

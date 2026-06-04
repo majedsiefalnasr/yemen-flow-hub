@@ -69,12 +69,14 @@ vi.stubGlobal('useRouter', () => ({ push: vi.fn() }))
 
 describe('RequestsDataTable keyboard focus affordances', () => {
   it('keeps filter, columns, row-actions, and pagination controls keyboard-focusable', async () => {
-    const rows = Array.from({ length: 25 }, (_, index) => makeImportRequest({
-      id: index + 1,
-      reference_number: `YFH-2026-${String(index + 1).padStart(6, '0')}`,
-      status: RequestStatus.DRAFT,
-      merchant: { id: 5, name: 'مؤسسة النور', commercial_register: null },
-    }))
+    const rows = Array.from({ length: 25 }, (_, index) =>
+      makeImportRequest({
+        id: index + 1,
+        reference_number: `YFH-2026-${String(index + 1).padStart(6, '0')}`,
+        status: RequestStatus.DRAFT,
+        merchant: { id: 5, name: 'مؤسسة النور', commercial_register: null },
+      }),
+    )
 
     const wrapper = mount(RequestsDataTable, {
       attachTo: document.body,
@@ -86,11 +88,11 @@ describe('RequestsDataTable keyboard focus affordances', () => {
       },
     })
 
-    const statusFilter = wrapper.findAll('button').find(btn => btn.text().includes('الحالة'))
-    const columnMenu = wrapper.findAll('button').find(btn => btn.text().includes('الأعمدة'))
-    const rowActions = wrapper.findAll('button').find(btn => btn.text().includes('فتح القائمة'))
-    const prevPage = wrapper.findAll('button').find(btn => btn.text().includes('الصفحة السابقة'))
-    const nextPage = wrapper.findAll('button').find(btn => btn.text().includes('الصفحة التالية'))
+    const statusFilter = wrapper.findAll('button').find((btn) => btn.text().includes('الحالة'))
+    const columnMenu = wrapper.findAll('button').find((btn) => btn.text().includes('الأعمدة'))
+    const rowActions = wrapper.findAll('button').find((btn) => btn.text().includes('فتح القائمة'))
+    const prevPage = wrapper.findAll('button').find((btn) => btn.text().includes('الصفحة السابقة'))
+    const nextPage = wrapper.findAll('button').find((btn) => btn.text().includes('الصفحة التالية'))
 
     expect(statusFilter).toBeTruthy()
     expect(columnMenu).toBeTruthy()
@@ -112,7 +114,9 @@ describe('RequestsDataTable keyboard focus affordances', () => {
 
     await nextPage!.trigger('click')
 
-    const prevPageAfterNext = wrapper.findAll('button').find(btn => btn.text().includes('الصفحة السابقة'))
+    const prevPageAfterNext = wrapper
+      .findAll('button')
+      .find((btn) => btn.text().includes('الصفحة السابقة'))
     expect(prevPageAfterNext).toBeTruthy()
 
     prevPageAfterNext!.element.focus()

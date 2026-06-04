@@ -24,7 +24,9 @@ test.describe('requests table', () => {
     await page.setViewportSize({ width: 1440, height: 1000 })
     await page.goto('/requests')
     // Wait for table rows to render
-    await page.waitForSelector('table tbody tr, [role="row"]:not(:first-child)', { timeout: 15_000 })
+    await page.waitForSelector('table tbody tr, [role="row"]:not(:first-child)', {
+      timeout: 15_000,
+    })
     await page.waitForLoadState('networkidle')
     await expect(page).toHaveScreenshot('requests-table-1440.png')
   })
@@ -32,7 +34,9 @@ test.describe('requests table', () => {
   test('full table at 1280×900', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 900 })
     await page.goto('/requests')
-    await page.waitForSelector('table tbody tr, [role="row"]:not(:first-child)', { timeout: 15_000 })
+    await page.waitForSelector('table tbody tr, [role="row"]:not(:first-child)', {
+      timeout: 15_000,
+    })
     await page.waitForLoadState('networkidle')
     await expect(page).toHaveScreenshot('requests-table-1280.png')
   })
@@ -42,7 +46,9 @@ test.describe('requests table', () => {
     await page.goto('/requests')
     await page.waitForLoadState('networkidle')
     // Toolbar area with search and filters
-    const toolbar = page.locator('[data-testid="table-toolbar"], .table-toolbar, form[role="search"]').first()
+    const toolbar = page
+      .locator('[data-testid="table-toolbar"], .table-toolbar, form[role="search"]')
+      .first()
     if (await toolbar.isVisible()) {
       await expect(toolbar).toHaveScreenshot('requests-toolbar.png')
     } else {
@@ -58,7 +64,7 @@ test.describe('requests table', () => {
     await page.waitForLoadState('networkidle')
     // Take screenshot of the status column area
     const badges = page.locator('[data-testid="status-badge"], .badge, [class*="badge"]')
-    if (await badges.count() > 0) {
+    if ((await badges.count()) > 0) {
       await expect(badges.first()).toHaveScreenshot('requests-status-badge.png')
     }
   })

@@ -12,7 +12,16 @@ import {
   Search,
   SearchX,
 } from 'lucide-vue-next'
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
@@ -25,7 +34,11 @@ import { useTableKeyboard } from '@/composables/useTableKeyboard'
 import { ROUTE_ROLE_MAP } from '@/constants/workflow'
 import { UserRole } from '@/types/enums'
 import type { DocumentType } from '@/types/models'
-import { useDocumentTypes, type CreateDocumentTypePayload, type UpdateDocumentTypePayload } from '@/composables/useDocumentTypes'
+import {
+  useDocumentTypes,
+  type CreateDocumentTypePayload,
+  type UpdateDocumentTypePayload,
+} from '@/composables/useDocumentTypes'
 import { useAuthStore } from '@/stores/auth.store'
 
 definePageMeta({
@@ -76,8 +89,7 @@ onMounted(async () => {
   loadingDocTypes.value = true
   try {
     docTypes.value = await fetchDocumentTypes()
-  }
-  finally {
+  } finally {
     loadingDocTypes.value = false
   }
 })
@@ -86,10 +98,11 @@ const canAdd = computed(() => Boolean(draft.name_ar.trim() && draft.slug.trim())
 const filteredDocTypes = computed(() => {
   const q = query.value.trim().toLowerCase()
   if (!q) return docTypes.value
-  return docTypes.value.filter(item =>
-    item.name_ar.toLowerCase().includes(q)
-    || item.name_en.toLowerCase().includes(q)
-    || item.slug.toLowerCase().includes(q),
+  return docTypes.value.filter(
+    (item) =>
+      item.name_ar.toLowerCase().includes(q) ||
+      item.name_en.toLowerCase().includes(q) ||
+      item.slug.toLowerCase().includes(q),
   )
 })
 
@@ -115,11 +128,9 @@ async function addRule() {
     draft.slug = ''
     draft.is_required = true
     notify('تمت إضافة نوع المستند')
-  }
-  catch {
+  } catch {
     toastError('تعذر حفظ نوع المستند. أعد المحاولة بعد قليل.')
-  }
-  finally {
+  } finally {
     saving.value = false
   }
 }
@@ -130,9 +141,7 @@ function requestToggleRequired(item: DocumentType) {
   impactPreview.value = {
     item,
     changeType: 'required',
-    title: becomingRequired
-      ? `جعل "${item.name_ar}" مطلوباً`
-      : `جعل "${item.name_ar}" اختيارياً`,
+    title: becomingRequired ? `جعل "${item.name_ar}" مطلوباً` : `جعل "${item.name_ar}" اختيارياً`,
     description: becomingRequired
       ? 'ستُصبح هذه الوثيقة مطلوبة في جميع الطلبات الجارية والمستقبلية.'
       : 'ستُصبح هذه الوثيقة اختيارية. الطلبات التي لم ترفعها ستستمر في التقدم دون انتظارها.',
@@ -155,7 +164,8 @@ function requestToggleActive(item: DocumentType) {
     changeType: 'deactivate',
     title: `تعطيل "${item.name_ar}"`,
     description: 'سيتوقف ظهور هذا النوع من المستندات في واجهة الرفع للطلبات الجديدة.',
-    consequence: 'الطلبات النشطة التي تحتوي على هذه الوثيقة مسبقاً لن تتأثر، لكن لن يُطلب هذا المستند في أي طلب جديد.',
+    consequence:
+      'الطلبات النشطة التي تحتوي على هذه الوثيقة مسبقاً لن تتأثر، لكن لن يُطلب هذا المستند في أي طلب جديد.',
   }
   impactDialogOpen.value = true
 }
@@ -166,8 +176,7 @@ async function confirmImpactChange() {
   const { item, changeType } = impactPreview.value
   if (changeType === 'required') {
     await applyToggleRequired(item)
-  }
-  else {
+  } else {
     await applyToggleActive(item)
   }
   impactPreview.value = null
@@ -189,9 +198,8 @@ async function applyToggleRequired(item: DocumentType) {
       sort_order: item.sort_order,
     }
     const updated = await updateDocumentType(item.id, payload)
-    docTypes.value = docTypes.value.map(d => d.id === item.id ? updated : d)
-  }
-  catch {
+    docTypes.value = docTypes.value.map((d) => (d.id === item.id ? updated : d))
+  } catch {
     toastError('فشل تحديث الحالة')
   }
 }
@@ -207,9 +215,8 @@ async function applyToggleActive(item: DocumentType) {
       sort_order: item.sort_order,
     }
     const updated = await updateDocumentType(item.id, payload)
-    docTypes.value = docTypes.value.map(d => d.id === item.id ? updated : d)
-  }
-  catch {
+    docTypes.value = docTypes.value.map((d) => (d.id === item.id ? updated : d))
+  } catch {
     toastError('فشل تحديث الحالة')
   }
 }
@@ -222,10 +229,14 @@ const columns: ColumnDef<DocumentType>[] = [
       h('div', { class: 'min-w-[220px]' }, [
         h('div', { class: 'text-sm font-medium' }, row.original.name_ar),
         h('div', { class: 'mt-0.5 flex items-center gap-2 text-xs text-muted-foreground' }, [
-          h(Badge, {
-            variant: 'outline',
-            class: 'font-mono text-[10px]',
-          }, () => row.original.slug),
+          h(
+            Badge,
+            {
+              variant: 'outline',
+              class: 'font-mono text-[10px]',
+            },
+            () => row.original.slug,
+          ),
           row.original.name_en ? h('span', {}, `· ${row.original.name_en}`) : null,
         ]),
       ]),
@@ -258,7 +269,11 @@ const columns: ColumnDef<DocumentType>[] = [
     accessorKey: 'sort_order',
     header: 'الترتيب',
     cell: ({ row }) =>
-      h('span', { class: 'text-sm tabular-nums text-muted-foreground' }, String(row.original.sort_order)),
+      h(
+        'span',
+        { class: 'text-sm tabular-nums text-muted-foreground' },
+        String(row.original.sort_order),
+      ),
   },
 ]
 
@@ -281,12 +296,12 @@ function exportCurrentRules() {
       {
         key: 'is_required',
         label: 'الإلزام',
-        format: (_value: unknown, row: DocumentType) => row.is_required ? 'مطلوب' : 'اختياري',
+        format: (_value: unknown, row: DocumentType) => (row.is_required ? 'مطلوب' : 'اختياري'),
       },
       {
         key: 'is_active',
         label: 'التفعيل',
-        format: (_value: unknown, row: DocumentType) => row.is_active ? 'مفعّل' : 'معطّل',
+        format: (_value: unknown, row: DocumentType) => (row.is_active ? 'مفعّل' : 'معطّل'),
       },
       { key: 'sort_order', label: 'الترتيب' },
     ] as any,
@@ -304,45 +319,28 @@ function exportCurrentRules() {
     />
 
     <Card class="mb-6 border-0 p-5 shadow">
-      <div class="mb-3 font-semibold">
-        إضافة نوع مستند جديد
-      </div>
+      <div class="mb-3 font-semibold">إضافة نوع مستند جديد</div>
       <div class="grid gap-3 md:grid-cols-4">
-        <Input
-          v-model="draft.name_ar"
-          placeholder="الاسم بالعربية *"
-        />
-        <Input
-          v-model="draft.name_en"
-          
-          placeholder="Name in English"
-        />
-        <Input
-          v-model="draft.slug"
-          
-          placeholder="المعرّف (slug) *"
-        />
+        <Input v-model="draft.name_ar" placeholder="الاسم بالعربية *" />
+        <Input v-model="draft.name_en" placeholder="Name in English" />
+        <Input v-model="draft.slug" placeholder="المعرّف (slug) *" />
         <div class="flex items-center gap-2 rounded-md border px-3">
           <Switch
             :model-value="draft.is_required"
-            @update:model-value="value => draft.is_required = Boolean(value)"
+            @update:model-value="(value) => (draft.is_required = Boolean(value))"
           />
           <span class="text-sm">مطلوب</span>
         </div>
       </div>
-      <Button
-        class="mt-3"
-        :disabled="!canAdd || saving"
-        @click="addRule"
-      >
+      <Button class="mt-3" :disabled="!canAdd || saving" @click="addRule">
         <Plus class="ms-1 h-4 w-4" />
         إضافة
       </Button>
     </Card>
 
     <div class="mb-3 flex items-center gap-2">
-      <div class="relative min-w-[240px] flex-1 max-w-md">
-        <Search class="absolute inset-e-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+      <div class="relative max-w-md min-w-[240px] flex-1">
+        <Search class="text-muted-foreground absolute inset-e-3 top-1/2 h-4 w-4 -translate-y-1/2" />
         <Input
           ref="searchInputRef"
           v-model="query"
@@ -362,26 +360,25 @@ function exportCurrentRules() {
       </Button>
     </div>
 
-    <Card class="border-0 shadow p-4">
+    <Card class="border-0 p-4 shadow">
       <DataTable
         :data="filteredDocTypes"
         :columns="columns"
         :loading="loadingDocTypes"
         :column-visibility="columnVisibility"
-        @update:column-visibility="(v) => columnVisibility = v"
+        @update:column-visibility="(v) => (columnVisibility = v)"
       >
         <template #toolbar="{ table }">
           <div class="mb-2 flex justify-end">
-            <DataTableViewOptions
-              :table="table"
-              :column-labels="WORKFLOW_DOC_COLUMN_LABELS"
-            />
+            <DataTableViewOptions :table="table" :column-labels="WORKFLOW_DOC_COLUMN_LABELS" />
           </div>
         </template>
         <template #empty>
-          <Empty class="min-h-[180px] rounded-xl border border-dashed bg-muted/20">
+          <Empty class="bg-muted/20 min-h-[180px] rounded-xl border border-dashed">
             <EmptyHeader>
-              <div class="flex size-12 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+              <div
+                class="bg-muted text-muted-foreground flex size-12 items-center justify-center rounded-xl"
+              >
                 <SearchX class="size-5" />
               </div>
               <EmptyTitle>لا توجد أنواع مستندات مطابقة</EmptyTitle>
@@ -393,7 +390,7 @@ function exportCurrentRules() {
         </template>
         <template #pagination="{ table }">
           <div class="flex items-center justify-between border-t">
-            <p class="text-sm text-muted-foreground">{{ filteredDocTypes.length }} نوع</p>
+            <p class="text-muted-foreground text-sm">{{ filteredDocTypes.length }} نوع</p>
             <div class="flex items-center gap-4">
               <p class="text-sm font-medium whitespace-nowrap">
                 صفحة {{ table.getState().pagination.pageIndex + 1 }} من {{ table.getPageCount() }}
@@ -457,20 +454,16 @@ function exportCurrentRules() {
           <AlertDialogTitle>{{ impactPreview?.title }}</AlertDialogTitle>
           <AlertDialogDescription class="space-y-2">
             <p>{{ impactPreview?.description }}</p>
-            <p class="rounded-md border border-[var(--severity-amber)]/30 bg-[var(--severity-amber)]/5 p-3 text-xs text-foreground">
+            <p
+              class="text-foreground rounded-md border border-[var(--severity-amber)]/30 bg-[var(--severity-amber)]/5 p-3 text-xs"
+            >
               <strong>التأثير المتوقع:</strong> {{ impactPreview?.consequence }}
             </p>
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel @click="cancelImpactChange">
-            إلغاء — لا تغيير
-          </AlertDialogCancel>
-          <AlertDialogAction
-            @click="confirmImpactChange"
-          >
-            تأكيد التغيير
-          </AlertDialogAction>
+          <AlertDialogCancel @click="cancelImpactChange"> إلغاء — لا تغيير </AlertDialogCancel>
+          <AlertDialogAction @click="confirmImpactChange"> تأكيد التغيير </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

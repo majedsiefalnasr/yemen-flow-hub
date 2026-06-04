@@ -76,7 +76,10 @@ describe('useMerchants — fetchMerchants', () => {
     mockGet.mockResolvedValueOnce({
       success: true,
       message: 'OK',
-      data: { data: [MERCHANT_FIXTURE], meta: { current_page: 1, last_page: 1, per_page: 200, total: 1 } },
+      data: {
+        data: [MERCHANT_FIXTURE],
+        meta: { current_page: 1, last_page: 1, per_page: 200, total: 1 },
+      },
     })
     const { fetchMerchants } = useMerchants()
     const result = await fetchMerchants()
@@ -105,8 +108,15 @@ describe('useMerchants — createMerchant', () => {
   it('posts to /api/merchants and returns created merchant', async () => {
     mockPost.mockResolvedValueOnce({ success: true, data: MERCHANT_FIXTURE })
     const { createMerchant } = useMerchants()
-    const result = await createMerchant({ name: 'شركة الأمل للتجارة', bank_id: 1, business_type: 'import' })
-    expect(mockPost).toHaveBeenCalledWith('/api/merchants', expect.objectContaining({ name: 'شركة الأمل للتجارة', bank_id: 1, business_type: 'import' }))
+    const result = await createMerchant({
+      name: 'شركة الأمل للتجارة',
+      bank_id: 1,
+      business_type: 'import',
+    })
+    expect(mockPost).toHaveBeenCalledWith(
+      '/api/merchants',
+      expect.objectContaining({ name: 'شركة الأمل للتجارة', bank_id: 1, business_type: 'import' }),
+    )
     expect(result.id).toBe(1)
   })
 
@@ -127,7 +137,10 @@ describe('useMerchants — updateMerchant', () => {
     mockPut.mockResolvedValueOnce({ success: true, data: updated })
     const { updateMerchant } = useMerchants()
     const result = await updateMerchant(1, { name: 'شركة النجاح' })
-    expect(mockPut).toHaveBeenCalledWith('/api/merchants/1', expect.objectContaining({ name: 'شركة النجاح' }))
+    expect(mockPut).toHaveBeenCalledWith(
+      '/api/merchants/1',
+      expect.objectContaining({ name: 'شركة النجاح' }),
+    )
     expect(result.name).toBe('شركة النجاح')
   })
 

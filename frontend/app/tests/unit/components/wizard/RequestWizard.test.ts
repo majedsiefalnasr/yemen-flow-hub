@@ -37,7 +37,8 @@ describe('RequestWizard — step state helpers', () => {
 describe('RequestWizard — submit button logic', () => {
   it('disabled when not acknowledged', () => expect(isSubmitDisabled(false, false)).toBe(true))
   it('disabled when submitting', () => expect(isSubmitDisabled(true, true)).toBe(true))
-  it('enabled when acknowledged and not submitting', () => expect(isSubmitDisabled(true, false)).toBe(false))
+  it('enabled when acknowledged and not submitting', () =>
+    expect(isSubmitDisabled(true, false)).toBe(false))
 })
 
 describe('RequestWizard — bottom nav layout', () => {

@@ -63,8 +63,8 @@ const tableData = ref<TableData[]>([
 </script>
 
 <template>
-  <div class="min-h-screen bg-background p-4 lg:p-6">
-    <div class="max-w-7xl mx-auto">
+  <div class="bg-background min-h-screen p-4 lg:p-6">
+    <div class="mx-auto max-w-7xl">
       <div class="mb-8">
         <h1 class="text-2xl font-bold tracking-tight">Data Table with Tabs</h1>
         <p class="text-muted-foreground">

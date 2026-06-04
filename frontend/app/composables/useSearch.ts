@@ -54,14 +54,12 @@ export const useSearch = () => {
       if (requestId === requestSequence) {
         results.value = response.data
       }
-    }
-    catch (err: any) {
+    } catch (err: any) {
       if (requestId === requestSequence) {
         error.value = err.data?.message || 'Failed to perform search'
         results.value = { ...EMPTY_RESULTS }
       }
-    }
-    finally {
+    } finally {
       if (requestId === requestSequence) {
         loading.value = false
       }
@@ -70,16 +68,18 @@ export const useSearch = () => {
 
   const fetchRecent = async (): Promise<void> => {
     try {
-      const response = await $fetch<{ success: boolean; data: { recent_searches: string[] } }>('/api/search/recent', {
-        baseURL,
-        credentials: 'include',
-        headers: { Accept: 'application/json' },
-        method: 'GET',
-      })
+      const response = await $fetch<{ success: boolean; data: { recent_searches: string[] } }>(
+        '/api/search/recent',
+        {
+          baseURL,
+          credentials: 'include',
+          headers: { Accept: 'application/json' },
+          method: 'GET',
+        },
+      )
 
       recentSearches.value = response.data.recent_searches
-    }
-    catch {
+    } catch {
       // silently ignore — non-critical
     }
   }

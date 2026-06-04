@@ -1,10 +1,7 @@
 <script setup lang="ts">
 import type { ColumnDef, PaginationState } from '@tanstack/vue-table'
 import { computed, ref, reactive, watch, onMounted, h } from 'vue'
-import {
-  AlertTriangle,
-  MoreHorizontal, Plus, Search, SearchX, X,
-} from 'lucide-vue-next'
+import { AlertTriangle, MoreHorizontal, Plus, Search, SearchX, X } from 'lucide-vue-next'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import { UserRole } from '../types/enums'
 import type { Bank } from '../types/models'
@@ -93,11 +90,9 @@ async function loadBanks() {
     })
     banks.value = result.data
     banksMeta.value = { last_page: result.meta.last_page, total: result.meta.total }
-  }
-  catch {
+  } catch {
     error.value = 'تعذر تحميل قائمة البنوك الآن. أعد المحاولة بعد قليل.'
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -137,9 +132,18 @@ function clearErrors() {
 function validateForm(): boolean {
   clearErrors()
   let valid = true
-  if (!form.name_ar.trim()) { formErrors.name_ar = 'الاسم بالعربية مطلوب'; valid = false }
-  if (!isBankAdmin.value && !form.name_en.trim()) { formErrors.name_en = 'الاسم بالإنجليزية مطلوب'; valid = false }
-  if (!isBankAdmin.value && !form.code.trim()) { formErrors.code = 'الرمز مطلوب'; valid = false }
+  if (!form.name_ar.trim()) {
+    formErrors.name_ar = 'الاسم بالعربية مطلوب'
+    valid = false
+  }
+  if (!isBankAdmin.value && !form.name_en.trim()) {
+    formErrors.name_en = 'الاسم بالإنجليزية مطلوب'
+    valid = false
+  }
+  if (!isBankAdmin.value && !form.code.trim()) {
+    formErrors.code = 'الرمز مطلوب'
+    valid = false
+  }
   return valid
 }
 
@@ -159,8 +163,7 @@ async function saveBank() {
             is_active: form.is_active,
           }
       await updateBank(editingBank.value.id, payload)
-    }
-    else {
+    } else {
       const payload: CreateBankPayload = {
         name: form.name_ar.trim(),
         name_ar: form.name_ar.trim(),
@@ -172,20 +175,17 @@ async function saveBank() {
     }
     closeModal()
     await loadBanks()
-  }
-  catch (err: unknown) {
-    const e = err as { data?: { errors?: Record<string, string[]>, message?: string } }
+  } catch (err: unknown) {
+    const e = err as { data?: { errors?: Record<string, string[]>; message?: string } }
     if (e.data?.errors) {
       const errs = e.data.errors
       if (errs.name_ar?.[0]) formErrors.name_ar = errs.name_ar[0]
       if (errs.name_en?.[0]) formErrors.name_en = errs.name_en[0]
       if (errs.code?.[0]) formErrors.code = errs.code[0]
-    }
-    else {
+    } else {
       formError.value = e.data?.message ?? 'تعذر حفظ بيانات البنك. راجع الحقول ثم أعد المحاولة.'
     }
-  }
-  finally {
+  } finally {
     saving.value = false
   }
 }
@@ -209,7 +209,9 @@ const bankPagination = computed<PaginationState>(() => ({
   pageSize: urlBankPageSize.value,
 }))
 
-function onBankPaginationChange(updater: PaginationState | ((old: PaginationState) => PaginationState)) {
+function onBankPaginationChange(
+  updater: PaginationState | ((old: PaginationState) => PaginationState),
+) {
   const next = typeof updater === 'function' ? updater(bankPagination.value) : updater
   router.push({
     query: {
@@ -247,11 +249,22 @@ function activeStatusCell(isActive: boolean, activeLabel = 'نشط', inactiveLab
         h('line', { x1: '9', y1: '9', x2: '15', y2: '15' }),
       ]
   return h('span', { class: 'inline-flex items-center gap-1.5 whitespace-nowrap' }, [
-    h('svg', {
-      class: 'shrink-0', style: { color }, width: 15, height: 15,
-      viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor',
-      'stroke-width': '2.5', 'stroke-linecap': 'round', 'stroke-linejoin': 'round',
-    }, paths),
+    h(
+      'svg',
+      {
+        class: 'shrink-0',
+        style: { color },
+        width: 15,
+        height: 15,
+        viewBox: '0 0 24 24',
+        fill: 'none',
+        stroke: 'currentColor',
+        'stroke-width': '2.5',
+        'stroke-linecap': 'round',
+        'stroke-linejoin': 'round',
+      },
+      paths,
+    ),
     h('span', { class: 'text-sm font-medium text-foreground' }, label),
   ])
 }
@@ -261,14 +274,17 @@ const columns: ColumnDef<Bank>[] = [
     id: 'select',
     header: ({ table }) =>
       h(Checkbox, {
-        'modelValue': table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() ? 'indeterminate' : false),
-        'onUpdate:modelValue': (v: boolean | 'indeterminate') => table.toggleAllPageRowsSelected(!!v),
+        modelValue:
+          table.getIsAllPageRowsSelected() ||
+          (table.getIsSomePageRowsSelected() ? 'indeterminate' : false),
+        'onUpdate:modelValue': (v: boolean | 'indeterminate') =>
+          table.toggleAllPageRowsSelected(!!v),
         'aria-label': 'تحديد الكل',
       }),
     cell: ({ row }) =>
       h('div', { onClick: (e: Event) => e.stopPropagation() }, [
         h(Checkbox, {
-          'modelValue': row.getIsSelected(),
+          modelValue: row.getIsSelected(),
           'onUpdate:modelValue': (v: boolean | 'indeterminate') => row.toggleSelected(!!v),
           'aria-label': 'تحديد البنك',
         }),
@@ -279,20 +295,30 @@ const columns: ColumnDef<Bank>[] = [
   {
     id: 'name',
     header: 'البنك',
-    cell: ({ row }) => h('div', { class: 'flex flex-col gap-0.5' }, [
-      h('button', {
-        type: 'button',
-        class: 'text-sm font-medium text-start hover:underline underline-offset-2 cursor-pointer focus-visible:outline-none focus-visible:underline',
-        title: 'معاينة سريعة',
-        onClick: (e: Event) => { e.stopPropagation(); viewingBank.value = row.original },
-      }, row.original.name_ar),
-      h('span', { class: 'text-xs text-muted-foreground', dir: 'ltr' }, row.original.name_en),
-    ]),
+    cell: ({ row }) =>
+      h('div', { class: 'flex flex-col gap-0.5' }, [
+        h(
+          'button',
+          {
+            type: 'button',
+            class:
+              'text-sm font-medium text-start hover:underline underline-offset-2 cursor-pointer focus-visible:outline-none focus-visible:underline',
+            title: 'معاينة سريعة',
+            onClick: (e: Event) => {
+              e.stopPropagation()
+              viewingBank.value = row.original
+            },
+          },
+          row.original.name_ar,
+        ),
+        h('span', { class: 'text-xs text-muted-foreground', dir: 'ltr' }, row.original.name_en),
+      ]),
   },
   {
     accessorKey: 'code',
     header: 'الرمز',
-    cell: ({ row }) => h('code', { class: 'rounded bg-muted px-2 py-0.5 text-xs font-mono' }, row.original.code),
+    cell: ({ row }) =>
+      h('code', { class: 'rounded bg-muted px-2 py-0.5 text-xs font-mono' }, row.original.code),
   },
   {
     accessorKey: 'is_active',
@@ -305,26 +331,45 @@ const columns: ColumnDef<Bank>[] = [
     enableHiding: false,
     cell: ({ row }) => {
       const bank = row.original
-      return h(DropdownMenu, {}, {
-        default: () => [
-          h(DropdownMenuTrigger, { asChild: true }, {
-            default: () => h(Button, {
-              variant: 'ghost', size: 'icon', class: 'h-8 w-8',
-            }, {
-              default: () => [
-                h('span', { class: 'sr-only' }, 'فتح القائمة'),
-                h(MoreHorizontal, { class: 'h-4 w-4' }),
-              ],
-            }),
-          }),
-          h(DropdownMenuContent, { align: 'end' }, {
-            default: () => [
-              h(DropdownMenuItem, { onClick: () => (viewingBank.value = bank) }, () => 'عرض'),
-              h(DropdownMenuItem, { onClick: () => openEdit(bank) }, () => 'تعديل'),
-            ],
-          }),
-        ],
-      })
+      return h(
+        DropdownMenu,
+        {},
+        {
+          default: () => [
+            h(
+              DropdownMenuTrigger,
+              { asChild: true },
+              {
+                default: () =>
+                  h(
+                    Button,
+                    {
+                      variant: 'ghost',
+                      size: 'icon',
+                      class: 'h-8 w-8',
+                    },
+                    {
+                      default: () => [
+                        h('span', { class: 'sr-only' }, 'فتح القائمة'),
+                        h(MoreHorizontal, { class: 'h-4 w-4' }),
+                      ],
+                    },
+                  ),
+              },
+            ),
+            h(
+              DropdownMenuContent,
+              { align: 'end' },
+              {
+                default: () => [
+                  h(DropdownMenuItem, { onClick: () => (viewingBank.value = bank) }, () => 'عرض'),
+                  h(DropdownMenuItem, { onClick: () => openEdit(bank) }, () => 'تعديل'),
+                ],
+              },
+            ),
+          ],
+        },
+      )
     },
   },
 ]
@@ -336,8 +381,13 @@ onMounted(loadBanks)
   <div class="flex flex-col gap-6">
     <PageHeader
       :title="isBankAdmin ? 'بيانات البنك' : 'إدارة البنوك'"
-      :subtitle="isBankAdmin ? 'عرض معلومات بنكك' : 'إدارة قائمة البنوك التجارية المتاحة على المنصة'"
-      :breadcrumbs="[{ label: 'الرئيسية', to: '/' }, { label: isBankAdmin ? 'بيانات البنك' : 'إدارة البنوك' }]"
+      :subtitle="
+        isBankAdmin ? 'عرض معلومات بنكك' : 'إدارة قائمة البنوك التجارية المتاحة على المنصة'
+      "
+      :breadcrumbs="[
+        { label: 'الرئيسية', to: '/' },
+        { label: isBankAdmin ? 'بيانات البنك' : 'إدارة البنوك' },
+      ]"
     >
       <template v-if="!isBankAdmin" #actions>
         <Button size="sm" class="h-8" @click="openCreate">
@@ -354,13 +404,16 @@ onMounted(loadBanks)
     </Alert>
 
     <!-- Toolbar: bulk (when selected) OR search (default) -->
-    <div v-if="selectedCount > 0" class="flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2">
-      <span class="text-sm font-medium text-primary">{{ selectedCount }} محدد</span>
-      <div class="mx-2 h-4 w-px bg-border" />
+    <div
+      v-if="selectedCount > 0"
+      class="border-primary/20 bg-primary/5 flex items-center gap-2 rounded-lg border px-3 py-2"
+    >
+      <span class="text-primary text-sm font-medium">{{ selectedCount }} محدد</span>
+      <div class="bg-border mx-2 h-4 w-px" />
       <Button
         variant="ghost"
         size="sm"
-        class="ms-auto h-7 gap-1 text-xs text-muted-foreground"
+        class="text-muted-foreground ms-auto h-7 gap-1 text-xs"
         @click="clearSelection"
       >
         <X class="h-3.5 w-3.5" />
@@ -370,7 +423,7 @@ onMounted(loadBanks)
 
     <div v-else class="flex items-center gap-2">
       <div class="relative min-w-[220px] flex-1">
-        <Search class="absolute inset-e-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Search class="text-muted-foreground absolute inset-e-3 top-1/2 h-4 w-4 -translate-y-1/2" />
         <Input
           v-model="query"
           placeholder="بحث بالاسم أو الرمز..."
@@ -388,14 +441,16 @@ onMounted(loadBanks)
         :page-count="banksMeta?.last_page ?? 1"
         :pagination="bankPagination"
         :row-selection="rowSelection"
-        @update:pagination="onBankPaginationChange"
-        @update:row-selection="(v) => rowSelection = v"
         :row-class="'group/row'"
+        @update:pagination="onBankPaginationChange"
+        @update:row-selection="(v) => (rowSelection = v)"
       >
         <template #empty>
-          <Empty class="min-h-[280px] rounded-xl border border-dashed bg-muted/20">
+          <Empty class="bg-muted/20 min-h-[280px] rounded-xl border border-dashed">
             <EmptyHeader>
-              <div class="flex size-12 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+              <div
+                class="bg-muted text-muted-foreground flex size-12 items-center justify-center rounded-xl"
+              >
                 <SearchX class="size-5" />
               </div>
               <EmptyTitle>لا توجد نتائج</EmptyTitle>
@@ -413,7 +468,7 @@ onMounted(loadBanks)
 
     <!-- Dialog Modal -->
     <Dialog v-model:open="showModal" @update:open="(open) => !open && closeModal()">
-      <DialogContent class="sm:max-w-[420px]" >
+      <DialogContent class="sm:max-w-[420px]">
         <DialogHeader>
           <DialogTitle>{{ editingBank ? 'تعديل بيانات البنك' : 'إضافة بنك جديد' }}</DialogTitle>
         </DialogHeader>
@@ -426,20 +481,42 @@ onMounted(loadBanks)
         <div class="flex flex-col gap-4">
           <Field :data-invalid="!!formErrors.name_ar">
             <FieldLabel>الاسم بالعربية <span class="text-destructive">*</span></FieldLabel>
-            <Input v-model="form.name_ar" :aria-invalid="!!formErrors.name_ar" placeholder="مثال: البنك التجاري اليمني" type="text" />
-            <FieldDescription v-if="formErrors.name_ar" class="text-destructive">{{ formErrors.name_ar }}</FieldDescription>
+            <Input
+              v-model="form.name_ar"
+              :aria-invalid="!!formErrors.name_ar"
+              placeholder="مثال: البنك التجاري اليمني"
+              type="text"
+            />
+            <FieldDescription v-if="formErrors.name_ar" class="text-destructive">{{
+              formErrors.name_ar
+            }}</FieldDescription>
           </Field>
 
           <Field v-if="!isBankAdmin" :data-invalid="!!formErrors.name_en">
             <FieldLabel>الاسم بالإنجليزية <span class="text-destructive">*</span></FieldLabel>
-            <Input v-model="form.name_en" :aria-invalid="!!formErrors.name_en" placeholder="e.g. Yemen Commercial Bank" type="text" />
-            <FieldDescription v-if="formErrors.name_en" class="text-destructive">{{ formErrors.name_en }}</FieldDescription>
+            <Input
+              v-model="form.name_en"
+              :aria-invalid="!!formErrors.name_en"
+              placeholder="e.g. Yemen Commercial Bank"
+              type="text"
+            />
+            <FieldDescription v-if="formErrors.name_en" class="text-destructive">{{
+              formErrors.name_en
+            }}</FieldDescription>
           </Field>
 
           <Field v-if="!isBankAdmin" :data-invalid="!!formErrors.code">
             <FieldLabel>الرمز <span class="text-destructive">*</span></FieldLabel>
-            <Input v-model="form.code" :aria-invalid="!!formErrors.code" placeholder="مثال: YCB" type="text" maxlength="20" />
-            <FieldDescription v-if="formErrors.code" class="text-destructive">{{ formErrors.code }}</FieldDescription>
+            <Input
+              v-model="form.code"
+              :aria-invalid="!!formErrors.code"
+              placeholder="مثال: YCB"
+              type="text"
+              maxlength="20"
+            />
+            <FieldDescription v-if="formErrors.code" class="text-destructive">{{
+              formErrors.code
+            }}</FieldDescription>
           </Field>
 
           <Field v-if="!isBankAdmin" class="flex items-center gap-3">
@@ -456,32 +533,40 @@ onMounted(loadBanks)
     </Dialog>
 
     <!-- Quick-view Dialog -->
-    <Dialog :open="Boolean(viewingBank)" @update:open="v => !v && (viewingBank = null)">
-      <DialogContent v-if="viewingBank"  class="sm:max-w-md">
+    <Dialog :open="Boolean(viewingBank)" @update:open="(v) => !v && (viewingBank = null)">
+      <DialogContent v-if="viewingBank" class="sm:max-w-md">
         <DialogHeader class="pb-2">
           <DialogTitle class="flex items-center gap-2 text-base">
             {{ viewingBank.name_ar }}
           </DialogTitle>
-          <DialogDescription  class="text-xs">{{ viewingBank.name_en }}</DialogDescription>
+          <DialogDescription class="text-xs">{{ viewingBank.name_en }}</DialogDescription>
         </DialogHeader>
 
         <div class="grid grid-cols-2 gap-x-4 gap-y-3 py-1 text-sm">
           <div class="space-y-0.5">
-            <p class="text-xs text-muted-foreground">الرمز</p>
-            <code class="rounded bg-muted px-2 py-0.5 text-xs font-mono">{{ viewingBank.code }}</code>
+            <p class="text-muted-foreground text-xs">الرمز</p>
+            <code class="bg-muted rounded px-2 py-0.5 font-mono text-xs">{{
+              viewingBank.code
+            }}</code>
           </div>
           <div class="space-y-0.5">
-            <p class="text-xs text-muted-foreground">الحالة</p>
-            <Badge :class="viewingBank.is_active ? 'bg-[var(--severity-green)]/10 text-[var(--severity-green)] border-[var(--severity-green)]/30 border' : 'bg-[var(--severity-red)]/10 text-[var(--severity-red)] border-[var(--severity-red)]/30 border'">
+            <p class="text-muted-foreground text-xs">الحالة</p>
+            <Badge
+              :class="
+                viewingBank.is_active
+                  ? 'border border-[var(--severity-green)]/30 bg-[var(--severity-green)]/10 text-[var(--severity-green)]'
+                  : 'border border-[var(--severity-red)]/30 bg-[var(--severity-red)]/10 text-[var(--severity-red)]'
+              "
+            >
               {{ viewingBank.is_active ? 'نشط' : 'موقوف' }}
             </Badge>
           </div>
           <div v-if="viewingBank.license_number" class="space-y-0.5">
-            <p class="text-xs text-muted-foreground">رقم الترخيص</p>
+            <p class="text-muted-foreground text-xs">رقم الترخيص</p>
             <p class="font-medium">{{ viewingBank.license_number }}</p>
           </div>
           <div v-if="viewingBank.entity_type" class="space-y-0.5">
-            <p class="text-xs text-muted-foreground">نوع الجهة</p>
+            <p class="text-muted-foreground text-xs">نوع الجهة</p>
             <p class="font-medium">{{ viewingBank.entity_type }}</p>
           </div>
         </div>
@@ -489,8 +574,26 @@ onMounted(loadBanks)
         <Separator />
 
         <DialogFooter class="gap-2">
-          <Button variant="outline" size="sm" @click="() => { viewingBank = null }">إغلاق</Button>
-          <Button size="sm" @click="() => { openEdit(viewingBank!); viewingBank = null }">تعديل البيانات</Button>
+          <Button
+            variant="outline"
+            size="sm"
+            @click="
+              () => {
+                viewingBank = null
+              }
+            "
+            >إغلاق</Button
+          >
+          <Button
+            size="sm"
+            @click="
+              () => {
+                openEdit(viewingBank!)
+                viewingBank = null
+              }
+            "
+            >تعديل البيانات</Button
+          >
         </DialogFooter>
       </DialogContent>
     </Dialog>

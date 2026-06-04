@@ -24,18 +24,17 @@ const downloadError = ref('')
 onMounted(async () => {
   try {
     declaration.value = await fetchCustomsPreview(requestId)
-  }
-  catch (err: unknown) {
-    const status = (err as { statusCode?: number; status?: number })?.statusCode
-      ?? (err as { statusCode?: number; status?: number })?.status
-      ?? 500
+  } catch (err: unknown) {
+    const status =
+      (err as { statusCode?: number; status?: number })?.statusCode ??
+      (err as { statusCode?: number; status?: number })?.status ??
+      500
     if (status === 403) {
       router.push('/dashboard')
       return
     }
     errorStatus.value = status
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 })
@@ -86,18 +85,16 @@ async function triggerDownload() {
     anchor.click()
     anchor.remove()
     URL.revokeObjectURL(url)
-  }
-  catch {
+  } catch {
     downloadError.value = 'تعذر تنزيل ملف PDF الرسمي الآن. أعد المحاولة بعد قليل.'
-  }
-  finally {
+  } finally {
     downloading.value = false
   }
 }
 </script>
 
 <template>
-  <div class="preview-page" >
+  <div class="preview-page">
     <!-- Loading -->
     <div v-if="loading" class="preview-loading" aria-busy="true" aria-label="جارٍ التحميل">
       <div class="loading-spinner" />
@@ -114,7 +111,9 @@ async function triggerDownload() {
     <!-- Other error -->
     <div v-else-if="!loading && !declaration && errorStatus !== 404" class="preview-empty">
       <p class="empty-title">تعذر فتح البيان الجمركي</p>
-      <p class="empty-body">تعذر تنزيل البيان الجمركي الآن. ارجع إلى الطلب ثم أعد المحاولة بعد قليل.</p>
+      <p class="empty-body">
+        تعذر تنزيل البيان الجمركي الآن. ارجع إلى الطلب ثم أعد المحاولة بعد قليل.
+      </p>
       <a :href="`/requests/${requestId}`" class="back-link">← العودة إلى الطلب</a>
     </div>
 
@@ -125,11 +124,7 @@ async function triggerDownload() {
         <a :href="`/requests/${requestId}`" class="back-link">← العودة إلى الطلب</a>
         <div class="action-buttons">
           <button class="btn btn-secondary" @click="triggerPrint">طباعة</button>
-          <button
-            class="btn btn-primary"
-            :disabled="downloading"
-            @click="triggerDownload"
-          >
+          <button class="btn btn-primary" :disabled="downloading" @click="triggerDownload">
             {{ downloading ? 'جارٍ التنزيل…' : 'تنزيل PDF الرسمي' }}
           </button>
         </div>
@@ -154,7 +149,9 @@ async function triggerDownload() {
         <div class="decl-meta">
           <p><strong>رقم البيان:</strong> {{ declaration.declaration_number }}</p>
           <p><strong>تاريخ الإصدار:</strong> {{ formatDate(declaration.issued_at) }}</p>
-          <p><strong>رقم طلب التمويل:</strong> {{ declaration.request?.reference_number ?? '—' }}</p>
+          <p>
+            <strong>رقم طلب التمويل:</strong> {{ declaration.request?.reference_number ?? '—' }}
+          </p>
           <p><strong>الجهة المصدرة:</strong> {{ declaration.issuer?.name ?? '—' }}</p>
         </div>
 
@@ -204,7 +201,8 @@ async function triggerDownload() {
 
         <!-- Official notice -->
         <div class="decl-notice">
-          بناءً على اكتمال الموافقات النظامية والتنفيذية، يصدر هذا البيان الجمركي كوثيقة رسمية نهائية وغير قابلة للتعديل ضمن منصة البنك المركزي اليمني.
+          بناءً على اكتمال الموافقات النظامية والتنفيذية، يصدر هذا البيان الجمركي كوثيقة رسمية
+          نهائية وغير قابلة للتعديل ضمن منصة البنك المركزي اليمني.
         </div>
 
         <!-- Signatures -->
@@ -346,7 +344,9 @@ async function triggerDownload() {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .empty-title {

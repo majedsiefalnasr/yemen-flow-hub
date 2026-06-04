@@ -12,17 +12,13 @@ export default defineNuxtConfig({
     compatibilityVersion: 4,
   },
 
-  modules: [
-    '@pinia/nuxt',
-    '@vueuse/nuxt',
-    'shadcn-nuxt',
-  ],
+  modules: ['@nuxt/eslint', '@pinia/nuxt', '@vueuse/nuxt', 'shadcn-nuxt'],
 
   components: [
     {
       path: '~/components',
       extensions: ['vue'],
-      ignore: ['**/ui/**', '**/index.ts'],
+      ignore: ['**/ui/**', '**/.playwright-cli/**', '**/index.ts'],
     },
   ],
 
@@ -56,9 +52,7 @@ export default defineNuxtConfig({
     },
   },
 
-  css: [
-    '~/assets/css/main.css',
-  ],
+  css: ['~/assets/css/main.css'],
 
   runtimeConfig: {
     public: {

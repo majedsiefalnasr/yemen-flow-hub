@@ -38,7 +38,10 @@ function shouldShowSupportRejectedStrip(stats: BankReviewerDashboardStats): bool
 describe('BankReviewerDashboard 12.1 — SUPPORT_REJECTED action strip', () => {
   it('shows strip when returned_by_support > 0', () => {
     const stats: BankReviewerDashboardStats = {
-      pending_review: 0, at_cby: 0, returned_by_support: 2, approved_completed: 0,
+      pending_review: 0,
+      at_cby: 0,
+      returned_by_support: 2,
+      approved_completed: 0,
       review_queue: [],
     }
     expect(shouldShowSupportRejectedStrip(stats)).toBe(true)
@@ -46,7 +49,10 @@ describe('BankReviewerDashboard 12.1 — SUPPORT_REJECTED action strip', () => {
 
   it('hides strip when returned_by_support is 0', () => {
     const stats: BankReviewerDashboardStats = {
-      pending_review: 0, at_cby: 0, returned_by_support: 0, approved_completed: 0,
+      pending_review: 0,
+      at_cby: 0,
+      returned_by_support: 0,
+      approved_completed: 0,
       review_queue: [],
     }
     expect(shouldShowSupportRejectedStrip(stats)).toBe(false)
@@ -54,7 +60,10 @@ describe('BankReviewerDashboard 12.1 — SUPPORT_REJECTED action strip', () => {
 
   it('strip count equals returned_by_support', () => {
     const stats: BankReviewerDashboardStats = {
-      pending_review: 1, at_cby: 0, returned_by_support: 4, approved_completed: 0,
+      pending_review: 1,
+      at_cby: 0,
+      returned_by_support: 4,
+      approved_completed: 0,
       review_queue: [],
     }
     expect(supportRejectedCount(stats)).toBe(4)
@@ -68,7 +77,10 @@ type KpiEntry = { label: string; variant: string }
 function buildKpiConfig(stats: BankReviewerDashboardStats): KpiEntry[] {
   return [
     { label: 'بانتظار المراجعة', variant: (stats.pending_review ?? 0) > 0 ? 'amber' : 'gray' },
-    { label: 'مرفوضة من لجنة المساندة', variant: (stats.returned_by_support ?? 0) > 0 ? 'rose' : 'gray' },
+    {
+      label: 'مرفوضة من لجنة المساندة',
+      variant: (stats.returned_by_support ?? 0) > 0 ? 'rose' : 'gray',
+    },
     { label: 'عند CBY', variant: 'blue' },
     { label: 'اعتُمِد / مكتمل', variant: 'green' },
   ]
@@ -76,7 +88,10 @@ function buildKpiConfig(stats: BankReviewerDashboardStats): KpiEntry[] {
 
 describe('BankReviewerDashboard 12.1 — KPI spec order', () => {
   const stats: BankReviewerDashboardStats = {
-    pending_review: 3, at_cby: 1, returned_by_support: 2, approved_completed: 5,
+    pending_review: 3,
+    at_cby: 1,
+    returned_by_support: 2,
+    approved_completed: 5,
     review_queue: [],
   }
   const kpis = buildKpiConfig(stats)
@@ -132,7 +147,7 @@ describe('BankReviewerDashboard 12.1 — segregation Created By column', () => {
     expect(canReview).toBe(false)
   })
 
-  it('segregation allows action button for others\' request', () => {
+  it("segregation allows action button for others' request", () => {
     const req = makeRequest({ created_by: 7 })
     const currentUserId = 8
     const canReview = !isCreatedByCurrentUser(req, currentUserId)

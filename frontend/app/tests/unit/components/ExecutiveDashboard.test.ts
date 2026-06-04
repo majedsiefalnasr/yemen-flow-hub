@@ -148,13 +148,17 @@ describe('ExecutiveDashboard — mixed queue composition', () => {
   it('voting_queue can contain both WAITING_FOR_VOTING_OPEN and EXECUTIVE_VOTING_OPEN', () => {
     const queue = [
       makeRequest({ id: 1, status: RequestStatus.WAITING_FOR_VOTING_OPEN }),
-      makeRequest({ id: 2, status: RequestStatus.EXECUTIVE_VOTING_OPEN, voting_session_status: VotingSessionStatus.OPEN }),
+      makeRequest({
+        id: 2,
+        status: RequestStatus.EXECUTIVE_VOTING_OPEN,
+        voting_session_status: VotingSessionStatus.OPEN,
+      }),
     ]
-    const statuses = queue.map(r => r.status)
+    const statuses = queue.map((r) => r.status)
     expect(statuses).toContain(RequestStatus.WAITING_FOR_VOTING_OPEN)
     expect(statuses).toContain(RequestStatus.EXECUTIVE_VOTING_OPEN)
 
-    const openCount = queue.filter(r => isVotingOpen(r.status)).length
+    const openCount = queue.filter((r) => isVotingOpen(r.status)).length
     expect(openCount).toBe(1)
   })
 })
@@ -168,9 +172,7 @@ describe('ExecutiveDashboard — director customs pending section', () => {
       decisions_rejected: 0,
       finalized_decisions: 1,
       voting_queue: [],
-      customs_declaration_pending: [
-        makeRequest({ status: RequestStatus.EXECUTIVE_APPROVED }),
-      ],
+      customs_declaration_pending: [makeRequest({ status: RequestStatus.EXECUTIVE_APPROVED })],
     }
 
     expect(shouldShowCustomsDeclarationPending(stats)).toBe(true)

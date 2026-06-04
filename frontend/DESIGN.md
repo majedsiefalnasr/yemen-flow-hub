@@ -1,8 +1,9 @@
 # Yemen Flow Hub — Frontend Design System
 
 > **Relationship to root `DESIGN.md`:**
-> - Root `DESIGN.md` = **What** — design decisions, token values, spacing philosophy, component specs, role dashboard layouts. Read it for *why* something looks the way it does.
-> - This file = **How** — Tailwind/Vue code patterns that implement those decisions. Read it for *how to write* correct code.
+>
+> - Root `DESIGN.md` = **What** — design decisions, token values, spacing philosophy, component specs, role dashboard layouts. Read it for _why_ something looks the way it does.
+> - This file = **How** — Tailwind/Vue code patterns that implement those decisions. Read it for _how to write_ correct code.
 > - **No conflict.** They cover different layers. If a value here contradicts the root, the root wins — fix this file.
 
 ## Platform Character
@@ -20,33 +21,33 @@ All colors are CSS custom properties. **Never hardcode hex. Never use raw Tailwi
 
 ### Core shadcn-vue tokens (via Tailwind utilities)
 
-| Utility class | Token | Usage |
-|---|---|---|
-| `bg-background` / `text-foreground` | `--background` / `--foreground` | Page canvas / primary text |
-| `bg-card` / `text-card-foreground` | `--card` / `--card-foreground` | Card surfaces |
-| `bg-muted` / `text-muted-foreground` | `--muted` / `--muted-foreground` | Alternate rows, secondary text, disabled states |
-| `bg-primary` / `text-primary-foreground` | `--primary` / `--primary-foreground` | CTA buttons, active nav, focus rings |
-| `bg-secondary` / `text-secondary-foreground` | `--secondary` / `--secondary-foreground` | Secondary button variant |
-| `bg-destructive` / `text-destructive` | `--destructive` | Destructive actions and errors |
-| `border-border` | `--border` | All dividers, card borders, input borders |
-| `ring-ring` | `--ring` | Focus outlines |
-| `bg-accent` / `text-accent-foreground` | `--accent` | Hover highlights on ghost/menu items |
+| Utility class                                | Token                                    | Usage                                           |
+| -------------------------------------------- | ---------------------------------------- | ----------------------------------------------- |
+| `bg-background` / `text-foreground`          | `--background` / `--foreground`          | Page canvas / primary text                      |
+| `bg-card` / `text-card-foreground`           | `--card` / `--card-foreground`           | Card surfaces                                   |
+| `bg-muted` / `text-muted-foreground`         | `--muted` / `--muted-foreground`         | Alternate rows, secondary text, disabled states |
+| `bg-primary` / `text-primary-foreground`     | `--primary` / `--primary-foreground`     | CTA buttons, active nav, focus rings            |
+| `bg-secondary` / `text-secondary-foreground` | `--secondary` / `--secondary-foreground` | Secondary button variant                        |
+| `bg-destructive` / `text-destructive`        | `--destructive`                          | Destructive actions and errors                  |
+| `border-border`                              | `--border`                               | All dividers, card borders, input borders       |
+| `ring-ring`                                  | `--ring`                                 | Focus outlines                                  |
+| `bg-accent` / `text-accent-foreground`       | `--accent`                               | Hover highlights on ghost/menu items            |
 
 ### Project-specific semantic tokens (via `var()`)
 
 These must be referenced as `text-[var(--token)]`, `bg-[var(--token)]/10`, etc.
 
-| Token | Value (light) | Value (dark) | Usage |
-|---|---|---|---|
-| `--brand-color` | `#0066cc` | same | Primary blue — same as `--primary` but available as a direct var |
-| `--severity-red` | `#ff3b30` | `#ff453a` | Errors, rejections, destructive states |
-| `--severity-amber` | `#ff9f0a` | `#ffb340` | Warnings, pending action required, at-risk |
-| `--severity-green` | `#34c759` | `#32d74b` | Success, approved, completed |
-| `--voting` | `#5856d6` | `#7b79e8` | Executive voting sessions |
-| `--info` / `--swift` | `#32ade6` | same | SWIFT officer, info states |
-| `--locked` | `#8e8e93` | `#a8b0ba` | Immutable/locked workflow states |
-| `--success` | `#1b5e20` | `#81c784` | Success text (lower saturation than severity-green) |
-| `--warning` | `#f57f17` | `#ffb74d` | Warning text |
+| Token                | Value (light) | Value (dark) | Usage                                                            |
+| -------------------- | ------------- | ------------ | ---------------------------------------------------------------- |
+| `--brand-color`      | `#0066cc`     | same         | Primary blue — same as `--primary` but available as a direct var |
+| `--severity-red`     | `#ff3b30`     | `#ff453a`    | Errors, rejections, destructive states                           |
+| `--severity-amber`   | `#ff9f0a`     | `#ffb340`    | Warnings, pending action required, at-risk                       |
+| `--severity-green`   | `#34c759`     | `#32d74b`    | Success, approved, completed                                     |
+| `--voting`           | `#5856d6`     | `#7b79e8`    | Executive voting sessions                                        |
+| `--info` / `--swift` | `#32ade6`     | same         | SWIFT officer, info states                                       |
+| `--locked`           | `#8e8e93`     | `#a8b0ba`    | Immutable/locked workflow states                                 |
+| `--success`          | `#1b5e20`     | `#81c784`    | Success text (lower saturation than severity-green)              |
+| `--warning`          | `#f57f17`     | `#ffb74d`    | Warning text                                                     |
 
 ### Token usage rules
 
@@ -82,12 +83,12 @@ Always use `border-s-*` (inline-start) not `border-l-*` (left). In RTL, `s` = ri
 
 ## 2 — Typography
 
-| Usage | Font | Class |
-|---|---|---|
-| Page headlines, section headings | Cairo | `font-heading` |
-| Subheadings, navigation labels | Tajawal | `font-section` |
-| Body text, form fields, table content | IBM Plex Sans Arabic | `font-sans` (default) |
-| Latin strings, numbers in LTR context | Inter | automatic via font stack |
+| Usage                                 | Font                 | Class                    |
+| ------------------------------------- | -------------------- | ------------------------ |
+| Page headlines, section headings      | Cairo                | `font-heading`           |
+| Subheadings, navigation labels        | Tajawal              | `font-section`           |
+| Body text, form fields, table content | IBM Plex Sans Arabic | `font-sans` (default)    |
+| Latin strings, numbers in LTR context | Inter                | automatic via font stack |
 
 Body base: `text-sm` (14px) for compact dashboard tables; `text-base` (16px) for form content.  
 No italics. Emphasis via weight (`font-medium`, `font-semibold`) or color. No `font-bold` on body.
@@ -109,15 +110,15 @@ No italics. Emphasis via weight (`font-medium`, `font-semibold`) or color. No `f
 
 The app uses Tailwind's theme radius tokens, mapped from the shadcn `--radius` base (0.625rem = 10px). Source of truth: root `DESIGN.md` section 4.
 
-| Token | Approx value | Usage |
-|---|---|---|
-| `rounded-sm` | 6px | Tight utility elements |
-| `rounded-md` | 8px | Inputs, textareas, selects |
-| `rounded-lg` | 10px | Standard cards (`shadow` cards), default buttons |
-| `rounded-xl` | 14px | Prominent cards, larger containers |
-| `rounded-2xl` | 18px | Quick-action tiles |
-| `rounded-3xl` | 22px | Modals, dialogs (handled by shadcn Dialog internally) |
-| `rounded-full` | 9999px | Badges, avatars, status chips |
+| Token          | Approx value | Usage                                                 |
+| -------------- | ------------ | ----------------------------------------------------- |
+| `rounded-sm`   | 6px          | Tight utility elements                                |
+| `rounded-md`   | 8px          | Inputs, textareas, selects                            |
+| `rounded-lg`   | 10px         | Standard cards (`shadow` cards), default buttons      |
+| `rounded-xl`   | 14px         | Prominent cards, larger containers                    |
+| `rounded-2xl`  | 18px         | Quick-action tiles                                    |
+| `rounded-3xl`  | 22px         | Modals, dialogs (handled by shadcn Dialog internally) |
+| `rounded-full` | 9999px       | Badges, avatars, status chips                         |
 
 When in doubt, defer to root `DESIGN.md` for the canonical radius value. Never hardcode a `rounded-[Xpx]` arbitrary value.
 
@@ -127,10 +128,10 @@ When in doubt, defer to root `DESIGN.md` for the canonical radius value. Never h
 
 One shadow level only. No stacked shadows.
 
-| State | Class |
-|---|---|
-| Card default | `shadow` |
-| Card hover | `shadow-md` |
+| State         | Class                                     |
+| ------------- | ----------------------------------------- |
+| Card default  | `shadow`                                  |
+| Card hover    | `shadow-md`                               |
 | Modal/popover | handled by shadcn Dialog/Sheet internally |
 
 ---
@@ -158,15 +159,15 @@ class="text-start"   <!-- not text-left -->
 Every status badge is role-aware (use `<StatusBadge :status="..." :role="UserRole.xxx" />`).  
 When building custom inline chips (not StatusBadge), use this mapping:
 
-| Status category | Color token | bg/10 tint |
-|---|---|---|
-| Approved / Completed / Uploaded | `--severity-green` | `bg-[var(--severity-green)]/10` |
-| Rejected / Error | `--severity-red` | `bg-[var(--severity-red)]/10` |
-| Pending / Action required | `--severity-amber` | `bg-[var(--severity-amber)]/10` |
-| Voting open/closed | `--voting` | `bg-[var(--voting)]/10` |
-| SWIFT stages | `--info` | `bg-[var(--info)]/10` |
-| Locked / Immutable | `--locked` | `bg-[var(--locked)]/10` |
-| In progress / Neutral | `text-foreground` + `bg-muted` | |
+| Status category                 | Color token                    | bg/10 tint                      |
+| ------------------------------- | ------------------------------ | ------------------------------- |
+| Approved / Completed / Uploaded | `--severity-green`             | `bg-[var(--severity-green)]/10` |
+| Rejected / Error                | `--severity-red`               | `bg-[var(--severity-red)]/10`   |
+| Pending / Action required       | `--severity-amber`             | `bg-[var(--severity-amber)]/10` |
+| Voting open/closed              | `--voting`                     | `bg-[var(--voting)]/10`         |
+| SWIFT stages                    | `--info`                       | `bg-[var(--info)]/10`           |
+| Locked / Immutable              | `--locked`                     | `bg-[var(--locked)]/10`         |
+| In progress / Neutral           | `text-foreground` + `bg-muted` |                                 |
 
 ---
 
@@ -180,7 +181,7 @@ Replace every `<div class="animate-pulse ...">` with `<Skeleton>`:
 <Skeleton class="h-4 w-32" />
 
 <!-- ❌ WRONG -->
-<div class="h-24 animate-pulse rounded-xl bg-muted" />
+<div class="bg-muted h-24 animate-pulse rounded-xl" />
 ```
 
 ---
@@ -201,7 +202,7 @@ Replace every custom error `div` with `<Alert variant="destructive">`:
 </Alert>
 
 <!-- ❌ WRONG -->
-<div class="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-destructive">
+<div class="border-destructive/30 bg-destructive/5 text-destructive rounded-xl border p-4">
   <button class="px-4 py-1.5 border ...">إعادة المحاولة</button>
 </div>
 ```
@@ -213,7 +214,10 @@ Replace every custom error `div` with `<Alert variant="destructive">`:
 Action-required banners above the KPI grid use `Card` with start border:
 
 ```vue
-<Card class="border-0 border-s-4 border-s-[var(--severity-amber)] bg-[var(--severity-amber)]/5 shadow-sm" role="alert">
+<Card
+  class="border-0 border-s-4 border-s-[var(--severity-amber)] bg-[var(--severity-amber)]/5 shadow-sm"
+  role="alert"
+>
   <CardContent class="pt-4 pb-4 flex items-center gap-3">
     <AlertTriangle class="h-5 w-5 flex-shrink-0 text-[var(--severity-amber)]" aria-hidden="true" />
     <div class="flex-1 min-w-0">
@@ -231,15 +235,15 @@ Action-required banners above the KPI grid use `Card` with start border:
 
 ## 11 — Do / Don't Summary
 
-| ✅ Do | ❌ Don't |
-|---|---|
-| `text-[var(--severity-red)]` | `text-red-600` |
-| `bg-[var(--voting)]/10` | `bg-indigo-50` |
-| `border-s-4 border-s-[var(--severity-amber)]` | `border-l-4 border-amber-500` |
-| `<Skeleton class="h-24 w-full rounded-xl" />` | `<div class="animate-pulse ...">` |
-| `<Button variant="outline" size="sm">` | `<button class="px-2 py-1 border ...">` |
-| `<Table><TableHeader>…</TableHeader></Table>` | `<table><thead>…</thead></table>` |
-| `<Alert variant="destructive">` | `<div class="border-destructive ...">` |
-| `<Card role="button" tabindex="0">` for multi-line tiles | `<button class="flex flex-col ...">` |
-| `<AlertDialog>` for destructive confirmations | `window.confirm()` or `<Dialog>` |
-| `<Empty>` for zero-state sections | `<div class="text-center text-muted-foreground">` |
+| ✅ Do                                                    | ❌ Don't                                          |
+| -------------------------------------------------------- | ------------------------------------------------- |
+| `text-[var(--severity-red)]`                             | `text-red-600`                                    |
+| `bg-[var(--voting)]/10`                                  | `bg-indigo-50`                                    |
+| `border-s-4 border-s-[var(--severity-amber)]`            | `border-l-4 border-amber-500`                     |
+| `<Skeleton class="h-24 w-full rounded-xl" />`            | `<div class="animate-pulse ...">`                 |
+| `<Button variant="outline" size="sm">`                   | `<button class="px-2 py-1 border ...">`           |
+| `<Table><TableHeader>…</TableHeader></Table>`            | `<table><thead>…</thead></table>`                 |
+| `<Alert variant="destructive">`                          | `<div class="border-destructive ...">`            |
+| `<Card role="button" tabindex="0">` for multi-line tiles | `<button class="flex flex-col ...">`              |
+| `<AlertDialog>` for destructive confirmations            | `window.confirm()` or `<Dialog>`                  |
+| `<Empty>` for zero-state sections                        | `<div class="text-center text-muted-foreground">` |

@@ -90,7 +90,7 @@ describe('useRequestsStore — loadRequest()', () => {
 
   it('sets loadingRequest to true while fetching and false after', async () => {
     let resolveFn!: (v: unknown) => void
-    mockFetchRequest.mockReturnValueOnce(new Promise(r => (resolveFn = r)))
+    mockFetchRequest.mockReturnValueOnce(new Promise((r) => (resolveFn = r)))
 
     const store = useRequestsStore()
     const promise = store.loadRequest(42)
@@ -131,7 +131,7 @@ describe('useRequestsStore — createRequest()', () => {
 
   it('sets saving to true while creating and false after', async () => {
     let resolveFn!: (v: unknown) => void
-    mockCreateRequest.mockReturnValueOnce(new Promise(r => (resolveFn = r)))
+    mockCreateRequest.mockReturnValueOnce(new Promise((r) => (resolveFn = r)))
 
     const store = useRequestsStore()
     const promise = store.createRequest(FORM_DATA)
@@ -172,7 +172,7 @@ describe('useRequestsStore — updateRequest()', () => {
 
   it('sets saving to true while updating and false after', async () => {
     let resolveFn!: (v: unknown) => void
-    mockUpdateRequest.mockReturnValueOnce(new Promise(r => (resolveFn = r)))
+    mockUpdateRequest.mockReturnValueOnce(new Promise((r) => (resolveFn = r)))
 
     const store = useRequestsStore()
     const promise = store.updateRequest(42, FORM_DATA)

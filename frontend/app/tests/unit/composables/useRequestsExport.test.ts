@@ -3,7 +3,7 @@ import { buildRequestsExportColumns } from '../../../composables/useRequestsExpo
 import { UserRole } from '../../../types/enums'
 
 function labelsFor(role: UserRole): string[] {
-  return buildRequestsExportColumns(role).map(column => column.label)
+  return buildRequestsExportColumns(role).map((column) => column.label)
 }
 
 describe('buildRequestsExportColumns', () => {

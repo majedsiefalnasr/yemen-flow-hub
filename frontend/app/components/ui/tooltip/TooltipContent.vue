@@ -9,9 +9,12 @@ defineOptions({
   inheritAttrs: false,
 })
 
-const props = withDefaults(defineProps<TooltipContentProps & { class?: HTMLAttributes['class'] }>(), {
-  sideOffset: 0,
-})
+const props = withDefaults(
+  defineProps<TooltipContentProps & { class?: HTMLAttributes['class'] }>(),
+  {
+    sideOffset: 0,
+  },
+)
 
 const emits = defineEmits<TooltipContentEmits>()
 
@@ -24,11 +27,18 @@ const forwarded = useForwardPropsEmits(delegatedProps, emits)
     <TooltipContent
       data-slot="tooltip-content"
       v-bind="{ ...forwarded, ...$attrs }"
-      :class="cn('data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-[state=delayed-open]:animate-in data-[state=delayed-open]:fade-in-0 data-[state=delayed-open]:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs has-data-[slot=kbd]:pe-1.5 **:data-[slot=kbd]:relative **:data-[slot=kbd]:isolate **:data-[slot=kbd]:z-50 **:data-[slot=kbd]:rounded-sm bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 z-50 w-fit max-w-xs origin-(--reka-tooltip-content-transform-origin)', props.class)"
+      :class="
+        cn(
+          'data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-[state=delayed-open]:animate-in data-[state=delayed-open]:fade-in-0 data-[state=delayed-open]:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 z-50 inline-flex w-fit max-w-xs origin-(--reka-tooltip-content-transform-origin) items-center gap-1.5 rounded-md bg-slate-900 px-3 py-1.5 text-xs text-white has-data-[slot=kbd]:pe-1.5 **:data-[slot=kbd]:relative **:data-[slot=kbd]:isolate **:data-[slot=kbd]:z-50 **:data-[slot=kbd]:rounded-sm dark:bg-slate-100 dark:text-slate-900',
+          props.class,
+        )
+      "
     >
       <slot />
 
-      <TooltipArrow class="size-2.5 rotate-45 rounded-[2px] bg-slate-900 fill-slate-900 dark:bg-slate-100 dark:fill-slate-100 z-50 translate-y-[calc(-50%_-_2px)]" />
+      <TooltipArrow
+        class="z-50 size-2.5 translate-y-[calc(-50%_-_2px)] rotate-45 rounded-[2px] bg-slate-900 fill-slate-900 dark:bg-slate-100 dark:fill-slate-100"
+      />
     </TooltipContent>
   </TooltipPortal>
 </template>

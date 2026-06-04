@@ -30,11 +30,7 @@ import { useOrgStore } from '@/stores/org.store'
 import { ROLE_LABELS } from '@/constants/workflow'
 import { useSavedAccounts, getDeviceInfo } from '@/composables/useSavedAccounts'
 import { useProfile } from '@/composables/useProfile'
-import {
-  AVATAR_VARIANTS,
-  persistUserAvatar,
-  type AvatarVariant,
-} from '@/composables/useUserAvatar'
+import { AVATAR_VARIANTS, persistUserAvatar, type AvatarVariant } from '@/composables/useUserAvatar'
 import LoginSavedAccountCard from '@/components/auth/LoginSavedAccountCard.vue'
 
 definePageMeta({ layout: false, middleware: ['guest'] })
@@ -77,14 +73,14 @@ function goBack() {
 const router = useRouter()
 const route = useRoute()
 const auth = useAuthStore()
-const pageDir = computed<'rtl' | 'ltr'>(() => auth.preferredLanguage === 'en' ? 'ltr' : 'rtl')
+const pageDir = computed<'rtl' | 'ltr'>(() => (auth.preferredLanguage === 'en' ? 'ltr' : 'rtl'))
 
 const STEP_PROGRESS: Partial<Record<LoginStep, number>> = {
   'account-select': 10,
-  'pin': 65,
+  pin: 65,
   'pin-reset': 20,
-  'password': 35,
-  'authenticator': 75,
+  password: 35,
+  authenticator: 75,
   'authenticator-setup': 70,
   'save-account': 88,
   'create-pin': 94,
@@ -127,12 +123,11 @@ onMounted(() => focusFirstInput())
  */
 async function navigateAfterAuth() {
   const email = pendingEmail.value || selectedAccount.value?.email || auth.user?.email || ''
-  const alreadySaved = accounts.value.some(a => a.email === email)
+  const alreadySaved = accounts.value.some((a) => a.email === email)
   if (!alreadySaved && email) {
     if (email) pendingEmail.value = email
     pushStep('save-account')
-  }
-  else {
+  } else {
     await router.push(nextPath.value)
   }
 }
@@ -142,12 +137,12 @@ const { accounts, addAccount, removeAccount, setPINStatus } = useSavedAccounts()
 const { setupTotp, verifyTotpSetup, setPin } = useProfile()
 
 const selectedAccountId = ref<string | null>(null)
-const selectedAccount = computed(() =>
-  accounts.value.find(a => a.id === selectedAccountId.value) ?? null,
+const selectedAccount = computed(
+  () => accounts.value.find((a) => a.id === selectedAccountId.value) ?? null,
 )
 
 function selectSavedAccount(id: string) {
-  const account = accounts.value.find(a => a.id === id)
+  const account = accounts.value.find((a) => a.id === id)
   if (!account) return
   selectedAccountId.value = id
   pendingEmail.value = account.email
@@ -211,7 +206,7 @@ const handlePasswordSubmit = passwordForm.handleSubmit(async (values) => {
     // TOTP not enabled on this account — offer setup before saving account, unless user already skipped
     if (!auth.user?.totp_enabled) {
       const skipKey = `yfh-skip-totp-${email}`
-      if (process.client && localStorage.getItem(skipKey)) {
+      if (import.meta.client && localStorage.getItem(skipKey)) {
         await navigateAfterAuth()
         return
       }
@@ -222,14 +217,12 @@ const handlePasswordSubmit = passwordForm.handleSubmit(async (values) => {
       setPINStatus(email, auth.user?.pin_enabled === true)
     }
     await navigateAfterAuth()
-  }
-  catch (err: any) {
-    serverError.value
-      = err?.statusCode === 429
+  } catch (err: any) {
+    serverError.value =
+      err?.statusCode === 429
         ? 'لقد تجاوزت الحد المسموح به من محاولات تسجيل الدخول. يرجى الانتظار دقيقة ثم حاول مرة أخرى.'
-        : err?.data?.message ?? 'البريد الإلكتروني أو كلمة المرور غير صحيحة.'
-  }
-  finally {
+        : (err?.data?.message ?? 'البريد الإلكتروني أو كلمة المرور غير صحيحة.')
+  } finally {
     isPasswordLoading.value = false
   }
 })
@@ -257,16 +250,18 @@ async function handlePinSubmit() {
     await auth.loginWithPin(email, pinValue.value)
     setPINStatus(email, true)
     await router.push(nextPath.value)
-  }
-  catch (err: any) {
+  } catch (err: any) {
     const backendMessage = err?.data?.message ?? err?.data?.errors?.pin?.[0]
-    pinError.value = backendMessage || 'رمز PIN غير صحيح. استخدم كلمة المرور الآن، ثم أعد تعيين PIN من الملف الشخصي إذا لزم.'
+    pinError.value =
+      backendMessage ||
+      'رمز PIN غير صحيح. استخدم كلمة المرور الآن، ثم أعد تعيين PIN من الملف الشخصي إذا لزم.'
     pinValue.value = ''
     pinShake.value = true
-    setTimeout(() => { pinShake.value = false }, 600)
+    setTimeout(() => {
+      pinShake.value = false
+    }, 600)
     nextTick(() => focusFirstInput())
-  }
-  finally {
+  } finally {
     isPinLoading.value = false
   }
 }
@@ -297,14 +292,14 @@ async function handleAuthenticatorSubmit() {
   authenticatorError.value = null
   try {
     await auth.verifyOtp(pendingEmail.value, authenticatorCode.value, pendingChallengeId.value)
-    otpRoleLabel.value = auth.user ? (ROLE_LABELS[auth.user.role] ?? otpRoleLabel.value) : otpRoleLabel.value
+    otpRoleLabel.value = auth.user
+      ? (ROLE_LABELS[auth.user.role] ?? otpRoleLabel.value)
+      : otpRoleLabel.value
     await navigateAfterAuth()
-  }
-  catch {
+  } catch {
     authenticatorError.value = 'الرمز المدخل غير صحيح أو انتهت صلاحيته. يرجى المحاولة مرة أخرى.'
     authenticatorCode.value = ''
-  }
-  finally {
+  } finally {
     isAuthenticatorLoading.value = false
   }
 }
@@ -345,15 +340,12 @@ async function handleCreatePinSubmit() {
     if (email) setPINStatus(email, true)
     toast.success('تم إنشاء رمز PIN بنجاح. يمكنك الآن تسجيل الدخول بسرعة في المرات القادمة.')
     await router.push(nextPath.value)
-  }
-  catch {
+  } catch {
     createPinError.value = 'تعذر حفظ رمز PIN الآن. أعد المحاولة بعد قليل.'
-  }
-  finally {
+  } finally {
     isCreatePinLoading.value = false
   }
 }
-
 
 // ─── Step: authenticator-setup ────────────────────────────────────────────────
 const isAuthSetupLoading = ref(false)
@@ -378,11 +370,9 @@ async function loadAuthSetup() {
     if (!data) throw new Error('failed')
     authSetupUri.value = data.provisioning_uri
     authSetupSecret.value = data.secret
-  }
-  catch {
+  } catch {
     authSetupError.value = 'تعذر تحميل رمز الإعداد الآن. أعد المحاولة بعد قليل.'
-  }
-  finally {
+  } finally {
     isAuthSetupLoading.value = false
   }
 }
@@ -400,19 +390,17 @@ async function handleAuthenticatorSetupSubmit() {
     // TOTP is now set up — proceed to save-account offer
     toast.success('تم إعداد المصادقة الثنائية بنجاح. حسابك محمي الآن.')
     await navigateAfterAuth()
-  }
-  catch {
+  } catch {
     authSetupError.value = 'الرمز غير صحيح. تأكد من إدخال الرمز من تطبيق المصادقة وحاول مجدداً.'
     authSetupCode.value = ''
-  }
-  finally {
+  } finally {
     isAuthSetupLoading.value = false
   }
 }
 
 function skipAuthenticatorSetup() {
   const email = auth.user?.email ?? pendingEmail.value ?? ''
-  if (email && process.client) {
+  if (email && import.meta.client) {
     localStorage.setItem(`yfh-skip-totp-${email}`, '1')
   }
   navigateAfterAuth()
@@ -439,8 +427,10 @@ async function handleSaveAccount(save: boolean) {
       // sync with the backend even if the snapshot above ever drifts (e.g. the
       // admin updates this user's avatar from a different session).
       const backendVariant = auth.user.avatar_variant
-      if (typeof backendVariant === 'string'
-        && (AVATAR_VARIANTS as readonly string[]).includes(backendVariant)) {
+      if (
+        typeof backendVariant === 'string' &&
+        (AVATAR_VARIANTS as readonly string[]).includes(backendVariant)
+      ) {
         persistUserAvatar(auth.user.email, { variant: backendVariant as AvatarVariant })
       }
       setPINStatus(auth.user.email, auth.user.pin_enabled === true)
@@ -450,12 +440,10 @@ async function handleSaveAccount(save: boolean) {
       }
       // Offer to create PIN only when this account does not have one yet.
       pushStep('create-pin')
-    }
-    else {
+    } else {
       await router.push(nextPath.value)
     }
-  }
-  finally {
+  } finally {
     isSaveAccountLoading.value = false
   }
 }
@@ -542,21 +530,20 @@ watch(step, (newStep) => {
                 type="email"
                 placeholder="user@cby.gov.ye"
                 autocomplete="email"
-                
-                class="h-11 bg-muted/30"
-                :aria-invalid="emailSubmitAttempted && emailForm.errors.value.email ? 'true' : undefined"
+                class="bg-muted/30 h-11"
+                :aria-invalid="
+                  emailSubmitAttempted && emailForm.errors.value.email ? 'true' : undefined
+                "
               />
               <p
                 v-if="emailSubmitAttempted && emailForm.errors.value.email"
                 role="alert"
-                class="text-sm text-destructive"
+                class="text-destructive text-sm"
               >
                 {{ emailForm.errors.value.email }}
               </p>
             </div>
-            <Button type="submit" size="lg" class="w-full" :disabled="!emailField">
-              متابعة
-            </Button>
+            <Button type="submit" size="lg" class="w-full" :disabled="!emailField"> متابعة </Button>
           </form>
 
           <!-- Saved accounts below — with OR separator -->
@@ -566,7 +553,7 @@ watch(step, (newStep) => {
                 <Separator class="w-full" />
               </div>
               <div class="relative flex justify-center text-xs">
-                <span class="bg-background px-3 text-muted-foreground">
+                <span class="bg-background text-muted-foreground px-3">
                   أو اختر حساباً محفوظاً
                 </span>
               </div>
@@ -587,7 +574,13 @@ watch(step, (newStep) => {
              STEP: pin
              ══════════════════════════════════════════════════════════════════ -->
         <template v-else-if="step === 'pin'">
-          <Button type="button" variant="ghost" size="sm" class="-ms-2 mb-5 gap-1 text-muted-foreground" @click="goBack">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            class="text-muted-foreground -ms-2 mb-5 gap-1"
+            @click="goBack"
+          >
             <ChevronRight class="size-4" />
             رجوع
           </Button>
@@ -605,11 +598,17 @@ watch(step, (newStep) => {
             class="mb-6"
           />
 
-          <Alert v-if="pinError" variant="destructive" role="alert" aria-live="assertive" class="mb-4">
+          <Alert
+            v-if="pinError"
+            variant="destructive"
+            role="alert"
+            aria-live="assertive"
+            class="mb-4"
+          >
             <AlertDescription>{{ pinError }}</AlertDescription>
           </Alert>
 
-          <div class="otp-wrap" :class="{ 'pin-shake': pinShake }" >
+          <div class="otp-wrap" :class="{ 'pin-shake': pinShake }">
             <InputOTP
               v-model="pinValue"
               :maxlength="6"
@@ -630,11 +629,11 @@ watch(step, (newStep) => {
           <Button
             type="button"
             size="lg"
-            class="w-full mt-5"
+            class="mt-5 w-full"
             :disabled="isPinLoading || pinValue.length < 6"
             @click="handlePinSubmit"
           >
-            <Loader2 v-if="isPinLoading" class="size-4 animate-spin me-2" />
+            <Loader2 v-if="isPinLoading" class="me-2 size-4 animate-spin" />
             {{ isPinLoading ? 'جارٍ التحقق...' : 'دخول' }}
           </Button>
 
@@ -644,7 +643,7 @@ watch(step, (newStep) => {
               type="button"
               variant="ghost"
               size="sm"
-              class="text-xs text-muted-foreground hover:text-foreground"
+              class="text-muted-foreground hover:text-foreground text-xs"
               @click="usePinFallbackPassword"
             >
               <Lock class="me-1.5 size-3.5" />
@@ -655,7 +654,7 @@ watch(step, (newStep) => {
               type="button"
               variant="ghost"
               size="sm"
-              class="text-xs text-destructive/70 hover:text-destructive"
+              class="text-destructive/70 hover:text-destructive text-xs"
               @click="openPinResetStep"
             >
               نسيت رمز PIN؟
@@ -667,7 +666,13 @@ watch(step, (newStep) => {
              STEP: password
              ══════════════════════════════════════════════════════════════════ -->
         <template v-else-if="step === 'password'">
-          <Button type="button" variant="ghost" size="sm" class="-ms-2 mb-5 gap-1 text-muted-foreground" @click="goBack">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            class="text-muted-foreground -ms-2 mb-5 gap-1"
+            @click="goBack"
+          >
             <ChevronRight class="size-4" />
             رجوع
           </Button>
@@ -685,11 +690,17 @@ watch(step, (newStep) => {
             class="mb-5"
           />
           <div v-else-if="pendingEmail" class="email-chip mb-5">
-            <span class="text-xs text-muted-foreground">البريد الإلكتروني</span>
-            <span class="text-sm font-medium" >{{ pendingEmail }}</span>
+            <span class="text-muted-foreground text-xs">البريد الإلكتروني</span>
+            <span class="text-sm font-medium">{{ pendingEmail }}</span>
           </div>
 
-          <Alert v-if="serverError" variant="destructive" role="alert" aria-live="assertive" class="mb-4">
+          <Alert
+            v-if="serverError"
+            variant="destructive"
+            role="alert"
+            aria-live="assertive"
+            class="mb-4"
+          >
             <AlertDescription>{{ serverError }}</AlertDescription>
           </Alert>
 
@@ -701,7 +712,7 @@ watch(step, (newStep) => {
                   type="button"
                   variant="link"
                   size="sm"
-                  class="h-auto p-0 text-xs text-muted-foreground"
+                  class="text-muted-foreground h-auto p-0 text-xs"
                   @click="navigateTo('/reset-password')"
                 >
                   نسيت كلمة المرور؟
@@ -715,24 +726,46 @@ watch(step, (newStep) => {
                   :type="showPassword ? 'text' : 'password'"
                   placeholder="••••••••"
                   autocomplete="current-password"
-                  class="h-11 bg-muted/30 ps-10"
-                  :aria-invalid="passwordSubmitAttempted && passwordForm.errors.value.password ? 'true' : undefined"
+                  class="bg-muted/30 h-11 ps-10"
+                  :aria-invalid="
+                    passwordSubmitAttempted && passwordForm.errors.value.password
+                      ? 'true'
+                      : undefined
+                  "
                 />
                 <Button
                   type="button"
                   variant="ghost"
                   size="icon"
-                  class="absolute start-3 top-1/2 h-7 w-7 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  class="text-muted-foreground hover:text-foreground absolute start-3 top-1/2 h-7 w-7 -translate-y-1/2"
                   :aria-label="showPassword ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور'"
                   @click="showPassword = !showPassword"
                 >
                   <!-- Eye-off -->
-                  <svg v-if="showPassword" class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+                  <svg
+                    v-if="showPassword"
+                    class="size-4"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    aria-hidden="true"
+                  >
+                    <path
+                      d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"
+                    />
                     <line x1="1" y1="1" x2="23" y2="23" />
                   </svg>
                   <!-- Eye -->
-                  <svg v-else class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <svg
+                    v-else
+                    class="size-4"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    aria-hidden="true"
+                  >
                     <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
                     <circle cx="12" cy="12" r="3" />
                   </svg>
@@ -741,14 +774,19 @@ watch(step, (newStep) => {
               <p
                 v-if="passwordSubmitAttempted && passwordForm.errors.value.password"
                 role="alert"
-                class="text-sm text-destructive"
+                class="text-destructive text-sm"
               >
                 {{ passwordForm.errors.value.password }}
               </p>
             </div>
 
-            <Button type="submit" size="lg" class="w-full" :disabled="isPasswordLoading || !pwField">
-              <Loader2 v-if="isPasswordLoading" class="size-4 animate-spin me-2" />
+            <Button
+              type="submit"
+              size="lg"
+              class="w-full"
+              :disabled="isPasswordLoading || !pwField"
+            >
+              <Loader2 v-if="isPasswordLoading" class="me-2 size-4 animate-spin" />
               {{ isPasswordLoading ? 'جارٍ تسجيل الدخول...' : 'تسجيل الدخول' }}
             </Button>
           </form>
@@ -758,21 +796,27 @@ watch(step, (newStep) => {
              STEP: authenticator
              ══════════════════════════════════════════════════════════════════ -->
         <template v-else-if="step === 'authenticator'">
-          <Button type="button" variant="ghost" size="sm" class="-ms-2 mb-5 gap-1 text-muted-foreground" @click="goBack">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            class="text-muted-foreground -ms-2 mb-5 gap-1"
+            @click="goBack"
+          >
             <ChevronRight class="size-4" />
             رجوع
           </Button>
 
           <div class="step-header">
             <h2 class="step-title">رمز التحقق</h2>
-            <p class="step-desc">
-              افتح تطبيق المصادقة وأدخل الرمز المكوّن من 6 أرقام
-            </p>
+            <p class="step-desc">افتح تطبيق المصادقة وأدخل الرمز المكوّن من 6 أرقام</p>
           </div>
 
           <Alert class="mb-5">
             <Smartphone class="h-4 w-4" />
-            <AlertDescription>يتجدد الرمز كل 30 ثانية، لذا أدخله فور ظهوره لضمان صلاحيته.</AlertDescription>
+            <AlertDescription
+              >يتجدد الرمز كل 30 ثانية، لذا أدخله فور ظهوره لضمان صلاحيته.</AlertDescription
+            >
           </Alert>
 
           <Alert
@@ -785,7 +829,7 @@ watch(step, (newStep) => {
             <AlertDescription>{{ authenticatorError }}</AlertDescription>
           </Alert>
 
-          <div class="otp-wrap" >
+          <div class="otp-wrap">
             <InputOTP
               v-model="authenticatorCode"
               :maxlength="6"
@@ -811,19 +855,19 @@ watch(step, (newStep) => {
           <Button
             type="button"
             size="lg"
-            class="w-full mt-5"
+            class="mt-5 w-full"
             :disabled="isAuthenticatorLoading || authenticatorCode.length < 6"
             @click="handleAuthenticatorSubmit"
           >
-            <Loader2 v-if="isAuthenticatorLoading" class="size-4 animate-spin me-2" />
+            <Loader2 v-if="isAuthenticatorLoading" class="me-2 size-4 animate-spin" />
             {{ isAuthenticatorLoading ? 'جارٍ التحقق...' : 'تأكيد ودخول' }}
           </Button>
 
           <div class="mt-4 text-center">
-            <p class="text-xs text-muted-foreground leading-6">
-              إذا لم تتمكن من استخدام تطبيق المصادقة:
-              تأكد من ضبط الوقت تلقائياً في الهاتف، ثم جرّب الرمز الجديد.
-              إذا استمرت المشكلة، استخدم الدخول من جهاز موثوق أو تواصل مع مسؤول النظام لإعادة ضبط المصادقة.
+            <p class="text-muted-foreground text-xs leading-6">
+              إذا لم تتمكن من استخدام تطبيق المصادقة: تأكد من ضبط الوقت تلقائياً في الهاتف، ثم جرّب
+              الرمز الجديد. إذا استمرت المشكلة، استخدم الدخول من جهاز موثوق أو تواصل مع مسؤول النظام
+              لإعادة ضبط المصادقة.
             </p>
           </div>
         </template>
@@ -841,10 +885,19 @@ watch(step, (newStep) => {
 
           <Alert class="mb-6">
             <KeyRound class="h-4 w-4" />
-            <AlertDescription>بعد إنشاء رمز PIN يمكنك تسجيل الدخول بسرعة دون الحاجة إلى كلمة المرور أو تطبيق المصادقة في كل مرة.</AlertDescription>
+            <AlertDescription
+              >بعد إنشاء رمز PIN يمكنك تسجيل الدخول بسرعة دون الحاجة إلى كلمة المرور أو تطبيق
+              المصادقة في كل مرة.</AlertDescription
+            >
           </Alert>
 
-          <Alert v-if="createPinError" variant="destructive" role="alert" aria-live="assertive" class="mb-4">
+          <Alert
+            v-if="createPinError"
+            variant="destructive"
+            role="alert"
+            aria-live="assertive"
+            class="mb-4"
+          >
             <AlertDescription>{{ createPinError }}</AlertDescription>
           </Alert>
 
@@ -853,7 +906,7 @@ watch(step, (newStep) => {
               <Label class="text-sm font-medium">
                 {{ createPinStage === 'enter' ? 'رمز PIN الجديد' : 'تأكيد رمز PIN' }}
               </Label>
-              <div class="otp-wrap" >
+              <div class="otp-wrap">
                 <InputOTP
                   v-if="createPinStage === 'enter'"
                   v-model="newPin"
@@ -886,7 +939,10 @@ watch(step, (newStep) => {
                   </InputOTPGroup>
                 </InputOTP>
               </div>
-              <p v-if="createPinStage === 'confirm'" class="text-xs text-muted-foreground text-center">
+              <p
+                v-if="createPinStage === 'confirm'"
+                class="text-muted-foreground text-center text-xs"
+              >
                 أعد إدخال رمز PIN للتأكيد
               </p>
             </div>
@@ -897,17 +953,20 @@ watch(step, (newStep) => {
               type="button"
               size="lg"
               class="w-full"
-              :disabled="isCreatePinLoading || (createPinStage === 'enter' ? newPin.length < 6 : newPinConfirm.length < 6)"
+              :disabled="
+                isCreatePinLoading ||
+                (createPinStage === 'enter' ? newPin.length < 6 : newPinConfirm.length < 6)
+              "
               @click="handleCreatePinSubmit"
             >
-              <Loader2 v-if="isCreatePinLoading" class="size-4 animate-spin me-2" />
+              <Loader2 v-if="isCreatePinLoading" class="me-2 size-4 animate-spin" />
               {{ isCreatePinLoading ? 'جارٍ الحفظ...' : 'إنشاء رمز PIN' }}
             </Button>
             <Button
               type="button"
               variant="ghost"
               size="sm"
-              class="text-xs text-muted-foreground"
+              class="text-muted-foreground text-xs"
               :disabled="isCreatePinLoading"
               @click="router.push(nextPath)"
             >
@@ -922,48 +981,62 @@ watch(step, (newStep) => {
         <template v-else-if="step === 'authenticator-setup'">
           <div class="step-header">
             <h2 class="step-title">ربط تطبيق المصادقة</h2>
-            <p class="step-desc">
-              خطوة أمان إضافية، امسح الرمز لربط حسابك بتطبيق المصادقة
-            </p>
+            <p class="step-desc">خطوة أمان إضافية، امسح الرمز لربط حسابك بتطبيق المصادقة</p>
           </div>
 
           <Alert class="mb-5">
             <ShieldCheck class="h-4 w-4" />
-            <AlertDescription>استخدم Microsoft Authenticator أو Google Authenticator. ستحتاج إلى التطبيق عند كل تسجيل دخول بكلمة المرور.</AlertDescription>
+            <AlertDescription
+              >استخدم Microsoft Authenticator أو Google Authenticator. ستحتاج إلى التطبيق عند كل
+              تسجيل دخول بكلمة المرور.</AlertDescription
+            >
           </Alert>
 
           <!-- QR code from backend TOTP provisioning URI -->
-          <div class="flex flex-col items-center gap-3 mb-5">
-            <div class="rounded-xl border-2 border-border bg-white p-2 shadow-sm" style="line-height:0">
+          <div class="mb-5 flex flex-col items-center gap-3">
+            <div
+              class="border-border rounded-xl border-2 bg-white p-2 shadow-sm"
+              style="line-height: 0"
+            >
               <div
                 v-if="authSetupQrSvg"
-                v-html="authSetupQrSvg"
-                class="w-44 h-44 [&>svg]:w-full [&>svg]:h-full [&>svg]:block"
+                class="h-44 w-44 [&>svg]:block [&>svg]:h-full [&>svg]:w-full"
                 aria-label="رمز QR لإعداد المصادقة الثنائية"
+                v-html="authSetupQrSvg"
               />
-              <div v-else class="w-44 h-44 flex flex-col items-center justify-center gap-2 text-muted-foreground">
+              <div
+                v-else
+                class="text-muted-foreground flex h-44 w-44 flex-col items-center justify-center gap-2"
+              >
                 <Loader2 v-if="isAuthSetupLoading" class="size-8 animate-spin" />
                 <QrCode v-else class="size-16 opacity-30" />
-                <span class="text-xs">{{ isAuthSetupLoading ? 'جارٍ تحميل الرمز…' : 'تعذر تحميل الرمز' }}</span>
+                <span class="text-xs">{{
+                  isAuthSetupLoading ? 'جارٍ تحميل الرمز…' : 'تعذر تحميل الرمز'
+                }}</span>
               </div>
             </div>
 
-            <div v-if="authSetupSecret" class="flex items-center gap-2 rounded-md border bg-muted/40 px-3 py-2 w-full max-w-xs">
-              <code class="text-xs font-mono text-foreground/70 tracking-widest select-all flex-1 text-center" >
+            <div
+              v-if="authSetupSecret"
+              class="bg-muted/40 flex w-full max-w-xs items-center gap-2 rounded-md border px-3 py-2"
+            >
+              <code
+                class="text-foreground/70 flex-1 text-center font-mono text-xs tracking-widest select-all"
+              >
                 {{ authSetupSecret }}
               </code>
               <Button
                 type="button"
                 variant="ghost"
                 size="icon"
-                class="h-7 w-7 text-muted-foreground"
+                class="text-muted-foreground h-7 w-7"
                 aria-label="نسخ المفتاح السري"
                 @click="copyToClipboard(authSetupSecret!)"
               >
                 <Copy class="size-3.5" />
               </Button>
             </div>
-            <p class="text-xs text-muted-foreground text-center">
+            <p class="text-muted-foreground text-center text-xs">
               لا يمكنك مسح الرمز؟ أدخل المفتاح يدوياً في التطبيق
             </p>
           </div>
@@ -978,11 +1051,9 @@ watch(step, (newStep) => {
             <AlertDescription>{{ authSetupError }}</AlertDescription>
           </Alert>
 
-          <div class="space-y-2 mb-4">
-            <Label class="text-sm font-medium">
-              أدخل الرمز من تطبيق المصادقة للتحقق
-            </Label>
-            <div class="otp-wrap" >
+          <div class="mb-4 space-y-2">
+            <Label class="text-sm font-medium"> أدخل الرمز من تطبيق المصادقة للتحقق </Label>
+            <div class="otp-wrap">
               <InputOTP
                 v-model="authSetupCode"
                 :maxlength="6"
@@ -1009,14 +1080,14 @@ watch(step, (newStep) => {
               :disabled="isAuthSetupLoading || authSetupCode.length < 6"
               @click="handleAuthenticatorSetupSubmit"
             >
-              <Loader2 v-if="isAuthSetupLoading" class="size-4 animate-spin me-2" />
+              <Loader2 v-if="isAuthSetupLoading" class="me-2 size-4 animate-spin" />
               {{ isAuthSetupLoading ? 'جارٍ التحقق...' : 'تأكيد الإعداد' }}
             </Button>
             <Button
               type="button"
               variant="ghost"
               size="sm"
-              class="text-xs text-muted-foreground"
+              class="text-muted-foreground text-xs"
               :disabled="isAuthSetupLoading"
               @click="skipAuthenticatorSetup"
             >
@@ -1030,7 +1101,7 @@ watch(step, (newStep) => {
              ══════════════════════════════════════════════════════════════════ -->
         <template v-else-if="step === 'save-account'">
           <div class="step-header">
-            <CheckCircle2 class="size-8 text-[var(--severity-green)] mb-2" />
+            <CheckCircle2 class="mb-2 size-8 text-[var(--severity-green)]" />
             <h2 class="step-title">تم تسجيل الدخول بنجاح</h2>
             <p class="step-desc">
               هل تريد حفظ بيانات الدخول على هذا الجهاز للدخول السريع في المرات القادمة؟
@@ -1041,15 +1112,17 @@ watch(step, (newStep) => {
             <ShieldCheck class="h-4 w-4" />
             <AlertDescription class="space-y-1">
               <p>سيظهر اسمك في قائمة الحسابات عند فتح النظام على هذا الجهاز.</p>
-              <p class="text-xs text-muted-foreground">يمكنك إنشاء رمز PIN في الخطوة التالية للدخول بدون كلمة مرور.</p>
+              <p class="text-muted-foreground text-xs">
+                يمكنك إنشاء رمز PIN في الخطوة التالية للدخول بدون كلمة مرور.
+              </p>
             </AlertDescription>
           </Alert>
 
           <!-- Account preview -->
           <div v-if="auth.user" class="email-chip mb-5 flex-col items-start gap-0.5 py-3">
-            <span class="text-xs text-muted-foreground">الحساب الذي سيتم حفظه</span>
+            <span class="text-muted-foreground text-xs">الحساب الذي سيتم حفظه</span>
             <span class="text-sm font-semibold">{{ auth.user.name }}</span>
-            <span class="text-xs text-muted-foreground" >{{ auth.user.email }}</span>
+            <span class="text-muted-foreground text-xs">{{ auth.user.email }}</span>
           </div>
 
           <div class="flex flex-col gap-3">
@@ -1060,9 +1133,13 @@ watch(step, (newStep) => {
               :disabled="isSaveAccountLoading"
               @click="handleSaveAccount(true)"
             >
-              <Loader2 v-if="isSaveAccountLoading" class="size-4 animate-spin me-2" />
-              <CheckCircle2 v-else class="size-4 me-2" />
-              {{ auth.user?.pin_enabled ? 'نعم، حفظ الحساب والمتابعة' : 'نعم، حفظ الحساب وإنشاء رمز PIN' }}
+              <Loader2 v-if="isSaveAccountLoading" class="me-2 size-4 animate-spin" />
+              <CheckCircle2 v-else class="me-2 size-4" />
+              {{
+                auth.user?.pin_enabled
+                  ? 'نعم، حفظ الحساب والمتابعة'
+                  : 'نعم، حفظ الحساب وإنشاء رمز PIN'
+              }}
             </Button>
             <Button
               type="button"
@@ -1074,7 +1151,7 @@ watch(step, (newStep) => {
             >
               لا، الدخول فقط هذه المرة
             </Button>
-            <p class="text-xs text-center text-muted-foreground/70">
+            <p class="text-muted-foreground/70 text-center text-xs">
               يمكنك تغيير هذا الإعداد لاحقاً من صفحة الملف الشخصي
             </p>
           </div>
@@ -1084,7 +1161,13 @@ watch(step, (newStep) => {
              STEP: pin-reset
              ══════════════════════════════════════════════════════════════════ -->
         <template v-else-if="step === 'pin-reset'">
-          <Button type="button" variant="ghost" size="sm" class="-ms-2 mb-5 gap-1 text-muted-foreground" @click="goBack">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            class="text-muted-foreground -ms-2 mb-5 gap-1"
+            @click="goBack"
+          >
             <ChevronRight class="size-4" />
             رجوع
           </Button>
@@ -1097,19 +1180,17 @@ watch(step, (newStep) => {
           <div class="space-y-4">
             <Alert>
               <KeyRound class="h-4 w-4" />
-              <AlertDescription>إذا نسيت PIN: استخدم كلمة المرور الآن، وبعد الدخول افتح الملف الشخصي وأعد تعيين رمز PIN.</AlertDescription>
+              <AlertDescription
+                >إذا نسيت PIN: استخدم كلمة المرور الآن، وبعد الدخول افتح الملف الشخصي وأعد تعيين رمز
+                PIN.</AlertDescription
+              >
             </Alert>
-            <Button
-              type="button"
-              size="lg"
-              class="w-full"
-              @click="usePinFallbackPassword"
-            >
+            <Button type="button" size="lg" class="w-full" @click="usePinFallbackPassword">
               استخدام كلمة المرور
             </Button>
-            <p class="text-xs text-center text-muted-foreground/80">
-              إذا نسيت PIN فأكمل الدخول بكلمة المرور ثم أعد ضبط PIN من الإعدادات.
-              إذا نسيت كلمة المرور أو لا تستطيع الوصول إلى تطبيق المصادقة، تواصل مع مسؤول النظام.
+            <p class="text-muted-foreground/80 text-center text-xs">
+              إذا نسيت PIN فأكمل الدخول بكلمة المرور ثم أعد ضبط PIN من الإعدادات. إذا نسيت كلمة
+              المرور أو لا تستطيع الوصول إلى تطبيق المصادقة، تواصل مع مسؤول النظام.
             </p>
           </div>
         </template>
@@ -1139,8 +1220,8 @@ watch(step, (newStep) => {
       <div class="hero-main">
         <h1>منصة إدارة ومراجعة طلبات تمويل الواردات</h1>
         <p>
-          نظام موحّد لإدارة التقديم، المراجعة البنكية، مراجعة الدعم، رفع SWIFT،
-          التصويت التنفيذي، وإصدار تأكيد الصرف الخارجي.
+          نظام موحّد لإدارة التقديم، المراجعة البنكية، مراجعة الدعم، رفع SWIFT، التصويت التنفيذي،
+          وإصدار تأكيد الصرف الخارجي.
         </p>
       </div>
       <p class="hero-iso">ISO 27001 compliant | Secure institutional workflow</p>
@@ -1281,7 +1362,6 @@ watch(step, (newStep) => {
   line-height: 1.5;
 }
 
-
 /* ── OTP / PIN wrapper (forces LTR slot order) ───────────────────────────── */
 .otp-wrap {
   display: flex;
@@ -1299,7 +1379,6 @@ watch(step, (newStep) => {
   justify-content: center;
 }
 
-
 /* ── Email chip (shows email during password step) ───────────────────────── */
 .email-chip {
   display: flex;
@@ -1310,8 +1389,6 @@ watch(step, (newStep) => {
   padding: 10px 14px;
   background: color-mix(in srgb, var(--muted) 25%, var(--background));
 }
-
-
 
 /* ── Page footer ─────────────────────────────────────────────────────────── */
 .login-footer {
@@ -1325,16 +1402,30 @@ watch(step, (newStep) => {
   text-align: center;
 }
 
-
 /* ── PIN shake animation (wrong PIN feedback) ────────────────────────────── */
 @keyframes shake {
-  0%, 100% { transform: translateX(0); }
-  15%       { transform: translateX(-8px); }
-  30%       { transform: translateX(8px); }
-  45%       { transform: translateX(-6px); }
-  60%       { transform: translateX(6px); }
-  75%       { transform: translateX(-3px); }
-  90%       { transform: translateX(3px); }
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  15% {
+    transform: translateX(-8px);
+  }
+  30% {
+    transform: translateX(8px);
+  }
+  45% {
+    transform: translateX(-6px);
+  }
+  60% {
+    transform: translateX(6px);
+  }
+  75% {
+    transform: translateX(-3px);
+  }
+  90% {
+    transform: translateX(3px);
+  }
 }
 
 .pin-shake {
@@ -1343,7 +1434,9 @@ watch(step, (newStep) => {
 
 /* ── Responsive ──────────────────────────────────────────────────────────── */
 @media (max-width: 1023px) {
-  .login-page { grid-template-columns: 1fr; }
+  .login-page {
+    grid-template-columns: 1fr;
+  }
   .login-hero {
     display: none;
     /* Reset the sticky pinning when the hero is hidden so it never reserves
@@ -1354,7 +1447,11 @@ watch(step, (newStep) => {
 }
 
 @media (max-width: 480px) {
-  .login-form-col { padding: 20px 12px; }
-  .step-title { font-size: 22px; }
+  .login-form-col {
+    padding: 20px 12px;
+  }
+  .step-title {
+    font-size: 22px;
+  }
 }
 </style>

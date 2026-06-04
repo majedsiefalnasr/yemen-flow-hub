@@ -1,5 +1,10 @@
 import { defineStore } from 'pinia'
-import type { BankReport, ReportFilter, ReportPreset, WorkflowReport } from '../composables/useReports'
+import type {
+  BankReport,
+  ReportFilter,
+  ReportPreset,
+  WorkflowReport,
+} from '../composables/useReports'
 import { useReports } from '../composables/useReports'
 
 export const useReportsStore = defineStore('reports', {
@@ -20,11 +25,9 @@ export const useReportsStore = defineStore('reports', {
       try {
         const { fetchWorkflowReport } = useReports()
         this.workflowReport = await fetchWorkflowReport(this.filters)
-      }
-      catch {
+      } catch {
         this.error = 'تعذّر تحميل تقرير سير العمل. يرجى المحاولة مرة أخرى.'
-      }
-      finally {
+      } finally {
         this.loading = false
       }
     },
@@ -35,11 +38,9 @@ export const useReportsStore = defineStore('reports', {
       try {
         const { fetchBankReport } = useReports()
         this.bankReport = await fetchBankReport(this.filters)
-      }
-      catch {
+      } catch {
         this.error = 'تعذّر تحميل تقرير البنك. يرجى المحاولة مرة أخرى.'
-      }
-      finally {
+      } finally {
         this.loading = false
       }
     },
@@ -70,11 +71,9 @@ export const useReportsStore = defineStore('reports', {
       try {
         const { exportReport } = useReports()
         await exportReport('workflow', format, this.filters)
-      }
-      catch {
+      } catch {
         this.error = 'تعذّر تصدير التقرير. يرجى المحاولة مرة أخرى.'
-      }
-      finally {
+      } finally {
         this.exportLoading = false
       }
     },
@@ -84,11 +83,9 @@ export const useReportsStore = defineStore('reports', {
       try {
         const { exportReport } = useReports()
         await exportReport('bank', format, this.filters)
-      }
-      catch {
+      } catch {
         this.error = 'تعذّر تصدير التقرير. يرجى المحاولة مرة أخرى.'
-      }
-      finally {
+      } finally {
         this.exportLoading = false
       }
     },

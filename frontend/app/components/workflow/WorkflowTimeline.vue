@@ -64,12 +64,12 @@ const sortedHistory = computed(() =>
   [...props.history].sort((a, b) => a.created_at.localeCompare(b.created_at)),
 )
 
-const visitedStatuses = computed(() =>
-  new Set(sortedHistory.value.map(e => e.to_status).filter(Boolean)),
+const visitedStatuses = computed(
+  () => new Set(sortedHistory.value.map((e) => e.to_status).filter(Boolean)),
 )
 
-const currentEntry = computed(() =>
-  [...sortedHistory.value].reverse().find(e => e.to_status === props.currentStatus) ?? null,
+const currentEntry = computed(
+  () => [...sortedHistory.value].reverse().find((e) => e.to_status === props.currentStatus) ?? null,
 )
 
 type ExtraState = 'terminal' | 'skipped' | null
@@ -90,11 +90,12 @@ const stages = computed((): StageItem[] => {
 
     if (TERMINAL_STATUSES.has(status) && isCurrent) extraState = 'terminal'
     else if (
-      knownIndex !== -1
-      && idx < knownIndex
-      && BRANCH_STATUSES.has(status)
-      && !visitedStatuses.value.has(status)
-    ) extraState = 'skipped'
+      knownIndex !== -1 &&
+      idx < knownIndex &&
+      BRANCH_STATUSES.has(status) &&
+      !visitedStatuses.value.has(status)
+    )
+      extraState = 'skipped'
 
     return {
       status,
@@ -111,7 +112,11 @@ const stepperValue = computed(() => currentIndex.value + 1)
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('ar-YE', {
-    year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
   })
 }
 </script>
@@ -132,15 +137,15 @@ function formatDate(iso: string): string {
     >
       <StepperSeparator
         v-if="stage.stepNumber !== stages[stages.length - 1]?.stepNumber"
-        class="absolute inset-s-[12px] top-[20px] block h-[110%] w-0.5 shrink-0 rounded-full bg-muted group-data-[state=completed]:bg-primary"
+        class="bg-muted group-data-[state=completed]:bg-primary absolute inset-s-[12px] top-[20px] block h-[110%] w-0.5 shrink-0 rounded-full"
       />
 
       <StepperTrigger as-child>
         <Button
           :variant="state === 'completed' || state === 'active' ? 'default' : 'outline'"
           size="icon"
-          class="z-10 rounded-full shrink-0 size-6 pointer-events-none"
-          :class="[state === 'active' && 'ring-2 ring-ring ring-offset-2 ring-offset-background']"
+          class="pointer-events-none z-10 size-6 shrink-0 rounded-full"
+          :class="[state === 'active' && 'ring-ring ring-offset-background ring-2 ring-offset-2']"
         >
           <Lock v-if="stage.extraState === 'terminal'" class="size-3.5" />
           <Check v-else-if="state === 'completed'" class="size-3" />
@@ -149,31 +154,34 @@ function formatDate(iso: string): string {
         </Button>
       </StepperTrigger>
 
-      <div class="flex flex-col gap-0.5 pt-0.5 flex-1">
+      <div class="flex flex-1 flex-col gap-0.5 pt-0.5">
         <StepperTitle
           class="text-sm leading-snug"
           :class="[
-            stage.extraState === 'skipped' ? 'italic text-muted-foreground font-normal' :
-            state === 'active' ? 'font-semibold text-foreground' :
-            state === 'completed' ? 'text-foreground' : 'font-normal text-muted-foreground',
+            stage.extraState === 'skipped'
+              ? 'text-muted-foreground font-normal italic'
+              : state === 'active'
+                ? 'text-foreground font-semibold'
+                : state === 'completed'
+                  ? 'text-foreground'
+                  : 'text-muted-foreground font-normal',
           ]"
         >
           {{ stage.label }}
         </StepperTitle>
 
-        <StepperDescription
-          v-if="state === 'active' && stage.entry"
-          class="flex flex-col gap-0.5"
-        >
-          <span class="text-xs text-muted-foreground">
+        <StepperDescription v-if="state === 'active' && stage.entry" class="flex flex-col gap-0.5">
+          <span class="text-muted-foreground text-xs">
             {{ stage.entry.performed_by?.name ?? `#${stage.entry.actor_id}` }}
           </span>
-          <span class="text-xs text-muted-foreground">{{ formatDate(stage.entry.created_at) }}</span>
+          <span class="text-muted-foreground text-xs">{{
+            formatDate(stage.entry.created_at)
+          }}</span>
         </StepperDescription>
 
         <StepperDescription
           v-if="stage.extraState === 'terminal'"
-          class="text-xs font-semibold text-muted-foreground"
+          class="text-muted-foreground text-xs font-semibold"
         >
           نهائي — لا إجراءات إضافية
         </StepperDescription>

@@ -11,17 +11,27 @@ import {
 } from '@tanstack/vue-table'
 import { h } from 'vue'
 import {
-  AlertCircle, AlertTriangle, Archive, ExternalLink, MoreHorizontal, Plus, PowerOff, RefreshCw, SearchX, ShieldCheck, UserCog, Zap,
+  AlertCircle,
+  AlertTriangle,
+  Archive,
+  ExternalLink,
+  MoreHorizontal,
+  Plus,
+  PowerOff,
+  RefreshCw,
+  SearchX,
+  ShieldCheck,
+  UserCog,
+  Zap,
 } from 'lucide-vue-next'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import { ROLE_LABELS, CBY_ROLES, ROUTE_ROLE_MAP } from '@/constants/workflow'
 import { UserRole } from '@/types/enums'
-import type { User } from '@/types/models'
+import type { User, Bank } from '@/types/models'
 import { useUsers, type CreateUserPayload, type UpdateUserPayload } from '@/composables/useUsers'
 import { useBanks } from '@/composables/useBanks'
 import { useTableExport } from '@/composables/useTableExport'
-import type { Bank } from '@/types/models'
 import { useAuthStore } from '@/stores/auth.store'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -81,7 +91,12 @@ import MetricCard from '@/components/shared/dashboard/MetricCard.vue'
 import MetricGrid from '@/components/shared/dashboard/MetricGrid.vue'
 import AvatarPicker from '@/components/shared/AvatarPicker.vue'
 import BoringAvatar from '@/components/shared/BoringAvatar.vue'
-import { DEFAULT_AVATAR_VARIANT, persistUserAvatar, readUserAvatar, type AvatarVariant } from '@/composables/useUserAvatar'
+import {
+  DEFAULT_AVATAR_VARIANT,
+  persistUserAvatar,
+  readUserAvatar,
+  type AvatarVariant,
+} from '@/composables/useUserAvatar'
 
 definePageMeta({
   middleware: ['auth', 'role'],
@@ -131,7 +146,7 @@ function resolveBankName(user: User): string {
   if (user.bank_name_en) return user.bank_name_en
   if (user.bank_name) return user.bank_name
   if (user.bank_id) {
-    const b = banksData.value.find(bk => bk.id === user.bank_id)
+    const b = banksData.value.find((bk) => bk.id === user.bank_id)
     if (b) return b.name_ar || b.name_en || ''
   }
   return ''
@@ -145,13 +160,11 @@ async function loadStaff() {
       fetchUsers({ per_page: 200 }),
       fetchBanks().catch(() => [] as Bank[]),
     ])
-    staffUsers.value = results.filter(u => STAFF_ROLES.includes(u.role))
+    staffUsers.value = results.filter((u) => STAFF_ROLES.includes(u.role))
     banksData.value = bankResults
-  }
-  catch {
+  } catch {
     fetchError.value = true
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -163,22 +176,22 @@ onMounted(loadStaff)
 const filtered = computed(() => {
   const q = query.value.trim().toLowerCase()
   if (!q) return staffUsers.value
-  return staffUsers.value.filter(u =>
-    u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q),
+  return staffUsers.value.filter(
+    (u) => u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q),
   )
 })
 
 const stats = computed(() => ({
   total: staffUsers.value.length,
-  active: staffUsers.value.filter(u => u.is_active).length,
-  inactive: staffUsers.value.filter(u => !u.is_active).length,
+  active: staffUsers.value.filter((u) => u.is_active).length,
+  inactive: staffUsers.value.filter((u) => !u.is_active).length,
 }))
 
 const activeDirectors = computed(() =>
-  staffUsers.value.filter(u => u.role === UserRole.COMMITTEE_DIRECTOR && u.is_active),
+  staffUsers.value.filter((u) => u.role === UserRole.COMMITTEE_DIRECTOR && u.is_active),
 )
 const activeExecutiveMembers = computed(() =>
-  staffUsers.value.filter(u => u.role === UserRole.EXECUTIVE_MEMBER && u.is_active),
+  staffUsers.value.filter((u) => u.role === UserRole.EXECUTIVE_MEMBER && u.is_active),
 )
 
 const rowSelection = ref<Record<string, boolean>>({})
@@ -188,18 +201,19 @@ const columnVisibility = ref<VisibilityState>({
 })
 const selectedCount = computed(() => Object.values(rowSelection.value).filter(Boolean).length)
 
-const hasActiveFilters = computed(() =>
-  columnFilters.value.length > 0 || query.value.trim().length > 0,
+const hasActiveFilters = computed(
+  () => columnFilters.value.length > 0 || query.value.trim().length > 0,
 )
 
 function clearSelection() {
   table.resetRowSelection()
 }
 
-const formValid = computed(() =>
-  form.name.trim().length > 0
-  && /\S+@\S+\.\S+/.test(form.email)
-  && (Boolean(editing.value) || form.password.length >= 8),
+const formValid = computed(
+  () =>
+    form.name.trim().length > 0 &&
+    /\S+@\S+\.\S+/.test(form.email) &&
+    (Boolean(editing.value) || form.password.length >= 8),
 )
 
 const roleSelectHint = computed(() => {
@@ -220,8 +234,7 @@ function resetForm(initial?: User) {
   if (initial?.email) {
     const stored = readUserAvatar(initial.email)
     avatarVariant.value = (initial.avatar_variant as AvatarVariant | undefined) ?? stored.variant
-  }
-  else {
+  } else {
     avatarVariant.value = DEFAULT_AVATAR_VARIANT
   }
 }
@@ -258,7 +271,7 @@ async function saveStaff() {
         ...(form.password ? { password: form.password } : {}),
       }
       const updated = await updateUser(editing.value.id, payload)
-      staffUsers.value = staffUsers.value.map(u => u.id === editing.value!.id ? updated : u)
+      staffUsers.value = staffUsers.value.map((u) => (u.id === editing.value!.id ? updated : u))
       persistUserAvatar(updated.email, { variant: avatarVariant.value })
       // When the admin is editing their own row, mirror the new variant onto
       // the auth store so surfaces that read `auth.user.avatar_variant`
@@ -268,8 +281,7 @@ async function saveStaff() {
         authStore.user = { ...authStore.user, ...updated, avatar_variant: avatarVariant.value }
       }
       notify('تم حفظ التعديلات')
-    }
-    else {
+    } else {
       const payload: CreateUserPayload = {
         name: form.name.trim(),
         email: form.email.trim(),
@@ -285,11 +297,9 @@ async function saveStaff() {
       notify(`تمت إضافة ${created.name}`)
     }
     closeForm()
-  }
-  catch {
+  } catch {
     toastError('تعذر حفظ بيانات الموظف. أعد المحاولة بعد قليل.')
-  }
-  finally {
+  } finally {
     saving.value = false
   }
 }
@@ -298,17 +308,18 @@ function requestToggleActive(target: User) {
   if (!currentUser.value || target.id === currentUser.value.id) return
   if (target.is_active) {
     if (target.role === UserRole.COMMITTEE_DIRECTOR && activeDirectors.value.length <= 1) {
-      deactivateBlocked.value = 'لا يمكن إلغاء تفعيل المدير الوحيد النشط. يجب أن يكون هناك مدير لجنة نشط واحد على الأقل في النظام في جميع الأوقات.'
+      deactivateBlocked.value =
+        'لا يمكن إلغاء تفعيل المدير الوحيد النشط. يجب أن يكون هناك مدير لجنة نشط واحد على الأقل في النظام في جميع الأوقات.'
       return
     }
     if (target.role === UserRole.EXECUTIVE_MEMBER && activeExecutiveMembers.value.length <= 1) {
-      deactivateBlocked.value = 'لا يمكن إلغاء تفعيل العضو التنفيذي الوحيد النشط. يجب الإبقاء على أعضاء تصويت كافين لضمان النصاب القانوني.'
+      deactivateBlocked.value =
+        'لا يمكن إلغاء تفعيل العضو التنفيذي الوحيد النشط. يجب الإبقاء على أعضاء تصويت كافين لضمان النصاب القانوني.'
       return
     }
     deactivateBlocked.value = null
     deactivateTarget.value = target
-  }
-  else {
+  } else {
     void doToggleActive(target)
   }
 }
@@ -324,10 +335,9 @@ async function doToggleActive(target: User) {
       is_active: !target.is_active,
     }
     const updated = await updateUser(target.id, payload)
-    staffUsers.value = staffUsers.value.map(u => u.id === target.id ? updated : u)
+    staffUsers.value = staffUsers.value.map((u) => (u.id === target.id ? updated : u))
     notify(updated.is_active ? `تم تفعيل ${target.name}` : `تم إلغاء تفعيل ${target.name}`)
-  }
-  catch {
+  } catch {
     toastError('فشل تغيير الحالة')
   }
 }
@@ -346,11 +356,22 @@ function activeStatusCell(isActive: boolean) {
         h('line', { x1: '9', y1: '9', x2: '15', y2: '15' }),
       ]
   return h('span', { class: 'inline-flex items-center gap-1.5 whitespace-nowrap' }, [
-    h('svg', {
-      class: 'shrink-0', style: { color }, width: 15, height: 15,
-      viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor',
-      'stroke-width': '2.5', 'stroke-linecap': 'round', 'stroke-linejoin': 'round',
-    }, paths),
+    h(
+      'svg',
+      {
+        class: 'shrink-0',
+        style: { color },
+        width: 15,
+        height: 15,
+        viewBox: '0 0 24 24',
+        fill: 'none',
+        stroke: 'currentColor',
+        'stroke-width': '2.5',
+        'stroke-linecap': 'round',
+        'stroke-linejoin': 'round',
+      },
+      paths,
+    ),
     h('span', { class: 'text-sm font-medium text-foreground' }, label),
   ])
 }
@@ -360,14 +381,17 @@ const columns: ColumnDef<User>[] = [
     id: 'select',
     header: ({ table }) =>
       h(Checkbox, {
-        'modelValue': table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() ? 'indeterminate' : false),
-        'onUpdate:modelValue': (v: boolean | 'indeterminate') => table.toggleAllPageRowsSelected(!!v),
+        modelValue:
+          table.getIsAllPageRowsSelected() ||
+          (table.getIsSomePageRowsSelected() ? 'indeterminate' : false),
+        'onUpdate:modelValue': (v: boolean | 'indeterminate') =>
+          table.toggleAllPageRowsSelected(!!v),
         'aria-label': 'تحديد الكل',
       }),
     cell: ({ row }) =>
       h('div', { onClick: (e: Event) => e.stopPropagation() }, [
         h(Checkbox, {
-          'modelValue': row.getIsSelected(),
+          modelValue: row.getIsSelected(),
           'onUpdate:modelValue': (v: boolean | 'indeterminate') => row.toggleSelected(!!v),
           'aria-label': 'تحديد المستخدم',
         }),
@@ -390,12 +414,20 @@ const columns: ColumnDef<User>[] = [
           class: 'size-8 shrink-0 overflow-hidden rounded-md',
         }),
         h('div', { class: 'flex flex-col gap-0.5' }, [
-          h('button', {
-            type: 'button',
-            class: 'text-sm font-medium text-start hover:underline underline-offset-2 cursor-pointer focus-visible:outline-none focus-visible:underline',
-            title: 'معاينة سريعة',
-            onClick: (e: Event) => { e.stopPropagation(); viewing.value = staff },
-          }, staff.name),
+          h(
+            'button',
+            {
+              type: 'button',
+              class:
+                'text-sm font-medium text-start hover:underline underline-offset-2 cursor-pointer focus-visible:outline-none focus-visible:underline',
+              title: 'معاينة سريعة',
+              onClick: (e: Event) => {
+                e.stopPropagation()
+                viewing.value = staff
+              },
+            },
+            staff.name,
+          ),
           h('span', { class: 'text-xs text-muted-foreground', dir: 'ltr' }, staff.email),
         ]),
       ])
@@ -421,8 +453,13 @@ const columns: ColumnDef<User>[] = [
     header: 'آخر ظهور',
     cell: ({ row }) => {
       const ts = row.original.last_login_at
-      if (!ts) return h('span', { class: 'text-sm text-muted-foreground', 'data-cell': 'last-seen' }, '—')
-      return h('span', { class: 'text-sm text-muted-foreground', 'data-cell': 'last-seen' }, new Date(ts).toLocaleDateString('ar-EG'))
+      if (!ts)
+        return h('span', { class: 'text-sm text-muted-foreground', 'data-cell': 'last-seen' }, '—')
+      return h(
+        'span',
+        { class: 'text-sm text-muted-foreground', 'data-cell': 'last-seen' },
+        new Date(ts).toLocaleDateString('ar-EG'),
+      )
     },
   },
   {
@@ -440,47 +477,90 @@ const columns: ColumnDef<User>[] = [
       const isSelf = staff.id === currentUser.value?.id
       const roleNavItems: ReturnType<typeof h>[] = []
       if (staff.role === UserRole.SUPPORT_COMMITTEE) {
-        roleNavItems.push(h(DropdownMenuItem, {
-          class: 'gap-1.5 text-primary',
-          onClick: () => navigateTo('/requests'),
-        }, () => [h(ExternalLink, { class: 'h-3.5 w-3.5' }), 'طابور المراجعة']))
+        roleNavItems.push(
+          h(
+            DropdownMenuItem,
+            {
+              class: 'gap-1.5 text-primary',
+              onClick: () => navigateTo('/requests'),
+            },
+            () => [h(ExternalLink, { class: 'h-3.5 w-3.5' }), 'طابور المراجعة'],
+          ),
+        )
+      } else if (
+        staff.role === UserRole.EXECUTIVE_MEMBER ||
+        staff.role === UserRole.COMMITTEE_DIRECTOR
+      ) {
+        roleNavItems.push(
+          h(
+            DropdownMenuItem,
+            {
+              class: 'gap-1.5 text-[var(--voting)]',
+              onClick: () => navigateTo('/voting'),
+            },
+            () => [h(ExternalLink, { class: 'h-3.5 w-3.5' }), 'جلسات التصويت'],
+          ),
+        )
       }
-      else if (staff.role === UserRole.EXECUTIVE_MEMBER || staff.role === UserRole.COMMITTEE_DIRECTOR) {
-        roleNavItems.push(h(DropdownMenuItem, {
-          class: 'gap-1.5 text-[var(--voting)]',
-          onClick: () => navigateTo('/voting'),
-        }, () => [h(ExternalLink, { class: 'h-3.5 w-3.5' }), 'جلسات التصويت']))
-      }
-      return h(DropdownMenu, {}, {
-        default: () => [
-          h(DropdownMenuTrigger, { asChild: true }, {
-            default: () => h(Button, {
-              variant: 'ghost', size: 'icon', class: 'h-8 w-8',
-            }, {
-              default: () => [
-                h('span', { class: 'sr-only' }, 'فتح القائمة'),
-                h(MoreHorizontal, { class: 'h-4 w-4' }),
-              ],
-            }),
-          }),
-          h(DropdownMenuContent, { align: 'end' }, {
-            default: () => [
-              h(DropdownMenuItem, { onClick: () => (viewing.value = staff) }, () => 'عرض التفاصيل'),
-              h(DropdownMenuItem, { onClick: () => openEdit(staff) }, () => 'تعديل'),
-              ...roleNavItems,
-              ...(!isSelf
-                ? [
-                    h(DropdownMenuSeparator),
-                    h(DropdownMenuItem, {
-                      class: staff.is_active ? 'text-destructive' : 'text-[var(--severity-green)]',
-                      onClick: () => requestToggleActive(staff),
-                    }, () => staff.is_active ? 'إلغاء تفعيل' : 'تفعيل'),
-                  ]
-                : []),
-            ],
-          }),
-        ],
-      })
+      return h(
+        DropdownMenu,
+        {},
+        {
+          default: () => [
+            h(
+              DropdownMenuTrigger,
+              { asChild: true },
+              {
+                default: () =>
+                  h(
+                    Button,
+                    {
+                      variant: 'ghost',
+                      size: 'icon',
+                      class: 'h-8 w-8',
+                    },
+                    {
+                      default: () => [
+                        h('span', { class: 'sr-only' }, 'فتح القائمة'),
+                        h(MoreHorizontal, { class: 'h-4 w-4' }),
+                      ],
+                    },
+                  ),
+              },
+            ),
+            h(
+              DropdownMenuContent,
+              { align: 'end' },
+              {
+                default: () => [
+                  h(
+                    DropdownMenuItem,
+                    { onClick: () => (viewing.value = staff) },
+                    () => 'عرض التفاصيل',
+                  ),
+                  h(DropdownMenuItem, { onClick: () => openEdit(staff) }, () => 'تعديل'),
+                  ...roleNavItems,
+                  ...(!isSelf
+                    ? [
+                        h(DropdownMenuSeparator),
+                        h(
+                          DropdownMenuItem,
+                          {
+                            class: staff.is_active
+                              ? 'text-destructive'
+                              : 'text-[var(--severity-green)]',
+                            onClick: () => requestToggleActive(staff),
+                          },
+                          () => (staff.is_active ? 'إلغاء تفعيل' : 'تفعيل'),
+                        ),
+                      ]
+                    : []),
+                ],
+              },
+            ),
+          ],
+        },
+      )
     },
   },
 ]
@@ -493,13 +573,13 @@ const CBY_STAFF_COLUMN_LABELS: Record<string, string> = {
   is_active: 'الحالة',
 }
 
-const roleFilterOptions = STAFF_ROLES.map(r => ({ label: ROLE_LABELS[r], value: r }))
+const roleFilterOptions = STAFF_ROLES.map((r) => ({ label: ROLE_LABELS[r], value: r }))
 const statusFilterOptions = [
   { label: 'نشط', value: 'true' },
   { label: 'غير نشط', value: 'false' },
 ]
 const bankFilterOptions = computed(() =>
-  banksData.value.map(b => ({ label: b.name_ar || b.name_en, value: String(b.id) })),
+  banksData.value.map((b) => ({ label: b.name_ar || b.name_en, value: String(b.id) })),
 )
 
 const exportCols = [
@@ -518,17 +598,20 @@ const exportCols = [
   {
     key: 'is_active',
     label: 'الحالة',
-    format: (_value: unknown, row: User) => row.is_active ? 'نشط' : 'غير نشط',
+    format: (_value: unknown, row: User) => (row.is_active ? 'نشط' : 'غير نشط'),
   },
   {
     key: 'last_login_at',
     label: 'آخر ظهور',
-    format: (_value: unknown, row: User) => row.last_login_at ? new Date(row.last_login_at).toLocaleDateString('ar-EG') : '—',
+    format: (_value: unknown, row: User) =>
+      row.last_login_at ? new Date(row.last_login_at).toLocaleDateString('ar-EG') : '—',
   },
 ]
 
 const table = useVueTable({
-  get data() { return filtered.value },
+  get data() {
+    return filtered.value
+  },
   columns,
   getCoreRowModel: getCoreRowModel(),
   getPaginationRowModel: getPaginationRowModel(),
@@ -536,16 +619,23 @@ const table = useVueTable({
   getFilteredRowModel: getFilteredRowModel(),
   getFacetedRowModel: getFacetedRowModel(),
   getFacetedUniqueValues: getFacetedUniqueValues(),
-  onColumnFiltersChange: updater =>
+  onColumnFiltersChange: (updater) =>
     (columnFilters.value = typeof updater === 'function' ? updater(columnFilters.value) : updater),
-  onRowSelectionChange: updater =>
+  onRowSelectionChange: (updater) =>
     (rowSelection.value = typeof updater === 'function' ? updater(rowSelection.value) : updater),
-  onColumnVisibilityChange: updater =>
-    (columnVisibility.value = typeof updater === 'function' ? updater(columnVisibility.value) : updater),
+  onColumnVisibilityChange: (updater) =>
+    (columnVisibility.value =
+      typeof updater === 'function' ? updater(columnVisibility.value) : updater),
   state: {
-    get columnFilters() { return columnFilters.value },
-    get rowSelection() { return rowSelection.value },
-    get columnVisibility() { return columnVisibility.value },
+    get columnFilters() {
+      return columnFilters.value
+    },
+    get rowSelection() {
+      return rowSelection.value
+    },
+    get columnVisibility() {
+      return columnVisibility.value
+    },
   },
   initialState: { pagination: { pageSize: 20 } },
 })
@@ -560,41 +650,53 @@ function buildExportFilename(): string {
 }
 
 function getSelectedUsers(): User[] {
-  return table.getFilteredSelectedRowModel().rows.map(r => r.original)
+  return table.getFilteredSelectedRowModel().rows.map((r) => r.original)
 }
 
 function bulkExportCSV() {
   const rows = getSelectedUsers()
   if (!rows.length) return
-  exportToCSV(rows as unknown as Record<string, unknown>[], exportCols as any, `${buildExportFilename()}-selected`)
+  exportToCSV(
+    rows as unknown as Record<string, unknown>[],
+    exportCols as any,
+    `${buildExportFilename()}-selected`,
+  )
 }
 
 function bulkExportExcel() {
   const rows = getSelectedUsers()
   if (!rows.length) return
-  exportToExcel(rows as unknown as Record<string, unknown>[], exportCols as any, `${buildExportFilename()}-selected`)
+  exportToExcel(
+    rows as unknown as Record<string, unknown>[],
+    exportCols as any,
+    `${buildExportFilename()}-selected`,
+  )
 }
 
 function bulkExportJSON() {
   const rows = getSelectedUsers()
   if (!rows.length) return
-  exportToJSON(rows as unknown as Record<string, unknown>[], exportCols as any, `${buildExportFilename()}-selected`)
+  exportToJSON(
+    rows as unknown as Record<string, unknown>[],
+    exportCols as any,
+    `${buildExportFilename()}-selected`,
+  )
 }
 
 const bulkToggling = ref(false)
 async function bulkToggleStatus(activate: boolean) {
-  const rows = getSelectedUsers().filter(u => u.is_active !== activate && u.id !== currentUser.value?.id)
+  const rows = getSelectedUsers().filter(
+    (u) => u.is_active !== activate && u.id !== currentUser.value?.id,
+  )
   if (!rows.length) return
   bulkToggling.value = true
   try {
-    await Promise.all(rows.map(u => doToggleActive(u)))
+    await Promise.all(rows.map((u) => doToggleActive(u)))
     clearSelection()
     notify(activate ? `تم تفعيل ${rows.length} مستخدم` : `تم إلغاء تفعيل ${rows.length} مستخدم`)
-  }
-  catch {
+  } catch {
     toastError('فشل تغيير الحالة لبعض المستخدمين')
-  }
-  finally {
+  } finally {
     bulkToggling.value = false
   }
 }
@@ -602,18 +704,16 @@ async function bulkToggleStatus(activate: boolean) {
 const archiveConfirmOpen = ref(false)
 const archiving = ref(false)
 async function bulkArchive() {
-  const rows = getSelectedUsers().filter(u => u.id !== currentUser.value?.id)
+  const rows = getSelectedUsers().filter((u) => u.id !== currentUser.value?.id)
   if (!rows.length) return
   archiving.value = true
   try {
-    await Promise.all(rows.filter(u => u.is_active).map(u => doToggleActive(u)))
+    await Promise.all(rows.filter((u) => u.is_active).map((u) => doToggleActive(u)))
     clearSelection()
     notify(`تم أرشفة ${rows.length} مستخدم`)
-  }
-  catch {
+  } catch {
     toastError('فشل أرشفة بعض المستخدمين')
-  }
-  finally {
+  } finally {
     archiving.value = false
   }
 }
@@ -649,7 +749,15 @@ async function bulkArchive() {
           :value="stats.active"
           :icon="ShieldCheck"
           tone="success"
-          :active="columnFilters.some(f => f.id === 'is_active' && Array.isArray(f.value) && f.value.includes('true') && f.value.length === 1)"
+          :active="
+            columnFilters.some(
+              (f) =>
+                f.id === 'is_active' &&
+                Array.isArray(f.value) &&
+                f.value.includes('true') &&
+                f.value.length === 1,
+            )
+          "
           @click="table.getColumn('is_active')?.setFilterValue(['true'])"
         />
         <MetricCard
@@ -657,7 +765,15 @@ async function bulkArchive() {
           :value="stats.inactive"
           :icon="AlertCircle"
           tone="danger"
-          :active="columnFilters.some(f => f.id === 'is_active' && Array.isArray(f.value) && f.value.includes('false') && f.value.length === 1)"
+          :active="
+            columnFilters.some(
+              (f) =>
+                f.id === 'is_active' &&
+                Array.isArray(f.value) &&
+                f.value.includes('false') &&
+                f.value.length === 1,
+            )
+          "
           @click="table.getColumn('is_active')?.setFilterValue(['false'])"
         />
       </MetricGrid>
@@ -685,10 +801,10 @@ async function bulkArchive() {
         :column-filters="columnFilters"
         :column-visibility="columnVisibility"
         :row-selection="rowSelection"
-        @update:column-filters="(v) => columnFilters = v"
-        @update:column-visibility="(v) => columnVisibility = v"
-        @update:row-selection="(v) => rowSelection = v"
         row-class="group/row"
+        @update:column-filters="(v) => (columnFilters = v)"
+        @update:column-visibility="(v) => (columnVisibility = v)"
+        @update:row-selection="(v) => (rowSelection = v)"
       >
         <template #toolbar="{ table }">
           <DataTableToolbar
@@ -696,21 +812,43 @@ async function bulkArchive() {
             search-placeholder="بحث بالاسم أو البريد..."
             :has-filters="hasActiveFilters"
             :selected-count="selectedCount"
-            @update:search="v => query = v"
+            @update:search="(v) => (query = v)"
             @reset="handleReset"
             @clear-selection="clearSelection"
           >
             <template #bulk-actions>
-              <DataTableBulkExport @csv="bulkExportCSV" @excel="bulkExportExcel" @json="bulkExportJSON" />
-              <Button variant="outline" size="sm" class="h-7 gap-1.5 text-xs" :disabled="bulkToggling" @click="bulkToggleStatus(true)">
+              <DataTableBulkExport
+                @csv="bulkExportCSV"
+                @excel="bulkExportExcel"
+                @json="bulkExportJSON"
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                class="h-7 gap-1.5 text-xs"
+                :disabled="bulkToggling"
+                @click="bulkToggleStatus(true)"
+              >
                 <Zap class="size-3.5" />
                 تفعيل
               </Button>
-              <Button variant="outline" size="sm" class="h-7 gap-1.5 text-xs" :disabled="bulkToggling" @click="bulkToggleStatus(false)">
+              <Button
+                variant="outline"
+                size="sm"
+                class="h-7 gap-1.5 text-xs"
+                :disabled="bulkToggling"
+                @click="bulkToggleStatus(false)"
+              >
                 <PowerOff class="size-3.5" />
                 إلغاء تفعيل
               </Button>
-              <Button variant="outline" size="sm" class="h-7 gap-1.5 text-xs text-destructive hover:text-destructive" :disabled="archiving" @click="archiveConfirmOpen = true">
+              <Button
+                variant="outline"
+                size="sm"
+                class="text-destructive hover:text-destructive h-7 gap-1.5 text-xs"
+                :disabled="archiving"
+                @click="archiveConfirmOpen = true"
+              >
                 <Archive class="size-3.5" />
                 أرشفة
               </Button>
@@ -738,8 +876,8 @@ async function bulkArchive() {
             <template #actions>
               <DataTableViewOptions :table="table" :column-labels="CBY_STAFF_COLUMN_LABELS" />
               <DataTableExport
-                :table="(table as any)"
-                :export-columns="(exportCols as any)"
+                :table="table as any"
+                :export-columns="exportCols as any"
                 :filename="buildExportFilename()"
                 :formats="['csv', 'tsv', 'json', 'excel', 'pdf']"
                 :respect-column-visibility="true"
@@ -750,10 +888,12 @@ async function bulkArchive() {
         <template #empty>
           <Empty
             data-empty-state-variant="cby-staff"
-            class="min-h-[280px] rounded-xl border border-dashed bg-muted/20"
+            class="bg-muted/20 min-h-[280px] rounded-xl border border-dashed"
           >
             <EmptyHeader>
-              <div class="flex size-12 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+              <div
+                class="bg-muted text-muted-foreground flex size-12 items-center justify-center rounded-xl"
+              >
                 <SearchX class="size-5" />
               </div>
               <EmptyTitle>
@@ -762,9 +902,11 @@ async function bulkArchive() {
             </EmptyHeader>
             <EmptyContent>
               <EmptyDescription>
-                {{ staffUsers.length === 0
-                  ? 'ابدأ بإضافة أول مستخدم للبنك المركزي باستخدام زر "مستخدم جديد" أعلاه.'
-                  : 'جرّب تغيير البحث أو إزالة فلتر الدور أو الجهة أو الحالة.' }}
+                {{
+                  staffUsers.length === 0
+                    ? 'ابدأ بإضافة أول مستخدم للبنك المركزي باستخدام زر "مستخدم جديد" أعلاه.'
+                    : 'جرّب تغيير البحث أو إزالة فلتر الدور أو الجهة أو الحالة.'
+                }}
               </EmptyDescription>
             </EmptyContent>
           </Empty>
@@ -776,10 +918,7 @@ async function bulkArchive() {
     </div>
 
     <!-- Create / Edit Dialog -->
-    <Dialog
-      :open="createOpen || Boolean(editing)"
-      @update:open="value => !value && closeForm()"
-    >
+    <Dialog :open="createOpen || Boolean(editing)" @update:open="(value) => !value && closeForm()">
       <DialogContent class="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{{ editing ? 'تعديل بيانات المستخدم' : 'إضافة مستخدم نظام' }}</DialogTitle>
@@ -787,7 +926,7 @@ async function bulkArchive() {
         </DialogHeader>
 
         <div class="space-y-3 py-2">
-          <div class="rounded-lg border border-border bg-muted/20 p-3">
+          <div class="border-border bg-muted/20 rounded-lg border p-3">
             <AvatarPicker
               v-model="avatarVariant"
               :seed="form.email || form.name || 'new-user'"
@@ -804,18 +943,29 @@ async function bulkArchive() {
             <Input v-model="form.email" type="email" />
           </div>
           <div class="space-y-1.5">
-            <Label>{{ editing ? 'كلمة المرور (اتركها فارغة للإبقاء على الحالية)' : 'كلمة المرور *' }}</Label>
-            <Input v-model="form.password" type="password" :placeholder="editing ? '••••••••' : 'كلمة مرور قوية'" />
+            <Label>{{
+              editing ? 'كلمة المرور (اتركها فارغة للإبقاء على الحالية)' : 'كلمة المرور *'
+            }}</Label>
+            <Input
+              v-model="form.password"
+              type="password"
+              :placeholder="editing ? '••••••••' : 'كلمة مرور قوية'"
+            />
           </div>
           <div class="space-y-1.5">
             <Label>الدور *</Label>
             <Select v-model="form.role">
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem v-for="role in STAFF_ROLES" :key="role" :value="role">{{ ROLE_LABELS[role] }}</SelectItem>
+                <SelectItem v-for="role in STAFF_ROLES" :key="role" :value="role">{{
+                  ROLE_LABELS[role]
+                }}</SelectItem>
               </SelectContent>
             </Select>
-            <p v-if="roleSelectHint" class="flex items-start gap-1.5 text-xs text-[var(--severity-amber)]">
+            <p
+              v-if="roleSelectHint"
+              class="flex items-start gap-1.5 text-xs text-[var(--severity-amber)]"
+            >
               <AlertTriangle class="mt-px h-3.5 w-3.5 shrink-0" />
               {{ roleSelectHint }}
             </p>
@@ -831,7 +981,10 @@ async function bulkArchive() {
     </Dialog>
 
     <!-- Deactivation blocked: critical-role protection -->
-    <AlertDialog :open="Boolean(deactivateBlocked)" @update:open="value => !value && (deactivateBlocked = null)">
+    <AlertDialog
+      :open="Boolean(deactivateBlocked)"
+      @update:open="(value) => !value && (deactivateBlocked = null)"
+    >
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle class="flex items-center gap-2">
@@ -847,13 +1000,17 @@ async function bulkArchive() {
     </AlertDialog>
 
     <!-- Deactivation confirmation with workload context -->
-    <AlertDialog :open="Boolean(deactivateTarget)" @update:open="value => !value && (deactivateTarget = null)">
+    <AlertDialog
+      :open="Boolean(deactivateTarget)"
+      @update:open="(value) => !value && (deactivateTarget = null)"
+    >
       <AlertDialogContent v-if="deactivateTarget">
         <AlertDialogHeader>
           <AlertDialogTitle>تأكيد إلغاء التفعيل</AlertDialogTitle>
           <AlertDialogDescription>
-            سيتم إلغاء تفعيل <strong>{{ deactivateTarget.name }}</strong>
-            ({{ ROLE_LABELS[deactivateTarget.role] }}).
+            سيتم إلغاء تفعيل <strong>{{ deactivateTarget.name }}</strong> ({{
+              ROLE_LABELS[deactivateTarget.role]
+            }}).
             <template v-if="deactivateTarget.role === UserRole.COMMITTEE_DIRECTOR">
               <br class="mb-1" />
               سيبقى {{ activeDirectors.length - 1 }} مدير نشط بعد هذا الإجراء.
@@ -866,7 +1023,10 @@ async function bulkArchive() {
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel @click="deactivateTarget = null">إلغاء</AlertDialogCancel>
-          <AlertDialogAction class="bg-destructive text-destructive-foreground hover:bg-destructive/90" @click="doToggleActive(deactivateTarget)">
+          <AlertDialogAction
+            class="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            @click="doToggleActive(deactivateTarget)"
+          >
             تأكيد الإلغاء
           </AlertDialogAction>
         </AlertDialogFooter>
@@ -874,11 +1034,11 @@ async function bulkArchive() {
     </AlertDialog>
 
     <!-- View Dialog -->
-    <Dialog :open="Boolean(viewing)" @update:open="value => !value && (viewing = null)">
+    <Dialog :open="Boolean(viewing)" @update:open="(value) => !value && (viewing = null)">
       <DialogContent v-if="viewing" class="sm:max-w-md">
         <DialogHeader>
           <DialogTitle class="flex items-center gap-2">
-            <UserCog class="h-5 w-5 text-primary" />
+            <UserCog class="text-primary h-5 w-5" />
             {{ viewing.name }}
           </DialogTitle>
           <DialogDescription>تفاصيل المستخدم</DialogDescription>
@@ -896,9 +1056,14 @@ async function bulkArchive() {
             <span class="text-muted-foreground">الحالة</span>
             <span class="text-start font-medium">{{ viewing.is_active ? 'نشط' : 'غير نشط' }}</span>
           </div>
-          <div v-if="viewing.last_login_at" class="flex items-center justify-between gap-3 border-b pb-2">
+          <div
+            v-if="viewing.last_login_at"
+            class="flex items-center justify-between gap-3 border-b pb-2"
+          >
             <span class="text-muted-foreground">آخر تسجيل دخول</span>
-            <span class="text-start font-medium">{{ new Date(viewing.last_login_at).toLocaleString('ar-EG') }}</span>
+            <span class="text-start font-medium">{{
+              new Date(viewing.last_login_at).toLocaleString('ar-EG')
+            }}</span>
           </div>
         </div>
       </DialogContent>

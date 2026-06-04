@@ -1,10 +1,19 @@
-// @parity-exempt — dashboard sub-component; parity evidence captured at dashboards/support-committee page level
+// @parity-exempt — dashboard sub-component; parity evidence captured at
+dashboards/support-committee page level
 <script setup lang="ts">
 import type { ColumnDef } from '@tanstack/vue-table'
-import { computed, onMounted } from 'vue'
-import { h } from 'vue'
+import { computed, onMounted, h } from 'vue'
 import { useRouter } from 'vue-router'
-import { CheckCircle2, Users, Clock, Mail, Zap, AlertCircle, AlarmClock, Globe } from 'lucide-vue-next'
+import {
+  CheckCircle2,
+  Users,
+  Clock,
+  Mail,
+  Zap,
+  AlertCircle,
+  AlarmClock,
+  Globe,
+} from 'lucide-vue-next'
 import { useDashboardStore } from '../../stores/dashboard.store'
 import { useAuthStore } from '../../stores/auth.store'
 import { UserRole } from '../../types/enums'
@@ -39,7 +48,11 @@ const currentUserId = computed(() => auth.user?.id ?? null)
 
 // Active claims = rows in queue currently claimed by me
 const myActiveClaims = computed(() =>
-  queue.value.filter(req => req.is_claimed_by_me || (currentUserId.value != null && req.claimed_by?.id === currentUserId.value)),
+  queue.value.filter(
+    (req) =>
+      req.is_claimed_by_me ||
+      (currentUserId.value != null && req.claimed_by?.id === currentUserId.value),
+  ),
 )
 const hasActiveClaim = computed(() => myActiveClaims.value.length > 0)
 // Oldest active claim — frontend defends the "oldest first" ordering so we
@@ -56,12 +69,19 @@ const oldestActiveClaim = computed(() => {
 })
 
 function formatAmount(amount: number, currency: string): string {
-  return new Intl.NumberFormat('ar-YE', { style: 'currency', currency, minimumFractionDigits: 0 }).format(amount)
+  return new Intl.NumberFormat('ar-YE', {
+    style: 'currency',
+    currency,
+    minimumFractionDigits: 0,
+  }).format(amount)
 }
 
 function claimOwnerLabel(req: SupportCommitteeDashboardStats['support_queue'][number]): string {
   if (!req.claimed_by) return 'غير مطالب به'
-  if (req.is_claimed_by_me || (currentUserId.value != null && req.claimed_by.id === currentUserId.value)) {
+  if (
+    req.is_claimed_by_me ||
+    (currentUserId.value != null && req.claimed_by.id === currentUserId.value)
+  ) {
     return `${req.claimed_by.name} (أنت)`
   }
   return req.claimed_by.name
@@ -73,72 +93,104 @@ const supportQueueColumns: ColumnDef<SupportQueueRow>[] = [
   {
     accessorKey: 'reference_number',
     header: 'المرجع',
-    cell: ({ row }) => h('a', {
-      class: 'font-mono text-primary hover:underline',
-      href: `/requests/${row.original.id}`,
-      onClick: (event: MouseEvent) => {
-        event.preventDefault()
-        event.stopPropagation()
-        router.push(`/requests/${row.original.id}`)
-      },
-    }, row.original.reference_number),
+    cell: ({ row }) =>
+      h(
+        'a',
+        {
+          class: 'font-mono text-primary hover:underline',
+          href: `/requests/${row.original.id}`,
+          onClick: (event: MouseEvent) => {
+            event.preventDefault()
+            event.stopPropagation()
+            router.push(`/requests/${row.original.id}`)
+          },
+        },
+        row.original.reference_number,
+      ),
   },
   { accessorKey: 'supplier_name', header: 'المورد' },
   {
     id: 'amount',
     header: 'المبلغ',
-    cell: ({ row }) => h('span', { class: 'direction-ltr font-tabular-nums' }, formatAmount(row.original.amount, row.original.currency)),
+    cell: ({ row }) =>
+      h(
+        'span',
+        { class: 'direction-ltr font-tabular-nums' },
+        formatAmount(row.original.amount, row.original.currency),
+      ),
   },
   {
     id: 'status',
     header: 'الحالة',
-    cell: ({ row }) => h(StatusBadge, { status: row.original.status, role: UserRole.SUPPORT_COMMITTEE }),
+    cell: ({ row }) =>
+      h(StatusBadge, { status: row.original.status, role: UserRole.SUPPORT_COMMITTEE }),
   },
   {
     id: 'claim',
     header: 'الحجز',
-    cell: ({ row }) => h('span', {
-      class: [
-        'inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium',
-        row.original.is_claimed_by_me || (currentUserId.value != null && row.original.claimed_by?.id === currentUserId.value)
-          ? 'bg-[var(--voting)]/10 text-[var(--voting)]'
-          : row.original.claimed_by
-            ? 'bg-muted text-muted-foreground'
-            : 'bg-[var(--severity-amber)]/10 text-[var(--severity-amber)]',
-      ],
-    }, claimOwnerLabel(row.original)),
+    cell: ({ row }) =>
+      h(
+        'span',
+        {
+          class: [
+            'inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium',
+            row.original.is_claimed_by_me ||
+            (currentUserId.value != null && row.original.claimed_by?.id === currentUserId.value)
+              ? 'bg-[var(--voting)]/10 text-[var(--voting)]'
+              : row.original.claimed_by
+                ? 'bg-muted text-muted-foreground'
+                : 'bg-[var(--severity-amber)]/10 text-[var(--severity-amber)]',
+          ],
+        },
+        claimOwnerLabel(row.original),
+      ),
   },
   {
     id: 'actions',
     header: 'إجراء',
     cell: ({ row }) => {
       if (!row.original.claimed_by) {
-        return h(Button, {
-          size: 'sm',
-          onClick: (event: MouseEvent) => {
-            event.stopPropagation()
-            router.push(`/requests/${row.original.id}`)
+        return h(
+          Button,
+          {
+            size: 'sm',
+            onClick: (event: MouseEvent) => {
+              event.stopPropagation()
+              router.push(`/requests/${row.original.id}`)
+            },
           },
-        }, () => 'مطالبة')
+          () => 'مطالبة',
+        )
       }
-      if (row.original.is_claimed_by_me || (currentUserId.value != null && row.original.claimed_by?.id === currentUserId.value)) {
-        return h(Button, {
+      if (
+        row.original.is_claimed_by_me ||
+        (currentUserId.value != null && row.original.claimed_by?.id === currentUserId.value)
+      ) {
+        return h(
+          Button,
+          {
+            size: 'sm',
+            variant: 'outline',
+            onClick: (event: MouseEvent) => {
+              event.stopPropagation()
+              router.push(`/requests/${row.original.id}`)
+            },
+          },
+          () => 'متابعة',
+        )
+      }
+      return h(
+        Button,
+        {
           size: 'sm',
           variant: 'outline',
           onClick: (event: MouseEvent) => {
             event.stopPropagation()
             router.push(`/requests/${row.original.id}`)
           },
-        }, () => 'متابعة')
-      }
-      return h(Button, {
-        size: 'sm',
-        variant: 'outline',
-        onClick: (event: MouseEvent) => {
-          event.stopPropagation()
-          router.push(`/requests/${row.original.id}`)
         },
-      }, () => 'عرض')
+        () => 'عرض',
+      )
     },
   },
 ]
@@ -175,41 +227,61 @@ const kpiConfig = computed(() => [
   },
 ])
 
-onMounted(() => { store.loadStats() })
+onMounted(() => {
+  store.loadStats()
+})
 </script>
 
 <template>
-  <div class="flex flex-col gap-6" >
-
+  <div class="flex flex-col gap-6">
     <!-- CBY-global scope chip -->
     <div class="mb-2">
-      <Badge variant="outline" class="gap-1.5 rounded-full px-3 py-1 text-xs font-medium text-muted-foreground border-border">
+      <Badge
+        variant="outline"
+        class="text-muted-foreground border-border gap-1.5 rounded-full px-3 py-1 text-xs font-medium"
+      >
         <Globe class="size-3" aria-hidden="true" />
         نطاق عبر البنوك
       </Badge>
     </div>
 
     <!-- Skeleton -->
-    <div v-if="store.loading" class="grid grid-cols-4 max-lg:grid-cols-2 max-md:grid-cols-1 gap-4" aria-busy="true" aria-label="جارٍ تحميل الإحصائيات">
+    <div
+      v-if="store.loading"
+      class="grid grid-cols-4 gap-4 max-lg:grid-cols-2 max-md:grid-cols-1"
+      aria-busy="true"
+      aria-label="جارٍ تحميل الإحصائيات"
+    >
       <div v-for="n in 4" :key="n" class="border-0 p-4 shadow" aria-hidden="true">
-        <Skeleton class="h-3.5 w-[60px] mb-3" />
+        <Skeleton class="mb-3 h-3.5 w-[60px]" />
         <Skeleton class="h-8 w-[40px]" />
       </div>
     </div>
 
     <!-- Error -->
-    <Card v-else-if="store.error" class="border-0 border-[var(--severity-red)] bg-background" role="alert">
-      <CardContent class="pt-6 flex items-center gap-3">
-        <AlertCircle class="w-4.5 h-4.5 flex-shrink-0 text-[var(--severity-red)]" aria-hidden="true" />
+    <Card
+      v-else-if="store.error"
+      class="bg-background border-0 border-[var(--severity-red)]"
+      role="alert"
+    >
+      <CardContent class="flex items-center gap-3 pt-6">
+        <AlertCircle
+          class="h-4.5 w-4.5 flex-shrink-0 text-[var(--severity-red)]"
+          aria-hidden="true"
+        />
         <span class="text-destructive flex-1">{{ store.error }}</span>
-        <Button variant="outline" size="sm" class="text-destructive border-destructive" @click="store.loadStats()">
+        <Button
+          variant="outline"
+          size="sm"
+          class="text-destructive border-destructive"
+          @click="store.loadStats()"
+        >
           إعادة المحاولة
         </Button>
       </CardContent>
     </Card>
 
     <template v-else-if="stats">
-
       <!-- Active-claim strip (highest priority, indigo) — hidden when no active claims -->
       <Card
         v-if="hasActiveClaim"
@@ -219,9 +291,11 @@ onMounted(() => { store.loadStats() })
       >
         <CardContent class="flex items-center gap-3">
           <AlarmClock class="h-5 w-5 flex-shrink-0 text-[var(--voting)]" aria-hidden="true" />
-          <div class="flex-1 min-w-0">
-            <span class="font-semibold text-foreground text-sm">لديك {{ myActiveClaims.length }} طلب نشط محجوز باسمك</span>
-            <p v-if="oldestActiveClaim" class="text-xs text-muted-foreground mt-0.5 truncate">
+          <div class="min-w-0 flex-1">
+            <span class="text-foreground text-sm font-semibold"
+              >لديك {{ myActiveClaims.length }} طلب نشط محجوز باسمك</span
+            >
+            <p v-if="oldestActiveClaim" class="text-muted-foreground mt-0.5 truncate text-xs">
               {{ oldestActiveClaim.reference_number }}
             </p>
           </div>
@@ -260,13 +334,16 @@ onMounted(() => { store.loadStats() })
 
       <!-- Quick actions -->
       <section aria-labelledby="qa-heading">
-        <h2 id="qa-heading" class="flex items-center gap-2 text-sm font-semibold text-foreground mb-3">
+        <h2
+          id="qa-heading"
+          class="text-foreground mb-3 flex items-center gap-2 text-sm font-semibold"
+        >
           <Zap class="h-4 w-4" aria-hidden="true" />
           إجراءات سريعة
         </h2>
-        <div class="grid grid-cols-2 max-md:grid-cols-1 gap-3">
+        <div class="grid grid-cols-2 gap-3 max-md:grid-cols-1">
           <Card
-            class="flex flex-col items-start gap-1 p-4 bg-[var(--voting)] text-white border-0 rounded-2xl cursor-pointer hover:opacity-90 transition-opacity focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
+            class="focus-visible:ring-primary flex cursor-pointer flex-col items-start gap-1 rounded-2xl border-0 bg-[var(--voting)] p-4 text-white transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:outline-none"
             role="button"
             tabindex="0"
             aria-label="طابور المراجعة"
@@ -274,13 +351,15 @@ onMounted(() => { store.loadStats() })
             @keydown.enter="router.push('/requests')"
             @keydown.space.prevent="router.push('/requests')"
           >
-            <Users class="h-5 w-5 flex-shrink-0 mb-1" aria-hidden="true" />
+            <Users class="mb-1 h-5 w-5 flex-shrink-0" aria-hidden="true" />
             <span class="text-sm font-semibold">طابور المراجعة</span>
-            <span class="text-xs opacity-75">{{ stats.waiting_for_claim }} طلب بانتظار المطالبة</span>
+            <span class="text-xs opacity-75"
+              >{{ stats.waiting_for_claim }} طلب بانتظار المطالبة</span
+            >
           </Card>
 
           <Card
-            class="flex flex-col items-start gap-1 p-4 bg-background border border-border text-foreground rounded-2xl cursor-pointer hover:border-primary hover:shadow-md transition-all focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
+            class="bg-background border-border text-foreground hover:border-primary focus-visible:ring-primary flex cursor-pointer flex-col items-start gap-1 rounded-2xl border p-4 transition-all hover:shadow-md focus-visible:ring-2 focus-visible:outline-none"
             role="button"
             tabindex="0"
             aria-label="الإشعارات"
@@ -288,9 +367,9 @@ onMounted(() => { store.loadStats() })
             @keydown.enter="router.push('/notifications')"
             @keydown.space.prevent="router.push('/notifications')"
           >
-            <Mail class="h-5 w-5 flex-shrink-0 text-primary mb-1" aria-hidden="true" />
+            <Mail class="text-primary mb-1 h-5 w-5 flex-shrink-0" aria-hidden="true" />
             <span class="text-sm font-semibold">الإشعارات</span>
-            <span class="text-xs text-muted-foreground">آخر تحديثات الطابور والقرارات</span>
+            <span class="text-muted-foreground text-xs">آخر تحديثات الطابور والقرارات</span>
           </Card>
         </div>
       </section>
@@ -298,17 +377,26 @@ onMounted(() => { store.loadStats() })
       <!-- Support queue table (max 8 rows) -->
       <Card class="border-0 shadow" aria-labelledby="queue-heading">
         <CardContent class="p-4">
-          <div class="flex items-center justify-between mb-4">
-            <h2 id="queue-heading" class="text-sm font-semibold text-foreground">طابور المراجعة</h2>
-            <Button variant="link" size="sm" class="text-xs h-auto p-0" @click="router.push('/requests')">عرض الكل</Button>
+          <div class="mb-4 flex items-center justify-between">
+            <h2 id="queue-heading" class="text-foreground text-sm font-semibold">طابور المراجعة</h2>
+            <Button
+              variant="link"
+              size="sm"
+              class="h-auto p-0 text-xs"
+              @click="router.push('/requests')"
+              >عرض الكل</Button
+            >
           </div>
 
-          <DataTable :data="queue.slice(0, 8)" :columns="supportQueueColumns" @row-click="(row) => router.push(`/requests/${row.id}`)">
+          <DataTable
+            :data="queue.slice(0, 8)"
+            :columns="supportQueueColumns"
+            @row-click="(row) => router.push(`/requests/${row.id}`)"
+          >
             <template #empty>لا توجد طلبات بانتظار المراجعة حالياً</template>
           </DataTable>
         </CardContent>
       </Card>
-
     </template>
   </div>
 </template>

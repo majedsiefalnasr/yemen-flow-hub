@@ -30,7 +30,11 @@ function makeBaseStats(overrides: Partial<CbyAdminDashboardStats> = {}): CbyAdmi
     approved: 0,
     in_process: 0,
     rejected: 0,
-    compliance_alerts: { duplicate_suppliers: [], high_amount_requests: [], stale_pending_requests: [] },
+    compliance_alerts: {
+      duplicate_suppliers: [],
+      high_amount_requests: [],
+      stale_pending_requests: [],
+    },
     most_active_banks: [],
     ...overrides,
   }
@@ -218,8 +222,12 @@ describe('CbyAdminDashboard 12.2 — governance stats optional fields', () => {
       system_availability: kpi,
     })
     const keys: (keyof CbyAdminDashboardStats)[] = [
-      'active_workflow_requests', 'sla_violations', 'open_voting_sessions',
-      'fx_confirmation_pending', 'bank_risk_alerts', 'system_availability',
+      'active_workflow_requests',
+      'sla_violations',
+      'open_voting_sessions',
+      'fx_confirmation_pending',
+      'bank_risk_alerts',
+      'system_availability',
     ]
     for (const k of keys) {
       expect(resolvedKpi(stats, k).value).toBe(10)

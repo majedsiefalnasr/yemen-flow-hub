@@ -94,19 +94,27 @@ function tallyBarWidth(count: number, totalMembers: number): string {
 
 function voteLabel(vote: VoteType): string {
   switch (vote) {
-    case VoteType.APPROVE: return 'موافق'
-    case VoteType.REJECT: return 'رافض'
-    case VoteType.ABSTAIN: return 'ممتنع'
-    case VoteType.AUTO_ABSTAIN_TIMEOUT: return 'غائب (مُنهي تلقائياً)'
+    case VoteType.APPROVE:
+      return 'موافق'
+    case VoteType.REJECT:
+      return 'رافض'
+    case VoteType.ABSTAIN:
+      return 'ممتنع'
+    case VoteType.AUTO_ABSTAIN_TIMEOUT:
+      return 'غائب (مُنهي تلقائياً)'
   }
 }
 
 function voteChipClass(vote: VoteType): string {
   switch (vote) {
-    case VoteType.APPROVE: return 'vote-chip--approve'
-    case VoteType.REJECT: return 'vote-chip--reject'
-    case VoteType.ABSTAIN: return 'vote-chip--abstain'
-    case VoteType.AUTO_ABSTAIN_TIMEOUT: return 'vote-chip--auto-abstain'
+    case VoteType.APPROVE:
+      return 'vote-chip--approve'
+    case VoteType.REJECT:
+      return 'vote-chip--reject'
+    case VoteType.ABSTAIN:
+      return 'vote-chip--abstain'
+    case VoteType.AUTO_ABSTAIN_TIMEOUT:
+      return 'vote-chip--auto-abstain'
   }
 }
 
@@ -182,7 +190,9 @@ describe('VotingPanel — canVote guard', () => {
   })
 
   it('cannot vote when session is closed', () => {
-    expect(canVote(RequestStatus.EXECUTIVE_VOTING_CLOSED, UserRole.EXECUTIVE_MEMBER, null)).toBe(false)
+    expect(canVote(RequestStatus.EXECUTIVE_VOTING_CLOSED, UserRole.EXECUTIVE_MEMBER, null)).toBe(
+      false,
+    )
   })
 
   it('cannot vote when user is not a voter role', () => {
@@ -191,11 +201,15 @@ describe('VotingPanel — canVote guard', () => {
 
   it('cannot vote when user has already voted', () => {
     const myVote = makeVote({ vote: VoteType.APPROVE })
-    expect(canVote(RequestStatus.EXECUTIVE_VOTING_OPEN, UserRole.EXECUTIVE_MEMBER, myVote)).toBe(false)
+    expect(canVote(RequestStatus.EXECUTIVE_VOTING_OPEN, UserRole.EXECUTIVE_MEMBER, myVote)).toBe(
+      false,
+    )
   })
 
   it('COMMITTEE_DIRECTOR can vote when session is open and not voted', () => {
-    expect(canVote(RequestStatus.EXECUTIVE_VOTING_OPEN, UserRole.COMMITTEE_DIRECTOR, null)).toBe(true)
+    expect(canVote(RequestStatus.EXECUTIVE_VOTING_OPEN, UserRole.COMMITTEE_DIRECTOR, null)).toBe(
+      true,
+    )
   })
 })
 
@@ -314,7 +328,9 @@ describe('VotingPanel — my_vote state', () => {
 
   it('shows vote buttons when my_vote is null and session is open', () => {
     const detail = makeDetail({ my_vote: null })
-    expect(canVote(RequestStatus.EXECUTIVE_VOTING_OPEN, UserRole.EXECUTIVE_MEMBER, detail.my_vote)).toBe(true)
+    expect(
+      canVote(RequestStatus.EXECUTIVE_VOTING_OPEN, UserRole.EXECUTIVE_MEMBER, detail.my_vote),
+    ).toBe(true)
   })
 })
 
@@ -327,7 +343,12 @@ function showTieBreak(tally: VotingTally | null, status: RequestStatus): boolean
 
 describe('VotingPanel — tie-break notice (Story 6.6)', () => {
   it('shows tie-break when approve === reject > 0 in open session', () => {
-    const tally = makeTally({ approve_count: 2, reject_count: 2, abstain_count: 0, auto_abstain_count: 0 })
+    const tally = makeTally({
+      approve_count: 2,
+      reject_count: 2,
+      abstain_count: 0,
+      auto_abstain_count: 0,
+    })
     expect(showTieBreak(tally, RequestStatus.EXECUTIVE_VOTING_OPEN)).toBe(true)
   })
 

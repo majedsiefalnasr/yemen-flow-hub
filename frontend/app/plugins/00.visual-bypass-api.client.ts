@@ -18,8 +18,7 @@ function resolveUrl(request: RequestInfo | URL, baseURL?: string): URL | null {
     if (request instanceof URL) return request
     if (typeof request === 'string') return new URL(request, baseURL ?? window.location.origin)
     return new URL(request.url, baseURL ?? window.location.origin)
-  }
-  catch {
+  } catch {
     return null
   }
 }
@@ -108,7 +107,19 @@ function mockForPath(path: string, method: string, role: UserRole) {
   if (path === '/api/requests') return apiOk(paginated([]))
   if (/^\/api\/requests\/\d+$/.test(path)) return apiOk(emptyRequest)
   if (/^\/api\/requests\/\d+\/history$/.test(path)) return apiOk([])
-  if (/^\/api\/requests\/\d+\/customs-preview$/.test(path)) return apiOk({ id: 1, request_id: 1, declaration_number: 'FX-0001', issued_by: 1, issuer: null, issued_at: new Date().toISOString(), request: null, metadata: null, download_url: '#', created_at: new Date().toISOString() })
+  if (/^\/api\/requests\/\d+\/customs-preview$/.test(path))
+    return apiOk({
+      id: 1,
+      request_id: 1,
+      declaration_number: 'FX-0001',
+      issued_by: 1,
+      issuer: null,
+      issued_at: new Date().toISOString(),
+      request: null,
+      metadata: null,
+      download_url: '#',
+      created_at: new Date().toISOString(),
+    })
 
   if (method === 'POST' || method === 'PUT' || method === 'PATCH' || method === 'DELETE') {
     return apiOk({})
@@ -121,8 +132,11 @@ export default defineNuxtPlugin(() => {
   const config = useRuntimeConfig()
   if (!config.public.visualBypass) return
 
-  const roleInput = String(config.public.visualBypassRole ?? 'CBY_ADMIN').trim().toUpperCase()
-  const role = (Object.values(UserRole).find(r => r === roleInput) ?? UserRole.CBY_ADMIN) as UserRole
+  const roleInput = String(config.public.visualBypassRole ?? 'CBY_ADMIN')
+    .trim()
+    .toUpperCase()
+  const role = (Object.values(UserRole).find((r) => r === roleInput) ??
+    UserRole.CBY_ADMIN) as UserRole
 
   const wrapFetch = (baseFetch: typeof globalThis.$fetch): typeof globalThis.$fetch => {
     const wrapped = (async (request: RequestInfo | URL, options?: any) => {
@@ -137,7 +151,8 @@ export default defineNuxtPlugin(() => {
     }) as typeof globalThis.$fetch
 
     Object.assign(wrapped, baseFetch)
-    wrapped.create = (defaults?: any) => wrapFetch(baseFetch.create(defaults) as typeof globalThis.$fetch)
+    wrapped.create = (defaults?: any) =>
+      wrapFetch(baseFetch.create(defaults) as typeof globalThis.$fetch)
     return wrapped
   }
 

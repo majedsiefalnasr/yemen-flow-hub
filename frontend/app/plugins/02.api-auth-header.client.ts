@@ -9,8 +9,7 @@ function isApiRequest(requestUrl: string, apiBase: string): boolean {
     const requestOrigin = new URL(requestUrl, window.location.origin).origin
     const apiOrigin = new URL(apiBase).origin
     return requestOrigin === apiOrigin
-  }
-  catch {
+  } catch {
     return false
   }
 }
@@ -25,11 +24,8 @@ export default defineNuxtPlugin(() => {
       const token = localStorage.getItem(ACCESS_TOKEN_STORAGE_KEY)
       if (!token) return
 
-      const requestUrl = typeof request === 'string'
-        ? request
-        : request instanceof Request
-          ? request.url
-          : ''
+      const requestUrl =
+        typeof request === 'string' ? request : request instanceof Request ? request.url : ''
 
       if (!requestUrl || !isApiRequest(requestUrl, apiBase)) return
 

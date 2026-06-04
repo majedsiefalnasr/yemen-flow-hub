@@ -113,7 +113,9 @@ describe('requests.store loadHistory', () => {
     const { useRequestsStore } = await import('../../../stores/requests.store')
 
     vi.resetModules()
-    const { useRequests: mockUseRequestsModule } = await vi.importMock('../../../composables/useRequests')
+    const { useRequests: mockUseRequestsModule } = await vi.importMock(
+      '../../../composables/useRequests',
+    )
 
     const store = useRequestsStore()
 

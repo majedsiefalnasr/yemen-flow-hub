@@ -16,29 +16,32 @@ import { useTableExport } from '@/composables/useTableExport'
 
 type ExportFormat = 'csv' | 'tsv' | 'json' | 'excel' | 'pdf'
 
-const props = withDefaults(defineProps<{
-  table: Table<TData>
-  /** Filename without extension. Defaults to 'export'. */
-  filename?: string
-  /**
-   * Column definitions for export.
-   * If omitted, all visible accessor columns are auto-detected.
-   */
-  exportColumns?: ExportColumn<TData>[]
-  /**
-   * Filter out hidden columns when explicit exportColumns are provided.
-   * Requires columnId on export column when the key differs from the table column id.
-   */
-  respectColumnVisibility?: boolean
-  /** Human-readable labels for auto-detected columns. Falls back to column id. */
-  columnLabels?: Record<string, string>
-  /** Which export formats to show. Defaults to all five. */
-  formats?: ExportFormat[]
-}>(), {
-  filename: 'export',
-  formats: () => ['csv', 'tsv', 'json', 'excel', 'pdf'] as ExportFormat[],
-  respectColumnVisibility: false,
-})
+const props = withDefaults(
+  defineProps<{
+    table: Table<TData>
+    /** Filename without extension. Defaults to 'export'. */
+    filename?: string
+    /**
+     * Column definitions for export.
+     * If omitted, all visible accessor columns are auto-detected.
+     */
+    exportColumns?: ExportColumn<TData>[]
+    /**
+     * Filter out hidden columns when explicit exportColumns are provided.
+     * Requires columnId on export column when the key differs from the table column id.
+     */
+    respectColumnVisibility?: boolean
+    /** Human-readable labels for auto-detected columns. Falls back to column id. */
+    columnLabels?: Record<string, string>
+    /** Which export formats to show. Defaults to all five. */
+    formats?: ExportFormat[]
+  }>(),
+  {
+    filename: 'export',
+    formats: () => ['csv', 'tsv', 'json', 'excel', 'pdf'] as ExportFormat[],
+    respectColumnVisibility: false,
+  },
+)
 
 const { exportToCSV, exportToJSON, exportToTSV, exportToExcel, exportToPDF } = useTableExport()
 
@@ -46,7 +49,7 @@ const resolvedColumns = computed<ExportColumn<TData>[]>(() => {
   if (props.exportColumns) {
     if (!props.respectColumnVisibility) return props.exportColumns
 
-    const visibleIds = new Set(props.table.getVisibleLeafColumns().map(col => col.id))
+    const visibleIds = new Set(props.table.getVisibleLeafColumns().map((col) => col.id))
     return props.exportColumns.filter((col) => {
       const id = col.columnId?.trim()
       return id ? visibleIds.has(id) : true
@@ -55,15 +58,17 @@ const resolvedColumns = computed<ExportColumn<TData>[]>(() => {
 
   return props.table
     .getAllColumns()
-    .filter(col => col.getIsVisible() && col.getCanHide() && typeof col.accessorFn !== 'undefined')
-    .map(col => ({
+    .filter(
+      (col) => col.getIsVisible() && col.getCanHide() && typeof col.accessorFn !== 'undefined',
+    )
+    .map((col) => ({
       key: col.id as keyof TData,
       label: props.columnLabels?.[col.id] ?? col.id,
     }))
 })
 
 function getRows() {
-  return props.table.getFilteredRowModel().rows.map(row => row.original)
+  return props.table.getFilteredRowModel().rows.map((row) => row.original)
 }
 
 const formatLabel: Record<ExportFormat, string> = {
@@ -80,28 +85,30 @@ function doExport(format: ExportFormat) {
   const name = props.filename
 
   switch (format) {
-    case 'csv': exportToCSV(rows, cols, name); break
-    case 'tsv': exportToTSV(rows, cols, name); break
-    case 'excel': exportToExcel(rows, cols, name); break
-    case 'pdf': exportToPDF(rows, cols, name); break
-    default: exportToJSON(rows, cols, name)
+    case 'csv':
+      exportToCSV(rows, cols, name)
+      break
+    case 'tsv':
+      exportToTSV(rows, cols, name)
+      break
+    case 'excel':
+      exportToExcel(rows, cols, name)
+      break
+    case 'pdf':
+      exportToPDF(rows, cols, name)
+      break
+    default:
+      exportToJSON(rows, cols, name)
   }
 }
 
-const canExport = computed(
-  () => resolvedColumns.value.length > 0 && getRows().length > 0,
-)
+const canExport = computed(() => resolvedColumns.value.length > 0 && getRows().length > 0)
 </script>
 
 <template>
   <DropdownMenu>
     <DropdownMenuTrigger as-child>
-      <Button
-        variant="outline"
-        size="sm"
-        class="ms-auto h-8 flex"
-        :disabled="!canExport"
-      >
+      <Button variant="outline" size="sm" class="ms-auto flex h-8" :disabled="!canExport">
         <Download class="me-2 h-4 w-4" />
         تصدير
       </Button>

@@ -68,10 +68,19 @@ interface ThemingState {
   reducedMotion: ReducedMotionPreference
 }
 
-type AppearanceSettings = Partial<Pick<
-  ThemingState,
-  'mode' | 'font' | 'layout' | 'radius' | 'sidebarVariant' | 'sidebarCollapsible' | 'density' | 'reducedMotion'
->>
+type AppearanceSettings = Partial<
+  Pick<
+    ThemingState,
+    | 'mode'
+    | 'font'
+    | 'layout'
+    | 'radius'
+    | 'sidebarVariant'
+    | 'sidebarCollapsible'
+    | 'density'
+    | 'reducedMotion'
+  >
+>
 
 const STORAGE_KEY = 'appearance-settings-cache'
 const SETTINGS_SYNC_EVENT = 'yfh-system-settings-sync'
@@ -103,25 +112,158 @@ const LEGACY_FONT_KEYS: Record<string, string> = {
 }
 
 const FALLBACK_FONT_OPTIONS: GoogleFontOption[] = [
-  { value: 'IBM Plex Sans Arabic', label: 'IBM Plex Sans Arabic', category: 'Arabic', subsets: ['arabic', 'latin'], variants: ['regular', '500', '600', '700'], source: 'fallback' },
-  { value: 'Cairo', label: 'Cairo', category: 'Arabic', subsets: ['arabic', 'latin'], variants: ['regular', '500', '600', '700'], source: 'fallback' },
-  { value: 'Tajawal', label: 'Tajawal', category: 'Arabic', subsets: ['arabic', 'latin'], variants: ['regular', '500', '700'], source: 'fallback' },
-  { value: 'Inter', label: 'Inter', category: 'Sans Serif', subsets: ['latin'], variants: ['regular', '500', '600', '700'], source: 'fallback' },
-  { value: 'Almarai', label: 'Almarai', category: 'Arabic', subsets: ['arabic'], variants: ['regular', '700'], source: 'fallback' },
-  { value: 'Amiri', label: 'Amiri', category: 'Arabic Serif', subsets: ['arabic'], variants: ['regular', '700'], source: 'fallback' },
-  { value: 'Noto Sans Arabic', label: 'Noto Sans Arabic', category: 'Arabic', subsets: ['arabic', 'latin'], variants: ['regular', '500', '600', '700'], source: 'fallback' },
-  { value: 'Lato', label: 'Lato', category: 'Sans Serif', subsets: ['latin'], variants: ['regular', '700'], source: 'fallback' },
-  { value: 'Josefin Sans', label: 'Josefin Sans', category: 'Sans Serif', subsets: ['latin'], variants: ['regular', '600', '700'], source: 'fallback' },
-  { value: 'Montserrat', label: 'Montserrat', category: 'Sans Serif', subsets: ['latin'], variants: ['regular', '500', '600', '700'], source: 'fallback' },
-  { value: 'Nunito', label: 'Nunito', category: 'Sans Serif', subsets: ['latin'], variants: ['regular', '600', '700'], source: 'fallback' },
-  { value: 'Open Sans', label: 'Open Sans', category: 'Sans Serif', subsets: ['latin'], variants: ['regular', '500', '600', '700'], source: 'fallback' },
-  { value: 'Poppins', label: 'Poppins', category: 'Sans Serif', subsets: ['latin'], variants: ['regular', '500', '600', '700'], source: 'fallback' },
-  { value: 'Raleway', label: 'Raleway', category: 'Sans Serif', subsets: ['latin'], variants: ['regular', '500', '600', '700'], source: 'fallback' },
-  { value: 'Roboto', label: 'Roboto', category: 'Sans Serif', subsets: ['latin'], variants: ['regular', '500', '700'], source: 'fallback' },
-  { value: 'Source Sans 3', label: 'Source Sans 3', category: 'Sans Serif', subsets: ['latin'], variants: ['regular', '500', '600', '700'], source: 'fallback' },
-  { value: 'Lora', label: 'Lora', category: 'Serif', subsets: ['latin'], variants: ['regular', '600', '700'], source: 'fallback' },
-  { value: 'Merriweather', label: 'Merriweather', category: 'Serif', subsets: ['latin'], variants: ['regular', '700'], source: 'fallback' },
-  { value: 'Playfair Display', label: 'Playfair Display', category: 'Serif', subsets: ['latin'], variants: ['regular', '600', '700'], source: 'fallback' },
+  {
+    value: 'IBM Plex Sans Arabic',
+    label: 'IBM Plex Sans Arabic',
+    category: 'Arabic',
+    subsets: ['arabic', 'latin'],
+    variants: ['regular', '500', '600', '700'],
+    source: 'fallback',
+  },
+  {
+    value: 'Cairo',
+    label: 'Cairo',
+    category: 'Arabic',
+    subsets: ['arabic', 'latin'],
+    variants: ['regular', '500', '600', '700'],
+    source: 'fallback',
+  },
+  {
+    value: 'Tajawal',
+    label: 'Tajawal',
+    category: 'Arabic',
+    subsets: ['arabic', 'latin'],
+    variants: ['regular', '500', '700'],
+    source: 'fallback',
+  },
+  {
+    value: 'Inter',
+    label: 'Inter',
+    category: 'Sans Serif',
+    subsets: ['latin'],
+    variants: ['regular', '500', '600', '700'],
+    source: 'fallback',
+  },
+  {
+    value: 'Almarai',
+    label: 'Almarai',
+    category: 'Arabic',
+    subsets: ['arabic'],
+    variants: ['regular', '700'],
+    source: 'fallback',
+  },
+  {
+    value: 'Amiri',
+    label: 'Amiri',
+    category: 'Arabic Serif',
+    subsets: ['arabic'],
+    variants: ['regular', '700'],
+    source: 'fallback',
+  },
+  {
+    value: 'Noto Sans Arabic',
+    label: 'Noto Sans Arabic',
+    category: 'Arabic',
+    subsets: ['arabic', 'latin'],
+    variants: ['regular', '500', '600', '700'],
+    source: 'fallback',
+  },
+  {
+    value: 'Lato',
+    label: 'Lato',
+    category: 'Sans Serif',
+    subsets: ['latin'],
+    variants: ['regular', '700'],
+    source: 'fallback',
+  },
+  {
+    value: 'Josefin Sans',
+    label: 'Josefin Sans',
+    category: 'Sans Serif',
+    subsets: ['latin'],
+    variants: ['regular', '600', '700'],
+    source: 'fallback',
+  },
+  {
+    value: 'Montserrat',
+    label: 'Montserrat',
+    category: 'Sans Serif',
+    subsets: ['latin'],
+    variants: ['regular', '500', '600', '700'],
+    source: 'fallback',
+  },
+  {
+    value: 'Nunito',
+    label: 'Nunito',
+    category: 'Sans Serif',
+    subsets: ['latin'],
+    variants: ['regular', '600', '700'],
+    source: 'fallback',
+  },
+  {
+    value: 'Open Sans',
+    label: 'Open Sans',
+    category: 'Sans Serif',
+    subsets: ['latin'],
+    variants: ['regular', '500', '600', '700'],
+    source: 'fallback',
+  },
+  {
+    value: 'Poppins',
+    label: 'Poppins',
+    category: 'Sans Serif',
+    subsets: ['latin'],
+    variants: ['regular', '500', '600', '700'],
+    source: 'fallback',
+  },
+  {
+    value: 'Raleway',
+    label: 'Raleway',
+    category: 'Sans Serif',
+    subsets: ['latin'],
+    variants: ['regular', '500', '600', '700'],
+    source: 'fallback',
+  },
+  {
+    value: 'Roboto',
+    label: 'Roboto',
+    category: 'Sans Serif',
+    subsets: ['latin'],
+    variants: ['regular', '500', '700'],
+    source: 'fallback',
+  },
+  {
+    value: 'Source Sans 3',
+    label: 'Source Sans 3',
+    category: 'Sans Serif',
+    subsets: ['latin'],
+    variants: ['regular', '500', '600', '700'],
+    source: 'fallback',
+  },
+  {
+    value: 'Lora',
+    label: 'Lora',
+    category: 'Serif',
+    subsets: ['latin'],
+    variants: ['regular', '600', '700'],
+    source: 'fallback',
+  },
+  {
+    value: 'Merriweather',
+    label: 'Merriweather',
+    category: 'Serif',
+    subsets: ['latin'],
+    variants: ['regular', '700'],
+    source: 'fallback',
+  },
+  {
+    value: 'Playfair Display',
+    label: 'Playfair Display',
+    category: 'Serif',
+    subsets: ['latin'],
+    variants: ['regular', '600', '700'],
+    source: 'fallback',
+  },
 ]
 
 interface GoogleFontsApiItem {
@@ -166,8 +308,10 @@ function sanitizeBrandColor(color: string): string {
 function hasAuthenticatedSessionHint(): boolean {
   if (typeof localStorage === 'undefined') return false
 
-  return localStorage.getItem('yfh-authenticated') === '1'
-    || Boolean(localStorage.getItem('yfh-api-token'))
+  return (
+    localStorage.getItem('yfh-authenticated') === '1' ||
+    Boolean(localStorage.getItem('yfh-api-token'))
+  )
 }
 
 export const useThemingStore = defineStore('theming', {
@@ -202,30 +346,35 @@ export const useThemingStore = defineStore('theming', {
   getters: {
     isDark: (state) => {
       if (state.mode === 'system') {
-        return typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches
+        return (
+          typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches
+        )
       }
       return state.mode === 'dark'
     },
 
     pinnedFonts: (state) => {
-      const pinned = PINNED_FONT_FAMILIES
-        .map((family) => state.fontOptions.find(font => font.value === family))
-        .filter(Boolean) as GoogleFontOption[]
+      const pinned = PINNED_FONT_FAMILIES.map((family) =>
+        state.fontOptions.find((font) => font.value === family),
+      ).filter(Boolean) as GoogleFontOption[]
       return pinned.length ? pinned : state.fontOptions.slice(0, 4)
     },
 
     searchableFonts: (state) => {
-      return state.fontOptions.filter(font => !PINNED_FONT_FAMILIES.includes(font.value))
+      return state.fontOptions.filter((font) => !PINNED_FONT_FAMILIES.includes(font.value))
     },
 
     selectedFontLabel: (state) => {
       const family = normalizeFontFamily(state.font)
-      return state.fontOptions.find(font => font.value === family)?.label || family
+      return state.fontOptions.find((font) => font.value === family)?.label || family
     },
 
     prefersReducedMotion: (state): boolean => {
       if (state.reducedMotion === 'always') return true
-      return typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      return (
+        typeof window !== 'undefined' &&
+        window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      )
     },
   },
 
@@ -247,12 +396,14 @@ export const useThemingStore = defineStore('theming', {
       this.fontsError = null
 
       try {
-        const response = await fetch(`https://www.googleapis.com/webfonts/v1/webfonts?sort=popularity&key=${encodeURIComponent(apiKey)}`)
+        const response = await fetch(
+          `https://www.googleapis.com/webfonts/v1/webfonts?sort=popularity&key=${encodeURIComponent(apiKey)}`,
+        )
         if (!response.ok) {
           throw new Error(`Google Fonts API returned ${response.status}`)
         }
 
-        const payload = await response.json() as { items?: GoogleFontsApiItem[] }
+        const payload = (await response.json()) as { items?: GoogleFontsApiItem[] }
         const fonts = (payload.items || []).map<GoogleFontOption>((item) => ({
           value: item.family,
           label: item.family,
@@ -263,7 +414,7 @@ export const useThemingStore = defineStore('theming', {
         }))
 
         this.fontOptions = uniqueByFamily([
-          ...FALLBACK_FONT_OPTIONS.map(font => ({ ...font, source: 'google' as FontSource })),
+          ...FALLBACK_FONT_OPTIONS.map((font) => ({ ...font, source: 'google' as FontSource })),
           ...fonts,
         ])
         this.fontSource = 'google'
@@ -281,9 +432,9 @@ export const useThemingStore = defineStore('theming', {
       this.mode = mode
 
       if (
-        typeof document !== 'undefined'
-        && 'startViewTransition' in document
-        && !window.matchMedia('(prefers-reduced-motion: reduce)').matches
+        typeof document !== 'undefined' &&
+        'startViewTransition' in document &&
+        !window.matchMedia('(prefers-reduced-motion: reduce)').matches
       ) {
         const x = event?.clientX ?? window.innerWidth / 2
         const y = event?.clientY ?? window.innerHeight / 2
@@ -486,18 +637,22 @@ export const useThemingStore = defineStore('theming', {
 
     getFontStack(): string {
       const family = normalizeFontFamily(this.font)
-      const selected = this.fontOptions.find(font => font.value === family)
-      const serifFallback = selected?.category.toLowerCase().includes('serif') ? 'serif' : 'sans-serif'
+      const selected = this.fontOptions.find((font) => font.value === family)
+      const serifFallback = selected?.category.toLowerCase().includes('serif')
+        ? 'serif'
+        : 'sans-serif'
       return `'${family}', 'IBM Plex Sans Arabic', 'Inter Variable', system-ui, -apple-system, ${serifFallback}`
     },
 
     getCss2FamilyParam(): string {
       const family = normalizeFontFamily(this.font)
-      const selected = this.fontOptions.find(font => font.value === family)
+      const selected = this.fontOptions.find((font) => font.value === family)
       const weights = (selected?.variants || [])
-        .map(variant => variant === 'regular' ? '400' : variant)
-        .filter(variant => /^\d+$/.test(variant))
-      const supportedWeights = ['400', '500', '600', '700'].filter(weight => weights.length === 0 || weights.includes(weight))
+        .map((variant) => (variant === 'regular' ? '400' : variant))
+        .filter((variant) => /^\d+$/.test(variant))
+      const supportedWeights = ['400', '500', '600', '700'].filter(
+        (weight) => weights.length === 0 || weights.includes(weight),
+      )
       const encodedFamily = family.trim().replace(/\s+/g, '+')
 
       if (!supportedWeights.length) {
@@ -564,7 +719,9 @@ export const useThemingStore = defineStore('theming', {
       const endpoint = authenticated ? '/api/settings' : '/api/settings/public'
 
       try {
-        const response = await $fetch<{ data?: { theming?: AppearanceSettings, system?: SystemSettings } | SystemSettings }>(endpoint, {
+        const response = await $fetch<{
+          data?: { theming?: AppearanceSettings; system?: SystemSettings } | SystemSettings
+        }>(endpoint, {
           baseURL,
           credentials: 'include',
           headers: { Accept: 'application/json' },
@@ -667,7 +824,8 @@ export const useThemingStore = defineStore('theming', {
     loadFromCache() {
       if (typeof localStorage === 'undefined') return
 
-      const cached = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('theming-settings-cache')
+      const cached =
+        localStorage.getItem(STORAGE_KEY) || localStorage.getItem('theming-settings-cache')
       if (!cached) return
 
       try {
@@ -687,11 +845,29 @@ export const useThemingStore = defineStore('theming', {
         this.highContrast = parsed.highContrast ?? false
         this.autoplayVideos = parsed.autoplayVideos || 'system'
         this.openLinksInDesktop = parsed.openLinksInDesktop ?? true
-        this.radius = (['none', 'sm', 'md', 'lg', 'xl'] as RadiusPreference[]).includes(parsed.radius) ? parsed.radius : 'md'
-        this.sidebarVariant = (['sidebar', 'floating', 'inset'] as SidebarVariant[]).includes(parsed.sidebarVariant) ? parsed.sidebarVariant : 'sidebar'
-        this.sidebarCollapsible = (['offcanvas', 'icon', 'none'] as SidebarCollapsible[]).includes(parsed.sidebarCollapsible) ? parsed.sidebarCollapsible : 'icon'
-        this.density = (['comfortable', 'compact'] as DensityPreference[]).includes(parsed.density) ? parsed.density : 'comfortable'
-        this.reducedMotion = (['system', 'always'] as ReducedMotionPreference[]).includes(parsed.reducedMotion) ? parsed.reducedMotion : 'system'
+        this.radius = (['none', 'sm', 'md', 'lg', 'xl'] as RadiusPreference[]).includes(
+          parsed.radius,
+        )
+          ? parsed.radius
+          : 'md'
+        this.sidebarVariant = (['sidebar', 'floating', 'inset'] as SidebarVariant[]).includes(
+          parsed.sidebarVariant,
+        )
+          ? parsed.sidebarVariant
+          : 'sidebar'
+        this.sidebarCollapsible = (['offcanvas', 'icon', 'none'] as SidebarCollapsible[]).includes(
+          parsed.sidebarCollapsible,
+        )
+          ? parsed.sidebarCollapsible
+          : 'icon'
+        this.density = (['comfortable', 'compact'] as DensityPreference[]).includes(parsed.density)
+          ? parsed.density
+          : 'comfortable'
+        this.reducedMotion = (['system', 'always'] as ReducedMotionPreference[]).includes(
+          parsed.reducedMotion,
+        )
+          ? parsed.reducedMotion
+          : 'system'
       } catch (error) {
         console.error('Failed to load appearance cache:', error)
       }
@@ -702,7 +878,9 @@ export const useThemingStore = defineStore('theming', {
 
       const payload = JSON.stringify({ version: useOrgStore().systemVersion, at: Date.now() })
       localStorage.setItem(SETTINGS_SYNC_EVENT, payload)
-      window.dispatchEvent(new StorageEvent('storage', { key: SETTINGS_SYNC_EVENT, newValue: payload }))
+      window.dispatchEvent(
+        new StorageEvent('storage', { key: SETTINGS_SYNC_EVENT, newValue: payload }),
+      )
     },
 
     listenForSystemSettingsSync() {

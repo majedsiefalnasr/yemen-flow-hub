@@ -65,7 +65,11 @@ describe('useRequests — performWorkflowAction', () => {
   })
 
   it('calls POST /api/workflow/{id}/bank-review without reason body key', async () => {
-    mockPost.mockResolvedValue({ success: true, message: 'ok', data: { ...REQUEST_FIXTURE, status: RequestStatus.BANK_REVIEW } })
+    mockPost.mockResolvedValue({
+      success: true,
+      message: 'ok',
+      data: { ...REQUEST_FIXTURE, status: RequestStatus.BANK_REVIEW },
+    })
 
     const { performWorkflowAction } = useRequests()
     const result = await performWorkflowAction(42, 'bank-review')
@@ -75,17 +79,27 @@ describe('useRequests — performWorkflowAction', () => {
   })
 
   it('calls POST /api/workflow/{id}/bank-reject with reason in body', async () => {
-    mockPost.mockResolvedValue({ success: true, message: 'ok', data: { ...REQUEST_FIXTURE, status: RequestStatus.DRAFT_REJECTED_INTERNAL } })
+    mockPost.mockResolvedValue({
+      success: true,
+      message: 'ok',
+      data: { ...REQUEST_FIXTURE, status: RequestStatus.DRAFT_REJECTED_INTERNAL },
+    })
 
     const { performWorkflowAction } = useRequests()
     const result = await performWorkflowAction(42, 'bank-reject', 'مستندات ناقصة')
 
-    expect(mockPost).toHaveBeenCalledWith('/api/workflow/42/bank-reject', { reason: 'مستندات ناقصة' })
+    expect(mockPost).toHaveBeenCalledWith('/api/workflow/42/bank-reject', {
+      reason: 'مستندات ناقصة',
+    })
     expect(result.status).toBe(RequestStatus.DRAFT_REJECTED_INTERNAL)
   })
 
   it('calls POST /api/workflow/{id}/bank-approve without reason', async () => {
-    mockPost.mockResolvedValue({ success: true, message: 'ok', data: { ...REQUEST_FIXTURE, status: RequestStatus.BANK_APPROVED } })
+    mockPost.mockResolvedValue({
+      success: true,
+      message: 'ok',
+      data: { ...REQUEST_FIXTURE, status: RequestStatus.BANK_APPROVED },
+    })
 
     const { performWorkflowAction } = useRequests()
     await performWorkflowAction(42, 'bank-approve')
@@ -120,13 +134,19 @@ describe('useRequests — bankRejectTerminal', () => {
     mockPost.mockResolvedValue({
       success: true,
       message: 'ok',
-      data: { ...REQUEST_FIXTURE, status: RequestStatus.BANK_REJECTED, bank_reject_comment: 'رفض نهائي' },
+      data: {
+        ...REQUEST_FIXTURE,
+        status: RequestStatus.BANK_REJECTED,
+        bank_reject_comment: 'رفض نهائي',
+      },
     })
 
     const { bankRejectTerminal } = useRequests()
     const result = await bankRejectTerminal(42, 'رفض نهائي')
 
-    expect(mockPost).toHaveBeenCalledWith('/api/workflow/42/bank-reject-terminal', { comment: 'رفض نهائي' })
+    expect(mockPost).toHaveBeenCalledWith('/api/workflow/42/bank-reject-terminal', {
+      comment: 'رفض نهائي',
+    })
     expect(result.status).toBe(RequestStatus.BANK_REJECTED)
   })
 })

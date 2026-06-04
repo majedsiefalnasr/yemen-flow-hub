@@ -86,7 +86,7 @@ vi.stubGlobal('useRoute', () => ({
 }))
 
 function visibleRoutes(role: UserRole): string[] {
-  return NAV_ITEMS.filter(item => item.roles.includes(role)).map(item => item.route)
+  return NAV_ITEMS.filter((item) => item.roles.includes(role)).map((item) => item.route)
 }
 
 async function mountedSidebarTextForRole(role: UserRole): Promise<string> {
@@ -150,14 +150,16 @@ describe('AppSidebar navigation contract', () => {
   it('mounts only allowed nav labels for every role (forbidden labels are not rendered)', async () => {
     for (const role of Object.values(UserRole)) {
       const renderedText = await mountedSidebarTextForRole(role)
-      const allowedItems = NAV_ITEMS.filter(item => item.roles.includes(role))
-      const forbiddenItems = NAV_ITEMS.filter(item => !item.roles.includes(role))
+      const allowedItems = NAV_ITEMS.filter((item) => item.roles.includes(role))
+      const forbiddenItems = NAV_ITEMS.filter((item) => !item.roles.includes(role))
 
       for (const item of allowedItems) {
         expect(renderedText, `Role ${role} should render ${item.route}`).toContain(item.label)
       }
       for (const item of forbiddenItems) {
-        expect(renderedText, `Role ${role} should not render ${item.route}`).not.toContain(item.label)
+        expect(renderedText, `Role ${role} should not render ${item.route}`).not.toContain(
+          item.label,
+        )
       }
     }
   })

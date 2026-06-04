@@ -10,7 +10,12 @@ const props = defineProps<{
 <template>
   <fieldset
     data-slot="field-set"
-    :class="cn('gap-4 has-[>[data-slot=checkbox-group]]:gap-3 has-[>[data-slot=radio-group]]:gap-3 flex flex-col', props.class)"
+    :class="
+      cn(
+        'flex flex-col gap-4 has-[>[data-slot=checkbox-group]]:gap-3 has-[>[data-slot=radio-group]]:gap-3',
+        props.class,
+      )
+    "
   >
     <slot />
   </fieldset>

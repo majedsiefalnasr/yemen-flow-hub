@@ -60,7 +60,12 @@ describe('useRequests.fetchRequestHistory', () => {
   it('returns multiple history entries in the order returned by the server', async () => {
     const entries = [
       makeHistory({ id: 1, action: 'submit', to_status: 'SUBMITTED' }),
-      makeHistory({ id: 2, action: 'bank_approve', from_status: 'SUBMITTED', to_status: 'BANK_APPROVED' }),
+      makeHistory({
+        id: 2,
+        action: 'bank_approve',
+        from_status: 'SUBMITTED',
+        to_status: 'BANK_APPROVED',
+      }),
     ]
     mockGet.mockResolvedValue({ success: true, message: 'ok', data: entries })
 

@@ -330,7 +330,7 @@ describe('useClaimLifecycle — startHeartbeat / stopHeartbeat', () => {
     await vi.advanceTimersByTimeAsync(60_000)
     expect(mockFetch).toHaveBeenCalledTimes(2)
 
-    const calls = mockFetch.mock.calls.map(c => c[0] as string)
+    const calls = mockFetch.mock.calls.map((c) => c[0] as string)
     expect(calls).toContain('/api/workflow/10/claim-support-review/heartbeat')
     expect(calls).toContain('/api/workflow/20/claim-support-review/heartbeat')
 
@@ -420,10 +420,7 @@ describe('useClaimLifecycle — startHeartbeat / stopHeartbeat', () => {
 
   it('heartbeat 5xx errors do not stop interval', async () => {
     const error = { response: { status: 503 } }
-    mockFetch
-      .mockRejectedValueOnce(error)
-      .mockRejectedValueOnce(error)
-      .mockResolvedValue({})
+    mockFetch.mockRejectedValueOnce(error).mockRejectedValueOnce(error).mockResolvedValue({})
 
     const onSessionExpired = vi.fn()
     const { startHeartbeat, stopHeartbeat, sessionExpired } = useClaimLifecycle()

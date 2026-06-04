@@ -87,8 +87,8 @@ describe('CommandPalette role safety', () => {
     for (const role of Object.values(UserRole)) {
       const wrapper = mountForRole(role)
       const text = wrapper.text()
-      const allowed = NAV_ITEMS.filter(item => item.roles.includes(role))
-      const forbidden = NAV_ITEMS.filter(item => !item.roles.includes(role))
+      const allowed = NAV_ITEMS.filter((item) => item.roles.includes(role))
+      const forbidden = NAV_ITEMS.filter((item) => !item.roles.includes(role))
 
       for (const item of allowed) {
         expect(text, `Role ${role} should render ${item.route}`).toContain(item.label)
@@ -108,7 +108,7 @@ describe('CommandPalette role safety', () => {
       const wrapper = mountForRole(role)
       const text = wrapper.text()
       const allowedQuick = QUICK_ACTION_LABELS[role]
-      const forbiddenQuick = allQuickLabels.filter(label => !allowedQuick.includes(label))
+      const forbiddenQuick = allQuickLabels.filter((label) => !allowedQuick.includes(label))
 
       for (const label of allowedQuick) {
         expect(text, `Role ${role} should render quick action: ${label}`).toContain(label)

@@ -8,7 +8,7 @@ import { ROLE_BUCKETS, CBY_BANK_FILTER_ROLES } from '../../../../constants/workf
 const SO_BUCKETS = ROLE_BUCKETS[UserRole.SWIFT_OFFICER]!
 
 function bucketByKey(key: string) {
-  return SO_BUCKETS.find(b => b.key === key)
+  return SO_BUCKETS.find((b) => b.key === key)
 }
 
 describe('SWIFT_OFFICER ROLE_BUCKETS — bucket existence', () => {
@@ -16,17 +16,33 @@ describe('SWIFT_OFFICER ROLE_BUCKETS — bucket existence', () => {
     expect(SO_BUCKETS).toHaveLength(4)
   })
 
-  it('has pending_swift bucket', () => { expect(bucketByKey('pending_swift')).toBeDefined() })
-  it('has swift_done bucket', () => { expect(bucketByKey('swift_done')).toBeDefined() })
-  it('has completed bucket', () => { expect(bucketByKey('completed')).toBeDefined() })
-  it('has rejected bucket', () => { expect(bucketByKey('rejected')).toBeDefined() })
+  it('has pending_swift bucket', () => {
+    expect(bucketByKey('pending_swift')).toBeDefined()
+  })
+  it('has swift_done bucket', () => {
+    expect(bucketByKey('swift_done')).toBeDefined()
+  })
+  it('has completed bucket', () => {
+    expect(bucketByKey('completed')).toBeDefined()
+  })
+  it('has rejected bucket', () => {
+    expect(bucketByKey('rejected')).toBeDefined()
+  })
 })
 
 describe('SWIFT_OFFICER ROLE_BUCKETS — tab ordering (pending_swift first)', () => {
-  it('pending_swift is first tab', () => { expect(SO_BUCKETS[0]!.key).toBe('pending_swift') })
-  it('swift_done is second tab', () => { expect(SO_BUCKETS[1]!.key).toBe('swift_done') })
-  it('completed is third tab', () => { expect(SO_BUCKETS[2]!.key).toBe('completed') })
-  it('rejected is fourth tab', () => { expect(SO_BUCKETS[3]!.key).toBe('rejected') })
+  it('pending_swift is first tab', () => {
+    expect(SO_BUCKETS[0]!.key).toBe('pending_swift')
+  })
+  it('swift_done is second tab', () => {
+    expect(SO_BUCKETS[1]!.key).toBe('swift_done')
+  })
+  it('completed is third tab', () => {
+    expect(SO_BUCKETS[2]!.key).toBe('completed')
+  })
+  it('rejected is fourth tab', () => {
+    expect(SO_BUCKETS[3]!.key).toBe('rejected')
+  })
 })
 
 describe('SWIFT_OFFICER ROLE_BUCKETS — pending_swift bucket', () => {

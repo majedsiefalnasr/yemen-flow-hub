@@ -9,7 +9,7 @@ import { ROLE_BUCKETS } from '../../../../constants/workflow'
 const CBY_BUCKETS = ROLE_BUCKETS[UserRole.CBY_ADMIN]!
 
 function bucketByKey(key: string) {
-  return CBY_BUCKETS.find(b => b.key === key)
+  return CBY_BUCKETS.find((b) => b.key === key)
 }
 
 // ── Bucket existence ──────────────────────────────────────────────────────────

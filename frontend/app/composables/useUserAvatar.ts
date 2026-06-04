@@ -4,16 +4,9 @@ import { computed, ref, watch } from 'vue'
  * boring-avatars supported variants. Kept in sync with the backend enum
  * `App\Enums\AvatarVariant`. Adding a value requires a backend release first.
  */
-export const AVATAR_VARIANTS = [
-  'marble',
-  'beam',
-  'pixel',
-  'sunset',
-  'ring',
-  'bauhaus',
-] as const
+export const AVATAR_VARIANTS = ['marble', 'beam', 'pixel', 'sunset', 'ring', 'bauhaus'] as const
 
-export type AvatarVariant = typeof AVATAR_VARIANTS[number]
+export type AvatarVariant = (typeof AVATAR_VARIANTS)[number]
 
 export const DEFAULT_AVATAR_VARIANT: AvatarVariant = 'beam'
 
@@ -23,13 +16,7 @@ export const DEFAULT_AVATAR_VARIANT: AvatarVariant = 'beam'
  * lives here as the canonical source of truth for both `BoringAvatar` and
  * `AvatarPicker`.
  */
-export const AVATAR_PALETTE = [
-  '#5b1d99',
-  '#0074b4',
-  '#00b34c',
-  '#ffd41f',
-  '#fc6e3d',
-] as const
+export const AVATAR_PALETTE = ['#5b1d99', '#0074b4', '#00b34c', '#ffd41f', '#fc6e3d'] as const
 
 const STORAGE_PREFIX = 'yfh:avatar:'
 
@@ -51,8 +38,7 @@ function readStored(identity: string): StoredAvatar | null {
       ? (parsed.variant as AvatarVariant)
       : DEFAULT_AVATAR_VARIANT
     return { variant }
-  }
-  catch {
+  } catch {
     return null
   }
 }
@@ -61,8 +47,7 @@ function writeStored(identity: string, value: StoredAvatar): void {
   if (!import.meta.client || !identity) return
   try {
     window.localStorage.setItem(storageKey(identity), JSON.stringify(value))
-  }
-  catch {
+  } catch {
     // localStorage may be unavailable (private mode, quota); fail silently —
     // avatar selection is a cosmetic preference, never block the user.
   }

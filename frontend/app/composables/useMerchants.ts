@@ -47,13 +47,17 @@ export function useMerchants() {
     if (filters.search) params.set('search', filters.search)
     if (filters.bank_id != null) params.set('bank_id', String(filters.bank_id))
     if (filters.is_active != null) params.set('is_active', String(filters.is_active))
-    const response = await get<ApiResponse<Merchant[] | PaginatedResponse<Merchant>>>(`/api/merchants?${params}`)
+    const response = await get<ApiResponse<Merchant[] | PaginatedResponse<Merchant>>>(
+      `/api/merchants?${params}`,
+    )
     const payload = response.data
     return Array.isArray(payload) ? payload : (payload.data ?? [])
   }
 
   // Server-side paginated fetch (same shape the requests page consumes).
-  async function fetchMerchantsPaginated(filters: MerchantFilters = {}): Promise<PaginatedResponse<Merchant>> {
+  async function fetchMerchantsPaginated(
+    filters: MerchantFilters = {},
+  ): Promise<PaginatedResponse<Merchant>> {
     const params = new URLSearchParams({ per_page: String(filters.per_page ?? 20) })
     if (filters.page) params.set('page', String(filters.page))
     if (filters.search) params.set('search', filters.search)
@@ -74,9 +78,17 @@ export function useMerchants() {
   }
 
   async function suspendMerchant(id: number, isActive: boolean): Promise<Merchant> {
-    const response = await put<ApiResponse<Merchant>>(`/api/merchants/${id}`, { is_active: isActive })
+    const response = await put<ApiResponse<Merchant>>(`/api/merchants/${id}`, {
+      is_active: isActive,
+    })
     return response.data
   }
 
-  return { fetchMerchants, fetchMerchantsPaginated, createMerchant, updateMerchant, suspendMerchant }
+  return {
+    fetchMerchants,
+    fetchMerchantsPaginated,
+    createMerchant,
+    updateMerchant,
+    suspendMerchant,
+  }
 }

@@ -120,12 +120,30 @@ watch(
 
 // ── Nav construction ──────────────────────────────────────────────────
 
-const NAV_GROUP_DEFS: Array<{ title: string; routes: string[]; navGroupStyle?: 'operational' | 'analytics' }> = [
-  { title: 'الرئيسية', routes: ['/dashboard', '/requests', '/notifications'], navGroupStyle: 'operational' },
+const NAV_GROUP_DEFS: Array<{
+  title: string
+  routes: string[]
+  navGroupStyle?: 'operational' | 'analytics'
+}> = [
+  {
+    title: 'الرئيسية',
+    routes: ['/dashboard', '/requests', '/notifications'],
+    navGroupStyle: 'operational',
+  },
   { title: 'العمليات', routes: ['/requests/new', '/customs'], navGroupStyle: 'operational' },
   {
     title: 'الإدارة',
-    routes: ['/merchants', '/staff', '/banks', '/reports', '/audit', '/admin/banks', '/admin/cby-staff', '/admin/workflow-docs', '/admin/roles'],
+    routes: [
+      '/merchants',
+      '/staff',
+      '/banks',
+      '/reports',
+      '/audit',
+      '/admin/banks',
+      '/admin/cby-staff',
+      '/admin/workflow-docs',
+      '/admin/roles',
+    ],
     navGroupStyle: 'analytics',
   },
   { title: 'الأخرى', routes: ['/settings'] },
@@ -135,16 +153,16 @@ const navGroups = computed<NavGroupDef[]>(() => {
   const role = user.value?.role
   if (!role) return []
 
-  const allowedLinks = NAV_ITEMS
-    .filter(item => item.roles.includes(role))
-    .map<NavLink>(item => ({
+  const allowedLinks = NAV_ITEMS.filter((item) => item.roles.includes(role)).map<NavLink>(
+    (item) => ({
       type: 'link',
       title: item.label,
       url: item.route,
       icon: ICONS[item.icon] ?? Home,
       roles: item.roles,
       badge: navBadgesByRoute.value[item.route],
-    }))
+    }),
+  )
 
   // Role-specific organization settings link
   const configLink = ((): NavLink | null => {
@@ -169,19 +187,18 @@ const navGroups = computed<NavGroupDef[]>(() => {
     return null
   })()
 
-  return NAV_GROUP_DEFS
-    .map(group => {
-      const baseItems = allowedLinks.filter(link => group.routes.includes(link.url)) as NavGroupItem[]
-      const items: NavGroupItem[] = configLink && group.title === 'الأخرى'
-        ? [...baseItems, configLink]
-        : baseItems
-      return {
-        title: group.title,
-        navGroupStyle: group.navGroupStyle,
-        items,
-      }
-    })
-    .filter(group => group.items.length > 0)
+  return NAV_GROUP_DEFS.map((group) => {
+    const baseItems = allowedLinks.filter((link) =>
+      group.routes.includes(link.url),
+    ) as NavGroupItem[]
+    const items: NavGroupItem[] =
+      configLink && group.title === 'الأخرى' ? [...baseItems, configLink] : baseItems
+    return {
+      title: group.title,
+      navGroupStyle: group.navGroupStyle,
+      items,
+    }
+  }).filter((group) => group.items.length > 0)
 })
 
 // ── Helpers ───────────────────────────────────────────────────────────
@@ -190,20 +207,26 @@ function isActiveRoute(url: string) {
   const path = url.split('?')[0] ?? url
   return route.path === path || (path !== '/dashboard' && route.path.startsWith(`${path}/`))
 }
-
 </script>
 
 <template>
   <Sidebar v-bind="props">
     <SidebarHeader>
       <div class="flex items-center gap-3">
-        <div class="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-lg text-sm font-bold">
-          <img v-if="orgStore.brandLogoDataUrl" :src="orgStore.brandLogoDataUrl" alt="Logo" class="h-full w-full object-contain" />
+        <div
+          class="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-lg text-sm font-bold"
+        >
+          <img
+            v-if="orgStore.brandLogoDataUrl"
+            :src="orgStore.brandLogoDataUrl"
+            alt="Logo"
+            class="h-full w-full object-contain"
+          />
           <span v-else>{{ brandInitial }}</span>
         </div>
         <div v-if="state === 'expanded'" class="min-w-0 flex-1">
-          <div class="truncate text-sm font-semibold leading-none">{{ orgStore.platformName }}</div>
-          <div class="mt-1 truncate text-xs text-muted-foreground">{{ orgStore.authority }}</div>
+          <div class="truncate text-sm leading-none font-semibold">{{ orgStore.platformName }}</div>
+          <div class="text-muted-foreground mt-1 truncate text-xs">{{ orgStore.authority }}</div>
         </div>
       </div>
     </SidebarHeader>
@@ -219,14 +242,14 @@ function isActiveRoute(url: string) {
                   as-child
                   :is-active="isActiveRoute(item.url)"
                   :tooltip="state === 'collapsed' ? item.title : undefined"
-                  class="data-[active=true]:bg-sidebar-accent data-[active=true]:font-semibold data-[active=true]:text-sidebar-accent-foreground"
+                  class="data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground data-[active=true]:font-semibold"
                 >
                   <NuxtLink :to="item.url" class="flex items-center gap-2">
                     <component :is="item.icon" class="h-4 w-4" />
                     <span>{{ item.title }}</span>
                     <span
                       v-if="item.badge"
-                      class="ms-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground"
+                      class="bg-primary text-primary-foreground ms-auto flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[10px] font-bold"
                     >
                       {{ item.badge > 99 ? '99+' : item.badge }}
                     </span>

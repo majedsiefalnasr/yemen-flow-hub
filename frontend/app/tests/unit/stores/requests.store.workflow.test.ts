@@ -88,12 +88,18 @@ describe('requests.store — performAction', () => {
 
   it('throws immediately if another action is in progress', async () => {
     let resolve!: (v: unknown) => void
-    mockPerformWorkflowAction.mockReturnValue(new Promise(r => { resolve = r }))
+    mockPerformWorkflowAction.mockReturnValue(
+      new Promise((r) => {
+        resolve = r
+      }),
+    )
 
     const store = useRequestsStore()
     const first = store.performAction(42, 'bank-review')
 
-    await expect(store.performAction(42, 'bank-approve')).rejects.toThrow('إجراء قيد التنفيذ بالفعل')
+    await expect(store.performAction(42, 'bank-approve')).rejects.toThrow(
+      'إجراء قيد التنفيذ بالفعل',
+    )
 
     resolve(REQUEST_FIXTURE)
     await first

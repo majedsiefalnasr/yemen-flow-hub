@@ -111,11 +111,14 @@ describe('useNotificationsStore — recent items', () => {
   it('setItems derives unread count from loaded rows instead of stale API counts', () => {
     const store = useNotificationsStore()
 
-    store.setItems([
-      { id: '1', read_at: null },
-      { id: '2', read_at: '2026-06-01T10:00:00.000Z' },
-      { id: '3', read_at: '2026-06-01T10:05:00.000Z' },
-    ] as any, 15)
+    store.setItems(
+      [
+        { id: '1', read_at: null },
+        { id: '2', read_at: '2026-06-01T10:00:00.000Z' },
+        { id: '3', read_at: '2026-06-01T10:05:00.000Z' },
+      ] as any,
+      15,
+    )
 
     expect(store.unreadCount).toBe(1)
   })

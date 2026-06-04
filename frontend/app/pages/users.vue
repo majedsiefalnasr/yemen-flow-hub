@@ -1,10 +1,7 @@
 <script setup lang="ts">
 import type { ColumnDef, PaginationState } from '@tanstack/vue-table'
 import { ref, reactive, computed, watch, onMounted, h } from 'vue'
-import {
-  AlertTriangle,
-  MoreHorizontal, Plus, Search, SearchX, X,
-} from 'lucide-vue-next'
+import { AlertTriangle, MoreHorizontal, Plus, Search, SearchX, X } from 'lucide-vue-next'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import { UserRole } from '../types/enums'
 import type { User, Bank } from '../types/models'
@@ -15,7 +12,12 @@ import { ROLE_LABELS, BANK_ROLES, CBY_ROLES, BANK_ADMIN_MANAGED_ROLES } from '..
 import type { CreateUserPayload, UpdateUserPayload } from '../composables/useUsers'
 import AvatarPicker from '../components/shared/AvatarPicker.vue'
 import BoringAvatar from '../components/shared/BoringAvatar.vue'
-import { DEFAULT_AVATAR_VARIANT, persistUserAvatar, readUserAvatar, type AvatarVariant } from '../composables/useUserAvatar'
+import {
+  DEFAULT_AVATAR_VARIANT,
+  persistUserAvatar,
+  readUserAvatar,
+  type AvatarVariant,
+} from '../composables/useUserAvatar'
 import {
   Dialog,
   DialogContent,
@@ -100,17 +102,22 @@ const avatarVariant = ref<AvatarVariant>(DEFAULT_AVATAR_VARIANT)
 const formErrors = reactive<Partial<Record<keyof UserForm, string>>>({})
 
 const isBankAdmin = computed(() => auth.user?.role === UserRole.BANK_ADMIN)
-const allowedRoles = computed(() => isBankAdmin.value ? BANK_ADMIN_MANAGED_ROLES : Object.values(UserRole))
+const allowedRoles = computed(() =>
+  isBankAdmin.value ? BANK_ADMIN_MANAGED_ROLES : Object.values(UserRole),
+)
 const isBankRole = computed(() => form.role !== '' && BANK_ROLES.includes(form.role as UserRole))
 
-watch(() => form.role, (newRole) => {
-  if (newRole !== '' && CBY_ROLES.includes(newRole as UserRole)) {
-    form.bank_id = null
-  }
-  if (isBankAdmin.value && newRole !== '') {
-    form.bank_id = auth.user?.bank_id ?? null
-  }
-})
+watch(
+  () => form.role,
+  (newRole) => {
+    if (newRole !== '' && CBY_ROLES.includes(newRole as UserRole)) {
+      form.bank_id = null
+    }
+    if (isBankAdmin.value && newRole !== '') {
+      form.bank_id = auth.user?.bank_id ?? null
+    }
+  },
+)
 
 // Server-side paginated load (same pattern as the requests page).
 async function loadUsers() {
@@ -125,11 +132,9 @@ async function loadUsers() {
     })
     users.value = result.data
     usersMeta.value = { last_page: result.meta.last_page, total: result.meta.total }
-  }
-  catch {
+  } catch {
     error.value = 'تعذر تحميل بيانات المستخدمين الآن. أعد المحاولة بعد قليل.'
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -146,7 +151,7 @@ function openCreate() {
   form.email = ''
   form.password = ''
   form.role = isBankAdmin.value ? UserRole.DATA_ENTRY : ''
-  form.bank_id = isBankAdmin.value ? auth.user?.bank_id ?? null : null
+  form.bank_id = isBankAdmin.value ? (auth.user?.bank_id ?? null) : null
   form.is_active = true
   avatarVariant.value = DEFAULT_AVATAR_VARIANT
   clearErrors()
@@ -159,7 +164,7 @@ function openEdit(user: User) {
   form.email = user.email
   form.password = ''
   form.role = user.role
-  form.bank_id = isBankAdmin.value ? auth.user?.bank_id ?? null : user.bank_id
+  form.bank_id = isBankAdmin.value ? (auth.user?.bank_id ?? null) : user.bank_id
   form.is_active = user.is_active
   const stored = readUserAvatar(user.email)
   avatarVariant.value = (user.avatar_variant as AvatarVariant | undefined) ?? stored.variant
@@ -184,11 +189,26 @@ function clearErrors() {
 function validateForm(): boolean {
   clearErrors()
   let valid = true
-  if (!form.name.trim()) { formErrors.name = 'الاسم مطلوب'; valid = false }
-  if (!form.email.trim()) { formErrors.email = 'البريد الإلكتروني مطلوب'; valid = false }
-  if (!editingUser.value && !form.password) { formErrors.password = 'كلمة المرور مطلوبة'; valid = false }
-  if (form.password && form.password.length < 8) { formErrors.password = 'كلمة المرور يجب أن تكون 8 أحرف على الأقل'; valid = false }
-  if (!form.role) { formErrors.role = 'الدور الوظيفي مطلوب'; valid = false }
+  if (!form.name.trim()) {
+    formErrors.name = 'الاسم مطلوب'
+    valid = false
+  }
+  if (!form.email.trim()) {
+    formErrors.email = 'البريد الإلكتروني مطلوب'
+    valid = false
+  }
+  if (!editingUser.value && !form.password) {
+    formErrors.password = 'كلمة المرور مطلوبة'
+    valid = false
+  }
+  if (form.password && form.password.length < 8) {
+    formErrors.password = 'كلمة المرور يجب أن تكون 8 أحرف على الأقل'
+    valid = false
+  }
+  if (!form.role) {
+    formErrors.role = 'الدور الوظيفي مطلوب'
+    valid = false
+  }
   if (form.role && !allowedRoles.value.includes(form.role as UserRole)) {
     formErrors.role = 'هذا الدور غير متاح لهذا المستخدم'
     valid = false
@@ -214,7 +234,7 @@ async function saveUser() {
         name: form.name.trim(),
         email: form.email.trim(),
         role: form.role as UserRole,
-        bank_id: isBankAdmin.value ? auth.user?.bank_id ?? null : form.bank_id,
+        bank_id: isBankAdmin.value ? (auth.user?.bank_id ?? null) : form.bank_id,
         is_active: form.is_active,
         avatar_variant: avatarVariant.value,
       }
@@ -226,14 +246,13 @@ async function saveUser() {
       if (auth.user && auth.user.id === updated.id) {
         auth.user = { ...auth.user, ...updated, avatar_variant: avatarVariant.value }
       }
-    }
-    else {
+    } else {
       const payload: CreateUserPayload = {
         name: form.name.trim(),
         email: form.email.trim(),
         password: form.password,
         role: form.role as UserRole,
-        bank_id: isBankAdmin.value ? auth.user?.bank_id ?? null : form.bank_id,
+        bank_id: isBankAdmin.value ? (auth.user?.bank_id ?? null) : form.bank_id,
         is_active: form.is_active,
         avatar_variant: avatarVariant.value,
       }
@@ -242,9 +261,8 @@ async function saveUser() {
     }
     closeModal()
     await loadUsers()
-  }
-  catch (err: unknown) {
-    const e = err as { data?: { errors?: Record<string, string[]>, message?: string } }
+  } catch (err: unknown) {
+    const e = err as { data?: { errors?: Record<string, string[]>; message?: string } }
     if (e.data?.errors) {
       const errs = e.data.errors
       if (errs.name?.[0]) formErrors.name = errs.name[0]
@@ -252,12 +270,10 @@ async function saveUser() {
       if (errs.password?.[0]) formErrors.password = errs.password[0]
       if (errs.role?.[0]) formErrors.role = errs.role[0]
       if (errs.bank_id?.[0]) formErrors.bank_id = errs.bank_id[0]
-    }
-    else {
+    } else {
       formError.value = e.data?.message ?? 'تعذر حفظ بيانات المستخدم. راجع الحقول ثم أعد المحاولة.'
     }
-  }
-  finally {
+  } finally {
     saving.value = false
   }
 }
@@ -285,7 +301,9 @@ const userPagination = computed<PaginationState>(() => ({
   pageSize: urlUserPageSize.value,
 }))
 
-function onUserPaginationChange(updater: PaginationState | ((old: PaginationState) => PaginationState)) {
+function onUserPaginationChange(
+  updater: PaginationState | ((old: PaginationState) => PaginationState),
+) {
   const next = typeof updater === 'function' ? updater(userPagination.value) : updater
   router.push({
     query: {
@@ -323,11 +341,22 @@ function activeStatusCell(isActive: boolean, activeLabel = 'نشط', inactiveLab
         h('line', { x1: '9', y1: '9', x2: '15', y2: '15' }),
       ]
   return h('span', { class: 'inline-flex items-center gap-1.5 whitespace-nowrap' }, [
-    h('svg', {
-      class: 'shrink-0', style: { color }, width: 15, height: 15,
-      viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor',
-      'stroke-width': '2.5', 'stroke-linecap': 'round', 'stroke-linejoin': 'round',
-    }, paths),
+    h(
+      'svg',
+      {
+        class: 'shrink-0',
+        style: { color },
+        width: 15,
+        height: 15,
+        viewBox: '0 0 24 24',
+        fill: 'none',
+        stroke: 'currentColor',
+        'stroke-width': '2.5',
+        'stroke-linecap': 'round',
+        'stroke-linejoin': 'round',
+      },
+      paths,
+    ),
     h('span', { class: 'text-sm font-medium text-foreground' }, label),
   ])
 }
@@ -337,14 +366,17 @@ const columns: ColumnDef<User>[] = [
     id: 'select',
     header: ({ table }) =>
       h(Checkbox, {
-        'modelValue': table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() ? 'indeterminate' : false),
-        'onUpdate:modelValue': (v: boolean | 'indeterminate') => table.toggleAllPageRowsSelected(!!v),
+        modelValue:
+          table.getIsAllPageRowsSelected() ||
+          (table.getIsSomePageRowsSelected() ? 'indeterminate' : false),
+        'onUpdate:modelValue': (v: boolean | 'indeterminate') =>
+          table.toggleAllPageRowsSelected(!!v),
         'aria-label': 'تحديد الكل',
       }),
     cell: ({ row }) =>
       h('div', { onClick: (e: Event) => e.stopPropagation() }, [
         h(Checkbox, {
-          'modelValue': row.getIsSelected(),
+          modelValue: row.getIsSelected(),
           'onUpdate:modelValue': (v: boolean | 'indeterminate') => row.toggleSelected(!!v),
           'aria-label': 'تحديد المستخدم',
         }),
@@ -355,35 +387,50 @@ const columns: ColumnDef<User>[] = [
   {
     accessorKey: 'name',
     header: 'الاسم',
-    cell: ({ row }) => h('div', { class: 'flex items-center gap-3' }, [
-      h(BoringAvatar, {
-        name: row.original.name || row.original.email,
-        identity: row.original.email,
-        variant: (row.original.avatar_variant as AvatarVariant | undefined) ?? undefined,
-        size: 32,
-        square: true,
-        class: 'size-8 shrink-0 overflow-hidden rounded-md',
-      }),
-      h('div', { class: 'flex min-w-0 flex-col gap-0.5' }, [
-        h('button', {
-          type: 'button',
-          class: 'text-sm font-medium text-start hover:underline underline-offset-2 cursor-pointer focus-visible:outline-none focus-visible:underline',
-          title: 'معاينة سريعة',
-          onClick: (e: Event) => { e.stopPropagation(); viewingUser.value = row.original },
-        }, row.original.name),
-        h('span', { class: 'font-mono text-xs text-muted-foreground truncate', dir: 'ltr' }, row.original.email),
+    cell: ({ row }) =>
+      h('div', { class: 'flex items-center gap-3' }, [
+        h(BoringAvatar, {
+          name: row.original.name || row.original.email,
+          identity: row.original.email,
+          variant: (row.original.avatar_variant as AvatarVariant | undefined) ?? undefined,
+          size: 32,
+          square: true,
+          class: 'size-8 shrink-0 overflow-hidden rounded-md',
+        }),
+        h('div', { class: 'flex min-w-0 flex-col gap-0.5' }, [
+          h(
+            'button',
+            {
+              type: 'button',
+              class:
+                'text-sm font-medium text-start hover:underline underline-offset-2 cursor-pointer focus-visible:outline-none focus-visible:underline',
+              title: 'معاينة سريعة',
+              onClick: (e: Event) => {
+                e.stopPropagation()
+                viewingUser.value = row.original
+              },
+            },
+            row.original.name,
+          ),
+          h(
+            'span',
+            { class: 'font-mono text-xs text-muted-foreground truncate', dir: 'ltr' },
+            row.original.email,
+          ),
+        ]),
       ]),
-    ]),
   },
   {
     accessorKey: 'role',
     header: 'الدور',
-    cell: ({ row }) => h(Badge, { variant: 'outline' }, () => ROLE_LABELS[row.original.role] ?? row.original.role),
+    cell: ({ row }) =>
+      h(Badge, { variant: 'outline' }, () => ROLE_LABELS[row.original.role] ?? row.original.role),
   },
   {
     id: 'organization',
     header: 'الجهة',
-    cell: ({ row }) => h('span', { class: 'text-sm text-muted-foreground' }, bankLabel(row.original)),
+    cell: ({ row }) =>
+      h('span', { class: 'text-sm text-muted-foreground' }, bankLabel(row.original)),
   },
   {
     accessorKey: 'is_active',
@@ -396,26 +443,45 @@ const columns: ColumnDef<User>[] = [
     enableHiding: false,
     cell: ({ row }) => {
       const user = row.original
-      return h(DropdownMenu, {}, {
-        default: () => [
-          h(DropdownMenuTrigger, { asChild: true }, {
-            default: () => h(Button, {
-              variant: 'ghost', size: 'icon', class: 'h-8 w-8',
-            }, {
-              default: () => [
-                h('span', { class: 'sr-only' }, 'فتح القائمة'),
-                h(MoreHorizontal, { class: 'h-4 w-4' }),
-              ],
-            }),
-          }),
-          h(DropdownMenuContent, { align: 'end' }, {
-            default: () => [
-              h(DropdownMenuItem, { onClick: () => (viewingUser.value = user) }, () => 'عرض'),
-              h(DropdownMenuItem, { onClick: () => openEdit(user) }, () => 'تعديل'),
-            ],
-          }),
-        ],
-      })
+      return h(
+        DropdownMenu,
+        {},
+        {
+          default: () => [
+            h(
+              DropdownMenuTrigger,
+              { asChild: true },
+              {
+                default: () =>
+                  h(
+                    Button,
+                    {
+                      variant: 'ghost',
+                      size: 'icon',
+                      class: 'h-8 w-8',
+                    },
+                    {
+                      default: () => [
+                        h('span', { class: 'sr-only' }, 'فتح القائمة'),
+                        h(MoreHorizontal, { class: 'h-4 w-4' }),
+                      ],
+                    },
+                  ),
+              },
+            ),
+            h(
+              DropdownMenuContent,
+              { align: 'end' },
+              {
+                default: () => [
+                  h(DropdownMenuItem, { onClick: () => (viewingUser.value = user) }, () => 'عرض'),
+                  h(DropdownMenuItem, { onClick: () => openEdit(user) }, () => 'تعديل'),
+                ],
+              },
+            ),
+          ],
+        },
+      )
     },
   },
 ]
@@ -428,7 +494,10 @@ onMounted(loadData)
     <PageHeader
       :title="isBankAdmin ? 'مستخدمو البنك' : 'مستخدمو النظام'"
       :subtitle="isBankAdmin ? 'إدارة مستخدمي البنك' : 'إدارة مستخدمي النظام'"
-      :breadcrumbs="[{ label: 'الرئيسية', to: '/' }, { label: isBankAdmin ? 'مستخدمو البنك' : 'مستخدمو النظام' }]"
+      :breadcrumbs="[
+        { label: 'الرئيسية', to: '/' },
+        { label: isBankAdmin ? 'مستخدمو البنك' : 'مستخدمو النظام' },
+      ]"
     >
       <template #actions>
         <Button size="sm" class="h-8" @click="openCreate">
@@ -445,13 +514,16 @@ onMounted(loadData)
     </Alert>
 
     <!-- Toolbar: bulk (when selected) OR search (default) -->
-    <div v-if="selectedCount > 0" class="flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2">
-      <span class="text-sm font-medium text-primary">{{ selectedCount }} محدد</span>
-      <div class="mx-2 h-4 w-px bg-border" />
+    <div
+      v-if="selectedCount > 0"
+      class="border-primary/20 bg-primary/5 flex items-center gap-2 rounded-lg border px-3 py-2"
+    >
+      <span class="text-primary text-sm font-medium">{{ selectedCount }} محدد</span>
+      <div class="bg-border mx-2 h-4 w-px" />
       <Button
         variant="ghost"
         size="sm"
-        class="ms-auto h-7 gap-1 text-xs text-muted-foreground"
+        class="text-muted-foreground ms-auto h-7 gap-1 text-xs"
         @click="clearSelection"
       >
         <X class="h-3.5 w-3.5" />
@@ -461,7 +533,7 @@ onMounted(loadData)
 
     <div v-else class="flex items-center gap-2">
       <div class="relative min-w-[220px] flex-1">
-        <Search class="absolute inset-e-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Search class="text-muted-foreground absolute inset-e-3 top-1/2 h-4 w-4 -translate-y-1/2" />
         <Input
           v-model="query"
           placeholder="بحث بالاسم أو البريد أو الدور..."
@@ -479,14 +551,16 @@ onMounted(loadData)
         :page-count="usersMeta?.last_page ?? 1"
         :pagination="userPagination"
         :row-selection="rowSelection"
-        @update:pagination="onUserPaginationChange"
-        @update:row-selection="(v) => rowSelection = v"
         :row-class="'group/row'"
+        @update:pagination="onUserPaginationChange"
+        @update:row-selection="(v) => (rowSelection = v)"
       >
         <template #empty>
-          <Empty class="min-h-[280px] rounded-xl border border-dashed bg-muted/20">
+          <Empty class="bg-muted/20 min-h-[280px] rounded-xl border border-dashed">
             <EmptyHeader>
-              <div class="flex size-12 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+              <div
+                class="bg-muted text-muted-foreground flex size-12 items-center justify-center rounded-xl"
+              >
                 <SearchX class="size-5" />
               </div>
               <EmptyTitle>لا توجد نتائج</EmptyTitle>
@@ -504,9 +578,11 @@ onMounted(loadData)
 
     <!-- Dialog Modal -->
     <Dialog :open="showModal" @update:open="(open) => !open && closeModal()">
-      <DialogContent class="sm:max-w-[420px]" >
+      <DialogContent class="sm:max-w-[420px]">
         <DialogHeader>
-          <DialogTitle>{{ editingUser ? 'تعديل بيانات المستخدم' : 'إضافة مستخدم جديد' }}</DialogTitle>
+          <DialogTitle>{{
+            editingUser ? 'تعديل بيانات المستخدم' : 'إضافة مستخدم جديد'
+          }}</DialogTitle>
         </DialogHeader>
 
         <Alert v-if="formError" variant="destructive">
@@ -514,7 +590,7 @@ onMounted(loadData)
           <AlertDescription>{{ formError }}</AlertDescription>
         </Alert>
 
-        <div class="rounded-lg border border-border bg-muted/20 p-3">
+        <div class="border-border bg-muted/20 rounded-lg border p-3">
           <AvatarPicker
             v-model="avatarVariant"
             :seed="form.email || form.name || 'new-user'"
@@ -526,42 +602,78 @@ onMounted(loadData)
         <div class="flex flex-col gap-4">
           <Field :data-invalid="!!formErrors.name">
             <FieldLabel>الاسم <span class="text-destructive">*</span></FieldLabel>
-            <Input v-model="form.name" :aria-invalid="!!formErrors.name" placeholder="الاسم الكامل" type="text" />
-            <FieldDescription v-if="formErrors.name" class="text-destructive">{{ formErrors.name }}</FieldDescription>
+            <Input
+              v-model="form.name"
+              :aria-invalid="!!formErrors.name"
+              placeholder="الاسم الكامل"
+              type="text"
+            />
+            <FieldDescription v-if="formErrors.name" class="text-destructive">{{
+              formErrors.name
+            }}</FieldDescription>
           </Field>
 
           <Field :data-invalid="!!formErrors.email">
             <FieldLabel>البريد الإلكتروني <span class="text-destructive">*</span></FieldLabel>
-            <Input v-model="form.email" :aria-invalid="!!formErrors.email" placeholder="example@bank.ye" type="email" />
-            <FieldDescription v-if="formErrors.email" class="text-destructive">{{ formErrors.email }}</FieldDescription>
+            <Input
+              v-model="form.email"
+              :aria-invalid="!!formErrors.email"
+              placeholder="example@bank.ye"
+              type="email"
+            />
+            <FieldDescription v-if="formErrors.email" class="text-destructive">{{
+              formErrors.email
+            }}</FieldDescription>
           </Field>
 
           <Field :data-invalid="!!formErrors.password">
-            <FieldLabel>كلمة المرور {{ editingUser ? '(اتركها فارغة للإبقاء على الحالية)' : '*' }}</FieldLabel>
-            <Input v-model="form.password" :aria-invalid="!!formErrors.password" placeholder="8 أحرف على الأقل" type="password" />
-            <FieldDescription v-if="formErrors.password" class="text-destructive">{{ formErrors.password }}</FieldDescription>
+            <FieldLabel
+              >كلمة المرور
+              {{ editingUser ? '(اتركها فارغة للإبقاء على الحالية)' : '*' }}</FieldLabel
+            >
+            <Input
+              v-model="form.password"
+              :aria-invalid="!!formErrors.password"
+              placeholder="8 أحرف على الأقل"
+              type="password"
+            />
+            <FieldDescription v-if="formErrors.password" class="text-destructive">{{
+              formErrors.password
+            }}</FieldDescription>
           </Field>
 
           <Field :data-invalid="!!formErrors.role">
             <FieldLabel>الدور الوظيفي <span class="text-destructive">*</span></FieldLabel>
             <Select v-model="form.role">
-              <SelectTrigger :aria-invalid="!!formErrors.role"><SelectValue placeholder="اختر الدور" /></SelectTrigger>
+              <SelectTrigger :aria-invalid="!!formErrors.role"
+                ><SelectValue placeholder="اختر الدور"
+              /></SelectTrigger>
               <SelectContent>
-                <SelectItem v-for="role in allowedRoles" :key="role" :value="role">{{ ROLE_LABELS[role] }}</SelectItem>
+                <SelectItem v-for="role in allowedRoles" :key="role" :value="role">{{
+                  ROLE_LABELS[role]
+                }}</SelectItem>
               </SelectContent>
             </Select>
-            <FieldDescription v-if="formErrors.role" class="text-destructive">{{ formErrors.role }}</FieldDescription>
+            <FieldDescription v-if="formErrors.role" class="text-destructive">{{
+              formErrors.role
+            }}</FieldDescription>
           </Field>
 
           <Field v-if="isBankRole" :data-invalid="!!formErrors.bank_id">
             <FieldLabel>البنك <span class="text-destructive">*</span></FieldLabel>
             <Select v-model="form.bank_id">
-              <SelectTrigger :aria-invalid="!!formErrors.bank_id"><SelectValue placeholder="اختر البنك" /></SelectTrigger>
+              <SelectTrigger :aria-invalid="!!formErrors.bank_id"
+                ><SelectValue placeholder="اختر البنك"
+              /></SelectTrigger>
               <SelectContent>
-                <SelectItem v-for="bank in banks" :key="bank.id" :value="bank.id">{{ bank.name_ar }}</SelectItem>
+                <SelectItem v-for="bank in banks" :key="bank.id" :value="bank.id">{{
+                  bank.name_ar
+                }}</SelectItem>
               </SelectContent>
             </Select>
-            <FieldDescription v-if="formErrors.bank_id" class="text-destructive">{{ formErrors.bank_id }}</FieldDescription>
+            <FieldDescription v-if="formErrors.bank_id" class="text-destructive">{{
+              formErrors.bank_id
+            }}</FieldDescription>
           </Field>
 
           <Field class="flex items-center gap-3">
@@ -578,26 +690,34 @@ onMounted(loadData)
     </Dialog>
 
     <!-- Quick-view Dialog -->
-    <Dialog :open="Boolean(viewingUser)" @update:open="v => !v && (viewingUser = null)">
-      <DialogContent v-if="viewingUser"  class="sm:max-w-md">
+    <Dialog :open="Boolean(viewingUser)" @update:open="(v) => !v && (viewingUser = null)">
+      <DialogContent v-if="viewingUser" class="sm:max-w-md">
         <DialogHeader class="pb-2">
           <DialogTitle class="text-base">{{ viewingUser.name }}</DialogTitle>
-          <DialogDescription  class="text-xs">{{ viewingUser.email }}</DialogDescription>
+          <DialogDescription class="text-xs">{{ viewingUser.email }}</DialogDescription>
         </DialogHeader>
 
         <div class="grid grid-cols-2 gap-x-4 gap-y-3 py-1 text-sm">
           <div class="space-y-0.5">
-            <p class="text-xs text-muted-foreground">الدور</p>
-            <Badge variant="secondary" class="text-xs">{{ ROLE_LABELS[viewingUser.role] ?? viewingUser.role }}</Badge>
+            <p class="text-muted-foreground text-xs">الدور</p>
+            <Badge variant="secondary" class="text-xs">{{
+              ROLE_LABELS[viewingUser.role] ?? viewingUser.role
+            }}</Badge>
           </div>
           <div class="space-y-0.5">
-            <p class="text-xs text-muted-foreground">الحالة</p>
-            <Badge :class="viewingUser.is_active ? 'bg-[var(--severity-green)]/10 text-[var(--severity-green)] border-[var(--severity-green)]/30 border' : 'bg-[var(--severity-red)]/10 text-[var(--severity-red)] border-[var(--severity-red)]/30 border'">
+            <p class="text-muted-foreground text-xs">الحالة</p>
+            <Badge
+              :class="
+                viewingUser.is_active
+                  ? 'border border-[var(--severity-green)]/30 bg-[var(--severity-green)]/10 text-[var(--severity-green)]'
+                  : 'border border-[var(--severity-red)]/30 bg-[var(--severity-red)]/10 text-[var(--severity-red)]'
+              "
+            >
               {{ viewingUser.is_active ? 'نشط' : 'غير نشط' }}
             </Badge>
           </div>
           <div v-if="viewingUser.bank_id" class="col-span-2 space-y-0.5">
-            <p class="text-xs text-muted-foreground">البنك التابع له</p>
+            <p class="text-muted-foreground text-xs">البنك التابع له</p>
             <p class="font-medium">{{ bankLabel(viewingUser) }}</p>
           </div>
         </div>
@@ -605,8 +725,26 @@ onMounted(loadData)
         <Separator />
 
         <DialogFooter class="gap-2">
-          <Button variant="outline" size="sm" @click="() => { viewingUser = null }">إغلاق</Button>
-          <Button size="sm" @click="() => { openEdit(viewingUser!); viewingUser = null }">تعديل البيانات</Button>
+          <Button
+            variant="outline"
+            size="sm"
+            @click="
+              () => {
+                viewingUser = null
+              }
+            "
+            >إغلاق</Button
+          >
+          <Button
+            size="sm"
+            @click="
+              () => {
+                openEdit(viewingUser!)
+                viewingUser = null
+              }
+            "
+            >تعديل البيانات</Button
+          >
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -6,7 +6,9 @@ const ALLOWED_EXTENSIONS = ['.pdf']
 
 function validateFile(file: File): string | null {
   const normalizedName = file.name.toLowerCase()
-  const hasAllowedExtension = ALLOWED_EXTENSIONS.some(extension => normalizedName.endsWith(extension))
+  const hasAllowedExtension = ALLOWED_EXTENSIONS.some((extension) =>
+    normalizedName.endsWith(extension),
+  )
 
   if (!ALLOWED_TYPES.includes(file.type) && !hasAllowedExtension) {
     return 'يجب أن يكون الملف بصيغة PDF فقط'

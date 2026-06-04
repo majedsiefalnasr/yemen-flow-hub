@@ -24,10 +24,7 @@ function makeRequest(overrides: Partial<ImportRequest> = {}): ImportRequest {
 }
 
 // Logic from [id]/index.vue: showActiveReviewBanner
-function shouldShowActiveReviewBanner(
-  userRole: UserRole,
-  isActiveReviewer: boolean,
-): boolean {
+function shouldShowActiveReviewBanner(userRole: UserRole, isActiveReviewer: boolean): boolean {
   return userRole === UserRole.SUPPORT_COMMITTEE && isActiveReviewer
 }
 

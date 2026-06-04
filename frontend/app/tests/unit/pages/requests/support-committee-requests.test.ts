@@ -8,7 +8,7 @@ import { ROLE_BUCKETS, CBY_BANK_FILTER_ROLES } from '../../../../constants/workf
 const SC_BUCKETS = ROLE_BUCKETS[UserRole.SUPPORT_COMMITTEE]!
 
 function bucketByKey(key: string) {
-  return SC_BUCKETS.find(b => b.key === key)
+  return SC_BUCKETS.find((b) => b.key === key)
 }
 
 describe('SUPPORT_COMMITTEE ROLE_BUCKETS — bucket existence', () => {
@@ -16,21 +16,39 @@ describe('SUPPORT_COMMITTEE ROLE_BUCKETS — bucket existence', () => {
     expect(SC_BUCKETS).toHaveLength(5)
   })
 
-  it('has waiting bucket', () => { expect(bucketByKey('waiting')).toBeDefined() })
-  it('has my_claims bucket', () => { expect(bucketByKey('my_claims')).toBeDefined() })
-  it('has in_progress bucket', () => { expect(bucketByKey('in_progress')).toBeDefined() })
-  it('has approved bucket', () => { expect(bucketByKey('approved')).toBeDefined() })
-  it('has rejected bucket', () => { expect(bucketByKey('rejected')).toBeDefined() })
+  it('has waiting bucket', () => {
+    expect(bucketByKey('waiting')).toBeDefined()
+  })
+  it('has my_claims bucket', () => {
+    expect(bucketByKey('my_claims')).toBeDefined()
+  })
+  it('has in_progress bucket', () => {
+    expect(bucketByKey('in_progress')).toBeDefined()
+  })
+  it('has approved bucket', () => {
+    expect(bucketByKey('approved')).toBeDefined()
+  })
+  it('has rejected bucket', () => {
+    expect(bucketByKey('rejected')).toBeDefined()
+  })
 })
 
 describe('SUPPORT_COMMITTEE ROLE_BUCKETS — tab ordering (waiting first)', () => {
   it('waiting is first tab — unclaimed queue is most actionable', () => {
     expect(SC_BUCKETS[0]!.key).toBe('waiting')
   })
-  it('my_claims is second tab', () => { expect(SC_BUCKETS[1]!.key).toBe('my_claims') })
-  it('in_progress is third tab', () => { expect(SC_BUCKETS[2]!.key).toBe('in_progress') })
-  it('approved is fourth tab', () => { expect(SC_BUCKETS[3]!.key).toBe('approved') })
-  it('rejected is fifth tab', () => { expect(SC_BUCKETS[4]!.key).toBe('rejected') })
+  it('my_claims is second tab', () => {
+    expect(SC_BUCKETS[1]!.key).toBe('my_claims')
+  })
+  it('in_progress is third tab', () => {
+    expect(SC_BUCKETS[2]!.key).toBe('in_progress')
+  })
+  it('approved is fourth tab', () => {
+    expect(SC_BUCKETS[3]!.key).toBe('approved')
+  })
+  it('rejected is fifth tab', () => {
+    expect(SC_BUCKETS[4]!.key).toBe('rejected')
+  })
 })
 
 describe('SUPPORT_COMMITTEE ROLE_BUCKETS — waiting bucket', () => {
@@ -62,12 +80,19 @@ describe('SUPPORT_COMMITTEE ROLE_BUCKETS — my_claims bucket (custom matcher)',
   })
 
   it('matches by currentUserId when is_claimed_by_me not set', () => {
-    const req = { status: RequestStatus.SUPPORT_REVIEW_IN_PROGRESS, claimed_by: { id: 42, name: 'Ali' } }
+    const req = {
+      status: RequestStatus.SUPPORT_REVIEW_IN_PROGRESS,
+      claimed_by: { id: 42, name: 'Ali' },
+    }
     expect(bucket().matches!(req, 42)).toBe(true)
   })
 
   it('does not match requests claimed by someone else', () => {
-    const req = { status: RequestStatus.SUPPORT_REVIEW_IN_PROGRESS, claimed_by: { id: 99, name: 'Other' }, is_claimed_by_me: false }
+    const req = {
+      status: RequestStatus.SUPPORT_REVIEW_IN_PROGRESS,
+      claimed_by: { id: 99, name: 'Other' },
+      is_claimed_by_me: false,
+    }
     expect(bucket().matches!(req, 42)).toBe(false)
   })
 })
@@ -80,12 +105,20 @@ describe('SUPPORT_COMMITTEE ROLE_BUCKETS — in_progress bucket (claimed by othe
   })
 
   it('matches requests claimed by someone else', () => {
-    const req = { status: RequestStatus.SUPPORT_REVIEW_IN_PROGRESS, claimed_by: { id: 99, name: 'Other' }, is_claimed_by_me: false }
+    const req = {
+      status: RequestStatus.SUPPORT_REVIEW_IN_PROGRESS,
+      claimed_by: { id: 99, name: 'Other' },
+      is_claimed_by_me: false,
+    }
     expect(bucket().matches!(req, 42)).toBe(true)
   })
 
   it('does not match own claims', () => {
-    const req = { status: RequestStatus.SUPPORT_REVIEW_IN_PROGRESS, claimed_by: { id: 42, name: 'Me' }, is_claimed_by_me: true }
+    const req = {
+      status: RequestStatus.SUPPORT_REVIEW_IN_PROGRESS,
+      claimed_by: { id: 42, name: 'Me' },
+      is_claimed_by_me: true,
+    }
     expect(bucket().matches!(req, 42)).toBe(false)
   })
 })

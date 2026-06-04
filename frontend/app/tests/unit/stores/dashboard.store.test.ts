@@ -1,6 +1,13 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
-import type { DataEntryDashboardStats, BankReviewerDashboardStats, SupportCommitteeDashboardStats, SwiftOfficerDashboardStats, ExecutiveDashboardStats, CbyAdminDashboardStats } from '../../../composables/useDashboard'
+import type {
+  DataEntryDashboardStats,
+  BankReviewerDashboardStats,
+  SupportCommitteeDashboardStats,
+  SwiftOfficerDashboardStats,
+  ExecutiveDashboardStats,
+  CbyAdminDashboardStats,
+} from '../../../composables/useDashboard'
 
 const mockFetchStats = vi.fn()
 
@@ -64,9 +71,7 @@ const CBY_STATS: CbyAdminDashboardStats = {
     high_amount_requests: [],
     stale_pending_requests: [],
   },
-  most_active_banks: [
-    { bank_id: 1, bank_name: 'بنك اليمن المركزي', request_count: 18 },
-  ],
+  most_active_banks: [{ bank_id: 1, bank_name: 'بنك اليمن المركزي', request_count: 18 }],
 }
 
 describe('useDashboardStore', () => {
@@ -84,7 +89,11 @@ describe('useDashboardStore', () => {
 
   it('loadStats sets loading true during fetch then false after', async () => {
     let resolveStats!: (v: DataEntryDashboardStats) => void
-    mockFetchStats.mockReturnValue(new Promise(r => { resolveStats = r }))
+    mockFetchStats.mockReturnValue(
+      new Promise((r) => {
+        resolveStats = r
+      }),
+    )
 
     const store = useDashboardStore()
     const promise = store.loadStats()

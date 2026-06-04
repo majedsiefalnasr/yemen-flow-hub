@@ -9,15 +9,15 @@ defineProps<{
 </script>
 
 <template>
-  <div class="flex min-h-[50vh] items-center justify-center" >
+  <div class="flex min-h-[50vh] items-center justify-center">
     <Card class="max-w-sm border border-dashed text-center shadow-none">
       <CardContent class="flex flex-col items-center gap-4 p-8">
-        <div class="rounded-full bg-muted p-4">
-          <Clock class="h-8 w-8 text-muted-foreground" />
+        <div class="bg-muted rounded-full p-4">
+          <Clock class="text-muted-foreground h-8 w-8" />
         </div>
         <div>
           <h2 class="text-lg font-semibold">{{ title || 'قريبًا' }}</h2>
-          <p class="mt-1 text-sm text-muted-foreground">
+          <p class="text-muted-foreground mt-1 text-sm">
             {{ description || 'هذه الصفحة قيد التطوير وستكون متاحة قريبًا.' }}
           </p>
         </div>

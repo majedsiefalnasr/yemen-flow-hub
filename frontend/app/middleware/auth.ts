@@ -11,7 +11,10 @@ export default defineNuxtRouteMiddleware((to) => {
   if (!auth.isAuthenticated) {
     return navigateTo({
       path: '/unauthorized',
-      query: typeof to.fullPath === 'string' && to.fullPath.length > 0 ? { next: to.fullPath } : undefined,
+      query:
+        typeof to.fullPath === 'string' && to.fullPath.length > 0
+          ? { next: to.fullPath }
+          : undefined,
     })
   }
 })

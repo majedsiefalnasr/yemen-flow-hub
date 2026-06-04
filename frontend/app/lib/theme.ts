@@ -114,12 +114,16 @@ export const defineVariants = (variants: Record<string, string>) => variants
  */
 export const themePresets = {
   card: 'bg-card text-card-foreground border border-border rounded-lg shadow-card',
-  input: 'bg-input border border-input rounded-md px-3 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring',
+  input:
+    'bg-input border border-input rounded-md px-3 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring',
   button: {
-    default: 'bg-primary text-primary-foreground rounded-md px-4 py-2 font-medium hover:bg-primary/90 transition-colors',
-    secondary: 'bg-secondary text-secondary-foreground rounded-md px-4 py-2 font-medium hover:bg-secondary/90 transition-colors',
+    default:
+      'bg-primary text-primary-foreground rounded-md px-4 py-2 font-medium hover:bg-primary/90 transition-colors',
+    secondary:
+      'bg-secondary text-secondary-foreground rounded-md px-4 py-2 font-medium hover:bg-secondary/90 transition-colors',
     ghost: 'text-foreground hover:bg-muted rounded-md px-4 py-2 transition-colors',
-    destructive: 'bg-destructive text-destructive-foreground rounded-md px-4 py-2 font-medium hover:bg-destructive/90 transition-colors',
+    destructive:
+      'bg-destructive text-destructive-foreground rounded-md px-4 py-2 font-medium hover:bg-destructive/90 transition-colors',
   },
   dialog: 'fixed inset-0 z-50 bg-background/80 backdrop-blur-sm',
   dialogContent: 'bg-card text-card-foreground border border-border rounded-lg shadow-card p-6',
@@ -132,7 +136,5 @@ export const themePresets = {
  */
 export const getThemeColorValue = (colorName: string): string => {
   if (typeof window === 'undefined') return ''
-  return getComputedStyle(document.documentElement)
-    .getPropertyValue(`--${colorName}`)
-    .trim()
+  return getComputedStyle(document.documentElement).getPropertyValue(`--${colorName}`).trim()
 }

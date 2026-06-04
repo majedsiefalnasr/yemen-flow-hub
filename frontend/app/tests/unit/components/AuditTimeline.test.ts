@@ -84,7 +84,9 @@ describe('AuditTimeline entryColor', () => {
   })
 
   it('returns neutral gray for DRAFT (initial creation — no color in STATUS_COLORS triggers fallback)', () => {
-    expect(entryColor(makeEntry({ to_status: RequestStatus.DRAFT }))).toBe(STATUS_COLORS[RequestStatus.DRAFT])
+    expect(entryColor(makeEntry({ to_status: RequestStatus.DRAFT }))).toBe(
+      STATUS_COLORS[RequestStatus.DRAFT],
+    )
   })
 
   // Spot-check key semantic colors stay correct via STATUS_COLORS
@@ -95,7 +97,9 @@ describe('AuditTimeline entryColor', () => {
 
   it('final approval statuses are green', () => {
     expect(entryColor(makeEntry({ to_status: RequestStatus.EXECUTIVE_APPROVED }))).toBe('#34c759')
-    expect(entryColor(makeEntry({ to_status: RequestStatus.CUSTOMS_DECLARATION_ISSUED }))).toBe('#34c759')
+    expect(entryColor(makeEntry({ to_status: RequestStatus.CUSTOMS_DECLARATION_ISSUED }))).toBe(
+      '#34c759',
+    )
     expect(entryColor(makeEntry({ to_status: RequestStatus.COMPLETED }))).toBe('#34c759')
   })
 

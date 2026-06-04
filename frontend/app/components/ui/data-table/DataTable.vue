@@ -30,27 +30,30 @@ import {
 } from '@/components/ui/table'
 import { valueUpdater } from '@/components/ui/table/utils'
 
-const props = withDefaults(defineProps<{
-  data: TData[]
-  columns: ColumnDef<TData, TValue>[]
-  loading?: boolean
-  /**
-   * For server-side pagination: total number of pages the server reports.
-   * When provided, manualPagination is enabled and TanStack will not slice data.
-   * Omit (or -1) for client-side pagination.
-   */
-  pageCount?: number
-  pagination?: PaginationState
-  sorting?: SortingState
-  columnFilters?: ColumnFiltersState
-  columnVisibility?: VisibilityState
-  rowSelection?: RowSelectionState
-  rowClass?: string | ((row: TData) => string)
-  isRowExpanded?: (row: TData) => boolean
-}>(), {
-  loading: false,
-  pageCount: -1,
-})
+const props = withDefaults(
+  defineProps<{
+    data: TData[]
+    columns: ColumnDef<TData, TValue>[]
+    loading?: boolean
+    /**
+     * For server-side pagination: total number of pages the server reports.
+     * When provided, manualPagination is enabled and TanStack will not slice data.
+     * Omit (or -1) for client-side pagination.
+     */
+    pageCount?: number
+    pagination?: PaginationState
+    sorting?: SortingState
+    columnFilters?: ColumnFiltersState
+    columnVisibility?: VisibilityState
+    rowSelection?: RowSelectionState
+    rowClass?: string | ((row: TData) => string)
+    isRowExpanded?: (row: TData) => boolean
+  }>(),
+  {
+    loading: false,
+    pageCount: -1,
+  },
+)
 
 const emit = defineEmits<{
   'update:pagination': [value: PaginationState]
@@ -95,21 +98,37 @@ const rowSelection = useVModel(props, 'rowSelection', emit, {
 const isServerSide = props.pageCount !== -1
 
 const table = useVueTable({
-  get data() { return props.data },
-  get columns() { return props.columns },
+  get data() {
+    return props.data
+  },
+  get columns() {
+    return props.columns
+  },
   // Only feed TanStack an explicit pageCount in server-side mode. In client-side
   // mode leave it undefined so TanStack derives the page count from the row model;
   // passing -1 would make getPageCount() return -1 (e.g. "صفحة 1 من -1").
-  get pageCount() { return props.pageCount === -1 ? undefined : props.pageCount },
+  get pageCount() {
+    return props.pageCount === -1 ? undefined : props.pageCount
+  },
   manualPagination: isServerSide,
   manualSorting: isServerSide,
   manualFiltering: isServerSide,
   state: {
-    get sorting() { return sorting.value },
-    get columnFilters() { return columnFilters.value },
-    get columnVisibility() { return columnVisibility.value },
-    get rowSelection() { return rowSelection.value },
-    get pagination() { return pagination.value },
+    get sorting() {
+      return sorting.value
+    },
+    get columnFilters() {
+      return columnFilters.value
+    },
+    get columnVisibility() {
+      return columnVisibility.value
+    },
+    get rowSelection() {
+      return rowSelection.value
+    },
+    get pagination() {
+      return pagination.value
+    },
   },
   getCoreRowModel: getCoreRowModel(),
   getFilteredRowModel: getFilteredRowModel(),
@@ -118,14 +137,14 @@ const table = useVueTable({
   getSortedRowModel: getSortedRowModel(),
   getFacetedRowModel: getFacetedRowModel(),
   getFacetedUniqueValues: getFacetedUniqueValues(),
-  onSortingChange: updater => valueUpdater(updater, sorting),
-  onColumnFiltersChange: updater => valueUpdater(updater, columnFilters),
-  onColumnVisibilityChange: updater => valueUpdater(updater, columnVisibility),
-  onRowSelectionChange: updater => valueUpdater(updater, rowSelection),
+  onSortingChange: (updater) => valueUpdater(updater, sorting),
+  onColumnFiltersChange: (updater) => valueUpdater(updater, columnFilters),
+  onColumnVisibilityChange: (updater) => valueUpdater(updater, columnVisibility),
+  onRowSelectionChange: (updater) => valueUpdater(updater, rowSelection),
   // passive useVModel updates the local ref AND emits update:pagination, so
   // uncontrolled tables keep their page size locally while controlled tables
   // (URL-driven) still receive the event.
-  onPaginationChange: updater => valueUpdater(updater, pagination),
+  onPaginationChange: (updater) => valueUpdater(updater, pagination),
 })
 
 function resolveHeaderClass(meta: unknown) {
@@ -154,13 +173,13 @@ defineExpose({ table })
   <div class="space-y-4">
     <slot name="toolbar" :table="table" />
 
-    <div v-if="loading || table.getRowModel().rows.length > 0" class="rounded-lg border overflow-x-auto">
+    <div
+      v-if="loading || table.getRowModel().rows.length > 0"
+      class="overflow-x-auto rounded-lg border"
+    >
       <Table class="min-w-full">
         <TableHeader>
-          <TableRow
-            v-for="headerGroup in table.getHeaderGroups()"
-            :key="headerGroup.id"
-          >
+          <TableRow v-for="headerGroup in table.getHeaderGroups()" :key="headerGroup.id">
             <TableHead
               v-for="header in headerGroup.headers"
               :key="header.id"
@@ -204,7 +223,7 @@ defineExpose({ table })
             <template v-for="row in table.getRowModel().rows" :key="row.id">
               <TableRow
                 :data-state="row.getIsSelected() ? 'selected' : undefined"
-                class="group/row transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted"
+                class="group/row hover:bg-muted/50 data-[state=selected]:bg-muted transition-colors"
                 :class="resolveRowClass(row.original)"
                 @click="emit('row-click', row.original)"
               >
@@ -220,10 +239,7 @@ defineExpose({ table })
                     v-if="isCompactColumn(cell.column.id)"
                     class="flex items-center justify-center px-4"
                   >
-                    <FlexRender
-                      :render="cell.column.columnDef.cell"
-                      :props="cell.getContext()"
-                    />
+                    <FlexRender :render="cell.column.columnDef.cell" :props="cell.getContext()" />
                   </div>
                   <FlexRender
                     v-else
@@ -246,7 +262,9 @@ defineExpose({ table })
 
     <template v-else>
       <slot name="empty">
-        <div class="flex min-h-[200px] items-center justify-center rounded-lg border border-dashed text-sm text-muted-foreground">
+        <div
+          class="text-muted-foreground flex min-h-[200px] items-center justify-center rounded-lg border border-dashed text-sm"
+        >
           لا توجد بيانات
         </div>
       </slot>

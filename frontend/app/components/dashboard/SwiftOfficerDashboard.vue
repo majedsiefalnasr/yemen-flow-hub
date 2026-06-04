@@ -1,8 +1,8 @@
-// @parity-exempt — dashboard sub-component; parity evidence captured at dashboards/swift-officer page level
+// @parity-exempt — dashboard sub-component; parity evidence captured at dashboards/swift-officer
+page level
 <script setup lang="ts">
 import type { ColumnDef } from '@tanstack/vue-table'
-import { computed, onMounted } from 'vue'
-import { h } from 'vue'
+import { computed, onMounted, h } from 'vue'
 import { useRouter } from 'vue-router'
 import { AlertTriangle, CheckCircle2, Clock3, UploadCloud, XCircle } from 'lucide-vue-next'
 import { useDashboardStore } from '../../stores/dashboard.store'
@@ -42,7 +42,11 @@ const queue = computed(() =>
 const oldestPending = computed(() => queue.value[0] ?? null)
 
 function formatAmount(amount: number, currency: string): string {
-  return new Intl.NumberFormat('ar-YE', { style: 'currency', currency, minimumFractionDigits: 0 }).format(amount)
+  return new Intl.NumberFormat('ar-YE', {
+    style: 'currency',
+    currency,
+    minimumFractionDigits: 0,
+  }).format(amount)
 }
 
 function hoursInStage(updatedAt: string): number {
@@ -54,75 +58,137 @@ function hoursInStage(updatedAt: string): number {
 type SwiftQueueRow = NonNullable<SwiftOfficerDashboardStats['swift_queue']>[number]
 
 const swiftQueueColumns: ColumnDef<SwiftQueueRow>[] = [
-  { accessorKey: 'reference_number', header: 'المرجع', cell: ({ row }) => h('span', { class: 'font-mono text-primary' }, row.original.reference_number) },
-  { id: 'merchant', header: 'التاجر', cell: ({ row }) => h('span', row.original.merchant?.name ?? '—') },
-  { id: 'amount', header: 'المبلغ', cell: ({ row }) => h('span', { class: 'font-mono' }, formatAmount(row.original.amount, row.original.currency)) },
-  { id: 'status', header: 'الحالة', cell: ({ row }) => h(StatusBadge, { status: row.original.status, role: UserRole.SWIFT_OFFICER }) },
+  {
+    accessorKey: 'reference_number',
+    header: 'المرجع',
+    cell: ({ row }) =>
+      h('span', { class: 'font-mono text-primary' }, row.original.reference_number),
+  },
+  {
+    id: 'merchant',
+    header: 'التاجر',
+    cell: ({ row }) => h('span', row.original.merchant?.name ?? '—'),
+  },
+  {
+    id: 'amount',
+    header: 'المبلغ',
+    cell: ({ row }) =>
+      h('span', { class: 'font-mono' }, formatAmount(row.original.amount, row.original.currency)),
+  },
+  {
+    id: 'status',
+    header: 'الحالة',
+    cell: ({ row }) =>
+      h(StatusBadge, { status: row.original.status, role: UserRole.SWIFT_OFFICER }),
+  },
   {
     id: 'age',
     header: 'العمر بالمرحلة',
-    cell: ({ row }) => h('span', {
-      class: hoursInStage(row.original.updated_at) > 24 ? 'text-[var(--severity-amber)]' : 'text-muted-foreground',
-    }, `${hoursInStage(row.original.updated_at)} ساعة`),
+    cell: ({ row }) =>
+      h(
+        'span',
+        {
+          class:
+            hoursInStage(row.original.updated_at) > 24
+              ? 'text-[var(--severity-amber)]'
+              : 'text-muted-foreground',
+        },
+        `${hoursInStage(row.original.updated_at)} ساعة`,
+      ),
   },
   {
     id: 'docs',
     header: 'المستندات',
-    cell: ({ row }) => h('div', { class: 'flex items-center gap-1.5' }, [
-      h('span', {
-        class: row.original.has_swift_document ? 'rounded-full border border-[var(--severity-green)]/30 bg-[var(--severity-green)]/10 px-2 py-0.5 text-xs text-[var(--severity-green)]' : 'rounded-full border border-border bg-muted px-2 py-0.5 text-xs text-muted-foreground',
-      }, 'السويفت'),
-      h('span', {
-        class: row.original.has_fx_request_document ? 'rounded-full border border-[var(--severity-green)]/30 bg-[var(--severity-green)]/10 px-2 py-0.5 text-xs text-[var(--severity-green)]' : 'rounded-full border border-border bg-muted px-2 py-0.5 text-xs text-muted-foreground',
-      }, 'طلب تأكيد المصارفة'),
-    ]),
+    cell: ({ row }) =>
+      h('div', { class: 'flex items-center gap-1.5' }, [
+        h(
+          'span',
+          {
+            class: row.original.has_swift_document
+              ? 'rounded-full border border-[var(--severity-green)]/30 bg-[var(--severity-green)]/10 px-2 py-0.5 text-xs text-[var(--severity-green)]'
+              : 'rounded-full border border-border bg-muted px-2 py-0.5 text-xs text-muted-foreground',
+          },
+          'السويفت',
+        ),
+        h(
+          'span',
+          {
+            class: row.original.has_fx_request_document
+              ? 'rounded-full border border-[var(--severity-green)]/30 bg-[var(--severity-green)]/10 px-2 py-0.5 text-xs text-[var(--severity-green)]'
+              : 'rounded-full border border-border bg-muted px-2 py-0.5 text-xs text-muted-foreground',
+          },
+          'طلب تأكيد المصارفة',
+        ),
+      ]),
   },
   {
     id: 'actions',
     header: 'إجراء',
-    cell: ({ row }) => h('div', { class: 'flex items-center gap-2' }, [
-      h(Button, {
-        size: 'sm',
-        onClick: (event: MouseEvent) => {
-          event.stopPropagation()
-          router.push(`/requests/${row.original.id}/swift`)
-        },
-      }, () => 'رفع وثائق السويفت'),
-      h(Button, {
-        size: 'sm',
-        variant: 'outline',
-        onClick: (event: MouseEvent) => {
-          event.stopPropagation()
-          router.push(`/requests/${row.original.id}`)
-        },
-      }, () => 'عرض الطلب'),
-    ]),
+    cell: ({ row }) =>
+      h('div', { class: 'flex items-center gap-2' }, [
+        h(
+          Button,
+          {
+            size: 'sm',
+            onClick: (event: MouseEvent) => {
+              event.stopPropagation()
+              router.push(`/requests/${row.original.id}/swift`)
+            },
+          },
+          () => 'رفع وثائق السويفت',
+        ),
+        h(
+          Button,
+          {
+            size: 'sm',
+            variant: 'outline',
+            onClick: (event: MouseEvent) => {
+              event.stopPropagation()
+              router.push(`/requests/${row.original.id}`)
+            },
+          },
+          () => 'عرض الطلب',
+        ),
+      ]),
   },
 ]
 
-onMounted(() => { store.loadStats() })
+onMounted(() => {
+  store.loadStats()
+})
 </script>
 
 <template>
-  <div class="flex flex-col gap-6" >
-
+  <div class="flex flex-col gap-6">
     <!-- Skeleton -->
-    <div v-if="store.loading" class="grid grid-cols-4 gap-4 md:grid-cols-2 sm:grid-cols-1" aria-busy="true">
+    <div
+      v-if="store.loading"
+      class="grid grid-cols-4 gap-4 sm:grid-cols-1 md:grid-cols-2"
+      aria-busy="true"
+    >
       <Skeleton v-for="n in 4" :key="n" class="h-24 w-full rounded-xl" />
     </div>
 
     <!-- Error -->
-    <Card v-else-if="store.error" class="border-0 border-[var(--severity-red)] bg-background" role="alert">
-      <CardContent class="pt-6 flex items-center gap-3">
+    <Card
+      v-else-if="store.error"
+      class="bg-background border-0 border-[var(--severity-red)]"
+      role="alert"
+    >
+      <CardContent class="flex items-center gap-3 pt-6">
         <span class="text-destructive flex-1">{{ store.error }}</span>
-        <Button variant="outline" size="sm" class="text-destructive border-destructive" @click="store.loadStats()">
+        <Button
+          variant="outline"
+          size="sm"
+          class="text-destructive border-destructive"
+          @click="store.loadStats()"
+        >
           إعادة المحاولة
         </Button>
       </CardContent>
     </Card>
 
     <template v-else-if="stats">
-
       <!-- Action strip — pending uploads -->
       <Card
         v-if="stats.pending_swift_upload > 0"
@@ -130,11 +196,17 @@ onMounted(() => { store.loadStats() })
         role="alert"
       >
         <CardContent class="flex items-center gap-3">
-          <AlertTriangle class="h-5 w-5 flex-shrink-0 text-[var(--severity-amber)]" aria-hidden="true" />
+          <AlertTriangle
+            class="h-5 w-5 flex-shrink-0 text-[var(--severity-amber)]"
+            aria-hidden="true"
+          />
           <div class="min-w-0 flex-1">
-            <p class="text-sm font-semibold text-foreground">{{ stats.pending_swift_upload }} طلبات بانتظار رفع وثائق السويفت</p>
-            <p v-if="oldestPending" class="truncate text-xs text-muted-foreground">
-              {{ oldestPending.reference_number }} · منذ {{ hoursInStage(oldestPending.updated_at) }} ساعة
+            <p class="text-foreground text-sm font-semibold">
+              {{ stats.pending_swift_upload }} طلبات بانتظار رفع وثائق السويفت
+            </p>
+            <p v-if="oldestPending" class="text-muted-foreground truncate text-xs">
+              {{ oldestPending.reference_number }} · منذ
+              {{ hoursInStage(oldestPending.updated_at) }} ساعة
             </p>
           </div>
           <Button
@@ -184,8 +256,10 @@ onMounted(() => { store.loadStats() })
       <!-- SWIFT queue table -->
       <Card class="border-0 shadow" aria-labelledby="swift-queue-heading">
         <CardContent class="p-4">
-          <div class="flex items-center justify-between mb-4">
-            <h2 id="swift-queue-heading" class="text-sm font-semibold text-foreground">طابور السويفت</h2>
+          <div class="mb-4 flex items-center justify-between">
+            <h2 id="swift-queue-heading" class="text-foreground text-sm font-semibold">
+              طابور السويفت
+            </h2>
           </div>
 
           <DataTable :data="queue" :columns="swiftQueueColumns">
@@ -193,7 +267,6 @@ onMounted(() => { store.loadStats() })
           </DataTable>
         </CardContent>
       </Card>
-
     </template>
   </div>
 </template>

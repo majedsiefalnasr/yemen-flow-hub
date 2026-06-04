@@ -38,7 +38,10 @@ const REQUESTS_EXPORT_COLUMNS: RoleAwareExportColumn[] = [
   {
     key: 'status',
     label: 'الحالة',
-    format: value => (typeof value === 'string' ? (STATUS_LABELS[value as keyof typeof STATUS_LABELS] ?? value) : '—'),
+    format: (value) =>
+      typeof value === 'string'
+        ? (STATUS_LABELS[value as keyof typeof STATUS_LABELS] ?? value)
+        : '—',
   },
   {
     key: 'created_at',
@@ -53,14 +56,19 @@ const REQUESTS_EXPORT_COLUMNS: RoleAwareExportColumn[] = [
   {
     key: 'bank_name',
     label: 'البنك',
-    roles: [UserRole.SUPPORT_COMMITTEE, UserRole.EXECUTIVE_MEMBER, UserRole.COMMITTEE_DIRECTOR, UserRole.CBY_ADMIN],
+    roles: [
+      UserRole.SUPPORT_COMMITTEE,
+      UserRole.EXECUTIVE_MEMBER,
+      UserRole.COMMITTEE_DIRECTOR,
+      UserRole.CBY_ADMIN,
+    ],
     format: (_, row) => row.bank_name ?? '—',
   },
   {
     key: 'current_owner_role',
     label: 'المالك الحالي',
     roles: [UserRole.SUPPORT_COMMITTEE, UserRole.COMMITTEE_DIRECTOR, UserRole.CBY_ADMIN],
-    format: value => (typeof value === 'string' ? value : '—'),
+    format: (value) => (typeof value === 'string' ? value : '—'),
   },
   {
     key: 'claimed_by',
@@ -76,10 +84,10 @@ const REQUESTS_EXPORT_COLUMNS: RoleAwareExportColumn[] = [
     key: 'voting_session_status',
     label: 'حالة التصويت',
     roles: [UserRole.EXECUTIVE_MEMBER, UserRole.COMMITTEE_DIRECTOR, UserRole.CBY_ADMIN],
-    format: value => (typeof value === 'string' ? value : '—'),
+    format: (value) => (typeof value === 'string' ? value : '—'),
   },
 ]
 
 export function buildRequestsExportColumns(role: UserRole): ExportColumn<ImportRequest>[] {
-  return REQUESTS_EXPORT_COLUMNS.filter(column => !column.roles || column.roles.includes(role))
+  return REQUESTS_EXPORT_COLUMNS.filter((column) => !column.roles || column.roles.includes(role))
 }

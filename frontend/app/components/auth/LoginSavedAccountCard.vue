@@ -66,16 +66,13 @@ const avatarVariant = computed<AvatarVariant>(() => {
     />
 
     <div class="min-w-0 flex-1 text-start">
-      <p class="truncate text-sm font-semibold text-foreground leading-tight">
+      <p class="text-foreground truncate text-sm leading-tight font-semibold">
         {{ account.name }}
       </p>
-      <p class="truncate text-xs text-muted-foreground mt-0.5">
+      <p class="text-muted-foreground mt-0.5 truncate text-xs">
         {{ account.bankName }}
       </p>
-      <p
-        v-if="account.department && !compact"
-        class="truncate text-xs text-muted-foreground/70"
-      >
+      <p v-if="account.department && !compact" class="text-muted-foreground/70 truncate text-xs">
         {{ account.department }}
       </p>
     </div>
@@ -89,7 +86,7 @@ const avatarVariant = computed<AvatarVariant>(() => {
         type="button"
         variant="ghost"
         size="icon"
-        class="size-7 text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10"
+        class="text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10 size-7"
         :aria-label="`إزالة حساب ${account.name}`"
         @click.stop="emit('remove')"
       >
@@ -110,7 +107,10 @@ const avatarVariant = computed<AvatarVariant>(() => {
   border-radius: 12px;
   background: var(--background);
   cursor: pointer;
-  transition: border-color 120ms ease, background-color 120ms ease, box-shadow 120ms ease;
+  transition:
+    border-color 120ms ease,
+    background-color 120ms ease,
+    box-shadow 120ms ease;
   text-align: start;
 }
 

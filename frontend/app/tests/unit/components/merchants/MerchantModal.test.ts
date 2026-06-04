@@ -47,7 +47,10 @@ function emptyFormValues(defaultBankId: number | null = null) {
   }
 }
 
-function lockedBankFieldVisible(requiresBankSelection: boolean, lockedBankName: string | null): boolean {
+function lockedBankFieldVisible(
+  requiresBankSelection: boolean,
+  lockedBankName: string | null,
+): boolean {
   return !requiresBankSelection && !!lockedBankName
 }
 
@@ -76,7 +79,11 @@ const BUSINESS_TYPE_OPTIONS = [
 
 describe('MerchantModal — Zod validation', () => {
   it('passes when all required fields are present', () => {
-    const result = validate({ name: 'شركة الأمل', commercial_register: 'CR-001', tax_number: 'TX-001' })
+    const result = validate({
+      name: 'شركة الأمل',
+      commercial_register: 'CR-001',
+      tax_number: 'TX-001',
+    })
     expect(result.success).toBe(true)
   })
 
@@ -84,7 +91,7 @@ describe('MerchantModal — Zod validation', () => {
     const result = validate({ name: '', commercial_register: 'CR-001', tax_number: 'TX-001' })
     expect(result.success).toBe(false)
     if (!result.success) {
-      const nameErrors = result.error.errors.filter(e => e.path.includes('name'))
+      const nameErrors = result.error.errors.filter((e) => e.path.includes('name'))
       expect(nameErrors.length).toBeGreaterThan(0)
       expect(nameErrors[0]!.message).toBe('اسم التاجر مطلوب')
     }
@@ -94,7 +101,7 @@ describe('MerchantModal — Zod validation', () => {
     const result = validate({ name: 'شركة', commercial_register: '', tax_number: 'TX-001' })
     expect(result.success).toBe(false)
     if (!result.success) {
-      const errs = result.error.errors.filter(e => e.path.includes('commercial_register'))
+      const errs = result.error.errors.filter((e) => e.path.includes('commercial_register'))
       expect(errs.length).toBeGreaterThan(0)
     }
   })
@@ -103,7 +110,7 @@ describe('MerchantModal — Zod validation', () => {
     const result = validate({ name: 'شركة', commercial_register: 'CR-001', tax_number: '' })
     expect(result.success).toBe(false)
     if (!result.success) {
-      const errs = result.error.errors.filter(e => e.path.includes('tax_number'))
+      const errs = result.error.errors.filter((e) => e.path.includes('tax_number'))
       expect(errs.length).toBeGreaterThan(0)
     }
   })
@@ -114,7 +121,12 @@ describe('MerchantModal — Zod validation', () => {
   })
 
   it('accepts address when provided', () => {
-    const result = validate({ name: 'شركة', commercial_register: 'CR-001', tax_number: 'TX-001', address: 'صنعاء' })
+    const result = validate({
+      name: 'شركة',
+      commercial_register: 'CR-001',
+      tax_number: 'TX-001',
+      address: 'صنعاء',
+    })
     expect(result.success).toBe(true)
     if (result.success) expect(result.data.address).toBe('صنعاء')
   })
@@ -165,7 +177,9 @@ describe('MerchantModal — edit prefill', () => {
   })
 
   it('defaults commercial_register to empty string when null', () => {
-    expect(prefillFromMerchant({ ...merchant, commercial_register: null }).commercial_register).toBe('')
+    expect(
+      prefillFromMerchant({ ...merchant, commercial_register: null }).commercial_register,
+    ).toBe('')
   })
 
   it('defaults address to empty string when null', () => {
@@ -225,11 +239,11 @@ describe('MerchantModal — business type options', () => {
   })
 
   it('includes import option', () => {
-    expect(BUSINESS_TYPE_OPTIONS.find(o => o.value === 'import')?.label).toBe('استيراد')
+    expect(BUSINESS_TYPE_OPTIONS.find((o) => o.value === 'import')?.label).toBe('استيراد')
   })
 
   it('all options have value and label', () => {
-    BUSINESS_TYPE_OPTIONS.forEach(opt => {
+    BUSINESS_TYPE_OPTIONS.forEach((opt) => {
       expect(opt.value).toBeTruthy()
       expect(opt.label).toBeTruthy()
     })

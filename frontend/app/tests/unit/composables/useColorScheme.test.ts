@@ -23,9 +23,15 @@ function createSchemeState() {
     applyScheme(dark)
   }
 
-  function getIsDark() { return dark }
-  function getLastApplied() { return classesAdded[classesAdded.length - 1] }
-  function getStoredValue() { return stored[STORAGE_KEY] }
+  function getIsDark() {
+    return dark
+  }
+  function getLastApplied() {
+    return classesAdded[classesAdded.length - 1]
+  }
+  function getStoredValue() {
+    return stored[STORAGE_KEY]
+  }
 
   return { toggle, hydrate, getIsDark, getLastApplied, getStoredValue }
 }

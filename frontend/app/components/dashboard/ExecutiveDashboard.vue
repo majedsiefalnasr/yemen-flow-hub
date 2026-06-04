@@ -1,9 +1,18 @@
-// @parity-exempt — dashboard sub-component; parity evidence captured at dashboards/executive page level
+// @parity-exempt — dashboard sub-component; parity evidence captured at dashboards/executive page
+level
 <script setup lang="ts">
 import type { ColumnDef } from '@tanstack/vue-table'
 import { computed, h, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { AlertTriangle, CheckCircle2, FileCheck2, Globe, Scale, Vote, XCircle } from 'lucide-vue-next'
+import {
+  AlertTriangle,
+  CheckCircle2,
+  FileCheck2,
+  Globe,
+  Scale,
+  Vote,
+  XCircle,
+} from 'lucide-vue-next'
 import { useDashboardStore } from '../../stores/dashboard.store'
 import { useAuthStore } from '../../stores/auth.store'
 import { RequestStatus, UserRole } from '../../types/enums'
@@ -39,16 +48,18 @@ function isPendingMyVote(req: VotingQueueItem): boolean {
   return req.status === RequestStatus.EXECUTIVE_VOTING_OPEN && !req.my_vote
 }
 
-const pendingMyVoteCount = computed(() =>
-  stats.value?.pending_my_vote ?? votingQueue.value.filter(isPendingMyVote).length,
+const pendingMyVoteCount = computed(
+  () => stats.value?.pending_my_vote ?? votingQueue.value.filter(isPendingMyVote).length,
 )
 
-const oldestPendingVote = computed(() =>
-  votingQueue.value.find(isPendingMyVote) ?? null,
-)
+const oldestPendingVote = computed(() => votingQueue.value.find(isPendingMyVote) ?? null)
 
 function formatAmount(amount: number, currency: string): string {
-  return new Intl.NumberFormat('ar-YE', { style: 'currency', currency, minimumFractionDigits: 0 }).format(amount)
+  return new Intl.NumberFormat('ar-YE', {
+    style: 'currency',
+    currency,
+    minimumFractionDigits: 0,
+  }).format(amount)
 }
 
 function ageHours(value?: string): number {
@@ -60,50 +71,127 @@ function ageHours(value?: string): number {
 
 function rowAction(req: VotingQueueItem): string {
   if (isPendingMyVote(req)) return 'تصويت'
-  if (req.status === RequestStatus.EXECUTIVE_VOTING_OPEN && req.ready_to_close) return 'إغلاق الجلسة'
+  if (req.status === RequestStatus.EXECUTIVE_VOTING_OPEN && req.ready_to_close)
+    return 'إغلاق الجلسة'
   if (req.status === RequestStatus.EXECUTIVE_VOTING_OPEN && req.is_tie) return 'حسم التعادل'
   if (req.status === RequestStatus.EXECUTIVE_VOTING_CLOSED) return 'إصدار نهائي'
   return 'عرض'
 }
 
 const votingQueueColumns: ColumnDef<VotingQueueItem>[] = [
-  { accessorKey: 'reference_number', header: 'المرجع', cell: ({ row }) => h('span', { class: 'font-mono text-primary' }, row.original.reference_number) },
-  { id: 'merchant', header: 'التاجر', cell: ({ row }) => h('span', row.original.merchant?.name ?? row.original.supplier_name ?? '—') },
-  { id: 'amount', header: 'المبلغ', cell: ({ row }) => h('span', { class: 'font-mono' }, formatAmount(row.original.amount, row.original.currency)) },
-  { id: 'votes', header: 'الأصوات', cell: ({ row }) => h('span', `${row.original.votes_cast ?? 0} / ${row.original.total_voters ?? 0}`) },
-  { id: 'status', header: 'الحالة', cell: ({ row }) => h(StatusBadge as any, { status: row.original.status, role: UserRole.COMMITTEE_DIRECTOR }) },
+  {
+    accessorKey: 'reference_number',
+    header: 'المرجع',
+    cell: ({ row }) =>
+      h('span', { class: 'font-mono text-primary' }, row.original.reference_number),
+  },
+  {
+    id: 'merchant',
+    header: 'التاجر',
+    cell: ({ row }) => h('span', row.original.merchant?.name ?? row.original.supplier_name ?? '—'),
+  },
+  {
+    id: 'amount',
+    header: 'المبلغ',
+    cell: ({ row }) =>
+      h('span', { class: 'font-mono' }, formatAmount(row.original.amount, row.original.currency)),
+  },
+  {
+    id: 'votes',
+    header: 'الأصوات',
+    cell: ({ row }) =>
+      h('span', `${row.original.votes_cast ?? 0} / ${row.original.total_voters ?? 0}`),
+  },
+  {
+    id: 'status',
+    header: 'الحالة',
+    cell: ({ row }) =>
+      h(StatusBadge as any, { status: row.original.status, role: UserRole.COMMITTEE_DIRECTOR }),
+  },
   {
     id: 'action',
     header: 'إجراء المدير',
-    cell: ({ row }) => h(Button, { size: 'sm', variant: 'outline', onClick: (e: Event) => { e.stopPropagation(); router.push(`/requests/${row.original.id}`) } }, () => rowAction(row.original)),
+    cell: ({ row }) =>
+      h(
+        Button,
+        {
+          size: 'sm',
+          variant: 'outline',
+          onClick: (e: Event) => {
+            e.stopPropagation()
+            router.push(`/requests/${row.original.id}`)
+          },
+        },
+        () => rowAction(row.original),
+      ),
   },
 ]
 
 const fxQueueColumns: ColumnDef<ImportRequest>[] = [
-  { accessorKey: 'reference_number', header: 'المرجع', cell: ({ row }) => h('span', { class: 'font-mono text-primary' }, row.original.reference_number) },
-  { id: 'merchant', header: 'التاجر', cell: ({ row }) => h('span', row.original.merchant?.name ?? row.original.supplier_name ?? '—') },
-  { id: 'amount', header: 'المبلغ', cell: ({ row }) => h('span', { class: 'font-mono' }, formatAmount(row.original.amount, row.original.currency)) },
+  {
+    accessorKey: 'reference_number',
+    header: 'المرجع',
+    cell: ({ row }) =>
+      h('span', { class: 'font-mono text-primary' }, row.original.reference_number),
+  },
+  {
+    id: 'merchant',
+    header: 'التاجر',
+    cell: ({ row }) => h('span', row.original.merchant?.name ?? row.original.supplier_name ?? '—'),
+  },
+  {
+    id: 'amount',
+    header: 'المبلغ',
+    cell: ({ row }) =>
+      h('span', { class: 'font-mono' }, formatAmount(row.original.amount, row.original.currency)),
+  },
   {
     id: 'age',
     header: 'العمر',
-    cell: ({ row }) => h('span', { class: ageHours(row.original.updated_at) > 24 ? 'text-[var(--severity-amber)]' : 'text-muted-foreground' }, `${ageHours(row.original.updated_at)} ساعة`),
+    cell: ({ row }) =>
+      h(
+        'span',
+        {
+          class:
+            ageHours(row.original.updated_at) > 24
+              ? 'text-[var(--severity-amber)]'
+              : 'text-muted-foreground',
+        },
+        `${ageHours(row.original.updated_at)} ساعة`,
+      ),
   },
   {
     id: 'action',
     header: 'إجراء',
-    cell: ({ row }) => h(Button, { size: 'sm', variant: 'outline', onClick: (e: Event) => { e.stopPropagation(); router.push(`/requests/${row.original.id}`) } }, () => 'إتمام التأكيد'),
+    cell: ({ row }) =>
+      h(
+        Button,
+        {
+          size: 'sm',
+          variant: 'outline',
+          onClick: (e: Event) => {
+            e.stopPropagation()
+            router.push(`/requests/${row.original.id}`)
+          },
+        },
+        () => 'إتمام التأكيد',
+      ),
   },
 ]
 
-onMounted(() => { store.loadStats() })
+onMounted(() => {
+  store.loadStats()
+})
 </script>
 
 <template>
-  <div class="flex flex-col gap-6" >
-
+  <div class="flex flex-col gap-6">
     <!-- CBY-global scope chip -->
     <div class="mb-2">
-      <Badge variant="outline" class="gap-1.5 rounded-full px-3 py-1 text-xs font-medium text-muted-foreground border-border">
+      <Badge
+        variant="outline"
+        class="text-muted-foreground border-border gap-1.5 rounded-full px-3 py-1 text-xs font-medium"
+      >
         <Globe class="size-3" aria-hidden="true" />
         نطاق عبر البنوك
       </Badge>
@@ -111,16 +199,16 @@ onMounted(() => { store.loadStats() })
 
     <div v-if="store.loading" class="space-y-4" aria-busy="true">
       <div class="grid grid-cols-3 gap-4 max-lg:grid-cols-2 max-md:grid-cols-1">
-        <Skeleton v-for="n in (isDirector ? 4 : 3)" :key="n" class="h-24 rounded-xl" />
+        <Skeleton v-for="n in isDirector ? 4 : 3" :key="n" class="h-24 rounded-xl" />
       </div>
-      <div v-if="isDirector" class="rounded-xl border border-border bg-background">
-        <Skeleton class="h-10 rounded-none border-b border-border" />
+      <div v-if="isDirector" class="border-border bg-background rounded-xl border">
+        <Skeleton class="border-border h-10 rounded-none border-b" />
         <div class="space-y-2 p-3">
           <Skeleton v-for="n in 4" :key="`voting-skel-${n}`" class="h-8 rounded" />
         </div>
       </div>
-      <div v-if="isDirector" class="rounded-xl border border-border bg-background">
-        <Skeleton class="h-10 rounded-none border-b border-border" />
+      <div v-if="isDirector" class="border-border bg-background rounded-xl border">
+        <Skeleton class="border-border h-10 rounded-none border-b" />
         <div class="space-y-2 p-3">
           <Skeleton v-for="n in 4" :key="`fx-skel-${n}`" class="h-8 rounded" />
         </div>
@@ -137,8 +225,12 @@ onMounted(() => { store.loadStats() })
     <template v-else-if="stats">
       <template v-if="isDirector">
         <div
-          v-if="(stats.sessions_ready_to_close ?? 0) > 0 || (stats.sessions_with_tie ?? 0) > 0 || (stats.fx_confirmation_pending ?? 0) > 0"
-          class="rounded-xl border border-border bg-background p-3"
+          v-if="
+            (stats.sessions_ready_to_close ?? 0) > 0 ||
+            (stats.sessions_with_tie ?? 0) > 0 ||
+            (stats.fx_confirmation_pending ?? 0) > 0
+          "
+          class="border-border bg-background rounded-xl border p-3"
         >
           <div class="flex flex-col gap-2">
             <Button
@@ -148,7 +240,9 @@ onMounted(() => { store.loadStats() })
               @click="router.push('/requests?tab=ready_to_close')"
             >
               <AlertTriangle class="h-4 w-4" />
-              <span class="text-sm">{{ stats.sessions_ready_to_close }} جلسات تصويت اكتملت وتنتظر الإغلاق</span>
+              <span class="text-sm"
+                >{{ stats.sessions_ready_to_close }} جلسات تصويت اكتملت وتنتظر الإغلاق</span
+              >
             </Button>
             <Button
               v-if="(stats.sessions_with_tie ?? 0) > 0"
@@ -157,7 +251,9 @@ onMounted(() => { store.loadStats() })
               @click="router.push('/requests?tab=tie_break')"
             >
               <Scale class="h-4 w-4" />
-              <span class="text-sm">{{ stats.sessions_with_tie }} جلسات تصويت بتعادل، تتطلب حسماً</span>
+              <span class="text-sm"
+                >{{ stats.sessions_with_tie }} جلسات تصويت بتعادل، تتطلب حسماً</span
+              >
             </Button>
             <Button
               v-if="(stats.fx_confirmation_pending ?? 0) > 0"
@@ -166,7 +262,10 @@ onMounted(() => { store.loadStats() })
               @click="router.push('/requests?tab=fx_pending')"
             >
               <FileCheck2 class="h-4 w-4" />
-              <span class="text-sm">{{ stats.fx_confirmation_pending }} طلبات جاهزة لإتمام تأكيد المصارفة الخارجية</span>
+              <span class="text-sm"
+                >{{ stats.fx_confirmation_pending }} طلبات جاهزة لإتمام تأكيد المصارفة
+                الخارجية</span
+              >
             </Button>
           </div>
         </div>
@@ -205,8 +304,8 @@ onMounted(() => { store.loadStats() })
           />
         </MetricGrid>
 
-        <section class="rounded-xl border border-border bg-background">
-          <div class="border-b border-border px-4 py-3">
+        <section class="border-border bg-background rounded-xl border">
+          <div class="border-border border-b px-4 py-3">
             <h2 class="text-sm font-semibold">جلسات التصويت — نظرة عامة</h2>
           </div>
           <div class="p-4">
@@ -218,11 +317,11 @@ onMounted(() => { store.loadStats() })
           </div>
         </section>
 
-        <section class="rounded-xl border border-border bg-background">
-          <div class="border-b border-border px-4 py-3">
+        <section class="border-border bg-background rounded-xl border">
+          <div class="border-border border-b px-4 py-3">
             <h2 class="text-sm font-semibold">قائمة انتظار تأكيد المصارفة الخارجية</h2>
           </div>
-          <div v-if="fxQueue.length === 0" class="p-8 text-center text-sm text-muted-foreground">
+          <div v-if="fxQueue.length === 0" class="text-muted-foreground p-8 text-center text-sm">
             لا توجد طلبات في انتظار تأكيد المصارفة ✓
           </div>
           <div v-else class="p-4">
@@ -244,7 +343,9 @@ onMounted(() => { store.loadStats() })
             <Vote class="h-5 w-5 text-[var(--voting)]" />
             <div class="min-w-0 flex-1">
               <p class="text-sm font-semibold">{{ pendingMyVoteCount }} جلسات تصويت تنتظر صوتك</p>
-              <p v-if="oldestPendingVote" class="truncate text-xs text-muted-foreground">{{ oldestPendingVote.reference_number }}</p>
+              <p v-if="oldestPendingVote" class="text-muted-foreground truncate text-xs">
+                {{ oldestPendingVote.reference_number }}
+              </p>
             </div>
             <Button @click="oldestPendingVote && router.push(`/requests/${oldestPendingVote.id}`)">
               ابدأ التصويت

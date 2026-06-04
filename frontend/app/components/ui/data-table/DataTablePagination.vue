@@ -18,13 +18,13 @@ defineProps<{
 
 <template>
   <div class="flex items-center justify-between px-2">
-    <div class="flex-1 text-sm text-muted-foreground">
+    <div class="text-muted-foreground flex-1 text-sm">
       {{
         table.getState().pagination.pageSize === 0
           ? 'لا توجد صفوف'
-          : `عرض ${(table.getState().pagination.pageIndex * table.getState().pagination.pageSize + 1).toLocaleString('ar-EG')}`
-            + ` إلى ${Math.min((table.getState().pagination.pageIndex + 1) * table.getState().pagination.pageSize, totalRows ?? table.getFilteredRowModel().rows.length).toLocaleString('ar-EG')}`
-            + ` من ${(totalRows !== undefined ? totalRows : table.getFilteredRowModel().rows.length).toLocaleString('ar-EG')} صف`
+          : `عرض ${(table.getState().pagination.pageIndex * table.getState().pagination.pageSize + 1).toLocaleString('ar-EG')}` +
+            ` إلى ${Math.min((table.getState().pagination.pageIndex + 1) * table.getState().pagination.pageSize, totalRows ?? table.getFilteredRowModel().rows.length).toLocaleString('ar-EG')}` +
+            ` من ${(totalRows !== undefined ? totalRows : table.getFilteredRowModel().rows.length).toLocaleString('ar-EG')} صف`
       }}
     </div>
 
@@ -33,7 +33,7 @@ defineProps<{
         <p class="text-sm font-medium">الصفوف في الصفحة</p>
         <Select
           :model-value="`${table.getState().pagination.pageSize}`"
-          @update:model-value="value => table.setPageSize(Number(value))"
+          @update:model-value="(value) => table.setPageSize(Number(value))"
         >
           <SelectTrigger class="h-8 w-[70px]">
             <SelectValue :placeholder="`${table.getState().pagination.pageSize}`" />

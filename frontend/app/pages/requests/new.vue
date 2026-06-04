@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onBeforeRouteLeave } from 'vue-router'
+import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import RequestWizard from '@/components/wizard/RequestWizard.vue'
 import { Button } from '@/components/ui/button'
@@ -18,7 +18,6 @@ import { ROUTE_ROLE_MAP } from '@/constants/workflow'
 import { UserRole } from '@/types/enums'
 import { useAuthStore } from '@/stores/auth.store'
 import { useRequests } from '@/composables/useRequests'
-import { useRoute, useRouter } from 'vue-router'
 import type { NavigationGuardNext } from 'vue-router'
 
 definePageMeta({
@@ -42,8 +41,8 @@ const wizardSubmitted = ref(false)
 const showLeaveDialog = ref(false)
 const pendingLeaveNext = ref<NavigationGuardNext | null>(null)
 
-const canCreate = computed(() =>
-  user.value?.role === UserRole.DATA_ENTRY || user.value?.role === UserRole.BANK_ADMIN,
+const canCreate = computed(
+  () => user.value?.role === UserRole.DATA_ENTRY || user.value?.role === UserRole.BANK_ADMIN,
 )
 
 onMounted(async () => {
@@ -57,11 +56,9 @@ onMounted(async () => {
   try {
     const newId = await cloneRequest(sourceId)
     await navigateTo(`/requests/${newId}/edit`, { replace: true })
-  }
-  catch (err: any) {
+  } catch (err: any) {
     if (err?.statusCode === 403) cloneForbidden.value = true
-  }
-  finally {
+  } finally {
     cloningInProgress.value = false
   }
 })
@@ -120,7 +117,8 @@ function confirmLeave() {
       <AlertDialogHeader>
         <AlertDialogTitle>مغادرة صفحة الطلب الجديد؟</AlertDialogTitle>
         <AlertDialogDescription>
-          لديك بيانات غير محفوظة في هذا الطلب. إذا غادرت الآن ستفقد ما أدخلته — يمكنك حفظه كمسودة أولاً.
+          لديك بيانات غير محفوظة في هذا الطلب. إذا غادرت الآن ستفقد ما أدخلته — يمكنك حفظه كمسودة
+          أولاً.
         </AlertDialogDescription>
       </AlertDialogHeader>
       <AlertDialogFooter>

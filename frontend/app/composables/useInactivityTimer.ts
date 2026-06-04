@@ -13,7 +13,14 @@ function installXhrPatch() {
 
   const proto = XMLHttpRequest.prototype
   const originalOpen = proto.open
-  proto.open = function (this: XMLHttpRequest, method: string, url: string | URL, async: boolean = true, username?: string | null, password?: string | null) {
+  proto.open = function (
+    this: XMLHttpRequest,
+    method: string,
+    url: string | URL,
+    async: boolean = true,
+    username?: string | null,
+    password?: string | null,
+  ) {
     this.addEventListener('loadstart', () => window.dispatchEvent(new CustomEvent('xhr:loadstart')))
     this.addEventListener('progress', () => window.dispatchEvent(new CustomEvent('xhr:progress')))
     this.addEventListener('loadend', () => window.dispatchEvent(new CustomEvent('xhr:finished')))
@@ -52,7 +59,7 @@ export function useInactivityTimer() {
   let ticker: ReturnType<typeof setInterval> | null = null
 
   function start() {
-    if (!process.client) return
+    if (!import.meta.client) return
 
     installXhrPatch()
 
@@ -74,7 +81,7 @@ export function useInactivityTimer() {
   }
 
   function stop() {
-    if (!process.client) return
+    if (!import.meta.client) return
 
     for (const event of ACTIVITY_EVENTS) {
       window.removeEventListener(event, debouncedBump)

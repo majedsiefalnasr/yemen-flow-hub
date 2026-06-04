@@ -56,17 +56,27 @@ function mountAuditPage() {
 
 function parseDevice(ua: string | null | undefined): string {
   if (!ua) return '—'
-  const browser = (ua.includes('Edg/') || ua.includes('Edge')) ? 'Edge'
-    : ua.includes('Chrome') ? 'Chrome'
-    : ua.includes('Firefox') ? 'Firefox'
-    : ua.includes('Safari') ? 'Safari'
-    : 'Unknown'
-  const os = ua.includes('Android') ? 'Android'
-    : (ua.includes('iOS') || ua.includes('iPhone')) ? 'iOS'
-    : ua.includes('Windows') ? 'Win'
-    : ua.includes('Mac') ? 'Mac'
-    : ua.includes('Linux') ? 'Linux'
-    : 'Unknown'
+  const browser =
+    ua.includes('Edg/') || ua.includes('Edge')
+      ? 'Edge'
+      : ua.includes('Chrome')
+        ? 'Chrome'
+        : ua.includes('Firefox')
+          ? 'Firefox'
+          : ua.includes('Safari')
+            ? 'Safari'
+            : 'Unknown'
+  const os = ua.includes('Android')
+    ? 'Android'
+    : ua.includes('iOS') || ua.includes('iPhone')
+      ? 'iOS'
+      : ua.includes('Windows')
+        ? 'Win'
+        : ua.includes('Mac')
+          ? 'Mac'
+          : ua.includes('Linux')
+            ? 'Linux'
+            : 'Unknown'
   return `${browser} / ${os}`
 }
 
@@ -116,7 +126,7 @@ describe('audit page — KPI rendering', () => {
       { level: 'متوسطة' as RiskLevel },
       { level: 'منخفضة' as RiskLevel },
     ]
-    const fraudCount = indicators.filter(item => item.level === 'عالية').length
+    const fraudCount = indicators.filter((item) => item.level === 'عالية').length
     expect(fraudCount).toBe(2)
   })
 })
@@ -157,8 +167,22 @@ describe('audit page — duplicate banner', () => {
 
   it('banner shows correct count when duplicates exist', () => {
     const duplicates = [
-      { id: 1, ref: 'IMP-2026-0001', importer: 'شركة الأمل', invoice_number: 'INV-001', sibling_id: 2, sibling_ref: 'IMP-2026-0002' },
-      { id: 2, ref: 'IMP-2026-0002', importer: 'شركة الأمل', invoice_number: 'INV-001', sibling_id: 1, sibling_ref: 'IMP-2026-0001' },
+      {
+        id: 1,
+        ref: 'IMP-2026-0001',
+        importer: 'شركة الأمل',
+        invoice_number: 'INV-001',
+        sibling_id: 2,
+        sibling_ref: 'IMP-2026-0002',
+      },
+      {
+        id: 2,
+        ref: 'IMP-2026-0002',
+        importer: 'شركة الأمل',
+        invoice_number: 'INV-001',
+        sibling_id: 1,
+        sibling_ref: 'IMP-2026-0001',
+      },
     ]
     const bannerText = `تم اكتشاف ${duplicates.length} حالات لفواتير مكررة بحاجة لمراجعة عاجلة`
     expect(bannerText).toContain('2')
@@ -170,19 +194,33 @@ describe('audit page — duplicate banner', () => {
 
 describe('parseDevice helper', () => {
   it('parses Chrome on Mac', () => {
-    expect(parseDevice('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0')).toBe('Chrome / Mac')
+    expect(
+      parseDevice(
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0',
+      ),
+    ).toBe('Chrome / Mac')
   })
 
   it('parses Firefox on Linux', () => {
-    expect(parseDevice('Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/115.0')).toBe('Firefox / Linux')
+    expect(
+      parseDevice('Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/115.0'),
+    ).toBe('Firefox / Linux')
   })
 
   it('parses Edge before Chrome', () => {
-    expect(parseDevice('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36 Edg/124.0')).toBe('Edge / Win')
+    expect(
+      parseDevice(
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36 Edg/124.0',
+      ),
+    ).toBe('Edge / Win')
   })
 
   it('parses Android before Linux', () => {
-    expect(parseDevice('Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36')).toBe('Chrome / Android')
+    expect(
+      parseDevice(
+        'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36',
+      ),
+    ).toBe('Chrome / Android')
   })
 
   it('returns "—" for null user agent', () => {
@@ -249,7 +287,7 @@ function hasDiff(meta: AuditLogMeta): boolean {
 function diffRows(meta: AuditLogMeta): Array<{ key: string; before: unknown; after: unknown }> {
   if (!meta) return []
   const before = (meta.before ?? {}) as Record<string, unknown>
-  const after  = (meta.after  ?? {}) as Record<string, unknown>
+  const after = (meta.after ?? {}) as Record<string, unknown>
   const keys = Array.from(new Set([...Object.keys(before), ...Object.keys(after)]))
 
   return keys
@@ -264,7 +302,7 @@ function diffRows(meta: AuditLogMeta): Array<{ key: string; before: unknown; aft
 
       return !beforeHasValue || !afterHasValue || beforeValue !== afterValue
     })
-    .map(key => ({
+    .map((key) => ({
       key,
       before: formatDiffValue(before, key),
       after: formatDiffValue(after, key),
@@ -343,8 +381,11 @@ describe('audit page — row expansion: toggleLog', () => {
   it('adds log id to expandedLogs on first click', () => {
     const expanded = ref(new Set<number>())
     function toggleLog(id: number) {
-      if (expanded.value.has(id)) { expanded.value.delete(id) }
-      else { expanded.value.add(id) }
+      if (expanded.value.has(id)) {
+        expanded.value.delete(id)
+      } else {
+        expanded.value.add(id)
+      }
       expanded.value = new Set(expanded.value)
     }
     toggleLog(42)
@@ -354,8 +395,11 @@ describe('audit page — row expansion: toggleLog', () => {
   it('removes log id from expandedLogs on second click', () => {
     const expanded = ref(new Set<number>([42]))
     function toggleLog(id: number) {
-      if (expanded.value.has(id)) { expanded.value.delete(id) }
-      else { expanded.value.add(id) }
+      if (expanded.value.has(id)) {
+        expanded.value.delete(id)
+      } else {
+        expanded.value.add(id)
+      }
       expanded.value = new Set(expanded.value)
     }
     toggleLog(42)
@@ -365,8 +409,11 @@ describe('audit page — row expansion: toggleLog', () => {
   it('supports multiple expanded rows independently', () => {
     const expanded = ref(new Set<number>())
     function toggleLog(id: number) {
-      if (expanded.value.has(id)) { expanded.value.delete(id) }
-      else { expanded.value.add(id) }
+      if (expanded.value.has(id)) {
+        expanded.value.delete(id)
+      } else {
+        expanded.value.add(id)
+      }
       expanded.value = new Set(expanded.value)
     }
     toggleLog(1)
@@ -412,7 +459,7 @@ describe('audit page — row expansion: hasDiff', () => {
   })
 
   it('returns false when metadata has neither before nor after', () => {
-    expect(hasDiff({ } as AuditLogMeta)).toBe(false)
+    expect(hasDiff({} as AuditLogMeta)).toBe(false)
   })
 
   it('returns false when before and after are both empty objects', () => {
@@ -424,10 +471,10 @@ describe('audit page — row expansion: diffRows', () => {
   it('returns one row per changed key', () => {
     const rows = diffRows({
       before: { role: 'DATA_ENTRY', name: 'Ali' },
-      after:  { role: 'BANK_REVIEWER', name: 'Ali' },
+      after: { role: 'BANK_REVIEWER', name: 'Ali' },
     })
     expect(rows).toHaveLength(1)
-    const roleRow = rows.find(r => r.key === 'role')
+    const roleRow = rows.find((r) => r.key === 'role')
     expect(roleRow?.before).toBe('DATA_ENTRY')
     expect(roleRow?.after).toBe('BANK_REVIEWER')
   })
@@ -435,7 +482,7 @@ describe('audit page — row expansion: diffRows', () => {
   it('uses "—" as placeholder for missing key in before or after', () => {
     const rows = diffRows({
       before: {},
-      after:  { role: 'BANK_REVIEWER' },
+      after: { role: 'BANK_REVIEWER' },
     })
     expect(rows).toHaveLength(1)
     expect(rows[0]!.before).toBe('—')

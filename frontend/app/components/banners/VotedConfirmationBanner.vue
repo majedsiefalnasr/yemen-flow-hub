@@ -15,12 +15,18 @@ function formatTime(iso: string | null | undefined): string {
 </script>
 
 <template>
-  <Alert  class="flex items-center gap-3 border-border bg-muted/30">
-    <CheckCircle2 class="h-5 w-5 flex-shrink-0 text-muted-foreground" aria-hidden="true" />
-    <AlertDescription class="flex-1 text-sm font-medium text-foreground">
+  <Alert class="border-border bg-muted/30 flex items-center gap-3">
+    <CheckCircle2 class="text-muted-foreground h-5 w-5 flex-shrink-0" aria-hidden="true" />
+    <AlertDescription class="text-foreground flex-1 text-sm font-medium">
       <span v-if="votedAt">صوّتت {{ formatTime(votedAt) }} — </span>
       <span v-else>لقد صوّتت — </span>
-      <span :class="vote === 'approve' ? 'text-[var(--color-text-success)] font-semibold' : 'text-rose-600 font-semibold'">
+      <span
+        :class="
+          vote === 'approve'
+            ? 'font-semibold text-[var(--color-text-success)]'
+            : 'font-semibold text-rose-600'
+        "
+      >
         {{ vote === 'approve' ? 'اعتمدت' : 'رفضت' }}
       </span>
     </AlertDescription>

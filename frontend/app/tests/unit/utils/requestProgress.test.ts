@@ -4,8 +4,12 @@ import { getRequestProgress } from '../../../utils/requestProgress'
 
 describe('getRequestProgress', () => {
   it('covers the early workflow stages in ascending order', () => {
-    expect(getRequestProgress(RequestStatus.DRAFT)).toBeLessThan(getRequestProgress(RequestStatus.SUBMITTED))
-    expect(getRequestProgress(RequestStatus.SUBMITTED)).toBeLessThan(getRequestProgress(RequestStatus.BANK_APPROVED))
+    expect(getRequestProgress(RequestStatus.DRAFT)).toBeLessThan(
+      getRequestProgress(RequestStatus.SUBMITTED),
+    )
+    expect(getRequestProgress(RequestStatus.SUBMITTED)).toBeLessThan(
+      getRequestProgress(RequestStatus.BANK_APPROVED),
+    )
   })
 
   it('marks terminal rejected states as complete progress', () => {

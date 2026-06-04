@@ -17,11 +17,31 @@ import {
 } from '../ui/field'
 
 const COUNTRIES = [
-  'الولايات المتحدة', 'المملكة المتحدة', 'الصين', 'الهند', 'الإمارات العربية المتحدة',
-  'المملكة العربية السعودية', 'تركيا', 'ألمانيا', 'فرنسا', 'إيطاليا',
-  'اليابان', 'كوريا الجنوبية', 'البرازيل', 'كندا', 'أستراليا',
-  'باكستان', 'مصر', 'الأردن', 'لبنان', 'الكويت',
-  'البحرين', 'عُمان', 'قطر', 'إيران', 'روسيا',
+  'الولايات المتحدة',
+  'المملكة المتحدة',
+  'الصين',
+  'الهند',
+  'الإمارات العربية المتحدة',
+  'المملكة العربية السعودية',
+  'تركيا',
+  'ألمانيا',
+  'فرنسا',
+  'إيطاليا',
+  'اليابان',
+  'كوريا الجنوبية',
+  'البرازيل',
+  'كندا',
+  'أستراليا',
+  'باكستان',
+  'مصر',
+  'الأردن',
+  'لبنان',
+  'الكويت',
+  'البحرين',
+  'عُمان',
+  'قطر',
+  'إيران',
+  'روسيا',
 ]
 
 const props = defineProps<{
@@ -59,7 +79,9 @@ const { onFieldKeydown, enterKeyHint } = useFormFieldNav()
 
         <FieldGroup>
           <Field>
-            <FieldLabel for="supplier-name">اسم المورد <span class="text-destructive">*</span></FieldLabel>
+            <FieldLabel for="supplier-name"
+              >اسم المورد <span class="text-destructive">*</span></FieldLabel
+            >
             <Input
               id="supplier-name"
               type="text"
@@ -76,13 +98,19 @@ const { onFieldKeydown, enterKeyHint } = useFormFieldNav()
           </Field>
 
           <Field>
-            <FieldLabel for="origin-country">بلد المنشأ <span class="text-destructive">*</span></FieldLabel>
+            <FieldLabel for="origin-country"
+              >بلد المنشأ <span class="text-destructive">*</span></FieldLabel
+            >
             <Select
               :model-value="modelValue.origin_country || ''"
               :disabled="loading"
               @update:model-value="(val) => update('origin_country', String(val ?? ''))"
             >
-              <SelectTrigger id="origin-country" :class="{ 'border-destructive': errors.origin_country }" :aria-invalid="!!errors.origin_country">
+              <SelectTrigger
+                id="origin-country"
+                :class="{ 'border-destructive': errors.origin_country }"
+                :aria-invalid="!!errors.origin_country"
+              >
                 <SelectValue placeholder="اختر بلد المنشأ..." />
               </SelectTrigger>
               <SelectContent>
@@ -104,7 +132,9 @@ const { onFieldKeydown, enterKeyHint } = useFormFieldNav()
         <FieldGroup>
           <div class="grid grid-cols-2 gap-4">
             <Field>
-              <FieldLabel for="invoice-number">رقم الفاتورة <span class="text-destructive">*</span></FieldLabel>
+              <FieldLabel for="invoice-number"
+                >رقم الفاتورة <span class="text-destructive">*</span></FieldLabel
+              >
               <Input
                 id="invoice-number"
                 type="text"
@@ -121,13 +151,15 @@ const { onFieldKeydown, enterKeyHint } = useFormFieldNav()
             </Field>
 
             <Field>
-              <FieldLabel for="invoice-date">تاريخ الفاتورة <span class="text-destructive">*</span></FieldLabel>
+              <FieldLabel for="invoice-date"
+                >تاريخ الفاتورة <span class="text-destructive">*</span></FieldLabel
+              >
               <Input
                 id="invoice-date"
                 type="date"
                 :disabled="loading"
                 :aria-invalid="!!errors.invoice_date"
-              :class="{ 'border-destructive': errors.invoice_date }"
+                :class="{ 'border-destructive': errors.invoice_date }"
                 :value="modelValue.invoice_date ?? ''"
                 @input="update('invoice_date', ($event.target as HTMLInputElement).value)"
               />
@@ -146,13 +178,25 @@ const { onFieldKeydown, enterKeyHint } = useFormFieldNav()
 
         <FieldGroup>
           <Field>
-            <FieldLabel for="arrival-port">ميناء الوصول <span class="text-destructive">*</span></FieldLabel>
+            <FieldLabel for="arrival-port"
+              >ميناء الوصول <span class="text-destructive">*</span></FieldLabel
+            >
             <Select
               :model-value="modelValue.arrival_port || ''"
               :disabled="loading"
-              @update:model-value="(val) => { const port = String(val ?? ''); update('arrival_port', port); onPortChange(port) }"
+              @update:model-value="
+                (val) => {
+                  const port = String(val ?? '')
+                  update('arrival_port', port)
+                  onPortChange(port)
+                }
+              "
             >
-              <SelectTrigger id="arrival-port" :class="{ 'border-destructive': errors.arrival_port }" :aria-invalid="!!errors.arrival_port">
+              <SelectTrigger
+                id="arrival-port"
+                :class="{ 'border-destructive': errors.arrival_port }"
+                :aria-invalid="!!errors.arrival_port"
+              >
                 <SelectValue placeholder="اختر ميناء الوصول..." />
               </SelectTrigger>
               <SelectContent>
@@ -199,7 +243,7 @@ const { onFieldKeydown, enterKeyHint } = useFormFieldNav()
               الجمارك المختصة
               <span
                 v-if="autoFillChip"
-                class="inline-block text-xs font-normal bg-primary/10 text-primary border border-border rounded-full px-2 py-0.5 ms-2"
+                class="bg-primary/10 text-primary border-border ms-2 inline-block rounded-full border px-2 py-0.5 text-xs font-normal"
                 aria-live="polite"
               >
                 تم التعبئة التلقائية

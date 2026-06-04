@@ -8,7 +8,15 @@ const targetPackageJsonPath = join(rootDir, 'node_modules', 'vue-router', 'packa
 const targetVolarDir = join(rootDir, 'node_modules', 'vue-router', 'dist', 'volar')
 
 // npm layout: nuxt bundles its own vue-router
-const npmSourceVolarDir = join(rootDir, 'node_modules', 'nuxt', 'node_modules', 'vue-router', 'dist', 'volar')
+const npmSourceVolarDir = join(
+  rootDir,
+  'node_modules',
+  'nuxt',
+  'node_modules',
+  'vue-router',
+  'dist',
+  'volar',
+)
 
 // pnpm layout: vue-router@5.x lives in the virtual store
 function findSourceVolarDir() {

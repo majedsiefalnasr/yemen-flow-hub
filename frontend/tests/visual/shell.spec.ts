@@ -96,7 +96,9 @@ test.describe('shell structure', () => {
     await page.goto('/dashboard')
     await page.waitForLoadState('networkidle')
     // Toggle sidebar collapse (keyboard or button)
-    const collapseBtn = page.locator('[aria-label*="تصغير"], [aria-label*="collapse"], [data-testid="sidebar-toggle"]').first()
+    const collapseBtn = page
+      .locator('[aria-label*="تصغير"], [aria-label*="collapse"], [data-testid="sidebar-toggle"]')
+      .first()
     if (await collapseBtn.isVisible()) {
       await collapseBtn.click()
       await page.waitForTimeout(400) // animation
@@ -118,7 +120,12 @@ test.describe('command palette', () => {
     await page.waitForLoadState('networkidle')
     await page.keyboard.press('Control+k')
     // Wait for palette dialog/popover to appear
-    await page.waitForSelector('[role="dialog"][aria-label*="بحث"], [data-testid="command-palette"], [cmdk-root]', { timeout: 5_000 }).catch(() => {})
+    await page
+      .waitForSelector(
+        '[role="dialog"][aria-label*="بحث"], [data-testid="command-palette"], [cmdk-root]',
+        { timeout: 5_000 },
+      )
+      .catch(() => {})
     await page.waitForTimeout(300)
     await expect(page).toHaveScreenshot('command-palette-open.png')
   })
@@ -150,8 +157,15 @@ test.describe('RTL component alignment', () => {
     await page.goto('/dashboard')
     await page.waitForLoadState('networkidle')
     // Assert dir="rtl" on html or body
-    const dir = await page.locator('html').getAttribute('dir').catch(() => null)
-      ?? await page.locator('body').getAttribute('dir').catch(() => null)
+    const dir =
+      (await page
+        .locator('html')
+        .getAttribute('dir')
+        .catch(() => null)) ??
+      (await page
+        .locator('body')
+        .getAttribute('dir')
+        .catch(() => null))
     expect(dir).toBe('rtl')
   })
 

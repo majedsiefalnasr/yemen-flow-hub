@@ -3,16 +3,19 @@ import { AlertCircle } from 'lucide-vue-next'
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 
-const props = withDefaults(defineProps<{
-  message: string
-  title?: string
-  retryLabel?: string
-  showRetry?: boolean
-}>(), {
-  title: 'تعذّر التحميل',
-  retryLabel: 'إعادة المحاولة',
-  showRetry: true,
-})
+const props = withDefaults(
+  defineProps<{
+    message: string
+    title?: string
+    retryLabel?: string
+    showRetry?: boolean
+  }>(),
+  {
+    title: 'تعذّر التحميل',
+    retryLabel: 'إعادة المحاولة',
+    showRetry: true,
+  },
+)
 
 const emit = defineEmits<{
   retry: []

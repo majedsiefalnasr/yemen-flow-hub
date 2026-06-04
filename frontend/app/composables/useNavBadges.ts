@@ -33,26 +33,31 @@ function requestsBadgeForRole(role: UserRole, stats: DashboardStats | null): num
         'active_by_me' in stats ? stats.active_by_me : undefined,
       )
     case UserRole.SWIFT_OFFICER:
-      return asPositiveCount('pending_swift_upload' in stats ? stats.pending_swift_upload : undefined)
+      return asPositiveCount(
+        'pending_swift_upload' in stats ? stats.pending_swift_upload : undefined,
+      )
     case UserRole.EXECUTIVE_MEMBER:
       return asPositiveCount(
         'pending_my_vote' in stats && stats.pending_my_vote != null
           ? stats.pending_my_vote
-          : ('active_voting_sessions' in stats ? stats.active_voting_sessions : undefined),
+          : 'active_voting_sessions' in stats
+            ? stats.active_voting_sessions
+            : undefined,
       )
     case UserRole.COMMITTEE_DIRECTOR:
       return sumPositiveCounts(
         'sessions_ready_to_close' in stats ? stats.sessions_ready_to_close : undefined,
         'sessions_with_tie' in stats ? stats.sessions_with_tie : undefined,
-        typeof ('fx_confirmation_pending' in stats ? stats.fx_confirmation_pending : undefined) === 'number'
-          ? ('fx_confirmation_pending' in stats ? stats.fx_confirmation_pending : undefined)
+        typeof ('fx_confirmation_pending' in stats ? stats.fx_confirmation_pending : undefined) ===
+          'number'
+          ? 'fx_confirmation_pending' in stats
+            ? stats.fx_confirmation_pending
+            : undefined
           : undefined,
       )
     case UserRole.CBY_ADMIN:
       return asPositiveCount(
-        'active_workflow_requests' in stats
-          ? stats.active_workflow_requests?.value
-          : undefined,
+        'active_workflow_requests' in stats ? stats.active_workflow_requests?.value : undefined,
       )
     default:
       return undefined

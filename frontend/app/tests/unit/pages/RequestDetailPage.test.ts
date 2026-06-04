@@ -44,7 +44,17 @@ describe('RequestsStore — detail page integration (loadRequest + loadDocuments
   })
 
   it('loadRequest populates currentRequest with documents field', async () => {
-    const req = makeRequest({ documents: [makeRequestDocument({ id: 1, type: 'invoice', original_filename: 'inv.pdf', size_bytes: 1024, checksum: 'abc' })] })
+    const req = makeRequest({
+      documents: [
+        makeRequestDocument({
+          id: 1,
+          type: 'invoice',
+          original_filename: 'inv.pdf',
+          size_bytes: 1024,
+          checksum: 'abc',
+        }),
+      ],
+    })
     mockFetchRequest.mockResolvedValue(req)
 
     const store = useRequestsStore()
@@ -55,9 +65,7 @@ describe('RequestsStore — detail page integration (loadRequest + loadDocuments
   })
 
   it('loadDocuments populates documents from fetchRequestDocuments', async () => {
-    mockFetchRequestDocuments.mockResolvedValue([
-      makeRequestDocument(),
-    ])
+    mockFetchRequestDocuments.mockResolvedValue([makeRequestDocument()])
 
     const store = useRequestsStore()
     await store.loadDocuments(42)
@@ -74,7 +82,8 @@ describe('RequestsStore — detail page integration (loadRequest + loadDocuments
     await store.loadRequest(42)
 
     const status = store.currentRequest?.status
-    const editable = status === RequestStatus.DRAFT || status === RequestStatus.DRAFT_REJECTED_INTERNAL
+    const editable =
+      status === RequestStatus.DRAFT || status === RequestStatus.DRAFT_REJECTED_INTERNAL
     expect(editable).toBe(true)
   })
 
@@ -86,7 +95,8 @@ describe('RequestsStore — detail page integration (loadRequest + loadDocuments
     await store.loadRequest(42)
 
     const status = store.currentRequest?.status
-    const editable = status === RequestStatus.DRAFT || status === RequestStatus.DRAFT_REJECTED_INTERNAL
+    const editable =
+      status === RequestStatus.DRAFT || status === RequestStatus.DRAFT_REJECTED_INTERNAL
     expect(editable).toBe(false)
   })
 
@@ -98,7 +108,8 @@ describe('RequestsStore — detail page integration (loadRequest + loadDocuments
     await store.loadRequest(42)
 
     const status = store.currentRequest?.status
-    const editable = status === RequestStatus.DRAFT || status === RequestStatus.DRAFT_REJECTED_INTERNAL
+    const editable =
+      status === RequestStatus.DRAFT || status === RequestStatus.DRAFT_REJECTED_INTERNAL
     expect(editable).toBe(false)
   })
 
@@ -148,7 +159,20 @@ describe('RequestsStore — detail page integration (loadRequest + loadDocuments
 
   it('loadRequest clears documents and resets documentsLoaded', async () => {
     mockFetchRequest.mockResolvedValue(makeRequest())
-    mockFetchRequestDocuments.mockResolvedValue([{ id: 10, type: 'commercial_invoice', original_filename: 'invoice.pdf', mime_type: 'application/pdf', size_bytes: 204800, checksum: 'abc123', uploaded_by: 1, uploaded_by_name: 'Test User', uploaded_at: '2026-05-15T00:00:00.000000Z', download_url: 'http://localhost/api/documents/10/download' }])
+    mockFetchRequestDocuments.mockResolvedValue([
+      {
+        id: 10,
+        type: 'commercial_invoice',
+        original_filename: 'invoice.pdf',
+        mime_type: 'application/pdf',
+        size_bytes: 204800,
+        checksum: 'abc123',
+        uploaded_by: 1,
+        uploaded_by_name: 'Test User',
+        uploaded_at: '2026-05-15T00:00:00.000000Z',
+        download_url: 'http://localhost/api/documents/10/download',
+      },
+    ])
 
     const store = useRequestsStore()
     await store.loadDocuments(42)

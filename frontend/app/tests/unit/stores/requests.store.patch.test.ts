@@ -79,7 +79,7 @@ describe('Loading isolation — loadingList does not affect loadingRequest', () 
 
   it('loadingList is true during loadRequests, loadingRequest stays false', async () => {
     let resolveList!: (v: unknown) => void
-    mockFetchRequests.mockReturnValueOnce(new Promise(r => (resolveList = r)))
+    mockFetchRequests.mockReturnValueOnce(new Promise((r) => (resolveList = r)))
     mockFetchRequest.mockResolvedValueOnce(REQUEST_FIXTURE)
 
     const store = useRequestsStore()
@@ -95,7 +95,7 @@ describe('Loading isolation — loadingList does not affect loadingRequest', () 
 
   it('loadingRequest is true during loadRequest, loadingList stays false', async () => {
     let resolveReq!: (v: unknown) => void
-    mockFetchRequest.mockReturnValueOnce(new Promise(r => (resolveReq = r)))
+    mockFetchRequest.mockReturnValueOnce(new Promise((r) => (resolveReq = r)))
 
     const store = useRequestsStore()
     const reqPromise = store.loadRequest(10)
@@ -110,7 +110,7 @@ describe('Loading isolation — loadingList does not affect loadingRequest', () 
 
   it('saving stays false when loadingRequest is in flight', async () => {
     let resolveReq!: (v: unknown) => void
-    mockFetchRequest.mockReturnValueOnce(new Promise(r => (resolveReq = r)))
+    mockFetchRequest.mockReturnValueOnce(new Promise((r) => (resolveReq = r)))
 
     const store = useRequestsStore()
     const reqPromise = store.loadRequest(10)
@@ -130,7 +130,7 @@ describe('Double-submit guard — createRequest', () => {
 
   it('rejects concurrent createRequest when saving is in flight', async () => {
     let resolveFirst!: (v: unknown) => void
-    mockCreateRequest.mockReturnValueOnce(new Promise(r => (resolveFirst = r)))
+    mockCreateRequest.mockReturnValueOnce(new Promise((r) => (resolveFirst = r)))
 
     const store = useRequestsStore()
     const first = store.createRequest(FORM_DATA)
@@ -173,7 +173,7 @@ describe('Double-submit guard — updateRequest', () => {
 
   it('rejects concurrent updateRequest when saving is in flight', async () => {
     let resolveFirst!: (v: unknown) => void
-    mockUpdateRequest.mockReturnValueOnce(new Promise(r => (resolveFirst = r)))
+    mockUpdateRequest.mockReturnValueOnce(new Promise((r) => (resolveFirst = r)))
 
     const store = useRequestsStore()
     const first = store.updateRequest(10, FORM_DATA)

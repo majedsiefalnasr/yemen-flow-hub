@@ -10,7 +10,7 @@ const BANK_ROLES = new Set<UserRole>([
 
 function resolveRole(input: string | undefined): UserRole {
   const role = (input ?? '').trim().toUpperCase()
-  const match = Object.values(UserRole).find(r => r === role)
+  const match = Object.values(UserRole).find((r) => r === role)
   return match ?? UserRole.CBY_ADMIN
 }
 

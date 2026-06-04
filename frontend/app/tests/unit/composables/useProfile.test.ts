@@ -59,25 +59,42 @@ describe('useProfile — updateProfile()', () => {
   })
 
   it('sends PUT /api/profile with name, email, phone', async () => {
-    mockFetch.mockResolvedValueOnce({ success: true, data: { ...SAMPLE_PROFILE, name: 'علي سالم' } })
+    mockFetch.mockResolvedValueOnce({
+      success: true,
+      data: { ...SAMPLE_PROFILE, name: 'علي سالم' },
+    })
     const { updateProfile } = useProfile()
-    const result = await updateProfile({ name: 'علي سالم', email: 'ali@cby.gov.ye', phone: '+967111000111' })
+    const result = await updateProfile({
+      name: 'علي سالم',
+      email: 'ali@cby.gov.ye',
+      phone: '+967111000111',
+    })
     expect(result).toBe(true)
-    expect(mockFetch).toHaveBeenCalledWith('/api/profile', expect.objectContaining({
-      method: 'PUT',
-      body: { name: 'علي سالم', email: 'ali@cby.gov.ye', phone: '+967111000111' },
-    }))
+    expect(mockFetch).toHaveBeenCalledWith(
+      '/api/profile',
+      expect.objectContaining({
+        method: 'PUT',
+        body: { name: 'علي سالم', email: 'ali@cby.gov.ye', phone: '+967111000111' },
+      }),
+    )
   })
 
   it('normalizes phone before saving', async () => {
     mockFetch.mockResolvedValueOnce({ success: true, data: { ...SAMPLE_PROFILE, phone: null } })
     const { updateProfile } = useProfile()
-    const result = await updateProfile({ name: ' علي سالم ', email: ' ali@cby.gov.ye ', phone: ' +967 77 000 111 ' })
+    const result = await updateProfile({
+      name: ' علي سالم ',
+      email: ' ali@cby.gov.ye ',
+      phone: ' +967 77 000 111 ',
+    })
     expect(result).toBe(true)
-    expect(mockFetch).toHaveBeenCalledWith('/api/profile', expect.objectContaining({
-      method: 'PUT',
-      body: { name: 'علي سالم', email: 'ali@cby.gov.ye', phone: '+96777000111' },
-    }))
+    expect(mockFetch).toHaveBeenCalledWith(
+      '/api/profile',
+      expect.objectContaining({
+        method: 'PUT',
+        body: { name: 'علي سالم', email: 'ali@cby.gov.ye', phone: '+96777000111' },
+      }),
+    )
   })
 
   it('normalizes blank phone to null before saving', async () => {
@@ -85,9 +102,12 @@ describe('useProfile — updateProfile()', () => {
     const { updateProfile } = useProfile()
     const result = await updateProfile({ name: 'علي سالم', email: 'ali@cby.gov.ye', phone: '   ' })
     expect(result).toBe(true)
-    expect(mockFetch).toHaveBeenCalledWith('/api/profile', expect.objectContaining({
-      body: expect.objectContaining({ phone: null }),
-    }))
+    expect(mockFetch).toHaveBeenCalledWith(
+      '/api/profile',
+      expect.objectContaining({
+        body: expect.objectContaining({ phone: null }),
+      }),
+    )
   })
 
   it('refreshes the shared auth user after saving', async () => {
@@ -95,7 +115,11 @@ describe('useProfile — updateProfile()', () => {
     const updated = { ...SAMPLE_PROFILE, name: 'علي سالم', avatar_variant: 'ring' }
     mockFetch.mockResolvedValueOnce({ success: true, data: updated })
     const { updateProfile } = useProfile()
-    const result = await updateProfile({ name: 'علي سالم', email: SAMPLE_PROFILE.email, avatar_variant: 'ring' })
+    const result = await updateProfile({
+      name: 'علي سالم',
+      email: SAMPLE_PROFILE.email,
+      avatar_variant: 'ring',
+    })
     expect(result).toBe(true)
     expect(mockAuth.user).toEqual(updated)
   })
@@ -116,11 +140,17 @@ describe('useProfile — toggleMfa()', () => {
   })
 
   it('sends POST /api/profile/mfa/toggle and updates profile', async () => {
-    mockFetch.mockResolvedValueOnce({ success: true, data: { ...SAMPLE_PROFILE, mfa_enabled: false } })
+    mockFetch.mockResolvedValueOnce({
+      success: true,
+      data: { ...SAMPLE_PROFILE, mfa_enabled: false },
+    })
     const { profile, toggleMfa } = useProfile()
     const result = await toggleMfa()
     expect(result).toBe(true)
-    expect(mockFetch).toHaveBeenCalledWith('/api/profile/mfa/toggle', expect.objectContaining({ method: 'POST' }))
+    expect(mockFetch).toHaveBeenCalledWith(
+      '/api/profile/mfa/toggle',
+      expect.objectContaining({ method: 'POST' }),
+    )
     expect(profile.value?.mfa_enabled).toBe(false)
   })
 

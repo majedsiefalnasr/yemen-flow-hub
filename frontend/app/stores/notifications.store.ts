@@ -3,7 +3,7 @@ import { useNotifications } from '../composables/useNotifications'
 import type { Notification } from '../types/models'
 
 function countUnread(items: Notification[]): number {
-  return items.filter(item => !item.read_at).length
+  return items.filter((item) => !item.read_at).length
 }
 
 export const useNotificationsStore = defineStore('notifications', {
@@ -40,7 +40,7 @@ export const useNotificationsStore = defineStore('notifications', {
       if (!ok) return
       const now = new Date().toISOString()
       this.unreadCount = 0
-      this.items = this.items.map(item => ({ ...item, read_at: item.read_at ?? now }))
+      this.items = this.items.map((item) => ({ ...item, read_at: item.read_at ?? now }))
     },
 
     decrementUnread(): void {
@@ -54,9 +54,9 @@ export const useNotificationsStore = defineStore('notifications', {
     },
 
     removeItems(ids: Set<string>): void {
-      const removed = this.items.filter(n => ids.has(n.id))
-      const removedUnread = removed.filter(n => !n.read_at).length
-      this.items = this.items.filter(n => !ids.has(n.id))
+      const removed = this.items.filter((n) => ids.has(n.id))
+      const removedUnread = removed.filter((n) => !n.read_at).length
+      this.items = this.items.filter((n) => !ids.has(n.id))
       if (this.unreadCount > 0) {
         this.unreadCount = Math.max(0, this.unreadCount - removedUnread)
       }

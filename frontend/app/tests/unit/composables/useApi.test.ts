@@ -47,15 +47,23 @@ describe('useApi', () => {
 
     await post('/api/notifications/abc-123/read')
 
-    expect(mockFetch).toHaveBeenNthCalledWith(1, '/sanctum/csrf-cookie', expect.objectContaining({
-      credentials: 'include',
-    }))
-    expect(mockFetch).toHaveBeenNthCalledWith(2, '/api/notifications/abc-123/read', expect.objectContaining({
-      method: 'POST',
-      headers: expect.objectContaining({
-        'x-xsrf-token': 'fresh-token',
+    expect(mockFetch).toHaveBeenNthCalledWith(
+      1,
+      '/sanctum/csrf-cookie',
+      expect.objectContaining({
+        credentials: 'include',
       }),
-    }))
+    )
+    expect(mockFetch).toHaveBeenNthCalledWith(
+      2,
+      '/api/notifications/abc-123/read',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({
+          'x-xsrf-token': 'fresh-token',
+        }),
+      }),
+    )
   })
 
   it('refreshes the CSRF cookie and retries once after a 419', async () => {
@@ -66,7 +74,10 @@ describe('useApi', () => {
         return null
       }
 
-      if (path === '/api/notifications/abc-123/read' && mockFetch.mock.calls.filter(([callPath]) => callPath === path).length === 1) {
+      if (
+        path === '/api/notifications/abc-123/read' &&
+        mockFetch.mock.calls.filter(([callPath]) => callPath === path).length === 1
+      ) {
         throw { statusCode: 419 }
       }
 
@@ -80,10 +91,14 @@ describe('useApi', () => {
 
     expect(mockFetch).toHaveBeenCalledTimes(3)
     expect(mockFetch).toHaveBeenNthCalledWith(2, '/sanctum/csrf-cookie', expect.any(Object))
-    expect(mockFetch).toHaveBeenNthCalledWith(3, '/api/notifications/abc-123/read', expect.objectContaining({
-      headers: expect.objectContaining({
-        'x-xsrf-token': 'fresh-token',
+    expect(mockFetch).toHaveBeenNthCalledWith(
+      3,
+      '/api/notifications/abc-123/read',
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          'x-xsrf-token': 'fresh-token',
+        }),
       }),
-    }))
+    )
   })
 })

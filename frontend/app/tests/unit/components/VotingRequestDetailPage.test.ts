@@ -114,27 +114,27 @@ describe('Request detail page — showVotesTab', () => {
 describe('Request detail page — tabs array includes votes conditionally', () => {
   it('includes votes tab for voting-stage request', () => {
     const tabs = buildTabs(makeRequest({ status: RequestStatus.EXECUTIVE_VOTING_OPEN }))
-    const keys = tabs.map(t => t.key)
+    const keys = tabs.map((t) => t.key)
     expect(keys).toContain('votes')
   })
 
   it('does not include votes tab for non-voting request', () => {
     const tabs = buildTabs(makeRequest({ status: RequestStatus.BANK_REVIEW }))
-    const keys = tabs.map(t => t.key)
+    const keys = tabs.map((t) => t.key)
     expect(keys).not.toContain('votes')
   })
 
   it('votes tab appears before audit tab', () => {
     const tabs = buildTabs(makeRequest({ status: RequestStatus.EXECUTIVE_VOTING_OPEN }))
-    const votesIdx = tabs.findIndex(t => t.key === 'votes')
-    const auditIdx = tabs.findIndex(t => t.key === 'audit')
+    const votesIdx = tabs.findIndex((t) => t.key === 'votes')
+    const auditIdx = tabs.findIndex((t) => t.key === 'audit')
     expect(votesIdx).toBeGreaterThan(-1)
     expect(votesIdx).toBeLessThan(auditIdx)
   })
 
   it('always has overview, documents, timeline, audit tabs', () => {
     const tabs = buildTabs(makeRequest({ status: RequestStatus.DRAFT }))
-    const keys = tabs.map(t => t.key)
+    const keys = tabs.map((t) => t.key)
     expect(keys).toContain('overview')
     expect(keys).toContain('documents')
     expect(keys).toContain('timeline')
@@ -144,41 +144,77 @@ describe('Request detail page — tabs array includes votes conditionally', () =
 
 describe('Request detail page — isLocked suppression for executive/director in voting stages', () => {
   it('EXECUTIVE_MEMBER does NOT see locked banner on WAITING_FOR_VOTING_OPEN', () => {
-    expect(isLocked(makeRequest({ status: RequestStatus.WAITING_FOR_VOTING_OPEN }), UserRole.EXECUTIVE_MEMBER)).toBe(false)
+    expect(
+      isLocked(
+        makeRequest({ status: RequestStatus.WAITING_FOR_VOTING_OPEN }),
+        UserRole.EXECUTIVE_MEMBER,
+      ),
+    ).toBe(false)
   })
 
   it('EXECUTIVE_MEMBER does NOT see locked banner on EXECUTIVE_VOTING_OPEN', () => {
-    expect(isLocked(makeRequest({ status: RequestStatus.EXECUTIVE_VOTING_OPEN }), UserRole.EXECUTIVE_MEMBER)).toBe(false)
+    expect(
+      isLocked(
+        makeRequest({ status: RequestStatus.EXECUTIVE_VOTING_OPEN }),
+        UserRole.EXECUTIVE_MEMBER,
+      ),
+    ).toBe(false)
   })
 
   it('COMMITTEE_DIRECTOR does NOT see locked banner on EXECUTIVE_VOTING_CLOSED', () => {
-    expect(isLocked(makeRequest({ status: RequestStatus.EXECUTIVE_VOTING_CLOSED }), UserRole.COMMITTEE_DIRECTOR)).toBe(false)
+    expect(
+      isLocked(
+        makeRequest({ status: RequestStatus.EXECUTIVE_VOTING_CLOSED }),
+        UserRole.COMMITTEE_DIRECTOR,
+      ),
+    ).toBe(false)
   })
 
   it('COMMITTEE_DIRECTOR does NOT see locked banner on EXECUTIVE_APPROVED', () => {
-    expect(isLocked(makeRequest({ status: RequestStatus.EXECUTIVE_APPROVED }), UserRole.COMMITTEE_DIRECTOR)).toBe(false)
+    expect(
+      isLocked(
+        makeRequest({ status: RequestStatus.EXECUTIVE_APPROVED }),
+        UserRole.COMMITTEE_DIRECTOR,
+      ),
+    ).toBe(false)
   })
 
   it('COMMITTEE_DIRECTOR does NOT see locked banner on EXECUTIVE_REJECTED', () => {
-    expect(isLocked(makeRequest({ status: RequestStatus.EXECUTIVE_REJECTED }), UserRole.COMMITTEE_DIRECTOR)).toBe(false)
+    expect(
+      isLocked(
+        makeRequest({ status: RequestStatus.EXECUTIVE_REJECTED }),
+        UserRole.COMMITTEE_DIRECTOR,
+      ),
+    ).toBe(false)
   })
 
   it('BANK_REVIEWER still sees locked banner on WAITING_FOR_VOTING_OPEN', () => {
-    expect(isLocked(makeRequest({ status: RequestStatus.WAITING_FOR_VOTING_OPEN }), UserRole.BANK_REVIEWER)).toBe(true)
+    expect(
+      isLocked(
+        makeRequest({ status: RequestStatus.WAITING_FOR_VOTING_OPEN }),
+        UserRole.BANK_REVIEWER,
+      ),
+    ).toBe(true)
   })
 
   it('DATA_ENTRY still sees locked banner on EXECUTIVE_VOTING_OPEN', () => {
-    expect(isLocked(makeRequest({ status: RequestStatus.EXECUTIVE_VOTING_OPEN }), UserRole.DATA_ENTRY)).toBe(true)
+    expect(
+      isLocked(makeRequest({ status: RequestStatus.EXECUTIVE_VOTING_OPEN }), UserRole.DATA_ENTRY),
+    ).toBe(true)
   })
 
   it('DATA_ENTRY sees locked banner on BANK_APPROVED', () => {
-    expect(isLocked(makeRequest({ status: RequestStatus.BANK_APPROVED }), UserRole.DATA_ENTRY)).toBe(true)
+    expect(
+      isLocked(makeRequest({ status: RequestStatus.BANK_APPROVED }), UserRole.DATA_ENTRY),
+    ).toBe(true)
   })
 
   it('EXECUTIVE_MEMBER does not see locked banner on SUPPORT_APPROVED (unrelated status)', () => {
     // SUPPORT_APPROVED is not in VOTING_STAGE_STATUSES, so the exec suppression doesn't kick in
     // EXECUTIVE_MEMBER still sees locked banner because SUPPORT_APPROVED is in LOCKED_STATUSES
-    expect(isLocked(makeRequest({ status: RequestStatus.SUPPORT_APPROVED }), UserRole.EXECUTIVE_MEMBER)).toBe(true)
+    expect(
+      isLocked(makeRequest({ status: RequestStatus.SUPPORT_APPROVED }), UserRole.EXECUTIVE_MEMBER),
+    ).toBe(true)
   })
 
   it('returns false for null request', () => {

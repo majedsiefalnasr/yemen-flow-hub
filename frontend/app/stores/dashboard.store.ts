@@ -44,14 +44,12 @@ export const useDashboardStore = defineStore('dashboard', {
         }
 
         this.stats = stats
-      }
-      catch (err) {
+      } catch (err) {
         if (import.meta.dev) {
           console.error('[dashboard.store] loadStats failed:', err)
         }
         this.error = 'تعذّر تحميل بيانات اللوحة. يرجى المحاولة مرة أخرى.'
-      }
-      finally {
+      } finally {
         this.loading = false
       }
     },

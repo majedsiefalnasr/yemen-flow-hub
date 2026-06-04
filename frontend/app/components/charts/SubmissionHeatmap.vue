@@ -46,28 +46,50 @@ function intensity(day: number, slot: number): number {
 </script>
 
 <template>
-  <div class="flex flex-col gap-3" >
-    <div v-if="!data.length" class="h-40 flex items-center justify-center text-muted-foreground text-sm">لا توجد بيانات</div>
+  <div class="flex flex-col gap-3">
+    <div
+      v-if="!data.length"
+      class="text-muted-foreground flex h-40 items-center justify-center text-sm"
+    >
+      لا توجد بيانات
+    </div>
     <div v-else class="grid gap-1" style="grid-template-columns: 5rem repeat(6, 1fr)">
       <div />
-      <div v-for="slot in SLOTS" :key="`slot-${slot}`" class="text-xs text-muted-foreground text-center px-0 py-0.5">
+      <div
+        v-for="slot in SLOTS"
+        :key="`slot-${slot}`"
+        class="text-muted-foreground px-0 py-0.5 text-center text-xs"
+      >
         {{ SLOT_LABELS[slot] }}
       </div>
       <template v-for="day in DAYS" :key="`day-${day}`">
-        <div class="text-xs text-foreground flex items-center justify-end ps-2">{{ DAY_LABELS[day] }}</div>
+        <div class="text-foreground flex items-center justify-end ps-2 text-xs">
+          {{ DAY_LABELS[day] }}
+        </div>
         <div
           v-for="slot in SLOTS"
           :key="`cell-${day}-${slot}`"
-          class="h-7 rounded border border-border cursor-default transition-opacity duration-200 hover:opacity-80"
-          :style="{ background: `color-mix(in srgb, var(--color-brand) ${Math.round(intensity(day, slot) * 100)}%, transparent)` }"
+          class="border-border h-7 cursor-default rounded border transition-opacity duration-200 hover:opacity-80"
+          :style="{
+            background: `color-mix(in srgb, var(--color-brand) ${Math.round(intensity(day, slot) * 100)}%, transparent)`,
+          }"
           :title="`${DAY_LABELS[day]} ${SLOT_LABELS[slot]}: ${countFor(day, slot)}`"
           :aria-label="`${DAY_LABELS[day]} ${SLOT_LABELS[slot]}: ${countFor(day, slot)} طلب`"
         />
       </template>
     </div>
-    <div class="flex items-center gap-2 text-xs text-muted-foreground">
+    <div class="text-muted-foreground flex items-center gap-2 text-xs">
       <span class="whitespace-nowrap">أقل</span>
-      <div class="flex-1 h-2 rounded max-w-32" style="background: linear-gradient(to left, var(--color-brand), color-mix(in srgb, var(--color-brand) 10%, transparent))" />
+      <div
+        class="h-2 max-w-32 flex-1 rounded"
+        style="
+          background: linear-gradient(
+            to left,
+            var(--color-brand),
+            color-mix(in srgb, var(--color-brand) 10%, transparent)
+          );
+        "
+      />
       <span class="whitespace-nowrap">أكثر</span>
     </div>
   </div>

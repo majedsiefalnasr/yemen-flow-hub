@@ -51,7 +51,9 @@ describe('useReports — fetchWorkflowReport()', () => {
     const { fetchWorkflowReport } = useReports()
     await fetchWorkflowReport({ fromDate: '2026-01-01', toDate: '2026-03-31' })
 
-    expect(mockGet).toHaveBeenCalledWith('/api/reports/workflow?from_date=2026-01-01&to_date=2026-03-31')
+    expect(mockGet).toHaveBeenCalledWith(
+      '/api/reports/workflow?from_date=2026-01-01&to_date=2026-03-31',
+    )
   })
 
   it('omits date params when not provided', async () => {
@@ -151,7 +153,12 @@ describe('useReports — WorkflowReport new 7.8 fields', () => {
     const result = await fetchWorkflowReport()
 
     expect(result.monthly_trend).toHaveLength(1)
-    expect(result.monthly_trend[0]).toMatchObject({ month: '2026-01', total: 5, approved: 3, rejected: 1 })
+    expect(result.monthly_trend[0]).toMatchObject({
+      month: '2026-01',
+      total: 5,
+      approved: 3,
+      rejected: 1,
+    })
     expect(result.category_distribution).toHaveLength(1)
     expect(result.amount_by_currency[0]).toMatchObject({ currency: 'USD', amount: 10000 })
     expect(result.total_financing_value).toBe(50000)
@@ -276,7 +283,10 @@ describe('useReports — preset management (API-backed)', () => {
     mockPost.mockResolvedValue({ data: [] })
     const { savePreset } = useReports()
     const preset = await savePreset('Q1 2026', { fromDate: '2026-01-01', toDate: '2026-03-31' })
-    expect(mockPost).toHaveBeenCalledWith('/api/report-presets', expect.objectContaining({ name: 'Q1 2026' }))
+    expect(mockPost).toHaveBeenCalledWith(
+      '/api/report-presets',
+      expect.objectContaining({ name: 'Q1 2026' }),
+    )
     expect(preset.name).toBe('Q1 2026')
     expect(preset.filter.fromDate).toBe('2026-01-01')
     expect(preset.id).toBeTruthy()

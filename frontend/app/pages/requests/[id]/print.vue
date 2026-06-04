@@ -44,10 +44,7 @@ async function loadData() {
   error.value = null
   clearPrintTimer()
   try {
-    const [req, hist] = await Promise.all([
-      fetchRequest(id),
-      fetchRequestHistory(id),
-    ])
+    const [req, hist] = await Promise.all([fetchRequest(id), fetchRequestHistory(id)])
     request.value = req
     history.value = [...hist].sort((a, b) => a.created_at.localeCompare(b.created_at))
 
@@ -56,16 +53,13 @@ async function loadData() {
       printTimer = null
       triggerPrint()
     }, 300)
-  }
-  catch (err: unknown) {
-    const status = (err as { statusCode?: number; status?: number })?.statusCode
-      ?? (err as { statusCode?: number; status?: number })?.status
+  } catch (err: unknown) {
+    const status =
+      (err as { statusCode?: number; status?: number })?.statusCode ??
+      (err as { statusCode?: number; status?: number })?.status
 
-    error.value = status === 403
-      ? 'ليس لديك صلاحية طباعة هذا الطلب.'
-      : 'تعذّر تحميل بيانات الطلب.'
-  }
-  finally {
+    error.value = status === 403 ? 'ليس لديك صلاحية طباعة هذا الطلب.' : 'تعذّر تحميل بيانات الطلب.'
+  } finally {
     loading.value = false
   }
 }
@@ -75,12 +69,20 @@ onBeforeUnmount(clearPrintTimer)
 </script>
 
 <template>
-  <div class="print-page" >
+  <div class="print-page">
     <!-- Controls bar — hidden on print -->
     <div class="print-controls no-print">
       <div class="controls-inner">
         <NuxtLink :to="`/requests/${id}`" class="back-link" aria-label="العودة إلى الطلب">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            aria-hidden="true"
+          >
             <path d="M19 12H5" />
             <polyline points="12 19 5 12 12 5" />
           </svg>
@@ -88,7 +90,15 @@ onBeforeUnmount(clearPrintTimer)
         </NuxtLink>
         <h1 class="controls-title">معاينة طلب تمويل واردات</h1>
         <button class="print-btn" :disabled="loading || !!error" @click="triggerPrint">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <svg
+            width="15"
+            height="15"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            aria-hidden="true"
+          >
             <polyline points="6 9 6 2 18 2 18 9" />
             <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
             <rect x="6" y="14" width="12" height="8" />

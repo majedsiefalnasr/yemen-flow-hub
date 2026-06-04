@@ -12,11 +12,7 @@ import {
   CommandList,
   CommandSeparator,
 } from '@/components/ui/command'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Separator } from '@/components/ui/separator'
 
 const props = defineProps<{
@@ -33,7 +29,7 @@ const props = defineProps<{
 const selectedValues = computed(() => {
   const filterValue = props.column.getFilterValue()
   if (!filterValue) return new Set<string>()
-  if (Array.isArray(filterValue)) return new Set<string>(filterValue.map(v => String(v)))
+  if (Array.isArray(filterValue)) return new Set<string>(filterValue.map((v) => String(v)))
   return new Set<string>([String(filterValue)])
 })
 
@@ -41,8 +37,7 @@ function toggleOption(value: string) {
   const current = new Set(selectedValues.value)
   if (current.has(value)) {
     current.delete(value)
-  }
-  else {
+  } else {
     current.add(value)
   }
   const values = Array.from(current)
@@ -78,7 +73,7 @@ function clearFilters() {
                 variant="secondary"
                 class="rounded-sm px-1 font-normal"
               >
-                {{ options.find(o => o.value === value)?.label ?? value }}
+                {{ options.find((o) => o.value === value)?.label ?? value }}
               </Badge>
             </template>
           </div>
@@ -100,16 +95,24 @@ function clearFilters() {
               @select="toggleOption(option.value)"
             >
               <div
-                class="flex h-4 w-4 items-center justify-center rounded-sm border border-primary"
-                :class="selectedValues.has(option.value) ? 'bg-primary text-primary-foreground' : 'opacity-50'"
+                class="border-primary flex h-4 w-4 items-center justify-center rounded-sm border"
+                :class="
+                  selectedValues.has(option.value)
+                    ? 'bg-primary text-primary-foreground'
+                    : 'opacity-50'
+                "
               >
                 <Check v-if="selectedValues.has(option.value)" class="h-3 w-3" />
               </div>
-              <component :is="option.icon" v-if="option.icon" class="h-4 w-4 text-muted-foreground" />
+              <component
+                :is="option.icon"
+                v-if="option.icon"
+                class="text-muted-foreground h-4 w-4"
+              />
               <span>{{ option.label }}</span>
               <span
                 v-if="option.count !== undefined"
-                class="ms-auto font-mono text-xs text-muted-foreground"
+                class="text-muted-foreground ms-auto font-mono text-xs"
               >
                 {{ option.count }}
               </span>
@@ -121,7 +124,7 @@ function clearFilters() {
             <CommandGroup>
               <CommandItem
                 value="clear-filters"
-                class="justify-center text-center text-sm text-muted-foreground"
+                class="text-muted-foreground justify-center text-center text-sm"
                 @select="clearFilters"
               >
                 مسح الفلاتر

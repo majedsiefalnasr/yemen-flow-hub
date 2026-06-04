@@ -31,23 +31,26 @@ const ACCESS_TOKEN_STORAGE_KEY = 'yfh-api-token'
 const LOGOUT_IN_PROGRESS_STORAGE_KEY = 'yfh-logout-in-progress'
 
 function markLogoutInProgress(value: boolean): void {
-  if (!process.client) return
+  if (!import.meta.client) return
   if (value) {
     sessionStorage.setItem(LOGOUT_IN_PROGRESS_STORAGE_KEY, '1')
-  }
-  else {
+  } else {
     sessionStorage.removeItem(LOGOUT_IN_PROGRESS_STORAGE_KEY)
   }
 }
 
-function clearAuthState(store: { user: AuthUser | null; isAuthenticated: boolean; isLoggingOut?: boolean }) {
+function clearAuthState(store: {
+  user: AuthUser | null
+  isAuthenticated: boolean
+  isLoggingOut?: boolean
+}) {
   store.user = null
   store.isAuthenticated = false
   if ('isLoggingOut' in store) {
     store.isLoggingOut = false
   }
 
-  if (process.client) {
+  if (import.meta.client) {
     localStorage.removeItem('yfh-authenticated')
     localStorage.removeItem(ACCESS_TOKEN_STORAGE_KEY)
   }
@@ -69,7 +72,7 @@ function resolveMfaRoleLabel(data: LoginResponseData): string | undefined {
  * device or session.
  */
 function syncAvatarCache(user: AuthUser | undefined | null): void {
-  if (!process.client || !user?.email) return
+  if (!import.meta.client || !user?.email) return
   const variant = user.avatar_variant
   if (typeof variant !== 'string') return
   if (!(AVATAR_VARIANTS as readonly string[]).includes(variant)) return
@@ -85,11 +88,11 @@ export const useAuthStore = defineStore('auth', {
   }),
 
   getters: {
-    currentRole: (state): UserRole | null =>
-      state.user?.role ?? null,
+    currentRole: (state): UserRole | null => state.user?.role ?? null,
 
     isBankUser: (state): boolean =>
-      state.user?.role != null && [
+      state.user?.role != null &&
+      [
         UserRole.DATA_ENTRY,
         UserRole.BANK_REVIEWER,
         UserRole.BANK_ADMIN,
@@ -97,32 +100,28 @@ export const useAuthStore = defineStore('auth', {
       ].includes(state.user.role),
 
     isCbyUser: (state): boolean =>
-      state.user?.role != null && [
+      state.user?.role != null &&
+      [
         UserRole.SUPPORT_COMMITTEE,
         UserRole.EXECUTIVE_MEMBER,
         UserRole.COMMITTEE_DIRECTOR,
         UserRole.CBY_ADMIN,
       ].includes(state.user.role),
 
-    isCbyAdmin: (state): boolean =>
-      state.user?.role === UserRole.CBY_ADMIN,
+    isCbyAdmin: (state): boolean => state.user?.role === UserRole.CBY_ADMIN,
 
-    preferredLanguage: (state): string =>
-      state.userPreferences?.language ?? 'ar',
+    preferredLanguage: (state): string => state.userPreferences?.language ?? 'ar',
 
-    preferredDashboardView: (state): string =>
-      state.userPreferences?.dashboard_view ?? 'normal',
+    preferredDashboardView: (state): string => state.userPreferences?.dashboard_view ?? 'normal',
 
-    preferredTableDensity: (state): string =>
-      state.userPreferences?.table_density ?? 'normal',
+    preferredTableDensity: (state): string => state.userPreferences?.table_density ?? 'normal',
 
-    preferredPageSize: (state): number =>
-      state.userPreferences?.page_size ?? 25,
+    preferredPageSize: (state): number => state.userPreferences?.page_size ?? 25,
   },
 
   actions: {
     getAccessToken(): string | null {
-      if (!process.client) return null
+      if (!import.meta.client) return null
       return localStorage.getItem(ACCESS_TOKEN_STORAGE_KEY)
     },
 
@@ -132,22 +131,21 @@ export const useAuthStore = defineStore('auth', {
     },
 
     persistAuthMode(data: { mode?: 'cookie' | 'token'; token?: string | null }) {
-      if (!process.client) return
+      if (!import.meta.client) return
 
       if (data.mode === 'token' && data.token) {
         localStorage.setItem(ACCESS_TOKEN_STORAGE_KEY, data.token)
-      }
-      else {
+      } else {
         localStorage.removeItem(ACCESS_TOKEN_STORAGE_KEY)
       }
     },
 
     getXsrfToken(): string | null {
-      if (!process.client) return null
+      if (!import.meta.client) return null
       const raw = document.cookie
         .split(';')
-        .map(cookie => cookie.trim())
-        .find(cookie => cookie.startsWith('XSRF-TOKEN='))
+        .map((cookie) => cookie.trim())
+        .find((cookie) => cookie.startsWith('XSRF-TOKEN='))
         ?.split('=')
         .slice(1)
         .join('=')
@@ -155,7 +153,15 @@ export const useAuthStore = defineStore('auth', {
       return raw ? decodeURIComponent(raw) : null
     },
 
-    async login(email: string, password: string): Promise<{ requiresMfa: true; email: string; challengeId: string; roleLabel?: string } | void> {
+    async login(
+      email: string,
+      password: string,
+    ): Promise<{
+      requiresMfa: true
+      email: string
+      challengeId: string
+      roleLabel?: string
+    } | void> {
       const config = useRuntimeConfig()
       const baseURL = config.public.apiBase as string
 
@@ -182,7 +188,10 @@ export const useAuthStore = defineStore('auth', {
       if (response.data.requires_mfa) {
         const challengeId = response.data.challenge_id
         if (!challengeId) {
-          throw { statusCode: 500, data: { success: false, message: 'تعذر بدء جلسة التحقق. يرجى إعادة المحاولة.' } }
+          throw {
+            statusCode: 500,
+            data: { success: false, message: 'تعذر بدء جلسة التحقق. يرجى إعادة المحاولة.' },
+          }
         }
 
         clearAuthState(this)
@@ -196,7 +205,10 @@ export const useAuthStore = defineStore('auth', {
       }
 
       if (!response.data.user?.is_active) {
-        throw { statusCode: 403, data: { success: false, message: 'حسابك موقوف. يرجى التواصل مع المسؤول.' } }
+        throw {
+          statusCode: 403,
+          data: { success: false, message: 'حسابك موقوف. يرجى التواصل مع المسؤول.' },
+        }
       }
 
       this.user = response.data.user!
@@ -205,7 +217,7 @@ export const useAuthStore = defineStore('auth', {
       markLogoutInProgress(false)
       this.persistAuthMode({ mode: response.data.mode, token: response.data.token })
       syncAvatarCache(this.user)
-      if (process.client) {
+      if (import.meta.client) {
         localStorage.setItem('yfh-authenticated', '1')
       }
     },
@@ -234,7 +246,10 @@ export const useAuthStore = defineStore('auth', {
       })
 
       if (!response.data.user?.is_active) {
-        throw { statusCode: 403, data: { success: false, message: 'حسابك موقوف. يرجى التواصل مع المسؤول.' } }
+        throw {
+          statusCode: 403,
+          data: { success: false, message: 'حسابك موقوف. يرجى التواصل مع المسؤول.' },
+        }
       }
 
       this.user = response.data.user
@@ -243,7 +258,7 @@ export const useAuthStore = defineStore('auth', {
       markLogoutInProgress(false)
       this.persistAuthMode({ mode: response.data.mode, token: response.data.token })
       syncAvatarCache(this.user)
-      if (process.client) {
+      if (import.meta.client) {
         localStorage.setItem('yfh-authenticated', '1')
       }
     },
@@ -266,7 +281,10 @@ export const useAuthStore = defineStore('auth', {
       })
 
       if (!response.data.user?.is_active) {
-        throw { statusCode: 403, data: { success: false, message: 'حساب العرض التوضيحي غير مفعل.' } }
+        throw {
+          statusCode: 403,
+          data: { success: false, message: 'حساب العرض التوضيحي غير مفعل.' },
+        }
       }
 
       this.user = response.data.user
@@ -275,7 +293,7 @@ export const useAuthStore = defineStore('auth', {
       markLogoutInProgress(false)
       this.persistAuthMode({ mode: response.data.mode, token: response.data.token })
       syncAvatarCache(this.user)
-      if (process.client) {
+      if (import.meta.client) {
         localStorage.setItem('yfh-authenticated', '1')
       }
     },
@@ -299,7 +317,10 @@ export const useAuthStore = defineStore('auth', {
       })
 
       if (!response.data.user.is_active) {
-        throw { statusCode: 403, data: { success: false, message: 'حسابك موقوف. يرجى التواصل مع المسؤول.' } }
+        throw {
+          statusCode: 403,
+          data: { success: false, message: 'حسابك موقوف. يرجى التواصل مع المسؤول.' },
+        }
       }
 
       this.user = response.data.user
@@ -308,7 +329,7 @@ export const useAuthStore = defineStore('auth', {
       markLogoutInProgress(false)
       this.persistAuthMode({ mode: response.data.mode, token: response.data.token })
       syncAvatarCache(this.user)
-      if (process.client) {
+      if (import.meta.client) {
         localStorage.setItem('yfh-authenticated', '1')
       }
     },
@@ -332,11 +353,9 @@ export const useAuthStore = defineStore('auth', {
             ...(xsrfToken ? { 'X-XSRF-TOKEN': xsrfToken } : {}),
           },
         })
-      }
-      catch {
+      } catch {
         // Always clear local state, even on network failure
-      }
-      finally {
+      } finally {
         clearAuthState(this)
       }
     },
@@ -364,8 +383,7 @@ export const useAuthStore = defineStore('auth', {
         this.isLoggingOut = false
         markLogoutInProgress(false)
         syncAvatarCache(this.user)
-      }
-      catch {
+      } catch {
         clearAuthState(this)
       }
     },
@@ -389,11 +407,9 @@ export const useAuthStore = defineStore('auth', {
             ...(xsrfToken ? { 'X-XSRF-TOKEN': xsrfToken } : {}),
           },
         })
-      }
-      catch {
+      } catch {
         // Clear local state even if the network call fails
-      }
-      finally {
+      } finally {
         clearAuthState(this)
         await navigateTo('/login?reason=inactivity')
       }
@@ -414,8 +430,7 @@ export const useAuthStore = defineStore('auth', {
           this.isAuthenticated = true
           syncAvatarCache(this.user)
         }
-      }
-      catch {
+      } catch {
         // Session may have already expired — let inactivity timer handle it
       }
     },
@@ -431,8 +446,7 @@ export const useAuthStore = defineStore('auth', {
           headers: { Accept: 'application/json' },
         })
         this.userPreferences = response.data
-      }
-      catch {
+      } catch {
         this.userPreferences = null
       }
     },

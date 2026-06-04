@@ -74,7 +74,9 @@ describe('Customs queue page — fetchRequests with EXECUTIVE_APPROVED status', 
   it('propagates API error on queue load', async () => {
     mockGet.mockRejectedValueOnce(new Error('Server error'))
     const { fetchRequests } = useRequests()
-    await expect(fetchRequests({ status: RequestStatus.EXECUTIVE_APPROVED })).rejects.toThrow('Server error')
+    await expect(fetchRequests({ status: RequestStatus.EXECUTIVE_APPROVED })).rejects.toThrow(
+      'Server error',
+    )
   })
 })
 
@@ -112,7 +114,10 @@ describe('Customs queue page — generateCustomsDeclaration', () => {
   })
 
   it('propagates error when request is not EXECUTIVE_APPROVED', async () => {
-    mockPost.mockRejectedValueOnce({ status: 422, data: { message: 'WORKFLOW_INVALID_TRANSITION' } })
+    mockPost.mockRejectedValueOnce({
+      status: 422,
+      data: { message: 'WORKFLOW_INVALID_TRANSITION' },
+    })
     const { generateCustomsDeclaration } = useRequests()
     await expect(generateCustomsDeclaration(99)).rejects.toBeTruthy()
   })

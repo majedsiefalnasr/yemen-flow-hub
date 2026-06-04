@@ -37,7 +37,9 @@ export function useBanks() {
   }
 
   // Server-side paginated fetch (same shape the requests page consumes).
-  async function fetchBanksPaginated(params: FetchBanksParams = {}): Promise<PaginatedResponse<Bank>> {
+  async function fetchBanksPaginated(
+    params: FetchBanksParams = {},
+  ): Promise<PaginatedResponse<Bank>> {
     const qs = new URLSearchParams()
     if (params.page) qs.set('page', String(params.page))
     if (params.per_page) qs.set('per_page', String(params.per_page))

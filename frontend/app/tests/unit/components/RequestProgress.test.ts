@@ -14,7 +14,9 @@ describe('RequestProgress', () => {
       },
     })
 
-    expect(wrapper.text()).toContain(`${getStatusProgress(RequestStatus.EXECUTIVE_APPROVED, UserRole.CBY_ADMIN)}%`)
+    expect(wrapper.text()).toContain(
+      `${getStatusProgress(RequestStatus.EXECUTIVE_APPROVED, UserRole.CBY_ADMIN)}%`,
+    )
     expect(wrapper.get('[role="progressbar"]').attributes('aria-valuenow')).toBe('92')
   })
 

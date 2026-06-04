@@ -48,11 +48,9 @@ async function fetchReady() {
       per_page: 50,
     })
     ready.value = result.data
-  }
-  catch {
+  } catch {
     readyError.value = 'تعذّر تحميل الطلبات الجاهزة.'
-  }
-  finally {
+  } finally {
     loadingReady.value = false
   }
 }
@@ -68,17 +66,14 @@ async function fetchIssued(page: number) {
     })
     if (page === 1) {
       issued.value = result.data
-    }
-    else {
+    } else {
       issued.value.push(...result.data)
     }
     issuedPage.value = result.meta.current_page
     issuedHasMore.value = result.meta.current_page < result.meta.last_page
-  }
-  catch {
+  } catch {
     issuedError.value = 'تعذّر تحميل التأكيدات الصادرة.'
-  }
-  finally {
+  } finally {
     loadingIssued.value = false
   }
 }
@@ -100,27 +95,34 @@ onMounted(() => {
       :breadcrumbs="[{ label: 'الرئيسية', to: '/' }, { label: 'تأكيد المصارفة الخارجية' }]"
     />
 
-    <Card class="mb-6 border-0 bg-primary/5 p-5 shadow" role="note" aria-labelledby="fx-confirmation-steps">
+    <Card
+      class="bg-primary/5 mb-6 border-0 p-5 shadow"
+      role="note"
+      aria-labelledby="fx-confirmation-steps"
+    >
       <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div class="min-w-0">
-          <h2 id="fx-confirmation-steps" class="text-sm font-semibold text-foreground">
+          <h2 id="fx-confirmation-steps" class="text-foreground text-sm font-semibold">
             مسار إتمام التأكيد
           </h2>
-          <p class="mt-1 text-sm text-muted-foreground">
+          <p class="text-muted-foreground mt-1 text-sm">
             هذه الصفحة تحتفظ بعنوان URL القديم فقط. جميع الإجراءات هنا تخص تأكيد المصارفة الخارجية.
           </p>
         </div>
-        <ol class="grid flex-1 gap-3 text-sm sm:grid-cols-3" aria-label="خطوات تأكيد المصارفة الخارجية">
-          <li class="rounded-lg border border-primary/15 bg-background px-3 py-2">
-            <span class="block text-xs font-semibold text-primary">1. تحميل النموذج</span>
+        <ol
+          class="grid flex-1 gap-3 text-sm sm:grid-cols-3"
+          aria-label="خطوات تأكيد المصارفة الخارجية"
+        >
+          <li class="border-primary/15 bg-background rounded-lg border px-3 py-2">
+            <span class="text-primary block text-xs font-semibold">1. تحميل النموذج</span>
             <span class="text-muted-foreground">مراجعة ملف التأكيد المولد من بيانات الطلب.</span>
           </li>
-          <li class="rounded-lg border border-primary/15 bg-background px-3 py-2">
-            <span class="block text-xs font-semibold text-primary">2. التوقيع والختم</span>
+          <li class="border-primary/15 bg-background rounded-lg border px-3 py-2">
+            <span class="text-primary block text-xs font-semibold">2. التوقيع والختم</span>
             <span class="text-muted-foreground">توقيع المستند خارج النظام حسب إجراء اللجنة.</span>
           </li>
-          <li class="rounded-lg border border-primary/15 bg-background px-3 py-2">
-            <span class="block text-xs font-semibold text-primary">3. الإتمام</span>
+          <li class="border-primary/15 bg-background rounded-lg border px-3 py-2">
+            <span class="text-primary block text-xs font-semibold">3. الإتمام</span>
             <span class="text-muted-foreground">إصدار النسخة النهائية وحفظها كأثر تدقيق دائم.</span>
           </li>
         </ol>
@@ -133,7 +135,9 @@ onMounted(() => {
         <h3 class="mb-4 flex items-center gap-2 font-semibold">
           <PackageCheck class="h-5 w-5 text-[var(--severity-green)]" />
           طلبات جاهزة للإصدار
-          <span v-if="!loadingReady" class="text-muted-foreground font-normal">({{ ready.length }})</span>
+          <span v-if="!loadingReady" class="text-muted-foreground font-normal"
+            >({{ ready.length }})</span
+          >
         </h3>
 
         <!-- Loading skeleton -->
@@ -154,11 +158,13 @@ onMounted(() => {
         <!-- Empty -->
         <Empty v-else-if="ready.length === 0" class="py-6">
           <EmptyHeader>
-            <PackageCheck class="h-8 w-8 text-muted-foreground/50" />
+            <PackageCheck class="text-muted-foreground/50 h-8 w-8" />
           </EmptyHeader>
           <EmptyContent>
             <EmptyTitle>لا توجد طلبات جاهزة</EmptyTitle>
-            <EmptyDescription>لا توجد طلبات معتمدة بانتظار إصدار تأكيد المصارفة حالياً.</EmptyDescription>
+            <EmptyDescription
+              >لا توجد طلبات معتمدة بانتظار إصدار تأكيد المصارفة حالياً.</EmptyDescription
+            >
           </EmptyContent>
         </Empty>
 
@@ -169,7 +175,9 @@ onMounted(() => {
             :key="request.id"
             class="flex items-center gap-3 rounded-lg border p-3 transition-colors hover:border-[var(--severity-green)]/20"
           >
-            <div class="grid h-11 w-11 place-items-center rounded-lg bg-[var(--severity-green)]/10 text-[var(--severity-green)]">
+            <div
+              class="grid h-11 w-11 place-items-center rounded-lg bg-[var(--severity-green)]/10 text-[var(--severity-green)]"
+            >
               <Truck class="h-5 w-5" />
             </div>
 
@@ -177,16 +185,12 @@ onMounted(() => {
               <div class="font-mono text-sm font-semibold">
                 {{ request.reference_number }}
               </div>
-              <div class="truncate text-xs text-muted-foreground">
+              <div class="text-muted-foreground truncate text-xs">
                 {{ request.merchant?.name }} · {{ request.port_of_entry }}
               </div>
             </div>
 
-            <Button
-              as="a"
-              size="sm"
-              :href="`/customs/${request.id}/print`"
-            >
+            <Button as="a" size="sm" :href="`/customs/${request.id}/print`">
               <FileSignature class="ms-1 h-3.5 w-3.5" />
               إصدار تأكيد مصارفة خارجية
             </Button>
@@ -199,11 +203,18 @@ onMounted(() => {
         <h3 class="mb-4 flex items-center gap-2 font-semibold">
           <CheckCircle2 class="h-5 w-5 text-[var(--severity-green)]" />
           تأكيدات صادرة مؤخراً
-          <span v-if="!loadingIssued || issued.length > 0" class="text-muted-foreground font-normal">({{ issued.length }}{{ issuedHasMore ? '+' : '' }})</span>
+          <span v-if="!loadingIssued || issued.length > 0" class="text-muted-foreground font-normal"
+            >({{ issued.length }}{{ issuedHasMore ? '+' : '' }})</span
+          >
         </h3>
 
         <!-- Loading skeleton (first load only) -->
-        <div v-if="loadingIssued && issued.length === 0" class="space-y-3" aria-busy="true" aria-label="جارٍ التحميل">
+        <div
+          v-if="loadingIssued && issued.length === 0"
+          class="space-y-3"
+          aria-busy="true"
+          aria-label="جارٍ التحميل"
+        >
           <Skeleton class="h-14 w-full rounded-lg" />
           <Skeleton class="h-14 w-full rounded-lg" />
           <Skeleton class="h-14 w-2/3 rounded-lg" />
@@ -220,7 +231,7 @@ onMounted(() => {
         <!-- Empty -->
         <Empty v-else-if="!loadingIssued && issued.length === 0" class="py-6">
           <EmptyHeader>
-            <CheckCircle2 class="h-8 w-8 text-muted-foreground/50" />
+            <CheckCircle2 class="text-muted-foreground/50 h-8 w-8" />
           </EmptyHeader>
           <EmptyContent>
             <EmptyTitle>لا توجد تأكيدات بعد</EmptyTitle>
@@ -239,7 +250,7 @@ onMounted(() => {
               <div class="font-mono text-sm font-semibold">
                 {{ request.customs_declaration?.declaration_number ?? request.reference_number }}
               </div>
-              <div class="truncate text-xs text-muted-foreground">
+              <div class="text-muted-foreground truncate text-xs">
                 {{ request.merchant?.name }}
               </div>
             </div>
@@ -248,12 +259,7 @@ onMounted(() => {
               {{ user ? getBusinessStatus(request.status, user.role).label : request.status }}
             </Badge>
 
-            <Button
-              as="a"
-              size="sm"
-              variant="outline"
-              :href="`/customs/${request.id}/print`"
-            >
+            <Button as="a" size="sm" variant="outline" :href="`/customs/${request.id}/print`">
               عرض/طباعة
             </Button>
           </div>
@@ -271,7 +277,7 @@ onMounted(() => {
             <Button
               variant="ghost"
               size="sm"
-              class="w-full text-muted-foreground"
+              class="text-muted-foreground w-full"
               :disabled="loadingIssued"
               @click="loadMoreIssued"
             >

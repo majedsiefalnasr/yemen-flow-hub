@@ -28,16 +28,18 @@ export const useNotifications = () => {
     error.value = null
 
     try {
-      const response = await get<ApiResponse<PaginatedResponse<Notification> | Notification[]>>('/api/notifications', {
-        query: { page },
-      })
+      const response = await get<ApiResponse<PaginatedResponse<Notification> | Notification[]>>(
+        '/api/notifications',
+        {
+          query: { page },
+        },
+      )
 
       // Backend returns either paginated { data: [...], meta: {...} } or a flat array
       const payload = response.data
       if (Array.isArray(payload)) {
         notifications.value = payload
-      }
-      else {
+      } else {
         notifications.value = payload.data
         pagination.value = {
           currentPage: payload.meta.current_page,
@@ -46,11 +48,9 @@ export const useNotifications = () => {
           total: payload.meta.total,
         }
       }
-    }
-    catch (err: any) {
+    } catch (err: any) {
       error.value = err.data?.message || 'Failed to load notifications'
-    }
-    finally {
+    } finally {
       loading.value = false
     }
   }
@@ -59,8 +59,7 @@ export const useNotifications = () => {
     try {
       const response = await get<ApiResponse<{ count: number }>>('/api/notifications/unread-count')
       unreadCount.value = response.data.count
-    }
-    catch {
+    } catch {
       // silently ignore — non-critical
     }
   }
@@ -69,7 +68,7 @@ export const useNotifications = () => {
     try {
       await post(`/api/notifications/${id}/read`)
 
-      const notif = notifications.value.find(n => n.id === id)
+      const notif = notifications.value.find((n) => n.id === id)
       if (notif && !notif.read_at) {
         notif.read_at = new Date().toISOString()
         if (unreadCount.value > 0) {
@@ -78,8 +77,7 @@ export const useNotifications = () => {
       }
 
       return true
-    }
-    catch (err: any) {
+    } catch (err: any) {
       error.value = err.data?.message || 'Failed to mark notification as read'
       return false
     }
@@ -96,8 +94,7 @@ export const useNotifications = () => {
       unreadCount.value = 0
 
       return true
-    }
-    catch (err: any) {
+    } catch (err: any) {
       error.value = err.data?.message || 'Failed to mark all notifications as read'
       return false
     }

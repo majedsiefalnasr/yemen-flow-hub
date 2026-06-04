@@ -22,15 +22,17 @@ function isVisible(el: HTMLElement): boolean {
 }
 
 function focusFirstIn(el: HTMLElement): boolean {
-  const firstInput = Array.from(el.querySelectorAll<HTMLElement>(INPUT_CANDIDATE_SELECTOR))
-    .find(node => isVisible(node))
+  const firstInput = Array.from(el.querySelectorAll<HTMLElement>(INPUT_CANDIDATE_SELECTOR)).find(
+    (node) => isVisible(node),
+  )
   if (firstInput) {
     firstInput.focus()
     return true
   }
 
-  const firstTabbable = Array.from(el.querySelectorAll<HTMLElement>(TAB_CANDIDATE_SELECTOR))
-    .find(node => isVisible(node))
+  const firstTabbable = Array.from(el.querySelectorAll<HTMLElement>(TAB_CANDIDATE_SELECTOR)).find(
+    (node) => isVisible(node),
+  )
   if (firstTabbable) {
     firstTabbable.focus()
     return true

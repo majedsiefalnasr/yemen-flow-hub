@@ -56,11 +56,11 @@ const DOCUMENT_LABELS: Record<WizardDocumentKey, string> = {
 const UPLOAD_ERROR_MESSAGE = 'تعذّر رفع الملف، يرجى إعادة المحاولة.'
 
 function getXsrfToken(): string | null {
-  if (!process.client) return null
+  if (!import.meta.client) return null
   const raw = document.cookie
     .split(';')
-    .map(cookie => cookie.trim())
-    .find(cookie => cookie.startsWith('XSRF-TOKEN='))
+    .map((cookie) => cookie.trim())
+    .find((cookie) => cookie.startsWith('XSRF-TOKEN='))
     ?.split('=')
     .slice(1)
     .join('=')
@@ -137,13 +137,14 @@ export function useRequestWizard() {
       const n = i + 1
       if (n === currentStep.value) return 'active'
       if (n < currentStep.value) {
-        const stepHasErrors = n === 1
-          ? Object.keys(step1Errors.value).length > 0
-          : n === 2
-            ? Object.keys(step2Errors.value).length > 0
-            : n === 3
-              ? Object.keys(step3Errors.value).length > 0
-              : false
+        const stepHasErrors =
+          n === 1
+            ? Object.keys(step1Errors.value).length > 0
+            : n === 2
+              ? Object.keys(step2Errors.value).length > 0
+              : n === 3
+                ? Object.keys(step3Errors.value).length > 0
+                : false
         return stepHasErrors ? 'error' : 'completed'
       }
       return 'future'
@@ -192,7 +193,12 @@ export function useRequestWizard() {
 
   function validateStep3(): boolean {
     const errs: typeof step3Errors.value = {}
-    const required: Array<WizardDocumentKey> = ['confirmation_request', 'proforma_invoice', 'commercial_register', 'tax_card']
+    const required: Array<WizardDocumentKey> = [
+      'confirmation_request',
+      'proforma_invoice',
+      'commercial_register',
+      'tax_card',
+    ]
     for (const key of required) {
       if (!step3.value[key]) {
         errs[key] = `يرجى رفع ${DOCUMENT_LABELS[key]}`
@@ -251,7 +257,9 @@ export function useRequestWizard() {
     if (mapped) {
       step2.value.customs_office = mapped
       autoFillChip.value = true
-      setTimeout(() => { autoFillChip.value = false }, 2000)
+      setTimeout(() => {
+        autoFillChip.value = false
+      }, 2000)
     }
   }
 
@@ -305,19 +313,16 @@ export function useRequestWizard() {
       if (savedRequestId.value) {
         const { updateRequest } = useRequests()
         result = await updateRequest(savedRequestId.value, payload)
-      }
-      else {
+      } else {
         result = await createRequest(payload)
         savedRequestId.value = result.id
       }
       return result
-    }
-    catch (err: unknown) {
+    } catch (err: unknown) {
       saveError.value = 'تعذّر الحفظ كمسودة، يرجى المحاولة مجدداً.'
       if (import.meta.dev) console.error('[useRequestWizard] saveDraft failed:', err)
       return null
-    }
-    finally {
+    } finally {
       saving.value = false
     }
   }
@@ -344,7 +349,10 @@ export function useRequestWizard() {
 
   function validateUploadFile(file: File): string | null {
     const lower = file.name.toLowerCase()
-    if (!UPLOAD_ALLOWED_TYPES.includes(file.type) && !UPLOAD_ALLOWED_EXTENSIONS.some(e => lower.endsWith(e))) {
+    if (
+      !UPLOAD_ALLOWED_TYPES.includes(file.type) &&
+      !UPLOAD_ALLOWED_EXTENSIONS.some((e) => lower.endsWith(e))
+    ) {
       return 'يجب أن يكون الملف بصيغة PDF فقط'
     }
     if (file.size > UPLOAD_MAX_SIZE_MB * 1024 * 1024) {
@@ -360,8 +368,7 @@ export function useRequestWizard() {
       const buf = await slice.arrayBuffer()
       // A deleted file returns an empty buffer even though file.size > 0
       return file.size === 0 || buf.byteLength > 0
-    }
-    catch {
+    } catch {
       return false
     }
   }
@@ -404,8 +411,7 @@ export function useRequestWizard() {
           form.append('file', file)
           if (key === 'confirmation_request') {
             form.append('confirmation_request', '1')
-          }
-          else {
+          } else {
             // Persist the wizard slot so the checklist shows the right document title
             form.append('sub_type', key)
           }
@@ -421,8 +427,7 @@ export function useRequestWizard() {
             },
           })
           uploadState.value[key] = 'done'
-        }
-        catch (err: unknown) {
+        } catch (err: unknown) {
           uploadState.value[key] = 'error'
 
           let userMessage = UPLOAD_ERROR_MESSAGE
@@ -430,14 +435,12 @@ export function useRequestWizard() {
           if (err instanceof Error && err.message === 'FILE_GONE') {
             userMessage = 'الملف لم يعد متاحاً. يرجى اختياره مجدداً.'
             step3.value = { ...step3.value, [key]: null }
-          }
-          else if (err instanceof Error && err.message.startsWith('INVALID:')) {
+          } else if (err instanceof Error && err.message.startsWith('INVALID:')) {
             // Local re-validation failed — show the exact validation message
             // and reset the drop zone so the user must re-pick a valid file.
             userMessage = err.message.slice('INVALID:'.length)
             step3.value = { ...step3.value, [key]: null }
-          }
-          else {
+          } else {
             // ofetch FetchError: response body is in err.data
             const data = (err as any)?.data
             const status = (err as any)?.response?.status
@@ -450,37 +453,43 @@ export function useRequestWizard() {
               const serverMsg: string | undefined = data?.message
               const raw = (fieldMsg ?? serverMsg ?? '').toLowerCase()
 
-              if (raw.includes('mime') || raw.includes('pdf') || raw.includes('type') || raw.includes('unsupported')) {
+              if (
+                raw.includes('mime') ||
+                raw.includes('pdf') ||
+                raw.includes('type') ||
+                raw.includes('unsupported')
+              ) {
                 userMessage = 'نوع الملف غير مقبول. يُسمح بملفات PDF فقط.'
-              }
-              else if (raw.includes('max') || raw.includes('size') || raw.includes('kilobytes') || raw.includes('exceeds')) {
+              } else if (
+                raw.includes('max') ||
+                raw.includes('size') ||
+                raw.includes('kilobytes') ||
+                raw.includes('exceeds')
+              ) {
                 userMessage = 'حجم الملف يتجاوز الحد الأقصى المسموح به (10MB).'
-              }
-              else if (raw.includes('authorized') || raw.includes('permission') || raw.includes('only authorized')) {
+              } else if (
+                raw.includes('authorized') ||
+                raw.includes('permission') ||
+                raw.includes('only authorized')
+              ) {
                 userMessage = 'لا تملك صلاحية رفع هذا الملف.'
-              }
-              else if (raw.includes('editable') || raw.includes('locked')) {
+              } else if (raw.includes('editable') || raw.includes('locked')) {
                 userMessage = 'لا يمكن رفع مستندات في الوضع الحالي للطلب.'
-              }
-              else if (fieldMsg || serverMsg) {
+              } else if (fieldMsg || serverMsg) {
                 // Unknown but specific server message — show it as-is
                 userMessage = fieldMsg ?? serverMsg!
               }
-            }
-            else if (status === 403) {
+            } else if (status === 403) {
               const serverMsg: string | undefined = data?.message
               const raw = (serverMsg ?? '').toLowerCase()
               if (raw.includes('editable') || raw.includes('locked')) {
                 userMessage = 'لا يمكن رفع مستندات في الوضع الحالي للطلب.'
-              }
-              else {
+              } else {
                 userMessage = 'لا تملك صلاحية رفع هذا الملف في الوضع الحالي للطلب.'
               }
-            }
-            else if (status === 409) {
+            } else if (status === 409) {
               userMessage = 'تعارض في حالة الطلب. حدّث الصفحة وأعد المحاولة.'
-            }
-            else if (status === 401) {
+            } else if (status === 401) {
               userMessage = 'انتهت جلستك. يرجى تسجيل الدخول مجدداً.'
             }
             // 5xx / network / unknown — fall through to generic UPLOAD_ERROR_MESSAGE
@@ -526,13 +535,11 @@ export function useRequestWizard() {
       const { performWorkflowAction } = useRequests()
       const submitted = await performWorkflowAction(reqId, 'submit')
       return submitted
-    }
-    catch (err: unknown) {
+    } catch (err: unknown) {
       submitError.value = 'تعذّر إرسال الطلب، يرجى المحاولة مجدداً.'
       if (import.meta.dev) console.error('[useRequestWizard] submitRequest failed:', err)
       return null
-    }
-    finally {
+    } finally {
       submitting.value = false
     }
   }

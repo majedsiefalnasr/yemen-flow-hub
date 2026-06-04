@@ -1,12 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { ChevronDown, LayoutGrid, Plus, ChevronLeft, ChevronRight } from 'lucide-vue-next'
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from '@/components/ui/tabs'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   Table,
   TableBody,
@@ -52,7 +47,7 @@ const props = defineProps<{
 // State management
 const selectedRows = ref<Set<number>>(new Set())
 const visibleColumns = ref<Set<string>>(
-  new Set(['header', 'type', 'status', 'target', 'limit', 'reviewer'])
+  new Set(['header', 'type', 'status', 'target', 'limit', 'reviewer']),
 )
 const pageSize = ref(10)
 const currentPage = ref(0)
@@ -79,9 +74,7 @@ const paginatedData = computed(() => {
   return sortedData.value.slice(start, end)
 })
 
-const totalPages = computed(() =>
-  Math.ceil(sortedData.value.length / pageSize.value)
-)
+const totalPages = computed(() => Math.ceil(sortedData.value.length / pageSize.value))
 
 const allColumnsVisible = [
   { key: 'header', label: 'Header' },
@@ -105,7 +98,7 @@ const toggleAllRows = () => {
   if (selectedRows.value.size === paginatedData.value.length) {
     selectedRows.value.clear()
   } else {
-    paginatedData.value.forEach(row => selectedRows.value.add(row.id))
+    paginatedData.value.forEach((row) => selectedRows.value.add(row.id))
   }
 }
 
@@ -142,7 +135,7 @@ const prevPage = () => {
 <template>
   <Tabs v-model="activeTab" class="w-full">
     <!-- Header with controls -->
-    <div class="flex flex-col gap-4 px-4 lg:px-6 py-4">
+    <div class="flex flex-col gap-4 px-4 py-4 lg:px-6">
       <div class="flex items-center justify-between">
         <!-- Mobile: View selector -->
         <Select v-model="activeTab" class="lg:hidden">
@@ -203,12 +196,9 @@ const prevPage = () => {
     </div>
 
     <!-- Outline tab with table -->
-    <TabsContent
-      value="outline"
-      class="flex flex-col gap-4 px-4 lg:px-6"
-    >
+    <TabsContent value="outline" class="flex flex-col gap-4 px-4 lg:px-6">
       <!-- Data table -->
-      <div class="rounded-lg border overflow-auto">
+      <div class="overflow-auto rounded-lg border">
         <Table>
           <TableHeader class="bg-muted sticky top-0">
             <TableRow>
@@ -216,8 +206,8 @@ const prevPage = () => {
               <TableHead class="w-12">
                 <Checkbox
                   :checked="selectedRows.size === paginatedData.length && paginatedData.length > 0"
-                  @update:checked="toggleAllRows"
                   aria-label="Select all rows"
+                  @update:checked="toggleAllRows"
                 />
               </TableHead>
 
@@ -226,8 +216,8 @@ const prevPage = () => {
                 v-for="column in allColumnsVisible"
                 v-show="visibleColumns.has(column.key)"
                 :key="column.key"
+                class="hover:bg-muted-foreground/5 cursor-pointer transition-colors"
                 @click="setSort(column.key)"
-                class="cursor-pointer hover:bg-muted-foreground/5 transition-colors"
               >
                 <div class="flex items-center gap-2">
                   {{ column.label }}
@@ -249,8 +239,8 @@ const prevPage = () => {
                 <TableCell>
                   <Checkbox
                     :checked="selectedRows.has(row.id)"
-                    @update:checked="toggleRowSelection(row.id)"
                     :aria-label="`Select row ${row.id}`"
+                    @update:checked="toggleRowSelection(row.id)"
                   />
                 </TableCell>
 
@@ -265,7 +255,11 @@ const prevPage = () => {
                   <div class="flex items-center gap-2">
                     <span
                       class="size-2 rounded-full"
-                      :class="row.status === 'Done' ? 'bg-emerald-500' : 'bg-muted-foreground animate-spin'"
+                      :class="
+                        row.status === 'Done'
+                          ? 'bg-emerald-500'
+                          : 'bg-muted-foreground animate-spin'
+                      "
                     />
                     {{ row.status }}
                   </div>
@@ -294,9 +288,7 @@ const prevPage = () => {
                       <DropdownMenuItem>Make a copy</DropdownMenuItem>
                       <DropdownMenuItem>Favorite</DropdownMenuItem>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem class="text-destructive">
-                        Delete
-                      </DropdownMenuItem>
+                      <DropdownMenuItem class="text-destructive"> Delete </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </TableCell>
@@ -314,17 +306,15 @@ const prevPage = () => {
       <!-- Pagination -->
       <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <!-- Selection info -->
-        <div class="text-sm text-muted-foreground hidden lg:block">
+        <div class="text-muted-foreground hidden text-sm lg:block">
           {{ selectedRows.size }} of {{ sortedData.length }} row(s) selected.
         </div>
 
         <!-- Pagination controls -->
-        <div class="flex flex-col gap-4 w-full lg:w-fit lg:flex-row lg:items-center">
+        <div class="flex w-full flex-col gap-4 lg:w-fit lg:flex-row lg:items-center">
           <!-- Rows per page -->
-          <div class="hidden lg:flex items-center gap-2">
-            <Label for="rows-per-page" class="text-sm font-medium">
-              Rows per page
-            </Label>
+          <div class="hidden items-center gap-2 lg:flex">
+            <Label for="rows-per-page" class="text-sm font-medium"> Rows per page </Label>
             <Select v-model="pageSize" as-child>
               <SelectTrigger id="rows-per-page" class="w-20">
                 <SelectValue :placeholder="`${pageSize}`" />
@@ -340,9 +330,7 @@ const prevPage = () => {
           </div>
 
           <!-- Page indicator -->
-          <div class="text-sm font-medium">
-            Page {{ currentPage + 1 }} of {{ totalPages || 1 }}
-          </div>
+          <div class="text-sm font-medium">Page {{ currentPage + 1 }} of {{ totalPages || 1 }}</div>
 
           <!-- Navigation buttons -->
           <div class="flex gap-2">
@@ -350,18 +338,13 @@ const prevPage = () => {
               variant="outline"
               size="icon"
               :disabled="currentPage === 0"
-              @click="currentPage = 0"
               class="hidden lg:flex"
+              @click="currentPage = 0"
             >
               <span class="sr-only">First page</span>
               «
             </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              :disabled="currentPage === 0"
-              @click="prevPage"
-            >
+            <Button variant="outline" size="icon" :disabled="currentPage === 0" @click="prevPage">
               <span class="sr-only">Previous page</span>
               <ChevronLeft class="size-4" />
             </Button>
@@ -378,8 +361,8 @@ const prevPage = () => {
               variant="outline"
               size="icon"
               :disabled="currentPage >= totalPages - 1"
-              @click="currentPage = totalPages - 1"
               class="hidden lg:flex"
+              @click="currentPage = totalPages - 1"
             >
               <span class="sr-only">Last page</span>
               »
@@ -390,13 +373,13 @@ const prevPage = () => {
     </TabsContent>
 
     <!-- Other tabs (placeholder) -->
-    <TabsContent value="past-performance" class="px-4 lg:px-6 py-4">
+    <TabsContent value="past-performance" class="px-4 py-4 lg:px-6">
       <div class="aspect-video w-full rounded-lg border border-dashed" />
     </TabsContent>
-    <TabsContent value="key-personnel" class="px-4 lg:px-6 py-4">
+    <TabsContent value="key-personnel" class="px-4 py-4 lg:px-6">
       <div class="aspect-video w-full rounded-lg border border-dashed" />
     </TabsContent>
-    <TabsContent value="focus-documents" class="px-4 lg:px-6 py-4">
+    <TabsContent value="focus-documents" class="px-4 py-4 lg:px-6">
       <div class="aspect-video w-full rounded-lg border border-dashed" />
     </TabsContent>
   </Tabs>

@@ -22,10 +22,13 @@ describe('role middleware', () => {
     authState.user = { role: UserRole.DATA_ENTRY }
     const middleware = (await import('../../../middleware/role')).default
 
-    middleware({
-      path: '/admin/banks',
-      meta: { requiredRoles: [UserRole.CBY_ADMIN] },
-    } as any, {} as any)
+    middleware(
+      {
+        path: '/admin/banks',
+        meta: { requiredRoles: [UserRole.CBY_ADMIN] },
+      } as any,
+      {} as any,
+    )
 
     expect(navigateTo).toHaveBeenCalledWith({
       path: '/forbidden',
@@ -37,10 +40,13 @@ describe('role middleware', () => {
     authState.user = { role: UserRole.CBY_ADMIN }
     const middleware = (await import('../../../middleware/role')).default
 
-    const result = middleware({
-      path: '/admin/banks',
-      meta: { requiredRoles: [UserRole.CBY_ADMIN] },
-    } as any, {} as any)
+    const result = middleware(
+      {
+        path: '/admin/banks',
+        meta: { requiredRoles: [UserRole.CBY_ADMIN] },
+      } as any,
+      {} as any,
+    )
 
     expect(navigateTo).not.toHaveBeenCalled()
     expect(result).toBeUndefined()

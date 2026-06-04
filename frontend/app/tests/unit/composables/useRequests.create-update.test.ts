@@ -143,7 +143,10 @@ describe('useRequests — updateRequest', () => {
     const { updateRequest } = useRequests()
     const result = await updateRequest(42, { ...FORM_DATA, supplier_name: 'Global Trade' })
 
-    expect(mockPut).toHaveBeenCalledWith('/api/requests/42', { ...FORM_DATA, supplier_name: 'Global Trade' })
+    expect(mockPut).toHaveBeenCalledWith('/api/requests/42', {
+      ...FORM_DATA,
+      supplier_name: 'Global Trade',
+    })
     expect(result.supplier_name).toBe('Global Trade')
   })
 

@@ -35,8 +35,8 @@ function normalizeEmailKey(email: string): string {
 
 function normalizePin(pin: string): string {
   return pin
-    .replace(/[٠-٩]/g, ch => String(ch.charCodeAt(0) - 0x660))
-    .replace(/[۰-۹]/g, ch => String(ch.charCodeAt(0) - 0x6F0))
+    .replace(/[٠-٩]/g, (ch) => String(ch.charCodeAt(0) - 0x660))
+    .replace(/[۰-۹]/g, (ch) => String(ch.charCodeAt(0) - 0x6f0))
     .replace(/\D/g, '')
     .slice(0, 6)
 }
@@ -56,8 +56,11 @@ function parseStoredPinValue(value: unknown): string | null {
   return null
 }
 
-function findLegacyValueByNormalizedEmail<T>(map: Record<string, T>, normalizedEmail: string): T | undefined {
-  const legacyKey = Object.keys(map).find(key => normalizeEmailKey(key) === normalizedEmail)
+function findLegacyValueByNormalizedEmail<T>(
+  map: Record<string, T>,
+  normalizedEmail: string,
+): T | undefined {
+  const legacyKey = Object.keys(map).find((key) => normalizeEmailKey(key) === normalizedEmail)
   return legacyKey ? map[legacyKey] : undefined
 }
 
@@ -65,16 +68,14 @@ function isClient(): boolean {
   return typeof window !== 'undefined' && typeof localStorage !== 'undefined'
 }
 
-const AVATAR_COLORS = [
-  '#0066cc', '#5856d6', '#32ade6', '#34c759', '#ff9f0a', '#ff3b30',
-]
+const AVATAR_COLORS = ['#0066cc', '#5856d6', '#32ade6', '#34c759', '#ff9f0a', '#ff3b30']
 
 export function getInitials(name: string): string {
   return name
     .trim()
     .split(/\s+/)
     .slice(0, 2)
-    .map(w => w[0])
+    .map((w) => w[0])
     .join('')
     .toUpperCase()
 }
@@ -89,7 +90,12 @@ export function getAvatarColor(id: string): string {
 
 export function getDeviceInfo(): DeviceInfo {
   if (!isClient() || typeof navigator === 'undefined') {
-    return { browser: 'Unknown', os: 'Unknown', deviceType: 'desktop', lastLoginAt: new Date().toISOString() }
+    return {
+      browser: 'Unknown',
+      os: 'Unknown',
+      deviceType: 'desktop',
+      lastLoginAt: new Date().toISOString(),
+    }
   }
   const ua = navigator.userAgent
   let browser = 'Unknown'
@@ -129,8 +135,7 @@ export function useSavedAccounts() {
       const raw = localStorage.getItem(STORAGE_KEY)
       // Fall back to mock data if no real saved accounts exist
       accounts.value = raw ? (JSON.parse(raw) as SavedAccount[]) : getMockAccounts()
-    }
-    catch {
+    } catch {
       accounts.value = []
     }
   }
@@ -145,18 +150,17 @@ export function useSavedAccounts() {
       ...account,
       deviceInfo: account.deviceInfo ?? (isClient() ? getDeviceInfo() : undefined),
     }
-    const idx = accounts.value.findIndex(a => a.email === enriched.email)
+    const idx = accounts.value.findIndex((a) => a.email === enriched.email)
     if (idx >= 0) {
       accounts.value[idx] = { ...accounts.value[idx]!, ...enriched }
-    }
-    else {
+    } else {
       accounts.value.unshift(enriched)
     }
     persist()
   }
 
   function removeAccount(id: string) {
-    accounts.value = accounts.value.filter(a => a.id !== id)
+    accounts.value = accounts.value.filter((a) => a.id !== id)
     persist()
   }
 
@@ -169,8 +173,9 @@ export function useSavedAccounts() {
       const map = JSON.parse(raw) as Record<string, boolean>
       const key = normalizeEmailKey(email)
       return map[key] ?? findLegacyValueByNormalizedEmail(map, key) ?? false
+    } catch {
+      return false
     }
-    catch { return false }
   }
 
   function setPINStatus(email: string, hasPIN: boolean) {
@@ -185,8 +190,7 @@ export function useSavedAccounts() {
         delete map[email]
       }
       localStorage.setItem(PIN_STATUS_KEY, JSON.stringify(map))
-    }
-    catch {}
+    } catch {}
   }
 
   /**
@@ -200,8 +204,7 @@ export function useSavedAccounts() {
       const map: Record<string, string> = raw ? (JSON.parse(raw) as Record<string, string>) : {}
       map[normalizeEmailKey(email)] = normalizePin(pin)
       localStorage.setItem(PIN_DATA_KEY, JSON.stringify(map))
-    }
-    catch {}
+    } catch {}
     setPINStatus(email, true)
   }
 
@@ -218,8 +221,9 @@ export function useSavedAccounts() {
       const key = normalizeEmailKey(email)
       const storedPin = map[key] ?? findLegacyValueByNormalizedEmail(map, key)
       return parseStoredPinValue(storedPin) != null
+    } catch {
+      return false
     }
-    catch { return false }
   }
 
   /**
@@ -237,8 +241,9 @@ export function useSavedAccounts() {
       const storedPin = parseStoredPinValue(map[key] ?? findLegacyValueByNormalizedEmail(map, key))
       if (!storedPin) return false
       return storedPin === normalizedPin
+    } catch {
+      return false
     }
-    catch { return false }
   }
 
   /** Clear all saved accounts, PIN status, and PIN data from this device. */
@@ -252,5 +257,15 @@ export function useSavedAccounts() {
 
   load()
 
-  return { accounts, addAccount, removeAccount, getPINStatus, setPINStatus, setPIN, hasStoredPIN, verifyPIN, clearAllData }
+  return {
+    accounts,
+    addAccount,
+    removeAccount,
+    getPINStatus,
+    setPINStatus,
+    setPIN,
+    hasStoredPIN,
+    verifyPIN,
+    clearAllData,
+  }
 }

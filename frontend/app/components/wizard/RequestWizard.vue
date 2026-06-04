@@ -51,7 +51,9 @@ async function resolveDataEntryMerchant(): Promise<void> {
     dataEntryMerchants.value = merchants
 
     if (wizard.step1.value.merchant_id) {
-      const currentMerchant = merchants.find(merchant => merchant.id === wizard.step1.value.merchant_id)
+      const currentMerchant = merchants.find(
+        (merchant) => merchant.id === wizard.step1.value.merchant_id,
+      )
       if (currentMerchant) {
         merchantName.value = currentMerchant.name
         merchantResolutionError.value = null
@@ -68,15 +70,16 @@ async function resolveDataEntryMerchant(): Promise<void> {
 
     wizard.step1.value.merchant_id = null
     merchantName.value = ''
-    merchantResolutionError.value = merchants.length === 0
-      ? 'لا يوجد تاجر نشط مرتبط بحساب إدخال البيانات هذا.'
-      : 'اختر التاجر المرتبط بهذا الطلب من قائمة تجار البنك.'
-  }
-  catch {
+    merchantResolutionError.value =
+      merchants.length === 0
+        ? 'لا يوجد تاجر نشط مرتبط بحساب إدخال البيانات هذا.'
+        : 'اختر التاجر المرتبط بهذا الطلب من قائمة تجار البنك.'
+  } catch {
     dataEntryMerchants.value = []
     wizard.step1.value.merchant_id = null
     merchantName.value = ''
-    merchantResolutionError.value = 'تعذر تحميل بيانات التاجر المرتبط بالحساب الآن. أعد المحاولة بعد قليل.'
+    merchantResolutionError.value =
+      'تعذر تحميل بيانات التاجر المرتبط بالحساب الآن. أعد المحاولة بعد قليل.'
   }
 }
 
@@ -84,14 +87,19 @@ onMounted(resolveDataEntryMerchant)
 
 // Keep merchantName in sync with BANK_ADMIN selection
 async function refreshMerchantName(id: number | null): Promise<void> {
-  if (!id) { merchantName.value = ''; return }
-  try {
-    const merchants = wizard.isDataEntry.value && dataEntryMerchants.value.length > 0
-      ? dataEntryMerchants.value
-      : await fetchMerchants()
-    merchantName.value = merchants.find(m => m.id === id)?.name ?? ''
+  if (!id) {
+    merchantName.value = ''
+    return
   }
-  catch { merchantName.value = '' }
+  try {
+    const merchants =
+      wizard.isDataEntry.value && dataEntryMerchants.value.length > 0
+        ? dataEntryMerchants.value
+        : await fetchMerchants()
+    merchantName.value = merchants.find((m) => m.id === id)?.name ?? ''
+  } catch {
+    merchantName.value = ''
+  }
 }
 
 async function handleNext(): Promise<void> {
@@ -99,8 +107,10 @@ async function handleNext(): Promise<void> {
   const ok = wizard.nextStep()
   if (!ok) {
     // Let Vue flush the error state into the DOM before scrolling
-    await new Promise(r => setTimeout(r, 60))
-    const firstInvalid = document.querySelector<HTMLElement>('[aria-invalid="true"], .border-destructive')
+    await new Promise((r) => setTimeout(r, 60))
+    const firstInvalid = document.querySelector<HTMLElement>(
+      '[aria-invalid="true"], .border-destructive',
+    )
     firstInvalid?.scrollIntoView({ behavior: 'smooth', block: 'center' })
     firstInvalid?.focus({ preventScroll: true })
     return
@@ -119,8 +129,7 @@ async function handleSaveDraft(): Promise<void> {
   if (result) {
     duplicateWarnings.value = result.duplicate_warnings ?? []
     toast.success('تم حفظ الطلب كمسودة بنجاح.')
-  }
-  else if (wizard.saveError.value) {
+  } else if (wizard.saveError.value) {
     emit('dirty')
     toast.error(wizard.saveError.value)
   }
@@ -131,10 +140,9 @@ async function handleSubmit(): Promise<void> {
   if (result) {
     emit('submitted')
     toast.success('تم إرسال الطلب بنجاح!')
-    await new Promise(r => setTimeout(r, 800))
+    await new Promise((r) => setTimeout(r, 800))
     await router.push(`/requests/${result.id}`)
-  }
-  else if (wizard.submitError.value) {
+  } else if (wizard.submitError.value) {
     toast.error(wizard.submitError.value)
   }
 }
@@ -153,20 +161,35 @@ function scrollToStepper(): void {
 </script>
 
 <template>
-  <div class="flex flex-col gap-6 max-w-2xl mx-auto w-full">
+  <div class="mx-auto flex w-full max-w-2xl flex-col gap-6">
     <!-- Breadcrumb -->
-    <nav class="flex items-center gap-1.5 font-section text-xs leading-5 text-muted-foreground" aria-label="مسار التنقل">
-      <NuxtLink to="/" class="text-muted-foreground transition-colors hover:text-primary hover:underline">الرئيسية</NuxtLink>
+    <nav
+      class="font-section text-muted-foreground flex items-center gap-1.5 text-xs leading-5"
+      aria-label="مسار التنقل"
+    >
+      <NuxtLink
+        to="/"
+        class="text-muted-foreground hover:text-primary transition-colors hover:underline"
+        >الرئيسية</NuxtLink
+      >
       <span class="text-border">/</span>
-      <NuxtLink to="/requests" class="text-muted-foreground transition-colors hover:text-primary hover:underline">الطلبات</NuxtLink>
+      <NuxtLink
+        to="/requests"
+        class="text-muted-foreground hover:text-primary transition-colors hover:underline"
+        >الطلبات</NuxtLink
+      >
       <span class="text-border">/</span>
       <span class="text-foreground font-medium">طلب جديد</span>
     </nav>
 
     <!-- Page title -->
     <div class="flex max-w-[65ch] flex-col gap-1.5">
-      <h1 class="font-heading text-2xl font-semibold leading-tight text-foreground">تقديم طلب تمويل واردات جديد</h1>
-      <p class="text-sm leading-6 text-muted-foreground">املأ البيانات بدقة وأرفق المستندات المطلوبة</p>
+      <h1 class="font-heading text-foreground text-2xl leading-tight font-semibold">
+        تقديم طلب تمويل واردات جديد
+      </h1>
+      <p class="text-muted-foreground text-sm leading-6">
+        املأ البيانات بدقة وأرفق المستندات المطلوبة
+      </p>
     </div>
 
     <!-- Stepper -->
@@ -175,33 +198,47 @@ function scrollToStepper(): void {
         :steps="STEP_LABELS"
         :current-step="wizard.currentStep.value"
         :step-statuses="wizard.stepStatuses.value"
-        @step-click="(s) => { wizard.goToStep(s); scrollToStepper() }"
+        @step-click="
+          (s) => {
+            wizard.goToStep(s)
+            scrollToStepper()
+          }
+        "
       />
     </div>
 
     <!-- Step content card -->
-    <div class="bg-card border border-border rounded-2xl p-6 shadow-sm" data-field-nav>
+    <div class="bg-card border-border rounded-2xl border p-6 shadow-sm" data-field-nav>
       <WizardStep1
         v-if="wizard.currentStep.value === 1"
         v-model="wizard.step1.value"
         :errors="wizard.step1Errors.value"
-        @clear-error="wizard.clearStep1Error"
         :is-data-entry="wizard.isDataEntry.value"
         :data-entry-merchant-name="merchantName"
         :data-entry-merchants="dataEntryMerchants"
         :data-entry-merchant-error="merchantResolutionError"
         :loading="wizard.saving.value"
-        @update:model-value="(v) => { wizard.step1.value = v; if (v.merchant_id) refreshMerchantName(v.merchant_id) }"
+        @clear-error="wizard.clearStep1Error"
+        @update:model-value="
+          (v) => {
+            wizard.step1.value = v
+            if (v.merchant_id) refreshMerchantName(v.merchant_id)
+          }
+        "
       />
       <WizardStep2
         v-else-if="wizard.currentStep.value === 2"
         v-model="wizard.step2.value"
         :errors="wizard.step2Errors.value"
-        @clear-error="wizard.clearStep2Error"
         :auto-fill-chip="wizard.autoFillChip.value"
         :loading="wizard.saving.value"
+        @clear-error="wizard.clearStep2Error"
         @arrival-port-change="wizard.onArrivalPortChange"
-        @update:model-value="(v) => { wizard.step2.value = v }"
+        @update:model-value="
+          (v) => {
+            wizard.step2.value = v
+          }
+        "
       />
       <WizardStep3
         v-else-if="wizard.currentStep.value === 3"
@@ -212,18 +249,34 @@ function scrollToStepper(): void {
         :request-id="wizard.savedRequestId.value"
         :template-ready="wizard.autoSavedForStep3.value"
         @file-reset="wizard.resetUploadState"
-        @update:model-value="(v) => { wizard.step3.value = v }"
+        @update:model-value="
+          (v) => {
+            wizard.step3.value = v
+          }
+        "
       />
       <template v-else-if="wizard.currentStep.value === 4">
         <!-- Duplicate invoice soft warning — non-blocking, backend is authority -->
-        <Alert v-if="duplicateWarnings.length > 0" class="mb-4 border-[var(--severity-amber)] bg-[var(--severity-amber)]/5 text-[var(--severity-amber)]">
+        <Alert
+          v-if="duplicateWarnings.length > 0"
+          class="mb-4 border-[var(--severity-amber)] bg-[var(--severity-amber)]/5 text-[var(--severity-amber)]"
+        >
           <AlertTriangle class="h-4 w-4" />
           <AlertDescription class="text-foreground">
-            تحذير: رقم الفاتورة <span class="font-mono font-semibold">{{ wizard.step2.value.invoice_number }}</span>
+            تحذير: رقم الفاتورة
+            <span class="font-mono font-semibold">{{ wizard.step2.value.invoice_number }}</span>
             مستخدم في
-            {{ duplicateWarnings.length === 1 ? 'طلب سابق' : `${duplicateWarnings.length} طلبات سابقة` }}
-            ({{ duplicateWarnings.map(w => w.reference_number).filter(Boolean).join('، ') || 'مرجع غير متاح' }}).
-            يمكنك المتابعة والإرسال إذا كانت الفاتورة صحيحة.
+            {{
+              duplicateWarnings.length === 1
+                ? 'طلب سابق'
+                : `${duplicateWarnings.length} طلبات سابقة`
+            }}
+            ({{
+              duplicateWarnings
+                .map((w) => w.reference_number)
+                .filter(Boolean)
+                .join('، ') || 'مرجع غير متاح'
+            }}). يمكنك المتابعة والإرسال إذا كانت الفاتورة صحيحة.
           </AlertDescription>
         </Alert>
         <WizardStep4
@@ -232,24 +285,33 @@ function scrollToStepper(): void {
           :step3="wizard.step3.value"
           :merchant-name="merchantName"
           :acknowledged="wizard.acknowledged.value"
-          @update:acknowledged="(v) => { wizard.acknowledged.value = v }"
+          @update:acknowledged="
+            (v) => {
+              wizard.acknowledged.value = v
+            }
+          "
         />
       </template>
 
       <!-- Bottom navigation bar -->
-      <div class="h-px bg-border my-6" aria-hidden="true" />
+      <div class="bg-border my-6 h-px" aria-hidden="true" />
       <div class="flex items-center gap-3" role="toolbar" aria-label="تنقل خطوات الطلب">
         <!-- Previous — ChevronRight points right = backward in RTL -->
         <Button
           v-if="!isFirstStep"
           variant="outline"
           :disabled="wizard.saving.value || wizard.submitting.value"
-          @click="() => { wizard.prevStep(); scrollToStepper() }"
+          @click="
+            () => {
+              wizard.prevStep()
+              scrollToStepper()
+            }
+          "
         >
           <ChevronRight class="h-4 w-4" />
           السابق
         </Button>
-        <span v-else class="flex-shrink-0 w-20" />
+        <span v-else class="w-20 flex-shrink-0" />
 
         <!-- Save draft -->
         <Button
@@ -258,26 +320,18 @@ function scrollToStepper(): void {
           :disabled="wizard.saving.value || wizard.submitting.value"
           @click="handleSaveDraft"
         >
-          <Save class="h-4 w-4 me-1" />
+          <Save class="me-1 h-4 w-4" />
           <span v-if="wizard.saving.value">جارٍ الحفظ...</span>
           <span v-else>حفظ كمسودة</span>
         </Button>
 
         <!-- Next — ChevronLeft points left = forward in RTL -->
-        <Button
-          v-if="!isLastStep"
-          :disabled="wizard.saving.value"
-          @click="handleNext"
-        >
+        <Button v-if="!isLastStep" :disabled="wizard.saving.value" @click="handleNext">
           التالي
           <ChevronLeft class="h-4 w-4" />
         </Button>
-        <Button
-          v-else
-          :disabled="isSubmitDisabled"
-          @click="handleSubmit"
-        >
-          <Loader2 v-if="wizard.submitting.value" class="h-4 w-4 me-1 animate-spin" />
+        <Button v-else :disabled="isSubmitDisabled" @click="handleSubmit">
+          <Loader2 v-if="wizard.submitting.value" class="me-1 h-4 w-4 animate-spin" />
           <span v-if="wizard.submitting.value">جارٍ الإرسال...</span>
           <span v-else>إرسال للمراجعة</span>
           <ChevronLeft v-if="!wizard.submitting.value" class="h-4 w-4" />

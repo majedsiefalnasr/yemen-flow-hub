@@ -2,8 +2,17 @@
 import type { ColumnFiltersState, PaginationState, VisibilityState } from '@tanstack/vue-table'
 import { toast } from 'vue-sonner'
 import {
-  AlertCircle, CheckCircle2, ClipboardList, Download,
-  Eye, FilePlus2, Lock, RefreshCw, SearchX, Vote, Upload,
+  AlertCircle,
+  CheckCircle2,
+  ClipboardList,
+  Download,
+  Eye,
+  FilePlus2,
+  Lock,
+  RefreshCw,
+  SearchX,
+  Vote,
+  Upload,
 } from 'lucide-vue-next'
 import {
   Empty,
@@ -28,12 +37,15 @@ import { useRequestsStore } from '@/stores/requests.store'
 import { useBanks } from '@/composables/useBanks'
 import type { RequestsFilter } from '@/composables/useRequests'
 import { useRequests } from '@/composables/useRequests'
-import { useRequestsColumns, buildStatusFilterOptions } from '@/composables/useRequestsColumns'
-import type { Bank } from '@/types/models'
+import {
+  useRequestsColumns,
+  buildStatusFilterOptions,
+  REQUESTS_COLUMN_LABELS,
+} from '@/composables/useRequestsColumns'
+import type { Bank, ImportRequest } from '@/types/models'
 import { Button } from '@/components/ui/button'
 import MetricCard from '@/components/shared/dashboard/MetricCard.vue'
 import MetricGrid from '@/components/shared/dashboard/MetricGrid.vue'
-import type { ImportRequest } from '@/types/models'
 import { useTableExport } from '@/composables/useTableExport'
 import {
   DropdownMenu,
@@ -51,7 +63,6 @@ import {
   DataTableToolbar,
   DataTableViewOptions,
 } from '@/components/ui/data-table'
-import { REQUESTS_COLUMN_LABELS } from '@/composables/useRequestsColumns'
 
 definePageMeta({
   middleware: ['auth', 'role'],
@@ -80,10 +91,14 @@ const columnVisibility = ref<VisibilityState>({
 const rowSelection = ref<Record<string, boolean>>({})
 const banks = ref<Bank[]>([])
 
-const isBankScoped = computed(() => user.value ? BANK_ROLES.includes(user.value.role) : false)
-const showBankFilter = computed(() => user.value ? CBY_BANK_FILTER_ROLES.includes(user.value.role) : false)
+const isBankScoped = computed(() => (user.value ? BANK_ROLES.includes(user.value.role) : false))
+const showBankFilter = computed(() =>
+  user.value ? CBY_BANK_FILTER_ROLES.includes(user.value.role) : false,
+)
 const canCreateRequest = computed(() => user.value?.role === UserRole.DATA_ENTRY)
-const canLoadRequests = computed(() => authStore.isAuthenticated && !authStore.isLoggingOut && Boolean(user.value))
+const canLoadRequests = computed(
+  () => authStore.isAuthenticated && !authStore.isLoggingOut && Boolean(user.value),
+)
 
 const currentUserId = computed(() => authStore.user?.id ?? null)
 
@@ -108,7 +123,9 @@ const pagination = computed<PaginationState>(() => ({
 }))
 
 // Called by DataTable's onPaginationChange — writes new values to URL.
-function onPaginationChange(updater: PaginationState | ((old: PaginationState) => PaginationState)) {
+function onPaginationChange(
+  updater: PaginationState | ((old: PaginationState) => PaginationState),
+) {
   const next = typeof updater === 'function' ? updater(pagination.value) : updater
   router.push({
     query: {
@@ -137,15 +154,14 @@ function buildFilter(overrides?: { page?: number; pageSize?: number }): Requests
   }
   const q = query.value.trim()
   if (q) filter.search = q
-  const statusCol = columnFilters.value.find(f => f.id === 'status')
+  const statusCol = columnFilters.value.find((f) => f.id === 'status')
   if (statusCol && Array.isArray(statusCol.value) && statusCol.value.length > 0) {
     filter.status = statusCol.value as RequestStatus[]
-  }
-  else if (roleAttentionStatuses.value) {
+  } else if (roleAttentionStatuses.value) {
     // No explicit status filter — fall back to attention-needed statuses for this role.
     filter.status = roleAttentionStatuses.value
   }
-  const merchantCol = columnFilters.value.find(f => f.id === 'merchant')
+  const merchantCol = columnFilters.value.find((f) => f.id === 'merchant')
   if (merchantCol && Array.isArray(merchantCol.value) && merchantCol.value.length > 0)
     filter.bank_id = parseInt(merchantCol.value[0] as string)
   return filter
@@ -174,21 +190,30 @@ watch(query, () => {
 })
 
 // Column filter → reset to page 1, reload + persist.
-watch(columnFilters, () => {
-  if (process.client && user.value?.role)
-    localStorage.setItem(`yfh-col-filters-${user.value.role}`, JSON.stringify(columnFilters.value))
-  if (!canLoadRequests.value) return
-  router.push({ query: { ...route.query, page: undefined } })
-  store.loadRequests(buildFilter({ page: 1 }))
-  refreshStats()
-}, { deep: true })
+watch(
+  columnFilters,
+  () => {
+    if (import.meta.client && user.value?.role)
+      localStorage.setItem(
+        `yfh-col-filters-${user.value.role}`,
+        JSON.stringify(columnFilters.value),
+      )
+    if (!canLoadRequests.value) return
+    router.push({ query: { ...route.query, page: undefined } })
+    store.loadRequests(buildFilter({ page: 1 }))
+    refreshStats()
+  },
+  { deep: true },
+)
 
 onMounted(async () => {
   if (!canLoadRequests.value) return
-  if (process.client && user.value?.role) {
+  if (import.meta.client && user.value?.role) {
     const saved = localStorage.getItem(`yfh-col-filters-${user.value.role}`)
     if (saved) {
-      try { columnFilters.value = JSON.parse(saved) } catch {}
+      try {
+        columnFilters.value = JSON.parse(saved)
+      } catch {}
     }
   }
   await store.loadRequests(buildFilter())
@@ -198,20 +223,21 @@ onMounted(async () => {
   }
 })
 
-
 // Consider filters "active" only when the user has explicitly set something beyond the role default.
 const hasActiveFilters = computed(() => {
   if (query.value.trim().length > 0) return true
   if (columnFilters.value.length === 0) return false
   // Check if the status filter differs from the role default
-  const statusCol = columnFilters.value.find(f => f.id === 'status')
+  const statusCol = columnFilters.value.find((f) => f.id === 'status')
   const defaults = roleAttentionStatuses.value
   if (!statusCol || !Array.isArray(statusCol.value)) {
-    return columnFilters.value.some(f => f.id !== 'status')
+    return columnFilters.value.some((f) => f.id !== 'status')
   }
   const active = statusCol.value as RequestStatus[]
   if (!defaults || active.length !== defaults.length) return true
-  return active.some((s, i) => s !== defaults[i]) || columnFilters.value.some(f => f.id !== 'status')
+  return (
+    active.some((s, i) => s !== defaults[i]) || columnFilters.value.some((f) => f.id !== 'status')
+  )
 })
 
 const selectedCount = computed(() => Object.values(rowSelection.value).filter(Boolean).length)
@@ -226,84 +252,393 @@ const roleKpiCards = computed(() => {
   // Use statusCount() which reads from statsMeta.status_totals (all pages, accurate)
   const count = (...statuses: RequestStatus[]) => statusCount(statuses)
 
-  const isActive = (...statuses: RequestStatus[]) =>
-    isStatusFilterActive(statuses)
+  const isActive = (...statuses: RequestStatus[]) => isStatusFilterActive(statuses)
 
-  const on = (...statuses: RequestStatus[]) =>
-    () => setStatusFilter(statuses)
+  const on =
+    (...statuses: RequestStatus[]) =>
+    () =>
+      setStatusFilter(statuses)
 
-  const resetAll = () => { columnFilters.value = [] }
+  const resetAll = () => {
+    columnFilters.value = []
+  }
 
   switch (role) {
     case UserRole.DATA_ENTRY:
       return [
-        { label: 'مسودات', value: count(RequestStatus.DRAFT, RequestStatus.DRAFT_REJECTED_INTERNAL), icon: FilePlus2, description: 'لم تُقدَّم بعد', active: isActive(RequestStatus.DRAFT, RequestStatus.DRAFT_REJECTED_INTERNAL), onClick: on(RequestStatus.DRAFT, RequestStatus.DRAFT_REJECTED_INTERNAL) },
-        { label: 'بانتظار المراجعة', value: count(RequestStatus.SUBMITTED, RequestStatus.BANK_REVIEW), icon: ClipboardList, description: 'مقدمة وتنتظر المراجعة', tone: 'warning' as const, active: isActive(RequestStatus.SUBMITTED, RequestStatus.BANK_REVIEW), onClick: on(RequestStatus.SUBMITTED, RequestStatus.BANK_REVIEW) },
-        { label: 'مكتملة', value: count(RequestStatus.COMPLETED), icon: CheckCircle2, description: 'اكتملت المعالجة', tone: 'success' as const, active: isActive(RequestStatus.COMPLETED), onClick: on(RequestStatus.COMPLETED) },
-        { label: 'تحتاج تصحيح', value: count(RequestStatus.BANK_RETURNED, RequestStatus.SUPPORT_RETURNED), icon: AlertCircle, description: 'أُعيدت للتعديل', tone: 'danger' as const, active: isActive(RequestStatus.BANK_RETURNED, RequestStatus.SUPPORT_RETURNED), onClick: on(RequestStatus.BANK_RETURNED, RequestStatus.SUPPORT_RETURNED) },
+        {
+          label: 'مسودات',
+          value: count(RequestStatus.DRAFT, RequestStatus.DRAFT_REJECTED_INTERNAL),
+          icon: FilePlus2,
+          description: 'لم تُقدَّم بعد',
+          active: isActive(RequestStatus.DRAFT, RequestStatus.DRAFT_REJECTED_INTERNAL),
+          onClick: on(RequestStatus.DRAFT, RequestStatus.DRAFT_REJECTED_INTERNAL),
+        },
+        {
+          label: 'بانتظار المراجعة',
+          value: count(RequestStatus.SUBMITTED, RequestStatus.BANK_REVIEW),
+          icon: ClipboardList,
+          description: 'مقدمة وتنتظر المراجعة',
+          tone: 'warning' as const,
+          active: isActive(RequestStatus.SUBMITTED, RequestStatus.BANK_REVIEW),
+          onClick: on(RequestStatus.SUBMITTED, RequestStatus.BANK_REVIEW),
+        },
+        {
+          label: 'مكتملة',
+          value: count(RequestStatus.COMPLETED),
+          icon: CheckCircle2,
+          description: 'اكتملت المعالجة',
+          tone: 'success' as const,
+          active: isActive(RequestStatus.COMPLETED),
+          onClick: on(RequestStatus.COMPLETED),
+        },
+        {
+          label: 'تحتاج تصحيح',
+          value: count(RequestStatus.BANK_RETURNED, RequestStatus.SUPPORT_RETURNED),
+          icon: AlertCircle,
+          description: 'أُعيدت للتعديل',
+          tone: 'danger' as const,
+          active: isActive(RequestStatus.BANK_RETURNED, RequestStatus.SUPPORT_RETURNED),
+          onClick: on(RequestStatus.BANK_RETURNED, RequestStatus.SUPPORT_RETURNED),
+        },
       ]
 
     case UserRole.BANK_REVIEWER:
       return [
-        { label: 'بانتظار المراجعة', value: count(RequestStatus.SUBMITTED), icon: ClipboardList, description: 'جديدة لم تُراجَع', tone: 'warning' as const, active: isActive(RequestStatus.SUBMITTED), onClick: on(RequestStatus.SUBMITTED) },
-        { label: 'قيد المراجعة', value: count(RequestStatus.BANK_REVIEW), icon: Eye, description: 'بدأت مراجعتها', tone: 'warning' as const, active: isActive(RequestStatus.BANK_REVIEW), onClick: on(RequestStatus.BANK_REVIEW) },
-        { label: 'تم اعتمادها', value: count(RequestStatus.BANK_APPROVED), icon: CheckCircle2, description: 'اعتمدها البنك', tone: 'success' as const, active: isActive(RequestStatus.BANK_APPROVED), onClick: on(RequestStatus.BANK_APPROVED) },
-        { label: 'مرفوضة نهائياً', value: count(RequestStatus.BANK_REJECTED), icon: AlertCircle, description: 'رفضها البنك نهائياً', tone: 'danger' as const, active: isActive(RequestStatus.BANK_REJECTED), onClick: on(RequestStatus.BANK_REJECTED) },
+        {
+          label: 'بانتظار المراجعة',
+          value: count(RequestStatus.SUBMITTED),
+          icon: ClipboardList,
+          description: 'جديدة لم تُراجَع',
+          tone: 'warning' as const,
+          active: isActive(RequestStatus.SUBMITTED),
+          onClick: on(RequestStatus.SUBMITTED),
+        },
+        {
+          label: 'قيد المراجعة',
+          value: count(RequestStatus.BANK_REVIEW),
+          icon: Eye,
+          description: 'بدأت مراجعتها',
+          tone: 'warning' as const,
+          active: isActive(RequestStatus.BANK_REVIEW),
+          onClick: on(RequestStatus.BANK_REVIEW),
+        },
+        {
+          label: 'تم اعتمادها',
+          value: count(RequestStatus.BANK_APPROVED),
+          icon: CheckCircle2,
+          description: 'اعتمدها البنك',
+          tone: 'success' as const,
+          active: isActive(RequestStatus.BANK_APPROVED),
+          onClick: on(RequestStatus.BANK_APPROVED),
+        },
+        {
+          label: 'مرفوضة نهائياً',
+          value: count(RequestStatus.BANK_REJECTED),
+          icon: AlertCircle,
+          description: 'رفضها البنك نهائياً',
+          tone: 'danger' as const,
+          active: isActive(RequestStatus.BANK_REJECTED),
+          onClick: on(RequestStatus.BANK_REJECTED),
+        },
       ]
 
     case UserRole.SWIFT_OFFICER:
       return [
-        { label: 'بانتظار SWIFT', value: count(RequestStatus.WAITING_FOR_SWIFT), icon: Upload, description: 'تحتاج رفع الوثيقة', tone: 'warning' as const, active: isActive(RequestStatus.WAITING_FOR_SWIFT), onClick: on(RequestStatus.WAITING_FOR_SWIFT) },
-        { label: 'تم رفع SWIFT', value: count(RequestStatus.SWIFT_UPLOADED), icon: CheckCircle2, description: 'تم رفع الوثيقة بنجاح', tone: 'success' as const, active: isActive(RequestStatus.SWIFT_UPLOADED), onClick: on(RequestStatus.SWIFT_UPLOADED) },
-        { label: 'مراحل التصويت', value: count(RequestStatus.WAITING_FOR_VOTING_OPEN, RequestStatus.EXECUTIVE_VOTING_OPEN, RequestStatus.EXECUTIVE_VOTING_CLOSED), icon: Lock, description: 'ما بعد SWIFT', active: isActive(RequestStatus.WAITING_FOR_VOTING_OPEN, RequestStatus.EXECUTIVE_VOTING_OPEN, RequestStatus.EXECUTIVE_VOTING_CLOSED), onClick: on(RequestStatus.WAITING_FOR_VOTING_OPEN, RequestStatus.EXECUTIVE_VOTING_OPEN, RequestStatus.EXECUTIVE_VOTING_CLOSED) },
-        { label: 'مكتملة', value: count(RequestStatus.COMPLETED), icon: CheckCircle2, description: 'اكتملت المعالجة', tone: 'success' as const, active: isActive(RequestStatus.COMPLETED), onClick: on(RequestStatus.COMPLETED) },
+        {
+          label: 'بانتظار SWIFT',
+          value: count(RequestStatus.WAITING_FOR_SWIFT),
+          icon: Upload,
+          description: 'تحتاج رفع الوثيقة',
+          tone: 'warning' as const,
+          active: isActive(RequestStatus.WAITING_FOR_SWIFT),
+          onClick: on(RequestStatus.WAITING_FOR_SWIFT),
+        },
+        {
+          label: 'تم رفع SWIFT',
+          value: count(RequestStatus.SWIFT_UPLOADED),
+          icon: CheckCircle2,
+          description: 'تم رفع الوثيقة بنجاح',
+          tone: 'success' as const,
+          active: isActive(RequestStatus.SWIFT_UPLOADED),
+          onClick: on(RequestStatus.SWIFT_UPLOADED),
+        },
+        {
+          label: 'مراحل التصويت',
+          value: count(
+            RequestStatus.WAITING_FOR_VOTING_OPEN,
+            RequestStatus.EXECUTIVE_VOTING_OPEN,
+            RequestStatus.EXECUTIVE_VOTING_CLOSED,
+          ),
+          icon: Lock,
+          description: 'ما بعد SWIFT',
+          active: isActive(
+            RequestStatus.WAITING_FOR_VOTING_OPEN,
+            RequestStatus.EXECUTIVE_VOTING_OPEN,
+            RequestStatus.EXECUTIVE_VOTING_CLOSED,
+          ),
+          onClick: on(
+            RequestStatus.WAITING_FOR_VOTING_OPEN,
+            RequestStatus.EXECUTIVE_VOTING_OPEN,
+            RequestStatus.EXECUTIVE_VOTING_CLOSED,
+          ),
+        },
+        {
+          label: 'مكتملة',
+          value: count(RequestStatus.COMPLETED),
+          icon: CheckCircle2,
+          description: 'اكتملت المعالجة',
+          tone: 'success' as const,
+          active: isActive(RequestStatus.COMPLETED),
+          onClick: on(RequestStatus.COMPLETED),
+        },
       ]
 
     case UserRole.SUPPORT_COMMITTEE:
       return [
-        { label: 'انتظار لجنة الدعم', value: count(RequestStatus.SUPPORT_REVIEW_PENDING), icon: ClipboardList, description: 'متاحة للمراجعة', tone: 'warning' as const, active: isActive(RequestStatus.SUPPORT_REVIEW_PENDING), onClick: on(RequestStatus.SUPPORT_REVIEW_PENDING) },
-        { label: 'قيد المراجعة', value: count(RequestStatus.SUPPORT_REVIEW_IN_PROGRESS), icon: Eye, description: 'محجوزة حالياً', tone: 'warning' as const, active: isActive(RequestStatus.SUPPORT_REVIEW_IN_PROGRESS), onClick: on(RequestStatus.SUPPORT_REVIEW_IN_PROGRESS) },
-        { label: 'تم اعتمادها', value: count(RequestStatus.SUPPORT_APPROVED), icon: CheckCircle2, description: 'اعتمدتها اللجنة', tone: 'success' as const, active: isActive(RequestStatus.SUPPORT_APPROVED), onClick: on(RequestStatus.SUPPORT_APPROVED) },
-        { label: 'مرفوضة أو معادة', value: count(RequestStatus.SUPPORT_REJECTED, RequestStatus.SUPPORT_RETURNED), icon: AlertCircle, description: 'رفضتها اللجنة أو أعادتها', tone: 'danger' as const, active: isActive(RequestStatus.SUPPORT_REJECTED, RequestStatus.SUPPORT_RETURNED), onClick: on(RequestStatus.SUPPORT_REJECTED, RequestStatus.SUPPORT_RETURNED) },
+        {
+          label: 'انتظار لجنة الدعم',
+          value: count(RequestStatus.SUPPORT_REVIEW_PENDING),
+          icon: ClipboardList,
+          description: 'متاحة للمراجعة',
+          tone: 'warning' as const,
+          active: isActive(RequestStatus.SUPPORT_REVIEW_PENDING),
+          onClick: on(RequestStatus.SUPPORT_REVIEW_PENDING),
+        },
+        {
+          label: 'قيد المراجعة',
+          value: count(RequestStatus.SUPPORT_REVIEW_IN_PROGRESS),
+          icon: Eye,
+          description: 'محجوزة حالياً',
+          tone: 'warning' as const,
+          active: isActive(RequestStatus.SUPPORT_REVIEW_IN_PROGRESS),
+          onClick: on(RequestStatus.SUPPORT_REVIEW_IN_PROGRESS),
+        },
+        {
+          label: 'تم اعتمادها',
+          value: count(RequestStatus.SUPPORT_APPROVED),
+          icon: CheckCircle2,
+          description: 'اعتمدتها اللجنة',
+          tone: 'success' as const,
+          active: isActive(RequestStatus.SUPPORT_APPROVED),
+          onClick: on(RequestStatus.SUPPORT_APPROVED),
+        },
+        {
+          label: 'مرفوضة أو معادة',
+          value: count(RequestStatus.SUPPORT_REJECTED, RequestStatus.SUPPORT_RETURNED),
+          icon: AlertCircle,
+          description: 'رفضتها اللجنة أو أعادتها',
+          tone: 'danger' as const,
+          active: isActive(RequestStatus.SUPPORT_REJECTED, RequestStatus.SUPPORT_RETURNED),
+          onClick: on(RequestStatus.SUPPORT_REJECTED, RequestStatus.SUPPORT_RETURNED),
+        },
       ]
 
     case UserRole.EXECUTIVE_MEMBER:
       return [
-        { label: 'جلسات مفتوحة', value: count(RequestStatus.EXECUTIVE_VOTING_OPEN), icon: Vote, description: 'تصويت مفتوح حالياً', tone: 'warning' as const, active: isActive(RequestStatus.EXECUTIVE_VOTING_OPEN), onClick: on(RequestStatus.EXECUTIVE_VOTING_OPEN) },
-        { label: 'جلسات مغلقة', value: count(RequestStatus.EXECUTIVE_VOTING_CLOSED), icon: Lock, description: 'انتهى التصويت', active: isActive(RequestStatus.EXECUTIVE_VOTING_CLOSED), onClick: on(RequestStatus.EXECUTIVE_VOTING_CLOSED) },
-        { label: 'قرارات معتمدة', value: count(RequestStatus.EXECUTIVE_APPROVED, RequestStatus.COMPLETED), icon: CheckCircle2, description: 'اعتمدتها اللجنة التنفيذية', tone: 'success' as const, active: isActive(RequestStatus.EXECUTIVE_APPROVED, RequestStatus.COMPLETED), onClick: on(RequestStatus.EXECUTIVE_APPROVED, RequestStatus.COMPLETED) },
-        { label: 'قرارات مرفوضة', value: count(RequestStatus.EXECUTIVE_REJECTED), icon: AlertCircle, description: 'رفضتها اللجنة التنفيذية', tone: 'danger' as const, active: isActive(RequestStatus.EXECUTIVE_REJECTED), onClick: on(RequestStatus.EXECUTIVE_REJECTED) },
+        {
+          label: 'جلسات مفتوحة',
+          value: count(RequestStatus.EXECUTIVE_VOTING_OPEN),
+          icon: Vote,
+          description: 'تصويت مفتوح حالياً',
+          tone: 'warning' as const,
+          active: isActive(RequestStatus.EXECUTIVE_VOTING_OPEN),
+          onClick: on(RequestStatus.EXECUTIVE_VOTING_OPEN),
+        },
+        {
+          label: 'جلسات مغلقة',
+          value: count(RequestStatus.EXECUTIVE_VOTING_CLOSED),
+          icon: Lock,
+          description: 'انتهى التصويت',
+          active: isActive(RequestStatus.EXECUTIVE_VOTING_CLOSED),
+          onClick: on(RequestStatus.EXECUTIVE_VOTING_CLOSED),
+        },
+        {
+          label: 'قرارات معتمدة',
+          value: count(RequestStatus.EXECUTIVE_APPROVED, RequestStatus.COMPLETED),
+          icon: CheckCircle2,
+          description: 'اعتمدتها اللجنة التنفيذية',
+          tone: 'success' as const,
+          active: isActive(RequestStatus.EXECUTIVE_APPROVED, RequestStatus.COMPLETED),
+          onClick: on(RequestStatus.EXECUTIVE_APPROVED, RequestStatus.COMPLETED),
+        },
+        {
+          label: 'قرارات مرفوضة',
+          value: count(RequestStatus.EXECUTIVE_REJECTED),
+          icon: AlertCircle,
+          description: 'رفضتها اللجنة التنفيذية',
+          tone: 'danger' as const,
+          active: isActive(RequestStatus.EXECUTIVE_REJECTED),
+          onClick: on(RequestStatus.EXECUTIVE_REJECTED),
+        },
       ]
 
     case UserRole.COMMITTEE_DIRECTOR:
       return [
-        { label: 'جلسات نشطة', value: count(RequestStatus.EXECUTIVE_VOTING_OPEN), icon: Vote, description: 'تصويت مفتوح الآن', tone: 'warning' as const, active: isActive(RequestStatus.EXECUTIVE_VOTING_OPEN), onClick: on(RequestStatus.EXECUTIVE_VOTING_OPEN) },
-        { label: 'بانتظار المصارفة', value: count(RequestStatus.EXECUTIVE_APPROVED), icon: Lock, description: 'انتظار تأكيد خارجي', tone: 'warning' as const, active: isActive(RequestStatus.EXECUTIVE_APPROVED), onClick: on(RequestStatus.EXECUTIVE_APPROVED) },
-        { label: 'جلسات مغلقة', value: count(RequestStatus.EXECUTIVE_VOTING_CLOSED), icon: CheckCircle2, description: 'انتهى التصويت', active: isActive(RequestStatus.EXECUTIVE_VOTING_CLOSED), onClick: on(RequestStatus.EXECUTIVE_VOTING_CLOSED) },
-        { label: 'مكتملة', value: count(RequestStatus.COMPLETED), icon: CheckCircle2, description: 'اكتملت المعالجة', tone: 'success' as const, active: isActive(RequestStatus.COMPLETED), onClick: on(RequestStatus.COMPLETED) },
+        {
+          label: 'جلسات نشطة',
+          value: count(RequestStatus.EXECUTIVE_VOTING_OPEN),
+          icon: Vote,
+          description: 'تصويت مفتوح الآن',
+          tone: 'warning' as const,
+          active: isActive(RequestStatus.EXECUTIVE_VOTING_OPEN),
+          onClick: on(RequestStatus.EXECUTIVE_VOTING_OPEN),
+        },
+        {
+          label: 'بانتظار المصارفة',
+          value: count(RequestStatus.EXECUTIVE_APPROVED),
+          icon: Lock,
+          description: 'انتظار تأكيد خارجي',
+          tone: 'warning' as const,
+          active: isActive(RequestStatus.EXECUTIVE_APPROVED),
+          onClick: on(RequestStatus.EXECUTIVE_APPROVED),
+        },
+        {
+          label: 'جلسات مغلقة',
+          value: count(RequestStatus.EXECUTIVE_VOTING_CLOSED),
+          icon: CheckCircle2,
+          description: 'انتهى التصويت',
+          active: isActive(RequestStatus.EXECUTIVE_VOTING_CLOSED),
+          onClick: on(RequestStatus.EXECUTIVE_VOTING_CLOSED),
+        },
+        {
+          label: 'مكتملة',
+          value: count(RequestStatus.COMPLETED),
+          icon: CheckCircle2,
+          description: 'اكتملت المعالجة',
+          tone: 'success' as const,
+          active: isActive(RequestStatus.COMPLETED),
+          onClick: on(RequestStatus.COMPLETED),
+        },
       ]
 
     case UserRole.BANK_ADMIN: {
-      const approved = count(RequestStatus.BANK_APPROVED, RequestStatus.EXECUTIVE_APPROVED, RequestStatus.COMPLETED)
-      const rejected = count(RequestStatus.BANK_REJECTED, RequestStatus.EXECUTIVE_REJECTED, RequestStatus.SUPPORT_REJECTED)
+      const approved = count(
+        RequestStatus.BANK_APPROVED,
+        RequestStatus.EXECUTIVE_APPROVED,
+        RequestStatus.COMPLETED,
+      )
+      const rejected = count(
+        RequestStatus.BANK_REJECTED,
+        RequestStatus.EXECUTIVE_REJECTED,
+        RequestStatus.SUPPORT_REJECTED,
+      )
       const approvalRate = total > 0 ? Math.round((approved / total) * 100) : 0
       return [
-        { label: 'إجمالي الطلبات', value: total, icon: ClipboardList, description: 'جميع طلبات الجهة', active: noFilter, onClick: resetAll },
-        { label: 'قيد المعالجة', value: count(...pendingStatuses), icon: Lock, description: 'بانتظار الإجراء', tone: 'warning' as const, active: isStatusFilterActive(pendingStatuses), onClick: filterByPending },
-        { label: 'معدل الاعتماد', value: approvalRate, icon: CheckCircle2, description: `${approved} من ${total} معتمدة`, tone: 'success' as const, active: isActive(RequestStatus.BANK_APPROVED, RequestStatus.EXECUTIVE_APPROVED, RequestStatus.COMPLETED), onClick: filterByApproved },
-        { label: 'مرفوضة', value: rejected, icon: AlertCircle, description: 'تم رفضها في إحدى المراحل', tone: 'danger' as const, active: isActive(RequestStatus.BANK_REJECTED, RequestStatus.EXECUTIVE_REJECTED, RequestStatus.SUPPORT_REJECTED), onClick: filterByRejected },
+        {
+          label: 'إجمالي الطلبات',
+          value: total,
+          icon: ClipboardList,
+          description: 'جميع طلبات الجهة',
+          active: noFilter,
+          onClick: resetAll,
+        },
+        {
+          label: 'قيد المعالجة',
+          value: count(...pendingStatuses),
+          icon: Lock,
+          description: 'بانتظار الإجراء',
+          tone: 'warning' as const,
+          active: isStatusFilterActive(pendingStatuses),
+          onClick: filterByPending,
+        },
+        {
+          label: 'معدل الاعتماد',
+          value: approvalRate,
+          icon: CheckCircle2,
+          description: `${approved} من ${total} معتمدة`,
+          tone: 'success' as const,
+          active: isActive(
+            RequestStatus.BANK_APPROVED,
+            RequestStatus.EXECUTIVE_APPROVED,
+            RequestStatus.COMPLETED,
+          ),
+          onClick: filterByApproved,
+        },
+        {
+          label: 'مرفوضة',
+          value: rejected,
+          icon: AlertCircle,
+          description: 'تم رفضها في إحدى المراحل',
+          tone: 'danger' as const,
+          active: isActive(
+            RequestStatus.BANK_REJECTED,
+            RequestStatus.EXECUTIVE_REJECTED,
+            RequestStatus.SUPPORT_REJECTED,
+          ),
+          onClick: filterByRejected,
+        },
       ]
     }
 
-    default: { // CBY_ADMIN and fallback
-      const approved = count(RequestStatus.BANK_APPROVED, RequestStatus.EXECUTIVE_APPROVED, RequestStatus.COMPLETED)
-      const rejected = count(RequestStatus.BANK_REJECTED, RequestStatus.EXECUTIVE_REJECTED, RequestStatus.SUPPORT_REJECTED)
+    default: {
+      // CBY_ADMIN and fallback
+      const approved = count(
+        RequestStatus.BANK_APPROVED,
+        RequestStatus.EXECUTIVE_APPROVED,
+        RequestStatus.COMPLETED,
+      )
+      const rejected = count(
+        RequestStatus.BANK_REJECTED,
+        RequestStatus.EXECUTIVE_REJECTED,
+        RequestStatus.SUPPORT_REJECTED,
+      )
       const pending = total - approved - rejected
       return [
-        { label: 'إجمالي الطلبات', value: total, icon: ClipboardList, description: 'جميع الطلبات المعروضة', active: noFilter, onClick: resetAll },
-        { label: 'قيد المعالجة', value: pending, icon: Lock, description: 'بانتظار الإجراء', tone: 'warning' as const, active: isStatusFilterActive(pendingStatuses), onClick: filterByPending },
-        { label: 'معتمدة', value: approved, icon: CheckCircle2, description: 'مرّت بجميع المراحل', tone: 'success' as const, active: isActive(RequestStatus.BANK_APPROVED, RequestStatus.EXECUTIVE_APPROVED, RequestStatus.COMPLETED), onClick: filterByApproved },
-        { label: 'تحتاج متابعة', value: count(RequestStatus.BANK_RETURNED, RequestStatus.SUPPORT_RETURNED, RequestStatus.DRAFT_REJECTED_INTERNAL, RequestStatus.SUPPORT_REJECTED), icon: AlertCircle, description: 'استثناءات تحتاج إجراء', tone: 'danger' as const, active: isActive(RequestStatus.BANK_RETURNED, RequestStatus.SUPPORT_RETURNED, RequestStatus.DRAFT_REJECTED_INTERNAL, RequestStatus.SUPPORT_REJECTED), onClick: on(RequestStatus.BANK_RETURNED, RequestStatus.SUPPORT_RETURNED, RequestStatus.DRAFT_REJECTED_INTERNAL, RequestStatus.SUPPORT_REJECTED) },
+        {
+          label: 'إجمالي الطلبات',
+          value: total,
+          icon: ClipboardList,
+          description: 'جميع الطلبات المعروضة',
+          active: noFilter,
+          onClick: resetAll,
+        },
+        {
+          label: 'قيد المعالجة',
+          value: pending,
+          icon: Lock,
+          description: 'بانتظار الإجراء',
+          tone: 'warning' as const,
+          active: isStatusFilterActive(pendingStatuses),
+          onClick: filterByPending,
+        },
+        {
+          label: 'معتمدة',
+          value: approved,
+          icon: CheckCircle2,
+          description: 'مرّت بجميع المراحل',
+          tone: 'success' as const,
+          active: isActive(
+            RequestStatus.BANK_APPROVED,
+            RequestStatus.EXECUTIVE_APPROVED,
+            RequestStatus.COMPLETED,
+          ),
+          onClick: filterByApproved,
+        },
+        {
+          label: 'تحتاج متابعة',
+          value: count(
+            RequestStatus.BANK_RETURNED,
+            RequestStatus.SUPPORT_RETURNED,
+            RequestStatus.DRAFT_REJECTED_INTERNAL,
+            RequestStatus.SUPPORT_REJECTED,
+          ),
+          icon: AlertCircle,
+          description: 'استثناءات تحتاج إجراء',
+          tone: 'danger' as const,
+          active: isActive(
+            RequestStatus.BANK_RETURNED,
+            RequestStatus.SUPPORT_RETURNED,
+            RequestStatus.DRAFT_REJECTED_INTERNAL,
+            RequestStatus.SUPPORT_REJECTED,
+          ),
+          onClick: on(
+            RequestStatus.BANK_RETURNED,
+            RequestStatus.SUPPORT_RETURNED,
+            RequestStatus.DRAFT_REJECTED_INTERNAL,
+            RequestStatus.SUPPORT_REJECTED,
+          ),
+        },
       ]
     }
   }
@@ -313,7 +648,7 @@ const roleKpiCards = computed(() => {
 function statusCount(statuses: RequestStatus[]): number {
   const totals = store.statsMeta?.status_totals
   if (totals) return statuses.reduce((sum, s) => sum + (totals[s] ?? 0), 0)
-  return store.requests.filter(r => statuses.includes(r.status)).length
+  return store.requests.filter((r) => statuses.includes(r.status)).length
 }
 
 // Status filter options built from STATUS_LABELS
@@ -321,7 +656,7 @@ const statusFilterOptions = computed(() => buildStatusFilterOptions())
 
 // Bank filter options for roles that see bank filter
 const bankFilterOptions = computed(() =>
-  banks.value.map(b => ({ label: b.name_ar || b.name_en || '', value: String(b.id) })),
+  banks.value.map((b) => ({ label: b.name_ar || b.name_en || '', value: String(b.id) })),
 )
 
 function handleReset() {
@@ -354,8 +689,14 @@ function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
   if (!rows.length || !exportColumns.value.length) return
   const filename = `${buildExportFilename()}-selected`
   if (format === 'csv') exportToCSV(rows, exportColumns.value, filename)
-  else if (format === 'excel') exportToExcel(rows as unknown as Record<string, unknown>[], exportColumns.value as any, filename)
-  else exportToJSON(rows as unknown as Record<string, unknown>[], exportColumns.value as any, filename)
+  else if (format === 'excel')
+    exportToExcel(
+      rows as unknown as Record<string, unknown>[],
+      exportColumns.value as any,
+      filename,
+    )
+  else
+    exportToJSON(rows as unknown as Record<string, unknown>[], exportColumns.value as any, filename)
 }
 
 // ── Smart export ─────────────────────────────────────────────────────────────
@@ -368,26 +709,26 @@ async function doExport(scope: 'page' | 'filtered' | 'all', format: 'csv' | 'exc
     let rows: ImportRequest[] = []
     if (scope === 'page') {
       rows = store.requests
-    }
-    else {
+    } else {
       const { fetchRequests } = useRequests()
-      const filter: RequestsFilter = scope === 'filtered'
-        ? { ...buildFilter({ page: 1, pageSize: 10000 }) }
-        : { per_page: 10000, page: 1 }
+      const filter: RequestsFilter =
+        scope === 'filtered'
+          ? { ...buildFilter({ page: 1, pageSize: 10000 }) }
+          : { per_page: 10000, page: 1 }
       const result = await fetchRequests(filter)
       rows = result.data
     }
     const filename = buildExportFilename()
     const exportRows = rows as unknown as Record<string, unknown>[]
-    const columns = exportColumns.value as unknown as Parameters<typeof exportToCSV<Record<string, unknown>>>[1]
+    const columns = exportColumns.value as unknown as Parameters<
+      typeof exportToCSV<Record<string, unknown>>
+    >[1]
     if (format === 'csv') exportToCSV(exportRows, columns, filename)
     else if (format === 'excel') exportToExcel(exportRows, columns, filename)
     else exportToJSON(exportRows, columns, filename)
-  }
-  catch {
+  } catch {
     toast.error('تعذّر التصدير. تحقق من اتصالك وأعد المحاولة.')
-  }
-  finally {
+  } finally {
     exportLoading.value = false
   }
 }
@@ -412,7 +753,16 @@ const pendingStatuses: RequestStatus[] = [
 ]
 
 function filterByApproved() {
-  columnFilters.value = [{ id: 'status', value: [RequestStatus.BANK_APPROVED, RequestStatus.EXECUTIVE_APPROVED, RequestStatus.COMPLETED] }]
+  columnFilters.value = [
+    {
+      id: 'status',
+      value: [
+        RequestStatus.BANK_APPROVED,
+        RequestStatus.EXECUTIVE_APPROVED,
+        RequestStatus.COMPLETED,
+      ],
+    },
+  ]
 }
 
 function filterByPending() {
@@ -420,7 +770,16 @@ function filterByPending() {
 }
 
 function filterByRejected() {
-  columnFilters.value = [{ id: 'status', value: [RequestStatus.BANK_REJECTED, RequestStatus.EXECUTIVE_REJECTED, RequestStatus.SUPPORT_REJECTED] }]
+  columnFilters.value = [
+    {
+      id: 'status',
+      value: [
+        RequestStatus.BANK_REJECTED,
+        RequestStatus.EXECUTIVE_REJECTED,
+        RequestStatus.SUPPORT_REJECTED,
+      ],
+    },
+  ]
 }
 
 function filterBySmartSummary(statuses: RequestStatus[]) {
@@ -432,23 +791,31 @@ function setStatusFilter(statuses: RequestStatus[]) {
 }
 
 function isStatusFilterActive(statuses: RequestStatus[]): boolean {
-  const f = columnFilters.value.find(cf => cf.id === 'status')
+  const f = columnFilters.value.find((cf) => cf.id === 'status')
   if (!f || !Array.isArray(f.value)) return false
-  return statuses.some(s => (f.value as RequestStatus[]).includes(s))
+  return statuses.some((s) => (f.value as RequestStatus[]).includes(s))
 }
 
-const requestsEmptyState = computed(() => buildRequestsEmptyState({
-  role: user.value?.role,
-  hasAnyRequests: store.requests.length > 0,
-  hasActiveFilters: hasActiveFilters.value,
-}))
+const requestsEmptyState = computed(() =>
+  buildRequestsEmptyState({
+    role: user.value?.role,
+    hasAnyRequests: store.requests.length > 0,
+    hasActiveFilters: hasActiveFilters.value,
+  }),
+)
 </script>
 
 <template>
   <div v-if="user">
     <PageHeader
       title="طلبات تمويل الواردات"
-      :subtitle="isBankScoped ? 'طلبات جهتك، للعرض والإدارة فقط' : roleAttentionStatuses ? 'الطلبات التي تتطلب إجراءً منك' : 'جميع الطلبات المقدمة عبر المنصة'"
+      :subtitle="
+        isBankScoped
+          ? 'طلبات جهتك، للعرض والإدارة فقط'
+          : roleAttentionStatuses
+            ? 'الطلبات التي تتطلب إجراءً منك'
+            : 'جميع الطلبات المقدمة عبر المنصة'
+      "
       :breadcrumbs="[{ label: 'الرئيسية', to: '/' }, { label: 'الطلبات' }]"
     >
       <template #actions>
@@ -474,7 +841,9 @@ const requestsEmptyState = computed(() => buildRequestsEmptyState({
       <AlertTitle>خطأ في تحميل الطلبات</AlertTitle>
       <AlertDescription>{{ store.error }}</AlertDescription>
       <AlertAction>
-        <Button variant="outline" size="sm" @click="store.loadRequests(buildFilter())">إعادة المحاولة</Button>
+        <Button variant="outline" size="sm" @click="store.loadRequests(buildFilter())"
+          >إعادة المحاولة</Button
+        >
       </AlertAction>
     </Alert>
 
@@ -495,7 +864,6 @@ const requestsEmptyState = computed(() => buildRequestsEmptyState({
       </MetricGrid>
     </div>
 
-
     <!-- Table -->
     <div class="relative flex flex-col gap-4">
       <DataTable
@@ -508,9 +876,9 @@ const requestsEmptyState = computed(() => buildRequestsEmptyState({
         :column-visibility="columnVisibility"
         :row-selection="rowSelection"
         @update:pagination="onPaginationChange"
-        @update:column-filters="(v) => columnFilters = v"
-        @update:column-visibility="(v) => columnVisibility = v"
-        @update:row-selection="(v) => rowSelection = v"
+        @update:column-filters="(v) => (columnFilters = v)"
+        @update:column-visibility="(v) => (columnVisibility = v)"
+        @update:row-selection="(v) => (rowSelection = v)"
       >
         <template #toolbar="{ table }">
           <DataTableToolbar
@@ -518,12 +886,16 @@ const requestsEmptyState = computed(() => buildRequestsEmptyState({
             search-placeholder="بحث برقم الطلب، التاجر، أو رقم الفاتورة..."
             :has-filters="hasActiveFilters"
             :selected-count="selectedCount"
-            @update:search="v => query = v"
+            @update:search="(v) => (query = v)"
             @reset="handleReset"
             @clear-selection="clearBulkSelection"
           >
             <template #bulk-actions>
-              <DataTableBulkExport @csv="exportSelectedRows('csv')" @excel="exportSelectedRows('excel')" @json="exportSelectedRows('json')" />
+              <DataTableBulkExport
+                @csv="exportSelectedRows('csv')"
+                @excel="exportSelectedRows('excel')"
+                @json="exportSelectedRows('json')"
+              />
             </template>
             <template #filters>
               <DataTableFacetedFilter
@@ -543,19 +915,33 @@ const requestsEmptyState = computed(() => buildRequestsEmptyState({
               <DataTableViewOptions :table="table" :column-labels="REQUESTS_COLUMN_LABELS" />
               <DropdownMenu>
                 <DropdownMenuTrigger as-child>
-                  <Button variant="outline" size="sm" :disabled="!exportColumns.length || exportLoading">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    :disabled="!exportColumns.length || exportLoading"
+                  >
                     <Download class="me-2 h-4 w-4" />
                     تصدير
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" class="w-56">
-                  <DropdownMenuLabel>الصفحة الحالية: {{ store.requests.length.toLocaleString('ar-EG') }} صف</DropdownMenuLabel>
+                  <DropdownMenuLabel
+                    >الصفحة الحالية:
+                    {{ store.requests.length.toLocaleString('ar-EG') }} صف</DropdownMenuLabel
+                  >
                   <DropdownMenuSeparator />
                   <DropdownMenuItem @click="doExport('page', 'csv')">CSV</DropdownMenuItem>
                   <DropdownMenuItem @click="doExport('page', 'excel')">Excel</DropdownMenuItem>
                   <DropdownMenuItem @click="doExport('page', 'json')">JSON</DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuLabel>{{ hasActiveFilters ? 'نتائج الفلتر' : 'جميع البيانات' }}: {{ (store.statsMeta?.total ?? store.meta?.total ?? '...').toLocaleString?.() ?? '...' }} صف</DropdownMenuLabel>
+                  <DropdownMenuLabel
+                    >{{ hasActiveFilters ? 'نتائج الفلتر' : 'جميع البيانات' }}:
+                    {{
+                      (store.statsMeta?.total ?? store.meta?.total ?? '...').toLocaleString?.() ??
+                      '...'
+                    }}
+                    صف</DropdownMenuLabel
+                  >
                   <DropdownMenuSeparator />
                   <DropdownMenuItem @click="doExport('filtered', 'csv')">CSV</DropdownMenuItem>
                   <DropdownMenuItem @click="doExport('filtered', 'excel')">Excel</DropdownMenuItem>
@@ -566,25 +952,32 @@ const requestsEmptyState = computed(() => buildRequestsEmptyState({
           </DataTableToolbar>
         </template>
         <template #empty>
-          <Empty class="min-h-[280px] rounded-xl border border-dashed bg-muted/20">
+          <Empty class="bg-muted/20 min-h-[280px] rounded-xl border border-dashed">
             <EmptyHeader>
-              <div class="flex size-12 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+              <div
+                class="bg-muted text-muted-foreground flex size-12 items-center justify-center rounded-xl"
+              >
                 <SearchX class="size-5" />
               </div>
               <EmptyTitle>{{ requestsEmptyState?.title ?? 'لا توجد طلبات مطابقة' }}</EmptyTitle>
             </EmptyHeader>
             <EmptyContent>
               <EmptyDescription>
-                {{ requestsEmptyState?.description ?? 'جرّب تغيير البحث أو الفلاتر لعرض الطلبات المتاحة.' }}
+                {{
+                  requestsEmptyState?.description ??
+                  'جرّب تغيير البحث أو الفلاتر لعرض الطلبات المتاحة.'
+                }}
               </EmptyDescription>
             </EmptyContent>
           </Empty>
         </template>
         <template #pagination="{ table }">
-          <DataTablePagination :table="table" :total-rows="store.statsMeta?.total ?? store.meta?.total" />
+          <DataTablePagination
+            :table="table"
+            :total-rows="store.statsMeta?.total ?? store.meta?.total"
+          />
         </template>
       </DataTable>
     </div>
-
   </div>
 </template>

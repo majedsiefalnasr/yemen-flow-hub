@@ -40,26 +40,20 @@ const roleSubtitle = computed(() =>
   role.value ? (ROLE_SUBTITLES[role.value] ?? ROLE_LABELS[role.value] ?? '') : '',
 )
 
-const showNewRequestAction = computed(() =>
-  role.value != null && ROUTE_ROLE_MAP['/requests/new']?.includes(role.value),
+const showNewRequestAction = computed(
+  () => role.value != null && ROUTE_ROLE_MAP['/requests/new']?.includes(role.value),
 )
 </script>
 
 <template>
-  <div class="flex flex-col gap-6" >
+  <div class="flex flex-col gap-6">
     <!-- Page header -->
     <div class="flex flex-wrap items-start justify-between gap-4">
       <div class="flex flex-col gap-1">
-        <h1 class="text-2xl font-semibold tracking-tight sm:text-3xl">
-          أهلاً، {{ firstName }}
-        </h1>
-        <p class="text-sm text-muted-foreground">{{ roleSubtitle }}</p>
+        <h1 class="text-2xl font-semibold tracking-tight sm:text-3xl">أهلاً، {{ firstName }}</h1>
+        <p class="text-muted-foreground text-sm">{{ roleSubtitle }}</p>
       </div>
-      <Button
-        v-if="showNewRequestAction"
-        class="shrink-0"
-        @click="router.push('/requests/new')"
-      >
+      <Button v-if="showNewRequestAction" class="shrink-0" @click="router.push('/requests/new')">
         <FilePlus2 class="h-4 w-4" />
         إنشاء طلب
       </Button>
@@ -71,21 +65,34 @@ const showNewRequestAction = computed(() =>
     <BankAdminDashboard v-else-if="role === UserRole.BANK_ADMIN" />
     <SupportCommitteeDashboard v-else-if="role === UserRole.SUPPORT_COMMITTEE" />
     <SwiftOfficerDashboard v-else-if="role === UserRole.SWIFT_OFFICER" />
-    <ExecutiveDashboard v-else-if="role === UserRole.EXECUTIVE_MEMBER || role === UserRole.COMMITTEE_DIRECTOR" />
+    <ExecutiveDashboard
+      v-else-if="role === UserRole.EXECUTIVE_MEMBER || role === UserRole.COMMITTEE_DIRECTOR"
+    />
     <CbyAdminDashboard v-else-if="role === UserRole.CBY_ADMIN" />
 
     <!-- Unknown role -->
     <div
       v-else
-      class="flex flex-col items-center gap-4 rounded-xl border border-border bg-background px-8 py-12 text-center"
+      class="border-border bg-background flex flex-col items-center gap-4 rounded-xl border px-8 py-12 text-center"
       role="status"
     >
-      <div class="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="text-muted-foreground" aria-hidden="true">
-          <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+      <div class="bg-muted flex h-12 w-12 items-center justify-center rounded-full">
+        <svg
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          class="text-muted-foreground"
+          aria-hidden="true"
+        >
+          <circle cx="12" cy="12" r="10" />
+          <line x1="12" y1="8" x2="12" y2="12" />
+          <line x1="12" y1="16" x2="12.01" y2="16" />
         </svg>
       </div>
-      <p class="max-w-sm text-sm text-muted-foreground">
+      <p class="text-muted-foreground max-w-sm text-sm">
         لوحة التحكم غير متاحة للدور المحدد. يرجى التواصل مع المسؤول.
       </p>
     </div>

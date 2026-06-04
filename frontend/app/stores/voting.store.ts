@@ -33,15 +33,13 @@ export const useVotingStore = defineStore('voting', {
         const result = await fetchVotingQueue()
         this.queue = result.data
         this.queueMeta = result.meta
-      }
-      catch (err) {
+      } catch (err) {
         if (import.meta.dev) {
           console.error('[voting.store] loadQueue failed:', err)
         }
         this.error = 'تعذّر تحميل قائمة التصويت.'
         this.queue = []
-      }
-      finally {
+      } finally {
         this.loading = false
       }
     },
@@ -53,14 +51,12 @@ export const useVotingStore = defineStore('voting', {
       try {
         const { fetchVotingDetail } = useVoting()
         this.votingDetail = await fetchVotingDetail(id)
-      }
-      catch (err) {
+      } catch (err) {
         if (import.meta.dev) {
           console.error('[voting.store] loadVotingDetail failed:', err)
         }
         this.voteError = 'تعذّر تحميل بيانات التصويت.'
-      }
-      finally {
+      } finally {
         this.loadingDetail = false
       }
     },
@@ -73,16 +69,14 @@ export const useVotingStore = defineStore('voting', {
       try {
         const { castVote } = useVoting()
         this.votingDetail = await castVote(id, vote, justification)
-      }
-      catch (err: unknown) {
+      } catch (err: unknown) {
         if (import.meta.dev) {
           console.error('[voting.store] castVote failed:', err)
         }
         const msg = err instanceof Error ? err.message : ''
         this.voteError = msg || 'تعذّر تسجيل الصوت. يرجى المحاولة مرة أخرى.'
         throw err
-      }
-      finally {
+      } finally {
         this.performingVote = false
       }
     },
@@ -97,16 +91,14 @@ export const useVotingStore = defineStore('voting', {
         const updated = await openSession(id)
         this.votingDetail = null
         return updated
-      }
-      catch (err: unknown) {
+      } catch (err: unknown) {
         if (import.meta.dev) {
           console.error('[voting.store] openSession failed:', err)
         }
         const msg = err instanceof Error ? err.message : ''
         this.error = msg || 'تعذّر فتح جلسة التصويت.'
         throw err
-      }
-      finally {
+      } finally {
         this.performingDirectorAction = false
       }
     },
@@ -121,16 +113,14 @@ export const useVotingStore = defineStore('voting', {
         const updated = await closeSession(id)
         this.votingDetail = null
         return updated
-      }
-      catch (err: unknown) {
+      } catch (err: unknown) {
         if (import.meta.dev) {
           console.error('[voting.store] closeSession failed:', err)
         }
         const msg = err instanceof Error ? err.message : ''
         this.error = msg || 'تعذّر إغلاق جلسة التصويت.'
         throw err
-      }
-      finally {
+      } finally {
         this.performingDirectorAction = false
       }
     },
@@ -143,21 +133,23 @@ export const useVotingStore = defineStore('voting', {
       try {
         const { finalizeDecision } = useVoting()
         return await finalizeDecision(id)
-      }
-      catch (err: unknown) {
+      } catch (err: unknown) {
         if (import.meta.dev) {
           console.error('[voting.store] finalizeDecision failed:', err)
         }
         const msg = err instanceof Error ? err.message : ''
         this.error = msg || 'تعذّر إصدار القرار النهائي.'
         throw err
-      }
-      finally {
+      } finally {
         this.performingDirectorAction = false
       }
     },
 
-    async directorOverride(id: number, decision: 'APPROVE' | 'REJECT', justification: string): Promise<ImportRequest> {
+    async directorOverride(
+      id: number,
+      decision: 'APPROVE' | 'REJECT',
+      justification: string,
+    ): Promise<ImportRequest> {
       if (this.performingDirectorAction) throw new Error('إجراء قيد التنفيذ بالفعل')
       this.performingDirectorAction = true
       this.error = null
@@ -167,16 +159,14 @@ export const useVotingStore = defineStore('voting', {
         const updated = await directorOverride(id, decision, justification)
         this.votingDetail = null
         return updated
-      }
-      catch (err: unknown) {
+      } catch (err: unknown) {
         if (import.meta.dev) {
           console.error('[voting.store] directorOverride failed:', err)
         }
         const msg = err instanceof Error ? err.message : ''
         this.error = msg || 'تعذّر تنفيذ قرار التجاوز.'
         throw err
-      }
-      finally {
+      } finally {
         this.performingDirectorAction = false
       }
     },

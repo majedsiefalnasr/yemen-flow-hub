@@ -66,7 +66,7 @@ describe('ROLE_BUCKETS', () => {
   })
 
   it('DATA_ENTRY buckets include draft, submitted, processing, completed, rejected', () => {
-    const keys = ROLE_BUCKETS[UserRole.DATA_ENTRY]!.map(b => b.key)
+    const keys = ROLE_BUCKETS[UserRole.DATA_ENTRY]!.map((b) => b.key)
     expect(keys).toContain('draft')
     expect(keys).toContain('submitted')
     expect(keys).toContain('processing')
@@ -75,7 +75,7 @@ describe('ROLE_BUCKETS', () => {
   })
 
   it('SUPPORT_COMMITTEE buckets cover claim lifecycle statuses', () => {
-    const allStatuses = ROLE_BUCKETS[UserRole.SUPPORT_COMMITTEE]!.flatMap(b => b.statuses)
+    const allStatuses = ROLE_BUCKETS[UserRole.SUPPORT_COMMITTEE]!.flatMap((b) => b.statuses)
     expect(allStatuses).toContain(RequestStatus.SUPPORT_REVIEW_PENDING)
     expect(allStatuses).toContain(RequestStatus.SUPPORT_REVIEW_IN_PROGRESS)
     expect(allStatuses).toContain(RequestStatus.SUPPORT_APPROVED)
@@ -83,7 +83,7 @@ describe('ROLE_BUCKETS', () => {
   })
 
   it('EXECUTIVE_MEMBER buckets cover voting statuses', () => {
-    const allStatuses = ROLE_BUCKETS[UserRole.EXECUTIVE_MEMBER]!.flatMap(b => b.statuses)
+    const allStatuses = ROLE_BUCKETS[UserRole.EXECUTIVE_MEMBER]!.flatMap((b) => b.statuses)
     expect(allStatuses).toContain(RequestStatus.SUPPORT_APPROVED)
     expect(allStatuses).toContain(RequestStatus.WAITING_FOR_VOTING_OPEN)
     expect(allStatuses).toContain(RequestStatus.EXECUTIVE_VOTING_OPEN)
@@ -93,7 +93,7 @@ describe('ROLE_BUCKETS', () => {
   })
 
   it('SWIFT_OFFICER buckets cover post-voting SWIFT and finalization lifecycle', () => {
-    const allStatuses = ROLE_BUCKETS[UserRole.SWIFT_OFFICER]!.flatMap(b => b.statuses)
+    const allStatuses = ROLE_BUCKETS[UserRole.SWIFT_OFFICER]!.flatMap((b) => b.statuses)
     expect(allStatuses).toContain(RequestStatus.EXECUTIVE_APPROVED)
     expect(allStatuses).toContain(RequestStatus.WAITING_FOR_SWIFT)
     expect(allStatuses).toContain(RequestStatus.SWIFT_UPLOADED)
@@ -108,7 +108,7 @@ describe('ROLE_BUCKETS', () => {
   })
 
   it('COMMITTEE_DIRECTOR buckets cover voting lifecycle, tie-break, and finalization states', () => {
-    const allStatuses = ROLE_BUCKETS[UserRole.COMMITTEE_DIRECTOR]!.flatMap(b => b.statuses)
+    const allStatuses = ROLE_BUCKETS[UserRole.COMMITTEE_DIRECTOR]!.flatMap((b) => b.statuses)
     expect(allStatuses).toContain(RequestStatus.EXECUTIVE_VOTING_OPEN)
     expect(allStatuses).toContain(RequestStatus.EXECUTIVE_VOTING_CLOSED)
     expect(allStatuses).toContain(RequestStatus.EXECUTIVE_APPROVED)
@@ -117,16 +117,16 @@ describe('ROLE_BUCKETS', () => {
   })
 
   it('BANK_RETURNED is in BANK_REVIEWER bank_returned bucket', () => {
-    const allStatuses = ROLE_BUCKETS[UserRole.BANK_REVIEWER]!.flatMap(b => b.statuses)
+    const allStatuses = ROLE_BUCKETS[UserRole.BANK_REVIEWER]!.flatMap((b) => b.statuses)
     expect(allStatuses).toContain(RequestStatus.BANK_RETURNED)
-    const bucket = ROLE_BUCKETS[UserRole.BANK_REVIEWER]!.find(b => b.key === 'bank_returned')
+    const bucket = ROLE_BUCKETS[UserRole.BANK_REVIEWER]!.find((b) => b.key === 'bank_returned')
     expect(bucket).toBeDefined()
     expect(bucket!.label).toBe('أُعيد للمدخل من البنك')
     expect(bucket!.statuses).toContain(RequestStatus.BANK_RETURNED)
   })
 
   it('BANK_RETURNED is in DATA_ENTRY returned bucket', () => {
-    const bucket = ROLE_BUCKETS[UserRole.DATA_ENTRY]!.find(b => b.key === 'returned')
+    const bucket = ROLE_BUCKETS[UserRole.DATA_ENTRY]!.find((b) => b.key === 'returned')
     expect(bucket).toBeDefined()
     expect(bucket!.label).toBe('مُعادة')
     expect(bucket!.statuses).toContain(RequestStatus.BANK_RETURNED)
@@ -134,13 +134,13 @@ describe('ROLE_BUCKETS', () => {
 
   it('BANK_ADMIN buckets do not expose CBY-internal stages to UI consumers by accident', () => {
     // BANK_ADMIN can see at_cby bucket which groups all CBY stages, but should NOT see individual raw stage buckets
-    const keys = ROLE_BUCKETS[UserRole.BANK_ADMIN]!.map(b => b.key)
+    const keys = ROLE_BUCKETS[UserRole.BANK_ADMIN]!.map((b) => b.key)
     expect(keys).not.toContain('support_stage')
     expect(keys).not.toContain('voting_stage')
   })
 
   it('CBY_ADMIN buckets cover all non-bank-internal statuses across buckets', () => {
-    const allStatuses = ROLE_BUCKETS[UserRole.CBY_ADMIN]!.flatMap(b => b.statuses)
+    const allStatuses = ROLE_BUCKETS[UserRole.CBY_ADMIN]!.flatMap((b) => b.statuses)
     const allStatusValues = Object.values(RequestStatus)
     // DRAFT and DRAFT_REJECTED_INTERNAL are not included in CBY_ADMIN buckets
     // because they are bank-internal; verify at least 17 statuses are covered
@@ -157,7 +157,9 @@ describe('ROLE_BUCKETS', () => {
       for (const bucket of buckets!) {
         expect(bucket.key, `empty key for ${role}`).toBeTruthy()
         expect(bucket.label, `empty label for ${role}`).toBeTruthy()
-        expect(bucket.statuses.length, `empty statuses for ${role}/${bucket.key}`).toBeGreaterThan(0)
+        expect(bucket.statuses.length, `empty statuses for ${role}/${bucket.key}`).toBeGreaterThan(
+          0,
+        )
       }
     }
   })

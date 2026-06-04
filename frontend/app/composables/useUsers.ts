@@ -53,7 +53,9 @@ export function useUsers() {
   }
 
   // Server-side paginated fetch (same shape the requests page consumes).
-  async function fetchUsersPaginated(params: FetchUsersParams = {}): Promise<PaginatedResponse<User>> {
+  async function fetchUsersPaginated(
+    params: FetchUsersParams = {},
+  ): Promise<PaginatedResponse<User>> {
     const query = new URLSearchParams()
     if (params.role) query.set('role', params.role)
     if (params.bank_id !== undefined) query.set('bank_id', String(params.bank_id))
@@ -62,7 +64,9 @@ export function useUsers() {
     if (params.page !== undefined) query.set('page', String(params.page))
     if (params.search) query.set('search', params.search)
 
-    const response = await get<ApiResponse<PaginatedResponse<User>>>(`/api/users?${query.toString()}`)
+    const response = await get<ApiResponse<PaginatedResponse<User>>>(
+      `/api/users?${query.toString()}`,
+    )
     return response.data
   }
 

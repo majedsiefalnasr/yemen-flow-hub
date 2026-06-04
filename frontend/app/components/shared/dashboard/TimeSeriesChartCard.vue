@@ -1,17 +1,20 @@
 <script setup lang="ts">
 import AnalyticsCard from './AnalyticsCard.vue'
 
-withDefaults(defineProps<{
-  title: string
-  description?: string
-  hasData?: boolean
-  emptyText?: string
-  cardClass?: string
-  contentClass?: string
-}>(), {
-  hasData: true,
-  emptyText: 'لا توجد بيانات للفترة المحددة',
-})
+withDefaults(
+  defineProps<{
+    title: string
+    description?: string
+    hasData?: boolean
+    emptyText?: string
+    cardClass?: string
+    contentClass?: string
+  }>(),
+  {
+    hasData: true,
+    emptyText: 'لا توجد بيانات للفترة المحددة',
+  },
+)
 </script>
 
 <template>
@@ -25,7 +28,7 @@ withDefaults(defineProps<{
       <slot name="actions" />
     </template>
     <slot v-if="hasData" />
-    <div v-else class="py-10 text-center text-sm text-muted-foreground" role="status">
+    <div v-else class="text-muted-foreground py-10 text-center text-sm" role="status">
       {{ emptyText }}
     </div>
     <template #footer>

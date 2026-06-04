@@ -16,11 +16,7 @@ import {
   CommandItem,
   CommandList,
 } from '../ui/command'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '../ui/popover'
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover'
 import { Textarea } from '../ui/textarea'
 import { Alert, AlertDescription } from '../ui/alert'
 import {
@@ -100,11 +96,9 @@ async function loadMerchants(): Promise<void> {
   merchantsError.value = false
   try {
     bankMerchants.value = await fetchMerchants()
-  }
-  catch {
+  } catch {
     merchantsError.value = true
-  }
-  finally {
+  } finally {
     merchantsLoading.value = false
   }
 }
@@ -117,16 +111,17 @@ const merchantOptions = computed(() =>
   props.isDataEntry ? (props.dataEntryMerchants ?? []) : bankMerchants.value,
 )
 
-const selectedMerchant = computed(() =>
-  merchantOptions.value.find(m => m.id === props.modelValue.merchant_id) ?? null,
+const selectedMerchant = computed(
+  () => merchantOptions.value.find((m) => m.id === props.modelValue.merchant_id) ?? null,
 )
 
 // Single merchant auto-lock for DATA_ENTRY
-const isLockedSingleMerchant = computed(() =>
-  props.isDataEntry
-  && merchantOptions.value.length === 1
-  && Boolean(props.modelValue.merchant_id)
-  && !props.dataEntryMerchantError,
+const isLockedSingleMerchant = computed(
+  () =>
+    props.isDataEntry &&
+    merchantOptions.value.length === 1 &&
+    Boolean(props.modelValue.merchant_id) &&
+    !props.dataEntryMerchantError,
 )
 
 const merchantOpen = ref(false)
@@ -151,13 +146,19 @@ const notesLength = computed(() => notesLocal.value.length)
         <FieldGroup>
           <!-- نوع الواردات -->
           <Field>
-            <FieldLabel for="goods-type">نوع الواردات <span class="text-destructive">*</span></FieldLabel>
+            <FieldLabel for="goods-type"
+              >نوع الواردات <span class="text-destructive">*</span></FieldLabel
+            >
             <Select
               :model-value="modelValue.goods_type || ''"
               :disabled="loading"
               @update:model-value="(val) => update('goods_type', String(val ?? ''))"
             >
-              <SelectTrigger id="goods-type" :class="{ 'border-destructive': errors.goods_type }" :aria-invalid="!!errors.goods_type">
+              <SelectTrigger
+                id="goods-type"
+                :class="{ 'border-destructive': errors.goods_type }"
+                :aria-invalid="!!errors.goods_type"
+              >
                 <SelectValue placeholder="اختر نوع الواردات..." />
               </SelectTrigger>
               <SelectContent>
@@ -169,13 +170,19 @@ const notesLength = computed(() => notesLocal.value.length)
 
           <!-- المستورد -->
           <Field>
-            <FieldLabel for="merchant-combobox">المستورد (التاجر) <span class="text-destructive">*</span></FieldLabel>
+            <FieldLabel for="merchant-combobox"
+              >المستورد (التاجر) <span class="text-destructive">*</span></FieldLabel
+            >
 
             <!-- DATA_ENTRY: single merchant locked -->
             <template v-if="isLockedSingleMerchant">
-              <div class="flex items-center gap-2 h-10 px-3 border border-border rounded-md bg-muted text-muted-foreground">
+              <div
+                class="border-border bg-muted text-muted-foreground flex h-10 items-center gap-2 rounded-md border px-3"
+              >
                 <Lock class="h-4 w-4 flex-shrink-0" />
-                <span class="text-sm">{{ selectedMerchant?.name ?? 'لم يتم تحديد التاجر بعد' }}</span>
+                <span class="text-sm">{{
+                  selectedMerchant?.name ?? 'لم يتم تحديد التاجر بعد'
+                }}</span>
               </div>
             </template>
 
@@ -185,8 +192,14 @@ const notesLength = computed(() => notesLocal.value.length)
                 <AlertTriangle class="h-4 w-4" />
                 <AlertDescription class="flex items-center justify-between gap-2">
                   <span>تعذر تحميل قائمة التجار. أعد المحاولة.</span>
-                  <Button type="button" variant="outline" size="sm" class="whitespace-nowrap" @click="loadMerchants">
-                    <RotateCcw class="h-3 w-3 me-1" />إعادة المحاولة
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    class="whitespace-nowrap"
+                    @click="loadMerchants"
+                  >
+                    <RotateCcw class="me-1 h-3 w-3" />إعادة المحاولة
                   </Button>
                 </AlertDescription>
               </Alert>
@@ -200,14 +213,20 @@ const notesLength = computed(() => notesLocal.value.length)
                     :aria-expanded="merchantOpen"
                     :disabled="merchantsLoading || loading"
                     :aria-invalid="!!errors.merchant_id"
-                    :class="cn(
-                      'w-full justify-between font-normal',
-                      errors.merchant_id ? 'border-destructive' : '',
-                      !selectedMerchant ? 'text-muted-foreground' : '',
-                    )"
+                    :class="
+                      cn(
+                        'w-full justify-between font-normal',
+                        errors.merchant_id ? 'border-destructive' : '',
+                        !selectedMerchant ? 'text-muted-foreground' : '',
+                      )
+                    "
                   >
-                    {{ merchantsLoading ? 'جارٍ تحميل القائمة...' : (selectedMerchant?.name ?? 'ابحث أو اختر المستورد...') }}
-                    <ChevronsUpDown class="h-4 w-4 opacity-50 flex-shrink-0" />
+                    {{
+                      merchantsLoading
+                        ? 'جارٍ تحميل القائمة...'
+                        : (selectedMerchant?.name ?? 'ابحث أو اختر المستورد...')
+                    }}
+                    <ChevronsUpDown class="h-4 w-4 flex-shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent class="w-[--radix-popover-trigger-width] p-0" align="start">
@@ -224,7 +243,12 @@ const notesLength = computed(() => notesLocal.value.length)
                         >
                           {{ m.name }}
                           <Check
-                            :class="cn('ms-auto h-4 w-4', modelValue.merchant_id === m.id ? 'opacity-100' : 'opacity-0')"
+                            :class="
+                              cn(
+                                'ms-auto h-4 w-4',
+                                modelValue.merchant_id === m.id ? 'opacity-100' : 'opacity-0',
+                              )
+                            "
                           />
                         </CommandItem>
                       </CommandGroup>
@@ -234,14 +258,18 @@ const notesLength = computed(() => notesLocal.value.length)
               </Popover>
             </template>
 
-            <FieldDescription v-if="isDataEntry && dataEntryMerchantError">{{ dataEntryMerchantError }}</FieldDescription>
+            <FieldDescription v-if="isDataEntry && dataEntryMerchantError">{{
+              dataEntryMerchantError
+            }}</FieldDescription>
             <FieldError v-if="errors.merchant_id">{{ errors.merchant_id }}</FieldError>
           </Field>
 
           <!-- المبلغ والعملة side by side -->
           <div class="grid grid-cols-2 gap-4">
             <Field>
-              <FieldLabel for="amount">مبلغ التمويل <span class="text-destructive">*</span></FieldLabel>
+              <FieldLabel for="amount"
+                >مبلغ التمويل <span class="text-destructive">*</span></FieldLabel
+              >
               <Input
                 id="amount"
                 type="number"
@@ -264,13 +292,21 @@ const notesLength = computed(() => notesLocal.value.length)
               <Select
                 :model-value="modelValue.currency || ''"
                 :disabled="loading"
-                @update:model-value="(val) => update('currency', String(val ?? '') as WizardStep1Data['currency'])"
+                @update:model-value="
+                  (val) => update('currency', String(val ?? '') as WizardStep1Data['currency'])
+                "
               >
-                <SelectTrigger id="currency" :class="{ 'border-destructive': errors.currency }" :aria-invalid="!!errors.currency">
+                <SelectTrigger
+                  id="currency"
+                  :class="{ 'border-destructive': errors.currency }"
+                  :aria-invalid="!!errors.currency"
+                >
                   <SelectValue placeholder="اختر..." />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem v-for="c in Object.values(Currency)" :key="c" :value="c">{{ CURRENCY_LABELS[c] ?? c }}</SelectItem>
+                  <SelectItem v-for="c in Object.values(Currency)" :key="c" :value="c">{{
+                    CURRENCY_LABELS[c] ?? c
+                  }}</SelectItem>
                 </SelectContent>
               </Select>
               <FieldError v-if="errors.currency">{{ errors.currency }}</FieldError>
@@ -288,17 +324,28 @@ const notesLength = computed(() => notesLocal.value.length)
 
         <FieldGroup>
           <Field>
-            <FieldLabel for="payment-terms">شروط الدفع <span class="text-destructive">*</span></FieldLabel>
+            <FieldLabel for="payment-terms"
+              >شروط الدفع <span class="text-destructive">*</span></FieldLabel
+            >
             <Select
               :model-value="modelValue.payment_terms || ''"
               :disabled="loading"
-              @update:model-value="(val) => update('payment_terms', String(val ?? '') as WizardStep1Data['payment_terms'])"
+              @update:model-value="
+                (val) =>
+                  update('payment_terms', String(val ?? '') as WizardStep1Data['payment_terms'])
+              "
             >
-              <SelectTrigger id="payment-terms" :class="{ 'border-destructive': errors.payment_terms }" :aria-invalid="!!errors.payment_terms">
+              <SelectTrigger
+                id="payment-terms"
+                :class="{ 'border-destructive': errors.payment_terms }"
+                :aria-invalid="!!errors.payment_terms"
+              >
                 <SelectValue placeholder="اختر شروط الدفع..." />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem v-for="t in PAYMENT_TERMS" :key="t" :value="t">{{ PAYMENT_LABELS[t] ?? t }}</SelectItem>
+                <SelectItem v-for="t in PAYMENT_TERMS" :key="t" :value="t">{{
+                  PAYMENT_LABELS[t] ?? t
+                }}</SelectItem>
               </SelectContent>
             </Select>
             <FieldError v-if="errors.payment_terms">{{ errors.payment_terms }}</FieldError>

@@ -42,8 +42,8 @@ const canIssueNow = computed(() => {
   if (!request.value || !user.value) return false
   const canIssueRoles = [UserRole.CBY_ADMIN, UserRole.COMMITTEE_DIRECTOR]
   return (
-    canIssueRoles.includes(user.value.role)
-    && request.value.status === RequestStatus.EXECUTIVE_APPROVED
+    canIssueRoles.includes(user.value.role) &&
+    request.value.status === RequestStatus.EXECUTIVE_APPROVED
   )
 })
 
@@ -53,9 +53,7 @@ const canView = computed(() => {
   return issued.value || canIssueNow.value || viewRoles.includes(user.value.role)
 })
 
-const stageBlocked = computed(() =>
-  Boolean(request.value && !issued.value && !canIssueNow.value),
-)
+const stageBlocked = computed(() => Boolean(request.value && !issued.value && !canIssueNow.value))
 
 const stageStatus = computed(() => {
   if (!request.value || !user.value) return null
@@ -82,39 +80,27 @@ async function performIssue() {
   if (!request.value || !canIssueNow.value) return
   try {
     await store.issueCustomsDeclaration(request.value.id)
-    notify(`تم إصدار تأكيد مصارفة خارجية رقم ${request.value.customs_declaration?.declaration_number} بنجاح`)
-  }
-  catch {
+    notify(
+      `تم إصدار تأكيد مصارفة خارجية رقم ${request.value.customs_declaration?.declaration_number} بنجاح`,
+    )
+  } catch {
     toastError('فشل إصدار تأكيد مصارفة خارجية')
-  }
-  finally {
+  } finally {
     confirmIssueOpen.value = false
   }
 }
 </script>
 
 <template>
-  <div
-    v-if="user && request"
-    class="space-y-4"
-  >
-    <div
-      v-if="!canView"
-      class="mx-auto max-w-md p-8 text-center"
-    >
+  <div v-if="user && request" class="space-y-4">
+    <div v-if="!canView" class="mx-auto max-w-md p-8 text-center">
       <Card class="border-[var(--severity-amber)]/30 bg-[var(--severity-amber)]/5 p-8">
         <Lock class="mx-auto mb-3 h-10 w-10 text-[var(--severity-amber)]" />
-        <h2 class="mb-1 text-lg font-bold">
-          غير مصرح بمعاينة التأكيد
-        </h2>
-        <p class="mb-4 text-sm text-muted-foreground">
+        <h2 class="mb-1 text-lg font-bold">غير مصرح بمعاينة التأكيد</h2>
+        <p class="text-muted-foreground mb-4 text-sm">
           معاينة وإصدار تأكيد مصارفة خارجية متاح لأعضاء اللجنة التنفيذية أو إدارة المنصة فقط.
         </p>
-        <Button
-          as="a"
-          variant="outline"
-          :href="`/requests/${request.id}`"
-        >
+        <Button as="a" variant="outline" :href="`/requests/${request.id}`">
           <ArrowRight class="ms-1 h-4 w-4" />
           العودة للطلب
         </Button>
@@ -127,27 +113,20 @@ async function performIssue() {
           <div class="flex flex-wrap items-start justify-between gap-3">
             <div class="min-w-0">
               <h1 class="flex items-center gap-2 text-lg font-bold">
-                <FileText class="h-5 w-5 text-accent" />
+                <FileText class="text-accent h-5 w-5" />
                 {{ issued ? 'تأكيد مصارفة خارجية' : 'معاينة تأكيد مصارفة خارجية' }}
               </h1>
-              <p class="mt-0.5 text-xs text-muted-foreground">
+              <p class="text-muted-foreground mt-0.5 text-xs">
                 طلب {{ request.reference_number }} — {{ request.merchant?.name }}
               </p>
             </div>
 
             <div class="flex flex-wrap gap-2">
-              <Button
-                as="a"
-                variant="outline"
-                :href="`/requests/${request.id}`"
-              >
+              <Button as="a" variant="outline" :href="`/requests/${request.id}`">
                 <ArrowRight class="ms-1 h-4 w-4" />
                 العودة للطلب
               </Button>
-              <Button
-                v-if="issued"
-                @click="printPage()"
-              >
+              <Button v-if="issued" @click="printPage()">
                 <Printer class="ms-1 h-4 w-4" />
                 طباعة / تنزيل PDF
               </Button>
@@ -172,11 +151,13 @@ async function performIssue() {
               <div class="font-semibold text-[var(--severity-green)]">
                 تم إصدار تأكيد مصارفة خارجية بنجاح
               </div>
-              <div class="text-xs text-muted-foreground">
+              <div class="text-muted-foreground text-xs">
                 رقم البيان
-                <span class="font-mono font-semibold">{{ request.customs_declaration?.declaration_number }}</span>
-                · بواسطة {{ request.customs_declaration?.issuer?.name ?? user?.name }}
-                · {{ formatDate(request.customs_declaration?.issued_at) }}
+                <span class="font-mono font-semibold">{{
+                  request.customs_declaration?.declaration_number
+                }}</span>
+                · بواسطة {{ request.customs_declaration?.issuer?.name ?? user?.name }} ·
+                {{ formatDate(request.customs_declaration?.issued_at) }}
               </div>
             </div>
           </div>
@@ -187,28 +168,25 @@ async function performIssue() {
           >
             <AlertTriangle class="h-5 w-5 shrink-0 text-[var(--severity-amber)]" />
             <div class="flex-1 text-sm">
-              <div class="font-semibold">
-                لا يمكن إصدار تأكيد مصارفة خارجية حالياً
-              </div>
-              <div class="text-xs text-muted-foreground">
+              <div class="font-semibold">لا يمكن إصدار تأكيد مصارفة خارجية حالياً</div>
+              <div class="text-muted-foreground text-xs">
                 الطلب في مرحلة
-                <span class="font-medium">{{ stageStatus?.label }}</span>.
-                يجب اعتماد التصويت التنفيذي أولاً.
+                <span class="font-medium">{{ stageStatus?.label }}</span
+                >. يجب اعتماد التصويت التنفيذي أولاً.
               </div>
             </div>
           </div>
 
           <div
             v-else
-            class="mt-4 flex items-center gap-3 rounded-lg border border-info/30 bg-info/5 p-3"
+            class="border-info/30 bg-info/5 mt-4 flex items-center gap-3 rounded-lg border p-3"
           >
-            <ShieldCheck class="h-5 w-5 shrink-0 text-info" />
+            <ShieldCheck class="text-info h-5 w-5 shrink-0" />
             <div class="flex-1 text-sm">
-              <div class="font-semibold">
-                جاهز للإصدار
-              </div>
-              <div class="text-xs text-muted-foreground">
-                راجع المعاينة أدناه ثم اضغط "إصدار تأكيد مصارفة خارجية رسمياً" لتوقيع وإغلاق الطلب نهائياً.
+              <div class="font-semibold">جاهز للإصدار</div>
+              <div class="text-muted-foreground text-xs">
+                راجع المعاينة أدناه ثم اضغط "إصدار تأكيد مصارفة خارجية رسمياً" لتوقيع وإغلاق الطلب
+                نهائياً.
               </div>
             </div>
           </div>
@@ -216,10 +194,17 @@ async function performIssue() {
       </div>
 
       <div class="overflow-hidden rounded-xl border bg-[oklch(0.22_0.02_260)] shadow print:hidden">
-        <div class="flex items-center justify-between bg-[oklch(0.18_0.02_260)] px-4 py-2 text-xs text-white">
+        <div
+          class="flex items-center justify-between bg-[oklch(0.18_0.02_260)] px-4 py-2 text-xs text-white"
+        >
           <div class="flex items-center gap-2">
             <FileText class="h-4 w-4 text-[var(--severity-red)]" />
-            <span class="font-mono">{{ request.customs_declaration?.declaration_number ?? `DRAFT-${request.reference_number}` }}.pdf</span>
+            <span class="font-mono"
+              >{{
+                request.customs_declaration?.declaration_number ??
+                `DRAFT-${request.reference_number}`
+              }}.pdf</span
+            >
             <span
               v-if="issued"
               class="inline-flex items-center gap-1 rounded bg-[var(--severity-green)]/10 px-2 py-0.5 text-[10px] text-[var(--severity-green)]"
@@ -259,7 +244,9 @@ async function performIssue() {
           </div>
         </div>
 
-        <div class="grid max-h-[80vh] place-items-start justify-center overflow-auto bg-[oklch(0.25_0.02_260)] px-2 py-6">
+        <div
+          class="grid max-h-[80vh] place-items-start justify-center overflow-auto bg-[oklch(0.25_0.02_260)] px-2 py-6"
+        >
           <div :style="{ transform: `scale(${zoom})`, transformOrigin: 'top center' }">
             <PrintablePermit
               :request="request"
@@ -281,13 +268,10 @@ async function performIssue() {
       </div>
 
       <Dialog v-model:open="confirmIssueOpen">
-        <DialogContent
-          class="sm:max-w-md"
-          
-        >
+        <DialogContent class="sm:max-w-md">
           <DialogHeader>
             <DialogTitle class="flex items-center gap-2">
-              <Stamp class="h-5 w-5 text-accent" />
+              <Stamp class="text-accent h-5 w-5" />
               تأكيد إصدار المصارفة الخارجية
             </DialogTitle>
             <DialogDescription class="space-y-2 text-start">
@@ -296,18 +280,15 @@ async function performIssue() {
                 <span class="font-mono font-semibold">{{ request.reference_number }}</span>
                 بشكل نهائي ولن يمكن التراجع.
               </span>
-              <span class="block rounded border border-[var(--severity-amber)]/30 bg-[var(--severity-amber)]/5 p-2 text-xs text-foreground">
+              <span
+                class="text-foreground block rounded border border-[var(--severity-amber)]/30 bg-[var(--severity-amber)]/5 p-2 text-xs"
+              >
                 سيتم إكمال دورة الطلب وإغلاقها فور الإصدار.
               </span>
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button
-              variant="outline"
-              @click="confirmIssueOpen = false"
-            >
-              إلغاء
-            </Button>
+            <Button variant="outline" @click="confirmIssueOpen = false"> إلغاء </Button>
             <Button
               class="bg-accent hover:bg-accent/90"
               :disabled="store.issuingCustoms"
@@ -322,23 +303,12 @@ async function performIssue() {
     </template>
   </div>
 
-  <div
-    v-else-if="user"
-    class="mx-auto max-w-md p-8 text-center"
-  >
+  <div v-else-if="user" class="mx-auto max-w-md p-8 text-center">
     <Card class="border-destructive/30 bg-[var(--severity-red)]/5 p-8">
       <AlertTriangle class="mx-auto mb-3 h-10 w-10 text-[var(--severity-red)]" />
-      <h2 class="mb-1 text-lg font-bold">
-        الطلب غير موجود
-      </h2>
-      <p class="mb-4 text-sm text-muted-foreground">
-        رقم الطلب {{ id }} غير معروف.
-      </p>
-      <Button
-        as="a"
-        variant="outline"
-        href="/customs"
-      >
+      <h2 class="mb-1 text-lg font-bold">الطلب غير موجود</h2>
+      <p class="text-muted-foreground mb-4 text-sm">رقم الطلب {{ id }} غير معروف.</p>
+      <Button as="a" variant="outline" href="/customs">
         <ArrowRight class="ms-1 h-4 w-4" />
         العودة لقائمة التأكيدات
       </Button>

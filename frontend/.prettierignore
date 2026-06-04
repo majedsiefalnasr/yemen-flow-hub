@@ -1,0 +1,10 @@
+.nuxt
+.output
+.playwright-cli
+**/.playwright-cli
+coverage
+graphify-out
+node_modules
+playwright-report
+test-results
+pnpm-lock.yaml

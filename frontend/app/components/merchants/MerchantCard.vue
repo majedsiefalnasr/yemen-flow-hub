@@ -32,55 +32,78 @@ function businessTypeLabel(type: string | null | undefined): string {
 </script>
 
 <template>
-  <Card  class="hover:shadow-md transition-shadow">
+  <Card class="transition-shadow hover:shadow-md">
     <!-- Header: icon tile + status badge -->
-    <div class="flex items-start justify-between gap-3 pb-3 border-b border-border">
-      <div class="w-12 h-12 rounded-lg bg-primary/10 text-primary flex items-center justify-center flex-shrink-0" aria-hidden="true">
+    <div class="border-border flex items-start justify-between gap-3 border-b pb-3">
+      <div
+        class="bg-primary/10 text-primary flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-lg"
+        aria-hidden="true"
+      >
         <Building2 :size="24" />
       </div>
-      <Badge
-        :variant="props.merchant.is_active ? 'default' : 'secondary'"
-        role="status"
-      >
+      <Badge :variant="props.merchant.is_active ? 'default' : 'secondary'" role="status">
         {{ props.merchant.is_active ? 'نشط' : 'موقوف' }}
       </Badge>
     </div>
 
     <!-- Name + category -->
-    <div class="flex flex-col gap-1 py-3 border-b border-border">
-      <p class="text-sm font-semibold text-[var(--color-text-primary)]">{{ props.merchant.name }}</p>
-      <p class="text-xs text-[var(--color-text-subtle)]">{{ businessTypeLabel(props.merchant.business_type) }}</p>
+    <div class="border-border flex flex-col gap-1 border-b py-3">
+      <p class="text-sm font-semibold text-[var(--color-text-primary)]">
+        {{ props.merchant.name }}
+      </p>
+      <p class="text-xs text-[var(--color-text-subtle)]">
+        {{ businessTypeLabel(props.merchant.business_type) }}
+      </p>
     </div>
 
     <!-- Metadata rows -->
-    <dl class="flex flex-col gap-2 py-3 border-b border-border text-xs">
-      <div class="flex justify-between items-center gap-2">
+    <dl class="border-border flex flex-col gap-2 border-b py-3 text-xs">
+      <div class="flex items-center justify-between gap-2">
         <dt class="text-[var(--color-text-subtle)]">السجل التجاري</dt>
-        <dd class="font-mono text-[var(--color-text-primary)] font-medium">{{ metaVal(props.merchant.commercial_register) }}</dd>
+        <dd class="font-mono font-medium text-[var(--color-text-primary)]">
+          {{ metaVal(props.merchant.commercial_register) }}
+        </dd>
       </div>
-      <div class="flex justify-between items-center gap-2">
+      <div class="flex items-center justify-between gap-2">
         <dt class="text-[var(--color-text-subtle)]">الرقم الضريبي</dt>
-        <dd class="font-mono text-[var(--color-text-primary)] font-medium">{{ metaVal(props.merchant.tax_number) }}</dd>
+        <dd class="font-mono font-medium text-[var(--color-text-primary)]">
+          {{ metaVal(props.merchant.tax_number) }}
+        </dd>
       </div>
-      <div class="flex justify-between items-center gap-2">
+      <div class="flex items-center justify-between gap-2">
         <dt class="text-[var(--color-text-subtle)]">البنك</dt>
-        <dd class="text-[var(--color-text-primary)] font-medium overflow-hidden text-ellipsis whitespace-nowrap max-w-xs">{{ metaVal(props.merchant.bank_name) }}</dd>
+        <dd
+          class="max-w-xs overflow-hidden font-medium text-ellipsis whitespace-nowrap text-[var(--color-text-primary)]"
+        >
+          {{ metaVal(props.merchant.bank_name) }}
+        </dd>
       </div>
-      <div class="flex justify-between items-center gap-2">
+      <div class="flex items-center justify-between gap-2">
         <dt class="text-[var(--color-text-subtle)]">العنوان</dt>
-        <dd class="text-[var(--color-text-primary)] font-medium overflow-hidden text-ellipsis whitespace-nowrap max-w-xs">{{ metaVal(props.merchant.address) }}</dd>
+        <dd
+          class="max-w-xs overflow-hidden font-medium text-ellipsis whitespace-nowrap text-[var(--color-text-primary)]"
+        >
+          {{ metaVal(props.merchant.address) }}
+        </dd>
       </div>
-      <div class="flex justify-between items-center gap-2">
+      <div class="flex items-center justify-between gap-2">
         <dt class="text-[var(--color-text-subtle)]">هاتف</dt>
-        <dd class="font-mono text-[var(--color-text-primary)] font-medium direction-ltr">{{ metaVal(props.merchant.phone) }}</dd>
+        <dd class="direction-ltr font-mono font-medium text-[var(--color-text-primary)]">
+          {{ metaVal(props.merchant.phone) }}
+        </dd>
       </div>
     </dl>
 
     <!-- Footer: transaction count + actions -->
     <div class="flex items-center justify-between gap-2 pt-3">
-      <div class="text-xs flex items-center gap-1">
-        <span class="font-section font-medium leading-5 text-[var(--color-text-subtle)]">المعاملات:</span>
-        <span class="font-mono font-semibold leading-5 tabular-nums text-[var(--color-text-primary)]">{{ props.merchant.transaction_count ?? 0 }}</span>
+      <div class="flex items-center gap-1 text-xs">
+        <span class="font-section leading-5 font-medium text-[var(--color-text-subtle)]"
+          >المعاملات:</span
+        >
+        <span
+          class="font-mono leading-5 font-semibold text-[var(--color-text-primary)] tabular-nums"
+          >{{ props.merchant.transaction_count ?? 0 }}</span
+        >
       </div>
       <div class="flex gap-1">
         <Button

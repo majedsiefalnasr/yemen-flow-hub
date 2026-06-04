@@ -129,7 +129,10 @@ describe('getBusinessStatus()', () => {
     })
 
     it('returns "قيد معالجة CBY" for SUPPORT_REVIEW_IN_PROGRESS (hidden CBY internal)', () => {
-      const result = getBusinessStatus(RequestStatus.SUPPORT_REVIEW_IN_PROGRESS, UserRole.DATA_ENTRY)
+      const result = getBusinessStatus(
+        RequestStatus.SUPPORT_REVIEW_IN_PROGRESS,
+        UserRole.DATA_ENTRY,
+      )
       expect(result.label).toBe('قيد معالجة CBY')
     })
 
@@ -296,9 +299,9 @@ describe('Role group constants', () => {
     })
 
     it('shows scoped administration nav items for BANK_ADMIN including reports', () => {
-      const bankAdminRoutes = NAV_ITEMS
-        .filter(item => item.roles.includes(UserRole.BANK_ADMIN))
-        .map(item => item.route)
+      const bankAdminRoutes = NAV_ITEMS.filter((item) =>
+        item.roles.includes(UserRole.BANK_ADMIN),
+      ).map((item) => item.route)
 
       expect(bankAdminRoutes).toContain('/staff')
       expect(bankAdminRoutes).toContain('/merchants')
@@ -307,8 +310,12 @@ describe('Role group constants', () => {
     })
 
     it('keeps reports hidden for DATA_ENTRY and BANK_REVIEWER nav', () => {
-      const dataEntryRoutes = NAV_ITEMS.filter(item => item.roles.includes(UserRole.DATA_ENTRY)).map(item => item.route)
-      const reviewerRoutes = NAV_ITEMS.filter(item => item.roles.includes(UserRole.BANK_REVIEWER)).map(item => item.route)
+      const dataEntryRoutes = NAV_ITEMS.filter((item) =>
+        item.roles.includes(UserRole.DATA_ENTRY),
+      ).map((item) => item.route)
+      const reviewerRoutes = NAV_ITEMS.filter((item) =>
+        item.roles.includes(UserRole.BANK_REVIEWER),
+      ).map((item) => item.route)
       expect(dataEntryRoutes).not.toContain('/reports')
       expect(reviewerRoutes).not.toContain('/reports')
     })

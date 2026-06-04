@@ -10,7 +10,7 @@ import { ROLE_BUCKETS, CBY_BANK_FILTER_ROLES } from '../../../../constants/workf
 const BR_BUCKETS = ROLE_BUCKETS[UserRole.BANK_REVIEWER]!
 
 function bucketByKey(key: string) {
-  return BR_BUCKETS.find(b => b.key === key)
+  return BR_BUCKETS.find((b) => b.key === key)
 }
 
 // ── Bucket existence ──────────────────────────────────────────────────────────
@@ -244,23 +244,23 @@ describe('BANK_REVIEWER ROLE_BUCKETS — no cross-bucket status overlap', () => 
 
 describe('BANK_REVIEWER ROLE_BUCKETS — no DATA_ENTRY or CBY internal bucket keys', () => {
   it('does not expose draft as a bucket key', () => {
-    expect(BR_BUCKETS.map(b => b.key)).not.toContain('draft')
+    expect(BR_BUCKETS.map((b) => b.key)).not.toContain('draft')
   })
 
   it('does not expose returned as a bucket key (simplified DATA_ENTRY view)', () => {
-    expect(BR_BUCKETS.map(b => b.key)).not.toContain('returned')
+    expect(BR_BUCKETS.map((b) => b.key)).not.toContain('returned')
   })
 
   it('does not expose support_stage as a bucket key', () => {
-    expect(BR_BUCKETS.map(b => b.key)).not.toContain('support_stage')
+    expect(BR_BUCKETS.map((b) => b.key)).not.toContain('support_stage')
   })
 
   it('does not expose voting_stage as a bucket key', () => {
-    expect(BR_BUCKETS.map(b => b.key)).not.toContain('voting_stage')
+    expect(BR_BUCKETS.map((b) => b.key)).not.toContain('voting_stage')
   })
 
   it('does not expose fx_pending as a bucket key (Director-only surface)', () => {
-    expect(BR_BUCKETS.map(b => b.key)).not.toContain('fx_pending')
+    expect(BR_BUCKETS.map((b) => b.key)).not.toContain('fx_pending')
   })
 })
 

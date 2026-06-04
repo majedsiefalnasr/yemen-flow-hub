@@ -53,14 +53,15 @@ export const useSettingsStore = defineStore('settings', () => {
   const originalValues = ref<Record<string, string>>({})
   const currentValues = ref<Record<string, string>>({})
 
-  const sectionKey = (section: string, subsection?: string) => subsection ? `${section}.${subsection}` : section
+  const sectionKey = (section: string, subsection?: string) =>
+    subsection ? `${section}.${subsection}` : section
   const serialize = (data: SettingSection) => JSON.stringify(data)
 
   const setDirtyFlag = (section: string, dirty: boolean, subsection?: string) => {
     const target = dirtyState.value[section as keyof SectionDirtyState]
     if (subsection) {
       if (typeof target === 'object') {
-        (target as Record<string, boolean>)[subsection] = dirty
+        ;(target as Record<string, boolean>)[subsection] = dirty
       }
       return
     }
@@ -72,7 +73,9 @@ export const useSettingsStore = defineStore('settings', () => {
   const isSectionDirty = (section: string, subsection?: string) => {
     const target = dirtyState.value[section as keyof SectionDirtyState]
     if (subsection) {
-      return typeof target === 'object' ? (target as Record<string, boolean>)[subsection] ?? false : false
+      return typeof target === 'object'
+        ? ((target as Record<string, boolean>)[subsection] ?? false)
+        : false
     }
     return typeof target === 'boolean' ? target : false
   }

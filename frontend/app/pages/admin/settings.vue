@@ -65,12 +65,36 @@ async function handleSmtpSave() {
 
 // ── Security policies ─────────────────────────────────────────────────────────
 const SECURITY_ROWS = [
-  { key: 'mfa_required', label: 'إلزام التحقق الثنائي (MFA)', desc: 'يُجبر جميع المستخدمين على إدخال رمز OTP عند تسجيل الدخول' },
-  { key: 'password_expiry_90_days', label: 'انتهاء صلاحية كلمة المرور (90 يوم)', desc: 'يُجبر المستخدمين على تغيير كلمة المرور كل 90 يوماً' },
-  { key: 'lockout_after_5_attempts', label: 'قفل الحساب بعد 5 محاولات', desc: 'يُقفل الحساب تلقائياً بعد 5 محاولات دخول فاشلة متتالية' },
-  { key: 'encrypt_uploads_aes256', label: 'تشفير الملفات المرفوعة (AES-256)', desc: 'تشفير جميع الملفات المرفوعة باستخدام معيار AES-256' },
-  { key: 'log_all_audit', label: 'تسجيل جميع أحداث التدقيق', desc: 'تسجيل جميع الإجراءات في سجل التدقيق الشامل' },
-  { key: 'allow_external_access', label: 'السماح بالوصول الخارجي', desc: 'السماح للمستخدمين بالوصول من خارج الشبكة الداخلية' },
+  {
+    key: 'mfa_required',
+    label: 'إلزام التحقق الثنائي (MFA)',
+    desc: 'يُجبر جميع المستخدمين على إدخال رمز OTP عند تسجيل الدخول',
+  },
+  {
+    key: 'password_expiry_90_days',
+    label: 'انتهاء صلاحية كلمة المرور (90 يوم)',
+    desc: 'يُجبر المستخدمين على تغيير كلمة المرور كل 90 يوماً',
+  },
+  {
+    key: 'lockout_after_5_attempts',
+    label: 'قفل الحساب بعد 5 محاولات',
+    desc: 'يُقفل الحساب تلقائياً بعد 5 محاولات دخول فاشلة متتالية',
+  },
+  {
+    key: 'encrypt_uploads_aes256',
+    label: 'تشفير الملفات المرفوعة (AES-256)',
+    desc: 'تشفير جميع الملفات المرفوعة باستخدام معيار AES-256',
+  },
+  {
+    key: 'log_all_audit',
+    label: 'تسجيل جميع أحداث التدقيق',
+    desc: 'تسجيل جميع الإجراءات في سجل التدقيق الشامل',
+  },
+  {
+    key: 'allow_external_access',
+    label: 'السماح بالوصول الخارجي',
+    desc: 'السماح للمستخدمين بالوصول من خارج الشبكة الداخلية',
+  },
 ]
 
 function getSecurityValue(key: string): boolean {
@@ -79,9 +103,21 @@ function getSecurityValue(key: string): boolean {
 
 // ── Feature toggles (عام tab) ─────────────────────────────────────────────────
 const FEATURE_ROWS = [
-  { key: 'notifications_phase_1_enabled', label: 'الإشعارات (المرحلة الأولى)', desc: 'تفعيل نظام الإشعارات التجريبي' },
-  { key: 'search_phase_1_enabled', label: 'البحث (المرحلة الأولى)', desc: 'تفعيل ميزة البحث المتقدم التجريبية' },
-  { key: 'customs_print_preview_enabled', label: 'معاينة الطباعة الجمركية', desc: 'تفعيل معاينة PDF للبيان الجمركي قبل الإصدار' },
+  {
+    key: 'notifications_phase_1_enabled',
+    label: 'الإشعارات (المرحلة الأولى)',
+    desc: 'تفعيل نظام الإشعارات التجريبي',
+  },
+  {
+    key: 'search_phase_1_enabled',
+    label: 'البحث (المرحلة الأولى)',
+    desc: 'تفعيل ميزة البحث المتقدم التجريبية',
+  },
+  {
+    key: 'customs_print_preview_enabled',
+    label: 'معاينة الطباعة الجمركية',
+    desc: 'تفعيل معاينة PDF للبيان الجمركي قبل الإصدار',
+  },
 ]
 
 // ── Mount ─────────────────────────────────────────────────────────────────────
@@ -96,7 +132,13 @@ onMounted(async () => {
     () => smtpSettings.value,
     (s) => {
       if (s) {
-        smtpForm.value = { host: s.host, port: s.port, username: s.username, password: '', template: s.template }
+        smtpForm.value = {
+          host: s.host,
+          port: s.port,
+          username: s.username,
+          password: '',
+          template: s.template,
+        }
       }
     },
   )
@@ -145,7 +187,6 @@ onMounted(async () => {
 
       <!-- Tab panels -->
       <div class="tab-content">
-
         <!-- ── سير العمل ────────────────────────────────────────────── -->
         <div v-show="activeTab === 'workflow'" class="panel">
           <div class="section-card">
@@ -162,14 +203,28 @@ onMounted(async () => {
                   <button
                     class="stepper-btn"
                     :disabled="loading || settings.support_claim_ttl <= 5"
-                    @click="updateSetting('support_claim_ttl', Math.max(5, settings.support_claim_ttl - 1))"
-                  >−</button>
+                    @click="
+                      updateSetting(
+                        'support_claim_ttl',
+                        Math.max(5, settings.support_claim_ttl - 1),
+                      )
+                    "
+                  >
+                    −
+                  </button>
                   <span class="stepper-value">{{ settings.support_claim_ttl }}</span>
                   <button
                     class="stepper-btn"
                     :disabled="loading || settings.support_claim_ttl >= 60"
-                    @click="updateSetting('support_claim_ttl', Math.min(60, settings.support_claim_ttl + 1))"
-                  >+</button>
+                    @click="
+                      updateSetting(
+                        'support_claim_ttl',
+                        Math.min(60, settings.support_claim_ttl + 1),
+                      )
+                    "
+                  >
+                    +
+                  </button>
                 </div>
               </div>
 
@@ -180,14 +235,28 @@ onMounted(async () => {
                   <button
                     class="stepper-btn"
                     :disabled="loading || settings.voting_session_timeout <= 15"
-                    @click="updateSetting('voting_session_timeout', Math.max(15, settings.voting_session_timeout - 1))"
-                  >−</button>
+                    @click="
+                      updateSetting(
+                        'voting_session_timeout',
+                        Math.max(15, settings.voting_session_timeout - 1),
+                      )
+                    "
+                  >
+                    −
+                  </button>
                   <span class="stepper-value">{{ settings.voting_session_timeout }}</span>
                   <button
                     class="stepper-btn"
                     :disabled="loading || settings.voting_session_timeout >= 120"
-                    @click="updateSetting('voting_session_timeout', Math.min(120, settings.voting_session_timeout + 1))"
-                  >+</button>
+                    @click="
+                      updateSetting(
+                        'voting_session_timeout',
+                        Math.min(120, settings.voting_session_timeout + 1),
+                      )
+                    "
+                  >
+                    +
+                  </button>
                 </div>
               </div>
 
@@ -198,14 +267,28 @@ onMounted(async () => {
                   <button
                     class="stepper-btn"
                     :disabled="loading || settings.pdf_upload_size_limit <= 1"
-                    @click="updateSetting('pdf_upload_size_limit', Math.max(1, settings.pdf_upload_size_limit - 1))"
-                  >−</button>
+                    @click="
+                      updateSetting(
+                        'pdf_upload_size_limit',
+                        Math.max(1, settings.pdf_upload_size_limit - 1),
+                      )
+                    "
+                  >
+                    −
+                  </button>
                   <span class="stepper-value">{{ settings.pdf_upload_size_limit }}</span>
                   <button
                     class="stepper-btn"
                     :disabled="loading || settings.pdf_upload_size_limit >= 50"
-                    @click="updateSetting('pdf_upload_size_limit', Math.min(50, settings.pdf_upload_size_limit + 1))"
-                  >+</button>
+                    @click="
+                      updateSetting(
+                        'pdf_upload_size_limit',
+                        Math.min(50, settings.pdf_upload_size_limit + 1),
+                      )
+                    "
+                  >
+                    +
+                  </button>
                 </div>
               </div>
 
@@ -216,20 +299,34 @@ onMounted(async () => {
                   <button
                     class="stepper-btn"
                     :disabled="loading || settings.login_lockout_duration <= 5"
-                    @click="updateSetting('login_lockout_duration', Math.max(5, settings.login_lockout_duration - 1))"
-                  >−</button>
+                    @click="
+                      updateSetting(
+                        'login_lockout_duration',
+                        Math.max(5, settings.login_lockout_duration - 1),
+                      )
+                    "
+                  >
+                    −
+                  </button>
                   <span class="stepper-value">{{ settings.login_lockout_duration }}</span>
                   <button
                     class="stepper-btn"
                     :disabled="loading || settings.login_lockout_duration >= 60"
-                    @click="updateSetting('login_lockout_duration', Math.min(60, settings.login_lockout_duration + 1))"
-                  >+</button>
+                    @click="
+                      updateSetting(
+                        'login_lockout_duration',
+                        Math.min(60, settings.login_lockout_duration + 1),
+                      )
+                    "
+                  >
+                    +
+                  </button>
                 </div>
               </div>
             </div>
 
             <template v-if="settings">
-              <div class="section-header" style="margin-top: 8px;">
+              <div class="section-header" style="margin-top: 8px">
                 <h3 class="section-title section-title--sub">دورة الموافقة</h3>
               </div>
               <div class="two-col-grid">
@@ -239,7 +336,13 @@ onMounted(async () => {
                     type="number"
                     class="form-input"
                     :value="settings.support_committee_size"
-                    @change="(e) => updateSetting('support_committee_size', Number((e.target as HTMLInputElement).value))"
+                    @change="
+                      (e) =>
+                        updateSetting(
+                          'support_committee_size',
+                          Number((e.target as HTMLInputElement).value),
+                        )
+                    "
                   />
                 </div>
                 <div class="field-group">
@@ -248,7 +351,13 @@ onMounted(async () => {
                     type="number"
                     class="form-input"
                     :value="settings.executive_committee_size"
-                    @change="(e) => updateSetting('executive_committee_size', Number((e.target as HTMLInputElement).value))"
+                    @change="
+                      (e) =>
+                        updateSetting(
+                          'executive_committee_size',
+                          Number((e.target as HTMLInputElement).value),
+                        )
+                    "
                   />
                 </div>
                 <div class="field-group">
@@ -257,7 +366,13 @@ onMounted(async () => {
                     type="number"
                     class="form-input"
                     :value="settings.minimum_quorum"
-                    @change="(e) => updateSetting('minimum_quorum', Number((e.target as HTMLInputElement).value))"
+                    @change="
+                      (e) =>
+                        updateSetting(
+                          'minimum_quorum',
+                          Number((e.target as HTMLInputElement).value),
+                        )
+                    "
                   />
                 </div>
                 <div class="field-group">
@@ -266,7 +381,13 @@ onMounted(async () => {
                     type="number"
                     class="form-input"
                     :value="settings.review_timeout_hours"
-                    @change="(e) => updateSetting('review_timeout_hours', Number((e.target as HTMLInputElement).value))"
+                    @change="
+                      (e) =>
+                        updateSetting(
+                          'review_timeout_hours',
+                          Number((e.target as HTMLInputElement).value),
+                        )
+                    "
                   />
                 </div>
               </div>
@@ -282,7 +403,10 @@ onMounted(async () => {
                       type="checkbox"
                       :checked="settings.secret_voting"
                       :disabled="pendingKeys.has('secret_voting')"
-                      @change="(e) => updateSetting('secret_voting', (e.target as HTMLInputElement).checked)"
+                      @change="
+                        (e) =>
+                          updateSetting('secret_voting', (e.target as HTMLInputElement).checked)
+                      "
                     />
                     <span class="toggle-knob" />
                   </label>
@@ -297,7 +421,10 @@ onMounted(async () => {
                       type="checkbox"
                       :checked="settings.director_tiebreak"
                       :disabled="pendingKeys.has('director_tiebreak')"
-                      @change="(e) => updateSetting('director_tiebreak', (e.target as HTMLInputElement).checked)"
+                      @change="
+                        (e) =>
+                          updateSetting('director_tiebreak', (e.target as HTMLInputElement).checked)
+                      "
                     />
                     <span class="toggle-knob" />
                   </label>
@@ -308,16 +435,28 @@ onMounted(async () => {
               <div class="section-divider" />
               <div class="section-sub-header">
                 <h3 class="section-sub-title">سياسة الفواتير المكررة</h3>
-                <p class="section-sub-desc">تحديد سلوك النظام عند اكتشاف رقم فاتورة مكرر عبر البنوك</p>
+                <p class="section-sub-desc">
+                  تحديد سلوك النظام عند اكتشاف رقم فاتورة مكرر عبر البنوك
+                </p>
               </div>
-              <div class="field-group" style="max-width: 320px;" data-testid="duplicate-policy-field">
+              <div
+                class="field-group"
+                style="max-width: 320px"
+                data-testid="duplicate-policy-field"
+              >
                 <label class="field-label">إجراء التكرار</label>
                 <select
                   class="form-input"
                   :value="settings.duplicate_invoice_policy"
                   :disabled="pendingKeys.has('duplicate_invoice_policy')"
                   data-testid="duplicate-policy-select"
-                  @change="(e) => updateSetting('duplicate_invoice_policy', (e.target as HTMLSelectElement).value)"
+                  @change="
+                    (e) =>
+                      updateSetting(
+                        'duplicate_invoice_policy',
+                        (e.target as HTMLSelectElement).value,
+                      )
+                  "
                 >
                   <option value="warn">تحذير (warn) — إنشاء الطلب مع تسجيل تحذير</option>
                   <option value="block">حظر (block) — رفض الطلب المكرر</option>
@@ -338,24 +477,39 @@ onMounted(async () => {
             <div class="two-col-grid">
               <div class="field-group">
                 <label class="field-label">الخادم (Host)</label>
-                <input v-model="smtpForm.host" type="text" class="form-input" placeholder="smtp.example.com"  />
+                <input
+                  v-model="smtpForm.host"
+                  type="text"
+                  class="form-input"
+                  placeholder="smtp.example.com"
+                />
               </div>
               <div class="field-group">
                 <label class="field-label">المنفذ (Port)</label>
-                <input v-model.number="smtpForm.port" type="number" class="form-input" placeholder="587"  />
+                <input
+                  v-model.number="smtpForm.port"
+                  type="number"
+                  class="form-input"
+                  placeholder="587"
+                />
               </div>
               <div class="field-group">
                 <label class="field-label">اسم المستخدم</label>
-                <input v-model="smtpForm.username" type="text" class="form-input"  />
+                <input v-model="smtpForm.username" type="text" class="form-input" />
               </div>
               <div class="field-group">
                 <label class="field-label">كلمة المرور</label>
-                <input v-model="smtpForm.password" type="password" class="form-input"  placeholder="••••••••" />
+                <input
+                  v-model="smtpForm.password"
+                  type="password"
+                  class="form-input"
+                  placeholder="••••••••"
+                />
               </div>
             </div>
             <div class="field-group">
               <label class="field-label">قالب البريد</label>
-              <textarea v-model="smtpForm.template" class="form-input form-textarea"  rows="3" />
+              <textarea v-model="smtpForm.template" class="form-input form-textarea" rows="3" />
             </div>
 
             <LoadErrorAlert
@@ -385,11 +539,7 @@ onMounted(async () => {
             </div>
 
             <div class="switch-section">
-              <div
-                v-for="row in SECURITY_ROWS"
-                :key="row.key"
-                class="switch-row"
-              >
+              <div v-for="row in SECURITY_ROWS" :key="row.key" class="switch-row">
                 <div class="switch-info">
                   <span class="switch-label">{{ row.label }}</span>
                   <span class="switch-desc">{{ row.desc }}</span>
@@ -399,7 +549,9 @@ onMounted(async () => {
                     type="checkbox"
                     :checked="getSecurityValue(row.key)"
                     :disabled="pendingKeys.has(row.key)"
-                    @change="(e) => updateSecurityPolicy(row.key, (e.target as HTMLInputElement).checked)"
+                    @change="
+                      (e) => updateSecurityPolicy(row.key, (e.target as HTMLInputElement).checked)
+                    "
                   />
                   <span class="toggle-knob" />
                 </label>
@@ -417,11 +569,7 @@ onMounted(async () => {
             </div>
 
             <div v-if="settings" class="switch-section">
-              <div
-                v-for="row in FEATURE_ROWS"
-                :key="row.key"
-                class="switch-row"
-              >
+              <div v-for="row in FEATURE_ROWS" :key="row.key" class="switch-row">
                 <div class="switch-info">
                   <span class="switch-label">{{ row.label }}</span>
                   <span class="switch-desc">{{ row.desc }}</span>
@@ -440,7 +588,7 @@ onMounted(async () => {
           </div>
 
           <!-- Platform info -->
-          <div class="section-card" style="margin-top: 16px;">
+          <div class="section-card" style="margin-top: 16px">
             <div class="section-header">
               <h2 class="section-title">معلومات المنصة</h2>
             </div>
@@ -460,7 +608,6 @@ onMounted(async () => {
             </div>
           </div>
         </div>
-
       </div>
     </template>
   </div>
@@ -496,7 +643,9 @@ onMounted(async () => {
   border: none;
   border-bottom: 2px solid transparent;
   cursor: pointer;
-  transition: color 0.15s, border-color 0.15s;
+  transition:
+    color 0.15s,
+    border-color 0.15s;
   margin-bottom: -1px;
   white-space: nowrap;
 }

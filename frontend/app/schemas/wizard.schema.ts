@@ -1,7 +1,13 @@
 import { z } from 'zod'
 import { Currency } from '../types/enums'
 
-export const GOODS_TYPES = ['مواد غذائية', 'أدوية ومستلزمات طبية', 'منتقلات نفطية', 'قطع غيار', 'أخرى'] as const
+export const GOODS_TYPES = [
+  'مواد غذائية',
+  'أدوية ومستلزمات طبية',
+  'منتقلات نفطية',
+  'قطع غيار',
+  'أخرى',
+] as const
 export const PAYMENT_TERMS = ['LC', 'TT', 'CAD'] as const
 export const ARRIVAL_PORTS = ['ميناء عدن', 'ميناء الحديدة', 'ميناء المكلا'] as const
 
@@ -25,13 +31,16 @@ function isFutureDate(value: string | null | undefined): boolean {
 }
 
 export const step1Schema = z.object({
-  goods_type: z.string({ required_error: 'يرجى اختيار نوع الواردات' })
+  goods_type: z
+    .string({ required_error: 'يرجى اختيار نوع الواردات' })
     .min(1, 'يرجى اختيار نوع الواردات'),
 
-  amount: z.number({
-    required_error: 'يرجى إدخال مبلغ التمويل',
-    invalid_type_error: 'يرجى إدخال رقم صحيح',
-  }).min(1000, 'يجب أن يكون المبلغ 1,000 على الأقل'),
+  amount: z
+    .number({
+      required_error: 'يرجى إدخال مبلغ التمويل',
+      invalid_type_error: 'يرجى إدخال رقم صحيح',
+    })
+    .min(1000, 'يجب أن يكون المبلغ 1,000 على الأقل'),
 
   currency: z.enum([Currency.USD, Currency.EUR, Currency.SAR, Currency.AED, Currency.CNY], {
     required_error: 'يرجى اختيار العملة',
@@ -43,35 +52,49 @@ export const step1Schema = z.object({
     invalid_type_error: 'شروط الدفع غير صالحة',
   }),
 
-  due_date: z.string()
+  due_date: z
+    .string()
     .optional()
     .nullable()
     .refine(isFutureDate, 'يجب أن يكون تاريخ الاستحقاق بعد تاريخ اليوم'),
 
-  merchant_id: z.number({
-    required_error: 'يرجى اختيار المستورد',
-    invalid_type_error: 'يرجى اختيار المستورد',
-  }).int().positive('يرجى اختيار المستورد'),
+  merchant_id: z
+    .number({
+      required_error: 'يرجى اختيار المستورد',
+      invalid_type_error: 'يرجى اختيار المستورد',
+    })
+    .int()
+    .positive('يرجى اختيار المستورد'),
 
-  notes: z.string().max(500, 'لا يمكن أن تتجاوز الملاحظات 500 حرف').optional().nullable().default(''),
+  notes: z
+    .string()
+    .max(500, 'لا يمكن أن تتجاوز الملاحظات 500 حرف')
+    .optional()
+    .nullable()
+    .default(''),
 })
 
 export const step2Schema = z.object({
-  supplier_name: z.string({ required_error: 'يرجى إدخال اسم المورد' })
+  supplier_name: z
+    .string({ required_error: 'يرجى إدخال اسم المورد' })
     .min(1, 'يرجى إدخال اسم المورد')
     .max(255, 'الاسم طويل جداً'),
 
-  invoice_number: z.string({ required_error: 'يرجى إدخال رقم الفاتورة' })
+  invoice_number: z
+    .string({ required_error: 'يرجى إدخال رقم الفاتورة' })
     .min(1, 'يرجى إدخال رقم الفاتورة')
     .max(100, 'رقم الفاتورة طويل جداً'),
 
-  origin_country: z.string({ required_error: 'يرجى اختيار بلد المنشأ' })
+  origin_country: z
+    .string({ required_error: 'يرجى اختيار بلد المنشأ' })
     .min(1, 'يرجى اختيار بلد المنشأ'),
 
-  invoice_date: z.string({ required_error: 'يرجى إدخال تاريخ الفاتورة' })
+  invoice_date: z
+    .string({ required_error: 'يرجى إدخال تاريخ الفاتورة' })
     .min(1, 'يرجى إدخال تاريخ الفاتورة'),
 
-  arrival_port: z.string({ required_error: 'يرجى اختيار ميناء الوصول' })
+  arrival_port: z
+    .string({ required_error: 'يرجى اختيار ميناء الوصول' })
     .min(1, 'يرجى اختيار ميناء الوصول'),
 
   shipping_port: z.string().max(255).optional().nullable().default(''),

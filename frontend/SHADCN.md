@@ -6,44 +6,44 @@
 
 ## Quick Decision Table
 
-| Need | Component to use | Never write |
-|---|---|---|
-| Any button / clickable action | `<Button>` | `<button class="...">` |
-| Multi-line nav/action tile (icon + title + desc) | `<Card role="button" tabindex="0">` | `<button class="flex flex-col ...">` |
-| Data table (any table) | `<Table>` + `<TableHeader>` + `<TableBody>` + `<TableRow>` + `<TableHead>` + `<TableCell>` | `<table><thead><tbody><tr><th><td>` |
-| Full table with sorting/filtering/pagination | TanStack `useVueTable` + shadcn `Table` primitives | Custom table implementation |
-| Status chip / label | `<Badge>` | `<span class="rounded-full px-2 ...">` |
-| Loading placeholder | `<Skeleton>` | `<div class="animate-pulse ...">` |
-| Spinner (inline loading) | `<Spinner>` | `<div class="animate-spin ...">` |
-| Error / info message | `<Alert>` + `<AlertDescription>` | `<div class="rounded border ...">` |
-| Overlay dialog | `<Dialog>` | custom modal div |
-| Destructive confirmation | `<AlertDialog>` | `<Dialog>` or `window.confirm()` |
-| Slide-in side panel | `<Sheet>` | custom drawer div |
-| Contextual menu | `<DropdownMenu>` | custom `ul/li` popup |
-| Hover tooltip | `<Tooltip>` + `<TooltipTrigger>` + `<TooltipContent>` | `title` attribute or custom div |
-| Tab navigation | `<Tabs>` + `<TabsList>` + `<TabsTrigger>` + `<TabsContent>` | custom button tab row |
-| Form field + label + validation | `<FormField>` + `<FormItem>` + `<FormLabel>` + `<FormControl>` + `<FormMessage>` | raw `<label><input>` |
-| Text input | `<Input>` | `<input class="...">` |
-| Textarea | `<Textarea>` | `<textarea class="...">` |
-| Select / dropdown | `<Select>` + sub-components | `<select class="...">` |
-| Searchable select | `<Combobox>` + sub-components | custom input+list |
-| Checkbox | `<Checkbox>` | `<input type="checkbox">` |
-| Toggle switch | `<Switch>` | `<input type="checkbox" role="switch">` |
-| Card container | `<Card>` + `<CardHeader>` + `<CardContent>` + `<CardFooter>` | `<div class="rounded border p-4">` |
-| Collapsible section | `<Collapsible>` + `<CollapsibleTrigger>` + `<CollapsibleContent>` | custom show/hide div |
-| Progress bar | `<Progress>` | `<div style="width: X%">` |
-| Separator line | `<Separator>` | `<hr>` or `<div class="border-t">` |
-| Keyboard shortcut label | `<Kbd>` | `<span class="...">` |
-| Empty / zero state | `<Empty>` + `<EmptyMedia>` + `<EmptyTitle>` + `<EmptyDescription>` | `<div class="text-center ...">` |
-| User avatar | `<Avatar>` + `<AvatarImage>` + `<AvatarFallback>` | `<img class="rounded-full">` |
-| Stepped wizard | `<Stepper>` + `<StepperItem>` + `<StepperTrigger>` + `<StepperIndicator>` | custom step indicator |
-| Pagination controls | `<Pagination>` + sub-components | custom prev/next buttons |
-| Scrollable area | `<ScrollArea>` | `<div class="overflow-auto">` |
-| Input with icon/addon | `<InputGroup>` + `<InputGroupInput>` + `<InputGroupAddon>` | `<div class="relative"><input>` |
-| Grouped buttons | `<ButtonGroup>` + `<Button>` items | `<div class="flex">` of raw buttons |
-| Accordion | `<Accordion>` + `<AccordionItem>` + `<AccordionTrigger>` + `<AccordionContent>` | custom show/hide |
-| Toast notification | `<Sonner>` (via `toast()`) | custom notification div |
-| Field layout (non-form) | `<Field>` + `<FieldLabel>` + `<FieldError>` | raw label+div |
+| Need                                             | Component to use                                                                           | Never write                             |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------------ | --------------------------------------- |
+| Any button / clickable action                    | `<Button>`                                                                                 | `<button class="...">`                  |
+| Multi-line nav/action tile (icon + title + desc) | `<Card role="button" tabindex="0">`                                                        | `<button class="flex flex-col ...">`    |
+| Data table (any table)                           | `<Table>` + `<TableHeader>` + `<TableBody>` + `<TableRow>` + `<TableHead>` + `<TableCell>` | `<table><thead><tbody><tr><th><td>`     |
+| Full table with sorting/filtering/pagination     | TanStack `useVueTable` + shadcn `Table` primitives                                         | Custom table implementation             |
+| Status chip / label                              | `<Badge>`                                                                                  | `<span class="rounded-full px-2 ...">`  |
+| Loading placeholder                              | `<Skeleton>`                                                                               | `<div class="animate-pulse ...">`       |
+| Spinner (inline loading)                         | `<Spinner>`                                                                                | `<div class="animate-spin ...">`        |
+| Error / info message                             | `<Alert>` + `<AlertDescription>`                                                           | `<div class="rounded border ...">`      |
+| Overlay dialog                                   | `<Dialog>`                                                                                 | custom modal div                        |
+| Destructive confirmation                         | `<AlertDialog>`                                                                            | `<Dialog>` or `window.confirm()`        |
+| Slide-in side panel                              | `<Sheet>`                                                                                  | custom drawer div                       |
+| Contextual menu                                  | `<DropdownMenu>`                                                                           | custom `ul/li` popup                    |
+| Hover tooltip                                    | `<Tooltip>` + `<TooltipTrigger>` + `<TooltipContent>`                                      | `title` attribute or custom div         |
+| Tab navigation                                   | `<Tabs>` + `<TabsList>` + `<TabsTrigger>` + `<TabsContent>`                                | custom button tab row                   |
+| Form field + label + validation                  | `<FormField>` + `<FormItem>` + `<FormLabel>` + `<FormControl>` + `<FormMessage>`           | raw `<label><input>`                    |
+| Text input                                       | `<Input>`                                                                                  | `<input class="...">`                   |
+| Textarea                                         | `<Textarea>`                                                                               | `<textarea class="...">`                |
+| Select / dropdown                                | `<Select>` + sub-components                                                                | `<select class="...">`                  |
+| Searchable select                                | `<Combobox>` + sub-components                                                              | custom input+list                       |
+| Checkbox                                         | `<Checkbox>`                                                                               | `<input type="checkbox">`               |
+| Toggle switch                                    | `<Switch>`                                                                                 | `<input type="checkbox" role="switch">` |
+| Card container                                   | `<Card>` + `<CardHeader>` + `<CardContent>` + `<CardFooter>`                               | `<div class="rounded border p-4">`      |
+| Collapsible section                              | `<Collapsible>` + `<CollapsibleTrigger>` + `<CollapsibleContent>`                          | custom show/hide div                    |
+| Progress bar                                     | `<Progress>`                                                                               | `<div style="width: X%">`               |
+| Separator line                                   | `<Separator>`                                                                              | `<hr>` or `<div class="border-t">`      |
+| Keyboard shortcut label                          | `<Kbd>`                                                                                    | `<span class="...">`                    |
+| Empty / zero state                               | `<Empty>` + `<EmptyMedia>` + `<EmptyTitle>` + `<EmptyDescription>`                         | `<div class="text-center ...">`         |
+| User avatar                                      | `<Avatar>` + `<AvatarImage>` + `<AvatarFallback>`                                          | `<img class="rounded-full">`            |
+| Stepped wizard                                   | `<Stepper>` + `<StepperItem>` + `<StepperTrigger>` + `<StepperIndicator>`                  | custom step indicator                   |
+| Pagination controls                              | `<Pagination>` + sub-components                                                            | custom prev/next buttons                |
+| Scrollable area                                  | `<ScrollArea>`                                                                             | `<div class="overflow-auto">`           |
+| Input with icon/addon                            | `<InputGroup>` + `<InputGroupInput>` + `<InputGroupAddon>`                                 | `<div class="relative"><input>`         |
+| Grouped buttons                                  | `<ButtonGroup>` + `<Button>` items                                                         | `<div class="flex">` of raw buttons     |
+| Accordion                                        | `<Accordion>` + `<AccordionItem>` + `<AccordionTrigger>` + `<AccordionContent>`            | custom show/hide                        |
+| Toast notification                               | `<Sonner>` (via `toast()`)                                                                 | custom notification div                 |
+| Field layout (non-form)                          | `<Field>` + `<FieldLabel>` + `<FieldError>`                                                | raw label+div                           |
 
 ---
 
@@ -116,7 +116,15 @@ import { Button } from '@/components/ui/button'
 
 ```vue
 <script setup>
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter, CardAction } from '@/components/ui/card'
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+  CardFooter,
+  CardAction,
+} from '@/components/ui/card'
 </script>
 
 <!-- Standard section card -->
@@ -135,7 +143,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter, 
 
 <!-- KPI card (clickable, navigates to filtered list) -->
 <Card
-  class="border-0 p-4 shadow flex flex-col gap-1.5 cursor-pointer hover:shadow-md transition-shadow"
+  class="flex cursor-pointer flex-col gap-1.5 border-0 p-4 shadow transition-shadow hover:shadow-md"
   role="button"
   tabindex="0"
   aria-label="`${label}: ${value}`"
@@ -153,7 +161,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter, 
 <!-- Quick-action tile (multi-line: icon + title + description) -->
 <!-- MUST use Card, not Button — Button doesn't support multi-line slot layout -->
 <Card
-  class="border-0 p-4 shadow flex flex-col items-start gap-1 cursor-pointer hover:shadow-md transition-shadow bg-primary text-primary-foreground"
+  class="bg-primary text-primary-foreground flex cursor-pointer flex-col items-start gap-1 border-0 p-4 shadow transition-shadow hover:shadow-md"
   role="button"
   tabindex="0"
   @click="router.push('/requests/new')"
@@ -167,7 +175,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter, 
 
 <!-- Quick-action tile (secondary style) -->
 <Card
-  class="border-0 p-4 shadow flex flex-col items-start gap-1 cursor-pointer hover:shadow-md transition-shadow"
+  class="flex cursor-pointer flex-col items-start gap-1 border-0 p-4 shadow transition-shadow hover:shadow-md"
   role="button"
   tabindex="0"
   @click="router.push('/requests')"
@@ -189,7 +197,13 @@ Use shadcn Table primitives directly for small dashboard queues (5–8 rows).
 ```vue
 <script setup>
 import {
-  Table, TableHeader, TableBody, TableRow, TableHead, TableCell, TableEmpty
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+  TableEmpty,
 } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
 import StatusBadge from '@/components/shared/StatusBadge.vue'
@@ -252,11 +266,23 @@ import {
   FlexRender,
 } from '@tanstack/vue-table'
 import {
-  Table, TableHeader, TableBody, TableRow, TableHead, TableCell, TableEmpty
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+  TableEmpty,
 } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from '@/components/ui/select'
 </script>
 ```
 
@@ -282,13 +308,17 @@ import { Badge } from '@/components/ui/badge'
 <Badge variant="outline">مسودة</Badge>
 
 <!-- Custom semantic color (when StatusBadge is not appropriate) -->
-<Badge class="bg-[var(--voting)]/10 text-[var(--voting)] border-[var(--voting)]/30 border">
+<Badge class="border border-[var(--voting)]/30 bg-[var(--voting)]/10 text-[var(--voting)]">
   تصويت مفتوح
 </Badge>
-<Badge class="bg-[var(--severity-green)]/10 text-[var(--severity-green)] border-[var(--severity-green)]/30 border">
+<Badge
+  class="border border-[var(--severity-green)]/30 bg-[var(--severity-green)]/10 text-[var(--severity-green)]"
+>
   مكتمل
 </Badge>
-<Badge class="bg-[var(--severity-amber)]/10 text-[var(--severity-amber)] border-[var(--severity-amber)]/30 border">
+<Badge
+  class="border border-[var(--severity-amber)]/30 bg-[var(--severity-amber)]/10 text-[var(--severity-amber)]"
+>
   قيد المراجعة
 </Badge>
 ```
@@ -357,8 +387,14 @@ import { AlertCircle, Info } from 'lucide-vue-next'
 ```vue
 <script setup>
 import {
-  Dialog, DialogTrigger, DialogContent, DialogHeader,
-  DialogTitle, DialogDescription, DialogFooter, DialogClose
+  Dialog,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 
@@ -395,9 +431,15 @@ const open = ref(false)
 ```vue
 <script setup>
 import {
-  AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader,
-  AlertDialogTitle, AlertDialogDescription, AlertDialogFooter,
-  AlertDialogCancel, AlertDialogAction
+  AlertDialog,
+  AlertDialogTrigger,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 </script>
@@ -430,8 +472,14 @@ import { Button } from '@/components/ui/button'
 ```vue
 <script setup>
 import {
-  Sheet, SheetTrigger, SheetContent, SheetHeader,
-  SheetTitle, SheetDescription, SheetFooter, SheetClose
+  Sheet,
+  SheetTrigger,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+  SheetFooter,
+  SheetClose,
 } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 </script>
@@ -464,8 +512,12 @@ Use Sheet for: document preview panels, request detail quick-view, filter panels
 ```vue
 <script setup>
 import {
-  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent,
-  DropdownMenuItem, DropdownMenuSeparator, DropdownMenuLabel
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
 import { MoreHorizontal } from 'lucide-vue-next'
@@ -532,21 +584,39 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { useForm } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/zod'
 import * as z from 'zod'
-import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage, FormDescription } from '@/components/ui/form'
+import {
+  Form,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormControl,
+  FormMessage,
+  FormDescription,
+} from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 
-const schema = toTypedSchema(z.object({
-  supplier_name: z.string().min(2, 'الاسم مطلوب'),
-  amount: z.number().positive('المبلغ يجب أن يكون موجباً'),
-  currency: z.string(),
-  notes: z.string().optional(),
-}))
+const schema = toTypedSchema(
+  z.object({
+    supplier_name: z.string().min(2, 'الاسم مطلوب'),
+    amount: z.number().positive('المبلغ يجب أن يكون موجباً'),
+    currency: z.string(),
+    notes: z.string().optional(),
+  }),
+)
 
 const form = useForm({ validationSchema: schema })
-const onSubmit = form.handleSubmit(async (values) => { /* submit */ })
+const onSubmit = form.handleSubmit(async (values) => {
+  /* submit */
+})
 </script>
 
 <form @submit="onSubmit" class="flex flex-col gap-4">
@@ -657,7 +727,16 @@ import { Button } from '@/components/ui/button'
 
 ```vue
 <script setup>
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem, SelectGroup, SelectLabel, SelectSeparator } from '@/components/ui/select'
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+  SelectGroup,
+  SelectLabel,
+  SelectSeparator,
+} from '@/components/ui/select'
 
 const selected = ref('')
 </script>
@@ -689,9 +768,15 @@ const selected = ref('')
 ```vue
 <script setup>
 import {
-  Combobox, ComboboxAnchor, ComboboxInput, ComboboxList,
-  ComboboxItem, ComboboxEmpty, ComboboxGroup, ComboboxItemIndicator,
-  ComboboxTrigger
+  Combobox,
+  ComboboxAnchor,
+  ComboboxInput,
+  ComboboxList,
+  ComboboxItem,
+  ComboboxEmpty,
+  ComboboxGroup,
+  ComboboxItemIndicator,
+  ComboboxTrigger,
 } from '@/components/ui/combobox'
 import { Check, ChevronsUpDown } from 'lucide-vue-next'
 
@@ -729,7 +814,14 @@ const banks = ref([
 
 ```vue
 <script setup>
-import { Empty, EmptyMedia, EmptyHeader, EmptyTitle, EmptyDescription, EmptyContent } from '@/components/ui/empty'
+import {
+  Empty,
+  EmptyMedia,
+  EmptyHeader,
+  EmptyTitle,
+  EmptyDescription,
+  EmptyContent,
+} from '@/components/ui/empty'
 import { Button } from '@/components/ui/button'
 import { InboxIcon } from 'lucide-vue-next'
 </script>
@@ -766,7 +858,13 @@ import { InboxIcon } from 'lucide-vue-next'
 
 ```vue
 <script setup>
-import { Avatar, AvatarImage, AvatarFallback, AvatarGroup, AvatarGroupCount } from '@/components/ui/avatar'
+import {
+  Avatar,
+  AvatarImage,
+  AvatarFallback,
+  AvatarGroup,
+  AvatarGroupCount,
+} from '@/components/ui/avatar'
 </script>
 
 <!-- Single user avatar -->
@@ -795,7 +893,15 @@ import { Avatar, AvatarImage, AvatarFallback, AvatarGroup, AvatarGroupCount } fr
 
 ```vue
 <script setup>
-import { Stepper, StepperItem, StepperTrigger, StepperIndicator, StepperTitle, StepperDescription, StepperSeparator } from '@/components/ui/stepper'
+import {
+  Stepper,
+  StepperItem,
+  StepperTrigger,
+  StepperIndicator,
+  StepperTitle,
+  StepperDescription,
+  StepperSeparator,
+} from '@/components/ui/stepper'
 
 const currentStep = ref(1)
 const steps = [
@@ -831,15 +937,26 @@ const steps = [
 ```vue
 <script setup>
 import {
-  Pagination, PaginationContent, PaginationItem,
-  PaginationPrevious, PaginationNext, PaginationLink, PaginationEllipsis
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationPrevious,
+  PaginationNext,
+  PaginationLink,
+  PaginationEllipsis,
 } from '@/components/ui/pagination'
 
 const currentPage = ref(1)
 const totalPages = ref(10)
 </script>
 
-<Pagination v-model:page="currentPage" :total="totalPages * 10" :items-per-page="10" :sibling-count="1" show-edges>
+<Pagination
+  v-model:page="currentPage"
+  :total="totalPages * 10"
+  :items-per-page="10"
+  :sibling-count="1"
+  show-edges
+>
   <PaginationContent>
     <PaginationItem>
       <PaginationPrevious />
@@ -975,7 +1092,10 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 ```vue
 <script setup>
 import {
-  Accordion, AccordionItem, AccordionTrigger, AccordionContent
+  Accordion,
+  AccordionItem,
+  AccordionTrigger,
+  AccordionContent,
 } from '@/components/ui/accordion'
 </script>
 
@@ -1014,13 +1134,8 @@ toast.error('فشل في إرسال الطلب. حاول مجدداً.')
 toast.info('تم تحديث حالة الطلب')
 
 <!-- With action -->
-toast('تم رفض الطلب', {
-  description: 'يمكنك مراجعة سبب الرفض في تفاصيل الطلب',
-  action: {
-    label: 'عرض التفاصيل',
-    onClick: () => router.push(`/requests/${id}`),
-  },
-})
+toast('تم رفض الطلب', { description: 'يمكنك مراجعة سبب الرفض في تفاصيل الطلب', action: { label: 'عرض
+التفاصيل', onClick: () => router.push(`/requests/${id}`), }, })
 ```
 
 ---
@@ -1035,51 +1150,181 @@ import { Button } from '@/components/ui/button'
 import { ButtonGroup, ButtonGroupSeparator } from '@/components/ui/button-group'
 
 // Layout containers
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter, CardAction } from '@/components/ui/card'
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+  CardFooter,
+  CardAction,
+} from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
 
 // Data display
 import { Badge } from '@/components/ui/badge'
-import { Avatar, AvatarImage, AvatarFallback, AvatarGroup, AvatarGroupCount } from '@/components/ui/avatar'
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell, TableEmpty, TableCaption, TableFooter } from '@/components/ui/table'
+import {
+  Avatar,
+  AvatarImage,
+  AvatarFallback,
+  AvatarGroup,
+  AvatarGroupCount,
+} from '@/components/ui/avatar'
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+  TableEmpty,
+  TableCaption,
+  TableFooter,
+} from '@/components/ui/table'
 import { Progress } from '@/components/ui/progress'
 
 // Feedback
 import { Skeleton } from '@/components/ui/skeleton'
 import { Spinner } from '@/components/ui/spinner'
 import { Alert, AlertTitle, AlertDescription, AlertAction } from '@/components/ui/alert'
-import { Empty, EmptyMedia, EmptyHeader, EmptyTitle, EmptyDescription, EmptyContent } from '@/components/ui/empty'
+import {
+  Empty,
+  EmptyMedia,
+  EmptyHeader,
+  EmptyTitle,
+  EmptyDescription,
+  EmptyContent,
+} from '@/components/ui/empty'
 
 // Overlays
-import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog'
-import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog'
-import { Sheet, SheetTrigger, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter, SheetClose } from '@/components/ui/sheet'
+import {
+  Dialog,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
+} from '@/components/ui/dialog'
+import {
+  AlertDialog,
+  AlertDialogTrigger,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from '@/components/ui/alert-dialog'
+import {
+  Sheet,
+  SheetTrigger,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+  SheetFooter,
+  SheetClose,
+} from '@/components/ui/sheet'
 
 // Menus & navigation
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuLabel, DropdownMenuGroup } from '@/components/ui/dropdown-menu'
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+  DropdownMenuGroup,
+} from '@/components/ui/dropdown-menu'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip'
 
 // Forms
-import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage, FormDescription } from '@/components/ui/form'
+import {
+  Form,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormControl,
+  FormMessage,
+  FormDescription,
+} from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem, SelectGroup, SelectLabel, SelectSeparator } from '@/components/ui/select'
-import { Combobox, ComboboxAnchor, ComboboxInput, ComboboxList, ComboboxItem, ComboboxEmpty, ComboboxGroup, ComboboxItemIndicator, ComboboxTrigger } from '@/components/ui/combobox'
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+  SelectGroup,
+  SelectLabel,
+  SelectSeparator,
+} from '@/components/ui/select'
+import {
+  Combobox,
+  ComboboxAnchor,
+  ComboboxInput,
+  ComboboxList,
+  ComboboxItem,
+  ComboboxEmpty,
+  ComboboxGroup,
+  ComboboxItemIndicator,
+  ComboboxTrigger,
+} from '@/components/ui/combobox'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
-import { InputGroup, InputGroupInput, InputGroupAddon, InputGroupButton, InputGroupText } from '@/components/ui/input-group'
+import {
+  InputGroup,
+  InputGroupInput,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupText,
+} from '@/components/ui/input-group'
 
 // Structure
-import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion'
+import {
+  Accordion,
+  AccordionItem,
+  AccordionTrigger,
+  AccordionContent,
+} from '@/components/ui/accordion'
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible'
-import { Stepper, StepperItem, StepperTrigger, StepperIndicator, StepperTitle, StepperDescription, StepperSeparator } from '@/components/ui/stepper'
-import { Pagination, PaginationContent, PaginationItem, PaginationPrevious, PaginationNext, PaginationLink, PaginationEllipsis } from '@/components/ui/pagination'
+import {
+  Stepper,
+  StepperItem,
+  StepperTrigger,
+  StepperIndicator,
+  StepperTitle,
+  StepperDescription,
+  StepperSeparator,
+} from '@/components/ui/stepper'
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationPrevious,
+  PaginationNext,
+  PaginationLink,
+  PaginationEllipsis,
+} from '@/components/ui/pagination'
 
 // Field layout (non-vee-validate)
-import { Field, FieldLabel, FieldError, FieldDescription, FieldGroup, FieldContent, FieldSet, FieldSeparator } from '@/components/ui/field'
+import {
+  Field,
+  FieldLabel,
+  FieldError,
+  FieldDescription,
+  FieldGroup,
+  FieldContent,
+  FieldSet,
+  FieldSeparator,
+} from '@/components/ui/field'
 ```
 
 ---

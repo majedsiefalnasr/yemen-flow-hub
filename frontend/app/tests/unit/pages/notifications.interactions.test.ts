@@ -14,8 +14,12 @@ const setItemsMock = vi.hoisted(() => vi.fn())
 const decrementUnreadMock = vi.hoisted(() => vi.fn())
 vi.mock('../../../stores/notifications.store', () => ({
   useNotificationsStore: () => ({
-    get items() { return notificationsRef.value },
-    get unreadCount() { return notificationsRef.value.filter((n: any) => !n.read_at).length },
+    get items() {
+      return notificationsRef.value
+    },
+    get unreadCount() {
+      return notificationsRef.value.filter((n: any) => !n.read_at).length
+    },
     refreshUnreadCount: refreshUnreadCountMock,
     setItems: setItemsMock,
     decrementUnread: decrementUnreadMock,
@@ -34,11 +38,21 @@ const markAllReadMock = vi.hoisted(() => vi.fn())
 
 vi.mock('../../../composables/useNotifications', () => ({
   useNotifications: () => ({
-    get notifications() { return notificationsRef },
-    get pagination() { return paginationRef },
-    get loading() { return loadingRef },
-    get error() { return errorRef },
-    get unreadCount() { return ref(notificationsRef.value.filter((n: any) => !n.read_at).length) },
+    get notifications() {
+      return notificationsRef
+    },
+    get pagination() {
+      return paginationRef
+    },
+    get loading() {
+      return loadingRef
+    },
+    get error() {
+      return errorRef
+    },
+    get unreadCount() {
+      return ref(notificationsRef.value.filter((n: any) => !n.read_at).length)
+    },
     fetchNotifications: fetchNotificationsMock,
     fetchUnreadCount: fetchUnreadCountMock,
     markRead: markReadMock,
@@ -64,21 +78,23 @@ describe('notifications page interactions', () => {
   })
 
   it('opens a summary dialog and marks a claim_released notification as read', async () => {
-    notificationsRef.value = [{
-      id: 'n-claim',
-      type: 'App\\Notifications\\ClaimReleasedNotification',
-      data: {
-        type: 'claim_released',
-        message: 'أُلغيت مطالبة على الطلب YFH-042 — يدوي',
-        request_id: 42,
-        reference_number: 'YFH-042',
-        reason: 'manual',
-        released_by_user_id: 5,
-        released_by_name: 'سعد',
+    notificationsRef.value = [
+      {
+        id: 'n-claim',
+        type: 'App\\Notifications\\ClaimReleasedNotification',
+        data: {
+          type: 'claim_released',
+          message: 'أُلغيت مطالبة على الطلب YFH-042 — يدوي',
+          request_id: 42,
+          reference_number: 'YFH-042',
+          reason: 'manual',
+          released_by_user_id: 5,
+          released_by_name: 'سعد',
+        },
+        read_at: null,
+        created_at: '2026-05-21T10:00:00.000000Z',
       },
-      read_at: null,
-      created_at: '2026-05-21T10:00:00.000000Z',
-    }]
+    ]
 
     const wrapper = mount(notificationsPage, { global: { stubs: { Teleport: true } } })
     await flushPromises()
@@ -93,18 +109,20 @@ describe('notifications page interactions', () => {
   })
 
   it('does not navigate when marking a notification as read', async () => {
-    notificationsRef.value = [{
-      id: 'n-claim',
-      type: 'App\\Notifications\\ClaimReleasedNotification',
-      data: {
-        type: 'claim_released',
-        message: 'أُلغيت مطالبة على الطلب YFH-042 — يدوي',
-        request_id: 42,
-        reference_number: 'YFH-042',
+    notificationsRef.value = [
+      {
+        id: 'n-claim',
+        type: 'App\\Notifications\\ClaimReleasedNotification',
+        data: {
+          type: 'claim_released',
+          message: 'أُلغيت مطالبة على الطلب YFH-042 — يدوي',
+          request_id: 42,
+          reference_number: 'YFH-042',
+        },
+        read_at: null,
+        created_at: '2026-05-21T10:00:00.000000Z',
       },
-      read_at: null,
-      created_at: '2026-05-21T10:00:00.000000Z',
-    }]
+    ]
 
     const wrapper = mount(notificationsPage, { global: { stubs: { Teleport: true } } })
     await flushPromises()
@@ -116,18 +134,20 @@ describe('notifications page interactions', () => {
   })
 
   it('does not navigate for non-claim notifications even when request_id is present', async () => {
-    notificationsRef.value = [{
-      id: 'n-submitted',
-      type: 'App\\Notifications\\RequestSubmittedNotification',
-      data: {
-        type: 'request_submitted',
-        message: 'طلب جديد',
-        request_id: 7,
-        reference_number: 'YFH-007',
+    notificationsRef.value = [
+      {
+        id: 'n-submitted',
+        type: 'App\\Notifications\\RequestSubmittedNotification',
+        data: {
+          type: 'request_submitted',
+          message: 'طلب جديد',
+          request_id: 7,
+          reference_number: 'YFH-007',
+        },
+        read_at: null,
+        created_at: '2026-05-21T10:00:00.000000Z',
       },
-      read_at: null,
-      created_at: '2026-05-21T10:00:00.000000Z',
-    }]
+    ]
 
     const wrapper = mount(notificationsPage, { global: { stubs: { Teleport: true } } })
     await flushPromises()

@@ -19,14 +19,15 @@ export interface RequestsEmptyState {
 }
 
 export function buildRequestsEmptyState(input: RequestsEmptyStateInput): RequestsEmptyState {
-  const hasActiveFilters = input.hasActiveFilters
-    ?? Boolean(
-      input.search?.trim()
-      || (input.bankFilter && input.bankFilter !== 'all')
-      || (input.dateRangeFilter && input.dateRangeFilter !== 'all')
-      || input.createdByMeOnly
-      || input.hideOthers
-      || (input.advancedFilterCount ?? 0) > 0,
+  const hasActiveFilters =
+    input.hasActiveFilters ??
+    Boolean(
+      input.search?.trim() ||
+      (input.bankFilter && input.bankFilter !== 'all') ||
+      (input.dateRangeFilter && input.dateRangeFilter !== 'all') ||
+      input.createdByMeOnly ||
+      input.hideOthers ||
+      (input.advancedFilterCount ?? 0) > 0,
     )
 
   if (!input.hasAnyRequests) {

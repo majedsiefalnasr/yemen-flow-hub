@@ -10,7 +10,7 @@ import { ROLE_BUCKETS } from '../../../../constants/workflow'
 const BANK_BUCKETS = ROLE_BUCKETS[UserRole.BANK_ADMIN]!
 
 function bucketByKey(key: string) {
-  return BANK_BUCKETS.find(b => b.key === key)
+  return BANK_BUCKETS.find((b) => b.key === key)
 }
 
 // ── Bucket existence ──────────────────────────────────────────────────────────

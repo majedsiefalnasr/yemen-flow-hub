@@ -78,8 +78,19 @@ export interface ExecutiveDashboardStats {
 
 export interface CbyAdminComplianceAlerts {
   duplicate_suppliers: Array<{ supplier_name: string; count: number }>
-  high_amount_requests: Array<{ id: number; reference_number: string; amount: number; currency: string; bank_name: string }>
-  stale_pending_requests: Array<{ id: number; reference_number: string; bank_name: string; updated_at: string | null }>
+  high_amount_requests: Array<{
+    id: number
+    reference_number: string
+    amount: number
+    currency: string
+    bank_name: string
+  }>
+  stale_pending_requests: Array<{
+    id: number
+    reference_number: string
+    bank_name: string
+    updated_at: string | null
+  }>
 }
 
 export interface CbyAdminMonthlyEntry {
@@ -189,7 +200,14 @@ export interface BankAdminDashboardStatsExtended extends BankAdminDashboardStats
   suspended_staff_with_active?: boolean
 }
 
-export type DashboardStats = DataEntryDashboardStats | BankReviewerDashboardStats | BankAdminDashboardStats | SupportCommitteeDashboardStats | SwiftOfficerDashboardStats | ExecutiveDashboardStats | CbyAdminDashboardStats
+export type DashboardStats =
+  | DataEntryDashboardStats
+  | BankReviewerDashboardStats
+  | BankAdminDashboardStats
+  | SupportCommitteeDashboardStats
+  | SwiftOfficerDashboardStats
+  | ExecutiveDashboardStats
+  | CbyAdminDashboardStats
 
 export function useDashboard() {
   const { get } = useApi()

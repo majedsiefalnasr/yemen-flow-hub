@@ -40,7 +40,12 @@ const store = useReportsStore()
 const role = computed(() => auth.user?.role)
 
 const isCbyUser = computed(() =>
-  [UserRole.CBY_ADMIN, UserRole.EXECUTIVE_MEMBER, UserRole.COMMITTEE_DIRECTOR, UserRole.SUPPORT_COMMITTEE].includes(role.value as UserRole),
+  [
+    UserRole.CBY_ADMIN,
+    UserRole.EXECUTIVE_MEMBER,
+    UserRole.COMMITTEE_DIRECTOR,
+    UserRole.SUPPORT_COMMITTEE,
+  ].includes(role.value as UserRole),
 )
 const isBankUser = computed(() =>
   [UserRole.BANK_REVIEWER, UserRole.BANK_ADMIN].includes(role.value as UserRole),
@@ -79,7 +84,7 @@ async function clearFilters() {
   await loadReports()
 }
 
-function loadPreset(preset: typeof store.presets[0]) {
+function loadPreset(preset: (typeof store.presets)[0]) {
   fromDate.value = preset.filter.fromDate ?? ''
   toDate.value = preset.filter.toDate ?? ''
 }
@@ -113,7 +118,8 @@ const kpiData = computed(() => {
   if (wr) {
     const counts = wr.counts_by_status
     const total = Object.values(counts).reduce((s, v) => s + v, 0)
-    const approvalRate = total > 0 ? Math.round(((wr.throughput.completed + wr.throughput.approved) / total) * 100) : 0
+    const approvalRate =
+      total > 0 ? Math.round(((wr.throughput.completed + wr.throughput.approved) / total) * 100) : 0
     return {
       totalRequests: total,
       totalFinancingValue: wr.total_financing_value ?? 0,
@@ -144,17 +150,18 @@ function formatFinancing(v: number): string {
 
 // ─── Chart data sources (CBY from workflowReport, bank from bankReport) ──────
 
-const chartMonthlyTrend = computed(() =>
-  store.workflowReport?.monthly_trend ?? store.bankReport?.monthly_trend ?? [],
+const chartMonthlyTrend = computed(
+  () => store.workflowReport?.monthly_trend ?? store.bankReport?.monthly_trend ?? [],
 )
-const chartCategoryDist = computed(() =>
-  store.workflowReport?.category_distribution ?? store.bankReport?.category_distribution ?? [],
+const chartCategoryDist = computed(
+  () =>
+    store.workflowReport?.category_distribution ?? store.bankReport?.category_distribution ?? [],
 )
-const chartAmountByCurrency = computed(() =>
-  store.workflowReport?.amount_by_currency ?? store.bankReport?.amount_by_currency ?? [],
+const chartAmountByCurrency = computed(
+  () => store.workflowReport?.amount_by_currency ?? store.bankReport?.amount_by_currency ?? [],
 )
-const chartHeatmap = computed(() =>
-  store.workflowReport?.submission_heatmap ?? store.bankReport?.submission_heatmap ?? [],
+const chartHeatmap = computed(
+  () => store.workflowReport?.submission_heatmap ?? store.bankReport?.submission_heatmap ?? [],
 )
 
 const hasChartData = computed(() => !!(store.workflowReport || store.bankReport))
@@ -171,13 +178,19 @@ const lineChartSeries = computed(() => {
   ]
 })
 
-const lineChartLabels = computed(() =>
-  chartMonthlyTrend.value.map((m) => m.month.slice(5)), // show MM only
+const lineChartLabels = computed(
+  () => chartMonthlyTrend.value.map((m) => m.month.slice(5)), // show MM only
 )
 
 // ─── Pie chart ────────────────────────────────────────────────────────────────
 
-const PIE_COLORS = ['var(--color-primary)', 'var(--color-voting)', 'var(--color-info)', 'var(--color-warning)', 'var(--color-destructive)']
+const PIE_COLORS = [
+  'var(--color-primary)',
+  'var(--color-voting)',
+  'var(--color-info)',
+  'var(--color-warning)',
+  'var(--color-destructive)',
+]
 
 const pieChartData = computed(() => {
   return chartCategoryDist.value.map((c, i) => ({
@@ -201,9 +214,7 @@ const heatmapData = computed(() => chartHeatmap.value)
 
 const bankChartData = computed(() => {
   if (!store.workflowReport) return []
-  return store.workflowReport.counts_by_bank
-    .filter((b) => b.total > 0)
-    .slice(0, 8)
+  return store.workflowReport.counts_by_bank.filter((b) => b.total > 0).slice(0, 8)
 })
 
 const maxBankTotal = computed(() => Math.max(...bankChartData.value.map((b) => b.total), 1))
@@ -214,7 +225,7 @@ const statusRows = computed(() => {
   return Object.entries(counts).map(([status, count]) => ({ status, count }))
 })
 
-const statusColumns: ColumnDef<{ status: string, count: number }>[] = [
+const statusColumns: ColumnDef<{ status: string; count: number }>[] = [
   {
     accessorKey: 'status',
     header: 'الحالة',
@@ -237,17 +248,47 @@ const bankBreakdownColumns: ColumnDef<{
   pending_count: number
   approval_rate: number
 }>[] = [
-  { accessorKey: 'bank_name', header: 'البنك', cell: ({ row }) => h('span', { class: 'font-medium' }, row.original.bank_name) },
-  { accessorKey: 'total_requests', header: 'إجمالي الطلبات', cell: ({ row }) => h('span', { class: 'tabular-nums' }, row.original.total_requests) },
-  { accessorKey: 'approved_count', header: 'المعتمدة', cell: ({ row }) => h('span', { class: 'tabular-nums text-[var(--severity-green)]' }, row.original.approved_count) },
-  { accessorKey: 'rejected_count', header: 'المرفوضة', cell: ({ row }) => h('span', { class: 'tabular-nums text-[var(--severity-red)]' }, row.original.rejected_count) },
-  { accessorKey: 'pending_count', header: 'المعلقة', cell: ({ row }) => h('span', { class: 'tabular-nums' }, row.original.pending_count) },
-  { accessorKey: 'approval_rate', header: 'نسبة الاعتماد', cell: ({ row }) => h('span', { class: 'tabular-nums' }, `${row.original.approval_rate}%`) },
+  {
+    accessorKey: 'bank_name',
+    header: 'البنك',
+    cell: ({ row }) => h('span', { class: 'font-medium' }, row.original.bank_name),
+  },
+  {
+    accessorKey: 'total_requests',
+    header: 'إجمالي الطلبات',
+    cell: ({ row }) => h('span', { class: 'tabular-nums' }, row.original.total_requests),
+  },
+  {
+    accessorKey: 'approved_count',
+    header: 'المعتمدة',
+    cell: ({ row }) =>
+      h(
+        'span',
+        { class: 'tabular-nums text-[var(--severity-green)]' },
+        row.original.approved_count,
+      ),
+  },
+  {
+    accessorKey: 'rejected_count',
+    header: 'المرفوضة',
+    cell: ({ row }) =>
+      h('span', { class: 'tabular-nums text-[var(--severity-red)]' }, row.original.rejected_count),
+  },
+  {
+    accessorKey: 'pending_count',
+    header: 'المعلقة',
+    cell: ({ row }) => h('span', { class: 'tabular-nums' }, row.original.pending_count),
+  },
+  {
+    accessorKey: 'approval_rate',
+    header: 'نسبة الاعتماد',
+    cell: ({ row }) => h('span', { class: 'tabular-nums' }, `${row.original.approval_rate}%`),
+  },
 ]
 </script>
 
 <template>
-  <div class="reports-page" >
+  <div class="reports-page">
     <!-- Page Header -->
     <div class="page-header">
       <div class="header-text">
@@ -295,29 +336,15 @@ const bankBreakdownColumns: ColumnDef<{
       <div class="filter-row">
         <div class="filter-group">
           <label class="filter-label" for="from-date">من تاريخ</label>
-          <Input
-            id="from-date"
-            v-model="fromDate"
-            type="date"
-            class="filter-input"
-          />
+          <Input id="from-date" v-model="fromDate" type="date" class="filter-input" />
         </div>
         <div class="filter-group">
           <label class="filter-label" for="to-date">إلى تاريخ</label>
-          <Input
-            id="to-date"
-            v-model="toDate"
-            type="date"
-            class="filter-input"
-          />
+          <Input id="to-date" v-model="toDate" type="date" class="filter-input" />
         </div>
         <div class="filter-actions">
-          <Button :disabled="store.loading" @click="applyFilters">
-            تطبيق
-          </Button>
-          <Button variant="outline" :disabled="store.loading" @click="clearFilters">
-            مسح
-          </Button>
+          <Button :disabled="store.loading" @click="applyFilters"> تطبيق </Button>
+          <Button variant="outline" :disabled="store.loading" @click="clearFilters"> مسح </Button>
         </div>
       </div>
 
@@ -335,7 +362,7 @@ const bankBreakdownColumns: ColumnDef<{
           >
             {{ preset.name }}
             <span
-              class="inline-flex h-4 w-4 items-center justify-center rounded-full text-muted-foreground hover:text-foreground"
+              class="text-muted-foreground hover:text-foreground inline-flex h-4 w-4 items-center justify-center rounded-full"
               aria-label="حذف الفلتر"
               @click.stop="store.deletePreset(preset.id)"
             >
@@ -344,11 +371,7 @@ const bankBreakdownColumns: ColumnDef<{
           </Button>
         </div>
         <div class="save-preset">
-          <Button
-            v-if="!showPresetForm"
-            variant="ghost"
-            @click="showPresetForm = true"
-          >
+          <Button v-if="!showPresetForm" variant="ghost" @click="showPresetForm = true">
             حفظ الفلتر الحالي
           </Button>
           <div v-else class="preset-form">
@@ -387,11 +410,39 @@ const bankBreakdownColumns: ColumnDef<{
       <!-- 5-KPI Strip -->
       <div v-if="kpiData" data-testid="kpi-cards">
         <MetricGrid :columns="5">
-          <MetricCard label="إجمالي الطلبات" :value="kpiData.totalRequests.toLocaleString('ar-EG')" :clickable="false" />
-          <MetricCard label="إجمالي قيمة التمويل" :value="kpiData.totalFinancingValue != null ? formatFinancing(kpiData.totalFinancingValue) : '—'" tone="success" :clickable="false" />
-          <MetricCard label="متوسط وقت المعالجة" :value="kpiData.avgProcessingHours != null ? `${kpiData.avgProcessingHours} ساعة` : '—'" tone="voting" :clickable="false" />
-          <MetricCard label="معدل الاعتماد" :value="`${kpiData.approvalRate}%`" tone="info" :clickable="false" />
-          <MetricCard label="الفواتير المكررة" :value="kpiData.duplicateInvoiceCount != null ? kpiData.duplicateInvoiceCount : '—'" tone="warning" :clickable="false" />
+          <MetricCard
+            label="إجمالي الطلبات"
+            :value="kpiData.totalRequests.toLocaleString('ar-EG')"
+            :clickable="false"
+          />
+          <MetricCard
+            label="إجمالي قيمة التمويل"
+            :value="
+              kpiData.totalFinancingValue != null
+                ? formatFinancing(kpiData.totalFinancingValue)
+                : '—'
+            "
+            tone="success"
+            :clickable="false"
+          />
+          <MetricCard
+            label="متوسط وقت المعالجة"
+            :value="kpiData.avgProcessingHours != null ? `${kpiData.avgProcessingHours} ساعة` : '—'"
+            tone="voting"
+            :clickable="false"
+          />
+          <MetricCard
+            label="معدل الاعتماد"
+            :value="`${kpiData.approvalRate}%`"
+            tone="info"
+            :clickable="false"
+          />
+          <MetricCard
+            label="الفواتير المكررة"
+            :value="kpiData.duplicateInvoiceCount != null ? kpiData.duplicateInvoiceCount : '—'"
+            tone="warning"
+            :clickable="false"
+          />
         </MetricGrid>
       </div>
 
@@ -404,10 +455,7 @@ const bankBreakdownColumns: ColumnDef<{
           card-class="section-card chart-lg"
           data-testid="line-chart"
         >
-          <LineChart
-            :labels="lineChartLabels"
-            :series="lineChartSeries"
-          />
+          <LineChart :labels="lineChartLabels" :series="lineChartSeries" />
         </TimeSeriesChartCard>
         <BreakdownChartCard
           title="التوزيع حسب الفئة"
@@ -428,17 +476,19 @@ const bankBreakdownColumns: ColumnDef<{
         >
           <CurrencyBarChart :data="currencyBarData" />
         </BreakdownChartCard>
-        <RankedListCard v-if="bankChartData.length" title="حجم الطلبات حسب البنك" card-class="section-card chart-sm">
+        <RankedListCard
+          v-if="bankChartData.length"
+          title="حجم الطلبات حسب البنك"
+          card-class="section-card chart-sm"
+        >
           <div class="bar-chart" role="list" aria-label="مخطط طلبات البنوك">
-            <div
-              v-for="bank in bankChartData"
-              :key="bank.bank_id"
-              class="bar-row"
-              role="listitem"
-            >
+            <div v-for="bank in bankChartData" :key="bank.bank_id" class="bar-row" role="listitem">
               <span class="bar-label">{{ bank.bank_name }}</span>
               <div class="bar-track">
-                <div class="bar-fill" :style="{ width: `${Math.round((bank.total / maxBankTotal) * 100)}%` }" />
+                <div
+                  class="bar-fill"
+                  :style="{ width: `${Math.round((bank.total / maxBankTotal) * 100)}%` }"
+                />
               </div>
               <span class="bar-value">{{ bank.total }}</span>
             </div>
@@ -459,22 +509,54 @@ const bankBreakdownColumns: ColumnDef<{
       </TimeSeriesChartCard>
 
       <!-- Workflow Report: Status Breakdown Table -->
-      <AnalyticsCard v-if="store.workflowReport && statusRows.length" title="توزيع الطلبات حسب الحالة" card-class="section-card" content-class="p-0">
+      <AnalyticsCard
+        v-if="store.workflowReport && statusRows.length"
+        title="توزيع الطلبات حسب الحالة"
+        card-class="section-card"
+        content-class="p-0"
+      >
         <DataTable :data="statusRows" :columns="statusColumns" />
       </AnalyticsCard>
 
       <!-- Bank Report: Per-bank cross-bank breakdown (CBY Admin) -->
-      <AnalyticsCard v-if="store.bankReport?.per_bank" title="إحصاءات البنوك" card-class="section-card" content-class="p-0">
+      <AnalyticsCard
+        v-if="store.bankReport?.per_bank"
+        title="إحصاءات البنوك"
+        card-class="section-card"
+        content-class="p-0"
+      >
         <DataTable :data="bankBreakdownRows" :columns="bankBreakdownColumns" />
       </AnalyticsCard>
 
       <!-- Bank Report: Own-bank summary (bank users) -->
-      <AnalyticsCard v-else-if="store.bankReport && isBankUser" title="إحصاءات بنكك" card-class="section-card">
+      <AnalyticsCard
+        v-else-if="store.bankReport && isBankUser"
+        title="إحصاءات بنكك"
+        card-class="section-card"
+      >
         <MetricGrid :columns="4">
-          <MetricCard label="إجمالي الطلبات" :value="store.bankReport.total_requests" :clickable="false" />
-          <MetricCard label="الطلبات المعتمدة" :value="store.bankReport.approved_count" tone="success" :clickable="false" />
-          <MetricCard label="الطلبات المرفوضة" :value="store.bankReport.rejected_count" tone="danger" :clickable="false" />
-          <MetricCard label="متوسط وقت المعالجة" :value="`${store.bankReport.avg_processing_hours} ساعة`" :clickable="false" />
+          <MetricCard
+            label="إجمالي الطلبات"
+            :value="store.bankReport.total_requests"
+            :clickable="false"
+          />
+          <MetricCard
+            label="الطلبات المعتمدة"
+            :value="store.bankReport.approved_count"
+            tone="success"
+            :clickable="false"
+          />
+          <MetricCard
+            label="الطلبات المرفوضة"
+            :value="store.bankReport.rejected_count"
+            tone="danger"
+            :clickable="false"
+          />
+          <MetricCard
+            label="متوسط وقت المعالجة"
+            :value="`${store.bankReport.avg_processing_hours} ساعة`"
+            :clickable="false"
+          />
         </MetricGrid>
       </AnalyticsCard>
 
@@ -568,12 +650,31 @@ const bankBreakdownColumns: ColumnDef<{
   align-items: center;
   gap: 6px;
 }
-.btn:disabled { opacity: 0.5; cursor: not-allowed; }
-.btn-primary { background: var(--primary); color: var(--primary-foreground); }
-.btn-outline { background: transparent; border: 1px solid var(--border); color: var(--foreground); }
-.btn-ghost { background: transparent; color: var(--primary); }
-.btn-sm { padding: 4px 10px; font-size: 0.8125rem; line-height: 1.25rem; }
-.btn-icon { padding: 8px 12px; }
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.btn-primary {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+.btn-outline {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--foreground);
+}
+.btn-ghost {
+  background: transparent;
+  color: var(--primary);
+}
+.btn-sm {
+  padding: 4px 10px;
+  font-size: 0.8125rem;
+  line-height: 1.25rem;
+}
+.btn-icon {
+  padding: 8px 12px;
+}
 
 /* ─── Filter Card ────────────────────────────────────────────── */
 .filter-card {
@@ -708,14 +809,26 @@ const bankBreakdownColumns: ColumnDef<{
   border-radius: 12px;
 }
 
-.skeleton-kpi { height: 100px; }
-.skeleton-chart-lg { height: 240px; }
-.skeleton-chart-sm { height: 240px; }
-.skeleton-chart-full { height: 200px; }
+.skeleton-kpi {
+  height: 100px;
+}
+.skeleton-chart-lg {
+  height: 240px;
+}
+.skeleton-chart-sm {
+  height: 240px;
+}
+.skeleton-chart-full {
+  height: 200px;
+}
 
 @keyframes shimmer {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
 }
 
 /* ─── KPI Strip ─────────────────────────────────────────────── */
@@ -751,11 +864,26 @@ const bankBreakdownColumns: ColumnDef<{
   flex-shrink: 0;
 }
 
-.kpi-icon-blue { background: color-mix(in srgb, var(--color-primary) 10%, transparent); color: var(--color-primary); }
-.kpi-icon-green { background: color-mix(in srgb, var(--color-success) 10%, transparent); color: var(--color-success); }
-.kpi-icon-indigo { background: color-mix(in srgb, var(--color-voting) 10%, transparent); color: var(--color-voting); }
-.kpi-icon-cyan { background: color-mix(in srgb, var(--color-info) 10%, transparent); color: var(--color-info); }
-.kpi-icon-orange { background: color-mix(in srgb, var(--color-warning) 10%, transparent); color: var(--color-warning); }
+.kpi-icon-blue {
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+  color: var(--color-primary);
+}
+.kpi-icon-green {
+  background: color-mix(in srgb, var(--color-success) 10%, transparent);
+  color: var(--color-success);
+}
+.kpi-icon-indigo {
+  background: color-mix(in srgb, var(--color-voting) 10%, transparent);
+  color: var(--color-voting);
+}
+.kpi-icon-cyan {
+  background: color-mix(in srgb, var(--color-info) 10%, transparent);
+  color: var(--color-info);
+}
+.kpi-icon-orange {
+  background: color-mix(in srgb, var(--color-warning) 10%, transparent);
+  color: var(--color-warning);
+}
 
 .kpi-content {
   display: flex;

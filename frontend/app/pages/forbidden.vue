@@ -16,11 +16,15 @@ const blockedPath = computed(() => {
 </script>
 
 <template>
-  <main class="min-h-screen bg-background px-4" >
+  <main class="bg-background min-h-screen px-4">
     <ErrorState
       :code="403"
       title="ليس لديك صلاحية لهذا المسار"
-      :description="blockedPath ? `ليس لديك صلاحية للوصول إلى ${blockedPath}. إذا كنت ترى أن ذلك خطأ، تواصل مع مسؤول النظام.` : 'ليس لديك صلاحية للوصول إلى هذه الصفحة. إذا كنت ترى أن ذلك خطأ، تواصل مع مسؤول النظام.'"
+      :description="
+        blockedPath
+          ? `ليس لديك صلاحية للوصول إلى ${blockedPath}. إذا كنت ترى أن ذلك خطأ، تواصل مع مسؤول النظام.`
+          : 'ليس لديك صلاحية للوصول إلى هذه الصفحة. إذا كنت ترى أن ذلك خطأ، تواصل مع مسؤول النظام.'
+      "
       :actions="[
         {
           label: 'العودة إلى لوحة التحكم',

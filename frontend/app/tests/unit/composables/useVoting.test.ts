@@ -157,7 +157,9 @@ describe('useVoting — castVote', () => {
   })
 
   it('sends vote + trimmed justification when justification is provided', async () => {
-    const detail = makeVotingDetail({ my_vote: makeVote({ vote: VoteType.REJECT, justification: 'مستندات غير مكتملة' }) })
+    const detail = makeVotingDetail({
+      my_vote: makeVote({ vote: VoteType.REJECT, justification: 'مستندات غير مكتملة' }),
+    })
     mockPost.mockResolvedValue({ success: true, message: 'ok', data: detail })
 
     const { castVote } = useVoting()
@@ -183,7 +185,10 @@ describe('useVoting — castVote', () => {
 
   it('returns updated VotingDetail after successful vote', async () => {
     const myVote = makeVote({ vote: VoteType.APPROVE })
-    const detail = makeVotingDetail({ my_vote: myVote, tally: makeTally({ approve_count: 3, total_cast: 4 }) })
+    const detail = makeVotingDetail({
+      my_vote: myVote,
+      tally: makeTally({ approve_count: 3, total_cast: 4 }),
+    })
     mockPost.mockResolvedValue({ success: true, message: 'ok', data: detail })
 
     const { castVote } = useVoting()
@@ -205,7 +210,10 @@ describe('useVoting — openSession', () => {
   beforeEach(() => vi.resetAllMocks())
 
   it('calls POST /api/voting/{id}/open with empty body', async () => {
-    const req = makeRequest({ status: RequestStatus.EXECUTIVE_VOTING_OPEN, voting_session_status: VotingSessionStatus.OPEN })
+    const req = makeRequest({
+      status: RequestStatus.EXECUTIVE_VOTING_OPEN,
+      voting_session_status: VotingSessionStatus.OPEN,
+    })
     mockPost.mockResolvedValue({ success: true, message: 'ok', data: req })
 
     const { openSession } = useVoting()
@@ -227,7 +235,10 @@ describe('useVoting — closeSession', () => {
   beforeEach(() => vi.resetAllMocks())
 
   it('calls POST /api/voting/{id}/close with empty body', async () => {
-    const req = makeRequest({ status: RequestStatus.EXECUTIVE_VOTING_CLOSED, voting_session_status: VotingSessionStatus.CLOSED })
+    const req = makeRequest({
+      status: RequestStatus.EXECUTIVE_VOTING_CLOSED,
+      voting_session_status: VotingSessionStatus.CLOSED,
+    })
     mockPost.mockResolvedValue({ success: true, message: 'ok', data: req })
 
     const { closeSession } = useVoting()
@@ -256,7 +267,10 @@ describe('useVoting — finalizeDecision', () => {
     await finalizeDecision(1)
 
     expect(mockPost).toHaveBeenCalledWith('/api/workflow/1/finalize-decision', {})
-    expect(mockPost).not.toHaveBeenCalledWith(expect.stringContaining('/api/voting'), expect.anything())
+    expect(mockPost).not.toHaveBeenCalledWith(
+      expect.stringContaining('/api/voting'),
+      expect.anything(),
+    )
   })
 
   it('sends empty body — no decision parameter', async () => {

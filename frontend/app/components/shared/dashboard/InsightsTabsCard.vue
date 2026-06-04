@@ -19,7 +19,7 @@ defineProps<{
     <template #actions>
       <slot name="actions" />
     </template>
-    <div class="grid grid-cols-[minmax(0,1fr)_18rem] max-xl:grid-cols-1 gap-4">
+    <div class="grid grid-cols-[minmax(0,1fr)_18rem] gap-4 max-xl:grid-cols-1">
       <div class="min-w-0">
         <slot />
       </div>

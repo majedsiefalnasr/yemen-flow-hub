@@ -21,7 +21,7 @@ defineProps<{
 <template>
   <DropdownMenu>
     <DropdownMenuTrigger as-child>
-      <Button variant="outline" size="sm" class="ms-auto h-8 flex">
+      <Button variant="outline" size="sm" class="ms-auto flex h-8">
         <Columns3 class="me-2 h-4 w-4" />
         الأعمدة
       </Button>
@@ -30,7 +30,7 @@ defineProps<{
       <DropdownMenuLabel>عرض الأعمدة</DropdownMenuLabel>
       <DropdownMenuSeparator />
       <DropdownMenuCheckboxItem
-        v-for="column in table.getAllColumns().filter(col => col.getCanHide())"
+        v-for="column in table.getAllColumns().filter((col) => col.getCanHide())"
         :key="column.id"
         :model-value="column.getIsVisible()"
         class="capitalize"

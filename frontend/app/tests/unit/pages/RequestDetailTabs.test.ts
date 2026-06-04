@@ -56,12 +56,10 @@ function hasActions(
     (status === RequestStatus.SUBMITTED || status === RequestStatus.BANK_REVIEW)
   const dataEntryAction =
     (role === UserRole.DATA_ENTRY || role === UserRole.BANK_ADMIN) &&
-    (
-      status === RequestStatus.DRAFT
-      || status === RequestStatus.DRAFT_REJECTED_INTERNAL
-      || status === RequestStatus.BANK_RETURNED
-      || status === RequestStatus.SUPPORT_RETURNED
-    )
+    (status === RequestStatus.DRAFT ||
+      status === RequestStatus.DRAFT_REJECTED_INTERNAL ||
+      status === RequestStatus.BANK_RETURNED ||
+      status === RequestStatus.SUPPORT_RETURNED)
   const supportAction =
     role === UserRole.SUPPORT_COMMITTEE &&
     status === RequestStatus.SUPPORT_REVIEW_IN_PROGRESS &&
@@ -70,7 +68,13 @@ function hasActions(
     role === UserRole.COMMITTEE_DIRECTOR && DIRECTOR_VOTING_STATUSES.has(status)
   const directorCustomsAction =
     role === UserRole.COMMITTEE_DIRECTOR && status === RequestStatus.EXECUTIVE_APPROVED
-  return bankReviewerAction || dataEntryAction || supportAction || directorVotingAction || directorCustomsAction
+  return (
+    bankReviewerAction ||
+    dataEntryAction ||
+    supportAction ||
+    directorVotingAction ||
+    directorCustomsAction
+  )
 }
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -81,36 +85,36 @@ describe('Request detail — tab keys and labels (3-tab layout)', () => {
   })
 
   it('uses "overview" key with label "المعلومات"', () => {
-    const tab = buildTabs().find(t => t.key === 'overview')
+    const tab = buildTabs().find((t) => t.key === 'overview')
     expect(tab).toBeDefined()
     expect(tab!.label).toBe('المعلومات')
   })
 
   it('uses "documents" key with label "الوثائق"', () => {
-    const tab = buildTabs().find(t => t.key === 'documents')
+    const tab = buildTabs().find((t) => t.key === 'documents')
     expect(tab).toBeDefined()
     expect(tab!.label).toBe('الوثائق')
   })
 
   it('uses "parties" key with label "الأطراف"', () => {
-    const tab = buildTabs().find(t => t.key === 'parties')
+    const tab = buildTabs().find((t) => t.key === 'parties')
     expect(tab).toBeDefined()
     expect(tab!.label).toBe('الأطراف')
   })
 
   it('does NOT have a "votes" tab', () => {
-    const keys = buildTabs().map(t => t.key)
+    const keys = buildTabs().map((t) => t.key)
     expect(keys).not.toContain('votes')
   })
 
   it('does NOT have old "timeline" or "audit" tabs', () => {
-    const keys = buildTabs().map(t => t.key)
+    const keys = buildTabs().map((t) => t.key)
     expect(keys).not.toContain('timeline')
     expect(keys).not.toContain('audit')
   })
 
   it('tab order is overview → documents → parties', () => {
-    const keys = buildTabs().map(t => t.key)
+    const keys = buildTabs().map((t) => t.key)
     expect(keys).toEqual(['overview', 'documents', 'parties'])
   })
 })
@@ -142,39 +146,57 @@ describe('Request detail — active tab normalization', () => {
 
 describe('Request detail — inline VotingPanel visibility', () => {
   it('shows inline panel for EXECUTIVE_MEMBER in EXECUTIVE_VOTING_OPEN', () => {
-    expect(showVotingPanelInline(UserRole.EXECUTIVE_MEMBER, RequestStatus.EXECUTIVE_VOTING_OPEN)).toBe(true)
+    expect(
+      showVotingPanelInline(UserRole.EXECUTIVE_MEMBER, RequestStatus.EXECUTIVE_VOTING_OPEN),
+    ).toBe(true)
   })
 
   it('shows inline panel for EXECUTIVE_MEMBER in EXECUTIVE_VOTING_CLOSED', () => {
-    expect(showVotingPanelInline(UserRole.EXECUTIVE_MEMBER, RequestStatus.EXECUTIVE_VOTING_CLOSED)).toBe(true)
+    expect(
+      showVotingPanelInline(UserRole.EXECUTIVE_MEMBER, RequestStatus.EXECUTIVE_VOTING_CLOSED),
+    ).toBe(true)
   })
 
   it('shows inline panel for EXECUTIVE_MEMBER in WAITING_FOR_VOTING_OPEN', () => {
-    expect(showVotingPanelInline(UserRole.EXECUTIVE_MEMBER, RequestStatus.WAITING_FOR_VOTING_OPEN)).toBe(true)
+    expect(
+      showVotingPanelInline(UserRole.EXECUTIVE_MEMBER, RequestStatus.WAITING_FOR_VOTING_OPEN),
+    ).toBe(true)
   })
 
   it('shows inline panel for COMMITTEE_DIRECTOR in EXECUTIVE_VOTING_OPEN', () => {
-    expect(showVotingPanelInline(UserRole.COMMITTEE_DIRECTOR, RequestStatus.EXECUTIVE_VOTING_OPEN)).toBe(true)
+    expect(
+      showVotingPanelInline(UserRole.COMMITTEE_DIRECTOR, RequestStatus.EXECUTIVE_VOTING_OPEN),
+    ).toBe(true)
   })
 
   it('shows inline panel for COMMITTEE_DIRECTOR in EXECUTIVE_APPROVED', () => {
-    expect(showVotingPanelInline(UserRole.COMMITTEE_DIRECTOR, RequestStatus.EXECUTIVE_APPROVED)).toBe(true)
+    expect(
+      showVotingPanelInline(UserRole.COMMITTEE_DIRECTOR, RequestStatus.EXECUTIVE_APPROVED),
+    ).toBe(true)
   })
 
   it('shows inline panel for COMMITTEE_DIRECTOR in EXECUTIVE_REJECTED', () => {
-    expect(showVotingPanelInline(UserRole.COMMITTEE_DIRECTOR, RequestStatus.EXECUTIVE_REJECTED)).toBe(true)
+    expect(
+      showVotingPanelInline(UserRole.COMMITTEE_DIRECTOR, RequestStatus.EXECUTIVE_REJECTED),
+    ).toBe(true)
   })
 
   it('hides inline panel for DATA_ENTRY in any voting stage', () => {
-    expect(showVotingPanelInline(UserRole.DATA_ENTRY, RequestStatus.EXECUTIVE_VOTING_OPEN)).toBe(false)
+    expect(showVotingPanelInline(UserRole.DATA_ENTRY, RequestStatus.EXECUTIVE_VOTING_OPEN)).toBe(
+      false,
+    )
   })
 
   it('hides inline panel for BANK_REVIEWER in any voting stage', () => {
-    expect(showVotingPanelInline(UserRole.BANK_REVIEWER, RequestStatus.EXECUTIVE_VOTING_OPEN)).toBe(false)
+    expect(showVotingPanelInline(UserRole.BANK_REVIEWER, RequestStatus.EXECUTIVE_VOTING_OPEN)).toBe(
+      false,
+    )
   })
 
   it('hides inline panel for SUPPORT_COMMITTEE in voting stages', () => {
-    expect(showVotingPanelInline(UserRole.SUPPORT_COMMITTEE, RequestStatus.EXECUTIVE_VOTING_OPEN)).toBe(false)
+    expect(
+      showVotingPanelInline(UserRole.SUPPORT_COMMITTEE, RequestStatus.EXECUTIVE_VOTING_OPEN),
+    ).toBe(false)
   })
 
   it('hides inline panel for EXECUTIVE_MEMBER in non-voting stage DRAFT', () => {
@@ -186,7 +208,9 @@ describe('Request detail — inline VotingPanel visibility', () => {
   })
 
   it('hides inline panel for EXECUTIVE_MEMBER in SUPPORT_REVIEW_IN_PROGRESS', () => {
-    expect(showVotingPanelInline(UserRole.EXECUTIVE_MEMBER, RequestStatus.SUPPORT_REVIEW_IN_PROGRESS)).toBe(false)
+    expect(
+      showVotingPanelInline(UserRole.EXECUTIVE_MEMBER, RequestStatus.SUPPORT_REVIEW_IN_PROGRESS),
+    ).toBe(false)
   })
 
   it('hides inline panel for EXECUTIVE_MEMBER in COMPLETED', () => {
@@ -225,24 +249,32 @@ describe('Request detail — hasActions rail-card visibility', () => {
 
   it('SUPPORT_COMMITTEE has actions in SUPPORT_REVIEW_IN_PROGRESS when claimed', () => {
     expect(
-      hasActions(UserRole.SUPPORT_COMMITTEE, RequestStatus.SUPPORT_REVIEW_IN_PROGRESS, { isClaimedByMe: true }),
+      hasActions(UserRole.SUPPORT_COMMITTEE, RequestStatus.SUPPORT_REVIEW_IN_PROGRESS, {
+        isClaimedByMe: true,
+      }),
     ).toBe(true)
   })
 
   it('SUPPORT_COMMITTEE has NO actions in SUPPORT_REVIEW_IN_PROGRESS when not claimed', () => {
     expect(
-      hasActions(UserRole.SUPPORT_COMMITTEE, RequestStatus.SUPPORT_REVIEW_IN_PROGRESS, { isClaimedByMe: false }),
+      hasActions(UserRole.SUPPORT_COMMITTEE, RequestStatus.SUPPORT_REVIEW_IN_PROGRESS, {
+        isClaimedByMe: false,
+      }),
     ).toBe(false)
   })
 
   it('SUPPORT_COMMITTEE has NO actions in SUPPORT_REVIEW_PENDING', () => {
     expect(
-      hasActions(UserRole.SUPPORT_COMMITTEE, RequestStatus.SUPPORT_REVIEW_PENDING, { isClaimedByMe: true }),
+      hasActions(UserRole.SUPPORT_COMMITTEE, RequestStatus.SUPPORT_REVIEW_PENDING, {
+        isClaimedByMe: true,
+      }),
     ).toBe(false)
   })
 
   it('COMMITTEE_DIRECTOR has actions in WAITING_FOR_VOTING_OPEN', () => {
-    expect(hasActions(UserRole.COMMITTEE_DIRECTOR, RequestStatus.WAITING_FOR_VOTING_OPEN)).toBe(true)
+    expect(hasActions(UserRole.COMMITTEE_DIRECTOR, RequestStatus.WAITING_FOR_VOTING_OPEN)).toBe(
+      true,
+    )
   })
 
   it('COMMITTEE_DIRECTOR has actions in EXECUTIVE_VOTING_OPEN', () => {
@@ -250,7 +282,9 @@ describe('Request detail — hasActions rail-card visibility', () => {
   })
 
   it('COMMITTEE_DIRECTOR has actions in EXECUTIVE_VOTING_CLOSED', () => {
-    expect(hasActions(UserRole.COMMITTEE_DIRECTOR, RequestStatus.EXECUTIVE_VOTING_CLOSED)).toBe(true)
+    expect(hasActions(UserRole.COMMITTEE_DIRECTOR, RequestStatus.EXECUTIVE_VOTING_CLOSED)).toBe(
+      true,
+    )
   })
 
   it('COMMITTEE_DIRECTOR has actions in EXECUTIVE_APPROVED (customs)', () => {

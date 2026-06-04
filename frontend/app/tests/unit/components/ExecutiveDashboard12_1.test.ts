@@ -33,10 +33,11 @@ function makeVotingItem(overrides: Partial<VotingQueueItem> = {}): VotingQueueIt
 // --- Pending-vote action strip ---
 
 function pendingMyVoteCount(stats: ExecutiveDashboardStats): number {
-  return stats.pending_my_vote
-    ?? stats.voting_queue.filter(
-        r => r.status === RequestStatus.EXECUTIVE_VOTING_OPEN && !r.my_vote,
-      ).length
+  return (
+    stats.pending_my_vote ??
+    stats.voting_queue.filter((r) => r.status === RequestStatus.EXECUTIVE_VOTING_OPEN && !r.my_vote)
+      .length
+  )
 }
 
 function shouldShowPendingVoteStrip(stats: ExecutiveDashboardStats): boolean {
@@ -46,26 +47,37 @@ function shouldShowPendingVoteStrip(stats: ExecutiveDashboardStats): boolean {
 describe('ExecutiveDashboard 12.1 — pending-vote action strip', () => {
   it('shows strip when pending_my_vote > 0', () => {
     const stats: ExecutiveDashboardStats = {
-      waiting_for_voting_open: 0, active_voting_sessions: 1,
-      decisions_approved: 0, decisions_rejected: 0, finalized_decisions: 0,
-      pending_my_vote: 2, voting_queue: [],
+      waiting_for_voting_open: 0,
+      active_voting_sessions: 1,
+      decisions_approved: 0,
+      decisions_rejected: 0,
+      finalized_decisions: 0,
+      pending_my_vote: 2,
+      voting_queue: [],
     }
     expect(shouldShowPendingVoteStrip(stats)).toBe(true)
   })
 
   it('hides strip when pending_my_vote is 0', () => {
     const stats: ExecutiveDashboardStats = {
-      waiting_for_voting_open: 0, active_voting_sessions: 0,
-      decisions_approved: 3, decisions_rejected: 1, finalized_decisions: 0,
-      pending_my_vote: 0, voting_queue: [],
+      waiting_for_voting_open: 0,
+      active_voting_sessions: 0,
+      decisions_approved: 3,
+      decisions_rejected: 1,
+      finalized_decisions: 0,
+      pending_my_vote: 0,
+      voting_queue: [],
     }
     expect(shouldShowPendingVoteStrip(stats)).toBe(false)
   })
 
   it('derives count from voting_queue when pending_my_vote is absent', () => {
     const stats: ExecutiveDashboardStats = {
-      waiting_for_voting_open: 0, active_voting_sessions: 2,
-      decisions_approved: 0, decisions_rejected: 0, finalized_decisions: 0,
+      waiting_for_voting_open: 0,
+      active_voting_sessions: 2,
+      decisions_approved: 0,
+      decisions_rejected: 0,
+      finalized_decisions: 0,
       voting_queue: [
         makeVotingItem({ id: 1, my_vote: null }),
         makeVotingItem({ id: 2, my_vote: 'approve' }),
@@ -90,9 +102,13 @@ function buildKpiConfig(stats: ExecutiveDashboardStats): KpiEntry[] {
 
 describe('ExecutiveDashboard 12.1 — 3-KPI grid spec order', () => {
   const stats: ExecutiveDashboardStats = {
-    waiting_for_voting_open: 0, active_voting_sessions: 2,
-    decisions_approved: 4, decisions_rejected: 1, finalized_decisions: 0,
-    pending_my_vote: 2, voting_queue: [],
+    waiting_for_voting_open: 0,
+    active_voting_sessions: 2,
+    decisions_approved: 4,
+    decisions_rejected: 1,
+    finalized_decisions: 0,
+    pending_my_vote: 2,
+    voting_queue: [],
   }
   const kpis = buildKpiConfig(stats)
 
@@ -120,9 +136,13 @@ describe('ExecutiveDashboard 12.1 — 3-KPI grid spec order', () => {
 
   it('voting queue KPI is gray when count is 0', () => {
     const zeroStats: ExecutiveDashboardStats = {
-      waiting_for_voting_open: 0, active_voting_sessions: 0,
-      decisions_approved: 0, decisions_rejected: 0, finalized_decisions: 0,
-      pending_my_vote: 0, voting_queue: [],
+      waiting_for_voting_open: 0,
+      active_voting_sessions: 0,
+      decisions_approved: 0,
+      decisions_rejected: 0,
+      finalized_decisions: 0,
+      pending_my_vote: 0,
+      voting_queue: [],
     }
     expect(buildKpiConfig(zeroStats)[0]?.variant).toBe('gray')
   })
@@ -133,8 +153,9 @@ describe('ExecutiveDashboard 12.1 — 3-KPI grid spec order', () => {
 type MyVoteDisplay = { text: string; style: 'indigo-chip' | 'green-chip' | 'rose-chip' | 'dash' }
 
 function myVoteDisplay(req: VotingQueueItem): MyVoteDisplay {
-  const isVotingStage = req.status === RequestStatus.EXECUTIVE_VOTING_OPEN
-    || req.status === RequestStatus.EXECUTIVE_VOTING_CLOSED
+  const isVotingStage =
+    req.status === RequestStatus.EXECUTIVE_VOTING_OPEN ||
+    req.status === RequestStatus.EXECUTIVE_VOTING_CLOSED
   if (!isVotingStage) return { text: '—', style: 'dash' }
   if (!req.my_vote) return { text: 'لم تصوّت بعد', style: 'indigo-chip' }
   if (req.my_vote === 'approve') return { text: 'اعتمدت', style: 'green-chip' }

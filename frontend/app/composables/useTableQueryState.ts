@@ -24,11 +24,12 @@ export function useTableQueryState(defaults: TableQuerySchema = {}) {
       page: q.page ? Number(q.page) : (defaults.page ?? DEFAULT_PAGE),
       perPage: q.perPage ? Number(q.perPage) : (defaults.perPage ?? DEFAULT_PER_PAGE),
       sortBy: (q.sortBy as string) || defaults.sortBy || '',
-      sortOrder: ((q.sortOrder as string) === 'asc' || (q.sortOrder as string) === 'desc')
-        ? (q.sortOrder as 'asc' | 'desc')
-        : (defaults.sortOrder ?? 'desc'),
+      sortOrder:
+        (q.sortOrder as string) === 'asc' || (q.sortOrder as string) === 'desc'
+          ? (q.sortOrder as 'asc' | 'desc')
+          : (defaults.sortOrder ?? 'desc'),
       ...Object.keys(defaults)
-        .filter(k => !['search', 'page', 'perPage', 'sortBy', 'sortOrder'].includes(k))
+        .filter((k) => !['search', 'page', 'perPage', 'sortBy', 'sortOrder'].includes(k))
         .reduce((acc, key) => {
           const value = q[key]
           if (value !== undefined && value !== null) {
@@ -47,18 +48,21 @@ export function useTableQueryState(defaults: TableQuerySchema = {}) {
 
   const queryState = computed(() => getQuery())
 
-  async function setQuery(updates: Partial<TableQuerySchema>, mode: 'push' | 'replace' = 'replace') {
+  async function setQuery(
+    updates: Partial<TableQuerySchema>,
+    mode: 'push' | 'replace' = 'replace',
+  ) {
     const current = getQuery()
     const merged = { ...current, ...updates }
 
     const query: Record<string, string | undefined> = {}
     for (const [key, value] of Object.entries(merged)) {
       if (
-        value === undefined
-        || value === null
-        || value === ''
-        || (value === DEFAULT_PAGE && key === 'page')
-        || (value === DEFAULT_PER_PAGE && key === 'perPage')
+        value === undefined ||
+        value === null ||
+        value === '' ||
+        (value === DEFAULT_PAGE && key === 'page') ||
+        (value === DEFAULT_PER_PAGE && key === 'perPage')
       ) {
         query[key] = undefined
       } else if (Array.isArray(value)) {
@@ -102,10 +106,10 @@ export function useTableQueryState(defaults: TableQuerySchema = {}) {
   const hasActiveFilters = computed(() => {
     const q = queryState.value
     return Boolean(
-      q.search
-      || (q.page && q.page > 1)
-      || Object.keys(q)
-        .filter(key => !['page', 'perPage'].includes(key))
+      q.search ||
+      (q.page && q.page > 1) ||
+      Object.keys(q)
+        .filter((key) => !['page', 'perPage'].includes(key))
         .some((key) => {
           const value = q[key]
           const defaultValue = defaults[key]

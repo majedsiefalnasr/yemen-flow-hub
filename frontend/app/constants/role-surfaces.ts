@@ -281,7 +281,7 @@ export const NAV_SURFACE_ROUTES: Record<
 }
 
 export function rolesForSurface(surface: RoleSurfaceKey): UserRole[] {
-  return ALL_ROLES.filter(role => ROLE_SURFACE_MATRIX[role].allowed.includes(surface))
+  return ALL_ROLES.filter((role) => ROLE_SURFACE_MATRIX[role].allowed.includes(surface))
 }
 
 export function roleHasSurface(role: UserRole, surface: RoleSurfaceKey): boolean {

@@ -7,22 +7,30 @@ import settingsPage from '../../../pages/settings.vue'
 
 vi.stubGlobal('definePageMeta', vi.fn())
 vi.stubGlobal('useHead', vi.fn())
-vi.stubGlobal('useRuntimeConfig', () => ({ public: { apiBase: 'http://localhost', demoMode: false } }))
+vi.stubGlobal('useRuntimeConfig', () => ({
+  public: { apiBase: 'http://localhost', demoMode: false },
+}))
 
 const fetchSettingsMock = vi.hoisted(() => vi.fn())
 const updateSettingsMock = vi.hoisted(() => vi.fn())
 const resetSettingsMock = vi.hoisted(() => vi.fn())
 
 // Use real Vue refs so template reactivity (v-if="preferences") works correctly
-let prefsRef = ref<any>(null)
-let settingsLoadingRef = ref(false)
-let settingsErrorRef = ref<string | null>(null)
+const prefsRef = ref<any>(null)
+const settingsLoadingRef = ref(false)
+const settingsErrorRef = ref<string | null>(null)
 
 vi.mock('../../../composables/useSettings', () => ({
   useSettings: () => ({
-    get preferences() { return prefsRef },
-    get loading() { return settingsLoadingRef },
-    get error() { return settingsErrorRef },
+    get preferences() {
+      return prefsRef
+    },
+    get loading() {
+      return settingsLoadingRef
+    },
+    get error() {
+      return settingsErrorRef
+    },
     fetchSettings: fetchSettingsMock,
     updateSettings: updateSettingsMock,
     resetSettings: resetSettingsMock,
@@ -37,17 +45,25 @@ const updateSecurityPolicyMock = vi.hoisted(() => vi.fn())
 const updateAdminSettingMock = vi.hoisted(() => vi.fn())
 
 // Use real Vue refs so template reactivity works correctly
-let adminSettingsRef = ref<any>(null)
-let smtpRef = ref<any>(null)
-let securityRef = ref<any>(null)
-let pendingKeysRef = ref<Set<string>>(new Set())
+const adminSettingsRef = ref<any>(null)
+const smtpRef = ref<any>(null)
+const securityRef = ref<any>(null)
+const pendingKeysRef = ref<Set<string>>(new Set())
 
 vi.mock('../../../composables/useAdminSettings', () => ({
   useAdminSettings: () => ({
-    get settings() { return adminSettingsRef },
-    get smtpSettings() { return smtpRef },
-    get securityPolicies() { return securityRef },
-    get pendingKeys() { return pendingKeysRef },
+    get settings() {
+      return adminSettingsRef
+    },
+    get smtpSettings() {
+      return smtpRef
+    },
+    get securityPolicies() {
+      return securityRef
+    },
+    get pendingKeys() {
+      return pendingKeysRef
+    },
     fetchSettings: fetchAdminSettingsMock,
     fetchSmtpSettings: fetchSmtpMock,
     updateSmtpSettings: updateSmtpMock,
@@ -61,7 +77,9 @@ let mockRole: UserRole = UserRole.CBY_ADMIN
 
 vi.mock('../../../stores/auth.store', () => ({
   useAuthStore: () => ({
-    get user() { return { id: 1, role: mockRole } },
+    get user() {
+      return { id: 1, role: mockRole }
+    },
   }),
 }))
 

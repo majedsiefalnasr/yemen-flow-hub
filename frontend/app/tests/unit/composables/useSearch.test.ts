@@ -10,7 +10,17 @@ const EMPTY_RESULTS = { requests: [], users: [], banks: [], customs: [] }
 
 const SAMPLE_RESULTS = {
   requests: [
-    { id: 1, reference_number: 'REF-001', bank_id: 1, bank_name: 'Bank A', status: 'SUBMITTED', supplier_name: 'Alpha Supplier', amount: 50000, currency: 'USD', created_at: '2026-05-17T10:00:00.000Z' },
+    {
+      id: 1,
+      reference_number: 'REF-001',
+      bank_id: 1,
+      bank_name: 'Bank A',
+      status: 'SUBMITTED',
+      supplier_name: 'Alpha Supplier',
+      amount: 50000,
+      currency: 'USD',
+      created_at: '2026-05-17T10:00:00.000Z',
+    },
   ],
   users: [],
   banks: [],
@@ -61,9 +71,12 @@ describe('useSearch — search()', () => {
     vi.advanceTimersByTime(100)
     await Promise.resolve()
 
-    expect(mockFetch).toHaveBeenCalledWith('/api/search', expect.objectContaining({
-      query: { q: 'al' },
-    }))
+    expect(mockFetch).toHaveBeenCalledWith(
+      '/api/search',
+      expect.objectContaining({
+        query: { q: 'al' },
+      }),
+    )
   })
 
   it('sets results on successful API response', async () => {
@@ -82,7 +95,9 @@ describe('useSearch — search()', () => {
 
   it('sets loading true while in-flight and false after', async () => {
     let resolvePromise: (v: any) => void
-    const pending = new Promise(res => { resolvePromise = res })
+    const pending = new Promise((res) => {
+      resolvePromise = res
+    })
     mockFetch.mockReturnValueOnce(pending)
 
     const { loading, search } = useSearch()
@@ -125,9 +140,12 @@ describe('useSearch — search()', () => {
 
     // Only one call (the debounced 'alp' one)
     expect(mockFetch).toHaveBeenCalledTimes(1)
-    expect(mockFetch).toHaveBeenCalledWith('/api/search', expect.objectContaining({
-      query: { q: 'alp' },
-    }))
+    expect(mockFetch).toHaveBeenCalledWith(
+      '/api/search',
+      expect.objectContaining({
+        query: { q: 'alp' },
+      }),
+    )
   })
 
   it('ignores stale responses from older in-flight requests', async () => {
@@ -135,11 +153,55 @@ describe('useSearch — search()', () => {
     let resolveSecond: ((value: any) => void) | undefined
 
     mockFetch
-      .mockImplementationOnce(() => new Promise((resolve) => { resolveFirst = resolve }))
-      .mockImplementationOnce(() => new Promise((resolve) => { resolveSecond = resolve }))
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveFirst = resolve
+          }),
+      )
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveSecond = resolve
+          }),
+      )
 
-    const oldResults = { requests: [{ id: 1, reference_number: 'OLD', bank_id: 1, bank_name: 'Bank A', status: 'SUBMITTED', supplier_name: 'Old', amount: 1, currency: 'USD', created_at: null }], users: [], banks: [], customs: [] }
-    const newResults = { requests: [{ id: 2, reference_number: 'NEW', bank_id: 1, bank_name: 'Bank A', status: 'SUBMITTED', supplier_name: 'New', amount: 2, currency: 'USD', created_at: null }], users: [], banks: [], customs: [] }
+    const oldResults = {
+      requests: [
+        {
+          id: 1,
+          reference_number: 'OLD',
+          bank_id: 1,
+          bank_name: 'Bank A',
+          status: 'SUBMITTED',
+          supplier_name: 'Old',
+          amount: 1,
+          currency: 'USD',
+          created_at: null,
+        },
+      ],
+      users: [],
+      banks: [],
+      customs: [],
+    }
+    const newResults = {
+      requests: [
+        {
+          id: 2,
+          reference_number: 'NEW',
+          bank_id: 1,
+          bank_name: 'Bank A',
+          status: 'SUBMITTED',
+          supplier_name: 'New',
+          amount: 2,
+          currency: 'USD',
+          created_at: null,
+        },
+      ],
+      users: [],
+      banks: [],
+      customs: [],
+    }
 
     const { search, results } = useSearch()
 
@@ -174,7 +236,10 @@ describe('useSearch — fetchRecent()', () => {
   })
 
   it('populates recentSearches from API', async () => {
-    mockFetch.mockResolvedValueOnce({ success: true, data: { recent_searches: ['query1', 'query2'] } })
+    mockFetch.mockResolvedValueOnce({
+      success: true,
+      data: { recent_searches: ['query1', 'query2'] },
+    })
 
     const { recentSearches, fetchRecent } = useSearch()
     await fetchRecent()
@@ -188,9 +253,12 @@ describe('useSearch — fetchRecent()', () => {
     const { fetchRecent } = useSearch()
     await fetchRecent()
 
-    expect(mockFetch).toHaveBeenCalledWith('/api/search/recent', expect.objectContaining({
-      method: 'GET',
-    }))
+    expect(mockFetch).toHaveBeenCalledWith(
+      '/api/search/recent',
+      expect.objectContaining({
+        method: 'GET',
+      }),
+    )
   })
 
   it('silently ignores fetch errors', async () => {

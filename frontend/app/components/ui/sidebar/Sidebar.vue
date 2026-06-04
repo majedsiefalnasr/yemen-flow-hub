@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import { cn } from '@/lib/utils'
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet'
 import type { SidebarProps } from './types'
 import { SIDEBAR_WIDTH_MOBILE, useSidebar } from './utils'
 
@@ -18,13 +24,10 @@ const { isMobile, state, openMobile, setOpenMobile } = useSidebar()
 
 const sidebarPositionStyle = computed(() => {
   const hiddenOffset = 'calc(var(--sidebar-width) * -1)'
-  const offset = state.value === 'collapsed' && props.collapsible === 'offcanvas'
-    ? hiddenOffset
-    : '0px'
+  const offset =
+    state.value === 'collapsed' && props.collapsible === 'offcanvas' ? hiddenOffset : '0px'
 
-  return props.side === 'right'
-    ? { right: offset }
-    : { left: offset }
+  return props.side === 'right' ? { right: offset } : { left: offset }
 })
 </script>
 
@@ -32,7 +35,9 @@ const sidebarPositionStyle = computed(() => {
   <div
     v-if="collapsible === 'none' && !isMobile"
     data-slot="sidebar"
-    :class="cn('bg-sidebar text-sidebar-foreground flex h-full w-(--sidebar-width) flex-col', props.class)"
+    :class="
+      cn('bg-sidebar text-sidebar-foreground flex h-full w-(--sidebar-width) flex-col', props.class)
+    "
     v-bind="$attrs"
   >
     <slot />
@@ -71,33 +76,37 @@ const sidebarPositionStyle = computed(() => {
     <!-- This is what handles the sidebar gap on desktop  -->
     <div
       data-slot="sidebar-gap"
-      :class="cn(
-        'transition-[width] duration-200 ease-linear relative w-(--sidebar-width) bg-transparent',
-        'group-data-[collapsible=offcanvas]:w-0',
-        'group-data-[side=right]:rotate-180',
-        variant === 'floating' || variant === 'inset'
-          ? 'group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)+(--spacing(4)))]'
-          : 'group-data-[collapsible=icon]:w-(--sidebar-width-icon)',
-      )"
+      :class="
+        cn(
+          'relative w-(--sidebar-width) bg-transparent transition-[width] duration-200 ease-linear',
+          'group-data-[collapsible=offcanvas]:w-0',
+          'group-data-[side=right]:rotate-180',
+          variant === 'floating' || variant === 'inset'
+            ? 'group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)+(--spacing(4)))]'
+            : 'group-data-[collapsible=icon]:w-(--sidebar-width-icon)',
+        )
+      "
     />
     <div
       data-slot="sidebar-container"
       :data-side="side"
-      :class="cn(
-        'fixed inset-y-0 z-10 hidden h-svh w-(--sidebar-width) transition-[left,right,width] duration-200 ease-linear md:flex',
-        // Adjust the padding for floating and inset variants.
-        variant === 'floating' || variant === 'inset'
-          ? 'p-2 group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)+(--spacing(4))+2px)]'
-          : 'group-data-[collapsible=icon]:w-(--sidebar-width-icon) group-data-[side=left]:border-s group-data-[side=right]:border-e',
-        props.class,
-      )"
+      :class="
+        cn(
+          'fixed inset-y-0 z-10 hidden h-svh w-(--sidebar-width) transition-[left,right,width] duration-200 ease-linear md:flex',
+          // Adjust the padding for floating and inset variants.
+          variant === 'floating' || variant === 'inset'
+            ? 'p-2 group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)+(--spacing(4))+2px)]'
+            : 'group-data-[collapsible=icon]:w-(--sidebar-width-icon) group-data-[side=left]:border-s group-data-[side=right]:border-e',
+          props.class,
+        )
+      "
       :style="sidebarPositionStyle"
       v-bind="$attrs"
     >
       <div
         data-sidebar="sidebar"
         data-slot="sidebar-inner"
-        class="bg-sidebar group-data-[variant=floating]:ring-sidebar-border group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:shadow-sm group-data-[variant=floating]:ring-1 flex size-full flex-col"
+        class="bg-sidebar group-data-[variant=floating]:ring-sidebar-border flex size-full flex-col group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:shadow-sm group-data-[variant=floating]:ring-1"
       >
         <slot />
       </div>

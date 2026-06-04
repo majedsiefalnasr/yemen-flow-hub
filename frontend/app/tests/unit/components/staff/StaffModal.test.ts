@@ -53,7 +53,7 @@ describe('StaffModal', () => {
     // policy (see CLAUDE.md).
     const wrapper = mountModal(STAFF_FIXTURE)
     await flushPromises()
-    const options = wrapper.findAll('#staff-role option').map(opt => opt.text())
+    const options = wrapper.findAll('#staff-role option').map((opt) => opt.text())
     expect(options).toContain('إدخال البيانات')
     expect(options).toContain('مراجع البنك')
     expect(options).not.toContain('مسؤول البنك المركزي')

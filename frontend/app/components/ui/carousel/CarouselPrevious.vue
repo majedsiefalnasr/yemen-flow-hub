@@ -7,14 +7,18 @@ import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { useCarousel } from './useCarousel'
 
-const props = withDefaults(defineProps<{
-  variant?: ButtonVariants['variant']
-  size?: ButtonVariants['size']
-}
-& WithClassAsProps>(), {
-  variant: 'outline',
-  size: 'icon-sm',
-})
+const props = withDefaults(
+  defineProps<
+    {
+      variant?: ButtonVariants['variant']
+      size?: ButtonVariants['size']
+    } & WithClassAsProps
+  >(),
+  {
+    variant: 'outline',
+    size: 'icon-sm',
+  },
+)
 
 const { orientation, canScrollPrev, scrollPrev } = useCarousel()
 </script>
@@ -23,13 +27,15 @@ const { orientation, canScrollPrev, scrollPrev } = useCarousel()
   <Button
     data-slot="carousel-previous"
     :disabled="!canScrollPrev"
-    :class="cn(
-      'rounded-full absolute touch-manipulation',
-      orientation === 'horizontal'
-        ? 'top-1/2 -start-12 -translate-y-1/2'
-        : '-top-12 start-1/2 -translate-x-1/2 rtl:translate-x-1/2 rotate-90',
-      props.class,
-    )"
+    :class="
+      cn(
+        'absolute touch-manipulation rounded-full',
+        orientation === 'horizontal'
+          ? '-start-12 top-1/2 -translate-y-1/2'
+          : 'start-1/2 -top-12 -translate-x-1/2 rotate-90 rtl:translate-x-1/2',
+        props.class,
+      )
+    "
     :variant="variant"
     :size="size"
     @click="scrollPrev"

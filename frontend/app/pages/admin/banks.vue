@@ -49,7 +49,16 @@ import {
   DataTableViewOptions,
   type RowAction,
 } from '@/components/ui/data-table'
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import MetricCard from '@/components/shared/dashboard/MetricCard.vue'
 import MetricGrid from '@/components/shared/dashboard/MetricGrid.vue'
 
@@ -99,8 +108,7 @@ onMounted(async () => {
   loadingBanks.value = true
   try {
     banks.value = await fetchBanks()
-  }
-  finally {
+  } finally {
     loadingBanks.value = false
   }
 })
@@ -109,23 +117,24 @@ onMounted(async () => {
 const filtered = computed(() => {
   const q = query.value.trim().toLowerCase()
   if (!q) return banks.value
-  return banks.value.filter(b =>
-    b.name_ar.toLowerCase().includes(q)
-    || b.name_en.toLowerCase().includes(q)
-    || (b.license_number ?? '').toLowerCase().includes(q)
-    || b.code.toLowerCase().includes(q),
+  return banks.value.filter(
+    (b) =>
+      b.name_ar.toLowerCase().includes(q) ||
+      b.name_en.toLowerCase().includes(q) ||
+      (b.license_number ?? '').toLowerCase().includes(q) ||
+      b.code.toLowerCase().includes(q),
   )
 })
 
-const hasActiveFilters = computed(() =>
-  columnFilters.value.length > 0 || query.value.trim().length > 0,
+const hasActiveFilters = computed(
+  () => columnFilters.value.length > 0 || query.value.trim().length > 0,
 )
 const selectedCount = computed(() => Object.values(rowSelection.value).filter(Boolean).length)
 
 const stats = computed(() => ({
   total: banks.value.length,
-  active: banks.value.filter(b => b.is_active).length,
-  inactive: banks.value.filter(b => !b.is_active).length,
+  active: banks.value.filter((b) => b.is_active).length,
+  inactive: banks.value.filter((b) => !b.is_active).length,
 }))
 
 const statusOptions = [
@@ -140,17 +149,25 @@ const BANK_COLUMN_LABELS: Record<string, string> = {
 }
 
 function bankInitials(nameAr: string): string {
-  return nameAr.trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('')
+  return nameAr
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((w) => w[0])
+    .join('')
 }
 
-const emailValid = computed(() =>
-  !form.adminEmail.trim() || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.adminEmail.trim()),
+const emailValid = computed(
+  () => !form.adminEmail.trim() || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.adminEmail.trim()),
 )
-const formValid = computed(() =>
-  form.name_ar.trim().length > 0
-  && form.code.trim().length > 0
-  && emailValid.value
-  && (Boolean(editing.value) || (form.adminName.trim().length > 0 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.adminEmail.trim()))),
+const formValid = computed(
+  () =>
+    form.name_ar.trim().length > 0 &&
+    form.code.trim().length > 0 &&
+    emailValid.value &&
+    (Boolean(editing.value) ||
+      (form.adminName.trim().length > 0 &&
+        /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.adminEmail.trim()))),
 )
 
 function resetForm(initial?: Bank) {
@@ -193,10 +210,9 @@ async function saveBank() {
         is_active: form.is_active,
       }
       const updated = await updateBank(editing.value.id, payload)
-      banks.value = banks.value.map(b => b.id === editing.value!.id ? updated : b)
+      banks.value = banks.value.map((b) => (b.id === editing.value!.id ? updated : b))
       notify('تم حفظ التعديلات')
-    }
-    else {
+    } else {
       const payload: CreateBankPayload = {
         name_ar: form.name_ar.trim(),
         name_en: form.name_en.trim(),
@@ -209,11 +225,9 @@ async function saveBank() {
       notify(`تم إضافة "${created.name_ar}"`)
     }
     closeForm()
-  }
-  catch {
+  } catch {
     toastError('تعذر حفظ بيانات البنك. أعد المحاولة بعد قليل.')
-  }
-  finally {
+  } finally {
     saving.value = false
   }
 }
@@ -228,10 +242,9 @@ async function toggleStatus(bank: Bank) {
       is_active: !bank.is_active,
     }
     const updated = await updateBank(bank.id, payload)
-    banks.value = banks.value.map(b => b.id === bank.id ? updated : b)
+    banks.value = banks.value.map((b) => (b.id === bank.id ? updated : b))
     notify(updated.is_active ? `تم تفعيل ${bank.name_ar}` : `تم إيقاف ${bank.name_ar}`)
-  }
-  catch {
+  } catch {
     toastError('فشل تغيير الحالة')
   }
 }
@@ -250,18 +263,22 @@ function activeStatusCell(isActive: boolean) {
         h('line', { x1: '9', y1: '9', x2: '15', y2: '15' }),
       ]
   return h('span', { class: 'inline-flex items-center gap-1.5 whitespace-nowrap' }, [
-    h('svg', {
-      class: 'shrink-0',
-      style: { color },
-      width: 15,
-      height: 15,
-      viewBox: '0 0 24 24',
-      fill: 'none',
-      stroke: 'currentColor',
-      'stroke-width': '2.5',
-      'stroke-linecap': 'round',
-      'stroke-linejoin': 'round',
-    }, paths),
+    h(
+      'svg',
+      {
+        class: 'shrink-0',
+        style: { color },
+        width: 15,
+        height: 15,
+        viewBox: '0 0 24 24',
+        fill: 'none',
+        stroke: 'currentColor',
+        'stroke-width': '2.5',
+        'stroke-linecap': 'round',
+        'stroke-linejoin': 'round',
+      },
+      paths,
+    ),
     h('span', { class: 'text-sm font-medium text-foreground' }, label),
   ])
 }
@@ -269,22 +286,22 @@ function activeStatusCell(isActive: boolean) {
 const bankActions: RowAction<Bank>[] = [
   {
     label: 'عرض',
-    onClick: row => (viewing.value = row.original),
+    onClick: (row) => (viewing.value = row.original),
   },
   {
     label: 'تعديل',
-    onClick: row => openEdit(row.original),
+    onClick: (row) => openEdit(row.original),
   },
   {
     label: 'إيقاف',
     destructive: true,
-    hidden: row => !row.original.is_active,
-    onClick: row => toggleStatus(row.original),
+    hidden: (row) => !row.original.is_active,
+    onClick: (row) => toggleStatus(row.original),
   },
   {
     label: 'تفعيل',
-    hidden: row => row.original.is_active,
-    onClick: row => toggleStatus(row.original),
+    hidden: (row) => row.original.is_active,
+    onClick: (row) => toggleStatus(row.original),
   },
 ]
 
@@ -294,7 +311,12 @@ const exportColumns = [
   { key: 'name_en', columnId: 'entity', label: 'الاسم الإنجليزي' },
   { key: 'code', columnId: 'code', label: 'الرمز' },
   { key: 'license_number', columnId: 'license_number', label: 'رقم الترخيص' },
-  { key: 'is_active', columnId: 'is_active', label: 'الحالة', format: (_v: unknown, row: Bank) => row.is_active ? 'نشط' : 'موقوف' },
+  {
+    key: 'is_active',
+    columnId: 'is_active',
+    label: 'الحالة',
+    format: (_v: unknown, row: Bank) => (row.is_active ? 'نشط' : 'موقوف'),
+  },
 ]
 
 const columns: ColumnDef<Bank>[] = [
@@ -302,8 +324,11 @@ const columns: ColumnDef<Bank>[] = [
     id: 'select',
     header: ({ table }) =>
       h(Checkbox, {
-        modelValue: table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() ? 'indeterminate' : false),
-        'onUpdate:modelValue': (value: boolean | 'indeterminate') => table.toggleAllPageRowsSelected(!!value),
+        modelValue:
+          table.getIsAllPageRowsSelected() ||
+          (table.getIsSomePageRowsSelected() ? 'indeterminate' : false),
+        'onUpdate:modelValue': (value: boolean | 'indeterminate') =>
+          table.toggleAllPageRowsSelected(!!value),
         'aria-label': 'تحديد الكل',
       }),
     cell: ({ row }) =>
@@ -322,9 +347,20 @@ const columns: ColumnDef<Bank>[] = [
     cell: ({ row }) => {
       const bank = row.original
       return h('div', { class: 'flex items-center gap-2' }, [
-        h('div', { class: 'grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary text-xs font-semibold leading-5' }, bankInitials(bank.name_ar)),
+        h(
+          'div',
+          {
+            class:
+              'grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary text-xs font-semibold leading-5',
+          },
+          bankInitials(bank.name_ar),
+        ),
         h('div', {}, [
-          h('div', { class: 'font-section text-sm font-semibold leading-5 text-foreground' }, bank.name_ar),
+          h(
+            'div',
+            { class: 'font-section text-sm font-semibold leading-5 text-foreground' },
+            bank.name_ar,
+          ),
           h('div', { class: 'text-xs leading-5 text-muted-foreground' }, bank.name_en),
         ]),
       ])
@@ -333,12 +369,18 @@ const columns: ColumnDef<Bank>[] = [
   {
     accessorKey: 'license_number',
     header: ({ column }) => h(DataTableColumnHeader as any, { column, title: 'رقم الترخيص' }),
-    cell: ({ row }) => h('span', { class: 'font-mono text-xs text-muted-foreground' }, row.original.license_number ?? '—'),
+    cell: ({ row }) =>
+      h(
+        'span',
+        { class: 'font-mono text-xs text-muted-foreground' },
+        row.original.license_number ?? '—',
+      ),
   },
   {
     accessorKey: 'code',
     header: ({ column }) => h(DataTableColumnHeader as any, { column, title: 'الرمز' }),
-    cell: ({ row }) => h('code', { class: 'rounded bg-muted px-2 py-0.5 text-xs font-mono' }, row.original.code),
+    cell: ({ row }) =>
+      h('code', { class: 'rounded bg-muted px-2 py-0.5 text-xs font-mono' }, row.original.code),
   },
   {
     accessorKey: 'is_active',
@@ -356,7 +398,9 @@ const columns: ColumnDef<Bank>[] = [
 ]
 
 const table = useVueTable({
-  get data() { return filtered.value },
+  get data() {
+    return filtered.value
+  },
   columns,
   getCoreRowModel: getCoreRowModel(),
   getPaginationRowModel: getPaginationRowModel(),
@@ -364,16 +408,23 @@ const table = useVueTable({
   getFilteredRowModel: getFilteredRowModel(),
   getFacetedRowModel: getFacetedRowModel(),
   getFacetedUniqueValues: getFacetedUniqueValues(),
-  onColumnVisibilityChange: updater =>
-    (columnVisibility.value = typeof updater === 'function' ? updater(columnVisibility.value) : updater),
-  onColumnFiltersChange: updater =>
+  onColumnVisibilityChange: (updater) =>
+    (columnVisibility.value =
+      typeof updater === 'function' ? updater(columnVisibility.value) : updater),
+  onColumnFiltersChange: (updater) =>
     (columnFilters.value = typeof updater === 'function' ? updater(columnFilters.value) : updater),
-  onRowSelectionChange: updater =>
+  onRowSelectionChange: (updater) =>
     (rowSelection.value = typeof updater === 'function' ? updater(rowSelection.value) : updater),
   state: {
-    get columnVisibility() { return columnVisibility.value },
-    get columnFilters() { return columnFilters.value },
-    get rowSelection() { return rowSelection.value },
+    get columnVisibility() {
+      return columnVisibility.value
+    },
+    get columnFilters() {
+      return columnFilters.value
+    },
+    get rowSelection() {
+      return rowSelection.value
+    },
   },
   initialState: { pagination: { pageSize: 20 } },
 })
@@ -393,41 +444,51 @@ function clearBulkSelection() {
 }
 
 function getSelectedBanks(): Bank[] {
-  return table.getFilteredSelectedRowModel().rows.map(r => r.original)
+  return table.getFilteredSelectedRowModel().rows.map((r) => r.original)
 }
 
 function bulkExportCSV() {
   const rows = getSelectedBanks()
   if (!rows.length) return
-  exportToCSV(rows as unknown as Record<string, unknown>[], exportColumns as any, `${buildExportFilename()}-selected`)
+  exportToCSV(
+    rows as unknown as Record<string, unknown>[],
+    exportColumns as any,
+    `${buildExportFilename()}-selected`,
+  )
 }
 
 function bulkExportExcel() {
   const rows = getSelectedBanks()
   if (!rows.length) return
-  exportToExcel(rows as unknown as Record<string, unknown>[], exportColumns as any, `${buildExportFilename()}-selected`)
+  exportToExcel(
+    rows as unknown as Record<string, unknown>[],
+    exportColumns as any,
+    `${buildExportFilename()}-selected`,
+  )
 }
 
 function bulkExportJSON() {
   const rows = getSelectedBanks()
   if (!rows.length) return
-  exportToJSON(rows as unknown as Record<string, unknown>[], exportColumns as any, `${buildExportFilename()}-selected`)
+  exportToJSON(
+    rows as unknown as Record<string, unknown>[],
+    exportColumns as any,
+    `${buildExportFilename()}-selected`,
+  )
 }
 
 const bulkToggling = ref(false)
 async function bulkToggleStatus(activate: boolean) {
-  const rows = getSelectedBanks().filter(b => b.is_active !== activate)
+  const rows = getSelectedBanks().filter((b) => b.is_active !== activate)
   if (!rows.length) return
   bulkToggling.value = true
   try {
-    await Promise.all(rows.map(b => toggleStatus(b)))
+    await Promise.all(rows.map((b) => toggleStatus(b)))
     clearBulkSelection()
     notify(activate ? `تم تفعيل ${rows.length} بنك` : `تم إيقاف ${rows.length} بنك`)
-  }
-  catch {
+  } catch {
     toastError('فشل تغيير الحالة لبعض البنوك')
-  }
-  finally {
+  } finally {
     bulkToggling.value = false
   }
 }
@@ -440,14 +501,12 @@ async function bulkArchive() {
   archiving.value = true
   try {
     // Archive = deactivate (no hard-delete in this system)
-    await Promise.all(rows.filter(b => b.is_active).map(b => toggleStatus(b)))
+    await Promise.all(rows.filter((b) => b.is_active).map((b) => toggleStatus(b)))
     clearBulkSelection()
     notify(`تم أرشفة ${rows.length} بنك`)
-  }
-  catch {
+  } catch {
     toastError('فشل أرشفة بعض البنوك')
-  }
-  finally {
+  } finally {
     archiving.value = false
   }
 }
@@ -462,7 +521,7 @@ async function bulkArchive() {
       :breadcrumbs="[{ label: 'الرئيسية', to: '/' }, { label: 'إدارة البنوك' }]"
     >
       <template #actions>
-        <Button size="sm" class="h-8 btn-primary" @click="openCreate">
+        <Button size="sm" class="btn-primary h-8" @click="openCreate">
           <Plus class="h-4 w-4" />
           <span class="hidden lg:inline">بنك جديد</span>
         </Button>
@@ -484,7 +543,15 @@ async function bulkArchive() {
           :value="stats.active"
           :icon="Building2"
           tone="success"
-          :active="columnFilters.some(f => f.id === 'is_active' && Array.isArray(f.value) && f.value.includes('true') && f.value.length === 1)"
+          :active="
+            columnFilters.some(
+              (f) =>
+                f.id === 'is_active' &&
+                Array.isArray(f.value) &&
+                f.value.includes('true') &&
+                f.value.length === 1,
+            )
+          "
           @click="table.getColumn('is_active')?.setFilterValue(['true'])"
         />
         <MetricCard
@@ -492,7 +559,15 @@ async function bulkArchive() {
           :value="stats.inactive"
           :icon="Building2"
           tone="danger"
-          :active="columnFilters.some(f => f.id === 'is_active' && Array.isArray(f.value) && f.value.includes('false') && f.value.length === 1)"
+          :active="
+            columnFilters.some(
+              (f) =>
+                f.id === 'is_active' &&
+                Array.isArray(f.value) &&
+                f.value.includes('false') &&
+                f.value.length === 1,
+            )
+          "
           @click="table.getColumn('is_active')?.setFilterValue(['false'])"
         />
       </MetricGrid>
@@ -507,9 +582,9 @@ async function bulkArchive() {
         :column-visibility="columnVisibility"
         :column-filters="columnFilters"
         :row-selection="rowSelection"
-        @update:column-visibility="(v) => columnVisibility = v"
-        @update:column-filters="(v) => columnFilters = v"
-        @update:row-selection="(v) => rowSelection = v"
+        @update:column-visibility="(v) => (columnVisibility = v)"
+        @update:column-filters="(v) => (columnFilters = v)"
+        @update:row-selection="(v) => (rowSelection = v)"
       >
         <template #toolbar="{ table }">
           <DataTableToolbar
@@ -517,21 +592,43 @@ async function bulkArchive() {
             search-placeholder="بحث بالاسم أو الكود أو رقم الترخيص..."
             :has-filters="hasActiveFilters"
             :selected-count="selectedCount"
-            @update:search="v => query = v"
+            @update:search="(v) => (query = v)"
             @reset="handleReset"
             @clear-selection="clearBulkSelection"
           >
             <template #bulk-actions>
-              <DataTableBulkExport @csv="bulkExportCSV" @excel="bulkExportExcel" @json="bulkExportJSON" />
-              <Button variant="outline" size="sm" class="h-7 gap-1.5 text-xs" :disabled="bulkToggling" @click="bulkToggleStatus(true)">
+              <DataTableBulkExport
+                @csv="bulkExportCSV"
+                @excel="bulkExportExcel"
+                @json="bulkExportJSON"
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                class="h-7 gap-1.5 text-xs"
+                :disabled="bulkToggling"
+                @click="bulkToggleStatus(true)"
+              >
                 <Zap class="size-3.5" />
                 تفعيل
               </Button>
-              <Button variant="outline" size="sm" class="h-7 gap-1.5 text-xs" :disabled="bulkToggling" @click="bulkToggleStatus(false)">
+              <Button
+                variant="outline"
+                size="sm"
+                class="h-7 gap-1.5 text-xs"
+                :disabled="bulkToggling"
+                @click="bulkToggleStatus(false)"
+              >
                 <PowerOff class="size-3.5" />
                 إيقاف
               </Button>
-              <Button variant="outline" size="sm" class="h-7 gap-1.5 text-xs text-destructive hover:text-destructive" :disabled="archiving" @click="archiveConfirmOpen = true">
+              <Button
+                variant="outline"
+                size="sm"
+                class="text-destructive hover:text-destructive h-7 gap-1.5 text-xs"
+                :disabled="archiving"
+                @click="archiveConfirmOpen = true"
+              >
                 <Archive class="size-3.5" />
                 أرشفة
               </Button>
@@ -547,8 +644,8 @@ async function bulkArchive() {
             <template #actions>
               <DataTableViewOptions :table="table" :column-labels="BANK_COLUMN_LABELS" />
               <DataTableExport
-                :table="(table as any)"
-                :export-columns="(exportColumns as any)"
+                :table="table as any"
+                :export-columns="exportColumns as any"
                 :filename="buildExportFilename()"
                 :formats="['csv', 'tsv', 'json', 'excel', 'pdf']"
                 :respect-column-visibility="true"
@@ -557,16 +654,24 @@ async function bulkArchive() {
           </DataTableToolbar>
         </template>
         <template #empty>
-          <Empty class="min-h-[280px] rounded-xl border border-dashed bg-muted/20">
+          <Empty class="bg-muted/20 min-h-[280px] rounded-xl border border-dashed">
             <EmptyHeader>
-              <div class="flex size-12 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+              <div
+                class="bg-muted text-muted-foreground flex size-12 items-center justify-center rounded-xl"
+              >
                 <SearchX class="size-5" />
               </div>
-              <EmptyTitle>{{ noBanks ? 'لا توجد بنوك مسجّلة بعد' : 'لا توجد بنوك مطابقة' }}</EmptyTitle>
+              <EmptyTitle>{{
+                noBanks ? 'لا توجد بنوك مسجّلة بعد' : 'لا توجد بنوك مطابقة'
+              }}</EmptyTitle>
             </EmptyHeader>
             <EmptyContent>
               <EmptyDescription>
-                {{ noBanks ? 'ابدأ بإضافة أول بنك تجاري باستخدام زر "بنك جديد" أعلاه.' : 'جرّب تغيير البحث أو إزالة فلتر الحالة لعرض المزيد من البنوك.' }}
+                {{
+                  noBanks
+                    ? 'ابدأ بإضافة أول بنك تجاري باستخدام زر "بنك جديد" أعلاه.'
+                    : 'جرّب تغيير البحث أو إزالة فلتر الحالة لعرض المزيد من البنوك.'
+                }}
               </EmptyDescription>
             </EmptyContent>
           </Empty>
@@ -578,10 +683,7 @@ async function bulkArchive() {
     </div>
 
     <!-- Create / Edit Dialog -->
-    <Dialog
-      :open="createOpen || Boolean(editing)"
-      @update:open="value => !value && closeForm()"
-    >
+    <Dialog :open="createOpen || Boolean(editing)" @update:open="(value) => !value && closeForm()">
       <DialogContent class="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{{ editing ? 'تعديل بيانات البنك' : 'إضافة بنك جديد' }}</DialogTitle>
@@ -607,14 +709,30 @@ async function bulkArchive() {
           <div class="space-y-1.5">
             <Label>الحالة</Label>
             <div class="flex gap-2">
-              <Button type="button" :variant="form.is_active ? 'default' : 'outline'" size="sm" @click="form.is_active = true">نشط</Button>
-              <Button type="button" :variant="!form.is_active ? 'default' : 'outline'" size="sm" @click="form.is_active = false">موقوف</Button>
+              <Button
+                type="button"
+                :variant="form.is_active ? 'default' : 'outline'"
+                size="sm"
+                @click="form.is_active = true"
+                >نشط</Button
+              >
+              <Button
+                type="button"
+                :variant="!form.is_active ? 'default' : 'outline'"
+                size="sm"
+                @click="form.is_active = false"
+                >موقوف</Button
+              >
             </div>
           </div>
 
           <div v-if="!editing" class="mt-2 border-t pt-3">
-            <div class="mb-1 text-sm font-semibold">حساب مدير البنك <span class="text-destructive">*</span></div>
-            <p class="mb-3 text-xs text-muted-foreground">يُنشأ حساب المدير الأول للبنك تلقائياً ويُستخدم لتسجيل الدخول وإضافة باقي المستخدمين.</p>
+            <div class="mb-1 text-sm font-semibold">
+              حساب مدير البنك <span class="text-destructive">*</span>
+            </div>
+            <p class="text-muted-foreground mb-3 text-xs">
+              يُنشأ حساب المدير الأول للبنك تلقائياً ويُستخدم لتسجيل الدخول وإضافة باقي المستخدمين.
+            </p>
             <div class="space-y-3">
               <div class="space-y-1.5">
                 <Label>اسم المدير *</Label>
@@ -623,7 +741,7 @@ async function bulkArchive() {
               <div class="space-y-1.5">
                 <Label>البريد الإلكتروني للمدير *</Label>
                 <Input v-model="form.adminEmail" type="email" placeholder="admin@bank.ye" />
-                <p v-if="!emailValid" class="text-xs text-destructive">صيغة البريد غير صحيحة</p>
+                <p v-if="!emailValid" class="text-destructive text-xs">صيغة البريد غير صحيحة</p>
               </div>
             </div>
           </div>
@@ -638,11 +756,11 @@ async function bulkArchive() {
     </Dialog>
 
     <!-- View Dialog -->
-    <Dialog :open="Boolean(viewing)" @update:open="value => !value && (viewing = null)">
+    <Dialog :open="Boolean(viewing)" @update:open="(value) => !value && (viewing = null)">
       <DialogContent v-if="viewing" class="sm:max-w-md">
         <DialogHeader>
           <DialogTitle class="flex items-center gap-2">
-            <Building2 class="h-5 w-5 text-primary" />
+            <Building2 class="text-primary h-5 w-5" />
             {{ viewing.name_ar }}
           </DialogTitle>
           <DialogDescription>تفاصيل البنك</DialogDescription>
@@ -664,7 +782,10 @@ async function bulkArchive() {
             <span class="text-muted-foreground">الحالة</span>
             <span class="font-medium">{{ viewing.is_active ? 'نشط' : 'موقوف' }}</span>
           </div>
-          <div v-if="viewing.user_count != null" class="flex items-center justify-between border-b pb-2">
+          <div
+            v-if="viewing.user_count != null"
+            class="flex items-center justify-between border-b pb-2"
+          >
             <span class="text-muted-foreground">عدد المستخدمين</span>
             <span class="font-medium">{{ viewing.user_count }}</span>
           </div>

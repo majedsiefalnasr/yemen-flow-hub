@@ -17,22 +17,25 @@ const isOpen = ref(false)
 const inputRef = ref<HTMLInputElement | null>(null)
 const wrapperRef = ref<HTMLElement | null>(null)
 
-const hasResults = computed(() =>
-  results.value.requests.length > 0
-  || results.value.users.length > 0
-  || results.value.banks.length > 0
-  || results.value.customs.length > 0,
+const hasResults = computed(
+  () =>
+    results.value.requests.length > 0 ||
+    results.value.users.length > 0 ||
+    results.value.banks.length > 0 ||
+    results.value.customs.length > 0,
 )
 
-const showDropdown = computed(() =>
-  isOpen.value && (
-    inputValue.value.length >= 2
-    || (inputValue.value.length === 0 && recentSearches.value.length > 0)
-  ),
+const showDropdown = computed(
+  () =>
+    isOpen.value &&
+    (inputValue.value.length >= 2 ||
+      (inputValue.value.length === 0 && recentSearches.value.length > 0)),
 )
 
 const availableChips = computed(() => {
-  const chips: Array<{ key: SearchEntityType | 'all'; label: string }> = [{ key: 'all', label: 'الكل' }]
+  const chips: Array<{ key: SearchEntityType | 'all'; label: string }> = [
+    { key: 'all', label: 'الكل' },
+  ]
   if (results.value.requests.length > 0) chips.push({ key: 'requests', label: 'الطلبات' })
   if (results.value.users.length > 0) chips.push({ key: 'users', label: 'المستخدمون' })
   if (results.value.banks.length > 0) chips.push({ key: 'banks', label: 'البنوك' })
@@ -101,58 +104,70 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div ref="wrapperRef" class="relative w-full max-w-sm" :class="{ 'block': props.mobile, 'hidden max-md:hidden': !props.mobile }">
+  <div
+    ref="wrapperRef"
+    class="relative w-full max-w-sm"
+    :class="{ block: props.mobile, 'hidden max-md:hidden': !props.mobile }"
+  >
     <!-- Input -->
-    <div class="flex items-center gap-2 rounded-md border border-border bg-background px-3 py-2">
-      <Search class="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+    <div class="border-border bg-background flex items-center gap-2 rounded-md border px-3 py-2">
+      <Search class="text-muted-foreground h-4 w-4 flex-shrink-0" />
       <input
         ref="inputRef"
         type="search"
-        class="flex-1 border-none bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+        class="placeholder:text-muted-foreground flex-1 border-none bg-transparent text-sm outline-none"
         placeholder="بحث..."
         aria-label="بحث في النظام"
         autocomplete="off"
-        
         :value="inputValue"
         @input="onInput"
         @focus="onFocus"
         @keydown="onKeydown"
       />
-      <Loader2 v-if="loading" class="search-spinner h-4 w-4 flex-shrink-0 animate-spin text-primary" aria-hidden="true" />
+      <Loader2
+        v-if="loading"
+        class="search-spinner text-primary h-4 w-4 flex-shrink-0 animate-spin"
+        aria-hidden="true"
+      />
     </div>
 
     <!-- Dropdown -->
     <div
       v-if="showDropdown"
-      class="search-dropdown absolute top-full start-0 z-50 mt-1 w-full max-h-96 overflow-y-auto rounded-lg border border-border bg-background shadow-lg"
+      class="search-dropdown border-border bg-background absolute start-0 top-full z-50 mt-1 max-h-96 w-full overflow-y-auto rounded-lg border shadow-lg"
       role="listbox"
       aria-label="نتائج البحث"
     >
-
       <!-- Recent searches (when query is empty) -->
       <template v-if="inputValue.length === 0 && recentSearches.length > 0">
-        <div class="px-3 py-2 text-xs font-semibold uppercase text-muted-foreground">عمليات البحث الأخيرة</div>
+        <div class="text-muted-foreground px-3 py-2 text-xs font-semibold uppercase">
+          عمليات البحث الأخيرة
+        </div>
         <button
           v-for="term in recentSearches"
           :key="term"
-          class="search-recent-item flex w-full items-center gap-2.5 px-3 py-2 text-start transition-colors hover:bg-muted/50"
+          class="search-recent-item hover:bg-muted/50 flex w-full items-center gap-2.5 px-3 py-2 text-start transition-colors"
           type="button"
           @click="selectRecent(term)"
         >
-          <Clock class="h-4 w-4 flex-shrink-0 text-muted-foreground" />
-          <span class="text-sm text-foreground">{{ term }}</span>
+          <Clock class="text-muted-foreground h-4 w-4 flex-shrink-0" />
+          <span class="text-foreground text-sm">{{ term }}</span>
         </button>
       </template>
 
       <!-- Results (when query ≥ 2 chars) -->
       <template v-else-if="inputValue.length >= 2">
         <!-- Filter chips -->
-        <div v-if="hasResults" class="flex flex-wrap gap-1.5 border-b border-border px-3 py-2">
+        <div v-if="hasResults" class="border-border flex flex-wrap gap-1.5 border-b px-3 py-2">
           <button
             v-for="chip in availableChips"
             :key="chip.key"
-            class="search-chip rounded-full border text-xs px-2.5 py-1 transition-all"
-            :class="activeFilter === chip.key ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-transparent text-foreground hover:bg-muted/50'"
+            class="search-chip rounded-full border px-2.5 py-1 text-xs transition-all"
+            :class="
+              activeFilter === chip.key
+                ? 'border-primary bg-primary text-primary-foreground'
+                : 'border-border text-foreground hover:bg-muted/50 bg-transparent'
+            "
             type="button"
             @click="activeFilter = chip.key"
           >
@@ -162,84 +177,100 @@ onBeforeUnmount(() => {
 
         <!-- Requests group -->
         <template v-if="filteredResults.requests.length > 0">
-          <div class="px-3 py-2 text-xs font-semibold uppercase text-muted-foreground">الطلبات</div>
+          <div class="text-muted-foreground px-3 py-2 text-xs font-semibold uppercase">الطلبات</div>
           <button
             v-for="req in filteredResults.requests"
             :key="req.id"
-            class="search-result-item flex w-full items-center gap-2.5 px-3 py-2 text-start transition-colors hover:bg-muted/50"
+            class="search-result-item hover:bg-muted/50 flex w-full items-center gap-2.5 px-3 py-2 text-start transition-colors"
             type="button"
             @click="navigateTo(`/requests/${req.id}`)"
           >
-            <FileText class="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+            <FileText class="text-muted-foreground h-4 w-4 flex-shrink-0" />
             <div class="min-w-0 flex-1">
-              <div class="text-sm font-medium text-foreground">{{ req.reference_number }}</div>
-              <div class="truncate text-xs text-muted-foreground">{{ req.supplier_name }}</div>
+              <div class="text-foreground text-sm font-medium">{{ req.reference_number }}</div>
+              <div class="text-muted-foreground truncate text-xs">{{ req.supplier_name }}</div>
             </div>
           </button>
         </template>
 
         <!-- Users group -->
         <template v-if="filteredResults.users.length > 0">
-          <div class="px-3 py-2 text-xs font-semibold uppercase text-muted-foreground">المستخدمون</div>
+          <div class="text-muted-foreground px-3 py-2 text-xs font-semibold uppercase">
+            المستخدمون
+          </div>
           <button
             v-for="user in filteredResults.users"
             :key="user.id"
-            class="search-result-item flex w-full items-center gap-2.5 px-3 py-2 text-start transition-colors hover:bg-muted/50"
+            class="search-result-item hover:bg-muted/50 flex w-full items-center gap-2.5 px-3 py-2 text-start transition-colors"
             type="button"
             @click="navigateTo('/users')"
           >
-            <User class="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+            <User class="text-muted-foreground h-4 w-4 flex-shrink-0" />
             <div class="min-w-0 flex-1">
-              <div class="text-sm font-medium text-foreground">{{ user.name }}</div>
-              <div class="truncate text-xs text-muted-foreground">{{ user.role_label }}</div>
+              <div class="text-foreground text-sm font-medium">{{ user.name }}</div>
+              <div class="text-muted-foreground truncate text-xs">{{ user.role_label }}</div>
             </div>
           </button>
         </template>
 
         <!-- Banks group -->
         <template v-if="filteredResults.banks.length > 0">
-          <div class="px-3 py-2 text-xs font-semibold uppercase text-muted-foreground">البنوك</div>
+          <div class="text-muted-foreground px-3 py-2 text-xs font-semibold uppercase">البنوك</div>
           <button
             v-for="bank in filteredResults.banks"
             :key="bank.id"
-            class="search-result-item flex w-full items-center gap-2.5 px-3 py-2 text-start transition-colors hover:bg-muted/50"
+            class="search-result-item hover:bg-muted/50 flex w-full items-center gap-2.5 px-3 py-2 text-start transition-colors"
             type="button"
             @click="navigateTo('/banks')"
           >
-            <Building2 class="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+            <Building2 class="text-muted-foreground h-4 w-4 flex-shrink-0" />
             <div class="min-w-0 flex-1">
-              <div class="text-sm font-medium text-foreground">{{ bank.name }}</div>
-              <div class="truncate text-xs text-muted-foreground">{{ bank.code }}</div>
+              <div class="text-foreground text-sm font-medium">{{ bank.name }}</div>
+              <div class="text-muted-foreground truncate text-xs">{{ bank.code }}</div>
             </div>
           </button>
         </template>
 
         <!-- Customs group -->
         <template v-if="filteredResults.customs.length > 0">
-          <div class="px-3 py-2 text-xs font-semibold uppercase text-muted-foreground">البيانات الجمركية</div>
+          <div class="text-muted-foreground px-3 py-2 text-xs font-semibold uppercase">
+            البيانات الجمركية
+          </div>
           <button
             v-for="customs in filteredResults.customs"
             :key="customs.id"
-            class="search-result-item flex w-full items-center gap-2.5 px-3 py-2 text-start transition-colors hover:bg-muted/50"
+            class="search-result-item hover:bg-muted/50 flex w-full items-center gap-2.5 px-3 py-2 text-start transition-colors"
             type="button"
             @click="navigateTo(`/requests/${customs.request_id}`)"
           >
-            <Stamp class="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+            <Stamp class="text-muted-foreground h-4 w-4 flex-shrink-0" />
             <div class="min-w-0 flex-1">
-              <div class="text-sm font-medium text-foreground">{{ customs.declaration_number }}</div>
-              <div class="truncate text-xs text-muted-foreground">{{ customs.reference_number }}</div>
+              <div class="text-foreground text-sm font-medium">
+                {{ customs.declaration_number }}
+              </div>
+              <div class="text-muted-foreground truncate text-xs">
+                {{ customs.reference_number }}
+              </div>
             </div>
           </button>
         </template>
 
         <!-- Empty state -->
-        <div v-if="!hasResults && !loading" class="flex flex-col items-center gap-2 px-4 py-6 text-center">
-          <Search class="h-6 w-6 opacity-30 text-muted-foreground" />
-          <span class="text-sm text-muted-foreground">لا توجد نتائج لـ «{{ inputValue }}»</span>
+        <div
+          v-if="!hasResults && !loading"
+          class="flex flex-col items-center gap-2 px-4 py-6 text-center"
+        >
+          <Search class="text-muted-foreground h-6 w-6 opacity-30" />
+          <span class="text-muted-foreground text-sm">لا توجد نتائج لـ «{{ inputValue }}»</span>
         </div>
       </template>
     </div>
 
-    <div v-if="showDropdown" class="fixed inset-0 z-40" aria-hidden="true" @click="isOpen = false" />
+    <div
+      v-if="showDropdown"
+      class="fixed inset-0 z-40"
+      aria-hidden="true"
+      @click="isOpen = false"
+    />
   </div>
 </template>

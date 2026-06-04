@@ -9,15 +9,18 @@ interface ErrorAction {
   onClick: () => void
 }
 
-const props = withDefaults(defineProps<{
-  code?: number | string
-  title?: string
-  description?: string
-  icon?: any
-  actions?: ErrorAction[]
-}>(), {
-  code: 500,
-})
+const props = withDefaults(
+  defineProps<{
+    code?: number | string
+    title?: string
+    description?: string
+    icon?: any
+    actions?: ErrorAction[]
+  }>(),
+  {
+    code: 500,
+  },
+)
 
 const defaultIcon = computed(() => {
   const code = Number(props.code)
@@ -40,7 +43,8 @@ const defaultTitle = computed(() => {
 const defaultDescription = computed(() => {
   const code = Number(props.code)
   if (code === 401) return 'سجل الدخول أولاً للوصول إلى هذه الصفحة.'
-  if (code === 403) return 'لا تملك صلاحية الوصول إلى هذه الصفحة. تواصل مع مدير النظام إذا كنت تحتاج هذا الإجراء.'
+  if (code === 403)
+    return 'لا تملك صلاحية الوصول إلى هذه الصفحة. تواصل مع مدير النظام إذا كنت تحتاج هذا الإجراء.'
   if (code === 404) return 'الصفحة التي تبحث عنها غير موجودة أو تم نقلها.'
   if (code === 503) return 'الخدمة غير متاحة حاليا. أعد المحاولة بعد قليل.'
   return 'تعذر فتح الصفحة بسبب خطأ في الخادم. أعد المحاولة أو ارجع إلى لوحة التحكم.'
@@ -52,14 +56,14 @@ const resolvedDescription = computed(() => props.description || defaultDescripti
 </script>
 
 <template>
-  <div class="flex min-h-screen flex-col items-center justify-center gap-6 text-center" >
-    <div class="rounded-full bg-muted p-6">
-      <component :is="resolvedIcon" class="h-12 w-12 text-muted-foreground" />
+  <div class="flex min-h-screen flex-col items-center justify-center gap-6 text-center">
+    <div class="bg-muted rounded-full p-6">
+      <component :is="resolvedIcon" class="text-muted-foreground h-12 w-12" />
     </div>
-    <div v-if="code" class="text-7xl font-bold text-muted-foreground/30">{{ code }}</div>
+    <div v-if="code" class="text-muted-foreground/30 text-7xl font-bold">{{ code }}</div>
     <div class="space-y-2">
       <h1 class="text-2xl font-bold tracking-tight">{{ resolvedTitle }}</h1>
-      <p class="max-w-sm text-sm text-muted-foreground">{{ resolvedDescription }}</p>
+      <p class="text-muted-foreground max-w-sm text-sm">{{ resolvedDescription }}</p>
     </div>
     <div v-if="actions?.length" class="flex flex-wrap justify-center gap-2">
       <Button

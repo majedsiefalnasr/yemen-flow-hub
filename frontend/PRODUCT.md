@@ -15,16 +15,16 @@ This is NOT a public SaaS app. It is an institutional back-office tool used dail
 
 ## Users & Roles
 
-| Role | Organisation | Daily task |
-|---|---|---|
-| DATA_ENTRY | Commercial bank | Create and submit import financing requests |
-| BANK_REVIEWER | Commercial bank | Review and approve/reject/return requests from their bank's data entry staff |
-| BANK_ADMIN | Commercial bank | Manage bank staff, view bank-level stats and reports |
-| SWIFT_OFFICER | CBY | Upload SWIFT documents for approved requests |
-| SUPPORT_COMMITTEE | CBY | Claim and review bank-approved requests; approve/reject/return |
-| EXECUTIVE_MEMBER | CBY | Vote on requests assigned to their executive committee session |
-| COMMITTEE_DIRECTOR | CBY | Open/close voting sessions, break ties, issue final decisions |
-| CBY_ADMIN | CBY | Manage banks, users, roles, system settings, full audit access |
+| Role               | Organisation    | Daily task                                                                   |
+| ------------------ | --------------- | ---------------------------------------------------------------------------- |
+| DATA_ENTRY         | Commercial bank | Create and submit import financing requests                                  |
+| BANK_REVIEWER      | Commercial bank | Review and approve/reject/return requests from their bank's data entry staff |
+| BANK_ADMIN         | Commercial bank | Manage bank staff, view bank-level stats and reports                         |
+| SWIFT_OFFICER      | CBY             | Upload SWIFT documents for approved requests                                 |
+| SUPPORT_COMMITTEE  | CBY             | Claim and review bank-approved requests; approve/reject/return               |
+| EXECUTIVE_MEMBER   | CBY             | Vote on requests assigned to their executive committee session               |
+| COMMITTEE_DIRECTOR | CBY             | Open/close voting sessions, break ties, issue final decisions                |
+| CBY_ADMIN          | CBY             | Manage banks, users, roles, system settings, full audit access               |
 
 ## Operational Posture
 

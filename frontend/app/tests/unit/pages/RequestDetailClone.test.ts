@@ -98,17 +98,19 @@ vi.mock('../../../composables/useRequests', () => ({
 vi.mock('../../../components/ui/alert-dialog', async () => {
   const { defineComponent, h } = await import('vue')
 
-  const slotStub = (tag: string) => defineComponent({
-    setup(_, { slots, attrs }) {
-      return () => h(tag, attrs, slots.default?.())
-    },
-  })
+  const slotStub = (tag: string) =>
+    defineComponent({
+      setup(_, { slots, attrs }) {
+        return () => h(tag, attrs, slots.default?.())
+      },
+    })
 
   return {
     AlertDialog: defineComponent({
       props: { open: { type: Boolean, default: false } },
       setup(props, { slots }) {
-        return () => props.open ? h('div', { 'data-testid': 'alert-dialog' }, slots.default?.()) : null
+        return () =>
+          props.open ? h('div', { 'data-testid': 'alert-dialog' }, slots.default?.()) : null
       },
     }),
     AlertDialogCancel: slotStub('button'),
@@ -159,7 +161,12 @@ function mountDetailPage() {
   return mount(requestDetailPage, {
     global: {
       stubs: {
-        NuxtLink: defineComponent({ props: ['to'], setup(_, { slots }) { return () => h('a', slots.default?.()) } }),
+        NuxtLink: defineComponent({
+          props: ['to'],
+          setup(_, { slots }) {
+            return () => h('a', slots.default?.())
+          },
+        }),
         StatusBadge: true,
         LockedBanner: true,
         CorrectionBanner: true,

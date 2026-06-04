@@ -30,8 +30,23 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/in
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { Badge } from '@/components/ui/badge'
-import { Field, FieldContent, FieldDescription, FieldGroup, FieldLabel, FieldTitle } from '@/components/ui/field'
-import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select'
+import {
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldGroup,
+  FieldLabel,
+  FieldTitle,
+} from '@/components/ui/field'
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { UserRole } from '@/types/enums'
 import { cn } from '@/lib/utils'
 import { useThemingStore } from '@/stores/theming.store'
@@ -73,7 +88,7 @@ const bankTabs = [
   { value: 'security', label: 'الأمان', icon: KeyRound },
 ] as const
 
-const currentTabs = computed(() => isCBYAdmin.value ? cbyTabs : bankTabs)
+const currentTabs = computed(() => (isCBYAdmin.value ? cbyTabs : bankTabs))
 
 type AnyTab = (typeof cbyTabs)[number]['value'] | (typeof bankTabs)[number]['value']
 
@@ -90,10 +105,13 @@ const showEmailPassword = ref(false)
 const pendingBrandColor = ref(themingStore.brandColor)
 const pendingBrandColorText = ref(themingStore.brandColor)
 
-watch(() => themingStore.brandColor, (v) => {
-  pendingBrandColor.value = v
-  pendingBrandColorText.value = v
-})
+watch(
+  () => themingStore.brandColor,
+  (v) => {
+    pendingBrandColor.value = v
+    pendingBrandColorText.value = v
+  },
+)
 
 function onBrandColorInput(event: Event) {
   const val = (event.target as HTMLInputElement).value
@@ -130,7 +148,8 @@ const emailSettings = reactive({
   port: '587',
   username: 'noreply@cby.gov.ye',
   password: '************',
-  approvalTemplate: 'عزيزي {{importer}}،\nنخبركم باعتماد طلب التمويل رقم {{ref}} بمبلغ {{amount}} {{currency}}.',
+  approvalTemplate:
+    'عزيزي {{importer}}،\nنخبركم باعتماد طلب التمويل رقم {{ref}} بمبلغ {{amount}} {{currency}}.',
 })
 
 // ── CBY: Notification settings ────────────────────────────────────────────────
@@ -172,7 +191,9 @@ function handleBankLogoFile(event: Event) {
     return
   }
   const reader = new FileReader()
-  reader.onload = (e) => { bankProfile.logoPreview = e.target?.result as string }
+  reader.onload = (e) => {
+    bankProfile.logoPreview = e.target?.result as string
+  }
   reader.readAsDataURL(file)
 }
 
@@ -188,13 +209,48 @@ const swift = reactive({
 
 // ── Bank: Notifications ───────────────────────────────────────────────────────
 const bankNotifications = ref([
-  { id: 'request_submitted', label: 'تقديم طلب جديد', description: 'إشعار عند تقديم أي طلب من داخل البنك', enabled: true },
-  { id: 'bank_approved', label: 'موافقة البنك الداخلية', description: 'عند اعتماد المراجع البنكي للطلب', enabled: true },
-  { id: 'cby_decision', label: 'قرار البنك المركزي', description: 'عند موافقة أو رفض لجنة الدعم', enabled: true },
-  { id: 'executive_decision', label: 'قرار الهيئة التنفيذية', description: 'عند صدور نتيجة التصويت', enabled: true },
-  { id: 'swift_uploaded', label: 'رفع SWIFT', description: 'عند رفع حوالة SWIFT لأحد الطلبات', enabled: false },
-  { id: 'escalation', label: 'تنبيهات التصعيد', description: 'عند تجاوز مدة معالجة طلب الحد المحدد', enabled: true },
-  { id: 'daily_digest', label: 'الملخص اليومي', description: 'تقرير يومي بحالة طلبات البنك', enabled: false },
+  {
+    id: 'request_submitted',
+    label: 'تقديم طلب جديد',
+    description: 'إشعار عند تقديم أي طلب من داخل البنك',
+    enabled: true,
+  },
+  {
+    id: 'bank_approved',
+    label: 'موافقة البنك الداخلية',
+    description: 'عند اعتماد المراجع البنكي للطلب',
+    enabled: true,
+  },
+  {
+    id: 'cby_decision',
+    label: 'قرار البنك المركزي',
+    description: 'عند موافقة أو رفض لجنة الدعم',
+    enabled: true,
+  },
+  {
+    id: 'executive_decision',
+    label: 'قرار الهيئة التنفيذية',
+    description: 'عند صدور نتيجة التصويت',
+    enabled: true,
+  },
+  {
+    id: 'swift_uploaded',
+    label: 'رفع SWIFT',
+    description: 'عند رفع حوالة SWIFT لأحد الطلبات',
+    enabled: false,
+  },
+  {
+    id: 'escalation',
+    label: 'تنبيهات التصعيد',
+    description: 'عند تجاوز مدة معالجة طلب الحد المحدد',
+    enabled: true,
+  },
+  {
+    id: 'daily_digest',
+    label: 'الملخص اليومي',
+    description: 'تقرير يومي بحالة طلبات البنك',
+    enabled: false,
+  },
 ])
 
 // ── Bank: Security ────────────────────────────────────────────────────────────
@@ -227,11 +283,11 @@ const brandingPayload = computed(() => ({
 }))
 
 const securityPayload = computed(() => ({
-  settings: cbySecuritySettings.map(item => ({ label: item.label, enabled: item.enabled })),
+  settings: cbySecuritySettings.map((item) => ({ label: item.label, enabled: item.enabled })),
 }))
 
 const notifPayload = computed(() => ({
-  settings: cbySysNotifications.map(item => ({ label: item.label, enabled: item.enabled })),
+  settings: cbySysNotifications.map((item) => ({ label: item.label, enabled: item.enabled })),
 }))
 
 const emailPayload = computed(() => ({
@@ -264,7 +320,7 @@ const bankProfilePayload = computed(() => ({
 const bankSwiftPayload = computed(() => ({ ...swift }))
 
 const bankNotificationsPayload = computed(() => ({
-  settings: bankNotifications.value.map(item => ({
+  settings: bankNotifications.value.map((item) => ({
     id: item.id,
     enabled: item.enabled,
   })),
@@ -295,16 +351,32 @@ onMounted(async () => {
 })
 
 // ── Dirty watchers ─────────────────────────────────────────────────────────────
-watch(workflowPayload, value => settingsStore.trackSectionState('workflow', value), { deep: true })
-watch(emailPayload, value => settingsStore.trackSectionState('email', value), { deep: true })
-watch(notifPayload, value => settingsStore.trackSectionState('notif', value), { deep: true })
-watch(securityPayload, value => settingsStore.trackSectionState('security', value), { deep: true })
-watch(generalPayload, value => settingsStore.trackSectionState('general', value), { deep: true })
-watch(brandingPayload, value => settingsStore.trackSectionState('theming', value, 'branding'), { deep: true })
-watch(bankProfilePayload, value => settingsStore.trackSectionState('bankProfile', value), { deep: true })
-watch(bankSwiftPayload, value => settingsStore.trackSectionState('bankSwift', value), { deep: true })
-watch(bankNotificationsPayload, value => settingsStore.trackSectionState('bankNotifications', value), { deep: true })
-watch(bankSecurityPayload, value => settingsStore.trackSectionState('bankSecurity', value), { deep: true })
+watch(workflowPayload, (value) => settingsStore.trackSectionState('workflow', value), {
+  deep: true,
+})
+watch(emailPayload, (value) => settingsStore.trackSectionState('email', value), { deep: true })
+watch(notifPayload, (value) => settingsStore.trackSectionState('notif', value), { deep: true })
+watch(securityPayload, (value) => settingsStore.trackSectionState('security', value), {
+  deep: true,
+})
+watch(generalPayload, (value) => settingsStore.trackSectionState('general', value), { deep: true })
+watch(brandingPayload, (value) => settingsStore.trackSectionState('theming', value, 'branding'), {
+  deep: true,
+})
+watch(bankProfilePayload, (value) => settingsStore.trackSectionState('bankProfile', value), {
+  deep: true,
+})
+watch(bankSwiftPayload, (value) => settingsStore.trackSectionState('bankSwift', value), {
+  deep: true,
+})
+watch(
+  bankNotificationsPayload,
+  (value) => settingsStore.trackSectionState('bankNotifications', value),
+  { deep: true },
+)
+watch(bankSecurityPayload, (value) => settingsStore.trackSectionState('bankSecurity', value), {
+  deep: true,
+})
 
 // ── CBY: Save handlers ─────────────────────────────────────────────────────────
 async function saveGeneralSettings() {
@@ -315,8 +387,7 @@ async function saveGeneralSettings() {
     await themingStore.loadFromServer()
     themingStore.publishSystemSettingsSync()
     toast.success('تم حفظ الإعدادات العامة بنجاح')
-  }
-  else {
+  } else {
     toast.error(settingsStore.error || 'فشل حفظ الإعدادات. حاول مرة أخرى.')
   }
 }
@@ -328,8 +399,9 @@ function handleCBYLogoFile(event: Event) {
     toast.error('حجم الشعار يجب ألا يتجاوز 2 ميجابايت')
     return
   }
-  const supportedLogo = ['image/svg+xml', 'image/png', 'image/jpeg'].includes(file.type)
-    || /\.(svg|png|jpe?g)$/i.test(file.name)
+  const supportedLogo =
+    ['image/svg+xml', 'image/png', 'image/jpeg'].includes(file.type) ||
+    /\.(svg|png|jpe?g)$/i.test(file.name)
   if (!supportedLogo) {
     toast.error('صيغة الشعار يجب أن تكون SVG أو PNG أو JPG')
     return
@@ -345,15 +417,18 @@ function handleCBYLogoFile(event: Event) {
 async function saveBrandingSettings() {
   // Apply brand color to CSS vars only on save
   themingStore.setBrandColor(pendingBrandColor.value)
-  const ok = await settingsStore.saveSection('theming', {
-    ...brandingPayload.value,
-  }, 'branding')
+  const ok = await settingsStore.saveSection(
+    'theming',
+    {
+      ...brandingPayload.value,
+    },
+    'branding',
+  )
   if (ok) {
     await themingStore.loadFromServer()
     themingStore.publishSystemSettingsSync()
     toast.success('تم حفظ إعدادات الهوية البصرية بنجاح')
-  }
-  else {
+  } else {
     toast.error(settingsStore.error || 'فشل حفظ الإعدادات')
   }
 }
@@ -422,11 +497,18 @@ async function saveBankSecurity() {
   <div>
     <PageHeader
       :title="isCBYAdmin ? 'إعدادات المؤسسة' : 'إعدادات البنك'"
-      :subtitle="isCBYAdmin ? 'إعدادات المنصة التي تؤثر على جميع المستخدمين، ويقتصر الوصول إليها على مدير النظام' : 'إعدادات وتكوينات البنك، وتؤثر على جميع مستخدميه'"
-      :breadcrumbs="[{ label: 'الرئيسية', to: '/' }, { label: isCBYAdmin ? 'إعدادات المؤسسة' : 'إعدادات البنك' }]"
+      :subtitle="
+        isCBYAdmin
+          ? 'إعدادات المنصة التي تؤثر على جميع المستخدمين، ويقتصر الوصول إليها على مدير النظام'
+          : 'إعدادات وتكوينات البنك، وتؤثر على جميع مستخدميه'
+      "
+      :breadcrumbs="[
+        { label: 'الرئيسية', to: '/' },
+        { label: isCBYAdmin ? 'إعدادات المؤسسة' : 'إعدادات البنك' },
+      ]"
     />
 
-    <div  class="flex flex-col gap-6 lg:flex-row">
+    <div class="flex flex-col gap-6 lg:flex-row">
       <!-- ── Desktop: left sidebar nav ───────────────────────────────────── -->
       <aside class="hidden lg:block lg:w-56 lg:shrink-0">
         <nav class="flex flex-col gap-1">
@@ -434,12 +516,14 @@ async function saveBankSecurity() {
             v-for="tab in currentTabs"
             :key="tab.value"
             :to="{ query: { section: tab.value } }"
-            :class="cn(
-              'flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm transition-colors',
-              activeSection === tab.value
-                ? 'bg-muted font-medium text-foreground'
-                : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground',
-            )"
+            :class="
+              cn(
+                'flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm transition-colors',
+                activeSection === tab.value
+                  ? 'bg-muted text-foreground font-medium'
+                  : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground',
+              )
+            "
             :aria-current="activeSection === tab.value ? 'page' : undefined"
           >
             <component :is="tab.icon" class="size-4 shrink-0" />
@@ -455,12 +539,14 @@ async function saveBankSecurity() {
             v-for="tab in currentTabs"
             :key="tab.value"
             :to="{ query: { section: tab.value } }"
-            :class="cn(
-              'flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-2 text-sm transition-colors',
-              activeSection === tab.value
-                ? 'bg-muted font-medium text-foreground'
-                : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground',
-            )"
+            :class="
+              cn(
+                'flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-sm whitespace-nowrap transition-colors',
+                activeSection === tab.value
+                  ? 'bg-muted text-foreground font-medium'
+                  : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground',
+              )
+            "
           >
             <component :is="tab.icon" class="size-4 shrink-0" />
             {{ tab.label }}
@@ -468,20 +554,26 @@ async function saveBankSecurity() {
         </div>
 
         <div class="space-y-6">
-
           <!-- ═══════════════════════════════════════════════════════════════ -->
           <!-- CBY: General                                                    -->
           <!-- ═══════════════════════════════════════════════════════════════ -->
           <section v-if="isCBYAdmin && activeSection === 'general'" class="space-y-6">
             <div>
-              <h3 class="font-heading text-base font-semibold leading-6 text-foreground">معلومات المنصة</h3>
-              <p class="text-sm text-muted-foreground">الاسم الرسمي، الجهة المشغّلة، اللغة الافتراضية، والمنطقة الزمنية</p>
+              <h3 class="font-heading text-foreground text-base leading-6 font-semibold">
+                معلومات المنصة
+              </h3>
+              <p class="text-muted-foreground text-sm">
+                الاسم الرسمي، الجهة المشغّلة، اللغة الافتراضية، والمنطقة الزمنية
+              </p>
             </div>
             <Separator />
             <div class="grid gap-5 md:grid-cols-2">
               <FieldGroup>
                 <FieldLabel>اسم المنصة</FieldLabel>
-                <Input v-model="generalSettings.platformName" placeholder="منصة إدارة وتمويل الواردات" />
+                <Input
+                  v-model="generalSettings.platformName"
+                  placeholder="منصة إدارة وتمويل الواردات"
+                />
               </FieldGroup>
               <FieldGroup>
                 <FieldLabel>الجهة المشغّلة</FieldLabel>
@@ -542,8 +634,12 @@ async function saveBankSecurity() {
           <!-- ═══════════════════════════════════════════════════════════════ -->
           <section v-if="isCBYAdmin && activeSection === 'branding'" class="space-y-6">
             <div>
-              <h3 class="font-heading text-base font-semibold leading-6 text-foreground">الهوية البصرية</h3>
-              <p class="text-sm text-muted-foreground">الشعار ولون العلامة — تؤثر على مظهر المنصة لجميع المستخدمين</p>
+              <h3 class="font-heading text-foreground text-base leading-6 font-semibold">
+                الهوية البصرية
+              </h3>
+              <p class="text-muted-foreground text-sm">
+                الشعار ولون العلامة — تؤثر على مظهر المنصة لجميع المستخدمين
+              </p>
             </div>
             <Separator />
 
@@ -555,28 +651,37 @@ async function saveBankSecurity() {
                   <FieldDescription>SVG أو PNG أو JPG حتى 800×400 بكسل</FieldDescription>
                 </FieldContent>
                 <div class="flex items-center gap-4">
-                  <div class="flex h-20 w-20 items-center justify-center overflow-hidden rounded-xl border border-border bg-muted">
+                  <div
+                    class="border-border bg-muted flex h-20 w-20 items-center justify-center overflow-hidden rounded-xl border"
+                  >
                     <img
                       v-if="orgStore.brandLogoDataUrl"
                       :src="orgStore.brandLogoDataUrl"
                       alt="شعار المنصة"
                       class="h-full w-full object-contain"
                     />
-                    <Image v-else class="h-8 w-8 text-muted-foreground" />
+                    <Image v-else class="text-muted-foreground h-8 w-8" />
                   </div>
                   <div class="space-y-2">
                     <label class="cursor-pointer">
-                      <div class="inline-flex items-center gap-2 rounded-lg border border-border bg-background px-4 py-2 text-sm font-medium hover:bg-muted">
+                      <div
+                        class="border-border bg-background hover:bg-muted inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium"
+                      >
                         <Image class="h-4 w-4" />
                         {{ orgStore.brandLogoName || 'رفع شعار' }}
                       </div>
-                      <input type="file" accept=".svg,.png,.jpg,.jpeg" class="sr-only" @change="handleCBYLogoFile">
+                      <input
+                        type="file"
+                        accept=".svg,.png,.jpg,.jpeg"
+                        class="sr-only"
+                        @change="handleCBYLogoFile"
+                      />
                     </label>
-                    <p class="text-xs text-muted-foreground">PNG، SVG، JPG — 2 MB كحد أقصى</p>
+                    <p class="text-muted-foreground text-xs">PNG، SVG، JPG — 2 MB كحد أقصى</p>
                     <button
                       v-if="orgStore.brandLogoDataUrl"
                       type="button"
-                      class="text-xs text-destructive hover:underline"
+                      class="text-destructive text-xs hover:underline"
                       @click="orgStore.clearBrandLogo()"
                     >
                       إزالة الشعار
@@ -607,8 +712,12 @@ async function saveBankSecurity() {
                   />
                   <InputGroupAddon align="inline-end" class="h-full pe-1">
                     <label
-                      class="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-md border border-input transition-colors hover:bg-muted"
-                      :style="{ backgroundColor: /^#[0-9a-f]{6}$/i.test(pendingBrandColor) ? pendingBrandColor : undefined }"
+                      class="border-input hover:bg-muted flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-md border transition-colors"
+                      :style="{
+                        backgroundColor: /^#[0-9a-f]{6}$/i.test(pendingBrandColor)
+                          ? pendingBrandColor
+                          : undefined,
+                      }"
                     >
                       <input
                         :value="pendingBrandColor"
@@ -624,7 +733,9 @@ async function saveBankSecurity() {
 
             <div class="flex justify-end">
               <Button
-                :disabled="!settingsStore.isSectionDirty('theming', 'branding') || settingsStore.saving"
+                :disabled="
+                  !settingsStore.isSectionDirty('theming', 'branding') || settingsStore.saving
+                "
                 @click="saveBrandingSettings"
               >
                 <Loader2 v-if="settingsStore.saving" class="ms-2 h-4 w-4 animate-spin" />
@@ -633,43 +744,53 @@ async function saveBankSecurity() {
             </div>
           </section>
 
-
-
           <!-- ═══════════════════════════════════════════════════════════════ -->
           <!-- CBY: Security                                                   -->
           <!-- ═══════════════════════════════════════════════════════════════ -->
           <section v-if="isCBYAdmin && activeSection === 'security'" class="space-y-6">
             <div>
-              <h3 class="font-heading text-base font-semibold leading-6 text-foreground">سياسات الأمن</h3>
-              <p class="text-sm text-muted-foreground">معايير الحماية الإلزامية على مستوى المنصة لجميع المستخدمين</p>
+              <h3 class="font-heading text-foreground text-base leading-6 font-semibold">
+                سياسات الأمن
+              </h3>
+              <p class="text-muted-foreground text-sm">
+                معايير الحماية الإلزامية على مستوى المنصة لجميع المستخدمين
+              </p>
             </div>
             <Separator />
             <div class="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <div class="rounded-lg border bg-muted/20 p-3">
-                <div class="text-xs text-muted-foreground">عتبة قفل الحساب</div>
-                <div class="font-section text-sm font-semibold leading-5 text-foreground">10 محاولات</div>
+              <div class="bg-muted/20 rounded-lg border p-3">
+                <div class="text-muted-foreground text-xs">عتبة قفل الحساب</div>
+                <div class="font-section text-foreground text-sm leading-5 font-semibold">
+                  10 محاولات
+                </div>
               </div>
-              <div class="rounded-lg border bg-muted/20 p-3">
-                <div class="text-xs text-muted-foreground">مدة القفل</div>
-                <div class="font-section text-sm font-semibold leading-5 text-foreground">15 دقيقة</div>
+              <div class="bg-muted/20 rounded-lg border p-3">
+                <div class="text-muted-foreground text-xs">مدة القفل</div>
+                <div class="font-section text-foreground text-sm leading-5 font-semibold">
+                  15 دقيقة
+                </div>
               </div>
-              <div class="rounded-lg border bg-muted/20 p-3">
-                <div class="text-xs text-muted-foreground">تقييد تسجيل الدخول</div>
-                <div class="font-section text-sm font-semibold leading-5 text-foreground">5 / دقيقة</div>
+              <div class="bg-muted/20 rounded-lg border p-3">
+                <div class="text-muted-foreground text-xs">تقييد تسجيل الدخول</div>
+                <div class="font-section text-foreground text-sm leading-5 font-semibold">
+                  5 / دقيقة
+                </div>
               </div>
-              <div class="rounded-lg border bg-muted/20 p-3">
-                <div class="text-xs text-muted-foreground">انتهاء الجلسة</div>
-                <div class="font-section text-sm font-semibold leading-5 text-foreground">8 ساعات</div>
+              <div class="bg-muted/20 rounded-lg border p-3">
+                <div class="text-muted-foreground text-xs">انتهاء الجلسة</div>
+                <div class="font-section text-foreground text-sm leading-5 font-semibold">
+                  8 ساعات
+                </div>
               </div>
             </div>
             <div class="space-y-2">
               <div
                 v-for="item in cbySecuritySettings"
                 :key="item.label"
-                class="flex items-center justify-between rounded-lg border border-border p-4 transition-colors hover:bg-muted/30"
+                class="border-border hover:bg-muted/30 flex items-center justify-between rounded-lg border p-4 transition-colors"
               >
                 <div class="flex items-center gap-3">
-                  <Lock class="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <Lock class="text-muted-foreground h-4 w-4 shrink-0" />
                   <span class="text-sm">{{ item.label }}</span>
                 </div>
                 <Switch v-model="item.enabled" />
@@ -691,18 +812,22 @@ async function saveBankSecurity() {
           <!-- ═══════════════════════════════════════════════════════════════ -->
           <section v-if="isCBYAdmin && activeSection === 'notif'" class="space-y-6">
             <div>
-              <h3 class="font-heading text-base font-semibold leading-6 text-foreground">قنوات الإشعارات النظامية</h3>
-              <p class="text-sm text-muted-foreground">قنوات التنبيه المفعّلة لأحداث سير العمل على مستوى النظام</p>
+              <h3 class="font-heading text-foreground text-base leading-6 font-semibold">
+                قنوات الإشعارات النظامية
+              </h3>
+              <p class="text-muted-foreground text-sm">
+                قنوات التنبيه المفعّلة لأحداث سير العمل على مستوى النظام
+              </p>
             </div>
             <Separator />
             <div class="space-y-2">
               <div
                 v-for="item in cbySysNotifications"
                 :key="item.label"
-                class="flex items-center justify-between rounded-lg border border-border p-4 transition-colors hover:bg-muted/30"
+                class="border-border hover:bg-muted/30 flex items-center justify-between rounded-lg border p-4 transition-colors"
               >
                 <div class="flex items-center gap-3">
-                  <Bell class="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <Bell class="text-muted-foreground h-4 w-4 shrink-0" />
                   <span class="text-sm">{{ item.label }}</span>
                 </div>
                 <Switch v-model="item.enabled" />
@@ -724,44 +849,51 @@ async function saveBankSecurity() {
           <!-- ═══════════════════════════════════════════════════════════════ -->
           <section v-if="isCBYAdmin && activeSection === 'email'" class="space-y-6">
             <div>
-              <h3 class="font-heading text-base font-semibold leading-6 text-foreground">إعدادات البريد الإلكتروني</h3>
-              <p class="text-sm text-muted-foreground">تكوين خادم البريد الصادر للإشعارات والمراسلات الرسمية</p>
+              <h3 class="font-heading text-foreground text-base leading-6 font-semibold">
+                إعدادات البريد الإلكتروني
+              </h3>
+              <p class="text-muted-foreground text-sm">
+                تكوين خادم البريد الصادر للإشعارات والمراسلات الرسمية
+              </p>
             </div>
             <Separator />
             <div class="space-y-4">
-              <h3 class="font-section text-sm font-semibold leading-5 text-foreground">إعدادات الخادم</h3>
+              <h3 class="font-section text-foreground text-sm leading-5 font-semibold">
+                إعدادات الخادم
+              </h3>
               <div class="grid gap-5 md:grid-cols-2">
                 <FieldGroup>
                   <FieldLabel>SMTP Host</FieldLabel>
-                  <Input v-model="emailSettings.host"  placeholder="smtp.example.com" />
+                  <Input v-model="emailSettings.host" placeholder="smtp.example.com" />
                 </FieldGroup>
                 <FieldGroup>
                   <FieldLabel>المنفذ (Port)</FieldLabel>
-                  <Input v-model="emailSettings.port"  type="number" placeholder="587" />
+                  <Input v-model="emailSettings.port" type="number" placeholder="587" />
                 </FieldGroup>
               </div>
             </div>
             <Separator />
             <div class="space-y-4">
-              <h3 class="font-section text-sm font-semibold leading-5 text-foreground">بيانات الاعتماد</h3>
+              <h3 class="font-section text-foreground text-sm leading-5 font-semibold">
+                بيانات الاعتماد
+              </h3>
               <div class="grid gap-5 md:grid-cols-2">
                 <FieldGroup>
                   <FieldLabel>اسم المستخدم</FieldLabel>
-                  <Input v-model="emailSettings.username"  />
+                  <Input v-model="emailSettings.username" />
                 </FieldGroup>
                 <FieldGroup>
                   <FieldLabel>كلمة المرور</FieldLabel>
                   <div class="relative">
                     <Input
                       v-model="emailSettings.password"
-                      
                       :type="showEmailPassword ? 'text' : 'password'"
                       placeholder="••••••••"
                       class="pe-10"
                     />
                     <button
                       type="button"
-                      class="absolute inset-y-0 end-0 flex cursor-pointer items-center px-3 text-muted-foreground transition-colors hover:text-foreground"
+                      class="text-muted-foreground hover:text-foreground absolute inset-y-0 end-0 flex cursor-pointer items-center px-3 transition-colors"
                       @click="showEmailPassword = !showEmailPassword"
                     >
                       <EyeOff v-if="showEmailPassword" class="h-4 w-4" />
@@ -773,16 +905,22 @@ async function saveBankSecurity() {
             </div>
             <Separator />
             <div class="space-y-4">
-              <h3 class="font-section text-sm font-semibold leading-5 text-foreground">قوالب البريد</h3>
+              <h3 class="font-section text-foreground text-sm leading-5 font-semibold">
+                قوالب البريد
+              </h3>
               <FieldGroup>
                 <FieldLabel>قالب إشعار اعتماد الطلب</FieldLabel>
-                <Textarea v-model="emailSettings.approvalTemplate" rows="5" class="font-mono text-sm" />
-                <p class="text-xs text-muted-foreground">
+                <Textarea
+                  v-model="emailSettings.approvalTemplate"
+                  rows="5"
+                  class="font-mono text-sm"
+                />
+                <p class="text-muted-foreground text-xs">
                   المتغيرات المتاحة:
-                  <code class="rounded bg-muted px-1">&#123;&#123;importer&#125;&#125;</code>
-                  <code class="rounded bg-muted px-1">&#123;&#123;ref&#125;&#125;</code>
-                  <code class="rounded bg-muted px-1">&#123;&#123;amount&#125;&#125;</code>
-                  <code class="rounded bg-muted px-1">&#123;&#123;currency&#125;&#125;</code>
+                  <code class="bg-muted rounded px-1">&#123;&#123;importer&#125;&#125;</code>
+                  <code class="bg-muted rounded px-1">&#123;&#123;ref&#125;&#125;</code>
+                  <code class="bg-muted rounded px-1">&#123;&#123;amount&#125;&#125;</code>
+                  <code class="bg-muted rounded px-1">&#123;&#123;currency&#125;&#125;</code>
                 </p>
               </FieldGroup>
             </div>
@@ -802,13 +940,19 @@ async function saveBankSecurity() {
           <!-- ═══════════════════════════════════════════════════════════════ -->
           <section v-if="isCBYAdmin && activeSection === 'workflow'" class="space-y-6">
             <div>
-              <h3 class="font-heading text-base font-semibold leading-6 text-foreground">إعدادات سير العمل</h3>
-              <p class="text-sm text-muted-foreground">تكوين معاملات الموافقة، اللجان، وقواعد التصويت</p>
+              <h3 class="font-heading text-foreground text-base leading-6 font-semibold">
+                إعدادات سير العمل
+              </h3>
+              <p class="text-muted-foreground text-sm">
+                تكوين معاملات الموافقة، اللجان، وقواعد التصويت
+              </p>
             </div>
             <Separator />
             <div class="space-y-4">
               <div class="flex items-center gap-2">
-                <h3 class="font-section text-sm font-semibold leading-5 text-foreground">هيكل اللجان</h3>
+                <h3 class="font-section text-foreground text-sm leading-5 font-semibold">
+                  هيكل اللجان
+                </h3>
                 <Badge variant="secondary" class="text-xs">تنظيمي</Badge>
               </div>
               <div class="grid gap-5 md:grid-cols-2">
@@ -825,7 +969,9 @@ async function saveBankSecurity() {
             <Separator />
             <div class="space-y-4">
               <div class="flex items-center gap-2">
-                <h3 class="font-section text-sm font-semibold leading-5 text-foreground">النصاب والمهل</h3>
+                <h3 class="font-section text-foreground text-sm leading-5 font-semibold">
+                  النصاب والمهل
+                </h3>
                 <Badge variant="secondary" class="text-xs">اجتماعات</Badge>
               </div>
               <div class="grid gap-5 md:grid-cols-2">
@@ -842,21 +988,29 @@ async function saveBankSecurity() {
             <Separator />
             <div class="space-y-4">
               <div class="flex items-center gap-2">
-                <h3 class="font-section text-sm font-semibold leading-5 text-foreground">قواعد التصويت</h3>
+                <h3 class="font-section text-foreground text-sm leading-5 font-semibold">
+                  قواعد التصويت
+                </h3>
                 <Badge variant="secondary" class="text-xs">صلاحيات</Badge>
               </div>
               <div class="space-y-3">
-                <div class="flex items-center justify-between rounded-lg border border-border p-4">
+                <div class="border-border flex items-center justify-between rounded-lg border p-4">
                   <div>
-                    <p class="font-section text-sm font-semibold leading-5 text-foreground">تصويت سري</p>
-                    <p class="text-xs text-muted-foreground">إخفاء أصوات الأعضاء قبل إغلاق الجلسة</p>
+                    <p class="font-section text-foreground text-sm leading-5 font-semibold">
+                      تصويت سري
+                    </p>
+                    <p class="text-muted-foreground text-xs">
+                      إخفاء أصوات الأعضاء قبل إغلاق الجلسة
+                    </p>
                   </div>
                   <Switch v-model="workflowSettings.hiddenVoting" />
                 </div>
-                <div class="flex items-center justify-between rounded-lg border border-border p-4">
+                <div class="border-border flex items-center justify-between rounded-lg border p-4">
                   <div>
-                    <p class="font-section text-sm font-semibold leading-5 text-foreground">ترجيح صوت المدير عند التعادل</p>
-                    <p class="text-xs text-muted-foreground">يملك مدير اللجنة صلاحية كسر التعادل</p>
+                    <p class="font-section text-foreground text-sm leading-5 font-semibold">
+                      ترجيح صوت المدير عند التعادل
+                    </p>
+                    <p class="text-muted-foreground text-xs">يملك مدير اللجنة صلاحية كسر التعادل</p>
                   </div>
                   <Switch v-model="workflowSettings.managerWeight" />
                 </div>
@@ -878,26 +1032,44 @@ async function saveBankSecurity() {
           <!-- ═══════════════════════════════════════════════════════════════ -->
           <section v-if="isBankAdmin && activeSection === 'profile'" class="space-y-6">
             <div>
-              <h3 class="font-heading text-base font-semibold leading-6 text-foreground">معلومات البنك</h3>
-              <p class="text-sm text-muted-foreground">البيانات الرسمية للبنك المسجلة لدى البنك المركزي اليمني</p>
+              <h3 class="font-heading text-foreground text-base leading-6 font-semibold">
+                معلومات البنك
+              </h3>
+              <p class="text-muted-foreground text-sm">
+                البيانات الرسمية للبنك المسجلة لدى البنك المركزي اليمني
+              </p>
             </div>
             <Separator />
 
             <!-- Logo -->
             <div class="flex items-center gap-4">
-              <div class="flex h-20 w-20 items-center justify-center overflow-hidden rounded-xl border border-border bg-muted">
-                <img v-if="bankProfile.logoPreview" :src="bankProfile.logoPreview" alt="شعار البنك" class="h-full w-full object-contain" />
-                <Building2 v-else class="h-8 w-8 text-muted-foreground" />
+              <div
+                class="border-border bg-muted flex h-20 w-20 items-center justify-center overflow-hidden rounded-xl border"
+              >
+                <img
+                  v-if="bankProfile.logoPreview"
+                  :src="bankProfile.logoPreview"
+                  alt="شعار البنك"
+                  class="h-full w-full object-contain"
+                />
+                <Building2 v-else class="text-muted-foreground h-8 w-8" />
               </div>
               <div class="space-y-1">
                 <label class="cursor-pointer">
-                  <div class="inline-flex items-center gap-2 rounded-lg border border-border bg-background px-4 py-2 text-sm font-medium hover:bg-muted">
+                  <div
+                    class="border-border bg-background hover:bg-muted inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium"
+                  >
                     <Image class="h-4 w-4" />
                     رفع شعار
                   </div>
-                  <Input type="file" accept=".png,.svg,.jpg,.jpeg" class="hidden" @change="handleBankLogoFile" />
+                  <Input
+                    type="file"
+                    accept=".png,.svg,.jpg,.jpeg"
+                    class="hidden"
+                    @change="handleBankLogoFile"
+                  />
                 </label>
-                <p class="text-xs text-muted-foreground">PNG، SVG، JPG — 2 MB كحد أقصى</p>
+                <p class="text-muted-foreground text-xs">PNG، SVG، JPG — 2 MB كحد أقصى</p>
               </div>
             </div>
 
@@ -906,35 +1078,43 @@ async function saveBankSecurity() {
             <div class="grid gap-4 sm:grid-cols-2">
               <div class="space-y-2">
                 <Label>الاسم بالعربية</Label>
-                <Input v-model="bankProfile.nameAr"  placeholder="البنك اليمني للتجارة" />
+                <Input v-model="bankProfile.nameAr" placeholder="البنك اليمني للتجارة" />
               </div>
               <div class="space-y-2">
                 <Label>الاسم بالإنجليزية</Label>
-                <Input v-model="bankProfile.nameEn"  placeholder="Yemen Commercial Bank" />
+                <Input v-model="bankProfile.nameEn" placeholder="Yemen Commercial Bank" />
               </div>
               <div class="space-y-2">
                 <Label>رمز البنك (CBY)</Label>
-                <Input v-model="bankProfile.code"  placeholder="YCB" class="font-mono uppercase" maxlength="10" />
+                <Input
+                  v-model="bankProfile.code"
+                  placeholder="YCB"
+                  class="font-mono uppercase"
+                  maxlength="10"
+                />
               </div>
               <div class="space-y-2">
                 <Label>البريد الإلكتروني</Label>
-                <Input v-model="bankProfile.email" type="email"  placeholder="info@bank.ye" />
+                <Input v-model="bankProfile.email" type="email" placeholder="info@bank.ye" />
               </div>
               <div class="space-y-2">
                 <Label>رقم الهاتف</Label>
-                <Input v-model="bankProfile.phone"  placeholder="+967 1 000 000" />
+                <Input v-model="bankProfile.phone" placeholder="+967 1 000 000" />
               </div>
               <div class="space-y-2">
                 <Label>الموقع الإلكتروني</Label>
-                <Input v-model="bankProfile.website"  placeholder="https://bank.ye" />
+                <Input v-model="bankProfile.website" placeholder="https://bank.ye" />
               </div>
               <div class="space-y-2 sm:col-span-2">
                 <Label>العنوان</Label>
-                <Input v-model="bankProfile.address"  placeholder="صنعاء، اليمن" />
+                <Input v-model="bankProfile.address" placeholder="صنعاء، اليمن" />
               </div>
             </div>
             <div class="flex justify-end">
-              <Button :disabled="!settingsStore.isSectionDirty('bankProfile') || settingsStore.saving" @click="saveBankProfile">
+              <Button
+                :disabled="!settingsStore.isSectionDirty('bankProfile') || settingsStore.saving"
+                @click="saveBankProfile"
+              >
                 <Save class="h-4 w-4" />
                 حفظ معلومات البنك
               </Button>
@@ -946,8 +1126,12 @@ async function saveBankSecurity() {
           <!-- ═══════════════════════════════════════════════════════════════ -->
           <section v-if="isBankAdmin && activeSection === 'swift'" class="space-y-6">
             <div>
-              <h3 class="font-heading text-base font-semibold leading-6 text-foreground">إعداد SWIFT</h3>
-              <p class="text-sm text-muted-foreground">تكوين رموز وإعدادات شبكة التحويلات المالية الدولية SWIFT</p>
+              <h3 class="font-heading text-foreground text-base leading-6 font-semibold">
+                إعداد SWIFT
+              </h3>
+              <p class="text-muted-foreground text-sm">
+                تكوين رموز وإعدادات شبكة التحويلات المالية الدولية SWIFT
+              </p>
             </div>
             <Separator />
             <FieldGroup>
@@ -964,15 +1148,23 @@ async function saveBankSecurity() {
                     </Badge>
                   </div>
                 </FieldContent>
-                <FieldDescription>تفعيل أو تعطيل إمكانية إصدار تحويلات SWIFT من هذا البنك</FieldDescription>
+                <FieldDescription
+                  >تفعيل أو تعطيل إمكانية إصدار تحويلات SWIFT من هذا البنك</FieldDescription
+                >
               </Field>
             </FieldGroup>
             <Separator />
             <div class="grid gap-4 sm:grid-cols-2">
               <div class="space-y-2">
                 <Label>رمز BIC الخاص بالبنك</Label>
-                <Input v-model="swift.bic"  placeholder="YCBBYEYE" maxlength="11" class="font-mono uppercase" :disabled="!swift.enabled" />
-                <p class="text-xs text-muted-foreground">8 أو 11 حرفاً — رمز SWIFT/BIC المعتمد</p>
+                <Input
+                  v-model="swift.bic"
+                  placeholder="YCBBYEYE"
+                  maxlength="11"
+                  class="font-mono uppercase"
+                  :disabled="!swift.enabled"
+                />
+                <p class="text-muted-foreground text-xs">8 أو 11 حرفاً — رمز SWIFT/BIC المعتمد</p>
               </div>
               <div class="space-y-2">
                 <Label>صيغة رسائل SWIFT</Label>
@@ -989,11 +1181,21 @@ async function saveBankSecurity() {
               </div>
               <div class="space-y-2">
                 <Label>اسم البنك المراسل</Label>
-                <Input v-model="swift.correspondentBankName"  placeholder="International Bank" :disabled="!swift.enabled" />
+                <Input
+                  v-model="swift.correspondentBankName"
+                  placeholder="International Bank"
+                  :disabled="!swift.enabled"
+                />
               </div>
               <div class="space-y-2">
                 <Label>BIC البنك المراسل</Label>
-                <Input v-model="swift.correspondentBankBic"  placeholder="IBKNUS33" maxlength="11" class="font-mono uppercase" :disabled="!swift.enabled" />
+                <Input
+                  v-model="swift.correspondentBankBic"
+                  placeholder="IBKNUS33"
+                  maxlength="11"
+                  class="font-mono uppercase"
+                  :disabled="!swift.enabled"
+                />
               </div>
             </div>
             <Separator />
@@ -1008,11 +1210,17 @@ async function saveBankSecurity() {
                     </Label>
                   </div>
                 </FieldContent>
-                <FieldDescription>في وضع الاختبار لا تُرسَل رسائل SWIFT الحقيقية — للتطوير والاختبار فقط</FieldDescription>
+                <FieldDescription
+                  >في وضع الاختبار لا تُرسَل رسائل SWIFT الحقيقية — للتطوير والاختبار
+                  فقط</FieldDescription
+                >
               </Field>
             </FieldGroup>
             <div class="flex justify-end">
-              <Button :disabled="!settingsStore.isSectionDirty('bankSwift') || settingsStore.saving" @click="saveBankSwift">
+              <Button
+                :disabled="!settingsStore.isSectionDirty('bankSwift') || settingsStore.saving"
+                @click="saveBankSwift"
+              >
                 <Save class="h-4 w-4" />
                 حفظ إعدادات SWIFT
               </Button>
@@ -1024,23 +1232,34 @@ async function saveBankSecurity() {
           <!-- ═══════════════════════════════════════════════════════════════ -->
           <section v-if="isBankAdmin && activeSection === 'notif'" class="space-y-6">
             <div>
-              <h3 class="font-heading text-base font-semibold leading-6 text-foreground">إشعارات البنك</h3>
-              <p class="text-sm text-muted-foreground">تحديد الأحداث التي يتلقى عنها مديرو البنك إشعارات بريدية ومنصة</p>
+              <h3 class="font-heading text-foreground text-base leading-6 font-semibold">
+                إشعارات البنك
+              </h3>
+              <p class="text-muted-foreground text-sm">
+                تحديد الأحداث التي يتلقى عنها مديرو البنك إشعارات بريدية ومنصة
+              </p>
             </div>
             <Separator />
             <div
               v-for="notif in bankNotifications"
               :key="notif.id"
-              class="flex items-center justify-between gap-4 rounded-lg px-3 py-3 transition-colors hover:bg-muted/40"
+              class="hover:bg-muted/40 flex items-center justify-between gap-4 rounded-lg px-3 py-3 transition-colors"
             >
               <div class="min-w-0 flex-1">
-                <p class="font-section text-sm font-semibold leading-5 text-foreground">{{ notif.label }}</p>
-                <p class="mt-0.5 text-xs text-muted-foreground">{{ notif.description }}</p>
+                <p class="font-section text-foreground text-sm leading-5 font-semibold">
+                  {{ notif.label }}
+                </p>
+                <p class="text-muted-foreground mt-0.5 text-xs">{{ notif.description }}</p>
               </div>
               <Switch :id="`notif-${notif.id}`" v-model="notif.enabled" class="shrink-0" />
             </div>
             <div class="flex justify-end">
-              <Button :disabled="!settingsStore.isSectionDirty('bankNotifications') || settingsStore.saving" @click="saveBankNotifications">
+              <Button
+                :disabled="
+                  !settingsStore.isSectionDirty('bankNotifications') || settingsStore.saving
+                "
+                @click="saveBankNotifications"
+              >
                 <Save class="h-4 w-4" />
                 حفظ إعدادات الإشعارات
               </Button>
@@ -1052,48 +1271,70 @@ async function saveBankSecurity() {
           <!-- ═══════════════════════════════════════════════════════════════ -->
           <section v-if="isBankAdmin && activeSection === 'security'" class="space-y-6">
             <div>
-              <h3 class="font-heading text-base font-semibold leading-6 text-foreground">أمان البنك</h3>
-              <p class="text-sm text-muted-foreground">سياسات كلمات المرور وإدارة الجلسات وقيود الوصول لمستخدمي بنكك</p>
+              <h3 class="font-heading text-foreground text-base leading-6 font-semibold">
+                أمان البنك
+              </h3>
+              <p class="text-muted-foreground text-sm">
+                سياسات كلمات المرور وإدارة الجلسات وقيود الوصول لمستخدمي بنكك
+              </p>
             </div>
             <Separator />
 
             <!-- Password policy -->
             <div class="space-y-4">
               <div class="flex items-center gap-2">
-                <Lock class="h-4 w-4 text-muted-foreground" />
-                <h3 class="font-section text-sm font-semibold leading-5 text-foreground">سياسة كلمة المرور</h3>
+                <Lock class="text-muted-foreground h-4 w-4" />
+                <h3 class="font-section text-foreground text-sm leading-5 font-semibold">
+                  سياسة كلمة المرور
+                </h3>
               </div>
               <div class="grid gap-4 sm:grid-cols-2">
                 <div class="space-y-2">
                   <Label>الحد الأدنى لطول كلمة المرور</Label>
                   <div class="flex items-center gap-3">
-                    <Input v-model.number="bankSecurity.passwordMinLength" type="number" min="6" max="32" class="w-24"  />
-                    <span class="text-sm text-muted-foreground">حرف على الأقل</span>
+                    <Input
+                      v-model.number="bankSecurity.passwordMinLength"
+                      type="number"
+                      min="6"
+                      max="32"
+                      class="w-24"
+                    />
+                    <span class="text-muted-foreground text-sm">حرف على الأقل</span>
                   </div>
                 </div>
                 <div class="space-y-2">
                   <Label>انتهاء صلاحية كلمة المرور</Label>
                   <div class="flex items-center gap-3">
-                    <Input v-model.number="bankSecurity.passwordExpiryDays" type="number" min="0" max="365" class="w-24"  />
-                    <span class="text-sm text-muted-foreground">يوم (0 = بدون انتهاء)</span>
+                    <Input
+                      v-model.number="bankSecurity.passwordExpiryDays"
+                      type="number"
+                      min="0"
+                      max="365"
+                      class="w-24"
+                    />
+                    <span class="text-muted-foreground text-sm">يوم (0 = بدون انتهاء)</span>
                   </div>
                 </div>
               </div>
               <div class="space-y-3">
                 <div
-                  v-for="(item, key) in ({
+                  v-for="(item, key) in {
                     passwordRequireUppercase: 'تتضمن حروفاً كبيرة (A–Z)',
                     passwordRequireNumbers: 'تتضمن أرقاماً (0–9)',
                     passwordRequireSpecial: 'تتضمن رموزاً خاصة (!@#$...)',
-                  } as const)"
+                  } as const"
                   :key="key"
                   class="flex items-center justify-between gap-4"
                 >
-                  <Label :for="`pw-${key}`" class="cursor-pointer text-sm text-muted-foreground">{{ item }}</Label>
+                  <Label :for="`pw-${key}`" class="text-muted-foreground cursor-pointer text-sm">{{
+                    item
+                  }}</Label>
                   <Switch
                     :id="`pw-${key}`"
                     :model-value="bankSecurity[key as keyof typeof bankSecurity] as boolean"
-                    @update:model-value="(v) => ((bankSecurity[key as keyof typeof bankSecurity] as boolean) = v)"
+                    @update:model-value="
+                      (v) => ((bankSecurity[key as keyof typeof bankSecurity] as boolean) = v)
+                    "
                   />
                 </div>
               </div>
@@ -1103,27 +1344,47 @@ async function saveBankSecurity() {
 
             <!-- Session & lockout -->
             <div class="space-y-4">
-              <h3 class="font-section text-sm font-semibold leading-5 text-foreground">الجلسات والقيود</h3>
+              <h3 class="font-section text-foreground text-sm leading-5 font-semibold">
+                الجلسات والقيود
+              </h3>
               <div class="grid gap-4 sm:grid-cols-2">
                 <div class="space-y-2">
                   <Label>مهلة انتهاء الجلسة</Label>
                   <div class="flex items-center gap-3">
-                    <Input v-model.number="bankSecurity.sessionTimeoutMinutes" type="number" min="5" max="480" class="w-24"  />
-                    <span class="text-sm text-muted-foreground">دقيقة</span>
+                    <Input
+                      v-model.number="bankSecurity.sessionTimeoutMinutes"
+                      type="number"
+                      min="5"
+                      max="480"
+                      class="w-24"
+                    />
+                    <span class="text-muted-foreground text-sm">دقيقة</span>
                   </div>
                 </div>
                 <div class="space-y-2">
                   <Label>الحد الأقصى لمحاولات تسجيل الدخول</Label>
                   <div class="flex items-center gap-3">
-                    <Input v-model.number="bankSecurity.maxLoginAttempts" type="number" min="3" max="20" class="w-24"  />
-                    <span class="text-sm text-muted-foreground">محاولة</span>
+                    <Input
+                      v-model.number="bankSecurity.maxLoginAttempts"
+                      type="number"
+                      min="3"
+                      max="20"
+                      class="w-24"
+                    />
+                    <span class="text-muted-foreground text-sm">محاولة</span>
                   </div>
                 </div>
                 <div class="space-y-2">
                   <Label>مدة الإغلاق بعد تجاوز المحاولات</Label>
                   <div class="flex items-center gap-3">
-                    <Input v-model.number="bankSecurity.lockoutDurationMinutes" type="number" min="5" max="1440" class="w-24"  />
-                    <span class="text-sm text-muted-foreground">دقيقة</span>
+                    <Input
+                      v-model.number="bankSecurity.lockoutDurationMinutes"
+                      type="number"
+                      min="5"
+                      max="1440"
+                      class="w-24"
+                    />
+                    <span class="text-muted-foreground text-sm">دقيقة</span>
                   </div>
                 </div>
               </div>
@@ -1135,8 +1396,12 @@ async function saveBankSecurity() {
             <div class="space-y-4">
               <div class="flex items-center justify-between">
                 <div>
-                  <h3 class="font-section text-sm font-semibold leading-5 text-foreground">قيود عناوين IP</h3>
-                  <p class="mt-0.5 text-xs text-muted-foreground">السماح بالوصول من نطاقات IP محددة فقط</p>
+                  <h3 class="font-section text-foreground text-sm leading-5 font-semibold">
+                    قيود عناوين IP
+                  </h3>
+                  <p class="text-muted-foreground mt-0.5 text-xs">
+                    السماح بالوصول من نطاقات IP محددة فقط
+                  </p>
                 </div>
                 <Switch id="ip-restriction" v-model="bankSecurity.ipRestrictionEnabled" />
               </div>
@@ -1144,23 +1409,26 @@ async function saveBankSecurity() {
                 <Label>نطاقات IP المسموح بها</Label>
                 <textarea
                   v-model="bankSecurity.allowedIpRanges"
-                  
                   rows="4"
                   placeholder="192.168.1.0/24&#10;10.0.0.1"
-                  class="w-full rounded-lg border border-border bg-background p-3 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  class="border-border bg-background focus:ring-primary/30 w-full rounded-lg border p-3 font-mono text-sm focus:ring-2 focus:outline-none"
                 />
-                <p class="text-xs text-muted-foreground">أدخل عنواناً واحداً أو نطاق CIDR في كل سطر</p>
+                <p class="text-muted-foreground text-xs">
+                  أدخل عنواناً واحداً أو نطاق CIDR في كل سطر
+                </p>
               </div>
             </div>
 
             <div class="flex justify-end">
-              <Button :disabled="!settingsStore.isSectionDirty('bankSecurity') || settingsStore.saving" @click="saveBankSecurity">
+              <Button
+                :disabled="!settingsStore.isSectionDirty('bankSecurity') || settingsStore.saving"
+                @click="saveBankSecurity"
+              >
                 <Save class="h-4 w-4" />
                 حفظ إعدادات الأمان
               </Button>
             </div>
           </section>
-
         </div>
       </div>
     </div>

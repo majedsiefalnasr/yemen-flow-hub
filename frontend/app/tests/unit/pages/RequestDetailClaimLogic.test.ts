@@ -42,7 +42,8 @@ function resolveBannerType(
 ): 'active-review' | 'claimed-by-others' | 'locked' | 'correction' | 'none' {
   if (!req) return 'none'
   if (userRole === UserRole.SUPPORT_COMMITTEE && isActiveReviewer) return 'active-review'
-  if (userRole === UserRole.SUPPORT_COMMITTEE && req.is_claimed && !req.is_claimed_by_me) return 'claimed-by-others'
+  if (userRole === UserRole.SUPPORT_COMMITTEE && req.is_claimed && !req.is_claimed_by_me)
+    return 'claimed-by-others'
   if (req.status === RequestStatus.DRAFT_REJECTED_INTERNAL) return 'correction'
 
   const lockedStatuses = new Set([
@@ -69,9 +70,7 @@ function resolveBannerType(
 // Logic mirrored from onActionCompleted cleanup: active reviewer state only remains
 // valid while the request is still in-progress and claimed by the current user.
 function shouldKeepActiveReview(req: ImportRequest | null): boolean {
-  return !!req
-    && req.status === RequestStatus.SUPPORT_REVIEW_IN_PROGRESS
-    && req.is_claimed_by_me
+  return !!req && req.status === RequestStatus.SUPPORT_REVIEW_IN_PROGRESS && req.is_claimed_by_me
 }
 
 describe('Request detail — SUPPORT_COMMITTEE claim action resolution', () => {
@@ -110,7 +109,10 @@ describe('Request detail — SUPPORT_COMMITTEE claim action resolution', () => {
 
 describe('Request detail — banner resolution', () => {
   it('shows active-review banner when SUPPORT_COMMITTEE and isActiveReviewer', () => {
-    const req = makeRequest({ status: RequestStatus.SUPPORT_REVIEW_IN_PROGRESS, is_claimed_by_me: true })
+    const req = makeRequest({
+      status: RequestStatus.SUPPORT_REVIEW_IN_PROGRESS,
+      is_claimed_by_me: true,
+    })
     expect(resolveBannerType(UserRole.SUPPORT_COMMITTEE, true, req)).toBe('active-review')
   })
 
@@ -141,7 +143,11 @@ describe('Request detail — banner resolution', () => {
 
   it('active-review takes priority over claimed-by-others', () => {
     // isActiveReviewer true even though request says is_claimed_by_me false (edge case)
-    const req = makeRequest({ status: RequestStatus.SUPPORT_REVIEW_IN_PROGRESS, is_claimed: true, is_claimed_by_me: false })
+    const req = makeRequest({
+      status: RequestStatus.SUPPORT_REVIEW_IN_PROGRESS,
+      is_claimed: true,
+      is_claimed_by_me: false,
+    })
     expect(resolveBannerType(UserRole.SUPPORT_COMMITTEE, true, req)).toBe('active-review')
   })
 

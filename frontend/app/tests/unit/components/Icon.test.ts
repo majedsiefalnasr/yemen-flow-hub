@@ -4,14 +4,37 @@ import { describe, it, expect } from 'vitest'
 // Tests verify the mapping logic and prop defaults.
 
 const ICON_NAMES = [
-  'home', 'file-text', 'plus-circle', 'building', 'bank', 'stamp',
-  'bar-chart-2', 'shield-check', 'bell', 'landmark', 'users', 'user',
-  'file-cog', 'user-check', 'settings', 'menu', 'x', 'search', 'sliders',
-  'sun', 'moon', 'chevron-down', 'clock', 'check-circle', 'x-circle',
-  'rotate-ccw', 'upload-cloud', 'vote',
+  'home',
+  'file-text',
+  'plus-circle',
+  'building',
+  'bank',
+  'stamp',
+  'bar-chart-2',
+  'shield-check',
+  'bell',
+  'landmark',
+  'users',
+  'user',
+  'file-cog',
+  'user-check',
+  'settings',
+  'menu',
+  'x',
+  'search',
+  'sliders',
+  'sun',
+  'moon',
+  'chevron-down',
+  'clock',
+  'check-circle',
+  'x-circle',
+  'rotate-ccw',
+  'upload-cloud',
+  'vote',
 ] as const
 
-type IconName = typeof ICON_NAMES[number]
+type IconName = (typeof ICON_NAMES)[number]
 
 const DEFAULT_SIZE = 18
 
@@ -22,19 +45,41 @@ function resolveSize(size?: number): number {
 describe('Icon — name-to-component map', () => {
   it('contains all required icon names', () => {
     const required: IconName[] = [
-      'home', 'file-text', 'plus-circle', 'building', 'stamp',
-      'bar-chart-2', 'shield-check', 'bell', 'landmark', 'users',
-      'file-cog', 'user-check', 'settings', 'menu', 'x', 'search',
-      'sliders', 'sun', 'moon', 'chevron-down',
+      'home',
+      'file-text',
+      'plus-circle',
+      'building',
+      'stamp',
+      'bar-chart-2',
+      'shield-check',
+      'bell',
+      'landmark',
+      'users',
+      'file-cog',
+      'user-check',
+      'settings',
+      'menu',
+      'x',
+      'search',
+      'sliders',
+      'sun',
+      'moon',
+      'chevron-down',
     ]
-    required.forEach(name => {
+    required.forEach((name) => {
       expect(ICON_NAMES).toContain(name)
     })
   })
 
   it('includes notification icons', () => {
-    const notifIcons: IconName[] = ['check-circle', 'x-circle', 'rotate-ccw', 'upload-cloud', 'vote']
-    notifIcons.forEach(name => expect(ICON_NAMES).toContain(name))
+    const notifIcons: IconName[] = [
+      'check-circle',
+      'x-circle',
+      'rotate-ccw',
+      'upload-cloud',
+      'vote',
+    ]
+    notifIcons.forEach((name) => expect(ICON_NAMES).toContain(name))
   })
 
   it('includes search/global icons (clock, user, bank)', () => {

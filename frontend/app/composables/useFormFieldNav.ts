@@ -41,7 +41,7 @@ export function useFormFieldNav() {
     const scope: Element = target.closest('[data-field-nav]') ?? document.body
 
     const focusable = Array.from(scope.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
-      el => !el.closest('[aria-hidden="true"]') && getComputedStyle(el).display !== 'none',
+      (el) => !el.closest('[aria-hidden="true"]') && getComputedStyle(el).display !== 'none',
     )
 
     const currentIndex = focusable.indexOf(target)

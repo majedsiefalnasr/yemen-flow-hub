@@ -20,18 +20,37 @@ function formatAmount(v: number): string {
 </script>
 
 <template>
-  <div class="flex flex-col gap-2" >
-    <div v-if="!data.length" class="h-28 flex items-center justify-center text-[var(--color-text-subtle)] text-sm">لا توجد بيانات</div>
+  <div class="flex flex-col gap-2">
+    <div
+      v-if="!data.length"
+      class="flex h-28 items-center justify-center text-sm text-[var(--color-text-subtle)]"
+    >
+      لا توجد بيانات
+    </div>
     <div v-else class="flex flex-col gap-3" role="list" aria-label="مخطط تمويل العملات">
-      <div v-for="item in data" :key="item.currency" class="flex items-center gap-2.5" role="listitem">
-        <span class="w-12 text-xs font-semibold text-[var(--color-text-primary)] flex-shrink-0 text-end">{{ item.currency }}</span>
-        <div class="flex-1 h-3 bg-[var(--color-surface-subtle)] rounded-full overflow-hidden">
+      <div
+        v-for="item in data"
+        :key="item.currency"
+        class="flex items-center gap-2.5"
+        role="listitem"
+      >
+        <span
+          class="w-12 flex-shrink-0 text-end text-xs font-semibold text-[var(--color-text-primary)]"
+          >{{ item.currency }}</span
+        >
+        <div class="h-3 flex-1 overflow-hidden rounded-full bg-[var(--color-surface-subtle)]">
           <div
-            class="h-full bg-primary rounded-full transition-all duration-500"
-            :style="{ width: `${(item.amount / maxAmount) * 100}%`, minWidth: item.amount > 0 ? '2px' : '0' }"
+            class="bg-primary h-full rounded-full transition-all duration-500"
+            :style="{
+              width: `${(item.amount / maxAmount) * 100}%`,
+              minWidth: item.amount > 0 ? '2px' : '0',
+            }"
           />
         </div>
-        <span class="w-13 text-xs text-[var(--color-text-subtle)] flex-shrink-0 text-start font-tabular-nums">{{ formatAmount(item.amount) }}</span>
+        <span
+          class="font-tabular-nums w-13 flex-shrink-0 text-start text-xs text-[var(--color-text-subtle)]"
+          >{{ formatAmount(item.amount) }}</span
+        >
       </div>
     </div>
   </div>

@@ -99,7 +99,7 @@ describe('BankReviewerDashboard — review queue status composition', () => {
       makeRequest({ id: 1, status: RequestStatus.SUBMITTED }),
       makeRequest({ id: 2, status: RequestStatus.BANK_REVIEW }),
     ]
-    const statuses = queue.map(r => r.status)
+    const statuses = queue.map((r) => r.status)
     expect(statuses).toContain(RequestStatus.SUBMITTED)
     expect(statuses).toContain(RequestStatus.BANK_REVIEW)
   })
