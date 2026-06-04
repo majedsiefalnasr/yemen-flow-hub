@@ -69,7 +69,8 @@
       "Bash(xargs ls -la)",
       "Bash(IMPECCABLE_CONTEXT_DIR=frontend node .claude/skills/impeccable/scripts/load-context.mjs)",
       "Bash(rtk find *)",
-      "Bash(rtk docker *)"
+      "Bash(rtk docker *)",
+      "Bash(node_modules/.bin/vitest run *)"
     ]
   }
 }

@@ -197,6 +197,8 @@ Place the following font files in `backend/resources/fonts/`:
 
 mPDF font configuration is passed inline when constructing the `Mpdf` instance (see `PdfGeneratorService` below). No `config/mpdf.php` file needed.
 
+Implementation note: the available Amiri font files in this checkout trigger an mPDF OTL parser error (`GPOS Lookup Type 5, Format 3 not supported`) when Arabic shaping is enabled. The shipped implementation therefore uses mPDF's bundled `xbriyaz` Arabic OTL font for generated PDFs so the rendered Arabic letters are connected. The Amiri files remain present for future replacement once a compatible font build is provided.
+
 ---
 
 ## Section 2 — Brand Assets
@@ -220,6 +222,89 @@ Reference in Blade templates as: `public_path('brand/yemen-emblem.png')`.
 | Border | `#cccccc` |
 | Subtle text (footer) | `#6c757d` |
 | Page background | `#ffffff` |
+
+---
+
+## Section 2.5 — File Storage Strategy
+
+This section codifies the storage convention for **every** generated or uploaded PDF in this
+feature (and aligns the new docs with what the codebase already does). It is intentionally a
+*convention*, not new infrastructure — no new disk, no new table, no purge job. The implementing
+AI must follow it exactly so the two new documents, the customs PDF, and any future doc all live
+the same way.
+
+### 2.5.1 Existing convention (do not diverge)
+
+The codebase already stores all documents identically — match it:
+
+| Aspect | Rule |
+|---|---|
+| **Disk** | `Storage::disk('local')` **only**. Never the `public` disk. No public URLs are ever generated for any document. |
+| **Root prefix** | Every file lives under `private/`. The `private/` prefix is added at storage time and stripped from the DB pointer. |
+| **Layout** | Per-document-type folder, then per-request id: `private/{type-folder}/{request_id}/{filename}`. |
+| **DB pointer** | Store the **relative** path (without the `private/` prefix) in the model column. Re-add `private/` when reading: `'private/'.$model->stored_path`. |
+| **Access** | All downloads stream through a policy-guarded controller via `Storage::disk('local')->readStream(...)`. Authorization is checked on every read. There are no direct file links. |
+| **Generation** | Generated PDFs are written with `Storage::disk('local')->put($storedPath, $pdf->output())` **inside the same DB transaction** that records the pointer, so a failed write rolls back the row. |
+
+Reference implementations already in the repo (mirror these exactly):
+- `backend/app/Services/Documents/DocumentService.php` — `storeDocument()`, `download()`, `deleteFile()`
+- `backend/app/Services/Customs/CustomsService.php` — generate→`put()`→pointer inside `DB::transaction`
+
+### 2.5.2 Folder map for this feature
+
+Extend the existing per-type folders. The two new docs get their own folders, matching the
+existing pattern (`requests/`, `swift/`, `fx-request/`):
+
+| Document | Folder | DB pointer column |
+|---|---|---|
+| Request supporting docs (existing) | `private/requests/{request_id}/` | `request_documents.stored_path` |
+| SWIFT (existing) | `private/swift/{request_id}/` | `request_documents.stored_path` |
+| FX request (existing) | `private/fx-request/{request_id}/` | `request_documents.stored_path` |
+| Customs PDF (existing) | written by `CustomsService` | `customs_declarations.pdf_path` |
+| **Document 1 — signed confirmation-request (new)** | `private/confirmation-request/{request_id}/` | `request_documents.stored_path` (type `CONFIRMATION_REQUEST`) |
+| **Document 2 — signed FX confirmation (new)** | `private/fx-confirmation/{request_id}/` | `customs_declarations.signed_fx_doc_path` |
+
+Notes:
+- **Document 1** is a re-uploaded supporting doc, so it flows through the normal
+  `DocumentService::storeDocument(..., 'CONFIRMATION_REQUEST', "confirmation-request/{$request->id}")`
+  path and is recorded as a `request_documents` row — consistent with proforma/SWIFT/FX-request.
+- **Document 2** is the Director's officially signed PDF tied to the customs declaration, so its
+  pointer lives on `customs_declarations.signed_fx_doc_path` (added in Migration C), not in
+  `request_documents`. Store it via the same `Storage::disk('local')->put('private/'.$relativePath, ...)`
+  call already shown in Section 3.13.
+- **Template downloads** (the unsigned PDF the user generates to print/sign) are streamed straight
+  from `PdfGeneratorService` and are **never persisted** — they carry no signature and are
+  reproducible on demand. Only the *re-uploaded, signed* file is stored.
+
+### 2.5.3 Reports are stream-only (unchanged)
+
+Exported reports (`ReportController::exportWorkflow`, `exportBank`) remain **on-demand and are not
+persisted** — `streamPdf()` / `streamCsv()` return the file directly and nothing is written to disk.
+This is the current behavior and this plan does **not** change it:
+- No `generated_reports` table, no `private/reports/` folder.
+- Each export is already recorded in `audit_logs` via `AuditAction::REPORT_EXPORTED` (who/format/date
+  range), which satisfies the audit trail without retaining the binary.
+- A user who needs the report again simply re-runs the export.
+
+### 2.5.4 Retention: permanent + delete-on-replace
+
+Official and signed documents are kept **permanently** — there is no time-based purge. In a
+regulated CBY context, deleting audit-relevant files on a timer is a liability, so the plan
+deliberately omits any scheduled cleanup command.
+
+The only deletion path is **replace-on-reupload**, which already exists: when a document is
+re-uploaded for the same slot, `DocumentService` deletes the superseded file
+(`Storage::disk('local')->delete('private/'.$relativePath)`) before/after writing the replacement.
+Apply the same delete-then-write discipline for Document 1 re-uploads and for replacing a
+previously uploaded (but not yet issued) signed FX confirmation. Once the customs declaration is
+**issued** (status `CUSTOMS_DECLARATION_ISSUED` / `COMPLETED`), the signed FX doc is immutable and
+must not be deleted or replaced — guard this in `CustomsService` (return `WORKFLOW_IMMUTABLE_STATE`).
+
+### 2.5.5 `.gitignore` / safety
+
+`storage/app/private/` is already runtime data and must never be committed. Confirm the backend
+`.gitignore` ignores `storage/app/*` (Laravel default keeps only `.gitignore` placeholders). No
+uploaded or generated PDF should ever enter version control.
 
 ---
 
@@ -1271,6 +1356,40 @@ The existing `issue_customs` transition must be updated to accept `FX_CONFIRMATI
 ],
 ```
 
+### 3.14b RequestDocumentPolicy — allow `CONFIRMATION_REQUEST` download
+
+File: `backend/app/Policies/RequestDocumentPolicy.php`
+
+**Why:** `download()` currently `match`es only `'REQUEST_DOC'` and `'SWIFT'`; every other type
+falls through to `default => false`. Document 1 is stored as `type = CONFIRMATION_REQUEST`
+(Section 2.5.2), so without this change **nobody could download it** — a Bank Reviewer opening it
+would get a 403.
+
+**Rule for `CONFIRMATION_REQUEST`:** identical access to `REQUEST_DOC` — same-bank users
+(`DATA_ENTRY`, `BANK_REVIEWER`, `BANK_ADMIN`, `SWIFT_OFFICER` where `bank_id === requestBankId`)
+plus all CBY roles (`SUPPORT_COMMITTEE`, `EXECUTIVE_MEMBER`, `COMMITTEE_DIRECTOR`, `CBY_ADMIN`).
+All cross-bank access is denied. This is correct because the confirmation-request is a
+bank-originated supporting document on the request, exactly like the other `REQUEST_DOC` files.
+
+Add a `'CONFIRMATION_REQUEST'` arm that reuses the existing `canDownloadRequestDoc()` helper:
+
+```php
+return match ($document->type) {
+    'REQUEST_DOC' => $this->canDownloadRequestDoc($user, $requestBankId),
+    'CONFIRMATION_REQUEST' => $this->canDownloadRequestDoc($user, $requestBankId),
+    'SWIFT' => $this->canDownloadSwift($user, $requestBankId),
+    default => false,
+};
+```
+
+No new helper is needed — `canDownloadRequestDoc()` already encodes the same-bank + all-CBY rule.
+
+**Mirror on the frontend** (UX-only hide, backend stays the gate): in
+`frontend/app/composables/useDocumentPermissions.ts`, `canDownloadDocument()` already returns
+`true` for any type that is not `SWIFT`/`FX_REQUEST`, so `CONFIRMATION_REQUEST` is already allowed
+in the UI. No change required there — but add a unit-test case asserting
+`canDownloadDocument(role, 'CONFIRMATION_REQUEST') === true` for all roles to lock the behavior.
+
 ### 3.15 Routes
 
 File: `backend/routes/api.php`
@@ -1873,6 +1992,146 @@ Remove the `showDirectorCustomsActions` block from `ActionsPanel.vue` (lines cov
 
 ---
 
+### 4.9 Add "View" (عرض) action beside "Download" (تنزيل) on every document
+
+**Why:** Reviewers frequently need to *read* a document inline, not save a copy. Today the only
+action is **تنزيل** (forces a file download via `anchor.download`). Add a **عرض** button beside it
+that opens the same policy-guarded PDF inline in a new browser tab. Download stays as a good-to-have
+secondary action. This applies to **all** document rows (staged, extra, and the customs/FX rows),
+including the new `CONFIRMATION_REQUEST` document.
+
+This is a presentation-layer addition only — it reuses the exact same
+`GET /api/documents/{id}/download` endpoint and the same `RequestDocumentPolicy` gate. No backend
+change is required (the endpoint already streams the PDF with its real `Content-Type`; the browser
+renders it inline when opened in a tab instead of being saved).
+
+#### Component: `frontend/app/components/requests/DocumentChecklist.vue`
+
+1. Add a `view` emit alongside the existing `download` emit:
+   ```typescript
+   const emit = defineEmits<{
+     view: [docId: number, filename: string]
+     download: [docId: number, filename: string]
+     'view-customs': [customsId: number, filename: string]
+     'download-customs': [customsId: number, filename: string]
+     upload: [file: File]
+   }>()
+   ```
+
+2. Track in-flight view state separately from download state (so the two buttons disable
+   independently). Add a prop mirroring `downloadingIds`:
+   ```typescript
+   viewingIds: Set<number>
+   ```
+
+3. Beside **every** existing تنزيل `<Button>` (the staged row at ~line 333, the extra-doc row at
+   ~line 379, and the customs row at ~line 430), add a **عرض** button as the *primary* read action.
+   Use a `ButtonGroup` so the two sit together cleanly (per `SHADCN.md`):
+   ```vue
+   <ButtonGroup>
+     <Button
+       v-if="row.doc && canDownloadDocument(userRole, row.doc.type)"
+       variant="outline"
+       size="sm"
+       :disabled="viewingIds.has(row.doc.id)"
+       class="h-7 text-xs px-3 whitespace-nowrap"
+       :aria-label="`عرض ${row.doc.original_filename}`"
+       @click="emit('view', row.doc.id, row.doc.original_filename)"
+     >
+       <Eye class="h-3.5 w-3.5 me-1" aria-hidden="true" />
+       {{ viewingIds.has(row.doc.id) ? 'جارٍ الفتح…' : 'عرض' }}
+     </Button>
+     <Button
+       v-if="row.doc && canDownloadDocument(userRole, row.doc.type)"
+       variant="outline"
+       size="sm"
+       :disabled="downloadingIds.has(row.doc.id)"
+       class="h-7 text-xs px-3 whitespace-nowrap"
+       :aria-label="`تنزيل ${row.doc.original_filename}`"
+       @click="emit('download', row.doc.id, row.doc.original_filename)"
+     >
+       {{ downloadingIds.has(row.doc.id) ? 'جارٍ التنزيل…' : 'تنزيل' }}
+     </Button>
+   </ButtonGroup>
+   ```
+   Import `Eye` from `lucide-vue-next` and `ButtonGroup` from `@/components/ui/button-group`.
+   The view button is gated by the **same** `canDownloadDocument()` check — if a role can't download
+   it, it can't view it either (the backend would 403 identically).
+
+#### Parent: `frontend/app/pages/requests/[id]/index.vue`
+
+1. Add a `viewingIds` ref mirroring `downloadingIds`:
+   ```typescript
+   const viewingIds = ref<Set<number>>(new Set())
+   ```
+
+2. Add a `viewDocument` handler — identical to `downloadDocument` (lines 1053–1082) **except** it
+   opens the blob in a new tab instead of triggering a download:
+   ```typescript
+   async function viewDocument(docId: number) {
+     if (viewingIds.value.has(docId)) return
+     viewingIds.value = new Set([...viewingIds.value, docId])
+     delete downloadErrors.value[docId]
+     try {
+       const response = await $fetch<Blob>(`/api/documents/${docId}/download`, {
+         responseType: 'blob',
+         credentials: 'include',
+       })
+       // Force PDF mime so the browser renders inline rather than downloading
+       const pdfBlob = response.type === 'application/pdf'
+         ? response
+         : new Blob([response], { type: 'application/pdf' })
+       const url = URL.createObjectURL(pdfBlob)
+       window.open(url, '_blank', 'noopener')
+       // Revoke after a tick so the new tab has time to load the resource
+       setTimeout(() => URL.revokeObjectURL(url), 60_000)
+     }
+     catch {
+       downloadErrors.value = { ...downloadErrors.value, [docId]: 'تعذر فتح الملف الآن. أعد المحاولة بعد قليل.' }
+     }
+     finally {
+       const next = new Set(viewingIds.value)
+       next.delete(docId)
+       viewingIds.value = next
+     }
+   }
+   ```
+   > Note: object-URL revocation is deferred (~60s) because revoking immediately after
+   > `window.open` can break the new tab's load. Do **not** `URL.revokeObjectURL` synchronously here.
+
+3. Wire the new emit + prop on the `DocumentChecklist` mount (~line 1650):
+   ```vue
+   <DocumentChecklist
+     ...
+     :viewing-ids="viewingIds"
+     @view="viewDocument"
+     @view-customs="handleViewCustoms"
+     @download="downloadDocument"
+     @download-customs="handleDownloadCustoms"
+   />
+   ```
+
+4. Add a matching `handleViewCustoms` that opens the customs/FX PDF inline, reusing the existing
+   `downloadCustomsBlob(declaration.id)` blob fetch (the same one used at ~line 995) but with
+   `window.open` instead of `anchor.download`.
+
+#### Customs/FX standalone buttons elsewhere on the page
+
+The detail page also has standalone "تنزيل البيان" buttons (~lines 1266, 1591) outside the
+checklist. Add a **عرض** button beside each, using the same `handleViewCustoms` inline-open
+approach, so the FX confirmation / customs PDF is also viewable inline. Keep the download button.
+
+#### Tests to add (frontend)
+
+- `DocumentChecklist` renders both عرض and تنزيل for a downloadable doc; emits `view` / `download`
+  with the correct `(docId, filename)`.
+- عرض is **hidden** for a role that fails `canDownloadDocument` (e.g. `DATA_ENTRY` on a `SWIFT` doc).
+- عرض appears for `CONFIRMATION_REQUEST` for an in-bank `BANK_REVIEWER`.
+- Detail page `viewDocument` calls `$fetch` with `responseType: 'blob'` and `window.open`
+  (mock `window.open`), and does not set `anchor.download`.
+
+---
+
 ## Section 5 — Error Cases
 
 | Scenario | Backend response | Frontend handling |
@@ -1892,23 +2151,23 @@ Remove the `showDirectorCustomsActions` block from `ActionsPanel.vue` (lines cov
 
 ### Document 1 (طلب وثيقة التأكيد)
 
-- [ ] DATA_ENTRY navigates to wizard Step 3; if no draft exists the system auto-saves, then enables the "تحميل النموذج" button
-- [ ] Clicking download produces a PDF file with correct merchant name, goods type, invoice amount, currency, arrival port, bank name, and today's date pre-filled
-- [ ] A new upload zone labeled "طلب وثيقة التأكيد (مختوم)" appears first in the document grid; it is marked required
-- [ ] Step 4 and the submit button are blocked if `confirmation_request` is not uploaded
-- [ ] The PDF uses the Amiri Arabic font, `#0066cc` color accents, and correct RTL layout — Arabic text renders with connected letters
-- [ ] The PDF is A4 portrait with proper margins matching the reference template
+- [x] DATA_ENTRY navigates to wizard Step 3; if no draft exists the system auto-saves, then enables the "تحميل النموذج" button
+- [x] Clicking download produces a PDF file with correct merchant name, goods type, invoice amount, currency, arrival port, bank name, and today's date pre-filled
+- [x] A new upload zone labeled "طلب وثيقة التأكيد (مختوم)" appears first in the document grid; it is marked required
+- [x] Step 4 and the submit button are blocked if `confirmation_request` is not uploaded
+- [x] The PDF uses an Arabic OTL-capable font, `#0066cc` color accents, and correct RTL layout — Arabic text renders with connected letters
+- [x] The PDF is A4 portrait with proper margins matching the reference template
 
 ### Document 2 (وثيقة تأكيد مصارفة)
 
-- [ ] COMMITTEE_DIRECTOR on a request in `EXECUTIVE_APPROVED` status sees `FxConfirmationCard` on the detail page (not just a bare button)
-- [ ] Clicking "تحميل النموذج المعبأ" produces a pre-filled PDF with correct data and Yemen emblem logo
-- [ ] The upload zone in the card accepts only PDF files ≤10MB
-- [ ] After successful upload the request transitions to `FX_CONFIRMATION_PENDING` and the issue button becomes enabled
-- [ ] The issue button remains disabled if the upload has not happened in this session AND the request is still `EXECUTIVE_APPROVED`
-- [ ] If the director returns to the page with the request already in `FX_CONFIRMATION_PENDING`, the card shows "تم رفع الوثيقة الموقّعة في جلسة سابقة" and the issue button is enabled immediately
-- [ ] Clicking issue and confirming transitions the request through `CUSTOMS_DECLARATION_ISSUED` → `COMPLETED`
-- [ ] Both transitions (`EXECUTIVE_APPROVED → FX_CONFIRMATION_PENDING` and `FX_CONFIRMATION_PENDING → CUSTOMS_DECLARATION_ISSUED`) are logged to `audit_logs`
+- [x] COMMITTEE_DIRECTOR on a request in `EXECUTIVE_APPROVED` status sees `FxConfirmationCard` on the detail page (not just a bare button)
+- [x] Clicking "تحميل النموذج المعبأ" produces a pre-filled PDF with correct data and Yemen emblem logo
+- [x] The upload zone in the card accepts only PDF files ≤10MB
+- [x] After successful upload the request transitions to `FX_CONFIRMATION_PENDING` and the issue button becomes enabled
+- [x] The issue button remains disabled if the upload has not happened in this session AND the request is still `EXECUTIVE_APPROVED`
+- [x] If the director returns to the page with the request already in `FX_CONFIRMATION_PENDING`, the card shows "تم رفع الوثيقة الموقّعة في جلسة سابقة" and the issue button is enabled immediately
+- [x] Clicking issue and confirming transitions the request through `CUSTOMS_DECLARATION_ISSUED` → `COMPLETED`
+- [x] Both transitions (`EXECUTIVE_APPROVED → FX_CONFIRMATION_PENDING` and `FX_CONFIRMATION_PENDING → CUSTOMS_DECLARATION_ISSUED`) are logged to `audit_logs`
 
 ---
 
@@ -1945,6 +2204,22 @@ Remove the `showDirectorCustomsActions` block from `ActionsPanel.vue` (lines cov
 - `FxConfirmationCard`: issue button is enabled when status is FX_CONFIRMATION_PENDING
 - `FxConfirmationCard`: upload zone rejects non-PDF files with Arabic error message
 - `FxConfirmationCard`: upload zone rejects files > 10MB
+
+### Verification completed
+
+- Backend focused tests: `php artisan test tests/Feature/Documents/DocumentTemplateControllerTest.php tests/Feature/Customs/CustomsDeclarationTest.php tests/Unit/Enums/RequestStatusTest.php tests/Unit/Enums/DocumentTypeTest.php` — 18 passed.
+- Frontend focused tests: `node_modules/.bin/vitest run app/tests/unit/components/requests/FxConfirmationCard.test.ts app/tests/unit/composables/useRequestWizard.test.ts app/tests/unit/components/wizard/WizardStep3.test.ts app/tests/unit/types/enums.test.ts` — 76 passed.
+- Generated PDFs from the real Laravel `PdfGeneratorService` and Blade templates:
+  - `/tmp/yfh-confirmation-request.pdf`
+  - `/tmp/yfh-fx-confirmation.pdf`
+- Structural PDF checks:
+  - Both files are PDF 1.4, one page.
+  - Both files have A4 portrait MediaBox: `[0 0 595.280 841.890]`.
+  - Both files embed `XBRiyaz` and `XBRiyaz-Bold` for Arabic OTL shaping.
+  - The FX confirmation PDF embeds image objects for the Yemen emblem.
+- Browser visual evidence captured with `playwright-cli`:
+  - `/tmp/yfh-confirmation-request-final.png`
+  - `/tmp/yfh-fx-confirmation-final-3.png`
 
 ---
 
