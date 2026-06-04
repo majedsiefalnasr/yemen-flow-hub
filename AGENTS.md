@@ -83,11 +83,31 @@ git commit -m "feat(voting): ..."
 ```
 
 - Commit message format: `type(scope): description` (conventional commits)
+- Commit message scope is required. Allowed scopes are `auth`, `backend`, `docs`, `frontend`, `repo`, `settings`, `testing`, `ui`, and `workflow`.
+- Commit message type must be a Conventional Commit type such as `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`, `build`, `ci`, `perf`, or `revert`.
+- Examples: `feat(workflow): add support return validation`, `fix(frontend): correct bank queue empty state`, `chore(repo): add lint and format tooling`.
+- Frontend and backend team repos enforce commit messages with Husky `commit-msg` hooks and Commitlint. Do not bypass hooks with `--no-verify` unless the user explicitly authorizes an emergency exception.
 - Co-author all AI-assisted commits with: `Co-Authored-By: Claude <noreply@anthropic.com>`
 - Keep commit messages identical between the team repo and the root monorepo for the same change
 - All commits must remain signed. Do NOT use `--no-gpg-sign`, `--no-sign`, or `-c commit.gpgsign=false` as a workaround.
 - If signing fails, stop and fix the Git signing setup instead of creating an unsigned commit.
 - Never add or commit generated artifacts from `graphify-out/`, `_bmad-output/implementation-artifacts/`, or `_bmad-output/test-artifacts/` in any repo. Keep them local only, even when they change during agent workflows.
+
+### Quality Gates
+
+Use the repository quality scripts before committing:
+
+| Repo | Fast check | Full check |
+| ---- | ---------- | ---------- |
+| `backend/` | `composer format:check` | `composer format:check && php artisan test` |
+| `frontend/` | `pnpm lint && pnpm format:check` | `pnpm lint && pnpm format:check && pnpm typecheck && pnpm test` |
+
+Frontend and backend team repos use Husky hooks:
+- `commit-msg` validates Conventional Commit messages with Commitlint.
+- `pre-commit` runs staged-file formatting/linting only.
+- `pre-push` runs only green non-test gates by default: backend `composer format:check`; frontend `pnpm lint`, `pnpm format:check`, and `pnpm typecheck`. Full test suites are still part of the manual/full check list above, but are not in hooks until their existing failures are cleaned up.
+
+Frontend lint rules must not be disabled broadly to hide old code debt. Keep legacy warnings visible in `pnpm lint`; use `pnpm lint:strict` as the zero-warning cleanup target once the warning baseline is reduced safely. Do not weaken lint, format, or hook rules to make a commit pass. Fix the code/config or ask the user how strict the gate should be.
 
 ---
 

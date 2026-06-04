@@ -21,5 +21,11 @@ Thumbs.db
 # Generated knowledge graph files
 graphify-out/
 
+# Browser automation artifacts
+.playwright-cli/
+
+# Local package manager store
+.pnpm-store/
+
 # Shadcn Admin example project
 shadcn-admin/
