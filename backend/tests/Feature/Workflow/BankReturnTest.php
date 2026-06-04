@@ -18,9 +18,13 @@ class BankReturnTest extends TestCase
     use RefreshDatabase;
 
     private Bank $bank;
+
     private Bank $otherBank;
+
     private User $dataEntry;
+
     private User $bankReviewer;
+
     private User $otherBankReviewer;
 
     protected function setUp(): void
@@ -37,6 +41,7 @@ class BankReturnTest extends TestCase
     {
         static $counter = 0;
         $counter++;
+
         return User::query()->create([
             'name' => "User {$counter}",
             'email' => "user{$counter}@brtest.com",
@@ -264,7 +269,8 @@ class BankReturnTest extends TestCase
             $this->dataEntry,
             RequestReturnedNotification::class,
             function (RequestReturnedNotification $notification) use ($request): bool {
-                $payload = $notification->toArray(new \stdClass());
+                $payload = $notification->toArray(new \stdClass);
+
                 return $payload['type'] === 'request_returned'
                     && $payload['from_role'] === UserRole::BANK_REVIEWER->value
                     && $payload['comment'] === 'يرجى تصحيح المستندات'

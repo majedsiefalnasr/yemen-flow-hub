@@ -29,7 +29,7 @@ class UploadSwiftRequest extends ApiFormRequest
                 || $this->hasFile('fx_request_file')
                 || filled($this->input('swift_reference'));
 
-            if (!$hasLegacyFile && !$hasPackage) {
+            if (! $hasLegacyFile && ! $hasPackage) {
                 $validator->errors()->add('file', 'Either legacy SWIFT file or full SWIFT package is required.');
             }
         });

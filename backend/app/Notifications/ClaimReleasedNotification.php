@@ -16,8 +16,7 @@ class ClaimReleasedNotification extends Notification implements ShouldQueue
         private readonly ImportRequest $requestModel,
         private readonly string $reason,
         private readonly ?User $releasedBy = null,
-    ) {
-    }
+    ) {}
 
     public function via(object $notifiable): array
     {
@@ -30,7 +29,7 @@ class ClaimReleasedNotification extends Notification implements ShouldQueue
 
         return [
             'type' => 'claim_released',
-            'message' => 'أُلغيت مطالبة على الطلب ' . $this->requestModel->reference_number . ' — ' . $reasonLabel,
+            'message' => 'أُلغيت مطالبة على الطلب '.$this->requestModel->reference_number.' — '.$reasonLabel,
             'request_id' => $this->requestModel->id,
             'reference_number' => $this->requestModel->reference_number,
             'released_by_user_id' => $this->releasedBy?->id,

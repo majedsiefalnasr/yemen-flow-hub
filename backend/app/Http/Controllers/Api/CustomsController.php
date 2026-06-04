@@ -10,14 +10,13 @@ use App\Models\ImportRequest;
 use App\Services\Customs\CustomsService;
 use App\Support\ApiResponse;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Support\Facades\Storage;
 use OpenApi\Attributes as OA;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class CustomsController extends Controller
 {
-    public function __construct(private readonly CustomsService $customsService)
-    {
-    }
+    public function __construct(private readonly CustomsService $customsService) {}
 
     #[OA\Post(
         path: '/api/customs/{importRequest}/generate',
@@ -104,16 +103,16 @@ class CustomsController extends Controller
     {
         $this->authorize('downloadSignedFx', $customsDeclaration);
 
-        if (!$customsDeclaration->signed_fx_doc_path) {
+        if (! $customsDeclaration->signed_fx_doc_path) {
             abort(404, 'No signed FX confirmation document has been uploaded yet.');
         }
 
         $fullPath = 'private/'.$customsDeclaration->signed_fx_doc_path;
-        if (!\Illuminate\Support\Facades\Storage::disk('local')->exists($fullPath)) {
+        if (! Storage::disk('local')->exists($fullPath)) {
             abort(404, 'Signed FX confirmation file not found on disk.');
         }
 
-        $stream = \Illuminate\Support\Facades\Storage::disk('local')->readStream($fullPath);
+        $stream = Storage::disk('local')->readStream($fullPath);
 
         $filename = 'fx-confirmation-signed-'
             .($customsDeclaration->request_id ?? $customsDeclaration->id)
@@ -150,8 +149,8 @@ class CustomsController extends Controller
             default => false,
         };
 
-        if (!$canAttemptPreview) {
-            throw new AuthorizationException();
+        if (! $canAttemptPreview) {
+            throw new AuthorizationException;
         }
 
         $declaration = $importRequest->customsDeclaration()->first();

@@ -19,10 +19,15 @@ class ImportRequestAdvancedFiltersTest extends TestCase
     use RefreshDatabase;
 
     private Bank $bank;
+
     private Bank $otherBank;
+
     private User $bankReviewer;
+
     private User $otherBankReviewer;
+
     private User $cbyadmin;
+
     private User $dataEntry;
 
     protected function setUp(): void
@@ -30,12 +35,12 @@ class ImportRequestAdvancedFiltersTest extends TestCase
         parent::setUp();
         Cache::flush();
 
-        $this->bank           = $this->makeBank('YCB');
-        $this->otherBank      = $this->makeBank('OTH');
-        $this->bankReviewer   = $this->makeUser(UserRole::BANK_REVIEWER, $this->bank);
+        $this->bank = $this->makeBank('YCB');
+        $this->otherBank = $this->makeBank('OTH');
+        $this->bankReviewer = $this->makeUser(UserRole::BANK_REVIEWER, $this->bank);
         $this->otherBankReviewer = $this->makeUser(UserRole::BANK_REVIEWER, $this->otherBank);
-        $this->cbyadmin       = $this->makeUser(UserRole::CBY_ADMIN);
-        $this->dataEntry      = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $this->cbyadmin = $this->makeUser(UserRole::CBY_ADMIN);
+        $this->dataEntry = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
@@ -43,8 +48,8 @@ class ImportRequestAdvancedFiltersTest extends TestCase
     private function makeBank(string $code): Bank
     {
         return Bank::query()->create([
-            'name'      => "بنك {$code}",
-            'code'      => $code,
+            'name' => "بنك {$code}",
+            'code' => $code,
             'is_active' => true,
         ]);
     }
@@ -55,11 +60,11 @@ class ImportRequestAdvancedFiltersTest extends TestCase
         $counter++;
 
         return User::query()->create([
-            'name'      => "User {$counter}",
-            'email'     => "adv_filter_user{$counter}@example.com",
-            'password'  => Hash::make('password'),
-            'role'      => $role->value,
-            'bank_id'   => $bank?->id,
+            'name' => "User {$counter}",
+            'email' => "adv_filter_user{$counter}@example.com",
+            'password' => Hash::make('password'),
+            'role' => $role->value,
+            'bank_id' => $bank?->id,
             'is_active' => true,
         ]);
     }
@@ -70,29 +75,29 @@ class ImportRequestAdvancedFiltersTest extends TestCase
         array $overrides = [],
     ): ImportRequest {
         $merchant = Merchant::query()->create([
-            'name'                => 'تاجر اختبار',
-            'tax_number'          => 'TX-AF-' . uniqid(),
-            'commercial_register' => 'CR-AF-' . uniqid(),
-            'address'             => 'صنعاء',
-            'contact'             => '+9670000000',
-            'category'            => 'general',
-            'status'              => 'active',
-            'bank_id'             => $bank->id,
+            'name' => 'تاجر اختبار',
+            'tax_number' => 'TX-AF-'.uniqid(),
+            'commercial_register' => 'CR-AF-'.uniqid(),
+            'address' => 'صنعاء',
+            'contact' => '+9670000000',
+            'category' => 'general',
+            'status' => 'active',
+            'bank_id' => $bank->id,
         ]);
 
         app()->instance('workflow.transition.active', true);
 
         try {
             return ImportRequest::query()->create(array_merge([
-                'bank_id'          => $bank->id,
-                'merchant_id'      => $merchant->id,
-                'created_by'       => $creator->id,
-                'currency'         => 'USD',
-                'amount'           => 10000.00,
-                'supplier_name'    => 'Supplier Co.',
+                'bank_id' => $bank->id,
+                'merchant_id' => $merchant->id,
+                'created_by' => $creator->id,
+                'currency' => 'USD',
+                'amount' => 10000.00,
+                'supplier_name' => 'Supplier Co.',
                 'goods_description' => 'Industrial equipment',
-                'port_of_entry'    => 'Aden Port',
-                'status'           => RequestStatus::DRAFT,
+                'port_of_entry' => 'Aden Port',
+                'status' => RequestStatus::DRAFT,
                 'current_owner_role' => UserRole::DATA_ENTRY,
             ], $overrides));
         } finally {
@@ -205,7 +210,7 @@ class ImportRequestAdvancedFiltersTest extends TestCase
 
     public function test_created_from_filters_out_older_requests(): void
     {
-        $old    = $this->makeRequest($this->bank, $this->dataEntry);
+        $old = $this->makeRequest($this->bank, $this->dataEntry);
         $recent = $this->makeRequest($this->bank, $this->dataEntry);
 
         ImportRequest::where('id', $old->id)->update(['created_at' => '2024-01-01 00:00:00']);
@@ -222,7 +227,7 @@ class ImportRequestAdvancedFiltersTest extends TestCase
 
     public function test_created_to_filters_out_newer_requests(): void
     {
-        $old    = $this->makeRequest($this->bank, $this->dataEntry);
+        $old = $this->makeRequest($this->bank, $this->dataEntry);
         $recent = $this->makeRequest($this->bank, $this->dataEntry);
 
         ImportRequest::where('id', $old->id)->update(['created_at' => '2024-01-01 00:00:00']);
@@ -239,7 +244,7 @@ class ImportRequestAdvancedFiltersTest extends TestCase
 
     public function test_legacy_from_date_to_date_still_work(): void
     {
-        $old    = $this->makeRequest($this->bank, $this->dataEntry);
+        $old = $this->makeRequest($this->bank, $this->dataEntry);
         $recent = $this->makeRequest($this->bank, $this->dataEntry);
 
         ImportRequest::where('id', $old->id)->update(['created_at' => '2024-01-01 00:00:00']);
@@ -258,7 +263,7 @@ class ImportRequestAdvancedFiltersTest extends TestCase
 
     public function test_amount_min_filters_low_amount_requests(): void
     {
-        $low  = $this->makeRequest($this->bank, $this->dataEntry, ['amount' => 500.00]);
+        $low = $this->makeRequest($this->bank, $this->dataEntry, ['amount' => 500.00]);
         $high = $this->makeRequest($this->bank, $this->dataEntry, ['amount' => 50000.00]);
 
         $response = $this->actingAs($this->cbyadmin)
@@ -272,7 +277,7 @@ class ImportRequestAdvancedFiltersTest extends TestCase
 
     public function test_amount_max_filters_high_amount_requests(): void
     {
-        $low  = $this->makeRequest($this->bank, $this->dataEntry, ['amount' => 500.00]);
+        $low = $this->makeRequest($this->bank, $this->dataEntry, ['amount' => 500.00]);
         $high = $this->makeRequest($this->bank, $this->dataEntry, ['amount' => 50000.00]);
 
         $response = $this->actingAs($this->cbyadmin)
@@ -286,9 +291,9 @@ class ImportRequestAdvancedFiltersTest extends TestCase
 
     public function test_amount_range_filters_correctly(): void
     {
-        $inRange  = $this->makeRequest($this->bank, $this->dataEntry, ['amount' => 15000.00]);
-        $tooLow   = $this->makeRequest($this->bank, $this->dataEntry, ['amount' => 500.00]);
-        $tooHigh  = $this->makeRequest($this->bank, $this->dataEntry, ['amount' => 999999.00]);
+        $inRange = $this->makeRequest($this->bank, $this->dataEntry, ['amount' => 15000.00]);
+        $tooLow = $this->makeRequest($this->bank, $this->dataEntry, ['amount' => 500.00]);
+        $tooHigh = $this->makeRequest($this->bank, $this->dataEntry, ['amount' => 999999.00]);
 
         $response = $this->actingAs($this->cbyadmin)
             ->getJson('/api/requests?amount_min=5000&amount_max=50000')
@@ -306,8 +311,8 @@ class ImportRequestAdvancedFiltersTest extends TestCase
     {
         $reviewer = $this->bankReviewer;
 
-        $matched    = $this->makeRequest($this->bank, $this->dataEntry, ['reviewed_by' => $reviewer->id]);
-        $unmatched  = $this->makeRequest($this->bank, $this->dataEntry);
+        $matched = $this->makeRequest($this->bank, $this->dataEntry, ['reviewed_by' => $reviewer->id]);
+        $unmatched = $this->makeRequest($this->bank, $this->dataEntry);
 
         $response = $this->actingAs($this->cbyadmin)
             ->getJson("/api/requests?assigned_reviewer_id={$reviewer->id}")
@@ -320,8 +325,8 @@ class ImportRequestAdvancedFiltersTest extends TestCase
 
     public function test_assigned_reviewer_id_for_out_of_scope_reviewer_silently_ignored(): void
     {
-        $inBankReq  = $this->makeRequest($this->bank, $this->dataEntry);
-        $otherReq   = $this->makeRequest($this->otherBank, $this->otherBankReviewer);
+        $inBankReq = $this->makeRequest($this->bank, $this->dataEntry);
+        $otherReq = $this->makeRequest($this->otherBank, $this->otherBankReviewer);
 
         // Act as bank-scoped reviewer; pass the OTHER bank's reviewer id
         $response = $this->actingAs($this->bankReviewer)
@@ -339,7 +344,7 @@ class ImportRequestAdvancedFiltersTest extends TestCase
     {
         $reviewer = $this->bankReviewer;
 
-        $matched   = $this->makeRequest($this->bank, $this->dataEntry, ['reviewed_by' => $reviewer->id]);
+        $matched = $this->makeRequest($this->bank, $this->dataEntry, ['reviewed_by' => $reviewer->id]);
         $unmatched = $this->makeRequest($this->bank, $this->dataEntry);
 
         $secondBankReviewer = $this->makeUser(UserRole::BANK_REVIEWER, $this->bank);
@@ -358,8 +363,8 @@ class ImportRequestAdvancedFiltersTest extends TestCase
     public function test_advanced_filters_compose_with_currency_filter(): void
     {
         $usdHigh = $this->makeRequest($this->bank, $this->dataEntry, ['currency' => 'USD', 'amount' => 50000.00]);
-        $eurLow  = $this->makeRequest($this->bank, $this->dataEntry, ['currency' => 'EUR', 'amount' => 100.00]);
-        $usdLow  = $this->makeRequest($this->bank, $this->dataEntry, ['currency' => 'USD', 'amount' => 100.00]);
+        $eurLow = $this->makeRequest($this->bank, $this->dataEntry, ['currency' => 'EUR', 'amount' => 100.00]);
+        $usdLow = $this->makeRequest($this->bank, $this->dataEntry, ['currency' => 'USD', 'amount' => 100.00]);
 
         $response = $this->actingAs($this->cbyadmin)
             ->getJson('/api/requests?currency=USD&amount_min=10000')
@@ -373,7 +378,7 @@ class ImportRequestAdvancedFiltersTest extends TestCase
 
     public function test_advanced_filters_respect_org_scoping(): void
     {
-        $ownReq   = $this->makeRequest($this->bank, $this->dataEntry, ['amount' => 50000.00]);
+        $ownReq = $this->makeRequest($this->bank, $this->dataEntry, ['amount' => 50000.00]);
         $otherReq = $this->makeRequest($this->otherBank, $this->otherBankReviewer, ['amount' => 50000.00]);
 
         $response = $this->actingAs($this->bankReviewer)

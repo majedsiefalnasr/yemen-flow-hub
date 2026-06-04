@@ -44,12 +44,12 @@ class CustomsDeclarationPolicy
         return match ($user->role) {
             UserRole::DATA_ENTRY,
             UserRole::BANK_REVIEWER,
-            UserRole::BANK_ADMIN  => $isSameBank,
+            UserRole::BANK_ADMIN => $isSameBank,
             UserRole::SUPPORT_COMMITTEE,
             UserRole::EXECUTIVE_MEMBER,
             UserRole::COMMITTEE_DIRECTOR,
-            UserRole::CBY_ADMIN   => true,
-            default               => false,
+            UserRole::CBY_ADMIN => true,
+            default => false,
         };
     }
 }

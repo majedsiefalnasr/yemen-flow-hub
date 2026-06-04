@@ -16,7 +16,7 @@ return new class extends Migration
                         ? json_decode($user->user_preferences, true)
                         : (array) $user->user_preferences;
 
-                    if (!is_array($preferences) || !array_key_exists('theming', $preferences)) {
+                    if (! is_array($preferences) || ! array_key_exists('theming', $preferences)) {
                         continue;
                     }
 

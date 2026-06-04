@@ -39,7 +39,7 @@ class AuditLogResource extends JsonResource
 
     private function entityReference(): ?string
     {
-        if (!in_array($this->subject_type, [ImportRequest::class, 'import_request'], true) || !$this->subject_id) {
+        if (! in_array($this->subject_type, [ImportRequest::class, 'import_request'], true) || ! $this->subject_id) {
             return null;
         }
 
@@ -47,12 +47,12 @@ class AuditLogResource extends JsonResource
             ->select(['id', 'created_at'])
             ->find($this->subject_id);
 
-        if (!$request) {
+        if (! $request) {
             return null;
         }
 
         $year = $request->created_at?->format('Y') ?? now()->format('Y');
 
-        return 'IMP-' . $year . '-' . str_pad((string) $request->id, 4, '0', STR_PAD_LEFT);
+        return 'IMP-'.$year.'-'.str_pad((string) $request->id, 4, '0', STR_PAD_LEFT);
     }
 }

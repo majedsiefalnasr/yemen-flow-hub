@@ -17,7 +17,7 @@ class NotificationControllerTest extends TestCase
     {
         return User::query()->create([
             'name' => 'Test User',
-            'email' => Str::random(8) . '@example.com',
+            'email' => Str::random(8).'@example.com',
             'password' => Hash::make('password'),
             'role' => $role,
             'bank_id' => $bankId,

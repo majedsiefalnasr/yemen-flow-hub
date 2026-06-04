@@ -18,13 +18,15 @@ class DuplicateDetectionServiceTest extends TestCase
     use RefreshDatabase;
 
     private DuplicateDetectionService $service;
+
     private Bank $bank1;
+
     private Bank $bank2;
 
     protected function setUp(): void
     {
         parent::setUp();
-        $this->service = new DuplicateDetectionService();
+        $this->service = new DuplicateDetectionService;
         $this->bank1 = Bank::query()->create(['name' => 'بنك التضامن', 'code' => 'B1', 'is_active' => true]);
         $this->bank2 = Bank::query()->create(['name' => 'بنك سبأ', 'code' => 'B2', 'is_active' => true]);
     }
@@ -32,8 +34,9 @@ class DuplicateDetectionServiceTest extends TestCase
     private function makeUser(Bank $bank): User
     {
         static $i = 0;
+
         return User::query()->create([
-            'name' => 'User ' . (++$i),
+            'name' => 'User '.(++$i),
             'email' => "u{$i}@test.com",
             'password' => Hash::make('pass'),
             'role' => UserRole::DATA_ENTRY,
@@ -67,6 +70,7 @@ class DuplicateDetectionServiceTest extends TestCase
         if ($deleted) {
             $req->delete();
         }
+
         return $req;
     }
 

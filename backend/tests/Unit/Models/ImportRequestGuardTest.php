@@ -15,7 +15,7 @@ class ImportRequestGuardTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->app = new Application();
+        $this->app = new Application;
         Application::setInstance($this->app);
     }
 
@@ -29,7 +29,7 @@ class ImportRequestGuardTest extends TestCase
     {
         $this->expectException(DirectStatusMutationException::class);
 
-        $model = new ImportRequest();
+        $model = new ImportRequest;
         $model->setAttribute('status', RequestStatus::SUBMITTED);
     }
 
@@ -37,7 +37,7 @@ class ImportRequestGuardTest extends TestCase
     {
         $this->app->instance('workflow.transition.active', true);
 
-        $model = new ImportRequest();
+        $model = new ImportRequest;
         $model->setAttribute('status', RequestStatus::SUBMITTED);
 
         // Verify both raw value and cast type
@@ -49,7 +49,7 @@ class ImportRequestGuardTest extends TestCase
     public function test_guard_re_engages_after_ioc_flag_removed(): void
     {
         $this->app->instance('workflow.transition.active', true);
-        $model = new ImportRequest();
+        $model = new ImportRequest;
         $model->setAttribute('status', RequestStatus::SUBMITTED);
         $this->app->offsetUnset('workflow.transition.active');
 
@@ -60,7 +60,7 @@ class ImportRequestGuardTest extends TestCase
 
     public function test_non_status_attributes_are_not_guarded(): void
     {
-        $model = new ImportRequest();
+        $model = new ImportRequest;
         $model->setAttribute('supplier_name', 'Test Supplier');
 
         $this->assertEquals('Test Supplier', $model->getAttributes()['supplier_name']);

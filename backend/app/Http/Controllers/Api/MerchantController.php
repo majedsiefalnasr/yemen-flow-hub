@@ -21,7 +21,7 @@ class MerchantController extends Controller
             ->with('bank')
             ->withCount('importRequests')
             ->forUser(request()->user())
-            ->when(request()->filled('bank_id') && !request()->user()->isBankUser(), fn ($q) => $q->where('bank_id', request('bank_id')))
+            ->when(request()->filled('bank_id') && ! request()->user()->isBankUser(), fn ($q) => $q->where('bank_id', request('bank_id')))
             ->when(request()->has('is_active'), fn ($q) => $q->where('is_active', filter_var(request('is_active'), FILTER_VALIDATE_BOOL)))
             ->when(request()->filled('search'), function ($q) {
                 $s = request('search');
@@ -35,9 +35,9 @@ class MerchantController extends Controller
             'data' => MerchantResource::collection($merchants->getCollection())->resolve(),
             'meta' => [
                 'current_page' => $merchants->currentPage(),
-                'last_page'    => $merchants->lastPage(),
-                'per_page'     => $merchants->perPage(),
-                'total'        => $merchants->total(),
+                'last_page' => $merchants->lastPage(),
+                'per_page' => $merchants->perPage(),
+                'total' => $merchants->total(),
             ],
         ], 'Merchants retrieved.');
     }
@@ -80,6 +80,7 @@ class MerchantController extends Controller
         $payload['created_by'] = request()->user()->id;
 
         $merchant = Merchant::query()->create($payload);
+
         return ApiResponse::success(new MerchantResource($merchant->load('bank')->loadCount('importRequests')), 'Merchant created successfully.', 201);
     }
 
@@ -87,6 +88,7 @@ class MerchantController extends Controller
     public function show(Merchant $merchant)
     {
         $this->authorize('view', $merchant);
+
         return ApiResponse::success(new MerchantResource($merchant->loadCount('importRequests')->load('bank')), 'Merchant retrieved.');
     }
 
@@ -99,6 +101,7 @@ class MerchantController extends Controller
             $payload['bank_id'] = request()->user()->bank_id;
         }
         $merchant->update($payload);
+
         return ApiResponse::success(new MerchantResource($merchant->refresh()->load('bank')->loadCount('importRequests')), 'Merchant updated successfully.');
     }
 
@@ -107,6 +110,7 @@ class MerchantController extends Controller
     {
         $this->authorize('delete', $merchant);
         $merchant->delete();
+
         return ApiResponse::success((object) [], 'Merchant deleted successfully.');
     }
 }

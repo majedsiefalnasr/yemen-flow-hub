@@ -12,6 +12,5 @@ class VotingTally
         public int $totalCast,
         public bool $isDecided,
         public string $result
-    ) {
-    }
+    ) {}
 }

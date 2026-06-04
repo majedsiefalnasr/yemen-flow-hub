@@ -17,7 +17,9 @@ class BankAdminRbacTest extends TestCase
     use RefreshDatabase;
 
     private Bank $bank;
+
     private Bank $otherBank;
+
     private User $bankAdmin;
 
     protected function setUp(): void

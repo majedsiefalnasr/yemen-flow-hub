@@ -14,9 +14,7 @@ use OpenApi\Attributes as OA;
 
 class UserController extends Controller
 {
-    public function __construct(private readonly AuditService $auditService)
-    {
-    }
+    public function __construct(private readonly AuditService $auditService) {}
 
     #[OA\Get(
         path: '/api/users',
@@ -40,7 +38,7 @@ class UserController extends Controller
             )
             ->when(request()->filled('role'), fn ($q) => $q->where('role', request('role')))
             ->when(
-                request()->filled('bank_id') && !$actor->hasRole(UserRole::BANK_ADMIN),
+                request()->filled('bank_id') && ! $actor->hasRole(UserRole::BANK_ADMIN),
                 fn ($q) => $q->where('bank_id', request('bank_id'))
             )
             ->when(request()->has('is_active'), fn ($q) => $q->where('is_active', filter_var(request('is_active'), FILTER_VALIDATE_BOOL)))
@@ -55,9 +53,9 @@ class UserController extends Controller
             'data' => UserResource::collection($users->getCollection())->resolve(),
             'meta' => [
                 'current_page' => $users->currentPage(),
-                'last_page'    => $users->lastPage(),
-                'per_page'     => $users->perPage(),
-                'total'        => $users->total(),
+                'last_page' => $users->lastPage(),
+                'per_page' => $users->perPage(),
+                'total' => $users->total(),
             ],
         ], 'Users retrieved.');
     }
@@ -142,7 +140,7 @@ class UserController extends Controller
             'target_role' => $user->role?->value,
             'password_reset' => array_key_exists('password', $payload),
             'before' => array_intersect_key($before, array_flip($changedKeys)),
-            'after'  => array_intersect_key($after, array_flip($changedKeys)),
+            'after' => array_intersect_key($after, array_flip($changedKeys)),
         ]);
 
         return ApiResponse::success(new UserResource($user->load('bank')), 'User updated successfully.');

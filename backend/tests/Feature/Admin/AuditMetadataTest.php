@@ -9,9 +9,8 @@ use App\Models\Bank;
 use App\Models\User;
 use App\Services\Audit\AuditService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 class AuditMetadataTest extends TestCase
@@ -40,6 +39,7 @@ class AuditMetadataTest extends TestCase
     {
         static $n = 0;
         $n++;
+
         return User::query()->create([
             'name' => "User {$n}",
             'email' => "user{$n}@meta.test",
@@ -78,17 +78,17 @@ class AuditMetadataTest extends TestCase
     public function test_audit_service_captures_ip_and_user_agent_from_request(): void
     {
         $admin = $this->makeCbyAdmin();
-        $bank  = $this->makeBank('IPT');
+        $bank = $this->makeBank('IPT');
 
         // POST /api/users creates a USER_CREATED audit log with ip+user_agent.
         $this->actingAs($admin)
             ->withHeaders(['User-Agent' => 'TestBrowser/1.0'])
             ->postJson('/api/users', [
-                'name'      => 'IP Test User',
-                'email'     => 'iptest@cby.gov.ye',
-                'password'  => 'Secret123!',
-                'role'      => UserRole::DATA_ENTRY->value,
-                'bank_id'   => $bank->id,
+                'name' => 'IP Test User',
+                'email' => 'iptest@cby.gov.ye',
+                'password' => 'Secret123!',
+                'role' => UserRole::DATA_ENTRY->value,
+                'bank_id' => $bank->id,
                 'is_active' => true,
             ])
             ->assertStatus(201);
@@ -108,7 +108,7 @@ class AuditMetadataTest extends TestCase
     {
         // Symfony's Request::create() injects HTTP_USER_AGENT='Symfony' by default.
         // Strip it to faithfully simulate a CLI/queue context with no browser UA.
-        $bare = \Illuminate\Http\Request::create('/');
+        $bare = Request::create('/');
         $bare->headers->remove('User-Agent');
         $bare->server->remove('HTTP_USER_AGENT');
         $this->app->instance('request', $bare);
@@ -127,19 +127,19 @@ class AuditMetadataTest extends TestCase
     /** @test */
     public function test_audit_service_truncates_user_agent_to_512_chars(): void
     {
-        $admin  = $this->makeCbyAdmin();
-        $bank   = $this->makeBank('TRK');
+        $admin = $this->makeCbyAdmin();
+        $bank = $this->makeBank('TRK');
         $longUa = str_repeat('X', 600);
 
         // Any write endpoint that logs via AuditService will do; POST /api/users is simplest.
         $this->actingAs($admin)
             ->withHeaders(['User-Agent' => $longUa])
             ->postJson('/api/users', [
-                'name'      => 'Truncate Test',
-                'email'     => 'trunc@cby.gov.ye',
-                'password'  => 'Secret123!',
-                'role'      => UserRole::DATA_ENTRY->value,
-                'bank_id'   => $bank->id,
+                'name' => 'Truncate Test',
+                'email' => 'trunc@cby.gov.ye',
+                'password' => 'Secret123!',
+                'role' => UserRole::DATA_ENTRY->value,
+                'bank_id' => $bank->id,
                 'is_active' => true,
             ])
             ->assertStatus(201);
@@ -258,7 +258,7 @@ class AuditMetadataTest extends TestCase
 
         $this->assertNotNull($log);
         $before = $log->metadata['before'] ?? [];
-        $after  = $log->metadata['after']  ?? [];
+        $after = $log->metadata['after'] ?? [];
 
         // Only 'role' changed — before/after must contain only that key
         $this->assertArrayHasKey('role', $before);
@@ -319,12 +319,12 @@ class AuditMetadataTest extends TestCase
 
         $this->assertNotNull($log);
         $before = $log->metadata['before'] ?? [];
-        $after  = $log->metadata['after']  ?? [];
+        $after = $log->metadata['after'] ?? [];
 
         // Only 'name' changed
         $this->assertArrayHasKey('name', $before);
         $this->assertArrayHasKey('name', $after);
-        $this->assertSame("بنك CBK", $before['name']);
+        $this->assertSame('بنك CBK', $before['name']);
         $this->assertSame('بنك جديد', $after['name']);
 
         // Unchanged fields must NOT appear
@@ -339,7 +339,7 @@ class AuditMetadataTest extends TestCase
         $bank = $this->makeBank('ZBK');
 
         $this->actingAs($admin)->putJson("/api/banks/{$bank->id}", [
-            'name' => "بنك ZBK",
+            'name' => 'بنك ZBK',
             'code' => 'ZBK',
             'is_active' => true,
         ])->assertOk();

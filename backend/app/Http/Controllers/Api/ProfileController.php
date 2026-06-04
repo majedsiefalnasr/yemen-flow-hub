@@ -10,6 +10,7 @@ use App\Http\Requests\ChangePasswordRequest;
 use App\Http\Resources\UserResource;
 use App\Models\AuditLog;
 use App\Models\ImportRequest;
+use App\Models\User;
 use App\Services\Audit\AuditService;
 use App\Services\Auth\MfaService;
 use App\Services\Settings\AdminSettingsService;
@@ -25,8 +26,7 @@ class ProfileController extends Controller
         private readonly AuditService $auditService,
         private readonly AdminSettingsService $settingsService,
         private readonly MfaService $mfaService,
-    ) {
-    }
+    ) {}
 
     #[OA\Get(
         path: '/api/profile',
@@ -88,7 +88,7 @@ class ProfileController extends Controller
         $user = $request->user();
 
         $validated = $request->validate([
-            'name'  => ['required', 'string', 'max:255'],
+            'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', Rule::unique('users')->ignore($user->id)],
             'phone' => ['nullable', 'regex:/^\+?[1-9]\d{1,14}$/'],
             'avatar_variant' => ['nullable', Rule::in(AvatarVariant::values())],
@@ -141,12 +141,12 @@ class ProfileController extends Controller
             'current_pin' => ['nullable', 'string', 'size:6', 'regex:/^[0-9]{6}$/'],
         ]);
 
-        /** @var \App\Models\User $user */
+        /** @var User $user */
         $user = $request->user();
 
         if ($user->pin_enabled) {
             $currentPin = $validated['current_pin'] ?? null;
-            if (!$currentPin || !$user->pin_code_hash || !Hash::check($currentPin, $user->pin_code_hash)) {
+            if (! $currentPin || ! $user->pin_code_hash || ! Hash::check($currentPin, $user->pin_code_hash)) {
                 return ApiResponse::error('رمز PIN الحالي غير صحيح.', [], 422);
             }
         }
@@ -167,14 +167,14 @@ class ProfileController extends Controller
             'current_pin' => ['required', 'string', 'size:6', 'regex:/^[0-9]{6}$/'],
         ]);
 
-        /** @var \App\Models\User $user */
+        /** @var User $user */
         $user = $request->user();
 
-        if (!$user->pin_enabled || !$user->pin_code_hash) {
+        if (! $user->pin_enabled || ! $user->pin_code_hash) {
             return ApiResponse::error('رمز PIN غير مفعّل.', [], 422);
         }
 
-        if (!Hash::check($validated['current_pin'], $user->pin_code_hash)) {
+        if (! Hash::check($validated['current_pin'], $user->pin_code_hash)) {
             return ApiResponse::error('رمز PIN الحالي غير صحيح.', [], 422);
         }
 
@@ -212,7 +212,7 @@ class ProfileController extends Controller
         }
 
         $user = $request->user();
-        $user->mfa_enabled = !$user->mfa_enabled;
+        $user->mfa_enabled = ! $user->mfa_enabled;
         $user->save();
 
         $mfaRequiredFull = false;
@@ -237,15 +237,15 @@ class ProfileController extends Controller
      */
     public function setupTotp(Request $request)
     {
-        /** @var \App\Models\User $user */
+        /** @var User $user */
         $user = $request->user();
 
         $secret = $this->mfaService->generateTotpSecret($user->email);
-        $uri    = $this->mfaService->getTotpProvisioningUri($user->email, $secret);
+        $uri = $this->mfaService->getTotpProvisioningUri($user->email, $secret);
 
         return ApiResponse::success([
             'provisioning_uri' => $uri,
-            'secret'           => $secret,
+            'secret' => $secret,
         ]);
     }
 
@@ -257,18 +257,18 @@ class ProfileController extends Controller
     {
         $request->validate(['code' => 'required|string|size:6']);
 
-        /** @var \App\Models\User $user */
+        /** @var User $user */
         $user = $request->user();
 
         $secret = $this->mfaService->verifyTotpSetup($user->email, $request->input('code'));
 
-        if (!$secret) {
+        if (! $secret) {
             return ApiResponse::error('الرمز غير صحيح أو انتهت صلاحيته. تأكد من التوقيت ثم أعد المحاولة.', [], 422);
         }
 
-        $user->totp_secret  = $secret;
+        $user->totp_secret = $secret;
         $user->totp_enabled = true;
-        $user->mfa_enabled  = true;
+        $user->mfa_enabled = true;
         $user->save();
 
         return ApiResponse::success(
@@ -284,18 +284,18 @@ class ProfileController extends Controller
     {
         $request->validate(['code' => 'required|string|size:6']);
 
-        /** @var \App\Models\User $user */
+        /** @var User $user */
         $user = $request->user();
 
-        if (!$user->totp_enabled || !$user->totp_secret) {
+        if (! $user->totp_enabled || ! $user->totp_secret) {
             return ApiResponse::error('تطبيق المصادقة غير مفعّل.', [], 422);
         }
 
-        if (!$this->mfaService->verifyTotp($user->totp_secret, $request->input('code'))) {
+        if (! $this->mfaService->verifyTotp($user->totp_secret, $request->input('code'))) {
             return ApiResponse::error('رمز التحقق غير صحيح.', [], 422);
         }
 
-        $user->totp_secret  = null;
+        $user->totp_secret = null;
         $user->totp_enabled = false;
         $user->save();
 
@@ -313,18 +313,18 @@ class ProfileController extends Controller
     {
         $request->validate(['password' => 'required|string']);
 
-        /** @var \App\Models\User $user */
+        /** @var User $user */
         $user = $request->user();
 
-        if (!$user->totp_enabled || !$user->totp_secret) {
+        if (! $user->totp_enabled || ! $user->totp_secret) {
             return ApiResponse::error('تطبيق المصادقة غير مفعّل.', [], 422);
         }
 
-        if (!Hash::check($request->input('password'), $user->password)) {
+        if (! Hash::check($request->input('password'), $user->password)) {
             return ApiResponse::error('كلمة المرور غير صحيحة.', [], 422);
         }
 
-        $user->totp_secret  = null;
+        $user->totp_secret = null;
         $user->totp_enabled = false;
         $user->save();
 
@@ -382,7 +382,7 @@ class ProfileController extends Controller
             UserRole::EXECUTIVE_MEMBER,
         ];
 
-        if (!in_array($user->role, $cbySideRoles)) {
+        if (! in_array($user->role, $cbySideRoles)) {
             $query->where('bank_id', $user->bank_id);
         }
 
@@ -410,11 +410,11 @@ class ProfileController extends Controller
         ];
 
         return [
-            'total'       => (clone $query)->count(),
+            'total' => (clone $query)->count(),
             'in_progress' => (clone $query)
                 ->whereIn('status', $inProgressStatuses)
                 ->count(),
-            'completed'   => (clone $query)
+            'completed' => (clone $query)
                 ->where('status', RequestStatus::COMPLETED->value)
                 ->count(),
         ];
@@ -428,10 +428,10 @@ class ProfileController extends Controller
             ->limit(6)
             ->get()
             ->map(fn ($log) => [
-                'id'     => $log->id,
+                'id' => $log->id,
                 'action' => $log->action,
-                'ref'    => $log->subject_id ?? $log->entity_id ?? null,
-                'ts'     => $log->created_at->toIso8601String(),
+                'ref' => $log->subject_id ?? $log->entity_id ?? null,
+                'ts' => $log->created_at->toIso8601String(),
             ])
             ->values()
             ->all();

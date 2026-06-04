@@ -15,8 +15,7 @@ class RequestReturnedNotification extends Notification implements ShouldQueue
         private readonly ImportRequest $requestModel,
         private readonly string $fromRole = '',
         private readonly ?string $comment = null,
-    ) {
-    }
+    ) {}
 
     public function via(object $notifiable): array
     {
@@ -27,7 +26,7 @@ class RequestReturnedNotification extends Notification implements ShouldQueue
     {
         return [
             'type' => 'request_returned',
-            'message' => 'تم إعادة الطلب للتعديل: ' . $this->requestModel->reference_number,
+            'message' => 'تم إعادة الطلب للتعديل: '.$this->requestModel->reference_number,
             'request_id' => $this->requestModel->id,
             'reference_number' => $this->requestModel->reference_number,
             'from_role' => $this->fromRole,

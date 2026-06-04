@@ -20,4 +20,3 @@ class OverrideVoteRequest extends ApiFormRequest
         ];
     }
 }
-

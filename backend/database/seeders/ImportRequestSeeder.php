@@ -10,7 +10,7 @@ class ImportRequestSeeder extends Seeder
 {
     public function run(): void
     {
-        $builder = new RequestScenarioBuilder();
+        $builder = new RequestScenarioBuilder;
         $banks = Bank::query()->where('is_active', true)->orderBy('id')->get()->values();
 
         // ~300 demo requests — all 21 canonical statuses represented with enough

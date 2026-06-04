@@ -30,7 +30,7 @@ class AuthServiceProvider extends ServiceProvider
         Gate::policy(CustomsDeclaration::class, CustomsDeclarationPolicy::class);
 
         Gate::before(function ($user, string $ability) {
-            if (!str_contains($ability, '.')) {
+            if (! str_contains($ability, '.')) {
                 return null;
             }
 

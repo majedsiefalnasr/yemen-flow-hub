@@ -8,6 +8,7 @@ use App\Models\AuditLog;
 use App\Models\Bank;
 use App\Models\User;
 use App\Services\Auth\MfaService;
+use Illuminate\Auth\SessionGuard;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Support\Facades\Cache;
@@ -89,7 +90,7 @@ class AuthControllerTest extends TestCase
     public function test_account_locks_after_10_consecutive_email_failures(): void
     {
         $email = 'lockme@example.com';
-        $failKey = 'login_fail:' . $email;
+        $failKey = 'login_fail:'.$email;
         $this->makeUser(['email' => $email]);
 
         for ($i = 0; $i < 10; $i++) {
@@ -105,7 +106,7 @@ class AuthControllerTest extends TestCase
     public function test_account_lockout_returns_correct_shape(): void
     {
         $email = 'locked@example.com';
-        $failKey = 'login_fail:' . $email;
+        $failKey = 'login_fail:'.$email;
         $this->makeUser(['email' => $email]);
 
         for ($i = 0; $i < 10; $i++) {
@@ -161,7 +162,7 @@ class AuthControllerTest extends TestCase
     public function test_locked_account_logs_login_failed_audit_entry(): void
     {
         $email = 'logme@example.com';
-        $failKey = 'login_fail:' . $email;
+        $failKey = 'login_fail:'.$email;
         $this->makeUser(['email' => $email]);
 
         for ($i = 0; $i < 10; $i++) {
@@ -184,7 +185,7 @@ class AuthControllerTest extends TestCase
     public function test_inactive_account_does_not_increment_lockout_counter(): void
     {
         $email = 'inactive@example.com';
-        $failKey = 'login_fail:' . $email;
+        $failKey = 'login_fail:'.$email;
         $this->makeUser(['email' => $email, 'is_active' => false]);
 
         $this->assertEquals(0, RateLimiter::attempts($failKey));
@@ -199,7 +200,7 @@ class AuthControllerTest extends TestCase
     public function test_successful_login_clears_failure_counter(): void
     {
         $email = 'clearme@example.com';
-        $failKey = 'login_fail:' . $email;
+        $failKey = 'login_fail:'.$email;
         $this->makeUser(['email' => $email]);
 
         for ($i = 0; $i < 5; $i++) {
@@ -331,7 +332,7 @@ class AuthControllerTest extends TestCase
         $response->assertJsonPath('success', true);
 
         // After session invalidation the web guard's auth key is absent from the new session
-        $webSessionKey = 'login_web_' . sha1(\Illuminate\Auth\SessionGuard::class);
+        $webSessionKey = 'login_web_'.sha1(SessionGuard::class);
         $response->assertSessionMissing($webSessionKey);
     }
 
@@ -410,7 +411,7 @@ class AuthControllerTest extends TestCase
     public function test_verify_otp_completes_login_with_correct_code(): void
     {
         $this->makeUser();
-        $mfa = new MfaService();
+        $mfa = new MfaService;
         $code = $mfa->generate('test@example.com');
         $challengeId = $mfa->getChallengeId('test@example.com');
 
@@ -430,7 +431,7 @@ class AuthControllerTest extends TestCase
     public function test_verify_otp_returns_422_for_wrong_code(): void
     {
         $this->makeUser();
-        $mfa = new MfaService();
+        $mfa = new MfaService;
         $mfa->generate('test@example.com');
         $challengeId = $mfa->getChallengeId('test@example.com');
 
@@ -466,7 +467,7 @@ class AuthControllerTest extends TestCase
     public function test_verify_otp_is_single_use(): void
     {
         $this->makeUser();
-        $mfa = new MfaService();
+        $mfa = new MfaService;
         $code = $mfa->generate('test@example.com');
         $challengeId = $mfa->getChallengeId('test@example.com');
 
@@ -491,7 +492,7 @@ class AuthControllerTest extends TestCase
     public function test_verify_otp_is_throttled(): void
     {
         $this->makeUser();
-        $mfa = new MfaService();
+        $mfa = new MfaService;
         $mfa->generate('test@example.com');
         $challengeId = $mfa->getChallengeId('test@example.com');
 

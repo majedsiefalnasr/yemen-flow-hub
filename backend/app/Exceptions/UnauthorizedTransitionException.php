@@ -4,6 +4,4 @@ namespace App\Exceptions;
 
 use Exception;
 
-class UnauthorizedTransitionException extends Exception
-{
-}
+class UnauthorizedTransitionException extends Exception {}

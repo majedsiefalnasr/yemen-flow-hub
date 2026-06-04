@@ -18,12 +18,12 @@ class MfaService
 
     private function cacheKey(string $email): string
     {
-        return 'mfa_otp:' . strtolower($email);
+        return 'mfa_otp:'.strtolower($email);
     }
 
     private function totpSetupKey(string $email): string
     {
-        return 'mfa_totp_setup:' . strtolower($email);
+        return 'mfa_totp_setup:'.strtolower($email);
     }
 
     // ── Random OTP (legacy / email-based fallback) ────────────────────────────
@@ -47,11 +47,12 @@ class MfaService
     {
         $challenge = Cache::get($this->cacheKey($email));
 
-        if (!is_array($challenge)) {
+        if (! is_array($challenge)) {
             return null;
         }
 
         $challengeId = $challenge['challenge_id'] ?? null;
+
         return is_string($challengeId) && $challengeId !== '' ? $challengeId : null;
     }
 
@@ -76,7 +77,7 @@ class MfaService
         $key = $this->cacheKey($email);
         $challenge = Cache::get($key);
 
-        if (!is_array($challenge)) {
+        if (! is_array($challenge)) {
             return false;
         }
 
@@ -86,18 +87,20 @@ class MfaService
         $expiresAt = (int) ($challenge['expires_at'] ?? 0);
         $now = now()->timestamp;
 
-        if (!is_string($storedChallengeId) || $storedChallengeId === ''
-            || !is_string($storedCode) || $storedCode === '') {
+        if (! is_string($storedChallengeId) || $storedChallengeId === ''
+            || ! is_string($storedCode) || $storedCode === '') {
             Cache::forget($key);
+
             return false;
         }
 
         if ($expiresAt <= $now) {
             Cache::forget($key);
+
             return false;
         }
 
-        if (!hash_equals($storedChallengeId, $challengeId)) {
+        if (! hash_equals($storedChallengeId, $challengeId)) {
             return false;
         }
 
@@ -105,23 +108,27 @@ class MfaService
 
         if ($attempts >= $maxAttempts) {
             Cache::forget($key);
+
             return false;
         }
 
-        if (!hash_equals($storedCode, $code)) {
+        if (! hash_equals($storedCode, $code)) {
             $challenge['attempts'] = $attempts + 1;
 
             if ($challenge['attempts'] >= $maxAttempts) {
                 Cache::forget($key);
+
                 return false;
             }
 
             $remainingSeconds = max(1, $expiresAt - $now);
             Cache::put($key, $challenge, now()->addSeconds($remainingSeconds));
+
             return false;
         }
 
         Cache::forget($key);
+
         return true;
     }
 
@@ -129,13 +136,14 @@ class MfaService
     {
         $challenge = Cache::get($this->cacheKey($email));
 
-        if (!is_array($challenge)) {
+        if (! is_array($challenge)) {
             return false;
         }
 
         $expiresAt = (int) ($challenge['expires_at'] ?? 0);
         if ($expiresAt <= now()->timestamp) {
             Cache::forget($this->cacheKey($email));
+
             return false;
         }
 
@@ -150,7 +158,7 @@ class MfaService
      */
     public function generateTotpSecret(string $email): string
     {
-        $google2fa = new Google2FA();
+        $google2fa = new Google2FA;
         $secret = $google2fa->generateSecretKey();
 
         Cache::put($this->totpSetupKey($email), $secret, now()->addMinutes(10));
@@ -163,7 +171,7 @@ class MfaService
      */
     public function getTotpProvisioningUri(string $email, string $secret): string
     {
-        $google2fa = new Google2FA();
+        $google2fa = new Google2FA;
         $issuer = config('app.name', 'YemenFlowHub');
 
         return $google2fa->getQRCodeUrl($issuer, $email, $secret);
@@ -175,7 +183,8 @@ class MfaService
      */
     public function verifyTotp(string $secret, string $code): bool
     {
-        $google2fa = new Google2FA();
+        $google2fa = new Google2FA;
+
         return (bool) $google2fa->verifyKey($secret, $code, 1);
     }
 
@@ -187,11 +196,11 @@ class MfaService
     {
         $secret = Cache::get($this->totpSetupKey($email));
 
-        if (!is_string($secret) || $secret === '') {
+        if (! is_string($secret) || $secret === '') {
             return null;
         }
 
-        if (!$this->verifyTotp($secret, $code)) {
+        if (! $this->verifyTotp($secret, $code)) {
             return null;
         }
 

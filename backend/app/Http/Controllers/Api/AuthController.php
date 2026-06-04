@@ -10,25 +10,25 @@ use App\Models\User;
 use App\Services\Audit\AuditService;
 use App\Services\Auth\MfaService;
 use App\Support\ApiResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Laravel\Sanctum\PersonalAccessToken;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
-use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use Laravel\Sanctum\PersonalAccessToken;
 use OpenApi\Attributes as OA;
 
 class AuthController extends Controller
 {
     private const LOCKOUT_THRESHOLD = 10;
+
     private const LOCKOUT_MINUTES = 15;
 
     public function __construct(
         private readonly AuditService $auditService,
         private readonly MfaService $mfaService,
-    ) {
-    }
+    ) {}
 
     #[OA\Post(
         path: '/api/auth/login',
@@ -57,23 +57,25 @@ class AuthController extends Controller
         $ip = $request->ip();
         // Normalize email for consistent counter keys and DB lookup
         $email = $request->string('email')->lower()->toString();
-        $failKey = 'login_fail:' . $email;
+        $failKey = 'login_fail:'.$email;
 
         // Per-email account lockout: 10 consecutive failures → 15 min lock
         if (RateLimiter::tooManyAttempts($failKey, self::LOCKOUT_THRESHOLD)) {
             $this->logFailedLogin($email, 'LOCKED', $ip);
+
             return ApiResponse::lockedOut();
         }
 
         $user = User::query()->where('email', $email)->first();
 
         // Check is_active before password — inactive is an admin state, not an auth failure
-        if ($user && !$user->is_active) {
+        if ($user && ! $user->is_active) {
             $this->logFailedLogin($email, 'INACTIVE', $ip);
+
             return ApiResponse::forbidden('Account is inactive.');
         }
 
-        if (!$user || !Hash::check($request->string('password')->toString(), $user->password)) {
+        if (! $user || ! Hash::check($request->string('password')->toString(), $user->password)) {
             RateLimiter::hit($failKey, self::LOCKOUT_MINUTES * 60);
             $this->logFailedLogin($email, 'WRONG_CREDENTIALS', $ip);
             throw ValidationException::withMessages([
@@ -114,21 +116,23 @@ class AuthController extends Controller
         $ip = $request->ip();
         $email = $request->string('email')->lower()->toString();
         $pin = $request->string('pin')->toString();
-        $failKey = 'login_pin_fail:' . $email;
+        $failKey = 'login_pin_fail:'.$email;
 
         if (RateLimiter::tooManyAttempts($failKey, self::LOCKOUT_THRESHOLD)) {
             $this->logFailedLogin($email, 'PIN_LOCKED', $ip);
+
             return ApiResponse::lockedOut();
         }
 
         $user = User::query()->where('email', $email)->first();
 
-        if ($user && !$user->is_active) {
+        if ($user && ! $user->is_active) {
             $this->logFailedLogin($email, 'INACTIVE', $ip);
+
             return ApiResponse::forbidden('Account is inactive.');
         }
 
-        if ($user && (!$user->pin_enabled || !$user->pin_code_hash)) {
+        if ($user && (! $user->pin_enabled || ! $user->pin_code_hash)) {
             RateLimiter::hit($failKey, self::LOCKOUT_MINUTES * 60);
             $this->logFailedLogin($email, 'PIN_NOT_CONFIGURED', $ip);
             throw ValidationException::withMessages([
@@ -137,8 +141,8 @@ class AuthController extends Controller
         }
 
         if (
-            !$user
-            || !Hash::check($pin, $user->pin_code_hash)
+            ! $user
+            || ! Hash::check($pin, $user->pin_code_hash)
         ) {
             RateLimiter::hit($failKey, self::LOCKOUT_MINUTES * 60);
             $this->logFailedLogin($email, 'WRONG_PIN', $ip);
@@ -234,12 +238,12 @@ class AuthController extends Controller
         $otp = $request->string('otp')->toString();
         $challengeId = $request->string('challenge_id')->toString();
 
-        if (!$this->mfaService->verify($email, $otp, $challengeId)) {
+        if (! $this->mfaService->verify($email, $otp, $challengeId)) {
             $this->throwInvalidOtp();
         }
 
         $user = User::query()->where('email', $email)->first();
-        if (!$user || !$user->is_active) {
+        if (! $user || ! $user->is_active) {
             $this->throwInvalidOtp();
         }
 
@@ -268,13 +272,13 @@ class AuthController extends Controller
     )]
     public function switchDemoRole(Request $request)
     {
-        if (!config('demo.allow_role_switch', false)) {
+        if (! config('demo.allow_role_switch', false)) {
             return ApiResponse::forbidden('Demo role switching is disabled.');
         }
 
         $validated = $request->validate([
             'role' => ['required', 'string', Rule::in(array_map(
-                static fn(UserRole $role): string => $role->value,
+                static fn (UserRole $role): string => $role->value,
                 UserRole::cases()
             ))],
         ]);
@@ -286,7 +290,7 @@ class AuthController extends Controller
             ->orderBy('id')
             ->first();
 
-        if (!$user) {
+        if (! $user) {
             return ApiResponse::notFound('No active demo account found for selected role.');
         }
 

@@ -97,8 +97,8 @@ class ImportRequest extends Model
 
     public function setAttribute($key, $value): static
     {
-        if ($key === 'status' && !app()->bound('workflow.transition.active')) {
-            throw new DirectStatusMutationException();
+        if ($key === 'status' && ! app()->bound('workflow.transition.active')) {
+            throw new DirectStatusMutationException;
         }
 
         return parent::setAttribute($key, $value);
@@ -212,6 +212,7 @@ class ImportRequest extends Model
     {
         if (is_array($status)) {
             $values = array_map(fn ($item) => $item instanceof RequestStatus ? $item->value : (string) $item, $status);
+
             return $query->whereIn('status', $values);
         }
 
@@ -245,7 +246,7 @@ class ImportRequest extends Model
     protected static function booted(): void
     {
         static::creating(function (self $importRequest): void {
-            if (!empty($importRequest->reference_number)) {
+            if (! empty($importRequest->reference_number)) {
                 return;
             }
 

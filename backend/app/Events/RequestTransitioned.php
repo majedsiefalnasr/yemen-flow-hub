@@ -16,6 +16,5 @@ class RequestTransitioned
         public string $action,
         public User $actor,
         public ?string $reason = null,
-    ) {
-    }
+    ) {}
 }

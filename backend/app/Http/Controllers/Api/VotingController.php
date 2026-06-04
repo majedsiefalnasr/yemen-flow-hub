@@ -27,14 +27,13 @@ class VotingController extends Controller
     public function __construct(
         private readonly VotingService $votingService,
         private readonly WorkflowService $workflowService,
-    ) {
-    }
+    ) {}
 
     #[OA\Get(path: '/api/voting', tags: ['Voting'], summary: 'List requests in executive voting', responses: [new OA\Response(response: 200, description: 'Voting list')])]
     public function index()
     {
         $user = request()->user();
-        if (!$user->hasRole(UserRole::EXECUTIVE_MEMBER) && !$user->hasRole(UserRole::COMMITTEE_DIRECTOR)) {
+        if (! $user->hasRole(UserRole::EXECUTIVE_MEMBER) && ! $user->hasRole(UserRole::COMMITTEE_DIRECTOR)) {
             return ApiResponse::forbidden();
         }
 
@@ -54,7 +53,7 @@ class VotingController extends Controller
     public function show(ImportRequest $importRequest)
     {
         $user = request()->user();
-        if (!$user->hasRole(UserRole::EXECUTIVE_MEMBER) && !$user->hasRole(UserRole::COMMITTEE_DIRECTOR)) {
+        if (! $user->hasRole(UserRole::EXECUTIVE_MEMBER) && ! $user->hasRole(UserRole::COMMITTEE_DIRECTOR)) {
             return ApiResponse::forbidden();
         }
 
@@ -82,7 +81,7 @@ class VotingController extends Controller
     #[OA\Post(path: '/api/voting/{importRequest}/open', tags: ['Voting'], summary: 'Director opens voting session (WAITING_FOR_VOTING_OPEN → EXECUTIVE_VOTING_OPEN)', parameters: [new OA\Parameter(name: 'importRequest', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], responses: [new OA\Response(response: 200, description: 'Voting session opened')])]
     public function openSession(Request $request, ImportRequest $importRequest)
     {
-        if (!$request->user()->hasPermission('voting.finalize')) {
+        if (! $request->user()->hasPermission('voting.finalize')) {
             return ApiResponse::forbidden();
         }
 
@@ -106,7 +105,7 @@ class VotingController extends Controller
     #[OA\Post(path: '/api/voting/{importRequest}/close', tags: ['Voting'], summary: 'Director closes voting session and applies AUTO_ABSTAIN_TIMEOUT to non-voters', parameters: [new OA\Parameter(name: 'importRequest', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], responses: [new OA\Response(response: 200, description: 'Voting session closed')])]
     public function closeSession(Request $request, ImportRequest $importRequest)
     {
-        if (!$request->user()->hasPermission('voting.finalize')) {
+        if (! $request->user()->hasPermission('voting.finalize')) {
             return ApiResponse::forbidden();
         }
 
@@ -135,7 +134,7 @@ class VotingController extends Controller
     #[OA\Post(path: '/api/voting/{importRequest}/director-decide', tags: ['Voting'], summary: 'Director tie-break decision', parameters: [new OA\Parameter(name: 'importRequest', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], requestBody: new OA\RequestBody(required: true, content: new OA\JsonContent(required: ['vote'], properties: [new OA\Property(property: 'vote', type: 'string', enum: ['APPROVE', 'REJECT']), new OA\Property(property: 'justification', type: 'string', nullable: true, maxLength: 3000)])), responses: [new OA\Response(response: 200, description: 'Director decision applied')])]
     public function directorDecide(DirectorDecideRequest $request, ImportRequest $importRequest)
     {
-        if (!$request->user()->hasPermission('voting.finalize')) {
+        if (! $request->user()->hasPermission('voting.finalize')) {
             return ApiResponse::forbidden();
         }
 
@@ -150,7 +149,7 @@ class VotingController extends Controller
     #[OA\Post(path: '/api/voting/{importRequest}/override', tags: ['Voting'], summary: 'Committee director override and finalize', parameters: [new OA\Parameter(name: 'importRequest', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], requestBody: new OA\RequestBody(required: true, content: new OA\JsonContent(required: ['decision', 'justification'], properties: [new OA\Property(property: 'decision', type: 'string', enum: ['APPROVE', 'REJECT']), new OA\Property(property: 'justification', type: 'string', minLength: 3, maxLength: 3000)])), responses: [new OA\Response(response: 200, description: 'Override decision applied')])]
     public function override(OverrideVoteRequest $request, ImportRequest $importRequest)
     {
-        if (!$request->user()->hasPermission('voting.finalize')) {
+        if (! $request->user()->hasPermission('voting.finalize')) {
             return ApiResponse::forbidden();
         }
 

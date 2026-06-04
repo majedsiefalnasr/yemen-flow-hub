@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Api;
 
 use App\Enums\AuditAction;
-use App\Enums\UserRole;
 use App\Http\Requests\UpdateAdminSettingRequest;
 use App\Services\Audit\AuditService;
 use App\Services\Settings\AdminSettingsService;
@@ -18,8 +17,7 @@ class AdminSettingsController extends Controller
     public function __construct(
         private readonly AdminSettingsService $settingsService,
         private readonly AuditService $auditService
-    ) {
-    }
+    ) {}
 
     #[OA\Get(
         path: '/api/admin/settings',
@@ -77,8 +75,8 @@ class AdminSettingsController extends Controller
         Gate::authorize('cbyAdmin', $request->user());
 
         $validated = $request->validate([
-            'host'     => ['nullable', 'string', 'max:255'],
-            'port'     => ['nullable', 'integer', 'min:1', 'max:65535'],
+            'host' => ['nullable', 'string', 'max:255'],
+            'port' => ['nullable', 'integer', 'min:1', 'max:65535'],
             'username' => ['nullable', 'string', 'max:255'],
             'password' => ['nullable', 'string', 'max:255'],
             'template' => ['nullable', 'string'],

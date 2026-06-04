@@ -2,13 +2,14 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\UserRole;
 use Illuminate\Validation\Rule;
 
 class UpdateBankRequest extends ApiFormRequest
 {
     protected function prepareForValidation(): void
     {
-        if (!$this->filled('name') && $this->filled('name_ar')) {
+        if (! $this->filled('name') && $this->filled('name_ar')) {
             $this->merge(['name' => $this->input('name_ar')]);
         }
     }
@@ -22,7 +23,7 @@ class UpdateBankRequest extends ApiFormRequest
     {
         $bankId = $this->route('bank')?->id;
 
-        if ($this->user()?->hasRole(\App\Enums\UserRole::BANK_ADMIN)) {
+        if ($this->user()?->hasRole(UserRole::BANK_ADMIN)) {
             return [
                 'name' => ['required', 'string', 'max:255', Rule::unique('banks', 'name')->ignore($bankId)],
                 'code' => ['prohibited'],

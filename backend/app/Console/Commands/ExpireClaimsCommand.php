@@ -14,14 +14,16 @@ use Illuminate\Support\Facades\DB;
 class ExpireClaimsCommand extends Command
 {
     protected $signature = 'workflow:expire-claims';
+
     protected $description = 'Release support and bank review claims whose TTL has expired, and unblock requests stuck without a TTL';
 
     public function handle(WorkflowService $workflowService, ClaimReleaseNotifier $claimReleaseNotifier): void
     {
         $systemActor = User::query()->where('role', UserRole::CBY_ADMIN)->first();
 
-        if (!$systemActor) {
+        if (! $systemActor) {
             $this->error('No CBY_ADMIN user found — cannot expire claims. Seed a system CBY_ADMIN user.');
+
             return;
         }
 
@@ -61,7 +63,7 @@ class ExpireClaimsCommand extends Command
             try {
                 DB::transaction(function () use ($id, $status, $releaseAction, $systemActor, $workflowService, $claimReleaseNotifier): void {
                     $request = ImportRequest::query()->lockForUpdate()->find($id);
-                    if (!$request || $request->status !== $status) {
+                    if (! $request || $request->status !== $status) {
                         return;
                     }
                     if ($request->claim_expires_at === null || $request->claim_expires_at->isFuture()) {

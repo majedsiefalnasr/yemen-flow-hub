@@ -23,7 +23,8 @@ use Illuminate\Support\Facades\Schema;
  * migration ran simply lack the snapshot, and `votingQueueResource` falls back
  * to the legacy global count for those rows. New sessions get the snapshot.
  */
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
         Schema::table('import_requests', function (Blueprint $table) {

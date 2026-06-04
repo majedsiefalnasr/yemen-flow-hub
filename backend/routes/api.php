@@ -1,27 +1,25 @@
 <?php
 
-use App\Http\Controllers\Api\AuthController;
-use App\Http\Controllers\Api\AuditController;
 use App\Http\Controllers\Api\AdminSettingsController;
+use App\Http\Controllers\Api\AuditController;
+use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BankController;
-use App\Http\Controllers\Api\ProfileController;
-use App\Http\Controllers\Api\SettingsController;
 use App\Http\Controllers\Api\CustomsController;
+use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\DocumentController;
 use App\Http\Controllers\Api\DocumentTemplateController;
 use App\Http\Controllers\Api\DocumentTypeController;
 use App\Http\Controllers\Api\ImportRequestController;
 use App\Http\Controllers\Api\MerchantController;
 use App\Http\Controllers\Api\NotificationController;
-use App\Http\Controllers\Api\DashboardController;
+use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\ReportPresetsController;
+use App\Http\Controllers\Api\SearchController;
+use App\Http\Controllers\Api\SettingsController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\VotingController;
-use App\Http\Controllers\Api\SearchController;
 use App\Http\Controllers\Api\WorkflowController;
-use App\Http\Requests\BankRejectTerminalRequest;
-use App\Http\Requests\BankReturnRequest;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('auth')->group(function () {

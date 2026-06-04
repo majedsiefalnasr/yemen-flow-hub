@@ -12,12 +12,12 @@ class StoreUserRequest extends ApiFormRequest
     public function authorize(): bool
     {
         $actor = $this->user();
-        if (!$actor?->hasRole(UserRole::BANK_ADMIN)) {
+        if (! $actor?->hasRole(UserRole::BANK_ADMIN)) {
             return true;
         }
 
         $roleValue = $this->input('role');
-        if (!$roleValue || !UserRole::tryFrom($roleValue)) {
+        if (! $roleValue || ! UserRole::tryFrom($roleValue)) {
             return true;
         }
 
@@ -45,12 +45,12 @@ class StoreUserRequest extends ApiFormRequest
             $roleValue = $this->input('role');
             $bankId = $this->input('bank_id');
 
-            if (!$roleValue) {
+            if (! $roleValue) {
                 return;
             }
 
             $role = UserRole::tryFrom($roleValue);
-            if (!$role) {
+            if (! $role) {
                 return;
             }
 
@@ -58,12 +58,12 @@ class StoreUserRequest extends ApiFormRequest
                 $validator->errors()->add('bank_id', 'bank_id is required for bank roles.');
             }
 
-            if ($role->isCbyRole() && !is_null($bankId)) {
+            if ($role->isCbyRole() && ! is_null($bankId)) {
                 $validator->errors()->add('bank_id', 'bank_id must be null for CBY roles.');
             }
 
             if ($this->user()?->hasRole(UserRole::BANK_ADMIN)) {
-                if (!$role->isBankAdminManageable()) {
+                if (! $role->isBankAdminManageable()) {
                     $validator->errors()->add('role', 'BANK_ADMIN can only manage DATA_ENTRY and BANK_REVIEWER users.');
                 }
 

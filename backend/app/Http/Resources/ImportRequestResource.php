@@ -5,10 +5,8 @@ namespace App\Http\Resources;
 use App\Enums\RequestStatus;
 use App\Enums\UserRole;
 use App\Models\User;
-use App\Http\Resources\DocumentResource;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
-use Illuminate\Support\Facades\URL;
 
 class ImportRequestResource extends JsonResource
 {
@@ -59,7 +57,7 @@ class ImportRequestResource extends JsonResource
 
     private function actorSummary($user): ?array
     {
-        if (!$user) {
+        if (! $user) {
             return null;
         }
 
@@ -146,6 +144,7 @@ class ImportRequestResource extends JsonResource
             'customs_issued_at' => $this->customs_issued_at?->toISOString(),
             'customs_declaration' => ($this->issuedCustomsDeclaration ?? $this->customsDeclaration) ? (function () {
                 $decl = $this->issuedCustomsDeclaration ?? $this->customsDeclaration;
+
                 return [
                     'id' => $decl->id,
                     'declaration_number' => $decl->declaration_number,

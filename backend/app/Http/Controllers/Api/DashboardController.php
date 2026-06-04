@@ -11,6 +11,7 @@ use App\Models\RequestVote;
 use App\Models\User;
 use App\Support\ApiResponse;
 use Carbon\CarbonImmutable;
+use Illuminate\Http\JsonResponse;
 use OpenApi\Attributes as OA;
 
 class DashboardController extends Controller
@@ -31,19 +32,19 @@ class DashboardController extends Controller
         $user = request()->user();
 
         return match (true) {
-            $user->hasRole(UserRole::DATA_ENTRY)          => $this->dataEntryStats($user),
-            $user->hasRole(UserRole::BANK_REVIEWER)       => $this->bankReviewerStats($user),
-            $user->hasRole(UserRole::BANK_ADMIN)          => $this->bankAdminStats($user),
-            $user->hasRole(UserRole::SUPPORT_COMMITTEE)   => $this->supportCommitteeStats($user),
-            $user->hasRole(UserRole::SWIFT_OFFICER)       => $this->swiftOfficerStats($user),
-            $user->hasRole(UserRole::EXECUTIVE_MEMBER)    => $this->executiveMemberStats($user),
-            $user->hasRole(UserRole::COMMITTEE_DIRECTOR)  => $this->committeeDirectorStats($user),
-            $user->hasRole(UserRole::CBY_ADMIN)           => $this->cbyadminStats(),
-            default                                       => ApiResponse::success([], 'Dashboard stats retrieved.'),
+            $user->hasRole(UserRole::DATA_ENTRY) => $this->dataEntryStats($user),
+            $user->hasRole(UserRole::BANK_REVIEWER) => $this->bankReviewerStats($user),
+            $user->hasRole(UserRole::BANK_ADMIN) => $this->bankAdminStats($user),
+            $user->hasRole(UserRole::SUPPORT_COMMITTEE) => $this->supportCommitteeStats($user),
+            $user->hasRole(UserRole::SWIFT_OFFICER) => $this->swiftOfficerStats($user),
+            $user->hasRole(UserRole::EXECUTIVE_MEMBER) => $this->executiveMemberStats($user),
+            $user->hasRole(UserRole::COMMITTEE_DIRECTOR) => $this->committeeDirectorStats($user),
+            $user->hasRole(UserRole::CBY_ADMIN) => $this->cbyadminStats(),
+            default => ApiResponse::success([], 'Dashboard stats retrieved.'),
         };
     }
 
-    private function bankAdminStats($user): \Illuminate\Http\JsonResponse
+    private function bankAdminStats($user): JsonResponse
     {
         $asOf = CarbonImmutable::now();
         $bankId = $user->bank_id ? (int) $user->bank_id : null;
@@ -65,11 +66,11 @@ class DashboardController extends Controller
 
         $rejectedStatuses = $this->bankFacingRejectedStatuses();
 
-        $total    = (clone $base)->count();
-        $pending  = (clone $base)->whereIn('status', [RequestStatus::SUBMITTED->value, RequestStatus::BANK_REVIEW->value])->count();
+        $total = (clone $base)->count();
+        $pending = (clone $base)->whereIn('status', [RequestStatus::SUBMITTED->value, RequestStatus::BANK_REVIEW->value])->count();
         $approved = (clone $base)->whereIn('status', $approvedStatuses)->count();
         $rejected = (clone $base)->whereIn('status', $rejectedStatuses)->count();
-        $atCby    = (clone $base)->whereIn('status', [
+        $atCby = (clone $base)->whereIn('status', [
             RequestStatus::BANK_APPROVED->value,
             RequestStatus::SUPPORT_REVIEW_PENDING->value,
             RequestStatus::SUPPORT_REVIEW_IN_PROGRESS->value,
@@ -100,18 +101,18 @@ class DashboardController extends Controller
 
         return ApiResponse::success([
             // New Story 6.3.2 fields
-            'total'                 => $total,
-            'pending'               => $pending,
-            'approved'              => $approved,
-            'rejected'              => $rejected,
+            'total' => $total,
+            'pending' => $pending,
+            'approved' => $approved,
+            'rejected' => $rejected,
             'total_financed_amount' => $totalFinancedAmount,
-            'monthly_requests'      => $monthlyRequests,
+            'monthly_requests' => $monthlyRequests,
             // Backward-compat fields retained for existing clients
-            'pending_bank_review'   => $pending,
-            'at_cby'                => $atCby,
-            'completed'             => $approved,
-            'active_users'          => $activeUsers,
-            'recent_requests'       => ImportRequestResource::collection($recentRequests)->toArray(request()),
+            'pending_bank_review' => $pending,
+            'at_cby' => $atCby,
+            'completed' => $approved,
+            'active_users' => $activeUsers,
+            'recent_requests' => ImportRequestResource::collection($recentRequests)->toArray(request()),
         ], 'Dashboard stats retrieved.');
     }
 
@@ -155,18 +156,18 @@ class DashboardController extends Controller
     {
         return [
             // New Story 6.3.2 fields
-            'total'                 => 0,
-            'pending'               => 0,
-            'approved'              => 0,
-            'rejected'              => 0,
+            'total' => 0,
+            'pending' => 0,
+            'approved' => 0,
+            'rejected' => 0,
             'total_financed_amount' => 0.0,
-            'monthly_requests'      => $this->bankMonthlyRequestsForEmptyBank($asOf),
+            'monthly_requests' => $this->bankMonthlyRequestsForEmptyBank($asOf),
             // Backward-compat fields retained for existing clients
-            'pending_bank_review'   => 0,
-            'at_cby'                => 0,
-            'completed'             => 0,
-            'active_users'          => 0,
-            'recent_requests'       => [],
+            'pending_bank_review' => 0,
+            'at_cby' => 0,
+            'completed' => 0,
+            'active_users' => 0,
+            'recent_requests' => [],
         ];
     }
 
@@ -190,8 +191,8 @@ class DashboardController extends Controller
     {
         $base = ImportRequest::query()->forUser($user);
 
-        $draft     = (clone $base)->where('status', RequestStatus::DRAFT)->count();
-        $returned  = (clone $base)->where('status', RequestStatus::DRAFT_REJECTED_INTERNAL)->count();
+        $draft = (clone $base)->where('status', RequestStatus::DRAFT)->count();
+        $returned = (clone $base)->where('status', RequestStatus::DRAFT_REJECTED_INTERNAL)->count();
 
         $underCbyStatuses = [
             RequestStatus::BANK_APPROVED,
@@ -231,13 +232,13 @@ class DashboardController extends Controller
             ->get();
 
         return ApiResponse::success([
-            'draft'               => $draft,
-            'returned'            => $returned,
+            'draft' => $draft,
+            'returned' => $returned,
             'under_cby_processing' => $underCby,
-            'completed'           => $completed,
-            'draft_requests'      => ImportRequestResource::collection($draftRequests)->resolve(),
-            'returned_requests'   => ImportRequestResource::collection($returnedRequests)->resolve(),
-            'recent_requests'     => ImportRequestResource::collection($recentRequests)->resolve(),
+            'completed' => $completed,
+            'draft_requests' => ImportRequestResource::collection($draftRequests)->resolve(),
+            'returned_requests' => ImportRequestResource::collection($returnedRequests)->resolve(),
+            'recent_requests' => ImportRequestResource::collection($recentRequests)->resolve(),
         ], 'Dashboard stats retrieved.');
     }
 
@@ -286,19 +287,19 @@ class DashboardController extends Controller
             ->get();
 
         return ApiResponse::success([
-            'pending_review'      => $pendingReview,
-            'at_cby'              => $atCby,
+            'pending_review' => $pendingReview,
+            'at_cby' => $atCby,
             'returned_by_support' => $returnedBySupport,
-            'approved_completed'  => $approvedCompleted,
-            'review_queue'        => ImportRequestResource::collection($reviewQueue)->resolve(),
-            'downstream_queue'    => ImportRequestResource::collection($downstreamQueue)->resolve(),
+            'approved_completed' => $approvedCompleted,
+            'review_queue' => ImportRequestResource::collection($reviewQueue)->resolve(),
+            'downstream_queue' => ImportRequestResource::collection($downstreamQueue)->resolve(),
         ], 'Dashboard stats retrieved.');
     }
 
     // SUPPORT_COMMITTEE is CBY-global by institutional design: committee members review
     // requests from all banks. No bank_id filter is applied here — this is intentional
     // governance behaviour, not a missing tenant scope.
-    private function supportCommitteeStats(\App\Models\User $user): \Illuminate\Http\JsonResponse
+    private function supportCommitteeStats(User $user): JsonResponse
     {
         $base = ImportRequest::query();
 
@@ -336,16 +337,16 @@ class DashboardController extends Controller
             ->get();
 
         return ApiResponse::success([
-            'waiting_for_claim'   => $waitingForClaim,
-            'active_by_me'        => $activeByMe,
-            'claimed_by_others'   => $claimedByOthers,
-            'recently_approved'   => $recentlyApproved,
-            'support_queue'       => ImportRequestResource::collection($supportQueue)->toArray(request()),
+            'waiting_for_claim' => $waitingForClaim,
+            'active_by_me' => $activeByMe,
+            'claimed_by_others' => $claimedByOthers,
+            'recently_approved' => $recentlyApproved,
+            'support_queue' => ImportRequestResource::collection($supportQueue)->toArray(request()),
         ], 'Dashboard stats retrieved.');
     }
 
     // SWIFT_OFFICER is bank-scoped: sees only their bank's requests.
-    private function swiftOfficerStats(\App\Models\User $user): \Illuminate\Http\JsonResponse
+    private function swiftOfficerStats(User $user): JsonResponse
     {
         $base = ImportRequest::query()->forUser($user);
 
@@ -381,10 +382,10 @@ class DashboardController extends Controller
 
         return ApiResponse::success([
             'pending_swift_upload' => $pendingSwiftUpload,
-            'uploaded'             => $uploaded,
-            'final_approved'       => $finalApproved,
-            'final_rejected'       => $finalRejected,
-            'swift_queue'          => ImportRequestResource::collection($swiftQueue)->toArray(request()),
+            'uploaded' => $uploaded,
+            'final_approved' => $finalApproved,
+            'final_rejected' => $finalRejected,
+            'swift_queue' => ImportRequestResource::collection($swiftQueue)->toArray(request()),
         ], 'Dashboard stats retrieved.');
     }
 
@@ -441,23 +442,23 @@ class DashboardController extends Controller
 
         return [
             'waiting_for_voting_open' => $waitingForVotingOpen,
-            'active_voting_sessions'  => $activeVotingSessions,
-            'decisions_approved'      => $decisionsApproved,
-            'decisions_rejected'      => $decisionsRejected,
-            'finalized_decisions'     => $finalizedDecisions,
-            'pending_my_vote'         => $pendingMyVote,
-            'voting_queue'            => $this->votingQueueResource($votingQueue, $user),
+            'active_voting_sessions' => $activeVotingSessions,
+            'decisions_approved' => $decisionsApproved,
+            'decisions_rejected' => $decisionsRejected,
+            'finalized_decisions' => $finalizedDecisions,
+            'pending_my_vote' => $pendingMyVote,
+            'voting_queue' => $this->votingQueueResource($votingQueue, $user),
         ];
     }
 
     // EXECUTIVE_MEMBER: global CBY view — no org scope
-    private function executiveMemberStats(User $user): \Illuminate\Http\JsonResponse
+    private function executiveMemberStats(User $user): JsonResponse
     {
         return ApiResponse::success($this->executiveVotingStats($user), 'Dashboard stats retrieved.');
     }
 
     // COMMITTEE_DIRECTOR: global CBY view — no org scope
-    private function committeeDirectorStats(User $user): \Illuminate\Http\JsonResponse
+    private function committeeDirectorStats(User $user): JsonResponse
     {
         $fxQueue = ImportRequest::query()
             ->where('status', RequestStatus::EXECUTIVE_APPROVED->value)
@@ -494,6 +495,7 @@ class DashboardController extends Controller
                 }
                 $snapshot = is_array($request->eligible_voter_ids) ? $request->eligible_voter_ids : null;
                 $total = ($snapshot !== null && count($snapshot) > 0) ? count($snapshot) : $legacyTotalVoters;
+
                 return $total > 0 && $request->votes->count() >= $total;
             })
             ->count();
@@ -573,7 +575,7 @@ class DashboardController extends Controller
     }
 
     // CBY_ADMIN: full-system visibility across all banks
-    private function cbyadminStats(): \Illuminate\Http\JsonResponse
+    private function cbyadminStats(): JsonResponse
     {
         $terminalStatuses = [
             RequestStatus::EXECUTIVE_REJECTED,
@@ -591,7 +593,7 @@ class DashboardController extends Controller
             $approvedStatuses,
         );
 
-        $total    = ImportRequest::query()->count();
+        $total = ImportRequest::query()->count();
         $approved = ImportRequest::query()
             ->whereIn('status', array_map(fn ($s) => $s->value, $approvedStatuses))
             ->count();
@@ -609,15 +611,15 @@ class DashboardController extends Controller
             ->get();
 
         return ApiResponse::success([
-            'total'                  => $total,
-            'approved'               => $approved,
-            'in_process'             => $inProcess,
-            'rejected'               => $rejected,
-            'compliance_alerts'      => $this->complianceAlerts(),
-            'most_active_banks'      => $this->mostActiveBanks(),
-            'monthly_requests'       => $this->cbyadminMonthlyRequests(CarbonImmutable::now()),
-            'category_distribution'  => $this->cbyadminCategoryDistribution(),
-            'recent_requests'        => ImportRequestResource::collection($recentRequests)->toArray(request()),
+            'total' => $total,
+            'approved' => $approved,
+            'in_process' => $inProcess,
+            'rejected' => $rejected,
+            'compliance_alerts' => $this->complianceAlerts(),
+            'most_active_banks' => $this->mostActiveBanks(),
+            'monthly_requests' => $this->cbyadminMonthlyRequests(CarbonImmutable::now()),
+            'category_distribution' => $this->cbyadminCategoryDistribution(),
+            'recent_requests' => ImportRequestResource::collection($recentRequests)->toArray(request()),
         ], 'Dashboard stats retrieved.');
     }
 
@@ -633,7 +635,7 @@ class DashboardController extends Controller
         }
 
         $submitted = array_fill_keys($monthKeys, 0);
-        $approved  = array_fill_keys($monthKeys, 0);
+        $approved = array_fill_keys($monthKeys, 0);
 
         $approvedStatuses = [
             RequestStatus::EXECUTIVE_APPROVED->value,
@@ -647,7 +649,7 @@ class DashboardController extends Controller
 
         foreach ($rows as $row) {
             $monthKey = (CarbonImmutable::instance($row->created_at))->setTimezone($timezone)->format('Y-m');
-            if (!array_key_exists($monthKey, $submitted)) {
+            if (! array_key_exists($monthKey, $submitted)) {
                 continue;
             }
             $submitted[$monthKey]++;
@@ -659,9 +661,9 @@ class DashboardController extends Controller
 
         return array_map(
             fn (string $month): array => [
-                'month'     => $month,
+                'month' => $month,
                 'submitted' => $submitted[$month],
-                'approved'  => $approved[$month],
+                'approved' => $approved[$month],
             ],
             $monthKeys
         );
@@ -722,11 +724,11 @@ class DashboardController extends Controller
             ->limit(10)
             ->get()
             ->map(fn ($r) => [
-                'id'               => $r->id,
+                'id' => $r->id,
                 'reference_number' => $r->reference_number,
-                'bank_name'        => $r->bank?->name ?? '—',
-                'amount'           => (float) $r->amount,
-                'currency'         => $r->currency,
+                'bank_name' => $r->bank?->name ?? '—',
+                'amount' => (float) $r->amount,
+                'currency' => $r->currency,
             ])
             ->values()
             ->all();
@@ -741,17 +743,17 @@ class DashboardController extends Controller
             ->limit(10)
             ->get()
             ->map(fn ($r) => [
-                'id'               => $r->id,
+                'id' => $r->id,
                 'reference_number' => $r->reference_number,
-                'bank_name'        => $r->bank?->name ?? '—',
-                'updated_at'       => $r->updated_at?->toIso8601String() ?? null,
+                'bank_name' => $r->bank?->name ?? '—',
+                'updated_at' => $r->updated_at?->toIso8601String() ?? null,
             ])
             ->values()
             ->all();
 
         return [
-            'duplicate_suppliers'    => $duplicateSuppliers,
-            'high_amount_requests'   => $highAmountRequests,
+            'duplicate_suppliers' => $duplicateSuppliers,
+            'high_amount_requests' => $highAmountRequests,
             'stale_pending_requests' => $stalePendingRequests,
         ];
     }
@@ -767,8 +769,8 @@ class DashboardController extends Controller
             ->limit(5)
             ->get()
             ->map(fn ($row) => [
-                'bank_id'       => $row->bank_id,
-                'bank_name'     => $row->bank_name,
+                'bank_id' => $row->bank_id,
+                'bank_name' => $row->bank_name,
                 'request_count' => (int) $row->request_count,
             ])
             ->values()

@@ -77,6 +77,7 @@ class AdminSettingsService
         foreach (array_keys(self::DEFAULTS) as $key) {
             $settings[$key] = $this->getSetting($key);
         }
+
         return $settings;
     }
 
@@ -84,6 +85,7 @@ class AdminSettingsService
     {
         $this->validateKey($key);
         $setting = SystemSetting::findByKey($key);
+
         return $setting?->value ?? self::DEFAULTS[$key];
     }
 
@@ -95,7 +97,7 @@ class AdminSettingsService
         return DB::transaction(function () use ($key, $value, $actor) {
             $setting = SystemSetting::findByKey($key);
 
-            if (!$setting) {
+            if (! $setting) {
                 $setting = SystemSetting::query()->create([
                     'key' => $key,
                     'value' => $value,
@@ -145,8 +147,8 @@ class AdminSettingsService
         }
 
         return [
-            'host'     => SystemSetting::findByKey('smtp_host')?->value ?? '',
-            'port'     => SystemSetting::findByKey('smtp_port')?->value ?? 587,
+            'host' => SystemSetting::findByKey('smtp_host')?->value ?? '',
+            'port' => SystemSetting::findByKey('smtp_port')?->value ?? 587,
             'username' => SystemSetting::findByKey('smtp_username')?->value ?? '',
             'password' => $passwordMask,
             'template' => SystemSetting::findByKey('smtp_template')?->value ?? '',
@@ -162,7 +164,7 @@ class AdminSettingsService
                 }
             }
             // Encrypt password
-            if (!empty($data['password'])) {
+            if (! empty($data['password'])) {
                 $this->upsertRawSetting('smtp_password', encrypt($data['password']), $actor);
             }
         });
@@ -176,13 +178,14 @@ class AdminSettingsService
             $setting = SystemSetting::findByKey($key);
             $result[$key] = (bool) ($setting ? $setting->value : self::DEFAULTS[$key]);
         }
+
         return $result;
     }
 
     private function upsertRawSetting(string $key, mixed $value, User $actor): void
     {
         $setting = SystemSetting::findByKey($key);
-        if (!$setting) {
+        if (! $setting) {
             SystemSetting::query()->create(['key' => $key, 'value' => $value, 'updated_by' => $actor->id]);
         } else {
             $setting->update(['value' => $value, 'updated_by' => $actor->id]);
@@ -191,7 +194,7 @@ class AdminSettingsService
 
     private function validateKey(string $key): void
     {
-        if (!array_key_exists($key, self::DEFAULTS)) {
+        if (! array_key_exists($key, self::DEFAULTS)) {
             throw new InvalidArgumentException("Invalid setting key: $key");
         }
     }
@@ -201,19 +204,19 @@ class AdminSettingsService
         $rule = self::VALIDATION_RULES[$key];
 
         if (isset($rule['type'])) {
-            if ($rule['type'] === 'boolean' && !is_bool($value)) {
+            if ($rule['type'] === 'boolean' && ! is_bool($value)) {
                 throw new InvalidArgumentException(
                     "Setting '$key' must be a boolean."
                 );
             }
-            if ($rule['type'] === 'enum' && !in_array($value, $rule['values'], true)) {
+            if ($rule['type'] === 'enum' && ! in_array($value, $rule['values'], true)) {
                 $allowed = implode(', ', $rule['values']);
                 throw new InvalidArgumentException(
                     "Setting '$key' must be one of: $allowed."
                 );
             }
         } else {
-            if (!is_numeric($value)) {
+            if (! is_numeric($value)) {
                 throw new InvalidArgumentException(
                     "Setting '$key' must be a number."
                 );

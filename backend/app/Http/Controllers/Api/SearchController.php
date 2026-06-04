@@ -17,7 +17,9 @@ use OpenApi\Attributes as OA;
 class SearchController extends Controller
 {
     private const MIN_QUERY_LENGTH = 2;
+
     private const MAX_RESULTS_PER_GROUP = 10;
+
     private const MAX_RECENT_SEARCHES = 10;
 
     #[OA\Get(
@@ -90,7 +92,7 @@ class SearchController extends Controller
 
     private function searchUsers(User $user, string $query): array
     {
-        if (!in_array($user->role, [UserRole::CBY_ADMIN, UserRole::BANK_ADMIN], true)) {
+        if (! in_array($user->role, [UserRole::CBY_ADMIN, UserRole::BANK_ADMIN], true)) {
             return [];
         }
 
@@ -104,7 +106,7 @@ class SearchController extends Controller
             });
 
         if ($user->role === UserRole::BANK_ADMIN) {
-            if (!$user->bank_id) {
+            if (! $user->bank_id) {
                 return [];
             }
 

@@ -18,16 +18,27 @@ class SearchControllerTest extends TestCase
     use RefreshDatabase;
 
     private Bank $bankA;
+
     private Bank $bankB;
+
     private User $dataEntryA;
+
     private User $bankReviewerA;
+
     private User $bankAdminA;
+
     private User $swiftOfficerA;
+
     private User $supportUser;
+
     private User $execMember;
+
     private User $director;
+
     private User $cbyadmin;
+
     private ImportRequest $requestA;
+
     private ImportRequest $requestB;
 
     protected function setUp(): void
@@ -70,9 +81,10 @@ class SearchControllerTest extends TestCase
     private function makeUser(UserRole $role, ?Bank $bank = null): User
     {
         self::$userCounter++;
+
         return User::query()->create([
-            'name' => "User " . self::$userCounter,
-            'email' => "user" . self::$userCounter . "@example.com",
+            'name' => 'User '.self::$userCounter,
+            'email' => 'user'.self::$userCounter.'@example.com',
             'password' => Hash::make('password'),
             'role' => $role->value,
             'bank_id' => $bank?->id,
@@ -84,6 +96,7 @@ class SearchControllerTest extends TestCase
     {
         static $mc = 0;
         $mc++;
+
         return Merchant::query()->create([
             'name' => "Merchant {$mc}",
             'tax_number' => "TX-{$mc}",
@@ -126,7 +139,7 @@ class SearchControllerTest extends TestCase
             'declaration_number' => $declarationNumber,
             'issued_by' => $this->cbyadmin->id,
             'issued_at' => now(),
-            'pdf_path' => 'customs/test/' . $declarationNumber . '.pdf',
+            'pdf_path' => 'customs/test/'.$declarationNumber.'.pdf',
             'metadata' => null,
         ]);
     }
@@ -396,7 +409,7 @@ class SearchControllerTest extends TestCase
     public function test_recent_searches_trimmed_to_10(): void
     {
         for ($i = 1; $i <= 12; $i++) {
-            $this->actingAs($this->dataEntryA)->getJson('/api/search?q=query' . $i);
+            $this->actingAs($this->dataEntryA)->getJson('/api/search?q=query'.$i);
         }
 
         $response = $this->actingAs($this->dataEntryA)

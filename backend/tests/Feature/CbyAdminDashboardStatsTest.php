@@ -18,7 +18,9 @@ class CbyAdminDashboardStatsTest extends TestCase
     use RefreshDatabase;
 
     private Bank $bank;
+
     private Bank $otherBank;
+
     private User $admin;
 
     protected function setUp(): void
@@ -31,9 +33,9 @@ class CbyAdminDashboardStatsTest extends TestCase
             ['name_ar' => 'إنشاء طلب', 'name_en' => 'Create Request', 'group' => 'requests']
         );
 
-        $this->bank      = $this->makeBank('YCB');
+        $this->bank = $this->makeBank('YCB');
         $this->otherBank = $this->makeBank('OTH');
-        $this->admin     = $this->makeUser(UserRole::CBY_ADMIN);
+        $this->admin = $this->makeUser(UserRole::CBY_ADMIN);
     }
 
     // ─── Helpers ──────────────────────────────────────────────────────────────
@@ -41,8 +43,8 @@ class CbyAdminDashboardStatsTest extends TestCase
     private function makeBank(string $code): Bank
     {
         return Bank::query()->create([
-            'name'      => "بنك {$code}",
-            'code'      => $code,
+            'name' => "بنك {$code}",
+            'code' => $code,
             'is_active' => true,
         ]);
     }
@@ -51,12 +53,13 @@ class CbyAdminDashboardStatsTest extends TestCase
     {
         static $counter = 0;
         $counter++;
+
         return User::query()->create([
-            'name'      => "User {$counter}",
-            'email'     => "user{$counter}@example.com",
-            'password'  => Hash::make('password'),
-            'role'      => $role->value,
-            'bank_id'   => $bank?->id,
+            'name' => "User {$counter}",
+            'email' => "user{$counter}@example.com",
+            'password' => Hash::make('password'),
+            'role' => $role->value,
+            'bank_id' => $bank?->id,
             'is_active' => true,
         ]);
     }
@@ -66,14 +69,14 @@ class CbyAdminDashboardStatsTest extends TestCase
         app()->instance('workflow.transition.active', true);
         try {
             return ImportRequest::query()->create(array_merge([
-                'bank_id'            => $bank->id,
-                'created_by'         => $creator->id,
-                'currency'           => 'USD',
-                'amount'             => 10000.00,
-                'supplier_name'      => 'Supplier Co.',
-                'goods_description'  => 'Industrial equipment',
-                'port_of_entry'      => 'Aden Port',
-                'status'             => $status,
+                'bank_id' => $bank->id,
+                'created_by' => $creator->id,
+                'currency' => 'USD',
+                'amount' => 10000.00,
+                'supplier_name' => 'Supplier Co.',
+                'goods_description' => 'Industrial equipment',
+                'port_of_entry' => 'Aden Port',
+                'status' => $status,
                 'current_owner_role' => UserRole::DATA_ENTRY,
             ], $extra));
         } finally {
@@ -411,7 +414,7 @@ class CbyAdminDashboardStatsTest extends TestCase
 
     public function test_compliance_alerts_stale_pending_excludes_executive_approved(): void
     {
-        $de  = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
         $req = $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_APPROVED);
         ImportRequest::query()->where('id', $req->id)->update(['updated_at' => now()->subDays(20)]);
 

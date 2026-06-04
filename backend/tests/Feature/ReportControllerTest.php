@@ -20,6 +20,7 @@ class ReportControllerTest extends TestCase
     use RefreshDatabase;
 
     private Bank $bank;
+
     private User $admin;
 
     protected function setUp(): void
@@ -32,7 +33,7 @@ class ReportControllerTest extends TestCase
             ['name_ar' => 'إنشاء طلب', 'name_en' => 'Create Request', 'group' => 'requests']
         );
 
-        $this->bank  = Bank::query()->create(['name' => 'بنك اليمن المركزي', 'code' => 'CBY', 'is_active' => true]);
+        $this->bank = Bank::query()->create(['name' => 'بنك اليمن المركزي', 'code' => 'CBY', 'is_active' => true]);
         $this->admin = $this->makeUser(UserRole::CBY_ADMIN);
     }
 
@@ -42,12 +43,13 @@ class ReportControllerTest extends TestCase
     {
         static $counter = 0;
         $counter++;
+
         return User::query()->create([
-            'name'      => "User {$counter}",
-            'email'     => "user{$counter}@example.com",
-            'password'  => Hash::make('password'),
-            'role'      => $role->value,
-            'bank_id'   => $bank?->id,
+            'name' => "User {$counter}",
+            'email' => "user{$counter}@example.com",
+            'password' => Hash::make('password'),
+            'role' => $role->value,
+            'bank_id' => $bank?->id,
             'is_active' => true,
         ]);
     }
@@ -57,14 +59,14 @@ class ReportControllerTest extends TestCase
         app()->instance('workflow.transition.active', true);
         try {
             return ImportRequest::query()->create(array_merge([
-                'bank_id'            => $bank->id,
-                'created_by'         => $creator->id,
-                'currency'           => 'USD',
-                'amount'             => 10000.00,
-                'supplier_name'      => 'Supplier Co.',
-                'goods_description'  => 'Industrial equipment',
-                'port_of_entry'      => 'Aden Port',
-                'status'             => $status,
+                'bank_id' => $bank->id,
+                'created_by' => $creator->id,
+                'currency' => 'USD',
+                'amount' => 10000.00,
+                'supplier_name' => 'Supplier Co.',
+                'goods_description' => 'Industrial equipment',
+                'port_of_entry' => 'Aden Port',
+                'status' => $status,
                 'current_owner_role' => UserRole::DATA_ENTRY,
             ], $extra));
         } finally {
@@ -75,11 +77,11 @@ class ReportControllerTest extends TestCase
     private function makeVote(ImportRequest $request, User $voter, VoteType $vote): RequestVote
     {
         return RequestVote::query()->create([
-            'request_id'          => $request->id,
-            'user_id'             => $voter->id,
-            'vote'                => $vote->value,
+            'request_id' => $request->id,
+            'user_id' => $voter->id,
+            'vote' => $vote->value,
             'is_director_override' => false,
-            'voted_at'            => now(),
+            'voted_at' => now(),
         ]);
     }
 
@@ -205,7 +207,7 @@ class ReportControllerTest extends TestCase
         $this->makeRequest($this->bank, $de, RequestStatus::SUBMITTED);
 
         $response = $this->actingAs($this->admin)
-            ->getJson('/api/reports/workflow?from_date=' . now()->subDays(5)->toDateString())
+            ->getJson('/api/reports/workflow?from_date='.now()->subDays(5)->toDateString())
             ->assertOk()
             ->json('data.counts_by_status');
 
@@ -224,7 +226,7 @@ class ReportControllerTest extends TestCase
         $this->makeRequest($this->bank, $de, RequestStatus::SUBMITTED);
 
         $response = $this->actingAs($this->admin)
-            ->getJson('/api/reports/workflow?to_date=' . now()->subDays(10)->toDateString())
+            ->getJson('/api/reports/workflow?to_date='.now()->subDays(10)->toDateString())
             ->assertOk()
             ->json('data.counts_by_status');
 
@@ -241,7 +243,7 @@ class ReportControllerTest extends TestCase
         $new = $this->makeRequest($this->bank, $de, RequestStatus::DRAFT);
 
         $response = $this->actingAs($this->admin)
-            ->getJson('/api/reports/workflow?from_date=' . now()->subDays(5)->toDateString())
+            ->getJson('/api/reports/workflow?from_date='.now()->subDays(5)->toDateString())
             ->assertOk()
             ->json('data.counts_by_bank');
 
@@ -258,7 +260,7 @@ class ReportControllerTest extends TestCase
         $this->makeRequest($this->bank, $de, RequestStatus::COMPLETED);
 
         $throughput = $this->actingAs($this->admin)
-            ->getJson('/api/reports/workflow?from_date=' . now()->subDays(5)->toDateString())
+            ->getJson('/api/reports/workflow?from_date='.now()->subDays(5)->toDateString())
             ->assertOk()
             ->json('data.throughput');
 
@@ -320,7 +322,7 @@ class ReportControllerTest extends TestCase
 
     public function test_voting_report_vote_tallies_aggregate_correctly(): void
     {
-        $de  = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
         $req = $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_VOTING_OPEN);
 
         // Each executive member can only vote once per request (unique constraint)
@@ -359,7 +361,7 @@ class ReportControllerTest extends TestCase
         $this->makeVote($recent, $this->makeUser(UserRole::EXECUTIVE_MEMBER), VoteType::APPROVE);
 
         $data = $this->actingAs($this->admin)
-            ->getJson('/api/reports/voting?from_date=' . now()->subDays(5)->toDateString())
+            ->getJson('/api/reports/voting?from_date='.now()->subDays(5)->toDateString())
             ->assertOk()
             ->json('data');
 
@@ -397,7 +399,7 @@ class ReportControllerTest extends TestCase
     public function test_workflow_report_stage_durations_key_is_unknown_not_empty_for_null_to_status(): void
     {
         // When all stage history rows have a known to_status, the avg_time map has no empty key
-        $de  = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
         $req = $this->makeRequest($this->bank, $de, RequestStatus::SUBMITTED);
 
         // No stage history rows at all → avg_time_per_stage_hours is empty (not crash)
@@ -416,7 +418,7 @@ class ReportControllerTest extends TestCase
 
     public function test_voting_report_tie_rate_detects_tied_sessions(): void
     {
-        $de  = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
         $req = $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_VOTING_OPEN);
 
         // 2 approve + 2 reject + 2 abstain = 6 total, neither side ≥4 → tie
@@ -437,7 +439,7 @@ class ReportControllerTest extends TestCase
 
     public function test_voting_report_no_tie_when_one_side_has_majority(): void
     {
-        $de  = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
         $req = $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_APPROVED);
 
         // 4 approve + 2 reject = no tie
@@ -460,17 +462,17 @@ class ReportControllerTest extends TestCase
 
     public function test_voting_report_vote_tallies_include_auto_abstain_timeout(): void
     {
-        $de  = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
         $req = $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_VOTING_OPEN);
 
         $this->makeVote($req, $this->makeUser(UserRole::EXECUTIVE_MEMBER), VoteType::APPROVE);
         // Simulate AUTO_ABSTAIN_TIMEOUT by inserting directly
         RequestVote::query()->create([
-            'request_id'           => $req->id,
-            'user_id'              => $this->makeUser(UserRole::EXECUTIVE_MEMBER)->id,
-            'vote'                 => 'AUTO_ABSTAIN_TIMEOUT',
+            'request_id' => $req->id,
+            'user_id' => $this->makeUser(UserRole::EXECUTIVE_MEMBER)->id,
+            'vote' => 'AUTO_ABSTAIN_TIMEOUT',
             'is_director_override' => false,
-            'voted_at'             => now(),
+            'voted_at' => now(),
         ]);
 
         $tallies = $this->actingAs($this->admin)
@@ -504,8 +506,8 @@ class ReportControllerTest extends TestCase
     public function test_bank_report_bank_user_sees_own_bank_only(): void
     {
         $bank2 = Bank::query()->create(['name' => 'بنك ثانٍ', 'code' => 'BNK2', 'is_active' => true]);
-        $de    = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
-        $de2   = $this->makeUser(UserRole::DATA_ENTRY, $bank2);
+        $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $de2 = $this->makeUser(UserRole::DATA_ENTRY, $bank2);
 
         $this->makeRequest($this->bank, $de, RequestStatus::DRAFT);
         $this->makeRequest($this->bank, $de, RequestStatus::SUBMITTED);
@@ -523,8 +525,8 @@ class ReportControllerTest extends TestCase
     public function test_bank_report_cby_admin_sees_cross_bank_breakdown(): void
     {
         $bank2 = Bank::query()->create(['name' => 'بنك ثانٍ', 'code' => 'BNK2', 'is_active' => true]);
-        $de    = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
-        $de2   = $this->makeUser(UserRole::DATA_ENTRY, $bank2);
+        $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $de2 = $this->makeUser(UserRole::DATA_ENTRY, $bank2);
 
         $this->makeRequest($this->bank, $de, RequestStatus::DRAFT);
         $this->makeRequest($bank2, $de2, RequestStatus::DRAFT);
@@ -541,13 +543,13 @@ class ReportControllerTest extends TestCase
 
     public function test_bank_report_date_range_filters_correctly(): void
     {
-        $de  = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
         $old = $this->makeRequest($this->bank, $de, RequestStatus::SUBMITTED);
         ImportRequest::query()->where('id', $old->id)->update(['created_at' => now()->subDays(30)]);
         $this->makeRequest($this->bank, $de, RequestStatus::SUBMITTED);
 
         $data = $this->actingAs($de)
-            ->getJson('/api/reports/bank?from_date=' . now()->subDays(5)->toDateString())
+            ->getJson('/api/reports/bank?from_date='.now()->subDays(5)->toDateString())
             ->assertOk()
             ->json('data');
 
@@ -614,7 +616,7 @@ class ReportControllerTest extends TestCase
         ]);
 
         $data = $this->actingAs($de)
-            ->getJson('/api/reports/bank?from_date=' . now()->subDays(5)->toDateString())
+            ->getJson('/api/reports/bank?from_date='.now()->subDays(5)->toDateString())
             ->assertOk()
             ->json('data');
 
@@ -647,7 +649,7 @@ class ReportControllerTest extends TestCase
 
         $this->assertDatabaseHas('audit_logs', [
             'user_id' => $this->admin->id,
-            'action'  => 'REPORT_EXPORTED',
+            'action' => 'REPORT_EXPORTED',
         ]);
     }
 
@@ -696,7 +698,7 @@ class ReportControllerTest extends TestCase
 
         $this->assertDatabaseHas('audit_logs', [
             'user_id' => $de->id,
-            'action'  => 'REPORT_EXPORTED',
+            'action' => 'REPORT_EXPORTED',
         ]);
     }
 

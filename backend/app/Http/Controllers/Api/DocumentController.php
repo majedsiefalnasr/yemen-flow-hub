@@ -15,9 +15,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class DocumentController extends Controller
 {
-    public function __construct(private readonly DocumentService $documentService)
-    {
-    }
+    public function __construct(private readonly DocumentService $documentService) {}
 
     #[OA\Post(
         path: '/api/documents/upload',

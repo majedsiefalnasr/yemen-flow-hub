@@ -19,8 +19,7 @@ class SettingsController extends Controller
         private readonly UserPreferencesService $preferencesService,
         private readonly SystemSettingsService $systemSettingsService,
         private readonly AuditService $auditService
-    ) {
-    }
+    ) {}
 
     #[OA\Get(
         path: '/api/settings/public',
@@ -165,11 +164,12 @@ class SettingsController extends Controller
                 );
             }
 
-            return ApiResponse::success($result, "Settings saved successfully.");
+            return ApiResponse::success($result, 'Settings saved successfully.');
         } catch (AuthorizationException $e) {
             return ApiResponse::forbidden($e->getMessage(), 'UNAUTHORIZED');
         } catch (\Exception $e) {
             \Log::error('Settings save error', ['error' => $e->getMessage()]);
+
             return ApiResponse::error('Failed to save settings', [], 500, 'SETTINGS_SAVE_ERROR');
         }
     }

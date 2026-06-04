@@ -21,6 +21,7 @@ class VotingServiceTest extends TestCase
     use RefreshDatabase;
 
     private VotingService $votingService;
+
     private Bank $bank;
 
     protected function setUp(): void
@@ -34,6 +35,7 @@ class VotingServiceTest extends TestCase
     {
         static $counter = 0;
         $counter++;
+
         return User::query()->create([
             'name' => "User {$counter}",
             'email' => "user{$counter}@vstest.com",
@@ -348,7 +350,7 @@ class VotingServiceTest extends TestCase
             'user_id' => $member->id,
         ]);
         $this->assertNotNull(
-            \App\Models\RequestVote::query()
+            RequestVote::query()
                 ->where('request_id', $request->id)
                 ->where('user_id', $member->id)
                 ->value('voted_at')
@@ -365,7 +367,7 @@ class VotingServiceTest extends TestCase
         $inactiveExec = User::query()->create([
             'name' => 'Inactive Exec',
             'email' => 'inactive@vstest.com',
-            'password' => \Illuminate\Support\Facades\Hash::make('password'),
+            'password' => Hash::make('password'),
             'role' => UserRole::EXECUTIVE_MEMBER->value,
             'bank_id' => null,
             'is_active' => false,
@@ -400,7 +402,7 @@ class VotingServiceTest extends TestCase
 
         $this->votingService->closeSession($request, $director);
 
-        $directorVote = \App\Models\RequestVote::query()
+        $directorVote = RequestVote::query()
             ->where('request_id', $request->id)
             ->where('user_id', $director->id)
             ->first();

@@ -4,6 +4,4 @@ namespace App\Exceptions;
 
 use Exception;
 
-class DuplicateVoteException extends Exception
-{
-}
+class DuplicateVoteException extends Exception {}

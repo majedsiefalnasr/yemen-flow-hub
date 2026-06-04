@@ -21,8 +21,11 @@ class DocumentControllerTest extends TestCase
     use RefreshDatabase;
 
     private Bank $bank;
+
     private Bank $otherBank;
+
     private User $dataEntry;
+
     private User $otherDataEntry;
 
     protected function setUp(): void
@@ -68,6 +71,7 @@ class DocumentControllerTest extends TestCase
     {
         static $counter = 0;
         $counter++;
+
         return User::query()->create([
             'name' => "User {$counter}",
             'email' => "user{$counter}@example.com",

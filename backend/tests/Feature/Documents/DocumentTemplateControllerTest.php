@@ -17,7 +17,9 @@ class DocumentTemplateControllerTest extends TestCase
     use RefreshDatabase;
 
     private Bank $bank;
+
     private Bank $otherBank;
+
     private Merchant $merchant;
 
     protected function setUp(): void

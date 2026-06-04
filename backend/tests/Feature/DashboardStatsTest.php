@@ -11,6 +11,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
@@ -19,6 +20,7 @@ class DashboardStatsTest extends TestCase
     use RefreshDatabase;
 
     private Bank $bank;
+
     private Bank $otherBank;
 
     protected function setUp(): void
@@ -44,8 +46,8 @@ class DashboardStatsTest extends TestCase
     private function makeBank(string $code): Bank
     {
         return Bank::query()->create([
-            'name'      => "بنك {$code}",
-            'code'      => $code,
+            'name' => "بنك {$code}",
+            'code' => $code,
             'is_active' => true,
         ]);
     }
@@ -54,12 +56,13 @@ class DashboardStatsTest extends TestCase
     {
         static $counter = 0;
         $counter++;
+
         return User::query()->create([
-            'name'      => "User {$counter}",
-            'email'     => "user{$counter}@example.com",
-            'password'  => Hash::make('password'),
-            'role'      => $role->value,
-            'bank_id'   => $bank?->id,
+            'name' => "User {$counter}",
+            'email' => "user{$counter}@example.com",
+            'password' => Hash::make('password'),
+            'role' => $role->value,
+            'bank_id' => $bank?->id,
             'is_active' => true,
         ]);
     }
@@ -69,14 +72,14 @@ class DashboardStatsTest extends TestCase
         app()->instance('workflow.transition.active', true);
         try {
             return ImportRequest::query()->create(array_merge([
-                'bank_id'            => $bank->id,
-                'created_by'         => $creator->id,
-                'currency'           => 'USD',
-                'amount'             => 10000.00,
-                'supplier_name'      => 'Supplier Co.',
-                'goods_description'  => 'Industrial equipment',
-                'port_of_entry'      => 'Aden Port',
-                'status'             => $status,
+                'bank_id' => $bank->id,
+                'created_by' => $creator->id,
+                'currency' => 'USD',
+                'amount' => 10000.00,
+                'supplier_name' => 'Supplier Co.',
+                'goods_description' => 'Industrial equipment',
+                'port_of_entry' => 'Aden Port',
+                'status' => $status,
                 'current_owner_role' => UserRole::DATA_ENTRY,
             ], $extra));
         } finally {
@@ -109,8 +112,8 @@ class DashboardStatsTest extends TestCase
 
     public function test_data_entry_stats_counts_are_bank_scoped(): void
     {
-        $de       = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
-        $otherDe  = $this->makeUser(UserRole::DATA_ENTRY, $this->otherBank);
+        $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $otherDe = $this->makeUser(UserRole::DATA_ENTRY, $this->otherBank);
 
         // 2 drafts in my bank, 3 in other bank
         $this->makeRequest($this->bank, $de, RequestStatus::DRAFT);
@@ -248,9 +251,9 @@ class DashboardStatsTest extends TestCase
 
     public function test_bank_reviewer_stats_counts_are_bank_scoped(): void
     {
-        $de       = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
-        $br       = $this->makeUser(UserRole::BANK_REVIEWER, $this->bank);
-        $otherDe  = $this->makeUser(UserRole::DATA_ENTRY, $this->otherBank);
+        $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $br = $this->makeUser(UserRole::BANK_REVIEWER, $this->bank);
+        $otherDe = $this->makeUser(UserRole::DATA_ENTRY, $this->otherBank);
 
         $this->makeRequest($this->bank, $de, RequestStatus::SUBMITTED);
         $this->makeRequest($this->otherBank, $otherDe, RequestStatus::SUBMITTED);
@@ -366,11 +369,11 @@ class DashboardStatsTest extends TestCase
 
     public function test_support_committee_active_by_me_counts_only_my_claims(): void
     {
-        $de  = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
-        $sc  = $this->makeUser(UserRole::SUPPORT_COMMITTEE);
+        $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $sc = $this->makeUser(UserRole::SUPPORT_COMMITTEE);
         $sc2 = $this->makeUser(UserRole::SUPPORT_COMMITTEE);
 
-        $myRequest    = $this->makeRequest($this->bank, $de, RequestStatus::SUPPORT_REVIEW_IN_PROGRESS);
+        $myRequest = $this->makeRequest($this->bank, $de, RequestStatus::SUPPORT_REVIEW_IN_PROGRESS);
         $otherRequest = $this->makeRequest($this->bank, $de, RequestStatus::SUPPORT_REVIEW_IN_PROGRESS);
 
         app()->instance('workflow.transition.active', true);
@@ -388,11 +391,11 @@ class DashboardStatsTest extends TestCase
 
     public function test_support_committee_claimed_by_others_excludes_mine(): void
     {
-        $de  = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
-        $sc  = $this->makeUser(UserRole::SUPPORT_COMMITTEE);
+        $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $sc = $this->makeUser(UserRole::SUPPORT_COMMITTEE);
         $sc2 = $this->makeUser(UserRole::SUPPORT_COMMITTEE);
 
-        $myRequest    = $this->makeRequest($this->bank, $de, RequestStatus::SUPPORT_REVIEW_IN_PROGRESS);
+        $myRequest = $this->makeRequest($this->bank, $de, RequestStatus::SUPPORT_REVIEW_IN_PROGRESS);
         $otherRequest = $this->makeRequest($this->bank, $de, RequestStatus::SUPPORT_REVIEW_IN_PROGRESS);
 
         app()->instance('workflow.transition.active', true);
@@ -416,13 +419,13 @@ class DashboardStatsTest extends TestCase
         // Two approved within the 7-day window — set support_approved_at to now
         $r1 = $this->makeRequest($this->bank, $de, RequestStatus::SUPPORT_APPROVED);
         $r2 = $this->makeRequest($this->bank, $de, RequestStatus::SUPPORT_APPROVED);
-        \Illuminate\Support\Facades\DB::table('import_requests')
+        DB::table('import_requests')
             ->whereIn('id', [$r1->id, $r2->id])
             ->update(['support_approved_at' => now()]);
 
         // One approved 8 days ago — must NOT be counted
         $old = $this->makeRequest($this->bank, $de, RequestStatus::SUPPORT_APPROVED);
-        \Illuminate\Support\Facades\DB::table('import_requests')
+        DB::table('import_requests')
             ->where('id', $old->id)
             ->update(['support_approved_at' => now()->subDays(8)]);
 
@@ -442,7 +445,7 @@ class DashboardStatsTest extends TestCase
         // All approved but support_approved_at is older than 7 days
         $r1 = $this->makeRequest($this->bank, $de, RequestStatus::SUPPORT_APPROVED);
         $r2 = $this->makeRequest($this->bank, $de, RequestStatus::SUPPORT_APPROVED);
-        \Illuminate\Support\Facades\DB::table('import_requests')
+        DB::table('import_requests')
             ->whereIn('id', [$r1->id, $r2->id])
             ->update(['support_approved_at' => now()->subDays(10)]);
 
@@ -507,7 +510,7 @@ class DashboardStatsTest extends TestCase
 
     public function test_bank_admin_total_counts_all_bank_requests(): void
     {
-        $de    = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
         $admin = $this->makeUser(UserRole::BANK_ADMIN, $this->bank);
         $otherDe = $this->makeUser(UserRole::DATA_ENTRY, $this->otherBank);
 
@@ -523,7 +526,7 @@ class DashboardStatsTest extends TestCase
 
     public function test_bank_admin_pending_counts_submitted_and_bank_review(): void
     {
-        $de    = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
         $admin = $this->makeUser(UserRole::BANK_ADMIN, $this->bank);
 
         $this->makeRequest($this->bank, $de, RequestStatus::SUBMITTED);
@@ -537,7 +540,7 @@ class DashboardStatsTest extends TestCase
 
     public function test_bank_admin_approved_counts_terminal_approved_statuses(): void
     {
-        $de    = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
         $admin = $this->makeUser(UserRole::BANK_ADMIN, $this->bank);
 
         $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_APPROVED);
@@ -552,7 +555,7 @@ class DashboardStatsTest extends TestCase
 
     public function test_bank_admin_rejected_counts_support_executive_and_bank_terminal_rejections(): void
     {
-        $de    = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
         $admin = $this->makeUser(UserRole::BANK_ADMIN, $this->bank);
 
         $this->makeRequest($this->bank, $de, RequestStatus::BANK_REJECTED);
@@ -567,7 +570,7 @@ class DashboardStatsTest extends TestCase
 
     public function test_bank_admin_total_financed_amount_sums_approved_requests(): void
     {
-        $de    = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
         $admin = $this->makeUser(UserRole::BANK_ADMIN, $this->bank);
 
         $this->makeRequest($this->bank, $de, RequestStatus::COMPLETED, ['amount' => 10000.00]);
@@ -580,7 +583,7 @@ class DashboardStatsTest extends TestCase
 
     public function test_bank_admin_total_financed_amount_is_zero_for_no_approved(): void
     {
-        $de    = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
         $admin = $this->makeUser(UserRole::BANK_ADMIN, $this->bank);
 
         $this->makeRequest($this->bank, $de, RequestStatus::DRAFT, ['amount' => 5000.00]);
@@ -591,8 +594,8 @@ class DashboardStatsTest extends TestCase
 
     public function test_bank_admin_stats_are_org_scoped(): void
     {
-        $de      = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
-        $admin   = $this->makeUser(UserRole::BANK_ADMIN, $this->bank);
+        $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $admin = $this->makeUser(UserRole::BANK_ADMIN, $this->bank);
         $otherDe = $this->makeUser(UserRole::DATA_ENTRY, $this->otherBank);
 
         $this->makeRequest($this->bank, $de, RequestStatus::SUBMITTED);
@@ -620,8 +623,8 @@ class DashboardStatsTest extends TestCase
 
     public function test_bank_admin_monthly_requests_counts_are_bank_scoped(): void
     {
-        $de      = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
-        $admin   = $this->makeUser(UserRole::BANK_ADMIN, $this->bank);
+        $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $admin = $this->makeUser(UserRole::BANK_ADMIN, $this->bank);
         $otherDe = $this->makeUser(UserRole::DATA_ENTRY, $this->otherBank);
 
         $currentMonth = now()->format('Y-m');
@@ -654,7 +657,7 @@ class DashboardStatsTest extends TestCase
 
     public function test_bank_admin_stats_keep_legacy_compatibility_keys(): void
     {
-        $de       = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
         $reviewer = $this->makeUser(UserRole::BANK_REVIEWER, $this->bank);
         $this->makeUser(UserRole::SWIFT_OFFICER, $this->bank);
         $admin = $this->makeUser(UserRole::BANK_ADMIN, $this->bank);
@@ -703,7 +706,7 @@ class DashboardStatsTest extends TestCase
         Carbon::setTestNow('2026-05-15 12:00:00');
 
         try {
-            $de    = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+            $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
             $admin = $this->makeUser(UserRole::BANK_ADMIN, $this->bank);
 
             $aprilRequest = $this->makeRequest($this->bank, $de, RequestStatus::DRAFT);
@@ -730,7 +733,7 @@ class DashboardStatsTest extends TestCase
 
     public function test_bank_admin_recent_requests_max_10(): void
     {
-        $de    = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
         $admin = $this->makeUser(UserRole::BANK_ADMIN, $this->bank);
 
         for ($i = 0; $i < 12; $i++) {
@@ -766,7 +769,7 @@ class DashboardStatsTest extends TestCase
     {
         $de1 = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
         $de2 = $this->makeUser(UserRole::DATA_ENTRY, $this->otherBank);
-        $sc  = $this->makeUser(UserRole::SUPPORT_COMMITTEE);
+        $sc = $this->makeUser(UserRole::SUPPORT_COMMITTEE);
 
         $this->makeRequest($this->bank, $de1, RequestStatus::SUPPORT_REVIEW_PENDING);
         $this->makeRequest($this->otherBank, $de2, RequestStatus::SUPPORT_REVIEW_PENDING);
@@ -817,7 +820,7 @@ class DashboardStatsTest extends TestCase
 
     public function test_swift_officer_pending_swift_upload_counts_waiting_for_swift(): void
     {
-        $de    = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
         $swift = $this->makeUser(UserRole::SWIFT_OFFICER, $this->bank);
 
         $this->makeRequest($this->bank, $de, RequestStatus::WAITING_FOR_SWIFT);
@@ -832,7 +835,7 @@ class DashboardStatsTest extends TestCase
 
     public function test_swift_officer_uploaded_counts_requests_with_swift_uploaded_at(): void
     {
-        $de    = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
         $swift = $this->makeUser(UserRole::SWIFT_OFFICER, $this->bank);
 
         // Production swift_upload auto-chains SWIFT_UPLOADED to WAITING_FOR_VOTING_OPEN,
@@ -849,7 +852,7 @@ class DashboardStatsTest extends TestCase
 
     public function test_swift_officer_final_approved_counts_executive_approved_and_completed(): void
     {
-        $de    = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
         $swift = $this->makeUser(UserRole::SWIFT_OFFICER, $this->bank);
 
         $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_APPROVED);
@@ -865,7 +868,7 @@ class DashboardStatsTest extends TestCase
 
     public function test_swift_officer_final_rejected_counts_executive_rejected(): void
     {
-        $de    = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
         $swift = $this->makeUser(UserRole::SWIFT_OFFICER, $this->bank);
 
         $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_REJECTED);
@@ -879,7 +882,7 @@ class DashboardStatsTest extends TestCase
 
     public function test_swift_officer_queue_shows_waiting_and_uploaded(): void
     {
-        $de    = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
         $swift = $this->makeUser(UserRole::SWIFT_OFFICER, $this->bank);
 
         $this->makeRequest($this->bank, $de, RequestStatus::WAITING_FOR_SWIFT);
@@ -887,7 +890,7 @@ class DashboardStatsTest extends TestCase
         $this->makeRequest($this->bank, $de, RequestStatus::SUPPORT_APPROVED);
 
         $response = $this->actingAs($swift)->getJson('/api/dashboard/stats')->assertOk();
-        $queue    = $response->json('data.swift_queue');
+        $queue = $response->json('data.swift_queue');
         $this->assertCount(2, $queue);
 
         $statuses = collect($queue)->pluck('status')->all();
@@ -897,8 +900,8 @@ class DashboardStatsTest extends TestCase
 
     public function test_swift_officer_cannot_see_other_bank_requests(): void
     {
-        $de1   = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
-        $de2   = $this->makeUser(UserRole::DATA_ENTRY, $this->otherBank);
+        $de1 = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $de2 = $this->makeUser(UserRole::DATA_ENTRY, $this->otherBank);
         $swift = $this->makeUser(UserRole::SWIFT_OFFICER, $this->bank);
 
         $this->makeRequest($this->bank, $de1, RequestStatus::WAITING_FOR_SWIFT);
@@ -912,7 +915,7 @@ class DashboardStatsTest extends TestCase
 
     public function test_swift_officer_queue_max_50(): void
     {
-        $de    = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
         $swift = $this->makeUser(UserRole::SWIFT_OFFICER, $this->bank);
 
         for ($i = 0; $i < 55; $i++) {
@@ -944,7 +947,7 @@ class DashboardStatsTest extends TestCase
 
     public function test_executive_member_waiting_for_voting_open_count(): void
     {
-        $de   = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
         $exec = $this->makeUser(UserRole::EXECUTIVE_MEMBER);
 
         $this->makeRequest($this->bank, $de, RequestStatus::WAITING_FOR_VOTING_OPEN);
@@ -959,7 +962,7 @@ class DashboardStatsTest extends TestCase
 
     public function test_executive_member_active_voting_sessions_count(): void
     {
-        $de   = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
         $exec = $this->makeUser(UserRole::EXECUTIVE_MEMBER);
 
         $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_VOTING_OPEN);
@@ -974,7 +977,7 @@ class DashboardStatsTest extends TestCase
 
     public function test_executive_member_decisions_approved_count(): void
     {
-        $de   = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
         $exec = $this->makeUser(UserRole::EXECUTIVE_MEMBER);
 
         $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_APPROVED);
@@ -990,7 +993,7 @@ class DashboardStatsTest extends TestCase
 
     public function test_executive_member_decisions_rejected_count(): void
     {
-        $de   = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
         $exec = $this->makeUser(UserRole::EXECUTIVE_MEMBER);
 
         $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_REJECTED);
@@ -1004,7 +1007,7 @@ class DashboardStatsTest extends TestCase
 
     public function test_executive_member_voting_queue_contains_correct_statuses(): void
     {
-        $de   = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
         $exec = $this->makeUser(UserRole::EXECUTIVE_MEMBER);
 
         $this->makeRequest($this->bank, $de, RequestStatus::WAITING_FOR_VOTING_OPEN);
@@ -1013,7 +1016,7 @@ class DashboardStatsTest extends TestCase
         $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_APPROVED);
 
         $response = $this->actingAs($exec)->getJson('/api/dashboard/stats')->assertOk();
-        $queue    = $response->json('data.voting_queue');
+        $queue = $response->json('data.voting_queue');
         $statuses = array_column($queue, 'status');
 
         $this->assertContains(RequestStatus::WAITING_FOR_VOTING_OPEN->value, $statuses);
@@ -1044,8 +1047,8 @@ class DashboardStatsTest extends TestCase
 
     public function test_committee_director_sees_all_banks_requests(): void
     {
-        $de1      = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
-        $de2      = $this->makeUser(UserRole::DATA_ENTRY, $this->otherBank);
+        $de1 = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $de2 = $this->makeUser(UserRole::DATA_ENTRY, $this->otherBank);
         $director = $this->makeUser(UserRole::COMMITTEE_DIRECTOR);
 
         $this->makeRequest($this->bank, $de1, RequestStatus::WAITING_FOR_VOTING_OPEN);
@@ -1059,7 +1062,7 @@ class DashboardStatsTest extends TestCase
 
     public function test_committee_director_voting_queue_max_50(): void
     {
-        $de       = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
         $director = $this->makeUser(UserRole::COMMITTEE_DIRECTOR);
 
         for ($i = 0; $i < 55; $i++) {
@@ -1072,7 +1075,7 @@ class DashboardStatsTest extends TestCase
 
     public function test_committee_director_finalized_decisions_count(): void
     {
-        $de       = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
         $director = $this->makeUser(UserRole::COMMITTEE_DIRECTOR);
 
         $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_APPROVED);
@@ -1089,7 +1092,7 @@ class DashboardStatsTest extends TestCase
 
     public function test_committee_director_customs_declaration_pending_lists_executive_approved(): void
     {
-        $de       = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
         $director = $this->makeUser(UserRole::COMMITTEE_DIRECTOR);
 
         $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_APPROVED);
@@ -1097,7 +1100,7 @@ class DashboardStatsTest extends TestCase
         $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_REJECTED);
 
         $response = $this->actingAs($director)->getJson('/api/dashboard/stats')->assertOk();
-        $pending  = $response->json('data.customs_declaration_pending');
+        $pending = $response->json('data.customs_declaration_pending');
 
         $this->assertCount(1, $pending);
         $this->assertSame(RequestStatus::EXECUTIVE_APPROVED->value, $pending[0]['status']);

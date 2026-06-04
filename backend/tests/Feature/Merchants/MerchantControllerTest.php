@@ -17,8 +17,11 @@ class MerchantControllerTest extends TestCase
     use RefreshDatabase;
 
     private Bank $bank;
+
     private Bank $otherBank;
+
     private User $bankAdmin;
+
     private User $cbyadmin;
 
     protected function setUp(): void
@@ -48,6 +51,7 @@ class MerchantControllerTest extends TestCase
     {
         static $counter = 0;
         $counter++;
+
         return User::query()->create([
             'name' => "User {$counter}",
             'email' => "user{$counter}@example.com",
@@ -63,8 +67,8 @@ class MerchantControllerTest extends TestCase
         return Merchant::query()->create(array_merge([
             'bank_id' => $bank->id,
             'name' => 'تاجر الاختبار',
-            'commercial_register' => 'CR-' . uniqid(),
-            'tax_number' => 'TX-' . uniqid(),
+            'commercial_register' => 'CR-'.uniqid(),
+            'tax_number' => 'TX-'.uniqid(),
             'business_type' => null,
             'is_active' => true,
             'created_by' => $this->bankAdmin->id,
@@ -74,7 +78,7 @@ class MerchantControllerTest extends TestCase
     private function makeImportRequestForMerchant(Merchant $merchant, array $overrides = []): void
     {
         DB::table('import_requests')->insert(array_merge([
-            'reference_number' => 'YFH-TEST-' . uniqid(),
+            'reference_number' => 'YFH-TEST-'.uniqid(),
             'bank_id' => $merchant->bank_id,
             'merchant_id' => $merchant->id,
             'created_by' => $this->bankAdmin->id,
@@ -167,7 +171,7 @@ class MerchantControllerTest extends TestCase
     {
         $this->makeMerchant($this->otherBank);
 
-        $response = $this->actingAs($this->bankAdmin)->getJson('/api/merchants?bank_id=' . $this->otherBank->id);
+        $response = $this->actingAs($this->bankAdmin)->getJson('/api/merchants?bank_id='.$this->otherBank->id);
 
         $response->assertOk();
         $this->assertCount(0, $response->json('data'));

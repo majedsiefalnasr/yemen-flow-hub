@@ -32,13 +32,12 @@ class SystemSettingsService
 
     public function __construct(
         private readonly AuditService $auditService
-    ) {
-    }
+    ) {}
 
     public function saveSection(User $user, string $section, array $data, ?string $subsection = null): array
     {
         // Check authorization
-        if (!$user->hasRole(UserRole::CBY_ADMIN)) {
+        if (! $user->hasRole(UserRole::CBY_ADMIN)) {
             throw new AuthorizationException('Only administrators can modify system settings.');
         }
 

@@ -13,10 +13,10 @@ use App\Services\Audit\AuditService;
 use App\Services\Customs\CustomsService;
 use App\Services\Workflow\WorkflowService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Http\UploadedFile;
 use Mockery;
 use RuntimeException;
 use Tests\TestCase;
@@ -26,7 +26,9 @@ class CustomsDeclarationTest extends TestCase
     use RefreshDatabase;
 
     private Bank $bank;
+
     private User $director;
+
     private User $dataEntry;
 
     protected function setUp(): void

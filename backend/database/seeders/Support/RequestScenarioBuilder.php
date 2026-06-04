@@ -27,15 +27,16 @@ use Illuminate\Support\Str;
 class RequestScenarioBuilder
 {
     private int $customsSequence;
+
     private ?Collection $documentTypes = null;
 
     public function __construct()
     {
         // Start after any already-seeded declarations so the unique number never collides.
-        $year   = now()->format('Y');
+        $year = now()->format('Y');
         $prefix = "CD-{$year}-";
-        $max    = \App\Models\CustomsDeclaration::query()
-            ->where('declaration_number', 'like', $prefix . '%')
+        $max = CustomsDeclaration::query()
+            ->where('declaration_number', 'like', $prefix.'%')
             ->max('declaration_number');
 
         $this->customsSequence = $max
@@ -45,110 +46,110 @@ class RequestScenarioBuilder
 
     public function build(string $scenario, Bank $bank, ?Carbon $createdAt = null): ImportRequest
     {
-        $data    = $this->scenarioConfig($scenario);
-        $status  = $data['status'];
+        $data = $this->scenarioConfig($scenario);
+        $status = $data['status'];
         $timeline = $this->timelineForStatus($status, $createdAt);
 
-        $entries      = User::query()->where('bank_id', $bank->id)->where('role', UserRole::DATA_ENTRY->value)->get();
-        $entry        = $entries->random();
-        $reviewer     = User::query()->where('bank_id', $bank->id)->where('role', UserRole::BANK_REVIEWER->value)->firstOrFail();
-        $swift        = User::query()->where('bank_id', $bank->id)->where('role', UserRole::SWIFT_OFFICER->value)->firstOrFail();
+        $entries = User::query()->where('bank_id', $bank->id)->where('role', UserRole::DATA_ENTRY->value)->get();
+        $entry = $entries->random();
+        $reviewer = User::query()->where('bank_id', $bank->id)->where('role', UserRole::BANK_REVIEWER->value)->firstOrFail();
+        $swift = User::query()->where('bank_id', $bank->id)->where('role', UserRole::SWIFT_OFFICER->value)->firstOrFail();
         $supportUsers = User::query()->where('role', UserRole::SUPPORT_COMMITTEE->value)->orderBy('id')->get();
-        $support      = $supportUsers->firstOrFail();
-        $director     = User::query()->where('role', UserRole::COMMITTEE_DIRECTOR->value)->firstOrFail();
-        $execs        = User::query()->where('role', UserRole::EXECUTIVE_MEMBER->value)->orderBy('id')->get();
-        $merchant     = Merchant::query()->where('bank_id', $bank->id)->inRandomOrder()->firstOrFail();
+        $support = $supportUsers->firstOrFail();
+        $director = User::query()->where('role', UserRole::COMMITTEE_DIRECTOR->value)->firstOrFail();
+        $execs = User::query()->where('role', UserRole::EXECUTIVE_MEMBER->value)->orderBy('id')->get();
+        $merchant = Merchant::query()->where('bank_id', $bank->id)->inRandomOrder()->firstOrFail();
 
         [$claimedBy, $claimedAt, $claimExpiresAt] = $this->resolveClaim($data, $supportUsers);
         $owner = $this->ownerForStatus($status);
 
         // Milestone flags — used for both field population and actor tracking
-        $submitted        = $this->reached(RequestStatus::SUBMITTED, $status);
+        $submitted = $this->reached(RequestStatus::SUBMITTED, $status);
         $bankReviewStarted = $this->reached(RequestStatus::BANK_REVIEW, $status);
-        $bankApproved     = $this->reached(RequestStatus::BANK_APPROVED, $status);
-        $supportReviewStarted = $bankApproved && !in_array($scenario, ['bank_approved'], true);
-        $supportDecided   = $this->reached(RequestStatus::SUPPORT_APPROVED, $status)
+        $bankApproved = $this->reached(RequestStatus::BANK_APPROVED, $status);
+        $supportReviewStarted = $bankApproved && ! in_array($scenario, ['bank_approved'], true);
+        $supportDecided = $this->reached(RequestStatus::SUPPORT_APPROVED, $status)
             || in_array($scenario, ['support_rejected', 'support_returned'], true);
-        $supportApproved  = $this->reached(RequestStatus::SUPPORT_APPROVED, $status);
-        $swiftUploaded    = $this->reached(RequestStatus::SWIFT_UPLOADED, $status);
-        $votingOpened     = $this->reached(RequestStatus::EXECUTIVE_VOTING_OPEN, $status);
-        $votingClosed     = $this->reached(RequestStatus::EXECUTIVE_VOTING_CLOSED, $status);
+        $supportApproved = $this->reached(RequestStatus::SUPPORT_APPROVED, $status);
+        $swiftUploaded = $this->reached(RequestStatus::SWIFT_UPLOADED, $status);
+        $votingOpened = $this->reached(RequestStatus::EXECUTIVE_VOTING_OPEN, $status);
+        $votingClosed = $this->reached(RequestStatus::EXECUTIVE_VOTING_CLOSED, $status);
         $executiveDecided = $this->reached(RequestStatus::EXECUTIVE_APPROVED, $status)
             || $status === RequestStatus::EXECUTIVE_REJECTED;
         $isTerminalBankAction = in_array($scenario, ['bank_returned', 'bank_rejected', 'draft_rejected_internal'], true);
 
         $originCountry = Arr::random(['China', 'United Arab Emirates', 'India', 'Turkey', 'Saudi Arabia', 'Germany', 'Egypt', 'Malaysia']);
-        $arrivalPort   = Arr::random(['Aden Port', 'Hodeidah Port', 'Mukalla Port']);
-        $shippingPort  = Arr::random(['Port of Shanghai', 'Port of Dubai', 'Port of Mumbai', 'Port of Jeddah', 'Port of Istanbul', 'Port of Hamburg']);
+        $arrivalPort = Arr::random(['Aden Port', 'Hodeidah Port', 'Mukalla Port']);
+        $shippingPort = Arr::random(['Port of Shanghai', 'Port of Dubai', 'Port of Mumbai', 'Port of Jeddah', 'Port of Istanbul', 'Port of Hamburg']);
 
         App::instance('workflow.transition.active', true);
         try {
             $request = ImportRequest::query()->create([
                 // Core
-                'bank_id'            => $bank->id,
-                'merchant_id'        => $merchant->id,
-                'created_by'         => $entry->id,
-                'last_updated_by'    => $entry->id,
-                'currency'           => Arr::random(Currency::cases())->value,
-                'amount'             => fake()->randomFloat(2, 5000, 500000),
-                'supplier_name'      => Arr::random([
+                'bank_id' => $bank->id,
+                'merchant_id' => $merchant->id,
+                'created_by' => $entry->id,
+                'last_updated_by' => $entry->id,
+                'currency' => Arr::random(Currency::cases())->value,
+                'amount' => fake()->randomFloat(2, 5000, 500000),
+                'supplier_name' => Arr::random([
                     'Al-Hadi Trading LLC', 'Shanghai Medical Supplies Co.', 'Global Grain & Food Imports',
                     'Aden Industrial Sourcing Ltd.', 'Gulf Trading Partners', 'Eastern Pharma Ltd.',
                     'Nile Valley Exports', 'Arabian Textiles Corp.', 'Far East Electronics Ltd.',
                 ]),
-                'goods_description'  => Arr::random([
+                'goods_description' => Arr::random([
                     'Medical Equipment', 'Food Supplies', 'Telecom Devices', 'Industrial Spare Parts',
                     'Pharmaceutical Products', 'Agricultural Goods', 'Construction Materials', 'Textiles & Garments',
                     'Electronic Components', 'Heavy Machinery', 'Chemical Raw Materials',
                 ]),
-                'port_of_entry'      => $arrivalPort,
-                'notes'              => fake()->boolean(35)
+                'port_of_entry' => $arrivalPort,
+                'notes' => fake()->boolean(35)
                     ? Arr::random(['Additional document under review', 'Need minor clarification', 'Awaiting supplier confirmation', 'Partial shipment expected'])
                     : null,
                 // Wizard fields
-                'goods_type'      => Arr::random(['Medical', 'Food & Beverages', 'Electronics', 'Machinery', 'Textiles', 'Chemicals', 'Raw Materials', 'Pharmaceutical']),
-                'payment_terms'   => Arr::random(['LC', 'TT', 'DA', 'DP', 'OA']),
-                'due_date'        => $timeline['created_at']->copy()->addDays(rand(30, 120)),
-                'invoice_number'  => 'INV-' . strtoupper(Str::random(4)) . '-' . rand(1000, 9999),
-                'invoice_date'    => $timeline['created_at']->copy()->subDays(rand(5, 30)),
-                'origin_country'  => $originCountry,
-                'arrival_port'    => $arrivalPort,
-                'shipping_port'   => $shippingPort,
-                'customs_office'  => Arr::random(['جمارك عدن', 'جمارك الحديدة', 'جمارك المكلا', 'جمارك صنعاء']),
-                'bl_number'       => $swiftUploaded ? ('BL-' . strtoupper(Str::random(3)) . rand(100000, 999999)) : null,
+                'goods_type' => Arr::random(['Medical', 'Food & Beverages', 'Electronics', 'Machinery', 'Textiles', 'Chemicals', 'Raw Materials', 'Pharmaceutical']),
+                'payment_terms' => Arr::random(['LC', 'TT', 'DA', 'DP', 'OA']),
+                'due_date' => $timeline['created_at']->copy()->addDays(rand(30, 120)),
+                'invoice_number' => 'INV-'.strtoupper(Str::random(4)).'-'.rand(1000, 9999),
+                'invoice_date' => $timeline['created_at']->copy()->subDays(rand(5, 30)),
+                'origin_country' => $originCountry,
+                'arrival_port' => $arrivalPort,
+                'shipping_port' => $shippingPort,
+                'customs_office' => Arr::random(['جمارك عدن', 'جمارك الحديدة', 'جمارك المكلا', 'جمارك صنعاء']),
+                'bl_number' => $swiftUploaded ? ('BL-'.strtoupper(Str::random(3)).rand(100000, 999999)) : null,
                 // Status
-                'status'               => $status,
-                'current_owner_role'   => $owner,
+                'status' => $status,
+                'current_owner_role' => $owner,
                 'voting_session_status' => $this->resolveVotingSessionStatus($scenario),
-                'eligible_voter_ids'    => $votingOpened ? $execs->pluck('id')->push($director->id)->toArray() : null,
+                'eligible_voter_ids' => $votingOpened ? $execs->pluck('id')->push($director->id)->toArray() : null,
                 // Claim
-                'claimed_by'       => $claimedBy,
-                'claimed_at'       => $claimedAt,
+                'claimed_by' => $claimedBy,
+                'claimed_at' => $claimedAt,
                 'claim_expires_at' => $claimExpiresAt,
                 // Milestone timestamps
-                'submitted_at'       => $timeline['submitted_at'],
-                'bank_approved_at'   => $timeline['bank_approved_at'],
+                'submitted_at' => $timeline['submitted_at'],
+                'bank_approved_at' => $timeline['bank_approved_at'],
                 'support_approved_at' => $timeline['support_approved_at'],
-                'swift_uploaded_at'  => $timeline['swift_uploaded_at'],
-                'voting_opened_at'   => $timeline['voting_opened_at'],
-                'voting_closed_at'   => $timeline['voting_closed_at'],
+                'swift_uploaded_at' => $timeline['swift_uploaded_at'],
+                'voting_opened_at' => $timeline['voting_opened_at'],
+                'voting_closed_at' => $timeline['voting_closed_at'],
                 'executive_decided_at' => $timeline['executive_decided_at'],
-                'final_decision_at'  => $timeline['final_decision_at'],
-                'customs_issued_at'  => $timeline['customs_issued_at'],
+                'final_decision_at' => $timeline['final_decision_at'],
+                'customs_issued_at' => $timeline['customs_issued_at'],
                 // Actor tracking
-                'submitted_by'       => $submitted ? $entry->id : null,
-                'reviewed_by'        => $bankReviewStarted ? $reviewer->id : null,
-                'approved_by'        => $bankApproved ? $reviewer->id : null,
-                'rejected_by'        => $isTerminalBankAction ? $reviewer->id : null,
-                'resubmitted_by'     => ($data['revision_count'] > 0 && $submitted) ? $entry->id : null,
+                'submitted_by' => $submitted ? $entry->id : null,
+                'reviewed_by' => $bankReviewStarted ? $reviewer->id : null,
+                'approved_by' => $bankApproved ? $reviewer->id : null,
+                'rejected_by' => $isTerminalBankAction ? $reviewer->id : null,
+                'resubmitted_by' => ($data['revision_count'] > 0 && $submitted) ? $entry->id : null,
                 'support_reviewed_by' => $supportDecided ? $support->id : null,
-                'swift_uploaded_by'  => $swiftUploaded ? $swift->id : null,
-                'voting_opened_by'   => $votingOpened ? $director->id : null,
-                'voting_closed_by'   => $votingClosed ? $director->id : null,
+                'swift_uploaded_by' => $swiftUploaded ? $swift->id : null,
+                'voting_opened_by' => $votingOpened ? $director->id : null,
+                'voting_closed_by' => $votingClosed ? $director->id : null,
                 // Misc
                 'revision_count' => $data['revision_count'],
-                'created_at'     => $timeline['created_at'],
-                'updated_at'     => $timeline['updated_at'],
+                'created_at' => $timeline['created_at'],
+                'updated_at' => $timeline['updated_at'],
             ]);
         } finally {
             App::offsetUnset('workflow.transition.active');
@@ -182,30 +183,30 @@ class RequestScenarioBuilder
     private function scenarioConfig(string $scenario): array
     {
         return match ($scenario) {
-            'draft'                              => ['status' => RequestStatus::DRAFT,                    'revision_count' => 0],
-            'draft_rejected_internal'            => ['status' => RequestStatus::DRAFT_REJECTED_INTERNAL,  'revision_count' => 1],
-            'submitted'                          => ['status' => RequestStatus::SUBMITTED,                'revision_count' => 0],
-            'bank_review'                        => ['status' => RequestStatus::BANK_REVIEW,              'revision_count' => 0],
-            'bank_returned'                      => ['status' => RequestStatus::BANK_RETURNED,            'revision_count' => 1],
-            'bank_rejected'                      => ['status' => RequestStatus::BANK_REJECTED,            'revision_count' => 0],
-            'bank_approved'                      => ['status' => RequestStatus::BANK_APPROVED,            'revision_count' => 0],
-            'support_review_pending'             => ['status' => RequestStatus::SUPPORT_REVIEW_PENDING,   'revision_count' => 0],
+            'draft' => ['status' => RequestStatus::DRAFT,                    'revision_count' => 0],
+            'draft_rejected_internal' => ['status' => RequestStatus::DRAFT_REJECTED_INTERNAL,  'revision_count' => 1],
+            'submitted' => ['status' => RequestStatus::SUBMITTED,                'revision_count' => 0],
+            'bank_review' => ['status' => RequestStatus::BANK_REVIEW,              'revision_count' => 0],
+            'bank_returned' => ['status' => RequestStatus::BANK_RETURNED,            'revision_count' => 1],
+            'bank_rejected' => ['status' => RequestStatus::BANK_REJECTED,            'revision_count' => 0],
+            'bank_approved' => ['status' => RequestStatus::BANK_APPROVED,            'revision_count' => 0],
+            'support_review_pending' => ['status' => RequestStatus::SUPPORT_REVIEW_PENDING,   'revision_count' => 0],
             'support_review_in_progress_claimed' => ['status' => RequestStatus::SUPPORT_REVIEW_IN_PROGRESS, 'revision_count' => 0, 'claim_state' => 'active'],
             'support_review_in_progress_expired' => ['status' => RequestStatus::SUPPORT_REVIEW_IN_PROGRESS, 'revision_count' => 0, 'claim_state' => 'expired'],
-            'support_approved'                   => ['status' => RequestStatus::SUPPORT_APPROVED,         'revision_count' => 0],
-            'support_rejected'                   => ['status' => RequestStatus::SUPPORT_REJECTED,         'revision_count' => 0],
-            'support_returned'                   => ['status' => RequestStatus::SUPPORT_RETURNED,         'revision_count' => 1],
-            'waiting_for_swift'                  => ['status' => RequestStatus::WAITING_FOR_SWIFT,        'revision_count' => 0],
-            'swift_uploaded'                     => ['status' => RequestStatus::SWIFT_UPLOADED,           'revision_count' => 0],
-            'waiting_for_voting_open'            => ['status' => RequestStatus::WAITING_FOR_VOTING_OPEN,  'revision_count' => 0],
-            'executive_voting_open'              => ['status' => RequestStatus::EXECUTIVE_VOTING_OPEN,    'revision_count' => 0],
-            'executive_voting_open_tie'          => ['status' => RequestStatus::EXECUTIVE_VOTING_OPEN,    'revision_count' => 0],
-            'executive_voting_closed'            => ['status' => RequestStatus::EXECUTIVE_VOTING_CLOSED,  'revision_count' => 0],
-            'executive_approved'                 => ['status' => RequestStatus::EXECUTIVE_APPROVED,       'revision_count' => 0],
-            'executive_rejected'                 => ['status' => RequestStatus::EXECUTIVE_REJECTED,       'revision_count' => 0],
-            'customs_declaration_issued'         => ['status' => RequestStatus::CUSTOMS_DECLARATION_ISSUED, 'revision_count' => 0],
-            'completed'                          => ['status' => RequestStatus::COMPLETED,                'revision_count' => 0],
-            'completed_with_revision'            => ['status' => RequestStatus::COMPLETED,                'revision_count' => 2],
+            'support_approved' => ['status' => RequestStatus::SUPPORT_APPROVED,         'revision_count' => 0],
+            'support_rejected' => ['status' => RequestStatus::SUPPORT_REJECTED,         'revision_count' => 0],
+            'support_returned' => ['status' => RequestStatus::SUPPORT_RETURNED,         'revision_count' => 1],
+            'waiting_for_swift' => ['status' => RequestStatus::WAITING_FOR_SWIFT,        'revision_count' => 0],
+            'swift_uploaded' => ['status' => RequestStatus::SWIFT_UPLOADED,           'revision_count' => 0],
+            'waiting_for_voting_open' => ['status' => RequestStatus::WAITING_FOR_VOTING_OPEN,  'revision_count' => 0],
+            'executive_voting_open' => ['status' => RequestStatus::EXECUTIVE_VOTING_OPEN,    'revision_count' => 0],
+            'executive_voting_open_tie' => ['status' => RequestStatus::EXECUTIVE_VOTING_OPEN,    'revision_count' => 0],
+            'executive_voting_closed' => ['status' => RequestStatus::EXECUTIVE_VOTING_CLOSED,  'revision_count' => 0],
+            'executive_approved' => ['status' => RequestStatus::EXECUTIVE_APPROVED,       'revision_count' => 0],
+            'executive_rejected' => ['status' => RequestStatus::EXECUTIVE_REJECTED,       'revision_count' => 0],
+            'customs_declaration_issued' => ['status' => RequestStatus::CUSTOMS_DECLARATION_ISSUED, 'revision_count' => 0],
+            'completed' => ['status' => RequestStatus::COMPLETED,                'revision_count' => 0],
+            'completed_with_revision' => ['status' => RequestStatus::COMPLETED,                'revision_count' => 2],
             default => throw new \InvalidArgumentException("Unknown scenario {$scenario}"),
         };
     }
@@ -216,19 +217,19 @@ class RequestScenarioBuilder
             RequestStatus::DRAFT,
             RequestStatus::DRAFT_REJECTED_INTERNAL,
             RequestStatus::BANK_RETURNED,
-            RequestStatus::SUPPORT_RETURNED      => UserRole::DATA_ENTRY,
+            RequestStatus::SUPPORT_RETURNED => UserRole::DATA_ENTRY,
 
             RequestStatus::SUBMITTED,
             RequestStatus::BANK_REVIEW,
             RequestStatus::SUPPORT_REJECTED,
-            RequestStatus::BANK_REJECTED         => UserRole::BANK_REVIEWER,
+            RequestStatus::BANK_REJECTED => UserRole::BANK_REVIEWER,
 
             RequestStatus::BANK_APPROVED,
             RequestStatus::SUPPORT_REVIEW_PENDING,
             RequestStatus::SUPPORT_REVIEW_IN_PROGRESS => UserRole::SUPPORT_COMMITTEE,
 
             RequestStatus::SUPPORT_APPROVED,
-            RequestStatus::WAITING_FOR_SWIFT     => UserRole::SWIFT_OFFICER,
+            RequestStatus::WAITING_FOR_SWIFT => UserRole::SWIFT_OFFICER,
 
             RequestStatus::SWIFT_UPLOADED,
             RequestStatus::WAITING_FOR_VOTING_OPEN => UserRole::COMMITTEE_DIRECTOR,
@@ -239,7 +240,7 @@ class RequestScenarioBuilder
             RequestStatus::EXECUTIVE_APPROVED,
             RequestStatus::EXECUTIVE_REJECTED,
             RequestStatus::CUSTOMS_DECLARATION_ISSUED,
-            RequestStatus::COMPLETED             => UserRole::COMMITTEE_DIRECTOR,
+            RequestStatus::COMPLETED => UserRole::COMMITTEE_DIRECTOR,
         };
     }
 
@@ -258,14 +259,14 @@ class RequestScenarioBuilder
         [$claimedBy, $claimedAt, $claimExpiresAt] = [null, null, null];
 
         if (($data['claim_state'] ?? null) === 'active') {
-            $claimer     = $supportUsers->first();
-            $claimedBy   = $claimer?->id;
-            $claimedAt   = now()->subMinutes(5);
+            $claimer = $supportUsers->first();
+            $claimedBy = $claimer?->id;
+            $claimedAt = now()->subMinutes(5);
             $claimExpiresAt = now()->addMinutes(10);
         } elseif (($data['claim_state'] ?? null) === 'expired') {
-            $claimer     = $supportUsers->skip(1)->first() ?? $supportUsers->first();
-            $claimedBy   = $claimer?->id;
-            $claimedAt   = now()->subHours(2);
+            $claimer = $supportUsers->skip(1)->first() ?? $supportUsers->first();
+            $claimedBy = $claimer?->id;
+            $claimedAt = now()->subHours(2);
             $claimExpiresAt = now()->subHour();
         }
 
@@ -279,30 +280,30 @@ class RequestScenarioBuilder
     private function timelineForStatus(RequestStatus $status, ?Carbon $baseDate = null): array
     {
         $created = $baseDate ?? now()->subDays(rand(20, 80));
-        $submitted       = $created->copy()->addDays(rand(1, 3));
-        $bankApproved    = $submitted->copy()->addDays(rand(1, 3));
+        $submitted = $created->copy()->addDays(rand(1, 3));
+        $bankApproved = $submitted->copy()->addDays(rand(1, 3));
         $supportApproved = $bankApproved->copy()->addDays(rand(2, 5));
-        $swiftUploaded   = $supportApproved->copy()->addDays(rand(1, 3));
-        $votingOpened    = $swiftUploaded->copy()->addDays(rand(1, 3));
-        $votingClosed    = $votingOpened->copy()->addDays(rand(1, 2));
-        $execDecided     = $votingClosed->copy()->addHours(rand(1, 12));
-        $customsIssued   = $execDecided->copy()->addDays(rand(1, 2));
-        $completed       = $customsIssued->copy()->addHours(rand(1, 24));
+        $swiftUploaded = $supportApproved->copy()->addDays(rand(1, 3));
+        $votingOpened = $swiftUploaded->copy()->addDays(rand(1, 3));
+        $votingClosed = $votingOpened->copy()->addDays(rand(1, 2));
+        $execDecided = $votingClosed->copy()->addHours(rand(1, 12));
+        $customsIssued = $execDecided->copy()->addDays(rand(1, 2));
+        $completed = $customsIssued->copy()->addHours(rand(1, 24));
 
         $r = fn (RequestStatus $t) => $this->reached($t, $status);
 
         return [
-            'created_at'          => $created,
-            'submitted_at'        => $r(RequestStatus::SUBMITTED)         ? $submitted       : null,
-            'bank_approved_at'    => $r(RequestStatus::BANK_APPROVED)     ? $bankApproved    : null,
-            'support_approved_at' => $r(RequestStatus::SUPPORT_APPROVED)  ? $supportApproved : null,
-            'swift_uploaded_at'   => $r(RequestStatus::SWIFT_UPLOADED)    ? $swiftUploaded   : null,
-            'voting_opened_at'    => $r(RequestStatus::EXECUTIVE_VOTING_OPEN) ? $votingOpened : null,
-            'voting_closed_at'    => $r(RequestStatus::EXECUTIVE_VOTING_CLOSED) ? $votingClosed : null,
+            'created_at' => $created,
+            'submitted_at' => $r(RequestStatus::SUBMITTED) ? $submitted : null,
+            'bank_approved_at' => $r(RequestStatus::BANK_APPROVED) ? $bankApproved : null,
+            'support_approved_at' => $r(RequestStatus::SUPPORT_APPROVED) ? $supportApproved : null,
+            'swift_uploaded_at' => $r(RequestStatus::SWIFT_UPLOADED) ? $swiftUploaded : null,
+            'voting_opened_at' => $r(RequestStatus::EXECUTIVE_VOTING_OPEN) ? $votingOpened : null,
+            'voting_closed_at' => $r(RequestStatus::EXECUTIVE_VOTING_CLOSED) ? $votingClosed : null,
             'executive_decided_at' => ($r(RequestStatus::EXECUTIVE_APPROVED) || $status === RequestStatus::EXECUTIVE_REJECTED) ? $execDecided : null,
-            'final_decision_at'   => ($r(RequestStatus::EXECUTIVE_APPROVED) || $status === RequestStatus::EXECUTIVE_REJECTED) ? $execDecided : null,
-            'customs_issued_at'   => $r(RequestStatus::CUSTOMS_DECLARATION_ISSUED) ? $customsIssued : null,
-            'updated_at'          => $completed,
+            'final_decision_at' => ($r(RequestStatus::EXECUTIVE_APPROVED) || $status === RequestStatus::EXECUTIVE_REJECTED) ? $execDecided : null,
+            'customs_issued_at' => $r(RequestStatus::CUSTOMS_DECLARATION_ISSUED) ? $customsIssued : null,
+            'updated_at' => $completed,
         ];
     }
 
@@ -321,27 +322,27 @@ class RequestScenarioBuilder
         static $order = null;
         if ($order === null) {
             $order = [
-                RequestStatus::DRAFT->value                    => 1,
-                RequestStatus::SUBMITTED->value                => 2,
-                RequestStatus::BANK_REVIEW->value              => 3,
-                RequestStatus::DRAFT_REJECTED_INTERNAL->value  => 3,
-                RequestStatus::BANK_RETURNED->value            => 3,
-                RequestStatus::BANK_REJECTED->value            => 3,
-                RequestStatus::BANK_APPROVED->value            => 4,
-                RequestStatus::SUPPORT_REVIEW_PENDING->value   => 4,
+                RequestStatus::DRAFT->value => 1,
+                RequestStatus::SUBMITTED->value => 2,
+                RequestStatus::BANK_REVIEW->value => 3,
+                RequestStatus::DRAFT_REJECTED_INTERNAL->value => 3,
+                RequestStatus::BANK_RETURNED->value => 3,
+                RequestStatus::BANK_REJECTED->value => 3,
+                RequestStatus::BANK_APPROVED->value => 4,
+                RequestStatus::SUPPORT_REVIEW_PENDING->value => 4,
                 RequestStatus::SUPPORT_REVIEW_IN_PROGRESS->value => 5,
-                RequestStatus::SUPPORT_REJECTED->value         => 5,
-                RequestStatus::SUPPORT_RETURNED->value         => 5,
-                RequestStatus::SUPPORT_APPROVED->value         => 6,
-                RequestStatus::WAITING_FOR_SWIFT->value        => 6,
-                RequestStatus::SWIFT_UPLOADED->value           => 7,
-                RequestStatus::WAITING_FOR_VOTING_OPEN->value  => 7,
-                RequestStatus::EXECUTIVE_VOTING_OPEN->value    => 8,
-                RequestStatus::EXECUTIVE_VOTING_CLOSED->value  => 9,
-                RequestStatus::EXECUTIVE_APPROVED->value       => 10,
-                RequestStatus::EXECUTIVE_REJECTED->value       => 10,
+                RequestStatus::SUPPORT_REJECTED->value => 5,
+                RequestStatus::SUPPORT_RETURNED->value => 5,
+                RequestStatus::SUPPORT_APPROVED->value => 6,
+                RequestStatus::WAITING_FOR_SWIFT->value => 6,
+                RequestStatus::SWIFT_UPLOADED->value => 7,
+                RequestStatus::WAITING_FOR_VOTING_OPEN->value => 7,
+                RequestStatus::EXECUTIVE_VOTING_OPEN->value => 8,
+                RequestStatus::EXECUTIVE_VOTING_CLOSED->value => 9,
+                RequestStatus::EXECUTIVE_APPROVED->value => 10,
+                RequestStatus::EXECUTIVE_REJECTED->value => 10,
                 RequestStatus::CUSTOMS_DECLARATION_ISSUED->value => 11,
-                RequestStatus::COMPLETED->value                => 12,
+                RequestStatus::COMPLETED->value => 12,
             ];
         }
 
@@ -357,51 +358,52 @@ class RequestScenarioBuilder
         if ($this->documentTypes === null) {
             $this->documentTypes = DocumentType::query()->where('is_active', true)->orderBy('sort_order')->get();
         }
+
         return $this->documentTypes;
     }
 
     private function seedRequestDocs(ImportRequest $request, User $actor, Carbon $at): void
     {
-        $types    = $this->docTypes();
+        $types = $this->docTypes();
         $required = $types->where('is_required', true)->values();
         $optional = $types->where('is_required', false)->values();
 
         $isDraft = $request->status === RequestStatus::DRAFT;
-        $count   = $isDraft ? rand(0, 2) : rand(3, min(6, $required->count() + $optional->count()));
+        $count = $isDraft ? rand(0, 2) : rand(3, min(6, $required->count() + $optional->count()));
 
         // Always include required docs for non-draft; pad with optional ones
         if ($isDraft) {
             $selected = $required->take($count)->merge($optional->take(max(0, $count - $required->count())))->values();
         } else {
-            $extra    = max(0, $count - $required->count());
+            $extra = max(0, $count - $required->count());
             $selected = $required->merge($optional->take($extra))->values();
         }
 
         $filenames = [
-            'commercial_invoice'   => ['commercial_invoice.pdf', 'invoice_supplier.pdf', 'فاتورة_تجارية.pdf'],
-            'packing_list'         => ['packing_list.pdf', 'قائمة_التعبئة.pdf'],
-            'bill_of_lading'       => ['bill_of_lading.pdf', 'سند_الشحن.pdf'],
+            'commercial_invoice' => ['commercial_invoice.pdf', 'invoice_supplier.pdf', 'فاتورة_تجارية.pdf'],
+            'packing_list' => ['packing_list.pdf', 'قائمة_التعبئة.pdf'],
+            'bill_of_lading' => ['bill_of_lading.pdf', 'سند_الشحن.pdf'],
             'certificate_of_origin' => ['certificate_of_origin.pdf', 'شهادة_المنشأ.pdf'],
-            'import_license'       => ['import_license.pdf', 'رخصة_الاستيراد.pdf'],
-            'insurance_policy'     => ['insurance_policy.pdf', 'وثيقة_التأمين.pdf'],
-            'quality_certificate'  => ['quality_certificate.pdf', 'شهادة_الجودة.pdf'],
-            'other'                => ['supporting_document.pdf', 'وثيقة_داعمة.pdf'],
+            'import_license' => ['import_license.pdf', 'رخصة_الاستيراد.pdf'],
+            'insurance_policy' => ['insurance_policy.pdf', 'وثيقة_التأمين.pdf'],
+            'quality_certificate' => ['quality_certificate.pdf', 'شهادة_الجودة.pdf'],
+            'other' => ['supporting_document.pdf', 'وثيقة_داعمة.pdf'],
         ];
 
         foreach ($selected as $i => $docType) {
             $filename = Arr::random($filenames[$docType->slug] ?? ['document.pdf']);
             $doc = RequestDocument::query()->create([
-                'request_id'        => $request->id,
-                'uploaded_by'       => $actor->id,
-                'type'              => 'REQUEST_DOC',
-                'document_type_id'  => $docType->id,
+                'request_id' => $request->id,
+                'uploaded_by' => $actor->id,
+                'type' => 'REQUEST_DOC',
+                'document_type_id' => $docType->id,
                 'original_filename' => $filename,
-                'stored_path'       => "requests/{$request->id}/" . Str::uuid() . '.pdf',
-                'mime_type'         => 'application/pdf',
-                'size_bytes'        => rand(50 * 1024, 5 * 1024 * 1024),
-                'checksum'          => bin2hex(random_bytes(32)),
-                'created_at'        => $at->copy()->addMinutes($i + 1),
-                'updated_at'        => $at->copy()->addMinutes($i + 1),
+                'stored_path' => "requests/{$request->id}/".Str::uuid().'.pdf',
+                'mime_type' => 'application/pdf',
+                'size_bytes' => rand(50 * 1024, 5 * 1024 * 1024),
+                'checksum' => bin2hex(random_bytes(32)),
+                'created_at' => $at->copy()->addMinutes($i + 1),
+                'updated_at' => $at->copy()->addMinutes($i + 1),
             ]);
             $this->log(AuditAction::DOCUMENT_UPLOADED, $actor, $doc, ['request_id' => $request->id], $doc->created_at);
         }
@@ -410,17 +412,17 @@ class RequestScenarioBuilder
     private function seedFxRequestDoc(ImportRequest $request, User $actor, Carbon $at): void
     {
         $doc = RequestDocument::query()->create([
-            'request_id'        => $request->id,
-            'uploaded_by'       => $actor->id,
-            'type'              => 'FX_REQUEST',
-            'document_type_id'  => null,
+            'request_id' => $request->id,
+            'uploaded_by' => $actor->id,
+            'type' => 'FX_REQUEST',
+            'document_type_id' => null,
             'original_filename' => 'fx_confirmation_request.pdf',
-            'stored_path'       => "fx-request/{$request->id}/" . Str::uuid() . '.pdf',
-            'mime_type'         => 'application/pdf',
-            'size_bytes'        => rand(60 * 1024, 2 * 1024 * 1024),
-            'checksum'          => bin2hex(random_bytes(32)),
-            'created_at'        => $at,
-            'updated_at'        => $at,
+            'stored_path' => "fx-request/{$request->id}/".Str::uuid().'.pdf',
+            'mime_type' => 'application/pdf',
+            'size_bytes' => rand(60 * 1024, 2 * 1024 * 1024),
+            'checksum' => bin2hex(random_bytes(32)),
+            'created_at' => $at,
+            'updated_at' => $at,
         ]);
         $this->log(AuditAction::DOCUMENT_UPLOADED, $actor, $doc, ['request_id' => $request->id, 'type' => 'FX_REQUEST'], $at);
     }
@@ -428,17 +430,17 @@ class RequestScenarioBuilder
     private function seedSwiftDoc(ImportRequest $request, User $actor, Carbon $at): void
     {
         $doc = RequestDocument::query()->create([
-            'request_id'        => $request->id,
-            'uploaded_by'       => $actor->id,
-            'type'              => 'SWIFT',
-            'document_type_id'  => null,
+            'request_id' => $request->id,
+            'uploaded_by' => $actor->id,
+            'type' => 'SWIFT',
+            'document_type_id' => null,
             'original_filename' => 'swift_message.pdf',
-            'stored_path'       => "swift/{$request->id}/" . Str::uuid() . '.pdf',
-            'mime_type'         => 'application/pdf',
-            'size_bytes'        => rand(60 * 1024, 2 * 1024 * 1024),
-            'checksum'          => bin2hex(random_bytes(32)),
-            'created_at'        => $at,
-            'updated_at'        => $at,
+            'stored_path' => "swift/{$request->id}/".Str::uuid().'.pdf',
+            'mime_type' => 'application/pdf',
+            'size_bytes' => rand(60 * 1024, 2 * 1024 * 1024),
+            'checksum' => bin2hex(random_bytes(32)),
+            'created_at' => $at,
+            'updated_at' => $at,
         ]);
         $this->log(AuditAction::SWIFT_UPLOADED, $actor, $doc, ['request_id' => $request->id], $at);
     }
@@ -446,17 +448,17 @@ class RequestScenarioBuilder
     private function seedCustomsDoc(ImportRequest $request, User $actor, string $declNo, Carbon $at): void
     {
         $doc = RequestDocument::query()->create([
-            'request_id'        => $request->id,
-            'uploaded_by'       => $actor->id,
-            'type'              => 'CUSTOMS',
-            'document_type_id'  => null,
+            'request_id' => $request->id,
+            'uploaded_by' => $actor->id,
+            'type' => 'CUSTOMS',
+            'document_type_id' => null,
             'original_filename' => "customs_declaration_{$declNo}.pdf",
-            'stored_path'       => "customs/{$request->id}/" . Str::uuid() . '.pdf',
-            'mime_type'         => 'application/pdf',
-            'size_bytes'        => rand(80 * 1024, 3 * 1024 * 1024),
-            'checksum'          => bin2hex(random_bytes(32)),
-            'created_at'        => $at,
-            'updated_at'        => $at,
+            'stored_path' => "customs/{$request->id}/".Str::uuid().'.pdf',
+            'mime_type' => 'application/pdf',
+            'size_bytes' => rand(80 * 1024, 3 * 1024 * 1024),
+            'checksum' => bin2hex(random_bytes(32)),
+            'created_at' => $at,
+            'updated_at' => $at,
         ]);
         $this->log(AuditAction::DOCUMENT_UPLOADED, $actor, $doc, ['request_id' => $request->id], $at);
     }
@@ -482,7 +484,7 @@ class RequestScenarioBuilder
             $steps[] = compact('from', 'to', 'fromOwner', 'toOwner', 'actor', 'action', 'reason', 'at');
         };
 
-        $sub  = $timeline['submitted_at'];
+        $sub = $timeline['submitted_at'];
         $bkAt = $timeline['bank_approved_at'];
         $spAt = $timeline['support_approved_at'];
         $swAt = $timeline['swift_uploaded_at'];
@@ -492,10 +494,10 @@ class RequestScenarioBuilder
         $csAt = $timeline['customs_issued_at'];
 
         // Derive intermediate timestamps where direct timestamps are unavailable
-        $bankBeganAt   = $sub  ? $sub->copy()->addHours(rand(1, 4))   : now();
-        $bankDecidedAt = $sub  ? $sub->copy()->addDays(rand(1, 3))    : now();
-        $spClaimAt     = $bkAt ? $bkAt->copy()->addHours(rand(6, 24)) : now();
-        $spDecidedAt   = $bkAt ? $bkAt->copy()->addDays(rand(2, 5))   : now();
+        $bankBeganAt = $sub ? $sub->copy()->addHours(rand(1, 4)) : now();
+        $bankDecidedAt = $sub ? $sub->copy()->addDays(rand(1, 3)) : now();
+        $spClaimAt = $bkAt ? $bkAt->copy()->addHours(rand(6, 24)) : now();
+        $spDecidedAt = $bkAt ? $bkAt->copy()->addDays(rand(2, 5)) : now();
 
         // Step 1 — DRAFT → SUBMITTED
         if ($scenario !== 'draft') {
@@ -505,7 +507,7 @@ class RequestScenarioBuilder
         }
 
         // Step 2 — SUBMITTED → BANK_REVIEW  (bank reviewer opens it)
-        $bankReviewStarted = !in_array($scenario, ['draft', 'submitted'], true);
+        $bankReviewStarted = ! in_array($scenario, ['draft', 'submitted'], true);
         if ($bankReviewStarted) {
             $add(RequestStatus::SUBMITTED, RequestStatus::BANK_REVIEW,
                 UserRole::BANK_REVIEWER, UserRole::BANK_REVIEWER,
@@ -525,7 +527,7 @@ class RequestScenarioBuilder
             $add(RequestStatus::BANK_REVIEW, RequestStatus::BANK_REJECTED,
                 UserRole::BANK_REVIEWER, UserRole::BANK_REVIEWER,
                 $reviewer, 'bank_reject_terminal', 'Non-compliant request — permanently rejected', $bkAt ?? $bankDecidedAt);
-        } elseif ($bankReviewStarted && !in_array($scenario, ['bank_review'], true)) {
+        } elseif ($bankReviewStarted && ! in_array($scenario, ['bank_review'], true)) {
             // Bank approved path
             $add(RequestStatus::BANK_REVIEW, RequestStatus::BANK_APPROVED,
                 UserRole::BANK_REVIEWER, UserRole::SUPPORT_COMMITTEE,
@@ -536,7 +538,7 @@ class RequestScenarioBuilder
         }
 
         // Step 4 — support claims
-        $supportClaimStarted = !in_array($scenario, [
+        $supportClaimStarted = ! in_array($scenario, [
             'draft', 'submitted', 'bank_review',
             'draft_rejected_internal', 'bank_returned', 'bank_rejected',
             'bank_approved', 'support_review_pending',
@@ -556,7 +558,7 @@ class RequestScenarioBuilder
             $add(RequestStatus::SUPPORT_REVIEW_IN_PROGRESS, RequestStatus::SUPPORT_RETURNED,
                 UserRole::SUPPORT_COMMITTEE, UserRole::DATA_ENTRY,
                 $support, 'support_return', 'Requires additional documentation from bank', $spDecidedAt);
-        } elseif ($supportClaimStarted && !in_array($scenario, [
+        } elseif ($supportClaimStarted && ! in_array($scenario, [
             'support_review_in_progress_claimed', 'support_review_in_progress_expired',
             'support_rejected', 'support_returned',
         ], true)) {
@@ -622,18 +624,18 @@ class RequestScenarioBuilder
 
         foreach ($steps as $step) {
             $row = RequestStageHistory::query()->create([
-                'request_id'     => $request->id,
-                'from_status'    => $step['from'],
-                'to_status'      => $step['to'],
+                'request_id' => $request->id,
+                'from_status' => $step['from'],
+                'to_status' => $step['to'],
                 'from_owner_role' => $step['fromOwner'],
-                'to_owner_role'  => $step['toOwner'],
-                'actor_id'       => $step['actor']->id,
-                'actor_role'     => $step['actor']->role,
-                'action'         => $step['action'],
-                'reason'         => $step['reason'],
-                'metadata'       => null,
-                'created_at'     => $step['at'] ?? now(),
-                'updated_at'     => $step['at'] ?? now(),
+                'to_owner_role' => $step['toOwner'],
+                'actor_id' => $step['actor']->id,
+                'actor_role' => $step['actor']->role,
+                'action' => $step['action'],
+                'reason' => $step['reason'],
+                'metadata' => null,
+                'created_at' => $step['at'] ?? now(),
+                'updated_at' => $step['at'] ?? now(),
             ]);
             $this->log(
                 AuditAction::STATUS_TRANSITION,
@@ -655,20 +657,20 @@ class RequestScenarioBuilder
             'executive_approved', 'executive_rejected',
             'customs_declaration_issued', 'completed', 'completed_with_revision',
         ];
-        if (!in_array($scenario, $votingScenarios, true)) {
+        if (! in_array($scenario, $votingScenarios, true)) {
             return;
         }
 
         $votes = match ($scenario) {
-            'executive_voting_open'      => array_fill(0, rand(1, min(4, $execs->count())), null),
-            'executive_voting_open_tie'  => [VoteType::APPROVE, VoteType::APPROVE, VoteType::APPROVE, VoteType::REJECT, VoteType::REJECT, VoteType::REJECT],
-            'executive_voting_closed'    => [VoteType::APPROVE, VoteType::APPROVE, VoteType::APPROVE, VoteType::APPROVE, VoteType::REJECT, VoteType::ABSTAIN],
+            'executive_voting_open' => array_fill(0, rand(1, min(4, $execs->count())), null),
+            'executive_voting_open_tie' => [VoteType::APPROVE, VoteType::APPROVE, VoteType::APPROVE, VoteType::REJECT, VoteType::REJECT, VoteType::REJECT],
+            'executive_voting_closed' => [VoteType::APPROVE, VoteType::APPROVE, VoteType::APPROVE, VoteType::APPROVE, VoteType::REJECT, VoteType::ABSTAIN],
             'executive_approved',
             'customs_declaration_issued',
             'completed',
-            'completed_with_revision'    => [VoteType::APPROVE, VoteType::APPROVE, VoteType::APPROVE, VoteType::APPROVE, VoteType::REJECT, VoteType::ABSTAIN],
-            'executive_rejected'         => [VoteType::REJECT, VoteType::REJECT, VoteType::REJECT, VoteType::REJECT, VoteType::APPROVE, VoteType::AUTO_ABSTAIN_TIMEOUT],
-            default                      => [],
+            'completed_with_revision' => [VoteType::APPROVE, VoteType::APPROVE, VoteType::APPROVE, VoteType::APPROVE, VoteType::REJECT, VoteType::ABSTAIN],
+            'executive_rejected' => [VoteType::REJECT, VoteType::REJECT, VoteType::REJECT, VoteType::REJECT, VoteType::APPROVE, VoteType::AUTO_ABSTAIN_TIMEOUT],
+            default => [],
         };
 
         $baseAt = $timeline['voting_opened_at'] ?? now();
@@ -677,18 +679,18 @@ class RequestScenarioBuilder
                 $voteType = Arr::random([VoteType::APPROVE, VoteType::REJECT, VoteType::ABSTAIN]);
             }
             $actor = $execs[$idx] ?? $execs->last();
-            $at    = $baseAt->copy()->addHours($idx + 1);
-            $vote  = RequestVote::query()->create([
-                'request_id'          => $request->id,
-                'user_id'             => $actor->id,
-                'vote'                => $voteType,
-                'justification'       => fake()->boolean(50)
+            $at = $baseAt->copy()->addHours($idx + 1);
+            $vote = RequestVote::query()->create([
+                'request_id' => $request->id,
+                'user_id' => $actor->id,
+                'vote' => $voteType,
+                'justification' => fake()->boolean(50)
                     ? Arr::random(['Need stronger documentation', 'High risk profile', 'Compliant with regulations', 'Insufficient collateral', 'All checks passed'])
                     : null,
                 'is_director_override' => false,
-                'voted_at'            => $at,
-                'created_at'          => $at,
-                'updated_at'          => $at,
+                'voted_at' => $at,
+                'created_at' => $at,
+                'updated_at' => $at,
             ]);
             $this->log(AuditAction::VOTE_CAST, $actor, $vote, ['request_id' => $request->id], $at);
         }
@@ -700,22 +702,22 @@ class RequestScenarioBuilder
 
     private function seedCustomsDeclaration(ImportRequest $request, User $issuer, Carbon $at): CustomsDeclaration
     {
-        $year   = now()->format('Y');
-        $number = 'CD-' . $year . '-' . str_pad((string) $this->customsSequence++, 6, '0', STR_PAD_LEFT);
+        $year = now()->format('Y');
+        $number = 'CD-'.$year.'-'.str_pad((string) $this->customsSequence++, 6, '0', STR_PAD_LEFT);
 
         $decl = CustomsDeclaration::query()->create([
-            'request_id'         => $request->id,
+            'request_id' => $request->id,
             'declaration_number' => $number,
-            'issued_by'          => $issuer->id,
-            'issued_at'          => $at,
-            'pdf_path'           => "customs/{$request->id}/{$number}.pdf",
-            'metadata'           => [
-                'supplier'  => $request->supplier_name,
-                'amount'    => (float) $request->amount,
-                'currency'  => is_string($request->currency) ? $request->currency : $request->currency?->value,
-                'goods'     => $request->goods_description,
-                'port'      => $request->port_of_entry,
-                'invoice'   => $request->invoice_number,
+            'issued_by' => $issuer->id,
+            'issued_at' => $at,
+            'pdf_path' => "customs/{$request->id}/{$number}.pdf",
+            'metadata' => [
+                'supplier' => $request->supplier_name,
+                'amount' => (float) $request->amount,
+                'currency' => is_string($request->currency) ? $request->currency : $request->currency?->value,
+                'goods' => $request->goods_description,
+                'port' => $request->port_of_entry,
+                'invoice' => $request->invoice_number,
                 'bl_number' => $request->bl_number,
             ],
             'created_at' => $at,
@@ -733,15 +735,15 @@ class RequestScenarioBuilder
     private function log(AuditAction $action, User $actor, $subject, array $meta, Carbon $at): void
     {
         AuditLog::query()->create([
-            'user_id'      => $actor->id,
-            'user_role'    => $actor->role->value,
-            'action'       => $action->value,
+            'user_id' => $actor->id,
+            'user_role' => $actor->role->value,
+            'action' => $action->value,
             'subject_type' => $subject::class,
-            'subject_id'   => $subject->id,
-            'ip_address'   => fake()->ipv4(),
-            'user_agent'   => 'Seeder/2.0',
-            'metadata'     => $meta,
-            'created_at'   => $at,
+            'subject_id' => $subject->id,
+            'ip_address' => fake()->ipv4(),
+            'user_agent' => 'Seeder/2.0',
+            'metadata' => $meta,
+            'created_at' => $at,
         ]);
     }
 }

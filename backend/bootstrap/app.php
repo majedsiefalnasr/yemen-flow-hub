@@ -1,33 +1,33 @@
 <?php
 
-use Illuminate\Foundation\Application;
-use Illuminate\Foundation\Configuration\Exceptions;
-use Illuminate\Foundation\Configuration\Middleware;
-use Illuminate\Http\Middleware\HandleCors;
-use Illuminate\Auth\Access\AuthorizationException;
-use Illuminate\Auth\AuthenticationException;
-use Illuminate\Validation\ValidationException;
-use Illuminate\Http\Request;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
-use Illuminate\Http\Exceptions\ThrottleRequestsException;
-use Illuminate\Session\TokenMismatchException;
-use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
-use Symfony\Component\HttpKernel\Exception\HttpException;
-use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
-use Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful;
-use App\Support\ApiResponse;
+use App\Enums\AuditAction;
+use App\Exceptions\CustomsException;
+use App\Exceptions\DocumentException;
+use App\Exceptions\DuplicateVoteException;
 use App\Exceptions\InvalidTransitionException;
 use App\Exceptions\SelfReviewException;
 use App\Exceptions\UnauthorizedTransitionException;
-use App\Exceptions\DuplicateVoteException;
 use App\Exceptions\VotingException;
-use App\Exceptions\DocumentException;
-use App\Exceptions\CustomsException;
-use App\Exceptions\WorkflowLockedStateException;
 use App\Exceptions\WorkflowImmutableStateException;
+use App\Exceptions\WorkflowLockedStateException;
 use App\Http\Middleware\Authenticate;
-use App\Enums\AuditAction;
 use App\Services\Audit\AuditService;
+use App\Support\ApiResponse;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Auth\AuthenticationException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Foundation\Application;
+use Illuminate\Foundation\Configuration\Exceptions;
+use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Exceptions\ThrottleRequestsException;
+use Illuminate\Http\Middleware\HandleCors;
+use Illuminate\Http\Request;
+use Illuminate\Session\TokenMismatchException;
+use Illuminate\Validation\ValidationException;
+use Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful;
+use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
+use Symfony\Component\HttpKernel\Exception\HttpException;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -91,9 +91,10 @@ return Application::configure(basePath: dirname(__DIR__))
                         null,
                         ['reason' => $e->getMessage(), 'path' => $request->path(), 'method' => $request->method()]
                     );
-                } catch (\Throwable) {
+                } catch (Throwable) {
                     // Never let audit failure suppress the actual response
                 }
+
                 return ApiResponse::forbidden('Forbidden action', 'WORKFLOW_FORBIDDEN');
             }
         });
@@ -119,9 +120,10 @@ return Application::configure(basePath: dirname(__DIR__))
                         null,
                         ['reason' => $e->getMessage(), 'path' => $request->path(), 'method' => $request->method()]
                     );
-                } catch (\Throwable) {
+                } catch (Throwable) {
                     // Never let audit failure suppress the actual response
                 }
+
                 return ApiResponse::forbidden($e->getMessage(), 'WORKFLOW_FORBIDDEN');
             }
         });
@@ -181,7 +183,7 @@ return Application::configure(basePath: dirname(__DIR__))
             }
         });
 
-        $exceptions->render(function (\Throwable $e, Request $request) {
+        $exceptions->render(function (Throwable $e, Request $request) {
             if ($request->is('api/*')) {
                 return ApiResponse::error('Internal server error.', [], 500);
             }

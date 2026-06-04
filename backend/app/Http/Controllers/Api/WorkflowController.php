@@ -27,8 +27,7 @@ class WorkflowController extends Controller
         private readonly WorkflowService $workflowService,
         private readonly VotingService $votingService,
         private readonly ClaimReleaseNotifier $claimReleaseNotifier,
-    ) {
-    }
+    ) {}
 
     #[OA\Post(path: '/api/workflow/{importRequest}/submit', tags: ['Workflow'], summary: 'Submit request', parameters: [new OA\Parameter(name: 'importRequest', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], requestBody: new OA\RequestBody(required: false, content: new OA\JsonContent(properties: [new OA\Property(property: 'reason', type: 'string', maxLength: 2000)])), responses: [new OA\Response(response: 200, description: 'Transition applied')])]
     public function submit(WorkflowActionRequest $request, ImportRequest $importRequest)
@@ -56,6 +55,7 @@ class WorkflowController extends Controller
             // Already in BANK_REVIEW claimed by someone else
             if ($locked->status === RequestStatus::BANK_REVIEW && $locked->isClaimed() && $locked->claimed_by !== $request->user()->id) {
                 $holder = $locked->claimedByUser;
+
                 return ApiResponse::error(
                     "هذا الطلب محجوز حالياً بواسطة {$holder?->name}. / This request is currently claimed by {$holder?->name}.",
                     [],
@@ -96,7 +96,7 @@ class WorkflowController extends Controller
             return ApiResponse::forbidden('يمكن تحرير الحجز فقط في مرحلة مراجعة البنك. / Claim can only be released while request is in BANK_REVIEW.');
         }
 
-        if (!$isCbyAdmin && $importRequest->claimed_by !== $actor->id) {
+        if (! $isCbyAdmin && $importRequest->claimed_by !== $actor->id) {
             return ApiResponse::forbidden('لا يمكنك تحرير حجز لا تملكه. / You do not hold this claim.');
         }
 
@@ -125,7 +125,7 @@ class WorkflowController extends Controller
         $expiresAt = now()->addMinutes($ttlMinutes);
         $cacheKey = "bank_claim:{$importRequest->id}";
 
-        if (!Cache::has($cacheKey)) {
+        if (! Cache::has($cacheKey)) {
             return ApiResponse::error('انتهت صلاحية الحجز. / Claim has expired.', [], 409);
         }
 
@@ -175,6 +175,7 @@ class WorkflowController extends Controller
 
             if ($locked->isClaimed()) {
                 $holder = $locked->claimedByUser;
+
                 return ApiResponse::error(
                     "هذا الطلب محجوز حالياً بواسطة {$holder?->name}. / This request is currently claimed by {$holder?->name}.",
                     [],
@@ -215,7 +216,7 @@ class WorkflowController extends Controller
         $actor = $request->user();
         $isCbyadmin = $actor->role === UserRole::CBY_ADMIN;
 
-        if (!$isCbyadmin && $importRequest->claimed_by !== $actor->id) {
+        if (! $isCbyadmin && $importRequest->claimed_by !== $actor->id) {
             return ApiResponse::forbidden('لا يمكنك تحرير حجز لا تملكه. / You do not hold this claim.');
         }
 
@@ -247,7 +248,7 @@ class WorkflowController extends Controller
         $expiresAt = now()->addMinutes($ttlMinutes);
         $cacheKey = "support_claim:{$importRequest->id}";
 
-        if (!Cache::has($cacheKey)) {
+        if (! Cache::has($cacheKey)) {
             return ApiResponse::error('انتهت صلاحية الحجز. / Claim has expired.', [], 409);
         }
 
@@ -351,7 +352,7 @@ class WorkflowController extends Controller
     #[OA\Post(path: '/api/workflow/{importRequest}/finalize-decision', tags: ['Workflow'], summary: 'Finalize executive decision — tally-computed, tie-resolved by Director vote (COMMITTEE_DIRECTOR only)', parameters: [new OA\Parameter(name: 'importRequest', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], responses: [new OA\Response(response: 200, description: 'Decision finalized'), new OA\Response(response: 403, description: 'Forbidden — COMMITTEE_DIRECTOR only')])]
     public function finalizeDecision(WorkflowActionRequest $request, ImportRequest $importRequest)
     {
-        if (!$request->user()->hasPermission('voting.finalize')) {
+        if (! $request->user()->hasPermission('voting.finalize')) {
             return ApiResponse::forbidden();
         }
 

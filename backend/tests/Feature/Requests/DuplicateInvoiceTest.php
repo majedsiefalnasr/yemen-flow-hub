@@ -11,6 +11,7 @@ use App\Models\ImportRequest;
 use App\Models\Merchant;
 use App\Models\SystemSetting;
 use App\Models\User;
+use App\Services\DuplicateDetectionService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -22,14 +23,23 @@ class DuplicateInvoiceTest extends TestCase
     use RefreshDatabase;
 
     private Bank $bank1;
+
     private Bank $bank2;
+
     private User $dataEntry1;
+
     private User $dataEntry2;
+
     private User $bankReviewer;
+
     private User $bankAdmin;
+
     private User $supportCommittee;
+
     private User $cbyAdmin;
+
     private Merchant $merchant1;
+
     private Merchant $merchant2;
 
     protected function setUp(): void
@@ -75,8 +85,9 @@ class DuplicateInvoiceTest extends TestCase
     private function makeUser(UserRole $role, ?Bank $bank = null): User
     {
         static $n = 0;
+
         return User::query()->create([
-            'name' => 'U' . (++$n),
+            'name' => 'U'.(++$n),
             'email' => "u{$n}@x.com",
             'password' => Hash::make('p'),
             'role' => $role,
@@ -88,8 +99,9 @@ class DuplicateInvoiceTest extends TestCase
     private function makeMerchant(Bank $bank): Merchant
     {
         static $m = 0;
+
         return Merchant::query()->create([
-            'name' => 'M' . (++$m), 'tax_number' => "T{$m}",
+            'name' => 'M'.(++$m), 'tax_number' => "T{$m}",
             'commercial_register' => "CR{$m}", 'address' => 'Sanaa',
             'contact' => '+967', 'category' => 'general', 'status' => 'active',
             'bank_id' => $bank->id,
@@ -145,6 +157,7 @@ class DuplicateInvoiceTest extends TestCase
                 ->pluck('name')
                 ->contains('idx_invoice_number_deleted_at');
         }
+
         return collect(DB::select('SHOW INDEX FROM import_requests'))
             ->pluck('Key_name')
             ->unique()
@@ -384,18 +397,18 @@ class DuplicateInvoiceTest extends TestCase
             $bindings = [];
             for ($i = 0; $i < $chunkSize; $i++) {
                 $idx = $batch * $chunkSize + $i;
-                $inv = 'INV-PERF-' . ($idx % 1000);
-                $ref = 'YFH-' . date('Y') . '-' . str_pad((string) ($counter++), 6, '0', STR_PAD_LEFT);
+                $inv = 'INV-PERF-'.($idx % 1000);
+                $ref = 'YFH-'.date('Y').'-'.str_pad((string) ($counter++), 6, '0', STR_PAD_LEFT);
                 $placeholders[] = "(?, ?, ?, ?, 'USD', 1000, 'Supplier', 'Goods', 'Aden', 'DRAFT', 'DATA_ENTRY', ?, ?, ?)";
                 array_push($bindings, $ref, $bankId, $merchantId, $createdBy, $inv, $now, $now);
             }
             DB::statement(
-                'INSERT INTO import_requests (reference_number, bank_id, merchant_id, created_by, currency, amount, supplier_name, goods_description, port_of_entry, status, current_owner_role, invoice_number, created_at, updated_at) VALUES ' . implode(',', $placeholders),
+                'INSERT INTO import_requests (reference_number, bank_id, merchant_id, created_by, currency, amount, supplier_name, goods_description, port_of_entry, status, current_owner_role, invoice_number, created_at, updated_at) VALUES '.implode(',', $placeholders),
                 $bindings
             );
         }
 
-        $service = app(\App\Services\DuplicateDetectionService::class);
+        $service = app(DuplicateDetectionService::class);
         $start = microtime(true);
         $service->findDuplicatesForInvoice('INV-PERF-1');
         $elapsed = (microtime(true) - $start) * 1000;

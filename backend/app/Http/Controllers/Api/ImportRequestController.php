@@ -32,8 +32,8 @@ class ImportRequestController extends Controller
         private readonly DuplicateDetectionService $duplicateService,
         private readonly AdminSettingsService $settingsService,
         private readonly AuditService $auditService,
-    ) {
-    }
+    ) {}
+
     #[OA\Get(
         path: '/api/requests',
         tags: ['Import Requests'],
@@ -46,15 +46,15 @@ class ImportRequestController extends Controller
         $this->authorize('viewAny', ImportRequest::class);
 
         $request->validate([
-            'created_from'          => ['nullable', 'date'],
-            'created_to'            => ['nullable', 'date'],
-            'amount_min'            => ['nullable', 'numeric', 'min:0'],
-            'amount_max'            => ['nullable', 'numeric', 'min:0', Rule::when(
+            'created_from' => ['nullable', 'date'],
+            'created_to' => ['nullable', 'date'],
+            'amount_min' => ['nullable', 'numeric', 'min:0'],
+            'amount_max' => ['nullable', 'numeric', 'min:0', Rule::when(
                 fn () => $request->filled('amount_min'),
                 'gte:amount_min',
             )],
-            'assigned_reviewer_id'  => ['nullable', 'integer'],
-            'per_page'              => ['nullable', 'integer', 'min:1', 'max:100'],
+            'assigned_reviewer_id' => ['nullable', 'integer'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
         ]);
 
         $statusTotals = $this->buildIndexQuery($request, false)
@@ -351,8 +351,8 @@ class ImportRequestController extends Controller
             throw new WorkflowImmutableStateException($status);
         }
 
-        if (!$importRequest->isEditable()) {
-            throw new WorkflowLockedStateException();
+        if (! $importRequest->isEditable()) {
+            throw new WorkflowLockedStateException;
         }
 
         $importRequest->update([

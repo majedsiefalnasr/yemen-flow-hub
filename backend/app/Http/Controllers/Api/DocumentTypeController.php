@@ -39,31 +39,34 @@ class DocumentTypeController extends Controller
     )]
     public function store(StoreDocumentTypeRequest $request)
     {
-        if (!request()->user()->hasPermission('docrules.manage')) {
+        if (! request()->user()->hasPermission('docrules.manage')) {
             return ApiResponse::forbidden();
         }
 
         $row = DocumentType::query()->create($request->validated());
+
         return ApiResponse::success(new DocumentTypeResource($row), 'Document type created successfully.', 201);
     }
 
     #[OA\Put(path: '/api/document-types/{id}', tags: ['Documents'], summary: 'Update document type', responses: [new OA\Response(response: 200, description: 'Document type updated')])]
     public function update(UpdateDocumentTypeRequest $request, DocumentType $documentType)
     {
-        if (!request()->user()->hasPermission('docrules.manage')) {
+        if (! request()->user()->hasPermission('docrules.manage')) {
             return ApiResponse::forbidden();
         }
         $documentType->update($request->validated());
+
         return ApiResponse::success(new DocumentTypeResource($documentType->refresh()), 'Document type updated successfully.');
     }
 
     #[OA\Delete(path: '/api/document-types/{id}', tags: ['Documents'], summary: 'Delete document type', responses: [new OA\Response(response: 200, description: 'Document type deleted')])]
     public function destroy(DocumentType $documentType)
     {
-        if (!request()->user()->hasPermission('docrules.manage')) {
+        if (! request()->user()->hasPermission('docrules.manage')) {
             return ApiResponse::forbidden();
         }
         $documentType->delete();
+
         return ApiResponse::success((object) [], 'Document type deleted successfully.');
     }
 }

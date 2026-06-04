@@ -21,8 +21,7 @@ class VotingService
     public function __construct(
         private readonly WorkflowService $workflowService,
         private readonly AuditService $auditService
-    ) {
-    }
+    ) {}
 
     public function castVote(ImportRequest $request, User $voter, VoteType $vote, ?string $justification): RequestVote
     {
@@ -30,7 +29,7 @@ class VotingService
             throw new VotingException('Request is not in executive voting stage.');
         }
 
-        if (!$voter->hasRole(UserRole::EXECUTIVE_MEMBER) && !$voter->hasRole(UserRole::COMMITTEE_DIRECTOR)) {
+        if (! $voter->hasRole(UserRole::EXECUTIVE_MEMBER) && ! $voter->hasRole(UserRole::COMMITTEE_DIRECTOR)) {
             throw new VotingException('Only executive members and committee director can cast votes.');
         }
 
@@ -66,7 +65,7 @@ class VotingService
 
     public function closeSession(ImportRequest $request, User $director): ImportRequest
     {
-        if (!$director->hasRole(UserRole::COMMITTEE_DIRECTOR)) {
+        if (! $director->hasRole(UserRole::COMMITTEE_DIRECTOR)) {
             throw new VotingException('Only committee director can close the voting session.');
         }
 
@@ -140,7 +139,7 @@ class VotingService
 
     public function finalize(ImportRequest $request, User $director): ImportRequest
     {
-        if (!$director->hasRole(UserRole::COMMITTEE_DIRECTOR)) {
+        if (! $director->hasRole(UserRole::COMMITTEE_DIRECTOR)) {
             throw new VotingException('Only committee director can finalize the voting decision.');
         }
 
@@ -190,7 +189,7 @@ class VotingService
         VoteType $finalDecision,
         string $justification
     ): ImportRequest {
-        if (!$director->hasRole(UserRole::COMMITTEE_DIRECTOR)) {
+        if (! $director->hasRole(UserRole::COMMITTEE_DIRECTOR)) {
             throw new VotingException('Only committee director can override voting decisions.');
         }
 

@@ -64,6 +64,7 @@ class UserPreferencesService
         $merged = array_merge($user->user_preferences ?? [], $preferences);
         $user->user_preferences = $merged;
         $user->save();
+
         return $this->getForUser($user);
     }
 
@@ -71,6 +72,7 @@ class UserPreferencesService
     {
         $user->user_preferences = null;
         $user->save();
+
         return $this->getForUser($user);
     }
 
@@ -85,7 +87,7 @@ class UserPreferencesService
             $validated = array_merge($overrides, $this->validateThemingSection($data));
             $validated = array_filter(
                 $validated,
-                static fn ($value, $key) => !array_key_exists($key, $base) || $base[$key] !== $value,
+                static fn ($value, $key) => ! array_key_exists($key, $base) || $base[$key] !== $value,
                 ARRAY_FILTER_USE_BOTH
             );
         } elseif ($section === 'notif') {

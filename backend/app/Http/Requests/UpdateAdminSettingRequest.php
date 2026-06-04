@@ -10,6 +10,7 @@ class UpdateAdminSettingRequest extends FormRequest
     public function authorize(): bool
     {
         $user = $this->user();
+
         return $user !== null && $user->hasRole(UserRole::CBY_ADMIN);
     }
 

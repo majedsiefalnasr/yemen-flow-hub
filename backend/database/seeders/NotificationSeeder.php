@@ -7,6 +7,8 @@ use App\Enums\UserRole;
 use App\Models\ImportRequest;
 use App\Models\User;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -91,7 +93,7 @@ class NotificationSeeder extends Seeder
     }
 
     /**
-     * @return array<int, array{type: string, audience: string, ar: string, en: string, at: \Illuminate\Support\Carbon|null}>
+     * @return array<int, array{type: string, audience: string, ar: string, en: string, at: Carbon|null}>
      */
     private function eventsFor(ImportRequest $request): array
     {
@@ -262,8 +264,8 @@ class NotificationSeeder extends Seeder
     }
 
     /**
-     * @param  \Illuminate\Support\Collection<string, \Illuminate\Support\Collection<int, User>>  $usersByRole
-     * @return \Illuminate\Support\Collection<int, User>
+     * @param  Collection<string, Collection<int, User>>  $usersByRole
+     * @return Collection<int, User>
      */
     private function recipients(string $audience, ImportRequest $request, $usersByRole)
     {

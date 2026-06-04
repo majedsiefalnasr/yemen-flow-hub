@@ -19,6 +19,7 @@ class CustomsPreviewTest extends TestCase
     use RefreshDatabase;
 
     private Bank $bank;
+
     private Bank $otherBank;
 
     protected function setUp(): void

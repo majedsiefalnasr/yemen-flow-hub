@@ -11,9 +11,7 @@ use App\Services\Audit\AuditService;
 
 class ClaimReleaseNotifier
 {
-    public function __construct(private readonly AuditService $auditService)
-    {
-    }
+    public function __construct(private readonly AuditService $auditService) {}
 
     public function dispatch(
         ImportRequest $request,

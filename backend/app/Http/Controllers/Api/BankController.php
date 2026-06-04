@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Api;
 
 use App\Enums\AuditAction;
-use App\Enums\UserRole;
 use App\Http\Requests\StoreBankRequest;
 use App\Http\Requests\UpdateBankRequest;
 use App\Http\Resources\BankResource;
@@ -14,9 +13,7 @@ use OpenApi\Attributes as OA;
 
 class BankController extends Controller
 {
-    public function __construct(private readonly AuditService $auditService)
-    {
-    }
+    public function __construct(private readonly AuditService $auditService) {}
 
     #[OA\Get(
         path: '/api/banks',
@@ -46,9 +43,9 @@ class BankController extends Controller
             'data' => BankResource::collection($banks->getCollection())->resolve(),
             'meta' => [
                 'current_page' => $banks->currentPage(),
-                'last_page'    => $banks->lastPage(),
-                'per_page'     => $banks->perPage(),
-                'total'        => $banks->total(),
+                'last_page' => $banks->lastPage(),
+                'per_page' => $banks->perPage(),
+                'total' => $banks->total(),
             ],
         ], 'Banks retrieved.');
     }
@@ -121,7 +118,7 @@ class BankController extends Controller
         $this->auditService->log(AuditAction::BANK_UPDATED, $request->user(), $bank, [
             'bank_id' => $bank->id,
             'before' => array_intersect_key($before, array_flip($changedKeys)),
-            'after'  => array_intersect_key($after, array_flip($changedKeys)),
+            'after' => array_intersect_key($after, array_flip($changedKeys)),
         ]);
 
         return ApiResponse::success(new BankResource($bank), 'Bank updated successfully.');

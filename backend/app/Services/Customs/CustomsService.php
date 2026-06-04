@@ -23,12 +23,11 @@ class CustomsService
     public function __construct(
         private readonly WorkflowService $workflowService,
         private readonly AuditService $auditService
-    ) {
-    }
+    ) {}
 
     public function generate(ImportRequest $request, User $issuer): CustomsDeclaration
     {
-        if (!$issuer->hasRole(UserRole::COMMITTEE_DIRECTOR)) {
+        if (! $issuer->hasRole(UserRole::COMMITTEE_DIRECTOR)) {
             throw new CustomsException('Only committee director can generate customs declarations.');
         }
 
@@ -50,7 +49,7 @@ class CustomsService
                 //      of this method, so an *issued* declaration always has both pdf_path and
                 //      the FK populated.
                 // The three guards below therefore cover three distinct states, not one:
-                if (!in_array($lockedRequest->status, [RequestStatus::EXECUTIVE_APPROVED, RequestStatus::FX_CONFIRMATION_PENDING], true)) {
+                if (! in_array($lockedRequest->status, [RequestStatus::EXECUTIVE_APPROVED, RequestStatus::FX_CONFIRMATION_PENDING], true)) {
                     throw new CustomsException('Customs declaration can only be generated for EXECUTIVE_APPROVED or FX_CONFIRMATION_PENDING requests.');
                 }
 
@@ -120,7 +119,7 @@ class CustomsService
 
     public function uploadSignedFxDoc(ImportRequest $request, User $uploader, UploadedFile $file): CustomsDeclaration
     {
-        if (!$uploader->hasRole(UserRole::COMMITTEE_DIRECTOR)) {
+        if (! $uploader->hasRole(UserRole::COMMITTEE_DIRECTOR)) {
             throw new CustomsException('Only committee director can upload signed FX confirmation documents.');
         }
 
@@ -196,7 +195,7 @@ class CustomsService
         Gate::forUser($user)->authorize('download', $declaration);
 
         $fullPath = 'private/'.$declaration->pdf_path;
-        if (!Storage::disk('local')->exists($fullPath)) {
+        if (! Storage::disk('local')->exists($fullPath)) {
             throw new CustomsException('Customs PDF file not found.');
         }
 

@@ -31,6 +31,7 @@ class SystemSetting extends Model
     public static function getValueByKey(string $key, mixed $default = null): mixed
     {
         $setting = static::findByKey($key);
+
         return $setting?->value ?? $default;
     }
 }

@@ -16,8 +16,7 @@ class AuditService
         ?Model $subject = null,
         array $metadata = [],
         ?string $subjectTypeOverride = null
-    ): AuditLog
-    {
+    ): AuditLog {
         $request = $this->currentRequest();
         $rawUa = $request?->userAgent();
 

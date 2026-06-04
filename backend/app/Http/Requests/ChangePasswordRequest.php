@@ -10,6 +10,7 @@ class ChangePasswordRequest extends FormRequest
     public function authorize(): bool
     {
         $user = $this->user();
+
         return $user !== null && $user->password !== null;
     }
 
@@ -20,7 +21,7 @@ class ChangePasswordRequest extends FormRequest
                 'required',
                 'string',
                 function ($attribute, $value, $fail) {
-                    if (!Hash::check($value, $this->user()->password)) {
+                    if (! Hash::check($value, $this->user()->password)) {
                         $fail('The current password is incorrect.');
                     }
                 },

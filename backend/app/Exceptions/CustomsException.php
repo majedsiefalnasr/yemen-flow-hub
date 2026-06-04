@@ -4,6 +4,4 @@ namespace App\Exceptions;
 
 use Exception;
 
-class CustomsException extends Exception
-{
-}
+class CustomsException extends Exception {}

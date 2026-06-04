@@ -19,8 +19,11 @@ class SupportReturnTest extends TestCase
     use RefreshDatabase;
 
     private Bank $bank;
+
     private User $dataEntry;
+
     private User $supportMember;
+
     private User $otherSupportMember;
 
     protected function setUp(): void
@@ -36,6 +39,7 @@ class SupportReturnTest extends TestCase
     {
         static $counter = 0;
         $counter++;
+
         return User::query()->create([
             'name' => "User {$counter}",
             'email' => "user{$counter}@srtest.com",
@@ -276,7 +280,8 @@ class SupportReturnTest extends TestCase
             $this->dataEntry,
             RequestReturnedNotification::class,
             function (RequestReturnedNotification $notification) use ($request): bool {
-                $payload = $notification->toArray(new \stdClass());
+                $payload = $notification->toArray(new \stdClass);
+
                 return $payload['type'] === 'request_returned'
                     && $payload['from_role'] === UserRole::SUPPORT_COMMITTEE->value
                     && $payload['comment'] === 'يرجى تصحيح المستندات'

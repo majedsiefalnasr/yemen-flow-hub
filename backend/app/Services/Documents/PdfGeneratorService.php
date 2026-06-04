@@ -12,25 +12,25 @@ class PdfGeneratorService
 {
     private function makeMpdf(): Mpdf
     {
-        $defaultFontDirs  = (new ConfigVariables())->getDefaults()['fontDir'];
-        $defaultFontData  = (new FontVariables())->getDefaults()['fontdata'];
+        $defaultFontDirs = (new ConfigVariables)->getDefaults()['fontDir'];
+        $defaultFontData = (new FontVariables)->getDefaults()['fontdata'];
 
         return new Mpdf([
-            'mode'              => 'utf-8',
-            'format'            => 'A4',
-            'default_font'      => 'ibmplexsansarabic',
+            'mode' => 'utf-8',
+            'format' => 'A4',
+            'default_font' => 'ibmplexsansarabic',
             'default_font_size' => 11,
-            'margin_top'        => 20,
-            'margin_right'      => 20,
-            'margin_bottom'     => 20,
-            'margin_left'       => 20,
-            'directionality'    => 'rtl',
-            'fontDir'           => array_merge($defaultFontDirs, [resource_path('fonts')]),
-            'fontdata'          => $defaultFontData + [
+            'margin_top' => 20,
+            'margin_right' => 20,
+            'margin_bottom' => 20,
+            'margin_left' => 20,
+            'directionality' => 'rtl',
+            'fontDir' => array_merge($defaultFontDirs, [resource_path('fonts')]),
+            'fontdata' => $defaultFontData + [
                 'ibmplexsansarabic' => [
-                    'R'          => 'IBMPlexSansArabic-Regular.ttf',
-                    'B'          => 'IBMPlexSansArabic-Bold.ttf',
-                    'useOTL'     => 0xFF,
+                    'R' => 'IBMPlexSansArabic-Regular.ttf',
+                    'B' => 'IBMPlexSansArabic-Bold.ttf',
+                    'useOTL' => 0xFF,
                     'useKashida' => 75,
                 ],
             ],

@@ -10,7 +10,6 @@ use App\Models\Bank;
 use App\Models\ImportRequest;
 use App\Models\User;
 use App\Notifications\CustomsIssuedNotification;
-use App\Notifications\RequestApprovedNotification;
 use App\Notifications\RequestRejectedNotification;
 use App\Notifications\RequestReturnedNotification;
 use App\Notifications\RequestSubmittedNotification;
@@ -19,7 +18,6 @@ use App\Notifications\VotingOpenedNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
-use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class NotificationPreferencesTest extends TestCase
@@ -27,7 +25,9 @@ class NotificationPreferencesTest extends TestCase
     use RefreshDatabase;
 
     private Bank $bank;
+
     private User $dataEntryUser;
+
     private User $bankReviewer;
 
     protected function setUp(): void

@@ -22,9 +22,7 @@ use Illuminate\Support\Facades\DB;
 
 class WorkflowService
 {
-    public function __construct(private readonly AuditService $auditService)
-    {
-    }
+    public function __construct(private readonly AuditService $auditService) {}
 
     public function transition(
         ImportRequest $request,
@@ -36,7 +34,7 @@ class WorkflowService
         $definitions = TransitionMap::definitions();
         $definition = $definitions[$action] ?? null;
 
-        if (!$definition) {
+        if (! $definition) {
             throw new InvalidTransitionException('Unknown workflow action.');
         }
 
@@ -45,13 +43,13 @@ class WorkflowService
         $allowedRoles = $definition['roles'];
         $newOwnerRole = $definition['next_owner'];
 
-        if (!in_array($request->status, $fromStatuses, true)) {
+        if (! in_array($request->status, $fromStatuses, true)) {
             throw new InvalidTransitionException('Current status does not allow this transition.');
         }
 
         $autoFinalize = (bool) ($metadata['auto_finalized'] ?? false);
 
-        if (!in_array($actor->role, $allowedRoles, true) && !$autoFinalize) {
+        if (! in_array($actor->role, $allowedRoles, true) && ! $autoFinalize) {
             throw new UnauthorizedTransitionException(
                 'هذا الإجراء غير مسموح لدورك الحالي. / This action is not allowed for your current role.'
             );
@@ -65,7 +63,7 @@ class WorkflowService
             throw new SelfReviewException('Reviewer cannot approve, reject, or return own request.');
         }
 
-        if (in_array($action, ['support_approve', 'support_reject', 'support_return_to_intake'], true) && !$request->isClaimedBy($actor)) {
+        if (in_array($action, ['support_approve', 'support_reject', 'support_return_to_intake'], true) && ! $request->isClaimedBy($actor)) {
             throw new UnauthorizedTransitionException(
                 'لا يمكنك اتخاذ قرار على طلب لم تقم بحجزه. / You cannot decide on a request you have not claimed.'
             );
@@ -90,7 +88,7 @@ class WorkflowService
             $transitionMetadata['override_previous_claim_by'] = $request->claimed_by;
         }
         // Allow release of expired claims (isClaimed() returns false when TTL has passed)
-        if ($action === 'support_release' && !$request->isClaimed() && !$request->isClaimExpired()) {
+        if ($action === 'support_release' && ! $request->isClaimed() && ! $request->isClaimExpired()) {
             throw new InvalidTransitionException('الطلب غير محجوز. / Request is not currently claimed.');
         }
 
@@ -98,7 +96,7 @@ class WorkflowService
         if ($action === 'bank_claim_release'
             && $request->claimed_by !== null
             && $request->claimed_by !== $actor->id
-            && !$autoFinalize) {
+            && ! $autoFinalize) {
             throw new UnauthorizedTransitionException('لا يمكنك تحرير حجز لا تملكه. / You do not hold this claim.');
         }
 
@@ -240,8 +238,8 @@ class WorkflowService
             RequestStatus::EXECUTIVE_REJECTED,
         ];
 
-        if (!in_array($source->status, $cloneableStatuses, true)) {
-            throw new \App\Exceptions\InvalidTransitionException('Source request is not in a terminal-rejected status.');
+        if (! in_array($source->status, $cloneableStatuses, true)) {
+            throw new InvalidTransitionException('Source request is not in a terminal-rejected status.');
         }
 
         $fields = [
@@ -381,21 +379,20 @@ class WorkflowService
     {
         $ttlMinutes = (int) config('workflow.support_claim_ttl_minutes', 15);
         $claimFields = [
-            'claimed_by'       => $actor->id,
-            'claimed_at'       => now(),
+            'claimed_by' => $actor->id,
+            'claimed_at' => now(),
             'claim_expires_at' => now()->addMinutes($ttlMinutes),
         ];
         $releaseFields = [
-            'claimed_by'       => null,
-            'claimed_at'       => null,
+            'claimed_by' => null,
+            'claimed_at' => null,
             'claim_expires_at' => null,
         ];
 
         match ($action) {
             // Claim (set holder + TTL)
             'support_claim',
-            'bank_begin_review'
-                => $request->forceFill($claimFields),
+            'bank_begin_review' => $request->forceFill($claimFields),
 
             // Release (clear holder + TTL)
             'support_release',
@@ -406,8 +403,7 @@ class WorkflowService
             'bank_approve',
             'bank_reject',
             'bank_return_to_intake',
-            'bank_reject_terminal'
-                => $request->forceFill($releaseFields),
+            'bank_reject_terminal' => $request->forceFill($releaseFields),
 
             default => null,
         };
@@ -417,17 +413,13 @@ class WorkflowService
     {
         $ttlMinutes = (int) config('workflow.support_claim_ttl_minutes', 15);
         $supportKey = "support_claim:{$request->id}";
-        $bankKey    = "bank_claim:{$request->id}";
+        $bankKey = "bank_claim:{$request->id}";
 
         match ($action) {
-            'support_claim'
-                => Cache::put($supportKey, $actor->id, now()->addMinutes($ttlMinutes)),
-            'support_release', 'support_approve', 'support_reject', 'support_return_to_intake'
-                => Cache::forget($supportKey),
-            'bank_begin_review'
-                => Cache::put($bankKey, $actor->id, now()->addMinutes($ttlMinutes)),
-            'bank_claim_release', 'bank_approve', 'bank_reject', 'bank_return_to_intake', 'bank_reject_terminal'
-                => Cache::forget($bankKey),
+            'support_claim' => Cache::put($supportKey, $actor->id, now()->addMinutes($ttlMinutes)),
+            'support_release', 'support_approve', 'support_reject', 'support_return_to_intake' => Cache::forget($supportKey),
+            'bank_begin_review' => Cache::put($bankKey, $actor->id, now()->addMinutes($ttlMinutes)),
+            'bank_claim_release', 'bank_approve', 'bank_reject', 'bank_return_to_intake', 'bank_reject_terminal' => Cache::forget($bankKey),
             default => null,
         };
     }

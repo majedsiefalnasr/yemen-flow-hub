@@ -2,6 +2,7 @@
 
 namespace App\Policies;
 
+use App\Enums\RequestStatus;
 use App\Models\ImportRequest;
 use App\Models\User;
 
@@ -36,7 +37,7 @@ class ImportRequestPolicy
 
     public function clone(User $user, ImportRequest $importRequest): bool
     {
-        if (!$user->is_active || !$user->hasPermission('request.create')) {
+        if (! $user->is_active || ! $user->hasPermission('request.create')) {
             return false;
         }
 
@@ -45,9 +46,9 @@ class ImportRequestPolicy
         }
 
         return in_array($importRequest->status, [
-            \App\Enums\RequestStatus::BANK_REJECTED,
-            \App\Enums\RequestStatus::SUPPORT_REJECTED,
-            \App\Enums\RequestStatus::EXECUTIVE_REJECTED,
+            RequestStatus::BANK_REJECTED,
+            RequestStatus::SUPPORT_REJECTED,
+            RequestStatus::EXECUTIVE_REJECTED,
         ], true);
     }
 

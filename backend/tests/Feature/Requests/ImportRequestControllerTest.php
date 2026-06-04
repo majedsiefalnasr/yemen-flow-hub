@@ -4,10 +4,11 @@ namespace Tests\Feature\Requests;
 
 use App\Enums\RequestStatus;
 use App\Enums\UserRole;
+use App\Models\AuditLog;
 use App\Models\Bank;
 use App\Models\ImportRequest;
 use App\Models\Merchant;
-use App\Models\Permission;
+use App\Models\RequestStageHistory;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
@@ -20,10 +21,15 @@ class ImportRequestControllerTest extends TestCase
     use RefreshDatabase;
 
     private Bank $bank;
+
     private Bank $otherBank;
+
     private User $dataEntry;
+
     private User $otherDataEntry;
+
     private User $supportReviewer;
+
     private Merchant $merchant;
 
     protected function setUp(): void
@@ -70,6 +76,7 @@ class ImportRequestControllerTest extends TestCase
     {
         static $counter = 0;
         $counter++;
+
         return User::query()->create([
             'name' => "User {$counter}",
             'email' => "user{$counter}@example.com",
@@ -84,6 +91,7 @@ class ImportRequestControllerTest extends TestCase
     {
         static $merchantCounter = 0;
         $merchantCounter++;
+
         return Merchant::query()->create([
             'name' => "مورد تجريبي {$merchantCounter}",
             'tax_number' => "TX-{$merchantCounter}",
@@ -771,7 +779,7 @@ class ImportRequestControllerTest extends TestCase
             'action' => 'create',
         ]);
 
-        $historyCount = \App\Models\RequestStageHistory::where('request_id', $clonedId)->count();
+        $historyCount = RequestStageHistory::where('request_id', $clonedId)->count();
         $this->assertEquals(1, $historyCount);
     }
 
@@ -785,7 +793,7 @@ class ImportRequestControllerTest extends TestCase
         $response->assertStatus(201);
         $clonedId = $response->json('data.id');
 
-        $audit = \App\Models\AuditLog::where('action', 'REQUEST_CREATED')
+        $audit = AuditLog::where('action', 'REQUEST_CREATED')
             ->where('subject_id', $clonedId)
             ->first();
 

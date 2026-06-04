@@ -16,28 +16,27 @@ use OpenApi\Attributes as OA;
 
 class ReportController extends Controller
 {
-    public function __construct(private readonly AuditService $auditService)
-    {
-    }
+    public function __construct(private readonly AuditService $auditService) {}
 
     // ─── Date validation helper ───────────────────────────────────────────────
 
-    private function validateDateParams(): array|null
+    private function validateDateParams(): ?array
     {
         $fromDate = request()->query('from_date');
-        $toDate   = request()->query('to_date');
+        $toDate = request()->query('to_date');
 
         $errors = [];
-        if ($fromDate && !$this->isValidDate($fromDate)) {
+        if ($fromDate && ! $this->isValidDate($fromDate)) {
             $errors['from_date'] = ['The from_date must be in Y-m-d format.'];
         }
-        if ($toDate && !$this->isValidDate($toDate)) {
+        if ($toDate && ! $this->isValidDate($toDate)) {
             $errors['to_date'] = ['The to_date must be in Y-m-d format.'];
         }
 
         if ($errors) {
             return $errors;
         }
+
         return null;
     }
 
@@ -51,9 +50,9 @@ class ReportController extends Controller
             && ($errors === false || ($errors['warning_count'] === 0 && $errors['error_count'] === 0));
     }
 
-    private function validateExportFormat(string $format): array|null
+    private function validateExportFormat(string $format): ?array
     {
-        if (!in_array($format, ['excel', 'pdf'], true)) {
+        if (! in_array($format, ['excel', 'pdf'], true)) {
             return ['format' => ['The format must be either excel or pdf.']];
         }
 
@@ -84,8 +83,8 @@ class ReportController extends Controller
         $this->applyDateFilter($monthlyRows, $fromDate, $toDate);
         $monthlyRows = $monthlyRows->groupByRaw($monthFormat)->orderBy('month')->limit(12)->get();
         $monthlyTrend = $monthlyRows->map(fn ($r) => [
-            'month'    => $r->month,
-            'total'    => (int) $r->total,
+            'month' => $r->month,
+            'total' => (int) $r->total,
             'approved' => (int) ($r->approved ?? 0),
             'rejected' => (int) ($r->rejected ?? 0),
         ])->values()->all();
@@ -94,22 +93,22 @@ class ReportController extends Controller
         $this->applyDateFilter($categoryRows, $fromDate, $toDate);
         $categoryDist = $categoryRows->orderByDesc('count')->get()->map(fn ($r) => [
             'category' => $r->goods_type ?? 'Uncategorized',
-            'count'    => (int) $r->count,
+            'count' => (int) $r->count,
         ])->values()->all();
 
         $currencyRows = $base()->select('currency')->selectRaw('SUM(amount) as total_amount')->groupBy('currency');
         $this->applyDateFilter($currencyRows, $fromDate, $toDate);
         $amountByCurrency = $currencyRows->orderByDesc('total_amount')->get()->map(fn ($r) => [
             'currency' => $r->currency,
-            'amount'   => (float) ($r->total_amount ?? 0),
+            'amount' => (float) ($r->total_amount ?? 0),
         ])->values()->all();
 
         if ($driver === 'sqlite') {
             $dayOfWeek = "CAST((julianday(created_at) - julianday('2000-01-03')) % 7 AS INTEGER) + 1";
-            $hour      = "CAST(strftime('%H', created_at) AS INTEGER)";
+            $hour = "CAST(strftime('%H', created_at) AS INTEGER)";
         } else {
             $dayOfWeek = 'DAYOFWEEK(created_at)';
-            $hour      = 'HOUR(created_at)';
+            $hour = 'HOUR(created_at)';
         }
         $timeSlot = "FLOOR({$hour} / 2) * 2";
 
@@ -124,16 +123,16 @@ class ReportController extends Controller
             ->orderBy('day_of_week')->orderBy('time_slot')
             ->get()
             ->map(fn ($r) => [
-                'day'   => (int) ($r->day_of_week ?? 1),
-                'slot'  => (int) ($r->time_slot ?? 8),
+                'day' => (int) ($r->day_of_week ?? 1),
+                'slot' => (int) ($r->time_slot ?? 8),
                 'count' => (int) $r->count,
             ])->values()->all();
 
         return [
-            'monthly_trend'         => $monthlyTrend,
+            'monthly_trend' => $monthlyTrend,
             'category_distribution' => $categoryDist,
-            'amount_by_currency'    => $amountByCurrency,
-            'submission_heatmap'    => $heatmapData,
+            'amount_by_currency' => $amountByCurrency,
+            'submission_heatmap' => $heatmapData,
         ];
     }
 
@@ -145,6 +144,7 @@ class ReportController extends Controller
         if ($toDate) {
             $query->whereDate($column, '<=', $toDate);
         }
+
         return $query;
     }
 
@@ -165,7 +165,7 @@ class ReportController extends Controller
     public function workflow()
     {
         $user = request()->user();
-        if (!$user->isCbyUser()) {
+        if (! $user->isCbyUser()) {
             $this->auditService->log(AuditAction::AUTHORIZATION_FAILURE, $user, null, [
                 'bank_id' => $user->bank_id,
                 'path' => request()->path(),
@@ -182,7 +182,7 @@ class ReportController extends Controller
         }
 
         $fromDate = request()->query('from_date');
-        $toDate   = request()->query('to_date');
+        $toDate = request()->query('to_date');
 
         // Counts by status
         $countsByStatus = [];
@@ -209,9 +209,9 @@ class ReportController extends Controller
             ->orderByDesc('total')
             ->get()
             ->map(fn ($row) => [
-                'bank_id'   => $row->bank_id,
+                'bank_id' => $row->bank_id,
                 'bank_name' => $row->bank_name,
-                'total'     => (int) $row->total,
+                'total' => (int) $row->total,
             ])
             ->values()
             ->all();
@@ -248,8 +248,8 @@ class ReportController extends Controller
 
         $throughput = [
             'completed' => $this->applyDateFilter(ImportRequest::query()->where('status', RequestStatus::COMPLETED->value), $fromDate, $toDate)->count(),
-            'approved'  => $this->applyDateFilter(ImportRequest::query()->where('status', RequestStatus::EXECUTIVE_APPROVED->value), $fromDate, $toDate)->count(),
-            'rejected'  => $this->applyDateFilter(ImportRequest::query()->whereIn('status', $this->rejectedStatuses()), $fromDate, $toDate)->count(),
+            'approved' => $this->applyDateFilter(ImportRequest::query()->where('status', RequestStatus::EXECUTIVE_APPROVED->value), $fromDate, $toDate)->count(),
+            'rejected' => $this->applyDateFilter(ImportRequest::query()->whereIn('status', $this->rejectedStatuses()), $fromDate, $toDate)->count(),
         ];
 
         $driver = DB::connection()->getDriverName();
@@ -280,16 +280,16 @@ class ReportController extends Controller
         }
 
         return ApiResponse::success([
-            'counts_by_status'         => $countsByStatus,
-            'counts_by_bank'           => $countsByBank,
+            'counts_by_status' => $countsByStatus,
+            'counts_by_bank' => $countsByBank,
             'avg_time_per_stage_hours' => $avgTimePerStage,
-            'throughput'               => $throughput,
-            'monthly_trend'            => $analytics['monthly_trend'],
-            'category_distribution'    => $analytics['category_distribution'],
-            'amount_by_currency'       => $analytics['amount_by_currency'],
-            'submission_heatmap'       => $analytics['submission_heatmap'],
-            'total_financing_value'    => $totalFinancing,
-            'duplicate_invoice_count'  => $duplicateCount,
+            'throughput' => $throughput,
+            'monthly_trend' => $analytics['monthly_trend'],
+            'category_distribution' => $analytics['category_distribution'],
+            'amount_by_currency' => $analytics['amount_by_currency'],
+            'submission_heatmap' => $analytics['submission_heatmap'],
+            'total_financing_value' => $totalFinancing,
+            'duplicate_invoice_count' => $duplicateCount,
         ], 'Workflow report retrieved.');
     }
 
@@ -310,7 +310,7 @@ class ReportController extends Controller
     public function voting()
     {
         $user = request()->user();
-        if (!$user->isCbyUser()) {
+        if (! $user->isCbyUser()) {
             $this->auditService->log(AuditAction::AUTHORIZATION_FAILURE, $user, null, [
                 'bank_id' => $user->bank_id,
                 'path' => request()->path(),
@@ -327,7 +327,7 @@ class ReportController extends Controller
         }
 
         $fromDate = request()->query('from_date');
-        $toDate   = request()->query('to_date');
+        $toDate = request()->query('to_date');
 
         $votingStatuses = [
             RequestStatus::EXECUTIVE_VOTING_OPEN->value,
@@ -392,7 +392,7 @@ class ReportController extends Controller
 
         $voteTallies = [
             'approve' => (int) ($tallyRows['APPROVE'] ?? 0),
-            'reject'  => (int) ($tallyRows['REJECT'] ?? 0),
+            'reject' => (int) ($tallyRows['REJECT'] ?? 0),
             // D6 fix: include AUTO_ABSTAIN_TIMEOUT in abstain count
             'abstain' => (int) ($tallyRows['ABSTAIN'] ?? 0) + (int) ($tallyRows['AUTO_ABSTAIN_TIMEOUT'] ?? 0),
         ];
@@ -429,11 +429,11 @@ class ReportController extends Controller
             : 0.0;
 
         return ApiResponse::success([
-            'total_voting_sessions'      => $totalVotingSessions,
-            'vote_tallies'               => $voteTallies,
-            'approval_rate'              => $executiveFinal ? round(($approved / $executiveFinal) * 100, 2) : 0,
-            'rejection_rate'             => $executiveFinal ? round(($rejected / $executiveFinal) * 100, 2) : 0,
-            'tie_rate'                   => $candidateIds->count() ? round(($ties / $candidateIds->count()) * 100, 2) : 0,
+            'total_voting_sessions' => $totalVotingSessions,
+            'vote_tallies' => $voteTallies,
+            'approval_rate' => $executiveFinal ? round(($approved / $executiveFinal) * 100, 2) : 0,
+            'rejection_rate' => $executiveFinal ? round(($rejected / $executiveFinal) * 100, 2) : 0,
+            'tie_rate' => $candidateIds->count() ? round(($ties / $candidateIds->count()) * 100, 2) : 0,
             'avg_time_to_decision_hours' => $avgHours,
         ], 'Voting report retrieved.');
     }
@@ -465,12 +465,13 @@ class ReportController extends Controller
         $isBankReportingUser = in_array($user->role?->value, $bankRoles, true);
         $isCbyAdmin = $user->role === UserRole::CBY_ADMIN;
 
-        if (!$isBankReportingUser && !$isCbyAdmin) {
+        if (! $isBankReportingUser && ! $isCbyAdmin) {
             $this->auditService->log(AuditAction::AUTHORIZATION_FAILURE, $user, null, [
                 'path' => request()->path(),
                 'method' => request()->method(),
                 'reason' => 'bank reports require bank role or CBY_ADMIN',
             ]);
+
             return ApiResponse::forbidden();
         }
 
@@ -480,7 +481,7 @@ class ReportController extends Controller
         }
 
         $fromDate = request()->query('from_date');
-        $toDate   = request()->query('to_date');
+        $toDate = request()->query('to_date');
 
         if ($isCbyAdmin) {
             // Cross-bank breakdown for CBY admin
@@ -489,7 +490,7 @@ class ReportController extends Controller
             foreach ($banks as $b) {
                 $q = ImportRequest::query()->where('bank_id', $b->id);
                 $this->applyDateFilter($q, $fromDate, $toDate);
-                $total    = $q->count();
+                $total = $q->count();
                 $approved = (clone $q)->whereIn('status', [
                     RequestStatus::EXECUTIVE_APPROVED->value,
                     RequestStatus::CUSTOMS_DECLARATION_ISSUED->value,
@@ -504,13 +505,13 @@ class ReportController extends Controller
                 ])->count();
 
                 $perBank[] = [
-                    'bank_id'        => $b->id,
-                    'bank_name'      => $b->name,
+                    'bank_id' => $b->id,
+                    'bank_name' => $b->name,
                     'total_requests' => $total,
                     'approved_count' => $approved,
                     'rejected_count' => $rejected,
-                    'pending_count'  => $pending,
-                    'approval_rate'  => $total > 0 ? round(($approved / $total) * 100, 2) : 0,
+                    'pending_count' => $pending,
+                    'approval_rate' => $total > 0 ? round(($approved / $total) * 100, 2) : 0,
                     'rejection_rate' => $total > 0 ? round(($rejected / $total) * 100, 2) : 0,
                 ];
             }
@@ -547,7 +548,7 @@ class ReportController extends Controller
         $q = ImportRequest::query()->where('bank_id', $user->bank_id);
         $this->applyDateFilter($q, $fromDate, $toDate);
 
-        $total    = $q->count();
+        $total = $q->count();
         $approved = (clone $q)->whereIn('status', [
             RequestStatus::EXECUTIVE_APPROVED->value,
             RequestStatus::CUSTOMS_DECLARATION_ISSUED->value,
@@ -568,17 +569,17 @@ class ReportController extends Controller
         $bankAnalytics = $this->buildAnalyticsForScope($user->bank_id, $fromDate, $toDate, DB::connection()->getDriverName());
 
         return ApiResponse::success([
-            'total_requests'         => $total,
-            'approved_count'         => $approved,
-            'rejected_count'         => $rejected,
-            'pending_count'          => $pending,
-            'approval_rate'          => $total > 0 ? round(($approved / $total) * 100, 2) : 0,
-            'rejection_rate'         => $total > 0 ? round(($rejected / $total) * 100, 2) : 0,
-            'avg_processing_hours'   => $avgHours,
-            'monthly_trend'          => $bankAnalytics['monthly_trend'],
-            'category_distribution'  => $bankAnalytics['category_distribution'],
-            'amount_by_currency'     => $bankAnalytics['amount_by_currency'],
-            'submission_heatmap'     => $bankAnalytics['submission_heatmap'],
+            'total_requests' => $total,
+            'approved_count' => $approved,
+            'rejected_count' => $rejected,
+            'pending_count' => $pending,
+            'approval_rate' => $total > 0 ? round(($approved / $total) * 100, 2) : 0,
+            'rejection_rate' => $total > 0 ? round(($rejected / $total) * 100, 2) : 0,
+            'avg_processing_hours' => $avgHours,
+            'monthly_trend' => $bankAnalytics['monthly_trend'],
+            'category_distribution' => $bankAnalytics['category_distribution'],
+            'amount_by_currency' => $bankAnalytics['amount_by_currency'],
+            'submission_heatmap' => $bankAnalytics['submission_heatmap'],
         ], 'Bank report retrieved.');
     }
 
@@ -599,11 +600,12 @@ class ReportController extends Controller
     public function exportWorkflow(Request $request)
     {
         $user = $request->user();
-        if (!$user->isCbyUser()) {
+        if (! $user->isCbyUser()) {
             $this->auditService->log(AuditAction::AUTHORIZATION_FAILURE, $user, null, [
                 'path' => $request->path(),
                 'reason' => 'workflow export requires CBY role',
             ]);
+
             return ApiResponse::forbidden();
         }
 
@@ -613,8 +615,8 @@ class ReportController extends Controller
         }
 
         $fromDate = $request->query('from_date');
-        $toDate   = $request->query('to_date');
-        $format   = $request->query('format', 'excel');
+        $toDate = $request->query('to_date');
+        $format = $request->query('format', 'excel');
 
         $formatErrors = $this->validateExportFormat($format);
         if ($formatErrors) {
@@ -631,9 +633,9 @@ class ReportController extends Controller
 
         $this->auditService->log(AuditAction::REPORT_EXPORTED, $user, null, [
             'report_type' => 'workflow',
-            'format'      => $format,
-            'from_date'   => $fromDate,
-            'to_date'     => $toDate,
+            'format' => $format,
+            'from_date' => $fromDate,
+            'to_date' => $toDate,
         ]);
 
         if ($format === 'pdf') {
@@ -664,11 +666,12 @@ class ReportController extends Controller
         $isBankReportingUser = in_array($user->role?->value, $bankRoles, true);
         $isCbyAdmin = $user->role === UserRole::CBY_ADMIN;
 
-        if (!$isBankReportingUser && !$isCbyAdmin) {
+        if (! $isBankReportingUser && ! $isCbyAdmin) {
             $this->auditService->log(AuditAction::AUTHORIZATION_FAILURE, $user, null, [
                 'path' => $request->path(),
                 'reason' => 'bank export requires bank role or CBY_ADMIN',
             ]);
+
             return ApiResponse::forbidden();
         }
 
@@ -678,8 +681,8 @@ class ReportController extends Controller
         }
 
         $fromDate = $request->query('from_date');
-        $toDate   = $request->query('to_date');
-        $format   = $request->query('format', 'excel');
+        $toDate = $request->query('to_date');
+        $format = $request->query('format', 'excel');
 
         $formatErrors = $this->validateExportFormat($format);
         if ($formatErrors) {
@@ -690,9 +693,9 @@ class ReportController extends Controller
 
         $this->auditService->log(AuditAction::REPORT_EXPORTED, $user, null, [
             'report_type' => 'bank',
-            'format'      => $format,
-            'from_date'   => $fromDate,
-            'to_date'     => $toDate,
+            'format' => $format,
+            'from_date' => $fromDate,
+            'to_date' => $toDate,
         ]);
 
         $headers = ['bank_name', 'total_requests', 'approved_count', 'rejected_count', 'pending_count', 'approval_rate', 'rejection_rate'];
@@ -714,37 +717,38 @@ class ReportController extends Controller
             foreach ($banks as $b) {
                 $q = ImportRequest::query()->where('bank_id', $b->id);
                 $this->applyDateFilter($q, $fromDate, $toDate);
-                $total    = $q->count();
+                $total = $q->count();
                 $approved = (clone $q)->whereIn('status', [RequestStatus::EXECUTIVE_APPROVED->value, RequestStatus::CUSTOMS_DECLARATION_ISSUED->value, RequestStatus::COMPLETED->value])->count();
                 $rejected = (clone $q)->whereIn('status', $this->rejectedStatuses())->count();
-                $pending  = $total - $approved - $rejected;
+                $pending = $total - $approved - $rejected;
                 $rows[] = [
-                    'bank_name'      => $b->name,
+                    'bank_name' => $b->name,
                     'total_requests' => $total,
                     'approved_count' => $approved,
                     'rejected_count' => $rejected,
-                    'pending_count'  => max(0, $pending),
-                    'approval_rate'  => $total > 0 ? round(($approved / $total) * 100, 2) : 0,
+                    'pending_count' => max(0, $pending),
+                    'approval_rate' => $total > 0 ? round(($approved / $total) * 100, 2) : 0,
                     'rejection_rate' => $total > 0 ? round(($rejected / $total) * 100, 2) : 0,
                 ];
             }
+
             return $rows;
         }
 
         $q = ImportRequest::query()->where('bank_id', $user->bank_id);
         $this->applyDateFilter($q, $fromDate, $toDate);
-        $total    = $q->count();
+        $total = $q->count();
         $approved = (clone $q)->whereIn('status', [RequestStatus::EXECUTIVE_APPROVED->value, RequestStatus::CUSTOMS_DECLARATION_ISSUED->value, RequestStatus::COMPLETED->value])->count();
         $rejected = (clone $q)->whereIn('status', $this->rejectedStatuses())->count();
-        $pending  = $total - $approved - $rejected;
+        $pending = $total - $approved - $rejected;
 
         return [[
-            'bank_name'      => $user->bank?->name ?? '',
+            'bank_name' => $user->bank?->name ?? '',
             'total_requests' => $total,
             'approved_count' => $approved,
             'rejected_count' => $rejected,
-            'pending_count'  => max(0, $pending),
-            'approval_rate'  => $total > 0 ? round(($approved / $total) * 100, 2) : 0,
+            'pending_count' => max(0, $pending),
+            'approval_rate' => $total > 0 ? round(($approved / $total) * 100, 2) : 0,
             'rejection_rate' => $total > 0 ? round(($rejected / $total) * 100, 2) : 0,
         ]];
     }
@@ -752,22 +756,22 @@ class ReportController extends Controller
     private function streamCsv(array $rows, array $columns, string $filename)
     {
         $bom = "\xEF\xBB\xBF";
-        $csv = $bom . implode(',', $columns) . "\n";
+        $csv = $bom.implode(',', $columns)."\n";
         foreach ($rows as $row) {
             $line = [];
             foreach ($columns as $col) {
                 $value = $row[$col] ?? '';
                 // Escape values that contain commas or quotes
                 if (str_contains((string) $value, ',') || str_contains((string) $value, '"')) {
-                    $value = '"' . str_replace('"', '""', (string) $value) . '"';
+                    $value = '"'.str_replace('"', '""', (string) $value).'"';
                 }
                 $line[] = $value;
             }
-            $csv .= implode(',', $line) . "\n";
+            $csv .= implode(',', $line)."\n";
         }
 
         return response($csv, 200, [
-            'Content-Type'        => 'text/csv; charset=UTF-8',
+            'Content-Type' => 'text/csv; charset=UTF-8',
             'Content-Disposition' => "attachment; filename=\"{$filename}\"",
         ]);
     }
@@ -811,7 +815,7 @@ class ReportController extends Controller
         $previousCompiledPath = config('view.compiled');
         $fallbackCompiledPath = storage_path('framework/views');
 
-        if (!is_string($previousCompiledPath) || $previousCompiledPath === '' || !is_dir($previousCompiledPath)) {
+        if (! is_string($previousCompiledPath) || $previousCompiledPath === '' || ! is_dir($previousCompiledPath)) {
             app('files')->ensureDirectoryExists($fallbackCompiledPath);
             config(['view.compiled' => $fallbackCompiledPath]);
         }
@@ -826,7 +830,7 @@ class ReportController extends Controller
         }
 
         return response($output, 200, [
-            'Content-Type'        => 'application/pdf',
+            'Content-Type' => 'application/pdf',
             'Content-Disposition' => "attachment; filename=\"{$filename}\"",
         ]);
     }

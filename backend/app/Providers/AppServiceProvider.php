@@ -14,7 +14,5 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(PdfGeneratorService::class, PdfGeneratorService::class);
     }
 
-    public function boot(): void
-    {
-    }
+    public function boot(): void {}
 }

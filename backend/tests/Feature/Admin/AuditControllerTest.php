@@ -9,7 +9,6 @@ use App\Models\AuditLog;
 use App\Models\Bank;
 use App\Models\ImportRequest;
 use App\Models\User;
-use App\Services\Audit\AuditService;
 use App\Services\Workflow\WorkflowService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -43,6 +42,7 @@ class AuditControllerTest extends TestCase
     {
         static $counter = 0;
         $counter++;
+
         return User::query()->create([
             'name' => "User {$counter}",
             'email' => "user{$counter}@audittest.com",
@@ -367,9 +367,9 @@ class AuditControllerTest extends TestCase
         $admin = $this->makeUser(UserRole::CBY_ADMIN);
 
         AuditLog::query()->create([
-            'user_id'   => $admin->id,
+            'user_id' => $admin->id,
             'user_role' => UserRole::CBY_ADMIN->value,
-            'action'    => AuditAction::LOGIN->value,
+            'action' => AuditAction::LOGIN->value,
         ]);
 
         $response = $this->actingAs($admin)->getJson('/api/audit/stats');
@@ -395,7 +395,7 @@ class AuditControllerTest extends TestCase
     /** @test */
     public function test_duplicates_endpoint_returns_requests_with_same_invoice_number(): void
     {
-        $admin     = $this->makeUser(UserRole::CBY_ADMIN);
+        $admin = $this->makeUser(UserRole::CBY_ADMIN);
         $dataEntry = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
 
         $req1 = $this->makeRequest($dataEntry);
@@ -434,13 +434,13 @@ class AuditControllerTest extends TestCase
 
         // Each request row has the required fields
         $row = $group['requests'][0];
-        $this->assertArrayHasKey('id',               $row);
+        $this->assertArrayHasKey('id', $row);
         $this->assertArrayHasKey('reference_number', $row);
-        $this->assertArrayHasKey('bank_name',        $row);
-        $this->assertArrayHasKey('amount',           $row);
-        $this->assertArrayHasKey('currency',         $row);
-        $this->assertArrayHasKey('created_at',       $row);
-        $this->assertArrayHasKey('status',           $row);
+        $this->assertArrayHasKey('bank_name', $row);
+        $this->assertArrayHasKey('amount', $row);
+        $this->assertArrayHasKey('currency', $row);
+        $this->assertArrayHasKey('created_at', $row);
+        $this->assertArrayHasKey('status', $row);
     }
 
     // ─── GET /api/audit/risk-indicators ──────────────────────────────────────
@@ -448,7 +448,7 @@ class AuditControllerTest extends TestCase
     /** @test */
     public function test_risk_indicators_endpoint_returns_list_with_required_fields(): void
     {
-        $admin    = $this->makeUser(UserRole::CBY_ADMIN);
+        $admin = $this->makeUser(UserRole::CBY_ADMIN);
         $response = $this->actingAs($admin)->getJson('/api/audit/risk-indicators');
 
         $response->assertOk();
@@ -457,7 +457,7 @@ class AuditControllerTest extends TestCase
         $this->assertIsArray($items);
         $this->assertNotEmpty($items);
         $this->assertArrayHasKey('title', $items[0]);
-        $this->assertArrayHasKey('body',  $items[0]);
+        $this->assertArrayHasKey('body', $items[0]);
         $this->assertArrayHasKey('level', $items[0]);
     }
 

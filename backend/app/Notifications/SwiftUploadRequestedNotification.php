@@ -11,9 +11,7 @@ class SwiftUploadRequestedNotification extends Notification implements ShouldQue
 {
     use Queueable;
 
-    public function __construct(private readonly ImportRequest $requestModel)
-    {
-    }
+    public function __construct(private readonly ImportRequest $requestModel) {}
 
     public function via(object $notifiable): array
     {
@@ -24,7 +22,7 @@ class SwiftUploadRequestedNotification extends Notification implements ShouldQue
     {
         return [
             'type' => 'swift_upload_requested',
-            'message' => 'مطلوب رفع وثيقة SWIFT للطلب: ' . $this->requestModel->reference_number,
+            'message' => 'مطلوب رفع وثيقة SWIFT للطلب: '.$this->requestModel->reference_number,
             'request_id' => $this->requestModel->id,
             'reference_number' => $this->requestModel->reference_number,
         ];

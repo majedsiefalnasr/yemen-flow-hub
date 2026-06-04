@@ -4,6 +4,4 @@ namespace App\Exceptions;
 
 use Exception;
 
-class SelfReviewException extends Exception
-{
-}
+class SelfReviewException extends Exception {}

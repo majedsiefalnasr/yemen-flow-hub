@@ -2,12 +2,12 @@
 
 namespace Tests\Unit\Notifications;
 
+use App\Enums\AuditAction;
 use App\Enums\RequestStatus;
 use App\Enums\UserRole;
 use App\Models\Bank;
 use App\Models\ImportRequest;
 use App\Models\User;
-use App\Enums\AuditAction;
 use App\Notifications\ClaimReleasedNotification;
 use App\Notifications\CustomsIssuedNotification;
 use App\Notifications\RequestApprovedNotification;
@@ -56,7 +56,7 @@ class NotificationPayloadTest extends TestCase
 
     private function callToArray(object $notification): array
     {
-        return $notification->toArray(new \stdClass());
+        return $notification->toArray(new \stdClass);
     }
 
     public function test_request_submitted_payload(): void

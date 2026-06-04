@@ -11,6 +11,7 @@ use App\Models\ImportRequest;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
@@ -24,6 +25,7 @@ class CustomsDownloadPermissionTest extends TestCase
     use RefreshDatabase;
 
     private Bank $bank;
+
     private Bank $otherBank;
 
     protected function setUp(): void
@@ -281,13 +283,14 @@ class CustomsDownloadPermissionTest extends TestCase
         $signedPath = "fx-confirmations/{$request->id}/signed-fx.pdf";
         Storage::disk('local')->put('private/'.$signedPath, '%PDF-1.4 fake signed fx pdf');
         // Use raw DB update to bypass the model's immutability guard (test setup only)
-        \Illuminate\Support\Facades\DB::table('customs_declarations')
+        DB::table('customs_declarations')
             ->where('id', $declaration->id)
             ->update([
-                'signed_fx_doc_path'        => $signedPath,
+                'signed_fx_doc_path' => $signedPath,
                 'signed_fx_doc_uploaded_at' => now(),
                 'signed_fx_doc_uploaded_by' => $declaration->issued_by,
             ]);
+
         return $declaration->fresh();
     }
 

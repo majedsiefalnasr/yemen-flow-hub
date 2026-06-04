@@ -7,7 +7,6 @@ use App\Models\AuditLog;
 use App\Models\LoginHistory;
 use App\Models\User;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Carbon;
 
 class AuditLogSeeder extends Seeder
 {
@@ -43,7 +42,7 @@ class AuditLogSeeder extends Seeder
                     'logged_out_at' => fake()->boolean(70) ? $at->copy()->addMinutes(rand(5, 240)) : null,
                 ]);
 
-                if (!$latest || $at->greaterThan($latest)) {
+                if (! $latest || $at->greaterThan($latest)) {
                     $latest = $at;
                 }
             }

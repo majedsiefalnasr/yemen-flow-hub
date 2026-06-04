@@ -21,7 +21,9 @@ class WorkflowServiceTest extends TestCase
     use RefreshDatabase;
 
     private WorkflowService $service;
+
     private Bank $bank;
+
     private Bank $otherBank;
 
     protected function setUp(): void
@@ -47,6 +49,7 @@ class WorkflowServiceTest extends TestCase
     {
         static $counter = 0;
         $counter++;
+
         return User::query()->create([
             'name' => "User {$counter}",
             'email' => "user{$counter}@example.com",
@@ -188,7 +191,7 @@ class WorkflowServiceTest extends TestCase
 
     public function test_direct_status_mutation_throws_exception_without_ioc_binding(): void
     {
-        $request = new ImportRequest();
+        $request = new ImportRequest;
 
         $this->expectException(DirectStatusMutationException::class);
         $request->setAttribute('status', RequestStatus::SUBMITTED);

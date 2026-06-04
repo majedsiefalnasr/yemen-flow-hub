@@ -24,7 +24,6 @@ use OpenApi\Annotations as OA;
  *   name="laravel_session",
  *   description="Sanctum stateful cookie auth for SPA"
  * )
- *
  * @OA\SecurityScheme(
  *   securityScheme="bearerAuth",
  *   type="http",
@@ -33,6 +32,4 @@ use OpenApi\Annotations as OA;
  *   description="Sanctum personal access token"
  * )
  */
-abstract class Controller extends BaseController
-{
-}
+abstract class Controller extends BaseController {}

@@ -8,7 +8,6 @@ use App\Enums\VoteType;
 use App\Enums\VotingSessionStatus;
 use App\Models\Bank;
 use App\Models\ImportRequest;
-use App\Models\Permission;
 use App\Models\RequestVote;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -21,9 +20,13 @@ class VotingEngineTest extends TestCase
     use RefreshDatabase;
 
     private Bank $bank;
+
     private User $director;
+
     private User $exec1;
+
     private User $exec2;
+
     private User $dataEntry;
 
     protected function setUp(): void
@@ -31,10 +34,10 @@ class VotingEngineTest extends TestCase
         parent::setUp();
         $this->seedPermissions();
 
-        $this->bank      = $this->makeBank('YCB');
-        $this->director  = $this->makeUser(UserRole::COMMITTEE_DIRECTOR);
-        $this->exec1     = $this->makeUser(UserRole::EXECUTIVE_MEMBER);
-        $this->exec2     = $this->makeUser(UserRole::EXECUTIVE_MEMBER);
+        $this->bank = $this->makeBank('YCB');
+        $this->director = $this->makeUser(UserRole::COMMITTEE_DIRECTOR);
+        $this->exec1 = $this->makeUser(UserRole::EXECUTIVE_MEMBER);
+        $this->exec2 = $this->makeUser(UserRole::EXECUTIVE_MEMBER);
         $this->dataEntry = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
     }
 
@@ -65,6 +68,7 @@ class VotingEngineTest extends TestCase
     {
         static $counter = 0;
         $counter++;
+
         return User::query()->create([
             'name' => "User {$counter}",
             'email' => "user{$counter}@vettest.com",
@@ -532,7 +536,7 @@ class VotingEngineTest extends TestCase
         $inactiveExec = User::query()->create([
             'name' => 'Inactive Exec',
             'email' => 'inactive_exec@vetest.com',
-            'password' => \Illuminate\Support\Facades\Hash::make('password'),
+            'password' => Hash::make('password'),
             'role' => UserRole::EXECUTIVE_MEMBER->value,
             'bank_id' => null,
             'is_active' => false,
@@ -556,7 +560,7 @@ class VotingEngineTest extends TestCase
         $inactiveExec = User::query()->create([
             'name' => 'Inactive Exec 2',
             'email' => 'inactive_exec2@vetest.com',
-            'password' => \Illuminate\Support\Facades\Hash::make('password'),
+            'password' => Hash::make('password'),
             'role' => UserRole::EXECUTIVE_MEMBER->value,
             'bank_id' => null,
             'is_active' => false,

@@ -18,6 +18,7 @@ class WorkflowVotingActorTest extends TestCase
     use RefreshDatabase;
 
     private WorkflowService $service;
+
     private Bank $bank;
 
     protected function setUp(): void
@@ -31,6 +32,7 @@ class WorkflowVotingActorTest extends TestCase
     {
         static $counter = 0;
         $counter++;
+
         return User::query()->create([
             'name' => "User {$counter}",
             'email' => "user{$counter}@votingtest.com",

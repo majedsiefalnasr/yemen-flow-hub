@@ -18,8 +18,11 @@ class WizardFieldsTest extends TestCase
     use RefreshDatabase;
 
     private Bank $bank;
+
     private User $dataEntry;
+
     private User $bankAdmin;
+
     private Merchant $merchant;
 
     protected function setUp(): void
@@ -50,6 +53,7 @@ class WizardFieldsTest extends TestCase
     {
         static $counter = 0;
         $counter++;
+
         return User::query()->create([
             'name' => "User {$counter}",
             'email' => "wizard{$counter}@test.com",
@@ -64,6 +68,7 @@ class WizardFieldsTest extends TestCase
     {
         static $mc = 0;
         $mc++;
+
         return Merchant::query()->create([
             'name' => "تاجر {$mc}",
             'bank_id' => $bank->id,

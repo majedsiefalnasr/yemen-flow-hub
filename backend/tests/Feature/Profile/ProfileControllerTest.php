@@ -5,7 +5,6 @@ namespace Tests\Feature\Profile;
 use App\Enums\AuditAction;
 use App\Enums\UserRole;
 use App\Models\AuditLog;
-use App\Models\Bank;
 use App\Models\SystemSetting;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -286,7 +285,7 @@ class ProfileControllerTest extends TestCase
         ]);
 
         $response = $this->actingAs($user)->putJson('/api/profile', [
-            'name'  => 'New Name',
+            'name' => 'New Name',
             'email' => 'new@bank.com',
             'phone' => '+9671234567',
         ]);
@@ -309,7 +308,7 @@ class ProfileControllerTest extends TestCase
         // there is no route to update another user's profile via this endpoint.
         // Verify unauthenticated request returns 401.
         $response = $this->putJson('/api/profile', [
-            'name'  => 'Attacker',
+            'name' => 'Attacker',
             'email' => 'attacker@evil.com',
         ]);
         $response->assertStatus(401);
@@ -320,18 +319,18 @@ class ProfileControllerTest extends TestCase
     public function test_get_smtp_returns_masked_password(): void
     {
         $cbyAdmin = User::query()->create([
-            'name'  => 'CBY Admin',
+            'name' => 'CBY Admin',
             'email' => 'admin@cby.ye',
             'password' => Hash::make('Password123'),
-            'role'  => UserRole::CBY_ADMIN,
+            'role' => UserRole::CBY_ADMIN,
             'bank_id' => null,
             'is_active' => true,
         ]);
 
         // Seed an SMTP password setting
         SystemSetting::query()->create([
-            'key'        => 'smtp_password',
-            'value'      => encrypt('secret123'),
+            'key' => 'smtp_password',
+            'value' => encrypt('secret123'),
             'updated_by' => $cbyAdmin->id,
         ]);
 
@@ -347,10 +346,10 @@ class ProfileControllerTest extends TestCase
     public function test_get_smtp_returns_403_for_non_cby_admin(): void
     {
         $bankUser = User::query()->create([
-            'name'  => 'Bank User',
+            'name' => 'Bank User',
             'email' => 'user@bank.com',
             'password' => Hash::make('Password123'),
-            'role'  => UserRole::BANK_REVIEWER,
+            'role' => UserRole::BANK_REVIEWER,
             'bank_id' => null,
             'is_active' => true,
         ]);
@@ -412,5 +411,4 @@ class ProfileControllerTest extends TestCase
         $user->refresh();
         $this->assertFalse($user->mfa_enabled);
     }
-
 }

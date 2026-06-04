@@ -22,9 +22,13 @@ class ClaimLifecycleTest extends TestCase
     use RefreshDatabase;
 
     private Bank $bank;
+
     private User $supportUser;
+
     private User $supportUser2;
+
     private User $bankReviewer;
+
     private User $cbyadmin;
 
     protected function setUp(): void
@@ -52,6 +56,7 @@ class ClaimLifecycleTest extends TestCase
     {
         static $counter = 0;
         $counter++;
+
         return User::query()->create([
             'name' => "User {$counter}",
             'email' => "user{$counter}@claimtest.com",
@@ -470,7 +475,8 @@ class ClaimLifecycleTest extends TestCase
             $this->cbyadmin,
             ClaimReleasedNotification::class,
             function (ClaimReleasedNotification $notification) use ($request) {
-                $payload = $notification->toArray(new \stdClass());
+                $payload = $notification->toArray(new \stdClass);
+
                 return $payload['type'] === 'claim_released'
                     && $payload['reason'] === 'manual'
                     && $payload['request_id'] === $request->id
@@ -498,7 +504,8 @@ class ClaimLifecycleTest extends TestCase
             $recipient,
             ClaimReleasedNotification::class,
             function (ClaimReleasedNotification $notification) {
-                $payload = $notification->toArray(new \stdClass());
+                $payload = $notification->toArray(new \stdClass);
+
                 return $payload['reason'] === 'manual'
                     && $payload['released_by_user_id'] === $this->cbyadmin->id
                     && $payload['released_by_name'] === $this->cbyadmin->name;
@@ -572,7 +579,8 @@ class ClaimLifecycleTest extends TestCase
             $this->cbyadmin,
             ClaimReleasedNotification::class,
             function (ClaimReleasedNotification $notification) {
-                $payload = $notification->toArray(new \stdClass());
+                $payload = $notification->toArray(new \stdClass);
+
                 return $payload['reason'] === 'ttl_expired'
                     && $payload['released_by_user_id'] === null;
             }

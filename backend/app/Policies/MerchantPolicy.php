@@ -14,7 +14,7 @@ class MerchantPolicy
 
     public function view(User $user, Merchant $merchant): bool
     {
-        return !$user->isBankUser() || $user->bank_id === $merchant->bank_id;
+        return ! $user->isBankUser() || $user->bank_id === $merchant->bank_id;
     }
 
     public function create(User $user): bool
@@ -25,7 +25,7 @@ class MerchantPolicy
     public function update(User $user, Merchant $merchant): bool
     {
         return $user->hasPermission('merchants.manage')
-            && (!$user->isBankUser() || $user->bank_id === $merchant->bank_id);
+            && (! $user->isBankUser() || $user->bank_id === $merchant->bank_id);
     }
 
     public function delete(User $user, Merchant $merchant): bool

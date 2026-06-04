@@ -6,7 +6,6 @@ use App\Enums\RequestStatus;
 use App\Enums\UserRole;
 use App\Models\Bank;
 use App\Models\ImportRequest;
-use App\Models\Permission;
 use App\Models\RequestDocument;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -22,8 +21,11 @@ class SwiftUploadTest extends TestCase
     use RefreshDatabase;
 
     private Bank $bank;
+
     private Bank $otherBank;
+
     private User $swiftOfficer;
+
     private User $otherSwiftOfficer;
 
     protected function setUp(): void
@@ -33,9 +35,9 @@ class SwiftUploadTest extends TestCase
         Storage::fake('local');
         $this->seedPermissions();
 
-        $this->bank             = $this->makeBank('YCB');
-        $this->otherBank        = $this->makeBank('OTH');
-        $this->swiftOfficer     = $this->makeUser(UserRole::SWIFT_OFFICER, $this->bank);
+        $this->bank = $this->makeBank('YCB');
+        $this->otherBank = $this->makeBank('OTH');
+        $this->swiftOfficer = $this->makeUser(UserRole::SWIFT_OFFICER, $this->bank);
         $this->otherSwiftOfficer = $this->makeUser(UserRole::SWIFT_OFFICER, $this->otherBank);
     }
 
@@ -44,23 +46,23 @@ class SwiftUploadTest extends TestCase
     private function seedPermissions(): void
     {
         $permissionId = DB::table('permissions')->insertGetId([
-            'slug'    => 'swift.upload',
+            'slug' => 'swift.upload',
             'name_ar' => 'رفع وثيقة السويفت',
             'name_en' => 'Upload SWIFT document',
-            'group'   => 'workflow',
+            'group' => 'workflow',
         ]);
 
         DB::table('role_permissions')->insert([
             'permission_id' => $permissionId,
-            'role'          => UserRole::SWIFT_OFFICER->value,
+            'role' => UserRole::SWIFT_OFFICER->value,
         ]);
     }
 
     private function makeBank(string $code): Bank
     {
         return Bank::query()->create([
-            'name'      => "بنك {$code}",
-            'code'      => $code,
+            'name' => "بنك {$code}",
+            'code' => $code,
             'is_active' => true,
         ]);
     }
@@ -69,12 +71,13 @@ class SwiftUploadTest extends TestCase
     {
         static $counter = 0;
         $counter++;
+
         return User::query()->create([
-            'name'      => "User {$counter}",
-            'email'     => "user{$counter}@example.com",
-            'password'  => Hash::make('password'),
-            'role'      => $role->value,
-            'bank_id'   => $bank?->id,
+            'name' => "User {$counter}",
+            'email' => "user{$counter}@example.com",
+            'password' => Hash::make('password'),
+            'role' => $role->value,
+            'bank_id' => $bank?->id,
             'is_active' => true,
         ]);
     }
@@ -84,14 +87,14 @@ class SwiftUploadTest extends TestCase
         app()->instance('workflow.transition.active', true);
         try {
             return ImportRequest::query()->create([
-                'bank_id'            => $bank->id,
-                'created_by'         => $creator->id,
-                'currency'           => 'USD',
-                'amount'             => 10000.00,
-                'supplier_name'      => 'Supplier Co.',
-                'goods_description'  => 'Industrial equipment',
-                'port_of_entry'      => 'Aden Port',
-                'status'             => $status,
+                'bank_id' => $bank->id,
+                'created_by' => $creator->id,
+                'currency' => 'USD',
+                'amount' => 10000.00,
+                'supplier_name' => 'Supplier Co.',
+                'goods_description' => 'Industrial equipment',
+                'port_of_entry' => 'Aden Port',
+                'status' => $status,
                 'current_owner_role' => UserRole::SWIFT_OFFICER,
             ]);
         } finally {
@@ -133,7 +136,7 @@ class SwiftUploadTest extends TestCase
         $this->assertDatabaseHas('request_documents', [
             'request_id' => $request->id,
             'uploaded_by' => $this->swiftOfficer->id,
-            'type'        => 'SWIFT',
+            'type' => 'SWIFT',
         ]);
     }
 
@@ -179,7 +182,7 @@ class SwiftUploadTest extends TestCase
 
         $this->assertDatabaseHas('request_stage_history', [
             'request_id' => $request->id,
-            'action'     => 'swift_upload',
+            'action' => 'swift_upload',
         ]);
     }
 
@@ -194,7 +197,7 @@ class SwiftUploadTest extends TestCase
             ]);
 
         $this->assertDatabaseHas('audit_logs', [
-            'user_id'   => $this->swiftOfficer->id,
+            'user_id' => $this->swiftOfficer->id,
             'user_role' => UserRole::SWIFT_OFFICER->value,
         ]);
     }
@@ -227,14 +230,14 @@ class SwiftUploadTest extends TestCase
 
         // Manually inject a SWIFT document to simulate immutability check
         RequestDocument::query()->create([
-            'request_id'       => $request->id,
-            'uploaded_by'      => $this->swiftOfficer->id,
-            'type'             => 'SWIFT',
+            'request_id' => $request->id,
+            'uploaded_by' => $this->swiftOfficer->id,
+            'type' => 'SWIFT',
             'original_filename' => 'swift.pdf',
-            'stored_path'      => "swift/{$request->id}/swift.pdf",
-            'mime_type'        => 'application/pdf',
-            'size_bytes'       => 1024,
-            'checksum'         => 'abc123',
+            'stored_path' => "swift/{$request->id}/swift.pdf",
+            'mime_type' => 'application/pdf',
+            'size_bytes' => 1024,
+            'checksum' => 'abc123',
         ]);
 
         $this->actingAs($this->swiftOfficer)
@@ -285,7 +288,7 @@ class SwiftUploadTest extends TestCase
 
         $this->assertDatabaseMissing('request_documents', [
             'request_id' => $request->id,
-            'type'       => 'SWIFT',
+            'type' => 'SWIFT',
         ]);
     }
 

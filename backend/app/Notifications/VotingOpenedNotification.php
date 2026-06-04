@@ -11,9 +11,7 @@ class VotingOpenedNotification extends Notification implements ShouldQueue
 {
     use Queueable;
 
-    public function __construct(private readonly ImportRequest $requestModel)
-    {
-    }
+    public function __construct(private readonly ImportRequest $requestModel) {}
 
     public function via(object $notifiable): array
     {
@@ -24,7 +22,7 @@ class VotingOpenedNotification extends Notification implements ShouldQueue
     {
         return [
             'type' => 'voting_opened',
-            'message' => 'تم فتح جلسة التصويت للطلب: ' . $this->requestModel->reference_number,
+            'message' => 'تم فتح جلسة التصويت للطلب: '.$this->requestModel->reference_number,
             'request_id' => $this->requestModel->id,
             'reference_number' => $this->requestModel->reference_number,
         ];

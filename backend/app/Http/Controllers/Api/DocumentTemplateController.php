@@ -8,14 +8,13 @@ use App\Enums\UserRole;
 use App\Models\ImportRequest;
 use App\Services\Documents\PdfGeneratorService;
 use App\Support\ApiResponse;
+use Carbon\Carbon;
 use Illuminate\Auth\Access\AuthorizationException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class DocumentTemplateController extends Controller
 {
-    public function __construct(private readonly PdfGeneratorService $pdf)
-    {
-    }
+    public function __construct(private readonly PdfGeneratorService $pdf) {}
 
     /** Shared data builder for Document 1 (confirmation-request) — used by both download and preview. */
     private function buildConfirmationRequestData(ImportRequest $importRequest): array
@@ -44,35 +43,35 @@ class DocumentTemplateController extends Controller
         ];
 
         $invoiceDate = $importRequest->invoice_date
-            ? \Carbon\Carbon::parse($importRequest->invoice_date)->format('d/m/Y')
+            ? Carbon::parse($importRequest->invoice_date)->format('d/m/Y')
             : '—';
 
         $dueDate = $importRequest->due_date
-            ? \Carbon\Carbon::parse($importRequest->due_date)->format('d/m/Y')
+            ? Carbon::parse($importRequest->due_date)->format('d/m/Y')
             : '—';
 
         return [
-            'date'               => now()->format('d/m/Y'),
-            'documentNumber'     => $importRequest->reference_number ?? '—',
-            'bankName'           => $importRequest->bank?->name ?? '—',
-            'merchantName'       => $importRequest->merchant?->name ?? '—',
-            'commercialRegNo'    => $importRequest->merchant?->commercial_register ?? '—',
+            'date' => now()->format('d/m/Y'),
+            'documentNumber' => $importRequest->reference_number ?? '—',
+            'bankName' => $importRequest->bank?->name ?? '—',
+            'merchantName' => $importRequest->merchant?->name ?? '—',
+            'commercialRegNo' => $importRequest->merchant?->commercial_register ?? '—',
             'committeeApprovalNo' => null,
-            'supplierName'       => $importRequest->supplier_name ?? '—',
-            'originCountry'      => $importRequest->origin_country ?? '—',
-            'invoiceNumber'      => $importRequest->invoice_number ?? '—',
-            'invoiceDate'        => $invoiceDate,
-            'amount'             => $importRequest->amount ?? 0,
-            'currency'           => $importRequest->currency?->value ?? $importRequest->currency ?? 'USD',
-            'goodsType'          => $importRequest->goods_type ?? '—',
-            'paymentTerms'       => $importRequest->payment_terms ?? '—',
-            'dueDate'            => $dueDate,
-            'goodsDescription'   => $importRequest->goods_description ?? '—',
-            'arrivalPort'        => $importRequest->arrival_port ?? '—',
-            'shippingPort'       => $importRequest->shipping_port ?? '—',
-            'customsOffice'      => $importRequest->customs_office ?? '—',
-            'blNumber'           => $importRequest->bl_number ?? '—',
-            'attachedDocs'       => $attachedDocs,
+            'supplierName' => $importRequest->supplier_name ?? '—',
+            'originCountry' => $importRequest->origin_country ?? '—',
+            'invoiceNumber' => $importRequest->invoice_number ?? '—',
+            'invoiceDate' => $invoiceDate,
+            'amount' => $importRequest->amount ?? 0,
+            'currency' => $importRequest->currency?->value ?? $importRequest->currency ?? 'USD',
+            'goodsType' => $importRequest->goods_type ?? '—',
+            'paymentTerms' => $importRequest->payment_terms ?? '—',
+            'dueDate' => $dueDate,
+            'goodsDescription' => $importRequest->goods_description ?? '—',
+            'arrivalPort' => $importRequest->arrival_port ?? '—',
+            'shippingPort' => $importRequest->shipping_port ?? '—',
+            'customsOffice' => $importRequest->customs_office ?? '—',
+            'blNumber' => $importRequest->bl_number ?? '—',
+            'attachedDocs' => $attachedDocs,
         ];
     }
 
@@ -91,11 +90,11 @@ class DocumentTemplateController extends Controller
             default => false,
         };
 
-        if (!$allowed) {
-            throw new AuthorizationException();
+        if (! $allowed) {
+            throw new AuthorizationException;
         }
 
-        if (!$importRequest->status?->isEditable()) {
+        if (! $importRequest->status?->isEditable()) {
             abort(response()->json(ApiResponse::error(
                 'Confirmation request template is only available while the request is editable.',
                 [],
@@ -127,8 +126,8 @@ class DocumentTemplateController extends Controller
             default => false,
         };
 
-        if (!$allowed) {
-            throw new AuthorizationException();
+        if (! $allowed) {
+            throw new AuthorizationException;
         }
 
         $data = $this->buildConfirmationRequestData($importRequest);
@@ -148,7 +147,7 @@ class DocumentTemplateController extends Controller
         $user = request()->user();
 
         if ($user->role !== UserRole::COMMITTEE_DIRECTOR) {
-            throw new AuthorizationException();
+            throw new AuthorizationException;
         }
 
         if ($importRequest->status !== RequestStatus::EXECUTIVE_APPROVED) {
@@ -163,18 +162,18 @@ class DocumentTemplateController extends Controller
         $importRequest->load(['merchant', 'bank']);
 
         $data = [
-            'date'            => now()->format('d/m/Y'),
-            'documentNumber'  => '',
-            'merchantName'    => $importRequest->merchant?->name ?? '—',
-            'taxNumber'       => $importRequest->merchant?->tax_number ?? null,
-            'bankName'        => $importRequest->bank?->name ?? '—',
+            'date' => now()->format('d/m/Y'),
+            'documentNumber' => '',
+            'merchantName' => $importRequest->merchant?->name ?? '—',
+            'taxNumber' => $importRequest->merchant?->tax_number ?? null,
+            'bankName' => $importRequest->bank?->name ?? '—',
             'referenceNumber' => $importRequest->reference_number ?? '—',
-            'goodsType'       => $importRequest->goods_type ?? '—',
-            'currency'        => $importRequest->currency?->value ?? $importRequest->currency ?? 'USD',
-            'amount'          => $importRequest->amount ?? 0,
-            'yerEquivalent'   => $importRequest->yer_equivalent,
-            'arrivalPort'     => $importRequest->arrival_port ?? '—',
-            'quantity'        => $importRequest->quantity,
+            'goodsType' => $importRequest->goods_type ?? '—',
+            'currency' => $importRequest->currency?->value ?? $importRequest->currency ?? 'USD',
+            'amount' => $importRequest->amount ?? 0,
+            'yerEquivalent' => $importRequest->yer_equivalent,
+            'arrivalPort' => $importRequest->arrival_port ?? '—',
+            'quantity' => $importRequest->quantity,
         ];
 
         $filename = 'fx-confirmation-template-'.($importRequest->reference_number ?? $importRequest->id).'.pdf';

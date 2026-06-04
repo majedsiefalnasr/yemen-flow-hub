@@ -5,6 +5,7 @@ namespace Tests\Feature\Workflow;
 use App\Enums\AuditAction;
 use App\Enums\RequestStatus;
 use App\Enums\UserRole;
+use App\Exceptions\InvalidTransitionException;
 use App\Models\Bank;
 use App\Models\ImportRequest;
 use App\Models\User;
@@ -19,8 +20,11 @@ class WorkflowControllerTest extends TestCase
     use RefreshDatabase;
 
     private Bank $bank;
+
     private Bank $otherBank;
+
     private User $dataEntry;
+
     private User $bankReviewer;
 
     protected function setUp(): void
@@ -62,6 +66,7 @@ class WorkflowControllerTest extends TestCase
     {
         static $counter = 0;
         $counter++;
+
         return User::query()->create([
             'name' => "User {$counter}",
             'email' => "user{$counter}@wtest.com",
@@ -675,7 +680,7 @@ class WorkflowControllerTest extends TestCase
         // BANK_REJECTED is terminal — any further transition must throw InvalidTransitionException
         $request = $this->makeRequest($this->bank, $this->dataEntry, RequestStatus::BANK_REJECTED);
 
-        $this->expectException(\App\Exceptions\InvalidTransitionException::class);
+        $this->expectException(InvalidTransitionException::class);
         app(WorkflowService::class)->transition($request, 'bank_approve', $this->bankReviewer);
     }
 

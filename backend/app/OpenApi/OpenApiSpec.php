@@ -32,7 +32,7 @@ use OpenApi\Attributes as OA;
     properties: [
         new OA\Property(property: 'success', type: 'boolean', example: true),
         new OA\Property(property: 'message', type: 'string', example: 'OK'),
-        new OA\Property(property: 'data', type: 'object')
+        new OA\Property(property: 'data', type: 'object'),
     ],
     type: 'object'
 )]
@@ -41,7 +41,7 @@ use OpenApi\Attributes as OA;
     properties: [
         new OA\Property(property: 'success', type: 'boolean', example: false),
         new OA\Property(property: 'message', type: 'string', example: 'Forbidden action'),
-        new OA\Property(property: 'errors', type: 'object')
+        new OA\Property(property: 'errors', type: 'object'),
     ],
     type: 'object'
 )]
@@ -115,6 +115,4 @@ use OpenApi\Attributes as OA;
     ],
     type: 'object'
 )]
-class OpenApiSpec
-{
-}
+class OpenApiSpec {}

@@ -23,18 +23,17 @@ class DocumentService
     public function __construct(
         private readonly WorkflowService $workflowService,
         private readonly AuditService $auditService
-    ) {
-    }
+    ) {}
 
     public function uploadRequestDocument(ImportRequest $request, User $uploader, UploadedFile $file, ?string $subType = null): RequestDocument
     {
         $this->assertFileValid($file);
 
-        if (!$request->isEditable()) {
+        if (! $request->isEditable()) {
             throw new WorkflowLockedStateException('Request documents can only be uploaded while request is editable.');
         }
 
-        if (!$uploader->hasPermission('request.create') || $uploader->bank_id !== $request->bank_id) {
+        if (! $uploader->hasPermission('request.create') || $uploader->bank_id !== $request->bank_id) {
             throw new DocumentException('Only authorized bank users can upload request documents.');
         }
 
@@ -52,11 +51,11 @@ class DocumentService
     {
         $this->assertFileValid($file);
 
-        if (!$request->isEditable()) {
+        if (! $request->isEditable()) {
             throw new WorkflowLockedStateException('Confirmation request can only be uploaded while request is editable.');
         }
 
-        if (!$uploader->hasPermission('request.create') || $uploader->bank_id !== $request->bank_id) {
+        if (! $uploader->hasPermission('request.create') || $uploader->bank_id !== $request->bank_id) {
             throw new DocumentException('Only authorized bank users can upload confirmation request documents.');
         }
 
@@ -94,7 +93,7 @@ class DocumentService
             throw new DocumentException('SWIFT can only be uploaded when request is in WAITING_FOR_SWIFT status.');
         }
 
-        if (!$uploader->hasPermission('swift.upload') || $uploader->bank_id !== $request->bank_id) {
+        if (! $uploader->hasPermission('swift.upload') || $uploader->bank_id !== $request->bank_id) {
             throw new DocumentException('Only authorized bank users can upload SWIFT documents.');
         }
 
@@ -120,8 +119,7 @@ class DocumentService
         UploadedFile $swiftFile,
         UploadedFile $fxRequestFile,
         string $swiftReference
-    ): array
-    {
+    ): array {
         $this->assertFileValid($swiftFile);
         $this->assertFileValid($fxRequestFile);
 
@@ -129,7 +127,7 @@ class DocumentService
             throw new DocumentException('SWIFT can only be uploaded when request is in WAITING_FOR_SWIFT status.');
         }
 
-        if (!$uploader->hasPermission('swift.upload') || $uploader->bank_id !== $request->bank_id) {
+        if (! $uploader->hasPermission('swift.upload') || $uploader->bank_id !== $request->bank_id) {
             throw new DocumentException('Only authorized bank users can upload SWIFT documents.');
         }
 
@@ -178,7 +176,7 @@ class DocumentService
         Gate::forUser($user)->authorize('download', $document);
 
         $fullPath = 'private/'.$document->stored_path;
-        if (!Storage::disk('local')->exists($fullPath)) {
+        if (! Storage::disk('local')->exists($fullPath)) {
             throw new DocumentException('Document file not found.');
         }
 
@@ -209,7 +207,7 @@ class DocumentService
             throw new DocumentException('Only regular request documents can be deleted.');
         }
 
-        if (!$request->isEditable()) {
+        if (! $request->isEditable()) {
             throw new WorkflowLockedStateException('Documents can only be deleted while request is editable.');
         }
 
@@ -276,7 +274,7 @@ class DocumentService
         $max = (int) config('documents.max_size_bytes', 10485760);
 
         $mime = $file->getMimeType();
-        if (!$mime || !in_array($mime, $allowed, true)) {
+        if (! $mime || ! in_array($mime, $allowed, true)) {
             throw new DocumentException('Unsupported file type.');
         }
 
