@@ -107,7 +107,7 @@ Frontend and backend team repos use Husky hooks:
 - `pre-commit` runs staged-file formatting/linting only.
 - `pre-push` runs only green non-test gates by default: backend `composer format:check`; frontend `pnpm lint`, `pnpm format:check`, and `pnpm typecheck`. Full test suites are still part of the manual/full check list above, but are not in hooks until their existing failures are cleaned up.
 
-Frontend lint rules must not be disabled broadly to hide old code debt. Keep legacy warnings visible in `pnpm lint`; use `pnpm lint:strict` as the zero-warning cleanup target once the warning baseline is reduced safely. Do not weaken lint, format, or hook rules to make a commit pass. Fix the code/config or ask the user how strict the gate should be.
+Frontend lint must pass with zero warnings. Do not disable rules broadly to hide old code debt. Rules that conflict with the chosen tools or framework semantics may stay intentionally disabled with clear rationale: Prettier owns void-element formatting (`vue/html-self-closing`), Vue 3 allows fragments (`vue/no-multiple-template-root`), TypeScript optional props make `vue/require-default-prop` noisy, and `@typescript-eslint/no-explicit-any` remains a staged typed-refactor category rather than a hook blocker. Do not weaken lint, format, or hook rules to make a commit pass. Fix the code/config or ask the user how strict the gate should be.
 
 ---
 
