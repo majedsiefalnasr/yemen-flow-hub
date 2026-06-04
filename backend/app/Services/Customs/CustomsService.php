@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Services\Audit\AuditService;
 use App\Services\Workflow\WorkflowService;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
@@ -41,11 +42,32 @@ class CustomsService
                     ->lockForUpdate()
                     ->firstOrFail();
 
-                if ($lockedRequest->status !== RequestStatus::EXECUTIVE_APPROVED) {
-                    throw new CustomsException('Customs declaration can only be generated for EXECUTIVE_APPROVED requests.');
+                // Declaration lifecycle has two phases, distinguished by pdf_path:
+                //   1. uploadSignedFxDoc() creates a *placeholder* row (pdf_path === '',
+                //      signed_fx_doc_path set) and moves the request to FX_CONFIRMATION_PENDING.
+                //   2. generate() (here) fills that same placeholder with the real PDF and
+                //      issues it. customs_declaration_id on the request is only set at the end
+                //      of this method, so an *issued* declaration always has both pdf_path and
+                //      the FK populated.
+                // The three guards below therefore cover three distinct states, not one:
+                if (!in_array($lockedRequest->status, [RequestStatus::EXECUTIVE_APPROVED, RequestStatus::FX_CONFIRMATION_PENDING], true)) {
+                    throw new CustomsException('Customs declaration can only be generated for EXECUTIVE_APPROVED or FX_CONFIRMATION_PENDING requests.');
                 }
 
-                if ($lockedRequest->customs_declaration_id !== null || $lockedRequest->customsDeclaration()->exists()) {
+                // Already fully issued (FK set in a prior, committed generate()).
+                if ($lockedRequest->customs_declaration_id !== null) {
+                    throw new CustomsException('Customs declaration already exists for this request.');
+                }
+
+                // No placeholder yet, or placeholder without the signed FX doc → upload must come first.
+                $declaration = $lockedRequest->customsDeclaration()->first();
+                if ($declaration === null || $declaration->signed_fx_doc_path === null) {
+                    throw new CustomsException('Signed FX confirmation document must be uploaded before issuing.');
+                }
+
+                // Placeholder already carries a generated PDF → issued (defends against a re-issue
+                // race where the FK write above hadn't landed yet).
+                if ($declaration->pdf_path !== '') {
                     throw new CustomsException('Customs declaration already exists for this request.');
                 }
 
@@ -65,8 +87,7 @@ class CustomsService
                 $storedPath = 'private/'.$relativePath;
                 Storage::disk('local')->put($storedPath, $pdf->output());
 
-                $declaration = CustomsDeclaration::query()->create([
-                    'request_id' => $lockedRequest->id,
+                $declaration->update([
                     'declaration_number' => $declarationNumber,
                     'issued_by' => $issuer->id,
                     'issued_at' => $issuedAt,
@@ -80,7 +101,7 @@ class CustomsService
                 $this->workflowService->transition($afterIssue->fresh(), 'complete', $issuer);
 
                 $this->auditService->log(
-                    AuditAction::CUSTOMS_ISSUED,
+                    AuditAction::FX_CONFIRMATION_ISSUED,
                     $issuer,
                     $lockedRequest,
                     ['declaration_id' => $declaration->id, 'declaration_number' => $declarationNumber]
@@ -91,6 +112,78 @@ class CustomsService
         } catch (\Throwable $exception) {
             if ($storedPath !== null) {
                 Storage::disk('local')->delete($storedPath);
+            }
+
+            throw $exception;
+        }
+    }
+
+    public function uploadSignedFxDoc(ImportRequest $request, User $uploader, UploadedFile $file): CustomsDeclaration
+    {
+        if (!$uploader->hasRole(UserRole::COMMITTEE_DIRECTOR)) {
+            throw new CustomsException('Only committee director can upload signed FX confirmation documents.');
+        }
+
+        if ($request->status !== RequestStatus::EXECUTIVE_APPROVED) {
+            throw new CustomsException('Signed FX confirmation can only be uploaded for EXECUTIVE_APPROVED requests.');
+        }
+
+        $relativePath = null;
+
+        try {
+            return DB::transaction(function () use ($request, $uploader, $file, &$relativePath): CustomsDeclaration {
+                $lockedRequest = ImportRequest::query()
+                    ->whereKey($request->id)
+                    ->lockForUpdate()
+                    ->firstOrFail();
+
+                if ($lockedRequest->status !== RequestStatus::EXECUTIVE_APPROVED) {
+                    throw new CustomsException('Signed FX confirmation can only be uploaded for EXECUTIVE_APPROVED requests.');
+                }
+
+                $declaration = CustomsDeclaration::query()->firstOrCreate(
+                    ['request_id' => $lockedRequest->id],
+                    [
+                        'declaration_number' => "PENDING-FX-{$lockedRequest->id}",
+                        'issued_by' => $uploader->id,
+                        'issued_at' => now(),
+                        'pdf_path' => '',
+                        'metadata' => [],
+                    ]
+                );
+
+                if ($declaration->pdf_path !== '') {
+                    throw new CustomsException('Issued FX confirmation documents are immutable.');
+                }
+
+                if ($declaration->signed_fx_doc_path !== null) {
+                    Storage::disk('local')->delete('private/'.$declaration->signed_fx_doc_path);
+                }
+
+                $extension = $file->getClientOriginalExtension() ?: 'pdf';
+                $relativePath = "fx-confirmation/{$lockedRequest->id}/".uniqid('signed_', true).".{$extension}";
+                Storage::disk('local')->put('private/'.$relativePath, file_get_contents($file->getRealPath()));
+
+                $declaration->update([
+                    'signed_fx_doc_path' => $relativePath,
+                    'signed_fx_doc_uploaded_at' => now(),
+                    'signed_fx_doc_uploaded_by' => $uploader->id,
+                ]);
+
+                $this->workflowService->transition($lockedRequest->fresh(), 'upload_fx_confirmation', $uploader);
+
+                $this->auditService->log(
+                    AuditAction::FX_CONFIRMATION_UPLOADED,
+                    $uploader,
+                    $lockedRequest,
+                    ['declaration_id' => $declaration->id]
+                );
+
+                return $declaration->refresh();
+            });
+        } catch (\Throwable $exception) {
+            if ($relativePath !== null) {
+                Storage::disk('local')->delete('private/'.$relativePath);
             }
 
             throw $exception;

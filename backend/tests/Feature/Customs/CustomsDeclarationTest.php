@@ -16,6 +16,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Http\UploadedFile;
 use Mockery;
 use RuntimeException;
 use Tests\TestCase;
@@ -43,6 +44,8 @@ class CustomsDeclarationTest extends TestCase
         Storage::fake('local');
         $request = $this->makeRequest(RequestStatus::EXECUTIVE_APPROVED);
 
+        $this->uploadSignedFx($request);
+
         $response = $this->actingAs($this->director)
             ->postJson("/api/customs/{$request->id}/generate")
             ->assertCreated()
@@ -68,7 +71,7 @@ class CustomsDeclarationTest extends TestCase
         $this->assertDatabaseHas('request_stage_history', [
             'request_id' => $request->id,
             'action' => 'issue_customs',
-            'from_status' => RequestStatus::EXECUTIVE_APPROVED->value,
+            'from_status' => RequestStatus::FX_CONFIRMATION_PENDING->value,
             'to_status' => RequestStatus::CUSTOMS_DECLARATION_ISSUED->value,
         ]);
         $this->assertDatabaseHas('request_stage_history', [
@@ -88,6 +91,8 @@ class CustomsDeclarationTest extends TestCase
         Storage::fake('local');
         $request = $this->makeRequest(RequestStatus::EXECUTIVE_APPROVED);
 
+        $this->uploadSignedFx($request);
+
         $declarationId = $this->actingAs($this->director)
             ->postJson("/api/customs/{$request->id}/generate")
             ->assertCreated()
@@ -105,6 +110,7 @@ class CustomsDeclarationTest extends TestCase
     {
         Storage::fake('local');
         $request = $this->makeRequest(RequestStatus::EXECUTIVE_APPROVED);
+        $this->uploadSignedFx($request);
 
         $workflow = Mockery::mock(WorkflowService::class);
         $workflow->shouldReceive('transition')
@@ -128,10 +134,30 @@ class CustomsDeclarationTest extends TestCase
             $this->assertSame('completion failed', $exception->getMessage());
         }
 
-        $this->assertDatabaseCount('customs_declarations', 0);
+        $this->assertDatabaseCount('customs_declarations', 1);
+        $this->assertDatabaseHas('customs_declarations', [
+            'request_id' => $request->id,
+            'declaration_number' => "PENDING-FX-{$request->id}",
+            'pdf_path' => '',
+        ]);
         $this->assertNull($request->fresh()->customs_declaration_id);
-        $this->assertSame(RequestStatus::EXECUTIVE_APPROVED, $request->fresh()->status);
+        $this->assertSame(RequestStatus::FX_CONFIRMATION_PENDING, $request->fresh()->status);
         Storage::disk('local')->assertMissing("private/customs/{$request->id}/CD-".now()->format('Y').'-000001.pdf');
+    }
+
+    public function test_signed_fx_upload_transitions_to_pending(): void
+    {
+        Storage::fake('local');
+        $request = $this->makeRequest(RequestStatus::EXECUTIVE_APPROVED);
+
+        $this->uploadSignedFx($request);
+
+        $this->assertSame(RequestStatus::FX_CONFIRMATION_PENDING, $request->fresh()->status);
+        $this->assertDatabaseHas('customs_declarations', [
+            'request_id' => $request->id,
+            'declaration_number' => "PENDING-FX-{$request->id}",
+            'signed_fx_doc_uploaded_by' => $this->director->id,
+        ]);
     }
 
     public function test_customs_declaration_is_immutable(): void
@@ -198,5 +224,14 @@ class CustomsDeclarationTest extends TestCase
         } finally {
             app()->offsetUnset('workflow.transition.active');
         }
+    }
+
+    private function uploadSignedFx(ImportRequest $request): void
+    {
+        $this->actingAs($this->director)
+            ->post("/api/requests/{$request->id}/fx-confirmation-upload", [
+                'signed_document' => UploadedFile::fake()->create('signed-fx.pdf', 64, 'application/pdf'),
+            ])
+            ->assertOk();
     }
 }

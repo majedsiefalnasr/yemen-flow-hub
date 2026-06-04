@@ -26,7 +26,7 @@ class DocumentService
     ) {
     }
 
-    public function uploadRequestDocument(ImportRequest $request, User $uploader, UploadedFile $file): RequestDocument
+    public function uploadRequestDocument(ImportRequest $request, User $uploader, UploadedFile $file, ?string $subType = null): RequestDocument
     {
         $this->assertFileValid($file);
 
@@ -38,11 +38,45 @@ class DocumentService
             throw new DocumentException('Only authorized bank users can upload request documents.');
         }
 
-        $document = $this->storeDocument($request, $uploader, $file, 'REQUEST_DOC', "requests/{$request->id}");
+        $document = $this->storeDocument($request, $uploader, $file, 'REQUEST_DOC', "requests/{$request->id}", $subType);
 
         $this->auditService->log(AuditAction::DOCUMENT_UPLOADED, $uploader, $document, [
             'request_id' => $request->id,
             'type' => 'REQUEST_DOC',
+        ]);
+
+        return $document;
+    }
+
+    public function uploadConfirmationRequest(ImportRequest $request, User $uploader, UploadedFile $file): RequestDocument
+    {
+        $this->assertFileValid($file);
+
+        if (!$request->isEditable()) {
+            throw new WorkflowLockedStateException('Confirmation request can only be uploaded while request is editable.');
+        }
+
+        if (!$uploader->hasPermission('request.create') || $uploader->bank_id !== $request->bank_id) {
+            throw new DocumentException('Only authorized bank users can upload confirmation request documents.');
+        }
+
+        if (RequestDocument::query()->where('request_id', $request->id)->where('type', 'CONFIRMATION_REQUEST')->exists()) {
+            $existing = RequestDocument::query()
+                ->where('request_id', $request->id)
+                ->where('type', 'CONFIRMATION_REQUEST')
+                ->get();
+
+            foreach ($existing as $document) {
+                $this->deleteStoredDocument($document);
+                $document->delete();
+            }
+        }
+
+        $document = $this->storeDocument($request, $uploader, $file, 'CONFIRMATION_REQUEST', "confirmation-request/{$request->id}", 'confirmation_request');
+
+        $this->auditService->log(AuditAction::DOCUMENT_UPLOADED, $uploader, $document, [
+            'request_id' => $request->id,
+            'type' => 'CONFIRMATION_REQUEST',
         ]);
 
         return $document;
@@ -179,10 +213,7 @@ class DocumentService
             throw new WorkflowLockedStateException('Documents can only be deleted while request is editable.');
         }
 
-        $path = 'private/'.$document->stored_path;
-        if (Storage::disk('local')->exists($path)) {
-            Storage::disk('local')->delete($path);
-        }
+        $this->deleteStoredDocument($document);
 
         $documentId = $document->id;
         $document->delete();
@@ -194,7 +225,15 @@ class DocumentService
         ]);
     }
 
-    private function storeDocument(ImportRequest $request, User $uploader, UploadedFile $file, string $type, string $folder): RequestDocument
+    private function deleteStoredDocument(RequestDocument $document): void
+    {
+        $path = 'private/'.$document->stored_path;
+        if (Storage::disk('local')->exists($path)) {
+            Storage::disk('local')->delete($path);
+        }
+    }
+
+    private function storeDocument(ImportRequest $request, User $uploader, UploadedFile $file, string $type, string $folder, ?string $subType = null): RequestDocument
     {
         $extension = $file->getClientOriginalExtension() ?: $file->extension() ?: 'bin';
         $filename = Str::uuid().".{$extension}";
@@ -212,11 +251,12 @@ class DocumentService
         }
 
         try {
-            return DB::transaction(function () use ($request, $uploader, $file, $type, $relativePath, $checksum): RequestDocument {
+            return DB::transaction(function () use ($request, $uploader, $file, $type, $subType, $relativePath, $checksum): RequestDocument {
                 return RequestDocument::query()->create([
                     'request_id' => $request->id,
                     'uploaded_by' => $uploader->id,
                     'type' => $type,
+                    'document_sub_type' => $subType,
                     'original_filename' => $file->getClientOriginalName(),
                     'stored_path' => $relativePath,
                     'mime_type' => $file->getMimeType() ?: 'application/octet-stream',

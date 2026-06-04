@@ -11,6 +11,7 @@ class RequestDocument extends Model
         'request_id',
         'uploaded_by',
         'type',
+        'document_sub_type',
         'document_type_id',
         'original_filename',
         'stored_path',

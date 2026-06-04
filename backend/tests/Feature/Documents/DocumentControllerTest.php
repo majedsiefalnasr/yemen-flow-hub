@@ -155,6 +155,57 @@ class DocumentControllerTest extends TestCase
         ]);
     }
 
+    public function test_upload_persists_sub_type_and_exposes_title(): void
+    {
+        $importRequest = $this->makeRequest($this->bank, $this->dataEntry);
+
+        $response = $this->actingAs($this->dataEntry)
+            ->postJson('/api/documents/upload', [
+                'request_id' => $importRequest->id,
+                'file' => $this->makePdf(),
+                'sub_type' => 'tax_card',
+            ]);
+
+        $response->assertStatus(201)
+            ->assertJsonPath('data.document_sub_type', 'tax_card')
+            ->assertJsonPath('data.title', 'البطاقة الضريبية');
+
+        $this->assertDatabaseHas('request_documents', [
+            'request_id' => $importRequest->id,
+            'type' => 'REQUEST_DOC',
+            'document_sub_type' => 'tax_card',
+        ]);
+    }
+
+    public function test_upload_rejects_unknown_sub_type(): void
+    {
+        $importRequest = $this->makeRequest($this->bank, $this->dataEntry);
+
+        $this->actingAs($this->dataEntry)
+            ->postJson('/api/documents/upload', [
+                'request_id' => $importRequest->id,
+                'file' => $this->makePdf(),
+                'sub_type' => 'not_a_real_slot',
+            ])
+            ->assertStatus(422);
+    }
+
+    public function test_confirmation_request_upload_gets_confirmation_sub_type(): void
+    {
+        $importRequest = $this->makeRequest($this->bank, $this->dataEntry);
+
+        $response = $this->actingAs($this->dataEntry)
+            ->postJson('/api/documents/upload', [
+                'request_id' => $importRequest->id,
+                'file' => $this->makePdf(),
+                'confirmation_request' => '1',
+            ]);
+
+        $response->assertStatus(201)
+            ->assertJsonPath('data.document_sub_type', 'confirmation_request')
+            ->assertJsonPath('data.title', 'طلب وثيقة التأكيد');
+    }
+
     public function test_upload_to_draft_rejected_internal_request_succeeds(): void
     {
         $importRequest = $this->makeRequest($this->bank, $this->dataEntry, RequestStatus::DRAFT_REJECTED_INTERNAL);

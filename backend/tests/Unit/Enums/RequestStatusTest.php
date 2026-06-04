@@ -26,6 +26,7 @@ class RequestStatusTest extends TestCase
             'EXECUTIVE_VOTING_CLOSED',
             'EXECUTIVE_APPROVED',
             'EXECUTIVE_REJECTED',
+            'FX_CONFIRMATION_PENDING',
             'CUSTOMS_DECLARATION_ISSUED',
             'COMPLETED',
             'BANK_RETURNED',
@@ -35,7 +36,7 @@ class RequestStatusTest extends TestCase
 
         $actual = array_column(RequestStatus::cases(), 'value');
 
-        $this->assertCount(21, $actual);
+        $this->assertCount(22, $actual);
         foreach ($expected as $value) {
             $this->assertContains($value, $actual, "Missing canonical status: {$value}");
         }
@@ -51,6 +52,7 @@ class RequestStatusTest extends TestCase
         $this->assertFalse(RequestStatus::SUBMITTED->isTerminal());
         $this->assertFalse(RequestStatus::BANK_RETURNED->isTerminal());
         $this->assertFalse(RequestStatus::SUPPORT_RETURNED->isTerminal());
+        $this->assertFalse(RequestStatus::FX_CONFIRMATION_PENDING->isTerminal());
         $this->assertTrue(RequestStatus::BANK_REJECTED->isTerminal(), 'BANK_REJECTED is a terminal status — no resubmission allowed');
     }
 

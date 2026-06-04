@@ -132,8 +132,14 @@ class TransitionMap
                 'roles' => [UserRole::COMMITTEE_DIRECTOR],
                 'next_owner' => null,
             ],
-            'issue_customs' => [
+            'upload_fx_confirmation' => [
                 'from' => [RequestStatus::EXECUTIVE_APPROVED],
+                'to' => RequestStatus::FX_CONFIRMATION_PENDING,
+                'roles' => [UserRole::COMMITTEE_DIRECTOR],
+                'next_owner' => UserRole::COMMITTEE_DIRECTOR,
+            ],
+            'issue_customs' => [
+                'from' => [RequestStatus::EXECUTIVE_APPROVED, RequestStatus::FX_CONFIRMATION_PENDING],
                 'to' => RequestStatus::CUSTOMS_DECLARATION_ISSUED,
                 'roles' => [UserRole::COMMITTEE_DIRECTOR],
                 'next_owner' => UserRole::COMMITTEE_DIRECTOR,

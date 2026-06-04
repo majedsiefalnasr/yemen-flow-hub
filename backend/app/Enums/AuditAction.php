@@ -16,6 +16,8 @@ enum AuditAction: string
     case DOCUMENT_DOWNLOADED = 'DOCUMENT_DOWNLOADED';
     case SWIFT_UPLOADED = 'SWIFT_UPLOADED';
     case CUSTOMS_ISSUED = 'CUSTOMS_ISSUED';
+    case FX_CONFIRMATION_UPLOADED = 'FX_CONFIRMATION_UPLOADED';
+    case FX_CONFIRMATION_ISSUED = 'FX_CONFIRMATION_ISSUED';
     case USER_CREATED = 'USER_CREATED';
     case USER_UPDATED = 'USER_UPDATED';
     case USER_DEACTIVATED = 'USER_DEACTIVATED';
@@ -41,6 +43,8 @@ enum AuditAction: string
             self::DOCUMENT_DOWNLOADED => 'Document Downloaded / تنزيل مستند',
             self::SWIFT_UPLOADED => 'SWIFT Uploaded / رفع سويفت',
             self::CUSTOMS_ISSUED => 'Customs Issued / إصدار الجمارك',
+            self::FX_CONFIRMATION_UPLOADED => 'FX Confirmation Uploaded / رفع وثيقة المصارفة الخارجية',
+            self::FX_CONFIRMATION_ISSUED => 'FX Confirmation Issued / إصدار وثيقة المصارفة الخارجية',
             self::USER_CREATED => 'User Created / إنشاء مستخدم',
             self::USER_UPDATED => 'User Updated / تحديث مستخدم',
             self::USER_DEACTIVATED => 'User Deactivated / إيقاف مستخدم',

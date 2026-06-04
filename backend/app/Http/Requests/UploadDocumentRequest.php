@@ -13,6 +13,7 @@ class UploadDocumentRequest extends ApiFormRequest
     {
         return [
             'file' => ['required', 'file', 'mimetypes:application/pdf', 'max:10240'],
+            'confirmation_request' => ['sometimes', 'boolean'],
         ];
     }
 }

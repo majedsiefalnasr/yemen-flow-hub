@@ -270,4 +270,113 @@ class CustomsDownloadPermissionTest extends TestCase
 
         $response->assertStatus(403);
     }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // signed-fx-download  GET /api/customs/{id}/signed-fx-download
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    private function makeDeclarationWithSignedFx(ImportRequest $request): CustomsDeclaration
+    {
+        $declaration = $this->makeCustomsDeclaration($request);
+        $signedPath = "fx-confirmations/{$request->id}/signed-fx.pdf";
+        Storage::disk('local')->put('private/'.$signedPath, '%PDF-1.4 fake signed fx pdf');
+        // Use raw DB update to bypass the model's immutability guard (test setup only)
+        \Illuminate\Support\Facades\DB::table('customs_declarations')
+            ->where('id', $declaration->id)
+            ->update([
+                'signed_fx_doc_path'        => $signedPath,
+                'signed_fx_doc_uploaded_at' => now(),
+                'signed_fx_doc_uploaded_by' => $declaration->issued_by,
+            ]);
+        return $declaration->fresh();
+    }
+
+    public function test_data_entry_same_bank_can_download_signed_fx(): void
+    {
+        $request = $this->makeRequest($this->bank);
+        $declaration = $this->makeDeclarationWithSignedFx($request);
+        $actor = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+
+        $this->actingAs($actor)
+            ->get("/api/customs/{$declaration->id}/signed-fx-download")
+            ->assertOk()
+            ->assertHeader('Content-Type', 'application/pdf');
+    }
+
+    public function test_bank_reviewer_same_bank_can_download_signed_fx(): void
+    {
+        $request = $this->makeRequest($this->bank);
+        $declaration = $this->makeDeclarationWithSignedFx($request);
+        $actor = $this->makeUser(UserRole::BANK_REVIEWER, $this->bank);
+
+        $this->actingAs($actor)
+            ->get("/api/customs/{$declaration->id}/signed-fx-download")
+            ->assertOk();
+    }
+
+    public function test_bank_admin_same_bank_can_download_signed_fx(): void
+    {
+        $request = $this->makeRequest($this->bank);
+        $declaration = $this->makeDeclarationWithSignedFx($request);
+        $actor = $this->makeUser(UserRole::BANK_ADMIN, $this->bank);
+
+        $this->actingAs($actor)
+            ->get("/api/customs/{$declaration->id}/signed-fx-download")
+            ->assertOk();
+    }
+
+    public function test_bank_user_of_wrong_bank_cannot_download_signed_fx(): void
+    {
+        $request = $this->makeRequest($this->bank);
+        $declaration = $this->makeDeclarationWithSignedFx($request);
+        $actor = $this->makeUser(UserRole::DATA_ENTRY, $this->otherBank);
+
+        $this->actingAs($actor)
+            ->get("/api/customs/{$declaration->id}/signed-fx-download")
+            ->assertForbidden();
+    }
+
+    public function test_committee_director_can_download_signed_fx(): void
+    {
+        $request = $this->makeRequest($this->bank);
+        $declaration = $this->makeDeclarationWithSignedFx($request);
+        $actor = $this->makeUser(UserRole::COMMITTEE_DIRECTOR);
+
+        $this->actingAs($actor)
+            ->get("/api/customs/{$declaration->id}/signed-fx-download")
+            ->assertOk();
+    }
+
+    public function test_cby_admin_can_download_signed_fx(): void
+    {
+        $request = $this->makeRequest($this->bank);
+        $declaration = $this->makeDeclarationWithSignedFx($request);
+        $actor = $this->makeUser(UserRole::CBY_ADMIN);
+
+        $this->actingAs($actor)
+            ->get("/api/customs/{$declaration->id}/signed-fx-download")
+            ->assertOk();
+    }
+
+    public function test_returns_404_when_no_signed_fx_doc_uploaded(): void
+    {
+        $request = $this->makeRequest($this->bank);
+        $declaration = $this->makeCustomsDeclaration($request); // no signed_fx_doc_path
+        $actor = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+
+        $this->actingAs($actor)
+            ->get("/api/customs/{$declaration->id}/signed-fx-download")
+            ->assertNotFound();
+    }
+
+    public function test_swift_officer_cannot_download_signed_fx(): void
+    {
+        $request = $this->makeRequest($this->bank);
+        $declaration = $this->makeDeclarationWithSignedFx($request);
+        $actor = $this->makeUser(UserRole::SWIFT_OFFICER, $this->bank);
+
+        $this->actingAs($actor)
+            ->get("/api/customs/{$declaration->id}/signed-fx-download")
+            ->assertForbidden();
+    }
 }

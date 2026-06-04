@@ -20,6 +20,7 @@ enum RequestStatus: string
     case EXECUTIVE_VOTING_CLOSED = 'EXECUTIVE_VOTING_CLOSED';
     case EXECUTIVE_APPROVED = 'EXECUTIVE_APPROVED';
     case EXECUTIVE_REJECTED = 'EXECUTIVE_REJECTED';
+    case FX_CONFIRMATION_PENDING = 'FX_CONFIRMATION_PENDING';
     case CUSTOMS_DECLARATION_ISSUED = 'CUSTOMS_DECLARATION_ISSUED';
     case COMPLETED = 'COMPLETED';
     case BANK_RETURNED = 'BANK_RETURNED';
@@ -45,6 +46,7 @@ enum RequestStatus: string
             self::EXECUTIVE_VOTING_CLOSED => 'جلسة التصويت مغلقة / Executive Voting Closed',
             self::EXECUTIVE_APPROVED => 'موافقة تنفيذية / Executive Approved',
             self::EXECUTIVE_REJECTED => 'رفض تنفيذي نهائي / Executive Rejected',
+            self::FX_CONFIRMATION_PENDING => 'بانتظار إصدار المصارفة الخارجية / FX Confirmation Pending',
             self::CUSTOMS_DECLARATION_ISSUED => 'صدر البيان الجمركي / Customs Declaration Issued',
             self::COMPLETED => 'مكتمل / Completed',
             self::BANK_RETURNED => 'إعادة للمدخل / Returned to Intake',

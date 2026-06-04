@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Enums\UserRole;
+use App\Http\Requests\FxConfirmationUploadRequest;
 use App\Http\Resources\CustomsDeclarationResource;
 use App\Models\CustomsDeclaration;
 use App\Models\ImportRequest;
@@ -65,6 +66,65 @@ class CustomsController extends Controller
     public function download(CustomsDeclaration $customsDeclaration): StreamedResponse
     {
         return $this->customsService->getPdfStream($customsDeclaration, request()->user());
+    }
+
+    #[OA\Post(
+        path: '/api/requests/{importRequest}/fx-confirmation-upload',
+        tags: ['Customs'],
+        summary: 'Upload signed FX confirmation PDF',
+        parameters: [
+            new OA\Parameter(name: 'importRequest', in: 'path', required: true, schema: new OA\Schema(type: 'integer')),
+        ],
+        responses: [new OA\Response(response: 200, description: 'Signed FX confirmation uploaded')]
+    )]
+    public function uploadSignedFx(FxConfirmationUploadRequest $request, ImportRequest $importRequest)
+    {
+        $this->authorize('view', $importRequest);
+
+        $this->customsService->uploadSignedFxDoc(
+            $importRequest,
+            $request->user(),
+            $request->file('signed_document')
+        );
+
+        return ApiResponse::success(null, 'تم رفع وثيقة المصارفة الموقعة بنجاح.');
+    }
+
+    #[OA\Get(
+        path: '/api/customs/{id}/signed-fx-download',
+        tags: ['Customs'],
+        summary: 'Download the signed FX confirmation PDF uploaded by the director',
+        responses: [
+            new OA\Response(response: 200, description: 'PDF stream'),
+            new OA\Response(response: 403, description: 'Access denied'),
+            new OA\Response(response: 404, description: 'No signed document uploaded yet'),
+        ]
+    )]
+    public function downloadSignedFx(CustomsDeclaration $customsDeclaration): StreamedResponse
+    {
+        $this->authorize('downloadSignedFx', $customsDeclaration);
+
+        if (!$customsDeclaration->signed_fx_doc_path) {
+            abort(404, 'No signed FX confirmation document has been uploaded yet.');
+        }
+
+        $fullPath = 'private/'.$customsDeclaration->signed_fx_doc_path;
+        if (!\Illuminate\Support\Facades\Storage::disk('local')->exists($fullPath)) {
+            abort(404, 'Signed FX confirmation file not found on disk.');
+        }
+
+        $stream = \Illuminate\Support\Facades\Storage::disk('local')->readStream($fullPath);
+
+        $filename = 'fx-confirmation-signed-'
+            .($customsDeclaration->request_id ?? $customsDeclaration->id)
+            .'.pdf';
+
+        return response()->streamDownload(function () use ($stream): void {
+            fpassthru($stream);
+            if (is_resource($stream)) {
+                fclose($stream);
+            }
+        }, $filename, ['Content-Type' => 'application/pdf']);
     }
 
     #[OA\Get(

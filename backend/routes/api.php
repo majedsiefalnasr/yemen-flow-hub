@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\SettingsController;
 use App\Http\Controllers\Api\CustomsController;
 use App\Http\Controllers\Api\DocumentController;
+use App\Http\Controllers\Api\DocumentTemplateController;
 use App\Http\Controllers\Api\DocumentTypeController;
 use App\Http\Controllers\Api\ImportRequestController;
 use App\Http\Controllers\Api\MerchantController;
@@ -71,6 +72,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('requests/{importRequest}/history', [ImportRequestController::class, 'history']);
     Route::post('requests/{importRequest}/clone', [ImportRequestController::class, 'clone']);
     Route::get('requests/{importRequest}/customs-preview', [CustomsController::class, 'preview']);
+    Route::get('requests/{importRequest}/confirmation-request-template', [DocumentTemplateController::class, 'confirmationRequest']);
+    Route::get('requests/{importRequest}/confirmation-request-preview', [DocumentTemplateController::class, 'confirmationRequestPreview']);
+    Route::get('requests/{importRequest}/fx-confirmation-template', [DocumentTemplateController::class, 'fxConfirmation']);
+    Route::post('requests/{importRequest}/fx-confirmation-upload', [CustomsController::class, 'uploadSignedFx']);
     Route::post('documents/upload', [DocumentController::class, 'upload']);
     // @deprecated — use POST /api/documents/upload; kept for backward compat during Epic 2 stabilization
     Route::post('requests/{importRequest}/documents', [DocumentController::class, 'uploadRequestDocument']);
@@ -111,6 +116,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('customs/{importRequest}/generate', [CustomsController::class, 'generate']);
     Route::get('customs/{customsDeclaration}', [CustomsController::class, 'show']);
     Route::get('customs/{customsDeclaration}/download', [CustomsController::class, 'download']);
+    Route::get('customs/{customsDeclaration}/signed-fx-download', [CustomsController::class, 'downloadSignedFx']);
 
     Route::get('audit', [AuditController::class, 'index']);
     Route::get('audit/stats', [AuditController::class, 'stats']);

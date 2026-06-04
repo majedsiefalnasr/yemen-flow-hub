@@ -5,6 +5,7 @@ namespace App\Http\Resources;
 use App\Enums\RequestStatus;
 use App\Enums\UserRole;
 use App\Models\User;
+use App\Http\Resources\DocumentResource;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\URL;
@@ -52,6 +53,7 @@ class ImportRequestResource extends JsonResource
             'documents.uploader',
             'votes',
             'issuedCustomsDeclaration.issuer',
+            'customsDeclaration.issuer',
         ];
     }
 
@@ -142,16 +144,23 @@ class ImportRequestResource extends JsonResource
             'swift_uploaded_at' => $this->swift_uploaded_at?->toISOString(),
             'executive_decided_at' => $this->executive_decided_at?->toISOString(),
             'customs_issued_at' => $this->customs_issued_at?->toISOString(),
-            'customs_declaration' => $this->issuedCustomsDeclaration ? [
-                'id' => $this->issuedCustomsDeclaration->id,
-                'declaration_number' => $this->issuedCustomsDeclaration->declaration_number,
-                'issued_at' => $this->issuedCustomsDeclaration->issued_at?->toISOString(),
-                'issued_by' => $this->issuedCustomsDeclaration->issuer ? [
-                    'id' => $this->issuedCustomsDeclaration->issuer->id,
-                    'name' => $this->issuedCustomsDeclaration->issuer->name,
-                ] : null,
-                'download_url' => url("/api/customs/{$this->issuedCustomsDeclaration->id}/download"),
-            ] : null,
+            'customs_declaration' => ($this->issuedCustomsDeclaration ?? $this->customsDeclaration) ? (function () {
+                $decl = $this->issuedCustomsDeclaration ?? $this->customsDeclaration;
+                return [
+                    'id' => $decl->id,
+                    'declaration_number' => $decl->declaration_number,
+                    'issued_at' => $decl->issued_at?->toISOString(),
+                    'issued_by' => $decl->issuer ? [
+                        'id' => $decl->issuer->id,
+                        'name' => $decl->issuer->name,
+                    ] : null,
+                    'download_url' => url("/api/customs/{$decl->id}/download"),
+                    'has_signed_fx_doc' => $decl->signed_fx_doc_path !== null,
+                    'signed_fx_download_url' => $decl->signed_fx_doc_path !== null
+                        ? url("/api/customs/{$decl->id}/signed-fx-download")
+                        : null,
+                ];
+            })() : null,
             'bank_return_comment' => $this->status === RequestStatus::BANK_RETURNED
                 ? $this->stageHistory()
                     ->where('action', 'bank_return_to_intake')
@@ -176,20 +185,7 @@ class ImportRequestResource extends JsonResource
             'updated_at' => $this->updated_at?->toISOString(),
             'swift_uploaded_by' => $this->swift_uploaded_by,
             'swift_uploaded_by_user' => $this->actorWhenLoaded('swiftUploadedBy'),
-            'documents' => $this->whenLoaded('documents', function () {
-                return $this->documents->map(fn ($doc) => [
-                    'id' => $doc->id,
-                    'type' => $doc->type,
-                    'original_filename' => $doc->original_filename,
-                    'mime_type' => $doc->mime_type,
-                    'size_bytes' => $doc->size_bytes,
-                    'checksum' => $doc->checksum,
-                    'uploaded_by' => $doc->uploaded_by,
-                    'uploaded_by_name' => $doc->relationLoaded('uploader') ? $doc->uploader?->name : null,
-                    'uploaded_at' => $doc->created_at?->toISOString(),
-                    'download_url' => url("/api/documents/{$doc->id}/download"),
-                ])->values()->all();
-            }),
+            'documents' => DocumentResource::collection($this->whenLoaded('documents')),
             'votes_cast' => $votesCast,
             'total_voters' => $totalVoters,
             'ready_to_close' => $this->status === RequestStatus::EXECUTIVE_VOTING_OPEN

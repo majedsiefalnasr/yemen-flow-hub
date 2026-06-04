@@ -44,11 +44,9 @@ class DocumentController extends Controller
 
         $this->authorize('uploadDocuments', $importRequest);
 
-        $document = $this->documentService->uploadRequestDocument(
-            $importRequest,
-            $request->user(),
-            $request->file('file')
-        );
+        $document = $request->boolean('confirmation_request')
+            ? $this->documentService->uploadConfirmationRequest($importRequest, $request->user(), $request->file('file'))
+            : $this->documentService->uploadRequestDocument($importRequest, $request->user(), $request->file('file'), $request->input('sub_type'));
 
         return ApiResponse::success(new DocumentResource($document), 'Document uploaded successfully.', 201);
     }
@@ -81,11 +79,9 @@ class DocumentController extends Controller
     {
         $this->authorize('uploadDocuments', $importRequest);
 
-        $document = $this->documentService->uploadRequestDocument(
-            $importRequest,
-            $request->user(),
-            $request->file('file')
-        );
+        $document = $request->boolean('confirmation_request')
+            ? $this->documentService->uploadConfirmationRequest($importRequest, $request->user(), $request->file('file'))
+            : $this->documentService->uploadRequestDocument($importRequest, $request->user(), $request->file('file'));
 
         return ApiResponse::success(new DocumentResource($document), 'Document uploaded successfully.', 201);
     }
