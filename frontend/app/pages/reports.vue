@@ -309,7 +309,7 @@ const votingAnalyticsColumns: ColumnDef<VotingAnalyticsRow>[] = [
       <TabsContent value="executive_summary" class="mt-4">
         <div class="grid gap-4 lg:grid-cols-3">
       <Card class="border-0 p-5 shadow lg:col-span-2">
-        <h3 class="mb-4 font-semibold">
+        <h3 class="mb-4 font-heading text-base font-semibold leading-6 text-foreground">
           تطور أحجام الطلبات
         </h3>
         <ChartContainer
@@ -356,7 +356,7 @@ const votingAnalyticsColumns: ColumnDef<VotingAnalyticsRow>[] = [
       </Card>
 
       <Card class="border-0 p-5 shadow">
-        <h3 class="mb-4 font-semibold">
+        <h3 class="mb-4 font-heading text-base font-semibold leading-6 text-foreground">
           حسب الفئة
         </h3>
         <ChartContainer
@@ -387,7 +387,7 @@ const votingAnalyticsColumns: ColumnDef<VotingAnalyticsRow>[] = [
       </Card>
 
       <Card class="border-0 p-5 shadow">
-        <h3 class="mb-4 font-semibold">
+        <h3 class="mb-4 font-heading text-base font-semibold leading-6 text-foreground">
           قيمة التمويل بالعملة
         </h3>
         <div class="space-y-3">
@@ -540,7 +540,7 @@ const votingAnalyticsColumns: ColumnDef<VotingAnalyticsRow>[] = [
       <!-- Bank Performance -->
       <TabsContent value="bank_performance" class="mt-4">
         <Card class="border-0 p-5 shadow">
-          <h3 class="mb-4 font-semibold">أداء البنوك</h3>
+          <h3 class="mb-4 font-heading text-base font-semibold leading-6 text-foreground">أداء البنوك</h3>
           <DataTable :data="bankBreakdownRows" :columns="bankBreakdownColumns" :loading="loading" />
         </Card>
       </TabsContent>
@@ -548,7 +548,7 @@ const votingAnalyticsColumns: ColumnDef<VotingAnalyticsRow>[] = [
       <!-- Workflow SLA -->
       <TabsContent value="workflow_sla" class="mt-4">
         <Card class="border-0 p-5 shadow">
-          <h3 class="mb-4 font-semibold">أداء SLA لمراحل سير العمل</h3>
+          <h3 class="mb-4 font-heading text-base font-semibold leading-6 text-foreground">أداء SLA لمراحل سير العمل</h3>
           <div class="space-y-4">
             <div v-if="loading" class="space-y-3">
               <Skeleton v-for="i in 5" :key="i" class="h-12 w-full rounded-lg" />
@@ -559,11 +559,11 @@ const votingAnalyticsColumns: ColumnDef<VotingAnalyticsRow>[] = [
                 :key="stage.stage"
                 class="flex items-center gap-4 rounded-lg border p-3"
               >
-                <div class="w-40 shrink-0 text-sm font-medium">{{ stage.stage }}</div>
+                <div class="w-40 shrink-0 font-section text-sm font-medium leading-5 text-foreground">{{ stage.stage }}</div>
                 <div class="flex-1">
-                  <div class="mb-1 flex justify-between text-xs text-muted-foreground">
-                    <span>متوسط: {{ stage.avg_hours != null ? stage.avg_hours + 'س' : '—' }}</span>
-                    <span :class="(stage.breach_rate ?? 0) > 20 ? 'text-[var(--severity-red)]' : 'text-[var(--severity-green)]'">
+                  <div class="mb-1 flex justify-between font-section text-xs leading-5 text-muted-foreground">
+                    <span class="tabular-nums">متوسط: {{ stage.avg_hours != null ? stage.avg_hours + 'س' : '—' }}</span>
+                    <span class="tabular-nums" :class="(stage.breach_rate ?? 0) > 20 ? 'text-[var(--severity-red)]' : 'text-[var(--severity-green)]'">
                       انتهاك: {{ stage.breach_rate != null ? stage.breach_rate + '%' : '—' }}
                     </span>
                   </div>
@@ -583,28 +583,28 @@ const votingAnalyticsColumns: ColumnDef<VotingAnalyticsRow>[] = [
       <TabsContent value="decisions" class="mt-4">
         <div class="grid gap-4 lg:grid-cols-2">
           <Card class="border-0 p-5 shadow">
-            <h3 class="mb-4 font-semibold">توزيع القرارات</h3>
+            <h3 class="mb-4 font-heading text-base font-semibold leading-6 text-foreground">توزيع القرارات</h3>
             <div class="space-y-3">
               <div class="flex items-center justify-between rounded-lg border p-3">
-                <span class="text-sm">مُعتمد</span>
-                <span class="text-lg font-bold text-[var(--severity-green)] tabular-nums">{{ loading ? '—' : approved }}</span>
+                <span class="font-section text-sm font-medium leading-5 text-muted-foreground">مُعتمد</span>
+                <span class="text-xl font-semibold leading-7 text-[var(--severity-green)] tabular-nums">{{ loading ? '—' : approved }}</span>
               </div>
               <div class="flex items-center justify-between rounded-lg border p-3">
-                <span class="text-sm">مرفوض</span>
-                <span class="text-lg font-bold text-[var(--severity-red)] tabular-nums">{{ loading ? '—' : rejected }}</span>
+                <span class="font-section text-sm font-medium leading-5 text-muted-foreground">مرفوض</span>
+                <span class="text-xl font-semibold leading-7 text-[var(--severity-red)] tabular-nums">{{ loading ? '—' : rejected }}</span>
               </div>
               <div class="flex items-center justify-between rounded-lg border p-3">
-                <span class="text-sm">نسبة الاعتماد</span>
-                <span class="text-lg font-bold tabular-nums">{{ loading ? '—' : approvalRate + '%' }}</span>
+                <span class="font-section text-sm font-medium leading-5 text-muted-foreground">نسبة الاعتماد</span>
+                <span class="text-xl font-semibold leading-7 tabular-nums text-foreground">{{ loading ? '—' : approvalRate + '%' }}</span>
               </div>
             </div>
           </Card>
           <Card class="border-0 p-5 shadow">
-            <h3 class="mb-4 font-semibold">قيمة التمويل الإجمالية</h3>
+            <h3 class="mb-4 font-heading text-base font-semibold leading-6 text-foreground">قيمة التمويل الإجمالية</h3>
             <div class="space-y-3">
               <div v-for="item in amountByCurrency" :key="item.currency" class="flex items-center justify-between rounded-lg border p-3">
-                <span class="text-sm font-semibold">{{ item.currency }}</span>
-                <span class="tabular-nums text-sm text-muted-foreground">{{ item.amount.toLocaleString('en-US') }}</span>
+                <span class="font-section text-sm font-semibold leading-5 text-foreground">{{ item.currency }}</span>
+                <span class="tabular-nums text-sm font-medium leading-5 text-muted-foreground">{{ item.amount.toLocaleString('en-US') }}</span>
               </div>
               <div v-if="amountByCurrency.length === 0" class="py-4 text-center text-xs text-muted-foreground">لا توجد بيانات</div>
             </div>
@@ -615,7 +615,7 @@ const votingAnalyticsColumns: ColumnDef<VotingAnalyticsRow>[] = [
       <!-- Executive Voting -->
       <TabsContent value="voting" class="mt-4">
         <Card class="border-0 p-5 shadow">
-          <h3 class="mb-4 font-semibold">تحليل التصويت التنفيذي</h3>
+          <h3 class="mb-4 font-heading text-base font-semibold leading-6 text-foreground">تحليل التصويت التنفيذي</h3>
           <DataTable :data="votingAnalyticsRows" :columns="votingAnalyticsColumns" :loading="loading">
             <template #empty>لا توجد بيانات تصويت</template>
           </DataTable>
@@ -626,32 +626,32 @@ const votingAnalyticsColumns: ColumnDef<VotingAnalyticsRow>[] = [
       <TabsContent value="swift_fx" class="mt-4">
         <div class="grid gap-4 lg:grid-cols-2">
           <Card class="border-0 p-5 shadow">
-            <h3 class="mb-4 font-semibold">إحصاءات SWIFT</h3>
+            <h3 class="mb-4 font-heading text-base font-semibold leading-6 text-foreground">إحصاءات SWIFT</h3>
             <div class="space-y-3 text-sm">
               <div class="flex justify-between rounded-lg border p-3">
-                <span>رفع SWIFT مكتمل</span>
-                <span class="font-bold tabular-nums text-[var(--info)]">{{ loading ? '—' : (report?.swift_stats?.uploaded ?? '—') }}</span>
+                <span class="font-section font-medium leading-5 text-muted-foreground">رفع SWIFT مكتمل</span>
+                <span class="font-semibold leading-5 tabular-nums text-[var(--info)]">{{ loading ? '—' : (report?.swift_stats?.uploaded ?? '—') }}</span>
               </div>
               <div class="flex justify-between rounded-lg border p-3">
-                <span>متوسط وقت الرفع</span>
-                <span class="font-bold tabular-nums">{{ loading ? '—' : (report?.swift_stats?.avg_upload_hours != null ? report.swift_stats.avg_upload_hours + 'س' : '—') }}</span>
+                <span class="font-section font-medium leading-5 text-muted-foreground">متوسط وقت الرفع</span>
+                <span class="font-semibold leading-5 tabular-nums text-foreground">{{ loading ? '—' : (report?.swift_stats?.avg_upload_hours != null ? report.swift_stats.avg_upload_hours + 'س' : '—') }}</span>
               </div>
               <div class="flex justify-between rounded-lg border p-3">
-                <span>قيد الانتظار</span>
-                <span class="font-bold tabular-nums text-[var(--severity-amber)]">{{ loading ? '—' : (report?.swift_stats?.pending ?? '—') }}</span>
+                <span class="font-section font-medium leading-5 text-muted-foreground">قيد الانتظار</span>
+                <span class="font-semibold leading-5 tabular-nums text-[var(--severity-amber)]">{{ loading ? '—' : (report?.swift_stats?.pending ?? '—') }}</span>
               </div>
             </div>
           </Card>
           <Card class="border-0 p-5 shadow">
-            <h3 class="mb-4 font-semibold">تأكيد المصارفة الخارجية</h3>
+            <h3 class="mb-4 font-heading text-base font-semibold leading-6 text-foreground">تأكيد المصارفة الخارجية</h3>
             <div class="space-y-3 text-sm">
               <div class="flex justify-between rounded-lg border p-3">
-                <span>مكتمل</span>
-                <span class="font-bold tabular-nums text-[var(--severity-green)]">{{ loading ? '—' : (report?.fx_stats?.completed ?? '—') }}</span>
+                <span class="font-section font-medium leading-5 text-muted-foreground">مكتمل</span>
+                <span class="font-semibold leading-5 tabular-nums text-[var(--severity-green)]">{{ loading ? '—' : (report?.fx_stats?.completed ?? '—') }}</span>
               </div>
               <div class="flex justify-between rounded-lg border p-3">
-                <span>قيد الانتظار</span>
-                <span class="font-bold tabular-nums text-[var(--severity-amber)]">{{ loading ? '—' : (report?.fx_stats?.pending ?? '—') }}</span>
+                <span class="font-section font-medium leading-5 text-muted-foreground">قيد الانتظار</span>
+                <span class="font-semibold leading-5 tabular-nums text-[var(--severity-amber)]">{{ loading ? '—' : (report?.fx_stats?.pending ?? '—') }}</span>
               </div>
             </div>
           </Card>
@@ -662,32 +662,32 @@ const votingAnalyticsColumns: ColumnDef<VotingAnalyticsRow>[] = [
       <TabsContent value="compliance" class="mt-4">
         <div class="grid gap-4 lg:grid-cols-2">
           <Card class="border-0 p-5 shadow">
-            <h3 class="mb-4 font-semibold">مؤشرات الامتثال</h3>
+            <h3 class="mb-4 font-heading text-base font-semibold leading-6 text-foreground">مؤشرات الامتثال</h3>
             <div class="space-y-3 text-sm">
               <div class="flex justify-between rounded-lg border p-3">
-                <span>معدل الإنجاز في الموعد</span>
-                <span class="font-bold tabular-nums text-[var(--severity-green)]">{{ loading ? '—' : (report?.compliance?.on_time_rate != null ? report.compliance.on_time_rate + '%' : '—') }}</span>
+                <span class="font-section font-medium leading-5 text-muted-foreground">معدل الإنجاز في الموعد</span>
+                <span class="font-semibold leading-5 tabular-nums text-[var(--severity-green)]">{{ loading ? '—' : (report?.compliance?.on_time_rate != null ? report.compliance.on_time_rate + '%' : '—') }}</span>
               </div>
               <div class="flex justify-between rounded-lg border p-3">
-                <span>انتهاكات SLA</span>
-                <span class="font-bold tabular-nums text-[var(--severity-red)]">{{ loading ? '—' : (report?.compliance?.sla_violations ?? '—') }}</span>
+                <span class="font-section font-medium leading-5 text-muted-foreground">انتهاكات SLA</span>
+                <span class="font-semibold leading-5 tabular-nums text-[var(--severity-red)]">{{ loading ? '—' : (report?.compliance?.sla_violations ?? '—') }}</span>
               </div>
               <div class="flex justify-between rounded-lg border p-3">
-                <span>طلبات عادت للبنك</span>
-                <span class="font-bold tabular-nums text-[var(--severity-amber)]">{{ loading ? '—' : (report?.compliance?.returned_count ?? '—') }}</span>
+                <span class="font-section font-medium leading-5 text-muted-foreground">طلبات عادت للبنك</span>
+                <span class="font-semibold leading-5 tabular-nums text-[var(--severity-amber)]">{{ loading ? '—' : (report?.compliance?.returned_count ?? '—') }}</span>
               </div>
             </div>
           </Card>
           <Card class="border-0 p-5 shadow">
-            <h3 class="mb-4 font-semibold">نشاط التدقيق</h3>
+            <h3 class="mb-4 font-heading text-base font-semibold leading-6 text-foreground">نشاط التدقيق</h3>
             <div class="space-y-3 text-sm">
               <div class="flex justify-between rounded-lg border p-3">
-                <span>إجمالي السجلات</span>
-                <span class="font-bold tabular-nums">{{ loading ? '—' : (report?.audit_summary?.total_events ?? '—') }}</span>
+                <span class="font-section font-medium leading-5 text-muted-foreground">إجمالي السجلات</span>
+                <span class="font-semibold leading-5 tabular-nums text-foreground">{{ loading ? '—' : (report?.audit_summary?.total_events ?? '—') }}</span>
               </div>
               <div class="flex justify-between rounded-lg border p-3">
-                <span>رفض صلاحيات</span>
-                <span class="font-bold tabular-nums text-[var(--severity-red)]">{{ loading ? '—' : (report?.audit_summary?.auth_failures ?? '—') }}</span>
+                <span class="font-section font-medium leading-5 text-muted-foreground">رفض صلاحيات</span>
+                <span class="font-semibold leading-5 tabular-nums text-[var(--severity-red)]">{{ loading ? '—' : (report?.audit_summary?.auth_failures ?? '—') }}</span>
               </div>
             </div>
           </Card>

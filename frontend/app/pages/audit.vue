@@ -775,10 +775,10 @@ function diffRows(meta: AuditLogMeta): Array<{ key: string; before: unknown; aft
                 :class="group.level === 'عالية' ? 'text-[var(--severity-red)]' : 'text-[var(--severity-amber)]'"
               />
               <div class="flex-1">
-                <div class="text-sm font-medium">{{ group.type }}</div>
-                <div class="text-xs text-muted-foreground">{{ group.actor }}</div>
+                <div class="font-section text-sm font-semibold leading-5 text-foreground">{{ group.type }}</div>
+                <div class="text-xs leading-5 text-muted-foreground">{{ group.actor }}</div>
               </div>
-              <div class="text-sm font-bold tabular-nums">
+              <div class="text-sm font-semibold leading-5 tabular-nums text-foreground">
                 {{ group.count }}×
               </div>
               <Badge

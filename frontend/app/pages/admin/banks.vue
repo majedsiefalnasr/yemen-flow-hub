@@ -322,10 +322,10 @@ const columns: ColumnDef<Bank>[] = [
     cell: ({ row }) => {
       const bank = row.original
       return h('div', { class: 'flex items-center gap-2' }, [
-        h('div', { class: 'grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary text-xs font-bold' }, bankInitials(bank.name_ar)),
+        h('div', { class: 'grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary text-xs font-semibold leading-5' }, bankInitials(bank.name_ar)),
         h('div', {}, [
-          h('div', { class: 'text-sm font-medium' }, bank.name_ar),
-          h('div', { class: 'text-xs text-muted-foreground' }, bank.name_en),
+          h('div', { class: 'font-section text-sm font-semibold leading-5 text-foreground' }, bank.name_ar),
+          h('div', { class: 'text-xs leading-5 text-muted-foreground' }, bank.name_en),
         ]),
       ])
     },

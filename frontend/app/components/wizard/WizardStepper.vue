@@ -26,7 +26,7 @@ function handleStepClick(index: number): void {
 </script>
 
 <template>
-  <div  role="navigation" aria-label="خطوات الطلب" class="rounded-lg border border-border bg-card p-6 shadow-sm">
+  <div  role="navigation" aria-label="خطوات الطلب" class="my-6">
     <div class="flex items-center justify-center gap-0">
       <template v-for="(label, index) in steps" :key="index">
         <!-- Step -->

@@ -230,7 +230,7 @@ onMounted(async () => {
 
             <template v-if="settings">
               <div class="section-header" style="margin-top: 8px;">
-                <h3 class="section-title" style="font-size: 15px;">دورة الموافقة</h3>
+                <h3 class="section-title section-title--sub">دورة الموافقة</h3>
               </div>
               <div class="two-col-grid">
                 <div class="field-group">
@@ -487,8 +487,10 @@ onMounted(async () => {
   align-items: center;
   gap: 6px;
   padding: 10px 16px;
-  font-size: 14px;
+  font-family: var(--font-section);
+  font-size: 0.875rem;
   font-weight: 500;
+  line-height: 1.25rem;
   color: var(--muted-foreground);
   background: transparent;
   border: none;
@@ -530,14 +532,22 @@ onMounted(async () => {
 }
 
 .section-title {
-  font-size: 18px;
+  font-family: var(--font-heading);
+  font-size: 1.125rem;
   font-weight: 600;
+  line-height: 1.75rem;
   color: var(--foreground);
   margin: 0;
 }
 
+.section-title--sub {
+  font-size: 0.9375rem;
+  line-height: 1.5rem;
+}
+
 .section-desc {
-  font-size: 13px;
+  font-size: 0.8125rem;
+  line-height: 1.25rem;
   color: var(--muted-foreground);
   margin: 0;
 }
@@ -553,14 +563,17 @@ onMounted(async () => {
 }
 
 .section-sub-title {
-  font-size: 15px;
+  font-family: var(--font-section);
+  font-size: 0.9375rem;
   font-weight: 600;
+  line-height: 1.5rem;
   color: var(--foreground);
   margin: 0 0 2px;
 }
 
 .section-sub-desc {
-  font-size: 13px;
+  font-size: 0.8125rem;
+  line-height: 1.25rem;
   color: var(--muted-foreground);
   margin: 0;
 }
@@ -588,15 +601,18 @@ onMounted(async () => {
 }
 
 .field-label {
-  font-size: 12px;
+  font-family: var(--font-section);
+  font-size: 0.75rem;
   font-weight: 500;
+  line-height: 1rem;
   color: var(--muted-foreground);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 
 .field-hint {
-  font-size: 11px;
+  font-size: 0.6875rem;
+  line-height: 1rem;
   color: var(--muted-foreground);
   margin: 0;
 }
@@ -614,7 +630,10 @@ onMounted(async () => {
   background: var(--muted);
   border: 1px solid var(--border);
   border-radius: 8px;
-  font-size: 16px;
+  font-family: var(--font-section);
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -627,11 +646,13 @@ onMounted(async () => {
 }
 
 .stepper-value {
-  font-size: 18px;
+  font-size: 1.125rem;
   font-weight: 600;
+  line-height: 1.75rem;
   color: var(--foreground);
   min-width: 36px;
   text-align: center;
+  font-variant-numeric: tabular-nums;
 }
 
 /* Form fields */
@@ -646,7 +667,8 @@ onMounted(async () => {
   padding: 0 12px;
   border: 1px solid var(--border);
   border-radius: 12px;
-  font-size: 14px;
+  font-size: 0.875rem;
+  line-height: 1.5rem;
   color: var(--foreground);
   background: var(--background);
   outline: none;
@@ -687,13 +709,16 @@ onMounted(async () => {
 }
 
 .switch-label {
-  font-size: 14px;
+  font-family: var(--font-section);
+  font-size: 0.875rem;
   font-weight: 500;
+  line-height: 1.5rem;
   color: var(--foreground);
 }
 
 .switch-desc {
-  font-size: 12px;
+  font-size: 0.75rem;
+  line-height: 1.25rem;
   color: var(--muted-foreground);
 }
 
@@ -765,13 +790,16 @@ onMounted(async () => {
 }
 
 .info-label {
-  font-size: 14px;
+  font-size: 0.875rem;
+  line-height: 1.5rem;
   color: var(--muted-foreground);
 }
 
 .info-value {
-  font-size: 14px;
+  font-family: var(--font-section);
+  font-size: 0.875rem;
   font-weight: 500;
+  line-height: 1.5rem;
   color: var(--foreground);
 }
 
@@ -781,7 +809,8 @@ onMounted(async () => {
   border: 1px solid color-mix(in srgb, var(--color-success) 40%, transparent);
   border-radius: 8px;
   padding: 10px 14px;
-  font-size: 13px;
+  font-size: 0.8125rem;
+  line-height: 1.25rem;
   color: var(--color-success);
 }
 
@@ -802,8 +831,10 @@ onMounted(async () => {
   color: var(--primary-foreground);
   border: none;
   border-radius: 16px;
-  font-size: 14px;
+  font-family: var(--font-section);
+  font-size: 0.875rem;
   font-weight: 500;
+  line-height: 1.25rem;
   cursor: pointer;
 }
 

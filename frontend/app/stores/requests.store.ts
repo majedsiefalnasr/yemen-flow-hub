@@ -2,6 +2,13 @@ import { defineStore } from 'pinia'
 import type { ImportRequest, RequestDocument, RequestFormData, RequestStageHistory } from '../types/models'
 import type { RequestsFilter } from '../composables/useRequests'
 import { useRequests } from '../composables/useRequests'
+import { useAuthStore } from './auth.store'
+
+function isAuthTeardown(): boolean {
+  if (!import.meta.client) return false
+  const auth = useAuthStore()
+  return auth.isLoggingOut || !auth.isAuthenticated
+}
 
 interface PaginationMeta {
   current_page: number
@@ -28,6 +35,8 @@ export const useRequestsStore = defineStore('requests', {
     performingAction: false,
     issuingCustoms: false,
     downloadingCustoms: false,
+    uploadingSignedFx: false,
+    signedFxUploaded: false,
     uploading: false,
     uploadError: null as string | null,
     saving: false,
@@ -74,10 +83,10 @@ export const useRequestsStore = defineStore('requests', {
       }
       catch (err) {
         if (token !== this._loadToken) return
-        if (import.meta.dev) {
+        if (import.meta.dev && !isAuthTeardown()) {
           console.error('[requests.store] loadRequests failed:', err)
         }
-        this.error = 'تعذّر تحميل قائمة الطلبات.'
+        this.error = isAuthTeardown() ? null : 'تعذّر تحميل قائمة الطلبات.'
         this.requests = []
         this.meta = null
       }
@@ -100,16 +109,18 @@ export const useRequestsStore = defineStore('requests', {
       this.historyLoaded = false
       this.uploading = false
       this.uploadError = null
+      this.uploadingSignedFx = false
+      this.signedFxUploaded = false
 
       try {
         const { fetchRequest } = useRequests()
         this.currentRequest = await fetchRequest(id)
       }
       catch (err) {
-        if (import.meta.dev) {
+        if (import.meta.dev && !isAuthTeardown()) {
           console.error('[requests.store] loadRequest failed:', err)
         }
-        this.error = 'تعذّر تحميل بيانات الطلب.'
+        this.error = isAuthTeardown() ? null : 'تعذّر تحميل بيانات الطلب.'
       }
       finally {
         this.loadingRequest = false
@@ -351,6 +362,29 @@ export const useRequestsStore = defineStore('requests', {
       }
       finally {
         this.issuingCustoms = false
+      }
+    },
+
+    async uploadSignedFxDoc(id: number, file: File): Promise<void> {
+      if (this.uploadingSignedFx) throw new Error('رفع وثيقة المصارفة قيد التنفيذ بالفعل')
+      this.uploadingSignedFx = true
+      this.error = null
+
+      try {
+        const { uploadSignedFxConfirmation, fetchRequest } = useRequests()
+        await uploadSignedFxConfirmation(id, file)
+        this.signedFxUploaded = true
+        this.currentRequest = await fetchRequest(id)
+      }
+      catch (err) {
+        if (import.meta.dev) {
+          console.error('[requests.store] uploadSignedFxDoc failed:', err)
+        }
+        this.error = 'تعذر رفع وثيقة المصارفة الموقعة.'
+        throw err
+      }
+      finally {
+        this.uploadingSignedFx = false
       }
     },
 

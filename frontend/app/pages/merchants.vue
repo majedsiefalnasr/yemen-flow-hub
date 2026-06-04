@@ -741,34 +741,34 @@ function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
                 {{ merchant.is_active ? 'نشط' : 'موقوف' }}
               </Badge>
             </div>
-            <div class="text-base font-semibold">{{ merchant.name }}</div>
-            <div class="text-xs text-muted-foreground">{{ merchant.business_type ?? '—' }}</div>
+            <div class="font-heading text-base font-semibold leading-6 text-foreground">{{ merchant.name }}</div>
+            <div class="text-xs leading-5 text-muted-foreground">{{ merchant.business_type ?? '—' }}</div>
             <div class="mt-4 space-y-1.5 text-xs">
               <div class="flex justify-between gap-2">
-                <span class="text-muted-foreground">السجل التجاري</span>
-                <span class="font-medium">{{ merchant.commercial_register ?? '—' }}</span>
+                <span class="font-section font-medium leading-5 text-muted-foreground">السجل التجاري</span>
+                <span class="font-medium leading-5 text-foreground">{{ merchant.commercial_register ?? '—' }}</span>
               </div>
               <div class="flex justify-between gap-2">
-                <span class="text-muted-foreground">الرقم الضريبي</span>
-                <span class="font-medium">{{ merchant.tax_number ?? '—' }}</span>
+                <span class="font-section font-medium leading-5 text-muted-foreground">الرقم الضريبي</span>
+                <span class="font-medium leading-5 text-foreground">{{ merchant.tax_number ?? '—' }}</span>
               </div>
               <div class="flex justify-between gap-2">
-                <span class="text-muted-foreground">البنك</span>
-                <span class="font-medium">{{ bankName(merchant.bank_id) }}</span>
+                <span class="font-section font-medium leading-5 text-muted-foreground">البنك</span>
+                <span class="font-medium leading-5 text-foreground">{{ bankName(merchant.bank_id) }}</span>
               </div>
               <div class="flex justify-between gap-2">
-                <span class="text-muted-foreground">العنوان</span>
-                <span class="text-end font-medium">{{ merchant.address ?? '—' }}</span>
+                <span class="font-section font-medium leading-5 text-muted-foreground">العنوان</span>
+                <span class="text-end font-medium leading-5 text-foreground">{{ merchant.address ?? '—' }}</span>
               </div>
               <div class="flex justify-between gap-2">
-                <span class="text-muted-foreground">هاتف</span>
-                <span class="font-medium">{{ merchant.phone ?? '—' }}</span>
+                <span class="font-section font-medium leading-5 text-muted-foreground">هاتف</span>
+                <span class="font-medium leading-5 text-foreground">{{ merchant.phone ?? '—' }}</span>
               </div>
             </div>
             <div class="mt-auto flex items-center justify-between border-t pt-4">
               <div class="text-xs">
-                <span class="text-muted-foreground">المعاملات: </span>
-                <span class="font-bold tabular-nums">{{ merchant.transaction_count ?? 0 }}</span>
+                <span class="font-section font-medium leading-5 text-muted-foreground">المعاملات: </span>
+                <span class="font-semibold leading-5 tabular-nums text-foreground">{{ merchant.transaction_count ?? 0 }}</span>
               </div>
               <div class="flex gap-1">
                 <Button size="sm" variant="ghost" class="h-8" @click="toggleStatus(merchant)">
@@ -847,7 +847,7 @@ function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
 
             <!-- Registration info -->
             <Card class="border p-4">
-              <h3 class="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">معلومات التسجيل</h3>
+              <h3 class="mb-3 font-section text-xs font-semibold uppercase tracking-wide text-muted-foreground">معلومات التسجيل</h3>
               <div class="grid grid-cols-2 gap-3 text-sm">
                 <div class="space-y-0.5">
                   <div class="text-xs text-muted-foreground">السجل التجاري</div>
@@ -863,7 +863,7 @@ function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
                 </div>
                 <div class="space-y-0.5">
                   <div class="text-xs text-muted-foreground">عدد المعاملات</div>
-                  <div class="font-bold tabular-nums">{{ viewing.transaction_count ?? 0 }}</div>
+                  <div class="font-semibold leading-5 tabular-nums text-foreground">{{ viewing.transaction_count ?? 0 }}</div>
                 </div>
                 <div class="col-span-2 space-y-0.5">
                   <div class="text-xs text-muted-foreground">العنوان</div>
@@ -882,7 +882,7 @@ function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
 
             <!-- Associated banks -->
             <Card class="border p-4">
-              <h3 class="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <h3 class="mb-3 flex items-center gap-1.5 font-section text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 <Shield class="h-3.5 w-3.5" />
                 البنوك المرتبطة
               </h3>

@@ -83,6 +83,7 @@ const banks = ref<Bank[]>([])
 const isBankScoped = computed(() => user.value ? BANK_ROLES.includes(user.value.role) : false)
 const showBankFilter = computed(() => user.value ? CBY_BANK_FILTER_ROLES.includes(user.value.role) : false)
 const canCreateRequest = computed(() => user.value?.role === UserRole.DATA_ENTRY)
+const canLoadRequests = computed(() => authStore.isAuthenticated && !authStore.isLoggingOut && Boolean(user.value))
 
 const currentUserId = computed(() => authStore.user?.id ?? null)
 
@@ -150,12 +151,14 @@ function buildFilter(overrides?: { page?: number; pageSize?: number }): Requests
   return filter
 }
 
-function refreshStats() {
+function refreshStats(): void {
+  if (!canLoadRequests.value) return
   store.loadStats({ per_page: 1, page: 1, with_status_totals: true })
 }
 
 // Watch URL params → fetch from server whenever page or pageSize changes.
 watch([urlPage, urlPageSize], ([newPage, newSize]) => {
+  if (!canLoadRequests.value) return
   store.loadRequests(buildFilter({ page: newPage, pageSize: newSize }))
 })
 
@@ -164,6 +167,7 @@ let searchTimeout: ReturnType<typeof setTimeout> | null = null
 watch(query, () => {
   if (searchTimeout) clearTimeout(searchTimeout)
   searchTimeout = setTimeout(() => {
+    if (!canLoadRequests.value) return
     router.push({ query: { ...route.query, page: undefined } })
     store.loadRequests(buildFilter({ page: 1 }))
   }, 350)
@@ -173,12 +177,14 @@ watch(query, () => {
 watch(columnFilters, () => {
   if (process.client && user.value?.role)
     localStorage.setItem(`yfh-col-filters-${user.value.role}`, JSON.stringify(columnFilters.value))
+  if (!canLoadRequests.value) return
   router.push({ query: { ...route.query, page: undefined } })
   store.loadRequests(buildFilter({ page: 1 }))
   refreshStats()
 }, { deep: true })
 
 onMounted(async () => {
+  if (!canLoadRequests.value) return
   if (process.client && user.value?.role) {
     const saved = localStorage.getItem(`yfh-col-filters-${user.value.role}`)
     if (saved) {

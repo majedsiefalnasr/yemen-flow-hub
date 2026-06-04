@@ -28,10 +28,24 @@ interface VerifyOtpResponseData {
 }
 
 const ACCESS_TOKEN_STORAGE_KEY = 'yfh-api-token'
+const LOGOUT_IN_PROGRESS_STORAGE_KEY = 'yfh-logout-in-progress'
 
-function clearAuthState(store: { user: AuthUser | null; isAuthenticated: boolean }) {
+function markLogoutInProgress(value: boolean): void {
+  if (!process.client) return
+  if (value) {
+    sessionStorage.setItem(LOGOUT_IN_PROGRESS_STORAGE_KEY, '1')
+  }
+  else {
+    sessionStorage.removeItem(LOGOUT_IN_PROGRESS_STORAGE_KEY)
+  }
+}
+
+function clearAuthState(store: { user: AuthUser | null; isAuthenticated: boolean; isLoggingOut?: boolean }) {
   store.user = null
   store.isAuthenticated = false
+  if ('isLoggingOut' in store) {
+    store.isLoggingOut = false
+  }
 
   if (process.client) {
     localStorage.removeItem('yfh-authenticated')
@@ -66,6 +80,7 @@ export const useAuthStore = defineStore('auth', {
   state: () => ({
     user: null as AuthUser | null,
     isAuthenticated: false,
+    isLoggingOut: false,
     userPreferences: null as UserPreferences | null,
   }),
 
@@ -186,6 +201,8 @@ export const useAuthStore = defineStore('auth', {
 
       this.user = response.data.user!
       this.isAuthenticated = true
+      this.isLoggingOut = false
+      markLogoutInProgress(false)
       this.persistAuthMode({ mode: response.data.mode, token: response.data.token })
       syncAvatarCache(this.user)
       if (process.client) {
@@ -222,6 +239,8 @@ export const useAuthStore = defineStore('auth', {
 
       this.user = response.data.user
       this.isAuthenticated = true
+      this.isLoggingOut = false
+      markLogoutInProgress(false)
       this.persistAuthMode({ mode: response.data.mode, token: response.data.token })
       syncAvatarCache(this.user)
       if (process.client) {
@@ -252,6 +271,8 @@ export const useAuthStore = defineStore('auth', {
 
       this.user = response.data.user
       this.isAuthenticated = true
+      this.isLoggingOut = false
+      markLogoutInProgress(false)
       this.persistAuthMode({ mode: response.data.mode, token: response.data.token })
       syncAvatarCache(this.user)
       if (process.client) {
@@ -283,6 +304,8 @@ export const useAuthStore = defineStore('auth', {
 
       this.user = response.data.user
       this.isAuthenticated = true
+      this.isLoggingOut = false
+      markLogoutInProgress(false)
       this.persistAuthMode({ mode: response.data.mode, token: response.data.token })
       syncAvatarCache(this.user)
       if (process.client) {
@@ -293,6 +316,8 @@ export const useAuthStore = defineStore('auth', {
     async logout(): Promise<void> {
       const config = useRuntimeConfig()
       const baseURL = config.public.apiBase as string
+      this.isLoggingOut = true
+      markLogoutInProgress(true)
 
       try {
         const xsrfToken = this.getXsrfToken()
@@ -336,6 +361,8 @@ export const useAuthStore = defineStore('auth', {
         }
         this.user = response.data
         this.isAuthenticated = true
+        this.isLoggingOut = false
+        markLogoutInProgress(false)
         syncAvatarCache(this.user)
       }
       catch {
@@ -346,6 +373,8 @@ export const useAuthStore = defineStore('auth', {
     async forceLogout(): Promise<void> {
       const config = useRuntimeConfig()
       const baseURL = config.public.apiBase as string
+      this.isLoggingOut = true
+      markLogoutInProgress(true)
 
       try {
         const xsrfToken = this.getXsrfToken()

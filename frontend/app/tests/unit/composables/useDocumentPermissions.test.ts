@@ -3,6 +3,8 @@ import { UserRole, RequestStatus } from '../../../types/enums'
 import {
   canDownloadDocument,
   canDownloadCustoms,
+  canDownloadSignedFxDoc,
+  canViewConfirmationRequestPreview,
   canUploadDocument,
   isDocumentModificationLocked,
 } from '../../../composables/useDocumentPermissions'
@@ -100,6 +102,68 @@ describe('canDownloadCustoms', () => {
 
   it.each(CUSTOMS_DENIED)('returns false for denied role %s', (role) => {
     expect(canDownloadCustoms(role)).toBe(false)
+  })
+})
+
+// ─── canDownloadDocument — CONFIRMATION_REQUEST type ──────────────────────────
+
+describe('canDownloadDocument — CONFIRMATION_REQUEST type', () => {
+  it('returns true for all roles (same policy as REQUEST_DOC)', () => {
+    for (const role of Object.values(UserRole)) {
+      expect(canDownloadDocument(role, 'CONFIRMATION_REQUEST')).toBe(true)
+    }
+  })
+})
+
+// ─── canDownloadSignedFxDoc ───────────────────────────────────────────────────
+
+describe('canDownloadSignedFxDoc', () => {
+  const SIGNED_FX_ALLOWED = [
+    UserRole.DATA_ENTRY,
+    UserRole.BANK_REVIEWER,
+    UserRole.BANK_ADMIN,
+    UserRole.SUPPORT_COMMITTEE,
+    UserRole.EXECUTIVE_MEMBER,
+    UserRole.COMMITTEE_DIRECTOR,
+    UserRole.CBY_ADMIN,
+  ] as const
+
+  const SIGNED_FX_DENIED = [
+    UserRole.SWIFT_OFFICER,
+  ] as const
+
+  it.each(SIGNED_FX_ALLOWED)('returns true for allowed role %s', (role) => {
+    expect(canDownloadSignedFxDoc(role)).toBe(true)
+  })
+
+  it.each(SIGNED_FX_DENIED)('returns false for denied role %s', (role) => {
+    expect(canDownloadSignedFxDoc(role)).toBe(false)
+  })
+})
+
+// ─── canViewConfirmationRequestPreview ───────────────────────────────────────
+
+describe('canViewConfirmationRequestPreview', () => {
+  const PREVIEW_ALLOWED = [
+    UserRole.BANK_REVIEWER,
+    UserRole.COMMITTEE_DIRECTOR,
+    UserRole.CBY_ADMIN,
+  ] as const
+
+  const PREVIEW_DENIED = [
+    UserRole.DATA_ENTRY,
+    UserRole.BANK_ADMIN,
+    UserRole.SWIFT_OFFICER,
+    UserRole.SUPPORT_COMMITTEE,
+    UserRole.EXECUTIVE_MEMBER,
+  ] as const
+
+  it.each(PREVIEW_ALLOWED)('returns true for allowed role %s', (role) => {
+    expect(canViewConfirmationRequestPreview(role)).toBe(true)
+  })
+
+  it.each(PREVIEW_DENIED)('returns false for denied role %s', (role) => {
+    expect(canViewConfirmationRequestPreview(role)).toBe(false)
   })
 })
 

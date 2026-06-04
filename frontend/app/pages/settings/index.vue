@@ -602,7 +602,7 @@ function savePersonalNotifications() {
           <!-- ── Profile ──────────────────────────────────────────────────── -->
           <section v-if="activeSection === 'profile'" data-panel="profile" class="space-y-6">
             <div>
-              <h3 class="text-lg font-medium">الملف الشخصي</h3>
+              <h3 class="font-heading text-base font-semibold leading-6 text-foreground">الملف الشخصي</h3>
               <p class="text-sm text-muted-foreground">معلوماتك الشخصية المرتبطة بحسابك في المنصة.</p>
             </div>
             <Separator />
@@ -649,7 +649,7 @@ function savePersonalNotifications() {
           <!-- ── Appearance ───────────────────────────────────────────────── -->
           <section v-if="activeSection === 'appearance'" data-panel="appearance" class="space-y-6">
             <div>
-              <h3 class="text-lg font-medium">المظهر الشخصي</h3>
+              <h3 class="font-heading text-base font-semibold leading-6 text-foreground">المظهر الشخصي</h3>
               <p class="text-sm text-muted-foreground">تخصيص واجهة المنصة لتناسب تفضيلاتك — لا تؤثر على المستخدمين الآخرين.</p>
             </div>
             <Separator />
@@ -657,7 +657,7 @@ function savePersonalNotifications() {
             <!-- Sub-section: Theme mode -->
             <section class="space-y-4">
               <div>
-                <h4 class="text-sm font-medium">وضع الثيم</h4>
+                <h4 class="font-section text-sm font-semibold leading-5 text-foreground">وضع الثيم</h4>
                 <p class="mt-0.5 text-xs text-muted-foreground">اختر وضع عرض الواجهة المناسب لبيئة عملك.</p>
               </div>
               <div class="grid gap-3 sm:grid-cols-3">
@@ -721,7 +721,7 @@ function savePersonalNotifications() {
                   <div class="flex items-center gap-2 border-t border-border px-3 py-2">
                     <component :is="option.icon" class="h-4 w-4 shrink-0 text-muted-foreground" />
                     <div class="min-w-0">
-                      <p class="text-sm font-medium">{{ option.label }}</p>
+                      <p class="font-section text-sm font-semibold leading-5 text-foreground">{{ option.label }}</p>
                       <p class="truncate text-xs text-muted-foreground">{{ option.description }}</p>
                     </div>
                   </div>
@@ -734,7 +734,7 @@ function savePersonalNotifications() {
             <!-- Sub-section: Font -->
             <section class="space-y-4">
               <div>
-                <h4 class="text-sm font-medium">الخط</h4>
+                <h4 class="font-section text-sm font-semibold leading-5 text-foreground">الخط</h4>
                 <p class="mt-0.5 text-xs text-muted-foreground">الخط المستخدم في واجهتك الشخصية.</p>
               </div>
               <Popover v-model:open="fontPickerOpen">
@@ -794,7 +794,7 @@ function savePersonalNotifications() {
             <!-- Sub-section: Layout -->
             <section class="space-y-4">
               <div>
-                <h4 class="text-sm font-medium">تخطيط المحتوى</h4>
+                <h4 class="font-section text-sm font-semibold leading-5 text-foreground">تخطيط المحتوى</h4>
                 <p class="mt-0.5 text-xs text-muted-foreground">كيفية توزيع المحتوى الرئيسي على الشاشة.</p>
               </div>
               <div class="grid gap-3 sm:grid-cols-2">
@@ -835,7 +835,7 @@ function savePersonalNotifications() {
                   <div class="flex items-center gap-2 border-t border-border px-3 py-2">
                     <component :is="option.icon" class="h-4 w-4 shrink-0 text-muted-foreground" />
                     <div class="min-w-0">
-                      <p class="text-sm font-medium">{{ option.label }}</p>
+                      <p class="font-section text-sm font-semibold leading-5 text-foreground">{{ option.label }}</p>
                       <p class="truncate text-xs text-muted-foreground">{{ option.description }}</p>
                     </div>
                   </div>
@@ -848,7 +848,7 @@ function savePersonalNotifications() {
             <!-- Sub-section: Sidebar variant -->
             <section class="space-y-4">
               <div>
-                <h4 class="text-sm font-medium">نمط الشريط الجانبي</h4>
+                <h4 class="font-section text-sm font-semibold leading-5 text-foreground">نمط الشريط الجانبي</h4>
                 <p class="mt-0.5 text-xs text-muted-foreground">كيف يظهر الشريط الجانبي بالنسبة لمنطقة المحتوى.</p>
               </div>
               <div class="grid gap-3 sm:grid-cols-3">
@@ -896,7 +896,7 @@ function savePersonalNotifications() {
                   <div class="flex items-center gap-2 border-t border-border px-3 py-2">
                     <component :is="option.icon" class="h-4 w-4 shrink-0 text-muted-foreground" />
                     <div class="min-w-0">
-                      <p class="text-sm font-medium">{{ option.label }}</p>
+                      <p class="font-section text-sm font-semibold leading-5 text-foreground">{{ option.label }}</p>
                       <p class="truncate text-xs text-muted-foreground">{{ option.description }}</p>
                     </div>
                   </div>
@@ -909,7 +909,7 @@ function savePersonalNotifications() {
             <!-- Sub-section: Sidebar collapsible -->
             <section class="space-y-4">
               <div>
-                <h4 class="text-sm font-medium">سلوك طي الشريط الجانبي</h4>
+                <h4 class="font-section text-sm font-semibold leading-5 text-foreground">سلوك طي الشريط الجانبي</h4>
                 <p class="mt-0.5 text-xs text-muted-foreground">كيف يتصرف الشريط عند الضغط على زر الطي.</p>
               </div>
               <div class="grid gap-3 sm:grid-cols-3">
@@ -955,7 +955,7 @@ function savePersonalNotifications() {
                   <div class="flex items-center gap-2 border-t border-border px-3 py-2">
                     <component :is="option.icon" class="h-4 w-4 shrink-0 text-muted-foreground" />
                     <div class="min-w-0">
-                      <p class="text-sm font-medium">{{ option.label }}</p>
+                      <p class="font-section text-sm font-semibold leading-5 text-foreground">{{ option.label }}</p>
                       <p class="truncate text-xs text-muted-foreground">{{ option.description }}</p>
                     </div>
                   </div>
@@ -968,7 +968,7 @@ function savePersonalNotifications() {
             <!-- Sub-section: Radius -->
             <section class="space-y-4">
               <div>
-                <h4 class="text-sm font-medium">نصف قطر الحواف</h4>
+                <h4 class="font-section text-sm font-semibold leading-5 text-foreground">نصف قطر الحواف</h4>
                 <p class="mt-0.5 text-xs text-muted-foreground">درجة استدارة حواف المكونات كالأزرار والبطاقات.</p>
               </div>
               <div class="grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
@@ -990,7 +990,7 @@ function savePersonalNotifications() {
                     </span>
                   </div>
                   <div class="flex items-center gap-2 border-t border-border px-3 py-2">
-                    <span class="text-sm font-medium">{{ opt.label }}</span>
+                    <span class="font-section text-sm font-semibold leading-5 text-foreground">{{ opt.label }}</span>
                   </div>
                 </button>
               </div>
@@ -1001,7 +1001,7 @@ function savePersonalNotifications() {
             <!-- Sub-section: Density -->
             <section class="space-y-4">
               <div>
-                <h4 class="text-sm font-medium">كثافة العرض</h4>
+                <h4 class="font-section text-sm font-semibold leading-5 text-foreground">كثافة العرض</h4>
                 <p class="mt-0.5 text-xs text-muted-foreground">التباعد بين عناصر الواجهة.</p>
               </div>
               <div class="grid gap-3 sm:grid-cols-2">
@@ -1041,7 +1041,7 @@ function savePersonalNotifications() {
                   </div>
                   <div class="flex items-center gap-2 border-t border-border px-3 py-2">
                     <div class="min-w-0">
-                      <p class="text-sm font-medium">{{ opt.label }}</p>
+                      <p class="font-section text-sm font-semibold leading-5 text-foreground">{{ opt.label }}</p>
                       <p class="truncate text-xs text-muted-foreground">{{ opt.description }}</p>
                     </div>
                   </div>
@@ -1064,7 +1064,7 @@ function savePersonalNotifications() {
           <!-- ── Security ───────────────────────────────────────────────────── -->
           <section v-if="activeSection === 'security'" data-panel="security" class="space-y-6">
             <div>
-              <h3 class="text-lg font-medium">الأمان</h3>
+              <h3 class="font-heading text-base font-semibold leading-6 text-foreground">الأمان</h3>
               <p class="text-sm text-muted-foreground">إدارة كلمة المرور، المصادقة الثنائية، ورمز PIN.</p>
             </div>
             <Separator />
@@ -1072,7 +1072,7 @@ function savePersonalNotifications() {
             <!-- Password change -->
             <section class="space-y-4">
               <div>
-                <h4 class="text-sm font-medium">تغيير كلمة المرور</h4>
+                <h4 class="font-section text-sm font-semibold leading-5 text-foreground">تغيير كلمة المرور</h4>
                 <p class="mt-0.5 text-xs text-muted-foreground">يُنصح بتغيير كلمة المرور بانتظام لحماية حسابك.</p>
               </div>
               <div
@@ -1114,7 +1114,7 @@ function savePersonalNotifications() {
             <!-- MFA / Authenticator -->
             <section class="space-y-4">
               <div>
-                <h4 class="text-sm font-medium flex items-center gap-2">
+                <h4 class="font-section flex items-center gap-2 text-sm font-semibold leading-5 text-foreground">
                   <Shield class="h-4 w-4" />
                   تطبيق المصادقة الثنائية
                 </h4>
@@ -1151,7 +1151,7 @@ function savePersonalNotifications() {
             <!-- PIN -->
             <section class="space-y-4">
               <div>
-                <h4 class="text-sm font-medium flex items-center gap-2">
+                <h4 class="font-section flex items-center gap-2 text-sm font-semibold leading-5 text-foreground">
                   <KeyRound class="h-4 w-4" />
                   رمز PIN للدخول السريع
                 </h4>
@@ -1192,7 +1192,7 @@ function savePersonalNotifications() {
             <!-- Trusted Devices -->
             <section class="space-y-4">
               <div>
-                <h4 class="text-sm font-medium flex items-center gap-2">
+                <h4 class="font-section flex items-center gap-2 text-sm font-semibold leading-5 text-foreground">
                   <MonitorSmartphone class="h-4 w-4" />
                   الأجهزة الموثوقة
                 </h4>
@@ -1404,7 +1404,7 @@ function savePersonalNotifications() {
           <!-- ── Personal Notifications ────────────────────────────────────────────────── -->
           <section v-if="activeSection === 'notif'" data-panel="notifications" class="space-y-6">
             <div>
-              <h3 class="text-lg font-medium">إشعاراتي الشخصية</h3>
+              <h3 class="font-heading text-base font-semibold leading-6 text-foreground">إشعاراتي الشخصية</h3>
               <p class="text-sm text-muted-foreground">اختر الأحداث التي تريد تلقّي إشعار عنها.</p>
             </div>
             <Separator />
@@ -1415,7 +1415,7 @@ function savePersonalNotifications() {
                 class="flex items-start justify-between gap-4 rounded-lg border border-border p-4 transition-colors hover:bg-muted/30"
               >
                 <div class="flex flex-col gap-0.5">
-                  <p class="text-sm font-medium">{{ item.label }}</p>
+                  <p class="font-section text-sm font-semibold leading-5 text-foreground">{{ item.label }}</p>
                   <p class="text-xs text-muted-foreground">{{ item.description }}</p>
                 </div>
                 <Switch v-model="item.enabled" :data-testid="`notif-switch-${item.id}`" class="shrink-0" />

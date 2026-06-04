@@ -126,62 +126,62 @@ async function handleUpload(payload: { swiftReference: string; swiftFile: File; 
 
     <div class="grid gap-6 lg:grid-cols-[0.95fr_1.35fr]">
       <aside class="sticky top-4 h-fit rounded-2xl border border-border bg-background p-5">
-        <h2 class="mb-4 text-sm font-semibold">ملخص بيانات الطلب (مقفلة)</h2>
+        <h2 class="mb-4 font-heading text-base font-semibold leading-6 text-foreground">ملخص بيانات الطلب (مقفلة)</h2>
         <div class="space-y-3 text-sm">
           <div class="flex items-start gap-2">
             <Lock class="mt-0.5 h-4 w-4 text-muted-foreground" />
             <div>
-              <p class="text-xs text-muted-foreground">المرجع</p>
-              <p class="font-mono">{{ request.reference_number }}</p>
+              <p class="font-section text-xs font-medium leading-5 text-muted-foreground">المرجع</p>
+              <p class="font-mono text-sm leading-6 tabular-nums text-foreground">{{ request.reference_number }}</p>
             </div>
           </div>
           <div class="flex items-start gap-2">
             <Lock class="mt-0.5 h-4 w-4 text-muted-foreground" />
             <div>
-              <p class="text-xs text-muted-foreground">التاجر</p>
-              <p>{{ request.merchant?.name ?? '—' }}</p>
+              <p class="font-section text-xs font-medium leading-5 text-muted-foreground">التاجر</p>
+              <p class="text-sm leading-6 text-foreground">{{ request.merchant?.name ?? '—' }}</p>
             </div>
           </div>
           <div class="flex items-start gap-2">
             <Lock class="mt-0.5 h-4 w-4 text-muted-foreground" />
             <div>
-              <p class="text-xs text-muted-foreground">المورد</p>
-              <p>{{ request.supplier_name }}</p>
+              <p class="font-section text-xs font-medium leading-5 text-muted-foreground">المورد</p>
+              <p class="text-sm leading-6 text-foreground">{{ request.supplier_name }}</p>
             </div>
           </div>
           <div class="flex items-start gap-2">
             <Lock class="mt-0.5 h-4 w-4 text-muted-foreground" />
             <div>
-              <p class="text-xs text-muted-foreground">المبلغ</p>
-              <p class="font-mono">{{ request.amount.toLocaleString('en-US') }} {{ request.currency }}</p>
+              <p class="font-section text-xs font-medium leading-5 text-muted-foreground">المبلغ</p>
+              <p class="font-mono text-sm leading-6 tabular-nums text-foreground">{{ request.amount.toLocaleString('en-US') }} {{ request.currency }}</p>
             </div>
           </div>
           <div class="flex items-start gap-2">
             <Lock class="mt-0.5 h-4 w-4 text-muted-foreground" />
             <div>
-              <p class="text-xs text-muted-foreground">شروط الدفع</p>
-              <p>{{ request.payment_terms ?? '—' }}</p>
+              <p class="font-section text-xs font-medium leading-5 text-muted-foreground">شروط الدفع</p>
+              <p class="text-sm leading-6 text-foreground">{{ request.payment_terms ?? '—' }}</p>
             </div>
           </div>
           <div class="flex items-start gap-2">
             <Lock class="mt-0.5 h-4 w-4 text-muted-foreground" />
             <div>
-              <p class="text-xs text-muted-foreground">رقم/تاريخ الفاتورة</p>
-              <p>{{ request.invoice_number ?? '—' }} / {{ request.invoice_date ?? '—' }}</p>
+              <p class="font-section text-xs font-medium leading-5 text-muted-foreground">رقم/تاريخ الفاتورة</p>
+              <p class="text-sm leading-6 text-foreground">{{ request.invoice_number ?? '—' }} / {{ request.invoice_date ?? '—' }}</p>
             </div>
           </div>
           <div class="flex items-start gap-2">
             <Lock class="mt-0.5 h-4 w-4 text-muted-foreground" />
             <div>
-              <p class="text-xs text-muted-foreground">ميناء الوصول</p>
-              <p>{{ request.arrival_port ?? request.port_of_entry ?? '—' }}</p>
+              <p class="font-section text-xs font-medium leading-5 text-muted-foreground">ميناء الوصول</p>
+              <p class="text-sm leading-6 text-foreground">{{ request.arrival_port ?? request.port_of_entry ?? '—' }}</p>
             </div>
           </div>
           <div class="flex items-start gap-2">
             <Lock class="mt-0.5 h-4 w-4 text-muted-foreground" />
             <div>
-              <p class="text-xs text-muted-foreground">رقم بوليصة الشحن</p>
-              <p>{{ request.bl_number ?? '—' }}</p>
+              <p class="font-section text-xs font-medium leading-5 text-muted-foreground">رقم بوليصة الشحن</p>
+              <p class="text-sm leading-6 text-foreground">{{ request.bl_number ?? '—' }}</p>
             </div>
           </div>
         </div>
@@ -210,7 +210,7 @@ async function handleUpload(payload: { swiftReference: string; swiftFile: File; 
         />
 
         <div v-if="completed" class="rounded-xl border border-[var(--color-border-success)] bg-[var(--color-surface-success)] p-4">
-          <p class="text-sm font-semibold text-[var(--color-text-success)]">تم تسليم وثائق السويفت بنجاح</p>
+          <p class="font-section text-sm font-semibold leading-5 text-[var(--color-text-success)]">تم تسليم وثائق السويفت بنجاح</p>
           <Button class="mt-3" @click="router.push('/requests?tab=pending_swift')">
             العودة إلى الطابور
           </Button>
@@ -233,7 +233,7 @@ async function handleUpload(payload: { swiftReference: string; swiftFile: File; 
 
   <Card v-else class="border-0 p-8 text-center shadow">
     <Lock class="mx-auto h-10 w-10 text-muted-foreground" />
-    <h2 class="mt-4 text-lg font-bold">غير متاح حالياً</h2>
+    <h2 class="mt-4 font-heading text-base font-semibold leading-6 text-foreground">غير متاح حالياً</h2>
     <p class="mt-1 text-sm text-muted-foreground">{{ deniedMessage }}</p>
     <Button class="mt-4" variant="outline" @click="router.push('/requests')">
       العودة

@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { AlertCircle } from 'lucide-vue-next'
+import { AlertCircle, Eye } from 'lucide-vue-next'
 import { Skeleton } from '../ui/skeleton'
+import { ButtonGroup } from '../ui/button-group'
 import type { RequestDocument, CustomsDeclarationSummary } from '../../types/models'
 import { UserRole, RequestStatus } from '../../types/enums'
 import {
@@ -35,83 +36,46 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
+  view: [docId: number, title: string]
   download: [docId: number, filename: string]
+  'view-customs': [customsId: number, title: string]
   'download-customs': [customsId: number, filename: string]
   upload: [file: File]
 }>()
 
-// ── Stage → required/optional document types ──────────────────────────────────
+// ── Required document slots ───────────────────────────────────────────────────
+// These are the documents the bank's data-entry user attaches in the creation
+// wizard. Each maps to a persisted `document_sub_type` on the request document.
+// SWIFT / FX_REQUEST are added later by CBY and matched by `type`, not sub-type.
 
-type DocRequirement = { type: string; label: string; required: boolean }
-
-const STAGE_DOCS: Record<string, DocRequirement[]> = {
-  [RequestStatus.DRAFT]: [
-    { type: 'COMMERCIAL_INVOICE', label: 'فاتورة تجارية', required: true },
-    { type: 'PACKING_LIST', label: 'قائمة التعبئة', required: false },
-  ],
-  [RequestStatus.DRAFT_REJECTED_INTERNAL]: [
-    { type: 'COMMERCIAL_INVOICE', label: 'فاتورة تجارية', required: true },
-    { type: 'PACKING_LIST', label: 'قائمة التعبئة', required: false },
-  ],
-  [RequestStatus.SUBMITTED]: [
-    { type: 'COMMERCIAL_INVOICE', label: 'فاتورة تجارية', required: true },
-    { type: 'PACKING_LIST', label: 'قائمة التعبئة', required: false },
-  ],
-  [RequestStatus.BANK_REVIEW]: [
-    { type: 'COMMERCIAL_INVOICE', label: 'فاتورة تجارية', required: true },
-    { type: 'PACKING_LIST', label: 'قائمة التعبئة', required: false },
-  ],
-  [RequestStatus.BANK_APPROVED]: [
-    { type: 'COMMERCIAL_INVOICE', label: 'فاتورة تجارية', required: true },
-    { type: 'PACKING_LIST', label: 'قائمة التعبئة', required: false },
-    { type: 'SWIFT', label: 'مستند SWIFT', required: true },
-    { type: 'FX_REQUEST', label: 'مستند طلب المصارفة الخارجية', required: true },
-  ],
-  [RequestStatus.SUPPORT_REVIEW_PENDING]: [
-    { type: 'COMMERCIAL_INVOICE', label: 'فاتورة تجارية', required: true },
-    { type: 'PACKING_LIST', label: 'قائمة التعبئة', required: false },
-    { type: 'SWIFT', label: 'مستند SWIFT', required: true },
-    { type: 'FX_REQUEST', label: 'مستند طلب المصارفة الخارجية', required: true },
-  ],
-  [RequestStatus.SUPPORT_REVIEW_IN_PROGRESS]: [
-    { type: 'COMMERCIAL_INVOICE', label: 'فاتورة تجارية', required: true },
-    { type: 'PACKING_LIST', label: 'قائمة التعبئة', required: false },
-    { type: 'SWIFT', label: 'مستند SWIFT', required: true },
-    { type: 'FX_REQUEST', label: 'مستند طلب المصارفة الخارجية', required: true },
-  ],
-  [RequestStatus.SUPPORT_APPROVED]: [
-    { type: 'COMMERCIAL_INVOICE', label: 'فاتورة تجارية', required: true },
-    { type: 'PACKING_LIST', label: 'قائمة التعبئة', required: false },
-    { type: 'SWIFT', label: 'مستند SWIFT', required: true },
-    { type: 'FX_REQUEST', label: 'مستند طلب المصارفة الخارجية', required: true },
-  ],
-  [RequestStatus.SUPPORT_REJECTED]: [
-    { type: 'COMMERCIAL_INVOICE', label: 'فاتورة تجارية', required: true },
-    { type: 'PACKING_LIST', label: 'قائمة التعبئة', required: false },
-  ],
-  [RequestStatus.WAITING_FOR_SWIFT]: [
-    { type: 'COMMERCIAL_INVOICE', label: 'فاتورة تجارية', required: true },
-    { type: 'PACKING_LIST', label: 'قائمة التعبئة', required: false },
-    { type: 'SWIFT', label: 'مستند SWIFT', required: true },
-    { type: 'FX_REQUEST', label: 'مستند طلب المصارفة الخارجية', required: true },
-  ],
-  [RequestStatus.SWIFT_UPLOADED]: [
-    { type: 'COMMERCIAL_INVOICE', label: 'فاتورة تجارية', required: true },
-    { type: 'PACKING_LIST', label: 'قائمة التعبئة', required: false },
-    { type: 'SWIFT', label: 'مستند SWIFT', required: true },
-    { type: 'FX_REQUEST', label: 'مستند طلب المصارفة الخارجية', required: true },
-  ],
+type DocRequirement = {
+  // matched against document_sub_type (bank wizard docs) or type (CBY docs)
+  match: string
+  matchBy: 'sub_type' | 'type'
+  label: string
+  required: boolean
 }
 
-// All voting+ states share the same doc set
-const VOTING_AND_BEYOND_DOCS: DocRequirement[] = [
-  { type: 'COMMERCIAL_INVOICE', label: 'فاتورة تجارية', required: true },
-  { type: 'PACKING_LIST', label: 'قائمة التعبئة', required: false },
-  { type: 'SWIFT', label: 'مستند SWIFT', required: true },
-  { type: 'FX_REQUEST', label: 'مستند طلب المصارفة الخارجية', required: true },
+const BANK_WIZARD_DOCS: DocRequirement[] = [
+  { match: 'confirmation_request', matchBy: 'sub_type', label: 'طلب وثيقة التأكيد', required: true },
+  { match: 'proforma_invoice', matchBy: 'sub_type', label: 'الفاتورة الأولية (Proforma Invoice)', required: true },
+  { match: 'commercial_register', matchBy: 'sub_type', label: 'السجل التجاري', required: true },
+  { match: 'tax_card', matchBy: 'sub_type', label: 'البطاقة الضريبية', required: true },
 ]
 
-const VOTING_AND_BEYOND = new Set([
+const CBY_DOCS: DocRequirement[] = [
+  { match: 'SWIFT', matchBy: 'type', label: 'مستند SWIFT', required: true },
+  { match: 'FX_REQUEST', matchBy: 'type', label: 'مستند طلب المصارفة الخارجية', required: true },
+]
+
+// Statuses at/after BANK_APPROVED also surface the CBY-side documents.
+const CBY_STAGE_STATUSES = new Set([
+  RequestStatus.BANK_APPROVED,
+  RequestStatus.SUPPORT_REVIEW_PENDING,
+  RequestStatus.SUPPORT_REVIEW_IN_PROGRESS,
+  RequestStatus.SUPPORT_APPROVED,
+  RequestStatus.WAITING_FOR_SWIFT,
+  RequestStatus.SWIFT_UPLOADED,
   RequestStatus.WAITING_FOR_VOTING_OPEN,
   RequestStatus.EXECUTIVE_VOTING_OPEN,
   RequestStatus.EXECUTIVE_VOTING_CLOSED,
@@ -123,13 +87,34 @@ const VOTING_AND_BEYOND = new Set([
 ])
 
 function getStageDocs(status: RequestStatus): DocRequirement[] {
-  if (VOTING_AND_BEYOND.has(status)) return VOTING_AND_BEYOND_DOCS
-  return STAGE_DOCS[status] ?? []
+  // Bank wizard docs are always shown; CBY docs appear once the request leaves the bank.
+  return CBY_STAGE_STATUSES.has(status)
+    ? [...BANK_WIZARD_DOCS, ...CBY_DOCS]
+    : [...BANK_WIZARD_DOCS]
 }
 
 function uploadedAtMs(doc: RequestDocument): number {
   const ts = Date.parse(doc.uploaded_at ?? '')
   return Number.isNaN(ts) ? 0 : ts
+}
+
+/** Does this document fill the given requirement slot? */
+function docMatchesRequirement(doc: RequestDocument, req: DocRequirement): boolean {
+  if (req.matchBy === 'type') return doc.type === req.match
+
+  // confirmation_request: match by explicit sub_type OR legacy CONFIRMATION_REQUEST type
+  if (req.match === 'confirmation_request') {
+    return doc.document_sub_type === 'confirmation_request' || doc.type === 'CONFIRMATION_REQUEST'
+  }
+
+  // Exact sub_type match (new documents with sub_type persisted)
+  if (doc.document_sub_type) return doc.document_sub_type === req.match
+
+  // Fallback for legacy REQUEST_DOC documents uploaded before sub_type was introduced:
+  // any REQUEST_DOC without a sub_type can fill any wizard sub_type slot.
+  // buildChecklist's usedDocIds ensures each document fills at most one slot,
+  // so docs are assigned to slots greedily in upload order.
+  return doc.type === 'REQUEST_DOC'
 }
 
 // ── Checklist row type ────────────────────────────────────────────────────────
@@ -143,45 +128,34 @@ const checklist = computed((): ChecklistRow[] => {
   const stageDocs = getStageDocs(props.requestStatus)
   const rows: ChecklistRow[] = []
 
-  // Build a lookup: type → first matching uploaded doc
-  // REQUEST_DOC is the generic type stored by uploadRequestDocument(); it
-  // represents a commercial invoice uploaded by the bank's data-entry user.
-  const uploadedByType = new Map<string, RequestDocument>()
-  const extraDocs: RequestDocument[] = []
+  // For each requirement slot, pick the newest matching uploaded document.
+  // Any document that does not fill a slot becomes an "extra" row.
+  const usedDocIds = new Set<number>()
+  const slotDoc = new Map<string, RequestDocument>()
 
-  for (const doc of props.documents) {
-    const rawType = doc.type ?? 'REQUEST_DOC'
-    // Map the backend's generic REQUEST_DOC to the checklist's COMMERCIAL_INVOICE slot
-    const t = rawType === 'REQUEST_DOC' ? 'COMMERCIAL_INVOICE' : rawType
-    const isStagedType = stageDocs.some(r => r.type === t)
-    if (!isStagedType) {
-      extraDocs.push(doc)
-      continue
+  for (const req of stageDocs) {
+    let best: RequestDocument | null = null
+    for (const doc of props.documents) {
+      if (usedDocIds.has(doc.id)) continue
+      if (!docMatchesRequirement(doc, req)) continue
+      if (!best || uploadedAtMs(doc) >= uploadedAtMs(best)) best = doc
     }
-
-    const existing = uploadedByType.get(t)
-    if (!existing) {
-      uploadedByType.set(t, doc)
-      continue
-    }
-
-    if (uploadedAtMs(doc) >= uploadedAtMs(existing)) {
-      extraDocs.push(existing)
-      uploadedByType.set(t, doc)
-    }
-    else {
-      extraDocs.push(doc)
+    if (best) {
+      slotDoc.set(req.match, best)
+      usedDocIds.add(best.id)
     }
   }
 
   // Staged requirement rows
   for (const req of stageDocs) {
-    rows.push({ kind: 'staged', requirement: req, doc: uploadedByType.get(req.type) ?? null })
+    rows.push({ kind: 'staged', requirement: req, doc: slotDoc.get(req.match) ?? null })
   }
 
-  // Extra uploaded docs not matching any requirement
-  for (const doc of extraDocs) {
-    rows.push({ kind: 'extra', doc })
+  // Extra uploaded docs not matching any requirement slot
+  for (const doc of props.documents) {
+    if (!usedDocIds.has(doc.id)) {
+      rows.push({ kind: 'extra', doc })
+    }
   }
 
   // Customs declaration row
@@ -334,17 +308,28 @@ function formatDate(iso: string | null): string {
               <Badge :variant="row.requirement.required ? 'destructive' : 'secondary'" class="text-xs">
                 {{ row.requirement.required ? 'مطلوب' : 'اختياري' }}
               </Badge>
-              <Button
-                v-if="row.doc && canDownloadDocument(userRole, row.doc.type)"
-                variant="outline"
-                size="sm"
-                :disabled="downloadingIds.has(row.doc.id)"
-                class="h-7 text-xs px-3 whitespace-nowrap"
-                :aria-label="`تنزيل ${row.doc.original_filename}`"
-                @click="emit('download', row.doc.id, row.doc.original_filename)"
-              >
-                {{ downloadingIds.has(row.doc.id) ? 'جارٍ التنزيل…' : 'تنزيل' }}
-              </Button>
+              <ButtonGroup v-if="row.doc && canDownloadDocument(userRole, row.doc.type)">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  class="h-7 text-xs px-3 whitespace-nowrap"
+                  :aria-label="`عرض ${row.requirement.label}`"
+                  @click="emit('view', row.doc.id, row.requirement.label)"
+                >
+                  <Eye class="h-3.5 w-3.5 me-1" aria-hidden="true" />
+                  عرض
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  :disabled="downloadingIds.has(row.doc.id)"
+                  class="h-7 text-xs px-3 whitespace-nowrap"
+                  :aria-label="`تنزيل ${row.doc.original_filename}`"
+                  @click="emit('download', row.doc.id, row.doc.original_filename)"
+                >
+                  {{ downloadingIds.has(row.doc.id) ? 'جارٍ التنزيل…' : 'تنزيل' }}
+                </Button>
+              </ButtonGroup>
             </div>
           </li>
 
@@ -358,13 +343,12 @@ function formatDate(iso: string | null): string {
             <div class="flex flex-col gap-0.5 flex-1 min-w-0">
               <div class="flex items-center gap-1.5">
                 <span class="text-xs font-semibold text-foreground">
-                  {{
-                    row.doc.type === 'SWIFT'
+                  {{ row.doc.title
+                    || (row.doc.type === 'SWIFT'
                       ? 'مستند SWIFT'
                       : row.doc.type === 'FX_REQUEST'
                         ? 'مستند طلب المصارفة الخارجية'
-                        : 'مستند طلب'
-                  }}
+                        : 'مستند إضافي') }}
                 </span>
               </div>
               <span class="text-xs font-medium text-foreground break-all">{{ row.doc.original_filename }}</span>
@@ -380,17 +364,28 @@ function formatDate(iso: string | null): string {
             <div class="flex flex-col items-end gap-1.5 flex-shrink-0 pt-0.5">
               <Badge v-if="row.doc.type === 'SWIFT'" class="bg-[var(--info)]/15 text-[var(--info)] border-[var(--info)]/30 border text-xs">SWIFT</Badge>
               <Badge v-else-if="row.doc.type === 'FX_REQUEST'" class="bg-[var(--voting)]/10 text-[var(--voting)] border-[var(--voting)]/30 border text-xs">FX</Badge>
-              <Button
-                v-if="canDownloadDocument(userRole, row.doc.type)"
-                variant="outline"
-                size="sm"
-                :disabled="downloadingIds.has(row.doc.id)"
-                class="h-7 text-xs px-3 whitespace-nowrap"
-                :aria-label="`تنزيل ${row.doc.original_filename}`"
-                @click="emit('download', row.doc.id, row.doc.original_filename)"
-              >
-                {{ downloadingIds.has(row.doc.id) ? 'جارٍ التنزيل…' : 'تنزيل' }}
-              </Button>
+              <ButtonGroup v-if="canDownloadDocument(userRole, row.doc.type)">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  class="h-7 text-xs px-3 whitespace-nowrap"
+                  :aria-label="`عرض ${row.doc.title || row.doc.original_filename}`"
+                  @click="emit('view', row.doc.id, row.doc.title || row.doc.original_filename)"
+                >
+                  <Eye class="h-3.5 w-3.5 me-1" aria-hidden="true" />
+                  عرض
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  :disabled="downloadingIds.has(row.doc.id)"
+                  class="h-7 text-xs px-3 whitespace-nowrap"
+                  :aria-label="`تنزيل ${row.doc.original_filename}`"
+                  @click="emit('download', row.doc.id, row.doc.original_filename)"
+                >
+                  {{ downloadingIds.has(row.doc.id) ? 'جارٍ التنزيل…' : 'تنزيل' }}
+                </Button>
+              </ButtonGroup>
               <!-- Lock indicator for DATA_ENTRY on downstream docs (SWIFT / FX) -->
               <template v-else-if="userRole === UserRole.DATA_ENTRY && (row.doc.type === 'SWIFT' || row.doc.type === 'FX_REQUEST')">
                 <Tooltip>
@@ -431,17 +426,28 @@ function formatDate(iso: string | null): string {
               </span>
             </div>
             <div class="flex flex-col items-end gap-1.5 flex-shrink-0 pt-0.5">
-              <Button
-                v-if="canDownloadCustoms(userRole)"
-                variant="outline"
-                size="sm"
-                :disabled="customsDownloading"
-                class="h-7 text-xs px-3 whitespace-nowrap"
-                aria-label="تنزيل البيان الجمركي"
-                @click="emit('download-customs', row.customs.id, row.customs.declaration_number)"
-              >
-                {{ customsDownloading ? 'جارٍ التنزيل…' : 'تنزيل' }}
-              </Button>
+              <ButtonGroup v-if="canDownloadCustoms(userRole)">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  class="h-7 text-xs px-3 whitespace-nowrap"
+                  aria-label="عرض البيان الجمركي"
+                  @click="emit('view-customs', row.customs.id, 'البيان الجمركي')"
+                >
+                  <Eye class="h-3.5 w-3.5 me-1" aria-hidden="true" />
+                  عرض
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  :disabled="customsDownloading"
+                  class="h-7 text-xs px-3 whitespace-nowrap"
+                  aria-label="تنزيل البيان الجمركي"
+                  @click="emit('download-customs', row.customs.id, row.customs.declaration_number)"
+                >
+                  {{ customsDownloading ? 'جارٍ التنزيل…' : 'تنزيل' }}
+                </Button>
+              </ButtonGroup>
             </div>
           </li>
 

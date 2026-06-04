@@ -154,7 +154,7 @@ const bankRiskColumns: ColumnDef<CbyAdminBankRiskRow>[] = [
   { accessorKey: 'bank_name', header: 'البنك', cell: ({ row }) => h('span', { class: 'text-right text-xs font-medium py-2' }, row.original.bank_name) },
   { accessorKey: 'request_volume', header: 'الحجم', cell: ({ row }) => h('span', { class: 'text-right text-xs py-2' }, row.original.request_volume) },
   { accessorKey: 'approval_rate', header: 'معدل القبول', cell: ({ row }) => h('span', { class: 'text-right text-xs py-2' }, `${row.original.approval_rate}%`) },
-  { accessorKey: 'risk_score', header: 'المخاطر', cell: ({ row }) => h('span', { class: 'text-xs font-bold', style: { color: riskScoreColor(row.original.risk_score) } }, row.original.risk_score) },
+  { accessorKey: 'risk_score', header: 'المخاطر', cell: ({ row }) => h('span', { class: 'text-xs font-semibold leading-5 tabular-nums', style: { color: riskScoreColor(row.original.risk_score) } }, row.original.risk_score) },
   {
     id: 'alerts',
     header: 'تنبيهات',

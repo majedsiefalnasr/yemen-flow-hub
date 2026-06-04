@@ -34,6 +34,7 @@ const requestsStoreState = vi.hoisted(() => ({
   downloadingCustoms: false,
   history: [] as any[],
   documents: [] as any[],
+  listIds: [42] as number[],
   error: null as string | null,
   loadRequest: mockLoadRequest,
   loadDocuments: vi.fn(),
@@ -223,7 +224,7 @@ describe('request detail clone flow', () => {
     await wrapper.get('[data-testid="clone-confirm-btn"]').trigger('click')
     await flushPromises()
 
-    expect(wrapper.text()).toContain('تعذّر إنشاء النسخة. يرجى المحاولة مرة أخرى.')
+    expect(wrapper.text()).toContain('تعذر إنشاء النسخة الآن. أعد المحاولة بعد قليل.')
     expect(wrapper.find('[data-testid="alert-dialog"]').exists()).toBe(true)
   })
 })
@@ -274,5 +275,21 @@ describe('new.vue clone_of flow', () => {
     expect(wrapper.text()).toContain('ليس لديك صلاحية نسخ هذا الطلب.')
     expect(navigateToMock).not.toHaveBeenCalled()
     expect(wrapper.find('[data-testid="request-wizard"]').exists()).toBe(false)
+  })
+
+  it('mounts the complete request wizard for normal request creation', async () => {
+    const wrapper = mount(newRequestPage, {
+      global: {
+        stubs: {
+          RequestWizard: {
+            template: '<div data-testid="request-wizard">RequestWizard</div>',
+          },
+        },
+      },
+    })
+    await flushPromises()
+
+    expect(mockCloneRequest).not.toHaveBeenCalled()
+    expect(wrapper.find('[data-testid="request-wizard"]').exists()).toBe(true)
   })
 })

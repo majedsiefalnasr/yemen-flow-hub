@@ -506,7 +506,9 @@ const bankBreakdownColumns: ColumnDef<{
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 13px;
+  font-family: var(--font-section);
+  font-size: 0.8125rem;
+  line-height: 1.25rem;
   color: var(--muted-foreground);
   margin-bottom: 6px;
 }
@@ -529,14 +531,18 @@ const bankBreakdownColumns: ColumnDef<{
 }
 
 .page-title {
-  font-size: 28px;
+  font-family: var(--font-heading);
+  font-size: 1.75rem;
+  line-height: 2.25rem;
   font-weight: 600;
   color: var(--foreground);
   margin: 0;
 }
 
 .page-subtitle {
-  font-size: 14px;
+  max-width: 68ch;
+  font-size: 0.875rem;
+  line-height: 1.5rem;
   color: var(--muted-foreground);
   margin: 4px 0 0;
 }
@@ -552,7 +558,8 @@ const bankBreakdownColumns: ColumnDef<{
 .btn {
   padding: 8px 16px;
   border-radius: 16px;
-  font-size: 14px;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
   font-weight: 500;
   cursor: pointer;
   border: none;
@@ -565,7 +572,7 @@ const bankBreakdownColumns: ColumnDef<{
 .btn-primary { background: var(--primary); color: var(--primary-foreground); }
 .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--foreground); }
 .btn-ghost { background: transparent; color: var(--primary); }
-.btn-sm { padding: 4px 10px; font-size: 13px; }
+.btn-sm { padding: 4px 10px; font-size: 0.8125rem; line-height: 1.25rem; }
 .btn-icon { padding: 8px 12px; }
 
 /* ─── Filter Card ────────────────────────────────────────────── */
@@ -593,7 +600,10 @@ const bankBreakdownColumns: ColumnDef<{
 }
 
 .filter-label {
-  font-size: 13px;
+  font-family: var(--font-section);
+  font-size: 0.8125rem;
+  line-height: 1.25rem;
+  font-weight: 500;
   color: var(--muted-foreground);
 }
 
@@ -601,7 +611,8 @@ const bankBreakdownColumns: ColumnDef<{
   padding: 8px 10px;
   border: 1px solid var(--border);
   border-radius: 12px;
-  font-size: 14px;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
   color: var(--foreground);
   background: var(--background);
   min-width: 160px;
@@ -621,7 +632,10 @@ const bankBreakdownColumns: ColumnDef<{
 }
 
 .presets-label {
-  font-size: 13px;
+  font-family: var(--font-section);
+  font-size: 0.8125rem;
+  line-height: 1.25rem;
+  font-weight: 500;
   color: var(--muted-foreground);
 }
 
@@ -637,7 +651,8 @@ const bankBreakdownColumns: ColumnDef<{
   border: 1px solid var(--border);
   border-radius: 20px;
   padding: 4px 12px;
-  font-size: 13px;
+  font-size: 0.8125rem;
+  line-height: 1.25rem;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -646,7 +661,7 @@ const bankBreakdownColumns: ColumnDef<{
 
 .preset-delete {
   color: var(--destructive);
-  font-weight: bold;
+  font-weight: 600;
   line-height: 1;
   cursor: pointer;
   padding: 0 2px;
@@ -750,15 +765,19 @@ const bankBreakdownColumns: ColumnDef<{
 }
 
 .kpi-label {
-  font-size: 12px;
+  font-family: var(--font-section);
+  font-size: 0.75rem;
+  line-height: 1.25rem;
+  font-weight: 500;
   color: var(--muted-foreground);
 }
 
 .kpi-value {
-  font-size: 22px;
-  font-weight: 700;
+  font-size: 1.375rem;
+  font-weight: 600;
   color: var(--foreground);
-  line-height: 1.2;
+  line-height: 1.75rem;
+  font-variant-numeric: tabular-nums;
 }
 
 /* ─── Charts Layout ─────────────────────────────────────────── */
@@ -783,14 +802,18 @@ const bankBreakdownColumns: ColumnDef<{
 }
 
 .section-title {
-  font-size: 16px;
+  font-family: var(--font-heading);
+  font-size: 1rem;
+  line-height: 1.5rem;
   font-weight: 600;
   color: var(--foreground);
   margin: 0 0 4px;
 }
 
 .section-subtitle {
-  font-size: 13px;
+  max-width: 70ch;
+  font-size: 0.8125rem;
+  line-height: 1.25rem;
   color: var(--muted-foreground);
   margin: 0 0 16px;
 }
@@ -801,7 +824,8 @@ const bankBreakdownColumns: ColumnDef<{
   align-items: center;
   justify-content: center;
   color: var(--muted-foreground);
-  font-size: 14px;
+  font-size: 0.875rem;
+  line-height: 1.5rem;
 }
 
 /* ─── Bank bar chart (existing pattern) ─────────────────────── */
@@ -819,7 +843,10 @@ const bankBreakdownColumns: ColumnDef<{
 
 .bar-label {
   width: 120px;
-  font-size: 13px;
+  font-family: var(--font-section);
+  font-size: 0.8125rem;
+  line-height: 1.25rem;
+  font-weight: 500;
   color: var(--foreground);
   text-align: right;
   flex-shrink: 0;
@@ -847,7 +874,10 @@ const bankBreakdownColumns: ColumnDef<{
 
 .bar-value {
   width: 36px;
-  font-size: 13px;
+  font-size: 0.8125rem;
+  line-height: 1.25rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
   color: var(--muted-foreground);
   text-align: left;
   flex-shrink: 0;
@@ -864,11 +894,13 @@ const bankBreakdownColumns: ColumnDef<{
 .report-table td {
   padding: 10px 12px;
   border-bottom: 1px solid var(--border);
-  font-size: 14px;
+  font-size: 0.875rem;
+  line-height: 1.5rem;
 }
 
 .report-table th {
   background: var(--muted);
+  font-family: var(--font-section);
   font-weight: 600;
   color: var(--foreground);
 }

@@ -41,7 +41,7 @@ import { useAuthStore } from '@/stores/auth.store'
 import { useRequestsStore } from '@/stores/requests.store'
 import { useVotingStore } from '@/stores/voting.store'
 import { useClaimLifecycle } from '@/composables/useClaimLifecycle'
-import { canDownloadCustoms } from '@/composables/useDocumentPermissions'
+import { canDownloadCustoms, canDownloadSignedFxDoc, canViewConfirmationRequestPreview } from '@/composables/useDocumentPermissions'
 import { STATUS_LABELS, ROLE_LABELS } from '@/constants/workflow'
 import StatusBadge from '@/components/shared/StatusBadge.vue'
 import LockedBanner from '@/components/banners/LockedBanner.vue'
@@ -54,6 +54,7 @@ import VotingPendingBanner from '@/components/banners/VotingPendingBanner.vue'
 import VotedConfirmationBanner from '@/components/banners/VotedConfirmationBanner.vue'
 import ActionsPanel from '@/components/requests/ActionsPanel.vue'
 import DocumentChecklist from '@/components/requests/DocumentChecklist.vue'
+import PdfViewerDialog from '@/components/requests/PdfViewerDialog.vue'
 import FxConfirmationCard from '@/components/requests/FxConfirmationCard.vue'
 import VotingPanel from '@/components/voting/VotingPanel.vue'
 import WorkflowTimeline from '@/components/workflow/WorkflowTimeline.vue'
@@ -128,6 +129,8 @@ const EXECUTIVE_ROLES = new Set([UserRole.EXECUTIVE_MEMBER, UserRole.COMMITTEE_D
 const request = computed(() => requestsStore.currentRequest)
 const userRole = computed(() => auth.user?.role ?? UserRole.DATA_ENTRY)
 const canDownloadCustomsDeclaration = computed(() => canDownloadCustoms(userRole.value))
+const canViewPreview = computed(() => canViewConfirmationRequestPreview(userRole.value))
+const canDownloadSignedFx = computed(() => canDownloadSignedFxDoc(userRole.value))
 
 // Prev/next navigation within the loaded list page, with absolute pagination counts.
 const listIds = computed(() => requestsStore.listIds)
@@ -369,18 +372,21 @@ const showSwiftFxLockedRow = computed(() =>
   && (SWIFT_COMPLETED_STATUSES.has(request.value.status) || request.value.status === RequestStatus.EXECUTIVE_APPROVED),
 )
 
-// BANK_ADMIN sees a locked placeholder row for the external FX confirmation PDF
-// once the request reaches the FX/completion stage — download is denied by policy
 const FX_STAGE_STATUSES = new Set([
   RequestStatus.FX_CONFIRMATION_PENDING,
   RequestStatus.CUSTOMS_DECLARATION_ISSUED,
   RequestStatus.COMPLETED,
 ])
-const showBankAdminFxLockedRow = computed(() =>
-  userRole.value === UserRole.BANK_ADMIN
-  && !!request.value
-  && FX_STAGE_STATUSES.has(request.value.status),
+
+// Show the signed FX download row when: the signed doc exists AND the user can download it
+const showSignedFxDownloadRow = computed(() =>
+  !!request.value
+  && !!request.value.customs_declaration?.has_signed_fx_doc
+  && canDownloadSignedFx.value,
 )
+
+// Legacy locked placeholder — only for Swift officer who can never download it
+const showBankAdminFxLockedRow = computed(() => false)
 
 /** Chip shown to bank reviewer when a SUBMITTED request was previously support-returned */
 const supportReturnHint = computed(() => {
@@ -530,6 +536,54 @@ const fxFlowError = ref('')
 const fxFlowSuccess = ref(false)
 const fxGeneratingTemplate = ref(false)
 const fxCompleting = ref(false)
+
+const downloadingSignedFx = ref(false)
+const signedFxDownloadError = ref('')
+
+// ── Shared A4 PDF viewer dialog ────────────────────────────────────────────────
+const pdfDialogOpen = ref(false)
+const pdfDialogTitle = ref('')
+const pdfDialogDescription = ref('')
+const pdfDialogFilename = ref('document.pdf')
+const pdfDialogFetch = ref<() => Promise<Blob>>(() => Promise.reject(new Error('no source')))
+
+function openPdfDialog(opts: { title: string; description?: string; filename: string; fetch: () => Promise<Blob> }) {
+  pdfDialogTitle.value = opts.title
+  pdfDialogDescription.value = opts.description ?? ''
+  pdfDialogFilename.value = opts.filename
+  pdfDialogFetch.value = opts.fetch
+  pdfDialogOpen.value = true
+}
+
+function fetchDocumentBlob(docId: number): Promise<Blob> {
+  const config = useRuntimeConfig()
+  return $fetch<Blob>(`/api/documents/${docId}/download`, {
+    baseURL: config.public.apiBase as string,
+    responseType: 'blob',
+    credentials: 'include',
+  })
+}
+
+// View an uploaded request document inline in the A4 dialog
+function viewDocument(docId: number, title: string) {
+  const ref = request.value?.reference_number ?? String(id.value)
+  openPdfDialog({
+    title,
+    filename: `${ref}-${title}.pdf`,
+    fetch: () => fetchDocumentBlob(docId),
+  })
+}
+
+// View the customs declaration PDF inline
+function handleViewCustoms(customsId: number, title: string) {
+  const { downloadCustomsDeclaration } = useRequests()
+  const ref = request.value?.reference_number ?? String(id.value)
+  openPdfDialog({
+    title,
+    filename: `${ref}-${title}.pdf`,
+    fetch: () => downloadCustomsDeclaration(customsId),
+  })
+}
 
 // Claim lifecycle for SUPPORT_COMMITTEE
 const {
@@ -1022,6 +1076,62 @@ async function handleDownloadCustoms(customsId: number, declarationNumber: strin
   }
 }
 
+// Whether the request has finished the full workflow
+const isRequestCompleted = computed(() => request.value?.status === RequestStatus.COMPLETED)
+
+// Print → open the watermarked (unsigned) request-preview in the A4 dialog
+function openRequestPreviewDialog() {
+  if (!request.value) return
+  const { fetchConfirmationRequestPreview } = useRequests()
+  const reqId = request.value.id
+  const ref = request.value.reference_number ?? reqId
+  openPdfDialog({
+    title: 'طلب وثيقة التأكيد — نسخة للعرض والطباعة',
+    description: 'نسخة إلكترونية للعرض، غير موقّعة. للطباعة والمراجعة فقط.',
+    filename: `confirmation-request-preview-${ref}.pdf`,
+    fetch: () => fetchConfirmationRequestPreview(reqId),
+  })
+}
+
+// عرض وثيقة التأكيد → the signed FX confirmation, available only when COMPLETED
+function openSignedFxDialog() {
+  const declaration = request.value?.customs_declaration
+  if (!declaration) return
+  const { downloadSignedFxDoc } = useRequests()
+  const ref = request.value?.reference_number ?? declaration.id
+  openPdfDialog({
+    title: 'وثيقة تأكيد المصارفة الخارجية الموقّعة',
+    description: 'الوثيقة الرسمية الموقّعة والمختومة.',
+    filename: `fx-confirmation-signed-${ref}.pdf`,
+    fetch: () => downloadSignedFxDoc(declaration.id),
+  })
+}
+
+async function downloadSignedFxDocument() {
+  const declaration = request.value?.customs_declaration
+  if (!declaration) return
+  downloadingSignedFx.value = true
+  signedFxDownloadError.value = ''
+  try {
+    const { downloadSignedFxDoc } = useRequests()
+    const blob = await downloadSignedFxDoc(declaration.id)
+    const url = URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }))
+    const anchor = document.createElement('a')
+    anchor.href = url
+    anchor.download = `fx-confirmation-signed-${request.value?.reference_number ?? declaration.id}.pdf`
+    document.body.appendChild(anchor)
+    anchor.click()
+    anchor.remove()
+    setTimeout(() => URL.revokeObjectURL(url), 5_000)
+  }
+  catch {
+    signedFxDownloadError.value = 'تعذر تنزيل وثيقة المصارفة الموقّعة. أعد المحاولة.'
+  }
+  finally {
+    downloadingSignedFx.value = false
+  }
+}
+
 async function fileSha256(file: File): Promise<string> {
   const buffer = await file.arrayBuffer()
   const digest = await crypto.subtle.digest('SHA-256', buffer)
@@ -1356,11 +1466,28 @@ async function handleCloneConfirm() {
           >
             {{ requestsStore.downloadingCustoms ? 'جارٍ التنزيل…' : 'تنزيل البيان' }}
           </Button>
-          <Button variant="outline" size="sm" as-child data-testid="print-request-btn">
-            <NuxtLink :to="`/requests/${id}/print`" aria-label="طباعة الطلب">
-              <Printer class="h-3.5 w-3.5" />
-              طباعة
-            </NuxtLink>
+          <!-- Print → A4 dialog with the watermarked request-preview (unsigned) -->
+          <Button
+            v-if="canViewPreview"
+            variant="outline"
+            size="sm"
+            data-testid="print-request-btn"
+            @click="openRequestPreviewDialog"
+          >
+            <Printer class="h-3.5 w-3.5" />
+            طباعة
+          </Button>
+          <!-- Signed FX confirmation — enabled only once the request is COMPLETED -->
+          <Button
+            v-if="canDownloadSignedFx"
+            variant="outline"
+            size="sm"
+            :disabled="!isRequestCompleted"
+            :title="isRequestCompleted ? undefined : 'تتاح وثيقة تأكيد المصارفة بعد اكتمال مسار الطلب'"
+            data-testid="view-fx-confirmation-btn"
+            @click="openSignedFxDialog"
+          >
+            عرض وثيقة التأكيد
           </Button>
           <Button
             variant="outline"
@@ -1749,12 +1876,15 @@ async function handleCloneConfirm() {
                   :download-errors="downloadErrors"
                   :customs-downloading="requestsStore.downloadingCustoms"
                   :customs-download-error="checklistCustomsDownloadError"
+                  @view="viewDocument"
+                  @view-customs="handleViewCustoms"
                   @download="downloadDocument"
                   @download-customs="handleDownloadCustoms"
                   @upload="handleUploadDocument"
                 />
+                <!-- Locked row — Swift officer only (can never download FX doc) -->
                 <div
-                  v-if="showSwiftFxLockedRow || showBankAdminFxLockedRow"
+                  v-if="showSwiftFxLockedRow"
                   class="mt-3 flex items-center justify-between gap-2 rounded-lg border border-[var(--locked)]/35 bg-[color-mix(in_srgb,var(--locked)_8%,var(--background))] px-3 py-2 text-[color-mix(in_srgb,var(--locked)_65%,var(--foreground))]"
                   data-testid="fx-confirmation-locked-row"
                 >
@@ -1763,12 +1893,37 @@ async function handleCloneConfirm() {
                       <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
                       <path d="M7 11V7a5 5 0 0 1 10 0v4" />
                     </svg>
-                    <span class="text-xs font-medium">نموذج تأكيد المصارفة الخارجية</span>
+                    <span class="text-xs font-medium">وثيقة تأكيد المصارفة الخارجية الموقّعة</span>
                   </div>
-                  <span
-                    class="text-xs"
-                    :title="showBankAdminFxLockedRow ? 'تنزيل تأكيد المصارفة الخارجية مقيد لأدوار CBY المختصة فقط.' : 'مخصص لمدير اللجنة التنفيذية.'"
-                  >مقيّد</span>
+                  <span class="text-xs" title="مخصص لأدوار أخرى.">مقيّد</span>
+                </div>
+
+                <!-- Signed FX doc download row — visible to bank users + CBY once uploaded -->
+                <div
+                  v-if="showSignedFxDownloadRow"
+                  class="mt-3 flex items-center justify-between gap-2 rounded-lg border border-[var(--severity-green)]/30 bg-[var(--severity-green)]/5 px-3 py-2"
+                  data-testid="signed-fx-download-row"
+                >
+                  <div class="flex items-center gap-2 min-w-0">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="flex-shrink-0 text-[var(--severity-green)]" aria-hidden="true">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                      <polyline points="14 2 14 8 20 8" />
+                    </svg>
+                    <span class="text-xs font-medium truncate">وثيقة تأكيد المصارفة الخارجية الموقّعة</span>
+                  </div>
+                  <div class="flex items-center gap-2 flex-shrink-0">
+                    <p v-if="signedFxDownloadError" class="text-xs text-[var(--severity-red)]">{{ signedFxDownloadError }}</p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      class="h-7 text-xs px-3"
+                      :disabled="downloadingSignedFx"
+                      data-testid="download-signed-fx-btn"
+                      @click="downloadSignedFxDocument"
+                    >
+                      {{ downloadingSignedFx ? 'جارٍ التنزيل…' : 'تنزيل' }}
+                    </Button>
+                  </div>
                 </div>
               </div>
             </TabsContent>
@@ -2254,6 +2409,15 @@ async function handleCloneConfirm() {
         </div>
       </DialogContent>
     </Dialog>
+
+    <!-- Shared A4 PDF viewer (review / print / download) -->
+    <PdfViewerDialog
+      v-model:open="pdfDialogOpen"
+      :title="pdfDialogTitle"
+      :description="pdfDialogDescription"
+      :download-filename="pdfDialogFilename"
+      :fetch-pdf="pdfDialogFetch"
+    />
   </div>
 </template>
 

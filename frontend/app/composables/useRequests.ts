@@ -182,6 +182,86 @@ export function useRequests() {
     })
   }
 
+  async function downloadConfirmationRequestTemplate(
+    requestId: number,
+    checkboxFlags?: {
+      hasProformaInvoice?: boolean
+      hasCommercialRegister?: boolean
+      hasTaxCard?: boolean
+      hasExtraDocs?: boolean
+    },
+  ): Promise<Blob> {
+    const config = useRuntimeConfig()
+    const baseURL = config.public.apiBase as string
+    const params = new URLSearchParams()
+    if (checkboxFlags?.hasProformaInvoice !== undefined)
+      params.set('has_proforma_invoice', checkboxFlags.hasProformaInvoice ? '1' : '0')
+    if (checkboxFlags?.hasCommercialRegister !== undefined)
+      params.set('has_commercial_register', checkboxFlags.hasCommercialRegister ? '1' : '0')
+    if (checkboxFlags?.hasTaxCard !== undefined)
+      params.set('has_tax_card', checkboxFlags.hasTaxCard ? '1' : '0')
+    if (checkboxFlags?.hasExtraDocs !== undefined)
+      params.set('has_extra_docs', checkboxFlags.hasExtraDocs ? '1' : '0')
+    const qs = params.toString() ? `?${params.toString()}` : ''
+    return $fetch<Blob>(`/api/requests/${requestId}/confirmation-request-template${qs}`, {
+      method: 'GET',
+      baseURL,
+      credentials: 'include',
+      responseType: 'blob',
+    })
+  }
+
+  async function downloadFxConfirmationTemplate(requestId: number): Promise<Blob> {
+    const config = useRuntimeConfig()
+    const baseURL = config.public.apiBase as string
+    return $fetch<Blob>(`/api/requests/${requestId}/fx-confirmation-template`, {
+      method: 'GET',
+      baseURL,
+      credentials: 'include',
+      responseType: 'blob',
+    })
+  }
+
+  async function fetchConfirmationRequestPreview(requestId: number): Promise<Blob> {
+    const config = useRuntimeConfig()
+    const baseURL = config.public.apiBase as string
+    return $fetch<Blob>(`/api/requests/${requestId}/confirmation-request-preview`, {
+      method: 'GET',
+      baseURL,
+      credentials: 'include',
+      responseType: 'blob',
+    })
+  }
+
+  async function downloadSignedFxDoc(customsDeclarationId: number): Promise<Blob> {
+    const config = useRuntimeConfig()
+    const baseURL = config.public.apiBase as string
+    return $fetch<Blob>(`/api/customs/${customsDeclarationId}/signed-fx-download`, {
+      method: 'GET',
+      baseURL,
+      credentials: 'include',
+      responseType: 'blob',
+    })
+  }
+
+  async function uploadSignedFxConfirmation(requestId: number, file: File): Promise<void> {
+    const config = useRuntimeConfig()
+    const baseURL = config.public.apiBase as string
+    const form = new FormData()
+    form.append('signed_document', file)
+    const xsrfToken = getXsrfToken()
+    await $fetch(`/api/requests/${requestId}/fx-confirmation-upload`, {
+      method: 'POST',
+      baseURL,
+      credentials: 'include',
+      body: form,
+      headers: {
+        Accept: 'application/json',
+        ...(xsrfToken ? { 'X-XSRF-TOKEN': xsrfToken } : {}),
+      },
+    })
+  }
+
   async function fetchRequestHistory(id: number): Promise<RequestStageHistory[]> {
     const response = await get<ApiResponse<RequestStageHistory[]>>(`/api/requests/${id}/history`)
     return response.data
@@ -239,6 +319,11 @@ export function useRequests() {
     uploadSwift,
     generateCustomsDeclaration,
     downloadCustomsDeclaration,
+    downloadConfirmationRequestTemplate,
+    fetchConfirmationRequestPreview,
+    downloadFxConfirmationTemplate,
+    uploadSignedFxConfirmation,
+    downloadSignedFxDoc,
     fetchRequestHistory,
     fetchCustomsPreview,
     bankReturn,

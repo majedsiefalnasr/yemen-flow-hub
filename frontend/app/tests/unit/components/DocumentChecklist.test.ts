@@ -71,31 +71,30 @@ describe('DocumentChecklist formatFileSize', () => {
 
 // ─── typeLabel logic ──────────────────────────────────────────────────────────
 
-function typeLabel(docType: string | null): string {
-  if (docType === 'SWIFT') return 'مستند SWIFT'
-  if (docType === 'FX_REQUEST') return 'مستند طلب المصارفة الخارجية'
-  return 'مستند طلب'
+// Extra-row label: prefer the backend-provided title, fall back per type.
+function extraRowLabel(doc: { title?: string | null; type: string | null }): string {
+  if (doc.title) return doc.title
+  if (doc.type === 'SWIFT') return 'مستند SWIFT'
+  if (doc.type === 'FX_REQUEST') return 'مستند طلب المصارفة الخارجية'
+  return 'مستند إضافي'
 }
 
-describe('DocumentChecklist typeLabel', () => {
-  it('returns Arabic SWIFT label for SWIFT type', () => {
-    expect(typeLabel('SWIFT')).toBe('مستند SWIFT')
+describe('DocumentChecklist extra-row label', () => {
+  it('prefers the backend title when present', () => {
+    expect(extraRowLabel({ title: 'البطاقة الضريبية', type: 'REQUEST_DOC' })).toBe('البطاقة الضريبية')
   })
 
-  it('returns Arabic request label for REQUEST_DOC type', () => {
-    expect(typeLabel('REQUEST_DOC')).toBe('مستند طلب')
+  it('falls back to SWIFT label when no title', () => {
+    expect(extraRowLabel({ title: null, type: 'SWIFT' })).toBe('مستند SWIFT')
   })
 
-  it('returns Arabic FX request label for FX_REQUEST type', () => {
-    expect(typeLabel('FX_REQUEST')).toBe('مستند طلب المصارفة الخارجية')
+  it('falls back to FX request label when no title', () => {
+    expect(extraRowLabel({ title: null, type: 'FX_REQUEST' })).toBe('مستند طلب المصارفة الخارجية')
   })
 
-  it('returns Arabic request label for null type', () => {
-    expect(typeLabel(null)).toBe('مستند طلب')
-  })
-
-  it('returns Arabic request label for unknown type', () => {
-    expect(typeLabel('COMMERCIAL_INVOICE')).toBe('مستند طلب')
+  it('falls back to generic extra label for null/unknown type', () => {
+    expect(extraRowLabel({ title: null, type: null })).toBe('مستند إضافي')
+    expect(extraRowLabel({ title: null, type: 'REQUEST_DOC' })).toBe('مستند إضافي')
   })
 })
 
@@ -258,7 +257,7 @@ describe('DocumentChecklist upload section — showLockedNote', () => {
 
 // ─── missingRequiredCount summary badge logic (Story 7.4) ────────────────────
 
-type DocRequirement = { type: string; label: string; required: boolean }
+type DocRequirement = { match: string; matchBy: 'sub_type' | 'type'; label: string; required: boolean }
 type ChecklistRow =
   | { kind: 'staged'; requirement: DocRequirement; doc: RequestDocument | null }
   | { kind: 'extra'; doc: RequestDocument }
@@ -271,32 +270,32 @@ function missingRequiredCount(rows: ChecklistRow[]): number {
 describe('DocumentChecklist — missingRequiredCount summary badge', () => {
   it('returns 0 when all required docs are uploaded', () => {
     const rows: ChecklistRow[] = [
-      { kind: 'staged', requirement: { type: 'COMMERCIAL_INVOICE', label: 'فاتورة تجارية', required: true }, doc: makeDoc({ type: 'COMMERCIAL_INVOICE' }) },
-      { kind: 'staged', requirement: { type: 'PACKING_LIST', label: 'قائمة التعبئة', required: false }, doc: null },
+      { kind: 'staged', requirement: { match: 'proforma_invoice', matchBy: 'sub_type', label: 'الفاتورة الأولية', required: true }, doc: makeDoc({ document_sub_type: 'proforma_invoice' }) },
+      { kind: 'staged', requirement: { match: 'extra_docs', matchBy: 'sub_type', label: 'مستندات إضافية', required: false }, doc: null },
     ]
     expect(missingRequiredCount(rows)).toBe(0)
   })
 
   it('returns 1 when one required doc is missing', () => {
     const rows: ChecklistRow[] = [
-      { kind: 'staged', requirement: { type: 'COMMERCIAL_INVOICE', label: 'فاتورة تجارية', required: true }, doc: null },
-      { kind: 'staged', requirement: { type: 'PACKING_LIST', label: 'قائمة التعبئة', required: false }, doc: null },
+      { kind: 'staged', requirement: { match: 'proforma_invoice', matchBy: 'sub_type', label: 'الفاتورة الأولية', required: true }, doc: null },
+      { kind: 'staged', requirement: { match: 'extra_docs', matchBy: 'sub_type', label: 'مستندات إضافية', required: false }, doc: null },
     ]
     expect(missingRequiredCount(rows)).toBe(1)
   })
 
   it('returns 2 when two required docs are missing', () => {
     const rows: ChecklistRow[] = [
-      { kind: 'staged', requirement: { type: 'COMMERCIAL_INVOICE', label: 'فاتورة تجارية', required: true }, doc: null },
-      { kind: 'staged', requirement: { type: 'SWIFT', label: 'مستند SWIFT', required: true }, doc: null },
-      { kind: 'staged', requirement: { type: 'PACKING_LIST', label: 'قائمة التعبئة', required: false }, doc: null },
+      { kind: 'staged', requirement: { match: 'proforma_invoice', matchBy: 'sub_type', label: 'الفاتورة الأولية', required: true }, doc: null },
+      { kind: 'staged', requirement: { match: 'SWIFT', matchBy: 'type', label: 'مستند SWIFT', required: true }, doc: null },
+      { kind: 'staged', requirement: { match: 'extra_docs', matchBy: 'sub_type', label: 'مستندات إضافية', required: false }, doc: null },
     ]
     expect(missingRequiredCount(rows)).toBe(2)
   })
 
   it('does not count optional missing docs', () => {
     const rows: ChecklistRow[] = [
-      { kind: 'staged', requirement: { type: 'PACKING_LIST', label: 'قائمة التعبئة', required: false }, doc: null },
+      { kind: 'staged', requirement: { match: 'extra_docs', matchBy: 'sub_type', label: 'مستندات إضافية', required: false }, doc: null },
     ]
     expect(missingRequiredCount(rows)).toBe(0)
   })

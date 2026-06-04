@@ -147,7 +147,10 @@ onBeforeUnmount(clearPrintTimer)
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 14px;
+  font-family: var(--font-section);
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.25rem;
   color: var(--muted-foreground);
   text-decoration: none;
   padding: 6px 12px;
@@ -162,8 +165,10 @@ onBeforeUnmount(clearPrintTimer)
 
 .controls-title {
   flex: 1;
-  font-size: 15px;
+  font-family: var(--font-heading);
+  font-size: 0.9375rem;
   font-weight: 600;
+  line-height: 1.5rem;
   color: var(--foreground);
   margin: 0;
   text-align: right;
@@ -178,8 +183,10 @@ onBeforeUnmount(clearPrintTimer)
   color: var(--primary-foreground);
   border: none;
   border-radius: 16px;
-  font-size: 14px;
-  font-family: 'IBM Plex Sans Arabic', sans-serif;
+  font-family: var(--font-section);
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.25rem;
   cursor: pointer;
   transition: opacity 120ms ease;
   flex-shrink: 0;
@@ -200,7 +207,8 @@ onBeforeUnmount(clearPrintTimer)
   justify-content: center;
   align-items: center;
   padding: 64px;
-  font-size: 15px;
+  font-size: 0.9375rem;
+  line-height: 1.5rem;
   color: var(--muted-foreground);
 }
 

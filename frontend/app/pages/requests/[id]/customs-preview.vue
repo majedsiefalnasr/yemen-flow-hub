@@ -230,7 +230,7 @@ async function triggerDownload() {
   min-height: 100vh;
   background: var(--muted);
   padding: 24px;
-  font-family: 'IBM Plex Sans Arabic', 'Inter', sans-serif;
+  font-family: var(--font-sans);
   direction: rtl;
 }
 
@@ -256,7 +256,10 @@ async function triggerDownload() {
 .back-link {
   color: var(--primary);
   text-decoration: none;
-  font-size: 14px;
+  font-family: var(--font-section);
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.25rem;
 }
 
 .back-link:hover {
@@ -266,10 +269,12 @@ async function triggerDownload() {
 .btn {
   padding: 8px 16px;
   border-radius: 8px;
-  font-size: 14px;
+  font-family: var(--font-section);
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.25rem;
   cursor: pointer;
   border: none;
-  font-family: inherit;
 }
 
 .btn:disabled {
@@ -299,7 +304,8 @@ async function triggerDownload() {
 .download-error {
   width: 100%;
   color: var(--destructive);
-  font-size: 13px;
+  font-size: 0.8125rem;
+  line-height: 1.25rem;
   margin: 0;
 }
 
@@ -309,7 +315,10 @@ async function triggerDownload() {
   border: 1px solid color-mix(in srgb, var(--color-warning) 40%, transparent);
   border-radius: 8px;
   padding: 10px 16px;
-  font-size: 13px;
+  font-family: var(--font-section);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1.25rem;
   color: var(--color-warning);
   margin-bottom: 20px;
   text-align: center;
@@ -341,14 +350,17 @@ async function triggerDownload() {
 }
 
 .empty-title {
-  font-size: 18px;
+  font-family: var(--font-heading);
+  font-size: 1rem;
   font-weight: 600;
+  line-height: 1.5rem;
   color: var(--foreground);
   margin: 0;
 }
 
 .empty-body {
-  font-size: 14px;
+  font-size: 0.875rem;
+  line-height: 1.5rem;
   margin: 0;
 }
 
@@ -379,19 +391,27 @@ async function triggerDownload() {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
+  font-family: var(--font-section);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  line-height: 1rem;
   color: var(--muted-foreground);
 }
 
 .decl-title {
-  font-size: 22px;
-  font-weight: 700;
+  font-family: var(--font-heading);
+  font-size: 1.375rem;
+  font-weight: 600;
+  line-height: 1.75rem;
   color: var(--foreground);
   margin: 6px 0 4px;
 }
 
 .decl-subtitle {
-  font-size: 14px;
+  font-family: var(--font-section);
+  font-size: 0.875rem;
+  line-height: 1.5rem;
   color: var(--muted-foreground);
   margin: 0;
 }
@@ -403,7 +423,8 @@ async function triggerDownload() {
 
 .decl-meta p {
   margin: 4px 0;
-  font-size: 14px;
+  font-size: 0.875rem;
+  line-height: 1.5rem;
   color: var(--foreground);
 }
 
@@ -412,7 +433,8 @@ async function triggerDownload() {
   width: 100%;
   border-collapse: collapse;
   margin-bottom: 16px;
-  font-size: 14px;
+  font-size: 0.875rem;
+  line-height: 1.5rem;
 }
 
 .decl-table th,
@@ -426,6 +448,7 @@ async function triggerDownload() {
 .decl-table th {
   background: var(--muted);
   width: 30%;
+  font-family: var(--font-section);
   font-weight: 600;
   color: var(--foreground);
 }
@@ -440,7 +463,7 @@ async function triggerDownload() {
   padding: 12px 16px;
   margin: 16px 0;
   background: var(--card);
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--foreground);
   line-height: 1.6;
   border-radius: 4px;
@@ -457,7 +480,8 @@ async function triggerDownload() {
 .signature-block {
   flex: 1;
   text-align: center;
-  font-size: 13px;
+  font-size: 0.8125rem;
+  line-height: 1.25rem;
   color: var(--foreground);
 }
 
@@ -466,6 +490,7 @@ async function triggerDownload() {
 }
 
 .signature-name {
+  font-family: var(--font-section);
   font-weight: 600;
 }
 

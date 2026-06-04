@@ -405,6 +405,10 @@ export function useRequestWizard() {
           if (key === 'confirmation_request') {
             form.append('confirmation_request', '1')
           }
+          else {
+            // Persist the wizard slot so the checklist shows the right document title
+            form.append('sub_type', key)
+          }
           const xsrfToken = getXsrfToken()
           await $fetch(`/api/documents/upload`, {
             method: 'POST',

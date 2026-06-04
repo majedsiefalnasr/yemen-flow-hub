@@ -234,7 +234,7 @@ function stepIconClass(state: string): string {
                 </StepperTitle>
               </div>
             </TooltipTrigger>
-            <TooltipContent side="end" class="text-xs">
+            <TooltipContent side="left" class="text-xs">
               <p :class="stepDescription(state).class">{{ stepDescription(state).label }}</p>
             </TooltipContent>
           </Tooltip>

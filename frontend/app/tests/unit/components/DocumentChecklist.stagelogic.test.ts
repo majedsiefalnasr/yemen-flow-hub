@@ -1,6 +1,10 @@
 /**
- * DocumentChecklist — stage-docs mapping and checklist merge logic (Story 6.6).
+ * DocumentChecklist — stage-docs mapping and checklist merge logic.
  * Pure logic tests, no component mounting.
+ *
+ * The checklist is built from the request's real wizard document slots (matched by
+ * persisted `document_sub_type`) plus the CBY-side SWIFT / FX documents (matched by
+ * `type`). This mirrors the logic in DocumentChecklist.vue.
  */
 import { describe, it, expect } from 'vitest'
 import { RequestStatus } from '../../../types/enums'
@@ -8,68 +12,32 @@ import type { RequestDocument } from '../../../types/models'
 
 // ── Mirror of component logic ─────────────────────────────────────────────────
 
-type DocRequirement = { type: string; label: string; required: boolean }
-
-const STAGE_DOCS: Record<string, DocRequirement[]> = {
-  [RequestStatus.DRAFT]: [
-    { type: 'COMMERCIAL_INVOICE', label: 'فاتورة تجارية', required: true },
-    { type: 'PACKING_LIST', label: 'قائمة التعبئة', required: false },
-  ],
-  [RequestStatus.DRAFT_REJECTED_INTERNAL]: [
-    { type: 'COMMERCIAL_INVOICE', label: 'فاتورة تجارية', required: true },
-    { type: 'PACKING_LIST', label: 'قائمة التعبئة', required: false },
-  ],
-  [RequestStatus.SUBMITTED]: [
-    { type: 'COMMERCIAL_INVOICE', label: 'فاتورة تجارية', required: true },
-    { type: 'PACKING_LIST', label: 'قائمة التعبئة', required: false },
-  ],
-  [RequestStatus.BANK_REVIEW]: [
-    { type: 'COMMERCIAL_INVOICE', label: 'فاتورة تجارية', required: true },
-    { type: 'PACKING_LIST', label: 'قائمة التعبئة', required: false },
-  ],
-  [RequestStatus.BANK_APPROVED]: [
-    { type: 'COMMERCIAL_INVOICE', label: 'فاتورة تجارية', required: true },
-    { type: 'PACKING_LIST', label: 'قائمة التعبئة', required: false },
-    { type: 'SWIFT', label: 'مستند SWIFT', required: true },
-  ],
-  [RequestStatus.SUPPORT_REVIEW_PENDING]: [
-    { type: 'COMMERCIAL_INVOICE', label: 'فاتورة تجارية', required: true },
-    { type: 'PACKING_LIST', label: 'قائمة التعبئة', required: false },
-    { type: 'SWIFT', label: 'مستند SWIFT', required: true },
-  ],
-  [RequestStatus.SUPPORT_REVIEW_IN_PROGRESS]: [
-    { type: 'COMMERCIAL_INVOICE', label: 'فاتورة تجارية', required: true },
-    { type: 'PACKING_LIST', label: 'قائمة التعبئة', required: false },
-    { type: 'SWIFT', label: 'مستند SWIFT', required: true },
-  ],
-  [RequestStatus.SUPPORT_APPROVED]: [
-    { type: 'COMMERCIAL_INVOICE', label: 'فاتورة تجارية', required: true },
-    { type: 'PACKING_LIST', label: 'قائمة التعبئة', required: false },
-    { type: 'SWIFT', label: 'مستند SWIFT', required: true },
-  ],
-  [RequestStatus.SUPPORT_REJECTED]: [
-    { type: 'COMMERCIAL_INVOICE', label: 'فاتورة تجارية', required: true },
-    { type: 'PACKING_LIST', label: 'قائمة التعبئة', required: false },
-  ],
-  [RequestStatus.WAITING_FOR_SWIFT]: [
-    { type: 'COMMERCIAL_INVOICE', label: 'فاتورة تجارية', required: true },
-    { type: 'PACKING_LIST', label: 'قائمة التعبئة', required: false },
-    { type: 'SWIFT', label: 'مستند SWIFT', required: true },
-  ],
-  [RequestStatus.SWIFT_UPLOADED]: [
-    { type: 'COMMERCIAL_INVOICE', label: 'فاتورة تجارية', required: true },
-    { type: 'PACKING_LIST', label: 'قائمة التعبئة', required: false },
-    { type: 'SWIFT', label: 'مستند SWIFT', required: true },
-  ],
+type DocRequirement = {
+  match: string
+  matchBy: 'sub_type' | 'type'
+  label: string
+  required: boolean
 }
 
-const VOTING_AND_BEYOND_DOCS: DocRequirement[] = [
-  { type: 'COMMERCIAL_INVOICE', label: 'فاتورة تجارية', required: true },
-  { type: 'PACKING_LIST', label: 'قائمة التعبئة', required: false },
-  { type: 'SWIFT', label: 'مستند SWIFT', required: true },
+const BANK_WIZARD_DOCS: DocRequirement[] = [
+  { match: 'confirmation_request', matchBy: 'sub_type', label: 'طلب وثيقة التأكيد', required: true },
+  { match: 'proforma_invoice', matchBy: 'sub_type', label: 'الفاتورة الأولية (Proforma Invoice)', required: true },
+  { match: 'commercial_register', matchBy: 'sub_type', label: 'السجل التجاري', required: true },
+  { match: 'tax_card', matchBy: 'sub_type', label: 'البطاقة الضريبية', required: true },
 ]
 
-const VOTING_AND_BEYOND = new Set([
+const CBY_DOCS: DocRequirement[] = [
+  { match: 'SWIFT', matchBy: 'type', label: 'مستند SWIFT', required: true },
+  { match: 'FX_REQUEST', matchBy: 'type', label: 'مستند طلب المصارفة الخارجية', required: true },
+]
+
+const CBY_STAGE_STATUSES = new Set([
+  RequestStatus.BANK_APPROVED,
+  RequestStatus.SUPPORT_REVIEW_PENDING,
+  RequestStatus.SUPPORT_REVIEW_IN_PROGRESS,
+  RequestStatus.SUPPORT_APPROVED,
+  RequestStatus.WAITING_FOR_SWIFT,
+  RequestStatus.SWIFT_UPLOADED,
   RequestStatus.WAITING_FOR_VOTING_OPEN,
   RequestStatus.EXECUTIVE_VOTING_OPEN,
   RequestStatus.EXECUTIVE_VOTING_CLOSED,
@@ -81,15 +49,28 @@ const VOTING_AND_BEYOND = new Set([
 ])
 
 function getStageDocs(status: RequestStatus): DocRequirement[] {
-  if (VOTING_AND_BEYOND.has(status)) return VOTING_AND_BEYOND_DOCS
-  return STAGE_DOCS[status] ?? []
+  return CBY_STAGE_STATUSES.has(status)
+    ? [...BANK_WIZARD_DOCS, ...CBY_DOCS]
+    : [...BANK_WIZARD_DOCS]
 }
 
-function makeDoc(type: string, overrides: Partial<RequestDocument> = {}): RequestDocument {
+function docMatchesRequirement(doc: RequestDocument, req: DocRequirement): boolean {
+  if (req.matchBy === 'type') return doc.type === req.match
+  if (req.match === 'confirmation_request') {
+    return doc.document_sub_type === 'confirmation_request' || doc.type === 'CONFIRMATION_REQUEST'
+  }
+  if (doc.document_sub_type) return doc.document_sub_type === req.match
+  // Legacy fallback: REQUEST_DOC without sub_type fills any wizard slot (greedy, in order)
+  return doc.type === 'REQUEST_DOC'
+}
+
+function makeDoc(overrides: Partial<RequestDocument> = {}): RequestDocument {
   return {
     id: 1,
-    type,
-    original_filename: `${type.toLowerCase()}.pdf`,
+    type: 'REQUEST_DOC',
+    document_sub_type: null,
+    title: null,
+    original_filename: 'doc.pdf',
     mime_type: 'application/pdf',
     size_bytes: 102400,
     checksum: 'abc',
@@ -109,43 +90,33 @@ function buildChecklist(status: RequestStatus, documents: RequestDocument[]): Ch
   const stageDocs = getStageDocs(status)
   const rows: ChecklistRow[] = []
 
-  const uploadedByType = new Map<string, RequestDocument>()
-  const extraDocs: RequestDocument[] = []
+  const usedDocIds = new Set<number>()
+  const slotDoc = new Map<string, RequestDocument>()
 
   function uploadedAtMs(doc: RequestDocument): number {
     const ts = Date.parse(doc.uploaded_at ?? '')
     return Number.isNaN(ts) ? 0 : ts
   }
 
-  for (const doc of documents) {
-    const t = doc.type ?? 'REQUEST_DOC'
-    const isStagedType = stageDocs.some(r => r.type === t)
-    if (!isStagedType) {
-      extraDocs.push(doc)
-      continue
+  for (const req of stageDocs) {
+    let best: RequestDocument | null = null
+    for (const doc of documents) {
+      if (usedDocIds.has(doc.id)) continue
+      if (!docMatchesRequirement(doc, req)) continue
+      if (!best || uploadedAtMs(doc) >= uploadedAtMs(best)) best = doc
     }
-
-    const existing = uploadedByType.get(t)
-    if (!existing) {
-      uploadedByType.set(t, doc)
-      continue
-    }
-
-    if (uploadedAtMs(doc) >= uploadedAtMs(existing)) {
-      extraDocs.push(existing)
-      uploadedByType.set(t, doc)
-    }
-    else {
-      extraDocs.push(doc)
+    if (best) {
+      slotDoc.set(req.match, best)
+      usedDocIds.add(best.id)
     }
   }
 
   for (const req of stageDocs) {
-    rows.push({ kind: 'staged', requirement: req, doc: uploadedByType.get(req.type) ?? null })
+    rows.push({ kind: 'staged', requirement: req, doc: slotDoc.get(req.match) ?? null })
   }
 
-  for (const doc of extraDocs) {
-    rows.push({ kind: 'extra', doc })
+  for (const doc of documents) {
+    if (!usedDocIds.has(doc.id)) rows.push({ kind: 'extra', doc })
   }
 
   return rows
@@ -154,163 +125,134 @@ function buildChecklist(status: RequestStatus, documents: RequestDocument[]): Ch
 // ── Stage docs mapping ────────────────────────────────────────────────────────
 
 describe('DocumentChecklist — getStageDocs', () => {
-  it('DRAFT returns 2 entries: COMMERCIAL_INVOICE (required) + PACKING_LIST (optional)', () => {
+  it('DRAFT returns the 4 bank wizard slots, all required', () => {
     const docs = getStageDocs(RequestStatus.DRAFT)
-    expect(docs).toHaveLength(2)
-    expect(docs[0]).toMatchObject({ type: 'COMMERCIAL_INVOICE', required: true })
-    expect(docs[1]).toMatchObject({ type: 'PACKING_LIST', required: false })
+    expect(docs).toHaveLength(4)
+    expect(docs.map(d => d.match)).toEqual([
+      'confirmation_request', 'proforma_invoice', 'commercial_register', 'tax_card',
+    ])
+    expect(docs.every(d => d.required)).toBe(true)
   })
 
-  it('SUBMITTED returns same 2 entries as DRAFT', () => {
+  it('SUBMITTED returns the same 4 bank slots as DRAFT', () => {
     const docs = getStageDocs(RequestStatus.SUBMITTED)
-    expect(docs).toHaveLength(2)
-    expect(docs.map(d => d.type)).toEqual(['COMMERCIAL_INVOICE', 'PACKING_LIST'])
+    expect(docs.map(d => d.match)).toEqual([
+      'confirmation_request', 'proforma_invoice', 'commercial_register', 'tax_card',
+    ])
   })
 
-  it('BANK_APPROVED adds SWIFT as required (3 entries)', () => {
+  it('does NOT include قائمة التعبئة / PACKING_LIST anywhere', () => {
+    for (const status of Object.values(RequestStatus)) {
+      const docs = getStageDocs(status)
+      expect(docs.some(d => d.label.includes('التعبئة'))).toBe(false)
+      expect(docs.some(d => d.match === 'PACKING_LIST')).toBe(false)
+    }
+  })
+
+  it('BANK_APPROVED adds SWIFT + FX_REQUEST (6 entries)', () => {
     const docs = getStageDocs(RequestStatus.BANK_APPROVED)
-    expect(docs).toHaveLength(3)
-    const swift = docs.find(d => d.type === 'SWIFT')
-    expect(swift).toBeDefined()
-    expect(swift!.required).toBe(true)
+    expect(docs).toHaveLength(6)
+    expect(docs.find(d => d.match === 'SWIFT')?.required).toBe(true)
+    expect(docs.find(d => d.match === 'FX_REQUEST')?.required).toBe(true)
   })
 
   it('WAITING_FOR_SWIFT includes SWIFT as required', () => {
-    const docs = getStageDocs(RequestStatus.WAITING_FOR_SWIFT)
-    const swift = docs.find(d => d.type === 'SWIFT')
-    expect(swift?.required).toBe(true)
+    expect(getStageDocs(RequestStatus.WAITING_FOR_SWIFT).find(d => d.match === 'SWIFT')?.required).toBe(true)
   })
 
-  it('SWIFT_UPLOADED includes SWIFT as required', () => {
-    const docs = getStageDocs(RequestStatus.SWIFT_UPLOADED)
-    expect(docs.find(d => d.type === 'SWIFT')).toBeDefined()
-  })
-
-  it('SUPPORT_REVIEW_PENDING includes SWIFT as required', () => {
-    const docs = getStageDocs(RequestStatus.SUPPORT_REVIEW_PENDING)
-    expect(docs.find(d => d.type === 'SWIFT')?.required).toBe(true)
-  })
-
-  it('SUPPORT_REVIEW_IN_PROGRESS includes SWIFT as required', () => {
-    const docs = getStageDocs(RequestStatus.SUPPORT_REVIEW_IN_PROGRESS)
-    expect(docs.find(d => d.type === 'SWIFT')?.required).toBe(true)
-  })
-
-  it('SUPPORT_APPROVED includes SWIFT as required', () => {
-    const docs = getStageDocs(RequestStatus.SUPPORT_APPROVED)
-    expect(docs.find(d => d.type === 'SWIFT')?.required).toBe(true)
-  })
-
-  it('SUPPORT_REJECTED does not include SWIFT requirement', () => {
+  it('SUPPORT_REJECTED stays at the 4 bank slots (no CBY docs)', () => {
     const docs = getStageDocs(RequestStatus.SUPPORT_REJECTED)
-    expect(docs.find(d => d.type === 'SWIFT')).toBeUndefined()
+    expect(docs).toHaveLength(4)
+    expect(docs.find(d => d.match === 'SWIFT')).toBeUndefined()
   })
 
-  it('EXECUTIVE_VOTING_OPEN returns voting-and-beyond set (3 entries)', () => {
-    const docs = getStageDocs(RequestStatus.EXECUTIVE_VOTING_OPEN)
-    expect(docs).toHaveLength(3)
-    expect(docs.map(d => d.type)).toEqual(['COMMERCIAL_INVOICE', 'PACKING_LIST', 'SWIFT'])
+  it('EXECUTIVE_VOTING_OPEN returns all 6 entries', () => {
+    expect(getStageDocs(RequestStatus.EXECUTIVE_VOTING_OPEN)).toHaveLength(6)
   })
 
-  it('COMPLETED returns voting-and-beyond set', () => {
-    const docs = getStageDocs(RequestStatus.COMPLETED)
-    expect(docs).toHaveLength(3)
-  })
-
-  it('EXECUTIVE_REJECTED returns voting-and-beyond set', () => {
-    const docs = getStageDocs(RequestStatus.EXECUTIVE_REJECTED)
-    expect(docs).toHaveLength(3)
+  it('COMPLETED returns all 6 entries', () => {
+    expect(getStageDocs(RequestStatus.COMPLETED)).toHaveLength(6)
   })
 })
 
 // ── Checklist merge logic ─────────────────────────────────────────────────────
 
 describe('DocumentChecklist — buildChecklist merge logic', () => {
-  it('uploaded doc matched to staged requirement row', () => {
-    const docs = [makeDoc('COMMERCIAL_INVOICE', { id: 1 })]
+  it('proforma_invoice sub_type fills the proforma slot', () => {
+    const docs = [makeDoc({ id: 1, document_sub_type: 'proforma_invoice' })]
     const rows = buildChecklist(RequestStatus.DRAFT, docs)
-    const staged = rows.find(r => r.kind === 'staged' && r.requirement.type === 'COMMERCIAL_INVOICE') as { kind: 'staged'; requirement: DocRequirement; doc: RequestDocument | null }
-    expect(staged).toBeDefined()
-    expect(staged.doc).not.toBeNull()
-    expect(staged.doc!.id).toBe(1)
+    const slot = rows.find(r => r.kind === 'staged' && r.requirement.match === 'proforma_invoice') as Extract<ChecklistRow, { kind: 'staged' }>
+    expect(slot.doc?.id).toBe(1)
+  })
+
+  it('confirmation_request matches by CONFIRMATION_REQUEST type as well', () => {
+    const docs = [makeDoc({ id: 7, type: 'CONFIRMATION_REQUEST', document_sub_type: null })]
+    const rows = buildChecklist(RequestStatus.DRAFT, docs)
+    const slot = rows.find(r => r.kind === 'staged' && r.requirement.match === 'confirmation_request') as Extract<ChecklistRow, { kind: 'staged' }>
+    expect(slot.doc?.id).toBe(7)
   })
 
   it('missing required doc shows as staged row with null doc', () => {
     const rows = buildChecklist(RequestStatus.DRAFT, [])
-    const invoice = rows.find(r => r.kind === 'staged' && r.requirement.type === 'COMMERCIAL_INVOICE') as { kind: 'staged'; requirement: DocRequirement; doc: RequestDocument | null }
-    expect(invoice).toBeDefined()
-    expect(invoice.doc).toBeNull()
+    const slot = rows.find(r => r.kind === 'staged' && r.requirement.match === 'tax_card') as Extract<ChecklistRow, { kind: 'staged' }>
+    expect(slot.doc).toBeNull()
   })
 
-  it('unrecognized doc type becomes extra row', () => {
-    const docs = [makeDoc('CERTIFICATE_OF_ORIGIN', { id: 99 })]
+  it('a document with no recognized sub_type becomes an extra row', () => {
+    const docs = [makeDoc({ id: 99, document_sub_type: 'extra_docs' })]
     const rows = buildChecklist(RequestStatus.DRAFT, docs)
-    const extra = rows.find(r => r.kind === 'extra') as { kind: 'extra'; doc: RequestDocument }
-    expect(extra).toBeDefined()
+    const extra = rows.find(r => r.kind === 'extra') as Extract<ChecklistRow, { kind: 'extra' }>
     expect(extra.doc.id).toBe(99)
   })
 
-  it('DRAFT stage produces 2 staged rows + 0 extras when no docs uploaded', () => {
-    const rows = buildChecklist(RequestStatus.DRAFT, [])
-    const staged = rows.filter(r => r.kind === 'staged')
-    const extra = rows.filter(r => r.kind === 'extra')
-    expect(staged).toHaveLength(2)
-    expect(extra).toHaveLength(0)
+  it('legacy REQUEST_DOC without sub_type fills wizard slots in order', () => {
+    // Simulates documents uploaded before sub_type was introduced
+    const docs = [
+      makeDoc({ id: 10, type: 'CONFIRMATION_REQUEST', document_sub_type: null }),
+      makeDoc({ id: 11, type: 'REQUEST_DOC', document_sub_type: null }),
+      makeDoc({ id: 12, type: 'REQUEST_DOC', document_sub_type: null }),
+      makeDoc({ id: 13, type: 'REQUEST_DOC', document_sub_type: null }),
+    ]
+    const rows = buildChecklist(RequestStatus.DRAFT, docs)
+    const staged = rows.filter(r => r.kind === 'staged') as Array<Extract<ChecklistRow, { kind: 'staged' }>>
+    // confirmation_request filled by CONFIRMATION_REQUEST type
+    expect(staged.find(r => r.requirement.match === 'confirmation_request')?.doc?.id).toBe(10)
+    // remaining REQUEST_DOC docs fill the 3 sub-type slots in order
+    expect(staged.filter(r => r.doc !== null)).toHaveLength(4)
+    // no extras — all docs consumed by slots
+    expect(rows.filter(r => r.kind === 'extra')).toHaveLength(0)
   })
 
-  it('BANK_APPROVED stage produces 3 staged rows when all uploaded', () => {
+  it('DRAFT produces 4 staged rows + 0 extras when no docs uploaded', () => {
+    const rows = buildChecklist(RequestStatus.DRAFT, [])
+    expect(rows.filter(r => r.kind === 'staged')).toHaveLength(4)
+    expect(rows.filter(r => r.kind === 'extra')).toHaveLength(0)
+  })
+
+  it('BANK_APPROVED with all docs uploaded fills all 6 slots', () => {
     const docs = [
-      makeDoc('COMMERCIAL_INVOICE', { id: 1 }),
-      makeDoc('PACKING_LIST', { id: 2 }),
-      makeDoc('SWIFT', { id: 3 }),
+      makeDoc({ id: 1, type: 'CONFIRMATION_REQUEST' }),
+      makeDoc({ id: 2, document_sub_type: 'proforma_invoice' }),
+      makeDoc({ id: 3, document_sub_type: 'commercial_register' }),
+      makeDoc({ id: 4, document_sub_type: 'tax_card' }),
+      makeDoc({ id: 5, type: 'SWIFT' }),
+      makeDoc({ id: 6, type: 'FX_REQUEST' }),
     ]
     const rows = buildChecklist(RequestStatus.BANK_APPROVED, docs)
-    const staged = rows.filter(r => r.kind === 'staged') as Array<{ kind: 'staged'; requirement: DocRequirement; doc: RequestDocument | null }>
-    expect(staged).toHaveLength(3)
+    const staged = rows.filter(r => r.kind === 'staged') as Array<Extract<ChecklistRow, { kind: 'staged' }>>
+    expect(staged).toHaveLength(6)
     expect(staged.every(r => r.doc !== null)).toBe(true)
   })
 
-  it('REQUEST_DOC type treated as extra (not a stage requirement type)', () => {
-    const docs = [makeDoc('REQUEST_DOC', { id: 5 })]
-    const rows = buildChecklist(RequestStatus.DRAFT, docs)
-    const extra = rows.filter(r => r.kind === 'extra')
-    expect(extra).toHaveLength(1)
-  })
-
-  it('duplicate type: latest upload wins staged row, older becomes extra', () => {
+  it('duplicate sub_type: latest upload wins the slot, older becomes extra', () => {
     const docs = [
-      makeDoc('COMMERCIAL_INVOICE', { id: 1, uploaded_at: '2026-05-19T10:00:00.000Z' }),
-      makeDoc('COMMERCIAL_INVOICE', { id: 2, uploaded_at: '2026-05-19T12:00:00.000Z' }),
+      makeDoc({ id: 1, document_sub_type: 'tax_card', uploaded_at: '2026-05-19T10:00:00.000Z' }),
+      makeDoc({ id: 2, document_sub_type: 'tax_card', uploaded_at: '2026-05-19T12:00:00.000Z' }),
     ]
     const rows = buildChecklist(RequestStatus.DRAFT, docs)
-    const staged = rows.filter(r => r.kind === 'staged' && r.requirement.type === 'COMMERCIAL_INVOICE') as Array<{ kind: 'staged'; requirement: DocRequirement; doc: RequestDocument | null }>
-    const extras = rows.filter(r => r.kind === 'extra')
-    expect(staged[0]?.doc?.id).toBe(2)
-    expect((extras[0] as { kind: 'extra'; doc: RequestDocument })?.doc?.id).toBe(1)
-  })
-})
-
-// ── Upload status badge logic ─────────────────────────────────────────────────
-
-describe('DocumentChecklist — upload status badge label', () => {
-  function badgeLabel(doc: RequestDocument | null, required: boolean): string {
-    if (doc) return 'مرفوع'
-    return required ? 'مطلوب' : 'غير مطلوب'
-  }
-
-  it('uploaded doc → "مرفوع"', () => {
-    expect(badgeLabel(makeDoc('COMMERCIAL_INVOICE'), true)).toBe('مرفوع')
-  })
-
-  it('missing required doc → "مطلوب"', () => {
-    expect(badgeLabel(null, true)).toBe('مطلوب')
-  })
-
-  it('missing optional doc → "غير مطلوب"', () => {
-    expect(badgeLabel(null, false)).toBe('غير مطلوب')
-  })
-
-  it('uploaded optional doc → "مرفوع" (not optional label)', () => {
-    expect(badgeLabel(makeDoc('PACKING_LIST'), false)).toBe('مرفوع')
+    const slot = rows.find(r => r.kind === 'staged' && r.requirement.match === 'tax_card') as Extract<ChecklistRow, { kind: 'staged' }>
+    const extra = rows.find(r => r.kind === 'extra') as Extract<ChecklistRow, { kind: 'extra' }>
+    expect(slot.doc?.id).toBe(2)
+    expect(extra.doc.id).toBe(1)
   })
 })

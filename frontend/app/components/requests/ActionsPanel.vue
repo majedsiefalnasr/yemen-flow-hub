@@ -890,17 +890,17 @@ defineExpose({ triggerPrimaryAction })
             <div class="space-y-4">
               <!-- Current tally snapshot -->
               <div v-if="votingStore.votingDetail?.tally" class="grid grid-cols-3 gap-2 text-center">
-                <div class="bg-[var(--severity-green)]/10 p-2 rounded">
-                  <p class="text-sm font-medium text-[var(--severity-green)]">موافق</p>
-                  <p class="text-lg font-bold text-[var(--severity-green)]">{{ votingStore.votingDetail.tally.approve_count }}</p>
+                <div class="rounded p-2 bg-[var(--severity-green)]/10">
+                  <p class="font-section text-xs font-medium leading-5 text-[var(--severity-green)]">موافق</p>
+                  <p class="text-xl font-semibold leading-7 tabular-nums text-[var(--severity-green)]">{{ votingStore.votingDetail.tally.approve_count }}</p>
                 </div>
-                <div class="bg-[var(--severity-red)]/10 p-2 rounded">
-                  <p class="text-sm font-medium text-[var(--severity-red)]">رافض</p>
-                  <p class="text-lg font-bold text-[var(--severity-red)]">{{ votingStore.votingDetail.tally.reject_count }}</p>
+                <div class="rounded p-2 bg-[var(--severity-red)]/10">
+                  <p class="font-section text-xs font-medium leading-5 text-[var(--severity-red)]">رافض</p>
+                  <p class="text-xl font-semibold leading-7 tabular-nums text-[var(--severity-red)]">{{ votingStore.votingDetail.tally.reject_count }}</p>
                 </div>
-                <div class="bg-muted p-2 rounded">
-                  <p class="text-sm font-medium text-foreground">ممتنع</p>
-                  <p class="text-lg font-bold text-muted-foreground">{{ votingStore.votingDetail.tally.abstain_count + votingStore.votingDetail.tally.auto_abstain_count }}</p>
+                <div class="rounded bg-muted p-2">
+                  <p class="font-section text-xs font-medium leading-5 text-foreground">ممتنع</p>
+                  <p class="text-xl font-semibold leading-7 tabular-nums text-muted-foreground">{{ votingStore.votingDetail.tally.abstain_count + votingStore.votingDetail.tally.auto_abstain_count }}</p>
                 </div>
               </div>
 
@@ -973,17 +973,17 @@ defineExpose({ triggerPrimaryAction })
     <!-- COMMITTEE_DIRECTOR: EXECUTIVE_VOTING_CLOSED → finalize decision -->
     <template v-if="showDirectorVotingActions && request.status === RequestStatus.EXECUTIVE_VOTING_CLOSED">
       <div v-if="votingStore.votingDetail?.tally" class="grid grid-cols-3 gap-2 text-center">
-        <div class="bg-[var(--color-surface-success)] p-2 rounded">
-          <p class="text-sm font-medium text-[var(--color-text-success)]">موافق</p>
-          <p class="text-lg font-bold text-[var(--color-text-success)]">{{ votingStore.votingDetail.tally.approve_count }}</p>
+        <div class="rounded p-2 bg-[var(--color-surface-success)]">
+          <p class="font-section text-xs font-medium leading-5 text-[var(--color-text-success)]">موافق</p>
+          <p class="text-xl font-semibold leading-7 tabular-nums text-[var(--color-text-success)]">{{ votingStore.votingDetail.tally.approve_count }}</p>
         </div>
-        <div class="bg-[var(--color-surface-error)] p-2 rounded">
-          <p class="text-sm font-medium text-[var(--color-text-error)]">رافض</p>
-          <p class="text-lg font-bold text-[var(--color-text-error)]">{{ votingStore.votingDetail.tally.reject_count }}</p>
+        <div class="rounded p-2 bg-[var(--color-surface-error)]">
+          <p class="font-section text-xs font-medium leading-5 text-[var(--color-text-error)]">رافض</p>
+          <p class="text-xl font-semibold leading-7 tabular-nums text-[var(--color-text-error)]">{{ votingStore.votingDetail.tally.reject_count }}</p>
         </div>
-        <div class="bg-muted p-2 rounded">
-          <p class="text-sm font-medium text-foreground">ممتنع</p>
-          <p class="text-lg font-bold text-muted-foreground">{{ votingStore.votingDetail.tally.abstain_count + votingStore.votingDetail.tally.auto_abstain_count }}</p>
+        <div class="rounded bg-muted p-2">
+          <p class="font-section text-xs font-medium leading-5 text-foreground">ممتنع</p>
+          <p class="text-xl font-semibold leading-7 tabular-nums text-muted-foreground">{{ votingStore.votingDetail.tally.abstain_count + votingStore.votingDetail.tally.auto_abstain_count }}</p>
         </div>
       </div>
       <AlertDialog>

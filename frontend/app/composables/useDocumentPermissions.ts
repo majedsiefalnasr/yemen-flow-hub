@@ -28,9 +28,40 @@ export function canDownloadDocument(role: UserRole, docType: string | null): boo
 
 /**
  * Returns true if the given role is permitted to download a customs declaration PDF.
- * Mirrors CustomsDeclarationPolicy on the backend.
+ * Mirrors CustomsDeclarationPolicy::download() on the backend.
  */
 export function canDownloadCustoms(role: UserRole): boolean {
+  return (
+    role === UserRole.BANK_REVIEWER
+    || role === UserRole.COMMITTEE_DIRECTOR
+    || role === UserRole.CBY_ADMIN
+  )
+}
+
+/**
+ * Returns true if the given role is permitted to download the signed FX confirmation
+ * document uploaded by the director. Bank users of the same bank get the deliverable
+ * they submitted the request for.
+ * Mirrors CustomsDeclarationPolicy::downloadSignedFx() on the backend.
+ */
+export function canDownloadSignedFxDoc(role: UserRole): boolean {
+  return (
+    role === UserRole.DATA_ENTRY
+    || role === UserRole.BANK_REVIEWER
+    || role === UserRole.BANK_ADMIN
+    || role === UserRole.SUPPORT_COMMITTEE
+    || role === UserRole.EXECUTIVE_MEMBER
+    || role === UserRole.COMMITTEE_DIRECTOR
+    || role === UserRole.CBY_ADMIN
+  )
+}
+
+/**
+ * Returns true if the given role is permitted to view the watermarked
+ * confirmation-request preview PDF.
+ * Mirrors DocumentTemplateController::confirmationRequestPreview() on the backend.
+ */
+export function canViewConfirmationRequestPreview(role: UserRole): boolean {
   return (
     role === UserRole.BANK_REVIEWER
     || role === UserRole.COMMITTEE_DIRECTOR

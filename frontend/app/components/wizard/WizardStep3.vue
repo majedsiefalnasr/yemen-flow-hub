@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useRequestWizard } from '../../composables/useRequestWizard'
 import type { WizardStep3Data, WizardUploadState, WizardDocumentKey } from '../../composables/useRequestWizard'
 import { Button } from '../ui/button'
@@ -40,20 +40,34 @@ interface DocumentZone {
   required: boolean
 }
 
-const ZONES: DocumentZone[] = [
-  { key: 'confirmation_request', title: 'طلب وثيقة التأكيد (مختوم)', description: 'حمّل النموذج أدناه، اطبعه، اختمه بختم البنك ثم ارفعه هنا', required: true },
+// Supporting docs shown first — user must attach these before downloading the template
+const SUPPORTING_ZONES: DocumentZone[] = [
   { key: 'proforma_invoice', title: 'الفاتورة الأولية (Proforma Invoice)', description: 'الفاتورة الأولية من المورد الخارجي', required: true },
   { key: 'commercial_register', title: 'السجل التجاري', description: 'نسخة سارية من السجل التجاري للمستورد', required: true },
   { key: 'tax_card', title: 'البطاقة الضريبية', description: 'نسخة سارية من البطاقة الضريبية للمستورد', required: true },
   { key: 'extra_docs', title: 'مستندات إضافية', description: 'أي مستندات داعمة أخرى (اختياري)', required: false },
 ]
 
+// Kept for external validation — full ordered list including confirmation_request
+const ZONES: DocumentZone[] = [
+  ...SUPPORTING_ZONES,
+  { key: 'confirmation_request', title: 'طلب وثيقة التأكيد (مختوم)', description: 'حمّل النموذج أدناه، اطبعه، اختمه بختم البنك ثم ارفعه هنا', required: true },
+]
+
 const ALLOWED_EXTENSIONS = ['.pdf']
+const MAX_SIZE_MB = 10
 
 const dragOver = ref<WizardDocumentKey | null>(null)
 const fileErrors = ref<Partial<Record<WizardDocumentKey, string>>>({})
 const { downloadConfirmationRequestTemplate } = useRequests()
 const { validateUploadFile } = useRequestWizard()
+
+// All required supporting docs must be attached before the template download is enabled
+const requiredDocsReady = computed(() =>
+  !!props.modelValue.proforma_invoice &&
+  !!props.modelValue.commercial_register &&
+  !!props.modelValue.tax_card,
+)
 
 function formatBytes(bytes: number): string {
   const mb = bytes / (1024 * 1024)
@@ -116,7 +130,12 @@ function getFileError(key: WizardDocumentKey): string | null {
 async function downloadTemplate(): Promise<void> {
   if (!props.requestId) return
   try {
-    const blob = await downloadConfirmationRequestTemplate(props.requestId)
+    const blob = await downloadConfirmationRequestTemplate(props.requestId, {
+      hasProformaInvoice: !!props.modelValue.proforma_invoice,
+      hasCommercialRegister: !!props.modelValue.commercial_register,
+      hasTaxCard: !!props.modelValue.tax_card,
+      hasExtraDocs: !!props.modelValue.extra_docs,
+    })
     const url = URL.createObjectURL(blob)
     const anchor = document.createElement('a')
     anchor.href = url
@@ -139,48 +158,20 @@ function triggerInput(key: WizardDocumentKey): void {
 
 <template>
   <div class="flex flex-col gap-0">
-    <!-- Template download banner -->
-    <Card class="mb-6 border border-[var(--severity-amber)]/30 bg-[var(--severity-amber)]/5 shadow-sm p-0" role="note">
-      <CardContent class="flex flex-col gap-3 p-4 sm:flex-row sm:items-start">
-        <FileDown class="h-5 w-5 flex-shrink-0 text-[var(--severity-amber)] mt-0.5" aria-hidden="true" />
-        <div class="flex-1 min-w-0">
-          <p class="font-semibold text-foreground text-sm">نموذج طلب وثيقة التأكيد: مطلوب قبل الإرسال</p>
-          <p class="text-xs text-muted-foreground mt-1">
-            حمّل النموذج المعبأ بالبيانات، اطبعه واختمه بختم البنك، ثم ارفعه في الحقل المخصص أدناه.
-          </p>
-        </div>
-        <Button
-          size="sm"
-          variant="outline"
-          class="flex-shrink-0"
-          :disabled="!templateReady || !requestId"
-          :aria-busy="!templateReady"
-          @click="downloadTemplate"
-        >
-          <FileDown class="h-4 w-4 me-1" />
-          <span v-if="!templateReady">جارٍ التحضير...</span>
-          <span v-else>تحميل النموذج</span>
-        </Button>
-      </CardContent>
-    </Card>
 
+    <!-- ① Supporting document zones (proforma, commercial register, tax card, extras) -->
     <FieldGroup>
-      <template v-for="(zone, idx) in ZONES" :key="zone.key">
+      <template v-for="(zone, idx) in SUPPORTING_ZONES" :key="zone.key">
         <FieldSet>
           <div class="flex items-center gap-2 mb-1">
             <FieldLegend class="mb-0">{{ zone.title }}</FieldLegend>
-            <Badge
-              :variant="zone.required ? 'destructive' : 'secondary'"
-              class="text-xs rounded-full"
-            >
+            <Badge :variant="zone.required ? 'destructive' : 'secondary'" class="text-xs rounded-full">
               {{ zone.required ? 'إلزامي' : 'اختياري' }}
             </Badge>
           </div>
           <FieldDescription>{{ zone.description }}</FieldDescription>
-
           <FieldGroup>
             <Field>
-              <!-- Hidden file input -->
               <input
                 :id="`file-input-${zone.key}`"
                 type="file"
@@ -189,16 +180,15 @@ function triggerInput(key: WizardDocumentKey): void {
                 :disabled="loading"
                 @change="onInputChange(zone.key, $event)"
               />
-
               <!-- Drop zone -->
               <div
+                v-if="!getZoneFile(zone.key) && uploadState[zone.key] !== 'uploading'"
                 class="relative rounded-xl border-2 border-dashed transition-all duration-150 cursor-pointer select-none"
                 :class="{
                   'border-primary bg-primary/5': dragOver === zone.key,
-                  'border-[var(--severity-green)] bg-[var(--severity-green)]/5': getZoneFile(zone.key) && !getFileError(zone.key),
                   'border-destructive bg-destructive/5': getFileError(zone.key),
-                  'border-border bg-muted/30 hover:border-primary/50 hover:bg-primary/5': !loading && !dragOver && !getZoneFile(zone.key) && !getFileError(zone.key),
-                  'border-border bg-muted/30 opacity-60': loading && !dragOver && !getZoneFile(zone.key) && !getFileError(zone.key),
+                  'border-border bg-muted/30 hover:border-primary/50 hover:bg-primary/5': !loading && dragOver !== zone.key && !getFileError(zone.key),
+                  'border-border bg-muted/30 opacity-60': loading,
                 }"
                 role="button"
                 :aria-label="`رفع ${zone.title}`"
@@ -212,33 +202,17 @@ function triggerInput(key: WizardDocumentKey): void {
                 @keydown.space.prevent="triggerInput(zone.key)"
               >
                 <div class="flex flex-col items-center justify-center gap-3 py-8 px-4 text-center">
-                  <!-- Upload icon -->
-                  <div
-                    class="h-12 w-12 rounded-full flex items-center justify-center transition-colors"
-                    :class="dragOver === zone.key ? 'bg-primary/15' : 'bg-muted'"
-                  >
-                    <Upload
-                      class="h-5 w-5 transition-colors"
-                      :class="dragOver === zone.key ? 'text-primary' : 'text-muted-foreground'"
-                      aria-hidden="true"
-                    />
+                  <div class="h-12 w-12 rounded-full flex items-center justify-center transition-colors" :class="dragOver === zone.key ? 'bg-primary/15' : 'bg-muted'">
+                    <Upload class="h-5 w-5 transition-colors" :class="dragOver === zone.key ? 'text-primary' : 'text-muted-foreground'" aria-hidden="true" />
                   </div>
                   <div>
-                    <p class="text-sm font-medium text-foreground">
-                      اسحب وأفلت الملف هنا
-                    </p>
-                    <p class="text-xs text-muted-foreground mt-0.5">
-                      أو <span class="text-primary font-medium">اضغط للاختيار</span>، PDF فقط، حتى {{ MAX_SIZE_MB }}MB
-                    </p>
+                    <p class="text-sm font-medium text-foreground">اسحب وأفلت الملف هنا</p>
+                    <p class="text-xs text-muted-foreground mt-0.5">أو <span class="text-primary font-medium">اضغط للاختيار</span>، PDF فقط، حتى {{ MAX_SIZE_MB }}MB</p>
                   </div>
                 </div>
               </div>
-
-              <!-- File attached row -->
-              <div
-                v-if="getZoneFile(zone.key) && !getFileError(zone.key)"
-                class="mt-2 flex items-center gap-3 rounded-lg border border-border bg-card px-4 py-3"
-              >
+              <!-- File attached -->
+              <div v-if="getZoneFile(zone.key) && !getFileError(zone.key)" class="mt-2 flex items-center gap-3 rounded-lg border border-border bg-card px-4 py-3">
                 <div class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-md bg-muted">
                   <FileText class="h-5 w-5 text-muted-foreground" aria-hidden="true" />
                 </div>
@@ -247,30 +221,17 @@ function triggerInput(key: WizardDocumentKey): void {
                   <p class="text-xs text-muted-foreground">{{ formatBytes(getZoneFile(zone.key)!.size) }}</p>
                 </div>
                 <CheckCircle2 class="h-4 w-4 flex-shrink-0 text-[var(--severity-green)]" aria-hidden="true" />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  class="h-7 w-7 flex-shrink-0 text-muted-foreground hover:text-destructive"
-                  :aria-label="`إزالة ${zone.title}`"
-                  :disabled="loading"
-                  @click.stop="removeFile(zone.key)"
-                >
+                <Button type="button" variant="ghost" size="icon" class="h-7 w-7 flex-shrink-0 text-muted-foreground hover:text-destructive" :aria-label="`إزالة ${zone.title}`" :disabled="loading" @click.stop="removeFile(zone.key)">
                   <X class="h-4 w-4" />
                 </Button>
               </div>
-
-              <!-- Upload progress indicator -->
-              <div
-                v-else-if="uploadState[zone.key] === 'uploading'"
-                class="mt-2 flex items-center gap-3 rounded-lg border border-border bg-card px-4 py-3"
-              >
+              <!-- Uploading -->
+              <div v-else-if="uploadState[zone.key] === 'uploading'" class="mt-2 flex items-center gap-3 rounded-lg border border-border bg-card px-4 py-3">
                 <div class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-md bg-muted">
                   <FileText class="h-5 w-5 text-muted-foreground animate-pulse" aria-hidden="true" />
                 </div>
                 <p class="flex-1 text-sm text-muted-foreground">جارٍ الرفع...</p>
               </div>
-
               <FieldError v-if="getFileError(zone.key)" class="mt-1">
                 <AlertTriangle class="inline h-3 w-3 me-1" aria-hidden="true" />
                 {{ getFileError(zone.key) }}
@@ -278,9 +239,126 @@ function triggerInput(key: WizardDocumentKey): void {
             </Field>
           </FieldGroup>
         </FieldSet>
-
-        <FieldSeparator v-if="idx < ZONES.length - 1" />
+        <FieldSeparator />
       </template>
     </FieldGroup>
+
+    <!-- ② Download banner + confirmation_request upload — shown at the end -->
+    <!-- Banner is dimmed and download disabled until all required supporting docs are attached -->
+    <Card
+      class="border shadow-sm p-0 transition-opacity mt-5"
+      :class="requiredDocsReady
+        ? 'border-[var(--severity-amber)]/30 bg-[var(--severity-amber)]/5'
+        : 'border-border bg-muted/30 opacity-70'"
+      role="note"
+    >
+      <CardContent class="flex flex-col gap-3 p-4 sm:flex-row sm:items-start">
+        <FileDown
+          class="h-5 w-5 flex-shrink-0 mt-0.5"
+          :class="requiredDocsReady ? 'text-[var(--severity-amber)]' : 'text-muted-foreground'"
+          aria-hidden="true"
+        />
+        <div class="flex-1 min-w-0">
+          <p class="font-semibold text-foreground text-sm">نموذج طلب وثيقة التأكيد: مطلوب قبل الإرسال</p>
+          <p class="text-xs text-muted-foreground mt-1">
+            حمّل النموذج المعبأ بالبيانات، اطبعه واختمه بختم البنك، ثم ارفعه في الحقل المخصص أدناه.
+          </p>
+          <!-- Hint shown until all required docs are ready -->
+          <p v-if="!requiredDocsReady" class="text-xs text-[var(--severity-amber)] mt-1.5 font-medium">
+            <AlertTriangle class="inline h-3 w-3 me-1" aria-hidden="true" />
+            أرفق المستندات الإلزامية أعلاه أولاً لتفعيل تحميل النموذج
+          </p>
+        </div>
+        <Button
+          size="sm"
+          variant="outline"
+          class="flex-shrink-0"
+          :disabled="!templateReady || !requestId || !requiredDocsReady"
+          :aria-busy="!templateReady"
+          @click="downloadTemplate"
+        >
+          <FileDown class="h-4 w-4 me-1" />
+          <span v-if="!templateReady">جارٍ التحضير...</span>
+          <span v-else>تحميل النموذج</span>
+        </Button>
+      </CardContent>
+    </Card>
+
+    <!-- confirmation_request upload zone -->
+    <FieldGroup class="mt-4">
+      <FieldSet>
+        <div class="flex items-center gap-2 mb-1">
+          <FieldLegend class="mb-0">طلب وثيقة التأكيد (مختوم)</FieldLegend>
+          <Badge variant="destructive" class="text-xs rounded-full">إلزامي</Badge>
+        </div>
+        <FieldDescription>حمّل النموذج أدناه، اطبعه، اختمه بختم البنك ثم ارفعه هنا</FieldDescription>
+        <FieldGroup>
+          <Field>
+            <input
+              id="file-input-confirmation_request"
+              type="file"
+              class="sr-only"
+              :accept="ALLOWED_EXTENSIONS.join(',')"
+              :disabled="loading || !requiredDocsReady"
+              @change="onInputChange('confirmation_request', $event)"
+            />
+            <!-- Drop zone: also locked until required docs are ready -->
+            <div
+              v-if="!getZoneFile('confirmation_request') && uploadState['confirmation_request'] !== 'uploading'"
+              class="relative rounded-xl border-2 border-dashed transition-all duration-150 select-none"
+              :class="requiredDocsReady && !loading
+                ? 'cursor-pointer border-border bg-muted/30 hover:border-primary/50 hover:bg-primary/5'
+                : 'cursor-not-allowed border-border bg-muted/20 opacity-50'"
+              role="button"
+              :aria-label="'رفع طلب وثيقة التأكيد'"
+              :aria-disabled="!requiredDocsReady || loading"
+              :tabindex="requiredDocsReady ? 0 : -1"
+              @dragover="requiredDocsReady ? onDragOver('confirmation_request', $event) : $event.preventDefault()"
+              @dragleave="onDragLeave"
+              @drop="requiredDocsReady ? onDrop('confirmation_request', $event) : $event.preventDefault()"
+              @click="requiredDocsReady ? triggerInput('confirmation_request') : undefined"
+              @keydown.enter.prevent="requiredDocsReady ? triggerInput('confirmation_request') : undefined"
+              @keydown.space.prevent="requiredDocsReady ? triggerInput('confirmation_request') : undefined"
+            >
+              <div class="flex flex-col items-center justify-center gap-3 py-8 px-4 text-center">
+                <div class="h-12 w-12 rounded-full flex items-center justify-center bg-muted">
+                  <Upload class="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+                </div>
+                <div>
+                  <p class="text-sm font-medium text-foreground">اسحب وأفلت الملف هنا</p>
+                  <p class="text-xs text-muted-foreground mt-0.5">أو <span class="text-primary font-medium">اضغط للاختيار</span>، PDF فقط، حتى {{ MAX_SIZE_MB }}MB</p>
+                </div>
+              </div>
+            </div>
+            <!-- File attached -->
+            <div v-if="getZoneFile('confirmation_request') && !getFileError('confirmation_request')" class="mt-2 flex items-center gap-3 rounded-lg border border-border bg-card px-4 py-3">
+              <div class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-md bg-muted">
+                <FileText class="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="truncate text-sm font-medium text-foreground">{{ getZoneFile('confirmation_request')!.name }}</p>
+                <p class="text-xs text-muted-foreground">{{ formatBytes(getZoneFile('confirmation_request')!.size) }}</p>
+              </div>
+              <CheckCircle2 class="h-4 w-4 flex-shrink-0 text-[var(--severity-green)]" aria-hidden="true" />
+              <Button type="button" variant="ghost" size="icon" class="h-7 w-7 flex-shrink-0 text-muted-foreground hover:text-destructive" aria-label="إزالة طلب وثيقة التأكيد" :disabled="loading" @click.stop="removeFile('confirmation_request')">
+                <X class="h-4 w-4" />
+              </Button>
+            </div>
+            <!-- Uploading -->
+            <div v-else-if="uploadState['confirmation_request'] === 'uploading'" class="mt-2 flex items-center gap-3 rounded-lg border border-border bg-card px-4 py-3">
+              <div class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-md bg-muted">
+                <FileText class="h-5 w-5 text-muted-foreground animate-pulse" aria-hidden="true" />
+              </div>
+              <p class="flex-1 text-sm text-muted-foreground">جارٍ الرفع...</p>
+            </div>
+            <FieldError v-if="getFileError('confirmation_request')" class="mt-1">
+              <AlertTriangle class="inline h-3 w-3 me-1" aria-hidden="true" />
+              {{ getFileError('confirmation_request') }}
+            </FieldError>
+          </Field>
+        </FieldGroup>
+      </FieldSet>
+    </FieldGroup>
+
   </div>
 </template>

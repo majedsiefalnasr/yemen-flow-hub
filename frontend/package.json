@@ -49,6 +49,7 @@
     "onlyBuiltDependencies": [
       "@parcel/watcher",
       "esbuild",
+      "maplibre-gl",
       "vue-demi"
     ]
   },

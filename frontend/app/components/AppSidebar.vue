@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type { Component } from 'vue'
 import { Building2, Home, Settings } from 'lucide-vue-next'
-import type { SidebarProps } from '@/components/ui/sidebar'
 import {
   Sidebar,
   SidebarContent,
@@ -15,6 +14,7 @@ import {
   SidebarRail,
   useSidebar,
 } from '@/components/ui/sidebar'
+import type { SidebarProps } from './ui/sidebar/types'
 import { buildOperationalNavBadges } from '@/composables/useNavBadges'
 import { NAV_ITEMS } from '@/constants/workflow'
 import { useAuthStore } from '@/stores/auth.store'

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, watch, onMounted, computed } from 'vue'
 import type { WizardStep1Data } from '../../composables/useRequestWizard'
 import { GOODS_TYPES, PAYMENT_TERMS } from '../../schemas/wizard.schema'
 import { Currency } from '../../types/enums'
@@ -59,6 +59,21 @@ function update<K extends keyof WizardStep1Data>(key: K, val: WizardStep1Data[K]
   emit('update:modelValue', { ...props.modelValue, [key]: val })
   if (props.errors[key]) emit('clear-error', key)
 }
+
+// Local ref for notes — decouples the textarea from the parent re-render cycle so
+// cursor position and Arabic IME composition are never disrupted.
+const notesLocal = ref(props.modelValue.notes ?? '')
+
+// Sync from parent (e.g. when a saved draft is loaded into the wizard).
+watch(
+  () => props.modelValue.notes,
+  (incoming) => {
+    if ((incoming ?? '') !== notesLocal.value) notesLocal.value = incoming ?? ''
+  },
+)
+
+// Push local changes up to parent state.
+watch(notesLocal, (val) => update('notes', val))
 
 const CURRENCY_LABELS: Record<string, string> = {
   USD: 'USD — دولار أمريكي',
@@ -122,7 +137,7 @@ function selectMerchant(merchantId: string) {
   merchantOpen.value = false
 }
 
-const notesLength = computed(() => props.modelValue.notes?.length ?? 0)
+const notesLength = computed(() => notesLocal.value.length)
 </script>
 
 <template>
@@ -295,10 +310,13 @@ const notesLength = computed(() => props.modelValue.notes?.length ?? 0)
               id="due-date"
               type="date"
               :disabled="loading"
+              :aria-invalid="!!errors.due_date"
+              :class="{ 'border-destructive': errors.due_date }"
               :value="modelValue.due_date ?? ''"
               @input="update('due_date', ($event.target as HTMLInputElement).value || '')"
             />
-            <FieldDescription>اختياري — التاريخ المتوقع لاستحقاق الدفع</FieldDescription>
+            <FieldError v-if="errors.due_date">{{ errors.due_date }}</FieldError>
+            <FieldDescription v-else>اختياري — التاريخ المتوقع لاستحقاق الدفع</FieldDescription>
           </Field>
         </FieldGroup>
       </FieldSet>
@@ -314,13 +332,12 @@ const notesLength = computed(() => props.modelValue.notes?.length ?? 0)
             <FieldLabel for="notes">ملاحظات</FieldLabel>
             <Textarea
               id="notes"
-              :value="modelValue.notes ?? ''"
+              v-model="notesLocal"
               :disabled="loading"
               rows="3"
               maxlength="500"
               placeholder="أي معلومات إضافية تتعلق بالطلب..."
               class="resize-none"
-              @input="update('notes', ($event.target as HTMLTextAreaElement).value)"
             />
             <FieldDescription class="flex justify-between">
               <span>اختياري</span>

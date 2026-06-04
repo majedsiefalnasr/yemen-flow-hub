@@ -474,7 +474,7 @@ async function saveBankSecurity() {
           <!-- ═══════════════════════════════════════════════════════════════ -->
           <section v-if="isCBYAdmin && activeSection === 'general'" class="space-y-6">
             <div>
-              <h3 class="text-lg font-medium">معلومات المنصة</h3>
+              <h3 class="font-heading text-base font-semibold leading-6 text-foreground">معلومات المنصة</h3>
               <p class="text-sm text-muted-foreground">الاسم الرسمي، الجهة المشغّلة، اللغة الافتراضية، والمنطقة الزمنية</p>
             </div>
             <Separator />
@@ -542,7 +542,7 @@ async function saveBankSecurity() {
           <!-- ═══════════════════════════════════════════════════════════════ -->
           <section v-if="isCBYAdmin && activeSection === 'branding'" class="space-y-6">
             <div>
-              <h3 class="text-lg font-medium">الهوية البصرية</h3>
+              <h3 class="font-heading text-base font-semibold leading-6 text-foreground">الهوية البصرية</h3>
               <p class="text-sm text-muted-foreground">الشعار ولون العلامة — تؤثر على مظهر المنصة لجميع المستخدمين</p>
             </div>
             <Separator />
@@ -640,26 +640,26 @@ async function saveBankSecurity() {
           <!-- ═══════════════════════════════════════════════════════════════ -->
           <section v-if="isCBYAdmin && activeSection === 'security'" class="space-y-6">
             <div>
-              <h3 class="text-lg font-medium">سياسات الأمن</h3>
+              <h3 class="font-heading text-base font-semibold leading-6 text-foreground">سياسات الأمن</h3>
               <p class="text-sm text-muted-foreground">معايير الحماية الإلزامية على مستوى المنصة لجميع المستخدمين</p>
             </div>
             <Separator />
             <div class="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
               <div class="rounded-lg border bg-muted/20 p-3">
                 <div class="text-xs text-muted-foreground">عتبة قفل الحساب</div>
-                <div class="text-sm font-semibold">10 محاولات</div>
+                <div class="font-section text-sm font-semibold leading-5 text-foreground">10 محاولات</div>
               </div>
               <div class="rounded-lg border bg-muted/20 p-3">
                 <div class="text-xs text-muted-foreground">مدة القفل</div>
-                <div class="text-sm font-semibold">15 دقيقة</div>
+                <div class="font-section text-sm font-semibold leading-5 text-foreground">15 دقيقة</div>
               </div>
               <div class="rounded-lg border bg-muted/20 p-3">
                 <div class="text-xs text-muted-foreground">تقييد تسجيل الدخول</div>
-                <div class="text-sm font-semibold">5 / دقيقة</div>
+                <div class="font-section text-sm font-semibold leading-5 text-foreground">5 / دقيقة</div>
               </div>
               <div class="rounded-lg border bg-muted/20 p-3">
                 <div class="text-xs text-muted-foreground">انتهاء الجلسة</div>
-                <div class="text-sm font-semibold">8 ساعات</div>
+                <div class="font-section text-sm font-semibold leading-5 text-foreground">8 ساعات</div>
               </div>
             </div>
             <div class="space-y-2">
@@ -691,7 +691,7 @@ async function saveBankSecurity() {
           <!-- ═══════════════════════════════════════════════════════════════ -->
           <section v-if="isCBYAdmin && activeSection === 'notif'" class="space-y-6">
             <div>
-              <h3 class="text-lg font-medium">قنوات الإشعارات النظامية</h3>
+              <h3 class="font-heading text-base font-semibold leading-6 text-foreground">قنوات الإشعارات النظامية</h3>
               <p class="text-sm text-muted-foreground">قنوات التنبيه المفعّلة لأحداث سير العمل على مستوى النظام</p>
             </div>
             <Separator />
@@ -724,12 +724,12 @@ async function saveBankSecurity() {
           <!-- ═══════════════════════════════════════════════════════════════ -->
           <section v-if="isCBYAdmin && activeSection === 'email'" class="space-y-6">
             <div>
-              <h3 class="text-lg font-medium">إعدادات البريد الإلكتروني</h3>
+              <h3 class="font-heading text-base font-semibold leading-6 text-foreground">إعدادات البريد الإلكتروني</h3>
               <p class="text-sm text-muted-foreground">تكوين خادم البريد الصادر للإشعارات والمراسلات الرسمية</p>
             </div>
             <Separator />
             <div class="space-y-4">
-              <h3 class="text-sm font-semibold">إعدادات الخادم</h3>
+              <h3 class="font-section text-sm font-semibold leading-5 text-foreground">إعدادات الخادم</h3>
               <div class="grid gap-5 md:grid-cols-2">
                 <FieldGroup>
                   <FieldLabel>SMTP Host</FieldLabel>
@@ -743,7 +743,7 @@ async function saveBankSecurity() {
             </div>
             <Separator />
             <div class="space-y-4">
-              <h3 class="text-sm font-semibold">بيانات الاعتماد</h3>
+              <h3 class="font-section text-sm font-semibold leading-5 text-foreground">بيانات الاعتماد</h3>
               <div class="grid gap-5 md:grid-cols-2">
                 <FieldGroup>
                   <FieldLabel>اسم المستخدم</FieldLabel>
@@ -773,7 +773,7 @@ async function saveBankSecurity() {
             </div>
             <Separator />
             <div class="space-y-4">
-              <h3 class="text-sm font-semibold">قوالب البريد</h3>
+              <h3 class="font-section text-sm font-semibold leading-5 text-foreground">قوالب البريد</h3>
               <FieldGroup>
                 <FieldLabel>قالب إشعار اعتماد الطلب</FieldLabel>
                 <Textarea v-model="emailSettings.approvalTemplate" rows="5" class="font-mono text-sm" />
@@ -802,13 +802,13 @@ async function saveBankSecurity() {
           <!-- ═══════════════════════════════════════════════════════════════ -->
           <section v-if="isCBYAdmin && activeSection === 'workflow'" class="space-y-6">
             <div>
-              <h3 class="text-lg font-medium">إعدادات سير العمل</h3>
+              <h3 class="font-heading text-base font-semibold leading-6 text-foreground">إعدادات سير العمل</h3>
               <p class="text-sm text-muted-foreground">تكوين معاملات الموافقة، اللجان، وقواعد التصويت</p>
             </div>
             <Separator />
             <div class="space-y-4">
               <div class="flex items-center gap-2">
-                <h3 class="text-sm font-semibold">هيكل اللجان</h3>
+                <h3 class="font-section text-sm font-semibold leading-5 text-foreground">هيكل اللجان</h3>
                 <Badge variant="secondary" class="text-xs">تنظيمي</Badge>
               </div>
               <div class="grid gap-5 md:grid-cols-2">
@@ -825,7 +825,7 @@ async function saveBankSecurity() {
             <Separator />
             <div class="space-y-4">
               <div class="flex items-center gap-2">
-                <h3 class="text-sm font-semibold">النصاب والمهل</h3>
+                <h3 class="font-section text-sm font-semibold leading-5 text-foreground">النصاب والمهل</h3>
                 <Badge variant="secondary" class="text-xs">اجتماعات</Badge>
               </div>
               <div class="grid gap-5 md:grid-cols-2">
@@ -842,20 +842,20 @@ async function saveBankSecurity() {
             <Separator />
             <div class="space-y-4">
               <div class="flex items-center gap-2">
-                <h3 class="text-sm font-semibold">قواعد التصويت</h3>
+                <h3 class="font-section text-sm font-semibold leading-5 text-foreground">قواعد التصويت</h3>
                 <Badge variant="secondary" class="text-xs">صلاحيات</Badge>
               </div>
               <div class="space-y-3">
                 <div class="flex items-center justify-between rounded-lg border border-border p-4">
                   <div>
-                    <p class="text-sm font-medium">تصويت سري</p>
+                    <p class="font-section text-sm font-semibold leading-5 text-foreground">تصويت سري</p>
                     <p class="text-xs text-muted-foreground">إخفاء أصوات الأعضاء قبل إغلاق الجلسة</p>
                   </div>
                   <Switch v-model="workflowSettings.hiddenVoting" />
                 </div>
                 <div class="flex items-center justify-between rounded-lg border border-border p-4">
                   <div>
-                    <p class="text-sm font-medium">ترجيح صوت المدير عند التعادل</p>
+                    <p class="font-section text-sm font-semibold leading-5 text-foreground">ترجيح صوت المدير عند التعادل</p>
                     <p class="text-xs text-muted-foreground">يملك مدير اللجنة صلاحية كسر التعادل</p>
                   </div>
                   <Switch v-model="workflowSettings.managerWeight" />
@@ -878,7 +878,7 @@ async function saveBankSecurity() {
           <!-- ═══════════════════════════════════════════════════════════════ -->
           <section v-if="isBankAdmin && activeSection === 'profile'" class="space-y-6">
             <div>
-              <h3 class="text-lg font-medium">معلومات البنك</h3>
+              <h3 class="font-heading text-base font-semibold leading-6 text-foreground">معلومات البنك</h3>
               <p class="text-sm text-muted-foreground">البيانات الرسمية للبنك المسجلة لدى البنك المركزي اليمني</p>
             </div>
             <Separator />
@@ -946,7 +946,7 @@ async function saveBankSecurity() {
           <!-- ═══════════════════════════════════════════════════════════════ -->
           <section v-if="isBankAdmin && activeSection === 'swift'" class="space-y-6">
             <div>
-              <h3 class="text-lg font-medium">إعداد SWIFT</h3>
+              <h3 class="font-heading text-base font-semibold leading-6 text-foreground">إعداد SWIFT</h3>
               <p class="text-sm text-muted-foreground">تكوين رموز وإعدادات شبكة التحويلات المالية الدولية SWIFT</p>
             </div>
             <Separator />
@@ -1024,7 +1024,7 @@ async function saveBankSecurity() {
           <!-- ═══════════════════════════════════════════════════════════════ -->
           <section v-if="isBankAdmin && activeSection === 'notif'" class="space-y-6">
             <div>
-              <h3 class="text-lg font-medium">إشعارات البنك</h3>
+              <h3 class="font-heading text-base font-semibold leading-6 text-foreground">إشعارات البنك</h3>
               <p class="text-sm text-muted-foreground">تحديد الأحداث التي يتلقى عنها مديرو البنك إشعارات بريدية ومنصة</p>
             </div>
             <Separator />
@@ -1034,7 +1034,7 @@ async function saveBankSecurity() {
               class="flex items-center justify-between gap-4 rounded-lg px-3 py-3 transition-colors hover:bg-muted/40"
             >
               <div class="min-w-0 flex-1">
-                <p class="text-sm font-medium">{{ notif.label }}</p>
+                <p class="font-section text-sm font-semibold leading-5 text-foreground">{{ notif.label }}</p>
                 <p class="mt-0.5 text-xs text-muted-foreground">{{ notif.description }}</p>
               </div>
               <Switch :id="`notif-${notif.id}`" v-model="notif.enabled" class="shrink-0" />
@@ -1052,7 +1052,7 @@ async function saveBankSecurity() {
           <!-- ═══════════════════════════════════════════════════════════════ -->
           <section v-if="isBankAdmin && activeSection === 'security'" class="space-y-6">
             <div>
-              <h3 class="text-lg font-medium">أمان البنك</h3>
+              <h3 class="font-heading text-base font-semibold leading-6 text-foreground">أمان البنك</h3>
               <p class="text-sm text-muted-foreground">سياسات كلمات المرور وإدارة الجلسات وقيود الوصول لمستخدمي بنكك</p>
             </div>
             <Separator />
@@ -1061,7 +1061,7 @@ async function saveBankSecurity() {
             <div class="space-y-4">
               <div class="flex items-center gap-2">
                 <Lock class="h-4 w-4 text-muted-foreground" />
-                <h3 class="text-sm font-semibold">سياسة كلمة المرور</h3>
+                <h3 class="font-section text-sm font-semibold leading-5 text-foreground">سياسة كلمة المرور</h3>
               </div>
               <div class="grid gap-4 sm:grid-cols-2">
                 <div class="space-y-2">
@@ -1103,7 +1103,7 @@ async function saveBankSecurity() {
 
             <!-- Session & lockout -->
             <div class="space-y-4">
-              <h3 class="text-sm font-semibold">الجلسات والقيود</h3>
+              <h3 class="font-section text-sm font-semibold leading-5 text-foreground">الجلسات والقيود</h3>
               <div class="grid gap-4 sm:grid-cols-2">
                 <div class="space-y-2">
                   <Label>مهلة انتهاء الجلسة</Label>
@@ -1135,7 +1135,7 @@ async function saveBankSecurity() {
             <div class="space-y-4">
               <div class="flex items-center justify-between">
                 <div>
-                  <h3 class="text-sm font-semibold">قيود عناوين IP</h3>
+                  <h3 class="font-section text-sm font-semibold leading-5 text-foreground">قيود عناوين IP</h3>
                   <p class="mt-0.5 text-xs text-muted-foreground">السماح بالوصول من نطاقات IP محددة فقط</p>
                 </div>
                 <Switch id="ip-restriction" v-model="bankSecurity.ipRestrictionEnabled" />

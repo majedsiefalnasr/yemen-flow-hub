@@ -23,6 +23,24 @@ describe('step1Schema — valid', () => {
     expect(step1Schema.safeParse({ ...VALID_STEP1, due_date: undefined }).success).toBe(true)
   })
 
+  it('accepts a future due_date', () => {
+    const future = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+    const iso = `${future.getFullYear()}-${String(future.getMonth() + 1).padStart(2, '0')}-${String(future.getDate()).padStart(2, '0')}`
+    expect(step1Schema.safeParse({ ...VALID_STEP1, due_date: iso }).success).toBe(true)
+  })
+
+  it('rejects today as due_date (backend requires after:today)', () => {
+    const today = new Date()
+    const iso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+    expect(step1Schema.safeParse({ ...VALID_STEP1, due_date: iso }).success).toBe(false)
+  })
+
+  it('rejects a past due_date', () => {
+    const past = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+    const iso = `${past.getFullYear()}-${String(past.getMonth() + 1).padStart(2, '0')}-${String(past.getDate()).padStart(2, '0')}`
+    expect(step1Schema.safeParse({ ...VALID_STEP1, due_date: iso }).success).toBe(false)
+  })
+
   it('accepts notes as null or omitted', () => {
     const r = step1Schema.safeParse({ ...VALID_STEP1, notes: null })
     expect(r.success).toBe(true)

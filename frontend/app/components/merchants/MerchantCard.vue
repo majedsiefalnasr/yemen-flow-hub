@@ -79,8 +79,8 @@ function businessTypeLabel(type: string | null | undefined): string {
     <!-- Footer: transaction count + actions -->
     <div class="flex items-center justify-between gap-2 pt-3">
       <div class="text-xs flex items-center gap-1">
-        <span class="text-[var(--color-text-subtle)]">المعاملات:</span>
-        <span class="font-mono font-bold text-[var(--color-text-primary)]">{{ props.merchant.transaction_count ?? 0 }}</span>
+        <span class="font-section font-medium leading-5 text-[var(--color-text-subtle)]">المعاملات:</span>
+        <span class="font-mono font-semibold leading-5 tabular-nums text-[var(--color-text-primary)]">{{ props.merchant.transaction_count ?? 0 }}</span>
       </div>
       <div class="flex gap-1">
         <Button

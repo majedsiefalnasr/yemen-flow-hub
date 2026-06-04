@@ -52,7 +52,7 @@ function requestClose() {
           <Play v-else :size="24" />
         </div>
 
-        <h3 class="text-lg font-semibold text-[var(--color-text-primary)]">
+        <h3 class="font-heading text-base font-semibold leading-6 text-[var(--color-text-primary)]">
           {{ title }}
         </h3>
 

@@ -75,6 +75,7 @@ function fillStep2(wizard: ReturnType<typeof makeWizard>): void {
 function fillStep3(wizard: ReturnType<typeof makeWizard>): void {
   const file = new File(['content'], 'required.pdf', { type: 'application/pdf' })
   wizard.step3.value = {
+    confirmation_request: file,
     proforma_invoice: file,
     commercial_register: file,
     tax_card: file,
@@ -241,6 +242,7 @@ describe('useRequestWizard — step3 validation', () => {
     const ok = wizard.validateStep3()
     expect(ok).toBe(false)
     expect(wizard.step3Errors.value.proforma_invoice).toBeDefined()
+    expect(wizard.step3Errors.value.confirmation_request).toBeDefined()
     expect(wizard.step3Errors.value.commercial_register).toBeDefined()
     expect(wizard.step3Errors.value.tax_card).toBeDefined()
   })
@@ -249,6 +251,7 @@ describe('useRequestWizard — step3 validation', () => {
     const wizard = makeWizard()
     const file = new File(['content'], 'test.pdf', { type: 'application/pdf' })
     wizard.step3.value = {
+      confirmation_request: file,
       proforma_invoice: file,
       commercial_register: file,
       tax_card: file,
@@ -263,6 +266,7 @@ describe('useRequestWizard — step3 validation', () => {
     const wizard = makeWizard()
     const file = new File(['content'], 'test.pdf', { type: 'application/pdf' })
     wizard.step3.value = {
+      confirmation_request: file,
       proforma_invoice: file,
       commercial_register: file,
       tax_card: file,
@@ -387,13 +391,14 @@ describe('useRequestWizard — submitRequest', () => {
       .mockResolvedValueOnce({ success: true })
       .mockRejectedValueOnce(new Error('upload failed'))
       .mockResolvedValueOnce({ success: true })
+      .mockResolvedValueOnce({ success: true })
 
     const result = await wizard.submitRequest()
 
     expect(result).toBeNull()
     expect(wizard.currentStep.value).toBe(3)
     expect(wizard.submitError.value).toContain('تعذّر رفع بعض الوثائق')
-    expect(wizard.step3Errors.value.commercial_register).toContain('تعذّر رفع الملف')
+    expect(wizard.step3Errors.value.proforma_invoice).toContain('تعذّر رفع الملف')
     expect(mockPerformWorkflowAction).not.toHaveBeenCalled()
   })
 
@@ -408,7 +413,7 @@ describe('useRequestWizard — submitRequest', () => {
 
     expect(result).toEqual({ id: 42, status: 'SUBMITTED' })
     expect(mockCreateRequest).toHaveBeenCalledOnce()
-    expect(mockFetch).toHaveBeenCalledTimes(3)
+    expect(mockFetch).toHaveBeenCalledTimes(4)
     expect(mockPerformWorkflowAction).toHaveBeenCalledWith(42, 'submit')
   })
 })

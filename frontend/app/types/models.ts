@@ -187,6 +187,9 @@ export interface CustomsDeclarationSummary {
   issued_at: string
   issued_by: number | null
   issuer: { id: number; name: string } | null
+  signed_fx_doc_uploaded_at?: string | null
+  signed_fx_doc_uploaded_by?: number | null
+  has_signed_fx_doc?: boolean
   download_url: string
 }
 
@@ -197,6 +200,10 @@ export interface CustomsDeclaration {
   issued_by: number
   issuer: { id: number; name: string; email: string; role: UserRole } | null
   issued_at: string
+  signed_fx_doc_path?: string | null
+  signed_fx_doc_uploaded_at?: string | null
+  signed_fx_doc_uploaded_by?: number | null
+  has_signed_fx_doc?: boolean
   request: { id: number; reference_number: string; bank_name: string | null } | null
   metadata: Record<string, unknown> | null
   download_url: string
@@ -206,6 +213,8 @@ export interface CustomsDeclaration {
 export interface RequestDocument {
   id: number
   type: string | null
+  document_sub_type?: string | null
+  title?: string | null
   original_filename: string
   mime_type: string | null
   size_bytes: number

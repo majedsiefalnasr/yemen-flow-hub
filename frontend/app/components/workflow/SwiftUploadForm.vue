@@ -121,7 +121,7 @@ function submit(): void {
     </div>
 
     <section class="space-y-2">
-      <label class="text-sm font-medium">
+      <label class="font-section text-sm font-semibold leading-5 text-foreground">
         رقم مرجع السويفت (UETR / Message Reference)
         <span class="text-destructive">*</span>
       </label>
@@ -135,14 +135,14 @@ function submit(): void {
 
     <section class="space-y-3">
       <div class="flex items-center justify-between">
-        <h3 class="text-sm font-semibold">وثيقة السويفت</h3>
+        <h3 class="font-section text-sm font-semibold leading-5 text-foreground">وثيقة السويفت</h3>
       </div>
       <p class="text-xs text-muted-foreground">نسخة PDF من رسالة MT103 / MT202.</p>
       <div class="rounded-xl border-2 border-dashed border-border p-4">
         <div class="flex items-center justify-between gap-3">
           <div class="min-w-0">
-            <p class="truncate text-sm font-medium">{{ swiftDoc?.file.name ?? 'اسحب الملف هنا أو اضغط للاختيار' }}</p>
-            <p v-if="swiftDoc" class="mt-1 text-xs text-muted-foreground">
+            <p class="truncate text-sm font-medium leading-5 text-foreground">{{ swiftDoc?.file.name ?? 'اسحب الملف هنا أو اضغط للاختيار' }}</p>
+            <p v-if="swiftDoc" class="mt-1 text-xs leading-5 text-muted-foreground tabular-nums">
               {{ formatFileSize(swiftDoc.file.size) }} • SHA-256: {{ swiftDoc.checksum.slice(0, 12) }}...
             </p>
             <p v-else class="mt-1 text-xs text-muted-foreground">PDF فقط، الحد الأقصى 10MB</p>
@@ -172,7 +172,7 @@ function submit(): void {
 
     <section class="space-y-3">
       <div class="flex items-center justify-between">
-        <h3 class="text-sm font-semibold">طلب تأكيد المصارفة الخارجية</h3>
+        <h3 class="font-section text-sm font-semibold leading-5 text-foreground">طلب تأكيد المصارفة الخارجية</h3>
         <Button type="button" variant="outline" size="sm" disabled>
           <Download class="ms-1 h-4 w-4" />
           تنزيل النموذج الفارغ
@@ -182,8 +182,8 @@ function submit(): void {
       <div class="rounded-xl border-2 border-dashed border-border p-4">
         <div class="flex items-center justify-between gap-3">
           <div class="min-w-0">
-            <p class="truncate text-sm font-medium">{{ fxRequestDoc?.file.name ?? 'اسحب الملف هنا أو اضغط للاختيار' }}</p>
-            <p v-if="fxRequestDoc" class="mt-1 text-xs text-muted-foreground">
+            <p class="truncate text-sm font-medium leading-5 text-foreground">{{ fxRequestDoc?.file.name ?? 'اسحب الملف هنا أو اضغط للاختيار' }}</p>
+            <p v-if="fxRequestDoc" class="mt-1 text-xs leading-5 text-muted-foreground tabular-nums">
               {{ formatFileSize(fxRequestDoc.file.size) }} • SHA-256: {{ fxRequestDoc.checksum.slice(0, 12) }}...
             </p>
             <p v-else class="mt-1 text-xs text-muted-foreground">PDF فقط، الحد الأقصى 10MB</p>

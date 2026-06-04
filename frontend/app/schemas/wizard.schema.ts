@@ -11,6 +11,19 @@ export const CUSTOMS_BY_PORT: Record<string, string> = {
   'ميناء المكلا': 'جمارك المكلا',
 }
 
+function isFutureDate(value: string | null | undefined): boolean {
+  if (!value) return true
+
+  const dueDate = new Date(`${value}T00:00:00`)
+  if (Number.isNaN(dueDate.getTime())) return false
+
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+
+  // Must be strictly after today — mirrors the backend rule `after:today`.
+  return dueDate.getTime() > today.getTime()
+}
+
 export const step1Schema = z.object({
   goods_type: z.string({ required_error: 'يرجى اختيار نوع الواردات' })
     .min(1, 'يرجى اختيار نوع الواردات'),
@@ -25,10 +38,15 @@ export const step1Schema = z.object({
     invalid_type_error: 'عملة غير صالحة',
   }),
 
-  payment_terms: z.string({ required_error: 'يرجى اختيار شروط الدفع' })
-    .min(1, 'يرجى اختيار شروط الدفع'),
+  payment_terms: z.enum(PAYMENT_TERMS, {
+    required_error: 'يرجى اختيار شروط الدفع',
+    invalid_type_error: 'شروط الدفع غير صالحة',
+  }),
 
-  due_date: z.string().optional().nullable(),
+  due_date: z.string()
+    .optional()
+    .nullable()
+    .refine(isFutureDate, 'يجب أن يكون تاريخ الاستحقاق بعد تاريخ اليوم'),
 
   merchant_id: z.number({
     required_error: 'يرجى اختيار المستورد',
