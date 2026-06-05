@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>بيان جمركي</title>
+    <title>وثيقة تأكيد مصارفة خارجية</title>
     <style>
         @page { margin: 28px 34px; }
         body { font-family: DejaVu Sans, sans-serif; direction: rtl; text-align: right; font-size: 13px; color: #111; line-height: 1.55; }
@@ -29,11 +29,11 @@
 <div class="header">
     <div class="logo">CBY Logo</div>
     <h1>البنك المركزي اليمني</h1>
-    <div>بيان جمركي للإفراج عن تمويل الاستيراد</div>
+    <div>وثيقة تأكيد مصارفة خارجية لتمويل الاستيراد</div>
 </div>
 
 <div class="meta">
-    <p><strong>رقم البيان:</strong> {{ $declarationNumber }}</p>
+    <p><strong>رقم الوثيقة:</strong> {{ $declarationNumber }}</p>
     <p><strong>تاريخ الإصدار:</strong> {{ $issuedAt->format('Y-m-d H:i') }}</p>
     <p><strong>رقم طلب التمويل:</strong> {{ $requestModel->reference_number }}</p>
     <p><strong>الجهة المصدرة:</strong> {{ $issuer->name }}</p>
@@ -49,12 +49,12 @@
 
 <table>
     <tr><th>تاريخ موافقة البنك</th><td>{{ optional($requestModel->bank_approved_at)->format('Y-m-d H:i') }}</td></tr>
-    <tr><th>تاريخ موافقة لجنة الدعم</th><td>{{ optional($requestModel->support_approved_at)->format('Y-m-d H:i') }}</td></tr>
+    <tr><th>تاريخ موافقة لجنة المساندة</th><td>{{ optional($requestModel->support_approved_at)->format('Y-m-d H:i') }}</td></tr>
     <tr><th>تاريخ القرار التنفيذي</th><td>{{ optional($requestModel->executive_decided_at)->format('Y-m-d H:i') }}</td></tr>
 </table>
 
 <div class="notice">
-    بناءً على اكتمال الموافقات النظامية والتنفيذية، يصدر هذا البيان الجمركي كوثيقة رسمية نهائية وغير قابلة للتعديل ضمن منصة البنك المركزي اليمني.
+    بناءً على اكتمال الموافقات النظامية والتنفيذية، تصدر هذه الوثيقة كتأكيد رسمي للمصارفة الخارجية ضمن منصة البنك المركزي اليمني.
 </div>
 
 <div class="signatures">

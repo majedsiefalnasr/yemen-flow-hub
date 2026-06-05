@@ -22,6 +22,7 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\App;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class RequestScenarioBuilder
@@ -392,16 +393,18 @@ class RequestScenarioBuilder
 
         foreach ($selected as $i => $docType) {
             $filename = Arr::random($filenames[$docType->slug] ?? ['document.pdf']);
+            $storedPath = "requests/{$request->id}/".Str::uuid().'.pdf';
+            $file = $this->writeSeedPdf($storedPath, $filename);
             $doc = RequestDocument::query()->create([
                 'request_id' => $request->id,
                 'uploaded_by' => $actor->id,
                 'type' => 'REQUEST_DOC',
                 'document_type_id' => $docType->id,
                 'original_filename' => $filename,
-                'stored_path' => "requests/{$request->id}/".Str::uuid().'.pdf',
+                'stored_path' => $storedPath,
                 'mime_type' => 'application/pdf',
-                'size_bytes' => rand(50 * 1024, 5 * 1024 * 1024),
-                'checksum' => bin2hex(random_bytes(32)),
+                'size_bytes' => $file['size'],
+                'checksum' => $file['checksum'],
                 'created_at' => $at->copy()->addMinutes($i + 1),
                 'updated_at' => $at->copy()->addMinutes($i + 1),
             ]);
@@ -411,16 +414,18 @@ class RequestScenarioBuilder
 
     private function seedFxRequestDoc(ImportRequest $request, User $actor, Carbon $at): void
     {
+        $storedPath = "fx-request/{$request->id}/".Str::uuid().'.pdf';
+        $file = $this->writeSeedPdf($storedPath, 'fx_confirmation_request.pdf');
         $doc = RequestDocument::query()->create([
             'request_id' => $request->id,
             'uploaded_by' => $actor->id,
             'type' => 'FX_REQUEST',
             'document_type_id' => null,
             'original_filename' => 'fx_confirmation_request.pdf',
-            'stored_path' => "fx-request/{$request->id}/".Str::uuid().'.pdf',
+            'stored_path' => $storedPath,
             'mime_type' => 'application/pdf',
-            'size_bytes' => rand(60 * 1024, 2 * 1024 * 1024),
-            'checksum' => bin2hex(random_bytes(32)),
+            'size_bytes' => $file['size'],
+            'checksum' => $file['checksum'],
             'created_at' => $at,
             'updated_at' => $at,
         ]);
@@ -429,16 +434,18 @@ class RequestScenarioBuilder
 
     private function seedSwiftDoc(ImportRequest $request, User $actor, Carbon $at): void
     {
+        $storedPath = "swift/{$request->id}/".Str::uuid().'.pdf';
+        $file = $this->writeSeedPdf($storedPath, 'swift_message.pdf');
         $doc = RequestDocument::query()->create([
             'request_id' => $request->id,
             'uploaded_by' => $actor->id,
             'type' => 'SWIFT',
             'document_type_id' => null,
             'original_filename' => 'swift_message.pdf',
-            'stored_path' => "swift/{$request->id}/".Str::uuid().'.pdf',
+            'stored_path' => $storedPath,
             'mime_type' => 'application/pdf',
-            'size_bytes' => rand(60 * 1024, 2 * 1024 * 1024),
-            'checksum' => bin2hex(random_bytes(32)),
+            'size_bytes' => $file['size'],
+            'checksum' => $file['checksum'],
             'created_at' => $at,
             'updated_at' => $at,
         ]);
@@ -447,20 +454,65 @@ class RequestScenarioBuilder
 
     private function seedCustomsDoc(ImportRequest $request, User $actor, string $declNo, Carbon $at): void
     {
+        $filename = "customs_declaration_{$declNo}.pdf";
+        $storedPath = "customs/{$request->id}/".Str::uuid().'.pdf';
+        $file = $this->writeSeedPdf($storedPath, $filename);
         $doc = RequestDocument::query()->create([
             'request_id' => $request->id,
             'uploaded_by' => $actor->id,
             'type' => 'CUSTOMS',
             'document_type_id' => null,
-            'original_filename' => "customs_declaration_{$declNo}.pdf",
-            'stored_path' => "customs/{$request->id}/".Str::uuid().'.pdf',
+            'original_filename' => $filename,
+            'stored_path' => $storedPath,
             'mime_type' => 'application/pdf',
-            'size_bytes' => rand(80 * 1024, 3 * 1024 * 1024),
-            'checksum' => bin2hex(random_bytes(32)),
+            'size_bytes' => $file['size'],
+            'checksum' => $file['checksum'],
             'created_at' => $at,
             'updated_at' => $at,
         ]);
         $this->log(AuditAction::DOCUMENT_UPLOADED, $actor, $doc, ['request_id' => $request->id], $at);
+    }
+
+    /**
+     * @return array{size: int, checksum: string}
+     */
+    private function writeSeedPdf(string $storedPath, string $title): array
+    {
+        $content = $this->seedPdfContent($title);
+        Storage::disk('local')->put('private/'.$storedPath, $content);
+
+        return [
+            'size' => strlen($content),
+            'checksum' => hash('sha256', $content),
+        ];
+    }
+
+    private function seedPdfContent(string $title): string
+    {
+        $safeTitle = str_replace(['\\', '(', ')'], ['\\\\', '\\(', '\\)'], $title);
+        $stream = "BT /F1 14 Tf 72 760 Td (Yemen Flow Hub seeded PDF) Tj 0 -24 Td ({$safeTitle}) Tj ET\n";
+        $objects = [
+            '1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj',
+            '2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj',
+            '3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >> endobj',
+            '4 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj',
+            '5 0 obj << /Length '.strlen($stream)." >> stream\n{$stream}endstream endobj",
+        ];
+
+        $pdf = "%PDF-1.4\n";
+        $offsets = [0];
+        foreach ($objects as $object) {
+            $offsets[] = strlen($pdf);
+            $pdf .= $object."\n";
+        }
+
+        $xrefOffset = strlen($pdf);
+        $pdf .= "xref\n0 6\n0000000000 65535 f \n";
+        foreach (array_slice($offsets, 1) as $offset) {
+            $pdf .= sprintf("%010d 00000 n \n", $offset);
+        }
+
+        return $pdf."trailer << /Root 1 0 R /Size 6 >>\nstartxref\n{$xrefOffset}\n%%EOF\n";
     }
 
     // -------------------------------------------------------------------------

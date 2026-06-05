@@ -193,7 +193,7 @@ class UserControllerTest extends TestCase
         $bank = $this->makeBank();
 
         $this->actingAs($admin)->postJson('/api/users', [
-            'name' => 'لجنة الدعم',
+            'name' => 'لجنة المساندة',
             'email' => 'support@cby.gov.ye',
             'password' => 'password123',
             'role' => UserRole::SUPPORT_COMMITTEE->value,

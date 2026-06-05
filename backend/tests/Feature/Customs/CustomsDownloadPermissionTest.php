@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /**
- * Story 4.3: Customs Declaration Download Permission Matrix
+ * Story 4.3: External FX Confirmation Download Permission Matrix
  * Tests the role-based permission matrix for GET /api/customs/{id}/download
  */
 class CustomsDownloadPermissionTest extends TestCase

@@ -116,7 +116,7 @@ class NotificationSeeder extends Seeder
             $events[] = [
                 'type' => 'App\\Notifications\\RequestApprovedNotification',
                 'audience' => 'support_committee',
-                'ar' => 'طلب جاهز لمراجعة لجنة الدعم.',
+                'ar' => 'طلب جاهز لمراجعة لجنة المساندة.',
                 'en' => 'A request is ready for support committee review.',
                 'at' => $request->bank_approved_at,
             ];
@@ -156,7 +156,7 @@ class NotificationSeeder extends Seeder
             $events[] = [
                 'type' => 'App\\Notifications\\RequestReturnedNotification',
                 'audience' => 'bank_reviewers',
-                'ar' => 'رُفض الطلب من لجنة الدعم — يرجى المراجعة.',
+                'ar' => 'رُفض الطلب من لجنة المساندة. يرجى المراجعة.',
                 'en' => 'Request rejected by support committee.',
                 'at' => $request->updated_at,
             ];
@@ -167,7 +167,7 @@ class NotificationSeeder extends Seeder
             $events[] = [
                 'type' => 'App\\Notifications\\RequestReturnedNotification',
                 'audience' => 'data_entry_creator',
-                'ar' => 'أعادت لجنة الدعم الطلب — يرجى استيفاء المتطلبات الإضافية.',
+                'ar' => 'أعادت لجنة المساندة الطلب. يرجى استيفاء المتطلبات الإضافية.',
                 'en' => 'Support committee returned your request — please provide additional documentation.',
                 'at' => $request->updated_at,
             ];
@@ -213,13 +213,13 @@ class NotificationSeeder extends Seeder
             ];
         }
 
-        // Executive approved → notify director (ready for customs)
+        // Executive approved → notify director (ready for FX confirmation)
         if ($status === RequestStatus::EXECUTIVE_APPROVED) {
             $events[] = [
                 'type' => 'App\\Notifications\\ExecutiveApprovedNotification',
                 'audience' => 'director',
-                'ar' => 'وافقت اللجنة التنفيذية على الطلب — جاهز لإصدار البيان الجمركي.',
-                'en' => 'Executive committee approved the request — ready to issue customs declaration.',
+                'ar' => 'وافقت اللجنة التنفيذية على الطلب. جاهز لإصدار وثيقة تأكيد المصارفة الخارجية.',
+                'en' => 'Executive committee approved the request. Ready to issue the external FX confirmation document.',
                 'at' => $request->executive_decided_at,
             ];
         }
@@ -242,20 +242,20 @@ class NotificationSeeder extends Seeder
             ];
         }
 
-        // Customs issued → notify data entry creator + bank reviewers
+        // FX confirmation issued → notify data entry creator + bank reviewers
         if ($request->customs_issued_at) {
             $events[] = [
                 'type' => 'App\\Notifications\\CustomsIssuedNotification',
                 'audience' => 'data_entry_creator',
-                'ar' => 'تم إصدار البيان الجمركي لطلبك.',
-                'en' => 'Customs declaration issued for your request.',
+                'ar' => 'تم إصدار وثيقة تأكيد المصارفة الخارجية لطلبك.',
+                'en' => 'External FX confirmation document issued for your request.',
                 'at' => $request->customs_issued_at,
             ];
             $events[] = [
                 'type' => 'App\\Notifications\\CustomsIssuedNotification',
                 'audience' => 'bank_reviewers',
-                'ar' => 'تم إصدار البيان الجمركي.',
-                'en' => 'Customs declaration issued.',
+                'ar' => 'تم إصدار وثيقة تأكيد المصارفة الخارجية.',
+                'en' => 'External FX confirmation document issued.',
                 'at' => $request->customs_issued_at,
             ];
         }

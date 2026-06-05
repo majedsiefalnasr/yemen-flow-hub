@@ -96,8 +96,8 @@ class MerchantControllerTest extends TestCase
     {
         $permissionId = Permission::query()->insertGetId([
             'slug' => 'merchants.manage',
-            'name_ar' => 'إدارة التجار',
-            'name_en' => 'Manage merchants',
+            'name_ar' => 'إدارة المستوردين',
+            'name_en' => 'Manage importers',
             'group' => 'admin',
         ]);
 

@@ -21,11 +21,11 @@ class CustomsController extends Controller
     #[OA\Post(
         path: '/api/customs/{importRequest}/generate',
         tags: ['Customs'],
-        summary: 'Generate customs declaration and PDF',
+        summary: 'Generate external FX confirmation document and PDF',
         parameters: [
             new OA\Parameter(name: 'importRequest', in: 'path', required: true, schema: new OA\Schema(type: 'integer')),
         ],
-        responses: [new OA\Response(response: 201, description: 'Customs declaration generated')]
+        responses: [new OA\Response(response: 201, description: 'External FX confirmation document generated')]
     )]
     public function generate(ImportRequest $importRequest)
     {
@@ -35,7 +35,7 @@ class CustomsController extends Controller
 
         return ApiResponse::success(
             new CustomsDeclarationResource($declaration->load(['issuer', 'request.bank'])),
-            'Customs declaration generated successfully.',
+            'External FX confirmation document generated successfully.',
             201
         );
     }
@@ -43,8 +43,8 @@ class CustomsController extends Controller
     #[OA\Get(
         path: '/api/customs/{id}',
         tags: ['Customs'],
-        summary: 'Get customs declaration metadata',
-        responses: [new OA\Response(response: 200, description: 'Customs declaration retrieved')]
+        summary: 'Get external FX confirmation metadata',
+        responses: [new OA\Response(response: 200, description: 'External FX confirmation document retrieved')]
     )]
     public function show(CustomsDeclaration $customsDeclaration)
     {
@@ -52,14 +52,14 @@ class CustomsController extends Controller
 
         return ApiResponse::success(
             new CustomsDeclarationResource($customsDeclaration->load(['issuer', 'request.bank'])),
-            'Customs declaration retrieved.'
+            'External FX confirmation document retrieved.'
         );
     }
 
     #[OA\Get(
         path: '/api/customs/{id}/download',
         tags: ['Customs'],
-        summary: 'Download customs declaration PDF',
+        summary: 'Download external FX confirmation PDF',
         responses: [new OA\Response(response: 200, description: 'PDF stream')]
     )]
     public function download(CustomsDeclaration $customsDeclaration): StreamedResponse
@@ -129,14 +129,14 @@ class CustomsController extends Controller
     #[OA\Get(
         path: '/api/requests/{importRequest}/customs-preview',
         tags: ['Customs'],
-        summary: 'Get customs declaration for a request (preview)',
+        summary: 'Get external FX confirmation for a request (preview)',
         parameters: [
             new OA\Parameter(name: 'importRequest', in: 'path', required: true, schema: new OA\Schema(type: 'integer')),
         ],
         responses: [
-            new OA\Response(response: 200, description: 'Customs declaration data for preview'),
+            new OA\Response(response: 200, description: 'External FX confirmation data for preview'),
             new OA\Response(response: 403, description: 'Access denied'),
-            new OA\Response(response: 404, description: 'No customs declaration for this request'),
+            new OA\Response(response: 404, description: 'No external FX confirmation document for this request'),
         ]
     )]
     public function preview(ImportRequest $importRequest)
@@ -156,14 +156,14 @@ class CustomsController extends Controller
         $declaration = $importRequest->customsDeclaration()->first();
 
         if ($declaration === null) {
-            abort(404, 'No customs declaration found for this request.');
+            abort(404, 'No external FX confirmation document found for this request.');
         }
 
         $this->authorize('download', $declaration);
 
         return ApiResponse::success(
             new CustomsDeclarationResource($declaration->load(['issuer', 'request.bank'])),
-            'Customs declaration retrieved for preview.'
+            'External FX confirmation document retrieved for preview.'
         );
     }
 }

@@ -71,7 +71,7 @@
 <div class="section-title">بيانات المستورد والوثيقة</div>
 <table class="dt">
     <tr>
-        <th>اسم المستورد / التاجر</th>
+        <th>اسم المستورد</th>
         <td>{{ $merchantName }}</td>
         <th>الرقم الضريبي</th>
         <td class="muted">{{ $taxNumber ?? '—' }}</td>

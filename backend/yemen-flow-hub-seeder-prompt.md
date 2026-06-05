@@ -38,13 +38,14 @@ Running `php artisan migrate:fresh --seed` must produce a database where every w
 - **Timestamp consistency:** `submitted_at` < `bank_approved_at` < `support_approved_at` < `swift_uploaded_at` < `executive_decided_at` < `customs_issued_at`. Set only the timestamps appropriate for the request's current status.
 - **Owner consistency:** `current_owner_role` must match the role expected for that status (per the workflow transition map).
 - **Vote integrity:** votes only exist for requests that reached `EXECUTIVE_VOTING` or beyond. Max 6 executive votes per request + optionally 1 director override on ties. Unique `(request_id, user_id)`.
-- **Documents:** every non-DRAFT request has at least 1-3 `REQUEST_DOC` documents. Every request at `SWIFT_UPLOADED` or beyond has exactly 1 `SWIFT` document. Every `CUSTOMS_ISSUED`/`COMPLETED` request has 1 `CUSTOMS` document (matching the customs declaration's `pdf_path`).
-- **Customs declarations:** exactly one row per request that reached `CUSTOMS_ISSUED` or `COMPLETED`.
+- **Documents:** every non-DRAFT request has at least 1-3 `REQUEST_DOC` documents. Every request at `SWIFT_UPLOADED` or beyond has exactly 1 `SWIFT` document. Every `CUSTOMS_ISSUED`/`COMPLETED` request has 1 `CUSTOMS` document (matching the external FX confirmation document's `pdf_path`).
+- **External FX confirmations:** exactly one row per request that reached `CUSTOMS_ISSUED` or `COMPLETED`.
 - **No fake file uploads to disk** — use placeholder paths and realistic metadata. Do NOT actually copy files to storage. Skip real file creation; just generate DB rows with plausible `stored_path` values like `requests/{id}/{uuid}.pdf`.
 
 ## Faker
 
 Use Laravel's built-in `fake()` helper (Faker). Mix Arabic and English where realistic:
+
 - `supplier_name`: use international company-style names (e.g. "Al-Hadi Trading LLC", "Shanghai Medical Supplies Co.").
 - `goods_description`: realistic Arabic phrases mixed with English (e.g. "أجهزة طبية - Medical Equipment", "مواد غذائية - Food Supplies").
 - `port_of_entry`: rotate through `["Aden Port", "Hodeidah Port", "Mukalla Port", "Sana'a Airport"]`.
@@ -70,6 +71,7 @@ NotificationSeeder.php
 ```
 
 Also create a helper:
+
 ```
 database/seeders/Support/RequestScenarioBuilder.php
 ```
@@ -101,13 +103,13 @@ Print `$this->command->info(...)` summaries after each step.
 
 Insert exactly **5 banks**:
 
-| Name | Code | is_active |
-|---|---|---|
-| Cooperative & Agricultural Credit Bank | CAC | true |
-| Yemen Commercial Bank | YCB | true |
-| Tadhamon International Islamic Bank | TIIB | true |
-| Saba Islamic Bank | SIB | true |
-| National Bank of Yemen | NBY | false |
+| Name                                   | Code | is_active |
+| -------------------------------------- | ---- | --------- |
+| Cooperative & Agricultural Credit Bank | CAC  | true      |
+| Yemen Commercial Bank                  | YCB  | true      |
+| Tadhamon International Islamic Bank    | TIIB | true      |
+| Saba Islamic Bank                      | SIB  | true      |
+| National Bank of Yemen                 | NBY  | false     |
 
 (One inactive bank gives the UI an edge case to display.)
 
@@ -119,28 +121,28 @@ Insert all users below. **All passwords = `password`** (bcrypted via `Hash::make
 
 ## CBY users (no `bank_id`)
 
-| Name | Email | Role |
-|---|---|---|
-| Ahmed Al-Sayed | admin@cby.gov.ye | CBY_ADMIN |
-| Khaled Al-Shamiri | director@cby.gov.ye | COMMITTEE_DIRECTOR |
-| Fatima Al-Hadi | support1@cby.gov.ye | SUPPORT_COMMITTEE |
-| Nasser Al-Mutawakil | support2@cby.gov.ye | SUPPORT_COMMITTEE |
-| Mona Al-Eryani | exec1@cby.gov.ye | EXECUTIVE_MEMBER |
-| Salem Al-Maqtari | exec2@cby.gov.ye | EXECUTIVE_MEMBER |
-| Hanan Al-Bukhaiti | exec3@cby.gov.ye | EXECUTIVE_MEMBER |
-| Yousef Al-Sallal | exec4@cby.gov.ye | EXECUTIVE_MEMBER |
-| Aisha Al-Janadi | exec5@cby.gov.ye | EXECUTIVE_MEMBER |
-| Tariq Al-Haddad | exec6@cby.gov.ye | EXECUTIVE_MEMBER |
+| Name                | Email               | Role               |
+| ------------------- | ------------------- | ------------------ |
+| Ahmed Al-Sayed      | admin@cby.gov.ye    | CBY_ADMIN          |
+| Khaled Al-Shamiri   | director@cby.gov.ye | COMMITTEE_DIRECTOR |
+| Fatima Al-Hadi      | support1@cby.gov.ye | SUPPORT_COMMITTEE  |
+| Nasser Al-Mutawakil | support2@cby.gov.ye | SUPPORT_COMMITTEE  |
+| Mona Al-Eryani      | exec1@cby.gov.ye    | EXECUTIVE_MEMBER   |
+| Salem Al-Maqtari    | exec2@cby.gov.ye    | EXECUTIVE_MEMBER   |
+| Hanan Al-Bukhaiti   | exec3@cby.gov.ye    | EXECUTIVE_MEMBER   |
+| Yousef Al-Sallal    | exec4@cby.gov.ye    | EXECUTIVE_MEMBER   |
+| Aisha Al-Janadi     | exec5@cby.gov.ye    | EXECUTIVE_MEMBER   |
+| Tariq Al-Haddad     | exec6@cby.gov.ye    | EXECUTIVE_MEMBER   |
 
 ## Bank users (one of each role per active bank)
 
 For each of the 4 active banks, create 3 users using the bank's code as email suffix:
 
-| Role | Email pattern | Example for CAC |
-|---|---|---|
-| DATA_ENTRY | entry@{code}.com.ye | entry@cac.com.ye |
+| Role          | Email pattern          | Example for CAC     |
+| ------------- | ---------------------- | ------------------- |
+| DATA_ENTRY    | entry@{code}.com.ye    | entry@cac.com.ye    |
 | BANK_REVIEWER | reviewer@{code}.com.ye | reviewer@cac.com.ye |
-| SWIFT_OFFICER | swift@{code}.com.ye | swift@cac.com.ye |
+| SWIFT_OFFICER | swift@{code}.com.ye    | swift@cac.com.ye    |
 
 Names: generate realistic Arabic names via faker (or hardcoded list of 12 unique names).
 
@@ -153,21 +155,24 @@ Print a summary table at the end with role counts.
 # 4️⃣ RequestScenarioBuilder.php (the heart of the seeder)
 
 Public method:
+
 ```php
 public function build(string $scenario, Bank $bank): ImportRequest
 ```
 
 Where `$scenario` is one of the scenario keys defined below. The builder:
+
 1. Creates the `import_requests` row with the right `status`, `current_owner_role`, and all relevant timestamps.
 2. Creates 1-3 `REQUEST_DOC` rows.
 3. Creates the appropriate `request_stage_history` chain (one row per transition the request has been through).
 4. Creates SWIFT document if status >= `SWIFT_UPLOADED`.
 5. Creates votes if status reached `EXECUTIVE_VOTING` or beyond.
-6. Creates customs declaration + CUSTOMS document if status is `CUSTOMS_ISSUED` or `COMPLETED`.
+6. Creates external FX confirmation + CUSTOMS document if status is `CUSTOMS_ISSUED` or `COMPLETED`.
 7. Inserts mirrored `audit_logs` for each transition.
 8. Returns the request.
 
 Helper rules:
+
 - All timestamps stagger backwards from "now" in plausible increments (2-5 days between stages).
 - Pick `created_by` randomly from the bank's `DATA_ENTRY` users.
 - Pick reviewer (different user!) from the bank's `BANK_REVIEWER` users.
@@ -181,22 +186,22 @@ Helper rules:
 
 Build the following scenarios across the 4 active banks. Distribute evenly (rotate banks).
 
-| # | Scenario key | Status | Count | Notes |
-|---|---|---|---|---|
-| 1 | `draft` | DRAFT | 4 | No history rows yet. No documents required (or 0-1 doc). |
-| 2 | `submitted` | SUBMITTED | 3 | History: [draft → submitted]. Reviewer not yet acted. |
-| 3 | `bank_approved` | BANK_APPROVED | 2 | History through bank_approve. Reviewer != creator. |
-| 4 | `bank_rejected_terminal` | BANK_REJECTED | 1 | Permanently rejected at bank stage. |
-| 5 | `returned_to_entry_once` | RETURNED_TO_DATA_ENTRY | 2 | `revision_count = 1`. History shows submitted → returned. |
-| 6 | `support_approved_waiting_swift` | SUPPORT_APPROVED | 2 | Awaiting SWIFT upload. No SWIFT doc yet. |
-| 7 | `support_rejected_pending_reviewer` | SUPPORT_REJECTED | 1 | Returned to reviewer for decision. |
-| 8 | `executive_voting_pending` | EXECUTIVE_VOTING | 3 | SWIFT uploaded. 0-3 of the 6 executive votes cast so far (mix of approve/reject/abstain, no decision yet). |
-| 9 | `executive_voting_tie` | EXECUTIVE_VOTING | 1 | All 6 voted: 3 approve / 3 reject. Awaiting director tie-breaker. |
-| 10 | `executive_approved_no_customs_yet` | EXECUTIVE_APPROVED | 2 | All 6 votes recorded with clear approval (e.g. 5 approve / 1 reject). Customs not yet issued. |
-| 11 | `executive_rejected_returned` | EXECUTIVE_REJECTED | 1 | Decisive rejection (e.g. 1 approve / 5 reject). Awaiting reviewer to decide whether to send back to entry. |
-| 12 | `customs_issued` | CUSTOMS_ISSUED | 1 | Customs declaration exists. Not yet marked completed. |
-| 13 | `completed` | COMPLETED | 3 | Full lifecycle: customs issued + completed. Includes the declaration record. |
-| 14 | `completed_with_revision` | COMPLETED | 1 | Went through one revision cycle (`revision_count = 1`), then succeeded all the way to completion. History should include the returned-to-entry detour. |
+| #   | Scenario key                        | Status                 | Count | Notes                                                                                                                                                  |
+| --- | ----------------------------------- | ---------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1   | `draft`                             | DRAFT                  | 4     | No history rows yet. No documents required (or 0-1 doc).                                                                                               |
+| 2   | `submitted`                         | SUBMITTED              | 3     | History: [draft → submitted]. Reviewer not yet acted.                                                                                                  |
+| 3   | `bank_approved`                     | BANK_APPROVED          | 2     | History through bank_approve. Reviewer != creator.                                                                                                     |
+| 4   | `bank_rejected_terminal`            | BANK_REJECTED          | 1     | Permanently rejected at bank stage.                                                                                                                    |
+| 5   | `returned_to_entry_once`            | RETURNED_TO_DATA_ENTRY | 2     | `revision_count = 1`. History shows submitted → returned.                                                                                              |
+| 6   | `support_approved_waiting_swift`    | SUPPORT_APPROVED       | 2     | Awaiting SWIFT upload. No SWIFT doc yet.                                                                                                               |
+| 7   | `support_rejected_pending_reviewer` | SUPPORT_REJECTED       | 1     | Returned to reviewer for decision.                                                                                                                     |
+| 8   | `executive_voting_pending`          | EXECUTIVE_VOTING       | 3     | SWIFT uploaded. 0-3 of the 6 executive votes cast so far (mix of approve/reject/abstain, no decision yet).                                             |
+| 9   | `executive_voting_tie`              | EXECUTIVE_VOTING       | 1     | All 6 voted: 3 approve / 3 reject. Awaiting director tie-breaker.                                                                                      |
+| 10  | `executive_approved_no_customs_yet` | EXECUTIVE_APPROVED     | 2     | All 6 votes recorded with clear approval (e.g. 5 approve / 1 reject). Customs not yet issued.                                                          |
+| 11  | `executive_rejected_returned`       | EXECUTIVE_REJECTED     | 1     | Decisive rejection (e.g. 1 approve / 5 reject). Awaiting reviewer to decide whether to send back to entry.                                             |
+| 12  | `customs_issued`                    | CUSTOMS_ISSUED         | 1     | Customs declaration exists. Not yet marked completed.                                                                                                  |
+| 13  | `completed`                         | COMPLETED              | 3     | Full lifecycle: customs issued + completed. Includes the declaration record.                                                                           |
+| 14  | `completed_with_revision`           | COMPLETED              | 1     | Went through one revision cycle (`revision_count = 1`), then succeeded all the way to completion. History should include the returned-to-entry detour. |
 
 **Total: ~27 requests.** Adjust counts only if needed to keep distribution sensible.
 
@@ -212,6 +217,7 @@ For each scenario, the builder must produce coherent timestamps, ownership, and 
 # 6️⃣ RequestDocumentSeeder behavior
 
 Don't run as a separate seeder — it's invoked inside the scenario builder. For each request:
+
 - 1-3 `REQUEST_DOC` rows with plausible `original_filename` (e.g. `"invoice.pdf"`, `"contract.pdf"`, `"goods_list.pdf"`).
 - `mime_type` rotated through `["application/pdf", "image/jpeg", "image/png"]`.
 - `size_bytes` random between 50 KB and 5 MB.
@@ -226,6 +232,7 @@ If the request reached `CUSTOMS_ISSUED` or beyond, add 1 row with `type = CUSTOM
 # 7️⃣ RequestStageHistorySeeder behavior
 
 Also internal to scenario builder. For each transition the request went through, insert a `request_stage_history` row with:
+
 - correct `from_status` and `to_status`
 - correct `from_owner_role` and `to_owner_role`
 - `actor_id` = the user who would realistically have performed the action
@@ -239,6 +246,7 @@ Also internal to scenario builder. For each transition the request went through,
 # 8️⃣ RequestVoteSeeder behavior
 
 Internal to scenario builder. For requests in scenarios 8–11:
+
 - Insert `request_votes` rows per the scenario's vote pattern.
 - `vote` values from the enum.
 - `justification` filled occasionally (50% of votes), realistic short text.
@@ -250,6 +258,7 @@ Internal to scenario builder. For requests in scenarios 8–11:
 # 9️⃣ CustomsDeclarationSeeder behavior
 
 Internal to scenario builder. For requests with status `CUSTOMS_ISSUED` or `COMPLETED`:
+
 - Insert one `customs_declarations` row.
 - `declaration_number` format: `CD-{YYYY}-{6-digit-sequence}` (sequence per seeder run).
 - `issued_by` = the CBY_ADMIN user.
@@ -262,6 +271,7 @@ Internal to scenario builder. For requests with status `CUSTOMS_ISSUED` or `COMP
 # 🔟 AuditLogSeeder behavior
 
 Internal to scenario builder. For every history record + every vote + every document upload, also insert a matching `audit_logs` row with:
+
 - `user_id`, `user_role` = matching actor
 - `action` = corresponding `AuditAction` enum value
 - `subject_type` = `App\Models\ImportRequest` (or `RequestVote`, `RequestDocument`, `CustomsDeclaration`)
@@ -272,6 +282,7 @@ Internal to scenario builder. For every history record + every vote + every docu
 - `created_at` = staggered timestamp matching the original action
 
 Additionally seed standalone audit rows:
+
 - 1 `LOGIN` per user (last_login_at = recent fake timestamp; also update `users.last_login_at`).
 
 ---
@@ -281,6 +292,7 @@ Additionally seed standalone audit rows:
 Runs after `ImportRequestSeeder`.
 
 For 30-40% of users, generate 2-8 notification rows in the `notifications` table:
+
 - Random `type` from the notification classes created in Module 8.
 - `notifiable_type` = `App\Models\User`, `notifiable_id` = user id.
 - `data` = JSON with `{ "request_id": ..., "request_reference": "YFH-2026-000123", "message_ar": "...", "message_en": "..." }`.
@@ -300,7 +312,7 @@ After running `php artisan migrate:fresh --seed`, verify:
 - [ ] ~27 import requests covering all 14 scenarios.
 - [ ] Every non-DRAFT request has documents.
 - [ ] Every SWIFT_UPLOADED+ request has 1 SWIFT document.
-- [ ] Every CUSTOMS_ISSUED+ request has 1 customs declaration + 1 CUSTOMS document.
+- [ ] Every CUSTOMS_ISSUED+ request has 1 external FX confirmation + 1 CUSTOMS document.
 - [ ] No request has `created_by` === any of its `bank_approve` history actors.
 - [ ] No bank user is linked to another bank's request.
 - [ ] Every status transition has a matching `request_stage_history` row.
@@ -310,6 +322,7 @@ After running `php artisan migrate:fresh --seed`, verify:
 - [ ] No row references a non-existent FK.
 
 Print a final summary to the console:
+
 ```
 ✓ Banks: 5
 ✓ Users: 22 (CBY: 10, Bank: 12)

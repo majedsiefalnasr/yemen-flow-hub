@@ -5,6 +5,7 @@
 ## How to use
 
 These are **patch instructions** for an existing Laravel 11 codebase (Modules 1–9 + seeder + test page already built). Codex must:
+
 - **Read existing files first** before editing.
 - **Modify in place** — don't recreate working code.
 - **Preserve existing Swagger annotations** and extend them, never replace.
@@ -45,6 +46,7 @@ case EXECUTIVE_DIRECTOR = 'EXECUTIVE_DIRECTOR';  // NEW
 ```
 
 Arabic labels in `label()` (these match the exact labels used in the prototype's login page):
+
 ```
 CBY_ADMIN          => 'مسؤول النظام (CBY) / CBY Admin'
 BANK_MANAGER       => 'مسؤول البنك / Bank Manager'
@@ -57,6 +59,7 @@ EXECUTIVE_DIRECTOR => 'مدير اللجنة التنفيذية / Executive Comm
 ```
 
 Add helpers:
+
 ```php
 public function isBankRole(): bool   // DATA_ENTRY, BANK_REVIEWER, SWIFT_OFFICER, BANK_MANAGER
 public function isCbyRole(): bool    // CBY_ADMIN, SUPPORT_COMMITTEE, EXECUTIVE_MEMBER, EXECUTIVE_DIRECTOR
@@ -79,9 +82,11 @@ The original Module 1 had a `COMMITTEE_DIRECTOR` role. This role does NOT exist 
 After this cleanup, the codebase should have ZERO occurrences of the string `COMMITTEE_DIRECTOR` (other than maybe historical comments — delete those too).
 
 **Sanity check command** Codex should run before declaring Chunk 1 done:
+
 ```bash
 grep -rn "COMMITTEE_DIRECTOR" app/ database/ routes/ config/
 ```
+
 Expected output: no matches.
 
 ---
@@ -96,6 +101,7 @@ php artisan make:migration create_role_permissions_table
 ```
 
 ### `permissions` table
+
 ```php
 $table->id();
 $table->string('slug')->unique();              // e.g. 'request.create'
@@ -106,6 +112,7 @@ $table->timestamps();
 ```
 
 ### `role_permissions` table
+
 ```php
 $table->id();
 $table->string('role');                        // matches UserRole enum value
@@ -123,45 +130,45 @@ Create `database/seeders/PermissionSeeder.php` and register it in `DatabaseSeede
 
 Seed exactly these 16 permissions:
 
-| slug | name_ar | name_en | group |
-|---|---|---|---|
-| `request.create` | إنشاء طلب تمويل | Create financing request | requests |
-| `request.review` | مراجعة الطلبات | Review requests | requests |
-| `request.approve` | اعتماد الطلبات | Approve requests | requests |
-| `request.reject` | رفض الطلبات | Reject requests | requests |
-| `swift.upload` | رفع وثيقة السويفت | Upload SWIFT document | swift |
-| `voting.cast` | التصويت على الطلبات | Cast vote on requests | voting |
-| `voting.finalize` | إغلاق التصويت ونشر القرار | Finalize voting and publish decision | voting |
-| `customs.issue` | إصدار البيان الجمركي | Issue customs declaration | customs |
-| `reports.view` | عرض التقارير | View reports | analytics |
-| `audit.view` | عرض سجل التدقيق | View audit log | analytics |
-| `merchants.manage` | إدارة التجار | Manage merchants | admin |
-| `users.manage` | إدارة المستخدمين | Manage users | admin |
-| `entities.manage` | إدارة البنوك والصرافات | Manage banks | admin |
-| `docrules.manage` | إدارة قواعد المستندات | Manage document types | admin |
-| `roles.manage` | إدارة الأدوار والصلاحيات | Manage roles and permissions | admin |
-| `request.claim` | حجز الطلب للمراجعة | Claim request for review | requests |
+| slug               | name_ar                             | name_en                                 | group     |
+| ------------------ | ----------------------------------- | --------------------------------------- | --------- |
+| `request.create`   | إنشاء طلب تمويل                     | Create financing request                | requests  |
+| `request.review`   | مراجعة الطلبات                      | Review requests                         | requests  |
+| `request.approve`  | اعتماد الطلبات                      | Approve requests                        | requests  |
+| `request.reject`   | رفض الطلبات                         | Reject requests                         | requests  |
+| `swift.upload`     | رفع وثيقة السويفت                   | Upload SWIFT document                   | swift     |
+| `voting.cast`      | التصويت على الطلبات                 | Cast vote on requests                   | voting    |
+| `voting.finalize`  | إغلاق التصويت ونشر القرار           | Finalize voting and publish decision    | voting    |
+| `customs.issue`    | إصدار وثيقة تأكيد المصارفة الخارجية | Issue external FX confirmation document | customs   |
+| `reports.view`     | عرض التقارير                        | View reports                            | analytics |
+| `audit.view`       | عرض سجل التدقيق                     | View audit log                          | analytics |
+| `merchants.manage` | إدارة المستوردين                    | Manage importers                        | admin     |
+| `users.manage`     | إدارة المستخدمين                    | Manage users                            | admin     |
+| `entities.manage`  | إدارة البنوك والصرافات              | Manage banks                            | admin     |
+| `docrules.manage`  | إدارة قواعد المستندات               | Manage document types                   | admin     |
+| `roles.manage`     | إدارة الأدوار والصلاحيات            | Manage roles and permissions            | admin     |
+| `request.claim`    | حجز الطلب للمراجعة                  | Claim request for review                | requests  |
 
 Then in the same seeder, populate `role_permissions` from this exact matrix (**8 roles**, matching the prototype):
 
-| Permission | CBY_ADMIN | BANK_MANAGER | DATA_ENTRY | BANK_REVIEWER | SWIFT_OFFICER | SUPPORT_COMMITTEE | EXECUTIVE_MEMBER | EXECUTIVE_DIRECTOR |
-|---|---|---|---|---|---|---|---|---|
-| request.create        | ✗ | ✓ | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ |
-| request.review        | ✗ | ✓ | ✗ | ✓ | ✗ | ✗ | ✗ | ✗ |
-| request.approve       | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ | ✗ | ✗ |
-| request.reject        | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ | ✗ | ✗ |
-| request.claim         | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ | ✗ | ✗ |
-| swift.upload          | ✗ | ✓ | ✗ | ✗ | ✓ | ✗ | ✗ | ✗ |
-| voting.cast           | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ | ✓ |
-| voting.finalize       | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ |
-| customs.issue         | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ |
-| reports.view          | ✓ | ✓ | ✗ | ✗ | ✗ | ✗ | ✓ | ✓ |
-| audit.view            | ✓ | ✓ | ✗ | ✗ | ✗ | ✓ | ✓ | ✓ |
-| merchants.manage      | ✓ | ✓ | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ |
-| users.manage          | ✓ | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ |
-| entities.manage       | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ |
-| docrules.manage       | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ |
-| roles.manage          | ✓ | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ |
+| Permission       | CBY_ADMIN | BANK_MANAGER | DATA_ENTRY | BANK_REVIEWER | SWIFT_OFFICER | SUPPORT_COMMITTEE | EXECUTIVE_MEMBER | EXECUTIVE_DIRECTOR |
+| ---------------- | --------- | ------------ | ---------- | ------------- | ------------- | ----------------- | ---------------- | ------------------ |
+| request.create   | ✗         | ✓            | ✓          | ✗             | ✗             | ✗                 | ✗                | ✗                  |
+| request.review   | ✗         | ✓            | ✗          | ✓             | ✗             | ✗                 | ✗                | ✗                  |
+| request.approve  | ✗         | ✗            | ✗          | ✗             | ✗             | ✓                 | ✗                | ✗                  |
+| request.reject   | ✗         | ✗            | ✗          | ✗             | ✗             | ✓                 | ✗                | ✗                  |
+| request.claim    | ✗         | ✗            | ✗          | ✗             | ✗             | ✓                 | ✗                | ✗                  |
+| swift.upload     | ✗         | ✓            | ✗          | ✗             | ✓             | ✗                 | ✗                | ✗                  |
+| voting.cast      | ✗         | ✗            | ✗          | ✗             | ✗             | ✗                 | ✓                | ✓                  |
+| voting.finalize  | ✗         | ✗            | ✗          | ✗             | ✗             | ✗                 | ✗                | ✓                  |
+| customs.issue    | ✗         | ✗            | ✗          | ✗             | ✗             | ✗                 | ✗                | ✓                  |
+| reports.view     | ✓         | ✓            | ✗          | ✗             | ✗             | ✗                 | ✓                | ✓                  |
+| audit.view       | ✓         | ✓            | ✗          | ✗             | ✗             | ✓                 | ✓                | ✓                  |
+| merchants.manage | ✓         | ✓            | ✓          | ✗             | ✗             | ✗                 | ✗                | ✗                  |
+| users.manage     | ✓         | ✓            | ✗          | ✗             | ✗             | ✗                 | ✗                | ✗                  |
+| entities.manage  | ✓         | ✗            | ✗          | ✗             | ✗             | ✗                 | ✗                | ✗                  |
+| docrules.manage  | ✓         | ✗            | ✗          | ✗             | ✗             | ✗                 | ✗                | ✗                  |
+| roles.manage     | ✓         | ✓            | ✗          | ✗             | ✗             | ✗                 | ✗                | ✗                  |
 
 **Note:** `BANK_MANAGER` is essentially a power user inside a bank — can create, review, upload SWIFT, manage their bank's users and merchants.
 
@@ -170,6 +177,7 @@ Then in the same seeder, populate `role_permissions` from this exact matrix (**8
 ## Task 1.4 — `Permission` model and `PermissionService`
 
 ### Model `app/Models/Permission.php`
+
 - Fillable: `slug`, `name_ar`, `name_en`, `group`.
 - Relationship: `roles()` via `role_permissions` (returns distinct role strings).
 
@@ -190,6 +198,7 @@ Bind this service in `AppServiceProvider`. Add a `Gate::before()` hook in `AuthS
 ## Task 1.5 — `User` model: add `can($permission)` helper
 
 In `app/Models/User.php`, override or add:
+
 ```php
 public function hasPermission(string $slug): bool
 {
@@ -204,6 +213,7 @@ Laravel's `$user->can('slug')` will already work via the Gate::before hook from 
 ## Task 1.6 — `merchants` table
 
 Migration:
+
 ```bash
 php artisan make:migration create_merchants_table
 ```
@@ -228,35 +238,39 @@ $table->index('is_active');
 ```
 
 ### Model `app/Models/Merchant.php`
+
 - Relationships: `bank()`, `creator()`, `importRequests()`.
 - Scope: `scopeActive()`, `scopeForUser(User $user)` (bank-scoped for bank roles, all for CBY).
 
 ### Policy `app/Policies/MerchantPolicy.php`
+
 Use the new permission system:
+
 - `viewAny`, `view`: any authenticated user (bank-scoped for bank users).
 - `create`, `update`, `delete`: `$user->hasPermission('merchants.manage')` AND bank-scoping (bank users can only manage their bank's merchants).
 
 ### Controller `app/Http/Controllers/Api/MerchantController.php`
 
-| Method | Endpoint |
-|---|---|
-| GET | `/api/merchants` (list, paginated, filter by `bank_id`, `is_active`, `search`) |
-| POST | `/api/merchants` |
-| GET | `/api/merchants/{id}` |
-| PUT | `/api/merchants/{id}` |
-| DELETE | `/api/merchants/{id}` (soft delete) |
+| Method | Endpoint                                                                       |
+| ------ | ------------------------------------------------------------------------------ |
+| GET    | `/api/merchants` (list, paginated, filter by `bank_id`, `is_active`, `search`) |
+| POST   | `/api/merchants`                                                               |
+| GET    | `/api/merchants/{id}`                                                          |
+| PUT    | `/api/merchants/{id}`                                                          |
+| DELETE | `/api/merchants/{id}` (soft delete)                                            |
 
 FormRequests: `StoreMerchantRequest`, `UpdateMerchantRequest`. Resource: `MerchantResource`.
 
 Bank scoping rule: when a `BANK_MANAGER` or `DATA_ENTRY` creates a merchant, `bank_id` is automatically set to their `bank_id` (don't trust user input). For `CBY_ADMIN`, `bank_id` must be provided in the body.
 
-Add full Swagger `@OA` annotations on all 5 endpoints under tag `"التجار / Merchants"`.
+Add full Swagger `@OA` annotations on all 5 endpoints under tag `"المستوردون / Importers"`.
 
 ---
 
 ## Task 1.7 — `document_types` table
 
 Migration:
+
 ```bash
 php artisan make:migration create_document_types_table
 ```
@@ -273,15 +287,16 @@ $table->timestamps();
 ```
 
 ### Model `app/Models/DocumentType.php`
+
 Standard model with fillable, casts, `scopeActive()`.
 
 ### Controller `app/Http/Controllers/Api/DocumentTypeController.php`
 
-| Method | Endpoint |
-|---|---|
-| GET | `/api/document-types` |
-| POST | `/api/document-types` |
-| PUT | `/api/document-types/{id}` |
+| Method | Endpoint                   |
+| ------ | -------------------------- |
+| GET    | `/api/document-types`      |
+| POST   | `/api/document-types`      |
+| PUT    | `/api/document-types/{id}` |
 | DELETE | `/api/document-types/{id}` |
 
 Authorization: only users with `docrules.manage` permission (only `CBY_ADMIN` per the matrix) for create/update/delete. GET is open to all authenticated users.
@@ -293,6 +308,7 @@ Create a follow-up migration that adds a nullable `document_type_id` FK to `requ
 ```bash
 php artisan make:migration add_document_type_to_request_documents
 ```
+
 ```php
 $table->foreignId('document_type_id')->nullable()->after('type')->constrained('document_types')->nullOnDelete();
 $table->index('document_type_id');
@@ -303,6 +319,7 @@ Existing rows stay `null` — backward compatible.
 ### Seeder `DocumentTypeSeeder`
 
 Seed 8 common document types:
+
 ```
 commercial_invoice    | فاتورة تجارية              | Commercial Invoice            | required
 packing_list          | قائمة التعبئة              | Packing List                  | required
@@ -332,6 +349,7 @@ Register the seeder in `DatabaseSeeder` after `PermissionSeeder`.
 - [ ] No existing endpoint is broken.
 
 Run:
+
 ```bash
 php artisan migrate
 php artisan db:seed --class=PermissionSeeder
@@ -505,6 +523,7 @@ public function overrideAndFinalize(
 ```
 
 **Logic:**
+
 - Verify `$director->role === UserRole::EXECUTIVE_DIRECTOR`.
 - Verify `$request->status === EXECUTIVE_VOTING`.
 - Verify `$justification` is non-empty (required when overriding the voting majority).
@@ -513,6 +532,7 @@ public function overrideAndFinalize(
 - Audit log includes `was_override: true` and the current tally at override time.
 
 Difference from the old `finalize()`:
+
 - Old `finalize()` only worked on a tie (3-3 deadlock); the director picked one side.
 - New `overrideAndFinalize()` works **regardless of tally** — even if 5 members voted approve, the Executive Director can override with reject + justification.
 
@@ -532,6 +552,7 @@ POST /api/voting/{id}/override
 ```
 
 Body:
+
 ```json
 {
   "decision": "APPROVE" | "REJECT",
@@ -553,7 +574,7 @@ In `app/Http/Controllers/Api/CustomsController.php`:
 
 - `POST /api/customs/{request_id}/generate`: authorization changes from `$user->role === CBY_ADMIN` to `$user->hasPermission('customs.issue')` (which is only `EXECUTIVE_DIRECTOR`).
 - Update `CustomsService::generate()` to verify `$issuer->role === EXECUTIVE_DIRECTOR` (changed from `CBY_ADMIN`).
-- The customs declaration's `issued_by` still points to the user, no schema change needed.
+- The external FX confirmation document's `issued_by` still points to the user, no schema change needed.
 
 ---
 
@@ -571,10 +592,12 @@ $table->index('merchant_id');
 ```
 
 Update `ImportRequest` model:
+
 - Add relationship `merchant()`.
 - Add `merchant_id` to fillable.
 
 Update `StoreImportRequest` FormRequest:
+
 - Add `merchant_id` field, required.
 - Validation: merchant must exist AND belong to the same bank as the creating user.
 
@@ -598,6 +621,7 @@ Update `ImportRequestResource` to include `merchant` (id, name, commercial_regis
 - [ ] No existing tests/seeds break (other than the customs ownership and merchant FK).
 
 Run:
+
 ```bash
 php artisan migrate
 php artisan l5-swagger:generate
@@ -634,17 +658,19 @@ $table->index('claim_expires_at');
 ## Task 3.2 — Add new status `SUPPORT_UNDER_REVIEW`
 
 In `app/Enums/RequestStatus.php`, add:
+
 ```php
 case SUPPORT_UNDER_REVIEW = 'SUPPORT_UNDER_REVIEW';
 ```
 
-Label: `'قيد مراجعة لجنة الدعم / Under Support Review'`.
+Label: `'قيد مراجعة لجنة المساندة / Under Support Review'`.
 
 ---
 
 ## Task 3.3 — Config file `config/workflow.php`
 
 Create:
+
 ```php
 return [
     'support_claim_ttl_hours' => env('SUPPORT_CLAIM_TTL_HOURS', 24),
@@ -783,12 +809,13 @@ Audit log entries for `support_claim` should include `claimed_until` and `overri
 
 Add to `WorkflowController`:
 
-| Method | Endpoint | Action |
-|---|---|---|
-| POST | `/api/workflow/{id}/support-claim` | support_claim |
-| POST | `/api/workflow/{id}/support-release` | support_release |
+| Method | Endpoint                             | Action          |
+| ------ | ------------------------------------ | --------------- |
+| POST   | `/api/workflow/{id}/support-claim`   | support_claim   |
+| POST   | `/api/workflow/{id}/support-release` | support_release |
 
 Both endpoints:
+
 - Require `request.claim` permission (which is SUPPORT_COMMITTEE only).
 - Return updated `ImportRequestResource`.
 - Full Swagger annotations.
@@ -798,6 +825,7 @@ Both endpoints:
 ## Task 3.8 — Update the requests list response to expose claim info
 
 In `ImportRequestResource`:
+
 - Add `claimed_by` (id, name) when not null.
 - Add `claimed_until` ISO timestamp.
 - Add `is_claimed` boolean.
@@ -811,6 +839,7 @@ These help the frontend render the claim button correctly without re-computing.
 ## Task 3.9 — Filter the support queue endpoint
 
 In `ImportRequestController::index()`, add a query param `?claim_filter=available|mine|all` (used only by support committee users):
+
 - `available` → status is `BANK_APPROVED` OR (`SUPPORT_UNDER_REVIEW` AND claim expired)
 - `mine` → claimed_by = current user AND claim active
 - `all` (default) → no filter
@@ -831,6 +860,7 @@ This lets the frontend show "Available for me" vs "I claimed" tabs.
 - [ ] Audit logs show override events with `override_previous_claim_by`.
 
 Run:
+
 ```bash
 php artisan migrate
 php artisan l5-swagger:generate
@@ -860,18 +890,18 @@ All passwords are `password` (bcrypted).
 
 ### CBY users (no `bank_id`) — 9 users
 
-| Name (Arabic) | Email | Role |
-|---|---|---|
-| ياسر الحضرمي | admin@cby.gov.ye | CBY_ADMIN |
-| محمد الشامي | support1@cby.gov.ye | SUPPORT_COMMITTEE |
-| نسيم العمري | support2@cby.gov.ye | SUPPORT_COMMITTEE |
+| Name (Arabic)   | Email               | Role               |
+| --------------- | ------------------- | ------------------ |
+| ياسر الحضرمي    | admin@cby.gov.ye    | CBY_ADMIN          |
+| محمد الشامي     | support1@cby.gov.ye | SUPPORT_COMMITTEE  |
+| نسيم العمري     | support2@cby.gov.ye | SUPPORT_COMMITTEE  |
 | د. هدى الإرياني | director@cby.gov.ye | EXECUTIVE_DIRECTOR |
-| م. سامي الذماري | exec1@cby.gov.ye | EXECUTIVE_MEMBER |
-| د. ندى الكبسي | exec2@cby.gov.ye | EXECUTIVE_MEMBER |
-| أ. فهد الشرعبي | exec3@cby.gov.ye | EXECUTIVE_MEMBER |
-| د. أمينة العزب | exec4@cby.gov.ye | EXECUTIVE_MEMBER |
-| م. خالد الأنسي | exec5@cby.gov.ye | EXECUTIVE_MEMBER |
-| محمود الذيباني | exec6@cby.gov.ye | EXECUTIVE_MEMBER |
+| م. سامي الذماري | exec1@cby.gov.ye    | EXECUTIVE_MEMBER   |
+| د. ندى الكبسي   | exec2@cby.gov.ye    | EXECUTIVE_MEMBER   |
+| أ. فهد الشرعبي  | exec3@cby.gov.ye    | EXECUTIVE_MEMBER   |
+| د. أمينة العزب  | exec4@cby.gov.ye    | EXECUTIVE_MEMBER   |
+| م. خالد الأنسي  | exec5@cby.gov.ye    | EXECUTIVE_MEMBER   |
+| محمود الذيباني  | exec6@cby.gov.ye    | EXECUTIVE_MEMBER   |
 
 **Note:** The prototype showed "د. هدى الإرياني" twice (once as executive member, once as director) — this was a prototype display issue. In our seeder she is **the executive director only**. The 6 executive members use the names from the prototype's executive committee section.
 
@@ -879,23 +909,23 @@ All passwords are `password` (bcrypted).
 
 The prototype highlighted **"البنك اليمني للإنشاء والتعمير"** with these specific users:
 
-| Name | Role |
-|---|---|
-| أحمد المقطري | BANK_MANAGER |
-| علي القاضي | DATA_ENTRY |
-| نوال الحاج | BANK_REVIEWER |
-| سامي العتمي | SWIFT_OFFICER |
+| Name         | Role          |
+| ------------ | ------------- |
+| أحمد المقطري | BANK_MANAGER  |
+| علي القاضي   | DATA_ENTRY    |
+| نوال الحاج   | BANK_REVIEWER |
+| سامي العتمي  | SWIFT_OFFICER |
 
 Replace the seeder's first active bank with **"البنك اليمني للإنشاء والتعمير"** (code `YBRD`) and assign these exact users to it (emails `manager@ybrd.com.ye`, `entry@ybrd.com.ye`, `reviewer@ybrd.com.ye`, `swift@ybrd.com.ye`).
 
 For the other 3 active banks, generate 4 bank users each using realistic Arabic names from the existing pool (or faker if needed). Email pattern: `{role}@{code}.com.ye`.
 
-| Bank | Code | BANK_MANAGER | DATA_ENTRY | BANK_REVIEWER | SWIFT_OFFICER |
-|---|---|---|---|---|---|
-| البنك اليمني للإنشاء والتعمير | YBRD | أحمد المقطري | علي القاضي | نوال الحاج | سامي العتمي |
-| بنك التضامن الإسلامي الدولي | TIIB | (generate) | (generate) | (generate) | (generate) |
-| البنك التجاري اليمني | YCB | (generate) | (generate) | (generate) | (generate) |
-| بنك سبأ الإسلامي | SIB | (generate) | (generate) | (generate) | (generate) |
+| Bank                          | Code | BANK_MANAGER | DATA_ENTRY | BANK_REVIEWER | SWIFT_OFFICER |
+| ----------------------------- | ---- | ------------ | ---------- | ------------- | ------------- |
+| البنك اليمني للإنشاء والتعمير | YBRD | أحمد المقطري | علي القاضي | نوال الحاج    | سامي العتمي   |
+| بنك التضامن الإسلامي الدولي   | TIIB | (generate)   | (generate) | (generate)    | (generate)    |
+| البنك التجاري اليمني          | YCB  | (generate)   | (generate) | (generate)    | (generate)    |
+| بنك سبأ الإسلامي              | SIB  | (generate)   | (generate) | (generate)    | (generate)    |
 
 (Keep one inactive bank for edge cases — `NBY` "البنك الأهلي اليمني" with no users.)
 
@@ -904,6 +934,7 @@ For the other 3 active banks, generate 4 bank users each using realistic Arabic 
 ### Print summary
 
 At the end of the seeder, print a table:
+
 ```
 ✓ CBY users:
   - 1 CBY_ADMIN
@@ -921,6 +952,7 @@ At the end of the seeder, print a table:
 ### Important — also delete legacy committee director user
 
 If a user record exists with role `COMMITTEE_DIRECTOR` from the original Module 2 seeder, the new seeder must NOT recreate it. Verify after `migrate:fresh --seed`:
+
 ```sql
 SELECT COUNT(*) FROM users WHERE role = 'COMMITTEE_DIRECTOR';
 -- Must return 0
@@ -933,11 +965,13 @@ SELECT COUNT(*) FROM users WHERE role = 'COMMITTEE_DIRECTOR';
 Seed 3 merchants per active bank (12 total):
 
 For each bank, generate names like:
+
 - `"شركة الهدى للتجارة"` / `"Al-Hadi Trading LLC"`
 - `"مؤسسة النور للاستيراد"` / `"Al-Noor Import Est."`
 - `"شركة اليمن الذهبية"` / `"Golden Yemen Co."`
 
 Each merchant has:
+
 - realistic `commercial_register` (e.g. `"CR-2024-{rand6}"`)
 - realistic `tax_number`
 - `owner_name` (Arabic name)
@@ -956,17 +990,17 @@ In `database/seeders/Support/RequestScenarioBuilder.php`:
 1. Every request now needs a `merchant_id`. Pick a random merchant from the bank's pool.
 2. For scenarios where status is `BANK_APPROVED` AND we want to demonstrate the claim mechanism, add a new scenario:
 
-   | New scenario key | Status | Count | Notes |
-   |---|---|---|---|
-   | `support_under_review_claimed` | SUPPORT_UNDER_REVIEW | 2 | Claimed by a specific support member, `claim_expires_at` = now + 23h |
-   | `support_claim_expired` | SUPPORT_UNDER_REVIEW | 1 | Claim is expired (`claim_expires_at` in past), available for re-claim |
+   | New scenario key               | Status               | Count | Notes                                                                 |
+   | ------------------------------ | -------------------- | ----- | --------------------------------------------------------------------- |
+   | `support_under_review_claimed` | SUPPORT_UNDER_REVIEW | 2     | Claimed by a specific support member, `claim_expires_at` = now + 23h  |
+   | `support_claim_expired`        | SUPPORT_UNDER_REVIEW | 1     | Claim is expired (`claim_expires_at` in past), available for re-claim |
 
 3. For scenarios that previously used `COMMITTEE_DIRECTOR` for finalization, change the actor to `EXECUTIVE_DIRECTOR`. Specifically:
    - Scenario 10 (`executive_approved_no_customs_yet`): the `finalize_approved` history entry's `actor_id` = the executive director user.
    - Scenario 11 (`executive_rejected_returned`): same — actor is executive director.
    - Scenarios 12, 13, 14 (customs flows): `customs_issued` and `complete` actions now performed by executive director, not CBY admin.
 
-4. Update the customs declaration's `issued_by` to point to the executive director user (not CBY admin).
+4. Update the external FX confirmation document's `issued_by` to point to the executive director user (not CBY admin).
 
 5. Print final scenario summary including the 2 new claim scenarios.
 
@@ -984,41 +1018,42 @@ No new columns needed — just ensure the seeded data is internally consistent.
 
 ### 4.5.1 — Add new endpoints to the relevant tabs
 
-**Tab "التجار / Merchants" (NEW TAB):**
+**Tab "المستوردون / Importers" (NEW TAB):**
 
-| Method | Path | الوصف | الحقول |
-|---|---|---|---|
-| GET | /api/merchants | قائمة التجار | bank_id, is_active, search |
-| POST | /api/merchants | إضافة تاجر | name, commercial_register, tax_number, owner_name, phone, email, address, bank_id (CBY only) |
-| GET | /api/merchants/{id} | تفاصيل تاجر | id |
-| PUT | /api/merchants/{id} | تعديل تاجر | id + fields |
-| DELETE | /api/merchants/{id} | حذف تاجر | id |
+| Method | Path                | الوصف            | الحقول                                                                                       |
+| ------ | ------------------- | ---------------- | -------------------------------------------------------------------------------------------- |
+| GET    | /api/merchants      | قائمة المستوردين | bank_id, is_active, search                                                                   |
+| POST   | /api/merchants      | إضافة مستورد     | name, commercial_register, tax_number, owner_name, phone, email, address, bank_id (CBY only) |
+| GET    | /api/merchants/{id} | تفاصيل مستورد    | id                                                                                           |
+| PUT    | /api/merchants/{id} | تعديل مستورد     | id + fields                                                                                  |
+| DELETE | /api/merchants/{id} | حذف تاجر         | id                                                                                           |
 
 **Tab "أنواع المستندات / Document Types" (NEW TAB):**
 
-| Method | Path | الوصف |
-|---|---|---|
-| GET | /api/document-types | قائمة أنواع المستندات |
-| POST | /api/document-types | إضافة نوع مستند |
-| PUT | /api/document-types/{id} | تعديل |
-| DELETE | /api/document-types/{id} | حذف |
+| Method | Path                     | الوصف                 |
+| ------ | ------------------------ | --------------------- |
+| GET    | /api/document-types      | قائمة أنواع المستندات |
+| POST   | /api/document-types      | إضافة نوع مستند       |
+| PUT    | /api/document-types/{id} | تعديل                 |
+| DELETE | /api/document-types/{id} | حذف                   |
 
 **Tab "سير العمل / Workflow" — add these new actions:**
 
-| Method | Path | الوصف |
-|---|---|---|
-| POST | /api/workflow/{id}/support-claim | حجز الطلب للمراجعة |
-| POST | /api/workflow/{id}/support-release | إلغاء حجز الطلب |
+| Method | Path                               | الوصف              |
+| ------ | ---------------------------------- | ------------------ |
+| POST   | /api/workflow/{id}/support-claim   | حجز الطلب للمراجعة |
+| POST   | /api/workflow/{id}/support-release | إلغاء حجز الطلب    |
 
 **Tab "التصويت / Voting" — add:**
 
-| Method | Path | الوصف |
-|---|---|---|
-| POST | /api/voting/{id}/override | قرار مدير اللجنة التنفيذية (override) |
+| Method | Path                      | الوصف                                 |
+| ------ | ------------------------- | ------------------------------------- |
+| POST   | /api/voting/{id}/override | قرار مدير اللجنة التنفيذية (override) |
 
 ### 4.5.2 — Add new request field to the request-create card
 
 In the "إنشاء طلب جديد" card (`POST /api/requests`), add a new field at the top:
+
 - `merchant_id` — required.
 
 Best UX: render this as a dropdown populated dynamically. When the user clicks the card, fetch `/api/merchants` and populate the dropdown with merchants belonging to the current user's bank.
@@ -1037,8 +1072,8 @@ Verify the tab filter logic still works after adding two new tabs (Merchants, Do
 
 ```
 المصادقة، البنوك، المستخدمون، طلبات التمويل، سير العمل، التصويت، المستندات،
-البيان الجمركي، سجلات التدقيق، الإشعارات، لوحة المعلومات، التقارير،
-التجار، أنواع المستندات
+وثيقة تأكيد المصارفة الخارجية، سجلات التدقيق، الإشعارات، لوحة المعلومات، التقارير،
+المستوردون، أنواع المستندات
 ```
 
 ---
@@ -1081,6 +1116,7 @@ Verify the tab filter logic still works after adding two new tabs (Merchants, Do
 - [ ] Full clean-slate run (`migrate:fresh --seed && l5-swagger:generate`) completes with no errors.
 
 Run:
+
 ```bash
 php artisan migrate:fresh --seed
 php artisan l5-swagger:generate

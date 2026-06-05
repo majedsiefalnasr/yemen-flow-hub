@@ -184,7 +184,9 @@ class ImportRequestResource extends JsonResource
             'updated_at' => $this->updated_at?->toISOString(),
             'swift_uploaded_by' => $this->swift_uploaded_by,
             'swift_uploaded_by_user' => $this->actorWhenLoaded('swiftUploadedBy'),
-            'documents' => DocumentResource::collection($this->whenLoaded('documents')),
+            'documents' => $this->relationLoaded('documents')
+                ? DocumentResource::collection($this->documents)->resolve($request)
+                : [],
             'votes_cast' => $votesCast,
             'total_voters' => $totalVoters,
             'ready_to_close' => $this->status === RequestStatus::EXECUTIVE_VOTING_OPEN

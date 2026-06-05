@@ -59,15 +59,15 @@ const EP=[
 {k:'banks',a:'البنوك',e:[['GET','/banks','قائمة البنوك',[]],['POST','/banks','إضافة بنك',['name','code']],['GET','/banks/{id}','تفاصيل بنك',['id']],['PUT','/banks/{id}','تعديل بنك',['id','name','code','is_active']],['DELETE','/banks/{id}','حذف بنك',['id']]]},
 {k:'users',a:'المستخدمون',e:[['GET','/users','قائمة المستخدمين',['role','bank_id','is_active']],['POST','/users','إضافة مستخدم',['name','email','password','role','bank_id']],['GET','/users/{id}','تفاصيل مستخدم',['id']],['PUT','/users/{id}','تعديل مستخدم',['id','name','email','role','bank_id','is_active']],['DELETE','/users/{id}','تعطيل مستخدم',['id']]]},
 {k:'requests',a:'طلبات التمويل',e:[['GET','/requests','قائمة الطلبات',['status','bank_id','search','from_date','to_date','claim_filter']],['POST','/requests','إنشاء طلب',['merchant_id','currency','amount','supplier_name','goods_description','port_of_entry','notes']],['GET','/requests/{id}','تفاصيل طلب',['id']],['PUT','/requests/{id}','تعديل طلب',['id','merchant_id','currency','amount','supplier_name','goods_description','port_of_entry','notes']],['DELETE','/requests/{id}','حذف طلب',['id']],['GET','/requests/{id}/history','سجل المراحل',['id']]]},
-{k:'workflow',a:'سير العمل',e:[['POST','/workflow/{id}/submit','إرسال الطلب',['id','reason']],['POST','/workflow/{id}/bank-approve','موافقة البنك',['id']],['POST','/workflow/{id}/bank-reject','رفض البنك',['id','reason']],['POST','/workflow/{id}/return-to-entry','إعادة للإدخال',['id','reason']],['POST','/workflow/{id}/support-claim','حجز الطلب',['id']],['POST','/workflow/{id}/support-release','إلغاء الحجز',['id']],['POST','/workflow/{id}/support-approve','موافقة لجنة الدعم',['id']],['POST','/workflow/{id}/support-reject','رفض لجنة الدعم',['id','reason']],['POST','/workflow/{id}/swift-upload','رفع SWIFT',['id','file']],['POST','/workflow/{id}/finalize-decision','إنهاء القرار',['id','decision']]]},
+{k:'workflow',a:'سير العمل',e:[['POST','/workflow/{id}/submit','إرسال الطلب',['id','reason']],['POST','/workflow/{id}/bank-approve','موافقة البنك',['id']],['POST','/workflow/{id}/bank-reject','رفض البنك',['id','reason']],['POST','/workflow/{id}/return-to-entry','إعادة للإدخال',['id','reason']],['POST','/workflow/{id}/support-claim','حجز الطلب',['id']],['POST','/workflow/{id}/support-release','إلغاء الحجز',['id']],['POST','/workflow/{id}/support-approve','موافقة لجنة المساندة',['id']],['POST','/workflow/{id}/support-reject','رفض لجنة المساندة',['id','reason']],['POST','/workflow/{id}/swift-upload','رفع SWIFT',['id','file']],['POST','/workflow/{id}/finalize-decision','إنهاء القرار',['id','decision']]]},
 {k:'voting',a:'التصويت',e:[['GET','/voting','طلبات التصويت',[]],['GET','/voting/{id}','تفاصيل تصويت',['id']],['POST','/voting/{id}/vote','إرسال تصويت',['id','vote','justification']],['POST','/voting/{id}/director-decide','قرار المدير',['id','vote','justification']],['POST','/voting/{id}/override','قرار مدير اللجنة التنفيذية',['id','decision','justification']]]},
 {k:'documents',a:'المستندات',e:[['POST','/requests/{id}/documents','رفع مستند',['id','file']],['DELETE','/documents/{id}','حذف مستند',['id']],['GET','/documents/{id}/download','تحميل مستند',['id']]]},
-{k:'customs',a:'البيان الجمركي',e:[['POST','/customs/{request_id}/generate','إصدار بيان',['request_id']],['GET','/customs/{id}','تفاصيل البيان',['id']],['GET','/customs/{id}/download','تحميل البيان',['id']]]},
+{k:'customs',a:'وثيقة تأكيد المصارفة الخارجية',e:[['POST','/customs/{request_id}/generate','إصدار الوثيقة',['request_id']],['GET','/customs/{id}','تفاصيل الوثيقة',['id']],['GET','/customs/{id}/download','تحميل الوثيقة',['id']]]},
 {k:'audit',a:'سجلات التدقيق',e:[['GET','/audit','عرض التدقيق',['user_id','action','from_date','to_date']]]},
 {k:'notifications',a:'الإشعارات',e:[['GET','/notifications','إشعاراتي',[]],['POST','/notifications/{id}/read','تعليم كمقروء',['id']],['POST','/notifications/read-all','تعليم الكل',[]]]},
 {k:'dashboard',a:'لوحة المعلومات',e:[['GET','/dashboard/stats','إحصائيات اللوحة',[]]]},
 {k:'reports',a:'التقارير',e:[['GET','/reports/workflow','تقرير سير العمل',[]],['GET','/reports/voting','تقرير التصويت',[]]]},
-{k:'merchants',a:'التجار',e:[['GET','/merchants','قائمة التجار',['bank_id','is_active','search']],['POST','/merchants','إضافة تاجر',['name','commercial_register','tax_number','owner_name','phone','email','address','bank_id']],['GET','/merchants/{id}','تفاصيل تاجر',['id']],['PUT','/merchants/{id}','تعديل تاجر',['id','name','commercial_register','tax_number','owner_name','phone','email','address','bank_id','is_active']],['DELETE','/merchants/{id}','حذف تاجر',['id']]]},
+{k:'merchants',a:'المستوردون',e:[['GET','/merchants','قائمة المستوردين',['bank_id','is_active','search']],['POST','/merchants','إضافة مستورد',['name','commercial_register','tax_number','owner_name','phone','email','address','bank_id']],['GET','/merchants/{id}','تفاصيل مستورد',['id']],['PUT','/merchants/{id}','تعديل مستورد',['id','name','commercial_register','tax_number','owner_name','phone','email','address','bank_id','is_active']],['DELETE','/merchants/{id}','حذف مستورد',['id']]]},
 {k:'doc-types',a:'أنواع المستندات',e:[['GET','/document-types','قائمة أنواع المستندات',[]],['POST','/document-types','إضافة نوع',['slug','name_ar','name_en','is_required','is_active','sort_order']],['PUT','/document-types/{id}','تعديل نوع',['id','slug','name_ar','name_en','is_required','is_active','sort_order']],['DELETE','/document-types/{id}','حذف نوع',['id']]]}
 ];
 
@@ -122,7 +122,7 @@ function fieldInput(key,f){
   if (f==='file') return `<input type="file" data-k="${key}" data-f="${f}" class="w-full border rounded-lg px-2 py-1.5">`;
   if (f==='merchant_id') {
     const options = merchantOptions.map(m=>`<option value="${m.id}">${m.name}</option>`).join('');
-    return `<select data-k="${key}" data-f="${f}" class="w-full border rounded-lg px-2 py-1.5"><option value="">اختر تاجر</option>${options}</select>`;
+    return `<select data-k="${key}" data-f="${f}" class="w-full border rounded-lg px-2 py-1.5"><option value="">اختر مستورداً</option>${options}</select>`;
   }
   return `<input data-k="${key}" data-f="${f}" class="w-full border rounded-lg px-2 py-1.5" value="${localStorage.getItem('v_'+key+'_'+f)||''}">`;
 }
@@ -191,4 +191,3 @@ document.getElementById('logoutBtn').addEventListener('click',logoutQuick);
 </script>
 </body>
 </html>
-

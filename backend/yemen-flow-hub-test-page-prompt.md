@@ -70,7 +70,10 @@ The view receives `$users` so the login section can render them as a clickable l
 - **Tailwind via CDN**: `<script src="https://cdn.tailwindcss.com"></script>` for fast setup. (No build step.)
 - **Font**: Use Cairo or Tajawal from Google Fonts for Arabic readability.
   ```html
-  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap"
+    rel="stylesheet"
+  />
   ```
 - **All visible text in Arabic.** Section headers, button labels, table headers, status messages — everything.
 - **RTL layout** throughout. Tailwind's RTL works fine when `dir="rtl"` is set on `<html>`.
@@ -103,6 +106,7 @@ The page is divided into 4 main sections, stacked vertically (or 2-column on wid
 # 🔐 Section 1 — تسجيل دخول سريع (Quick Login)
 
 Render a list/table of all seeded users grouped by role. Each row shows:
+
 - اسم المستخدم (name)
 - البريد الإلكتروني (email)
 - الدور (role label in Arabic+English, e.g. `"موظف إدخال البيانات / Data Entry"`)
@@ -110,12 +114,14 @@ Render a list/table of all seeded users grouped by role. Each row shows:
 - زر **"دخول"** (login button)
 
 Clicking "دخول" sends:
+
 ```js
 POST /api/auth/login
 { "email": "<that email>", "password": "password" }
 ```
 
 Authentication uses **Bearer token** mode (since this page is on `/web` but calling `/api`). On success:
+
 1. Store the token in `localStorage` under key `yfh_api_token`.
 2. Store user info in `localStorage` under key `yfh_current_user`.
 3. Update the top status bar to show: `"المستخدم الحالي: {name} ({role_label}) — {bank_name}"`.
@@ -134,22 +140,23 @@ All subsequent API calls in section 2 automatically include `Authorization: Bear
 
 Render endpoints organized into **collapsible tabs/accordions** matching the Swagger tags from Module 9:
 
-| Tab key | Arabic label |
-|---|---|
-| `auth` | المصادقة |
-| `banks` | البنوك |
-| `users` | المستخدمون |
-| `requests` | طلبات التمويل |
-| `workflow` | سير العمل |
-| `voting` | التصويت |
-| `documents` | المستندات |
-| `customs` | البيان الجمركي |
-| `audit` | سجلات التدقيق |
-| `notifications` | الإشعارات |
-| `dashboard` | لوحة المعلومات |
-| `reports` | التقارير |
+| Tab key         | Arabic label                  |
+| --------------- | ----------------------------- |
+| `auth`          | المصادقة                      |
+| `banks`         | البنوك                        |
+| `users`         | المستخدمون                    |
+| `requests`      | طلبات التمويل                 |
+| `workflow`      | سير العمل                     |
+| `voting`        | التصويت                       |
+| `documents`     | المستندات                     |
+| `customs`       | وثيقة تأكيد المصارفة الخارجية |
+| `audit`         | سجلات التدقيق                 |
+| `notifications` | الإشعارات                     |
+| `dashboard`     | لوحة المعلومات                |
+| `reports`       | التقارير                      |
 
 For each endpoint inside a tab, render a card with:
+
 - **Method badge** (color-coded: GET=blue, POST=emerald, PUT=amber, DELETE=rose).
 - **Endpoint URL** in monospace.
 - **Short Arabic description** (e.g. `"إنشاء طلب تمويل جديد"`).
@@ -157,6 +164,7 @@ For each endpoint inside a tab, render a card with:
 - **زر "تنفيذ"** (Execute) button.
 
 When user clicks "تنفيذ":
+
 - Build the fetch call with the entered values.
 - Send to the `/api/*` endpoint.
 - Render the response in Section 3 (the response panel).
@@ -168,113 +176,114 @@ When user clicks "تنفيذ":
 
 ### Tab: المصادقة (auth)
 
-| Method | Path | الوصف | الحقول |
-|---|---|---|---|
-| POST | /api/auth/login | تسجيل الدخول | email, password |
-| POST | /api/auth/logout | تسجيل الخروج | — |
-| GET | /api/auth/me | المستخدم الحالي | — |
+| Method | Path             | الوصف           | الحقول          |
+| ------ | ---------------- | --------------- | --------------- |
+| POST   | /api/auth/login  | تسجيل الدخول    | email, password |
+| POST   | /api/auth/logout | تسجيل الخروج    | —               |
+| GET    | /api/auth/me     | المستخدم الحالي | —               |
 
 ### Tab: البنوك (banks)
 
-| Method | Path | الوصف | الحقول |
-|---|---|---|---|
-| GET | /api/banks | قائمة البنوك | — |
-| POST | /api/banks | إضافة بنك جديد | name, code |
-| GET | /api/banks/{id} | تفاصيل البنك | id |
-| PUT | /api/banks/{id} | تعديل بنك | id, name, code, is_active |
-| DELETE | /api/banks/{id} | حذف بنك | id |
+| Method | Path            | الوصف          | الحقول                    |
+| ------ | --------------- | -------------- | ------------------------- |
+| GET    | /api/banks      | قائمة البنوك   | —                         |
+| POST   | /api/banks      | إضافة بنك جديد | name, code                |
+| GET    | /api/banks/{id} | تفاصيل البنك   | id                        |
+| PUT    | /api/banks/{id} | تعديل بنك      | id, name, code, is_active |
+| DELETE | /api/banks/{id} | حذف بنك        | id                        |
 
 ### Tab: المستخدمون (users)
 
-| Method | Path | الوصف | الحقول |
-|---|---|---|---|
-| GET | /api/users | قائمة المستخدمين | role (filter), bank_id (filter), is_active |
-| POST | /api/users | إضافة مستخدم | name, email, password, role, bank_id |
-| GET | /api/users/{id} | تفاصيل مستخدم | id |
-| PUT | /api/users/{id} | تعديل مستخدم | id, name, email, role, bank_id, is_active |
-| DELETE | /api/users/{id} | إلغاء تفعيل مستخدم | id |
+| Method | Path            | الوصف              | الحقول                                     |
+| ------ | --------------- | ------------------ | ------------------------------------------ |
+| GET    | /api/users      | قائمة المستخدمين   | role (filter), bank_id (filter), is_active |
+| POST   | /api/users      | إضافة مستخدم       | name, email, password, role, bank_id       |
+| GET    | /api/users/{id} | تفاصيل مستخدم      | id                                         |
+| PUT    | /api/users/{id} | تعديل مستخدم       | id, name, email, role, bank_id, is_active  |
+| DELETE | /api/users/{id} | إلغاء تفعيل مستخدم | id                                         |
 
 ### Tab: طلبات التمويل (requests)
 
-| Method | Path | الوصف | الحقول |
-|---|---|---|---|
-| GET | /api/requests | قائمة الطلبات | status, bank_id, search, from_date, to_date |
-| POST | /api/requests | إنشاء طلب جديد | currency, amount, supplier_name, goods_description, port_of_entry, notes |
-| GET | /api/requests/{id} | تفاصيل الطلب | id |
-| PUT | /api/requests/{id} | تعديل الطلب | id + كل الحقول |
-| DELETE | /api/requests/{id} | حذف الطلب | id |
-| GET | /api/requests/{id}/history | سجل مراحل الطلب | id |
+| Method | Path                       | الوصف           | الحقول                                                                   |
+| ------ | -------------------------- | --------------- | ------------------------------------------------------------------------ |
+| GET    | /api/requests              | قائمة الطلبات   | status, bank_id, search, from_date, to_date                              |
+| POST   | /api/requests              | إنشاء طلب جديد  | currency, amount, supplier_name, goods_description, port_of_entry, notes |
+| GET    | /api/requests/{id}         | تفاصيل الطلب    | id                                                                       |
+| PUT    | /api/requests/{id}         | تعديل الطلب     | id + كل الحقول                                                           |
+| DELETE | /api/requests/{id}         | حذف الطلب       | id                                                                       |
+| GET    | /api/requests/{id}/history | سجل مراحل الطلب | id                                                                       |
 
 ### Tab: سير العمل (workflow)
 
-| Method | Path | الوصف | الحقول |
-|---|---|---|---|
-| POST | /api/workflow/{id}/submit | إرسال الطلب للمراجعة | id, reason (optional) |
-| POST | /api/workflow/{id}/bank-approve | موافقة البنك | id |
-| POST | /api/workflow/{id}/bank-reject | رفض البنك | id, reason |
-| POST | /api/workflow/{id}/return-to-entry | إعادة لموظف الإدخال | id, reason |
-| POST | /api/workflow/{id}/support-approve | موافقة لجنة الدعم | id |
-| POST | /api/workflow/{id}/support-reject | رفض لجنة الدعم | id, reason |
-| POST | /api/workflow/{id}/swift-upload | رفع مستند SWIFT | id, file (multipart) |
-| POST | /api/workflow/{id}/finalize-decision | إنهاء قرار اللجنة التنفيذية | id |
+| Method | Path                                 | الوصف                       | الحقول                |
+| ------ | ------------------------------------ | --------------------------- | --------------------- |
+| POST   | /api/workflow/{id}/submit            | إرسال الطلب للمراجعة        | id, reason (optional) |
+| POST   | /api/workflow/{id}/bank-approve      | موافقة البنك                | id                    |
+| POST   | /api/workflow/{id}/bank-reject       | رفض البنك                   | id, reason            |
+| POST   | /api/workflow/{id}/return-to-entry   | إعادة لموظف الإدخال         | id, reason            |
+| POST   | /api/workflow/{id}/support-approve   | موافقة لجنة المساندة        | id                    |
+| POST   | /api/workflow/{id}/support-reject    | رفض لجنة المساندة           | id, reason            |
+| POST   | /api/workflow/{id}/swift-upload      | رفع مستند SWIFT             | id, file (multipart)  |
+| POST   | /api/workflow/{id}/finalize-decision | إنهاء قرار اللجنة التنفيذية | id                    |
 
 ### Tab: التصويت (voting)
 
-| Method | Path | الوصف | الحقول |
-|---|---|---|---|
-| GET | /api/voting | قائمة الطلبات للتصويت | — |
-| GET | /api/voting/{id} | تفاصيل تصويت | id |
-| POST | /api/voting/{id}/vote | إرسال تصويت | id, vote (APPROVE/REJECT/ABSTAIN), justification |
-| POST | /api/voting/{id}/director-decide | قرار رئيس اللجنة (كسر التعادل) | id, vote, justification |
+| Method | Path                             | الوصف                          | الحقول                                           |
+| ------ | -------------------------------- | ------------------------------ | ------------------------------------------------ |
+| GET    | /api/voting                      | قائمة الطلبات للتصويت          | —                                                |
+| GET    | /api/voting/{id}                 | تفاصيل تصويت                   | id                                               |
+| POST   | /api/voting/{id}/vote            | إرسال تصويت                    | id, vote (APPROVE/REJECT/ABSTAIN), justification |
+| POST   | /api/voting/{id}/director-decide | قرار رئيس اللجنة (كسر التعادل) | id, vote, justification                          |
 
 ### Tab: المستندات (documents)
 
-| Method | Path | الوصف | الحقول |
-|---|---|---|---|
-| POST | /api/requests/{id}/documents | رفع مستند طلب | id, file (multipart) |
-| DELETE | /api/documents/{id} | حذف مستند | id |
-| GET | /api/documents/{id}/download | تحميل مستند | id |
+| Method | Path                         | الوصف         | الحقول               |
+| ------ | ---------------------------- | ------------- | -------------------- |
+| POST   | /api/requests/{id}/documents | رفع مستند طلب | id, file (multipart) |
+| DELETE | /api/documents/{id}          | حذف مستند     | id                   |
+| GET    | /api/documents/{id}/download | تحميل مستند   | id                   |
 
-### Tab: البيان الجمركي (customs)
+### Tab: وثيقة تأكيد المصارفة الخارجية (customs)
 
-| Method | Path | الوصف | الحقول |
-|---|---|---|---|
-| POST | /api/customs/{request_id}/generate | إصدار البيان الجمركي | request_id |
-| GET | /api/customs/{id} | تفاصيل البيان | id |
-| GET | /api/customs/{id}/download | تحميل البيان PDF | id |
+| Method | Path                               | الوصف             | الحقول     |
+| ------ | ---------------------------------- | ----------------- | ---------- |
+| POST   | /api/customs/{request_id}/generate | إصدار الوثيقة     | request_id |
+| GET    | /api/customs/{id}                  | تفاصيل الوثيقة    | id         |
+| GET    | /api/customs/{id}/download         | تحميل الوثيقة PDF | id         |
 
 ### Tab: سجلات التدقيق (audit)
 
-| Method | Path | الوصف | الحقول |
-|---|---|---|---|
-| GET | /api/audit | سجل العمليات | user_id, action, from_date, to_date |
+| Method | Path       | الوصف        | الحقول                              |
+| ------ | ---------- | ------------ | ----------------------------------- |
+| GET    | /api/audit | سجل العمليات | user_id, action, from_date, to_date |
 
 ### Tab: الإشعارات (notifications)
 
-| Method | Path | الوصف | الحقول |
-|---|---|---|---|
-| GET | /api/notifications | إشعاراتي | — |
-| POST | /api/notifications/{id}/read | تعليم كمقروء | id |
-| POST | /api/notifications/read-all | تعليم الكل كمقروء | — |
+| Method | Path                         | الوصف             | الحقول |
+| ------ | ---------------------------- | ----------------- | ------ |
+| GET    | /api/notifications           | إشعاراتي          | —      |
+| POST   | /api/notifications/{id}/read | تعليم كمقروء      | id     |
+| POST   | /api/notifications/read-all  | تعليم الكل كمقروء | —      |
 
 ### Tab: لوحة المعلومات (dashboard)
 
-| Method | Path | الوصف | الحقول |
-|---|---|---|---|
-| GET | /api/dashboard/stats | إحصائيات اللوحة | — |
+| Method | Path                 | الوصف           | الحقول |
+| ------ | -------------------- | --------------- | ------ |
+| GET    | /api/dashboard/stats | إحصائيات اللوحة | —      |
 
 ### Tab: التقارير (reports)
 
-| Method | Path | الوصف | الحقول |
-|---|---|---|---|
-| GET | /api/reports/workflow | تقرير سير العمل | — |
-| GET | /api/reports/voting | تقرير التصويت | — |
+| Method | Path                  | الوصف           | الحقول |
+| ------ | --------------------- | --------------- | ------ |
+| GET    | /api/reports/workflow | تقرير سير العمل | —      |
+| GET    | /api/reports/voting   | تقرير التصويت   | —      |
 
 ---
 
 # 📤 Section 3 — نتيجة آخر طلب (Response Panel)
 
 A sticky/fixed panel showing:
+
 - **شريط الحالة**: HTTP status code (color-coded green/red).
 - **الطريقة + الرابط**: e.g. `POST /api/requests`.
 - **الوقت المستغرق**: ms.
@@ -294,27 +303,36 @@ All in one `<script>` block at the bottom of the page. No external JS frameworks
 ## Core helpers
 
 ```js
-const API_BASE = '/api';
-const TOKEN_KEY = 'yfh_api_token';
-const USER_KEY  = 'yfh_current_user';
+const API_BASE = "/api";
+const TOKEN_KEY = "yfh_api_token";
+const USER_KEY = "yfh_current_user";
 
-function getToken() { return localStorage.getItem(TOKEN_KEY); }
-function setToken(t) { localStorage.setItem(TOKEN_KEY, t); }
-function clearToken() { localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(USER_KEY); }
+function getToken() {
+  return localStorage.getItem(TOKEN_KEY);
+}
+function setToken(t) {
+  localStorage.setItem(TOKEN_KEY, t);
+}
+function clearToken() {
+  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(USER_KEY);
+}
 
 async function callApi(method, path, body = null, isMultipart = false) {
   const start = performance.now();
-  const headers = { 'Accept': 'application/json' };
+  const headers = { Accept: "application/json" };
   const token = getToken();
-  if (token) headers['Authorization'] = `Bearer ${token}`;
-  if (!isMultipart && body) headers['Content-Type'] = 'application/json';
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  if (!isMultipart && body) headers["Content-Type"] = "application/json";
 
   const opts = { method, headers };
-  if (body && method !== 'GET') {
+  if (body && method !== "GET") {
     opts.body = isMultipart ? body : JSON.stringify(body);
   }
 
-  let res, data, error = null;
+  let res,
+    data,
+    error = null;
   try {
     res = await fetch(API_BASE + path, opts);
     data = await res.json().catch(() => null);
@@ -323,7 +341,15 @@ async function callApi(method, path, body = null, isMultipart = false) {
   }
   const elapsed = Math.round(performance.now() - start);
 
-  renderResponse({ method, path, body, status: res?.status, data, error, elapsed });
+  renderResponse({
+    method,
+    path,
+    body,
+    status: res?.status,
+    data,
+    error,
+    elapsed,
+  });
   return { status: res?.status, data };
 }
 ```
@@ -332,14 +358,17 @@ async function callApi(method, path, body = null, isMultipart = false) {
 
 ```js
 async function login(email) {
-  const { status, data } = await callApi('POST', '/auth/login', { email, password: 'password' });
+  const { status, data } = await callApi("POST", "/auth/login", {
+    email,
+    password: "password",
+  });
   if (status === 200 && data?.data?.token) {
     setToken(data.data.token);
     localStorage.setItem(USER_KEY, JSON.stringify(data.data.user));
     updateStatusBar();
-    showToast('تم تسجيل الدخول بنجاح', 'success');
+    showToast("تم تسجيل الدخول بنجاح", "success");
   } else {
-    showToast('فشل تسجيل الدخول', 'error');
+    showToast("فشل تسجيل الدخول", "error");
   }
 }
 ```
@@ -349,6 +378,7 @@ async function login(email) {
 ## Endpoint card form handling
 
 For each endpoint card:
+
 - Path params (`{id}`, `{request_id}`) become input fields above the body fields.
 - File inputs are detected by field name (`file`) and trigger multipart mode.
 - The "تنفيذ" button reads all field values, builds the URL by replacing path params, and calls `callApi(...)`.
@@ -356,6 +386,7 @@ For each endpoint card:
 ## Render response
 
 `renderResponse({...})` updates Section 3:
+
 - Status badge with color (2xx=green, 4xx=amber, 5xx=red).
 - Pretty-print JSON with simple inline syntax coloring.
 - Show elapsed time and full path.
@@ -413,6 +444,7 @@ After running the page at `http://localhost:8000/test-api`:
 # 📤 Output
 
 Print:
+
 - File tree of the 3 created/modified files.
 - The exact URL to visit: `http://localhost:8000/test-api`.
 - Reminder: seeded password is `password` for all users.

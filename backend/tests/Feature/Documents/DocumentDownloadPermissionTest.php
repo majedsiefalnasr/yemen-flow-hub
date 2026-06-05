@@ -387,6 +387,66 @@ class DocumentDownloadPermissionTest extends TestCase
         $response->assertStatus(200);
     }
 
+    public function test_bank_reviewer_can_download_customs_for_own_bank(): void
+    {
+        $uploader = $this->makeUser(UserRole::COMMITTEE_DIRECTOR);
+        $request = $this->makeRequest($this->bank, $this->makeUser(UserRole::DATA_ENTRY, $this->bank));
+        $document = $this->makeDocument($request, $uploader, 'CUSTOMS');
+
+        $actor = $this->makeUser(UserRole::BANK_REVIEWER, $this->bank);
+        $response = $this->actingAs($actor)->getJson("/api/documents/{$document->id}/download");
+
+        $response->assertStatus(200);
+    }
+
+    public function test_bank_reviewer_cannot_download_customs_for_other_bank(): void
+    {
+        $uploader = $this->makeUser(UserRole::COMMITTEE_DIRECTOR);
+        $request = $this->makeRequest($this->otherBank, $this->makeUser(UserRole::DATA_ENTRY, $this->otherBank));
+        $document = $this->makeDocument($request, $uploader, 'CUSTOMS');
+
+        $actor = $this->makeUser(UserRole::BANK_REVIEWER, $this->bank);
+        $response = $this->actingAs($actor)->getJson("/api/documents/{$document->id}/download");
+
+        $response->assertStatus(403);
+    }
+
+    public function test_bank_admin_cannot_download_customs_document(): void
+    {
+        $uploader = $this->makeUser(UserRole::COMMITTEE_DIRECTOR);
+        $request = $this->makeRequest($this->bank, $this->makeUser(UserRole::DATA_ENTRY, $this->bank));
+        $document = $this->makeDocument($request, $uploader, 'CUSTOMS');
+
+        $actor = $this->makeUser(UserRole::BANK_ADMIN, $this->bank);
+        $response = $this->actingAs($actor)->getJson("/api/documents/{$document->id}/download");
+
+        $response->assertStatus(403);
+    }
+
+    public function test_committee_director_can_download_customs_for_any_bank(): void
+    {
+        $uploader = $this->makeUser(UserRole::COMMITTEE_DIRECTOR);
+        $request = $this->makeRequest($this->otherBank, $this->makeUser(UserRole::DATA_ENTRY, $this->otherBank));
+        $document = $this->makeDocument($request, $uploader, 'CUSTOMS');
+
+        $actor = $this->makeUser(UserRole::COMMITTEE_DIRECTOR);
+        $response = $this->actingAs($actor)->getJson("/api/documents/{$document->id}/download");
+
+        $response->assertStatus(200);
+    }
+
+    public function test_cby_admin_can_download_customs_for_any_bank(): void
+    {
+        $uploader = $this->makeUser(UserRole::COMMITTEE_DIRECTOR);
+        $request = $this->makeRequest($this->otherBank, $this->makeUser(UserRole::DATA_ENTRY, $this->otherBank));
+        $document = $this->makeDocument($request, $uploader, 'CUSTOMS');
+
+        $actor = $this->makeUser(UserRole::CBY_ADMIN);
+        $response = $this->actingAs($actor)->getJson("/api/documents/{$document->id}/download");
+
+        $response->assertStatus(200);
+    }
+
     // ─── AC5: Audit log on successful download ────────────────────────────────
 
     public function test_download_creates_audit_log_with_document_type(): void

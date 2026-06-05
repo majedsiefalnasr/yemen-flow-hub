@@ -28,7 +28,7 @@ class CustomsService
     public function generate(ImportRequest $request, User $issuer): CustomsDeclaration
     {
         if (! $issuer->hasRole(UserRole::COMMITTEE_DIRECTOR)) {
-            throw new CustomsException('Only committee director can generate customs declarations.');
+            throw new CustomsException('Only committee director can generate external FX confirmation documents.');
         }
 
         $storedPath = null;
@@ -50,12 +50,12 @@ class CustomsService
                 //      the FK populated.
                 // The three guards below therefore cover three distinct states, not one:
                 if (! in_array($lockedRequest->status, [RequestStatus::EXECUTIVE_APPROVED, RequestStatus::FX_CONFIRMATION_PENDING], true)) {
-                    throw new CustomsException('Customs declaration can only be generated for EXECUTIVE_APPROVED or FX_CONFIRMATION_PENDING requests.');
+                    throw new CustomsException('External FX confirmation document can only be generated for EXECUTIVE_APPROVED or FX_CONFIRMATION_PENDING requests.');
                 }
 
                 // Already fully issued (FK set in a prior, committed generate()).
                 if ($lockedRequest->customs_declaration_id !== null) {
-                    throw new CustomsException('Customs declaration already exists for this request.');
+                    throw new CustomsException('External FX confirmation document already exists for this request.');
                 }
 
                 // No placeholder yet, or placeholder without the signed FX doc → upload must come first.
@@ -67,7 +67,7 @@ class CustomsService
                 // Placeholder already carries a generated PDF → issued (defends against a re-issue
                 // race where the FK write above hadn't landed yet).
                 if ($declaration->pdf_path !== '') {
-                    throw new CustomsException('Customs declaration already exists for this request.');
+                    throw new CustomsException('External FX confirmation document already exists for this request.');
                 }
 
                 $issuedAt = now();
@@ -196,12 +196,12 @@ class CustomsService
 
         $fullPath = 'private/'.$declaration->pdf_path;
         if (! Storage::disk('local')->exists($fullPath)) {
-            throw new CustomsException('Customs PDF file not found.');
+            throw new CustomsException('External FX confirmation PDF file not found.');
         }
 
         $stream = Storage::disk('local')->readStream($fullPath);
         if ($stream === false) {
-            throw new CustomsException('Unable to stream customs PDF.');
+            throw new CustomsException('Unable to stream external FX confirmation PDF.');
         }
 
         $this->auditService->log(AuditAction::DOCUMENT_DOWNLOADED, $user, $declaration, [

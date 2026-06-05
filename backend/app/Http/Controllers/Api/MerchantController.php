@@ -11,7 +11,7 @@ use OpenApi\Attributes as OA;
 
 class MerchantController extends Controller
 {
-    #[OA\Get(path: '/api/merchants', tags: ['التجار / Merchants'], summary: 'List merchants', responses: [new OA\Response(response: 200, description: 'Merchants retrieved')])]
+    #[OA\Get(path: '/api/merchants', tags: ['المستوردون / Importers'], summary: 'List importers', responses: [new OA\Response(response: 200, description: 'Importers retrieved')])]
     public function index()
     {
         $this->authorize('viewAny', Merchant::class);
@@ -39,13 +39,13 @@ class MerchantController extends Controller
                 'per_page' => $merchants->perPage(),
                 'total' => $merchants->total(),
             ],
-        ], 'Merchants retrieved.');
+        ], 'Importers retrieved.');
     }
 
     #[OA\Post(
         path: '/api/merchants',
-        tags: ['التجار / Merchants'],
-        summary: 'Create merchant',
+        tags: ['المستوردون / Importers'],
+        summary: 'Create importer',
         requestBody: new OA\RequestBody(
             required: true,
             content: new OA\JsonContent(
@@ -65,7 +65,7 @@ class MerchantController extends Controller
                 ]
             )
         ),
-        responses: [new OA\Response(response: 201, description: 'Merchant created')]
+        responses: [new OA\Response(response: 201, description: 'Importer created')]
     )]
     public function store(StoreMerchantRequest $request)
     {
@@ -81,18 +81,18 @@ class MerchantController extends Controller
 
         $merchant = Merchant::query()->create($payload);
 
-        return ApiResponse::success(new MerchantResource($merchant->load('bank')->loadCount('importRequests')), 'Merchant created successfully.', 201);
+        return ApiResponse::success(new MerchantResource($merchant->load('bank')->loadCount('importRequests')), 'Importer created successfully.', 201);
     }
 
-    #[OA\Get(path: '/api/merchants/{id}', tags: ['التجار / Merchants'], summary: 'Get merchant', responses: [new OA\Response(response: 200, description: 'Merchant retrieved')])]
+    #[OA\Get(path: '/api/merchants/{id}', tags: ['المستوردون / Importers'], summary: 'Get importer', responses: [new OA\Response(response: 200, description: 'Importer retrieved')])]
     public function show(Merchant $merchant)
     {
         $this->authorize('view', $merchant);
 
-        return ApiResponse::success(new MerchantResource($merchant->loadCount('importRequests')->load('bank')), 'Merchant retrieved.');
+        return ApiResponse::success(new MerchantResource($merchant->loadCount('importRequests')->load('bank')), 'Importer retrieved.');
     }
 
-    #[OA\Put(path: '/api/merchants/{id}', tags: ['التجار / Merchants'], summary: 'Update merchant', responses: [new OA\Response(response: 200, description: 'Merchant updated')])]
+    #[OA\Put(path: '/api/merchants/{id}', tags: ['المستوردون / Importers'], summary: 'Update importer', responses: [new OA\Response(response: 200, description: 'Importer updated')])]
     public function update(UpdateMerchantRequest $request, Merchant $merchant)
     {
         $this->authorize('update', $merchant);
@@ -102,15 +102,15 @@ class MerchantController extends Controller
         }
         $merchant->update($payload);
 
-        return ApiResponse::success(new MerchantResource($merchant->refresh()->load('bank')->loadCount('importRequests')), 'Merchant updated successfully.');
+        return ApiResponse::success(new MerchantResource($merchant->refresh()->load('bank')->loadCount('importRequests')), 'Importer updated successfully.');
     }
 
-    #[OA\Delete(path: '/api/merchants/{id}', tags: ['التجار / Merchants'], summary: 'Delete merchant', responses: [new OA\Response(response: 200, description: 'Merchant deleted')])]
+    #[OA\Delete(path: '/api/merchants/{id}', tags: ['المستوردون / Importers'], summary: 'Delete importer', responses: [new OA\Response(response: 200, description: 'Importer deleted')])]
     public function destroy(Merchant $merchant)
     {
         $this->authorize('delete', $merchant);
         $merchant->delete();
 
-        return ApiResponse::success((object) [], 'Merchant deleted successfully.');
+        return ApiResponse::success((object) [], 'Importer deleted successfully.');
     }
 }

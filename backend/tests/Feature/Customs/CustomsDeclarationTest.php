@@ -182,8 +182,8 @@ class CustomsDeclarationTest extends TestCase
     {
         $permission = Permission::query()->create([
             'slug' => 'customs.issue',
-            'name_ar' => 'إصدار البيان الجمركي',
-            'name_en' => 'Issue customs declaration',
+            'name_ar' => 'إصدار وثيقة تأكيد المصارفة الخارجية',
+            'name_en' => 'Issue external FX confirmation document',
             'group' => 'customs',
         ]);
 

@@ -135,6 +135,7 @@ Set up the foundation: Sanctum (cookie + token), enums, base response helper, ba
 ### 1.1 Install & configure packages
 
 Run:
+
 ```bash
 composer require laravel/sanctum darkaonline/l5-swagger
 php artisan vendor:publish --provider="Laravel\Sanctum\SanctumServiceProvider"
@@ -157,6 +158,7 @@ Each enum should have a `label()` method returning a human-readable Arabic+Engli
 ### 1.3 Base API response helper
 
 Create `app/Support/ApiResponse.php` with static methods:
+
 - `success(mixed $data = null, string $message = 'OK', int $status = 200)`
 - `error(string $message, array $errors = [], int $status = 400)`
 - `unauthorized(string $message = 'Unauthorized action')`
@@ -169,6 +171,7 @@ All return `JsonResponse` in the standard shape from Global Context.
 ### 1.4 Exception handling
 
 In `bootstrap/app.php`, register a global exception handler that converts:
+
 - `ValidationException` → `ApiResponse::validationError(...)`
 - `AuthenticationException` → `ApiResponse::unauthorized()`
 - `AuthorizationException` → `ApiResponse::forbidden()`
@@ -178,6 +181,7 @@ In `bootstrap/app.php`, register a global exception handler that converts:
 ### 1.5 User model + migration
 
 `users` table:
+
 - `id`, `name`, `email` (unique), `password`
 - `role` (enum string, indexed)
 - `bank_id` (nullable FK → `banks.id`, indexed) — null for CBY roles
@@ -186,6 +190,7 @@ In `bootstrap/app.php`, register a global exception handler that converts:
 - `remember_token`, `timestamps`
 
 `User` model:
+
 - Casts `role` to `UserRole` enum.
 - Relationships: `bank()`, `votes()`, `auditLogs()`.
 - Helper methods: `isBankUser(): bool`, `isCbyUser(): bool`, `hasRole(UserRole $role): bool`.
@@ -195,11 +200,11 @@ In `bootstrap/app.php`, register a global exception handler that converts:
 
 `App\Http\Controllers\Api\AuthController`:
 
-| Method | Endpoint | Behavior |
-|---|---|---|
-| POST | `/api/auth/login` | Validate email+password. If SPA request (has session) → regenerate session, no token. If pure API → return Sanctum token. Log `LOGIN` audit. |
-| POST | `/api/auth/logout` | Invalidate session AND revoke current token. Log `LOGOUT` audit. |
-| GET | `/api/auth/me` | Return current user + role + bank (if any). |
+| Method | Endpoint           | Behavior                                                                                                                                     |
+| ------ | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| POST   | `/api/auth/login`  | Validate email+password. If SPA request (has session) → regenerate session, no token. If pure API → return Sanctum token. Log `LOGIN` audit. |
+| POST   | `/api/auth/logout` | Invalidate session AND revoke current token. Log `LOGOUT` audit.                                                                             |
+| GET    | `/api/auth/me`     | Return current user + role + bank (if any).                                                                                                  |
 
 Use `LoginRequest` FormRequest for validation.
 
@@ -216,6 +221,7 @@ Return user via `UserResource` (create it: `id, name, email, role, role_label, b
 ### 1.8 Routes
 
 In `routes/api.php`:
+
 ```php
 Route::prefix('auth')->group(function () {
     Route::post('login', [AuthController::class, 'login']);
@@ -229,6 +235,7 @@ Route::prefix('auth')->group(function () {
 ## Deliverable
 
 At end of module, print:
+
 - File tree of everything created.
 - Commands to run: `composer install`, `php artisan migrate`, `php artisan l5-swagger:generate`.
 
@@ -245,9 +252,11 @@ CRUD for banks and users, restricted to `CBY_ADMIN`.
 ### 2.1 Bank model + migration
 
 `banks` table:
+
 - `id`, `name` (unique), `code` (unique, short identifier like `CAC`, `YCB`), `is_active` (bool), `timestamps`.
 
 `Bank` model:
+
 - Relationships: `users()`, `importRequests()`.
 - Scope: `scopeActive()`.
 
@@ -260,12 +269,12 @@ CRUD for banks and users, restricted to `CBY_ADMIN`.
 
 `App\Http\Controllers\Api\BankController`:
 
-| Method | Endpoint |
-|---|---|
-| GET | `/api/banks` |
-| POST | `/api/banks` |
-| GET | `/api/banks/{id}` |
-| PUT | `/api/banks/{id}` |
+| Method | Endpoint          |
+| ------ | ----------------- |
+| GET    | `/api/banks`      |
+| POST   | `/api/banks`      |
+| GET    | `/api/banks/{id}` |
+| PUT    | `/api/banks/{id}` |
 | DELETE | `/api/banks/{id}` |
 
 Use `StoreBankRequest`, `UpdateBankRequest`. Use `BankResource`.
@@ -274,19 +283,21 @@ Use `StoreBankRequest`, `UpdateBankRequest`. Use `BankResource`.
 
 `App\Http\Controllers\Api\UserController`:
 
-| Method | Endpoint |
-|---|---|
-| GET | `/api/users` (filterable by `role`, `bank_id`, `is_active`) |
-| POST | `/api/users` |
-| GET | `/api/users/{id}` |
-| PUT | `/api/users/{id}` |
-| DELETE | `/api/users/{id}` (soft via `is_active = false`) |
+| Method | Endpoint                                                    |
+| ------ | ----------------------------------------------------------- |
+| GET    | `/api/users` (filterable by `role`, `bank_id`, `is_active`) |
+| POST   | `/api/users`                                                |
+| GET    | `/api/users/{id}`                                           |
+| PUT    | `/api/users/{id}`                                           |
+| DELETE | `/api/users/{id}` (soft via `is_active = false`)            |
 
 `UserPolicy`:
+
 - All actions: only `CBY_ADMIN`.
 - Validation rule: if `role` is a bank role, `bank_id` is required. If `role` is a CBY role, `bank_id` must be null.
 
 `StoreUserRequest`, `UpdateUserRequest`:
+
 - Validate role is valid enum.
 - Enforce bank_id + role consistency rule above.
 - Password required on create, optional on update.
@@ -298,6 +309,7 @@ Annotate every endpoint in this module.
 ### 2.6 Seeder
 
 Create `DatabaseSeeder` that calls:
+
 - `BankSeeder` — 3 sample banks.
 - `UserSeeder` — 1 user per role:
   - 1 `CBY_ADMIN` (admin@cby.gov.ye / password)
@@ -325,6 +337,7 @@ Build the `ImportRequest` model, migration, and DRAFT-stage CRUD endpoints. **No
 ### 3.1 Migrations
 
 `import_requests` table:
+
 - `id`, `reference_number` (unique, format `YFH-{YYYY}-{6-digit-sequence}`, generated on create)
 - `bank_id` (FK, indexed)
 - `created_by` (FK → users.id)
@@ -341,6 +354,7 @@ Build the `ImportRequest` model, migration, and DRAFT-stage CRUD endpoints. **No
 - `timestamps`, `softDeletes`
 
 `request_documents` table:
+
 - `id`, `request_id` (FK, indexed), `uploaded_by` (FK), `type` (enum: `REQUEST_DOC`, `SWIFT`, `CUSTOMS`), `original_filename`, `stored_path`, `mime_type`, `size_bytes`, `timestamps`.
 
 (Other tables — `request_stage_history`, `request_votes`, `audit_logs`, `customs_declarations` — come in later modules.)
@@ -367,17 +381,18 @@ Build the `ImportRequest` model, migration, and DRAFT-stage CRUD endpoints. **No
 
 `App\Http\Controllers\Api\ImportRequestController`:
 
-| Method | Endpoint |
-|---|---|
-| GET | `/api/requests` — list, paginated, filterable by `status`, `bank_id` (CBY only), `search` (reference / supplier), `from_date`, `to_date` |
-| POST | `/api/requests` — create in DRAFT |
-| GET | `/api/requests/{id}` — details |
-| PUT | `/api/requests/{id}` — update (only when editable) |
-| DELETE | `/api/requests/{id}` — delete (only DRAFT) |
+| Method | Endpoint                                                                                                                                 |
+| ------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| GET    | `/api/requests` — list, paginated, filterable by `status`, `bank_id` (CBY only), `search` (reference / supplier), `from_date`, `to_date` |
+| POST   | `/api/requests` — create in DRAFT                                                                                                        |
+| GET    | `/api/requests/{id}` — details                                                                                                           |
+| PUT    | `/api/requests/{id}` — update (only when editable)                                                                                       |
+| DELETE | `/api/requests/{id}` — delete (only DRAFT)                                                                                               |
 
 Resources: `ImportRequestResource` (full), `ImportRequestListResource` (lighter for list view).
 
 FormRequests: `StoreImportRequest`, `UpdateImportRequest` with validation:
+
 - `currency`: required, 3 chars, in [`USD`, `EUR`, `SAR`, `AED`, `CNY`].
 - `amount`: required, numeric, min 1.
 - `supplier_name`, `goods_description`, `port_of_entry`: required strings.
@@ -406,6 +421,7 @@ Build the centralized `WorkflowService` that handles ALL status transitions, own
 ### 4.1 Migration: `request_stage_history`
 
 Columns:
+
 - `id`, `request_id` (FK, indexed)
 - `from_status` (enum string, nullable for initial)
 - `to_status` (enum string)
@@ -454,6 +470,7 @@ public function transition(
 ```
 
 Logic:
+
 1. Look up `$action` in `TransitionMap`. Throw `InvalidTransitionException` if unknown.
 2. Verify `$request->status` is in the allowed `from_status` list. Else throw `InvalidTransitionException`.
 3. Verify `$actor->role` matches `required_role`. Else throw `UnauthorizedTransitionException`.
@@ -469,6 +486,7 @@ Logic:
 7. Return refreshed model.
 
 Custom exceptions in `app/Exceptions/`:
+
 - `InvalidTransitionException` (HTTP 422)
 - `UnauthorizedTransitionException` (HTTP 403)
 - `SelfReviewException` (HTTP 403)
@@ -479,17 +497,18 @@ Register them in the exception handler with proper `ApiResponse` mappings.
 
 `App\Http\Controllers\Api\WorkflowController`:
 
-| Method | Endpoint | Action |
-|---|---|---|
-| POST | `/api/workflow/{id}/submit` | submit |
-| POST | `/api/workflow/{id}/bank-approve` | bank_approve |
-| POST | `/api/workflow/{id}/bank-reject` | bank_reject |
-| POST | `/api/workflow/{id}/return-to-entry` | return_to_entry |
-| POST | `/api/workflow/{id}/support-approve` | support_approve |
-| POST | `/api/workflow/{id}/support-reject` | support_reject |
-| POST | `/api/workflow/{id}/finalize-decision` | finalize_approved OR finalize_rejected (determined by voting result — handled by VotingService in Module 5; for now expose endpoint that calls service) |
+| Method | Endpoint                               | Action                                                                                                                                                  |
+| ------ | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| POST   | `/api/workflow/{id}/submit`            | submit                                                                                                                                                  |
+| POST   | `/api/workflow/{id}/bank-approve`      | bank_approve                                                                                                                                            |
+| POST   | `/api/workflow/{id}/bank-reject`       | bank_reject                                                                                                                                             |
+| POST   | `/api/workflow/{id}/return-to-entry`   | return_to_entry                                                                                                                                         |
+| POST   | `/api/workflow/{id}/support-approve`   | support_approve                                                                                                                                         |
+| POST   | `/api/workflow/{id}/support-reject`    | support_reject                                                                                                                                          |
+| POST   | `/api/workflow/{id}/finalize-decision` | finalize_approved OR finalize_rejected (determined by voting result — handled by VotingService in Module 5; for now expose endpoint that calls service) |
 
 Each endpoint:
+
 - Loads the request (via route model binding).
 - Reads optional `reason` from request body (required for rejections + returns).
 - Calls `WorkflowService::transition()`.
@@ -520,6 +539,7 @@ Executive Committee voting: 6 members, one vote each, majority logic, tie-breake
 ### 5.1 Migration: `request_votes`
 
 Columns:
+
 - `id`, `request_id` (FK, indexed), `user_id` (FK, indexed)
 - `vote` (enum: `APPROVE`, `REJECT`, `ABSTAIN`)
 - `justification` (text, nullable)
@@ -538,6 +558,7 @@ public function finalize(ImportRequest $request, User $director, ?VoteType $dire
 ```
 
 **castVote logic:**
+
 - Verify `$request->status === EXECUTIVE_VOTING`. Else throw.
 - Verify `$voter->role === EXECUTIVE_MEMBER`. Else throw.
 - Verify no existing vote for this `(request, voter)` pair. Else throw `DuplicateVoteException`.
@@ -547,6 +568,7 @@ public function finalize(ImportRequest $request, User $director, ?VoteType $dire
 - Return the vote.
 
 **tally logic:**
+
 - Count votes by type.
 - Return DTO with: `approveCount`, `rejectCount`, `abstainCount`, `totalCast`, `isDecided` (bool), `result` (APPROVED / REJECTED / TIE / PENDING).
 - Decision rules:
@@ -556,6 +578,7 @@ public function finalize(ImportRequest $request, User $director, ?VoteType $dire
   - else PENDING
 
 **finalize logic (director tie-breaker):**
+
 - Verify `$director->role === COMMITTEE_DIRECTOR`.
 - Verify current tally is TIE.
 - Insert a `request_votes` row for the director with `is_director_override = true`.
@@ -565,12 +588,12 @@ public function finalize(ImportRequest $request, User $director, ?VoteType $dire
 
 `App\Http\Controllers\Api\VotingController`:
 
-| Method | Endpoint | Role |
-|---|---|---|
-| GET | `/api/voting` | List requests currently in `EXECUTIVE_VOTING` (executive members + director see all; others 403) |
-| GET | `/api/voting/{id}` | Voting detail: request info + current tally + my vote (if any) |
-| POST | `/api/voting/{id}/vote` | Cast vote (executive member) |
-| POST | `/api/voting/{id}/director-decide` | Director tie-breaker — body: `{ vote: APPROVE|REJECT, justification }` |
+| Method | Endpoint                           | Role                                                                                             |
+| ------ | ---------------------------------- | ------------------------------------------------------------------------------------------------ | ------------------------ |
+| GET    | `/api/voting`                      | List requests currently in `EXECUTIVE_VOTING` (executive members + director see all; others 403) |
+| GET    | `/api/voting/{id}`                 | Voting detail: request info + current tally + my vote (if any)                                   |
+| POST   | `/api/voting/{id}/vote`            | Cast vote (executive member)                                                                     |
+| POST   | `/api/voting/{id}/director-decide` | Director tie-breaker — body: `{ vote: APPROVE                                                    | REJECT, justification }` |
 
 FormRequests: `CastVoteRequest`, `DirectorDecideRequest`.
 Resources: `VoteResource`, `VotingTallyResource`.
@@ -607,10 +630,12 @@ public function delete(RequestDocument $document, User $user): void
 ```
 
 **Validation:**
+
 - Allowed MIME types: `application/pdf`, `image/jpeg`, `image/png`.
 - Max size: 10 MB (configurable via `config/documents.php`).
 
 **Storage:**
+
 - Use the `local` disk, root `storage/app/private/`.
 - Path structure:
   - Request docs: `requests/{request_id}/{uuid}.{ext}`
@@ -619,6 +644,7 @@ public function delete(RequestDocument $document, User $user): void
 - Store the relative path, never expose absolute paths.
 
 **Rules:**
+
 - `uploadRequestDocument`: only when request `isEditable()`. Only by request creator's bank's `DATA_ENTRY`.
 - `uploadSwift`: only when status is `SUPPORT_APPROVED`. Only by `SWIFT_OFFICER` of same bank. After success, calls `WorkflowService::transition($request, 'swift_upload', $user)`.
 - SWIFT files **cannot be replaced or deleted** after upload — enforce in service.
@@ -629,12 +655,12 @@ All operations log to `AuditService`.
 
 ### 6.2 DocumentController endpoints
 
-| Method | Endpoint | Notes |
-|---|---|---|
-| POST | `/api/requests/{id}/documents` | Upload request document (multipart) |
-| DELETE | `/api/documents/{id}` | Delete request doc (only when editable) |
-| POST | `/api/workflow/{id}/swift-upload` | Upload SWIFT (multipart) — triggers transition |
-| GET | `/api/documents/{id}/download` | Stream file |
+| Method | Endpoint                          | Notes                                          |
+| ------ | --------------------------------- | ---------------------------------------------- |
+| POST   | `/api/requests/{id}/documents`    | Upload request document (multipart)            |
+| DELETE | `/api/documents/{id}`             | Delete request doc (only when editable)        |
+| POST   | `/api/workflow/{id}/swift-upload` | Upload SWIFT (multipart) — triggers transition |
+| GET    | `/api/documents/{id}/download`    | Stream file                                    |
 
 FormRequests: `UploadDocumentRequest`, `UploadSwiftRequest`.
 Resource: `DocumentResource` (id, type, original_filename, mime_type, size_bytes, uploaded_at, download_url).
@@ -649,17 +675,18 @@ File tree + run instructions.
 
 ---
 
-# 📦 MODULE 7 — Customs Declaration
+# 📦 MODULE 7 — External FX Confirmation
 
 ## Goal
 
-CBY Admin generates the final customs declaration document and PDF.
+The Committee Director generates the final external FX confirmation document and PDF.
 
 ## Tasks
 
 ### 7.1 Migration: `customs_declarations`
 
 Columns:
+
 - `id`, `request_id` (FK, unique — one per request)
 - `declaration_number` (unique, format `CD-{YYYY}-{6-digit}`)
 - `issued_by` (FK → users.id)
@@ -678,6 +705,7 @@ public function getPdfStream(CustomsDeclaration $declaration, User $user): Strea
 ```
 
 **generate logic:**
+
 - Verify `$request->status === EXECUTIVE_APPROVED`.
 - Verify `$issuer->role === CBY_ADMIN`.
 - Auto-generate `declaration_number`.
@@ -697,11 +725,11 @@ public function getPdfStream(CustomsDeclaration $declaration, User $user): Strea
 
 ### 7.3 CustomsController endpoints
 
-| Method | Endpoint |
-|---|---|
-| POST | `/api/customs/{request_id}/generate` |
-| GET | `/api/customs/{id}` (returns declaration metadata) |
-| GET | `/api/customs/{id}/download` (PDF stream) |
+| Method | Endpoint                                           |
+| ------ | -------------------------------------------------- |
+| POST   | `/api/customs/{request_id}/generate`               |
+| GET    | `/api/customs/{id}` (returns declaration metadata) |
+| GET    | `/api/customs/{id}/download` (PDF stream)          |
 
 Resource: `CustomsDeclarationResource`.
 
@@ -724,6 +752,7 @@ Wire up the audit logging system (referenced as stubs in earlier modules) and ba
 ### 8.1 Migration: `audit_logs`
 
 Columns:
+
 - `id`, `user_id` (FK, nullable for system events)
 - `user_role` (enum string, nullable)
 - `action` (string — values from `AuditAction` enum)
@@ -752,15 +781,16 @@ public function log(AuditAction $action, ?User $actor, ?Model $subject = null, a
 
 `App\Http\Controllers\Api\AuditController`:
 
-| Method | Endpoint | Role |
-|---|---|---|
-| GET | `/api/audit` | List audit logs, filterable by `user_id`, `action`, `subject_type`, `from_date`, `to_date`. Only `CBY_ADMIN` and `COMMITTEE_DIRECTOR`. |
+| Method | Endpoint     | Role                                                                                                                                   |
+| ------ | ------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
+| GET    | `/api/audit` | List audit logs, filterable by `user_id`, `action`, `subject_type`, `from_date`, `to_date`. Only `CBY_ADMIN` and `COMMITTEE_DIRECTOR`. |
 
 Resource: `AuditLogResource`.
 
 ### 8.4 Notifications
 
 Create notification classes in `app/Notifications/`:
+
 - `RequestSubmittedNotification` — to bank reviewers of the same bank.
 - `RequestApprovedNotification` — to creator.
 - `RequestRejectedNotification` — to creator + reviewer.
@@ -775,11 +805,11 @@ Hook them via an event listener `SendWorkflowNotifications` listening to `Reques
 
 ### 8.5 Notification endpoints
 
-| Method | Endpoint |
-|---|---|
-| GET | `/api/notifications` (current user's notifications, paginated) |
-| POST | `/api/notifications/{id}/read` (mark as read) |
-| POST | `/api/notifications/read-all` |
+| Method | Endpoint                                                       |
+| ------ | -------------------------------------------------------------- |
+| GET    | `/api/notifications` (current user's notifications, paginated) |
+| POST   | `/api/notifications/{id}/read` (mark as read)                  |
+| POST   | `/api/notifications/read-all`                                  |
 
 ### 8.6 Swagger annotations
 
@@ -801,11 +831,12 @@ Dashboard stats endpoints, basic reports, and a final pass to ensure the Swagger
 
 `App\Http\Controllers\Api\DashboardController`:
 
-| Method | Endpoint |
-|---|---|
-| GET | `/api/dashboard/stats` |
+| Method | Endpoint               |
+| ------ | ---------------------- |
+| GET    | `/api/dashboard/stats` |
 
 Response (scoped by user role — bank users see only their bank):
+
 ```json
 {
   "total_requests": 0,
@@ -820,10 +851,10 @@ Response (scoped by user role — bank users see only their bank):
 
 ### 9.2 Reports controller
 
-| Method | Endpoint | Role |
-|---|---|---|
-| GET | `/api/reports/workflow` | Aggregated workflow metrics: avg time-per-stage, throughput. CBY only. |
-| GET | `/api/reports/voting` | Voting stats: approval rate, tie rate, avg time to decision. CBY only. |
+| Method | Endpoint                | Role                                                                   |
+| ------ | ----------------------- | ---------------------------------------------------------------------- |
+| GET    | `/api/reports/workflow` | Aggregated workflow metrics: avg time-per-stage, throughput. CBY only. |
+| GET    | `/api/reports/voting`   | Voting stats: approval rate, tie rate, avg time to decision. CBY only. |
 
 Simple JSON responses are fine — keep it lightweight.
 
@@ -838,6 +869,7 @@ Simple JSON responses are fine — keep it lightweight.
 ### 9.4 README updates
 
 Append to `README.md`:
+
 - Project description (1 paragraph).
 - Setup steps: `composer install`, `cp .env.example .env`, configure DB, `php artisan key:generate`, `php artisan migrate --seed`, `php artisan l5-swagger:generate`, `php artisan serve`.
 - Default seeded credentials.

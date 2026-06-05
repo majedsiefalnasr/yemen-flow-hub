@@ -23,6 +23,7 @@ class RequestDocumentPolicy
             'CONFIRMATION_REQUEST' => $this->canDownloadRequestDoc($user, $requestBankId),
             'SWIFT' => $this->canDownloadSwift($user, $requestBankId),
             'FX_REQUEST' => $this->canDownloadSwift($user, $requestBankId),
+            'CUSTOMS' => $this->canDownloadCustoms($user, $requestBankId),
             default => false,
         };
     }
@@ -51,6 +52,16 @@ class RequestDocumentPolicy
             UserRole::BANK_ADMIN,
             UserRole::SWIFT_OFFICER => $user->bank_id !== null && $user->bank_id === $requestBankId,
             UserRole::EXECUTIVE_MEMBER,
+            UserRole::COMMITTEE_DIRECTOR,
+            UserRole::CBY_ADMIN => true,
+            default => false,
+        };
+    }
+
+    private function canDownloadCustoms(User $user, ?int $requestBankId): bool
+    {
+        return match ($user->role) {
+            UserRole::BANK_REVIEWER => $user->bank_id !== null && $user->bank_id === $requestBankId,
             UserRole::COMMITTEE_DIRECTOR,
             UserRole::CBY_ADMIN => true,
             default => false,

@@ -17,7 +17,7 @@ enum DocumentType: string
             self::SWIFT => 'وثيقة السويفت / SWIFT Document',
             self::FX_REQUEST => 'طلب تأكيد المصارفة الخارجية / External FX Confirmation Request',
             self::CONFIRMATION_REQUEST => 'طلب وثيقة التأكيد / Confirmation Request',
-            self::CUSTOMS => 'البيان الجمركي / Customs Declaration',
+            self::CUSTOMS => 'وثيقة تأكيد المصارفة الخارجية / External FX Confirmation Document',
         };
     }
 }
