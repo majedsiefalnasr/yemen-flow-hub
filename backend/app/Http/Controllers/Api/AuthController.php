@@ -92,10 +92,15 @@ class AuthController extends Controller
         // - system-level MFA switch
         // - OR user already configured authenticator (TOTP) and must verify code on login
         if (config('mfa.enabled', false) || $this->mfaService->hasTotpConfigured($user)) {
-            $this->mfaService->generate($email);
+            $otp = $this->mfaService->generate($email);
             $challengeId = $this->mfaService->getChallengeId($email);
             if ($challengeId === null) {
                 return ApiResponse::error('Unable to initialize MFA challenge.', [], 500);
+            }
+
+            if (! $this->mfaService->hasTotpConfigured($user)) {
+                $ttlMinutes = (int) ceil(config('mfa.otp_ttl_seconds', 600) / 60);
+                $this->mfaService->sendOtpEmail($email, $otp, $ttlMinutes);
             }
 
             return ApiResponse::success([

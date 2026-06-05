@@ -2,9 +2,11 @@
 
 namespace App\Services\Auth;
 
+use App\Mail\MfaOtpMail;
 use App\Models\User;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use PragmaRX\Google2FA\Google2FA;
 
@@ -48,6 +50,11 @@ class MfaService
         ], now()->addSeconds($ttlSeconds));
 
         return $code;
+    }
+
+    public function sendOtpEmail(string $email, string $otp, int $ttlMinutes): void
+    {
+        Mail::to($email)->queue(new MfaOtpMail($email, $otp, $ttlMinutes));
     }
 
     public function getChallengeId(string $email): ?string

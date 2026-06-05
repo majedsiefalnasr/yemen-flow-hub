@@ -4,6 +4,7 @@ namespace Tests\Feature\Auth;
 
 use App\Enums\AuditAction;
 use App\Enums\UserRole;
+use App\Mail\MfaOtpMail;
 use App\Models\AuditLog;
 use App\Models\Bank;
 use App\Models\User;
@@ -13,6 +14,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Tests\TestCase;
@@ -607,5 +609,54 @@ class AuthControllerTest extends TestCase
         $response->assertJsonPath('success', true);
         $response->assertJsonPath('data.user.id', $target->id);
         $response->assertJsonPath('data.user.role', UserRole::CBY_ADMIN->value);
+    }
+
+    // --- MFA OTP email: dispatched for non-TOTP users ---
+
+    public function test_non_totp_login_dispatches_mfa_otp_email(): void
+    {
+        Mail::fake();
+        config(['mfa.enabled' => true]);
+
+        $this->makeUser(['totp_enabled' => false, 'totp_secret' => null]);
+
+        $this->postJson('/api/auth/login', [
+            'email' => 'test@example.com',
+            'password' => 'password',
+        ])->assertStatus(200)
+            ->assertJsonPath('data.requires_mfa', true);
+
+        Mail::assertQueued(MfaOtpMail::class, function (MfaOtpMail $mail): bool {
+            return $mail->email === 'test@example.com'
+                && strlen($mail->otp) === 6
+                && $mail->ttlMinutes > 0;
+        });
+    }
+
+    public function test_totp_login_does_not_dispatch_mfa_otp_email(): void
+    {
+        Mail::fake();
+        config(['mfa.enabled' => false]);
+
+        $this->makeUser([
+            'totp_enabled' => true,
+            'totp_secret' => 'JBSWY3DPEHPK3PXP',
+        ]);
+
+        $this->postJson('/api/auth/login', [
+            'email' => 'test@example.com',
+            'password' => 'password',
+        ])->assertStatus(200)
+            ->assertJsonPath('data.requires_mfa', true);
+
+        Mail::assertNotQueued(MfaOtpMail::class);
+    }
+
+    public function test_mfa_otp_mail_has_correct_retry_config(): void
+    {
+        $mail = new MfaOtpMail('user@example.com', '123456', 10);
+
+        $this->assertSame(3, $mail->tries);
+        $this->assertSame([60, 300], $mail->backoff);
     }
 }
