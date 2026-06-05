@@ -298,7 +298,13 @@ function removeTrustedDevice(id: string) {
 }
 
 // ── MFA / Authenticator setup ──────────────────────────────────────────────────
-type MfaDialogStage = 'intro' | 'scan' | 'verify' | 'disable-verify' | 'disable-with-password'
+type MfaDialogStage =
+  | 'intro'
+  | 'scan'
+  | 'verify'
+  | 'backup-codes'
+  | 'disable-verify'
+  | 'disable-with-password'
 
 const mfaDialogOpen = ref(false)
 const mfaDialogStage = ref<MfaDialogStage>('intro')
@@ -307,6 +313,7 @@ const mfaSetupError = ref<string | null>(null)
 const isMfaActionLoading = ref(false)
 const liveMfaSecret = ref<string | null>(null)
 const liveMfaUri = ref<string | null>(null)
+const liveMfaBackupCodes = ref<string[]>([])
 const mfaDisablePassword = ref('')
 
 const mfaQrSvg = computed(() => {
@@ -320,6 +327,7 @@ function openMfaSetup() {
   mfaSetupError.value = null
   liveMfaSecret.value = null
   liveMfaUri.value = null
+  liveMfaBackupCodes.value = []
   mfaDialogOpen.value = true
 }
 
@@ -382,11 +390,12 @@ async function confirmMfaSetup() {
   isMfaActionLoading.value = true
   mfaSetupError.value = null
   try {
-    const ok = await verifyTotpSetup(mfaVerifyCode.value)
-    if (!ok) throw new Error('invalid')
+    const result = await verifyTotpSetup(mfaVerifyCode.value)
+    if (!result) throw new Error('invalid')
     totpEnabled.value = true
     mfaEnabled.value = true
-    mfaDialogOpen.value = false
+    liveMfaBackupCodes.value = result.recovery_codes ?? []
+    mfaDialogStage.value = 'backup-codes'
     toast.success('تم تفعيل تطبيق المصادقة بنجاح')
   } catch {
     mfaSetupError.value = 'الرمز غير صحيح. تحقق من تطبيق المصادقة وحاول مجدداً.'
@@ -1892,6 +1901,36 @@ function savePersonalNotifications() {
                       @click="mfaDialogStage = 'scan'"
                       >رجوع</Button
                     >
+                  </DialogFooter>
+                </template>
+
+                <template v-else-if="mfaDialogStage === 'backup-codes'">
+                  <DialogHeader>
+                    <DialogTitle>رموز الاسترداد الاحتياطية</DialogTitle>
+                    <DialogDescription>
+                      احفظ هذه الرموز في مكان آمن. سيظهر كل رمز مرة واحدة فقط ويمكن استخدامه مرة
+                      واحدة عند فقدان تطبيق المصادقة.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <Alert class="mb-4">
+                    <AlertDescription>
+                      لا تشارك هذه الرموز مع أي شخص. كل رمز يعمل كبديل طارئ لتطبيق المصادقة.
+                    </AlertDescription>
+                  </Alert>
+                  <div
+                    class="border-border bg-muted/30 grid grid-cols-2 gap-2 rounded-lg border p-3"
+                    dir="ltr"
+                  >
+                    <code
+                      v-for="code in liveMfaBackupCodes"
+                      :key="code"
+                      class="bg-background rounded-md px-2 py-1 text-center font-mono text-xs tracking-widest"
+                    >
+                      {{ code }}
+                    </code>
+                  </div>
+                  <DialogFooter class="gap-2">
+                    <Button type="button" @click="mfaDialogOpen = false">حفظت الرموز</Button>
                   </DialogFooter>
                 </template>
               </DialogContent>

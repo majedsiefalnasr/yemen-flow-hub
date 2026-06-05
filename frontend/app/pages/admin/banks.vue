@@ -14,7 +14,7 @@ import { Archive, Building2, Plus, PowerOff, SearchX, Zap } from 'lucide-vue-nex
 import PageHeader from '@/components/layout/PageHeader.vue'
 import { ROUTE_ROLE_MAP } from '@/constants/workflow'
 import { UserRole } from '@/types/enums'
-import type { Bank } from '@/types/models'
+import type { Bank, User } from '@/types/models'
 import { useBanks, type CreateBankPayload, type UpdateBankPayload } from '@/composables/useBanks'
 import { useTableExport } from '@/composables/useTableExport'
 import { useAuthStore } from '@/stores/auth.store'
@@ -61,6 +61,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import MetricCard from '@/components/shared/dashboard/MetricCard.vue'
 import MetricGrid from '@/components/shared/dashboard/MetricGrid.vue'
+import AccountRecoveryDialog from '@/components/security/AccountRecoveryDialog.vue'
 
 definePageMeta({
   middleware: ['auth', 'role'],
@@ -75,6 +76,7 @@ type BankForm = {
   is_active: boolean
   adminName: string
   adminEmail: string
+  adminPassword: string
 }
 
 const authStore = useAuthStore()
@@ -93,6 +95,7 @@ const loadingBanks = ref(false)
 const columnVisibility = ref<VisibilityState>({})
 const columnFilters = ref<ColumnFiltersState>([])
 const rowSelection = ref<Record<string, boolean>>({})
+const recoveryTarget = ref<User | null>(null)
 
 const form = reactive<BankForm>({
   name_ar: '',
@@ -102,6 +105,7 @@ const form = reactive<BankForm>({
   is_active: true,
   adminName: '',
   adminEmail: '',
+  adminPassword: '',
 })
 
 onMounted(async () => {
@@ -165,9 +169,9 @@ const formValid = computed(
     form.name_ar.trim().length > 0 &&
     form.code.trim().length > 0 &&
     emailValid.value &&
-    (Boolean(editing.value) ||
-      (form.adminName.trim().length > 0 &&
-        /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.adminEmail.trim()))),
+    form.adminName.trim().length > 0 &&
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.adminEmail.trim()) &&
+    (Boolean(editing.value) || form.adminPassword.length >= 8),
 )
 
 function resetForm(initial?: Bank) {
@@ -176,8 +180,9 @@ function resetForm(initial?: Bank) {
   form.license_number = initial?.license_number ?? ''
   form.code = initial?.code ?? ''
   form.is_active = initial?.is_active ?? true
-  form.adminName = ''
-  form.adminEmail = ''
+  form.adminName = initial?.admin?.name ?? ''
+  form.adminEmail = initial?.admin?.email ?? ''
+  form.adminPassword = ''
 }
 
 function openCreate() {
@@ -208,6 +213,8 @@ async function saveBank() {
         code: form.code.trim(),
         license_number: form.license_number.trim() || undefined,
         is_active: form.is_active,
+        adminName: form.adminName.trim(),
+        adminEmail: form.adminEmail.trim(),
       }
       const updated = await updateBank(editing.value.id, payload)
       banks.value = banks.value.map((b) => (b.id === editing.value!.id ? updated : b))
@@ -219,6 +226,9 @@ async function saveBank() {
         code: form.code.trim(),
         license_number: form.license_number.trim() || undefined,
         is_active: form.is_active,
+        adminName: form.adminName.trim(),
+        adminEmail: form.adminEmail.trim(),
+        adminPassword: form.adminPassword,
       }
       const created = await createBank(payload)
       banks.value = [...banks.value, created]
@@ -230,6 +240,22 @@ async function saveBank() {
   } finally {
     saving.value = false
   }
+}
+
+function openBankAdminRecovery(bank: Bank) {
+  if (!bank.admin) {
+    toastError('لا يوجد حساب مدير مرتبط بهذا البنك.')
+    return
+  }
+  closeForm()
+  recoveryTarget.value = bank.admin
+}
+
+function handleRecoveryUpdated(updated: User) {
+  banks.value = banks.value.map((bank) =>
+    bank.admin?.id === updated.id ? { ...bank, admin: updated } : bank,
+  )
+  recoveryTarget.value = updated
 }
 
 async function toggleStatus(bank: Bank) {
@@ -291,6 +317,10 @@ const bankActions: RowAction<Bank>[] = [
   {
     label: 'تعديل',
     onClick: (row) => openEdit(row.original),
+  },
+  {
+    label: 'استعادة وصول مدير البنك',
+    onClick: (row) => openBankAdminRecovery(row.original),
   },
   {
     label: 'إيقاف',
@@ -726,12 +756,16 @@ async function bulkArchive() {
             </div>
           </div>
 
-          <div v-if="!editing" class="mt-2 border-t pt-3">
+          <div class="mt-2 border-t pt-3">
             <div class="mb-1 text-sm font-semibold">
               حساب مدير البنك <span class="text-destructive">*</span>
             </div>
             <p class="text-muted-foreground mb-3 text-xs">
-              يُنشأ حساب المدير الأول للبنك تلقائياً ويُستخدم لتسجيل الدخول وإضافة باقي المستخدمين.
+              {{
+                editing
+                  ? 'عدّل بيانات حساب مدير البنك أو افتح إجراءات استعادة الوصول.'
+                  : 'يُنشأ حساب المدير الأول للبنك تلقائياً ويُستخدم لتسجيل الدخول وإضافة باقي المستخدمين.'
+              }}
             </p>
             <div class="space-y-3">
               <div class="space-y-1.5">
@@ -743,6 +777,24 @@ async function bulkArchive() {
                 <Input v-model="form.adminEmail" type="email" placeholder="admin@bank.ye" />
                 <p v-if="!emailValid" class="text-destructive text-xs">صيغة البريد غير صحيحة</p>
               </div>
+              <div v-if="!editing" class="space-y-1.5">
+                <Label>كلمة المرور المؤقتة *</Label>
+                <Input
+                  v-model="form.adminPassword"
+                  type="password"
+                  autocomplete="new-password"
+                  placeholder="TempPassword123"
+                />
+              </div>
+              <Button
+                v-if="editing?.admin"
+                type="button"
+                variant="outline"
+                class="w-full"
+                @click="openBankAdminRecovery(editing)"
+              >
+                استعادة وصول مدير البنك
+              </Button>
             </div>
           </div>
         </div>
@@ -754,6 +806,12 @@ async function bulkArchive() {
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    <AccountRecoveryDialog
+      :target="recoveryTarget"
+      @close="recoveryTarget = null"
+      @updated="handleRecoveryUpdated"
+    />
 
     <!-- View Dialog -->
     <Dialog :open="Boolean(viewing)" @update:open="(value) => !value && (viewing = null)">
@@ -781,6 +839,16 @@ async function bulkArchive() {
           <div class="flex items-center justify-between border-b pb-2">
             <span class="text-muted-foreground">الحالة</span>
             <span class="font-medium">{{ viewing.is_active ? 'نشط' : 'موقوف' }}</span>
+          </div>
+          <div class="flex items-center justify-between gap-3 border-b pb-2">
+            <span class="text-muted-foreground">مدير البنك</span>
+            <span class="text-start font-medium">{{ viewing.admin?.name ?? 'غير متاح' }}</span>
+          </div>
+          <div class="flex items-center justify-between gap-3 border-b pb-2">
+            <span class="text-muted-foreground">بريد مدير البنك</span>
+            <span class="text-start font-medium" dir="ltr">{{
+              viewing.admin?.email ?? 'غير متاح'
+            }}</span>
           </div>
           <div
             v-if="viewing.user_count != null"

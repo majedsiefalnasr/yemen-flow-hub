@@ -17,6 +17,7 @@
     "postinstall": "nuxt prepare && node scripts/patch-vue-router-volar.mjs",
     "test": "vitest run",
     "test:e2e": "playwright test --project=e2e",
+    "test:e2e:mailpit": "RUN_MAILPIT_E2E=1 PLAYWRIGHT_USE_EXISTING_SERVER=1 playwright test tests/e2e/account-recovery-mailpit.spec.ts --project=e2e",
     "test:visual": "playwright test --project=visual",
     "test:visual:update": "playwright test --project=visual --update-snapshots",
     "test:watch": "vitest",

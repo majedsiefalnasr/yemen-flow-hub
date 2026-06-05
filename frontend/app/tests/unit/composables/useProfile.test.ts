@@ -162,3 +162,31 @@ describe('useProfile — toggleMfa()', () => {
     expect(error.value).toBe('MFA is required by policy')
   })
 })
+
+describe('useProfile — TOTP setup()', () => {
+  beforeEach(() => {
+    vi.resetAllMocks()
+    mockAuth.user = null
+  })
+
+  it('returns one-time backup codes after verifying TOTP setup', async () => {
+    const data = {
+      ...SAMPLE_PROFILE,
+      totp_enabled: true,
+      recovery_codes: ['ABCD-EFGH', 'JKLM-NPQR'],
+    }
+    mockFetch.mockResolvedValueOnce({ success: true, data })
+
+    const { verifyTotpSetup } = useProfile()
+    const result = await verifyTotpSetup('123456')
+
+    expect(result?.recovery_codes).toEqual(['ABCD-EFGH', 'JKLM-NPQR'])
+    expect(mockFetch).toHaveBeenCalledWith(
+      '/api/profile/mfa/setup/verify',
+      expect.objectContaining({
+        method: 'POST',
+        body: { code: '123456' },
+      }),
+    )
+  })
+})

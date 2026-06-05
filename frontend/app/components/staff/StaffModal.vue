@@ -49,6 +49,7 @@ const emit = defineEmits<{
     },
   ]
   close: []
+  recover: [staff: User]
 }>()
 
 const isEdit = computed(() => props.staff !== null)
@@ -67,13 +68,7 @@ const extendedSchema = computed(() => {
           errorMap: () => ({ message: 'اختر الدور الوظيفي للموظف.' }),
         }),
         department: z.string().optional().default(''),
-        password: z
-          .string()
-          .default('')
-          .refine(
-            (value) => value.length === 0 || value.length >= 8,
-            'استخدم 8 أحرف على الأقل أو اترك الحقل فارغا.',
-          ),
+        password: z.string().optional().default(''),
       }),
     )
   }
@@ -113,7 +108,6 @@ watch(
           email: staff.email,
           role: staff.role as UserRole.DATA_ENTRY | UserRole.BANK_REVIEWER,
           department: '',
-          password: '',
         },
       })
       const stored = readUserAvatar(staff.email)
@@ -263,15 +257,9 @@ const onSubmit = handleSubmit((values) => {
             </FormField>
 
             <!-- Password -->
-            <FormField v-slot="{ componentField }" name="password">
+            <FormField v-if="!isEdit" v-slot="{ componentField }" name="password">
               <FormItem class="col-span-2">
-                <FormLabel class="text-xs">
-                  {{
-                    isEdit
-                      ? 'كلمة المرور (اتركها فارغة للإبقاء على الحالية)'
-                      : 'كلمة المرور الأولية *'
-                  }}
-                </FormLabel>
+                <FormLabel class="text-xs">كلمة المرور الأولية *</FormLabel>
                 <FormControl>
                   <Input v-bind="componentField" type="password" placeholder="8 أحرف على الأقل" />
                 </FormControl>
@@ -281,6 +269,15 @@ const onSubmit = handleSubmit((values) => {
           </div>
 
           <DialogFooter class="flex justify-end gap-3 pt-2">
+            <Button
+              v-if="isEdit && staff"
+              type="button"
+              variant="outline"
+              :disabled="props.saving"
+              @click="emit('recover', staff)"
+            >
+              استعادة الوصول
+            </Button>
             <Button type="button" variant="outline" :disabled="props.saving" @click="requestClose">
               إلغاء
             </Button>

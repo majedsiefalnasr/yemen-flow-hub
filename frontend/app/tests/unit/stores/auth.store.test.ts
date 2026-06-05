@@ -45,6 +45,45 @@ describe('useAuthStore', () => {
     })
   })
 
+  describe('password recovery CSRF', () => {
+    it('initializes Sanctum CSRF and sends the token for every recovery mutation', async () => {
+      mockFetch.mockResolvedValue({
+        success: true,
+        message: 'If this email exists, a recovery code has been sent.',
+        data: {},
+      })
+
+      const store = useAuthStore()
+      vi.spyOn(store, 'getXsrfToken').mockReturnValue('recovery-token')
+      await store.requestPasswordRecovery('user@example.gov.ye')
+      await store.verifyPasswordRecoveryCode('user@example.gov.ye', '123456')
+      await store.resetPasswordWithOtp(
+        'user@example.gov.ye',
+        '123456',
+        'NewPassword123',
+        'NewPassword123',
+      )
+
+      for (const path of [
+        '/api/auth/password/forgot',
+        '/api/auth/password/verify',
+        '/api/auth/password/reset',
+      ]) {
+        expect(mockFetch).toHaveBeenCalledWith(
+          path,
+          expect.objectContaining({
+            headers: expect.objectContaining({
+              'X-XSRF-TOKEN': 'recovery-token',
+            }),
+          }),
+        )
+      }
+      expect(mockFetch.mock.calls.filter(([path]) => path === '/sanctum/csrf-cookie')).toHaveLength(
+        3,
+      )
+    })
+  })
+
   describe('login()', () => {
     it('sets user and isAuthenticated on successful login', async () => {
       mockFetch.mockResolvedValueOnce(null) // CSRF cookie prefetch

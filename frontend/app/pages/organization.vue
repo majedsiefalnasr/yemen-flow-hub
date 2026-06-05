@@ -701,7 +701,6 @@ async function saveBankSecurity() {
                 <InputGroup class="h-9 w-full max-w-64">
                   <InputGroupInput
                     :model-value="pendingBrandColorText"
-                    dir="ltr"
                     class="font-mono"
                     placeholder="#0066cc"
                     maxlength="7"

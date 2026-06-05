@@ -15,6 +15,9 @@ export interface CreateBankPayload {
   license_number?: string | null
   entity_type?: string | null
   is_active: boolean
+  adminName?: string
+  adminEmail?: string
+  adminPassword?: string
 }
 
 export interface UpdateBankPayload {
@@ -25,6 +28,8 @@ export interface UpdateBankPayload {
   license_number?: string | null
   entity_type?: string | null
   is_active?: boolean
+  adminName?: string
+  adminEmail?: string
 }
 
 export function useBanks() {
@@ -58,5 +63,12 @@ export function useBanks() {
     return response.data
   }
 
-  return { fetchBanks, fetchBanksPaginated, createBank, updateBank }
+  async function resetBankAdminPassword(
+    id: number,
+    payload: { password: string; password_confirmation: string },
+  ): Promise<void> {
+    await post(`/api/banks/${id}/admin/reset-password`, payload)
+  }
+
+  return { fetchBanks, fetchBanksPaginated, createBank, updateBank, resetBankAdminPassword }
 }

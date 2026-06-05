@@ -27,6 +27,12 @@ interface VerifyOtpResponseData {
   requires_mfa: false
 }
 
+interface PasswordRecoveryResponseData {
+  success: boolean
+  message: string
+  data: Record<string, never>
+}
+
 const ACCESS_TOKEN_STORAGE_KEY = 'yfh-api-token'
 const LOGOUT_IN_PROGRESS_STORAGE_KEY = 'yfh-logout-in-progress'
 
@@ -223,6 +229,115 @@ export const useAuthStore = defineStore('auth', {
       if (import.meta.client) {
         localStorage.setItem('yfh-authenticated', '1')
       }
+    },
+
+    async requestPasswordRecovery(email: string): Promise<string> {
+      const config = useRuntimeConfig()
+      const baseURL = config.public.apiBase as string
+      await $fetch('/sanctum/csrf-cookie', {
+        baseURL,
+        credentials: 'include',
+      })
+      const xsrfToken = this.getXsrfToken()
+
+      const response = await $fetch<PasswordRecoveryResponseData>('/api/auth/password/forgot', {
+        method: 'POST',
+        baseURL,
+        credentials: 'include',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+          ...(xsrfToken ? { 'X-XSRF-TOKEN': xsrfToken } : {}),
+        },
+        body: { email },
+      })
+
+      return response.message
+    },
+
+    async verifyPasswordRecoveryCode(email: string, otp: string): Promise<void> {
+      const config = useRuntimeConfig()
+      const baseURL = config.public.apiBase as string
+      await $fetch('/sanctum/csrf-cookie', {
+        baseURL,
+        credentials: 'include',
+      })
+      const xsrfToken = this.getXsrfToken()
+
+      await $fetch('/api/auth/password/verify', {
+        method: 'POST',
+        baseURL,
+        credentials: 'include',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+          ...(xsrfToken ? { 'X-XSRF-TOKEN': xsrfToken } : {}),
+        },
+        body: { email, otp },
+      })
+    },
+
+    async resetPasswordWithOtp(
+      email: string,
+      otp: string,
+      password: string,
+      passwordConfirmation: string,
+    ): Promise<void> {
+      const config = useRuntimeConfig()
+      const baseURL = config.public.apiBase as string
+      await $fetch('/sanctum/csrf-cookie', {
+        baseURL,
+        credentials: 'include',
+      })
+      const xsrfToken = this.getXsrfToken()
+
+      await $fetch('/api/auth/password/reset', {
+        method: 'POST',
+        baseURL,
+        credentials: 'include',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+          ...(xsrfToken ? { 'X-XSRF-TOKEN': xsrfToken } : {}),
+        },
+        body: {
+          email,
+          otp,
+          password,
+          password_confirmation: passwordConfirmation,
+        },
+      })
+    },
+
+    async changeTemporaryPassword(password: string, passwordConfirmation: string): Promise<void> {
+      const config = useRuntimeConfig()
+      const baseURL = config.public.apiBase as string
+      const xsrfToken = this.getXsrfToken()
+      const authHeader = this.getAuthorizationHeader()
+
+      const response = await $fetch<ApiResponse<AuthUser>>(
+        '/api/profile/change-temporary-password',
+        {
+          method: 'POST',
+          baseURL,
+          credentials: 'include',
+          headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+            ...(authHeader ? { Authorization: authHeader } : {}),
+            ...(xsrfToken ? { 'X-XSRF-TOKEN': xsrfToken } : {}),
+          },
+          body: {
+            password,
+            password_confirmation: passwordConfirmation,
+          },
+        },
+      )
+
+      this.user = response.data
+      this.isAuthenticated = true
+      this.isLoggingOut = false
+      syncAvatarCache(this.user)
     },
 
     async loginWithPin(email: string, pin: string): Promise<void> {

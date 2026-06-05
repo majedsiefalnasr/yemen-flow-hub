@@ -14,7 +14,6 @@ import {
   AlertCircle,
   AlertTriangle,
   Archive,
-  ExternalLink,
   MoreHorizontal,
   Plus,
   PowerOff,
@@ -90,6 +89,7 @@ import MetricCard from '@/components/shared/dashboard/MetricCard.vue'
 import MetricGrid from '@/components/shared/dashboard/MetricGrid.vue'
 import AvatarPicker from '@/components/shared/AvatarPicker.vue'
 import BoringAvatar from '@/components/shared/BoringAvatar.vue'
+import AccountRecoveryDialog from '@/components/security/AccountRecoveryDialog.vue'
 import {
   DEFAULT_AVATAR_VARIANT,
   persistUserAvatar,
@@ -130,6 +130,7 @@ const staffUsers = ref<User[]>([])
 const deactivateTarget = ref<User | null>(null)
 const deactivateBlocked = ref<string | null>(null)
 const banksData = ref<Bank[]>([])
+const recoveryTarget = ref<User | null>(null)
 
 const form = reactive<StaffForm>({
   name: '',
@@ -255,6 +256,16 @@ function closeForm() {
   resetForm()
 }
 
+function openAccountRecovery(target: User) {
+  closeForm()
+  recoveryTarget.value = target
+}
+
+function handleRecoveryUpdated(updated: User) {
+  staffUsers.value = staffUsers.value.map((user) => (user.id === updated.id ? updated : user))
+  recoveryTarget.value = updated
+}
+
 async function saveStaff() {
   if (!formValid.value) return
   saving.value = true
@@ -267,7 +278,6 @@ async function saveStaff() {
         bank_id: null,
         is_active: editing.value.is_active,
         avatar_variant: avatarVariant.value,
-        ...(form.password ? { password: form.password } : {}),
       }
       const updated = await updateUser(editing.value.id, payload)
       staffUsers.value = staffUsers.value.map((u) => (u.id === editing.value!.id ? updated : u))
@@ -478,33 +488,6 @@ const columns: ColumnDef<User>[] = [
     cell: ({ row }) => {
       const staff = row.original
       const isSelf = staff.id === currentUser.value?.id
-      const roleNavItems: ReturnType<typeof h>[] = []
-      if (staff.role === UserRole.SUPPORT_COMMITTEE) {
-        roleNavItems.push(
-          h(
-            DropdownMenuItem,
-            {
-              class: 'gap-1.5 text-primary',
-              onClick: () => navigateTo('/requests'),
-            },
-            () => [h(ExternalLink, { class: 'h-3.5 w-3.5' }), 'طابور المراجعة'],
-          ),
-        )
-      } else if (
-        staff.role === UserRole.EXECUTIVE_MEMBER ||
-        staff.role === UserRole.COMMITTEE_DIRECTOR
-      ) {
-        roleNavItems.push(
-          h(
-            DropdownMenuItem,
-            {
-              class: 'gap-1.5 text-[var(--voting)]',
-              onClick: () => navigateTo('/voting'),
-            },
-            () => [h(ExternalLink, { class: 'h-3.5 w-3.5' }), 'جلسات التصويت'],
-          ),
-        )
-      }
       return h(
         DropdownMenu,
         {},
@@ -542,7 +525,15 @@ const columns: ColumnDef<User>[] = [
                     () => 'عرض التفاصيل',
                   ),
                   h(DropdownMenuItem, { onClick: () => openEdit(staff) }, () => 'تعديل'),
-                  ...roleNavItems,
+                  ...(!isSelf
+                    ? [
+                        h(
+                          DropdownMenuItem,
+                          { onClick: () => openAccountRecovery(staff) },
+                          () => 'استعادة الوصول للحساب',
+                        ),
+                      ]
+                    : []),
                   ...(!isSelf
                     ? [
                         h(DropdownMenuSeparator),
@@ -953,15 +944,9 @@ async function bulkArchive() {
             <Label>البريد الإلكتروني <span class="text-destructive">*</span></Label>
             <Input v-model="form.email" type="email" placeholder="name@cby.gov.ye" />
           </div>
-          <div class="space-y-1.5">
-            <Label>{{
-              editing ? 'كلمة المرور (اتركها فارغة للإبقاء على الحالية)' : 'كلمة المرور المؤقتة *'
-            }}</Label>
-            <Input
-              v-model="form.password"
-              type="password"
-              :placeholder="editing ? 'اتركها فارغة دون تغيير' : '8 أحرف على الأقل'"
-            />
+          <div v-if="!editing" class="space-y-1.5">
+            <Label>كلمة المرور المؤقتة *</Label>
+            <Input v-model="form.password" type="password" placeholder="8 أحرف على الأقل" />
           </div>
           <div class="space-y-1.5">
             <Label>الدور <span class="text-destructive">*</span></Label>
@@ -984,12 +969,21 @@ async function bulkArchive() {
         </div>
 
         <DialogFooter>
+          <Button v-if="editing" variant="outline" @click="openAccountRecovery(editing)">
+            استعادة الوصول
+          </Button>
           <Button :disabled="!formValid || saving" @click="saveStaff">
             {{ saving ? 'جارٍ حفظ المستخدم...' : editing ? 'حفظ التعديلات' : 'إضافة المستخدم' }}
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    <AccountRecoveryDialog
+      :target="recoveryTarget"
+      @close="recoveryTarget = null"
+      @updated="handleRecoveryUpdated"
+    />
 
     <!-- Deactivation blocked: critical-role protection -->
     <AlertDialog

@@ -42,6 +42,7 @@ export interface AuthUser {
   bank_name_ar: string | null
   bank_name_en: string | null
   is_active: boolean
+  must_change_password?: boolean
   mfa_enabled?: boolean
   mfa_required?: boolean
   totp_enabled?: boolean
@@ -69,6 +70,7 @@ export interface Bank {
   license_number?: string | null
   entity_type?: string | null
   user_count?: number | null
+  admin?: User | null
   is_active: boolean
 }
 
@@ -261,6 +263,10 @@ export interface User {
   last_login_at?: string | null
   last_seen_at?: string | null
   is_active: boolean
+  must_change_password?: boolean
+  mfa_enabled?: boolean
+  totp_enabled?: boolean
+  pin_enabled?: boolean
   avatar_variant?: string | null
   created_at?: string | null
 }

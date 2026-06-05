@@ -2,6 +2,10 @@ import { ref } from 'vue'
 import type { AuthUser, ApiResponse } from '../types/models'
 import { useAuthStore } from '../stores/auth.store'
 
+export interface TotpVerifyResult extends AuthUser {
+  recovery_codes?: string[]
+}
+
 function getXsrfToken(): string | null {
   if (!import.meta.client) return null
   const raw = document.cookie
@@ -157,26 +161,29 @@ export const useProfile = () => {
    * Confirm TOTP setup by submitting the 6-digit code from the authenticator app.
    * On success the backend stores the secret and enables TOTP for the user.
    */
-  const verifyTotpSetup = async (code: string): Promise<boolean> => {
+  const verifyTotpSetup = async (code: string): Promise<TotpVerifyResult | null> => {
     error.value = null
     try {
-      const response = await $fetch<ApiResponse<AuthUser>>('/api/profile/mfa/setup/verify', {
-        method: 'POST',
-        baseURL,
-        credentials: 'include',
-        headers: {
-          Accept: 'application/json',
-          'Content-Type': 'application/json',
-          ...xsrfHeaders(),
+      const response = await $fetch<ApiResponse<TotpVerifyResult>>(
+        '/api/profile/mfa/setup/verify',
+        {
+          method: 'POST',
+          baseURL,
+          credentials: 'include',
+          headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+            ...xsrfHeaders(),
+          },
+          body: { code },
         },
-        body: { code },
-      })
+      )
       profile.value = response.data
       if (auth.user) auth.user.totp_enabled = true
-      return true
+      return response.data
     } catch (err: any) {
       error.value = err.data?.message || 'الرمز غير صحيح أو انتهت صلاحيته'
-      return false
+      return null
     }
   }
 

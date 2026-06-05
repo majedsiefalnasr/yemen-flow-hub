@@ -31,6 +31,11 @@ export interface UpdateUserPayload {
   avatar_variant?: string
 }
 
+export interface ResetPasswordPayload {
+  password: string
+  password_confirmation: string
+}
+
 export function useUsers() {
   const { get, post, put } = useApi()
 
@@ -85,5 +90,29 @@ export function useUsers() {
     return response.data
   }
 
-  return { fetchUsers, fetchUsersPaginated, createUser, updateUser, getUser }
+  async function resetUserPassword(id: number, payload: ResetPasswordPayload): Promise<User> {
+    const response = await post<ApiResponse<User>>(`/api/users/${id}/reset-password`, payload)
+    return response.data
+  }
+
+  async function resetUserMfa(id: number): Promise<User> {
+    const response = await post<ApiResponse<User>>(`/api/users/${id}/reset-mfa`, {})
+    return response.data
+  }
+
+  async function resetUserPin(id: number): Promise<User> {
+    const response = await post<ApiResponse<User>>(`/api/users/${id}/reset-pin`, {})
+    return response.data
+  }
+
+  return {
+    fetchUsers,
+    fetchUsersPaginated,
+    createUser,
+    updateUser,
+    getUser,
+    resetUserPassword,
+    resetUserMfa,
+    resetUserPin,
+  }
 }

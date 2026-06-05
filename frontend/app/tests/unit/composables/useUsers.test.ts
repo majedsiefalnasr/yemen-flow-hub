@@ -145,4 +145,33 @@ describe('useUsers', () => {
       )
     })
   })
+
+  describe('account recovery admin actions', () => {
+    it('calls POST /api/users/:id/reset-password with the temporary password payload', async () => {
+      mockPost.mockResolvedValueOnce({ success: true, message: 'OK', data: USER_FIXTURE })
+      const { resetUserPassword } = useUsers()
+      const payload = {
+        password: 'TempPassword123',
+        password_confirmation: 'TempPassword123',
+      }
+
+      const result = await resetUserPassword(7, payload)
+
+      expect(mockPost).toHaveBeenCalledWith('/api/users/7/reset-password', payload)
+      expect(result).toEqual(USER_FIXTURE)
+    })
+
+    it('calls separate MFA and PIN reset endpoints', async () => {
+      mockPost
+        .mockResolvedValueOnce({ success: true, message: 'OK', data: USER_FIXTURE })
+        .mockResolvedValueOnce({ success: true, message: 'OK', data: USER_FIXTURE })
+      const { resetUserMfa, resetUserPin } = useUsers()
+
+      await resetUserMfa(7)
+      await resetUserPin(7)
+
+      expect(mockPost).toHaveBeenNthCalledWith(1, '/api/users/7/reset-mfa', {})
+      expect(mockPost).toHaveBeenNthCalledWith(2, '/api/users/7/reset-pin', {})
+    })
+  })
 })

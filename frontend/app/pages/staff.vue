@@ -31,6 +31,7 @@ import StaffModal from '../components/staff/StaffModal.vue'
 import EmptyState from '../components/shared/EmptyState.vue'
 import type { CreateUserPayload, UpdateUserPayload } from '../composables/useUsers'
 import BoringAvatar from '../components/shared/BoringAvatar.vue'
+import AccountRecoveryDialog from '../components/security/AccountRecoveryDialog.vue'
 import { persistUserAvatar, type AvatarVariant } from '../composables/useUserAvatar'
 import {
   AlertDialog,
@@ -87,6 +88,7 @@ const serverError = ref<string | null>(null)
 const showDeactivateConfirm = ref(false)
 const deactivatingStaff = ref<User | null>(null)
 const deactivating = ref(false)
+const recoveryTarget = ref<User | null>(null)
 
 const query = ref('')
 const columnFilters = ref<ColumnFiltersState>([])
@@ -166,6 +168,17 @@ function openDeactivate(member: User) {
 function closeDeactivate() {
   showDeactivateConfirm.value = false
   deactivatingStaff.value = null
+}
+
+function openAccountRecovery(member: User) {
+  closeModal()
+  recoveryTarget.value = member
+}
+
+function handleRecoveryUpdated(updated: User) {
+  const idx = staff.value.findIndex((member) => member.id === updated.id)
+  if (idx !== -1) staff.value[idx] = updated
+  recoveryTarget.value = updated
 }
 
 async function handleSave(data: {
@@ -390,6 +403,11 @@ const columns: ColumnDef<User>[] = [
               {
                 default: () => [
                   h(DropdownMenuItem, { onClick: () => openEdit(member) }, () => 'تعديل'),
+                  h(
+                    DropdownMenuItem,
+                    { onClick: () => openAccountRecovery(member) },
+                    () => 'استعادة الوصول للحساب',
+                  ),
                   ...(member.is_active
                     ? [
                         h(DropdownMenuSeparator),
@@ -670,7 +688,14 @@ onMounted(loadStaff)
       :saving="saving"
       :server-error="serverError"
       @save="handleSave"
+      @recover="openAccountRecovery"
       @close="closeModal"
+    />
+
+    <AccountRecoveryDialog
+      :target="recoveryTarget"
+      @close="recoveryTarget = null"
+      @updated="handleRecoveryUpdated"
     />
 
     <!-- Deactivate Dialog -->

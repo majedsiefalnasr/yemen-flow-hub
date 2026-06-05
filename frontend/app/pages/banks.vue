@@ -65,6 +65,9 @@ interface BankForm {
   name_ar: string
   name_en: string
   code: string
+  admin_name: string
+  admin_email: string
+  admin_password: string
   is_active: boolean
 }
 
@@ -72,6 +75,9 @@ const form = reactive<BankForm>({
   name_ar: '',
   name_en: '',
   code: '',
+  admin_name: '',
+  admin_email: '',
+  admin_password: '',
   is_active: true,
 })
 
@@ -102,6 +108,9 @@ function openCreate() {
   form.name_ar = ''
   form.name_en = ''
   form.code = ''
+  form.admin_name = ''
+  form.admin_email = ''
+  form.admin_password = ''
   form.is_active = true
   clearErrors()
   showModal.value = true
@@ -112,6 +121,9 @@ function openEdit(bank: Bank) {
   form.name_ar = bank.name_ar
   form.name_en = bank.name_en
   form.code = bank.code
+  form.admin_name = ''
+  form.admin_email = ''
+  form.admin_password = ''
   form.is_active = bank.is_active
   clearErrors()
   showModal.value = true
@@ -126,6 +138,9 @@ function clearErrors() {
   formErrors.name_ar = undefined
   formErrors.name_en = undefined
   formErrors.code = undefined
+  formErrors.admin_name = undefined
+  formErrors.admin_email = undefined
+  formErrors.admin_password = undefined
   formError.value = null
 }
 
@@ -142,6 +157,18 @@ function validateForm(): boolean {
   }
   if (!isBankAdmin.value && !form.code.trim()) {
     formErrors.code = 'أدخل رمز البنك.'
+    valid = false
+  }
+  if (!editingBank.value && !isBankAdmin.value && !form.admin_name.trim()) {
+    formErrors.admin_name = 'أدخل اسم مدير البنك.'
+    valid = false
+  }
+  if (!editingBank.value && !isBankAdmin.value && !form.admin_email.trim()) {
+    formErrors.admin_email = 'أدخل البريد المؤسسي لمدير البنك.'
+    valid = false
+  }
+  if (!editingBank.value && !isBankAdmin.value && form.admin_password.length < 8) {
+    formErrors.admin_password = 'أدخل كلمة مرور مؤقتة لا تقل عن 8 أحرف.'
     valid = false
   }
   return valid
@@ -169,6 +196,9 @@ async function saveBank() {
         name_ar: form.name_ar.trim(),
         name_en: form.name_en.trim(),
         code: form.code.trim().toUpperCase(),
+        adminName: form.admin_name.trim(),
+        adminEmail: form.admin_email.trim(),
+        adminPassword: form.admin_password,
         is_active: form.is_active,
       }
       await createBank(payload)
@@ -182,6 +212,15 @@ async function saveBank() {
       if (errs.name_ar?.[0]) formErrors.name_ar = errs.name_ar[0]
       if (errs.name_en?.[0]) formErrors.name_en = errs.name_en[0]
       if (errs.code?.[0]) formErrors.code = errs.code[0]
+      if (errs.admin_name?.[0] || errs.adminName?.[0]) {
+        formErrors.admin_name = errs.admin_name?.[0] ?? errs.adminName?.[0]
+      }
+      if (errs.admin_email?.[0] || errs.adminEmail?.[0]) {
+        formErrors.admin_email = errs.admin_email?.[0] ?? errs.adminEmail?.[0]
+      }
+      if (errs.admin_password?.[0] || errs.adminPassword?.[0]) {
+        formErrors.admin_password = errs.admin_password?.[0] ?? errs.adminPassword?.[0]
+      }
     } else {
       formError.value =
         e.data?.message ?? 'تعذّر حفظ بيانات البنك. صحّح الحقول المطلوبة ثم أعد المحاولة.'
@@ -524,6 +563,57 @@ onMounted(loadBanks)
             <FieldLabel class="flex-1">نشط</FieldLabel>
             <Switch v-model:checked="form.is_active" />
           </Field>
+
+          <template v-if="!editingBank && !isBankAdmin">
+            <Separator />
+
+            <div class="space-y-1">
+              <p class="text-sm font-medium">حساب مدير البنك</p>
+              <p class="text-muted-foreground text-xs">
+                سيستخدم مدير البنك كلمة المرور المؤقتة لأول دخول، ثم يطلب منه النظام تغييرها.
+              </p>
+            </div>
+
+            <Field :data-invalid="!!formErrors.admin_name">
+              <FieldLabel>اسم مدير البنك <span class="text-destructive">*</span></FieldLabel>
+              <Input
+                v-model="form.admin_name"
+                :aria-invalid="!!formErrors.admin_name"
+                placeholder="مثال: مدير البنك التجاري"
+                type="text"
+              />
+              <FieldDescription v-if="formErrors.admin_name" class="text-destructive">{{
+                formErrors.admin_name
+              }}</FieldDescription>
+            </Field>
+
+            <Field :data-invalid="!!formErrors.admin_email">
+              <FieldLabel>البريد المؤسسي <span class="text-destructive">*</span></FieldLabel>
+              <Input
+                v-model="form.admin_email"
+                :aria-invalid="!!formErrors.admin_email"
+                placeholder="bank-admin@example.gov.ye"
+                type="email"
+              />
+              <FieldDescription v-if="formErrors.admin_email" class="text-destructive">{{
+                formErrors.admin_email
+              }}</FieldDescription>
+            </Field>
+
+            <Field :data-invalid="!!formErrors.admin_password">
+              <FieldLabel>كلمة المرور المؤقتة <span class="text-destructive">*</span></FieldLabel>
+              <Input
+                v-model="form.admin_password"
+                :aria-invalid="!!formErrors.admin_password"
+                autocomplete="new-password"
+                placeholder="********"
+                type="password"
+              />
+              <FieldDescription v-if="formErrors.admin_password" class="text-destructive">{{
+                formErrors.admin_password
+              }}</FieldDescription>
+            </Field>
+          </template>
         </div>
 
         <DialogFooter class="gap-2">

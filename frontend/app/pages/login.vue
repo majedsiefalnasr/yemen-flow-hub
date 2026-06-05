@@ -122,6 +122,11 @@ onMounted(() => focusFirstInput())
  * Called after full authentication is complete (password + TOTP if required).
  */
 async function navigateAfterAuth() {
+  if (auth.user?.must_change_password) {
+    await router.push('/change-temporary-password')
+    return
+  }
+
   const email = pendingEmail.value || selectedAccount.value?.email || auth.user?.email || ''
   const alreadySaved = accounts.value.some((a) => a.email === email)
   if (!alreadySaved && email) {
@@ -203,6 +208,10 @@ const handlePasswordSubmit = passwordForm.handleSubmit(async (values) => {
       pushStep('authenticator')
       return
     }
+    if (auth.user?.must_change_password) {
+      await router.push('/change-temporary-password')
+      return
+    }
     // TOTP not enabled on this account — offer setup before saving account, unless user already skipped
     if (!auth.user?.totp_enabled) {
       const skipKey = `yfh-skip-totp-${email}`
@@ -280,18 +289,31 @@ function openPinResetStep() {
 
 // ─── Step: authenticator ──────────────────────────────────────────────────────
 const authenticatorCode = ref('')
+const authenticatorBackupCode = ref('')
+const useAuthenticatorBackupCode = ref(false)
 const authenticatorError = ref<string | null>(null)
 const isAuthenticatorLoading = ref(false)
+const canSubmitAuthenticator = computed(() =>
+  useAuthenticatorBackupCode.value
+    ? authenticatorBackupCode.value.trim().length >= 6
+    : authenticatorCode.value.length === 6,
+)
 
 async function handleAuthenticatorSubmit() {
-  if (authenticatorCode.value.length < 6) {
-    authenticatorError.value = 'أدخل رمز التحقق المكوّن من 6 أرقام.'
+  const submittedCode = useAuthenticatorBackupCode.value
+    ? authenticatorBackupCode.value.trim()
+    : authenticatorCode.value
+
+  if (submittedCode.length < 6) {
+    authenticatorError.value = useAuthenticatorBackupCode.value
+      ? 'أدخل رمز الاسترداد الاحتياطي.'
+      : 'أدخل رمز التحقق المكوّن من 6 أرقام.'
     return
   }
   isAuthenticatorLoading.value = true
   authenticatorError.value = null
   try {
-    await auth.verifyOtp(pendingEmail.value, authenticatorCode.value, pendingChallengeId.value)
+    await auth.verifyOtp(pendingEmail.value, submittedCode, pendingChallengeId.value)
     otpRoleLabel.value = auth.user
       ? (ROLE_LABELS[auth.user.role] ?? otpRoleLabel.value)
       : otpRoleLabel.value
@@ -299,6 +321,7 @@ async function handleAuthenticatorSubmit() {
   } catch {
     authenticatorError.value = 'رمز التحقق غير صحيح أو انتهت صلاحيته. أدخل الرمز الجديد من التطبيق.'
     authenticatorCode.value = ''
+    authenticatorBackupCode.value = ''
   } finally {
     isAuthenticatorLoading.value = false
   }
@@ -470,6 +493,8 @@ watch(step, (newStep) => {
   }
   if (newStep === 'authenticator') {
     authenticatorCode.value = ''
+    authenticatorBackupCode.value = ''
+    useAuthenticatorBackupCode.value = false
     authenticatorError.value = null
   }
   if (newStep === 'authenticator-setup') {
@@ -810,7 +835,9 @@ watch(step, (newStep) => {
 
           <div class="step-header">
             <h2 class="step-title">رمز التحقق</h2>
-            <p class="step-desc">افتح تطبيق المصادقة وأدخل الرمز المكوّن من 6 أرقام.</p>
+            <p class="step-desc">
+              افتح تطبيق المصادقة وأدخل الرمز المكوّن من 6 أرقام، أو استخدم رمز استرداد احتياطي.
+            </p>
           </div>
 
           <Alert class="mb-5">
@@ -830,7 +857,7 @@ watch(step, (newStep) => {
             <AlertDescription>{{ authenticatorError }}</AlertDescription>
           </Alert>
 
-          <div class="otp-wrap">
+          <div v-if="!useAuthenticatorBackupCode" class="otp-wrap">
             <InputOTP
               v-model="authenticatorCode"
               :maxlength="6"
@@ -848,6 +875,20 @@ watch(step, (newStep) => {
             </InputOTP>
           </div>
 
+          <div v-else class="space-y-2">
+            <Label for="authenticator-backup-code">رمز الاسترداد الاحتياطي</Label>
+            <Input
+              id="authenticator-backup-code"
+              v-model="authenticatorBackupCode"
+              class="bg-muted/30 h-11 font-mono tracking-widest"
+              dir="ltr"
+              placeholder="ABCD-EFGH"
+              autocomplete="one-time-code"
+              :disabled="isAuthenticatorLoading"
+              @keyup.enter="handleAuthenticatorSubmit"
+            />
+          </div>
+
           <p v-if="otpRoleLabel" class="role-note mt-4">
             <Lock class="size-3.5 shrink-0" aria-hidden="true" />
             سيتم تسجيل دخولك بصلاحيات: <strong>{{ otpRoleLabel }}</strong>
@@ -857,12 +898,29 @@ watch(step, (newStep) => {
             type="button"
             size="lg"
             class="mt-5 w-full"
-            :disabled="isAuthenticatorLoading || authenticatorCode.length < 6"
+            :disabled="isAuthenticatorLoading || !canSubmitAuthenticator"
             @click="handleAuthenticatorSubmit"
           >
             <Loader2 v-if="isAuthenticatorLoading" class="me-2 size-4 animate-spin" />
             {{ isAuthenticatorLoading ? 'جارٍ التحقق من الرمز...' : 'تأكيد الرمز والدخول' }}
           </Button>
+
+          <div class="mt-4 flex flex-col items-center gap-1">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              class="text-muted-foreground hover:text-foreground text-xs"
+              @click="useAuthenticatorBackupCode = !useAuthenticatorBackupCode"
+            >
+              <KeyRound class="me-1.5 size-3.5" />
+              {{
+                useAuthenticatorBackupCode
+                  ? 'استخدام رمز تطبيق المصادقة'
+                  : 'استخدام رمز استرداد احتياطي'
+              }}
+            </Button>
+          </div>
 
           <div class="mt-4 text-center">
             <p class="text-muted-foreground text-xs leading-6">

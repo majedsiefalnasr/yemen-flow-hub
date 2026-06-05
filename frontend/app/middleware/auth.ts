@@ -17,4 +17,8 @@ export default defineNuxtRouteMiddleware((to) => {
           : undefined,
     })
   }
+
+  if (auth.user?.must_change_password && to.path !== '/change-temporary-password') {
+    return navigateTo('/change-temporary-password')
+  }
 })

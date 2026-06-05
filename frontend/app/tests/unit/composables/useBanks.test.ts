@@ -80,4 +80,19 @@ describe('useBanks', () => {
       expect(result).toEqual(updated)
     })
   })
+
+  describe('resetBankAdminPassword()', () => {
+    it('calls POST /api/banks/:id/admin/reset-password with the temporary password payload', async () => {
+      mockPost.mockResolvedValueOnce({ success: true, message: 'OK', data: {} })
+      const { resetBankAdminPassword } = useBanks()
+      const payload = {
+        password: 'TempPassword123',
+        password_confirmation: 'TempPassword123',
+      }
+
+      await resetBankAdminPassword(4, payload)
+
+      expect(mockPost).toHaveBeenCalledWith('/api/banks/4/admin/reset-password', payload)
+    })
+  })
 })

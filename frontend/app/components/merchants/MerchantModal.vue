@@ -283,7 +283,7 @@ const onSubmit = handleSubmit((values) => {
                   >رقم السجل التجاري <span class="text-destructive">*</span></FormLabel
                 >
                 <FormControl>
-                  <Input v-bind="componentField" type="text" placeholder="CR-12345" dir="ltr" />
+                  <Input v-bind="componentField" type="text" placeholder="CR-12345" />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -296,7 +296,7 @@ const onSubmit = handleSubmit((values) => {
                   >الرقم الضريبي <span class="text-destructive">*</span></FormLabel
                 >
                 <FormControl>
-                  <Input v-bind="componentField" type="text" placeholder="4123456" dir="ltr" />
+                  <Input v-bind="componentField" type="text" placeholder="4123456" />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -307,12 +307,7 @@ const onSubmit = handleSubmit((values) => {
               <FormItem>
                 <FormLabel class="text-xs">هاتف التواصل</FormLabel>
                 <FormControl>
-                  <Input
-                    v-bind="componentField"
-                    type="text"
-                    placeholder="مثال: +96771234567"
-                    dir="ltr"
-                  />
+                  <Input v-bind="componentField" type="text" placeholder="مثال: +96771234567" />
                 </FormControl>
                 <FormMessage />
               </FormItem>
