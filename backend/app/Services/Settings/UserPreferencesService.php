@@ -7,6 +7,16 @@ use App\Models\User;
 
 class UserPreferencesService
 {
+    private const CANONICAL_NOTIFICATION_IDS = [
+        'request_approved',
+        'request_rejected',
+        'request_returned',
+        'voting_opened',
+        'request_submitted',
+        'swift_upload_requested',
+        'claim_released',
+    ];
+
     private const DEFAULTS = [
         'language' => 'ar',
         'dashboard_view' => 'normal',
@@ -14,6 +24,7 @@ class UserPreferencesService
         'page_size' => 25,
         'default_filters' => [],
         'notification_preferences' => [],
+        'email_notifications' => false,
         'theming' => [
             'mode' => 'system',
             'font' => 'IBM Plex Sans Arabic',
@@ -92,6 +103,21 @@ class UserPreferencesService
             );
         } elseif ($section === 'notif') {
             $validated = $this->validateNotificationSection($data);
+            // Store into the canonical top-level keys that shouldNotify() reads from,
+            // not under 'notif' which is the route section name only.
+            $stored['notification_preferences'] = $validated['notification_preferences'] ?? [];
+            $stored['email_notifications'] = $validated['email_notifications'] ?? false;
+
+            if ($stored === []) {
+                $stored = null;
+            }
+
+            $current['notification_preferences'] = $stored['notification_preferences'] ?? [];
+            $current['email_notifications'] = $stored['email_notifications'] ?? false;
+            $user->user_preferences = $stored;
+            $user->save();
+
+            return $current;
         } else {
             $validated = $data;
         }
@@ -206,24 +232,23 @@ class UserPreferencesService
 
     private function validateNotificationSection(array $data): array
     {
-        $validated = [];
+        $prefs = [];
 
-        if (isset($data['email']) && is_bool($data['email'])) {
-            $validated['email'] = $data['email'];
+        if (isset($data['notification_preferences']) && is_array($data['notification_preferences'])) {
+            foreach ($data['notification_preferences'] as $key => $value) {
+                if (in_array($key, self::CANONICAL_NOTIFICATION_IDS, true) && is_bool($value)) {
+                    $prefs[$key] = $value;
+                }
+            }
         }
 
-        if (isset($data['in_app']) && is_bool($data['in_app'])) {
-            $validated['in_app'] = $data['in_app'];
-        }
+        $emailNotifications = isset($data['email_notifications']) && is_bool($data['email_notifications'])
+            ? $data['email_notifications']
+            : false;
 
-        if (isset($data['sms']) && is_bool($data['sms'])) {
-            $validated['sms'] = $data['sms'];
-        }
-
-        if (isset($data['settings']) && is_array($data['settings'])) {
-            $validated['settings'] = $data['settings'];
-        }
-
-        return $validated;
+        return [
+            'notification_preferences' => $prefs,
+            'email_notifications' => $emailNotifications,
+        ];
     }
 }

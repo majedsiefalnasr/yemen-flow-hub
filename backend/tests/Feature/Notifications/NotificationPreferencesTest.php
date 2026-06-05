@@ -10,6 +10,7 @@ use App\Models\Bank;
 use App\Models\ImportRequest;
 use App\Models\User;
 use App\Notifications\CustomsIssuedNotification;
+use App\Notifications\RequestApprovedNotification;
 use App\Notifications\RequestRejectedNotification;
 use App\Notifications\RequestReturnedNotification;
 use App\Notifications\RequestSubmittedNotification;
@@ -162,6 +163,41 @@ class NotificationPreferencesTest extends TestCase
     }
 
     // --- Mandatory types: always delivered regardless of preferences ---
+
+    public function test_request_approved_is_always_delivered_even_when_disabled_in_preferences(): void
+    {
+        Notification::fake();
+
+        $creator = User::query()->create([
+            'name' => 'Creator3',
+            'email' => 'creator3@example.com',
+            'password' => Hash::make('password'),
+            'role' => UserRole::DATA_ENTRY,
+            'bank_id' => $this->bank->id,
+            'is_active' => true,
+            'user_preferences' => ['notification_preferences' => ['request_approved' => false]],
+        ]);
+
+        app()->instance('workflow.transition.active', true);
+        $request = ImportRequest::query()->create([
+            'bank_id' => $this->bank->id,
+            'created_by' => $creator->id,
+            'currency' => 'USD',
+            'amount' => 10000,
+            'supplier_name' => 'Supplier',
+            'goods_description' => 'Goods',
+            'port_of_entry' => 'Aden',
+            'status' => RequestStatus::BANK_APPROVED,
+            'current_owner_role' => UserRole::BANK_REVIEWER,
+        ]);
+        app()->offsetUnset('workflow.transition.active');
+
+        $event = new RequestTransitioned($request->fresh(['creator']), 'test_action', $creator);
+        app(SendWorkflowNotifications::class)->handle($event);
+
+        // mandatory — must still be sent even when preference is false
+        Notification::assertSentTo($creator, RequestApprovedNotification::class);
+    }
 
     public function test_request_rejected_is_always_delivered_even_when_disabled_in_preferences(): void
     {

@@ -17,7 +17,7 @@ use App\Notifications\VotingOpenedNotification;
 class SendWorkflowNotifications
 {
     /** Types that must always be delivered regardless of user preferences (governance-critical). */
-    private const MANDATORY_TYPES = ['request_rejected', 'request_returned'];
+    private const MANDATORY_TYPES = ['request_rejected', 'request_returned', 'request_approved'];
 
     public function handle(RequestTransitioned $event): void
     {
