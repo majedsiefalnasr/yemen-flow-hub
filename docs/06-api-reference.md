@@ -559,7 +559,7 @@ GET /api/documents/{id}/download
 
 ## Permission Matrix
 
-| Role               | Request Documents | SWIFT Document | Customs Declaration PDF |
+| Role               | Request Documents | SWIFT Document | External FX Confirmation PDF |
 | ------------------ | ----------------- | -------------- | ----------------------- |
 | DATA_ENTRY         | Own bank only     | No             | No                      |
 | BANK_REVIEWER      | Own bank only     | Own bank only  | Own bank only           |
@@ -603,9 +603,9 @@ GET /api/requests/{id}/history
 
 ---
 
-# Customs APIs
+# External FX Confirmation APIs
 
-# Generate Customs Declaration
+# Generate External FX Confirmation
 
 ## Endpoint
 
@@ -619,7 +619,7 @@ POST /api/customs/{id}/generate
 
 ---
 
-# Get Customs Declaration
+# Get External FX Confirmation
 
 ## Endpoint
 
@@ -629,7 +629,7 @@ GET /api/customs/{id}
 
 ---
 
-# Download Customs PDF
+# Download External FX Confirmation PDF
 
 ## Endpoint
 
@@ -845,7 +845,7 @@ Workflow locking rules guarantee:
 - Temporary support review locking
 - Immutable support-approved requests
 - Immutable executive-rejected requests
-- Immutable customs declarations
+- Immutable external FX confirmation documents
 
 ---
 

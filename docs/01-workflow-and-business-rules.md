@@ -248,7 +248,7 @@ The Executive Committee Director can:
 - Vote as a normal committee member
 - Resolve tie decisions
 - Finalize executive decisions
-- Issue customs declarations
+- Issue external FX confirmation documents
 
 ---
 
@@ -297,7 +297,7 @@ Rejected requests remain permanently locked and cannot return to editable workfl
 
 ---
 
-# 10. Customs Declaration Stage
+# 10. External FX Confirmation Stage
 
 ## Owner
 
@@ -305,8 +305,8 @@ Executive Committee Director
 
 ## Allowed Actions
 
-- Generate customs declaration
-- Issue declaration number
+- Generate external FX confirmation document
+- Issue confirmation number
 - Export printable PDF
 - Complete workflow
 
@@ -348,7 +348,7 @@ Locked stages include:
 - Executive Voting Closed
 - Executive Approved
 - Executive Rejected
-- Customs Declaration Issued
+- External FX Confirmation Issued
 - Completed
 
 ---
@@ -368,7 +368,7 @@ Requests themselves belong to the bank entity, not individual users.
 | Support Review In Progress | Assigned Support Reviewer |
 | Support Approved           | SWIFT Officer             |
 | Executive Voting           | Executive Committee       |
-| Customs Declaration        | Committee Director        |
+| External FX Confirmation   | Committee Director        |
 
 ## Ownership Tracking
 
@@ -416,7 +416,7 @@ Bank Reviewer can always track:
 - SWIFT upload status
 - Voting status
 - Final result
-- Customs declaration issuance
+- External FX confirmation issuance
 
 But cannot modify requests after approval.
 
@@ -539,7 +539,7 @@ Every important action must be logged.
 - Rejection actions
 - Voting actions
 - SWIFT upload
-- Customs declaration issuance
+- External FX confirmation issuance
 - Status transitions
 
 ## Audit Metadata
@@ -630,7 +630,7 @@ They can monitor:
 - SWIFT upload status
 - Executive voting status
 - Final workflow results
-- Customs declaration issuance
+- External FX confirmation issuance
 
 ---
 

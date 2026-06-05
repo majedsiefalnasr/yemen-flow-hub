@@ -113,7 +113,7 @@ Stores uploaded request files.
 - Invoices
 - Financial documents
 - SWIFT documents
-- Customs declaration PDFs
+- External FX confirmation PDFs
 
 ## File Rules
 
@@ -223,7 +223,7 @@ Note: `role` captures the user's role at the time of the action (not current rol
 
 # 8. customs_declarations
 
-Stores customs declaration information.
+Stores external FX confirmation document information. The table name remains `customs_declarations` as a legacy compatibility name.
 
 ## Fields
 
@@ -254,7 +254,7 @@ Import Request
  └── Votes
  └── Stage History
  └── Audit Logs
- └── Customs Declaration
+ └── External FX Confirmation
 ```
 
 ---
@@ -301,7 +301,7 @@ CBY_ADMIN
 
 ## Role Hierarchy Notes
 
-- `COMMITTEE_DIRECTOR` inherits all `EXECUTIVE_MEMBER` permissions plus director-specific actions (open/close voting sessions, resolve ties, finalize decisions, issue customs declarations).
+- `COMMITTEE_DIRECTOR` inherits all `EXECUTIVE_MEMBER` permissions plus director-specific actions (open/close voting sessions, resolve ties, finalize decisions, issue external FX confirmation documents).
 - A user cannot simultaneously hold `COMMITTEE_DIRECTOR` and `EXECUTIVE_MEMBER`. The director role is the sole executive role for that user.
 - `bank_id` is `NULL` for all CBY roles (`SUPPORT_COMMITTEE`, `EXECUTIVE_MEMBER`, `COMMITTEE_DIRECTOR`, `CBY_ADMIN`).
 - `bank_id` is required (non-null) for all bank roles (`DATA_ENTRY`, `BANK_REVIEWER`, `BANK_ADMIN`, `SWIFT_OFFICER`).
@@ -480,7 +480,7 @@ Can:
 - Open voting sessions
 - Close voting sessions
 - Finalize voting
-- Issue customs declarations
+- Issue external FX confirmation documents
 
 ---
 

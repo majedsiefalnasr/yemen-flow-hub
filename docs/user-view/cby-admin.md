@@ -19,7 +19,7 @@ Scope: all banks, all requests, all entities, all users (CBY-side).
 | الرئيسية (Main)          | اللوحة الرئيسية (Dashboard)             | /dashboard           |
 | الرئيسية                 | طلبات التمويل (Requests)                | /requests            |
 | الرئيسية                 | الإشعارات (Notifications)               | /notifications       |
-| الإدارة (Administration) | إدارة التجار (Merchants)                | /merchants           |
+| الإدارة (Administration) | إدارة المستوردين (Importers)            | /merchants           |
 | الإدارة                  | التقارير والتحليلات (Reports)           | /reports             |
 | الإدارة                  | التدقيق والامتثال (Audit)               | /audit               |
 | الإدارة                  | إدارة المستخدمين (CBY Staff Management) | /admin/cby-staff     |
@@ -865,11 +865,11 @@ CBY Admin has global merchant visibility across all banks. Merchant mutation act
 
 **Title:**
 
-- "سجل التجار"
+- "سجل المستوردين"
 
 **Subtitle:**
 
-- "سجل رقابي للتجار عبر البنوك، التكرارات، ومؤشرات المخاطر"
+- "سجل رقابي للمستوردين عبر البنوك، التكرارات، ومؤشرات المخاطر"
 
 Primary actions should not over-emphasize merchant creation.
 

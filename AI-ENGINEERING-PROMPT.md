@@ -10,7 +10,7 @@ Yemen Flow Hub is a workflow-critical government banking platform designed to ma
 
 ## 2. Product Purpose
 
-The platform's primary purpose is to facilitate and enforce a rigorous, auditable, and immutable workflow for banking regulatory approvals and customs declarations. It ensures operational clarity, enforces strict role-based queues, and supports multi-stage approvals without compromise. The system must support government auditors, bank officers, support teams, and executives with clear, immutable states and transparent audit trails.
+The platform's primary purpose is to facilitate and enforce a rigorous, auditable, and immutable workflow for banking regulatory approvals and external FX confirmation documents. It ensures operational clarity, enforces strict role-based queues, and supports multi-stage approvals without compromise. The system must support government auditors, bank officers, support teams, and executives with clear, immutable states and transparent audit trails.
 
 ---
 
@@ -209,9 +209,9 @@ PDF upload validation, immutable file handling, SWIFT upload rules, and secure f
 
 ---
 
-## 23. PDF & Customs Declaration Rules
+## 23. PDF & External FX Confirmation Rules
 
-Customs declaration generation, immutable declaration behavior, PDF workflows, and executive director permissions must strictly follow:
+External FX confirmation generation, immutable document behavior, PDF workflows, and executive director permissions must strictly follow:
 
 - docs/01-workflow-and-business-rules.md
 - docs/05-backend-guide.md
@@ -296,7 +296,7 @@ Avoid duplicating rules already defined in the documentation files.
 3. Develop backend services, policies, and audit logging.
 4. Build queue-first frontend workspace with role-aware queues.
 5. Integrate support review claiming and voting systems.
-6. Implement file upload, PDF generation, and customs declaration.
+6. Implement file upload, PDF generation, and external FX confirmation.
 7. Ensure full RTL support and Arabic-native UI.
 8. Add notification system and error handling.
 9. Conduct comprehensive testing and security audits.
@@ -443,7 +443,7 @@ The Executive Committee Director has authority to:
 - Participate in voting
 - Resolve tie decisions
 - Finalize executive decisions
-- Issue customs declarations
+- Issue external FX confirmation documents
 
 ---
 
@@ -509,20 +509,20 @@ This is a terminal workflow state.
 
 ---
 
-# Customs Declaration Governance
+# External FX Confirmation Governance
 
-Only the Executive Committee Director can issue customs declarations.
+Only the Executive Committee Director can issue external FX confirmation documents.
 
 Once issued:
 
-- The customs declaration becomes immutable
-- The declaration cannot be revoked
-- The declaration cannot be regenerated
-- The declaration becomes a permanent legal workflow artifact
+- The external FX confirmation document becomes immutable
+- The document cannot be revoked
+- The document cannot be regenerated
+- The document becomes a permanent legal workflow artifact
 
 ## PDF Generation Failure Handling
 
-If the PDF generation process fails (e.g., rendering library error, storage write failure) before the declaration record is committed, the entire transaction must be rolled back. The declaration is only considered issued once:
+If the PDF generation process fails (e.g., rendering library error, storage write failure) before the external FX confirmation record is committed, the entire transaction must be rolled back. The document is only considered issued once:
 
 1. The `customs_declarations` record is created in the database
 2. The PDF is successfully written to storage
@@ -540,7 +540,7 @@ Allowed uploads:
 
 - Request documents
 - SWIFT documents
-- Generated customs declarations
+- Generated external FX confirmation documents
 
 Rules:
 

@@ -70,7 +70,7 @@ The external FX confirmation PDF is intentionally restricted: it is a governance
 | الرئيسية (Main)          | اللوحة الرئيسية (Dashboard)   | /dashboard   |
 | الرئيسية                 | طلبات التمويل (Requests)      | /requests    |
 | الرئيسية                 | الإشعارات (Notifications)     | /notifications |
-| الإدارة (Administration) | إدارة التجار (Merchants)      | /merchants   |
+| الإدارة (Administration) | إدارة المستوردين (Importers)  | /merchants   |
 | الإدارة                  | الموظفون (Staff)              | /staff       |
 | الإدارة                  | التقارير والتحليلات (Reports) | /reports     |
 | الأخرى (Other)           | الإعدادات (Settings)          | /settings    |
@@ -143,7 +143,7 @@ If no risks are present, the strip is hidden entirely (no decorative "all good" 
 **Quick actions (4-column grid):**
 
 - "طلبات البنك" — outline → `/requests`
-- "إدارة التجار" — outline → `/merchants`
+- "إدارة المستوردين" — outline → `/merchants`
 - "إدارة الموظفين" — outline → `/staff`
 - "التقارير" — primary blue → `/reports`
 
@@ -358,10 +358,10 @@ This page is the bank-scoped counterpart to the CBY Admin's cross-bank merchant 
 
 **Page header:**
 
-- Title: "سجل التجار"
-- Subtitle: "تجار جهتك المسجلون"
-- Breadcrumbs: الرئيسية → التجار
-- Primary action: "+ إضافة تاجر"
+- Title: "سجل المستوردين"
+- Subtitle: "المستوردون المسجلون لدى جهتك"
+- Breadcrumbs: الرئيسية → المستوردون
+- Primary action: "+ إضافة مستورد"
 
 ---
 
@@ -413,7 +413,7 @@ On save, the modal closes and the table refreshes. Duplicate-detection warnings 
 
 ---
 
-**States:** skeleton on load; reassuring empty state with "+ إضافة تاجر" CTA; inline error with retry.
+**States:** skeleton on load; reassuring empty state with "+ إضافة مستورد" CTA; inline error with retry.
 
 ---
 

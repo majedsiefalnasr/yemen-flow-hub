@@ -385,7 +385,7 @@ SWIFT_OFFICER cannot, under any UI condition:
 - Skip the two-document gate (submit SWIFT stage without both PDFs)
 - Modify request data on the upload page (all fields are read-only with lock icons)
 - See other banks' SWIFT queues or requests
-- Manage merchants, staff, or any administrative surface
+- Manage importers, staff, or any administrative surface
 
 The UI must not render any of these controls. If a backend response erroneously offers such an action, frontend drops it defensively.
 

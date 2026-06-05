@@ -25,13 +25,13 @@ Date: [submission date]
 
 الإخوة / اللجنة الوطنية لتنظيم وتمويل الواردات    المحترمون
 
-الموضوع / طلب وثيقة تأكيد للجمارك
+الموضوع / طلب وثيقة تأكيد مصارفة خارجية
 (underlined, bold)
 
 [body paragraph — fixed text]
 
 ┌──────────────────────────────────────────────────┐
-│ أسم التاجر المستورد    │ [merchant.name]         │
+│ اسم المستورد           │ [merchant.name]         │
 ├──────────────────────────────────────────────────┤
 │ اسم النشاط التجاري    │ [merchant.business_type] │
 ├──────────────────────────────────────────────────┤
@@ -44,7 +44,7 @@ Date: [submission date]
 │ نوع السلعة: [goods_type]                         │
 │ منفذ الدخول: [arrival_port]  الكمية: [qty or —] │
 ├──────────────────────────────────────────────────┤
-│ وثائق التاجر (checkboxes):                       │
+│ وثائق المستورد (checkboxes):                     │
 │ ☑/☐ صورة البطاقة الضريبية                       │
 │ ☑/☐ صورة الفاتورة (نسخة واضحة)                 │
 │ ☐   اشعار المصارفة أو الايداع                   │
@@ -73,7 +73,7 @@ From the physical template `نموذج وثيقة تأكيد مصارفة-تغط
 وثيقة تأكيد مصارفة/تغطية خارجية     تاريخ / [date]
 (bold, underlined, large)
 
-اسم التاجر/المستورد: [merchant.name]    رقم الوثيقة: [doc_number]
+اسم المستورد: [merchant.name]    رقم الوثيقة: [doc_number]
 الرقم الضريبي: [merchant.tax_number]
 
 ┌─────────────────────────────────┬─────────────────────────┬──────────┐
@@ -260,7 +260,7 @@ existing pattern (`requests/`, `swift/`, `fx-request/`):
 | Request supporting docs (existing) | `private/requests/{request_id}/` | `request_documents.stored_path` |
 | SWIFT (existing) | `private/swift/{request_id}/` | `request_documents.stored_path` |
 | FX request (existing) | `private/fx-request/{request_id}/` | `request_documents.stored_path` |
-| Customs PDF (existing) | written by `CustomsService` | `customs_declarations.pdf_path` |
+| External FX confirmation PDF (existing) | written by `CustomsService` | `customs_declarations.pdf_path` |
 | **Document 1 — signed confirmation-request (new)** | `private/confirmation-request/{request_id}/` | `request_documents.stored_path` (type `CONFIRMATION_REQUEST`) |
 | **Document 2 — signed FX confirmation (new)** | `private/fx-confirmation/{request_id}/` | `customs_declarations.signed_fx_doc_path` |
 
@@ -268,7 +268,7 @@ Notes:
 - **Document 1** is a re-uploaded supporting doc, so it flows through the normal
   `DocumentService::storeDocument(..., 'CONFIRMATION_REQUEST', "confirmation-request/{$request->id}")`
   path and is recorded as a `request_documents` row — consistent with proforma/SWIFT/FX-request.
-- **Document 2** is the Director's officially signed PDF tied to the customs declaration, so its
+- **Document 2** is the Director's officially signed PDF tied to the external FX confirmation, so its
   pointer lives on `customs_declarations.signed_fx_doc_path` (added in Migration C), not in
   `request_documents`. Store it via the same `Storage::disk('local')->put('private/'.$relativePath, ...)`
   call already shown in Section 3.13.
@@ -296,7 +296,7 @@ The only deletion path is **replace-on-reupload**, which already exists: when a 
 re-uploaded for the same slot, `DocumentService` deletes the superseded file
 (`Storage::disk('local')->delete('private/'.$relativePath)`) before/after writing the replacement.
 Apply the same delete-then-write discipline for Document 1 re-uploads and for replacing a
-previously uploaded (but not yet issued) signed FX confirmation. Once the customs declaration is
+previously uploaded (but not yet issued) signed FX confirmation. Once the external FX confirmation is
 **issued** (status `CUSTOMS_DECLARATION_ISSUED` / `COMPLETED`), the signed FX doc is immutable and
 must not be deleted or replaced — guard this in `CustomsService` (return `WORKFLOW_IMMUTABLE_STATE`).
 
@@ -757,7 +757,7 @@ Variables passed from controller:
   {{-- Data table --}}
   <table class="data">
     <tr>
-      <td class="lbl">أسم التاجر المستورد</td>
+      <td class="lbl">اسم المستورد</td>
       <td class="val">{{ $merchantName }}</td>
     </tr>
     <tr>
@@ -796,7 +796,7 @@ Variables passed from controller:
       </td>
     </tr>
     <tr>
-      <td class="lbl">وثائق التاجر</td>
+      <td class="lbl">وثائق المستورد</td>
       <td class="val">
         <div class="cb-row">
           <span class="cb-box {{ $hasTaxCard ? 'cb-checked' : '' }}"></span>
@@ -995,7 +995,7 @@ Variables passed from controller:
   <table width="100%" style="border:none; margin-bottom:6mm;">
     <tr>
       <td style="width:60%;">
-        <span class="meta-lbl">اسم التاجر/المستورد: </span>
+        <span class="meta-lbl">اسم المستورد: </span>
         <span class="meta-val">{{ $merchantName }}</span>
       </td>
       <td style="width:40%; text-align:left;">
@@ -1573,7 +1573,7 @@ Insert **above** the `<div class="grid ...">` zones grid. Use a `Card` with an a
         @click="downloadTemplate"
       >
         <FileDown class="h-4 w-4 me-1" />
-        <span v-if="!props.templateReady">جارٍ التحضير…</span>
+        <span v-if="!props.templateReady">جارٍ التحضير</span>
         <span v-else>تحميل النموذج</span>
       </Button>
     </div>
@@ -1904,7 +1904,7 @@ async function handleIssue() {
           @click="handleUpload"
         >
           <Loader2 v-if="requestsStore.uploadingSignedFx" class="h-4 w-4 me-1 animate-spin" />
-          {{ requestsStore.uploadingSignedFx ? 'جارٍ الرفع…' : 'رفع الوثيقة' }}
+          {{ requestsStore.uploadingSignedFx ? 'جارٍ الرفع' : 'رفع الوثيقة' }}
         </Button>
 
         <Alert v-if="uploadError" class="border-[var(--severity-red)] bg-[var(--color-surface-error)]">
@@ -1926,13 +1926,13 @@ async function handleIssue() {
       <!-- Step 3: Issue -->
       <div class="space-y-1">
         <p class="text-xs text-muted-foreground">
-          الخطوة 3 — بعد رفع الوثيقة الموقّعة، أصدر التأكيد النهائي. هذا الإجراء لا يمكن التراجع عنه.
+          الخطوة 3 - بعد رفع الوثيقة الموقّعة، أصدر التأكيد النهائي. هذا الإجراء لا يمكن التراجع عنه.
         </p>
         <AlertDialog>
           <AlertDialogTrigger as-child>
             <Button :disabled="!canIssue || requestsStore.issuingCustoms">
               <Loader2 v-if="requestsStore.issuingCustoms" class="h-4 w-4 me-1 animate-spin" />
-              {{ requestsStore.issuingCustoms ? 'جارٍ الإصدار…' : 'إصدار وثيقة تأكيد المصارفة الخارجية' }}
+              {{ requestsStore.issuingCustoms ? 'جارٍ الإصدار' : 'إصدار وثيقة تأكيد المصارفة الخارجية' }}
             </Button>
           </AlertDialogTrigger>
           <AlertDialogContent>
@@ -1949,7 +1949,7 @@ async function handleIssue() {
                 @click="handleIssue"
               >
                 <Loader2 v-if="requestsStore.issuingCustoms" class="h-4 w-4 me-1 animate-spin" />
-                {{ requestsStore.issuingCustoms ? 'جارٍ الإصدار…' : 'تأكيد الإصدار' }}
+                {{ requestsStore.issuingCustoms ? 'جارٍ الإصدار' : 'تأكيد الإصدار' }}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -2039,7 +2039,7 @@ renders it inline when opened in a tab instead of being saved).
        @click="emit('view', row.doc.id, row.doc.original_filename)"
      >
        <Eye class="h-3.5 w-3.5 me-1" aria-hidden="true" />
-       {{ viewingIds.has(row.doc.id) ? 'جارٍ الفتح…' : 'عرض' }}
+       {{ viewingIds.has(row.doc.id) ? 'جارٍ الفتح' : 'عرض' }}
      </Button>
      <Button
        v-if="row.doc && canDownloadDocument(userRole, row.doc.type)"
@@ -2050,7 +2050,7 @@ renders it inline when opened in a tab instead of being saved).
        :aria-label="`تنزيل ${row.doc.original_filename}`"
        @click="emit('download', row.doc.id, row.doc.original_filename)"
      >
-       {{ downloadingIds.has(row.doc.id) ? 'جارٍ التنزيل…' : 'تنزيل' }}
+       {{ downloadingIds.has(row.doc.id) ? 'جارٍ التنزيل' : 'تنزيل' }}
      </Button>
    </ButtonGroup>
    ```
@@ -2087,7 +2087,7 @@ renders it inline when opened in a tab instead of being saved).
        setTimeout(() => URL.revokeObjectURL(url), 60_000)
      }
      catch {
-       downloadErrors.value = { ...downloadErrors.value, [docId]: 'تعذر فتح الملف الآن. أعد المحاولة بعد قليل.' }
+       downloadErrors.value = { ...downloadErrors.value, [docId]: 'تعذّر فتح الملف الآن. أعد المحاولة بعد قليل.' }
      }
      finally {
        const next = new Set(viewingIds.value)

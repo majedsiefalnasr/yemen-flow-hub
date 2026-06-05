@@ -633,7 +633,7 @@ DATA_ENTRY cannot, under any UI condition:
 - Download SWIFT, FX confirmation request, or external FX confirmation documents
 - Access other banks' requests, merchants, or staff
 - View CBY internal audit, voting tallies, or claim ownership data
-- Manage merchants, staff, or any bank-admin surface (those belong to `BANK_ADMIN`)
+- Manage importers, staff, or any bank-admin surface (those belong to `BANK_ADMIN`)
 
 The UI must not render any of the above controls. If a backend response erroneously offers such an action, frontend should drop it rather than display it (defense-in-depth).
 

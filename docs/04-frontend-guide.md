@@ -221,7 +221,7 @@ Contains:
 
 Used for:
 
-- Customs declaration PDF views
+- External FX confirmation PDF views
 - Printable pages
 
 ---
@@ -296,7 +296,7 @@ Features:
 
 ---
 
-# Customs Declarations
+# External FX Confirmation
 
 ```text
 /customs
@@ -305,7 +305,7 @@ Features:
 
 Features:
 
-- Declaration generation
+- External FX confirmation generation
 - PDF preview
 - Printable view
 
@@ -385,7 +385,7 @@ SWIFT Officers see requests in `SUPPORT_APPROVED` / `WAITING_FOR_SWIFT` as their
 - Open Voting Sessions
 - Closed Voting Sessions
 - Final Decisions
-- Customs Declaration Issuance
+- External FX Confirmation Issuance
 
 ---
 
@@ -396,7 +396,7 @@ SWIFT Officers see requests in `SUPPORT_APPROVED` / `WAITING_FOR_SWIFT` as their
 - Banks
 - Audit Logs
 - Reports
-- Customs Declarations
+- External FX Confirmations
 
 ---
 
@@ -740,7 +740,7 @@ Examples:
 - After SWIFT upload
 - During executive voting
 - After executive rejection
-- After customs declaration issuance
+- After external FX confirmation issuance
 - After completion
 
 The UI must visually communicate locked workflow states.
@@ -755,7 +755,7 @@ Use:
 
 Executive rejected requests remain permanently locked.
 
-Customs declarations remain immutable permanently.
+External FX confirmation documents remain immutable permanently.
 
 ---
 

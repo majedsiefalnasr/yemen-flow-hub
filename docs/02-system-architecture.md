@@ -72,7 +72,7 @@ The frontend handles:
 - Request forms
 - Voting interfaces
 - SWIFT upload screens
-- Customs declaration views
+- External FX confirmation views
 - Role-based navigation
 - Organization-scoped request visibility
 - Business-status abstraction
@@ -186,7 +186,7 @@ Committee Director can:
 - Open voting sessions
 - Close voting sessions
 - Finalize executive decisions
-- Issue customs declarations
+- Issue external FX confirmation documents
 
 ---
 
@@ -425,7 +425,7 @@ Actions remain role-scoped.
 
 - Request documents
 - SWIFT documents
-- Customs declarations
+- External FX confirmations
 
 ---
 

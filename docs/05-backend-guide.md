@@ -261,7 +261,7 @@ Can monitor:
 - Support review progress
 - SWIFT upload progress
 - Executive voting progress
-- Customs declaration issuance
+- External FX confirmation issuance
 
 ---
 
@@ -323,7 +323,7 @@ Can:
 - Open voting sessions
 - Close voting sessions
 - Finalize executive decisions
-- Issue customs declarations
+- Issue external FX confirmation documents
 
 ---
 
@@ -404,7 +404,7 @@ Examples:
 - Voting
 - File upload
 - Status transitions
-- Customs declaration generation
+- External FX confirmation generation
 
 ---
 
@@ -504,7 +504,7 @@ Policies should validate:
 - Can finalize rejection after support rejection
 - Can upload SWIFT
 - Can vote
-- Can issue customs declaration
+- Can issue external FX confirmation documents
 - Can access queue
 - Can access request visibility scope
 
@@ -614,7 +614,7 @@ The system should support:
 - SWIFT upload notifications
 - Voting session opened
 - Voting session closed
-- Customs declaration issued
+- External FX confirmation issued
 
 ---
 
