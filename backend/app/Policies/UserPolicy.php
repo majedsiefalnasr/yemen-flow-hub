@@ -42,6 +42,31 @@ class UserPolicy
         return $user->hasRole(UserRole::CBY_ADMIN);
     }
 
+    public function resetPassword(User $user, User $model): bool
+    {
+        if ($user->id === $model->id) {
+            return false;
+        }
+
+        if ($user->hasRole(UserRole::CBY_ADMIN)) {
+            return $model->role?->isCbyRole() || $model->hasRole(UserRole::BANK_ADMIN);
+        }
+
+        return $this->canManageOwnBankUser($user, $model);
+    }
+
+    public function resetMfa(User $user, User $model): bool
+    {
+        return $user->id !== $model->id
+            && ($user->hasRole(UserRole::CBY_ADMIN) || $this->canManageOwnBankUser($user, $model));
+    }
+
+    public function resetPin(User $user, User $model): bool
+    {
+        return $user->id !== $model->id
+            && ($user->hasRole(UserRole::CBY_ADMIN) || $this->canManageOwnBankUser($user, $model));
+    }
+
     private function canManageOwnBankUser(User $actor, User $target): bool
     {
         return $actor->hasRole(UserRole::BANK_ADMIN)

@@ -269,10 +269,14 @@ class ProfileController extends Controller
         $user->totp_secret = $secret;
         $user->totp_enabled = true;
         $user->mfa_enabled = true;
+        $recoveryCodes = $this->mfaService->generateRecoveryCodes();
+        $user->totp_recovery_codes = $this->mfaService->hashRecoveryCodes($recoveryCodes);
         $user->save();
 
         return ApiResponse::success(
-            (new UserResource($user->loadMissing('bank')))->resolve(),
+            array_merge((new UserResource($user->loadMissing('bank')))->resolve(), [
+                'recovery_codes' => $recoveryCodes,
+            ]),
             'تم تفعيل تطبيق المصادقة بنجاح.'
         );
     }
@@ -297,6 +301,7 @@ class ProfileController extends Controller
 
         $user->totp_secret = null;
         $user->totp_enabled = false;
+        $user->totp_recovery_codes = null;
         $user->save();
 
         return ApiResponse::success(
@@ -326,6 +331,7 @@ class ProfileController extends Controller
 
         $user->totp_secret = null;
         $user->totp_enabled = false;
+        $user->totp_recovery_codes = null;
         $user->save();
 
         return ApiResponse::success(
@@ -358,7 +364,12 @@ class ProfileController extends Controller
     {
         $user = $request->user();
 
-        $user->forceFill(['password' => Hash::make($request->string('password'))])
+        $user->forceFill([
+            'password' => Hash::make($request->string('password')),
+            'must_change_password' => false,
+            'temporary_password_set_at' => null,
+            'password_changed_at' => now(),
+        ])
             ->save();
 
         $this->auditService->log(
@@ -368,6 +379,43 @@ class ProfileController extends Controller
         );
 
         return ApiResponse::success((object) [], 'Password changed successfully.');
+    }
+
+    public function changeTemporaryPassword(Request $request)
+    {
+        $validated = $request->validate([
+            'password' => ['required', 'string', 'min:8', 'confirmed', 'regex:/[A-Z]/', 'regex:/[a-z]/', 'regex:/[0-9]/'],
+        ]);
+
+        /** @var User $user */
+        $user = $request->user();
+
+        if (! $user->must_change_password) {
+            return ApiResponse::error('Temporary password change is not required.', [], 422);
+        }
+
+        if (Hash::check($validated['password'], $user->password)) {
+            return ApiResponse::error('The new password must be different from the temporary password.', [], 422);
+        }
+
+        $user->forceFill([
+            'password' => Hash::make($validated['password']),
+            'must_change_password' => false,
+            'temporary_password_set_at' => null,
+            'password_changed_at' => now(),
+        ])->save();
+
+        $this->auditService->log(
+            AuditAction::PASSWORD_CHANGED,
+            $user,
+            $user,
+            ['mode' => 'temporary_password']
+        );
+
+        return ApiResponse::success(
+            (new UserResource($user->loadMissing('bank')))->resolve(),
+            'Password changed successfully.'
+        );
     }
 
     private function computeStats(mixed $user): array

@@ -26,6 +26,9 @@ Route::prefix('auth')->group(function () {
     Route::post('login', [AuthController::class, 'login'])->middleware('throttle:5,1');
     Route::post('login-pin', [AuthController::class, 'loginWithPin'])->middleware('throttle:10,1');
     Route::post('verify-otp', [AuthController::class, 'verifyOtp'])->middleware('throttle:10,1');
+    Route::post('password/forgot', [AuthController::class, 'forgotPassword'])->middleware('throttle:5,1');
+    Route::post('password/verify', [AuthController::class, 'verifyPasswordResetOtp'])->middleware('throttle:10,1');
+    Route::post('password/reset', [AuthController::class, 'resetPassword'])->middleware('throttle:10,1');
     Route::middleware('auth:sanctum')->group(function () {
         Route::post('logout', [AuthController::class, 'logout']);
         Route::get('me', [AuthController::class, 'me']);
@@ -47,6 +50,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('profile/mfa/disable', [ProfileController::class, 'disableTotp']);
     Route::post('profile/mfa/disable-with-password', [ProfileController::class, 'disableTotpWithPassword']);
     Route::post('profile/change-password', [ProfileController::class, 'changePassword'])->middleware('throttle:3,60');
+    Route::post('profile/change-temporary-password', [ProfileController::class, 'changeTemporaryPassword'])->middleware('throttle:5,1');
     Route::get('settings', [SettingsController::class, 'show']);
     Route::put('settings', [SettingsController::class, 'update']);
     Route::post('settings/reset', [SettingsController::class, 'reset']);
@@ -55,7 +59,11 @@ Route::middleware('auth:sanctum')->group(function () {
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('banks', BankController::class);
+    Route::post('banks/{bank}/admin/reset-password', [BankController::class, 'resetAdminPassword'])->middleware('throttle:10,1');
     Route::apiResource('users', UserController::class);
+    Route::post('users/{user}/reset-password', [UserController::class, 'resetPassword'])->middleware('throttle:10,1');
+    Route::post('users/{user}/reset-mfa', [UserController::class, 'resetMfa'])->middleware('throttle:10,1');
+    Route::post('users/{user}/reset-pin', [UserController::class, 'resetPin'])->middleware('throttle:10,1');
     Route::apiResource('merchants', MerchantController::class);
     Route::get('document-types', [DocumentTypeController::class, 'index']);
     Route::post('document-types', [DocumentTypeController::class, 'store']);

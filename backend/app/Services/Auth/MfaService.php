@@ -4,12 +4,19 @@ namespace App\Services\Auth;
 
 use App\Models\User;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use PragmaRX\Google2FA\Google2FA;
 
 class MfaService
 {
     private const CODE_LENGTH = 6;
+
+    private const RECOVERY_CODE_COUNT = 10;
+
+    private const RECOVERY_CODE_LENGTH = 8;
+
+    private const RECOVERY_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
     public function hasTotpConfigured(User $user): bool
     {
@@ -66,7 +73,11 @@ class MfaService
         $user = User::where('email', strtolower($email))->first();
 
         if ($user && $this->hasTotpConfigured($user) && filled($user->totp_secret)) {
-            return $this->verifyTotp($user->totp_secret, $code);
+            if (preg_match('/^[0-9]{6}$/', $code) === 1 && $this->verifyTotp($user->totp_secret, $code)) {
+                return true;
+            }
+
+            return $this->verifyRecoveryCode($user, $code);
         }
 
         return $this->verifyRandomOtp($email, $code, $challengeId);
@@ -207,5 +218,72 @@ class MfaService
         Cache::forget($this->totpSetupKey($email));
 
         return $secret;
+    }
+
+    /**
+     * Generate one-time backup codes for authenticator recovery.
+     *
+     * @return array<int, string>
+     */
+    public function generateRecoveryCodes(): array
+    {
+        $codes = [];
+
+        while (count($codes) < self::RECOVERY_CODE_COUNT) {
+            $raw = '';
+            for ($i = 0; $i < self::RECOVERY_CODE_LENGTH; $i++) {
+                $raw .= self::RECOVERY_CODE_ALPHABET[random_int(0, strlen(self::RECOVERY_CODE_ALPHABET) - 1)];
+            }
+
+            $displayCode = substr($raw, 0, 4).'-'.substr($raw, 4);
+            $codes[$displayCode] = $displayCode;
+        }
+
+        return array_values($codes);
+    }
+
+    /**
+     * @param  array<int, string>  $codes
+     * @return array<int, string>
+     */
+    public function hashRecoveryCodes(array $codes): array
+    {
+        return array_map(
+            fn (string $code): string => Hash::make($this->normalizeRecoveryCode($code)),
+            $codes
+        );
+    }
+
+    public function verifyRecoveryCode(User $user, string $code): bool
+    {
+        $normalized = $this->normalizeRecoveryCode($code);
+        if ($normalized === '') {
+            return false;
+        }
+
+        $hashes = $user->totp_recovery_codes;
+        if (! is_array($hashes) || $hashes === []) {
+            return false;
+        }
+
+        foreach ($hashes as $index => $hash) {
+            if (! is_string($hash) || ! Hash::check($normalized, $hash)) {
+                continue;
+            }
+
+            unset($hashes[$index]);
+            $user->forceFill([
+                'totp_recovery_codes' => array_values($hashes),
+            ])->save();
+
+            return true;
+        }
+
+        return false;
+    }
+
+    private function normalizeRecoveryCode(string $code): string
+    {
+        return strtoupper(str_replace(['-', ' '], '', trim($code)));
     }
 }

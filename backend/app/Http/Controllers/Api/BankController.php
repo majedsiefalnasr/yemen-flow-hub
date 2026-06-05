@@ -3,12 +3,19 @@
 namespace App\Http\Controllers\Api;
 
 use App\Enums\AuditAction;
+use App\Enums\UserRole;
 use App\Http\Requests\StoreBankRequest;
 use App\Http\Requests\UpdateBankRequest;
 use App\Http\Resources\BankResource;
+use App\Http\Resources\UserResource;
 use App\Models\Bank;
+use App\Models\User;
 use App\Services\Audit\AuditService;
 use App\Support\ApiResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use OpenApi\Attributes as OA;
 
 class BankController extends Controller
@@ -29,6 +36,7 @@ class BankController extends Controller
 
         $perPage = max(1, min(request()->integer('per_page', 20), 200));
         $banks = Bank::query()
+            ->with('bankAdmin.bank')
             ->when($actor->isBankUser(), fn ($q) => $q->where('id', $actor->bank_id))
             ->when(request()->filled('search'), function ($q) {
                 $s = request('search');
@@ -75,9 +83,36 @@ class BankController extends Controller
     {
         $this->authorize('create', Bank::class);
 
-        $bank = Bank::query()->create($request->validated());
+        $payload = $request->validated();
 
-        return ApiResponse::success(new BankResource($bank), 'Bank created successfully.', 201);
+        $bank = DB::transaction(function () use ($payload, $request): Bank {
+            $bank = Bank::query()->create(Arr::only($payload, ['name', 'code', 'is_active']));
+
+            $admin = User::query()->create([
+                'name' => $payload['admin_name'],
+                'email' => strtolower($payload['admin_email']),
+                'password' => Hash::make($payload['admin_password']),
+                'role' => UserRole::BANK_ADMIN,
+                'bank_id' => $bank->id,
+                'is_active' => true,
+                'must_change_password' => true,
+                'temporary_password_set_at' => now(),
+            ]);
+
+            $this->auditService->log(AuditAction::BANK_CREATED, $request->user(), $bank, [
+                'bank_id' => $bank->id,
+            ]);
+
+            $this->auditService->log(AuditAction::USER_CREATED, $request->user(), $admin, [
+                'bank_id' => $bank->id,
+                'target_role' => UserRole::BANK_ADMIN->value,
+                'temporary_password' => true,
+            ]);
+
+            return $bank;
+        });
+
+        return ApiResponse::success(new BankResource($bank->load('bankAdmin.bank')), 'Bank created successfully.', 201);
     }
 
     #[OA\Get(
@@ -91,7 +126,7 @@ class BankController extends Controller
     {
         $this->authorize('view', $bank);
 
-        return ApiResponse::success(new BankResource($bank), 'Bank retrieved.');
+        return ApiResponse::success(new BankResource($bank->load('bankAdmin.bank')), 'Bank retrieved.');
     }
 
     #[OA\Put(
@@ -105,8 +140,20 @@ class BankController extends Controller
     {
         $this->authorize('update', $bank);
 
+        $validated = $request->validated();
         $before = $bank->only(['name', 'code', 'is_active']);
-        $bank->update($request->validated());
+        DB::transaction(function () use ($bank, $validated): void {
+            $bank->update(Arr::only($validated, ['name', 'code', 'is_active']));
+
+            if (isset($validated['admin_name']) || isset($validated['admin_email'])) {
+                $bank->bankAdmin()->first()?->update(array_filter([
+                    'name' => $validated['admin_name'] ?? null,
+                    'email' => isset($validated['admin_email'])
+                        ? strtolower($validated['admin_email'])
+                        : null,
+                ], fn ($value) => $value !== null));
+            }
+        });
         $bank->refresh();
         $after = $bank->only(['name', 'code', 'is_active']);
         $changedKeys = array_keys(array_filter(
@@ -121,7 +168,47 @@ class BankController extends Controller
             'after' => array_intersect_key($after, array_flip($changedKeys)),
         ]);
 
-        return ApiResponse::success(new BankResource($bank), 'Bank updated successfully.');
+        return ApiResponse::success(new BankResource($bank->load('bankAdmin.bank')), 'Bank updated successfully.');
+    }
+
+    public function resetAdminPassword(Request $request, Bank $bank)
+    {
+        $this->authorize('update', $bank);
+
+        if (! $request->user()?->hasRole(UserRole::CBY_ADMIN)) {
+            return ApiResponse::forbidden('Only CBY Admin can reset Bank Admin credentials.');
+        }
+
+        $validated = $request->validate([
+            'password' => ['required', 'string', 'min:8', 'confirmed', 'regex:/[A-Z]/', 'regex:/[a-z]/', 'regex:/[0-9]/'],
+        ]);
+
+        $admin = User::query()
+            ->where('bank_id', $bank->id)
+            ->where('role', UserRole::BANK_ADMIN->value)
+            ->orderBy('id')
+            ->first();
+
+        if (! $admin) {
+            return ApiResponse::notFound('No Bank Admin account found for this bank.');
+        }
+
+        $this->authorize('resetPassword', $admin);
+
+        $admin->forceFill([
+            'password' => Hash::make($validated['password']),
+            'must_change_password' => true,
+            'temporary_password_set_at' => now(),
+        ])->save();
+        $admin->tokens()->delete();
+
+        $this->auditService->log(AuditAction::PASSWORD_RESET, $request->user(), $admin, [
+            'mode' => 'bank_management',
+            'target_role' => $admin->role?->value,
+            'target_bank_id' => $bank->id,
+        ]);
+
+        return ApiResponse::success(new UserResource($admin->load('bank')), 'Bank Admin temporary password set successfully.');
     }
 
     #[OA\Delete(

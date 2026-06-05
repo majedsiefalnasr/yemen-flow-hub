@@ -69,7 +69,7 @@ class BankControllerTest extends TestCase
 
         $response->assertOk()
             ->assertJsonPath('success', true)
-            ->assertJsonStructure(['data' => [['id', 'name', 'code', 'is_active']]]);
+            ->assertJsonStructure(['data' => ['data' => [['id', 'name', 'code', 'is_active']]]]);
     }
 
     public function test_index_returns_banks_for_bank_reviewer(): void
@@ -109,14 +109,24 @@ class BankControllerTest extends TestCase
             'name' => 'بنك سبأ الإسلامي',
             'code' => 'SIB',
             'is_active' => true,
+            'adminName' => 'مدير بنك سبأ',
+            'adminEmail' => 'admin@sib.test',
+            'adminPassword' => 'TempPassword123',
         ]);
 
         $response->assertStatus(201)
             ->assertJsonPath('success', true)
             ->assertJsonPath('data.name', 'بنك سبأ الإسلامي')
-            ->assertJsonPath('data.code', 'SIB');
+            ->assertJsonPath('data.code', 'SIB')
+            ->assertJsonPath('data.admin.name', 'مدير بنك سبأ')
+            ->assertJsonPath('data.admin.email', 'admin@sib.test');
 
         $this->assertDatabaseHas('banks', ['code' => 'SIB', 'name' => 'بنك سبأ الإسلامي']);
+        $this->assertDatabaseHas('users', [
+            'email' => 'admin@sib.test',
+            'role' => UserRole::BANK_ADMIN->value,
+            'must_change_password' => true,
+        ]);
     }
 
     public function test_store_returns_403_for_bank_reviewer(): void
@@ -138,6 +148,9 @@ class BankControllerTest extends TestCase
         $this->actingAs($admin)->postJson('/api/banks', [
             'name' => 'البنك التجاري اليمني',
             'code' => 'ACB',
+            'adminName' => 'مدير البنك',
+            'adminEmail' => 'admin@acb.test',
+            'adminPassword' => 'TempPassword123',
         ])->assertUnprocessable();
     }
 
@@ -149,6 +162,9 @@ class BankControllerTest extends TestCase
         $this->actingAs($admin)->postJson('/api/banks', [
             'name' => 'بنك آخر',
             'code' => 'YCB',
+            'adminName' => 'مدير البنك',
+            'adminEmail' => 'admin@other.test',
+            'adminPassword' => 'TempPassword123',
         ])->assertUnprocessable();
     }
 
@@ -167,12 +183,26 @@ class BankControllerTest extends TestCase
     {
         $admin = $this->makeCbyAdmin();
         $bank = $this->makeBank();
+        $bankAdmin = User::query()->create([
+            'name' => 'Old Bank Admin',
+            'email' => 'old-admin@bank.test',
+            'password' => Hash::make('Password123'),
+            'role' => UserRole::BANK_ADMIN,
+            'bank_id' => $bank->id,
+            'is_active' => true,
+        ]);
 
         $response = $this->actingAs($admin)->putJson("/api/banks/{$bank->id}", [
             'name' => 'اسم محدث',
             'code' => $bank->code,
             'is_active' => false,
+            'adminName' => 'Updated Bank Admin',
+            'adminEmail' => 'updated-admin@bank.test',
         ]);
+
+        $response->assertJsonPath('data.admin.name', 'Updated Bank Admin')
+            ->assertJsonPath('data.admin.email', 'updated-admin@bank.test');
+        $this->assertSame('Updated Bank Admin', $bankAdmin->refresh()->name);
 
         $response->assertOk()
             ->assertJsonPath('data.name', 'اسم محدث')

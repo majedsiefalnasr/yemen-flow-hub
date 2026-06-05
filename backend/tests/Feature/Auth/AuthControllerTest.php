@@ -14,6 +14,7 @@ use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class AuthControllerTest extends TestCase
@@ -485,6 +486,37 @@ class AuthControllerTest extends TestCase
         ]);
 
         $response->assertStatus(422);
+    }
+
+    public function test_totp_backup_code_completes_login_once(): void
+    {
+        $mfa = new MfaService;
+        $backupCodes = $mfa->generateRecoveryCodes();
+        $user = $this->makeUser([
+            'totp_enabled' => true,
+            'totp_secret' => 'JBSWY3DPEHPK3PXP',
+            'totp_recovery_codes' => $mfa->hashRecoveryCodes($backupCodes),
+        ]);
+
+        $response = $this->postJson('/api/auth/verify-otp', [
+            'email' => $user->email,
+            'otp' => $backupCodes[0],
+            'challenge_id' => (string) Str::uuid(),
+        ]);
+
+        $response->assertOk();
+        $response->assertJsonPath('data.requires_mfa', false);
+
+        $user->refresh();
+        $this->assertCount(9, $user->totp_recovery_codes);
+
+        $reuse = $this->postJson('/api/auth/verify-otp', [
+            'email' => $user->email,
+            'otp' => $backupCodes[0],
+            'challenge_id' => (string) Str::uuid(),
+        ]);
+
+        $reuse->assertStatus(422);
     }
 
     // --- MFA: verify-otp throttled ---

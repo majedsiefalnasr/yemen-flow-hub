@@ -9,6 +9,7 @@ use App\Http\Resources\UserResource;
 use App\Models\User;
 use App\Services\Audit\AuditService;
 use App\Services\Auth\MfaService;
+use App\Services\Auth\PasswordRecoveryService;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -28,6 +29,7 @@ class AuthController extends Controller
     public function __construct(
         private readonly AuditService $auditService,
         private readonly MfaService $mfaService,
+        private readonly PasswordRecoveryService $passwordRecoveryService,
     ) {}
 
     #[OA\Post(
@@ -230,7 +232,7 @@ class AuthController extends Controller
     {
         $request->validate([
             'email' => ['required', 'string', 'email'],
-            'otp' => ['required', 'string', 'size:6', 'regex:/^[0-9]{6}$/'],
+            'otp' => ['required', 'string', 'min:6', 'max:16', 'regex:/^[A-Za-z0-9-]+$/'],
             'challenge_id' => ['required', 'string', 'uuid'],
         ]);
 
@@ -248,6 +250,50 @@ class AuthController extends Controller
         }
 
         return $this->issueSession($request, $user);
+    }
+
+    public function forgotPassword(Request $request)
+    {
+        $validated = $request->validate([
+            'email' => ['required', 'string', 'email'],
+        ]);
+
+        $this->passwordRecoveryService->request($validated['email']);
+
+        return ApiResponse::success((object) [], $this->passwordRecoveryService->genericMessage());
+    }
+
+    public function verifyPasswordResetOtp(Request $request)
+    {
+        $validated = $request->validate([
+            'email' => ['required', 'string', 'email'],
+            'otp' => ['required', 'string', 'size:6', 'regex:/^[0-9]{6}$/'],
+        ]);
+
+        if (! $this->passwordRecoveryService->verify($validated['email'], $validated['otp'])) {
+            $this->throwInvalidRecoveryCode();
+        }
+
+        return ApiResponse::success((object) [], 'Recovery code verified.');
+    }
+
+    public function resetPassword(Request $request)
+    {
+        $validated = $request->validate([
+            'email' => ['required', 'string', 'email'],
+            'otp' => ['required', 'string', 'size:6', 'regex:/^[0-9]{6}$/'],
+            'password' => ['required', 'string', 'min:8', 'confirmed', 'regex:/[A-Z]/', 'regex:/[a-z]/', 'regex:/[0-9]/'],
+        ]);
+
+        if (! $this->passwordRecoveryService->reset(
+            $validated['email'],
+            $validated['otp'],
+            $validated['password']
+        )) {
+            $this->throwInvalidRecoveryCode();
+        }
+
+        return ApiResponse::success((object) [], 'Password reset successfully.');
     }
 
     #[OA\Post(
@@ -348,6 +394,13 @@ class AuthController extends Controller
     {
         throw ValidationException::withMessages([
             'otp' => ['الرمز المدخل غير صحيح أو منتهي الصلاحية.'],
+        ]);
+    }
+
+    private function throwInvalidRecoveryCode(): void
+    {
+        throw ValidationException::withMessages([
+            'otp' => ['رمز الاستعادة غير صحيح أو منتهي الصلاحية.'],
         ]);
     }
 }

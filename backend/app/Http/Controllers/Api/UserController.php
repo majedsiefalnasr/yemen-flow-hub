@@ -10,6 +10,8 @@ use App\Http\Resources\UserResource;
 use App\Models\User;
 use App\Services\Audit\AuditService;
 use App\Support\ApiResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 use OpenApi\Attributes as OA;
 
 class UserController extends Controller
@@ -168,6 +170,66 @@ class UserController extends Controller
         ]);
 
         return ApiResponse::success((object) [], 'User deactivated successfully.');
+    }
+
+    public function resetPassword(Request $request, User $user)
+    {
+        $this->authorize('resetPassword', $user);
+
+        $validated = $request->validate([
+            'password' => ['required', 'string', 'min:8', 'confirmed', 'regex:/[A-Z]/', 'regex:/[a-z]/', 'regex:/[0-9]/'],
+        ]);
+
+        $user->forceFill([
+            'password' => Hash::make($validated['password']),
+            'must_change_password' => true,
+            'temporary_password_set_at' => now(),
+        ])->save();
+        $user->tokens()->delete();
+
+        $this->auditService->log(AuditAction::PASSWORD_RESET, $request->user(), $user, [
+            'mode' => 'admin_assisted',
+            'target_role' => $user->role?->value,
+            'target_bank_id' => $user->bank_id,
+        ]);
+
+        return ApiResponse::success(new UserResource($user->load('bank')), 'Temporary password set successfully.');
+    }
+
+    public function resetMfa(Request $request, User $user)
+    {
+        $this->authorize('resetMfa', $user);
+
+        $user->forceFill([
+            'totp_secret' => null,
+            'totp_enabled' => false,
+            'totp_recovery_codes' => null,
+            'mfa_enabled' => false,
+        ])->save();
+
+        $this->auditService->log(AuditAction::MFA_RESET, $request->user(), $user, [
+            'target_role' => $user->role?->value,
+            'target_bank_id' => $user->bank_id,
+        ]);
+
+        return ApiResponse::success(new UserResource($user->load('bank')), 'MFA reset successfully.');
+    }
+
+    public function resetPin(Request $request, User $user)
+    {
+        $this->authorize('resetPin', $user);
+
+        $user->forceFill([
+            'pin_code_hash' => null,
+            'pin_enabled' => false,
+        ])->save();
+
+        $this->auditService->log(AuditAction::PIN_RESET, $request->user(), $user, [
+            'target_role' => $user->role?->value,
+            'target_bank_id' => $user->bank_id,
+        ]);
+
+        return ApiResponse::success(new UserResource($user->load('bank')), 'PIN reset successfully.');
     }
 
     private function auditSnapshot(User $user): array

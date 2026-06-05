@@ -9,6 +9,7 @@ use App\Models\SystemSetting;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use PragmaRX\Google2FA\Google2FA;
 use Tests\TestCase;
 
 class ProfileControllerTest extends TestCase
@@ -312,6 +313,40 @@ class ProfileControllerTest extends TestCase
             'email' => 'attacker@evil.com',
         ]);
         $response->assertStatus(401);
+    }
+
+    public function test_totp_setup_returns_one_time_backup_codes(): void
+    {
+        $user = User::query()->create([
+            'name' => 'MFA User',
+            'email' => 'mfa-user@bank.com',
+            'password' => Hash::make('Password123'),
+            'role' => UserRole::DATA_ENTRY,
+            'bank_id' => null,
+            'is_active' => true,
+        ]);
+
+        $setup = $this->actingAs($user)->postJson('/api/profile/mfa/setup')->assertOk();
+        $secret = $setup->json('data.secret');
+        $code = (new Google2FA)->getCurrentOtp($secret);
+
+        $response = $this->actingAs($user)->postJson('/api/profile/mfa/setup/verify', [
+            'code' => $code,
+        ]);
+
+        $response->assertOk();
+        $codes = $response->json('data.recovery_codes');
+        $this->assertIsArray($codes);
+        $this->assertCount(10, $codes);
+        foreach ($codes as $backupCode) {
+            $this->assertMatchesRegularExpression('/^[A-Z2-9]{4}-[A-Z2-9]{4}$/', $backupCode);
+        }
+
+        $user->refresh();
+        $this->assertTrue($user->totp_enabled);
+        $this->assertIsArray($user->totp_recovery_codes);
+        $this->assertCount(10, $user->totp_recovery_codes);
+        $this->assertNotContains($codes[0], $user->totp_recovery_codes);
     }
 
     // --- GET /api/admin/settings/smtp ---

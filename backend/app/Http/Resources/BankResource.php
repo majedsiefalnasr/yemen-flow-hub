@@ -16,6 +16,10 @@ class BankResource extends JsonResource
             'name_en' => $this->name,
             'code' => $this->code,
             'is_active' => (bool) $this->is_active,
+            'admin' => $this->whenLoaded(
+                'bankAdmin',
+                fn () => $this->bankAdmin ? new UserResource($this->bankAdmin) : null,
+            ),
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),
         ];

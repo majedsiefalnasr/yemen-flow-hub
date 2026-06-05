@@ -21,8 +21,12 @@ enum AuditAction: string
     case USER_CREATED = 'USER_CREATED';
     case USER_UPDATED = 'USER_UPDATED';
     case USER_DEACTIVATED = 'USER_DEACTIVATED';
+    case BANK_CREATED = 'BANK_CREATED';
     case BANK_UPDATED = 'BANK_UPDATED';
     case PASSWORD_CHANGED = 'PASSWORD_CHANGED';
+    case PASSWORD_RESET = 'PASSWORD_RESET';
+    case MFA_RESET = 'MFA_RESET';
+    case PIN_RESET = 'PIN_RESET';
     case SETTINGS_UPDATED = 'SETTINGS_UPDATED';
     case AUTHORIZATION_FAILURE = 'AUTHORIZATION_FAILURE';
     case REPORT_EXPORTED = 'REPORT_EXPORTED';
@@ -48,8 +52,12 @@ enum AuditAction: string
             self::USER_CREATED => 'User Created / إنشاء مستخدم',
             self::USER_UPDATED => 'User Updated / تحديث مستخدم',
             self::USER_DEACTIVATED => 'User Deactivated / إيقاف مستخدم',
+            self::BANK_CREATED => 'Bank Created / إنشاء بنك',
             self::BANK_UPDATED => 'Bank Updated / تحديث بنك',
             self::PASSWORD_CHANGED => 'Password Changed / تغيير كلمة المرور',
+            self::PASSWORD_RESET => 'Password Reset / إعادة تعيين كلمة المرور',
+            self::MFA_RESET => 'MFA Reset / إعادة ضبط المصادقة متعددة العوامل',
+            self::PIN_RESET => 'PIN Reset / إعادة ضبط رمز PIN',
             self::SETTINGS_UPDATED => 'Settings Updated / تحديث الإعدادات',
             self::AUTHORIZATION_FAILURE => 'Authorization Failure / فشل التفويض',
             self::REPORT_EXPORTED => 'Report Exported / تصدير تقرير',

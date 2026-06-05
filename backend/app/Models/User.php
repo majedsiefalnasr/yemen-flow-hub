@@ -20,6 +20,9 @@ class User extends Authenticatable
         'email',
         'phone',
         'password',
+        'must_change_password',
+        'temporary_password_set_at',
+        'password_changed_at',
         'pin_code_hash',
         'pin_enabled',
         'role',
@@ -28,22 +31,33 @@ class User extends Authenticatable
         'mfa_enabled',
         'totp_secret',
         'totp_enabled',
+        'totp_recovery_codes',
         'last_login_at',
         'user_preferences',
         'avatar_variant',
     ];
 
-    protected $hidden = ['password', 'remember_token', 'totp_secret', 'pin_code_hash'];
+    protected $hidden = [
+        'password',
+        'remember_token',
+        'totp_secret',
+        'totp_recovery_codes',
+        'pin_code_hash',
+    ];
 
     protected function casts(): array
     {
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'must_change_password' => 'boolean',
+            'temporary_password_set_at' => 'datetime',
+            'password_changed_at' => 'datetime',
             'role' => UserRole::class,
             'is_active' => 'boolean',
             'mfa_enabled' => 'boolean',
             'totp_enabled' => 'boolean',
+            'totp_recovery_codes' => 'array',
             'pin_enabled' => 'boolean',
             'last_login_at' => 'datetime',
             'user_preferences' => 'array',
