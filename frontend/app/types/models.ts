@@ -52,13 +52,24 @@ export interface AuthUser {
   recent_activity?: RecentActivity[]
 }
 
+export interface NotificationPreferences {
+  request_approved?: boolean
+  request_rejected?: boolean
+  request_returned?: boolean
+  voting_opened?: boolean
+  request_submitted?: boolean
+  swift_upload_requested?: boolean
+  claim_released?: boolean
+}
+
 export interface UserPreferences {
   language: string
   dashboard_view: string
   table_density: string
   page_size: number
   default_filters: Record<string, any>
-  notification_preferences: Record<string, any>
+  notification_preferences: NotificationPreferences
+  email_notifications?: boolean
   theming?: Record<string, any>
 }
 

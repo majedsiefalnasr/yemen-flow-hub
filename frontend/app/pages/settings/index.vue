@@ -36,6 +36,7 @@ import {
 import { renderSVG } from 'uqr'
 import { Separator } from '@/components/ui/separator'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
@@ -60,6 +61,7 @@ import {
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp'
 import { cn } from '@/lib/utils'
 import { UserRole } from '@/types/enums'
+import type { NotificationPreferences } from '@/types/models'
 import {
   useThemingStore,
   type DensityPreference,
@@ -449,6 +451,14 @@ onMounted(async () => {
   await themingStore.loadSettings()
   await authStore.fetchUserPreferences()
   themingStore.applyAppearanceSettings(authStore.userPreferences?.theming)
+
+  const notifPrefs = authStore.userPreferences?.notification_preferences ?? {}
+  personalNotifications.value = personalNotifications.value.map((item) => ({
+    ...item,
+    enabled: item.mandatory ? true : (notifPrefs[item.id] ?? item.enabled),
+  }))
+  emailNotifications.value = authStore.userPreferences?.email_notifications ?? false
+
   settingsStore.markSectionClean('userProfile', undefined, profilePayload.value)
   settingsStore.markSectionClean('userAppearance', undefined, appearancePayload.value)
   settingsStore.markSectionClean('userNotifications', undefined, notificationsPayload.value)
@@ -567,42 +577,57 @@ const densityOptions: Array<{ value: DensityPreference; label: string; descripti
 // ── Personal notification prefs ────────────────────────────────────────────────
 const personalNotifications = ref([
   {
-    id: 'status_change',
-    label: 'تغييرات حالة طلباتي',
-    description: 'عند تحديث حالة أي طلب أشارك فيه',
+    id: 'request_approved' as keyof NotificationPreferences,
+    label: 'الموافقة على الطلب',
+    description: 'عند الموافقة على طلبك في أي مرحلة',
     enabled: true,
+    mandatory: true,
   },
   {
-    id: 'task_assigned',
-    label: 'تكليف مهام جديدة',
-    description: 'عند إسناد مهمة مراجعة أو تصويت إليّ',
+    id: 'request_rejected' as keyof NotificationPreferences,
+    label: 'رفض الطلب',
+    description: 'عند رفض طلبك نهائياً',
     enabled: true,
+    mandatory: true,
   },
   {
-    id: 'comments',
-    label: 'التعليقات والملاحظات',
-    description: 'عند إضافة تعليق على طلب مرتبط بي',
+    id: 'request_returned' as keyof NotificationPreferences,
+    label: 'إعادة الطلب للتصحيح',
+    description: 'عند إعادة الطلب لمراجعة أو تصحيح',
     enabled: true,
+    mandatory: true,
   },
   {
-    id: 'deadlines',
-    label: 'تذكيرات المواعيد النهائية',
-    description: 'قبل 24 ساعة من انتهاء مهلة المراجعة',
-    enabled: false,
-  },
-  {
-    id: 'session_open',
-    label: 'فتح جلسات التصويت',
+    id: 'voting_opened' as keyof NotificationPreferences,
+    label: 'فتح جلسة التصويت',
     description: 'عند فتح جلسة تصويت جديدة',
     enabled: true,
+    mandatory: false,
   },
   {
-    id: 'reports',
-    label: 'التقارير الدورية',
-    description: 'ملخص أسبوعي لنشاط العمل',
-    enabled: false,
+    id: 'request_submitted' as keyof NotificationPreferences,
+    label: 'تقديم طلب للمراجعة',
+    description: 'عند تقديم طلب جديد للمراجعة',
+    enabled: true,
+    mandatory: false,
+  },
+  {
+    id: 'swift_upload_requested' as keyof NotificationPreferences,
+    label: 'طلب رفع وثيقة SWIFT',
+    description: 'عند الحاجة لرفع وثيقة SWIFT',
+    enabled: true,
+    mandatory: false,
+  },
+  {
+    id: 'claim_released' as keyof NotificationPreferences,
+    label: 'الإفراج عن مطالبة المساندة',
+    description: 'عند انتهاء مطالبة المساندة أو تحريرها',
+    enabled: true,
+    mandatory: false,
   },
 ])
+
+const emailNotifications = ref(false)
 
 const profilePayload = computed(() => ({
   name: profileForm.name.trim(),
@@ -622,10 +647,10 @@ const appearancePayload = computed(() => ({
 }))
 
 const notificationsPayload = computed(() => ({
-  settings: personalNotifications.value.map((item) => ({
-    id: item.id,
-    enabled: item.enabled,
-  })),
+  notification_preferences: Object.fromEntries(
+    personalNotifications.value.map((item) => [item.id, item.enabled]),
+  ) as NotificationPreferences,
+  email_notifications: emailNotifications.value,
 }))
 
 watch(fontPickerOpen, (opened) => {
@@ -2051,22 +2076,53 @@ function savePersonalNotifications() {
               <p class="text-muted-foreground text-sm">اختر الأحداث التي تريد تلقّي إشعار عنها.</p>
             </div>
             <Separator />
+            <!-- Email master toggle -->
+            <div
+              class="border-border hover:bg-muted/30 flex items-start justify-between gap-4 rounded-lg border p-4 transition-colors"
+            >
+              <div class="flex flex-col gap-0.5">
+                <p class="font-section text-foreground text-sm leading-5 font-semibold">
+                  إشعارات البريد الإلكتروني
+                </p>
+                <p class="text-muted-foreground text-xs">
+                  تلقّي إشعارات الأحداث عبر البريد الإلكتروني
+                </p>
+              </div>
+              <Switch
+                v-model="emailNotifications"
+                data-testid="notif-switch-email_notifications"
+                class="shrink-0"
+              />
+            </div>
+            <Separator />
             <div class="space-y-2">
               <div
                 v-for="item in personalNotifications"
                 :key="item.id"
-                class="border-border hover:bg-muted/30 flex items-start justify-between gap-4 rounded-lg border p-4 transition-colors"
+                class="border-border flex items-start justify-between gap-4 rounded-lg border p-4 transition-colors"
+                :class="item.mandatory ? 'bg-muted/30' : 'hover:bg-muted/30'"
               >
                 <div class="flex flex-col gap-0.5">
-                  <p class="font-section text-foreground text-sm leading-5 font-semibold">
-                    {{ item.label }}
-                  </p>
+                  <div class="flex items-center gap-2">
+                    <p class="font-section text-foreground text-sm leading-5 font-semibold">
+                      {{ item.label }}
+                    </p>
+                    <Badge v-if="item.mandatory" variant="secondary" class="text-xs">
+                      إلزامي
+                    </Badge>
+                  </div>
                   <p class="text-muted-foreground text-xs">{{ item.description }}</p>
                 </div>
                 <Switch
-                  v-model="item.enabled"
+                  :model-value="item.mandatory ? true : item.enabled"
+                  :disabled="item.mandatory"
                   :data-testid="`notif-switch-${item.id}`"
                   class="shrink-0"
+                  @update:model-value="
+                    (v) => {
+                      if (!item.mandatory) item.enabled = v as boolean
+                    }
+                  "
                 />
               </div>
             </div>

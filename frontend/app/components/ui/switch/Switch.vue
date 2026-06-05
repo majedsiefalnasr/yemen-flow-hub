@@ -36,6 +36,7 @@ const forwarded = useForwardPropsEmits(delegatedProps, emits)
         props.class,
       )
     "
+    dir="ltr"
   >
     <SwitchThumb
       data-slot="switch-thumb"
