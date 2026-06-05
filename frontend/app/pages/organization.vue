@@ -6,8 +6,6 @@ import {
   Bell,
   Building2,
   Cog,
-  Eye,
-  EyeOff,
   Image,
   KeyRound,
   Loader2,
@@ -96,8 +94,6 @@ const activeSection = computed<AnyTab>(() => {
   return (valid ? raw : currentTabs.value[0].value) as AnyTab
 })
 
-const showEmailPassword = ref(false)
-
 // ── Brand color — local pending state, apply ONLY on save ─────────────────────
 const pendingBrandColor = ref(themingStore.brandColor)
 const pendingBrandColorText = ref(themingStore.brandColor)
@@ -141,13 +137,12 @@ const workflowSettings = reactive({
 
 // ── CBY: Email settings ────────────────────────────────────────────────────────
 const emailSettings = reactive({
-  host: 'smtp.cby.gov.ye',
-  port: '587',
-  username: 'noreply@cby.gov.ye',
-  password: '************',
   approvalTemplate:
     'عزيزي {{importer}}،\nنخبركم باعتماد طلب التمويل رقم {{ref}} بمبلغ {{amount}} {{currency}}.',
 })
+
+const testEmailLoading = ref(false)
+const testEmailAddress = ref('')
 
 // ── CBY: Notification settings ────────────────────────────────────────────────
 const cbySysNotifications = reactive([
@@ -288,10 +283,6 @@ const notifPayload = computed(() => ({
 }))
 
 const emailPayload = computed(() => ({
-  host: emailSettings.host,
-  port: emailSettings.port,
-  username: emailSettings.username,
-  password: emailSettings.password,
   approvalTemplate: emailSettings.approvalTemplate,
 }))
 
@@ -452,6 +443,22 @@ function saveEmailSettings() {
     success: 'تم حفظ إعدادات البريد بنجاح',
     error: () => settingsStore.error || 'فشل حفظ الإعدادات.',
   })
+}
+
+async function sendTestEmail() {
+  const { post } = useApi()
+  testEmailLoading.value = true
+  try {
+    const body: Record<string, string> = {}
+    if (testEmailAddress.value.trim()) body.test_address = testEmailAddress.value.trim()
+    await post('/admin/settings/email/test', body)
+    toast.success('تم إرسال البريد الاختباري بنجاح')
+  } catch (err: any) {
+    const message = err?.data?.message || err?.message || 'فشل إرسال البريد الاختباري'
+    toast.error(message)
+  } finally {
+    testEmailLoading.value = false
+  }
 }
 
 function saveWorkflowSettings() {
@@ -855,53 +862,6 @@ async function saveBankSecurity() {
             <Separator />
             <div class="space-y-4">
               <h3 class="font-section text-foreground text-sm leading-5 font-semibold">
-                إعدادات الخادم
-              </h3>
-              <div class="grid gap-5 md:grid-cols-2">
-                <FieldGroup>
-                  <FieldLabel>SMTP Host</FieldLabel>
-                  <Input v-model="emailSettings.host" placeholder="smtp.example.com" />
-                </FieldGroup>
-                <FieldGroup>
-                  <FieldLabel>المنفذ (Port)</FieldLabel>
-                  <Input v-model="emailSettings.port" type="number" placeholder="587" />
-                </FieldGroup>
-              </div>
-            </div>
-            <Separator />
-            <div class="space-y-4">
-              <h3 class="font-section text-foreground text-sm leading-5 font-semibold">
-                بيانات الاعتماد
-              </h3>
-              <div class="grid gap-5 md:grid-cols-2">
-                <FieldGroup>
-                  <FieldLabel>اسم المستخدم</FieldLabel>
-                  <Input v-model="emailSettings.username" />
-                </FieldGroup>
-                <FieldGroup>
-                  <FieldLabel>كلمة المرور</FieldLabel>
-                  <div class="relative">
-                    <Input
-                      v-model="emailSettings.password"
-                      :type="showEmailPassword ? 'text' : 'password'"
-                      placeholder="••••••••"
-                      class="pe-10"
-                    />
-                    <button
-                      type="button"
-                      class="text-muted-foreground hover:text-foreground absolute inset-y-0 end-0 flex cursor-pointer items-center px-3 transition-colors"
-                      @click="showEmailPassword = !showEmailPassword"
-                    >
-                      <EyeOff v-if="showEmailPassword" class="h-4 w-4" />
-                      <Eye v-else class="h-4 w-4" />
-                    </button>
-                  </div>
-                </FieldGroup>
-              </div>
-            </div>
-            <Separator />
-            <div class="space-y-4">
-              <h3 class="font-section text-foreground text-sm leading-5 font-semibold">
                 قوالب البريد
               </h3>
               <FieldGroup>
@@ -920,7 +880,26 @@ async function saveBankSecurity() {
                 </p>
               </FieldGroup>
             </div>
-            <div class="flex justify-end">
+            <Separator />
+            <div class="space-y-4">
+              <h3 class="font-section text-foreground text-sm leading-5 font-semibold">
+                اختبار البريد الإلكتروني
+              </h3>
+              <FieldGroup>
+                <FieldLabel>عنوان البريد الاختباري (اختياري)</FieldLabel>
+                <Input
+                  v-model="testEmailAddress"
+                  type="email"
+                  placeholder="اتركه فارغاً لإرسال إلى بريدك الخاص"
+                  :disabled="testEmailLoading"
+                />
+              </FieldGroup>
+            </div>
+            <div class="flex items-center justify-between pt-2">
+              <Button variant="outline" :disabled="testEmailLoading" @click="sendTestEmail">
+                <Loader2 v-if="testEmailLoading" class="ms-2 h-4 w-4 animate-spin" />
+                إرسال بريد اختبار
+              </Button>
               <Button
                 :disabled="!settingsStore.isSectionDirty('email') || settingsStore.saving"
                 @click="saveEmailSettings"
