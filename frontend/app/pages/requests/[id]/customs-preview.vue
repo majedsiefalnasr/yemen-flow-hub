@@ -46,12 +46,12 @@ const metadata = computed(() => {
 
 const bankName = computed(() => {
   const bank = metadata.value.bank as { name?: string; code?: string } | undefined
-  if (!bank) return '—'
-  return bank.code ? `${bank.name} (${bank.code})` : (bank.name ?? '—')
+  if (!bank) return 'غير متاح'
+  return bank.code ? `${bank.name} (${bank.code})` : (bank.name ?? 'غير متاح')
 })
 
 function formatDate(iso: string | null | undefined): string {
-  if (!iso) return '—'
+  if (!iso) return 'غير متاح'
   return new Date(iso).toLocaleDateString('ar-YE', {
     year: 'numeric',
     month: 'long',
@@ -62,7 +62,7 @@ function formatDate(iso: string | null | undefined): string {
 }
 
 function formatAmount(amount: any, currency: any): string {
-  if (amount == null) return '—'
+  if (amount == null) return 'غير متاح'
   return `${Number(amount).toLocaleString('ar-YE')} ${currency ?? ''}`
 }
 
@@ -80,13 +80,13 @@ async function triggerDownload() {
     const url = URL.createObjectURL(blob)
     const anchor = document.createElement('a')
     anchor.href = url
-    anchor.download = `customs-declaration-${declaration.value.declaration_number}.pdf`
+    anchor.download = `fx-confirmation-${declaration.value.declaration_number}.pdf`
     document.body.appendChild(anchor)
     anchor.click()
     anchor.remove()
     URL.revokeObjectURL(url)
   } catch {
-    downloadError.value = 'تعذر تنزيل ملف PDF الرسمي الآن. أعد المحاولة بعد قليل.'
+    downloadError.value = 'تعذّر تنزيل ملف PDF الرسمي الآن. أعد المحاولة بعد قليل.'
   } finally {
     downloading.value = false
   }
@@ -98,21 +98,21 @@ async function triggerDownload() {
     <!-- Loading -->
     <div v-if="loading" class="preview-loading" aria-busy="true" aria-label="جارٍ التحميل">
       <div class="loading-spinner" />
-      <p>جارٍ تنزيل البيان الجمركي…</p>
+      <p>جارٍ تحميل وثيقة تأكيد المصارفة الخارجية...</p>
     </div>
 
-    <!-- 404 — no declaration -->
+    <!-- 404: no confirmation document -->
     <div v-else-if="!loading && !declaration && errorStatus === 404" class="preview-empty">
-      <p class="empty-title">لا يوجد بيان جمركي</p>
-      <p class="empty-body">لم يتم إصدار بيان جمركي لهذا الطلب بعد.</p>
+      <p class="empty-title">لا توجد وثيقة تأكيد مصارفة</p>
+      <p class="empty-body">لم تصدر وثيقة تأكيد المصارفة الخارجية لهذا الطلب بعد.</p>
       <a :href="`/requests/${requestId}`" class="back-link">← العودة إلى الطلب</a>
     </div>
 
     <!-- Other error -->
     <div v-else-if="!loading && !declaration && errorStatus !== 404" class="preview-empty">
-      <p class="empty-title">تعذر فتح البيان الجمركي</p>
+      <p class="empty-title">تعذّر فتح وثيقة التأكيد</p>
       <p class="empty-body">
-        تعذر تنزيل البيان الجمركي الآن. ارجع إلى الطلب ثم أعد المحاولة بعد قليل.
+        تعذّر تحميل وثيقة تأكيد المصارفة الخارجية الآن. ارجع إلى الطلب ثم أعد المحاولة.
       </p>
       <a :href="`/requests/${requestId}`" class="back-link">← العودة إلى الطلب</a>
     </div>
@@ -125,7 +125,7 @@ async function triggerDownload() {
         <div class="action-buttons">
           <button class="btn btn-secondary" @click="triggerPrint">طباعة</button>
           <button class="btn btn-primary" :disabled="downloading" @click="triggerDownload">
-            {{ downloading ? 'جارٍ التنزيل…' : 'تنزيل PDF الرسمي' }}
+            {{ downloading ? 'جارٍ تنزيل الملف...' : 'تنزيل PDF الرسمي' }}
           </button>
         </div>
         <p v-if="downloadError" class="download-error" role="alert">{{ downloadError }}</p>
@@ -142,17 +142,18 @@ async function triggerDownload() {
         <div class="decl-header">
           <div class="decl-logo">CBY</div>
           <h1 class="decl-title">البنك المركزي اليمني</h1>
-          <p class="decl-subtitle">بيان جمركي للإفراج عن تمويل الاستيراد</p>
+          <p class="decl-subtitle">وثيقة تأكيد مصارفة خارجية لتمويل الاستيراد</p>
         </div>
 
         <!-- Meta info -->
         <div class="decl-meta">
-          <p><strong>رقم البيان:</strong> {{ declaration.declaration_number }}</p>
+          <p><strong>رقم الوثيقة:</strong> {{ declaration.declaration_number }}</p>
           <p><strong>تاريخ الإصدار:</strong> {{ formatDate(declaration.issued_at) }}</p>
           <p>
-            <strong>رقم طلب التمويل:</strong> {{ declaration.request?.reference_number ?? '—' }}
+            <strong>رقم طلب التمويل:</strong>
+            {{ declaration.request?.reference_number ?? 'غير متاح' }}
           </p>
-          <p><strong>الجهة المصدرة:</strong> {{ declaration.issuer?.name ?? '—' }}</p>
+          <p><strong>الجهة المصدرة:</strong> {{ declaration.issuer?.name ?? 'غير متاح' }}</p>
         </div>
 
         <!-- Main data table -->
@@ -164,7 +165,7 @@ async function triggerDownload() {
             </tr>
             <tr>
               <th>اسم المورد</th>
-              <td>{{ (metadata.supplier_name as string) ?? '—' }}</td>
+              <td>{{ (metadata.supplier_name as string) ?? 'غير متاح' }}</td>
             </tr>
             <tr>
               <th>المبلغ</th>
@@ -172,11 +173,11 @@ async function triggerDownload() {
             </tr>
             <tr>
               <th>وصف البضائع</th>
-              <td>{{ (metadata.goods_description as string) ?? '—' }}</td>
+              <td>{{ (metadata.goods_description as string) ?? 'غير متاح' }}</td>
             </tr>
             <tr>
               <th>منفذ الدخول</th>
-              <td>{{ (metadata.port_of_entry as string) ?? '—' }}</td>
+              <td>{{ (metadata.port_of_entry as string) ?? 'غير متاح' }}</td>
             </tr>
           </tbody>
         </table>
@@ -189,7 +190,7 @@ async function triggerDownload() {
               <td>{{ formatDate(metadata.bank_approved_at as string | null) }}</td>
             </tr>
             <tr>
-              <th>تاريخ موافقة لجنة الدعم</th>
+              <th>تاريخ موافقة لجنة المساندة</th>
               <td>{{ formatDate(metadata.support_approved_at as string | null) }}</td>
             </tr>
             <tr>
@@ -201,15 +202,15 @@ async function triggerDownload() {
 
         <!-- Official notice -->
         <div class="decl-notice">
-          بناءً على اكتمال الموافقات النظامية والتنفيذية، يصدر هذا البيان الجمركي كوثيقة رسمية
-          نهائية وغير قابلة للتعديل ضمن منصة البنك المركزي اليمني.
+          بناءً على اكتمال الموافقات النظامية والتنفيذية، تصدر وثيقة تأكيد المصارفة الخارجية كوثيقة
+          رسمية نهائية وغير قابلة للتعديل ضمن منصة البنك المركزي اليمني.
         </div>
 
         <!-- Signatures -->
         <div class="decl-signatures">
           <div class="signature-block">
             <p>توقيع مدير اللجنة</p>
-            <p class="signature-name">{{ declaration.issuer?.name ?? '—' }}</p>
+            <p class="signature-name">{{ declaration.issuer?.name ?? 'غير متاح' }}</p>
             <div class="signature-line" />
           </div>
           <div class="signature-block">

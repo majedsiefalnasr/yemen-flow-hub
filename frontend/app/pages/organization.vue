@@ -221,7 +221,7 @@ const bankNotifications = ref([
   {
     id: 'cby_decision',
     label: 'قرار البنك المركزي',
-    description: 'عند موافقة أو رفض لجنة الدعم',
+    description: 'عند موافقة أو رفض لجنة المساندة',
     enabled: true,
   },
   {
@@ -635,7 +635,7 @@ async function saveBankSecurity() {
                 الهوية البصرية
               </h3>
               <p class="text-muted-foreground text-sm">
-                الشعار ولون العلامة — تؤثر على مظهر المنصة لجميع المستخدمين
+                الشعار ولون العلامة يؤثران على مظهر المنصة لجميع المستخدمين.
               </p>
             </div>
             <Separator />
@@ -674,7 +674,7 @@ async function saveBankSecurity() {
                         @change="handleCBYLogoFile"
                       />
                     </label>
-                    <p class="text-muted-foreground text-xs">PNG، SVG، JPG — 2 MB كحد أقصى</p>
+                    <p class="text-muted-foreground text-xs">PNG أو SVG أو JPG، حتى 2 MB</p>
                     <button
                       v-if="orgStore.brandLogoDataUrl"
                       type="button"
@@ -1066,7 +1066,7 @@ async function saveBankSecurity() {
                     @change="handleBankLogoFile"
                   />
                 </label>
-                <p class="text-muted-foreground text-xs">PNG، SVG، JPG — 2 MB كحد أقصى</p>
+                <p class="text-muted-foreground text-xs">PNG أو SVG أو JPG، حتى 2 MB</p>
               </div>
             </div>
 
@@ -1161,7 +1161,7 @@ async function saveBankSecurity() {
                   class="font-mono uppercase"
                   :disabled="!swift.enabled"
                 />
-                <p class="text-muted-foreground text-xs">8 أو 11 حرفاً — رمز SWIFT/BIC المعتمد</p>
+                <p class="text-muted-foreground text-xs">8 أو 11 حرفاً لرمز SWIFT/BIC المعتمد</p>
               </div>
               <div class="space-y-2">
                 <Label>صيغة رسائل SWIFT</Label>
@@ -1170,9 +1170,9 @@ async function saveBankSecurity() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="MT103">MT103 — تحويل عميل</SelectItem>
-                    <SelectItem value="MT202">MT202 — تحويل بين بنوك</SelectItem>
-                    <SelectItem value="MT199">MT199 — رسالة حرة</SelectItem>
+                    <SelectItem value="MT103">MT103: تحويل عميل</SelectItem>
+                    <SelectItem value="MT202">MT202: تحويل بين بنوك</SelectItem>
+                    <SelectItem value="MT199">MT199: رسالة حرة</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -1208,7 +1208,7 @@ async function saveBankSecurity() {
                   </div>
                 </FieldContent>
                 <FieldDescription
-                  >في وضع الاختبار لا تُرسَل رسائل SWIFT الحقيقية — للتطوير والاختبار
+                  >في وضع الاختبار لا تُرسَل رسائل SWIFT الحقيقية. مخصص للتطوير والاختبار
                   فقط</FieldDescription
                 >
               </Field>
@@ -1316,8 +1316,8 @@ async function saveBankSecurity() {
               <div class="space-y-3">
                 <div
                   v-for="(item, key) in {
-                    passwordRequireUppercase: 'تتضمن حروفاً كبيرة (A–Z)',
-                    passwordRequireNumbers: 'تتضمن أرقاماً (0–9)',
+                    passwordRequireUppercase: 'تتضمن حروفاً كبيرة (A-Z)',
+                    passwordRequireNumbers: 'تتضمن أرقاماً (0-9)',
                     passwordRequireSpecial: 'تتضمن رموزاً خاصة (!@#$...)',
                   } as const"
                   :key="key"

@@ -69,7 +69,7 @@ describe('Story 5.7 page smoke tests', () => {
   it('renders /merchants page shell', async () => {
     const page = await import('../../../pages/merchants.vue')
     const html = await renderPage(page.default)
-    expect(html).toContain('التجار')
+    expect(html).toContain('المستوردون')
   })
 
   it('renders /audit page shell', async () => {

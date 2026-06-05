@@ -45,8 +45,8 @@ defineProps<{
         <div class="text-xs">إدارة تنظيم وتمويل الواردات</div>
       </div>
       <div class="text-center">
-        <div class="text-base font-bold">إذن إصدار بيان جمركي</div>
-        <div class="text-xs">Customs Declaration Permit</div>
+        <div class="text-base font-bold">وثيقة تأكيد مصارفة خارجية</div>
+        <div class="text-xs">External FX Confirmation</div>
         <div
           v-if="request.customs_declaration"
           class="mt-1 inline-flex items-center gap-1 rounded border border-green-200 px-2 py-0.5 text-[10px] text-green-700"
@@ -56,9 +56,9 @@ defineProps<{
       </div>
       <div class="text-start text-xs">
         <div>
-          رقم البيان:
+          رقم الوثيقة:
           <span class="font-bold">{{
-            request.customs_declaration?.declaration_number ?? '—'
+            request.customs_declaration?.declaration_number ?? 'غير متاح'
           }}</span>
         </div>
         <div>التاريخ: {{ formatDay(request.customs_declaration?.issued_at) }}</div>
@@ -98,7 +98,7 @@ defineProps<{
                 )
               "
             >
-              {{ request.merchant?.name ?? '—' }}
+              {{ request.merchant?.name ?? 'غير متاح' }}
             </td>
             <td
               :class="
@@ -118,7 +118,7 @@ defineProps<{
                 )
               "
             >
-              {{ request.bank_name ?? '—' }}
+              {{ request.bank_name ?? 'غير متاح' }}
             </td>
           </tr>
           <tr>
@@ -160,7 +160,7 @@ defineProps<{
                 )
               "
             >
-              {{ request.invoice_number ?? '—' }}
+              {{ request.invoice_number ?? 'غير متاح' }}
             </td>
           </tr>
           <tr>
@@ -284,7 +284,7 @@ defineProps<{
                 )
               "
             >
-              {{ request.swift_uploaded_at ? formatDay(request.swift_uploaded_at) : '—' }}
+              {{ request.swift_uploaded_at ? formatDay(request.swift_uploaded_at) : 'غير متاح' }}
             </td>
           </tr>
           <tr>
@@ -346,7 +346,7 @@ defineProps<{
       </div>
       <div class="text-center">
         <div class="mt-12 border-t border-gray-900 pt-2 text-xs print:border-black">
-          تأشيرة الجمارك
+          اعتماد البنك المركزي
         </div>
       </div>
     </section>
@@ -359,8 +359,8 @@ defineProps<{
         )
       "
     >
-      هذه الوثيقة صادرة إلكترونياً من منصة إدارة الواردات — البنك المركزي اليمني. للتحقق من الصحة،
-      يرجى مراجعة سجل المنصة باستخدام رقم البيان.
+      هذه الوثيقة صادرة إلكترونياً من منصة إدارة الواردات في البنك المركزي اليمني. للتحقق من الصحة،
+      يرجى مراجعة سجل المنصة باستخدام رقم الوثيقة.
     </footer>
   </div>
 </template>

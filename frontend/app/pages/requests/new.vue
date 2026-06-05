@@ -85,14 +85,17 @@ function confirmLeave() {
 
 <template>
   <div v-if="cloneForbidden">
-    <PageHeader title="غير مصرح بنسخ الطلب" subtitle="ليس لديك صلاحية نسخ هذا الطلب." />
+    <PageHeader
+      title="لا يمكن نسخ هذا الطلب"
+      subtitle="لا تملك صلاحية إنشاء نسخة من هذا الطلب. ارجع إلى قائمة الطلبات أو اختر طلبا ضمن نطاق صلاحياتك."
+    />
     <Card class="border-0 p-6 shadow">
       <Button variant="outline" @click="router.push('/requests')">العودة لقائمة الطلبات</Button>
     </Card>
   </div>
 
   <div v-else-if="cloningInProgress">
-    <PageHeader title="جارٍ إنشاء النسخة..." />
+    <PageHeader title="جارٍ إنشاء نسخة من الطلب..." />
   </div>
 
   <RequestWizard
@@ -104,8 +107,8 @@ function confirmLeave() {
 
   <div v-else>
     <PageHeader
-      title="غير مصرح بإنشاء طلب"
-      subtitle="هذه الصفحة متاحة لمدخل البيانات أو مسؤول البنك فقط."
+      title="لا يمكن إنشاء طلب جديد"
+      subtitle="إنشاء طلبات تمويل الواردات متاح لمدخل البيانات أو مسؤول البنك فقط."
     />
     <Card class="border-0 p-6 shadow">
       <Button variant="outline" @click="router.push('/requests')">العودة لقائمة الطلبات</Button>
@@ -117,17 +120,17 @@ function confirmLeave() {
       <AlertDialogHeader>
         <AlertDialogTitle>مغادرة صفحة الطلب الجديد؟</AlertDialogTitle>
         <AlertDialogDescription>
-          لديك بيانات غير محفوظة في هذا الطلب. إذا غادرت الآن ستفقد ما أدخلته — يمكنك حفظه كمسودة
-          أولاً.
+          لديك بيانات غير محفوظة في هذا الطلب. احفظ الطلب كمسودة قبل المغادرة إذا أردت الاحتفاظ بما
+          أدخلته.
         </AlertDialogDescription>
       </AlertDialogHeader>
       <AlertDialogFooter>
-        <AlertDialogCancel @click="cancelLeave">البقاء والحفظ</AlertDialogCancel>
+        <AlertDialogCancel @click="cancelLeave">البقاء في الطلب</AlertDialogCancel>
         <AlertDialogAction
           class="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           @click="confirmLeave"
         >
-          مغادرة بدون حفظ
+          مغادرة دون حفظ
         </AlertDialogAction>
       </AlertDialogFooter>
     </AlertDialogContent>

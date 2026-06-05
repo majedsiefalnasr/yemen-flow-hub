@@ -324,7 +324,7 @@ const bankBreakdownColumns: ColumnDef<{
 
     <!-- Error State -->
     <Alert v-if="store.error" variant="destructive" role="alert">
-      <AlertTitle>تعذر تحميل التقارير</AlertTitle>
+      <AlertTitle>تعذّر تحميل التقارير</AlertTitle>
       <AlertDescription>{{ store.error }}</AlertDescription>
       <AlertAction>
         <Button variant="outline" size="sm" @click="retry">إعادة المحاولة</Button>
@@ -343,8 +343,10 @@ const bankBreakdownColumns: ColumnDef<{
           <Input id="to-date" v-model="toDate" type="date" class="filter-input" />
         </div>
         <div class="filter-actions">
-          <Button :disabled="store.loading" @click="applyFilters"> تطبيق </Button>
-          <Button variant="outline" :disabled="store.loading" @click="clearFilters"> مسح </Button>
+          <Button :disabled="store.loading" @click="applyFilters"> تطبيق الفترة </Button>
+          <Button variant="outline" :disabled="store.loading" @click="clearFilters">
+            مسح الفترة
+          </Button>
         </div>
       </div>
 
@@ -372,18 +374,18 @@ const bankBreakdownColumns: ColumnDef<{
         </div>
         <div class="save-preset">
           <Button v-if="!showPresetForm" variant="ghost" @click="showPresetForm = true">
-            حفظ الفلتر الحالي
+            حفظ الفترة الحالية
           </Button>
           <div v-else class="preset-form">
             <Input
               v-model="presetName"
               type="text"
               class="filter-input preset-name-input"
-              placeholder="اسم الفلتر"
+              placeholder="اسم الفترة المحفوظة"
               maxlength="50"
               @keydown.enter="handleSavePreset"
             />
-            <Button size="sm" @click="handleSavePreset">حفظ</Button>
+            <Button size="sm" @click="handleSavePreset">حفظ الفترة</Button>
             <Button variant="ghost" size="sm" @click="showPresetForm = false">إلغاء</Button>
           </div>
         </div>
@@ -420,14 +422,16 @@ const bankBreakdownColumns: ColumnDef<{
             :value="
               kpiData.totalFinancingValue != null
                 ? formatFinancing(kpiData.totalFinancingValue)
-                : '—'
+                : 'غير متاح'
             "
             tone="success"
             :clickable="false"
           />
           <MetricCard
             label="متوسط وقت المعالجة"
-            :value="kpiData.avgProcessingHours != null ? `${kpiData.avgProcessingHours} ساعة` : '—'"
+            :value="
+              kpiData.avgProcessingHours != null ? `${kpiData.avgProcessingHours} ساعة` : 'غير متاح'
+            "
             tone="voting"
             :clickable="false"
           />
@@ -439,7 +443,9 @@ const bankBreakdownColumns: ColumnDef<{
           />
           <MetricCard
             label="الفواتير المكررة"
-            :value="kpiData.duplicateInvoiceCount != null ? kpiData.duplicateInvoiceCount : '—'"
+            :value="
+              kpiData.duplicateInvoiceCount != null ? kpiData.duplicateInvoiceCount : 'غير متاح'
+            "
             tone="warning"
             :clickable="false"
           />
@@ -562,7 +568,7 @@ const bankBreakdownColumns: ColumnDef<{
 
       <!-- Empty State -->
       <div v-if="!store.workflowReport && !store.bankReport && !store.error" class="empty-state">
-        <p>لا توجد بيانات متاحة للفترة المحددة.</p>
+        <p>لا توجد بيانات تقارير للفترة المحددة. غيّر الفترة أو امسح الفلاتر.</p>
       </div>
     </template>
   </div>

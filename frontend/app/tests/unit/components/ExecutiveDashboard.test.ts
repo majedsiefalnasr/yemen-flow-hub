@@ -163,8 +163,8 @@ describe('ExecutiveDashboard — mixed queue composition', () => {
   })
 })
 
-describe('ExecutiveDashboard — director customs pending section', () => {
-  it('shows customs declaration pending section when director stats include requests', () => {
+describe('ExecutiveDashboard - director external FX confirmation pending section', () => {
+  it('shows external FX confirmation pending section when director stats include requests', () => {
     const stats: ExecutiveDashboardStats = {
       waiting_for_voting_open: 0,
       active_voting_sessions: 0,
@@ -178,7 +178,7 @@ describe('ExecutiveDashboard — director customs pending section', () => {
     expect(shouldShowCustomsDeclarationPending(stats)).toBe(true)
   })
 
-  it('hides customs declaration pending rows when list is absent or empty', () => {
+  it('hides external FX confirmation pending rows when list is absent or empty', () => {
     const stats: ExecutiveDashboardStats = {
       waiting_for_voting_open: 0,
       active_voting_sessions: 0,

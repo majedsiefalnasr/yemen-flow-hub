@@ -150,7 +150,7 @@ const isBankAdmin = computed(() => user.value?.role === UserRole.BANK_ADMIN)
 const canManage = computed(() => isBankAdmin.value || isCbyAdmin.value)
 
 function bankName(id?: number | null) {
-  return banks.value.find((b) => b.id === id)?.name_ar ?? '—'
+  return banks.value.find((b) => b.id === id)?.name_ar ?? 'غير محدد'
 }
 
 const scoped = computed(() => {
@@ -240,16 +240,16 @@ function detectDuplicates(data: MerchantFormData): string[] {
   const reasons: string[] = []
   const nameLower = data.name.trim().toLowerCase()
   if (scopedMerchants.some((m) => m.name.trim().toLowerCase() === nameLower)) {
-    reasons.push(`اسم التاجر "${data.name}" مسجّل مسبقاً لدى هذا البنك`)
+    reasons.push(`اسم المستورد "${data.name}" مسجّل مسبقا لدى هذا البنك`)
   }
   if (
     data.commercial_register &&
     scopedMerchants.some((m) => m.commercial_register === data.commercial_register.trim())
   ) {
-    reasons.push(`رقم السجل التجاري "${data.commercial_register}" مسجّل مسبقاً`)
+    reasons.push(`رقم السجل التجاري "${data.commercial_register}" مسجّل مسبقا`)
   }
   if (data.tax_number && scopedMerchants.some((m) => m.tax_number === data.tax_number.trim())) {
-    reasons.push(`الرقم الضريبي "${data.tax_number}" مسجّل مسبقاً`)
+    reasons.push(`الرقم الضريبي "${data.tax_number}" مسجّل مسبقا`)
   }
   return reasons
 }
@@ -269,7 +269,7 @@ async function doCreateMerchant(data: MerchantFormData) {
   const created = await createMerchant({ ...data, bank_id: data.bank_id ?? undefined })
   merchants.value = [created, ...merchants.value]
   createOpen.value = false
-  notify(`تم تسجيل التاجر "${created.name}"`)
+  notify(`تم تسجيل المستورد "${created.name}"`)
 }
 
 async function confirmDuplicateAndSave() {
@@ -291,7 +291,7 @@ async function saveEdit(data: MerchantFormData) {
   const updated = await updateMerchant(editing.value.id, data)
   merchants.value = merchants.value.map((m) => (m.id === updated.id ? updated : m))
   editing.value = null
-  notify('تم تحديث بيانات التاجر')
+  notify('تم تحديث بيانات المستورد')
 }
 
 const rowSelection = ref<Record<string, boolean>>({})
@@ -372,7 +372,7 @@ const columns: ColumnDef<Merchant>[] = [
         h(Checkbox, {
           modelValue: row.getIsSelected(),
           'onUpdate:modelValue': (v: boolean | 'indeterminate') => row.toggleSelected(!!v),
-          'aria-label': 'تحديد التاجر',
+          'aria-label': 'تحديد المستورد',
         }),
       ]),
     enableSorting: false,
@@ -380,7 +380,7 @@ const columns: ColumnDef<Merchant>[] = [
   },
   {
     accessorKey: 'name',
-    header: 'التاجر',
+    header: 'المستورد',
     cell: ({ row }) =>
       h(
         'button',
@@ -404,7 +404,7 @@ const columns: ColumnDef<Merchant>[] = [
       h(
         'span',
         { class: 'text-sm text-muted-foreground' },
-        row.original.commercial_register ?? '—',
+        row.original.commercial_register ?? 'غير محدد',
       ),
   },
   {
@@ -414,14 +414,18 @@ const columns: ColumnDef<Merchant>[] = [
       h(
         'span',
         { class: 'text-sm tabular-nums text-muted-foreground' },
-        row.original.tax_number ?? '—',
+        row.original.tax_number ?? 'غير محدد',
       ),
   },
   {
     accessorKey: 'business_type',
     header: 'القطاع',
     cell: ({ row }) =>
-      h('span', { class: 'text-sm text-muted-foreground' }, row.original.business_type ?? '—'),
+      h(
+        'span',
+        { class: 'text-sm text-muted-foreground' },
+        row.original.business_type ?? 'غير محدد',
+      ),
   },
   {
     id: 'bank',
@@ -548,7 +552,7 @@ const columns: ColumnDef<Merchant>[] = [
 ]
 
 const MERCHANT_COLUMN_LABELS: Record<string, string> = {
-  name: 'التاجر',
+  name: 'المستورد',
   commercial_register: 'السجل التجاري',
   tax_number: 'الرقم الضريبي',
   business_type: 'القطاع',
@@ -566,7 +570,7 @@ const bankFilterOptions = computed(() =>
 )
 
 const exportCols = [
-  { key: 'name', label: 'التاجر' },
+  { key: 'name', label: 'المستورد' },
   { key: 'commercial_register', label: 'السجل التجاري' },
   { key: 'tax_number', label: 'الرقم الضريبي' },
   { key: 'business_type', label: 'القطاع' },
@@ -650,18 +654,18 @@ function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
 <template>
   <div v-if="user && canManage">
     <PageHeader
-      title="التجار"
+      title="المستوردون"
       :subtitle="
         isCbyAdmin
-          ? 'عرض جميع التجار المسجّلين على المنصّة مع البنوك التابعة لها'
-          : 'تسجيل ومتابعة التجار والمستوردين المرتبطين بالبنك'
+          ? 'عرض جميع المستوردين المسجلين على المنصة مع البنوك التابعة لهم'
+          : 'تسجيل ومتابعة المستوردين المرتبطين بالبنك'
       "
-      :breadcrumbs="[{ label: 'الرئيسية', to: '/' }, { label: 'التجار' }]"
+      :breadcrumbs="[{ label: 'الرئيسية', to: '/' }, { label: 'المستوردون' }]"
     >
       <template v-if="isBankAdmin" #actions>
         <Button size="sm" class="h-8" @click="createOpen = true">
           <Plus class="h-4 w-4" />
-          <span class="hidden lg:inline">تاجر جديد</span>
+          <span class="hidden lg:inline">مستورد جديد</span>
         </Button>
       </template>
     </PageHeader>
@@ -728,7 +732,7 @@ function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
         <div class="flex items-center gap-3 px-4">
           <AlertTriangle class="h-4 w-4 shrink-0 text-[var(--severity-amber)]" aria-hidden="true" />
           <span class="flex-1 text-sm font-medium">
-            {{ riskSummary.crossBank }} تاجر يظهر في أكثر من بنك — مراجعة مخاطر التكرار مطلوبة
+            {{ riskSummary.crossBank }} مستورد يظهر في أكثر من بنك. مراجعة مخاطر التكرار مطلوبة.
           </span>
         </div>
       </Card>
@@ -740,7 +744,7 @@ function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
         <div class="flex items-center gap-3 px-4">
           <AlertTriangle class="h-4 w-4 shrink-0 text-[var(--severity-amber)]" aria-hidden="true" />
           <span class="flex-1 text-sm font-medium">
-            {{ riskSummary.missingData }} تاجر ببيانات ناقصة (سجل تجاري أو رقم ضريبي)
+            {{ riskSummary.missingData }} مستورد ببيانات ناقصة، سجل تجاري أو رقم ضريبي.
           </span>
         </div>
       </Card>
@@ -766,7 +770,7 @@ function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
           <template #toolbar="{ table: dataTable }">
             <DataTableToolbar
               :table="dataTable"
-              search-placeholder="بحث برقم السجل، الرقم الضريبي، أو الاسم..."
+              search-placeholder="بحث بالاسم، السجل التجاري، أو الرقم الضريبي"
               :has-filters="hasActiveFilters"
               :selected-count="selectedCount"
               @update:search="(v) => (query = v)"
@@ -815,7 +819,9 @@ function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
                   <SearchX class="size-5" />
                 </div>
                 <EmptyTitle>
-                  {{ merchants.length === 0 ? 'لا يوجد تجار مسجّلون بعد' : 'لا توجد تجار مطابقون' }}
+                  {{
+                    merchants.length === 0 ? 'لا يوجد مستوردون مسجلون بعد' : 'لا توجد نتائج مطابقة'
+                  }}
                 </EmptyTitle>
               </EmptyHeader>
               <EmptyContent>
@@ -823,8 +829,8 @@ function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
                   {{
                     merchants.length === 0
                       ? isCbyAdmin
-                        ? 'لم يتم تسجيل أي تجار عبر البنوك حتى الآن.'
-                        : 'ابدأ بتسجيل أول تاجر أو مستورد باستخدام زر "تاجر جديد" أعلاه.'
+                        ? 'لم يتم تسجيل أي مستوردين عبر البنوك حتى الآن.'
+                        : 'ابدأ بتسجيل أول مستورد باستخدام زر "مستورد جديد" أعلاه.'
                       : 'جرّب إزالة فلتر الحالة أو البنك، أو تغيير نص البحث.'
                   }}
                 </EmptyDescription>
@@ -872,15 +878,17 @@ function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
                   <SearchX class="size-5" />
                 </div>
                 <EmptyTitle>
-                  {{ merchants.length === 0 ? 'لا يوجد تجار مسجّلون بعد' : 'لا توجد تجار مطابقون' }}
+                  {{
+                    merchants.length === 0 ? 'لا يوجد مستوردون مسجلون بعد' : 'لا توجد نتائج مطابقة'
+                  }}
                 </EmptyTitle>
               </EmptyHeader>
               <EmptyContent>
                 <EmptyDescription>
                   {{
                     merchants.length === 0
-                      ? 'ابدأ بتسجيل أول تاجر أو مستورد باستخدام زر "تاجر جديد" أعلاه.'
-                      : 'جرّب تغيير البحث أو فلتر الحالة لعرض المزيد من التجار.'
+                      ? 'ابدأ بتسجيل أول مستورد باستخدام زر "مستورد جديد" أعلاه.'
+                      : 'جرّب تغيير البحث أو فلتر الحالة لعرض المزيد من المستوردين.'
                   }}
                 </EmptyDescription>
               </EmptyContent>
@@ -915,7 +923,7 @@ function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
               {{ merchant.name }}
             </div>
             <div class="text-muted-foreground text-xs leading-5">
-              {{ merchant.business_type ?? '—' }}
+              {{ merchant.business_type ?? 'غير محدد' }}
             </div>
             <div class="mt-4 space-y-1.5 text-xs">
               <div class="flex justify-between gap-2">
@@ -923,7 +931,7 @@ function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
                   >السجل التجاري</span
                 >
                 <span class="text-foreground leading-5 font-medium">{{
-                  merchant.commercial_register ?? '—'
+                  merchant.commercial_register ?? 'غير محدد'
                 }}</span>
               </div>
               <div class="flex justify-between gap-2">
@@ -931,7 +939,7 @@ function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
                   >الرقم الضريبي</span
                 >
                 <span class="text-foreground leading-5 font-medium">{{
-                  merchant.tax_number ?? '—'
+                  merchant.tax_number ?? 'غير محدد'
                 }}</span>
               </div>
               <div class="flex justify-between gap-2">
@@ -945,13 +953,13 @@ function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
                   >العنوان</span
                 >
                 <span class="text-foreground text-end leading-5 font-medium">{{
-                  merchant.address ?? '—'
+                  merchant.address ?? 'غير محدد'
                 }}</span>
               </div>
               <div class="flex justify-between gap-2">
                 <span class="font-section text-muted-foreground leading-5 font-medium">هاتف</span>
                 <span class="text-foreground leading-5 font-medium">{{
-                  merchant.phone ?? '—'
+                  merchant.phone ?? 'غير محدد'
                 }}</span>
               </div>
             </div>
@@ -980,7 +988,7 @@ function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
 
     <Dialog v-model:open="createOpen">
       <MerchantDialog
-        title="تسجيل تاجر جديد"
+        title="تسجيل مستورد جديد"
         :banks="banks"
         :default-bank-id="user?.bank_id"
         :lock-bank="Boolean(user?.bank_id && !isCbyAdmin)"
@@ -991,7 +999,7 @@ function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
     <Dialog :open="Boolean(editing)" @update:open="(v) => !v && (editing = null)">
       <MerchantDialog
         v-if="editing"
-        title="تعديل بيانات التاجر"
+        title="تعديل بيانات المستورد"
         :banks="banks"
         :initial="merchantToForm(editing)"
         :default-bank-id="user?.bank_id"
@@ -1013,7 +1021,7 @@ function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
             {{ viewing.name }}
           </DialogTitle>
           <DialogDescription>
-            {{ isCbyAdmin ? 'ملف التاجر — عرض رقابي' : 'تفاصيل التاجر — عرض فقط' }}
+            {{ isCbyAdmin ? 'ملف المستورد، عرض رقابي' : 'تفاصيل المستورد، عرض فقط' }}
           </DialogDescription>
         </DialogHeader>
 
@@ -1057,15 +1065,15 @@ function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
               <div class="grid grid-cols-2 gap-3 text-sm">
                 <div class="space-y-0.5">
                   <div class="text-muted-foreground text-xs">السجل التجاري</div>
-                  <div class="font-medium">{{ viewing.commercial_register ?? '—' }}</div>
+                  <div class="font-medium">{{ viewing.commercial_register ?? 'غير محدد' }}</div>
                 </div>
                 <div class="space-y-0.5">
                   <div class="text-muted-foreground text-xs">الرقم الضريبي</div>
-                  <div class="font-medium">{{ viewing.tax_number ?? '—' }}</div>
+                  <div class="font-medium">{{ viewing.tax_number ?? 'غير محدد' }}</div>
                 </div>
                 <div class="space-y-0.5">
                   <div class="text-muted-foreground text-xs">القطاع</div>
-                  <div class="font-medium">{{ viewing.business_type ?? '—' }}</div>
+                  <div class="font-medium">{{ viewing.business_type ?? 'غير محدد' }}</div>
                 </div>
                 <div class="space-y-0.5">
                   <div class="text-muted-foreground text-xs">عدد المعاملات</div>
@@ -1075,15 +1083,15 @@ function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
                 </div>
                 <div class="col-span-2 space-y-0.5">
                   <div class="text-muted-foreground text-xs">العنوان</div>
-                  <div class="font-medium">{{ viewing.address ?? '—' }}</div>
+                  <div class="font-medium">{{ viewing.address ?? 'غير محدد' }}</div>
                 </div>
                 <div class="space-y-0.5">
                   <div class="text-muted-foreground text-xs">هاتف</div>
-                  <div class="font-medium">{{ viewing.phone ?? '—' }}</div>
+                  <div class="font-medium">{{ viewing.phone ?? 'غير محدد' }}</div>
                 </div>
                 <div class="space-y-0.5">
                   <div class="text-muted-foreground text-xs">البريد</div>
-                  <div class="font-medium">{{ viewing.email ?? '—' }}</div>
+                  <div class="font-medium">{{ viewing.email ?? 'غير محدد' }}</div>
                 </div>
               </div>
             </Card>
@@ -1125,7 +1133,7 @@ function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
           <!-- CBY Admin: view-only footer -->
           <div class="border-t pt-3">
             <p class="text-muted-foreground text-xs">
-              عرض رقابي — لا تتاح إجراءات التعديل لمسؤول البنك المركزي
+              عرض رقابي. لا تتاح إجراءات التعديل لمسؤول البنك المركزي.
             </p>
           </div>
         </template>
@@ -1135,15 +1143,15 @@ function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
           <div class="grid gap-3 py-1 text-sm sm:grid-cols-2">
             <div class="space-y-0.5">
               <div class="text-muted-foreground text-xs">السجل التجاري</div>
-              <div class="font-medium">{{ viewing.commercial_register ?? '—' }}</div>
+              <div class="font-medium">{{ viewing.commercial_register ?? 'غير محدد' }}</div>
             </div>
             <div class="space-y-0.5">
               <div class="text-muted-foreground text-xs">الرقم الضريبي</div>
-              <div class="font-medium">{{ viewing.tax_number ?? '—' }}</div>
+              <div class="font-medium">{{ viewing.tax_number ?? 'غير محدد' }}</div>
             </div>
             <div class="space-y-0.5">
               <div class="text-muted-foreground text-xs">القطاع</div>
-              <div class="font-medium">{{ viewing.business_type ?? '—' }}</div>
+              <div class="font-medium">{{ viewing.business_type ?? 'غير محدد' }}</div>
             </div>
             <div class="space-y-0.5">
               <div class="text-muted-foreground text-xs">الحالة</div>
@@ -1167,11 +1175,11 @@ function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
             </div>
             <div class="space-y-0.5 sm:col-span-2">
               <div class="text-muted-foreground text-xs">العنوان</div>
-              <div class="font-medium">{{ viewing.address ?? '—' }}</div>
+              <div class="font-medium">{{ viewing.address ?? 'غير محدد' }}</div>
             </div>
             <div class="space-y-0.5 sm:col-span-2">
               <div class="text-muted-foreground text-xs">هاتف التواصل</div>
-              <div class="font-medium">{{ viewing.phone ?? '—' }}</div>
+              <div class="font-medium">{{ viewing.phone ?? 'غير محدد' }}</div>
             </div>
           </div>
 
@@ -1206,23 +1214,23 @@ function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
             <AlertTriangle class="h-5 w-5 flex-shrink-0" aria-hidden="true" />
             <span class="text-sm font-semibold">تحذير: احتمال تكرار بيانات</span>
           </div>
-          <AlertDialogTitle>تاجر مشابه موجود مسبقاً</AlertDialogTitle>
+          <AlertDialogTitle>مستورد مشابه موجود مسبقا</AlertDialogTitle>
           <AlertDialogDescription class="space-y-2">
-            <p>تم اكتشاف تشابه مع سجلات تجار موجودة:</p>
+            <p>تم اكتشاف تشابه مع سجلات مستوردين موجودة:</p>
             <ul class="text-foreground list-disc space-y-1 ps-4 text-xs">
               <li v-for="reason in duplicateWarningReasons" :key="reason">{{ reason }}</li>
             </ul>
             <p class="text-muted-foreground text-xs">
-              يمكنك إلغاء العملية ومراجعة البيانات، أو تأكيد الإضافة إذا كان التاجر مختلفاً فعلاً.
+              راجع البيانات قبل الإضافة. يمكنك المتابعة فقط إذا كان المستورد مختلفا فعلا.
             </p>
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel @click="cancelDuplicateSave">
-            إلغاء — مراجعة البيانات
+            إلغاء ومراجعة البيانات
           </AlertDialogCancel>
           <AlertDialogAction data-testid="duplicate-confirm-btn" @click="confirmDuplicateAndSave">
-            تأكيد الإضافة رغم التشابه
+            إضافة المستورد رغم التشابه
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
@@ -1230,9 +1238,9 @@ function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
   </div>
 
   <div v-else>
-    <PageHeader title="التجار" subtitle="هذه الصفحة متاحة لمسؤول النظام أو مسؤول البنك فقط." />
+    <PageHeader title="المستوردون" subtitle="هذه الصفحة متاحة لمسؤول النظام أو مسؤول البنك فقط." />
     <Card class="border-0 p-6 shadow">
-      <div class="text-muted-foreground text-sm">لا تملك صلاحية الوصول إلى التجار.</div>
+      <div class="text-muted-foreground text-sm">لا تملك صلاحية الوصول إلى المستوردين.</div>
     </Card>
   </div>
 </template>

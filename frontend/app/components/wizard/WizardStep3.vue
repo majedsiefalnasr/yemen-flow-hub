@@ -48,25 +48,25 @@ const SUPPORTING_ZONES: DocumentZone[] = [
   {
     key: 'proforma_invoice',
     title: 'الفاتورة الأولية (Proforma Invoice)',
-    description: 'الفاتورة الأولية من المورد الخارجي',
+    description: 'ملف PDF للفاتورة الأولية الصادرة من المورد الخارجي.',
     required: true,
   },
   {
     key: 'commercial_register',
     title: 'السجل التجاري',
-    description: 'نسخة سارية من السجل التجاري للمستورد',
+    description: 'نسخة PDF سارية من السجل التجاري للمستورد.',
     required: true,
   },
   {
     key: 'tax_card',
     title: 'البطاقة الضريبية',
-    description: 'نسخة سارية من البطاقة الضريبية للمستورد',
+    description: 'نسخة PDF سارية من البطاقة الضريبية للمستورد.',
     required: true,
   },
   {
     key: 'extra_docs',
     title: 'مستندات إضافية',
-    description: 'أي مستندات داعمة أخرى (اختياري)',
+    description: 'أي مستندات داعمة أخرى بصيغة PDF، عند الحاجة.',
     required: false,
   },
 ]
@@ -143,7 +143,9 @@ function getFileError(key: WizardDocumentKey): string | null {
   return (
     fileErrors.value[key] ??
     props.errors[key] ??
-    (props.uploadState[key] === 'error' ? 'تعذّر رفع الملف، يرجى إعادة المحاولة.' : null)
+    (props.uploadState[key] === 'error'
+      ? 'تعذّر رفع الملف. أعد اختيار ملف PDF وحاول مرة أخرى.'
+      : null)
   )
 }
 
@@ -165,7 +167,7 @@ async function downloadTemplate(): Promise<void> {
     anchor.remove()
     URL.revokeObjectURL(url)
   } catch {
-    toast.error('تعذر تحميل النموذج. أعد المحاولة.')
+    toast.error('تعذّر تحميل نموذج طلب التأكيد. أعد المحاولة.')
   }
 }
 
@@ -235,10 +237,10 @@ function triggerInput(key: WizardDocumentKey): void {
                     />
                   </div>
                   <div>
-                    <p class="text-foreground text-sm font-medium">اسحب وأفلت الملف هنا</p>
+                    <p class="text-foreground text-sm font-medium">أرفق ملف PDF</p>
                     <p class="text-muted-foreground mt-0.5 text-xs">
-                      أو <span class="text-primary font-medium">اضغط للاختيار</span>، PDF فقط، حتى
-                      {{ MAX_SIZE_MB }}MB
+                      اسحب الملف هنا أو <span class="text-primary font-medium">اضغط للاختيار</span>،
+                      PDF فقط، حتى {{ MAX_SIZE_MB }}MB
                     </p>
                   </div>
                 </div>
@@ -290,7 +292,7 @@ function triggerInput(key: WizardDocumentKey): void {
                     aria-hidden="true"
                   />
                 </div>
-                <p class="text-muted-foreground flex-1 text-sm">جارٍ الرفع...</p>
+                <p class="text-muted-foreground flex-1 text-sm">جارٍ رفع الملف...</p>
               </div>
               <FieldError v-if="getFileError(zone.key)" class="mt-1">
                 <AlertTriangle class="me-1 inline h-3 w-3" aria-hidden="true" />
@@ -322,10 +324,11 @@ function triggerInput(key: WizardDocumentKey): void {
         />
         <div class="min-w-0 flex-1">
           <p class="text-foreground text-sm font-semibold">
-            نموذج طلب وثيقة التأكيد: مطلوب قبل الإرسال
+            نموذج طلب التأكيد البنكي مطلوب قبل الإرسال
           </p>
           <p class="text-muted-foreground mt-1 text-xs">
-            حمّل النموذج المعبأ بالبيانات، اطبعه واختمه بختم البنك، ثم ارفعه في الحقل المخصص أدناه.
+            بعد إرفاق المستندات الإلزامية، حمّل النموذج المعبأ ببيانات الطلب، اطبعه واختمه بختم
+            البنك، ثم ارفعه في الحقل المخصص أدناه.
           </p>
           <!-- Hint shown until all required docs are ready -->
           <p
@@ -333,7 +336,7 @@ function triggerInput(key: WizardDocumentKey): void {
             class="mt-1.5 text-xs font-medium text-[var(--severity-amber)]"
           >
             <AlertTriangle class="me-1 inline h-3 w-3" aria-hidden="true" />
-            أرفق المستندات الإلزامية أعلاه أولاً لتفعيل تحميل النموذج
+            أرفق المستندات الإلزامية أولا لتفعيل تحميل النموذج.
           </p>
         </div>
         <Button
@@ -345,7 +348,7 @@ function triggerInput(key: WizardDocumentKey): void {
           @click="downloadTemplate"
         >
           <FileDown class="me-1 h-4 w-4" />
-          <span v-if="!templateReady">جارٍ التحضير...</span>
+          <span v-if="!templateReady">جارٍ تجهيز النموذج...</span>
           <span v-else>تحميل النموذج</span>
         </Button>
       </CardContent>
@@ -355,12 +358,10 @@ function triggerInput(key: WizardDocumentKey): void {
     <FieldGroup class="mt-4">
       <FieldSet>
         <div class="mb-1 flex items-center gap-2">
-          <FieldLegend class="mb-0">طلب وثيقة التأكيد (مختوم)</FieldLegend>
+          <FieldLegend class="mb-0">طلب التأكيد البنكي المختوم</FieldLegend>
           <Badge variant="destructive" class="rounded-full text-xs">إلزامي</Badge>
         </div>
-        <FieldDescription
-          >حمّل النموذج أدناه، اطبعه، اختمه بختم البنك ثم ارفعه هنا</FieldDescription
-        >
+        <FieldDescription>ارفع النسخة المختومة من نموذج طلب التأكيد بصيغة PDF.</FieldDescription>
         <FieldGroup>
           <Field>
             <input
@@ -384,7 +385,7 @@ function triggerInput(key: WizardDocumentKey): void {
                   : 'border-border bg-muted/20 cursor-not-allowed opacity-50'
               "
               role="button"
-              :aria-label="'رفع طلب وثيقة التأكيد'"
+              :aria-label="'رفع طلب التأكيد البنكي المختوم'"
               :aria-disabled="!requiredDocsReady || loading"
               :tabindex="requiredDocsReady ? 0 : -1"
               @dragover="
@@ -409,10 +410,10 @@ function triggerInput(key: WizardDocumentKey): void {
                   <Upload class="text-muted-foreground h-5 w-5" aria-hidden="true" />
                 </div>
                 <div>
-                  <p class="text-foreground text-sm font-medium">اسحب وأفلت الملف هنا</p>
+                  <p class="text-foreground text-sm font-medium">أرفق نموذج التأكيد المختوم</p>
                   <p class="text-muted-foreground mt-0.5 text-xs">
-                    أو <span class="text-primary font-medium">اضغط للاختيار</span>، PDF فقط، حتى
-                    {{ MAX_SIZE_MB }}MB
+                    اسحب الملف هنا أو <span class="text-primary font-medium">اضغط للاختيار</span>،
+                    PDF فقط، حتى {{ MAX_SIZE_MB }}MB
                   </p>
                 </div>
               </div>
@@ -444,7 +445,7 @@ function triggerInput(key: WizardDocumentKey): void {
                 variant="ghost"
                 size="icon"
                 class="text-muted-foreground hover:text-destructive h-7 w-7 flex-shrink-0"
-                aria-label="إزالة طلب وثيقة التأكيد"
+                aria-label="إزالة طلب التأكيد البنكي المختوم"
                 :disabled="loading"
                 @click.stop="removeFile('confirmation_request')"
               >
@@ -461,7 +462,7 @@ function triggerInput(key: WizardDocumentKey): void {
               >
                 <FileText class="text-muted-foreground h-5 w-5 animate-pulse" aria-hidden="true" />
               </div>
-              <p class="text-muted-foreground flex-1 text-sm">جارٍ الرفع...</p>
+              <p class="text-muted-foreground flex-1 text-sm">جارٍ رفع الملف...</p>
             </div>
             <FieldError v-if="getFileError('confirmation_request')" class="mt-1">
               <AlertTriangle class="me-1 inline h-3 w-3" aria-hidden="true" />

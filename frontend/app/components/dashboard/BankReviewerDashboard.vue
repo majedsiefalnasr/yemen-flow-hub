@@ -122,7 +122,7 @@ const reviewQueueColumns: ColumnDef<ReviewerQueueRow>[] = [
     cell: ({ row }) =>
       isCreatedByCurrentUser(row.original.created_by)
         ? h('span', { class: 'text-[var(--severity-amber)] font-medium' }, 'أنا')
-        : h('span', row.original.created_by_user?.name ?? '—'),
+        : h('span', row.original.created_by_user?.name ?? 'غير متاح'),
   },
   { accessorKey: 'supplier_name', header: 'المورد' },
   {
@@ -196,7 +196,7 @@ const downstreamQueueColumns: ColumnDef<DownstreamQueueRow>[] = [
   {
     id: 'stage',
     header: 'المرحلة الحالية',
-    cell: ({ row }) => h('span', STATUS_LABELS[row.original.status] ?? '—'),
+    cell: ({ row }) => h('span', STATUS_LABELS[row.original.status] ?? 'غير متاح'),
   },
   {
     id: 'status',

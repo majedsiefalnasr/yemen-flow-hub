@@ -15,7 +15,7 @@ const emit = defineEmits<{
 }>()
 
 function metaVal(val: string | null | undefined): string {
-  return val ?? '—'
+  return val ?? 'غير محدد'
 }
 
 function businessTypeLabel(type: string | null | undefined): string {
@@ -27,7 +27,7 @@ function businessTypeLabel(type: string | null | undefined): string {
     manufacturing: 'تصنيع',
     services: 'خدمات',
   }
-  return type ? (MAP[type] ?? type) : '—'
+  return type ? (MAP[type] ?? type) : 'غير محدد'
 }
 </script>
 
@@ -110,8 +110,8 @@ function businessTypeLabel(type: string | null | undefined): string {
           variant="ghost"
           size="sm"
           class="h-8 w-8 p-0"
-          :aria-label="props.merchant.is_active ? 'تعليق التاجر' : 'تفعيل التاجر'"
-          :title="props.merchant.is_active ? 'تعليق' : 'تفعيل'"
+          :aria-label="props.merchant.is_active ? 'إيقاف المستورد' : 'تفعيل المستورد'"
+          :title="props.merchant.is_active ? 'إيقاف النشاط' : 'تفعيل النشاط'"
           @click="emit('toggleStatus', props.merchant)"
         >
           <Pause v-if="props.merchant.is_active" :size="16" />
@@ -121,8 +121,8 @@ function businessTypeLabel(type: string | null | undefined): string {
           variant="ghost"
           size="sm"
           class="h-8 w-8 p-0"
-          aria-label="تعديل التاجر"
-          title="تعديل"
+          aria-label="تعديل بيانات المستورد"
+          title="تعديل بيانات المستورد"
           @click="emit('edit', props.merchant)"
         >
           <Edit :size="16" />

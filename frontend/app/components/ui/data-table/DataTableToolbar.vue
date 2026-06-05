@@ -59,7 +59,7 @@ if (typeof document !== 'undefined') {
           class="h-8 ps-8 pe-9 text-sm"
         />
         <kbd
-          class="bg-muted text-muted-foreground pointer-events-none absolute end-2 top-1/2 hidden h-5 -translate-y-1/2 items-center rounded border px-1.5 font-mono text-[10px] select-none sm:flex"
+          class="bg-muted text-muted-foreground pointer-events-none absolute end-2 top-1/2 hidden h-5 -translate-y-1/2 items-center rounded border px-1.5 font-mono text-xs leading-none select-none sm:flex"
           aria-hidden="true"
         >
           /

@@ -50,8 +50,12 @@ const showNewRequestAction = computed(
     <!-- Page header -->
     <div class="flex flex-wrap items-start justify-between gap-4">
       <div class="flex flex-col gap-1">
-        <h1 class="text-2xl font-semibold tracking-tight sm:text-3xl">أهلاً، {{ firstName }}</h1>
-        <p class="text-muted-foreground text-sm">{{ roleSubtitle }}</p>
+        <h1
+          class="font-heading text-foreground text-2xl leading-8 font-semibold sm:text-3xl sm:leading-10"
+        >
+          أهلاً، {{ firstName }}
+        </h1>
+        <p class="font-section text-muted-foreground text-sm leading-5">{{ roleSubtitle }}</p>
       </div>
       <Button v-if="showNewRequestAction" class="shrink-0" @click="router.push('/requests/new')">
         <FilePlus2 class="h-4 w-4" />

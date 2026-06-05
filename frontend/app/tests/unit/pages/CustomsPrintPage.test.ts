@@ -134,9 +134,9 @@ describe('CustomsPrintPage — confirmation dialog', () => {
 })
 
 describe('CustomsPrintPage — page structure', () => {
-  it('page title contains "معاينة البيان الجمركي"', () => {
-    const title = 'معاينة البيان الجمركي'
-    expect(title).toContain('البيان الجمركي')
+  it('page title contains "معاينة وثيقة تأكيد المصارفة الخارجية"', () => {
+    const title = 'معاينة وثيقة تأكيد المصارفة الخارجية'
+    expect(title).toContain('وثيقة تأكيد المصارفة الخارجية')
   })
 
   it('print button label is "طباعة"', () => {

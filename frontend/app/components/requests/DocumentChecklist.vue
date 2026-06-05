@@ -56,7 +56,7 @@ const BANK_WIZARD_DOCS: DocRequirement[] = [
   {
     match: 'confirmation_request',
     matchBy: 'sub_type',
-    label: 'طلب وثيقة التأكيد',
+    label: 'طلب التأكيد البنكي المختوم',
     required: true,
   },
   {
@@ -194,7 +194,7 @@ function handleFileChange(event: Event) {
   if (!file) return
 
   if (file.type !== 'application/pdf') {
-    fileTypeError.value = 'يُقبل ملف PDF فقط. الرجاء اختيار ملف بصيغة PDF.'
+    fileTypeError.value = 'يُقبل ملف PDF فقط. اختر ملفا بصيغة PDF.'
     input.value = ''
     return
   }
@@ -217,9 +217,9 @@ function formatFileSize(bytes: number): string {
 }
 
 function formatDate(iso: string | null): string {
-  if (!iso) return '—'
+  if (!iso) return 'غير متاح'
   const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return '—'
+  if (Number.isNaN(d.getTime())) return 'غير متاح'
   return d.toLocaleDateString('ar-YE', {
     year: 'numeric',
     month: 'long',
@@ -254,7 +254,9 @@ function formatDate(iso: string | null): string {
     </Alert>
 
     <!-- Empty state -->
-    <p v-else-if="!hasContent" class="text-muted-foreground mt-2 text-sm">لا توجد مستندات بعد.</p>
+    <p v-else-if="!hasContent" class="text-muted-foreground mt-2 text-sm">
+      لم تُرفع مستندات لهذا الطلب بعد.
+    </p>
 
     <!-- Checklist summary badge -->
     <template v-else>
@@ -265,7 +267,7 @@ function formatDate(iso: string | null): string {
           class="inline-flex items-center gap-1 rounded-full bg-[var(--severity-red)]/10 px-2.5 py-0.5 text-xs font-semibold text-[var(--severity-red)]"
         >
           <AlertCircle class="h-3 w-3" aria-hidden="true" />
-          ينقص {{ missingRequiredCount }} مستند مطلوب
+          ينقص {{ missingRequiredCount }} مستند إلزامي
         </div>
         <div
           v-else
@@ -282,7 +284,7 @@ function formatDate(iso: string | null): string {
           >
             <polyline points="20 6 9 17 4 12" />
           </svg>
-          مكتمل
+          كل المستندات الإلزامية مرفوعة
         </div>
       </div>
 
@@ -357,7 +359,7 @@ function formatDate(iso: string | null): string {
                 </span>
               </template>
               <span v-else class="text-muted-foreground text-xs">{{
-                row.requirement.required ? 'لم يُرفع بعد' : 'لم يُرفع'
+                row.requirement.required ? 'لم يُرفع المستند بعد' : 'لم يُرفع مستند اختياري'
               }}</span>
             </div>
 
@@ -388,7 +390,7 @@ function formatDate(iso: string | null): string {
                   :aria-label="`تنزيل ${row.doc.original_filename}`"
                   @click="emit('download', row.doc.id, row.doc.original_filename)"
                 >
-                  {{ downloadingIds.has(row.doc.id) ? 'جارٍ التنزيل…' : 'تنزيل' }}
+                  {{ downloadingIds.has(row.doc.id) ? 'جارٍ تنزيل الملف...' : 'تنزيل' }}
                 </Button>
               </ButtonGroup>
             </div>
@@ -475,7 +477,7 @@ function formatDate(iso: string | null): string {
                   :aria-label="`تنزيل ${row.doc.original_filename}`"
                   @click="emit('download', row.doc.id, row.doc.original_filename)"
                 >
-                  {{ downloadingIds.has(row.doc.id) ? 'جارٍ التنزيل…' : 'تنزيل' }}
+                  {{ downloadingIds.has(row.doc.id) ? 'جارٍ تنزيل الملف...' : 'تنزيل' }}
                 </Button>
               </ButtonGroup>
               <!-- Lock indicator for DATA_ENTRY on downstream docs (SWIFT / FX) -->
@@ -507,7 +509,7 @@ function formatDate(iso: string | null): string {
                     </span>
                   </TooltipTrigger>
                   <TooltipContent side="top" class="max-w-[220px] text-center text-xs">
-                    هذا المستند يُعالَج من قِبل فريق CBY ولا يتاح للتنزيل في هذه المرحلة
+                    هذا المستند يُعالَج من فريق البنك المركزي ولا يتاح للتنزيل في هذه المرحلة.
                   </TooltipContent>
                 </Tooltip>
               </template>
@@ -536,7 +538,9 @@ function formatDate(iso: string | null): string {
             </div>
             <div class="flex min-w-0 flex-1 flex-col gap-0.5">
               <div class="flex items-center gap-1.5">
-                <span class="text-foreground text-xs font-semibold">بيان جمركي</span>
+                <span class="text-foreground text-xs font-semibold">
+                  وثيقة تأكيد المصارفة الخارجية
+                </span>
               </div>
               <span class="text-foreground text-xs font-medium">{{
                 row.customs.declaration_number
@@ -558,8 +562,8 @@ function formatDate(iso: string | null): string {
                   variant="outline"
                   size="sm"
                   class="h-7 px-3 text-xs whitespace-nowrap"
-                  aria-label="عرض البيان الجمركي"
-                  @click="emit('view-customs', row.customs.id, 'البيان الجمركي')"
+                  aria-label="عرض وثيقة تأكيد المصارفة الخارجية"
+                  @click="emit('view-customs', row.customs.id, 'وثيقة تأكيد المصارفة الخارجية')"
                 >
                   <Eye class="me-1 h-3.5 w-3.5" aria-hidden="true" />
                   عرض
@@ -569,10 +573,10 @@ function formatDate(iso: string | null): string {
                   size="sm"
                   :disabled="customsDownloading"
                   class="h-7 px-3 text-xs whitespace-nowrap"
-                  aria-label="تنزيل البيان الجمركي"
+                  aria-label="تنزيل وثيقة تأكيد المصارفة الخارجية"
                   @click="emit('download-customs', row.customs.id, row.customs.declaration_number)"
                 >
-                  {{ customsDownloading ? 'جارٍ التنزيل…' : 'تنزيل' }}
+                  {{ customsDownloading ? 'جارٍ تنزيل الملف...' : 'تنزيل' }}
                 </Button>
               </ButtonGroup>
             </div>
@@ -597,7 +601,7 @@ function formatDate(iso: string | null): string {
           class="h-9 rounded-lg px-4"
           @click="triggerFileInput"
         >
-          {{ uploadingDocument ? 'جارٍ الرفع…' : 'رفع مستند' }}
+          {{ uploadingDocument ? 'جارٍ رفع المستند...' : 'رفع مستند PDF' }}
         </Button>
         <Alert
           v-if="fileTypeError"
@@ -624,7 +628,7 @@ function formatDate(iso: string | null): string {
         class="text-muted-foreground flex items-center gap-1 text-xs"
         role="note"
       >
-        🔒 المستندات مقفلة، ولا يمكن تعديلها الآن
+        المستندات مقفلة ولا يمكن تعديلها في هذه المرحلة.
       </p>
     </div>
   </div>

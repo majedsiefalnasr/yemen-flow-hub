@@ -43,8 +43,8 @@ const canIssue = computed(
 
 function validateFile(file: File): string | null {
   const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')
-  if (!isPdf) return 'يجب أن يكون الملف بصيغة PDF فقط'
-  if (file.size > MAX_MB * 1024 * 1024) return `حجم الملف يتجاوز ${MAX_MB}MB`
+  if (!isPdf) return 'ارفع ملفا بصيغة PDF فقط.'
+  if (file.size > MAX_MB * 1024 * 1024) return `حجم الملف يتجاوز ${MAX_MB}MB.`
   return null
 }
 
@@ -83,7 +83,7 @@ async function handleDownloadTemplate(): Promise<void> {
     anchor.remove()
     URL.revokeObjectURL(url)
   } catch {
-    downloadError.value = 'تعذر تحميل النموذج. أعد المحاولة.'
+    downloadError.value = 'تعذّر تحميل نموذج تأكيد المصارفة. أعد المحاولة.'
   }
 }
 
@@ -92,10 +92,11 @@ async function handleUpload(): Promise<void> {
   uploadError.value = ''
   try {
     await requestsStore.uploadSignedFxDoc(props.request.id, signedFile.value)
-    toast.success('تم رفع الوثيقة الموقعة بنجاح. يمكنك الآن إصدار التأكيد.')
+    toast.success('تم رفع الوثيقة الموقعة. يمكنك الآن إصدار تأكيد المصارفة الخارجية.')
     emit('action-completed')
   } catch (error: any) {
-    uploadError.value = error instanceof Error ? error.message : 'تعذر رفع الوثيقة.'
+    uploadError.value =
+      error instanceof Error ? error.message : 'تعذّر رفع الوثيقة الموقعة. أعد المحاولة.'
   }
 }
 
@@ -104,7 +105,7 @@ async function handleIssue(): Promise<void> {
     await requestsStore.issueCustomsDeclaration(props.request.id)
     emit('action-completed')
   } catch (error: any) {
-    toast.error(error instanceof Error ? error.message : 'تعذر إصدار التأكيد.')
+    toast.error(error instanceof Error ? error.message : 'تعذّر إصدار تأكيد المصارفة الخارجية.')
   }
 }
 </script>
@@ -117,7 +118,7 @@ async function handleIssue(): Promise<void> {
   >
     <CardHeader class="pb-2">
       <CardTitle class="font-heading text-base leading-snug font-semibold">
-        إصدار وثيقة تأكيد مصارفة / تغطية خارجية
+        إصدار تأكيد المصارفة الخارجية
       </CardTitle>
     </CardHeader>
     <CardContent class="space-y-4">
@@ -126,7 +127,7 @@ async function handleIssue(): Promise<void> {
           <p class="font-section text-muted-foreground text-xs leading-5 font-medium">الخطوة 1</p>
           <p class="text-foreground text-sm leading-6 font-semibold">تحميل النموذج النظامي</p>
           <p class="text-muted-foreground text-sm leading-6">
-            حمّل النموذج المعبأ بالبيانات، اطبعه، اختمه ووقعه، ثم امسحه ضوئيا بصيغة PDF.
+            حمّل النموذج المعبأ ببيانات الطلب، اطبعه، اختمه ووقّعه، ثم امسحه ضوئيا بصيغة PDF.
           </p>
         </div>
         <Button variant="outline" size="sm" @click="handleDownloadTemplate">
@@ -145,7 +146,7 @@ async function handleIssue(): Promise<void> {
           <p class="font-section text-muted-foreground text-xs leading-5 font-medium">الخطوة 2</p>
           <p class="text-foreground text-sm leading-6 font-semibold">رفع الوثيقة الموقعة</p>
           <p class="text-muted-foreground text-sm leading-6">
-            ارفع الوثيقة بعد الختم والتوقيع، PDF بحجم لا يتجاوز
+            ارفع الوثيقة بعد الختم والتوقيع بصيغة PDF، بحجم لا يتجاوز
             <span class="tabular-nums">{{ MAX_MB }}MB</span>.
           </p>
         </div>
@@ -164,7 +165,7 @@ async function handleIssue(): Promise<void> {
         >
           <div class="flex h-full flex-col items-center justify-center gap-2 text-center">
             <Upload class="text-muted-foreground h-6 w-6" />
-            <p class="text-muted-foreground text-sm leading-6">اسحب الملف هنا أو</p>
+            <p class="text-muted-foreground text-sm leading-6">اسحب ملف PDF هنا أو</p>
             <label>
               <Button type="button" variant="outline" size="sm" as-child>
                 <span>اضغط للاختيار</span>
@@ -204,7 +205,7 @@ async function handleIssue(): Promise<void> {
           @click="handleUpload"
         >
           <Loader2 v-if="requestsStore.uploadingSignedFx" class="me-1 h-4 w-4 animate-spin" />
-          {{ requestsStore.uploadingSignedFx ? 'جار الرفع...' : 'رفع الوثيقة' }}
+          {{ requestsStore.uploadingSignedFx ? 'جارٍ رفع الوثيقة...' : 'رفع الوثيقة الموقعة' }}
         </Button>
 
         <Alert v-if="uploadError" class="border-[var(--severity-red)] bg-[var(--severity-red)]/10">
@@ -219,7 +220,7 @@ async function handleIssue(): Promise<void> {
           class="flex items-center gap-2 text-sm leading-6 text-[var(--success)]"
         >
           <CheckCircle2 class="h-4 w-4" />
-          تم رفع الوثيقة الموقعة في جلسة سابقة. يمكنك الآن الإصدار.
+          الوثيقة الموقعة مرفوعة سابقا. يمكنك الآن إصدار التأكيد.
         </div>
       </div>
 
@@ -230,7 +231,8 @@ async function handleIssue(): Promise<void> {
           <p class="font-section text-muted-foreground text-xs leading-5 font-medium">الخطوة 3</p>
           <p class="text-foreground text-sm leading-6 font-semibold">إصدار التأكيد النهائي</p>
           <p class="text-muted-foreground text-sm leading-6">
-            بعد رفع الوثيقة الموقعة، أصدر التأكيد النهائي. هذا الإجراء لا يمكن التراجع عنه.
+            بعد رفع الوثيقة الموقعة، أصدر تأكيد المصارفة الخارجية لإتمام معالجة الطلب. هذا الإجراء
+            لا يمكن التراجع عنه.
           </p>
         </div>
         <AlertDialog>
@@ -239,24 +241,24 @@ async function handleIssue(): Promise<void> {
               <Loader2 v-if="requestsStore.issuingCustoms" class="me-1 h-4 w-4 animate-spin" />
               {{
                 requestsStore.issuingCustoms
-                  ? 'جار الإصدار...'
+                  ? 'جارٍ إصدار التأكيد...'
                   : 'إصدار وثيقة تأكيد المصارفة الخارجية'
               }}
             </Button>
           </AlertDialogTrigger>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>تأكيد إصدار وثيقة المصارفة الخارجية</AlertDialogTitle>
+              <AlertDialogTitle>إصدار تأكيد المصارفة الخارجية</AlertDialogTitle>
               <AlertDialogDescription>
-                سيتم إصدار وثيقة تأكيد المصارفة الخارجية وإتمام معالجة الطلب نهائيا. هذا الإجراء لا
-                يمكن التراجع عنه.
+                سيتم إصدار تأكيد المصارفة الخارجية وإتمام معالجة الطلب نهائيا. راجع الوثيقة الموقعة
+                قبل المتابعة.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>إلغاء</AlertDialogCancel>
               <AlertDialogAction :disabled="requestsStore.issuingCustoms" @click="handleIssue">
                 <Loader2 v-if="requestsStore.issuingCustoms" class="me-1 h-4 w-4 animate-spin" />
-                {{ requestsStore.issuingCustoms ? 'جار الإصدار...' : 'تأكيد الإصدار' }}
+                {{ requestsStore.issuingCustoms ? 'جارٍ إصدار التأكيد...' : 'إصدار التأكيد' }}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

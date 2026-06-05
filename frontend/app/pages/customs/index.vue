@@ -255,7 +255,7 @@ onMounted(() => {
               </div>
             </div>
 
-            <Badge variant="secondary" class="text-[10px]">
+            <Badge variant="secondary" class="text-xs leading-none">
               {{ user ? getBusinessStatus(request.status, user.role).label : request.status }}
             </Badge>
 
@@ -282,7 +282,7 @@ onMounted(() => {
               @click="loadMoreIssued"
             >
               <RefreshCw v-if="loadingIssued" class="h-3.5 w-3.5 animate-spin" />
-              {{ loadingIssued ? 'جارٍ التحميل…' : 'تحميل المزيد' }}
+              {{ loadingIssued ? 'جارٍ تحميل المزيد...' : 'تحميل المزيد من التأكيدات' }}
             </Button>
           </div>
         </div>

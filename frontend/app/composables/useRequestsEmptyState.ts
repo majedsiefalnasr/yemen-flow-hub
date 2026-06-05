@@ -34,49 +34,57 @@ export function buildRequestsEmptyState(input: RequestsEmptyStateInput): Request
     if (input.role === UserRole.DATA_ENTRY) {
       return {
         title: 'لا توجد طلبات بعد',
-        description: 'لم تقدّم أي طلبات تمويل حتى الآن. استخدم زر "طلب جديد" لبدء أول طلب.',
+        description:
+          'ابدأ بطلب تمويل واحد. بعد الحفظ ستظهر المسودة هنا، ثم تنتقل إلى مراجعة البنك عند التقديم.',
       }
     }
     if (input.role === UserRole.BANK_REVIEWER) {
       return {
         title: 'الطابور فارغ حالياً',
-        description: 'لا توجد طلبات بانتظار مراجعتك. ستظهر هنا عند تقديمها من مدخلي البيانات.',
+        description:
+          'لا توجد طلبات بانتظار مراجعتك. عند تقديم مدخل البيانات طلباً جديداً سيظهر هنا مع إجراء المراجعة المناسب.',
       }
     }
     if (input.role === UserRole.BANK_ADMIN) {
       return {
         title: 'لا توجد طلبات لجهتك بعد',
-        description: 'لم يقدّم موظفو بنكك أي طلبات تمويل حتى الآن.',
+        description:
+          'لم يقدّم موظفو بنكك أي طلبات تمويل حتى الآن. ستظهر الطلبات هنا للمتابعة المؤسسية بعد أول تقديم.',
       }
     }
     if (input.role === UserRole.SUPPORT_COMMITTEE) {
       return {
-        title: 'لا توجد طلبات دعم حالياً',
-        description: 'لم تصل أي طلبات إلى لجنة الدعم بعد. ستظهر هنا عند اعتمادها من البنوك.',
+        title: 'لا توجد طلبات دعم للجنة المساندة حالياً',
+        description:
+          'لم تصل أي طلبات معتمدة من البنوك إلى لجنة المساندة بعد. عند وصول أول طلب يمكنك حجزه وبدء المراجعة.',
       }
     }
     if (input.role === UserRole.EXECUTIVE_MEMBER) {
       return {
         title: 'لا توجد جلسات تصويت مرتبطة بك',
-        description: 'لم يتم فتح جلسات تصويت تتطلب مشاركتك حالياً.',
+        description:
+          'لم تُفتح جلسة تصويت تتطلب مشاركتك حالياً. عند تكليفك بجلسة ستظهر هنا مع خيار التصويت.',
       }
     }
     if (input.role === UserRole.COMMITTEE_DIRECTOR) {
       return {
         title: 'لا توجد طلبات في مرحلة التصويت',
-        description: 'لم تصل أي طلبات إلى مرحلة التصويت التنفيذي حتى الآن.',
+        description:
+          'لم تصل أي طلبات إلى مرحلة التصويت التنفيذي. بعد اعتماد لجنة المساندة والسويفت ستظهر هنا لإدارة الجلسة.',
       }
     }
     if (input.role === UserRole.SWIFT_OFFICER) {
       return {
         title: 'لا توجد طلبات بانتظار السويفت',
-        description: 'لم تصل طلبات تحتاج رفع مستندات السويفت حتى الآن.',
+        description:
+          'لم تصل طلبات تحتاج رفع مستندات السويفت. عند وصول أول طلب ستظهر هنا الوثائق المطلوبة وخيار الرفع.',
       }
     }
     if (input.role === UserRole.CBY_ADMIN) {
       return {
         title: 'لا توجد طلبات في النظام',
-        description: 'لم يتم تقديم أي طلبات تمويل عبر المنصة حتى الآن.',
+        description:
+          'لم يتم تقديم أي طلبات تمويل عبر المنصة حتى الآن. بعد أول تقديم ستظهر هنا للرقابة والمتابعة.',
       }
     }
     return {
@@ -96,24 +104,25 @@ export function buildRequestsEmptyState(input: RequestsEmptyStateInput): Request
     if (input.tab === 'my_claims') {
       return {
         title: 'لا توجد مطالبات نشطة',
-        description: 'لا توجد طلبات محجوزة باسمك حالياً.',
+        description:
+          'لا توجد طلبات محجوزة باسمك حالياً. انتقل إلى طابور المساندة العام لحجز طلب جديد عند توفره.',
       }
     }
     return {
-      title: 'الطابور فارغ — أنجزت المهمة',
-      description: 'لا توجد طلبات في انتظار مراجعتك حالياً.',
+      title: 'الطابور فارغ، أنجزت المهمة',
+      description: 'لا توجد طلبات في انتظار مراجعتك حالياً. هذه حالة سليمة ولا تتطلب إجراء.',
     }
   }
   if (input.role === UserRole.EXECUTIVE_MEMBER) {
     if (input.tab === 'pending_my_vote') {
       return {
         title: 'لا توجد جلسات مخصصة لتصويتك',
-        description: 'لا توجد جلسات مفتوحة تتطلب تصويتك حالياً.',
+        description: 'لا توجد جلسات مفتوحة تتطلب تصويتك حالياً. ستظهر الجلسة هنا فور تكليفك.',
       }
     }
     return {
       title: 'لا توجد جلسات مخصصة لتصويتك',
-      description: 'لا توجد جلسات مفتوحة تتطلب تصويتك حالياً.',
+      description: 'لا توجد جلسات مفتوحة تتطلب تصويتك حالياً. ستظهر الجلسة هنا فور تكليفك.',
     }
   }
   if (input.role === UserRole.SWIFT_OFFICER) {
@@ -125,6 +134,6 @@ export function buildRequestsEmptyState(input: RequestsEmptyStateInput): Request
 
   return {
     title: 'لا توجد طلبات في هذا الطابور',
-    description: 'لا توجد عناصر ضمن المرحلة المختارة حالياً.',
+    description: 'لا توجد عناصر ضمن المرحلة المختارة حالياً. اختر طابوراً آخر أو امسح الفلاتر.',
   }
 }

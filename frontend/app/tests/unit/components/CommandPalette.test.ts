@@ -21,7 +21,7 @@ const QUICK_ACTION_LABELS: Record<UserRole, string[]> = {
   [UserRole.BANK_REVIEWER]: ['طلبات تنتظر المراجعة'],
   [UserRole.BANK_ADMIN]: ['لوحة الإشراف البنكي'],
   [UserRole.SWIFT_OFFICER]: ['رفع مستندات SWIFT'],
-  [UserRole.SUPPORT_COMMITTEE]: ['قائمة انتظار لجنة الدعم'],
+  [UserRole.SUPPORT_COMMITTEE]: ['قائمة انتظار لجنة المساندة'],
   [UserRole.EXECUTIVE_MEMBER]: ['جلسات التصويت النشطة'],
   [UserRole.COMMITTEE_DIRECTOR]: ['التحكم في جلسات التصويت', 'تأكيد المصارفة الخارجية'],
   [UserRole.CBY_ADMIN]: ['لوحة الحوكمة والإشراف', 'سجلات التدقيق والامتثال'],

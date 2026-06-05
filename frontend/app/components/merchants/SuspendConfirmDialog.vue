@@ -20,14 +20,18 @@ const emit = defineEmits<{
 }>()
 
 const isSuspend = computed(() => props.merchant.is_active)
-const title = computed(() => (isSuspend.value ? 'تأكيد تعليق التاجر' : 'تأكيد تفعيل التاجر'))
+const title = computed(() => (isSuspend.value ? 'إيقاف نشاط المستورد' : 'تفعيل المستورد'))
 const message = computed(() =>
   isSuspend.value
-    ? `هل أنت متأكد من تعليق التاجر ${props.merchant.name}؟ لن يتمكن المستخدمون من اختياره في الطلبات الجديدة.`
-    : `هل أنت متأكد من تفعيل التاجر ${props.merchant.name}؟`,
+    ? `لن يظهر ${props.merchant.name} ضمن اختيارات الطلبات الجديدة بعد الإيقاف.`
+    : `سيظهر ${props.merchant.name} مرة أخرى ضمن اختيارات الطلبات الجديدة.`,
 )
 const confirmLabel = computed(() =>
-  props.submitting ? 'جارٍ التحديث…' : isSuspend.value ? 'تعليق' : 'تفعيل',
+  props.submitting
+    ? 'جارٍ تحديث حالة المستورد...'
+    : isSuspend.value
+      ? 'إيقاف نشاط المستورد'
+      : 'تفعيل المستورد',
 )
 
 function requestClose() {

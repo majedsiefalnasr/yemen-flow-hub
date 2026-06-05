@@ -133,7 +133,7 @@ async function loadUsers() {
     users.value = result.data
     usersMeta.value = { last_page: result.meta.last_page, total: result.meta.total }
   } catch {
-    error.value = 'تعذر تحميل بيانات المستخدمين الآن. أعد المحاولة بعد قليل.'
+    error.value = 'تعذّر تحميل بيانات المستخدمين. تحقق من الاتصال وأعد المحاولة.'
   } finally {
     loading.value = false
   }
@@ -190,35 +190,35 @@ function validateForm(): boolean {
   clearErrors()
   let valid = true
   if (!form.name.trim()) {
-    formErrors.name = 'الاسم مطلوب'
+    formErrors.name = 'أدخل اسم المستخدم.'
     valid = false
   }
   if (!form.email.trim()) {
-    formErrors.email = 'البريد الإلكتروني مطلوب'
+    formErrors.email = 'أدخل البريد الإلكتروني المؤسسي.'
     valid = false
   }
   if (!editingUser.value && !form.password) {
-    formErrors.password = 'كلمة المرور مطلوبة'
+    formErrors.password = 'أدخل كلمة مرور مؤقتة للمستخدم الجديد.'
     valid = false
   }
   if (form.password && form.password.length < 8) {
-    formErrors.password = 'كلمة المرور يجب أن تكون 8 أحرف على الأقل'
+    formErrors.password = 'استخدم 8 أحرف على الأقل.'
     valid = false
   }
   if (!form.role) {
-    formErrors.role = 'الدور الوظيفي مطلوب'
+    formErrors.role = 'اختر الدور الوظيفي للمستخدم.'
     valid = false
   }
   if (form.role && !allowedRoles.value.includes(form.role as UserRole)) {
-    formErrors.role = 'هذا الدور غير متاح لهذا المستخدم'
+    formErrors.role = 'هذا الدور غير متاح ضمن صلاحياتك.'
     valid = false
   }
   if (form.role && BANK_ROLES.includes(form.role as UserRole) && !form.bank_id) {
-    formErrors.bank_id = 'يجب تحديد البنك للأدوار المصرفية'
+    formErrors.bank_id = 'اختر البنك المرتبط بهذا الدور المصرفي.'
     valid = false
   }
   if (isBankAdmin.value && form.bank_id !== auth.user?.bank_id) {
-    formErrors.bank_id = 'يمكن إدارة مستخدمي البنك الخاص بك فقط'
+    formErrors.bank_id = 'يمكنك إدارة مستخدمي بنكك فقط.'
     valid = false
   }
   return valid
@@ -271,7 +271,7 @@ async function saveUser() {
       if (errs.role?.[0]) formErrors.role = errs.role[0]
       if (errs.bank_id?.[0]) formErrors.bank_id = errs.bank_id[0]
     } else {
-      formError.value = e.data?.message ?? 'تعذر حفظ بيانات المستخدم. راجع الحقول ثم أعد المحاولة.'
+      formError.value = e.data?.message ?? 'تعذّر حفظ بيانات المستخدم. راجع الحقول ثم أعد المحاولة.'
     }
   } finally {
     saving.value = false
@@ -684,7 +684,9 @@ onMounted(loadData)
 
         <DialogFooter class="gap-2">
           <Button variant="outline" :disabled="saving" @click="closeModal">إلغاء</Button>
-          <Button :disabled="saving" @click="saveUser">{{ saving ? 'جارٍ الحفظ…' : 'حفظ' }}</Button>
+          <Button :disabled="saving" @click="saveUser">{{
+            saving ? 'جارٍ حفظ المستخدم...' : 'حفظ المستخدم'
+          }}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

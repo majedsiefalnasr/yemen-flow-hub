@@ -36,11 +36,11 @@ function statusClass(merchant: Merchant): string {
 }
 
 function toggleButtonLabel(merchant: Merchant): string {
-  return merchant.is_active ? 'تعليق التاجر' : 'تفعيل التاجر'
+  return merchant.is_active ? 'إيقاف المستورد' : 'تفعيل المستورد'
 }
 
 function metaValue(val: string | null): string {
-  return val ?? '—'
+  return val ?? 'غير محدد'
 }
 
 function businessTypeLabel(type: string | null | undefined): string {
@@ -52,7 +52,7 @@ function businessTypeLabel(type: string | null | undefined): string {
     manufacturing: 'تصنيع',
     services: 'خدمات',
   }
-  return type ? (MAP[type] ?? type) : '—'
+  return type ? (MAP[type] ?? type) : 'غير محدد'
 }
 
 function transactionCount(merchant: Merchant): number {
@@ -80,12 +80,12 @@ describe('MerchantCard — status badge', () => {
 })
 
 describe('MerchantCard — toggle button', () => {
-  it('shows "تعليق التاجر" aria-label for active merchant', () => {
-    expect(toggleButtonLabel(makeMerchant({ is_active: true }))).toBe('تعليق التاجر')
+  it('shows "إيقاف المستورد" aria-label for active merchant', () => {
+    expect(toggleButtonLabel(makeMerchant({ is_active: true }))).toBe('إيقاف المستورد')
   })
 
-  it('shows "تفعيل التاجر" aria-label for suspended merchant', () => {
-    expect(toggleButtonLabel(makeMerchant({ is_active: false }))).toBe('تفعيل التاجر')
+  it('shows "تفعيل المستورد" aria-label for suspended merchant', () => {
+    expect(toggleButtonLabel(makeMerchant({ is_active: false }))).toBe('تفعيل المستورد')
   })
 })
 
@@ -114,8 +114,8 @@ describe('MerchantCard — businessTypeLabel', () => {
     expect(businessTypeLabel('services')).toBe('خدمات')
   })
 
-  it('returns dash for null', () => {
-    expect(businessTypeLabel(null)).toBe('—')
+  it('returns غير محدد for null', () => {
+    expect(businessTypeLabel(null)).toBe('غير محدد')
   })
 
   it('returns unknown values as-is', () => {
@@ -142,16 +142,16 @@ describe('MerchantCard — meta values', () => {
     expect(metaValue('CR-12345')).toBe('CR-12345')
   })
 
-  it('shows dash for null commercial_register', () => {
-    expect(metaValue(null)).toBe('—')
+  it('shows غير محدد for null commercial_register', () => {
+    expect(metaValue(null)).toBe('غير محدد')
   })
 
-  it('shows dash for null tax_number', () => {
-    expect(metaValue(null)).toBe('—')
+  it('shows غير محدد for null tax_number', () => {
+    expect(metaValue(null)).toBe('غير محدد')
   })
 
-  it('shows dash for null address', () => {
-    expect(metaValue(null)).toBe('—')
+  it('shows غير محدد for null address', () => {
+    expect(metaValue(null)).toBe('غير محدد')
   })
 
   it('shows address value when present', () => {

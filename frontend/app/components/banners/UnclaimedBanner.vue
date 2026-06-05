@@ -12,7 +12,7 @@ import { Alert, AlertDescription } from '../ui/alert'
       aria-hidden="true"
     />
     <AlertDescription class="text-foreground flex-1 text-sm font-medium">
-      جارٍ حجز الطلب تلقائياً…
+      جارٍ حجز الطلب لك تلقائياً...
     </AlertDescription>
   </Alert>
 </template>

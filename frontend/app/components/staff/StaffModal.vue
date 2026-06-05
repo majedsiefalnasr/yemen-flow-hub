@@ -57,14 +57,14 @@ const extendedSchema = computed(() => {
   if (isEdit.value) {
     return toTypedSchema(
       z.object({
-        name: z.string().trim().min(1, 'الاسم الكامل مطلوب'),
+        name: z.string().trim().min(1, 'أدخل الاسم الكامل للموظف.'),
         email: z
           .string()
           .trim()
-          .min(1, 'البريد الإلكتروني مطلوب')
-          .email('البريد الإلكتروني غير صحيح'),
+          .min(1, 'أدخل البريد الإلكتروني المؤسسي.')
+          .email('أدخل بريدا إلكترونيا صحيحا.'),
         role: z.enum([UserRole.DATA_ENTRY, UserRole.BANK_REVIEWER], {
-          errorMap: () => ({ message: 'يجب اختيار الدور الوظيفي' }),
+          errorMap: () => ({ message: 'اختر الدور الوظيفي للموظف.' }),
         }),
         department: z.string().optional().default(''),
         password: z
@@ -72,24 +72,24 @@ const extendedSchema = computed(() => {
           .default('')
           .refine(
             (value) => value.length === 0 || value.length >= 8,
-            'كلمة المرور يجب أن تكون 8 أحرف على الأقل',
+            'استخدم 8 أحرف على الأقل أو اترك الحقل فارغا.',
           ),
       }),
     )
   }
   return toTypedSchema(
     z.object({
-      name: z.string().trim().min(1, 'الاسم الكامل مطلوب'),
+      name: z.string().trim().min(1, 'أدخل الاسم الكامل للموظف.'),
       email: z
         .string()
         .trim()
-        .min(1, 'البريد الإلكتروني مطلوب')
-        .email('البريد الإلكتروني غير صحيح'),
+        .min(1, 'أدخل البريد الإلكتروني المؤسسي.')
+        .email('أدخل بريدا إلكترونيا صحيحا.'),
       role: z.enum([UserRole.DATA_ENTRY, UserRole.BANK_REVIEWER], {
-        errorMap: () => ({ message: 'يجب اختيار الدور الوظيفي' }),
+        errorMap: () => ({ message: 'اختر الدور الوظيفي للموظف.' }),
       }),
       department: z.string().optional().default(''),
-      password: z.string().min(8, 'كلمة المرور يجب أن تكون 8 أحرف على الأقل'),
+      password: z.string().min(8, 'استخدم 8 أحرف على الأقل لكلمة المرور المؤقتة.'),
     }),
   )
 })
@@ -184,7 +184,7 @@ const onSubmit = handleSubmit((values) => {
         </DialogHeader>
 
         <p class="modal-description text-muted-foreground -mt-2 text-xs">
-          الفصل بين الإدخال والمراجعة الداخلية مفروض تلقائياً على نفس الطلب.
+          لا يمكن للموظف نفسه إدخال الطلب ومراجعته داخليا.
         </p>
 
         <Alert v-if="props.serverError" variant="destructive" role="alert">
@@ -210,7 +210,7 @@ const onSubmit = handleSubmit((values) => {
                   >الاسم الكامل <span class="text-destructive">*</span></FormLabel
                 >
                 <FormControl>
-                  <Input v-bind="componentField" type="text" placeholder="الاسم الكامل للموظف" />
+                  <Input v-bind="componentField" type="text" placeholder="مثال: أحمد محمد" />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -223,7 +223,7 @@ const onSubmit = handleSubmit((values) => {
                   >البريد الإلكتروني <span class="text-destructive">*</span></FormLabel
                 >
                 <FormControl>
-                  <Input v-bind="componentField" type="email" placeholder="email@bank.ye" />
+                  <Input v-bind="componentField" type="email" placeholder="name@bank.ye" />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -238,7 +238,7 @@ const onSubmit = handleSubmit((values) => {
                 <Select v-bind="componentField">
                   <FormControl>
                     <SelectTrigger>
-                      <SelectValue placeholder="اختر الدور" />
+                      <SelectValue placeholder="اختر الدور الوظيفي" />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
@@ -256,11 +256,7 @@ const onSubmit = handleSubmit((values) => {
               <FormItem>
                 <FormLabel class="text-xs">القسم</FormLabel>
                 <FormControl>
-                  <Input
-                    v-bind="componentField"
-                    type="text"
-                    placeholder="القسم أو الإدارة (اختياري)"
-                  />
+                  <Input v-bind="componentField" type="text" placeholder="مثال: إدارة الاعتمادات" />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -289,7 +285,7 @@ const onSubmit = handleSubmit((values) => {
               إلغاء
             </Button>
             <Button type="submit" :disabled="isSaveDisabled">
-              {{ props.saving ? 'جارٍ الحفظ…' : 'حفظ' }}
+              {{ props.saving ? 'جارٍ حفظ الموظف...' : isEdit ? 'حفظ التعديلات' : 'إضافة الموظف' }}
             </Button>
           </DialogFooter>
         </form>

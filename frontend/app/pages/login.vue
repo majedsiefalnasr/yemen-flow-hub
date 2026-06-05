@@ -220,8 +220,8 @@ const handlePasswordSubmit = passwordForm.handleSubmit(async (values) => {
   } catch (err: any) {
     serverError.value =
       err?.statusCode === 429
-        ? 'لقد تجاوزت الحد المسموح به من محاولات تسجيل الدخول. يرجى الانتظار دقيقة ثم حاول مرة أخرى.'
-        : (err?.data?.message ?? 'البريد الإلكتروني أو كلمة المرور غير صحيحة.')
+        ? 'تم تجاوز عدد محاولات تسجيل الدخول المسموح. انتظر دقيقة واحدة ثم أعد المحاولة.'
+        : (err?.data?.message ?? 'البريد الإلكتروني أو كلمة المرور غير صحيحين.')
   } finally {
     isPasswordLoading.value = false
   }
@@ -240,7 +240,7 @@ const pinShake = ref(false)
 
 async function handlePinSubmit() {
   if (pinValue.value.length < 6) {
-    pinError.value = 'الرجاء إدخال رمز PIN المكوّن من 6 أرقام'
+    pinError.value = 'أدخل رمز PIN المكوّن من 6 أرقام.'
     return
   }
   isPinLoading.value = true
@@ -254,7 +254,7 @@ async function handlePinSubmit() {
     const backendMessage = err?.data?.message ?? err?.data?.errors?.pin?.[0]
     pinError.value =
       backendMessage ||
-      'رمز PIN غير صحيح. استخدم كلمة المرور الآن، ثم أعد تعيين PIN من الملف الشخصي إذا لزم.'
+      'رمز PIN غير صحيح. استخدم كلمة المرور للدخول، ثم أعد تعيين الرمز من الملف الشخصي عند الحاجة.'
     pinValue.value = ''
     pinShake.value = true
     setTimeout(() => {
@@ -285,7 +285,7 @@ const isAuthenticatorLoading = ref(false)
 
 async function handleAuthenticatorSubmit() {
   if (authenticatorCode.value.length < 6) {
-    authenticatorError.value = 'الرجاء إدخال الرمز المكوّن من 6 أرقام'
+    authenticatorError.value = 'أدخل رمز التحقق المكوّن من 6 أرقام.'
     return
   }
   isAuthenticatorLoading.value = true
@@ -297,7 +297,7 @@ async function handleAuthenticatorSubmit() {
       : otpRoleLabel.value
     await navigateAfterAuth()
   } catch {
-    authenticatorError.value = 'الرمز المدخل غير صحيح أو انتهت صلاحيته. يرجى المحاولة مرة أخرى.'
+    authenticatorError.value = 'رمز التحقق غير صحيح أو انتهت صلاحيته. أدخل الرمز الجديد من التطبيق.'
     authenticatorCode.value = ''
   } finally {
     isAuthenticatorLoading.value = false
@@ -323,11 +323,11 @@ watch(createPinStage, (stage) => {
 
 async function handleCreatePinSubmit() {
   if (newPin.value.length < 6 || newPinConfirm.value.length < 6) {
-    createPinError.value = 'الرجاء إدخال رمز PIN المكوّن من 6 أرقام في كلا الحقلين'
+    createPinError.value = 'أدخل رمز PIN المكوّن من 6 أرقام ثم أعد إدخاله للتأكيد.'
     return
   }
   if (newPin.value !== newPinConfirm.value) {
-    createPinError.value = 'رمز PIN غير متطابق. يرجى المحاولة مرة أخرى.'
+    createPinError.value = 'رمزا PIN غير متطابقين. أعد إدخال رمز التأكيد.'
     newPinConfirm.value = ''
     return
   }
@@ -338,10 +338,10 @@ async function handleCreatePinSubmit() {
     const ok = await setPin(newPin.value)
     if (!ok) throw new Error('pin-save-failed')
     if (email) setPINStatus(email, true)
-    toast.success('تم إنشاء رمز PIN بنجاح. يمكنك الآن تسجيل الدخول بسرعة في المرات القادمة.')
+    toast.success('تم إنشاء رمز PIN. يمكنك استخدامه للدخول السريع على هذا الجهاز.')
     await router.push(nextPath.value)
   } catch {
-    createPinError.value = 'تعذر حفظ رمز PIN الآن. أعد المحاولة بعد قليل.'
+    createPinError.value = 'تعذّر حفظ رمز PIN الآن. أعد المحاولة بعد قليل.'
   } finally {
     isCreatePinLoading.value = false
   }
@@ -371,7 +371,7 @@ async function loadAuthSetup() {
     authSetupUri.value = data.provisioning_uri
     authSetupSecret.value = data.secret
   } catch {
-    authSetupError.value = 'تعذر تحميل رمز الإعداد الآن. أعد المحاولة بعد قليل.'
+    authSetupError.value = 'تعذّر تحميل رمز إعداد المصادقة. أعد المحاولة بعد قليل.'
   } finally {
     isAuthSetupLoading.value = false
   }
@@ -379,7 +379,7 @@ async function loadAuthSetup() {
 
 async function handleAuthenticatorSetupSubmit() {
   if (authSetupCode.value.length < 6) {
-    authSetupError.value = 'الرجاء إدخال الرمز المكوّن من 6 أرقام من تطبيق المصادقة'
+    authSetupError.value = 'أدخل الرمز المكوّن من 6 أرقام من تطبيق المصادقة.'
     return
   }
   isAuthSetupLoading.value = true
@@ -388,10 +388,11 @@ async function handleAuthenticatorSetupSubmit() {
     const ok = await verifyTotpSetup(authSetupCode.value)
     if (!ok) throw new Error('invalid')
     // TOTP is now set up — proceed to save-account offer
-    toast.success('تم إعداد المصادقة الثنائية بنجاح. حسابك محمي الآن.')
+    toast.success('تم تفعيل المصادقة الثنائية على الحساب.')
     await navigateAfterAuth()
   } catch {
-    authSetupError.value = 'الرمز غير صحيح. تأكد من إدخال الرمز من تطبيق المصادقة وحاول مجدداً.'
+    authSetupError.value =
+      'رمز التطبيق غير صحيح. انتظر الرمز الجديد في تطبيق المصادقة ثم أعد المحاولة.'
     authSetupCode.value = ''
   } finally {
     isAuthSetupLoading.value = false
@@ -587,7 +588,7 @@ watch(step, (newStep) => {
 
           <div class="step-header">
             <h2 class="step-title">رمز PIN</h2>
-            <p class="step-desc">أدخل رمز PIN المكوّن من 6 أرقام للدخول السريع</p>
+            <p class="step-desc">أدخل رمز PIN المكوّن من 6 أرقام للدخول إلى هذا الحساب.</p>
           </div>
 
           <!-- Compact selected account display -->
@@ -634,7 +635,7 @@ watch(step, (newStep) => {
             @click="handlePinSubmit"
           >
             <Loader2 v-if="isPinLoading" class="me-2 size-4 animate-spin" />
-            {{ isPinLoading ? 'جارٍ التحقق...' : 'دخول' }}
+            {{ isPinLoading ? 'جارٍ التحقق من الرمز...' : 'الدخول برمز PIN' }}
           </Button>
 
           <!-- Fallback options -->
@@ -647,7 +648,7 @@ watch(step, (newStep) => {
               @click="usePinFallbackPassword"
             >
               <Lock class="me-1.5 size-3.5" />
-              استخدام كلمة المرور بدلاً من PIN
+              استخدام كلمة المرور بدلا من رمز PIN
             </Button>
             <Separator class="my-1 w-32" />
             <Button
@@ -679,7 +680,7 @@ watch(step, (newStep) => {
 
           <div class="step-header">
             <h2 class="step-title">كلمة المرور</h2>
-            <p class="step-desc">أدخل كلمة مرور حسابك المؤسسي للمتابعة</p>
+            <p class="step-desc">أدخل كلمة مرور حسابك المؤسسي للمتابعة.</p>
           </div>
 
           <!-- Show who is logging in -->
@@ -809,7 +810,7 @@ watch(step, (newStep) => {
 
           <div class="step-header">
             <h2 class="step-title">رمز التحقق</h2>
-            <p class="step-desc">افتح تطبيق المصادقة وأدخل الرمز المكوّن من 6 أرقام</p>
+            <p class="step-desc">افتح تطبيق المصادقة وأدخل الرمز المكوّن من 6 أرقام.</p>
           </div>
 
           <Alert class="mb-5">
@@ -860,7 +861,7 @@ watch(step, (newStep) => {
             @click="handleAuthenticatorSubmit"
           >
             <Loader2 v-if="isAuthenticatorLoading" class="me-2 size-4 animate-spin" />
-            {{ isAuthenticatorLoading ? 'جارٍ التحقق...' : 'تأكيد ودخول' }}
+            {{ isAuthenticatorLoading ? 'جارٍ التحقق من الرمز...' : 'تأكيد الرمز والدخول' }}
           </Button>
 
           <div class="mt-4 text-center">
@@ -878,16 +879,13 @@ watch(step, (newStep) => {
         <template v-else-if="step === 'create-pin'">
           <div class="step-header">
             <h2 class="step-title">إنشاء رمز PIN</h2>
-            <p class="step-desc">
-              أنشئ رمز PIN مكوّن من 6 أرقام لتسجيل دخول سريع في المرات القادمة
-            </p>
+            <p class="step-desc">أنشئ رمز PIN من 6 أرقام للدخول السريع على هذا الجهاز.</p>
           </div>
 
           <Alert class="mb-6">
             <KeyRound class="h-4 w-4" />
             <AlertDescription
-              >بعد إنشاء رمز PIN يمكنك تسجيل الدخول بسرعة دون الحاجة إلى كلمة المرور أو تطبيق
-              المصادقة في كل مرة.</AlertDescription
+              >سيُستخدم رمز PIN على هذا الجهاز فقط. لا تشاركه مع أي شخص.</AlertDescription
             >
           </Alert>
 
@@ -943,7 +941,7 @@ watch(step, (newStep) => {
                 v-if="createPinStage === 'confirm'"
                 class="text-muted-foreground text-center text-xs"
               >
-                أعد إدخال رمز PIN للتأكيد
+                أعد إدخال رمز PIN للتأكيد.
               </p>
             </div>
           </div>
@@ -960,7 +958,7 @@ watch(step, (newStep) => {
               @click="handleCreatePinSubmit"
             >
               <Loader2 v-if="isCreatePinLoading" class="me-2 size-4 animate-spin" />
-              {{ isCreatePinLoading ? 'جارٍ الحفظ...' : 'إنشاء رمز PIN' }}
+              {{ isCreatePinLoading ? 'جارٍ حفظ الرمز...' : 'إنشاء رمز PIN' }}
             </Button>
             <Button
               type="button"
@@ -970,7 +968,7 @@ watch(step, (newStep) => {
               :disabled="isCreatePinLoading"
               @click="router.push(nextPath)"
             >
-              تخطي في الوقت الحالي
+              المتابعة بدون رمز PIN
             </Button>
           </div>
         </template>
@@ -981,14 +979,14 @@ watch(step, (newStep) => {
         <template v-else-if="step === 'authenticator-setup'">
           <div class="step-header">
             <h2 class="step-title">ربط تطبيق المصادقة</h2>
-            <p class="step-desc">خطوة أمان إضافية، امسح الرمز لربط حسابك بتطبيق المصادقة</p>
+            <p class="step-desc">امسح الرمز لربط حسابك بتطبيق المصادقة.</p>
           </div>
 
           <Alert class="mb-5">
             <ShieldCheck class="h-4 w-4" />
             <AlertDescription
-              >استخدم Microsoft Authenticator أو Google Authenticator. ستحتاج إلى التطبيق عند كل
-              تسجيل دخول بكلمة المرور.</AlertDescription
+              >استخدم Microsoft Authenticator أو Google Authenticator. سيُطلب الرمز بعد إدخال كلمة
+              المرور.</AlertDescription
             >
           </Alert>
 
@@ -1012,7 +1010,7 @@ watch(step, (newStep) => {
                 <Loader2 v-if="isAuthSetupLoading" class="size-8 animate-spin" />
                 <QrCode v-else class="size-16 opacity-30" />
                 <span class="text-xs">{{
-                  isAuthSetupLoading ? 'جارٍ تحميل الرمز…' : 'تعذر تحميل الرمز'
+                  isAuthSetupLoading ? 'جارٍ تحميل الرمز...' : 'تعذّر تحميل الرمز'
                 }}</span>
               </div>
             </div>
@@ -1038,7 +1036,7 @@ watch(step, (newStep) => {
               </Button>
             </div>
             <p class="text-muted-foreground text-center text-xs">
-              لا يمكنك مسح الرمز؟ أدخل المفتاح يدوياً في التطبيق
+              إذا تعذّر مسح الرمز، أدخل المفتاح يدويا في التطبيق.
             </p>
           </div>
 
@@ -1053,7 +1051,7 @@ watch(step, (newStep) => {
           </Alert>
 
           <div class="mb-4 space-y-2">
-            <Label class="text-sm font-medium"> أدخل الرمز من تطبيق المصادقة للتحقق </Label>
+            <Label class="text-sm font-medium">رمز التحقق من تطبيق المصادقة</Label>
             <div class="otp-wrap">
               <InputOTP
                 v-model="authSetupCode"
@@ -1083,7 +1081,7 @@ watch(step, (newStep) => {
               @click="handleAuthenticatorSetupSubmit"
             >
               <Loader2 v-if="isAuthSetupLoading" class="me-2 size-4 animate-spin" />
-              {{ isAuthSetupLoading ? 'جارٍ التحقق...' : 'تأكيد الإعداد' }}
+              {{ isAuthSetupLoading ? 'جارٍ التحقق من الرمز...' : 'تفعيل المصادقة الثنائية' }}
             </Button>
             <Button
               type="button"
@@ -1093,7 +1091,7 @@ watch(step, (newStep) => {
               :disabled="isAuthSetupLoading"
               @click="skipAuthenticatorSetup"
             >
-              التخطي والإعداد لاحقاً
+              الإعداد لاحقا
             </Button>
           </div>
         </template>
@@ -1105,17 +1103,15 @@ watch(step, (newStep) => {
           <div class="step-header">
             <CheckCircle2 class="mb-2 size-8 text-[var(--severity-green)]" />
             <h2 class="step-title">تم تسجيل الدخول بنجاح</h2>
-            <p class="step-desc">
-              هل تريد حفظ بيانات الدخول على هذا الجهاز للدخول السريع في المرات القادمة؟
-            </p>
+            <p class="step-desc">هل تريد حفظ هذا الحساب على الجهاز الحالي للدخول السريع لاحقا؟</p>
           </div>
 
           <Alert class="mb-5">
             <ShieldCheck class="h-4 w-4" />
             <AlertDescription class="space-y-1">
-              <p>سيظهر اسمك في قائمة الحسابات عند فتح النظام على هذا الجهاز.</p>
+              <p>سيظهر هذا الحساب في شاشة الدخول على هذا الجهاز فقط.</p>
               <p class="text-muted-foreground text-xs">
-                يمكنك إنشاء رمز PIN في الخطوة التالية للدخول بدون كلمة مرور.
+                يمكنك إنشاء رمز PIN في الخطوة التالية للدخول السريع دون كلمة مرور.
               </p>
             </AlertDescription>
           </Alert>
@@ -1137,11 +1133,7 @@ watch(step, (newStep) => {
             >
               <Loader2 v-if="isSaveAccountLoading" class="me-2 size-4 animate-spin" />
               <CheckCircle2 v-else class="me-2 size-4" />
-              {{
-                auth.user?.pin_enabled
-                  ? 'نعم، حفظ الحساب والمتابعة'
-                  : 'نعم، حفظ الحساب وإنشاء رمز PIN'
-              }}
+              {{ auth.user?.pin_enabled ? 'حفظ الحساب والمتابعة' : 'حفظ الحساب وإنشاء رمز PIN' }}
             </Button>
             <Button
               type="button"
@@ -1151,10 +1143,10 @@ watch(step, (newStep) => {
               :disabled="isSaveAccountLoading"
               @click="handleSaveAccount(false)"
             >
-              لا، الدخول فقط هذه المرة
+              الدخول دون حفظ الحساب
             </Button>
             <p class="text-muted-foreground/70 text-center text-xs">
-              يمكنك تغيير هذا الإعداد لاحقاً من صفحة الملف الشخصي
+              يمكنك إزالة الحساب المحفوظ لاحقا من شاشة الدخول أو الملف الشخصي.
             </p>
           </div>
         </template>
@@ -1176,7 +1168,7 @@ watch(step, (newStep) => {
 
           <div class="step-header">
             <h2 class="step-title">إعادة تعيين رمز PIN</h2>
-            <p class="step-desc">أكمل الدخول بكلمة المرور، ثم أعد تعيين PIN من ملفك الشخصي</p>
+            <p class="step-desc">أكمل الدخول بكلمة المرور، ثم أعد تعيين رمز PIN من ملفك الشخصي.</p>
           </div>
 
           <div class="space-y-4">

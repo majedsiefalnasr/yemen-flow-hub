@@ -135,7 +135,7 @@ async function confirmVote() {
   if (!pendingVote.value) return
 
   if (pendingVote.value === VoteType.REJECT && !justification.value.trim()) {
-    justificationError.value = 'سبب الرفض مطلوب عند التصويت بالرفض.'
+    justificationError.value = 'اكتب سبب الرفض قبل تسجيل صوت رافض.'
     return
   }
 
@@ -154,9 +154,9 @@ async function confirmVote() {
     const msg = err instanceof Error ? err.message : ''
     if (msg.includes('VOTING_SESSION_CLOSED')) {
       votingStore.$patch({ votingDetail: savedDetail })
-      voteError.value = 'انتهت جلسة التصويت. تم إلغاء صوتك.'
+      voteError.value = 'انتهت جلسة التصويت قبل تسجيل صوتك. حدّث الطلب لمراجعة النتيجة.'
     } else {
-      voteError.value = msg || 'تعذر تسجيل التصويت الآن. أعد المحاولة بعد قليل.'
+      voteError.value = msg || 'تعذّر تسجيل التصويت. تحقق من حالة الجلسة وأعد المحاولة.'
     }
     cancelVote()
   }
@@ -209,14 +209,14 @@ onMounted(async () => {
           <path d="M7 11V7a5 5 0 0 1 10 0v4" />
         </svg>
         <AlertDescription class="text-destructive text-sm"
-          >هذا قرار نهائي، ولا يمكن اتخاذ إجراءات إضافية.</AlertDescription
+          >هذا قرار نهائي ولا يمكن تعديل التصويت أو إعادة فتح الجلسة.</AlertDescription
         >
       </Alert>
 
       <!-- Final decision badge -->
       <div
         v-if="isFinalized"
-        class="rounded-lg px-4 py-4 text-center text-2xl font-bold"
+        class="font-heading rounded-lg px-4 py-4 text-center text-xl leading-7 font-semibold"
         :class="
           requestStatus === RequestStatus.EXECUTIVE_APPROVED
             ? 'bg-success/10 text-success border border-[var(--color-border-success)]'
@@ -379,7 +379,7 @@ onMounted(async () => {
 
       <!-- Vote action buttons -->
       <div v-if="canVote && !pendingVote" class="flex flex-col gap-3">
-        <h3 class="text-foreground text-sm font-medium">صوّت الآن</h3>
+        <h3 class="text-foreground text-sm font-medium">تسجيل صوتك</h3>
         <div class="flex flex-row-reverse gap-3">
           <Button class="h-11 flex-1" @click="selectVote(VoteType.APPROVE)">موافقة</Button>
           <Button variant="destructive" class="h-11 flex-1" @click="selectVote(VoteType.REJECT)"
@@ -398,7 +398,7 @@ onMounted(async () => {
       >
         <p class="text-foreground text-sm">
           أنت على وشك التصويت بـ <strong>{{ pendingVoteLabel(pendingVote) }}</strong
-          >. هل أنت متأكد؟
+          >. لا يمكن تعديل الصوت بعد تسجيله.
         </p>
 
         <!-- Justification textarea (required for REJECT, optional for others) -->
@@ -411,7 +411,7 @@ onMounted(async () => {
             v-model="justification"
             class="border-border text-foreground resize-none rounded-lg border p-2.5 text-sm font-normal focus:border-indigo-600 focus:outline-none"
             rows="3"
-            placeholder="اكتب سبب الرفض هنا…"
+            placeholder="اكتب سبب الرفض الذي سيظهر في سجل التصويت."
             :aria-invalid="!!justificationError"
           />
           <p v-if="justificationError" class="text-destructive text-xs">{{ justificationError }}</p>
@@ -427,7 +427,7 @@ onMounted(async () => {
             v-model="justification"
             class="border-border text-foreground resize-none rounded-lg border p-2.5 text-sm font-normal focus:border-indigo-600 focus:outline-none"
             rows="2"
-            placeholder="أضف ملاحظة اختيارية…"
+            placeholder="أضف ملاحظة اختيارية لسجل التصويت."
           />
         </div>
 
@@ -446,7 +446,7 @@ onMounted(async () => {
           >
             {{
               votingStore.performingVote
-                ? 'جارٍ التسجيل…'
+                ? 'جارٍ تسجيل الصوت...'
                 : `تأكيد ${pendingVoteLabel(pendingVote)}`
             }}
           </Button>

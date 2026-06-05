@@ -103,7 +103,7 @@ function onCardClick(event: MouseEvent | KeyboardEvent) {
       <span class="text-muted-foreground text-xs">{{ label }}</span>
       <span class="text-foreground text-2xl leading-none font-semibold">{{ value }}</span>
       <span class="text-muted-foreground/80 text-xs">{{
-        description ?? previousLabel ?? '—'
+        description ?? previousLabel ?? 'لا توجد مقارنة متاحة'
       }}</span>
       <slot name="footer" />
     </Card>

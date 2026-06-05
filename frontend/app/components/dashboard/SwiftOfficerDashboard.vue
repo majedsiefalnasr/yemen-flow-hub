@@ -66,8 +66,8 @@ const swiftQueueColumns: ColumnDef<SwiftQueueRow>[] = [
   },
   {
     id: 'merchant',
-    header: 'التاجر',
-    cell: ({ row }) => h('span', row.original.merchant?.name ?? '—'),
+    header: 'المستورد',
+    cell: ({ row }) => h('span', row.original.merchant?.name ?? 'غير متاح'),
   },
   {
     id: 'amount',

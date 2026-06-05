@@ -22,7 +22,7 @@ const applySystemTheme = () => {
 }
 const platformName = computed(() => orgStore.platformName.trim() || 'منصة إدارة وتمويل الواردات')
 const authorityName = computed(() => orgStore.authority.trim() || 'البنك المركزي اليمني')
-const fullAppTitle = computed(() => `${platformName.value} — ${authorityName.value}`)
+const fullAppTitle = computed(() => `${platformName.value}، ${authorityName.value}`)
 const seoDescription = computed(
   () =>
     `${platformName.value} منصة مؤسسية لإدارة ومراجعة طلبات تمويل الواردات لدى ${authorityName.value}.`,
@@ -82,7 +82,7 @@ useHead(() => ({
     class: themingStore.isDark ? 'dark' : '',
   },
   titleTemplate: (titleChunk) =>
-    titleChunk ? `${titleChunk} — ${platformName.value}` : fullAppTitle.value,
+    titleChunk ? `${titleChunk}، ${platformName.value}` : fullAppTitle.value,
   link: [
     {
       key: 'favicon',

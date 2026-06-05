@@ -398,9 +398,9 @@ onMounted(() => {
           <CardTitle id="pressure-heading" class="text-sm font-semibold"
             >خريطة ضغط سير العمل</CardTitle
           >
-          <CardDescription class="text-xs"
-            >المراحل النشطة وحالة SLA — انقر لتصفية الطلبات حسب المرحلة</CardDescription
-          >
+          <CardDescription class="text-xs">
+            المراحل النشطة وحالة SLA. انقر لتصفية الطلبات حسب المرحلة
+          </CardDescription>
         </CardHeader>
         <CardContent class="p-0">
           <DataTable

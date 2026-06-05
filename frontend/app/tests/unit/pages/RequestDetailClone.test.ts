@@ -46,6 +46,7 @@ const requestsStoreState = vi.hoisted(() => ({
 }))
 
 vi.mock('vue-router', () => ({
+  onBeforeRouteLeave: vi.fn(),
   useRoute: () => routeState,
   useRouter: () => ({
     replace: routerReplaceMock,
@@ -87,6 +88,8 @@ vi.mock('../../../composables/useClaimLifecycle', () => ({
 
 vi.mock('../../../composables/useDocumentPermissions', () => ({
   canDownloadCustoms: () => false,
+  canDownloadSignedFxDoc: () => false,
+  canViewConfirmationRequestPreview: () => false,
 }))
 
 vi.mock('../../../composables/useRequests', () => ({
@@ -152,7 +155,7 @@ function buildDetailRequest(status: RequestStatus = RequestStatus.BANK_REJECTED)
     id: 42,
     status,
     bank_name: 'بنك اليمن',
-    merchant: { id: 1, name: 'التاجر', commercial_register: null },
+    merchant: { id: 1, name: 'المستورد', commercial_register: null },
     created_by_user: { id: 1, name: 'صاحب الطلب' },
   })
 }
@@ -231,7 +234,7 @@ describe('request detail clone flow', () => {
     await wrapper.get('[data-testid="clone-confirm-btn"]').trigger('click')
     await flushPromises()
 
-    expect(wrapper.text()).toContain('تعذر إنشاء النسخة الآن. أعد المحاولة بعد قليل.')
+    expect(wrapper.text()).toContain('تعذّر إنشاء نسخة جديدة من الطلب. أعد المحاولة.')
     expect(wrapper.find('[data-testid="alert-dialog"]').exists()).toBe(true)
   })
 })
@@ -279,7 +282,7 @@ describe('new.vue clone_of flow', () => {
     })
     await flushPromises()
 
-    expect(wrapper.text()).toContain('ليس لديك صلاحية نسخ هذا الطلب.')
+    expect(wrapper.text()).toContain('لا تملك صلاحية إنشاء نسخة من هذا الطلب.')
     expect(navigateToMock).not.toHaveBeenCalled()
     expect(wrapper.find('[data-testid="request-wizard"]').exists()).toBe(false)
   })

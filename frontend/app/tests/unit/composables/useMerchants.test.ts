@@ -121,7 +121,7 @@ describe('useMerchants — createMerchant', () => {
   })
 
   it('propagates validation error from API', async () => {
-    mockPost.mockRejectedValueOnce({ data: { errors: { name: ['اسم التاجر مطلوب'] } } })
+    mockPost.mockRejectedValueOnce({ data: { errors: { name: ['أدخل اسم المستورد أو الشركة.'] } } })
     const { createMerchant } = useMerchants()
     await expect(createMerchant({ name: '' })).rejects.toBeTruthy()
   })

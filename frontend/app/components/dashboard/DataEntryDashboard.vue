@@ -12,6 +12,13 @@ import ActionRequiredStrip from '@/components/shared/ActionRequiredStrip.vue'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+} from '@/components/ui/empty'
 import DataTable from '@/components/ui/data-table/DataTable.vue'
 import MetricCard from '@/components/shared/dashboard/MetricCard.vue'
 import MetricGrid from '@/components/shared/dashboard/MetricGrid.vue'
@@ -50,7 +57,7 @@ const returnReasonSnippet = computed(() => {
   if (!req) return ''
   // bank_return_comment for BANK_RETURNED; support_return_comment for SUPPORT_RETURNED
   const reason = req.bank_return_comment ?? req.support_return_comment ?? req.notes ?? ''
-  return reason.length > 80 ? reason.slice(0, 80) + '…' : reason
+  return reason.length > 80 ? reason.slice(0, 80) + '...' : reason
 })
 
 const actionStripDetail = computed(() => {
@@ -89,7 +96,7 @@ const draftColumns: ColumnDef<DraftRow>[] = [
         row.original.reference_number,
       ),
   },
-  { accessorKey: 'supplier_name', header: 'التاجر' },
+  { accessorKey: 'supplier_name', header: 'المستورد' },
   {
     id: 'amount',
     header: 'المبلغ',
@@ -137,7 +144,7 @@ const recentColumns: ColumnDef<RecentRow>[] = [
         row.original.reference_number,
       ),
   },
-  { accessorKey: 'supplier_name', header: 'التاجر' },
+  { accessorKey: 'supplier_name', header: 'المستورد' },
   {
     id: 'amount',
     header: 'المبلغ',
@@ -245,11 +252,26 @@ onMounted(() => {
 
     <!-- Empty state — no requests at all: hide KPI grid entirely -->
     <template v-else-if="stats && !hasAnyRequests">
-      <div class="flex flex-col items-center justify-center gap-4 py-20 text-center">
-        <FileText class="text-muted-foreground h-12 w-12" aria-hidden="true" />
-        <p class="text-muted-foreground text-sm">لم تبدأ بعد. ابدأ بأول طلب تمويل واردات.</p>
-        <Button @click="router.push('/requests/new')">طلب جديد</Button>
-      </div>
+      <Empty class="bg-muted/20 min-h-[320px] rounded-xl border border-dashed">
+        <EmptyHeader>
+          <div
+            class="bg-primary/10 text-primary flex size-12 items-center justify-center rounded-xl"
+          >
+            <FileText class="size-5" aria-hidden="true" />
+          </div>
+          <EmptyTitle>ابدأ بأول طلب تمويل واردات</EmptyTitle>
+        </EmptyHeader>
+        <EmptyContent>
+          <EmptyDescription>
+            احفظ المسودة أولاً، ثم أرفق الوثائق المطلوبة وقدّمها لمراجع البنك. بعد التقديم ستتابع
+            حالة الطلب من هذه اللوحة.
+          </EmptyDescription>
+          <div class="flex flex-wrap items-center justify-center gap-2 pt-1">
+            <Button @click="router.push('/requests/new')">طلب جديد</Button>
+            <Button variant="outline" @click="router.push('/requests')">عرض طابور الطلبات</Button>
+          </div>
+        </EmptyContent>
+      </Empty>
     </template>
 
     <template v-else-if="stats">
@@ -325,7 +347,7 @@ onMounted(() => {
               <Bell class="text-primary h-5 w-5 flex-shrink-0" aria-hidden="true" />
               <span
                 v-if="unreadCount > 0"
-                class="bg-destructive absolute -end-1.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full px-0.5 text-[10px] leading-none font-bold text-white"
+                class="bg-destructive absolute -end-1.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-xs leading-none font-medium text-white tabular-nums"
                 aria-hidden="true"
               >
                 {{ unreadCount > 99 ? '99+' : unreadCount }}
@@ -386,7 +408,7 @@ onMounted(() => {
               :columns="recentColumns"
               @row-click="(row) => router.push(`/requests/${row.id}`)"
             >
-              <template #empty>لا توجد طلبات بعد</template>
+              <template #empty>ستظهر هنا آخر طلباتك بعد حفظ أول مسودة أو تقديم أول طلب.</template>
             </DataTable>
           </CardContent>
         </Card>

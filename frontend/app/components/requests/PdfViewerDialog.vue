@@ -107,14 +107,16 @@ function setOpen(value: boolean) {
     >
       <DialogHeader class="border-border border-b px-5 pt-5 pb-3">
         <DialogTitle class="text-base font-semibold">{{ title }}</DialogTitle>
-        <DialogDescription v-if="description" class="text-xs">{{ description }}</DialogDescription>
+        <DialogDescription :class="description ? 'text-xs' : 'sr-only'">
+          {{ description || 'عارض PDF للوثيقة مع خيارات الطباعة والتنزيل.' }}
+        </DialogDescription>
       </DialogHeader>
 
       <!-- PDF viewport: tall enough to show a full A4 page -->
       <div class="bg-muted/40 flex items-center justify-center" style="height: min(82vh, 1050px)">
         <div v-if="loading" class="text-muted-foreground flex flex-col items-center gap-2">
           <Loader2 class="h-6 w-6 animate-spin" aria-hidden="true" />
-          <span class="text-sm">جارٍ تحميل الوثيقة…</span>
+          <span class="text-sm">جارٍ تحميل الوثيقة...</span>
         </div>
 
         <Alert v-else-if="error" variant="destructive" class="m-5 w-auto" role="alert">

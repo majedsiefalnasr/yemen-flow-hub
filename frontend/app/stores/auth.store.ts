@@ -193,7 +193,7 @@ export const useAuthStore = defineStore('auth', {
         if (!challengeId) {
           throw {
             statusCode: 500,
-            data: { success: false, message: 'تعذر بدء جلسة التحقق. يرجى إعادة المحاولة.' },
+            data: { success: false, message: 'تعذّر بدء جلسة التحقق. أعد المحاولة.' },
           }
         }
 

@@ -87,8 +87,9 @@ const votingQueueColumns: ColumnDef<VotingQueueItem>[] = [
   },
   {
     id: 'merchant',
-    header: 'التاجر',
-    cell: ({ row }) => h('span', row.original.merchant?.name ?? row.original.supplier_name ?? '—'),
+    header: 'المستورد',
+    cell: ({ row }) =>
+      h('span', row.original.merchant?.name ?? row.original.supplier_name ?? 'غير متاح'),
   },
   {
     id: 'amount',
@@ -136,8 +137,9 @@ const fxQueueColumns: ColumnDef<ImportRequest>[] = [
   },
   {
     id: 'merchant',
-    header: 'التاجر',
-    cell: ({ row }) => h('span', row.original.merchant?.name ?? row.original.supplier_name ?? '—'),
+    header: 'المستورد',
+    cell: ({ row }) =>
+      h('span', row.original.merchant?.name ?? row.original.supplier_name ?? 'غير متاح'),
   },
   {
     id: 'amount',
@@ -306,7 +308,7 @@ onMounted(() => {
 
         <section class="border-border bg-background rounded-xl border">
           <div class="border-border border-b px-4 py-3">
-            <h2 class="text-sm font-semibold">جلسات التصويت — نظرة عامة</h2>
+            <h2 class="text-sm font-semibold">جلسات التصويت، نظرة عامة</h2>
           </div>
           <div class="p-4">
             <DataTable

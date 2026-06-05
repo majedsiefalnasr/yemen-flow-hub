@@ -26,14 +26,14 @@ function makeMerchant(overrides: Partial<Merchant> = {}): Merchant {
 // ── Dialog logic (mirrors SuspendConfirmDialog.vue) ──────────────────────────
 
 function dialogTitle(merchant: Merchant): string {
-  return merchant.is_active ? 'تأكيد تعليق التاجر' : 'تأكيد تفعيل التاجر'
+  return merchant.is_active ? 'إيقاف نشاط المستورد' : 'تفعيل المستورد'
 }
 
 function confirmButtonLabel(merchant: Merchant, submitting = false): string {
   if (submitting) {
-    return 'جارٍ التحديث…'
+    return 'جارٍ تحديث حالة المستورد...'
   }
-  return merchant.is_active ? 'تعليق' : 'تفعيل'
+  return merchant.is_active ? 'إيقاف نشاط المستورد' : 'تفعيل المستورد'
 }
 
 function confirmButtonClass(merchant: Merchant): string {
@@ -46,9 +46,9 @@ function iconClass(merchant: Merchant): string {
 
 function dialogMessage(merchant: Merchant): string {
   if (merchant.is_active) {
-    return `هل أنت متأكد من تعليق التاجر ${merchant.name}؟ لن يتمكن المستخدمون من اختياره في الطلبات الجديدة.`
+    return `لن يظهر ${merchant.name} ضمن اختيارات الطلبات الجديدة بعد الإيقاف.`
   }
-  return `هل أنت متأكد من تفعيل التاجر ${merchant.name}؟`
+  return `سيظهر ${merchant.name} مرة أخرى ضمن اختيارات الطلبات الجديدة.`
 }
 
 function canDismissDialog(submitting: boolean): boolean {
@@ -59,21 +59,21 @@ function canDismissDialog(submitting: boolean): boolean {
 
 describe('SuspendConfirmDialog — title', () => {
   it('shows suspend title for active merchant', () => {
-    expect(dialogTitle(makeMerchant({ is_active: true }))).toBe('تأكيد تعليق التاجر')
+    expect(dialogTitle(makeMerchant({ is_active: true }))).toBe('إيقاف نشاط المستورد')
   })
 
   it('shows activate title for suspended merchant', () => {
-    expect(dialogTitle(makeMerchant({ is_active: false }))).toBe('تأكيد تفعيل التاجر')
+    expect(dialogTitle(makeMerchant({ is_active: false }))).toBe('تفعيل المستورد')
   })
 })
 
 describe('SuspendConfirmDialog — confirm button', () => {
-  it('shows "تعليق" label for active merchant', () => {
-    expect(confirmButtonLabel(makeMerchant({ is_active: true }))).toBe('تعليق')
+  it('shows "إيقاف نشاط المستورد" label for active merchant', () => {
+    expect(confirmButtonLabel(makeMerchant({ is_active: true }))).toBe('إيقاف نشاط المستورد')
   })
 
-  it('shows "تفعيل" label for suspended merchant', () => {
-    expect(confirmButtonLabel(makeMerchant({ is_active: false }))).toBe('تفعيل')
+  it('shows "تفعيل المستورد" label for suspended merchant', () => {
+    expect(confirmButtonLabel(makeMerchant({ is_active: false }))).toBe('تفعيل المستورد')
   })
 
   it('uses btn-suspend class for active merchant', () => {
@@ -85,7 +85,9 @@ describe('SuspendConfirmDialog — confirm button', () => {
   })
 
   it('shows loading label while submitting', () => {
-    expect(confirmButtonLabel(makeMerchant({ is_active: true }), true)).toBe('جارٍ التحديث…')
+    expect(confirmButtonLabel(makeMerchant({ is_active: true }), true)).toBe(
+      'جارٍ تحديث حالة المستورد...',
+    )
   })
 })
 
@@ -103,14 +105,14 @@ describe('SuspendConfirmDialog — message', () => {
   it('suspend message contains merchant name', () => {
     const msg = dialogMessage(makeMerchant({ name: 'شركة النجاح', is_active: true }))
     expect(msg).toContain('شركة النجاح')
-    expect(msg).toContain('تعليق')
-    expect(msg).toContain('لن يتمكن المستخدمون')
+    expect(msg).toContain('بعد الإيقاف')
+    expect(msg).toContain('لن يظهر')
   })
 
   it('activate message contains merchant name', () => {
     const msg = dialogMessage(makeMerchant({ name: 'مؤسسة الفجر', is_active: false }))
     expect(msg).toContain('مؤسسة الفجر')
-    expect(msg).toContain('تفعيل')
+    expect(msg).toContain('سيظهر')
   })
 
   it('suspend message differs from activate message', () => {

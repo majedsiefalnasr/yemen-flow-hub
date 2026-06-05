@@ -23,20 +23,23 @@ const serverError = ref<string | null>(null)
 const schema = toTypedSchema(
   z
     .object({
-      email: z.string().min(1, 'البريد الإلكتروني مطلوب').email('صيغة البريد الإلكتروني غير صحيحة'),
-      otp: z.string().regex(/^\d{6}$/, 'أدخل رمز التحقق المكوّن من 6 أرقام'),
+      email: z
+        .string()
+        .min(1, 'أدخل البريد الإلكتروني المؤسسي.')
+        .email('أدخل بريدا إلكترونيا صحيحا.'),
+      otp: z.string().regex(/^\d{6}$/, 'أدخل رمز التحقق المكوّن من 6 أرقام.'),
       password: z
         .string()
-        .min(8, 'كلمة المرور يجب أن تكون 8 أحرف على الأقل')
-        .regex(/[A-Z]/, 'يجب أن تحتوي كلمة المرور على حرف كبير')
-        .regex(/[a-z]/, 'يجب أن تحتوي كلمة المرور على حرف صغير')
-        .regex(/\d/, 'يجب أن تحتوي كلمة المرور على رقم')
-        .regex(/[^A-Z0-9]/i, 'يجب أن تحتوي كلمة المرور على رمز خاص'),
-      password_confirmation: z.string().min(1, 'تأكيد كلمة المرور مطلوب'),
+        .min(8, 'استخدم 8 أحرف على الأقل.')
+        .regex(/[A-Z]/, 'أضف حرفا إنجليزيا كبيرا واحدا على الأقل.')
+        .regex(/[a-z]/, 'أضف حرفا إنجليزيا صغيرا واحدا على الأقل.')
+        .regex(/\d/, 'أضف رقما واحدا على الأقل.')
+        .regex(/[^A-Z0-9]/i, 'أضف رمزا خاصا واحدا على الأقل.'),
+      password_confirmation: z.string().min(1, 'أعد إدخال كلمة المرور الجديدة.'),
     })
     .refine((values) => values.password === values.password_confirmation, {
       path: ['password_confirmation'],
-      message: 'تأكيد كلمة المرور غير مطابق',
+      message: 'كلمتا المرور غير متطابقتين.',
     }),
 )
 
@@ -60,7 +63,7 @@ const onSubmit = handleSubmit(async () => {
     await new Promise((resolve) => setTimeout(resolve, 500))
     isDone.value = true
   } catch {
-    serverError.value = 'تعذر تحديث كلمة المرور الآن. تحقق من رمز التحقق ثم أعد المحاولة.'
+    serverError.value = 'تعذّر تحديث كلمة المرور. تحقق من رمز التحقق ثم أعد المحاولة.'
   } finally {
     isSubmitting.value = false
   }
@@ -73,7 +76,7 @@ const onSubmit = handleSubmit(async () => {
       <Card>
         <CardHeader>
           <CardTitle>إعادة تعيين كلمة المرور</CardTitle>
-          <CardDescription>أدخل رمز التحقق وكلمة المرور الجديدة للمتابعة.</CardDescription>
+          <CardDescription>أدخل رمز التحقق وكلمة المرور الجديدة لحسابك المؤسسي.</CardDescription>
         </CardHeader>
         <CardContent>
           <Alert v-if="serverError" variant="destructive" class="mb-4">
@@ -82,13 +85,13 @@ const onSubmit = handleSubmit(async () => {
 
           <Alert v-if="isDone" class="mb-4">
             <AlertDescription
-              >تم تحديث كلمة المرور بنجاح. يمكنك تسجيل الدخول الآن.</AlertDescription
+              >تم تحديث كلمة المرور. استخدمها في تسجيل الدخول التالي.</AlertDescription
             >
           </Alert>
 
           <form class="space-y-4" novalidate @submit.prevent="onSubmit">
             <div class="space-y-2">
-              <Label for="reset-email">البريد الإلكتروني</Label>
+              <Label for="reset-email">البريد الإلكتروني المؤسسي</Label>
               <Input
                 id="reset-email"
                 v-model="email"
@@ -100,7 +103,7 @@ const onSubmit = handleSubmit(async () => {
             </div>
 
             <div class="space-y-2">
-              <Label for="reset-otp">رمز التحقق</Label>
+              <Label for="reset-otp">رمز التحقق المرسل للحساب</Label>
               <Input
                 id="reset-otp"
                 v-model="otp"
@@ -127,7 +130,7 @@ const onSubmit = handleSubmit(async () => {
             </div>
 
             <div class="space-y-2">
-              <Label for="reset-password-confirmation">تأكيد كلمة المرور</Label>
+              <Label for="reset-password-confirmation">إعادة إدخال كلمة المرور</Label>
               <Input
                 id="reset-password-confirmation"
                 v-model="passwordConfirmation"
@@ -143,7 +146,7 @@ const onSubmit = handleSubmit(async () => {
             <div class="flex flex-wrap items-center gap-2 pt-2">
               <Button type="submit" :disabled="isSubmitting || isDone" class="h-10">
                 <Loader2 v-if="isSubmitting" class="me-2 size-4 animate-spin" />
-                {{ isSubmitting ? 'جارٍ الحفظ...' : 'حفظ كلمة المرور' }}
+                {{ isSubmitting ? 'جارٍ تحديث كلمة المرور...' : 'تحديث كلمة المرور' }}
               </Button>
               <Button type="button" variant="outline" class="h-10" @click="navigateTo('/login')">
                 العودة لتسجيل الدخول

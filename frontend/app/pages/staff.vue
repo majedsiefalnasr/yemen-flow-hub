@@ -136,7 +136,7 @@ async function loadStaff() {
   try {
     staff.value = await fetchUsers()
   } catch {
-    error.value = 'تعذر تحميل بيانات الموظفين الآن. أعد المحاولة بعد قليل.'
+    error.value = 'تعذّر تحميل بيانات موظفي البنك. تحقق من الاتصال وأعد المحاولة.'
   } finally {
     loading.value = false
   }
@@ -179,7 +179,7 @@ async function handleSave(data: {
   saving.value = true
   serverError.value = null
   if (!auth.user?.bank_id) {
-    serverError.value = 'خطأ: معرّف البنك غير متاح.'
+    serverError.value = 'لا يمكن حفظ الموظف لأن البنك المرتبط بحسابك غير محدد.'
     saving.value = false
     return
   }
@@ -221,7 +221,7 @@ async function handleSave(data: {
     closeModal()
   } catch (err: any) {
     serverError.value =
-      getFirstApiErrorMessage(err) ?? 'تعذر حفظ بيانات الموظف. راجع الحقول ثم أعد المحاولة.'
+      getFirstApiErrorMessage(err) ?? 'تعذّر حفظ بيانات الموظف. راجع الحقول ثم أعد المحاولة.'
   } finally {
     saving.value = false
   }
@@ -253,7 +253,7 @@ async function confirmDeactivate() {
 }
 
 function formatJoinDate(dateStr: string | null | undefined): string {
-  if (!dateStr) return '—'
+  if (!dateStr) return 'غير متاح'
   return new Date(dateStr).toLocaleDateString('ar-YE', {
     year: 'numeric',
     month: 'short',
@@ -345,7 +345,11 @@ const columns: ColumnDef<User>[] = [
     header: 'آخر دخول',
     cell: ({ row }) => {
       const ts = row.original.last_login_at
-      return h('span', { class: 'text-xs text-muted-foreground' }, ts ? formatJoinDate(ts) : '—')
+      return h(
+        'span',
+        { class: 'text-xs text-muted-foreground' },
+        ts ? formatJoinDate(ts) : 'غير متاح',
+      )
     },
   },
   {
@@ -634,7 +638,11 @@ onMounted(loadStaff)
                   <SearchX class="size-5" />
                 </div>
                 <EmptyTitle>
-                  {{ staff.length === 0 ? 'لا يوجد موظفون مسجّلون بعد' : 'لا توجد نتائج مطابقة' }}
+                  {{
+                    staff.length === 0
+                      ? 'لا يوجد موظفون مسجلون لهذا البنك بعد'
+                      : 'لا توجد نتائج مطابقة'
+                  }}
                 </EmptyTitle>
               </EmptyHeader>
               <EmptyContent>
@@ -669,10 +677,10 @@ onMounted(loadStaff)
     <AlertDialog :open="showDeactivateConfirm" @update:open="(v) => !v && closeDeactivate()">
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>تأكيد إلغاء التفعيل</AlertDialogTitle>
+          <AlertDialogTitle>إلغاء تفعيل حساب الموظف</AlertDialogTitle>
           <AlertDialogDescription>
-            هل أنت متأكد من إلغاء تفعيل حساب <strong>{{ deactivatingStaff?.name }}</strong
-            >؟ لن يتمكن من تسجيل الدخول بعد ذلك.
+            سيتم منع <strong>{{ deactivatingStaff?.name }}</strong> من تسجيل الدخول إلى المنصة بعد
+            إلغاء التفعيل.
           </AlertDialogDescription>
         </AlertDialogHeader>
 
@@ -685,8 +693,8 @@ onMounted(loadStaff)
         >
           <p class="font-semibold text-[var(--severity-amber)]">تحقق من المسودات النشطة</p>
           <p class="text-foreground mt-1 text-xs">
-            قد يكون لهذا الموظف طلبات في حالة مسودة أو مُعادة للتصحيح. بعد التعطيل، لن يتمكن من
-            إتمامها. تأكد من نقل مسؤولية هذه الطلبات قبل المتابعة.
+            قد تكون لدى هذا الموظف طلبات مسودة أو مُعادة للتصحيح. بعد إلغاء التفعيل لن يتمكن من
+            تعديلها أو إعادة تقديمها. انقل مسؤولية هذه الطلبات قبل المتابعة.
           </p>
         </div>
         <div
@@ -697,8 +705,8 @@ onMounted(loadStaff)
         >
           <p class="font-semibold text-[var(--severity-amber)]">تحقق من الطلبات قيد المراجعة</p>
           <p class="text-foreground mt-1 text-xs">
-            قد يكون لهذا المراجع طلبات قيد المراجعة حالياً. بعد التعطيل، لن يتمكن من إكمال مراجعتها.
-            تأكد من توفر مراجع آخر نشط يمكنه الاستمرار بهذه الطلبات.
+            قد تكون لدى هذا المراجع طلبات قيد المراجعة حاليا. بعد إلغاء التفعيل لن يتمكن من إكمالها.
+            تأكد من توفر مراجع آخر نشط قبل المتابعة.
           </p>
         </div>
 
@@ -710,7 +718,7 @@ onMounted(loadStaff)
             :disabled="deactivating"
             @click="confirmDeactivate"
           >
-            {{ deactivating ? 'جارٍ التعطيل…' : 'تعطيل' }}
+            {{ deactivating ? 'جارٍ إلغاء التفعيل...' : 'إلغاء تفعيل الحساب' }}
           </Button>
         </AlertDialogFooter>
       </AlertDialogContent>

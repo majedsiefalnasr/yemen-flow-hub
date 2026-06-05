@@ -95,7 +95,7 @@ const kpis = computed(() => [
     summary: `${approved.value} مُعتمد`,
   },
   { label: 'قيمة التمويل', value: `$${(totalValue.value / 1_000_000).toFixed(1)}M`, summary: '' },
-  { label: 'متوسط زمن المعالجة', value: '—', summary: '' },
+  { label: 'متوسط زمن المعالجة', value: 'غير متاح', summary: '' },
   { label: 'نسبة الاعتماد', value: `${approvalRate.value}%`, summary: `${rejected.value} مرفوض` },
   {
     label: 'الفواتير المكررة',
@@ -269,14 +269,18 @@ const bankBreakdownColumns: ColumnDef<BankBreakdownRow>[] = [
       h(
         'span',
         { class: 'tabular-nums text-[var(--severity-green)]' },
-        row.original.approved ?? '—',
+        row.original.approved ?? 'غير متاح',
       ),
   },
   {
     accessorKey: 'rejected',
     header: 'مرفوض',
     cell: ({ row }) =>
-      h('span', { class: 'tabular-nums text-[var(--severity-red)]' }, row.original.rejected ?? '—'),
+      h(
+        'span',
+        { class: 'tabular-nums text-[var(--severity-red)]' },
+        row.original.rejected ?? 'غير متاح',
+      ),
   },
   {
     id: 'approval_rate',
@@ -287,7 +291,7 @@ const bankBreakdownColumns: ColumnDef<BankBreakdownRow>[] = [
         { class: 'tabular-nums' },
         row.original.total > 0 && row.original.approved != null
           ? `${Math.round((row.original.approved / row.original.total) * 100)}%`
-          : '—',
+          : 'غير متاح',
       ),
   },
   {
@@ -346,7 +350,7 @@ const votingAnalyticsColumns: ColumnDef<VotingAnalyticsRow>[] = [
         { class: 'tabular-nums' },
         row.original.sessions > 0
           ? `${Math.round((row.original.approvals / row.original.sessions) * 100)}%`
-          : '—',
+          : 'غير متاح',
       ),
   },
   {
@@ -356,7 +360,7 @@ const votingAnalyticsColumns: ColumnDef<VotingAnalyticsRow>[] = [
       h(
         'span',
         { class: 'tabular-nums text-muted-foreground' },
-        row.original.avg_hours != null ? `${row.original.avg_hours}س` : '—',
+        row.original.avg_hours != null ? `${row.original.avg_hours}س` : 'غير متاح',
       ),
   },
 ]
@@ -706,7 +710,8 @@ const votingAnalyticsColumns: ColumnDef<VotingAnalyticsRow>[] = [
                       class="font-section text-muted-foreground mb-1 flex justify-between text-xs leading-5"
                     >
                       <span class="tabular-nums"
-                        >متوسط: {{ stage.avg_hours != null ? stage.avg_hours + 'س' : '—' }}</span
+                        >متوسط:
+                        {{ stage.avg_hours != null ? stage.avg_hours + 'س' : 'غير متاح' }}</span
                       >
                       <span
                         class="tabular-nums"
@@ -716,7 +721,8 @@ const votingAnalyticsColumns: ColumnDef<VotingAnalyticsRow>[] = [
                             : 'text-[var(--severity-green)]'
                         "
                       >
-                        انتهاك: {{ stage.breach_rate != null ? stage.breach_rate + '%' : '—' }}
+                        انتهاك:
+                        {{ stage.breach_rate != null ? stage.breach_rate + '%' : 'غير متاح' }}
                       </span>
                     </div>
                     <Progress :model-value="stage.breach_rate ?? 0" class="h-2" />
@@ -744,7 +750,7 @@ const votingAnalyticsColumns: ColumnDef<VotingAnalyticsRow>[] = [
                   >
                   <span
                     class="text-xl leading-7 font-semibold text-[var(--severity-green)] tabular-nums"
-                    >{{ loading ? '—' : approved }}</span
+                    >{{ loading ? 'جارٍ التحميل' : approved }}</span
                   >
                 </div>
                 <div class="flex items-center justify-between rounded-lg border p-3">
@@ -753,7 +759,7 @@ const votingAnalyticsColumns: ColumnDef<VotingAnalyticsRow>[] = [
                   >
                   <span
                     class="text-xl leading-7 font-semibold text-[var(--severity-red)] tabular-nums"
-                    >{{ loading ? '—' : rejected }}</span
+                    >{{ loading ? 'جارٍ التحميل' : rejected }}</span
                   >
                 </div>
                 <div class="flex items-center justify-between rounded-lg border p-3">
@@ -761,7 +767,7 @@ const votingAnalyticsColumns: ColumnDef<VotingAnalyticsRow>[] = [
                     >نسبة الاعتماد</span
                   >
                   <span class="text-foreground text-xl leading-7 font-semibold tabular-nums">{{
-                    loading ? '—' : approvalRate + '%'
+                    loading ? 'جارٍ التحميل' : approvalRate + '%'
                   }}</span>
                 </div>
               </div>
@@ -823,7 +829,7 @@ const votingAnalyticsColumns: ColumnDef<VotingAnalyticsRow>[] = [
                     >رفع SWIFT مكتمل</span
                   >
                   <span class="leading-5 font-semibold text-[var(--info)] tabular-nums">{{
-                    loading ? '—' : (report?.swift_stats?.uploaded ?? '—')
+                    loading ? 'جارٍ التحميل' : (report?.swift_stats?.uploaded ?? 'غير متاح')
                   }}</span>
                 </div>
                 <div class="flex justify-between rounded-lg border p-3">
@@ -832,10 +838,10 @@ const votingAnalyticsColumns: ColumnDef<VotingAnalyticsRow>[] = [
                   >
                   <span class="text-foreground leading-5 font-semibold tabular-nums">{{
                     loading
-                      ? '—'
+                      ? 'جارٍ التحميل'
                       : report?.swift_stats?.avg_upload_hours != null
                         ? report.swift_stats.avg_upload_hours + 'س'
-                        : '—'
+                        : 'غير متاح'
                   }}</span>
                 </div>
                 <div class="flex justify-between rounded-lg border p-3">
@@ -843,7 +849,7 @@ const votingAnalyticsColumns: ColumnDef<VotingAnalyticsRow>[] = [
                     >قيد الانتظار</span
                   >
                   <span class="leading-5 font-semibold text-[var(--severity-amber)] tabular-nums">{{
-                    loading ? '—' : (report?.swift_stats?.pending ?? '—')
+                    loading ? 'جارٍ التحميل' : (report?.swift_stats?.pending ?? 'غير متاح')
                   }}</span>
                 </div>
               </div>
@@ -858,7 +864,7 @@ const votingAnalyticsColumns: ColumnDef<VotingAnalyticsRow>[] = [
                     >مكتمل</span
                   >
                   <span class="leading-5 font-semibold text-[var(--severity-green)] tabular-nums">{{
-                    loading ? '—' : (report?.fx_stats?.completed ?? '—')
+                    loading ? 'جارٍ التحميل' : (report?.fx_stats?.completed ?? 'غير متاح')
                   }}</span>
                 </div>
                 <div class="flex justify-between rounded-lg border p-3">
@@ -866,7 +872,7 @@ const votingAnalyticsColumns: ColumnDef<VotingAnalyticsRow>[] = [
                     >قيد الانتظار</span
                   >
                   <span class="leading-5 font-semibold text-[var(--severity-amber)] tabular-nums">{{
-                    loading ? '—' : (report?.fx_stats?.pending ?? '—')
+                    loading ? 'جارٍ التحميل' : (report?.fx_stats?.pending ?? 'غير متاح')
                   }}</span>
                 </div>
               </div>
@@ -888,10 +894,10 @@ const votingAnalyticsColumns: ColumnDef<VotingAnalyticsRow>[] = [
                   >
                   <span class="leading-5 font-semibold text-[var(--severity-green)] tabular-nums">{{
                     loading
-                      ? '—'
+                      ? 'جارٍ التحميل'
                       : report?.compliance?.on_time_rate != null
                         ? report.compliance.on_time_rate + '%'
-                        : '—'
+                        : 'غير متاح'
                   }}</span>
                 </div>
                 <div class="flex justify-between rounded-lg border p-3">
@@ -899,7 +905,7 @@ const votingAnalyticsColumns: ColumnDef<VotingAnalyticsRow>[] = [
                     >انتهاكات SLA</span
                   >
                   <span class="leading-5 font-semibold text-[var(--severity-red)] tabular-nums">{{
-                    loading ? '—' : (report?.compliance?.sla_violations ?? '—')
+                    loading ? 'جارٍ التحميل' : (report?.compliance?.sla_violations ?? 'غير متاح')
                   }}</span>
                 </div>
                 <div class="flex justify-between rounded-lg border p-3">
@@ -907,7 +913,7 @@ const votingAnalyticsColumns: ColumnDef<VotingAnalyticsRow>[] = [
                     >طلبات عادت للبنك</span
                   >
                   <span class="leading-5 font-semibold text-[var(--severity-amber)] tabular-nums">{{
-                    loading ? '—' : (report?.compliance?.returned_count ?? '—')
+                    loading ? 'جارٍ التحميل' : (report?.compliance?.returned_count ?? 'غير متاح')
                   }}</span>
                 </div>
               </div>
@@ -922,7 +928,7 @@ const votingAnalyticsColumns: ColumnDef<VotingAnalyticsRow>[] = [
                     >إجمالي السجلات</span
                   >
                   <span class="text-foreground leading-5 font-semibold tabular-nums">{{
-                    loading ? '—' : (report?.audit_summary?.total_events ?? '—')
+                    loading ? 'جارٍ التحميل' : (report?.audit_summary?.total_events ?? 'غير متاح')
                   }}</span>
                 </div>
                 <div class="flex justify-between rounded-lg border p-3">
@@ -930,7 +936,7 @@ const votingAnalyticsColumns: ColumnDef<VotingAnalyticsRow>[] = [
                     >رفض صلاحيات</span
                   >
                   <span class="leading-5 font-semibold text-[var(--severity-red)] tabular-nums">{{
-                    loading ? '—' : (report?.audit_summary?.auth_failures ?? '—')
+                    loading ? 'جارٍ التحميل' : (report?.audit_summary?.auth_failures ?? 'غير متاح')
                   }}</span>
                 </div>
               </div>

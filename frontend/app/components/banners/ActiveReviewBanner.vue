@@ -58,7 +58,7 @@ onBeforeUnmount(() => {
     <AlarmClock class="h-5 w-5 flex-shrink-0 text-[var(--voting)]" aria-hidden="true" />
     <AlertDescription class="text-foreground flex-1 text-sm font-medium">
       <span class="font-semibold text-[var(--voting)]"
-        >أنت المراجع النشط — الطلب محجوز لك حالياً</span
+        >أنت المراجع النشط. الطلب محجوز لك حالياً</span
       >
       <span class="text-muted-foreground mx-2">·</span>
       <span class="text-muted-foreground">{{ remainingLabel }}</span>
@@ -81,7 +81,7 @@ onBeforeUnmount(() => {
           {{
             heartbeatActive
               ? 'يُجدَّد حجزك تلقائياً كل دقيقة طالما الصفحة مفتوحة'
-              : 'توقّف تجديد الحجز — قد يُحرَّر الطلب بعد انتهاء المهلة'
+              : 'توقّف تجديد الحجز. قد يُحرَّر الطلب بعد انتهاء المهلة'
           }}
         </p>
       </TooltipContent>

@@ -74,7 +74,7 @@ const { onFieldKeydown, enterKeyHint } = useFormFieldNav()
       <!-- Section 1: Supplier -->
       <FieldSet>
         <FieldLegend>بيانات المورد</FieldLegend>
-        <FieldDescription>معلومات المورد الخارجي المصدّر للبضاعة</FieldDescription>
+        <FieldDescription>أدخل بيانات المورد الخارجي المصدّر للبضاعة.</FieldDescription>
 
         <FieldGroup>
           <Field>
@@ -110,7 +110,7 @@ const { onFieldKeydown, enterKeyHint } = useFormFieldNav()
                 :class="{ 'border-destructive': errors.origin_country }"
                 :aria-invalid="!!errors.origin_country"
               >
-                <SelectValue placeholder="اختر بلد المنشأ..." />
+                <SelectValue placeholder="اختر بلد المنشأ" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem v-for="c in COUNTRIES" :key="c" :value="c">{{ c }}</SelectItem>
@@ -126,7 +126,7 @@ const { onFieldKeydown, enterKeyHint } = useFormFieldNav()
       <!-- Section 2: Invoice -->
       <FieldSet>
         <FieldLegend>بيانات الفاتورة</FieldLegend>
-        <FieldDescription>رقم وتاريخ الفاتورة التجارية للشحنة</FieldDescription>
+        <FieldDescription>أدخل رقم الفاتورة التجارية وتاريخ إصدارها.</FieldDescription>
 
         <FieldGroup>
           <div class="grid grid-cols-2 gap-4">
@@ -142,7 +142,7 @@ const { onFieldKeydown, enterKeyHint } = useFormFieldNav()
                 :class="{ 'border-destructive': errors.invoice_number }"
                 :value="modelValue.invoice_number ?? ''"
                 :enterkeyhint="enterKeyHint"
-                placeholder="INV-2025-XXXX"
+                placeholder="مثال: INV-2026-0001"
                 @input="update('invoice_number', ($event.target as HTMLInputElement).value)"
                 @keydown="onFieldKeydown"
               />
@@ -173,7 +173,7 @@ const { onFieldKeydown, enterKeyHint } = useFormFieldNav()
       <!-- Section 3: Shipping -->
       <FieldSet>
         <FieldLegend>بيانات الشحن والجمارك</FieldLegend>
-        <FieldDescription>تفاصيل مسار الشحنة والمنفذ الجمركي المختص</FieldDescription>
+        <FieldDescription>حدد مسار الشحنة والمنفذ الجمركي المختص.</FieldDescription>
 
         <FieldGroup>
           <Field>
@@ -196,7 +196,7 @@ const { onFieldKeydown, enterKeyHint } = useFormFieldNav()
                 :class="{ 'border-destructive': errors.arrival_port }"
                 :aria-invalid="!!errors.arrival_port"
               >
-                <SelectValue placeholder="اختر ميناء الوصول..." />
+                <SelectValue placeholder="اختر ميناء الوصول" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem v-for="p in ARRIVAL_PORTS" :key="p" :value="p">{{ p }}</SelectItem>
@@ -214,7 +214,7 @@ const { onFieldKeydown, enterKeyHint } = useFormFieldNav()
                 :disabled="loading"
                 :value="modelValue.shipping_port ?? ''"
                 :enterkeyhint="enterKeyHint"
-                placeholder="Port of Houston, USA"
+                placeholder="مثال: Port of Houston"
                 @input="update('shipping_port', ($event.target as HTMLInputElement).value)"
                 @keydown="onFieldKeydown"
               />
@@ -229,7 +229,7 @@ const { onFieldKeydown, enterKeyHint } = useFormFieldNav()
                 :disabled="loading"
                 :value="modelValue.bl_number ?? ''"
                 :enterkeyhint="enterKeyHint"
-                placeholder="BL-XXXX-XXXX"
+                placeholder="مثال: BL-2026-0001"
                 @input="update('bl_number', ($event.target as HTMLInputElement).value)"
                 @keydown="onFieldKeydown"
               />
@@ -245,7 +245,7 @@ const { onFieldKeydown, enterKeyHint } = useFormFieldNav()
                 class="bg-primary/10 text-primary border-border ms-2 inline-block rounded-full border px-2 py-0.5 text-xs font-normal"
                 aria-live="polite"
               >
-                تم التعبئة التلقائية
+                تم التحديد تلقائيا
               </span>
             </FieldLabel>
             <Select
@@ -254,7 +254,7 @@ const { onFieldKeydown, enterKeyHint } = useFormFieldNav()
               @update:model-value="(val) => update('customs_office', String(val ?? ''))"
             >
               <SelectTrigger id="customs-office">
-                <SelectValue placeholder="اختر الجمارك المختصة..." />
+                <SelectValue placeholder="اختر الجمارك المختصة" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="جمارك عدن">جمارك عدن</SelectItem>
@@ -262,7 +262,7 @@ const { onFieldKeydown, enterKeyHint } = useFormFieldNav()
                 <SelectItem value="جمارك المكلا">جمارك المكلا</SelectItem>
               </SelectContent>
             </Select>
-            <FieldDescription>تُحدَّد تلقائياً بناءً على ميناء الوصول عند الإمكان</FieldDescription>
+            <FieldDescription>تُحدَّد تلقائيا بناء على ميناء الوصول عند الإمكان.</FieldDescription>
           </Field>
         </FieldGroup>
       </FieldSet>

@@ -82,7 +82,7 @@ describe('getBusinessStatus()', () => {
   describe('BANK_REVIEWER role — shows internal statuses', () => {
     it('returns the correct internal label for SUBMITTED', () => {
       const result = getBusinessStatus(RequestStatus.SUBMITTED, UserRole.BANK_REVIEWER)
-      expect(result.label).toBe('مُقدَّم')
+      expect(result.label).toBe('مقدم')
       expect(result.color).toBe('#ff9f0a')
       expect(result.icon).toBe('clock')
       expect(result.canonicalStatus).toBe(RequestStatus.SUBMITTED)
@@ -96,7 +96,7 @@ describe('getBusinessStatus()', () => {
 
     it('returns the correct label for SUPPORT_REVIEW_PENDING', () => {
       const result = getBusinessStatus(RequestStatus.SUPPORT_REVIEW_PENDING, UserRole.BANK_REVIEWER)
-      expect(result.label).toBe('انتظار لجنة الدعم')
+      expect(result.label).toBe('بانتظار المراجعة')
     })
   })
 
@@ -183,7 +183,7 @@ describe('getBusinessStatus()', () => {
   describe('CBY_ADMIN role — shows internal statuses', () => {
     it('returns internal status labels, not simplified', () => {
       const result = getBusinessStatus(RequestStatus.SUPPORT_REVIEW_IN_PROGRESS, UserRole.CBY_ADMIN)
-      expect(result.label).toBe('قيد مراجعة الدعم')
+      expect(result.label).toBe('قيد المراجعة')
     })
   })
 })

@@ -65,11 +65,11 @@ function setZoom(nextZoom: number) {
 }
 
 function formatDate(value?: string | null) {
-  return value ? new Date(value).toLocaleString('ar-EG') : '—'
+  return value ? new Date(value).toLocaleString('ar-EG') : 'غير متاح'
 }
 
 function formatDay(value?: string | null) {
-  return value ? new Date(value).toLocaleDateString('ar-EG') : '—'
+  return value ? new Date(value).toLocaleDateString('ar-EG') : 'غير متاح'
 }
 
 function printPage() {
@@ -117,7 +117,7 @@ async function performIssue() {
                 {{ issued ? 'تأكيد مصارفة خارجية' : 'معاينة تأكيد مصارفة خارجية' }}
               </h1>
               <p class="text-muted-foreground mt-0.5 text-xs">
-                طلب {{ request.reference_number }} — {{ request.merchant?.name }}
+                طلب {{ request.reference_number }}، {{ request.merchant?.name ?? 'غير متاح' }}
               </p>
             </div>
 
@@ -152,11 +152,11 @@ async function performIssue() {
                 تم إصدار تأكيد مصارفة خارجية بنجاح
               </div>
               <div class="text-muted-foreground text-xs">
-                رقم البيان
+                رقم الوثيقة
                 <span class="font-mono font-semibold">{{
                   request.customs_declaration?.declaration_number
                 }}</span>
-                · بواسطة {{ request.customs_declaration?.issuer?.name ?? user?.name }} ·
+                ، بواسطة {{ request.customs_declaration?.issuer?.name ?? user?.name }}،
                 {{ formatDate(request.customs_declaration?.issued_at) }}
               </div>
             </div>

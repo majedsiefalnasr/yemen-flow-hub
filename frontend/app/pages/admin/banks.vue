@@ -226,7 +226,7 @@ async function saveBank() {
     }
     closeForm()
   } catch {
-    toastError('تعذر حفظ بيانات البنك. أعد المحاولة بعد قليل.')
+    toastError('تعذّر حفظ بيانات البنك. راجع الحقول ثم أعد المحاولة.')
   } finally {
     saving.value = false
   }
@@ -373,7 +373,7 @@ const columns: ColumnDef<Bank>[] = [
       h(
         'span',
         { class: 'font-mono text-xs text-muted-foreground' },
-        row.original.license_number ?? '—',
+        row.original.license_number ?? 'غير متاح',
       ),
   },
   {
@@ -776,7 +776,7 @@ async function bulkArchive() {
           </div>
           <div class="flex items-center justify-between border-b pb-2">
             <span class="text-muted-foreground">رقم الترخيص</span>
-            <span class="font-mono font-medium">{{ viewing.license_number ?? '—' }}</span>
+            <span class="font-mono font-medium">{{ viewing.license_number ?? 'غير متاح' }}</span>
           </div>
           <div class="flex items-center justify-between border-b pb-2">
             <span class="text-muted-foreground">الحالة</span>

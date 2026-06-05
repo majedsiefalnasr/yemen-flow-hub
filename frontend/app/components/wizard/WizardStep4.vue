@@ -84,7 +84,9 @@ const formattedAmount = computed(() => {
           </div>
           <div>
             <p class="font-section text-muted-foreground text-xs leading-5 font-medium">المستورد</p>
-            <p class="text-foreground text-sm leading-6 font-medium">{{ merchantName || '—' }}</p>
+            <p class="text-foreground text-sm leading-6 font-medium">
+              {{ merchantName || 'غير محدد' }}
+            </p>
           </div>
           <div v-if="step1.amount">
             <p class="font-section text-muted-foreground text-xs leading-5 font-medium">
@@ -131,7 +133,7 @@ const formattedAmount = computed(() => {
           <div>
             <p class="font-section text-muted-foreground text-xs leading-5 font-medium">المورد</p>
             <p class="text-foreground text-sm leading-6 font-medium">
-              {{ step2.supplier_name || '—' }}
+              {{ step2.supplier_name || 'غير محدد' }}
             </p>
           </div>
           <div v-if="step2.origin_country">
@@ -217,8 +219,8 @@ const formattedAmount = computed(() => {
             class="text-foreground max-w-[75ch] cursor-pointer text-sm leading-7 font-normal"
             @click="emit('update:acknowledged', !acknowledged)"
           >
-            أُقر بأن جميع البيانات والمستندات المقدمة صحيحة وكاملة، وأتحمل المسؤولية القانونية عن أي
-            بيانات غير دقيقة أو مستندات مزوّرة، وفقاً للوائح البنك المركزي اليمني.
+            أُقر بأن بيانات الطلب والمستندات المرفقة صحيحة وكاملة، وأتحمل مسؤولية أي بيانات غير
+            دقيقة أو مستندات غير صحيحة وفق لوائح البنك المركزي اليمني.
           </Label>
         </div>
       </CardContent>

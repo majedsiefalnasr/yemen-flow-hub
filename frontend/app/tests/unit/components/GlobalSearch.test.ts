@@ -202,7 +202,7 @@ describe('GlobalSearch', () => {
     await wrapper.get('input').setValue('alpha')
     await wrapper
       .findAll('button.search-chip')
-      .find((button) => button.text() === 'البيانات الجمركية')!
+      .find((button) => button.text() === 'وثائق تأكيد المصارفة')!
       .trigger('click')
     await wrapper.find('button.search-result-item').trigger('click')
 

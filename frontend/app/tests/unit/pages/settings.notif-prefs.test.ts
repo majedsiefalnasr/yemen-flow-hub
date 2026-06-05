@@ -68,7 +68,7 @@ const ALL_NOTIF_PREFS: NotifPrefItem[] = [
   },
   {
     key: 'customs_issued',
-    label: 'إشعار إصدار البيان الجمركي',
+    label: 'إشعار إصدار تأكيد المصارفة الخارجية',
     mandatory: false,
     roles: [UserRole.DATA_ENTRY, UserRole.BANK_REVIEWER],
   },

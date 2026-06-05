@@ -134,7 +134,7 @@ const onSubmit = handleSubmit((v) => {
           <AlertTriangle class="h-4 w-4" />
           <AlertDescription>
             <div class="flex items-center justify-between gap-2">
-              <span>تعذر تحميل قائمة التجار الآن. أعد المحاولة بعد قليل.</span>
+              <span>تعذّر تحميل قائمة المستوردين. أعد المحاولة بعد قليل.</span>
               <Button
                 type="button"
                 variant="outline"
@@ -160,7 +160,7 @@ const onSubmit = handleSubmit((v) => {
               :class="{ 'border-destructive': errors.merchant_id }"
             >
               <SelectValue
-                :placeholder="merchantsLoading ? 'جارٍ تحميل القائمة...' : 'اختر المستورد'"
+                :placeholder="merchantsLoading ? 'جارٍ تحميل المستوردين...' : 'اختر المستورد'"
               />
             </SelectTrigger>
             <SelectContent>
@@ -191,7 +191,7 @@ const onSubmit = handleSubmit((v) => {
           type="text"
           :disabled="loading"
           :class="{ 'border-destructive': errors.supplier_name }"
-          placeholder="أدخل اسم المورد"
+          placeholder="مثال: Cargill Trading Inc."
           @input="(e: Event) => setValues({ supplier_name: (e.target as HTMLInputElement).value })"
         />
         <p v-if="errors.supplier_name" class="text-sm text-[var(--color-text-error)]">
@@ -214,7 +214,7 @@ const onSubmit = handleSubmit((v) => {
           :value="values.goods_description"
           :disabled="loading"
           :class="{ 'border-destructive': errors.goods_description }"
-          placeholder="أدخل وصفاً تفصيلياً للبضائع"
+          placeholder="اكتب وصفا مختصرا للبضائع المطلوبة."
           rows="3"
           @input="
             (e: Event) => setValues({ goods_description: (e.target as HTMLTextAreaElement).value })
@@ -497,7 +497,7 @@ const onSubmit = handleSubmit((v) => {
           id="notes"
           :value="values.notes"
           :disabled="loading"
-          placeholder="أي ملاحظات إضافية (اختياري)"
+          placeholder="أضف ملاحظات تشغيلية عند الحاجة."
           rows="3"
           @input="(e: Event) => setValues({ notes: (e.target as HTMLTextAreaElement).value })"
         />
@@ -508,7 +508,7 @@ const onSubmit = handleSubmit((v) => {
     <div class="flex justify-start gap-3">
       <slot name="actions">
         <Button type="submit" :disabled="loading">
-          {{ loading ? 'جاري الحفظ...' : 'حفظ الطلب' }}
+          {{ loading ? 'جارٍ حفظ الطلب...' : 'حفظ الطلب' }}
         </Button>
       </slot>
     </div>

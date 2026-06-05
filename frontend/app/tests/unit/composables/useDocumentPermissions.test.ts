@@ -67,9 +67,9 @@ describe('canDownloadDocument — unknown / null type', () => {
     expect(canDownloadDocument(UserRole.SUPPORT_COMMITTEE, null)).toBe(true)
   })
 
-  it('returns true for unknown string type for all roles', () => {
+  it('returns false for unknown string type for all roles', () => {
     for (const role of Object.values(UserRole)) {
-      expect(canDownloadDocument(role, 'COMMERCIAL_INVOICE')).toBe(true)
+      expect(canDownloadDocument(role, 'COMMERCIAL_INVOICE')).toBe(false)
     }
   })
 })
@@ -106,6 +106,30 @@ describe('canDownloadDocument — CONFIRMATION_REQUEST type', () => {
     for (const role of Object.values(UserRole)) {
       expect(canDownloadDocument(role, 'CONFIRMATION_REQUEST')).toBe(true)
     }
+  })
+})
+
+describe('canDownloadDocument — CUSTOMS type', () => {
+  const CUSTOMS_ALLOWED = [
+    UserRole.BANK_REVIEWER,
+    UserRole.COMMITTEE_DIRECTOR,
+    UserRole.CBY_ADMIN,
+  ] as const
+
+  const CUSTOMS_DENIED = [
+    UserRole.DATA_ENTRY,
+    UserRole.BANK_ADMIN,
+    UserRole.SWIFT_OFFICER,
+    UserRole.SUPPORT_COMMITTEE,
+    UserRole.EXECUTIVE_MEMBER,
+  ] as const
+
+  it.each(CUSTOMS_ALLOWED)('returns true for allowed role %s', (role) => {
+    expect(canDownloadDocument(role, 'CUSTOMS')).toBe(true)
+  })
+
+  it.each(CUSTOMS_DENIED)('returns false for denied role %s', (role) => {
+    expect(canDownloadDocument(role, 'CUSTOMS')).toBe(false)
   })
 })
 

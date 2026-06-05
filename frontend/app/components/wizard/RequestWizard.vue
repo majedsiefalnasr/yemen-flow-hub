@@ -72,14 +72,14 @@ async function resolveDataEntryMerchant(): Promise<void> {
     merchantName.value = ''
     merchantResolutionError.value =
       merchants.length === 0
-        ? 'لا يوجد تاجر نشط مرتبط بحساب إدخال البيانات هذا.'
-        : 'اختر التاجر المرتبط بهذا الطلب من قائمة تجار البنك.'
+        ? 'لا يوجد مستورد نشط مرتبط بحساب إدخال البيانات هذا.'
+        : 'اختر المستورد المرتبط بهذا الطلب من قائمة مستوردي البنك.'
   } catch {
     dataEntryMerchants.value = []
     wizard.step1.value.merchant_id = null
     merchantName.value = ''
     merchantResolutionError.value =
-      'تعذر تحميل بيانات التاجر المرتبط بالحساب الآن. أعد المحاولة بعد قليل.'
+      'تعذّر تحميل بيانات المستورد المرتبط بالحساب. أعد المحاولة بعد قليل.'
   }
 }
 
@@ -128,7 +128,7 @@ async function handleSaveDraft(): Promise<void> {
   const result = await wizard.saveDraft()
   if (result) {
     duplicateWarnings.value = result.duplicate_warnings ?? []
-    toast.success('تم حفظ الطلب كمسودة بنجاح.')
+    toast.success('تم حفظ الطلب كمسودة.')
   } else if (wizard.saveError.value) {
     emit('dirty')
     toast.error(wizard.saveError.value)
@@ -139,7 +139,7 @@ async function handleSubmit(): Promise<void> {
   const result = await wizard.submitRequest()
   if (result) {
     emit('submitted')
-    toast.success('تم إرسال الطلب بنجاح!')
+    toast.success('تم إرسال الطلب للمراجعة البنكية.')
     await new Promise((r) => setTimeout(r, 800))
     await router.push(`/requests/${result.id}`)
   } else if (wizard.submitError.value) {
@@ -188,7 +188,7 @@ function scrollToStepper(): void {
         تقديم طلب تمويل واردات جديد
       </h1>
       <p class="text-muted-foreground text-sm leading-6">
-        املأ البيانات بدقة وأرفق المستندات المطلوبة
+        أدخل بيانات الطلب وأرفق ملفات PDF المطلوبة قبل الإرسال للمراجعة البنكية.
       </p>
     </div>
 
@@ -263,7 +263,7 @@ function scrollToStepper(): void {
         >
           <AlertTriangle class="h-4 w-4" />
           <AlertDescription class="text-foreground">
-            تحذير: رقم الفاتورة
+            تنبيه: رقم الفاتورة
             <span class="font-mono font-semibold">{{ wizard.step2.value.invoice_number }}</span>
             مستخدم في
             {{
@@ -271,12 +271,13 @@ function scrollToStepper(): void {
                 ? 'طلب سابق'
                 : `${duplicateWarnings.length} طلبات سابقة`
             }}
-            ({{
+            المراجع:
+            {{
               duplicateWarnings
                 .map((w) => w.reference_number)
                 .filter(Boolean)
                 .join('، ') || 'مرجع غير متاح'
-            }}). يمكنك المتابعة والإرسال إذا كانت الفاتورة صحيحة.
+            }}. راجع الرقم قبل الإرسال، ويمكنك المتابعة إذا كانت الفاتورة صحيحة.
           </AlertDescription>
         </Alert>
         <WizardStep4
@@ -321,7 +322,7 @@ function scrollToStepper(): void {
           @click="handleSaveDraft"
         >
           <Save class="me-1 h-4 w-4" />
-          <span v-if="wizard.saving.value">جارٍ الحفظ...</span>
+          <span v-if="wizard.saving.value">جارٍ حفظ المسودة...</span>
           <span v-else>حفظ كمسودة</span>
         </Button>
 
@@ -332,8 +333,8 @@ function scrollToStepper(): void {
         </Button>
         <Button v-else :disabled="isSubmitDisabled" @click="handleSubmit">
           <Loader2 v-if="wizard.submitting.value" class="me-1 h-4 w-4 animate-spin" />
-          <span v-if="wizard.submitting.value">جارٍ الإرسال...</span>
-          <span v-else>إرسال للمراجعة</span>
+          <span v-if="wizard.submitting.value">جارٍ إرسال الطلب...</span>
+          <span v-else>إرسال للمراجعة البنكية</span>
           <ChevronLeft v-if="!wizard.submitting.value" class="h-4 w-4" />
         </Button>
       </div>

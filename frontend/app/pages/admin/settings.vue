@@ -197,7 +197,7 @@ onMounted(async () => {
             <div v-if="settings" class="two-col-grid">
               <div class="stepper-field">
                 <label class="field-label">مدة صلاحية المطالبة (دقيقة)</label>
-                <p class="field-hint">النطاق: 5–60 دقيقة</p>
+                <p class="field-hint">القيمة المسموحة من 5 إلى 60 دقيقة</p>
                 <div class="stepper-row">
                   <button
                     class="stepper-btn"
@@ -229,7 +229,7 @@ onMounted(async () => {
 
               <div class="stepper-field">
                 <label class="field-label">انتظار جلسة التصويت (دقيقة)</label>
-                <p class="field-hint">النطاق: 15–120 دقيقة</p>
+                <p class="field-hint">القيمة المسموحة من 15 إلى 120 دقيقة</p>
                 <div class="stepper-row">
                   <button
                     class="stepper-btn"
@@ -261,7 +261,7 @@ onMounted(async () => {
 
               <div class="stepper-field">
                 <label class="field-label">حد رفع PDF (MB)</label>
-                <p class="field-hint">النطاق: 1–50 MB</p>
+                <p class="field-hint">القيمة المسموحة من 1 إلى 50 MB</p>
                 <div class="stepper-row">
                   <button
                     class="stepper-btn"
@@ -293,7 +293,7 @@ onMounted(async () => {
 
               <div class="stepper-field">
                 <label class="field-label">مدة حظر الدخول (دقيقة)</label>
-                <p class="field-hint">النطاق: 5–60 دقيقة</p>
+                <p class="field-hint">القيمة المسموحة من 5 إلى 60 دقيقة</p>
                 <div class="stepper-row">
                   <button
                     class="stepper-btn"
@@ -330,7 +330,7 @@ onMounted(async () => {
               </div>
               <div class="two-col-grid">
                 <div class="field-group">
-                  <label class="field-label">حجم لجنة الدعم</label>
+                  <label class="field-label">حجم لجنة المساندة</label>
                   <input
                     type="number"
                     class="form-input"
@@ -457,8 +457,8 @@ onMounted(async () => {
                       )
                   "
                 >
-                  <option value="warn">تحذير (warn) — إنشاء الطلب مع تسجيل تحذير</option>
-                  <option value="block">حظر (block) — رفض الطلب المكرر</option>
+                  <option value="warn">تحذير (warn): إنشاء الطلب مع تسجيل تحذير</option>
+                  <option value="block">حظر (block): رفض الطلب المكرر</option>
                 </select>
               </div>
             </template>

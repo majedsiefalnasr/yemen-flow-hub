@@ -41,7 +41,7 @@ export function makeRequest(id: number, status: string) {
     reference_number: `YFH-2026-${String(id).padStart(6, '0')}`,
     bank_id: 11,
     bank_name: 'البنك اليمني للتجارة والاستثمار',
-    merchant: { id: 91, name: 'شركة التاجر الذهبي', commercial_register: 'CR-1001' },
+    merchant: { id: 91, name: 'شركة المستورد الذهبي', commercial_register: 'CR-1001' },
     status,
     current_owner_role: 'DATA_ENTRY',
     currency: 'USD',

@@ -214,7 +214,7 @@ function isActiveRoute(url: string) {
     <SidebarHeader>
       <div class="flex items-center gap-3">
         <div
-          class="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-lg text-sm font-bold"
+          class="font-section grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-lg text-sm leading-none font-semibold"
         >
           <img
             v-if="orgStore.brandLogoDataUrl"
@@ -225,8 +225,12 @@ function isActiveRoute(url: string) {
           <span v-else>{{ brandInitial }}</span>
         </div>
         <div v-if="state === 'expanded'" class="min-w-0 flex-1">
-          <div class="truncate text-sm leading-none font-semibold">{{ orgStore.platformName }}</div>
-          <div class="text-muted-foreground mt-1 truncate text-xs">{{ orgStore.authority }}</div>
+          <div class="font-section truncate text-sm leading-5 font-semibold">
+            {{ orgStore.platformName }}
+          </div>
+          <div class="text-muted-foreground mt-0.5 truncate text-xs leading-5">
+            {{ orgStore.authority }}
+          </div>
         </div>
       </div>
     </SidebarHeader>
@@ -249,7 +253,7 @@ function isActiveRoute(url: string) {
                     <span>{{ item.title }}</span>
                     <span
                       v-if="item.badge"
-                      class="bg-primary text-primary-foreground ms-auto flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[10px] font-bold"
+                      class="bg-primary text-primary-foreground ms-auto flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-xs leading-none font-medium tabular-nums"
                     >
                       {{ item.badge > 99 ? '99+' : item.badge }}
                     </span>

@@ -10,7 +10,7 @@ const DEMO_ROLE_LABELS: Record<UserRole, string> = {
   [UserRole.BANK_REVIEWER]: 'مراجع بنك',
   [UserRole.BANK_ADMIN]: 'مدير بنك',
   [UserRole.SWIFT_OFFICER]: 'ضابط SWIFT',
-  [UserRole.SUPPORT_COMMITTEE]: 'لجنة الدعم',
+  [UserRole.SUPPORT_COMMITTEE]: 'لجنة المساندة',
   [UserRole.EXECUTIVE_MEMBER]: 'عضو تنفيذي',
   [UserRole.COMMITTEE_DIRECTOR]: 'مدير اللجنة',
   [UserRole.CBY_ADMIN]: 'مدير CBY',
@@ -32,7 +32,7 @@ async function switchRole(role: UserRole) {
     open.value = false
     await router.push('/dashboard')
   } catch {
-    error.value = 'تعذر تبديل الدور. تأكد من تشغيل الخادم.'
+    error.value = 'تعذّر تبديل الدور. تأكد من تشغيل الخادم.'
   } finally {
     switching.value = false
   }

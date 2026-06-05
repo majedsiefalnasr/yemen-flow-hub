@@ -26,13 +26,13 @@ withDefaults(
     />
     <div class="flex flex-1 flex-col gap-1">
       <AlertDescription v-if="variant === 'bank_returned'" class="text-sm font-medium">
-        إعادة من المراجع — يرجى التعديل وإعادة الإرسال
+        أعاد مراجع البنك الطلب للتصحيح. راجع التعليق، عدّل البيانات، ثم أعد الإرسال.
       </AlertDescription>
       <AlertDescription v-else-if="variant === 'support_returned'" class="text-sm font-medium">
-        إعادة من لجنة المساندة — يرجى التعديل وإعادة الإرسال
+        أعادت لجنة المساندة الطلب للتصحيح. راجع التعليق، عدّل البيانات، ثم أعد الإرسال.
       </AlertDescription>
       <AlertDescription v-else class="text-sm font-medium">
-        تم إرجاع الطلب للتصحيح من المراجعة الداخلية — يرجى مراجعة الملاحظات وتعديل الطلب.
+        أُعيد الطلب للتصحيح من المراجعة الداخلية. راجع الملاحظات وعدّل الطلب.
       </AlertDescription>
       <p
         v-if="variant === 'bank_returned' && reviewerComment"

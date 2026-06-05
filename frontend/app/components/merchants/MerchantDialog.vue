@@ -55,9 +55,9 @@ const emit = defineEmits<{
 
 const formSchema = toTypedSchema(
   z.object({
-    name: z.string().trim().min(1, 'اسم التاجر مطلوب'),
-    commercial_register: z.string().trim().min(1, 'رقم السجل التجاري مطلوب'),
-    tax_number: z.string().trim().min(1, 'الرقم الضريبي مطلوب'),
+    name: z.string().trim().min(1, 'أدخل اسم المستورد أو الشركة.'),
+    commercial_register: z.string().trim().min(1, 'أدخل رقم السجل التجاري.'),
+    tax_number: z.string().trim().min(1, 'أدخل الرقم الضريبي.'),
     address: z.string().optional().default(''),
     phone: z.string().optional().default(''),
     business_type: z.string().optional().default(''),
@@ -98,16 +98,16 @@ const submit = handleSubmit((values) => {
   <DialogContent class="sm:max-w-lg">
     <DialogHeader>
       <DialogTitle>{{ title }}</DialogTitle>
-      <DialogDescription>الحقول المعلّمة إلزامية.</DialogDescription>
+      <DialogDescription>أدخل بيانات المستورد كما تظهر في السجل التجاري.</DialogDescription>
     </DialogHeader>
 
     <form class="grid gap-3 py-2 sm:grid-cols-2" @submit.prevent="submit">
       <!-- Name -->
       <FormField v-slot="{ componentField }" name="name">
         <FormItem>
-          <FormLabel class="text-xs"
-            >اسم التاجر / الشركة <span class="text-destructive">*</span></FormLabel
-          >
+          <FormLabel class="text-xs">
+            اسم المستورد / الشركة <span class="text-destructive">*</span>
+          </FormLabel>
           <FormControl>
             <Input v-bind="componentField" placeholder="مثال: شركة الكميم للأدوية" />
           </FormControl>
@@ -146,7 +146,7 @@ const submit = handleSubmit((values) => {
         <FormItem>
           <FormLabel class="text-xs">هاتف التواصل</FormLabel>
           <FormControl>
-            <Input v-bind="componentField" placeholder="+9677..." />
+            <Input v-bind="componentField" placeholder="مثال: +96771234567" />
           </FormControl>
           <FormMessage />
         </FormItem>
@@ -214,7 +214,7 @@ const submit = handleSubmit((values) => {
         <FormItem class="sm:col-span-2">
           <FormLabel class="text-xs">العنوان</FormLabel>
           <FormControl>
-            <Input v-bind="componentField" placeholder="المدينة – الشارع" />
+            <Input v-bind="componentField" placeholder="مثال: صنعاء، شارع الستين" />
           </FormControl>
           <FormMessage />
         </FormItem>
@@ -222,7 +222,7 @@ const submit = handleSubmit((values) => {
 
       <DialogFooter class="sm:col-span-2">
         <Button type="submit" :disabled="!meta.valid">
-          {{ initial ? 'حفظ التعديلات' : 'حفظ التاجر' }}
+          {{ initial ? 'حفظ بيانات المستورد' : 'حفظ المستورد' }}
         </Button>
       </DialogFooter>
     </form>

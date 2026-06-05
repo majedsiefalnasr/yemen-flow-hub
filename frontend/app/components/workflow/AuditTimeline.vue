@@ -35,14 +35,14 @@ const ACTION_LABELS: Record<string, string> = {
   bank_return_to_intake: 'إرجاع الطلب للمدخل',
   bank_reject_terminal: 'رفض نهائي من البنك',
   return_to_entry: 'إرجاع الطلب للمدخل',
-  bank_return_after_support_reject: 'إرجاع الطلب بعد رفض لجنة الدعم',
-  bank_finalize_rejection: 'تثبيت رفض لجنة الدعم',
-  support_claim: 'مطالبة لجنة الدعم بالطلب',
-  support_release: 'إفراج لجنة الدعم عن الطلب',
-  support_approve: 'اعتماد لجنة الدعم',
-  support_reject: 'رفض لجنة الدعم',
-  support_return_to_intake: 'إرجاع الطلب للمدخل من لجنة الدعم',
-  move_to_support_queue: 'إحالة الطلب إلى لجنة الدعم',
+  bank_return_after_support_reject: 'إرجاع الطلب بعد رفض لجنة المساندة',
+  bank_finalize_rejection: 'تثبيت رفض لجنة المساندة',
+  support_claim: 'استلام لجنة المساندة للطلب',
+  support_release: 'تحرير مطالبة لجنة المساندة',
+  support_approve: 'اعتماد لجنة المساندة',
+  support_reject: 'رفض لجنة المساندة',
+  support_return_to_intake: 'إرجاع الطلب للمدخل من لجنة المساندة',
+  move_to_support_queue: 'إحالة الطلب إلى لجنة المساندة',
   move_to_swift_queue: 'إحالة الطلب إلى رفع SWIFT',
   swift_upload: 'رفع وثائق SWIFT',
   open_voting: 'فتح التصويت التنفيذي',
@@ -50,7 +50,7 @@ const ACTION_LABELS: Record<string, string> = {
   finalize_approved: 'اعتماد القرار التنفيذي',
   finalize_rejected: 'رفض القرار التنفيذي',
   issue_customs: 'إصدار تأكيد المصارفة الخارجية',
-  complete: 'إكمال الطلب',
+  complete: 'إكمال معالجة الطلب',
 }
 
 function statusLabel(raw: string | null | undefined): string | null {
@@ -60,7 +60,7 @@ function statusLabel(raw: string | null | undefined): string | null {
 }
 
 function actionLabel(raw: string): string {
-  return ACTION_LABELS[raw] ?? 'إجراء مسجل'
+  return ACTION_LABELS[raw] ?? 'إجراء مسجل في سير العمل'
 }
 
 function entryNotes(entry: RequestStageHistory): string | null {
@@ -71,7 +71,7 @@ function entryNotes(entry: RequestStageHistory): string | null {
 
 <template>
   <div v-if="visible.length === 0" class="text-muted-foreground p-4 text-sm">
-    لا توجد إجراءات مسجلة بعد.
+    لا توجد إجراءات مسجلة في سجل سير العمل بعد.
   </div>
 
   <Stepper
@@ -104,23 +104,26 @@ function entryNotes(entry: RequestStageHistory): string | null {
 
       <div class="flex flex-1 flex-col gap-0.5 pt-0.5">
         <div class="flex flex-wrap items-center justify-between gap-2">
-          <StepperTitle class="text-sm font-semibold">
+          <StepperTitle class="font-section text-sm leading-5 font-semibold">
             {{ actionLabel(entry.action) }}
           </StepperTitle>
-          <div class="text-muted-foreground flex items-center gap-1 text-[11px]">
+          <div class="text-muted-foreground flex items-center gap-1 text-xs leading-5 tabular-nums">
             <Clock class="h-3 w-3" />
             {{ new Date(entry.created_at).toLocaleString('ar-EG') }}
           </div>
         </div>
 
-        <StepperDescription class="text-muted-foreground text-xs">
+        <StepperDescription class="text-muted-foreground text-xs leading-5">
           {{ entry.performed_by?.name ?? 'غير معروف' }}
           <span v-if="entry.from_status && entry.to_status">
-            — من «{{ statusLabel(entry.from_status) }}» إلى «{{ statusLabel(entry.to_status) }}»
+            من «{{ statusLabel(entry.from_status) }}» إلى «{{ statusLabel(entry.to_status) }}»
           </span>
         </StepperDescription>
 
-        <div v-if="entryNotes(entry)" class="bg-muted/40 mt-1.5 rounded px-2 py-1 text-xs">
+        <div
+          v-if="entryNotes(entry)"
+          class="bg-muted/40 mt-1.5 rounded px-2 py-1 text-xs leading-5"
+        >
           {{ entryNotes(entry) }}
         </div>
       </div>

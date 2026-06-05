@@ -285,8 +285,8 @@ function notificationSummary(notification: Notification): string {
   switch (notification.data?.type) {
     case 'claim_released':
       return notification.data.reason === 'ttl_expired'
-        ? 'تم تحرير مطالبة الدعم بسبب انتهاء مهلة النشاط. راجع الطلب إذا كنت بحاجة إلى استلامه مرة أخرى.'
-        : `تم تحرير مطالبة الدعم${notification.data.released_by_name ? ` بواسطة ${notification.data.released_by_name}` : ''}. راجع الطلب قبل اتخاذ أي إجراء جديد.`
+        ? 'تم تحرير مطالبة لجنة المساندة بسبب انتهاء مهلة النشاط. راجع الطلب إذا كنت بحاجة إلى استلامه مرة أخرى.'
+        : `تم تحرير مطالبة لجنة المساندة${notification.data.released_by_name ? ` بواسطة ${notification.data.released_by_name}` : ''}. راجع الطلب قبل اتخاذ أي إجراء جديد.`
     case 'voting_opened':
       return 'تم فتح جلسة تصويت مرتبطة بهذا الطلب. افتح الطلب للاطلاع على التفاصيل واتخاذ إجراء التصويت إذا كان دورك يسمح بذلك.'
     case 'swift_upload_requested':
@@ -721,49 +721,54 @@ const columns: ColumnDef<Notification>[] = [
     </div>
 
     <Dialog v-model:open="notificationDialogOpen">
-      <DialogContent class="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle class="flex items-center gap-2">
+      <DialogContent class="overflow-hidden sm:max-w-md">
+        <DialogHeader class="min-w-0 pe-10">
+          <DialogTitle class="flex min-w-0 items-start gap-2 text-start leading-7">
             <span
               :class="`grid h-8 w-8 shrink-0 place-items-center rounded-lg ${selectedNotificationStyle.iconWrap}`"
             >
               <component :is="selectedNotificationStyle.icon" class="h-4 w-4" />
             </span>
-            <span class="min-w-0 truncate"
-              >{{ selectedNotificationStyle.label }}: {{ selectedNotificationMessage }}</span
-            >
+            <span class="min-w-0 break-words">
+              {{ selectedNotificationStyle.label }}: {{ selectedNotificationMessage }}
+            </span>
           </DialogTitle>
-          <DialogDescription>{{ selectedNotificationSummary }}</DialogDescription>
+          <DialogDescription class="leading-6 break-words">
+            {{ selectedNotificationSummary }}
+          </DialogDescription>
         </DialogHeader>
 
-        <div v-if="selectedNotification" class="space-y-3 py-2 text-sm">
-          <div class="flex items-center justify-between gap-4 border-b pb-2">
+        <div
+          v-if="selectedNotification"
+          class="max-h-[min(56dvh,26rem)] space-y-3 overflow-y-auto py-2 text-sm"
+        >
+          <div class="grid grid-cols-[6rem_minmax(0,1fr)] items-start gap-4 border-b pb-2">
             <span class="text-muted-foreground">حالة القراءة</span>
-            <span class="text-foreground font-medium">{{
-              selectedNotification.read_at ? 'مقروء' : 'غير مقروء'
-            }}</span>
+            <span class="text-foreground min-w-0 text-start font-medium">
+              {{ selectedNotification.read_at ? 'مقروء' : 'غير مقروء' }}
+            </span>
           </div>
-          <div class="flex items-center justify-between gap-4 border-b pb-2">
+          <div class="grid grid-cols-[6rem_minmax(0,1fr)] items-start gap-4 border-b pb-2">
             <span class="text-muted-foreground">وقت الوصول</span>
-            <span class="text-foreground tabular-nums">{{
-              new Date(selectedNotification.created_at).toLocaleString('ar-EG')
-            }}</span>
+            <span class="text-foreground min-w-0 text-start tabular-nums">
+              {{ new Date(selectedNotification.created_at).toLocaleString('ar-EG') }}
+            </span>
           </div>
           <div
             v-if="selectedNotificationReference"
-            class="flex items-center justify-between gap-4 border-b pb-2"
+            class="grid grid-cols-[6rem_minmax(0,1fr)] items-start gap-4 border-b pb-2"
           >
             <span class="text-muted-foreground">مرجع الطلب</span>
-            <span class="text-foreground font-mono font-medium">{{
-              selectedNotificationReference
-            }}</span>
+            <span class="text-foreground min-w-0 text-start font-mono font-medium break-all">
+              {{ selectedNotificationReference }}
+            </span>
           </div>
           <div
             v-if="selectedNotification.data.reason"
-            class="flex items-center justify-between gap-4 border-b pb-2"
+            class="grid grid-cols-[6rem_minmax(0,1fr)] items-start gap-4 border-b pb-2"
           >
             <span class="text-muted-foreground">سبب الإشعار</span>
-            <span class="text-foreground font-medium">
+            <span class="text-foreground min-w-0 text-start font-medium">
               {{
                 selectedNotification.data.reason === 'ttl_expired'
                   ? 'انتهاء مهلة النشاط'
@@ -774,9 +779,15 @@ const columns: ColumnDef<Notification>[] = [
         </div>
 
         <DialogFooter class="gap-2">
-          <Button v-if="selectedNotification?.data?.request_id" @click="openLinkedRequest()">
+          <Button
+            v-if="selectedNotification?.data?.request_id"
+            class="min-w-0"
+            @click="openLinkedRequest()"
+          >
             <ExternalLink class="ms-1 h-4 w-4" />
-            {{ notificationActionLabel(selectedNotification) }}
+            <span class="min-w-0 truncate">{{
+              notificationActionLabel(selectedNotification)
+            }}</span>
           </Button>
           <Button variant="outline" @click="notificationDialogOpen = false"> إغلاق </Button>
         </DialogFooter>

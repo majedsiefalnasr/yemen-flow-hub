@@ -355,13 +355,13 @@ const columns: ColumnDef<AuditLog>[] = [
     accessorKey: 'from_status',
     header: 'من',
     cell: ({ row }) =>
-      h('span', { class: 'text-xs text-muted-foreground' }, row.original.from_status ?? '—'),
+      h('span', { class: 'text-xs text-muted-foreground' }, row.original.from_status ?? 'غير متاح'),
   },
   {
     accessorKey: 'to_status',
     header: 'إلى',
     cell: ({ row }) =>
-      h('span', { class: 'text-xs text-muted-foreground' }, row.original.to_status ?? '—'),
+      h('span', { class: 'text-xs text-muted-foreground' }, row.original.to_status ?? 'غير متاح'),
   },
   {
     accessorKey: 'created_at',
@@ -490,13 +490,13 @@ function toggleLog(id: number) {
 }
 
 function truncateUa(ua: string | null | undefined, max = 80): string {
-  if (!ua) return '—'
-  return ua.length > max ? ua.slice(0, max) + '…' : ua
+  if (!ua) return 'غير متاح'
+  return ua.length > max ? ua.slice(0, max) + '...' : ua
 }
 
 type AuditLogMeta = { before?: Record<string, any>; after?: Record<string, any> } | null
 
-const MISSING_DIFF_VALUE = '—'
+const MISSING_DIFF_VALUE = 'غير متاح'
 const EMPTY_DIFF_VALUE = 'فارغ'
 
 function hasDiffValue(record: Record<string, any>, key: string): boolean {
@@ -555,7 +555,7 @@ function diffRows(meta: AuditLogMeta): Array<{ key: string; before: any; after: 
         <div class="flex items-center gap-3 px-4">
           <AlertTriangle class="h-4 w-4 shrink-0 text-[var(--severity-red)]" aria-hidden="true" />
           <span class="flex-1 text-sm font-medium">
-            {{ smartSummary.denied }} محاولة وصول مرفوضة — مراجعة التفويض مطلوبة
+            {{ smartSummary.denied }} محاولة وصول مرفوضة. راجع التفويضات المرتبطة بهذه المحاولات.
           </span>
         </div>
       </Card>
@@ -567,7 +567,7 @@ function diffRows(meta: AuditLogMeta): Array<{ key: string; before: any; after: 
         <div class="flex items-center gap-3 px-4">
           <AlertTriangle class="h-4 w-4 shrink-0 text-[var(--severity-red)]" aria-hidden="true" />
           <span class="flex-1 text-sm font-medium">
-            {{ smartSummary.failedLogins }} محاولة دخول فاشلة — تحقق من الأنشطة المشبوهة
+            {{ smartSummary.failedLogins }} محاولة دخول فاشلة. تحقق من الأنشطة المشبوهة.
           </span>
         </div>
       </Card>
@@ -579,7 +579,7 @@ function diffRows(meta: AuditLogMeta): Array<{ key: string; before: any; after: 
         <div class="flex items-center gap-3 px-4 py-3">
           <AlertTriangle class="h-4 w-4 shrink-0 text-[var(--severity-amber)]" aria-hidden="true" />
           <span class="flex-1 text-sm font-medium">
-            {{ smartSummary.roleChanges }} تغيير دور حساس — مراجعة الصلاحيات مطلوبة
+            {{ smartSummary.roleChanges }} تغيير دور حساس. راجع الصلاحيات المرتبطة بهذه التغييرات.
           </span>
         </div>
       </Card>
@@ -608,7 +608,7 @@ function diffRows(meta: AuditLogMeta): Array<{ key: string; before: any; after: 
           الأنماط الشاذة
           <Badge
             v-if="anomalyGroups.length > 0"
-            class="ms-1.5 border border-[var(--severity-red)]/30 bg-[var(--severity-red)]/10 text-[10px] text-[var(--severity-red)]"
+            class="ms-1.5 border border-[var(--severity-red)]/30 bg-[var(--severity-red)]/10 text-xs leading-none text-[var(--severity-red)] tabular-nums"
           >
             {{ anomalyGroups.length }}
           </Badge>
@@ -703,7 +703,7 @@ function diffRows(meta: AuditLogMeta): Array<{ key: string; before: any; after: 
             </template>
             <template #row-expanded="{ row }">
               <div class="text-muted-foreground mb-2 text-xs">
-                <span class="font-medium">IP: </span>{{ row.ip_address ?? '—' }}
+                <span class="font-medium">IP: </span>{{ row.ip_address ?? 'غير متاح' }}
                 <span class="mx-2">·</span>
                 <span data-testid="log-ua-full">{{ truncateUa(row.user_agent) }}</span>
               </div>

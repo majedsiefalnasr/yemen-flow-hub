@@ -34,9 +34,9 @@ const BUSINESS_TYPE_OPTIONS = [
 
 const schema = toTypedSchema(
   z.object({
-    name: z.string().trim().min(1, 'اسم التاجر مطلوب'),
-    commercial_register: z.string().trim().min(1, 'رقم السجل التجاري مطلوب'),
-    tax_number: z.string().trim().min(1, 'الرقم الضريبي مطلوب'),
+    name: z.string().trim().min(1, 'أدخل اسم المستورد أو الشركة.'),
+    commercial_register: z.string().trim().min(1, 'أدخل رقم السجل التجاري.'),
+    tax_number: z.string().trim().min(1, 'أدخل الرقم الضريبي.'),
     phone: z.string().optional().default(''),
     address: z.string().optional().default(''),
     business_type: z.string().optional().default(''),
@@ -156,7 +156,7 @@ function onDialogOpenChange(open: boolean) {
 
 const onSubmit = handleSubmit((values) => {
   if (isBankRequiredForCreate.value && !values.bank_id) {
-    setFieldError('bank_id', 'اختيار البنك مطلوب')
+    setFieldError('bank_id', 'اختر البنك المرتبط بهذا المستورد.')
     return
   }
 
@@ -179,15 +179,15 @@ const onSubmit = handleSubmit((values) => {
       <DialogOverlay class="modal-backdrop" @click="requestClose" />
       <DialogContent
         class="modal"
-        :aria-label="isEditMode ? 'تعديل بيانات التاجر' : 'تسجيل تاجر جديد'"
+        :aria-label="isEditMode ? 'تعديل بيانات المستورد' : 'تسجيل مستورد جديد'"
       >
         <DialogHeader class="flex items-start justify-between">
           <div>
             <DialogTitle class="text-xl font-semibold text-[var(--color-text-primary)]">
-              {{ isEditMode ? 'تعديل بيانات التاجر' : 'تسجيل تاجر جديد' }}
+              {{ isEditMode ? 'تعديل بيانات المستورد' : 'تسجيل مستورد جديد' }}
             </DialogTitle>
             <p class="mt-1 text-xs text-[var(--color-text-subtle)]">
-              الحقول المعلّمة بـ * إلزامية.
+              أدخل بيانات المستورد كما تظهر في السجل التجاري.
             </p>
           </div>
           <button
@@ -263,7 +263,7 @@ const onSubmit = handleSubmit((values) => {
             <FormField v-slot="{ componentField }" name="name">
               <FormItem class="col-span-2">
                 <FormLabel class="text-xs"
-                  >اسم التاجر / الشركة <span class="text-destructive">*</span></FormLabel
+                  >اسم المستورد / الشركة <span class="text-destructive">*</span></FormLabel
                 >
                 <FormControl>
                   <Input
@@ -307,7 +307,12 @@ const onSubmit = handleSubmit((values) => {
               <FormItem>
                 <FormLabel class="text-xs">هاتف التواصل</FormLabel>
                 <FormControl>
-                  <Input v-bind="componentField" type="text" placeholder="+9677…" dir="ltr" />
+                  <Input
+                    v-bind="componentField"
+                    type="text"
+                    placeholder="مثال: +96771234567"
+                    dir="ltr"
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -361,7 +366,11 @@ const onSubmit = handleSubmit((values) => {
               <FormItem class="col-span-2">
                 <FormLabel class="text-xs">العنوان</FormLabel>
                 <FormControl>
-                  <Input v-bind="componentField" type="text" placeholder="المدينة – الشارع" />
+                  <Input
+                    v-bind="componentField"
+                    type="text"
+                    placeholder="مثال: صنعاء، شارع الستين"
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -373,9 +382,9 @@ const onSubmit = handleSubmit((values) => {
               إلغاء
             </Button>
             <Button type="submit" :disabled="isSaveDisabled">
-              <template v-if="props.saving">جارٍ الحفظ…</template>
-              <template v-else-if="isEditMode">حفظ التعديلات</template>
-              <template v-else>حفظ التاجر</template>
+              <template v-if="props.saving">جارٍ حفظ المستورد...</template>
+              <template v-else-if="isEditMode">حفظ بيانات المستورد</template>
+              <template v-else>حفظ المستورد</template>
             </Button>
           </DialogFooter>
         </form>

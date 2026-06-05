@@ -31,7 +31,7 @@ function makeRequest(id: number, status: Status) {
     reference_number: `YFH-2026-${id.toString().padStart(6, '0')}`,
     bank_id: 11,
     bank_name: 'البنك اليمني للإنشاء والتعمير',
-    merchant: { id: 91, name: 'شركة التاجر الذهبي', commercial_register: 'CR-1001' },
+    merchant: { id: 91, name: 'شركة المستورد الذهبي', commercial_register: 'CR-1001' },
     status,
     current_owner_role:
       status === 'WAITING_FOR_SWIFT' || status === 'SWIFT_UPLOADED'

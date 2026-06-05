@@ -38,7 +38,8 @@ const availableChips = computed(() => {
   if (results.value.requests.length > 0) chips.push({ key: 'requests', label: 'الطلبات' })
   if (results.value.users.length > 0) chips.push({ key: 'users', label: 'المستخدمون' })
   if (results.value.banks.length > 0) chips.push({ key: 'banks', label: 'البنوك' })
-  if (results.value.customs.length > 0) chips.push({ key: 'customs', label: 'البيانات الجمركية' })
+  if (results.value.customs.length > 0)
+    chips.push({ key: 'customs', label: 'وثائق تأكيد المصارفة' })
   return chips
 })
 
@@ -233,7 +234,7 @@ onBeforeUnmount(() => {
         <!-- Customs group -->
         <template v-if="filteredResults.customs.length > 0">
           <div class="text-muted-foreground px-3 py-2 text-xs font-semibold uppercase">
-            البيانات الجمركية
+            وثائق تأكيد المصارفة
           </div>
           <button
             v-for="customs in filteredResults.customs"

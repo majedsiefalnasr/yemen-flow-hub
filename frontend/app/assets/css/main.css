@@ -365,3 +365,15 @@
     animation: none !important;
   }
 }
+
+.font-heading {
+  font-family: var(--font-heading);
+}
+
+.font-section {
+  font-family: var(--font-section);
+}
+
+.font-sans {
+  font-family: var(--font-sans);
+}

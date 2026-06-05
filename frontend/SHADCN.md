@@ -79,11 +79,11 @@ import { Button } from '@/components/ui/button'
 <!-- Loading state — disable during async -->
 <Button :disabled="loading" @click="submit">
   <Spinner v-if="loading" class="me-2 h-4 w-4" />
-  {{ loading ? 'جارٍ الإرسال…' : 'إرسال' }}
+  {{ loading ? 'جارٍ الإرسال' : 'إرسال' }}
 </Button>
 
-<!-- Custom color override (voting, severity) -->
-<Button class="bg-[var(--voting)] text-white hover:bg-[var(--voting)]/90" @click="openVoting">
+<!-- Workflow actions use normal button variants; state colors stay on badges/cards -->
+<Button @click="openVoting">
   فتح جلسة التصويت
 </Button>
 ```
@@ -656,15 +656,15 @@ const onSubmit = form.handleSubmit(async (values) => {
     <FormItem>
       <FormLabel>ملاحظات</FormLabel>
       <FormControl>
-        <Textarea v-bind="componentField" placeholder="أضف ملاحظاتك هنا…" rows="4" />
+        <Textarea v-bind="componentField" placeholder="أضف ملاحظاتك هنا" rows="4" />
       </FormControl>
-      <FormDescription>اختياري — تظهر في سجل المراجعة</FormDescription>
+      <FormDescription>اختياري - تظهر في سجل المراجعة</FormDescription>
       <FormMessage />
     </FormItem>
   </FormField>
 
   <Button type="submit" :disabled="form.isSubmitting.value">
-    {{ form.isSubmitting.value ? 'جارٍ الحفظ…' : 'حفظ' }}
+    {{ form.isSubmitting.value ? 'جارٍ الحفظ' : 'حفظ' }}
   </Button>
 </form>
 ```

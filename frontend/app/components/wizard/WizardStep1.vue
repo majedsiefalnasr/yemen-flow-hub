@@ -72,17 +72,17 @@ watch(
 watch(notesLocal, (val) => update('notes', val))
 
 const CURRENCY_LABELS: Record<string, string> = {
-  USD: 'USD — دولار أمريكي',
-  EUR: 'EUR — يورو',
-  SAR: 'SAR — ريال سعودي',
-  AED: 'AED — درهم إماراتي',
-  CNY: 'CNY — يوان صيني',
+  USD: 'USD، دولار أمريكي',
+  EUR: 'EUR، يورو',
+  SAR: 'SAR، ريال سعودي',
+  AED: 'AED، درهم إماراتي',
+  CNY: 'CNY، يوان صيني',
 }
 
 const PAYMENT_LABELS: Record<string, string> = {
-  LC: 'L/C — اعتماد مستندي',
-  TT: 'T/T — تحويل بنكي مباشر',
-  CAD: 'CAD — نقداً عند التسليم',
+  LC: 'L/C، اعتماد مستندي',
+  TT: 'T/T، تحويل بنكي مباشر',
+  CAD: 'CAD، نقدا عند التسليم',
 }
 
 const bankMerchants = ref<Merchant[]>([])
@@ -141,7 +141,7 @@ const notesLength = computed(() => notesLocal.value.length)
       <!-- Section 1: Basic request info -->
       <FieldSet>
         <FieldLegend>معلومات الطلب الأساسية</FieldLegend>
-        <FieldDescription>حدد نوع الواردات والمستورد والمبلغ المطلوب تمويله</FieldDescription>
+        <FieldDescription>حدد نوع الواردات والمستورد ومبلغ التمويل المطلوب.</FieldDescription>
 
         <FieldGroup>
           <!-- نوع الواردات -->
@@ -159,7 +159,7 @@ const notesLength = computed(() => notesLocal.value.length)
                 :class="{ 'border-destructive': errors.goods_type }"
                 :aria-invalid="!!errors.goods_type"
               >
-                <SelectValue placeholder="اختر نوع الواردات..." />
+                <SelectValue placeholder="اختر نوع الواردات" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem v-for="t in GOODS_TYPES" :key="t" :value="t">{{ t }}</SelectItem>
@@ -170,9 +170,9 @@ const notesLength = computed(() => notesLocal.value.length)
 
           <!-- المستورد -->
           <Field>
-            <FieldLabel for="merchant-combobox"
-              >المستورد (التاجر) <span class="text-destructive">*</span></FieldLabel
-            >
+            <FieldLabel for="merchant-combobox">
+              المستورد <span class="text-destructive">*</span>
+            </FieldLabel>
 
             <!-- DATA_ENTRY: single merchant locked -->
             <template v-if="isLockedSingleMerchant">
@@ -181,7 +181,7 @@ const notesLength = computed(() => notesLocal.value.length)
               >
                 <Lock class="h-4 w-4 flex-shrink-0" />
                 <span class="text-sm">{{
-                  selectedMerchant?.name ?? 'لم يتم تحديد التاجر بعد'
+                  selectedMerchant?.name ?? 'لم يتم تحديد المستورد بعد'
                 }}</span>
               </div>
             </template>
@@ -191,7 +191,7 @@ const notesLength = computed(() => notesLocal.value.length)
               <Alert v-if="merchantsError" variant="destructive" class="mb-2">
                 <AlertTriangle class="h-4 w-4" />
                 <AlertDescription class="flex items-center justify-between gap-2">
-                  <span>تعذر تحميل قائمة التجار. أعد المحاولة.</span>
+                  <span>تعذّر تحميل قائمة المستوردين. أعد المحاولة.</span>
                   <Button
                     type="button"
                     variant="outline"
@@ -224,16 +224,16 @@ const notesLength = computed(() => notesLocal.value.length)
                     {{
                       merchantsLoading
                         ? 'جارٍ تحميل القائمة...'
-                        : (selectedMerchant?.name ?? 'ابحث أو اختر المستورد...')
+                        : (selectedMerchant?.name ?? 'ابحث أو اختر المستورد')
                     }}
                     <ChevronsUpDown class="h-4 w-4 flex-shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent class="w-[--radix-popover-trigger-width] p-0" align="start">
                   <Command>
-                    <CommandInput placeholder="ابحث عن تاجر..." class="h-9" />
+                    <CommandInput placeholder="ابحث عن مستورد" class="h-9" />
                     <CommandList>
-                      <CommandEmpty>لا توجد نتائج</CommandEmpty>
+                      <CommandEmpty>لا توجد مستوردون مطابقون</CommandEmpty>
                       <CommandGroup>
                         <CommandItem
                           v-for="m in merchantOptions"
@@ -340,7 +340,7 @@ const notesLength = computed(() => notesLocal.value.length)
                 :class="{ 'border-destructive': errors.payment_terms }"
                 :aria-invalid="!!errors.payment_terms"
               >
-                <SelectValue placeholder="اختر شروط الدفع..." />
+                <SelectValue placeholder="اختر شروط الدفع" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem v-for="t in PAYMENT_TERMS" :key="t" :value="t">{{
@@ -363,7 +363,7 @@ const notesLength = computed(() => notesLocal.value.length)
               @input="update('due_date', ($event.target as HTMLInputElement).value || '')"
             />
             <FieldError v-if="errors.due_date">{{ errors.due_date }}</FieldError>
-            <FieldDescription v-else>اختياري — التاريخ المتوقع لاستحقاق الدفع</FieldDescription>
+            <FieldDescription v-else>اختياري. التاريخ المتوقع لاستحقاق الدفع.</FieldDescription>
           </Field>
         </FieldGroup>
       </FieldSet>
@@ -383,7 +383,7 @@ const notesLength = computed(() => notesLocal.value.length)
               :disabled="loading"
               rows="3"
               maxlength="500"
-              placeholder="أي معلومات إضافية تتعلق بالطلب..."
+              placeholder="أضف أي معلومات تشغيلية إضافية تتعلق بالطلب."
               class="resize-none"
             />
             <FieldDescription class="flex justify-between">

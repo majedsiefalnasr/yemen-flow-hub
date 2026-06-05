@@ -58,11 +58,12 @@ const statusLabel = computed(() => {
 })
 
 const deniedMessage = computed(() => {
-  if (!request.value || !user.value) return 'غير متاح حالياً.'
-  if (user.value.role !== UserRole.SWIFT_OFFICER) return 'هذه الصفحة مخصصة لموظفي السويفت بالبنك.'
+  if (!request.value || !user.value) return 'هذه الصفحة غير متاحة حاليا.'
+  if (user.value.role !== UserRole.SWIFT_OFFICER)
+    return 'تسليم وثائق السويفت متاح لموظف السويفت فقط.'
   if (request.value.status !== RequestStatus.WAITING_FOR_SWIFT)
-    return 'هذا الطلب ليس في مرحلة السويفت.'
-  return 'غير متاح حالياً.'
+    return 'هذا الطلب ليس في مرحلة انتظار السويفت.'
+  return 'هذه الصفحة غير متاحة حاليا.'
 })
 
 async function handleUpload(payload: {
@@ -84,7 +85,7 @@ async function handleUpload(payload: {
     if (message.includes('WORKFLOW_LOCKED_STATE') || message.includes('403')) {
       lockedStateError.value = 'تم تغيير حالة الطلب أثناء العمل. حدّث الصفحة للمتابعة.'
     } else {
-      uploadError.value = message || 'تعذّر تسليم وثائق السويفت. حاول مرة أخرى.'
+      uploadError.value = message || 'تعذّر تسليم وثائق السويفت. تحقق من الملفات وأعد المحاولة.'
     }
   } finally {
     uploading.value = false
@@ -105,7 +106,7 @@ async function handleUpload(payload: {
   <div v-else-if="request && canAccessPage">
     <PageHeader
       title="تسليم وثائق السويفت"
-      subtitle="صفحة تنفيذ متخصصة لوثائق السويفت وطلب تأكيد المصارفة الخارجية"
+      subtitle="أدخل مرجع السويفت وارفع وثيقة السويفت وطلب تأكيد المصارفة الخارجية."
       :breadcrumbs="[
         { label: 'الرئيسية', to: '/' },
         { label: 'الطلبات', to: '/requests' },
@@ -123,7 +124,7 @@ async function handleUpload(payload: {
     <div class="grid gap-6 lg:grid-cols-[0.95fr_1.35fr]">
       <aside class="border-border bg-background sticky top-4 h-fit rounded-2xl border p-5">
         <h2 class="font-heading text-foreground mb-4 text-base leading-6 font-semibold">
-          ملخص بيانات الطلب (مقفلة)
+          ملخص بيانات الطلب للقراءة فقط
         </h2>
         <div class="space-y-3 text-sm">
           <div class="flex items-start gap-2">
@@ -138,8 +139,12 @@ async function handleUpload(payload: {
           <div class="flex items-start gap-2">
             <Lock class="text-muted-foreground mt-0.5 h-4 w-4" />
             <div>
-              <p class="font-section text-muted-foreground text-xs leading-5 font-medium">التاجر</p>
-              <p class="text-foreground text-sm leading-6">{{ request.merchant?.name ?? '—' }}</p>
+              <p class="font-section text-muted-foreground text-xs leading-5 font-medium">
+                المستورد
+              </p>
+              <p class="text-foreground text-sm leading-6">
+                {{ request.merchant?.name ?? 'غير محدد' }}
+              </p>
             </div>
           </div>
           <div class="flex items-start gap-2">
@@ -164,7 +169,9 @@ async function handleUpload(payload: {
               <p class="font-section text-muted-foreground text-xs leading-5 font-medium">
                 شروط الدفع
               </p>
-              <p class="text-foreground text-sm leading-6">{{ request.payment_terms ?? '—' }}</p>
+              <p class="text-foreground text-sm leading-6">
+                {{ request.payment_terms ?? 'غير محدد' }}
+              </p>
             </div>
           </div>
           <div class="flex items-start gap-2">
@@ -174,7 +181,8 @@ async function handleUpload(payload: {
                 رقم/تاريخ الفاتورة
               </p>
               <p class="text-foreground text-sm leading-6">
-                {{ request.invoice_number ?? '—' }} / {{ request.invoice_date ?? '—' }}
+                {{ request.invoice_number ?? 'غير محدد' }} /
+                {{ request.invoice_date ?? 'غير محدد' }}
               </p>
             </div>
           </div>
@@ -185,7 +193,7 @@ async function handleUpload(payload: {
                 ميناء الوصول
               </p>
               <p class="text-foreground text-sm leading-6">
-                {{ request.arrival_port ?? request.port_of_entry ?? '—' }}
+                {{ request.arrival_port ?? request.port_of_entry ?? 'غير محدد' }}
               </p>
             </div>
           </div>
@@ -195,7 +203,9 @@ async function handleUpload(payload: {
               <p class="font-section text-muted-foreground text-xs leading-5 font-medium">
                 رقم بوليصة الشحن
               </p>
-              <p class="text-foreground text-sm leading-6">{{ request.bl_number ?? '—' }}</p>
+              <p class="text-foreground text-sm leading-6">
+                {{ request.bl_number ?? 'غير محدد' }}
+              </p>
             </div>
           </div>
         </div>
@@ -232,7 +242,7 @@ async function handleUpload(payload: {
           class="rounded-xl border border-[var(--color-border-success)] bg-[var(--color-surface-success)] p-4"
         >
           <p class="font-section text-sm leading-5 font-semibold text-[var(--color-text-success)]">
-            تم تسليم وثائق السويفت بنجاح
+            تم تسليم وثائق السويفت وانتقل الطلب للمرحلة التالية.
           </p>
           <Button class="mt-3" @click="router.push('/requests?tab=pending_swift')">
             العودة إلى الطابور
@@ -247,7 +257,7 @@ async function handleUpload(payload: {
           v-else
           class="border-border bg-muted/20 text-muted-foreground rounded-xl border p-5 text-sm"
         >
-          تم تسليم السويفت بالفعل أو أن الطلب لم يعد في مرحلة الرفع.
+          لا يمكن رفع وثائق السويفت لهذا الطلب لأن حالته لم تعد بانتظار السويفت.
         </div>
       </section>
     </div>
@@ -256,9 +266,11 @@ async function handleUpload(payload: {
   <Card v-else class="border-0 p-8 text-center shadow">
     <Lock class="text-muted-foreground mx-auto h-10 w-10" />
     <h2 class="font-heading text-foreground mt-4 text-base leading-6 font-semibold">
-      غير متاح حالياً
+      لا يمكن فتح صفحة السويفت
     </h2>
     <p class="text-muted-foreground mt-1 text-sm">{{ deniedMessage }}</p>
-    <Button class="mt-4" variant="outline" @click="router.push('/requests')"> العودة </Button>
+    <Button class="mt-4" variant="outline" @click="router.push('/requests')">
+      العودة إلى الطلبات
+    </Button>
   </Card>
 </template>

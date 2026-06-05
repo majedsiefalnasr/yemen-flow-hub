@@ -15,7 +15,7 @@ const sortedHistory = computed(() =>
 )
 
 function formatDate(iso: string | null | undefined): string {
-  if (!iso) return '—'
+  if (!iso) return 'غير متاح'
   return new Date(iso).toLocaleDateString('ar-YE', {
     year: 'numeric',
     month: 'long',
@@ -28,7 +28,7 @@ function formatAmount(amount: number, currency: string): string {
 }
 
 function actorName(user: { name: string } | null | undefined): string {
-  return user?.name ?? '—'
+  return user?.name ?? 'غير متاح'
 }
 
 function statusLabel(status: string): string {
@@ -38,7 +38,7 @@ function statusLabel(status: string): string {
 const workflowEntries = computed(() =>
   sortedHistory.value.map((entry) => ({
     id: entry.id,
-    statusLabel: entry.to_status ? statusLabel(entry.to_status) : '—',
+    statusLabel: entry.to_status ? statusLabel(entry.to_status) : 'غير متاح',
     actor: entry.performed_by?.name ?? `#${entry.actor_id}`,
     timestamp: formatDate(entry.created_at),
   })),
@@ -49,18 +49,18 @@ const fields = computed(() => [
   { label: 'المبلغ', value: formatAmount(props.request.amount, props.request.currency) },
   { label: 'اسم المورّد', value: props.request.supplier_name },
   { label: 'وصف البضائع', value: props.request.goods_description },
-  { label: 'نوع البضائع', value: props.request.goods_type ?? '—' },
+  { label: 'نوع البضائع', value: props.request.goods_type ?? 'غير متاح' },
   { label: 'ميناء الدخول', value: props.request.port_of_entry },
-  { label: 'شروط الدفع', value: props.request.payment_terms ?? '—' },
+  { label: 'شروط الدفع', value: props.request.payment_terms ?? 'غير متاح' },
   { label: 'تاريخ الاستحقاق', value: formatDate(props.request.due_date) },
-  { label: 'رقم الفاتورة', value: props.request.invoice_number ?? '—' },
+  { label: 'رقم الفاتورة', value: props.request.invoice_number ?? 'غير متاح' },
   { label: 'تاريخ الفاتورة', value: formatDate(props.request.invoice_date) },
-  { label: 'بلد المنشأ', value: props.request.origin_country ?? '—' },
-  { label: 'ميناء الوصول', value: props.request.arrival_port ?? '—' },
-  { label: 'ميناء الشحن', value: props.request.shipping_port ?? '—' },
-  { label: 'مكتب الجمارك', value: props.request.customs_office ?? '—' },
-  { label: 'رقم بوليصة الشحن', value: props.request.bl_number ?? '—' },
-  { label: 'ملاحظات', value: props.request.notes ?? '—' },
+  { label: 'بلد المنشأ', value: props.request.origin_country ?? 'غير متاح' },
+  { label: 'ميناء الوصول', value: props.request.arrival_port ?? 'غير متاح' },
+  { label: 'ميناء الشحن', value: props.request.shipping_port ?? 'غير متاح' },
+  { label: 'مكتب الجمارك', value: props.request.customs_office ?? 'غير متاح' },
+  { label: 'رقم بوليصة الشحن', value: props.request.bl_number ?? 'غير متاح' },
+  { label: 'ملاحظات', value: props.request.notes ?? 'غير متاح' },
 ])
 </script>
 
@@ -97,7 +97,7 @@ const fields = computed(() => [
           >البنك:</span
         >
         <span class="text-foreground min-w-0 break-words print:text-black">{{
-          request.bank_name ?? '—'
+          request.bank_name ?? 'غير متاح'
         }}</span>
       </div>
       <div class="flex gap-2 text-sm leading-6">
@@ -192,7 +192,7 @@ const fields = computed(() => [
             <td
               class="border-border text-foreground border px-2.5 py-2 text-right leading-6 break-words print:text-black"
             >
-              {{ doc.uploaded_by_name ?? '—' }}
+              {{ doc.uploaded_by_name ?? 'غير متاح' }}
             </td>
           </tr>
         </tbody>

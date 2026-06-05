@@ -12,10 +12,12 @@ defineProps<{
       class="flex items-center justify-between gap-4"
     >
       <div class="min-w-0">
-        <h2 v-if="title" class="text-base leading-none font-semibold tracking-tight">
+        <h2 v-if="title" class="font-heading text-foreground text-base leading-6 font-semibold">
           {{ title }}
         </h2>
-        <p v-if="description" class="text-muted-foreground mt-1 text-sm">{{ description }}</p>
+        <p v-if="description" class="text-muted-foreground mt-1 max-w-[72ch] text-sm leading-6">
+          {{ description }}
+        </p>
       </div>
       <div v-if="$slots.actions" class="flex shrink-0 items-center gap-2">
         <slot name="actions" />

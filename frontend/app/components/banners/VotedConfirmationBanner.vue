@@ -18,8 +18,8 @@ function formatTime(iso: string | null | undefined): string {
   <Alert class="border-border bg-muted/30 flex items-center gap-3">
     <CheckCircle2 class="text-muted-foreground h-5 w-5 flex-shrink-0" aria-hidden="true" />
     <AlertDescription class="text-foreground flex-1 text-sm font-medium">
-      <span v-if="votedAt">صوّتت {{ formatTime(votedAt) }} — </span>
-      <span v-else>لقد صوّتت — </span>
+      <span v-if="votedAt">تم تسجيل صوتك عند {{ formatTime(votedAt) }}: </span>
+      <span v-else>تم تسجيل صوتك: </span>
       <span
         :class="
           vote === 'approve'
@@ -27,7 +27,7 @@ function formatTime(iso: string | null | undefined): string {
             : 'font-semibold text-rose-600'
         "
       >
-        {{ vote === 'approve' ? 'اعتمدت' : 'رفضت' }}
+        {{ vote === 'approve' ? 'موافقة' : 'رفض' }}
       </span>
     </AlertDescription>
     <Badge variant="secondary" class="flex-shrink-0">تم التصويت</Badge>

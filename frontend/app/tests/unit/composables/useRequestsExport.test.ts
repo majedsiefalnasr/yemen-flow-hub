@@ -10,7 +10,7 @@ describe('buildRequestsExportColumns', () => {
   it('keeps core columns for all roles', () => {
     const labels = labelsFor(UserRole.DATA_ENTRY)
     expect(labels).toContain('المرجع')
-    expect(labels).toContain('التاجر')
+    expect(labels).toContain('المستورد')
     expect(labels).toContain('المورد')
     expect(labels).toContain('المبلغ')
     expect(labels).toContain('العملة')

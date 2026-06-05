@@ -10,8 +10,17 @@ import { UserRole, RequestStatus } from '../types/enums'
  *   REQUEST_DOC  → all 8 roles (backend enforces bank scope)
  *   SWIFT/FX_REQUEST → BANK_REVIEWER, BANK_ADMIN, SWIFT_OFFICER, EXECUTIVE_MEMBER,
  *                      COMMITTEE_DIRECTOR, CBY_ADMIN only
+ *   CUSTOMS → BANK_REVIEWER, COMMITTEE_DIRECTOR, CBY_ADMIN only
  */
 export function canDownloadDocument(role: UserRole, docType: string | null): boolean {
+  if (docType === 'CUSTOMS') {
+    return (
+      role === UserRole.BANK_REVIEWER ||
+      role === UserRole.COMMITTEE_DIRECTOR ||
+      role === UserRole.CBY_ADMIN
+    )
+  }
+
   if (docType === 'SWIFT' || docType === 'FX_REQUEST') {
     return (
       role === UserRole.BANK_REVIEWER ||
@@ -22,12 +31,12 @@ export function canDownloadDocument(role: UserRole, docType: string | null): boo
       role === UserRole.CBY_ADMIN
     )
   }
-  // REQUEST_DOC or unknown type — all roles may attempt (bank scope enforced by backend)
-  return true
+
+  return docType === null || docType === 'REQUEST_DOC' || docType === 'CONFIRMATION_REQUEST'
 }
 
 /**
- * Returns true if the given role is permitted to download a customs declaration PDF.
+ * Returns true if the given role is permitted to download an external FX confirmation PDF.
  * Mirrors CustomsDeclarationPolicy::download() on the backend.
  */
 export function canDownloadCustoms(role: UserRole): boolean {

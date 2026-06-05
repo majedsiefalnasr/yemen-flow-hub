@@ -92,7 +92,7 @@ const ROLE_LABELS: Record<string, string> = {
   [UserRole.BANK_REVIEWER]: 'مراجع بنكي',
   [UserRole.BANK_ADMIN]: 'مدير البنك',
   [UserRole.SWIFT_OFFICER]: 'مسؤول سويفت',
-  [UserRole.SUPPORT_COMMITTEE]: 'لجنة الدعم',
+  [UserRole.SUPPORT_COMMITTEE]: 'لجنة المساندة',
   [UserRole.EXECUTIVE_MEMBER]: 'عضو تنفيذي',
   [UserRole.COMMITTEE_DIRECTOR]: 'مدير اللجنة',
   [UserRole.CBY_ADMIN]: 'مدير النظام',
@@ -175,7 +175,7 @@ async function submitPasswordChange() {
       passwordForm.password_confirmation = ''
       toast.success('تم تغيير كلمة المرور بنجاح')
     } else {
-      passwordError.value = 'تعذر تغيير كلمة المرور. تحقق من كلمة المرور الحالية.'
+      passwordError.value = 'تعذّر تغيير كلمة المرور. تحقق من كلمة المرور الحالية.'
     }
   } catch {
     passwordError.value = 'حدث خطأ غير متوقع. أعد المحاولة.'
@@ -286,7 +286,7 @@ async function submitPinAction() {
       pinDialogMode.value === 'create' ? 'تم إنشاء رمز PIN بنجاح' : 'تم تغيير رمز PIN بنجاح',
     )
   } catch {
-    pinError.value = 'تعذر حفظ رمز PIN الآن. أعد المحاولة بعد قليل.'
+    pinError.value = 'تعذّر حفظ رمز PIN الآن. أعد المحاولة.'
   } finally {
     isPinSaving.value = false
   }
@@ -368,7 +368,7 @@ async function loadTotpSetup() {
     liveMfaUri.value = data.provisioning_uri
     mfaDialogStage.value = 'scan'
   } catch {
-    mfaSetupError.value = 'تعذر تحميل رمز QR الآن. أعد المحاولة بعد قليل.'
+    mfaSetupError.value = 'تعذّر تحميل رمز QR الآن. أعد المحاولة.'
   } finally {
     isMfaActionLoading.value = false
   }
@@ -790,7 +790,7 @@ function savePersonalNotifications() {
                 المظهر الشخصي
               </h3>
               <p class="text-muted-foreground text-sm">
-                تخصيص واجهة المنصة لتناسب تفضيلاتك — لا تؤثر على المستخدمين الآخرين.
+                تخصيص واجهة المنصة لتناسب تفضيلاتك. لا تؤثر هذه الإعدادات على المستخدمين الآخرين.
               </p>
             </div>
             <Separator />
@@ -1780,7 +1780,7 @@ function savePersonalNotifications() {
                       <span v-if="isMfaActionLoading" class="flex items-center gap-2">
                         <span
                           class="border-primary h-4 w-4 animate-spin rounded-full border-2 border-t-transparent"
-                        />جارٍ التحميل…
+                        />جارٍ التحميل...
                       </span>
                       <span v-else>التالي</span>
                     </Button>
@@ -1813,7 +1813,7 @@ function savePersonalNotifications() {
                         v-else
                         class="text-muted-foreground flex h-40 w-40 items-center justify-center text-xs"
                       >
-                        جارٍ تحميل الرمز…
+                        جارٍ تحميل الرمز...
                       </div>
                     </div>
                     <div class="border-border bg-muted/30 w-full rounded-lg border px-3 py-2">
@@ -1822,7 +1822,7 @@ function savePersonalNotifications() {
                       </p>
                       <div class="flex items-center justify-between gap-2">
                         <code class="font-mono text-xs tracking-widest">{{
-                          liveMfaSecret ?? '…'
+                          liveMfaSecret ?? 'قيد التحميل'
                         }}</code>
                         <Button
                           type="button"

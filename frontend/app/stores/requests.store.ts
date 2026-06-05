@@ -324,7 +324,8 @@ export const useRequestsStore = defineStore('requests', {
     },
 
     async issueCustomsDeclaration(id: number): Promise<void> {
-      if (this.issuingCustoms) throw new Error('إصدار البيان الجمركي قيد التنفيذ بالفعل')
+      if (this.issuingCustoms)
+        throw new Error('إصدار وثيقة تأكيد المصارفة الخارجية قيد التنفيذ بالفعل')
       this.issuingCustoms = true
       this.error = null
 
@@ -336,7 +337,7 @@ export const useRequestsStore = defineStore('requests', {
         if (import.meta.dev) {
           console.error('[requests.store] issueCustomsDeclaration failed:', err)
         }
-        this.error = 'تعذّر إصدار البيان الجمركي.'
+        this.error = 'تعذّر إصدار وثيقة تأكيد المصارفة الخارجية.'
         throw err
       } finally {
         this.issuingCustoms = false
@@ -357,7 +358,7 @@ export const useRequestsStore = defineStore('requests', {
         if (import.meta.dev) {
           console.error('[requests.store] uploadSignedFxDoc failed:', err)
         }
-        this.error = 'تعذر رفع وثيقة المصارفة الموقعة.'
+        this.error = 'تعذّر رفع وثيقة المصارفة الموقّعة.'
         throw err
       } finally {
         this.uploadingSignedFx = false

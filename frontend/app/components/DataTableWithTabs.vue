@@ -279,16 +279,16 @@ const prevPage = () => {
                   <DropdownMenu>
                     <DropdownMenuTrigger as-child>
                       <Button variant="ghost" size="sm">
-                        <span class="sr-only">Open menu</span>
+                        <span class="sr-only">فتح قائمة الإجراءات</span>
                         ⋯
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem>Edit</DropdownMenuItem>
-                      <DropdownMenuItem>Make a copy</DropdownMenuItem>
-                      <DropdownMenuItem>Favorite</DropdownMenuItem>
+                      <DropdownMenuItem>تعديل</DropdownMenuItem>
+                      <DropdownMenuItem>إنشاء نسخة</DropdownMenuItem>
+                      <DropdownMenuItem>إضافة إلى المفضلة</DropdownMenuItem>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem class="text-destructive"> Delete </DropdownMenuItem>
+                      <DropdownMenuItem class="text-destructive"> حذف </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </TableCell>
@@ -296,7 +296,7 @@ const prevPage = () => {
             </template>
             <TableRow v-else>
               <TableCell :colspan="allColumnsVisible.length + 2" class="h-24 text-center">
-                No results.
+                لا توجد نتائج مطابقة.
               </TableCell>
             </TableRow>
           </TableBody>

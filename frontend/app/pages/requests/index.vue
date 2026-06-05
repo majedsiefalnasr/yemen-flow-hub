@@ -399,7 +399,7 @@ const roleKpiCards = computed(() => {
     case UserRole.SUPPORT_COMMITTEE:
       return [
         {
-          label: 'انتظار لجنة الدعم',
+          label: 'انتظار لجنة المساندة',
           value: count(RequestStatus.SUPPORT_REVIEW_PENDING),
           icon: ClipboardList,
           description: 'متاحة للمراجعة',
@@ -827,7 +827,7 @@ const requestsEmptyState = computed(() =>
     <!-- Inline error state -->
     <Alert v-if="store.error" variant="destructive" role="alert" class="mb-4">
       <AlertCircle class="h-4 w-4" />
-      <AlertTitle>خطأ في تحميل الطلبات</AlertTitle>
+      <AlertTitle>تعذّر تحميل الطلبات</AlertTitle>
       <AlertDescription>{{ store.error }}</AlertDescription>
       <AlertAction>
         <Button variant="outline" size="sm" @click="store.loadRequests(buildFilter())"
@@ -872,7 +872,7 @@ const requestsEmptyState = computed(() =>
         <template #toolbar="{ table }">
           <DataTableToolbar
             :table="table"
-            search-placeholder="بحث برقم الطلب، التاجر، أو رقم الفاتورة..."
+            search-placeholder="بحث برقم الطلب، المستورد، أو رقم الفاتورة"
             :has-filters="hasActiveFilters"
             :selected-count="selectedCount"
             @update:search="(v) => (query = v)"

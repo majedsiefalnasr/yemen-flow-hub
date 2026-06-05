@@ -33,8 +33,8 @@ const referencePatternWarning = computed(() => {
 
 const disabledReason = computed(() => {
   if (!swiftReference.value.trim()) return 'أدخل رقم مرجع السويفت أولاً'
-  if (!swiftDoc.value) return 'أكمل رفع وثيقة السويفت قبل التسليم'
-  if (!fxRequestDoc.value) return 'أكمل رفع طلب تأكيد المصارفة قبل التسليم'
+  if (!swiftDoc.value) return 'ارفع وثيقة السويفت بصيغة PDF قبل التسليم'
+  if (!fxRequestDoc.value) return 'ارفع طلب تأكيد المصارفة الخارجية بصيغة PDF قبل التسليم'
   return ''
 })
 
@@ -65,13 +65,13 @@ async function assignFile(kind: 'swift' | 'fx', event: Event): Promise<void> {
   if (!file) return
 
   if (!isPdf(file)) {
-    errorMessage.value = 'صيغة الملف غير مدعومة. يُسمح بملفات PDF فقط.'
+    errorMessage.value = 'صيغة الملف غير مدعومة. ارفع ملف PDF فقط.'
     input.value = ''
     return
   }
 
   if (file.size > 10 * 1024 * 1024) {
-    errorMessage.value = 'حجم الملف يتجاوز الحد الأقصى (10MB).'
+    errorMessage.value = 'حجم الملف يتجاوز الحد الأقصى 10MB.'
     input.value = ''
     return
   }
@@ -116,20 +116,20 @@ function submit(): void {
     <div class="border-border bg-muted/20 text-muted-foreground rounded-xl border p-3 text-xs">
       <div class="flex items-center gap-2">
         <Lock class="h-3.5 w-3.5" />
-        <span>يجب إكمال البيانات الثلاثة قبل التسليم</span>
+        <span>أكمل مرجع السويفت والوثيقتين بصيغة PDF قبل التسليم.</span>
       </div>
     </div>
 
     <section class="space-y-2">
       <label class="font-section text-foreground text-sm leading-5 font-semibold">
-        رقم مرجع السويفت (UETR / Message Reference)
+        رقم مرجع السويفت (UETR أو Message Reference)
         <span class="text-destructive">*</span>
       </label>
       <Input v-model="swiftReference" placeholder="مثال: UETR-2026-ABC123456789" />
       <p v-if="referencePatternWarning" class="text-xs text-[var(--color-text-warning)]">
         {{ referencePatternWarning }}
       </p>
-      <p class="text-muted-foreground text-xs">أدخل المرجع الصادر من نظام SWIFT بالبنك.</p>
+      <p class="text-muted-foreground text-xs">أدخل المرجع كما يظهر في نظام SWIFT.</p>
     </section>
 
     <section class="space-y-3">
@@ -141,18 +141,18 @@ function submit(): void {
         <div class="flex items-center justify-between gap-3">
           <div class="min-w-0">
             <p class="text-foreground truncate text-sm leading-5 font-medium">
-              {{ swiftDoc?.file.name ?? 'اسحب الملف هنا أو اضغط للاختيار' }}
+              {{ swiftDoc?.file.name ?? 'لم يتم اختيار وثيقة السويفت بعد' }}
             </p>
             <p v-if="swiftDoc" class="text-muted-foreground mt-1 text-xs leading-5 tabular-nums">
               {{ formatFileSize(swiftDoc.file.size) }} • SHA-256:
               {{ swiftDoc.checksum.slice(0, 12) }}...
             </p>
-            <p v-else class="text-muted-foreground mt-1 text-xs">PDF فقط، الحد الأقصى 10MB</p>
+            <p v-else class="text-muted-foreground mt-1 text-xs">PDF فقط، الحد الأقصى 10MB.</p>
           </div>
           <div class="flex items-center gap-2">
             <Button type="button" variant="outline" size="sm" @click="swiftInput?.click()">
               <Upload class="ms-1 h-4 w-4" />
-              اختر ملف
+              اختيار وثيقة السويفت
             </Button>
             <Button
               v-if="swiftDoc"
@@ -191,15 +191,17 @@ function submit(): void {
         </h3>
         <Button type="button" variant="outline" size="sm" disabled>
           <Download class="ms-1 h-4 w-4" />
-          تنزيل النموذج الفارغ
+          تنزيل النموذج
         </Button>
       </div>
-      <p class="text-muted-foreground text-xs">النموذج الرسمي المعبأ والمختوم من البنك (PDF).</p>
+      <p class="text-muted-foreground text-xs">
+        ارفع النموذج الرسمي المعبأ والمختوم من البنك بصيغة PDF.
+      </p>
       <div class="border-border rounded-xl border-2 border-dashed p-4">
         <div class="flex items-center justify-between gap-3">
           <div class="min-w-0">
             <p class="text-foreground truncate text-sm leading-5 font-medium">
-              {{ fxRequestDoc?.file.name ?? 'اسحب الملف هنا أو اضغط للاختيار' }}
+              {{ fxRequestDoc?.file.name ?? 'لم يتم اختيار طلب المصارفة بعد' }}
             </p>
             <p
               v-if="fxRequestDoc"
@@ -208,12 +210,12 @@ function submit(): void {
               {{ formatFileSize(fxRequestDoc.file.size) }} • SHA-256:
               {{ fxRequestDoc.checksum.slice(0, 12) }}...
             </p>
-            <p v-else class="text-muted-foreground mt-1 text-xs">PDF فقط، الحد الأقصى 10MB</p>
+            <p v-else class="text-muted-foreground mt-1 text-xs">PDF فقط، الحد الأقصى 10MB.</p>
           </div>
           <div class="flex items-center gap-2">
             <Button type="button" variant="outline" size="sm" @click="fxInput?.click()">
               <FileText class="ms-1 h-4 w-4" />
-              اختر ملف
+              اختيار طلب المصارفة
             </Button>
             <Button
               v-if="fxRequestDoc"
@@ -255,7 +257,7 @@ function submit(): void {
     <div class="space-y-2">
       <Button :disabled="!canSubmit || uploading" class="w-full" @click="submit">
         <CheckCircle2 class="ms-1 h-4 w-4" />
-        {{ uploading ? 'جارٍ التسليم...' : 'تسليم وثائق السويفت' }}
+        {{ uploading ? 'جارٍ تسليم الوثائق...' : 'تسليم وثائق السويفت' }}
       </Button>
       <p v-if="!canSubmit" class="text-muted-foreground text-xs">{{ disabledReason }}</p>
     </div>

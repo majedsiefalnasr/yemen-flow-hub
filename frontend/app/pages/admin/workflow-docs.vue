@@ -129,7 +129,7 @@ async function addRule() {
     draft.is_required = true
     notify('تمت إضافة نوع المستند')
   } catch {
-    toastError('تعذر حفظ نوع المستند. أعد المحاولة بعد قليل.')
+    toastError('تعذّر حفظ نوع المستند. راجع البيانات ثم أعد المحاولة.')
   } finally {
     saving.value = false
   }
@@ -462,7 +462,7 @@ function exportCurrentRules() {
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel @click="cancelImpactChange"> إلغاء — لا تغيير </AlertDialogCancel>
+          <AlertDialogCancel @click="cancelImpactChange"> إلغاء بدون تغيير </AlertDialogCancel>
           <AlertDialogAction @click="confirmImpactChange"> تأكيد التغيير </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

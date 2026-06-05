@@ -10,7 +10,9 @@ const props = defineProps<{
 <template>
   <div
     data-slot="empty-title"
-    :class="cn('cn-font-heading text-sm font-medium tracking-tight', props.class)"
+    :class="
+      cn('cn-font-heading max-w-full text-sm font-medium tracking-tight break-words', props.class)
+    "
   >
     <slot />
   </div>

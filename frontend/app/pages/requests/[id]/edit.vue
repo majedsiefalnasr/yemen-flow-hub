@@ -104,9 +104,9 @@ const isReturnedCorrection = computed(() => {
 })
 
 const submitLabel = computed(() => {
-  if (requestsStore.saving) return 'جارٍ الحفظ...'
-  if (requestsStore.performingAction) return 'جارٍ إعادة الإرسال...'
-  return isReturnedCorrection.value ? 'إعادة الإرسال للمراجعة' : 'حفظ التعديلات'
+  if (requestsStore.saving) return 'جارٍ حفظ التعديلات...'
+  if (requestsStore.performingAction) return 'جارٍ إعادة إرسال الطلب...'
+  return isReturnedCorrection.value ? 'إعادة الإرسال للمراجعة البنكية' : 'حفظ التعديلات'
 })
 
 const isEditable = computed(() => {
@@ -257,7 +257,7 @@ async function handleSubmit() {
       frozen.value = true
       frozenReason.value =
         status === 409
-          ? 'تغيرت حالة الطلب أثناء التعديل. حدّث البيانات ثم راجعها مرة أخرى.'
+          ? 'تغيّرت حالة الطلب أثناء التعديل. حدّث البيانات ثم راجعها مرة أخرى.'
           : 'لا تملك صلاحية تعديل هذا الطلب في حالته الحالية.'
     } else if (status === 422) {
       const fieldErrors = res?._data?.errors as Record<string, string[]> | undefined
@@ -290,9 +290,9 @@ async function handleSubmit() {
             step2Errors.value = { ...step2Errors.value, [field]: msg }
         }
       }
-      saveError.value = res?._data?.message ?? 'البيانات المدخلة غير صالحة.'
+      saveError.value = res?._data?.message ?? 'راجع الحقول المظللة قبل حفظ التعديلات.'
     } else {
-      saveError.value = 'تعذّر تحديث الطلب. حاول مرة أخرى.'
+      saveError.value = 'تعذّر تحديث الطلب. تحقق من الاتصال وأعد المحاولة.'
     }
   }
 }
@@ -333,7 +333,7 @@ async function downloadDocument(docId: number, filename: string) {
   } catch {
     downloadErrors.value = {
       ...downloadErrors.value,
-      [docId]: 'تعذر تنزيل الملف الآن. أعد المحاولة بعد قليل.',
+      [docId]: 'تعذّر تنزيل الملف الآن. أعد المحاولة بعد قليل.',
     }
   } finally {
     downloadingIds.value = new Set([...downloadingIds.value].filter((x) => x !== docId))
@@ -363,7 +363,7 @@ async function downloadDocument(docId: number, filename: string) {
 
     <!-- Frozen (403/409) -->
     <Alert v-else-if="frozen" variant="destructive" role="alert" class="mb-4">
-      <AlertTitle>تعذر حفظ التعديلات</AlertTitle>
+      <AlertTitle>تعذّر حفظ التعديلات</AlertTitle>
       <AlertDescription>{{ frozenReason }}</AlertDescription>
       <AlertAction>
         <Button variant="outline" size="sm" @click="reload">
@@ -438,7 +438,7 @@ async function downloadDocument(docId: number, filename: string) {
         <CardHeader class="pb-2">
           <CardTitle class="text-sm font-semibold">المستندات المرفوعة</CardTitle>
           <CardDescription class="text-xs">
-            راجع المستندات المرفقة وارفع بدائل محدّثة عند الحاجة (PDF فقط)
+            راجع المستندات المرفقة وارفع بدائل محدّثة عند الحاجة. تقبل المنصة ملفات PDF فقط.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -472,7 +472,8 @@ async function downloadDocument(docId: number, filename: string) {
         <AlertDialogHeader>
           <AlertDialogTitle>مغادرة صفحة التعديل؟</AlertDialogTitle>
           <AlertDialogDescription>
-            لديك تعديلات غير محفوظة على هذا الطلب. إذا غادرت الآن ستفقد آخر التغييرات غير المحفوظة.
+            لديك تعديلات غير محفوظة على هذا الطلب. احفظ التعديلات قبل المغادرة إذا أردت الاحتفاظ
+            بها.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
@@ -481,7 +482,7 @@ async function downloadDocument(docId: number, filename: string) {
             class="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             @click="confirmLeave"
           >
-            مغادرة بدون حفظ
+            مغادرة دون حفظ
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

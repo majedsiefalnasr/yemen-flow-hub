@@ -18,7 +18,7 @@ defineProps<{
         v-if="votesCast != null && totalVoters != null"
         class="text-muted-foreground ms-2 font-normal"
       >
-        — {{ votesCast }}/{{ totalVoters }} صوتوا حتى الآن
+        صوّت {{ votesCast }} من {{ totalVoters }} حتى الآن
       </span>
     </AlertDescription>
     <Badge class="flex-shrink-0 bg-[var(--voting)] text-white hover:bg-[var(--voting)]"

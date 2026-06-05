@@ -73,7 +73,7 @@ const ALL_PERMISSIONS: Permission[] = [
   },
   {
     key: 'customs.issue',
-    label: 'إصدار إذن بيان جمركي',
+    label: 'إصدار وثيقة تأكيد المصارفة الخارجية',
     roles: [UserRole.CBY_ADMIN, UserRole.COMMITTEE_DIRECTOR],
   },
   {
@@ -88,7 +88,7 @@ const ALL_PERMISSIONS: Permission[] = [
   },
   {
     key: 'merchants.manage',
-    label: 'التجار',
+    label: 'المستوردون',
     roles: [UserRole.BANK_ADMIN, UserRole.CBY_ADMIN],
   },
   {
@@ -137,7 +137,7 @@ const columns = computed(() => [
         row.original.label,
         h(
           Badge,
-          { variant: 'outline', class: 'me-2 font-mono text-[9px]' },
+          { variant: 'outline', class: 'me-2 font-mono text-xs leading-none' },
           () => row.original.key,
         ),
       ]),
@@ -151,7 +151,11 @@ const columns = computed(() => [
     columnHelper.display({
       id: role,
       header: () =>
-        h('div', { class: 'text-[11px] font-medium leading-tight text-center' }, ROLE_LABELS[role]),
+        h(
+          'div',
+          { class: 'font-section text-xs font-medium leading-5 text-center' },
+          ROLE_LABELS[role],
+        ),
       cell: ({ row }) =>
         h('div', { class: 'flex justify-center p-1' }, [
           h(Checkbox, {

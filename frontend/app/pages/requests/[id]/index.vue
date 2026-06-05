@@ -596,7 +596,7 @@ function viewDocument(docId: number, title: string) {
   })
 }
 
-// View the customs declaration PDF inline
+// View the external FX confirmation PDF inline
 function handleViewCustoms(customsId: number, title: string) {
   const { downloadCustomsDeclaration } = useRequests()
   const ref = request.value?.reference_number ?? String(id.value)
@@ -1105,7 +1105,7 @@ async function downloadCustomsDeclaration() {
       `customs-declaration-${declaration.declaration_number}.pdf`,
     )
   } catch {
-    customsDownloadError.value = 'تعذر تنزيل البيان الجمركي الآن. أعد المحاولة بعد قليل.'
+    customsDownloadError.value = 'تعذّر تنزيل وثيقة تأكيد المصارفة الخارجية الآن. أعد المحاولة.'
   }
 }
 
@@ -1117,7 +1117,8 @@ async function handleDownloadCustoms(customsId: number, declarationNumber: strin
       `customs-declaration-${declarationNumber}.pdf`,
     )
   } catch {
-    checklistCustomsDownloadError.value = 'تعذر تنزيل البيان الجمركي الآن. أعد المحاولة بعد قليل.'
+    checklistCustomsDownloadError.value =
+      'تعذّر تنزيل وثيقة تأكيد المصارفة الخارجية الآن. أعد المحاولة.'
   }
 }
 
@@ -1131,7 +1132,7 @@ function openRequestPreviewDialog() {
   const reqId = request.value.id
   const ref = request.value.reference_number ?? reqId
   openPdfDialog({
-    title: 'طلب وثيقة التأكيد — نسخة للعرض والطباعة',
+    title: 'طلب وثيقة التأكيد، نسخة للعرض والطباعة',
     description: 'نسخة إلكترونية للعرض، غير موقّعة. للطباعة والمراجعة فقط.',
     filename: `confirmation-request-preview-${ref}.pdf`,
     fetch: () => fetchConfirmationRequestPreview(reqId),
@@ -1169,7 +1170,7 @@ async function downloadSignedFxDocument() {
     anchor.remove()
     setTimeout(() => URL.revokeObjectURL(url), 5_000)
   } catch {
-    signedFxDownloadError.value = 'تعذر تنزيل وثيقة المصارفة الموقّعة. أعد المحاولة.'
+    signedFxDownloadError.value = 'تعذّر تنزيل وثيقة المصارفة الموقّعة. أعد المحاولة.'
   } finally {
     downloadingSignedFx.value = false
   }
@@ -1212,7 +1213,7 @@ async function handleFxSignedFileChange(event: Event) {
     const buf = await slice.arrayBuffer()
     if (file.size > 0 && buf.byteLength === 0) throw new Error('gone')
   } catch {
-    fxFlowError.value = 'الملف غير متاح أو تالف. يرجى اختياره مجدداً.'
+    fxFlowError.value = 'الملف غير متاح أو تالف. يرجى اختياره مجددا.'
     target.value = ''
     return
   }
@@ -1245,7 +1246,7 @@ async function handleDownloadFxTemplate() {
     URL.revokeObjectURL(url)
   } catch (error: any) {
     const message = error instanceof Error ? error.message : ''
-    fxFlowError.value = message || 'تعذر تنزيل نموذج تأكيد المصارفة الآن. أعد المحاولة بعد قليل.'
+    fxFlowError.value = message || 'تعذّر تنزيل نموذج تأكيد المصارفة الآن. أعد المحاولة.'
   } finally {
     fxGeneratingTemplate.value = false
   }
@@ -1269,7 +1270,7 @@ async function handleCompleteFxConfirmation() {
     await onActionCompleted()
   } catch (error: any) {
     const message = error instanceof Error ? error.message : ''
-    fxFlowError.value = message || 'تعذر إتمام تأكيد المصارفة الآن. أعد المحاولة بعد قليل.'
+    fxFlowError.value = message || 'تعذّر إتمام تأكيد المصارفة الآن. أعد المحاولة.'
   } finally {
     fxCompleting.value = false
   }
@@ -1308,7 +1309,7 @@ async function downloadDocument(docId: number, filename: string) {
   } catch {
     downloadErrors.value = {
       ...downloadErrors.value,
-      [docId]: 'تعذر تنزيل الملف الآن. أعد المحاولة بعد قليل.',
+      [docId]: 'تعذّر تنزيل الملف الآن. أعد المحاولة.',
     }
   } finally {
     const next = new Set(downloadingIds.value)
@@ -1390,7 +1391,7 @@ async function handleCloneConfirm() {
     showCloneDialog.value = false
     await navigateTo(`/requests/${newId}/edit`)
   } catch {
-    cloneError.value = 'تعذر إنشاء النسخة الآن. أعد المحاولة بعد قليل.'
+    cloneError.value = 'تعذّر إنشاء نسخة جديدة من الطلب. أعد المحاولة.'
   } finally {
     cloneLoading.value = false
   }
@@ -1470,7 +1471,7 @@ async function handleCloneConfirm() {
           <div class="page-header__main">
             <h1 class="page-title">{{ request.reference_number }}</h1>
             <p class="page-subtitle">
-              <span>{{ request.merchant?.name ?? '—' }}</span>
+              <span>{{ request.merchant?.name ?? 'غير متاح' }}</span>
               <template v-if="request.goods_type">
                 <span class="subtitle-dot" aria-hidden="true">·</span>
                 <span>{{ request.goods_type }}</span>
@@ -1511,7 +1512,7 @@ async function handleCloneConfirm() {
               :disabled="requestsStore.downloadingCustoms"
               @click="downloadCustomsDeclaration"
             >
-              {{ requestsStore.downloadingCustoms ? 'جارٍ التنزيل…' : 'تنزيل البيان' }}
+              {{ requestsStore.downloadingCustoms ? 'جارٍ تنزيل الملف...' : 'تنزيل وثيقة التأكيد' }}
             </Button>
             <!-- Print → A4 dialog with the watermarked request-preview (unsigned) -->
             <Button
@@ -1843,22 +1844,22 @@ async function handleCloneConfirm() {
                             :to="`/requests/${warn.id}`"
                             class="text-primary font-mono text-xs hover:underline"
                           >
-                            {{ warn.reference_number ?? '—' }}
+                            {{ warn.reference_number ?? 'غير متاح' }}
                           </NuxtLink>
                           <span v-else class="font-mono text-xs">{{
-                            warn.reference_number ?? '—'
+                            warn.reference_number ?? 'غير متاح'
                           }}</span>
                         </TableCell>
-                        <TableCell class="text-sm">{{ warn.bank_name ?? '—' }}</TableCell>
+                        <TableCell class="text-sm">{{ warn.bank_name ?? 'غير متاح' }}</TableCell>
                         <TableCell class="font-mono text-sm">{{
-                          warn.amount?.toLocaleString('ar') ?? '—'
+                          warn.amount?.toLocaleString('ar') ?? 'غير متاح'
                         }}</TableCell>
-                        <TableCell class="text-sm">{{ warn.currency ?? '—' }}</TableCell>
+                        <TableCell class="text-sm">{{ warn.currency ?? 'غير متاح' }}</TableCell>
                         <TableCell class="text-muted-foreground text-xs">
                           {{
                             warn.created_at
                               ? new Date(warn.created_at).toLocaleDateString('ar-YE')
-                              : '—'
+                              : 'غير متاح'
                           }}
                         </TableCell>
                       </TableRow>
@@ -1925,11 +1926,11 @@ async function handleCloneConfirm() {
                   <dl class="detail-grid">
                     <div class="detail-row">
                       <dt class="detail-label">نوع الواردات</dt>
-                      <dd class="detail-value">{{ request.goods_type ?? '—' }}</dd>
+                      <dd class="detail-value">{{ request.goods_type ?? 'غير متاح' }}</dd>
                     </div>
                     <div class="detail-row">
                       <dt class="detail-label">المستورد</dt>
-                      <dd class="detail-value">{{ request.merchant?.name ?? '—' }}</dd>
+                      <dd class="detail-value">{{ request.merchant?.name ?? 'غير متاح' }}</dd>
                     </div>
                     <div class="detail-row">
                       <dt class="detail-label">المبلغ</dt>
@@ -1939,7 +1940,7 @@ async function handleCloneConfirm() {
                     </div>
                     <div class="detail-row">
                       <dt class="detail-label">البنك / الجهة</dt>
-                      <dd class="detail-value">{{ request.bank_name ?? '—' }}</dd>
+                      <dd class="detail-value">{{ request.bank_name ?? 'غير متاح' }}</dd>
                     </div>
                     <div class="detail-row">
                       <dt class="detail-label">المورّد</dt>
@@ -1947,7 +1948,7 @@ async function handleCloneConfirm() {
                     </div>
                     <div class="detail-row">
                       <dt class="detail-label">رقم الفاتورة</dt>
-                      <dd class="detail-value">{{ request.invoice_number ?? '—' }}</dd>
+                      <dd class="detail-value">{{ request.invoice_number ?? 'غير متاح' }}</dd>
                     </div>
                     <div class="detail-row">
                       <dt class="detail-label">ميناء الوصول</dt>
@@ -1964,7 +1965,7 @@ async function handleCloneConfirm() {
 
                 <div v-if="request.customs_declaration" class="card customs-card">
                   <div class="customs-card__header">
-                    <h2 class="card-title customs-card__title">البيان الجمركي</h2>
+                    <h2 class="card-title customs-card__title">وثيقة تأكيد المصارفة الخارجية</h2>
                     <div class="customs-card__actions">
                       <Button
                         v-if="
@@ -1978,7 +1979,7 @@ async function handleCloneConfirm() {
                         size="sm"
                         as-child
                       >
-                        <NuxtLink :to="`/requests/${id}/customs-preview`">معاينة البيان</NuxtLink>
+                        <NuxtLink :to="`/requests/${id}/customs-preview`">معاينة الوثيقة</NuxtLink>
                       </Button>
                       <Button
                         v-if="canDownloadCustomsDeclaration"
@@ -1986,7 +1987,7 @@ async function handleCloneConfirm() {
                         :disabled="requestsStore.downloadingCustoms"
                         @click="downloadCustomsDeclaration"
                       >
-                        {{ requestsStore.downloadingCustoms ? 'جارٍ التنزيل…' : 'تنزيل PDF' }}
+                        {{ requestsStore.downloadingCustoms ? 'جارٍ تنزيل الملف...' : 'تنزيل PDF' }}
                       </Button>
                       <!-- BANK_ADMIN: locked PDF — visible but not downloadable -->
                       <Button
@@ -2000,13 +2001,13 @@ async function handleCloneConfirm() {
                         data-testid="fx-pdf-locked"
                       >
                         <Lock class="h-3 w-3" aria-hidden="true" />
-                        تنزيل PDF (مقيد)
+                        تنزيل PDF مقيّد
                       </Button>
                     </div>
                   </div>
                   <dl class="detail-grid">
                     <div class="detail-row">
-                      <dt class="detail-label">رقم البيان</dt>
+                      <dt class="detail-label">رقم الوثيقة</dt>
                       <dd class="detail-value">
                         {{ request.customs_declaration.declaration_number }}
                       </dd>
@@ -2020,7 +2021,7 @@ async function handleCloneConfirm() {
                     <div class="detail-row">
                       <dt class="detail-label">أصدره</dt>
                       <dd class="detail-value">
-                        {{ request.customs_declaration.issuer?.name ?? '—' }}
+                        {{ request.customs_declaration.issuer?.name ?? 'غير متاح' }}
                       </dd>
                     </div>
                     <div class="detail-row">
@@ -2129,7 +2130,7 @@ async function handleCloneConfirm() {
                         data-testid="download-signed-fx-btn"
                         @click="downloadSignedFxDocument"
                       >
-                        {{ downloadingSignedFx ? 'جارٍ التنزيل…' : 'تنزيل' }}
+                        {{ downloadingSignedFx ? 'جارٍ تنزيل الملف...' : 'تنزيل' }}
                       </Button>
                     </div>
                   </div>
@@ -2266,7 +2267,7 @@ async function handleCloneConfirm() {
                     >
                       {{
                         fxGeneratingTemplate
-                          ? 'جارٍ التنزيل…'
+                          ? 'جارٍ تنزيل الملف...'
                           : 'تنزيل نموذج تأكيد المصارفة الخارجية'
                       }}
                     </Button>
@@ -2312,7 +2313,7 @@ async function handleCloneConfirm() {
                       "
                       @click="handleCompleteFxConfirmation"
                     >
-                      {{ fxCompleting ? 'جارٍ الإتمام…' : 'إتمام تأكيد المصارفة' }}
+                      {{ fxCompleting ? 'جارٍ إتمام التأكيد...' : 'إتمام تأكيد المصارفة' }}
                     </Button>
                     <div
                       v-if="fxFlowError"
@@ -2387,7 +2388,7 @@ async function handleCloneConfirm() {
                       </dd>
                     </div>
                     <div class="detail-row">
-                      <dt class="detail-label">مراجع لجنة الدعم</dt>
+                      <dt class="detail-label">مراجع لجنة المساندة</dt>
                       <dd class="detail-value">
                         {{
                           actorLabel(request.support_reviewed_by_user, request.support_reviewed_by)
@@ -2396,7 +2397,7 @@ async function handleCloneConfirm() {
                     </div>
                     <div class="detail-row">
                       <dt class="detail-label">المراجع الحالي</dt>
-                      <dd class="detail-value">{{ request.claimed_by?.name ?? '—' }}</dd>
+                      <dd class="detail-value">{{ request.claimed_by?.name ?? 'غير متاح' }}</dd>
                     </div>
                     <div class="detail-row">
                       <dt class="detail-label">رفع SWIFT</dt>
@@ -2420,7 +2421,7 @@ async function handleCloneConfirm() {
                       v-if="request.customs_declaration?.issuer"
                       class="detail-row detail-row--customs"
                     >
-                      <dt class="detail-label">مكتب الجمارك (مُصدِر البيان)</dt>
+                      <dt class="detail-label">مُصدِر وثيقة التأكيد</dt>
                       <dd class="detail-value">{{ request.customs_declaration.issuer.name }}</dd>
                     </div>
                   </dl>
@@ -2602,7 +2603,7 @@ async function handleCloneConfirm() {
                   <div class="quick-info-content">
                     <span class="quick-info-label">الممثل المسؤول</span>
                     <span class="quick-info-value">{{
-                      ROLE_LABELS[request.current_owner_role] ?? '—'
+                      ROLE_LABELS[request.current_owner_role] ?? 'غير متاح'
                     }}</span>
                   </div>
                 </li>
@@ -2709,7 +2710,7 @@ async function handleCloneConfirm() {
                   </span>
                   <div class="quick-info-content">
                     <span class="quick-info-label">البنك</span>
-                    <span class="quick-info-value">{{ request.bank_name ?? '—' }}</span>
+                    <span class="quick-info-value">{{ request.bank_name ?? 'غير متاح' }}</span>
                   </div>
                 </li>
                 <li class="quick-info-item">
@@ -2777,7 +2778,7 @@ async function handleCloneConfirm() {
             data-testid="clone-confirm-btn"
             @click="handleCloneConfirm"
           >
-            {{ cloneLoading ? 'جارٍ الإنشاء…' : 'متابعة' }}
+            {{ cloneLoading ? 'جارٍ إنشاء النسخة...' : 'إنشاء النسخة' }}
           </Button>
         </AlertDialogFooter>
       </AlertDialogContent>

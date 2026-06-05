@@ -5,9 +5,9 @@ import type { Merchant } from '../../../../types/models'
 // ── Schema (mirrors MerchantModal.vue validation) ────────────────────────────
 
 const schema = z.object({
-  name: z.string().trim().min(1, 'اسم التاجر مطلوب'),
-  commercial_register: z.string().trim().min(1, 'رقم السجل التجاري مطلوب'),
-  tax_number: z.string().trim().min(1, 'الرقم الضريبي مطلوب'),
+  name: z.string().trim().min(1, 'أدخل اسم المستورد أو الشركة.'),
+  commercial_register: z.string().trim().min(1, 'أدخل رقم السجل التجاري.'),
+  tax_number: z.string().trim().min(1, 'أدخل الرقم الضريبي.'),
   phone: z.string().optional().default(''),
   address: z.string().optional().default(''),
   business_type: z.string().optional().default(''),
@@ -61,7 +61,7 @@ function bankSelectionRequired(requiresBankSelection: boolean, merchant: Merchan
 // ── Modal title logic ────────────────────────────────────────────────────────
 
 function modalTitle(merchant: Merchant | null): string {
-  return merchant ? 'تعديل بيانات التاجر' : 'تسجيل تاجر جديد'
+  return merchant ? 'تعديل بيانات المستورد' : 'تسجيل مستورد جديد'
 }
 
 // ── BUSINESS_TYPE_OPTIONS ────────────────────────────────────────────────────
@@ -93,7 +93,7 @@ describe('MerchantModal — Zod validation', () => {
     if (!result.success) {
       const nameErrors = result.error.errors.filter((e) => e.path.includes('name'))
       expect(nameErrors.length).toBeGreaterThan(0)
-      expect(nameErrors[0]!.message).toBe('اسم التاجر مطلوب')
+      expect(nameErrors[0]!.message).toBe('أدخل اسم المستورد أو الشركة.')
     }
   })
 
@@ -223,13 +223,13 @@ describe('MerchantModal — create mode', () => {
 })
 
 describe('MerchantModal — title', () => {
-  it('shows "تسجيل تاجر جديد" when no merchant', () => {
-    expect(modalTitle(null)).toBe('تسجيل تاجر جديد')
+  it('shows "تسجيل مستورد جديد" when no merchant', () => {
+    expect(modalTitle(null)).toBe('تسجيل مستورد جديد')
   })
 
-  it('shows "تعديل بيانات التاجر" when merchant provided', () => {
+  it('shows "تعديل بيانات المستورد" when merchant provided', () => {
     const m = { id: 1, name: 'Test' } as Merchant
-    expect(modalTitle(m)).toBe('تعديل بيانات التاجر')
+    expect(modalTitle(m)).toBe('تعديل بيانات المستورد')
   })
 })
 

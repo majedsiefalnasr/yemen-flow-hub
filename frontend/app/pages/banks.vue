@@ -91,7 +91,7 @@ async function loadBanks() {
     banks.value = result.data
     banksMeta.value = { last_page: result.meta.last_page, total: result.meta.total }
   } catch {
-    error.value = 'تعذر تحميل قائمة البنوك الآن. أعد المحاولة بعد قليل.'
+    error.value = 'تعذّر تحميل قائمة البنوك. تحقق من الاتصال ثم أعد المحاولة.'
   } finally {
     loading.value = false
   }
@@ -133,15 +133,15 @@ function validateForm(): boolean {
   clearErrors()
   let valid = true
   if (!form.name_ar.trim()) {
-    formErrors.name_ar = 'الاسم بالعربية مطلوب'
+    formErrors.name_ar = 'أدخل اسم البنك بالعربية.'
     valid = false
   }
   if (!isBankAdmin.value && !form.name_en.trim()) {
-    formErrors.name_en = 'الاسم بالإنجليزية مطلوب'
+    formErrors.name_en = 'أدخل اسم البنك بالإنجليزية.'
     valid = false
   }
   if (!isBankAdmin.value && !form.code.trim()) {
-    formErrors.code = 'الرمز مطلوب'
+    formErrors.code = 'أدخل رمز البنك.'
     valid = false
   }
   return valid
@@ -183,7 +183,8 @@ async function saveBank() {
       if (errs.name_en?.[0]) formErrors.name_en = errs.name_en[0]
       if (errs.code?.[0]) formErrors.code = errs.code[0]
     } else {
-      formError.value = e.data?.message ?? 'تعذر حفظ بيانات البنك. راجع الحقول ثم أعد المحاولة.'
+      formError.value =
+        e.data?.message ?? 'تعذّر حفظ بيانات البنك. صحّح الحقول المطلوبة ثم أعد المحاولة.'
     }
   } finally {
     saving.value = false
@@ -426,7 +427,7 @@ onMounted(loadBanks)
         <Search class="text-muted-foreground absolute inset-e-3 top-1/2 h-4 w-4 -translate-y-1/2" />
         <Input
           v-model="query"
-          placeholder="بحث بالاسم أو الرمز..."
+          placeholder="ابحث باسم البنك أو رمزه"
           class="h-8 rounded-md pe-9 text-sm"
         />
       </div>
@@ -453,10 +454,10 @@ onMounted(loadBanks)
               >
                 <SearchX class="size-5" />
               </div>
-              <EmptyTitle>لا توجد نتائج</EmptyTitle>
+              <EmptyTitle>لا توجد بنوك مطابقة</EmptyTitle>
             </EmptyHeader>
             <EmptyContent>
-              <EmptyDescription>جرّب تغيير البحث لعرض البنوك.</EmptyDescription>
+              <EmptyDescription>غيّر عبارة البحث أو امسحها لعرض قائمة البنوك.</EmptyDescription>
             </EmptyContent>
           </Empty>
         </template>
@@ -527,7 +528,9 @@ onMounted(loadBanks)
 
         <DialogFooter class="gap-2">
           <Button variant="outline" :disabled="saving" @click="closeModal">إلغاء</Button>
-          <Button :disabled="saving" @click="saveBank">{{ saving ? 'جارٍ الحفظ…' : 'حفظ' }}</Button>
+          <Button :disabled="saving" @click="saveBank">{{
+            saving ? 'جارٍ حفظ البنك...' : editingBank ? 'حفظ التعديلات' : 'إضافة البنك'
+          }}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

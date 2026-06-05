@@ -278,10 +278,10 @@ describe('VotingPanel — Tiebreak Notice Styling (AC7 — heavier amber emphasi
 })
 
 // ──────────────────────────────────────────────────────────────────────────────────
-// Customs Declaration Issuer Row (AC4 — requests/detail-parties-customs parity)
+// External FX Confirmation Issuer Row (AC4 - requests/detail-parties-customs parity)
 // ──────────────────────────────────────────────────────────────────────────────────
 
-describe('Request Detail — Customs Declaration Issuer Row (AC4)', () => {
+describe('Request Detail - External FX Confirmation Issuer Row (AC4)', () => {
   function createCustomsIssuerRow() {
     const request = ref<any>({
       customs_declaration: null,

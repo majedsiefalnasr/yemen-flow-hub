@@ -183,7 +183,7 @@ function formatDate(iso: string): string {
           v-if="stage.extraState === 'terminal'"
           class="text-muted-foreground text-xs font-semibold"
         >
-          نهائي — لا إجراءات إضافية
+          نهائي، ولا توجد إجراءات إضافية
         </StepperDescription>
       </div>
     </StepperItem>

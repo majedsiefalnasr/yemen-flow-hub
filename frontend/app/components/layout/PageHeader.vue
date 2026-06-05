@@ -19,7 +19,7 @@ defineProps<{
   <div class="mb-6 pt-2">
     <nav
       v-if="breadcrumbs?.length"
-      class="text-muted-foreground mb-3 flex min-w-0 items-center gap-1 text-xs"
+      class="font-section text-muted-foreground mb-3 flex min-w-0 items-center gap-1 text-xs leading-5"
       aria-label="مسار التنقل"
     >
       <template v-for="(breadcrumb, index) in breadcrumbs" :key="`${breadcrumb.label}-${index}`">
@@ -40,17 +40,20 @@ defineProps<{
     >
       <div class="min-w-0 flex-1">
         <div class="flex items-center gap-2">
-          <h1 class="text-2xl font-bold tracking-tight">
+          <h1 class="font-heading text-foreground text-2xl leading-8 font-semibold">
             {{ title }}
           </h1>
-          <span v-if="statusSummary" class="text-muted-foreground text-sm font-medium">
+          <span
+            v-if="statusSummary"
+            class="font-section text-muted-foreground text-sm leading-5 font-medium"
+          >
             ({{ statusSummary }})
           </span>
         </div>
-        <p v-if="subtitle" class="text-muted-foreground mt-1 text-sm">
+        <p v-if="subtitle" class="text-muted-foreground mt-1 max-w-[72ch] text-sm leading-6">
           {{ subtitle }}
         </p>
-        <p v-if="lastUpdated" class="text-muted-foreground/70 mt-1 text-xs">
+        <p v-if="lastUpdated" class="text-muted-foreground/70 mt-1 text-xs leading-5 tabular-nums">
           آخر تحديث: {{ lastUpdated }}
         </p>
       </div>

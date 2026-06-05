@@ -28,7 +28,7 @@ import type { ImportRequest } from '@/types/models'
 export const REQUESTS_COLUMN_LABELS: Record<string, string> = {
   reference_number: 'رقم المرجع',
   created_by: 'أنشأه',
-  merchant: 'التاجر / البنك',
+  merchant: 'المستورد / البنك',
   goods_description: 'نوع البضاعة',
   amount: 'المبلغ',
   status: 'الحالة',
@@ -61,7 +61,7 @@ export function buildStatusFilterOptions(
 }
 
 function relativeTime(isoDate: string | null | undefined): string {
-  if (!isoDate) return '—'
+  if (!isoDate) return 'غير متاح'
   const ms = Date.now() - new Date(isoDate).getTime()
   const mins = Math.floor(ms / 60000)
   if (mins < 60) return `منذ ${mins} دقيقة`
@@ -153,7 +153,7 @@ export function useRequestsColumns(opts: {
           badges.push(
             h(Badge, { variant: 'secondary', class: 'rounded-full text-amber-700' }, () => [
               h(Lock, { class: 'size-3.5 me-1' }),
-              `قيد المراجعة: ${request.claimed_by?.name ?? '—'}`,
+              `قيد المراجعة: ${request.claimed_by?.name ?? 'غير متاح'}`,
             ]),
           )
         } else if (request.is_claimed_by_me) {
@@ -196,7 +196,7 @@ export function useRequestsColumns(opts: {
       cell: ({ row }) => {
         const request = row.original
         if (role.value !== UserRole.BANK_REVIEWER && role.value !== UserRole.BANK_ADMIN) {
-          return h('span', { class: 'text-xs text-muted-foreground' }, '—')
+          return h('span', { class: 'text-xs text-muted-foreground' }, 'غير متاح')
         }
         const isSelf = currentUserId.value != null && request.created_by === currentUserId.value
         return h(
@@ -204,7 +204,7 @@ export function useRequestsColumns(opts: {
           {
             class: isSelf ? 'text-sm font-semibold text-amber-600' : 'text-sm text-foreground',
           },
-          isSelf ? 'أنا' : (request.created_by_user?.name ?? '—'),
+          isSelf ? 'أنا' : (request.created_by_user?.name ?? 'غير متاح'),
         )
       },
     },
@@ -217,12 +217,12 @@ export function useRequestsColumns(opts: {
           h(
             'span',
             { class: 'truncate text-sm font-semibold text-foreground' },
-            row.original.merchant?.name ?? '—',
+            row.original.merchant?.name ?? 'غير متاح',
           ),
           h(
             'span',
             { class: 'truncate text-xs text-muted-foreground' },
-            row.original.bank_name ?? '—',
+            row.original.bank_name ?? 'غير متاح',
           ),
         ]),
     },
@@ -233,7 +233,7 @@ export function useRequestsColumns(opts: {
         h(
           'span',
           { class: 'line-clamp-2 text-sm text-muted-foreground' },
-          row.original.goods_description ?? '—',
+          row.original.goods_description ?? 'غير متاح',
         ),
     },
     {
@@ -270,7 +270,7 @@ export function useRequestsColumns(opts: {
         if (
           ![UserRole.BANK_REVIEWER, UserRole.BANK_ADMIN, UserRole.CBY_ADMIN].includes(role.value)
         ) {
-          return h('span', { class: 'text-xs text-muted-foreground' }, '—')
+          return h('span', { class: 'text-xs text-muted-foreground' }, 'غير متاح')
         }
         return h(
           'span',
@@ -287,7 +287,7 @@ export function useRequestsColumns(opts: {
       header: REQUESTS_COLUMN_LABELS.cby_age,
       cell: ({ row }) => {
         if (role.value !== UserRole.CBY_ADMIN)
-          return h('span', { class: 'text-xs text-muted-foreground' }, '—')
+          return h('span', { class: 'text-xs text-muted-foreground' }, 'غير متاح')
         const hrs = ageHours(row.original.created_at)
         const days = Math.floor(hrs / 24)
         return h(
@@ -302,7 +302,7 @@ export function useRequestsColumns(opts: {
       header: REQUESTS_COLUMN_LABELS.cby_sla,
       cell: ({ row }) => {
         if (role.value !== UserRole.CBY_ADMIN)
-          return h('span', { class: 'text-xs text-muted-foreground' }, '—')
+          return h('span', { class: 'text-xs text-muted-foreground' }, 'غير متاح')
         const { label, color } = slaInfo(ageHours(row.original.created_at))
         return h(
           'span',
@@ -319,9 +319,9 @@ export function useRequestsColumns(opts: {
       header: REQUESTS_COLUMN_LABELS.cby_voting,
       cell: ({ row }) => {
         if (role.value !== UserRole.CBY_ADMIN)
-          return h('span', { class: 'text-xs text-muted-foreground' }, '—')
+          return h('span', { class: 'text-xs text-muted-foreground' }, 'غير متاح')
         const votingStatus = row.original.voting_session_status
-        if (!votingStatus) return h('span', { class: 'text-xs text-muted-foreground' }, '—')
+        if (!votingStatus) return h('span', { class: 'text-xs text-muted-foreground' }, 'غير متاح')
         return h(
           'span',
           {
@@ -337,7 +337,7 @@ export function useRequestsColumns(opts: {
       header: REQUESTS_COLUMN_LABELS.cby_fx,
       cell: ({ row }) => {
         if (role.value !== UserRole.CBY_ADMIN)
-          return h('span', { class: 'text-xs text-muted-foreground' }, '—')
+          return h('span', { class: 'text-xs text-muted-foreground' }, 'غير متاح')
         const done = row.original.has_fx_request_document === true
         return h(
           'span',
@@ -354,7 +354,7 @@ export function useRequestsColumns(opts: {
       header: REQUESTS_COLUMN_LABELS.cby_risk,
       cell: ({ row }) => {
         if (role.value !== UserRole.CBY_ADMIN)
-          return h('span', { class: 'text-xs text-muted-foreground' }, '—')
+          return h('span', { class: 'text-xs text-muted-foreground' }, 'غير متاح')
         const flags = row.original.duplicate_warnings?.length ?? 0
         if (flags === 0) return h(Shield, { class: 'size-4 text-[var(--severity-green)]' })
         return h(
@@ -372,10 +372,10 @@ export function useRequestsColumns(opts: {
       header: REQUESTS_COLUMN_LABELS.director_ready_to_close,
       cell: ({ row }) => {
         if (role.value !== UserRole.COMMITTEE_DIRECTOR)
-          return h('span', { class: 'text-xs text-muted-foreground' }, '—')
+          return h('span', { class: 'text-xs text-muted-foreground' }, 'غير متاح')
         const request = row.original
         if (request.status !== RequestStatus.EXECUTIVE_VOTING_OPEN)
-          return h('span', { class: 'text-xs text-muted-foreground' }, '—')
+          return h('span', { class: 'text-xs text-muted-foreground' }, 'غير متاح')
         if (request.ready_to_close) {
           return h(
             'span',
@@ -405,7 +405,7 @@ export function useRequestsColumns(opts: {
       header: REQUESTS_COLUMN_LABELS.director_fx_state,
       cell: ({ row }) => {
         if (role.value !== UserRole.COMMITTEE_DIRECTOR)
-          return h('span', { class: 'text-xs text-muted-foreground' }, '—')
+          return h('span', { class: 'text-xs text-muted-foreground' }, 'غير متاح')
         const request = row.original
         if (request.status === RequestStatus.FX_CONFIRMATION_PENDING) {
           if (request.has_fx_request_document === true) {
@@ -454,7 +454,7 @@ export function useRequestsColumns(opts: {
             'مكتمل',
           )
         }
-        return h('span', { class: 'text-xs text-muted-foreground' }, '—')
+        return h('span', { class: 'text-xs text-muted-foreground' }, 'غير متاح')
       },
     },
     {
@@ -462,7 +462,7 @@ export function useRequestsColumns(opts: {
       header: REQUESTS_COLUMN_LABELS.swift_documents,
       cell: ({ row }) => {
         if (role.value !== UserRole.SWIFT_OFFICER)
-          return h('span', { class: 'text-xs text-muted-foreground' }, '—')
+          return h('span', { class: 'text-xs text-muted-foreground' }, 'غير متاح')
         const pillClass = (active: boolean) =>
           active
             ? 'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-green-50 text-green-700 border border-green-200'

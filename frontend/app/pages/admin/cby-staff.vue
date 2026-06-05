@@ -279,7 +279,7 @@ async function saveStaff() {
       if (authStore.user && authStore.user.id === updated.id) {
         authStore.user = { ...authStore.user, ...updated, avatar_variant: avatarVariant.value }
       }
-      notify('تم حفظ التعديلات')
+      notify('تم حفظ تعديلات المستخدم')
     } else {
       const payload: CreateUserPayload = {
         name: form.name.trim(),
@@ -297,7 +297,7 @@ async function saveStaff() {
     }
     closeForm()
   } catch {
-    toastError('تعذر حفظ بيانات الموظف. أعد المحاولة بعد قليل.')
+    toastError('تعذّر حفظ بيانات المستخدم. راجع الحقول وأعد المحاولة.')
   } finally {
     saving.value = false
   }
@@ -308,12 +308,12 @@ function requestToggleActive(target: User) {
   if (target.is_active) {
     if (target.role === UserRole.COMMITTEE_DIRECTOR && activeDirectors.value.length <= 1) {
       deactivateBlocked.value =
-        'لا يمكن إلغاء تفعيل المدير الوحيد النشط. يجب أن يكون هناك مدير لجنة نشط واحد على الأقل في النظام في جميع الأوقات.'
+        'لا يمكن إلغاء تفعيل مدير اللجنة الوحيد النشط. يجب بقاء مدير لجنة نشط واحد على الأقل لإدارة جلسات التصويت.'
       return
     }
     if (target.role === UserRole.EXECUTIVE_MEMBER && activeExecutiveMembers.value.length <= 1) {
       deactivateBlocked.value =
-        'لا يمكن إلغاء تفعيل العضو التنفيذي الوحيد النشط. يجب الإبقاء على أعضاء تصويت كافين لضمان النصاب القانوني.'
+        'لا يمكن إلغاء تفعيل العضو التنفيذي الوحيد النشط. يجب بقاء أعضاء تصويت كافين لضمان النصاب القانوني.'
       return
     }
     deactivateBlocked.value = null
@@ -337,7 +337,7 @@ async function doToggleActive(target: User) {
     staffUsers.value = staffUsers.value.map((u) => (u.id === target.id ? updated : u))
     notify(updated.is_active ? `تم تفعيل ${target.name}` : `تم إلغاء تفعيل ${target.name}`)
   } catch {
-    toastError('فشل تغيير الحالة')
+    toastError('تعذّر تغيير حالة المستخدم. أعد المحاولة.')
   }
 }
 
@@ -444,7 +444,7 @@ const columns: ColumnDef<User>[] = [
     filterFn: (row, _id, value: string[]) => value.includes(String(row.original.bank_id)),
     cell: ({ row }) => {
       const name = resolveBankName(row.original)
-      return h('span', { class: 'text-sm text-muted-foreground' }, name || '—')
+      return h('span', { class: 'text-sm text-muted-foreground' }, name || 'غير متاح')
     },
   },
   {
@@ -453,7 +453,11 @@ const columns: ColumnDef<User>[] = [
     cell: ({ row }) => {
       const ts = row.original.last_login_at
       if (!ts)
-        return h('span', { class: 'text-sm text-muted-foreground', 'data-cell': 'last-seen' }, '—')
+        return h(
+          'span',
+          { class: 'text-sm text-muted-foreground', 'data-cell': 'last-seen' },
+          'لم يسجل الدخول بعد',
+        )
       return h(
         'span',
         { class: 'text-sm text-muted-foreground', 'data-cell': 'last-seen' },
@@ -603,7 +607,9 @@ const exportCols = [
     key: 'last_login_at',
     label: 'آخر ظهور',
     format: (_value: any, row: User) =>
-      row.last_login_at ? new Date(row.last_login_at).toLocaleDateString('ar-EG') : '—',
+      row.last_login_at
+        ? new Date(row.last_login_at).toLocaleDateString('ar-EG')
+        : 'لم يسجل الدخول بعد',
   },
 ]
 
@@ -722,7 +728,7 @@ async function bulkArchive() {
   <div v-if="currentUser?.role === UserRole.CBY_ADMIN">
     <PageHeader
       title="مستخدمي النظام"
-      subtitle="إدارة موظفي البنك المركزي — اللجان المساندة والتنفيذية ومسؤولي النظام"
+      subtitle="إدارة موظفي البنك المركزي واللجان المساندة والتنفيذية ومسؤولي النظام"
       :breadcrumbs="[{ label: 'الرئيسية', to: '/' }, { label: 'مستخدمي النظام' }]"
     >
       <template #actions>
@@ -808,7 +814,7 @@ async function bulkArchive() {
         <template #toolbar="{ table: dataTable }">
           <DataTableToolbar
             :table="dataTable"
-            search-placeholder="بحث بالاسم أو البريد..."
+            search-placeholder="بحث بالاسم أو البريد الإلكتروني"
             :has-filters="hasActiveFilters"
             :selected-count="selectedCount"
             @update:search="(v) => (query = v)"
@@ -896,7 +902,11 @@ async function bulkArchive() {
                 <SearchX class="size-5" />
               </div>
               <EmptyTitle>
-                {{ staffUsers.length === 0 ? 'لا يوجد مستخدمو نظام بعد' : 'لا توجد نتائج مطابقة' }}
+                {{
+                  staffUsers.length === 0
+                    ? 'لا يوجد مستخدمو نظام للبنك المركزي بعد'
+                    : 'لا توجد نتائج مطابقة'
+                }}
               </EmptyTitle>
             </EmptyHeader>
             <EmptyContent>
@@ -921,7 +931,9 @@ async function bulkArchive() {
       <DialogContent class="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{{ editing ? 'تعديل بيانات المستخدم' : 'إضافة مستخدم نظام' }}</DialogTitle>
-          <DialogDescription>مستخدمو البنك المركزي فقط (لجان وإدارة النظام).</DialogDescription>
+          <DialogDescription>
+            أضف أو عدّل مستخدمي البنك المركزي للجان وإدارة النظام.
+          </DialogDescription>
         </DialogHeader>
 
         <div class="space-y-3 py-2">
@@ -934,25 +946,25 @@ async function bulkArchive() {
             />
           </div>
           <div class="space-y-1.5">
-            <Label>الاسم *</Label>
-            <Input v-model="form.name" />
+            <Label>الاسم <span class="text-destructive">*</span></Label>
+            <Input v-model="form.name" placeholder="مثال: أحمد محمد" />
           </div>
           <div class="space-y-1.5">
-            <Label>البريد الإلكتروني *</Label>
-            <Input v-model="form.email" type="email" />
+            <Label>البريد الإلكتروني <span class="text-destructive">*</span></Label>
+            <Input v-model="form.email" type="email" placeholder="name@cby.gov.ye" />
           </div>
           <div class="space-y-1.5">
             <Label>{{
-              editing ? 'كلمة المرور (اتركها فارغة للإبقاء على الحالية)' : 'كلمة المرور *'
+              editing ? 'كلمة المرور (اتركها فارغة للإبقاء على الحالية)' : 'كلمة المرور المؤقتة *'
             }}</Label>
             <Input
               v-model="form.password"
               type="password"
-              :placeholder="editing ? '••••••••' : 'كلمة مرور قوية'"
+              :placeholder="editing ? 'اتركها فارغة دون تغيير' : '8 أحرف على الأقل'"
             />
           </div>
           <div class="space-y-1.5">
-            <Label>الدور *</Label>
+            <Label>الدور <span class="text-destructive">*</span></Label>
             <Select v-model="form.role">
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -973,7 +985,7 @@ async function bulkArchive() {
 
         <DialogFooter>
           <Button :disabled="!formValid || saving" @click="saveStaff">
-            {{ editing ? 'حفظ التعديلات' : 'إضافة' }}
+            {{ saving ? 'جارٍ حفظ المستخدم...' : editing ? 'حفظ التعديلات' : 'إضافة المستخدم' }}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -1005,11 +1017,11 @@ async function bulkArchive() {
     >
       <AlertDialogContent v-if="deactivateTarget">
         <AlertDialogHeader>
-          <AlertDialogTitle>تأكيد إلغاء التفعيل</AlertDialogTitle>
+          <AlertDialogTitle>إلغاء تفعيل مستخدم البنك المركزي</AlertDialogTitle>
           <AlertDialogDescription>
-            سيتم إلغاء تفعيل <strong>{{ deactivateTarget.name }}</strong> ({{
+            سيتم منع <strong>{{ deactivateTarget.name }}</strong> ({{
               ROLE_LABELS[deactivateTarget.role]
-            }}).
+            }}) من تسجيل الدخول.
             <template v-if="deactivateTarget.role === UserRole.COMMITTEE_DIRECTOR">
               <br class="mb-1" />
               سيبقى {{ activeDirectors.length - 1 }} مدير نشط بعد هذا الإجراء.
@@ -1026,7 +1038,7 @@ async function bulkArchive() {
             class="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             @click="doToggleActive(deactivateTarget)"
           >
-            تأكيد الإلغاء
+            إلغاء تفعيل المستخدم
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
@@ -1040,7 +1052,7 @@ async function bulkArchive() {
             <UserCog class="text-primary h-5 w-5" />
             {{ viewing.name }}
           </DialogTitle>
-          <DialogDescription>تفاصيل المستخدم</DialogDescription>
+          <DialogDescription>تفاصيل حساب المستخدم وصلاحياته</DialogDescription>
         </DialogHeader>
         <div class="space-y-3 py-2 text-sm">
           <div class="flex items-center justify-between gap-3 border-b pb-2">
@@ -1071,14 +1083,15 @@ async function bulkArchive() {
     <AlertDialog v-model:open="archiveConfirmOpen">
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>تأكيد أرشفة المستخدمين المحددين</AlertDialogTitle>
+          <AlertDialogTitle>أرشفة المستخدمين المحددين</AlertDialogTitle>
           <AlertDialogDescription>
-            سيتم إلغاء تفعيل {{ selectedCount }} مستخدم وأرشفته. يمكن إعادة تفعيله لاحقاً.
+            سيتم إلغاء تفعيل {{ selectedCount }} مستخدم وأرشفتهم. يمكن إعادة تفعيلهم لاحقا عند
+            الحاجة.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>إلغاء</AlertDialogCancel>
-          <AlertDialogAction @click="bulkArchive">تأكيد الأرشفة</AlertDialogAction>
+          <AlertDialogAction @click="bulkArchive">أرشفة المستخدمين</AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

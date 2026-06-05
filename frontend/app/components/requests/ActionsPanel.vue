@@ -184,8 +184,7 @@ function resetBankRejectTerminalModal() {
 async function handleBankRejectTerminalConfirm() {
   bankRejectTerminalCommentError.value = ''
   if (bankRejectTerminalComment.value.trim().length < 20) {
-    bankRejectTerminalCommentError.value =
-      'سبب الرفض النهائي مطلوب ويجب أن يكون 20 حرفاً على الأقل.'
+    bankRejectTerminalCommentError.value = 'اكتب سبب الرفض النهائي بوضوح، 20 حرفا على الأقل.'
     return
   }
   actionError.value = ''
@@ -195,7 +194,7 @@ async function handleBankRejectTerminalConfirm() {
     emit('action-completed')
   } catch (err: any) {
     const msg = err instanceof Error ? err.message : ''
-    actionError.value = msg || 'تعذّر تنفيذ الرفض النهائي.'
+    actionError.value = msg || 'تعذّر رفض الطلب نهائيا. تحقق من حالة الطلب وأعد المحاولة.'
     resetBankRejectTerminalModal()
   }
 }
@@ -209,7 +208,7 @@ function resetSupportReturnModal() {
 async function handleBankReturnConfirm() {
   bankReturnCommentError.value = ''
   if (bankReturnComment.value.trim().length < 3) {
-    bankReturnCommentError.value = 'التعليق مطلوب ويجب أن يكون 3 أحرف على الأقل.'
+    bankReturnCommentError.value = 'اكتب سبب الإعادة قبل إرجاع الطلب للمدخل.'
     return
   }
   actionError.value = ''
@@ -219,7 +218,7 @@ async function handleBankReturnConfirm() {
     emit('action-completed')
   } catch (err: any) {
     const msg = err instanceof Error ? err.message : ''
-    actionError.value = msg || 'تعذّر إعادة الطلب للمدخل.'
+    actionError.value = msg || 'تعذّرت إعادة الطلب للمدخل. تحقق من حالة الطلب وأعد المحاولة.'
     resetBankReturnModal()
   }
 }
@@ -227,7 +226,7 @@ async function handleBankReturnConfirm() {
 async function handleSupportReturnConfirm() {
   supportReturnCommentError.value = ''
   if (supportReturnComment.value.trim().length < 3) {
-    supportReturnCommentError.value = 'التعليق مطلوب ويجب أن يكون 3 أحرف على الأقل.'
+    supportReturnCommentError.value = 'اكتب سبب الإعادة قبل إرجاع الطلب للمدخل.'
     return
   }
   actionError.value = ''
@@ -237,7 +236,7 @@ async function handleSupportReturnConfirm() {
     emit('action-completed')
   } catch (err: any) {
     const msg = err instanceof Error ? err.message : ''
-    actionError.value = msg || 'تعذّر إعادة الطلب للمدخل.'
+    actionError.value = msg || 'تعذّرت إعادة الطلب للمدخل. تحقق من حالة الطلب وأعد المحاولة.'
     resetSupportReturnModal()
   }
 }
@@ -253,7 +252,7 @@ function resetDirectorState() {
 
 async function handleCloseSession() {
   if (!allExecutiveVotesCast.value) {
-    actionError.value = 'لا يمكن إغلاق التصويت قبل إتمام تصويت جميع الأعضاء النشطين.'
+    actionError.value = 'لا يمكن إغلاق الجلسة قبل تسجيل تصويت جميع الأعضاء النشطين.'
     showCloseConfirm.value = false
     return
   }
@@ -265,7 +264,7 @@ async function handleCloseSession() {
     emit('action-completed')
   } catch (err: any) {
     const msg = err instanceof Error ? err.message : ''
-    actionError.value = msg || 'تعذّر إغلاق جلسة التصويت.'
+    actionError.value = msg || 'تعذّر إغلاق جلسة التصويت. حدّث البيانات وأعد المحاولة.'
     showCloseConfirm.value = false
   }
 }
@@ -277,7 +276,7 @@ async function handleFinalizeDecision() {
     emit('action-completed')
   } catch (err: any) {
     const msg = err instanceof Error ? err.message : ''
-    actionError.value = msg || 'تعذّر إصدار القرار النهائي.'
+    actionError.value = msg || 'تعذّر إصدار القرار النهائي. راجع نتيجة التصويت وأعد المحاولة.'
   }
 }
 
@@ -286,11 +285,11 @@ async function handleDirectorOverride() {
   overrideJustificationError.value = ''
 
   if (!overrideDecision.value) {
-    overrideDecisionError.value = 'يجب اختيار قرار (موافقة أو رفض).'
+    overrideDecisionError.value = 'اختر قرار التجاوز: موافقة أو رفض.'
     return
   }
   if (overrideJustification.value.trim().length < 10) {
-    overrideJustificationError.value = 'المبرر مطلوب ويجب أن يكون 10 أحرف على الأقل.'
+    overrideJustificationError.value = 'اكتب مبرر التجاوز بوضوح، 10 أحرف على الأقل.'
     return
   }
 
@@ -305,7 +304,7 @@ async function handleDirectorOverride() {
     emit('action-completed')
   } catch (err: any) {
     const msg = err instanceof Error ? err.message : ''
-    actionError.value = msg || 'تعذّر تنفيذ قرار التجاوز.'
+    actionError.value = msg || 'تعذّر تسجيل قرار التجاوز. راجع البيانات وأعد المحاولة.'
     resetDirectorState()
   }
 }
@@ -317,7 +316,7 @@ async function handleIssueCustomsDeclaration() {
     emit('action-completed')
   } catch (err: any) {
     const msg = err instanceof Error ? err.message : ''
-    actionError.value = msg || 'تعذّر إصدار تأكيد المصارفة الخارجية.'
+    actionError.value = msg || 'تعذّر إصدار تأكيد المصارفة الخارجية. أعد المحاولة.'
   }
 }
 
@@ -340,7 +339,7 @@ async function handleFinalizeRejection() {
     emit('action-completed')
   } catch (err: any) {
     const msg = err instanceof Error ? err.message : ''
-    actionError.value = msg || 'تعذّر إتمام الرفض النهائي.'
+    actionError.value = msg || 'تعذّر تثبيت الرفض النهائي. أعد المحاولة.'
   }
 }
 
@@ -354,7 +353,7 @@ async function handleSupportRejectedReturnConfirm() {
     emit('action-completed')
   } catch (err: any) {
     const msg = err instanceof Error ? err.message : ''
-    actionError.value = msg || 'تعذّر إعادة الطلب للمدخل.'
+    actionError.value = msg || 'تعذّرت إعادة الطلب للمدخل. أضف ملاحظة واضحة وأعد المحاولة.'
     showSupportRejectedReturnModal.value = false
   }
 }
@@ -374,7 +373,7 @@ async function handleSupportApprove() {
 
 async function handleRejectConfirm() {
   if (!rejectReason.value.trim()) {
-    rejectReasonError.value = 'سبب الرفض مطلوب.'
+    rejectReasonError.value = 'اكتب سبب الرفض قبل إيقاف مسار الطلب.'
     return
   }
   const action = showSupportCommitteeActions.value ? 'support-reject' : 'bank-reject'
@@ -390,7 +389,7 @@ async function dispatchAction(action: string, reason?: string) {
     emit('action-completed')
   } catch (err: any) {
     const msg = err instanceof Error ? err.message : ''
-    actionError.value = msg || 'تعذّر تنفيذ الإجراء. يرجى المحاولة مرة أخرى.'
+    actionError.value = msg || 'تعذّر تنفيذ الإجراء. تحقق من حالة الطلب وأعد المحاولة.'
   }
 }
 
@@ -438,11 +437,11 @@ defineExpose({ triggerPrimaryAction })
         <TooltipTrigger as-child>
           <Button class="w-full" :disabled="performingAction" @click="handleBeginReview">
             <Loader2 v-if="performingAction" class="me-2 h-4 w-4 animate-spin" />
-            {{ performingAction ? 'جارٍ التنفيذ…' : 'البدء بالمراجعة' }}
+            {{ performingAction ? 'جارٍ بدء المراجعة...' : 'البدء بالمراجعة' }}
           </Button>
         </TooltipTrigger>
         <TooltipContent
-          ><p>نقل الطلب إلى قيد المراجعة البنكية — يمكنك الموافقة أو الرفض أو الإعادة بعد ذلك</p>
+          ><p>ينقل الطلب إلى قيد المراجعة البنكية، ثم تظهر قرارات الاعتماد أو الرفض أو الإعادة.</p>
           <p class="text-muted-foreground mt-1 text-xs">Ctrl+Enter</p></TooltipContent
         >
       </Tooltip>
@@ -458,15 +457,17 @@ defineExpose({ triggerPrimaryAction })
           </DialogTrigger>
           <DialogContent class="max-w-md">
             <DialogHeader>
-              <DialogTitle>تأكيد اعتماد الطلب</DialogTitle>
-              <DialogDescription> الطلب: {{ request.reference_number }} </DialogDescription>
+              <DialogTitle>اعتماد الطلب البنكي</DialogTitle>
+              <DialogDescription>
+                سيتم نقل الطلب {{ request.reference_number }} إلى المرحلة التالية في مسار الاعتماد.
+              </DialogDescription>
             </DialogHeader>
             <div>
               <label for="approve-note" class="text-sm font-medium">ملاحظة (اختياري)</label>
               <Textarea
                 id="approve-note"
                 v-model="approveNote"
-                placeholder="أضف ملاحظة تُسجَّل في سجل الأحداث…"
+                placeholder="اكتب ملاحظة للمراجعة أو اترك الحقل فارغا."
                 class="mt-2 min-h-20"
               />
             </div>
@@ -474,7 +475,7 @@ defineExpose({ triggerPrimaryAction })
               <Button variant="outline" @click="cancelApproveModal">إلغاء</Button>
               <Button :disabled="performingAction" @click="handleApproveConfirm">
                 <Loader2 v-if="performingAction" class="me-2 h-4 w-4 animate-spin" />
-                {{ performingAction ? 'جارٍ التنفيذ…' : 'تأكيد الاعتماد' }}
+                {{ performingAction ? 'جارٍ اعتماد الطلب...' : 'اعتماد الطلب' }}
               </Button>
             </div>
           </DialogContent>
@@ -484,19 +485,19 @@ defineExpose({ triggerPrimaryAction })
         <Dialog v-model:open="showBankRejectTerminalModal">
           <DialogTrigger as-child>
             <Button variant="destructive" class="flex-1" :disabled="performingAction">
-              رفض نهائي
+              رفض الطلب نهائيا
             </Button>
           </DialogTrigger>
           <DialogContent class="max-w-md">
             <DialogHeader>
-              <DialogTitle class="text-destructive">رفض الطلب نهائياً</DialogTitle>
+              <DialogTitle class="text-destructive">رفض الطلب نهائيا</DialogTitle>
             </DialogHeader>
 
             <div class="space-y-4">
               <Alert variant="destructive">
-                <AlertTitle>تحذير: إجراء لا يمكن التراجع عنه</AlertTitle>
+                <AlertTitle>إجراء نهائي لا يمكن التراجع عنه</AlertTitle>
                 <AlertDescription
-                  >بعد الرفض النهائي لن يتمكن أي طرف من استئناف الطلب أو إعادة
+                  >سيغلق الرفض النهائي مسار الطلب، ولن يتمكن أي طرف من تعديله أو إعادة
                   تقديمه.</AlertDescription
                 >
               </Alert>
@@ -507,7 +508,7 @@ defineExpose({ triggerPrimaryAction })
                 <Textarea
                   id="bank-reject-terminal-comment"
                   v-model="bankRejectTerminalComment"
-                  placeholder="اكتب سبب الرفض النهائي هنا (20 حرفاً على الأقل)…"
+                  placeholder="اكتب سببا واضحا يمكن الرجوع إليه في سجل التدقيق."
                   class="mt-2 min-h-24"
                   :aria-invalid="!!bankRejectTerminalCommentError"
                 />
@@ -524,7 +525,7 @@ defineExpose({ triggerPrimaryAction })
                   @click="handleBankRejectTerminalConfirm"
                 >
                   <Loader2 v-if="performingAction" class="me-2 h-4 w-4 animate-spin" />
-                  {{ performingAction ? 'جارٍ التنفيذ…' : 'تأكيد الرفض النهائي' }}
+                  {{ performingAction ? 'جارٍ رفض الطلب...' : 'رفض الطلب نهائيا' }}
                 </Button>
               </div>
             </div>
@@ -539,9 +540,9 @@ defineExpose({ triggerPrimaryAction })
           </DialogTrigger>
           <DialogContent class="max-w-md">
             <DialogHeader>
-              <DialogTitle>إعادة الطلب للمدخل</DialogTitle>
+              <DialogTitle>إعادة الطلب إلى موظف الإدخال</DialogTitle>
               <DialogDescription>
-                سيعود الطلب إلى موظف الإدخال لتصحيح البيانات أو المستندات ثم إعادة إرساله للمراجعة
+                سيعود الطلب إلى موظف الإدخال لتصحيح البيانات أو المستندات، ثم إعادة إرساله للمراجعة
                 البنكية.
               </DialogDescription>
             </DialogHeader>
@@ -554,7 +555,7 @@ defineExpose({ triggerPrimaryAction })
                 <Textarea
                   id="bank-return-comment"
                   v-model="bankReturnComment"
-                  placeholder="اكتب سبب الإعادة هنا…"
+                  placeholder="اكتب ما يجب تصحيحه قبل إعادة التقديم."
                   class="mt-2 min-h-24"
                   :aria-invalid="!!bankReturnCommentError"
                 />
@@ -570,7 +571,7 @@ defineExpose({ triggerPrimaryAction })
                 <Button variant="outline" @click="resetBankReturnModal"> إلغاء </Button>
                 <Button :disabled="performingAction" @click="handleBankReturnConfirm">
                   <Loader2 v-if="performingAction" class="me-2 h-4 w-4 animate-spin" />
-                  {{ performingAction ? 'جارٍ التنفيذ…' : 'تأكيد الإعادة' }}
+                  {{ performingAction ? 'جارٍ إعادة الطلب...' : 'إعادة الطلب' }}
                 </Button>
               </div>
             </div>
@@ -584,7 +585,7 @@ defineExpose({ triggerPrimaryAction })
       <div class="flex flex-row-reverse gap-3">
         <Button class="flex-1" :disabled="performingAction" @click="handleSupportApprove">
           <Loader2 v-if="performingAction" class="me-2 h-4 w-4 animate-spin" />
-          {{ performingAction ? 'جارٍ التنفيذ…' : 'اعتماد' }}
+          {{ performingAction ? 'جارٍ اعتماد الطلب...' : 'اعتماد الطلب' }}
         </Button>
 
         <Dialog v-model:open="showRejectForm">
@@ -593,18 +594,18 @@ defineExpose({ triggerPrimaryAction })
           </DialogTrigger>
           <DialogContent class="max-w-md">
             <DialogHeader>
-              <DialogTitle>رفض الطلب</DialogTitle>
+              <DialogTitle>رفض الطلب من لجنة المساندة</DialogTitle>
               <DialogDescription>
-                سجّل سبب الرفض قبل إيقاف مسار الطلب لدى لجنة المساندة.
+                سجّل سبب الرفض قبل إنهاء مراجعة لجنة المساندة.
               </DialogDescription>
             </DialogHeader>
 
             <div class="space-y-4">
               <Alert variant="destructive">
-                <AlertTitle>تحذير</AlertTitle>
+                <AlertTitle>قرار مؤثر في مسار الطلب</AlertTitle>
                 <AlertDescription
-                  >رفض لجنة المساندة يوقف مسار الطلب. سيحتاج المراجع البنكي للبت في المرحلة
-                  التالية.</AlertDescription
+                  >سيتوقف الطلب عند رفض لجنة المساندة حتى يقرر المراجع البنكي إغلاقه نهائيا أو
+                  إعادته للتصحيح.</AlertDescription
                 >
               </Alert>
               <div>
@@ -614,7 +615,7 @@ defineExpose({ triggerPrimaryAction })
                 <Textarea
                   id="reject-reason-support"
                   v-model="rejectReason"
-                  placeholder="اكتب سبب الرفض هنا…"
+                  placeholder="اكتب سبب الرفض بلغة واضحة قابلة للتدقيق."
                   class="mt-2 min-h-24"
                   :aria-invalid="!!rejectReasonError"
                 />
@@ -631,7 +632,7 @@ defineExpose({ triggerPrimaryAction })
                   @click="handleRejectConfirm"
                 >
                   <Loader2 v-if="performingAction" class="me-2 h-4 w-4 animate-spin" />
-                  {{ performingAction ? 'جارٍ التنفيذ…' : 'تأكيد الرفض' }}
+                  {{ performingAction ? 'جارٍ رفض الطلب...' : 'رفض الطلب' }}
                 </Button>
               </div>
             </div>
@@ -646,9 +647,9 @@ defineExpose({ triggerPrimaryAction })
           </DialogTrigger>
           <DialogContent class="max-w-md">
             <DialogHeader>
-              <DialogTitle>إعادة الطلب للمدخل</DialogTitle>
+              <DialogTitle>إعادة الطلب إلى موظف الإدخال</DialogTitle>
               <DialogDescription>
-                سيعود الطلب إلى موظف الإدخال لمعالجة ملاحظات لجنة المساندة ثم إعادة الإرسال.
+                سيعود الطلب إلى موظف الإدخال لمعالجة ملاحظات لجنة المساندة، ثم إعادة الإرسال.
               </DialogDescription>
             </DialogHeader>
 
@@ -660,7 +661,7 @@ defineExpose({ triggerPrimaryAction })
                 <Textarea
                   id="support-return-comment"
                   v-model="supportReturnComment"
-                  placeholder="اكتب سبب الإعادة هنا…"
+                  placeholder="اكتب الملاحظات المطلوبة قبل إعادة التقديم."
                   class="mt-2 min-h-24"
                   :aria-invalid="!!supportReturnCommentError"
                 />
@@ -676,7 +677,7 @@ defineExpose({ triggerPrimaryAction })
                 <Button variant="outline" @click="resetSupportReturnModal"> إلغاء </Button>
                 <Button :disabled="performingAction" @click="handleSupportReturnConfirm">
                   <Loader2 v-if="performingAction" class="me-2 h-4 w-4 animate-spin" />
-                  {{ performingAction ? 'جارٍ التنفيذ…' : 'تأكيد الإعادة' }}
+                  {{ performingAction ? 'جارٍ إعادة الطلب...' : 'إعادة الطلب' }}
                 </Button>
               </div>
             </div>
@@ -697,21 +698,21 @@ defineExpose({ triggerPrimaryAction })
       v-if="showDataEntryActions && request.status === RequestStatus.DRAFT_REJECTED_INTERNAL"
     >
       <NuxtLink :to="`/requests/${request.id}/edit`">
-        <Button class="w-full">تعديل وإعادة تقديم</Button>
+        <Button class="w-full">تعديل الطلب وإعادة تقديمه</Button>
       </NuxtLink>
     </template>
 
     <!-- DATA_ENTRY: BANK_RETURNED → edit & resubmit -->
     <template v-if="showDataEntryActions && request.status === RequestStatus.BANK_RETURNED">
       <NuxtLink :to="`/requests/${request.id}/edit`">
-        <Button class="w-full">تعديل وإعادة تقديم</Button>
+        <Button class="w-full">تعديل الطلب وإعادة تقديمه</Button>
       </NuxtLink>
     </template>
 
     <!-- DATA_ENTRY: SUPPORT_RETURNED → edit & resubmit -->
     <template v-if="showDataEntryActions && request.status === RequestStatus.SUPPORT_RETURNED">
       <NuxtLink :to="`/requests/${request.id}/edit`">
-        <Button class="w-full">تعديل وإعادة تقديم</Button>
+        <Button class="w-full">تعديل الطلب وإعادة تقديمه</Button>
       </NuxtLink>
     </template>
 
@@ -736,14 +737,14 @@ defineExpose({ triggerPrimaryAction })
         <Dialog v-model:open="showSupportRejectedReturnModal">
           <DialogTrigger as-child>
             <Button variant="outline" class="flex-1" :disabled="performingAction">
-              إعادة للمدخل
+              إعادة للمدخل للتصحيح
             </Button>
           </DialogTrigger>
           <DialogContent class="max-w-md">
             <DialogHeader>
-              <DialogTitle>إعادة الطلب للمدخل للتعديل</DialogTitle>
+              <DialogTitle>إعادة الطلب إلى موظف الإدخال للتصحيح</DialogTitle>
               <DialogDescription>
-                سيُعاد الطلب إلى موظف الإدخال لتصحيح المعلومات وإعادة التقديم.
+                سيعود الطلب إلى موظف الإدخال لتصحيح المعلومات قبل إعادة التقديم.
               </DialogDescription>
             </DialogHeader>
             <div>
@@ -753,7 +754,7 @@ defineExpose({ triggerPrimaryAction })
               <Textarea
                 id="support-rejected-return-reason"
                 v-model="supportRejectedReturnReason"
-                placeholder="أضف توجيهات أو ملاحظات للمدخل…"
+                placeholder="اكتب توجيهات التصحيح أو اترك الحقل فارغا."
                 class="mt-2 min-h-20"
               />
             </div>
@@ -761,7 +762,7 @@ defineExpose({ triggerPrimaryAction })
               <Button variant="outline" @click="cancelSupportRejectedReturnModal"> إلغاء </Button>
               <Button :disabled="performingAction" @click="handleSupportRejectedReturnConfirm">
                 <Loader2 v-if="performingAction" class="me-2 h-4 w-4 animate-spin" />
-                {{ performingAction ? 'جارٍ التنفيذ…' : 'تأكيد الإعادة' }}
+                {{ performingAction ? 'جارٍ إعادة الطلب...' : 'إعادة الطلب' }}
               </Button>
             </div>
           </DialogContent>
@@ -771,14 +772,14 @@ defineExpose({ triggerPrimaryAction })
         <AlertDialog>
           <AlertDialogTrigger as-child>
             <Button variant="destructive" class="flex-1" :disabled="performingAction">
-              إبقاء مرفوضاً
+              تثبيت الرفض
             </Button>
           </AlertDialogTrigger>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>تأكيد إبقاء الطلب مرفوضاً</AlertDialogTitle>
+              <AlertDialogTitle>تثبيت رفض لجنة المساندة</AlertDialogTitle>
               <AlertDialogDescription>
-                سيصبح قرار رفض لجنة المساندة نهائياً ولا يمكن استئناف الطلب بعد ذلك.
+                سيصبح رفض لجنة المساندة قرارا نهائيا، ولن يمكن استئناف الطلب بعد ذلك.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -789,7 +790,7 @@ defineExpose({ triggerPrimaryAction })
                 @click="handleFinalizeRejection"
               >
                 <Loader2 v-if="performingAction" class="me-2 h-4 w-4 animate-spin" />
-                {{ performingAction ? 'جارٍ التنفيذ…' : 'تأكيد' }}
+                {{ performingAction ? 'جارٍ تثبيت الرفض...' : 'تثبيت الرفض' }}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -805,7 +806,7 @@ defineExpose({ triggerPrimaryAction })
         v-if="!allExecutiveVotesCast"
         class="rounded-md border border-[var(--severity-amber)]/40 bg-[var(--severity-amber)]/10 px-3 py-2 text-xs text-[var(--severity-amber)]"
       >
-        لا يمكن الإغلاق قبل اكتمال تصويت جميع الأعضاء النشطين.
+        لا يمكن إغلاق الجلسة قبل تسجيل تصويت جميع الأعضاء النشطين.
       </p>
       <div class="flex flex-row-reverse gap-3">
         <AlertDialog v-model:open="showCloseConfirm">
@@ -815,15 +816,15 @@ defineExpose({ triggerPrimaryAction })
               class="flex-1"
               :disabled="votingStore.performingDirectorAction || !allExecutiveVotesCast"
             >
-              إغلاق جلسة التصويت
+              إغلاق الجلسة
             </Button>
           </AlertDialogTrigger>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>تأكيد إغلاق جلسة التصويت</AlertDialogTitle>
+              <AlertDialogTitle>إغلاق جلسة التصويت</AlertDialogTitle>
               <AlertDialogDescription>
-                هل أنت متأكد؟ لن يتمكن الأعضاء من التصويت بعد إغلاق الجلسة. هذا الإجراء لا يمكن
-                التراجع عنه.
+                سيغلق هذا الإجراء باب التصويت على الطلب. لن يتمكن الأعضاء من تعديل أصواتهم بعد
+                الإغلاق.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -837,7 +838,7 @@ defineExpose({ triggerPrimaryAction })
                   v-if="votingStore.performingDirectorAction"
                   class="me-2 h-4 w-4 animate-spin"
                 />
-                {{ votingStore.performingDirectorAction ? 'جارٍ التنفيذ…' : 'تأكيد الإغلاق' }}
+                {{ votingStore.performingDirectorAction ? 'جارٍ إغلاق الجلسة...' : 'إغلاق الجلسة' }}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -852,21 +853,21 @@ defineExpose({ triggerPrimaryAction })
                 :disabled="votingStore.performingDirectorAction"
                 @click="showOverrideModal = true"
               >
-                تجاوز مدير اللجنة
+                قرار مدير اللجنة
               </Button>
             </TooltipTrigger>
             <TooltipContent
               ><p>
-                حسم التعادل أو تجاوز نتيجة التصويت — يتطلب قراراً ومبرراً مكتوبين، يُسجَّل في سجل
-                التدقيق
+                يستخدم لحسم التعادل أو اعتماد قرار مخالف لنتيجة التصويت، مع مبرر مكتوب في سجل
+                التدقيق.
               </p></TooltipContent
             >
           </Tooltip>
           <DialogContent class="max-w-md">
             <DialogHeader>
-              <DialogTitle>تجاوز مدير اللجنة</DialogTitle>
+              <DialogTitle>قرار مدير اللجنة</DialogTitle>
               <DialogDescription>
-                اختر قرار التجاوز واكتب مبرراً واضحاً ليُسجّل في سجل التدقيق.
+                اختر القرار النهائي واكتب مبررا واضحا قبل حفظه في سجل التدقيق.
               </DialogDescription>
             </DialogHeader>
 
@@ -944,12 +945,12 @@ defineExpose({ triggerPrimaryAction })
               <!-- Justification -->
               <div>
                 <label for="override-justification" class="text-sm font-medium">
-                  المبرر <span class="text-[var(--severity-red)]">*</span>
+                  مبرر القرار <span class="text-[var(--severity-red)]">*</span>
                 </label>
                 <Textarea
                   id="override-justification"
                   v-model="overrideJustification"
-                  placeholder="اكتب مبرر القرار هنا (10 أحرف على الأقل)…"
+                  placeholder="اكتب المبرر الذي سيظهر في سجل التدقيق."
                   class="mt-2 min-h-24"
                   :aria-invalid="!!overrideJustificationError"
                 />
@@ -971,7 +972,9 @@ defineExpose({ triggerPrimaryAction })
                     v-if="votingStore.performingDirectorAction"
                     class="me-2 h-4 w-4 animate-spin"
                   />
-                  {{ votingStore.performingDirectorAction ? 'جارٍ التنفيذ…' : 'تأكيد التجاوز' }}
+                  {{
+                    votingStore.performingDirectorAction ? 'جارٍ حفظ القرار...' : 'حفظ قرار المدير'
+                  }}
                 </Button>
               </div>
             </div>
@@ -1017,9 +1020,9 @@ defineExpose({ triggerPrimaryAction })
         </AlertDialogTrigger>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>تأكيد إصدار القرار النهائي</AlertDialogTitle>
+            <AlertDialogTitle>إصدار القرار النهائي</AlertDialogTitle>
             <AlertDialogDescription>
-              سيتم إصدار القرار النهائي بناءً على نتيجة التصويت. هذا الإجراء لا يمكن التراجع عنه.
+              سيتم إصدار القرار النهائي بناء على نتيجة التصويت الحالية. راجع الأرقام قبل المتابعة.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1032,7 +1035,11 @@ defineExpose({ triggerPrimaryAction })
                 v-if="votingStore.performingDirectorAction"
                 class="me-2 h-4 w-4 animate-spin"
               />
-              {{ votingStore.performingDirectorAction ? 'جارٍ التنفيذ…' : 'إصدار القرار' }}
+              {{
+                votingStore.performingDirectorAction
+                  ? 'جارٍ إصدار القرار...'
+                  : 'إصدار القرار النهائي'
+              }}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -91,7 +91,7 @@ const aliasesByRoute: Record<string, string> = {
   '/requests/new': 'new request create submit',
   '/merchants': 'merchants companies banks',
   '/staff': 'staff employees users',
-  '/customs': 'customs fx confirmation external',
+  '/customs': 'fx confirmation external',
   '/reports': 'reports analytics charts',
   '/audit': 'audit logs compliance',
   '/notifications': 'notifications alerts',
@@ -139,7 +139,7 @@ const QUICK_ACTIONS: Partial<Record<UserRole, PaletteAction[]>> = {
   [UserRole.SUPPORT_COMMITTEE]: [
     {
       id: 'qa-support-queue',
-      title: 'قائمة انتظار لجنة الدعم',
+      title: 'قائمة انتظار لجنة المساندة',
       aliases: 'support committee queue claim',
       url: '/requests',
       icon: Users,

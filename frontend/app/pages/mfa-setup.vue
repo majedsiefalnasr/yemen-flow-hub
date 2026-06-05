@@ -27,8 +27,8 @@ const method = ref<'sms' | 'authenticator'>('sms')
 
 const schema = toTypedSchema(
   z.object({
-    phone: z.string().min(8, 'أدخل رقم هاتف صالح'),
-    code: z.string().regex(/^\d{6}$/, 'أدخل رمز تحقق مكوّن من 6 أرقام'),
+    phone: z.string().min(8, 'أدخل رقم هاتف صحيحا لاستقبال رمز التحقق.'),
+    code: z.string().regex(/^\d{6}$/, 'أدخل رمز التحقق المكوّن من 6 أرقام.'),
   }),
 )
 
@@ -61,19 +61,17 @@ const onSubmit = handleSubmit(async () => {
 
     <Card>
       <CardHeader>
-        <CardTitle>تأمين الحساب بخطوة تحقق إضافية</CardTitle>
-        <CardDescription
-          >أكمل الخطوات التالية لتفعيل المصادقة متعددة العوامل على حسابك.</CardDescription
-        >
+        <CardTitle>تفعيل خطوة تحقق إضافية</CardTitle>
+        <CardDescription>اختر طريقة التحقق وأدخل الرمز لتفعيل المصادقة على حسابك.</CardDescription>
       </CardHeader>
       <CardContent>
         <Alert v-if="isDone" class="mb-4">
-          <AlertDescription>تم حفظ إعداد المصادقة الثنائية بنجاح.</AlertDescription>
+          <AlertDescription>تم تفعيل المصادقة الثنائية على الحساب.</AlertDescription>
         </Alert>
 
         <form class="grid gap-4 md:grid-cols-2" novalidate @submit.prevent="onSubmit">
           <div class="space-y-2">
-            <Label>طريقة التحقق</Label>
+            <Label>طريقة استلام رمز التحقق</Label>
             <Select v-model="method">
               <SelectTrigger>
                 <SelectValue placeholder="اختر طريقة التحقق" />
@@ -86,7 +84,7 @@ const onSubmit = handleSubmit(async () => {
           </div>
 
           <div class="space-y-2">
-            <Label for="mfa-phone">رقم الهاتف</Label>
+            <Label for="mfa-phone">رقم الهاتف المرتبط بالحساب</Label>
             <Input
               id="mfa-phone"
               v-model="phone"
@@ -98,7 +96,7 @@ const onSubmit = handleSubmit(async () => {
           </div>
 
           <div class="space-y-2 md:col-span-2">
-            <Label for="mfa-code">رمز التحقق</Label>
+            <Label for="mfa-code">رمز التحقق المستلم</Label>
             <Input
               id="mfa-code"
               v-model="code"
@@ -114,7 +112,7 @@ const onSubmit = handleSubmit(async () => {
           <div class="flex flex-wrap gap-2 pt-2 md:col-span-2">
             <Button type="submit" class="h-10" :disabled="isSubmitting || isDone">
               <Loader2 v-if="isSubmitting" class="me-2 size-4 animate-spin" />
-              {{ isSubmitting ? 'جارٍ الحفظ...' : 'تفعيل المصادقة الثنائية' }}
+              {{ isSubmitting ? 'جارٍ تفعيل المصادقة...' : 'تفعيل المصادقة الثنائية' }}
             </Button>
             <Button
               type="button"

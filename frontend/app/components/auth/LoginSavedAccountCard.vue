@@ -78,7 +78,7 @@ const avatarVariant = computed<AvatarVariant>(() => {
     </div>
 
     <div class="flex shrink-0 items-center gap-1.5">
-      <Badge variant="secondary" class="hidden text-[10px] sm:flex">
+      <Badge variant="secondary" class="hidden text-xs leading-none sm:flex">
         {{ roleLabel }}
       </Badge>
       <Button

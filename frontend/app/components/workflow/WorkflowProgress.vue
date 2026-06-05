@@ -194,11 +194,13 @@ function stepIconClass(state: string): string {
       <div class="flex items-center gap-2">
         <span
           v-if="statusChip"
-          :class="cn('rounded-full px-2 py-0.5 text-[10px] font-medium', statusChip.class)"
+          :class="cn('rounded-full px-2 py-0.5 text-xs leading-none font-medium', statusChip.class)"
         >
           {{ statusChip.label }}
         </span>
-        <span class="text-muted-foreground text-xs">{{ progressPercent }}%</span>
+        <span class="text-muted-foreground text-xs leading-none tabular-nums"
+          >{{ progressPercent }}%</span
+        >
       </div>
     </div>
 
@@ -271,7 +273,7 @@ function stepIconClass(state: string): string {
           >
             {{ s.label }}
           </StepperTitle>
-          <StepperDescription :class="stepDescription(state).class" class="text-[11px]">
+          <StepperDescription :class="stepDescription(state).class" class="text-xs leading-5">
             {{ stepDescription(state).label }}
           </StepperDescription>
         </div>

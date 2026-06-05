@@ -106,7 +106,7 @@ function handleSelect(path: string) {
     @click="open = true"
   >
     <Search class="h-4 w-4" />
-    <span class="hidden text-sm sm:inline">ابحث...</span>
+    <span class="hidden text-sm sm:inline">بحث سريع</span>
     <div class="hidden items-center gap-0.5 sm:flex">
       <Kbd class="h-5 px-1 text-[10px]">⌘</Kbd>
       <Kbd class="h-5 px-1 text-[10px]">K</Kbd>
@@ -118,7 +118,7 @@ function handleSelect(path: string) {
       <Command
         class="[&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-medium [&_[cmdk-input-wrapper]_svg]:h-5 [&_[cmdk-input-wrapper]_svg]:w-5 [&_[cmdk-input]]:h-12 [&_[cmdk-item]]:px-2 [&_[cmdk-item]]:py-3 [&_[cmdk-item]_svg]:h-5 [&_[cmdk-item]_svg]:w-5"
       >
-        <CommandInput placeholder="ابحث أو اختر إجراء..." />
+        <CommandInput placeholder="ابحث عن صفحة أو إجراء" />
         <CommandList>
           <CommandEmpty>لم يتم العثور على نتائج.</CommandEmpty>
           <CommandGroup

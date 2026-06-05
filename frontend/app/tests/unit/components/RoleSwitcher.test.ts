@@ -8,7 +8,7 @@ const DEMO_ROLE_LABELS: Record<string, string> = {
   BANK_REVIEWER: 'مراجع بنك',
   BANK_ADMIN: 'مدير بنك',
   SWIFT_OFFICER: 'ضابط SWIFT',
-  SUPPORT_COMMITTEE: 'لجنة الدعم',
+  SUPPORT_COMMITTEE: 'لجنة المساندة',
   EXECUTIVE_MEMBER: 'عضو تنفيذي',
   COMMITTEE_DIRECTOR: 'مدير اللجنة',
   CBY_ADMIN: 'مدير CBY',

@@ -253,7 +253,7 @@ export const useProfile = () => {
       if (auth.user) auth.user.pin_enabled = true
       return true
     } catch (err: any) {
-      error.value = err.data?.message || 'تعذر حفظ رمز PIN'
+      error.value = err.data?.message || 'تعذّر حفظ رمز PIN'
       return false
     }
   }
@@ -276,7 +276,7 @@ export const useProfile = () => {
       if (auth.user) auth.user.pin_enabled = false
       return true
     } catch (err: any) {
-      error.value = err.data?.message || 'تعذر تعطيل رمز PIN'
+      error.value = err.data?.message || 'تعذّر تعطيل رمز PIN'
       return false
     }
   }

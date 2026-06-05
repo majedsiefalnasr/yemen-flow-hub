@@ -110,7 +110,7 @@ onBeforeUnmount(clearPrintTimer)
 
     <!-- Loading state -->
     <div v-if="loading" class="state-message" role="status" aria-live="polite">
-      <span>جارٍ التحميل…</span>
+      <span>جارٍ تحميل بيانات الطلب...</span>
     </div>
 
     <!-- Error state -->
