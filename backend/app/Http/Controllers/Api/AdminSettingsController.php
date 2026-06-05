@@ -4,11 +4,13 @@ namespace App\Http\Controllers\Api;
 
 use App\Enums\AuditAction;
 use App\Http\Requests\UpdateAdminSettingRequest;
+use App\Mail\TestEmailMail;
 use App\Services\Audit\AuditService;
 use App\Services\Settings\AdminSettingsService;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Mail;
 use InvalidArgumentException;
 use OpenApi\Attributes as OA;
 
@@ -195,5 +197,63 @@ class AdminSettingsController extends Controller
         } catch (InvalidArgumentException $e) {
             return ApiResponse::error($e->getMessage(), [], 400);
         }
+    }
+
+    #[OA\Post(
+        path: '/api/admin/settings/email/test',
+        tags: ['Admin Settings'],
+        summary: 'Send a test email (CBY_ADMIN only)',
+        requestBody: new OA\RequestBody(
+            required: false,
+            content: new OA\JsonContent(
+                properties: [
+                    new OA\Property(property: 'test_address', type: 'string', format: 'email', nullable: true),
+                ]
+            )
+        ),
+        responses: [
+            new OA\Response(response: 200, description: 'Test email sent'),
+            new OA\Response(response: 422, description: 'Validation failed'),
+            new OA\Response(response: 403, description: 'Forbidden — requires CBY_ADMIN role'),
+        ]
+    )]
+    public function testEmail(Request $request)
+    {
+        Gate::authorize('cbyAdmin', $request->user());
+
+        $validated = $request->validate([
+            'test_address' => ['nullable', 'email', 'max:255'],
+        ]);
+
+        $recipient = $validated['test_address'] ?? $request->user()->email;
+        $success = true;
+        $errorMessage = null;
+
+        try {
+            Mail::to($recipient)->send(new TestEmailMail);
+        } catch (\Throwable $e) {
+            $success = false;
+            $errorMessage = $e->getMessage();
+        }
+
+        $this->auditService->log(
+            AuditAction::EMAIL_TEST_SENT,
+            $request->user(),
+            null,
+            array_filter([
+                'success' => $success,
+                'recipient' => $recipient,
+                'error_message' => $errorMessage,
+            ], fn ($v) => $v !== null)
+        );
+
+        if (! $success) {
+            return ApiResponse::error('Mail transport error.', [], 500, 'EMAIL_TEST_FAILED');
+        }
+
+        return ApiResponse::success(
+            ['sent' => true, 'recipient' => $recipient],
+            'Test email sent successfully.'
+        );
     }
 }
