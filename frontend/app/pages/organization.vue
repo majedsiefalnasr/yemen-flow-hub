@@ -22,6 +22,7 @@ import {
   Dialog,
   DialogClose,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -1077,6 +1078,9 @@ async function saveBankSecurity() {
             <DialogContent class="max-w-2xl" dir="rtl">
               <DialogHeader>
                 <DialogTitle>معاينة القالب — {{ TEMPLATE_LABELS[previewType] }}</DialogTitle>
+                <DialogDescription>
+                  معاينة نص البريد الإلكتروني بعد استبدال المتغيرات ببيانات نموذجية.
+                </DialogDescription>
               </DialogHeader>
               <div class="border-border bg-muted/30 rounded-lg border p-4">
                 <p class="mb-2 text-sm font-semibold">{{ previewSubject || '(بدون موضوع)' }}</p>

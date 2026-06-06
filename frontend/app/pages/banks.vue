@@ -511,6 +511,13 @@ onMounted(loadBanks)
       <DialogContent class="sm:max-w-[420px]">
         <DialogHeader>
           <DialogTitle>{{ editingBank ? 'تعديل بيانات البنك' : 'إضافة بنك جديد' }}</DialogTitle>
+          <DialogDescription>
+            {{
+              editingBank
+                ? 'عدّل بيانات البنك وحالة تفعيله ضمن نطاق الصلاحيات المتاحة.'
+                : 'أدخل بيانات البنك وحساب المدير الأول ليتمكن من إدارة مستخدمي البنك.'
+            }}
+          </DialogDescription>
         </DialogHeader>
 
         <Alert v-if="formError" variant="destructive">

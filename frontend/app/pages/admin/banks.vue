@@ -717,6 +717,13 @@ async function bulkArchive() {
       <DialogContent class="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{{ editing ? 'تعديل بيانات البنك' : 'إضافة بنك جديد' }}</DialogTitle>
+          <DialogDescription>
+            {{
+              editing
+                ? 'عدّل بيانات البنك وحساب المدير المرتبط به أو افتح إجراءات استعادة الوصول.'
+                : 'أدخل بيانات البنك وحساب المدير الأول لإنشاء الجهة على المنصة.'
+            }}
+          </DialogDescription>
         </DialogHeader>
 
         <div class="space-y-3 py-2">

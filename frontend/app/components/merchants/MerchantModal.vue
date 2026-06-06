@@ -11,6 +11,7 @@ import DialogFooter from '@/components/ui/dialog/DialogFooter.vue'
 import DialogHeader from '@/components/ui/dialog/DialogHeader.vue'
 import DialogOverlay from '@/components/ui/dialog/DialogOverlay.vue'
 import DialogTitle from '@/components/ui/dialog/DialogTitle.vue'
+import DialogDescription from '@/components/ui/dialog/DialogDescription.vue'
 import Button from '@/components/ui/button/Button.vue'
 import Input from '@/components/ui/input/Input.vue'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -186,9 +187,9 @@ const onSubmit = handleSubmit((values) => {
             <DialogTitle class="text-xl font-semibold text-[var(--color-text-primary)]">
               {{ isEditMode ? 'تعديل بيانات المستورد' : 'تسجيل مستورد جديد' }}
             </DialogTitle>
-            <p class="mt-1 text-xs text-[var(--color-text-subtle)]">
+            <DialogDescription class="mt-1 text-xs text-[var(--color-text-subtle)]">
               أدخل بيانات المستورد كما تظهر في السجل التجاري.
-            </p>
+            </DialogDescription>
           </div>
           <button
             class="p-1 text-lg leading-none text-[var(--color-text-subtle)] hover:text-[var(--color-text-primary)] disabled:cursor-not-allowed disabled:opacity-50"

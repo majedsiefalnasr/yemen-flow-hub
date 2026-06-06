@@ -13,6 +13,7 @@ import DialogFooter from '@/components/ui/dialog/DialogFooter.vue'
 import DialogHeader from '@/components/ui/dialog/DialogHeader.vue'
 import DialogOverlay from '@/components/ui/dialog/DialogOverlay.vue'
 import DialogTitle from '@/components/ui/dialog/DialogTitle.vue'
+import DialogDescription from '@/components/ui/dialog/DialogDescription.vue'
 import Button from '@/components/ui/button/Button.vue'
 import Input from '@/components/ui/input/Input.vue'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -177,9 +178,9 @@ const onSubmit = handleSubmit((values) => {
           </button>
         </DialogHeader>
 
-        <p class="modal-description text-muted-foreground -mt-2 text-xs">
+        <DialogDescription class="modal-description text-muted-foreground -mt-2 text-xs">
           لا يمكن للموظف نفسه إدخال الطلب ومراجعته داخليا.
-        </p>
+        </DialogDescription>
 
         <Alert v-if="props.serverError" variant="destructive" role="alert">
           <AlertCircle class="h-4 w-4" aria-hidden="true" />
