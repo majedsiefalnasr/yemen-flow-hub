@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\Admin\NotificationTemplateController;
 use App\Http\Controllers\Api\AdminSettingsController;
 use App\Http\Controllers\Api\AuditController;
 use App\Http\Controllers\Api\AuthController;
@@ -135,6 +136,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('admin/settings/email/test', [AdminSettingsController::class, 'testEmail'])->middleware('throttle:5,1');
     Route::put('admin/settings/{key}', [AdminSettingsController::class, 'update'])->middleware('throttle:10,60');
     Route::post('admin/settings/{key}/reset', [AdminSettingsController::class, 'reset'])->middleware('throttle:10,60');
+    Route::get('admin/notification-templates', [NotificationTemplateController::class, 'index']);
+    Route::get('admin/notification-templates/{type}', [NotificationTemplateController::class, 'show']);
+    Route::put('admin/notification-templates/{type}', [NotificationTemplateController::class, 'update'])->middleware('throttle:10,60');
+    Route::post('admin/notification-templates/{type}/preview', [NotificationTemplateController::class, 'preview'])->middleware('throttle:30,60');
 
     Route::get('notifications', [NotificationController::class, 'index']);
     Route::get('notifications/unread-count', [NotificationController::class, 'unreadCount']);

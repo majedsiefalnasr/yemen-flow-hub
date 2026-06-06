@@ -13,6 +13,7 @@ class TemplateRenderer
 
     public function __construct(
         private readonly TemplateResolver $resolver,
+        private readonly NotificationRegistry $registry,
         private readonly Markdown $markdown,
     ) {
         $this->converter = new CommonMarkConverter([
@@ -56,8 +57,73 @@ class TemplateRenderer
             ];
         }
 
-        $subject = $this->substitute($resolved['subject'], $resolved['allowed_variables'], $variables, false);
-        $markdownBody = $this->substitute($resolved['body'] ?? '', $resolved['allowed_variables'], $variables, true);
+        return $this->renderMarkdownSource(
+            $resolved['subject'],
+            $resolved['body'] ?? '',
+            $resolved['allowed_variables'],
+            $variables,
+            $resolved['template_version_id'],
+            $locale,
+        );
+    }
+
+    /**
+     * Render sanitized, unsaved Markdown through the same themed email path as
+     * persisted database templates. Used by admin preview before committing a
+     * new template version.
+     *
+     * @return array{
+     *     subject: string,
+     *     html: string,
+     *     text: string,
+     *     source: 'preview',
+     *     template_version_id: null,
+     *     locale: string
+     * }
+     */
+    public function renderSource(
+        NotificationType $type,
+        string $subject,
+        string $body,
+        array $variables,
+        string $locale = 'ar'
+    ): array {
+        app()->setLocale($locale);
+
+        return $this->renderMarkdownSource(
+            $subject,
+            $body,
+            $this->registry->for($type)['allowed_variables'],
+            $this->normalizeVariables($variables),
+            null,
+            $locale,
+            'preview',
+        );
+    }
+
+    /**
+     * @param  array<int, string>  $allowedVariables
+     * @param  array<string, mixed>  $variables
+     * @return array{
+     *     subject: string,
+     *     html: string,
+     *     text: string,
+     *     source: 'db'|'preview',
+     *     template_version_id: int|null,
+     *     locale: string
+     * }
+     */
+    private function renderMarkdownSource(
+        string $subjectTemplate,
+        string $bodyTemplate,
+        array $allowedVariables,
+        array $variables,
+        ?int $templateVersionId,
+        string $locale,
+        string $source = 'db',
+    ): array {
+        $subject = $this->substitute($subjectTemplate, $allowedVariables, $variables, false);
+        $markdownBody = $this->substitute($bodyTemplate, $allowedVariables, $variables, true);
         $htmlFragment = (string) $this->converter->convert($markdownBody);
         $html = (string) $this->markdown->render('mail::message', [
             'slot' => new HtmlString($htmlFragment),
@@ -67,8 +133,8 @@ class TemplateRenderer
             'subject' => $subject,
             'html' => $html,
             'text' => $this->htmlToText($htmlFragment),
-            'source' => 'db',
-            'template_version_id' => $resolved['template_version_id'],
+            'source' => $source,
+            'template_version_id' => $templateVersionId,
             'locale' => $locale,
         ];
     }
