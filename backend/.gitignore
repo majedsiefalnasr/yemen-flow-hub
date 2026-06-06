@@ -24,3 +24,8 @@ yarn-error.log
 graphify-out/
 _bmad-output/implementation-artifacts/
 _bmad-output/test-artifacts/
+
+# Laravel mail view overrides are source files even though the path includes "vendor".
+!resources/views/vendor/
+!resources/views/vendor/mail/
+!resources/views/vendor/mail/**
