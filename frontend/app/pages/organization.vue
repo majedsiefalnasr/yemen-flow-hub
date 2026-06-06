@@ -519,6 +519,14 @@ const bodyRefs = reactive<Record<TemplateType, HTMLTextAreaElement | null>>({
   returned: null,
 })
 
+// Tracks the last-focused field per template so a variable chip inserts into
+// whichever of subject/body the user was editing (defaults to body).
+const lastFocusedField = reactive<Record<TemplateType, 'subject' | 'body'>>({
+  approved: 'body',
+  rejected: 'body',
+  returned: 'body',
+})
+
 const previewOpen = ref(false)
 const previewType = ref<TemplateType>('approved')
 
@@ -998,6 +1006,7 @@ async function saveBankSecurity() {
                   v-model="emailSettings.templates[type].subject"
                   :placeholder="`موضوع إشعار ${TEMPLATE_LABELS[type]}`"
                   dir="rtl"
+                  @focus="lastFocusedField[type] = 'subject'"
                 />
               </FieldGroup>
 
@@ -1010,6 +1019,7 @@ async function saveBankSecurity() {
                   :placeholder="`نص رسالة ${TEMPLATE_LABELS[type]}`"
                   dir="rtl"
                   class="font-mono text-sm"
+                  @focus="lastFocusedField[type] = 'body'"
                 />
               </FieldGroup>
 
@@ -1024,7 +1034,7 @@ async function saveBankSecurity() {
                     variant="secondary"
                     class="hover:bg-primary/10 hover:text-primary cursor-pointer text-xs select-none"
                     :title="`{{${variable.name}}}`"
-                    @click="insertVariable(variable.name, 'body', type)"
+                    @click="insertVariable(variable.name, lastFocusedField[type], type)"
                   >
                     {{ variable.label }}
                   </Badge>
