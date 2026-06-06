@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { toast } from 'vue-sonner'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import {
@@ -18,20 +18,10 @@ import {
   Workflow,
 } from 'lucide-vue-next'
 import { Separator } from '@/components/ui/separator'
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group'
-import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -142,15 +132,6 @@ const workflowSettings = reactive({
   reviewHours: '48',
   hiddenVoting: true,
   managerWeight: true,
-})
-
-// ── CBY: Email settings ────────────────────────────────────────────────────────
-const emailSettings = reactive({
-  templates: {
-    approved: { subject: '', body: '' },
-    rejected: { subject: '', body: '' },
-    returned: { subject: '', body: '' },
-  },
 })
 
 const testEmailLoading = ref(false)
@@ -294,10 +275,6 @@ const notifPayload = computed(() => ({
   settings: cbySysNotifications.map((item) => ({ label: item.label, enabled: item.enabled })),
 }))
 
-const emailPayload = computed(() => ({
-  templates: emailSettings.templates,
-}))
-
 const workflowPayload = computed(() => ({
   supportMembers: workflowSettings.supportMembers,
   executiveMembers: workflowSettings.executiveMembers,
@@ -339,29 +316,8 @@ onMounted(async () => {
   pendingBrandColor.value = themingStore.brandColor
   pendingBrandColorText.value = themingStore.brandColor
 
-  if (isCBYAdmin.value) {
-    try {
-      const { get } = useApi()
-      const res = await get<{
-        data: { email_templates?: Record<string, { subject: string; body: string }> }
-      }>('/api/admin/settings')
-      const saved = res?.data?.email_templates
-      if (saved) {
-        for (const type of ['approved', 'rejected', 'returned'] as const) {
-          if (saved[type]) {
-            emailSettings.templates[type].subject = saved[type].subject ?? ''
-            emailSettings.templates[type].body = saved[type].body ?? ''
-          }
-        }
-      }
-    } catch {
-      // Non-critical: hydration failure falls back to empty templates
-    }
-  }
-
   settingsStore.markSectionClean('general', undefined, generalPayload.value)
   settingsStore.markSectionClean('workflow', undefined, workflowPayload.value)
-  settingsStore.markSectionClean('email', undefined, emailPayload.value)
   settingsStore.markSectionClean('notif', undefined, notifPayload.value)
   settingsStore.markSectionClean('security', undefined, securityPayload.value)
   settingsStore.markSectionClean('theming', 'branding', brandingPayload.value)
@@ -375,7 +331,6 @@ onMounted(async () => {
 watch(workflowPayload, (value) => settingsStore.trackSectionState('workflow', value), {
   deep: true,
 })
-watch(emailPayload, (value) => settingsStore.trackSectionState('email', value), { deep: true })
 watch(notifPayload, (value) => settingsStore.trackSectionState('notif', value), { deep: true })
 watch(securityPayload, (value) => settingsStore.trackSectionState('security', value), {
   deep: true,
@@ -467,107 +422,6 @@ function saveCBYNotifications() {
     loading: 'جاري حفظ إعدادات الإشعارات...',
     success: 'تم حفظ إعدادات الإشعارات بنجاح',
     error: () => settingsStore.error || 'فشل حفظ الإعدادات.',
-  })
-}
-
-function saveEmailSettings() {
-  toast.promise(settingsStore.saveSection('email', emailPayload.value), {
-    loading: 'جاري حفظ إعدادات البريد...',
-    success: 'تم حفظ إعدادات البريد بنجاح',
-    error: () => settingsStore.error || 'فشل حفظ الإعدادات.',
-  })
-}
-
-// ── Email template editor ──────────────────────────────────────────────────────
-const TEMPLATE_LABELS: Record<string, string> = {
-  approved: 'قالب الموافقة على الطلب',
-  rejected: 'قالب رفض الطلب',
-  returned: 'قالب إعادة الطلب للتعديل',
-}
-
-const EMAIL_VARIABLES = [
-  { name: 'user_name', label: 'اسم المستخدم' },
-  { name: 'request_reference', label: 'رقم الطلب' },
-  { name: 'importer_name', label: 'اسم المستورد' },
-  { name: 'amount', label: 'المبلغ' },
-  { name: 'currency', label: 'العملة' },
-  { name: 'status', label: 'الحالة' },
-  { name: 'action_url', label: 'رابط الإجراء' },
-  { name: 'bank_name', label: 'اسم البنك' },
-]
-
-const SAMPLE_DATA: Record<string, string> = {
-  user_name: 'أحمد محمد علي',
-  request_reference: 'REQ-2026-00123',
-  importer_name: 'شركة النيل للتجارة',
-  amount: '250,000.00',
-  currency: 'USD',
-  status: 'معتمد',
-  action_url: 'https://app.yemenflowhub.ye/requests/123',
-  bank_name: 'البنك التجاري اليمني',
-}
-
-type TemplateType = 'approved' | 'rejected' | 'returned'
-
-const subjectRefs = reactive<Record<TemplateType, HTMLInputElement | null>>({
-  approved: null,
-  rejected: null,
-  returned: null,
-})
-const bodyRefs = reactive<Record<TemplateType, HTMLTextAreaElement | null>>({
-  approved: null,
-  rejected: null,
-  returned: null,
-})
-
-// Tracks the last-focused field per template so a variable chip inserts into
-// whichever of subject/body the user was editing (defaults to body).
-const lastFocusedField = reactive<Record<TemplateType, 'subject' | 'body'>>({
-  approved: 'body',
-  rejected: 'body',
-  returned: 'body',
-})
-
-const previewOpen = ref(false)
-const previewType = ref<TemplateType>('approved')
-
-function openPreview(type: TemplateType) {
-  previewType.value = type
-  previewOpen.value = true
-}
-
-function renderWithSampleData(text: string): string {
-  let result = text
-  for (const [key, value] of Object.entries(SAMPLE_DATA)) {
-    result = result.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), value)
-  }
-  return result.replace(/\{\{[^}]+\}\}/g, '')
-}
-
-const previewSubject = computed(() =>
-  renderWithSampleData(emailSettings.templates[previewType.value].subject),
-)
-const previewBody = computed(() =>
-  renderWithSampleData(emailSettings.templates[previewType.value].body),
-)
-
-function insertVariable(varName: string, field: 'subject' | 'body', type: TemplateType) {
-  const insertion = `{{${varName}}}`
-  const target = field === 'subject' ? subjectRefs[type] : bodyRefs[type]
-  const current = emailSettings.templates[type][field]
-
-  if (!target) {
-    emailSettings.templates[type][field] = current + insertion
-    return
-  }
-
-  const start = target.selectionStart ?? current.length
-  const end = target.selectionEnd ?? start
-  emailSettings.templates[type][field] = current.slice(0, start) + insertion + current.slice(end)
-
-  nextTick(() => {
-    target.focus()
-    target.setSelectionRange(start + insertion.length, start + insertion.length)
   })
 }
 
@@ -979,68 +833,27 @@ async function saveBankSecurity() {
           <section v-if="isCBYAdmin && activeSection === 'email'" class="space-y-6">
             <div>
               <h3 class="font-heading text-foreground text-base leading-6 font-semibold">
-                قوالب البريد الإلكتروني
+                البريد الإلكتروني
               </h3>
               <p class="text-muted-foreground text-sm">
-                تخصيص نص إشعارات البريد المرسلة عند تغيير حالة الطلبات
+                اختبار قناة البريد وإدارة القوالب من السطح المخصص للإصدارات
               </p>
             </div>
             <Separator />
 
-            <!-- Template blocks -->
             <div
-              v-for="type in ['approved', 'rejected', 'returned'] as const"
-              :key="type"
-              class="border-border space-y-4 rounded-xl border p-5"
+              class="border-border bg-muted/20 flex flex-col gap-4 rounded-xl border p-5 sm:flex-row sm:items-center sm:justify-between"
             >
-              <div class="flex items-center justify-between">
+              <div class="space-y-1">
                 <h4 class="font-section text-foreground text-sm font-semibold">
-                  {{ TEMPLATE_LABELS[type] }}
+                  إدارة قوالب البريد الرسمية
                 </h4>
-                <Button variant="outline" size="sm" @click="openPreview(type)"> معاينة </Button>
-              </div>
-
-              <FieldGroup>
-                <FieldLabel>الموضوع</FieldLabel>
-                <Input
-                  :ref="(el: any) => (subjectRefs[type] = el?.$el ?? el)"
-                  v-model="emailSettings.templates[type].subject"
-                  :placeholder="`موضوع إشعار ${TEMPLATE_LABELS[type]}`"
-                  dir="rtl"
-                  @focus="lastFocusedField[type] = 'subject'"
-                />
-              </FieldGroup>
-
-              <FieldGroup>
-                <FieldLabel>نص الرسالة</FieldLabel>
-                <Textarea
-                  :ref="(el: any) => (bodyRefs[type] = el?.$el ?? el)"
-                  v-model="emailSettings.templates[type].body"
-                  :rows="6"
-                  :placeholder="`نص رسالة ${TEMPLATE_LABELS[type]}`"
-                  dir="rtl"
-                  class="font-mono text-sm"
-                  @focus="lastFocusedField[type] = 'body'"
-                />
-              </FieldGroup>
-
-              <div class="space-y-2">
-                <p class="text-muted-foreground text-xs">
-                  اضغط على متغير لإدراجه في الموضوع أو نص الرسالة المحدد:
+                <p class="text-muted-foreground text-sm">
+                  تم نقل تحرير القوالب إلى صفحة مخصصة تستخدم مخزن الإصدارات الجديد ومعاينة HTML/Text
+                  قبل الحفظ. لا يمكن تعديل القوالب من هذه الصفحة بعد الآن.
                 </p>
-                <div class="flex flex-wrap gap-1.5">
-                  <Badge
-                    v-for="variable in EMAIL_VARIABLES"
-                    :key="variable.name"
-                    variant="secondary"
-                    class="hover:bg-primary/10 hover:text-primary cursor-pointer text-xs select-none"
-                    :title="`{{${variable.name}}}`"
-                    @click="insertVariable(variable.name, lastFocusedField[type], type)"
-                  >
-                    {{ variable.label }}
-                  </Badge>
-                </div>
               </div>
+              <Button @click="$router.push('/admin/email-templates')"> فتح إدارة القوالب </Button>
             </div>
 
             <Separator />
@@ -1063,40 +876,8 @@ async function saveBankSecurity() {
                 <Loader2 v-if="testEmailLoading" class="ms-2 h-4 w-4 animate-spin" />
                 إرسال بريد اختبار
               </Button>
-              <Button
-                :disabled="!settingsStore.isSectionDirty('email') || settingsStore.saving"
-                @click="saveEmailSettings"
-              >
-                <Loader2 v-if="settingsStore.saving" class="ms-2 h-4 w-4 animate-spin" />
-                حفظ إعدادات البريد
-              </Button>
             </div>
           </section>
-
-          <!-- Preview Dialog (shared across all 3 template types) -->
-          <Dialog v-model:open="previewOpen">
-            <DialogContent class="max-w-2xl" dir="rtl">
-              <DialogHeader>
-                <DialogTitle>معاينة القالب — {{ TEMPLATE_LABELS[previewType] }}</DialogTitle>
-                <DialogDescription>
-                  معاينة نص البريد الإلكتروني بعد استبدال المتغيرات ببيانات نموذجية.
-                </DialogDescription>
-              </DialogHeader>
-              <div class="border-border bg-muted/30 rounded-lg border p-4">
-                <p class="mb-2 text-sm font-semibold">{{ previewSubject || '(بدون موضوع)' }}</p>
-                <Separator class="my-2" />
-                <div dir="rtl" class="text-foreground text-sm leading-relaxed whitespace-pre-wrap">
-                  {{ previewBody || '(بدون محتوى)' }}
-                </div>
-              </div>
-              <p class="text-muted-foreground text-xs">البيانات المعروضة نموذجية للمعاينة فقط</p>
-              <DialogFooter>
-                <DialogClose as-child>
-                  <Button variant="outline">إغلاق</Button>
-                </DialogClose>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
 
           <!-- ═══════════════════════════════════════════════════════════════ -->
           <!-- CBY: Workflow                                                   -->
