@@ -343,7 +343,7 @@ onMounted(async () => {
       const { get } = useApi()
       const res = await get<{
         data: { email_templates?: Record<string, { subject: string; body: string }> }
-      }>('/admin/settings')
+      }>('/api/admin/settings')
       const saved = res?.data?.email_templates
       if (saved) {
         for (const type of ['approved', 'rejected', 'returned'] as const) {
@@ -576,7 +576,7 @@ async function sendTestEmail() {
   try {
     const body: Record<string, string> = {}
     if (testEmailAddress.value.trim()) body.test_address = testEmailAddress.value.trim()
-    await post('/admin/settings/email/test', body)
+    await post('/api/admin/settings/email/test', body)
     toast.success('تم إرسال البريد الاختباري بنجاح')
   } catch (err: any) {
     const message = err?.data?.message || err?.message || 'فشل إرسال البريد الاختباري'
