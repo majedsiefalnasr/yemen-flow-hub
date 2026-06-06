@@ -39,7 +39,9 @@ class AdminSettingsController extends Controller
         $securityPolicies = $this->settingsService->getSecurityPolicies();
 
         return ApiResponse::success(
-            array_merge($settings, $securityPolicies),
+            array_merge($settings, $securityPolicies, [
+                'email_templates' => $this->settingsService->getEmailTemplates(),
+            ]),
             'System settings retrieved.'
         );
     }

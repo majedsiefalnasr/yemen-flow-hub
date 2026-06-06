@@ -81,6 +81,20 @@ class AdminSettingsService
         return $settings;
     }
 
+    public function getEmailTemplates(): array
+    {
+        $emailSettings = SystemSetting::getValueByKey('settings.email', []);
+        $templates = is_array($emailSettings['templates'] ?? null) ? $emailSettings['templates'] : [];
+
+        $empty = ['subject' => '', 'body' => ''];
+
+        return [
+            'approved' => is_array($templates['approved'] ?? null) ? $templates['approved'] : $empty,
+            'rejected' => is_array($templates['rejected'] ?? null) ? $templates['rejected'] : $empty,
+            'returned' => is_array($templates['returned'] ?? null) ? $templates['returned'] : $empty,
+        ];
+    }
+
     public function getSetting(string $key): mixed
     {
         $this->validateKey($key);
