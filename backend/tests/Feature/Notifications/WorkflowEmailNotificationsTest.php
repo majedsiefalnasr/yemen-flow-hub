@@ -2,14 +2,12 @@
 
 namespace Tests\Feature\Notifications;
 
+use App\Enums\NotificationType;
 use App\Enums\RequestStatus;
 use App\Enums\UserRole;
 use App\Events\RequestTransitioned;
+use App\Jobs\SendEmailDelivery;
 use App\Listeners\SendWorkflowNotifications;
-use App\Mail\RequestApprovedMail;
-use App\Mail\RequestRejectedMail;
-use App\Mail\RequestReturnedMail;
-use App\Mail\VotingOpenedMail;
 use App\Models\Bank;
 use App\Models\ImportRequest;
 use App\Models\User;
@@ -21,6 +19,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 class WorkflowEmailNotificationsTest extends TestCase
@@ -88,6 +87,7 @@ class WorkflowEmailNotificationsTest extends TestCase
     public function test_workflow_email_queued_when_email_notifications_enabled(): void
     {
         Mail::fake();
+        Queue::fake();
         Notification::fake();
 
         $creator = User::query()->create([
@@ -103,9 +103,8 @@ class WorkflowEmailNotificationsTest extends TestCase
         $request = $this->makeRequest(RequestStatus::BANK_APPROVED, $creator);
         $this->dispatch($request, RequestStatus::BANK_APPROVED, $creator);
 
-        Mail::assertQueued(RequestApprovedMail::class, function (RequestApprovedMail $mail) use ($request) {
-            return $mail->requestModel->id === $request->id;
-        });
+        Mail::assertNothingQueued();
+        $this->assertOutboxQueued(NotificationType::REQUEST_APPROVED, $request, $creator);
     }
 
     // -----------------------------------------------------------------------
@@ -115,6 +114,7 @@ class WorkflowEmailNotificationsTest extends TestCase
     public function test_workflow_email_not_queued_when_email_notifications_disabled(): void
     {
         Mail::fake();
+        Queue::fake();
         Notification::fake();
 
         $creator = User::query()->create([
@@ -131,6 +131,7 @@ class WorkflowEmailNotificationsTest extends TestCase
         $this->dispatch($request, RequestStatus::BANK_APPROVED, $creator);
 
         Mail::assertNothingQueued();
+        Queue::assertNothingPushed();
     }
 
     // -----------------------------------------------------------------------
@@ -140,6 +141,7 @@ class WorkflowEmailNotificationsTest extends TestCase
     public function test_workflow_email_not_queued_when_email_notifications_preference_absent(): void
     {
         Mail::fake();
+        Queue::fake();
         Notification::fake();
 
         $creator = User::query()->create([
@@ -155,6 +157,7 @@ class WorkflowEmailNotificationsTest extends TestCase
         $this->dispatch($request, RequestStatus::BANK_APPROVED, $creator);
 
         Mail::assertNothingQueued();
+        Queue::assertNothingPushed();
     }
 
     // -----------------------------------------------------------------------
@@ -164,6 +167,7 @@ class WorkflowEmailNotificationsTest extends TestCase
     public function test_database_notification_always_created_regardless_of_email_pref(): void
     {
         Mail::fake();
+        Queue::fake();
         Notification::fake();
 
         // email off — DB notification must still fire
@@ -182,6 +186,7 @@ class WorkflowEmailNotificationsTest extends TestCase
 
         Notification::assertSentTo($creator, RequestApprovedNotification::class);
         Mail::assertNothingQueued();
+        Queue::assertNothingPushed();
     }
 
     // -----------------------------------------------------------------------
@@ -191,6 +196,7 @@ class WorkflowEmailNotificationsTest extends TestCase
     public function test_bank_rejected_email_queued_when_email_notifications_enabled(): void
     {
         Mail::fake();
+        Queue::fake();
         Notification::fake();
 
         $dataEntry = User::query()->create([
@@ -207,12 +213,14 @@ class WorkflowEmailNotificationsTest extends TestCase
         $this->dispatch($request, RequestStatus::BANK_REJECTED, $dataEntry, 'Missing documents');
 
         Notification::assertSentTo($dataEntry, RequestRejectedNotification::class);
-        Mail::assertQueued(RequestRejectedMail::class);
+        Mail::assertNothingQueued();
+        $this->assertOutboxQueued(NotificationType::REQUEST_REJECTED, $request, $dataEntry);
     }
 
     public function test_bank_rejected_db_notification_sent_even_when_email_off(): void
     {
         Mail::fake();
+        Queue::fake();
         Notification::fake();
 
         $dataEntry = User::query()->create([
@@ -231,6 +239,7 @@ class WorkflowEmailNotificationsTest extends TestCase
         // In-app must fire unconditionally for BANK_REJECTED
         Notification::assertSentTo($dataEntry, RequestRejectedNotification::class);
         Mail::assertNothingQueued();
+        Queue::assertNothingPushed();
     }
 
     // -----------------------------------------------------------------------
@@ -240,6 +249,7 @@ class WorkflowEmailNotificationsTest extends TestCase
     public function test_request_rejected_email_queued_for_creator_with_email_enabled(): void
     {
         Mail::fake();
+        Queue::fake();
         Notification::fake();
 
         $creator = User::query()->create([
@@ -255,7 +265,8 @@ class WorkflowEmailNotificationsTest extends TestCase
         $request = $this->makeRequest(RequestStatus::SUPPORT_REJECTED, $creator);
         $this->dispatch($request, RequestStatus::SUPPORT_REJECTED, $creator);
 
-        Mail::assertQueued(RequestRejectedMail::class);
+        Mail::assertNothingQueued();
+        $this->assertOutboxQueued(NotificationType::REQUEST_REJECTED, $request, $creator);
     }
 
     // -----------------------------------------------------------------------
@@ -265,6 +276,7 @@ class WorkflowEmailNotificationsTest extends TestCase
     public function test_request_returned_email_queued_when_email_notifications_enabled(): void
     {
         Mail::fake();
+        Queue::fake();
         Notification::fake();
 
         $dataEntry = User::query()->create([
@@ -289,7 +301,8 @@ class WorkflowEmailNotificationsTest extends TestCase
         $this->dispatch($request, RequestStatus::DRAFT_REJECTED_INTERNAL, $actor);
 
         Notification::assertSentTo($dataEntry, RequestReturnedNotification::class);
-        Mail::assertQueued(RequestReturnedMail::class);
+        Mail::assertNothingQueued();
+        $this->assertOutboxQueued(NotificationType::REQUEST_RETURNED, $request, $dataEntry);
     }
 
     // -----------------------------------------------------------------------
@@ -299,6 +312,7 @@ class WorkflowEmailNotificationsTest extends TestCase
     public function test_voting_opened_email_queued_for_executive_with_email_enabled(): void
     {
         Mail::fake();
+        Queue::fake();
         Notification::fake();
 
         $executive = User::query()->create([
@@ -318,12 +332,14 @@ class WorkflowEmailNotificationsTest extends TestCase
         $this->dispatch($request, RequestStatus::EXECUTIVE_VOTING_OPEN, $this->dataEntryUser);
 
         Notification::assertSentTo($executive, VotingOpenedNotification::class);
-        Mail::assertQueued(VotingOpenedMail::class);
+        Mail::assertNothingQueued();
+        $this->assertOutboxQueued(NotificationType::VOTING_OPENED, $request, $executive);
     }
 
     public function test_voting_opened_email_not_queued_when_email_off(): void
     {
         Mail::fake();
+        Queue::fake();
         Notification::fake();
 
         $executive = User::query()->create([
@@ -344,5 +360,20 @@ class WorkflowEmailNotificationsTest extends TestCase
 
         Notification::assertSentTo($executive, VotingOpenedNotification::class);
         Mail::assertNothingQueued();
+        Queue::assertNothingPushed();
+    }
+
+    private function assertOutboxQueued(NotificationType $type, ImportRequest $request, User $recipient): void
+    {
+        $this->assertDatabaseHas('email_deliveries', [
+            'notification_type' => $type->value,
+            'event_id' => $request->id.':'.$request->status->value,
+            'recipient_user_id' => $recipient->id,
+            'recipient_email' => $recipient->email,
+            'channel' => 'mail',
+            'status' => 'queued',
+        ]);
+
+        Queue::assertPushed(SendEmailDelivery::class);
     }
 }

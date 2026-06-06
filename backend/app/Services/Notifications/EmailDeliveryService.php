@@ -11,9 +11,9 @@ use Illuminate\Database\QueryException;
  * Persistence-only writer for the `email_deliveries` outbox (Epic 15, Story 15.1).
  *
  * This service is the ONLY writer of `email_deliveries` rows. It performs no
- * rendering, recipient resolution, or sending — those belong to the future
- * SendEmailNotification orchestrator (Story 15.4). Its job is the two-phase
- * reserve/finalize lifecycle plus terminal status writes.
+ * rendering, recipient resolution, or sending — those belong to
+ * {@see SendEmailNotification}. Its job is the two-phase reserve/finalize
+ * lifecycle plus terminal status writes from {@see SendEmailDelivery}.
  */
 class EmailDeliveryService
 {
@@ -77,9 +77,15 @@ class EmailDeliveryService
      * - redacted → store a masked render only (defense in depth: any OTP-shaped
      *   digit run is masked, so a live code can never be persisted). Status stays queued.
      */
-    public function finalize(EmailDelivery $delivery, string $renderedSubject, string $renderedBody): EmailDelivery
-    {
-        if ($this->isRedacted($this->typeOf($delivery))) {
+    public function finalize(
+        EmailDelivery $delivery,
+        string $renderedSubject,
+        string $renderedBody,
+        ?int $templateVersionId = null,
+    ): EmailDelivery {
+        $isRedacted = $this->isRedacted($this->typeOf($delivery));
+
+        if ($isRedacted) {
             $renderedSubject = $this->maskSecrets($renderedSubject);
             $renderedBody = $this->maskSecrets($renderedBody);
         }
@@ -87,6 +93,7 @@ class EmailDeliveryService
         $delivery->forceFill([
             'rendered_subject' => $renderedSubject,
             'rendered_body' => $renderedBody,
+            'template_version_id' => $templateVersionId,
         ])->save();
 
         return $delivery;

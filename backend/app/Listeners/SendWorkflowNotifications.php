@@ -2,13 +2,11 @@
 
 namespace App\Listeners;
 
+use App\Enums\NotificationType;
 use App\Enums\RequestStatus;
 use App\Enums\UserRole;
 use App\Events\RequestTransitioned;
-use App\Mail\RequestApprovedMail;
-use App\Mail\RequestRejectedMail;
-use App\Mail\RequestReturnedMail;
-use App\Mail\VotingOpenedMail;
+use App\Models\ImportRequest;
 use App\Models\User;
 use App\Notifications\CustomsIssuedNotification;
 use App\Notifications\RequestApprovedNotification;
@@ -17,12 +15,17 @@ use App\Notifications\RequestReturnedNotification;
 use App\Notifications\RequestSubmittedNotification;
 use App\Notifications\SwiftUploadRequestedNotification;
 use App\Notifications\VotingOpenedNotification;
-use Illuminate\Support\Facades\Mail;
+use App\Services\Notifications\SendEmailNotification;
 
 class SendWorkflowNotifications
 {
-    /** Types that must always be delivered regardless of user preferences (governance-critical). */
+    /**
+     * In-app notification preference keys that bypass per-type opt-out.
+     * Email mandatory types are enforced separately in {@see SendEmailNotification}.
+     */
     private const MANDATORY_TYPES = ['request_rejected', 'request_returned', 'request_approved'];
+
+    public function __construct(private readonly SendEmailNotification $sendEmailNotification) {}
 
     public function handle(RequestTransitioned $event): void
     {
@@ -42,10 +45,9 @@ class SendWorkflowNotifications
             $creator = $request->creator;
             if ($creator && $this->shouldNotify($creator, 'request_approved')) {
                 $creator->notify(new RequestApprovedNotification($request));
-                if ($this->shouldEmailNotify($creator)) {
-                    Mail::to($creator->email)->queue(new RequestApprovedMail($request));
-                }
             }
+
+            $this->dispatchWorkflowEmail(NotificationType::REQUEST_APPROVED, $request);
         }
 
         if (in_array($status, [RequestStatus::SUPPORT_REJECTED, RequestStatus::EXECUTIVE_REJECTED], true)) {
@@ -53,18 +55,14 @@ class SendWorkflowNotifications
             $reviewers = User::query()->where('bank_id', $request->bank_id)->where('role', UserRole::BANK_REVIEWER->value)->get();
             if ($creator && $this->shouldNotify($creator, 'request_rejected')) {
                 $creator->notify(new RequestRejectedNotification($request));
-                if ($this->shouldEmailNotify($creator)) {
-                    Mail::to($creator->email)->queue(new RequestRejectedMail($request));
-                }
             }
             $reviewers->each(function (User $u) use ($request): void {
                 if ($this->shouldNotify($u, 'request_rejected')) {
                     $u->notify(new RequestRejectedNotification($request));
-                    if ($this->shouldEmailNotify($u)) {
-                        Mail::to($u->email)->queue(new RequestRejectedMail($request));
-                    }
                 }
             });
+
+            $this->dispatchWorkflowEmail(NotificationType::REQUEST_REJECTED, $request);
         }
 
         if ($status === RequestStatus::BANK_REJECTED) {
@@ -72,10 +70,12 @@ class SendWorkflowNotifications
             User::query()->where('bank_id', $request->bank_id)->where('role', UserRole::DATA_ENTRY->value)->get()
                 ->each(function (User $u) use ($request, $comment): void {
                     $u->notify(new RequestRejectedNotification($request, true, $comment));
-                    if ($this->shouldEmailNotify($u)) {
-                        Mail::to($u->email)->queue(new RequestRejectedMail($request, true, $comment));
-                    }
                 });
+
+            $this->dispatchWorkflowEmail(NotificationType::REQUEST_REJECTED, $request, [
+                'terminal' => true,
+                'comment' => $comment,
+            ]);
         }
 
         if (in_array($status, [RequestStatus::DRAFT_REJECTED_INTERNAL, RequestStatus::BANK_RETURNED, RequestStatus::SUPPORT_RETURNED], true)) {
@@ -85,11 +85,13 @@ class SendWorkflowNotifications
                 ->each(function (User $u) use ($request, $fromRole, $comment): void {
                     if ($this->shouldNotify($u, 'request_returned')) {
                         $u->notify(new RequestReturnedNotification($request, $fromRole, $comment));
-                        if ($this->shouldEmailNotify($u)) {
-                            Mail::to($u->email)->queue(new RequestReturnedMail($request, $fromRole, $comment));
-                        }
                     }
                 });
+
+            $this->dispatchWorkflowEmail(NotificationType::REQUEST_RETURNED, $request, [
+                'fromRole' => $fromRole,
+                'comment' => $comment,
+            ]);
         }
 
         if ($status === RequestStatus::SUPPORT_APPROVED) {
@@ -106,11 +108,10 @@ class SendWorkflowNotifications
                 ->each(function (User $u) use ($request): void {
                     if ($this->shouldNotify($u, 'voting_opened')) {
                         $u->notify(new VotingOpenedNotification($request));
-                        if ($this->shouldEmailNotify($u)) {
-                            Mail::to($u->email)->queue(new VotingOpenedMail($request));
-                        }
                     }
                 });
+
+            $this->dispatchWorkflowEmail(NotificationType::VOTING_OPENED, $request);
         }
 
         if ($status === RequestStatus::CUSTOMS_DECLARATION_ISSUED) {
@@ -127,6 +128,14 @@ class SendWorkflowNotifications
         }
     }
 
+    /**
+     * @param  array<string, mixed>  $context
+     */
+    private function dispatchWorkflowEmail(NotificationType $type, ImportRequest $request, array $context = []): void
+    {
+        $this->sendEmailNotification->sendWorkflow($type, $request, $context);
+    }
+
     private function shouldNotify(User $user, string $type): bool
     {
         if (in_array($type, self::MANDATORY_TYPES, true)) {
@@ -136,16 +145,5 @@ class SendWorkflowNotifications
         $prefs = $user->user_preferences['notification_preferences'] ?? [];
 
         return ($prefs[$type] ?? true) !== false;
-    }
-
-    private function shouldEmailNotify(User $user): bool
-    {
-        // A missing/empty email would make Mail::to($user->email) throw and abort
-        // the rest of the notification fan-out for the transition, so guard it here.
-        if (empty($user->email)) {
-            return false;
-        }
-
-        return (bool) ($user->user_preferences['email_notifications'] ?? false);
     }
 }
