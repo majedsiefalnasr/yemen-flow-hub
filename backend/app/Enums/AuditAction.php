@@ -33,6 +33,7 @@ enum AuditAction: string
     case CLAIM_RELEASED = 'CLAIM_RELEASED';
     case EMAIL_TEST_SENT = 'EMAIL_TEST_SENT';
     case EMAIL_TEMPLATE_UPDATED = 'EMAIL_TEMPLATE_UPDATED';
+    case EMAIL_DELIVERY_FAILED = 'EMAIL_DELIVERY_FAILED';
 
     public function label(): string
     {
@@ -66,6 +67,7 @@ enum AuditAction: string
             self::CLAIM_RELEASED => 'Claim Released / إلغاء المطالبة',
             self::EMAIL_TEST_SENT => 'Email Test Sent / إرسال بريد اختباري',
             self::EMAIL_TEMPLATE_UPDATED => 'Email Template Updated / تحديث قالب البريد',
+            self::EMAIL_DELIVERY_FAILED => 'Email Delivery Failed / فشل إرسال البريد الإلكتروني',
         };
     }
 }

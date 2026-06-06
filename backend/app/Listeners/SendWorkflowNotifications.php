@@ -5,6 +5,10 @@ namespace App\Listeners;
 use App\Enums\RequestStatus;
 use App\Enums\UserRole;
 use App\Events\RequestTransitioned;
+use App\Mail\RequestApprovedMail;
+use App\Mail\RequestRejectedMail;
+use App\Mail\RequestReturnedMail;
+use App\Mail\VotingOpenedMail;
 use App\Models\User;
 use App\Notifications\CustomsIssuedNotification;
 use App\Notifications\RequestApprovedNotification;
@@ -13,6 +17,7 @@ use App\Notifications\RequestReturnedNotification;
 use App\Notifications\RequestSubmittedNotification;
 use App\Notifications\SwiftUploadRequestedNotification;
 use App\Notifications\VotingOpenedNotification;
+use Illuminate\Support\Facades\Mail;
 
 class SendWorkflowNotifications
 {
@@ -37,6 +42,9 @@ class SendWorkflowNotifications
             $creator = $request->creator;
             if ($creator && $this->shouldNotify($creator, 'request_approved')) {
                 $creator->notify(new RequestApprovedNotification($request));
+                if ($this->shouldEmailNotify($creator)) {
+                    Mail::to($creator->email)->queue(new RequestApprovedMail($request));
+                }
             }
         }
 
@@ -45,10 +53,16 @@ class SendWorkflowNotifications
             $reviewers = User::query()->where('bank_id', $request->bank_id)->where('role', UserRole::BANK_REVIEWER->value)->get();
             if ($creator && $this->shouldNotify($creator, 'request_rejected')) {
                 $creator->notify(new RequestRejectedNotification($request));
+                if ($this->shouldEmailNotify($creator)) {
+                    Mail::to($creator->email)->queue(new RequestRejectedMail($request));
+                }
             }
             $reviewers->each(function (User $u) use ($request): void {
                 if ($this->shouldNotify($u, 'request_rejected')) {
                     $u->notify(new RequestRejectedNotification($request));
+                    if ($this->shouldEmailNotify($u)) {
+                        Mail::to($u->email)->queue(new RequestRejectedMail($request));
+                    }
                 }
             });
         }
@@ -58,6 +72,9 @@ class SendWorkflowNotifications
             User::query()->where('bank_id', $request->bank_id)->where('role', UserRole::DATA_ENTRY->value)->get()
                 ->each(function (User $u) use ($request, $comment): void {
                     $u->notify(new RequestRejectedNotification($request, true, $comment));
+                    if ($this->shouldEmailNotify($u)) {
+                        Mail::to($u->email)->queue(new RequestRejectedMail($request, true, $comment));
+                    }
                 });
         }
 
@@ -68,6 +85,9 @@ class SendWorkflowNotifications
                 ->each(function (User $u) use ($request, $fromRole, $comment): void {
                     if ($this->shouldNotify($u, 'request_returned')) {
                         $u->notify(new RequestReturnedNotification($request, $fromRole, $comment));
+                        if ($this->shouldEmailNotify($u)) {
+                            Mail::to($u->email)->queue(new RequestReturnedMail($request, $fromRole, $comment));
+                        }
                     }
                 });
         }
@@ -86,6 +106,9 @@ class SendWorkflowNotifications
                 ->each(function (User $u) use ($request): void {
                     if ($this->shouldNotify($u, 'voting_opened')) {
                         $u->notify(new VotingOpenedNotification($request));
+                        if ($this->shouldEmailNotify($u)) {
+                            Mail::to($u->email)->queue(new VotingOpenedMail($request));
+                        }
                     }
                 });
         }
@@ -113,5 +136,10 @@ class SendWorkflowNotifications
         $prefs = $user->user_preferences['notification_preferences'] ?? [];
 
         return ($prefs[$type] ?? true) !== false;
+    }
+
+    private function shouldEmailNotify(User $user): bool
+    {
+        return (bool) ($user->user_preferences['email_notifications'] ?? false);
     }
 }
