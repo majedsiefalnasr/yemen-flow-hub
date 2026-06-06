@@ -1,5 +1,5 @@
 ---
-stepsCompleted: ["step-01-validate-prerequisites", "step-02-design-epics", "step-03-create-stories", "step-04-final-validation", "epic-6-production-readiness", "correct-course-lovable-1-1-ui-parity"]
+stepsCompleted: ["step-01-validate-prerequisites", "step-02-design-epics", "step-03-create-stories", "step-04-final-validation", "epic-6-production-readiness", "correct-course-lovable-1-1-ui-parity", "epic-15-email-subsystem-formalization"]
 inputDocuments:
   - docs/00-project-brief.md
   - docs/01-workflow-and-business-rules.md
@@ -14,6 +14,7 @@ inputDocuments:
   - DESIGN.md
   - _bmad-output/planning-artifacts/project-context.md
   - _bmad-output/planning-artifacts/lovable-prototype-current-project-audit-2026-05-17.md
+  - _bmad-output/planning-artifacts/architecture.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-05-19.md
   - lovable/ (approved UX reference — workflow, dashboards, component hierarchy, RTL patterns)
 lastUpdated: "2026-05-19"
@@ -3513,6 +3514,9 @@ So that users who cannot access email can regain access through a forced tempora
 
 ## Epic 14: Email Ecosystem — Notifications, MFA OTP, Templates & Auditing
 
+> ⚠️ **SUPERSEDED (2026-06-06) by Epic 15: Email Subsystem Formalization.**
+> Epic 14 (decision date 2026-06-05) shipped a first-pass email layer (`shouldNotify()` canonical IDs, `MfaOtpMail`, `EmailTemplateService` storing templates in `system_settings`, `email/test` action, `AuditAction` email cases). The approved architecture (`_bmad-output/planning-artifacts/architecture.md`, 2026-06-06) formalizes that layer with a notification-type registry, a versioned template store, a mandatory delivery outbox, idempotency, redaction, a queue-isolated `after_commit` dispatch path, and an email design system. **Epic 15 is the authoritative build.** Epic 14 is retained below for history only and must not be implemented as-is; its shipped code is absorbed/refactored by Epic 15 stories.
+
 **Purpose:** Make the email layer production-ready. This epic fixes a silent notification-preference bug, wires MFA login OTP email delivery, adds workflow email notifications for high-stakes events, builds admin-editable email templates, and introduces a test-email action with full audit coverage. SMTP infrastructure remains managed through environment configuration (`.env`/deployment), not through the UI.
 
 **Decision date:** 2026-06-05
@@ -3682,3 +3686,332 @@ So that outgoing emails use institution-appropriate wording approved by CBY.
 - Backend: `app/Services/Mail/EmailTemplateService.php`, updates to `app/Services/Settings/SystemSettingsService.php`, updates to 3 Mailable classes
 - Frontend: `app/pages/organization.vue` (template editor blocks + preview modal), `composables/useEmailSettings.ts` (extend with template save)
 - No new migrations (templates stored in existing `system_settings` table as `settings.email`)
+
+---
+
+## Epic 15: Email Subsystem Formalization
+
+**Decision date:** 2026-06-06
+
+**Supersedes:** Epic 14 (Email Ecosystem). Epic 14 shipped a first-pass email layer; Epic 15 formalizes it. See the SUPERSEDED notice on Epic 14.
+
+**Source authority:** `_bmad-output/planning-artifacts/architecture.md` (Email/Notification Subsystem) — the approved architecture is the single source of truth for this epic. Also `DESIGN.md` (email tokens), `docs/07-account-recovery-and-mail.md` (SMTP/recovery doctrine), `AGENTS.md` (security baseline, role/enum rules).
+
+**Goal:** Refactor the shipped first-pass email layer into a governed, audit-grade notification subsystem — an enum-backed type registry, a versioned admin-editable template store with Blade fallback, a mandatory delivery outbox with idempotency and redaction, a queue-isolated `after_commit` dispatch path, and an RTL email design system — so every institutional email is reproducible, org-scoped, and never leaks secrets.
+
+**Brownfield note:** Epic 14 code is live (`shouldNotify()` + canonical IDs + `MANDATORY_TYPES`, `MfaOtpMail`, `PasswordRecoveryOtpMail`, `EmailTemplateService` on `system_settings`, `email/test` action, `AuditAction` email cases, 6 workflow Notification classes, 7 email Blade views). Epic 15 stories **absorb and refactor** this code onto the formalized model — they do not build from zero.
+
+**Architecture decisions (locked, from architecture.md):**
+- D1 registry-driven org-scoped recipient resolution; D2 outbox dedup via unique `(event_id, user_id, channel)` index, insert/reserve-first; D3 dispatch on `after_commit` (email queue); D4 templates stored as raw Markdown, rendered at send; D5 OTP outbox = redacted re-render (code never in DB/log); D6 outbox `rendered_body` inline TEXT, no Phase-1 pruning; D7 `users.locale` default `ar`; D8 dedicated `emails` queue + worker.
+- Zero new dependency (CommonMark `html_input => 'strip'`).
+- `SendEmailNotification` orchestrator owns the send sequence; `EmailDeliveryService` is persistence-only (two-phase `reserve` / `finalize` + `markSent` / `markFailed`).
+- One `email_deliveries` row per recipient per channel.
+- Reuse existing `audit_logs` spine + existing `AuditAction` email cases (`EMAIL_TEMPLATE_UPDATED`, `EMAIL_DELIVERY_FAILED`, `EMAIL_TEST_SENT`). No new audit table.
+
+**Anti-patterns (forbidden):** `Mail::to()->send()` directly for a registered type; storing OTP/token/raw HTML in any column; new audit enum case duplicating an email one; hex/Tailwind inside `<x-email.*>`; partial registry entries; writing `email_deliveries` rows outside `EmailDeliveryService`.
+
+### Epic 15 Story List
+
+- **Story 15.1: Outbox & Delivery Foundation** — `NotificationType` enum + `NotificationRegistry`, `email_deliveries` migration (+unique idempotency index), `EmailDeliveryService` (`reserve`/`finalize`/`markSent`/`markFailed`), `users.locale` migration, dedicated `emails` queue connection with `after_commit=true`. **FRs:** FR1, FR7, FR8, FR12. **Gap:** after_commit config.
+- **Story 15.2: Email Design System** — `config/email-theme.php` (DESIGN.md tokens), mail theme override (message/button/panel), 6 `<x-email.*>` components, RTL/Arabic system font, plaintext multipart. **FRs:** FR9, FR10.
+- **Story 15.3: Template Store, Resolver & Renderer** — `notification_templates` + `notification_template_versions` migrations, `TemplateResolver` (DB vs Blade), `TemplateValidator` (whitelist/strip/undefined-guard/fallback), `TemplateRenderer` (markdown→html + locale + theme), seed 3 DB templates; migrate `EmailTemplateService` (system_settings) → versioned store. **FRs:** FR3, FR4, FR5, FR12. **Gap:** DB-template missing → Blade fallback.
+- **Story 15.4: Workflow Email Dispatch via Registry** — `SendEmailNotification` orchestrator, refactor `SendWorkflowNotifications` + the 4 workflow Notifications onto registry-driven `via()` (database always + mail conditional), after_commit dispatch, row-per-recipient-per-channel outbox, org-scoped resolver. Types: REQUEST_APPROVED/REJECTED/RETURNED, VOTING_OPENED. **FRs:** FR2, FR11. **Gap:** row-per-recipient-per-channel.
+- **Story 15.5: Security Email Types & Redaction** — MFA_OTP + PASSWORD_RESET registry entries (source=blade, persist=redacted), refactor `MfaOtpMail` / `PasswordRecoveryOtpMail` onto theme + components, redacted outbox re-render (mask `••••••`, code never persisted/logged). **FRs:** FR11. **NFR:** redaction, no-secret-storage, OTP TTL.
+- **Story 15.6: Admin Template Management UI & Preview** — `NotificationTemplateController` (index/show/update/preview), CBY_ADMIN policy, Nuxt `email-templates/index.vue` + `[type].vue`, version history, dual preview (template + sample-data: YFH-2026-000123 / Yemen International Bank / 1,000,000 USD / Approved), validation at save. **FRs:** FR5, FR6.
+
+### Epic 15 FR Coverage Map
+
+- FR1 (registry) → 15.1
+- FR2 (dual channel) → 15.4
+- FR3 (dual-source resolver) → 15.3
+- FR4 (template versioning) → 15.3
+- FR5 (save/render validation) → 15.3 + 15.6
+- FR6 (preview) → 15.6
+- FR7 (outbox) → 15.1
+- FR8 (idempotency) → 15.1
+- FR9 (design system) → 15.2
+- FR10 (RTL/theme/plaintext) → 15.2
+- FR11 (phase-1 types) → 15.4 (workflow) + 15.5 (security)
+- FR12 (locale) → 15.1 (column) + 15.3 (render)
+
+**Validation-gap placement:** after_commit config → 15.1 · DB-template→Blade fallback → 15.3 · row-per-recipient-per-channel → 15.4.
+
+<!-- Epic 15 story details appended below in step-03 -->
+
+### Story 15.1: Outbox & Delivery Foundation
+
+As a compliance officer of the platform,
+I want every outbound email reserved in an auditable delivery log before it is sent, keyed so it can never be sent twice,
+So that the institution has a reproducible, idempotent record of all email activity from day one.
+
+**Acceptance Criteria:**
+
+**Given** the email subsystem foundation
+**When** the migration runs
+**Then** an `email_deliveries` table exists with columns: `id`, `notification_type`, `event_id`, `recipient_user_id` (nullable FK → users), `recipient_email`, `channel`, `status` (`queued|sent|failed|bounced`), `provider_message_id` (nullable), `rendered_subject` (nullable), `rendered_body` (nullable LONGTEXT), `template_version_id` (nullable), `queued_at`, `sent_at` (nullable), `error` (nullable), `created_at`, `updated_at`
+**And** a unique index exists on `(event_id, recipient_user_id, channel)`
+**And** indexes exist on `status` and `notification_type`.
+
+**Given** the registry
+**When** `NotificationType` enum and `NotificationRegistry` are added
+**Then** `NotificationType` is a backed enum using `SCREAMING_SNAKE` cases
+**And** `NotificationRegistry` exposes per-type config with the frozen key set: `channels`, `admin_editable`, `persist_body` (`full|redacted`), `source` (`db|blade`), `recipient_roles`, `allowed_variables`
+**And** every declared type provides all keys (no partial entries)
+**And** Phase-1 type taxonomy is reserved: `REQUEST_APPROVED`, `REQUEST_REJECTED`, `REQUEST_RETURNED`, `VOTING_OPENED`, `MFA_OTP`, `PASSWORD_RESET`.
+
+**Given** the persistence boundary
+**When** `EmailDeliveryService` is implemented
+**Then** it exposes `reserve(notificationType, eventId, recipientUserId, recipientEmail, channel)` which inserts a row with `status=queued` and returns it, or returns `null` when the unique index rejects a duplicate
+**And** `finalize(delivery, renderedSubject, renderedBody)` writes the rendered snapshot (applying redaction by type — see Story 15.5), keeping `status=queued`
+**And** `markSent(delivery, providerMessageId)` and `markFailed(delivery, error)` update terminal status
+**And** `EmailDeliveryService` is the only writer of `email_deliveries` rows
+**And** no method writes an OTP, token, or secret to any column.
+
+**Given** the locale requirement
+**When** the users migration runs
+**Then** `users.locale` exists, nullable, default `'ar'`
+**And** the `User` model casts/exposes `locale`.
+
+**Given** queue isolation (validation gap: after_commit)
+**When** `config/queue.php` is updated
+**Then** a dedicated `emails` queue connection (redis driver, queue name `emails`) exists with `after_commit => true`
+**And** the dead-letter path uses the existing `failed_jobs` driver
+**And** documentation/comments state the dedicated worker runs `queue:work --queue=emails`.
+
+**Given** the foundation is complete
+**When** backend tests run
+**Then** unit tests assert the registry frozen-key-set per type and reject partial entries
+**And** feature tests assert `reserve` idempotency (duplicate `(event_id, recipient_user_id, channel)` returns null, no second row)
+**And** all existing backend tests remain green.
+
+**Technical requirements:**
+- Backend: `app/Enums/NotificationType.php`, `app/Services/Notifications/NotificationRegistry.php`, `app/Services/Notifications/EmailDeliveryService.php`, `app/Models/EmailDelivery.php`, `app/Models/User.php` (locale cast).
+- Migrations: `..._create_email_deliveries_table.php` (unique `(event_id, recipient_user_id, channel)`), `..._add_locale_to_users_table.php`.
+- Config: `config/queue.php` (`emails` connection, `after_commit=true`).
+- Tests: `tests/Unit/Notifications/NotificationRegistryTest.php`, `tests/Feature/Notifications/EmailDeliveryOutboxTest.php`.
+- No new Composer dependency.
+
+---
+
+### Story 15.2: Email Design System
+
+As a recipient of platform emails,
+I want every email to render with consistent CBY branding, correct RTL Arabic layout, and a plaintext alternative,
+So that institutional emails look official and are readable in any client.
+
+**Acceptance Criteria:**
+
+**Given** the design tokens
+**When** `config/email-theme.php` is added
+**Then** it mirrors DESIGN.md tokens as a single source (snake_case keys, e.g. `primary_blue`, `severity_red`, `voting_indigo`, `success_text`, `error_text`, `warning_text`, `locked_gray`)
+**And** values are consumed as inline styles only (no Tailwind, no CSS classes, no webfont).
+
+**Given** the Laravel markdown mail theme
+**When** the theme override is published
+**Then** `resources/views/vendor/mail/html/{message,button,panel}.blade.php` are overridden to use `config/email-theme.php` tokens
+**And** the outer layout sets `dir="rtl"` and `lang="ar"`
+**And** the font stack uses a system Arabic fallback (not webfont Cairo/Tajawal/IBM Plex).
+
+**Given** the reusable components
+**When** the `<x-email.*>` set is created
+**Then** these components exist under `resources/views/components/email/`: `status-badge`, `data-row`, `info-box` (with `variant` prop), `action-card`, `otp-code`, `confidentiality-notice`
+**And** each renders with inline styles from `config/email-theme.php`
+**And** no component contains a raw hex literal or a Tailwind class.
+
+**Given** plaintext requirement
+**When** any email is rendered through the theme
+**Then** a plaintext multipart alternative is always produced
+**And** the confidentiality notice is present and bilingual-ready.
+
+**Given** the design system is complete
+**When** a sample email is rendered in dev
+**Then** it is caught by Mailpit and displays correct RTL layout, badge colors, and plaintext alternative.
+
+**Technical requirements:**
+- Backend: `config/email-theme.php`, `config/mail.php` (theme pointer if needed), `resources/views/vendor/mail/html/{message,button,panel}.blade.php`, `resources/views/components/email/{status-badge,data-row,info-box,action-card,otp-code,confidentiality-notice}.blade.php`.
+- Tests: render assertions that components emit inline-style tokens and no hex/Tailwind literals.
+- Depends on: Story 15.1.
+
+---
+
+### Story 15.3: Template Store, Resolver & Renderer
+
+As a CBY communications owner,
+I want approved workflow emails driven by versioned, admin-editable Markdown templates that safely fall back to system Blade templates,
+So that wording can be governed and reproduced without risking malformed or unsafe email output.
+
+**Acceptance Criteria:**
+
+**Given** the versioned template store
+**When** the migrations run
+**Then** `notification_templates` (type, active flag) and `notification_template_versions` (raw Markdown subject + body, `changed_by`, `changed_at`, active-version pointer) tables exist
+**And** versions store **raw Markdown source** (never pre-rendered HTML).
+
+**Given** the resolver
+**When** `TemplateResolver::resolve(type)` runs
+**Then** it returns the active DB version for `source=db` types when one exists
+**And** **falls back to the system Blade template when no active DB version exists** (validation gap: DB-template missing fallback)
+**And** returns the Blade template directly for `source=blade` types.
+
+**Given** the validator
+**When** a template body is saved or rendered
+**Then** `TemplateValidator` enforces the per-type `allowed_variables` whitelist
+**And** strips raw HTML via CommonMark `html_input => 'strip'` (`allow_unsafe_links => false`)
+**And** guards undefined variables with a safe fallback (never leaks raw `{{ }}` to a recipient)
+**And** validation runs at BOTH save time (reject bad input) and render time (guard + fallback).
+
+**Given** the renderer
+**When** `TemplateRenderer::render(type, variables, locale)` runs
+**Then** it converts Markdown → HTML through the email theme and `<x-email.*>` components
+**And** resolves the recipient `locale` (default `ar`) at render time
+**And** returns both `rendered_subject` and `rendered_body`.
+
+**Given** migration of the shipped layer
+**When** Story 15.3 lands
+**Then** the existing `EmailTemplateService` (system_settings storage) is migrated to the versioned store
+**And** the 3 admin-editable types (`REQUEST_APPROVED`, `REQUEST_REJECTED`, `REQUEST_RETURNED`) are seeded as DB templates
+**And** existing template content is preserved during migration.
+
+**Given** validation coverage
+**When** tests run
+**Then** feature tests assert: DB version used when present; Blade fallback when absent; whitelist rejection of disallowed variable; raw HTML stripped; undefined variable → safe fallback
+**And** all existing backend tests remain green.
+
+**Technical requirements:**
+- Backend: `app/Services/Notifications/TemplateResolver.php`, `TemplateValidator.php`, `TemplateRenderer.php`, `app/Models/NotificationTemplate.php`, `NotificationTemplateVersion.php`, `database/seeders/NotificationTemplateSeeder.php`; migrate/retire `app/Services/Mail/EmailTemplateService.php`.
+- Migrations: `..._create_notification_templates_table.php`, `..._create_notification_template_versions_table.php`.
+- Tests: `tests/Feature/Notifications/TemplateResolverTest.php`, `tests/Feature/Notifications/TemplateValidationTest.php`.
+- Depends on: Stories 15.1, 15.2. No new Composer dependency (reuse `league/commonmark`).
+
+---
+
+### Story 15.4: Workflow Email Dispatch via Registry
+
+As a user involved in a high-stakes workflow event,
+I want approved/rejected/returned/voting-opened emails delivered through the governed registry path with one auditable outbox row per recipient,
+So that I am reliably and verifiably notified without the workflow transaction being put at risk.
+
+**Acceptance Criteria:**
+
+**Given** the orchestrator
+**When** `SendEmailNotification` is implemented
+**Then** it owns the send sequence: registry → org-scoped recipient resolver → `EmailDeliveryService::reserve()` → `TemplateResolver` → `TemplateRenderer` → `EmailDeliveryService::finalize()` → dispatch on `emails` queue (after_commit)
+**And** the listener is the only entry point; agents do not call `Mail::to()->send()` for a registered type.
+
+**Given** registry-driven channels
+**When** the 4 workflow Notifications (`RequestApprovedNotification`, `RequestRejectedNotification`, `RequestReturnedNotification`, `VotingOpenedNotification`) are refactored
+**Then** `via()` returns `['database']` always and adds `'mail'` only when the registry + recipient `email_notifications` preference allow it
+**And** the database notification is created synchronously; the email is queued.
+
+**Given** org scoping
+**When** recipients are resolved
+**Then** resolution runs an org-scoped query (reuses `scopeForUser()` invariant)
+**And** no user is ever emailed about an out-of-scope request.
+
+**Given** row-per-recipient-per-channel (validation gap)
+**When** a workflow event fans out to multiple recipients
+**Then** exactly one `email_deliveries` row is reserved per recipient per channel
+**And** the idempotency key `(event_id, recipient_user_id, channel)` keeps fan-out rows distinct
+**And** a retried event produces no duplicate send.
+
+**Given** transactional safety
+**When** the workflow transition transaction rolls back
+**Then** no email job is dispatched (after_commit)
+**And** a failed email job does NOT roll back or block the workflow transition
+**And** delivery failure is recorded as `email_deliveries.status=failed` + `error` and audited as `EMAIL_DELIVERY_FAILED`.
+
+**Given** dispatch coverage
+**When** tests run
+**Then** tests assert: email queued when `email_notifications=true`, not queued when `false`, database notification always created; after_commit prevents dispatch on rollback; multi-recipient fan-out creates one row each; duplicate event = no double-send
+**And** all existing workflow notification tests remain green.
+
+**Technical requirements:**
+- Backend: `app/Services/Notifications/SendEmailNotification.php`, `app/Listeners/SendWorkflowNotifications.php` (refactor onto orchestrator), 4 notification classes (`via()` registry-driven), `app/Enums/AuditAction.php` (reuse `EMAIL_DELIVERY_FAILED`).
+- Config: relies on `emails` connection `after_commit=true` from Story 15.1.
+- Tests: `tests/Feature/Notifications/WorkflowEmailDispatchTest.php`.
+- Depends on: Stories 15.1, 15.2, 15.3.
+
+---
+
+### Story 15.5: Security Email Types & Redaction
+
+As a security officer,
+I want MFA and password-reset emails delivered through the same governed path but with their codes permanently redacted in the outbox,
+So that one-time secrets are never stored or logged while the act of sending remains fully auditable.
+
+**Acceptance Criteria:**
+
+**Given** the security types
+**When** `MFA_OTP` and `PASSWORD_RESET` are registered
+**Then** each has `source=blade`, `persist_body=redacted`, `admin_editable=false`, and `channels=['mail']` (plus `database` only if required by policy)
+**And** their system Blade templates live under `resources/views/emails/system/` and use the email theme + `<x-email.otp-code>` component.
+
+**Given** redaction at finalize
+**When** `EmailDeliveryService::finalize()` records a `persist_body=redacted` type
+**Then** the stored `rendered_subject`/`rendered_body` is a re-render with the code variable masked (`••••••`)
+**And** the live code appears only in the actually-sent email
+**And** the code/token is never written to any DB column or to `Log::`.
+
+**Given** migration of the shipped security mailers
+**When** `MfaOtpMail` and `PasswordRecoveryOtpMail` are refactored
+**Then** they render through the email theme + components (no bespoke inline HTML)
+**And** they dispatch through the governed path on the `emails` queue
+**And** existing MFA/TOTP and password-recovery login behavior remains unchanged (OTP TTL, single-use, rate-limited send preserved).
+
+**Given** redaction coverage
+**When** tests run
+**Then** a unit test asserts the outbox row for an OTP send contains the mask and never the real code
+**And** a test asserts no OTP/token reaches logs
+**And** existing MFA/recovery tests remain green.
+
+**Technical requirements:**
+- Backend: `app/Mail/MfaOtpMail.php`, `app/Mail/PasswordRecoveryOtpMail.php` (refactor), `resources/views/emails/system/{mfa-otp,password-recovery-otp}.blade.php`, `app/Services/Notifications/EmailDeliveryService.php` (redaction branch).
+- Tests: `tests/Unit/Notifications/RedactionTest.php`.
+- Depends on: Stories 15.1, 15.2.
+
+---
+
+### Story 15.6: Admin Template Management UI & Preview
+
+As a CBY Admin,
+I want to edit the subject and Markdown body of admin-editable email templates, see version history, and preview the rendered result with sample data,
+So that I can govern institutional wording safely and confirm output before it reaches recipients.
+
+**Acceptance Criteria:**
+
+**Given** the admin API
+**When** the template endpoints are added
+**Then** `GET /api/admin/notification-templates`, `GET /api/admin/notification-templates/{type}`, `PUT /api/admin/notification-templates/{type}`, and `POST /api/admin/notification-templates/{type}/preview` exist under `auth:sanctum`
+**And** all are restricted to `CBY_ADMIN` by backend policy (never frontend-only)
+**And** only `admin_editable=true` types are editable; editing a non-editable type is rejected.
+
+**Given** save governance
+**When** an admin saves a template
+**Then** `TemplateValidator` runs at save (whitelist, HTML strip, sanitize) and rejects invalid input with a clear error
+**And** a new `notification_template_versions` row is created with `changed_by` + `changed_at` (raw Markdown source)
+**And** an `EMAIL_TEMPLATE_UPDATED` audit entry is written recording `template_type`, `changed_by`, `timestamp` — never the body content.
+
+**Given** preview
+**When** the admin requests a preview
+**Then** a template preview and a sample-data rendered preview are returned
+**And** sample data is the fixed set: `YFH-2026-000123` / `Yemen International Bank` / `1,000,000 USD` / `Approved`
+**And** the preview renders RTL Arabic through the email theme + components.
+
+**Given** the management UI
+**When** the Nuxt pages are built
+**Then** `app/pages/admin/email-templates/index.vue` lists editable types and `[type].vue` edits Subject + Markdown body with a variable-reference strip (allowed variables as clickable chips)
+**And** version history is shown (who/when)
+**And** the dual preview is available
+**And** the save button is dirty-state gated (disabled when clean).
+
+**Given** UI coverage
+**When** tests run
+**Then** backend feature tests assert CBY_ADMIN-only access, save validation, audit entry, and preview sample data
+**And** frontend unit tests cover edit/preview/dirty-state
+**And** frontend lint and typecheck pass with zero warnings.
+
+**Technical requirements:**
+- Backend: `app/Http/Controllers/Api/Admin/NotificationTemplateController.php`, `app/Http/Resources/NotificationTemplateResource.php`, policy/authorization, `routes/api.php`; reuse `EMAIL_TEMPLATE_UPDATED`.
+- Frontend: `app/pages/admin/email-templates/index.vue`, `app/pages/admin/email-templates/[type].vue`, `app/composables/useEmailTemplates.ts`, `app/types/notifications.ts`.
+- Tests: `tests/Feature/Notifications/NotificationTemplateApiTest.php`; frontend Vitest for the template pages.
+- Depends on: Story 15.3.
