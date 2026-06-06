@@ -132,7 +132,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('admin/settings', [AdminSettingsController::class, 'index']);
     Route::get('admin/settings/smtp', [AdminSettingsController::class, 'getSmtp']);
     Route::put('admin/settings/smtp', [AdminSettingsController::class, 'updateSmtp']);
-    Route::post('admin/settings/email/test', [AdminSettingsController::class, 'testEmail']);
+    Route::post('admin/settings/email/test', [AdminSettingsController::class, 'testEmail'])->middleware('throttle:5,1');
     Route::put('admin/settings/{key}', [AdminSettingsController::class, 'update'])->middleware('throttle:10,60');
     Route::post('admin/settings/{key}/reset', [AdminSettingsController::class, 'reset'])->middleware('throttle:10,60');
 

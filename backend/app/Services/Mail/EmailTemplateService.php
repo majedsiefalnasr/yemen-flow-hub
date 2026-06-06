@@ -39,12 +39,23 @@ class EmailTemplateService
             $subject = $dbTemplate['subject'] ?? '';
             $body = $dbTemplate['body'] ?? '';
 
+            // Build single-pass replacement maps so a substituted value can never
+            // introduce or collide with another {{placeholder}} (no smuggling).
+            // The body is delivered as raw HTML (htmlString), so every substituted
+            // value is HTML-escaped to prevent injection from user-controlled
+            // request data (supplier/importer name, bank name, comments). The
+            // subject is plain text and is substituted without HTML escaping.
+            $subjectMap = [];
+            $bodyMap = [];
             foreach ($variables as $key => $value) {
                 if (is_string($value)) {
-                    $subject = str_replace('{{'.$key.'}}', $value, $subject);
-                    $body = str_replace('{{'.$key.'}}', $value, $body);
+                    $subjectMap['{{'.$key.'}}'] = $value;
+                    $bodyMap['{{'.$key.'}}'] = e($value);
                 }
             }
+
+            $subject = strtr($subject, $subjectMap);
+            $body = strtr($body, $bodyMap);
 
             $body = preg_replace('/\{\{[^}]+\}\}/', '', $body) ?? $body;
             $subject = preg_replace('/\{\{[^}]+\}\}/', '', $subject) ?? $subject;

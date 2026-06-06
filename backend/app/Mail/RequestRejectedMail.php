@@ -78,7 +78,7 @@ class RequestRejectedMail extends Mailable implements ShouldQueue
                 'amount' => (string) ($this->requestModel->amount ?? ''),
                 'currency' => $this->requestModel->currency ?? '',
                 'status' => $this->requestModel->current_status ?? '',
-                'action_url' => '',
+                'action_url' => rtrim((string) config('app.url'), '/').'/requests/'.$this->requestModel->id,
                 'bank_name' => $this->requestModel->bank?->name ?? '',
                 'requestModel' => $this->requestModel,
                 'terminal' => $this->terminal,

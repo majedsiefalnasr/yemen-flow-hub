@@ -140,6 +140,12 @@ class SendWorkflowNotifications
 
     private function shouldEmailNotify(User $user): bool
     {
+        // A missing/empty email would make Mail::to($user->email) throw and abort
+        // the rest of the notification fan-out for the transition, so guard it here.
+        if (empty($user->email)) {
+            return false;
+        }
+
         return (bool) ($user->user_preferences['email_notifications'] ?? false);
     }
 }
