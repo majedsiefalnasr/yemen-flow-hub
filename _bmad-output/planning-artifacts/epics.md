@@ -3441,3 +3441,244 @@ So that voting lifecycle management, external FX completion, and SWIFT + FX-conf
 - `/ui-ux-pro-max` invoked during dev.
 
 **Out of scope:** Tier 1 operational roles, Tier 2 administrative roles, backend changes, any external FX terminology migration (out of Epic 12's scope).
+
+---
+
+## Epic 13: Security & Account Recovery Hardening
+
+**Purpose:** Add a production-safe account recovery model without disrupting the working authentication, MFA/TOTP, PIN, and role-scoped administration paths already shipped in Epics 1, 5, 6, and 12. This epic reconciles the BMAD chain after security requirements matured through stakeholder discussion.
+
+**Decision date:** 2026-06-05
+
+**Source authorities:**
+1. `AGENTS.md` — security baseline, role enum, git and verification rules.
+2. `_bmad-output/planning-artifacts/sprint-change-proposal-2026-06-05-account-recovery-reconciliation.md` — approved correction proposal and current-code findings.
+3. `docs/user-view/cby-admin.md` — CBY Admin security, user, bank, and SMTP/admin settings surfaces.
+4. `docs/user-view/bank-admin.md` — Bank Admin own-bank staff management constraints.
+5. `docs/user-view/data-entry.md` and sibling login sections — shared login/MFA/security UX baseline.
+6. Existing implementation in `backend/app/Http/Controllers/Api/AuthController.php`, `ProfileController.php`, `UserController.php`, `BankController.php`, `UserPolicy.php`, `MfaService.php`, and corresponding frontend auth/admin pages.
+
+**Correction rules:**
+- Implement additively. Do not rewrite the working login, MFA/TOTP, PIN, profile password change, or generic user CRUD flows unless a test proves a direct integration need.
+- Password recovery resets password only. MFA, Authenticator/TOTP, and PIN reset are separate admin actions with separate authorization checks.
+- Do not expose account existence in forgot-password responses.
+- Do not implement WhatsApp/phone recovery and do not introduce unofficial WhatsApp libraries.
+- Production email must use CBY/government SMTP configured through environment variables.
+- Mailpit is local/dev/test only and must not be used or documented as production delivery.
+- All authorization must be enforced server-side; frontend visibility is only a usability layer.
+
+### Story 13.1: Account Recovery - Email OTP and Admin-Assisted Temporary Password Reset
+
+As an institutional user,
+I want to recover my password through a secure email OTP flow,
+So that I can regain access without exposing account existence or weakening MFA/PIN controls.
+
+As a CBY Admin or Bank Admin,
+I want tightly scoped emergency reset actions,
+So that users who cannot access email can regain access through a forced temporary-password change.
+
+**Acceptance criteria:**
+1. `POST /api/auth/password/forgot` accepts institutional email and always returns the same generic message: `If this email exists, a recovery code has been sent.`
+2. Existing and non-existing email requests return the same HTTP status and generic body.
+3. Existing active users receive a short-lived email OTP through Laravel mail.
+4. Reset OTPs are namespaced separately from login MFA OTPs, expire, enforce attempt limits, and are single-use.
+5. Valid reset OTP allows setting a new password, clears only the password-reset challenge, and redirects the frontend to login.
+6. Invalid, expired, or reused OTP fails safely without account-existence leakage.
+7. Email password reset does not clear `totp_secret`, `totp_enabled`, `mfa_enabled`, `pin_code_hash`, or `pin_enabled`.
+8. CBY Admin can reset passwords for CBY-side users and Bank Admin users.
+9. CBY Admin can reset Bank Admin credentials from the bank management surface.
+10. Bank Admin can reset passwords only for own-bank `DATA_ENTRY` and `BANK_REVIEWER` staff.
+11. Bank Admin cannot reset another Bank Admin, SWIFT Officer, CBY user, other-bank user, or themselves through the staff reset flow.
+12. Admin reset marks the target password as temporary and forces password change on next login.
+13. Forced password change clears the temporary flag only after a successful new password save.
+14. Reset MFA/PIN are implemented as separate server-side endpoints/actions with stronger permission checks than password reset.
+15. Production mail configuration uses CBY/government SMTP environment variables.
+16. Local development and Playwright tests use Mailpit only.
+17. Playwright tests inspect Mailpit and never depend on real external SMTP.
+18. WhatsApp/phone recovery is not implemented.
+19. CBY Admin bank creation includes the `حساب مدير البنك` password field, creates or updates the associated `BANK_ADMIN` account, and forces that Bank Admin to change the temporary password on first login.
+
+**Technical requirements:**
+- Add user temporary-password state, likely `must_change_password`, `temporary_password_set_at`, and optionally `password_changed_at`.
+- Add dedicated password recovery service/controller rather than overloading `MfaService` login challenge keys.
+- Add explicit user-policy methods for password reset, MFA reset, and PIN reset.
+- Add audit logs for reset actions without logging raw passwords or OTPs.
+- Extend bank creation/update so the `حساب مدير البنك` section creates or updates the bank's `BANK_ADMIN` account and first-use temporary password.
+- Wire existing `frontend/app/pages/reset-password.vue` to real APIs instead of replacing the page.
+- Add forced-password-change UX after login before normal navigation.
+- Add Mailpit service/env config for local Docker/test usage and `.env.example` SMTP entries for production.
+- Add backend feature tests, frontend unit tests, and Playwright E2E coverage listed in the correction proposal.
+
+---
+
+## Epic 14: Email Ecosystem — Notifications, MFA OTP, Templates & Auditing
+
+**Purpose:** Make the email layer production-ready. This epic fixes a silent notification-preference bug, wires MFA login OTP email delivery, adds workflow email notifications for high-stakes events, builds admin-editable email templates, and introduces a test-email action with full audit coverage. SMTP infrastructure remains managed through environment configuration (`.env`/deployment), not through the UI.
+
+**Decision date:** 2026-06-05
+
+**Source authorities:**
+1. `AGENTS.md` — security baseline, role enum, git and verification rules.
+2. `docs/05-backend-guide.md` — backend architecture and service structure.
+3. `docs/06-api-reference.md` — API contracts.
+4. `frontend/app/pages/settings/index.vue` — existing notification preferences UI (currently has ID mismatch bug).
+5. `frontend/app/pages/organization.vue` — existing email settings UI (SMTP fields to be removed).
+6. `backend/app/Listeners/SendWorkflowNotifications.php` — existing notification dispatch logic.
+7. `backend/app/Services/Auth/MfaService.php` — MFA service (random OTP path never sends email today).
+
+**Architecture decisions (locked):**
+- SMTP configuration lives in `.env`/deployment only. No runtime SMTP management through the UI or database.
+- All new Mailable classes implement `ShouldQueue` with `tries=3`, `backoff=[60,300]`.
+- Database notification is always created synchronously first; email is dispatched to queue after — email failure never blocks workflow transitions.
+- Email notifications are opt-in (`email_notifications` preference defaults to `false`).
+- Admin-editable templates (approved/rejected/returned) support `subject` + `body` only; no unrestricted HTML. Unknown `{{variables}}` are stripped silently.
+- Voting-opened email uses a hardcoded system blade template; not admin-editable.
+- MFA email OTP is a fallback path for non-TOTP users only; TOTP users always use their authenticator app.
+
+**Correction rules:**
+- Do not touch SMTP host/port/username/password configuration through any API or UI path.
+- Do not rewrite the working login, MFA/TOTP, or password recovery flows except to wire email OTP dispatch.
+- Notification preference keys must match the canonical backend IDs exactly — no frontend-only aliases.
+- `EMAIL_CONFIG_UPDATED` audit action is NOT added (SMTP is env-only). Only `EMAIL_TEST_SENT` and `EMAIL_TEMPLATE_UPDATED` are introduced.
+
+---
+
+### Story 14.1: Notification Preferences Fix
+
+As a platform user,
+I want my notification preference toggles to actually control which notifications I receive,
+So that my settings reflect real delivery behavior rather than being silently ignored.
+
+**Context:** The frontend Settings page saves notification preference IDs (`status_change`, `task_assigned`, `comments`, etc.) that do not match the backend canonical IDs (`request_approved`, `request_rejected`, etc.) checked in `shouldNotify()`. The mismatch means preference gating is completely non-functional — all users effectively receive all notifications regardless of their settings.
+
+**Acceptance criteria:**
+1. `shouldNotify()` in `SendWorkflowNotifications` uses the 7 canonical IDs: `request_approved`, `request_rejected`, `request_returned`, `voting_opened`, `request_submitted`, `swift_upload_requested`, `claim_released`.
+2. `UserPreferencesService` validates incoming notification preference keys against the canonical list; unknown keys are rejected.
+3. `MANDATORY_TYPES` updated to include `request_approved` (in addition to `request_rejected` and `request_returned`).
+4. `email_notifications` boolean added to user preferences with default `false` (opt-in).
+5. Frontend settings notification tab replaces 6 broken IDs with 7 canonical IDs; labels remain in Arabic.
+6. `email_notifications` master toggle appears above the per-event list in user settings.
+7. `notificationsPayload` in settings page includes `email_notifications` boolean.
+8. `notification_preferences` type in `models.ts` is a typed interface, not `Record<string, any>`.
+9. All existing backend notification tests remain green.
+10. Frontend lint and typecheck pass with zero warnings.
+
+**Technical requirements:**
+- Backend: `app/Listeners/SendWorkflowNotifications.php`, `app/Services/Settings/UserPreferencesService.php`
+- Frontend: `app/pages/settings/index.vue`, `app/types/models.ts`
+- No new migrations required (preferences stored in existing `user_preferences` JSON column).
+
+---
+
+### Story 14.2: Email Test & Auditing
+
+As a CBY Admin,
+I want to send a test email through the currently configured mail transport,
+So that I can verify the email infrastructure is working before relying on it for real workflow events.
+
+**Acceptance criteria:**
+1. `POST /api/settings/email/test` endpoint exists, restricted to `CBY_ADMIN`.
+2. Endpoint accepts optional `test_address` field (string, email); defaults to the authenticated admin's own email.
+3. A test email is sent and a success response returned if delivery succeeds.
+4. A clear error response is returned if delivery fails (transport error, bad config, etc.).
+5. An `EMAIL_TEST_SENT` audit log entry is created recording: `initiated_by` (user ID + name), `timestamp`, `success` (bool), `error_message` (if failed). SMTP credentials are never logged.
+6. `AuditAction` enum includes `EMAIL_TEST_SENT` and `EMAIL_TEMPLATE_UPDATED`.
+7. Frontend organization.vue email section: SMTP host/port/username/password fields are **removed entirely**.
+8. "إرسال بريد اختبار" button added to the email section; shows success toast on pass, error toast on fail.
+9. Button shows loading state during the request.
+10. In dev, the test email is caught by Mailpit (MAIL_HOST=mailpit in .env).
+11. Audit log entry visible in the audit trail (CBY Admin view).
+
+**Technical requirements:**
+- Backend: new endpoint in `app/Http/Controllers/Api/SettingsController.php`, new `EMAIL_TEST_SENT` and `EMAIL_TEMPLATE_UPDATED` cases in `app/Enums/AuditAction.php`
+- Frontend: `app/pages/organization.vue` (remove SMTP fields, add test button), new `composables/useEmailSettings.ts`
+- Route: add to `routes/api.php`
+
+---
+
+### Story 14.3: MFA Email OTP
+
+As a user without an authenticator app (TOTP) configured,
+I want to receive a one-time login code by email when the system requires MFA,
+So that I can complete login securely even before setting up an authenticator app.
+
+**Context:** `MfaService::generate()` stores a random OTP in Redis but never sends it anywhere. The `AuthController` responds with `"OTP sent"` but nothing is delivered. This means non-TOTP users cannot complete MFA login. TOTP-configured users are unaffected (they use their authenticator app).
+
+**Target behavior:**
+- TOTP configured → authenticator app code only; no email sent.
+- TOTP not configured → random OTP generated → email dispatched to user's address → user enters code.
+
+**Acceptance criteria:**
+1. `app/Mail/MfaOtpMail.php` exists, implements `ShouldQueue`, `tries=3`, `backoff=[60,300]`.
+2. `resources/views/emails/mfa-otp.blade.php` exists with RTL Arabic content: OTP code prominently displayed, TTL stated in minutes, security note.
+3. `MfaService::sendOtpEmail(string $email, string $otp, int $ttlMinutes): void` dispatches `MfaOtpMail` queued.
+4. `AuthController::login()` calls `sendOtpEmail()` after `generate()` for non-TOTP users only.
+5. TOTP-configured users: `sendOtpEmail()` is NOT called; authenticator app code required as before.
+6. Test coverage: email is dispatched for non-TOTP login; email is NOT dispatched for TOTP login.
+7. Queue retry behavior verified: failed delivery retries up to 3 times with backoff.
+8. In dev, OTP email is caught by Mailpit.
+9. Frontend: a prompt/banner encourages users without TOTP to set up an authenticator app (links to profile TOTP setup).
+10. Existing MFA/TOTP tests remain green.
+
+**Technical requirements:**
+- Backend: `app/Mail/MfaOtpMail.php`, `resources/views/emails/mfa-otp.blade.php`, `app/Services/Auth/MfaService.php`, `app/Http/Controllers/Api/AuthController.php`
+- Frontend: TOTP enrollment encouragement banner (shown post-login when `totp_enabled=false`)
+
+---
+
+### Story 14.4: Workflow Email Notifications
+
+As a user involved in a high-stakes workflow event,
+I want to receive an email notification in addition to the in-app bell notification,
+So that I am informed even when I am not actively logged into the platform.
+
+**Scope:** Email delivery for 4 events only:
+1. Request Approved (`request_approved`) → request creator
+2. Request Rejected (`request_rejected`) → creator + reviewers
+3. Request Returned for Correction (`request_returned`) → request creator
+4. Voting Opened (`voting_opened`) → executive members
+
+**Acceptance criteria:**
+1. `RequestApprovedNotification`, `RequestRejectedNotification`, `RequestReturnedNotification`, `VotingOpenedNotification` each have a `toMail()` method.
+2. `via()` for these 4 notifications returns `['database']` always; adds `'mail'` only when `email_notifications` preference is `true` for that user.
+3. Database notification is always created synchronously. Email is always queued (never synchronous).
+4. A failed email queue job does NOT roll back or block the workflow transition.
+5. Failed delivery is logged to `audit_logs` (new `EMAIL_DELIVERY_FAILED` audit action or generic error log — to be decided at implementation time).
+6. 4 new blade templates exist: `emails/request-approved.blade.php`, `emails/request-rejected.blade.php`, `emails/request-returned.blade.php`, `emails/voting-opened.blade.php` — all RTL Arabic, include request reference, amount, action URL.
+7. `voting-opened` blade is system-managed (not admin-editable). The other 3 use `EmailTemplateService` with blade fallback (implemented in S-E5; for S-E4, blade-only is acceptable if S-E5 is not yet merged).
+8. All 4 Mailables implement `ShouldQueue`, `tries=3`, `backoff=[60,300]`.
+9. In dev, all 4 email types are caught by Mailpit.
+10. Tests: email dispatched when `email_notifications=true`; not dispatched when `false`; database notification always created regardless.
+11. No frontend changes required (the user preference toggle was added in Story 14.1).
+
+**Technical requirements:**
+- Backend: 4 notification classes, 4 blade templates, 4 Mailable classes, `app/Listeners/SendWorkflowNotifications.php` (add `shouldEmailNotify()`), `app/Enums/AuditAction.php` (add `EMAIL_DELIVERY_FAILED` if needed)
+
+---
+
+### Story 14.5: Template Management & Preview
+
+As a CBY Admin,
+I want to customize the subject and body of formal workflow email notifications,
+So that outgoing emails use institution-appropriate wording approved by CBY.
+
+**Scope:** Admin-editable templates for 3 events: Request Approved, Request Rejected, Request Returned for Correction. Voting-opened template remains system-managed (blade only, not editable).
+
+**Acceptance criteria:**
+1. `app/Services/Mail/EmailTemplateService.php` exists with `render(string $type, array $variables): array` returning `['subject' => ..., 'body' => ...]`.
+2. Template rendering uses DB-stored templates from `settings.email.templates` when available; falls back to blade templates when not.
+3. Allowed template variables: `{{user_name}}`, `{{request_reference}}`, `{{importer_name}}`, `{{amount}}`, `{{currency}}`, `{{status}}`, `{{action_url}}`, `{{bank_name}}`. Unknown variables are stripped silently; delivery never fails due to unknown variables.
+4. `SystemSettingsService::normalizeSectionData()` handles the `email` section: validates template structure (`subject` + `body` strings), strips unknown `{{variables}}` from body on save.
+5. Saving email templates logs an `EMAIL_TEMPLATE_UPDATED` audit entry including: `template_type`, `changed_by`, `timestamp`. Template body content is NOT logged (may contain PII).
+6. Frontend `organization.vue` قوالب البريد section shows 3 editable blocks: each has a subject `<Input>` and a body `<Textarea>`.
+7. Each template block shows a variable reference strip listing the 8 allowed variables as clickable chips that insert the variable at cursor position.
+8. A preview modal shows the rendered template with sample data (Arabic only).
+9. Saving templates is tracked by the dirty-state system (save button disabled when clean).
+10. `RequestApprovedNotification`, `RequestRejectedNotification`, `RequestReturnedNotification` use `EmailTemplateService` (supersedes blade-only from Story 14.4).
+11. In dev, previewed and sent emails are caught by Mailpit.
+12. All existing backend tests remain green; frontend lint/typecheck pass with zero warnings.
+
+**Technical requirements:**
+- Backend: `app/Services/Mail/EmailTemplateService.php`, updates to `app/Services/Settings/SystemSettingsService.php`, updates to 3 Mailable classes
+- Frontend: `app/pages/organization.vue` (template editor blocks + preview modal), `composables/useEmailSettings.ts` (extend with template save)
+- No new migrations (templates stored in existing `system_settings` table as `settings.email`)

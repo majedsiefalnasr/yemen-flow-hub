@@ -234,7 +234,9 @@ CBY_ADMIN
 ## AI Tool Usage
 
 ### playwright-cli (Browser Automation)
-Use `playwright-cli` whenever browser interaction is needed — UI verification, screenshot capture, navigating the running app, or testing frontend flows. Prefer it over manual curl or fetch for anything that requires a real browser context.
+Use `playwright-cli` as the primary browser automation tool whenever browser interaction is needed — UI verification, screenshot capture, navigating the running app, or testing frontend flows. Prefer it over manual curl or fetch for anything that requires a real browser context.
+
+Use Playwright MCP (`playwright-mcp` / MCP server `playwright`) only as a fallback when `playwright-cli` is unavailable, blocked, cannot attach to the required browser/session, or the task explicitly requires MCP-native browser tools. If you fall back to Playwright MCP, mention the reason in the work log or final response.
 
 For all AI tools used on this repo (Claude Code, Cursor, GitHub Copilot, Codex), permanently allow command prefixes that start with `playwright-cli` in each tool's local permission/approval settings so browser verification is never blocked by per-command prompts.
 
