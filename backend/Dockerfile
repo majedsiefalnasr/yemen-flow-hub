@@ -1,6 +1,7 @@
 FROM composer:2 AS vendor
 
 WORKDIR /var/www/html
+ENV APP_ENV=local
 COPY . .
 # gd is required by mpdf/mpdf at install-time platform check
 RUN apk add --no-cache freetype-dev libjpeg-turbo-dev libpng-dev \
