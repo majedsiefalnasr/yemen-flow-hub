@@ -6,6 +6,7 @@ use App\Enums\AuditAction;
 use App\Enums\RequestStatus;
 use App\Enums\UserRole;
 use App\Exceptions\InvalidTransitionException;
+use App\Exceptions\UnauthorizedTransitionException;
 use App\Models\Bank;
 use App\Models\ImportRequest;
 use App\Models\User;
@@ -352,23 +353,30 @@ class WorkflowControllerTest extends TestCase
         ]);
     }
 
-    public function test_bank_approve_does_not_overwrite_reviewed_by_when_different_reviewers(): void
+    public function test_bank_approve_by_different_reviewer_is_blocked_and_preserves_reviewed_by(): void
     {
         $beginner = $this->makeUser(UserRole::BANK_REVIEWER, $this->bank);
-        $approver = $this->bankReviewer;
+        $other = $this->makeUser(UserRole::BANK_REVIEWER, $this->bank);
 
         $request = $this->makeRequest($this->bank, $this->dataEntry, RequestStatus::SUBMITTED);
 
-        // beginner starts the review
+        // beginner claims the request and starts the review (sets reviewed_by + claimed_by)
         app(WorkflowService::class)->transition($request, 'bank_begin_review', $beginner);
         $request->refresh();
-
-        // approver approves
-        app(WorkflowService::class)->transition($request, 'bank_approve', $approver);
-        $request->refresh();
-
         $this->assertEquals($beginner->id, $request->reviewed_by, 'reviewed_by must be the begin-review actor');
-        $this->assertEquals($approver->id, $request->approved_by, 'approved_by must be the approval actor');
+
+        // a different reviewer cannot approve a request claimed by the beginner
+        try {
+            app(WorkflowService::class)->transition($request, 'bank_approve', $other);
+            $this->fail('Expected UnauthorizedTransitionException for approval by a non-claiming reviewer.');
+        } catch (UnauthorizedTransitionException) {
+            // expected: bank-claim ownership blocks the non-holder
+        }
+
+        // reviewed_by must never be overwritten by the blocked approval attempt
+        $request->refresh();
+        $this->assertEquals($beginner->id, $request->reviewed_by, 'reviewed_by must remain the begin-review actor');
+        $this->assertNull($request->approved_by, 'approved_by must not be set by a blocked attempt');
     }
 
     public function test_post_approve_request_is_permanently_locked(): void
@@ -501,7 +509,7 @@ class WorkflowControllerTest extends TestCase
             ->assertOk()
             ->assertJsonStructure(['success', 'data']);
 
-        $bankIds = collect($response->json('data'))->pluck('bank_id')->unique()->values()->all();
+        $bankIds = collect($response->json('data.data'))->pluck('bank_id')->unique()->values()->all();
         $this->assertNotEmpty($bankIds, 'Expected at least one request in response');
         $this->assertEquals([$this->bank->id], $bankIds);
     }

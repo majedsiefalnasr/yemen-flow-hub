@@ -72,6 +72,13 @@ class WorkflowServiceTest extends TestCase
                 'supplier_name' => 'Supplier Co.',
                 'goods_description' => 'Goods',
                 'port_of_entry' => 'Aden',
+                'goods_type' => 'مواد غذائية',
+                'payment_terms' => 'LC',
+                'invoice_number' => 'INV-WS-001',
+                'invoice_date' => now()->subDays(2)->toDateString(),
+                'origin_country' => 'اليمن',
+                'arrival_port' => 'ميناء عدن',
+                'customs_office' => 'جمارك عدن',
                 'status' => $status,
                 'current_owner_role' => UserRole::DATA_ENTRY,
             ]);

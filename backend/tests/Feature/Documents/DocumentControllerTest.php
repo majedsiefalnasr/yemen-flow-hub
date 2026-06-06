@@ -285,15 +285,17 @@ class DocumentControllerTest extends TestCase
             ->assertJsonStructure(['errors' => ['file']]);
     }
 
-    public function test_upload_missing_request_id_returns_422(): void
+    public function test_upload_missing_request_id_is_rejected(): void
     {
+        // Authorization runs before field validation and fails closed: without a
+        // request_id the uploader cannot be scoped to a request, so the request is
+        // forbidden (403) rather than surfacing field-validation details (422).
         $response = $this->actingAs($this->dataEntry)
             ->postJson('/api/documents/upload', [
                 'file' => $this->makePdf(),
             ]);
 
-        $response->assertStatus(422)
-            ->assertJsonStructure(['errors' => ['request_id']]);
+        $response->assertForbidden();
     }
 
     // ─── AC-3: WORKFLOW_LOCKED_STATE for upload on non-editable request ────────

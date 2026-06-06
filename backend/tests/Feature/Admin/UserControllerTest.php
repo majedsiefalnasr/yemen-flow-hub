@@ -56,7 +56,7 @@ class UserControllerTest extends TestCase
 
         $response->assertOk()
             ->assertJsonPath('success', true)
-            ->assertJsonStructure(['data' => [['id', 'name', 'email', 'role']]]);
+            ->assertJsonStructure(['data' => ['data' => [['id', 'name', 'email', 'role']]]]);
     }
 
     public function test_index_honors_role_and_per_page_filters(): void
@@ -87,9 +87,9 @@ class UserControllerTest extends TestCase
         $response = $this->actingAs($admin)->getJson('/api/users?role=BANK_REVIEWER&per_page=2');
 
         $response->assertOk()
-            ->assertJsonCount(2, 'data')
-            ->assertJsonPath('data.0.role', UserRole::BANK_REVIEWER->value)
-            ->assertJsonPath('data.1.role', UserRole::BANK_REVIEWER->value);
+            ->assertJsonCount(2, 'data.data')
+            ->assertJsonPath('data.data.0.role', UserRole::BANK_REVIEWER->value)
+            ->assertJsonPath('data.data.1.role', UserRole::BANK_REVIEWER->value);
     }
 
     public function test_index_returns_403_for_bank_reviewer(): void

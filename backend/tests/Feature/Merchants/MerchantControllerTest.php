@@ -117,7 +117,7 @@ class MerchantControllerTest extends TestCase
         $response = $this->actingAs($this->bankAdmin)->getJson('/api/merchants');
 
         $response->assertOk();
-        $ids = collect($response->json('data'))->pluck('id');
+        $ids = collect($response->json('data.data'))->pluck('id');
         $this->assertTrue($ids->contains($own->id));
         $this->assertCount(1, $ids);
     }
@@ -130,7 +130,7 @@ class MerchantControllerTest extends TestCase
         $response = $this->actingAs($this->cbyadmin)->getJson('/api/merchants');
 
         $response->assertOk();
-        $this->assertGreaterThanOrEqual(2, count($response->json('data')));
+        $this->assertGreaterThanOrEqual(2, count($response->json('data.data')));
     }
 
     public function test_index_includes_transaction_count_for_each_merchant(): void
@@ -142,7 +142,7 @@ class MerchantControllerTest extends TestCase
         $response = $this->actingAs($this->bankAdmin)->getJson('/api/merchants');
 
         $response->assertOk();
-        $merchantData = collect($response->json('data'))->firstWhere('id', $merchant->id);
+        $merchantData = collect($response->json('data.data'))->firstWhere('id', $merchant->id);
         $this->assertNotNull($merchantData);
         $this->assertSame(2, $merchantData['transaction_count']);
     }
@@ -164,7 +164,7 @@ class MerchantControllerTest extends TestCase
         $response = $this->actingAs($this->cbyadmin)->getJson('/api/merchants?per_page=100');
 
         $response->assertOk();
-        $this->assertCount(25, $response->json('data'));
+        $this->assertCount(25, $response->json('data.data'));
     }
 
     public function test_bank_admin_cannot_filter_another_banks_merchants(): void
@@ -174,7 +174,7 @@ class MerchantControllerTest extends TestCase
         $response = $this->actingAs($this->bankAdmin)->getJson('/api/merchants?bank_id='.$this->otherBank->id);
 
         $response->assertOk();
-        $this->assertCount(0, $response->json('data'));
+        $this->assertCount(0, $response->json('data.data'));
     }
 
     public function test_unauthenticated_user_cannot_list_merchants(): void
@@ -339,7 +339,7 @@ class MerchantControllerTest extends TestCase
         $response = $this->actingAs($this->bankAdmin)->getJson('/api/merchants?search=UNIQUE-001');
 
         $response->assertOk();
-        $registers = collect($response->json('data'))->pluck('commercial_register');
+        $registers = collect($response->json('data.data'))->pluck('commercial_register');
         $this->assertTrue($registers->contains('CR-UNIQUE-001'));
         $this->assertFalse($registers->contains('CR-OTHER-002'));
     }

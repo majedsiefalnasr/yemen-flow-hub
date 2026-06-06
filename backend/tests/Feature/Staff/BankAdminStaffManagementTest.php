@@ -53,7 +53,7 @@ class BankAdminStaffManagementTest extends TestCase
         $response = $this->actingAs($this->bankAdmin)->getJson('/api/users');
 
         $response->assertOk();
-        $ids = collect($response->json('data'))->pluck('id');
+        $ids = collect($response->json('data.data'))->pluck('id');
         $this->assertTrue($ids->contains($entry->id), 'own DATA_ENTRY should be visible');
         $this->assertTrue($ids->contains($reviewer->id), 'own BANK_REVIEWER should be visible');
         $this->assertFalse($ids->contains($otherEntry->id), 'other bank staff must be excluded');
@@ -66,7 +66,7 @@ class BankAdminStaffManagementTest extends TestCase
         $response = $this->actingAs($this->bankAdmin)->getJson('/api/users');
 
         $response->assertOk();
-        $this->assertEmpty($response->json('data'));
+        $this->assertEmpty($response->json('data.data'));
     }
 
     // ─── Create staff ─────────────────────────────────────────────────────────

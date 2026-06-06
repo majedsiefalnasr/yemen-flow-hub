@@ -84,7 +84,7 @@ class BankAdminRbacTest extends TestCase
         $response = $this->actingAs($this->bankAdmin)->getJson('/api/users');
 
         $response->assertOk();
-        $ids = collect($response->json('data'))->pluck('id');
+        $ids = collect($response->json('data.data'))->pluck('id');
         $this->assertTrue($ids->contains($ownEntry->id));
         $this->assertFalse($ids->contains($this->bankAdmin->id));
     }
@@ -178,7 +178,7 @@ class BankAdminRbacTest extends TestCase
         $response = $this->actingAs($this->bankAdmin)->getJson('/api/requests');
 
         $response->assertOk();
-        $ids = collect($response->json('data'))->pluck('id');
+        $ids = collect($response->json('data.data'))->pluck('id');
         $this->assertTrue($ids->contains($ownRequest->id));
         $this->assertEquals(1, $ids->count());
     }
@@ -191,7 +191,7 @@ class BankAdminRbacTest extends TestCase
         $response = $this->actingAs($this->bankAdmin)->getJson('/api/requests');
 
         $response->assertOk();
-        $this->assertEmpty($response->json('data'));
+        $this->assertEmpty($response->json('data.data'));
     }
 
     // ─── AC-4: CBY-internal endpoints return 403 ─────────────────────────────
