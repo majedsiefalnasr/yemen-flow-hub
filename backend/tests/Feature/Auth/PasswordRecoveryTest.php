@@ -2,12 +2,13 @@
 
 namespace Tests\Feature\Auth;
 
+use App\Enums\NotificationType;
 use App\Enums\UserRole;
-use App\Mail\PasswordRecoveryOtpMail;
+use App\Jobs\SendEmailDelivery;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 class PasswordRecoveryTest extends TestCase
@@ -28,8 +29,8 @@ class PasswordRecoveryTest extends TestCase
 
     public function test_existing_email_receives_recovery_code_with_generic_response(): void
     {
-        Mail::fake();
-        $this->makeUser();
+        Queue::fake();
+        $user = $this->makeUser();
 
         $response = $this->postJson('/api/auth/password/forgot', [
             'email' => 'recovery@example.com',
@@ -38,12 +39,17 @@ class PasswordRecoveryTest extends TestCase
         $response->assertOk()
             ->assertJsonPath('message', 'If this email exists, a recovery code has been sent.');
 
-        Mail::assertSent(PasswordRecoveryOtpMail::class);
+        $this->assertDatabaseHas('email_deliveries', [
+            'notification_type' => NotificationType::PASSWORD_RESET->value,
+            'recipient_user_id' => $user->id,
+            'recipient_email' => $user->email,
+        ]);
+        Queue::assertPushed(SendEmailDelivery::class);
     }
 
     public function test_unknown_email_returns_same_generic_response_without_email(): void
     {
-        Mail::fake();
+        Queue::fake();
 
         $response = $this->postJson('/api/auth/password/forgot', [
             'email' => 'missing@example.com',
@@ -52,12 +58,13 @@ class PasswordRecoveryTest extends TestCase
         $response->assertOk()
             ->assertJsonPath('message', 'If this email exists, a recovery code has been sent.');
 
-        Mail::assertNothingSent();
+        $this->assertDatabaseCount('email_deliveries', 0);
+        Queue::assertNothingPushed();
     }
 
     public function test_password_reset_with_valid_otp_changes_password_and_preserves_mfa_pin(): void
     {
-        Mail::fake();
+        Queue::fake();
         $user = $this->makeUser([
             'mfa_enabled' => true,
             'totp_enabled' => true,
@@ -88,7 +95,7 @@ class PasswordRecoveryTest extends TestCase
 
     public function test_invalid_otp_fails_safely(): void
     {
-        Mail::fake();
+        Queue::fake();
         $user = $this->makeUser();
 
         $this->postJson('/api/auth/password/forgot', ['email' => $user->email])->assertOk();
@@ -104,7 +111,7 @@ class PasswordRecoveryTest extends TestCase
 
     public function test_otp_expires(): void
     {
-        Mail::fake();
+        Queue::fake();
         $user = $this->makeUser();
 
         $this->postJson('/api/auth/password/forgot', ['email' => $user->email])->assertOk();
@@ -123,7 +130,7 @@ class PasswordRecoveryTest extends TestCase
 
     public function test_otp_cannot_be_reused(): void
     {
-        Mail::fake();
+        Queue::fake();
         $user = $this->makeUser();
 
         $this->postJson('/api/auth/password/forgot', ['email' => $user->email])->assertOk();
@@ -145,8 +152,12 @@ class PasswordRecoveryTest extends TestCase
     {
         $otp = null;
 
-        Mail::assertSent(PasswordRecoveryOtpMail::class, function (PasswordRecoveryOtpMail $mail) use (&$otp): bool {
-            $otp = $mail->otp;
+        Queue::assertPushed(SendEmailDelivery::class, function (SendEmailDelivery $job) use (&$otp): bool {
+            if (preg_match('/\b(\d{6})\b/', (string) $job->renderedBody, $matches) !== 1) {
+                return false;
+            }
+
+            $otp = $matches[1];
 
             return true;
         });

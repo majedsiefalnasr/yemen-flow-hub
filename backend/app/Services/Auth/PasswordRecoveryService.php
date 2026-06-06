@@ -3,12 +3,13 @@
 namespace App\Services\Auth;
 
 use App\Enums\AuditAction;
-use App\Mail\PasswordRecoveryOtpMail;
+use App\Enums\NotificationType;
 use App\Models\User;
 use App\Services\Audit\AuditService;
+use App\Services\Notifications\SendEmailNotification;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 
 class PasswordRecoveryService
 {
@@ -35,15 +36,27 @@ class PasswordRecoveryService
 
         $ttlSeconds = max(60, (int) config('account_recovery.otp_ttl_seconds', 600));
         $otp = $this->generateCode();
+        $issuanceId = (string) Str::uuid();
 
         Cache::put($this->cacheKey($email), [
             'otp_hash' => Hash::make($otp),
+            'issuance_id' => $issuanceId,
             'attempts' => 0,
             'expires_at' => now()->addSeconds($ttlSeconds)->timestamp,
         ], now()->addSeconds($ttlSeconds));
 
-        Mail::to($user->email)->send(
-            new PasswordRecoveryOtpMail($otp, (int) ceil($ttlSeconds / 60))
+        app(SendEmailNotification::class)->sendAuth(
+            NotificationType::PASSWORD_RESET,
+            $user,
+            $issuanceId,
+            [
+                'otp_code' => $otp,
+                'ttl_minutes' => (int) ceil($ttlSeconds / 60),
+            ],
+            [
+                'otp_code' => '••••••',
+                'ttl_minutes' => (int) ceil($ttlSeconds / 60),
+            ],
         );
     }
 

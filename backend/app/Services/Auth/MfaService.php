@@ -2,11 +2,11 @@
 
 namespace App\Services\Auth;
 
-use App\Mail\MfaOtpMail;
+use App\Enums\NotificationType;
 use App\Models\User;
+use App\Services\Notifications\SendEmailNotification;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use PragmaRX\Google2FA\Google2FA;
 
@@ -45,6 +45,7 @@ class MfaService
         Cache::put($this->cacheKey($email), [
             'otp' => $code,
             'challenge_id' => (string) Str::uuid(),
+            'issuance_id' => (string) Str::uuid(),
             'attempts' => 0,
             'expires_at' => now()->addSeconds($ttlSeconds)->timestamp,
         ], now()->addSeconds($ttlSeconds));
@@ -52,9 +53,34 @@ class MfaService
         return $code;
     }
 
-    public function sendOtpEmail(string $email, string $otp, int $ttlMinutes): void
+    public function sendOtpEmail(User|string $recipient, string $otp, int $ttlMinutes): void
     {
-        Mail::to($email)->queue(new MfaOtpMail($email, $otp, $ttlMinutes));
+        $user = $recipient instanceof User
+            ? $recipient
+            : User::query()->where('email', strtolower($recipient))->where('is_active', true)->first();
+
+        if (! $user) {
+            return;
+        }
+
+        $issuanceId = $this->getIssuanceId($user->email);
+        if ($issuanceId === null) {
+            return;
+        }
+
+        app(SendEmailNotification::class)->sendAuth(
+            NotificationType::MFA_OTP,
+            $user,
+            $issuanceId,
+            [
+                'otp_code' => $otp,
+                'ttl_minutes' => $ttlMinutes,
+            ],
+            [
+                'otp_code' => '••••••',
+                'ttl_minutes' => $ttlMinutes,
+            ],
+        );
     }
 
     public function getChallengeId(string $email): ?string
@@ -68,6 +94,19 @@ class MfaService
         $challengeId = $challenge['challenge_id'] ?? null;
 
         return is_string($challengeId) && $challengeId !== '' ? $challengeId : null;
+    }
+
+    public function getIssuanceId(string $email): ?string
+    {
+        $challenge = Cache::get($this->cacheKey($email));
+
+        if (! is_array($challenge)) {
+            return null;
+        }
+
+        $issuanceId = $challenge['issuance_id'] ?? null;
+
+        return is_string($issuanceId) && $issuanceId !== '' ? $issuanceId : null;
     }
 
     /**

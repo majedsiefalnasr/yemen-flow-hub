@@ -3,7 +3,9 @@
 namespace Tests\Feature\Auth;
 
 use App\Enums\AuditAction;
+use App\Enums\NotificationType;
 use App\Enums\UserRole;
+use App\Jobs\SendEmailDelivery;
 use App\Mail\MfaOtpMail;
 use App\Models\AuditLog;
 use App\Models\Bank;
@@ -14,7 +16,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Tests\TestCase;
@@ -615,10 +617,10 @@ class AuthControllerTest extends TestCase
 
     public function test_non_totp_login_dispatches_mfa_otp_email(): void
     {
-        Mail::fake();
+        Queue::fake();
         config(['mfa.enabled' => true]);
 
-        $this->makeUser(['totp_enabled' => false, 'totp_secret' => null]);
+        $user = $this->makeUser(['totp_enabled' => false, 'totp_secret' => null]);
 
         $this->postJson('/api/auth/login', [
             'email' => 'test@example.com',
@@ -626,16 +628,17 @@ class AuthControllerTest extends TestCase
         ])->assertStatus(200)
             ->assertJsonPath('data.requires_mfa', true);
 
-        Mail::assertQueued(MfaOtpMail::class, function (MfaOtpMail $mail): bool {
-            return $mail->email === 'test@example.com'
-                && strlen($mail->otp) === 6
-                && $mail->ttlMinutes > 0;
-        });
+        $this->assertDatabaseHas('email_deliveries', [
+            'notification_type' => NotificationType::MFA_OTP->value,
+            'recipient_user_id' => $user->id,
+            'recipient_email' => 'test@example.com',
+        ]);
+        Queue::assertPushed(SendEmailDelivery::class);
     }
 
     public function test_totp_login_does_not_dispatch_mfa_otp_email(): void
     {
-        Mail::fake();
+        Queue::fake();
         config(['mfa.enabled' => false]);
 
         $this->makeUser([
@@ -649,7 +652,10 @@ class AuthControllerTest extends TestCase
         ])->assertStatus(200)
             ->assertJsonPath('data.requires_mfa', true);
 
-        Mail::assertNotQueued(MfaOtpMail::class);
+        $this->assertDatabaseMissing('email_deliveries', [
+            'notification_type' => NotificationType::MFA_OTP->value,
+        ]);
+        Queue::assertNothingPushed();
     }
 
     public function test_mfa_otp_mail_has_correct_retry_config(): void

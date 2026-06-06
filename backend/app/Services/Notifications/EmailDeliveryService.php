@@ -20,6 +20,10 @@ class EmailDeliveryService
     /** Six U+2022 BULLET — the mask stored in place of any redacted secret. */
     private const REDACTION_MASK = '••••••';
 
+    private const REDACTED_SECRET_PLACEHOLDER = '[redacted-secret]';
+
+    private const REDACTED_URL_PLACEHOLDER = '[redacted-url]';
+
     /** SQLSTATE for an integrity-constraint (incl. unique) violation, shared by MySQL and SQLite. */
     private const SQLSTATE_INTEGRITY_VIOLATION = '23000';
 
@@ -132,12 +136,35 @@ class EmailDeliveryService
     }
 
     /**
-     * Defense in depth for redacted types: replace any run of 4+ digits (OTP/reset
-     * code shape) with the bullet mask so a live code is never stored, even if a
-     * caller mistakenly passes an unmasked body.
+     * Defense in depth for redacted types: strip signed URLs, token-like values,
+     * recovery-secret labels, and OTP/reset-code digit runs before persistence.
      */
     private function maskSecrets(string $value): string
     {
+        $value = (string) preg_replace_callback(
+            '~https?://[^\s"\'<>]+~i',
+            static function (array $matches): string {
+                $url = $matches[0];
+
+                return preg_match('/[?&](?:token|signature|expires|otp|secret|reset_token)=/i', $url) === 1
+                    ? self::REDACTED_URL_PLACEHOLDER
+                    : $url;
+            },
+            $value
+        );
+
+        $value = (string) preg_replace(
+            '/\b((?:password[-_\s]*)?reset[-_\s]*token|token|recovery[-_\s]*secret|backup[-_\s]*code|secret)\b\s*[:=]\s*[A-Za-z0-9+\/_=.-]{6,}/iu',
+            '$1: '.self::REDACTED_SECRET_PLACEHOLDER,
+            $value
+        );
+
+        $value = (string) preg_replace(
+            '/\b[A-Za-z0-9_-]{32,}\b/',
+            self::REDACTED_SECRET_PLACEHOLDER,
+            $value
+        );
+
         return (string) preg_replace('/\d{4,}/', self::REDACTION_MASK, $value);
     }
 

@@ -55,6 +55,59 @@ class SendEmailNotification
     }
 
     /**
+     * Security/auth emails are intentionally mail-only: no database notification
+     * row is created, but the send still goes through the governed outbox path.
+     *
+     * @param  array<string, mixed>  $liveVariables
+     * @param  array<string, mixed>  $maskedVariables
+     */
+    public function sendAuth(
+        NotificationType $type,
+        User $recipient,
+        string $issuanceId,
+        array $liveVariables,
+        array $maskedVariables,
+    ): void {
+        $definition = $this->registry->for($type);
+
+        if ($definition['channels'] !== ['mail'] || $definition['persist_body'] !== 'redacted') {
+            throw new \InvalidArgumentException("Notification type [{$type->value}] is not a redacted mail-only auth type.");
+        }
+
+        if (empty($recipient->email)) {
+            return;
+        }
+
+        $delivery = $this->deliveries->reserve(
+            $type,
+            EmailEventId::forAuth($type->value, $issuanceId),
+            $recipient->id,
+            $recipient->email,
+            'mail'
+        );
+
+        if ($delivery === null) {
+            return;
+        }
+
+        $live = $this->renderer->render($type, array_merge([
+            'user_name' => (string) $recipient->name,
+        ], $liveVariables));
+        $masked = $this->renderer->render($type, array_merge([
+            'user_name' => (string) $recipient->name,
+        ], $maskedVariables));
+
+        $this->deliveries->finalize(
+            $delivery,
+            $masked['subject'],
+            $masked['html'],
+            $masked['template_version_id']
+        );
+
+        $this->queueDeliveryAfterCommit($delivery->id, $live['subject'], $live['html']);
+    }
+
+    /**
      * @param  array<string, mixed>  $context
      */
     private function deliverToRecipient(
@@ -92,10 +145,13 @@ class SendEmailNotification
         $this->queueDeliveryAfterCommit($delivery->id);
     }
 
-    private function queueDeliveryAfterCommit(int $deliveryId): void
-    {
-        DB::afterCommit(function () use ($deliveryId): void {
-            SendEmailDelivery::dispatch($deliveryId);
+    private function queueDeliveryAfterCommit(
+        int $deliveryId,
+        ?string $renderedSubject = null,
+        ?string $renderedBody = null,
+    ): void {
+        DB::afterCommit(function () use ($deliveryId, $renderedSubject, $renderedBody): void {
+            SendEmailDelivery::dispatch($deliveryId, $renderedSubject, $renderedBody);
         });
     }
 

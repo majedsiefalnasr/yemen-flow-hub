@@ -95,6 +95,11 @@ class EmailDeliveryRedactionTest extends TestCase
         $this->service()->finalize($delivery, 'رمز التحقق', 'رمزك هو '.self::MASK);
         $this->service()->markSent($delivery, 'provider-xyz');
 
+        $this->assertSame([], array_filter(
+            $spy,
+            static fn (string $line): bool => str_contains($line, self::LIVE_CODE)
+        ), 'OTP code leaked into logs.');
+
         foreach ($spy as $line) {
             $this->assertStringNotContainsString(self::LIVE_CODE, (string) $line, 'OTP code leaked into logs.');
         }

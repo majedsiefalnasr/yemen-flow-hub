@@ -100,7 +100,7 @@ class AuthController extends Controller
 
             if (! $this->mfaService->hasTotpConfigured($user)) {
                 $ttlMinutes = (int) ceil(config('mfa.otp_ttl_seconds', 600) / 60);
-                $this->mfaService->sendOtpEmail($email, $otp, $ttlMinutes);
+                $this->mfaService->sendOtpEmail($user, $otp, $ttlMinutes);
             }
 
             return ApiResponse::success([

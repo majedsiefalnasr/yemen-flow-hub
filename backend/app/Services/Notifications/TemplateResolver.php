@@ -12,8 +12,8 @@ class TemplateResolver
         NotificationType::REQUEST_REJECTED->value => 'request-rejected',
         NotificationType::REQUEST_RETURNED->value => 'request-returned',
         NotificationType::VOTING_OPENED->value => 'voting-opened',
-        NotificationType::MFA_OTP->value => 'mfa-otp',
-        NotificationType::PASSWORD_RESET->value => 'password-recovery-otp',
+        NotificationType::MFA_OTP->value => 'system.mfa-otp',
+        NotificationType::PASSWORD_RESET->value => 'system.password-recovery-otp',
     ];
 
     private const DEFAULT_SUBJECTS = [
