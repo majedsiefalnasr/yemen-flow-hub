@@ -2,13 +2,18 @@
 
 namespace App\Services\Mail;
 
-use App\Models\SystemSetting;
+use App\Enums\NotificationType;
+use App\Services\Notifications\TemplateRenderer;
 
+/**
+ * @deprecated Story 15.3 compatibility shim. New code should use
+ *             App\Services\Notifications\TemplateRenderer directly.
+ */
 class EmailTemplateService
 {
     public const ALLOWED_VARIABLES = [
         'user_name',
-        'request_reference',
+        'reference_number',
         'importer_name',
         'amount',
         'currency',
@@ -17,56 +22,28 @@ class EmailTemplateService
         'bank_name',
     ];
 
-    private array $bladeMap = [
-        'approved' => 'request-approved',
-        'rejected' => 'request-rejected',
-        'returned' => 'request-returned',
+    private array $typeMap = [
+        'approved' => NotificationType::REQUEST_APPROVED,
+        'rejected' => NotificationType::REQUEST_REJECTED,
+        'returned' => NotificationType::REQUEST_RETURNED,
     ];
 
-    private array $defaultSubjects = [
-        'approved' => 'تمت الموافقة على طلبكم - Yemen Flow Hub',
-        'rejected' => 'تم رفض طلبكم - Yemen Flow Hub',
-        'returned' => 'تم إعادة طلبكم للتعديل - Yemen Flow Hub',
-    ];
+    public function __construct(private readonly TemplateRenderer $renderer) {}
 
     public function render(string $type, array $variables): array
     {
-        $emailSettings = SystemSetting::getValueByKey('settings.email', []);
-        $templates = is_array($emailSettings['templates'] ?? null) ? $emailSettings['templates'] : [];
-        $dbTemplate = $templates[$type] ?? null;
+        $notificationType = $this->typeMap[$type] ?? NotificationType::tryFrom($type);
 
-        if ($dbTemplate && is_array($dbTemplate)) {
-            $subject = $dbTemplate['subject'] ?? '';
-            $body = $dbTemplate['body'] ?? '';
-
-            // Build single-pass replacement maps so a substituted value can never
-            // introduce or collide with another {{placeholder}} (no smuggling).
-            // The body is delivered as raw HTML (htmlString), so every substituted
-            // value is HTML-escaped to prevent injection from user-controlled
-            // request data (supplier/importer name, bank name, comments). The
-            // subject is plain text and is substituted without HTML escaping.
-            $subjectMap = [];
-            $bodyMap = [];
-            foreach ($variables as $key => $value) {
-                if (is_string($value)) {
-                    $subjectMap['{{'.$key.'}}'] = $value;
-                    $bodyMap['{{'.$key.'}}'] = e($value);
-                }
-            }
-
-            $subject = strtr($subject, $subjectMap);
-            $body = strtr($body, $bodyMap);
-
-            $body = preg_replace('/\{\{[^}]+\}\}/', '', $body) ?? $body;
-            $subject = preg_replace('/\{\{[^}]+\}\}/', '', $subject) ?? $subject;
-
-            return ['subject' => $subject, 'body' => $body, 'source' => 'db'];
+        if (! $notificationType) {
+            $notificationType = NotificationType::REQUEST_APPROVED;
         }
 
-        return [
-            'subject' => $this->defaultSubjects[$type] ?? 'Yemen Flow Hub',
-            'body' => view('emails.'.($this->bladeMap[$type] ?? $type), $variables)->render(),
-            'source' => 'blade',
-        ];
+        if (! array_key_exists('reference_number', $variables) && array_key_exists('request_reference', $variables)) {
+            $variables['reference_number'] = $variables['request_reference'];
+        }
+
+        $rendered = $this->renderer->render($notificationType, $variables);
+
+        return $rendered + ['body' => $rendered['html']];
     }
 }

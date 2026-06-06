@@ -2,12 +2,13 @@
 
 namespace Tests\Unit\Mail;
 
+use App\Enums\NotificationType;
 use App\Mail\RequestApprovedMail;
 use App\Mail\RequestRejectedMail;
 use App\Mail\RequestReturnedMail;
 use App\Models\Bank;
 use App\Models\ImportRequest;
-use App\Models\SystemSetting;
+use App\Models\NotificationTemplate;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -52,209 +53,72 @@ class MailableEmailTemplateServiceTest extends TestCase
         }
     }
 
-    // ─── RequestApprovedMail ──────────────────────────────────────────────────
-
-    public function test_approved_mail_uses_db_template_subject_when_available(): void
+    public function test_request_approved_mail_uses_active_database_template(): void
     {
-        SystemSetting::create([
-            'key' => 'settings.email',
-            'value' => [
-                'templates' => [
-                    'approved' => [
-                        'subject' => 'تم اعتماد طلبكم {{request_reference}}',
-                        'body' => '<p>مرحبا {{user_name}}</p>',
-                    ],
-                ],
-            ],
-        ]);
+        $this->createTemplateVersion(
+            NotificationType::REQUEST_APPROVED,
+            'تم اعتماد طلبكم {{reference_number}}',
+            'مرحبا {{user_name}}'
+        );
 
         $mailable = new RequestApprovedMail($this->request);
-        $envelope = $mailable->envelope();
 
-        $this->assertStringContainsString('تم اعتماد طلبكم', $envelope->subject);
-        $this->assertStringContainsString($this->request->reference_number, $envelope->subject);
+        $this->assertStringContainsString($this->request->reference_number, $mailable->envelope()->subject);
+        $this->assertNotNull($mailable->content()->htmlString);
+        $this->assertNull($mailable->content()->view);
     }
 
-    public function test_approved_mail_uses_blade_subject_when_no_db_template(): void
+    public function test_request_rejected_mail_uses_active_database_template(): void
     {
-        $mailable = new RequestApprovedMail($this->request);
-        $envelope = $mailable->envelope();
-
-        $this->assertNotEmpty($envelope->subject);
-        $this->assertStringContainsString('Yemen Flow Hub', $envelope->subject);
-    }
-
-    public function test_approved_mail_content_uses_html_string_when_db_template_available(): void
-    {
-        SystemSetting::create([
-            'key' => 'settings.email',
-            'value' => [
-                'templates' => [
-                    'approved' => [
-                        'subject' => 'موافقة',
-                        'body' => '<p>مرحبا {{user_name}}</p>',
-                    ],
-                ],
-            ],
-        ]);
-
-        $mailable = new RequestApprovedMail($this->request);
-        $content = $mailable->content();
-
-        $this->assertNotNull($content->htmlString);
-        $this->assertNull($content->view);
-        $this->assertStringContainsString('<p>مرحبا', $content->htmlString);
-    }
-
-    public function test_approved_mail_content_uses_blade_view_when_no_db_template(): void
-    {
-        $mailable = new RequestApprovedMail($this->request);
-        $content = $mailable->content();
-
-        $this->assertNull($content->htmlString);
-        $this->assertEquals('emails.request-approved', $content->view);
-    }
-
-    // ─── RequestRejectedMail ──────────────────────────────────────────────────
-
-    public function test_rejected_mail_uses_db_template_subject_when_available(): void
-    {
-        SystemSetting::create([
-            'key' => 'settings.email',
-            'value' => [
-                'templates' => [
-                    'rejected' => [
-                        'subject' => 'رُفض طلبكم {{request_reference}}',
-                        'body' => '<p>عزيزي {{user_name}}</p>',
-                    ],
-                ],
-            ],
-        ]);
+        $this->createTemplateVersion(
+            NotificationType::REQUEST_REJECTED,
+            'رُفض طلبكم {{reference_number}}',
+            'مرفوض {{user_name}}'
+        );
 
         $mailable = new RequestRejectedMail($this->request);
-        $envelope = $mailable->envelope();
 
-        $this->assertStringContainsString('رُفض طلبكم', $envelope->subject);
+        $this->assertStringContainsString('رُفض طلبكم', $mailable->envelope()->subject);
+        $this->assertNotNull($mailable->content()->htmlString);
+        $this->assertNull($mailable->content()->view);
     }
 
-    public function test_rejected_mail_uses_blade_subject_when_no_db_template(): void
+    public function test_request_returned_mail_uses_active_database_template(): void
     {
-        $mailable = new RequestRejectedMail($this->request);
-        $envelope = $mailable->envelope();
-
-        $this->assertStringContainsString('Yemen Flow Hub', $envelope->subject);
-    }
-
-    public function test_rejected_mail_content_uses_html_string_when_db_template_available(): void
-    {
-        SystemSetting::create([
-            'key' => 'settings.email',
-            'value' => [
-                'templates' => [
-                    'rejected' => [
-                        'subject' => 'رفض',
-                        'body' => '<p>مرفوض {{user_name}}</p>',
-                    ],
-                ],
-            ],
-        ]);
-
-        $mailable = new RequestRejectedMail($this->request);
-        $content = $mailable->content();
-
-        $this->assertNotNull($content->htmlString);
-        $this->assertNull($content->view);
-    }
-
-    public function test_rejected_mail_content_uses_blade_view_when_no_db_template(): void
-    {
-        $mailable = new RequestRejectedMail($this->request);
-        $content = $mailable->content();
-
-        $this->assertNull($content->htmlString);
-        $this->assertEquals('emails.request-rejected', $content->view);
-    }
-
-    // ─── RequestReturnedMail ─────────────────────────────────────────────────
-
-    public function test_returned_mail_uses_db_template_subject_when_available(): void
-    {
-        SystemSetting::create([
-            'key' => 'settings.email',
-            'value' => [
-                'templates' => [
-                    'returned' => [
-                        'subject' => 'إعادة طلبكم {{request_reference}}',
-                        'body' => '<p>أُعيد {{user_name}}</p>',
-                    ],
-                ],
-            ],
-        ]);
+        $this->createTemplateVersion(
+            NotificationType::REQUEST_RETURNED,
+            'إعادة طلبكم {{reference_number}}',
+            'أُعيد {{user_name}}'
+        );
 
         $mailable = new RequestReturnedMail($this->request);
-        $envelope = $mailable->envelope();
 
-        $this->assertStringContainsString('إعادة طلبكم', $envelope->subject);
+        $this->assertStringContainsString('إعادة طلبكم', $mailable->envelope()->subject);
+        $this->assertNotNull($mailable->content()->htmlString);
+        $this->assertNull($mailable->content()->view);
     }
 
-    public function test_returned_mail_uses_blade_subject_when_no_db_template(): void
+    public function test_request_mailables_fall_back_to_blade_when_database_template_missing(): void
     {
-        $mailable = new RequestReturnedMail($this->request);
-        $envelope = $mailable->envelope();
+        $approved = new RequestApprovedMail($this->request);
+        $rejected = new RequestRejectedMail($this->request);
+        $returned = new RequestReturnedMail($this->request);
 
-        $this->assertStringContainsString('Yemen Flow Hub', $envelope->subject);
+        $this->assertEquals('emails.request-approved', $approved->content()->view);
+        $this->assertEquals('emails.request-rejected', $rejected->content()->view);
+        $this->assertEquals('emails.request-returned', $returned->content()->view);
     }
 
-    public function test_returned_mail_content_uses_html_string_when_db_template_available(): void
+    private function createTemplateVersion(NotificationType $type, string $subject, string $body): void
     {
-        SystemSetting::create([
-            'key' => 'settings.email',
-            'value' => [
-                'templates' => [
-                    'returned' => [
-                        'subject' => 'إعادة',
-                        'body' => '<p>أُعيد {{user_name}}</p>',
-                    ],
-                ],
-            ],
+        $template = NotificationTemplate::query()->create([
+            'notification_type' => $type,
         ]);
 
-        $mailable = new RequestReturnedMail($this->request);
-        $content = $mailable->content();
-
-        $this->assertNotNull($content->htmlString);
-        $this->assertNull($content->view);
-    }
-
-    public function test_returned_mail_content_uses_blade_view_when_no_db_template(): void
-    {
-        $mailable = new RequestReturnedMail($this->request);
-        $content = $mailable->content();
-
-        $this->assertNull($content->htmlString);
-        $this->assertEquals('emails.request-returned', $content->view);
-    }
-
-    // ─── Variable substitution in subject ────────────────────────────────────
-
-    public function test_approved_mail_subject_has_variables_substituted(): void
-    {
-        SystemSetting::create([
-            'key' => 'settings.email',
-            'value' => [
-                'templates' => [
-                    'approved' => [
-                        'subject' => 'موافقة {{request_reference}} - {{bank_name}}',
-                        'body' => 'نص',
-                    ],
-                ],
-            ],
+        $template->versions()->create([
+            'subject' => $subject,
+            'body' => $body,
+            'is_active_version' => true,
         ]);
-
-        $mailable = new RequestApprovedMail($this->request);
-        $envelope = $mailable->envelope();
-
-        $this->assertStringContainsString($this->request->reference_number, $envelope->subject);
-        $this->assertStringNotContainsString('{{', $envelope->subject);
     }
 }

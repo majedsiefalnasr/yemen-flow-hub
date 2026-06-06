@@ -34,5 +34,8 @@ class DatabaseSeeder extends Seeder
 
         $this->call([SystemSettingsSeeder::class]);
         $this->command?->info('Seeded system settings.');
+
+        $this->call([NotificationTemplateSeeder::class]);
+        $this->command?->info('Seeded notification templates.');
     }
 }
