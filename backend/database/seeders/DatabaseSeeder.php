@@ -23,6 +23,11 @@ class DatabaseSeeder extends Seeder
         $this->call([MerchantSeeder::class]);
         $this->command?->info('Seeded merchants.');
 
+        if (! app()->isProduction()) {
+            $this->call([TraderSeeder::class]);
+            $this->command?->info('Seeded trader sample data.');
+        }
+
         $this->call([ImportRequestSeeder::class]);
         $this->command?->info('Seeded requests and linked workflow artifacts.');
 
