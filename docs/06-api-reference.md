@@ -534,6 +534,12 @@ AUTO_ABSTAIN_TIMEOUT
 POST /api/documents/upload
 ```
 
+Deprecated compatibility endpoint:
+
+```http
+POST /api/requests/{id}/documents
+```
+
 ## Request Type
 
 ```text
@@ -543,6 +549,8 @@ multipart/form-data
 ## Allowed File Types
 
 - PDF only
+- Upload routes are authenticated and rate-limited: exceeding the upload throttle returns HTTP `429` with the standard JSON error envelope.
+- Client-supplied filenames are sanitized before persistence and again before download headers are generated; the private on-disk filename remains UUID-based.
 
 ---
 
@@ -563,6 +571,8 @@ Note: `{id}` is the import request ID. This endpoint follows the workflow-centri
 - SWIFT cannot be replaced after upload
 - Request remains permanently read-only after upload
 - PDF only
+- Authenticated and rate-limited: exceeding the upload throttle returns HTTP `429` with the standard JSON error envelope.
+- Client-supplied filenames are sanitized before persistence and again before download headers are generated; the private on-disk filename remains UUID-based.
 
 ---
 
@@ -588,6 +598,7 @@ GET /api/documents/{id}/download
 | CBY_ADMIN          | Yes (all banks)   | Yes            | Yes                     |
 
 Document access is validated at the backend policy layer. Frontend visibility is not sufficient.
+Document API payloads do not expose a reusable `download_url`; clients should download with an authenticated request to `GET /api/documents/{id}/download`.
 
 ---
 
