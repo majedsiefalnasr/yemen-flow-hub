@@ -47,11 +47,33 @@ const error = ref<string | null>(null)
 const subjectInputRef = ref<HTMLInputElement | null>(null)
 const bodyTextareaRef = ref<HTMLTextAreaElement | null>(null)
 const lastFocusedField = ref<'subject' | 'body'>('body')
+// Caret position captured while a field is focused/blurred, so a chip click
+// (which blurs the field) inserts at the last caret instead of position 0.
+const savedSelection = reactive<{ subject: number | null; body: number | null }>({
+  subject: null,
+  body: null,
+})
 
 const templateTitle = computed(() => notificationTemplateLabel(type.value))
 const isDirty = computed(
   () => form.subject !== cleanSnapshot.value.subject || form.body !== cleanSnapshot.value.body,
 )
+
+// Clear stale validation errors as soon as the admin edits a field, so a fixed
+// field does not keep showing a previous preview/save error until the next action.
+watch(
+  () => [form.subject, form.body],
+  () => {
+    if (Object.keys(fieldErrors.value).length > 0) fieldErrors.value = {}
+  },
+)
+
+function captureSelection(field: 'subject' | 'body', event: Event) {
+  const el = event.target as HTMLInputElement | HTMLTextAreaElement | null
+  if (el && typeof el.selectionStart === 'number') {
+    savedSelection[field] = el.selectionStart
+  }
+}
 
 function syncFormFromTemplate(source: NotificationTemplate) {
   form.subject = source.active?.subject ?? ''
@@ -115,18 +137,18 @@ function insertVariable(variable: string) {
   const target = field === 'subject' ? subjectInputRef.value : bodyTextareaRef.value
   const current = form[field]
 
-  if (!target) {
-    form[field] = current + token
-    return
-  }
-
-  const start = target.selectionStart ?? current.length
-  const end = target.selectionEnd ?? start
+  // Prefer the caret captured while the field was focused. Fall back to the live
+  // selection, then to end-of-field — never position 0 for a never-focused field.
+  const start = savedSelection[field] ?? target?.selectionStart ?? current.length
+  const end = savedSelection[field] ?? target?.selectionEnd ?? start
   form[field] = current.slice(0, start) + token + current.slice(end)
 
+  const cursor = start + token.length
+  savedSelection[field] = cursor
+
   nextTick(() => {
+    if (!target) return
     target.focus()
-    const cursor = start + token.length
     target.setSelectionRange(cursor, cursor)
   })
 }
@@ -219,6 +241,10 @@ function firstFieldError(field: 'subject' | 'body'): string | null {
                 dir="rtl"
                 placeholder="أدخل موضوع البريد"
                 @focus="lastFocusedField = 'subject'"
+                @select="captureSelection('subject', $event)"
+                @keyup="captureSelection('subject', $event)"
+                @click="captureSelection('subject', $event)"
+                @blur="captureSelection('subject', $event)"
               />
               <FieldError v-if="firstFieldError('subject')">
                 {{ firstFieldError('subject') }}
@@ -235,6 +261,10 @@ function firstFieldError(field: 'subject' | 'body'): string | null {
                 class="font-mono text-sm"
                 placeholder="أدخل نص القالب بصيغة Markdown"
                 @focus="lastFocusedField = 'body'"
+                @select="captureSelection('body', $event)"
+                @keyup="captureSelection('body', $event)"
+                @click="captureSelection('body', $event)"
+                @blur="captureSelection('body', $event)"
               />
               <FieldDescription>
                 لا يسمح HTML الخام. تعرض المعاينة المصدر بعد التنظيف قبل إنشاء الإصدار.
