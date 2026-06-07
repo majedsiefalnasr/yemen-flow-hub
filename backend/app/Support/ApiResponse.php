@@ -50,12 +50,20 @@ class ApiResponse
         return self::error('Validation failed.', $errors, 422);
     }
 
-    public static function lockedOut(string $message = 'Account is temporarily locked due to too many failed attempts.'): JsonResponse
-    {
-        return response()->json([
+    public static function lockedOut(
+        string $message = 'Account is temporarily locked due to too many failed attempts.',
+        ?int $retryAfter = null
+    ): JsonResponse {
+        $response = response()->json([
             'success' => false,
             'message' => $message,
             'error_code' => 'ACCOUNT_LOCKED',
-        ], 403);
+        ], 429);
+
+        if ($retryAfter !== null) {
+            $response->headers->set('Retry-After', (string) max(1, $retryAfter));
+        }
+
+        return $response;
     }
 }

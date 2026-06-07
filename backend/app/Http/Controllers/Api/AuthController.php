@@ -50,22 +50,22 @@ class AuthController extends Controller
         responses: [
             new OA\Response(response: 200, description: 'Login successful'),
             new OA\Response(response: 422, description: 'Validation failed'),
-            new OA\Response(response: 403, description: 'Inactive account or account locked'),
-            new OA\Response(response: 429, description: 'Too many requests — per-IP throttle via throttle:login middleware'),
+            new OA\Response(response: 403, description: 'Inactive account'),
+            new OA\Response(response: 429, description: 'Too many requests or account/source lockout'),
         ]
     )]
     public function login(LoginRequest $request)
     {
-        $ip = $request->ip();
+        $ip = (string) $request->ip();
         // Normalize email for consistent counter keys and DB lookup
         $email = $request->string('email')->lower()->toString();
-        $failKey = 'login_fail:'.$email;
+        $failKey = $this->lockoutKey('login_fail', $email, $ip);
 
-        // Per-email account lockout: 10 consecutive failures → 15 min lock
+        // Account/source lockout: 10 consecutive failures from the same IP -> 15 min lock.
         if (RateLimiter::tooManyAttempts($failKey, self::LOCKOUT_THRESHOLD)) {
             $this->logFailedLogin($email, 'LOCKED', $ip);
 
-            return ApiResponse::lockedOut();
+            return ApiResponse::lockedOut(retryAfter: RateLimiter::availableIn($failKey));
         }
 
         $user = User::query()->where('email', $email)->first();
@@ -85,20 +85,21 @@ class AuthController extends Controller
             ]);
         }
 
-        // Success: clear only the per-email failure counter; IP window decays naturally
+        // Success clears the failure counter for this account/source pair.
         RateLimiter::clear($failKey);
 
         // MFA gate:
         // - system-level MFA switch
         // - OR user already configured authenticator (TOTP) and must verify code on login
-        if (config('mfa.enabled', false) || $this->mfaService->hasTotpConfigured($user)) {
+        $hasTotp = $this->mfaService->hasTotpConfigured($user);
+        if (config('mfa.enabled', false) || $hasTotp) {
             $otp = $this->mfaService->generate($email);
             $challengeId = $this->mfaService->getChallengeId($email);
             if ($challengeId === null) {
                 return ApiResponse::error('Unable to initialize MFA challenge.', [], 500);
             }
 
-            if (! $this->mfaService->hasTotpConfigured($user)) {
+            if (! $hasTotp) {
                 $ttlMinutes = (int) ceil(config('mfa.otp_ttl_seconds', 600) / 60);
                 $this->mfaService->sendOtpEmail($user, $otp, $ttlMinutes);
             }
@@ -120,15 +121,15 @@ class AuthController extends Controller
             'pin' => ['required', 'string', 'size:6', 'regex:/^[0-9]{6}$/'],
         ]);
 
-        $ip = $request->ip();
+        $ip = (string) $request->ip();
         $email = $request->string('email')->lower()->toString();
         $pin = $request->string('pin')->toString();
-        $failKey = 'login_pin_fail:'.$email;
+        $failKey = $this->lockoutKey('login_pin_fail', $email, $ip);
 
         if (RateLimiter::tooManyAttempts($failKey, self::LOCKOUT_THRESHOLD)) {
             $this->logFailedLogin($email, 'PIN_LOCKED', $ip);
 
-            return ApiResponse::lockedOut();
+            return ApiResponse::lockedOut(retryAfter: RateLimiter::availableIn($failKey));
         }
 
         $user = User::query()->where('email', $email)->first();
@@ -350,39 +351,37 @@ class AuthController extends Controller
 
     private function issueSession(Request $request, User $user)
     {
-        if ($request->hasSession()) {
+        $cookieMode = $request->hasSession();
+
+        if ($cookieMode) {
             Auth::guard('web')->login($user);
             $request->session()->regenerate();
         }
 
-        $user->forceFill(['last_login_at' => now()])->save();
+        $user->updateQuietly(['last_login_at' => now()]);
 
         $this->auditService->log(
             AuditAction::LOGIN,
             $user,
             $user,
-            ['mode' => $request->hasSession() ? 'cookie' : 'token']
+            ['mode' => $cookieMode ? 'cookie' : 'token']
         );
 
-        if ($request->hasSession()) {
-            return ApiResponse::success([
-                'user' => new UserResource($user->fresh('bank')),
-                'token' => null,
-                'token_type' => null,
-                'mode' => 'cookie',
-                'requires_mfa' => false,
-            ], 'Login successful.');
+        $payload = [
+            'user' => new UserResource($user->fresh('bank')),
+            'requires_mfa' => false,
+            'mode' => $cookieMode ? 'cookie' : 'token',
+        ];
+
+        if ($cookieMode) {
+            $payload['token'] = null;
+            $payload['token_type'] = null;
+        } else {
+            $payload['token'] = $user->createToken($request->string('device_name')->toString() ?: 'api-client')->plainTextToken;
+            $payload['token_type'] = 'Bearer';
         }
 
-        $token = $user->createToken($request->string('device_name')->toString() ?: 'api-client')->plainTextToken;
-
-        return ApiResponse::success([
-            'user' => new UserResource($user->fresh('bank')),
-            'token' => $token,
-            'token_type' => 'Bearer',
-            'mode' => 'token',
-            'requires_mfa' => false,
-        ], 'Login successful.');
+        return ApiResponse::success($payload, 'Login successful.');
     }
 
     private function logFailedLogin(string $email, string $reason, string $ip): void
@@ -393,6 +392,11 @@ class AuthController extends Controller
             null,
             ['email' => $email, 'reason' => $reason, 'ip' => $ip]
         );
+    }
+
+    private function lockoutKey(string $prefix, string $email, string $ip): string
+    {
+        return $prefix.':'.strtolower($email).'|'.$ip;
     }
 
     private function throwInvalidOtp(): void

@@ -15,6 +15,7 @@ use Illuminate\Auth\SessionGuard;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\RateLimiter;
@@ -61,6 +62,11 @@ class AuthControllerTest extends TestCase
         ]);
     }
 
+    private function lockoutKey(string $prefix, string $email, string $ip = '127.0.0.1'): string
+    {
+        return $prefix.':'.strtolower($email).'|'.$ip;
+    }
+
     // --- AC-1: IP rate limit ---
 
     public function test_login_allows_5_attempts_per_minute(): void
@@ -95,7 +101,7 @@ class AuthControllerTest extends TestCase
     public function test_account_locks_after_10_consecutive_email_failures(): void
     {
         $email = 'lockme@example.com';
-        $failKey = 'login_fail:'.$email;
+        $failKey = $this->lockoutKey('login_fail', $email);
         $this->makeUser(['email' => $email]);
 
         for ($i = 0; $i < 10; $i++) {
@@ -104,14 +110,15 @@ class AuthControllerTest extends TestCase
 
         $response = $this->postJson('/api/auth/login', ['email' => $email, 'password' => 'wrong']);
 
-        $response->assertStatus(403);
+        $response->assertStatus(429);
         $response->assertJsonPath('error_code', 'ACCOUNT_LOCKED');
+        $this->assertGreaterThan(0, (int) $response->headers->get('Retry-After'));
     }
 
     public function test_account_lockout_returns_correct_shape(): void
     {
         $email = 'locked@example.com';
-        $failKey = 'login_fail:'.$email;
+        $failKey = $this->lockoutKey('login_fail', $email);
         $this->makeUser(['email' => $email]);
 
         for ($i = 0; $i < 10; $i++) {
@@ -120,9 +127,48 @@ class AuthControllerTest extends TestCase
 
         $response = $this->postJson('/api/auth/login', ['email' => $email, 'password' => 'any']);
 
-        $response->assertStatus(403);
+        $response->assertStatus(429);
         $response->assertJsonStructure(['success', 'message', 'error_code']);
         $this->assertEquals('ACCOUNT_LOCKED', $response->json('error_code'));
+        $this->assertGreaterThan(0, (int) $response->headers->get('Retry-After'));
+    }
+
+    public function test_rotating_ips_cannot_lock_password_login_for_victim_source(): void
+    {
+        $email = 'victim@example.com';
+        $this->makeUser(['email' => $email]);
+
+        for ($i = 0; $i < 10; $i++) {
+            $this->withServerVariables(['REMOTE_ADDR' => "10.0.0.{$i}"])
+                ->postJson('/api/auth/login', ['email' => $email, 'password' => 'wrong'])
+                ->assertStatus(422);
+        }
+
+        $this->withServerVariables(['REMOTE_ADDR' => '203.0.113.10'])
+            ->postJson('/api/auth/login', ['email' => $email, 'password' => 'password'])
+            ->assertStatus(200)
+            ->assertJsonPath('success', true);
+    }
+
+    public function test_pin_lockout_uses_source_ip_and_returns_retry_after(): void
+    {
+        $email = 'pin-lock@example.com';
+        $failKey = $this->lockoutKey('login_pin_fail', $email);
+        $this->makeUser([
+            'email' => $email,
+            'pin_enabled' => true,
+            'pin_code_hash' => Hash::make('125812'),
+        ]);
+
+        for ($i = 0; $i < 10; $i++) {
+            RateLimiter::hit($failKey, 15 * 60);
+        }
+
+        $response = $this->postJson('/api/auth/login-pin', ['email' => $email, 'pin' => '000000']);
+
+        $response->assertStatus(429);
+        $response->assertJsonPath('error_code', 'ACCOUNT_LOCKED');
+        $this->assertGreaterThan(0, (int) $response->headers->get('Retry-After'));
     }
 
     // --- AC-3: Failed login audit logging ---
@@ -167,7 +213,7 @@ class AuthControllerTest extends TestCase
     public function test_locked_account_logs_login_failed_audit_entry(): void
     {
         $email = 'logme@example.com';
-        $failKey = 'login_fail:'.$email;
+        $failKey = $this->lockoutKey('login_fail', $email);
         $this->makeUser(['email' => $email]);
 
         for ($i = 0; $i < 10; $i++) {
@@ -190,7 +236,7 @@ class AuthControllerTest extends TestCase
     public function test_inactive_account_does_not_increment_lockout_counter(): void
     {
         $email = 'inactive@example.com';
-        $failKey = 'login_fail:'.$email;
+        $failKey = $this->lockoutKey('login_fail', $email);
         $this->makeUser(['email' => $email, 'is_active' => false]);
 
         $this->assertEquals(0, RateLimiter::attempts($failKey));
@@ -205,7 +251,7 @@ class AuthControllerTest extends TestCase
     public function test_successful_login_clears_failure_counter(): void
     {
         $email = 'clearme@example.com';
-        $failKey = 'login_fail:'.$email;
+        $failKey = $this->lockoutKey('login_fail', $email);
         $this->makeUser(['email' => $email]);
 
         for ($i = 0; $i < 5; $i++) {
@@ -217,6 +263,21 @@ class AuthControllerTest extends TestCase
         $this->postJson('/api/auth/login', ['email' => $email, 'password' => 'password']);
 
         $this->assertEquals(0, RateLimiter::attempts($failKey), 'Failure counter must be cleared after successful login');
+    }
+
+    public function test_successful_login_updates_last_login_without_user_model_events(): void
+    {
+        Event::fake();
+        $user = $this->makeUser(['last_login_at' => null]);
+
+        $response = $this->postJson('/api/auth/login', [
+            'email' => $user->email,
+            'password' => 'password',
+        ]);
+
+        $response->assertStatus(200);
+        $this->assertNotNull($user->fresh()->last_login_at);
+        Event::assertNotDispatched('eloquent.updated: '.User::class);
     }
 
     // --- AC-5: /me response has bilingual bank fields ---
@@ -664,5 +725,13 @@ class AuthControllerTest extends TestCase
 
         $this->assertSame(3, $mail->tries);
         $this->assertSame([60, 300], $mail->backoff);
+    }
+
+    public function test_mfa_otp_send_requires_resolved_user_not_email_string(): void
+    {
+        $method = new \ReflectionMethod(MfaService::class, 'sendOtpEmail');
+        $recipientType = $method->getParameters()[0]->getType();
+
+        $this->assertSame(User::class, $recipientType?->getName());
     }
 }

@@ -53,16 +53,8 @@ class MfaService
         return $code;
     }
 
-    public function sendOtpEmail(User|string $recipient, string $otp, int $ttlMinutes): void
+    public function sendOtpEmail(User $user, string $otp, int $ttlMinutes): void
     {
-        $user = $recipient instanceof User
-            ? $recipient
-            : User::query()->where('email', strtolower($recipient))->where('is_active', true)->first();
-
-        if (! $user) {
-            return;
-        }
-
         $issuanceId = $this->getIssuanceId($user->email);
         if ($issuanceId === null) {
             return;
@@ -85,18 +77,15 @@ class MfaService
 
     public function getChallengeId(string $email): ?string
     {
-        $challenge = Cache::get($this->cacheKey($email));
-
-        if (! is_array($challenge)) {
-            return null;
-        }
-
-        $challengeId = $challenge['challenge_id'] ?? null;
-
-        return is_string($challengeId) && $challengeId !== '' ? $challengeId : null;
+        return $this->getCachedChallengeField($email, 'challenge_id');
     }
 
     public function getIssuanceId(string $email): ?string
+    {
+        return $this->getCachedChallengeField($email, 'issuance_id');
+    }
+
+    private function getCachedChallengeField(string $email, string $field): ?string
     {
         $challenge = Cache::get($this->cacheKey($email));
 
@@ -104,9 +93,9 @@ class MfaService
             return null;
         }
 
-        $issuanceId = $challenge['issuance_id'] ?? null;
+        $value = $challenge[$field] ?? null;
 
-        return is_string($issuanceId) && $issuanceId !== '' ? $issuanceId : null;
+        return is_string($value) && $value !== '' ? $value : null;
     }
 
     /**
