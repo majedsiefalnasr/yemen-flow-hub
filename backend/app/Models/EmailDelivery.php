@@ -20,15 +20,7 @@ class EmailDelivery extends Model
         'recipient_user_id',
         'recipient_email',
         'channel',
-        'status',
-        'provider_message_id',
-        'rendered_subject',
-        'rendered_body',
-        'template_version_id',
-        'error',
         'queued_at',
-        'dispatched_at',
-        'sent_at',
     ];
 
     protected function casts(): array
@@ -37,6 +29,7 @@ class EmailDelivery extends Model
             'status' => EmailDeliveryStatus::class,
             'queued_at' => 'datetime',
             'dispatched_at' => 'datetime',
+            'failed_at' => 'datetime',
             'sent_at' => 'datetime',
         ];
     }

@@ -4,6 +4,7 @@ namespace Tests\Feature\Notifications;
 
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
@@ -39,6 +40,7 @@ class EmailDeliveriesSchemaTest extends TestCase
             'template_version_id',
             'error',
             'queued_at',
+            'failed_at',
             'sent_at',
             'created_at',
             'updated_at',
@@ -59,7 +61,7 @@ class EmailDeliveriesSchemaTest extends TestCase
     public function test_unique_index_on_event_id_recipient_user_id_channel(): void
     {
         $now = now();
-        \DB::table('email_deliveries')->insert([
+        DB::table('email_deliveries')->insert([
             'notification_type' => 'REQUEST_APPROVED',
             'event_id' => '42:BANK_APPROVED',
             'recipient_user_id' => 1,
@@ -73,7 +75,7 @@ class EmailDeliveriesSchemaTest extends TestCase
 
         $this->expectException(QueryException::class);
 
-        \DB::table('email_deliveries')->insert([
+        DB::table('email_deliveries')->insert([
             'notification_type' => 'REQUEST_APPROVED',
             'event_id' => '42:BANK_APPROVED',
             'recipient_user_id' => 1,

@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Schema;
  * can atomically reserve a row before transport. A retry after a mid-send worker
  * crash finds dispatched_at already set and stops, preventing a duplicate send
  * (notably duplicate OTP/reset emails). Status stays `queued` until the job marks
- * it sent/failed, so the EmailDeliveryStatus enum (queued/sent/failed/bounced)
+ * it sent/failed, so the EmailDeliveryStatus enum (queued/sent/failed)
  * is unchanged.
  */
 return new class extends Migration

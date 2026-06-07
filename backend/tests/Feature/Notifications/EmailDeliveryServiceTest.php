@@ -2,7 +2,13 @@
 
 namespace Tests\Feature\Notifications;
 
+use App\Enums\EmailDeliveryStatus;
+use App\Enums\NotificationType;
+use App\Models\EmailDelivery;
+use App\Models\NotificationTemplate;
+use App\Services\Notifications\EmailDeliveryService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 /**
@@ -22,15 +28,14 @@ class EmailDeliveryServiceTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function service()
+    private function service(): EmailDeliveryService
     {
-        return app('App\\Services\\Notifications\\EmailDeliveryService');
+        return app(EmailDeliveryService::class);
     }
 
-    private function workflowType()
+    private function workflowType(): NotificationType
     {
-        // REQUEST_APPROVED: channels [database, mail], persist_body full.
-        return constant('App\\Enums\\NotificationType::REQUEST_APPROVED');
+        return NotificationType::REQUEST_APPROVED;
     }
 
     /** T9 — reserve() creates a queued row with queued_at set (AC3.10). */
@@ -88,7 +93,7 @@ class EmailDeliveryServiceTest extends TestCase
     public function test_reserve_is_insert_first_and_swallows_unique_violation(): void
     {
         $now = now();
-        \DB::table('email_deliveries')->insert([
+        DB::table('email_deliveries')->insert([
             'notification_type' => 'REQUEST_APPROVED',
             'event_id' => '42:BANK_APPROVED',
             'recipient_user_id' => 1,
@@ -140,5 +145,36 @@ class EmailDeliveryServiceTest extends TestCase
             'status' => 'failed',
             'error' => 'SMTP connection refused',
         ]);
+        $this->assertNotNull($failed->fresh()->failed_at);
+    }
+
+    public function test_service_owned_delivery_columns_are_not_mass_assignable(): void
+    {
+        $template = NotificationTemplate::query()->create([
+            'notification_type' => 'REQUEST_APPROVED',
+        ]);
+        $version = $template->versions()->create([
+            'subject' => 'Subject',
+            'body' => 'Body',
+            'is_active_version' => true,
+        ]);
+
+        $delivery = EmailDelivery::query()->create([
+            'notification_type' => 'REQUEST_APPROVED',
+            'event_id' => 'mass-assignment-probe',
+            'recipient_user_id' => 1,
+            'recipient_email' => 'creator@example.com',
+            'channel' => 'mail',
+            'status' => EmailDeliveryStatus::SENT,
+            'provider_message_id' => 'provider-from-request',
+            'template_version_id' => $version->id,
+            'queued_at' => now(),
+        ]);
+
+        $stored = $delivery->fresh();
+
+        $this->assertSame(EmailDeliveryStatus::QUEUED, $stored->status);
+        $this->assertNull($stored->provider_message_id);
+        $this->assertNull($stored->template_version_id);
     }
 }

@@ -6,7 +6,6 @@ use App\Enums\AuditAction;
 use App\Enums\NotificationType;
 use App\Enums\UserRole;
 use App\Jobs\SendEmailDelivery;
-use App\Mail\MfaOtpMail;
 use App\Models\AuditLog;
 use App\Models\Bank;
 use App\Models\User;
@@ -719,14 +718,6 @@ class AuthControllerTest extends TestCase
             'notification_type' => NotificationType::MFA_OTP->value,
         ]);
         Queue::assertNothingPushed();
-    }
-
-    public function test_mfa_otp_mail_has_correct_retry_config(): void
-    {
-        $mail = new MfaOtpMail('user@example.com', '123456', 10);
-
-        $this->assertSame(3, $mail->tries);
-        $this->assertSame([60, 300], $mail->backoff);
     }
 
     public function test_mfa_otp_send_requires_resolved_user_not_email_string(): void

@@ -51,20 +51,25 @@ class EmailDeliveryService
         string $recipientEmail,
         string $channel,
     ): ?EmailDelivery {
-        if ($recipientUserId === null && $this->requiresResolvedUserId($type)) {
+        if ($recipientUserId === null && $this->isRedacted($type)) {
             return null;
         }
 
         try {
-            return EmailDelivery::query()->create([
+            $delivery = EmailDelivery::query()->create([
                 'notification_type' => $type->value,
                 'event_id' => $eventId,
                 'recipient_user_id' => $recipientUserId,
                 'recipient_email' => $recipientEmail,
                 'channel' => $channel,
-                'status' => EmailDeliveryStatus::QUEUED,
                 'queued_at' => now(),
             ]);
+
+            $delivery->forceFill([
+                'status' => EmailDeliveryStatus::QUEUED,
+            ])->save();
+
+            return $delivery;
         } catch (QueryException $e) {
             if ($this->isUniqueViolation($e)) {
                 return null;
@@ -108,7 +113,7 @@ class EmailDeliveryService
     {
         // Terminal-state guard: never overwrite a row that already reached a
         // terminal status (a late retry/webhook must not flip sent → failed etc.).
-        if ($this->isTerminal($delivery)) {
+        if ($delivery->status->isTerminal()) {
             return $delivery;
         }
 
@@ -132,6 +137,7 @@ class EmailDeliveryService
         $delivery->forceFill([
             'status' => EmailDeliveryStatus::FAILED,
             'error' => $error,
+            'failed_at' => now(),
         ])->save();
 
         return $delivery;
@@ -169,21 +175,6 @@ class EmailDeliveryService
     public function redact(string $value): string
     {
         return $this->maskSecrets($value);
-    }
-
-    private function isTerminal(EmailDelivery $delivery): bool
-    {
-        return in_array(
-            $delivery->status,
-            [EmailDeliveryStatus::SENT, EmailDeliveryStatus::FAILED, EmailDeliveryStatus::BOUNCED],
-            true,
-        );
-    }
-
-    /** Redacted (auth/security) types require a resolved recipient_user_id to dedup safely. */
-    private function requiresResolvedUserId(NotificationType $type): bool
-    {
-        return $this->isRedacted($type);
     }
 
     private function isRedacted(NotificationType $type): bool
@@ -263,7 +254,7 @@ class EmailDeliveryService
         $driverMessage = (string) ($e->errorInfo[2] ?? $e->getMessage());
 
         return $driverCode === self::MYSQL_DUPLICATE_ENTRY
-            || stripos($driverMessage, 'UNIQUE constraint failed') !== false
-            || stripos($driverMessage, 'Duplicate entry') !== false;
+            || str_contains($driverMessage, 'UNIQUE constraint failed')
+            || str_contains($driverMessage, 'Duplicate entry');
     }
 }

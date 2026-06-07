@@ -23,6 +23,7 @@ use App\Services\Notifications\TemplateRenderer;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Queue;
@@ -189,11 +190,13 @@ class WorkflowEmailDispatchTest extends TestCase
             'recipient_user_id' => $this->dataEntryUser->id,
             'recipient_email' => $this->dataEntryUser->email,
             'channel' => 'mail',
+            'queued_at' => now(),
+        ]);
+        $delivery->forceFill([
             'status' => EmailDeliveryStatus::QUEUED,
             'rendered_subject' => 'Subject',
             'rendered_body' => '<p>Body</p>',
-            'queued_at' => now(),
-        ]);
+        ])->save();
 
         app(SendEmailDelivery::class, ['deliveryId' => $delivery->id])
             ->handle(app(EmailDeliveryService::class));
@@ -209,11 +212,13 @@ class WorkflowEmailDispatchTest extends TestCase
             'recipient_user_id' => $this->dataEntryUser->id,
             'recipient_email' => $this->dataEntryUser->email,
             'channel' => 'mail',
+            'queued_at' => now(),
+        ]);
+        $failed->forceFill([
             'status' => EmailDeliveryStatus::QUEUED,
             'rendered_subject' => 'Subject',
             'rendered_body' => '<p>Body</p>',
-            'queued_at' => now(),
-        ]);
+        ])->save();
 
         app(SendEmailDelivery::class, ['deliveryId' => $failed->id])->failed(new \RuntimeException('smtp down'));
 
@@ -238,12 +243,14 @@ class WorkflowEmailDispatchTest extends TestCase
             'recipient_user_id' => $this->dataEntryUser->id,
             'recipient_email' => $this->dataEntryUser->email,
             'channel' => 'mail',
+            'queued_at' => now(),
+        ]);
+        $delivery->forceFill([
             'status' => EmailDeliveryStatus::SENT,
             'rendered_subject' => 'Subject',
             'rendered_body' => '<p>Body</p>',
-            'queued_at' => now(),
             'sent_at' => now(),
-        ]);
+        ])->save();
 
         app(SendEmailDelivery::class, ['deliveryId' => $delivery->id])
             ->handle(app(EmailDeliveryService::class));
@@ -252,6 +259,60 @@ class WorkflowEmailDispatchTest extends TestCase
             'id' => $delivery->id,
             'status' => EmailDeliveryStatus::SENT->value,
         ]);
+    }
+
+    public function test_partition_recipient_roles_separates_bank_global_cby_and_org_scoped_cby_roles(): void
+    {
+        [$bankRoles, $globalCbyRoles, $orgScopedCbyRoles] = $this->partitionRecipientRoles([
+            UserRole::DATA_ENTRY,
+            UserRole::BANK_REVIEWER,
+            UserRole::SUPPORT_COMMITTEE,
+            UserRole::EXECUTIVE_MEMBER,
+            UserRole::COMMITTEE_DIRECTOR,
+            UserRole::CBY_ADMIN,
+        ]);
+
+        $this->assertSame([
+            UserRole::DATA_ENTRY->value,
+            UserRole::BANK_REVIEWER->value,
+        ], $bankRoles);
+        $this->assertSame([
+            UserRole::SUPPORT_COMMITTEE->value,
+            UserRole::EXECUTIVE_MEMBER->value,
+            UserRole::COMMITTEE_DIRECTOR->value,
+            UserRole::CBY_ADMIN->value,
+        ], $globalCbyRoles);
+        $this->assertSame([], $orgScopedCbyRoles);
+    }
+
+    public function test_unclassified_recipient_role_is_logged_instead_of_silently_dropped(): void
+    {
+        Log::shouldReceive('warning')
+            ->once()
+            ->with('Unclassified notification recipient role skipped.', \Mockery::on(
+                static fn (array $context): bool => ($context['role'] ?? null) === 'FUTURE_ROLE'
+            ));
+
+        $role = new class
+        {
+            public string $value = 'FUTURE_ROLE';
+
+            public function isBankRole(): bool
+            {
+                return false;
+            }
+
+            public function isCbyRole(): bool
+            {
+                return false;
+            }
+        };
+
+        [$bankRoles, $globalCbyRoles, $orgScopedCbyRoles] = $this->partitionRecipientRoles([$role]);
+
+        $this->assertSame([], $bankRoles);
+        $this->assertSame([], $globalCbyRoles);
+        $this->assertSame([], $orgScopedCbyRoles);
     }
 
     private function makeUser(UserRole $role, ?Bank $bank = null, array $preferences = [], ?string $email = null): User
@@ -303,5 +364,17 @@ class WorkflowEmailDispatchTest extends TestCase
 
         $event = new RequestTransitioned($request->fresh(), 'test_action', $actor, $reason);
         app(SendWorkflowNotifications::class)->handle($event);
+    }
+
+    /**
+     * @param  array<int, mixed>  $roles
+     * @return array{0: list<string>, 1: list<string>, 2: list<string>}
+     */
+    private function partitionRecipientRoles(array $roles): array
+    {
+        $method = new \ReflectionMethod(SendEmailNotification::class, 'partitionRecipientRoles');
+        $method->setAccessible(true);
+
+        return $method->invoke(app(SendEmailNotification::class), $roles);
     }
 }

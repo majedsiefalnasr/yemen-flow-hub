@@ -243,7 +243,7 @@ class WorkflowEmailNotificationsTest extends TestCase
     }
 
     // -----------------------------------------------------------------------
-    // RequestRejectedMail (SUPPORT_REJECTED)
+    // REQUEST_REJECTED outbox email (SUPPORT_REJECTED)
     // -----------------------------------------------------------------------
 
     public function test_request_rejected_email_queued_for_creator_with_email_enabled(): void
@@ -270,7 +270,7 @@ class WorkflowEmailNotificationsTest extends TestCase
     }
 
     // -----------------------------------------------------------------------
-    // RequestReturnedMail
+    // REQUEST_RETURNED outbox email
     // -----------------------------------------------------------------------
 
     public function test_request_returned_email_queued_when_email_notifications_enabled(): void
@@ -306,7 +306,7 @@ class WorkflowEmailNotificationsTest extends TestCase
     }
 
     // -----------------------------------------------------------------------
-    // VotingOpenedMail
+    // VOTING_OPENED outbox email
     // -----------------------------------------------------------------------
 
     public function test_voting_opened_email_queued_for_executive_with_email_enabled(): void
