@@ -20,6 +20,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
+use PHPUnit\Framework\Attributes\Group;
 use Tests\TestCase;
 
 class AuthControllerTest extends TestCase
@@ -423,6 +424,7 @@ class AuthControllerTest extends TestCase
 
     // --- MFA: login returns requires_mfa when MFA enabled ---
 
+    #[Group('baseline-red')]
     public function test_login_returns_requires_mfa_when_mfa_enabled(): void
     {
         config(['mfa.enabled' => true]);

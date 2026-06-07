@@ -84,3 +84,21 @@ Before modifying any service/model/policy:
 - `codebase_symbol` → find the class/method
 - `codebase_flow` → trace callers
 - `codebase_impact` → assess change impact
+
+## Verification Ladder
+Before editing, check `git -c core.fsmonitor=false status --short` from `backend/` and report existing dirty files. Do not modify dirty files unless directly in scope.
+
+Default verification is focused:
+- Run the smallest relevant PHPUnit file or `--filter` for the touched behavior.
+- Run Pint only for touched PHP files where possible.
+- Do not run full `php artisan test` by default.
+- Full suites are required only for release checks, broad refactors, security-critical changes, or explicit user requests.
+- If the full suite is known red, report the known baseline and do not treat unrelated failures as task failures.
+
+Focused commands:
+```bash
+php artisan test tests/Feature/Auth/PasswordRecoveryTest.php
+php artisan test --filter=PasswordRecoveryTest
+php artisan test --filter='password reset with valid otp'
+vendor/bin/pint app/Services/Workflow/WorkflowService.php --test
+```

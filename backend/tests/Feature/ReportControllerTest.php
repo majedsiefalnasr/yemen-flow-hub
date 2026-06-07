@@ -13,6 +13,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
+use PHPUnit\Framework\Attributes\Group;
 use Tests\TestCase;
 
 class ReportControllerTest extends TestCase
@@ -653,6 +654,7 @@ class ReportControllerTest extends TestCase
         ]);
     }
 
+    #[Group('baseline-red')]
     public function test_workflow_export_pdf_returns_pdf_content_type(): void
     {
         $response = $this->actingAs($this->admin)
@@ -702,6 +704,7 @@ class ReportControllerTest extends TestCase
         ]);
     }
 
+    #[Group('baseline-red')]
     public function test_bank_export_pdf_returns_pdf_content_type(): void
     {
         $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
