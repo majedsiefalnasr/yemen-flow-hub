@@ -56,7 +56,6 @@ const DOCUMENT_FIXTURE = {
   size_bytes: 204800,
   checksum: 'abc123',
   uploaded_at: '2026-05-15T00:00:00.000000Z',
-  download_url: 'http://localhost/api/documents/10/download',
 }
 
 describe('useRequests — performWorkflowAction', () => {

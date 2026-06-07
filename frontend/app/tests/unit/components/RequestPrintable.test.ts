@@ -77,7 +77,6 @@ function makeDocuments(): RequestDocument[] {
       uploaded_by: 1,
       uploaded_by_name: 'أحمد محمد',
       uploaded_at: '2026-05-18T09:00:00Z',
-      download_url: '/api/documents/1/download',
     },
     {
       id: 2,
@@ -89,7 +88,6 @@ function makeDocuments(): RequestDocument[] {
       uploaded_by: 2,
       uploaded_by_name: 'سارة',
       uploaded_at: '2026-05-19T11:00:00Z',
-      download_url: '/api/documents/2/download',
     },
   ]
 }

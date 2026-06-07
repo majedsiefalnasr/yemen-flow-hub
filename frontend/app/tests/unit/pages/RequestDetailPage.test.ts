@@ -170,7 +170,6 @@ describe('RequestsStore — detail page integration (loadRequest + loadDocuments
         uploaded_by: 1,
         uploaded_by_name: 'Test User',
         uploaded_at: '2026-05-15T00:00:00.000000Z',
-        download_url: 'http://localhost/api/documents/10/download',
       },
     ])
 
@@ -196,11 +195,9 @@ describe('RequestDocument type', () => {
       size_bytes: 1024,
       checksum: 'abc123',
       uploaded_at: '2026-05-15T00:00:00.000000Z',
-      download_url: 'http://localhost/api/documents/1/download',
     }
     expect(doc.id).toBe(1)
     expect(doc.original_filename).toBe('invoice.pdf')
     expect(doc.size_bytes).toBe(1024)
-    expect(doc.download_url).toContain('/api/documents/')
   })
 })

@@ -85,7 +85,6 @@ function makeDoc(overrides: Partial<RequestDocument> = {}): RequestDocument {
     uploaded_by: 1,
     uploaded_by_name: 'علي',
     uploaded_at: '2026-05-19T10:00:00.000Z',
-    download_url: '/api/documents/1/download',
     ...overrides,
   }
 }

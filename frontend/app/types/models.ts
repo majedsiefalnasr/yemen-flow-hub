@@ -203,7 +203,6 @@ export interface CustomsDeclarationSummary {
   signed_fx_doc_uploaded_at?: string | null
   signed_fx_doc_uploaded_by?: number | null
   has_signed_fx_doc?: boolean
-  download_url: string
 }
 
 export interface CustomsDeclaration {
@@ -219,7 +218,6 @@ export interface CustomsDeclaration {
   has_signed_fx_doc?: boolean
   request: { id: number; reference_number: string; bank_name: string | null } | null
   metadata: Record<string, any> | null
-  download_url: string
   created_at: string
 }
 
@@ -235,7 +233,6 @@ export interface RequestDocument {
   uploaded_by: number
   uploaded_by_name: string | null
   uploaded_at: string | null
-  download_url: string
 }
 
 /** Fields sent to POST /api/requests and PUT /api/requests/{id} */

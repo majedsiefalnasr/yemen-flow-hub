@@ -28,7 +28,6 @@ const DECLARATION_FIXTURE = {
     support_approved_at: '2026-05-12T10:00:00.000000Z',
     executive_decided_at: '2026-05-14T10:00:00.000000Z',
   },
-  download_url: 'http://localhost/api/customs/7/download',
   created_at: '2026-05-18T10:00:00.000000Z',
 }
 

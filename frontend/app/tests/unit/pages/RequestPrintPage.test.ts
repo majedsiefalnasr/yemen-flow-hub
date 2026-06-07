@@ -93,7 +93,6 @@ function makeRequest(overrides: Partial<ImportRequest> = {}): ImportRequest {
         uploaded_by: 1,
         uploaded_by_name: 'محمد علي',
         uploaded_at: '2026-05-18T09:00:00Z',
-        download_url: '/api/documents/1/download',
       },
     ],
     ...overrides,

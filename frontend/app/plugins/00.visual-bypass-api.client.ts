@@ -117,7 +117,6 @@ function mockForPath(path: string, method: string, role: UserRole) {
       issued_at: new Date().toISOString(),
       request: null,
       metadata: null,
-      download_url: '#',
       created_at: new Date().toISOString(),
     })
 

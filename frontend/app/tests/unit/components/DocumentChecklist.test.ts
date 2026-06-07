@@ -26,7 +26,6 @@ function makeDoc(overrides: Partial<RequestDocument> = {}): RequestDocument {
     uploaded_by: 1,
     uploaded_by_name: 'علي أحمد',
     uploaded_at: '2026-05-17T08:00:00.000Z',
-    download_url: 'http://localhost/api/documents/1/download',
     ...overrides,
   }
 }
@@ -40,7 +39,6 @@ function makeCustoms(
     issued_at: '2026-05-17T10:00:00.000Z',
     issued_by: 2,
     issuer: { id: 2, name: 'مدير اللجنة' },
-    download_url: 'http://localhost/api/customs/99/download',
     ...overrides,
   }
 }

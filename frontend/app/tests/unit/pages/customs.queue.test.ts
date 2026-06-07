@@ -90,7 +90,6 @@ describe('Customs queue page — generateCustomsDeclaration', () => {
     issued_at: '2026-05-18T10:00:00.000Z',
     request: { id: 10, reference_number: 'YFH-2026-000010', bank_name: 'بنك اليمن' },
     metadata: {},
-    download_url: 'http://localhost/api/customs/5/download',
     created_at: '2026-05-18T10:00:00.000Z',
   }
 

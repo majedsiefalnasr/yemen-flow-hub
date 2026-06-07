@@ -60,7 +60,6 @@ function makeDoc(
     uploaded_by: 5,
     uploaded_by_name: 'محمد أحمد',
     uploaded_at: '2026-05-16T10:00:00.000000Z',
-    download_url: '/download/swift-doc.pdf',
     ...overrides,
   } as RequestDocument
 }

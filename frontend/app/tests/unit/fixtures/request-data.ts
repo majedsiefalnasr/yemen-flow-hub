@@ -72,7 +72,6 @@ export function makeRequestDocument(overrides: Partial<RequestDocument> = {}): R
     uploaded_by: 1,
     uploaded_by_name: 'Test User',
     uploaded_at: '2026-05-15T00:00:00.000000Z',
-    download_url: 'http://localhost/api/documents/10/download',
     ...overrides,
   }
 }
