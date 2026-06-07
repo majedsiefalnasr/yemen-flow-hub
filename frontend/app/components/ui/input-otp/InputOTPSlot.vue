@@ -2,19 +2,68 @@
 import type { HTMLAttributes } from 'vue'
 import { reactiveOmit } from '@vueuse/core'
 import { useForwardProps } from 'reka-ui'
-import { computed } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useVueOTPContext } from 'vue-input-otp'
 import { cn } from '@/lib/utils'
 
-const props = defineProps<{ index: number; class?: HTMLAttributes['class'] }>()
+const props = withDefaults(
+  defineProps<{
+    index: number
+    class?: HTMLAttributes['class']
+    mask?: boolean
+    maskCharacter?: string
+    revealDurationMs?: number
+  }>(),
+  {
+    mask: false,
+    maskCharacter: '*',
+    revealDurationMs: 300,
+  },
+)
 
-const delegatedProps = reactiveOmit(props, 'class')
+const delegatedProps = reactiveOmit(props, 'class', 'mask', 'maskCharacter', 'revealDurationMs')
 
 const forwarded = useForwardProps(delegatedProps)
 
 const context = useVueOTPContext()
 
 const slot = computed(() => context?.value.slots[props.index])
+const isRevealed = ref(false)
+let revealTimer: ReturnType<typeof setTimeout> | undefined
+
+function clearRevealTimer() {
+  if (revealTimer) {
+    clearTimeout(revealTimer)
+    revealTimer = undefined
+  }
+}
+
+watch(
+  () => slot.value?.char,
+  (char, previousChar) => {
+    clearRevealTimer()
+
+    if (!props.mask || !char) {
+      isRevealed.value = false
+      return
+    }
+
+    isRevealed.value = char !== previousChar
+    revealTimer = setTimeout(() => {
+      isRevealed.value = false
+      revealTimer = undefined
+    }, props.revealDurationMs)
+  },
+)
+
+const displayChar = computed(() => {
+  const char = slot.value?.char
+  if (!char) return ''
+  if (!props.mask || isRevealed.value) return char
+  return props.maskCharacter
+})
+
+onBeforeUnmount(clearRevealTimer)
 </script>
 
 <template>
@@ -29,7 +78,7 @@ const slot = computed(() => context?.value.slots[props.index])
       )
     "
   >
-    {{ slot?.char }}
+    {{ displayChar }}
     <div
       v-if="slot?.hasFakeCaret"
       class="pointer-events-none absolute inset-0 flex items-center justify-center"

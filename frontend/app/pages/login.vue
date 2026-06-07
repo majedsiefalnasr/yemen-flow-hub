@@ -35,6 +35,8 @@ import LoginSavedAccountCard from '@/components/auth/LoginSavedAccountCard.vue'
 
 definePageMeta({ layout: false, middleware: ['guest'] })
 
+const PIN_DIGIT_PATTERN = '^[0-9٠-٩۰-۹]+$'
+
 const orgStore = useOrgStore()
 orgStore.loadSettings()
 
@@ -638,6 +640,9 @@ watch(step, (newStep) => {
             <InputOTP
               v-model="pinValue"
               :maxlength="6"
+              :pattern="PIN_DIGIT_PATTERN"
+              inputmode="numeric"
+              autocomplete="current-password"
               :disabled="isPinLoading"
               @complete="handlePinSubmit"
             >
@@ -646,6 +651,7 @@ watch(step, (newStep) => {
                   v-for="i in 6"
                   :key="i"
                   :index="i - 1"
+                  mask
                   class="size-12 text-2xl font-bold"
                 />
               </InputOTPGroup>
@@ -967,6 +973,9 @@ watch(step, (newStep) => {
                   v-if="createPinStage === 'enter'"
                   v-model="newPin"
                   :maxlength="6"
+                  :pattern="PIN_DIGIT_PATTERN"
+                  inputmode="numeric"
+                  autocomplete="new-password"
                   :disabled="isCreatePinLoading"
                 >
                   <InputOTPGroup>
@@ -982,6 +991,9 @@ watch(step, (newStep) => {
                   v-else
                   v-model="newPinConfirm"
                   :maxlength="6"
+                  :pattern="PIN_DIGIT_PATTERN"
+                  inputmode="numeric"
+                  autocomplete="new-password"
                   :disabled="isCreatePinLoading"
                   @complete="handleCreatePinSubmit"
                 >
