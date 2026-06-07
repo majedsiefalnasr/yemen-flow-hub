@@ -1,9 +1,20 @@
 // @vitest-environment jsdom
+import { readFileSync } from 'node:fs'
 import { mount, flushPromises } from '@vue/test-utils'
 import { ref } from 'vue'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { UserRole } from '../../../types/enums'
 import settingsPage from '../../../pages/settings.vue'
+
+const ADMIN_SETTINGS_SOURCE = readFileSync(
+  new URL('../../../pages/admin/settings.vue', import.meta.url),
+  'utf8',
+)
+const ORGANIZATION_SOURCE = readFileSync(
+  new URL('../../../pages/organization.vue', import.meta.url),
+  'utf8',
+)
+const NATIONAL_COMMITTEE_AR = 'اللجنة الوطنية لتنظيم وتمويل الواردات'
 
 vi.stubGlobal('definePageMeta', vi.fn())
 vi.stubGlobal('useHead', vi.fn())
@@ -220,5 +231,18 @@ describe('settings.vue', () => {
     await flushPromises()
 
     expect(updateSmtpMock).toHaveBeenCalled()
+  })
+
+  it('uses the National Committee identity in platform info rows and organization placeholders', () => {
+    expect(ADMIN_SETTINGS_SOURCE).toContain(NATIONAL_COMMITTEE_AR)
+    expect(ADMIN_SETTINGS_SOURCE).not.toContain('Yemen Flow Hub')
+    expect(ADMIN_SETTINGS_SOURCE).not.toContain('البنك المركزي اليمني')
+
+    expect(ORGANIZATION_SOURCE).toContain(`placeholder="${NATIONAL_COMMITTEE_AR}"`)
+    expect(ORGANIZATION_SOURCE).toContain('اللجنة الوطنية')
+    expect(ORGANIZATION_SOURCE).not.toContain('placeholder="البنك المركزي اليمني"')
+    expect(ORGANIZATION_SOURCE).not.toContain(
+      'البيانات الرسمية للبنك المسجلة لدى البنك المركزي اليمني',
+    )
   })
 })

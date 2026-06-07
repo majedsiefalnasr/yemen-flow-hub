@@ -594,11 +594,11 @@ onMounted(async () => {
             <div class="info-grid">
               <div class="info-row">
                 <span class="info-label">اسم المنصة</span>
-                <span class="info-value">Yemen Flow Hub</span>
+                <span class="info-value">اللجنة الوطنية لتنظيم وتمويل الواردات</span>
               </div>
               <div class="info-row">
                 <span class="info-label">الجهة</span>
-                <span class="info-value">البنك المركزي اليمني</span>
+                <span class="info-value">اللجنة الوطنية لتنظيم وتمويل الواردات</span>
               </div>
               <div class="info-row">
                 <span class="info-label">المنطقة الزمنية</span>

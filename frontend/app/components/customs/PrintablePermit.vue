@@ -41,7 +41,7 @@ defineProps<{
     >
       <div>
         <div class="text-xs">الجمهورية اليمنية</div>
-        <div class="text-lg font-bold">البنك المركزي اليمني</div>
+        <div class="text-lg font-bold">اللجنة الوطنية لتنظيم وتمويل الواردات</div>
         <div class="text-xs">إدارة تنظيم وتمويل الواردات</div>
       </div>
       <div class="text-center">
@@ -346,7 +346,7 @@ defineProps<{
       </div>
       <div class="text-center">
         <div class="mt-12 border-t border-gray-900 pt-2 text-xs print:border-black">
-          اعتماد البنك المركزي
+          اعتماد اللجنة الوطنية
         </div>
       </div>
     </section>
@@ -359,7 +359,7 @@ defineProps<{
         )
       "
     >
-      هذه الوثيقة صادرة إلكترونياً من منصة إدارة الواردات في البنك المركزي اليمني. للتحقق من الصحة،
+      هذه الوثيقة صادرة إلكترونياً من منصة اللجنة الوطنية لتنظيم وتمويل الواردات. للتحقق من الصحة،
       يرجى مراجعة سجل المنصة باستخدام رقم الوثيقة.
     </footer>
   </div>

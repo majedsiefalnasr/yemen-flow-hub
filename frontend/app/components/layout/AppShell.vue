@@ -44,7 +44,7 @@ watch(
 
         <!-- Footer -->
         <!-- <footer class="flex flex-wrap items-center justify-between gap-2 border-t text-[10px] text-muted-foreground sm:px-6 sm:text-xs">
-          <div>© 2025 البنك المركزي اليمني</div>
+          <div>© 2025 اللجنة الوطنية لتنظيم وتمويل الواردات</div>
           <div class="flex shrink-0 items-center gap-2 text-[var(--color-text-warning)] dark:text-amber-400">
             <AlertTriangle class="h-3.5 w-3.5" />
             بيئة عرض توضيحي

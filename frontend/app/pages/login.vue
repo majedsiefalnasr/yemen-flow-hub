@@ -444,7 +444,10 @@ async function handleSaveAccount(save: boolean) {
         name: auth.user.name,
         email: auth.user.email,
         role: auth.user.role,
-        bankName: auth.user.bank_name_ar ?? auth.user.bank_name_en ?? 'البنك المركزي اليمني',
+        bankName:
+          auth.user.bank_name_ar ??
+          auth.user.bank_name_en ??
+          'اللجنة الوطنية لتنظيم وتمويل الواردات',
         trustedAt: new Date().toISOString(),
         deviceInfo: getDeviceInfo(),
         avatarVariant: auth.user.avatar_variant ?? null,
@@ -1262,7 +1265,7 @@ watch(step, (newStep) => {
         <!-- Footer -->
         <div class="login-footer">
           <Building2 class="size-3.5 shrink-0" aria-hidden="true" />
-          البنك المركزي اليمني، {{ orgStore.platformName }} v3.0
+          {{ orgStore.authority }}، {{ orgStore.platformName }} v3.0
         </div>
       </div>
     </div>
@@ -1274,10 +1277,10 @@ watch(step, (newStep) => {
           <div v-if="orgStore.brandLogoDataUrl" class="hero-monogram-logo">
             <img :src="orgStore.brandLogoDataUrl" alt="Logo" class="h-full w-full object-contain" />
           </div>
-          <div v-else class="hero-monogram">ب.م</div>
+          <div v-else class="hero-monogram">ل.و</div>
           <div>
             <p class="hero-brand-ar">{{ orgStore.authority }}</p>
-            <p class="hero-brand-en">Central Bank of Yemen</p>
+            <p class="hero-brand-en">National Committee for Import Regulation and Financing</p>
           </div>
         </div>
       </div>

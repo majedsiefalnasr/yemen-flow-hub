@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 import type { AuthUser } from '../../../types/models'
@@ -12,6 +13,10 @@ vi.stubGlobal('useRuntimeConfig', () => ({
 vi.stubGlobal('navigateTo', vi.fn())
 
 const { useAuthStore } = await import('../../../stores/auth.store')
+const LOGIN_PAGE_SOURCE = readFileSync(new URL('../../../pages/login.vue', import.meta.url), 'utf8')
+
+const NATIONAL_COMMITTEE_AR = 'اللجنة الوطنية لتنظيم وتمويل الواردات'
+const NATIONAL_COMMITTEE_EN = 'National Committee for Import Regulation and Financing'
 
 const DEMO_USER: AuthUser = {
   id: 1,
@@ -204,5 +209,12 @@ describe('Login page — layout logic', () => {
 
   it('OTP heading parity uses "رمز التحقق (OTP)" text', () => {
     expect('رمز التحقق (OTP)').toContain('OTP')
+  })
+
+  it('uses the National Committee identity in the hero brand and saved-account fallback', () => {
+    expect(LOGIN_PAGE_SOURCE).toContain(NATIONAL_COMMITTEE_AR)
+    expect(LOGIN_PAGE_SOURCE).toContain(NATIONAL_COMMITTEE_EN)
+    expect(LOGIN_PAGE_SOURCE).not.toContain('Central Bank of Yemen')
+    expect(LOGIN_PAGE_SOURCE).not.toContain("'البنك المركزي اليمني'")
   })
 })

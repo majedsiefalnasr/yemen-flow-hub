@@ -34,7 +34,7 @@ const ROLE_SUBTITLES: Record<UserRole, string> = {
   [UserRole.SUPPORT_COMMITTEE]: 'عضو لجنة المساندة',
   [UserRole.EXECUTIVE_MEMBER]: 'عضو اللجنة التنفيذية',
   [UserRole.COMMITTEE_DIRECTOR]: 'مدير اللجنة التنفيذية',
-  [UserRole.CBY_ADMIN]: 'مسؤول البنك المركزي اليمني',
+  [UserRole.CBY_ADMIN]: 'مسؤول اللجنة الوطنية',
 }
 
 const roleSubtitle = computed(() =>

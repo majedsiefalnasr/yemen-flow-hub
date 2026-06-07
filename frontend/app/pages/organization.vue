@@ -556,12 +556,15 @@ async function saveBankSecurity() {
                 <FieldLabel>اسم المنصة</FieldLabel>
                 <Input
                   v-model="generalSettings.platformName"
-                  placeholder="منصة إدارة وتمويل الواردات"
+                  placeholder="اللجنة الوطنية لتنظيم وتمويل الواردات"
                 />
               </FieldGroup>
               <FieldGroup>
                 <FieldLabel>الجهة المشغّلة</FieldLabel>
-                <Input v-model="generalSettings.authority" placeholder="البنك المركزي اليمني" />
+                <Input
+                  v-model="generalSettings.authority"
+                  placeholder="اللجنة الوطنية لتنظيم وتمويل الواردات"
+                />
               </FieldGroup>
               <FieldGroup>
                 <FieldLabel>اللغة الافتراضية للنظام</FieldLabel>
@@ -980,7 +983,7 @@ async function saveBankSecurity() {
                 معلومات البنك
               </h3>
               <p class="text-muted-foreground text-sm">
-                البيانات الرسمية للبنك المسجلة لدى البنك المركزي اليمني
+                البيانات الرسمية للبنك المسجلة لدى اللجنة الوطنية لتنظيم وتمويل الواردات
               </p>
             </div>
             <Separator />

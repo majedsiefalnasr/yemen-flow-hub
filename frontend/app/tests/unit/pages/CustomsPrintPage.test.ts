@@ -1,6 +1,16 @@
+import { readFileSync } from 'node:fs'
 import { describe, it, expect } from 'vitest'
 
 // Customs print page logic tests — pure functions extracted from print.vue
+const PRINTABLE_PERMIT_SOURCE = readFileSync(
+  new URL('../../../components/customs/PrintablePermit.vue', import.meta.url),
+  'utf8',
+)
+const CUSTOMS_PREVIEW_SOURCE = readFileSync(
+  new URL('../../../pages/requests/[id]/customs-preview.vue', import.meta.url),
+  'utf8',
+)
+const NATIONAL_COMMITTEE_AR = 'اللجنة الوطنية لتنظيم وتمويل الواردات'
 
 function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString('ar-YE', {
@@ -147,5 +157,19 @@ describe('CustomsPrintPage — page structure', () => {
   it('confirmation dialog title is "تأكيد الطباعة"', () => {
     const title = 'تأكيد الطباعة'
     expect(title).toBe('تأكيد الطباعة')
+  })
+
+  it('uses the National Committee identity across permit and customs preview letterheads', () => {
+    expect(PRINTABLE_PERMIT_SOURCE).toContain(NATIONAL_COMMITTEE_AR)
+    expect(PRINTABLE_PERMIT_SOURCE).toContain('اعتماد اللجنة الوطنية')
+    expect(PRINTABLE_PERMIT_SOURCE).not.toContain('البنك المركزي اليمني')
+    expect(PRINTABLE_PERMIT_SOURCE).not.toContain('اعتماد البنك المركزي')
+
+    expect(CUSTOMS_PREVIEW_SOURCE).toContain(NATIONAL_COMMITTEE_AR)
+    expect(CUSTOMS_PREVIEW_SOURCE).toContain('منصة اللجنة الوطنية')
+    expect(CUSTOMS_PREVIEW_SOURCE).toContain('ختم اللجنة الوطنية')
+    expect(CUSTOMS_PREVIEW_SOURCE).not.toContain('البنك المركزي اليمني')
+    expect(CUSTOMS_PREVIEW_SOURCE).not.toContain('منصة البنك المركزي اليمني')
+    expect(CUSTOMS_PREVIEW_SOURCE).not.toContain('ختم البنك المركزي')
   })
 })

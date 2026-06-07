@@ -1,10 +1,17 @@
 // @vitest-environment jsdom
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 import { defineComponent, h } from 'vue'
 import RequestPrintable from '../../../components/requests/RequestPrintable.vue'
 import { RequestStatus } from '../../../types/enums'
 import type { ImportRequest, RequestDocument, RequestStageHistory } from '../../../types/models'
+
+const REQUEST_PRINTABLE_SOURCE = readFileSync(
+  resolve(process.cwd(), 'app/components/requests/RequestPrintable.vue'),
+  'utf8',
+)
 
 function makeRequest(overrides: Partial<ImportRequest> = {}): ImportRequest {
   return {
@@ -205,5 +212,11 @@ describe('RequestPrintable', () => {
 
     expect(wrapper.find('button').exists()).toBe(false)
     expect(wrapper.find('[data-testid="audit-timeline"]').text()).toBe('2')
+  })
+
+  it('keeps the request document title without adding an institution-name letterhead', () => {
+    expect(REQUEST_PRINTABLE_SOURCE).toContain('طلب تمويل واردات')
+    expect(REQUEST_PRINTABLE_SOURCE).not.toContain('البنك المركزي اليمني')
+    expect(REQUEST_PRINTABLE_SOURCE).not.toContain('اللجنة الوطنية لتنظيم وتمويل الواردات')
   })
 })

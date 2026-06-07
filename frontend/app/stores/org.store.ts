@@ -2,8 +2,8 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
 const STORAGE_KEY = 'org-settings-cache'
-const DEFAULT_PLATFORM_NAME = 'منصة إدارة وتمويل الواردات'
-const DEFAULT_AUTHORITY = 'البنك المركزي اليمني'
+const DEFAULT_PLATFORM_NAME = 'اللجنة الوطنية لتنظيم وتمويل الواردات'
+const DEFAULT_AUTHORITY = 'اللجنة الوطنية لتنظيم وتمويل الواردات'
 export const DEFAULT_BRAND_LOGO_URL = '/brand/yemen-emblem.svg'
 export const DEFAULT_BRAND_LOGO_NAME = 'yemen-emblem.svg'
 

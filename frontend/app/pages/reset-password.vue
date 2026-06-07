@@ -364,7 +364,7 @@ defineExpose({
 
         <div class="login-footer">
           <Building2 class="size-3.5 shrink-0" aria-hidden="true" />
-          البنك المركزي اليمني، {{ orgStore.platformName }} v3.0
+          {{ orgStore.authority }}، {{ orgStore.platformName }} v3.0
         </div>
       </div>
     </div>
@@ -375,10 +375,10 @@ defineExpose({
           <div v-if="orgStore.brandLogoDataUrl" class="hero-monogram-logo">
             <img :src="orgStore.brandLogoDataUrl" alt="Logo" class="h-full w-full object-contain" />
           </div>
-          <div v-else class="hero-monogram">ب.م</div>
+          <div v-else class="hero-monogram">ل.و</div>
           <div>
             <p class="hero-brand-ar">{{ orgStore.authority }}</p>
-            <p class="hero-brand-en">Central Bank of Yemen</p>
+            <p class="hero-brand-en">National Committee for Import Regulation and Financing</p>
           </div>
         </div>
       </div>

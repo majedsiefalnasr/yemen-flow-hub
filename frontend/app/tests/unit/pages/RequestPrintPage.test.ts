@@ -1,9 +1,16 @@
 // @vitest-environment jsdom
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { mount, flushPromises } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, h } from 'vue'
 import { RequestStatus } from '../../../types/enums'
 import type { ImportRequest, RequestStageHistory } from '../../../types/models'
+
+const REQUEST_PRINT_PAGE_SOURCE = readFileSync(
+  resolve(process.cwd(), 'app/pages/requests/[id]/print.vue'),
+  'utf8',
+)
 
 const mockFetchRequest = vi.fn()
 const mockFetchRequestHistory = vi.fn()
@@ -257,5 +264,11 @@ describe('RequestPrintPage', () => {
     expect(mockFetchRequest).not.toHaveBeenCalled()
     expect(mockFetchRequestHistory).not.toHaveBeenCalled()
     expect(wrapper.text()).toContain('معرّف الطلب غير صالح.')
+  })
+
+  it('keeps the print page wired to RequestPrintable without hardcoded institution copy', () => {
+    expect(REQUEST_PRINT_PAGE_SOURCE).toContain('RequestPrintable')
+    expect(REQUEST_PRINT_PAGE_SOURCE).not.toContain('البنك المركزي اليمني')
+    expect(REQUEST_PRINT_PAGE_SOURCE).not.toContain('Central Bank of Yemen')
   })
 })

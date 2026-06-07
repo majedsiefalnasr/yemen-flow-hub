@@ -114,6 +114,14 @@ describe('AppSidebar navigation contract', () => {
     vi.clearAllMocks()
   })
 
+  it('renders the National Committee platform name and authority from the org store', async () => {
+    const renderedText = await mountedSidebarTextForRole(UserRole.DATA_ENTRY)
+
+    expect(
+      renderedText.match(/اللجنة الوطنية لتنظيم وتمويل الواردات/g)?.length ?? 0,
+    ).toBeGreaterThanOrEqual(2)
+  })
+
   it('uses the active canonical sidebar source (frontend/app/components/AppSidebar.vue contract)', () => {
     const routes = visibleRoutes(UserRole.CBY_ADMIN)
     expect(routes).toContain('/dashboard')

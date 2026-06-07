@@ -140,8 +140,8 @@ async function triggerDownload() {
       <div class="customs-preview-content print-content">
         <!-- Header -->
         <div class="decl-header">
-          <div class="decl-logo">CBY</div>
-          <h1 class="decl-title">البنك المركزي اليمني</h1>
+          <div class="decl-logo">ل و</div>
+          <h1 class="decl-title">اللجنة الوطنية لتنظيم وتمويل الواردات</h1>
           <p class="decl-subtitle">وثيقة تأكيد مصارفة خارجية لتمويل الاستيراد</p>
         </div>
 
@@ -203,7 +203,7 @@ async function triggerDownload() {
         <!-- Official notice -->
         <div class="decl-notice">
           بناءً على اكتمال الموافقات النظامية والتنفيذية، تصدر وثيقة تأكيد المصارفة الخارجية كوثيقة
-          رسمية نهائية وغير قابلة للتعديل ضمن منصة البنك المركزي اليمني.
+          رسمية نهائية وغير قابلة للتعديل ضمن منصة اللجنة الوطنية لتنظيم وتمويل الواردات.
         </div>
 
         <!-- Signatures -->
@@ -214,7 +214,7 @@ async function triggerDownload() {
             <div class="signature-line" />
           </div>
           <div class="signature-block">
-            <p>ختم البنك المركزي</p>
+            <p>ختم اللجنة الوطنية</p>
             <div class="signature-line" />
           </div>
         </div>

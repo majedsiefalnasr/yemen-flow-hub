@@ -20,8 +20,12 @@ const applySystemTheme = () => {
     themingStore.applyTheme()
   }
 }
-const platformName = computed(() => orgStore.platformName.trim() || 'منصة إدارة وتمويل الواردات')
-const authorityName = computed(() => orgStore.authority.trim() || 'البنك المركزي اليمني')
+const platformName = computed(
+  () => orgStore.platformName.trim() || 'اللجنة الوطنية لتنظيم وتمويل الواردات',
+)
+const authorityName = computed(
+  () => orgStore.authority.trim() || 'اللجنة الوطنية لتنظيم وتمويل الواردات',
+)
 const fullAppTitle = computed(() => `${platformName.value}، ${authorityName.value}`)
 const seoDescription = computed(
   () =>
