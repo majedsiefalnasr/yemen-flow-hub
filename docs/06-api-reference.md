@@ -48,6 +48,23 @@ POST /api/auth/login
 }
 ```
 
+## Account Lockout Response
+
+After 10 consecutive failed credentials from the same account/source pair, the API returns HTTP `429 Too Many Requests` with a `Retry-After` header containing the seconds until the lockout window expires.
+
+```http
+HTTP/1.1 429 Too Many Requests
+Retry-After: 900
+```
+
+```json
+{
+  "success": false,
+  "message": "Account is temporarily locked due to too many failed attempts.",
+  "error_code": "ACCOUNT_LOCKED"
+}
+```
+
 ---
 
 # Current User
