@@ -153,11 +153,7 @@ class ImportRequestResource extends JsonResource
                         'id' => $decl->issuer->id,
                         'name' => $decl->issuer->name,
                     ] : null,
-                    'download_url' => url("/api/customs/{$decl->id}/download"),
                     'has_signed_fx_doc' => $decl->signed_fx_doc_path !== null,
-                    'signed_fx_download_url' => $decl->signed_fx_doc_path !== null
-                        ? url("/api/customs/{$decl->id}/signed-fx-download")
-                        : null,
                 ];
             })() : null,
             'bank_return_comment' => $this->status === RequestStatus::BANK_RETURNED

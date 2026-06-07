@@ -13,7 +13,6 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
-use PHPUnit\Framework\Attributes\Group;
 use Tests\TestCase;
 
 /**
@@ -174,7 +173,6 @@ class DocumentDownloadPermissionTest extends TestCase
         $response->assertStatus(403);
     }
 
-    #[Group('baseline-red')]
     public function test_swift_officer_can_download_request_doc_for_own_bank(): void
     {
         $creator = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
@@ -213,7 +211,6 @@ class DocumentDownloadPermissionTest extends TestCase
         $response->assertStatus(200);
     }
 
-    #[Group('baseline-red')]
     public function test_executive_member_can_download_request_doc_for_any_bank(): void
     {
         $creator = $this->makeUser(UserRole::DATA_ENTRY, $this->otherBank);
@@ -280,7 +277,6 @@ class DocumentDownloadPermissionTest extends TestCase
 
     // ─── SWIFT: Bank-scoped roles (own bank only) ─────────────────────────────
 
-    #[Group('baseline-red')]
     public function test_bank_reviewer_can_download_swift_for_own_bank(): void
     {
         $uploader = $this->makeUser(UserRole::SWIFT_OFFICER, $this->bank);

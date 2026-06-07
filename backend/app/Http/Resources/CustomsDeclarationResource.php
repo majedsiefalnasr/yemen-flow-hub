@@ -31,7 +31,6 @@ class CustomsDeclarationResource extends JsonResource
                 'bank_name' => $this->request->bank?->name,
             ] : null,
             'metadata' => $this->metadata,
-            'download_url' => url("/api/customs/{$this->id}/download"),
             'created_at' => $this->created_at?->toISOString(),
         ];
     }

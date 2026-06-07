@@ -14,7 +14,6 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
-use PHPUnit\Framework\Attributes\Group;
 use Tests\TestCase;
 
 /**
@@ -302,7 +301,6 @@ class CustomsDownloadPermissionTest extends TestCase
         return $declaration->fresh();
     }
 
-    #[Group('baseline-red')]
     public function test_data_entry_same_bank_can_download_signed_fx(): void
     {
         $request = $this->makeRequest($this->bank);
@@ -315,7 +313,6 @@ class CustomsDownloadPermissionTest extends TestCase
             ->assertHeader('Content-Type', 'application/pdf');
     }
 
-    #[Group('baseline-red')]
     public function test_bank_reviewer_same_bank_can_download_signed_fx(): void
     {
         $request = $this->makeRequest($this->bank);
@@ -327,7 +324,6 @@ class CustomsDownloadPermissionTest extends TestCase
             ->assertOk();
     }
 
-    #[Group('baseline-red')]
     public function test_bank_admin_same_bank_can_download_signed_fx(): void
     {
         $request = $this->makeRequest($this->bank);
@@ -361,7 +357,6 @@ class CustomsDownloadPermissionTest extends TestCase
             ->assertOk();
     }
 
-    #[Group('baseline-red')]
     public function test_cby_admin_can_download_signed_fx(): void
     {
         $request = $this->makeRequest($this->bank);

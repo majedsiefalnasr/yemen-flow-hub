@@ -257,10 +257,13 @@ class CustomsPreviewTest extends TestCase
                 'issued_by',
                 'issuer',
                 'metadata',
-                'download_url',
                 'request' => ['id', 'reference_number'],
             ],
         ]);
+
+        // Hardening (Epic 16 review): plain download URLs are no longer exposed in
+        // resources. Downloads go through the auth:sanctum-protected route directly.
+        $response->assertJsonMissingPath('data.download_url');
     }
 
     // ─── No data leak in error response ──────────────────────────────────────
