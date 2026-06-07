@@ -99,6 +99,8 @@ class VotingService
                     'justification' => null,
                     'voted_at' => now(),
                 ]);
+
+                $this->logAutoAbstainVote($lockedRequest, $director, $member, 'close_voting');
             }
 
             return $this->workflowService->transition($lockedRequest->fresh(), 'close_voting', $director);
@@ -229,6 +231,7 @@ class VotingService
             $nonVoters = User::query()
                 ->whereIn('role', [UserRole::EXECUTIVE_MEMBER->value, UserRole::COMMITTEE_DIRECTOR->value])
                 ->where('is_active', true)
+                ->where('id', '!=', $director->id)
                 ->whereNotIn('id', $votedUserIds)
                 ->get();
 
@@ -240,6 +243,8 @@ class VotingService
                     'justification' => null,
                     'voted_at' => now(),
                 ]);
+
+                $this->logAutoAbstainVote($lockedRequest, $director, $member, 'override_and_finalize');
             }
 
             RequestVote::query()->updateOrCreate(
@@ -265,5 +270,21 @@ class VotingService
 
             return $this->workflowService->transition($closed, $action, $director, $justification, $overrideMeta);
         });
+    }
+
+    private function logAutoAbstainVote(ImportRequest $request, User $director, User $member, string $sourceAction): void
+    {
+        $this->auditService->log(
+            AuditAction::VOTE_CAST,
+            $director,
+            $request,
+            [
+                'vote' => VoteType::AUTO_ABSTAIN_TIMEOUT->value,
+                'auto_abstain' => true,
+                'member_id' => $member->id,
+                'member_role' => $member->role?->value,
+                'source_action' => $sourceAction,
+            ]
+        );
     }
 }

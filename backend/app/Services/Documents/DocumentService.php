@@ -187,16 +187,21 @@ class DocumentService
             throw new DocumentException('Unable to read document stream.');
         }
 
-        $this->auditService->log(AuditAction::DOCUMENT_DOWNLOADED, $user, $document, [
-            'request_id' => $document->request_id,
-            'document_id' => $document->id,
-            'document_type' => $document->type,
-        ]);
+        return response()->streamDownload(function () use ($stream, $document, $user): void {
+            try {
+                $bytesWritten = fpassthru($stream);
 
-        return response()->streamDownload(function () use ($stream): void {
-            fpassthru($stream);
-            if (is_resource($stream)) {
-                fclose($stream);
+                if ($bytesWritten !== false) {
+                    $this->auditService->log(AuditAction::DOCUMENT_DOWNLOADED, $user, $document, [
+                        'request_id' => $document->request_id,
+                        'document_id' => $document->id,
+                        'document_type' => $document->type,
+                    ]);
+                }
+            } finally {
+                if (is_resource($stream)) {
+                    fclose($stream);
+                }
             }
         }, $this->sanitizeDisplayFilename($document->original_filename), ['Content-Type' => $document->mime_type]);
     }

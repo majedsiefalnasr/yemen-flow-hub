@@ -56,6 +56,19 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
+        $auditAuthorizationFailure = function (Throwable $e, Request $request): void {
+            try {
+                app(AuditService::class)->log(
+                    AuditAction::AUTHORIZATION_FAILURE,
+                    $request->user(),
+                    null,
+                    ['reason' => $e->getMessage(), 'path' => $request->path(), 'method' => $request->method()]
+                );
+            } catch (Throwable) {
+                // Never let audit failure suppress the actual response
+            }
+        };
+
         $exceptions->render(function (ValidationException $e, Request $request) {
             if ($request->is('api/*')) {
                 return ApiResponse::validationError($e->errors());
@@ -74,25 +87,29 @@ return Application::configure(basePath: dirname(__DIR__))
             }
         });
 
-        $exceptions->render(function (HttpException $e, Request $request) {
+        $exceptions->render(function (HttpException $e, Request $request) use ($auditAuthorizationFailure) {
             if ($request->is('api/*') && $e->getStatusCode() === 419) {
                 return ApiResponse::error('CSRF token mismatch.', [], 419);
+            }
+
+            if ($request->is('api/*') && $e->getStatusCode() === 403) {
+                if ($e instanceof AccessDeniedHttpException && $e->getPrevious() instanceof AuthorizationException) {
+                    $auditAuthorizationFailure($e, $request);
+                }
+
+                return ApiResponse::forbidden('Forbidden action', 'WORKFLOW_FORBIDDEN');
             }
         });
 
         // AuthorizationException is converted to AccessDeniedHttpException by the framework
         // before reaching render callbacks, so both types must be listed.
-        $exceptions->render(function (AccessDeniedHttpException|AuthorizationException $e, Request $request) {
+        $exceptions->render(function (AccessDeniedHttpException|AuthorizationException $e, Request $request) use ($auditAuthorizationFailure) {
             if ($request->is('api/*')) {
-                try {
-                    app(AuditService::class)->log(
-                        AuditAction::AUTHORIZATION_FAILURE,
-                        $request->user(),
-                        null,
-                        ['reason' => $e->getMessage(), 'path' => $request->path(), 'method' => $request->method()]
-                    );
-                } catch (Throwable) {
-                    // Never let audit failure suppress the actual response
+                $isDomainAuthorization = $e instanceof AuthorizationException
+                    || $e->getPrevious() instanceof AuthorizationException;
+
+                if ($isDomainAuthorization) {
+                    $auditAuthorizationFailure($e, $request);
                 }
 
                 return ApiResponse::forbidden('Forbidden action', 'WORKFLOW_FORBIDDEN');
@@ -111,18 +128,9 @@ return Application::configure(basePath: dirname(__DIR__))
             }
         });
 
-        $exceptions->render(function (UnauthorizedTransitionException|SelfReviewException $e, Request $request) {
+        $exceptions->render(function (UnauthorizedTransitionException|SelfReviewException $e, Request $request) use ($auditAuthorizationFailure) {
             if ($request->is('api/*')) {
-                try {
-                    app(AuditService::class)->log(
-                        AuditAction::AUTHORIZATION_FAILURE,
-                        $request->user(),
-                        null,
-                        ['reason' => $e->getMessage(), 'path' => $request->path(), 'method' => $request->method()]
-                    );
-                } catch (Throwable) {
-                    // Never let audit failure suppress the actual response
-                }
+                $auditAuthorizationFailure($e, $request);
 
                 return ApiResponse::forbidden($e->getMessage(), 'WORKFLOW_FORBIDDEN');
             }

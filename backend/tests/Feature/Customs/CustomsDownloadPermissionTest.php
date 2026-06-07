@@ -213,14 +213,20 @@ class CustomsDownloadPermissionTest extends TestCase
 
     // ─── AC5: Audit log on customs download ───────────────────────────────────
 
-    #[Group('baseline-red')]
     public function test_customs_download_creates_audit_log_with_customs_type(): void
     {
         $request = $this->makeRequest($this->bank);
         $declaration = $this->makeCustomsDeclaration($request);
 
         $actor = $this->makeUser(UserRole::COMMITTEE_DIRECTOR);
-        $this->actingAs($actor)->getJson("/api/customs/{$declaration->id}/download");
+        $response = $this->actingAs($actor)->getJson("/api/customs/{$declaration->id}/download");
+
+        $this->assertDatabaseMissing('audit_logs', [
+            'user_id' => $actor->id,
+            'action' => 'DOCUMENT_DOWNLOADED',
+        ]);
+
+        $response->streamedContent();
 
         $log = AuditLog::query()
             ->where('user_id', $actor->id)

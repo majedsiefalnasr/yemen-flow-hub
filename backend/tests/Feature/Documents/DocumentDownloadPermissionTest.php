@@ -460,7 +460,14 @@ class DocumentDownloadPermissionTest extends TestCase
         $document = $this->makeDocument($request, $creator, 'REQUEST_DOC');
 
         $actor = $this->makeUser(UserRole::BANK_REVIEWER, $this->bank);
-        $this->actingAs($actor)->getJson("/api/documents/{$document->id}/download");
+        $response = $this->actingAs($actor)->getJson("/api/documents/{$document->id}/download");
+
+        $this->assertDatabaseMissing('audit_logs', [
+            'user_id' => $actor->id,
+            'action' => 'DOCUMENT_DOWNLOADED',
+        ]);
+
+        $response->streamedContent();
 
         $this->assertDatabaseHas('audit_logs', [
             'user_id' => $actor->id,
@@ -507,7 +514,8 @@ class DocumentDownloadPermissionTest extends TestCase
         $document = $this->makeDocument($request, $uploader, 'SWIFT');
 
         $actor = $this->makeUser(UserRole::COMMITTEE_DIRECTOR);
-        $this->actingAs($actor)->getJson("/api/documents/{$document->id}/download");
+        $response = $this->actingAs($actor)->getJson("/api/documents/{$document->id}/download");
+        $response->streamedContent();
 
         $log = AuditLog::query()
             ->where('user_id', $actor->id)

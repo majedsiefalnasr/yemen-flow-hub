@@ -2,11 +2,13 @@
 
 namespace Tests\Unit\Services;
 
+use App\Enums\AuditAction;
 use App\Enums\RequestStatus;
 use App\Enums\UserRole;
 use App\Enums\VoteType;
 use App\Exceptions\DuplicateVoteException;
 use App\Exceptions\VotingException;
+use App\Models\AuditLog;
 use App\Models\Bank;
 use App\Models\ImportRequest;
 use App\Models\RequestVote;
@@ -410,5 +412,69 @@ class VotingServiceTest extends TestCase
         $this->assertNotNull($directorVote);
         $this->assertEquals(VoteType::AUTO_ABSTAIN_TIMEOUT, $directorVote->vote);
         $this->assertNotNull($directorVote->voted_at);
+    }
+
+    public function test_close_session_logs_auto_abstain_audit_for_each_non_voter(): void
+    {
+        $director = $this->makeUser(UserRole::COMMITTEE_DIRECTOR);
+        $voter = $this->makeUser(UserRole::EXECUTIVE_MEMBER);
+        $nonVoter = $this->makeUser(UserRole::EXECUTIVE_MEMBER);
+        $request = $this->makeRequest(RequestStatus::EXECUTIVE_VOTING_OPEN);
+        $this->castVoteDirectly($request, $voter, VoteType::APPROVE);
+
+        $this->votingService->closeSession($request, $director);
+
+        $log = AuditLog::query()
+            ->where('user_id', $director->id)
+            ->where('user_role', UserRole::COMMITTEE_DIRECTOR->value)
+            ->where('action', AuditAction::VOTE_CAST->value)
+            ->where('subject_type', ImportRequest::class)
+            ->where('subject_id', $request->id)
+            ->where('metadata->auto_abstain', true)
+            ->where('metadata->member_id', $nonVoter->id)
+            ->first();
+
+        $this->assertNotNull($log);
+        $this->assertSame(VoteType::AUTO_ABSTAIN_TIMEOUT->value, $log->metadata['vote']);
+    }
+
+    public function test_override_and_finalize_logs_auto_abstain_audit_for_each_non_voter(): void
+    {
+        $director = $this->makeUser(UserRole::COMMITTEE_DIRECTOR);
+        $voter = $this->makeUser(UserRole::EXECUTIVE_MEMBER);
+        $nonVoter = $this->makeUser(UserRole::EXECUTIVE_MEMBER);
+        $request = $this->makeRequest(RequestStatus::EXECUTIVE_VOTING_OPEN);
+        $this->castVoteDirectly($request, $voter, VoteType::REJECT);
+
+        $this->votingService->overrideAndFinalize($request, $director, VoteType::APPROVE, 'Director override reason');
+
+        $log = AuditLog::query()
+            ->where('user_id', $director->id)
+            ->where('user_role', UserRole::COMMITTEE_DIRECTOR->value)
+            ->where('action', AuditAction::VOTE_CAST->value)
+            ->where('subject_type', ImportRequest::class)
+            ->where('subject_id', $request->id)
+            ->where('metadata->auto_abstain', true)
+            ->where('metadata->member_id', $nonVoter->id)
+            ->first();
+
+        $this->assertNotNull($log);
+        $this->assertSame(VoteType::AUTO_ABSTAIN_TIMEOUT->value, $log->metadata['vote']);
+
+        $this->assertDatabaseMissing('audit_logs', [
+            'user_id' => $director->id,
+            'action' => AuditAction::VOTE_CAST->value,
+            'subject_type' => ImportRequest::class,
+            'subject_id' => $request->id,
+            'metadata->auto_abstain' => true,
+            'metadata->member_id' => $director->id,
+        ]);
+
+        $this->assertDatabaseHas('request_votes', [
+            'request_id' => $request->id,
+            'user_id' => $director->id,
+            'vote' => VoteType::APPROVE->value,
+            'is_director_override' => true,
+        ]);
     }
 }

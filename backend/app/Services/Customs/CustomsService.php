@@ -204,16 +204,21 @@ class CustomsService
             throw new CustomsException('Unable to stream external FX confirmation PDF.');
         }
 
-        $this->auditService->log(AuditAction::DOCUMENT_DOWNLOADED, $user, $declaration, [
-            'document_id' => $declaration->id,
-            'document_type' => 'CUSTOMS',
-            'request_id' => $declaration->request_id,
-        ]);
+        return response()->streamDownload(function () use ($stream, $declaration, $user): void {
+            try {
+                $bytesWritten = fpassthru($stream);
 
-        return response()->streamDownload(function () use ($stream): void {
-            fpassthru($stream);
-            if (is_resource($stream)) {
-                fclose($stream);
+                if ($bytesWritten !== false) {
+                    $this->auditService->log(AuditAction::DOCUMENT_DOWNLOADED, $user, $declaration, [
+                        'document_id' => $declaration->id,
+                        'document_type' => 'CUSTOMS',
+                        'request_id' => $declaration->request_id,
+                    ]);
+                }
+            } finally {
+                if (is_resource($stream)) {
+                    fclose($stream);
+                }
             }
         }, $declaration->declaration_number.'.pdf', ['Content-Type' => 'application/pdf']);
     }
