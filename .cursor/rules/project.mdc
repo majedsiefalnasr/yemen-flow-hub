@@ -35,3 +35,8 @@ npx ctx7@latest docs <id> "<question>"
 
 ## Browser Automation
 Use `playwright-cli` for browser interactions and UI verification. Keep command prefixes that start with `playwright-cli` permanently allowlisted in local approvals.
+
+## Verification Ladder
+Before editing, check `git -c core.fsmonitor=false status --short` and report existing dirty files. Do not modify dirty files unless directly in scope.
+
+Keep `pnpm`; do not migrate to Bun. Default verification is focused: run the smallest relevant test/filter for the touched behavior, then lint/format only touched files where supported. Run frontend typecheck only for type, composable, store, API contract, shared interface, or cross-module changes. Do not run full `pnpm test` or full `php artisan test` by default. Full suites are required only for release checks, broad refactors, security-critical changes, or explicit user requests. If a full suite is known red, report the baseline and ignore unrelated failures.

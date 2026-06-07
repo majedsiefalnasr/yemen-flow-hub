@@ -13,6 +13,11 @@ persistent_facts = [
   "BEFORE completing each task: call codebase_flow on any new public function you added to confirm the call chain is correct.",
   "SocratiCode tool quick-reference: codebase_index (index/re-index a path) · codebase_search (semantic search) · codebase_symbol (find class/function) · codebase_flow (trace execution) · codebase_impact (change impact) · codebase_graph_query (dependency graph).",
   "The project codebase is indexed at /Users/majedsiefalnasr/Documents/Work/Ultimate-Solutions-EGY/yemen-flow-hub/code. If codebase_search returns no results, call codebase_index on that path first to build or refresh the index.",
+  "Verification ladder: before editing, check git status in the repo you will touch and report existing dirty files. Do not modify dirty files unless directly in scope.",
+  "Verification ladder: default verification is focused. For narrow changes, run the smallest relevant test/filter first, then lint/format only touched files where supported.",
+  "Verification ladder: run frontend typecheck only when changing types, composables, stores, API contracts, shared interfaces, or cross-module contracts.",
+  "Verification ladder: do not run full pnpm test or full php artisan test by default. Full suites are required only for release checks, broad refactors, security-critical changes, or explicit user requests.",
+  "Verification ladder: if a full suite is known red, report the known baseline and do not treat unrelated failures as task failures. Keep pnpm; do not migrate to Bun.",
 ]
 
 # On activation, verify SocratiCode is available and the index is fresh.

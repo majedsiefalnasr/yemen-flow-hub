@@ -3,9 +3,11 @@
 This is the root repository for Yemen Flow Hub, an internal government banking regulatory workflow platform for the Central Bank of Yemen. It contains documentation, design system, and AI configuration files only.
 
 ## Source of Truth
+
 Read `AGENTS.md` at the root. All workflow rules, enums, and architecture decisions are defined there and in `docs/`.
 
 ## Git Scope
+
 Root monorepo (`git@github.com:majedsiefalnasr/yemen-flow-hub.git`) tracks **everything**: docs, backend, frontend.
 
 Backend and frontend also each have their own team repos. Every change to `backend/` or `frontend/` must be committed to both the team repo (from inside that directory) and the root monorepo (from the root).
@@ -16,11 +18,23 @@ Backend and frontend also each have their own team repos. Every change to `backe
 - Commit format: `type(scope): description`
 
 ## Key Rules
+
 - Docs in `docs/` override all Copilot suggestions about workflow or business logic
 - Use Context7 CLI for library documentation: `npx ctx7@latest library "<name>" "<question>"`
 - Use SocratiCode MCP for codebase exploration before suggesting changes
 - For browser automation and UI verification, use `playwright-cli`; keep command prefixes that start with `playwright-cli` allowlisted in local approvals.
 - Never add or commit generated artifacts from `graphify-out/`, `_bmad-output/implementation-artifacts/`, or `_bmad-output/test-artifacts/`. Keep them local only.
+
+## Verification Ladder
+
+- Before editing, check `git -c core.fsmonitor=false status --short` and report existing dirty files. Do not modify dirty files unless directly in scope.
+- Keep `pnpm`; do not migrate the project to Bun.
+- Default verification is focused: run the smallest relevant test/filter for the touched behavior.
+- Run lint/format only for touched files where supported.
+- Run frontend typecheck only for type, composable, store, API contract, shared interface, or cross-module changes.
+- Do not run full `pnpm test` or full `php artisan test` by default.
+- Full suites are required only for release checks, broad refactors, security-critical changes, or explicit user requests.
+- If a full suite is known red, report the known baseline and do not treat unrelated failures as task failures.
 
 ## graphify
 

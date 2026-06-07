@@ -12,10 +12,10 @@ Yemen Flow Hub is a government banking workflow platform for the Central Bank of
 
 The design is **RTL-first, workflow-centric, and desktop-focused** with responsive degradation at ≤ 600px. Unlike consumer product design, every surface prioritizes *operational density*: each screen is a queue or a form. There are no gradients, no glassmorphism, no decorative chrome, only what the transaction requires.
 
-**Platform aesthetic:** Institutional clarity built on the shadcn-vue **new-york / neutral** base with Tailwind CSS v4. A single, themeable brand accent (default `#0066cc`, set by CBY Admin). A four-font Arabic-first system (Cairo headings, Tajawal sections, IBM Plex Sans Arabic body, Inter for Latin). Compact controls (32px default button height) tuned for operators processing dozens of requests. One subtle card shadow. Generous gaps between sections. The system rests on five foundations:
+**Platform aesthetic:** Institutional clarity built on the shadcn-vue **new-york / neutral** base with Tailwind CSS v4. A single, themeable brand accent (default `#0066cc`, set by CBY Admin). A four-font Arabic-first system (IBM Plex Sans Arabic headings, sections, and body, Inter for Latin). Compact controls (32px default button height) tuned for operators processing dozens of requests. One subtle card shadow. Generous gaps between sections. The system rests on five foundations:
 
 1. **Color:** A themeable brand accent plus a dual semantic system — muted institutional status colors (`--success`, `--warning`) and brighter iOS-style severity colors (`--severity-green/amber/red`), all OKLCH, all with automatic dark-mode derivations.
-2. **Typography:** Four loaded families. Cairo (headings) + Tajawal (sections) + IBM Plex Sans Arabic (body) + Inter (Latin), Arabic-first fallback stack.
+2. **Typography:** Four loaded families. IBM Plex Sans Arabic (headings, sections, and body) + Inter (Latin), Arabic-first fallback stack.
 3. **Spacing:** 8px base unit; `gap-6` between dashboard sections; `p-4` compact cards / `p-6` full-page cards.
 4. **Shapes:** One radius scale derived from `--radius: 0.625rem` (10px). `rounded-lg` = 10px on buttons and standard cards. No pill buttons; badges use `rounded-4xl`.
 5. **Elevation:** One shadow at rest (`shadow`), one on hover (`shadow-md`). No stacked shadows.
@@ -117,9 +117,7 @@ Five chart colors (`--chart-1` … `--chart-5`) with distinct light/dark OKLCH v
 
 Four font families load via Google Fonts (`display=swap`), imported at the top of `main.css`:
 
-- **Cairo** — page headlines and section headings (`font-heading`; auto-applied to `h1`–`h6`)
-- **Tajawal** — subheadings, navigation labels (`font-section`)
-- **IBM Plex Sans Arabic** — body copy, form fields, table content (`font-sans`, default)
+- **IBM Plex Sans Arabic** — page headlines and section headings (`font-heading`; auto-applied to `h1`–`h6`) subheadings, navigation labels (`font-section`) body copy, form fields, table content (`font-sans`, default)
 - **Inter** — Latin strings and numbers in LTR context (via the fallback stack)
 
 Fallback stack (Arabic-first): `'IBM Plex Sans Arabic', 'Inter', system-ui, -apple-system, sans-serif`.
@@ -130,9 +128,9 @@ Product UI uses a fixed rem scale, not fluid clamps. Density favors compact size
 
 | Role | Font | Size | Weight | Usage |
 |---|---|---|---|---|
-| Page headline | Cairo | `text-2xl`–`text-3xl` | 600–700 | Dashboard / page title |
-| Section heading | Cairo | `text-lg`–`text-xl` | 600 | Card titles, form section headers |
-| Subheading / nav | Tajawal | `text-sm` | 500–600 | Sidebar items, secondary headers |
+| Page headline | IBM Plex Sans Arabic | `text-2xl`–`text-3xl` | 600–700 | Dashboard / page title |
+| Section heading | IBM Plex Sans Arabic | `text-lg`–`text-xl` | 600 | Card titles, form section headers |
+| Subheading / nav | IBM Plex Sans Arabic | `text-sm` | 500–600 | Sidebar items, secondary headers |
 | Body (default) | IBM Plex Sans Arabic | `text-sm` (14px) | 400 | Dashboard tables, dense UI |
 | Body (form) | IBM Plex Sans Arabic | `text-base` (16px) | 400 | Form content, reading surfaces |
 | Label / button | IBM Plex Sans Arabic | `text-sm` | 500 (`font-medium`) | Button text, form labels |
@@ -142,7 +140,7 @@ Product UI uses a fixed rem scale, not fluid clamps. Density favors compact size
 
 - **The Three-Weight Rule.** Body ladder is 400 / 500 / 600. Avoid `font-bold` (700) on body text; reserve 700 for headings only.
 - **No italics.** Emphasis uses weight (`font-medium`, `font-semibold`) or color, never slant.
-- **Headings are Cairo automatically.** `h1`–`h6` and `.cn-font-heading` map to `font-heading` in the base layer. Don't restate the family on every heading.
+- **Headings are IBM Plex Sans Arabic automatically.** `h1`–`h6` and `.cn-font-heading` map to `font-heading` in the base layer. Don't restate the family on every heading.
 - **Compact body by default.** Dense operational surfaces (tables, queues) run at `text-sm`; only reading-oriented form surfaces step up to `text-base`.
 
 ---

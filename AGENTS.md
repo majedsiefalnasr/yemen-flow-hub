@@ -35,13 +35,14 @@ yemen-flow-hub/               ← Root repo (git@github.com:majedsiefalnasr/yeme
 
 The project uses **three git repositories** with overlapping coverage:
 
-| Repo | Remote | Tracks |
-| ---- | ------ | ------ |
-| Root (monorepo) | `git@github.com:majedsiefalnasr/yemen-flow-hub.git` | Everything: `docs/`, `backend/`, `frontend/`, configs |
-| Backend team repo | `git@github.com:ultimate-eg/yemen-flow-hub-backend.git` | `backend/` only — for the backend team |
-| Frontend team repo | `git@github.com:ultimate-eg/yemen-flow-hub-frontend.git` | `frontend/` only — for the frontend team |
+| Repo               | Remote                                                   | Tracks                                                |
+| ------------------ | -------------------------------------------------------- | ----------------------------------------------------- |
+| Root (monorepo)    | `git@github.com:majedsiefalnasr/yemen-flow-hub.git`      | Everything: `docs/`, `backend/`, `frontend/`, configs |
+| Backend team repo  | `git@github.com:ultimate-eg/yemen-flow-hub-backend.git`  | `backend/` only — for the backend team                |
+| Frontend team repo | `git@github.com:ultimate-eg/yemen-flow-hub-frontend.git` | `frontend/` only — for the frontend team              |
 
 **Why three repos?**
+
 - The root monorepo is the source of truth — all code lives here.
 - Backend and frontend each have their own repo so team members only see their part of the codebase.
 - Both team repos stay in sync with the corresponding subdirectory in the root monorepo.
@@ -50,13 +51,14 @@ The project uses **three git repositories** with overlapping coverage:
 
 Each change must be committed to **all applicable repos**:
 
-| Change location | Commit to |
-| --------------- | --------- |
-| `docs/`, `AGENTS.md`, `DESIGN.md`, root configs | Root repo only (run `git` from `/`) |
-| `backend/` code | Root repo (`git` from `/`) **AND** backend team repo (`git` from `backend/`) |
-| `frontend/` code | Root repo (`git` from `/`) **AND** frontend team repo (`git` from `frontend/`) |
+| Change location                                 | Commit to                                                                      |
+| ----------------------------------------------- | ------------------------------------------------------------------------------ |
+| `docs/`, `AGENTS.md`, `DESIGN.md`, root configs | Root repo only (run `git` from `/`)                                            |
+| `backend/` code                                 | Root repo (`git` from `/`) **AND** backend team repo (`git` from `backend/`)   |
+| `frontend/` code                                | Root repo (`git` from `/`) **AND** frontend team repo (`git` from `frontend/`) |
 
 **Commit workflow for backend changes:**
+
 ```bash
 # 1. Commit to backend team repo
 cd backend
@@ -70,6 +72,7 @@ git commit -m "feat(workflow): ..."
 ```
 
 **Commit workflow for frontend changes:**
+
 ```bash
 # 1. Commit to frontend team repo
 cd frontend
@@ -95,14 +98,48 @@ git commit -m "feat(voting): ..."
 
 ### Quality Gates
 
-Use the repository quality scripts before committing:
+Before editing, every agent must run `git -c core.fsmonitor=false status --short` in the relevant repo (`/`, `frontend/`, or `backend/`). Report existing dirty files before modifying anything, and do not edit dirty files unless they are directly in scope for the current task.
 
-| Repo | Fast check | Full check |
-| ---- | ---------- | ---------- |
-| `backend/` | `composer format:check` | `composer format:check && php artisan test` |
+Use the repository quality scripts before committing, but follow the verification ladder below. The project uses `pnpm` for JavaScript tooling; do not migrate to Bun.
+
+| Repo        | Fast check                       | Full check                                                      |
+| ----------- | -------------------------------- | --------------------------------------------------------------- |
+| `backend/`  | `composer format:check`          | `composer format:check && php artisan test`                     |
 | `frontend/` | `pnpm lint && pnpm format:check` | `pnpm lint && pnpm format:check && pnpm typecheck && pnpm test` |
 
+### Verification Ladder
+
+Default verification is focused. For narrow changes:
+
+1. Run the smallest relevant test, file, or filter for the touched behavior.
+2. Run lint/format only for touched files where the tool supports it.
+3. Run frontend typecheck only when changing types, composables, stores, API contracts, shared interfaces, or cross-module contracts.
+4. Do not run full `pnpm test` or full `php artisan test` by default.
+5. Full suites are required only for release checks, broad refactors, security-critical changes, or when explicitly requested.
+6. If a full suite is known red, report the known baseline and do not treat unrelated failures as task failures.
+
+Focused command examples:
+
+```bash
+# Frontend: run one Vitest file or a name filter from frontend/
+pnpm exec vitest run app/tests/unit/components/FxConfirmationCard.test.ts
+pnpm exec vitest run -t "renders the warning copy"
+
+# Frontend: lint/format specific touched files
+pnpm exec eslint app/components/Example.vue app/composables/useExample.ts
+pnpm exec prettier app/components/Example.vue --check
+
+# Backend: run one PHPUnit file or filter from backend/
+php artisan test tests/Feature/Auth/PasswordRecoveryTest.php
+php artisan test --filter=PasswordRecoveryTest
+php artisan test --filter='password reset with valid otp'
+
+# Backend: format specific touched PHP files
+vendor/bin/pint app/Services/Workflow/WorkflowService.php --test
+```
+
 Frontend and backend team repos use Husky hooks:
+
 - `commit-msg` validates Conventional Commit messages with Commitlint.
 - `pre-commit` runs staged-file formatting/linting only.
 - `pre-push` runs only green non-test gates by default: backend `composer format:check`; frontend `pnpm lint`, `pnpm format:check`, and `pnpm typecheck`. Full test suites are still part of the manual/full check list above, but are not in hooks until their existing failures are cleaned up.
@@ -114,6 +151,7 @@ Frontend lint must pass with zero warnings. Do not disable rules broadly to hide
 ## Tech Stack
 
 ### Backend (`backend/`)
+
 - PHP 8.2+, Laravel 11
 - Laravel Sanctum (auth)
 - MySQL (primary DB)
@@ -121,6 +159,7 @@ Frontend lint must pass with zero warnings. Do not disable rules broadly to hide
 - REST API, service-oriented architecture
 
 ### Frontend (`frontend/`)
+
 - Nuxt 4, Vue 4, TypeScript
 - Tailwind CSS v4, shadcn-vue
 - Pinia, VueUse, VeeValidate, Zod
@@ -146,11 +185,11 @@ All implementation decisions must follow these docs in order of authority:
 
 These three files are loaded automatically by `frontend/CLAUDE.md` and must be read before writing any Vue/Nuxt/Tailwind code:
 
-| File | Purpose |
-| ---- | ------- |
-| `frontend/PRODUCT.md` | Product identity, 8 roles and their daily tasks, operational posture, brand tone, anti-references |
-| `frontend/DESIGN.md` | Color token rules (semantic vars vs raw Tailwind), RTL border rule, skeleton/error/banner patterns |
-| `frontend/SHADCN.md` | Complete shadcn-vue reference: 30+ components with copy-paste recipes, import paths, decision table, 10 absolute rules |
+| File                  | Purpose                                                                                                                |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `frontend/PRODUCT.md` | Product identity, 8 roles and their daily tasks, operational posture, brand tone, anti-references                      |
+| `frontend/DESIGN.md`  | Color token rules (semantic vars vs raw Tailwind), RTL border rule, skeleton/error/banner patterns                     |
+| `frontend/SHADCN.md`  | Complete shadcn-vue reference: 30+ components with copy-paste recipes, import paths, decision table, 10 absolute rules |
 
 **Rule:** Any AI tool working on frontend code must treat these three files as equally authoritative as `docs/user-view/*.md` for UI decisions. Violations (raw `<button>`, raw `<table>`, `text-red-600` instead of `text-[var(--severity-red)]`, etc.) are the same class of error as using a wrong status enum.
 
@@ -209,6 +248,7 @@ CBY_ADMIN
 ## Core Architecture Rules
 
 ### Never Do
+
 - Do NOT mutate `current_status` directly on the model — all transitions via `WorkflowService::transition()`
 - Do NOT put business logic in controllers, Vue components, or routes
 - Do NOT expose requests outside a user's organization scope
@@ -220,6 +260,7 @@ CBY_ADMIN
 - Do NOT replace shadcn-vue components with raw HTML to make tests pass. shadcn-vue components (Button, Dialog, Table, Select, etc.) are mandatory — see `frontend/SHADCN.md`. If a Vitest test fails because it cannot introspect a shadcn-vue component (e.g. Dialog content is teleported, Select options are not raw `<option>` tags), **skip or ignore that test** rather than downgrading the component to raw HTML.
 
 ### Always Do
+
 - Enforce organization-scoped visibility at the database query level
 - Start role UI decisions from the relevant `docs/user-view/{role}.md`: operational queue first, supporting metrics second, least privilege on uncertainty
 - Log every workflow transition to both `request_stage_history` and `audit_logs`
@@ -234,6 +275,7 @@ CBY_ADMIN
 ## AI Tool Usage
 
 ### playwright-cli (Browser Automation)
+
 Use `playwright-cli` as the primary browser automation tool whenever browser interaction is needed — UI verification, screenshot capture, navigating the running app, or testing frontend flows. Prefer it over manual curl or fetch for anything that requires a real browser context.
 
 Use Playwright MCP (`playwright-mcp` / MCP server `playwright`) only as a fallback when `playwright-cli` is unavailable, blocked, cannot attach to the required browser/session, or the task explicitly requires MCP-native browser tools. If you fall back to Playwright MCP, mention the reason in the work log or final response.
@@ -265,6 +307,7 @@ All AI tools (Claude Code, Cursor, Codex, GitHub Copilot) must use `playwright-c
 ---
 
 ### Context7 CLI
+
 Use `ctx7` to fetch current library documentation before writing implementation code.
 
 ```bash
@@ -286,12 +329,12 @@ SocratiCode provides semantic codebase search and dependency graph analysis. It 
 
 **Required workflow (enforce in every story task):**
 
-| When | Tool to call |
-| ---- | ------------ |
-| Before modifying an existing file | `codebase_symbol` → locate, then `codebase_impact` → assess blast radius |
-| Before creating code that touches existing services/models | `codebase_search` → find related code and avoid duplication |
-| After adding a new public function/method | `codebase_flow` → confirm the call chain is wired correctly |
-| Index is stale or returns no results | `codebase_index` on the path above to rebuild |
+| When                                                       | Tool to call                                                             |
+| ---------------------------------------------------------- | ------------------------------------------------------------------------ |
+| Before modifying an existing file                          | `codebase_symbol` → locate, then `codebase_impact` → assess blast radius |
+| Before creating code that touches existing services/models | `codebase_search` → find related code and avoid duplication              |
+| After adding a new public function/method                  | `codebase_flow` → confirm the call chain is wired correctly              |
+| Index is stale or returns no results                       | `codebase_index` on the path above to rebuild                            |
 
 **MCP tool names** (logical names):
 
@@ -306,6 +349,7 @@ codebase_graph_query  — query the full dependency graph
 ```
 
 Tool prefixes vary by client:
+
 - Claude Code may expose these as `mcp__plugin_socraticode_socraticode__...`
 - Codex should load them from the `socraticode` MCP server configured in `~/.codex/config.toml`; use the SocratiCode tools exposed in the current session rather than hardcoding the Claude prefix.
 
@@ -336,29 +380,29 @@ Tool prefixes vary by client:
 
 Full rules in `DESIGN.md`. Key values:
 
-| Token           | Value                   |
-| --------------- | ----------------------- |
-| Background      | #ffffff                 |
-| Surface         | #ffffff                 |
-| Primary Text    | #1c222b                 |
-| Border          | #cccccc (outline-variant) |
-| Primary Blue    | #0066cc                 |
-| Success Text    | #1b5e20                 |
-| Error Text      | #c62828                 |
-| Warning Text    | #f57f17                 |
-| Voting Indigo   | #5856d6                 |
-| SWIFT Cyan      | #32ade6                 |
-| Locked Gray     | #8e8e93                 |
-| Font (headlines)| Cairo                   |
-| Font (sections) | Tajawal                 |
-| Font (body)     | IBM Plex Sans Arabic    |
-| Font (Latin)    | Inter                   |
-| Button Radius   | 16px (lg)               |
-| Input Radius    | 12px (md)               |
-| Modal Radius    | 24px (xl)               |
-| Sidebar expanded | 280px                  |
-| Sidebar collapsed | 72px                  |
-| Container max   | 1600px                  |
+| Token             | Value                     |
+| ----------------- | ------------------------- |
+| Background        | #ffffff                   |
+| Surface           | #ffffff                   |
+| Primary Text      | #1c222b                   |
+| Border            | #cccccc (outline-variant) |
+| Primary Blue      | #0066cc                   |
+| Success Text      | #1b5e20                   |
+| Error Text        | #c62828                   |
+| Warning Text      | #f57f17                   |
+| Voting Indigo     | #5856d6                   |
+| SWIFT Cyan        | #32ade6                   |
+| Locked Gray       | #8e8e93                   |
+| Font (headlines)  | IBM Plex Sans Arabic      |
+| Font (sections)   | IBM Plex Sans Arabic      |
+| Font (body)       | IBM Plex Sans Arabic      |
+| Font (Latin)      | Inter                     |
+| Button Radius     | 16px (lg)                 |
+| Input Radius      | 12px (md)                 |
+| Modal Radius      | 24px (xl)                 |
+| Sidebar expanded  | 280px                     |
+| Sidebar collapsed | 72px                      |
+| Container max     | 1600px                    |
 
 Platform is **desktop-first** with responsive degradation at ≤ 600px. RTL is the default direction.
 
@@ -371,6 +415,7 @@ This project has a knowledge graph at graphify-out/ with god nodes, community st
 When the user types `/graphify`, invoke the `skill` tool with `skill: "graphify"` before doing anything else.
 
 Rules:
+
 - For codebase questions, first run `graphify query "<question>"` when graphify-out/graph.json exists. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.
 - Dirty graphify-out/ files are expected after hooks or incremental updates; dirty graph files are not a reason to skip graphify. Only skip graphify if the task is about stale or incorrect graph output, or the user explicitly says not to use it.
 - If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
