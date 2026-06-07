@@ -17,12 +17,12 @@ class TemplateResolver
     ];
 
     private const DEFAULT_SUBJECTS = [
-        NotificationType::REQUEST_APPROVED->value => 'تمت الموافقة على طلبكم - Yemen Flow Hub',
-        NotificationType::REQUEST_REJECTED->value => 'تم رفض طلبكم - Yemen Flow Hub',
-        NotificationType::REQUEST_RETURNED->value => 'تم إعادة طلبكم للتعديل - Yemen Flow Hub',
-        NotificationType::VOTING_OPENED->value => 'تم فتح جلسة التصويت - Yemen Flow Hub',
-        NotificationType::MFA_OTP->value => 'رمز التحقق متعدد العوامل - Yemen Flow Hub',
-        NotificationType::PASSWORD_RESET->value => 'رمز استعادة كلمة المرور - Yemen Flow Hub',
+        NotificationType::REQUEST_APPROVED->value => 'تمت الموافقة على طلبكم - The National Committee for Regulating & Financing Imports',
+        NotificationType::REQUEST_REJECTED->value => 'تم رفض طلبكم - The National Committee for Regulating & Financing Imports',
+        NotificationType::REQUEST_RETURNED->value => 'تم إعادة طلبكم للتعديل - The National Committee for Regulating & Financing Imports',
+        NotificationType::VOTING_OPENED->value => 'تم فتح جلسة التصويت - The National Committee for Regulating & Financing Imports',
+        NotificationType::MFA_OTP->value => 'رمز التحقق متعدد العوامل - The National Committee for Regulating & Financing Imports',
+        NotificationType::PASSWORD_RESET->value => 'رمز استعادة كلمة المرور - The National Committee for Regulating & Financing Imports',
     ];
 
     public function __construct(private readonly NotificationRegistry $registry) {}
@@ -64,7 +64,7 @@ class TemplateResolver
 
         return [
             'source' => 'blade',
-            'subject' => self::DEFAULT_SUBJECTS[$type->value] ?? 'Yemen Flow Hub',
+            'subject' => self::DEFAULT_SUBJECTS[$type->value] ?? 'The National Committee for Regulating & Financing Imports',
             'body' => null,
             'view' => 'emails.'.(self::BLADE_MAP[$type->value] ?? strtolower($type->value)),
             'template_version_id' => null,

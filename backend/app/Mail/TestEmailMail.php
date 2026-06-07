@@ -13,7 +13,7 @@ class TestEmailMail extends Mailable
 
     public function envelope(): Envelope
     {
-        return new Envelope(subject: 'Yemen Flow Hub — بريد اختباري');
+        return new Envelope(subject: 'The National Committee for Regulating & Financing Imports — بريد اختباري');
     }
 
     public function content(): Content

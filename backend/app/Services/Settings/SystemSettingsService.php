@@ -12,8 +12,10 @@ use Illuminate\Auth\Access\AuthorizationException;
 class SystemSettingsService
 {
     private const DEFAULT_GENERAL = [
-        'platformName' => 'منصة إدارة وتمويل الواردات',
-        'authority' => 'البنك المركزي اليمني',
+        'platformName' => 'اللجنة الوطنية لتنظيم وتمويل الواردات',
+        'platformNameEn' => 'The National Committee for Regulating & Financing Imports',
+        'authority' => 'اللجنة الوطنية لتنظيم وتمويل الواردات',
+        'authorityEn' => 'The National Committee for Regulating & Financing Imports',
         'language' => 'ar',
         'timeZone' => 'GMT+3',
     ];

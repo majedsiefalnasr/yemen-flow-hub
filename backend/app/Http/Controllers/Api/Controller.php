@@ -7,9 +7,9 @@ use OpenApi\Annotations as OA;
 
 /**
  * @OA\Info(
- *   title="Yemen Flow Hub API",
+ *   title="National Committee Imports API",
  *   version="1.0.0",
- *   description="Internal regulatory workflow API for CBY import financing requests."
+ *   description="Internal regulatory workflow API for National Committee import financing requests."
  * )
  *
  * @OA\Server(

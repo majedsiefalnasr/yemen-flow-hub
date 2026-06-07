@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Yemen Flow Hub</title>
+    <title>اللجنة الوطنية لتنظيم وتمويل الواردات</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
     <style>body{font-family:Cairo,sans-serif}</style>
@@ -12,7 +12,7 @@
 <div class="max-w-[1800px] mx-auto p-4 space-y-4">
     <header class="bg-white border rounded-xl shadow-sm p-4 flex items-center justify-between">
         <div>
-            <h1 class="text-2xl font-extrabold">Yemen Flow Hub</h1>
+            <h1 class="text-2xl font-extrabold">اللجنة الوطنية لتنظيم وتمويل الواردات</h1>
             <p class="text-sm text-slate-500">صفحة اختبار API</p>
         </div>
         <button id="logoutBtn" class="px-3 py-2 text-sm rounded-lg bg-rose-600 text-white hover:bg-rose-700">تسجيل خروج</button>
@@ -85,7 +85,7 @@ async function fetchMerchants() {
 
 function updateStatus(){
   const u=getUser();
-  document.getElementById('statusBar').textContent=u?`المستخدم الحالي: ${u.name} (${u.role_label}) - ${u.bank_name||'البنك المركزي'}`:'لم يتم تسجيل الدخول';
+  document.getElementById('statusBar').textContent=u?`المستخدم الحالي: ${u.name} (${u.role_label}) - ${u.bank_name||'اللجنة الوطنية لتنظيم وتمويل الواردات'}`:'لم يتم تسجيل الدخول';
 }
 
 function groupUsers(list){const g={};list.forEach(u=>(g[u.role_label]=g[u.role_label]||[]).push(u));return g;}
@@ -93,7 +93,7 @@ function renderUsers(){
   const q=document.getElementById('userFilter').value.toLowerCase();
   const users=window.SEEDED_USERS.filter(u=>[u.name,u.email,u.role_label,u.bank_name||''].join(' ').toLowerCase().includes(q));
   const g=groupUsers(users);
-  document.getElementById('usersWrap').innerHTML=Object.entries(g).map(([role,arr])=>`<div class="border-b last:border-b-0"><div class="bg-slate-50 px-3 py-2 text-sm font-bold">${role}</div>${arr.map(u=>`<div class="px-3 py-2 flex items-center justify-between gap-3 ${getUser()?.email===u.email?'bg-emerald-50':''}"><div class="text-sm"><div class="font-semibold">${u.name}</div><div class="text-slate-500">${u.email} - ${u.bank_name||'البنك المركزي'}</div></div><button class="px-3 py-1.5 rounded-lg bg-blue-600 text-white text-sm hover:bg-blue-700" onclick="loginQuick('${u.email}')">دخول</button></div>`).join('')}</div>`).join('');
+  document.getElementById('usersWrap').innerHTML=Object.entries(g).map(([role,arr])=>`<div class="border-b last:border-b-0"><div class="bg-slate-50 px-3 py-2 text-sm font-bold">${role}</div>${arr.map(u=>`<div class="px-3 py-2 flex items-center justify-between gap-3 ${getUser()?.email===u.email?'bg-emerald-50':''}"><div class="text-sm"><div class="font-semibold">${u.name}</div><div class="text-slate-500">${u.email} - ${u.bank_name||'اللجنة الوطنية لتنظيم وتمويل الواردات'}</div></div><button class="px-3 py-1.5 rounded-lg bg-blue-600 text-white text-sm hover:bg-blue-700" onclick="loginQuick('${u.email}')">دخول</button></div>`).join('')}</div>`).join('');
 }
 
 async function callApi(method,path,body=null,isMultipart=false){

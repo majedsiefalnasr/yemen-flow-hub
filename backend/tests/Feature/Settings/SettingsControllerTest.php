@@ -99,6 +99,17 @@ class SettingsControllerTest extends TestCase
         $response->assertJsonPath('data.branding.brandLogoName', 'custom-logo.svg');
     }
 
+    public function test_get_public_settings_returns_national_committee_defaults(): void
+    {
+        $response = $this->getJson('/api/settings/public');
+
+        $response->assertStatus(200);
+        $response->assertJsonPath('data.general.platformName', 'اللجنة الوطنية لتنظيم وتمويل الواردات');
+        $response->assertJsonPath('data.general.platformNameEn', 'The National Committee for Regulating & Financing Imports');
+        $response->assertJsonPath('data.general.authority', 'اللجنة الوطنية لتنظيم وتمويل الواردات');
+        $response->assertJsonPath('data.general.authorityEn', 'The National Committee for Regulating & Financing Imports');
+    }
+
     public function test_cby_admin_save_branding_persists_system_branding(): void
     {
         $user = User::query()->create([

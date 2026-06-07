@@ -5,7 +5,7 @@ return [
     'documentations' => [
         'default' => [
             'api' => [
-                'title' => 'Yemen Flow Hub API',
+                'title' => 'National Committee Imports API',
             ],
             'routes' => [
                 'api' => 'api/documentation',

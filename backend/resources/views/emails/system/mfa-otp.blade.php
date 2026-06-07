@@ -17,7 +17,7 @@
                     <tr>
                         <td style="padding: 24px;">
                             <p dir="rtl" style="margin: 0 0 16px 0; color: {{ config('email-theme.primary_text') }}; font-size: 16px;">مرحباً {{ $user_name ?? '' }}،</p>
-                            <p dir="rtl" style="margin: 0 0 16px 0; color: {{ config('email-theme.primary_text') }}; font-size: 16px;">تم طلب تسجيل الدخول إلى منصة Yemen Flow Hub. استخدم رمز التحقق التالي لإكمال المصادقة متعددة العوامل.</p>
+                            <p dir="rtl" style="margin: 0 0 16px 0; color: {{ config('email-theme.primary_text') }}; font-size: 16px;">تم طلب تسجيل الدخول إلى منصة اللجنة الوطنية لتنظيم وتمويل الواردات. استخدم رمز التحقق التالي لإكمال المصادقة متعددة العوامل.</p>
                             <x-email.otp-code :code="$displayCode" />
                             <p dir="rtl" style="margin: 0 0 16px 0; color: {{ config('email-theme.primary_text') }}; font-size: 16px;">ينتهي هذا الرمز خلال {{ $displayTtl }} دقيقة، ويستخدم مرة واحدة فقط.</p>
                             <p dir="rtl" style="margin: 0 0 24px 0; color: {{ config('email-theme.locked_gray') }}; font-size: 14px;">إذا لم تطلب هذا الإجراء، تجاهل هذه الرسالة وتأكد من أمان حسابك.</p>

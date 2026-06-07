@@ -17,7 +17,7 @@
                     <tr>
                         <td style="padding: 24px;">
                             <p dir="rtl" style="margin: 0 0 16px 0; color: {{ config('email-theme.primary_text') }}; font-size: 16px;">مرحباً {{ $user_name ?? '' }}،</p>
-                            <p dir="rtl" style="margin: 0 0 16px 0; color: {{ config('email-theme.primary_text') }}; font-size: 16px;">تم طلب استعادة كلمة المرور لحسابكم في منصة Yemen Flow Hub. استخدموا رمز الاستعادة التالي لإكمال العملية.</p>
+                            <p dir="rtl" style="margin: 0 0 16px 0; color: {{ config('email-theme.primary_text') }}; font-size: 16px;">تم طلب استعادة كلمة المرور لحسابكم في منصة اللجنة الوطنية لتنظيم وتمويل الواردات. استخدموا رمز الاستعادة التالي لإكمال العملية.</p>
                             <x-email.otp-code :code="$displayCode" />
                             <p dir="rtl" style="margin: 0 0 16px 0; color: {{ config('email-theme.primary_text') }}; font-size: 16px;">ينتهي هذا الرمز خلال {{ $displayTtl }} دقائق، ويستخدم مرة واحدة فقط.</p>
                             <p dir="rtl" style="margin: 0 0 24px 0; color: {{ config('email-theme.locked_gray') }}; font-size: 14px;">إذا لم تطلبوا هذا الإجراء، يمكن تجاهل هذه الرسالة بأمان.</p>

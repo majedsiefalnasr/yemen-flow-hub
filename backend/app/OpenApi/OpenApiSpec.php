@@ -6,8 +6,8 @@ use OpenApi\Attributes as OA;
 
 #[OA\Info(
     version: '1.0.0',
-    title: 'Yemen Flow Hub API',
-    description: 'Internal regulatory workflow API for CBY import financing requests.'
+    title: 'National Committee Imports API',
+    description: 'Internal regulatory workflow API for National Committee import financing requests.'
 )]
 #[OA\Server(
     url: '/',

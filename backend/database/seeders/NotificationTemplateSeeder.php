@@ -16,11 +16,11 @@ class NotificationTemplateSeeder extends Seeder
      */
     private array $templates = [
         NotificationType::REQUEST_APPROVED->value => [
-            'subject' => 'تمت الموافقة على طلبكم - Yemen Flow Hub',
+            'subject' => 'تمت الموافقة على طلبكم - The National Committee for Regulating & Financing Imports',
             'body' => <<<'MARKDOWN'
 عزيزي {{user_name}}،
 
-يسعدنا إبلاغكم بأنه تمت الموافقة على طلبكم في منصة Yemen Flow Hub.
+يسعدنا إبلاغكم بأنه تمت الموافقة على طلبكم في منصة اللجنة الوطنية لتنظيم وتمويل الواردات.
 
 **رقم الطلب:** {{reference_number}}
 
@@ -30,15 +30,15 @@ class NotificationTemplateSeeder extends Seeder
 
 [عرض الطلب]({{action_url}})
 
-شكراً لاستخدامكم منصة Yemen Flow Hub.
+شكراً لاستخدامكم منصة اللجنة الوطنية لتنظيم وتمويل الواردات.
 MARKDOWN,
         ],
         NotificationType::REQUEST_REJECTED->value => [
-            'subject' => 'تم رفض طلبكم - Yemen Flow Hub',
+            'subject' => 'تم رفض طلبكم - The National Committee for Regulating & Financing Imports',
             'body' => <<<'MARKDOWN'
 عزيزي {{user_name}}،
 
-نأسف لإبلاغكم بأنه تم رفض طلبكم في منصة Yemen Flow Hub.
+نأسف لإبلاغكم بأنه تم رفض طلبكم في منصة اللجنة الوطنية لتنظيم وتمويل الواردات.
 
 **رقم الطلب:** {{reference_number}}
 
@@ -48,15 +48,15 @@ MARKDOWN,
 
 [عرض الطلب]({{action_url}})
 
-شكراً لاستخدامكم منصة Yemen Flow Hub.
+شكراً لاستخدامكم منصة اللجنة الوطنية لتنظيم وتمويل الواردات.
 MARKDOWN,
         ],
         NotificationType::REQUEST_RETURNED->value => [
-            'subject' => 'تم إعادة طلبكم للتعديل - Yemen Flow Hub',
+            'subject' => 'تم إعادة طلبكم للتعديل - The National Committee for Regulating & Financing Imports',
             'body' => <<<'MARKDOWN'
 عزيزي {{user_name}}،
 
-تم إعادة طلبكم للتعديل في منصة Yemen Flow Hub.
+تم إعادة طلبكم للتعديل في منصة اللجنة الوطنية لتنظيم وتمويل الواردات.
 
 **رقم الطلب:** {{reference_number}}
 
@@ -66,7 +66,7 @@ MARKDOWN,
 
 [عرض الطلب وتعديله]({{action_url}})
 
-شكراً لاستخدامكم منصة Yemen Flow Hub.
+شكراً لاستخدامكم منصة اللجنة الوطنية لتنظيم وتمويل الواردات.
 MARKDOWN,
         ],
     ];

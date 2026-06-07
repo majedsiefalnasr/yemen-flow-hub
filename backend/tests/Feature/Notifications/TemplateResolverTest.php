@@ -30,7 +30,7 @@ class TemplateResolverTest extends TestCase
 
         $this->assertSame('blade', $resolved['source']);
         $this->assertSame('emails.request-approved', $resolved['view']);
-        $this->assertSame('تمت الموافقة على طلبكم - Yemen Flow Hub', $resolved['subject']);
+        $this->assertSame('تمت الموافقة على طلبكم - The National Committee for Regulating & Financing Imports', $resolved['subject']);
         $this->assertNull($resolved['template_version_id']);
     }
 
@@ -42,8 +42,27 @@ class TemplateResolverTest extends TestCase
 
         $this->assertSame('blade', $resolved['source']);
         $this->assertSame('emails.voting-opened', $resolved['view']);
-        $this->assertSame('تم فتح جلسة التصويت - Yemen Flow Hub', $resolved['subject']);
+        $this->assertSame('تم فتح جلسة التصويت - The National Committee for Regulating & Financing Imports', $resolved['subject']);
         $this->assertNull($resolved['template_version_id']);
+    }
+
+    public function test_default_subjects_use_national_committee_identity(): void
+    {
+        $expectedSubjects = [
+            NotificationType::REQUEST_APPROVED->value => 'تمت الموافقة على طلبكم - The National Committee for Regulating & Financing Imports',
+            NotificationType::REQUEST_REJECTED->value => 'تم رفض طلبكم - The National Committee for Regulating & Financing Imports',
+            NotificationType::REQUEST_RETURNED->value => 'تم إعادة طلبكم للتعديل - The National Committee for Regulating & Financing Imports',
+            NotificationType::VOTING_OPENED->value => 'تم فتح جلسة التصويت - The National Committee for Regulating & Financing Imports',
+            NotificationType::MFA_OTP->value => 'رمز التحقق متعدد العوامل - The National Committee for Regulating & Financing Imports',
+            NotificationType::PASSWORD_RESET->value => 'رمز استعادة كلمة المرور - The National Committee for Regulating & Financing Imports',
+        ];
+
+        foreach (NotificationType::cases() as $type) {
+            $resolved = app(TemplateResolver::class)->resolve($type);
+
+            $this->assertSame($expectedSubjects[$type->value], $resolved['subject']);
+            $this->assertStringNotContainsString('Yemen Flow Hub', $resolved['subject']);
+        }
     }
 
     public function test_inactive_versions_are_ignored(): void

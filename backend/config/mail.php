@@ -27,6 +27,6 @@ return [
 
     'from' => [
         'address' => env('MAIL_FROM_ADDRESS', 'no-reply@yemen-flow-hub.local'),
-        'name' => env('MAIL_FROM_NAME', env('APP_NAME', 'Yemen Flow Hub')),
+        'name' => env('MAIL_FROM_NAME', env('APP_NAME', 'The National Committee for Regulating & Financing Imports')),
     ],
 ];

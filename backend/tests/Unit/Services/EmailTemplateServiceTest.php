@@ -45,7 +45,7 @@ class EmailTemplateServiceTest extends TestCase
         ]);
 
         $this->assertSame('blade', $result['source']);
-        $this->assertSame('تمت الموافقة على طلبكم - Yemen Flow Hub', $result['subject']);
+        $this->assertSame('تمت الموافقة على طلبكم - The National Committee for Regulating & Financing Imports', $result['subject']);
         $this->assertStringContainsString('</html>', $result['body']);
     }
 

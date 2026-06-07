@@ -47,7 +47,7 @@ class SystemSettingsSeeder extends Seeder
             ['key' => 'lockout_duration_minutes', 'value' => 15],
 
             // Platform name shown in UI header and emails
-            ['key' => 'platform_name', 'value' => 'Yemen Flow Hub'],
+            ['key' => 'platform_name', 'value' => 'اللجنة الوطنية لتنظيم وتمويل الواردات'],
 
             // Default UI language: 'ar' | 'en'
             ['key' => 'default_language', 'value' => 'ar'],
