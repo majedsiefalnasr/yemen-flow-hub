@@ -83,9 +83,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('requests/{importRequest}/confirmation-request-preview', [DocumentTemplateController::class, 'confirmationRequestPreview']);
     Route::get('requests/{importRequest}/fx-confirmation-template', [DocumentTemplateController::class, 'fxConfirmation']);
     Route::post('requests/{importRequest}/fx-confirmation-upload', [CustomsController::class, 'uploadSignedFx']);
-    Route::post('documents/upload', [DocumentController::class, 'upload']);
+    Route::post('documents/upload', [DocumentController::class, 'upload'])->middleware('throttle:10,1');
     // @deprecated — use POST /api/documents/upload; kept for backward compat during Epic 2 stabilization
-    Route::post('requests/{importRequest}/documents', [DocumentController::class, 'uploadRequestDocument']);
+    Route::post('requests/{importRequest}/documents', [DocumentController::class, 'uploadRequestDocument'])->middleware('throttle:10,1');
     Route::delete('documents/{document}', [DocumentController::class, 'destroy']);
     Route::get('documents/{document}/download', [DocumentController::class, 'download']);
 
@@ -109,7 +109,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('workflow/{importRequest}/bank-reject-terminal', [WorkflowController::class, 'bankRejectTerminal'])->name('workflow.bank-reject-terminal');
     Route::post('workflow/{importRequest}/bank-return', [WorkflowController::class, 'bankReturn'])->name('workflow.bank-return');
     Route::post('workflow/{importRequest}/support-return', [WorkflowController::class, 'supportReturn'])->name('workflow.support-return');
-    Route::post('workflow/{importRequest}/swift-upload', [DocumentController::class, 'uploadSwift']);
+    Route::post('workflow/{importRequest}/swift-upload', [DocumentController::class, 'uploadSwift'])->middleware('throttle:10,1');
     Route::post('workflow/{importRequest}/finalize-decision', [WorkflowController::class, 'finalizeDecision'])->name('workflow.finalize-decision');
 
     Route::get('voting', [VotingController::class, 'index']);

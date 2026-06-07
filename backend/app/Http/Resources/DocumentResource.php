@@ -47,7 +47,6 @@ class DocumentResource extends JsonResource
             'uploaded_by' => $this->uploaded_by,
             'uploaded_by_name' => $this->whenLoaded('uploader', fn () => $this->uploader?->name),
             'uploaded_at' => $this->created_at?->toISOString(),
-            'download_url' => url("/api/documents/{$this->id}/download"),
         ];
     }
 }

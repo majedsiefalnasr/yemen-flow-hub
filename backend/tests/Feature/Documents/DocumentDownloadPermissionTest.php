@@ -475,6 +475,27 @@ class DocumentDownloadPermissionTest extends TestCase
         $this->assertEquals($request->id, $metadata['request_id']);
     }
 
+    public function test_download_content_disposition_sanitizes_legacy_original_filename(): void
+    {
+        $creator = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $request = $this->makeRequest($this->bank, $creator);
+        $document = $this->makeDocument($request, $creator, 'REQUEST_DOC');
+        $document->forceFill(['original_filename' => "../../evil\r\nname<script>.pdf"])->save();
+
+        $actor = $this->makeUser(UserRole::BANK_REVIEWER, $this->bank);
+        $response = $this->actingAs($actor)->get("/api/documents/{$document->id}/download");
+
+        $response->assertStatus(200);
+
+        $contentDisposition = (string) $response->headers->get('content-disposition');
+        $this->assertStringContainsString('evil name_script_.pdf', $contentDisposition);
+        $this->assertStringNotContainsString('..', $contentDisposition);
+        $this->assertStringNotContainsString('/', $contentDisposition);
+        $this->assertStringNotContainsString('\\', $contentDisposition);
+        $this->assertStringNotContainsString("\r", $contentDisposition);
+        $this->assertStringNotContainsString("\n", $contentDisposition);
+    }
+
     public function test_swift_download_creates_audit_log_with_swift_type(): void
     {
         $uploader = $this->makeUser(UserRole::SWIFT_OFFICER, $this->bank);

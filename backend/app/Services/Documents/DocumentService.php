@@ -20,6 +20,8 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class DocumentService
 {
+    private const MAX_DISPLAY_FILENAME_LENGTH = 255;
+
     public function __construct(
         private readonly WorkflowService $workflowService,
         private readonly AuditService $auditService
@@ -196,7 +198,7 @@ class DocumentService
             if (is_resource($stream)) {
                 fclose($stream);
             }
-        }, $document->original_filename, ['Content-Type' => $document->mime_type]);
+        }, $this->sanitizeDisplayFilename($document->original_filename), ['Content-Type' => $document->mime_type]);
     }
 
     public function delete(RequestDocument $document, User $user): void
@@ -237,6 +239,7 @@ class DocumentService
         $filename = Str::uuid().".{$extension}";
         $relativePath = "{$folder}/{$filename}";
         $storagePath = 'private/'.$folder;
+        $safeOriginalFilename = $this->sanitizeDisplayFilename($file->getClientOriginalName());
 
         $checksum = hash_file('sha256', $file->getRealPath());
         if ($checksum === false) {
@@ -249,13 +252,13 @@ class DocumentService
         }
 
         try {
-            return DB::transaction(function () use ($request, $uploader, $file, $type, $subType, $relativePath, $checksum): RequestDocument {
+            return DB::transaction(function () use ($request, $uploader, $file, $type, $subType, $relativePath, $checksum, $safeOriginalFilename): RequestDocument {
                 return RequestDocument::query()->create([
                     'request_id' => $request->id,
                     'uploaded_by' => $uploader->id,
                     'type' => $type,
                     'document_sub_type' => $subType,
-                    'original_filename' => $file->getClientOriginalName(),
+                    'original_filename' => $safeOriginalFilename,
                     'stored_path' => $relativePath,
                     'mime_type' => $file->getMimeType() ?: 'application/octet-stream',
                     'size_bytes' => $file->getSize() ?: 0,
@@ -266,6 +269,38 @@ class DocumentService
             Storage::disk('local')->delete('private/'.$relativePath);
             throw $e;
         }
+    }
+
+    private function sanitizeDisplayFilename(?string $filename): string
+    {
+        $filename = trim((string) $filename);
+        $filename = str_replace(['/', '\\'], ' ', $filename);
+        $filename = preg_replace('/[\x00-\x1F\x7F]+/u', ' ', $filename) ?? '';
+        $filename = preg_replace('/[^\p{L}\p{N}._ -]+/u', '_', $filename) ?? '';
+        $filename = preg_replace('/\s+/u', ' ', $filename) ?? '';
+        $filename = preg_replace('/_+/u', '_', $filename) ?? '';
+
+        while (str_contains($filename, '..')) {
+            $filename = str_replace('..', '.', $filename);
+        }
+
+        $filename = trim($filename, " ._\t\n\r\0\x0B");
+
+        if ($filename === '') {
+            return 'document.pdf';
+        }
+
+        if (mb_strlen($filename) <= self::MAX_DISPLAY_FILENAME_LENGTH) {
+            return $filename;
+        }
+
+        $extension = pathinfo($filename, PATHINFO_EXTENSION);
+        $suffix = $extension !== '' ? ".{$extension}" : '';
+        $basename = pathinfo($filename, PATHINFO_FILENAME);
+        $maxBasenameLength = max(1, self::MAX_DISPLAY_FILENAME_LENGTH - mb_strlen($suffix));
+        $truncated = rtrim(mb_substr($basename, 0, $maxBasenameLength), ' ._');
+
+        return ($truncated !== '' ? $truncated : 'document').$suffix;
     }
 
     private function assertFileValid(UploadedFile $file): void

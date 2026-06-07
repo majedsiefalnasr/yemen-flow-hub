@@ -45,16 +45,23 @@ class DocumentControllerTest extends TestCase
 
     private function seedPermissions(): void
     {
-        $permissionId = DB::table('permissions')->insertGetId([
+        $requestCreatePermissionId = DB::table('permissions')->insertGetId([
             'slug' => 'request.create',
             'name_ar' => 'إنشاء طلب',
             'name_en' => 'Create request',
             'group' => 'requests',
         ]);
 
+        $swiftUploadPermissionId = DB::table('permissions')->insertGetId([
+            'slug' => 'swift.upload',
+            'name_ar' => 'رفع وثيقة السويفت',
+            'name_en' => 'Upload SWIFT document',
+            'group' => 'workflow',
+        ]);
+
         DB::table('role_permissions')->insert([
-            'permission_id' => $permissionId,
-            'role' => UserRole::DATA_ENTRY->value,
+            ['permission_id' => $requestCreatePermissionId, 'role' => UserRole::DATA_ENTRY->value],
+            ['permission_id' => $swiftUploadPermissionId, 'role' => UserRole::SWIFT_OFFICER->value],
         ]);
     }
 
@@ -107,6 +114,14 @@ class DocumentControllerTest extends TestCase
         return UploadedFile::fake()->create($name, 100, 'application/pdf');
     }
 
+    private function makePdfWithOriginalName(string $name): UploadedFile
+    {
+        $path = tempnam(sys_get_temp_dir(), 'yfh-upload-');
+        file_put_contents($path, '%PDF-1.4 test');
+
+        return new UploadedFile($path, $name, 'application/pdf', null, true);
+    }
+
     private function makeDocument(ImportRequest $request, User $uploader): RequestDocument
     {
         $storedPath = "requests/{$request->id}/test.pdf";
@@ -147,9 +162,9 @@ class DocumentControllerTest extends TestCase
                     'size_bytes',
                     'checksum',
                     'uploaded_at',
-                    'download_url',
                 ],
-            ]);
+            ])
+            ->assertJsonMissingPath('data.download_url');
 
         $this->assertDatabaseHas('request_documents', [
             'request_id' => $importRequest->id,
@@ -239,6 +254,58 @@ class DocumentControllerTest extends TestCase
 
         $this->assertNotNull($document->checksum);
         $this->assertMatchesRegularExpression('/^[a-f0-9]{64}$/', $document->checksum);
+    }
+
+    public function test_upload_sanitizes_original_filename_without_changing_storage_or_checksum(): void
+    {
+        $importRequest = $this->makeRequest($this->bank, $this->dataEntry);
+        $file = $this->makePdf("../../evil\r\nname<script>.pdf");
+        $expectedChecksum = hash_file('sha256', $file->getRealPath());
+
+        $response = $this->actingAs($this->dataEntry)
+            ->postJson('/api/documents/upload', [
+                'request_id' => $importRequest->id,
+                'file' => $file,
+            ]);
+
+        $response->assertStatus(201)
+            ->assertJsonPath('data.original_filename', 'evil name_script_.pdf');
+
+        $document = RequestDocument::query()
+            ->where('request_id', $importRequest->id)
+            ->firstOrFail();
+
+        $this->assertSame('evil name_script_.pdf', $document->original_filename);
+        $this->assertStringNotContainsString('..', $document->original_filename);
+        $this->assertStringNotContainsString('/', $document->original_filename);
+        $this->assertStringNotContainsString('\\', $document->original_filename);
+        $this->assertStringNotContainsString("\r", $document->original_filename);
+        $this->assertStringNotContainsString("\n", $document->original_filename);
+        $this->assertMatchesRegularExpression("#^requests/{$importRequest->id}/[0-9a-f-]{36}\.pdf$#", $document->stored_path);
+        $this->assertSame($expectedChecksum, $document->checksum);
+    }
+
+    public function test_upload_preserves_arabic_filename_and_truncates_without_breaking_utf8(): void
+    {
+        $importRequest = $this->makeRequest($this->bank, $this->dataEntry);
+        $file = $this->makePdfWithOriginalName(str_repeat('فاتورة', 70).'.pdf');
+
+        $response = $this->actingAs($this->dataEntry)
+            ->postJson('/api/documents/upload', [
+                'request_id' => $importRequest->id,
+                'file' => $file,
+            ]);
+
+        $response->assertStatus(201);
+
+        $document = RequestDocument::query()
+            ->where('request_id', $importRequest->id)
+            ->firstOrFail();
+
+        $this->assertTrue(mb_check_encoding($document->original_filename, 'UTF-8'));
+        $this->assertLessThanOrEqual(255, mb_strlen($document->original_filename));
+        $this->assertStringStartsWith('فاتورة', $document->original_filename);
+        $this->assertStringEndsWith('.pdf', $document->original_filename);
     }
 
     public function test_upload_non_pdf_returns_422_validation_error(): void
@@ -389,6 +456,68 @@ class DocumentControllerTest extends TestCase
         ]);
 
         $response->assertStatus(401);
+    }
+
+    public function test_document_upload_route_is_rate_limited(): void
+    {
+        $importRequest = $this->makeRequest($this->bank, $this->dataEntry);
+
+        for ($i = 0; $i < 10; $i++) {
+            $this->actingAs($this->dataEntry)
+                ->postJson('/api/documents/upload', [
+                    'request_id' => $importRequest->id,
+                    'file' => $this->makePdf("document-{$i}.pdf"),
+                ])
+                ->assertStatus(201);
+        }
+
+        $this->actingAs($this->dataEntry)
+            ->postJson('/api/documents/upload', [
+                'request_id' => $importRequest->id,
+                'file' => $this->makePdf('document-11.pdf'),
+            ])
+            ->assertStatus(429)
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('message', 'Too many requests. Please try again later.');
+    }
+
+    public function test_deprecated_request_document_upload_route_is_rate_limited(): void
+    {
+        $importRequest = $this->makeRequest($this->bank, $this->dataEntry);
+
+        for ($i = 0; $i < 10; $i++) {
+            $this->actingAs($this->dataEntry)
+                ->postJson("/api/requests/{$importRequest->id}/documents", [
+                    'file' => $this->makePdf("legacy-document-{$i}.pdf"),
+                ])
+                ->assertStatus(201);
+        }
+
+        $this->actingAs($this->dataEntry)
+            ->postJson("/api/requests/{$importRequest->id}/documents", [
+                'file' => $this->makePdf('legacy-document-11.pdf'),
+            ])
+            ->assertStatus(429)
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('message', 'Too many requests. Please try again later.');
+    }
+
+    public function test_swift_upload_route_is_rate_limited(): void
+    {
+        $swiftOfficer = $this->makeUser(UserRole::SWIFT_OFFICER, $this->bank);
+        $request = $this->makeRequest($this->bank, $this->dataEntry, RequestStatus::WAITING_FOR_SWIFT);
+
+        for ($i = 0; $i < 10; $i++) {
+            $this->actingAs($swiftOfficer)
+                ->postJson("/api/workflow/{$request->id}/swift-upload", [])
+                ->assertStatus(422);
+        }
+
+        $this->actingAs($swiftOfficer)
+            ->postJson("/api/workflow/{$request->id}/swift-upload", [])
+            ->assertStatus(429)
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('message', 'Too many requests. Please try again later.');
     }
 
     // ─── AC-3: Additional locked-status coverage (Patch K) ───────────────────
