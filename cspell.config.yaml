@@ -3,11 +3,13 @@ ignorePaths: []
 dictionaryDefinitions: []
 dictionaries: []
 words:
+  - AUTOCOMPACT
   - bmad
   - cmdk
   - customizer
   - decisioning
   - drilldown
+  - esac
   - glassmorphism
   - gpgsign
   - graphify
