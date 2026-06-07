@@ -14,6 +14,7 @@ use App\Services\Notifications\TemplateValidator;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 
 class NotificationTemplateController extends Controller
@@ -58,22 +59,26 @@ class NotificationTemplateController extends Controller
         $template = $this->editableTemplate($type);
         $sanitized = $this->validatedTemplateContent($request, $template->notification_type);
 
-        $template->createActiveVersion(
-            $sanitized['subject'],
-            $sanitized['body'],
-            $request->user()->id,
-        );
+        // Version write + audit are atomic: a failed audit insert must not leave an
+        // un-audited template change committed (and vice-versa).
+        DB::transaction(function () use ($template, $sanitized, $request): void {
+            $template->createActiveVersion(
+                $sanitized['subject'],
+                $sanitized['body'],
+                $request->user()->id,
+            );
 
-        $this->auditService->log(
-            AuditAction::EMAIL_TEMPLATE_UPDATED,
-            $request->user(),
-            $template,
-            [
-                'template_type' => $template->notification_type->value,
-                'changed_by' => $request->user()->id,
-                'timestamp' => now()->toISOString(),
-            ],
-        );
+            $this->auditService->log(
+                AuditAction::EMAIL_TEMPLATE_UPDATED,
+                $request->user(),
+                $template,
+                [
+                    'template_type' => $template->notification_type->value,
+                    'changed_by' => $request->user()->id,
+                    'timestamp' => now()->toISOString(),
+                ],
+            );
+        });
 
         $template->load(['activeVersion.changedBy', 'versions.changedBy']);
 
@@ -87,8 +92,11 @@ class NotificationTemplateController extends Controller
     {
         Gate::authorize('cbyAdmin', $request->user());
 
-        $notificationType = $this->editableType($type);
-        $sanitized = $this->validatedTemplateContent($request, $notificationType);
+        // Require the template row to exist (firstOrFail), matching show/update — so
+        // an editable type with no stored template 404s consistently across methods
+        // instead of previewing fine but failing to open/save.
+        $template = $this->editableTemplate($type);
+        $sanitized = $this->validatedTemplateContent($request, $template->notification_type);
 
         return ApiResponse::success([
             'source' => [
@@ -96,7 +104,7 @@ class NotificationTemplateController extends Controller
                 'body' => $sanitized['body'],
             ],
             'rendered' => $this->renderer->renderSource(
-                $notificationType,
+                $template->notification_type,
                 $sanitized['subject'],
                 $sanitized['body'],
                 $this->sampleVariables(),

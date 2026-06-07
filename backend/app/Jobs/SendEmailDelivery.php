@@ -49,16 +49,23 @@ class SendEmailDelivery implements ShouldBeEncrypted, ShouldQueue
             throw new RuntimeException('Redacted email delivery requires a live encrypted payload.');
         }
 
+        // Atomic claim before transport: only one attempt may send. A retry after a
+        // worker crash between transport and markSent finds the row already claimed
+        // and stops, preventing a duplicate send (notably duplicate OTP/reset codes).
+        if (! $deliveries->claimForSending($delivery)) {
+            return;
+        }
+
         $subject = $this->renderedSubject ?? (string) $delivery->rendered_subject;
         $body = $this->renderedBody ?? (string) $delivery->rendered_body;
 
-        Mail::html($body, function ($message) use ($delivery, $subject): void {
+        $sent = Mail::html($body, function ($message) use ($delivery, $subject): void {
             $message
                 ->to($delivery->recipient_email)
                 ->subject($subject);
         });
 
-        $deliveries->markSent($delivery);
+        $deliveries->markSent($delivery, $sent?->getMessageId());
     }
 
     public function failed(?Throwable $exception): void
@@ -69,8 +76,17 @@ class SendEmailDelivery implements ShouldBeEncrypted, ShouldQueue
             return;
         }
 
-        $error = $exception?->getMessage() ?? 'Email delivery job failed.';
-        app(EmailDeliveryService::class)->markFailed($delivery, $error);
+        $deliveries = app(EmailDeliveryService::class);
+        $rawError = $exception?->getMessage() ?? 'Email delivery job failed.';
+
+        // For redacted types, a transport error can echo the rendered body/subject
+        // (incl. the live secret). Mask it before it reaches the failed-status column
+        // and the audit log, which the redaction layer would otherwise bypass.
+        $error = $this->isRedactedType($delivery, app(NotificationRegistry::class))
+            ? $deliveries->redact($rawError)
+            : $rawError;
+
+        $deliveries->markFailed($delivery, $error);
 
         app(AuditService::class)->log(
             AuditAction::EMAIL_DELIVERY_FAILED,
@@ -81,7 +97,7 @@ class SendEmailDelivery implements ShouldBeEncrypted, ShouldQueue
                 'event_id' => $delivery->event_id,
                 'recipient_user_id' => $delivery->recipient_user_id,
                 'recipient_email' => $delivery->recipient_email,
-                'error' => $exception?->getMessage(),
+                'error' => $error,
             ]
         );
     }

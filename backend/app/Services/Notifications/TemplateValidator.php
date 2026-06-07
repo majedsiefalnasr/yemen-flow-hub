@@ -19,21 +19,51 @@ class TemplateValidator
     public function validateForSave(NotificationType $type, string $subject, string $body): array
     {
         $allowedVariables = $this->registry->for($type)['allowed_variables'];
-        $unknownVariables = array_values(array_diff(
-            array_unique(array_merge($this->variablesIn($subject), $this->variablesIn($body))),
-            $allowedVariables
-        ));
 
-        if ($unknownVariables !== []) {
-            throw ValidationException::withMessages([
-                'body' => 'Template contains unsupported variables: '.implode(', ', $unknownVariables),
-            ]);
+        $subjectUnknown = array_values(array_diff(array_unique($this->variablesIn($subject)), $allowedVariables));
+        $bodyUnknown = array_values(array_diff(array_unique($this->variablesIn($body)), $allowedVariables));
+
+        $errors = [];
+        if ($subjectUnknown !== []) {
+            $errors['subject'] = 'Template subject contains unsupported variables: '.implode(', ', $subjectUnknown);
+        }
+        if ($bodyUnknown !== []) {
+            $errors['body'] = 'Template contains unsupported variables: '.implode(', ', $bodyUnknown);
+        }
+        if ($errors !== []) {
+            throw ValidationException::withMessages($errors);
+        }
+
+        $cleanSubject = trim($this->stripHtmlTags($subject));
+        $cleanBody = trim($this->stripHtmlTags($body));
+
+        $emptyErrors = [];
+        if ($cleanSubject === '') {
+            $emptyErrors['subject'] = 'Template subject cannot be empty after sanitization.';
+        }
+        if ($cleanBody === '') {
+            $emptyErrors['body'] = 'Template body cannot be empty after sanitization.';
+        }
+        if ($emptyErrors !== []) {
+            throw ValidationException::withMessages($emptyErrors);
         }
 
         return [
-            'subject' => trim(strip_tags($subject)),
-            'body' => trim(strip_tags($body)),
+            'subject' => $cleanSubject,
+            'body' => $cleanBody,
         ];
+    }
+
+    /**
+     * Strip raw HTML tags while preserving Markdown source.
+     *
+     * Unlike strip_tags(), which deletes everything from a stray "<" to the next
+     * ">" (or end of string) — corrupting legitimate Markdown such as "amount &lt; 1000"
+     * — this removes only actual tag constructs (&lt;tag ...&gt; / &lt;/tag&gt;).
+     */
+    private function stripHtmlTags(string $value): string
+    {
+        return (string) preg_replace('/<\/?[a-zA-Z][^>]*>/', '', $value);
     }
 
     /**

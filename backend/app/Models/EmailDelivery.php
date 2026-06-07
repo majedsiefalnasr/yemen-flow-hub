@@ -27,6 +27,7 @@ class EmailDelivery extends Model
         'template_version_id',
         'error',
         'queued_at',
+        'dispatched_at',
         'sent_at',
     ];
 
@@ -35,6 +36,7 @@ class EmailDelivery extends Model
         return [
             'status' => EmailDeliveryStatus::class,
             'queued_at' => 'datetime',
+            'dispatched_at' => 'datetime',
             'sent_at' => 'datetime',
         ];
     }

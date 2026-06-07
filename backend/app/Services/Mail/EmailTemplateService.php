@@ -35,7 +35,9 @@ class EmailTemplateService
         $notificationType = $this->typeMap[$type] ?? NotificationType::tryFrom($type);
 
         if (! $notificationType) {
-            $notificationType = NotificationType::REQUEST_APPROVED;
+            // Fail loudly instead of silently rendering an approval email for an
+            // unknown alias (which would send the wrong message to recipients).
+            throw new \InvalidArgumentException("Unknown email template type [{$type}].");
         }
 
         if (! array_key_exists('reference_number', $variables) && array_key_exists('request_reference', $variables)) {

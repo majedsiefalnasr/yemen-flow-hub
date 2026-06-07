@@ -74,7 +74,9 @@ MARKDOWN,
     public function run(): void
     {
         foreach ($this->templates as $type => $templateSource) {
-            $template = NotificationTemplate::query()->updateOrCreate(
+            // firstOrCreate (not updateOrCreate): never force is_active back to true
+            // on re-run, which would silently re-activate a template an admin disabled.
+            $template = NotificationTemplate::query()->firstOrCreate(
                 ['notification_type' => $type],
                 ['is_active' => true],
             );
@@ -83,12 +85,13 @@ MARKDOWN,
                 continue;
             }
 
-            $template->versions()->create([
-                'subject' => $templateSource['subject'],
-                'body' => $templateSource['body'],
-                'changed_by' => null,
-                'is_active_version' => true,
-            ]);
+            // Route the write through createActiveVersion() — the single guarded
+            // path that holds the "exactly one active version" invariant.
+            $template->createActiveVersion(
+                $templateSource['subject'],
+                $templateSource['body'],
+                null,
+            );
         }
     }
 }

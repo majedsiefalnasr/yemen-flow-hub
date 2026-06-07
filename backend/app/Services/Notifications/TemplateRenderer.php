@@ -39,32 +39,39 @@ class TemplateRenderer
      */
     public function render(NotificationType $type, array $variables, string $locale = 'ar'): array
     {
+        // Save/restore the app locale so a render on a long-lived queue worker does
+        // not leak this email's locale into subsequent jobs in the same process.
+        $previousLocale = app()->getLocale();
         app()->setLocale($locale);
 
-        $variables = $this->normalizeVariables($variables);
-        $resolved = $this->resolver->resolve($type);
+        try {
+            $variables = $this->normalizeVariables($variables);
+            $resolved = $this->resolver->resolve($type);
 
-        if ($resolved['source'] === 'blade') {
-            $html = view($resolved['view'], $variables)->render();
+            if ($resolved['source'] === 'blade') {
+                $html = view($resolved['view'], $variables)->render();
 
-            return [
-                'subject' => $this->substitute($resolved['subject'], $resolved['allowed_variables'], $variables, false),
-                'html' => $html,
-                'text' => $this->htmlToText($html),
-                'source' => 'blade',
-                'template_version_id' => null,
-                'locale' => $locale,
-            ];
+                return [
+                    'subject' => $this->substitute($resolved['subject'], $resolved['allowed_variables'], $variables, false),
+                    'html' => $html,
+                    'text' => $this->htmlToText($html),
+                    'source' => 'blade',
+                    'template_version_id' => null,
+                    'locale' => $locale,
+                ];
+            }
+
+            return $this->renderMarkdownSource(
+                $resolved['subject'],
+                $resolved['body'] ?? '',
+                $resolved['allowed_variables'],
+                $variables,
+                $resolved['template_version_id'],
+                $locale,
+            );
+        } finally {
+            app()->setLocale($previousLocale);
         }
-
-        return $this->renderMarkdownSource(
-            $resolved['subject'],
-            $resolved['body'] ?? '',
-            $resolved['allowed_variables'],
-            $variables,
-            $resolved['template_version_id'],
-            $locale,
-        );
     }
 
     /**
@@ -88,17 +95,22 @@ class TemplateRenderer
         array $variables,
         string $locale = 'ar'
     ): array {
+        $previousLocale = app()->getLocale();
         app()->setLocale($locale);
 
-        return $this->renderMarkdownSource(
-            $subject,
-            $body,
-            $this->registry->for($type)['allowed_variables'],
-            $this->normalizeVariables($variables),
-            null,
-            $locale,
-            'preview',
-        );
+        try {
+            return $this->renderMarkdownSource(
+                $subject,
+                $body,
+                $this->registry->for($type)['allowed_variables'],
+                $this->normalizeVariables($variables),
+                null,
+                $locale,
+                'preview',
+            );
+        } finally {
+            app()->setLocale($previousLocale);
+        }
     }
 
     /**
@@ -150,7 +162,10 @@ class TemplateRenderer
         foreach ($allowedVariables as $variable) {
             $value = $variables[$variable] ?? '';
             $value = is_scalar($value) ? (string) $value : '';
-            $map['{{'.$variable.'}}'] = $escapeHtml ? e($value) : $value;
+            // The non-escaped path is the email subject: collapse CR/LF so a
+            // user-controlled value cannot inject newlines (header smuggling /
+            // display spoofing) into the rendered/stored subject.
+            $map['{{'.$variable.'}}'] = $escapeHtml ? e($value) : str_replace(["\r", "\n"], ' ', $value);
         }
 
         $rendered = strtr($template, $map);

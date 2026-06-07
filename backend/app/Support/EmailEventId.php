@@ -12,13 +12,23 @@ namespace App\Support;
 final class EmailEventId
 {
     /**
-     * Workflow-triggered email: stable per (request, destination status), distinct per real transition.
+     * Workflow-triggered email: stable per real transition, distinct across transitions.
      *
-     * Example: forWorkflow(42, 'BANK_APPROVED') => "42:BANK_APPROVED".
+     * The optional transition id (the request_stage_history row id for this
+     * transition) disambiguates a request that re-enters the SAME status more than
+     * once — e.g. BANK_RETURNED → resubmitted → BANK_RETURNED again — so the second
+     * legitimate email is not suppressed as a duplicate. It is stable across queue
+     * retries of the same transition (the same stage-history row), preserving dedup.
+     * When no transition id is available the id collapses to the legacy
+     * "{request}:{status}" form.
+     *
+     * Example: forWorkflow(42, 'BANK_APPROVED', 7) => "42:BANK_APPROVED:7".
      */
-    public static function forWorkflow(int $requestId, string $toStatus): string
+    public static function forWorkflow(int $requestId, string $toStatus, ?int $transitionId = null): string
     {
-        return $requestId.':'.$toStatus;
+        $base = $requestId.':'.$toStatus;
+
+        return $transitionId === null ? $base : $base.':'.$transitionId;
     }
 
     /**

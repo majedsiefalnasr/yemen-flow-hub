@@ -87,7 +87,8 @@ class EmailDeliveryService
         string $renderedBody,
         ?int $templateVersionId = null,
     ): EmailDelivery {
-        $isRedacted = $this->isRedacted($this->typeOf($delivery));
+        $type = $this->typeOf($delivery);
+        $isRedacted = $type !== null && $this->isRedacted($type);
 
         if ($isRedacted) {
             $renderedSubject = $this->maskSecrets($renderedSubject);
@@ -105,6 +106,12 @@ class EmailDeliveryService
 
     public function markSent(EmailDelivery $delivery, ?string $providerMessageId = null): EmailDelivery
     {
+        // Terminal-state guard: never overwrite a row that already reached a
+        // terminal status (a late retry/webhook must not flip sent → failed etc.).
+        if ($this->isTerminal($delivery)) {
+            return $delivery;
+        }
+
         $delivery->forceFill([
             'status' => EmailDeliveryStatus::SENT,
             'sent_at' => now(),
@@ -116,12 +123,61 @@ class EmailDeliveryService
 
     public function markFailed(EmailDelivery $delivery, string $error): EmailDelivery
     {
+        // A successful delivery must never be downgraded to failed (e.g. when a
+        // concurrent attempt sent it and this attempt later exhausts its retries).
+        if ($delivery->status === EmailDeliveryStatus::SENT) {
+            return $delivery;
+        }
+
         $delivery->forceFill([
             'status' => EmailDeliveryStatus::FAILED,
             'error' => $error,
         ])->save();
 
         return $delivery;
+    }
+
+    /**
+     * Atomically claim a queued row for transport. Returns true only for the
+     * single caller that wins the claim; a retry after a mid-send worker crash
+     * finds dispatched_at already set and returns false, so the message is never
+     * sent twice. Status stays `queued` until markSent/markFailed.
+     */
+    public function claimForSending(EmailDelivery $delivery): bool
+    {
+        $claimed = EmailDelivery::query()
+            ->whereKey($delivery->getKey())
+            ->whereNull('dispatched_at')
+            ->update(['dispatched_at' => now()]);
+
+        return $claimed === 1;
+    }
+
+    /**
+     * Release a reserved-but-unfinalized row so its idempotency key
+     * (event_id, recipient_user_id, channel) is not permanently consumed by a
+     * render/finalize failure — otherwise that recipient could never be re-sent.
+     */
+    public function release(EmailDelivery $delivery): void
+    {
+        if ($delivery->status === EmailDeliveryStatus::QUEUED) {
+            $delivery->delete();
+        }
+    }
+
+    /** Apply the redacted-type secret masking to an arbitrary string (e.g. an error message bound for logs/audit). */
+    public function redact(string $value): string
+    {
+        return $this->maskSecrets($value);
+    }
+
+    private function isTerminal(EmailDelivery $delivery): bool
+    {
+        return in_array(
+            $delivery->status,
+            [EmailDeliveryStatus::SENT, EmailDeliveryStatus::FAILED, EmailDeliveryStatus::BOUNCED],
+            true,
+        );
     }
 
     /** Redacted (auth/security) types require a resolved recipient_user_id to dedup safely. */
@@ -159,18 +215,37 @@ class EmailDeliveryService
             $value
         );
 
-        $value = (string) preg_replace(
-            '/\b[A-Za-z0-9_-]{32,}\b/',
-            self::REDACTED_SECRET_PLACEHOLDER,
+        // Bare high-entropy token/base64 runs (16+ chars containing BOTH a letter
+        // and a digit). Includes base64 punctuation (+ / =) and is not anchored on
+        // \b so signed-URL/base64 fragments are caught; plain words/Arabic text
+        // (no digit) are left intact.
+        $value = (string) preg_replace_callback(
+            '~[A-Za-z0-9+/=_-]{16,}~',
+            static function (array $matches): string {
+                $token = $matches[0];
+
+                return preg_match('/[A-Za-z]/', $token) === 1 && preg_match('/\d/', $token) === 1
+                    ? self::REDACTED_SECRET_PLACEHOLDER
+                    : $token;
+            },
             $value
         );
 
-        return (string) preg_replace('/\d{4,}/', self::REDACTION_MASK, $value);
+        // OTP/reset-code digit runs (4+ digits). Unicode-aware (\p{Nd} covers
+        // Arabic-Indic and Extended Arabic-Indic numerals — the product is
+        // Arabic-first) and tolerant of single space/dot/hyphen separators so a
+        // grouped code ("4 8 2 9 1 3", "482-913") is also masked.
+        return (string) preg_replace('/\p{Nd}(?:[\s.\-]?\p{Nd}){3,}/u', self::REDACTION_MASK, $value);
     }
 
-    private function typeOf(EmailDelivery $delivery): NotificationType
+    /**
+     * The DB column is a plain string for forward-compat; an unknown/removed type
+     * value yields null rather than throwing, so finalize() degrades safely
+     * (treats it as non-redacted) instead of failing the snapshot write.
+     */
+    private function typeOf(EmailDelivery $delivery): ?NotificationType
     {
-        return NotificationType::from($delivery->notification_type);
+        return NotificationType::tryFrom($delivery->notification_type);
     }
 
     /**

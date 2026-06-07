@@ -47,7 +47,11 @@ class SendEmailNotification
             return;
         }
 
-        $eventId = EmailEventId::forWorkflow($request->id, $request->status->value);
+        // Discriminate distinct transitions that land on the same status (e.g. a
+        // request returned, resubmitted, then returned again) by the latest
+        // stage-history row id, so the second legitimate email is not deduped away.
+        $transitionId = $request->stageHistory()->max('id');
+        $eventId = EmailEventId::forWorkflow($request->id, $request->status->value, $transitionId);
 
         foreach ($this->resolveRecipients($request, $definition['recipient_roles']) as $recipient) {
             $this->deliverToRecipient($type, $eventId, $request, $recipient, $context);
@@ -90,19 +94,28 @@ class SendEmailNotification
             return;
         }
 
-        $live = $this->renderer->render($type, array_merge([
-            'user_name' => (string) $recipient->name,
-        ], $liveVariables));
-        $masked = $this->renderer->render($type, array_merge([
-            'user_name' => (string) $recipient->name,
-        ], $maskedVariables));
+        try {
+            $live = $this->renderer->render($type, array_merge([
+                'user_name' => (string) $recipient->name,
+            ], $liveVariables));
+            $masked = $this->renderer->render($type, array_merge([
+                'user_name' => (string) $recipient->name,
+            ], $maskedVariables));
 
-        $this->deliveries->finalize(
-            $delivery,
-            $masked['subject'],
-            $masked['html'],
-            $masked['template_version_id']
-        );
+            $this->deliveries->finalize(
+                $delivery,
+                $masked['subject'],
+                $masked['html'],
+                $masked['template_version_id']
+            );
+        } catch (\Throwable $e) {
+            // Free the reservation on render/finalize failure so a re-issuance can
+            // send; never leave the auth row stuck reserved-but-undelivered.
+            $this->deliveries->release($delivery);
+            report($e);
+
+            return;
+        }
 
         $this->queueDeliveryAfterCommit($delivery->id, $live['subject'], $live['html']);
     }
@@ -133,14 +146,24 @@ class SendEmailNotification
             return;
         }
 
-        $rendered = $this->renderer->render($type, $this->variablesFor($request, $recipient, $context));
+        try {
+            $rendered = $this->renderer->render($type, $this->variablesFor($request, $recipient, $context));
 
-        $this->deliveries->finalize(
-            $delivery,
-            $rendered['subject'],
-            $rendered['html'],
-            $rendered['template_version_id']
-        );
+            $this->deliveries->finalize(
+                $delivery,
+                $rendered['subject'],
+                $rendered['html'],
+                $rendered['template_version_id']
+            );
+        } catch (\Throwable $e) {
+            // Free the reservation so a render/finalize failure does not permanently
+            // consume the idempotency key (which would block any re-send). Do not
+            // rethrow: a failed email must never roll back the workflow transition.
+            $this->deliveries->release($delivery);
+            report($e);
+
+            return;
+        }
 
         $this->queueDeliveryAfterCommit($delivery->id);
     }
