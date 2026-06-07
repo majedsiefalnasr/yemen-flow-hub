@@ -216,6 +216,28 @@ Before modifying any composable, store, or service:
 2. `codebase_flow` — trace how data flows
 3. `codebase_impact` — check what would break
 
+## Verification Ladder
+
+Before editing, run `git -c core.fsmonitor=false status --short` from `frontend/` and report existing dirty files. Do not modify dirty files unless directly in scope.
+
+Keep `pnpm`; do not migrate to Bun. Default verification is focused:
+
+1. Run the smallest relevant Vitest file or name filter for the touched behavior.
+2. Run ESLint/Prettier only for touched files where possible.
+3. Run `pnpm typecheck` only when changing types, composables, stores, API contracts, shared interfaces, or cross-module contracts.
+4. Do not run full `pnpm test` by default.
+5. Full frontend suites are required only for release checks, broad refactors, security-critical changes, or explicit user requests.
+6. If the full suite is known red, report the known baseline and do not treat unrelated failures as task failures.
+
+Focused commands:
+
+```bash
+pnpm exec vitest run app/tests/unit/components/FxConfirmationCard.test.ts
+pnpm exec vitest run -t "rejects non-PDF uploads"
+pnpm exec eslint app/components/Example.vue app/composables/useExample.ts
+pnpm exec prettier app/components/Example.vue --check
+```
+
 ## Browser Automation
 
 For UI validation and browser interactions, use `playwright-cli`. Keep the `playwright-cli` command prefix permanently allowlisted in local tool permissions to avoid repeated approval prompts during frontend verification.

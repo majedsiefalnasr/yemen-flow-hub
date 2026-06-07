@@ -72,3 +72,25 @@ npx ctx7@latest docs <id> "<question>"
 ## SocratiCode
 
 Use semantic codebase search before modifying composables, stores, or services.
+
+## Verification Ladder
+
+Before editing, check `git -c core.fsmonitor=false status --short` from `frontend/` and report existing dirty files. Do not modify dirty files unless directly in scope.
+
+Keep `pnpm`; do not migrate to Bun. Default verification is focused:
+
+- Run the smallest relevant Vitest file or name filter for the touched behavior.
+- Run ESLint/Prettier only for touched files where possible.
+- Run `pnpm typecheck` only for type, composable, store, API contract, shared interface, or cross-module changes.
+- Do not run full `pnpm test` by default.
+- Full suites are required only for release checks, broad refactors, security-critical changes, or explicit user requests.
+- If the full suite is known red, report the known baseline and do not treat unrelated failures as task failures.
+
+Focused commands:
+
+```bash
+pnpm exec vitest run app/tests/unit/components/FxConfirmationCard.test.ts
+pnpm exec vitest run -t "rejects non-PDF uploads"
+pnpm exec eslint app/components/Example.vue app/composables/useExample.ts
+pnpm exec prettier app/components/Example.vue --check
+```
