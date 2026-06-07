@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\DB;
 
 class ImportRequest extends Model
 {
@@ -246,24 +247,69 @@ class ImportRequest extends Model
     protected static function booted(): void
     {
         static::creating(function (self $importRequest): void {
-            if (! empty($importRequest->reference_number)) {
-                return;
+            if (empty($importRequest->reference_number)) {
+                $importRequest->reference_number = self::nextReferenceNumber();
             }
-
-            $year = now()->format('Y');
-            $prefix = "YFH-{$year}-";
-            $latest = self::withTrashed()
-                ->where('reference_number', 'like', $prefix.'%')
-                ->latest('id')
-                ->value('reference_number');
-
-            $next = 1;
-            if ($latest) {
-                $parts = explode('-', $latest);
-                $next = ((int) ($parts[2] ?? 0)) + 1;
-            }
-
-            $importRequest->reference_number = $prefix.str_pad((string) $next, 6, '0', STR_PAD_LEFT);
         });
+    }
+
+    private static function referencePrefixForYear(string $year): string
+    {
+        return "YFH-{$year}-";
+    }
+
+    private static function nextReferenceNumber(): string
+    {
+        $year = now()->format('Y');
+
+        $nextValue = DB::transaction(function () use ($year): int {
+            $latestFromRequests = self::latestReferenceSequenceForYear($year);
+            $now = now();
+
+            if (! DB::table('import_request_reference_sequences')->where('year', $year)->exists()) {
+                DB::table('import_request_reference_sequences')->insertOrIgnore([
+                    'year' => $year,
+                    'last_value' => $latestFromRequests,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ]);
+            }
+
+            $sequence = DB::table('import_request_reference_sequences')
+                ->where('year', $year)
+                ->lockForUpdate()
+                ->first();
+
+            $nextValue = max((int) ($sequence?->last_value ?? 0), $latestFromRequests) + 1;
+
+            DB::table('import_request_reference_sequences')
+                ->where('year', $year)
+                ->update([
+                    'last_value' => $nextValue,
+                    'updated_at' => $now,
+                ]);
+
+            return $nextValue;
+        }, 5);
+
+        $prefix = self::referencePrefixForYear($year);
+
+        return $prefix.str_pad((string) $nextValue, 6, '0', STR_PAD_LEFT);
+    }
+
+    private static function latestReferenceSequenceForYear(string $year): int
+    {
+        $prefix = self::referencePrefixForYear($year);
+
+        $latest = self::withTrashed()
+            ->where('reference_number', 'like', $prefix.'%')
+            ->orderByDesc('reference_number')
+            ->value('reference_number');
+
+        if ($latest === null) {
+            return 0;
+        }
+
+        return (int) substr($latest, strlen($prefix));
     }
 }
