@@ -26,7 +26,7 @@ class RequestReturnedNotification extends Notification implements ShouldQueue
     {
         return [
             'type' => 'request_returned',
-            'message' => 'تم إعادة الطلب للتعديل: '.$this->requestModel->reference_number,
+            'message' => 'أُعيد طلبك إلى مدخل البيانات / Your request was Returned to Data Entry: '.$this->requestModel->reference_number,
             'request_id' => $this->requestModel->id,
             'reference_number' => $this->requestModel->reference_number,
             'from_role' => $this->fromRole,

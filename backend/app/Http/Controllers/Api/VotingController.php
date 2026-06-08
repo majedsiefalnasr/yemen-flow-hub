@@ -138,6 +138,13 @@ class VotingController extends Controller
             return ApiResponse::forbidden();
         }
 
+        // Era gate (Epic 17-E.3): new-rule (voting_rule_version = 2) sessions have no
+        // Director tie-break decision point — they finalize automatically on a simple
+        // majority. Reject the tie-break attempt with the existing 422 envelope.
+        if ((int) ($importRequest->voting_rule_version ?? 1) === 2) {
+            return ApiResponse::error('قرار حسم التعادل غير متاح لطلبات اللجنة الوطنية. / Tie-break decision is not available for National Committee requests.', [], 422);
+        }
+
         $updated = $this->votingService->finalize(
             $importRequest,
             $request->user()

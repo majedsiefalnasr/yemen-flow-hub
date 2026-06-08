@@ -100,6 +100,18 @@ class NotificationPayloadTest extends TestCase
         $this->assertSame($request->reference_number, $payload['reference_number']);
     }
 
+    // Story 17-E.4 (AC3): notification copy uses the "Returned to Data Entry" wording.
+    public function test_request_returned_payload_uses_returned_to_data_entry_wording(): void
+    {
+        $request = $this->makeRequest();
+        $payload = $this->callToArray(new RequestReturnedNotification($request));
+
+        $this->assertStringContainsString('أُعيد طلبك إلى مدخل البيانات', $payload['message']);
+        $this->assertStringContainsString('Returned to Data Entry', $payload['message']);
+        $this->assertStringNotContainsString('مُعادة للمراجعة', $payload['message']);
+        $this->assertStringNotContainsString('Returned for Review', $payload['message']);
+    }
+
     public function test_request_returned_payload_includes_from_role_and_comment(): void
     {
         $request = $this->makeRequest();

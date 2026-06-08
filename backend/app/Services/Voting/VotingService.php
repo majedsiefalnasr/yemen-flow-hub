@@ -14,6 +14,7 @@ use App\Models\RequestVote;
 use App\Models\User;
 use App\Services\Audit\AuditService;
 use App\Services\Workflow\WorkflowService;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 
 class VotingService
@@ -85,9 +86,7 @@ class VotingService
                 ->pluck('user_id')
                 ->all();
 
-            $nonVoters = User::query()
-                ->whereIn('role', [UserRole::EXECUTIVE_MEMBER->value, UserRole::COMMITTEE_DIRECTOR->value])
-                ->where('is_active', true)
+            $nonVoters = $this->activeExecutiveQuery()
                 ->whereNotIn('id', $votedUserIds)
                 ->get();
 
@@ -162,6 +161,22 @@ class VotingService
 
             $tally = $this->tally($lockedRequest);
 
+            // Era gate (Epic 17-E.3): two finalize rules coexist, keyed on the request's
+            // stored voting_rule_version (1 = legacy, 2 = new National Committee). The gate
+            // is read here, at finalize-time, from the request row — never inferred from
+            // created_at — so an in-flight legacy session opened before the 17-E deploy
+            // still finalizes under the legacy rule (including Director tie-break) and no
+            // already-closed session is ever recomputed.
+            if ((int) ($lockedRequest->voting_rule_version ?? 1) === 2) {
+                // New rule: simple majority of ALL eligible members. floor(n/2)+1 approvals
+                // → APPROVED; every other outcome (sub-majority or even split) → Not-Eligible
+                // (EXECUTIVE_REJECTED). No Director tie-break.
+                $required = intdiv($this->totalEligibleMembers(), 2) + 1;
+                $action = $tally->approveCount >= $required ? 'finalize_approved' : 'finalize_rejected';
+
+                return $this->workflowService->transition($lockedRequest, $action, $director);
+            }
+
             if ($tally->approveCount > $tally->rejectCount) {
                 return $this->workflowService->transition($lockedRequest, 'finalize_approved', $director);
             }
@@ -199,6 +214,13 @@ class VotingService
             throw new VotingException('Override is only allowed during executive voting stage.');
         }
 
+        // Era gate (Epic 17-E.3): new-rule (voting_rule_version = 2) sessions finalize on a
+        // simple majority with no Director tie-break/override path. Legacy (version 1)
+        // sessions keep the override exactly as shipped.
+        if ((int) ($request->voting_rule_version ?? 1) === 2) {
+            throw new VotingException('قرار حسم التعادل غير متاح لطلبات اللجنة الوطنية. / Director tie-break/override is not available for National Committee requests.');
+        }
+
         if (trim($justification) === '') {
             throw new VotingException('Override justification is required.');
         }
@@ -228,9 +250,7 @@ class VotingService
                 ->pluck('user_id')
                 ->all();
 
-            $nonVoters = User::query()
-                ->whereIn('role', [UserRole::EXECUTIVE_MEMBER->value, UserRole::COMMITTEE_DIRECTOR->value])
-                ->where('is_active', true)
+            $nonVoters = $this->activeExecutiveQuery()
                 ->where('id', '!=', $director->id)
                 ->whereNotIn('id', $votedUserIds)
                 ->get();
@@ -270,6 +290,27 @@ class VotingService
 
             return $this->workflowService->transition($closed, $action, $director, $justification, $overrideMeta);
         });
+    }
+
+    /**
+     * Active executive voters eligible to participate in a session.
+     *
+     * Single source of truth for "eligible" (Story 3.4 predicate): role in
+     * [EXECUTIVE_MEMBER, COMMITTEE_DIRECTOR] AND is_active = true. The Director is
+     * counted as an eligible voter, matching the close-session/auto-abstain logic.
+     * Shared by AUTO_ABSTAIN_TIMEOUT backfill and the Story 17-E.3 majority threshold
+     * so the two definitions can never drift.
+     */
+    private function activeExecutiveQuery(): Builder
+    {
+        return User::query()
+            ->whereIn('role', [UserRole::EXECUTIVE_MEMBER->value, UserRole::COMMITTEE_DIRECTOR->value])
+            ->where('is_active', true);
+    }
+
+    private function totalEligibleMembers(): int
+    {
+        return $this->activeExecutiveQuery()->count();
     }
 
     private function logAutoAbstainVote(ImportRequest $request, User $director, User $member, string $sourceAction): void

@@ -114,6 +114,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('workflow/{importRequest}/support-release', [WorkflowController::class, 'supportRelease'])->name('workflow.support-release');
     Route::post('workflow/{importRequest}/support-approve', [WorkflowController::class, 'supportApprove'])->name('workflow.support-approve');
     Route::post('workflow/{importRequest}/support-reject', [WorkflowController::class, 'supportReject'])->name('workflow.support-reject');
+    Route::post('workflow/{importRequest}/support-forward-to-executive', [WorkflowController::class, 'supportForwardToExecutive'])->name('workflow.support-forward-to-executive');
     Route::post('workflow/{importRequest}/bank-return-after-support-reject', [WorkflowController::class, 'bankReturnAfterSupportReject'])->name('workflow.bank-return-after-support-reject');
     Route::post('workflow/{importRequest}/bank-finalize-rejection', [WorkflowController::class, 'bankFinalizeRejection'])->name('workflow.bank-finalize-rejection');
     Route::post('workflow/{importRequest}/bank-reject-terminal', [WorkflowController::class, 'bankRejectTerminal'])->name('workflow.bank-reject-terminal');

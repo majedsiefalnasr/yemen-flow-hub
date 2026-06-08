@@ -7,6 +7,49 @@ use App\Enums\UserRole;
 
 class TransitionMap
 {
+    /**
+     * Era gate — National Committee authority reform (Epic 17-E).
+     *
+     * Maps a workflow action to the list of `voting_rule_version` values it remains
+     * available for. Actions NOT listed here are era-agnostic and resolve for every
+     * version. Resolution is keyed on the stored `voting_rule_version` column
+     * (1 = legacy, 2 = new National Committee) from Story 17-C.1 — never on
+     * `created_at` or any implicit signal.
+     *
+     * Cutover rationale: a legacy (version 1) request still in flight when Epic 17-E
+     * deploys keeps its original action set so it can be carried to completion under
+     * the rule it was created under. No migration, backfill, or recompute changes a
+     * request's `voting_rule_version` or its available actions retroactively.
+     *
+     * - Story 17-E.1: the Internal Reviewer loses bank-stage reject authority on
+     *   new-rule requests, so `bank_reject`/`bank_reject_terminal` are version-1 only.
+     * - Story 17-E.2: the Support Committee loses independent decision authority on
+     *   new-rule requests, so `support_approve`/`support_reject` are version-1 only,
+     *   while `support_forward_to_executive` is version-2 only.
+     */
+    private const ERA_GATED_ACTIONS = [
+        'bank_reject' => [1],
+        'bank_reject_terminal' => [1],
+        'support_approve' => [1],
+        'support_reject' => [1],
+        'support_forward_to_executive' => [2],
+    ];
+
+    /**
+     * Whether the given action is available for a request on the given era
+     * (`voting_rule_version`). Era-agnostic actions are always available.
+     */
+    public static function isActionAvailableForVersion(string $action, int $votingRuleVersion): bool
+    {
+        $allowedVersions = self::ERA_GATED_ACTIONS[$action] ?? null;
+
+        if ($allowedVersions === null) {
+            return true;
+        }
+
+        return in_array($votingRuleVersion, $allowedVersions, true);
+    }
+
     public static function definitions(): array
     {
         return [
@@ -95,6 +138,18 @@ class TransitionMap
                 'to' => RequestStatus::SUPPORT_REJECTED,
                 'roles' => [UserRole::SUPPORT_COMMITTEE],
                 'next_owner' => UserRole::BANK_REVIEWER,
+            ],
+            // Story 17-E.2: Support Committee forward-only (new-rule requests). Mirrors
+            // support_approve — moves to SUPPORT_APPROVED and reuses the same auto-chain
+            // to WAITING_FOR_SWIFT — because the workflow has no dedicated "forwarded"
+            // status and the Epic 17-E enum is frozen. A mandatory comment (the $reason
+            // argument) is recorded to request_stage_history + audit_logs. Era-gated to
+            // version 2 only (see ERA_GATED_ACTIONS).
+            'support_forward_to_executive' => [
+                'from' => [RequestStatus::SUPPORT_REVIEW_IN_PROGRESS],
+                'to' => RequestStatus::SUPPORT_APPROVED,
+                'roles' => [UserRole::SUPPORT_COMMITTEE],
+                'next_owner' => UserRole::SWIFT_OFFICER,
             ],
             'support_return_to_intake' => [
                 'from' => [RequestStatus::SUPPORT_REVIEW_IN_PROGRESS],

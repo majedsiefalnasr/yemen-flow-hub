@@ -49,7 +49,7 @@ enum RequestStatus: string
             self::FX_CONFIRMATION_PENDING => 'بانتظار إصدار المصارفة الخارجية / FX Confirmation Pending',
             self::CUSTOMS_DECLARATION_ISSUED => 'صدرت وثيقة تأكيد المصارفة الخارجية / External FX Confirmation Issued',
             self::COMPLETED => 'مكتمل / Completed',
-            self::BANK_RETURNED => 'إعادة للمدخل / Returned to Intake',
+            self::BANK_RETURNED => 'أُعيد إلى مدخل البيانات / Returned to Data Entry',
             self::SUPPORT_RETURNED => 'إعادة من المساندة / Returned from Support',
             self::BANK_REJECTED => 'مرفوض (البنك) / Bank Rejected',
         };

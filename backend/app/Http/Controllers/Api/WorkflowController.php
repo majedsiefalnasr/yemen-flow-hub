@@ -8,6 +8,7 @@ use App\Exceptions\FinancingLimitExceededException;
 use App\Exceptions\VotingException;
 use App\Http\Requests\BankRejectTerminalRequest;
 use App\Http\Requests\BankReturnRequest;
+use App\Http\Requests\SupportForwardRequest;
 use App\Http\Requests\SupportReturnRequest;
 use App\Http\Requests\WorkflowActionRequest;
 use App\Http\Resources\ImportRequestResource;
@@ -158,6 +159,8 @@ class WorkflowController extends Controller
     #[OA\Post(path: '/api/workflow/{importRequest}/bank-reject', tags: ['Workflow'], summary: 'Bank reject request', parameters: [new OA\Parameter(name: 'importRequest', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], requestBody: new OA\RequestBody(required: true, content: new OA\JsonContent(required: ['reason'], properties: [new OA\Property(property: 'reason', type: 'string', maxLength: 2000)])), responses: [new OA\Response(response: 200, description: 'Transition applied')])]
     public function bankReject(WorkflowActionRequest $request, ImportRequest $importRequest)
     {
+        $this->authorize('bankReject', $importRequest);
+
         return $this->run($request, $importRequest, 'bank_reject');
     }
 
@@ -275,13 +278,32 @@ class WorkflowController extends Controller
     #[OA\Post(path: '/api/workflow/{importRequest}/support-approve', tags: ['Workflow'], summary: 'Support approve request', parameters: [new OA\Parameter(name: 'importRequest', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], requestBody: new OA\RequestBody(required: false, content: new OA\JsonContent(properties: [new OA\Property(property: 'reason', type: 'string', maxLength: 2000)])), responses: [new OA\Response(response: 200, description: 'Transition applied')])]
     public function supportApprove(WorkflowActionRequest $request, ImportRequest $importRequest)
     {
+        $this->authorize('supportApprove', $importRequest);
+
         return $this->run($request, $importRequest, 'support_approve');
     }
 
     #[OA\Post(path: '/api/workflow/{importRequest}/support-reject', tags: ['Workflow'], summary: 'Support reject request', parameters: [new OA\Parameter(name: 'importRequest', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], requestBody: new OA\RequestBody(required: true, content: new OA\JsonContent(required: ['reason'], properties: [new OA\Property(property: 'reason', type: 'string', maxLength: 2000)])), responses: [new OA\Response(response: 200, description: 'Transition applied')])]
     public function supportReject(WorkflowActionRequest $request, ImportRequest $importRequest)
     {
+        $this->authorize('supportReject', $importRequest);
+
         return $this->run($request, $importRequest, 'support_reject');
+    }
+
+    #[OA\Post(path: '/api/workflow/{importRequest}/support-forward-to-executive', tags: ['Workflow'], summary: 'Support Committee forwards request to Executive Committee with mandatory comment (new-rule requests)', parameters: [new OA\Parameter(name: 'importRequest', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], requestBody: new OA\RequestBody(required: true, content: new OA\JsonContent(required: ['comment'], properties: [new OA\Property(property: 'comment', type: 'string', minLength: 3, maxLength: 2000)])), responses: [new OA\Response(response: 200, description: 'Transition applied'), new OA\Response(response: 422, description: 'Comment required'), new OA\Response(response: 403, description: 'Forbidden — not claim holder or wrong role')])]
+    public function supportForwardToExecutive(SupportForwardRequest $request, ImportRequest $importRequest)
+    {
+        $this->authorize('view', $importRequest);
+
+        $updated = $this->workflowService->transition(
+            $importRequest,
+            'support_forward_to_executive',
+            $request->user(),
+            $request->input('comment')
+        );
+
+        return ApiResponse::success(new ImportRequestResource($updated->load(ImportRequestResource::baseRelations())), 'Workflow transition executed.');
     }
 
     #[OA\Post(path: '/api/workflow/{importRequest}/bank-return-after-support-reject', tags: ['Workflow'], summary: 'BANK_REVIEWER returns a support-rejected request to DATA_ENTRY for editing', parameters: [new OA\Parameter(name: 'importRequest', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], requestBody: new OA\RequestBody(required: false, content: new OA\JsonContent(properties: [new OA\Property(property: 'reason', type: 'string', maxLength: 2000)])), responses: [new OA\Response(response: 200, description: 'Transition applied')])]
@@ -337,6 +359,7 @@ class WorkflowController extends Controller
     public function bankRejectTerminal(BankRejectTerminalRequest $request, ImportRequest $importRequest)
     {
         $this->authorize('view', $importRequest);
+        $this->authorize('bankRejectTerminal', $importRequest);
 
         $updated = $this->workflowService->transition(
             $importRequest,

@@ -55,6 +55,16 @@ class WorkflowService
             );
         }
 
+        // Era gate (Epic 17-E): action availability depends on the request's stored
+        // voting_rule_version (1 = legacy, 2 = new National Committee). In-flight legacy
+        // requests keep their original action set; the gate is read once, here, from the
+        // request row — never inferred from created_at. See TransitionMap::ERA_GATED_ACTIONS.
+        if (! TransitionMap::isActionAvailableForVersion($action, (int) ($request->voting_rule_version ?? 1))) {
+            throw new UnauthorizedTransitionException(
+                'هذا الإجراء غير متاح لهذا الطلب وفق قواعد اللجنة الوطنية. / This action is not available for this request under the National Committee rules.'
+            );
+        }
+
         if ($actor->isBankUser() && $actor->bank_id !== $request->bank_id) {
             throw new UnauthorizedTransitionException('You cannot transition another bank request.');
         }
@@ -63,7 +73,7 @@ class WorkflowService
             throw new SelfReviewException('Reviewer cannot approve, reject, or return own request.');
         }
 
-        if (in_array($action, ['support_approve', 'support_reject', 'support_return_to_intake'], true) && ! $request->isClaimedBy($actor)) {
+        if (in_array($action, ['support_approve', 'support_reject', 'support_return_to_intake', 'support_forward_to_executive'], true) && ! $request->isClaimedBy($actor)) {
             throw new UnauthorizedTransitionException(
                 'لا يمكنك اتخاذ قرار على طلب لم تقم بحجزه. / You cannot decide on a request you have not claimed.'
             );
@@ -112,7 +122,7 @@ class WorkflowService
             $timestampColumn = match ($action) {
                 'submit' => 'submitted_at',
                 'bank_approve' => 'bank_approved_at',
-                'support_approve' => 'support_approved_at',
+                'support_approve', 'support_forward_to_executive' => 'support_approved_at',
                 'swift_upload' => 'swift_uploaded_at',
                 'open_voting' => 'voting_opened_at',
                 'close_voting' => 'voting_closed_at',
@@ -129,7 +139,7 @@ class WorkflowService
                 'bank_begin_review' => 'reviewed_by',
                 'bank_approve' => 'approved_by',
                 'bank_reject', 'bank_reject_terminal' => 'rejected_by',
-                'support_approve', 'support_reject' => 'support_reviewed_by',
+                'support_approve', 'support_reject', 'support_forward_to_executive' => 'support_reviewed_by',
                 'swift_upload' => 'swift_uploaded_by',
                 'open_voting' => 'voting_opened_by',
                 'close_voting' => 'voting_closed_by',
@@ -181,7 +191,8 @@ class WorkflowService
             }
 
             // Auto-chain: SUPPORT_APPROVED → WAITING_FOR_SWIFT
-            if ($action === 'support_approve') {
+            // support_forward_to_executive (Story 17-E.2) reuses this exact auto-chain.
+            if (in_array($action, ['support_approve', 'support_forward_to_executive'], true)) {
                 $this->autoChain($request, $actor, RequestStatus::WAITING_FOR_SWIFT, UserRole::SWIFT_OFFICER, 'move_to_swift_queue');
             }
 
@@ -399,6 +410,7 @@ class WorkflowService
             'support_approve',
             'support_reject',
             'support_return_to_intake',
+            'support_forward_to_executive',
             'bank_claim_release',
             'bank_approve',
             'bank_reject',
@@ -417,7 +429,7 @@ class WorkflowService
 
         match ($action) {
             'support_claim' => Cache::put($supportKey, $actor->id, now()->addMinutes($ttlMinutes)),
-            'support_release', 'support_approve', 'support_reject', 'support_return_to_intake' => Cache::forget($supportKey),
+            'support_release', 'support_approve', 'support_reject', 'support_return_to_intake', 'support_forward_to_executive' => Cache::forget($supportKey),
             'bank_begin_review' => Cache::put($bankKey, $actor->id, now()->addMinutes($ttlMinutes)),
             'bank_claim_release', 'bank_approve', 'bank_reject', 'bank_return_to_intake', 'bank_reject_terminal' => Cache::forget($bankKey),
             default => null,
