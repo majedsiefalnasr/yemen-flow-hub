@@ -10,17 +10,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import FinancingUtilizationBar from '@/components/request/FinancingUtilizationBar.vue'
 import { COVERAGE_TYPE_OPTIONS, INVOICE_TYPE_OPTIONS } from '@/constants/workflow'
 import { CoverageType, InvoiceType } from '@/types/enums'
 import type { RequestFormData } from '@/types/models'
 
 const props = defineProps<{
   modelValue: Partial<RequestFormData>
+  excludeRequestId?: number | null
 }>()
 
 const emit = defineEmits<{
   'update:modelValue': [value: Partial<RequestFormData>]
   validation: [value: { tab: 'invoice'; hasError: boolean }]
+  'advisory-block': [blocked: boolean]
 }>()
 
 const percentageError = computed(() => {
@@ -55,6 +58,14 @@ function updateInvoiceType(value: InvoiceType) {
 
 <template>
   <div class="grid gap-5">
+    <FinancingUtilizationBar
+      :tax-number="modelValue.trader_snapshot_tax_number"
+      :invoice-number="modelValue.invoice_number"
+      :request-percentage="modelValue.request_percentage"
+      :exclude-request-id="excludeRequestId ?? null"
+      @advisory-block="emit('advisory-block', $event)"
+    />
+
     <div class="grid gap-4 md:grid-cols-2">
       <div class="grid gap-2">
         <Label>نوع التغطية</Label>

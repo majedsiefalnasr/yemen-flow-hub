@@ -15,6 +15,7 @@ import WorkflowHistoryTab from '@/components/request/tabs/WorkflowHistoryTab.vue
 import CorrectionBanner from '@/components/banners/CorrectionBanner.vue'
 import { CoverageType, RequestStatus } from '@/types/enums'
 import type { ImportRequest, RequestFormData } from '@/types/models'
+import { FINANCING_ADVISORY_MESSAGE } from '@/composables/useFinancingLedger'
 import { useRequestsStore } from '@/stores/requests.store'
 
 const props = defineProps<{
@@ -36,6 +37,7 @@ const visitedTabs = ref(new Set(['basic']))
 const values = reactive<Partial<RequestFormData>>(defaultValues())
 const documentsComplete = ref(false)
 const declarationAccepted = ref(false)
+const financingAdvisoryBlocked = ref(false)
 
 const tabs = [
   { value: 'basic', label: 'بيانات أساسية' },
@@ -176,6 +178,12 @@ async function saveDraft() {
   toast.success('تم حفظ المسودة')
 }
 
+function extractErrorCode(err: unknown): string | null {
+  if (typeof err !== 'object' || err === null) return null
+  const data = (err as { data?: { error_code?: string } }).data
+  return data?.error_code ?? null
+}
+
 async function submitForReview() {
   if (!validateBasicTab()) {
     activeTab.value = 'basic'
@@ -186,6 +194,14 @@ async function submitForReview() {
     return
   }
   if (!documentsComplete.value || !declarationAccepted.value) return
+
+  // Advisory only — backend FINANCING_LIMIT_EXCEEDED remains authoritative (Story 17-D.2).
+  if (financingAdvisoryBlocked.value) {
+    toast.error(FINANCING_ADVISORY_MESSAGE)
+    activeTab.value = 'invoice'
+    return
+  }
+
   const payload = buildPayload()
   let requestId = props.requestId ?? props.initialValues?.id ?? null
   if (requestId) {
@@ -193,7 +209,18 @@ async function submitForReview() {
   } else {
     requestId = await requestsStore.createRequest(payload)
   }
-  await requestsStore.performAction(requestId, 'submit')
+
+  try {
+    await requestsStore.performAction(requestId, 'submit')
+  } catch (err) {
+    if (extractErrorCode(err) === 'FINANCING_LIMIT_EXCEEDED') {
+      toast.error('تم تجاوز السقف التمويلي العالمي لهذه الفاتورة.')
+      activeTab.value = 'invoice'
+      return
+    }
+    throw err
+  }
+
   emit('submitted')
   toast.success('تم تقديم الطلب للمراجعة')
   await router.push('/requests')
@@ -247,7 +274,12 @@ function buildPayload(): RequestFormData {
           </TabsContent>
 
           <TabsContent value="invoice" class="mt-6">
-            <InvoiceTab :model-value="values" @update:model-value="setValues" />
+            <InvoiceTab
+              :model-value="values"
+              :exclude-request-id="requestId ?? initialValues?.id ?? null"
+              @update:model-value="setValues"
+              @advisory-block="financingAdvisoryBlocked = $event"
+            />
           </TabsContent>
 
           <TabsContent value="shipping" class="mt-6">
@@ -301,13 +333,20 @@ function buildPayload(): RequestFormData {
             <Button
               v-else
               type="button"
-              :disabled="requestsStore.saving || !documentsComplete || !declarationAccepted"
+              :disabled="
+                requestsStore.saving ||
+                !documentsComplete ||
+                !declarationAccepted ||
+                financingAdvisoryBlocked
+              "
               :title="
-                !documentsComplete
-                  ? 'أكمل رفع المستندات الإلزامية أولاً'
-                  : !declarationAccepted
-                    ? 'وافق على الإقرار أولاً'
-                    : undefined
+                financingAdvisoryBlocked
+                  ? FINANCING_ADVISORY_MESSAGE
+                  : !documentsComplete
+                    ? 'أكمل رفع المستندات الإلزامية أولاً'
+                    : !declarationAccepted
+                      ? 'وافق على الإقرار أولاً'
+                      : undefined
               "
               @click="submitForReview"
             >

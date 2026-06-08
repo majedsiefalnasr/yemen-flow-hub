@@ -27,6 +27,11 @@ describe('RequestFormTabs', () => {
     expect(source).toContain('إرسال للمراجعة')
   })
 
+  it('wires financing advisory block from the invoice tab', () => {
+    expect(source).toContain('@advisory-block')
+    expect(source).toContain('financingAdvisoryBlocked')
+  })
+
   it('uses the tab components rather than the legacy wizard', () => {
     expect(source).toContain('BasicInfoTab')
     expect(source).toContain('InvoiceTab')
