@@ -24,6 +24,24 @@ function updateOwner(index: number, patch: Partial<TraderOwner>): void {
   emit('update:modelValue', next)
 }
 
+/**
+ * Parse a percentage input that may contain Arabic-Indic digits (٠-٩),
+ * Eastern Arabic-Indic (۰-۹), or thousands separators. Returns NaN for
+ * non-numeric input so an invalid value surfaces as a validation error
+ * instead of silently collapsing to 0 (code-review 17-B).
+ */
+function parsePercentage(raw: unknown): number {
+  const text = String(raw ?? '').trim()
+  if (text === '') return Number.NaN
+
+  const normalized = text
+    .replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)))
+    .replace(/[۰-۹]/g, (d) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)))
+    .replace(/[,٬\s]/g, '')
+
+  return /^\d*\.?\d+$/.test(normalized) ? Number(normalized) : Number.NaN
+}
+
 function addRow(): void {
   emit('update:modelValue', addTraderOwnerRow(props.modelValue))
 }
@@ -99,7 +117,7 @@ function removeRow(index: number): void {
                 :model-value="owner.ownership_percentage"
                 placeholder="0"
                 @update:model-value="
-                  updateOwner(index, { ownership_percentage: Number($event || 0) })
+                  updateOwner(index, { ownership_percentage: parsePercentage($event) })
                 "
               />
               <p

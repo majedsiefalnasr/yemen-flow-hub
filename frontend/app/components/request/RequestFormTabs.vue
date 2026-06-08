@@ -2,6 +2,7 @@
 import { computed, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
+import * as z from 'zod'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardFooter } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -17,6 +18,48 @@ import { CoverageType, RequestStatus } from '@/types/enums'
 import type { ImportRequest, RequestFormData } from '@/types/models'
 import { FINANCING_ADVISORY_MESSAGE } from '@/composables/useFinancingLedger'
 import { useRequestsStore } from '@/stores/requests.store'
+import { extractApiFieldErrors } from '@/utils/apiErrors'
+
+/** Supported transaction currencies (must match backend `currency` whitelist). */
+const SUPPORTED_CURRENCIES = ['USD', 'EUR', 'SAR', 'AED', 'CNY'] as const
+
+/**
+ * Zod schema for the new-model request form (architecture: VeeValidate + Zod
+ * + backend FormRequest). Validates across all tabs; tab validators below run
+ * focused slices of it and surface inline errors (code-review 17-C decision #5).
+ */
+const requestFormSchema = z
+  .object({
+    trader_id: z.number({ message: 'التاجر مطلوب' }).int().positive('التاجر مطلوب'),
+    request_type: z.string().min(1, 'نوع الطلب مطلوب'),
+    currency_source: z.string().min(1, 'مصدر العملة مطلوب'),
+    payment_terms_mode: z.string().min(1, 'طريقة الدفع مطلوبة'),
+    coverage_type: z.nativeEnum(CoverageType).nullable().optional(),
+    request_percentage: z.coerce.number().gt(0).max(100).nullable().optional(),
+    request_currency: z.enum(SUPPORTED_CURRENCIES).nullable().optional(),
+    invoice_currency: z.enum(SUPPORTED_CURRENCIES).nullable().optional(),
+    requested_amount: z.coerce.number().positive().nullable().optional(),
+    total_invoice_amount: z.coerce.number().positive().nullable().optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.coverage_type === CoverageType.FULL && Number(data.request_percentage) !== 100) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['request_percentage'],
+        message: 'التغطية الكاملة تتطلب نسبة 100%',
+      })
+    }
+    if (
+      data.coverage_type === CoverageType.PARTIAL &&
+      !(Number(data.request_percentage) >= 5 && Number(data.request_percentage) < 100)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['request_percentage'],
+        message: 'التغطية الجزئية تتطلب نسبة بين 5 و أقل من 100',
+      })
+    }
+  })
 
 const props = defineProps<{
   requestId?: number | null
@@ -38,6 +81,10 @@ const values = reactive<Partial<RequestFormData>>(defaultValues())
 const documentsComplete = ref(false)
 const declarationAccepted = ref(false)
 const financingAdvisoryBlocked = ref(false)
+const formErrors = ref<Record<string, string | undefined>>({})
+// Suppress the spurious `dirty` emit caused by the immediate initialValues
+// watcher assigning into `values` on mount (code-review 17-C).
+let hydrating = true
 
 const tabs = [
   { value: 'basic', label: 'بيانات أساسية' },
@@ -71,7 +118,17 @@ const correctionVariant = computed(() => {
 watch(
   () => props.initialValues,
   (next) => {
+    hydrating = true
     Object.assign(values, defaultValues(next ?? null))
+    // When editing an existing request, all tabs hold data and must be
+    // directly reachable (do not trap behind sequential visiting).
+    if (props.requestId != null || next?.id != null) {
+      visitedTabs.value = new Set(tabs.map((tab) => tab.value))
+    }
+    // Release the dirty guard after the assignment settles.
+    void Promise.resolve().then(() => {
+      hydrating = false
+    })
   },
   { immediate: true },
 )
@@ -79,6 +136,7 @@ watch(
 watch(
   values,
   () => {
+    if (hydrating) return
     emit('dirty')
   },
   { deep: true },
@@ -141,22 +199,50 @@ function setValues(next: Partial<RequestFormData>) {
   Object.assign(values, next)
 }
 
+/** Validate one or more schema fields; record inline errors; return validity. */
+function validateFields(fields: string[]): boolean {
+  const result = requestFormSchema.safeParse(values)
+  const next: Record<string, string | undefined> = { ...formErrors.value }
+  for (const field of fields) next[field] = undefined
+  let valid = true
+
+  if (!result.success) {
+    for (const issue of result.error.issues) {
+      const field = String(issue.path[0] ?? '')
+      if (fields.includes(field)) {
+        next[field] ??= issue.message
+        valid = false
+      }
+    }
+  }
+
+  formErrors.value = next
+  return valid
+}
+
 function validateBasicTab(): boolean {
-  return Boolean(
-    values.trader_id && values.request_type && values.currency_source && values.payment_terms_mode,
-  )
+  return validateFields(['trader_id', 'request_type', 'currency_source', 'payment_terms_mode'])
 }
 
 function validateInvoiceTab(): boolean {
-  if (values.coverage_type === CoverageType.FULL) return Number(values.request_percentage) === 100
-  if (values.coverage_type !== CoverageType.PARTIAL) return true
-  const percentage = Number(values.request_percentage)
-  return Number.isFinite(percentage) && percentage >= 5 && percentage < 100
+  return validateFields([
+    'coverage_type',
+    'request_percentage',
+    'request_currency',
+    'invoice_currency',
+    'requested_amount',
+  ])
 }
 
 function goNext() {
-  if (activeTab.value === 'basic' && !validateBasicTab()) return
-  if (activeTab.value === 'invoice' && !validateInvoiceTab()) return
+  if (activeTab.value === 'basic' && !validateBasicTab()) {
+    toast.error('يرجى إكمال الحقول المطلوبة في هذه الخطوة.')
+    return
+  }
+  if (activeTab.value === 'invoice' && !validateInvoiceTab()) {
+    toast.error('يرجى تصحيح بيانات الفاتورة قبل المتابعة.')
+    return
+  }
   const index = tabs.findIndex((tab) => tab.value === activeTab.value)
   activeTab.value = tabs[Math.min(index + 1, tabs.length - 1)]?.value ?? 'basic'
 }
@@ -166,16 +252,37 @@ function goPrevious() {
   activeTab.value = tabs[Math.max(index - 1, 0)]?.value ?? 'basic'
 }
 
+/** Surface backend validation errors inline and route to the first error tab. */
+function handleSaveError(err: unknown, fallback: string): void {
+  const fieldErrors = extractApiFieldErrors(err)
+  if (Object.keys(fieldErrors).length > 0) {
+    formErrors.value = { ...formErrors.value, ...fieldErrors }
+    const first = Object.keys(fieldErrors)[0] ?? ''
+    if (
+      ['request_percentage', 'coverage_type', 'request_currency'].some((f) => first.includes(f))
+    ) {
+      activeTab.value = 'invoice'
+    } else if (['trader', 'request_type', 'payment'].some((f) => first.includes(f))) {
+      activeTab.value = 'basic'
+    }
+  }
+  toast.error(fallback)
+}
+
 async function saveDraft() {
   const payload = buildPayload()
-  if (isEditMode.value && props.requestId) {
-    await requestsStore.updateRequest(props.requestId, payload)
-  } else {
-    const id = await requestsStore.createRequest(payload)
-    await router.push(`/requests/${id}/edit`)
+  try {
+    if (isEditMode.value && props.requestId) {
+      await requestsStore.updateRequest(props.requestId, payload)
+    } else {
+      const id = await requestsStore.createRequest(payload)
+      await router.push(`/requests/${id}/edit`)
+    }
+    emit('clean')
+    toast.success('تم حفظ المسودة')
+  } catch (err) {
+    handleSaveError(err, 'تعذّر حفظ المسودة. حاول مجدداً.')
   }
-  emit('clean')
-  toast.success('تم حفظ المسودة')
 }
 
 function extractErrorCode(err: unknown): string | null {
@@ -187,13 +294,19 @@ function extractErrorCode(err: unknown): string | null {
 async function submitForReview() {
   if (!validateBasicTab()) {
     activeTab.value = 'basic'
+    toast.error('يرجى إكمال الحقول المطلوبة في البيانات الأساسية.')
     return
   }
   if (!validateInvoiceTab()) {
     activeTab.value = 'invoice'
+    toast.error('يرجى تصحيح بيانات الفاتورة.')
     return
   }
-  if (!documentsComplete.value || !declarationAccepted.value) return
+  if (!documentsComplete.value || !declarationAccepted.value) {
+    activeTab.value = 'documents'
+    toast.error('يرجى إرفاق الوثائق الإلزامية وقبول الإقرار.')
+    return
+  }
 
   // Advisory only — backend FINANCING_LIMIT_EXCEEDED remains authoritative (Story 17-D.2).
   if (financingAdvisoryBlocked.value) {
@@ -204,10 +317,15 @@ async function submitForReview() {
 
   const payload = buildPayload()
   let requestId = props.requestId ?? props.initialValues?.id ?? null
-  if (requestId) {
-    await requestsStore.updateRequest(requestId, payload)
-  } else {
-    requestId = await requestsStore.createRequest(payload)
+  try {
+    if (requestId) {
+      await requestsStore.updateRequest(requestId, payload)
+    } else {
+      requestId = await requestsStore.createRequest(payload)
+    }
+  } catch (err) {
+    handleSaveError(err, 'تعذّر حفظ الطلب قبل التقديم.')
+    return
   }
 
   try {
@@ -218,7 +336,8 @@ async function submitForReview() {
       activeTab.value = 'invoice'
       return
     }
-    throw err
+    handleSaveError(err, 'تعذّر تقديم الطلب للمراجعة.')
+    return
   }
 
   emit('submitted')
@@ -227,16 +346,22 @@ async function submitForReview() {
 }
 
 function buildPayload(): RequestFormData {
-  const requestCurrency =
-    values.request_currency || values.invoice_currency || values.currency || 'USD'
-  const requestedAmount = Number(
-    values.requested_amount ?? values.total_invoice_amount ?? values.amount ?? 1,
-  )
+  // Only derive the canonical currency from a value that is a supported code;
+  // never smuggle an unvalidated free-text currency into the whitelisted column.
+  const candidate = values.request_currency || values.invoice_currency || values.currency
+  const requestCurrency = (SUPPORTED_CURRENCIES as readonly string[]).includes(candidate ?? '')
+    ? (candidate as string)
+    : 'USD'
+
+  // Derive the legacy amount only from a real numeric value; do not fabricate a
+  // bogus amount=1 that masks a missing input (backend enforces the real rule).
+  const amountSource = values.requested_amount ?? values.total_invoice_amount ?? values.amount
+  const amount = Number(amountSource)
 
   return {
     ...values,
     currency: requestCurrency,
-    amount: Number.isFinite(requestedAmount) && requestedAmount > 0 ? requestedAmount : 1,
+    amount: Number.isFinite(amount) && amount > 0 ? amount : null,
     supplier_name: values.exporting_company_name || values.supplier_name || null,
     goods_description: values.commodity || values.goods_description || null,
     port_of_entry:
@@ -270,12 +395,17 @@ function buildPayload(): RequestFormData {
           </TabsList>
 
           <TabsContent value="basic" class="mt-6">
-            <BasicInfoTab :model-value="values" @update:model-value="setValues" />
+            <BasicInfoTab
+              :model-value="values"
+              :errors="formErrors"
+              @update:model-value="setValues"
+            />
           </TabsContent>
 
           <TabsContent value="invoice" class="mt-6">
             <InvoiceTab
               :model-value="values"
+              :errors="formErrors"
               :exclude-request-id="requestId ?? initialValues?.id ?? null"
               @update:model-value="setValues"
               @advisory-block="financingAdvisoryBlocked = $event"

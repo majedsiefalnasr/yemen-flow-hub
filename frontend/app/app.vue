@@ -26,7 +26,11 @@ const platformName = computed(
 const authorityName = computed(
   () => orgStore.authority.trim() || 'اللجنة الوطنية لتنظيم وتمويل الواردات',
 )
-const fullAppTitle = computed(() => `${platformName.value}، ${authorityName.value}`)
+const fullAppTitle = computed(() =>
+  platformName.value === authorityName.value
+    ? platformName.value
+    : `${platformName.value}، ${authorityName.value}`,
+)
 const seoDescription = computed(
   () =>
     `${platformName.value} منصة مؤسسية لإدارة ومراجعة طلبات تمويل الواردات لدى ${authorityName.value}.`,

@@ -556,7 +556,7 @@ export const ROLE_BUCKETS: Partial<Record<UserRole, StageBucket[]>> = {
     },
     {
       key: 'at_cby',
-      label: 'لدى البنك المركزي',
+      label: 'لدى اللجنة الوطنية',
       statuses: [
         RequestStatus.BANK_APPROVED,
         RequestStatus.SUPPORT_REVIEW_PENDING,
@@ -600,7 +600,7 @@ export const ROLE_BUCKETS: Partial<Record<UserRole, StageBucket[]>> = {
     },
     {
       key: 'at_cby',
-      label: 'لدى البنك المركزي',
+      label: 'لدى اللجنة الوطنية',
       statuses: [
         RequestStatus.BANK_APPROVED,
         RequestStatus.SUPPORT_REVIEW_PENDING,

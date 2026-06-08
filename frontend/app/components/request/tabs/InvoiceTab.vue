@@ -18,6 +18,7 @@ import type { RequestFormData } from '@/types/models'
 const props = defineProps<{
   modelValue: Partial<RequestFormData>
   excludeRequestId?: number | null
+  errors?: Record<string, string | undefined>
 }>()
 
 const emit = defineEmits<{

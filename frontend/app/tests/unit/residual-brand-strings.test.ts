@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
 const NATIONAL_COMMITTEE_AR = 'اللجنة الوطنية لتنظيم وتمويل الواردات'
-const NATIONAL_COMMITTEE_EN = 'National Committee for Import Regulation and Financing'
+const NATIONAL_COMMITTEE_EN = 'The National Committee for Regulating & Financing Imports'
 
 function source(relativePath: string): string {
   return readFileSync(new URL(`../../${relativePath}`, import.meta.url), 'utf8')

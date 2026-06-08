@@ -86,6 +86,7 @@ const columnVisibility = ref<VisibilityState>({})
 const rowSelection = ref<Record<string, boolean>>({})
 const selectedNotification = ref<Notification | null>(null)
 const notificationDialogOpen = ref(false)
+// not-eligible-copy-allow \u2014 legitimate marker for classifying in-flight legacy notifications
 const LEGACY_REJECTION_MARKER = '\u0631\u0641\u0636'
 
 async function loadNotifications() {

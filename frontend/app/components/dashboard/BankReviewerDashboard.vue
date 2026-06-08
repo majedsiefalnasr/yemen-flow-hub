@@ -73,7 +73,7 @@ const kpiConfig = computed(() => [
   {
     icon: RotateCcw,
     value: stats.value?.at_cby ?? 0,
-    label: 'قيد البنك المركزي',
+    label: 'قيد اللجنة الوطنية',
     variant: 'blue',
     tab: 'at_cby',
   },
@@ -375,7 +375,7 @@ onMounted(() => {
       <section v-if="downstreamQueue.length > 0" aria-labelledby="downstream-heading">
         <div class="mb-4 flex items-center justify-between">
           <h2 id="downstream-heading" class="text-foreground text-sm font-semibold">
-            متابعة الطلبات لدى البنك المركزي
+            متابعة الطلبات لدى اللجنة الوطنية
           </h2>
           <Button
             variant="link"

@@ -94,7 +94,7 @@ export function calcHealthIssues(
   const rate = calcRejectionRate(stats)
   if (rate > REJECTION_THRESHOLD) issues.push(`معدل ${NOT_ELIGIBLE_LABEL_AR} مرتفع: ${rate}%`)
   if ((stats.stalled_at_cby_count ?? 0) > 0)
-    issues.push(`${stats.stalled_at_cby_count} طلب متوقف لدى البنك المركزي`)
+    issues.push(`${stats.stalled_at_cby_count} طلب متوقف لدى اللجنة الوطنية`)
   if (stats.missing_bank_reviewer_coverage) issues.push('لا يوجد مراجع بنك نشط لاستلام الطلبات')
   if ((stats.repeated_support_returns ?? 0) > REPEATED_SUPPORT_RETURNS_THRESHOLD) {
     issues.push(`${stats.repeated_support_returns} إعادة متكررة من لجنة المساندة`)

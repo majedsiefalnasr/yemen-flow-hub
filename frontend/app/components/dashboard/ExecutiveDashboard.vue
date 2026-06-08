@@ -16,7 +16,7 @@ import {
 import { useDashboardStore } from '../../stores/dashboard.store'
 import { useAuthStore } from '../../stores/auth.store'
 import { RequestStatus, UserRole } from '../../types/enums'
-import { NOT_ELIGIBLE_EXECUTIVE_LABEL } from '../../constants/workflow'
+import { NOT_ELIGIBLE_EXECUTIVE_LABEL, NOT_ELIGIBLE_LABEL_AR } from '../../constants/workflow'
 import type { ExecutiveDashboardStats, VotingQueueItem } from '../../composables/useDashboard'
 import type { ImportRequest } from '../../types/models'
 import StatusBadge from '../shared/StatusBadge.vue'
@@ -298,7 +298,7 @@ onMounted(() => {
             @click="router.push('/requests?tab=finalized')"
           />
           <MetricCard
-            label="قرارات مُرفوضة"
+            :label="`قرارات ${NOT_ELIGIBLE_LABEL_AR}`"
             :value="stats.finalized_rejected ?? stats.decisions_rejected"
             :icon="XCircle"
             tone="danger"

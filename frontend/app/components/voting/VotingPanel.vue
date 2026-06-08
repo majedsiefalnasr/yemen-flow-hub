@@ -1,5 +1,4 @@
 // @parity-exempt — voting sub-component; parity evidence captured at requests/detail-voting page
-level
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { AlertCircle } from 'lucide-vue-next'
@@ -77,13 +76,18 @@ const canVote = computed(
 const detail = computed(() => votingStore.votingDetail)
 const tally = computed(() => detail.value?.tally ?? null)
 const votes = computed<RequestVote[]>(() => detail.value?.votes ?? [])
-const COMMITTEE_SIZE = 6
-const displayedVotes = computed<RequestVote[]>(() => votes.value.slice(0, COMMITTEE_SIZE))
-const notYetVotedCount = computed(() => Math.max(0, COMMITTEE_SIZE - displayedVotes.value.length))
+// Eligible-member count from the backend; the v2 majority threshold is dynamic
+// (floor(n/2)+1), so never hardcode 6 (code-review 17-E).
+const DEFAULT_COMMITTEE_SIZE = 6
+const committeeSize = computed(() => detail.value?.total_members || DEFAULT_COMMITTEE_SIZE)
+const displayedVotes = computed<RequestVote[]>(() => votes.value.slice(0, committeeSize.value))
+const notYetVotedCount = computed(() =>
+  Math.max(0, committeeSize.value - displayedVotes.value.length),
+)
 const revealVoteChoices = computed(() => !isSessionOpen.value)
 
 function tallyBarWidth(count: number): string {
-  return `${Math.round((count / COMMITTEE_SIZE) * 100)}%`
+  return `${Math.round((count / committeeSize.value) * 100)}%`
 }
 
 function voteLabel(vote: VoteType): string {
@@ -91,7 +95,9 @@ function voteLabel(vote: VoteType): string {
     case VoteType.APPROVE:
       return 'موافقة'
     case VoteType.REJECT:
-      return NOT_ELIGIBLE_LABEL_AR
+      // Preserve history (code-review 17-F decision #3): v1 (legacy) vote records
+      // keep the legacy term; only new-model (v2) votes show "Not Eligible".
+      return isV2.value ? NOT_ELIGIBLE_LABEL_AR : 'رفض' // not-eligible-copy-allow legacy v1 vote-history
     case VoteType.ABSTAIN:
       return 'امتناع'
     case VoteType.AUTO_ABSTAIN_TIMEOUT:
@@ -270,7 +276,7 @@ onMounted(async () => {
               />
             </div>
             <span class="text-muted-foreground w-14 flex-shrink-0 text-start text-xs"
-              >{{ tally.approve_count }} / {{ COMMITTEE_SIZE }}</span
+              >{{ tally.approve_count }} / {{ committeeSize }}</span
             >
           </div>
 
@@ -286,7 +292,7 @@ onMounted(async () => {
               />
             </div>
             <span class="text-muted-foreground w-14 flex-shrink-0 text-start text-xs"
-              >{{ tally.reject_count }} / {{ COMMITTEE_SIZE }}</span
+              >{{ tally.reject_count }} / {{ committeeSize }}</span
             >
           </div>
 
@@ -302,7 +308,7 @@ onMounted(async () => {
               />
             </div>
             <span class="text-muted-foreground w-14 flex-shrink-0 text-start text-xs"
-              >{{ tally.abstain_count + tally.auto_abstain_count }} / {{ COMMITTEE_SIZE }}</span
+              >{{ tally.abstain_count + tally.auto_abstain_count }} / {{ committeeSize }}</span
             >
           </div>
         </div>

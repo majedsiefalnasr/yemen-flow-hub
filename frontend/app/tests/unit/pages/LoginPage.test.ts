@@ -16,7 +16,7 @@ const { useAuthStore } = await import('../../../stores/auth.store')
 const LOGIN_PAGE_SOURCE = readFileSync(new URL('../../../pages/login.vue', import.meta.url), 'utf8')
 
 const NATIONAL_COMMITTEE_AR = 'اللجنة الوطنية لتنظيم وتمويل الواردات'
-const NATIONAL_COMMITTEE_EN = 'National Committee for Import Regulation and Financing'
+const NATIONAL_COMMITTEE_EN = 'The National Committee for Regulating & Financing Imports'
 
 const DEMO_USER: AuthUser = {
   id: 1,

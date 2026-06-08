@@ -167,7 +167,7 @@ describe('BankAdminDashboard 12.2 — calcHealthIssues()', () => {
   it('includes stalled count issue when stalled_at_cby_count > 0', () => {
     const stats = makeStats({ total: 100, rejected: 5, stalled_at_cby_count: 4 })
     const issues = calcHealthIssues(stats)
-    expect(issues.some((i) => i.includes('متوقف لدى البنك المركزي'))).toBe(true)
+    expect(issues.some((i) => i.includes('متوقف لدى اللجنة الوطنية'))).toBe(true)
   })
 
   it('includes missing reviewer issue when coverage is missing', () => {

@@ -509,7 +509,7 @@ function formatDate(iso: string | null): string {
                     </span>
                   </TooltipTrigger>
                   <TooltipContent side="top" class="max-w-[220px] text-center text-xs">
-                    هذا المستند يُعالَج من فريق البنك المركزي ولا يتاح للتنزيل في هذه المرحلة.
+                    هذا المستند يُعالَج من فريق اللجنة الوطنية ولا يتاح للتنزيل في هذه المرحلة.
                   </TooltipContent>
                 </Tooltip>
               </template>

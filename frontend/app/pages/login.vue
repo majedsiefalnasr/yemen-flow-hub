@@ -1280,7 +1280,7 @@ watch(step, (newStep) => {
           <div v-else class="hero-monogram">ل.و</div>
           <div>
             <p class="hero-brand-ar">{{ orgStore.authority }}</p>
-            <p class="hero-brand-en">National Committee for Import Regulation and Financing</p>
+            <p class="hero-brand-en">The National Committee for Regulating & Financing Imports</p>
           </div>
         </div>
       </div>

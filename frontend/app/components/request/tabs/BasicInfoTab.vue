@@ -24,6 +24,7 @@ import type { RequestFormData, TraderLookupResult } from '@/types/models'
 
 const props = defineProps<{
   modelValue: Partial<RequestFormData>
+  errors?: Record<string, string | undefined>
 }>()
 
 const emit = defineEmits<{

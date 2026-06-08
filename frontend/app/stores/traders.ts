@@ -92,20 +92,27 @@ export const useTradersStore = defineStore('traders', {
     },
 
     async loadTrader(id: number): Promise<void> {
+      const token = ++this._loadToken
       this.loading = true
       this.error = null
       this.currentTrader = null
 
       try {
         const { getById } = useTraders()
-        this.currentTrader = await getById(id)
+        const trader = await getById(id)
+        // Drop a stale response if a newer load started (rapid navigation).
+        if (token !== this._loadToken) return
+        this.currentTrader = trader
       } catch (err) {
+        if (token !== this._loadToken) return
         if (import.meta.dev) {
           console.error('[traders.store] loadTrader failed:', err)
         }
         this.error = 'تعذّر تحميل بيانات التاجر.'
       } finally {
-        this.loading = false
+        if (token === this._loadToken) {
+          this.loading = false
+        }
       }
     },
 

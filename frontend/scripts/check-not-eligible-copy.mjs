@@ -3,12 +3,28 @@ import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { extname, join, relative } from 'node:path'
 import process from 'node:process'
 
-const banned = /مرفوض|رُفض|رفض|Rejected|Declined|Disapproved|Not Approved/
+// Arabic forms are matched after normalization (tatweel/diacritics stripped,
+// alef/taa unified) so orthographic variants like "رُفِض", "رفـض", "رافض"
+// cannot slip past. Latin synonyms stay case-sensitive (Title-case prose) so
+// snake_case / SCREAMING_CASE internal identifiers are not false-positives
+// (code-review 17-F).
+const banned = /مرفوض|رفض|رافض|Rejected|Declined|Disapproved|Not Approved/
 const roots = process.argv.slice(2)
 const scanRoots = roots.length > 0 ? roots : ['app']
 const extensions = new Set(['.ts', '.vue'])
 const skipSegments = new Set(['node_modules', '.nuxt', '.output', 'dist', 'coverage', 'tests'])
+// Lines carrying this marker are intentional legacy-history literals (e.g. v1
+// vote records that must keep "رفض" per the preserve-history decision).
+const ALLOW_MARKER = 'not-eligible-copy-allow'
 const findings = []
+
+function normalizeArabic(text) {
+  return text
+    .replace(/[ـ]/g, '') // tatweel
+    .replace(/[ً-ْٰ]/g, '') // harakat / diacritics
+    .replace(/[آأإ]/g, 'ا') // alef variants -> bare alef
+    .replace(/ة/g, 'ه') // taa marbuta -> haa
+}
 
 function walk(path) {
   const stat = statSync(path)
@@ -25,12 +41,17 @@ function walk(path) {
 
 function inspect(path) {
   const source = readFileSync(path, 'utf8')
+  const lines = source.split('\n')
   const chunks = extname(path) === '.vue' ? vueChunks(source) : tsChunks(source)
 
   for (const chunk of chunks) {
-    const renderedText = chunk.text.replace(/\$\{[\s\S]*?\}/g, '')
+    // Scan interpolation contents too (do not blindly strip them).
+    const renderedText = normalizeArabic(chunk.text)
     if (!banned.test(renderedText)) continue
-    findings.push({ path, line: lineNumber(source, chunk.index), text: renderedText.trim() })
+    const line = lineNumber(source, chunk.index)
+    // Respect an explicit per-line allow marker for legitimate legacy literals.
+    if (lines[line - 1]?.includes(ALLOW_MARKER)) continue
+    findings.push({ path, line, text: chunk.text.trim() })
   }
 }
 
