@@ -3,7 +3,9 @@
 use App\Enums\AuditAction;
 use App\Exceptions\CustomsException;
 use App\Exceptions\DocumentException;
+use App\Exceptions\DuplicateInvoiceMismatchException;
 use App\Exceptions\DuplicateVoteException;
+use App\Exceptions\FinancingLimitExceededException;
 use App\Exceptions\InvalidTransitionException;
 use App\Exceptions\SelfReviewException;
 use App\Exceptions\UnauthorizedTransitionException;
@@ -145,6 +147,18 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->render(function (DocumentException $e, Request $request) {
             if ($request->is('api/*')) {
                 return ApiResponse::error($e->getMessage(), [], 422);
+            }
+        });
+
+        $exceptions->render(function (FinancingLimitExceededException $e, Request $request) {
+            if ($request->is('api/*')) {
+                return ApiResponse::error($e->getMessage(), [], 422, FinancingLimitExceededException::ERROR_CODE);
+            }
+        });
+
+        $exceptions->render(function (DuplicateInvoiceMismatchException $e, Request $request) {
+            if ($request->is('api/*')) {
+                return ApiResponse::error($e->getMessage(), [], 422, DuplicateInvoiceMismatchException::ERROR_CODE);
             }
         });
 

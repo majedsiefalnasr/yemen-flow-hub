@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Enums\RequestStatus;
 use App\Enums\UserRole;
+use App\Exceptions\FinancingLimitExceededException;
 use App\Exceptions\VotingException;
 use App\Http\Requests\BankRejectTerminalRequest;
 use App\Http\Requests\BankReturnRequest;
@@ -11,6 +12,8 @@ use App\Http\Requests\SupportReturnRequest;
 use App\Http\Requests\WorkflowActionRequest;
 use App\Http\Resources\ImportRequestResource;
 use App\Models\ImportRequest;
+use App\Services\DuplicateDetectionService;
+use App\Services\FinancingLedgerService;
 use App\Services\Notifications\ClaimReleaseNotifier;
 use App\Services\Voting\VotingService;
 use App\Services\Workflow\WorkflowService;
@@ -27,6 +30,8 @@ class WorkflowController extends Controller
         private readonly WorkflowService $workflowService,
         private readonly VotingService $votingService,
         private readonly ClaimReleaseNotifier $claimReleaseNotifier,
+        private readonly FinancingLedgerService $financingLedgerService,
+        private readonly DuplicateDetectionService $duplicateDetectionService,
     ) {}
 
     #[OA\Post(path: '/api/workflow/{importRequest}/submit', tags: ['Workflow'], summary: 'Submit request', parameters: [new OA\Parameter(name: 'importRequest', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], requestBody: new OA\RequestBody(required: false, content: new OA\JsonContent(properties: [new OA\Property(property: 'reason', type: 'string', maxLength: 2000)])), responses: [new OA\Response(response: 200, description: 'Transition applied')])]
@@ -372,6 +377,10 @@ class WorkflowController extends Controller
     {
         $this->authorize('view', $importRequest);
 
+        if ($action === 'submit') {
+            return $this->submitWithFinancingGuards($request, $importRequest);
+        }
+
         $updated = $this->workflowService->transition(
             $importRequest,
             $action,
@@ -380,5 +389,50 @@ class WorkflowController extends Controller
         );
 
         return ApiResponse::success(new ImportRequestResource($updated->load(ImportRequestResource::baseRelations())), 'Workflow transition executed.');
+    }
+
+    private function submitWithFinancingGuards(WorkflowActionRequest $request, ImportRequest $importRequest)
+    {
+        $taxNumber = $importRequest->trader_snapshot_tax_number;
+        $invoiceNumber = $importRequest->invoice_number;
+        $requestPercentage = $importRequest->request_percentage;
+
+        if ($taxNumber && $invoiceNumber && $requestPercentage !== null) {
+            $this->duplicateDetectionService->assertInvoiceKeyConsistency([
+                'trader_snapshot_tax_number' => $taxNumber,
+                'invoice_number' => $invoiceNumber,
+                'invoice_currency' => $importRequest->invoice_currency,
+                'total_invoice_amount' => $importRequest->total_invoice_amount,
+            ], $importRequest->id);
+
+            try {
+                $updated = $this->financingLedgerService->reserveCapacity(
+                    $taxNumber,
+                    $invoiceNumber,
+                    (float) $requestPercentage,
+                    fn () => $this->workflowService->transition(
+                        $importRequest,
+                        'submit',
+                        $request->user(),
+                        $request->input('reason'),
+                    ),
+                    $importRequest->id,
+                );
+            } catch (FinancingLimitExceededException $exception) {
+                throw $exception;
+            }
+        } else {
+            $updated = $this->workflowService->transition(
+                $importRequest,
+                'submit',
+                $request->user(),
+                $request->input('reason'),
+            );
+        }
+
+        return ApiResponse::success(
+            new ImportRequestResource($updated->load(ImportRequestResource::baseRelations())),
+            'Workflow transition executed.'
+        );
     }
 }

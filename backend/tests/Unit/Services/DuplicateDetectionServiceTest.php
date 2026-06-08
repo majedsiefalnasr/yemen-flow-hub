@@ -4,6 +4,7 @@ namespace Tests\Unit\Services;
 
 use App\Enums\RequestStatus;
 use App\Enums\UserRole;
+use App\Exceptions\DuplicateInvoiceMismatchException;
 use App\Models\Bank;
 use App\Models\ImportRequest;
 use App\Models\Merchant;
@@ -155,5 +156,77 @@ class DuplicateDetectionServiceTest extends TestCase
     {
         $groups = $this->service->findDuplicateGroups();
         $this->assertCount(0, $groups);
+    }
+
+    public function test_assert_invoice_key_consistency_passes_for_matching_snapshot(): void
+    {
+        $this->makeFinancingRequest($this->bank1, 'TAX-100', 'INV-100', 'USD', '5000.00');
+
+        $this->service->assertInvoiceKeyConsistency([
+            'trader_snapshot_tax_number' => 'TAX-100',
+            'invoice_number' => 'INV-100',
+            'invoice_currency' => 'USD',
+            'total_invoice_amount' => 5000,
+        ]);
+
+        $this->assertTrue(true);
+    }
+
+    public function test_assert_invoice_key_consistency_rejects_mismatched_currency(): void
+    {
+        $this->makeFinancingRequest($this->bank1, 'TAX-101', 'INV-101', 'USD', '5000.00');
+
+        $this->expectException(DuplicateInvoiceMismatchException::class);
+
+        $this->service->assertInvoiceKeyConsistency([
+            'trader_snapshot_tax_number' => 'TAX-101',
+            'invoice_number' => 'INV-101',
+            'invoice_currency' => 'EUR',
+            'total_invoice_amount' => 5000,
+        ]);
+    }
+
+    public function test_assert_invoice_key_consistency_rejects_mismatched_total(): void
+    {
+        $this->makeFinancingRequest($this->bank1, 'TAX-102', 'INV-102', 'USD', '5000.00');
+
+        $this->expectException(DuplicateInvoiceMismatchException::class);
+
+        $this->service->assertInvoiceKeyConsistency([
+            'trader_snapshot_tax_number' => 'TAX-102',
+            'invoice_number' => 'INV-102',
+            'invoice_currency' => 'USD',
+            'total_invoice_amount' => 6000,
+        ]);
+    }
+
+    private function makeFinancingRequest(
+        Bank $bank,
+        string $taxNumber,
+        string $invoiceNumber,
+        string $invoiceCurrency,
+        string $totalInvoiceAmount,
+    ): ImportRequest {
+        app()->instance('workflow.transition.active', true);
+        try {
+            return ImportRequest::query()->create([
+                'bank_id' => $bank->id,
+                'created_by' => $this->makeUser($bank)->id,
+                'currency' => 'USD',
+                'amount' => 1000,
+                'supplier_name' => 'Supplier',
+                'goods_description' => 'Goods',
+                'port_of_entry' => 'Aden',
+                'status' => RequestStatus::DRAFT,
+                'current_owner_role' => UserRole::DATA_ENTRY,
+                'invoice_number' => $invoiceNumber,
+                'trader_snapshot_tax_number' => $taxNumber,
+                'invoice_currency' => $invoiceCurrency,
+                'total_invoice_amount' => $totalInvoiceAmount,
+                'request_percentage' => 25,
+            ]);
+        } finally {
+            app()->offsetUnset('workflow.transition.active');
+        }
     }
 }

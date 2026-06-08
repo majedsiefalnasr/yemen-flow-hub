@@ -9,6 +9,9 @@ use App\Enums\InvoiceType;
 use App\Enums\PaymentTermsMode;
 use App\Enums\PortOfArrival;
 use App\Enums\RequestType;
+use App\Models\Trader;
+use App\Rules\FinancingLimitRule;
+use App\Services\DuplicateDetectionService;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
@@ -22,6 +25,8 @@ class StoreImportRequest extends ApiFormRequest
     public function rules(): array
     {
         $bankId = $this->user()?->bank_id;
+        $taxNumber = $this->resolveTaxNumber();
+        $invoiceNumber = $this->input('invoice_number');
 
         return [
             'merchant_id' => ['nullable', 'integer', Rule::exists('merchants', 'id')->where(fn ($q) => $q->where('bank_id', $bankId))],
@@ -46,7 +51,11 @@ class StoreImportRequest extends ApiFormRequest
             'coverage_type' => ['nullable', Rule::enum(CoverageType::class)],
             'currency_source' => ['nullable', Rule::enum(CurrencySource::class)],
             'payment_terms_mode' => ['nullable', Rule::enum(PaymentTermsMode::class)],
-            'request_percentage' => ['nullable', 'numeric'],
+            'request_percentage' => array_filter([
+                'nullable',
+                'numeric',
+                $taxNumber && $invoiceNumber ? new FinancingLimitRule($taxNumber, (string) $invoiceNumber) : null,
+            ]),
             'request_currency' => ['nullable', 'string', 'max:10'],
             'requested_amount' => ['nullable', 'numeric', 'min:0'],
             'invoice_type' => ['nullable', Rule::enum(InvoiceType::class)],
@@ -85,6 +94,37 @@ class StoreImportRequest extends ApiFormRequest
             if ($coverageType === CoverageType::PARTIAL->value && ($percentage < 5.0 || $percentage >= 100.0)) {
                 $validator->errors()->add('request_percentage', 'التغطية الجزئية يجب أن تكون بين 5% و 100% (غير شاملة) / Partial coverage must be between 5% and 100% (exclusive)');
             }
+
+            $taxNumber = $this->resolveTaxNumber();
+            $invoiceNumber = $this->input('invoice_number');
+
+            if ($taxNumber === null || $invoiceNumber === null) {
+                return;
+            }
+
+            app(DuplicateDetectionService::class)->assertInvoiceKeyConsistency([
+                'trader_snapshot_tax_number' => $taxNumber,
+                'invoice_number' => $invoiceNumber,
+                'invoice_currency' => $this->input('invoice_currency'),
+                'total_invoice_amount' => $this->input('total_invoice_amount'),
+            ]);
         });
+    }
+
+    private function resolveTaxNumber(): ?string
+    {
+        if ($this->filled('trader_snapshot_tax_number')) {
+            return (string) $this->input('trader_snapshot_tax_number');
+        }
+
+        if ($this->filled('tax_number')) {
+            return (string) $this->input('tax_number');
+        }
+
+        if (! $this->filled('trader_id')) {
+            return null;
+        }
+
+        return Trader::query()->whereKey($this->input('trader_id'))->value('tax_number');
     }
 }

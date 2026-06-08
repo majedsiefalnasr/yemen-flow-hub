@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\DocumentController;
 use App\Http\Controllers\Api\DocumentTemplateController;
 use App\Http\Controllers\Api\DocumentTypeController;
+use App\Http\Controllers\Api\FinancingController;
 use App\Http\Controllers\Api\ImportRequestController;
 use App\Http\Controllers\Api\MerchantController;
 use App\Http\Controllers\Api\NotificationController;
@@ -77,6 +78,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('document-types', [DocumentTypeController::class, 'store']);
     Route::put('document-types/{documentType}', [DocumentTypeController::class, 'update']);
     Route::delete('document-types/{documentType}', [DocumentTypeController::class, 'destroy']);
+
+    Route::get('financing/utilization', [FinancingController::class, 'utilization']);
 
     Route::get('requests', [ImportRequestController::class, 'index']);
     Route::post('requests', [ImportRequestController::class, 'store']);
