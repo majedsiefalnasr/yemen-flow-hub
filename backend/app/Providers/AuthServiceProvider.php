@@ -7,12 +7,14 @@ use App\Models\CustomsDeclaration;
 use App\Models\ImportRequest;
 use App\Models\Merchant;
 use App\Models\RequestDocument;
+use App\Models\Trader;
 use App\Models\User;
 use App\Policies\BankPolicy;
 use App\Policies\CustomsDeclarationPolicy;
 use App\Policies\ImportRequestPolicy;
 use App\Policies\MerchantPolicy;
 use App\Policies\RequestDocumentPolicy;
+use App\Policies\TraderPolicy;
 use App\Policies\UserPolicy;
 use App\Services\Authorization\PermissionService;
 use Illuminate\Support\Facades\Gate;
@@ -28,6 +30,7 @@ class AuthServiceProvider extends ServiceProvider
         Gate::policy(Merchant::class, MerchantPolicy::class);
         Gate::policy(RequestDocument::class, RequestDocumentPolicy::class);
         Gate::policy(CustomsDeclaration::class, CustomsDeclarationPolicy::class);
+        Gate::policy(Trader::class, TraderPolicy::class);
 
         Gate::before(function ($user, string $ability) {
             if (! str_contains($ability, '.')) {
