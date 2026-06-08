@@ -134,6 +134,7 @@ const NAV_GROUP_DEFS: Array<{
   {
     title: 'الإدارة',
     routes: [
+      '/traders',
       '/merchants',
       '/staff',
       '/banks',
