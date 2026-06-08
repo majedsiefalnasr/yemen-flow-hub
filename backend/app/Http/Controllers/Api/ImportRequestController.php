@@ -13,10 +13,12 @@ use App\Http\Resources\ImportRequestListResource;
 use App\Http\Resources\ImportRequestResource;
 use App\Http\Resources\StageHistoryResource;
 use App\Models\ImportRequest;
+use App\Models\Trader;
 use App\Models\User;
 use App\Services\Audit\AuditService;
 use App\Services\DuplicateDetectionService;
 use App\Services\Settings\AdminSettingsService;
+use App\Services\TraderService;
 use App\Services\Workflow\WorkflowService;
 use App\Support\ApiResponse;
 use Illuminate\Database\Eloquent\Builder;
@@ -32,6 +34,7 @@ class ImportRequestController extends Controller
         private readonly DuplicateDetectionService $duplicateService,
         private readonly AdminSettingsService $settingsService,
         private readonly AuditService $auditService,
+        private readonly TraderService $traderService,
     ) {}
 
     #[OA\Get(
@@ -236,18 +239,25 @@ class ImportRequestController extends Controller
             }
         }
 
-        App::instance('workflow.transition.active', true);
-        try {
-            $importRequest = ImportRequest::query()->create([
-                ...$request->validated(),
-                'bank_id' => $request->user()->bank_id,
-                'created_by' => $request->user()->id,
-                'status' => RequestStatus::DRAFT,
-                'current_owner_role' => UserRole::DATA_ENTRY,
-            ]);
-        } finally {
-            App::offsetUnset('workflow.transition.active');
-        }
+        $validated = $request->validated();
+        $snapshot = $this->snapshotForTraderId($validated['trader_id'] ?? null);
+
+        $importRequest = DB::transaction(function () use ($request, $validated, $snapshot): ImportRequest {
+            App::instance('workflow.transition.active', true);
+            try {
+                return ImportRequest::query()->create([
+                    ...$validated,
+                    ...$snapshot,
+                    'bank_id' => $request->user()->bank_id,
+                    'created_by' => $request->user()->id,
+                    'status' => RequestStatus::DRAFT,
+                    'current_owner_role' => UserRole::DATA_ENTRY,
+                    'voting_rule_version' => 2,
+                ]);
+            } finally {
+                App::offsetUnset('workflow.transition.active');
+            }
+        });
 
         $this->auditService->log(
             AuditAction::REQUEST_CREATED,
@@ -355,12 +365,33 @@ class ImportRequestController extends Controller
             throw new WorkflowLockedStateException;
         }
 
+        $validated = $request->validated();
+        unset($validated['voting_rule_version']);
+
+        $snapshot = [];
+        if (array_key_exists('trader_id', $validated)) {
+            $newTraderId = $validated['trader_id'];
+            $shouldSnapshot = $newTraderId !== null
+                && ((int) $newTraderId !== (int) $importRequest->trader_id || $importRequest->trader_snapshot_name === null);
+            $snapshot = $shouldSnapshot ? $this->snapshotForTraderId((int) $newTraderId) : [];
+        }
+
         $importRequest->update([
-            ...$request->validated(),
+            ...$validated,
+            ...$snapshot,
             'last_updated_by' => $request->user()->id,
         ]);
 
         return ApiResponse::success(new ImportRequestResource($importRequest->refresh()->load(ImportRequestResource::baseRelations())), 'Request updated successfully.');
+    }
+
+    private function snapshotForTraderId(mixed $traderId): array
+    {
+        if ($traderId === null) {
+            return [];
+        }
+
+        return $this->traderService->buildSnapshot(Trader::query()->findOrFail((int) $traderId));
     }
 
     #[OA\Delete(

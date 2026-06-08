@@ -40,7 +40,12 @@ class UploadRequestDocumentRequest extends ApiFormRequest
             'request_id' => ['required', 'integer', 'exists:import_requests,id'],
             'file' => ['required', 'file', 'mimetypes:application/pdf', 'max:10240'],
             'confirmation_request' => ['sometimes', 'boolean'],
-            'sub_type' => ['sometimes', 'nullable', 'string', 'in:proforma_invoice,commercial_register,tax_card,confirmation_request,extra_docs'],
+            'sub_type' => [
+                'sometimes',
+                'nullable',
+                'string',
+                'in:proforma_invoice,commercial_register,tax_card,bill_of_lading,certificate_of_origin,letter_of_credit,sales_contract,commercial_invoice,packing_list,import_license,conformity_certificate,sector_license,inspection_report,additional_supporting_document,confirmation_request,extra_docs',
+            ],
         ];
     }
 }

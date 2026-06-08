@@ -78,11 +78,11 @@ class TraderService
     public function buildSnapshot(Trader $trader): array
     {
         return [
-            'trader_name' => $trader->trader_name,
-            'tax_number' => $trader->tax_number,
-            'commercial_registration_number' => $trader->commercial_registration_number,
-            'commercial_registration_expiry' => $trader->commercial_registration_expiry?->format('Y-m-d'),
-            'tax_card_expiry' => $trader->tax_card_expiry?->format('Y-m-d'),
+            'trader_snapshot_name' => $trader->trader_name,
+            'trader_snapshot_tax_number' => $trader->tax_number,
+            'trader_snapshot_tax_card_expiry' => $trader->tax_card_expiry?->format('Y-m-d'),
+            'trader_snapshot_commercial_registration_number' => $trader->commercial_registration_number,
+            'trader_snapshot_commercial_registration_expiry' => $trader->commercial_registration_expiry?->format('Y-m-d'),
         ];
     }
 

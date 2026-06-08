@@ -196,6 +196,28 @@ class DocumentControllerTest extends TestCase
         ]);
     }
 
+    public function test_upload_accepts_fixed_national_committee_document_slot_sub_type(): void
+    {
+        $importRequest = $this->makeRequest($this->bank, $this->dataEntry);
+
+        $response = $this->actingAs($this->dataEntry)
+            ->postJson('/api/documents/upload', [
+                'request_id' => $importRequest->id,
+                'file' => $this->makePdf(),
+                'sub_type' => 'certificate_of_origin',
+            ]);
+
+        $response->assertStatus(201)
+            ->assertJsonPath('data.document_sub_type', 'certificate_of_origin')
+            ->assertJsonPath('data.title', 'شهادة المنشأ');
+
+        $this->assertDatabaseHas('request_documents', [
+            'request_id' => $importRequest->id,
+            'type' => 'REQUEST_DOC',
+            'document_sub_type' => 'certificate_of_origin',
+        ]);
+    }
+
     public function test_upload_rejects_unknown_sub_type(): void
     {
         $importRequest = $this->makeRequest($this->bank, $this->dataEntry);

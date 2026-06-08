@@ -2,8 +2,15 @@
 
 namespace App\Models;
 
+use App\Enums\CoverageType;
 use App\Enums\Currency;
+use App\Enums\CurrencySource;
+use App\Enums\Incoterm;
+use App\Enums\InvoiceType;
+use App\Enums\PaymentTermsMode;
+use App\Enums\PortOfArrival;
 use App\Enums\RequestStatus;
+use App\Enums\RequestType;
 use App\Enums\UserRole;
 use App\Enums\VotingSessionStatus;
 use App\Exceptions\DirectStatusMutationException;
@@ -23,6 +30,7 @@ class ImportRequest extends Model
         'reference_number',
         'bank_id',
         'merchant_id',
+        'trader_id',
         'created_by',
         'last_updated_by',
         'currency',
@@ -43,6 +51,33 @@ class ImportRequest extends Model
         'shipping_port',
         'customs_office',
         'bl_number',
+        'request_type',
+        'coverage_type',
+        'currency_source',
+        'payment_terms_mode',
+        'request_percentage',
+        'request_currency',
+        'requested_amount',
+        'invoice_type',
+        'invoice_currency',
+        'unit_of_measure',
+        'total_invoice_amount',
+        'commodity',
+        'exporting_company_name',
+        'exporting_company_location',
+        'country_of_origin',
+        'port_of_loading',
+        'port_of_arrival',
+        'incoterm',
+        'final_destination',
+        'shipping_date',
+        'arrival_date',
+        'trader_snapshot_name',
+        'trader_snapshot_tax_number',
+        'trader_snapshot_tax_card_expiry',
+        'trader_snapshot_commercial_registration_number',
+        'trader_snapshot_commercial_registration_expiry',
+        'voting_rule_version',
         'status',
         'current_owner_role',
         'claimed_by',
@@ -79,8 +114,18 @@ class ImportRequest extends Model
             'current_owner_role' => UserRole::class,
             'currency' => Currency::class,
             'voting_session_status' => VotingSessionStatus::class,
+            'request_type' => RequestType::class,
+            'coverage_type' => CoverageType::class,
+            'currency_source' => CurrencySource::class,
+            'payment_terms_mode' => PaymentTermsMode::class,
+            'invoice_type' => InvoiceType::class,
+            'port_of_arrival' => PortOfArrival::class,
+            'incoterm' => Incoterm::class,
             'amount' => 'decimal:2',
             'yer_equivalent' => 'decimal:2',
+            'request_percentage' => 'decimal:2',
+            'requested_amount' => 'decimal:2',
+            'total_invoice_amount' => 'decimal:2',
             'claimed_at' => 'datetime',
             'claim_expires_at' => 'datetime',
             'submitted_at' => 'datetime',
@@ -93,6 +138,10 @@ class ImportRequest extends Model
             'eligible_voter_ids' => 'array',
             'voting_closed_at' => 'datetime',
             'final_decision_at' => 'datetime',
+            'shipping_date' => 'date',
+            'arrival_date' => 'date',
+            'trader_snapshot_tax_card_expiry' => 'date',
+            'trader_snapshot_commercial_registration_expiry' => 'date',
         ];
     }
 
@@ -173,6 +222,11 @@ class ImportRequest extends Model
     public function merchant(): BelongsTo
     {
         return $this->belongsTo(Merchant::class);
+    }
+
+    public function trader(): BelongsTo
+    {
+        return $this->belongsTo(Trader::class);
     }
 
     public function stageHistory(): HasMany
