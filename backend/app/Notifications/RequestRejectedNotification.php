@@ -2,6 +2,7 @@
 
 namespace App\Notifications;
 
+use App\Enums\RequestStatus;
 use App\Models\ImportRequest;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -24,9 +25,11 @@ class RequestRejectedNotification extends Notification implements ShouldQueue
 
     public function toArray(object $notifiable): array
     {
+        $statusLabel = ($this->requestModel->status ?? RequestStatus::EXECUTIVE_REJECTED)->label();
+
         return [
             'type' => 'request_rejected',
-            'message' => 'تم رفض الطلب: '.$this->requestModel->reference_number,
+            'message' => 'حالة الطلب: '.$statusLabel.' — '.$this->requestModel->reference_number,
             'request_id' => $this->requestModel->id,
             'reference_number' => $this->requestModel->reference_number,
             'terminal' => $this->terminal,

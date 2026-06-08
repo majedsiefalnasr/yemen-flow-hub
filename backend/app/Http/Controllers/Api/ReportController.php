@@ -701,10 +701,15 @@ class ReportController extends Controller
         $headers = ['bank_name', 'total_requests', 'approved_count', 'rejected_count', 'pending_count', 'approval_rate', 'rejection_rate'];
 
         if ($format === 'pdf') {
-            return $this->streamPdf('reports.bank-pdf', ['rows' => $rows, 'from_date' => $fromDate, 'to_date' => $toDate], 'bank-report.pdf');
+            return $this->streamPdf('reports.bank-pdf', [
+                'rows' => $rows,
+                'from_date' => $fromDate,
+                'to_date' => $toDate,
+                'not_eligible_label' => $this->notEligibleReportLabel(),
+            ], 'bank-report.pdf');
         }
 
-        return $this->streamCsv($rows, $headers, 'bank-report.csv');
+        return $this->streamCsv($rows, $headers, 'bank-report.csv', $this->bankExportHeadings());
     }
 
     // ─── Private helpers ──────────────────────────────────────────────────────
@@ -753,10 +758,10 @@ class ReportController extends Controller
         ]];
     }
 
-    private function streamCsv(array $rows, array $columns, string $filename)
+    private function streamCsv(array $rows, array $columns, string $filename, ?array $headings = null)
     {
         $bom = "\xEF\xBB\xBF";
-        $csv = $bom.implode(',', $columns)."\n";
+        $csv = $bom.implode(',', $headings ?? $columns)."\n";
         foreach ($rows as $row) {
             $line = [];
             foreach ($columns as $col) {
@@ -774,6 +779,26 @@ class ReportController extends Controller
             'Content-Type' => 'text/csv; charset=UTF-8',
             'Content-Disposition' => "attachment; filename=\"{$filename}\"",
         ]);
+    }
+
+    private function bankExportHeadings(): array
+    {
+        $label = $this->notEligibleReportLabel();
+
+        return [
+            'bank_name',
+            'total_requests',
+            'approved_count',
+            "{$label} count",
+            'pending_count',
+            'approval_rate',
+            "{$label} rate",
+        ];
+    }
+
+    private function notEligibleReportLabel(): string
+    {
+        return RequestStatus::EXECUTIVE_REJECTED->label();
     }
 
     /**

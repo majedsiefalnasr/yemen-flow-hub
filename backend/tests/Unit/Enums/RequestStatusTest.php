@@ -67,18 +67,24 @@ class RequestStatusTest extends TestCase
         $this->assertFalse(RequestStatus::BANK_REJECTED->isEditable(), 'BANK_REJECTED is terminal — not editable');
     }
 
-    public function test_bank_returned_has_arabic_and_english_label(): void
+    public function test_not_eligible_status_labels_keep_frozen_values(): void
     {
-        $label = RequestStatus::BANK_RETURNED->label();
-        $this->assertStringContainsString('إعادة للمدخل', $label);
-        $this->assertStringContainsString('Returned to Intake', $label);
-    }
+        $cases = [
+            [RequestStatus::DRAFT_REJECTED_INTERNAL, 'DRAFT_REJECTED_INTERNAL'],
+            [RequestStatus::BANK_REJECTED, 'BANK_REJECTED'],
+            [RequestStatus::SUPPORT_REJECTED, 'SUPPORT_REJECTED'],
+            [RequestStatus::EXECUTIVE_REJECTED, 'EXECUTIVE_REJECTED'],
+        ];
 
-    public function test_bank_rejected_has_arabic_and_english_label(): void
-    {
-        $label = RequestStatus::BANK_REJECTED->label();
-        $this->assertStringContainsString('مرفوض', $label);
-        $this->assertStringContainsString('Bank Rejected', $label);
+        foreach ($cases as [$status, $value]) {
+            $label = $status->label();
+
+            $this->assertSame($value, $status->value);
+            $this->assertStringContainsString('غير مستوفي للشروط', $label);
+            $this->assertStringContainsString('Not Eligible', $label);
+            $this->assertStringNotContainsString('مرفوض', $label);
+            $this->assertStringNotContainsString('Rejected', $label);
+        }
     }
 
     public function test_from_string_round_trips(): void

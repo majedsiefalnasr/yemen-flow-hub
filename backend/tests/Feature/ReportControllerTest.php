@@ -721,6 +721,22 @@ class ReportControllerTest extends TestCase
         $this->assertStringContainsString('text/csv', $response->headers->get('Content-Type'));
     }
 
+    public function test_bank_export_header_uses_not_eligible_label_while_rows_keep_values(): void
+    {
+        $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_REJECTED);
+
+        $response = $this->actingAs($de)
+            ->get('/api/reports/bank/export?format=excel')
+            ->assertOk();
+
+        $csv = $response->getContent();
+
+        $this->assertStringContainsString(RequestStatus::EXECUTIVE_REJECTED->label(), $csv);
+        $this->assertStringNotContainsString('rejected_count', $csv);
+        $this->assertStringContainsString($this->bank->name.',1,0,1,0,0,100', $csv);
+    }
+
     // ─── Workflow report: new analytics fields ─────────────────────────────────
 
     public function test_workflow_report_monthly_trend_has_correct_shape(): void

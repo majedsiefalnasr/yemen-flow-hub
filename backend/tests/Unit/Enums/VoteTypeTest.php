@@ -24,4 +24,15 @@ class VoteTypeTest extends TestCase
             $this->assertSame($type, VoteType::from($type->value));
         }
     }
+
+    public function test_reject_label_uses_not_eligible_copy_and_keeps_frozen_value(): void
+    {
+        $label = VoteType::REJECT->label();
+
+        $this->assertSame('REJECT', VoteType::REJECT->value);
+        $this->assertStringContainsString('غير مستوفي للشروط', $label);
+        $this->assertStringContainsString('Not Eligible', $label);
+        $this->assertStringNotContainsString('رفض', $label);
+        $this->assertStringNotContainsString('Reject', $label);
+    }
 }

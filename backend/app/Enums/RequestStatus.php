@@ -31,27 +31,27 @@ enum RequestStatus: string
     {
         return match ($this) {
             self::DRAFT => 'مسودة / Draft',
-            self::DRAFT_REJECTED_INTERNAL => 'معاد للتعديل / Returned for Correction',
+            self::DRAFT_REJECTED_INTERNAL => 'غير مستوفي للشروط (قابل للتعديل) / Not Eligible (Returned for Correction)',
             self::SUBMITTED => 'مقدّم للمراجعة / Submitted',
             self::BANK_REVIEW => 'قيد المراجعة الداخلية / Under Bank Review',
             self::BANK_APPROVED => 'موافقة البنك / Bank Approved',
             self::SUPPORT_REVIEW_PENDING => 'بانتظار لجنة المساندة / Awaiting Support Review',
             self::SUPPORT_REVIEW_IN_PROGRESS => 'قيد مراجعة لجنة المساندة / Support Review In Progress',
             self::SUPPORT_APPROVED => 'موافقة لجنة المساندة / Support Approved',
-            self::SUPPORT_REJECTED => 'رفض لجنة المساندة / Support Rejected',
+            self::SUPPORT_REJECTED => 'غير مستوفي للشروط (لجنة المساندة) / Not Eligible (Support Committee)',
             self::WAITING_FOR_SWIFT => 'بانتظار رفع السويفت / Waiting for SWIFT',
             self::SWIFT_UPLOADED => 'تم رفع السويفت / SWIFT Uploaded',
             self::WAITING_FOR_VOTING_OPEN => 'بانتظار فتح التصويت / Waiting for Voting Open',
             self::EXECUTIVE_VOTING_OPEN => 'جلسة التصويت مفتوحة / Executive Voting Open',
             self::EXECUTIVE_VOTING_CLOSED => 'جلسة التصويت مغلقة / Executive Voting Closed',
             self::EXECUTIVE_APPROVED => 'موافقة تنفيذية / Executive Approved',
-            self::EXECUTIVE_REJECTED => 'رفض تنفيذي نهائي / Executive Rejected',
+            self::EXECUTIVE_REJECTED => 'غير مستوفي للشروط (اللجنة التنفيذية) / Not Eligible (Executive Committee)',
             self::FX_CONFIRMATION_PENDING => 'بانتظار إصدار المصارفة الخارجية / FX Confirmation Pending',
             self::CUSTOMS_DECLARATION_ISSUED => 'صدرت وثيقة تأكيد المصارفة الخارجية / External FX Confirmation Issued',
             self::COMPLETED => 'مكتمل / Completed',
             self::BANK_RETURNED => 'أُعيد إلى مدخل البيانات / Returned to Data Entry',
             self::SUPPORT_RETURNED => 'إعادة من المساندة / Returned from Support',
-            self::BANK_REJECTED => 'مرفوض (البنك) / Bank Rejected',
+            self::BANK_REJECTED => 'غير مستوفي للشروط (البنك) / Not Eligible (Bank)',
         };
     }
 

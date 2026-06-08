@@ -13,7 +13,7 @@ enum VoteType: string
     {
         return match ($this) {
             self::APPROVE => 'موافقة / Approve',
-            self::REJECT => 'رفض / Reject',
+            self::REJECT => 'غير مستوفي للشروط / Not Eligible',
             self::ABSTAIN => 'امتناع / Abstain',
             self::AUTO_ABSTAIN_TIMEOUT => 'امتناع تلقائي (انتهاء الوقت) / Auto-Abstain (Timeout)',
         };

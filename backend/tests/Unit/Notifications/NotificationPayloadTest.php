@@ -24,7 +24,7 @@ class NotificationPayloadTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function makeRequest(): ImportRequest
+    private function makeRequest(RequestStatus $status = RequestStatus::DRAFT): ImportRequest
     {
         $bank = Bank::query()->create(['name' => 'Test Bank', 'code' => 'TB01', 'is_active' => true]);
         $user = User::query()->create([
@@ -46,7 +46,7 @@ class NotificationPayloadTest extends TestCase
                 'supplier_name' => 'ACME',
                 'goods_description' => 'Electronics',
                 'port_of_entry' => 'Aden',
-                'status' => RequestStatus::DRAFT,
+                'status' => $status,
                 'current_owner_role' => UserRole::DATA_ENTRY,
             ]);
         } finally {
@@ -82,12 +82,16 @@ class NotificationPayloadTest extends TestCase
 
     public function test_request_rejected_payload(): void
     {
-        $request = $this->makeRequest();
+        $request = $this->makeRequest(RequestStatus::EXECUTIVE_REJECTED);
         $payload = $this->callToArray(new RequestRejectedNotification($request));
 
         $this->assertSame('request_rejected', $payload['type']);
         $this->assertSame($request->id, $payload['request_id']);
         $this->assertSame($request->reference_number, $payload['reference_number']);
+        $this->assertArrayHasKey('message', $payload);
+        $this->assertStringContainsString(RequestStatus::EXECUTIVE_REJECTED->label(), $payload['message']);
+        $this->assertStringContainsString($request->reference_number, $payload['message']);
+        $this->assertStringNotContainsString('تم رفض الطلب', $payload['message']);
     }
 
     public function test_request_returned_payload(): void
