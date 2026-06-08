@@ -9,7 +9,7 @@ vi.mock('../../../composables/useApi', () => ({
   useApi: () => ({ get: mockGet, post: mockPost, put: mockPut }),
 }))
 
-const { useRequests } = await import('../../../composables/useRequests')
+const { useRequests, isV2Rule } = await import('../../../composables/useRequests')
 
 const REQUEST_FIXTURE = {
   id: 42,
@@ -147,6 +147,48 @@ describe('useRequests — bankRejectTerminal', () => {
       comment: 'رفض نهائي',
     })
     expect(result.status).toBe(RequestStatus.BANK_REJECTED)
+  })
+})
+
+describe('useRequests — isV2Rule helper (Epic 17-E era gate)', () => {
+  it('returns true only for voting_rule_version === 2', () => {
+    expect(isV2Rule({ voting_rule_version: 2 })).toBe(true)
+    expect(isV2Rule({ voting_rule_version: 1 })).toBe(false)
+  })
+
+  it('defaults to legacy (false) when version is missing or nullish', () => {
+    expect(isV2Rule({})).toBe(false)
+    expect(isV2Rule(null)).toBe(false)
+    expect(isV2Rule(undefined)).toBe(false)
+  })
+})
+
+describe('useRequests — supportForwardToExecutive (Story 17-E.2)', () => {
+  beforeEach(() => {
+    vi.resetAllMocks()
+  })
+
+  it('posts the comment to /api/workflow/{id}/support-forward-to-executive', async () => {
+    mockPost.mockResolvedValue({
+      success: true,
+      message: 'ok',
+      data: { ...REQUEST_FIXTURE, status: RequestStatus.SUPPORT_APPROVED },
+    })
+
+    const { supportForwardToExecutive } = useRequests()
+    const result = await supportForwardToExecutive(42, 'مستوفٍ للشروط')
+
+    expect(mockPost).toHaveBeenCalledWith('/api/workflow/42/support-forward-to-executive', {
+      comment: 'مستوفٍ للشروط',
+    })
+    expect(result.status).toBe(RequestStatus.SUPPORT_APPROVED)
+  })
+
+  it('propagates API errors (e.g. 422 missing comment)', async () => {
+    mockPost.mockRejectedValue(new Error('Unprocessable'))
+
+    const { supportForwardToExecutive } = useRequests()
+    await expect(supportForwardToExecutive(42, '')).rejects.toThrow('Unprocessable')
   })
 })
 

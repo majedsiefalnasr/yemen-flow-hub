@@ -412,3 +412,55 @@ describe('VotingPanel — not-yet-voted placeholder rows (Story 6.6)', () => {
     expect(notYetVotedCount(detail)).toBe(0)
   })
 })
+
+// ── Story 17-E.3: era-gated voting (no tie-break + "Not Eligible" relabel) ────
+
+function isV2Rule(votingRuleVersion: number): boolean {
+  return votingRuleVersion === 2
+}
+
+function showTieBreakV2(
+  tally: VotingTally | null,
+  status: RequestStatus,
+  votingRuleVersion: number,
+): boolean {
+  if (isV2Rule(votingRuleVersion)) return false
+  if (status !== RequestStatus.EXECUTIVE_VOTING_OPEN || !tally) return false
+  return tally.approve_count === tally.reject_count && tally.approve_count > 0
+}
+
+function displayVoteLabel(vote: VoteType, votingRuleVersion: number): string {
+  if (isV2Rule(votingRuleVersion) && vote === VoteType.REJECT) return 'غير مستوفي للشروط'
+  return voteLabel(vote)
+}
+
+describe('VotingPanel — Story 17-E.3 era gate (votingRuleVersion)', () => {
+  it('treats version 2 as the new National Committee rule', () => {
+    expect(isV2Rule(2)).toBe(true)
+    expect(isV2Rule(1)).toBe(false)
+  })
+
+  it('NEVER shows the Director tie-break notice for a v2 even split', () => {
+    const tied = makeTally({ approve_count: 3, reject_count: 3 })
+    // v1 surfaces the tie-break; v2 must not.
+    expect(showTieBreakV2(tied, RequestStatus.EXECUTIVE_VOTING_OPEN, 1)).toBe(true)
+    expect(showTieBreakV2(tied, RequestStatus.EXECUTIVE_VOTING_OPEN, 2)).toBe(false)
+  })
+
+  it('keeps tie-break behavior intact for v1 (regression)', () => {
+    const tied = makeTally({ approve_count: 2, reject_count: 2 })
+    const lopsided = makeTally({ approve_count: 3, reject_count: 1 })
+    expect(showTieBreakV2(tied, RequestStatus.EXECUTIVE_VOTING_OPEN, 1)).toBe(true)
+    expect(showTieBreakV2(lopsided, RequestStatus.EXECUTIVE_VOTING_OPEN, 1)).toBe(false)
+  })
+
+  it('relabels a REJECT vote as "غير مستوفي للشروط" under v2 only', () => {
+    expect(displayVoteLabel(VoteType.REJECT, 2)).toBe('غير مستوفي للشروط')
+    expect(displayVoteLabel(VoteType.REJECT, 1)).toBe('رافض')
+  })
+
+  it('leaves the APPROVE label unchanged across both eras', () => {
+    expect(displayVoteLabel(VoteType.APPROVE, 1)).toBe('موافق')
+    expect(displayVoteLabel(VoteType.APPROVE, 2)).toBe('موافق')
+  })
+})

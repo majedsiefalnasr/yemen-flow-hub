@@ -7,6 +7,7 @@ const mockPerformWorkflowAction = vi.fn()
 const mockFetchRequestDocuments = vi.fn()
 const mockFetchRequest = vi.fn()
 const mockBankRejectTerminal = vi.fn()
+const mockSupportForwardToExecutive = vi.fn()
 
 vi.mock('../../../composables/useRequests', () => ({
   useRequests: () => ({
@@ -18,6 +19,7 @@ vi.mock('../../../composables/useRequests', () => ({
     performWorkflowAction: mockPerformWorkflowAction,
     fetchRequestDocuments: mockFetchRequestDocuments,
     bankRejectTerminal: mockBankRejectTerminal,
+    supportForwardToExecutive: mockSupportForwardToExecutive,
   }),
 }))
 
@@ -207,6 +209,54 @@ describe('requests.store — bankRejectTerminal', () => {
 
     expect(store.error).toBe('تعذّر تنفيذ الرفض النهائي.')
     expect(store.performingAction).toBe(false)
+  })
+})
+
+describe('requests.store — supportForwardToExecutive (Story 17-E.2)', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    vi.resetAllMocks()
+  })
+
+  it('updates currentRequest with the SUPPORT_APPROVED response', async () => {
+    mockSupportForwardToExecutive.mockResolvedValue({
+      ...REQUEST_FIXTURE,
+      status: RequestStatus.SUPPORT_APPROVED,
+    })
+
+    const store = useRequestsStore()
+    await store.supportForwardToExecutive(42, 'مستوفٍ للشروط')
+
+    expect(mockSupportForwardToExecutive).toHaveBeenCalledWith(42, 'مستوفٍ للشروط')
+    expect(store.currentRequest?.status).toBe(RequestStatus.SUPPORT_APPROVED)
+    expect(store.performingAction).toBe(false)
+  })
+
+  it('sets the store error and rethrows on failure', async () => {
+    mockSupportForwardToExecutive.mockRejectedValue(new Error('Forbidden'))
+
+    const store = useRequestsStore()
+    await expect(store.supportForwardToExecutive(42, 'x')).rejects.toThrow('Forbidden')
+
+    expect(store.error).toBe('تعذّر إرسال الطلب إلى اللجنة التنفيذية.')
+    expect(store.performingAction).toBe(false)
+  })
+
+  it('blocks concurrent actions while one is in progress', async () => {
+    let resolve!: (v: unknown) => void
+    mockSupportForwardToExecutive.mockReturnValue(
+      new Promise((r) => {
+        resolve = r
+      }),
+    )
+
+    const store = useRequestsStore()
+    const first = store.supportForwardToExecutive(42, 'مستوفٍ')
+    await expect(store.supportForwardToExecutive(42, 'مستوفٍ')).rejects.toThrow(
+      'إجراء قيد التنفيذ بالفعل',
+    )
+    resolve({ ...REQUEST_FIXTURE, status: RequestStatus.SUPPORT_APPROVED })
+    await first
   })
 })
 

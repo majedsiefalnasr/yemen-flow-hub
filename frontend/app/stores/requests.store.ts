@@ -266,6 +266,25 @@ export const useRequestsStore = defineStore('requests', {
       }
     },
 
+    async supportForwardToExecutive(id: number, comment: string): Promise<void> {
+      if (this.performingAction) throw new Error('إجراء قيد التنفيذ بالفعل')
+      this.performingAction = true
+      this.error = null
+
+      try {
+        const { supportForwardToExecutive } = useRequests()
+        this.currentRequest = await supportForwardToExecutive(id, comment)
+      } catch (err) {
+        if (import.meta.dev) {
+          console.error('[requests.store] supportForwardToExecutive failed:', err)
+        }
+        this.error = 'تعذّر إرسال الطلب إلى اللجنة التنفيذية.'
+        throw err
+      } finally {
+        this.performingAction = false
+      }
+    },
+
     async bankRejectTerminal(id: number, comment: string): Promise<void> {
       if (this.performingAction) throw new Error('إجراء قيد التنفيذ بالفعل')
       this.performingAction = true

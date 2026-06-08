@@ -635,6 +635,109 @@ describe('ActionsPanel — DATA_ENTRY actions on BANK_RETURNED', () => {
   })
 })
 
+// ── Epic 17-E era gate (voting_rule_version) ─────────────────────────────────
+
+function isV2Rule(request: { voting_rule_version?: number }): boolean {
+  return (request.voting_rule_version ?? 1) === 2
+}
+
+// 17-E.1: the terminal "no-reject" rule — Bank Reviewer reject surface is gated off for v2.
+function showBankRejectTerminal(request: ImportRequest, userRole: UserRole): boolean {
+  return (
+    userRole === UserRole.BANK_REVIEWER &&
+    request.status === RequestStatus.BANK_REVIEW &&
+    !isV2Rule(request)
+  )
+}
+
+// 17-E.2: Support Committee approve/reject/return are v1-only; v2 sees forward-only.
+function showSupportApproveReject(request: ImportRequest, userRole: UserRole): boolean {
+  return showSupportCommitteeActions(request, userRole) && !isV2Rule(request)
+}
+function showSupportForward(request: ImportRequest, userRole: UserRole): boolean {
+  return showSupportCommitteeActions(request, userRole) && isV2Rule(request)
+}
+function validateSupportForwardComment(comment: string): string | null {
+  if (comment.trim().length < 3) return 'اكتب تعليقا قبل الإرسال إلى اللجنة التنفيذية.'
+  return null
+}
+
+// 17-E.3: Director override/tie-break surface is gated off for v2.
+function showDirectorOverride(request: ImportRequest, userRole: UserRole): boolean {
+  return (
+    userRole === UserRole.COMMITTEE_DIRECTOR &&
+    request.status === RequestStatus.EXECUTIVE_VOTING_OPEN &&
+    !isV2Rule(request)
+  )
+}
+
+describe('ActionsPanel — 17-E.1 Bank Reviewer no-reject under v2', () => {
+  it('shows the terminal reject surface for v1 BANK_REVIEW', () => {
+    const req = makeRequest({ status: RequestStatus.BANK_REVIEW, voting_rule_version: 1 })
+    expect(showBankRejectTerminal(req, UserRole.BANK_REVIEWER)).toBe(true)
+  })
+
+  it('hides the terminal reject surface for v2 BANK_REVIEW', () => {
+    const req = makeRequest({ status: RequestStatus.BANK_REVIEW, voting_rule_version: 2 })
+    expect(showBankRejectTerminal(req, UserRole.BANK_REVIEWER)).toBe(false)
+  })
+
+  it('still allows bank return (not reject) for v2 — return path is unaffected', () => {
+    const req = makeRequest({ status: RequestStatus.BANK_REVIEW, voting_rule_version: 2 })
+    expect(showBankReturnButton(req, UserRole.BANK_REVIEWER)).toBe(true)
+  })
+})
+
+describe('ActionsPanel — 17-E.2 Support Committee forward-only under v2', () => {
+  const claimed = (version: number) =>
+    makeRequest({
+      status: RequestStatus.SUPPORT_REVIEW_IN_PROGRESS,
+      is_claimed: true,
+      is_claimed_by_me: true,
+      voting_rule_version: version,
+    })
+
+  it('v1: shows approve/reject/return, hides forward', () => {
+    const req = claimed(1)
+    expect(showSupportApproveReject(req, UserRole.SUPPORT_COMMITTEE)).toBe(true)
+    expect(showSupportForward(req, UserRole.SUPPORT_COMMITTEE)).toBe(false)
+  })
+
+  it('v2: shows forward-only, hides approve/reject', () => {
+    const req = claimed(2)
+    expect(showSupportForward(req, UserRole.SUPPORT_COMMITTEE)).toBe(true)
+    expect(showSupportApproveReject(req, UserRole.SUPPORT_COMMITTEE)).toBe(false)
+  })
+
+  it('forward requires a non-trivial comment (min 3 chars)', () => {
+    expect(validateSupportForwardComment('')).not.toBeNull()
+    expect(validateSupportForwardComment('ab')).not.toBeNull()
+    expect(validateSupportForwardComment('موافق على الإحالة')).toBeNull()
+  })
+
+  it('forward surface stays hidden when the request is not claimed by me', () => {
+    const req = makeRequest({
+      status: RequestStatus.SUPPORT_REVIEW_IN_PROGRESS,
+      is_claimed: true,
+      is_claimed_by_me: false,
+      voting_rule_version: 2,
+    })
+    expect(showSupportForward(req, UserRole.SUPPORT_COMMITTEE)).toBe(false)
+  })
+})
+
+describe('ActionsPanel — 17-E.3 Director override gated by era', () => {
+  it('shows override surface for v1 open voting', () => {
+    const req = makeRequest({ status: RequestStatus.EXECUTIVE_VOTING_OPEN, voting_rule_version: 1 })
+    expect(showDirectorOverride(req, UserRole.COMMITTEE_DIRECTOR)).toBe(true)
+  })
+
+  it('hides override surface for v2 open voting (no tie-break)', () => {
+    const req = makeRequest({ status: RequestStatus.EXECUTIVE_VOTING_OPEN, voting_rule_version: 2 })
+    expect(showDirectorOverride(req, UserRole.COMMITTEE_DIRECTOR)).toBe(false)
+  })
+})
+
 describe('ActionsPanel — isLocked excludes BANK_RETURNED', () => {
   const LOCKED_STATUSES = new Set([
     RequestStatus.BANK_APPROVED,

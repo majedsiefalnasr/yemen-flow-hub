@@ -11,7 +11,7 @@ import {
   StepperTrigger,
 } from '@/components/ui/stepper'
 import { RequestStatus } from '../../types/enums'
-import { STATUS_LABELS } from '../../constants/workflow'
+import { STATUS_LABELS, SWIFT_DISPLAY_GROUP } from '../../constants/workflow'
 import type { RequestStageHistory } from '../../types/models'
 
 const props = defineProps<{
@@ -58,7 +58,7 @@ const TERMINAL_STATUSES = new Set<RequestStatus>([
   RequestStatus.BANK_REJECTED,
 ])
 
-const currentIndex = computed(() => WORKFLOW_STAGE_ORDER.indexOf(props.currentStatus))
+const SWIFT_GROUP = new Set<RequestStatus>(SWIFT_DISPLAY_GROUP.statuses)
 
 const sortedHistory = computed(() =>
   [...props.history].sort((a, b) => a.created_at.localeCompare(b.created_at)),
@@ -73,42 +73,84 @@ const currentEntry = computed(
 )
 
 type ExtraState = 'terminal' | 'skipped' | null
+type DisplayState = 'completed' | 'active' | 'inactive'
 
 interface StageItem {
+  /** Representative status for the display node (first member of a merged group). */
   status: RequestStatus
+  /** All canonical statuses collapsed into this display node. */
+  statuses: RequestStatus[]
   label: string
   stepNumber: number
+  state: DisplayState
   extraState: ExtraState
   entry: RequestStageHistory | null
 }
 
-const stages = computed((): StageItem[] => {
-  const knownIndex = currentIndex.value
-  return WORKFLOW_STAGE_ORDER.map((status, idx) => {
-    const isCurrent = status === props.currentStatus
-    let extraState: ExtraState = null
+/**
+ * Canonical order collapsed into display nodes. The SWIFT pair
+ * (WAITING_FOR_SWIFT + SWIFT_UPLOADED) becomes one node; every other status
+ * stays one-to-one (Story 17-E.4).
+ */
+const displayOrder = computed(
+  (): { status: RequestStatus; statuses: RequestStatus[]; label: string }[] => {
+    const nodes: { status: RequestStatus; statuses: RequestStatus[]; label: string }[] = []
+    for (const status of WORKFLOW_STAGE_ORDER) {
+      if (SWIFT_GROUP.has(status)) {
+        const last = nodes[nodes.length - 1]
+        if (last && SWIFT_GROUP.has(last.status)) {
+          last.statuses.push(status)
+          continue
+        }
+        nodes.push({ status, statuses: [status], label: SWIFT_DISPLAY_GROUP.label })
+        continue
+      }
+      nodes.push({ status, statuses: [status], label: STATUS_LABELS[status] })
+    }
+    return nodes
+  },
+)
 
-    if (TERMINAL_STATUSES.has(status) && isCurrent) extraState = 'terminal'
+const currentDisplayIndex = computed(() =>
+  displayOrder.value.findIndex((n) => n.statuses.includes(props.currentStatus)),
+)
+
+const stages = computed((): StageItem[] => {
+  const activeIdx = currentDisplayIndex.value
+  return displayOrder.value.map((node, idx) => {
+    const isCurrent = node.statuses.includes(props.currentStatus)
+    let state: DisplayState
+    if (activeIdx === -1 || idx > activeIdx) state = 'inactive'
+    else if (idx < activeIdx) state = 'completed'
+    // At the current node: a merged SWIFT node reads completed once the SWIFT
+    // file is uploaded; otherwise the current node is active/in-progress.
+    else if (isCurrent && props.currentStatus === RequestStatus.SWIFT_UPLOADED) state = 'completed'
+    else state = 'active'
+
+    let extraState: ExtraState = null
+    if (node.statuses.some((s) => TERMINAL_STATUSES.has(s)) && isCurrent) extraState = 'terminal'
     else if (
-      knownIndex !== -1 &&
-      idx < knownIndex &&
-      BRANCH_STATUSES.has(status) &&
-      !visitedStatuses.value.has(status)
+      activeIdx !== -1 &&
+      idx < activeIdx &&
+      node.statuses.some((s) => BRANCH_STATUSES.has(s)) &&
+      !node.statuses.some((s) => visitedStatuses.value.has(s))
     )
       extraState = 'skipped'
 
     return {
-      status,
-      label: STATUS_LABELS[status],
+      status: node.status,
+      statuses: node.statuses,
+      label: node.label,
       stepNumber: idx + 1,
+      state,
       extraState,
       entry: isCurrent ? currentEntry.value : null,
     }
   })
 })
 
-// Stepper model value: 1-based index of current step
-const stepperValue = computed(() => currentIndex.value + 1)
+// Stepper model value: 1-based index of current display node.
+const stepperValue = computed(() => currentDisplayIndex.value + 1)
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('ar-YE', {
@@ -131,25 +173,27 @@ function formatDate(iso: string): string {
     <StepperItem
       v-for="stage in stages"
       :key="stage.status"
-      v-slot="{ state }"
       class="relative flex w-full items-start gap-4"
       :step="stage.stepNumber"
     >
       <StepperSeparator
         v-if="stage.stepNumber !== stages[stages.length - 1]?.stepNumber"
-        class="bg-muted group-data-[state=completed]:bg-primary absolute inset-s-[12px] top-[20px] block h-[110%] w-0.5 shrink-0 rounded-full"
+        class="absolute inset-s-[12px] top-[20px] block h-[110%] w-0.5 shrink-0 rounded-full"
+        :class="stage.state === 'completed' ? 'bg-primary' : 'bg-muted'"
       />
 
       <StepperTrigger as-child>
         <Button
-          :variant="state === 'completed' || state === 'active' ? 'default' : 'outline'"
+          :variant="stage.state === 'completed' || stage.state === 'active' ? 'default' : 'outline'"
           size="icon"
           class="pointer-events-none z-10 size-6 shrink-0 rounded-full"
-          :class="[state === 'active' && 'ring-ring ring-offset-background ring-2 ring-offset-2']"
+          :class="[
+            stage.state === 'active' && 'ring-ring ring-offset-background ring-2 ring-offset-2',
+          ]"
         >
           <Lock v-if="stage.extraState === 'terminal'" class="size-3.5" />
-          <Check v-else-if="state === 'completed'" class="size-3" />
-          <Circle v-else-if="state === 'active'" class="size-3" />
+          <Check v-else-if="stage.state === 'completed'" class="size-3" />
+          <Circle v-else-if="stage.state === 'active'" class="size-3" />
           <Dot v-else class="size-3" />
         </Button>
       </StepperTrigger>
@@ -160,9 +204,9 @@ function formatDate(iso: string): string {
           :class="[
             stage.extraState === 'skipped'
               ? 'text-muted-foreground font-normal italic'
-              : state === 'active'
+              : stage.state === 'active'
                 ? 'text-foreground font-semibold'
-                : state === 'completed'
+                : stage.state === 'completed'
                   ? 'text-foreground'
                   : 'text-muted-foreground font-normal',
           ]"
@@ -170,7 +214,10 @@ function formatDate(iso: string): string {
           {{ stage.label }}
         </StepperTitle>
 
-        <StepperDescription v-if="state === 'active' && stage.entry" class="flex flex-col gap-0.5">
+        <StepperDescription
+          v-if="stage.state === 'active' && stage.entry"
+          class="flex flex-col gap-0.5"
+        >
           <span class="text-muted-foreground text-xs">
             {{ stage.entry.performed_by?.name ?? `#${stage.entry.actor_id}` }}
           </span>

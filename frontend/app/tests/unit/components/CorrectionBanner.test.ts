@@ -1,7 +1,12 @@
+// @vitest-environment jsdom
 /**
- * CorrectionBanner variant logic — pure unit tests without component mounting.
+ * CorrectionBanner variant logic — pure unit tests without component mounting,
+ * plus mounted copy assertions for Story 17-E.4 (rendered "Returned to Data
+ * Entry" wording on the bank_returned variant).
  */
+import { mount } from '@vue/test-utils'
 import { describe, it, expect } from 'vitest'
+import CorrectionBanner from '../../../components/banners/CorrectionBanner.vue'
 import { RequestStatus } from '../../../types/enums'
 
 type CorrectionBannerVariant = 'draft_rejected' | 'bank_returned' | 'support_returned'
@@ -268,5 +273,40 @@ describe('CorrectionBanner — reviewer chip (support return hint)', () => {
     const hint = resolveSupportReturnHint('BANK_REVIEWER', RequestStatus.SUBMITTED, historyNoNotes)
     expect(hint).not.toBeNull()
     expect(hint?.comment).toBeNull()
+  })
+})
+
+// ─── Story 17-E.4: rendered "Returned to Data Entry" copy ────────────────────
+describe('CorrectionBanner — rendered copy (Story 17-E.4)', () => {
+  const stubs = {
+    Alert: { template: '<div role="alert"><slot /></div>', props: ['variant'] },
+    AlertDescription: { template: '<div><slot /></div>' },
+    AlertTriangle: { template: '<svg />' },
+  }
+
+  it('bank_returned variant renders the "Returned to Data Entry" wording', () => {
+    const wrapper = mount(CorrectionBanner, {
+      props: { variant: 'bank_returned' as const },
+      global: { stubs },
+    })
+    expect(wrapper.text()).toContain('أُعيد الطلب إلى مدخل البيانات للتصحيح')
+    expect(wrapper.text()).not.toContain('أعاد مراجع البنك')
+  })
+
+  it('draft_rejected variant copy is unchanged', () => {
+    const wrapper = mount(CorrectionBanner, {
+      props: { variant: 'draft_rejected' as const },
+      global: { stubs },
+    })
+    expect(wrapper.text()).toContain('أُعيد الطلب للتصحيح من المراجعة الداخلية')
+    expect(wrapper.text()).not.toContain('مدخل البيانات')
+  })
+
+  it('support_returned variant copy is unchanged', () => {
+    const wrapper = mount(CorrectionBanner, {
+      props: { variant: 'support_returned' as const },
+      global: { stubs },
+    })
+    expect(wrapper.text()).toContain('أعادت لجنة المساندة الطلب للتصحيح')
   })
 })

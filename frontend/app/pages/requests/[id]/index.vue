@@ -1898,6 +1898,7 @@ async function handleCloneConfirm() {
                 :request-id="id"
                 :request-status="request.status"
                 :user-role="userRole"
+                :voting-rule-version="request.voting_rule_version"
               />
             </div>
 

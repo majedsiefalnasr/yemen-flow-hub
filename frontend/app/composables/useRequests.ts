@@ -39,6 +39,16 @@ export interface SwiftUploadPayload {
   file?: File
 }
 
+/**
+ * Era gate (Epic 17-E): whether a request runs under the new National Committee
+ * rules. Keyed on the stored `voting_rule_version` column from Story 17-C.1
+ * (1 = legacy, 2 = new National Committee). Requests missing the column are
+ * treated as legacy so in-flight rows keep their original surfaces.
+ */
+export function isV2Rule(request?: { voting_rule_version?: number } | null): boolean {
+  return (request?.voting_rule_version ?? 1) === 2
+}
+
 export function useRequests() {
   const { get, post, put, del } = useApi()
 
@@ -332,6 +342,14 @@ export function useRequests() {
     return response.data
   }
 
+  async function supportForwardToExecutive(id: number, comment: string): Promise<ImportRequest> {
+    const response = await post<ApiResponse<ImportRequest>>(
+      `/api/workflow/${id}/support-forward-to-executive`,
+      { comment },
+    )
+    return response.data
+  }
+
   async function bankRejectTerminal(id: number, comment: string): Promise<ImportRequest> {
     const response = await post<ApiResponse<ImportRequest>>(
       `/api/workflow/${id}/bank-reject-terminal`,
@@ -384,6 +402,7 @@ export function useRequests() {
     fetchCustomsPreview,
     bankReturn,
     supportReturn,
+    supportForwardToExecutive,
     bankRejectTerminal,
     bankReturnAfterSupportReject,
     bankFinalizeRejection,

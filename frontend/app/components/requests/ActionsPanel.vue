@@ -5,6 +5,7 @@ import { UserRole, RequestStatus } from '../../types/enums'
 import type { ImportRequest } from '../../types/models'
 import { useRequestsStore } from '../../stores/requests.store'
 import { useVotingStore } from '../../stores/voting.store'
+import { isV2Rule } from '../../composables/useRequests'
 import { Button } from '../ui/button'
 import { Textarea } from '../ui/textarea'
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert'
@@ -58,6 +59,16 @@ const showSupportReturnModal = ref(false)
 const supportReturnComment = ref('')
 const supportReturnCommentError = ref('')
 
+// Story 17-E.2: Support Committee forward-only (new-rule requests)
+const showSupportForwardModal = ref(false)
+const supportForwardComment = ref('')
+const supportForwardCommentError = ref('')
+
+// Era gate (Epic 17-E): new National Committee rules (voting_rule_version = 2)
+// vs legacy (version 1). Drives reviewer no-reject (17-E.1), Support forward-only
+// (17-E.2), and Director tie-break/override removal (17-E.3) on this panel.
+const isV2 = computed(() => isV2Rule(props.request))
+
 // Approve dialog state
 const showApproveModal = ref(false)
 const approveNote = ref('')
@@ -83,6 +94,7 @@ watch(
     resetBankReturnModal()
     resetBankRejectTerminalModal()
     resetSupportReturnModal()
+    resetSupportForwardModal()
     resetDirectorState()
     showApproveModal.value = false
     approveNote.value = ''
@@ -238,6 +250,34 @@ async function handleSupportReturnConfirm() {
     const msg = err instanceof Error ? err.message : ''
     actionError.value = msg || 'تعذّرت إعادة الطلب للمدخل. تحقق من حالة الطلب وأعد المحاولة.'
     resetSupportReturnModal()
+  }
+}
+
+function resetSupportForwardModal() {
+  showSupportForwardModal.value = false
+  supportForwardComment.value = ''
+  supportForwardCommentError.value = ''
+}
+
+async function handleSupportForwardConfirm() {
+  supportForwardCommentError.value = ''
+  if (supportForwardComment.value.trim().length < 3) {
+    supportForwardCommentError.value = 'اكتب تعليقا قبل الإرسال إلى اللجنة التنفيذية.'
+    return
+  }
+  actionError.value = ''
+  try {
+    await requestsStore.supportForwardToExecutive(
+      props.request.id,
+      supportForwardComment.value.trim(),
+    )
+    resetSupportForwardModal()
+    emit('action-completed')
+  } catch (err: any) {
+    const msg = err instanceof Error ? err.message : ''
+    actionError.value =
+      msg || 'تعذّر إرسال الطلب إلى اللجنة التنفيذية. تحقق من الحالة وأعد المحاولة.'
+    resetSupportForwardModal()
   }
 }
 
@@ -481,8 +521,10 @@ defineExpose({ triggerPrimaryAction })
           </DialogContent>
         </Dialog>
 
-        <!-- Terminal reject: destructive dialog with irreversible warning -->
-        <Dialog v-model:open="showBankRejectTerminalModal">
+        <!-- Terminal reject: destructive dialog with irreversible warning.
+             Era gate (17-E.1): bank-stage terminal reject is removed for new-rule
+             (voting_rule_version = 2) requests; legacy (v1) requests keep it. -->
+        <Dialog v-if="!isV2" v-model:open="showBankRejectTerminalModal">
           <DialogTrigger as-child>
             <Button variant="destructive" class="flex-1" :disabled="performingAction">
               رفض الطلب نهائيا
@@ -580,8 +622,8 @@ defineExpose({ triggerPrimaryAction })
       </div>
     </template>
 
-    <!-- SUPPORT_COMMITTEE: SUPPORT_REVIEW_IN_PROGRESS + is_claimed_by_me → approve, reject, or return -->
-    <template v-if="showSupportCommitteeActions">
+    <!-- SUPPORT_COMMITTEE (legacy v1): SUPPORT_REVIEW_IN_PROGRESS + is_claimed_by_me → approve, reject, or return -->
+    <template v-if="showSupportCommitteeActions && !isV2">
       <div class="flex flex-row-reverse gap-3">
         <Button class="flex-1" :disabled="performingAction" @click="handleSupportApprove">
           <Loader2 v-if="performingAction" class="me-2 h-4 w-4 animate-spin" />
@@ -684,6 +726,53 @@ defineExpose({ triggerPrimaryAction })
           </DialogContent>
         </Dialog>
       </div>
+    </template>
+
+    <!-- SUPPORT_COMMITTEE (new-rule v2, 17-E.2): forward-only with mandatory comment -->
+    <template v-if="showSupportCommitteeActions && isV2">
+      <Dialog v-model:open="showSupportForwardModal">
+        <DialogTrigger as-child>
+          <Button class="w-full" :disabled="performingAction"> إرسال إلى اللجنة التنفيذية </Button>
+        </DialogTrigger>
+        <DialogContent class="max-w-md">
+          <DialogHeader>
+            <DialogTitle>إرسال الطلب إلى اللجنة التنفيذية</DialogTitle>
+            <DialogDescription>
+              سيُحال الطلب {{ request.reference_number }} إلى اللجنة التنفيذية للتصويت. سجّل تعليق
+              لجنة المساندة قبل الإرسال.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div class="space-y-4">
+            <div>
+              <label for="support-forward-comment" class="text-sm font-medium">
+                تعليق لجنة المساندة <span class="text-[var(--color-text-error)]">*</span>
+              </label>
+              <Textarea
+                id="support-forward-comment"
+                v-model="supportForwardComment"
+                placeholder="اكتب ملاحظة لجنة المساندة التي سترافق الإحالة في سجل التدقيق."
+                class="mt-2 min-h-24"
+                :aria-invalid="!!supportForwardCommentError"
+              />
+              <p
+                v-if="supportForwardCommentError"
+                class="mt-1 text-xs text-[var(--color-text-error)]"
+              >
+                {{ supportForwardCommentError }}
+              </p>
+            </div>
+
+            <div class="flex justify-end gap-2">
+              <Button variant="outline" @click="resetSupportForwardModal"> إلغاء </Button>
+              <Button :disabled="performingAction" @click="handleSupportForwardConfirm">
+                <Loader2 v-if="performingAction" class="me-2 h-4 w-4 animate-spin" />
+                {{ performingAction ? 'جارٍ الإرسال...' : 'إرسال إلى اللجنة التنفيذية' }}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </template>
 
     <!-- DATA_ENTRY: DRAFT → edit -->
@@ -844,7 +933,10 @@ defineExpose({ triggerPrimaryAction })
           </AlertDialogContent>
         </AlertDialog>
 
-        <Dialog v-model:open="showOverrideModal">
+        <!-- Era gate (17-E.3): Director tie-break/override is removed for new-rule
+             (voting_rule_version = 2) sessions; they finalize automatically on a
+             simple majority. Legacy (v1) sessions keep the override control. -->
+        <Dialog v-if="!isV2" v-model:open="showOverrideModal">
           <Tooltip>
             <TooltipTrigger as-child>
               <Button

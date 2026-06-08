@@ -384,7 +384,8 @@ export const STATUS_LABELS: Record<RequestStatus, string> = {
   [RequestStatus.DRAFT_REJECTED_INTERNAL]: 'معاد للتعديل',
   [RequestStatus.SUBMITTED]: 'مقدم',
   [RequestStatus.BANK_REVIEW]: 'قيد مراجعة البنك',
-  [RequestStatus.BANK_RETURNED]: 'إعادة للمدخل',
+  // Story 17-E.4: single source for the "Returned to Data Entry" display label.
+  [RequestStatus.BANK_RETURNED]: 'أُعيد إلى مدخل البيانات',
   [RequestStatus.SUPPORT_RETURNED]: 'إعادة من المساندة',
   [RequestStatus.BANK_APPROVED]: 'موافقة البنك',
   [RequestStatus.SUPPORT_REVIEW_PENDING]: 'بانتظار المراجعة',
@@ -403,6 +404,18 @@ export const STATUS_LABELS: Record<RequestStatus, string> = {
   [RequestStatus.COMPLETED]: 'مكتمل',
   [RequestStatus.BANK_REJECTED]: 'مرفوض (البنك)',
 }
+
+/**
+ * Story 17-E.4 (D8): SWIFT stage DISPLAY merge. `WAITING_FOR_SWIFT` and
+ * `SWIFT_UPLOADED` collapse into a single timeline node labeled "تم رفع السويفت".
+ * Display-only — the underlying statuses remain distinct in STATUS_PROGRESS,
+ * STATUS_LABELS, API responses, queries, and audit. The merged node renders
+ * in-progress while at `WAITING_FOR_SWIFT` and completed at `SWIFT_UPLOADED`.
+ */
+export const SWIFT_DISPLAY_GROUP = {
+  label: 'تم رفع السويفت',
+  statuses: [RequestStatus.WAITING_FOR_SWIFT, RequestStatus.SWIFT_UPLOADED] as RequestStatus[],
+} as const
 
 /** Progress percentage per status — role-aware, derived from canonical RequestStatus */
 export const STATUS_PROGRESS: Record<RequestStatus, number> = {
@@ -521,7 +534,7 @@ export const ROLE_BUCKETS: Partial<Record<UserRole, StageBucket[]>> = {
     },
     {
       key: 'bank_returned',
-      label: 'أُعيد للمدخل من البنك',
+      label: 'أُعيد إلى مدخل البيانات',
       statuses: [RequestStatus.BANK_RETURNED],
     },
     {

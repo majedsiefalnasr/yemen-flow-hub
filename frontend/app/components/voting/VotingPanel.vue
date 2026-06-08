@@ -12,11 +12,22 @@ import { Alert, AlertDescription } from '../ui/alert'
 import { Skeleton } from '../ui/skeleton'
 import LoadErrorAlert from '../shared/LoadErrorAlert.vue'
 
-const props = defineProps<{
-  requestId: number
-  requestStatus: RequestStatus
-  userRole: UserRole
-}>()
+const props = withDefaults(
+  defineProps<{
+    requestId: number
+    requestStatus: RequestStatus
+    userRole: UserRole
+    /** Era gate (Epic 17-E.3): 1 = legacy, 2 = new National Committee. */
+    votingRuleVersion?: number
+  }>(),
+  {
+    votingRuleVersion: 1,
+  },
+)
+
+// New National Committee rules (17-E.3): Approve / Not-Eligible only, no Abstain,
+// no Director tie-break. Legacy (v1) keeps Approve / Reject / Abstain + tie-break.
+const isV2 = computed(() => props.votingRuleVersion === 2)
 
 const votingStore = useVotingStore()
 const authStore = useAuthStore()
@@ -35,7 +46,8 @@ const voteError = ref('')
 const isSessionOpen = computed(() => props.requestStatus === RequestStatus.EXECUTIVE_VOTING_OPEN)
 
 const showTieBreak = computed(() => {
-  if (!isSessionOpen.value || !tally.value) return false
+  // No tie-break for new-rule (v2) sessions — even splits resolve to Not-Eligible.
+  if (isV2.value || !isSessionOpen.value || !tally.value) return false
   return tally.value.approve_count === tally.value.reject_count && tally.value.approve_count > 0
 })
 const isSessionClosed = computed(
@@ -112,9 +124,16 @@ function maskedVoteChipClasses(voter: RequestVote): string {
   return 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#5856d6]/10 text-[#5856d6]'
 }
 
+// Display-only relabel for new-rule sessions: a REJECT vote is shown as
+// "غير مستوفي للشروط / Not Eligible". The stored VoteType is unchanged (D6/D8).
+function displayVoteLabel(vote: VoteType): string {
+  if (isV2.value && vote === VoteType.REJECT) return 'غير مستوفي للشروط'
+  return voteLabel(vote)
+}
+
 function pendingVoteLabel(vote: VoteType): string {
   if (vote === VoteType.AUTO_ABSTAIN_TIMEOUT) return ''
-  return voteLabel(vote)
+  return displayVoteLabel(vote)
 }
 
 function selectVote(vote: VoteType) {
@@ -382,12 +401,22 @@ onMounted(async () => {
         <h3 class="text-foreground text-sm font-medium">تسجيل صوتك</h3>
         <div class="flex flex-row-reverse gap-3">
           <Button class="h-11 flex-1" @click="selectVote(VoteType.APPROVE)">موافقة</Button>
-          <Button variant="destructive" class="h-11 flex-1" @click="selectVote(VoteType.REJECT)"
-            >رفض</Button
+          <!-- New-rule (v2): "Not Eligible" casts REJECT under the hood; Abstain hidden -->
+          <Button
+            v-if="isV2"
+            variant="destructive"
+            class="h-11 flex-1"
+            @click="selectVote(VoteType.REJECT)"
+            >غير مستوفي للشروط</Button
           >
-          <Button variant="outline" class="h-11 flex-1" @click="selectVote(VoteType.ABSTAIN)"
-            >امتناع</Button
-          >
+          <template v-else>
+            <Button variant="destructive" class="h-11 flex-1" @click="selectVote(VoteType.REJECT)"
+              >رفض</Button
+            >
+            <Button variant="outline" class="h-11 flex-1" @click="selectVote(VoteType.ABSTAIN)"
+              >امتناع</Button
+            >
+          </template>
         </div>
       </div>
 
@@ -479,7 +508,8 @@ onMounted(async () => {
           <polyline points="20 6 9 17 4 12" />
         </svg>
         <AlertDescription class="text-success text-sm"
-          >لقد صوّتت بـ <strong>{{ voteLabel(detail.my_vote.vote) }}</strong></AlertDescription
+          >لقد صوّتت بـ
+          <strong>{{ displayVoteLabel(detail.my_vote.vote) }}</strong></AlertDescription
         >
       </Alert>
 

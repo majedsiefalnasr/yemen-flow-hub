@@ -26,7 +26,7 @@ withDefaults(
     />
     <div class="flex flex-1 flex-col gap-1">
       <AlertDescription v-if="variant === 'bank_returned'" class="text-sm font-medium">
-        أعاد مراجع البنك الطلب للتصحيح. راجع التعليق، عدّل البيانات، ثم أعد الإرسال.
+        أُعيد الطلب إلى مدخل البيانات للتصحيح. راجع التعليق، عدّل البيانات، ثم أعد الإرسال.
       </AlertDescription>
       <AlertDescription v-else-if="variant === 'support_returned'" class="text-sm font-medium">
         أعادت لجنة المساندة الطلب للتصحيح. راجع التعليق، عدّل البيانات، ثم أعد الإرسال.

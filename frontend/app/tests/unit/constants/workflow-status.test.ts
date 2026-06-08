@@ -3,6 +3,8 @@ import { RequestStatus, UserRole } from '../../../types/enums'
 import {
   STATUS_COLORS,
   STATUS_ICONS,
+  STATUS_LABELS,
+  SWIFT_DISPLAY_GROUP,
   getBusinessStatus,
   DATA_ENTRY_ROLES,
   BANK_ADMIN_MANAGED_ROLES,
@@ -319,5 +321,43 @@ describe('Role group constants', () => {
       expect(dataEntryRoutes).not.toContain('/reports')
       expect(reviewerRoutes).not.toContain('/reports')
     })
+  })
+})
+
+// ─── Story 17-E.4: "Returned to Data Entry" label + SWIFT display merge ──────
+describe('STATUS_LABELS — Story 17-E.4 BANK_RETURNED rename', () => {
+  it('BANK_RETURNED is the single source for the "Returned to Data Entry" label', () => {
+    expect(STATUS_LABELS[RequestStatus.BANK_RETURNED]).toBe('أُعيد إلى مدخل البيانات')
+  })
+
+  it('drops the legacy "أُعيد للمدخل من البنك" wording for BANK_RETURNED', () => {
+    expect(STATUS_LABELS[RequestStatus.BANK_RETURNED]).not.toContain('من البنك')
+    expect(STATUS_LABELS[RequestStatus.BANK_RETURNED]).not.toContain('للمراجعة')
+  })
+
+  it('covers every RequestStatus and leaves the other labels unchanged', () => {
+    const statuses = Object.values(RequestStatus)
+    expect(Object.keys(STATUS_LABELS)).toHaveLength(statuses.length)
+    expect(STATUS_LABELS[RequestStatus.SUPPORT_RETURNED]).toBe('إعادة من المساندة')
+    expect(STATUS_LABELS[RequestStatus.BANK_REVIEW]).toBe('قيد مراجعة البنك')
+  })
+})
+
+describe('SWIFT_DISPLAY_GROUP — Story 17-E.4 display merge (D8, display-only)', () => {
+  it('groups WAITING_FOR_SWIFT and SWIFT_UPLOADED under one display label', () => {
+    expect(SWIFT_DISPLAY_GROUP.label).toBe('تم رفع السويفت')
+    expect(SWIFT_DISPLAY_GROUP.statuses).toEqual([
+      RequestStatus.WAITING_FOR_SWIFT,
+      RequestStatus.SWIFT_UPLOADED,
+    ])
+  })
+
+  it('does NOT mutate the underlying granular STATUS_LABELS (statuses stay distinct)', () => {
+    // AC5: the two enum cases remain distinct in every non-timeline surface.
+    expect(STATUS_LABELS[RequestStatus.WAITING_FOR_SWIFT]).toBe('انتظار رفع SWIFT')
+    expect(STATUS_LABELS[RequestStatus.SWIFT_UPLOADED]).toBe('تم رفع SWIFT')
+    expect(STATUS_LABELS[RequestStatus.WAITING_FOR_SWIFT]).not.toBe(
+      STATUS_LABELS[RequestStatus.SWIFT_UPLOADED],
+    )
   })
 })
