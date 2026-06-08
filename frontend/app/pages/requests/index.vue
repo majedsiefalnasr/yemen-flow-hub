@@ -29,6 +29,11 @@ import { RequestStatus, UserRole } from '@/types/enums'
 import {
   BANK_ROLES,
   CBY_BANK_FILTER_ROLES,
+  NOT_ELIGIBLE_LABEL,
+  NOT_ELIGIBLE_LABEL_AR,
+  NOT_ELIGIBLE_BANK_LABEL,
+  NOT_ELIGIBLE_SUPPORT_LABEL,
+  NOT_ELIGIBLE_EXECUTIVE_LABEL,
   ROLE_ATTENTION_STATUSES,
   ROUTE_ROLE_MAP,
 } from '@/constants/workflow'
@@ -335,10 +340,10 @@ const roleKpiCards = computed(() => {
           onClick: on(RequestStatus.BANK_APPROVED),
         },
         {
-          label: 'مرفوضة نهائياً',
+          label: NOT_ELIGIBLE_BANK_LABEL,
           value: count(RequestStatus.BANK_REJECTED),
           icon: AlertCircle,
-          description: 'رفضها البنك نهائياً',
+          description: `صنّفها البنك ${NOT_ELIGIBLE_LABEL_AR} نهائياً`,
           tone: 'danger' as const,
           active: isActive(RequestStatus.BANK_REJECTED),
           onClick: on(RequestStatus.BANK_REJECTED),
@@ -426,10 +431,10 @@ const roleKpiCards = computed(() => {
           onClick: on(RequestStatus.SUPPORT_APPROVED),
         },
         {
-          label: 'مرفوضة أو معادة',
+          label: `${NOT_ELIGIBLE_SUPPORT_LABEL} أو معادة`,
           value: count(RequestStatus.SUPPORT_REJECTED, RequestStatus.SUPPORT_RETURNED),
           icon: AlertCircle,
-          description: 'رفضتها اللجنة أو أعادتها',
+          description: `صنّفتها اللجنة ${NOT_ELIGIBLE_LABEL_AR} أو أعادتها`,
           tone: 'danger' as const,
           active: isActive(RequestStatus.SUPPORT_REJECTED, RequestStatus.SUPPORT_RETURNED),
           onClick: on(RequestStatus.SUPPORT_REJECTED, RequestStatus.SUPPORT_RETURNED),
@@ -465,10 +470,10 @@ const roleKpiCards = computed(() => {
           onClick: on(RequestStatus.EXECUTIVE_APPROVED, RequestStatus.COMPLETED),
         },
         {
-          label: 'قرارات مرفوضة',
+          label: NOT_ELIGIBLE_EXECUTIVE_LABEL,
           value: count(RequestStatus.EXECUTIVE_REJECTED),
           icon: AlertCircle,
-          description: 'رفضتها اللجنة التنفيذية',
+          description: `صنّفتها اللجنة التنفيذية ${NOT_ELIGIBLE_LABEL_AR}`,
           tone: 'danger' as const,
           active: isActive(RequestStatus.EXECUTIVE_REJECTED),
           onClick: on(RequestStatus.EXECUTIVE_REJECTED),
@@ -558,10 +563,10 @@ const roleKpiCards = computed(() => {
           onClick: filterByApproved,
         },
         {
-          label: 'مرفوضة',
+          label: NOT_ELIGIBLE_LABEL,
           value: rejected,
           icon: AlertCircle,
-          description: 'تم رفضها في إحدى المراحل',
+          description: `صُنّفت ${NOT_ELIGIBLE_LABEL_AR} في إحدى المراحل`,
           tone: 'danger' as const,
           active: isActive(
             RequestStatus.BANK_REJECTED,

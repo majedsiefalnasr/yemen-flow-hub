@@ -10,7 +10,13 @@ import {
   StepperTitle,
   StepperTrigger,
 } from '@/components/ui/stepper'
-import { ROLE_BUCKETS, STATUS_LABELS, getStatusProgress } from '@/constants/workflow'
+import {
+  NOT_ELIGIBLE_LABEL,
+  NOT_ELIGIBLE_ROUTE_STOPPED_LABEL,
+  ROLE_BUCKETS,
+  STATUS_LABELS,
+  getStatusProgress,
+} from '@/constants/workflow'
 import { RequestStatus, UserRole } from '@/types/enums'
 import { useAuthStore } from '@/stores/auth.store'
 import { cn } from '@/lib/utils'
@@ -104,13 +110,16 @@ const statusChip = computed(() => {
       class: 'bg-[var(--severity-amber)]/15 text-[var(--severity-amber)]',
     }
   if (REJECT_STATUSES.includes(resolvedStatus.value))
-    return { label: 'مرفوض', class: 'bg-[var(--severity-red)]/15 text-[var(--severity-red)]' }
+    return {
+      label: NOT_ELIGIBLE_LABEL,
+      class: 'bg-[var(--severity-red)]/15 text-[var(--severity-red)]',
+    }
   return null
 })
 
 function activeDescription(status: RequestStatus): { label: string; class: string } {
   if (REJECT_STATUSES.includes(status)) {
-    return { label: 'توقف المسار بالرفض', class: 'text-[var(--severity-red)]' }
+    return { label: NOT_ELIGIBLE_ROUTE_STOPPED_LABEL, class: 'text-[var(--severity-red)]' }
   }
   if (RETURN_STATUSES.includes(status)) {
     return { label: 'بانتظار تصحيح البيانات', class: 'text-[var(--severity-amber)]' }

@@ -9,6 +9,7 @@ import { useDashboardStore } from '../../stores/dashboard.store'
 import type { SwiftOfficerDashboardStats } from '../../composables/useDashboard'
 import StatusBadge from '../shared/StatusBadge.vue'
 import { UserRole } from '../../types/enums'
+import { NOT_ELIGIBLE_EXECUTIVE_LABEL } from '../../constants/workflow'
 import { Card, CardContent } from '../ui/card'
 import { Button } from '../ui/button'
 import { Skeleton } from '../ui/skeleton'
@@ -244,7 +245,7 @@ onMounted(() => {
           @click="router.push('/requests?tab=completed')"
         />
         <MetricCard
-          label="مرفوض من اللجنة"
+          :label="NOT_ELIGIBLE_EXECUTIVE_LABEL"
           :value="stats.final_rejected"
           :icon="XCircle"
           tone="danger"

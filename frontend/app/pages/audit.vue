@@ -222,7 +222,7 @@ const anomalyGroups = computed(() => {
   for (const [actor, count] of Object.entries(denialsByUser)) {
     if (count >= 3)
       groups.push({
-        type: 'رفض متكرر للصلاحيات',
+        type: 'منع متكرر للصلاحيات',
         actor,
         count,
         level: count >= 5 ? 'عالية' : 'متوسطة',
@@ -555,7 +555,8 @@ function diffRows(meta: AuditLogMeta): Array<{ key: string; before: any; after: 
         <div class="flex items-center gap-3 px-4">
           <AlertTriangle class="h-4 w-4 shrink-0 text-[var(--severity-red)]" aria-hidden="true" />
           <span class="flex-1 text-sm font-medium">
-            {{ smartSummary.denied }} محاولة وصول مرفوضة. راجع التفويضات المرتبطة بهذه المحاولات.
+            {{ smartSummary.denied }} محاولة وصول غير مصرح بها. راجع التفويضات المرتبطة بهذه
+            المحاولات.
           </span>
         </div>
       </Card>
@@ -839,7 +840,7 @@ function diffRows(meta: AuditLogMeta): Array<{ key: string; before: any; after: 
       <TabsContent value="anomalies" class="mt-4">
         <InsightsTabsCard
           title="تجميع الأنماط الشاذة"
-          description="محاولات رفض متكررة، دخول فاشل، تحميل وثائق مكثف"
+          description="محاولات منع متكررة، دخول فاشل، تحميل وثائق مكثف"
           content-class="p-5"
         >
           <Empty

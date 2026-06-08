@@ -51,7 +51,11 @@ import {
 import MetricCard from '@/components/shared/dashboard/MetricCard.vue'
 import MetricGrid from '@/components/shared/dashboard/MetricGrid.vue'
 import LoadErrorAlert from '@/components/shared/LoadErrorAlert.vue'
-import { ROUTE_ROLE_MAP } from '@/constants/workflow'
+import {
+  NOT_ELIGIBLE_LABEL_AR,
+  NOT_ELIGIBLE_REVIEW_ACTION_LABEL,
+  ROUTE_ROLE_MAP,
+} from '@/constants/workflow'
 import { useNotificationsStore } from '@/stores/notifications.store'
 import { useNotifications } from '@/composables/useNotifications'
 import type { Notification } from '@/types/models'
@@ -82,6 +86,7 @@ const columnVisibility = ref<VisibilityState>({})
 const rowSelection = ref<Record<string, boolean>>({})
 const selectedNotification = ref<Notification | null>(null)
 const notificationDialogOpen = ref(false)
+const LEGACY_REJECTION_MARKER = '\u0631\u0641\u0636'
 
 async function loadNotifications() {
   loading.value = true
@@ -120,7 +125,12 @@ function severityFor(notification: Notification): Severity {
   if (notification.data?.type === 'swift_upload_requested') return 'info'
 
   const text = (notification.data?.message_ar ?? notification.data?.message ?? '').toLowerCase()
-  if (text.includes('رفض') || text.includes('تنبيه')) return 'critical'
+  if (
+    text.includes(NOT_ELIGIBLE_LABEL_AR) ||
+    text.includes(LEGACY_REJECTION_MARKER) ||
+    text.includes('تنبيه')
+  )
+    return 'critical'
   if (text.includes('إعادة') || text.includes('معاد') || text.includes('نقص')) return 'warning'
   if (text.includes('اعتماد') || text.includes('صدر') || text.includes('مكتمل')) return 'success'
   if (text.includes('تصويت') || text.includes('اللجنة')) return 'voting'
@@ -272,7 +282,7 @@ function notificationActionLabel(notification: Notification): string {
     case 'request_returned':
       return 'فتح الطلب لمعالجة الإعادة'
     case 'request_rejected':
-      return 'فتح الطلب ومراجعة سبب الرفض'
+      return `فتح الطلب و${NOT_ELIGIBLE_REVIEW_ACTION_LABEL}`
     case 'request_approved':
     case 'customs_issued':
       return 'فتح الطلب المرتبط'
@@ -294,7 +304,7 @@ function notificationSummary(notification: Notification): string {
     case 'request_returned':
       return 'تمت إعادة الطلب للتصحيح. افتح الطلب لمعرفة المطلوب واستكمال المعالجة.'
     case 'request_rejected':
-      return 'تم رفض الطلب. افتح الطلب لمراجعة السبب وسجل المراحل.'
+      return `تم تصنيف الطلب ${NOT_ELIGIBLE_LABEL_AR}. افتح الطلب لمراجعة السبب وسجل المراحل.`
     case 'request_approved':
       return 'تم اعتماد الطلب في إحدى مراحل سير العمل. افتح الطلب لمتابعة المرحلة التالية.'
     case 'customs_issued':

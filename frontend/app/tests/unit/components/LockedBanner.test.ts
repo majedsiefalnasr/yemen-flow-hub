@@ -5,6 +5,7 @@ import { describe, it, expect } from 'vitest'
 
 // Variant mapping logic (mirrors detail page lockedBannerVariant computed)
 import { RequestStatus, UserRole } from '../../../types/enums'
+import { NOT_ELIGIBLE_LABEL_AR } from '../../../constants/workflow'
 
 type LockedBannerVariant = 'locked' | 'readonly' | 'pending' | 'bank_rejected'
 
@@ -23,7 +24,7 @@ const VARIANT_CONFIG: Record<LockedBannerVariant, { icon: string; message: strin
   },
   bank_rejected: {
     icon: '🚫',
-    message: 'تم رفض هذا الطلب نهائياً من قِبَل البنك — لا يمكن اتخاذ أي إجراء',
+    message: `صنّف البنك هذا الطلب ${NOT_ELIGIBLE_LABEL_AR} نهائيا، لذلك لا يمكن اتخاذ أي إجراء عليه.`,
   },
 }
 
@@ -56,8 +57,8 @@ describe('LockedBanner — variant config', () => {
     expect(VARIANT_CONFIG.bank_rejected.icon).toBe('🚫')
   })
 
-  it('bank_rejected variant message mentions "رفض"', () => {
-    expect(VARIANT_CONFIG.bank_rejected.message).toContain('رفض')
+  it('bank_rejected variant message mentions Not Eligible', () => {
+    expect(VARIANT_CONFIG.bank_rejected.message).toContain(NOT_ELIGIBLE_LABEL_AR)
   })
 
   it('all four variants have distinct messages', () => {

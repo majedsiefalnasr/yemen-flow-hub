@@ -3,6 +3,7 @@
  * Tests the pure functions extracted from reports/index.vue.
  */
 import { describe, it, expect } from 'vitest'
+import { NOT_ELIGIBLE_LABEL } from '../../../constants/workflow'
 
 // ─── KPI computation (mirrors kpiData computed in reports page) ────────────────
 
@@ -60,7 +61,7 @@ function buildLineChartSeries(trend: WorkflowReportStub['monthly_trend']) {
   return [
     { label: 'طلبات', values: trend.map((m) => m.total), color: 'var(--color-primary)' },
     { label: 'مُعتمد', values: trend.map((m) => m.approved), color: '#1b5e20' },
-    { label: 'مرفوض', values: trend.map((m) => m.rejected), color: '#c62828' },
+    { label: NOT_ELIGIBLE_LABEL, values: trend.map((m) => m.rejected), color: '#c62828' },
   ]
 }
 
@@ -136,7 +137,7 @@ describe('Reports page — LineChart monthly_trend data', () => {
     expect(series[0]!.values).toEqual([10, 15])
     expect(series[1]!.label).toBe('مُعتمد')
     expect(series[1]!.values).toEqual([7, 11])
-    expect(series[2]!.label).toBe('مرفوض')
+    expect(series[2]!.label).toBe(NOT_ELIGIBLE_LABEL)
     expect(series[2]!.values).toEqual([2, 3])
   })
 

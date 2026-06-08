@@ -2,6 +2,7 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { toast } from 'vue-sonner'
 import PageHeader from '@/components/layout/PageHeader.vue'
+import { NOT_ELIGIBLE_LABEL_AR } from '@/constants/workflow'
 import {
   Bell,
   Building2,
@@ -141,7 +142,7 @@ const testEmailAddress = ref('')
 const cbySysNotifications = reactive([
   { label: 'البريد الإلكتروني عند تقديم طلب جديد', enabled: true },
   { label: 'إشعار داخل المنصة عند تغيير حالة طلب', enabled: true },
-  { label: 'SMS عند اعتماد/رفض الطلب', enabled: true },
+  { label: `SMS عند اعتماد الطلب أو تصنيفه ${NOT_ELIGIBLE_LABEL_AR}`, enabled: true },
   { label: 'تنبيه فوري عند اكتشاف فاتورة مكررة', enabled: true },
   { label: 'تقرير يومي بإجمالي النشاط', enabled: true },
 ])
@@ -209,7 +210,7 @@ const bankNotifications = ref([
   {
     id: 'cby_decision',
     label: 'قرار البنك المركزي',
-    description: 'عند موافقة أو رفض لجنة المساندة',
+    description: `عند موافقة لجنة المساندة أو تصنيفها الطلب ${NOT_ELIGIBLE_LABEL_AR}`,
     enabled: true,
   },
   {

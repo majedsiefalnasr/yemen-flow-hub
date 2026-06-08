@@ -16,6 +16,7 @@ import {
 import { useDashboardStore } from '../../stores/dashboard.store'
 import { useAuthStore } from '../../stores/auth.store'
 import { RequestStatus, UserRole } from '../../types/enums'
+import { NOT_ELIGIBLE_EXECUTIVE_LABEL } from '../../constants/workflow'
 import type { ExecutiveDashboardStats, VotingQueueItem } from '../../composables/useDashboard'
 import type { ImportRequest } from '../../types/models'
 import StatusBadge from '../shared/StatusBadge.vue'
@@ -372,7 +373,7 @@ onMounted(() => {
             @click="router.push('/requests?tab=approved')"
           />
           <MetricCard
-            label="قرارات رفض"
+            :label="NOT_ELIGIBLE_EXECUTIVE_LABEL"
             :value="stats.decisions_rejected"
             :icon="XCircle"
             tone="danger"

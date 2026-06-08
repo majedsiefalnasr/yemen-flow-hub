@@ -17,6 +17,7 @@ import {
 } from 'lucide-vue-next'
 import { useDashboardStore } from '../../stores/dashboard.store'
 import { UserRole } from '../../types/enums'
+import { NOT_ELIGIBLE_LABEL } from '../../constants/workflow'
 import type {
   BankAdminDashboardStats,
   BankAdminDashboardStatsExtended,
@@ -81,7 +82,7 @@ const healthIssues = computed(() => calcHealthIssues(stats.value))
 const monthlyRequests = computed(() => stats.value?.monthly_requests ?? [])
 const recentRequests = computed(() => stats.value?.recent_requests ?? [])
 
-// KPI grid — spec order: Total / In Process / Approved-Completed / Rejected
+// KPI grid — spec order: Total / In Process / Approved-Completed / Not Eligible
 const kpiGrid = computed(() => {
   if (!stats.value) return []
   return [
@@ -111,7 +112,7 @@ const kpiGrid = computed(() => {
     },
     {
       value: stats.value.rejected,
-      label: 'مرفوض',
+      label: NOT_ELIGIBLE_LABEL,
       color: 'var(--severity-red)',
       bg: rejectionRate.value > REJECTION_THRESHOLD ? 'bg-[var(--severity-red)]/5' : 'bg-muted/40',
       border: rejectionRate.value > REJECTION_THRESHOLD ? 'border-s-[3px]' : '',

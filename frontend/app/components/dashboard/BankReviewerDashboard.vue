@@ -16,7 +16,11 @@ import {
 import { useDashboardStore } from '../../stores/dashboard.store'
 import { useAuthStore } from '../../stores/auth.store'
 import { UserRole } from '../../types/enums'
-import { STATUS_LABELS } from '../../constants/workflow'
+import {
+  NOT_ELIGIBLE_LABEL_AR,
+  NOT_ELIGIBLE_SUPPORT_LABEL,
+  STATUS_LABELS,
+} from '../../constants/workflow'
 import type { BankReviewerDashboardStats } from '../../composables/useDashboard'
 import StatusBadge from '../shared/StatusBadge.vue'
 import ActionRequiredStrip from '../shared/ActionRequiredStrip.vue'
@@ -50,7 +54,7 @@ const queue = computed(() => stats.value?.review_queue ?? [])
 const downstreamQueue = computed(() => stats.value?.downstream_queue ?? [])
 const supportRejectedCount = computed(() => stats.value?.returned_by_support ?? 0)
 
-// Spec order: Pending Review (amber) / Rejected by Support (rose) / At CBY (blue) / Approved-Completed (green)
+// Spec order: Pending Review / Not Eligible by Support / At CBY / Approved-Completed
 const kpiConfig = computed(() => [
   {
     icon: Clock,
@@ -62,7 +66,7 @@ const kpiConfig = computed(() => [
   {
     icon: XCircle,
     value: stats.value?.returned_by_support ?? 0,
-    label: 'مرفوض من لجنة المساندة',
+    label: NOT_ELIGIBLE_SUPPORT_LABEL,
     variant: (stats.value?.returned_by_support ?? 0) > 0 ? 'rose' : 'gray',
     tab: 'support_rejected',
   },
@@ -270,13 +274,13 @@ onMounted(() => {
       <!-- Action-required strip: SUPPORT_REJECTED requests waiting for bank-side decision -->
       <ActionRequiredStrip
         :count="supportRejectedCount"
-        message="طلبات رفضتها لجنة المساندة وتنتظر قرارك"
+        :message="`طلبات صنّفتها لجنة المساندة ${NOT_ELIGIBLE_LABEL_AR} وتنتظر قرارك`"
         cta-label="اتخاذ القرار"
         cta-route="/requests?tab=support_rejected"
         severity="red"
       />
 
-      <!-- KPI grid (4 cards): Pending Review / Rejected by Support / At CBY / Approved-Completed -->
+      <!-- KPI grid (4 cards): Pending Review / Not Eligible by Support / At CBY / Approved-Completed -->
       <MetricGrid :columns="4">
         <MetricCard
           v-for="kpi in kpiConfig"

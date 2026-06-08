@@ -5,6 +5,7 @@ import { describe, it, expect } from 'vitest'
 import { UserRole, RequestStatus, VotingSessionStatus } from '../../../types/enums'
 import type { ImportRequest } from '../../../types/models'
 import { makeImportRequest } from '../fixtures/request-data'
+import { NOT_ELIGIBLE_LABEL_AR } from '../../../constants/workflow'
 
 function makeRequest(overrides: Partial<ImportRequest> = {}): ImportRequest {
   return makeImportRequest({
@@ -58,7 +59,7 @@ function validateOverride(
 ): { decisionError: string; justificationError: string } {
   let decisionError = ''
   let justificationError = ''
-  if (!decision) decisionError = 'يجب اختيار قرار (موافقة أو رفض).'
+  if (!decision) decisionError = `يجب اختيار قرار (موافقة أو ${NOT_ELIGIBLE_LABEL_AR}).`
   if (justification.trim().length < 10)
     justificationError = 'المبرر مطلوب ويجب أن يكون 10 أحرف على الأقل.'
   return { decisionError, justificationError }

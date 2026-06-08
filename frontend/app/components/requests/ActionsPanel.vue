@@ -11,6 +11,13 @@ import { Textarea } from '../ui/textarea'
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert'
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip'
 import {
+  NOT_ELIGIBLE_LABEL_AR,
+  NOT_ELIGIBLE_SUPPORT_LABEL,
+  NOT_ELIGIBLE_REASON_LABEL,
+  NOT_ELIGIBLE_FINAL_REASON_LABEL,
+  NOT_ELIGIBLE_REQUEST_LABEL,
+} from '../../constants/workflow'
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -196,7 +203,7 @@ function resetBankRejectTerminalModal() {
 async function handleBankRejectTerminalConfirm() {
   bankRejectTerminalCommentError.value = ''
   if (bankRejectTerminalComment.value.trim().length < 20) {
-    bankRejectTerminalCommentError.value = 'اكتب سبب الرفض النهائي بوضوح، 20 حرفا على الأقل.'
+    bankRejectTerminalCommentError.value = `اكتب ${NOT_ELIGIBLE_FINAL_REASON_LABEL} بوضوح، 20 حرفا على الأقل.`
     return
   }
   actionError.value = ''
@@ -206,7 +213,8 @@ async function handleBankRejectTerminalConfirm() {
     emit('action-completed')
   } catch (err: any) {
     const msg = err instanceof Error ? err.message : ''
-    actionError.value = msg || 'تعذّر رفض الطلب نهائيا. تحقق من حالة الطلب وأعد المحاولة.'
+    actionError.value =
+      msg || `تعذّر تصنيف الطلب ${NOT_ELIGIBLE_LABEL_AR} نهائيا. تحقق من حالة الطلب وأعد المحاولة.`
     resetBankRejectTerminalModal()
   }
 }
@@ -325,7 +333,7 @@ async function handleDirectorOverride() {
   overrideJustificationError.value = ''
 
   if (!overrideDecision.value) {
-    overrideDecisionError.value = 'اختر قرار التجاوز: موافقة أو رفض.'
+    overrideDecisionError.value = `اختر قرار التجاوز: موافقة أو ${NOT_ELIGIBLE_LABEL_AR}.`
     return
   }
   if (overrideJustification.value.trim().length < 10) {
@@ -379,7 +387,7 @@ async function handleFinalizeRejection() {
     emit('action-completed')
   } catch (err: any) {
     const msg = err instanceof Error ? err.message : ''
-    actionError.value = msg || 'تعذّر تثبيت الرفض النهائي. أعد المحاولة.'
+    actionError.value = msg || `تعذّر تثبيت نتيجة ${NOT_ELIGIBLE_LABEL_AR} النهائية. أعد المحاولة.`
   }
 }
 
@@ -413,7 +421,7 @@ async function handleSupportApprove() {
 
 async function handleRejectConfirm() {
   if (!rejectReason.value.trim()) {
-    rejectReasonError.value = 'اكتب سبب الرفض قبل إيقاف مسار الطلب.'
+    rejectReasonError.value = `اكتب ${NOT_ELIGIBLE_REASON_LABEL} قبل إيقاف مسار الطلب.`
     return
   }
   const action = showSupportCommitteeActions.value ? 'support-reject' : 'bank-reject'
@@ -481,7 +489,10 @@ defineExpose({ triggerPrimaryAction })
           </Button>
         </TooltipTrigger>
         <TooltipContent
-          ><p>ينقل الطلب إلى قيد المراجعة البنكية، ثم تظهر قرارات الاعتماد أو الرفض أو الإعادة.</p>
+          ><p>
+            ينقل الطلب إلى قيد المراجعة البنكية، ثم تظهر قرارات الاعتماد أو
+            {{ NOT_ELIGIBLE_LABEL_AR }} أو الإعادة.
+          </p>
           <p class="text-muted-foreground mt-1 text-xs">Ctrl+Enter</p></TooltipContent
         >
       </Tooltip>
@@ -527,25 +538,27 @@ defineExpose({ triggerPrimaryAction })
         <Dialog v-if="!isV2" v-model:open="showBankRejectTerminalModal">
           <DialogTrigger as-child>
             <Button variant="destructive" class="flex-1" :disabled="performingAction">
-              رفض الطلب نهائيا
+              {{ NOT_ELIGIBLE_REQUEST_LABEL }} نهائيا
             </Button>
           </DialogTrigger>
           <DialogContent class="max-w-md">
             <DialogHeader>
-              <DialogTitle class="text-destructive">رفض الطلب نهائيا</DialogTitle>
+              <DialogTitle class="text-destructive"
+                >{{ NOT_ELIGIBLE_REQUEST_LABEL }} نهائيا</DialogTitle
+              >
             </DialogHeader>
 
             <div class="space-y-4">
               <Alert variant="destructive">
                 <AlertTitle>إجراء نهائي لا يمكن التراجع عنه</AlertTitle>
                 <AlertDescription
-                  >سيغلق الرفض النهائي مسار الطلب، ولن يتمكن أي طرف من تعديله أو إعادة
-                  تقديمه.</AlertDescription
+                  >سيغلق تصنيف {{ NOT_ELIGIBLE_LABEL_AR }} النهائي مسار الطلب، ولن يتمكن أي طرف من
+                  تعديله أو إعادة تقديمه.</AlertDescription
                 >
               </Alert>
               <div>
                 <label for="bank-reject-terminal-comment" class="text-sm font-medium">
-                  سبب الرفض النهائي <span class="text-destructive">*</span>
+                  {{ NOT_ELIGIBLE_FINAL_REASON_LABEL }} <span class="text-destructive">*</span>
                 </label>
                 <Textarea
                   id="bank-reject-terminal-comment"
@@ -567,7 +580,11 @@ defineExpose({ triggerPrimaryAction })
                   @click="handleBankRejectTerminalConfirm"
                 >
                   <Loader2 v-if="performingAction" class="me-2 h-4 w-4 animate-spin" />
-                  {{ performingAction ? 'جارٍ رفض الطلب...' : 'رفض الطلب نهائيا' }}
+                  {{
+                    performingAction
+                      ? `جارٍ تصنيف الطلب ${NOT_ELIGIBLE_LABEL_AR}...`
+                      : `${NOT_ELIGIBLE_REQUEST_LABEL} نهائيا`
+                  }}
                 </Button>
               </div>
             </div>
@@ -632,13 +649,15 @@ defineExpose({ triggerPrimaryAction })
 
         <Dialog v-model:open="showRejectForm">
           <DialogTrigger as-child>
-            <Button variant="destructive" class="flex-1" :disabled="performingAction"> رفض </Button>
+            <Button variant="destructive" class="flex-1" :disabled="performingAction">
+              {{ NOT_ELIGIBLE_LABEL_AR }}
+            </Button>
           </DialogTrigger>
           <DialogContent class="max-w-md">
             <DialogHeader>
-              <DialogTitle>رفض الطلب من لجنة المساندة</DialogTitle>
+              <DialogTitle>{{ NOT_ELIGIBLE_REQUEST_LABEL }} من لجنة المساندة</DialogTitle>
               <DialogDescription>
-                سجّل سبب الرفض قبل إنهاء مراجعة لجنة المساندة.
+                سجّل {{ NOT_ELIGIBLE_REASON_LABEL }} قبل إنهاء مراجعة لجنة المساندة.
               </DialogDescription>
             </DialogHeader>
 
@@ -646,18 +665,19 @@ defineExpose({ triggerPrimaryAction })
               <Alert variant="destructive">
                 <AlertTitle>قرار مؤثر في مسار الطلب</AlertTitle>
                 <AlertDescription
-                  >سيتوقف الطلب عند رفض لجنة المساندة حتى يقرر المراجع البنكي إغلاقه نهائيا أو
-                  إعادته للتصحيح.</AlertDescription
+                  >سيتوقف الطلب عند تصنيف لجنة المساندة له {{ NOT_ELIGIBLE_LABEL_AR }} حتى يقرر
+                  المراجع البنكي إغلاقه نهائيا أو إعادته للتصحيح.</AlertDescription
                 >
               </Alert>
               <div>
                 <label for="reject-reason-support" class="text-sm font-medium">
-                  سبب الرفض <span class="text-[var(--color-text-error)]">*</span>
+                  {{ NOT_ELIGIBLE_REASON_LABEL }}
+                  <span class="text-[var(--color-text-error)]">*</span>
                 </label>
                 <Textarea
                   id="reject-reason-support"
                   v-model="rejectReason"
-                  placeholder="اكتب سبب الرفض بلغة واضحة قابلة للتدقيق."
+                  :placeholder="`اكتب ${NOT_ELIGIBLE_REASON_LABEL} بلغة واضحة قابلة للتدقيق.`"
                   class="mt-2 min-h-24"
                   :aria-invalid="!!rejectReasonError"
                 />
@@ -674,7 +694,11 @@ defineExpose({ triggerPrimaryAction })
                   @click="handleRejectConfirm"
                 >
                   <Loader2 v-if="performingAction" class="me-2 h-4 w-4 animate-spin" />
-                  {{ performingAction ? 'جارٍ رفض الطلب...' : 'رفض الطلب' }}
+                  {{
+                    performingAction
+                      ? `جارٍ تصنيف الطلب ${NOT_ELIGIBLE_LABEL_AR}...`
+                      : NOT_ELIGIBLE_REQUEST_LABEL
+                  }}
                 </Button>
               </div>
             </div>
@@ -857,18 +881,19 @@ defineExpose({ triggerPrimaryAction })
           </DialogContent>
         </Dialog>
 
-        <!-- Finalize rejection: irreversible AlertDialog confirmation -->
+        <!-- Finalize Not-Eligible outcome: irreversible AlertDialog confirmation -->
         <AlertDialog>
           <AlertDialogTrigger as-child>
             <Button variant="destructive" class="flex-1" :disabled="performingAction">
-              تثبيت الرفض
+              تثبيت {{ NOT_ELIGIBLE_LABEL_AR }}
             </Button>
           </AlertDialogTrigger>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>تثبيت رفض لجنة المساندة</AlertDialogTitle>
+              <AlertDialogTitle>تثبيت {{ NOT_ELIGIBLE_SUPPORT_LABEL }}</AlertDialogTitle>
               <AlertDialogDescription>
-                سيصبح رفض لجنة المساندة قرارا نهائيا، ولن يمكن استئناف الطلب بعد ذلك.
+                سيصبح تصنيف لجنة المساندة للطلب {{ NOT_ELIGIBLE_LABEL_AR }} قرارا نهائيا، ولن يمكن
+                استئناف الطلب بعد ذلك.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -879,7 +904,11 @@ defineExpose({ triggerPrimaryAction })
                 @click="handleFinalizeRejection"
               >
                 <Loader2 v-if="performingAction" class="me-2 h-4 w-4 animate-spin" />
-                {{ performingAction ? 'جارٍ تثبيت الرفض...' : 'تثبيت الرفض' }}
+                {{
+                  performingAction
+                    ? `جارٍ تثبيت ${NOT_ELIGIBLE_LABEL_AR}...`
+                    : `تثبيت ${NOT_ELIGIBLE_LABEL_AR}`
+                }}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -983,7 +1012,7 @@ defineExpose({ triggerPrimaryAction })
                 </div>
                 <div class="rounded bg-[var(--severity-red)]/10 p-2">
                   <p class="font-section text-xs leading-5 font-medium text-[var(--severity-red)]">
-                    رافض
+                    {{ NOT_ELIGIBLE_LABEL_AR }}
                   </p>
                   <p
                     class="text-xl leading-7 font-semibold text-[var(--severity-red)] tabular-nums"
@@ -1026,7 +1055,7 @@ defineExpose({ triggerPrimaryAction })
                       value="REJECT"
                       class="rounded"
                     />
-                    <span class="text-sm">رفض</span>
+                    <span class="text-sm">{{ NOT_ELIGIBLE_LABEL_AR }}</span>
                   </label>
                 </div>
                 <p v-if="overrideDecisionError" class="text-xs text-[var(--severity-red)]">

@@ -3,6 +3,7 @@ import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 import WorkflowProgress from '../../../components/workflow/WorkflowProgress.vue'
 import { RequestStatus, UserRole } from '../../../types/enums'
+import { NOT_ELIGIBLE_LABEL, NOT_ELIGIBLE_ROUTE_STOPPED_LABEL } from '../../../constants/workflow'
 
 describe('WorkflowProgress', () => {
   it('uses DATA_ENTRY simplified status labels and progress', () => {
@@ -51,8 +52,8 @@ describe('WorkflowProgress', () => {
 
     const currentStep = wrapper.get('[aria-current="true"]')
     const stageLabels = wrapper.findAll('h4').map((label) => label.text())
-    expect(currentStep.text()).toContain('مرفوض')
-    expect(currentStep.text()).toContain('توقف المسار بالرفض')
+    expect(currentStep.text()).toContain(NOT_ELIGIBLE_LABEL)
+    expect(currentStep.text()).toContain(NOT_ELIGIBLE_ROUTE_STOPPED_LABEL)
     expect(currentStep.get('button').classes()).toContain('bg-[var(--severity-red)]')
     expect(currentStep.get('button').classes()).toContain('ring-[var(--severity-red)]/35')
     expect(currentStep.text()).not.toContain('قيد المراجعة')

@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import { RequestStatus, UserRole } from '../../../types/enums'
 import {
+  NOT_ELIGIBLE_LABEL,
+  NOT_ELIGIBLE_SUPPORT_LABEL,
+  NOT_ELIGIBLE_EXECUTIVE_LABEL,
   STATUS_COLORS,
   STATUS_ICONS,
   STATUS_LABELS,
@@ -148,16 +151,23 @@ describe('getBusinessStatus()', () => {
       expect(result.label).toBe('قيد معالجة CBY')
     })
 
-    it('returns "مرفوض" for SUPPORT_REJECTED', () => {
+    it('returns Not Eligible for SUPPORT_REJECTED', () => {
       const result = getBusinessStatus(RequestStatus.SUPPORT_REJECTED, UserRole.DATA_ENTRY)
-      expect(result.label).toBe('مرفوض')
+      expect(result.label).toBe(NOT_ELIGIBLE_SUPPORT_LABEL)
       expect(result.color).toBe('#ff3b30')
     })
 
-    it('returns "مرفوض نهائياً" for EXECUTIVE_REJECTED', () => {
+    it('returns Not Eligible for EXECUTIVE_REJECTED', () => {
       const result = getBusinessStatus(RequestStatus.EXECUTIVE_REJECTED, UserRole.DATA_ENTRY)
-      expect(result.label).toBe('مرفوض نهائياً')
+      expect(result.label).toBe(NOT_ELIGIBLE_EXECUTIVE_LABEL)
       expect(result.color).toBe('#ff3b30')
+    })
+
+    it('does not expose old rejection copy for any Data Entry status label', () => {
+      for (const status of Object.values(RequestStatus)) {
+        const { label } = getBusinessStatus(status, UserRole.DATA_ENTRY)
+        expect(label).not.toMatch(/مرفوض|رفض|Rejected|Declined|Disapproved|Not Approved/)
+      }
     })
 
     it('returns "مكتمل" for EXECUTIVE_APPROVED', () => {
@@ -187,6 +197,21 @@ describe('getBusinessStatus()', () => {
       const result = getBusinessStatus(RequestStatus.SUPPORT_REVIEW_IN_PROGRESS, UserRole.CBY_ADMIN)
       expect(result.label).toBe('قيد المراجعة')
     })
+  })
+})
+
+describe('STATUS_LABELS — Story 17-F Not Eligible terminology', () => {
+  it('uses the canonical Not Eligible phrase for every terminal not-eligible status', () => {
+    for (const status of [
+      RequestStatus.BANK_REJECTED,
+      RequestStatus.SUPPORT_REJECTED,
+      RequestStatus.EXECUTIVE_REJECTED,
+    ]) {
+      expect(STATUS_LABELS[status]).toContain(NOT_ELIGIBLE_LABEL)
+      expect(STATUS_LABELS[status]).not.toMatch(
+        /مرفوض|رفض|Rejected|Declined|Disapproved|Not Approved/,
+      )
+    }
   })
 })
 

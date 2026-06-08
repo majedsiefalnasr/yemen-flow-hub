@@ -11,7 +11,13 @@ import {
 } from '@/components/ui/stepper'
 import type { RequestStageHistory } from '@/types/models'
 import { UserRole } from '@/types/enums'
-import { STATUS_LABELS, DATA_ENTRY_STATUS_LABELS } from '@/constants/workflow'
+import {
+  DATA_ENTRY_STATUS_LABELS,
+  NOT_ELIGIBLE_BANK_LABEL,
+  NOT_ELIGIBLE_EXECUTIVE_LABEL,
+  NOT_ELIGIBLE_SUPPORT_LABEL,
+  STATUS_LABELS,
+} from '@/constants/workflow'
 
 const props = withDefaults(
   defineProps<{
@@ -33,14 +39,14 @@ const ACTION_LABELS: Record<string, string> = {
   bank_approve: 'اعتماد البنك',
   bank_reject: 'إعادة الطلب للتعديل',
   bank_return_to_intake: 'إرجاع الطلب للمدخل',
-  bank_reject_terminal: 'رفض نهائي من البنك',
+  bank_reject_terminal: NOT_ELIGIBLE_BANK_LABEL,
   return_to_entry: 'إرجاع الطلب للمدخل',
-  bank_return_after_support_reject: 'إرجاع الطلب بعد رفض لجنة المساندة',
-  bank_finalize_rejection: 'تثبيت رفض لجنة المساندة',
+  bank_return_after_support_reject: `إرجاع الطلب بعد ${NOT_ELIGIBLE_SUPPORT_LABEL}`,
+  bank_finalize_rejection: `تثبيت ${NOT_ELIGIBLE_SUPPORT_LABEL}`,
   support_claim: 'استلام لجنة المساندة للطلب',
   support_release: 'تحرير مطالبة لجنة المساندة',
   support_approve: 'اعتماد لجنة المساندة',
-  support_reject: 'رفض لجنة المساندة',
+  support_reject: NOT_ELIGIBLE_SUPPORT_LABEL,
   support_return_to_intake: 'إرجاع الطلب للمدخل من لجنة المساندة',
   move_to_support_queue: 'إحالة الطلب إلى لجنة المساندة',
   move_to_swift_queue: 'إحالة الطلب إلى رفع SWIFT',
@@ -48,7 +54,7 @@ const ACTION_LABELS: Record<string, string> = {
   open_voting: 'فتح التصويت التنفيذي',
   close_voting: 'إغلاق التصويت التنفيذي',
   finalize_approved: 'اعتماد القرار التنفيذي',
-  finalize_rejected: 'رفض القرار التنفيذي',
+  finalize_rejected: NOT_ELIGIBLE_EXECUTIVE_LABEL,
   issue_customs: 'إصدار تأكيد المصارفة الخارجية',
   complete: 'إكمال معالجة الطلب',
 }

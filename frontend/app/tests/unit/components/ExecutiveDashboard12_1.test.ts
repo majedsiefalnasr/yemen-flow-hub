@@ -7,6 +7,7 @@ import { describe, it, expect } from 'vitest'
 import { UserRole, RequestStatus } from '../../../types/enums'
 import type { ExecutiveDashboardStats, VotingQueueItem } from '../../../composables/useDashboard'
 import { makeImportRequest } from '../fixtures/request-data'
+import { NOT_ELIGIBLE_EXECUTIVE_LABEL, NOT_ELIGIBLE_LABEL_AR } from '../../../constants/workflow'
 
 function makeVotingItem(overrides: Partial<VotingQueueItem> = {}): VotingQueueItem {
   return {
@@ -87,7 +88,7 @@ describe('ExecutiveDashboard 12.1 — pending-vote action strip', () => {
   })
 })
 
-// --- KPI spec order: My Voting Queue (indigo) / Approval (green) / Rejection (rose) ---
+// --- KPI spec order: My Voting Queue (indigo) / Approval (green) / Not Eligible (rose) ---
 
 type KpiEntry = { label: string; variant: string; tab: string }
 
@@ -96,7 +97,7 @@ function buildKpiConfig(stats: ExecutiveDashboardStats): KpiEntry[] {
   return [
     { label: 'طابور التصويت', variant: pending > 0 ? 'indigo' : 'gray', tab: 'pending_my_vote' },
     { label: 'قرارات اعتماد', variant: 'green', tab: 'approved' },
-    { label: 'قرارات رفض', variant: 'rose', tab: 'rejected' },
+    { label: NOT_ELIGIBLE_EXECUTIVE_LABEL, variant: 'rose', tab: 'rejected' },
   ]
 }
 
@@ -128,8 +129,8 @@ describe('ExecutiveDashboard 12.1 — 3-KPI grid spec order', () => {
     expect(kpis[1]?.tab).toBe('approved')
   })
 
-  it('third KPI is Rejection Decisions (rose)', () => {
-    expect(kpis[2]?.label).toBe('قرارات رفض')
+  it('third KPI is Not Eligible decisions (rose)', () => {
+    expect(kpis[2]?.label).toBe(NOT_ELIGIBLE_EXECUTIVE_LABEL)
     expect(kpis[2]?.variant).toBe('rose')
     expect(kpis[2]?.tab).toBe('rejected')
   })
@@ -159,7 +160,7 @@ function myVoteDisplay(req: VotingQueueItem): MyVoteDisplay {
   if (!isVotingStage) return { text: '—', style: 'dash' }
   if (!req.my_vote) return { text: 'لم تصوّت بعد', style: 'indigo-chip' }
   if (req.my_vote === 'approve') return { text: 'اعتمدت', style: 'green-chip' }
-  return { text: 'رفضت', style: 'rose-chip' }
+  return { text: NOT_ELIGIBLE_LABEL_AR, style: 'rose-chip' }
 }
 
 describe('ExecutiveDashboard 12.1 — My Vote column 4 states', () => {
@@ -184,10 +185,10 @@ describe('ExecutiveDashboard 12.1 — My Vote column 4 states', () => {
     expect(display.style).toBe('green-chip')
   })
 
-  it('shows "رفضت" (rose) when vote is reject', () => {
+  it('shows Not Eligible (rose) when vote is reject', () => {
     const req = makeVotingItem({ status: RequestStatus.EXECUTIVE_VOTING_OPEN, my_vote: 'reject' })
     const display = myVoteDisplay(req)
-    expect(display.text).toBe('رفضت')
+    expect(display.text).toBe(NOT_ELIGIBLE_LABEL_AR)
     expect(display.style).toBe('rose-chip')
   })
 })

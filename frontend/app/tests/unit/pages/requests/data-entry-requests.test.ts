@@ -6,6 +6,8 @@
 import { describe, it, expect } from 'vitest'
 import { RequestStatus, UserRole } from '../../../../types/enums'
 import {
+  NOT_ELIGIBLE_SUPPORT_LABEL,
+  NOT_ELIGIBLE_EXECUTIVE_LABEL,
   ROLE_BUCKETS,
   DATA_ENTRY_STATUS_LABELS,
   CBY_BANK_FILTER_ROLES,
@@ -305,11 +307,15 @@ describe('DATA_ENTRY_STATUS_LABELS — CBY internals hidden', () => {
     expect(DATA_ENTRY_STATUS_LABELS[RequestStatus.FX_CONFIRMATION_PENDING]).toBe('مكتمل')
   })
 
-  it('EXECUTIVE_REJECTED maps to مرفوض نهائياً', () => {
-    expect(DATA_ENTRY_STATUS_LABELS[RequestStatus.EXECUTIVE_REJECTED]).toBe('مرفوض نهائياً')
+  it('EXECUTIVE_REJECTED maps to Not Eligible', () => {
+    expect(DATA_ENTRY_STATUS_LABELS[RequestStatus.EXECUTIVE_REJECTED]).toBe(
+      NOT_ELIGIBLE_EXECUTIVE_LABEL,
+    )
   })
 
-  it('SUPPORT_REJECTED maps to مرفوض', () => {
-    expect(DATA_ENTRY_STATUS_LABELS[RequestStatus.SUPPORT_REJECTED]).toBe('مرفوض')
+  it('SUPPORT_REJECTED maps to Not Eligible', () => {
+    expect(DATA_ENTRY_STATUS_LABELS[RequestStatus.SUPPORT_REJECTED]).toBe(
+      NOT_ELIGIBLE_SUPPORT_LABEL,
+    )
   })
 })

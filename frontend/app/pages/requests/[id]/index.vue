@@ -46,7 +46,13 @@ import {
   canDownloadSignedFxDoc,
   canViewConfirmationRequestPreview,
 } from '@/composables/useDocumentPermissions'
-import { STATUS_LABELS, ROLE_LABELS } from '@/constants/workflow'
+import {
+  NOT_ELIGIBLE_LABEL_AR,
+  NOT_ELIGIBLE_SUPPORT_LABEL,
+  NOT_ELIGIBLE_REQUEST_LABEL,
+  STATUS_LABELS,
+  ROLE_LABELS,
+} from '@/constants/workflow'
 import StatusBadge from '@/components/shared/StatusBadge.vue'
 import LockedBanner from '@/components/banners/LockedBanner.vue'
 import CorrectionBanner from '@/components/banners/CorrectionBanner.vue'
@@ -1770,10 +1776,12 @@ async function handleCloneConfirm() {
                   <line x1="12" y1="17" x2="12.01" y2="17" />
                 </svg>
                 <div class="min-w-0 flex-1">
-                  <p class="text-foreground text-sm font-semibold">رُفض الطلب من لجنة المساندة</p>
+                  <p class="text-foreground text-sm font-semibold">
+                    {{ NOT_ELIGIBLE_SUPPORT_LABEL }}
+                  </p>
                   <p class="text-muted-foreground mt-0.5 text-xs">
-                    يجب اتخاذ قرار: إبقاء الرفض نهائياً أو إعادة الطلب للمدخل للتعديل وإعادة
-                    التقديم.
+                    يجب اتخاذ قرار: إبقاء تصنيف {{ NOT_ELIGIBLE_LABEL_AR }} نهائياً أو إعادة الطلب
+                    للمدخل للتعديل وإعادة التقديم.
                   </p>
                 </div>
               </div>
@@ -2407,7 +2415,7 @@ async function handleCloneConfirm() {
                       </dd>
                     </div>
                     <div class="detail-row">
-                      <dt class="detail-label">رفض الطلب</dt>
+                      <dt class="detail-label">{{ NOT_ELIGIBLE_REQUEST_LABEL }}</dt>
                       <dd class="detail-value">
                         {{ actorLabel(request.rejected_by_user, request.rejected_by) }}
                       </dd>

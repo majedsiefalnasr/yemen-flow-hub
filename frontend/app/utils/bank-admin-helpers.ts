@@ -12,14 +12,15 @@ import type {
   BankAdminDashboardStats,
   BankAdminDashboardStatsExtended,
 } from '../composables/useDashboard'
+import { NOT_ELIGIBLE_LABEL_AR } from '../constants/workflow'
 
 // Monthly Trend chart geometry — used for SVG viewBox and point coords.
 export const CHART_W = 480
 export const CHART_H = 80
 export const CHART_PAD = 8
 
-// Bank rejection rate (%) above which the Rejected KPI gets a rose left-border
-// highlight and the Operational Health strip considers "high rejections" an
+// Bank Not-Eligible rate (%) above which the KPI gets a rose left-border
+// highlight and the Operational Health strip considers the rate an
 // alert condition.
 export const REJECTION_THRESHOLD = 20
 
@@ -91,7 +92,7 @@ export function calcHealthIssues(
   if (!stats) return []
   const issues: string[] = []
   const rate = calcRejectionRate(stats)
-  if (rate > REJECTION_THRESHOLD) issues.push(`معدل الرفض مرتفع: ${rate}%`)
+  if (rate > REJECTION_THRESHOLD) issues.push(`معدل ${NOT_ELIGIBLE_LABEL_AR} مرتفع: ${rate}%`)
   if ((stats.stalled_at_cby_count ?? 0) > 0)
     issues.push(`${stats.stalled_at_cby_count} طلب متوقف لدى البنك المركزي`)
   if (stats.missing_bank_reviewer_coverage) issues.push('لا يوجد مراجع بنك نشط لاستلام الطلبات')

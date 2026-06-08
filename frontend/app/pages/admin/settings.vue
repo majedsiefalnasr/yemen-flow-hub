@@ -458,7 +458,7 @@ onMounted(async () => {
                   "
                 >
                   <option value="warn">تحذير (warn): إنشاء الطلب مع تسجيل تحذير</option>
-                  <option value="block">حظر (block): رفض الطلب المكرر</option>
+                  <option value="block">حظر (block): منع إنشاء الطلب المكرر</option>
                 </select>
               </div>
             </template>

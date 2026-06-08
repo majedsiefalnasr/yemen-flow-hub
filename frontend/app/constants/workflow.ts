@@ -13,6 +13,18 @@ import { TRADER_MANAGEMENT_ROLES } from '../types/trader'
 import type { IconName } from '../utils/icon-map'
 import { NAV_SURFACE_ROUTES, rolesForSurface } from './role-surfaces'
 
+export const NOT_ELIGIBLE_LABEL_AR = 'غير مستوفي للشروط'
+export const NOT_ELIGIBLE_LABEL = `${NOT_ELIGIBLE_LABEL_AR} / Not Eligible`
+export const NOT_ELIGIBLE_BANK_LABEL = `${NOT_ELIGIBLE_LABEL} (البنك)`
+export const NOT_ELIGIBLE_SUPPORT_LABEL = `${NOT_ELIGIBLE_LABEL} (لجنة المساندة)`
+export const NOT_ELIGIBLE_EXECUTIVE_LABEL = `${NOT_ELIGIBLE_LABEL} (اللجنة التنفيذية)`
+export const NOT_ELIGIBLE_REASON_LABEL = `سبب ${NOT_ELIGIBLE_LABEL_AR}`
+export const NOT_ELIGIBLE_FINAL_REASON_LABEL = `سبب ${NOT_ELIGIBLE_LABEL_AR} النهائي`
+export const NOT_ELIGIBLE_BEFORE_SWIFT_LABEL = `${NOT_ELIGIBLE_LABEL} قبل السويفت`
+export const NOT_ELIGIBLE_REQUEST_LABEL = `طلب ${NOT_ELIGIBLE_LABEL_AR}`
+export const NOT_ELIGIBLE_ROUTE_STOPPED_LABEL = `توقف المسار: ${NOT_ELIGIBLE_LABEL_AR}`
+export const NOT_ELIGIBLE_REVIEW_ACTION_LABEL = `مراجعة سبب ${NOT_ELIGIBLE_LABEL_AR}`
+
 /** Hex color for each status — matches UX-DR38 semantic color mapping */
 export const STATUS_COLORS: Record<RequestStatus, string> = {
   [RequestStatus.DRAFT]: '#8e8e93',
@@ -364,18 +376,18 @@ export const DATA_ENTRY_STATUS_LABELS: Partial<Record<RequestStatus, string>> = 
   [RequestStatus.SUPPORT_REVIEW_PENDING]: 'قيد معالجة CBY',
   [RequestStatus.SUPPORT_REVIEW_IN_PROGRESS]: 'قيد معالجة CBY',
   [RequestStatus.SUPPORT_APPROVED]: 'قيد معالجة CBY',
-  [RequestStatus.SUPPORT_REJECTED]: 'مرفوض',
+  [RequestStatus.SUPPORT_REJECTED]: NOT_ELIGIBLE_SUPPORT_LABEL,
   [RequestStatus.WAITING_FOR_SWIFT]: 'قيد معالجة CBY',
   [RequestStatus.SWIFT_UPLOADED]: 'قيد معالجة CBY',
   [RequestStatus.WAITING_FOR_VOTING_OPEN]: 'قيد معالجة CBY',
   [RequestStatus.EXECUTIVE_VOTING_OPEN]: 'قيد معالجة CBY',
   [RequestStatus.EXECUTIVE_VOTING_CLOSED]: 'قيد معالجة CBY',
   [RequestStatus.EXECUTIVE_APPROVED]: 'مكتمل',
-  [RequestStatus.EXECUTIVE_REJECTED]: 'مرفوض نهائياً',
+  [RequestStatus.EXECUTIVE_REJECTED]: NOT_ELIGIBLE_EXECUTIVE_LABEL,
   [RequestStatus.CUSTOMS_DECLARATION_ISSUED]: 'مكتمل',
   [RequestStatus.FX_CONFIRMATION_PENDING]: 'مكتمل',
   [RequestStatus.COMPLETED]: 'مكتمل',
-  [RequestStatus.BANK_REJECTED]: 'مرفوض (البنك)',
+  [RequestStatus.BANK_REJECTED]: NOT_ELIGIBLE_BANK_LABEL,
 }
 
 /** Full internal status labels for bank/CBY roles */
@@ -391,18 +403,18 @@ export const STATUS_LABELS: Record<RequestStatus, string> = {
   [RequestStatus.SUPPORT_REVIEW_PENDING]: 'بانتظار المراجعة',
   [RequestStatus.SUPPORT_REVIEW_IN_PROGRESS]: 'قيد المراجعة',
   [RequestStatus.SUPPORT_APPROVED]: 'موافقة لجنة المساندة',
-  [RequestStatus.SUPPORT_REJECTED]: 'رفض لجنة المساندة',
+  [RequestStatus.SUPPORT_REJECTED]: NOT_ELIGIBLE_SUPPORT_LABEL,
   [RequestStatus.WAITING_FOR_SWIFT]: 'انتظار رفع SWIFT',
   [RequestStatus.SWIFT_UPLOADED]: 'تم رفع SWIFT',
   [RequestStatus.WAITING_FOR_VOTING_OPEN]: 'انتظار فتح التصويت',
   [RequestStatus.EXECUTIVE_VOTING_OPEN]: 'التصويت جارٍ',
   [RequestStatus.EXECUTIVE_VOTING_CLOSED]: 'التصويت مغلق',
   [RequestStatus.EXECUTIVE_APPROVED]: 'موافقة تنفيذية',
-  [RequestStatus.EXECUTIVE_REJECTED]: 'رفض نهائي',
+  [RequestStatus.EXECUTIVE_REJECTED]: NOT_ELIGIBLE_EXECUTIVE_LABEL,
   [RequestStatus.CUSTOMS_DECLARATION_ISSUED]: 'تأكيد المصارفة الخارجية صادر',
   [RequestStatus.FX_CONFIRMATION_PENDING]: 'بانتظار تأكيد المصارفة الخارجية',
   [RequestStatus.COMPLETED]: 'مكتمل',
-  [RequestStatus.BANK_REJECTED]: 'مرفوض (البنك)',
+  [RequestStatus.BANK_REJECTED]: NOT_ELIGIBLE_BANK_LABEL,
 }
 
 /**
@@ -512,7 +524,7 @@ export const ROLE_BUCKETS: Partial<Record<UserRole, StageBucket[]>> = {
     },
     {
       key: 'rejected',
-      label: 'مرفوض',
+      label: NOT_ELIGIBLE_LABEL,
       statuses: [
         RequestStatus.SUPPORT_REJECTED,
         RequestStatus.EXECUTIVE_REJECTED,
@@ -529,7 +541,7 @@ export const ROLE_BUCKETS: Partial<Record<UserRole, StageBucket[]>> = {
     },
     {
       key: 'support_rejected',
-      label: 'رفض من المساندة',
+      label: NOT_ELIGIBLE_SUPPORT_LABEL,
       statuses: [RequestStatus.SUPPORT_REJECTED],
     },
     {
@@ -569,7 +581,7 @@ export const ROLE_BUCKETS: Partial<Record<UserRole, StageBucket[]>> = {
     },
     {
       key: 'rejected',
-      label: 'مرفوض',
+      label: NOT_ELIGIBLE_LABEL,
       statuses: [RequestStatus.BANK_REJECTED, RequestStatus.EXECUTIVE_REJECTED],
     },
   ],
@@ -619,7 +631,7 @@ export const ROLE_BUCKETS: Partial<Record<UserRole, StageBucket[]>> = {
     },
     {
       key: 'rejected',
-      label: 'مرفوض',
+      label: NOT_ELIGIBLE_LABEL,
       statuses: [
         RequestStatus.SUPPORT_REJECTED,
         RequestStatus.EXECUTIVE_REJECTED,
@@ -649,7 +661,7 @@ export const ROLE_BUCKETS: Partial<Record<UserRole, StageBucket[]>> = {
     },
     {
       key: 'rejected',
-      label: 'رُفض قبل السويفت',
+      label: NOT_ELIGIBLE_BEFORE_SWIFT_LABEL,
       statuses: [
         RequestStatus.EXECUTIVE_REJECTED,
         RequestStatus.SUPPORT_REJECTED,
@@ -680,7 +692,11 @@ export const ROLE_BUCKETS: Partial<Record<UserRole, StageBucket[]>> = {
         request.claimed_by.id !== currentUserId,
     },
     { key: 'approved', label: 'اعتُمدت', statuses: [RequestStatus.SUPPORT_APPROVED] },
-    { key: 'rejected', label: 'مرفوض', statuses: [RequestStatus.SUPPORT_REJECTED] },
+    {
+      key: 'rejected',
+      label: NOT_ELIGIBLE_SUPPORT_LABEL,
+      statuses: [RequestStatus.SUPPORT_REJECTED],
+    },
   ],
   // Spec order: pending_my_vote first (most actionable), voted_by_me, pending_open, voting_open, voting_closed, approved, rejected, post_approval, all
   [UserRole.EXECUTIVE_MEMBER]: [
@@ -718,7 +734,11 @@ export const ROLE_BUCKETS: Partial<Record<UserRole, StageBucket[]>> = {
       statuses: [RequestStatus.EXECUTIVE_VOTING_CLOSED],
     },
     { key: 'approved', label: 'معتمد', statuses: [RequestStatus.EXECUTIVE_APPROVED] },
-    { key: 'rejected', label: 'مرفوض', statuses: [RequestStatus.EXECUTIVE_REJECTED] },
+    {
+      key: 'rejected',
+      label: NOT_ELIGIBLE_EXECUTIVE_LABEL,
+      statuses: [RequestStatus.EXECUTIVE_REJECTED],
+    },
     {
       key: 'post_approval',
       label: 'ما بعد الاعتماد',
@@ -811,7 +831,7 @@ export const ROLE_BUCKETS: Partial<Record<UserRole, StageBucket[]>> = {
     { key: 'fx_pending', label: 'تأكيد المصارفة', statuses: [RequestStatus.EXECUTIVE_APPROVED] },
     {
       key: 'rejected',
-      label: 'مرفوض',
+      label: NOT_ELIGIBLE_LABEL,
       statuses: [
         RequestStatus.BANK_REJECTED,
         RequestStatus.SUPPORT_REJECTED,

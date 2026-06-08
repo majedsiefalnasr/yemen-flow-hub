@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import { RequestStatus, UserRole } from '../../../types/enums'
 import {
+  NOT_ELIGIBLE_LABEL,
+  NOT_ELIGIBLE_SUPPORT_LABEL,
+  NOT_ELIGIBLE_EXECUTIVE_LABEL,
   ROLE_BUCKETS,
   CBY_BANK_FILTER_ROLES,
   CURRENCY_OPTIONS,
@@ -65,13 +68,16 @@ describe('ROLE_BUCKETS', () => {
     }
   })
 
-  it('DATA_ENTRY buckets include draft, submitted, processing, completed, rejected', () => {
+  it('DATA_ENTRY buckets include draft, submitted, processing, completed, not eligible', () => {
     const keys = ROLE_BUCKETS[UserRole.DATA_ENTRY]!.map((b) => b.key)
     expect(keys).toContain('draft')
     expect(keys).toContain('submitted')
     expect(keys).toContain('processing')
     expect(keys).toContain('completed')
     expect(keys).toContain('rejected')
+    expect(ROLE_BUCKETS[UserRole.DATA_ENTRY]!.find((b) => b.key === 'rejected')!.label).toBe(
+      NOT_ELIGIBLE_LABEL,
+    )
   })
 
   it('SUPPORT_COMMITTEE buckets cover claim lifecycle statuses', () => {
@@ -90,6 +96,18 @@ describe('ROLE_BUCKETS', () => {
     expect(allStatuses).toContain(RequestStatus.EXECUTIVE_VOTING_CLOSED)
     expect(allStatuses).toContain(RequestStatus.EXECUTIVE_APPROVED)
     expect(allStatuses).toContain(RequestStatus.EXECUTIVE_REJECTED)
+  })
+
+  it('uses Not Eligible labels for rejected buckets', () => {
+    expect(ROLE_BUCKETS[UserRole.SUPPORT_COMMITTEE]!.find((b) => b.key === 'rejected')!.label).toBe(
+      NOT_ELIGIBLE_SUPPORT_LABEL,
+    )
+    expect(ROLE_BUCKETS[UserRole.EXECUTIVE_MEMBER]!.find((b) => b.key === 'rejected')!.label).toBe(
+      NOT_ELIGIBLE_EXECUTIVE_LABEL,
+    )
+    expect(ROLE_BUCKETS[UserRole.CBY_ADMIN]!.find((b) => b.key === 'rejected')!.label).toBe(
+      NOT_ELIGIBLE_LABEL,
+    )
   })
 
   it('SWIFT_OFFICER buckets cover post-voting SWIFT and finalization lifecycle', () => {

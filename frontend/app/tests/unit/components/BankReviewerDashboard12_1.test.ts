@@ -7,6 +7,7 @@ import { UserRole, RequestStatus } from '../../../types/enums'
 import type { ImportRequest } from '../../../types/models'
 import type { BankReviewerDashboardStats } from '../../../composables/useDashboard'
 import { makeImportRequest } from '../fixtures/request-data'
+import { NOT_ELIGIBLE_SUPPORT_LABEL } from '../../../constants/workflow'
 
 function makeRequest(overrides: Partial<ImportRequest> = {}): ImportRequest {
   return makeImportRequest({
@@ -70,7 +71,7 @@ describe('BankReviewerDashboard 12.1 — SUPPORT_REJECTED action strip', () => {
   })
 })
 
-// --- KPI spec order: Pending Review / Rejected by Support / At CBY / Approved-Completed ---
+// --- KPI spec order: Pending Review / Not Eligible by Support / At CBY / Approved-Completed ---
 
 type KpiEntry = { label: string; variant: string }
 
@@ -78,7 +79,7 @@ function buildKpiConfig(stats: BankReviewerDashboardStats): KpiEntry[] {
   return [
     { label: 'بانتظار المراجعة', variant: (stats.pending_review ?? 0) > 0 ? 'amber' : 'gray' },
     {
-      label: 'مرفوضة من لجنة المساندة',
+      label: NOT_ELIGIBLE_SUPPORT_LABEL,
       variant: (stats.returned_by_support ?? 0) > 0 ? 'rose' : 'gray',
     },
     { label: 'عند CBY', variant: 'blue' },
@@ -101,8 +102,8 @@ describe('BankReviewerDashboard 12.1 — KPI spec order', () => {
     expect(kpis[0]?.variant).toBe('amber')
   })
 
-  it('second KPI is Rejected by Support (rose when > 0)', () => {
-    expect(kpis[1]?.label).toBe('مرفوضة من لجنة المساندة')
+  it('second KPI is Not Eligible by Support (rose when > 0)', () => {
+    expect(kpis[1]?.label).toBe(NOT_ELIGIBLE_SUPPORT_LABEL)
     expect(kpis[1]?.variant).toBe('rose')
   })
 

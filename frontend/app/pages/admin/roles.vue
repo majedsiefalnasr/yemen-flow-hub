@@ -2,7 +2,12 @@
 import { h } from 'vue'
 import { createColumnHelper } from '@tanstack/vue-table'
 import PageHeader from '@/components/layout/PageHeader.vue'
-import { ROLE_LABELS, ALL_ROLES, ROUTE_ROLE_MAP } from '@/constants/workflow'
+import {
+  ROLE_LABELS,
+  ALL_ROLES,
+  ROUTE_ROLE_MAP,
+  NOT_ELIGIBLE_REQUEST_LABEL,
+} from '@/constants/workflow'
 import { UserRole } from '@/types/enums'
 import { useAuthStore } from '@/stores/auth.store'
 import { Card } from '@/components/ui/card'
@@ -48,7 +53,7 @@ const ALL_PERMISSIONS: Permission[] = [
   },
   {
     key: 'request.reject',
-    label: 'رفض الطلبات',
+    label: NOT_ELIGIBLE_REQUEST_LABEL,
     roles: [
       UserRole.BANK_REVIEWER,
       UserRole.BANK_ADMIN,

@@ -255,7 +255,7 @@ describe('new.vue clone_of flow', () => {
     const wrapper = mount(newRequestPage, {
       global: {
         stubs: {
-          RequestWizard: true,
+          RequestFormTabs: true,
         },
       },
     })
@@ -276,7 +276,7 @@ describe('new.vue clone_of flow', () => {
     const wrapper = mount(newRequestPage, {
       global: {
         stubs: {
-          RequestWizard: true,
+          RequestFormTabs: true,
         },
       },
     })
@@ -291,7 +291,7 @@ describe('new.vue clone_of flow', () => {
     const wrapper = mount(newRequestPage, {
       global: {
         stubs: {
-          RequestWizard: {
+          RequestFormTabs: {
             template: '<div data-testid="request-wizard">RequestWizard</div>',
           },
         },

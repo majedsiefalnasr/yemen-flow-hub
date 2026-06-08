@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Lock, Eye, Clock, Ban } from 'lucide-vue-next'
 import { Alert, AlertDescription } from '../ui/alert'
+import { NOT_ELIGIBLE_LABEL_AR } from '../../constants/workflow'
 
 type LockedBannerVariant = 'locked' | 'readonly' | 'pending' | 'bank_rejected'
 
@@ -30,7 +31,7 @@ const VARIANT_CONFIG: Record<
   },
   bank_rejected: {
     icon: Ban,
-    message: 'رفض البنك هذا الطلب نهائيا، لذلك لا يمكن اتخاذ أي إجراء عليه.',
+    message: `صنّف البنك هذا الطلب ${NOT_ELIGIBLE_LABEL_AR} نهائيا، لذلك لا يمكن اتخاذ أي إجراء عليه.`,
     variant: 'destructive',
   },
 }

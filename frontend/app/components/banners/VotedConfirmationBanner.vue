@@ -2,6 +2,7 @@
 import { CheckCircle2 } from 'lucide-vue-next'
 import { Alert, AlertDescription } from '../ui/alert'
 import { Badge } from '../ui/badge'
+import { NOT_ELIGIBLE_LABEL_AR } from '../../constants/workflow'
 
 defineProps<{
   vote: 'approve' | 'reject'
@@ -27,7 +28,7 @@ function formatTime(iso: string | null | undefined): string {
             : 'font-semibold text-rose-600'
         "
       >
-        {{ vote === 'approve' ? 'موافقة' : 'رفض' }}
+        {{ vote === 'approve' ? 'موافقة' : NOT_ELIGIBLE_LABEL_AR }}
       </span>
     </AlertDescription>
     <Badge variant="secondary" class="flex-shrink-0">تم التصويت</Badge>

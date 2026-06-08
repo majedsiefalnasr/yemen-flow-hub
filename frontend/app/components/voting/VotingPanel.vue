@@ -11,6 +11,11 @@ import { Button } from '../ui/button'
 import { Alert, AlertDescription } from '../ui/alert'
 import { Skeleton } from '../ui/skeleton'
 import LoadErrorAlert from '../shared/LoadErrorAlert.vue'
+import {
+  NOT_ELIGIBLE_LABEL_AR,
+  NOT_ELIGIBLE_REASON_LABEL,
+  STATUS_LABELS,
+} from '../../constants/workflow'
 
 const props = withDefaults(
   defineProps<{
@@ -86,7 +91,7 @@ function voteLabel(vote: VoteType): string {
     case VoteType.APPROVE:
       return 'موافقة'
     case VoteType.REJECT:
-      return 'رفض'
+      return NOT_ELIGIBLE_LABEL_AR
     case VoteType.ABSTAIN:
       return 'امتناع'
     case VoteType.AUTO_ABSTAIN_TIMEOUT:
@@ -124,16 +129,9 @@ function maskedVoteChipClasses(voter: RequestVote): string {
   return 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#5856d6]/10 text-[#5856d6]'
 }
 
-// Display-only relabel for new-rule sessions: a REJECT vote is shown as
-// "غير مستوفي للشروط / Not Eligible". The stored VoteType is unchanged (D6/D8).
-function displayVoteLabel(vote: VoteType): string {
-  if (isV2.value && vote === VoteType.REJECT) return 'غير مستوفي للشروط'
-  return voteLabel(vote)
-}
-
 function pendingVoteLabel(vote: VoteType): string {
   if (vote === VoteType.AUTO_ABSTAIN_TIMEOUT) return ''
-  return displayVoteLabel(vote)
+  return voteLabel(vote)
 }
 
 function selectVote(vote: VoteType) {
@@ -154,7 +152,7 @@ async function confirmVote() {
   if (!pendingVote.value) return
 
   if (pendingVote.value === VoteType.REJECT && !justification.value.trim()) {
-    justificationError.value = 'اكتب سبب الرفض قبل تسجيل صوت رافض.'
+    justificationError.value = `اكتب ${NOT_ELIGIBLE_REASON_LABEL} قبل تسجيل الصوت.`
     return
   }
 
@@ -242,7 +240,11 @@ onMounted(async () => {
             : 'bg-destructive/10 text-destructive border-destructive border'
         "
       >
-        {{ requestStatus === RequestStatus.EXECUTIVE_APPROVED ? 'معتمد' : 'مرفوض' }}
+        {{
+          requestStatus === RequestStatus.EXECUTIVE_APPROVED
+            ? 'معتمد'
+            : STATUS_LABELS[RequestStatus.EXECUTIVE_REJECTED]
+        }}
       </div>
 
       <!-- Vote action error -->
@@ -274,9 +276,9 @@ onMounted(async () => {
 
           <!-- Reject bar -->
           <div class="flex items-center gap-3">
-            <span class="text-destructive w-28 flex-shrink-0 text-right text-xs font-medium"
-              >رفض</span
-            >
+            <span class="text-destructive w-28 flex-shrink-0 text-right text-xs font-medium">
+              {{ NOT_ELIGIBLE_LABEL_AR }}
+            </span>
             <div class="bg-muted h-2.5 flex-1 overflow-hidden rounded-full">
               <div
                 class="bg-destructive h-full rounded-full transition-all"
@@ -407,12 +409,12 @@ onMounted(async () => {
             variant="destructive"
             class="h-11 flex-1"
             @click="selectVote(VoteType.REJECT)"
-            >غير مستوفي للشروط</Button
+            >{{ NOT_ELIGIBLE_LABEL_AR }}</Button
           >
           <template v-else>
-            <Button variant="destructive" class="h-11 flex-1" @click="selectVote(VoteType.REJECT)"
-              >رفض</Button
-            >
+            <Button variant="destructive" class="h-11 flex-1" @click="selectVote(VoteType.REJECT)">
+              {{ NOT_ELIGIBLE_LABEL_AR }}
+            </Button>
             <Button variant="outline" class="h-11 flex-1" @click="selectVote(VoteType.ABSTAIN)"
               >امتناع</Button
             >
@@ -433,14 +435,15 @@ onMounted(async () => {
         <!-- Justification textarea (required for REJECT, optional for others) -->
         <div v-if="pendingVote === VoteType.REJECT" class="flex flex-col gap-1.5">
           <label class="text-muted-foreground text-xs font-medium" for="vote-justification">
-            سبب الرفض <span class="text-destructive" aria-hidden="true">*</span>
+            {{ NOT_ELIGIBLE_REASON_LABEL }}
+            <span class="text-destructive" aria-hidden="true">*</span>
           </label>
           <textarea
             id="vote-justification"
             v-model="justification"
             class="border-border text-foreground resize-none rounded-lg border p-2.5 text-sm font-normal focus:border-indigo-600 focus:outline-none"
             rows="3"
-            placeholder="اكتب سبب الرفض الذي سيظهر في سجل التصويت."
+            :placeholder="`اكتب ${NOT_ELIGIBLE_REASON_LABEL} الذي سيظهر في سجل التصويت.`"
             :aria-invalid="!!justificationError"
           />
           <p v-if="justificationError" class="text-destructive text-xs">{{ justificationError }}</p>
@@ -508,8 +511,7 @@ onMounted(async () => {
           <polyline points="20 6 9 17 4 12" />
         </svg>
         <AlertDescription class="text-success text-sm"
-          >لقد صوّتت بـ
-          <strong>{{ displayVoteLabel(detail.my_vote.vote) }}</strong></AlertDescription
+          >لقد صوّتت بـ <strong>{{ voteLabel(detail.my_vote.vote) }}</strong></AlertDescription
         >
       </Alert>
 

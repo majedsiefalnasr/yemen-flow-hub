@@ -2,6 +2,7 @@ import { vi, describe, it, expect, beforeEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 import { RequestStatus, UserRole } from '../../../types/enums'
 import { makeImportRequest, makeRequestDocument } from '../fixtures/request-data'
+import { NOT_ELIGIBLE_LABEL_AR } from '../../../constants/workflow'
 
 const mockPerformWorkflowAction = vi.fn()
 const mockFetchRequestDocuments = vi.fn()
@@ -190,13 +191,13 @@ describe('requests.store — bankRejectTerminal', () => {
     mockBankRejectTerminal.mockResolvedValue({
       ...REQUEST_FIXTURE,
       status: RequestStatus.BANK_REJECTED,
-      bank_reject_comment: 'رفض نهائي',
+      bank_reject_comment: `قرار نهائي ${NOT_ELIGIBLE_LABEL_AR}`,
     })
 
     const store = useRequestsStore()
-    await store.bankRejectTerminal(42, 'رفض نهائي')
+    await store.bankRejectTerminal(42, `قرار نهائي ${NOT_ELIGIBLE_LABEL_AR}`)
 
-    expect(mockBankRejectTerminal).toHaveBeenCalledWith(42, 'رفض نهائي')
+    expect(mockBankRejectTerminal).toHaveBeenCalledWith(42, `قرار نهائي ${NOT_ELIGIBLE_LABEL_AR}`)
     expect(store.currentRequest?.status).toBe(RequestStatus.BANK_REJECTED)
     expect(store.performingAction).toBe(false)
   })
@@ -205,9 +206,11 @@ describe('requests.store — bankRejectTerminal', () => {
     mockBankRejectTerminal.mockRejectedValue(new Error('Forbidden'))
 
     const store = useRequestsStore()
-    await expect(store.bankRejectTerminal(42, 'رفض نهائي')).rejects.toThrow('Forbidden')
+    await expect(
+      store.bankRejectTerminal(42, `قرار نهائي ${NOT_ELIGIBLE_LABEL_AR}`),
+    ).rejects.toThrow('Forbidden')
 
-    expect(store.error).toBe('تعذّر تنفيذ الرفض النهائي.')
+    expect(store.error).toBe(`تعذّر تنفيذ تصنيف ${NOT_ELIGIBLE_LABEL_AR} النهائي.`)
     expect(store.performingAction).toBe(false)
   })
 })

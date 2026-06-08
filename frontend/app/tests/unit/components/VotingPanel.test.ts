@@ -5,6 +5,7 @@ import { describe, it, expect } from 'vitest'
 import { VoteType, RequestStatus, UserRole, VotingSessionStatus } from '../../../types/enums'
 import type { RequestVote, VotingDetail, VotingTally, ImportRequest } from '../../../types/models'
 import { makeImportRequest } from '../fixtures/request-data'
+import { NOT_ELIGIBLE_LABEL_AR } from '../../../constants/workflow'
 
 function makeRequest(overrides: Partial<ImportRequest> = {}): ImportRequest {
   return makeImportRequest({
@@ -97,7 +98,7 @@ function voteLabel(vote: VoteType): string {
     case VoteType.APPROVE:
       return 'موافق'
     case VoteType.REJECT:
-      return 'رافض'
+      return NOT_ELIGIBLE_LABEL_AR
     case VoteType.ABSTAIN:
       return 'ممتنع'
     case VoteType.AUTO_ABSTAIN_TIMEOUT:
@@ -242,7 +243,7 @@ describe('VotingPanel — vote labels', () => {
   })
 
   it('labels REJECT correctly', () => {
-    expect(voteLabel(VoteType.REJECT)).toBe('رافض')
+    expect(voteLabel(VoteType.REJECT)).toBe(NOT_ELIGIBLE_LABEL_AR)
   })
 
   it('labels ABSTAIN correctly', () => {
@@ -429,8 +430,7 @@ function showTieBreakV2(
   return tally.approve_count === tally.reject_count && tally.approve_count > 0
 }
 
-function displayVoteLabel(vote: VoteType, votingRuleVersion: number): string {
-  if (isV2Rule(votingRuleVersion) && vote === VoteType.REJECT) return 'غير مستوفي للشروط'
+function displayVoteLabel(vote: VoteType): string {
   return voteLabel(vote)
 }
 
@@ -454,13 +454,12 @@ describe('VotingPanel — Story 17-E.3 era gate (votingRuleVersion)', () => {
     expect(showTieBreakV2(lopsided, RequestStatus.EXECUTIVE_VOTING_OPEN, 1)).toBe(false)
   })
 
-  it('relabels a REJECT vote as "غير مستوفي للشروط" under v2 only', () => {
-    expect(displayVoteLabel(VoteType.REJECT, 2)).toBe('غير مستوفي للشروط')
-    expect(displayVoteLabel(VoteType.REJECT, 1)).toBe('رافض')
+  it('relabels a REJECT vote as Not Eligible for display without changing VoteType', () => {
+    expect(displayVoteLabel(VoteType.REJECT)).toBe(NOT_ELIGIBLE_LABEL_AR)
+    expect(VoteType.REJECT).toBe('REJECT')
   })
 
   it('leaves the APPROVE label unchanged across both eras', () => {
-    expect(displayVoteLabel(VoteType.APPROVE, 1)).toBe('موافق')
-    expect(displayVoteLabel(VoteType.APPROVE, 2)).toBe('موافق')
+    expect(displayVoteLabel(VoteType.APPROVE)).toBe('موافق')
   })
 })

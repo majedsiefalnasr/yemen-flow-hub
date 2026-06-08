@@ -58,6 +58,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { NOT_ELIGIBLE_LABEL_AR, NOT_ELIGIBLE_REQUEST_LABEL } from '@/constants/workflow'
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp'
 import { cn } from '@/lib/utils'
 import { UserRole } from '@/types/enums'
@@ -585,8 +586,8 @@ const personalNotifications = ref([
   },
   {
     id: 'request_rejected' as keyof NotificationPreferences,
-    label: 'رفض الطلب',
-    description: 'عند رفض طلبك نهائياً',
+    label: NOT_ELIGIBLE_REQUEST_LABEL,
+    description: `عند تصنيف طلبك ${NOT_ELIGIBLE_LABEL_AR} نهائياً`,
     enabled: true,
     mandatory: true,
   },

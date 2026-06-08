@@ -7,6 +7,7 @@ import type {
 } from '../types/models'
 import type { RequestsFilter } from '../composables/useRequests'
 import { useRequests } from '../composables/useRequests'
+import { NOT_ELIGIBLE_LABEL_AR } from '../constants/workflow'
 import { useAuthStore } from './auth.store'
 
 function isAuthTeardown(): boolean {
@@ -297,7 +298,7 @@ export const useRequestsStore = defineStore('requests', {
         if (import.meta.dev) {
           console.error('[requests.store] bankRejectTerminal failed:', err)
         }
-        this.error = 'تعذّر تنفيذ الرفض النهائي.'
+        this.error = `تعذّر تنفيذ تصنيف ${NOT_ELIGIBLE_LABEL_AR} النهائي.`
         throw err
       } finally {
         this.performingAction = false
@@ -335,7 +336,7 @@ export const useRequestsStore = defineStore('requests', {
         if (import.meta.dev) {
           console.error('[requests.store] bankFinalizeRejection failed:', err)
         }
-        this.error = 'تعذّر إتمام الرفض النهائي.'
+        this.error = `تعذّر إتمام تصنيف ${NOT_ELIGIBLE_LABEL_AR} النهائي.`
         throw err
       } finally {
         this.performingAction = false

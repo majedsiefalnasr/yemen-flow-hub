@@ -8,7 +8,12 @@
  */
 import { describe, it, expect } from 'vitest'
 import { RequestStatus } from '../../../types/enums'
-import { STATUS_COLORS } from '../../../constants/workflow'
+import {
+  NOT_ELIGIBLE_BANK_LABEL,
+  NOT_ELIGIBLE_EXECUTIVE_LABEL,
+  NOT_ELIGIBLE_SUPPORT_LABEL,
+  STATUS_COLORS,
+} from '../../../constants/workflow'
 import type { RequestStageHistory } from '../../../types/models'
 
 // ─── Reproduce color logic from AuditTimeline.vue (F4: delegates to STATUS_COLORS) ──
@@ -26,14 +31,14 @@ const ACTION_LABELS: Record<string, string> = {
   bank_approve: 'اعتماد البنك',
   bank_reject: 'إعادة الطلب للتعديل',
   bank_return_to_intake: 'إرجاع الطلب للمدخل',
-  bank_reject_terminal: 'رفض نهائي من البنك',
+  bank_reject_terminal: NOT_ELIGIBLE_BANK_LABEL,
   return_to_entry: 'إرجاع الطلب للمدخل',
-  bank_return_after_support_reject: 'إرجاع الطلب بعد رفض لجنة المساندة',
-  bank_finalize_rejection: 'تثبيت رفض لجنة المساندة',
+  bank_return_after_support_reject: `إرجاع الطلب بعد ${NOT_ELIGIBLE_SUPPORT_LABEL}`,
+  bank_finalize_rejection: `تثبيت ${NOT_ELIGIBLE_SUPPORT_LABEL}`,
   support_claim: 'مطالبة لجنة المساندة بالطلب',
   support_release: 'إفراج لجنة المساندة عن الطلب',
   support_approve: 'اعتماد لجنة المساندة',
-  support_reject: 'رفض لجنة المساندة',
+  support_reject: NOT_ELIGIBLE_SUPPORT_LABEL,
   support_return_to_intake: 'إرجاع الطلب للمدخل من لجنة المساندة',
   move_to_support_queue: 'إحالة الطلب إلى لجنة المساندة',
   move_to_swift_queue: 'إحالة الطلب إلى رفع SWIFT',
@@ -41,7 +46,7 @@ const ACTION_LABELS: Record<string, string> = {
   open_voting: 'فتح التصويت التنفيذي',
   close_voting: 'إغلاق التصويت التنفيذي',
   finalize_approved: 'اعتماد القرار التنفيذي',
-  finalize_rejected: 'رفض القرار التنفيذي',
+  finalize_rejected: NOT_ELIGIBLE_EXECUTIVE_LABEL,
   issue_customs: 'إصدار تأكيد المصارفة الخارجية',
   complete: 'إكمال الطلب',
 }
@@ -119,14 +124,14 @@ describe('AuditTimeline actionLabel', () => {
       ['bank_approve', 'اعتماد البنك'],
       ['bank_reject', 'إعادة الطلب للتعديل'],
       ['bank_return_to_intake', 'إرجاع الطلب للمدخل'],
-      ['bank_reject_terminal', 'رفض نهائي من البنك'],
+      ['bank_reject_terminal', NOT_ELIGIBLE_BANK_LABEL],
       ['return_to_entry', 'إرجاع الطلب للمدخل'],
-      ['bank_return_after_support_reject', 'إرجاع الطلب بعد رفض لجنة المساندة'],
-      ['bank_finalize_rejection', 'تثبيت رفض لجنة المساندة'],
+      ['bank_return_after_support_reject', `إرجاع الطلب بعد ${NOT_ELIGIBLE_SUPPORT_LABEL}`],
+      ['bank_finalize_rejection', `تثبيت ${NOT_ELIGIBLE_SUPPORT_LABEL}`],
       ['support_claim', 'مطالبة لجنة المساندة بالطلب'],
       ['support_release', 'إفراج لجنة المساندة عن الطلب'],
       ['support_approve', 'اعتماد لجنة المساندة'],
-      ['support_reject', 'رفض لجنة المساندة'],
+      ['support_reject', NOT_ELIGIBLE_SUPPORT_LABEL],
       ['support_return_to_intake', 'إرجاع الطلب للمدخل من لجنة المساندة'],
       ['move_to_support_queue', 'إحالة الطلب إلى لجنة المساندة'],
       ['move_to_swift_queue', 'إحالة الطلب إلى رفع SWIFT'],
@@ -134,7 +139,7 @@ describe('AuditTimeline actionLabel', () => {
       ['open_voting', 'فتح التصويت التنفيذي'],
       ['close_voting', 'إغلاق التصويت التنفيذي'],
       ['finalize_approved', 'اعتماد القرار التنفيذي'],
-      ['finalize_rejected', 'رفض القرار التنفيذي'],
+      ['finalize_rejected', NOT_ELIGIBLE_EXECUTIVE_LABEL],
       ['issue_customs', 'إصدار تأكيد المصارفة الخارجية'],
       ['complete', 'إكمال الطلب'],
     ]

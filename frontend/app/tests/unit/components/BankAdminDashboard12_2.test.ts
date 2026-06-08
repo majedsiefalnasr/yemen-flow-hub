@@ -22,6 +22,7 @@ import {
   calcShowHealthStrip,
   calcHealthIssues,
 } from '../../../utils/bank-admin-helpers'
+import { NOT_ELIGIBLE_LABEL_AR } from '../../../constants/workflow'
 
 type StatsLike = (BankAdminDashboardStats & BankAdminDashboardStatsExtended) | null
 
@@ -157,10 +158,10 @@ describe('BankAdminDashboard 12.2 — calcHealthIssues()', () => {
     expect(calcHealthIssues(stats)).toHaveLength(0)
   })
 
-  it('includes rejection rate issue when above threshold', () => {
+  it('includes Not Eligible rate issue when above threshold', () => {
     const stats = makeStats({ total: 100, rejected: 30 })
     const issues = calcHealthIssues(stats)
-    expect(issues.some((i) => i.includes('معدل الرفض'))).toBe(true)
+    expect(issues.some((i) => i.includes(`معدل ${NOT_ELIGIBLE_LABEL_AR}`))).toBe(true)
   })
 
   it('includes stalled count issue when stalled_at_cby_count > 0', () => {

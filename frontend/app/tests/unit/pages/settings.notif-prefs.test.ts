@@ -1,5 +1,6 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest'
 import { UserRole } from '../../../types/enums'
+import { NOT_ELIGIBLE_REQUEST_LABEL } from '../../../constants/workflow'
 
 vi.stubGlobal('useRuntimeConfig', () => ({ public: { apiBase: 'http://localhost' } }))
 vi.stubGlobal('definePageMeta', vi.fn())
@@ -44,7 +45,7 @@ const ALL_NOTIF_PREFS: NotifPrefItem[] = [
   },
   {
     key: 'request_rejected',
-    label: 'إشعار رفض الطلبات',
+    label: `إشعار ${NOT_ELIGIBLE_REQUEST_LABEL}`,
     mandatory: true,
     roles: [UserRole.DATA_ENTRY, UserRole.BANK_REVIEWER],
   },

@@ -6,6 +6,7 @@ import { describe, it, expect } from 'vitest'
 import { UserRole, RequestStatus } from '../../../types/enums'
 import type { ImportRequest } from '../../../types/models'
 import { makeImportRequest } from '../fixtures/request-data'
+import { NOT_ELIGIBLE_REASON_LABEL } from '../../../constants/workflow'
 
 function makeRequest(overrides: Partial<ImportRequest> = {}): ImportRequest {
   return makeImportRequest({
@@ -377,16 +378,16 @@ describe('ActionsPanel — returned edit links', () => {
 
 describe('ActionsPanel — rejection reason validation', () => {
   function validateReason(reason: string): string | null {
-    if (!reason.trim()) return 'سبب الرفض مطلوب.'
+    if (!reason.trim()) return `${NOT_ELIGIBLE_REASON_LABEL} مطلوب.`
     return null
   }
 
   it('returns error for empty reason', () => {
-    expect(validateReason('')).toBe('سبب الرفض مطلوب.')
+    expect(validateReason('')).toBe(`${NOT_ELIGIBLE_REASON_LABEL} مطلوب.`)
   })
 
   it('returns error for whitespace-only reason', () => {
-    expect(validateReason('   ')).toBe('سبب الرفض مطلوب.')
+    expect(validateReason('   ')).toBe(`${NOT_ELIGIBLE_REASON_LABEL} مطلوب.`)
   })
 
   it('returns null for valid reason', () => {

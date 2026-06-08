@@ -11,7 +11,7 @@ import {
 } from 'lucide-vue-next'
 import { h } from 'vue'
 import PageHeader from '@/components/layout/PageHeader.vue'
-import { ROUTE_ROLE_MAP } from '@/constants/workflow'
+import { NOT_ELIGIBLE_LABEL, NOT_ELIGIBLE_LABEL_AR, ROUTE_ROLE_MAP } from '@/constants/workflow'
 import { useReports } from '@/composables/useReports'
 import type { WorkflowReport } from '@/composables/useReports'
 import { useTableKeyboard } from '@/composables/useTableKeyboard'
@@ -96,7 +96,11 @@ const kpis = computed(() => [
   },
   { label: 'قيمة التمويل', value: `$${(totalValue.value / 1_000_000).toFixed(1)}M`, summary: '' },
   { label: 'متوسط زمن المعالجة', value: 'غير متاح', summary: '' },
-  { label: 'نسبة الاعتماد', value: `${approvalRate.value}%`, summary: `${rejected.value} مرفوض` },
+  {
+    label: 'نسبة الاعتماد',
+    value: `${approvalRate.value}%`,
+    summary: `${rejected.value} ${NOT_ELIGIBLE_LABEL_AR}`,
+  },
   {
     label: 'الفواتير المكررة',
     value: (report.value?.duplicate_invoice_count ?? 0).toString(),
@@ -274,7 +278,7 @@ const bankBreakdownColumns: ColumnDef<BankBreakdownRow>[] = [
   },
   {
     accessorKey: 'rejected',
-    header: 'مرفوض',
+    header: NOT_ELIGIBLE_LABEL,
     cell: ({ row }) =>
       h(
         'span',
@@ -337,7 +341,7 @@ const votingAnalyticsColumns: ColumnDef<VotingAnalyticsRow>[] = [
   },
   {
     accessorKey: 'rejections',
-    header: 'أصوات الرفض',
+    header: `أصوات ${NOT_ELIGIBLE_LABEL_AR}`,
     cell: ({ row }) =>
       h('span', { class: 'tabular-nums text-[var(--severity-red)]' }, row.original.rejections),
   },
@@ -754,9 +758,9 @@ const votingAnalyticsColumns: ColumnDef<VotingAnalyticsRow>[] = [
                   >
                 </div>
                 <div class="flex items-center justify-between rounded-lg border p-3">
-                  <span class="font-section text-muted-foreground text-sm leading-5 font-medium"
-                    >مرفوض</span
-                  >
+                  <span class="font-section text-muted-foreground text-sm leading-5 font-medium">{{
+                    NOT_ELIGIBLE_LABEL
+                  }}</span>
                   <span
                     class="text-xl leading-7 font-semibold text-[var(--severity-red)] tabular-nums"
                     >{{ loading ? 'جارٍ التحميل' : rejected }}</span
@@ -933,7 +937,7 @@ const votingAnalyticsColumns: ColumnDef<VotingAnalyticsRow>[] = [
                 </div>
                 <div class="flex justify-between rounded-lg border p-3">
                   <span class="font-section text-muted-foreground leading-5 font-medium"
-                    >رفض صلاحيات</span
+                    >وصول غير مصرح</span
                   >
                   <span class="leading-5 font-semibold text-[var(--severity-red)] tabular-nums">{{
                     loading ? 'جارٍ التحميل' : (report?.audit_summary?.auth_failures ?? 'غير متاح')

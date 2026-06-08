@@ -19,6 +19,7 @@ import DataTable from '@/components/ui/data-table/DataTable.vue'
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { NOT_ELIGIBLE_LABEL, NOT_ELIGIBLE_LABEL_AR } from '@/constants/workflow'
 
 const REPORTING_ROLES = [
   UserRole.CBY_ADMIN,
@@ -174,7 +175,11 @@ const lineChartSeries = computed(() => {
   return [
     { label: 'طلبات', values: trend.map((m) => m.total), color: 'var(--color-primary)' },
     { label: 'مُعتمد', values: trend.map((m) => m.approved), color: 'var(--color-success)' },
-    { label: 'مرفوض', values: trend.map((m) => m.rejected), color: 'var(--color-destructive)' },
+    {
+      label: NOT_ELIGIBLE_LABEL,
+      values: trend.map((m) => m.rejected),
+      color: 'var(--color-destructive)',
+    },
   ]
 })
 
@@ -270,7 +275,7 @@ const bankBreakdownColumns: ColumnDef<{
   },
   {
     accessorKey: 'rejected_count',
-    header: 'المرفوضة',
+    header: NOT_ELIGIBLE_LABEL,
     cell: ({ row }) =>
       h('span', { class: 'tabular-nums text-[var(--severity-red)]' }, row.original.rejected_count),
   },
@@ -553,7 +558,7 @@ const bankBreakdownColumns: ColumnDef<{
             :clickable="false"
           />
           <MetricCard
-            label="الطلبات المرفوضة"
+            :label="`طلبات ${NOT_ELIGIBLE_LABEL_AR}`"
             :value="store.bankReport.rejected_count"
             tone="danger"
             :clickable="false"
