@@ -1,4 +1,14 @@
-import { RequestStatus, UserRole } from '../types/enums'
+import {
+  CoverageType,
+  CurrencySource,
+  Incoterm,
+  InvoiceType,
+  PaymentTermsMode,
+  PortOfArrival,
+  RequestStatus,
+  RequestType,
+  UserRole,
+} from '../types/enums'
 import { TRADER_MANAGEMENT_ROLES } from '../types/trader'
 import type { IconName } from '../utils/icon-map'
 import { NAV_SURFACE_ROUTES, rolesForSurface } from './role-surfaces'
@@ -839,6 +849,72 @@ export const CBY_BANK_FILTER_ROLES: UserRole[] = [
 
 /** Supported currencies for the currency filter */
 export const CURRENCY_OPTIONS = ['USD', 'EUR', 'SAR', 'AED', 'CNY'] as const
+
+export interface EnumOption<T extends string = string> {
+  value: T
+  label: string
+  hint?: string
+}
+
+export const REQUEST_TYPE_OPTIONS: EnumOption<RequestType>[] = [
+  { value: RequestType.GOODS_IMPORT, label: 'استيراد بضائع', hint: 'Goods Import' },
+  {
+    value: RequestType.RAW_MATERIAL_IMPORT,
+    label: 'استيراد مواد خام',
+    hint: 'Raw Material Import',
+  },
+  { value: RequestType.EQUIPMENT_IMPORT, label: 'استيراد معدات', hint: 'Equipment Import' },
+]
+
+export const COVERAGE_TYPE_OPTIONS: EnumOption<CoverageType>[] = [
+  { value: CoverageType.FULL, label: 'تغطية كاملة', hint: 'Full Coverage' },
+  { value: CoverageType.PARTIAL, label: 'تغطية جزئية', hint: 'Partial Coverage' },
+]
+
+export const CURRENCY_SOURCE_OPTIONS: EnumOption<CurrencySource>[] = [
+  { value: CurrencySource.OWN_FUNDS, label: 'موارد ذاتية', hint: 'Own Funds' },
+  { value: CurrencySource.BANK_FINANCING, label: 'تمويل بنكي', hint: 'Bank Financing' },
+  { value: CurrencySource.EXTERNAL_FINANCING, label: 'تمويل خارجي', hint: 'External Financing' },
+]
+
+export const PAYMENT_TERMS_MODE_OPTIONS: EnumOption<PaymentTermsMode>[] = [
+  { value: PaymentTermsMode.ADVANCE_PAYMENT, label: 'دفع مقدم', hint: 'Advance Payment' },
+  { value: PaymentTermsMode.LETTER_OF_CREDIT, label: 'اعتماد مستندي', hint: 'Letter of Credit' },
+  {
+    value: PaymentTermsMode.DOCUMENTARY_COLLECTION,
+    label: 'تحصيل مستندي',
+    hint: 'Documentary Collection',
+  },
+  { value: PaymentTermsMode.DEFERRED_PAYMENT, label: 'دفع مؤجل', hint: 'Deferred Payment' },
+]
+
+export const INVOICE_TYPE_OPTIONS: EnumOption<InvoiceType>[] = [
+  { value: InvoiceType.PROFORMA, label: 'فاتورة مبدئية', hint: 'Proforma Invoice' },
+  { value: InvoiceType.COMMERCIAL, label: 'فاتورة تجارية', hint: 'Commercial Invoice' },
+  { value: InvoiceType.FINAL, label: 'فاتورة نهائية', hint: 'Final Invoice' },
+]
+
+export const PORT_OF_ARRIVAL_OPTIONS: EnumOption<PortOfArrival>[] = [
+  { value: PortOfArrival.ADEN, label: 'ميناء عدن', hint: 'Aden Port' },
+  { value: PortOfArrival.HODEIDAH, label: 'ميناء الحديدة', hint: 'Hodeidah Port' },
+  { value: PortOfArrival.MUKALLA, label: 'ميناء المكلا', hint: 'Mukalla Port' },
+  { value: PortOfArrival.MOKHA, label: 'ميناء المخا', hint: 'Mokha Port' },
+  { value: PortOfArrival.NISHTUN, label: 'ميناء نشطون', hint: 'Nishtun Port' },
+]
+
+export const INCOTERM_OPTIONS: EnumOption<Incoterm>[] = [
+  { value: Incoterm.EXW, label: 'تسليم في المصنع', hint: 'EXW' },
+  { value: Incoterm.FCA, label: 'تسليم للناقل', hint: 'FCA' },
+  { value: Incoterm.CPT, label: 'النقل مدفوع إلى', hint: 'CPT' },
+  { value: Incoterm.CIP, label: 'النقل والتأمين مدفوعان إلى', hint: 'CIP' },
+  { value: Incoterm.DAP, label: 'تسليم في المكان', hint: 'DAP' },
+  { value: Incoterm.DPU, label: 'تسليم في المكان مع التفريغ', hint: 'DPU' },
+  { value: Incoterm.DDP, label: 'تسليم خالص الرسوم', hint: 'DDP' },
+  { value: Incoterm.FAS, label: 'تسليم جانب السفينة', hint: 'FAS' },
+  { value: Incoterm.FOB, label: 'تسليم على ظهر السفينة', hint: 'FOB' },
+  { value: Incoterm.CFR, label: 'التكلفة والشحن', hint: 'CFR' },
+  { value: Incoterm.CIF, label: 'التكلفة والتأمين والشحن', hint: 'CIF' },
+]
 
 /** Routes that require authentication (all except login) */
 export const PROTECTED_ROUTES = [

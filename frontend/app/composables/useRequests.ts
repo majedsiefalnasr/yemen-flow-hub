@@ -6,6 +6,7 @@ import type {
   RequestDocument,
   RequestFormData,
   RequestStageHistory,
+  TraderLookupResult,
 } from '../types/models'
 import type { RequestStatus } from '../types/enums'
 import { useApi } from './useApi'
@@ -39,7 +40,7 @@ export interface SwiftUploadPayload {
 }
 
 export function useRequests() {
-  const { get, post, put } = useApi()
+  const { get, post, put, del } = useApi()
 
   function getXsrfToken(): string | null {
     if (!import.meta.client) return null
@@ -103,14 +104,38 @@ export function useRequests() {
     return response.data
   }
 
-  async function uploadDocument(requestId: number, file: File, label: string): Promise<void> {
+  async function lookupTrader(taxNumber: string): Promise<TraderLookupResult | null> {
+    const query = encodeURIComponent(taxNumber.trim())
+    if (!query) return null
+
+    try {
+      const response = await get<ApiResponse<TraderLookupResult['trader']>>(
+        `/api/traders/lookup?tax_number=${query}`,
+      )
+      return {
+        trader: response.data,
+        companies: response.data.companies ?? [],
+        owners: response.data.owners ?? [],
+      }
+    } catch (err: any) {
+      if (err?.response?.status === 404 || err?.statusCode === 404) return null
+      throw err
+    }
+  }
+
+  async function uploadDocument(
+    requestId: number,
+    file: File,
+    subType?: string,
+  ): Promise<RequestDocument> {
     const config = useRuntimeConfig()
     const baseURL = config.public.apiBase as string
     const form = new FormData()
+    form.append('request_id', String(requestId))
     form.append('file', file)
-    form.append('label', label)
+    if (subType) form.append('sub_type', subType)
     const xsrfToken = getXsrfToken()
-    await $fetch(`/api/requests/${requestId}/documents`, {
+    const response = await $fetch<ApiResponse<RequestDocument>>(`/api/documents/upload`, {
       method: 'POST',
       baseURL,
       credentials: 'include',
@@ -119,6 +144,20 @@ export function useRequests() {
         Accept: 'application/json',
         ...(xsrfToken ? { 'X-XSRF-TOKEN': xsrfToken } : {}),
       },
+    })
+    return response.data
+  }
+
+  async function deleteDocument(documentId: number): Promise<void> {
+    await del<ApiResponse<null>>(`/api/documents/${documentId}`)
+  }
+
+  async function downloadDocument(documentId: number): Promise<Blob> {
+    const config = useRuntimeConfig()
+    return $fetch<Blob>(`/api/documents/${documentId}/download`, {
+      baseURL: config.public.apiBase as string,
+      responseType: 'blob',
+      credentials: 'include',
     })
   }
 
@@ -327,7 +366,10 @@ export function useRequests() {
     fetchRequest,
     createRequest,
     updateRequest,
+    lookupTrader,
     uploadDocument,
+    deleteDocument,
+    downloadDocument,
     performWorkflowAction,
     fetchRequestDocuments,
     uploadSwift,

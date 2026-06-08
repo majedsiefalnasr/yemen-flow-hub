@@ -53,6 +53,58 @@ export enum Currency {
   CNY = 'CNY',
 }
 
+export enum RequestType {
+  GOODS_IMPORT = 'GOODS_IMPORT',
+  RAW_MATERIAL_IMPORT = 'RAW_MATERIAL_IMPORT',
+  EQUIPMENT_IMPORT = 'EQUIPMENT_IMPORT',
+}
+
+export enum CoverageType {
+  FULL = 'FULL',
+  PARTIAL = 'PARTIAL',
+}
+
+export enum CurrencySource {
+  OWN_FUNDS = 'OWN_FUNDS',
+  BANK_FINANCING = 'BANK_FINANCING',
+  EXTERNAL_FINANCING = 'EXTERNAL_FINANCING',
+}
+
+export enum PaymentTermsMode {
+  ADVANCE_PAYMENT = 'ADVANCE_PAYMENT',
+  LETTER_OF_CREDIT = 'LETTER_OF_CREDIT',
+  DOCUMENTARY_COLLECTION = 'DOCUMENTARY_COLLECTION',
+  DEFERRED_PAYMENT = 'DEFERRED_PAYMENT',
+}
+
+export enum InvoiceType {
+  PROFORMA = 'PROFORMA',
+  COMMERCIAL = 'COMMERCIAL',
+  FINAL = 'FINAL',
+}
+
+export enum PortOfArrival {
+  ADEN = 'ADEN',
+  HODEIDAH = 'HODEIDAH',
+  MUKALLA = 'MUKALLA',
+  MOKHA = 'MOKHA',
+  NISHTUN = 'NISHTUN',
+}
+
+export enum Incoterm {
+  EXW = 'EXW',
+  FCA = 'FCA',
+  CPT = 'CPT',
+  CIP = 'CIP',
+  DAP = 'DAP',
+  DPU = 'DPU',
+  DDP = 'DDP',
+  FAS = 'FAS',
+  FOB = 'FOB',
+  CFR = 'CFR',
+  CIF = 'CIF',
+}
+
 export enum VotingSessionStatus {
   OPEN = 'OPEN',
   CLOSED = 'CLOSED',

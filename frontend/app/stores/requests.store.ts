@@ -174,7 +174,7 @@ export const useRequestsStore = defineStore('requests', {
 
       try {
         const { uploadDocument } = useRequests()
-        await uploadDocument(id, file, file.name)
+        await uploadDocument(id, file)
       } catch (err) {
         if (import.meta.dev) {
           console.error('[requests.store] uploadDocument failed:', err)

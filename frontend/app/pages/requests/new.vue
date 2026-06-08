@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import PageHeader from '@/components/layout/PageHeader.vue'
-import RequestWizard from '@/components/wizard/RequestWizard.vue'
+import RequestFormTabs from '@/components/request/RequestFormTabs.vue'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import {
@@ -98,12 +98,21 @@ function confirmLeave() {
     <PageHeader title="جارٍ إنشاء نسخة من الطلب..." />
   </div>
 
-  <RequestWizard
-    v-else-if="user && canCreate"
-    @dirty="wizardDirty = true"
-    @clean="wizardDirty = false"
-    @submitted="wizardSubmitted = true"
-  />
+  <div v-else-if="user && canCreate" class="flex flex-col gap-4">
+    <PageHeader
+      title="تقديم طلب تمويل واردات جديد"
+      :breadcrumbs="[
+        { label: 'الرئيسية', to: '/' },
+        { label: 'طلبات التمويل', to: '/requests' },
+        { label: 'طلب جديد' },
+      ]"
+    />
+    <RequestFormTabs
+      @dirty="wizardDirty = true"
+      @clean="wizardDirty = false"
+      @submitted="wizardSubmitted = true"
+    />
+  </div>
 
   <div v-else>
     <PageHeader

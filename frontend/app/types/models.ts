@@ -1,4 +1,17 @@
-import type { RequestStatus, UserRole, VoteType, VotingSessionStatus } from './enums'
+import type {
+  CoverageType,
+  CurrencySource,
+  Incoterm,
+  InvoiceType,
+  PaymentTermsMode,
+  PortOfArrival,
+  RequestStatus,
+  RequestType,
+  UserRole,
+  VoteType,
+  VotingSessionStatus,
+} from './enums'
+import type { Trader, TraderCompany, TraderOwner } from './trader'
 
 export interface ProfileStats {
   total: number
@@ -128,6 +141,34 @@ export interface ImportRequest {
   shipping_port: string | null
   customs_office: string | null
   bl_number: string | null
+  trader_id: number | null
+  request_type: RequestType | null
+  coverage_type: CoverageType | null
+  currency_source: CurrencySource | null
+  payment_terms_mode: PaymentTermsMode | null
+  request_percentage: string | null
+  request_currency: string | null
+  requested_amount: string | null
+  invoice_type: InvoiceType | null
+  invoice_currency: string | null
+  unit_of_measure: string | null
+  total_invoice_amount: string | null
+  commodity: string | null
+  exporting_company_name: string | null
+  exporting_company_location: string | null
+  country_of_origin: string | null
+  port_of_loading: string | null
+  port_of_arrival: PortOfArrival | null
+  incoterm: Incoterm | null
+  final_destination: string | null
+  shipping_date: string | null
+  arrival_date: string | null
+  trader_snapshot_name: string | null
+  trader_snapshot_tax_number: string | null
+  trader_snapshot_tax_card_expiry: string | null
+  trader_snapshot_commercial_registration_number: string | null
+  trader_snapshot_commercial_registration_expiry: string | null
+  voting_rule_version: number
   created_by: number
   created_by_user?: { id: number; name: string } | null
   last_updated_by?: number | null
@@ -237,13 +278,13 @@ export interface RequestDocument {
 
 /** Fields sent to POST /api/requests and PUT /api/requests/{id} */
 export interface RequestFormData {
-  merchant_id: number
+  merchant_id?: number | null
   currency: string
   amount: number
-  supplier_name: string
-  goods_description: string
-  port_of_entry: string
-  notes: string
+  supplier_name?: string | null
+  goods_description?: string | null
+  port_of_entry?: string | null
+  notes?: string | null
   // Wizard step 1 extended fields
   goods_type?: string | null
   payment_terms?: string | null
@@ -256,6 +297,39 @@ export interface RequestFormData {
   shipping_port?: string | null
   customs_office?: string | null
   bl_number?: string | null
+  trader_id?: number | null
+  request_type?: RequestType | null
+  coverage_type?: CoverageType | null
+  currency_source?: CurrencySource | null
+  payment_terms_mode?: PaymentTermsMode | null
+  request_percentage?: number | string | null
+  request_currency?: string | null
+  requested_amount?: number | string | null
+  invoice_type?: InvoiceType | null
+  invoice_currency?: string | null
+  unit_of_measure?: string | null
+  total_invoice_amount?: number | string | null
+  commodity?: string | null
+  exporting_company_name?: string | null
+  exporting_company_location?: string | null
+  country_of_origin?: string | null
+  port_of_loading?: string | null
+  port_of_arrival?: PortOfArrival | null
+  incoterm?: Incoterm | null
+  final_destination?: string | null
+  shipping_date?: string | null
+  arrival_date?: string | null
+  trader_snapshot_name?: string | null
+  trader_snapshot_tax_number?: string | null
+  trader_snapshot_tax_card_expiry?: string | null
+  trader_snapshot_commercial_registration_number?: string | null
+  trader_snapshot_commercial_registration_expiry?: string | null
+}
+
+export interface TraderLookupResult {
+  trader: Trader
+  companies: TraderCompany[]
+  owners: TraderOwner[]
 }
 
 export interface User {

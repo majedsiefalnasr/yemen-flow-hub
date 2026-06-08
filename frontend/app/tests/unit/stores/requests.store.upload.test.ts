@@ -65,7 +65,7 @@ describe('requests.store uploadDocument', () => {
     expect(store.uploadError).toBeNull()
   })
 
-  it('calls uploadDocument composable with correct arguments (id, file, file.name)', async () => {
+  it('calls uploadDocument composable with correct arguments (id, file)', async () => {
     const { useRequestsStore } = await import('../../../stores/requests.store')
     const store = useRequestsStore()
 
@@ -75,7 +75,7 @@ describe('requests.store uploadDocument', () => {
     const file = new File(['data'], 'invoice.pdf', { type: 'application/pdf' })
     await store.uploadDocument(42, file)
 
-    expect(mockUploadDocument).toHaveBeenCalledWith(42, file, 'invoice.pdf')
+    expect(mockUploadDocument).toHaveBeenCalledWith(42, file)
   })
 
   it('calls loadDocuments after successful upload to refresh the document list', async () => {
