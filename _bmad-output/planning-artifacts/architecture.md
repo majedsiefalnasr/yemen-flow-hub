@@ -2,530 +2,687 @@
 stepsCompleted: [1, 2, 3, 4, 5, 6, 7, 8]
 lastStep: 8
 status: 'complete'
-completedAt: '2026-06-06'
+completedAt: '2026-06-07'
 inputDocuments:
-  - docs/00-project-brief.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-06-07-national-committee-rebrand-trader-workflow.md
+  - _bmad-output/planning-artifacts/project-context.md
   - docs/01-workflow-and-business-rules.md
   - docs/02-system-architecture.md
   - docs/03-database-and-models.md
+  - docs/05-backend-guide.md
   - docs/06-api-reference.md
-  - docs/07-account-recovery-and-mail.md
-  - _bmad-output/planning-artifacts/project-context.md
-  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-06-05-account-recovery-reconciliation.md
 workflowType: 'architecture'
-project_name: 'Yemen Flow Hub'
+project_name: 'Yemen Flow Hub → National Committee for Regulating & Financing Imports'
 user_name: 'MAJED'
-date: '2026-06-06'
-scope: 'Email / Notification Subsystem'
+date: '2026-06-07'
+scope: 'National Committee Re-Scope (Rebrand + Trader Module + 5-Tab Request Form + Invoice/Shipping Model + Global Financing Ledger + Workflow Authority Reform + Terminology Layer) — Epics A–F'
 ---
 
-# Architecture Decision Document — Email / Notification Subsystem
+# Architecture Decision Document — National Committee Re-Scope (Epics A–F)
+
+_Brownfield architecture for the re-scope from Yemen Flow Hub (CBY FX/customs tool) to **The National Committee for Regulating & Financing Imports** (اللجنة الوطنية لتنظيم وتمويل الواردات). Implements `sprint-change-proposal-2026-06-07-national-committee-rebrand-trader-workflow.md`. The prior email/notification subsystem architecture is archived at `architecture-email-subsystem-archive.md`._
 
 _This document builds collaboratively through step-by-step discovery. Sections are appended as we work through each architectural decision together._
 
 ## Scope
 
-Architecture for the Yemen Flow Hub email + notification subsystem: notification-type registry, dual-source template resolver, email design system, queue-based delivery, delivery log / outbox, and security/compliance posture. Locked decisions supplied by MAJED on activation are treated as approved constraints.
+Brownfield re-scope of Yemen Flow Hub → The National Committee for Regulating & Financing
+Imports. Implements the 2026-06-07 sprint-change-proposal across six sequenced epics:
+A Rebrand · B Trader Module · C 5-Tab Form + Invoice/Shipping Model · D Global Financing
+Ledger · E Workflow Authority Reform · F Terminology Label Layer. Three LOCKED decisions
+(supplied via correct-course) are treated as approved constraints and are NOT re-litigated:
+1. Reject→Not Eligible = label-layer ONLY (enum cases + DB values frozen, zero migration).
+2. New Trader tables, keep Merchant (snapshot trader data into new requests).
+3. Voting majority floor(n/2)+1 = NEW REQUESTS ONLY (no retroactive recompute).
+
+**Canonical "Not Eligible" label:** Arabic `غير مستوفي للشروط` / English `Not Eligible`. This
+display string replaces "Reject/Rejected" user-facing copy ONLY; enum cases (`EXECUTIVE_REJECTED`,
+`SUPPORT_REJECTED`, `BANK_REJECTED`) and stored DB values are frozen.
 
 ## Project Context Analysis
 
 ### Requirements Overview
 
-**Brownfield note:** This subsystem formalizes existing ad-hoc mail scaffolding (8 `Notification` classes, 6 `Mail` classes, 7 email Blade views, `SendWorkflowNotifications` listener, standard Laravel `notifications` table) into a governed subsystem. Existing classes are migrated into the registry — not greenfielded.
+**Brownfield note:** This re-scope layers onto a shipped 16-epic platform. No standalone PRD
+exists; requirements source = this sprint-change-proposal + docs/ + epics.md. Closed epics are
+NOT edited; a new epic set (A–F) is layered on top. All changes preserve existing shipped
+behavior for historical rows.
 
-**Existing infra baseline (verified in code):**
-- `config/queue.php`: `default = redis`, single `default` queue → dedicated email queue + isolation is NEW work.
-- `QUEUE_FAILED_DRIVER = database-uuids` → dead-letter substrate exists; email-specific retry/backoff policy is NEW.
-- `config/mail.php`: vanilla smtp/array/log mailers, no markdown theme override, `from` fallback present → theme override + `config/email-theme.php` is NEW.
-- `MfaService` already isolates OTP in its own cache namespace (recovery doctrine mandates password-reset OTP stay separate from login MFA OTP).
-- Production fail-fast already rejects non-SMTP / Mailpit-host in `production` (preserve).
+**Functional Requirements (derived from proposal §4 Epics A–F):**
 
-**Functional Requirements (derived):**
-
-| # | FR | Architectural implication |
+| Epic | FR | Architectural implication |
 |---|---|---|
-| FR1 | Notification-type registry (enum-backed, central) | New enum + registry config; per-type flags drive channels / persist_body / admin_editable / allowed_variables |
-| FR2 | Dual delivery channel: database always + mail conditional | `via()` resolves from registry per type and per-recipient preference |
-| FR3 | Dual-source template resolver (DB admin-editable vs Blade system-managed) | Resolver service; admin owns Markdown prose only, system owns layout |
-| FR4 | Template versioning, reproducible active-version-at-send | `notification_templates` + `notification_template_versions` tables |
-| FR5 | Save/render validation (allowed-var whitelist, raw-HTML strip, MD sanitize, undefined-var guard, safe fallback) | Validation pipeline at save AND render |
-| FR6 | Template + sample-data rendered preview | Preview endpoint with fixed sample data (YFH-2026-000123 / Yemen International Bank / 1,000,000 USD / Approved) |
-| FR7 | Delivery log / outbox (full audit field set) | `email_deliveries` table; persist_body full vs redacted per type |
-| FR8 | Idempotency (event_id, user_id, channel) — no double-send on retry | Unique idempotency key + pre-send guard |
-| FR9 | Email design system: theme override + `<x-email.*>` components | Blade components: status-badge, data-row, info-box (variant prop), action-card, otp-code, confidentiality-notice |
-| FR10 | RTL + Arabic default, system Arabic font fallback, plaintext multipart always | Inline-style tokens from `config/email-theme.php`; no webfont; no Tailwind in email |
-| FR11 | Phase-1 types: REQUEST_APPROVED, REQUEST_REJECTED, REQUEST_RETURNED, VOTING_OPENED, MFA_OTP, PASSWORD_RESET | Registry seeded; existing Mail/Notification classes mapped in |
-| FR12 | Per-recipient locale resolved at render time | Locale resolution inside render pipeline |
+| A | Full bilingual rebrand across every surface (title, login, sidebar, header, emails, notifications, PDFs, reports, exports, settings, docs) | String-level only; no schema. Labels are hardcoded bilingual strings (NO i18n framework exists). |
+| B | Trader Management module: global `traders` (tax_number = global unique identifier), `trader_companies` (1:N), `trader_owners` (1:N, ownership %) | New global tables + `TraderService` + controllers + policies + CRUD UI. CRUD perms: DATA_ENTRY, BANK_REVIEWER, BANK_ADMIN. |
+| C | 5-tab request screen (Basic/Invoice/Shipping/Documents/Workflow History) + ~20 additive `import_requests` columns + 7 new additive enums | Additive migration (all nullable/defaulted). Tab1 tax-number lookup → trader autofill → SNAPSHOT into request row (request edits never mutate trader). Full=100% readonly; Partial ≥5% & <100%. |
+| D | Global cross-bank duplicate prevention + partial-financing ledger: Σ financing % per (tax_number, invoice_number) ≤ 100% across ALL banks | Net-new `FinancingLedgerService`; extend `DuplicateDetectionService` detection→prevention. Concurrency-safe (lock/transactional). Composite index. Intentionally bypasses org-scope (must be access-guarded + documented). |
+| E | Workflow authority reform: Internal Reviewer no-reject (approve-continue + RETURN_TO_DATA_ENTRY only); Support Committee comment+forward only (no decision); Executive voting Approved/Not-Eligible with floor(n/2)+1; "Returned for Review"→"Returned to Data Entry"; merge SWIFT Upload+Uploaded display | TransitionMap edits (strip `support_approve`/`support_reject`→`support_forward_to_executive`; remove `bank_reject`/`bank_reject_terminal` from reviewer actions, KEEP cases for history). VotingService majority = real logic change. All via WorkflowService::transition(). |
+| F | Terminology: Reject/Rejected → "غير مستوفي للشروط / Not Eligible" everywhere user-facing | Display strings only in enum `.label()`, `frontend/app/constants/workflow.ts`, types, notification templates, report/export headers. NO enum case/DB value renamed; APIs still emit stored codes. |
 
 **Non-Functional Requirements:**
 
 | NFR | Driver |
 |---|---|
-| Audit reproducibility | Banking compliance — read log, reproduce exact historical email, NO re-render |
-| Security: never store OTP/reset tokens/secrets; redact MFA_OTP / PASSWORD_RESET body (mask `••••••`) | Compliance non-negotiable |
-| SPF + DKIM + DMARC on CBY sending domain; no tracking pixels; no sensitive financials in body (deep-link to app) | Infra + data-protection mandate |
-| Org-scoped sends — never email a user about an out-of-scope request | Reuses workflow `scopeForUser()` invariant |
-| OTP / reset: short stated TTL, single-use, rate-limited send | Recovery doctrine (`docs/07-account-recovery-and-mail.md`) |
-| Queue isolation + retry/backoff/dead-letter | Delivery reliability; workflow events must not block on SMTP |
-| Provider portability (Laravel mail abstraction) | Scale readiness — swap CBY SMTP without code change |
-| Production fail-fast: reject non-SMTP / Mailpit host in `production` env | Preserve existing doctrine |
-| Workflow-comm sends tied to existing `audit_logs` | Single audit spine, no parallel audit |
+| Backward-compat invariant: frozen enum cases + nullable columns → historical rows render/function unchanged, zero migration | Audit immutability + de-risking the MAJOR re-scope |
+| Voting rule = new requests only; closed sessions never recomputed | Regulatory finality of past decisions |
+| Org-scope preserved EVERYWHERE except financing-ledger duplicate check (intentional, documented, access-guarded) | The one deliberate org-scope exception in the platform |
+| Concurrency-safe global % ledger under cross-bank races (lock or transactional check) | Ledger correctness is the highest-risk surface |
+| All transitions via `WorkflowService::transition()`; immutable stage_history + audit_logs | Existing workflow doctrine, non-negotiable |
+| RBAC unchanged — no new roles; reuse existing 8-role enum | Constraint: authority changes are transition/policy edits, not role edits |
+| Audit logs immutable; only display labels change, stored action/status codes unchanged | Compliance: terminology is presentation-layer |
+| Trader snapshot: request-level data is point-in-time; trader edits never mutate historical requests | Data integrity for issued requests |
+| Reuse existing design system / shadcn-vue (no new component library) | UI consistency + YAGNI |
 
 **Scale & Complexity:**
 
-- Primary domain: backend (Laravel 11) — service + queue + persistence; admin-facing template-management UI (Nuxt) is secondary.
-- Complexity level: **HIGH (enterprise / compliance-driven)** — governance + audit + reproducibility + security + RTL/i18n + dual-template ownership, not request volume.
-- Estimated new architectural components: **~9** — NotificationType enum/registry, TemplateResolver, validation pipeline, `config/email-theme.php`, `<x-email.*>` component set, EmailDelivery outbox (model + service), idempotency guard, dedicated email queue config, preview/render endpoint.
+- Primary domain: **full-stack** (Laravel 11 backend-heavy: enums/migrations/services/transition-map/voting; Nuxt 4 frontend: Trader pages + 5-tab form + % utilization UI).
+- Complexity level: **HIGH (enterprise / compliance-driven)** — concentrated in (a) global financing-% ledger correctness under cross-bank concurrency, (b) workflow-authority removal touching TransitionMap + extensive tests, (c) voting algorithm change.
+- New architectural components: **~6 core** — `TraderService`, `FinancingLedgerService`, Trader table set (traders/companies/owners), ledger (query or table), modified VotingService/TransitionMap/DuplicateDetectionService, 7 new enums, 5-tab request component.
 
 ### Technical Constraints & Dependencies
 
-- **MUST reuse:** `audit_logs` spine + `AuditService`; `notifications` table (database channel); `MfaService` cache-namespace separation; `WorkflowService` event hook (`RequestTransitioned` → `SendWorkflowNotifications` listener).
-- **MUST NOT:** store secrets/OTPs; use Tailwind or webfonts in email; configure Mailpit as a production provider; add a parallel audit log.
-- DESIGN.md is the single source for email tokens, mirrored to `config/email-theme.php` and applied as inline styles only.
-- SMTP transport via `infra/.env` only — no DB/UI SMTP config. (Contrast: template bodies ARE DB-managed; transport is NOT.)
-- Laravel Markdown Mail (NO MJML — Phase 2 re-eval only).
-- Laravel Notifications `via()` = database always + mail conditional.
+- **MUST reuse:** `WorkflowService::transition()` for all state changes; existing `RequestStatus` (22 cases) + `VoteType` (4 cases) enums FROZEN; existing 8-role RBAC; `audit_logs` + `request_stage_history` spine; existing shadcn-vue design system; `Merchant` model (retained for historical requests).
+- **MUST NOT:** rename any enum case or DB status/vote value; migrate historical data; add new roles; introduce an i18n framework (labels stay hardcoded bilingual); break org-scope anywhere except the documented ledger exception; recompute closed voting sessions.
+- **No i18n framework** (no vue-i18n / no locale json) → rebrand + terminology = string edits in enum `.label()` + `frontend/app/constants/workflow.ts` + types + notif templates + report headers.
+- **Existing partial infra:** `add_index_invoice_number` + `import_request_reference_sequences` migrations already exist (partial ledger infra present).
+- **Ground-truth deltas (verified in code):** `VotingService` today = `approve>reject` + director tiebreak, NO quorum/majority → real change. `DuplicateDetectionService` = detection only, no prevention/no % ledger → net-new engine. `ImportRequest` flat → ~20 additive columns. `TransitionMap` has `support_approve`/`support_reject` (→ strip to forward-only) + `bank_reject`/`bank_reject_terminal` (→ remove from reviewer, keep cases).
 
 ### Cross-Cutting Concerns Identified
 
-1. **Audit / reproducibility** — spans outbox + template versioning + render pipeline.
-2. **Security / redaction** — spans registry flags + outbox persist_body + logging guards.
-3. **i18n / RTL** — spans theme + components + locale-at-render.
-4. **Idempotency / reliability** — spans queue + outbox + retry.
-5. **Registry as extension point** — adding a type = data + template, never refactor; governs the shape of every other component.
-6. **Dual ownership boundary** — admin owns prose; system owns layout / badge / data-rows / buttons / footer; governs resolver + validation + preview.
+1. **Backward-compatibility** — spans every epic: frozen enums (F), nullable columns (C), new-requests-only voting (E), retained Merchant (B). The de-risking spine of the whole re-scope.
+2. **Org-scope vs. the global-ledger exception** — the financing ledger (D) is the single intentional org-scope break; must be access-guarded + explicitly documented so it is never mistaken for a leak.
+3. **Trader snapshot boundary** — trader data is global/mutable, but request-linked trader data is a point-in-time snapshot (B+C); governs the form, the migration, and data integrity.
+4. **Concurrency** — ledger % validation (D) + voting closure (E) both need lock/transactional guarantees under cross-bank / multi-actor races.
+5. **Label layer as presentation-only** — terminology (A+F) changes display strings only; stored codes, APIs, audit entries, exports-by-code unchanged. Governs enum `.label()` + frontend constants + notif templates.
+6. **WorkflowService as the sole transition chokepoint** — authority reform (E) is implemented purely as TransitionMap + policy + voting-rule edits routed through `WorkflowService::transition()`; agents never mutate `current_status` directly.
 
 ## Starter Template Evaluation
 
-### Verdict: NOT APPLICABLE — brownfield subsystem
+### Verdict: NOT APPLICABLE — brownfield re-scope
 
-No starter template applies. The email subsystem is built inside the existing Laravel 11 backend and existing Nuxt 4 frontend. The tech stack is already locked by the project (`project-context.md` §2); there is no greenfield scaffold to initialize. This step is reframed as: foundation libraries + tooling already present vs. NEW for this subsystem.
+No starter template applies. Epics A–F are built inside the existing Laravel 11 backend
+(`backend/`) and Nuxt 4 frontend (`frontend/`). The stack is locked by the shipped 16-epic
+platform; there is no greenfield scaffold to initialize and no init story. Reframed as:
+inherited foundation vs. NEW components this re-scope introduces.
 
 ### Technology Foundation (inherited, not chosen)
 
 | Layer | Tech | Status |
 |---|---|---|
 | Runtime | PHP 8.2+, Laravel 11 | Inherited |
-| Mail engine | Laravel Mail + Notifications (markdown mailables) | Inherited, formalize |
-| Queue | Redis (`queue.default = redis`) | Inherited |
-| Failed / dead-letter | `database-uuids` failed driver | Inherited |
+| Auth | Laravel Sanctum | Inherited |
 | DB | MySQL | Inherited |
-| Cache / TTL | Redis (OTP namespace via `MfaService`) | Inherited |
-| PDF (not email) | barryvdh/laravel-dompdf | Inherited, unrelated |
-| Admin UI | Nuxt 4 / Vue 4 / shadcn-vue | Inherited |
+| Cache / queue / TTL | Redis | Inherited |
+| Workflow engine | `WorkflowService` + `TransitionMap` (state machine) | Inherited, EXTEND |
+| Voting engine | `VotingService` | Inherited, MODIFY (majority rule) |
+| Duplicate engine | `DuplicateDetectionService` | Inherited, EXTEND (detection→prevention) |
+| Trader (legacy) | `Merchant` model (bank-scoped, flat) | Inherited, RETAINED for history |
+| PDF | barryvdh/laravel-dompdf | Inherited |
+| Frontend | Nuxt 4 / Vue 4 / TypeScript / Tailwind v4 / shadcn-vue | Inherited |
+| State / forms | Pinia, VueUse, VeeValidate, Zod | Inherited |
+| i18n | NONE (hardcoded bilingual strings in enums + frontend constants) | Inherited constraint |
 
-### NEW Components This Subsystem Introduces (no new framework)
+### NEW Components This Re-Scope Introduces (no new framework)
 
-| Component | Built on |
-|---|---|
-| `NotificationType` enum + registry | native PHP enum + config array |
-| `config/email-theme.php` | native config, mirrors DESIGN.md |
-| `<x-email.*>` Blade components | native Blade components |
-| Mail theme override (message / button / panel) | Laravel markdown-mail theme publish |
-| `email_deliveries` outbox + `EmailDeliveryService` | Eloquent + migration |
-| `notification_templates` + `notification_template_versions` | Eloquent + migration |
-| `TemplateResolver` + validation pipeline | native services |
-| Dedicated `emails` queue | `config/queue.php` connection/queue entry |
+| Component | Built on | Epic |
+|---|---|---|
+| `traders` / `trader_companies` / `trader_owners` tables + models | Eloquent + migrations | B |
+| `TraderService` + controllers + policies | native Laravel services | B |
+| 7 additive enums (RequestType, CoverageType, CurrencySource, PaymentTermsMode, InvoiceType, PortOfArrival, Incoterm) | native PHP enums | C |
+| ~20 additive `import_requests` columns + trader snapshot fields | additive migration (nullable) | C |
+| `FinancingLedgerService` (global cross-bank % validation, org-scope exception) | native service + DB lock/transaction | D |
+| `DuplicateDetectionService` prevention extension + composite index | extend existing service | D |
+| `VotingService` majority `floor(n/2)+1` (new requests only) | modify existing service | E |
+| `TransitionMap` authority edits + `support_forward_to_executive` action | modify existing map | E |
+| 5-tab request form component + Trader CRUD pages + % utilization UI | shadcn-vue (existing) | C, B, D |
+| Bilingual label updates (enum `.label()`, `frontend/app/constants/workflow.ts`) | string edits | A, F |
 
 ### Library / Dependency Decision
 
-Only template-body sanitization (FR5) is a candidate for a new dependency. Decision: **zero new dependency**.
+**Zero new dependency.** Every NEW component is built on the inherited stack:
+- Trader module = Eloquent + native services (mirrors existing `Merchant`/`Bank` patterns).
+- New enums = native PHP backed enums (mirrors existing `RequestStatus`/`VoteType`).
+- Financing ledger = native MySQL transactional/lock primitives (mirrors existing voting-closure
+  pessimistic locking) — no external lock library.
+- 5-tab form + Trader pages = existing shadcn-vue + VeeValidate + Zod (mirrors existing RequestForm).
+- Rebrand/terminology = string edits; NO i18n framework added (locked constraint).
 
-- **Markdown parser:** reuse `league/commonmark` (already a Laravel dependency). No new dep.
-- **HTML handling:** locked decision is "Markdown PROSE ONLY + raw-HTML strip." Use CommonMark with `html_input => 'strip'` and `allow_unsafe_links => false` so no author-supplied HTML survives rendering. This is the strongest security posture, matches the prose-only mandate, and adds no supply-chain surface — preferred for a government compliance context over `mews/purifier` / HTMLPurifier.
+**Rationale:** A government compliance platform favors a minimal supply chain. The inherited stack
+already provides every primitive these epics need (KISS + YAGNI). Adding a library would expand the
+audit surface for capabilities the existing patterns already cover.
 
-**Rationale:** Adding a sanitizer dependency would be defense for HTML that is never allowed in the first place. Stripping at parse time removes the threat class entirely (YAGNI + reduced audit surface).
-
-**Note:** No project-initialization story is needed (brownfield). The first implementation story is the registry + enum + migrations foundation, not a scaffold command.
+**Note:** No project-initialization story exists (brownfield). The first implementation story is the
+Epic A rebrand (lowest risk, string-level), per the proposal's A→B→C→D→E→F sequencing.
 
 ## Core Architectural Decisions
 
 ### Decision Priority Analysis
 
 **Critical (block implementation):**
-- D1 — Registry-driven recipient resolution via org-scoped query
-- D2 — Outbox dedup via unique DB index, insert-first
-- D3 — Dispatch on `after_commit` (email queue)
-- D4 — Template stored as raw Markdown, rendered at send
-- D5 — OTP outbox = redacted re-render (code never in DB)
+- D1 — Financing ledger = derived query over `import_requests`, NOT a separate table.
+- D2 — Ledger concurrency = named invoice-key lock + row-lock + sum-AFTER-lock inside the submit transaction (NOT `SUM(...) FOR UPDATE`).
+- D3 — Trader snapshot = trader fields copied onto the request row at create/submit (`trader_id` FK + denormalized snapshot columns).
+- D4 — Voting majority `floor(total_eligible/2)+1` gated per-request (new requests only); legacy/closed sessions keep prior behavior.
 
 **Important (shape architecture):**
-- D6 — Outbox `rendered_body` inline TEXT, no Phase-1 pruning
-- D7 — `users.locale` column, default `ar`
-- D8 — Dedicated `emails` queue + dedicated worker
+- D5 — Authority reform = TransitionMap + Policy edits only (enum cases frozen).
+- D6 — Terminology = single label source per layer (enum `.label()` backend; `frontend/app/constants/workflow.ts` frontend).
+- D7 — 7 new enums = additive native PHP backed enums, SCREAMING_SNAKE + bilingual `.label()`.
+- D8 — SWIFT stage merge = display-only (statuses + audit unchanged).
 
-**Deferred (Phase 2):**
-- Outbox archival / pruning (revisit at proven volume)
-- MJML re-evaluation
-- Localization-as-variant beyond `ar` / `en`
-- Digest notification types (taxonomy reserved now, build later)
+**Deferred:**
+- Promoting derived ledger to a materialized/cached table (revisit only if query cost proves real at volume).
+- Dynamic document-type configuration (Tab4 ships a fixed 5-mandatory + ~9-optional set now; proposal flags "future-dynamic").
 
 ### Data Architecture
 
-- **New tables:** `notification_templates`, `notification_template_versions`, `email_deliveries`. New column: `users.locale` (nullable, default `ar`).
-- **D4 — Template body storage:** each `notification_template_versions` row stores **raw Markdown source** + metadata (`changed_by`, `changed_at`, active flag). HTML is never stored in the version. At send, render Markdown → HTML, then **snapshot the rendered output into `email_deliveries`**. Source stays editable/diffable; the outbox row is the immutable historical artifact.
-- **D6 — Outbox body:** `rendered_subject` + `rendered_body` stored as MySQL `TEXT` / `LONGTEXT` inline on `email_deliveries`. No pruning in Phase 1 — banking audit favors permanent retention.
-- **D2 — Idempotency:** unique index on `(event_id, user_id, channel)`. **Insert the `email_deliveries` row (status = `queued`) BEFORE dispatch.** A duplicate insert fails the unique constraint → the send is skipped. DB is the single source of truth; safe across worker restarts and races.
-- **Reproducibility:** reading one `email_deliveries` row reproduces the exact historical email with no re-render.
+- **D1 — Financing ledger (derived query):** the global cross-bank financing total is computed
+  on demand from `import_requests` rows — there is NO `request_financing_ledger` table, no sync, no
+  reconciliation. `import_requests` is the single source of truth. A composite index on
+  `(tax_number, invoice_number)` makes the aggregate cheap. Rows in Not-Eligible / terminal-rejected
+  states are excluded from the sum (they free capacity).
+- **D2 — Ledger concurrency (correct locking protocol):** `SELECT SUM(...) FOR UPDATE` is NOT used —
+  an aggregate result row is not the matched request rows, so it does not lock them, and it cannot
+  lock rows that do not yet exist (the empty-set / phantom-insert race). The required protocol is:
+  1. Begin DB transaction.
+  2. Acquire a **named lock for the invoice key** `(tax_number, invoice_number)` — a MySQL advisory
+     lock (`GET_LOCK("financing:{tax_number}:{invoice_number}", timeout)`) or a dedicated
+     invoice-key sentinel lock row. This is mandatory because `FOR UPDATE` cannot lock rows that do
+     not exist yet; the named lock serializes concurrent first-inserts for the same key across banks.
+     (Reuse the existing MySQL advisory-lock pattern already used for external FX confirmation
+     issuance in Story 3.6 — do not invent a new locking mechanism.)
+  3. `SELECT ... FROM import_requests WHERE tax_number=? AND invoice_number=? AND current_status
+     NOT IN (<not_eligible_set>) FOR UPDATE;` — lock the actual matched rows.
+  4. Sum `request_percentage` over the locked rows (application code, or a second aggregate AFTER the
+     rows are locked).
+  5. Validate `existing_sum + new_request_percentage <= 100`; on violation throw a domain error
+     (HTTP 422 `FINANCING_LIMIT_EXCEEDED`) and roll back.
+  6. Insert / submit the new request via `WorkflowService::transition()` in the SAME transaction.
+  7. Commit (releases row locks; release the named lock).
+  This serializes both the "rows already exist" case (step 3 row-lock) and the "no rows yet" case
+  (step 2 named lock), closing the phantom-insert race that a bare `FOR UPDATE` leaves open.
+- **D3 — Trader snapshot:** new requests carry `trader_id` (FK, lineage) PLUS denormalized snapshot
+  columns copied from the trader at create/submit (trader name, tax_number, registration number +
+  expiry, etc.). Editing a trader later never mutates an existing request. `Merchant` is retained
+  untouched for historical (pre-trader) requests; `merchant_id` and `trader_id` are mutually-present
+  by request era, both nullable.
+- **Additive migration (Epic C):** ~20 nullable/defaulted columns on `import_requests` (request_type,
+  coverage_type, currency_source, payment_terms_mode, request_percentage, request_currency,
+  requested_amount, invoice_type, invoice_currency, unit_of_measure, total_invoice_amount, commodity,
+  exporting_company_name, exporting_company_location, country_of_origin, port_of_loading,
+  port_of_arrival, incoterm, final_destination, shipping_date, arrival_date, trader_id + snapshot
+  fields). All nullable → historical rows stay valid, zero data migration.
+- **New tables (Epic B):** `traders` (tax_number unique global identifier, trader_name,
+  tax_card_expiry, commercial_registration_number, commercial_registration_expiry),
+  `trader_companies` (trader_id FK, company_name), `trader_owners` (trader_id FK, full_name,
+  ownership_percentage, nationality?, identification_number?).
+- **Indexes:** composite `(tax_number, invoice_number)` on `import_requests` (D1/D2); unique
+  `traders.tax_number`; FK indexes on trader_companies/owners. `add_index_invoice_number` already
+  exists — extend, don't duplicate.
 
 ### Authentication & Security
 
-- **D5 — OTP redaction:** the live code appears in the sent email only. The outbox stores a **redacted re-render** of the same template with the code variable masked (`••••••`). The code/token is never written to the DB or to logs. Applies to `MFA_OTP` and `PASSWORD_RESET` (`persist_body = redacted`).
-- OTP / reset stay in a separate cache namespace (recovery doctrine): short TTL, single-use, rate-limited send.
-- No tracking pixels. No sensitive financials in the body → deep-link to the app.
-- SPF + DKIM + DMARC infra mandate on the CBY sending domain.
-- Production fail-fast (non-SMTP / Mailpit host in `production`) preserved.
+- **Org-scope exception (the single deliberate break):** the D1 ledger query is GLOBAL — it sums
+  across ALL banks, intentionally bypassing `scopeForUser()`. This is the only place the platform
+  reads cross-org data. It MUST be: (a) reachable only through `FinancingLedgerService` (never an
+  ad-hoc query), (b) used only for the duplicate/% validation + the UI % indicator, (c) NEVER expose
+  another bank's request details — it returns aggregate % and a boolean/violation, not foreign rows,
+  (d) explicitly documented as an intentional exception in the service docblock + this architecture.
+- **RBAC unchanged:** no new roles. Trader CRUD permitted to DATA_ENTRY, BANK_REVIEWER, BANK_ADMIN
+  via new policies on the existing role enum. Authority reform (D5) is enforced in policies +
+  TransitionMap, never in the UI alone.
+- **Audit immutability:** terminology (D6) and SWIFT merge (D8) are display-only; stored
+  `audit_logs` / `request_stage_history` action + status codes are unchanged.
 
 ### API & Communication Patterns
 
-- **D1 — Recipient resolution:** each `NotificationType` declares its target role(s) / relation in the registry. A resolver runs an **org-scoped query** (reusing the `scopeForUser()` invariant) to produce concrete recipients. Org-scope is enforced at the query level — the design structurally cannot email an out-of-scope user.
-- **D3 — Dispatch timing:** the email queue connection opts into `after_commit = true`. Jobs dispatch only after the `WorkflowService::transition()` DB transaction commits, so a rolled-back transition never produces an email.
-- Workflow-comm sends are tied to the existing `audit_logs` spine (no parallel audit).
-- Admin template management is an authenticated `CBY_ADMIN` API exposing template preview + sample-data rendered preview; validation runs at save AND at render.
+- **D2 — Submit path (concurrency):** request submission runs the full named-lock + row-lock +
+  sum-after-lock + validate + transition protocol (see Data Architecture D2) in one DB transaction.
+  Mirrors the existing pessimistic-lock + advisory-lock patterns already in the codebase.
+- **D4 — Voting majority gating:** `VotingService` finalization computes APPROVED when
+  approve-votes `≥ floor(total_eligible/2)+1`, else NOT-ELIGIBLE — applied only to requests flagged
+  as new-rule (created after the feature lands; gate via created_at threshold or an explicit
+  `voting_rule_version` attribute). Closed sessions are never recomputed. Director tiebreak/legacy
+  path remains for old-rule requests.
+- **Error envelope:** reuse the existing `{ success, message, error_code }` wrapper; new codes
+  `FINANCING_LIMIT_EXCEEDED`, `DUPLICATE_INVOICE_MISMATCH` (currency/total/number/tax mismatch on a
+  shared invoice key). No new envelope shape.
+- **Forwarding action (D5):** new transition action `support_forward_to_executive` replaces the
+  Support Committee's decision actions; comment still recorded to audit. New `RETURN_TO_DATA_ENTRY`
+  is the only non-forward action available to the Internal Reviewer besides approve-continue.
 
 ### Frontend Architecture
 
-- Admin template-management UI (Nuxt 4 / shadcn-vue): list types, edit Subject + Markdown body, view version history, and a **dual preview** — template preview + sample-data rendered preview using fixed sample data (YFH-2026-000123 / Yemen International Bank / 1,000,000 USD / Approved).
-- No new frontend framework; reuse existing settings/admin surface patterns.
+- **5-tab request form (D, Epic C):** one parent component, five tab panels
+  (Basic / Invoice / Shipping / Documents / Workflow History) built on existing shadcn-vue +
+  VeeValidate + Zod (mirror existing `RequestForm`). Tab1 tax-number lookup → `TraderService`
+  autofill → snapshot into form state. Full coverage = 100% readonly; Partial = `≥5% & <100%`.
+  Tab5 reuses the existing workflow timeline component.
+- **% utilization UI (D, Epic D):** the financing indicator + low-remaining warning + submit-block
+  read the GLOBAL remaining % via the ledger endpoint (aggregate only, no foreign rows). Advisory in
+  the UI; the D2 named-lock + row-lock check at submit is the authority.
+- **Trader CRUD pages (Epic B):** list/create/edit/view with companies + owners sub-forms; existing
+  table/modal/dialog patterns, no new component library.
+- **Terminology (D6) + SWIFT merge (D8):** all label changes flow through
+  `frontend/app/constants/workflow.ts` (single frontend label source). SWIFT merge collapses the two
+  SWIFT timeline nodes into one display node; underlying statuses untouched.
+- **State management:** extend existing Pinia stores (`requests`, plus a new `traders` store);
+  reuse existing composable patterns (`useRequests` → `useTraders`).
 
 ### Infrastructure & Deployment
 
-- **D8 — Queue topology:** `config/queue.php` gains an `emails` queue; a dedicated `queue:work --queue=emails` worker runs it. SMTP latency or failure never blocks workflow/default jobs. Retry/backoff plus the existing `database-uuids` dead-letter driver.
-- **D7 — Locale:** the render pipeline reads `recipient.locale` (default `ar`).
-- SMTP via `infra/.env`: CBY government SMTP in prod, Mailpit in dev. Provider-portable through the Laravel mail abstraction.
+- No infra change. Same MySQL + Redis + Laravel/Nuxt deployment. The D1 ledger is a query against
+  the existing primary DB; the D2 protocol uses native InnoDB row locks + MySQL named/advisory locks
+  (already used in the codebase) — no new service, no new queue, no new cache topology. Redis stays
+  as-is (no ledger cache in Phase 1 — Deferred).
+- Migrations are additive and reversible; deploy order follows epic sequence A→B→C→D→E→F.
 
 ### Decision Impact Analysis
 
-**Implementation sequence:**
-1. `NotificationType` enum + registry config (per-type flags) + `users.locale` migration.
-2. `email_deliveries` migration (unique idempotency index) + `EmailDeliveryService` (insert-first).
-3. `config/email-theme.php` + mail theme override + `<x-email.*>` components.
-4. `notification_templates` + `notification_template_versions` migrations + `TemplateResolver` + validation pipeline.
-5. Wire `SendWorkflowNotifications` → registry resolver + `after_commit` dispatch + outbox record.
-6. Migrate the existing 6 `Mail` / 8 `Notification` classes into the registry.
-7. Admin template API + preview endpoints + Nuxt management UI.
+**Implementation sequence (matches proposal A→F):**
+1. Epic A — rebrand strings (enum `.label()` + `frontend/app/constants/workflow.ts`). Lowest risk.
+2. Epic B — Trader tables + `TraderService` + policies + CRUD pages (D3 foundation; precedes C).
+3. Epic C — additive `import_requests` migration + 7 enums (D7) + 5-tab form + trader snapshot (D3).
+4. Epic D — composite index + `FinancingLedgerService` (D1) + `DuplicateDetectionService` prevention
+   + D2 submit-lock protocol + % UI. (Gates submission, so after C.)
+5. Epic E — TransitionMap + Policy authority edits (D5) + `VotingService` majority (D4) + SWIFT
+   display merge (D8). Full test suite (workflow-critical).
+6. Epic F — finalize terminology labels (D6) after workflow labels settle.
 
 **Cross-component dependencies:**
-- The registry (1) governs the shape of the resolver (5), outbox `persist_body` (2), template editability (4), and validation allowed-vars (4).
-- Outbox insert-first (2) gates dispatch (5) — idempotency is enforced before send.
-- Theme + components (3) are consumed by both Blade system templates and rendered admin Markdown (4).
+- D3 snapshot (C) depends on the Trader tables (B) existing — B precedes C.
+- D1/D2 ledger (D) depends on `request_percentage` + duplicate-key columns from C — C precedes D.
+- D4 voting gating (E) is independent of D but shares the "new-requests-only" backward-compat
+  invariant with the locked decisions.
+- D6 terminology (F) finalizes after E because workflow labels ("Returned to Data Entry",
+  forward-only) settle in E.
 
 ## Implementation Patterns & Consistency Rules
 
 ### Critical Conflict Points Identified
 
-9 areas where AI agents could diverge on this subsystem. Most naming is inherited from the existing codebase and is restated here to bind agents. Verified against current code: `AuditAction` already declares `EMAIL_TEST_SENT`, `EMAIL_TEMPLATE_UPDATED`, `EMAIL_DELIVERY_FAILED` (audit hooks pre-staged); existing notifications use `SCREAMING_SNAKE` enum cases and `via()` returning `['database']`; migrations use `YYYY_MM_DD_NNNNNN_verb_noun`.
+8 areas where AI agents could diverge on this re-scope. Naming is inherited from the existing
+codebase and restated here to bind agents. Verified conventions: backed PHP enums with
+SCREAMING_SNAKE cases + bilingual `.label()`; snake_case tables/columns; `{Domain}Service` classes
+in `App\Services\`; migrations `YYYY_MM_DD_NNNNNN_verb_noun`; frontend constants in
+`frontend/app/constants/`; `useX` composables + Pinia stores; response wrapper
+`{ success, message, data }` / error `{ success, message, error_code }`.
 
 ### Naming Patterns
 
-**Notification types (enum cases):** `SCREAMING_SNAKE`, matching existing `AuditAction` — e.g. `REQUEST_APPROVED`, `MFA_OTP`. Not `RequestApproved` / `requestApproved`.
+**New enums (Epic C, D7):** backed PHP enums, SCREAMING_SNAKE cases, bilingual `.label()` —
+matching `RequestStatus` / `VoteType`. Files `app/Enums/{PascalCase}.php`:
+`RequestType`, `CoverageType`, `CurrencySource`, `PaymentTermsMode`, `InvoiceType`,
+`PortOfArrival`, `Incoterm`. NOT `requestType` / kebab. Each case carries `label(): string`
+returning `"عربي / English"` form consistent with existing enums.
 
-**Audit actions — REUSE existing, do NOT invent:** `EMAIL_TEMPLATE_UPDATED` (template save), `EMAIL_DELIVERY_FAILED` (failed send), `EMAIL_TEST_SENT` (test email). Already in `app/Enums/AuditAction.php`. Agents must NOT add `EMAIL_SENT`-style duplicates.
+**DB tables/columns:** snake_case plural tables — `traders`, `trader_companies`, `trader_owners`.
+Columns snake_case — `tax_number`, `commercial_registration_expiry`, `ownership_percentage`,
+`request_percentage`, `port_of_arrival`. FK = `{singular}_id` — `trader_id`. Snapshot columns
+prefixed for clarity where they shadow trader fields (e.g. `trader_snapshot_name` or documented
+inline) — pick ONE convention in the Epic C foundation story and reuse.
 
-**DB tables:** snake_case plural — `notification_templates`, `notification_template_versions`, `email_deliveries`. Columns snake_case: `recipient_user_id`, `rendered_body`, `template_version_id`, `provider_message_id`. FK = `{singular}_id`.
+**Migrations:** `YYYY_MM_DD_NNNNNN_verb_noun.php` — `..._create_traders_table.php`,
+`..._add_invoice_shipping_fields_to_import_requests_table.php`,
+`..._add_composite_index_tax_invoice_to_import_requests_table.php`.
 
-**Migrations:** `YYYY_MM_DD_NNNNNN_verb_noun.php` (e.g. `..._create_email_deliveries_table.php`, `..._add_locale_to_users_table.php`).
+**Services:** `{Domain}Service` in `App\Services\` — `TraderService`, `FinancingLedgerService`.
+Modify existing in place — `VotingService`, `DuplicateDetectionService`, `WorkflowService`,
+`TransitionMap`.
 
-**Blade email components:** `<x-email.{kebab}>` — `status-badge`, `data-row`, `info-box`, `action-card`, `otp-code`, `confidentiality-notice`. Files at `resources/views/components/email/{kebab}.blade.php`.
+**Transition actions:** snake_case verb phrases matching existing TransitionMap keys —
+`support_forward_to_executive`, `return_to_data_entry`. Do NOT invent camelCase action keys.
+Frozen-but-retired actions (`bank_reject`, `bank_reject_terminal`, `support_approve`,
+`support_reject`) stay defined for history; just removed from the actor's available-action set.
 
-**Theme tokens (`config/email-theme.php`):** snake_case keys mirroring DESIGN.md names — `primary_blue`, `severity_red`, `voting_indigo`. No raw hex scattered in components.
-
-**Services:** `{Domain}Service` / resolver — `EmailDeliveryService`, `TemplateResolver`, `TemplateValidator`, `NotificationRegistry`. Namespace `App\Services\Notifications\`.
+**Frontend:** components PascalCase `.vue` (`TraderForm.vue`, `RequestFormTabs.vue`); composables
+`useTraders.ts`; Pinia store `traders` (`useTradersStore`); types in `app/types/`; labels in
+`frontend/app/constants/workflow.ts`. Mirror existing `useRequests` / `requests` store shapes.
 
 ### Structure Patterns
 
 ```
 backend/app/
-  Enums/NotificationType.php
-  Services/Notifications/
-    NotificationRegistry.php        (per-type config accessor)
-    TemplateResolver.php            (DB vs Blade source)
-    TemplateValidator.php           (allowed-var, strip, sanitize)
-    EmailDeliveryService.php        (insert-first, outbox, redaction)
-  Models/{NotificationTemplate,NotificationTemplateVersion,EmailDelivery}.php
-config/email-theme.php
-resources/views/
-  components/email/*.blade.php       (<x-email.*>)
-  vendor/mail/html/{message,button,panel}.blade.php   (theme override)
-  emails/system/*.blade.php          (system-managed: otp, reset, voting)
+  Enums/{RequestType,CoverageType,CurrencySource,PaymentTermsMode,InvoiceType,PortOfArrival,Incoterm}.php
+  Services/
+    TraderService.php
+    FinancingLedgerService.php          (global; org-scope exception documented in docblock)
+    VotingService.php                   (modify: floor(n/2)+1 gating)
+    DuplicateDetectionService.php       (modify: detection → prevention)
+    Workflow/{WorkflowService,TransitionMap}.php   (modify: authority reform)
+  Models/{Trader,TraderCompany,TraderOwner}.php
+  Policies/TraderPolicy.php
+  Http/Controllers/Api/TraderController.php
+  Http/Requests/{StoreTraderRequest,SubmitImportRequest...}.php   (FinancingLimit rule here)
+frontend/app/
+  components/trader/{TraderForm,TraderCompaniesField,TraderOwnersField}.vue
+  components/request/RequestFormTabs.vue (+ tab panels)
+  composables/useTraders.ts
+  stores/traders.ts
+  types/trader.ts
+  constants/workflow.ts                 (modify: Not-Eligible labels, Returned-to-Data-Entry, SWIFT merge)
 ```
 
-Tests: `backend/tests/Feature/Notifications/` + `backend/tests/Unit/Notifications/` (matches existing Feature/Unit split).
+Tests: `backend/tests/Feature/{Trader,Financing,Workflow,Voting}/` + `Unit/` mirror existing split.
 
 ### Format Patterns
 
-**Registry per-type shape (frozen key set):**
+**Bilingual label form:** `"غير مستوفي للشروط / Not Eligible"` style — Arabic first, ` / `
+separator, English second — matching existing enum `.label()` output. Single source per layer
+(D6): backend enum `.label()`, frontend `constants/workflow.ts`. Never duplicate a label string
+across files.
 
-```php
-NotificationType::REQUEST_APPROVED => [
-  'channels' => ['database', 'mail'],
-  'admin_editable' => true,
-  'persist_body' => 'full',          // full | redacted
-  'source' => 'db',                  // db | blade
-  'recipient_roles' => ['DATA_ENTRY', 'BANK_REVIEWER'],
-  'allowed_variables' => ['reference_number', 'bank_name', 'amount', 'currency', 'status'],
-],
-```
+**Coverage/% rules:** `request_percentage` stored as integer or decimal — pick in Epic C
+foundation; Full coverage = `100` (readonly in UI), Partial = `>= 5 && < 100`. Validation lives in
+a Form Request rule + `FinancingLedgerService`, not scattered in the controller.
 
-Every type declares ALL keys — no partial maps, no ad-hoc keys.
-
-**Outbox status enum:** `queued | sent | failed | bounced` (lowercase, locked).
-
-**API response:** existing wrapper `{ success, message, data }` and error `{ success: false, message, error_code }`. Reuse; no new envelope.
-
-**Allowed-variable refs in Markdown:** `{{ variable_name }}` (snake_case, whitespace-tolerant). Undefined var → safe fallback; never leak raw `{{ }}` to a recipient.
+**API envelope:** reuse `{ success, message, data }` / `{ success, message, error_code }`. New
+error codes: `FINANCING_LIMIT_EXCEEDED` (422), `DUPLICATE_INVOICE_MISMATCH` (422). APIs/exports
+emit STORED status/vote codes; labels resolve at display only (D6).
 
 ### Communication Patterns
 
-**Dispatch:** workflow emails ONLY via the `SendWorkflowNotifications` listener → registry resolver. Agents must NOT call `Mail::send()` / `->notify()` directly from controllers/services for registered types.
+**All state transitions via `WorkflowService::transition()`** — agents NEVER mutate
+`current_status` directly and NEVER add a transition outside `TransitionMap`. The new
+`support_forward_to_executive` + `return_to_data_entry` actions are registered in `TransitionMap`
+with role guards in policy; comments recorded to `audit_logs` + `request_stage_history`.
 
-**Idempotency `event_id`:** stable, derived from the domain event — `{request_id}:{to_status}` for workflow, `{user_id}:{otp_purpose}:{issued_at}` for OTP. Same event retried = same key = no double-send.
+**Ledger access ONLY via `FinancingLedgerService`** — the global cross-bank sum is never queried
+ad-hoc from a controller, model scope, or another service. The service is the single guarded
+chokepoint for the org-scope exception, returns aggregate % / violation only (never foreign rows).
 
-**after_commit:** all email dispatch is post-commit; no emailing inside an open transaction.
+**Voting gating** — the new-rule check lives in `VotingService` only; agents do not branch on
+voting rule version anywhere else.
 
 ### Process Patterns
 
-**Redaction:** `persist_body = redacted` types store a masked re-render in the outbox. Code/token NEVER reaches the DB or `Log::`. Single chokepoint: `EmailDeliveryService::record()` applies redaction by type — agents route through it, never write `email_deliveries` rows directly.
+**Concurrency (D2):** any new-request submission that touches the financing key goes through the
+named-lock → row-lock → sum-after-lock → validate → transition protocol inside ONE transaction.
+Agents reuse the existing MySQL advisory-lock helper (Story 3.6 FX-confirmation pattern); they do
+NOT write a bare `SUM(...) FOR UPDATE` and do NOT skip the named lock for the empty-set case.
 
-**Failure:** SMTP failure → job retry/backoff → on exhaustion set `email_deliveries.status = failed` + `error`, write audit `EMAIL_DELIVERY_FAILED`, dead-letter via `failed_jobs`. Never silently swallow.
+**Trader snapshot:** snapshot copy happens at create/submit in `TraderService` /
+the submit handler — once. Agents never re-read the live trader to populate an existing request's
+display; the request's snapshot columns are authoritative for that request.
 
-**Validation timing:** at template SAVE (reject bad input) AND at RENDER (guard + safe fallback) — both, not either.
+**Backward-compat guard:** every additive column is nullable/defaulted; every label change is
+display-only; voting rule is gated to new requests. Agents NEVER write a data migration that
+backfills or rewrites historical rows, and NEVER rename an enum case or DB value.
+
+**Validation timing:** Zod (frontend) for UX + Form Request (backend) for authority — both. The
+financing-% and duplicate-invoice checks are authoritative on the BACKEND (Form Request rule +
+`FinancingLedgerService`); the frontend % indicator is advisory only.
 
 ### Enforcement Guidelines
 
 **All AI agents MUST:**
-- Use the `NotificationType` enum + registry — never hardcode type strings or channel lists.
-- Route all sends through listener → resolver → `EmailDeliveryService`.
-- Reuse the existing `AuditAction` email cases.
-- Org-scope recipient queries via `scopeForUser()`.
-- Use inline styles from `config/email-theme.php` only — no Tailwind, no webfont, no raw hex.
-- Insert the outbox row before dispatch (idempotency).
+- Route every transition through `WorkflowService::transition()` + `TransitionMap`.
+- Access the global financing sum ONLY through `FinancingLedgerService`.
+- Use the named-lock + row-lock + sum-after-lock protocol for submit (never `SUM(...) FOR UPDATE`).
+- Add new enums as backed PHP enums with bilingual `.label()`; keep frozen cases intact.
+- Put labels in exactly one place per layer (enum `.label()` / `constants/workflow.ts`).
+- Keep additive columns nullable; never migrate/rewrite historical rows.
+- Reuse shadcn-vue + existing composable/store/Form-Request patterns.
 
 **Anti-patterns (forbidden):**
-- `Mail::to($x)->send()` directly for a registered type.
-- Storing an OTP / token / raw HTML in any column.
-- Adding a new audit enum case that duplicates an existing email one.
-- `text-red-600` or hex literals inside `<x-email.*>` components.
-- Partial registry entries.
+- Mutating `current_status` directly or adding an out-of-map transition.
+- `SUM(request_percentage) ... FOR UPDATE` as the ledger guard (locks nothing useful).
+- Skipping the named lock → losing the empty-set / phantom-insert race.
+- A separate `request_financing_ledger` table duplicating the requests source of truth.
+- Renaming `EXECUTIVE_REJECTED` / `SUPPORT_REJECTED` / `BANK_REJECTED` (or any frozen case).
+- Duplicating a label string across files; emitting labels (not codes) from APIs/exports.
+- Re-reading a live trader to render a historical request (snapshot drift).
+- Recomputing closed voting sessions under the new majority rule.
+- Querying cross-bank request rows anywhere except the guarded ledger aggregate.
 
 ## Project Structure & Boundaries
 
-### Complete Subsystem Tree (✚ new, ✎ modify, · exists)
+### Complete Re-Scope Tree (✚ new, ✎ modify, · exists)
 
 ```
 backend/
 ├── app/
 │   ├── Enums/
-│   │   ├── AuditAction.php                          ·  (email cases already present)
-│   │   └── NotificationType.php                     ✚  enum-backed registry keys
-│   ├── Services/
-│   │   ├── Notifications/
-│   │   │   ├── ClaimReleaseNotifier.php             ·
-│   │   │   ├── NotificationRegistry.php             ✚  per-type config accessor (pure config, no I/O)
-│   │   │   ├── SendEmailNotification.php            ✚  ORCHESTRATOR: registry→resolver→render→record→dispatch
-│   │   │   ├── TemplateResolver.php                 ✚  db vs blade source selection only
-│   │   │   ├── TemplateValidator.php                ✚  allowed-var / strip / sanitize (stateless)
-│   │   │   ├── TemplateRenderer.php                 ✚  markdown→html + locale + theme (no persistence)
-│   │   │   └── EmailDeliveryService.php             ✚  PERSISTENCE ONLY: reserve / finalize / markSent / markFailed
-│   │   └── Audit/AuditService.php                   ·  (reuse spine)
+│   │   ├── RequestStatus.php                       ✎  (F) .label() → "Not Eligible"; cases FROZEN
+│   │   ├── VoteType.php                            ✎  (F) hide ABSTAIN in UI; cases FROZEN
+│   │   ├── RequestType.php                         ✚  (C) backed enum + bilingual label()
+│   │   ├── CoverageType.php                        ✚  (C) FULL | PARTIAL
+│   │   ├── CurrencySource.php                      ✚  (C)
+│   │   ├── PaymentTermsMode.php                    ✚  (C)
+│   │   ├── InvoiceType.php                         ✚  (C)
+│   │   ├── PortOfArrival.php                       ✚  (C)
+│   │   └── Incoterm.php                            ✚  (C)
 │   ├── Models/
-│   │   ├── NotificationTemplate.php                 ✚
-│   │   ├── NotificationTemplateVersion.php          ✚
-│   │   ├── EmailDelivery.php                        ✚
-│   │   └── User.php                                 ✎  + locale cast
-│   ├── Notifications/                               ✎  8 existing → registry-driven via()
-│   │   ├── RequestApprovedNotification.php          ✎  via() = database + mail (conditional)
-│   │   ├── RequestRejectedNotification.php          ✎
-│   │   ├── RequestReturnedNotification.php          ✎
-│   │   ├── VotingOpenedNotification.php             ✎
-│   │   └── … (Submitted, SwiftUpload, ClaimReleased, CustomsIssued)  ·
-│   ├── Mail/                                        ✎  6 existing → theme + components
-│   │   ├── MfaOtpMail.php                           ✎  source=blade, persist=redacted
-│   │   ├── PasswordRecoveryOtpMail.php              ✎  source=blade, persist=redacted
-│   │   └── … (RequestApproved/Rejected/Returned, VotingOpened)  ✎
-│   ├── Listeners/
-│   │   └── SendWorkflowNotifications.php            ✎  → SendEmailNotification orchestrator (after_commit)
-│   └── Http/
-│       ├── Controllers/Api/Admin/
-│       │   └── NotificationTemplateController.php   ✚  index/show/update/preview/render-preview
-│       └── Resources/
-│           ├── NotificationTemplateResource.php     ✚
-│           └── EmailDeliveryResource.php            ✚
-├── config/
-│   ├── mail.php                                     ✎  theme override pointer
-│   ├── queue.php                                    ✎  emails connection/queue + after_commit
-│   └── email-theme.php                              ✚  DESIGN.md tokens → inline
-├── database/migrations/
-│   ├── ..._create_notification_templates_table.php          ✚
-│   ├── ..._create_notification_template_versions_table.php  ✚
-│   ├── ..._create_email_deliveries_table.php                ✚  unique(event_id,user_id,channel)
-│   └── ..._add_locale_to_users_table.php                    ✚  default 'ar'
-├── database/seeders/
-│   └── NotificationTemplateSeeder.php              ✚  seed 3 admin-editable DB templates
-├── resources/views/
-│   ├── vendor/mail/html/
-│   │   ├── message.blade.php                        ✚  theme override
-│   │   ├── button.blade.php                         ✚
-│   │   └── panel.blade.php                          ✚
-│   ├── components/email/
-│   │   ├── status-badge.blade.php                   ✚
-│   │   ├── data-row.blade.php                       ✚
-│   │   ├── info-box.blade.php                       ✚  variant prop
-│   │   ├── action-card.blade.php                    ✚
-│   │   ├── otp-code.blade.php                       ✚
-│   │   └── confidentiality-notice.blade.php         ✚
-│   └── emails/                                      ✎
-│       ├── system/                                  ✚  system-managed (blade source)
-│       │   ├── mfa-otp.blade.php                    ✎ (move)
-│       │   ├── password-recovery-otp.blade.php      ✎ (move)
-│       │   └── voting-opened.blade.php              ✎ (move)
-│       └── … (request-approved/rejected/returned now DB-sourced; blade = fallback)
+│   │   ├── ImportRequest.php                       ✎  (C) + invoice/shipping/snapshot fillable + trader() rel
+│   │   ├── Merchant.php                            ·  retained for historical requests
+│   │   ├── Trader.php                              ✚  (B) hasMany companies/owners; tax_number unique
+│   │   ├── TraderCompany.php                       ✚  (B)
+│   │   └── TraderOwner.php                         ✚  (B)
+│   ├── Services/
+│   │   ├── TraderService.php                       ✚  (B) CRUD + snapshot builder
+│   │   ├── FinancingLedgerService.php              ✚  (D) GLOBAL aggregate (org-scope exception)
+│   │   ├── DuplicateDetectionService.php           ✎  (D) detection → prevention + invoice-match guard
+│   │   ├── VotingService.php                       ✎  (E) floor(n/2)+1 gated to new requests
+│   │   └── Workflow/
+│   │       ├── WorkflowService.php                 ·  sole transition chokepoint (reuse)
+│   │       └── TransitionMap.php                   ✎  (E) +support_forward_to_executive, +return_to_data_entry;
+│   │                                                      strip support_approve/reject + bank_reject from actors
+│   ├── Policies/
+│   │   ├── TraderPolicy.php                        ✚  (B) DATA_ENTRY/BANK_REVIEWER/BANK_ADMIN
+│   │   └── ImportRequestPolicy.php                 ✎  (E) reviewer no-reject, support forward-only
+│   ├── Rules/
+│   │   └── FinancingLimitRule.php                  ✚  (D) ≤100% global check (delegates to ledger service)
+│   ├── Http/
+│   │   ├── Controllers/Api/
+│   │   │   ├── TraderController.php                ✚  (B) index/show/store/update + tax-number lookup
+│   │   │   └── ImportRequestController.php         ✎  (C/D) 5-tab payload + submit through D2 protocol
+│   │   ├── Requests/
+│   │   │   ├── StoreTraderRequest.php              ✚  (B)
+│   │   │   ├── UpdateTraderRequest.php             ✚  (B)
+│   │   │   └── StoreImportRequest.php              ✎  (C/D) invoice/shipping/% + FinancingLimitRule
+│   │   └── Resources/
+│   │       ├── TraderResource.php                  ✚  (B)
+│   │       └── ImportRequestResource.php           ✎  (C) + invoice/shipping/snapshot; emits STORED codes
+├── database/
+│   ├── migrations/
+│   │   ├── ..._create_traders_table.php                                ✚ (B) unique tax_number
+│   │   ├── ..._create_trader_companies_table.php                       ✚ (B)
+│   │   ├── ..._create_trader_owners_table.php                          ✚ (B)
+│   │   ├── ..._add_invoice_shipping_fields_to_import_requests_table.php ✚ (C) ~20 nullable cols + trader_id + snapshot
+│   │   └── ..._add_composite_index_tax_invoice_to_import_requests_table.php ✚ (D)
+│   ├── factories/{TraderFactory,TraderCompanyFactory,TraderOwnerFactory}.php ✚ (B)
+│   └── seeders/TraderSeeder.php                    ✚  (B) dev sample traders
 └── tests/
-    ├── Feature/Notifications/
-    │   ├── EmailDeliveryOutboxTest.php              ✚  reserve/finalize, idempotency, redaction
-    │   ├── TemplateResolverTest.php                 ✚  db vs blade
-    │   ├── TemplateValidationTest.php               ✚  allowed-var, strip, undefined-var
-    │   ├── NotificationTemplateApiTest.php          ✚  CBY_ADMIN only, preview
-    │   └── WorkflowEmailDispatchTest.php            ✚  after_commit, org-scope, no double-send
-    └── Unit/Notifications/
-        ├── NotificationRegistryTest.php             ✚  frozen key set per type
-        └── RedactionTest.php                        ✚  OTP never persisted
+    ├── Feature/
+    │   ├── Trader/TraderCrudTest.php               ✚  (B) global CRUD + RBAC
+    │   ├── Financing/FinancingLedgerTest.php       ✚  (D) ≤100% global, cross-bank, empty-set race, concurrency
+    │   ├── Request/FiveTabRequestTest.php          ✚  (C) snapshot, % rules, additive fields
+    │   ├── Workflow/AuthorityReformTest.php        ✚  (E) reviewer no-reject, support forward-only, returns
+    │   └── Voting/MajorityRuleTest.php             ✚  (E) floor(n/2)+1 new-only, legacy untouched
+    └── Unit/
+        ├── Enums/NewEnumsLabelTest.php             ✚  (C/F) bilingual labels incl. غير مستوفي للشروط
+        └── Services/TraderSnapshotTest.php         ✚  (C) snapshot immutability
 
-frontend/                                            (admin UI — secondary)
-├── app/pages/admin/
-│   └── email-templates/
-│       ├── index.vue                                ✚  type list
-│       └── [type].vue                               ✚  edit subject+markdown, version history, dual preview
-├── app/composables/
-│   └── useEmailTemplates.ts                         ✚
-└── app/types/
-    └── notifications.ts                             ✚  NotificationType, template, version, delivery
-
-infra/
-├── docker-compose.yml                               ✎  mailpit service (dev)
-└── .env.example                                     ✎  MAIL_* + EMAIL_QUEUE entries
+frontend/
+├── app/
+│   ├── constants/
+│   │   └── workflow.ts                             ✎  (A/F) Not-Eligible label, Returned-to-Data-Entry, SWIFT merge
+│   ├── types/
+│   │   ├── trader.ts                               ✚  (B) Trader, Company, Owner
+│   │   └── request.ts                              ✎  (C) + invoice/shipping/snapshot fields, new enums
+│   ├── composables/
+│   │   ├── useTraders.ts                           ✚  (B) CRUD + tax-number lookup
+│   │   ├── useRequests.ts                          ✎  (C) 5-tab payload + financing % fetch
+│   │   └── useFinancingLedger.ts                   ✚  (D) advisory % indicator (aggregate only)
+│   ├── stores/
+│   │   └── traders.ts                              ✚  (B) Pinia
+│   ├── components/
+│   │   ├── trader/
+│   │   │   ├── TraderForm.vue                      ✚  (B) shadcn-vue + VeeValidate + Zod
+│   │   │   ├── TraderCompaniesField.vue            ✚  (B) 1:N sub-form
+│   │   │   └── TraderOwnersField.vue               ✚  (B) 1:N + ownership %
+│   │   └── request/
+│   │       ├── RequestFormTabs.vue                 ✚  (C) parent 5-tab shell
+│   │       ├── tabs/BasicInfoTab.vue               ✚  (C) tax-number lookup → autofill
+│   │       ├── tabs/InvoiceTab.vue                 ✚  (C) Full/Partial % rules
+│   │       ├── tabs/ShippingTab.vue                ✚  (C) ports/incoterm enums
+│   │       ├── tabs/DocumentsTab.vue               ✚  (C) 5 mandatory + ~9 optional
+│   │       ├── tabs/WorkflowHistoryTab.vue         ✎  (C) reuse existing timeline
+│   │       └── FinancingUtilizationBar.vue         ✚  (D) % used + low-remaining warning + submit-block
+│   ├── pages/
+│   │   ├── traders/index.vue                       ✚  (B) list
+│   │   ├── traders/new.vue                         ✚  (B)
+│   │   ├── traders/[id]/index.vue                  ✚  (B) view
+│   │   ├── traders/[id]/edit.vue                   ✚  (B)
+│   │   └── requests/new.vue                        ✎  (C) mount RequestFormTabs
+│   └── tests/unit/                                 ✚/✎  Trader*, RequestFormTabs, FinancingUtilizationBar, label tests
+└── (branding assets/strings)                       ✎  (A) title, login, sidebar, header → National Committee
 ```
 
 ### Architectural Boundaries
 
 **API boundaries:**
-- Public: none new. OTP/reset endpoints live in the auth-recovery story; email is a downstream side-effect, not a new endpoint.
-- Admin (auth:sanctum + `CBY_ADMIN`): `GET/PUT /api/admin/notification-templates`, `POST /api/admin/notification-templates/{type}/preview`. Authority is backend policy, never frontend.
-- No SMTP-config endpoint — transport is env-only. (Boundary: template bodies are DB-managed; transport is NOT.)
+- Trader (auth:sanctum + TraderPolicy): `GET/POST /api/traders`, `GET/PUT /api/traders/{id}`,
+  `GET /api/traders/lookup?tax_number=` (autofill). Org-scope NOT applied to trader records
+  (traders are global), but write authority is role-gated.
+- Financing ledger: `GET /api/requests/financing-utilization?tax_number=&invoice_number=` →
+  returns `{ used_percent, remaining_percent, blocked }` ONLY. Never returns foreign request rows.
+  This is the single public surface of the org-scope exception.
+- Request submit: `POST /api/requests` / submit transition runs the D2 protocol server-side; the
+  FinancingLimitRule + ledger service are the authority. No client can bypass.
+- Workflow actions: existing endpoints; `support_forward_to_executive` + `return_to_data_entry`
+  added to the transition surface; `bank_reject*` / `support_*` decision actions removed from the
+  actor-available set (cases retained for history).
 
-**Send-path sequence (one direction, idempotency-first, render-before-persist):**
+**Component boundaries (frontend):**
+- `RequestFormTabs.vue` owns tab state + submit; tab panels are dumb field groups.
+- `FinancingUtilizationBar.vue` is advisory display only; it never gates submit by itself — the
+  backend D2 check is authoritative; the bar mirrors it for UX.
+- `traders` store is the single client cache for trader data; the request form snapshots into its
+  own form state at lookup time (never live-binds to the trader store after autofill).
 
-```
-Domain event
- → SendWorkflowNotifications listener        (entry point for agents)
- → SendEmailNotification orchestrator
-     → NotificationRegistry                   (who / how — channels, source, persist_body, roles, allowed_vars)
-     → recipient resolver (scopeForUser)      (org-scoped concrete users; row-per-recipient)
-     → EmailDeliveryService::reserve()        (INSERT status=queued; unique(event_id,user_id,channel)
-                                               claims idempotency BEFORE render; duplicate → null → skip)
-     → TemplateResolver                       (db vs blade source)
-     → TemplateRenderer                       (markdown→html, locale, theme → rendered_subject + rendered_body)
-     → EmailDeliveryService::finalize()       (write rendered snapshot, redacted per type, still queued)
-     → dispatch email job on `emails` queue   (after_commit)
- → SMTP
- → EmailDeliveryService::markSent()/markFailed()   (outbox status update + provider_message_id / error)
-```
-
-**Responsibility split — explicit (resolves the insert-first vs render-before-persist tension):**
-- `SendEmailNotification` is the **orchestrator** that owns the sequence. Agents enter only via the listener.
-- `EmailDeliveryService` is **persistence only** — it does NOT orchestrate resolve/render. It exposes a two-phase write:
-  - `reserve(event_id, user_id, channel, type)` → inserts the `queued` row; the unique index claims idempotency **before** any rendering work. Duplicate returns null → orchestrator skips.
-  - `finalize(delivery, rendered_subject, rendered_body)` → fills the rendered snapshot (redaction applied here by type), still `queued`, pre-dispatch.
-  - `markSent(delivery, provider_message_id)` / `markFailed(delivery, error)` → post-SMTP status.
-- This keeps idempotency claimed first (cheap insert) AND guarantees the outbox stores the rendered body, with no service taking on a god-orchestrator role.
-
-**Service boundaries:**
-- `NotificationRegistry` — pure config, no I/O.
-- `TemplateResolver` — source selection only (db vs blade), no rendering.
-- `TemplateRenderer` — markdown→html + theme + locale; no persistence.
-- `EmailDeliveryService` — persistence + redaction + idempotency; no rendering, no recipient logic.
-- `TemplateValidator` — save + render guard; stateless.
+**Service boundaries (backend):**
+- `FinancingLedgerService` — the ONLY place the global cross-bank sum is computed; owns the
+  named-lock + row-lock + sum-after-lock protocol; returns aggregate/violation, never foreign rows.
+- `TraderService` — trader CRUD + builds the request snapshot payload; does not touch workflow.
+- `VotingService` — owns the new-rule gating; nothing else branches on voting rule version.
+- `TransitionMap` / `WorkflowService` — sole authority for which actions each role may take.
+- `DuplicateDetectionService` — invoice-key match validation (currency/total/number/tax); calls
+  into `FinancingLedgerService` for the % portion, does not duplicate the global query.
 
 **Data boundaries:**
-- `notification_template_versions` — mutable source of truth for editable bodies (raw Markdown).
-- `email_deliveries` — immutable historical artifact (rendered snapshot). Neither reads the other at send time.
-- `users.locale` — read-only at render.
-- `notifications` table reused unchanged (database channel).
+- `import_requests` — single source of truth for financing %; snapshot columns are authoritative
+  per-request; `merchant_id` (legacy) and `trader_id` (new) coexist, both nullable.
+- `traders` / `trader_companies` / `trader_owners` — global, mutable, NOT org-scoped.
+- Frozen enum cases — DB values never change; only `.label()` output changes.
 
 ### Requirements → Structure Mapping
 
-| FR | Lives in |
+| Epic | Lives in |
 |---|---|
-| FR1 registry | `Enums/NotificationType.php` + `NotificationRegistry.php` |
-| FR2 dual channel | `Notifications/*::via()` (registry-driven) |
-| FR3 resolver | `TemplateResolver.php` |
-| FR4 versioning | `NotificationTemplate(Version).php` + migrations |
-| FR5 validation | `TemplateValidator.php` |
-| FR6 preview | `NotificationTemplateController@preview` + `[type].vue` |
-| FR7 outbox | `EmailDelivery.php` + `EmailDeliveryService.php` + migration |
-| FR8 idempotency | unique-index migration + `EmailDeliveryService::reserve()` |
-| FR9 design system | `components/email/*` + `vendor/mail/html/*` |
-| FR10 RTL/theme | `config/email-theme.php` + `TemplateRenderer` |
-| FR11 phase-1 types | `NotificationTemplateSeeder` + mapped Mail/Notification classes |
-| FR12 locale | `users.locale` migration + `TemplateRenderer` |
+| A Rebrand | `frontend` branding strings + `constants/workflow.ts` + enum `.label()` + email/PDF/report headers |
+| B Trader Module | `Models/Trader*`, `TraderService`, `TraderPolicy`, `TraderController`, migrations, `components/trader/*`, `pages/traders/*`, `useTraders`, `stores/traders` |
+| C 5-Tab Form + Model | 7 `Enums/*`, `..._add_invoice_shipping_fields_*` migration, `ImportRequest`/`StoreImportRequest`/`ImportRequestResource` edits, `components/request/RequestFormTabs` + tabs, `types/request` |
+| D Financing Ledger | `FinancingLedgerService`, `FinancingLimitRule`, `DuplicateDetectionService` edit, composite-index migration, `FinancingUtilizationBar`, `useFinancingLedger`, financing-utilization endpoint |
+| E Workflow Authority | `TransitionMap`, `ImportRequestPolicy`, `VotingService` edits; `support_forward_to_executive` + `return_to_data_entry`; SWIFT display merge in `constants/workflow.ts` |
+| F Terminology | enum `.label()`, `constants/workflow.ts`, notification templates, report/export headers (labels only, codes unchanged) |
 
 ### Integration Points
 
-- **Internal:** workflow `RequestTransitioned` event (exists) → listener. Auth-recovery OTP/reset (exists) → `MfaOtpMail` / `PasswordRecoveryOtpMail` via registry.
-- **External:** SMTP (CBY gov prod / Mailpit dev) via the Laravel mail abstraction (provider-portable). Mailpit SMTP `1025` / web `8025`, dev only.
-- **Data flow:** every send produces exactly one `email_deliveries` row per recipient per channel, reserved before transport and finalized with the rendered body before dispatch.
+- **Internal:** request submit → `FinancingLimitRule` → `FinancingLedgerService` (D2 protocol) →
+  `WorkflowService::transition()`. Trader lookup → `TraderService` → snapshot into request.
+  Support forward / reviewer return → `TransitionMap` via `WorkflowService`. Voting close →
+  `VotingService` (gated majority).
+- **External:** none new. Same MySQL + Redis. Advisory lock via MySQL `GET_LOCK` (existing pattern).
+- **Data flow:** trader (global) → snapshot → request (org-scoped) → workflow transitions
+  (audited) → voting (gated) → completion. Financing % flows: request rows → ledger aggregate
+  (global, guarded) → submit guard + advisory UI bar.
 
 ## Architecture Validation Results
 
 ### Coherence Validation ✅
 
-**Decision compatibility:** Decisions D1–D8 are consistent with no contradictions. The one real tension — insert-first (D2) vs render-before-persist (FR7) — is resolved via the two-phase `reserve` / `finalize` split. `after_commit` (D3) is compatible with the redis email queue, provided the new `emails` connection sets `after_commit = true` (captured as Important gap #1). Raw-Markdown storage (D4) + render-at-send aligns with the outbox snapshot (D6) and redaction (D5).
+**Decision compatibility:** D1–D8 are mutually consistent. The one real tension — D1 derived-query
+ledger vs. D2 concurrency under the empty-set case — is resolved by the named-lock + row-lock +
+sum-after-lock protocol (named lock covers the phantom-insert race a bare row-lock cannot). D3
+snapshot + retained `Merchant` coexist via two nullable FKs (`merchant_id` legacy / `trader_id`
+new), with no contradiction: a request is identified by era, never both live-bound. D4 voting
+gating + the locked "new-requests-only" rule + D6 label-only terminology together preserve the
+backward-compat invariant with zero data migration.
 
-**Pattern consistency:** Naming is inherited from verified codebase conventions (`SCREAMING_SNAKE` enums, snake_case tables/migrations, `<x-email.kebab>`). Audit reuse is confirmed against real `AuditAction` cases. The registry's frozen key set enforces D1/D2/D5 uniformly.
+**Pattern consistency:** All naming is inherited from verified codebase conventions (backed PHP
+enums + bilingual `.label()`, snake_case tables/migrations, `{Domain}Service`, `useX` composables,
+`{success,message,data}` envelope). New surfaces (traders, 7 enums, ledger service, transition
+actions, labels) restate those conventions rather than introducing new ones. The single-source-
+per-layer label rule (D6) enforces F uniformly.
 
-**Structure alignment:** The send-path boundary (listener → orchestrator → services → queue) supports D1/D3. The `EmailDeliveryService` sole-writer boundary enforces D2/D5. The service split is single-responsibility with no god-orchestrator.
+**Structure alignment:** The structure tree maps every decision to a concrete file. The
+`FinancingLedgerService` sole-writer boundary enforces the org-scope exception (D1/D2). The
+`WorkflowService`/`TransitionMap` chokepoint enforces authority reform (D5). The advisory-only
+`FinancingUtilizationBar` + authoritative backend check keeps UI and authority correctly separated.
 
 ### Requirements Coverage Validation ✅
 
-**FR coverage:** FR1–FR12 each map to a concrete file (step 6 mapping table). No orphan FR.
+**Epic coverage:** A–F each map to concrete files (step-6 mapping table). No orphan epic.
+
+| Epic | Architecturally supported by |
+|---|---|
+| A Rebrand | enum `.label()` + `constants/workflow.ts` + branding strings + headers (D6) |
+| B Trader Module | Trader tables/models/service/policy/controller + CRUD UI (D3 foundation) |
+| C 5-Tab Form + Model | 7 additive enums + nullable migration + 5-tab component + snapshot (D3/D7) |
+| D Financing Ledger | derived-query ledger + D2 lock protocol + prevention + composite index + % UI (D1/D2) |
+| E Workflow Authority | TransitionMap + Policy + VotingService edits + SWIFT display merge (D4/D5/D8) |
+| F Terminology | single-source labels, codes frozen (D6) |
 
 **NFR coverage:**
 
 | NFR | Covered by |
 |---|---|
-| Audit reproducibility | D6 inline snapshot + outbox immutability boundary |
-| No secret storage / redaction | D5 + `EmailDeliveryService::finalize()` chokepoint + RedactionTest |
-| SPF / DKIM / DMARC | Infra mandate (env / DNS — out of code scope, noted) |
-| Org-scoped sends | D1 `scopeForUser()` resolver |
-| OTP TTL / single-use / rate-limit | Existing recovery doctrine (auth story); email is a side-effect only |
-| Queue isolation + retry / dead-letter | D8 + existing `failed_jobs` |
-| Provider portability | Laravel mail abstraction |
-| Production fail-fast | Preserved existing guard |
-| Single audit spine | Reuse `audit_logs` + existing email `AuditAction` cases |
+| Backward-compat (zero migration) | Frozen cases (D6) + nullable columns (D3/C) + new-only voting (D4) + retained Merchant |
+| Org-scope preserved except ledger | `FinancingLedgerService` guarded chokepoint, aggregate-only return (D1) |
+| Ledger concurrency correctness | D2 named-lock + row-lock + sum-after-lock; empty-set race closed |
+| All transitions via WorkflowService | D5 + Communication Patterns enforcement |
+| RBAC unchanged | TraderPolicy on existing roles; no new role |
+| Audit immutability | D6/D8 display-only; stored codes unchanged |
+| Trader snapshot integrity | D3 snapshot-at-submit, never live re-read |
+| No new dependency / minimal supply chain | Step-3 zero-dependency decision |
 
 ### Implementation Readiness Validation ✅
 
-**Decision completeness:** All critical decisions documented; no version ambiguity (zero new dependencies). Patterns are enforceable via explicit MUST / forbidden lists.
+**Decision completeness:** All critical decisions (D1–D4) documented with the exact locking
+protocol and gating mechanism; no version ambiguity (zero new deps). Patterns enforceable via
+explicit MUST / forbidden lists.
 
-**Structure completeness:** Full tree with ✚/✎/· markers; every file located; boundaries + responsibility split explicit.
+**Structure completeness:** Full ✚/✎/· tree across both repos; every NEW + MODIFIED file located;
+boundaries + epic mapping explicit.
 
-**Pattern completeness:** 9 conflict points addressed; error / redaction / validation-timing process patterns specified.
+**Pattern completeness:** 8 conflict points addressed; concurrency, snapshot, backward-compat, and
+validation-timing process patterns specified.
 
 ### Gap Analysis Results
 
 **Critical gaps:** NONE.
 
-**Important gaps (capture in the relevant stories; not blocking):**
-1. The new `emails` queue connection MUST set `after_commit = true` (current redis connection is `false`). Decided; must land in `config/queue.php` in the foundation story.
-2. Multi-recipient outbox = one row per recipient per channel. The idempotency key includes `user_id`, so fan-out rows are naturally distinct. Confirmed, no change.
-3. DB-template missing fallback: a `source = db` type with no active DB version falls back to its Blade template. The first template story should assert this.
+**Important gaps (capture in stories, not blocking):**
+1. `request_percentage` storage type (integer vs decimal) + `voting_rule_version` gating mechanism
+   (created_at threshold vs explicit column) MUST be fixed in the Epic C / Epic E foundation
+   stories. Decided in principle; the concrete choice lands in the first story of each epic.
+2. Snapshot column naming convention (prefix vs documented inline) MUST be fixed in the Epic C
+   foundation story and reused across all snapshot fields.
+3. The exact "not_eligible_set" excluded from the ledger sum (which terminal/rejected statuses free
+   capacity) MUST be enumerated in the Epic D story against the frozen `RequestStatus` cases.
 
-**Nice-to-have (Phase 2):** bounce-webhook ingestion (`status = bounced` is currently set only on synchronous provider report), digest types, archival job.
+**Nice-to-have (Phase 2 / deferred):** materialized/cached ledger table, dynamic document-type
+configuration, Redis advisory % cache.
 
 ### Validation Issues Addressed
 
-- Insert-first vs render-before-persist tension → resolved via two-phase `reserve` / `finalize` (step 6).
-- `after_commit` on the new queue connection → captured as Important gap #1; decided and folded into the foundation story.
+- Bare `SUM(...) FOR UPDATE` ledger guard → replaced with named-lock + row-lock + sum-after-lock
+  (D2), reusing the existing Story 3.6 MySQL advisory-lock pattern; empty-set phantom-insert race
+  explicitly closed.
+- Arabic "Not Eligible" label corrected to `غير مستوفي للشروط` (the garbled string in the source
+  proposal/memory is NOT used).
+- Snapshot vs retained-Merchant coexistence → resolved via two nullable FKs by request era.
 
 ### Architecture Completeness Checklist
 
@@ -536,10 +693,10 @@ Domain event
 - [x] Cross-cutting concerns mapped
 
 **Architectural Decisions**
-- [x] Critical decisions documented with versions (zero new deps; inherited stack pinned by project)
+- [x] Critical decisions documented with versions (zero new deps; inherited stack pinned by platform)
 - [x] Technology stack fully specified
 - [x] Integration patterns defined
-- [x] Performance considerations addressed (queue isolation, inline outbox, indexed idempotency)
+- [x] Performance considerations addressed (composite index, derived query, lock scope)
 
 **Implementation Patterns**
 - [x] Naming conventions established
@@ -555,30 +712,35 @@ Domain event
 
 ### Architecture Readiness Assessment
 
-**Overall Status:** READY FOR IMPLEMENTATION (16/16 checklist items confirmed, no critical gaps).
+**Overall Status:** READY FOR IMPLEMENTATION (16/16 checklist items confirmed; no critical gaps; 3
+important gaps deferred to epic-foundation stories as documented).
 
-**Confidence Level:** HIGH — brownfield subsystem, decisions grounded in verified existing code, all FR/NFR mapped to concrete components.
+**Confidence Level:** HIGH — brownfield re-scope, decisions grounded in verified existing code,
+all epics + NFRs mapped to concrete components, the one high-risk surface (global ledger
+concurrency) has an explicit correct protocol reusing a proven in-repo pattern.
 
 **Key Strengths:**
-- Reuses the existing audit / notification spine instead of building a parallel one.
-- Idempotency + redaction structurally enforced through a single-writer boundary.
+- Single source of truth for financing % (derived query) — no ledger-sync class of bug.
+- The org-scope exception is structurally confined to one guarded service returning aggregates only.
+- Zero data migration + frozen enums = full backward-compat and audit immutability.
+- Authority reform is pure TransitionMap/Policy edits through the existing workflow chokepoint.
 - Zero new dependency (government compliance-friendly supply chain).
-- Registry makes adding a notification type a data-only change, never a refactor.
 
-**Areas for Future Enhancement:** bounce-webhook ingestion, outbox archival/pruning, digest taxonomy, MJML re-evaluation, multi-locale variants.
+**Areas for Future Enhancement:** materialized/cached ledger, dynamic document types, Redis %
+cache, deprecation of `DRAFT_REJECTED_INTERNAL` after the migration window.
 
 ### Implementation Handoff
 
 **AI Agent Guidelines:**
-- Follow decisions D1–D8 exactly as documented.
-- Route all sends through listener → `SendEmailNotification` orchestrator → `EmailDeliveryService`; never write `email_deliveries` directly.
-- Org-scope recipient queries via `scopeForUser()`.
-- Use inline theme tokens from `config/email-theme.php` only.
+- Follow D1–D8 exactly; never substitute a bare `SUM(...) FOR UPDATE` for the D2 protocol.
+- Access the global financing sum ONLY through `FinancingLedgerService`.
+- Route all transitions through `WorkflowService::transition()` + `TransitionMap`.
+- Keep enum cases + DB values frozen; change only `.label()` / `constants/workflow.ts`.
+- Keep additive columns nullable; never migrate/rewrite historical rows; never recompute closed
+  voting sessions.
+- Use `غير مستوفي للشروط / Not Eligible` as the canonical bilingual label.
 
-**First Implementation Priority — Foundation Story (brownfield, not a scaffold):**
-- `NotificationType` enum
-- `NotificationRegistry`
-- `email_deliveries` migration (unique `(event_id, user_id, channel)` index)
-- `EmailDeliveryService` with `reserve` / `finalize` (+ `markSent` / `markFailed`)
-- `users.locale` migration (default `ar`)
-- Dedicated `emails` queue connection in `config/queue.php` with `after_commit = true`
+**First Implementation Priority — Epic A (Rebrand, brownfield, string-level):**
+- Update enum `.label()` + `frontend/app/constants/workflow.ts` + branding strings (title, login,
+  sidebar, header) + email/PDF/report/export headers to "The National Committee for Regulating &
+  Financing Imports / اللجنة الوطنية لتنظيم وتمويل الواردات". Then B→C→D→E→F per the sequence.
