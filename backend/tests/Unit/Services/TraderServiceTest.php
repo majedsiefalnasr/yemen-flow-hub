@@ -101,11 +101,11 @@ class TraderServiceTest extends TestCase
 
         $this->assertTrue($found?->is($trader));
         $this->assertSame([
-            'trader_name' => 'Al Noor Trading',
-            'tax_number' => 'YE-TAX-171002',
-            'commercial_registration_number' => 'CR-171002',
-            'commercial_registration_expiry' => '2028-12-31',
-            'tax_card_expiry' => '2028-06-30',
+            'trader_snapshot_name' => 'Al Noor Trading',
+            'trader_snapshot_tax_number' => 'YE-TAX-171002',
+            'trader_snapshot_tax_card_expiry' => '2028-06-30',
+            'trader_snapshot_commercial_registration_number' => 'CR-171002',
+            'trader_snapshot_commercial_registration_expiry' => '2028-12-31',
         ], $snapshot);
     }
 

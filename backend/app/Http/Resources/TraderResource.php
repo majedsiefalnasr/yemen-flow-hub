@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Models\Trader;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -13,6 +14,10 @@ class TraderResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
+        // Owner identification PII is restricted to trader-management roles
+        // (code-review 17-B decision #9).
+        $canViewPii = (bool) $request->user()?->can('viewPii', Trader::class);
+
         return [
             'id' => $this->id,
             'tax_number' => $this->tax_number,
@@ -30,8 +35,8 @@ class TraderResource extends JsonResource
                 'id' => $owner->id,
                 'full_name' => $owner->full_name,
                 'ownership_percentage' => (float) $owner->ownership_percentage,
-                'nationality' => $owner->nationality,
-                'identification_number' => $owner->identification_number,
+                'nationality' => $canViewPii ? $owner->nationality : null,
+                'identification_number' => $canViewPii ? $owner->identification_number : null,
             ])->values()->all(), []),
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),

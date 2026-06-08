@@ -312,6 +312,15 @@ class WorkflowService
 
     private function assertSubmitReadiness(ImportRequest $request): void
     {
+        // Era-gated readiness (Epic 17-C/17-E): new-model National Committee requests
+        // (voting_rule_version = 2) use the 5-tab form and do NOT collect the legacy
+        // wizard fields. Legacy requests (version 1) keep the original wizard rules.
+        if ((int) ($request->voting_rule_version ?? 1) === 2) {
+            $this->assertNewModelSubmitReadiness($request);
+
+            return;
+        }
+
         $requiredWizardFields = [
             'goods_type',
             'payment_terms',
@@ -338,6 +347,56 @@ class WorkflowService
         throw new InvalidTransitionException(
             'Cannot submit request. Missing required wizard fields: '.implode(', ', $missingFields).'.'
         );
+    }
+
+    /**
+     * Submit-readiness for the new National Committee 5-tab model (voting_rule_version = 2).
+     * A trader must be attached and the financing coverage must be coherent.
+     */
+    private function assertNewModelSubmitReadiness(ImportRequest $request): void
+    {
+        $missingFields = [];
+
+        if (blank($request->trader_id)) {
+            $missingFields[] = 'trader_id';
+        }
+
+        if (blank($request->trader_snapshot_tax_number)) {
+            $missingFields[] = 'trader_snapshot_tax_number';
+        }
+
+        if (blank($request->invoice_number)) {
+            $missingFields[] = 'invoice_number';
+        }
+
+        if ($missingFields !== []) {
+            throw new InvalidTransitionException(
+                'Cannot submit request. Missing required fields: '.implode(', ', $missingFields).'.'
+            );
+        }
+
+        // Coverage coherence: a declared coverage type requires a valid percentage.
+        $coverageType = $request->coverage_type instanceof \BackedEnum
+            ? $request->coverage_type->value
+            : $request->coverage_type;
+
+        if (filled($coverageType)) {
+            $percentage = $request->request_percentage;
+
+            if (blank($percentage)) {
+                throw new InvalidTransitionException('Cannot submit request. request_percentage is required when a coverage type is set.');
+            }
+
+            $percentage = round((float) $percentage, 2);
+
+            if ($percentage <= 0 || $percentage > 100) {
+                throw new InvalidTransitionException('Cannot submit request. request_percentage must be between 0 and 100.');
+            }
+
+            if ($coverageType === 'FULL' && $percentage !== 100.0) {
+                throw new InvalidTransitionException('Cannot submit request. FULL coverage requires request_percentage = 100.');
+            }
+        }
     }
 
     private function autoChain(

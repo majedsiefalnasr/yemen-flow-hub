@@ -4,11 +4,11 @@ namespace App\Services;
 
 use App\Enums\RequestStatus;
 use App\Exceptions\FinancingLimitExceededException;
+use App\Exceptions\FinancingLockTimeoutException;
 use App\Models\ImportRequest;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-use RuntimeException;
 
 /**
  * Global cross-bank financing ledger derived directly from import_requests.
@@ -30,19 +30,23 @@ use RuntimeException;
 class FinancingLedgerService
 {
     /**
-     * Terminal non-approved outcomes that free financing capacity.
+     * Terminal non-approved (Not-Eligible) outcomes that free financing capacity.
      *
-     * Cross-reference RequestStatus::isTerminal(): only the rejected/dead-end cases
-     * below can never reach COMPLETED and must not keep consuming global capacity.
-     * Returned-for-correction statuses (BANK_RETURNED, SUPPORT_RETURNED) stay in
-     * the sum because the request may still complete.
+     * Business rule (code-review 17-D decision #10): capacity is consumed by every
+     * active in-flight request and released only by Not-Eligible outcomes (the
+     * rejected/dead-end states below) and cancellation (soft-delete, already
+     * excluded by the query). DRAFT and the returned-for-correction states
+     * (BANK_RETURNED, SUPPORT_RETURNED) intentionally STAY in the sum: an
+     * unsubmitted draft created under reserveCapacity must hold its reservation,
+     * and a returned request may still be corrected and completed — releasing its
+     * slot would let another bank consume the capacity and block the resubmission.
      *
      * @var list<RequestStatus>
      */
     public const NOT_ELIGIBLE_STATUSES = [
-        RequestStatus::BANK_REJECTED,          // terminal bank rejection
-        RequestStatus::SUPPORT_REJECTED,       // terminal support rejection
-        RequestStatus::EXECUTIVE_REJECTED,     // terminal executive rejection
+        RequestStatus::BANK_REJECTED,           // terminal bank rejection
+        RequestStatus::SUPPORT_REJECTED,        // terminal support rejection
+        RequestStatus::EXECUTIVE_REJECTED,      // terminal executive rejection
         RequestStatus::DRAFT_REJECTED_INTERNAL, // returned internally, dead-end for financing
     ];
 
@@ -55,13 +59,16 @@ class FinancingLedgerService
         callable $onSuccess,
         ?int $excludeRequestId = null,
     ): mixed {
-        return DB::transaction(function () use ($taxNumber, $invoiceNumber, $requestedPercent, $onSuccess, $excludeRequestId): mixed {
-            $lockName = $this->lockName($taxNumber, $invoiceNumber);
-            $cacheLock = null;
+        // Acquire the named lock OUTSIDE the transaction. Laravel retries the
+        // transaction closure on deadlock; acquiring inside would re-enter
+        // GET_LOCK (re-entrant counter) while the single finally release only
+        // decrements once, leaking the lock (code-review 17-D).
+        $lockName = $this->lockName($taxNumber, $invoiceNumber);
+        $cacheLock = null;
+        $this->acquireNamedLock($lockName, $cacheLock);
 
-            $this->acquireNamedLock($lockName, $cacheLock);
-
-            try {
+        try {
+            return DB::transaction(function () use ($taxNumber, $invoiceNumber, $requestedPercent, $onSuccess, $excludeRequestId): mixed {
                 $usedPercent = $this->sumUsedPercentAfterRowLock($taxNumber, $invoiceNumber, $excludeRequestId);
 
                 if ($usedPercent + $requestedPercent > 100) {
@@ -72,10 +79,10 @@ class FinancingLedgerService
                 }
 
                 return $onSuccess();
-            } finally {
-                $this->releaseNamedLock($lockName, $cacheLock);
-            }
-        });
+            });
+        } finally {
+            $this->releaseNamedLock($lockName, $cacheLock);
+        }
     }
 
     public function assertWithinLimit(
@@ -123,11 +130,21 @@ class FinancingLedgerService
         );
     }
 
+    /**
+     * Canonical invoice-key normalization (code-review 17-D): trim surrounding
+     * whitespace so " INV-1 " and "INV-1" resolve to the same ledger key and the
+     * 100% cap cannot be bypassed by reformatting.
+     */
+    public static function normalizeKey(string $value): string
+    {
+        return trim($value);
+    }
+
     private function sumEligiblePercent(string $taxNumber, string $invoiceNumber, ?int $excludeRequestId = null): float
     {
         $total = ImportRequest::query()
-            ->where('trader_snapshot_tax_number', $taxNumber)
-            ->where('invoice_number', $invoiceNumber)
+            ->where('trader_snapshot_tax_number', self::normalizeKey($taxNumber))
+            ->where('invoice_number', self::normalizeKey($invoiceNumber))
             ->when($excludeRequestId !== null, fn ($query) => $query->where('id', '!=', $excludeRequestId))
             ->whereNotIn('status', self::notEligibleStatusValues())
             ->sum('request_percentage');
@@ -138,8 +155,8 @@ class FinancingLedgerService
     private function sumUsedPercentAfterRowLock(string $taxNumber, string $invoiceNumber, ?int $excludeRequestId = null): float
     {
         $lockedRows = ImportRequest::query()
-            ->where('trader_snapshot_tax_number', $taxNumber)
-            ->where('invoice_number', $invoiceNumber)
+            ->where('trader_snapshot_tax_number', self::normalizeKey($taxNumber))
+            ->where('invoice_number', self::normalizeKey($invoiceNumber))
             ->when($excludeRequestId !== null, fn ($query) => $query->where('id', '!=', $excludeRequestId))
             ->whereNotIn('status', self::notEligibleStatusValues())
             ->lockForUpdate()
@@ -152,7 +169,11 @@ class FinancingLedgerService
 
     private function lockName(string $taxNumber, string $invoiceNumber): string
     {
-        return 'financing:'.$taxNumber.':'.$invoiceNumber;
+        // Hash the normalized key so the lock name stays within MySQL's 64-char
+        // GET_LOCK limit and cannot collide via a raw delimiter (code-review 17-D).
+        $key = self::normalizeKey($taxNumber).'|'.self::normalizeKey($invoiceNumber);
+
+        return 'financing:'.hash('sha256', $key);
     }
 
     private function acquireNamedLock(string $lockName, mixed &$cacheLock): void
@@ -160,7 +181,7 @@ class FinancingLedgerService
         if (DB::connection()->getDriverName() === 'mysql') {
             $result = DB::selectOne('SELECT GET_LOCK(?, ?) AS acquired', [$lockName, self::LOCK_TIMEOUT_SECONDS]);
             if ((int) ($result->acquired ?? 0) !== 1) {
-                throw new RuntimeException('Unable to acquire financing invoice-key lock.');
+                throw new FinancingLockTimeoutException;
             }
 
             return;

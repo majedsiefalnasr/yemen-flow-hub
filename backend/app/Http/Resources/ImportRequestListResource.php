@@ -51,6 +51,7 @@ class ImportRequestListResource extends JsonResource
                 'commercial_register' => $this->merchant->commercial_register,
             ] : null,
             'status' => $this->status?->value,
+            'voting_rule_version' => (int) ($this->voting_rule_version ?? 1),
             'current_owner_role' => $this->current_owner_role?->value,
             'claimed_by' => $this->claimedByUser ? [
                 'id' => $this->claimedByUser->id,

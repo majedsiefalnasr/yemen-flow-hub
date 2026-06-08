@@ -23,15 +23,25 @@ class TraderPolicyTest extends TestCase
         $this->policy = new TraderPolicy;
     }
 
-    public function test_read_access_is_available_to_every_authenticated_role(): void
+    public function test_read_access_is_limited_to_bank_trader_management_roles(): void
     {
+        // Epic 17-B decision #9: trader records (and owner identification PII)
+        // are visible only to the bank-side trader roles — least privilege on
+        // owner identification data.
+        $allowed = [
+            UserRole::DATA_ENTRY->value,
+            UserRole::BANK_REVIEWER->value,
+            UserRole::BANK_ADMIN->value,
+        ];
         $trader = Trader::factory()->create();
 
         foreach (UserRole::cases() as $role) {
             $user = $this->makeUser($role);
+            $expected = in_array($role->value, $allowed, true);
 
-            $this->assertTrue($this->policy->viewAny($user), "{$role->value} should list traders");
-            $this->assertTrue($this->policy->view($user, $trader), "{$role->value} should view traders");
+            $this->assertSame($expected, $this->policy->viewAny($user), "{$role->value} viewAny mismatch");
+            $this->assertSame($expected, $this->policy->view($user, $trader), "{$role->value} view mismatch");
+            $this->assertSame($expected, $this->policy->viewPii($user), "{$role->value} viewPii mismatch");
         }
     }
 

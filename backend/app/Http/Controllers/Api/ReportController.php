@@ -761,16 +761,13 @@ class ReportController extends Controller
     private function streamCsv(array $rows, array $columns, string $filename, ?array $headings = null)
     {
         $bom = "\xEF\xBB\xBF";
-        $csv = $bom.implode(',', $headings ?? $columns)."\n";
+        // Escape the heading row too — bilingual labels can contain commas/quotes
+        // and an unescaped header breaks column alignment (code-review 17-F).
+        $csv = $bom.implode(',', array_map([$this, 'csvCell'], $headings ?? $columns))."\n";
         foreach ($rows as $row) {
             $line = [];
             foreach ($columns as $col) {
-                $value = $row[$col] ?? '';
-                // Escape values that contain commas or quotes
-                if (str_contains((string) $value, ',') || str_contains((string) $value, '"')) {
-                    $value = '"'.str_replace('"', '""', (string) $value).'"';
-                }
-                $line[] = $value;
+                $line[] = $this->csvCell($row[$col] ?? '');
             }
             $csv .= implode(',', $line)."\n";
         }
@@ -779,6 +776,17 @@ class ReportController extends Controller
             'Content-Type' => 'text/csv; charset=UTF-8',
             'Content-Disposition' => "attachment; filename=\"{$filename}\"",
         ]);
+    }
+
+    private function csvCell(mixed $value): string
+    {
+        $value = (string) $value;
+
+        if (str_contains($value, ',') || str_contains($value, '"') || str_contains($value, "\n")) {
+            return '"'.str_replace('"', '""', $value).'"';
+        }
+
+        return $value;
     }
 
     private function bankExportHeadings(): array

@@ -6,6 +6,7 @@ use App\Exceptions\DocumentException;
 use App\Exceptions\DuplicateInvoiceMismatchException;
 use App\Exceptions\DuplicateVoteException;
 use App\Exceptions\FinancingLimitExceededException;
+use App\Exceptions\FinancingLockTimeoutException;
 use App\Exceptions\InvalidTransitionException;
 use App\Exceptions\SelfReviewException;
 use App\Exceptions\UnauthorizedTransitionException;
@@ -153,6 +154,13 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->render(function (FinancingLimitExceededException $e, Request $request) {
             if ($request->is('api/*')) {
                 return ApiResponse::error($e->getMessage(), [], 422, FinancingLimitExceededException::ERROR_CODE);
+            }
+        });
+
+        $exceptions->render(function (FinancingLockTimeoutException $e, Request $request) {
+            if ($request->is('api/*')) {
+                // 409 Conflict — retryable contention, not a server error.
+                return ApiResponse::error($e->getMessage(), [], 409, FinancingLockTimeoutException::ERROR_CODE);
             }
         });
 

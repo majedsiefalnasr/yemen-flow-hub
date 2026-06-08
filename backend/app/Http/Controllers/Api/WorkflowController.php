@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Api;
 
 use App\Enums\RequestStatus;
 use App\Enums\UserRole;
-use App\Exceptions\FinancingLimitExceededException;
 use App\Exceptions\VotingException;
 use App\Http\Requests\BankRejectTerminalRequest;
 use App\Http\Requests\BankReturnRequest;
@@ -295,6 +294,7 @@ class WorkflowController extends Controller
     public function supportForwardToExecutive(SupportForwardRequest $request, ImportRequest $importRequest)
     {
         $this->authorize('view', $importRequest);
+        $this->authorize('supportForward', $importRequest);
 
         $updated = $this->workflowService->transition(
             $importRequest,
@@ -420,37 +420,34 @@ class WorkflowController extends Controller
         $invoiceNumber = $importRequest->invoice_number;
         $requestPercentage = $importRequest->request_percentage;
 
-        if ($taxNumber && $invoiceNumber && $requestPercentage !== null) {
+        // The invoice-key consistency guard is independent of the financing
+        // percentage and must run whenever the key is present (code-review 17-D).
+        if ($taxNumber && $invoiceNumber) {
             $this->duplicateDetectionService->assertInvoiceKeyConsistency([
                 'trader_snapshot_tax_number' => $taxNumber,
                 'invoice_number' => $invoiceNumber,
                 'invoice_currency' => $importRequest->invoice_currency,
                 'total_invoice_amount' => $importRequest->total_invoice_amount,
             ], $importRequest->id);
+        }
 
-            try {
-                $updated = $this->financingLedgerService->reserveCapacity(
-                    $taxNumber,
-                    $invoiceNumber,
-                    (float) $requestPercentage,
-                    fn () => $this->workflowService->transition(
-                        $importRequest,
-                        'submit',
-                        $request->user(),
-                        $request->input('reason'),
-                    ),
-                    $importRequest->id,
-                );
-            } catch (FinancingLimitExceededException $exception) {
-                throw $exception;
-            }
-        } else {
-            $updated = $this->workflowService->transition(
-                $importRequest,
-                'submit',
-                $request->user(),
-                $request->input('reason'),
+        $transition = fn () => $this->workflowService->transition(
+            $importRequest,
+            'submit',
+            $request->user(),
+            $request->input('reason'),
+        );
+
+        if ($taxNumber && $invoiceNumber && $requestPercentage !== null) {
+            $updated = $this->financingLedgerService->reserveCapacity(
+                $taxNumber,
+                $invoiceNumber,
+                (float) $requestPercentage,
+                $transition,
+                $importRequest->id,
             );
+        } else {
+            $updated = $transition();
         }
 
         return ApiResponse::success(

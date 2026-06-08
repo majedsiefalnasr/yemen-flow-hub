@@ -8,7 +8,9 @@ use App\Http\Resources\TraderResource;
 use App\Models\Trader;
 use App\Services\TraderService;
 use App\Support\ApiResponse;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class TraderController extends Controller
 {
@@ -41,7 +43,19 @@ class TraderController extends Controller
     {
         $this->authorize('create', Trader::class);
 
-        $trader = $this->traderService->create($request->validated());
+        try {
+            $trader = $this->traderService->create($request->validated());
+        } catch (QueryException $exception) {
+            // Concurrent create that raced past the unique validation: surface a
+            // clean 422 instead of a raw 500 (code-review 17-B).
+            if ($this->isUniqueViolation($exception)) {
+                throw ValidationException::withMessages([
+                    'tax_number' => 'A trader with this tax number already exists.',
+                ]);
+            }
+
+            throw $exception;
+        }
 
         return ApiResponse::success(new TraderResource($trader), 'Trader created successfully.', 201);
     }
@@ -80,5 +94,12 @@ class TraderController extends Controller
         }
 
         return ApiResponse::success(new TraderResource($trader), 'Trader retrieved successfully.');
+    }
+
+    private function isUniqueViolation(QueryException $exception): bool
+    {
+        // SQLSTATE 23000 = integrity constraint violation (unique/duplicate key)
+        // across MySQL and SQLite.
+        return (string) ($exception->errorInfo[0] ?? '') === '23000';
     }
 }

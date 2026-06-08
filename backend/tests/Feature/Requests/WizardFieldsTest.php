@@ -208,6 +208,11 @@ class WizardFieldsTest extends TestCase
         $createResponse->assertStatus(201);
         $requestId = $createResponse->json('data.id');
 
+        // Legacy wizard readiness only applies to in-flight legacy (v1) requests;
+        // newly created requests default to the new National Committee model (v2),
+        // which requires trader linkage instead of the wizard fields (Epic 17-C).
+        ImportRequest::query()->whereKey($requestId)->update(['voting_rule_version' => 1]);
+
         $submitResponse = $this->actingAs($this->dataEntry)
             ->postJson("/api/workflow/{$requestId}/submit");
 
@@ -226,6 +231,9 @@ class WizardFieldsTest extends TestCase
         $createResponse->assertStatus(201);
         $requestId = $createResponse->json('data.id');
 
+        // See note above: exercise the preserved legacy (v1) wizard readiness path.
+        ImportRequest::query()->whereKey($requestId)->update(['voting_rule_version' => 1]);
+
         $submitResponse = $this->actingAs($this->dataEntry)
             ->postJson("/api/workflow/{$requestId}/submit");
 
@@ -240,6 +248,9 @@ class WizardFieldsTest extends TestCase
 
         $createResponse->assertStatus(201);
         $requestId = $createResponse->json('data.id');
+
+        // See note above: exercise the preserved legacy (v1) wizard readiness path.
+        ImportRequest::query()->whereKey($requestId)->update(['voting_rule_version' => 1]);
 
         $submitResponse = $this->actingAs($this->bankAdmin)
             ->postJson("/api/workflow/{$requestId}/submit");

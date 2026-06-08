@@ -3,6 +3,7 @@
 namespace App\Policies;
 
 use App\Enums\RequestStatus;
+use App\Enums\UserRole;
 use App\Models\ImportRequest;
 use App\Models\User;
 
@@ -83,6 +84,16 @@ class ImportRequestPolicy
     public function supportReject(User $user, ImportRequest $importRequest): bool
     {
         return (int) ($importRequest->voting_rule_version ?? 1) === 1;
+    }
+
+    /**
+     * New-model (v2) support committee forward-to-executive. Defense-in-depth:
+     * gated on the role AND the era (code-review 17-E).
+     */
+    public function supportForward(User $user, ImportRequest $importRequest): bool
+    {
+        return $user->hasRole(UserRole::SUPPORT_COMMITTEE)
+            && (int) ($importRequest->voting_rule_version ?? 1) === 2;
     }
 
     public function uploadDocuments(User $user, ImportRequest $importRequest): bool

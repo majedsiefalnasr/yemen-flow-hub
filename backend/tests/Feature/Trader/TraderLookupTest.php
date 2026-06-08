@@ -40,7 +40,10 @@ class TraderLookupTest extends TestCase
 
     public function test_lookup_missing_tax_number_returns_404_without_partial_data(): void
     {
-        $user = $this->makeUser(UserRole::CBY_ADMIN);
+        // Trader access is restricted to the bank-side trader roles (Epic 17-B
+        // decision #9): Data Entry, Internal Reviewer, Bank Manager.
+        $bank = Bank::query()->create(['name' => 'Lookup Bank C', 'code' => 'LBC', 'is_active' => true]);
+        $user = $this->makeUser(UserRole::DATA_ENTRY, $bank);
         Trader::factory()->create(['tax_number' => 'YE-TAX-EXISTS']);
 
         $response = $this->actingAs($user)->getJson('/api/traders/lookup?tax_number=YE-TAX-MISSING');
@@ -52,7 +55,8 @@ class TraderLookupTest extends TestCase
 
     public function test_lookup_requires_tax_number_query_parameter(): void
     {
-        $user = $this->makeUser(UserRole::SUPPORT_COMMITTEE);
+        $bank = Bank::query()->create(['name' => 'Lookup Bank D', 'code' => 'LBD', 'is_active' => true]);
+        $user = $this->makeUser(UserRole::BANK_REVIEWER, $bank);
 
         $this->actingAs($user)
             ->getJson('/api/traders/lookup')

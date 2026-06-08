@@ -8,9 +8,19 @@ use App\Models\User;
 
 class TraderPolicy
 {
+    /**
+     * Roles permitted to manage and view trader records (code-review 17-B
+     * decision #9 — least privilege; trader owner PII is not exposed broadly).
+     */
+    private const TRADER_ROLES = [
+        UserRole::DATA_ENTRY,
+        UserRole::BANK_REVIEWER,
+        UserRole::BANK_ADMIN,
+    ];
+
     public function viewAny(User $user): bool
     {
-        return (bool) $user->is_active;
+        return $this->hasTraderRole($user);
     }
 
     public function view(User $user, Trader $trader): bool
@@ -20,20 +30,24 @@ class TraderPolicy
 
     public function create(User $user): bool
     {
-        return $this->canWrite($user);
+        return $this->hasTraderRole($user);
     }
 
     public function update(User $user, Trader $trader): bool
     {
-        return $this->canWrite($user);
+        return $this->hasTraderRole($user);
     }
 
-    private function canWrite(User $user): bool
+    /**
+     * Gate for owner identification PII (nationality, identification_number).
+     */
+    public function viewPii(User $user): bool
     {
-        return $user->is_active && in_array($user->role, [
-            UserRole::DATA_ENTRY,
-            UserRole::BANK_REVIEWER,
-            UserRole::BANK_ADMIN,
-        ], true);
+        return $this->hasTraderRole($user);
+    }
+
+    private function hasTraderRole(User $user): bool
+    {
+        return $user->is_active && in_array($user->role, self::TRADER_ROLES, true);
     }
 }

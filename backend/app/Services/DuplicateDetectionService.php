@@ -66,10 +66,17 @@ class DuplicateDetectionService
             return;
         }
 
+        // Normalize the key consistently with FinancingLedgerService so a
+        // reformatted invoice number cannot dodge the consistency guard.
+        $taxNumber = trim((string) $taxNumber);
+        $invoiceNumber = trim((string) $invoiceNumber);
+
         $existingRows = ImportRequest::query()
             ->where('trader_snapshot_tax_number', $taxNumber)
             ->where('invoice_number', $invoiceNumber)
             ->when($excludeRequestId !== null, fn ($query) => $query->where('id', '!=', $excludeRequestId))
+            // Deterministic reference row (oldest) so the guard's verdict is stable.
+            ->orderBy('id')
             ->get([
                 'trader_snapshot_tax_number',
                 'invoice_number',
@@ -107,7 +114,10 @@ class DuplicateDetectionService
 
     private function assertFieldMatches(string $field, ?string $candidateValue, ?string $referenceValue): void
     {
-        if ($candidateValue === null || $referenceValue === null) {
+        // Both absent: nothing to compare. One absent / one present is a real
+        // mismatch — a null side must not silently "match anything" and disable
+        // detection for the whole invoice key (code-review 17-D).
+        if ($candidateValue === null && $referenceValue === null) {
             return;
         }
 

@@ -20,13 +20,13 @@ class StoreTraderRequest extends ApiFormRequest
             'tax_card_expiry' => ['required', 'date'],
             'commercial_registration_number' => ['required', 'string', 'max:255'],
             'commercial_registration_expiry' => ['required', 'date'],
-            'companies' => ['sometimes', 'array'],
+            'companies' => ['sometimes', 'array', 'max:50'],
             'companies.*.id' => ['prohibited'],
             'companies.*.company_name' => ['required', 'string', 'max:255'],
-            'owners' => ['sometimes', 'array'],
+            'owners' => ['sometimes', 'array', 'max:50'],
             'owners.*.id' => ['prohibited'],
             'owners.*.full_name' => ['required', 'string', 'max:255'],
-            'owners.*.ownership_percentage' => ['required', 'numeric', 'between:0,100'],
+            'owners.*.ownership_percentage' => ['required', 'numeric', 'gt:0', 'max:100'],
             'owners.*.nationality' => ['nullable', 'string', 'max:255'],
             'owners.*.identification_number' => ['nullable', 'string', 'max:255'],
         ];
@@ -35,6 +35,7 @@ class StoreTraderRequest extends ApiFormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after($this->validateMajorOwners(...));
+        $validator->after($this->validateOwnershipTotal(...));
     }
 
     protected function validateMajorOwners(Validator $validator): void
@@ -51,6 +52,28 @@ class StoreTraderRequest extends ApiFormRequest
             if (blank($owner['identification_number'] ?? null)) {
                 $validator->errors()->add("owners.{$index}.identification_number", 'The identification number field is required for owners with 25% or more ownership.');
             }
+        }
+    }
+
+    /**
+     * Authoritative backend enforcement: combined ownership across all owners
+     * of a single trader must not exceed 100% (code-review 17-B decision #8).
+     */
+    protected function validateOwnershipTotal(Validator $validator): void
+    {
+        $owners = $this->input('owners', []);
+
+        if ($owners === []) {
+            return;
+        }
+
+        $total = array_sum(array_map(
+            static fn ($owner): float => (float) ($owner['ownership_percentage'] ?? 0),
+            $owners
+        ));
+
+        if (round($total, 2) > 100) {
+            $validator->errors()->add('owners', 'Total ownership percentage across all owners must not exceed 100%.');
         }
     }
 }

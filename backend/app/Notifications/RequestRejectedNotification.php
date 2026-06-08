@@ -25,7 +25,11 @@ class RequestRejectedNotification extends Notification implements ShouldQueue
 
     public function toArray(object $notifiable): array
     {
-        $statusLabel = ($this->requestModel->status ?? RequestStatus::EXECUTIVE_REJECTED)->label();
+        // Use the request's real status; never default a null status to
+        // EXECUTIVE_REJECTED, which would mislabel a bank/support rejection
+        // (code-review 17-F). Fall back to a neutral label only if truly absent.
+        $status = $this->requestModel->status;
+        $statusLabel = $status instanceof RequestStatus ? $status->label() : 'غير متاح / Unavailable';
 
         return [
             'type' => 'request_rejected',

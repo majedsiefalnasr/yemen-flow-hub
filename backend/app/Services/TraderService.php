@@ -13,10 +13,44 @@ class TraderService
     public function list(array $filters = [], int $perPage = 20): LengthAwarePaginator
     {
         return $this->baseQuery()
-            ->when($filters['tax_number'] ?? null, fn (Builder $query, string $taxNumber) => $query->where('tax_number', 'like', "%{$taxNumber}%"))
-            ->when($filters['trader_name'] ?? null, fn (Builder $query, string $traderName) => $query->where('trader_name', 'like', "%{$traderName}%"))
+            ->when(
+                $this->trimmedFilter($filters['tax_number'] ?? null),
+                fn (Builder $query, string $taxNumber) => $query->where('tax_number', 'like', '%'.$this->escapeLike($taxNumber).'%')
+            )
+            ->when(
+                $this->trimmedFilter($filters['trader_name'] ?? null),
+                fn (Builder $query, string $traderName) => $query->where('trader_name', 'like', '%'.$this->escapeLike($traderName).'%')
+            )
             ->latest('id')
             ->paginate(max(1, min($perPage, 100)));
+    }
+
+    /**
+     * Canonical normalization for the tax-number key: trim surrounding
+     * whitespace so " INV-1 " and "INV-1" resolve to the same trader on both
+     * lookup and write (code-review 17-B).
+     */
+    public static function normalizeTaxNumber(?string $taxNumber): ?string
+    {
+        if ($taxNumber === null) {
+            return null;
+        }
+
+        $trimmed = trim($taxNumber);
+
+        return $trimmed === '' ? null : $trimmed;
+    }
+
+    private function trimmedFilter(?string $value): ?string
+    {
+        $value = $value === null ? null : trim($value);
+
+        return ($value === null || $value === '') ? null : $value;
+    }
+
+    private function escapeLike(string $value): string
+    {
+        return addcslashes($value, '%_\\');
     }
 
     public function find(int $id): Trader
@@ -32,7 +66,7 @@ class TraderService
     public function findByTaxNumber(string $taxNumber): ?Trader
     {
         return $this->baseQuery()
-            ->where('tax_number', $taxNumber)
+            ->where('tax_number', self::normalizeTaxNumber($taxNumber))
             ->first();
     }
 
@@ -95,6 +129,10 @@ class TraderService
             'commercial_registration_number',
             'commercial_registration_expiry',
         ]);
+
+        if (array_key_exists('tax_number', $attributes)) {
+            $attributes['tax_number'] = self::normalizeTaxNumber($attributes['tax_number']);
+        }
 
         return $partial ? array_filter($attributes, fn ($value): bool => $value !== null) : $attributes;
     }

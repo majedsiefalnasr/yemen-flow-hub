@@ -40,7 +40,9 @@ class TraderCrudTest extends TestCase
 
     public function test_show_returns_nested_relations_and_missing_id_returns_404(): void
     {
-        $user = $this->makeUser(UserRole::EXECUTIVE_MEMBER);
+        $user = $this->makeUser(UserRole::DATA_ENTRY, Bank::query()->create([
+            'name' => 'Show Bank', 'code' => 'SHB', 'is_active' => true,
+        ]));
         $trader = Trader::factory()
             ->has(TraderCompany::factory()->state(['company_name' => 'Nested Company']), 'companies')
             ->has(TraderOwner::factory()->state(['full_name' => 'Nested Owner', 'ownership_percentage' => 75]), 'owners')
@@ -167,8 +169,11 @@ class TraderCrudTest extends TestCase
             ->assertJsonPath('data.trader_name', 'After Patch');
     }
 
-    public function test_non_permitted_roles_cannot_write_but_can_read(): void
+    public function test_non_permitted_roles_cannot_read_or_write(): void
     {
+        // Epic 17-B decision #9: trader data (incl. owner identification PII) is
+        // restricted to the bank-side trader roles. All other roles are denied
+        // read and write alike — least privilege on owner identification data.
         $trader = Trader::factory()->create();
         $blockedRoles = [
             UserRole::SWIFT_OFFICER,
@@ -181,7 +186,8 @@ class TraderCrudTest extends TestCase
         foreach ($blockedRoles as $role) {
             $user = $this->makeUser($role);
 
-            $this->actingAs($user)->getJson('/api/traders')->assertOk();
+            $this->actingAs($user)->getJson('/api/traders')->assertForbidden();
+            $this->actingAs($user)->getJson("/api/traders/{$trader->id}")->assertForbidden();
             $this->actingAs($user)
                 ->postJson('/api/traders', $this->payload("YE-TAX-{$role->value}"))
                 ->assertForbidden()
