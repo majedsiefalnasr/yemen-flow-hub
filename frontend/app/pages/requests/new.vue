@@ -101,6 +101,7 @@ function confirmLeave() {
   <div v-else-if="user && canCreate" class="flex flex-col gap-4">
     <PageHeader
       title="تقديم طلب تمويل واردات جديد"
+      subtitle="ابدأ من بيانات التاجر والفاتورة، ثم احفظ المسودة قبل رفع الوثائق الإلزامية."
       :breadcrumbs="[
         { label: 'الرئيسية', to: '/' },
         { label: 'طلبات التمويل', to: '/requests' },

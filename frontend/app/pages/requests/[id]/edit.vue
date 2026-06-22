@@ -97,6 +97,11 @@ onUnmounted(() => window.removeEventListener('beforeunload', onBeforeUnload))
   <div class="flex flex-col gap-4">
     <PageHeader
       title="تعديل طلب تمويل الواردات"
+      :subtitle="
+        request?.reference_number
+          ? `راجع بيانات ${request.reference_number} واحفظ التعديلات قبل إعادة التقديم.`
+          : 'راجع البيانات والوثائق قبل إعادة التقديم.'
+      "
       :breadcrumbs="[
         { label: 'الرئيسية', to: '/' },
         { label: 'طلبات التمويل', to: '/requests' },

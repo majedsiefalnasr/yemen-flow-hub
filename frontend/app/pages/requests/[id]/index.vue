@@ -490,6 +490,33 @@ const bankAdminInfoText = computed(() => {
   return `الطلب حاليا في مرحلة ${stage}، والمسؤول عنها: ${roleLabel}`
 })
 
+const requestSummaryItems = computed(() => {
+  if (!request.value) return []
+  const requestedAmount = Number(request.value.requested_amount ?? request.value.amount)
+  const amountCurrency = request.value.request_currency ?? request.value.currency
+  return [
+    {
+      label: 'المبلغ المطلوب',
+      value:
+        Number.isFinite(requestedAmount) && requestedAmount > 0
+          ? formatAmount(requestedAmount, amountCurrency)
+          : 'غير متاح',
+    },
+    {
+      label: 'التاجر',
+      value: request.value.trader_snapshot_name ?? request.value.merchant?.name ?? 'غير متاح',
+    },
+    {
+      label: 'المسؤول الحالي',
+      value: ROLE_LABELS[request.value.current_owner_role] ?? 'غير متاح',
+    },
+    {
+      label: 'آخر تحديث',
+      value: formatDate(request.value.updated_at),
+    },
+  ]
+})
+
 // BANK_ADMIN sees a read-only informational panel instead of action buttons
 // Exception: own-DRAFT requests get "تعديل" + "حذف" (handled via canEdit/hasActions)
 const showBankAdminInfoPanel = computed(() => {
@@ -1595,6 +1622,17 @@ async function handleCloneConfirm() {
           </span>
           <span class="text-muted-foreground text-xs">{{ cbySlaState.label }}</span>
         </div>
+
+        <section class="request-summary-strip" aria-label="ملخص الطلب">
+          <div
+            v-for="item in requestSummaryItems"
+            :key="item.label"
+            class="request-summary-strip__item"
+          >
+            <span class="request-summary-strip__label">{{ item.label }}</span>
+            <span class="request-summary-strip__value" :title="item.value">{{ item.value }}</span>
+          </div>
+        </section>
 
         <!-- Two-column layout -->
         <div class="detail-layout">
@@ -2873,7 +2911,7 @@ async function handleCloneConfirm() {
   font-weight: 700;
   color: var(--foreground);
   margin: 0;
-  letter-spacing: -0.5px;
+  letter-spacing: 0;
 }
 
 .page-subtitle {
@@ -2889,6 +2927,43 @@ async function handleCloneConfirm() {
 .subtitle-dot {
   color: var(--border);
   opacity: 0.5;
+}
+
+.request-summary-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  overflow: hidden;
+  margin-bottom: 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) * 1.4);
+  background: var(--border);
+}
+
+.request-summary-strip__item {
+  min-width: 0;
+  padding: 0.875rem 1rem;
+  background: var(--background);
+}
+
+.request-summary-strip__label {
+  display: block;
+  margin-bottom: 0.25rem;
+  color: var(--muted-foreground);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.request-summary-strip__value {
+  display: block;
+  overflow: hidden;
+  color: var(--foreground);
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.5;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Two-column layout */
@@ -2973,7 +3048,7 @@ async function handleCloneConfirm() {
   font-size: 13px;
   font-weight: 600;
   color: color-mix(in srgb, var(--warning) 70%, var(--foreground));
-  letter-spacing: -0.2px;
+  letter-spacing: 0;
 }
 
 .dup-widget-toggle {
@@ -3027,7 +3102,7 @@ async function handleCloneConfirm() {
   font-weight: 600;
   color: var(--foreground);
   margin: 0 0 16px 0;
-  letter-spacing: -0.3px;
+  letter-spacing: 0;
 }
 
 /* Detail grid — canonical field order, 2 columns */
@@ -3134,7 +3209,7 @@ async function handleCloneConfirm() {
   font-weight: 600;
   color: var(--foreground);
   margin: 0 0 12px 0;
-  letter-spacing: -0.2px;
+  letter-spacing: 0;
 }
 
 /* Quick info list */
@@ -3196,6 +3271,10 @@ async function handleCloneConfirm() {
   }
 
   .detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .request-summary-strip {
     grid-template-columns: 1fr;
   }
 

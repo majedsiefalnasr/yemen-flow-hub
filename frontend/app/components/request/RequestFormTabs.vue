@@ -1,10 +1,19 @@
 <script setup lang="ts">
+import { AlertCircle, CheckCircle2, Circle } from 'lucide-vue-next'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
 import * as z from 'zod'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardFooter } from '@/components/ui/card'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -87,12 +96,32 @@ const formErrors = ref<Record<string, string | undefined>>({})
 let hydrating = true
 
 const tabs = [
-  { value: 'basic', label: 'بيانات أساسية' },
-  { value: 'invoice', label: 'بيانات الفاتورة' },
-  { value: 'shipping', label: 'بيانات الشحن' },
-  { value: 'documents', label: 'الوثائق' },
-  { value: 'history', label: 'سجل سير العمل' },
-]
+  {
+    value: 'basic',
+    label: 'بيانات أساسية',
+    description: 'التاجر ونوع الطلب ومصدر العملة',
+  },
+  {
+    value: 'invoice',
+    label: 'بيانات الفاتورة',
+    description: 'التغطية والمبلغ والفاتورة',
+  },
+  {
+    value: 'shipping',
+    label: 'بيانات الشحن',
+    description: 'بلد المنشأ والموانئ والتواريخ',
+  },
+  {
+    value: 'documents',
+    label: 'الوثائق',
+    description: 'رفع ملفات PDF وقبول الإقرار',
+  },
+  {
+    value: 'history',
+    label: 'سجل سير العمل',
+    description: 'أثر التعديلات والقرارات السابقة',
+  },
+] as const
 
 const isEditMode = computed(() => props.requestId != null)
 const isReturnedCorrection = computed(() =>
@@ -113,6 +142,102 @@ const correctionVariant = computed(() => {
     default:
       return undefined
   }
+})
+
+const activeTabMeta = computed(() => tabs.find((tab) => tab.value === activeTab.value) ?? tabs[0])
+const activeTabIndex = computed(() => tabs.findIndex((tab) => tab.value === activeTab.value))
+const flowTabs = computed(() => tabs.filter((tab) => tab.value !== 'history'))
+const currentFlowStep = computed(() => Math.min(activeTabIndex.value + 1, flowTabs.value.length))
+const completionItems = computed(() => [
+  {
+    key: 'basic',
+    label: 'البيانات الأساسية',
+    complete: Boolean(
+      values.trader_id &&
+      values.request_type &&
+      values.currency_source &&
+      values.payment_terms_mode,
+    ),
+  },
+  {
+    key: 'invoice',
+    label: 'بيانات الفاتورة',
+    complete: Boolean(
+      values.coverage_type &&
+      values.request_percentage &&
+      values.request_currency &&
+      values.invoice_currency &&
+      values.requested_amount,
+    ),
+  },
+  {
+    key: 'documents',
+    label: 'الوثائق الإلزامية',
+    complete: documentsComplete.value,
+  },
+  {
+    key: 'declaration',
+    label: 'الإقرار',
+    complete: declarationAccepted.value,
+  },
+])
+const completedItemCount = computed(
+  () => completionItems.value.filter((item) => item.complete).length,
+)
+const missingItemLabels = computed(() =>
+  completionItems.value.filter((item) => !item.complete).map((item) => item.label),
+)
+const formProgressPercent = computed(() =>
+  Math.round((completedItemCount.value / completionItems.value.length) * 100),
+)
+const tabHasError = computed(() => {
+  const keys = Object.keys(formErrors.value).filter((key) => formErrors.value[key])
+  return {
+    basic: keys.some((key) =>
+      ['trader', 'request_type', 'currency_source', 'payment'].some((field) => key.includes(field)),
+    ),
+    invoice: keys.some((key) =>
+      [
+        'coverage_type',
+        'request_percentage',
+        'request_currency',
+        'invoice_currency',
+        'requested_amount',
+      ].some((field) => key.includes(field)),
+    ),
+    shipping: false,
+    documents: !documentsComplete.value && activeTab.value === 'documents',
+    history: false,
+  } as Record<(typeof tabs)[number]['value'], boolean>
+})
+const tabIsComplete = computed(() => ({
+  basic: completionItems.value[0]?.complete === true,
+  invoice: completionItems.value[1]?.complete === true,
+  shipping: Boolean(values.country_of_origin || values.port_of_arrival || values.shipping_date),
+  documents: documentsComplete.value && declarationAccepted.value,
+  history: false,
+}))
+const arabicNumberFormatter = new Intl.NumberFormat('ar-YE')
+const formatArabicNumber = (value: number) => arabicNumberFormatter.format(value)
+const completionProgressLabel = computed(
+  () =>
+    `اكتمل ${formatArabicNumber(completedItemCount.value)} من ${formatArabicNumber(
+      completionItems.value.length,
+    )}`,
+)
+const stepProgressLabel = computed(
+  () =>
+    `الخطوة ${formatArabicNumber(currentFlowStep.value)} من ${formatArabicNumber(
+      flowTabs.value.length,
+    )}: ${activeTabMeta.value.description}`,
+)
+const formProgressLabel = computed(() => `${formatArabicNumber(formProgressPercent.value)}%`)
+const saveLabel = computed(() => (isEditMode.value ? 'حفظ التعديلات' : 'حفظ كمسودة'))
+const submitDisabledReason = computed(() => {
+  if (financingAdvisoryBlocked.value) return FINANCING_ADVISORY_MESSAGE
+  if (!documentsComplete.value) return 'أكمل رفع المستندات الإلزامية أولاً'
+  if (!declarationAccepted.value) return 'وافق على الإقرار أولاً'
+  return undefined
 })
 
 watch(
@@ -382,17 +507,91 @@ function buildPayload(): RequestFormData {
 
     <Card class="border-0 shadow">
       <Tabs v-model="activeTab" dir="rtl">
-        <CardContent class="p-6">
-          <TabsList class="grid w-full grid-cols-5">
-            <TabsTrigger
-              v-for="tab in tabs"
-              :key="tab.value"
-              :value="tab.value"
-              :disabled="tab.value !== 'basic' && !visitedTabs.has(tab.value)"
+        <CardHeader class="border-border border-b pb-4">
+          <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div class="min-w-0">
+              <div class="flex flex-wrap items-center gap-2">
+                <CardTitle class="text-base">
+                  {{ isEditMode ? 'تحديث بيانات الطلب' : 'بيانات طلب تمويل الواردات' }}
+                </CardTitle>
+                <Badge variant="secondary" class="tabular-nums">
+                  {{ completionProgressLabel }}
+                </Badge>
+              </div>
+              <CardDescription class="mt-1">
+                {{ stepProgressLabel }}
+              </CardDescription>
+            </div>
+            <div class="w-full max-w-sm space-y-2">
+              <div class="flex items-center justify-between text-xs">
+                <span class="text-muted-foreground">جاهزية التقديم</span>
+                <span class="font-medium tabular-nums">{{ formProgressLabel }}</span>
+              </div>
+              <div
+                class="bg-muted h-2 overflow-hidden rounded-full"
+                role="progressbar"
+                aria-label="جاهزية التقديم"
+                :aria-valuenow="formProgressPercent"
+                aria-valuemin="0"
+                aria-valuemax="100"
+              >
+                <div
+                  class="bg-primary h-full rounded-full transition-all"
+                  :style="{ width: `${formProgressPercent}%` }"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div
+            v-if="missingItemLabels.length"
+            class="border-border bg-muted/30 mt-2 flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2 text-xs"
+            role="status"
+          >
+            <span class="font-medium">المتبقي قبل التقديم:</span>
+            <Badge
+              v-for="label in missingItemLabels"
+              :key="label"
+              variant="outline"
+              class="bg-background"
             >
-              {{ tab.label }}
-            </TabsTrigger>
-          </TabsList>
+              {{ label }}
+            </Badge>
+          </div>
+        </CardHeader>
+
+        <CardContent class="p-6">
+          <div class="overflow-x-auto pb-1">
+            <TabsList
+              class="bg-muted/60 grid h-auto w-full min-w-[44rem] grid-cols-5 gap-1 p-1 max-sm:min-w-0 max-sm:grid-cols-1"
+            >
+              <TabsTrigger
+                v-for="tab in tabs"
+                :key="tab.value"
+                :value="tab.value"
+                class="h-auto min-h-12 justify-start gap-2 px-3 py-2 text-start"
+                :disabled="tab.value !== 'basic' && !visitedTabs.has(tab.value)"
+              >
+                <AlertCircle
+                  v-if="tabHasError[tab.value]"
+                  class="size-4 text-[var(--severity-red)]"
+                  aria-hidden="true"
+                />
+                <CheckCircle2
+                  v-else-if="tabIsComplete[tab.value]"
+                  class="size-4 text-[var(--severity-green)]"
+                  aria-hidden="true"
+                />
+                <Circle v-else class="text-muted-foreground size-3" aria-hidden="true" />
+                <span class="flex min-w-0 flex-col">
+                  <span class="truncate text-sm font-medium">{{ tab.label }}</span>
+                  <span class="text-muted-foreground truncate text-xs">
+                    {{ tab.description }}
+                  </span>
+                </span>
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
           <TabsContent value="basic" class="mt-6">
             <BasicInfoTab
@@ -434,50 +633,57 @@ function buildPayload(): RequestFormData {
           </TabsContent>
         </CardContent>
 
-        <CardFooter class="border-border flex items-center justify-between gap-3 border-t p-4">
+        <CardFooter
+          class="border-border flex flex-col items-stretch justify-between gap-3 border-t p-4 sm:flex-row sm:items-center"
+        >
           <Button
             type="button"
             variant="outline"
+            class="sm:w-auto"
             :disabled="activeTab === 'basic'"
             @click="goPrevious"
           >
-            ← السابق
+            السابق
           </Button>
-          <div class="flex gap-2">
+          <div class="text-muted-foreground hidden min-w-0 flex-1 px-2 text-xs md:block">
+            <span v-if="activeTab === 'documents' && submitDisabledReason">
+              {{ submitDisabledReason }}
+            </span>
+            <span v-else-if="activeTab === 'history'">
+              سجل سير العمل للمتابعة فقط، ولا يؤثر على جاهزية التقديم.
+            </span>
+            <span v-else>يمكن حفظ المسودة في أي وقت دون فقدان البيانات.</span>
+          </div>
+          <div class="flex flex-col-reverse justify-end gap-2 sm:flex-row sm:flex-wrap">
             <Button
               type="button"
               variant="secondary"
+              class="sm:w-auto"
               :disabled="requestsStore.saving"
               @click="saveDraft"
             >
-              حفظ كمسودة
+              {{ saveLabel }}
             </Button>
             <Button
               v-if="activeTab !== 'documents'"
               type="button"
+              class="sm:w-auto"
               :disabled="requestsStore.saving"
               @click="goNext"
             >
-              التالي →
+              التالي
             </Button>
             <Button
               v-else
               type="button"
+              class="sm:w-auto"
               :disabled="
                 requestsStore.saving ||
                 !documentsComplete ||
                 !declarationAccepted ||
                 financingAdvisoryBlocked
               "
-              :title="
-                financingAdvisoryBlocked
-                  ? FINANCING_ADVISORY_MESSAGE
-                  : !documentsComplete
-                    ? 'أكمل رفع المستندات الإلزامية أولاً'
-                    : !declarationAccepted
-                      ? 'وافق على الإقرار أولاً'
-                      : undefined
-              "
+              :title="submitDisabledReason"
               @click="submitForReview"
             >
               إرسال للمراجعة
