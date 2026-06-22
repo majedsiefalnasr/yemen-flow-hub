@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\RequestStatus;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -15,21 +16,21 @@ class Merchant extends Model
     protected $fillable = [
         'bank_id',
         'name',
-        'commercial_register',
         'tax_number',
-        'national_id',
-        'owner_name',
-        'phone',
-        'email',
+        'tax_card_expiry',
         'address',
-        'business_type',
-        'is_active',
+        'phone',
+        'status',
+        'version',
         'created_by',
     ];
 
     protected function casts(): array
     {
-        return ['is_active' => 'boolean'];
+        return [
+            'tax_card_expiry' => 'date',
+            'version' => 'integer',
+        ];
     }
 
     public function bank(): BelongsTo
@@ -47,13 +48,43 @@ class Merchant extends Model
         return $this->hasMany(ImportRequest::class);
     }
 
+    public function owners(): HasMany
+    {
+        return $this->hasMany(MerchantOwner::class);
+    }
+
+    public function companies(): HasMany
+    {
+        return $this->hasMany(MerchantCompany::class);
+    }
+
     public function scopeActive(Builder $query): Builder
     {
-        return $query->where('is_active', true);
+        return $query->where('status', 'ACTIVE');
     }
 
     public function scopeForUser(Builder $query, User $user): Builder
     {
         return $user->isBankUser() ? $query->where('bank_id', $user->bank_id) : $query;
+    }
+
+    public function hasActiveRequests(): bool
+    {
+        return $this->importRequests()
+            ->whereNotIn('status', $this->terminalStatusValues())
+            ->exists();
+    }
+
+    public function hasAnyRequests(): bool
+    {
+        return $this->importRequests()->exists();
+    }
+
+    private function terminalStatusValues(): array
+    {
+        return array_values(array_map(
+            fn (RequestStatus $status) => $status->value,
+            array_filter(RequestStatus::cases(), fn (RequestStatus $status) => $status->isTerminal())
+        ));
     }
 }

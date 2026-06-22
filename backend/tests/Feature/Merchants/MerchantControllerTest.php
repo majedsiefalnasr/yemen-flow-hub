@@ -36,8 +36,6 @@ class MerchantControllerTest extends TestCase
         $this->seedMerchantsPermission();
     }
 
-    // ─── Helpers ──────────────────────────────────────────────────────────────
-
     private function makeBank(string $code): Bank
     {
         return Bank::query()->create([
@@ -67,28 +65,10 @@ class MerchantControllerTest extends TestCase
         return Merchant::query()->create(array_merge([
             'bank_id' => $bank->id,
             'name' => 'تاجر الاختبار',
-            'commercial_register' => 'CR-'.uniqid(),
             'tax_number' => 'TX-'.uniqid(),
-            'business_type' => null,
-            'is_active' => true,
+            'status' => 'ACTIVE',
+            'version' => 1,
             'created_by' => $this->bankAdmin->id,
-        ], $overrides));
-    }
-
-    private function makeImportRequestForMerchant(Merchant $merchant, array $overrides = []): void
-    {
-        DB::table('import_requests')->insert(array_merge([
-            'reference_number' => 'YFH-TEST-'.uniqid(),
-            'bank_id' => $merchant->bank_id,
-            'merchant_id' => $merchant->id,
-            'created_by' => $this->bankAdmin->id,
-            'currency' => 'USD',
-            'amount' => 1000,
-            'supplier_name' => 'Supplier Test',
-            'goods_description' => 'Medical supplies',
-            'port_of_entry' => 'Aden',
-            'created_at' => now(),
-            'updated_at' => now(),
         ], $overrides));
     }
 
@@ -107,17 +87,17 @@ class MerchantControllerTest extends TestCase
         ]);
     }
 
-    // ─── GET /api/merchants ───────────────────────────────────────────────────
+    // ─── GET /api/v1/merchants ───────────────────────────────────────────────
 
     public function test_bank_admin_lists_only_own_bank_merchants(): void
     {
         $own = $this->makeMerchant($this->bank);
         $this->makeMerchant($this->otherBank);
 
-        $response = $this->actingAs($this->bankAdmin)->getJson('/api/merchants');
+        $response = $this->actingAs($this->bankAdmin)->getJson('/api/v1/merchants');
 
         $response->assertOk();
-        $ids = collect($response->json('data.data'))->pluck('id');
+        $ids = collect($response->json('data'))->pluck('id');
         $this->assertTrue($ids->contains($own->id));
         $this->assertCount(1, $ids);
     }
@@ -127,172 +107,178 @@ class MerchantControllerTest extends TestCase
         $this->makeMerchant($this->bank);
         $this->makeMerchant($this->otherBank);
 
-        $response = $this->actingAs($this->cbyadmin)->getJson('/api/merchants');
+        $response = $this->actingAs($this->cbyadmin)->getJson('/api/v1/merchants');
 
         $response->assertOk();
-        $this->assertGreaterThanOrEqual(2, count($response->json('data.data')));
+        $this->assertGreaterThanOrEqual(2, count($response->json('data')));
     }
 
-    public function test_index_includes_transaction_count_for_each_merchant(): void
+    public function test_list_returns_data_and_meta_envelope(): void
     {
-        $merchant = $this->makeMerchant($this->bank);
-        $this->makeImportRequestForMerchant($merchant);
-        $this->makeImportRequestForMerchant($merchant);
+        $this->makeMerchant($this->bank);
 
-        $response = $this->actingAs($this->bankAdmin)->getJson('/api/merchants');
+        $response = $this->actingAs($this->bankAdmin)->getJson('/api/v1/merchants');
 
+        $response->assertOk()
+            ->assertJsonStructure([
+                'data' => [['id', 'bank_id', 'name', 'tax_number', 'status', 'version', 'created_at', 'updated_at']],
+                'meta' => ['current_page', 'last_page', 'per_page', 'total'],
+            ]);
+    }
+
+    public function test_pagination_default_25_max_100(): void
+    {
+        $response = $this->actingAs($this->bankAdmin)->getJson('/api/v1/merchants');
+        $response->assertOk()->assertJsonPath('meta.per_page', 25);
+
+        $response = $this->actingAs($this->bankAdmin)->getJson('/api/v1/merchants?per_page=200');
+        $response->assertOk()->assertJsonPath('meta.per_page', 100);
+    }
+
+    public function test_search_filter_matches_name_and_tax_number(): void
+    {
+        $this->makeMerchant($this->bank, ['name' => 'شركة الأمل', 'tax_number' => 'TX-HOPE-001']);
+        $this->makeMerchant($this->bank, ['name' => 'شركة السلام', 'tax_number' => 'TX-PEACE-002']);
+
+        $response = $this->actingAs($this->bankAdmin)->getJson('/api/v1/merchants?search=HOPE');
         $response->assertOk();
-        $merchantData = collect($response->json('data.data'))->firstWhere('id', $merchant->id);
-        $this->assertNotNull($merchantData);
-        $this->assertSame(2, $merchantData['transaction_count']);
+        $this->assertCount(1, $response->json('data'));
     }
 
-    public function test_per_page_query_param_is_respected_up_to_limit(): void
+    public function test_status_filter(): void
     {
-        Merchant::query()->insert(collect(range(1, 25))->map(fn ($i) => [
-            'bank_id' => $this->bank->id,
-            'name' => "Merchant {$i}",
-            'commercial_register' => "CR-P{$i}",
-            'tax_number' => "TX-P{$i}",
-            'business_type' => null,
-            'is_active' => true,
-            'created_by' => $this->bankAdmin->id,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ])->all());
+        $this->makeMerchant($this->bank, ['status' => 'ACTIVE']);
+        $this->makeMerchant($this->bank, ['status' => 'SUSPENDED']);
 
-        $response = $this->actingAs($this->cbyadmin)->getJson('/api/merchants?per_page=100');
-
+        $response = $this->actingAs($this->bankAdmin)->getJson('/api/v1/merchants?status=SUSPENDED');
         $response->assertOk();
-        $this->assertCount(25, $response->json('data.data'));
+        $this->assertCount(1, $response->json('data'));
+        $this->assertSame('SUSPENDED', $response->json('data.0.status'));
     }
 
-    public function test_bank_admin_cannot_filter_another_banks_merchants(): void
+    public function test_bank_id_filter_for_global_user(): void
     {
+        $this->makeMerchant($this->bank);
         $this->makeMerchant($this->otherBank);
 
-        $response = $this->actingAs($this->bankAdmin)->getJson('/api/merchants?bank_id='.$this->otherBank->id);
-
+        $response = $this->actingAs($this->cbyadmin)->getJson('/api/v1/merchants?bank_id='.$this->bank->id);
         $response->assertOk();
-        $this->assertCount(0, $response->json('data.data'));
+        $bankIds = collect($response->json('data'))->pluck('bank_id')->unique();
+        $this->assertCount(1, $bankIds);
+        $this->assertSame($this->bank->id, $bankIds->first());
     }
 
-    public function test_unauthenticated_user_cannot_list_merchants(): void
+    public function test_bank_user_ignores_bank_id_filter(): void
     {
-        $this->getJson('/api/merchants')->assertUnauthorized();
-    }
-
-    public function test_data_entry_can_list_own_bank_merchants(): void
-    {
-        // DATA_ENTRY uses merchant list to select merchants in request form
-        $seedDataEntryPermission = function () {
-            $permId = Permission::query()->insertGetId([
-                'slug' => 'request.create',
-                'name_ar' => 'إنشاء طلب',
-                'name_en' => 'Create request',
-                'group' => 'requests',
-            ]);
-            DB::table('role_permissions')->insert(['permission_id' => $permId, 'role' => UserRole::DATA_ENTRY->value]);
-        };
-        $seedDataEntryPermission();
-
         $this->makeMerchant($this->bank);
-        $dataEntry = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+        $this->makeMerchant($this->otherBank);
 
-        // viewAny allows all active users — DATA_ENTRY can read but not write
-        $this->actingAs($dataEntry)->getJson('/api/merchants')->assertOk();
+        $response = $this->actingAs($this->bankAdmin)->getJson('/api/v1/merchants?bank_id='.$this->otherBank->id);
+        $response->assertOk();
+        $bankIds = collect($response->json('data'))->pluck('bank_id')->unique();
+        $this->assertTrue($bankIds->every(fn ($id) => $id === $this->bank->id));
     }
 
-    // ─── POST /api/merchants ──────────────────────────────────────────────────
+    public function test_unauthenticated_user_cannot_list(): void
+    {
+        $this->getJson('/api/v1/merchants')->assertUnauthorized();
+    }
 
-    public function test_bank_admin_creates_merchant_for_own_bank(): void
+    // ─── POST /api/v1/merchants ──────────────────────────────────────────────
+
+    public function test_bank_admin_creates_merchant(): void
     {
         $payload = [
             'name' => 'شركة التقنية للاستيراد',
-            'commercial_register' => 'CR-12345',
-            'tax_number' => 'TX-99999',
-            'address' => 'صنعاء، شارع التحرير',
-            'business_type' => 'import',
-            'is_active' => true,
+            'tax_number' => 'TX-CREATE-001',
+            'tax_card_expiry' => '2027-06-01',
+            'address' => 'صنعاء',
+            'phone' => '+967771234567',
         ];
 
-        $response = $this->actingAs($this->bankAdmin)->postJson('/api/merchants', $payload);
+        $response = $this->actingAs($this->bankAdmin)->postJson('/api/v1/merchants', $payload);
 
-        $response->assertStatus(201);
-        $response->assertJsonPath('data.transaction_count', 0);
-        $this->assertDatabaseHas('merchants', [
-            'name' => 'شركة التقنية للاستيراد',
-            'bank_id' => $this->bank->id,
-            'created_by' => $this->bankAdmin->id,
-            'business_type' => 'import',
-        ]);
+        $response->assertCreated()
+            ->assertJsonPath('data.name', 'شركة التقنية للاستيراد')
+            ->assertJsonPath('data.bank_id', $this->bank->id)
+            ->assertJsonPath('data.version', 1)
+            ->assertJsonPath('data.status', 'ACTIVE');
     }
 
-    public function test_cby_admin_must_provide_bank_id_when_creating_merchant(): void
+    public function test_bank_admin_store_forces_own_bank(): void
     {
-        $response = $this->actingAs($this->cbyadmin)->postJson('/api/merchants', [
+        $response = $this->actingAs($this->bankAdmin)->postJson('/api/v1/merchants', [
+            'name' => 'تاجر',
+            'tax_number' => 'TX-FORCE-001',
+            'bank_id' => $this->otherBank->id,
+        ]);
+
+        $response->assertCreated();
+        $this->assertSame($this->bank->id, $response->json('data.bank_id'));
+    }
+
+    public function test_cby_admin_must_provide_bank_id(): void
+    {
+        $this->actingAs($this->cbyadmin)->postJson('/api/v1/merchants', [
             'name' => 'تاجر بدون بنك',
-        ]);
-
-        $response->assertUnprocessable()->assertJsonValidationErrors(['bank_id']);
+            'tax_number' => 'TX-NO-BANK',
+        ])->assertUnprocessable();
     }
 
-    public function test_cby_admin_can_create_merchant_for_selected_bank(): void
+    public function test_cby_admin_creates_for_selected_bank(): void
     {
-        $response = $this->actingAs($this->cbyadmin)->postJson('/api/merchants', [
+        $response = $this->actingAs($this->cbyadmin)->postJson('/api/v1/merchants', [
             'name' => 'تاجر مركزي',
+            'tax_number' => 'TX-CBY-001',
             'bank_id' => $this->otherBank->id,
-            'business_type' => 'services',
         ]);
 
-        $response->assertStatus(201);
-        $this->assertDatabaseHas('merchants', [
-            'name' => 'تاجر مركزي',
-            'bank_id' => $this->otherBank->id,
-            'business_type' => 'services',
-        ]);
+        $response->assertCreated()->assertJsonPath('data.bank_id', $this->otherBank->id);
     }
 
-    public function test_bank_admin_store_enforces_own_bank_regardless_of_payload(): void
-    {
-        $response = $this->actingAs($this->bankAdmin)->postJson('/api/merchants', [
-            'name' => 'تاجر آخر',
-            'bank_id' => $this->otherBank->id,
-        ]);
-
-        $response->assertStatus(201);
-        $this->assertDatabaseHas('merchants', [
-            'name' => 'تاجر آخر',
-            'bank_id' => $this->bank->id,
-        ]);
-    }
-
-    public function test_create_merchant_requires_name(): void
+    public function test_create_requires_name_and_tax_number(): void
     {
         $this->actingAs($this->bankAdmin)
-            ->postJson('/api/merchants', ['commercial_register' => 'CR-000'])
+            ->postJson('/api/v1/merchants', [])
             ->assertUnprocessable()
-            ->assertJsonValidationErrors(['name']);
+            ->assertJsonValidationErrors(['name', 'tax_number']);
     }
 
-    // ─── PUT /api/merchants/{id} ──────────────────────────────────────────────
+    // ─── PUT /api/v1/merchants/{id} ──────────────────────────────────────────
 
-    public function test_bank_admin_updates_own_bank_merchant(): void
+    public function test_update_with_version_check(): void
     {
-        $merchant = $this->makeMerchant($this->bank, ['business_type' => 'retail']);
-        $this->makeImportRequestForMerchant($merchant);
-        $this->makeImportRequestForMerchant($merchant);
+        $merchant = $this->makeMerchant($this->bank);
 
-        $response = $this->actingAs($this->bankAdmin)->putJson("/api/merchants/{$merchant->id}", [
+        $response = $this->actingAs($this->bankAdmin)->putJson("/api/v1/merchants/{$merchant->id}", [
             'name' => 'اسم محدّث',
-            'business_type' => 'import',
+            'version' => 1,
         ]);
 
-        $response->assertOk();
-        $response->assertJsonPath('data.name', 'اسم محدّث');
-        $response->assertJsonPath('data.business_type', 'import');
-        $response->assertJsonPath('data.transaction_count', 2);
-        $this->assertDatabaseHas('merchants', ['id' => $merchant->id, 'name' => 'اسم محدّث', 'business_type' => 'import']);
+        $response->assertOk()
+            ->assertJsonPath('data.name', 'اسم محدّث')
+            ->assertJsonPath('data.version', 2);
+    }
+
+    public function test_stale_version_returns_409(): void
+    {
+        $merchant = $this->makeMerchant($this->bank);
+
+        $this->actingAs($this->bankAdmin)->putJson("/api/v1/merchants/{$merchant->id}", [
+            'name' => 'اسم محدّث',
+            'version' => 99,
+        ])->assertConflict()
+            ->assertJsonPath('error.code', 'STALE_RESOURCE');
+    }
+
+    public function test_update_requires_version(): void
+    {
+        $merchant = $this->makeMerchant($this->bank);
+
+        $this->actingAs($this->bankAdmin)->putJson("/api/v1/merchants/{$merchant->id}", [
+            'name' => 'اسم',
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors(['version']);
     }
 
     public function test_bank_admin_cannot_update_other_bank_merchant(): void
@@ -300,47 +286,60 @@ class MerchantControllerTest extends TestCase
         $merchant = $this->makeMerchant($this->otherBank);
 
         $this->actingAs($this->bankAdmin)
-            ->putJson("/api/merchants/{$merchant->id}", ['name' => 'Hacked'])
+            ->putJson("/api/v1/merchants/{$merchant->id}", ['name' => 'Hacked', 'version' => 1])
             ->assertForbidden();
     }
 
-    // ─── Suspend (PUT is_active: false) ───────────────────────────────────────
+    // ─── DELETE /api/v1/merchants/{id} ───────────────────────────────────────
 
-    public function test_bank_admin_suspends_merchant(): void
+    public function test_soft_delete_merchant(): void
     {
-        $merchant = $this->makeMerchant($this->bank, ['is_active' => true]);
-        $this->makeImportRequestForMerchant($merchant);
+        $merchant = $this->makeMerchant($this->bank);
 
-        $response = $this->actingAs($this->bankAdmin)->putJson("/api/merchants/{$merchant->id}", ['is_active' => false]);
+        $this->actingAs($this->bankAdmin)->deleteJson("/api/v1/merchants/{$merchant->id}")
+            ->assertNoContent();
 
-        $response->assertOk();
-        $response->assertJsonPath('data.is_active', false);
-        $response->assertJsonPath('data.transaction_count', 1);
-        $this->assertDatabaseHas('merchants', ['id' => $merchant->id, 'is_active' => false]);
+        $this->assertSoftDeleted('merchants', ['id' => $merchant->id]);
     }
 
-    public function test_bank_admin_reactivates_suspended_merchant(): void
+    public function test_bank_admin_cannot_delete_other_bank_merchant(): void
     {
-        $merchant = $this->makeMerchant($this->bank, ['is_active' => false]);
+        $merchant = $this->makeMerchant($this->otherBank);
 
-        $response = $this->actingAs($this->bankAdmin)->putJson("/api/merchants/{$merchant->id}", ['is_active' => true]);
-
-        $response->assertOk();
-        $response->assertJsonPath('data.is_active', true);
+        $this->actingAs($this->bankAdmin)
+            ->deleteJson("/api/v1/merchants/{$merchant->id}")
+            ->assertForbidden();
     }
 
-    // ─── Search filter ────────────────────────────────────────────────────────
+    // ─── Audit ──────────────────────────────────────────────────────────────
 
-    public function test_bank_admin_can_search_own_merchants_by_commercial_register(): void
+    public function test_create_is_audited(): void
     {
-        $this->makeMerchant($this->bank, ['commercial_register' => 'CR-UNIQUE-001']);
-        $this->makeMerchant($this->bank, ['commercial_register' => 'CR-OTHER-002']);
+        $this->actingAs($this->bankAdmin)->postJson('/api/v1/merchants', [
+            'name' => 'Audited Merchant',
+            'tax_number' => 'TX-AUDIT-001',
+        ])->assertCreated();
 
-        $response = $this->actingAs($this->bankAdmin)->getJson('/api/merchants?search=UNIQUE-001');
+        $this->assertDatabaseHas('audit_logs', [
+            'user_id' => $this->bankAdmin->id,
+            'action' => 'GOVERNANCE_CREATED',
+            'subject_type' => Merchant::class,
+        ]);
+    }
 
-        $response->assertOk();
-        $registers = collect($response->json('data.data'))->pluck('commercial_register');
-        $this->assertTrue($registers->contains('CR-UNIQUE-001'));
-        $this->assertFalse($registers->contains('CR-OTHER-002'));
+    public function test_update_is_audited(): void
+    {
+        $merchant = $this->makeMerchant($this->bank);
+
+        $this->actingAs($this->bankAdmin)->putJson("/api/v1/merchants/{$merchant->id}", [
+            'name' => 'Updated',
+            'version' => 1,
+        ])->assertOk();
+
+        $this->assertDatabaseHas('audit_logs', [
+            'user_id' => $this->bankAdmin->id,
+            'action' => 'GOVERNANCE_UPDATED',
+            'subject_type' => Merchant::class,
+        ]);
     }
 }

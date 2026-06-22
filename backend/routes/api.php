@@ -12,7 +12,6 @@ use App\Http\Controllers\Api\DocumentTemplateController;
 use App\Http\Controllers\Api\DocumentTypeController;
 use App\Http\Controllers\Api\FinancingController;
 use App\Http\Controllers\Api\ImportRequestController;
-use App\Http\Controllers\Api\MerchantController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\ReportController;
@@ -22,6 +21,7 @@ use App\Http\Controllers\Api\SettingsController;
 use App\Http\Controllers\Api\TraderController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\V1\BankController as V1BankController;
+use App\Http\Controllers\Api\V1\MerchantController as V1MerchantController;
 use App\Http\Controllers\Api\V1\OrganizationController;
 use App\Http\Controllers\Api\V1\ReferenceTableController;
 use App\Http\Controllers\Api\V1\ReferenceValueController;
@@ -96,6 +96,7 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'active'])->group(function () {
     Route::post('users/{user}/deactivate', [V1UserController::class, 'deactivate']);
     Route::post('users/{user}/reset-password', [V1UserController::class, 'resetPassword']);
     Route::post('users/{user}/reset-mfa', [V1UserController::class, 'resetMfa']);
+    Route::apiResource('merchants', V1MerchantController::class);
 });
 
 Route::get('settings/public', [SettingsController::class, 'publicSettings']);
@@ -132,7 +133,6 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::get('traders/{trader}', [TraderController::class, 'show']);
     Route::put('traders/{trader}', [TraderController::class, 'update']);
     Route::patch('traders/{trader}', [TraderController::class, 'update']);
-    Route::apiResource('merchants', MerchantController::class);
     Route::get('document-types', [DocumentTypeController::class, 'index']);
     Route::post('document-types', [DocumentTypeController::class, 'store']);
     Route::put('document-types/{documentType}', [DocumentTypeController::class, 'update']);
