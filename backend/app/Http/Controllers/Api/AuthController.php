@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Enums\AuditAction;
 use App\Enums\UserRole;
 use App\Http\Requests\LoginRequest;
+use App\Http\Resources\AuthMeResource;
 use App\Http\Resources\UserResource;
 use App\Models\User;
 use App\Services\Audit\AuditService;
@@ -176,7 +177,9 @@ class AuthController extends Controller
     public function me(Request $request)
     {
         return ApiResponse::success(
-            new UserResource($request->user()->loadMissing('bank')),
+            new AuthMeResource(
+                $request->user()->loadMissing(['organization', 'teams', 'roles', 'bank'])
+            ),
             'User profile retrieved.'
         );
     }

@@ -34,6 +34,8 @@ enum AuditAction: string
     case EMAIL_TEST_SENT = 'EMAIL_TEST_SENT';
     case EMAIL_TEMPLATE_UPDATED = 'EMAIL_TEMPLATE_UPDATED';
     case EMAIL_DELIVERY_FAILED = 'EMAIL_DELIVERY_FAILED';
+    case GOVERNANCE_CREATED = 'GOVERNANCE_CREATED';
+    case GOVERNANCE_UPDATED = 'GOVERNANCE_UPDATED';
 
     public function label(): string
     {
@@ -68,6 +70,8 @@ enum AuditAction: string
             self::EMAIL_TEST_SENT => 'Email Test Sent / إرسال بريد اختباري',
             self::EMAIL_TEMPLATE_UPDATED => 'Email Template Updated / تحديث قالب البريد',
             self::EMAIL_DELIVERY_FAILED => 'Email Delivery Failed / فشل إرسال البريد الإلكتروني',
+            self::GOVERNANCE_CREATED => 'Governance Created / إنشاء سجل حوكمة',
+            self::GOVERNANCE_UPDATED => 'Governance Updated / تحديث سجل حوكمة',
         };
     }
 }

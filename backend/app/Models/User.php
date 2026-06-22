@@ -6,6 +6,7 @@ use App\Enums\UserRole;
 use App\Services\Authorization\PermissionService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -18,6 +19,7 @@ class User extends Authenticatable
     protected $fillable = [
         'name',
         'email',
+        'organization_id',
         'locale',
         'phone',
         'password',
@@ -36,6 +38,7 @@ class User extends Authenticatable
         'last_login_at',
         'user_preferences',
         'avatar_variant',
+        'version',
     ];
 
     protected $hidden = [
@@ -62,12 +65,38 @@ class User extends Authenticatable
             'pin_enabled' => 'boolean',
             'last_login_at' => 'datetime',
             'user_preferences' => 'array',
+            'version' => 'integer',
         ];
     }
 
     public function bank(): BelongsTo
     {
         return $this->belongsTo(Bank::class);
+    }
+
+    public function organization(): BelongsTo
+    {
+        return $this->belongsTo(Organization::class);
+    }
+
+    public function teams(): BelongsToMany
+    {
+        return $this->belongsToMany(Team::class, 'user_teams')->withTimestamps();
+    }
+
+    public function roles(): BelongsToMany
+    {
+        return $this->belongsToMany(Role::class, 'user_roles')->withTimestamps();
+    }
+
+    public function team(): ?Team
+    {
+        return $this->relationLoaded('teams') ? $this->teams->first() : $this->teams()->first();
+    }
+
+    public function role(): ?Role
+    {
+        return $this->relationLoaded('roles') ? $this->roles->first() : $this->roles()->first();
     }
 
     public function votes(): HasMany

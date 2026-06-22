@@ -4,6 +4,9 @@ namespace Database\Seeders;
 
 use App\Enums\UserRole;
 use App\Models\Bank;
+use App\Models\Organization;
+use App\Models\Role;
+use App\Models\Team;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
@@ -29,7 +32,7 @@ class UserSeeder extends Seeder
         ];
 
         foreach ($cbyUsers as $row) {
-            User::query()->updateOrCreate(
+            $user = User::query()->updateOrCreate(
                 ['email' => $row['email']],
                 [
                     'name' => $row['name'],
@@ -42,6 +45,7 @@ class UserSeeder extends Seeder
                     'user_preferences' => $this->defaultPreferences($row['role']),
                 ]
             );
+            $this->assignIdentity($user, $row['role']);
         }
 
         // Bank users — 5 canonical bank roles per bank (BANK_ADMIN, 2×DATA_ENTRY, BANK_REVIEWER, SWIFT_OFFICER)
@@ -77,7 +81,7 @@ class UserSeeder extends Seeder
             ];
 
             foreach ($rows as $idx => $row) {
-                User::query()->updateOrCreate(
+                $user = User::query()->updateOrCreate(
                     ['email' => $row['email']],
                     [
                         'name' => $row['name'],
@@ -90,6 +94,7 @@ class UserSeeder extends Seeder
                         'user_preferences' => $this->defaultPreferences($row['role']),
                     ]
                 );
+                $this->assignIdentity($user, $row['role']);
             }
         }
 
@@ -128,6 +133,38 @@ class UserSeeder extends Seeder
             'default_filters' => [],
             'notification_preferences' => $notifMap[$role->value] ?? [],
         ];
+    }
+
+    private function assignIdentity(User $user, UserRole $legacyRole): void
+    {
+        $map = [
+            UserRole::DATA_ENTRY->value => ['commercial_banks', 'entry', 'intake', true],
+            UserRole::BANK_REVIEWER->value => ['commercial_banks', 'internal_review', 'internal_reviewer', true],
+            UserRole::BANK_ADMIN->value => ['commercial_banks', 'bank_admin', 'bank_admin', true],
+            UserRole::SWIFT_OFFICER->value => ['commercial_banks', 'fx_ops', 'fx_swift', true],
+            UserRole::SUPPORT_COMMITTEE->value => ['national_committee', 'support', 'support', false],
+            UserRole::EXECUTIVE_MEMBER->value => ['national_committee', 'executive', 'committee_manager', false],
+            UserRole::COMMITTEE_DIRECTOR->value => ['national_committee', 'executive', 'committee_manager', false],
+            UserRole::CBY_ADMIN->value => ['system_administration', 'administration', 'system_admin', false],
+        ];
+
+        [$organizationCode, $teamCode, $roleCode, $keepsBank] = $map[$legacyRole->value];
+        $organization = Organization::query()->where('code', $organizationCode)->firstOrFail();
+        $team = Team::query()
+            ->whereBelongsTo($organization)
+            ->where('code', $teamCode)
+            ->firstOrFail();
+        $role = Role::query()
+            ->whereBelongsTo($organization)
+            ->where('code', $roleCode)
+            ->firstOrFail();
+
+        $user->forceFill([
+            'organization_id' => $organization->id,
+            'bank_id' => $keepsBank ? $user->bank_id : null,
+        ])->save();
+        $user->teams()->sync([$team->id]);
+        $user->roles()->sync([$role->id]);
     }
 
     private function generatePhone(string $bankCode, int $idx): string

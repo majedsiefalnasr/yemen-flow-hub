@@ -9,6 +9,7 @@ use App\Http\Requests\UpdateUserRequest;
 use App\Http\Resources\UserResource;
 use App\Models\User;
 use App\Services\Audit\AuditService;
+use App\Services\Auth\SessionInvalidationService;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -16,7 +17,10 @@ use OpenApi\Attributes as OA;
 
 class UserController extends Controller
 {
-    public function __construct(private readonly AuditService $auditService) {}
+    public function __construct(
+        private readonly AuditService $auditService,
+        private readonly SessionInvalidationService $sessionInvalidationService,
+    ) {}
 
     #[OA\Get(
         path: '/api/users',
@@ -130,6 +134,9 @@ class UserController extends Controller
 
         $user->update($payload);
         $user->refresh();
+        if (array_intersect(['role', 'bank_id', 'is_active'], array_keys($payload))) {
+            $this->sessionInvalidationService->invalidate($user);
+        }
         $after = $this->auditSnapshot($user);
         $changedKeys = array_keys(array_filter(
             $after,
@@ -162,6 +169,7 @@ class UserController extends Controller
         $before = $this->auditSnapshot($user);
         $user->update(['is_active' => false]);
         $user->refresh();
+        $this->sessionInvalidationService->invalidate($user);
         $this->auditService->log(AuditAction::USER_DEACTIVATED, request()->user(), $user, [
             'bank_id' => $user->bank_id,
             'target_role' => $user->role?->value,
@@ -185,7 +193,7 @@ class UserController extends Controller
             'must_change_password' => true,
             'temporary_password_set_at' => now(),
         ])->save();
-        $user->tokens()->delete();
+        $this->sessionInvalidationService->invalidate($user);
 
         $this->auditService->log(AuditAction::PASSWORD_RESET, $request->user(), $user, [
             'mode' => 'admin_assisted',

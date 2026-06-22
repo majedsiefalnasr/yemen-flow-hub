@@ -14,6 +14,9 @@ class DatabaseSeeder extends Seeder
         $this->call([DocumentTypeSeeder::class]);
         $this->command?->info('Seeded document types.');
 
+        $this->call([GovernanceSeeder::class]);
+        $this->command?->info('Seeded governance identity.');
+
         $this->call([BankSeeder::class]);
         $this->command?->info('Seeded banks.');
 

@@ -11,8 +11,26 @@ use Illuminate\Support\Facades\DB;
 
 class PermissionService
 {
+    private const SCREEN_MAP = [
+        'request' => 'requests',
+        'swift' => 'requests',
+        'voting' => 'requests',
+        'customs' => 'requests',
+        'reports' => 'reports',
+        'audit' => 'audit',
+        'merchants' => 'merchants',
+        'users' => 'users',
+        'entities' => 'banks',
+        'docrules' => 'reference_data',
+        'roles' => 'roles',
+    ];
+
     public function userCan(User $user, string $permissionSlug): bool
     {
+        if ($user->role === null) {
+            return false;
+        }
+
         $slugs = Cache::remember(
             $this->cacheKey($user->role),
             now()->addHour(),
@@ -37,6 +55,55 @@ class PermissionService
             ->orderBy('permissions.group')
             ->orderBy('permissions.slug')
             ->get();
+    }
+
+    public function screenPermissionsForUser(User $user): array
+    {
+        $result = [];
+
+        if ($user->role === null) {
+            // A user without a resolved legacy role has no derived screen
+            // permissions (fail closed) rather than throwing on /auth/me.
+            return $result;
+        }
+
+        foreach ($this->permissionsForRole($user->role) as $permission) {
+            [$subject, $action] = array_pad(explode('.', $permission->slug, 2), 2, 'view');
+            $screen = self::SCREEN_MAP[$subject] ?? $subject;
+            $capabilities = match ($action) {
+                'create' => ['VIEW', 'CREATE'],
+                'manage' => ['VIEW', 'CREATE', 'UPDATE', 'MANAGE'],
+                'view', 'review', 'claim', 'cast' => ['VIEW'],
+                'approve', 'reject', 'upload', 'issue', 'finalize' => ['VIEW', 'UPDATE'],
+                default => ['VIEW'],
+            };
+
+            $result[$screen] = array_values(array_unique([
+                ...($result[$screen] ?? []),
+                ...$capabilities,
+            ]));
+        }
+
+        if (isset($result['roles'])) {
+            foreach (['organizations', 'teams'] as $screen) {
+                $result[$screen] = $result['roles'];
+            }
+        }
+
+        ksort($result);
+
+        return $result;
+    }
+
+    public function capabilitiesForUser(User $user): array
+    {
+        return [
+            'manage_users' => $this->userCan($user, 'users.manage'),
+            'manage_banks' => $this->userCan($user, 'entities.manage'),
+            'manage_roles' => $this->userCan($user, 'roles.manage'),
+            'view_reports' => $this->userCan($user, 'reports.view'),
+            'view_audit' => $this->userCan($user, 'audit.view'),
+        ];
     }
 
     public function rolesForPermission(string $permissionSlug): array

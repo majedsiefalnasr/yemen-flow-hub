@@ -21,6 +21,11 @@ use App\Http\Controllers\Api\SearchController;
 use App\Http\Controllers\Api\SettingsController;
 use App\Http\Controllers\Api\TraderController;
 use App\Http\Controllers\Api\UserController;
+use App\Http\Controllers\Api\V1\BankController as V1BankController;
+use App\Http\Controllers\Api\V1\OrganizationController;
+use App\Http\Controllers\Api\V1\RoleController;
+use App\Http\Controllers\Api\V1\TeamController;
+use App\Http\Controllers\Api\V1\UserController as V1UserController;
 use App\Http\Controllers\Api\VotingController;
 use App\Http\Controllers\Api\WorkflowController;
 use Illuminate\Support\Facades\Route;
@@ -32,16 +37,54 @@ Route::prefix('auth')->group(function () {
     Route::post('password/forgot', [AuthController::class, 'forgotPassword'])->middleware('throttle:5,1');
     Route::post('password/verify', [AuthController::class, 'verifyPasswordResetOtp'])->middleware('throttle:10,1');
     Route::post('password/reset', [AuthController::class, 'resetPassword'])->middleware('throttle:10,1');
-    Route::middleware('auth:sanctum')->group(function () {
+    Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::post('logout', [AuthController::class, 'logout']);
         Route::get('me', [AuthController::class, 'me']);
         Route::post('switch-demo-role', [AuthController::class, 'switchDemoRole'])->middleware('throttle:20,1');
     });
 });
 
+Route::prefix('v1')->middleware(['auth:sanctum', 'active'])->group(function () {
+    Route::get('organizations', [OrganizationController::class, 'index']);
+    Route::post('organizations', [OrganizationController::class, 'store']);
+    Route::get('organizations/{organization}', [OrganizationController::class, 'show']);
+    Route::put('organizations/{organization}', [OrganizationController::class, 'update']);
+    Route::post('organizations/{organization}/activate', [OrganizationController::class, 'activate']);
+    Route::post('organizations/{organization}/deactivate', [OrganizationController::class, 'deactivate']);
+    Route::delete('organizations/{organization}', [OrganizationController::class, 'destroy']);
+    Route::get('teams', [TeamController::class, 'index']);
+    Route::post('teams', [TeamController::class, 'store']);
+    Route::get('teams/{team}', [TeamController::class, 'show']);
+    Route::put('teams/{team}', [TeamController::class, 'update']);
+    Route::post('teams/{team}/activate', [TeamController::class, 'activate']);
+    Route::post('teams/{team}/deactivate', [TeamController::class, 'deactivate']);
+    Route::delete('teams/{team}', [TeamController::class, 'destroy']);
+    Route::get('roles', [RoleController::class, 'index']);
+    Route::post('roles', [RoleController::class, 'store']);
+    Route::get('roles/{role}', [RoleController::class, 'show']);
+    Route::put('roles/{role}', [RoleController::class, 'update']);
+    Route::post('roles/{role}/activate', [RoleController::class, 'activate']);
+    Route::post('roles/{role}/deactivate', [RoleController::class, 'deactivate']);
+    Route::delete('roles/{role}', [RoleController::class, 'destroy']);
+    Route::get('banks', [V1BankController::class, 'index']);
+    Route::post('banks', [V1BankController::class, 'store']);
+    Route::get('banks/{bank}', [V1BankController::class, 'show']);
+    Route::put('banks/{bank}', [V1BankController::class, 'update']);
+    Route::post('banks/{bank}/activate', [V1BankController::class, 'activate']);
+    Route::post('banks/{bank}/deactivate', [V1BankController::class, 'deactivate']);
+    Route::delete('banks/{bank}', [V1BankController::class, 'destroy']);
+    Route::get('users', [V1UserController::class, 'index']);
+    Route::post('users', [V1UserController::class, 'store']);
+    Route::get('users/{user}', [V1UserController::class, 'show']);
+    Route::put('users/{user}', [V1UserController::class, 'update']);
+    Route::post('users/{user}/deactivate', [V1UserController::class, 'deactivate']);
+    Route::post('users/{user}/reset-password', [V1UserController::class, 'resetPassword']);
+    Route::post('users/{user}/reset-mfa', [V1UserController::class, 'resetMfa']);
+});
+
 Route::get('settings/public', [SettingsController::class, 'publicSettings']);
 
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::get('profile', [ProfileController::class, 'show']);
     Route::put('profile', [ProfileController::class, 'update']);
     Route::put('profile/avatar', [ProfileController::class, 'updateAvatar']);
@@ -60,7 +103,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('settings/save-section', [SettingsController::class, 'saveSection']);
 });
 
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::apiResource('banks', BankController::class);
     Route::post('banks/{bank}/admin/reset-password', [BankController::class, 'resetAdminPassword'])->middleware('throttle:10,1');
     Route::apiResource('users', UserController::class);

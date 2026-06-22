@@ -14,6 +14,7 @@ use App\Exceptions\VotingException;
 use App\Exceptions\WorkflowImmutableStateException;
 use App\Exceptions\WorkflowLockedStateException;
 use App\Http\Middleware\Authenticate;
+use App\Http\Middleware\EnsureActiveUser;
 use App\Services\Audit\AuditService;
 use App\Support\ApiResponse;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -52,6 +53,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'auth' => Authenticate::class,
+            'active' => EnsureActiveUser::class,
         ]);
 
         $middleware->api(prepend: [
