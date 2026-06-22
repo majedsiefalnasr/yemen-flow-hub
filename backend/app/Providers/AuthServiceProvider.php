@@ -7,6 +7,8 @@ use App\Models\CustomsDeclaration;
 use App\Models\ImportRequest;
 use App\Models\Merchant;
 use App\Models\Organization;
+use App\Models\ReferenceTable;
+use App\Models\ReferenceValue;
 use App\Models\RequestDocument;
 use App\Models\Role;
 use App\Models\Team;
@@ -17,6 +19,8 @@ use App\Policies\CustomsDeclarationPolicy;
 use App\Policies\ImportRequestPolicy;
 use App\Policies\MerchantPolicy;
 use App\Policies\OrganizationPolicy;
+use App\Policies\ReferenceTablePolicy;
+use App\Policies\ReferenceValuePolicy;
 use App\Policies\RequestDocumentPolicy;
 use App\Policies\RolePolicy;
 use App\Policies\TeamPolicy;
@@ -40,6 +44,8 @@ class AuthServiceProvider extends ServiceProvider
         Gate::policy(CustomsDeclaration::class, CustomsDeclarationPolicy::class);
         Gate::policy(Trader::class, TraderPolicy::class);
         Gate::policy(Team::class, TeamPolicy::class);
+        Gate::policy(ReferenceTable::class, ReferenceTablePolicy::class);
+        Gate::policy(ReferenceValue::class, ReferenceValuePolicy::class);
 
         Gate::before(function ($user, string $ability) {
             if (! str_contains($ability, '.')) {

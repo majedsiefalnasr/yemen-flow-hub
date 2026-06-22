@@ -17,6 +17,9 @@ class DatabaseSeeder extends Seeder
         $this->call([GovernanceSeeder::class]);
         $this->command?->info('Seeded governance identity.');
 
+        $this->call([ReferenceDataSeeder::class]);
+        $this->command?->info('Seeded reference data tables.');
+
         $this->call([BankSeeder::class]);
         $this->command?->info('Seeded banks.');
 
