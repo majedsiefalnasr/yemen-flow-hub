@@ -287,7 +287,8 @@ class MerchantControllerTest extends TestCase
 
         $this->actingAs($this->bankAdmin)
             ->putJson("/api/v1/merchants/{$merchant->id}", ['name' => 'Hacked', 'version' => 1])
-            ->assertForbidden();
+            ->assertNotFound()
+            ->assertJsonPath('error.code', 'MERCHANT_OUT_OF_SCOPE');
     }
 
     // ─── DELETE /api/v1/merchants/{id} ───────────────────────────────────────
@@ -308,7 +309,8 @@ class MerchantControllerTest extends TestCase
 
         $this->actingAs($this->bankAdmin)
             ->deleteJson("/api/v1/merchants/{$merchant->id}")
-            ->assertForbidden();
+            ->assertNotFound()
+            ->assertJsonPath('error.code', 'MERCHANT_OUT_OF_SCOPE');
     }
 
     // ─── Audit ──────────────────────────────────────────────────────────────

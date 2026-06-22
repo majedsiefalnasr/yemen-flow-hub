@@ -199,7 +199,8 @@ class MerchantIntegrityTest extends TestCase
 
         $this->actingAs($this->bankAdmin)
             ->getJson("/api/v1/merchants/{$merchant->id}")
-            ->assertForbidden();
+            ->assertNotFound()
+            ->assertJsonPath('error.code', 'MERCHANT_OUT_OF_SCOPE');
     }
 
     // ─── Audit on Integrity Blocks ──────────────────────────────────────────

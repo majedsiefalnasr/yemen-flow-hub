@@ -3,12 +3,36 @@
 namespace App\Http\Requests;
 
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 class UpdateMerchantRequest extends ApiFormRequest
 {
     public function authorize(): bool
     {
         return true;
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator): void {
+            if (! $this->has('owners')) {
+                return;
+            }
+
+            $owners = $this->input('owners', []);
+            if (! is_array($owners) || $owners === []) {
+                return;
+            }
+
+            $total = array_sum(array_map(
+                static fn ($owner) => (float) ($owner['ownership_percentage'] ?? 0),
+                $owners
+            ));
+
+            if ($total > 100) {
+                $validator->errors()->add('owners', 'Total ownership percentage cannot exceed 100.');
+            }
+        });
     }
 
     public function rules(): array

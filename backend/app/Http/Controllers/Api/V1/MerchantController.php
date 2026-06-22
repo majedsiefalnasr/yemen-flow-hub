@@ -10,7 +10,9 @@ use App\Http\Requests\UpdateMerchantRequest;
 use App\Http\Resources\MerchantResource;
 use App\Models\Merchant;
 use App\Models\MerchantCompany;
+use App\Models\User;
 use App\Services\Audit\AuditService;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -61,11 +63,12 @@ class MerchantController extends Controller
         ]);
     }
 
-    public function show(Merchant $merchant): MerchantResource
+    public function show(Request $request, Merchant $merchant): MerchantResource
     {
+        $this->guardMerchantScope($request->user(), $merchant);
         $this->authorize('view', $merchant);
 
-        return new MerchantResource($merchant->load('bank', 'owners', 'companies'));
+        return new MerchantResource($merchant->loadCount('importRequests')->load('bank', 'owners', 'companies'));
     }
 
     public function store(StoreMerchantRequest $request): JsonResponse
@@ -78,7 +81,7 @@ class MerchantController extends Controller
             throw ValidationException::withMessages(['bank_id' => 'The bank_id field is required.']);
         }
 
-        if (Merchant::query()->where('tax_number', $request->string('tax_number')->toString())->exists()) {
+        if (Merchant::withTrashed()->where('tax_number', $request->string('tax_number')->toString())->exists()) {
             return $this->businessError('MERCHANT_TAX_NUMBER_EXISTS', 'A merchant with this tax number already exists.', 409, ['tax_number' => 'Already in use.']);
         }
 
@@ -114,18 +117,19 @@ class MerchantController extends Controller
             return $merchant->refresh();
         });
 
-        return (new MerchantResource($merchant->load('bank', 'owners', 'companies')))
+        return (new MerchantResource($merchant->loadCount('importRequests')->load('bank', 'owners', 'companies')))
             ->response()
             ->setStatusCode(201);
     }
 
     public function update(UpdateMerchantRequest $request, Merchant $merchant): JsonResponse
     {
+        $this->guardMerchantScope($request->user(), $merchant);
         $this->authorize('update', $merchant);
         $user = $request->user();
         $expectedVersion = (int) $request->integer('version');
 
-        if ($request->filled('tax_number') && Merchant::query()
+        if ($request->filled('tax_number') && Merchant::withTrashed()
             ->where('tax_number', $request->string('tax_number')->toString())
             ->whereKeyNot($merchant->id)
             ->exists()) {
@@ -155,7 +159,7 @@ class MerchantController extends Controller
 
                 $before = $locked->only(['bank_id', 'name', 'tax_number', 'status', 'version']);
 
-                $locked->update(array_filter([
+                $locked->update([
                     'bank_id' => $user->isBankUser() ? $locked->bank_id : ($request->filled('bank_id') ? $request->integer('bank_id') : $locked->bank_id),
                     'name' => $request->input('name', $locked->name),
                     'tax_number' => $request->input('tax_number', $locked->tax_number),
@@ -164,7 +168,7 @@ class MerchantController extends Controller
                     'phone' => $request->has('phone') ? $request->input('phone') : $locked->phone,
                     'status' => $request->input('status', $locked->status),
                     'version' => $locked->version + 1,
-                ], fn ($value) => $value !== null || true));
+                ]);
 
                 if ($request->has('owners')) {
                     $locked->owners()->delete();
@@ -189,28 +193,51 @@ class MerchantController extends Controller
             return $this->businessError('STALE_RESOURCE', 'The merchant was modified by another user.', 409);
         }
 
-        return (new MerchantResource($merchant->refresh()->load('bank', 'owners', 'companies')))->response();
+        return (new MerchantResource($merchant->refresh()->loadCount('importRequests')->load('bank', 'owners', 'companies')))->response();
     }
 
-    public function destroy(Merchant $merchant): JsonResponse
+    public function destroy(Request $request, Merchant $merchant): JsonResponse
     {
+        $this->guardMerchantScope($request->user(), $merchant);
         $this->authorize('delete', $merchant);
 
         $merchant->delete();
-        $this->auditService->log(AuditAction::GOVERNANCE_UPDATED, request()->user(), $merchant, [
+        $this->auditService->log(AuditAction::GOVERNANCE_UPDATED, $request->user(), $merchant, [
             'after' => ['deleted_at' => $merchant->deleted_at?->toIso8601String()],
         ]);
 
         return response()->json(null, 204);
     }
 
+    /**
+     * Block out-of-scope access without leaking existence: a bank user reaching
+     * another bank's merchant gets 404 + MERCHANT_OUT_OF_SCOPE, never a 403 oracle.
+     */
+    private function guardMerchantScope(User $user, Merchant $merchant): void
+    {
+        if ($user->isBankUser() && $user->bank_id !== $merchant->bank_id) {
+            throw new HttpResponseException(
+                $this->businessError('MERCHANT_OUT_OF_SCOPE', 'Merchant not found.', 404)
+            );
+        }
+    }
+
     private function findDuplicateCommercialRegistration(array $companies, ?Merchant $merchant = null): ?string
     {
+        $seen = [];
+
         foreach ($companies as $company) {
             $number = $company['commercial_registration_number'] ?? null;
-            if (! $number) {
+            if ($number === null || $number === '') {
                 continue;
             }
+
+            // Catch duplicates within the same payload before they reach the DB
+            // unique index (which would surface as an unhandled 500, not a 409).
+            if (isset($seen[$number])) {
+                return $number;
+            }
+            $seen[$number] = true;
 
             $exists = MerchantCompany::query()
                 ->where('commercial_registration_number', $number)
