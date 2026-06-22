@@ -72,7 +72,7 @@ class PermissionService
             $screen = self::SCREEN_MAP[$subject] ?? $subject;
             $capabilities = match ($action) {
                 'create' => ['VIEW', 'CREATE'],
-                'manage' => ['VIEW', 'CREATE', 'UPDATE', 'MANAGE'],
+                'manage' => ['VIEW', 'CREATE', 'UPDATE', 'DELETE', 'MANAGE'],
                 'view', 'review', 'claim', 'cast' => ['VIEW'],
                 'approve', 'reject', 'upload', 'issue', 'finalize' => ['VIEW', 'UPDATE'],
                 default => ['VIEW'],

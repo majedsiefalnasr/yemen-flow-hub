@@ -35,7 +35,7 @@ class AuthIdentityTest extends TestCase
             ->assertJsonPath('data.team.code', 'bank_admin')
             ->assertJsonPath('data.role.code', 'bank_admin')
             ->assertJsonPath('data.bank.id', $user->bank_id)
-            ->assertJsonPath('data.screen_permissions.users', ['VIEW', 'CREATE', 'UPDATE', 'MANAGE'])
+            ->assertJsonPath('data.screen_permissions.users', ['VIEW', 'CREATE', 'UPDATE', 'DELETE', 'MANAGE'])
             ->assertJsonPath('data.capabilities.manage_users', true);
     }
 

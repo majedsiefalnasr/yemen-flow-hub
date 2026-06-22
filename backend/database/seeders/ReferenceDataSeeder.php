@@ -37,14 +37,14 @@ class ReferenceDataSeeder extends Seeder
         ];
 
         foreach ($tables as $tableKey => $tableLabel) {
-            $referenceTable = ReferenceTable::query()->updateOrCreate(
+            $referenceTable = ReferenceTable::query()->firstOrCreate(
                 ['key' => $tableKey],
                 ['label' => $tableLabel, 'is_system' => true, 'is_active' => true]
             );
 
             $sortOrder = 0;
             foreach ($values[$tableKey] as $valueKey => $valueLabel) {
-                ReferenceValue::query()->updateOrCreate(
+                ReferenceValue::query()->firstOrCreate(
                     ['reference_table_id' => $referenceTable->id, 'key' => $valueKey],
                     ['label' => $valueLabel, 'is_system' => true, 'is_active' => true, 'sort_order' => $sortOrder++]
                 );

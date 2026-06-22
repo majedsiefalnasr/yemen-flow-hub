@@ -2,32 +2,42 @@
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Enums\AuditAction;
+use App\Exceptions\ReferenceDataProtectionException;
 use App\Exceptions\StaleResourceException;
 use App\Http\Controllers\Api\Controller;
 use App\Http\Requests\StoreReferenceTableRequest;
 use App\Http\Requests\UpdateReferenceTableRequest;
 use App\Http\Resources\ReferenceTableResource;
 use App\Models\ReferenceTable;
-use App\Services\Audit\AuditService;
+use App\Services\ReferenceData\ReferenceDataService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 class ReferenceTableController extends Controller
 {
-    public function __construct(private readonly AuditService $auditService) {}
+    private const SORT_COLUMNS = ['key', 'label', 'sort_order', 'is_active', 'created_at'];
+
+    public function __construct(private readonly ReferenceDataService $referenceData) {}
 
     public function index(Request $request): JsonResponse
     {
         $this->authorize('viewAny', ReferenceTable::class);
+        $validated = $request->validate([
+            'search' => ['sometimes', 'string', 'max:255'],
+            'sort' => ['sometimes', 'string', 'in:'.implode(',', self::SORT_COLUMNS)],
+            'direction' => ['sometimes', 'string', 'in:asc,desc'],
+            'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
+        ]);
+        $sort = $validated['sort'] ?? 'sort_order';
+        $direction = $validated['direction'] ?? 'asc';
         $page = ReferenceTable::query()
+            ->withExists('values')
             ->when($request->filled('search'), fn ($q) => $q->where(fn ($n) => $n
                 ->where('key', 'like', '%'.$request->string('search')->toString().'%')
                 ->orWhere('label', 'like', '%'.$request->string('search')->toString().'%')))
-            ->orderBy('sort_order')
+            ->orderBy($sort, $direction)
             ->orderBy('id')
-            ->paginate(min(max($request->integer('per_page', 50), 1), 100));
+            ->paginate($request->integer('per_page', 25));
 
         return response()->json([
             'data' => ReferenceTableResource::collection($page->items())->resolve(),
@@ -45,12 +55,7 @@ class ReferenceTableController extends Controller
     public function store(StoreReferenceTableRequest $request): JsonResponse
     {
         $this->authorize('create', ReferenceTable::class);
-        $referenceTable = DB::transaction(function () use ($request): ReferenceTable {
-            $referenceTable = ReferenceTable::query()->create($request->validated())->refresh();
-            $this->auditService->log(AuditAction::GOVERNANCE_CREATED, $request->user(), $referenceTable, ['after' => $referenceTable->toArray()]);
-
-            return $referenceTable;
-        });
+        $referenceTable = $this->referenceData->createTable($request->user(), $request->validated());
 
         return (new ReferenceTableResource($referenceTable))->response()->setStatusCode(201);
     }
@@ -61,65 +66,70 @@ class ReferenceTableController extends Controller
         $expectedVersion = $request->integer('version');
 
         try {
-            DB::transaction(function () use ($request, $referenceTable, $expectedVersion): void {
-                $locked = ReferenceTable::query()->lockForUpdate()->findOrFail($referenceTable->getKey());
-                if ($expectedVersion !== $locked->version) {
-                    throw new StaleResourceException;
-                }
-                $before = $locked->toArray();
-                $locked->update([
+            $referenceTable = $this->referenceData->updateTable(
+                $request->user(),
+                $referenceTable,
+                array_filter([
                     'label' => $request->string('label')->toString(),
-                    'sort_order' => $request->integer('sort_order', $locked->sort_order),
-                    'version' => $locked->version + 1,
-                ]);
-                $this->auditService->log(AuditAction::GOVERNANCE_UPDATED, $request->user(), $locked, ['before' => $before, 'after' => $locked->toArray()]);
-            });
+                    'sort_order' => $request->has('sort_order') ? $request->integer('sort_order') : null,
+                ], fn ($value) => $value !== null),
+                $expectedVersion,
+            );
         } catch (StaleResourceException) {
             return $this->error('STALE_RESOURCE', 'The reference table was modified by another user.', 409);
         }
 
-        return (new ReferenceTableResource($referenceTable->refresh()))->response();
+        return (new ReferenceTableResource($referenceTable))->response();
     }
 
-    public function activate(Request $request, ReferenceTable $referenceTable): ReferenceTableResource
+    public function activate(Request $request, ReferenceTable $referenceTable): JsonResponse|ReferenceTableResource
     {
         $this->authorize('update', $referenceTable);
-        $this->setActive($request, $referenceTable, true);
+        $validated = $request->validate(['version' => ['required', 'integer', 'min:1']]);
 
-        return new ReferenceTableResource($referenceTable->refresh());
+        try {
+            $referenceTable = $this->referenceData->setTableActive(
+                $request->user(),
+                $referenceTable,
+                true,
+                $validated['version'],
+            );
+        } catch (StaleResourceException) {
+            return $this->error('STALE_RESOURCE', 'The reference table was modified by another user.', 409);
+        }
+
+        return new ReferenceTableResource($referenceTable);
     }
 
     public function deactivate(Request $request, ReferenceTable $referenceTable): JsonResponse|ReferenceTableResource
     {
         $this->authorize('update', $referenceTable);
-        if ($referenceTable->isProtected()) {
-            return $this->error('REFERENCE_TABLE_PROTECTED', 'System reference tables cannot be deactivated.', 422);
-        }
-        $this->setActive($request, $referenceTable, false);
+        $validated = $request->validate(['version' => ['required', 'integer', 'min:1']]);
 
-        return new ReferenceTableResource($referenceTable->refresh());
+        try {
+            $referenceTable = $this->referenceData->setTableActive(
+                $request->user(),
+                $referenceTable,
+                false,
+                $validated['version'],
+            );
+        } catch (StaleResourceException) {
+            return $this->error('STALE_RESOURCE', 'The reference table was modified by another user.', 409);
+        }
+
+        return new ReferenceTableResource($referenceTable);
     }
 
     public function destroy(Request $request, ReferenceTable $referenceTable): JsonResponse
     {
         $this->authorize('delete', $referenceTable);
-        if ($referenceTable->isProtected() || $referenceTable->isInUse()) {
-            $this->auditService->log(AuditAction::AUTHORIZATION_FAILURE, $request->user(), $referenceTable, [
-                'reason' => 'reference_table_protected_or_in_use',
-            ]);
-
-            return $this->error('REFERENCE_TABLE_PROTECTED', 'Reference table cannot be deleted while it has values or is a system table.', 422);
+        try {
+            $this->referenceData->deleteTable($request->user(), $referenceTable);
+        } catch (ReferenceDataProtectionException $exception) {
+            return $this->error($exception->errorCode, $exception->getMessage(), 422);
         }
-        $referenceTable->delete();
 
         return response()->json(null, 204);
-    }
-
-    private function setActive(Request $request, ReferenceTable $referenceTable, bool $active): void
-    {
-        $before = $referenceTable->only(['is_active', 'version']);
-        $referenceTable->update(['is_active' => $active, 'version' => $referenceTable->version + 1]);
-        $this->auditService->log(AuditAction::GOVERNANCE_UPDATED, $request->user(), $referenceTable, ['before' => $before, 'after' => $referenceTable->only(['is_active', 'version'])]);
     }
 
     private function error(string $code, string $message, int $status): JsonResponse

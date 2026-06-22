@@ -36,6 +36,7 @@ enum AuditAction: string
     case EMAIL_DELIVERY_FAILED = 'EMAIL_DELIVERY_FAILED';
     case GOVERNANCE_CREATED = 'GOVERNANCE_CREATED';
     case GOVERNANCE_UPDATED = 'GOVERNANCE_UPDATED';
+    case GOVERNANCE_DELETED = 'GOVERNANCE_DELETED';
 
     public function label(): string
     {
@@ -72,6 +73,7 @@ enum AuditAction: string
             self::EMAIL_DELIVERY_FAILED => 'Email Delivery Failed / فشل إرسال البريد الإلكتروني',
             self::GOVERNANCE_CREATED => 'Governance Created / إنشاء سجل حوكمة',
             self::GOVERNANCE_UPDATED => 'Governance Updated / تحديث سجل حوكمة',
+            self::GOVERNANCE_DELETED => 'Governance Deleted / حذف سجل حوكمة',
         };
     }
 }

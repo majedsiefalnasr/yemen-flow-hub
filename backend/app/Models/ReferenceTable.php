@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Models\Concerns\ProtectsSystemRecords;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -10,7 +9,7 @@ use LogicException;
 
 class ReferenceTable extends Model
 {
-    use HasFactory, ProtectsSystemRecords;
+    use HasFactory;
 
     protected $fillable = ['key', 'label', 'sort_order', 'is_system', 'is_active', 'version'];
 
@@ -19,6 +18,15 @@ class ReferenceTable extends Model
         static::updating(function (self $model): void {
             if ($model->isDirty('key')) {
                 throw new LogicException('Reference table key is immutable once created.');
+            }
+            if ($model->isProtected() && $model->isDirty('is_system')) {
+                throw new LogicException('System reference tables cannot change their system flag.');
+            }
+        });
+
+        static::deleting(function (self $model): void {
+            if ($model->isProtected()) {
+                throw new LogicException('System reference tables are protected from deletion.');
             }
         });
     }
@@ -41,5 +49,10 @@ class ReferenceTable extends Model
     public function isInUse(): bool
     {
         return $this->values()->exists();
+    }
+
+    public function isProtected(): bool
+    {
+        return (bool) $this->is_system;
     }
 }
