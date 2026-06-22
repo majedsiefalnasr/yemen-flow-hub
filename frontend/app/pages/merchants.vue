@@ -98,7 +98,20 @@ const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
 const user = computed(() => authStore.user)
-const { fetchMerchants, createMerchant, updateMerchant, extractBusinessError } = useMerchants()
+const { fetchMerchants, fetchMerchant, createMerchant, updateMerchant, extractBusinessError } =
+  useMerchants()
+
+// A STALE_RESOURCE 409 means our cached row's version is behind the server. Pull
+// the fresh row so the next edit/toggle uses the current version instead of
+// re-failing forever on the same stale value.
+async function refreshMerchantRow(id: number) {
+  try {
+    const fresh = await fetchMerchant(id)
+    merchants.value = merchants.value.map((m) => (m.id === fresh.id ? fresh : m))
+  } catch {
+    // Best-effort refresh; the surfaced 409 message already informs the user.
+  }
+}
 const { fetchBanks } = useBanks()
 const { exportToCSV, exportToExcel, exportToJSON } = useTableExport()
 const { notify } = useToast()
@@ -341,6 +354,9 @@ async function saveEdit(data: MerchantFormData) {
     if (bizErr) {
       serverError.value = bizErr.message
       notify(bizErr.message)
+      if (bizErr.code === 'STALE_RESOURCE' && editing.value) {
+        await refreshMerchantRow(editing.value.id)
+      }
     } else {
       serverError.value = 'حدث خطأ غير متوقع'
       notify('حدث خطأ غير متوقع')
@@ -373,6 +389,9 @@ async function toggleStatus(merchant: Merchant) {
   } catch (error: unknown) {
     const bizErr = extractBusinessError(error)
     notify(bizErr?.message ?? 'حدث خطأ أثناء تغيير الحالة')
+    if (bizErr?.code === 'STALE_RESOURCE') {
+      await refreshMerchantRow(merchant.id)
+    }
   }
 }
 

@@ -56,8 +56,13 @@ export interface MerchantBusinessError {
 export function useMerchants() {
   const { get, post, put, del } = useApi()
 
+  // Server caps per_page at 100; requesting more is silently truncated. List-wide
+  // analytics (stats/cross-bank/risk) are computed on whatever this returns, so
+  // never request beyond the cap and treat the result as "first MERCHANTS_PAGE_CAP".
+  const MERCHANTS_PAGE_CAP = 100
+
   async function fetchMerchants(filters: MerchantFilters = {}): Promise<Merchant[]> {
-    const params = new URLSearchParams({ per_page: '200' })
+    const params = new URLSearchParams({ per_page: String(MERCHANTS_PAGE_CAP) })
     if (filters.search) params.set('search', filters.search)
     if (filters.bank_id != null) params.set('bank_id', String(filters.bank_id))
     if (filters.status) params.set('status', filters.status)
@@ -109,9 +114,30 @@ export function useMerchants() {
     return e.response?.data?.error?.code != null
   }
 
+  // Laravel 422 validation envelope: { message, errors: { field: [msg, ...] } }.
+  // It has no `error.code`, so without this it would fall through to a generic
+  // "unexpected error" banner and drop every per-field message.
+  function extractValidationError(error: unknown): MerchantBusinessError | null {
+    if (!error || typeof error !== 'object') return null
+    const e = error as Record<string, any>
+    if (e.response?.status !== 422) return null
+    const errors = e.response?.data?.errors as Record<string, string[]> | undefined
+    const fields: Record<string, string> = {}
+    if (errors) {
+      for (const [key, messages] of Object.entries(errors)) {
+        if (Array.isArray(messages) && messages[0]) fields[key] = messages[0]
+      }
+    }
+    return {
+      code: 'VALIDATION_ERROR',
+      message: e.response?.data?.message ?? 'بيانات غير صالحة.',
+      fields,
+    }
+  }
+
   function extractBusinessError(error: unknown): MerchantBusinessError | null {
     if (isBusinessError(error)) return error.response.data.error
-    return null
+    return extractValidationError(error)
   }
 
   return {

@@ -62,7 +62,7 @@ const companySchema = z.object({
   name: z.string().trim().min(1, 'أدخل اسم الشركة.'),
   commercial_registration_number: z.string().trim().min(1, 'أدخل رقم السجل التجاري.'),
   commercial_registration_expiry: z.string().optional().default(''),
-  is_active: z.string().default('true'),
+  is_active: z.enum(['true', 'false']).default('true'),
 })
 
 const formSchema = toTypedSchema(
@@ -99,7 +99,7 @@ const { handleSubmit, meta } = useForm({
       name: c.name,
       commercial_registration_number: c.commercial_registration_number,
       commercial_registration_expiry: c.commercial_registration_expiry ?? '',
-      is_active: c.is_active ? 'true' : 'false',
+      is_active: (c.is_active ? 'true' : 'false') as 'true' | 'false',
     })),
   },
 })
@@ -118,7 +118,7 @@ const {
   name: string
   commercial_registration_number: string
   commercial_registration_expiry: string
-  is_active: string
+  is_active: 'true' | 'false'
 }>('companies')
 
 const submit = handleSubmit((values) => {
@@ -139,7 +139,7 @@ const submit = handleSubmit((values) => {
       name: c.name.trim(),
       commercial_registration_number: c.commercial_registration_number.trim(),
       commercial_registration_expiry: c.commercial_registration_expiry || '',
-      is_active: c.is_active !== 'false',
+      is_active: c.is_active === 'true',
     })),
   })
 })

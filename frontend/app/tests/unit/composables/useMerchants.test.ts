@@ -50,11 +50,11 @@ describe('useMerchants — fetchMerchants', () => {
     vi.clearAllMocks()
   })
 
-  it('calls GET /api/v1/merchants?per_page=200 by default', async () => {
+  it('calls GET /api/v1/merchants?per_page=100 by default (server cap)', async () => {
     mockGet.mockResolvedValueOnce(PAGINATED_RESPONSE)
     const { fetchMerchants } = useMerchants()
     await fetchMerchants()
-    expect(mockGet).toHaveBeenCalledWith('/api/v1/merchants?per_page=200')
+    expect(mockGet).toHaveBeenCalledWith('/api/v1/merchants?per_page=100')
   })
 
   it('appends search filter', async () => {
