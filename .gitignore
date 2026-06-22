@@ -29,3 +29,6 @@ graphify-out/
 
 # Shadcn Admin example project
 shadcn-admin/
+
+# Dynamic workflow engine codebase
+dynamic-workflow-engine/
