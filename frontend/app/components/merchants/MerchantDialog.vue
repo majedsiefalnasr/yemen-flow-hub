@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useForm } from 'vee-validate'
+import { useForm, useFieldArray } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/zod'
 import { z } from 'zod'
 import type { Bank } from '@/types/models'
@@ -20,25 +20,25 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-
-const CATEGORIES = [
-  'مواد غذائية',
-  'أدوية ومستلزمات طبية',
-  'مشتقات نفطية',
-  'قطع غيار',
-  'مواد بناء',
-  'إلكترونيات',
-]
+import { Separator } from '@/components/ui/separator'
+import { Plus, Trash2 } from 'lucide-vue-next'
 
 export interface MerchantFormData {
   name: string
-  commercial_register: string
   tax_number: string
+  tax_card_expiry: string
   address: string
   phone: string
-  business_type: string
-  is_active: boolean
+  status: string
   bank_id: number | null
+  version: number
+  owners: { name: string; ownership_percentage: number }[]
+  companies: {
+    name: string
+    commercial_registration_number: string
+    commercial_registration_expiry: string
+    is_active: boolean
+  }[]
 }
 
 const props = defineProps<{
@@ -53,16 +53,30 @@ const emit = defineEmits<{
   save: [data: MerchantFormData]
 }>()
 
+const ownerSchema = z.object({
+  name: z.string().trim().min(1, 'أدخل اسم المالك.'),
+  ownership_percentage: z.coerce.number().min(0, 'الحد الأدنى 0').max(100, 'الحد الأقصى 100'),
+})
+
+const companySchema = z.object({
+  name: z.string().trim().min(1, 'أدخل اسم الشركة.'),
+  commercial_registration_number: z.string().trim().min(1, 'أدخل رقم السجل التجاري.'),
+  commercial_registration_expiry: z.string().optional().default(''),
+  is_active: z.string().default('true'),
+})
+
 const formSchema = toTypedSchema(
   z.object({
     name: z.string().trim().min(1, 'أدخل اسم المستورد أو الشركة.'),
-    commercial_register: z.string().trim().min(1, 'أدخل رقم السجل التجاري.'),
     tax_number: z.string().trim().min(1, 'أدخل الرقم الضريبي.'),
+    tax_card_expiry: z.string().optional().default(''),
     address: z.string().optional().default(''),
     phone: z.string().optional().default(''),
-    business_type: z.string().optional().default(''),
-    is_active: z.string().default('active'),
+    status: z.string().default('ACTIVE'),
     bank_id: z.string().optional().default(''),
+    version: z.coerce.number().default(1),
+    owners: z.array(ownerSchema).optional().default([]),
+    companies: z.array(companySchema).optional().default([]),
   }),
 )
 
@@ -70,32 +84,69 @@ const { handleSubmit, meta } = useForm({
   validationSchema: formSchema,
   initialValues: {
     name: props.initial?.name ?? '',
-    commercial_register: props.initial?.commercial_register ?? '',
     tax_number: props.initial?.tax_number ?? '',
+    tax_card_expiry: props.initial?.tax_card_expiry ?? '',
     address: props.initial?.address ?? '',
     phone: props.initial?.phone ?? '',
-    business_type: props.initial?.business_type ?? CATEGORIES[0] ?? '',
-    is_active: (props.initial?.is_active ?? true) ? 'active' : 'suspended',
+    status: props.initial?.status ?? 'ACTIVE',
     bank_id: props.initial?.bank_id?.toString() ?? props.defaultBankId?.toString() ?? '',
+    version: props.initial?.version ?? 1,
+    owners: (props.initial?.owners ?? []).map((o) => ({
+      name: o.name,
+      ownership_percentage: o.ownership_percentage,
+    })),
+    companies: (props.initial?.companies ?? []).map((c) => ({
+      name: c.name,
+      commercial_registration_number: c.commercial_registration_number,
+      commercial_registration_expiry: c.commercial_registration_expiry ?? '',
+      is_active: c.is_active ? 'true' : 'false',
+    })),
   },
 })
+
+const {
+  fields: ownerFields,
+  push: addOwner,
+  remove: removeOwner,
+} = useFieldArray<{ name: string; ownership_percentage: number }>('owners')
+
+const {
+  fields: companyFields,
+  push: addCompany,
+  remove: removeCompany,
+} = useFieldArray<{
+  name: string
+  commercial_registration_number: string
+  commercial_registration_expiry: string
+  is_active: string
+}>('companies')
 
 const submit = handleSubmit((values) => {
   emit('save', {
     name: values.name.trim(),
-    commercial_register: values.commercial_register.trim(),
     tax_number: values.tax_number.trim(),
+    tax_card_expiry: values.tax_card_expiry || '',
     address: values.address ?? '',
     phone: values.phone ?? '',
-    business_type: values.business_type ?? '',
-    is_active: values.is_active !== 'suspended',
+    status: values.status,
     bank_id: values.bank_id ? Number(values.bank_id) : null,
+    version: values.version,
+    owners: (values.owners ?? []).map((o: any) => ({
+      name: o.name.trim(),
+      ownership_percentage: Number(o.ownership_percentage),
+    })),
+    companies: (values.companies ?? []).map((c: any) => ({
+      name: c.name.trim(),
+      commercial_registration_number: c.commercial_registration_number.trim(),
+      commercial_registration_expiry: c.commercial_registration_expiry || '',
+      is_active: c.is_active !== 'false',
+    })),
   })
 })
 </script>
 
 <template>
-  <DialogContent class="sm:max-w-lg">
+  <DialogContent class="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
     <DialogHeader>
       <DialogTitle>{{ title }}</DialogTitle>
       <DialogDescription>أدخل بيانات المستورد كما تظهر في السجل التجاري.</DialogDescription>
@@ -104,25 +155,12 @@ const submit = handleSubmit((values) => {
     <form class="grid gap-3 py-2 sm:grid-cols-2" @submit.prevent="submit">
       <!-- Name -->
       <FormField v-slot="{ componentField }" name="name">
-        <FormItem>
+        <FormItem class="sm:col-span-2">
           <FormLabel class="text-xs">
             اسم المستورد / الشركة <span class="text-destructive">*</span>
           </FormLabel>
           <FormControl>
             <Input v-bind="componentField" placeholder="مثال: شركة الكميم للأدوية" />
-          </FormControl>
-          <FormMessage />
-        </FormItem>
-      </FormField>
-
-      <!-- Commercial register -->
-      <FormField v-slot="{ componentField }" name="commercial_register">
-        <FormItem>
-          <FormLabel class="text-xs"
-            >رقم السجل التجاري <span class="text-destructive">*</span></FormLabel
-          >
-          <FormControl>
-            <Input v-bind="componentField" placeholder="CR-12345" />
           </FormControl>
           <FormMessage />
         </FormItem>
@@ -141,6 +179,17 @@ const submit = handleSubmit((values) => {
         </FormItem>
       </FormField>
 
+      <!-- Tax card expiry -->
+      <FormField v-slot="{ componentField }" name="tax_card_expiry">
+        <FormItem>
+          <FormLabel class="text-xs">تاريخ انتهاء البطاقة الضريبية</FormLabel>
+          <FormControl>
+            <Input v-bind="componentField" type="date" />
+          </FormControl>
+          <FormMessage />
+        </FormItem>
+      </FormField>
+
       <!-- Phone -->
       <FormField v-slot="{ componentField }" name="phone">
         <FormItem>
@@ -152,26 +201,8 @@ const submit = handleSubmit((values) => {
         </FormItem>
       </FormField>
 
-      <!-- Business type -->
-      <FormField v-slot="{ componentField }" name="business_type">
-        <FormItem>
-          <FormLabel class="text-xs">القطاع / النشاط</FormLabel>
-          <Select v-bind="componentField">
-            <FormControl>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-            </FormControl>
-            <SelectContent>
-              <SelectItem v-for="category in CATEGORIES" :key="category" :value="category">
-                {{ category }}
-              </SelectItem>
-            </SelectContent>
-          </Select>
-          <FormMessage />
-        </FormItem>
-      </FormField>
-
       <!-- Status -->
-      <FormField v-slot="{ componentField }" name="is_active">
+      <FormField v-slot="{ componentField }" name="status">
         <FormItem>
           <FormLabel class="text-xs">الحالة</FormLabel>
           <Select v-bind="componentField">
@@ -179,8 +210,8 @@ const submit = handleSubmit((values) => {
               <SelectTrigger><SelectValue /></SelectTrigger>
             </FormControl>
             <SelectContent>
-              <SelectItem value="active">نشط</SelectItem>
-              <SelectItem value="suspended">موقوف</SelectItem>
+              <SelectItem value="ACTIVE">نشط</SelectItem>
+              <SelectItem value="SUSPENDED">موقوف</SelectItem>
             </SelectContent>
           </Select>
           <FormMessage />
@@ -219,6 +250,140 @@ const submit = handleSubmit((values) => {
           <FormMessage />
         </FormItem>
       </FormField>
+
+      <!-- Owners section -->
+      <div class="sm:col-span-2">
+        <Separator class="my-2" />
+        <div class="mb-2 flex items-center justify-between">
+          <span class="text-xs font-semibold">المالكون</span>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            class="h-7 gap-1 text-xs"
+            @click="addOwner({ name: '', ownership_percentage: 0 })"
+          >
+            <Plus class="h-3 w-3" />
+            إضافة مالك
+          </Button>
+        </div>
+        <div v-for="(field, idx) in ownerFields" :key="field.key" class="mb-2 flex gap-2">
+          <FormField v-slot="{ componentField }" :name="`owners[${idx}].name`">
+            <FormItem class="flex-1">
+              <FormControl>
+                <Input v-bind="componentField" placeholder="اسم المالك" />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          </FormField>
+          <FormField v-slot="{ componentField }" :name="`owners[${idx}].ownership_percentage`">
+            <FormItem class="w-24">
+              <FormControl>
+                <Input v-bind="componentField" type="number" min="0" max="100" placeholder="%" />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          </FormField>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            class="text-destructive h-9 w-9 shrink-0"
+            @click="removeOwner(idx)"
+          >
+            <Trash2 class="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      </div>
+
+      <!-- Companies section -->
+      <div class="sm:col-span-2">
+        <Separator class="my-2" />
+        <div class="mb-2 flex items-center justify-between">
+          <span class="text-xs font-semibold">الشركات التابعة</span>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            class="h-7 gap-1 text-xs"
+            @click="
+              addCompany({
+                name: '',
+                commercial_registration_number: '',
+                commercial_registration_expiry: '',
+                is_active: 'true',
+              })
+            "
+          >
+            <Plus class="h-3 w-3" />
+            إضافة شركة
+          </Button>
+        </div>
+        <div
+          v-for="(field, idx) in companyFields"
+          :key="field.key"
+          class="mb-3 rounded-md border p-3"
+        >
+          <div class="mb-2 flex items-start justify-between">
+            <span class="text-muted-foreground text-xs">شركة {{ idx + 1 }}</span>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              class="text-destructive h-7 w-7"
+              @click="removeCompany(idx)"
+            >
+              <Trash2 class="h-3 w-3" />
+            </Button>
+          </div>
+          <div class="grid gap-2 sm:grid-cols-2">
+            <FormField v-slot="{ componentField }" :name="`companies[${idx}].name`">
+              <FormItem>
+                <FormControl>
+                  <Input v-bind="componentField" placeholder="اسم الشركة" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            </FormField>
+            <FormField
+              v-slot="{ componentField }"
+              :name="`companies[${idx}].commercial_registration_number`"
+            >
+              <FormItem>
+                <FormControl>
+                  <Input v-bind="componentField" placeholder="رقم السجل التجاري" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            </FormField>
+            <FormField
+              v-slot="{ componentField }"
+              :name="`companies[${idx}].commercial_registration_expiry`"
+            >
+              <FormItem>
+                <FormControl>
+                  <Input v-bind="componentField" type="date" placeholder="تاريخ الانتهاء" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            </FormField>
+            <FormField v-slot="{ componentField }" :name="`companies[${idx}].is_active`">
+              <FormItem>
+                <Select v-bind="componentField">
+                  <FormControl>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="true">نشطة</SelectItem>
+                    <SelectItem value="false">غير نشطة</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            </FormField>
+          </div>
+        </div>
+      </div>
 
       <DialogFooter class="sm:col-span-2">
         <Button type="submit" :disabled="!meta.valid">

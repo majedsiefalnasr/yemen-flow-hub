@@ -4,57 +4,70 @@ import { useApi } from './useApi'
 export interface MerchantFilters {
   search?: string
   bank_id?: number
-  is_active?: boolean
+  status?: string
   page?: number
   per_page?: number
+}
+
+export interface MerchantOwnerPayload {
+  name: string
+  ownership_percentage: number
+}
+
+export interface MerchantCompanyPayload {
+  name: string
+  commercial_registration_number: string
+  commercial_registration_expiry?: string | null
+  sector_reference_value_id?: number | null
+  is_active?: boolean
 }
 
 export interface CreateMerchantPayload {
   name: string
   bank_id?: number | null
-  commercial_register?: string | null
-  tax_number?: string | null
-  national_id?: string | null
-  owner_name?: string | null
+  tax_number: string
+  tax_card_expiry?: string | null
   phone?: string | null
-  email?: string | null
   address?: string | null
-  business_type?: string | null
-  is_active?: boolean
+  status?: string
+  owners?: MerchantOwnerPayload[]
+  companies?: MerchantCompanyPayload[]
 }
 
 export interface UpdateMerchantPayload {
+  version: number
   name?: string
-  commercial_register?: string | null
-  tax_number?: string | null
-  national_id?: string | null
-  owner_name?: string | null
+  tax_number?: string
+  tax_card_expiry?: string | null
   phone?: string | null
-  email?: string | null
   address?: string | null
-  business_type?: string | null
-  is_active?: boolean
+  status?: string
+  owners?: MerchantOwnerPayload[]
+  companies?: MerchantCompanyPayload[]
+}
+
+export interface MerchantBusinessError {
+  code: string
+  message: string
+  fields?: Record<string, string>
+  request_id?: string
 }
 
 export function useMerchants() {
-  const { get, post, put } = useApi()
+  const { get, post, put, del } = useApi()
 
-  // Merchants render analytics cards computed across the whole set; fetch all real rows.
-  // The API may return the data field as a flat array (ResourceCollection strips
-  // pagination meta) or as a wrapped { data, meta } object — handle both.
   async function fetchMerchants(filters: MerchantFilters = {}): Promise<Merchant[]> {
     const params = new URLSearchParams({ per_page: '200' })
     if (filters.search) params.set('search', filters.search)
     if (filters.bank_id != null) params.set('bank_id', String(filters.bank_id))
-    if (filters.is_active != null) params.set('is_active', String(filters.is_active))
+    if (filters.status) params.set('status', filters.status)
     const response = await get<ApiResponse<Merchant[] | PaginatedResponse<Merchant>>>(
-      `/api/merchants?${params}`,
+      `/api/v1/merchants?${params}`,
     )
     const payload = response.data
     return Array.isArray(payload) ? payload : (payload.data ?? [])
   }
 
-  // Server-side paginated fetch (same shape the requests page consumes).
   async function fetchMerchantsPaginated(
     filters: MerchantFilters = {},
   ): Promise<PaginatedResponse<Merchant>> {
@@ -62,33 +75,53 @@ export function useMerchants() {
     if (filters.page) params.set('page', String(filters.page))
     if (filters.search) params.set('search', filters.search)
     if (filters.bank_id != null) params.set('bank_id', String(filters.bank_id))
-    if (filters.is_active != null) params.set('is_active', String(filters.is_active))
-    const response = await get<ApiResponse<PaginatedResponse<Merchant>>>(`/api/merchants?${params}`)
+    if (filters.status) params.set('status', filters.status)
+    const response = await get<ApiResponse<PaginatedResponse<Merchant>>>(
+      `/api/v1/merchants?${params}`,
+    )
+    return response.data
+  }
+
+  async function fetchMerchant(id: number): Promise<Merchant> {
+    const response = await get<ApiResponse<Merchant>>(`/api/v1/merchants/${id}`)
     return response.data
   }
 
   async function createMerchant(payload: CreateMerchantPayload): Promise<Merchant> {
-    const response = await post<ApiResponse<Merchant>>('/api/merchants', payload)
+    const response = await post<ApiResponse<Merchant>>('/api/v1/merchants', payload)
     return response.data
   }
 
   async function updateMerchant(id: number, payload: UpdateMerchantPayload): Promise<Merchant> {
-    const response = await put<ApiResponse<Merchant>>(`/api/merchants/${id}`, payload)
+    const response = await put<ApiResponse<Merchant>>(`/api/v1/merchants/${id}`, payload)
     return response.data
   }
 
-  async function suspendMerchant(id: number, isActive: boolean): Promise<Merchant> {
-    const response = await put<ApiResponse<Merchant>>(`/api/merchants/${id}`, {
-      is_active: isActive,
-    })
-    return response.data
+  async function deleteMerchant(id: number): Promise<void> {
+    await del(`/api/v1/merchants/${id}`)
+  }
+
+  function isBusinessError(
+    error: unknown,
+  ): error is { response: { status: number; data: { error: MerchantBusinessError } } } {
+    if (!error || typeof error !== 'object') return false
+    const e = error as Record<string, any>
+    return e.response?.data?.error?.code != null
+  }
+
+  function extractBusinessError(error: unknown): MerchantBusinessError | null {
+    if (isBusinessError(error)) return error.response.data.error
+    return null
   }
 
   return {
     fetchMerchants,
     fetchMerchantsPaginated,
+    fetchMerchant,
     createMerchant,
     updateMerchant,
-    suspendMerchant,
+    deleteMerchant,
+    isBusinessError,
+    extractBusinessError,
   }
 }

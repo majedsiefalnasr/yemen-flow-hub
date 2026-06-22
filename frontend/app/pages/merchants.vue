@@ -17,6 +17,7 @@ import {
 import { h } from 'vue'
 import {
   AlertTriangle,
+  AlertCircle,
   Building2,
   Edit,
   ExternalLink,
@@ -24,6 +25,8 @@ import {
   Plus,
   SearchX,
   Shield,
+  Users,
+  Briefcase,
 } from 'lucide-vue-next'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import MerchantDialog from '@/components/merchants/MerchantDialog.vue'
@@ -81,6 +84,8 @@ import {
   DataTableToolbar,
   DataTableViewOptions,
 } from '@/components/ui/data-table'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Separator } from '@/components/ui/separator'
 import MetricCard from '@/components/shared/dashboard/MetricCard.vue'
 import MetricGrid from '@/components/shared/dashboard/MetricGrid.vue'
 
@@ -93,7 +98,7 @@ const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
 const user = computed(() => authStore.user)
-const { fetchMerchants, createMerchant, updateMerchant, suspendMerchant } = useMerchants()
+const { fetchMerchants, createMerchant, updateMerchant, extractBusinessError } = useMerchants()
 const { fetchBanks } = useBanks()
 const { exportToCSV, exportToExcel, exportToJSON } = useTableExport()
 const { notify } = useToast()
@@ -106,6 +111,7 @@ const columnFilters = ref<ColumnFiltersState>([])
 const createOpen = ref(false)
 const editing = ref<Merchant | null>(null)
 const viewing = ref<Merchant | null>(null)
+const serverError = ref<string | null>(null)
 
 const DEFAULT_MERCHANT_PAGE_SIZE = 20
 const urlMerchantPage = computed(() => Number(route.query.page ?? 1))
@@ -160,23 +166,19 @@ const scoped = computed(() => {
   return merchants.value
 })
 
-// CBY Admin: pre-filter by search; TanStack handles faceted column filters
 const preFiltered = computed(() => {
   const q = query.value.trim().toLowerCase()
   if (!q) return scoped.value
   return scoped.value.filter((m) =>
-    [m.name, m.commercial_register, m.tax_number, bankName(m.bank_id)].some((v) =>
-      (v ?? '').toLowerCase().includes(q),
-    ),
+    [m.name, m.tax_number, bankName(m.bank_id)].some((v) => (v ?? '').toLowerCase().includes(q)),
   )
 })
 
-// Bank Admin: pre-filter by search (no TanStack table for Bank Admin)
 const filtered = computed(() => {
   const q = query.value.trim().toLowerCase()
   return scoped.value.filter((m) => {
     if (!q) return true
-    return [m.name, m.commercial_register, m.tax_number, bankName(m.bank_id)].some((v) =>
+    return [m.name, m.tax_number, bankName(m.bank_id)].some((v) =>
       (v ?? '').toLowerCase().includes(q),
     )
   })
@@ -184,12 +186,10 @@ const filtered = computed(() => {
 
 const stats = computed(() => ({
   total: scoped.value.length,
-  active: scoped.value.filter((m) => m.is_active).length,
-  suspended: scoped.value.filter((m) => !m.is_active).length,
-  incomplete: scoped.value.filter((m) => !m.commercial_register || !m.tax_number).length,
+  active: scoped.value.filter((m) => m.status === 'ACTIVE').length,
+  suspended: scoped.value.filter((m) => m.status === 'SUSPENDED').length,
 }))
 
-// CBY-Admin risk intelligence computeds
 const crossBankNames = computed(() => {
   if (!isCbyAdmin.value) return new Set<string>()
   const nameCount: Record<string, number> = {}
@@ -209,25 +209,33 @@ const riskSummary = computed(() => {
   return {
     crossBank: merchants.value.filter((m) => crossBankNames.value.has(m.name.trim().toLowerCase()))
       .length,
-    missingData: merchants.value.filter((m) => !m.commercial_register || !m.tax_number).length,
-    inactive: merchants.value.filter((m) => !m.is_active).length,
+    inactive: merchants.value.filter((m) => m.status === 'SUSPENDED').length,
   }
 })
 
 function merchantToForm(m: Merchant): MerchantFormData {
   return {
     name: m.name,
-    commercial_register: m.commercial_register ?? '',
-    tax_number: m.tax_number ?? '',
+    tax_number: m.tax_number,
+    tax_card_expiry: m.tax_card_expiry ?? '',
     address: m.address ?? '',
     phone: m.phone ?? '',
-    business_type: m.business_type ?? '',
-    is_active: m.is_active,
+    status: m.status,
     bank_id: m.bank_id,
+    version: m.version,
+    owners: (m.owners ?? []).map((o) => ({
+      name: o.name,
+      ownership_percentage: o.ownership_percentage,
+    })),
+    companies: (m.companies ?? []).map((c) => ({
+      name: c.name,
+      commercial_registration_number: c.commercial_registration_number,
+      commercial_registration_expiry: c.commercial_registration_expiry ?? '',
+      is_active: c.is_active,
+    })),
   }
 }
 
-// Duplicate confirmation state
 const duplicateWarningOpen = ref(false)
 const duplicateWarningReasons = ref<string[]>([])
 const pendingNewMerchant = ref<MerchantFormData | null>(null)
@@ -242,12 +250,6 @@ function detectDuplicates(data: MerchantFormData): string[] {
   if (scopedMerchants.some((m) => m.name.trim().toLowerCase() === nameLower)) {
     reasons.push(`اسم المستورد "${data.name}" مسجّل مسبقا لدى هذا البنك`)
   }
-  if (
-    data.commercial_register &&
-    scopedMerchants.some((m) => m.commercial_register === data.commercial_register.trim())
-  ) {
-    reasons.push(`رقم السجل التجاري "${data.commercial_register}" مسجّل مسبقا`)
-  }
   if (data.tax_number && scopedMerchants.some((m) => m.tax_number === data.tax_number.trim())) {
     reasons.push(`الرقم الضريبي "${data.tax_number}" مسجّل مسبقا`)
   }
@@ -255,6 +257,7 @@ function detectDuplicates(data: MerchantFormData): string[] {
 }
 
 async function saveNew(data: MerchantFormData) {
+  serverError.value = null
   const warnings = detectDuplicates(data)
   if (warnings.length > 0) {
     duplicateWarningReasons.value = warnings
@@ -266,10 +269,35 @@ async function saveNew(data: MerchantFormData) {
 }
 
 async function doCreateMerchant(data: MerchantFormData) {
-  const created = await createMerchant({ ...data, bank_id: data.bank_id ?? undefined })
-  merchants.value = [created, ...merchants.value]
-  createOpen.value = false
-  notify(`تم تسجيل المستورد "${created.name}"`)
+  try {
+    const created = await createMerchant({
+      name: data.name,
+      tax_number: data.tax_number,
+      tax_card_expiry: data.tax_card_expiry || undefined,
+      phone: data.phone || undefined,
+      address: data.address || undefined,
+      status: data.status,
+      bank_id: data.bank_id ?? undefined,
+      owners: data.owners,
+      companies: data.companies.map((c) => ({
+        ...c,
+        commercial_registration_expiry: c.commercial_registration_expiry || undefined,
+      })),
+    })
+    merchants.value = [created, ...merchants.value]
+    createOpen.value = false
+    serverError.value = null
+    notify(`تم تسجيل المستورد "${created.name}"`)
+  } catch (error: unknown) {
+    const bizErr = extractBusinessError(error)
+    if (bizErr) {
+      serverError.value = bizErr.message
+      notify(bizErr.message)
+    } else {
+      serverError.value = 'حدث خطأ غير متوقع'
+      notify('حدث خطأ غير متوقع')
+    }
+  }
 }
 
 async function confirmDuplicateAndSave() {
@@ -288,15 +316,40 @@ function cancelDuplicateSave() {
 
 async function saveEdit(data: MerchantFormData) {
   if (!editing.value) return
-  const updated = await updateMerchant(editing.value.id, data)
-  merchants.value = merchants.value.map((m) => (m.id === updated.id ? updated : m))
-  editing.value = null
-  notify('تم تحديث بيانات المستورد')
+  serverError.value = null
+  try {
+    const updated = await updateMerchant(editing.value.id, {
+      version: data.version,
+      name: data.name,
+      tax_number: data.tax_number,
+      tax_card_expiry: data.tax_card_expiry || undefined,
+      phone: data.phone || undefined,
+      address: data.address || undefined,
+      status: data.status,
+      owners: data.owners,
+      companies: data.companies.map((c) => ({
+        ...c,
+        commercial_registration_expiry: c.commercial_registration_expiry || undefined,
+      })),
+    })
+    merchants.value = merchants.value.map((m) => (m.id === updated.id ? updated : m))
+    editing.value = null
+    serverError.value = null
+    notify('تم تحديث بيانات المستورد')
+  } catch (error: unknown) {
+    const bizErr = extractBusinessError(error)
+    if (bizErr) {
+      serverError.value = bizErr.message
+      notify(bizErr.message)
+    } else {
+      serverError.value = 'حدث خطأ غير متوقع'
+      notify('حدث خطأ غير متوقع')
+    }
+  }
 }
 
 const rowSelection = ref<Record<string, boolean>>({})
 const columnVisibility = ref<VisibilityState>({
-  business_type: false,
   transactions: false,
 })
 const selectedCount = computed(() => Object.values(rowSelection.value).filter(Boolean).length)
@@ -310,8 +363,17 @@ function clearSelection() {
 }
 
 async function toggleStatus(merchant: Merchant) {
-  const updated = await suspendMerchant(merchant.id, !merchant.is_active)
-  merchants.value = merchants.value.map((m) => (m.id === updated.id ? updated : m))
+  const newStatus = merchant.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE'
+  try {
+    const updated = await updateMerchant(merchant.id, {
+      version: merchant.version,
+      status: newStatus,
+    })
+    merchants.value = merchants.value.map((m) => (m.id === updated.id ? updated : m))
+  } catch (error: unknown) {
+    const bizErr = extractBusinessError(error)
+    notify(bizErr?.message ?? 'حدث خطأ أثناء تغيير الحالة')
+  }
 }
 
 function openEditFromView() {
@@ -321,7 +383,8 @@ function openEditFromView() {
   }
 }
 
-function activeStatusCell(isActive: boolean) {
+function activeStatusCell(status: string) {
+  const isActive = status === 'ACTIVE'
   const color = isActive ? 'var(--color-success)' : 'var(--color-destructive)'
   const label = isActive ? 'نشط' : 'موقوف'
   const paths = isActive
@@ -398,34 +461,10 @@ const columns: ColumnDef<Merchant>[] = [
       ),
   },
   {
-    accessorKey: 'commercial_register',
-    header: 'السجل التجاري',
-    cell: ({ row }) =>
-      h(
-        'span',
-        { class: 'text-sm text-muted-foreground' },
-        row.original.commercial_register ?? 'غير محدد',
-      ),
-  },
-  {
     accessorKey: 'tax_number',
     header: 'الرقم الضريبي',
     cell: ({ row }) =>
-      h(
-        'span',
-        { class: 'text-sm tabular-nums text-muted-foreground' },
-        row.original.tax_number ?? 'غير محدد',
-      ),
-  },
-  {
-    accessorKey: 'business_type',
-    header: 'القطاع',
-    cell: ({ row }) =>
-      h(
-        'span',
-        { class: 'text-sm text-muted-foreground' },
-        row.original.business_type ?? 'غير محدد',
-      ),
+      h('span', { class: 'text-sm tabular-nums text-muted-foreground' }, row.original.tax_number),
   },
   {
     id: 'bank',
@@ -438,10 +477,30 @@ const columns: ColumnDef<Merchant>[] = [
       ]),
   },
   {
-    accessorKey: 'is_active',
+    accessorKey: 'status',
     header: 'الحالة',
-    filterFn: (row, _id, value: string[]) => value.includes(String(row.original.is_active)),
-    cell: ({ row }) => activeStatusCell(row.original.is_active),
+    filterFn: (row, _id, value: string[]) => value.includes(row.original.status),
+    cell: ({ row }) => activeStatusCell(row.original.status),
+  },
+  {
+    id: 'owners_count',
+    header: 'المالكون',
+    cell: ({ row }) =>
+      h(
+        'span',
+        { class: 'text-sm tabular-nums text-muted-foreground' },
+        String(row.original.owners?.length ?? 0),
+      ),
+  },
+  {
+    id: 'companies_count',
+    header: 'الشركات',
+    cell: ({ row }) =>
+      h(
+        'span',
+        { class: 'text-sm tabular-nums text-muted-foreground' },
+        String(row.original.companies?.length ?? 0),
+      ),
   },
   {
     id: 'transactions',
@@ -477,7 +536,7 @@ const columns: ColumnDef<Merchant>[] = [
                 {
                   class: 'gap-1.5 text-[var(--severity-amber)]',
                   onClick: () => {
-                    table.getColumn('is_active')?.setFilterValue(undefined)
+                    table.getColumn('status')?.setFilterValue(undefined)
                   },
                 },
                 () => [h(AlertTriangle, { class: 'h-3.5 w-3.5' }), 'عرض مخاطر التكرار'],
@@ -532,12 +591,13 @@ const columns: ColumnDef<Merchant>[] = [
                         h(
                           DropdownMenuItem,
                           {
-                            class: merchant.is_active
-                              ? 'text-destructive'
-                              : 'text-[var(--severity-green)]',
+                            class:
+                              merchant.status === 'ACTIVE'
+                                ? 'text-destructive'
+                                : 'text-[var(--severity-green)]',
                             onClick: () => toggleStatus(merchant),
                           },
-                          () => (merchant.is_active ? 'إيقاف النشاط' : 'تفعيل'),
+                          () => (merchant.status === 'ACTIVE' ? 'إيقاف النشاط' : 'تفعيل'),
                         ),
                       ]
                     : []),
@@ -553,17 +613,17 @@ const columns: ColumnDef<Merchant>[] = [
 
 const MERCHANT_COLUMN_LABELS: Record<string, string> = {
   name: 'المستورد',
-  commercial_register: 'السجل التجاري',
   tax_number: 'الرقم الضريبي',
-  business_type: 'القطاع',
   bank: 'البنك',
-  is_active: 'الحالة',
+  status: 'الحالة',
+  owners_count: 'المالكون',
+  companies_count: 'الشركات',
   transactions: 'المعاملات',
 }
 
 const statusFilterOptions = [
-  { label: 'نشط', value: 'true' },
-  { label: 'موقوف', value: 'false' },
+  { label: 'نشط', value: 'ACTIVE' },
+  { label: 'موقوف', value: 'SUSPENDED' },
 ]
 const bankFilterOptions = computed(() =>
   banks.value.map((b) => ({ label: b.name_ar || b.name_en, value: String(b.id) })),
@@ -571,18 +631,16 @@ const bankFilterOptions = computed(() =>
 
 const exportCols = [
   { key: 'name', label: 'المستورد' },
-  { key: 'commercial_register', label: 'السجل التجاري' },
   { key: 'tax_number', label: 'الرقم الضريبي' },
-  { key: 'business_type', label: 'القطاع' },
   {
     key: 'bank_id',
     label: 'البنك',
     format: (_value: any, row: Merchant) => bankName(row.bank_id),
   },
   {
-    key: 'is_active',
+    key: 'status',
     label: 'الحالة',
-    format: (_value: any, row: Merchant) => (row.is_active ? 'نشط' : 'موقوف'),
+    format: (_value: any, row: Merchant) => (row.status === 'ACTIVE' ? 'نشط' : 'موقوف'),
   },
   {
     key: 'transaction_count',
@@ -670,9 +728,16 @@ function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
       </template>
     </PageHeader>
 
+    <!-- Server error banner -->
+    <Alert v-if="serverError" variant="destructive" role="alert" class="mb-4">
+      <AlertCircle class="h-4 w-4" />
+      <AlertTitle>خطأ</AlertTitle>
+      <AlertDescription>{{ serverError }}</AlertDescription>
+    </Alert>
+
     <!-- KPI Cards -->
     <div class="mb-6">
-      <MetricGrid :columns="4">
+      <MetricGrid :columns="3">
         <MetricCard
           label="إجمالي"
           :value="stats.total"
@@ -688,13 +753,13 @@ function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
           :active="
             columnFilters.some(
               (f) =>
-                f.id === 'is_active' &&
+                f.id === 'status' &&
                 Array.isArray(f.value) &&
-                f.value.includes('true') &&
+                f.value.includes('ACTIVE') &&
                 f.value.length === 1,
             )
           "
-          @click="table.getColumn('is_active')?.setFilterValue(['true'])"
+          @click="table.getColumn('status')?.setFilterValue(['ACTIVE'])"
         />
         <MetricCard
           label="موقوف"
@@ -704,20 +769,13 @@ function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
           :active="
             columnFilters.some(
               (f) =>
-                f.id === 'is_active' &&
+                f.id === 'status' &&
                 Array.isArray(f.value) &&
-                f.value.includes('false') &&
+                f.value.includes('SUSPENDED') &&
                 f.value.length === 1,
             )
           "
-          @click="table.getColumn('is_active')?.setFilterValue(['false'])"
-        />
-        <MetricCard
-          label="سجلات ناقصة"
-          :value="stats.incomplete"
-          :icon="Building2"
-          tone="warning"
-          :clickable="false"
+          @click="table.getColumn('status')?.setFilterValue(['SUSPENDED'])"
         />
       </MetricGrid>
     </div>
@@ -733,18 +791,6 @@ function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
           <AlertTriangle class="h-4 w-4 shrink-0 text-[var(--severity-amber)]" aria-hidden="true" />
           <span class="flex-1 text-sm font-medium">
             {{ riskSummary.crossBank }} مستورد يظهر في أكثر من بنك. مراجعة مخاطر التكرار مطلوبة.
-          </span>
-        </div>
-      </Card>
-      <Card
-        v-if="riskSummary.missingData > 0"
-        class="border-0 border-[var(--severity-amber)] bg-[var(--severity-amber)]/5 shadow-sm"
-        role="alert"
-      >
-        <div class="flex items-center gap-3 px-4">
-          <AlertTriangle class="h-4 w-4 shrink-0 text-[var(--severity-amber)]" aria-hidden="true" />
-          <span class="flex-1 text-sm font-medium">
-            {{ riskSummary.missingData }} مستورد ببيانات ناقصة، سجل تجاري أو رقم ضريبي.
           </span>
         </div>
       </Card>
@@ -770,7 +816,7 @@ function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
           <template #toolbar="{ table: dataTable }">
             <DataTableToolbar
               :table="dataTable"
-              search-placeholder="بحث بالاسم، السجل التجاري، أو الرقم الضريبي"
+              search-placeholder="بحث بالاسم أو الرقم الضريبي"
               :has-filters="hasActiveFilters"
               :selected-count="selectedCount"
               @update:search="(v) => (query = v)"
@@ -786,8 +832,8 @@ function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
               </template>
               <template #filters>
                 <DataTableFacetedFilter
-                  v-if="dataTable.getColumn('is_active')"
-                  :column="dataTable.getColumn('is_active')!"
+                  v-if="dataTable.getColumn('status')"
+                  :column="dataTable.getColumn('status')!"
                   title="الحالة"
                   :options="statusFilterOptions"
                 />
@@ -911,36 +957,23 @@ function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
               </div>
               <Badge
                 :class="
-                  merchant.is_active
+                  merchant.status === 'ACTIVE'
                     ? 'border-0 bg-[var(--color-surface-success)] text-[var(--color-text-success)]'
                     : 'border-0 bg-[var(--color-surface-error)] text-[var(--color-text-error)]'
                 "
               >
-                {{ merchant.is_active ? 'نشط' : 'موقوف' }}
+                {{ merchant.status === 'ACTIVE' ? 'نشط' : 'موقوف' }}
               </Badge>
             </div>
             <div class="font-heading text-foreground text-base leading-6 font-semibold">
               {{ merchant.name }}
             </div>
-            <div class="text-muted-foreground text-xs leading-5">
-              {{ merchant.business_type ?? 'غير محدد' }}
-            </div>
             <div class="mt-4 space-y-1.5 text-xs">
-              <div class="flex justify-between gap-2">
-                <span class="font-section text-muted-foreground leading-5 font-medium"
-                  >السجل التجاري</span
-                >
-                <span class="text-foreground leading-5 font-medium">{{
-                  merchant.commercial_register ?? 'غير محدد'
-                }}</span>
-              </div>
               <div class="flex justify-between gap-2">
                 <span class="font-section text-muted-foreground leading-5 font-medium"
                   >الرقم الضريبي</span
                 >
-                <span class="text-foreground leading-5 font-medium">{{
-                  merchant.tax_number ?? 'غير محدد'
-                }}</span>
+                <span class="text-foreground leading-5 font-medium">{{ merchant.tax_number }}</span>
               </div>
               <div class="flex justify-between gap-2">
                 <span class="font-section text-muted-foreground leading-5 font-medium">البنك</span>
@@ -962,6 +995,22 @@ function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
                   merchant.phone ?? 'غير محدد'
                 }}</span>
               </div>
+              <div class="flex justify-between gap-2">
+                <span class="font-section text-muted-foreground leading-5 font-medium"
+                  >المالكون</span
+                >
+                <span class="text-foreground leading-5 font-medium tabular-nums">{{
+                  merchant.owners?.length ?? 0
+                }}</span>
+              </div>
+              <div class="flex justify-between gap-2">
+                <span class="font-section text-muted-foreground leading-5 font-medium"
+                  >الشركات</span
+                >
+                <span class="text-foreground leading-5 font-medium tabular-nums">{{
+                  merchant.companies?.length ?? 0
+                }}</span>
+              </div>
             </div>
             <div class="mt-auto flex items-center justify-between border-t pt-4">
               <div class="text-xs">
@@ -974,7 +1023,7 @@ function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
               </div>
               <div class="flex gap-1">
                 <Button size="sm" variant="ghost" class="h-8" @click="toggleStatus(merchant)">
-                  {{ merchant.is_active ? 'إيقاف' : 'تفعيل' }}
+                  {{ merchant.status === 'ACTIVE' ? 'إيقاف' : 'تفعيل' }}
                 </Button>
                 <Button size="icon" variant="ghost" class="h-8 w-8" @click="editing = merchant">
                   <Edit class="h-3.5 w-3.5" />
@@ -1032,12 +1081,12 @@ function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
             <div class="flex flex-wrap gap-2">
               <Badge
                 :class="
-                  viewing.is_active
+                  viewing.status === 'ACTIVE'
                     ? 'border border-[var(--severity-green)]/30 bg-[var(--severity-green)]/10 text-[var(--severity-green)]'
                     : 'border border-[var(--severity-red)]/30 bg-[var(--severity-red)]/10 text-[var(--severity-red)]'
                 "
               >
-                {{ viewing.is_active ? 'نشط' : 'غير نشط' }}
+                {{ viewing.status === 'ACTIVE' ? 'نشط' : 'موقوف' }}
               </Badge>
               <Badge
                 v-if="crossBankNames.has(viewing.name.trim().toLowerCase())"
@@ -1045,13 +1094,6 @@ function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
               >
                 <AlertTriangle class="me-1 h-3 w-3" />
                 ظهور في أكثر من بنك
-              </Badge>
-              <Badge
-                v-if="!viewing.commercial_register || !viewing.tax_number"
-                class="border border-[var(--severity-amber)]/30 bg-[var(--severity-amber)]/10 text-[var(--severity-amber)]"
-              >
-                <AlertTriangle class="me-1 h-3 w-3" />
-                بيانات ناقصة
               </Badge>
             </div>
 
@@ -1064,22 +1106,22 @@ function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
               </h3>
               <div class="grid grid-cols-2 gap-3 text-sm">
                 <div class="space-y-0.5">
-                  <div class="text-muted-foreground text-xs">السجل التجاري</div>
-                  <div class="font-medium">{{ viewing.commercial_register ?? 'غير محدد' }}</div>
-                </div>
-                <div class="space-y-0.5">
                   <div class="text-muted-foreground text-xs">الرقم الضريبي</div>
-                  <div class="font-medium">{{ viewing.tax_number ?? 'غير محدد' }}</div>
+                  <div class="font-medium">{{ viewing.tax_number }}</div>
                 </div>
                 <div class="space-y-0.5">
-                  <div class="text-muted-foreground text-xs">القطاع</div>
-                  <div class="font-medium">{{ viewing.business_type ?? 'غير محدد' }}</div>
+                  <div class="text-muted-foreground text-xs">انتهاء البطاقة الضريبية</div>
+                  <div class="font-medium">{{ viewing.tax_card_expiry ?? 'غير محدد' }}</div>
                 </div>
                 <div class="space-y-0.5">
                   <div class="text-muted-foreground text-xs">عدد المعاملات</div>
                   <div class="text-foreground leading-5 font-semibold tabular-nums">
                     {{ viewing.transaction_count ?? 0 }}
                   </div>
+                </div>
+                <div class="space-y-0.5">
+                  <div class="text-muted-foreground text-xs">الإصدار</div>
+                  <div class="font-medium tabular-nums">v{{ viewing.version }}</div>
                 </div>
                 <div class="col-span-2 space-y-0.5">
                   <div class="text-muted-foreground text-xs">العنوان</div>
@@ -1089,9 +1131,61 @@ function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
                   <div class="text-muted-foreground text-xs">هاتف</div>
                   <div class="font-medium">{{ viewing.phone ?? 'غير محدد' }}</div>
                 </div>
-                <div class="space-y-0.5">
-                  <div class="text-muted-foreground text-xs">البريد</div>
-                  <div class="font-medium">{{ viewing.email ?? 'غير محدد' }}</div>
+              </div>
+            </Card>
+
+            <!-- Owners -->
+            <Card v-if="viewing.owners?.length" class="border p-4">
+              <h3
+                class="font-section text-muted-foreground mb-3 flex items-center gap-1.5 text-xs font-semibold tracking-wide uppercase"
+              >
+                <Users class="h-3.5 w-3.5" />
+                المالكون ({{ viewing.owners.length }})
+              </h3>
+              <div class="space-y-2 text-sm">
+                <div
+                  v-for="owner in viewing.owners"
+                  :key="owner.id"
+                  class="flex items-center justify-between"
+                >
+                  <span class="font-medium">{{ owner.name }}</span>
+                  <Badge variant="secondary" class="text-xs tabular-nums"
+                    >{{ owner.ownership_percentage }}%</Badge
+                  >
+                </div>
+              </div>
+            </Card>
+
+            <!-- Companies -->
+            <Card v-if="viewing.companies?.length" class="border p-4">
+              <h3
+                class="font-section text-muted-foreground mb-3 flex items-center gap-1.5 text-xs font-semibold tracking-wide uppercase"
+              >
+                <Briefcase class="h-3.5 w-3.5" />
+                الشركات التابعة ({{ viewing.companies.length }})
+              </h3>
+              <div class="space-y-2 text-sm">
+                <div
+                  v-for="company in viewing.companies"
+                  :key="company.id"
+                  class="flex items-center justify-between gap-2"
+                >
+                  <div>
+                    <div class="font-medium">{{ company.name }}</div>
+                    <div class="text-muted-foreground text-xs">
+                      {{ company.commercial_registration_number }}
+                    </div>
+                  </div>
+                  <Badge
+                    :class="
+                      company.is_active
+                        ? 'border border-[var(--severity-green)]/30 bg-[var(--severity-green)]/10 text-[var(--severity-green)]'
+                        : 'border border-[var(--severity-red)]/30 bg-[var(--severity-red)]/10 text-[var(--severity-red)]'
+                    "
+                    class="text-xs"
+                  >
+                    {{ company.is_active ? 'نشطة' : 'غير نشطة' }}
+                  </Badge>
                 </div>
               </div>
             </Card>
@@ -1142,27 +1236,23 @@ function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
         <template v-else>
           <div class="grid gap-3 py-1 text-sm sm:grid-cols-2">
             <div class="space-y-0.5">
-              <div class="text-muted-foreground text-xs">السجل التجاري</div>
-              <div class="font-medium">{{ viewing.commercial_register ?? 'غير محدد' }}</div>
-            </div>
-            <div class="space-y-0.5">
               <div class="text-muted-foreground text-xs">الرقم الضريبي</div>
-              <div class="font-medium">{{ viewing.tax_number ?? 'غير محدد' }}</div>
+              <div class="font-medium">{{ viewing.tax_number }}</div>
             </div>
             <div class="space-y-0.5">
-              <div class="text-muted-foreground text-xs">القطاع</div>
-              <div class="font-medium">{{ viewing.business_type ?? 'غير محدد' }}</div>
+              <div class="text-muted-foreground text-xs">انتهاء البطاقة الضريبية</div>
+              <div class="font-medium">{{ viewing.tax_card_expiry ?? 'غير محدد' }}</div>
             </div>
             <div class="space-y-0.5">
               <div class="text-muted-foreground text-xs">الحالة</div>
               <Badge
                 :class="
-                  viewing.is_active
+                  viewing.status === 'ACTIVE'
                     ? 'border border-[var(--severity-green)]/30 bg-[var(--severity-green)]/10 text-[var(--severity-green)]'
                     : 'border border-[var(--severity-red)]/30 bg-[var(--severity-red)]/10 text-[var(--severity-red)]'
                 "
               >
-                {{ viewing.is_active ? 'نشط' : 'موقوف' }}
+                {{ viewing.status === 'ACTIVE' ? 'نشط' : 'موقوف' }}
               </Badge>
             </div>
             <div class="space-y-0.5">
@@ -1173,6 +1263,10 @@ function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
               <div class="text-muted-foreground text-xs">عدد المعاملات</div>
               <div class="font-semibold tabular-nums">{{ viewing.transaction_count ?? 0 }}</div>
             </div>
+            <div class="space-y-0.5">
+              <div class="text-muted-foreground text-xs">الإصدار</div>
+              <div class="font-medium tabular-nums">v{{ viewing.version }}</div>
+            </div>
             <div class="space-y-0.5 sm:col-span-2">
               <div class="text-muted-foreground text-xs">العنوان</div>
               <div class="font-medium">{{ viewing.address ?? 'غير محدد' }}</div>
@@ -1180,6 +1274,53 @@ function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
             <div class="space-y-0.5 sm:col-span-2">
               <div class="text-muted-foreground text-xs">هاتف التواصل</div>
               <div class="font-medium">{{ viewing.phone ?? 'غير محدد' }}</div>
+            </div>
+          </div>
+
+          <!-- Owners in bank admin view -->
+          <div v-if="viewing.owners?.length" class="mt-3">
+            <Separator class="mb-3" />
+            <h4 class="mb-2 flex items-center gap-1.5 text-xs font-semibold">
+              <Users class="h-3.5 w-3.5" />
+              المالكون ({{ viewing.owners.length }})
+            </h4>
+            <div class="space-y-1.5 text-sm">
+              <div
+                v-for="owner in viewing.owners"
+                :key="owner.id"
+                class="flex items-center justify-between"
+              >
+                <span>{{ owner.name }}</span>
+                <span class="text-muted-foreground text-xs tabular-nums"
+                  >{{ owner.ownership_percentage }}%</span
+                >
+              </div>
+            </div>
+          </div>
+
+          <!-- Companies in bank admin view -->
+          <div v-if="viewing.companies?.length" class="mt-3">
+            <Separator class="mb-3" />
+            <h4 class="mb-2 flex items-center gap-1.5 text-xs font-semibold">
+              <Briefcase class="h-3.5 w-3.5" />
+              الشركات التابعة ({{ viewing.companies.length }})
+            </h4>
+            <div class="space-y-1.5 text-sm">
+              <div
+                v-for="company in viewing.companies"
+                :key="company.id"
+                class="flex items-center justify-between gap-2"
+              >
+                <div>
+                  <div>{{ company.name }}</div>
+                  <div class="text-muted-foreground text-xs">
+                    {{ company.commercial_registration_number }}
+                  </div>
+                </div>
+                <Badge variant="secondary" class="text-xs">
+                  {{ company.is_active ? 'نشطة' : 'غير نشطة' }}
+                </Badge>
+              </div>
             </div>
           </div>
 

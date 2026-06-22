@@ -46,7 +46,7 @@ async function resolveDataEntryMerchant(): Promise<void> {
   try {
     const merchants = await fetchMerchants({
       bank_id: authStore.user?.bank_id ?? undefined,
-      is_active: true,
+      status: 'ACTIVE',
     })
     dataEntryMerchants.value = merchants
 

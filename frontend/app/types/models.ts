@@ -169,23 +169,40 @@ export interface Bank {
   is_active: boolean
 }
 
+export type MerchantStatus = 'ACTIVE' | 'SUSPENDED'
+
+export interface MerchantOwner {
+  id: number
+  name: string
+  ownership_percentage: number
+}
+
+export interface MerchantCompany {
+  id: number
+  name: string
+  commercial_registration_number: string
+  commercial_registration_expiry: string | null
+  sector_reference_value_id: number | null
+  is_active: boolean
+}
+
 export interface Merchant {
   id: number
   bank_id: number
   bank_name: string | null
   name: string
-  commercial_register: string | null
-  tax_number: string | null
-  national_id: string | null
-  owner_name: string | null
+  tax_number: string
+  tax_card_expiry: string | null
   phone: string | null
-  email: string | null
   address: string | null
-  business_type?: string | null
-  is_active: boolean
-  transaction_count?: number | null
+  status: MerchantStatus
+  version: number
+  transaction_count: number
+  owners: MerchantOwner[]
+  companies: MerchantCompany[]
   created_by: number | null
   created_at: string | null
+  updated_at: string | null
 }
 
 export interface ImportRequest {
