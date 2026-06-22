@@ -599,3 +599,28 @@ export interface DocumentType {
   is_active: boolean
   sort_order: number
 }
+
+export interface ReferenceTable {
+  id: number
+  key: string
+  label: string
+  sort_order: number
+  is_system: boolean
+  is_active: boolean
+  created_at: string | null
+  updated_at: string | null
+  version: number
+}
+
+export interface ReferenceValue {
+  id: number
+  reference_table_id: number
+  key: string
+  label: string
+  sort_order: number
+  is_system: boolean
+  is_active: boolean
+  created_at: string | null
+  updated_at: string | null
+  version: number
+}
