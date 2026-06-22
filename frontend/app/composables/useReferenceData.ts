@@ -1,46 +1,95 @@
-import { ref } from 'vue'
-import type { ReferenceTable, ReferenceValue } from '@/types/models'
+import { computed, ref } from 'vue'
+import type { PaginatedResponse, ReferenceTable, ReferenceValue } from '@/types/models'
 import { useApi } from '@/composables/useApi'
 
-type ListResponse<T> = {
-  data: T[]
-  meta: { current_page: number; last_page: number; per_page: number; total: number }
+type ListOptions = {
+  page?: number
+  search?: string
+  sort?: 'key' | 'label' | 'sort_order' | 'is_active' | 'created_at'
+  direction?: 'asc' | 'desc'
 }
 
 export function useReferenceData() {
   const api = useApi()
   const referenceTables = ref<ReferenceTable[]>([])
   const referenceValues = ref<ReferenceValue[]>([])
-  const loading = ref(false)
+  const referenceTablesMeta = ref<PaginatedResponse<ReferenceTable>['meta'] | null>(null)
+  const referenceValuesMeta = ref<PaginatedResponse<ReferenceValue>['meta'] | null>(null)
+  const tablesLoading = ref(false)
+  const valuesLoading = ref(false)
+  const loading = computed(() => tablesLoading.value || valuesLoading.value)
   const error = ref<string | null>(null)
+  let tablesRequestToken = 0
+  let valuesRequestToken = 0
 
-  const fetchReferenceTables = async (search = '') => {
-    loading.value = true
+  const fetchReferenceTables = async (options: ListOptions = {}) => {
+    const token = ++tablesRequestToken
+    tablesLoading.value = true
     error.value = null
     try {
-      const response = await api.get<ListResponse<ReferenceTable>>('/api/v1/reference-tables', {
-        query: { search },
-      })
-      referenceTables.value = response.data
+      const response = await api.get<PaginatedResponse<ReferenceTable>>(
+        '/api/v1/reference-tables',
+        {
+          query: {
+            page: options.page ?? 1,
+            per_page: 25,
+            search: options.search ?? '',
+            sort: options.sort ?? 'sort_order',
+            direction: options.direction ?? 'asc',
+          },
+        },
+      )
+      if (token === tablesRequestToken) {
+        referenceTables.value = response.data
+        referenceTablesMeta.value = response.meta
+      }
     } catch (cause: unknown) {
-      error.value = extractApiErrorMessage(cause, 'تعذر تحميل الجداول المرجعية.')
+      if (token === tablesRequestToken) {
+        referenceTables.value = []
+        referenceTablesMeta.value = null
+        error.value = extractApiErrorMessage(cause, 'تعذر تحميل الجداول المرجعية.')
+      }
     } finally {
-      loading.value = false
+      if (token === tablesRequestToken) {
+        tablesLoading.value = false
+      }
     }
   }
 
-  const fetchReferenceValues = async (referenceTableId: number) => {
-    loading.value = true
+  const fetchReferenceValues = async (referenceTableId: number, options: ListOptions = {}) => {
+    const token = ++valuesRequestToken
+    referenceValues.value = []
+    referenceValuesMeta.value = null
+    valuesLoading.value = true
     error.value = null
     try {
-      const response = await api.get<ListResponse<ReferenceValue>>('/api/v1/reference-values', {
-        query: { reference_table_id: referenceTableId },
-      })
-      referenceValues.value = response.data
+      const response = await api.get<PaginatedResponse<ReferenceValue>>(
+        '/api/v1/reference-values',
+        {
+          query: {
+            reference_table_id: referenceTableId,
+            page: options.page ?? 1,
+            per_page: 25,
+            search: options.search ?? '',
+            sort: options.sort ?? 'sort_order',
+            direction: options.direction ?? 'asc',
+          },
+        },
+      )
+      if (token === valuesRequestToken) {
+        referenceValues.value = response.data
+        referenceValuesMeta.value = response.meta
+      }
     } catch (cause: unknown) {
-      error.value = extractApiErrorMessage(cause, 'تعذر تحميل القيم المرجعية.')
+      if (token === valuesRequestToken) {
+        referenceValues.value = []
+        referenceValuesMeta.value = null
+        error.value = extractApiErrorMessage(cause, 'تعذر تحميل القيم المرجعية.')
+      }
     } finally {
-      loading.value = false
+      if (token === valuesRequestToken) {
+        valuesLoading.value = false
+      }
     }
   }
 
@@ -67,6 +116,7 @@ export function useReferenceData() {
   const setReferenceTableActive = async (referenceTable: ReferenceTable, active: boolean) => {
     const response = await api.post<{ data: ReferenceTable }>(
       `/api/v1/reference-tables/${referenceTable.id}/${active ? 'activate' : 'deactivate'}`,
+      { version: referenceTable.version },
     )
     referenceTables.value = referenceTables.value.map((item) =>
       item.id === response.data.id ? response.data : item,
@@ -106,6 +156,7 @@ export function useReferenceData() {
   const setReferenceValueActive = async (referenceValue: ReferenceValue, active: boolean) => {
     const response = await api.post<{ data: ReferenceValue }>(
       `/api/v1/reference-values/${referenceValue.id}/${active ? 'activate' : 'deactivate'}`,
+      { version: referenceValue.version },
     )
     referenceValues.value = referenceValues.value.map((item) =>
       item.id === response.data.id ? response.data : item,
@@ -121,6 +172,10 @@ export function useReferenceData() {
   return {
     referenceTables,
     referenceValues,
+    referenceTablesMeta,
+    referenceValuesMeta,
+    tablesLoading,
+    valuesLoading,
     loading,
     error,
     fetchReferenceTables,

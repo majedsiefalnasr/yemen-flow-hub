@@ -624,6 +624,7 @@ export interface ReferenceTable {
   sort_order: number
   is_system: boolean
   is_active: boolean
+  is_in_use: boolean
   created_at: string | null
   updated_at: string | null
   version: number
@@ -637,6 +638,7 @@ export interface ReferenceValue {
   sort_order: number
   is_system: boolean
   is_active: boolean
+  is_in_use: boolean
   created_at: string | null
   updated_at: string | null
   version: number
