@@ -30,14 +30,14 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { useOrganizations } from '@/composables/useOrganizations'
-import { useGovernanceRoles } from '@/composables/useGovernanceRoles'
+import { useTeams } from '@/composables/useTeams'
 
-definePageMeta({ middleware: ['auth', 'screen'], requiredScreen: 'roles' })
+definePageMeta({ middleware: ['auth', 'screen'], requiredScreen: 'teams' })
 
 const { organizations, fetchOrganizations } = useOrganizations()
-const { roles, fetchRoles, createRole } = useGovernanceRoles()
-const selectedOrganization = ref('')
+const { teams, fetchTeams, createTeam } = useTeams()
 const dialogOpen = ref(false)
+const selectedOrganization = ref<string>('')
 const form = useForm({
   validationSchema: toTypedSchema(
     z.object({
@@ -52,12 +52,12 @@ const [code] = form.defineField('code')
 const [name] = form.defineField('name')
 const submit = form.handleSubmit(async (values) => {
   try {
-    await createRole(values)
-    toast.success('تم إنشاء الدور')
+    await createTeam(values)
+    toast.success('تم إنشاء الفريق')
     dialogOpen.value = false
     form.resetForm()
   } catch (error) {
-    toast.error(extractApiErrorMessage(error, 'تعذّر إنشاء الدور'))
+    toast.error(extractApiErrorMessage(error, 'تعذّر إنشاء الفريق'))
   }
 })
 
@@ -74,8 +74,8 @@ watch(dialogOpen, (open) => {
 })
 
 watch(selectedOrganization, (value) => {
-  organizationId.value = Number(value)
-  fetchRoles(value ? Number(value) : undefined)
+  organizationId.value = value ? Number(value) : 0
+  fetchTeams(value ? Number(value) : undefined)
 })
 onMounted(async () => {
   await fetchOrganizations()
@@ -84,10 +84,10 @@ onMounted(async () => {
 </script>
 
 <template>
-  <ScreenGuard screen="roles">
+  <ScreenGuard screen="teams">
     <div class="space-y-6">
-      <PageHeader title="الأدوار" description="إدارة الأدوار المرتبطة بالمؤسسات">
-        <template #actions><Button @click="dialogOpen = true">إضافة دور</Button></template>
+      <PageHeader title="الفرق" description="إدارة الفرق ضمن كل مؤسسة">
+        <template #actions><Button @click="dialogOpen = true">إضافة فريق</Button></template>
       </PageHeader>
       <Select v-model="selectedOrganization">
         <SelectTrigger><SelectValue placeholder="اختر المؤسسة" /></SelectTrigger>
@@ -109,17 +109,17 @@ onMounted(async () => {
           ></TableHeader
         >
         <TableBody>
-          <TableRow v-for="role in roles" :key="role.id">
-            <TableCell>{{ role.code }}</TableCell
-            ><TableCell>{{ role.name }}</TableCell
-            ><TableCell>{{ role.organization?.name ?? '—' }}</TableCell>
+          <TableRow v-for="team in teams" :key="team.id">
+            <TableCell>{{ team.code }}</TableCell
+            ><TableCell>{{ team.name }}</TableCell
+            ><TableCell>{{ team.organization?.name ?? '—' }}</TableCell>
           </TableRow>
         </TableBody>
       </Table>
     </div>
     <Dialog v-model:open="dialogOpen">
       <DialogContent>
-        <DialogHeader><DialogTitle>إضافة دور</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>إضافة فريق</DialogTitle></DialogHeader>
         <form class="space-y-4" @submit="submit">
           <Select v-model="dialogOrganizationId">
             <SelectTrigger><SelectValue placeholder="اختر المؤسسة" /></SelectTrigger>
@@ -132,8 +132,8 @@ onMounted(async () => {
               >
             </SelectContent>
           </Select>
-          <Input v-model="code" placeholder="الرمز" />
-          <Input v-model="name" placeholder="الاسم" />
+          <Input v-model="code" name="code" placeholder="الرمز" />
+          <Input v-model="name" name="name" placeholder="الاسم" />
           <DialogFooter><Button type="submit">حفظ</Button></DialogFooter>
         </form>
       </DialogContent>

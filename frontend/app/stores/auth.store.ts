@@ -1,5 +1,11 @@
 import { defineStore } from 'pinia'
-import type { AuthUser, ApiResponse, UserPreferences } from '../types/models'
+import type {
+  AuthMeData,
+  AuthUser,
+  ApiResponse,
+  ScreenPermissions,
+  UserPreferences,
+} from '../types/models'
 import { ROLE_LABELS } from '../constants/workflow'
 import { UserRole } from '../types/enums'
 import {
@@ -49,11 +55,19 @@ function clearAuthState(store: {
   user: AuthUser | null
   isAuthenticated: boolean
   isLoggingOut?: boolean
+  screenPermissions?: ScreenPermissions
+  capabilities?: Record<string, boolean>
 }) {
   store.user = null
   store.isAuthenticated = false
   if ('isLoggingOut' in store) {
     store.isLoggingOut = false
+  }
+  if ('screenPermissions' in store) {
+    store.screenPermissions = {}
+  }
+  if ('capabilities' in store) {
+    store.capabilities = {}
   }
 
   if (import.meta.client) {
@@ -85,12 +99,43 @@ function syncAvatarCache(user: AuthUser | undefined | null): void {
   persistUserAvatar(user.email, { variant: variant as AvatarVariant })
 }
 
+function applyAuthMe(
+  store: {
+    user: AuthUser | null
+    screenPermissions: ScreenPermissions
+    capabilities: Record<string, boolean>
+  },
+  data: AuthMeData | AuthUser,
+): AuthUser {
+  if (!('user' in data)) {
+    store.screenPermissions = {}
+    store.capabilities = {}
+    return data
+  }
+
+  // Guard against a payload that omits/nulls these — without the fallback,
+  // `can()` would do `undefined[screen]` and throw, locking out every guarded
+  // page instead of just hiding gated controls.
+  store.screenPermissions = data.screen_permissions ?? {}
+  store.capabilities = data.capabilities ?? {}
+
+  return {
+    ...data.user,
+    organization: data.organization,
+    team: data.team,
+    identity_role: data.role,
+    bank: data.bank,
+  }
+}
+
 export const useAuthStore = defineStore('auth', {
   state: () => ({
     user: null as AuthUser | null,
     isAuthenticated: false,
     isLoggingOut: false,
     userPreferences: null as UserPreferences | null,
+    screenPermissions: {} as ScreenPermissions,
+    capabilities: {} as Record<string, boolean>,
   }),
 
   getters: {
@@ -123,6 +168,11 @@ export const useAuthStore = defineStore('auth', {
     preferredTableDensity: (state): string => state.userPreferences?.table_density ?? 'normal',
 
     preferredPageSize: (state): number => state.userPreferences?.page_size ?? 25,
+
+    canAccessScreen:
+      (state) =>
+      (screen: string, capability: import('../types/models').ScreenCapability = 'VIEW'): boolean =>
+        state.screenPermissions[screen]?.includes(capability) ?? false,
   },
 
   actions: {
@@ -484,7 +534,7 @@ export const useAuthStore = defineStore('auth', {
 
       try {
         const authHeader = this.getAuthorizationHeader()
-        const response = await $fetch<ApiResponse<AuthUser>>('/api/auth/me', {
+        const response = await $fetch<ApiResponse<AuthMeData | AuthUser>>('/api/auth/me', {
           baseURL,
           credentials: 'include',
           headers: {
@@ -492,11 +542,12 @@ export const useAuthStore = defineStore('auth', {
             ...(authHeader ? { Authorization: authHeader } : {}),
           },
         })
-        if (!response.data.is_active) {
+        const user = applyAuthMe(this, response.data)
+        if (!user.is_active) {
           clearAuthState(this)
           return
         }
-        this.user = response.data
+        this.user = user
         this.isAuthenticated = true
         this.isLoggingOut = false
         markLogoutInProgress(false)
@@ -538,13 +589,14 @@ export const useAuthStore = defineStore('auth', {
       const baseURL = config.public.apiBase as string
 
       try {
-        const response = await $fetch<ApiResponse<AuthUser>>('/api/auth/me', {
+        const response = await $fetch<ApiResponse<AuthMeData | AuthUser>>('/api/auth/me', {
           baseURL,
           credentials: 'include',
           headers: { Accept: 'application/json' },
         })
-        if (response.data.is_active) {
-          this.user = response.data
+        const user = applyAuthMe(this, response.data)
+        if (user.is_active) {
+          this.user = user
           this.isAuthenticated = true
           syncAvatarCache(this.user)
         }

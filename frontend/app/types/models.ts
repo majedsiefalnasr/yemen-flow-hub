@@ -63,6 +63,72 @@ export interface AuthUser {
   avatar_variant?: string | null
   stats?: ProfileStats
   recent_activity?: RecentActivity[]
+  organization?: GovernanceIdentity | null
+  team?: GovernanceIdentity | null
+  identity_role?: GovernanceIdentity | null
+  bank?: GovernanceBank | null
+}
+
+export interface GovernanceIdentity {
+  id: number
+  organization_id?: number
+  code: string
+  name: string
+}
+
+export interface Organization extends GovernanceIdentity {
+  is_system: boolean
+  is_active: boolean
+  created_at: string | null
+  updated_at: string | null
+  version: number
+}
+
+export interface GovernanceTeam extends GovernanceIdentity {
+  organization_id: number
+  organization: Organization
+  is_system: boolean
+  is_active: boolean
+  created_at: string | null
+  updated_at: string | null
+  version: number
+}
+
+export type GovernanceRole = GovernanceTeam
+
+export interface GovernanceUser {
+  id: number
+  name: string
+  email: string
+  phone: string | null
+  is_active: boolean
+  mfa_enabled: boolean
+  organization: Organization
+  team: GovernanceTeam
+  role: GovernanceRole
+  bank: Bank | null
+  created_at: string | null
+  updated_at: string | null
+  version: number
+}
+
+export interface GovernanceBank {
+  id: number
+  code: string
+  name: string
+}
+
+export type ScreenCapability = 'VIEW' | 'CREATE' | 'UPDATE' | 'DELETE' | 'EXPORT' | 'MANAGE'
+export type ScreenPermissions = Record<string, ScreenCapability[]>
+
+export interface AuthMeData {
+  user: AuthUser
+  organization: GovernanceIdentity | null
+  team: GovernanceIdentity | null
+  role: GovernanceIdentity | null
+  bank: GovernanceBank | null
+  screen_permissions: ScreenPermissions
+  capabilities: Record<string, boolean>
 }
 
 export interface NotificationPreferences {
@@ -88,10 +154,15 @@ export interface UserPreferences {
 
 export interface Bank {
   id: number
+  organization_id?: number | null
+  organization?: Organization | null
   name_ar: string
   name_en: string
   code: string
   license_number?: string | null
+  swift_code?: string | null
+  status?: 'ACTIVE' | 'SUSPENDED'
+  version?: number
   entity_type?: string | null
   user_count?: number | null
   admin?: User | null

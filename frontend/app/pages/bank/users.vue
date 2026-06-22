@@ -5,5 +5,5 @@ definePageMeta({ middleware: ['auth', 'screen'], requiredScreen: 'users' })
 </script>
 
 <template>
-  <IdentityUsersPage audience="committee" />
+  <IdentityUsersPage audience="bank" />
 </template>
