@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Models\Bank;
 use App\Models\CustomsDeclaration;
+use App\Models\EngineRequest;
 use App\Models\FieldDefinition;
 use App\Models\FieldGroup;
 use App\Models\ImportRequest;
@@ -25,6 +26,7 @@ use App\Models\WorkflowTransition;
 use App\Models\WorkflowVersion;
 use App\Policies\BankPolicy;
 use App\Policies\CustomsDeclarationPolicy;
+use App\Policies\EngineRequestPolicy;
 use App\Policies\FieldDefinitionPolicy;
 use App\Policies\FieldGroupPolicy;
 use App\Policies\ImportRequestPolicy;
@@ -73,6 +75,7 @@ class AuthServiceProvider extends ServiceProvider
         Gate::policy(FieldGroup::class, FieldGroupPolicy::class);
         Gate::policy(FieldDefinition::class, FieldDefinitionPolicy::class);
         Gate::policy(StageFieldRule::class, StageFieldRulePolicy::class);
+        Gate::policy(EngineRequest::class, EngineRequestPolicy::class);
 
         Gate::before(function ($user, string $ability) {
             if (! str_contains($ability, '.')) {

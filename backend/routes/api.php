@@ -21,6 +21,7 @@ use App\Http\Controllers\Api\SettingsController;
 use App\Http\Controllers\Api\TraderController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\V1\BankController as V1BankController;
+use App\Http\Controllers\Api\V1\EngineRequestController;
 use App\Http\Controllers\Api\V1\FieldDefinitionController;
 use App\Http\Controllers\Api\V1\FieldGroupController;
 use App\Http\Controllers\Api\V1\MerchantController as V1MerchantController;
@@ -150,6 +151,20 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'active'])->group(function () {
     Route::post('users/{user}/reset-password', [V1UserController::class, 'resetPassword']);
     Route::post('users/{user}/reset-mfa', [V1UserController::class, 'resetMfa']);
     Route::apiResource('merchants', V1MerchantController::class);
+
+    // ─── Engine Requests (Epic 18.5) ─────────────────────────────────────
+    Route::get('engine-requests', [EngineRequestController::class, 'index']);
+    Route::get('engine-requests/my-queue', [EngineRequestController::class, 'myQueue']);
+    Route::post('engine-requests', [EngineRequestController::class, 'store']);
+    Route::get('engine-requests/{engineRequest}', [EngineRequestController::class, 'show']);
+    Route::post('engine-requests/{engineRequest}/actions', [EngineRequestController::class, 'executeAction']);
+    Route::patch('engine-requests/{engineRequest}/draft', [EngineRequestController::class, 'draft']);
+    Route::get('engine-requests/{engineRequest}/history', [EngineRequestController::class, 'history']);
+    Route::get('engine-requests/{engineRequest}/graph', [EngineRequestController::class, 'graph']);
+    Route::get('engine-requests/{engineRequest}/documents', [EngineRequestController::class, 'listDocuments']);
+    Route::post('engine-requests/{engineRequest}/documents', [EngineRequestController::class, 'uploadDocument'])->middleware('throttle:10,1');
+    Route::get('engine-requests/{engineRequest}/documents/{document}/download', [EngineRequestController::class, 'downloadDocument']);
+    Route::delete('engine-requests/{engineRequest}/documents/{document}', [EngineRequestController::class, 'deleteDocument']);
 });
 
 Route::get('settings/public', [SettingsController::class, 'publicSettings']);
