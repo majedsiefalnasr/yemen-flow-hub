@@ -643,3 +643,197 @@ export interface ReferenceValue {
   updated_at: string | null
   version: number
 }
+
+export type WorkflowVersionState = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED'
+
+export interface WorkflowVersion {
+  id: number
+  workflow_definition_id: number
+  version_number: number
+  state: WorkflowVersionState
+  is_editable: boolean
+  published_at: string | null
+  created_at: string | null
+  updated_at: string | null
+  version: number
+}
+
+export interface WorkflowDefinition {
+  id: number
+  code: string
+  name: string
+  description: string | null
+  is_active: boolean
+  versions: WorkflowVersion[]
+  created_at: string | null
+  updated_at: string | null
+  version: number
+}
+
+export type WorkflowStageStatus = 'ACTIVE' | 'INACTIVE'
+
+export interface WorkflowStage {
+  id: number
+  workflow_version_id: number
+  code: string
+  name: string
+  description: string | null
+  sort_order: number
+  is_initial: boolean
+  is_final: boolean
+  sla_duration_minutes: number | null
+  status: WorkflowStageStatus
+  created_at: string | null
+  updated_at: string | null
+  version: number
+}
+
+export type WorkflowActionKind =
+  | 'DRAFT'
+  | 'APPROVE'
+  | 'REJECT'
+  | 'RETURN'
+  | 'CLOSE'
+  | 'INFO'
+  | 'CUSTOM'
+
+export interface WorkflowAction {
+  id: number
+  code: string
+  name: string
+  kind: WorkflowActionKind
+  is_active: boolean
+  is_system: boolean
+  is_in_use: boolean
+  created_at: string | null
+  updated_at: string | null
+  version: number
+}
+
+export interface WorkflowTransition {
+  id: number
+  workflow_version_id: number
+  from_stage_id: number
+  action_id: number
+  to_stage_id: number
+  requires_comment: boolean
+  confirmation_message: string | null
+  created_at: string | null
+  updated_at: string | null
+  version: number
+}
+
+export type FieldType =
+  | 'TEXT'
+  | 'NUMBER'
+  | 'DATE'
+  | 'SELECT'
+  | 'DYNAMIC_SELECT'
+  | 'TEXTAREA'
+  | 'FILE'
+  | 'CURRENCY'
+  | 'CHECKBOX'
+
+export type DynamicFieldSource = 'MERCHANTS' | 'MERCHANT_COMPANIES' | 'REFERENCE_DATA'
+
+export interface FieldGroup {
+  id: number
+  workflow_version_id: number
+  name: string
+  label: string
+  sort_order: number
+  fields: FieldDefinition[]
+  created_at: string | null
+  updated_at: string | null
+  version: number
+}
+
+export interface FieldDefinition {
+  id: number
+  workflow_version_id: number
+  field_group_id: number
+  key: string
+  label: string
+  type: FieldType
+  placeholder: string | null
+  help_text: string | null
+  default_value: string | null
+  min_value: number | null
+  max_value: number | null
+  min_length: number | null
+  max_length: number | null
+  regex_pattern: string | null
+  options: Array<{ value: string; label: string }> | null
+  reference_table_id: number | null
+  dynamic_source: DynamicFieldSource | null
+  allowed_file_types: string[] | null
+  max_file_size: number | null
+  multiple: boolean
+  is_required: boolean
+  is_system: boolean
+  sort_order: number
+  created_at: string | null
+  updated_at: string | null
+  version: number
+}
+
+export interface WorkflowValidationError {
+  code: string
+  target: string
+  message: string
+}
+
+export interface WorkflowGraphNode {
+  id: number
+  code: string
+  name: string
+  display_label: string | null
+  is_initial: boolean
+  is_final: boolean
+  sort_order: number
+}
+
+export interface WorkflowGraphEdge {
+  id: number
+  from_stage_id: number
+  to_stage_id: number
+  action_id: number
+  action_code: string | null
+  action_name: string | null
+  requires_comment: boolean
+  is_self_loop: boolean
+  is_return: boolean
+}
+
+export interface WorkflowGraph {
+  nodes: WorkflowGraphNode[]
+  edges: WorkflowGraphEdge[]
+}
+
+export interface StageFieldRule {
+  id: number
+  stage_id: number
+  field_id: number
+  is_visible: boolean
+  is_editable: boolean
+  is_required: boolean
+  created_at: string | null
+  updated_at: string | null
+  version: number
+}
+
+export type StageAccessLevel = 'VIEW' | 'EXECUTE'
+
+export interface StagePermission {
+  id: number
+  stage_id: number
+  organization_id: number | null
+  team_id: number | null
+  role_id: number | null
+  user_id: number | null
+  access_level: StageAccessLevel
+  display_label: string
+  created_at: string | null
+  updated_at: string | null
+  version: number
+}
