@@ -49,6 +49,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { useWorkflowActions } from '@/composables/useWorkflowActions'
+import { NOT_ELIGIBLE_LABEL_AR } from '@/constants/workflow'
 
 const {
   actions,
@@ -78,7 +79,7 @@ const KINDS: WorkflowActionKind[] = [
 const kindLabels: Record<WorkflowActionKind, string> = {
   DRAFT: 'مسودة',
   APPROVE: 'اعتماد',
-  REJECT: 'رفض',
+  REJECT: NOT_ELIGIBLE_LABEL_AR,
   RETURN: 'إعادة',
   CLOSE: 'إغلاق',
   INFO: 'معلومات',
