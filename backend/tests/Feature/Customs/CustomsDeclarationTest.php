@@ -10,6 +10,7 @@ use App\Models\ImportRequest;
 use App\Models\Permission;
 use App\Models\User;
 use App\Services\Audit\AuditService;
+use App\Services\Customs\CustomsDeclarationGenerator;
 use App\Services\Customs\CustomsService;
 use App\Services\Workflow\WorkflowService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -127,7 +128,7 @@ class CustomsDeclarationTest extends TestCase
         $audit = Mockery::mock(AuditService::class);
         $audit->shouldNotReceive('log');
 
-        $service = new CustomsService($workflow, $audit);
+        $service = new CustomsService($workflow, $audit, app(CustomsDeclarationGenerator::class));
 
         try {
             $service->generate($request, $this->director);

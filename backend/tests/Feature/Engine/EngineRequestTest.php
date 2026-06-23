@@ -490,6 +490,9 @@ class EngineRequestTest extends TestCase
     {
         $request = $this->createRequest();
 
+        // The viewer holds only VIEW on the initial stage, so the policy's execute
+        // gate (bank scope + EXECUTE) rejects before the service runs — the API
+        // returns the policy-level forbidden envelope.
         $response = $this->actingAs($this->viewer)->postJson("/api/v1/engine-requests/{$request->id}/actions", [
             'transition_id' => $this->submitTransition->id,
             'data' => [],
@@ -497,7 +500,7 @@ class EngineRequestTest extends TestCase
         ]);
 
         $response->assertStatus(403)
-            ->assertJsonPath('error_code', 'STAGE_EXECUTION_FORBIDDEN');
+            ->assertJsonPath('error_code', 'WORKFLOW_FORBIDDEN');
     }
 
     public function test_transition_comment_required(): void
@@ -574,8 +577,10 @@ class EngineRequestTest extends TestCase
             'version' => $request->version,
         ]);
 
+        // A closed request is non-actionable: the policy's execute gate (which checks
+        // isActive) forbids before the service-level REQUEST_CLOSED path is reached.
         $response->assertStatus(403)
-            ->assertJsonPath('error_code', 'REQUEST_CLOSED');
+            ->assertJsonPath('error_code', 'WORKFLOW_FORBIDDEN');
     }
 
     // ── 18.5.5: Save Draft ───────────────────────────────────────────────
@@ -614,13 +619,15 @@ class EngineRequestTest extends TestCase
     {
         $request = $this->createRequest();
 
+        // The viewer lacks EXECUTE on the initial stage, so the policy execute gate
+        // forbids the draft before the service runs.
         $response = $this->actingAs($this->viewer)->patchJson("/api/v1/engine-requests/{$request->id}/draft", [
             'data' => ['amount' => 75000],
             'version' => $request->version,
         ]);
 
         $response->assertStatus(403)
-            ->assertJsonPath('error_code', 'STAGE_EXECUTION_FORBIDDEN');
+            ->assertJsonPath('error_code', 'WORKFLOW_FORBIDDEN');
     }
 
     // ── 18.5.6: Documents ────────────────────────────────────────────────
@@ -807,7 +814,8 @@ class EngineRequestTest extends TestCase
             'version' => $request->version,
         ]);
 
-        $response->assertStatus(500);
+        $response->assertStatus(422)
+            ->assertJsonPath('error_code', 'STAGE_HOOK_FAILED');
 
         $request->refresh();
         $this->assertEquals($this->initialStage->id, $request->current_stage_id);

@@ -4,8 +4,12 @@ namespace App\Services\Workflow;
 
 use App\Enums\AuditAction;
 use App\Enums\StageAccessLevel;
+use App\Exceptions\CustomsException;
 use App\Exceptions\EngineException;
+use App\Exceptions\FinancingLimitExceededException;
+use App\Exceptions\FinancingLockTimeoutException;
 use App\Models\EngineRequest;
+use App\Models\User;
 use App\Models\WorkflowHistoryEntry;
 use App\Models\WorkflowTransition;
 use App\Services\Audit\AuditService;
@@ -27,8 +31,9 @@ class EngineTransitionService
         ?string $comment,
         array $data,
         int $version,
+        User $actor,
     ): EngineRequest {
-        return DB::transaction(function () use ($request, $transitionId, $comment, $data, $version) {
+        return DB::transaction(function () use ($request, $transitionId, $comment, $data, $version, $actor) {
             $request = EngineRequest::lockForUpdate()->findOrFail($request->id);
 
             if (! $request->isActive()) {
@@ -44,7 +49,7 @@ class EngineTransitionService
                 throw EngineException::transitionNotAvailable();
             }
 
-            $user = auth()->user();
+            $user = $actor;
             if (! $this->permissionResolver->userCanAccessStage($user, $transition->fromStage, StageAccessLevel::EXECUTE)) {
                 throw EngineException::stageExecutionForbidden();
             }
@@ -97,16 +102,30 @@ class EngineTransitionService
                 ],
             );
 
-            $this->hookRegistry->fireExit($request, $transition, $user);
-            $this->hookRegistry->fireEntry($request, $transition, $user);
+            // Hooks run inside the transaction so any failure rolls the transition back
+            // atomically. Domain exceptions that already carry their own error envelope
+            // (engine, financing, customs) propagate as-is so the client sees the correct
+            // error_code; only an unexpected throwable is wrapped to avoid a bare 500.
+            try {
+                $this->hookRegistry->fireExit($request, $transition, $user);
+                $this->hookRegistry->fireEntry($request, $transition, $user);
+            } catch (EngineException|FinancingLimitExceededException|FinancingLockTimeoutException|CustomsException $e) {
+                throw $e;
+            } catch (\Throwable $e) {
+                throw new EngineException(
+                    'A stage side-effect failed; the transition was rolled back.',
+                    'STAGE_HOOK_FAILED',
+                    422,
+                );
+            }
 
             return $request->fresh(['currentStage', 'creator', 'bank', 'merchant']);
         });
     }
 
-    public function saveDraft(EngineRequest $request, array $data, int $version): EngineRequest
+    public function saveDraft(EngineRequest $request, array $data, int $version, User $actor): EngineRequest
     {
-        return DB::transaction(function () use ($request, $data, $version) {
+        return DB::transaction(function () use ($request, $data, $version, $actor) {
             $request = EngineRequest::lockForUpdate()->findOrFail($request->id);
 
             if (! $request->isActive()) {
@@ -117,7 +136,7 @@ class EngineTransitionService
                 throw EngineException::requestStale();
             }
 
-            $user = auth()->user();
+            $user = $actor;
             if (! $this->permissionResolver->userCanAccessStage($user, $request->currentStage, StageAccessLevel::EXECUTE)) {
                 throw EngineException::stageExecutionForbidden();
             }

@@ -14,6 +14,7 @@ enum AuditAction: string
     case VOTE_CAST = 'VOTE_CAST';
     case DOCUMENT_UPLOADED = 'DOCUMENT_UPLOADED';
     case DOCUMENT_DOWNLOADED = 'DOCUMENT_DOWNLOADED';
+    case DOCUMENT_DELETED = 'DOCUMENT_DELETED';
     case SWIFT_UPLOADED = 'SWIFT_UPLOADED';
     case CUSTOMS_ISSUED = 'CUSTOMS_ISSUED';
     case FX_CONFIRMATION_UPLOADED = 'FX_CONFIRMATION_UPLOADED';
@@ -51,6 +52,7 @@ enum AuditAction: string
             self::VOTE_CAST => 'Vote Cast / تسجيل تصويت',
             self::DOCUMENT_UPLOADED => 'Document Uploaded / رفع مستند',
             self::DOCUMENT_DOWNLOADED => 'Document Downloaded / تنزيل مستند',
+            self::DOCUMENT_DELETED => 'Document Deleted / حذف مستند',
             self::SWIFT_UPLOADED => 'SWIFT Uploaded / رفع سويفت',
             self::CUSTOMS_ISSUED => 'Customs Issued / إصدار الجمارك',
             self::FX_CONFIRMATION_UPLOADED => 'FX Confirmation Uploaded / رفع وثيقة المصارفة الخارجية',

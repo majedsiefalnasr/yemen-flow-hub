@@ -19,6 +19,7 @@ use App\Services\Workflow\WorkflowGraphService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 
 class EngineRequestController extends Controller
 {
@@ -80,25 +81,18 @@ class EngineRequestController extends Controller
         $accessibleStageIds = $this->permissionResolver->accessibleStageIds($user, StageAccessLevel::VIEW);
 
         $query = EngineRequest::query()
+            ->withStageEntry()
             ->forUser($user)
-            ->whereIn('current_stage_id', $accessibleStageIds)
+            ->whereIn('engine_requests.current_stage_id', $accessibleStageIds)
             ->with(['currentStage', 'bank', 'merchant', 'creator']);
 
         $this->applyFilters($query, $request);
 
-        $page = $query->orderByDesc('created_at')
-            ->orderBy('id')
-            ->paginate($request->integer('per_page', 25));
+        $page = $query->orderByDesc('engine_requests.created_at')
+            ->orderBy('engine_requests.id')
+            ->paginate($this->perPage($request));
 
-        return response()->json([
-            'data' => EngineRequestResource::collection($page->items()),
-            'meta' => [
-                'current_page' => $page->currentPage(),
-                'last_page' => $page->lastPage(),
-                'per_page' => $page->perPage(),
-                'total' => $page->total(),
-            ],
-        ]);
+        return $this->paginatedResponse($page);
     }
 
     // ── 18.5.3: My Queue (دوري) ──────────────────────────────────────────
@@ -109,33 +103,29 @@ class EngineRequestController extends Controller
         $executeStageIds = $this->permissionResolver->accessibleStageIds($user, StageAccessLevel::EXECUTE);
 
         $query = EngineRequest::query()
+            ->withStageEntry()
             ->active()
             ->forUser($user)
-            ->whereIn('current_stage_id', $executeStageIds)
+            ->whereIn('engine_requests.current_stage_id', $executeStageIds)
             ->with(['currentStage', 'bank', 'merchant', 'creator']);
 
         $this->applyFilters($query, $request);
 
+        // Default دوري priority: SLA-breached → nearest-to-breach → oldest-in-stage.
         $page = $query
-            ->orderByDesc('created_at')
-            ->orderBy('id')
-            ->paginate($request->integer('per_page', 25));
+            ->orderBySlaPriority()
+            ->orderBy('engine_requests.id')
+            ->paginate($this->perPage($request));
 
-        return response()->json([
-            'data' => EngineRequestResource::collection($page->items()),
-            'meta' => [
-                'current_page' => $page->currentPage(),
-                'last_page' => $page->lastPage(),
-                'per_page' => $page->perPage(),
-                'total' => $page->total(),
-            ],
-        ]);
+        return $this->paginatedResponse($page);
     }
 
     // ── 18.5.4: Execute Transition ───────────────────────────────────────
 
     public function executeAction(Request $request, EngineRequest $engineRequest): JsonResponse
     {
+        $this->authorize('execute', $engineRequest);
+
         $validated = $request->validate([
             'transition_id' => ['required', 'integer', 'exists:workflow_transitions,id'],
             'comment' => ['nullable', 'string', 'max:2000'],
@@ -149,6 +139,7 @@ class EngineRequestController extends Controller
             $validated['comment'] ?? null,
             $validated['data'] ?? [],
             $validated['version'],
+            $request->user(),
         );
 
         $response = [
@@ -172,6 +163,8 @@ class EngineRequestController extends Controller
 
     public function draft(Request $request, EngineRequest $engineRequest): JsonResponse
     {
+        $this->authorize('execute', $engineRequest);
+
         $validated = $request->validate([
             'data' => ['required', 'array'],
             'version' => ['required', 'integer'],
@@ -181,6 +174,7 @@ class EngineRequestController extends Controller
             $engineRequest,
             $validated['data'],
             $validated['version'],
+            $request->user(),
         );
 
         return response()->json([
@@ -198,7 +192,12 @@ class EngineRequestController extends Controller
 
         $request->validate([
             'file' => ['required', 'file', 'mimes:pdf', 'max:10240'],
-            'field_id' => ['nullable', 'integer', 'exists:field_definitions,id'],
+            'field_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('field_definitions', 'id')
+                    ->where('workflow_version_id', $engineRequest->workflow_version_id),
+            ],
         ]);
 
         $file = $request->file('file');
@@ -242,7 +241,7 @@ class EngineRequestController extends Controller
         ]);
     }
 
-    public function downloadDocument(EngineRequest $engineRequest, EngineRequestDocument $document): mixed
+    public function downloadDocument(Request $request, EngineRequest $engineRequest, EngineRequestDocument $document): mixed
     {
         $this->authorize('view', $engineRequest);
 
@@ -250,9 +249,13 @@ class EngineRequestController extends Controller
             abort(404);
         }
 
+        if (! Storage::disk('private')->exists($document->path)) {
+            abort(404);
+        }
+
         $this->auditService->log(
             AuditAction::DOCUMENT_DOWNLOADED,
-            auth()->user(),
+            $request->user(),
             $document,
             ['request_id' => $engineRequest->id],
         );
@@ -279,10 +282,10 @@ class EngineRequestController extends Controller
         $document->delete();
 
         $this->auditService->log(
-            AuditAction::DOCUMENT_DOWNLOADED,
+            AuditAction::DOCUMENT_DELETED,
             $request->user(),
             $document,
-            ['request_id' => $engineRequest->id, 'action' => 'delete'],
+            ['request_id' => $engineRequest->id],
         );
 
         return response()->json(['success' => true, 'message' => 'Document deleted.']);
@@ -297,6 +300,7 @@ class EngineRequestController extends Controller
         $entries = $engineRequest->history()
             ->with(['fromStage:id,code,name', 'toStage:id,code,name', 'performer:id,name'])
             ->orderBy('created_at')
+            ->orderBy('id')
             ->get();
 
         return response()->json([
@@ -304,9 +308,9 @@ class EngineRequestController extends Controller
             'data' => $entries->map(fn ($e) => [
                 'id' => $e->id,
                 'from_stage' => $e->fromStage ? ['id' => $e->fromStage->id, 'code' => $e->fromStage->code, 'name' => $e->fromStage->name] : null,
-                'to_stage' => ['id' => $e->toStage->id, 'code' => $e->toStage->code, 'name' => $e->toStage->name],
+                'to_stage' => $e->toStage ? ['id' => $e->toStage->id, 'code' => $e->toStage->code, 'name' => $e->toStage->name] : null,
                 'action_code' => $e->action_code,
-                'performed_by' => ['id' => $e->performer->id, 'name' => $e->performer->name],
+                'performed_by' => $e->performer ? ['id' => $e->performer->id, 'name' => $e->performer->name] : null,
                 'comments' => $e->comments,
                 'created_at' => $e->created_at?->toISOString(),
             ]),
@@ -317,12 +321,14 @@ class EngineRequestController extends Controller
     {
         $this->authorize('view', $engineRequest);
 
-        $engineRequest->load('workflowVersion');
+        $engineRequest->load(['workflowVersion', 'history']);
         $graphData = $this->graphService->build($engineRequest->workflowVersion);
 
-        $executedStageIds = $engineRequest->history()
+        $history = $engineRequest->history;
+
+        $executedStageIds = $history
             ->pluck('to_stage_id')
-            ->merge($engineRequest->history()->pluck('from_stage_id'))
+            ->merge($history->pluck('from_stage_id'))
             ->filter()
             ->unique()
             ->values()
@@ -337,17 +343,18 @@ class EngineRequestController extends Controller
                 default => 'possible',
             };
         }
+        unset($node);
 
-        $executedTransitionIds = $engineRequest->history()
+        $executedTransitionKeys = $history
             ->whereNotNull('from_stage_id')
-            ->get(['from_stage_id', 'to_stage_id'])
             ->map(fn ($h) => "{$h->from_stage_id}-{$h->to_stage_id}")
             ->all();
 
         foreach ($graphData['edges'] as &$edge) {
             $key = "{$edge['from_stage_id']}-{$edge['to_stage_id']}";
-            $edge['state'] = in_array($key, $executedTransitionIds, true) ? 'executed' : 'possible';
+            $edge['state'] = in_array($key, $executedTransitionKeys, true) ? 'executed' : 'possible';
         }
+        unset($edge);
 
         return response()->json([
             'success' => true,
@@ -357,38 +364,88 @@ class EngineRequestController extends Controller
 
     // ── Private helpers ──────────────────────────────────────────────────
 
+    private const ALLOWED_STATUSES = ['ACTIVE', 'CLOSED', 'REJECTED'];
+
+    private const ALLOWED_SLA_STATUSES = ['ok', 'nearing', 'breached'];
+
     private function applyFilters($query, Request $request): void
     {
         if ($request->filled('workflow_id')) {
             $query->whereHas('workflowVersion', fn ($q) => $q->where('workflow_definition_id', $request->integer('workflow_id')));
         }
         if ($request->filled('workflow_version_id')) {
-            $query->where('workflow_version_id', $request->integer('workflow_version_id'));
+            $query->where('engine_requests.workflow_version_id', $request->integer('workflow_version_id'));
         }
         if ($request->filled('stage_id')) {
-            $query->where('current_stage_id', $request->integer('stage_id'));
+            $query->where('engine_requests.current_stage_id', $request->integer('stage_id'));
         }
         if ($request->filled('bank_id')) {
-            $query->where('bank_id', $request->integer('bank_id'));
+            $query->where('engine_requests.bank_id', $request->integer('bank_id'));
         }
         if ($request->filled('merchant_id')) {
-            $query->where('merchant_id', $request->integer('merchant_id'));
+            $query->where('engine_requests.merchant_id', $request->integer('merchant_id'));
         }
-        if ($request->filled('status')) {
-            $query->where('status', $request->string('status'));
+        if ($request->filled('status') && in_array($request->string('status')->value(), self::ALLOWED_STATUSES, true)) {
+            $query->where('engine_requests.status', $request->string('status'));
         }
         if ($request->filled('created_from')) {
-            $query->whereDate('created_at', '>=', $request->date('created_from'));
+            $query->whereDate('engine_requests.created_at', '>=', $request->date('created_from'));
         }
         if ($request->filled('created_to')) {
-            $query->whereDate('created_at', '<=', $request->date('created_to'));
+            $query->whereDate('engine_requests.created_at', '<=', $request->date('created_to'));
         }
         if ($request->filled('search')) {
             $term = '%'.$request->string('search').'%';
             $query->where(fn ($q) => $q
-                ->where('reference', 'like', $term)
-                ->orWhere('invoice_number', 'like', $term));
+                ->where('engine_requests.reference', 'like', $term)
+                ->orWhere('engine_requests.invoice_number', 'like', $term));
         }
+        if ($request->filled('sla_status') && in_array($request->string('sla_status')->value(), self::ALLOWED_SLA_STATUSES, true)) {
+            $this->applySlaStatusFilter($query, $request->string('sla_status')->value());
+        }
+    }
+
+    /**
+     * Filters on derived SLA status using the stage-entry subselect + stage SLA window,
+     * never a JSON scan. `ok` and `nearing` exclude requests with no SLA configured.
+     * Expressions are epoch-second based so they run on both MySQL and SQLite.
+     */
+    private function applySlaStatusFilter($query, string $slaStatus): void
+    {
+        $deadline = EngineRequest::slaDeadlineEpochSql();
+        $now = EngineRequest::nowEpochSql();
+        // Nearing window = the final 20% of the SLA (at least 1 minute) before the deadline.
+        $nearingWindow = 'MAX(1, CAST(current_stage.sla_duration_minutes * 0.2 AS INTEGER)) * 60';
+        $threshold = "({$deadline}) - ({$nearingWindow})";
+
+        match ($slaStatus) {
+            'breached' => $query->whereNotNull('current_stage.sla_duration_minutes')
+                ->whereRaw("({$deadline}) < ({$now})"),
+            'nearing' => $query->whereNotNull('current_stage.sla_duration_minutes')
+                ->whereRaw("({$deadline}) >= ({$now})")
+                ->whereRaw("({$now}) >= ({$threshold})"),
+            'ok' => $query->whereNotNull('current_stage.sla_duration_minutes')
+                ->whereRaw("({$now}) < ({$threshold})"),
+            default => null,
+        };
+    }
+
+    private function perPage(Request $request): int
+    {
+        return max(1, min(100, $request->integer('per_page', 25)));
+    }
+
+    private function paginatedResponse($page): JsonResponse
+    {
+        return response()->json([
+            'data' => EngineRequestResource::collection($page->items()),
+            'meta' => [
+                'current_page' => $page->currentPage(),
+                'last_page' => $page->lastPage(),
+                'per_page' => $page->perPage(),
+                'total' => $page->total(),
+            ],
+        ]);
     }
 
     private function documentResource(EngineRequestDocument $doc): array

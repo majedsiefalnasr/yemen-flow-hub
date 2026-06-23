@@ -35,22 +35,27 @@
 <div class="meta">
     <p><strong>رقم الوثيقة:</strong> {{ $declarationNumber }}</p>
     <p><strong>تاريخ الإصدار:</strong> {{ $issuedAt->format('Y-m-d H:i') }}</p>
-    <p><strong>رقم طلب التمويل:</strong> {{ $requestModel->reference_number }}</p>
+    <p><strong>رقم طلب التمويل:</strong> {{ $snapshot['reference_number'] }}</p>
     <p><strong>الجهة المصدرة:</strong> {{ $issuer->name }}</p>
 </div>
 
+@php
+    $fmt = static function ($iso) {
+        return $iso ? \Illuminate\Support\Carbon::parse($iso)->format('Y-m-d H:i') : '';
+    };
+@endphp
 <table>
-    <tr><th>البنك التجاري</th><td>{{ $requestModel->bank?->name }} ({{ $requestModel->bank?->code }})</td></tr>
-    <tr><th>اسم المورد</th><td>{{ $requestModel->supplier_name }}</td></tr>
-    <tr><th>المبلغ</th><td>{{ number_format((float)$requestModel->amount, 2) }} {{ $requestModel->currency }}</td></tr>
-    <tr><th>وصف البضائع</th><td>{{ $requestModel->goods_description }}</td></tr>
-    <tr><th>منفذ الدخول</th><td>{{ $requestModel->port_of_entry }}</td></tr>
+    <tr><th>البنك التجاري</th><td>{{ $snapshot['bank']['name'] ?? '' }} ({{ $snapshot['bank']['code'] ?? '' }})</td></tr>
+    <tr><th>اسم المورد</th><td>{{ $snapshot['supplier_name'] }}</td></tr>
+    <tr><th>المبلغ</th><td>{{ number_format((float) $snapshot['amount'], 2) }} {{ $snapshot['currency'] }}</td></tr>
+    <tr><th>وصف البضائع</th><td>{{ $snapshot['goods_description'] }}</td></tr>
+    <tr><th>منفذ الدخول</th><td>{{ $snapshot['port_of_entry'] }}</td></tr>
 </table>
 
 <table>
-    <tr><th>تاريخ موافقة البنك</th><td>{{ optional($requestModel->bank_approved_at)->format('Y-m-d H:i') }}</td></tr>
-    <tr><th>تاريخ موافقة لجنة المساندة</th><td>{{ optional($requestModel->support_approved_at)->format('Y-m-d H:i') }}</td></tr>
-    <tr><th>تاريخ القرار التنفيذي</th><td>{{ optional($requestModel->executive_decided_at)->format('Y-m-d H:i') }}</td></tr>
+    <tr><th>تاريخ موافقة البنك</th><td>{{ $fmt($snapshot['bank_approved_at'] ?? null) }}</td></tr>
+    <tr><th>تاريخ موافقة لجنة المساندة</th><td>{{ $fmt($snapshot['support_approved_at'] ?? null) }}</td></tr>
+    <tr><th>تاريخ القرار التنفيذي</th><td>{{ $fmt($snapshot['executive_decided_at'] ?? null) }}</td></tr>
 </table>
 
 <div class="notice">

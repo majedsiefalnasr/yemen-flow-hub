@@ -9,6 +9,7 @@ class CustomsDeclaration extends Model
 {
     protected $fillable = [
         'request_id',
+        'engine_request_id',
         'declaration_number',
         'issued_by',
         'issued_at',
@@ -36,6 +37,11 @@ class CustomsDeclaration extends Model
     public function request(): BelongsTo
     {
         return $this->belongsTo(ImportRequest::class, 'request_id');
+    }
+
+    public function engineRequest(): BelongsTo
+    {
+        return $this->belongsTo(EngineRequest::class, 'engine_request_id');
     }
 
     public function issuer(): BelongsTo

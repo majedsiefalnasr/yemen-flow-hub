@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Models\WorkflowHistoryEntry;
 use App\Models\WorkflowVersion;
 use App\Services\Audit\AuditService;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 
 class EngineRequestService
@@ -48,24 +49,28 @@ class EngineRequestService
             throw EngineException::stageFieldsInvalid($fieldErrors);
         }
 
+        $resolvedBankId = $actor->bank_id ?? ($data['bank_id'] ?? null);
+
         if (isset($data['merchant_id'])) {
             $merchant = Merchant::find($data['merchant_id']);
             if ($merchant === null) {
                 throw new EngineException('Merchant not found.', 'MERCHANT_NOT_FOUND', 422);
             }
-            if ($actor->bank_id !== null && (int) $merchant->bank_id !== (int) $actor->bank_id) {
+            // The merchant must belong to the request's resolved bank. This guards
+            // both bank users (resolved bank = their bank) and CBY users who select
+            // a bank explicitly — preventing a merchant being bound to a foreign bank.
+            if ($resolvedBankId !== null && (int) $merchant->bank_id !== (int) $resolvedBankId) {
                 throw EngineException::merchantOutOfScope();
             }
         }
 
-        return DB::transaction(function () use ($version, $initialStage, $data, $actor) {
-            $request = EngineRequest::create([
+        return DB::transaction(function () use ($version, $initialStage, $data, $actor, $resolvedBankId) {
+            $request = $this->createWithUniqueReference([
                 'workflow_version_id' => $version->id,
                 'current_stage_id' => $initialStage->id,
-                'reference' => $this->generateReference(),
                 'status' => 'ACTIVE',
                 'created_by' => $actor->id,
-                'bank_id' => $data['bank_id'] ?? $actor->bank_id,
+                'bank_id' => $resolvedBankId,
                 'merchant_id' => $data['merchant_id'] ?? null,
                 'data' => $data['data'] ?? [],
                 'version' => 1,
@@ -98,20 +103,46 @@ class EngineRequestService
         });
     }
 
-    private function generateReference(): string
+    /**
+     * Insert the request with a unique reference, retrying on a duplicate-reference
+     * collision. The reference is derived from the current max sequence rather than a
+     * row count (count drifts on soft-delete), and concurrent creators that compute the
+     * same sequence are resolved by the unique-constraint retry instead of a 500.
+     *
+     * @param  array<string, mixed>  $attributes
+     */
+    private function createWithUniqueReference(array $attributes): EngineRequest
     {
         $year = now()->year;
-        $sequence = DB::table('engine_requests')
-            ->where('reference', 'like', "ENG-{$year}-%")
-            ->count() + 1;
+        $prefix = "ENG-{$year}-";
 
-        $ref = sprintf('ENG-%d-%06d', $year, $sequence);
+        for ($attempt = 0; $attempt < 5; $attempt++) {
+            $maxReference = DB::table('engine_requests')
+                ->where('reference', 'like', $prefix.'%')
+                ->max('reference');
 
-        while (EngineRequest::where('reference', $ref)->exists()) {
-            $sequence++;
-            $ref = sprintf('ENG-%d-%06d', $year, $sequence);
+            $sequence = $maxReference !== null
+                ? ((int) substr($maxReference, strlen($prefix))) + 1
+                : 1;
+
+            $reference = sprintf('ENG-%d-%06d', $year, $sequence + $attempt);
+
+            try {
+                return EngineRequest::create($attributes + ['reference' => $reference]);
+            } catch (QueryException $e) {
+                if (! $this->isDuplicateKey($e)) {
+                    throw $e;
+                }
+                // Lost the race for this reference — recompute and retry.
+            }
         }
 
-        return $ref;
+        throw new EngineException('Could not allocate a unique request reference.', 'REFERENCE_ALLOCATION_FAILED', 500);
+    }
+
+    private function isDuplicateKey(QueryException $e): bool
+    {
+        return (int) ($e->errorInfo[1] ?? 0) === 1062
+            || str_contains($e->getMessage(), 'Integrity constraint violation');
     }
 }
