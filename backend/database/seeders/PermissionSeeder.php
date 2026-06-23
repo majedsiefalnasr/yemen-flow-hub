@@ -29,6 +29,7 @@ class PermissionSeeder extends Seeder
             ['slug' => 'docrules.manage', 'name_ar' => 'إدارة قواعد المستندات', 'name_en' => 'Manage document types', 'group' => 'admin'],
             ['slug' => 'roles.manage', 'name_ar' => 'إدارة الأدوار والصلاحيات', 'name_en' => 'Manage roles and permissions', 'group' => 'admin'],
             ['slug' => 'request.claim', 'name_ar' => 'حجز الطلب للمراجعة', 'name_en' => 'Claim request for review', 'group' => 'requests'],
+            ['slug' => 'workflow.design', 'name_ar' => 'تصميم مسارات العمل', 'name_en' => 'Design workflows', 'group' => 'admin'],
         ];
 
         foreach ($permissions as $permission) {
@@ -52,6 +53,7 @@ class PermissionSeeder extends Seeder
             'entities.manage' => [UserRole::CBY_ADMIN],
             'docrules.manage' => [UserRole::CBY_ADMIN],
             'roles.manage' => [UserRole::CBY_ADMIN],
+            'workflow.design' => [UserRole::CBY_ADMIN],
         ];
 
         DB::table('role_permissions')->delete();

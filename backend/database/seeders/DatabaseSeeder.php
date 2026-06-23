@@ -20,6 +20,9 @@ class DatabaseSeeder extends Seeder
         $this->call([ReferenceDataSeeder::class]);
         $this->command?->info('Seeded reference data tables.');
 
+        $this->call([WorkflowActionSeeder::class]);
+        $this->command?->info('Seeded workflow actions catalog.');
+
         $this->call([BankSeeder::class]);
         $this->command?->info('Seeded banks.');
 
