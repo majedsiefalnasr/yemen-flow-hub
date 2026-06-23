@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Services\Audit\AuditService;
 use App\Services\Auth\MfaService;
 use App\Services\Auth\PasswordRecoveryService;
+use App\Services\Authorization\PermissionService;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -182,6 +183,16 @@ class AuthController extends Controller
             ),
             'User profile retrieved.'
         );
+    }
+
+    public function permissions(Request $request)
+    {
+        $permissions = app(PermissionService::class);
+
+        return ApiResponse::success([
+            'screen_permissions' => $permissions->screenPermissionsForUser($request->user()),
+            'capabilities' => $permissions->capabilitiesForUser($request->user()),
+        ], 'Permissions retrieved.');
     }
 
     #[OA\Post(

@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\DB;
 
 class PermissionService
 {
+    // Legacy SCREEN_MAP kept for userCan() / permissionsForRole() back-compat
     private const SCREEN_MAP = [
         'request' => 'requests',
         'swift' => 'requests',
@@ -57,13 +58,85 @@ class PermissionService
             ->get();
     }
 
+    /**
+     * Build screen → capabilities map from screen_permissions table (governance roles).
+     * Falls back to legacy derivation for users without a governance role.
+     */
     public function screenPermissionsForUser(User $user): array
+    {
+        $governanceRole = $user->role();
+
+        if ($governanceRole) {
+            return $this->screenPermissionsForGovernanceRole($governanceRole->id);
+        }
+
+        return $this->legacyScreenPermissionsForUser($user);
+    }
+
+    public function screenPermissionsForGovernanceRole(int $roleId): array
+    {
+        $cacheKey = "screen_permissions.role.{$roleId}";
+
+        return Cache::remember($cacheKey, now()->addHour(), function () use ($roleId): array {
+            $rows = DB::table('screen_permissions')
+                ->join('screens', 'screens.id', '=', 'screen_permissions.screen_id')
+                ->where('screen_permissions.role_id', $roleId)
+                ->select('screens.key', 'screen_permissions.capability')
+                ->get();
+
+            $result = [];
+            foreach ($rows as $row) {
+                $result[$row->key][] = $row->capability;
+            }
+
+            foreach ($result as $key => $caps) {
+                $result[$key] = array_values(array_unique($caps));
+            }
+
+            ksort($result);
+
+            return $result;
+        });
+    }
+
+    public function capabilitiesForUser(User $user): array
+    {
+        $sp = $this->screenPermissionsForUser($user);
+
+        return [
+            'manage_users' => in_array('MANAGE', $sp['users'] ?? [], true),
+            'manage_banks' => in_array('MANAGE', $sp['banks'] ?? [], true),
+            'manage_roles' => in_array('MANAGE', $sp['roles'] ?? [], true),
+            'view_reports' => in_array('VIEW', $sp['reports'] ?? [], true),
+            'view_audit' => in_array('VIEW', $sp['audit'] ?? [], true),
+        ];
+    }
+
+    public function rolesForPermission(string $permissionSlug): array
+    {
+        return DB::table('role_permissions')
+            ->join('permissions', 'permissions.id', '=', 'role_permissions.permission_id')
+            ->where('permissions.slug', $permissionSlug)
+            ->pluck('role_permissions.role')
+            ->toArray();
+    }
+
+    public function clearRoleCache(UserRole|string $role): void
+    {
+        $value = $role instanceof UserRole ? $role->value : $role;
+        Cache::forget("permissions.role.{$value}");
+    }
+
+    public function clearScreenPermissionCache(int $roleId): void
+    {
+        Cache::forget("screen_permissions.role.{$roleId}");
+    }
+
+    private function legacyScreenPermissionsForUser(User $user): array
     {
         $result = [];
 
         if ($user->role === null) {
-            // A user without a resolved legacy role has no derived screen
-            // permissions (fail closed) rather than throwing on /auth/me.
             return $result;
         }
 
@@ -93,32 +166,6 @@ class PermissionService
         ksort($result);
 
         return $result;
-    }
-
-    public function capabilitiesForUser(User $user): array
-    {
-        return [
-            'manage_users' => $this->userCan($user, 'users.manage'),
-            'manage_banks' => $this->userCan($user, 'entities.manage'),
-            'manage_roles' => $this->userCan($user, 'roles.manage'),
-            'view_reports' => $this->userCan($user, 'reports.view'),
-            'view_audit' => $this->userCan($user, 'audit.view'),
-        ];
-    }
-
-    public function rolesForPermission(string $permissionSlug): array
-    {
-        return DB::table('role_permissions')
-            ->join('permissions', 'permissions.id', '=', 'role_permissions.permission_id')
-            ->where('permissions.slug', $permissionSlug)
-            ->pluck('role_permissions.role')
-            ->toArray();
-    }
-
-    public function clearRoleCache(UserRole|string $role): void
-    {
-        $value = $role instanceof UserRole ? $role->value : $role;
-        Cache::forget("permissions.role.{$value}");
     }
 
     private function cacheKey(UserRole $role): string
