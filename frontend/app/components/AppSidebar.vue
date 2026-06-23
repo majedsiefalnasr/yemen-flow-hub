@@ -144,6 +144,7 @@ const NAV_GROUP_DEFS: Array<{
       '/admin/cby-staff',
       '/admin/workflow-docs',
       '/admin/roles',
+      '/admin/screen-permissions',
     ],
     navGroupStyle: 'analytics',
   },

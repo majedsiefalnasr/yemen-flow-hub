@@ -1,5 +1,5 @@
 import { ref } from 'vue'
-import type { Notification, PaginatedResponse, ApiResponse } from '../types/models'
+import type { Notification, ApiResponse } from '../types/models'
 import { useApi } from './useApi'
 
 interface NotificationPagination {
@@ -7,6 +7,43 @@ interface NotificationPagination {
   lastPage: number
   perPage: number
   total: number
+}
+
+interface EngineNotificationRow {
+  id: number
+  notification_id: number
+  type: string
+  severity: string
+  title: string
+  body: string | null
+  entity_type: string | null
+  entity_id: number | null
+  action_url: string | null
+  read_at: string | null
+  archived_at: string | null
+  created_at: string | null
+}
+
+interface EngineNotificationResponse {
+  data: EngineNotificationRow[]
+  meta: { current_page: number; last_page: number; per_page: number; total: number }
+}
+
+function engineRowToNotification(row: EngineNotificationRow): Notification {
+  return {
+    id: String(row.id),
+    type: row.type,
+    data: {
+      title: row.title,
+      body: row.body ?? '',
+      severity: row.severity,
+      entity_type: row.entity_type,
+      entity_id: row.entity_id,
+      action_url: row.action_url,
+    },
+    read_at: row.read_at,
+    created_at: row.created_at ?? '',
+  }
 }
 
 export const useNotifications = () => {
@@ -28,25 +65,17 @@ export const useNotifications = () => {
     error.value = null
 
     try {
-      const response = await get<ApiResponse<PaginatedResponse<Notification> | Notification[]>>(
-        '/api/notifications',
-        {
-          query: { page },
-        },
-      )
+      const response = await get<ApiResponse<EngineNotificationResponse>>('/api/v1/notifications', {
+        query: { page },
+      })
 
-      // Backend returns either paginated { data: [...], meta: {...} } or a flat array
       const payload = response.data
-      if (Array.isArray(payload)) {
-        notifications.value = payload
-      } else {
-        notifications.value = payload.data
-        pagination.value = {
-          currentPage: payload.meta.current_page,
-          lastPage: payload.meta.last_page,
-          perPage: payload.meta.per_page,
-          total: payload.meta.total,
-        }
+      notifications.value = payload.data.map(engineRowToNotification)
+      pagination.value = {
+        currentPage: payload.meta.current_page,
+        lastPage: payload.meta.last_page,
+        perPage: payload.meta.per_page,
+        total: payload.meta.total,
       }
     } catch (err: any) {
       error.value = err.data?.message || 'Failed to load notifications'
@@ -57,7 +86,9 @@ export const useNotifications = () => {
 
   const fetchUnreadCount = async () => {
     try {
-      const response = await get<ApiResponse<{ count: number }>>('/api/notifications/unread-count')
+      const response = await get<ApiResponse<{ count: number }>>(
+        '/api/v1/notifications/unread-count',
+      )
       unreadCount.value = response.data.count
     } catch {
       // silently ignore — non-critical
@@ -66,7 +97,7 @@ export const useNotifications = () => {
 
   const markRead = async (id: string): Promise<boolean> => {
     try {
-      await post(`/api/notifications/${id}/read`)
+      await post(`/api/v1/notifications/${id}/read`)
 
       const notif = notifications.value.find((n) => n.id === id)
       if (notif && !notif.read_at) {
@@ -85,7 +116,7 @@ export const useNotifications = () => {
 
   const markAllRead = async (): Promise<boolean> => {
     try {
-      await post('/api/notifications/read-all')
+      await post('/api/v1/notifications/read-all')
 
       const now = new Date().toISOString()
       notifications.value.forEach((n) => {

@@ -13,6 +13,7 @@ export type RoleSurfaceKey =
   | 'nav.admin.cby_staff'
   | 'nav.admin.workflow_docs'
   | 'nav.admin.roles'
+  | 'nav.admin.screen_permissions'
   | 'nav.settings'
   | 'nav.external_fx_confirmation'
   | 'action.support_claim'
@@ -56,6 +57,7 @@ export const ROLE_SURFACE_MATRIX: Record<UserRole, RoleSurfaceContract> = {
       'nav.admin.cby_staff',
       'nav.admin.workflow_docs',
       'nav.admin.roles',
+      'nav.admin.screen_permissions',
     ],
   },
   [UserRole.BANK_REVIEWER]: {
@@ -76,6 +78,7 @@ export const ROLE_SURFACE_MATRIX: Record<UserRole, RoleSurfaceContract> = {
       'nav.admin.cby_staff',
       'nav.admin.workflow_docs',
       'nav.admin.roles',
+      'nav.admin.screen_permissions',
       'action.support_claim',
       'action.swift_upload',
       'action.fx_request_upload',
@@ -102,6 +105,7 @@ export const ROLE_SURFACE_MATRIX: Record<UserRole, RoleSurfaceContract> = {
       'nav.admin.cby_staff',
       'nav.admin.workflow_docs',
       'nav.admin.roles',
+      'nav.admin.screen_permissions',
       'action.support_claim',
       'action.swift_upload',
       'action.fx_request_upload',
@@ -131,6 +135,7 @@ export const ROLE_SURFACE_MATRIX: Record<UserRole, RoleSurfaceContract> = {
       'nav.admin.cby_staff',
       'nav.admin.workflow_docs',
       'nav.admin.roles',
+      'nav.admin.screen_permissions',
       'action.support_claim',
       'action.voting.cast',
       'action.voting.close_finalize',
@@ -156,6 +161,7 @@ export const ROLE_SURFACE_MATRIX: Record<UserRole, RoleSurfaceContract> = {
       'nav.admin.cby_staff',
       'nav.admin.workflow_docs',
       'nav.admin.roles',
+      'nav.admin.screen_permissions',
       'action.swift_upload',
       'action.fx_request_upload',
       'action.voting.cast',
@@ -184,6 +190,7 @@ export const ROLE_SURFACE_MATRIX: Record<UserRole, RoleSurfaceContract> = {
       'nav.admin.cby_staff',
       'nav.admin.workflow_docs',
       'nav.admin.roles',
+      'nav.admin.screen_permissions',
       'action.support_claim',
       'action.swift_upload',
       'action.fx_request_upload',
@@ -213,6 +220,7 @@ export const ROLE_SURFACE_MATRIX: Record<UserRole, RoleSurfaceContract> = {
       'nav.admin.cby_staff',
       'nav.admin.workflow_docs',
       'nav.admin.roles',
+      'nav.admin.screen_permissions',
       'action.support_claim',
       'action.swift_upload',
       'action.fx_request_upload',
@@ -230,6 +238,7 @@ export const ROLE_SURFACE_MATRIX: Record<UserRole, RoleSurfaceContract> = {
       'nav.admin.cby_staff',
       'nav.admin.workflow_docs',
       'nav.admin.roles',
+      'nav.admin.screen_permissions',
       'nav.settings',
       'action.external_fx_confirmation.download',
     ],
@@ -260,6 +269,7 @@ export const NAV_SURFACE_ROUTES: Record<
   | 'nav.admin.cby_staff'
   | 'nav.admin.workflow_docs'
   | 'nav.admin.roles'
+  | 'nav.admin.screen_permissions'
   | 'nav.settings'
   | 'nav.external_fx_confirmation',
   string
@@ -276,6 +286,7 @@ export const NAV_SURFACE_ROUTES: Record<
   'nav.admin.cby_staff': '/admin/cby-staff',
   'nav.admin.workflow_docs': '/admin/workflow-docs',
   'nav.admin.roles': '/admin/roles',
+  'nav.admin.screen_permissions': '/admin/screen-permissions',
   'nav.settings': '/settings',
   'nav.external_fx_confirmation': '/customs',
 }

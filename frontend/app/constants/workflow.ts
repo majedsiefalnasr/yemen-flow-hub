@@ -357,6 +357,12 @@ export const NAV_ITEMS: NavItem[] = [
     roles: rolesForSurface('nav.admin.roles'),
   },
   {
+    label: 'صلاحيات الشاشات',
+    route: NAV_SURFACE_ROUTES['nav.admin.screen_permissions'],
+    icon: 'lock',
+    roles: rolesForSurface('nav.admin.screen_permissions'),
+  },
+  {
     label: 'الإعدادات',
     route: NAV_SURFACE_ROUTES['nav.settings'],
     icon: 'settings',
@@ -986,6 +992,7 @@ export const ROUTE_ROLE_MAP: Record<string, UserRole[]> = {
   '/admin/banks': rolesForSurface('nav.admin.entities'),
   '/admin/roles': rolesForSurface('nav.admin.roles'),
   '/admin/workflow-docs': rolesForSurface('nav.admin.workflow_docs'),
+  '/admin/screen-permissions': rolesForSurface('nav.admin.screen_permissions'),
   '/settings': rolesForSurface('nav.settings'),
   '/settings/system': [UserRole.CBY_ADMIN],
   '/settings/bank': [UserRole.BANK_ADMIN],
