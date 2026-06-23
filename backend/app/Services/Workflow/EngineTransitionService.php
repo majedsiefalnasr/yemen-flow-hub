@@ -13,7 +13,9 @@ use App\Models\User;
 use App\Models\WorkflowHistoryEntry;
 use App\Models\WorkflowTransition;
 use App\Services\Audit\AuditService;
+use App\Services\Notifications\EngineNotificationDispatcher;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class EngineTransitionService
 {
@@ -23,6 +25,7 @@ class EngineTransitionService
         private RequestProjectionSync $projectionSync,
         private AuditService $auditService,
         private StageHookRegistry $hookRegistry,
+        private EngineNotificationDispatcher $notificationDispatcher,
     ) {}
 
     public function execute(
@@ -80,6 +83,8 @@ class EngineTransitionService
 
             $this->projectionSync->sync($request);
 
+            $correlationId = (string) Str::uuid();
+
             WorkflowHistoryEntry::create([
                 'request_id' => $request->id,
                 'from_stage_id' => $transition->from_stage_id,
@@ -100,6 +105,8 @@ class EngineTransitionService
                     'to_stage_id' => $transition->to_stage_id,
                     'action_code' => $transition->action?->code,
                 ],
+                workflowInstanceId: $request->id,
+                correlationId: $correlationId,
             );
 
             // Hooks run inside the transaction so any failure rolls the transition back
@@ -118,6 +125,15 @@ class EngineTransitionService
                     422,
                 );
             }
+
+            $this->notificationDispatcher->afterTransition(
+                requestId: $request->id,
+                referenceNumber: $request->reference_number ?? "#{$request->id}",
+                toStage: $transition->toStage,
+                fromStageName: $transition->fromStage->name ?? $transition->fromStage->code,
+                toStageName: $transition->toStage->name ?? $transition->toStage->code,
+                actionLabel: $transition->action?->label ?? $transition->action?->code ?? 'transition',
+            );
 
             return $request->fresh(['currentStage', 'creator', 'bank', 'merchant']);
         });
@@ -164,6 +180,7 @@ class EngineTransitionService
                 $user,
                 $request,
                 ['action' => 'draft_save'],
+                workflowInstanceId: $request->id,
             );
 
             return $request->fresh(['currentStage', 'creator', 'bank', 'merchant']);

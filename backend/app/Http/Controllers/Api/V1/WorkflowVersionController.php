@@ -2,13 +2,17 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Enums\AuditAction;
 use App\Exceptions\StaleResourceException;
 use App\Exceptions\WorkflowVersionImmutableException;
 use App\Exceptions\WorkflowVersionValidationException;
 use App\Http\Controllers\Api\Controller;
 use App\Http\Requests\UpdateWorkflowVersionRequest;
 use App\Http\Resources\WorkflowVersionResource;
+use App\Models\User;
 use App\Models\WorkflowVersion;
+use App\Services\Audit\AuditService;
+use App\Services\Notifications\EngineNotificationDispatcher;
 use App\Services\Workflow\WorkflowDesignerService;
 use App\Services\Workflow\WorkflowGraphService;
 use Illuminate\Http\JsonResponse;
@@ -19,6 +23,8 @@ class WorkflowVersionController extends Controller
     public function __construct(
         private readonly WorkflowDesignerService $designer,
         private readonly WorkflowGraphService $graphService,
+        private readonly AuditService $auditService,
+        private readonly EngineNotificationDispatcher $notificationDispatcher,
     ) {}
 
     public function show(WorkflowVersion $workflowVersion): WorkflowVersionResource
@@ -68,6 +74,10 @@ class WorkflowVersionController extends Controller
             return $this->error($exception->errorCode, $exception->getMessage(), 409);
         }
 
+        $this->auditService->log(AuditAction::WORKFLOW_CLONED, $request->user(), $clone, [
+            'source_version_id' => $workflowVersion->id,
+        ]);
+
         return (new WorkflowVersionResource($clone))->response()->setStatusCode(201);
     }
 
@@ -92,6 +102,24 @@ class WorkflowVersionController extends Controller
                 ],
             ], 422);
         }
+
+        $this->auditService->log(AuditAction::WORKFLOW_PUBLISHED, $request->user(), $workflowVersion, [
+            'workflow_definition_id' => $workflowVersion->workflow_definition_id,
+        ]);
+
+        $definition = $workflowVersion->workflowDefinition;
+        $adminUserIds = User::query()
+            ->where('is_active', true)
+            ->whereHas('roles', fn ($q) => $q->where('code', 'system_admin'))
+            ->pluck('id')
+            ->toArray();
+
+        $this->notificationDispatcher->afterWorkflowPublished(
+            definitionId: (int) $workflowVersion->workflow_definition_id,
+            workflowName: $definition?->name ?? 'Workflow',
+            versionLabel: $workflowVersion->label ?? "v{$workflowVersion->id}",
+            recipientUserIds: $adminUserIds,
+        );
 
         return (new WorkflowVersionResource($workflowVersion))->response();
     }

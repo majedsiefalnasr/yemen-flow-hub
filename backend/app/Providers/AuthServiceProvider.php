@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Models\AuditLog;
 use App\Models\Bank;
 use App\Models\CustomsDeclaration;
 use App\Models\EngineRequest;
@@ -24,6 +25,7 @@ use App\Models\WorkflowDefinition;
 use App\Models\WorkflowStage;
 use App\Models\WorkflowTransition;
 use App\Models\WorkflowVersion;
+use App\Policies\AuditLogPolicy;
 use App\Policies\BankPolicy;
 use App\Policies\CustomsDeclarationPolicy;
 use App\Policies\EngineRequestPolicy;
@@ -54,6 +56,7 @@ class AuthServiceProvider extends ServiceProvider
 {
     public function boot(): void
     {
+        Gate::policy(AuditLog::class, AuditLogPolicy::class);
         Gate::policy(Bank::class, BankPolicy::class);
         Gate::policy(User::class, UserPolicy::class);
         Gate::policy(ImportRequest::class, ImportRequestPolicy::class);

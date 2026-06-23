@@ -38,6 +38,11 @@ enum AuditAction: string
     case GOVERNANCE_CREATED = 'GOVERNANCE_CREATED';
     case GOVERNANCE_UPDATED = 'GOVERNANCE_UPDATED';
     case GOVERNANCE_DELETED = 'GOVERNANCE_DELETED';
+    case WORKFLOW_CLONED = 'WORKFLOW_CLONED';
+    case WORKFLOW_VALIDATED = 'WORKFLOW_VALIDATED';
+    case WORKFLOW_PUBLISHED = 'WORKFLOW_PUBLISHED';
+    case AUDIT_LOG_EXPORTED = 'AUDIT_LOG_EXPORTED';
+    case SCREEN_PERMISSION_UPDATED = 'SCREEN_PERMISSION_UPDATED';
 
     public function label(): string
     {
@@ -76,6 +81,11 @@ enum AuditAction: string
             self::GOVERNANCE_CREATED => 'Governance Created / إنشاء سجل حوكمة',
             self::GOVERNANCE_UPDATED => 'Governance Updated / تحديث سجل حوكمة',
             self::GOVERNANCE_DELETED => 'Governance Deleted / حذف سجل حوكمة',
+            self::WORKFLOW_CLONED => 'Workflow Cloned / استنساخ سير العمل',
+            self::WORKFLOW_VALIDATED => 'Workflow Validated / التحقق من سير العمل',
+            self::WORKFLOW_PUBLISHED => 'Workflow Published / نشر سير العمل',
+            self::AUDIT_LOG_EXPORTED => 'Audit Log Exported / تصدير سجل التدقيق',
+            self::SCREEN_PERMISSION_UPDATED => 'Screen Permission Updated / تحديث صلاحيات الشاشة',
         };
     }
 }

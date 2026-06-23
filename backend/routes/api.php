@@ -20,15 +20,22 @@ use App\Http\Controllers\Api\SearchController;
 use App\Http\Controllers\Api\SettingsController;
 use App\Http\Controllers\Api\TraderController;
 use App\Http\Controllers\Api\UserController;
+use App\Http\Controllers\Api\V1\AuditLogController;
 use App\Http\Controllers\Api\V1\BankController as V1BankController;
+use App\Http\Controllers\Api\V1\ComplianceController;
 use App\Http\Controllers\Api\V1\EngineRequestController;
 use App\Http\Controllers\Api\V1\FieldDefinitionController;
 use App\Http\Controllers\Api\V1\FieldGroupController;
 use App\Http\Controllers\Api\V1\MerchantController as V1MerchantController;
+use App\Http\Controllers\Api\V1\NotificationInboxController;
 use App\Http\Controllers\Api\V1\OrganizationController;
 use App\Http\Controllers\Api\V1\ReferenceTableController;
 use App\Http\Controllers\Api\V1\ReferenceValueController;
+use App\Http\Controllers\Api\V1\ReportController as V1ReportController;
+use App\Http\Controllers\Api\V1\ReportExportController;
 use App\Http\Controllers\Api\V1\RoleController;
+use App\Http\Controllers\Api\V1\RoleScreenPermissionController;
+use App\Http\Controllers\Api\V1\ScreenController;
 use App\Http\Controllers\Api\V1\StageFieldRuleController;
 use App\Http\Controllers\Api\V1\StagePermissionController;
 use App\Http\Controllers\Api\V1\TeamController;
@@ -52,6 +59,7 @@ Route::prefix('auth')->group(function () {
     Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::post('logout', [AuthController::class, 'logout']);
         Route::get('me', [AuthController::class, 'me']);
+        Route::get('me/permissions', [AuthController::class, 'permissions']);
         Route::post('switch-demo-role', [AuthController::class, 'switchDemoRole'])->middleware('throttle:20,1');
     });
 });
@@ -78,6 +86,9 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'active'])->group(function () {
     Route::post('roles/{role}/activate', [RoleController::class, 'activate']);
     Route::post('roles/{role}/deactivate', [RoleController::class, 'deactivate']);
     Route::delete('roles/{role}', [RoleController::class, 'destroy']);
+    Route::get('screens', [ScreenController::class, 'index']);
+    Route::get('roles/{role}/screen-permissions', [RoleScreenPermissionController::class, 'show']);
+    Route::put('roles/{role}/screen-permissions', [RoleScreenPermissionController::class, 'update']);
     Route::get('reference-tables', [ReferenceTableController::class, 'index']);
     Route::post('reference-tables', [ReferenceTableController::class, 'store']);
     Route::get('reference-tables/{reference_table}', [ReferenceTableController::class, 'show']);
@@ -165,6 +176,42 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'active'])->group(function () {
     Route::post('engine-requests/{engineRequest}/documents', [EngineRequestController::class, 'uploadDocument'])->middleware('throttle:10,1');
     Route::get('engine-requests/{engineRequest}/documents/{document}/download', [EngineRequestController::class, 'downloadDocument']);
     Route::delete('engine-requests/{engineRequest}/documents/{document}', [EngineRequestController::class, 'deleteDocument']);
+
+    // ─── Audit Logs (Epic 18.6) ─────────────────────────────────────────
+    Route::get('audit-logs', [AuditLogController::class, 'index']);
+    Route::get('audit-logs/export', [AuditLogController::class, 'export']);
+    Route::get('audit-logs/{auditLog}', [AuditLogController::class, 'show']);
+
+    // ─── Compliance (Epic 18.6) ─────────────────────────────────────────
+    Route::get('compliance/duplicate-invoices', [ComplianceController::class, 'duplicateInvoices']);
+    Route::get('compliance/expired-documents', [ComplianceController::class, 'expiredDocuments']);
+    Route::get('compliance/sla-breaches', [ComplianceController::class, 'slaBreaches']);
+
+    // ─── Reports (Epic 18.6) ────────────────────────────────────────────
+    Route::get('reports/summary', [V1ReportController::class, 'summary']);
+    Route::get('reports/requests-over-time', [V1ReportController::class, 'requestsOverTime']);
+    Route::get('reports/by-workflow-stage', [V1ReportController::class, 'byWorkflowStage']);
+    Route::get('reports/by-bank', [V1ReportController::class, 'byBank']);
+    Route::get('reports/by-merchant', [V1ReportController::class, 'byMerchant']);
+    Route::get('reports/by-sector', [V1ReportController::class, 'bySector']);
+    Route::get('reports/by-currency', [V1ReportController::class, 'byCurrency']);
+    Route::get('reports/stage-duration', [V1ReportController::class, 'stageDuration']);
+    Route::get('reports/sla', [V1ReportController::class, 'sla']);
+    Route::get('reports/team-performance', [V1ReportController::class, 'teamPerformance']);
+
+    // ─── Report Exports (Epic 18.6) ─────────────────────────────────────
+    Route::get('reports/exports', [ReportExportController::class, 'index']);
+    Route::post('reports/exports', [ReportExportController::class, 'store']);
+    Route::get('reports/exports/{reportExport}', [ReportExportController::class, 'show']);
+    Route::get('reports/exports/{reportExport}/download', [ReportExportController::class, 'download']);
+
+    // ─── Notification Inbox (Epic 18.7) ─────────────────────────────────
+    Route::get('notifications', [NotificationInboxController::class, 'index']);
+    Route::get('notifications/unread-count', [NotificationInboxController::class, 'unreadCount']);
+    Route::post('notifications/read-all', [NotificationInboxController::class, 'readAll']);
+    Route::post('notifications/{id}/read', [NotificationInboxController::class, 'read']);
+    Route::post('notifications/{id}/unread', [NotificationInboxController::class, 'unread']);
+    Route::post('notifications/{id}/archive', [NotificationInboxController::class, 'archive']);
 });
 
 Route::get('settings/public', [SettingsController::class, 'publicSettings']);

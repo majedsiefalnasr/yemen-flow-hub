@@ -220,6 +220,7 @@ class EngineRequestController extends Controller
             $request->user(),
             $doc,
             ['request_id' => $engineRequest->id, 'original_name' => $doc->original_name],
+            workflowInstanceId: $engineRequest->id,
         );
 
         return response()->json([
@@ -258,6 +259,7 @@ class EngineRequestController extends Controller
             $request->user(),
             $document,
             ['request_id' => $engineRequest->id],
+            workflowInstanceId: $engineRequest->id,
         );
 
         return Storage::disk('private')->download($document->path, $document->original_name);
@@ -286,6 +288,7 @@ class EngineRequestController extends Controller
             $request->user(),
             $document,
             ['request_id' => $engineRequest->id],
+            workflowInstanceId: $engineRequest->id,
         );
 
         return response()->json(['success' => true, 'message' => 'Document deleted.']);
