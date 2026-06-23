@@ -199,3 +199,76 @@ describe('useAudit — new endpoints (Story 7.9)', () => {
     expect(result.data[0]?.action).toBe('STATUS_TRANSITION')
   })
 })
+
+const ENGINE_LOG_FIXTURE = {
+  id: 100,
+  actor: { id: 5, name: 'Admin', email: 'admin@cby.ye' },
+  actor_user_id: 5,
+  actor_role: { id: 1, code: 'admin', name: 'مدير النظام' },
+  actor_role_id: 1,
+  user_role: 'CBY_ADMIN',
+  event_code: 'STATUS_TRANSITION',
+  entity_type: 'EngineRequest',
+  entity_id: 42,
+  request_id: 42,
+  correlation_id: 'abc-123',
+  old_values: { stage: 'INTAKE' },
+  new_values: { stage: 'REVIEW' },
+  metadata: {},
+  ip_address: '10.0.0.1',
+  user_agent: 'Test Agent',
+  created_at: '2026-06-23T10:00:00.000Z',
+}
+
+describe('useAudit — V1 engine audit (Story 18.6.1)', () => {
+  beforeEach(() => {
+    mockGet.mockReset()
+  })
+
+  it('fetchEngineAuditLogs calls GET /api/v1/audit-logs', async () => {
+    mockGet.mockResolvedValueOnce({
+      data: [ENGINE_LOG_FIXTURE],
+      meta: { current_page: 1, last_page: 1, per_page: 30, total: 1 },
+    })
+    const { fetchEngineAuditLogs } = useAudit()
+    const result = await fetchEngineAuditLogs()
+    expect(mockGet).toHaveBeenCalledWith('/api/v1/audit-logs')
+    expect(result.data).toHaveLength(1)
+    expect(result.data[0]?.event_code).toBe('STATUS_TRANSITION')
+    expect(result.data[0]?.correlation_id).toBe('abc-123')
+  })
+
+  it('fetchEngineAuditLogs passes all filters', async () => {
+    mockGet.mockResolvedValueOnce({
+      data: [],
+      meta: { current_page: 1, last_page: 1, per_page: 30, total: 0 },
+    })
+    const { fetchEngineAuditLogs } = useAudit()
+    await fetchEngineAuditLogs({ event: 'LOGIN', user: 5, from: '2026-06-01', ip: '10.0.0.1' })
+    const url = mockGet.mock.calls[0]?.[0] as string
+    expect(url).toContain('event=LOGIN')
+    expect(url).toContain('user=5')
+    expect(url).toContain('from=2026-06-01')
+    expect(url).toContain('ip=10.0.0.1')
+  })
+
+  it('fetchEngineAuditLogDetail calls GET /api/v1/audit-logs/:id', async () => {
+    mockGet.mockResolvedValueOnce({ data: ENGINE_LOG_FIXTURE })
+    const { fetchEngineAuditLogDetail } = useAudit()
+    const result = await fetchEngineAuditLogDetail(100)
+    expect(mockGet).toHaveBeenCalledWith('/api/v1/audit-logs/100')
+    expect(result.id).toBe(100)
+    expect(result.old_values).toEqual({ stage: 'INTAKE' })
+    expect(result.new_values).toEqual({ stage: 'REVIEW' })
+  })
+
+  it('fetchEngineAuditLogs filters by correlation_id', async () => {
+    mockGet.mockResolvedValueOnce({
+      data: [ENGINE_LOG_FIXTURE],
+      meta: { current_page: 1, last_page: 1, per_page: 30, total: 1 },
+    })
+    const { fetchEngineAuditLogs } = useAudit()
+    await fetchEngineAuditLogs({ correlation_id: 'abc-123' })
+    expect(mockGet).toHaveBeenCalledWith(expect.stringContaining('correlation_id=abc-123'))
+  })
+})

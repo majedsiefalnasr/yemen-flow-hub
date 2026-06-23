@@ -6,6 +6,86 @@ export interface ReportFilter {
   toDate?: string
 }
 
+export interface ReportExportEntry {
+  id: number
+  report_type: string
+  filters: Record<string, any> | null
+  format: string
+  status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED'
+  created_at: string
+}
+
+export interface EngineReportFilters {
+  from?: string
+  to?: string
+  workflow?: number
+  version?: number
+  bank?: number
+  stage?: number
+  status?: string
+  currency?: string
+}
+
+export interface ReportSummary {
+  total: number
+  active: number
+  closed: number
+  rejected: number
+  totalAmount: number
+}
+
+export interface MonthlyRow {
+  month: string
+  total: number
+  closed: number
+  rejected: number
+}
+
+export interface StageCount {
+  stage_code: string
+  stage_name: string
+  count: number
+}
+
+export interface BankBreakdown {
+  bank_id: number
+  bank_name: string
+  total: number
+  closed: number
+  rejected: number
+  total_amount: number
+}
+
+export interface CurrencyBreakdown {
+  currency: string
+  count: number
+  total_amount: number
+}
+
+export interface StageDuration {
+  stage_code: string
+  stage_name: string
+  avg_hours: number
+  transitions: number
+}
+
+export interface SlaReport {
+  stage_code: string
+  stage_name: string
+  total: number
+  breached: number
+  nearing: number
+  ok: number
+  breach_rate: number
+}
+
+export interface TeamPerformance {
+  role: string
+  actions: number
+  members: number
+  avg_actions_per_member: number
+}
+
 export interface WorkflowReport {
   counts_by_status: Record<string, number>
   counts_by_bank: Array<{ bank_id: number; bank_name: string; total: number }>
@@ -149,6 +229,97 @@ export function useReports() {
     await del(`/api/report-presets/${id}`)
   }
 
+  function buildEngineQuery(filters: EngineReportFilters): string {
+    const params = new URLSearchParams()
+    for (const [key, value] of Object.entries(filters)) {
+      if (value !== undefined && value !== null && value !== '') {
+        params.set(key, String(value))
+      }
+    }
+    const q = params.toString()
+    return q ? `?${q}` : ''
+  }
+
+  async function fetchReportSummary(filters: EngineReportFilters = {}): Promise<ReportSummary> {
+    const response = await get<{ data: ReportSummary }>(
+      `/api/v1/reports/summary${buildEngineQuery(filters)}`,
+    )
+    return response.data
+  }
+
+  async function fetchRequestsOverTime(filters: EngineReportFilters = {}): Promise<MonthlyRow[]> {
+    const response = await get<{ data: MonthlyRow[] }>(
+      `/api/v1/reports/requests-over-time${buildEngineQuery(filters)}`,
+    )
+    return response.data
+  }
+
+  async function fetchByWorkflowStage(filters: EngineReportFilters = {}): Promise<StageCount[]> {
+    const response = await get<{ data: StageCount[] }>(
+      `/api/v1/reports/by-workflow-stage${buildEngineQuery(filters)}`,
+    )
+    return response.data
+  }
+
+  async function fetchByBank(filters: EngineReportFilters = {}): Promise<BankBreakdown[]> {
+    const response = await get<{ data: BankBreakdown[] }>(
+      `/api/v1/reports/by-bank${buildEngineQuery(filters)}`,
+    )
+    return response.data
+  }
+
+  async function fetchByCurrency(filters: EngineReportFilters = {}): Promise<CurrencyBreakdown[]> {
+    const response = await get<{ data: CurrencyBreakdown[] }>(
+      `/api/v1/reports/by-currency${buildEngineQuery(filters)}`,
+    )
+    return response.data
+  }
+
+  async function fetchStageDuration(filters: EngineReportFilters = {}): Promise<StageDuration[]> {
+    const response = await get<{ data: StageDuration[] }>(
+      `/api/v1/reports/stage-duration${buildEngineQuery(filters)}`,
+    )
+    return response.data
+  }
+
+  async function fetchSlaReport(filters: EngineReportFilters = {}): Promise<SlaReport[]> {
+    const response = await get<{ data: SlaReport[] }>(
+      `/api/v1/reports/sla${buildEngineQuery(filters)}`,
+    )
+    return response.data
+  }
+
+  async function fetchTeamPerformance(
+    filters: EngineReportFilters = {},
+  ): Promise<TeamPerformance[]> {
+    const response = await get<{ data: TeamPerformance[] }>(
+      `/api/v1/reports/team-performance${buildEngineQuery(filters)}`,
+    )
+    return response.data
+  }
+
+  async function requestExport(
+    reportType: string,
+    filters: EngineReportFilters = {},
+    format: 'csv' | 'pdf' = 'csv',
+  ): Promise<ReportExportEntry> {
+    const response = await post<{ data: ReportExportEntry }>('/api/v1/reports/exports', {
+      report_type: reportType,
+      filters,
+      format,
+    })
+    return response.data
+  }
+
+  async function fetchExportStatus(exportId: number): Promise<ReportExportEntry> {
+    const response = await get<{ data: ReportExportEntry }>(`/api/v1/reports/exports/${exportId}`)
+    return response.data
+  }
+
+  async function fetchMyExports(): Promise<{ data: ReportExportEntry[]; meta: any }> {
+    return get<{ data: ReportExportEntry[]; meta: any }>('/api/v1/reports/exports')
+  }
+
   return {
     fetchWorkflowReport,
     fetchBankReport,
@@ -156,5 +327,16 @@ export function useReports() {
     loadPresets,
     savePreset,
     deletePreset,
+    fetchReportSummary,
+    fetchRequestsOverTime,
+    fetchByWorkflowStage,
+    fetchByBank,
+    fetchByCurrency,
+    fetchStageDuration,
+    fetchSlaReport,
+    fetchTeamPerformance,
+    requestExport,
+    fetchExportStatus,
+    fetchMyExports,
   }
 }

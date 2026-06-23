@@ -1,4 +1,4 @@
-import type { ApiResponse, AuditLog, PaginatedResponse } from '../types/models'
+import type { ApiResponse, AuditLog, EngineAuditLog, PaginatedResponse } from '../types/models'
 import { useApi } from './useApi'
 
 export interface AuditFilters {
@@ -6,6 +6,20 @@ export interface AuditFilters {
   action?: string
   from_date?: string
   to_date?: string
+  page?: number
+  per_page?: number
+}
+
+export interface EngineAuditFilters {
+  user?: number
+  role?: number
+  event?: string
+  entity?: string
+  request?: number
+  from?: string
+  to?: string
+  ip?: string
+  correlation_id?: string
   page?: number
   per_page?: number
 }
@@ -72,5 +86,55 @@ export function useAudit() {
     return response.data.data
   }
 
-  return { fetchAuditLogs, fetchAuditStats, fetchDuplicates, fetchRiskIndicators }
+  async function fetchEngineAuditLogs(
+    filters: EngineAuditFilters = {},
+  ): Promise<PaginatedResponse<EngineAuditLog>> {
+    const params = new URLSearchParams()
+    for (const [key, value] of Object.entries(filters)) {
+      if (value !== undefined && value !== null && value !== '') {
+        params.set(key, String(value))
+      }
+    }
+    const query = params.toString()
+    const path = query ? `/api/v1/audit-logs?${query}` : '/api/v1/audit-logs'
+    const response = await get<{
+      data: EngineAuditLog[]
+      meta: PaginatedResponse<EngineAuditLog>['meta']
+    }>(path)
+    return { data: response.data, meta: response.meta }
+  }
+
+  async function fetchEngineAuditLogDetail(id: number): Promise<EngineAuditLog> {
+    const response = await get<{ data: EngineAuditLog }>(`/api/v1/audit-logs/${id}`)
+    return response.data
+  }
+
+  async function exportEngineAuditLogs(filters: EngineAuditFilters = {}): Promise<void> {
+    const params = new URLSearchParams()
+    for (const [key, value] of Object.entries(filters)) {
+      if (value !== undefined && value !== null && value !== '') {
+        params.set(key, String(value))
+      }
+    }
+    const query = params.toString()
+    const path = query ? `/api/v1/audit-logs/export?${query}` : '/api/v1/audit-logs/export'
+    const response = await get<Blob>(path)
+    const blob = new Blob([response as unknown as BlobPart], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `audit-logs-${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  return {
+    fetchAuditLogs,
+    fetchAuditStats,
+    fetchDuplicates,
+    fetchRiskIndicators,
+    fetchEngineAuditLogs,
+    fetchEngineAuditLogDetail,
+    exportEngineAuditLogs,
+  }
 }

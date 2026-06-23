@@ -607,6 +607,26 @@ export interface AuditLog {
   created_at: string
 }
 
+export interface EngineAuditLog {
+  id: number
+  actor: { id: number; name: string; email: string } | null
+  actor_user_id: number | null
+  actor_role: { id: number; code: string; name: string } | null
+  actor_role_id: number | null
+  user_role: string | null
+  event_code: string
+  entity_type: string | null
+  entity_id: number | null
+  request_id: number | null
+  correlation_id: string | null
+  old_values: Record<string, any> | null
+  new_values: Record<string, any> | null
+  metadata: Record<string, any> | null
+  ip_address: string | null
+  user_agent: string | null
+  created_at: string
+}
+
 export interface DocumentType {
   id: number
   slug: string

@@ -306,3 +306,129 @@ describe('useReports — preset management (API-backed)', () => {
     expect(mockDel).toHaveBeenCalledWith('/api/report-presets/abc-123')
   })
 })
+
+describe('useReports — V1 report exports (Story 18.6.4)', () => {
+  beforeEach(() => vi.resetAllMocks())
+
+  it('requestExport posts to /api/v1/reports/exports', async () => {
+    mockPost.mockResolvedValueOnce({
+      data: {
+        id: 1,
+        report_type: 'summary',
+        status: 'PENDING',
+        created_at: '2026-06-23T10:00:00Z',
+      },
+    })
+    const { requestExport } = useReports()
+    const result = await requestExport('summary', { bank: 1 })
+    expect(mockPost).toHaveBeenCalledWith(
+      '/api/v1/reports/exports',
+      expect.objectContaining({ report_type: 'summary' }),
+    )
+    expect(result.status).toBe('PENDING')
+  })
+
+  it('fetchExportStatus calls show endpoint', async () => {
+    mockGet.mockResolvedValueOnce({
+      data: {
+        id: 1,
+        status: 'COMPLETED',
+        report_type: 'summary',
+        created_at: '2026-06-23T10:00:00Z',
+      },
+    })
+    const { fetchExportStatus } = useReports()
+    const result = await fetchExportStatus(1)
+    expect(mockGet).toHaveBeenCalledWith('/api/v1/reports/exports/1')
+    expect(result.status).toBe('COMPLETED')
+  })
+
+  it('fetchMyExports calls index endpoint', async () => {
+    mockGet.mockResolvedValueOnce({
+      data: [
+        { id: 1, report_type: 'summary', status: 'COMPLETED', created_at: '2026-06-23T10:00:00Z' },
+      ],
+      meta: { current_page: 1, last_page: 1, per_page: 20, total: 1 },
+    })
+    const { fetchMyExports } = useReports()
+    const result = await fetchMyExports()
+    expect(mockGet).toHaveBeenCalledWith('/api/v1/reports/exports')
+    expect(result.data).toHaveLength(1)
+  })
+})
+
+describe('useReports — V1 engine reports (Story 18.6.3)', () => {
+  beforeEach(() => vi.resetAllMocks())
+
+  it('fetchReportSummary calls /api/v1/reports/summary', async () => {
+    mockGet.mockResolvedValueOnce({
+      data: { total: 10, active: 5, closed: 4, rejected: 1, totalAmount: 50000 },
+    })
+    const { fetchReportSummary } = useReports()
+    const result = await fetchReportSummary()
+    expect(mockGet).toHaveBeenCalledWith('/api/v1/reports/summary')
+    expect(result.total).toBe(10)
+    expect(result.totalAmount).toBe(50000)
+  })
+
+  it('fetchReportSummary passes filters', async () => {
+    mockGet.mockResolvedValueOnce({
+      data: { total: 3, active: 3, closed: 0, rejected: 0, totalAmount: 15000 },
+    })
+    const { fetchReportSummary } = useReports()
+    await fetchReportSummary({ bank: 1, status: 'ACTIVE', from: '2026-01-01' })
+    const url = mockGet.mock.calls[0]?.[0] as string
+    expect(url).toContain('bank=1')
+    expect(url).toContain('status=ACTIVE')
+    expect(url).toContain('from=2026-01-01')
+  })
+
+  it('fetchRequestsOverTime returns monthly array', async () => {
+    mockGet.mockResolvedValueOnce({
+      data: [{ month: '2026-06', total: 5, closed: 2, rejected: 1 }],
+    })
+    const { fetchRequestsOverTime } = useReports()
+    const result = await fetchRequestsOverTime()
+    expect(result).toHaveLength(1)
+    expect(result[0]?.month).toBe('2026-06')
+  })
+
+  it('fetchByBank returns bank breakdown', async () => {
+    mockGet.mockResolvedValueOnce({
+      data: [
+        { bank_id: 1, bank_name: 'Bank', total: 5, closed: 3, rejected: 1, total_amount: 25000 },
+      ],
+    })
+    const { fetchByBank } = useReports()
+    const result = await fetchByBank()
+    expect(result[0]?.bank_name).toBe('Bank')
+  })
+
+  it('fetchSlaReport returns stage SLA data', async () => {
+    mockGet.mockResolvedValueOnce({
+      data: [
+        {
+          stage_code: 'INTAKE',
+          stage_name: 'Intake',
+          total: 10,
+          breached: 2,
+          nearing: 1,
+          ok: 7,
+          breach_rate: 20,
+        },
+      ],
+    })
+    const { fetchSlaReport } = useReports()
+    const result = await fetchSlaReport()
+    expect(result[0]?.breach_rate).toBe(20)
+  })
+
+  it('fetchTeamPerformance returns role aggregation', async () => {
+    mockGet.mockResolvedValueOnce({
+      data: [{ role: 'Support', actions: 50, members: 5, avg_actions_per_member: 10 }],
+    })
+    const { fetchTeamPerformance } = useReports()
+    const result = await fetchTeamPerformance()
+    expect(result[0]?.avg_actions_per_member).toBe(10)
+  })
+})
