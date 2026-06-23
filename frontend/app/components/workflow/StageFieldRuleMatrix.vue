@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { toast } from 'vue-sonner'
 import type {
   FieldDefinition,
@@ -26,6 +26,7 @@ const { rules, error, fetchRules, setRule } = useStageFieldRules()
 const { groups, fetchGroups } = useWorkflowFields()
 
 const editable = props.version.state === 'DRAFT'
+const pendingFieldIds = ref<Set<number>>(new Set())
 
 const fields = computed<FieldDefinition[]>(() => groups.value.flatMap((group) => group.fields))
 
@@ -40,12 +41,17 @@ function flag(fieldId: number, key: 'is_visible' | 'is_editable' | 'is_required'
   return key !== 'is_required'
 }
 
+function isPending(fieldId: number): boolean {
+  return pendingFieldIds.value.has(fieldId)
+}
+
 async function toggle(
   field: FieldDefinition,
   key: 'is_visible' | 'is_editable' | 'is_required',
   value: boolean,
 ) {
-  if (!editable) return
+  if (!editable || isPending(field.id)) return
+  pendingFieldIds.value.add(field.id)
   const current = ruleFor(field.id)
   try {
     await setRule(props.stage.id, {
@@ -56,6 +62,8 @@ async function toggle(
     })
   } catch (cause) {
     toast.error(extractApiErrorMessage(cause, 'تعذّر حفظ القاعدة'))
+  } finally {
+    pendingFieldIds.value.delete(field.id)
   }
 }
 
@@ -96,7 +104,7 @@ onMounted(() => {
           <TableCell>
             <Checkbox
               :checked="flag(field.id, 'is_visible')"
-              :disabled="!editable"
+              :disabled="!editable || isPending(field.id)"
               :aria-label="`ظاهر ${field.key}`"
               @update:checked="(v: boolean) => toggle(field, 'is_visible', v)"
             />
@@ -104,7 +112,7 @@ onMounted(() => {
           <TableCell>
             <Checkbox
               :checked="flag(field.id, 'is_editable')"
-              :disabled="!editable"
+              :disabled="!editable || isPending(field.id)"
               :aria-label="`قابل للتعديل ${field.key}`"
               @update:checked="(v: boolean) => toggle(field, 'is_editable', v)"
             />
@@ -112,7 +120,7 @@ onMounted(() => {
           <TableCell>
             <Checkbox
               :checked="flag(field.id, 'is_required')"
-              :disabled="!editable"
+              :disabled="!editable || isPending(field.id)"
               :aria-label="`مطلوب ${field.key}`"
               @update:checked="(v: boolean) => toggle(field, 'is_required', v)"
             />
