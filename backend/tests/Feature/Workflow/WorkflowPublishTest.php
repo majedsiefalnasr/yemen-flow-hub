@@ -133,27 +133,14 @@ class WorkflowPublishTest extends TestCase
             ->postJson("/api/v1/workflow-versions/{$first->id}/publish", ['version' => $first->version])
             ->assertOk();
 
-        // Clone the published version into a new DRAFT, rebuild it valid, publish.
+        // Clone the published version into a new DRAFT; deep-copy already carries
+        // the source's valid stages/transitions/permissions, so it's publishable as-is.
         $clone = $this->actingAs($this->admin)
             ->postJson("/api/v1/workflow-versions/{$first->id}/clone")
             ->assertCreated()
             ->json('data.id');
 
         $cloneVersion = WorkflowVersion::query()->findOrFail($clone);
-        $intake = $cloneVersion->stages()->create(['code' => 'intake', 'name' => 'Intake', 'is_initial' => true, 'sort_order' => 0]);
-        $done = $cloneVersion->stages()->create(['code' => 'done', 'name' => 'Done', 'is_final' => true, 'sort_order' => 1]);
-        $intake->stagePermissions()->create([
-            'organization_id' => $this->org->id,
-            'role_id' => $this->role->id,
-            'access_level' => StageAccessLevel::EXECUTE,
-            'display_label' => 'Reviewers',
-        ]);
-        $approve = WorkflowAction::query()->create(['code' => 'APPROVE2', 'name' => 'Approve', 'kind' => 'APPROVE']);
-        $cloneVersion->transitions()->create([
-            'from_stage_id' => $intake->id,
-            'action_id' => $approve->id,
-            'to_stage_id' => $done->id,
-        ]);
 
         $this->actingAs($this->admin)
             ->postJson("/api/v1/workflow-versions/{$clone}/publish", ['version' => $cloneVersion->fresh()->version])
@@ -174,6 +161,67 @@ class WorkflowPublishTest extends TestCase
         $errors = collect(app(WorkflowVersionValidator::class)->validate($version))->pluck('code');
 
         $this->assertContains('STAGE_NO_OUTGOING_TRANSITION', $errors);
+        $this->assertContains('STAGE_NO_EXECUTOR', $errors);
+    }
+
+    public function test_validator_flags_transition_referencing_inactive_action(): void
+    {
+        $version = $this->validDraft();
+        $transition = $version->transitions()->first();
+        $transition->action->update(['is_active' => false]);
+
+        $errors = collect(app(WorkflowVersionValidator::class)->validate($version))->pluck('code');
+
+        $this->assertContains('TRANSITION_INVALID_ACTION', $errors);
+    }
+
+    public function test_validator_flags_stage_with_only_self_loop_transitions(): void
+    {
+        $definition = WorkflowDefinition::query()->create(['code' => 'self_loop', 'name' => 'Self Loop']);
+        $version = $definition->versions()->create(['version_number' => 1, 'state' => WorkflowVersionState::DRAFT])->refresh();
+        $intake = $version->stages()->create(['code' => 'intake', 'name' => 'Intake', 'is_initial' => true, 'sort_order' => 0]);
+        $version->stages()->create(['code' => 'done', 'name' => 'Done', 'is_final' => true, 'sort_order' => 1]);
+        $intake->stagePermissions()->create([
+            'organization_id' => $this->org->id,
+            'role_id' => $this->role->id,
+            'access_level' => StageAccessLevel::EXECUTE,
+            'display_label' => 'Reviewers',
+        ]);
+        $note = WorkflowAction::query()->create(['code' => 'NOTE_'.uniqid(), 'name' => 'Add Note', 'kind' => 'INFO']);
+        $version->transitions()->create([
+            'from_stage_id' => $intake->id,
+            'action_id' => $note->id,
+            'to_stage_id' => $intake->id,
+        ]);
+
+        $errors = collect(app(WorkflowVersionValidator::class)->validate($version))->pluck('code');
+
+        $this->assertContains('STAGE_ONLY_SELF_LOOP', $errors);
+    }
+
+    public function test_validator_flags_executor_whose_sole_pinned_user_is_inactive(): void
+    {
+        $definition = WorkflowDefinition::query()->create(['code' => 'inactive_exec', 'name' => 'Inactive Executor']);
+        $version = $definition->versions()->create(['version_number' => 1, 'state' => WorkflowVersionState::DRAFT])->refresh();
+        $intake = $version->stages()->create(['code' => 'intake', 'name' => 'Intake', 'is_initial' => true, 'sort_order' => 0]);
+        $done = $version->stages()->create(['code' => 'done', 'name' => 'Done', 'is_final' => true, 'sort_order' => 1]);
+
+        $inactiveUser = User::factory()->create(['organization_id' => $this->org->id, 'is_active' => false]);
+        $intake->stagePermissions()->create([
+            'organization_id' => $this->org->id,
+            'user_id' => $inactiveUser->id,
+            'access_level' => StageAccessLevel::EXECUTE,
+            'display_label' => 'Sole Reviewer',
+        ]);
+        $approve = WorkflowAction::query()->create(['code' => 'APPROVE_'.uniqid(), 'name' => 'Approve', 'kind' => 'APPROVE']);
+        $version->transitions()->create([
+            'from_stage_id' => $intake->id,
+            'action_id' => $approve->id,
+            'to_stage_id' => $done->id,
+        ]);
+
+        $errors = collect(app(WorkflowVersionValidator::class)->validate($version))->pluck('code');
+
         $this->assertContains('STAGE_NO_EXECUTOR', $errors);
     }
 }

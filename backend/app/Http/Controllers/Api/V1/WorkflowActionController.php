@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Exceptions\StaleResourceException;
 use App\Exceptions\WorkflowDesignProtectionException;
 use App\Http\Controllers\Api\Controller;
+use App\Http\Controllers\Concerns\GuardsDesignerInput;
 use App\Http\Requests\StoreWorkflowActionRequest;
 use App\Http\Requests\UpdateWorkflowActionRequest;
 use App\Http\Resources\WorkflowActionResource;
@@ -16,6 +17,8 @@ use Illuminate\Support\Facades\DB;
 
 class WorkflowActionController extends Controller
 {
+    use GuardsDesignerInput;
+
     private const SORT_COLUMNS = ['code', 'name', 'kind', 'is_active', 'created_at'];
 
     public function __construct(private readonly WorkflowActionService $actions) {}
@@ -34,8 +37,8 @@ class WorkflowActionController extends Controller
 
         $page = WorkflowAction::query()
             ->when($request->filled('search'), fn ($q) => $q->where(fn ($n) => $n
-                ->where('code', 'like', '%'.$request->string('search')->toString().'%')
-                ->orWhere('name', 'like', '%'.$request->string('search')->toString().'%')))
+                ->where('code', 'like', '%'.$this->escapeLike($request->string('search')->toString()).'%')
+                ->orWhere('name', 'like', '%'.$this->escapeLike($request->string('search')->toString()).'%')))
             ->orderBy($sort, $direction)
             ->orderBy('id')
             ->paginate($request->integer('per_page', 25));
@@ -63,7 +66,11 @@ class WorkflowActionController extends Controller
     public function store(StoreWorkflowActionRequest $request): JsonResponse
     {
         $this->authorize('create', WorkflowAction::class);
-        $action = $this->actions->create($request->user(), $request->validated());
+        $action = $this->withUniqueViolationGuard(
+            fn () => $this->actions->create($request->user(), $request->validated()),
+            'code',
+            'A workflow action with this code already exists.',
+        );
 
         return (new WorkflowActionResource($action))->response()->setStatusCode(201);
     }

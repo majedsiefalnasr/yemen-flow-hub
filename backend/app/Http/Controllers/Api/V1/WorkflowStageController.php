@@ -6,17 +6,22 @@ use App\Exceptions\StaleResourceException;
 use App\Exceptions\WorkflowDesignProtectionException;
 use App\Exceptions\WorkflowVersionImmutableException;
 use App\Http\Controllers\Api\Controller;
+use App\Http\Controllers\Concerns\GuardsDesignerInput;
 use App\Http\Requests\StoreWorkflowStageRequest;
 use App\Http\Requests\UpdateWorkflowStageRequest;
 use App\Http\Resources\WorkflowStageResource;
 use App\Models\WorkflowStage;
 use App\Models\WorkflowVersion;
 use App\Services\Workflow\WorkflowDesignerService;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class WorkflowStageController extends Controller
 {
+    use GuardsDesignerInput;
+
     public function __construct(private readonly WorkflowDesignerService $designer) {}
 
     public function index(WorkflowVersion $workflowVersion): JsonResponse
@@ -42,6 +47,12 @@ class WorkflowStageController extends Controller
             $stage = $this->designer->createStage($request->user(), $workflowVersion, $request->validated());
         } catch (WorkflowVersionImmutableException $exception) {
             return $this->error($exception->errorCode, $exception->getMessage(), 409);
+        } catch (QueryException $exception) {
+            if (! $this->isUniqueViolation($exception)) {
+                throw $exception;
+            }
+
+            throw ValidationException::withMessages(['code' => 'A stage with this code already exists in this version.']);
         }
 
         return (new WorkflowStageResource($stage))->response()->setStatusCode(201);

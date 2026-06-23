@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Api\Controller;
+use App\Http\Controllers\Concerns\GuardsDesignerInput;
 use App\Http\Requests\StoreWorkflowDefinitionRequest;
 use App\Http\Resources\WorkflowDefinitionResource;
 use App\Models\WorkflowDefinition;
@@ -12,6 +13,8 @@ use Illuminate\Http\Request;
 
 class WorkflowDefinitionController extends Controller
 {
+    use GuardsDesignerInput;
+
     private const SORT_COLUMNS = ['code', 'name', 'is_active', 'created_at'];
 
     public function __construct(private readonly WorkflowDesignerService $designer) {}
@@ -31,8 +34,8 @@ class WorkflowDefinitionController extends Controller
         $page = WorkflowDefinition::query()
             ->with(['versions' => fn ($q) => $q->orderByDesc('version_number')])
             ->when($request->filled('search'), fn ($q) => $q->where(fn ($n) => $n
-                ->where('code', 'like', '%'.$request->string('search')->toString().'%')
-                ->orWhere('name', 'like', '%'.$request->string('search')->toString().'%')))
+                ->where('code', 'like', '%'.$this->escapeLike($request->string('search')->toString()).'%')
+                ->orWhere('name', 'like', '%'.$this->escapeLike($request->string('search')->toString()).'%')))
             ->orderBy($sort, $direction)
             ->orderBy('id')
             ->paginate($request->integer('per_page', 25));
@@ -55,7 +58,11 @@ class WorkflowDefinitionController extends Controller
     public function store(StoreWorkflowDefinitionRequest $request): JsonResponse
     {
         $this->authorize('create', WorkflowDefinition::class);
-        $definition = $this->designer->createDefinition($request->user(), $request->validated());
+        $definition = $this->withUniqueViolationGuard(
+            fn () => $this->designer->createDefinition($request->user(), $request->validated()),
+            'code',
+            'A workflow definition with this code already exists.',
+        );
 
         return (new WorkflowDefinitionResource(
             $definition->load(['versions' => fn ($q) => $q->orderByDesc('version_number')]),

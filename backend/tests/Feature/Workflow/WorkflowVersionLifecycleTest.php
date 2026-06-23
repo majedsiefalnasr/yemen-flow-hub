@@ -5,11 +5,13 @@ namespace Tests\Feature\Workflow;
 use App\Enums\StageAccessLevel;
 use App\Enums\UserRole;
 use App\Enums\WorkflowVersionState;
+use App\Models\FieldDefinition;
 use App\Models\Organization;
 use App\Models\Role;
 use App\Models\User;
 use App\Models\WorkflowAction;
 use App\Models\WorkflowDefinition;
+use App\Models\WorkflowStage;
 use App\Models\WorkflowVersion;
 use Database\Seeders\BankSeeder;
 use Database\Seeders\GovernanceSeeder;
@@ -136,6 +138,48 @@ class WorkflowVersionLifecycleTest extends TestCase
             'state' => 'DRAFT',
             'version_number' => 2,
         ]);
+    }
+
+    public function test_clone_deep_copies_stages_transitions_permissions_and_fields(): void
+    {
+        $version = $this->validDraftVersion();
+        $intake = $version->stages()->where('code', 'intake')->firstOrFail();
+        $group = $version->fieldGroups()->create(['name' => 'main', 'label' => 'Main', 'sort_order' => 0]);
+        $field = FieldDefinition::query()->create([
+            'workflow_version_id' => $version->id,
+            'field_group_id' => $group->id,
+            'key' => 'amount',
+            'label' => 'Amount',
+            'type' => 'NUMBER',
+            'sort_order' => 0,
+        ]);
+        $intake->stageFieldRules()->create([
+            'field_id' => $field->id,
+            'is_visible' => true,
+            'is_editable' => true,
+            'is_required' => true,
+        ]);
+        $version->update(['state' => WorkflowVersionState::PUBLISHED, 'published_at' => now()]);
+
+        $response = $this->actingAs($this->admin)->postJson("/api/v1/workflow-versions/{$version->id}/clone")
+            ->assertCreated();
+        $cloneId = $response->json('data.id');
+
+        $this->assertDatabaseCount('workflow_stages', 4);
+        $this->assertDatabaseCount('workflow_transitions', 2);
+        $this->assertDatabaseCount('stage_permissions', 2);
+        $this->assertDatabaseCount('field_groups', 2);
+        $this->assertDatabaseCount('field_definitions', 2);
+        $this->assertDatabaseCount('stage_field_rules', 2);
+
+        $cloneIntake = WorkflowStage::query()->where('workflow_version_id', $cloneId)->where('code', 'intake')->firstOrFail();
+        $this->assertNotSame($intake->id, $cloneIntake->id);
+        $this->assertDatabaseHas('stage_permissions', ['stage_id' => $cloneIntake->id, 'display_label' => 'Reviewers']);
+        $this->assertDatabaseHas('field_definitions', ['workflow_version_id' => $cloneId, 'key' => 'amount']);
+        $this->assertDatabaseHas('stage_field_rules', ['stage_id' => $cloneIntake->id]);
+
+        // Original untouched.
+        $this->assertDatabaseHas('workflow_stages', ['id' => $intake->id, 'workflow_version_id' => $version->id]);
     }
 
     public function test_cloning_a_draft_version_is_rejected(): void

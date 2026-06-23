@@ -6,6 +6,7 @@ use App\Exceptions\StaleResourceException;
 use App\Exceptions\WorkflowDesignProtectionException;
 use App\Exceptions\WorkflowVersionImmutableException;
 use App\Http\Controllers\Api\Controller;
+use App\Http\Controllers\Concerns\GuardsDesignerInput;
 use App\Http\Requests\StoreFieldDefinitionRequest;
 use App\Http\Requests\UpdateFieldDefinitionRequest;
 use App\Http\Resources\FieldDefinitionResource;
@@ -13,11 +14,15 @@ use App\Models\FieldDefinition;
 use App\Models\WorkflowVersion;
 use App\Services\Workflow\DynamicFieldOptionsResolver;
 use App\Services\Workflow\FieldDesignerService;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class FieldDefinitionController extends Controller
 {
+    use GuardsDesignerInput;
+
     public function __construct(
         private readonly FieldDesignerService $designer,
         private readonly DynamicFieldOptionsResolver $options,
@@ -39,6 +44,12 @@ class FieldDefinitionController extends Controller
             $field = $this->designer->createField($request->user(), $workflowVersion, $request->validated());
         } catch (WorkflowVersionImmutableException $exception) {
             return $this->error($exception->errorCode, $exception->getMessage(), 409);
+        } catch (QueryException $exception) {
+            if (! $this->isUniqueViolation($exception)) {
+                throw $exception;
+            }
+
+            throw ValidationException::withMessages(['key' => 'A field with this key already exists in this version.']);
         }
 
         return (new FieldDefinitionResource($field))->response()->setStatusCode(201);

@@ -8,6 +8,9 @@ use App\Exceptions\StaleResourceException;
 use App\Exceptions\WorkflowDesignProtectionException;
 use App\Exceptions\WorkflowVersionImmutableException;
 use App\Exceptions\WorkflowVersionValidationException;
+use App\Models\FieldDefinition;
+use App\Models\FieldGroup;
+use App\Models\StageFieldRule;
 use App\Models\StagePermission;
 use App\Models\User;
 use App\Models\WorkflowDefinition;
@@ -111,6 +114,8 @@ class WorkflowDesignerService
                 'state' => WorkflowVersionState::DRAFT,
             ])->refresh();
 
+            $this->deepCopyVersionConfig($source, $clone);
+
             $this->auditService->log(
                 AuditAction::GOVERNANCE_CREATED,
                 $actor,
@@ -120,6 +125,108 @@ class WorkflowDesignerService
 
             return $clone;
         });
+    }
+
+    /**
+     * Deep-copy stages, field groups/fields, transitions, stage permissions, and
+     * stage field rules from a PUBLISHED source version into a new DRAFT clone.
+     * Foreign keys are remapped via id maps since every child row gets a fresh id.
+     */
+    private function deepCopyVersionConfig(WorkflowVersion $source, WorkflowVersion $clone): void
+    {
+        $stageIdMap = [];
+        foreach (WorkflowStage::query()->where('workflow_version_id', $source->id)->get() as $stage) {
+            $newStage = WorkflowStage::query()->create([
+                'workflow_version_id' => $clone->id,
+                'code' => $stage->code,
+                'name' => $stage->name,
+                'description' => $stage->description,
+                'sort_order' => $stage->sort_order,
+                'is_initial' => $stage->is_initial,
+                'is_final' => $stage->is_final,
+                'sla_duration_minutes' => $stage->sla_duration_minutes,
+                'status' => $stage->status,
+            ]);
+            $stageIdMap[$stage->id] = $newStage->id;
+        }
+
+        $fieldGroupIdMap = [];
+        foreach (FieldGroup::query()->where('workflow_version_id', $source->id)->get() as $group) {
+            $newGroup = FieldGroup::query()->create([
+                'workflow_version_id' => $clone->id,
+                'name' => $group->name,
+                'label' => $group->label,
+                'sort_order' => $group->sort_order,
+            ]);
+            $fieldGroupIdMap[$group->id] = $newGroup->id;
+        }
+
+        $fieldIdMap = [];
+        foreach (FieldDefinition::query()->where('workflow_version_id', $source->id)->get() as $field) {
+            $newField = FieldDefinition::query()->create([
+                'workflow_version_id' => $clone->id,
+                'field_group_id' => $fieldGroupIdMap[$field->field_group_id] ?? null,
+                'key' => $field->key,
+                'label' => $field->label,
+                'type' => $field->type,
+                'placeholder' => $field->placeholder,
+                'help_text' => $field->help_text,
+                'default_value' => $field->default_value,
+                'min_value' => $field->min_value,
+                'max_value' => $field->max_value,
+                'min_length' => $field->min_length,
+                'max_length' => $field->max_length,
+                'regex_pattern' => $field->regex_pattern,
+                'options' => $field->options,
+                'reference_table_id' => $field->reference_table_id,
+                'dynamic_source' => $field->dynamic_source,
+                'allowed_file_types' => $field->allowed_file_types,
+                'max_file_size' => $field->max_file_size,
+                'multiple' => $field->multiple,
+                'is_required' => $field->is_required,
+                'is_system' => $field->is_system,
+                'sort_order' => $field->sort_order,
+            ]);
+            $fieldIdMap[$field->id] = $newField->id;
+        }
+
+        foreach (WorkflowTransition::query()->where('workflow_version_id', $source->id)->get() as $transition) {
+            WorkflowTransition::query()->create([
+                'workflow_version_id' => $clone->id,
+                'from_stage_id' => $stageIdMap[$transition->from_stage_id],
+                'action_id' => $transition->action_id,
+                'to_stage_id' => $stageIdMap[$transition->to_stage_id],
+                'requires_comment' => $transition->requires_comment,
+                'confirmation_message' => $transition->confirmation_message,
+            ]);
+        }
+
+        $sourceStageIds = array_keys($stageIdMap);
+        foreach (StagePermission::query()->whereIn('stage_id', $sourceStageIds)->get() as $permission) {
+            StagePermission::query()->create([
+                'stage_id' => $stageIdMap[$permission->stage_id],
+                'organization_id' => $permission->organization_id,
+                'team_id' => $permission->team_id,
+                'role_id' => $permission->role_id,
+                'user_id' => $permission->user_id,
+                'access_level' => $permission->access_level,
+                'display_label' => $permission->display_label,
+            ]);
+        }
+
+        foreach (StageFieldRule::query()->whereIn('stage_id', $sourceStageIds)->get() as $rule) {
+            if (! isset($fieldIdMap[$rule->field_id])) {
+                continue;
+            }
+
+            StageFieldRule::query()->create([
+                'stage_id' => $stageIdMap[$rule->stage_id],
+                'field_id' => $fieldIdMap[$rule->field_id],
+                'is_visible' => $rule->is_visible,
+                'is_editable' => $rule->is_editable,
+                'is_required' => $rule->is_required,
+            ]);
+        }
     }
 
     /**

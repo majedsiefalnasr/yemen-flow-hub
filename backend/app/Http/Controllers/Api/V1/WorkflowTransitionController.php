@@ -5,17 +5,22 @@ namespace App\Http\Controllers\Api\V1;
 use App\Exceptions\StaleResourceException;
 use App\Exceptions\WorkflowVersionImmutableException;
 use App\Http\Controllers\Api\Controller;
+use App\Http\Controllers\Concerns\GuardsDesignerInput;
 use App\Http\Requests\StoreWorkflowTransitionRequest;
 use App\Http\Requests\UpdateWorkflowTransitionRequest;
 use App\Http\Resources\WorkflowTransitionResource;
 use App\Models\WorkflowTransition;
 use App\Models\WorkflowVersion;
 use App\Services\Workflow\WorkflowDesignerService;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class WorkflowTransitionController extends Controller
 {
+    use GuardsDesignerInput;
+
     public function __construct(private readonly WorkflowDesignerService $designer) {}
 
     public function index(WorkflowVersion $workflowVersion): JsonResponse
@@ -41,6 +46,12 @@ class WorkflowTransitionController extends Controller
             $transition = $this->designer->createTransition($request->user(), $workflowVersion, $request->validated());
         } catch (WorkflowVersionImmutableException $exception) {
             return $this->error($exception->errorCode, $exception->getMessage(), 409);
+        } catch (QueryException $exception) {
+            if (! $this->isUniqueViolation($exception)) {
+                throw $exception;
+            }
+
+            throw ValidationException::withMessages(['action_id' => 'A transition for this action already exists from this stage.']);
         }
 
         return (new WorkflowTransitionResource($transition))->response()->setStatusCode(201);
@@ -65,6 +76,12 @@ class WorkflowTransitionController extends Controller
             return $this->error('STALE_RESOURCE', 'The workflow transition was modified by another user.', 409);
         } catch (WorkflowVersionImmutableException $exception) {
             return $this->error($exception->errorCode, $exception->getMessage(), 409);
+        } catch (QueryException $exception) {
+            if (! $this->isUniqueViolation($exception)) {
+                throw $exception;
+            }
+
+            throw ValidationException::withMessages(['action_id' => 'A transition for this action already exists from this stage.']);
         }
 
         return (new WorkflowTransitionResource($workflowTransition))->response();

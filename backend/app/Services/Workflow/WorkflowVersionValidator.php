@@ -4,6 +4,8 @@ namespace App\Services\Workflow;
 
 use App\Enums\FieldType;
 use App\Enums\StageAccessLevel;
+use App\Models\User;
+use App\Models\WorkflowAction;
 use App\Models\WorkflowVersion;
 
 /**
@@ -50,27 +52,38 @@ class WorkflowVersionValidator
 
         // ── Transition integrity ────────────────────────────────────────────
         $stageIds = $stages->pluck('id')->all();
+        $activeActionIds = WorkflowAction::query()->where('is_active', true)->pluck('id')->all();
         foreach ($transitions as $transition) {
             if (! in_array($transition->from_stage_id, $stageIds, true) || ! in_array($transition->to_stage_id, $stageIds, true)) {
                 $errors[] = $this->error('TRANSITION_INVALID_STAGE', 'transitions', 'A transition references a stage outside this version.');
             }
+
+            if (! in_array($transition->action_id, $activeActionIds, true)) {
+                $errors[] = $this->error('TRANSITION_INVALID_ACTION', 'transitions', "Transition from stage id {$transition->from_stage_id} references an inactive or missing action.");
+            }
         }
 
-        // ── Non-final stages need ≥1 outgoing transition AND ≥1 executor ─────
+        // ── Non-final stages need ≥1 outgoing transition AND ≥1 active executor ─
         $transitionsByFrom = $transitions->groupBy('from_stage_id');
+        $activeUserIds = User::query()->where('is_active', true)->pluck('id')->all();
         foreach ($stages as $stage) {
             if ($stage->is_final) {
                 continue;
             }
 
-            if (($transitionsByFrom[$stage->id] ?? collect())->isEmpty()) {
+            $outgoing = $transitionsByFrom[$stage->id] ?? collect();
+            if ($outgoing->isEmpty()) {
                 $errors[] = $this->error('STAGE_NO_OUTGOING_TRANSITION', "stage:{$stage->code}", "Non-final stage '{$stage->code}' has no outgoing transition.");
+            } elseif ($outgoing->every(fn ($transition) => $transition->to_stage_id === $stage->id)) {
+                $errors[] = $this->error('STAGE_ONLY_SELF_LOOP', "stage:{$stage->code}", "Non-final stage '{$stage->code}' has only self-loop transitions; the workflow can never advance past it.");
             }
 
-            $hasExecutor = $stage->stagePermissions
-                ->contains(fn ($permission) => $permission->access_level === StageAccessLevel::EXECUTE);
+            $hasExecutor = $stage->stagePermissions->contains(
+                fn ($permission) => $permission->access_level === StageAccessLevel::EXECUTE
+                    && ($permission->user_id === null || in_array($permission->user_id, $activeUserIds, true)),
+            );
             if (! $hasExecutor) {
-                $errors[] = $this->error('STAGE_NO_EXECUTOR', "stage:{$stage->code}", "Non-final stage '{$stage->code}' has no executor (an EXECUTE stage permission).");
+                $errors[] = $this->error('STAGE_NO_EXECUTOR', "stage:{$stage->code}", "Non-final stage '{$stage->code}' has no executor (an EXECUTE stage permission for an active user/role/team).");
             }
         }
 
