@@ -15,8 +15,8 @@ return new class extends Migration
             $table->string('reference')->unique();
             $table->string('status', 20)->default('ACTIVE')->index();
             $table->foreignId('created_by')->constrained('users');
-            $table->foreignId('bank_id')->nullable()->constrained('banks')->index();
-            $table->foreignId('merchant_id')->nullable()->constrained('merchants')->index();
+            $table->foreignId('bank_id')->nullable()->constrained('banks');
+            $table->foreignId('merchant_id')->nullable()->constrained('merchants');
             $table->json('data')->nullable();
             $table->unsignedInteger('version')->default(1);
 
@@ -27,6 +27,8 @@ return new class extends Migration
 
             $table->timestamps();
 
+            $table->index('bank_id');
+            $table->index('merchant_id');
             $table->index(['status', 'current_stage_id']);
             $table->index(['workflow_version_id', 'status']);
         });
