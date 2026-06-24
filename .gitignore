@@ -16,6 +16,8 @@ Thumbs.db
 
 # Generated knowledge graph files
 graphify-out/
+.graphify_detect.json
+.graphify_python
 
 # Browser automation artifacts
 .playwright-cli/
