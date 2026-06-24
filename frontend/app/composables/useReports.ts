@@ -56,6 +56,19 @@ export interface BankBreakdown {
   total_amount: number
 }
 
+export interface MerchantBreakdown {
+  merchant_id: number
+  merchant_name: string
+  total: number
+  total_amount: number
+}
+
+export interface SectorBreakdown {
+  sector: string
+  count: number
+  total_amount: number
+}
+
 export interface CurrencyBreakdown {
   currency: string
   count: number
@@ -268,6 +281,20 @@ export function useReports() {
     return response.data
   }
 
+  async function fetchByMerchant(filters: EngineReportFilters = {}): Promise<MerchantBreakdown[]> {
+    const response = await get<{ data: MerchantBreakdown[] }>(
+      `/api/v1/reports/by-merchant${buildEngineQuery(filters)}`,
+    )
+    return response.data
+  }
+
+  async function fetchBySector(filters: EngineReportFilters = {}): Promise<SectorBreakdown[]> {
+    const response = await get<{ data: SectorBreakdown[] }>(
+      `/api/v1/reports/by-sector${buildEngineQuery(filters)}`,
+    )
+    return response.data
+  }
+
   async function fetchByCurrency(filters: EngineReportFilters = {}): Promise<CurrencyBreakdown[]> {
     const response = await get<{ data: CurrencyBreakdown[] }>(
       `/api/v1/reports/by-currency${buildEngineQuery(filters)}`,
@@ -331,6 +358,8 @@ export function useReports() {
     fetchRequestsOverTime,
     fetchByWorkflowStage,
     fetchByBank,
+    fetchByMerchant,
+    fetchBySector,
     fetchByCurrency,
     fetchStageDuration,
     fetchSlaReport,

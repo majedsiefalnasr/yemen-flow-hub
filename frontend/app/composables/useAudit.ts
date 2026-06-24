@@ -118,8 +118,15 @@ export function useAudit() {
     }
     const query = params.toString()
     const path = query ? `/api/v1/audit-logs/export?${query}` : '/api/v1/audit-logs/export'
-    const response = await get<Blob>(path)
-    const blob = new Blob([response as unknown as BlobPart], { type: 'text/csv' })
+    // Fetch as a blob so the raw CSV bytes (including the server's BOM) are preserved.
+    // useApi's get() lets $fetch content-negotiate and parse the body, corrupting the file.
+    const config = useRuntimeConfig()
+    const baseURL = config.public.apiBase as string
+    const blob = await $fetch<Blob>(`${baseURL}${path}`, {
+      credentials: 'include',
+      responseType: 'blob',
+      headers: { Accept: 'text/csv' },
+    })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
