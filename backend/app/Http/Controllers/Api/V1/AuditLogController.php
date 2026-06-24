@@ -65,8 +65,12 @@ class AuditLogController extends Controller
             ->when($request->filled('user'), fn ($q) => $q->where('user_id', $request->integer('user')))
             ->when($request->filled('role'), fn ($q) => $q->where('actor_role_id', $request->integer('role')))
             ->when($request->filled('event'), fn ($q) => $q->where('action', $request->string('event')))
+            ->when($request->filled('entity'), fn ($q) => $q->where('subject_type', 'like', '%'.class_basename($request->string('entity')).'%'))
+            ->when($request->filled('request'), fn ($q) => $q->where('workflow_instance_id', $request->integer('request')))
             ->when($request->filled('from'), fn ($q) => $q->whereDate('created_at', '>=', $request->string('from')))
             ->when($request->filled('to'), fn ($q) => $q->whereDate('created_at', '<=', $request->string('to')))
+            ->when($request->filled('ip'), fn ($q) => $q->where('ip_address', $request->string('ip')))
+            ->when($request->filled('correlation_id'), fn ($q) => $q->where('correlation_id', $request->string('correlation_id')))
             ->latest('id')
             ->limit(10000);
 
@@ -74,7 +78,7 @@ class AuditLogController extends Controller
 
         $this->auditService->log(AuditAction::AUDIT_LOG_EXPORTED, $request->user(), null, [
             'row_count' => $rows->count(),
-            'filters' => $request->only(['user', 'role', 'event', 'from', 'to']),
+            'filters' => $request->only(['user', 'role', 'event', 'entity', 'request', 'from', 'to', 'ip', 'correlation_id']),
         ]);
 
         $csv = "\xEF\xBB\xBF".implode(',', ['ID', 'User', 'Role', 'Event', 'Entity', 'IP', 'Timestamp'])."\n";
@@ -103,6 +107,12 @@ class AuditLogController extends Controller
 
     private function csvCell(string $value): string
     {
+        // Neutralize CSV formula injection: a cell that a spreadsheet would evaluate as a
+        // formula gets prefixed with a single quote so it is rendered as literal text.
+        if ($value !== '' && in_array($value[0], ['=', '+', '-', '@', "\t", "\r"], true)) {
+            $value = "'".$value;
+        }
+
         if (str_contains($value, ',') || str_contains($value, '"') || str_contains($value, "\n")) {
             return '"'.str_replace('"', '""', $value).'"';
         }

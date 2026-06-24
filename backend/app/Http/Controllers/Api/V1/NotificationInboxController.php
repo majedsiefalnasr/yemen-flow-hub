@@ -14,7 +14,8 @@ class NotificationInboxController extends Controller
         $query = NotificationRecipient::query()
             ->where('user_id', $request->user()->id)
             ->with('notification')
-            ->orderByDesc('created_at');
+            ->orderByDesc('created_at')
+            ->orderByDesc('id');
 
         if ($request->has('status')) {
             match ($request->input('status')) {
@@ -30,7 +31,7 @@ class NotificationInboxController extends Controller
         $items = $query->paginate(20);
 
         return ApiResponse::success([
-            'data' => $items->map(fn (NotificationRecipient $r) => [
+            'data' => $items->getCollection()->map(fn (NotificationRecipient $r) => [
                 'id' => $r->id,
                 'notification_id' => $r->notification_id,
                 'type' => $r->notification->type,

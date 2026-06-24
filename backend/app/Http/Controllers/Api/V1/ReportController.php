@@ -35,14 +35,18 @@ class ReportController extends Controller
         $query = $this->baseQuery($request);
         $monthFormat = $this->monthFormat();
 
+        // Take the most recent 24 months (order desc + limit), then reverse to ascending
+        // so the trend chart reads oldest → newest without dropping recent data.
         $rows = $query
             ->selectRaw("{$monthFormat} as month, COUNT(*) as total")
             ->selectRaw("SUM(CASE WHEN engine_requests.status = 'CLOSED' THEN 1 ELSE 0 END) as closed")
             ->selectRaw("SUM(CASE WHEN engine_requests.status = 'REJECTED' THEN 1 ELSE 0 END) as rejected")
             ->groupByRaw($monthFormat)
-            ->orderBy('month')
+            ->orderByDesc('month')
             ->limit(24)
-            ->get();
+            ->get()
+            ->reverse()
+            ->values();
 
         return response()->json([
             'data' => $rows->map(fn ($r) => [
@@ -61,9 +65,9 @@ class ReportController extends Controller
         $query = $this->baseQuery($request);
 
         $rows = $query
-            ->join('workflow_stages as ws', 'ws.id', '=', 'engine_requests.current_stage_id')
-            ->selectRaw('ws.code as stage_code, ws.name as stage_name, COUNT(*) as count')
-            ->groupBy('ws.code', 'ws.name')
+            ->leftJoin('workflow_stages as ws', 'ws.id', '=', 'engine_requests.current_stage_id')
+            ->selectRaw("COALESCE(ws.code, 'unassigned') as stage_code, COALESCE(ws.name, 'بدون مرحلة') as stage_name, COUNT(*) as count")
+            ->groupByRaw("COALESCE(ws.code, 'unassigned'), COALESCE(ws.name, 'بدون مرحلة')")
             ->orderByDesc('count')
             ->get();
 
@@ -83,12 +87,12 @@ class ReportController extends Controller
         $query = $this->baseQuery($request);
 
         $rows = $query
-            ->join('banks as b', 'b.id', '=', 'engine_requests.bank_id')
-            ->selectRaw('b.id as bank_id, b.name as bank_name, COUNT(*) as total')
+            ->leftJoin('banks as b', 'b.id', '=', 'engine_requests.bank_id')
+            ->selectRaw("b.id as bank_id, COALESCE(b.name, 'بدون بنك') as bank_name, COUNT(*) as total")
             ->selectRaw("SUM(CASE WHEN engine_requests.status = 'CLOSED' THEN 1 ELSE 0 END) as closed")
             ->selectRaw("SUM(CASE WHEN engine_requests.status = 'REJECTED' THEN 1 ELSE 0 END) as rejected")
             ->selectRaw('SUM(engine_requests.amount) as total_amount')
-            ->groupBy('b.id', 'b.name')
+            ->groupByRaw("b.id, COALESCE(b.name, 'بدون بنك')")
             ->orderByDesc('total')
             ->get();
 
@@ -111,10 +115,10 @@ class ReportController extends Controller
         $query = $this->baseQuery($request);
 
         $rows = $query
-            ->join('merchants as m', 'm.id', '=', 'engine_requests.merchant_id')
-            ->selectRaw('m.id as merchant_id, m.name as merchant_name, COUNT(*) as total')
+            ->leftJoin('merchants as m', 'm.id', '=', 'engine_requests.merchant_id')
+            ->selectRaw("m.id as merchant_id, COALESCE(m.name, 'بدون تاجر') as merchant_name, COUNT(*) as total")
             ->selectRaw('SUM(engine_requests.amount) as total_amount')
-            ->groupBy('m.id', 'm.name')
+            ->groupByRaw("m.id, COALESCE(m.name, 'بدون تاجر')")
             ->orderByDesc('total')
             ->limit(50)
             ->get();
@@ -185,10 +189,18 @@ class ReportController extends Controller
 
         $rows = DB::table('workflow_history as h1')
             ->join('workflow_stages as ws', 'ws.id', '=', 'h1.to_stage_id')
+            ->join('engine_requests as er', 'er.id', '=', 'h1.request_id')
             ->join(DB::raw('workflow_history h2'), function ($join) {
                 $join->on('h2.request_id', '=', 'h1.request_id')
                     ->whereRaw('h2.id = (SELECT MIN(h3.id) FROM workflow_history h3 WHERE h3.request_id = h1.request_id AND h3.created_at > h1.created_at)');
             })
+            ->when($request->user()?->bank_id !== null, fn ($q) => $q->where('er.bank_id', $request->user()->bank_id))
+            ->when($request->filled('from'), fn ($q) => $q->whereDate('h1.created_at', '>=', $request->string('from')))
+            ->when($request->filled('to'), fn ($q) => $q->whereDate('h1.created_at', '<=', $request->string('to')))
+            ->when($request->filled('bank'), fn ($q) => $q->where('er.bank_id', $request->integer('bank')))
+            ->when($request->filled('version'), fn ($q) => $q->where('er.workflow_version_id', $request->integer('version')))
+            ->when($request->filled('status'), fn ($q) => $q->where('er.status', $request->string('status')))
+            ->when($request->filled('currency'), fn ($q) => $q->where('er.currency', $request->string('currency')))
             ->selectRaw("ws.code as stage_code, ws.name as stage_name, AVG({$hoursDiff}) as avg_hours, COUNT(*) as transitions")
             ->groupBy('ws.code', 'ws.name')
             ->orderBy('ws.code')
@@ -214,6 +226,7 @@ class ReportController extends Controller
             ->with('currentStage:id,code,name,sla_duration_minutes');
 
         $this->applyScope($request, $query);
+        $this->applyFilters($request, $query);
 
         $requests = $query->get();
         $grouped = $requests->groupBy(fn ($r) => $r->currentStage?->code ?? 'unknown');
@@ -242,15 +255,22 @@ class ReportController extends Controller
     {
         Gate::authorize('reports.view');
 
-        $rows = WorkflowHistoryEntry::query()
+        $query = WorkflowHistoryEntry::query()
             ->join('users as u', 'u.id', '=', 'workflow_history.performed_by')
             ->leftJoin('user_roles as ur', 'ur.user_id', '=', 'u.id')
             ->leftJoin('roles as r', 'r.id', '=', 'ur.role_id')
-            ->selectRaw("COALESCE(r.name, u.role, 'Unknown') as role_name, COUNT(*) as actions")
+            ->join('engine_requests', 'engine_requests.id', '=', 'workflow_history.request_id')
+            // COUNT(DISTINCT workflow_history.id) — the user_roles fan-out would otherwise
+            // multiply each action by the number of roles the performing user holds.
+            ->selectRaw("COALESCE(r.name, u.role, 'Unknown') as role_name, COUNT(DISTINCT workflow_history.id) as actions")
             ->selectRaw('COUNT(DISTINCT workflow_history.performed_by) as members')
             ->groupByRaw("COALESCE(r.name, u.role, 'Unknown')")
-            ->orderByDesc('actions')
-            ->get();
+            ->orderByDesc('actions');
+
+        $this->applyScope($request, $query);
+        $this->applyFilters($request, $query);
+
+        $rows = $query->get();
 
         return response()->json([
             'data' => $rows->map(fn ($r) => [

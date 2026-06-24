@@ -99,6 +99,17 @@ class PermissionService
         });
     }
 
+    /**
+     * Whether the user holds a specific capability on a specific screen,
+     * derived from the data-driven screen_permissions catalog (never role codes).
+     */
+    public function userHasCapability(User $user, string $screenKey, string $capability): bool
+    {
+        $sp = $this->screenPermissionsForUser($user);
+
+        return in_array($capability, $sp[$screenKey] ?? [], true);
+    }
+
     public function capabilitiesForUser(User $user): array
     {
         $sp = $this->screenPermissionsForUser($user);

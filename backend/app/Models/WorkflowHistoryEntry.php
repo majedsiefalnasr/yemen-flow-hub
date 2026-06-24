@@ -18,6 +18,7 @@ class WorkflowHistoryEntry extends Model
         'action_code',
         'performed_by',
         'comments',
+        'correlation_id',
         'created_at',
     ];
 

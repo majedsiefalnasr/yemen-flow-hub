@@ -9,6 +9,21 @@ class AuditLog extends Model
 {
     public $timestamps = false;
 
+    /**
+     * Audit logs are append-only. Block any app-layer update or delete so the trail
+     * cannot be altered or erased after a row is written (FR-AUD1).
+     */
+    protected static function booted(): void
+    {
+        static::updating(function (): void {
+            throw new \LogicException('Audit logs are append-only and cannot be updated.');
+        });
+
+        static::deleting(function (): void {
+            throw new \LogicException('Audit logs are append-only and cannot be deleted.');
+        });
+    }
+
     protected $fillable = [
         'user_id',
         'user_role',

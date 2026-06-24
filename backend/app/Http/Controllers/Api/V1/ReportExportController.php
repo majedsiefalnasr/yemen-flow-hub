@@ -19,7 +19,9 @@ class ReportExportController extends Controller
         $validated = $request->validate([
             'report_type' => ['required', 'string', 'in:summary,requests-over-time,by-workflow-stage,by-bank,by-merchant,by-sector,by-currency,stage-duration,sla,team-performance'],
             'filters' => ['nullable', 'array'],
-            'format' => ['nullable', 'string', 'in:csv,pdf'],
+            // PDF export is not implemented yet; only CSV is accepted so the stored
+            // format never disagrees with the file the job actually writes.
+            'format' => ['nullable', 'string', 'in:csv'],
         ]);
 
         $export = ReportExport::create([

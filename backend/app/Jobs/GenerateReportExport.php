@@ -35,6 +35,15 @@ class GenerateReportExport implements ShouldQueue
             $query = EngineRequest::query()
                 ->with(['bank:id,name', 'currentStage:id,code,name', 'merchant:id,name']);
 
+            // Enforce the requester's bank scope. The job runs detached from the request
+            // auth context, so scope is taken from the stored requester and cannot be
+            // widened by the filters payload (a bank-scoped user never receives other
+            // banks' rows even with no bank filter).
+            $requester = $export->requester;
+            if ($requester && $requester->bank_id !== null) {
+                $query->where('bank_id', $requester->bank_id);
+            }
+
             if (! empty($filters['bank'])) {
                 $query->where('bank_id', $filters['bank']);
             }
@@ -49,6 +58,15 @@ class GenerateReportExport implements ShouldQueue
             }
             if (! empty($filters['currency'])) {
                 $query->where('currency', $filters['currency']);
+            }
+            if (! empty($filters['stage'])) {
+                $query->where('current_stage_id', $filters['stage']);
+            }
+            if (! empty($filters['version'])) {
+                $query->where('workflow_version_id', $filters['version']);
+            }
+            if (! empty($filters['workflow'])) {
+                $query->whereHas('workflowVersion', fn ($q) => $q->where('workflow_definition_id', $filters['workflow']));
             }
 
             $rows = $query->orderByDesc('created_at')->limit(50000)->get();
@@ -90,8 +108,26 @@ class GenerateReportExport implements ShouldQueue
         }
     }
 
+    /**
+     * Final safety net: if the job exhausts its retries (or dies after marking the row
+     * PROCESSING), make sure the export does not stay stuck in a non-terminal state.
+     */
+    public function failed(\Throwable $exception): void
+    {
+        $export = ReportExport::find($this->exportId);
+        if ($export !== null && ! in_array($export->status, ['COMPLETED', 'FAILED'], true)) {
+            $export->update(['status' => 'FAILED']);
+        }
+    }
+
     private function cell(string $value): string
     {
+        // Neutralize CSV formula injection: prefix formula-trigger characters so a
+        // spreadsheet renders the cell as literal text instead of evaluating it.
+        if ($value !== '' && in_array($value[0], ['=', '+', '-', '@', "\t", "\r"], true)) {
+            $value = "'".$value;
+        }
+
         if (str_contains($value, ',') || str_contains($value, '"') || str_contains($value, "\n")) {
             return '"'.str_replace('"', '""', $value).'"';
         }

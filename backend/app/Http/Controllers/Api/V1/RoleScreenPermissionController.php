@@ -25,8 +25,12 @@ class RoleScreenPermissionController extends Controller
         private readonly EngineNotificationDispatcher $notificationDispatcher,
     ) {}
 
-    public function show(Role $role)
+    public function show(Request $request, Role $role)
     {
+        if (! $this->permissionService->userHasCapability($request->user(), 'screen_permissions', 'VIEW')) {
+            abort(403, 'You are not authorized to view screen permissions.');
+        }
+
         $grants = ScreenPermission::query()
             ->where('role_id', $role->id)
             ->join('screens', 'screens.id', '=', 'screen_permissions.screen_id')
@@ -46,6 +50,10 @@ class RoleScreenPermissionController extends Controller
 
     public function update(Request $request, Role $role)
     {
+        if (! $this->permissionService->userHasCapability($request->user(), 'screen_permissions', 'MANAGE')) {
+            abort(403, 'You are not authorized to manage screen permissions.');
+        }
+
         $validCapabilities = array_column(ScreenCapability::cases(), 'value');
         $validScreenKeys = Screen::query()->pluck('key')->toArray();
 
@@ -62,9 +70,6 @@ class RoleScreenPermissionController extends Controller
             }
         }
 
-        // Last-admin protection: if removing MANAGE on screen_permissions, check this isn't the last
-        $this->guardLastAdmin($role, $validated['grants']);
-
         $oldGrants = ScreenPermission::query()
             ->where('role_id', $role->id)
             ->join('screens', 'screens.id', '=', 'screen_permissions.screen_id')
@@ -75,6 +80,10 @@ class RoleScreenPermissionController extends Controller
             ->toArray();
 
         DB::transaction(function () use ($role, $validated): void {
+            // Last-admin protection runs inside the transaction with a lock on the
+            // screen_permissions MANAGE rows so two concurrent removals cannot both pass.
+            $this->guardLastAdmin($role, $validated['grants']);
+
             ScreenPermission::query()->where('role_id', $role->id)->delete();
 
             $rows = [];
@@ -134,29 +143,43 @@ class RoleScreenPermissionController extends Controller
             return;
         }
 
-        // Check if the role currently holds MANAGE on screen_permissions
-        $currentlyHoldsManage = ScreenPermission::query()
-            ->where('role_id', $role->id)
-            ->whereHas('screen', fn ($q) => $q->where('key', 'screen_permissions'))
-            ->where('capability', 'MANAGE')
-            ->exists();
-
-        if (! $currentlyHoldsManage) {
+        $screenId = Screen::query()->where('key', 'screen_permissions')->value('id');
+        if ($screenId === null) {
             return;
         }
 
-        // Count other roles that also hold MANAGE on screen_permissions
-        $screenId = Screen::query()->where('key', 'screen_permissions')->value('id');
-        $otherManagerCount = ScreenPermission::query()
+        // Lock every MANAGE grant on the screen_permissions screen for the duration of
+        // the surrounding transaction. This serializes concurrent removals so two admins
+        // cannot each observe the other's grant and both pass the last-admin check.
+        $managerRoleIds = ScreenPermission::query()
             ->where('screen_id', $screenId)
             ->where('capability', 'MANAGE')
-            ->where('role_id', '!=', $role->id)
-            ->distinct('role_id')
-            ->count('role_id');
+            ->lockForUpdate()
+            ->pluck('role_id')
+            ->all();
 
-        if ($otherManagerCount === 0) {
+        if (! in_array($role->id, $managerRoleIds, true)) {
+            return;
+        }
+
+        // Count OTHER roles that hold MANAGE and have at least one active user attached.
+        // A role with no (or only inactive) members cannot manage permissions, so it does
+        // not satisfy the "at least one active administrator remains" invariant.
+        $otherManagerRoleIds = array_values(array_filter(
+            array_unique($managerRoleIds),
+            fn ($roleId) => (int) $roleId !== (int) $role->id,
+        ));
+
+        $otherManagerWithActiveUserCount = empty($otherManagerRoleIds) ? 0 : DB::table('user_roles')
+            ->join('users', 'users.id', '=', 'user_roles.user_id')
+            ->whereIn('user_roles.role_id', $otherManagerRoleIds)
+            ->where('users.is_active', true)
+            ->distinct('user_roles.role_id')
+            ->count('user_roles.role_id');
+
+        if ($otherManagerWithActiveUserCount === 0) {
             throw ValidationException::withMessages([
-                'grants' => ['Cannot remove permission-management capability from the last role that holds it.'],
+                'grants' => ['Cannot remove permission-management capability from the last role with an active administrator.'],
             ]);
         }
     }

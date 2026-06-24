@@ -11,6 +11,7 @@ use App\Models\EngineRequest;
 use App\Models\EngineRequestDocument;
 use App\Models\WorkflowVersion;
 use App\Services\Audit\AuditService;
+use App\Services\Notifications\EngineNotificationDispatcher;
 use App\Services\Workflow\DuplicateInvoiceChecker;
 use App\Services\Workflow\EngineRequestService;
 use App\Services\Workflow\EngineTransitionService;
@@ -30,6 +31,7 @@ class EngineRequestController extends Controller
         private DuplicateInvoiceChecker $duplicateChecker,
         private WorkflowGraphService $graphService,
         private AuditService $auditService,
+        private EngineNotificationDispatcher $notificationDispatcher,
     ) {}
 
     // ── 18.5.1: Create ──────────────────────────────────────────────────
@@ -55,6 +57,12 @@ class EngineRequestController extends Controller
             $warning = $this->duplicateChecker->check($invoiceNumber, $engineRequest->id);
             if ($warning !== null) {
                 $response['warnings'] = [$warning];
+                $this->notificationDispatcher->afterDuplicateInvoice(
+                    $engineRequest->id,
+                    (string) $engineRequest->reference,
+                    $invoiceNumber,
+                    $warning['duplicates'],
+                );
             }
         }
 
@@ -153,6 +161,12 @@ class EngineRequestController extends Controller
             $warning = $this->duplicateChecker->check($invoiceNumber, $result->id);
             if ($warning !== null) {
                 $response['warnings'] = [$warning];
+                $this->notificationDispatcher->afterDuplicateInvoice(
+                    $result->id,
+                    (string) $result->reference,
+                    $invoiceNumber,
+                    $warning['duplicates'],
+                );
             }
         }
 

@@ -33,36 +33,55 @@ class EngineNotificationDispatcher
         );
     }
 
-    public function afterApproveRejectReturn(
+    /**
+     * Notify the oversight audience when a submitted request shares an invoice number
+     * with an existing active request (compliance signal, FR-NOTIF2).
+     *
+     * @param  array<int, array{id: int, reference: string}>  $duplicates
+     */
+    public function afterDuplicateInvoice(
         int $requestId,
         string $referenceNumber,
-        string $decision,
-        ?string $reason,
-        array $recipientUserIds,
+        string $invoiceNumber,
+        array $duplicates,
     ): void {
-        $severityMap = [
-            'approved' => 'success',
-            'rejected' => 'critical',
-            'returned' => 'warning',
-        ];
-
-        $labelMap = [
-            'approved' => 'تمت الموافقة',
-            'rejected' => 'تم الرفض',
-            'returned' => 'تمت الإعادة',
-        ];
-
-        $label = $labelMap[$decision] ?? $decision;
+        $refs = implode('، ', array_column($duplicates, 'reference'));
 
         $this->dispatchAfterCommit(
-            type: "decision.{$decision}",
-            severity: $severityMap[$decision] ?? 'info',
-            title: "{$referenceNumber}: {$label}",
-            body: $reason,
+            type: 'compliance.duplicate_invoice',
+            severity: 'warning',
+            title: "تكرار رقم فاتورة: {$referenceNumber}",
+            body: "رقم الفاتورة {$invoiceNumber} مطابق لطلبات قائمة: {$refs}",
             entityType: 'engine_request',
             entityId: $requestId,
             actionUrl: "/requests/{$requestId}",
-            recipientUserIds: $recipientUserIds,
+            recipientUserIds: $this->resolveAuditViewers(),
+        );
+    }
+
+    /**
+     * Notify the oversight audience that a request has breached or is nearing its
+     * stage SLA. Dispatched by the scheduled SLA scan (FR-NOTIF2).
+     */
+    public function afterSlaSignal(
+        int $requestId,
+        string $referenceNumber,
+        string $slaStatus,
+        string $stageName,
+    ): void {
+        $isBreached = $slaStatus === 'breached';
+
+        $this->dispatchAfterCommit(
+            type: $isBreached ? 'sla.breached' : 'sla.nearing',
+            severity: $isBreached ? 'critical' : 'warning',
+            title: $isBreached
+                ? "تجاوز المهلة: {$referenceNumber}"
+                : "اقتراب المهلة: {$referenceNumber}",
+            body: "المرحلة: {$stageName}",
+            entityType: 'engine_request',
+            entityId: $requestId,
+            actionUrl: "/requests/{$requestId}",
+            recipientUserIds: $this->resolveAuditViewers(),
         );
     }
 
@@ -130,7 +149,14 @@ class EngineNotificationDispatcher
         $rows = StagePermission::query()
             ->where('stage_id', $stage->getKey())
             ->where('access_level', StageAccessLevel::EXECUTE->value)
-            ->get();
+            ->get()
+            // Skip rows with no scoping column set — an empty inner closure would match
+            // every active user and fan the notification out to the entire user base.
+            ->filter(fn ($row) => $row->organization_id !== null
+                || $row->role_id !== null
+                || $row->team_id !== null
+                || $row->user_id !== null)
+            ->values();
 
         if ($rows->isEmpty()) {
             return [];
@@ -158,6 +184,32 @@ class EngineNotificationDispatcher
         });
 
         return $query->pluck('id')->toArray();
+    }
+
+    /**
+     * Resolve active users in any role that holds VIEW on the `audit` screen — the
+     * oversight audience for compliance and SLA signals (data-driven, not role codes).
+     *
+     * @return int[]
+     */
+    private function resolveAuditViewers(): array
+    {
+        $roleIds = DB::table('screen_permissions')
+            ->join('screens', 'screens.id', '=', 'screen_permissions.screen_id')
+            ->where('screens.key', 'audit')
+            ->where('screen_permissions.capability', 'VIEW')
+            ->pluck('screen_permissions.role_id')
+            ->all();
+
+        if (empty($roleIds)) {
+            return [];
+        }
+
+        return User::query()
+            ->where('is_active', true)
+            ->whereHas('roles', fn ($q) => $q->whereIn('roles.id', $roleIds))
+            ->pluck('id')
+            ->toArray();
     }
 
     private function dispatchAfterCommit(

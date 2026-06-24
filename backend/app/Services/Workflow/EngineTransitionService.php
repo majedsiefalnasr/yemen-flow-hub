@@ -92,6 +92,7 @@ class EngineTransitionService
                 'action_code' => $transition->action?->code,
                 'performed_by' => $user->id,
                 'comments' => $comment,
+                'correlation_id' => $correlationId,
                 'created_at' => now(),
             ]);
 

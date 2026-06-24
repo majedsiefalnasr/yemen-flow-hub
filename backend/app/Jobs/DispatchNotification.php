@@ -49,6 +49,8 @@ class DispatchNotification implements ShouldQueue
             ];
         }
 
-        NotificationRecipient::insert($rows);
+        // insertOrIgnore so a retry after a partial write cannot fail on the
+        // unique(notification_id, user_id) constraint.
+        NotificationRecipient::insertOrIgnore($rows);
     }
 }

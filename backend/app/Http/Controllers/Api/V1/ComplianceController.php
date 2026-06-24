@@ -23,6 +23,7 @@ class ComplianceController extends Controller
             ->groupBy('invoice_number')
             ->havingRaw('COUNT(*) > 1');
 
+        $this->applyScope($request, $query);
         if ($request->filled('bank_id')) {
             $query->where('bank_id', $request->integer('bank_id'));
         }
@@ -30,9 +31,11 @@ class ComplianceController extends Controller
         $duplicateInvoices = $query->orderByDesc('duplicate_count')->paginate($this->perPage($request));
 
         $invoiceNumbers = collect($duplicateInvoices->items())->pluck('invoice_number');
-        $requests = EngineRequest::query()
+        $detailQuery = EngineRequest::query()
             ->whereIn('invoice_number', $invoiceNumbers)
-            ->with(['bank:id,name', 'merchant:id,name', 'currentStage:id,code,name'])
+            ->with(['bank:id,name', 'merchant:id,name', 'currentStage:id,code,name']);
+        $this->applyScope($request, $detailQuery);
+        $requests = $detailQuery
             ->get()
             ->groupBy('invoice_number');
 
@@ -67,11 +70,17 @@ class ComplianceController extends Controller
     {
         $this->authorize('viewAny', AuditLog::class);
 
-        $merchants = Merchant::query()
+        $merchantQuery = Merchant::query()
             ->whereNotNull('tax_card_expiry')
             ->whereDate('tax_card_expiry', '<', now())
-            ->with('bank:id,name')
-            ->paginate($this->perPage($request));
+            ->with('bank:id,name');
+
+        $user = $request->user();
+        if ($user && $user->bank_id !== null) {
+            $merchantQuery->where('bank_id', $user->bank_id);
+        }
+
+        $merchants = $merchantQuery->paginate($this->perPage($request));
 
         $data = collect($merchants->items())->map(fn (Merchant $m) => [
             'merchant_id' => $m->id,
@@ -104,6 +113,7 @@ class ComplianceController extends Controller
             ->whereRaw(EngineRequest::slaDeadlineEpochSql().' < '.EngineRequest::nowEpochSql())
             ->with(['currentStage:id,code,name,sla_duration_minutes', 'bank:id,name', 'creator:id,name']);
 
+        $this->applyScope($request, $query, 'engine_requests.bank_id');
         if ($request->filled('bank_id')) {
             $query->where('engine_requests.bank_id', $request->integer('bank_id'));
         }
@@ -135,6 +145,14 @@ class ComplianceController extends Controller
                 'total' => $page->total(),
             ],
         ]);
+    }
+
+    private function applyScope(Request $request, $query, string $column = 'bank_id'): void
+    {
+        $user = $request->user();
+        if ($user && $user->bank_id !== null) {
+            $query->where($column, $user->bank_id);
+        }
     }
 
     private function perPage(Request $request): int
