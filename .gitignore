@@ -1,10 +1,6 @@
 # Claude Code agent worktrees — ephemeral, never commit
 .claude/worktrees/
 
-# BMad output — exclude only truly transient artifacts
-_bmad-output/implementation-artifacts/
-_bmad-output/test-artifacts/
-
 # OS
 .DS_Store
 Thumbs.db

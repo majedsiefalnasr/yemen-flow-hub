@@ -39,11 +39,10 @@ cd .. && git add frontend/<files> && git commit -m "feat(scope): description"
 
 All commits must stay signed. Never use `--no-gpg-sign`, `--no-sign`, or `-c commit.gpgsign=false`; if signing fails, fix signing first.
 
-Never add or commit generated artifacts from `graphify-out/`, `_bmad-output/implementation-artifacts/`, or `_bmad-output/test-artifacts/`. Keep them local only in every repo workflow.
+Never add or commit generated artifacts from `graphify-out/`. Keep them local only in every repo workflow.
 
 ## Skills Available
 
-Use `/bmad-*` skills for project management, PRD, architecture, and sprint planning.
 Use `/socraticode:codebase-exploration` to explore the codebase structure.
 Use `/fewer-permission-prompts` after initial setup to reduce permission friction.
 

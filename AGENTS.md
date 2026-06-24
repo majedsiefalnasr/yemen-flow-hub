@@ -94,7 +94,7 @@ git commit -m "feat(voting): ..."
 - Keep commit messages identical between the team repo and the root monorepo for the same change
 - All commits must remain signed. Do NOT use `--no-gpg-sign`, `--no-sign`, or `-c commit.gpgsign=false` as a workaround.
 - If signing fails, stop and fix the Git signing setup instead of creating an unsigned commit.
-- Never add or commit generated artifacts from `graphify-out/`, `_bmad-output/implementation-artifacts/`, or `_bmad-output/test-artifacts/` in any repo. Keep them local only, even when they change during agent workflows.
+- Never add or commit generated artifacts from `graphify-out/` in any repo. Keep them local only, even when they change during agent workflows.
 
 ### Quality Gates
 
@@ -323,7 +323,7 @@ Do NOT use for: business logic, workflow rules, or anything covered by this proj
 
 ### SocratiCode (MANDATORY for all story/feature work)
 
-SocratiCode provides semantic codebase search and dependency graph analysis. It is **required** — not optional — for every BMAD dev-story run and any non-trivial implementation task.
+SocratiCode provides semantic codebase search and dependency graph analysis. It is **required** — not optional — for every non-trivial implementation task.
 
 **Indexed path:** `/Users/majedsiefalnasr/Documents/Work/Ultimate-Solutions-EGY/yemen-flow-hub/code`
 
@@ -352,8 +352,6 @@ Tool prefixes vary by client:
 
 - Claude Code may expose these as `mcp__plugin_socraticode_socraticode__...`
 - Codex should load them from the `socraticode` MCP server configured in `~/.codex/config.toml`; use the SocratiCode tools exposed in the current session rather than hardcoding the Claude prefix.
-
-**BMAD integration:** The `_bmad/custom/bmad-dev-story.toml` file enforces SocratiCode checks as persistent facts on every story activation. On startup, the dev-story workflow calls `codebase_search` to verify the index is live and triggers `codebase_index` automatically if it is not.
 
 ---
 
