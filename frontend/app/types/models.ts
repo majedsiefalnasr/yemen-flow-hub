@@ -533,6 +533,12 @@ export interface NotificationData {
   reason?: 'manual' | 'ttl_expired' | null
   released_by_user_id?: number | null
   released_by_name?: string | null
+  title?: string
+  body?: string
+  severity?: string
+  entity_type?: string | null
+  entity_id?: number | null
+  action_url?: string | null
 }
 
 export interface Notification {
