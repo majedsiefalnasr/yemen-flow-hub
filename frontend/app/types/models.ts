@@ -863,3 +863,100 @@ export interface StagePermission {
   updated_at: string | null
   version: number
 }
+
+export type EngineRequestStatus = 'ACTIVE' | 'CLOSED' | 'REJECTED'
+
+export interface EngineRequest {
+  id: number
+  reference: string
+  status: EngineRequestStatus
+  version: number
+  workflow_version_id: number
+  current_stage: {
+    id: number
+    code: string
+    name: string
+    is_initial: boolean
+    is_final: boolean
+    sla_duration_minutes: number | null
+  } | null
+  bank_id: number | null
+  bank: { id: number; name: string; code: string | null } | null
+  merchant_id: number | null
+  merchant: { id: number; name: string } | null
+  data: Record<string, unknown>
+  amount: number | null
+  currency: string | null
+  invoice_number: string | null
+  sla_status: string | null
+  created_by: number
+  creator: { id: number; name: string } | null
+  created_at: string | null
+  updated_at: string | null
+}
+
+export interface EngineRequestDocument {
+  id: number
+  request_id: number
+  field_id: number | null
+  stage_id: number
+  original_name: string
+  mime: string
+  size: number
+  uploaded_by: { id: number; name: string } | number
+  created_at: string | null
+}
+
+export interface EngineHistoryEntry {
+  id: number
+  from_stage: { id: number; code: string; name: string } | null
+  to_stage: { id: number; code: string; name: string } | null
+  action_code: string | null
+  performed_by: { id: number; name: string } | null
+  comments: string | null
+  created_at: string | null
+}
+
+export interface AvailableWorkflow {
+  id: number
+  code: string
+  name: string
+  version_id: number
+  version_number: number
+}
+
+export interface ResolvedFieldDefinition {
+  id: number
+  key: string
+  label: string
+  type: FieldType
+  placeholder: string | null
+  help_text: string | null
+  default_value: string | null
+  min_value: number | null
+  max_value: number | null
+  min_length: number | null
+  max_length: number | null
+  regex_pattern: string | null
+  options: Array<{ value: string; label: string }> | null
+  dynamic_source: DynamicFieldSource | null
+  allowed_file_types: string[] | null
+  max_file_size: number | null
+  multiple: boolean
+  is_visible: boolean
+  is_editable: boolean
+  is_required: boolean
+  dynamic_options: Array<{ value: string | number; label: string }> | null
+}
+
+export interface ResolvedFieldGroup {
+  id: number
+  name: string
+  label: string
+  sort_order: number
+  fields: ResolvedFieldDefinition[]
+}
+
+export interface EngineFormSchema {
+  field_groups: ResolvedFieldGroup[]
+}
