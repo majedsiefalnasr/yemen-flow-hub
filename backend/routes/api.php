@@ -169,6 +169,7 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'active'])->group(function () {
     Route::post('engine-requests', [EngineRequestController::class, 'store']);
     Route::get('engine-requests/available-workflows', [EngineRequestController::class, 'availableWorkflows']);
     Route::get('engine-requests/{engineRequest}', [EngineRequestController::class, 'show']);
+    Route::get('engine-requests/{engineRequest}/form-schema', [EngineRequestController::class, 'formSchema']);
     Route::post('engine-requests/{engineRequest}/actions', [EngineRequestController::class, 'executeAction']);
     Route::patch('engine-requests/{engineRequest}/draft', [EngineRequestController::class, 'draft']);
     Route::get('engine-requests/{engineRequest}/history', [EngineRequestController::class, 'history']);

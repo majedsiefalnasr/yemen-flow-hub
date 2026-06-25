@@ -12,6 +12,7 @@ use App\Models\FieldGroup;
 use App\Models\Merchant;
 use App\Models\Organization;
 use App\Models\Role;
+use App\Models\StageFieldRule;
 use App\Models\StagePermission;
 use App\Models\Team;
 use App\Models\User;
@@ -864,6 +865,87 @@ class EngineRequestTest extends TestCase
 
         $response = $this->actingAs($noAccessUser)
             ->getJson('/api/v1/engine-requests/available-workflows');
+
+        $response->assertForbidden();
+    }
+
+    // ── 18.5.10: Form Schema ─────────────────────────────────────────────
+
+    public function test_form_schema_returns_merged_stage_effective_rules(): void
+    {
+        $group = FieldGroup::create([
+            'workflow_version_id' => $this->version->id,
+            'name' => 'invoice_details',
+            'label' => 'Invoice Details',
+            'sort_order' => 2,
+            'version' => 1,
+        ]);
+
+        $field = FieldDefinition::create([
+            'workflow_version_id' => $this->version->id,
+            'field_group_id' => $group->id,
+            'key' => 'invoice_amount',
+            'label' => 'Invoice Amount',
+            'type' => 'NUMBER',
+            'is_required' => false,
+            'sort_order' => 1,
+            'version' => 1,
+        ]);
+
+        StageFieldRule::create([
+            'stage_id' => $this->initialStage->id,
+            'field_id' => $field->id,
+            'is_visible' => true,
+            'is_editable' => true,
+            'is_required' => true,
+            'version' => 1,
+        ]);
+
+        $engineRequest = EngineRequest::create([
+            'workflow_version_id' => $this->version->id,
+            'current_stage_id' => $this->initialStage->id,
+            'created_by' => $this->executor->id,
+            'merchant_id' => $this->merchant->id,
+            'bank_id' => $this->bank->id,
+            'reference' => 'ENG-2026-000001',
+            'status' => 'ACTIVE',
+            'data' => ['amount' => 50000],
+            'version' => 1,
+        ]);
+
+        $response = $this->actingAs($this->executor)
+            ->getJson("/api/v1/engine-requests/{$engineRequest->id}/form-schema");
+
+        $response->assertOk();
+        $groups = $response->json('data.field_groups');
+        $this->assertCount(2, $groups); // main + invoice_details
+        $invoiceDetailsGroup = collect($groups)->firstWhere('name', 'invoice_details');
+        $this->assertNotNull($invoiceDetailsGroup);
+        $this->assertEquals('invoice_details', $invoiceDetailsGroup['name']);
+        $this->assertCount(1, $invoiceDetailsGroup['fields']);
+        $returnedField = $invoiceDetailsGroup['fields'][0];
+        $this->assertSame('invoice_amount', $returnedField['key']);
+        $this->assertTrue($returnedField['is_required']); // stage rule overrides field default false
+        $this->assertTrue($returnedField['is_visible']);
+        $this->assertTrue($returnedField['is_editable']);
+    }
+
+    public function test_form_schema_forbidden_for_user_outside_scope(): void
+    {
+        $engineRequest = EngineRequest::create([
+            'workflow_version_id' => $this->version->id,
+            'current_stage_id' => $this->initialStage->id,
+            'created_by' => $this->executor->id,
+            'merchant_id' => $this->merchant->id,
+            'bank_id' => $this->bank->id,
+            'reference' => 'ENG-2026-000002',
+            'status' => 'ACTIVE',
+            'data' => ['amount' => 50000],
+            'version' => 1,
+        ]);
+
+        $response = $this->actingAs($this->outsideUser)
+            ->getJson("/api/v1/engine-requests/{$engineRequest->id}/form-schema");
 
         $response->assertForbidden();
     }

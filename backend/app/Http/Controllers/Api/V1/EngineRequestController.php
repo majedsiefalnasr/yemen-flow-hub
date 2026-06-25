@@ -9,11 +9,14 @@ use App\Http\Requests\StoreEngineRequestRequest;
 use App\Http\Resources\EngineRequestResource;
 use App\Models\EngineRequest;
 use App\Models\EngineRequestDocument;
+use App\Models\FieldDefinition;
+use App\Models\FieldGroup;
 use App\Models\WorkflowVersion;
 use App\Services\Audit\AuditService;
 use App\Services\Authorization\PermissionService;
 use App\Services\Notifications\EngineNotificationDispatcher;
 use App\Services\Workflow\DuplicateInvoiceChecker;
+use App\Services\Workflow\DynamicFieldOptionsResolver;
 use App\Services\Workflow\EngineRequestService;
 use App\Services\Workflow\EngineTransitionService;
 use App\Services\Workflow\StagePermissionResolver;
@@ -115,6 +118,70 @@ class EngineRequestController extends Controller
             'success' => true,
             'data' => new EngineRequestResource($engineRequest),
         ]);
+    }
+
+    public function formSchema(EngineRequest $engineRequest): JsonResponse
+    {
+        $this->authorize('view', $engineRequest);
+
+        $stage = $engineRequest->currentStage;
+        $fields = FieldDefinition::query()
+            ->where('workflow_version_id', $engineRequest->workflow_version_id)
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get();
+        $rulesByFieldId = $stage->stageFieldRules()->get()->keyBy('field_id');
+        $groups = FieldGroup::query()
+            ->where('workflow_version_id', $engineRequest->workflow_version_id)
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get();
+
+        $optionsResolver = app(DynamicFieldOptionsResolver::class);
+
+        $fieldsByGroup = $fields->groupBy('field_group_id');
+
+        $data = $groups->map(function ($group) use ($fieldsByGroup, $rulesByFieldId, $optionsResolver): array {
+            $groupFields = ($fieldsByGroup->get($group->id) ?? collect())
+                ->map(function ($field) use ($rulesByFieldId, $optionsResolver): array {
+                    $rule = $rulesByFieldId->get($field->id);
+
+                    return [
+                        'id' => $field->id,
+                        'key' => $field->key,
+                        'label' => $field->label,
+                        'type' => $field->type->value,
+                        'placeholder' => $field->placeholder,
+                        'help_text' => $field->help_text,
+                        'default_value' => $field->default_value,
+                        'min_value' => $field->min_value !== null ? (float) $field->min_value : null,
+                        'max_value' => $field->max_value !== null ? (float) $field->max_value : null,
+                        'min_length' => $field->min_length,
+                        'max_length' => $field->max_length,
+                        'regex_pattern' => $field->regex_pattern,
+                        'options' => $field->options,
+                        'dynamic_source' => $field->dynamic_source?->value,
+                        'allowed_file_types' => $field->allowed_file_types,
+                        'max_file_size' => $field->max_file_size,
+                        'multiple' => (bool) $field->multiple,
+                        'is_visible' => $rule?->is_visible ?? true,
+                        'is_editable' => $rule?->is_editable ?? true,
+                        'is_required' => $rule?->is_required ?? (bool) $field->is_required,
+                        'dynamic_options' => $field->dynamic_source !== null ? $optionsResolver->resolve($field) : null,
+                    ];
+                })
+                ->values();
+
+            return [
+                'id' => $group->id,
+                'name' => $group->name,
+                'label' => $group->label,
+                'sort_order' => $group->sort_order,
+                'fields' => $groupFields,
+            ];
+        })->values();
+
+        return response()->json(['data' => ['field_groups' => $data]]);
     }
 
     // ── 18.5.2: List (scoped & filtered) ─────────────────────────────────
