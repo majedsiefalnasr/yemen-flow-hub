@@ -11,6 +11,7 @@ use App\Models\EngineRequest;
 use App\Models\EngineRequestDocument;
 use App\Models\WorkflowVersion;
 use App\Services\Audit\AuditService;
+use App\Services\Authorization\PermissionService;
 use App\Services\Notifications\EngineNotificationDispatcher;
 use App\Services\Workflow\DuplicateInvoiceChecker;
 use App\Services\Workflow\EngineRequestService;
@@ -67,6 +68,41 @@ class EngineRequestController extends Controller
         }
 
         return response()->json($response, 201);
+    }
+
+    public function availableWorkflows(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        if (! app(PermissionService::class)->userHasCapability($user, 'requests', 'CREATE')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You do not have permission to create requests.',
+            ], 403);
+        }
+
+        $versions = WorkflowVersion::query()
+            ->where('state', 'PUBLISHED')
+            ->with('definition')
+            ->get()
+            ->filter(function (WorkflowVersion $version) use ($user): bool {
+                $initialStage = $version->stages()->where('is_initial', true)->first();
+                if ($initialStage === null) {
+                    return false;
+                }
+
+                return $this->permissionResolver->userCanAccessStage($user, $initialStage, StageAccessLevel::EXECUTE);
+            })
+            ->map(fn (WorkflowVersion $version): array => [
+                'id' => $version->definition->id,
+                'code' => $version->definition->code,
+                'name' => $version->definition->name,
+                'version_id' => $version->id,
+                'version_number' => $version->version_number,
+            ])
+            ->values();
+
+        return response()->json(['data' => $versions]);
     }
 
     public function show(EngineRequest $engineRequest): JsonResponse

@@ -23,6 +23,7 @@ use App\Models\WorkflowVersion;
 use App\Services\Workflow\StageHookRegistry;
 use Database\Seeders\GovernanceSeeder;
 use Database\Seeders\PermissionSeeder;
+use Database\Seeders\ScreenPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -61,7 +62,7 @@ class EngineRequestTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->seed([PermissionSeeder::class, GovernanceSeeder::class]);
+        $this->seed([PermissionSeeder::class, GovernanceSeeder::class, ScreenPermissionSeeder::class]);
         $this->setUpWorkflow();
     }
 
@@ -820,5 +821,50 @@ class EngineRequestTest extends TestCase
         $request->refresh();
         $this->assertEquals($this->initialStage->id, $request->current_stage_id);
         $this->assertEquals('ACTIVE', $request->status);
+    }
+
+    public function test_available_workflows_lists_published_versions_the_user_can_start(): void
+    {
+        $response = $this->actingAs($this->executor)
+            ->getJson('/api/v1/engine-requests/available-workflows');
+
+        $response->assertOk();
+        $ids = collect($response->json('data'))->pluck('version_id')->all();
+        $this->assertContains($this->version->id, $ids);
+    }
+
+    public function test_available_workflows_excludes_draft_versions(): void
+    {
+        $draftVersion = WorkflowVersion::create([
+            'workflow_definition_id' => $this->version->workflow_definition_id,
+            'state' => WorkflowVersionState::DRAFT,
+            'version_number' => $this->version->version_number + 1,
+            'version' => 1,
+        ]);
+
+        $response = $this->actingAs($this->executor)
+            ->getJson('/api/v1/engine-requests/available-workflows');
+
+        $response->assertOk();
+        $ids = collect($response->json('data'))->pluck('version_id')->all();
+        $this->assertNotContains($draftVersion->id, $ids);
+    }
+
+    public function test_available_workflows_excludes_users_without_create_capability(): void
+    {
+        $noAccessUser = User::create([
+            'name' => 'No Access User',
+            'email' => 'noaccess@test.com',
+            'password' => bcrypt('password'),
+            'role' => UserRole::BANK_REVIEWER,
+            'bank_id' => $this->bank->id,
+            'organization_id' => null,
+            'is_active' => true,
+        ]);
+
+        $response = $this->actingAs($noAccessUser)
+            ->getJson('/api/v1/engine-requests/available-workflows');
+
+        $response->assertForbidden();
     }
 }
