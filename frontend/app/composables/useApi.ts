@@ -112,6 +112,14 @@ export function useApi() {
     return apiFetch<T>(path, { ...options, method: 'PUT', body })
   }
 
+  async function patch<T>(
+    path: string,
+    body?: ApiFetchBody,
+    options: Omit<ApiFetchOptions, 'method' | 'body'> = {},
+  ): Promise<T> {
+    return apiFetch<T>(path, { ...options, method: 'PATCH', body })
+  }
+
   async function del<T>(path: string, options: Omit<ApiFetchOptions, 'method'> = {}): Promise<T> {
     return apiFetch<T>(path, { ...options, method: 'DELETE' })
   }
@@ -125,5 +133,5 @@ export function useApi() {
     )
   }
 
-  return { get, post, put, del, isApiError }
+  return { get, post, put, patch, del, isApiError }
 }
