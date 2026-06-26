@@ -120,6 +120,38 @@ const stubs = {
   },
 }
 
+function makeInstance(overrides: Record<string, unknown> = {}) {
+  return {
+    id: 5,
+    reference: 'ENG-2026-000005',
+    status: 'ACTIVE' as const,
+    version: 1,
+    workflow_version_id: 1,
+    current_stage: {
+      id: 1,
+      code: 'INTAKE',
+      name: 'استلام',
+      is_initial: true,
+      is_final: false,
+      sla_duration_minutes: null,
+    },
+    bank_id: null,
+    bank: null,
+    merchant_id: null,
+    merchant: null,
+    data: {},
+    amount: null,
+    currency: null,
+    invoice_number: null,
+    sla_status: null,
+    created_by: 1,
+    creator: { id: 1, name: 'Test User' },
+    created_at: '2026-06-25T00:00:00Z',
+    updated_at: '2026-06-25T00:00:00Z',
+    ...overrides,
+  }
+}
+
 describe('workflows/instances/[id].vue', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
@@ -136,30 +168,7 @@ describe('workflows/instances/[id].vue', () => {
 
   it('renders the instance reference', async () => {
     const store = useEngineRequestsStore()
-    store.current = {
-      id: 5,
-      reference: 'ENG-2026-000005',
-      status: 'ACTIVE',
-      version: 1,
-      workflow_version_id: 1,
-      current_stage: {
-        id: 1,
-        code: 'INTAKE',
-        name: 'استلام',
-        is_initial: true,
-        is_final: false,
-        sla_duration_minutes: null,
-      },
-      bank_id: null,
-      bank: null,
-      merchant_id: null,
-      merchant: null,
-      data: {},
-      amount: null,
-      currency: null,
-      invoice_number: null,
-      sla_status: null,
-    }
+    store.current = makeInstance()
     const wrapper = mount(WorkflowInstanceDetailPage, { global: { stubs } })
     await wrapper.vm.$nextTick()
     expect(wrapper.text()).toContain('ENG-2026-000005')
@@ -167,30 +176,7 @@ describe('workflows/instances/[id].vue', () => {
 
   it('renders available actions derived from graph edges matching the current stage', async () => {
     const store = useEngineRequestsStore()
-    store.current = {
-      id: 5,
-      reference: 'ENG-2026-000005',
-      status: 'ACTIVE',
-      version: 1,
-      workflow_version_id: 1,
-      current_stage: {
-        id: 1,
-        code: 'INTAKE',
-        name: 'استلام',
-        is_initial: true,
-        is_final: false,
-        sla_duration_minutes: null,
-      },
-      bank_id: null,
-      bank: null,
-      merchant_id: null,
-      merchant: null,
-      data: {},
-      amount: null,
-      currency: null,
-      invoice_number: null,
-      sla_status: null,
-    }
+    store.current = makeInstance()
     store.graph = {
       nodes: [
         {
@@ -224,30 +210,7 @@ describe('workflows/instances/[id].vue', () => {
 
   it('shows a conflict banner when conflictError is true', async () => {
     const store = useEngineRequestsStore()
-    store.current = {
-      id: 5,
-      reference: 'ENG-2026-000005',
-      status: 'ACTIVE',
-      version: 1,
-      workflow_version_id: 1,
-      current_stage: {
-        id: 1,
-        code: 'INTAKE',
-        name: 'استلام',
-        is_initial: true,
-        is_final: false,
-        sla_duration_minutes: null,
-      },
-      bank_id: null,
-      bank: null,
-      merchant_id: null,
-      merchant: null,
-      data: {},
-      amount: null,
-      currency: null,
-      invoice_number: null,
-      sla_status: null,
-    }
+    store.current = makeInstance()
     mockConflictError.value = true
     const wrapper = mount(WorkflowInstanceDetailPage, { global: { stubs } })
     await wrapper.vm.$nextTick()

@@ -65,7 +65,7 @@ function onInput(value: unknown) {
       :model-value="String((modelValue as number) ?? '')"
       :placeholder="field.placeholder ?? undefined"
       :disabled="!field.is_editable"
-      @update:model-value="(v: string) => onInput(v === '' ? undefined : Number(v))"
+      @update:model-value="(v: string | number) => onInput(v === '' ? undefined : Number(v))"
     />
 
     <Input

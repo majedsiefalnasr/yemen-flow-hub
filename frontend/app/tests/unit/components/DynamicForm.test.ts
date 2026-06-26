@@ -84,8 +84,8 @@ describe('DynamicForm', () => {
   it('skips invisible fields', () => {
     const hiddenGroups: ResolvedFieldGroup[] = [
       {
-        ...groups[0],
-        fields: [{ ...groups[0].fields[0], is_visible: false }],
+        ...groups[0]!,
+        fields: [{ ...groups[0]!.fields[0]!, is_visible: false }],
       },
     ]
     const wrapper = mount(DynamicForm, {
