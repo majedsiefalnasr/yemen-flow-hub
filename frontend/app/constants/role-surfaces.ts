@@ -12,6 +12,9 @@ export type RoleSurfaceKey =
   | 'nav.admin.entities'
   | 'nav.admin.cby_staff'
   | 'nav.admin.workflow_docs'
+  | 'nav.admin.workflow_designer'
+  | 'nav.admin.teams'
+  | 'nav.admin.reference_data'
   | 'nav.admin.roles'
   | 'nav.admin.screen_permissions'
   | 'nav.settings'
@@ -56,6 +59,9 @@ export const ROLE_SURFACE_MATRIX: Record<UserRole, RoleSurfaceContract> = {
       'nav.admin.entities',
       'nav.admin.cby_staff',
       'nav.admin.workflow_docs',
+      'nav.admin.workflow_designer',
+      'nav.admin.teams',
+      'nav.admin.reference_data',
       'nav.admin.roles',
       'nav.admin.screen_permissions',
     ],
@@ -77,6 +83,9 @@ export const ROLE_SURFACE_MATRIX: Record<UserRole, RoleSurfaceContract> = {
       'nav.admin.entities',
       'nav.admin.cby_staff',
       'nav.admin.workflow_docs',
+      'nav.admin.workflow_designer',
+      'nav.admin.teams',
+      'nav.admin.reference_data',
       'nav.admin.roles',
       'nav.admin.screen_permissions',
       'action.support_claim',
@@ -104,6 +113,9 @@ export const ROLE_SURFACE_MATRIX: Record<UserRole, RoleSurfaceContract> = {
       'nav.admin.entities',
       'nav.admin.cby_staff',
       'nav.admin.workflow_docs',
+      'nav.admin.workflow_designer',
+      'nav.admin.teams',
+      'nav.admin.reference_data',
       'nav.admin.roles',
       'nav.admin.screen_permissions',
       'action.support_claim',
@@ -134,6 +146,9 @@ export const ROLE_SURFACE_MATRIX: Record<UserRole, RoleSurfaceContract> = {
       'nav.admin.entities',
       'nav.admin.cby_staff',
       'nav.admin.workflow_docs',
+      'nav.admin.workflow_designer',
+      'nav.admin.teams',
+      'nav.admin.reference_data',
       'nav.admin.roles',
       'nav.admin.screen_permissions',
       'action.support_claim',
@@ -160,6 +175,9 @@ export const ROLE_SURFACE_MATRIX: Record<UserRole, RoleSurfaceContract> = {
       'nav.admin.entities',
       'nav.admin.cby_staff',
       'nav.admin.workflow_docs',
+      'nav.admin.workflow_designer',
+      'nav.admin.teams',
+      'nav.admin.reference_data',
       'nav.admin.roles',
       'nav.admin.screen_permissions',
       'action.swift_upload',
@@ -189,6 +207,9 @@ export const ROLE_SURFACE_MATRIX: Record<UserRole, RoleSurfaceContract> = {
       'nav.admin.entities',
       'nav.admin.cby_staff',
       'nav.admin.workflow_docs',
+      'nav.admin.workflow_designer',
+      'nav.admin.teams',
+      'nav.admin.reference_data',
       'nav.admin.roles',
       'nav.admin.screen_permissions',
       'action.support_claim',
@@ -219,6 +240,9 @@ export const ROLE_SURFACE_MATRIX: Record<UserRole, RoleSurfaceContract> = {
       'nav.admin.entities',
       'nav.admin.cby_staff',
       'nav.admin.workflow_docs',
+      'nav.admin.workflow_designer',
+      'nav.admin.teams',
+      'nav.admin.reference_data',
       'nav.admin.roles',
       'nav.admin.screen_permissions',
       'action.support_claim',
@@ -237,6 +261,9 @@ export const ROLE_SURFACE_MATRIX: Record<UserRole, RoleSurfaceContract> = {
       'nav.admin.entities',
       'nav.admin.cby_staff',
       'nav.admin.workflow_docs',
+      'nav.admin.workflow_designer',
+      'nav.admin.teams',
+      'nav.admin.reference_data',
       'nav.admin.roles',
       'nav.admin.screen_permissions',
       'nav.settings',
@@ -268,6 +295,9 @@ export const NAV_SURFACE_ROUTES: Record<
   | 'nav.admin.entities'
   | 'nav.admin.cby_staff'
   | 'nav.admin.workflow_docs'
+  | 'nav.admin.workflow_designer'
+  | 'nav.admin.teams'
+  | 'nav.admin.reference_data'
   | 'nav.admin.roles'
   | 'nav.admin.screen_permissions'
   | 'nav.settings'
@@ -285,6 +315,9 @@ export const NAV_SURFACE_ROUTES: Record<
   'nav.admin.entities': '/admin/banks',
   'nav.admin.cby_staff': '/admin/cby-staff',
   'nav.admin.workflow_docs': '/admin/workflow-docs',
+  'nav.admin.workflow_designer': '/admin/workflows',
+  'nav.admin.teams': '/admin/teams',
+  'nav.admin.reference_data': '/admin/reference-data',
   'nav.admin.roles': '/admin/roles',
   'nav.admin.screen_permissions': '/admin/screen-permissions',
   'nav.settings': '/settings',

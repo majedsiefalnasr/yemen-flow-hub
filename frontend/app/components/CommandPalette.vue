@@ -80,6 +80,9 @@ const shortcutByRoute: Record<string, string> = {
   '/admin/banks': 'B',
   '/admin/cby-staff': 'U',
   '/admin/workflow-docs': 'W',
+  '/admin/workflows': 'Y',
+  '/admin/reference-data': 'J',
+  '/admin/teams': 'Q',
   '/admin/roles': 'P',
   '/settings': 'S',
 }
@@ -100,6 +103,9 @@ const aliasesByRoute: Record<string, string> = {
   '/admin/banks': 'banks بنوك organizations institutions',
   '/admin/cby-staff': 'cby staff admin users',
   '/admin/workflow-docs': 'workflow documents rules',
+  '/admin/workflows': 'workflow designer مصمم سير العمل stages transitions',
+  '/admin/reference-data': 'reference data البيانات الأساسية lookup tables',
+  '/admin/teams': 'teams فرق groups',
   '/admin/roles': 'roles permissions access',
   '/settings': 'settings preferences configuration',
 }
@@ -216,7 +222,18 @@ const GROUP_DEFS: Array<{ heading: string; routes: string[] }> = [
     routes: ['/traders', '/merchants', '/staff', '/admin/banks', '/admin/cby-staff'],
   },
   { heading: 'التدقيق والتقارير', routes: ['/audit', '/reports'] },
-  { heading: 'الإعدادات والإدارة', routes: ['/settings', '/admin/workflow-docs', '/admin/roles'] },
+  {
+    heading: 'الإعدادات والإدارة',
+    routes: [
+      '/settings',
+      '/admin/workflow-docs',
+      '/admin/workflows',
+      '/admin/reference-data',
+      '/admin/teams',
+      '/admin/roles',
+      '/admin/screen-permissions',
+    ],
+  },
   { heading: 'المساعدة والإشعارات', routes: ['/notifications'] },
 ]
 

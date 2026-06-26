@@ -238,6 +238,7 @@ defineExpose({ table })
                   <div
                     v-if="isCompactColumn(cell.column.id)"
                     class="flex items-center justify-center px-4"
+                    @click.stop
                   >
                     <FlexRender :render="cell.column.columnDef.cell" :props="cell.getContext()" />
                   </div>
