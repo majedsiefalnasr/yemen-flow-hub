@@ -23,7 +23,7 @@ class WorkflowDefinitionController extends Controller
     {
         $this->authorize('viewAny', WorkflowDefinition::class);
         $validated = $request->validate([
-            'search' => ['sometimes', 'string', 'max:255'],
+            'search' => ['sometimes', 'nullable', 'string', 'max:255'],
             'sort' => ['sometimes', 'string', 'in:'.implode(',', self::SORT_COLUMNS)],
             'direction' => ['sometimes', 'string', 'in:asc,desc'],
             'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],

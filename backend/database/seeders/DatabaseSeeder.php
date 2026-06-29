@@ -26,6 +26,9 @@ class DatabaseSeeder extends Seeder
         $this->call([WorkflowActionSeeder::class]);
         $this->command?->info('Seeded workflow actions catalog.');
 
+        $this->call([ImportFinancingWorkflowSeeder::class]);
+        $this->command?->info('Seeded Import Financing workflow.');
+
         $this->call([BankSeeder::class]);
         $this->command?->info('Seeded banks.');
 

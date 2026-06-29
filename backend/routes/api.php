@@ -87,6 +87,7 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'active'])->group(function () {
     Route::post('roles/{role}/deactivate', [RoleController::class, 'deactivate']);
     Route::delete('roles/{role}', [RoleController::class, 'destroy']);
     Route::get('screens', [ScreenController::class, 'index']);
+    Route::get('screen-permissions/matrix', [RoleScreenPermissionController::class, 'matrix']);
     Route::get('roles/{role}/screen-permissions', [RoleScreenPermissionController::class, 'show']);
     Route::put('roles/{role}/screen-permissions', [RoleScreenPermissionController::class, 'update']);
     Route::get('reference-tables', [ReferenceTableController::class, 'index']);

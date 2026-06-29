@@ -7,7 +7,7 @@ COPY . .
 RUN apk add --no-cache freetype-dev libjpeg-turbo-dev libpng-dev \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install -j"$(nproc)" gd \
-    && composer install --no-dev --prefer-dist --no-interaction --optimize-autoloader
+    && composer install --no-dev --prefer-dist --no-interaction --optimize-autoloader || composer install --no-dev --prefer-source --no-interaction --optimize-autoloader
 
 FROM php:8.3-cli-alpine AS runtime
 
