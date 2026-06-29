@@ -331,14 +331,14 @@ onMounted(() => {
             class="bg-background border-border text-foreground hover:border-primary focus-visible:ring-primary flex cursor-pointer flex-col items-start gap-1 rounded-xl border p-4 transition-all hover:shadow-md focus-visible:ring-2 focus-visible:outline-none"
             role="button"
             tabindex="0"
-            aria-label="المستوردون"
+            aria-label="التجار"
             @click="router.push('/merchants')"
             @keydown.enter="router.push('/merchants')"
             @keydown.space.prevent="router.push('/merchants')"
           >
             <Building2 class="text-primary mb-1 size-5 flex-shrink-0" aria-hidden="true" />
-            <span class="text-sm font-semibold">المستوردون</span>
-            <span class="text-muted-foreground text-xs">إدارة بيانات المستوردين</span>
+            <span class="text-sm font-semibold">التجار</span>
+            <span class="text-muted-foreground text-xs">إدارة بيانات التجار</span>
           </Card>
 
           <Card

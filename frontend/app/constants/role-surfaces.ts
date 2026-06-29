@@ -9,9 +9,10 @@ export type RoleSurfaceKey =
   | 'nav.reports'
   | 'nav.audit'
   | 'nav.notifications'
-  | 'nav.admin.entities'
+  | 'nav.admin.banks'
+  | 'nav.admin.orgs'
+  | 'nav.admin.system_settings'
   | 'nav.admin.cby_staff'
-  | 'nav.admin.workflow_docs'
   | 'nav.admin.workflow_designer'
   | 'nav.admin.teams'
   | 'nav.admin.reference_data'
@@ -56,9 +57,10 @@ export const ROLE_SURFACE_MATRIX: Record<UserRole, RoleSurfaceContract> = {
       'nav.reports',
       'nav.merchants',
       'nav.staff',
-      'nav.admin.entities',
+      'nav.admin.banks',
+      'nav.admin.orgs',
+      'nav.admin.system_settings',
       'nav.admin.cby_staff',
-      'nav.admin.workflow_docs',
       'nav.admin.workflow_designer',
       'nav.admin.teams',
       'nav.admin.reference_data',
@@ -80,9 +82,10 @@ export const ROLE_SURFACE_MATRIX: Record<UserRole, RoleSurfaceContract> = {
       'nav.merchants',
       'nav.staff',
       'nav.audit',
-      'nav.admin.entities',
+      'nav.admin.banks',
+      'nav.admin.orgs',
+      'nav.admin.system_settings',
       'nav.admin.cby_staff',
-      'nav.admin.workflow_docs',
       'nav.admin.workflow_designer',
       'nav.admin.teams',
       'nav.admin.reference_data',
@@ -110,9 +113,10 @@ export const ROLE_SURFACE_MATRIX: Record<UserRole, RoleSurfaceContract> = {
       'nav.new_request',
       'nav.external_fx_confirmation',
       'nav.audit',
-      'nav.admin.entities',
+      'nav.admin.banks',
+      'nav.admin.orgs',
+      'nav.admin.system_settings',
       'nav.admin.cby_staff',
-      'nav.admin.workflow_docs',
       'nav.admin.workflow_designer',
       'nav.admin.teams',
       'nav.admin.reference_data',
@@ -143,9 +147,10 @@ export const ROLE_SURFACE_MATRIX: Record<UserRole, RoleSurfaceContract> = {
       'nav.staff',
       'nav.reports',
       'nav.audit',
-      'nav.admin.entities',
+      'nav.admin.banks',
+      'nav.admin.orgs',
+      'nav.admin.system_settings',
       'nav.admin.cby_staff',
-      'nav.admin.workflow_docs',
       'nav.admin.workflow_designer',
       'nav.admin.teams',
       'nav.admin.reference_data',
@@ -172,9 +177,10 @@ export const ROLE_SURFACE_MATRIX: Record<UserRole, RoleSurfaceContract> = {
       'nav.merchants',
       'nav.staff',
       'nav.audit',
-      'nav.admin.entities',
+      'nav.admin.banks',
+      'nav.admin.orgs',
+      'nav.admin.system_settings',
       'nav.admin.cby_staff',
-      'nav.admin.workflow_docs',
       'nav.admin.workflow_designer',
       'nav.admin.teams',
       'nav.admin.reference_data',
@@ -204,9 +210,10 @@ export const ROLE_SURFACE_MATRIX: Record<UserRole, RoleSurfaceContract> = {
       'nav.merchants',
       'nav.staff',
       'nav.audit',
-      'nav.admin.entities',
+      'nav.admin.banks',
+      'nav.admin.orgs',
+      'nav.admin.system_settings',
       'nav.admin.cby_staff',
-      'nav.admin.workflow_docs',
       'nav.admin.workflow_designer',
       'nav.admin.teams',
       'nav.admin.reference_data',
@@ -237,9 +244,10 @@ export const ROLE_SURFACE_MATRIX: Record<UserRole, RoleSurfaceContract> = {
       'nav.new_request',
       'nav.merchants',
       'nav.staff',
-      'nav.admin.entities',
+      'nav.admin.banks',
+      'nav.admin.orgs',
+      'nav.admin.system_settings',
       'nav.admin.cby_staff',
-      'nav.admin.workflow_docs',
       'nav.admin.workflow_designer',
       'nav.admin.teams',
       'nav.admin.reference_data',
@@ -258,9 +266,10 @@ export const ROLE_SURFACE_MATRIX: Record<UserRole, RoleSurfaceContract> = {
       'nav.reports',
       'nav.audit',
       'nav.notifications',
-      'nav.admin.entities',
+      'nav.admin.banks',
+      'nav.admin.orgs',
+      'nav.admin.system_settings',
       'nav.admin.cby_staff',
-      'nav.admin.workflow_docs',
       'nav.admin.workflow_designer',
       'nav.admin.teams',
       'nav.admin.reference_data',
@@ -292,9 +301,10 @@ export const NAV_SURFACE_ROUTES: Record<
   | 'nav.reports'
   | 'nav.audit'
   | 'nav.notifications'
-  | 'nav.admin.entities'
+  | 'nav.admin.banks'
+  | 'nav.admin.orgs'
+  | 'nav.admin.system_settings'
   | 'nav.admin.cby_staff'
-  | 'nav.admin.workflow_docs'
   | 'nav.admin.workflow_designer'
   | 'nav.admin.teams'
   | 'nav.admin.reference_data'
@@ -312,9 +322,10 @@ export const NAV_SURFACE_ROUTES: Record<
   'nav.reports': '/reports',
   'nav.audit': '/audit',
   'nav.notifications': '/notifications',
-  'nav.admin.entities': '/admin/banks',
+  'nav.admin.banks': '/admin/banks',
+  'nav.admin.orgs': '/admin/orgs',
+  'nav.admin.system_settings': '/admin/settings',
   'nav.admin.cby_staff': '/admin/cby-staff',
-  'nav.admin.workflow_docs': '/admin/workflow-docs',
   'nav.admin.workflow_designer': '/admin/workflows',
   'nav.admin.teams': '/admin/teams',
   'nav.admin.reference_data': '/admin/reference-data',

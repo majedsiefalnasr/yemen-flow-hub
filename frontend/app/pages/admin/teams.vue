@@ -89,7 +89,7 @@ const columnFilters = ref<ColumnFiltersState>([])
 const rowSelection = ref<Record<string, boolean>>({})
 const deleteConfirmOpen = ref(false)
 const deletingTeam = ref<GovernanceTeam | null>(null)
-const selectedOrgFilter = ref<string>('')
+const selectedOrgFilter = ref<string>('all')
 
 const teamSchema = toTypedSchema(
   z.object({
@@ -108,7 +108,7 @@ onMounted(async () => {
 const filtered = computed(() => {
   let result = teams.value
   const orgId = selectedOrgFilter.value
-  if (orgId) {
+  if (orgId && orgId !== 'all') {
     result = result.filter((t) => t.organization_id === Number(orgId))
   }
   const q = query.value.trim().toLowerCase()
@@ -125,7 +125,7 @@ const hasActiveFilters = computed(
   () =>
     columnFilters.value.length > 0 ||
     query.value.trim().length > 0 ||
-    selectedOrgFilter.value.length > 0,
+    selectedOrgFilter.value !== 'all',
 )
 const selectedCount = computed(() => Object.values(rowSelection.value).filter(Boolean).length)
 
@@ -402,7 +402,7 @@ const noTeams = computed(() => !loading.value && teams.value.length === 0 && !er
 
 function handleReset() {
   query.value = ''
-  selectedOrgFilter.value = ''
+  selectedOrgFilter.value = 'all'
   table.resetColumnFilters()
 }
 
@@ -551,7 +551,7 @@ const formOrgId = computed({
             <SelectValue placeholder="تصفية حسب المؤسسة" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">الكل</SelectItem>
+            <SelectItem value="all">الكل</SelectItem>
             <SelectItem v-for="org in organizations" :key="org.id" :value="String(org.id)">
               {{ org.name }}
             </SelectItem>

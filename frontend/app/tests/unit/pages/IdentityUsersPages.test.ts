@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
 describe('identity user management pages', () => {
-  it('uses cascading org team role bank selects and ScreenGuard', () => {
+  it('uses DataTable with cascading selects and ScreenGuard', () => {
     const source = readFileSync(
       resolve(process.cwd(), 'app/components/admin/IdentityUsersPage.vue'),
       'utf8',
@@ -13,6 +13,10 @@ describe('identity user management pages', () => {
     expect(source).toContain('v-if="bankRequired"')
     expect(source).toContain('resetPassword')
     expect(source).toContain('resetMfa')
+    expect(source).toContain('<DataTable')
+    expect(source).toContain('<DataTableToolbar')
+    expect(source).toContain('<DataTablePagination')
+    expect(source).toContain('MetricGrid')
   })
 
   it('exposes committee and bank routes', () => {

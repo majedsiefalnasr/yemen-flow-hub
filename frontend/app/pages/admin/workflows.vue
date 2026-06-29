@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
+import type { AcceptableValue } from 'reka-ui'
 import { toTypedSchema } from '@vee-validate/zod'
 import { useForm } from 'vee-validate'
 import { toast } from 'vue-sonner'
 import { z } from 'zod'
-import { AlertCircle, Copy, Plus } from 'lucide-vue-next'
+import { AlertCircle, Copy, Plus, Workflow } from 'lucide-vue-next'
 import type { WorkflowVersion } from '@/types/models'
 import ScreenGuard from '@/components/security/ScreenGuard.vue'
 import PageHeader from '@/components/layout/PageHeader.vue'
@@ -13,11 +14,12 @@ import WorkflowTransitionEditor from '@/components/workflow/WorkflowTransitionEd
 import WorkflowFieldDesigner from '@/components/workflow/WorkflowFieldDesigner.vue'
 import WorkflowProcessGraph from '@/components/workflow/WorkflowProcessGraph.vue'
 import WorkflowPublishPanel from '@/components/workflow/WorkflowPublishPanel.vue'
+import StageRoutingEditor from '@/components/workflow/StageRoutingEditor.vue'
 import WorkflowActionsCatalog from '@/components/workflow/WorkflowActionsCatalog.vue'
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import {
   Dialog,
   DialogContent,
@@ -31,25 +33,99 @@ import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/comp
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { useWorkflows } from '@/composables/useWorkflows'
 
 const { definitions, loading, error, fetchDefinitions, createDefinition, cloneVersion } =
   useWorkflows()
 
-const createDialogOpen = ref(false)
-const expandedVersionId = ref<number | null>(null)
+// ── Version picker state ────────────────────────────────────────────────
+const selectedDefinitionId = ref<number | null>(null)
+const selectedVersionId = ref<number | null>(null)
 
-function toggleVersion(versionId: number) {
-  expandedVersionId.value = expandedVersionId.value === versionId ? null : versionId
+const selectedDefinition = computed(
+  () => definitions.value.find((d) => d.id === selectedDefinitionId.value) ?? null,
+)
+const selectedVersion = computed<WorkflowVersion | null>(() => {
+  if (!selectedDefinition.value || !selectedVersionId.value) return null
+  return selectedDefinition.value.versions.find((v) => v.id === selectedVersionId.value) ?? null
+})
+
+// Auto-select the first definition + its newest version on load.
+watch(
+  definitions,
+  (next) => {
+    if (next.length === 0) return
+    const first = next[0]
+    if (
+      selectedDefinitionId.value === null ||
+      !next.some((d) => d.id === selectedDefinitionId.value)
+    ) {
+      if (first) selectedDefinitionId.value = first.id
+    }
+    const def = next.find((d) => d.id === selectedDefinitionId.value)
+    if (def && def.versions.length > 0) {
+      const newest = def.versions[0]
+      const needPick =
+        selectedVersionId.value === null ||
+        !def.versions.some((v) => v.id === selectedVersionId.value)
+      if (needPick && newest) {
+        selectedVersionId.value = newest.id
+      }
+    } else {
+      selectedVersionId.value = null
+    }
+  },
+  { immediate: true },
+)
+
+function onDefinitionChange(value: AcceptableValue) {
+  selectedDefinitionId.value = Number(value)
+  const def = definitions.value.find((d) => d.id === Number(value))
+  selectedVersionId.value = def?.versions[0]?.id ?? null
 }
+
+function onVersionChange(value: AcceptableValue) {
+  selectedVersionId.value = Number(value)
+}
+
+async function clone() {
+  if (!selectedVersion.value) return
+  try {
+    const clone = await cloneVersion(selectedVersion.value)
+    selectedVersionId.value = clone.id
+    toast.success('تم إنشاء نسخة مسودة جديدة')
+  } catch (cause) {
+    toast.error(extractApiErrorMessage(cause, 'تعذّر استنساخ النسخة'))
+  }
+}
+
+// ── State badges ────────────────────────────────────────────────────────
+function stateBadgeClass(state: WorkflowVersion['state']): string {
+  if (state === 'PUBLISHED') {
+    return 'border border-[var(--severity-green)]/30 bg-[var(--severity-green)]/10 text-[var(--severity-green)]'
+  }
+  if (state === 'ARCHIVED') {
+    return 'border border-[var(--locked)]/30 bg-[var(--locked)]/10 text-[var(--locked)]'
+  }
+  return 'border border-[var(--severity-amber)]/30 bg-[var(--severity-amber)]/10 text-[var(--severity-amber)]'
+}
+
+const stateLabels: Record<WorkflowVersion['state'], string> = {
+  DRAFT: 'مسودة',
+  PUBLISHED: 'منشورة',
+  ARCHIVED: 'مؤرشفة',
+}
+
+// ── Create-definition dialog ────────────────────────────────────────────
+const createDialogOpen = ref(false)
 
 const definitionSchema = toTypedSchema(
   z.object({
@@ -71,11 +147,13 @@ function openCreate() {
 
 const onCreate = definitionForm.handleSubmit(async (values) => {
   try {
-    await createDefinition({
+    const created = await createDefinition({
       code: values.code,
       name: values.name,
       description: values.description || undefined,
     })
+    selectedDefinitionId.value = created.id
+    selectedVersionId.value = created.versions[0]?.id ?? null
     toast.success('تم إنشاء مسار العمل')
     createDialogOpen.value = false
   } catch (cause) {
@@ -83,41 +161,27 @@ const onCreate = definitionForm.handleSubmit(async (values) => {
   }
 })
 
-async function clone(version: WorkflowVersion) {
-  try {
-    await cloneVersion(version)
-    toast.success('تم إنشاء نسخة مسودة جديدة')
-  } catch (cause) {
-    toast.error(extractApiErrorMessage(cause, 'تعذّر استنساخ النسخة'))
-  }
+async function reload() {
+  await fetchDefinitions()
 }
 
-function stateBadgeClass(state: WorkflowVersion['state']): string {
-  if (state === 'PUBLISHED') {
-    return 'border border-[var(--severity-green)]/30 bg-[var(--severity-green)]/10 text-[var(--severity-green)]'
-  }
-  if (state === 'ARCHIVED') {
-    return 'border border-[var(--locked)]/30 bg-[var(--locked)]/10 text-[var(--locked)]'
-  }
-  return 'border border-[var(--severity-amber)]/30 bg-[var(--severity-amber)]/10 text-[var(--severity-amber)]'
-}
-
-const stateLabels: Record<WorkflowVersion['state'], string> = {
-  DRAFT: 'مسودة',
-  PUBLISHED: 'منشورة',
-  ARCHIVED: 'مؤرشفة',
-}
-
-onMounted(() => fetchDefinitions())
+onMounted(reload)
 </script>
 
 <template>
   <ScreenGuard screen="workflow_designer">
-    <div class="space-y-6">
-      <PageHeader title="مصمم مسارات العمل" description="إنشاء وإدارة تعريفات مسارات العمل ونسخها">
+    <div class="mx-auto max-w-[1600px] space-y-6 p-6">
+      <PageHeader
+        title="مصمم مسارات العمل"
+        subtitle="إنشاء وإدارة تعريفات مسارات العمل ونسخها ضمن تبويبات تصميم متخصصة"
+        :breadcrumbs="[{ label: 'الرئيسية', to: '/dashboard' }, { label: 'مصمم مسارات العمل' }]"
+      >
         <template #actions>
           <ScreenGuard screen="workflow_designer" capability="CREATE">
-            <Button @click="openCreate"><Plus class="h-4 w-4" />إنشاء مسار عمل</Button>
+            <Button @click="openCreate">
+              <Plus class="h-4 w-4" />
+              إنشاء مسار عمل
+            </Button>
           </ScreenGuard>
         </template>
       </PageHeader>
@@ -127,17 +191,19 @@ onMounted(() => fetchDefinitions())
         <AlertTitle>تعذّر تحميل مسارات العمل</AlertTitle>
         <AlertDescription>{{ error }}</AlertDescription>
         <AlertAction>
-          <Button variant="outline" size="sm" @click="fetchDefinitions()">إعادة المحاولة</Button>
+          <Button variant="outline" size="sm" @click="reload">إعادة المحاولة</Button>
         </AlertAction>
       </Alert>
 
       <div v-if="loading" class="grid gap-4">
-        <Skeleton v-for="n in 3" :key="n" class="h-32 w-full rounded-xl" />
+        <Skeleton class="h-32 w-full rounded-xl" />
+        <Skeleton class="h-10 w-full rounded-lg" />
+        <Skeleton class="h-96 w-full rounded-xl" />
       </div>
 
       <Empty v-else-if="definitions.length === 0 && !error">
         <EmptyMedia variant="icon">
-          <Plus />
+          <Workflow />
         </EmptyMedia>
         <EmptyHeader>
           <EmptyTitle>لا توجد مسارات عمل</EmptyTitle>
@@ -145,73 +211,117 @@ onMounted(() => fetchDefinitions())
         </EmptyHeader>
       </Empty>
 
-      <div v-else class="grid gap-4">
-        <Card v-for="definition in definitions" :key="definition.id" class="border-0 shadow">
-          <CardHeader class="pb-2">
-            <div class="flex items-center justify-between gap-3">
-              <div class="min-w-0">
-                <CardTitle class="text-sm font-semibold">{{ definition.name }}</CardTitle>
-                <span class="text-muted-foreground font-mono text-xs">{{ definition.code }}</span>
-              </div>
-              <Badge v-if="!definition.is_active" variant="secondary">غير نشط</Badge>
-            </div>
-          </CardHeader>
-          <CardContent class="p-4 pt-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead class="text-right">النسخة</TableHead>
-                  <TableHead class="text-right">الحالة</TableHead>
-                  <TableHead class="text-right">إجراء</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                <TableRow v-for="version in definition.versions" :key="version.id">
-                  <TableCell class="font-mono">v{{ version.version_number }}</TableCell>
-                  <TableCell>
-                    <Badge :class="stateBadgeClass(version.state)">
-                      {{ stateLabels[version.state] }}
-                    </Badge>
-                  </TableCell>
-                  <TableCell @click.stop>
-                    <Button size="sm" variant="ghost" @click="toggleVersion(version.id)">
-                      {{ expandedVersionId === version.id ? 'إخفاء المراحل' : 'المراحل' }}
-                    </Button>
-                    <ScreenGuard screen="workflow_designer" capability="CREATE">
-                      <Button
-                        v-if="version.state === 'PUBLISHED'"
-                        size="sm"
-                        variant="outline"
-                        @click="clone(version)"
-                      >
-                        <Copy class="h-3.5 w-3.5" />استنساخ
-                      </Button>
-                      <span v-else-if="!version.is_editable" class="text-muted-foreground text-xs">
-                        مقفلة
-                      </span>
-                    </ScreenGuard>
-                  </TableCell>
-                </TableRow>
-              </TableBody>
-            </Table>
-
-            <template v-for="version in definition.versions" :key="`stages-${version.id}`">
-              <div
-                v-if="expandedVersionId === version.id"
-                class="border-border mt-4 space-y-6 border-t pt-4"
+      <template v-else>
+        <!-- Version picker card -->
+        <Card class="border-0 shadow">
+          <CardContent class="flex flex-wrap items-end gap-4 p-4">
+            <div class="flex min-w-[220px] flex-1 flex-col gap-1.5">
+              <label class="text-muted-foreground text-xs font-medium" for="def-select">
+                مسار العمل
+              </label>
+              <Select
+                :model-value="String(selectedDefinitionId ?? '')"
+                @update:model-value="onDefinitionChange"
               >
-                <WorkflowPublishPanel :version="version" @published="fetchDefinitions()" />
-                <WorkflowStageEditor :version="version" />
-                <WorkflowTransitionEditor :version="version" />
-                <WorkflowFieldDesigner :version="version" />
-                <WorkflowProcessGraph :version="version" />
-              </div>
-            </template>
+                <SelectTrigger id="def-select">
+                  <SelectValue placeholder="اختر مسار العمل" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem v-for="def in definitions" :key="def.id" :value="String(def.id)">
+                    {{ def.name }}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div class="flex min-w-[160px] flex-1 flex-col gap-1.5">
+              <label class="text-muted-foreground text-xs font-medium" for="ver-select">
+                النسخة
+              </label>
+              <Select
+                :model-value="String(selectedVersionId ?? '')"
+                :disabled="!selectedDefinition"
+                @update:model-value="onVersionChange"
+              >
+                <SelectTrigger id="ver-select">
+                  <SelectValue placeholder="اختر النسخة" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem
+                    v-for="version in selectedDefinition?.versions ?? []"
+                    :key="version.id"
+                    :value="String(version.id)"
+                  >
+                    v{{ version.version_number }}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div class="flex flex-col gap-1.5">
+              <span class="text-muted-foreground text-xs font-medium">الحالة</span>
+              <Badge v-if="selectedVersion" :class="stateBadgeClass(selectedVersion.state)">
+                {{ stateLabels[selectedVersion.state] }}
+              </Badge>
+              <Badge v-else variant="secondary">—</Badge>
+            </div>
+
+            <div class="ms-auto flex items-center gap-2">
+              <ScreenGuard screen="workflow_designer" capability="CREATE">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  :disabled="!selectedVersion || selectedVersion.state !== 'PUBLISHED'"
+                  @click="clone"
+                >
+                  <Copy class="h-3.5 w-3.5" />
+                  استنساخ
+                </Button>
+              </ScreenGuard>
+            </div>
           </CardContent>
         </Card>
-      </div>
 
-      <WorkflowActionsCatalog />
+        <div v-if="!selectedVersion" class="py-12">
+          <Empty>
+            <EmptyTitle>اختر مسار عمل ونسخة للبدء</EmptyTitle>
+            <EmptyDescription> تظهر أدوات التصميم بعد اختيار النسخة من الأعلى. </EmptyDescription>
+          </Empty>
+        </div>
+
+        <!-- Tabs -->
+        <Tabs v-else default-value="stages" dir="rtl">
+          <TabsList class="flex w-full flex-wrap">
+            <TabsTrigger value="stages">المراحل</TabsTrigger>
+            <TabsTrigger value="routing">سير العملية</TabsTrigger>
+            <TabsTrigger value="transitions">الانتقالات</TabsTrigger>
+            <TabsTrigger value="fields">الحقول</TabsTrigger>
+            <TabsTrigger value="actions">الإجراءات</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="stages" class="mt-4 space-y-6">
+            <WorkflowPublishPanel :version="selectedVersion" @published="reload" />
+            <WorkflowStageEditor :version="selectedVersion" />
+          </TabsContent>
+
+          <TabsContent value="routing" class="mt-4 space-y-6">
+            <StageRoutingEditor :version="selectedVersion" />
+            <WorkflowProcessGraph :version="selectedVersion" />
+          </TabsContent>
+
+          <TabsContent value="transitions" class="mt-4">
+            <WorkflowTransitionEditor :version="selectedVersion" />
+          </TabsContent>
+
+          <TabsContent value="fields" class="mt-4">
+            <WorkflowFieldDesigner :version="selectedVersion" />
+          </TabsContent>
+
+          <TabsContent value="actions" class="mt-4">
+            <WorkflowActionsCatalog />
+          </TabsContent>
+        </Tabs>
+      </template>
 
       <Dialog v-model:open="createDialogOpen">
         <DialogContent class="max-w-lg">

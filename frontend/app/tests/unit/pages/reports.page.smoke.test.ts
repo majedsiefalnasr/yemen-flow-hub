@@ -35,7 +35,7 @@ async function renderPage(component: unknown): Promise<string> {
 
 describe('/reports page smoke', () => {
   it('renders reports shell', async () => {
-    const page = await import('../../../pages/reports.vue')
+    const page = await import('../../../pages/reports/index.vue')
     const html = await renderPage(page.default)
     expect(html).toContain('التقارير والتحليلات المتقدمة')
   })

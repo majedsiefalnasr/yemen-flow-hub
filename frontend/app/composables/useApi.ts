@@ -48,6 +48,23 @@ export function useApi() {
     })
   }
 
+  /**
+   * Remove empty/null/undefined values from a query object so ofetch does not
+   * serialize them as bare keys (e.g. `?search`), which Laravel rejects on
+   * `string`-validated params. Empty strings, null, undefined dropped.
+   */
+  function stripEmptyQueryParams(
+    query: ApiFetchOptions['query'],
+  ): Record<string, unknown> | undefined {
+    if (query == null || typeof query !== 'object') return undefined
+    const result: Record<string, unknown> = {}
+    for (const [key, value] of Object.entries(query)) {
+      if (value === null || value === undefined || value === '') continue
+      result[key] = value
+    }
+    return result
+  }
+
   function buildHeaders(
     method: string,
     extraHeaders?: ApiFetchOptions['headers'],
@@ -65,18 +82,23 @@ export function useApi() {
   }
 
   async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): Promise<T> {
-    const { headers: extraHeaders, ...restOptions } = options
+    const { headers: extraHeaders, query, ...restOptions } = options
     const method = String(options.method ?? 'GET').toUpperCase()
 
     if (import.meta.client && isUnsafeMethod(method) && !getXsrfToken()) {
       await ensureCsrfCookie()
     }
 
+    // Drop empty/null/undefined query params so they aren't serialized as bare
+    // keys (e.g. `?search`) which Laravel rejects on `string`-typed rules.
+    const cleanQuery = stripEmptyQueryParams(query)
+
     const request = () =>
       $fetch<T>(path, {
         baseURL,
         credentials: 'include',
         ...restOptions,
+        query: cleanQuery,
         method: method as ApiFetchMethod,
         headers: buildHeaders(method, extraHeaders),
       })

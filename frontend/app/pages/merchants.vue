@@ -731,13 +731,13 @@ function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
 <template>
   <div v-if="user && canManage">
     <PageHeader
-      title="المستوردون"
+      title="التجار"
       :subtitle="
         isCbyAdmin
-          ? 'عرض جميع المستوردين المسجلين على المنصة مع البنوك التابعة لهم'
-          : 'تسجيل ومتابعة المستوردين المرتبطين بالبنك'
+          ? 'عرض جميع التجار المسجلين على المنصة مع البنوك التابعة لهم'
+          : 'تسجيل ومتابعة التجار المرتبطين بالبنك'
       "
-      :breadcrumbs="[{ label: 'الرئيسية', to: '/' }, { label: 'المستوردون' }]"
+      :breadcrumbs="[{ label: 'الرئيسية', to: '/' }, { label: 'التجار' }]"
     >
       <template v-if="isBankAdmin" #actions>
         <Button size="sm" class="h-8" @click="createOpen = true">
@@ -953,7 +953,7 @@ function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
                   {{
                     merchants.length === 0
                       ? 'ابدأ بتسجيل أول مستورد باستخدام زر "مستورد جديد" أعلاه.'
-                      : 'جرّب تغيير البحث أو فلتر الحالة لعرض المزيد من المستوردين.'
+                      : 'جرّب تغيير البحث أو فلتر الحالة لعرض المزيد من التجار.'
                   }}
                 </EmptyDescription>
               </EmptyContent>
@@ -1398,9 +1398,9 @@ function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
   </div>
 
   <div v-else>
-    <PageHeader title="المستوردون" subtitle="هذه الصفحة متاحة لمسؤول النظام أو مسؤول البنك فقط." />
+    <PageHeader title="التجار" subtitle="هذه الصفحة متاحة لمسؤول النظام أو مسؤول البنك فقط." />
     <Card class="border-0 p-6 shadow">
-      <div class="text-muted-foreground text-sm">لا تملك صلاحية الوصول إلى المستوردين.</div>
+      <div class="text-muted-foreground text-sm">لا تملك صلاحية الوصول إلى التجار.</div>
     </Card>
   </div>
 </template>

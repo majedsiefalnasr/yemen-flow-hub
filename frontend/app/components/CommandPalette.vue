@@ -79,7 +79,6 @@ const shortcutByRoute: Record<string, string> = {
   '/notifications': 'I',
   '/admin/banks': 'B',
   '/admin/cby-staff': 'U',
-  '/admin/workflow-docs': 'W',
   '/admin/workflows': 'Y',
   '/admin/reference-data': 'J',
   '/admin/teams': 'Q',
@@ -102,7 +101,6 @@ const aliasesByRoute: Record<string, string> = {
   '/notifications': 'notifications alerts',
   '/admin/banks': 'banks بنوك organizations institutions',
   '/admin/cby-staff': 'cby staff admin users',
-  '/admin/workflow-docs': 'workflow documents rules',
   '/admin/workflows': 'workflow designer مصمم سير العمل stages transitions',
   '/admin/reference-data': 'reference data البيانات الأساسية lookup tables',
   '/admin/teams': 'teams فرق groups',
@@ -226,7 +224,6 @@ const GROUP_DEFS: Array<{ heading: string; routes: string[] }> = [
     heading: 'الإعدادات والإدارة',
     routes: [
       '/settings',
-      '/admin/workflow-docs',
       '/admin/workflows',
       '/admin/reference-data',
       '/admin/teams',

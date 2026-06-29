@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Component } from 'vue'
-import { Building2, Home, Settings } from 'lucide-vue-next'
+import { Home } from 'lucide-vue-next'
 import {
   Sidebar,
   SidebarContent,
@@ -127,31 +127,38 @@ const NAV_GROUP_DEFS: Array<{
 }> = [
   {
     title: 'الرئيسية',
-    routes: ['/dashboard', '/requests', '/notifications'],
+    routes: ['/dashboard', '/notifications', '/reports', '/audit'],
     navGroupStyle: 'operational',
   },
-  { title: 'العمليات', routes: ['/requests/new', '/customs'], navGroupStyle: 'operational' },
+  {
+    title: 'العمليات',
+    routes: ['/requests', '/requests/new', '/customs', '/staff'],
+    navGroupStyle: 'operational',
+  },
   {
     title: 'الإدارة',
     routes: [
-      '/traders',
-      '/merchants',
-      '/staff',
-      '/banks',
-      '/reports',
-      '/audit',
+      '/admin/orgs',
       '/admin/banks',
+      '/merchants',
+      '/traders',
       '/admin/cby-staff',
-      '/admin/workflow-docs',
-      '/admin/workflows',
-      '/admin/reference-data',
       '/admin/teams',
       '/admin/roles',
-      '/admin/screen-permissions',
     ],
     navGroupStyle: 'analytics',
   },
-  { title: 'الأخرى', routes: ['/settings'] },
+  {
+    title: 'النظام',
+    routes: [
+      '/admin/workflows',
+      '/admin/screen-permissions',
+      '/admin/reference-data',
+      '/admin/settings',
+      '/settings',
+    ],
+    navGroupStyle: 'analytics',
+  },
 ]
 
 const navGroups = computed<NavGroupDef[]>(() => {
@@ -169,35 +176,8 @@ const navGroups = computed<NavGroupDef[]>(() => {
     }),
   )
 
-  // Role-specific organization settings link
-  const configLink = ((): NavLink | null => {
-    if (role === UserRole.CBY_ADMIN) {
-      return {
-        type: 'link',
-        title: 'إعدادات المؤسسة',
-        icon: Settings,
-        roles: [UserRole.CBY_ADMIN],
-        url: '/organization?section=general',
-      }
-    }
-    if (role === UserRole.BANK_ADMIN) {
-      return {
-        type: 'link',
-        title: 'إعدادات البنك',
-        icon: Building2,
-        roles: [UserRole.BANK_ADMIN],
-        url: '/organization?section=profile',
-      }
-    }
-    return null
-  })()
-
   return NAV_GROUP_DEFS.map((group) => {
-    const baseItems = allowedLinks.filter((link) =>
-      group.routes.includes(link.url),
-    ) as NavGroupItem[]
-    const items: NavGroupItem[] =
-      configLink && group.title === 'الأخرى' ? [...baseItems, configLink] : baseItems
+    const items = allowedLinks.filter((link) => group.routes.includes(link.url)) as NavGroupItem[]
     return {
       title: group.title,
       navGroupStyle: group.navGroupStyle,

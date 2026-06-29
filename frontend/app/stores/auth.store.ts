@@ -279,6 +279,8 @@ export const useAuthStore = defineStore('auth', {
       if (import.meta.client) {
         localStorage.setItem('yfh-authenticated', '1')
       }
+
+      await this.fetchUser()
     },
 
     async requestPasswordRecovery(email: string): Promise<string> {
@@ -429,6 +431,8 @@ export const useAuthStore = defineStore('auth', {
       if (import.meta.client) {
         localStorage.setItem('yfh-authenticated', '1')
       }
+
+      await this.fetchUser()
     },
 
     async switchDemoRole(role: UserRole): Promise<void> {

@@ -54,6 +54,11 @@ export function useOrganizations() {
     )
   }
 
+  const deleteOrganization = async (organization: Organization) => {
+    await api.del(`/api/v1/organizations/${organization.id}`)
+    organizations.value = organizations.value.filter((item) => item.id !== organization.id)
+  }
+
   return {
     organizations,
     loading,
@@ -62,5 +67,6 @@ export function useOrganizations() {
     createOrganization,
     updateOrganization,
     setOrganizationActive,
+    deleteOrganization,
   }
 }

@@ -51,6 +51,7 @@ export default defineNuxtConfig({
         'vue-input-otp',
         'vue-sonner',
         'zod',
+        '@unovis/vue',
       ],
     },
   },

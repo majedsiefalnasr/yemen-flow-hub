@@ -118,15 +118,11 @@ describe('ROLE_SURFACE_MATRIX — DATA_ENTRY forbidden surfaces (plan §1)', () 
   })
 
   it('cannot see admin entities nav', () => {
-    expect(roleHasSurface(UserRole.DATA_ENTRY, 'nav.admin.entities')).toBe(false)
+    expect(roleHasSurface(UserRole.DATA_ENTRY, 'nav.admin.banks')).toBe(false)
   })
 
   it('cannot see admin CBY staff nav', () => {
     expect(roleHasSurface(UserRole.DATA_ENTRY, 'nav.admin.cby_staff')).toBe(false)
-  })
-
-  it('cannot see admin workflow docs nav', () => {
-    expect(roleHasSurface(UserRole.DATA_ENTRY, 'nav.admin.workflow_docs')).toBe(false)
   })
 
   it('cannot see admin roles nav', () => {
@@ -200,7 +196,7 @@ describe('ROLE_SURFACE_MATRIX — BANK_REVIEWER forbidden surfaces (plan §1)', 
   })
 
   it('cannot see admin entities nav', () => {
-    expect(roleHasSurface(UserRole.BANK_REVIEWER, 'nav.admin.entities')).toBe(false)
+    expect(roleHasSurface(UserRole.BANK_REVIEWER, 'nav.admin.banks')).toBe(false)
   })
 
   it('cannot see admin CBY staff nav', () => {
@@ -305,7 +301,7 @@ describe('ROLE_SURFACE_MATRIX — BANK_ADMIN forbidden surfaces (plan §1)', () 
   })
 
   it('cannot see admin entities nav', () => {
-    expect(roleHasSurface(UserRole.BANK_ADMIN, 'nav.admin.entities')).toBe(false)
+    expect(roleHasSurface(UserRole.BANK_ADMIN, 'nav.admin.banks')).toBe(false)
   })
 
   it('cannot see admin CBY staff nav', () => {
@@ -563,7 +559,7 @@ describe('ROLE_SURFACE_MATRIX — CBY_ADMIN allowed surfaces', () => {
   })
 
   it('allows admin entities nav', () => {
-    expect(roleHasSurface(UserRole.CBY_ADMIN, 'nav.admin.entities')).toBe(true)
+    expect(roleHasSurface(UserRole.CBY_ADMIN, 'nav.admin.banks')).toBe(true)
   })
 
   it('allows admin CBY staff nav', () => {

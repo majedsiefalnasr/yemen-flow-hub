@@ -69,19 +69,13 @@ describe('Story 5.7 page smoke tests', () => {
   it('renders /merchants page shell', async () => {
     const page = await import('../../../pages/merchants.vue')
     const html = await renderPage(page.default)
-    expect(html).toContain('المستوردون')
+    expect(html).toContain('التجار')
   })
 
   it('renders /audit page shell', async () => {
     const page = await import('../../../pages/audit.vue')
     const html = await renderPage(page.default)
     expect(html).toContain('التدقيق والامتثال')
-  })
-
-  it('renders /admin/workflow-docs page shell', async () => {
-    const page = await import('../../../pages/admin/workflow-docs.vue')
-    const html = await renderPage(page.default)
-    expect(html).toContain('أنواع المستندات')
   })
 
   it('renders /staff page shell (BANK_ADMIN staff management)', async () => {

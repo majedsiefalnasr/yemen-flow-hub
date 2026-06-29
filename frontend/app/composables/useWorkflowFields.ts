@@ -95,6 +95,73 @@ export function useWorkflowFields() {
     )
   }
 
+  /**
+   * Update a field (e.g. reassign to another group via field_group_id). PATCH
+   * semantics: only the supplied keys are sent.
+   */
+  const updateField = async (
+    versionId: number,
+    field: FieldDefinition,
+    payload: Partial<FieldDefinitionPayload>,
+  ) => {
+    const response = await api.put<{ data: FieldDefinition }>(
+      `/api/v1/workflow-versions/${versionId}/fields/${field.id}`,
+      payload,
+    )
+    const updated = response.data
+    // Remove from old group, insert into new group (or same group if only other
+    // fields changed).
+    groups.value = groups.value
+      .map((group) => ({
+        ...group,
+        fields: group.fields.filter((f) => f.id !== updated.id),
+      }))
+      .map((group) =>
+        group.id === updated.field_group_id
+          ? {
+              ...group,
+              fields: [...group.fields, updated].sort((a, b) => a.sort_order - b.sort_order),
+            }
+          : group,
+      )
+    return updated
+  }
+
+  const updateGroup = async (
+    versionId: number,
+    group: FieldGroup,
+    payload: Partial<FieldGroupPayload>,
+  ) => {
+    const response = await api.put<{ data: FieldGroup }>(
+      `/api/v1/workflow-versions/${versionId}/field-groups/${group.id}`,
+      payload,
+    )
+    const updated = response.data
+    groups.value = groups.value
+      .map((g) => (g.id === updated.id ? { ...g, ...updated, fields: g.fields } : g))
+      .sort((a, b) => a.sort_order - b.sort_order)
+    return updated
+  }
+
+  const deleteGroup = async (versionId: number, group: FieldGroup) => {
+    await api.del(`/api/v1/workflow-versions/${versionId}/field-groups/${group.id}`)
+    // Backend nullOnDelete on fields → orphaned fields drop out of this group.
+    groups.value = groups.value.filter((g) => g.id !== group.id)
+  }
+
+  /**
+   * Persist a new sort order for every group after a local reorder. Sends one
+   * PUT per group with its new sort_order.
+   */
+  const persistGroupOrder = async (versionId: number, orderedIds: number[]) => {
+    const updates = orderedIds.map((id, index) => {
+      const group = groups.value.find((g) => g.id === id)
+      if (!group) return Promise.resolve()
+      return updateGroup(versionId, group, { sort_order: index }).catch(() => {})
+    })
+    await Promise.all(updates)
+  }
+
   return {
     groups,
     loading,
@@ -103,5 +170,9 @@ export function useWorkflowFields() {
     createGroup,
     createField,
     deleteField,
+    updateField,
+    updateGroup,
+    deleteGroup,
+    persistGroupOrder,
   }
 }

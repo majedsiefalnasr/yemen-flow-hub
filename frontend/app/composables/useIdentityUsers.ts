@@ -5,10 +5,23 @@ import type { GovernanceUser } from '@/types/models'
 export function useIdentityUsers() {
   const api = useApi()
   const users = ref<GovernanceUser[]>([])
+  const loading = ref(false)
+  const error = ref<string | null>(null)
 
   const fetchUsers = async (filters: Record<string, string | number> = {}) => {
-    const response = await api.get<{ data: GovernanceUser[] }>('/api/v1/users', { query: filters })
-    users.value = response.data
+    loading.value = true
+    error.value = null
+    try {
+      const response = await api.get<{ data: GovernanceUser[] }>('/api/v1/users', {
+        query: filters,
+      })
+      users.value = response.data
+    } catch (cause: unknown) {
+      users.value = []
+      error.value = extractApiErrorMessage(cause, 'تعذر تحميل المستخدمين.')
+    } finally {
+      loading.value = false
+    }
   }
 
   const createUser = async (payload: Record<string, unknown>) => {
@@ -35,7 +48,7 @@ export function useIdentityUsers() {
 
   const resetMfa = async (user: GovernanceUser) => api.post(`/api/v1/users/${user.id}/reset-mfa`)
 
-  return { users, fetchUsers, createUser, deactivateUser, resetPassword, resetMfa }
+  return { users, loading, error, fetchUsers, createUser, deactivateUser, resetPassword, resetMfa }
 }
 
 function generateTempPassword(): string {
