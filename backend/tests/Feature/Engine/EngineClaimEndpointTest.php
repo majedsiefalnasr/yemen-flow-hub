@@ -32,6 +32,18 @@ class EngineClaimEndpointTest extends TestCase
             ->assertJsonPath('data.claimed_by', $user->id);
     }
 
+    public function test_claim_endpoint_exposes_requires_claim_and_claim_holder(): void
+    {
+        ['request' => $request, 'executor' => $user] = EngineWorkflowFactory::seedClaimStageWithTransition();
+
+        $this->actingAs($user)
+            ->postJson("/api/v1/engine-requests/{$request->id}/claim")
+            ->assertOk()
+            ->assertJsonPath('data.current_stage.requires_claim', true)
+            ->assertJsonPath('data.claimed_by_user.id', $user->id)
+            ->assertJsonPath('data.claimed_by_user.name', $user->name);
+    }
+
     public function test_second_user_claim_returns_409(): void
     {
         ['request' => $request, 'executor' => $a] = EngineWorkflowFactory::seedClaimStageWithTransition();

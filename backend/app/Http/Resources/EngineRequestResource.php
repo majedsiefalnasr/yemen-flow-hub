@@ -22,6 +22,7 @@ class EngineRequestResource extends JsonResource
                 'is_initial' => $this->currentStage->is_initial,
                 'is_final' => $this->currentStage->is_final,
                 'sla_duration_minutes' => $this->currentStage->sla_duration_minutes,
+                'requires_claim' => $this->currentStage->requires_claim,
             ]),
             'bank_id' => $this->bank_id,
             'bank' => $this->whenLoaded('bank', fn () => [
@@ -40,6 +41,10 @@ class EngineRequestResource extends JsonResource
             'invoice_number' => $this->invoice_number,
             'sla_status' => $this->sla_status,
             'claimed_by' => $this->claimed_by,
+            'claimed_by_user' => $this->whenLoaded('claimedBy', fn () => $this->claimedBy === null ? null : [
+                'id' => $this->claimedBy->id,
+                'name' => $this->claimedBy->name,
+            ]),
             'claimed_at' => $this->claimed_at?->toISOString(),
             'claim_expires_at' => $this->claim_expires_at?->toISOString(),
             'created_by' => $this->created_by,

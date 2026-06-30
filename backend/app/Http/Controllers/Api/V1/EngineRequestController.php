@@ -114,7 +114,7 @@ class EngineRequestController extends Controller
     {
         $this->authorize('view', $engineRequest);
 
-        $engineRequest->load(['currentStage', 'creator', 'bank', 'merchant']);
+        $engineRequest->load(['currentStage', 'creator', 'bank', 'merchant', 'claimedBy']);
 
         return response()->json([
             'success' => true,
@@ -310,6 +310,7 @@ class EngineRequestController extends Controller
         $this->authorize('execute', $engineRequest);
 
         $updated = $this->claimService->claim($engineRequest, request()->user());
+        $updated->load(['currentStage', 'claimedBy']);
 
         return response()->json([
             'success' => true,
@@ -322,6 +323,7 @@ class EngineRequestController extends Controller
         $this->authorize('execute', $engineRequest);
 
         $updated = $this->claimService->heartbeat($engineRequest, request()->user());
+        $updated->load(['currentStage', 'claimedBy']);
 
         return response()->json([
             'success' => true,
@@ -334,6 +336,7 @@ class EngineRequestController extends Controller
         $this->authorize('execute', $engineRequest);
 
         $updated = $this->claimService->release($engineRequest, request()->user());
+        $updated->load(['currentStage', 'claimedBy']);
 
         return response()->json([
             'success' => true,
