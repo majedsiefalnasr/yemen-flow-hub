@@ -141,7 +141,8 @@ class BankController extends Controller
         // bank_id FK dangling if such a merchant were later restored.
         return $bank->users()->exists()
             || $bank->merchants()->withTrashed()->exists()
-            || $bank->importRequests()->exists();
+            || $bank->importRequests()->exists()
+            || $bank->engineRequests()->exists();
     }
 
     private function error(string $code, string $message, int $status): JsonResponse

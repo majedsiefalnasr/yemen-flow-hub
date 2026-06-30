@@ -46,6 +46,11 @@ class Bank extends Model
         return $this->hasMany(ImportRequest::class);
     }
 
+    public function engineRequests(): HasMany
+    {
+        return $this->hasMany(EngineRequest::class);
+    }
+
     public function scopeActive(Builder $query): Builder
     {
         return $query->where('is_active', true);

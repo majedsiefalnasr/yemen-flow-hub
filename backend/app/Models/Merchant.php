@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Enums\RequestStatus;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -48,6 +47,11 @@ class Merchant extends Model
         return $this->hasMany(ImportRequest::class);
     }
 
+    public function engineRequests(): HasMany
+    {
+        return $this->hasMany(EngineRequest::class);
+    }
+
     public function owners(): HasMany
     {
         return $this->hasMany(MerchantOwner::class);
@@ -70,21 +74,13 @@ class Merchant extends Model
 
     public function hasActiveRequests(): bool
     {
-        return $this->importRequests()
-            ->whereNotIn('status', $this->terminalStatusValues())
+        return $this->engineRequests()
+            ->where('status', 'ACTIVE')
             ->exists();
     }
 
     public function hasAnyRequests(): bool
     {
-        return $this->importRequests()->exists();
-    }
-
-    private function terminalStatusValues(): array
-    {
-        return array_values(array_map(
-            fn (RequestStatus $status) => $status->value,
-            array_filter(RequestStatus::cases(), fn (RequestStatus $status) => $status->isTerminal())
-        ));
+        return $this->engineRequests()->exists();
     }
 }

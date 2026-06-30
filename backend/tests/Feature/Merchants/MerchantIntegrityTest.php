@@ -4,12 +4,17 @@ namespace Tests\Feature\Merchants;
 
 use App\Enums\UserRole;
 use App\Models\Bank;
+use App\Models\EngineRequest;
 use App\Models\Merchant;
 use App\Models\Permission;
 use App\Models\User;
+use App\Models\WorkflowDefinition;
+use App\Models\WorkflowStage;
+use App\Models\WorkflowVersion;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class MerchantIntegrityTest extends TestCase
@@ -23,6 +28,9 @@ class MerchantIntegrityTest extends TestCase
     private User $bankAdmin;
 
     private User $cbyadmin;
+
+    /** @var array{version: WorkflowVersion, stages: array<string, WorkflowStage>} */
+    private array $workflow;
 
     protected function setUp(): void
     {
@@ -57,6 +65,8 @@ class MerchantIntegrityTest extends TestCase
             ['permission_id' => $permissionId, 'role' => UserRole::CBY_ADMIN->value],
             ['permission_id' => $permissionId, 'role' => UserRole::BANK_ADMIN->value],
         ]);
+
+        $this->workflow = $this->makeWorkflow();
     }
 
     private function makeMerchant(array $overrides = []): Merchant
@@ -71,21 +81,48 @@ class MerchantIntegrityTest extends TestCase
         ], $overrides));
     }
 
-    private function createImportRequest(Merchant $merchant, string $status = 'SUBMITTED'): void
+    private function makeWorkflow(): array
     {
-        DB::table('import_requests')->insert([
-            'reference_number' => 'YFH-'.uniqid(),
+        $definition = WorkflowDefinition::query()->create([
+            'code' => 'MERCHANT_TEST_'.Str::random(6),
+            'name' => 'Merchant Test Workflow',
+            'is_active' => true,
+            'version' => 1,
+        ]);
+
+        $version = WorkflowVersion::query()->create([
+            'workflow_definition_id' => $definition->id,
+            'version_number' => 1,
+            'state' => 'PUBLISHED',
+            'published_at' => now(),
+            'version' => 1,
+        ]);
+
+        $stage = WorkflowStage::query()->create([
+            'workflow_version_id' => $version->id,
+            'code' => 'CREATE',
+            'name' => 'Create',
+            'sort_order' => 1,
+            'is_initial' => true,
+            'is_final' => false,
+            'version' => 1,
+        ]);
+
+        return ['version' => $version, 'stages' => ['CREATE' => $stage]];
+    }
+
+    private function createEngineRequest(Merchant $merchant, string $status = 'ACTIVE'): void
+    {
+        EngineRequest::query()->create([
+            'workflow_version_id' => $this->workflow['version']->id,
+            'current_stage_id' => $this->workflow['stages']['CREATE']->id,
+            'reference' => 'ENG-'.Str::random(8),
+            'status' => $status,
             'bank_id' => $merchant->bank_id,
             'merchant_id' => $merchant->id,
-            'status' => $status,
             'created_by' => $this->bankAdmin->id,
-            'currency' => 'USD',
-            'amount' => 1000,
-            'supplier_name' => 'Supplier',
-            'goods_description' => 'Goods',
-            'port_of_entry' => 'Aden',
-            'created_at' => now(),
-            'updated_at' => now(),
+            'data' => [],
+            'version' => 1,
         ]);
     }
 
@@ -130,7 +167,7 @@ class MerchantIntegrityTest extends TestCase
     public function test_cannot_suspend_merchant_with_active_requests(): void
     {
         $merchant = $this->makeMerchant();
-        $this->createImportRequest($merchant, 'SUBMITTED');
+        $this->createEngineRequest($merchant, 'ACTIVE');
 
         $this->actingAs($this->bankAdmin)->putJson("/api/v1/merchants/{$merchant->id}", [
             'status' => 'SUSPENDED',
@@ -142,8 +179,8 @@ class MerchantIntegrityTest extends TestCase
     public function test_can_suspend_merchant_with_only_terminal_requests(): void
     {
         $merchant = $this->makeMerchant();
-        $this->createImportRequest($merchant, 'COMPLETED');
-        $this->createImportRequest($merchant, 'BANK_REJECTED');
+        $this->createEngineRequest($merchant, 'CLOSED');
+        $this->createEngineRequest($merchant, 'REJECTED');
 
         $this->actingAs($this->bankAdmin)->putJson("/api/v1/merchants/{$merchant->id}", [
             'status' => 'SUSPENDED',
@@ -168,7 +205,7 @@ class MerchantIntegrityTest extends TestCase
     public function test_bank_change_blocked_after_first_request(): void
     {
         $merchant = $this->makeMerchant();
-        $this->createImportRequest($merchant, 'COMPLETED');
+        $this->createEngineRequest($merchant, 'CLOSED');
 
         $this->actingAs($this->cbyadmin)->putJson("/api/v1/merchants/{$merchant->id}", [
             'bank_id' => $this->otherBank->id,
