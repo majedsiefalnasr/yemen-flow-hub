@@ -1,0 +1,1718 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Yemen Flow Hub API",
+    "description": "Internal regulatory workflow API for CBY import financing requests.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "/",
+      "description": "Current API server"
+    }
+  ],
+  "paths": {
+    "/api/audit": {
+      "get": {
+        "tags": ["Audit"],
+        "summary": "List audit logs",
+        "operationId": "b673e9a48211c2fe6b28ae53744c3bef",
+        "responses": {
+          "200": {
+            "description": "Audit logs retrieved"
+          }
+        }
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Login with Sanctum cookie mode or bearer token mode",
+        "operationId": "dd51a484b7fa0f97c7680fdbde14cf5f",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "required": ["email", "password"],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "password": {
+                    "type": "string"
+                  },
+                  "device_name": {
+                    "type": "string",
+                    "nullable": true
+                  }
+                },
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login successful"
+          },
+          "422": {
+            "description": "Validation failed"
+          },
+          "403": {
+            "description": "Inactive account"
+          }
+        }
+      }
+    },
+    "/api/auth/me": {
+      "get": {
+        "tags": ["Auth"],
+        "summary": "Get authenticated user profile",
+        "operationId": "b5de204f5e452ef51327c691aa99e77c",
+        "responses": {
+          "200": {
+            "description": "User profile retrieved"
+          },
+          "401": {
+            "description": "Unauthenticated"
+          }
+        }
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Logout from session and revoke current token",
+        "operationId": "df9bdc6c7a6d9f20b983526b2ec0f698",
+        "responses": {
+          "200": {
+            "description": "Logout successful"
+          },
+          "401": {
+            "description": "Unauthenticated"
+          }
+        }
+      }
+    },
+    "/api/banks": {
+      "get": {
+        "tags": ["Banks"],
+        "summary": "List banks",
+        "operationId": "9d84dc6df1101f8b158b22e9724be084",
+        "responses": {
+          "200": {
+            "description": "Banks retrieved"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sanctumCookie": []
+          }
+        ]
+      },
+      "post": {
+        "tags": ["Banks"],
+        "summary": "Create bank",
+        "operationId": "7eb363ced0c5b92b3cea7b6e7b99e5a3",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "required": ["name", "code"],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "maxLength": 255
+                  },
+                  "code": {
+                    "type": "string",
+                    "maxLength": 20
+                  },
+                  "is_active": {
+                    "type": "boolean"
+                  }
+                },
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Bank created"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sanctumCookie": []
+          }
+        ]
+      }
+    },
+    "/api/banks/{id}": {
+      "get": {
+        "tags": ["Banks"],
+        "summary": "Get bank",
+        "operationId": "1a9e92d7fbcac986b313c44e7061b8bd",
+        "responses": {
+          "200": {
+            "description": "Bank retrieved"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sanctumCookie": []
+          }
+        ]
+      },
+      "put": {
+        "tags": ["Banks"],
+        "summary": "Update bank",
+        "operationId": "e90014b7763047bcd5938a4e279ceee5",
+        "responses": {
+          "200": {
+            "description": "Bank updated"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sanctumCookie": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": ["Banks"],
+        "summary": "Delete bank",
+        "operationId": "e0cc1107004dda02113cb2de2afbe70b",
+        "responses": {
+          "200": {
+            "description": "Bank deleted"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sanctumCookie": []
+          }
+        ]
+      }
+    },
+    "/api/customs/{importRequest}/generate": {
+      "post": {
+        "tags": ["Customs"],
+        "summary": "Generate external FX confirmation document and PDF",
+        "operationId": "685dd0efd33ea65d8ee5830808dea441",
+        "parameters": [
+          {
+            "name": "importRequest",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "External FX confirmation document generated"
+          }
+        }
+      }
+    },
+    "/api/customs/{id}": {
+      "get": {
+        "tags": ["Customs"],
+        "summary": "Get external FX confirmation metadata",
+        "operationId": "27ce40a396e17fef959976578f26d6fe",
+        "responses": {
+          "200": {
+            "description": "External FX confirmation document retrieved"
+          }
+        }
+      }
+    },
+    "/api/customs/{id}/download": {
+      "get": {
+        "tags": ["Customs"],
+        "summary": "Download external FX confirmation PDF",
+        "operationId": "c400587da4439c778627f17ea91810cf",
+        "responses": {
+          "200": {
+            "description": "PDF stream"
+          }
+        }
+      }
+    },
+    "/api/dashboard/stats": {
+      "get": {
+        "tags": ["Dashboard"],
+        "summary": "Dashboard stats",
+        "description": "Returns role-scoped dashboard metrics.",
+        "operationId": "654e1617f74d2b9e0654ec77620d960b",
+        "responses": {
+          "200": {
+            "description": "Dashboard stats retrieved"
+          },
+          "401": {
+            "description": "Unauthenticated"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sanctumCookie": []
+          }
+        ]
+      }
+    },
+    "/api/requests/{importRequest}/documents": {
+      "post": {
+        "tags": ["Documents"],
+        "summary": "Upload request document",
+        "operationId": "f387a6eae03daaed34a7b89d02031520",
+        "parameters": [
+          {
+            "name": "importRequest",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "required": ["file"],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                },
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Document uploaded"
+          }
+        }
+      }
+    },
+    "/api/workflow/{importRequest}/swift-upload": {
+      "post": {
+        "tags": ["Documents"],
+        "summary": "Upload SWIFT document and trigger workflow transition",
+        "operationId": "93f6e04e3f1097215a75ce37a720f25f",
+        "parameters": [
+          {
+            "name": "importRequest",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "required": ["file"],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                },
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "SWIFT uploaded"
+          }
+        }
+      }
+    },
+    "/api/documents/{id}/download": {
+      "get": {
+        "tags": ["Documents"],
+        "summary": "Download document file",
+        "operationId": "82e9bca1bbc2236748b6450b0502a5f0",
+        "responses": {
+          "200": {
+            "description": "File stream"
+          }
+        }
+      }
+    },
+    "/api/documents/{id}": {
+      "delete": {
+        "tags": ["Documents"],
+        "summary": "Delete request document",
+        "operationId": "6b128368bb7ca99054b61fa94cd12162",
+        "responses": {
+          "200": {
+            "description": "Document deleted"
+          }
+        }
+      }
+    },
+    "/api/document-types": {
+      "get": {
+        "tags": ["Documents"],
+        "summary": "List document types",
+        "operationId": "8b19a581a124487ac3655a2b100bbf14",
+        "responses": {
+          "200": {
+            "description": "Document types retrieved"
+          }
+        }
+      },
+      "post": {
+        "tags": ["Documents"],
+        "summary": "Create document type",
+        "operationId": "752e398963276a9b347e43042dd3e029",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "required": ["slug", "name_ar", "name_en"],
+                "properties": {
+                  "slug": {
+                    "type": "string",
+                    "maxLength": 255
+                  },
+                  "name_ar": {
+                    "type": "string",
+                    "maxLength": 255
+                  },
+                  "name_en": {
+                    "type": "string",
+                    "maxLength": 255
+                  },
+                  "is_required": {
+                    "type": "boolean"
+                  },
+                  "is_active": {
+                    "type": "boolean"
+                  },
+                  "sort_order": {
+                    "type": "integer",
+                    "maximum": 65535,
+                    "minimum": 0
+                  }
+                },
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Document type created"
+          }
+        }
+      }
+    },
+    "/api/document-types/{id}": {
+      "put": {
+        "tags": ["Documents"],
+        "summary": "Update document type",
+        "operationId": "22372b93986b85086eb21ee98200ccbc",
+        "responses": {
+          "200": {
+            "description": "Document type updated"
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Documents"],
+        "summary": "Delete document type",
+        "operationId": "8e1d8e98e3b354f33349b3ee60730499",
+        "responses": {
+          "200": {
+            "description": "Document type deleted"
+          }
+        }
+      }
+    },
+    "/api/requests": {
+      "get": {
+        "tags": ["Import Requests"],
+        "summary": "List requests",
+        "operationId": "81f070558de3bee7a1acf5f707a02794",
+        "responses": {
+          "200": {
+            "description": "Requests retrieved"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sanctumCookie": []
+          }
+        ]
+      },
+      "post": {
+        "tags": ["Import Requests"],
+        "summary": "Create draft request",
+        "operationId": "f4e7970c60149062c38cb7a8104c22d5",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "required": [
+                  "merchant_id",
+                  "currency",
+                  "amount",
+                  "supplier_name",
+                  "goods_description",
+                  "port_of_entry"
+                ],
+                "properties": {
+                  "merchant_id": {
+                    "type": "integer"
+                  },
+                  "currency": {
+                    "type": "string",
+                    "enum": ["USD", "EUR", "SAR", "AED", "CNY"]
+                  },
+                  "amount": {
+                    "type": "number",
+                    "format": "float"
+                  },
+                  "supplier_name": {
+                    "type": "string",
+                    "maxLength": 255
+                  },
+                  "goods_description": {
+                    "type": "string"
+                  },
+                  "port_of_entry": {
+                    "type": "string",
+                    "maxLength": 255
+                  },
+                  "notes": {
+                    "type": "string",
+                    "nullable": true
+                  }
+                },
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Request created"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sanctumCookie": []
+          }
+        ]
+      }
+    },
+    "/api/requests/{id}": {
+      "get": {
+        "tags": ["Import Requests"],
+        "summary": "Show request details",
+        "operationId": "932a4b4d28771c0e9526071a67c261f7",
+        "responses": {
+          "200": {
+            "description": "Request retrieved"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sanctumCookie": []
+          }
+        ]
+      },
+      "put": {
+        "tags": ["Import Requests"],
+        "summary": "Update request",
+        "operationId": "91a21fac2e0dc46c6322f7ae74553371",
+        "responses": {
+          "200": {
+            "description": "Request updated"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sanctumCookie": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": ["Import Requests"],
+        "summary": "Delete draft request",
+        "operationId": "b837f7524126dbc3717f488790c5321c",
+        "responses": {
+          "200": {
+            "description": "Request deleted"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sanctumCookie": []
+          }
+        ]
+      }
+    },
+    "/api/requests/{id}/history": {
+      "get": {
+        "tags": ["Workflow"],
+        "summary": "Request stage history",
+        "operationId": "2381e42554faf01229090aa1c47a9eb5",
+        "responses": {
+          "200": {
+            "description": "History retrieved"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sanctumCookie": []
+          }
+        ]
+      }
+    },
+    "/api/merchants": {
+      "get": {
+        "tags": ["المستوردون / Importers"],
+        "summary": "List importers",
+        "operationId": "29dc2feea9d224f1903cfe3d27bd81fb",
+        "responses": {
+          "200": {
+            "description": "Importers retrieved"
+          }
+        }
+      },
+      "post": {
+        "tags": ["المستوردون / Importers"],
+        "summary": "Create importer",
+        "operationId": "15db992a94c43f36e50daf7853b53ca2",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "required": ["name"],
+                "properties": {
+                  "bank_id": {
+                    "type": "integer",
+                    "nullable": true
+                  },
+                  "name": {
+                    "type": "string",
+                    "maxLength": 255
+                  },
+                  "commercial_register": {
+                    "type": "string",
+                    "nullable": true,
+                    "maxLength": 255
+                  },
+                  "tax_number": {
+                    "type": "string",
+                    "nullable": true,
+                    "maxLength": 255
+                  },
+                  "national_id": {
+                    "type": "string",
+                    "nullable": true,
+                    "maxLength": 255
+                  },
+                  "owner_name": {
+                    "type": "string",
+                    "nullable": true,
+                    "maxLength": 255
+                  },
+                  "phone": {
+                    "type": "string",
+                    "nullable": true,
+                    "maxLength": 255
+                  },
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "nullable": true,
+                    "maxLength": 255
+                  },
+                  "address": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "is_active": {
+                    "type": "boolean"
+                  }
+                },
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Importer created"
+          }
+        }
+      }
+    },
+    "/api/merchants/{id}": {
+      "get": {
+        "tags": ["المستوردون / Importers"],
+        "summary": "Get importer",
+        "operationId": "56beef28bbe1d805bab17fb72672742e",
+        "responses": {
+          "200": {
+            "description": "Importer retrieved"
+          }
+        }
+      },
+      "put": {
+        "tags": ["المستوردون / Importers"],
+        "summary": "Update importer",
+        "operationId": "1bfd0f2f913af1bcfbe7306aafd7e5ea",
+        "responses": {
+          "200": {
+            "description": "Importer updated"
+          }
+        }
+      },
+      "delete": {
+        "tags": ["المستوردون / Importers"],
+        "summary": "Delete importer",
+        "operationId": "b4a0d51bc1209b6cb6c808e902595592",
+        "responses": {
+          "200": {
+            "description": "Importer deleted"
+          }
+        }
+      }
+    },
+    "/api/notifications": {
+      "get": {
+        "tags": ["Notifications"],
+        "summary": "List current user notifications",
+        "operationId": "6d56a555955089a73fdf3f7229e8ead8",
+        "responses": {
+          "200": {
+            "description": "Notifications retrieved"
+          }
+        }
+      }
+    },
+    "/api/notifications/{notification}/read": {
+      "post": {
+        "tags": ["Notifications"],
+        "summary": "Mark one notification as read",
+        "operationId": "0335843b4658cbd12e3f19136665e4dd",
+        "parameters": [
+          {
+            "name": "notification",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Notification marked read"
+          }
+        }
+      }
+    },
+    "/api/notifications/read-all": {
+      "post": {
+        "tags": ["Notifications"],
+        "summary": "Mark all current user notifications as read",
+        "operationId": "a938b29776d5df701355702f21a24149",
+        "responses": {
+          "200": {
+            "description": "All notifications marked read"
+          }
+        }
+      }
+    },
+    "/api/reports/workflow": {
+      "get": {
+        "tags": ["Reports"],
+        "summary": "Workflow metrics report",
+        "description": "Average time-per-stage and throughput. CBY only.",
+        "operationId": "1c0dd1d850c02c8646517187279aa099",
+        "responses": {
+          "200": {
+            "description": "Workflow report retrieved"
+          },
+          "401": {
+            "description": "Unauthenticated"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sanctumCookie": []
+          }
+        ]
+      }
+    },
+    "/api/reports/voting": {
+      "get": {
+        "tags": ["Reports"],
+        "summary": "Voting metrics report",
+        "description": "Approval rate, tie rate, and average decision time. CBY only.",
+        "operationId": "8220cd4671daf0d93cc82f7894286bdc",
+        "responses": {
+          "200": {
+            "description": "Voting report retrieved"
+          },
+          "401": {
+            "description": "Unauthenticated"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sanctumCookie": []
+          }
+        ]
+      }
+    },
+    "/api/users": {
+      "get": {
+        "tags": ["Users"],
+        "summary": "List users with filters",
+        "operationId": "566aed8efb436ca506e0ef51a032ecd9",
+        "responses": {
+          "200": {
+            "description": "Users retrieved"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sanctumCookie": []
+          }
+        ]
+      },
+      "post": {
+        "tags": ["Users"],
+        "summary": "Create user",
+        "operationId": "be551c1d694a01c164966f58bfa77013",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "required": ["name", "email", "password", "role"],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "maxLength": 255
+                  },
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "maxLength": 255
+                  },
+                  "password": {
+                    "type": "string",
+                    "minLength": 8
+                  },
+                  "role": {
+                    "type": "string"
+                  },
+                  "bank_id": {
+                    "type": "integer",
+                    "nullable": true
+                  },
+                  "is_active": {
+                    "type": "boolean"
+                  }
+                },
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "User created"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sanctumCookie": []
+          }
+        ]
+      }
+    },
+    "/api/users/{id}": {
+      "get": {
+        "tags": ["Users"],
+        "summary": "Get user details",
+        "operationId": "6f51bd5fa2dddcd25e44cfa53dcbd10a",
+        "responses": {
+          "200": {
+            "description": "User retrieved"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sanctumCookie": []
+          }
+        ]
+      },
+      "put": {
+        "tags": ["Users"],
+        "summary": "Update user",
+        "operationId": "070e37fc9aff78ae73860751bc990ed3",
+        "responses": {
+          "200": {
+            "description": "User updated"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sanctumCookie": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": ["Users"],
+        "summary": "Deactivate user",
+        "operationId": "0b4133ed462528a5e648b88ead11e929",
+        "responses": {
+          "200": {
+            "description": "User deactivated"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sanctumCookie": []
+          }
+        ]
+      }
+    },
+    "/api/voting": {
+      "get": {
+        "tags": ["Voting"],
+        "summary": "List requests in executive voting",
+        "operationId": "5287a84215243099a923d93a191d53be",
+        "responses": {
+          "200": {
+            "description": "Voting list"
+          }
+        }
+      }
+    },
+    "/api/voting/{id}": {
+      "get": {
+        "tags": ["Voting"],
+        "summary": "Voting detail",
+        "operationId": "4eeb647ed07e809a80f2233b371a7064",
+        "responses": {
+          "200": {
+            "description": "Voting detail"
+          }
+        }
+      }
+    },
+    "/api/voting/{importRequest}/vote": {
+      "post": {
+        "tags": ["Voting"],
+        "summary": "Cast executive vote",
+        "operationId": "1ca88e5bb69b121f20e19065d9684f4d",
+        "parameters": [
+          {
+            "name": "importRequest",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "required": ["vote"],
+                "properties": {
+                  "vote": {
+                    "type": "string",
+                    "enum": ["APPROVE", "REJECT"]
+                  },
+                  "justification": {
+                    "type": "string",
+                    "nullable": true,
+                    "maxLength": 3000
+                  }
+                },
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Vote cast"
+          }
+        }
+      }
+    },
+    "/api/voting/{importRequest}/director-decide": {
+      "post": {
+        "tags": ["Voting"],
+        "summary": "Director tie-break decision",
+        "operationId": "ab589fa29be26f6da15647edf67df9e6",
+        "parameters": [
+          {
+            "name": "importRequest",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "required": ["vote"],
+                "properties": {
+                  "vote": {
+                    "type": "string",
+                    "enum": ["APPROVE", "REJECT"]
+                  },
+                  "justification": {
+                    "type": "string",
+                    "nullable": true,
+                    "maxLength": 3000
+                  }
+                },
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Director decision applied"
+          }
+        }
+      }
+    },
+    "/api/voting/{importRequest}/override": {
+      "post": {
+        "tags": ["Voting"],
+        "summary": "Executive director override and finalize",
+        "operationId": "fec836b6254894ed89dcd82da937c166",
+        "parameters": [
+          {
+            "name": "importRequest",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "required": ["decision", "justification"],
+                "properties": {
+                  "decision": {
+                    "type": "string",
+                    "enum": ["APPROVE", "REJECT"]
+                  },
+                  "justification": {
+                    "type": "string",
+                    "maxLength": 3000,
+                    "minLength": 3
+                  }
+                },
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Override decision applied"
+          }
+        }
+      }
+    },
+    "/api/workflow/{importRequest}/submit": {
+      "post": {
+        "tags": ["Workflow"],
+        "summary": "Submit request",
+        "operationId": "72b37ebbb1e0846b904e8264673260be",
+        "parameters": [
+          {
+            "name": "importRequest",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "maxLength": 2000
+                  }
+                },
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Transition applied"
+          }
+        }
+      }
+    },
+    "/api/workflow/{importRequest}/bank-approve": {
+      "post": {
+        "tags": ["Workflow"],
+        "summary": "Bank approve request",
+        "operationId": "e9c52a1afb0276ae4a4d984e15c4c2c8",
+        "parameters": [
+          {
+            "name": "importRequest",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "maxLength": 2000
+                  }
+                },
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Transition applied"
+          }
+        }
+      }
+    },
+    "/api/workflow/{importRequest}/bank-reject": {
+      "post": {
+        "tags": ["Workflow"],
+        "summary": "Bank reject request",
+        "operationId": "d2236311dede029538ac5696737c3410",
+        "parameters": [
+          {
+            "name": "importRequest",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "required": ["reason"],
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "maxLength": 2000
+                  }
+                },
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Transition applied"
+          }
+        }
+      }
+    },
+    "/api/workflow/{importRequest}/return-to-entry": {
+      "post": {
+        "tags": ["Workflow"],
+        "summary": "Return request to data entry",
+        "operationId": "7a893dcd90c1b3a232423a5352573be0",
+        "parameters": [
+          {
+            "name": "importRequest",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "required": ["reason"],
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "maxLength": 2000
+                  }
+                },
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Transition applied"
+          }
+        }
+      }
+    },
+    "/api/workflow/{importRequest}/support-approve": {
+      "post": {
+        "tags": ["Workflow"],
+        "summary": "Support approve request",
+        "operationId": "c3ba9f3aed6cbe6a8bc5e0f65c3dd901",
+        "parameters": [
+          {
+            "name": "importRequest",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "maxLength": 2000
+                  }
+                },
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Transition applied"
+          }
+        }
+      }
+    },
+    "/api/workflow/{importRequest}/support-claim": {
+      "post": {
+        "tags": ["Workflow"],
+        "summary": "Support claim request",
+        "operationId": "236c772fc020463455f033532b64db3f",
+        "parameters": [
+          {
+            "name": "importRequest",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "maxLength": 2000
+                  }
+                },
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Transition applied"
+          }
+        }
+      }
+    },
+    "/api/workflow/{importRequest}/support-release": {
+      "post": {
+        "tags": ["Workflow"],
+        "summary": "Support release claim",
+        "operationId": "15b1a7f9e5951ec21804ad7e667630d2",
+        "parameters": [
+          {
+            "name": "importRequest",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "maxLength": 2000
+                  }
+                },
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Transition applied"
+          }
+        }
+      }
+    },
+    "/api/workflow/{importRequest}/support-reject": {
+      "post": {
+        "tags": ["Workflow"],
+        "summary": "Support reject request",
+        "operationId": "3bdd3ab70335b83b3496d7cf0304797c",
+        "parameters": [
+          {
+            "name": "importRequest",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "required": ["reason"],
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "maxLength": 2000
+                  }
+                },
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Transition applied"
+          }
+        }
+      }
+    },
+    "/api/workflow/{importRequest}/finalize-decision": {
+      "post": {
+        "tags": ["Workflow"],
+        "summary": "Finalize executive decision",
+        "operationId": "e6bbc8c6c41f044991e591e39e2ae790",
+        "parameters": [
+          {
+            "name": "importRequest",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "decision": {
+                    "type": "string",
+                    "enum": ["approve", "reject"]
+                  },
+                  "reason": {
+                    "type": "string",
+                    "maxLength": 2000
+                  }
+                },
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Transition applied"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ApiSuccess": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "message": {
+            "type": "string",
+            "example": "OK"
+          },
+          "data": {
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "ApiError": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": false
+          },
+          "message": {
+            "type": "string",
+            "example": "Forbidden action"
+          },
+          "errors": {
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "ValidationError": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ApiError"
+          }
+        ]
+      },
+      "User": {
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "bank_id": {
+            "type": "integer",
+            "nullable": true
+          }
+        },
+        "type": "object"
+      },
+      "Bank": {
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "is_active": {
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      },
+      "ImportRequest": {
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "reference_number": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "current_owner_role": {
+            "type": "string"
+          },
+          "bank_id": {
+            "type": "integer"
+          },
+          "supplier_name": {
+            "type": "string"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number",
+            "format": "float"
+          }
+        },
+        "type": "object"
+      },
+      "Vote": {
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "request_id": {
+            "type": "integer"
+          },
+          "user_id": {
+            "type": "integer"
+          },
+          "vote": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "Document": {
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "type": {
+            "type": "string"
+          },
+          "original_filename": {
+            "type": "string"
+          },
+          "mime_type": {
+            "type": "string"
+          },
+          "size_bytes": {
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "CustomsDeclaration": {
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "request_id": {
+            "type": "integer"
+          },
+          "declaration_number": {
+            "type": "string"
+          },
+          "issued_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "sanctumCookie": {
+        "type": "apiKey",
+        "description": "Sanctum stateful cookie auth for SPA",
+        "name": "laravel_session",
+        "in": "cookie"
+      },
+      "bearerAuth": {
+        "type": "http",
+        "description": "Sanctum personal access token",
+        "bearerFormat": "Token",
+        "scheme": "bearer"
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Audit",
+      "description": "Audit"
+    },
+    {
+      "name": "Auth",
+      "description": "Auth"
+    },
+    {
+      "name": "Banks",
+      "description": "Banks"
+    },
+    {
+      "name": "Customs",
+      "description": "Customs"
+    },
+    {
+      "name": "Dashboard",
+      "description": "Dashboard"
+    },
+    {
+      "name": "Documents",
+      "description": "Documents"
+    },
+    {
+      "name": "Import Requests",
+      "description": "Import Requests"
+    },
+    {
+      "name": "Workflow",
+      "description": "Workflow"
+    },
+    {
+      "name": "المستوردون / Importers",
+      "description": "المستوردون / Importers"
+    },
+    {
+      "name": "Notifications",
+      "description": "Notifications"
+    },
+    {
+      "name": "Reports",
+      "description": "Reports"
+    },
+    {
+      "name": "Users",
+      "description": "Users"
+    },
+    {
+      "name": "Voting",
+      "description": "Voting"
+    }
+  ]
+}

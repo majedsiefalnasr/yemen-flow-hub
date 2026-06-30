@@ -1,0 +1,10 @@
+/*
+ * Email Design System — intentionally empty.
+ *
+ * Yemen Flow Hub emails use INLINE STYLES ONLY, drawn from
+ * config/email-theme.php (see DESIGN.md). Laravel's markdown mail CSS
+ * inliner runs against this file at render time; keeping it empty ensures
+ * no class-based or hex color rules leak into the final email and that every
+ * branded value lives in a single source of truth. Do not add color/hex
+ * rules here — add tokens to config/email-theme.php and apply them inline.
+ */
