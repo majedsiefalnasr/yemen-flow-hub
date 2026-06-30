@@ -1,11 +1,28 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi, beforeEach } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { mount, flushPromises } from '@vue/test-utils'
 import { setActivePinia, createPinia } from 'pinia'
 import WorkflowInstanceDetailPage from '@/pages/workflows/instances/[id].vue'
 import { useEngineRequestsStore } from '@/stores/engineRequests.store'
 
 vi.stubGlobal('useRoute', () => ({ params: { id: '5' } }))
+
+const mockShow = vi.fn().mockResolvedValue({
+  id: 5,
+  reference: 'ENG-2026-000005',
+  status: 'ACTIVE',
+  version: 1,
+  current_stage: {
+    id: 1,
+    code: 'INTAKE',
+    name: 'استلام',
+    is_initial: true,
+    is_final: false,
+    sla_duration_minutes: null,
+    requires_claim: false,
+  },
+  data: {},
+})
 
 vi.mock('@/composables/useEngineRequests', () => ({
   useEngineRequests: () => ({
@@ -21,21 +38,7 @@ vi.mock('@/composables/useEngineRequests', () => ({
     fetchQueue: vi.fn(),
     fetchAvailableWorkflows: vi.fn(),
     create: vi.fn(),
-    show: vi.fn().mockResolvedValue({
-      id: 5,
-      reference: 'ENG-2026-000005',
-      status: 'ACTIVE',
-      version: 1,
-      current_stage: {
-        id: 1,
-        code: 'INTAKE',
-        name: 'استلام',
-        is_initial: true,
-        is_final: false,
-        sla_duration_minutes: null,
-      },
-      data: {},
-    }),
+    show: mockShow,
     saveDraft: vi.fn(),
   }),
 }))
@@ -134,6 +137,7 @@ function makeInstance(overrides: Record<string, unknown> = {}) {
       is_initial: true,
       is_final: false,
       sla_duration_minutes: null,
+      requires_claim: false,
     },
     bank_id: null,
     bank: null,
@@ -144,6 +148,10 @@ function makeInstance(overrides: Record<string, unknown> = {}) {
     currency: null,
     invoice_number: null,
     sla_status: null,
+    claimed_by: null,
+    claimed_by_user: null,
+    claimed_at: null,
+    claim_expires_at: null,
     created_by: 1,
     creator: { id: 1, name: 'Test User' },
     created_at: '2026-06-25T00:00:00Z',
@@ -157,6 +165,22 @@ describe('workflows/instances/[id].vue', () => {
     setActivePinia(createPinia())
     mockConflictError.value = false
     mockFieldErrors.value = {}
+    mockShow.mockResolvedValue({
+      id: 5,
+      reference: 'ENG-2026-000005',
+      status: 'ACTIVE',
+      version: 1,
+      current_stage: {
+        id: 1,
+        code: 'INTAKE',
+        name: 'استلام',
+        is_initial: true,
+        is_final: false,
+        sla_duration_minutes: null,
+        requires_claim: false,
+      },
+      data: {},
+    })
   })
 
   it('loads the instance on mount', () => {
@@ -215,5 +239,31 @@ describe('workflows/instances/[id].vue', () => {
     const wrapper = mount(WorkflowInstanceDetailPage, { global: { stubs } })
     await wrapper.vm.$nextTick()
     expect(wrapper.text()).toContain('تم تحديث الطلب من مستخدم آخر')
+  })
+
+  it('shows the real claim holder name when claimed by another user', async () => {
+    mockShow.mockResolvedValue(
+      makeInstance({
+        claimed_by: 99,
+        claimed_by_user: { id: 99, name: 'سارة أحمد' },
+      }),
+    )
+    const wrapper = mount(WorkflowInstanceDetailPage, { global: { stubs } })
+    await flushPromises()
+    await wrapper.vm.$nextTick()
+    expect(wrapper.text()).toContain('سارة أحمد يراجع هذا الطلب الآن')
+  })
+
+  it('falls back to the generic placeholder when claimed_by_user is null', async () => {
+    mockShow.mockResolvedValue(
+      makeInstance({
+        claimed_by: 99,
+        claimed_by_user: null,
+      }),
+    )
+    const wrapper = mount(WorkflowInstanceDetailPage, { global: { stubs } })
+    await flushPromises()
+    await wrapper.vm.$nextTick()
+    expect(wrapper.text()).toContain('مراجع آخر يراجع هذا الطلب الآن')
   })
 })

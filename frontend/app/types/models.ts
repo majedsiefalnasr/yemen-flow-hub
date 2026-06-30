@@ -707,6 +707,7 @@ export interface WorkflowStage {
   sort_order: number
   is_initial: boolean
   is_final: boolean
+  requires_claim: boolean
   sla_duration_minutes: number | null
   status: WorkflowStageStatus
   created_at: string | null
@@ -879,6 +880,7 @@ export interface EngineRequest {
     is_initial: boolean
     is_final: boolean
     sla_duration_minutes: number | null
+    requires_claim: boolean
   } | null
   bank_id: number | null
   bank: { id: number; name: string; code: string | null } | null
@@ -889,6 +891,10 @@ export interface EngineRequest {
   currency: string | null
   invoice_number: string | null
   sla_status: string | null
+  claimed_by: number | null
+  claimed_by_user: { id: number; name: string } | null
+  claimed_at: string | null
+  claim_expires_at: string | null
   created_by: number
   creator: { id: number; name: string } | null
   created_at: string | null

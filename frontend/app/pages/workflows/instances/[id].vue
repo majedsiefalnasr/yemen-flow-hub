@@ -2,7 +2,10 @@
 import { useEngineRequestsStore } from '@/stores/engineRequests.store'
 import { useEngineFormSchema } from '@/composables/useEngineFormSchema'
 import { useEngineRequestActions } from '@/composables/useEngineRequestActions'
+import { useEngineClaim } from '@/composables/useEngineClaim'
+import { useAuthStore } from '@/stores/auth.store'
 import DynamicForm from '@/components/workflow/DynamicForm.vue'
+import ClaimBanner from '@/components/workflow/ClaimBanner.vue'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -22,6 +25,10 @@ const store = useEngineRequestsStore()
 const { fieldGroups, fetchSchema } = useEngineFormSchema()
 const { executeAction, conflictError } = useEngineRequestActions()
 
+const auth = useAuthStore()
+const currentUserId = computed(() => auth.user?.id ?? null)
+const { claim, isHeldByMe, heldByOther, claimedBy } = useEngineClaim(requestId, currentUserId)
+
 const formRef = ref<InstanceType<typeof DynamicForm> | null>(null)
 const formData = ref<Record<string, unknown>>({})
 const comment = ref('')
@@ -30,6 +37,7 @@ async function load() {
   await store.loadInstance(requestId.value)
   await fetchSchema(requestId.value)
   formData.value = store.current?.data ?? {}
+  claimedBy.value = store.current?.claimed_by ?? null
 }
 
 onMounted(load)
@@ -40,6 +48,20 @@ const availableActions = computed(() => {
   }
   return store.graph.edges.filter((edge) => edge.from_stage_id === store.current!.current_stage!.id)
 })
+
+const stageRequiresClaim = computed(() => store.current?.current_stage?.requires_claim === true)
+const isUnclaimed = computed(() => claimedBy.value === null)
+const showClaimButton = computed(
+  () => stageRequiresClaim.value && isUnclaimed.value && !heldByOther.value,
+)
+const claimHolderName = computed(() => store.current?.claimed_by_user?.name ?? null)
+// Action panel is gated behind holding the claim whenever the stage requires
+// one; stages that don't require a claim remain actionable as before.
+const canAct = computed(() => !stageRequiresClaim.value || isHeldByMe.value)
+
+async function startReview() {
+  await claim()
+}
 
 async function runAction(transitionId: number, requiresComment: boolean) {
   if (requiresComment && !comment.value.trim()) {
@@ -80,6 +102,7 @@ async function runAction(transitionId: number, requiresComment: boolean) {
             {{ store.current.current_stage?.name ?? '—' }}
           </Badge>
         </div>
+        <Button v-if="showClaimButton" size="sm" @click="startReview">بدء المراجعة</Button>
       </div>
 
       <Alert v-if="conflictError" variant="destructive" role="alert">
@@ -89,6 +112,8 @@ async function runAction(transitionId: number, requiresComment: boolean) {
           تم تحديث الطلب من مستخدم آخر. تم تحديث البيانات المعروضة.
         </AlertDescription>
       </Alert>
+
+      <ClaimBanner v-if="heldByOther" :holder-name="claimHolderName ?? 'مراجع آخر'" />
 
       <Tabs default-value="form" dir="rtl">
         <TabsList>
@@ -110,13 +135,24 @@ async function runAction(transitionId: number, requiresComment: boolean) {
 
               <Field class="mt-4">
                 <FieldLabel for="comment">ملاحظات</FieldLabel>
-                <Textarea id="comment" v-model="comment" placeholder="أضف ملاحظاتك هنا…" rows="3" />
+                <Textarea
+                  id="comment"
+                  v-model="comment"
+                  placeholder="أضف ملاحظاتك هنا…"
+                  rows="3"
+                  :disabled="!canAct"
+                />
               </Field>
 
+              <!-- Action panel is gated behind holding the claim: when the
+                   current stage requires_claim and I don't hold it, actions
+                   are disabled rather than hidden so the user still sees what
+                   is normally available. -->
               <div class="mt-4 flex gap-2">
                 <Button
                   v-for="action in availableActions"
                   :key="action.id"
+                  :disabled="!canAct"
                   @click="runAction(action.id, action.requires_comment)"
                 >
                   {{ action.action_name ?? action.action_code }}
