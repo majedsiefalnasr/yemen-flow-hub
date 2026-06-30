@@ -1,6 +1,0 @@
-[submodule "frontend"]
-	path = frontend
-	url = git@github.com:ultimate-eg/yemen-flow-hub-frontend.git
-[submodule "backend"]
-	path = backend
-	url = git@github.com:ultimate-eg/yemen-flow-hub-backend.git
