@@ -707,6 +707,7 @@ export interface WorkflowStage {
   sort_order: number
   is_initial: boolean
   is_final: boolean
+  requires_claim: boolean
   sla_duration_minutes: number | null
   status: WorkflowStageStatus
   created_at: string | null

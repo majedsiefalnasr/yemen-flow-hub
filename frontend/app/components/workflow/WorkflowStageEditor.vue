@@ -22,6 +22,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Switch } from '@/components/ui/switch'
 import {
   Dialog,
   DialogContent,
@@ -55,6 +56,7 @@ const editing = ref<WorkflowStage | null>(null)
 const deleting = ref<WorkflowStage | null>(null)
 const isInitial = ref(false)
 const isFinal = ref(false)
+const requiresClaim = ref(false)
 const permissionsStageId = ref<number | null>(null)
 
 function togglePermissions(stageId: number) {
@@ -78,6 +80,7 @@ function openCreate() {
   editing.value = null
   isInitial.value = false
   isFinal.value = false
+  requiresClaim.value = false
   form.resetForm({ values: { code: '', name: '', sla_duration_minutes: undefined } })
   dialogOpen.value = true
 }
@@ -86,6 +89,7 @@ function openEdit(stage: WorkflowStage) {
   editing.value = stage
   isInitial.value = stage.is_initial
   isFinal.value = stage.is_final
+  requiresClaim.value = stage.requires_claim
   form.resetForm({
     values: {
       code: stage.code,
@@ -104,6 +108,7 @@ const onSubmit = form.handleSubmit(async (values) => {
       sla_duration_minutes: values.sla_duration_minutes ?? null,
       is_initial: isInitial.value,
       is_final: isFinal.value,
+      requires_claim: requiresClaim.value,
     }
     if (editing.value) {
       await updateStage(editing.value, payload)
@@ -252,6 +257,11 @@ onMounted(() => fetchStages(props.version.id))
               <Checkbox id="stage-final" v-model:checked="isFinal" />
               <Label for="stage-final">مرحلة النهاية</Label>
             </div>
+          </div>
+
+          <div class="flex items-center gap-3">
+            <Switch id="stage-requires-claim" v-model:checked="requiresClaim" />
+            <Label for="stage-requires-claim">يتطلب مطالبة (قفل مرن)</Label>
           </div>
 
           <DialogFooter>
