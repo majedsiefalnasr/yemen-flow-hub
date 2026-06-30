@@ -1,0 +1,14 @@
+.git
+.github
+.env
+.env.*
+node_modules
+.nuxt
+.output
+dist
+coverage
+.playwright-cli
+**/.playwright-cli
+**/.playwright-cli/**
+cookies.txt
+**/cookies.txt

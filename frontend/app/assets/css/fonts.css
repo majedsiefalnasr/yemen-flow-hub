@@ -1,0 +1,5 @@
+/*
+ * Google Fonts imports live at the top of main.css.
+ * Keeping this file import-free prevents PostCSS from expanding @import rules
+ * after Tailwind/shadcn output, which triggers Vite's @import ordering warning.
+ */

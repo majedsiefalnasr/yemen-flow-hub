@@ -1,0 +1,411 @@
+import type {
+  ApiResponse,
+  CustomsDeclaration,
+  ImportRequest,
+  PaginatedResponse,
+  RequestDocument,
+  RequestFormData,
+  RequestStageHistory,
+  TraderLookupResult,
+} from '../types/models'
+import type { RequestStatus } from '../types/enums'
+import { useApi } from './useApi'
+
+export interface RequestsFilter {
+  search?: string
+  status?: RequestStatus | RequestStatus[] | string | ''
+  bank_id?: number | ''
+  currency?: string | ''
+  /** Legacy aliases kept for backward compat — prefer created_from / created_to */
+  from_date?: string | ''
+  to_date?: string | ''
+  created_from?: string | ''
+  created_to?: string | ''
+  amount_min?: number | ''
+  amount_max?: number | ''
+  assigned_reviewer_id?: number | ''
+  claim_filter?: 'all' | 'available' | 'mine' | ''
+  page?: number
+  per_page?: number
+  /** Request status_totals aggregate in the response meta */
+  with_status_totals?: boolean
+}
+
+export interface SwiftUploadPayload {
+  swiftReference?: string
+  swiftFile?: File
+  fxRequestFile?: File
+  // legacy fallback
+  file?: File
+}
+
+/**
+ * Era gate (Epic 17-E): whether a request runs under the new National Committee
+ * rules. Keyed on the stored `voting_rule_version` column from Story 17-C.1
+ * (1 = legacy, 2 = new National Committee). Requests missing the column are
+ * treated as legacy so in-flight rows keep their original surfaces.
+ */
+export function isV2Rule(request?: { voting_rule_version?: number } | null): boolean {
+  return (request?.voting_rule_version ?? 1) === 2
+}
+
+export function useRequests() {
+  const { get, post, put, del } = useApi()
+
+  function getXsrfToken(): string | null {
+    if (!import.meta.client) return null
+    const raw = document.cookie
+      .split(';')
+      .map((cookie) => cookie.trim())
+      .find((cookie) => cookie.startsWith('XSRF-TOKEN='))
+      ?.split('=')
+      .slice(1)
+      .join('=')
+
+    return raw ? decodeURIComponent(raw) : null
+  }
+
+  async function fetchRequests(
+    filter: RequestsFilter = {},
+  ): Promise<PaginatedResponse<ImportRequest>> {
+    const params = new URLSearchParams()
+
+    if (filter.search) params.set('search', filter.search)
+    if (filter.status) {
+      params.set('status', Array.isArray(filter.status) ? filter.status.join(',') : filter.status)
+    }
+    if (filter.bank_id) params.set('bank_id', String(filter.bank_id))
+    if (filter.currency) params.set('currency', filter.currency)
+    if (filter.created_from) params.set('created_from', filter.created_from)
+    if (filter.created_to) params.set('created_to', filter.created_to)
+    // Legacy aliases: only sent if new params absent
+    if (!filter.created_from && filter.from_date) params.set('from_date', filter.from_date)
+    if (!filter.created_to && filter.to_date) params.set('to_date', filter.to_date)
+    if (filter.amount_min !== '' && filter.amount_min !== undefined)
+      params.set('amount_min', String(filter.amount_min))
+    if (filter.amount_max !== '' && filter.amount_max !== undefined)
+      params.set('amount_max', String(filter.amount_max))
+    if (filter.assigned_reviewer_id)
+      params.set('assigned_reviewer_id', String(filter.assigned_reviewer_id))
+    if (filter.claim_filter) params.set('claim_filter', filter.claim_filter)
+    if (filter.page) params.set('page', String(filter.page))
+    if (filter.per_page) params.set('per_page', String(filter.per_page))
+    if (filter.with_status_totals) params.set('with_status_totals', '1')
+
+    const query = params.toString()
+    const path = query ? `/api/requests?${query}` : '/api/requests'
+
+    const response = await get<ApiResponse<PaginatedResponse<ImportRequest>>>(path)
+    return response.data
+  }
+
+  async function fetchRequest(id: number): Promise<ImportRequest> {
+    const response = await get<ApiResponse<ImportRequest>>(`/api/requests/${id}`)
+    return response.data
+  }
+
+  async function createRequest(data: RequestFormData): Promise<ImportRequest> {
+    const response = await post<ApiResponse<ImportRequest>>('/api/requests', data)
+    return response.data
+  }
+
+  async function updateRequest(id: number, data: RequestFormData): Promise<ImportRequest> {
+    const response = await put<ApiResponse<ImportRequest>>(`/api/requests/${id}`, data)
+    return response.data
+  }
+
+  async function lookupTrader(taxNumber: string): Promise<TraderLookupResult | null> {
+    const query = encodeURIComponent(taxNumber.trim())
+    if (!query) return null
+
+    try {
+      const response = await get<ApiResponse<TraderLookupResult['trader']>>(
+        `/api/traders/lookup?tax_number=${query}`,
+      )
+      return {
+        trader: response.data,
+        companies: response.data.companies ?? [],
+        owners: response.data.owners ?? [],
+      }
+    } catch (err: any) {
+      if (err?.response?.status === 404 || err?.statusCode === 404) return null
+      throw err
+    }
+  }
+
+  async function uploadDocument(
+    requestId: number,
+    file: File,
+    subType?: string,
+  ): Promise<RequestDocument> {
+    const config = useRuntimeConfig()
+    const baseURL = config.public.apiBase as string
+    const form = new FormData()
+    form.append('request_id', String(requestId))
+    form.append('file', file)
+    if (subType) form.append('sub_type', subType)
+    const xsrfToken = getXsrfToken()
+    const response = await $fetch<ApiResponse<RequestDocument>>(`/api/documents/upload`, {
+      method: 'POST',
+      baseURL,
+      credentials: 'include',
+      body: form,
+      headers: {
+        Accept: 'application/json',
+        ...(xsrfToken ? { 'X-XSRF-TOKEN': xsrfToken } : {}),
+      },
+    })
+    return response.data
+  }
+
+  async function deleteDocument(documentId: number): Promise<void> {
+    await del<ApiResponse<null>>(`/api/documents/${documentId}`)
+  }
+
+  async function downloadDocument(documentId: number): Promise<Blob> {
+    const config = useRuntimeConfig()
+    return $fetch<Blob>(`/api/documents/${documentId}/download`, {
+      baseURL: config.public.apiBase as string,
+      responseType: 'blob',
+      credentials: 'include',
+    })
+  }
+
+  async function performWorkflowAction(
+    id: number,
+    action: string,
+    reason?: string,
+  ): Promise<ImportRequest> {
+    const body: Record<string, string> = {}
+    if (reason !== undefined) body.reason = reason
+    const response = await post<ApiResponse<ImportRequest>>(`/api/workflow/${id}/${action}`, body)
+    return response.data
+  }
+
+  async function fetchRequestDocuments(id: number): Promise<RequestDocument[]> {
+    const response = await get<ApiResponse<ImportRequest>>(`/api/requests/${id}`)
+    return response.data.documents ?? []
+  }
+
+  async function uploadSwift(requestId: number, payload: SwiftUploadPayload): Promise<void> {
+    const config = useRuntimeConfig()
+    const baseURL = config.public.apiBase as string
+    const form = new FormData()
+
+    if (payload.file) {
+      // Legacy API mode
+      form.append('file', payload.file)
+    } else {
+      if (payload.swiftReference) form.append('swift_reference', payload.swiftReference)
+      if (payload.swiftFile) {
+        form.append('swift_file', payload.swiftFile)
+        // Backward compatibility: some backend paths still require the legacy single `file` key.
+        form.append('file', payload.swiftFile)
+      }
+      if (payload.fxRequestFile) form.append('fx_request_file', payload.fxRequestFile)
+    }
+
+    const xsrfToken = getXsrfToken()
+    await $fetch(`/api/workflow/${requestId}/swift-upload`, {
+      method: 'POST',
+      baseURL,
+      credentials: 'include',
+      body: form,
+      headers: {
+        Accept: 'application/json',
+        ...(xsrfToken ? { 'X-XSRF-TOKEN': xsrfToken } : {}),
+      },
+    })
+  }
+
+  async function generateCustomsDeclaration(requestId: number): Promise<CustomsDeclaration> {
+    const response = await post<ApiResponse<CustomsDeclaration>>(
+      `/api/customs/${requestId}/generate`,
+    )
+    return response.data
+  }
+
+  async function downloadCustomsDeclaration(customsDeclarationId: number): Promise<Blob> {
+    const config = useRuntimeConfig()
+    const baseURL = config.public.apiBase as string
+    return $fetch<Blob>(`/api/customs/${customsDeclarationId}/download`, {
+      method: 'GET',
+      baseURL,
+      credentials: 'include',
+      responseType: 'blob',
+    })
+  }
+
+  async function downloadConfirmationRequestTemplate(
+    requestId: number,
+    checkboxFlags?: {
+      hasProformaInvoice?: boolean
+      hasCommercialRegister?: boolean
+      hasTaxCard?: boolean
+      hasExtraDocs?: boolean
+    },
+  ): Promise<Blob> {
+    const config = useRuntimeConfig()
+    const baseURL = config.public.apiBase as string
+    const params = new URLSearchParams()
+    if (checkboxFlags?.hasProformaInvoice !== undefined)
+      params.set('has_proforma_invoice', checkboxFlags.hasProformaInvoice ? '1' : '0')
+    if (checkboxFlags?.hasCommercialRegister !== undefined)
+      params.set('has_commercial_register', checkboxFlags.hasCommercialRegister ? '1' : '0')
+    if (checkboxFlags?.hasTaxCard !== undefined)
+      params.set('has_tax_card', checkboxFlags.hasTaxCard ? '1' : '0')
+    if (checkboxFlags?.hasExtraDocs !== undefined)
+      params.set('has_extra_docs', checkboxFlags.hasExtraDocs ? '1' : '0')
+    const qs = params.toString() ? `?${params.toString()}` : ''
+    return $fetch<Blob>(`/api/requests/${requestId}/confirmation-request-template${qs}`, {
+      method: 'GET',
+      baseURL,
+      credentials: 'include',
+      responseType: 'blob',
+    })
+  }
+
+  async function downloadFxConfirmationTemplate(requestId: number): Promise<Blob> {
+    const config = useRuntimeConfig()
+    const baseURL = config.public.apiBase as string
+    return $fetch<Blob>(`/api/requests/${requestId}/fx-confirmation-template`, {
+      method: 'GET',
+      baseURL,
+      credentials: 'include',
+      responseType: 'blob',
+    })
+  }
+
+  async function fetchConfirmationRequestPreview(requestId: number): Promise<Blob> {
+    const config = useRuntimeConfig()
+    const baseURL = config.public.apiBase as string
+    return $fetch<Blob>(`/api/requests/${requestId}/confirmation-request-preview`, {
+      method: 'GET',
+      baseURL,
+      credentials: 'include',
+      responseType: 'blob',
+    })
+  }
+
+  async function downloadSignedFxDoc(customsDeclarationId: number): Promise<Blob> {
+    const config = useRuntimeConfig()
+    const baseURL = config.public.apiBase as string
+    return $fetch<Blob>(`/api/customs/${customsDeclarationId}/signed-fx-download`, {
+      method: 'GET',
+      baseURL,
+      credentials: 'include',
+      responseType: 'blob',
+    })
+  }
+
+  async function uploadSignedFxConfirmation(requestId: number, file: File): Promise<void> {
+    const config = useRuntimeConfig()
+    const baseURL = config.public.apiBase as string
+    const form = new FormData()
+    form.append('signed_document', file)
+    const xsrfToken = getXsrfToken()
+    await $fetch(`/api/requests/${requestId}/fx-confirmation-upload`, {
+      method: 'POST',
+      baseURL,
+      credentials: 'include',
+      body: form,
+      headers: {
+        Accept: 'application/json',
+        ...(xsrfToken ? { 'X-XSRF-TOKEN': xsrfToken } : {}),
+      },
+    })
+  }
+
+  async function fetchRequestHistory(id: number): Promise<RequestStageHistory[]> {
+    const response = await get<ApiResponse<RequestStageHistory[]>>(`/api/requests/${id}/history`)
+    return response.data
+  }
+
+  async function fetchCustomsPreview(requestId: number): Promise<CustomsDeclaration> {
+    const response = await get<ApiResponse<CustomsDeclaration>>(
+      `/api/requests/${requestId}/customs-preview`,
+    )
+    return response.data
+  }
+
+  async function bankReturn(id: number, comment: string): Promise<ImportRequest> {
+    const response = await post<ApiResponse<ImportRequest>>(`/api/workflow/${id}/bank-return`, {
+      comment,
+    })
+    return response.data
+  }
+
+  async function supportReturn(id: number, comment: string): Promise<ImportRequest> {
+    const response = await post<ApiResponse<ImportRequest>>(`/api/workflow/${id}/support-return`, {
+      comment,
+    })
+    return response.data
+  }
+
+  async function supportForwardToExecutive(id: number, comment: string): Promise<ImportRequest> {
+    const response = await post<ApiResponse<ImportRequest>>(
+      `/api/workflow/${id}/support-forward-to-executive`,
+      { comment },
+    )
+    return response.data
+  }
+
+  async function bankRejectTerminal(id: number, comment: string): Promise<ImportRequest> {
+    const response = await post<ApiResponse<ImportRequest>>(
+      `/api/workflow/${id}/bank-reject-terminal`,
+      { comment },
+    )
+    return response.data
+  }
+
+  async function bankReturnAfterSupportReject(id: number, reason?: string): Promise<ImportRequest> {
+    const response = await post<ApiResponse<ImportRequest>>(
+      `/api/workflow/${id}/bank-return-after-support-reject`,
+      reason ? { reason } : {},
+    )
+    return response.data
+  }
+
+  async function bankFinalizeRejection(id: number, reason?: string): Promise<ImportRequest> {
+    const response = await post<ApiResponse<ImportRequest>>(
+      `/api/workflow/${id}/bank-finalize-rejection`,
+      reason ? { reason } : {},
+    )
+    return response.data
+  }
+
+  async function cloneRequest(sourceId: number): Promise<number> {
+    const response = await post<ApiResponse<ImportRequest>>(`/api/requests/${sourceId}/clone`, {})
+    return response.data.id
+  }
+
+  return {
+    fetchRequests,
+    fetchRequest,
+    createRequest,
+    updateRequest,
+    lookupTrader,
+    uploadDocument,
+    deleteDocument,
+    downloadDocument,
+    performWorkflowAction,
+    fetchRequestDocuments,
+    uploadSwift,
+    generateCustomsDeclaration,
+    downloadCustomsDeclaration,
+    downloadConfirmationRequestTemplate,
+    fetchConfirmationRequestPreview,
+    downloadFxConfirmationTemplate,
+    uploadSignedFxConfirmation,
+    downloadSignedFxDoc,
+    fetchRequestHistory,
+    fetchCustomsPreview,
+    bankReturn,
+    supportReturn,
+    supportForwardToExecutive,
+    bankRejectTerminal,
+    bankReturnAfterSupportReject,
+    bankFinalizeRejection,
+    cloneRequest,
+  }
+}

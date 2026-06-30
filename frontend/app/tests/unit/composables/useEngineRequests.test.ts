@@ -1,0 +1,111 @@
+import { describe, expect, it, vi, beforeEach } from 'vitest'
+import { useEngineRequests } from '@/composables/useEngineRequests'
+
+const mockGet = vi.fn()
+const mockPost = vi.fn()
+const mockPatch = vi.fn()
+
+vi.mock('@/composables/useApi', () => ({
+  useApi: () => ({ get: mockGet, post: mockPost, patch: mockPatch, put: vi.fn(), del: vi.fn() }),
+}))
+
+describe('useEngineRequests', () => {
+  beforeEach(() => {
+    mockGet.mockReset()
+    mockPost.mockReset()
+    mockPatch.mockReset()
+  })
+
+  it('fetchList populates instances and meta on success', async () => {
+    mockGet.mockResolvedValue({
+      data: [{ id: 1, reference: 'ENG-2026-000001' }],
+      meta: { current_page: 1, last_page: 1, per_page: 25, total: 1 },
+    })
+    const { instances, instancesMeta, fetchList } = useEngineRequests()
+
+    await fetchList()
+
+    expect(mockGet).toHaveBeenCalledWith('/api/v1/engine-requests', expect.any(Object))
+    expect(instances.value).toHaveLength(1)
+    expect(instancesMeta.value?.total).toBe(1)
+  })
+
+  it('fetchList sets error message on failure', async () => {
+    mockGet.mockRejectedValue({ data: { message: 'فشل' } })
+    const { instances, error, fetchList } = useEngineRequests()
+
+    await fetchList()
+
+    expect(instances.value).toEqual([])
+    expect(error.value).toBe('فشل')
+  })
+
+  it('fetchQueue calls the my-queue endpoint', async () => {
+    mockGet.mockResolvedValue({
+      data: [],
+      meta: { current_page: 1, last_page: 1, per_page: 25, total: 0 },
+    })
+    const { fetchQueue } = useEngineRequests()
+
+    await fetchQueue()
+
+    expect(mockGet).toHaveBeenCalledWith('/api/v1/engine-requests/my-queue', expect.any(Object))
+  })
+
+  it('fetchAvailableWorkflows populates availableWorkflows', async () => {
+    mockGet.mockResolvedValue({
+      data: [
+        {
+          id: 1,
+          code: 'IMPORT_FINANCING',
+          name: 'تمويل الواردات',
+          version_id: 10,
+          version_number: 1,
+        },
+      ],
+    })
+    const { availableWorkflows, fetchAvailableWorkflows } = useEngineRequests()
+
+    await fetchAvailableWorkflows()
+
+    expect(mockGet).toHaveBeenCalledWith('/api/v1/engine-requests/available-workflows')
+    expect(availableWorkflows.value).toHaveLength(1)
+  })
+
+  it('create posts payload and returns the created instance', async () => {
+    mockPost.mockResolvedValue({ success: true, data: { id: 5, reference: 'ENG-2026-000005' } })
+    const { create } = useEngineRequests()
+
+    const result = await create({ workflow_version_id: 10, data: {} })
+
+    expect(mockPost).toHaveBeenCalledWith('/api/v1/engine-requests', {
+      workflow_version_id: 10,
+      data: {},
+    })
+    expect(result.id).toBe(5)
+  })
+
+  it('show fetches a single instance by id', async () => {
+    mockGet.mockResolvedValue({ success: true, data: { id: 5, reference: 'ENG-2026-000005' } })
+    const { show, current } = useEngineRequests()
+
+    const result = await show(5)
+
+    expect(mockGet).toHaveBeenCalledWith('/api/v1/engine-requests/5')
+    expect(result.id).toBe(5)
+    expect(current.value?.id).toBe(5)
+  })
+
+  it('saveDraft patches data and version', async () => {
+    mockPatch.mockResolvedValue({ success: true, data: { id: 5, version: 2 } })
+    const { saveDraft } = useEngineRequests()
+
+    const result = await saveDraft(5, { invoice_amount: 100 }, 1)
+
+    expect(mockPatch).toHaveBeenCalledWith('/api/v1/engine-requests/5/draft', {
+      data: { invoice_amount: 100 },
+      version: 1,
+    })
+    expect(result.version).toBe(2)
+  })
+})

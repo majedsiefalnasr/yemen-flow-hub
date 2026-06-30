@@ -1,0 +1,7 @@
+<script setup lang="ts">
+const route = useRoute()
+await navigateTo({ path: '/admin/settings', query: route.query }, { replace: true })
+</script>
+<template>
+  <div />
+</template>
