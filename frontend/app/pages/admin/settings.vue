@@ -275,7 +275,7 @@ const emailSettings = reactive({
 const cbySysNotifications = reactive([
   { label: 'البريد الإلكتروني عند تقديم طلب جديد', enabled: true },
   { label: 'إشعار داخل المنصة عند تغيير حالة طلب', enabled: true },
-  { label: 'SMS عند اعتماد/رفض الطلب', enabled: true },
+  { label: 'SMS عند اعتماد/عدم استيفاء الطلب', enabled: true },
   { label: 'تنبيه فوري عند اكتشاف فاتورة مكررة', enabled: true },
   { label: 'تقرير يومي بإجمالي النشاط', enabled: true },
 ])
@@ -343,7 +343,7 @@ const bankNotifications = ref([
   {
     id: 'cby_decision',
     label: 'قرار البنك المركزي',
-    description: 'عند موافقة أو رفض لجنة الدعم',
+    description: 'عند موافقة أو عدم استيفاء شروط لجنة الدعم',
     enabled: true,
   },
   {
