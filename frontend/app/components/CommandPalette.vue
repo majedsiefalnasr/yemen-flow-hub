@@ -118,7 +118,7 @@ const QUICK_ACTIONS: Partial<Record<UserRole, PaletteAction[]>> = {
       id: 'qa-new-request',
       title: 'تقديم طلب جديد',
       aliases: 'new request create submit',
-      url: '/requests/new',
+      url: '/workflows/new',
       icon: PlusCircle,
       shortcut: 'N',
       isQuickAction: true,

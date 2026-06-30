@@ -5,6 +5,7 @@ import {
   roleHasSurface,
   rolesForSurface,
 } from '../../../constants/role-surfaces'
+import { ROUTE_ROLE_MAP } from '../../../constants/workflow'
 import { UserRole } from '../../../types/enums'
 
 describe('ROLE_SURFACE_MATRIX', () => {
@@ -631,5 +632,13 @@ describe('engine workflow nav surfaces', () => {
     for (const role of Object.values(UserRole)) {
       expect(ROLE_SURFACE_MATRIX[role].allowed).toContain('nav.workflows')
     }
+  })
+})
+
+// ── Engine create CTA route guard ──────────────────────────────────────────
+
+describe('engine create CTA route guard', () => {
+  it('/workflows/new route guard exists and matches nav.workflows_new', () => {
+    expect(ROUTE_ROLE_MAP['/workflows/new']).toEqual(rolesForSurface('nav.workflows_new'))
   })
 })

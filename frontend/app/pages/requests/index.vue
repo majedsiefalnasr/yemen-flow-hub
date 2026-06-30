@@ -822,7 +822,7 @@ const requestsEmptyState = computed(() =>
           <RefreshCw class="h-4 w-4" :class="{ 'animate-spin': store.loadingList }" />
           تحديث
         </Button>
-        <Button v-if="canCreateRequest" as="a" href="/requests/new" size="sm">
+        <Button v-if="canCreateRequest" as="a" href="/workflows/new" size="sm">
           <FilePlus2 class="h-4 w-4" />
           إنشاء طلب
         </Button>

@@ -42,7 +42,7 @@ const roleSubtitle = computed(() =>
 )
 
 const showNewRequestAction = computed(
-  () => role.value != null && ROUTE_ROLE_MAP['/requests/new']?.includes(role.value),
+  () => role.value != null && ROUTE_ROLE_MAP['/workflows/new']?.includes(role.value),
 )
 </script>
 
@@ -51,7 +51,7 @@ const showNewRequestAction = computed(
     <!-- Page header -->
     <PageHeader :title="`أهلاً، ${firstName}`" :subtitle="roleSubtitle">
       <template v-if="showNewRequestAction" #actions>
-        <Button class="shrink-0" @click="router.push('/requests/new')">
+        <Button class="shrink-0" @click="router.push('/workflows/new')">
           <FilePlus2 class="h-4 w-4" />
           إنشاء طلب
         </Button>
