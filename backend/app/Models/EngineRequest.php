@@ -19,6 +19,9 @@ class EngineRequest extends Model
         'reference',
         'status',
         'created_by',
+        'claimed_by',
+        'claimed_at',
+        'claim_expires_at',
         'bank_id',
         'merchant_id',
         'data',
@@ -36,6 +39,8 @@ class EngineRequest extends Model
             'version' => 'integer',
             'amount' => 'decimal:2',
             'request_percentage' => 'decimal:2',
+            'claimed_at' => 'datetime',
+            'claim_expires_at' => 'datetime',
         ];
     }
 
@@ -52,6 +57,23 @@ class EngineRequest extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function claimedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'claimed_by');
+    }
+
+    public function isClaimed(): bool
+    {
+        return $this->claimed_by !== null
+            && $this->claim_expires_at !== null
+            && $this->claim_expires_at->isFuture();
+    }
+
+    public function claimIsExpired(): bool
+    {
+        return $this->claim_expires_at !== null && $this->claim_expires_at->isPast();
     }
 
     public function bank(): BelongsTo

@@ -20,6 +20,7 @@ class WorkflowStage extends Model
         'is_initial',
         'is_final',
         'sla_duration_minutes',
+        'requires_claim',
         'status',
         'version',
     ];
@@ -31,6 +32,7 @@ class WorkflowStage extends Model
             'is_initial' => 'boolean',
             'is_final' => 'boolean',
             'sla_duration_minutes' => 'integer',
+            'requires_claim' => 'boolean',
             'version' => 'integer',
         ];
     }
