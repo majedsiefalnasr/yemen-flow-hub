@@ -503,14 +503,13 @@ class DashboardStatsTest extends TestCase
         $this->makeRequest($this->bank, $de, 'SUPPORT');
         $claimed = $this->makeRequest($this->bank, $de, 'SUPPORT');
         $claimed->update(['claimed_by' => $sc->id, 'claimed_at' => now(), 'claim_expires_at' => now()->addMinutes(15)]);
-        // support_queue is a stage-only bucket (currentStage=SUPPORT); it is not
-        // filtered by lifecycle status, so a CLOSED request still on the SUPPORT
-        // stage remains in the queue alongside the two ACTIVE ones.
-        $this->makeRequest($this->bank, $de, 'SUPPORT', 'CLOSED');
+        // A closed request has left the SUPPORT stage and must NOT appear in the
+        // active support queue, so it is not counted below.
+        $this->makeRequest($this->bank, $de, 'CLOSED', 'CLOSED');
 
         $response = $this->actingAs($sc)->getJson('/api/dashboard/stats')->assertOk();
         $queue = $response->json('data.support_queue');
-        $this->assertCount(3, $queue);
+        $this->assertCount(2, $queue);
     }
 
     // ─── Story 6.3.2: BANK_ADMIN dashboard ───────────────────────────────────
@@ -906,16 +905,18 @@ class DashboardStatsTest extends TestCase
         $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
         $swift = $this->makeUser(UserRole::SWIFT_OFFICER, $this->bank);
 
+        // Only the active FX request is operational work for the SWIFT officer.
+        // Closed requests have left the FX stage and must not appear in the queue.
         $this->makeRequest($this->bank, $de, 'FX');
-        $this->makeRequest($this->bank, $de, 'FX', 'CLOSED');
-        $this->makeRequest($this->bank, $de, 'SUPPORT', 'CLOSED');
+        $this->makeRequest($this->bank, $de, 'CLOSED', 'CLOSED');
+        $this->makeRequest($this->bank, $de, 'INTERNAL');
 
         $response = $this->actingAs($swift)->getJson('/api/dashboard/stats')->assertOk();
         $queue = $response->json('data.swift_queue');
-        $this->assertCount(2, $queue);
+        $this->assertCount(1, $queue);
 
         $stageCodes = collect($queue)->pluck('stage_code')->all();
-        $this->assertSame(['FX', 'FX'], $stageCodes);
+        $this->assertSame(['FX'], $stageCodes);
     }
 
     public function test_swift_officer_cannot_see_other_bank_requests(): void

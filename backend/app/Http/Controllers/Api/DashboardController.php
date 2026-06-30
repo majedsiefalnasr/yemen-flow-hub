@@ -222,9 +222,11 @@ class DashboardController extends Controller
         $pendingReview = (clone $base)->where(EngineRequestReadModel::bucket('pending_bank_review'))->count();
         $atCby = (clone $base)->where(EngineRequestReadModel::bucket('at_cby'))->count();
 
-        // Returned-by-support has no dedicated engine bucket; ported as SUPPORT/REJECTED.
+        // "Returned by support" maps to a rejected lifecycle outcome. The engine has
+        // no distinct support-return status during coexistence, so this keys on
+        // terminal REJECTED rather than the impossible "on SUPPORT stage AND rejected"
+        // state the stage queue would imply.
         $returnedBySupport = (clone $base)
-            ->where(EngineRequestReadModel::bucket('support_queue'))
             ->where(EngineRequestReadModel::bucket('rejected'))
             ->count();
 
@@ -257,7 +259,12 @@ class DashboardController extends Controller
     // governance behaviour, not a missing tenant scope.
     private function supportCommitteeStats(User $user): JsonResponse
     {
-        $base = EngineRequestReadModel::queryFor($user)->where(EngineRequestReadModel::bucket('support_queue'));
+        // The support queue is active work parked on the SUPPORT stage: a request
+        // that has closed or been rejected has left the stage and must not appear
+        // here, so the stage bucket is scoped to ACTIVE.
+        $base = EngineRequestReadModel::queryFor($user)
+            ->where(EngineRequestReadModel::bucket('support_queue'))
+            ->active();
 
         $waitingForClaim = (clone $base)->whereNull('engine_requests.claimed_by')->count();
 
@@ -272,11 +279,10 @@ class DashboardController extends Controller
 
         // Rolling 7-day window — "معتمد حديثاً" reflects active committee throughput,
         // not a cumulative total. Scoped globally (all SC members), not per-reviewer.
-        // The engine has no dedicated support_approved_at column, so this uses the
-        // request's updated_at as the best-effort completion signal for SUPPORT/CLOSED-ish
-        // throughput within the support stage's closing window.
+        // The engine has no support_approved_at column during coexistence, so this
+        // keys on terminal completion (status CLOSED) within the window as the
+        // best-available throughput signal.
         $recentlyApproved = EngineRequestReadModel::queryFor($user)
-            ->where(EngineRequestReadModel::bucket('support_queue'))
             ->where(EngineRequestReadModel::bucket('completed'))
             ->where('engine_requests.updated_at', '>=', now()->subDays(7))
             ->count();
@@ -301,27 +307,35 @@ class DashboardController extends Controller
     {
         $base = EngineRequestReadModel::queryFor($user);
 
+        // The pending SWIFT queue is active work parked on the FX stage; a request
+        // that has closed or been rejected has left the stage and must not appear.
         $pendingSwiftUpload = (clone $base)
             ->where(EngineRequestReadModel::bucket('swift_queue'))
-            ->where(EngineRequestReadModel::bucket('active'))
+            ->active()
             ->count();
 
+        // The engine has no SWIFT-document signal during coexistence, so "uploaded"
+        // is approximated as any request that has reached the FX stage (active or
+        // beyond), matching the legacy SWIFT_UPLOADED throughput key.
         $uploaded = (clone $base)
             ->where(EngineRequestReadModel::bucket('swift_queue'))
             ->count();
 
+        // Final outcomes key on terminal lifecycle status, not stage, because an
+        // executive-decided request has left the EXEC stage. CLOSED == approved &
+        // completed, REJECTED == rejected (DI-3 removed voting, so there is no
+        // vote-derived signal here).
         $finalApproved = (clone $base)
-            ->where(EngineRequestReadModel::bucket('executive_queue'))
             ->where(EngineRequestReadModel::bucket('completed'))
             ->count();
 
         $finalRejected = (clone $base)
-            ->where(EngineRequestReadModel::bucket('executive_queue'))
             ->where(EngineRequestReadModel::bucket('rejected'))
             ->count();
 
         $swiftQueue = (clone $base)
             ->where(EngineRequestReadModel::bucket('swift_queue'))
+            ->active()
             ->orderBy('updated_at')
             ->orderBy('id')
             ->limit(50)
