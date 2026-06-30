@@ -17,6 +17,7 @@ use App\Services\Authorization\PermissionService;
 use App\Services\Notifications\EngineNotificationDispatcher;
 use App\Services\Workflow\DuplicateInvoiceChecker;
 use App\Services\Workflow\DynamicFieldOptionsResolver;
+use App\Services\Workflow\EngineClaimService;
 use App\Services\Workflow\EngineRequestService;
 use App\Services\Workflow\EngineTransitionService;
 use App\Services\Workflow\StagePermissionResolver;
@@ -36,6 +37,7 @@ class EngineRequestController extends Controller
         private WorkflowGraphService $graphService,
         private AuditService $auditService,
         private EngineNotificationDispatcher $notificationDispatcher,
+        private EngineClaimService $claimService,
     ) {}
 
     // ── 18.5.1: Create ──────────────────────────────────────────────────
@@ -112,7 +114,7 @@ class EngineRequestController extends Controller
     {
         $this->authorize('view', $engineRequest);
 
-        $engineRequest->load(['currentStage', 'creator', 'bank', 'merchant']);
+        $engineRequest->load(['currentStage', 'creator', 'bank', 'merchant', 'claimedBy']);
 
         return response()->json([
             'success' => true,
@@ -298,6 +300,47 @@ class EngineRequestController extends Controller
             'success' => true,
             'message' => 'Draft saved successfully.',
             'data' => new EngineRequestResource($result),
+        ]);
+    }
+
+    // ── Stage Claim ───────────────────────────────────────────────────────
+
+    public function claim(EngineRequest $engineRequest): JsonResponse
+    {
+        $this->authorize('execute', $engineRequest);
+
+        $updated = $this->claimService->claim($engineRequest, request()->user());
+        $updated->load(['currentStage', 'claimedBy']);
+
+        return response()->json([
+            'success' => true,
+            'data' => new EngineRequestResource($updated),
+        ]);
+    }
+
+    public function heartbeatClaim(EngineRequest $engineRequest): JsonResponse
+    {
+        $this->authorize('execute', $engineRequest);
+
+        $updated = $this->claimService->heartbeat($engineRequest, request()->user());
+        $updated->load(['currentStage', 'claimedBy']);
+
+        return response()->json([
+            'success' => true,
+            'data' => new EngineRequestResource($updated),
+        ]);
+    }
+
+    public function releaseClaim(EngineRequest $engineRequest): JsonResponse
+    {
+        $this->authorize('execute', $engineRequest);
+
+        $updated = $this->claimService->release($engineRequest, request()->user());
+        $updated->load(['currentStage', 'claimedBy']);
+
+        return response()->json([
+            'success' => true,
+            'data' => new EngineRequestResource($updated),
         ]);
     }
 

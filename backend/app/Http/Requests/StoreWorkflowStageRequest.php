@@ -28,6 +28,7 @@ class StoreWorkflowStageRequest extends FormRequest
             'sort_order' => ['sometimes', 'integer', 'min:0'],
             'is_initial' => ['sometimes', 'boolean'],
             'is_final' => ['sometimes', 'boolean'],
+            'requires_claim' => ['sometimes', 'boolean'],
             'sla_duration_minutes' => ['sometimes', 'nullable', 'integer', 'min:1'],
             'status' => ['sometimes', 'string', 'in:ACTIVE,INACTIVE'],
         ];

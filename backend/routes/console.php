@@ -1,6 +1,7 @@
 <?php
 
 use App\Console\Commands\ExpireClaimsCommand;
+use App\Console\Commands\ExpireEngineClaimsCommand;
 use App\Console\Commands\NotifySlaSignalsCommand;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
@@ -11,4 +12,5 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command(ExpireClaimsCommand::class)->everyMinute();
+Schedule::command(ExpireEngineClaimsCommand::class)->everyMinute();
 Schedule::command(NotifySlaSignalsCommand::class)->hourly();

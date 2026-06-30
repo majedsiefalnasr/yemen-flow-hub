@@ -75,4 +75,14 @@ class EngineException extends RuntimeException
     {
         return new self('Workflow has no initial stage.', 'NO_INITIAL_STAGE', 422);
     }
+
+    public static function stageClaimed(): self
+    {
+        return new self('This request is already being reviewed by another user.', 'STAGE_CLAIMED', 409);
+    }
+
+    public static function claimNotHeld(): self
+    {
+        return new self('You do not hold the claim on this request.', 'CLAIM_NOT_HELD', 403);
+    }
 }

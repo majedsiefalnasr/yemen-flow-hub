@@ -57,6 +57,11 @@ class EngineTransitionService
                 throw EngineException::stageExecutionForbidden();
             }
 
+            if ($transition->fromStage->requires_claim
+                && ! ($request->claimed_by === $user->id && $request->isClaimed())) {
+                throw EngineException::claimNotHeld();
+            }
+
             if ($transition->requires_comment && (trim($comment ?? '') === '')) {
                 throw EngineException::commentRequired();
             }
