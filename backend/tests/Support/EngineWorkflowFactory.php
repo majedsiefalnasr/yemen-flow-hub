@@ -153,4 +153,24 @@ class EngineWorkflowFactory
             'executor' => $executor,
         ];
     }
+
+    /**
+     * Create a second user who also holds EXECUTE on the same stage as the request's
+     * current stage, so claim-conflict tests (second claimant, non-holder heartbeat)
+     * have a genuinely authorized peer rather than one rejected by the execute guard.
+     */
+    public static function executorPeer(User $a, EngineRequest $request): User
+    {
+        $peer = User::factory()->create();
+
+        StagePermission::create([
+            'stage_id' => $request->current_stage_id,
+            'user_id' => $peer->id,
+            'access_level' => StageAccessLevel::EXECUTE,
+            'display_label' => 'Exec Peer',
+            'version' => 1,
+        ]);
+
+        return $peer;
+    }
 }

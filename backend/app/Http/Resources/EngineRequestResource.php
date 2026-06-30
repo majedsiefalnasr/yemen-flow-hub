@@ -39,6 +39,9 @@ class EngineRequestResource extends JsonResource
             'currency' => $this->currency,
             'invoice_number' => $this->invoice_number,
             'sla_status' => $this->sla_status,
+            'claimed_by' => $this->claimed_by,
+            'claimed_at' => $this->claimed_at?->toISOString(),
+            'claim_expires_at' => $this->claim_expires_at?->toISOString(),
             'created_by' => $this->created_by,
             'creator' => $this->whenLoaded('creator', fn () => [
                 'id' => $this->creator->id,
