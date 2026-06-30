@@ -17,43 +17,40 @@ class ExpireEngineClaimsCommand extends Command
 
     public function handle(EngineClaimService $claimService, EngineNotificationDispatcher $dispatcher): void
     {
-        $systemActor = User::query()->where('role', UserRole::CBY_ADMIN)->first();
-        if (! $systemActor) {
-            $this->error('No CBY_ADMIN user found — cannot expire engine claims.');
-
-            return;
-        }
-
         $expiredIds = EngineRequest::query()
             ->whereNotNull('claim_expires_at')
             ->where('claim_expires_at', '<', now())
             ->pluck('id');
 
-        $count = 0;
         foreach ($expiredIds as $id) {
             try {
-                $request = EngineRequest::find($id);
-                if ($request === null || ! $request->claimIsExpired()) {
-                    continue;
-                }
-                $priorHolderId = $request->claimed_by;
-                $released = $claimService->release($request, $systemActor);
+                $request = EngineRequest::findOrFail($id);
+                $referenceNumber = $request->reference;
+                $claimService->releaseExpired($request);
+
                 $dispatcher->custom(
-                    'claim.released',
-                    'info',
-                    'انتهت مهلة المطالبة',
-                    "تم تحرير المطالبة على الطلب {$released->reference} لانتهاء المهلة.",
-                    'engine_request',
-                    $released->id,
-                    null,
-                    $priorHolderId !== null ? [$priorHolderId] : [],
+                    type: 'claim.released',
+                    severity: 'info',
+                    title: "أُلغيت مطالبة بسبب انتهاء المهلة: {$referenceNumber}",
+                    body: null,
+                    entityType: 'engine_request',
+                    entityId: $id,
+                    actionUrl: "/requests/{$id}",
+                    recipientUserIds: $this->resolveCbyAdminIds(),
                 );
-                $count++;
             } catch (\Throwable $e) {
                 $this->error("Failed to expire engine claim for request {$id}: {$e->getMessage()}");
             }
         }
+    }
 
-        $this->info("Released {$count} expired engine claim(s).");
+    /** @return int[] */
+    private function resolveCbyAdminIds(): array
+    {
+        return User::query()
+            ->where('role', UserRole::CBY_ADMIN->value)
+            ->where('is_active', true)
+            ->pluck('id')
+            ->toArray();
     }
 }

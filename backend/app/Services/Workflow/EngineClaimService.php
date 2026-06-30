@@ -88,4 +88,33 @@ class EngineClaimService
             return $locked;
         });
     }
+
+    /**
+     * Release a claim whose TTL has expired. System-initiated (no holder-identity
+     * check, unlike release()) — called by the scheduled expiry command, not a user
+     * action. Mirrors release() but tags the audit entry with reason: ttl_expired.
+     */
+    public function releaseExpired(EngineRequest $request): EngineRequest
+    {
+        return DB::transaction(function () use ($request) {
+            $locked = EngineRequest::lockForUpdate()->findOrFail($request->id);
+
+            if ($locked->claimed_by === null || $locked->claim_expires_at === null || $locked->claim_expires_at->isFuture()) {
+                return $locked; // already released or re-claimed/extended since the scan — no-op
+            }
+
+            $locked->forceFill([
+                'claimed_by' => null,
+                'claimed_at' => null,
+                'claim_expires_at' => null,
+            ])->save();
+            Cache::forget($this->cacheKey($locked));
+            $this->auditService->log(AuditAction::CLAIM_RELEASED, null, $locked, [
+                'entity_type' => 'engine_request',
+                'reason' => 'ttl_expired',
+            ]);
+
+            return $locked;
+        });
+    }
 }
