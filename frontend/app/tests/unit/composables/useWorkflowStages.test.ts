@@ -24,6 +24,7 @@ function makeStage(overrides: Partial<WorkflowStage> = {}): WorkflowStage {
     sort_order: 1,
     is_initial: true,
     is_final: false,
+    requires_claim: false,
     sla_duration_minutes: null,
     status: 'ACTIVE',
     created_at: null,
