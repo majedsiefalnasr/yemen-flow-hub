@@ -70,6 +70,7 @@ const shortcutByRoute: Record<string, string> = {
   '/dashboard': 'D',
   '/requests': 'R',
   '/requests/new': 'N',
+  '/workflows': 'W',
   '/traders': 'G',
   '/merchants': 'M',
   '/staff': 'F',
@@ -92,6 +93,7 @@ const aliasesByRoute: Record<string, string> = {
   '/dashboard': 'dashboard home overview',
   '/requests': 'requests list queue',
   '/requests/new': 'new request create submit',
+  '/workflows': 'engine workflow dynamic requests دوري',
   '/traders': 'traders tax owners companies',
   '/merchants': 'merchants companies banks',
   '/staff': 'staff employees users',
@@ -213,7 +215,7 @@ const QUICK_ACTIONS: Partial<Record<UserRole, PaletteAction[]>> = {
 // ── Group definition (route → group heading) ──────────────────────────
 
 const GROUP_DEFS: Array<{ heading: string; routes: string[] }> = [
-  { heading: 'الطلبات', routes: ['/requests', '/requests/new'] },
+  { heading: 'الطلبات', routes: ['/requests', '/requests/new', '/workflows', '/workflows/new'] },
   { heading: 'الطوابير', routes: ['/dashboard', '/customs'] },
   {
     heading: 'الجهات والمستخدمون',

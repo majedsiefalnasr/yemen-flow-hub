@@ -291,6 +291,12 @@ export const NAV_ITEMS: NavItem[] = [
     roles: rolesForSurface('nav.new_request'),
   },
   {
+    label: 'سير العمل',
+    route: NAV_SURFACE_ROUTES['nav.workflows'],
+    icon: 'workflow',
+    roles: rolesForSurface('nav.workflows'),
+  },
+  {
     label: 'التجار',
     route: NAV_SURFACE_ROUTES['nav.merchants'],
     icon: 'building',
@@ -983,6 +989,8 @@ export const INCOTERM_OPTIONS: EnumOption<Incoterm>[] = [
 export const PROTECTED_ROUTES = [
   '/dashboard',
   '/requests',
+  '/workflows',
+  '/workflows/new',
   '/voting',
   '/customs',
   '/audit',
@@ -1002,6 +1010,9 @@ export const ROUTE_ROLE_MAP: Record<string, UserRole[]> = {
   '/dashboard': rolesForSurface('nav.dashboard'),
   '/requests': rolesForSurface('nav.requests'),
   '/requests/new': rolesForSurface('nav.new_request'),
+  '/workflows': rolesForSurface('nav.workflows'),
+  '/workflows/new': rolesForSurface('nav.workflows_new'),
+  '/workflows/:id': rolesForSurface('nav.workflows'),
   '/requests/:id/edit': [UserRole.DATA_ENTRY, UserRole.BANK_ADMIN],
   '/requests/:id/swift': rolesForSurface('action.swift_upload'),
   '/merchants': rolesForSurface('nav.merchants'),
