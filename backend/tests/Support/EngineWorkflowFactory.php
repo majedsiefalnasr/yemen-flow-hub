@@ -3,6 +3,7 @@
 namespace Tests\Support;
 
 use App\Enums\StageAccessLevel;
+use App\Enums\UserRole;
 use App\Enums\WorkflowVersionState;
 use App\Models\EngineRequest;
 use App\Models\StagePermission;
@@ -12,6 +13,7 @@ use App\Models\WorkflowDefinition;
 use App\Models\WorkflowStage;
 use App\Models\WorkflowTransition;
 use App\Models\WorkflowVersion;
+use Database\Seeders\PermissionSeeder;
 use Illuminate\Support\Str;
 
 /**
@@ -172,5 +174,43 @@ class EngineWorkflowFactory
         ]);
 
         return $peer;
+    }
+
+    /**
+     * Seed a CBY_ADMIN user (with the workflow.design permission) plus a stage on a
+     * DRAFT workflow version, for designer-endpoint tests (e.g. requires_claim toggle).
+     *
+     * @return array{admin: User, stage: WorkflowStage}
+     */
+    public static function draftStageForAdmin(): array
+    {
+        (new PermissionSeeder)->run();
+
+        $admin = User::factory()->create(['role' => UserRole::CBY_ADMIN->value]);
+
+        $def = WorkflowDefinition::create([
+            'code' => 'DESIGNER_WF_'.Str::random(8),
+            'name' => 'Designer Test Workflow',
+            'is_active' => true,
+        ]);
+
+        $version = WorkflowVersion::create([
+            'workflow_definition_id' => $def->id,
+            'version_number' => 1,
+            'state' => WorkflowVersionState::DRAFT,
+            'version' => 1,
+        ]);
+
+        $stage = WorkflowStage::create([
+            'workflow_version_id' => $version->id,
+            'code' => 'INTAKE',
+            'name' => 'Intake',
+            'sort_order' => 1,
+            'is_initial' => true,
+            'is_final' => false,
+            'version' => 1,
+        ]);
+
+        return ['admin' => $admin, 'stage' => $stage];
     }
 }
