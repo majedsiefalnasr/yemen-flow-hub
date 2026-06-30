@@ -879,6 +879,11 @@ export interface EngineRequest {
     is_initial: boolean
     is_final: boolean
     sla_duration_minutes: number | null
+    // TODO(engine-stage-claim): backend EngineRequestResource does not expose
+    // requires_claim on current_stage yet, even though WorkflowStage has the
+    // column. Until that gap is closed, this stays optional/undefined and the
+    // claim button only renders when the page actually receives a true value.
+    requires_claim?: boolean
   } | null
   bank_id: number | null
   bank: { id: number; name: string; code: string | null } | null
@@ -889,6 +894,9 @@ export interface EngineRequest {
   currency: string | null
   invoice_number: string | null
   sla_status: string | null
+  claimed_by: number | null
+  claimed_at: string | null
+  claim_expires_at: string | null
   created_by: number
   creator: { id: number; name: string } | null
   created_at: string | null
