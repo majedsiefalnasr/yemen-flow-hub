@@ -3,13 +3,12 @@
 namespace App\Http\Controllers\Api;
 
 use App\Enums\UserRole;
-use App\Http\Resources\ImportRequestListResource;
 use App\Http\Resources\UserResource;
 use App\Models\Bank;
 use App\Models\CustomsDeclaration;
-use App\Models\ImportRequest;
 use App\Models\User;
 use App\Support\ApiResponse;
+use App\Support\EngineRequestReadModel;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use OpenApi\Attributes as OA;
@@ -74,20 +73,19 @@ class SearchController extends Controller
 
     private function searchRequests(User $user, string $query): array
     {
-        $results = ImportRequest::query()
-            ->with(['bank'])
-            ->forUser($user)
-            ->where(function ($q) use ($query) {
-                $like = "%{$query}%";
-                $q->where('reference_number', 'like', $like)
-                    ->orWhere('supplier_name', 'like', $like)
-                    ->orWhere('goods_description', 'like', $like)
-                    ->orWhere('port_of_entry', 'like', $like);
+        $like = "%{$query}%";
+
+        $results = EngineRequestReadModel::queryFor($user)
+            ->where(function ($q) use ($like): void {
+                $q->where('engine_requests.reference', 'like', $like)
+                    ->orWhere('engine_requests.invoice_number', 'like', $like)
+                    ->orWhereHas('merchant', fn ($m) => $m->where('name', 'like', $like))
+                    ->orWhereHas('bank', fn ($b) => $b->where('name', 'like', $like));
             })
             ->limit(self::MAX_RESULTS_PER_GROUP)
             ->get();
 
-        return ImportRequestListResource::collection($results)->resolve();
+        return EngineRequestReadModel::resourceCollection($results);
     }
 
     private function searchUsers(User $user, string $query): array

@@ -4,17 +4,15 @@ namespace App\Http\Controllers\Api;
 
 use App\Enums\AuditAction;
 use App\Enums\AvatarVariant;
-use App\Enums\RequestStatus;
-use App\Enums\UserRole;
 use App\Http\Requests\ChangePasswordRequest;
 use App\Http\Resources\UserResource;
 use App\Models\AuditLog;
-use App\Models\ImportRequest;
 use App\Models\User;
 use App\Services\Audit\AuditService;
 use App\Services\Auth\MfaService;
 use App\Services\Settings\AdminSettingsService;
 use App\Support\ApiResponse;
+use App\Support\EngineRequestReadModel;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
@@ -420,51 +418,12 @@ class ProfileController extends Controller
 
     private function computeStats(mixed $user): array
     {
-        $query = ImportRequest::query();
-
-        $cbySideRoles = [
-            UserRole::CBY_ADMIN,
-            UserRole::COMMITTEE_DIRECTOR,
-            UserRole::SUPPORT_COMMITTEE,
-            UserRole::SWIFT_OFFICER,
-            UserRole::EXECUTIVE_MEMBER,
-        ];
-
-        if (! in_array($user->role, $cbySideRoles)) {
-            $query->where('bank_id', $user->bank_id);
-        }
-
-        $terminalStatuses = [
-            RequestStatus::COMPLETED->value,
-            RequestStatus::EXECUTIVE_REJECTED->value,
-            RequestStatus::CUSTOMS_DECLARATION_ISSUED->value,
-        ];
-
-        $inProgressStatuses = [
-            RequestStatus::DRAFT_REJECTED_INTERNAL->value,
-            RequestStatus::SUBMITTED->value,
-            RequestStatus::BANK_REVIEW->value,
-            RequestStatus::BANK_APPROVED->value,
-            RequestStatus::SUPPORT_REVIEW_PENDING->value,
-            RequestStatus::SUPPORT_REVIEW_IN_PROGRESS->value,
-            RequestStatus::SUPPORT_APPROVED->value,
-            RequestStatus::SUPPORT_REJECTED->value,
-            RequestStatus::WAITING_FOR_SWIFT->value,
-            RequestStatus::SWIFT_UPLOADED->value,
-            RequestStatus::WAITING_FOR_VOTING_OPEN->value,
-            RequestStatus::EXECUTIVE_VOTING_OPEN->value,
-            RequestStatus::EXECUTIVE_VOTING_CLOSED->value,
-            RequestStatus::EXECUTIVE_APPROVED->value,
-        ];
+        $base = EngineRequestReadModel::queryFor($user);
 
         return [
-            'total' => (clone $query)->count(),
-            'in_progress' => (clone $query)
-                ->whereIn('status', $inProgressStatuses)
-                ->count(),
-            'completed' => (clone $query)
-                ->where('status', RequestStatus::COMPLETED->value)
-                ->count(),
+            'total' => (clone $base)->count(),
+            'in_progress' => (clone $base)->where(EngineRequestReadModel::bucket('active'))->count(),
+            'completed' => (clone $base)->where(EngineRequestReadModel::bucket('completed'))->count(),
         ];
     }
 

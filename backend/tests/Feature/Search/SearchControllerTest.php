@@ -6,11 +6,16 @@ use App\Enums\RequestStatus;
 use App\Enums\UserRole;
 use App\Models\Bank;
 use App\Models\CustomsDeclaration;
+use App\Models\EngineRequest;
 use App\Models\ImportRequest;
 use App\Models\Merchant;
 use App\Models\User;
+use App\Models\WorkflowDefinition;
+use App\Models\WorkflowStage;
+use App\Models\WorkflowVersion;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class SearchControllerTest extends TestCase
@@ -37,9 +42,12 @@ class SearchControllerTest extends TestCase
 
     private User $cbyadmin;
 
-    private ImportRequest $requestA;
+    private EngineRequest $requestA;
 
-    private ImportRequest $requestB;
+    private EngineRequest $requestB;
+
+    /** @var array{version: WorkflowVersion, stages: array<string, WorkflowStage>} */
+    private array $workflow;
 
     protected function setUp(): void
     {
@@ -57,12 +65,14 @@ class SearchControllerTest extends TestCase
         $this->director = $this->makeUser(UserRole::COMMITTEE_DIRECTOR);
         $this->cbyadmin = $this->makeUser(UserRole::CBY_ADMIN);
 
+        $this->workflow = $this->makeWorkflow();
+
         $merchantA = $this->makeMerchant($this->bankA);
         $merchantB = $this->makeMerchant($this->bankB);
         $dataEntryB = $this->makeUser(UserRole::DATA_ENTRY, $this->bankB);
 
-        $this->requestA = $this->makeRequest($this->bankA, $merchantA, $this->dataEntryA, 'REF-ALPHA-001', 'Alpha Supplier');
-        $this->requestB = $this->makeRequest($this->bankB, $merchantB, $dataEntryB, 'REF-BETA-001', 'Beta Supplier');
+        $this->requestA = $this->makeEngineRequest($this->bankA, $merchantA, $this->dataEntryA, 'REF-ALPHA-001');
+        $this->requestB = $this->makeEngineRequest($this->bankB, $merchantB, $dataEntryB, 'REF-BETA-001');
     }
 
     // ─── Helpers ──────────────────────────────────────────────────────────────
@@ -100,30 +110,73 @@ class SearchControllerTest extends TestCase
         return Merchant::query()->create([
             'name' => "Merchant {$mc}",
             'tax_number' => "TX-{$mc}",
-            'commercial_register' => "CR-{$mc}",
-            'address' => 'Sanaa, Yemen',
-            'contact' => '+9671234567',
-            'category' => 'general',
-            'status' => 'active',
             'bank_id' => $bank->id,
+            'created_by' => $this->dataEntryA->id,
         ]);
     }
 
-    private function makeRequest(Bank $bank, Merchant $merchant, User $creator, string $refNumber, string $supplierName): ImportRequest
+    /** @return array{version: WorkflowVersion, stages: array<string, WorkflowStage>} */
+    private function makeWorkflow(): array
+    {
+        $definition = WorkflowDefinition::query()->create([
+            'code' => 'SEARCH_TEST_'.Str::random(6),
+            'name' => 'Search Test Workflow',
+            'is_active' => true,
+            'version' => 1,
+        ]);
+
+        $version = WorkflowVersion::query()->create([
+            'workflow_definition_id' => $definition->id,
+            'version_number' => 1,
+            'state' => 'PUBLISHED',
+            'published_at' => now(),
+            'version' => 1,
+        ]);
+
+        $stage = WorkflowStage::query()->create([
+            'workflow_version_id' => $version->id,
+            'code' => 'CREATE',
+            'name' => 'Create',
+            'sort_order' => 1,
+            'is_initial' => true,
+            'is_final' => false,
+            'version' => 1,
+        ]);
+
+        return ['version' => $version, 'stages' => ['CREATE' => $stage]];
+    }
+
+    private function makeEngineRequest(Bank $bank, Merchant $merchant, User $creator, string $reference): EngineRequest
+    {
+        return EngineRequest::query()->create([
+            'workflow_version_id' => $this->workflow['version']->id,
+            'current_stage_id' => $this->workflow['stages']['CREATE']->id,
+            'reference' => $reference,
+            'invoice_number' => 'INV-'.Str::random(6),
+            'status' => 'ACTIVE',
+            'bank_id' => $bank->id,
+            'merchant_id' => $merchant->id,
+            'created_by' => $creator->id,
+            'currency' => 'USD',
+            'amount' => 50000.00,
+            'data' => [],
+            'version' => 1,
+        ]);
+    }
+
+    private function makeImportRequest(Bank $bank, User $creator): ImportRequest
     {
         app()->instance('workflow.transition.active', true);
         try {
             return ImportRequest::query()->create([
-                'reference_number' => $refNumber,
+                'reference_number' => 'IR-'.Str::random(6),
                 'bank_id' => $bank->id,
-                'merchant_id' => $merchant->id,
                 'created_by' => $creator->id,
                 'currency' => 'USD',
                 'amount' => 50000.00,
-                'supplier_name' => $supplierName,
-                'goods_description' => 'Industrial equipment',
+                'supplier_name' => 'Test Supplier',
+                'goods_description' => 'Test goods',
                 'port_of_entry' => 'Aden Port',
-                'notes' => null,
                 'status' => RequestStatus::SUBMITTED,
                 'current_owner_role' => UserRole::BANK_REVIEWER,
             ]);
@@ -218,10 +271,10 @@ class SearchControllerTest extends TestCase
         $this->assertContains($this->requestA->id, $requestIds);
     }
 
-    public function test_request_search_matches_supplier_name(): void
+    public function test_request_search_matches_merchant_name(): void
     {
         $response = $this->actingAs($this->dataEntryA)
-            ->getJson('/api/search?q=Alpha Supplier');
+            ->getJson('/api/search?q=Merchant');
 
         $requestIds = collect($response->json('data.requests'))->pluck('id')->all();
         $this->assertContains($this->requestA->id, $requestIds);
@@ -335,8 +388,11 @@ class SearchControllerTest extends TestCase
 
     public function test_bank_user_only_sees_own_bank_customs(): void
     {
-        $customsA = $this->makeCustomsDeclaration($this->requestA, 'DECL-ALPHA-2026');
-        $customsB = $this->makeCustomsDeclaration($this->requestB, 'DECL-BETA-2026');
+        $importA = $this->makeImportRequest($this->bankA, $this->dataEntryA);
+        $dataEntryB = User::query()->where('bank_id', $this->bankB->id)->first();
+        $importB = $this->makeImportRequest($this->bankB, $dataEntryB);
+        $customsA = $this->makeCustomsDeclaration($importA, 'DECL-ALPHA-2026');
+        $customsB = $this->makeCustomsDeclaration($importB, 'DECL-BETA-2026');
 
         $response = $this->actingAs($this->dataEntryA)
             ->getJson('/api/search?q=DECL');
@@ -350,8 +406,11 @@ class SearchControllerTest extends TestCase
 
     public function test_cby_user_sees_all_customs_declarations(): void
     {
-        $customsA = $this->makeCustomsDeclaration($this->requestA, 'DECL-ALPHA-2026');
-        $customsB = $this->makeCustomsDeclaration($this->requestB, 'DECL-BETA-2026');
+        $importA = $this->makeImportRequest($this->bankA, $this->dataEntryA);
+        $dataEntryB = User::query()->where('bank_id', $this->bankB->id)->first();
+        $importB = $this->makeImportRequest($this->bankB, $dataEntryB);
+        $customsA = $this->makeCustomsDeclaration($importA, 'DECL-ALPHA-2026');
+        $customsB = $this->makeCustomsDeclaration($importB, 'DECL-BETA-2026');
 
         $response = $this->actingAs($this->cbyadmin)
             ->getJson('/api/search?q=DECL');

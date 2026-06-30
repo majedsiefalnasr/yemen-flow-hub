@@ -7,12 +7,18 @@ use App\Enums\RequestStatus;
 use App\Enums\UserRole;
 use App\Models\AuditLog;
 use App\Models\Bank;
+use App\Models\EngineRequest;
 use App\Models\ImportRequest;
+use App\Models\Merchant;
 use App\Models\User;
+use App\Models\WorkflowDefinition;
+use App\Models\WorkflowStage;
+use App\Models\WorkflowVersion;
 use App\Services\Workflow\WorkflowService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class AuditControllerTest extends TestCase
@@ -78,6 +84,55 @@ class AuditControllerTest extends TestCase
         } finally {
             app()->offsetUnset('workflow.transition.active');
         }
+    }
+
+    private function makeEngineRequest(): EngineRequest
+    {
+        $definition = WorkflowDefinition::query()->create([
+            'code' => 'AUDIT_TEST_'.Str::random(6),
+            'name' => 'Audit Test Workflow',
+            'is_active' => true,
+            'version' => 1,
+        ]);
+
+        $version = WorkflowVersion::query()->create([
+            'workflow_definition_id' => $definition->id,
+            'version_number' => 1,
+            'state' => 'PUBLISHED',
+            'published_at' => now(),
+            'version' => 1,
+        ]);
+
+        $stage = WorkflowStage::query()->create([
+            'workflow_version_id' => $version->id,
+            'code' => 'CREATE',
+            'name' => 'Create',
+            'sort_order' => 1,
+            'is_initial' => true,
+            'is_final' => false,
+            'version' => 1,
+        ]);
+
+        $creator = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
+
+        $merchant = Merchant::query()->create([
+            'bank_id' => $this->bank->id,
+            'name' => 'Audit Merchant',
+            'tax_number' => 'TX-'.Str::random(8),
+            'created_by' => $creator->id,
+        ]);
+
+        return EngineRequest::query()->create([
+            'workflow_version_id' => $version->id,
+            'current_stage_id' => $stage->id,
+            'reference' => 'ENG-AUDIT-'.Str::random(6),
+            'status' => 'ACTIVE',
+            'bank_id' => $this->bank->id,
+            'merchant_id' => $merchant->id,
+            'created_by' => $creator->id,
+            'data' => [],
+            'version' => 1,
+        ]);
     }
 
     // ─── GET /api/audit — access control ─────────────────────────────────────
@@ -173,6 +228,29 @@ class AuditControllerTest extends TestCase
             sprintf('IMP-%s-%04d', $request->created_at->format('Y'), $request->id),
             $entry['entity_reference']
         );
+    }
+
+    /** @test */
+    public function test_audit_log_entity_reference_resolves_engine_request(): void
+    {
+        $admin = $this->makeUser(UserRole::CBY_ADMIN);
+        $engineRequest = $this->makeEngineRequest();
+
+        AuditLog::query()->create([
+            'user_id' => $admin->id,
+            'user_role' => UserRole::CBY_ADMIN->value,
+            'action' => AuditAction::REQUEST_CREATED->value,
+            'subject_type' => EngineRequest::class,
+            'subject_id' => $engineRequest->id,
+        ]);
+
+        $response = $this->actingAs($admin)->getJson('/api/audit');
+
+        $response->assertOk();
+        $entry = $response->json('data.data.0');
+        $this->assertSame('EngineRequest', $entry['entity_type']);
+        $this->assertSame($engineRequest->id, $entry['entity_id']);
+        $this->assertNotNull($entry['entity_reference']); // either reference or ENG-{id}
     }
 
     /** @test */
