@@ -307,6 +307,8 @@ class EngineRequestController extends Controller
 
     public function claim(EngineRequest $engineRequest): JsonResponse
     {
+        $this->authorize('execute', $engineRequest);
+
         $updated = $this->claimService->claim($engineRequest, request()->user());
 
         return response()->json([
@@ -317,6 +319,8 @@ class EngineRequestController extends Controller
 
     public function heartbeatClaim(EngineRequest $engineRequest): JsonResponse
     {
+        $this->authorize('execute', $engineRequest);
+
         $updated = $this->claimService->heartbeat($engineRequest, request()->user());
 
         return response()->json([
@@ -327,6 +331,8 @@ class EngineRequestController extends Controller
 
     public function releaseClaim(EngineRequest $engineRequest): JsonResponse
     {
+        $this->authorize('execute', $engineRequest);
+
         $updated = $this->claimService->release($engineRequest, request()->user());
 
         return response()->json([

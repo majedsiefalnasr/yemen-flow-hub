@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Engine;
 
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\EngineWorkflowFactory;
 use Tests\TestCase;
@@ -9,6 +10,17 @@ use Tests\TestCase;
 class EngineClaimEndpointTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_claim_by_user_without_execute_returns_403(): void
+    {
+        ['request' => $request] = EngineWorkflowFactory::seedClaimStageWithTransition();
+        $outsider = User::factory()->create();
+
+        $this->actingAs($outsider)
+            ->postJson("/api/v1/engine-requests/{$request->id}/claim")
+            ->assertStatus(403)
+            ->assertJsonPath('error_code', 'WORKFLOW_FORBIDDEN');
+    }
 
     public function test_claim_endpoint_returns_200_and_sets_holder(): void
     {
