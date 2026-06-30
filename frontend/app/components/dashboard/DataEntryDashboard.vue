@@ -267,7 +267,7 @@ onMounted(() => {
             حالة الطلب من هذه اللوحة.
           </EmptyDescription>
           <div class="flex flex-wrap items-center justify-center gap-2 pt-1">
-            <Button @click="router.push('/requests/new')">طلب جديد</Button>
+            <Button @click="router.push('/workflows/new')">طلب جديد</Button>
             <Button variant="outline" @click="router.push('/requests')">عرض طابور الطلبات</Button>
           </div>
         </EmptyContent>
@@ -317,7 +317,7 @@ onMounted(() => {
         <div class="grid grid-cols-3 gap-3 max-md:grid-cols-1">
           <!-- إنشاء طلب جديد -->
           <NuxtLink
-            to="/requests/new"
+            to="/workflows/new"
             class="bg-primary text-primary-foreground focus-visible:ring-primary flex flex-col items-start gap-1 rounded-2xl border-0 p-4 transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:outline-none"
             aria-label="إنشاء طلب جديد"
           >

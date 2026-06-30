@@ -1,4 +1,5 @@
 <script setup lang="ts">
+// Legacy create page — kept for G11 rollback; CTAs now route to /workflows/new
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import RequestFormTabs from '@/components/request/RequestFormTabs.vue'

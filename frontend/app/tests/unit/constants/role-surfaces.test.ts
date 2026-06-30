@@ -5,6 +5,7 @@ import {
   roleHasSurface,
   rolesForSurface,
 } from '../../../constants/role-surfaces'
+import { ROUTE_ROLE_MAP } from '../../../constants/workflow'
 import { UserRole } from '../../../types/enums'
 
 describe('ROLE_SURFACE_MATRIX', () => {
@@ -602,5 +603,42 @@ describe('ROLE_SURFACE_MATRIX — CBY_ADMIN forbidden surfaces (plan §1)', () =
 
   it('cannot create new requests', () => {
     expect(roleHasSurface(UserRole.CBY_ADMIN, 'nav.new_request')).toBe(false)
+  })
+})
+
+// ── Engine workflow nav surfaces ──────────────────────────────────────────
+
+describe('engine workflow nav surfaces', () => {
+  it('nav.workflows route is /workflows', () => {
+    expect(NAV_SURFACE_ROUTES['nav.workflows']).toBe('/workflows')
+  })
+
+  it('nav.workflows_new route is /workflows/new', () => {
+    expect(NAV_SURFACE_ROUTES['nav.workflows_new']).toBe('/workflows/new')
+  })
+
+  it('nav.workflows is visible to all 8 roles', () => {
+    const roles = rolesForSurface('nav.workflows')
+    expect(new Set(roles)).toEqual(new Set(Object.values(UserRole)))
+  })
+
+  it('nav.workflows_new roles match nav.new_request roles', () => {
+    expect(rolesForSurface('nav.workflows_new').sort()).toEqual(
+      rolesForSurface('nav.new_request').sort(),
+    )
+  })
+
+  it('every role has nav.workflows in its allowed list', () => {
+    for (const role of Object.values(UserRole)) {
+      expect(ROLE_SURFACE_MATRIX[role].allowed).toContain('nav.workflows')
+    }
+  })
+})
+
+// ── Engine create CTA route guard ──────────────────────────────────────────
+
+describe('engine create CTA route guard', () => {
+  it('/workflows/new route guard exists and matches nav.workflows_new', () => {
+    expect(ROUTE_ROLE_MAP['/workflows/new']).toEqual(rolesForSurface('nav.workflows_new'))
   })
 })

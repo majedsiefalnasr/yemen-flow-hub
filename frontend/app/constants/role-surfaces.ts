@@ -4,6 +4,8 @@ export type RoleSurfaceKey =
   | 'nav.dashboard'
   | 'nav.requests'
   | 'nav.new_request'
+  | 'nav.workflows'
+  | 'nav.workflows_new'
   | 'nav.merchants'
   | 'nav.staff'
   | 'nav.reports'
@@ -41,6 +43,8 @@ export const ROLE_SURFACE_MATRIX: Record<UserRole, RoleSurfaceContract> = {
       'nav.dashboard',
       'nav.requests',
       'nav.new_request',
+      'nav.workflows_new',
+      'nav.workflows',
       'nav.notifications',
       'nav.settings',
     ],
@@ -72,6 +76,7 @@ export const ROLE_SURFACE_MATRIX: Record<UserRole, RoleSurfaceContract> = {
     allowed: [
       'nav.dashboard',
       'nav.requests',
+      'nav.workflows',
       'nav.notifications',
       'nav.settings',
       'action.external_fx_confirmation.download',
@@ -103,6 +108,7 @@ export const ROLE_SURFACE_MATRIX: Record<UserRole, RoleSurfaceContract> = {
     allowed: [
       'nav.dashboard',
       'nav.requests',
+      'nav.workflows',
       'nav.merchants',
       'nav.staff',
       'nav.reports',
@@ -135,6 +141,7 @@ export const ROLE_SURFACE_MATRIX: Record<UserRole, RoleSurfaceContract> = {
     allowed: [
       'nav.dashboard',
       'nav.requests',
+      'nav.workflows',
       'nav.notifications',
       'nav.settings',
       'action.swift_upload',
@@ -167,6 +174,7 @@ export const ROLE_SURFACE_MATRIX: Record<UserRole, RoleSurfaceContract> = {
     allowed: [
       'nav.dashboard',
       'nav.requests',
+      'nav.workflows',
       'nav.notifications',
       'nav.settings',
       'action.support_claim',
@@ -198,6 +206,7 @@ export const ROLE_SURFACE_MATRIX: Record<UserRole, RoleSurfaceContract> = {
     allowed: [
       'nav.dashboard',
       'nav.requests',
+      'nav.workflows',
       'nav.reports',
       'nav.notifications',
       'nav.settings',
@@ -230,6 +239,7 @@ export const ROLE_SURFACE_MATRIX: Record<UserRole, RoleSurfaceContract> = {
     allowed: [
       'nav.dashboard',
       'nav.requests',
+      'nav.workflows',
       'nav.external_fx_confirmation',
       'nav.reports',
       'nav.audit',
@@ -262,6 +272,7 @@ export const ROLE_SURFACE_MATRIX: Record<UserRole, RoleSurfaceContract> = {
     allowed: [
       'nav.dashboard',
       'nav.requests',
+      'nav.workflows',
       'nav.merchants',
       'nav.reports',
       'nav.audit',
@@ -296,6 +307,8 @@ export const NAV_SURFACE_ROUTES: Record<
   | 'nav.dashboard'
   | 'nav.requests'
   | 'nav.new_request'
+  | 'nav.workflows'
+  | 'nav.workflows_new'
   | 'nav.merchants'
   | 'nav.staff'
   | 'nav.reports'
@@ -317,6 +330,8 @@ export const NAV_SURFACE_ROUTES: Record<
   'nav.dashboard': '/dashboard',
   'nav.requests': '/requests',
   'nav.new_request': '/requests/new',
+  'nav.workflows': '/workflows',
+  'nav.workflows_new': '/workflows/new',
   'nav.merchants': '/merchants',
   'nav.staff': '/staff',
   'nav.reports': '/reports',

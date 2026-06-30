@@ -132,7 +132,7 @@ const NAV_GROUP_DEFS: Array<{
   },
   {
     title: 'العمليات',
-    routes: ['/requests', '/requests/new', '/customs', '/staff'],
+    routes: ['/requests', '/requests/new', '/workflows', '/customs', '/staff'],
     navGroupStyle: 'operational',
   },
   {

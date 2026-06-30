@@ -543,7 +543,7 @@ const columns: ColumnDef<Merchant>[] = [
               DropdownMenuItem,
               {
                 class: 'gap-1.5 text-primary',
-                onClick: () => router.push('/requests/new'),
+                onClick: () => router.push('/workflows/new'),
               },
               () => [h(ExternalLink, { class: 'h-3.5 w-3.5' }), 'إنشاء طلب تمويل'],
             ),
@@ -1353,7 +1353,7 @@ function exportSelectedRows(format: 'csv' | 'excel' | 'json' = 'csv') {
               size="sm"
               @click="
                 () => {
-                  router.push('/requests/new')
+                  router.push('/workflows/new')
                   viewing = null
                 }
               "
