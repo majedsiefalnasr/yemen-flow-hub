@@ -49,14 +49,12 @@ const availableActions = computed(() => {
   return store.graph.edges.filter((edge) => edge.from_stage_id === store.current!.current_stage!.id)
 })
 
-// Backend does not yet expose requires_claim on current_stage (see TODO in
-// types/models.ts); the claim button only renders once that data actually
-// arrives, rather than guessing.
 const stageRequiresClaim = computed(() => store.current?.current_stage?.requires_claim === true)
 const isUnclaimed = computed(() => claimedBy.value === null)
 const showClaimButton = computed(
   () => stageRequiresClaim.value && isUnclaimed.value && !heldByOther.value,
 )
+const claimHolderName = computed(() => store.current?.claimed_by_user?.name ?? null)
 // Action panel is gated behind holding the claim whenever the stage requires
 // one; stages that don't require a claim remain actionable as before.
 const canAct = computed(() => !stageRequiresClaim.value || isHeldByMe.value)
@@ -115,13 +113,7 @@ async function runAction(transitionId: number, requiresComment: boolean) {
         </AlertDescription>
       </Alert>
 
-      <!--
-        Backend claimed_by is a raw user id (no eager-loaded user/name relation
-        on EngineRequestResource yet), so the holder's display name is not
-        available to the frontend. Using a generic Arabic placeholder until
-        that gap is closed; see TODO in types/models.ts.
-      -->
-      <ClaimBanner v-if="heldByOther" holder-name="مراجع آخر" />
+      <ClaimBanner v-if="heldByOther" :holder-name="claimHolderName ?? 'مراجع آخر'" />
 
       <Tabs default-value="form" dir="rtl">
         <TabsList>
