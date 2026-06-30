@@ -8,10 +8,12 @@ Read `AGENTS.md` (one level up at `../AGENTS.md`) and `CLAUDE.md` in this direct
 
 ## Git
 
-Frontend code lives in two repos. Commit every change to both:
+Frontend code is tracked under `frontend/` in the root monorepo. Commit every frontend change from the root repository:
 
-1. From `frontend/` → `git@github.com:ultimate-eg/yemen-flow-hub-frontend.git` (team repo)
-2. From root `/` → `git@github.com:majedsiefalnasr/yemen-flow-hub.git` (monorepo, stage `frontend/<files>`)
+```bash
+git add frontend/<files>
+git commit -m "type(scope): description"
+```
 
 Commit format: `type(scope): description`
 
@@ -75,7 +77,7 @@ Use semantic codebase search before modifying composables, stores, or services.
 
 ## Verification Ladder
 
-Before editing, check `git -c core.fsmonitor=false status --short` from `frontend/` and report existing dirty files. Do not modify dirty files unless directly in scope.
+Before editing, check `git -c core.fsmonitor=false status --short` from the repository root and report existing dirty files. Do not modify dirty files unless directly in scope.
 
 Keep `pnpm`; do not migrate to Bun. Default verification is focused:
 

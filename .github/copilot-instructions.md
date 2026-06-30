@@ -1,6 +1,6 @@
 # Yemen Flow Hub — GitHub Copilot Instructions (Root Repo)
 
-This is the root repository for Yemen Flow Hub, an internal government banking regulatory workflow platform for the Central Bank of Yemen. It contains documentation, design system, and AI configuration files only.
+This is the root repository for Yemen Flow Hub, an internal government banking regulatory workflow platform for the Central Bank of Yemen. It contains documentation, backend, frontend, design system, and AI configuration files.
 
 ## Source of Truth
 
@@ -10,11 +10,11 @@ Read `AGENTS.md` at the root. All workflow rules, enums, and architecture decisi
 
 Root monorepo (`git@github.com:majedsiefalnasr/yemen-flow-hub.git`) tracks **everything**: docs, backend, frontend.
 
-Backend and frontend also each have their own team repos. Every change to `backend/` or `frontend/` must be committed to both the team repo (from inside that directory) and the root monorepo (from the root).
+`backend/` and `frontend/` are regular directories in the root repository. They are not submodules or nested Git repositories.
 
-- Docs/root changes → root monorepo only
-- Backend changes → `backend/` team repo + root monorepo
-- Frontend changes → `frontend/` team repo + root monorepo
+- Docs/root changes → root monorepo
+- Backend changes → root monorepo, staged as `backend/<files>`
+- Frontend changes → root monorepo, staged as `frontend/<files>`
 - Commit format: `type(scope): description`
 
 ## Key Rules

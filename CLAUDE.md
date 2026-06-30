@@ -4,7 +4,7 @@
 
 This is the **root monorepo** for Yemen Flow Hub. It tracks all code: docs, backend, and frontend.
 
-`backend/` and `frontend/` also have their own independent git repos so each team only sees their part.
+`backend/` and `frontend/` are regular directories in this repository. They are not submodules or nested Git repositories.
 
 ## Git Scope
 
@@ -19,27 +19,23 @@ git add docs/ AGENTS.md DESIGN.md   # whichever changed
 git commit -m "docs(scope): description"
 ```
 
-**Backend changes** — commit to both repos:
+**Backend changes** — commit from the root repository:
 
 ```bash
-# 1. Backend team repo
-cd backend && git add <files> && git commit -m "feat(scope): description"
-# 2. Root monorepo
-cd .. && git add backend/<files> && git commit -m "feat(scope): description"
+git add backend/<files>
+git commit -m "feat(scope): description"
 ```
 
-**Frontend changes** — commit to both repos:
+**Frontend changes** — commit from the root repository:
 
 ```bash
-# 1. Frontend team repo
-cd frontend && git add <files> && git commit -m "feat(scope): description"
-# 2. Root monorepo
-cd .. && git add frontend/<files> && git commit -m "feat(scope): description"
+git add frontend/<files>
+git commit -m "feat(scope): description"
 ```
 
 All commits must stay signed. Never use `--no-gpg-sign`, `--no-sign`, or `-c commit.gpgsign=false`; if signing fails, fix signing first.
 
-Never add or commit generated artifacts from `graphify-out/`. Keep them local only in every repo workflow.
+Never add or commit generated artifacts from `graphify-out/`. Keep them local only.
 
 ## Skills Available
 
@@ -61,7 +57,7 @@ When browser interaction is required, use `playwright-cli` commands. Keep the `p
 
 ## Verification Ladder
 
-Before editing, run `git -c core.fsmonitor=false status --short` in the repo you will touch and report existing dirty files. Do not modify dirty files unless directly in scope.
+Before editing, run `git -c core.fsmonitor=false status --short` from the repository root and report existing dirty files. Do not modify dirty files unless directly in scope.
 
 Keep `pnpm` as the JavaScript package manager. For narrow changes, verify with the smallest relevant test/filter first, then touched-file lint/format where supported. Run frontend typecheck only for type, composable, store, API contract, shared interface, or cross-module changes. Do not run full `pnpm test` or full `php artisan test` by default. Full suites are for release checks, broad refactors, security-critical changes, or explicit user requests. If a full suite is known red, report the baseline and ignore unrelated failures.
 

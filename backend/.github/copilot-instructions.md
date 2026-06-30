@@ -8,10 +8,12 @@ Read `AGENTS.md` (one level up at `../AGENTS.md`) and `CLAUDE.md` in this direct
 
 ## Git
 
-Backend code lives in two repos. Commit every change to both:
+Backend code is tracked under `backend/` in the root monorepo. Commit every backend change from the root repository:
 
-1. From `backend/` → `git@github.com:ultimate-eg/yemen-flow-hub-backend.git` (team repo)
-2. From root `/` → `git@github.com:majedsiefalnasr/yemen-flow-hub.git` (monorepo, stage `backend/<files>`)
+```bash
+git add backend/<files>
+git commit -m "type(scope): description"
+```
 
 Commit format: `type(scope): description`
 
@@ -67,7 +69,7 @@ Use semantic codebase search before modifying any service, model, or policy.
 
 ## Verification Ladder
 
-Before editing, check `git -c core.fsmonitor=false status --short` from `backend/` and report existing dirty files. Do not modify dirty files unless directly in scope.
+Before editing, check `git -c core.fsmonitor=false status --short` from the repository root and report existing dirty files. Do not modify dirty files unless directly in scope.
 
 Default verification is focused:
 

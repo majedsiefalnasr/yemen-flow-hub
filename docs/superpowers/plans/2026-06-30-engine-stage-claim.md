@@ -11,7 +11,7 @@
 ## Global Constraints
 
 - Commit format: `type(scope): description`; scope must be `workflow`. End every commit message with `Co-Authored-By: Claude <noreply@anthropic.com>`. Commits stay signed — never `--no-gpg-sign`.
-- Backend changes commit to BOTH the backend team repo (`git` from `backend/`) AND the root monorepo (`git` from `/`, staging `backend/<files>`) with identical messages.
+- Backend changes are committed once in the root monorepo, staging paths as `backend/<files>`.
 - All business logic in services, not controllers/models/routes. Controllers stay thin.
 - Org-scoped visibility enforced at the Eloquent query level.
 - Every claim mutation logs to `audit_logs` via `AuditService`.
@@ -956,15 +956,9 @@ Expected: PASS.
 Run: `cd frontend && pnpm exec vitest run app/tests/unit/composables/useEngineClaim.test.ts`
 Expected: PASS. Also: `pnpm exec eslint app/composables/useEngineClaim.ts app/components/workflow/ClaimBanner.vue` clean.
 
-- [ ] **Step 7: Commit (frontend → frontend team repo + root)**
+- [ ] **Step 7: Commit frontend changes from root**
 
 ```bash
-cd frontend
-git add app/composables/useEngineClaim.ts app/components/workflow/ClaimBanner.vue app/pages/workflows/instances/[id].vue app/tests/unit/composables/useEngineClaim.test.ts
-git commit -m "feat(workflow): add engine claim soft-lock UI on instance page
-
-Co-Authored-By: Claude <noreply@anthropic.com>"
-cd ..
 git add frontend/app/composables/useEngineClaim.ts frontend/app/components/workflow/ClaimBanner.vue frontend/app/pages/workflows/instances/[id].vue frontend/app/tests/unit/composables/useEngineClaim.test.ts
 git commit -m "feat(workflow): add engine claim soft-lock UI on instance page
 
@@ -1036,20 +1030,13 @@ Expected: PASS.
 
 In `frontend/app/pages/admin/workflows.vue` stage editor, add a shadcn-vue `Switch` + label "يتطلب مطالبة (قفل مرن)" bound to the stage's `requires_claim`, included in the stage save payload. Use shadcn-vue components only.
 
-- [ ] **Step 6: Format + commit (both repos, both backend+frontend)**
+- [ ] **Step 6: Format + commit backend and frontend changes from root**
 
 ```bash
 cd backend
 vendor/bin/pint app/Http/Controllers/Api/V1/WorkflowStageController.php --test
-git add app/Http/Controllers/Api/V1/WorkflowStageController.php tests/Feature/Engine/WorkflowStageRequiresClaimTest.php tests/Support/EngineWorkflowFactory.php
-git commit -m "feat(workflow): allow requires_claim on stage designer
-
-Co-Authored-By: Claude <noreply@anthropic.com>"
 cd ../frontend
-git add app/pages/admin/workflows.vue
-git commit -m "feat(workflow): add requires_claim toggle to stage editor
-
-Co-Authored-By: Claude <noreply@anthropic.com>"
+pnpm exec eslint app/pages/admin/workflows.vue
 cd ..
 git add backend/app/Http/Controllers/Api/V1/WorkflowStageController.php backend/tests/Feature/Engine/WorkflowStageRequiresClaimTest.php backend/tests/Support/EngineWorkflowFactory.php frontend/app/pages/admin/workflows.vue
 git commit -m "feat(workflow): expose requires_claim on stage designer

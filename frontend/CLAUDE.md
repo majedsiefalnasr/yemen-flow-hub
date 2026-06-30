@@ -9,20 +9,11 @@ Yemen Flow Hub Nuxt 4 frontend application.
 
 ## Git Scope
 
-Frontend code lives in **two repos simultaneously**:
+Frontend code lives under `frontend/` in the root monorepo (`git@github.com:majedsiefalnasr/yemen-flow-hub.git`). It is tracked as normal root files, not as a submodule or nested Git repository.
 
-- **Frontend team repo** (`git@github.com:ultimate-eg/yemen-flow-hub-frontend.git`) — frontend team's standalone repo
-- **Root monorepo** (`git@github.com:majedsiefalnasr/yemen-flow-hub.git`) — tracked under `frontend/`
-
-Every frontend change must be committed to **both**:
+Commit frontend changes from the root repository:
 
 ```bash
-# 1. From inside frontend/ — commit to frontend team repo
-git add <files>
-git commit -m "feat(voting): add session open/close director controls"
-
-# 2. From root — commit same change to root monorepo
-cd ..
 git add frontend/<files>
 git commit -m "feat(voting): add session open/close director controls"
 ```

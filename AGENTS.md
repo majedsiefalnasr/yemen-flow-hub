@@ -16,9 +16,9 @@ This file is the authoritative reference for all AI tools (Claude Code, Cursor, 
 ## Repository Structure
 
 ```
-yemen-flow-hub/               ← Root repo (git@github.com:majedsiefalnasr/yemen-flow-hub.git)
-├── backend/                  ← Laravel 11 API (git@github.com:ultimate-eg/yemen-flow-hub-backend.git)
-├── frontend/                 ← Nuxt 4 app (git@github.com:ultimate-eg/yemen-flow-hub-frontend.git)
+yemen-flow-hub/               ← Root Git repository (git@github.com:majedsiefalnasr/yemen-flow-hub.git)
+├── backend/                  ← Laravel 11 API, tracked as normal root files
+├── frontend/                 ← Nuxt 4 app, tracked as normal root files
 │   ├── PRODUCT.md            ← Product identity, users, roles, operational posture, brand tone
 │   ├── DESIGN.md             ← Frontend design token rules, RTL patterns, color token usage
 │   ├── SHADCN.md             ← shadcn-vue component reference: recipes, imports, decision table
@@ -31,56 +31,34 @@ yemen-flow-hub/               ← Root repo (git@github.com:majedsiefalnasr/yeme
 
 ---
 
-## Git Workflow — Monorepo + Two Team Repos
+## Git Workflow
 
-The project uses **three git repositories** with overlapping coverage:
+The project uses one Git repository:
 
-| Repo               | Remote                                                   | Tracks                                                |
-| ------------------ | -------------------------------------------------------- | ----------------------------------------------------- |
-| Root (monorepo)    | `git@github.com:majedsiefalnasr/yemen-flow-hub.git`      | Everything: `docs/`, `backend/`, `frontend/`, configs |
-| Backend team repo  | `git@github.com:ultimate-eg/yemen-flow-hub-backend.git`  | `backend/` only — for the backend team                |
-| Frontend team repo | `git@github.com:ultimate-eg/yemen-flow-hub-frontend.git` | `frontend/` only — for the frontend team              |
+| Repo            | Remote                                              | Tracks                                                |
+| --------------- | --------------------------------------------------- | ----------------------------------------------------- |
+| Root monorepo   | `git@github.com:majedsiefalnasr/yemen-flow-hub.git` | Everything: `docs/`, `backend/`, `frontend/`, configs |
 
-**Why three repos?**
-
-- The root monorepo is the source of truth — all code lives here.
-- Backend and frontend each have their own repo so team members only see their part of the codebase.
-- Both team repos stay in sync with the corresponding subdirectory in the root monorepo.
+`backend/` and `frontend/` are regular directories in the root repository. They are not submodules or nested Git repositories.
 
 ### Commit Rules
 
-Each change must be committed to **all applicable repos**:
+Each change is committed once in the root repository:
 
 | Change location                                 | Commit to                                                                      |
 | ----------------------------------------------- | ------------------------------------------------------------------------------ |
 | `docs/`, `AGENTS.md`, `DESIGN.md`, root configs | Root repo only (run `git` from `/`)                                            |
-| `backend/` code                                 | Root repo (`git` from `/`) **AND** backend team repo (`git` from `backend/`)   |
-| `frontend/` code                                | Root repo (`git` from `/`) **AND** frontend team repo (`git` from `frontend/`) |
-
-**Commit workflow for backend changes:**
+| `backend/` code                                 | Root repo only                                                                 |
+| `frontend/` code                                | Root repo only                                                                 |
 
 ```bash
-# 1. Commit to backend team repo
-cd backend
-git add <files>
-git commit -m "feat(workflow): ..."
-
-# 2. Commit same change to root monorepo
-cd ..
+# From the repository root
 git add backend/<files>
 git commit -m "feat(workflow): ..."
 ```
 
-**Commit workflow for frontend changes:**
-
 ```bash
-# 1. Commit to frontend team repo
-cd frontend
-git add <files>
-git commit -m "feat(voting): ..."
-
-# 2. Commit same change to root monorepo
-cd ..
+# From the repository root
 git add frontend/<files>
 git commit -m "feat(voting): ..."
 ```
@@ -89,16 +67,15 @@ git commit -m "feat(voting): ..."
 - Commit message scope is required. Allowed scopes are `auth`, `backend`, `docs`, `frontend`, `repo`, `settings`, `testing`, `ui`, and `workflow`.
 - Commit message type must be a Conventional Commit type such as `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`, `build`, `ci`, `perf`, or `revert`.
 - Examples: `feat(workflow): add support return validation`, `fix(frontend): correct bank queue empty state`, `chore(repo): add lint and format tooling`.
-- Frontend and backend team repos enforce commit messages with Husky `commit-msg` hooks and Commitlint. Do not bypass hooks with `--no-verify` unless the user explicitly authorizes an emergency exception.
+- The repository enforces commit messages with Husky `commit-msg` hooks and Commitlint. Do not bypass hooks with `--no-verify` unless the user explicitly authorizes an emergency exception.
 - Co-author all AI-assisted commits with: `Co-Authored-By: Claude <noreply@anthropic.com>`
-- Keep commit messages identical between the team repo and the root monorepo for the same change
 - All commits must remain signed. Do NOT use `--no-gpg-sign`, `--no-sign`, or `-c commit.gpgsign=false` as a workaround.
 - If signing fails, stop and fix the Git signing setup instead of creating an unsigned commit.
-- Never add or commit generated artifacts from `graphify-out/` in any repo. Keep them local only, even when they change during agent workflows.
+- Never add or commit generated artifacts from `graphify-out/`. Keep them local only, even when they change during agent workflows.
 
 ### Quality Gates
 
-Before editing, every agent must run `git -c core.fsmonitor=false status --short` in the relevant repo (`/`, `frontend/`, or `backend/`). Report existing dirty files before modifying anything, and do not edit dirty files unless they are directly in scope for the current task.
+Before editing, every agent must run `git -c core.fsmonitor=false status --short` from the root repository. Report existing dirty files before modifying anything, and do not edit dirty files unless they are directly in scope for the current task.
 
 Use the repository quality scripts before committing, but follow the verification ladder below. The project uses `pnpm` for JavaScript tooling; do not migrate to Bun.
 
@@ -138,7 +115,7 @@ php artisan test --filter='password reset with valid otp'
 vendor/bin/pint app/Services/Workflow/WorkflowService.php --test
 ```
 
-Frontend and backend team repos use Husky hooks:
+The repository uses Husky hooks:
 
 - `commit-msg` validates Conventional Commit messages with Commitlint.
 - `pre-commit` runs staged-file formatting/linting only.

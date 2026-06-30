@@ -6,20 +6,11 @@ Yemen Flow Hub Laravel 11 API backend.
 
 ## Git Scope
 
-Backend code lives in **two repos simultaneously**:
+Backend code lives under `backend/` in the root monorepo (`git@github.com:majedsiefalnasr/yemen-flow-hub.git`). It is tracked as normal root files, not as a submodule or nested Git repository.
 
-- **Backend team repo** (`git@github.com:ultimate-eg/yemen-flow-hub-backend.git`) — backend team's standalone repo
-- **Root monorepo** (`git@github.com:majedsiefalnasr/yemen-flow-hub.git`) — tracked under `backend/`
-
-Every backend change must be committed to **both**:
+Commit backend changes from the root repository:
 
 ```bash
-# 1. From inside backend/ — commit to backend team repo
-git add <files>
-git commit -m "feat(workflow): add support claim heartbeat endpoint"
-
-# 2. From root — commit same change to root monorepo
-cd ..
 git add backend/<files>
 git commit -m "feat(workflow): add support claim heartbeat endpoint"
 ```
