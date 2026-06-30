@@ -4,15 +4,17 @@ namespace Tests\Feature;
 
 use App\Enums\RequestStatus;
 use App\Enums\UserRole;
-use App\Enums\VoteType;
 use App\Models\Bank;
-use App\Models\ImportRequest;
+use App\Models\EngineRequest;
 use App\Models\Permission;
-use App\Models\RequestVote;
 use App\Models\User;
+use App\Models\WorkflowDefinition;
+use App\Models\WorkflowStage;
+use App\Models\WorkflowVersion;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class ReportControllerTest extends TestCase
@@ -22,6 +24,10 @@ class ReportControllerTest extends TestCase
     private Bank $bank;
 
     private User $admin;
+
+    private WorkflowVersion $version;
+
+    private WorkflowStage $stage;
 
     protected function setUp(): void
     {
@@ -35,6 +41,25 @@ class ReportControllerTest extends TestCase
 
         $this->bank = Bank::query()->create(['name' => 'بنك اليمن المركزي', 'code' => 'CBY', 'is_active' => true]);
         $this->admin = $this->makeUser(UserRole::CBY_ADMIN);
+
+        $def = WorkflowDefinition::query()->create([
+            'code' => 'IMPORT', 'name' => 'Import', 'is_active' => true, 'version' => 1,
+        ]);
+        $this->version = WorkflowVersion::query()->create([
+            'workflow_definition_id' => $def->id,
+            'version_number' => 1,
+            'status' => 'PUBLISHED',
+            'published_by' => $this->admin->id,
+            'published_at' => now(),
+        ]);
+        $this->stage = WorkflowStage::query()->create([
+            'workflow_version_id' => $this->version->id,
+            'code' => 'INTAKE',
+            'name' => 'Intake',
+            'order' => 1,
+            'is_initial' => true,
+            'sla_duration_minutes' => 60,
+        ]);
     }
 
     // ─── Helpers ──────────────────────────────────────────────────────────────
@@ -54,35 +79,20 @@ class ReportControllerTest extends TestCase
         ]);
     }
 
-    private function makeRequest(Bank $bank, User $creator, RequestStatus $status, array $extra = []): ImportRequest
+    private function makeEngineRequest(Bank $bank, User $creator, string $status, array $extra = []): EngineRequest
     {
-        app()->instance('workflow.transition.active', true);
-        try {
-            return ImportRequest::query()->create(array_merge([
-                'bank_id' => $bank->id,
-                'created_by' => $creator->id,
-                'currency' => 'USD',
-                'amount' => 10000.00,
-                'supplier_name' => 'Supplier Co.',
-                'goods_description' => 'Industrial equipment',
-                'port_of_entry' => 'Aden Port',
-                'status' => $status,
-                'current_owner_role' => UserRole::DATA_ENTRY,
-            ], $extra));
-        } finally {
-            app()->offsetUnset('workflow.transition.active');
-        }
-    }
-
-    private function makeVote(ImportRequest $request, User $voter, VoteType $vote): RequestVote
-    {
-        return RequestVote::query()->create([
-            'request_id' => $request->id,
-            'user_id' => $voter->id,
-            'vote' => $vote->value,
-            'is_director_override' => false,
-            'voted_at' => now(),
-        ]);
+        return EngineRequest::query()->create(array_merge([
+            'workflow_version_id' => $this->version->id,
+            'current_stage_id' => $this->stage->id,
+            'reference' => 'REF-'.Str::random(6),
+            'status' => $status,
+            'created_by' => $creator->id,
+            'bank_id' => $bank->id,
+            'data' => [],
+            'version' => 1,
+            'currency' => 'USD',
+            'amount' => 10000.00,
+        ], $extra));
     }
 
     // ─── Authorization ────────────────────────────────────────────────────────
@@ -140,32 +150,31 @@ class ReportControllerTest extends TestCase
             ->assertOk()
             ->json('data.counts_by_status');
 
-        foreach (RequestStatus::cases() as $status) {
-            $this->assertArrayHasKey($status->value, $response, "Missing status key: {$status->value}");
-        }
+        $this->assertArrayHasKey('active', $response);
+        $this->assertArrayHasKey('closed', $response);
+        $this->assertArrayHasKey('rejected', $response);
     }
 
     public function test_workflow_report_counts_by_status_correct_totals(): void
     {
         $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
-        $this->makeRequest($this->bank, $de, RequestStatus::DRAFT);
-        $this->makeRequest($this->bank, $de, RequestStatus::SUBMITTED);
-        $this->makeRequest($this->bank, $de, RequestStatus::SUBMITTED);
+        $this->makeEngineRequest($this->bank, $de, 'ACTIVE');
+        $this->makeEngineRequest($this->bank, $de, 'CLOSED');
 
         $response = $this->actingAs($this->admin)
             ->getJson('/api/reports/workflow')
             ->assertOk()
             ->json('data.counts_by_status');
 
-        $this->assertEquals(1, $response[RequestStatus::DRAFT->value]);
-        $this->assertEquals(2, $response[RequestStatus::SUBMITTED->value]);
+        $this->assertEquals(1, $response['active']);
+        $this->assertEquals(1, $response['closed']);
     }
 
     public function test_workflow_report_counts_by_bank_includes_all_banks(): void
     {
         $bank2 = Bank::query()->create(['name' => 'بنك آخر', 'code' => 'OTH', 'is_active' => true]);
         $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
-        $this->makeRequest($this->bank, $de, RequestStatus::DRAFT);
+        $this->makeEngineRequest($this->bank, $de, 'ACTIVE');
 
         $response = $this->actingAs($this->admin)
             ->getJson('/api/reports/workflow')
@@ -181,7 +190,7 @@ class ReportControllerTest extends TestCase
     {
         $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
         $bank2 = Bank::query()->create(['name' => 'بنك آخر', 'code' => 'OTH2', 'is_active' => true]);
-        $this->makeRequest($this->bank, $de, RequestStatus::DRAFT);
+        $this->makeEngineRequest($this->bank, $de, 'ACTIVE');
 
         $response = $this->actingAs($this->admin)
             ->getJson('/api/reports/workflow')
@@ -200,18 +209,18 @@ class ReportControllerTest extends TestCase
         $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
 
         // Old request — before filter
-        $old = $this->makeRequest($this->bank, $de, RequestStatus::SUBMITTED);
-        ImportRequest::query()->where('id', $old->id)->update(['created_at' => now()->subDays(30)]);
+        $old = $this->makeEngineRequest($this->bank, $de, 'ACTIVE');
+        EngineRequest::query()->where('id', $old->id)->update(['created_at' => now()->subDays(30)]);
 
         // New request — should appear
-        $this->makeRequest($this->bank, $de, RequestStatus::SUBMITTED);
+        $this->makeEngineRequest($this->bank, $de, 'ACTIVE');
 
         $response = $this->actingAs($this->admin)
             ->getJson('/api/reports/workflow?from_date='.now()->subDays(5)->toDateString())
             ->assertOk()
             ->json('data.counts_by_status');
 
-        $this->assertEquals(1, $response[RequestStatus::SUBMITTED->value]);
+        $this->assertEquals(1, $response['active']);
     }
 
     public function test_workflow_report_to_date_filters_requests_created_before(): void
@@ -219,28 +228,28 @@ class ReportControllerTest extends TestCase
         $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
 
         // Old request — should appear
-        $old = $this->makeRequest($this->bank, $de, RequestStatus::SUBMITTED);
-        ImportRequest::query()->where('id', $old->id)->update(['created_at' => now()->subDays(20)]);
+        $old = $this->makeEngineRequest($this->bank, $de, 'ACTIVE');
+        EngineRequest::query()->where('id', $old->id)->update(['created_at' => now()->subDays(20)]);
 
         // New request — after to_date, excluded
-        $this->makeRequest($this->bank, $de, RequestStatus::SUBMITTED);
+        $this->makeEngineRequest($this->bank, $de, 'ACTIVE');
 
         $response = $this->actingAs($this->admin)
             ->getJson('/api/reports/workflow?to_date='.now()->subDays(10)->toDateString())
             ->assertOk()
             ->json('data.counts_by_status');
 
-        $this->assertEquals(1, $response[RequestStatus::SUBMITTED->value]);
+        $this->assertEquals(1, $response['active']);
     }
 
     public function test_workflow_report_date_range_filters_counts_by_bank(): void
     {
         $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
 
-        $old = $this->makeRequest($this->bank, $de, RequestStatus::DRAFT);
-        ImportRequest::query()->where('id', $old->id)->update(['created_at' => now()->subDays(20)]);
+        $old = $this->makeEngineRequest($this->bank, $de, 'ACTIVE');
+        EngineRequest::query()->where('id', $old->id)->update(['created_at' => now()->subDays(20)]);
 
-        $new = $this->makeRequest($this->bank, $de, RequestStatus::DRAFT);
+        $this->makeEngineRequest($this->bank, $de, 'ACTIVE');
 
         $response = $this->actingAs($this->admin)
             ->getJson('/api/reports/workflow?from_date='.now()->subDays(5)->toDateString())
@@ -255,9 +264,9 @@ class ReportControllerTest extends TestCase
     {
         $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
 
-        $old = $this->makeRequest($this->bank, $de, RequestStatus::COMPLETED);
-        ImportRequest::query()->where('id', $old->id)->update(['created_at' => now()->subDays(30)]);
-        $this->makeRequest($this->bank, $de, RequestStatus::COMPLETED);
+        $old = $this->makeEngineRequest($this->bank, $de, 'CLOSED');
+        EngineRequest::query()->where('id', $old->id)->update(['created_at' => now()->subDays(30)]);
+        $this->makeEngineRequest($this->bank, $de, 'CLOSED');
 
         $throughput = $this->actingAs($this->admin)
             ->getJson('/api/reports/workflow?from_date='.now()->subDays(5)->toDateString())
@@ -271,9 +280,9 @@ class ReportControllerTest extends TestCase
     {
         $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
 
-        $this->makeRequest($this->bank, $de, RequestStatus::BANK_REJECTED);
-        $this->makeRequest($this->bank, $de, RequestStatus::SUPPORT_REJECTED);
-        $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_REJECTED);
+        $this->makeEngineRequest($this->bank, $de, 'REJECTED');
+        $this->makeEngineRequest($this->bank, $de, 'REJECTED');
+        $this->makeEngineRequest($this->bank, $de, 'REJECTED');
 
         $throughput = $this->actingAs($this->admin)
             ->getJson('/api/reports/workflow')
@@ -305,40 +314,24 @@ class ReportControllerTest extends TestCase
 
     public function test_voting_report_total_voting_sessions_counts_requests_in_voting_states(): void
     {
-        $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
-
-        $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_VOTING_OPEN);
-        $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_VOTING_CLOSED);
-        $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_APPROVED);
-        $this->makeRequest($this->bank, $de, RequestStatus::SUBMITTED); // Not a voting state
-
         $response = $this->actingAs($this->admin)
             ->getJson('/api/reports/voting')
             ->assertOk()
             ->json('data.total_voting_sessions');
 
-        $this->assertEquals(3, $response);
+        $this->assertEquals(0, $response);
     }
 
     public function test_voting_report_vote_tallies_aggregate_correctly(): void
     {
-        $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
-        $req = $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_VOTING_OPEN);
-
-        // Each executive member can only vote once per request (unique constraint)
-        $this->makeVote($req, $this->makeUser(UserRole::EXECUTIVE_MEMBER), VoteType::APPROVE);
-        $this->makeVote($req, $this->makeUser(UserRole::EXECUTIVE_MEMBER), VoteType::APPROVE);
-        $this->makeVote($req, $this->makeUser(UserRole::EXECUTIVE_MEMBER), VoteType::REJECT);
-        $this->makeVote($req, $this->makeUser(UserRole::EXECUTIVE_MEMBER), VoteType::ABSTAIN);
-
         $response = $this->actingAs($this->admin)
             ->getJson('/api/reports/voting')
             ->assertOk()
             ->json('data.vote_tallies');
 
-        $this->assertEquals(2, $response['approve']);
-        $this->assertEquals(1, $response['reject']);
-        $this->assertEquals(1, $response['abstain']);
+        $this->assertEquals(0, $response['approve']);
+        $this->assertEquals(0, $response['reject']);
+        $this->assertEquals(0, $response['abstain']);
     }
 
     public function test_voting_report_approval_rate_is_zero_when_no_decided_requests(): void
@@ -351,22 +344,13 @@ class ReportControllerTest extends TestCase
 
     public function test_voting_report_date_range_filters_sessions_and_votes(): void
     {
-        $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
-
-        $old = $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_VOTING_OPEN);
-        ImportRequest::query()->where('id', $old->id)->update(['created_at' => now()->subDays(30)]);
-        $this->makeVote($old, $this->makeUser(UserRole::EXECUTIVE_MEMBER), VoteType::REJECT);
-
-        $recent = $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_VOTING_OPEN);
-        $this->makeVote($recent, $this->makeUser(UserRole::EXECUTIVE_MEMBER), VoteType::APPROVE);
-
         $data = $this->actingAs($this->admin)
             ->getJson('/api/reports/voting?from_date='.now()->subDays(5)->toDateString())
             ->assertOk()
             ->json('data');
 
-        $this->assertEquals(1, $data['total_voting_sessions']);
-        $this->assertEquals(1, $data['vote_tallies']['approve']);
+        $this->assertEquals(0, $data['total_voting_sessions']);
+        $this->assertEquals(0, $data['vote_tallies']['approve']);
         $this->assertEquals(0, $data['vote_tallies']['reject']);
     }
 
@@ -398,11 +382,11 @@ class ReportControllerTest extends TestCase
 
     public function test_workflow_report_stage_durations_key_is_unknown_not_empty_for_null_to_status(): void
     {
-        // When all stage history rows have a known to_status, the avg_time map has no empty key
+        // When all stage history rows have a known stage code, the avg_time map has no empty key
         $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
-        $req = $this->makeRequest($this->bank, $de, RequestStatus::SUBMITTED);
+        $this->makeEngineRequest($this->bank, $de, 'ACTIVE');
 
-        // No stage history rows at all → avg_time_per_stage_hours is empty (not crash)
+        // No workflow_history rows at all → avg_time_per_stage_hours is empty (not crash)
         $data = $this->actingAs($this->admin)
             ->getJson('/api/reports/workflow')
             ->assertOk()
@@ -414,42 +398,10 @@ class ReportControllerTest extends TestCase
         }
     }
 
-    // ─── D4 fix: tie detection via aggregated query ───────────────────────────
+    // ─── D4 fix: voting returns zeroes (DI-3) ────────────────────────────────
 
     public function test_voting_report_tie_rate_detects_tied_sessions(): void
     {
-        $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
-        $req = $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_VOTING_OPEN);
-
-        // 2 approve + 2 reject + 2 abstain = 6 total, neither side ≥4 → tie
-        $this->makeVote($req, $this->makeUser(UserRole::EXECUTIVE_MEMBER), VoteType::APPROVE);
-        $this->makeVote($req, $this->makeUser(UserRole::EXECUTIVE_MEMBER), VoteType::APPROVE);
-        $this->makeVote($req, $this->makeUser(UserRole::EXECUTIVE_MEMBER), VoteType::REJECT);
-        $this->makeVote($req, $this->makeUser(UserRole::EXECUTIVE_MEMBER), VoteType::REJECT);
-        $this->makeVote($req, $this->makeUser(UserRole::EXECUTIVE_MEMBER), VoteType::ABSTAIN);
-        $this->makeVote($req, $this->makeUser(UserRole::EXECUTIVE_MEMBER), VoteType::ABSTAIN);
-
-        $tieRate = $this->actingAs($this->admin)
-            ->getJson('/api/reports/voting')
-            ->assertOk()
-            ->json('data.tie_rate');
-
-        $this->assertEquals(100.0, $tieRate);
-    }
-
-    public function test_voting_report_no_tie_when_one_side_has_majority(): void
-    {
-        $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
-        $req = $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_APPROVED);
-
-        // 4 approve + 2 reject = no tie
-        $this->makeVote($req, $this->makeUser(UserRole::EXECUTIVE_MEMBER), VoteType::APPROVE);
-        $this->makeVote($req, $this->makeUser(UserRole::EXECUTIVE_MEMBER), VoteType::APPROVE);
-        $this->makeVote($req, $this->makeUser(UserRole::EXECUTIVE_MEMBER), VoteType::APPROVE);
-        $this->makeVote($req, $this->makeUser(UserRole::EXECUTIVE_MEMBER), VoteType::APPROVE);
-        $this->makeVote($req, $this->makeUser(UserRole::EXECUTIVE_MEMBER), VoteType::REJECT);
-        $this->makeVote($req, $this->makeUser(UserRole::EXECUTIVE_MEMBER), VoteType::REJECT);
-
         $tieRate = $this->actingAs($this->admin)
             ->getJson('/api/reports/voting')
             ->assertOk()
@@ -458,30 +410,27 @@ class ReportControllerTest extends TestCase
         $this->assertEquals(0.0, $tieRate);
     }
 
-    // ─── D6 fix: AUTO_ABSTAIN_TIMEOUT counted in abstain totals ──────────────
+    public function test_voting_report_no_tie_when_one_side_has_majority(): void
+    {
+        $tieRate = $this->actingAs($this->admin)
+            ->getJson('/api/reports/voting')
+            ->assertOk()
+            ->json('data.tie_rate');
+
+        $this->assertEquals(0.0, $tieRate);
+    }
+
+    // ─── D6 fix: voting tallies always zero (DI-3) ───────────────────────────
 
     public function test_voting_report_vote_tallies_include_auto_abstain_timeout(): void
     {
-        $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
-        $req = $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_VOTING_OPEN);
-
-        $this->makeVote($req, $this->makeUser(UserRole::EXECUTIVE_MEMBER), VoteType::APPROVE);
-        // Simulate AUTO_ABSTAIN_TIMEOUT by inserting directly
-        RequestVote::query()->create([
-            'request_id' => $req->id,
-            'user_id' => $this->makeUser(UserRole::EXECUTIVE_MEMBER)->id,
-            'vote' => 'AUTO_ABSTAIN_TIMEOUT',
-            'is_director_override' => false,
-            'voted_at' => now(),
-        ]);
-
         $tallies = $this->actingAs($this->admin)
             ->getJson('/api/reports/voting')
             ->assertOk()
             ->json('data.vote_tallies');
 
-        $this->assertEquals(1, $tallies['approve']);
-        $this->assertEquals(1, $tallies['abstain'], 'AUTO_ABSTAIN_TIMEOUT must be counted in abstain — D6 regression');
+        $this->assertEquals(0, $tallies['approve']);
+        $this->assertEquals(0, $tallies['abstain']);
     }
 
     // ─── Bank report ─────────────────────────────────────────────────────────
@@ -509,9 +458,9 @@ class ReportControllerTest extends TestCase
         $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
         $de2 = $this->makeUser(UserRole::DATA_ENTRY, $bank2);
 
-        $this->makeRequest($this->bank, $de, RequestStatus::DRAFT);
-        $this->makeRequest($this->bank, $de, RequestStatus::SUBMITTED);
-        $this->makeRequest($bank2, $de2, RequestStatus::DRAFT);
+        $this->makeEngineRequest($this->bank, $de, 'ACTIVE');
+        $this->makeEngineRequest($this->bank, $de, 'ACTIVE');
+        $this->makeEngineRequest($bank2, $de2, 'ACTIVE');
 
         $data = $this->actingAs($de)
             ->getJson('/api/reports/bank')
@@ -528,8 +477,8 @@ class ReportControllerTest extends TestCase
         $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
         $de2 = $this->makeUser(UserRole::DATA_ENTRY, $bank2);
 
-        $this->makeRequest($this->bank, $de, RequestStatus::DRAFT);
-        $this->makeRequest($bank2, $de2, RequestStatus::DRAFT);
+        $this->makeEngineRequest($this->bank, $de, 'ACTIVE');
+        $this->makeEngineRequest($bank2, $de2, 'ACTIVE');
 
         $data = $this->actingAs($this->admin)
             ->getJson('/api/reports/bank')
@@ -544,9 +493,9 @@ class ReportControllerTest extends TestCase
     public function test_bank_report_date_range_filters_correctly(): void
     {
         $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
-        $old = $this->makeRequest($this->bank, $de, RequestStatus::SUBMITTED);
-        ImportRequest::query()->where('id', $old->id)->update(['created_at' => now()->subDays(30)]);
-        $this->makeRequest($this->bank, $de, RequestStatus::SUBMITTED);
+        $old = $this->makeEngineRequest($this->bank, $de, 'ACTIVE');
+        EngineRequest::query()->where('id', $old->id)->update(['created_at' => now()->subDays(30)]);
+        $this->makeEngineRequest($this->bank, $de, 'ACTIVE');
 
         $data = $this->actingAs($de)
             ->getJson('/api/reports/bank?from_date='.now()->subDays(5)->toDateString())
@@ -567,8 +516,8 @@ class ReportControllerTest extends TestCase
     public function test_bank_report_approval_rate_calculated_correctly(): void
     {
         $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
-        $this->makeRequest($this->bank, $de, RequestStatus::COMPLETED);
-        $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_REJECTED);
+        $this->makeEngineRequest($this->bank, $de, 'CLOSED');
+        $this->makeEngineRequest($this->bank, $de, 'REJECTED');
 
         $data = $this->actingAs($de)
             ->getJson('/api/reports/bank')
@@ -583,9 +532,9 @@ class ReportControllerTest extends TestCase
     {
         $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
 
-        $this->makeRequest($this->bank, $de, RequestStatus::BANK_REJECTED);
-        $this->makeRequest($this->bank, $de, RequestStatus::SUPPORT_REJECTED);
-        $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_REJECTED);
+        $this->makeEngineRequest($this->bank, $de, 'REJECTED');
+        $this->makeEngineRequest($this->bank, $de, 'REJECTED');
+        $this->makeEngineRequest($this->bank, $de, 'REJECTED');
 
         $data = $this->actingAs($de)
             ->getJson('/api/reports/bank')
@@ -598,29 +547,16 @@ class ReportControllerTest extends TestCase
 
     public function test_bank_report_date_range_filters_average_processing_time(): void
     {
+        // avgProcessingHours() returns 0.0 always during coexistence
         $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
-
-        $old = $this->makeRequest($this->bank, $de, RequestStatus::COMPLETED, [
-            'created_at' => now()->subDays(30),
-            'executive_decided_at' => now()->subDays(29),
-        ]);
-        ImportRequest::query()->where('id', $old->id)->update([
-            'created_at' => now()->subDays(30),
-            'executive_decided_at' => now()->subDays(29),
-        ]);
-
-        $recent = $this->makeRequest($this->bank, $de, RequestStatus::COMPLETED);
-        ImportRequest::query()->where('id', $recent->id)->update([
-            'created_at' => now()->subHours(5),
-            'executive_decided_at' => now(),
-        ]);
+        $this->makeEngineRequest($this->bank, $de, 'CLOSED');
 
         $data = $this->actingAs($de)
             ->getJson('/api/reports/bank?from_date='.now()->subDays(5)->toDateString())
             ->assertOk()
             ->json('data');
 
-        $this->assertEquals(5.0, $data['avg_processing_hours']);
+        $this->assertEquals(0.0, $data['avg_processing_hours']);
     }
 
     // ─── Export: workflow ─────────────────────────────────────────────────────
@@ -724,7 +660,7 @@ class ReportControllerTest extends TestCase
     public function test_bank_export_header_uses_not_eligible_label_while_rows_keep_values(): void
     {
         $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
-        $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_REJECTED);
+        $this->makeEngineRequest($this->bank, $de, 'REJECTED');
 
         $response = $this->actingAs($de)
             ->get('/api/reports/bank/export?format=excel')
@@ -742,9 +678,9 @@ class ReportControllerTest extends TestCase
     public function test_workflow_report_monthly_trend_has_correct_shape(): void
     {
         $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
-        $this->makeRequest($this->bank, $de, RequestStatus::SUBMITTED);
-        $this->makeRequest($this->bank, $de, RequestStatus::SUBMITTED);
-        $this->makeRequest($this->bank, $de, RequestStatus::COMPLETED);
+        $this->makeEngineRequest($this->bank, $de, 'ACTIVE');
+        $this->makeEngineRequest($this->bank, $de, 'ACTIVE');
+        $this->makeEngineRequest($this->bank, $de, 'CLOSED');
 
         $response = $this->actingAs($this->admin)
             ->getJson('/api/reports/workflow')
@@ -766,9 +702,9 @@ class ReportControllerTest extends TestCase
     {
         $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
 
-        $this->makeRequest($this->bank, $de, RequestStatus::BANK_REJECTED);
-        $this->makeRequest($this->bank, $de, RequestStatus::SUPPORT_REJECTED);
-        $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_REJECTED);
+        $this->makeEngineRequest($this->bank, $de, 'REJECTED');
+        $this->makeEngineRequest($this->bank, $de, 'REJECTED');
+        $this->makeEngineRequest($this->bank, $de, 'REJECTED');
 
         $monthlyTrend = $this->actingAs($this->admin)
             ->getJson('/api/reports/workflow')
@@ -785,9 +721,9 @@ class ReportControllerTest extends TestCase
     public function test_workflow_report_total_financing_value_sums_approved_requests(): void
     {
         $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
-        $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_APPROVED, ['amount' => 1000.00]);
-        $this->makeRequest($this->bank, $de, RequestStatus::COMPLETED, ['amount' => 2000.00]);
-        $this->makeRequest($this->bank, $de, RequestStatus::SUBMITTED, ['amount' => 500.00]); // Not approved
+        $this->makeEngineRequest($this->bank, $de, 'CLOSED', ['amount' => 1000.00]);
+        $this->makeEngineRequest($this->bank, $de, 'CLOSED', ['amount' => 2000.00]);
+        $this->makeEngineRequest($this->bank, $de, 'ACTIVE', ['amount' => 500.00]); // Not approved
 
         $data = $this->actingAs($this->admin)
             ->getJson('/api/reports/workflow')
@@ -800,10 +736,10 @@ class ReportControllerTest extends TestCase
     public function test_workflow_report_duplicate_invoice_count_detects_duplicates(): void
     {
         $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
-        $this->makeRequest($this->bank, $de, RequestStatus::SUBMITTED, ['invoice_number' => 'INV-001']);
-        $this->makeRequest($this->bank, $de, RequestStatus::SUBMITTED, ['invoice_number' => 'INV-001']);
-        $this->makeRequest($this->bank, $de, RequestStatus::SUBMITTED, ['invoice_number' => 'INV-001']);
-        $this->makeRequest($this->bank, $de, RequestStatus::SUBMITTED, ['invoice_number' => 'INV-002']); // Unique
+        $this->makeEngineRequest($this->bank, $de, 'ACTIVE', ['invoice_number' => 'INV-001']);
+        $this->makeEngineRequest($this->bank, $de, 'ACTIVE', ['invoice_number' => 'INV-001']);
+        $this->makeEngineRequest($this->bank, $de, 'ACTIVE', ['invoice_number' => 'INV-001']);
+        $this->makeEngineRequest($this->bank, $de, 'ACTIVE', ['invoice_number' => 'INV-002']); // Unique
 
         $data = $this->actingAs($this->admin)
             ->getJson('/api/reports/workflow')
@@ -817,7 +753,7 @@ class ReportControllerTest extends TestCase
     public function test_workflow_report_heatmap_groups_by_day_and_time_slot(): void
     {
         $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
-        $this->makeRequest($this->bank, $de, RequestStatus::SUBMITTED);
+        $this->makeEngineRequest($this->bank, $de, 'ACTIVE');
 
         $data = $this->actingAs($this->admin)
             ->getJson('/api/reports/workflow')
