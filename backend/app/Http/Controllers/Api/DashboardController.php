@@ -2,16 +2,15 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Enums\RequestStatus;
 use App\Enums\UserRole;
-use App\Http\Resources\ImportRequestResource;
 use App\Models\Bank;
-use App\Models\ImportRequest;
-use App\Models\RequestVote;
+use App\Models\EngineRequest;
 use App\Models\User;
 use App\Support\ApiResponse;
+use App\Support\EngineRequestReadModel;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Collection;
 use OpenApi\Attributes as OA;
 
 class DashboardController extends Controller
@@ -56,31 +55,13 @@ class DashboardController extends Controller
             );
         }
 
-        $base = ImportRequest::query()->where('bank_id', $bankId);
-
-        $approvedStatuses = [
-            RequestStatus::EXECUTIVE_APPROVED->value,
-            RequestStatus::CUSTOMS_DECLARATION_ISSUED->value,
-            RequestStatus::COMPLETED->value,
-        ];
-
-        $rejectedStatuses = $this->bankFacingRejectedStatuses();
+        $base = EngineRequestReadModel::queryFor($user);
 
         $total = (clone $base)->count();
-        $pending = (clone $base)->whereIn('status', [RequestStatus::SUBMITTED->value, RequestStatus::BANK_REVIEW->value])->count();
-        $approved = (clone $base)->whereIn('status', $approvedStatuses)->count();
-        $rejected = (clone $base)->whereIn('status', $rejectedStatuses)->count();
-        $atCby = (clone $base)->whereIn('status', [
-            RequestStatus::BANK_APPROVED->value,
-            RequestStatus::SUPPORT_REVIEW_PENDING->value,
-            RequestStatus::SUPPORT_REVIEW_IN_PROGRESS->value,
-            RequestStatus::SUPPORT_APPROVED->value,
-            RequestStatus::WAITING_FOR_SWIFT->value,
-            RequestStatus::SWIFT_UPLOADED->value,
-            RequestStatus::WAITING_FOR_VOTING_OPEN->value,
-            RequestStatus::EXECUTIVE_VOTING_OPEN->value,
-            RequestStatus::EXECUTIVE_VOTING_CLOSED->value,
-        ])->count();
+        $pending = (clone $base)->where(EngineRequestReadModel::bucket('pending_bank_review'))->count();
+        $approved = (clone $base)->where(EngineRequestReadModel::bucket('completed'))->count();
+        $rejected = (clone $base)->where(EngineRequestReadModel::bucket('rejected'))->count();
+        $atCby = (clone $base)->where(EngineRequestReadModel::bucket('at_cby'))->count();
         $activeUsers = User::query()
             ->where('bank_id', $bankId)
             ->whereIn('role', [UserRole::DATA_ENTRY->value, UserRole::BANK_REVIEWER->value])
@@ -88,16 +69,15 @@ class DashboardController extends Controller
             ->count();
 
         $totalFinancedAmount = (float) (clone $base)
-            ->whereIn('status', $approvedStatuses)
-            ->sum('amount');
+            ->where(EngineRequestReadModel::bucket('completed'))
+            ->sum('engine_requests.amount');
 
         $recentRequests = (clone $base)
             ->orderByDesc('updated_at')
             ->limit(10)
-            ->with(['bank'])
             ->get();
 
-        $monthlyRequests = $this->bankMonthlyRequests($bankId, $asOf);
+        $monthlyRequests = $this->bankMonthlyRequests($user, $asOf);
 
         return ApiResponse::success([
             // New Story 6.3.2 fields
@@ -112,11 +92,11 @@ class DashboardController extends Controller
             'at_cby' => $atCby,
             'completed' => $approved,
             'active_users' => $activeUsers,
-            'recent_requests' => ImportRequestResource::collection($recentRequests)->toArray(request()),
+            'recent_requests' => EngineRequestReadModel::resourceCollection($recentRequests),
         ], 'Dashboard stats retrieved.');
     }
 
-    private function bankMonthlyRequests(int $bankId, CarbonImmutable $asOf): array
+    private function bankMonthlyRequests(User $user, CarbonImmutable $asOf): array
     {
         $timezone = config('app.timezone', 'UTC');
         $anchorMonth = $asOf->setTimezone($timezone)->startOfMonth();
@@ -130,10 +110,9 @@ class DashboardController extends Controller
         $counts = array_fill_keys($monthKeys, 0);
 
         // Group in app layer using UTC to avoid DB/session timezone drift at month boundaries.
-        $createdAtValues = ImportRequest::query()
-            ->where('bank_id', $bankId)
-            ->where('created_at', '>=', $windowStart)
-            ->pluck('created_at');
+        $createdAtValues = EngineRequestReadModel::queryFor($user)
+            ->where('engine_requests.created_at', '>=', $windowStart)
+            ->pluck('engine_requests.created_at');
 
         foreach ($createdAtValues as $createdAt) {
             $monthKey = ($createdAt instanceof \DateTimeInterface
@@ -189,39 +168,33 @@ class DashboardController extends Controller
 
     private function dataEntryStats($user)
     {
-        $base = ImportRequest::query()->forUser($user);
+        $base = EngineRequestReadModel::queryFor($user);
 
-        $draft = (clone $base)->where('status', RequestStatus::DRAFT)->count();
-        $returned = (clone $base)->where('status', RequestStatus::DRAFT_REJECTED_INTERNAL)->count();
+        $draft = (clone $base)->where(EngineRequestReadModel::bucket('draft'))->count();
+        // Draft-rejected-internal has no dedicated engine bucket; DRAFT_REJECTED_INTERNAL
+        // ported to CREATE/REJECTED so it is distinguishable from an open draft.
+        $returned = (clone $base)
+            ->where(EngineRequestReadModel::bucket('draft'))
+            ->where(EngineRequestReadModel::bucket('rejected'))
+            ->count();
+        $openDraft = (clone $base)
+            ->where(EngineRequestReadModel::bucket('draft'))
+            ->where(EngineRequestReadModel::bucket('active'))
+            ->count();
 
-        $underCbyStatuses = [
-            RequestStatus::BANK_APPROVED,
-            RequestStatus::SUPPORT_REVIEW_PENDING,
-            RequestStatus::SUPPORT_REVIEW_IN_PROGRESS,
-            RequestStatus::SUPPORT_APPROVED,
-            RequestStatus::WAITING_FOR_SWIFT,
-            RequestStatus::SWIFT_UPLOADED,
-            RequestStatus::WAITING_FOR_VOTING_OPEN,
-            RequestStatus::EXECUTIVE_VOTING_OPEN,
-            RequestStatus::EXECUTIVE_VOTING_CLOSED,
-        ];
-        $underCby = (clone $base)->whereIn('status', array_map(fn ($s) => $s->value, $underCbyStatuses))->count();
-
-        $completedStatuses = [
-            RequestStatus::EXECUTIVE_APPROVED,
-            RequestStatus::CUSTOMS_DECLARATION_ISSUED,
-            RequestStatus::COMPLETED,
-        ];
-        $completed = (clone $base)->whereIn('status', array_map(fn ($s) => $s->value, $completedStatuses))->count();
+        $underCby = (clone $base)->where(EngineRequestReadModel::bucket('at_cby'))->count();
+        $completed = (clone $base)->where(EngineRequestReadModel::bucket('completed'))->count();
 
         $returnedRequests = (clone $base)
-            ->where('status', RequestStatus::DRAFT_REJECTED_INTERNAL)
+            ->where(EngineRequestReadModel::bucket('draft'))
+            ->where(EngineRequestReadModel::bucket('rejected'))
             ->orderByDesc('updated_at')
             ->limit(10)
             ->get();
 
         $draftRequests = (clone $base)
-            ->where('status', RequestStatus::DRAFT)
+            ->where(EngineRequestReadModel::bucket('draft'))
+            ->where(EngineRequestReadModel::bucket('active'))
             ->orderByDesc('updated_at')
             ->limit(5)
             ->get();
@@ -232,58 +205,41 @@ class DashboardController extends Controller
             ->get();
 
         return ApiResponse::success([
-            'draft' => $draft,
+            'draft' => $openDraft,
             'returned' => $returned,
             'under_cby_processing' => $underCby,
             'completed' => $completed,
-            'draft_requests' => ImportRequestResource::collection($draftRequests)->resolve(),
-            'returned_requests' => ImportRequestResource::collection($returnedRequests)->resolve(),
-            'recent_requests' => ImportRequestResource::collection($recentRequests)->resolve(),
+            'draft_requests' => EngineRequestReadModel::resourceCollection($draftRequests),
+            'returned_requests' => EngineRequestReadModel::resourceCollection($returnedRequests),
+            'recent_requests' => EngineRequestReadModel::resourceCollection($recentRequests),
         ], 'Dashboard stats retrieved.');
     }
 
     private function bankReviewerStats($user)
     {
-        $base = ImportRequest::query()->forUser($user);
+        $base = EngineRequestReadModel::queryFor($user);
 
-        $pendingReview = (clone $base)->whereIn('status', [
-            RequestStatus::SUBMITTED->value,
-            RequestStatus::BANK_REVIEW->value,
-        ])->count();
+        $pendingReview = (clone $base)->where(EngineRequestReadModel::bucket('pending_bank_review'))->count();
+        $atCby = (clone $base)->where(EngineRequestReadModel::bucket('at_cby'))->count();
 
-        $atCbyStatuses = [
-            RequestStatus::BANK_APPROVED,
-            RequestStatus::SUPPORT_REVIEW_PENDING,
-            RequestStatus::SUPPORT_REVIEW_IN_PROGRESS,
-            RequestStatus::SUPPORT_APPROVED,
-            RequestStatus::WAITING_FOR_SWIFT,
-            RequestStatus::SWIFT_UPLOADED,
-            RequestStatus::WAITING_FOR_VOTING_OPEN,
-            RequestStatus::EXECUTIVE_VOTING_OPEN,
-            RequestStatus::EXECUTIVE_VOTING_CLOSED,
-        ];
-        $atCby = (clone $base)->whereIn('status', array_map(fn ($s) => $s->value, $atCbyStatuses))->count();
+        // Returned-by-support has no dedicated engine bucket; ported as SUPPORT/REJECTED.
+        $returnedBySupport = (clone $base)
+            ->where(EngineRequestReadModel::bucket('support_queue'))
+            ->where(EngineRequestReadModel::bucket('rejected'))
+            ->count();
 
-        $returnedBySupport = (clone $base)->where('status', RequestStatus::SUPPORT_REJECTED)->count();
-
-        $approvedCompleted = (clone $base)->whereIn('status', [
-            RequestStatus::EXECUTIVE_APPROVED->value,
-            RequestStatus::CUSTOMS_DECLARATION_ISSUED->value,
-            RequestStatus::COMPLETED->value,
-        ])->count();
+        $approvedCompleted = (clone $base)->where(EngineRequestReadModel::bucket('completed'))->count();
 
         $reviewQueue = (clone $base)
-            ->whereIn('status', [RequestStatus::SUBMITTED->value, RequestStatus::BANK_REVIEW->value])
+            ->where(EngineRequestReadModel::bucket('pending_bank_review'))
             ->orderBy('updated_at')
             ->limit(50)
-            ->with(['bank', 'creator'])
             ->get();
 
         $downstreamQueue = (clone $base)
-            ->whereIn('status', array_map(fn ($s) => $s->value, $atCbyStatuses))
+            ->where(EngineRequestReadModel::bucket('at_cby'))
             ->orderByDesc('updated_at')
             ->limit(5)
-            ->with(['bank', 'creator'])
             ->get();
 
         return ApiResponse::success([
@@ -291,8 +247,8 @@ class DashboardController extends Controller
             'at_cby' => $atCby,
             'returned_by_support' => $returnedBySupport,
             'approved_completed' => $approvedCompleted,
-            'review_queue' => ImportRequestResource::collection($reviewQueue)->resolve(),
-            'downstream_queue' => ImportRequestResource::collection($downstreamQueue)->resolve(),
+            'review_queue' => EngineRequestReadModel::resourceCollection($reviewQueue),
+            'downstream_queue' => EngineRequestReadModel::resourceCollection($downstreamQueue),
         ], 'Dashboard stats retrieved.');
     }
 
@@ -301,39 +257,34 @@ class DashboardController extends Controller
     // governance behaviour, not a missing tenant scope.
     private function supportCommitteeStats(User $user): JsonResponse
     {
-        $base = ImportRequest::query();
+        $base = EngineRequestReadModel::queryFor($user)->where(EngineRequestReadModel::bucket('support_queue'));
 
-        $waitingForClaim = (clone $base)
-            ->where('status', RequestStatus::SUPPORT_REVIEW_PENDING->value)
-            ->count();
+        $waitingForClaim = (clone $base)->whereNull('engine_requests.claimed_by')->count();
 
         $activeByMe = (clone $base)
-            ->where('status', RequestStatus::SUPPORT_REVIEW_IN_PROGRESS->value)
-            ->where('claimed_by', $user->id)
+            ->where('engine_requests.claimed_by', $user->id)
             ->count();
 
         $claimedByOthers = (clone $base)
-            ->whereNotNull('claimed_by')
-            ->where('status', RequestStatus::SUPPORT_REVIEW_IN_PROGRESS->value)
-            ->where('claimed_by', '!=', $user->id)
+            ->whereNotNull('engine_requests.claimed_by')
+            ->where('engine_requests.claimed_by', '!=', $user->id)
             ->count();
 
         // Rolling 7-day window — "معتمد حديثاً" reflects active committee throughput,
         // not a cumulative total. Scoped globally (all SC members), not per-reviewer.
-        $recentlyApproved = (clone $base)
-            ->where('status', RequestStatus::SUPPORT_APPROVED->value)
-            ->where('support_approved_at', '>=', now()->subDays(7))
+        // The engine has no dedicated support_approved_at column, so this uses the
+        // request's updated_at as the best-effort completion signal for SUPPORT/CLOSED-ish
+        // throughput within the support stage's closing window.
+        $recentlyApproved = EngineRequestReadModel::queryFor($user)
+            ->where(EngineRequestReadModel::bucket('support_queue'))
+            ->where(EngineRequestReadModel::bucket('completed'))
+            ->where('engine_requests.updated_at', '>=', now()->subDays(7))
             ->count();
 
         $supportQueue = (clone $base)
-            ->whereIn('status', [
-                RequestStatus::SUPPORT_REVIEW_PENDING->value,
-                RequestStatus::SUPPORT_REVIEW_IN_PROGRESS->value,
-            ])
             ->orderBy('updated_at')
             ->orderBy('id')
             ->limit(50)
-            ->with(['bank', 'claimedByUser'])
             ->get();
 
         return ApiResponse::success([
@@ -341,43 +292,39 @@ class DashboardController extends Controller
             'active_by_me' => $activeByMe,
             'claimed_by_others' => $claimedByOthers,
             'recently_approved' => $recentlyApproved,
-            'support_queue' => ImportRequestResource::collection($supportQueue)->toArray(request()),
+            'support_queue' => $this->withClaimedBy($supportQueue),
         ], 'Dashboard stats retrieved.');
     }
 
     // SWIFT_OFFICER is bank-scoped: sees only their bank's requests.
     private function swiftOfficerStats(User $user): JsonResponse
     {
-        $base = ImportRequest::query()->forUser($user);
+        $base = EngineRequestReadModel::queryFor($user);
 
         $pendingSwiftUpload = (clone $base)
-            ->where('status', RequestStatus::WAITING_FOR_SWIFT->value)
+            ->where(EngineRequestReadModel::bucket('swift_queue'))
+            ->where(EngineRequestReadModel::bucket('active'))
             ->count();
 
         $uploaded = (clone $base)
-            ->whereNotNull('swift_uploaded_at')
+            ->where(EngineRequestReadModel::bucket('swift_queue'))
             ->count();
 
         $finalApproved = (clone $base)
-            ->whereIn('status', [
-                RequestStatus::EXECUTIVE_APPROVED->value,
-                RequestStatus::COMPLETED->value,
-            ])
+            ->where(EngineRequestReadModel::bucket('executive_queue'))
+            ->where(EngineRequestReadModel::bucket('completed'))
             ->count();
 
         $finalRejected = (clone $base)
-            ->where('status', RequestStatus::EXECUTIVE_REJECTED->value)
+            ->where(EngineRequestReadModel::bucket('executive_queue'))
+            ->where(EngineRequestReadModel::bucket('rejected'))
             ->count();
 
         $swiftQueue = (clone $base)
-            ->whereIn('status', [
-                RequestStatus::WAITING_FOR_SWIFT->value,
-                RequestStatus::SWIFT_UPLOADED->value,
-            ])
+            ->where(EngineRequestReadModel::bucket('swift_queue'))
             ->orderBy('updated_at')
             ->orderBy('id')
             ->limit(50)
-            ->with(['bank', 'documents'])
             ->get();
 
         return ApiResponse::success([
@@ -385,69 +332,22 @@ class DashboardController extends Controller
             'uploaded' => $uploaded,
             'final_approved' => $finalApproved,
             'final_rejected' => $finalRejected,
-            'swift_queue' => ImportRequestResource::collection($swiftQueue)->toArray(request()),
+            'swift_queue' => EngineRequestReadModel::resourceCollection($swiftQueue),
         ], 'Dashboard stats retrieved.');
     }
 
+    // Voting was removed by DI-3. Counters below are zeroed and queues are empty;
+    // keys are retained for response-shape stability during frontend coexistence.
     private function executiveVotingStats(User $user): array
     {
-        $waitingForVotingOpen = ImportRequest::query()
-            ->where('status', RequestStatus::WAITING_FOR_VOTING_OPEN->value)
-            ->count();
-
-        $activeVotingSessions = ImportRequest::query()
-            ->where('status', RequestStatus::EXECUTIVE_VOTING_OPEN->value)
-            ->count();
-
-        $decisionsApproved = ImportRequest::query()
-            ->whereIn('status', [
-                RequestStatus::EXECUTIVE_APPROVED->value,
-                RequestStatus::CUSTOMS_DECLARATION_ISSUED->value,
-                RequestStatus::COMPLETED->value,
-            ])
-            ->count();
-
-        $decisionsRejected = ImportRequest::query()
-            ->where('status', RequestStatus::EXECUTIVE_REJECTED->value)
-            ->count();
-
-        $finalizedDecisions = ImportRequest::query()
-            ->whereIn('status', [
-                RequestStatus::EXECUTIVE_APPROVED->value,
-                RequestStatus::EXECUTIVE_REJECTED->value,
-                RequestStatus::CUSTOMS_DECLARATION_ISSUED->value,
-                RequestStatus::COMPLETED->value,
-            ])
-            ->count();
-
-        $votingQueue = ImportRequest::query()
-            ->whereIn('status', [
-                RequestStatus::WAITING_FOR_VOTING_OPEN->value,
-                RequestStatus::EXECUTIVE_VOTING_OPEN->value,
-                RequestStatus::EXECUTIVE_VOTING_CLOSED->value,
-            ])
-            ->orderBy('updated_at')
-            ->orderBy('id')
-            ->limit(50)
-            ->with(['bank', 'votes'])
-            ->get();
-
-        // Count my pending sessions at the DB layer so the count is not capped by
-        // the voting_queue limit(50) above and is not affected by races between
-        // load('votes') and resource serialization.
-        $pendingMyVote = ImportRequest::query()
-            ->where('status', RequestStatus::EXECUTIVE_VOTING_OPEN->value)
-            ->whereDoesntHave('votes', fn ($q) => $q->where('user_id', $user->id))
-            ->count();
-
         return [
-            'waiting_for_voting_open' => $waitingForVotingOpen,
-            'active_voting_sessions' => $activeVotingSessions,
-            'decisions_approved' => $decisionsApproved,
-            'decisions_rejected' => $decisionsRejected,
-            'finalized_decisions' => $finalizedDecisions,
-            'pending_my_vote' => $pendingMyVote,
-            'voting_queue' => $this->votingQueueResource($votingQueue, $user),
+            'waiting_for_voting_open' => 0,
+            'active_voting_sessions' => 0,
+            'decisions_approved' => 0,
+            'decisions_rejected' => 0,
+            'finalized_decisions' => 0,
+            'pending_my_vote' => 0,
+            'voting_queue' => [],
         ];
     }
 
@@ -460,154 +360,71 @@ class DashboardController extends Controller
     // COMMITTEE_DIRECTOR: global CBY view — no org scope
     private function committeeDirectorStats(User $user): JsonResponse
     {
-        $fxQueue = ImportRequest::query()
-            ->where('status', RequestStatus::EXECUTIVE_APPROVED->value)
+        $fxQueue = EngineRequestReadModel::queryFor($user)
+            ->where(EngineRequestReadModel::bucket('fx_confirmation_pending'))
             ->orderBy('updated_at')
             ->orderBy('id')
             ->limit(50)
-            ->with(['bank', 'documents'])
             ->get();
-
-        $votingQueue = ImportRequest::query()
-            ->whereIn('status', [
-                RequestStatus::EXECUTIVE_VOTING_OPEN->value,
-                RequestStatus::EXECUTIVE_VOTING_CLOSED->value,
-            ])
-            ->orderBy('updated_at')
-            ->orderBy('id')
-            ->limit(50)
-            ->with(['bank', 'votes'])
-            ->get();
-
-        // C6 (code review): "ready to close" uses each session's own
-        // eligible_voter_ids snapshot rather than the global active count so
-        // a member deactivated after voting doesn't make the Director think
-        // a session is short of votes when it actually has everyone.
-        $legacyTotalVoters = User::query()
-            ->where('role', UserRole::EXECUTIVE_MEMBER->value)
-            ->where('is_active', true)
-            ->count();
-
-        $sessionsReadyToClose = $votingQueue
-            ->filter(function (ImportRequest $request) use ($legacyTotalVoters): bool {
-                if ($request->status !== RequestStatus::EXECUTIVE_VOTING_OPEN) {
-                    return false;
-                }
-                $snapshot = is_array($request->eligible_voter_ids) ? $request->eligible_voter_ids : null;
-                $total = ($snapshot !== null && count($snapshot) > 0) ? count($snapshot) : $legacyTotalVoters;
-
-                return $total > 0 && $request->votes->count() >= $total;
-            })
-            ->count();
-
-        $sessionsWithTie = $votingQueue
-            ->filter(function (ImportRequest $request): bool {
-                if ($request->status !== RequestStatus::EXECUTIVE_VOTING_OPEN) {
-                    return false;
-                }
-
-                $approveCount = $request->votes->filter(fn (RequestVote $vote) => $vote->vote?->value === 'APPROVE')->count();
-                $rejectCount = $request->votes->filter(fn (RequestVote $vote) => $vote->vote?->value === 'REJECT')->count();
-
-                return $approveCount > 0 && $approveCount === $rejectCount;
-            })
-            ->count();
 
         $executiveStats = $this->executiveVotingStats($user);
 
         return ApiResponse::success(array_merge($executiveStats, [
-            // Director-specific lifecycle counters
-            'sessions_ready_to_close' => $sessionsReadyToClose,
-            'sessions_with_tie' => $sessionsWithTie,
+            // Director-specific lifecycle counters (voting removed by DI-3 — zeroed)
+            'sessions_ready_to_close' => 0,
+            'sessions_with_tie' => 0,
             'fx_confirmation_pending' => $fxQueue->count(),
             'finalized_approved' => $executiveStats['decisions_approved'] ?? 0,
             'finalized_rejected' => $executiveStats['decisions_rejected'] ?? 0,
             // Director-specific lifecycle queues
-            'voting_lifecycle_queue' => $this->votingQueueResource($votingQueue, request()->user()),
-            'fx_confirmation_queue' => ImportRequestResource::collection($fxQueue)->toArray(request()),
+            'voting_lifecycle_queue' => [],
+            'fx_confirmation_queue' => EngineRequestReadModel::resourceCollection($fxQueue),
             // Backward compatibility with existing frontend contract
-            'customs_declaration_pending' => ImportRequestResource::collection($fxQueue)->toArray(request()),
+            'customs_declaration_pending' => EngineRequestReadModel::resourceCollection($fxQueue),
         ]), 'Dashboard stats retrieved.');
     }
 
-    private function votingQueueResource($requests, User $user): array
+    /**
+     * Adds a `claimed_by` object (or null) to each resource-collection item, mirroring
+     * the legacy claimedByUser eager-loaded relation shape consumed by the Support
+     * Committee dashboard.
+     *
+     * @param  Collection<int, EngineRequest>  $requests
+     */
+    private function withClaimedBy($requests): array
     {
-        // Fallback for sessions opened before the C6 migration shipped — those
-        // rows have a null eligible_voter_ids snapshot, so use the current
-        // active-member count as a best-effort denominator.
-        $legacyTotalVoters = User::query()
-            ->where('role', UserRole::EXECUTIVE_MEMBER->value)
-            ->where('is_active', true)
-            ->count();
-
-        return collect(ImportRequestResource::collection($requests)->toArray(request()))
-            ->map(function (array $item, int $index) use ($requests, $user, $legacyTotalVoters) {
-                /** @var ImportRequest $request */
+        return collect(EngineRequestReadModel::resourceCollection($requests))
+            ->map(function (array $item, int $index) use ($requests) {
                 $request = $requests->values()->get($index);
-                $myVote = $request->votes->firstWhere('user_id', $user->id);
-
-                // Per-session denominator: prefer the snapshot taken at session
-                // open. Falls back to the live count for legacy rows. Resolves
-                // code-review C6 (votes_cast > total_voters race).
-                $snapshot = is_array($request->eligible_voter_ids) ? $request->eligible_voter_ids : null;
-                $totalVoters = ($snapshot !== null && count($snapshot) > 0)
-                    ? count($snapshot)
-                    : $legacyTotalVoters;
 
                 return [
                     ...$item,
-                    'my_vote' => $this->dashboardVoteValue($myVote),
-                    'votes_cast' => $request->votes->count(),
-                    'total_voters' => $totalVoters,
+                    'claimed_by' => $request->claimedBy ? [
+                        'id' => $request->claimedBy->id,
+                        'name' => $request->claimedBy->name,
+                    ] : null,
                 ];
             })
             ->values()
             ->all();
     }
 
-    private function dashboardVoteValue(?RequestVote $vote): ?string
-    {
-        return match ($vote?->vote?->value) {
-            'APPROVE' => 'approve',
-            'REJECT' => 'reject',
-            default => null,
-        };
-    }
-
     // CBY_ADMIN: full-system visibility across all banks
     private function cbyadminStats(): JsonResponse
     {
-        $terminalStatuses = [
-            RequestStatus::EXECUTIVE_REJECTED,
-            RequestStatus::CUSTOMS_DECLARATION_ISSUED,
-            RequestStatus::COMPLETED,
-        ];
-        $approvedStatuses = [
-            RequestStatus::EXECUTIVE_APPROVED,
-            RequestStatus::CUSTOMS_DECLARATION_ISSUED,
-            RequestStatus::COMPLETED,
-        ];
-        $inProcessExcluded = array_merge(
-            [RequestStatus::DRAFT, RequestStatus::DRAFT_REJECTED_INTERNAL],
-            $terminalStatuses,
-            $approvedStatuses,
-        );
+        $base = EngineRequestReadModel::queryFor(request()->user());
 
-        $total = ImportRequest::query()->count();
-        $approved = ImportRequest::query()
-            ->whereIn('status', array_map(fn ($s) => $s->value, $approvedStatuses))
-            ->count();
-        $rejected = ImportRequest::query()
-            ->where('status', RequestStatus::EXECUTIVE_REJECTED->value)
-            ->count();
-        $inProcess = ImportRequest::query()
-            ->whereNotIn('status', array_map(fn ($s) => $s->value, array_unique($inProcessExcluded, SORT_REGULAR)))
+        $total = (clone $base)->count();
+        $approved = (clone $base)->where(EngineRequestReadModel::bucket('completed'))->count();
+        $rejected = (clone $base)->where(EngineRequestReadModel::bucket('rejected'))->count();
+        $inProcess = (clone $base)
+            ->where(EngineRequestReadModel::bucket('active'))
+            ->whereDoesntHave('currentStage', fn ($q) => $q->whereIn('workflow_stages.code', ['CREATE']))
             ->count();
 
-        $recentRequests = ImportRequest::query()
+        $recentRequests = (clone $base)
             ->orderByDesc('updated_at')
             ->limit(10)
-            ->with(['bank'])
             ->get();
 
         return ApiResponse::success([
@@ -619,7 +436,7 @@ class DashboardController extends Controller
             'most_active_banks' => $this->mostActiveBanks(),
             'monthly_requests' => $this->cbyadminMonthlyRequests(CarbonImmutable::now()),
             'category_distribution' => $this->cbyadminCategoryDistribution(),
-            'recent_requests' => ImportRequestResource::collection($recentRequests)->toArray(request()),
+            'recent_requests' => EngineRequestReadModel::resourceCollection($recentRequests),
         ], 'Dashboard stats retrieved.');
     }
 
@@ -637,15 +454,15 @@ class DashboardController extends Controller
         $submitted = array_fill_keys($monthKeys, 0);
         $approved = array_fill_keys($monthKeys, 0);
 
-        $approvedStatuses = [
-            RequestStatus::EXECUTIVE_APPROVED->value,
-            RequestStatus::CUSTOMS_DECLARATION_ISSUED->value,
-            RequestStatus::COMPLETED->value,
-        ];
+        $rows = EngineRequestReadModel::queryFor(request()->user())
+            ->where('engine_requests.created_at', '>=', $windowStart)
+            ->get(['engine_requests.created_at', 'engine_requests.status']);
 
-        $rows = ImportRequest::query()
-            ->where('created_at', '>=', $windowStart)
-            ->get(['created_at', 'status']);
+        $approvedIds = EngineRequestReadModel::queryFor(request()->user())
+            ->where('engine_requests.created_at', '>=', $windowStart)
+            ->where(EngineRequestReadModel::bucket('completed'))
+            ->pluck('engine_requests.id')
+            ->all();
 
         foreach ($rows as $row) {
             $monthKey = (CarbonImmutable::instance($row->created_at))->setTimezone($timezone)->format('Y-m');
@@ -653,8 +470,7 @@ class DashboardController extends Controller
                 continue;
             }
             $submitted[$monthKey]++;
-            $statusValue = $row->status instanceof \BackedEnum ? $row->status->value : (string) $row->status;
-            if (in_array($statusValue, $approvedStatuses, true)) {
+            if (in_array($row->id, $approvedIds, true)) {
                 $approved[$monthKey]++;
             }
         }
@@ -675,9 +491,9 @@ class DashboardController extends Controller
         // as a meaningful operational segmentation visible in the CBY_ADMIN dashboard.
         $colors = ['#0066cc', '#1b5e20', '#f57f17', '#c62828', '#5856d6', '#32ade6'];
 
-        $groups = ImportRequest::query()
-            ->selectRaw('currency as label, COUNT(*) as `count`')
-            ->groupBy('currency')
+        $groups = EngineRequestReadModel::queryFor(request()->user())
+            ->selectRaw('engine_requests.currency as label, COUNT(*) as `count`')
+            ->groupBy('engine_requests.currency')
             ->orderByDesc('count')
             ->limit(6)
             ->get()
@@ -694,18 +510,17 @@ class DashboardController extends Controller
 
     private function complianceAlerts(): array
     {
-        $draftStatuses = [RequestStatus::DRAFT, RequestStatus::DRAFT_REJECTED_INTERNAL];
-        $terminalStatuses = [
-            RequestStatus::EXECUTIVE_REJECTED,
-            RequestStatus::CUSTOMS_DECLARATION_ISSUED,
-            RequestStatus::COMPLETED,
-        ];
+        $user = request()->user();
 
-        // Duplicate supplier names in non-draft, non-terminal active requests
-        $duplicateSuppliers = ImportRequest::query()
-            ->whereNotIn('status', array_map(fn ($s) => $s->value, $draftStatuses))
-            ->selectRaw('supplier_name, COUNT(*) as `count`')
-            ->groupBy('supplier_name')
+        // Duplicate suppliers: the engine has no dedicated supplier_name projection
+        // column (supplier identity now lives on merchant/data payload), so this
+        // surfaces duplicate merchants among non-draft requests instead.
+        $duplicateSuppliers = EngineRequestReadModel::queryFor($user)
+            ->whereDoesntHave('currentStage', fn ($q) => $q->whereIn('workflow_stages.code', ['CREATE']))
+            ->whereNotNull('engine_requests.merchant_id')
+            ->join('merchants', 'merchants.id', '=', 'engine_requests.merchant_id')
+            ->selectRaw('merchants.name as supplier_name, COUNT(*) as `count`')
+            ->groupBy('merchants.name')
             ->havingRaw('COUNT(*) > 1')
             ->orderByDesc('count')
             ->limit(10)
@@ -714,18 +529,17 @@ class DashboardController extends Controller
             ->values()
             ->all();
 
-        // USD requests exceeding $1,000,000 in non-terminal status
-        $highAmountRequests = ImportRequest::query()
-            ->where('currency', 'USD')
-            ->where('amount', '>', 1_000_000)
-            ->whereNotIn('status', array_map(fn ($s) => $s->value, $terminalStatuses))
-            ->with(['bank'])
-            ->orderByDesc('amount')
+        // USD requests exceeding $1,000,000 that are not closed/rejected
+        $highAmountRequests = EngineRequestReadModel::queryFor($user)
+            ->where('engine_requests.currency', 'USD')
+            ->where('engine_requests.amount', '>', 1_000_000)
+            ->where(EngineRequestReadModel::bucket('active'))
+            ->orderByDesc('engine_requests.amount')
             ->limit(10)
             ->get()
             ->map(fn ($r) => [
                 'id' => $r->id,
-                'reference_number' => $r->reference_number,
+                'reference_number' => EngineRequestReadModel::reference($r),
                 'bank_name' => $r->bank?->name ?? '—',
                 'amount' => (float) $r->amount,
                 'currency' => $r->currency,
@@ -733,18 +547,18 @@ class DashboardController extends Controller
             ->values()
             ->all();
 
-        // Stale pending: non-draft, non-terminal (and non-approved-awaiting-customs), updated > 14 days ago
-        $stalePendingExcluded = array_merge($draftStatuses, $terminalStatuses, [RequestStatus::EXECUTIVE_APPROVED]);
-        $stalePendingRequests = ImportRequest::query()
-            ->whereNotIn('status', array_map(fn ($s) => $s->value, $stalePendingExcluded))
-            ->where('updated_at', '<', now()->subDays(14))
-            ->with(['bank'])
-            ->orderBy('updated_at')
+        // Stale pending: not draft, not closed/rejected, not at the final FX-confirmation
+        // hand-off stage, updated > 14 days ago.
+        $stalePendingRequests = EngineRequestReadModel::queryFor($user)
+            ->where(EngineRequestReadModel::bucket('active'))
+            ->whereDoesntHave('currentStage', fn ($q) => $q->whereIn('workflow_stages.code', ['CREATE', 'FX_CONFIRM', 'FINAL']))
+            ->where('engine_requests.updated_at', '<', now()->subDays(14))
+            ->orderBy('engine_requests.updated_at')
             ->limit(10)
             ->get()
             ->map(fn ($r) => [
                 'id' => $r->id,
-                'reference_number' => $r->reference_number,
+                'reference_number' => EngineRequestReadModel::reference($r),
                 'bank_name' => $r->bank?->name ?? '—',
                 'updated_at' => $r->updated_at?->toIso8601String() ?? null,
             ])
@@ -762,8 +576,8 @@ class DashboardController extends Controller
     {
         return Bank::query()
             ->select('banks.id as bank_id', 'banks.name as bank_name')
-            ->selectRaw('COUNT(import_requests.id) as request_count')
-            ->leftJoin('import_requests', 'import_requests.bank_id', '=', 'banks.id')
+            ->selectRaw('COUNT(engine_requests.id) as request_count')
+            ->leftJoin('engine_requests', 'engine_requests.bank_id', '=', 'banks.id')
             ->groupBy('banks.id', 'banks.name')
             ->orderByDesc('request_count')
             ->limit(5)
@@ -775,18 +589,5 @@ class DashboardController extends Controller
             ])
             ->values()
             ->all();
-    }
-
-    /**
-     * Bank-facing rejected queues include support rejection, executive rejection,
-     * and terminal bank rejection.
-     */
-    private function bankFacingRejectedStatuses(): array
-    {
-        return [
-            RequestStatus::SUPPORT_REJECTED->value,
-            RequestStatus::EXECUTIVE_REJECTED->value,
-            RequestStatus::BANK_REJECTED->value,
-        ];
     }
 }

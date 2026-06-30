@@ -2,15 +2,19 @@
 
 namespace Tests\Feature;
 
-use App\Enums\RequestStatus;
 use App\Enums\UserRole;
 use App\Models\Bank;
-use App\Models\ImportRequest;
+use App\Models\EngineRequest;
+use App\Models\Merchant;
 use App\Models\Permission;
 use App\Models\User;
+use App\Models\WorkflowDefinition;
+use App\Models\WorkflowStage;
+use App\Models\WorkflowVersion;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class CbyAdminDashboardStatsTest extends TestCase
@@ -22,6 +26,9 @@ class CbyAdminDashboardStatsTest extends TestCase
     private Bank $otherBank;
 
     private User $admin;
+
+    /** @var array{version: WorkflowVersion, stages: array<string, WorkflowStage>} */
+    private array $workflow;
 
     protected function setUp(): void
     {
@@ -36,6 +43,9 @@ class CbyAdminDashboardStatsTest extends TestCase
         $this->bank = $this->makeBank('YCB');
         $this->otherBank = $this->makeBank('OTH');
         $this->admin = $this->makeUser(UserRole::CBY_ADMIN);
+        $this->workflow = $this->workflowWithStages([
+            'CREATE', 'INTERNAL', 'SUPPORT', 'EXEC', 'FX', 'FX_CONFIRM', 'FINAL', 'CLOSED',
+        ]);
     }
 
     // ─── Helpers ──────────────────────────────────────────────────────────────
@@ -64,24 +74,72 @@ class CbyAdminDashboardStatsTest extends TestCase
         ]);
     }
 
-    private function makeRequest(Bank $bank, User $creator, RequestStatus $status, array $extra = []): ImportRequest
+    /**
+     * @return array{version: WorkflowVersion, stages: array<string, WorkflowStage>}
+     */
+    private function workflowWithStages(array $stageCodes): array
     {
-        app()->instance('workflow.transition.active', true);
-        try {
-            return ImportRequest::query()->create(array_merge([
-                'bank_id' => $bank->id,
-                'created_by' => $creator->id,
-                'currency' => 'USD',
-                'amount' => 10000.00,
-                'supplier_name' => 'Supplier Co.',
-                'goods_description' => 'Industrial equipment',
-                'port_of_entry' => 'Aden Port',
-                'status' => $status,
-                'current_owner_role' => UserRole::DATA_ENTRY,
-            ], $extra));
-        } finally {
-            app()->offsetUnset('workflow.transition.active');
+        $definition = WorkflowDefinition::query()->create([
+            'code' => 'CBYADMIN_'.Str::random(8),
+            'name' => 'CBY Admin Test Workflow',
+            'is_active' => true,
+            'version' => 1,
+        ]);
+
+        $version = WorkflowVersion::query()->create([
+            'workflow_definition_id' => $definition->id,
+            'version_number' => 1,
+            'state' => 'PUBLISHED',
+            'published_at' => now(),
+            'version' => 1,
+        ]);
+
+        $stages = [];
+        foreach ($stageCodes as $index => $stageCode) {
+            $stages[$stageCode] = WorkflowStage::query()->create([
+                'workflow_version_id' => $version->id,
+                'code' => $stageCode,
+                'name' => Str::headline(Str::lower($stageCode)),
+                'sort_order' => $index + 1,
+                'is_initial' => $index === 0,
+                'is_final' => $stageCode === 'CLOSED',
+                'version' => 1,
+            ]);
         }
+
+        return ['version' => $version, 'stages' => $stages];
+    }
+
+    /**
+     * Creates an EngineRequest on a given stage + status. `merchant_name` (extra key)
+     * lets duplicate-supplier tests control the merchant identity directly; it is
+     * stripped before being passed to EngineRequest::create().
+     */
+    private function makeRequest(Bank $bank, User $creator, string $stageCode, string $status = 'ACTIVE', array $extra = []): EngineRequest
+    {
+        $merchantName = $extra['merchant_name'] ?? ('Merchant '.Str::random(6));
+        unset($extra['merchant_name']);
+
+        $merchant = Merchant::query()->create([
+            'bank_id' => $bank->id,
+            'name' => $merchantName,
+            'tax_number' => 'TX-'.Str::random(10),
+            'created_by' => $creator->id,
+        ]);
+
+        return EngineRequest::query()->create(array_merge([
+            'workflow_version_id' => $this->workflow['version']->id,
+            'current_stage_id' => $this->workflow['stages'][$stageCode]->id,
+            'reference' => 'ENG-'.Str::random(10),
+            'status' => $status,
+            'created_by' => $creator->id,
+            'bank_id' => $bank->id,
+            'merchant_id' => $merchant->id,
+            'data' => [],
+            'version' => 1,
+            'currency' => 'USD',
+            'amount' => 10000.00,
+        ], $extra));
     }
 
     // ─── AC8: Response shape ──────────────────────────────────────────────────
@@ -89,7 +147,7 @@ class CbyAdminDashboardStatsTest extends TestCase
     public function test_cby_admin_stats_returns_correct_shape(): void
     {
         $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
-        $this->makeRequest($this->bank, $de, RequestStatus::DRAFT);
+        $this->makeRequest($this->bank, $de, 'CREATE');
 
         $this->actingAs($this->admin)
             ->getJson('/api/dashboard/stats')
@@ -119,7 +177,7 @@ class CbyAdminDashboardStatsTest extends TestCase
     public function test_cby_admin_monthly_requests_returns_6_month_window(): void
     {
         $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
-        $this->makeRequest($this->bank, $de, RequestStatus::SUBMITTED);
+        $this->makeRequest($this->bank, $de, 'INTERNAL');
 
         $response = $this->actingAs($this->admin)
             ->getJson('/api/dashboard/stats')
@@ -135,9 +193,9 @@ class CbyAdminDashboardStatsTest extends TestCase
     public function test_cby_admin_monthly_requests_counts_submitted_and_approved(): void
     {
         $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
-        $this->makeRequest($this->bank, $de, RequestStatus::SUBMITTED);
-        $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_APPROVED);
-        $this->makeRequest($this->bank, $de, RequestStatus::COMPLETED);
+        $this->makeRequest($this->bank, $de, 'INTERNAL');
+        $this->makeRequest($this->bank, $de, 'EXEC', 'CLOSED');
+        $this->makeRequest($this->bank, $de, 'CLOSED', 'CLOSED');
 
         $response = $this->actingAs($this->admin)
             ->getJson('/api/dashboard/stats')
@@ -149,7 +207,7 @@ class CbyAdminDashboardStatsTest extends TestCase
 
         $this->assertNotNull($currentEntry);
         $this->assertEquals(3, $currentEntry['submitted']);
-        $this->assertEquals(2, $currentEntry['approved']); // EXECUTIVE_APPROVED + COMPLETED
+        $this->assertEquals(2, $currentEntry['approved']); // EXEC/CLOSED + CLOSED/CLOSED
     }
 
     // ─── Category distribution ────────────────────────────────────────────────
@@ -157,9 +215,9 @@ class CbyAdminDashboardStatsTest extends TestCase
     public function test_cby_admin_category_distribution_returns_currency_groups(): void
     {
         $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
-        $this->makeRequest($this->bank, $de, RequestStatus::SUBMITTED, ['currency' => 'USD']);
-        $this->makeRequest($this->bank, $de, RequestStatus::SUBMITTED, ['currency' => 'EUR']);
-        $this->makeRequest($this->bank, $de, RequestStatus::SUBMITTED, ['currency' => 'USD']);
+        $this->makeRequest($this->bank, $de, 'INTERNAL', 'ACTIVE', ['currency' => 'USD']);
+        $this->makeRequest($this->bank, $de, 'INTERNAL', 'ACTIVE', ['currency' => 'EUR']);
+        $this->makeRequest($this->bank, $de, 'INTERNAL', 'ACTIVE', ['currency' => 'USD']);
 
         $response = $this->actingAs($this->admin)
             ->getJson('/api/dashboard/stats')
@@ -182,7 +240,7 @@ class CbyAdminDashboardStatsTest extends TestCase
     {
         $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
         for ($i = 0; $i < 12; $i++) {
-            $this->makeRequest($this->bank, $de, RequestStatus::SUBMITTED);
+            $this->makeRequest($this->bank, $de, 'INTERNAL');
         }
 
         $response = $this->actingAs($this->admin)
@@ -199,8 +257,8 @@ class CbyAdminDashboardStatsTest extends TestCase
         $de1 = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
         $de2 = $this->makeUser(UserRole::DATA_ENTRY, $this->otherBank);
 
-        $this->makeRequest($this->bank, $de1, RequestStatus::SUBMITTED);
-        $this->makeRequest($this->otherBank, $de2, RequestStatus::SUBMITTED);
+        $this->makeRequest($this->bank, $de1, 'INTERNAL');
+        $this->makeRequest($this->otherBank, $de2, 'INTERNAL');
 
         $response = $this->actingAs($this->admin)
             ->getJson('/api/dashboard/stats')
@@ -217,9 +275,9 @@ class CbyAdminDashboardStatsTest extends TestCase
         $de1 = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
         $de2 = $this->makeUser(UserRole::DATA_ENTRY, $this->otherBank);
 
-        $this->makeRequest($this->bank, $de1, RequestStatus::DRAFT);
-        $this->makeRequest($this->bank, $de1, RequestStatus::SUBMITTED);
-        $this->makeRequest($this->otherBank, $de2, RequestStatus::DRAFT);
+        $this->makeRequest($this->bank, $de1, 'CREATE');
+        $this->makeRequest($this->bank, $de1, 'INTERNAL');
+        $this->makeRequest($this->otherBank, $de2, 'CREATE');
 
         $response = $this->actingAs($this->admin)
             ->getJson('/api/dashboard/stats')
@@ -235,10 +293,11 @@ class CbyAdminDashboardStatsTest extends TestCase
     {
         $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
 
-        $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_APPROVED);
-        $this->makeRequest($this->bank, $de, RequestStatus::CUSTOMS_DECLARATION_ISSUED);
-        $this->makeRequest($this->bank, $de, RequestStatus::COMPLETED);
-        $this->makeRequest($this->bank, $de, RequestStatus::DRAFT);
+        // EXECUTIVE_APPROVED, CUSTOMS_DECLARATION_ISSUED, COMPLETED all port to CLOSED status.
+        $this->makeRequest($this->bank, $de, 'EXEC', 'CLOSED');
+        $this->makeRequest($this->bank, $de, 'FX_CONFIRM', 'CLOSED');
+        $this->makeRequest($this->bank, $de, 'CLOSED', 'CLOSED');
+        $this->makeRequest($this->bank, $de, 'CREATE');
 
         $response = $this->actingAs($this->admin)
             ->getJson('/api/dashboard/stats')
@@ -252,16 +311,16 @@ class CbyAdminDashboardStatsTest extends TestCase
     {
         $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
 
-        $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_REJECTED);
-        $this->makeRequest($this->bank, $de, RequestStatus::SUPPORT_REJECTED);
-        $this->makeRequest($this->bank, $de, RequestStatus::DRAFT);
+        $this->makeRequest($this->bank, $de, 'EXEC', 'REJECTED');
+        $this->makeRequest($this->bank, $de, 'SUPPORT', 'REJECTED');
+        $this->makeRequest($this->bank, $de, 'CREATE');
 
         $response = $this->actingAs($this->admin)
             ->getJson('/api/dashboard/stats')
             ->assertOk()
             ->json('data');
 
-        $this->assertEquals(1, $response['rejected']);
+        $this->assertEquals(2, $response['rejected']);
     }
 
     public function test_cby_admin_in_process_excludes_draft_and_terminal(): void
@@ -269,17 +328,17 @@ class CbyAdminDashboardStatsTest extends TestCase
         $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
 
         // in-process: should count these
-        $this->makeRequest($this->bank, $de, RequestStatus::SUBMITTED);
-        $this->makeRequest($this->bank, $de, RequestStatus::BANK_REVIEW);
-        $this->makeRequest($this->bank, $de, RequestStatus::SUPPORT_REVIEW_PENDING);
+        $this->makeRequest($this->bank, $de, 'INTERNAL');
+        $this->makeRequest($this->bank, $de, 'INTERNAL');
+        $this->makeRequest($this->bank, $de, 'SUPPORT');
 
         // not in-process: excluded
-        $this->makeRequest($this->bank, $de, RequestStatus::DRAFT);
-        $this->makeRequest($this->bank, $de, RequestStatus::DRAFT_REJECTED_INTERNAL);
-        $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_APPROVED);
-        $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_REJECTED);
-        $this->makeRequest($this->bank, $de, RequestStatus::COMPLETED);
-        $this->makeRequest($this->bank, $de, RequestStatus::CUSTOMS_DECLARATION_ISSUED);
+        $this->makeRequest($this->bank, $de, 'CREATE');
+        $this->makeRequest($this->bank, $de, 'CREATE', 'REJECTED');
+        $this->makeRequest($this->bank, $de, 'EXEC', 'CLOSED');
+        $this->makeRequest($this->bank, $de, 'EXEC', 'REJECTED');
+        $this->makeRequest($this->bank, $de, 'CLOSED', 'CLOSED');
+        $this->makeRequest($this->bank, $de, 'FX_CONFIRM', 'CLOSED');
 
         $response = $this->actingAs($this->admin)
             ->getJson('/api/dashboard/stats')
@@ -295,9 +354,9 @@ class CbyAdminDashboardStatsTest extends TestCase
     {
         $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
 
-        $this->makeRequest($this->bank, $de, RequestStatus::SUBMITTED, ['supplier_name' => 'Dup Supplier']);
-        $this->makeRequest($this->bank, $de, RequestStatus::BANK_REVIEW, ['supplier_name' => 'Dup Supplier']);
-        $this->makeRequest($this->bank, $de, RequestStatus::SUBMITTED, ['supplier_name' => 'Unique Supplier']);
+        $this->makeRequest($this->bank, $de, 'INTERNAL', 'ACTIVE', ['merchant_name' => 'Dup Supplier']);
+        $this->makeRequest($this->bank, $de, 'INTERNAL', 'ACTIVE', ['merchant_name' => 'Dup Supplier']);
+        $this->makeRequest($this->bank, $de, 'INTERNAL', 'ACTIVE', ['merchant_name' => 'Unique Supplier']);
 
         $response = $this->actingAs($this->admin)
             ->getJson('/api/dashboard/stats')
@@ -313,9 +372,9 @@ class CbyAdminDashboardStatsTest extends TestCase
     {
         $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
 
-        // Both are drafts — should NOT be counted as duplicate
-        $this->makeRequest($this->bank, $de, RequestStatus::DRAFT, ['supplier_name' => 'Draft Supplier']);
-        $this->makeRequest($this->bank, $de, RequestStatus::DRAFT, ['supplier_name' => 'Draft Supplier']);
+        // Both are drafts (CREATE stage) — should NOT be counted as duplicate
+        $this->makeRequest($this->bank, $de, 'CREATE', 'ACTIVE', ['merchant_name' => 'Draft Supplier']);
+        $this->makeRequest($this->bank, $de, 'CREATE', 'ACTIVE', ['merchant_name' => 'Draft Supplier']);
 
         $response = $this->actingAs($this->admin)
             ->getJson('/api/dashboard/stats')
@@ -329,16 +388,16 @@ class CbyAdminDashboardStatsTest extends TestCase
     {
         $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
 
-        $this->makeRequest($this->bank, $de, RequestStatus::SUBMITTED, [
+        $this->makeRequest($this->bank, $de, 'INTERNAL', 'ACTIVE', [
             'amount' => 1_500_000,
             'currency' => 'USD',
         ]);
-        $this->makeRequest($this->bank, $de, RequestStatus::SUBMITTED, [
+        $this->makeRequest($this->bank, $de, 'INTERNAL', 'ACTIVE', [
             'amount' => 500_000,
             'currency' => 'USD',
         ]);
         // EUR exceeding 1M — should NOT appear (USD only)
-        $this->makeRequest($this->bank, $de, RequestStatus::SUBMITTED, [
+        $this->makeRequest($this->bank, $de, 'INTERNAL', 'ACTIVE', [
             'amount' => 2_000_000,
             'currency' => 'EUR',
         ]);
@@ -358,11 +417,11 @@ class CbyAdminDashboardStatsTest extends TestCase
         $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
 
         // Terminal — should NOT appear
-        $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_REJECTED, [
+        $this->makeRequest($this->bank, $de, 'EXEC', 'REJECTED', [
             'amount' => 2_000_000,
             'currency' => 'USD',
         ]);
-        $this->makeRequest($this->bank, $de, RequestStatus::COMPLETED, [
+        $this->makeRequest($this->bank, $de, 'CLOSED', 'CLOSED', [
             'amount' => 3_000_000,
             'currency' => 'USD',
         ]);
@@ -380,11 +439,11 @@ class CbyAdminDashboardStatsTest extends TestCase
         $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
 
         // Stale — updated 20 days ago
-        $stale = $this->makeRequest($this->bank, $de, RequestStatus::SUBMITTED);
-        ImportRequest::query()->where('id', $stale->id)->update(['updated_at' => now()->subDays(20)]);
+        $stale = $this->makeRequest($this->bank, $de, 'INTERNAL');
+        EngineRequest::query()->where('id', $stale->id)->update(['updated_at' => now()->subDays(20)]);
 
         // Fresh — should NOT appear
-        $this->makeRequest($this->bank, $de, RequestStatus::SUBMITTED);
+        $this->makeRequest($this->bank, $de, 'INTERNAL');
 
         $response = $this->actingAs($this->admin)
             ->getJson('/api/dashboard/stats')
@@ -392,16 +451,23 @@ class CbyAdminDashboardStatsTest extends TestCase
             ->json('data.compliance_alerts.stale_pending_requests');
 
         $this->assertCount(1, $response);
-        $this->assertEquals($stale->reference_number, $response[0]['reference_number']);
+        $this->assertEquals($stale->fresh()->reference, $response[0]['reference_number']);
     }
 
     public function test_compliance_alerts_stale_pending_excludes_draft_and_terminal(): void
     {
         $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
 
-        foreach ([RequestStatus::DRAFT, RequestStatus::DRAFT_REJECTED_INTERNAL, RequestStatus::EXECUTIVE_REJECTED, RequestStatus::COMPLETED] as $status) {
-            $req = $this->makeRequest($this->bank, $de, $status);
-            ImportRequest::query()->where('id', $req->id)->update(['updated_at' => now()->subDays(20)]);
+        $fixtures = [
+            ['CREATE', 'ACTIVE'],
+            ['CREATE', 'REJECTED'],
+            ['EXEC', 'REJECTED'],
+            ['CLOSED', 'CLOSED'],
+        ];
+
+        foreach ($fixtures as [$stageCode, $status]) {
+            $req = $this->makeRequest($this->bank, $de, $stageCode, $status);
+            EngineRequest::query()->where('id', $req->id)->update(['updated_at' => now()->subDays(20)]);
         }
 
         $response = $this->actingAs($this->admin)
@@ -415,8 +481,9 @@ class CbyAdminDashboardStatsTest extends TestCase
     public function test_compliance_alerts_stale_pending_excludes_executive_approved(): void
     {
         $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
-        $req = $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_APPROVED);
-        ImportRequest::query()->where('id', $req->id)->update(['updated_at' => now()->subDays(20)]);
+        // EXECUTIVE_APPROVED ports to EXEC/CLOSED — excluded via the `active` status bucket.
+        $req = $this->makeRequest($this->bank, $de, 'EXEC', 'CLOSED');
+        EngineRequest::query()->where('id', $req->id)->update(['updated_at' => now()->subDays(20)]);
 
         $response = $this->actingAs($this->admin)
             ->getJson('/api/dashboard/stats')
@@ -433,9 +500,9 @@ class CbyAdminDashboardStatsTest extends TestCase
         $de1 = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
         $de2 = $this->makeUser(UserRole::DATA_ENTRY, $this->otherBank);
 
-        $this->makeRequest($this->bank, $de1, RequestStatus::DRAFT);
-        $this->makeRequest($this->bank, $de1, RequestStatus::DRAFT);
-        $this->makeRequest($this->otherBank, $de2, RequestStatus::DRAFT);
+        $this->makeRequest($this->bank, $de1, 'CREATE');
+        $this->makeRequest($this->bank, $de1, 'CREATE');
+        $this->makeRequest($this->otherBank, $de2, 'CREATE');
 
         $response = $this->actingAs($this->admin)
             ->getJson('/api/dashboard/stats')
@@ -453,13 +520,13 @@ class CbyAdminDashboardStatsTest extends TestCase
     {
         $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
 
-        // Create 6 banks (including the 2 already created in setUp)
+        // Create 4 more banks (including the 2 already created in setUp = 6 total)
         for ($i = 0; $i < 4; $i++) {
             $bank = $this->makeBank("B{$i}");
             $newDe = $this->makeUser(UserRole::DATA_ENTRY, $bank);
-            $this->makeRequest($bank, $newDe, RequestStatus::DRAFT);
+            $this->makeRequest($bank, $newDe, 'CREATE');
         }
-        $this->makeRequest($this->bank, $de, RequestStatus::DRAFT);
+        $this->makeRequest($this->bank, $de, 'CREATE');
 
         $response = $this->actingAs($this->admin)
             ->getJson('/api/dashboard/stats')

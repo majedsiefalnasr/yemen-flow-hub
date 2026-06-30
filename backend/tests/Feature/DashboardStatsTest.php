@@ -2,17 +2,20 @@
 
 namespace Tests\Feature;
 
-use App\Enums\RequestStatus;
 use App\Enums\UserRole;
 use App\Models\Bank;
-use App\Models\ImportRequest;
+use App\Models\EngineRequest;
+use App\Models\Merchant;
 use App\Models\Permission;
 use App\Models\User;
+use App\Models\WorkflowDefinition;
+use App\Models\WorkflowStage;
+use App\Models\WorkflowVersion;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class DashboardStatsTest extends TestCase
@@ -23,6 +26,9 @@ class DashboardStatsTest extends TestCase
 
     private Bank $otherBank;
 
+    /** @var array{version: WorkflowVersion, stages: array<string, WorkflowStage>} */
+    private array $workflow;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -31,6 +37,9 @@ class DashboardStatsTest extends TestCase
 
         $this->bank = $this->makeBank('YCB');
         $this->otherBank = $this->makeBank('OTH');
+        $this->workflow = $this->workflowWithStages([
+            'CREATE', 'INTERNAL', 'SUPPORT', 'EXEC', 'FX', 'FX_CONFIRM', 'FINAL', 'CLOSED',
+        ]);
     }
 
     // ─── Helpers ──────────────────────────────────────────────────────────────
@@ -67,24 +76,69 @@ class DashboardStatsTest extends TestCase
         ]);
     }
 
-    private function makeRequest(Bank $bank, User $creator, RequestStatus $status, array $extra = []): ImportRequest
+    /**
+     * @return array{version: WorkflowVersion, stages: array<string, WorkflowStage>}
+     */
+    private function workflowWithStages(array $stageCodes): array
     {
-        app()->instance('workflow.transition.active', true);
-        try {
-            return ImportRequest::query()->create(array_merge([
-                'bank_id' => $bank->id,
-                'created_by' => $creator->id,
-                'currency' => 'USD',
-                'amount' => 10000.00,
-                'supplier_name' => 'Supplier Co.',
-                'goods_description' => 'Industrial equipment',
-                'port_of_entry' => 'Aden Port',
-                'status' => $status,
-                'current_owner_role' => UserRole::DATA_ENTRY,
-            ], $extra));
-        } finally {
-            app()->offsetUnset('workflow.transition.active');
+        $definition = WorkflowDefinition::query()->create([
+            'code' => 'DASHBOARD_'.Str::random(8),
+            'name' => 'Dashboard Test Workflow',
+            'is_active' => true,
+            'version' => 1,
+        ]);
+
+        $version = WorkflowVersion::query()->create([
+            'workflow_definition_id' => $definition->id,
+            'version_number' => 1,
+            'state' => 'PUBLISHED',
+            'published_at' => now(),
+            'version' => 1,
+        ]);
+
+        $stages = [];
+        foreach ($stageCodes as $index => $stageCode) {
+            $stages[$stageCode] = WorkflowStage::query()->create([
+                'workflow_version_id' => $version->id,
+                'code' => $stageCode,
+                'name' => Str::headline(Str::lower($stageCode)),
+                'sort_order' => $index + 1,
+                'is_initial' => $index === 0,
+                'is_final' => $stageCode === 'CLOSED',
+                'version' => 1,
+            ]);
         }
+
+        return ['version' => $version, 'stages' => $stages];
+    }
+
+    /**
+     * Creates an EngineRequest on a given stage + status. Mirrors the canonical
+     * helper in tests/Feature/Engine/EngineSharedReadModelTest.php.
+     */
+    private function makeRequest(Bank $bank, User $creator, string $stageCode, string $status = 'ACTIVE', array $extra = []): EngineRequest
+    {
+        $merchant = Merchant::query()->create([
+            'bank_id' => $bank->id,
+            'name' => $extra['supplier_name'] ?? ('Merchant '.Str::random(6)),
+            'tax_number' => 'TX-'.Str::random(10),
+            'created_by' => $creator->id,
+        ]);
+        unset($extra['supplier_name']);
+
+        return EngineRequest::query()->create(array_merge([
+            'workflow_version_id' => $this->workflow['version']->id,
+            'current_stage_id' => $this->workflow['stages'][$stageCode]->id,
+            'reference' => 'ENG-'.Str::random(10),
+            'status' => $status,
+            'created_by' => $creator->id,
+            'bank_id' => $bank->id,
+            'merchant_id' => $merchant->id,
+            'data' => [],
+            'version' => 1,
+            'currency' => 'USD',
+            'amount' => 10000.00,
+        ], $extra));
     }
 
     // ─── AC-3: DATA_ENTRY stats shape ─────────────────────────────────────────
@@ -116,24 +170,23 @@ class DashboardStatsTest extends TestCase
         $otherDe = $this->makeUser(UserRole::DATA_ENTRY, $this->otherBank);
 
         // 2 drafts in my bank, 3 in other bank
-        $this->makeRequest($this->bank, $de, RequestStatus::DRAFT);
-        $this->makeRequest($this->bank, $de, RequestStatus::DRAFT);
-        $this->makeRequest($this->otherBank, $otherDe, RequestStatus::DRAFT);
-        $this->makeRequest($this->otherBank, $otherDe, RequestStatus::DRAFT);
-        $this->makeRequest($this->otherBank, $otherDe, RequestStatus::DRAFT);
+        $this->makeRequest($this->bank, $de, 'CREATE');
+        $this->makeRequest($this->bank, $de, 'CREATE');
+        $this->makeRequest($this->otherBank, $otherDe, 'CREATE');
+        $this->makeRequest($this->otherBank, $otherDe, 'CREATE');
+        $this->makeRequest($this->otherBank, $otherDe, 'CREATE');
 
         $this->actingAs($de)
             ->getJson('/api/dashboard/stats')
-            ->assertOk()
             ->assertJsonPath('data.draft', 2);
     }
 
     public function test_data_entry_draft_count(): void
     {
         $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
-        $this->makeRequest($this->bank, $de, RequestStatus::DRAFT);
-        $this->makeRequest($this->bank, $de, RequestStatus::DRAFT);
-        $this->makeRequest($this->bank, $de, RequestStatus::SUBMITTED);
+        $this->makeRequest($this->bank, $de, 'CREATE');
+        $this->makeRequest($this->bank, $de, 'CREATE');
+        $this->makeRequest($this->bank, $de, 'INTERNAL');
 
         $this->actingAs($de)
             ->getJson('/api/dashboard/stats')
@@ -143,8 +196,9 @@ class DashboardStatsTest extends TestCase
     public function test_data_entry_returned_count(): void
     {
         $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
-        $this->makeRequest($this->bank, $de, RequestStatus::DRAFT_REJECTED_INTERNAL);
-        $this->makeRequest($this->bank, $de, RequestStatus::DRAFT_REJECTED_INTERNAL);
+        // DRAFT_REJECTED_INTERNAL → CREATE/REJECTED
+        $this->makeRequest($this->bank, $de, 'CREATE', 'REJECTED');
+        $this->makeRequest($this->bank, $de, 'CREATE', 'REJECTED');
 
         $this->actingAs($de)
             ->getJson('/api/dashboard/stats')
@@ -154,10 +208,10 @@ class DashboardStatsTest extends TestCase
     public function test_data_entry_under_cby_processing_count(): void
     {
         $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
-        $this->makeRequest($this->bank, $de, RequestStatus::BANK_APPROVED);
-        $this->makeRequest($this->bank, $de, RequestStatus::SUPPORT_REVIEW_PENDING);
-        $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_VOTING_OPEN);
-        $this->makeRequest($this->bank, $de, RequestStatus::DRAFT);
+        $this->makeRequest($this->bank, $de, 'SUPPORT');
+        $this->makeRequest($this->bank, $de, 'SUPPORT');
+        $this->makeRequest($this->bank, $de, 'EXEC');
+        $this->makeRequest($this->bank, $de, 'CREATE');
 
         $this->actingAs($de)
             ->getJson('/api/dashboard/stats')
@@ -167,9 +221,9 @@ class DashboardStatsTest extends TestCase
     public function test_data_entry_completed_count(): void
     {
         $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
-        $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_APPROVED);
-        $this->makeRequest($this->bank, $de, RequestStatus::COMPLETED);
-        $this->makeRequest($this->bank, $de, RequestStatus::DRAFT);
+        $this->makeRequest($this->bank, $de, 'CLOSED', 'CLOSED');
+        $this->makeRequest($this->bank, $de, 'CLOSED', 'CLOSED');
+        $this->makeRequest($this->bank, $de, 'CREATE');
 
         $this->actingAs($de)
             ->getJson('/api/dashboard/stats')
@@ -179,8 +233,8 @@ class DashboardStatsTest extends TestCase
     public function test_data_entry_returned_requests_contains_draft_rejected_only(): void
     {
         $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
-        $this->makeRequest($this->bank, $de, RequestStatus::DRAFT_REJECTED_INTERNAL);
-        $this->makeRequest($this->bank, $de, RequestStatus::DRAFT);
+        $this->makeRequest($this->bank, $de, 'CREATE', 'REJECTED');
+        $this->makeRequest($this->bank, $de, 'CREATE');
 
         $response = $this->actingAs($de)
             ->getJson('/api/dashboard/stats')
@@ -188,14 +242,14 @@ class DashboardStatsTest extends TestCase
 
         $returnedRequests = $response->json('data.returned_requests');
         $this->assertCount(1, $returnedRequests);
-        $this->assertSame(RequestStatus::DRAFT_REJECTED_INTERNAL->value, $returnedRequests[0]['status']);
+        $this->assertSame('REJECTED', $returnedRequests[0]['status']);
     }
 
     public function test_data_entry_draft_requests_contains_drafts_only(): void
     {
         $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
-        $this->makeRequest($this->bank, $de, RequestStatus::DRAFT);
-        $this->makeRequest($this->bank, $de, RequestStatus::DRAFT_REJECTED_INTERNAL);
+        $this->makeRequest($this->bank, $de, 'CREATE');
+        $this->makeRequest($this->bank, $de, 'CREATE', 'REJECTED');
 
         $response = $this->actingAs($de)
             ->getJson('/api/dashboard/stats')
@@ -203,14 +257,14 @@ class DashboardStatsTest extends TestCase
 
         $draftRequests = $response->json('data.draft_requests');
         $this->assertCount(1, $draftRequests);
-        $this->assertSame(RequestStatus::DRAFT->value, $draftRequests[0]['status']);
+        $this->assertSame('ACTIVE', $draftRequests[0]['status']);
     }
 
     public function test_data_entry_draft_requests_max_5(): void
     {
         $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
         for ($i = 0; $i < 7; $i++) {
-            $this->makeRequest($this->bank, $de, RequestStatus::DRAFT);
+            $this->makeRequest($this->bank, $de, 'CREATE');
         }
 
         $response = $this->actingAs($de)->getJson('/api/dashboard/stats')->assertOk();
@@ -221,7 +275,7 @@ class DashboardStatsTest extends TestCase
     {
         $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
         for ($i = 0; $i < 7; $i++) {
-            $this->makeRequest($this->bank, $de, RequestStatus::DRAFT);
+            $this->makeRequest($this->bank, $de, 'CREATE');
         }
 
         $response = $this->actingAs($de)->getJson('/api/dashboard/stats')->assertOk();
@@ -255,8 +309,8 @@ class DashboardStatsTest extends TestCase
         $br = $this->makeUser(UserRole::BANK_REVIEWER, $this->bank);
         $otherDe = $this->makeUser(UserRole::DATA_ENTRY, $this->otherBank);
 
-        $this->makeRequest($this->bank, $de, RequestStatus::SUBMITTED);
-        $this->makeRequest($this->otherBank, $otherDe, RequestStatus::SUBMITTED);
+        $this->makeRequest($this->bank, $de, 'INTERNAL');
+        $this->makeRequest($this->otherBank, $otherDe, 'INTERNAL');
 
         $this->actingAs($br)
             ->getJson('/api/dashboard/stats')
@@ -267,9 +321,10 @@ class DashboardStatsTest extends TestCase
     {
         $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
         $br = $this->makeUser(UserRole::BANK_REVIEWER, $this->bank);
-        $this->makeRequest($this->bank, $de, RequestStatus::SUBMITTED);
-        $this->makeRequest($this->bank, $de, RequestStatus::BANK_REVIEW);
-        $this->makeRequest($this->bank, $de, RequestStatus::BANK_APPROVED);
+        // SUBMITTED/BANK_REVIEW → INTERNAL
+        $this->makeRequest($this->bank, $de, 'INTERNAL');
+        $this->makeRequest($this->bank, $de, 'INTERNAL');
+        $this->makeRequest($this->bank, $de, 'SUPPORT');
 
         $this->actingAs($br)
             ->getJson('/api/dashboard/stats')
@@ -280,10 +335,10 @@ class DashboardStatsTest extends TestCase
     {
         $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
         $br = $this->makeUser(UserRole::BANK_REVIEWER, $this->bank);
-        $this->makeRequest($this->bank, $de, RequestStatus::BANK_APPROVED);
-        $this->makeRequest($this->bank, $de, RequestStatus::SUPPORT_REVIEW_PENDING);
-        $this->makeRequest($this->bank, $de, RequestStatus::WAITING_FOR_SWIFT);
-        $this->makeRequest($this->bank, $de, RequestStatus::DRAFT);
+        $this->makeRequest($this->bank, $de, 'SUPPORT');
+        $this->makeRequest($this->bank, $de, 'SUPPORT');
+        $this->makeRequest($this->bank, $de, 'FX');
+        $this->makeRequest($this->bank, $de, 'CREATE');
 
         $this->actingAs($br)
             ->getJson('/api/dashboard/stats')
@@ -294,8 +349,9 @@ class DashboardStatsTest extends TestCase
     {
         $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
         $br = $this->makeUser(UserRole::BANK_REVIEWER, $this->bank);
-        $this->makeRequest($this->bank, $de, RequestStatus::SUPPORT_REJECTED);
-        $this->makeRequest($this->bank, $de, RequestStatus::DRAFT);
+        // SUPPORT_REJECTED → SUPPORT/REJECTED
+        $this->makeRequest($this->bank, $de, 'SUPPORT', 'REJECTED');
+        $this->makeRequest($this->bank, $de, 'CREATE');
 
         $this->actingAs($br)
             ->getJson('/api/dashboard/stats')
@@ -306,10 +362,10 @@ class DashboardStatsTest extends TestCase
     {
         $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
         $br = $this->makeUser(UserRole::BANK_REVIEWER, $this->bank);
-        $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_APPROVED);
-        $this->makeRequest($this->bank, $de, RequestStatus::COMPLETED);
-        $this->makeRequest($this->bank, $de, RequestStatus::CUSTOMS_DECLARATION_ISSUED);
-        $this->makeRequest($this->bank, $de, RequestStatus::DRAFT);
+        $this->makeRequest($this->bank, $de, 'CLOSED', 'CLOSED');
+        $this->makeRequest($this->bank, $de, 'CLOSED', 'CLOSED');
+        $this->makeRequest($this->bank, $de, 'CLOSED', 'CLOSED');
+        $this->makeRequest($this->bank, $de, 'CREATE');
 
         $this->actingAs($br)
             ->getJson('/api/dashboard/stats')
@@ -320,16 +376,15 @@ class DashboardStatsTest extends TestCase
     {
         $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
         $br = $this->makeUser(UserRole::BANK_REVIEWER, $this->bank);
-        $this->makeRequest($this->bank, $de, RequestStatus::SUBMITTED);
-        $this->makeRequest($this->bank, $de, RequestStatus::BANK_REVIEW);
-        $this->makeRequest($this->bank, $de, RequestStatus::BANK_APPROVED);
+        $this->makeRequest($this->bank, $de, 'INTERNAL');
+        $this->makeRequest($this->bank, $de, 'INTERNAL');
+        $this->makeRequest($this->bank, $de, 'SUPPORT');
 
         $response = $this->actingAs($br)->getJson('/api/dashboard/stats')->assertOk();
         $queue = $response->json('data.review_queue');
         $this->assertCount(2, $queue);
-        $statuses = array_column($queue, 'status');
-        $this->assertContains(RequestStatus::SUBMITTED->value, $statuses);
-        $this->assertContains(RequestStatus::BANK_REVIEW->value, $statuses);
+        $stageCodes = array_column($queue, 'stage_code');
+        $this->assertSame(['INTERNAL', 'INTERNAL'], $stageCodes);
     }
 
     // ─── AC-5: SUPPORT_COMMITTEE stats shape ──────────────────────────────────
@@ -358,9 +413,10 @@ class DashboardStatsTest extends TestCase
         $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
         $sc = $this->makeUser(UserRole::SUPPORT_COMMITTEE);
 
-        $this->makeRequest($this->bank, $de, RequestStatus::SUPPORT_REVIEW_PENDING);
-        $this->makeRequest($this->bank, $de, RequestStatus::SUPPORT_REVIEW_PENDING);
-        $this->makeRequest($this->bank, $de, RequestStatus::SUPPORT_REVIEW_IN_PROGRESS);
+        $this->makeRequest($this->bank, $de, 'SUPPORT');
+        $this->makeRequest($this->bank, $de, 'SUPPORT');
+        $claimed = $this->makeRequest($this->bank, $de, 'SUPPORT');
+        $claimed->update(['claimed_by' => $sc->id, 'claimed_at' => now(), 'claim_expires_at' => now()->addMinutes(15)]);
 
         $this->actingAs($sc)
             ->getJson('/api/dashboard/stats')
@@ -373,16 +429,11 @@ class DashboardStatsTest extends TestCase
         $sc = $this->makeUser(UserRole::SUPPORT_COMMITTEE);
         $sc2 = $this->makeUser(UserRole::SUPPORT_COMMITTEE);
 
-        $myRequest = $this->makeRequest($this->bank, $de, RequestStatus::SUPPORT_REVIEW_IN_PROGRESS);
-        $otherRequest = $this->makeRequest($this->bank, $de, RequestStatus::SUPPORT_REVIEW_IN_PROGRESS);
+        $myRequest = $this->makeRequest($this->bank, $de, 'SUPPORT');
+        $otherRequest = $this->makeRequest($this->bank, $de, 'SUPPORT');
 
-        app()->instance('workflow.transition.active', true);
-        try {
-            $myRequest->update(['claimed_by' => $sc->id]);
-            $otherRequest->update(['claimed_by' => $sc2->id]);
-        } finally {
-            app()->offsetUnset('workflow.transition.active');
-        }
+        $myRequest->update(['claimed_by' => $sc->id, 'claimed_at' => now(), 'claim_expires_at' => now()->addMinutes(15)]);
+        $otherRequest->update(['claimed_by' => $sc2->id, 'claimed_at' => now(), 'claim_expires_at' => now()->addMinutes(15)]);
 
         $this->actingAs($sc)
             ->getJson('/api/dashboard/stats')
@@ -395,16 +446,11 @@ class DashboardStatsTest extends TestCase
         $sc = $this->makeUser(UserRole::SUPPORT_COMMITTEE);
         $sc2 = $this->makeUser(UserRole::SUPPORT_COMMITTEE);
 
-        $myRequest = $this->makeRequest($this->bank, $de, RequestStatus::SUPPORT_REVIEW_IN_PROGRESS);
-        $otherRequest = $this->makeRequest($this->bank, $de, RequestStatus::SUPPORT_REVIEW_IN_PROGRESS);
+        $myRequest = $this->makeRequest($this->bank, $de, 'SUPPORT');
+        $otherRequest = $this->makeRequest($this->bank, $de, 'SUPPORT');
 
-        app()->instance('workflow.transition.active', true);
-        try {
-            $myRequest->update(['claimed_by' => $sc->id]);
-            $otherRequest->update(['claimed_by' => $sc2->id]);
-        } finally {
-            app()->offsetUnset('workflow.transition.active');
-        }
+        $myRequest->update(['claimed_by' => $sc->id, 'claimed_at' => now(), 'claim_expires_at' => now()->addMinutes(15)]);
+        $otherRequest->update(['claimed_by' => $sc2->id, 'claimed_at' => now(), 'claim_expires_at' => now()->addMinutes(15)]);
 
         $this->actingAs($sc)
             ->getJson('/api/dashboard/stats')
@@ -416,21 +462,18 @@ class DashboardStatsTest extends TestCase
         $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
         $sc = $this->makeUser(UserRole::SUPPORT_COMMITTEE);
 
-        // Two approved within the 7-day window — set support_approved_at to now
-        $r1 = $this->makeRequest($this->bank, $de, RequestStatus::SUPPORT_APPROVED);
-        $r2 = $this->makeRequest($this->bank, $de, RequestStatus::SUPPORT_APPROVED);
-        DB::table('import_requests')
-            ->whereIn('id', [$r1->id, $r2->id])
-            ->update(['support_approved_at' => now()]);
+        // Two approved within the 7-day window — updated_at now via support stage closed.
+        $r1 = $this->makeRequest($this->bank, $de, 'SUPPORT', 'CLOSED');
+        $r2 = $this->makeRequest($this->bank, $de, 'SUPPORT', 'CLOSED');
+        $r1->forceFill(['updated_at' => now()])->saveQuietly();
+        $r2->forceFill(['updated_at' => now()])->saveQuietly();
 
         // One approved 8 days ago — must NOT be counted
-        $old = $this->makeRequest($this->bank, $de, RequestStatus::SUPPORT_APPROVED);
-        DB::table('import_requests')
-            ->where('id', $old->id)
-            ->update(['support_approved_at' => now()->subDays(8)]);
+        $old = $this->makeRequest($this->bank, $de, 'SUPPORT', 'CLOSED');
+        $old->forceFill(['updated_at' => now()->subDays(8)])->saveQuietly();
 
         // One still pending — must NOT be counted
-        $this->makeRequest($this->bank, $de, RequestStatus::SUPPORT_REVIEW_PENDING);
+        $this->makeRequest($this->bank, $de, 'SUPPORT');
 
         $this->actingAs($sc)
             ->getJson('/api/dashboard/stats')
@@ -442,26 +485,10 @@ class DashboardStatsTest extends TestCase
         $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
         $sc = $this->makeUser(UserRole::SUPPORT_COMMITTEE);
 
-        // All approved but support_approved_at is older than 7 days
-        $r1 = $this->makeRequest($this->bank, $de, RequestStatus::SUPPORT_APPROVED);
-        $r2 = $this->makeRequest($this->bank, $de, RequestStatus::SUPPORT_APPROVED);
-        DB::table('import_requests')
-            ->whereIn('id', [$r1->id, $r2->id])
-            ->update(['support_approved_at' => now()->subDays(10)]);
-
-        $this->actingAs($sc)
-            ->getJson('/api/dashboard/stats')
-            ->assertJsonPath('data.recently_approved', 0);
-    }
-
-    public function test_support_committee_recently_approved_null_support_approved_at_excluded(): void
-    {
-        $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
-        $sc = $this->makeUser(UserRole::SUPPORT_COMMITTEE);
-
-        // Status is SUPPORT_APPROVED but support_approved_at is NULL — must not be counted
-        $this->makeRequest($this->bank, $de, RequestStatus::SUPPORT_APPROVED);
-        // support_approved_at remains NULL (makeRequest does not set it)
+        $r1 = $this->makeRequest($this->bank, $de, 'SUPPORT', 'CLOSED');
+        $r2 = $this->makeRequest($this->bank, $de, 'SUPPORT', 'CLOSED');
+        $r1->forceFill(['updated_at' => now()->subDays(10)])->saveQuietly();
+        $r2->forceFill(['updated_at' => now()->subDays(10)])->saveQuietly();
 
         $this->actingAs($sc)
             ->getJson('/api/dashboard/stats')
@@ -473,16 +500,17 @@ class DashboardStatsTest extends TestCase
         $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
         $sc = $this->makeUser(UserRole::SUPPORT_COMMITTEE);
 
-        $this->makeRequest($this->bank, $de, RequestStatus::SUPPORT_REVIEW_PENDING);
-        $this->makeRequest($this->bank, $de, RequestStatus::SUPPORT_REVIEW_IN_PROGRESS);
-        $this->makeRequest($this->bank, $de, RequestStatus::SUPPORT_APPROVED);
+        $this->makeRequest($this->bank, $de, 'SUPPORT');
+        $claimed = $this->makeRequest($this->bank, $de, 'SUPPORT');
+        $claimed->update(['claimed_by' => $sc->id, 'claimed_at' => now(), 'claim_expires_at' => now()->addMinutes(15)]);
+        // support_queue is a stage-only bucket (currentStage=SUPPORT); it is not
+        // filtered by lifecycle status, so a CLOSED request still on the SUPPORT
+        // stage remains in the queue alongside the two ACTIVE ones.
+        $this->makeRequest($this->bank, $de, 'SUPPORT', 'CLOSED');
 
         $response = $this->actingAs($sc)->getJson('/api/dashboard/stats')->assertOk();
         $queue = $response->json('data.support_queue');
-        $this->assertCount(2, $queue);
-        $statuses = array_column($queue, 'status');
-        $this->assertContains(RequestStatus::SUPPORT_REVIEW_PENDING->value, $statuses);
-        $this->assertContains(RequestStatus::SUPPORT_REVIEW_IN_PROGRESS->value, $statuses);
+        $this->assertCount(3, $queue);
     }
 
     // ─── Story 6.3.2: BANK_ADMIN dashboard ───────────────────────────────────
@@ -514,10 +542,10 @@ class DashboardStatsTest extends TestCase
         $admin = $this->makeUser(UserRole::BANK_ADMIN, $this->bank);
         $otherDe = $this->makeUser(UserRole::DATA_ENTRY, $this->otherBank);
 
-        $this->makeRequest($this->bank, $de, RequestStatus::DRAFT);
-        $this->makeRequest($this->bank, $de, RequestStatus::SUBMITTED);
-        $this->makeRequest($this->bank, $de, RequestStatus::COMPLETED);
-        $this->makeRequest($this->otherBank, $otherDe, RequestStatus::DRAFT);
+        $this->makeRequest($this->bank, $de, 'CREATE');
+        $this->makeRequest($this->bank, $de, 'INTERNAL');
+        $this->makeRequest($this->bank, $de, 'CLOSED', 'CLOSED');
+        $this->makeRequest($this->otherBank, $otherDe, 'CREATE');
 
         $this->actingAs($admin)
             ->getJson('/api/dashboard/stats')
@@ -529,9 +557,9 @@ class DashboardStatsTest extends TestCase
         $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
         $admin = $this->makeUser(UserRole::BANK_ADMIN, $this->bank);
 
-        $this->makeRequest($this->bank, $de, RequestStatus::SUBMITTED);
-        $this->makeRequest($this->bank, $de, RequestStatus::BANK_REVIEW);
-        $this->makeRequest($this->bank, $de, RequestStatus::BANK_APPROVED);
+        $this->makeRequest($this->bank, $de, 'INTERNAL');
+        $this->makeRequest($this->bank, $de, 'INTERNAL');
+        $this->makeRequest($this->bank, $de, 'SUPPORT');
 
         $this->actingAs($admin)
             ->getJson('/api/dashboard/stats')
@@ -543,10 +571,10 @@ class DashboardStatsTest extends TestCase
         $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
         $admin = $this->makeUser(UserRole::BANK_ADMIN, $this->bank);
 
-        $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_APPROVED);
-        $this->makeRequest($this->bank, $de, RequestStatus::CUSTOMS_DECLARATION_ISSUED);
-        $this->makeRequest($this->bank, $de, RequestStatus::COMPLETED);
-        $this->makeRequest($this->bank, $de, RequestStatus::DRAFT);
+        $this->makeRequest($this->bank, $de, 'CLOSED', 'CLOSED');
+        $this->makeRequest($this->bank, $de, 'CLOSED', 'CLOSED');
+        $this->makeRequest($this->bank, $de, 'CLOSED', 'CLOSED');
+        $this->makeRequest($this->bank, $de, 'CREATE');
 
         $this->actingAs($admin)
             ->getJson('/api/dashboard/stats')
@@ -558,10 +586,10 @@ class DashboardStatsTest extends TestCase
         $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
         $admin = $this->makeUser(UserRole::BANK_ADMIN, $this->bank);
 
-        $this->makeRequest($this->bank, $de, RequestStatus::BANK_REJECTED);
-        $this->makeRequest($this->bank, $de, RequestStatus::SUPPORT_REJECTED);
-        $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_REJECTED);
-        $this->makeRequest($this->bank, $de, RequestStatus::DRAFT);
+        $this->makeRequest($this->bank, $de, 'INTERNAL', 'REJECTED');
+        $this->makeRequest($this->bank, $de, 'SUPPORT', 'REJECTED');
+        $this->makeRequest($this->bank, $de, 'EXEC', 'REJECTED');
+        $this->makeRequest($this->bank, $de, 'CREATE');
 
         $this->actingAs($admin)
             ->getJson('/api/dashboard/stats')
@@ -573,9 +601,9 @@ class DashboardStatsTest extends TestCase
         $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
         $admin = $this->makeUser(UserRole::BANK_ADMIN, $this->bank);
 
-        $this->makeRequest($this->bank, $de, RequestStatus::COMPLETED, ['amount' => 10000.00]);
-        $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_APPROVED, ['amount' => 5000.00]);
-        $this->makeRequest($this->bank, $de, RequestStatus::DRAFT, ['amount' => 3000.00]);
+        $this->makeRequest($this->bank, $de, 'CLOSED', 'CLOSED', ['amount' => 10000.00]);
+        $this->makeRequest($this->bank, $de, 'CLOSED', 'CLOSED', ['amount' => 5000.00]);
+        $this->makeRequest($this->bank, $de, 'CREATE', 'ACTIVE', ['amount' => 3000.00]);
 
         $response = $this->actingAs($admin)->getJson('/api/dashboard/stats')->assertOk();
         $this->assertEquals(15000.0, $response->json('data.total_financed_amount'));
@@ -586,7 +614,7 @@ class DashboardStatsTest extends TestCase
         $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
         $admin = $this->makeUser(UserRole::BANK_ADMIN, $this->bank);
 
-        $this->makeRequest($this->bank, $de, RequestStatus::DRAFT, ['amount' => 5000.00]);
+        $this->makeRequest($this->bank, $de, 'CREATE', 'ACTIVE', ['amount' => 5000.00]);
 
         $response = $this->actingAs($admin)->getJson('/api/dashboard/stats')->assertOk();
         $this->assertEquals(0.0, $response->json('data.total_financed_amount'));
@@ -598,9 +626,9 @@ class DashboardStatsTest extends TestCase
         $admin = $this->makeUser(UserRole::BANK_ADMIN, $this->bank);
         $otherDe = $this->makeUser(UserRole::DATA_ENTRY, $this->otherBank);
 
-        $this->makeRequest($this->bank, $de, RequestStatus::SUBMITTED);
-        $this->makeRequest($this->otherBank, $otherDe, RequestStatus::SUBMITTED);
-        $this->makeRequest($this->otherBank, $otherDe, RequestStatus::SUBMITTED);
+        $this->makeRequest($this->bank, $de, 'INTERNAL');
+        $this->makeRequest($this->otherBank, $otherDe, 'INTERNAL');
+        $this->makeRequest($this->otherBank, $otherDe, 'INTERNAL');
 
         $this->actingAs($admin)
             ->getJson('/api/dashboard/stats')
@@ -629,9 +657,9 @@ class DashboardStatsTest extends TestCase
 
         $currentMonth = now()->format('Y-m');
 
-        $this->makeRequest($this->bank, $de, RequestStatus::DRAFT);
-        $this->makeRequest($this->bank, $de, RequestStatus::SUBMITTED);
-        $this->makeRequest($this->otherBank, $otherDe, RequestStatus::DRAFT);
+        $this->makeRequest($this->bank, $de, 'CREATE');
+        $this->makeRequest($this->bank, $de, 'INTERNAL');
+        $this->makeRequest($this->otherBank, $otherDe, 'CREATE');
 
         $response = $this->actingAs($admin)->getJson('/api/dashboard/stats')->assertOk();
         $monthly = $response->json('data.monthly_requests');
@@ -658,11 +686,11 @@ class DashboardStatsTest extends TestCase
     public function test_bank_admin_stats_keep_legacy_compatibility_keys(): void
     {
         $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
-        $reviewer = $this->makeUser(UserRole::BANK_REVIEWER, $this->bank);
+        $this->makeUser(UserRole::BANK_REVIEWER, $this->bank);
         $this->makeUser(UserRole::SWIFT_OFFICER, $this->bank);
         $admin = $this->makeUser(UserRole::BANK_ADMIN, $this->bank);
 
-        $this->makeRequest($this->bank, $de, RequestStatus::SUBMITTED);
+        $this->makeRequest($this->bank, $de, 'INTERNAL');
 
         $this->actingAs($admin)
             ->getJson('/api/dashboard/stats')
@@ -709,13 +737,13 @@ class DashboardStatsTest extends TestCase
             $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
             $admin = $this->makeUser(UserRole::BANK_ADMIN, $this->bank);
 
-            $aprilRequest = $this->makeRequest($this->bank, $de, RequestStatus::DRAFT);
+            $aprilRequest = $this->makeRequest($this->bank, $de, 'CREATE');
             $aprilRequest->forceFill([
                 'created_at' => '2026-04-30 23:59:59',
                 'updated_at' => '2026-04-30 23:59:59',
             ])->saveQuietly();
 
-            $mayRequest = $this->makeRequest($this->bank, $de, RequestStatus::DRAFT);
+            $mayRequest = $this->makeRequest($this->bank, $de, 'CREATE');
             $mayRequest->forceFill([
                 'created_at' => '2026-05-01 00:00:00',
                 'updated_at' => '2026-05-01 00:00:00',
@@ -737,7 +765,7 @@ class DashboardStatsTest extends TestCase
         $admin = $this->makeUser(UserRole::BANK_ADMIN, $this->bank);
 
         for ($i = 0; $i < 12; $i++) {
-            $this->makeRequest($this->bank, $de, RequestStatus::DRAFT);
+            $this->makeRequest($this->bank, $de, 'CREATE');
         }
 
         $response = $this->actingAs($admin)->getJson('/api/dashboard/stats')->assertOk();
@@ -749,13 +777,8 @@ class DashboardStatsTest extends TestCase
         $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
         $sc = $this->makeUser(UserRole::SUPPORT_COMMITTEE);
 
-        $req = $this->makeRequest($this->bank, $de, RequestStatus::SUPPORT_REVIEW_IN_PROGRESS);
-        app()->instance('workflow.transition.active', true);
-        try {
-            $req->update(['claimed_by' => $sc->id]);
-        } finally {
-            app()->offsetUnset('workflow.transition.active');
-        }
+        $req = $this->makeRequest($this->bank, $de, 'SUPPORT');
+        $req->update(['claimed_by' => $sc->id, 'claimed_at' => now(), 'claim_expires_at' => now()->addMinutes(15)]);
 
         $response = $this->actingAs($sc)->getJson('/api/dashboard/stats')->assertOk();
         $queue = $response->json('data.support_queue');
@@ -771,8 +794,8 @@ class DashboardStatsTest extends TestCase
         $de2 = $this->makeUser(UserRole::DATA_ENTRY, $this->otherBank);
         $sc = $this->makeUser(UserRole::SUPPORT_COMMITTEE);
 
-        $this->makeRequest($this->bank, $de1, RequestStatus::SUPPORT_REVIEW_PENDING);
-        $this->makeRequest($this->otherBank, $de2, RequestStatus::SUPPORT_REVIEW_PENDING);
+        $this->makeRequest($this->bank, $de1, 'SUPPORT');
+        $this->makeRequest($this->otherBank, $de2, 'SUPPORT');
 
         $this->actingAs($sc)
             ->getJson('/api/dashboard/stats')
@@ -785,7 +808,7 @@ class DashboardStatsTest extends TestCase
         $sc = $this->makeUser(UserRole::SUPPORT_COMMITTEE);
 
         for ($i = 0; $i < 55; $i++) {
-            $this->makeRequest($this->bank, $de, RequestStatus::SUPPORT_REVIEW_PENDING);
+            $this->makeRequest($this->bank, $de, 'SUPPORT');
         }
 
         $response = $this->actingAs($sc)->getJson('/api/dashboard/stats')->assertOk();
@@ -823,9 +846,9 @@ class DashboardStatsTest extends TestCase
         $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
         $swift = $this->makeUser(UserRole::SWIFT_OFFICER, $this->bank);
 
-        $this->makeRequest($this->bank, $de, RequestStatus::WAITING_FOR_SWIFT);
-        $this->makeRequest($this->bank, $de, RequestStatus::WAITING_FOR_SWIFT);
-        $this->makeRequest($this->bank, $de, RequestStatus::SWIFT_UPLOADED);
+        $this->makeRequest($this->bank, $de, 'FX');
+        $this->makeRequest($this->bank, $de, 'FX');
+        $this->makeRequest($this->bank, $de, 'FX', 'CLOSED');
 
         $this->actingAs($swift)
             ->getJson('/api/dashboard/stats')
@@ -838,11 +861,10 @@ class DashboardStatsTest extends TestCase
         $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
         $swift = $this->makeUser(UserRole::SWIFT_OFFICER, $this->bank);
 
-        // Production swift_upload auto-chains SWIFT_UPLOADED to WAITING_FOR_VOTING_OPEN,
-        // so the stable uploaded signal is the request-level upload timestamp.
-        $this->makeRequest($this->bank, $de, RequestStatus::WAITING_FOR_VOTING_OPEN, ['swift_uploaded_at' => now()]);
-        $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_VOTING_OPEN, ['swift_uploaded_at' => now()]);
-        $this->makeRequest($this->bank, $de, RequestStatus::WAITING_FOR_SWIFT);
+        // "uploaded" now means present in (or past) the FX stage at all.
+        $this->makeRequest($this->bank, $de, 'FX');
+        $this->makeRequest($this->bank, $de, 'FX', 'CLOSED');
+        $this->makeRequest($this->bank, $de, 'INTERNAL');
 
         $this->actingAs($swift)
             ->getJson('/api/dashboard/stats')
@@ -855,10 +877,9 @@ class DashboardStatsTest extends TestCase
         $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
         $swift = $this->makeUser(UserRole::SWIFT_OFFICER, $this->bank);
 
-        $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_APPROVED);
-        $this->makeRequest($this->bank, $de, RequestStatus::CUSTOMS_DECLARATION_ISSUED);
-        $this->makeRequest($this->bank, $de, RequestStatus::COMPLETED);
-        $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_REJECTED);
+        $this->makeRequest($this->bank, $de, 'EXEC', 'CLOSED');
+        $this->makeRequest($this->bank, $de, 'EXEC', 'CLOSED');
+        $this->makeRequest($this->bank, $de, 'EXEC', 'REJECTED');
 
         $this->actingAs($swift)
             ->getJson('/api/dashboard/stats')
@@ -871,8 +892,8 @@ class DashboardStatsTest extends TestCase
         $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
         $swift = $this->makeUser(UserRole::SWIFT_OFFICER, $this->bank);
 
-        $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_REJECTED);
-        $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_APPROVED);
+        $this->makeRequest($this->bank, $de, 'EXEC', 'REJECTED');
+        $this->makeRequest($this->bank, $de, 'EXEC', 'CLOSED');
 
         $this->actingAs($swift)
             ->getJson('/api/dashboard/stats')
@@ -885,17 +906,16 @@ class DashboardStatsTest extends TestCase
         $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
         $swift = $this->makeUser(UserRole::SWIFT_OFFICER, $this->bank);
 
-        $this->makeRequest($this->bank, $de, RequestStatus::WAITING_FOR_SWIFT);
-        $this->makeRequest($this->bank, $de, RequestStatus::SWIFT_UPLOADED);
-        $this->makeRequest($this->bank, $de, RequestStatus::SUPPORT_APPROVED);
+        $this->makeRequest($this->bank, $de, 'FX');
+        $this->makeRequest($this->bank, $de, 'FX', 'CLOSED');
+        $this->makeRequest($this->bank, $de, 'SUPPORT', 'CLOSED');
 
         $response = $this->actingAs($swift)->getJson('/api/dashboard/stats')->assertOk();
         $queue = $response->json('data.swift_queue');
         $this->assertCount(2, $queue);
 
-        $statuses = collect($queue)->pluck('status')->all();
-        $this->assertContains(RequestStatus::WAITING_FOR_SWIFT->value, $statuses);
-        $this->assertContains(RequestStatus::SWIFT_UPLOADED->value, $statuses);
+        $stageCodes = collect($queue)->pluck('stage_code')->all();
+        $this->assertSame(['FX', 'FX'], $stageCodes);
     }
 
     public function test_swift_officer_cannot_see_other_bank_requests(): void
@@ -904,8 +924,8 @@ class DashboardStatsTest extends TestCase
         $de2 = $this->makeUser(UserRole::DATA_ENTRY, $this->otherBank);
         $swift = $this->makeUser(UserRole::SWIFT_OFFICER, $this->bank);
 
-        $this->makeRequest($this->bank, $de1, RequestStatus::WAITING_FOR_SWIFT);
-        $this->makeRequest($this->otherBank, $de2, RequestStatus::WAITING_FOR_SWIFT);
+        $this->makeRequest($this->bank, $de1, 'FX');
+        $this->makeRequest($this->otherBank, $de2, 'FX');
 
         $this->actingAs($swift)
             ->getJson('/api/dashboard/stats')
@@ -919,14 +939,14 @@ class DashboardStatsTest extends TestCase
         $swift = $this->makeUser(UserRole::SWIFT_OFFICER, $this->bank);
 
         for ($i = 0; $i < 55; $i++) {
-            $this->makeRequest($this->bank, $de, RequestStatus::WAITING_FOR_SWIFT);
+            $this->makeRequest($this->bank, $de, 'FX');
         }
 
         $response = $this->actingAs($swift)->getJson('/api/dashboard/stats')->assertOk();
         $this->assertCount(50, $response->json('data.swift_queue'));
     }
 
-    // ─── EXECUTIVE_MEMBER stats ───────────────────────────────────────────────
+    // ─── EXECUTIVE_MEMBER stats (voting removed by DI-3 — zeroed) ────────────
 
     public function test_executive_member_stats_returns_correct_kpi_keys(): void
     {
@@ -945,84 +965,19 @@ class DashboardStatsTest extends TestCase
             ]]);
     }
 
-    public function test_executive_member_waiting_for_voting_open_count(): void
+    public function test_executive_member_voting_counters_are_zeroed(): void
     {
-        $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
         $exec = $this->makeUser(UserRole::EXECUTIVE_MEMBER);
-
-        $this->makeRequest($this->bank, $de, RequestStatus::WAITING_FOR_VOTING_OPEN);
-        $this->makeRequest($this->bank, $de, RequestStatus::WAITING_FOR_VOTING_OPEN);
-        $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_VOTING_OPEN);
 
         $this->actingAs($exec)
             ->getJson('/api/dashboard/stats')
             ->assertOk()
-            ->assertJsonPath('data.waiting_for_voting_open', 2);
-    }
-
-    public function test_executive_member_active_voting_sessions_count(): void
-    {
-        $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
-        $exec = $this->makeUser(UserRole::EXECUTIVE_MEMBER);
-
-        $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_VOTING_OPEN);
-        $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_VOTING_OPEN);
-        $this->makeRequest($this->bank, $de, RequestStatus::WAITING_FOR_VOTING_OPEN);
-
-        $this->actingAs($exec)
-            ->getJson('/api/dashboard/stats')
-            ->assertOk()
-            ->assertJsonPath('data.active_voting_sessions', 2);
-    }
-
-    public function test_executive_member_decisions_approved_count(): void
-    {
-        $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
-        $exec = $this->makeUser(UserRole::EXECUTIVE_MEMBER);
-
-        $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_APPROVED);
-        $this->makeRequest($this->bank, $de, RequestStatus::CUSTOMS_DECLARATION_ISSUED);
-        $this->makeRequest($this->bank, $de, RequestStatus::COMPLETED);
-        $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_REJECTED);
-
-        $this->actingAs($exec)
-            ->getJson('/api/dashboard/stats')
-            ->assertOk()
-            ->assertJsonPath('data.decisions_approved', 3);
-    }
-
-    public function test_executive_member_decisions_rejected_count(): void
-    {
-        $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
-        $exec = $this->makeUser(UserRole::EXECUTIVE_MEMBER);
-
-        $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_REJECTED);
-        $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_APPROVED);
-
-        $this->actingAs($exec)
-            ->getJson('/api/dashboard/stats')
-            ->assertOk()
-            ->assertJsonPath('data.decisions_rejected', 1);
-    }
-
-    public function test_executive_member_voting_queue_contains_correct_statuses(): void
-    {
-        $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
-        $exec = $this->makeUser(UserRole::EXECUTIVE_MEMBER);
-
-        $this->makeRequest($this->bank, $de, RequestStatus::WAITING_FOR_VOTING_OPEN);
-        $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_VOTING_OPEN);
-        $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_VOTING_CLOSED);
-        $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_APPROVED);
-
-        $response = $this->actingAs($exec)->getJson('/api/dashboard/stats')->assertOk();
-        $queue = $response->json('data.voting_queue');
-        $statuses = array_column($queue, 'status');
-
-        $this->assertContains(RequestStatus::WAITING_FOR_VOTING_OPEN->value, $statuses);
-        $this->assertContains(RequestStatus::EXECUTIVE_VOTING_OPEN->value, $statuses);
-        $this->assertContains(RequestStatus::EXECUTIVE_VOTING_CLOSED->value, $statuses);
-        $this->assertCount(3, $queue);
+            ->assertJsonPath('data.waiting_for_voting_open', 0)
+            ->assertJsonPath('data.active_voting_sessions', 0)
+            ->assertJsonPath('data.decisions_approved', 0)
+            ->assertJsonPath('data.decisions_rejected', 0)
+            ->assertJsonPath('data.finalized_decisions', 0)
+            ->assertJsonPath('data.voting_queue', []);
     }
 
     // ─── COMMITTEE_DIRECTOR stats ─────────────────────────────────────────────
@@ -1045,64 +1000,52 @@ class DashboardStatsTest extends TestCase
             ]]);
     }
 
-    public function test_committee_director_sees_all_banks_requests(): void
+    public function test_committee_director_sees_all_banks_fx_confirmation_pending(): void
     {
         $de1 = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
         $de2 = $this->makeUser(UserRole::DATA_ENTRY, $this->otherBank);
         $director = $this->makeUser(UserRole::COMMITTEE_DIRECTOR);
 
-        $this->makeRequest($this->bank, $de1, RequestStatus::WAITING_FOR_VOTING_OPEN);
-        $this->makeRequest($this->otherBank, $de2, RequestStatus::WAITING_FOR_VOTING_OPEN);
+        $this->makeRequest($this->bank, $de1, 'FX_CONFIRM');
+        $this->makeRequest($this->otherBank, $de2, 'FX_CONFIRM');
 
         $this->actingAs($director)
             ->getJson('/api/dashboard/stats')
             ->assertOk()
-            ->assertJsonPath('data.waiting_for_voting_open', 2);
+            ->assertJsonPath('data.fx_confirmation_pending', 2);
     }
 
-    public function test_committee_director_voting_queue_max_50(): void
+    public function test_committee_director_voting_queue_is_empty(): void
     {
-        $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
         $director = $this->makeUser(UserRole::COMMITTEE_DIRECTOR);
-
-        for ($i = 0; $i < 55; $i++) {
-            $this->makeRequest($this->bank, $de, RequestStatus::WAITING_FOR_VOTING_OPEN);
-        }
 
         $response = $this->actingAs($director)->getJson('/api/dashboard/stats')->assertOk();
-        $this->assertCount(50, $response->json('data.voting_queue'));
+        $this->assertSame([], $response->json('data.voting_queue'));
     }
 
-    public function test_committee_director_finalized_decisions_count(): void
+    public function test_committee_director_finalized_decisions_is_zeroed(): void
     {
-        $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
         $director = $this->makeUser(UserRole::COMMITTEE_DIRECTOR);
-
-        $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_APPROVED);
-        $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_REJECTED);
-        $this->makeRequest($this->bank, $de, RequestStatus::CUSTOMS_DECLARATION_ISSUED);
-        $this->makeRequest($this->bank, $de, RequestStatus::COMPLETED);
-        $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_VOTING_OPEN);
 
         $this->actingAs($director)
             ->getJson('/api/dashboard/stats')
             ->assertOk()
-            ->assertJsonPath('data.finalized_decisions', 4);
+            ->assertJsonPath('data.finalized_decisions', 0);
     }
 
-    public function test_committee_director_customs_declaration_pending_lists_executive_approved(): void
+    public function test_committee_director_customs_declaration_pending_lists_fx_confirmation_stage(): void
     {
         $de = $this->makeUser(UserRole::DATA_ENTRY, $this->bank);
         $director = $this->makeUser(UserRole::COMMITTEE_DIRECTOR);
 
-        $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_APPROVED);
-        $this->makeRequest($this->bank, $de, RequestStatus::COMPLETED);
-        $this->makeRequest($this->bank, $de, RequestStatus::EXECUTIVE_REJECTED);
+        $this->makeRequest($this->bank, $de, 'FX_CONFIRM');
+        $this->makeRequest($this->bank, $de, 'CLOSED', 'CLOSED');
+        $this->makeRequest($this->bank, $de, 'EXEC', 'REJECTED');
 
         $response = $this->actingAs($director)->getJson('/api/dashboard/stats')->assertOk();
         $pending = $response->json('data.customs_declaration_pending');
 
         $this->assertCount(1, $pending);
-        $this->assertSame(RequestStatus::EXECUTIVE_APPROVED->value, $pending[0]['status']);
+        $this->assertSame('FX_CONFIRM', $pending[0]['stage_code']);
     }
 }
