@@ -34,11 +34,6 @@ class CustomsDeclaration extends Model
         return $this->signed_fx_doc_path !== null;
     }
 
-    public function request(): BelongsTo
-    {
-        return $this->belongsTo(ImportRequest::class, 'request_id');
-    }
-
     public function engineRequest(): BelongsTo
     {
         return $this->belongsTo(EngineRequest::class, 'engine_request_id');

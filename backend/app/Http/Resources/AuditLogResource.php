@@ -3,7 +3,6 @@
 namespace App\Http\Resources;
 
 use App\Models\EngineRequest;
-use App\Models\ImportRequest;
 use App\Support\EngineRequestReadModel;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -52,21 +51,6 @@ class AuditLogResource extends JsonResource
                 ->find($this->subject_id);
 
             return EngineRequestReadModel::reference($engineRequest, $this->subject_id);
-        }
-
-        // Legacy ImportRequest subject (coexistence — keep until P3/P4)
-        if (in_array($this->subject_type, [ImportRequest::class, 'import_request'], true)) {
-            $request = ImportRequest::query()
-                ->select(['id', 'created_at'])
-                ->find($this->subject_id);
-
-            if (! $request) {
-                return null;
-            }
-
-            $year = $request->created_at?->format('Y') ?? now()->format('Y');
-
-            return 'IMP-'.$year.'-'.str_pad((string) $request->id, 4, '0', STR_PAD_LEFT);
         }
 
         return null;

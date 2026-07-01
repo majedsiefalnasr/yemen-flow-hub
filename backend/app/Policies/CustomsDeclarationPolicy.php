@@ -47,16 +47,8 @@ class CustomsDeclarationPolicy
 
     private function resolveBankId(CustomsDeclaration $declaration): ?int
     {
-        // Engine-issued: request_id is null, engine_request_id is set.
-        if ($declaration->engine_request_id !== null) {
-            $declaration->loadMissing('engineRequest');
+        $declaration->loadMissing('engineRequest');
 
-            return $declaration->engineRequest?->bank_id;
-        }
-
-        // Legacy-issued: request_id is set.
-        $declaration->loadMissing('request');
-
-        return $declaration->request?->bank_id;
+        return $declaration->engineRequest?->bank_id;
     }
 }

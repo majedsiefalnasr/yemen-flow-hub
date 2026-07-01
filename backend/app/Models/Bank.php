@@ -41,11 +41,6 @@ class Bank extends Model
         return $this->hasOne(User::class)->where('role', UserRole::BANK_ADMIN->value);
     }
 
-    public function importRequests(): HasMany
-    {
-        return $this->hasMany(ImportRequest::class);
-    }
-
     public function engineRequests(): HasMany
     {
         return $this->hasMany(EngineRequest::class);

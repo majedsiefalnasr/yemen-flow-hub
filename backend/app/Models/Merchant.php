@@ -42,11 +42,6 @@ class Merchant extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
-    public function importRequests(): HasMany
-    {
-        return $this->hasMany(ImportRequest::class);
-    }
-
     public function engineRequests(): HasMany
     {
         return $this->hasMany(EngineRequest::class);

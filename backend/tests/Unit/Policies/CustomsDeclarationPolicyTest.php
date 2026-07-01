@@ -6,7 +6,6 @@ use App\Enums\UserRole;
 use App\Models\Bank;
 use App\Models\CustomsDeclaration;
 use App\Models\EngineRequest;
-use App\Models\ImportRequest;
 use App\Models\User;
 use App\Policies\CustomsDeclarationPolicy;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -57,17 +56,6 @@ class CustomsDeclarationPolicyTest extends TestCase
 
         $this->assertTrue($this->policy->download($sameReviewer, $declaration));
         $this->assertFalse($this->policy->download($otherReviewer, $declaration));
-    }
-
-    public function test_legacy_declaration_download_still_works(): void
-    {
-        $bank = $this->makeBank();
-        $importRequest = $this->makeImportRequest($bank->id);
-        $declaration = $this->makeLegacyDeclaration($importRequest);
-
-        $director = User::factory()->create(['role' => UserRole::COMMITTEE_DIRECTOR]);
-
-        $this->assertTrue($this->policy->download($director, $declaration));
     }
 
     // ── downloadSignedFx() ───────────────────────────────────────────────
@@ -135,45 +123,6 @@ class CustomsDeclarationPolicyTest extends TestCase
             'issued_by' => $engineRequest->created_by,
             'issued_at' => now()->toDateTimeString(),
             'pdf_path' => 'fx-confirmation/test.pdf',
-            'metadata' => json_encode([]),
-            'created_at' => now()->toDateTimeString(),
-            'updated_at' => now()->toDateTimeString(),
-        ]);
-
-        return CustomsDeclaration::findOrFail($id);
-    }
-
-    private function makeImportRequest(int $bankId): ImportRequest
-    {
-        $user = User::factory()->create(['bank_id' => $bankId]);
-
-        app()->instance('workflow.transition.active', true);
-
-        try {
-            return ImportRequest::create([
-                'bank_id' => $bankId,
-                'created_by' => $user->id,
-                'status' => 'SUBMITTED',
-                'current_owner_role' => UserRole::BANK_REVIEWER,
-                'currency' => 'USD',
-                'amount' => 1000,
-                'supplier_name' => 'Test Supplier',
-                'goods_description' => 'Test goods',
-                'port_of_entry' => 'Aden',
-            ]);
-        } finally {
-            app()->forgetInstance('workflow.transition.active');
-        }
-    }
-
-    private function makeLegacyDeclaration(ImportRequest $importRequest): CustomsDeclaration
-    {
-        $id = DB::table('customs_declarations')->insertGetId([
-            'request_id' => $importRequest->id,
-            'declaration_number' => 'FX-LEGACY-'.uniqid(),
-            'issued_by' => $importRequest->created_by,
-            'issued_at' => now()->toDateTimeString(),
-            'pdf_path' => 'fx-confirmation/legacy.pdf',
             'metadata' => json_encode([]),
             'created_at' => now()->toDateTimeString(),
             'updated_at' => now()->toDateTimeString(),
