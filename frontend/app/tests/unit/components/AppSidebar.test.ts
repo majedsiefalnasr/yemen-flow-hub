@@ -125,7 +125,7 @@ describe('AppSidebar navigation contract', () => {
   it('uses the active canonical sidebar source (frontend/app/components/AppSidebar.vue contract)', () => {
     const routes = visibleRoutes(UserRole.CBY_ADMIN)
     expect(routes).toContain('/dashboard')
-    expect(routes).toContain('/requests')
+    expect(routes).toContain('/workflows')
   })
 
   it('does not expose director external-FX nav for CBY_ADMIN', () => {

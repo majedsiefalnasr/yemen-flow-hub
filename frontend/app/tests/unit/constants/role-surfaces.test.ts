@@ -32,7 +32,7 @@ describe('ROLE_SURFACE_MATRIX', () => {
 
   it('maps navigation routes from surfaces consistently', () => {
     expect(NAV_SURFACE_ROUTES['nav.dashboard']).toBe('/dashboard')
-    expect(NAV_SURFACE_ROUTES['nav.requests']).toBe('/requests')
+    expect(NAV_SURFACE_ROUTES['nav.requests']).toBe('/workflows')
     expect(NAV_SURFACE_ROUTES['nav.external_fx_confirmation']).toBe('/customs')
   })
 

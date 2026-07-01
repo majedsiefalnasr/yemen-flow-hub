@@ -7,22 +7,22 @@ function navItemsForRole(role: UserRole) {
 }
 
 describe('NAV_ITEMS role filtering', () => {
-  it('all roles see dashboard and requests', () => {
+  it('all roles see dashboard and workflows', () => {
     for (const role of Object.values(UserRole)) {
       const routes = navItemsForRole(role).map((i) => i.route)
       expect(routes).toContain('/dashboard')
-      expect(routes).toContain('/requests')
+      expect(routes).toContain('/workflows')
     }
   })
 
   it('DATA_ENTRY sees new request form', () => {
     const routes = navItemsForRole(UserRole.DATA_ENTRY).map((i) => i.route)
-    expect(routes).toContain('/requests/new')
+    expect(routes).toContain('/workflows/new')
   })
 
   it('BANK_REVIEWER does not see new request form', () => {
     const routes = navItemsForRole(UserRole.BANK_REVIEWER).map((i) => i.route)
-    expect(routes).not.toContain('/requests/new')
+    expect(routes).not.toContain('/workflows/new')
   })
 
   it('COMMITTEE_DIRECTOR sees customs', () => {
@@ -39,7 +39,7 @@ describe('NAV_ITEMS role filtering', () => {
     const routes = navItemsForRole(UserRole.CBY_ADMIN).map((i) => i.route)
     expect(routes).toContain('/admin/cby-staff')
     expect(routes).toContain('/admin/banks')
-    expect(routes).toContain('/admin/workflow-docs')
+    expect(routes).toContain('/admin/workflows')
     expect(routes).toContain('/admin/roles')
     expect(routes).toContain('/audit')
     expect(routes).toContain('/settings')
@@ -68,7 +68,7 @@ describe('NAV_ITEMS role filtering', () => {
   it('BANK_ADMIN sees merchants, staff, reports, notifications', () => {
     const routes = navItemsForRole(UserRole.BANK_ADMIN).map((i) => i.route)
     expect(routes).toContain('/dashboard')
-    expect(routes).toContain('/requests')
+    expect(routes).toContain('/workflows')
     expect(routes).toContain('/merchants')
     expect(routes).toContain('/staff')
     expect(routes).toContain('/reports')

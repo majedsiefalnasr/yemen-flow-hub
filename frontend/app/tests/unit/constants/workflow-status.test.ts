@@ -317,7 +317,7 @@ describe('Role group constants', () => {
       expect(ROUTE_ROLE_MAP['/audit']).not.toContain(UserRole.BANK_ADMIN)
       expect(ROUTE_ROLE_MAP['/reports']).toContain(UserRole.BANK_ADMIN)
       expect(ROUTE_ROLE_MAP['/reports']).not.toContain(UserRole.SUPPORT_COMMITTEE)
-      expect(ROUTE_ROLE_MAP['/requests/new']).toEqual([UserRole.DATA_ENTRY])
+      expect(ROUTE_ROLE_MAP['/workflows/new']).toEqual([UserRole.DATA_ENTRY])
     })
 
     it('limits external-FX route to COMMITTEE_DIRECTOR', () => {
