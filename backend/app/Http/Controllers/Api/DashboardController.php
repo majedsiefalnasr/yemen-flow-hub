@@ -506,6 +506,7 @@ class DashboardController extends Controller
         $colors = ['#0066cc', '#1b5e20', '#f57f17', '#c62828', '#5856d6', '#32ade6'];
 
         $groups = EngineRequestReadModel::queryFor(request()->user())
+            ->select([])
             ->selectRaw('engine_requests.currency as label, COUNT(*) as `count`')
             ->groupBy('engine_requests.currency')
             ->orderByDesc('count')
@@ -533,6 +534,7 @@ class DashboardController extends Controller
             ->whereDoesntHave('currentStage', fn ($q) => $q->whereIn('workflow_stages.code', ['CREATE']))
             ->whereNotNull('engine_requests.merchant_id')
             ->join('merchants', 'merchants.id', '=', 'engine_requests.merchant_id')
+            ->select([])
             ->selectRaw('merchants.name as supplier_name, COUNT(*) as `count`')
             ->groupBy('merchants.name')
             ->havingRaw('COUNT(*) > 1')
