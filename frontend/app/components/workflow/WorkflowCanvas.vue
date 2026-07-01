@@ -11,6 +11,9 @@ import {
   type NodeTypesObject,
   type Connection,
   type NodeMouseEvent,
+  type EdgeMouseEvent,
+  type EdgeUpdateEvent,
+  type GraphEdge,
   useVueFlow,
 } from '@vue-flow/core'
 import { Background, BackgroundVariant } from '@vue-flow/background'
@@ -286,8 +289,39 @@ function onConnect(conn: Connection) {
   if (from && to && editable.value) openAddTransition(from, to)
 }
 
-// ── Edge click → delete transition ───────────────────────────────────────────
-async function onEdgeClick(_: MouseEvent, edge: Edge) {
+// ── Edge drag-to-reconnect ────────────────────────────────────────────────────
+// When user drags an edge endpoint to a new stage, update the transition via API.
+const { updateEdge } = useVueFlow()
+
+async function onEdgeUpdate({ edge, connection }: EdgeUpdateEvent) {
+  if (!editable.value) return
+  const transitionId = edge.data?.transitionId as number | undefined
+  if (!transitionId) return
+  const transition = transitions.value.find((t) => t.id === transitionId)
+  if (!transition) return
+  const newFrom = Number(connection.source?.replace('stage-', ''))
+  const newTo = Number(connection.target?.replace('stage-', ''))
+  if (!newFrom || !newTo) return
+  try {
+    // Optimistically update the visual edge
+    updateEdge(edge as GraphEdge, connection)
+    await createTransition(props.version.id, {
+      from_stage_id: newFrom,
+      action_id: transition.action_id,
+      to_stage_id: newTo,
+      requires_comment: transition.requires_comment,
+    })
+    await deleteTransition(transition)
+    await fetchGraph(props.version.id)
+    toast.success('تم تحديث الانتقال')
+  } catch (cause) {
+    toast.error(extractApiErrorMessage(cause, 'تعذّر تحديث الانتقال'))
+    await fetchGraph(props.version.id)
+  }
+}
+
+// ── Edge double-click → delete transition ────────────────────────────────────
+async function onEdgeDblClick({ edge }: EdgeMouseEvent) {
   if (!editable.value) return
   const transitionId = edge.data?.transitionId as number | undefined
   if (!transitionId) return
@@ -297,9 +331,35 @@ async function onEdgeClick(_: MouseEvent, edge: Edge) {
   try {
     await deleteTransition(transition)
     await fetchGraph(props.version.id)
+    await fetchTransitions(props.version.id)
     toast.success('تم حذف الانتقال')
   } catch (cause) {
     toast.error(extractApiErrorMessage(cause, 'تعذّر حذف الانتقال'))
+  }
+}
+
+// ── Delete key on selected edges ─────────────────────────────────────────────
+// VueFlow fires edges-change with type 'remove' when Delete/Backspace pressed on selected edge.
+// We intercept and call the API instead of letting VueFlow remove it from local state.
+async function onEdgesChange(changes: Array<{ type: string; id?: string }>) {
+  if (!editable.value) return
+  const removals = changes.filter((c) => c.type === 'remove')
+  for (const c of removals) {
+    const edgeId = c.id
+    if (!edgeId) continue
+    // edgeId format: "e{transitionId}"
+    const transitionId = Number(edgeId.replace('e', ''))
+    if (!transitionId) continue
+    const transition = transitions.value.find((t) => t.id === transitionId)
+    if (!transition) continue
+    try {
+      await deleteTransition(transition)
+      toast.success('تم حذف الانتقال')
+    } catch (cause) {
+      toast.error(extractApiErrorMessage(cause, 'تعذّر حذف الانتقال'))
+    }
+    await fetchGraph(props.version.id)
+    await fetchTransitions(props.version.id)
   }
 }
 
@@ -379,7 +439,7 @@ function handleFit() { void fitView({ duration: 300, padding: 0.12 }) }
         :edges="edges"
         :node-types="nodeTypes"
         :nodes-draggable="true"
-        :edges-updatable="false"
+        :edges-updatable="editable"
         :connectable="editable"
         :zoom-on-scroll="true"
         :pan-on-drag="true"
@@ -390,10 +450,13 @@ function handleFit() { void fitView({ duration: 300, padding: 0.12 }) }
         :fit-view-on-init-options="{ padding: 0.12 }"
         :min-zoom="0.2"
         :max-zoom="3"
+        :delete-key-code="editable ? 'Delete' : null"
         dir="ltr"
         @node-drag-stop="onNodeDragStop"
         @connect="onConnect"
-        @edge-click="onEdgeClick"
+        @edge-update="onEdgeUpdate"
+        @edge-double-click="onEdgeDblClick"
+        @edges-change="onEdgesChange"
         @node-double-click="onNodeDblClick"
       >
         <Background :variant="BackgroundVariant.Dots" :size="1.5" :gap="24" />
