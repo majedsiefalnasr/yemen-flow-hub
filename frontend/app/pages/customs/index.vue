@@ -1,11 +1,9 @@
 <script setup lang="ts">
 import { CheckCircle2, FileSignature, PackageCheck, RefreshCw, Truck } from 'lucide-vue-next'
 import PageHeader from '@/components/layout/PageHeader.vue'
-import { RequestStatus } from '@/types/enums'
-import type { ImportRequest } from '@/types/models'
-import { getBusinessStatus, ROUTE_ROLE_MAP } from '@/constants/workflow'
-import { useAuthStore } from '@/stores/auth.store'
-import { useRequests } from '@/composables/useRequests'
+import type { EngineRequest } from '@/types/models'
+import { ROUTE_ROLE_MAP } from '@/constants/workflow'
+import { useEngineRequests } from '@/composables/useEngineRequests'
 import { Skeleton } from '@/components/ui/skeleton'
 import LoadErrorAlert from '@/components/shared/LoadErrorAlert.vue'
 import {
@@ -21,18 +19,15 @@ definePageMeta({
   requiredRoles: ROUTE_ROLE_MAP['/customs'],
 })
 
-const authStore = useAuthStore()
-const user = computed(() => authStore.user)
-const { fetchRequests } = useRequests()
+// Two separate composable instances to avoid shared state between ready/issued panels
+const readyComposable = useEngineRequests()
+const issuedComposable = useEngineRequests()
 
-// Ready for issuance — EXECUTIVE_APPROVED or FX_CONFIRMATION_PENDING
-// These should be few at any given time; fetch all with a high per_page
-const ready = ref<ImportRequest[]>([])
+const ready = ref<EngineRequest[]>([])
 const loadingReady = ref(false)
 const readyError = ref<string | null>(null)
 
-// Issued — CUSTOMS_DECLARATION_ISSUED or COMPLETED — paginated with load-more
-const issued = ref<ImportRequest[]>([])
+const issued = ref<EngineRequest[]>([])
 const loadingIssued = ref(false)
 const issuedError = ref<string | null>(null)
 const issuedPage = ref(1)
@@ -43,11 +38,8 @@ async function fetchReady() {
   loadingReady.value = true
   readyError.value = null
   try {
-    const result = await fetchRequests({
-      status: [RequestStatus.EXECUTIVE_APPROVED, RequestStatus.FX_CONFIRMATION_PENDING],
-      per_page: 50,
-    })
-    ready.value = result.data
+    await readyComposable.fetchQueue({ per_page: 50 })
+    ready.value = readyComposable.queue.value
   } catch {
     readyError.value = 'تعذّر تحميل الطلبات الجاهزة.'
   } finally {
@@ -59,18 +51,17 @@ async function fetchIssued(page: number) {
   loadingIssued.value = true
   issuedError.value = null
   try {
-    const result = await fetchRequests({
-      status: [RequestStatus.CUSTOMS_DECLARATION_ISSUED, RequestStatus.COMPLETED],
-      per_page: ISSUED_PER_PAGE,
-      page,
-    })
+    await issuedComposable.fetchList({ status: 'CLOSED', per_page: ISSUED_PER_PAGE, page })
     if (page === 1) {
-      issued.value = result.data
+      issued.value = issuedComposable.instances.value
     } else {
-      issued.value.push(...result.data)
+      issued.value.push(...issuedComposable.instances.value)
     }
-    issuedPage.value = result.meta.current_page
-    issuedHasMore.value = result.meta.current_page < result.meta.last_page
+    const meta = issuedComposable.instancesMeta.value
+    if (meta) {
+      issuedPage.value = meta.current_page
+      issuedHasMore.value = meta.current_page < meta.last_page
+    }
   } catch {
     issuedError.value = 'تعذّر تحميل التأكيدات الصادرة.'
   } finally {
@@ -88,7 +79,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div v-if="user">
+  <div>
     <PageHeader
       title="تأكيد المصارفة الخارجية"
       subtitle="إصدار وطباعة تأكيدات المصارفة الخارجية للطلبات المعتمدة من اللجنة التنفيذية"
@@ -171,8 +162,8 @@ onMounted(() => {
         <!-- List -->
         <div v-else class="space-y-3">
           <div
-            v-for="request in ready"
-            :key="request.id"
+            v-for="instance in ready"
+            :key="instance.id"
             class="flex items-center gap-3 rounded-lg border p-3 transition-colors hover:border-[var(--severity-green)]/20"
           >
             <div
@@ -183,14 +174,14 @@ onMounted(() => {
 
             <div class="min-w-0 flex-1">
               <div class="font-mono text-sm font-semibold">
-                {{ request.reference_number }}
+                {{ instance.reference }}
               </div>
               <div class="text-muted-foreground truncate text-xs">
-                {{ request.merchant?.name }} · {{ request.port_of_entry }}
+                {{ instance.merchant?.name ?? '—' }}
               </div>
             </div>
 
-            <Button as="a" size="sm" :href="`/customs/${request.id}/print`">
+            <Button as="a" size="sm" :href="`/workflows/instances/${instance.id}`">
               <FileSignature class="ms-1 h-3.5 w-3.5" />
               إصدار تأكيد مصارفة خارجية
             </Button>
@@ -242,24 +233,24 @@ onMounted(() => {
         <!-- List -->
         <div v-else class="space-y-3">
           <div
-            v-for="request in issued"
-            :key="request.id"
+            v-for="instance in issued"
+            :key="instance.id"
             class="flex items-center gap-3 rounded-lg border p-3"
           >
             <div class="min-w-0 flex-1">
               <div class="font-mono text-sm font-semibold">
-                {{ request.customs_declaration?.declaration_number ?? request.reference_number }}
+                {{ instance.reference }}
               </div>
               <div class="text-muted-foreground truncate text-xs">
-                {{ request.merchant?.name }}
+                {{ instance.merchant?.name ?? '—' }}
               </div>
             </div>
 
             <Badge variant="secondary" class="text-xs leading-none">
-              {{ user ? getBusinessStatus(request.status, user.role).label : request.status }}
+              {{ instance.current_stage?.name ?? 'مكتمل' }}
             </Badge>
 
-            <Button as="a" size="sm" variant="outline" :href="`/customs/${request.id}/print`">
+            <Button as="a" size="sm" variant="outline" :href="`/workflows/instances/${instance.id}`">
               عرض/طباعة
             </Button>
           </div>

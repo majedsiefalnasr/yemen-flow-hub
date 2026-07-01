@@ -328,8 +328,8 @@ export const NAV_SURFACE_ROUTES: Record<
   string
 > = {
   'nav.dashboard': '/dashboard',
-  'nav.requests': '/requests',
-  'nav.new_request': '/requests/new',
+  'nav.requests': '/workflows',
+  'nav.new_request': '/workflows/new',
   'nav.workflows': '/workflows',
   'nav.workflows_new': '/workflows/new',
   'nav.merchants': '/merchants',

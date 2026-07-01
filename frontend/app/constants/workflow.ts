@@ -280,21 +280,15 @@ export const NAV_ITEMS: NavItem[] = [
   },
   {
     label: 'طلبات التمويل',
-    route: NAV_SURFACE_ROUTES['nav.requests'],
+    route: NAV_SURFACE_ROUTES['nav.workflows'],
     icon: 'file-text',
-    roles: rolesForSurface('nav.requests'),
+    roles: rolesForSurface('nav.workflows'),
   },
   {
     label: 'تقديم طلب جديد',
-    route: NAV_SURFACE_ROUTES['nav.new_request'],
+    route: NAV_SURFACE_ROUTES['nav.workflows_new'],
     icon: 'plus-circle',
-    roles: rolesForSurface('nav.new_request'),
-  },
-  {
-    label: 'سير العمل',
-    route: NAV_SURFACE_ROUTES['nav.workflows'],
-    icon: 'workflow',
-    roles: rolesForSurface('nav.workflows'),
+    roles: rolesForSurface('nav.workflows_new'),
   },
   {
     label: 'التجار',
@@ -988,10 +982,8 @@ export const INCOTERM_OPTIONS: EnumOption<Incoterm>[] = [
 /** Routes that require authentication (all except login) */
 export const PROTECTED_ROUTES = [
   '/dashboard',
-  '/requests',
   '/workflows',
   '/workflows/new',
-  '/voting',
   '/customs',
   '/audit',
   '/reports',
@@ -1008,13 +1000,9 @@ export const PROTECTED_ROUTES = [
 /** Route → allowed roles mapping for role middleware */
 export const ROUTE_ROLE_MAP: Record<string, UserRole[]> = {
   '/dashboard': rolesForSurface('nav.dashboard'),
-  '/requests': rolesForSurface('nav.requests'),
-  '/requests/new': rolesForSurface('nav.new_request'),
   '/workflows': rolesForSurface('nav.workflows'),
   '/workflows/new': rolesForSurface('nav.workflows_new'),
   '/workflows/:id': rolesForSurface('nav.workflows'),
-  '/requests/:id/edit': [UserRole.DATA_ENTRY, UserRole.BANK_ADMIN],
-  '/requests/:id/swift': rolesForSurface('action.swift_upload'),
   '/merchants': rolesForSurface('nav.merchants'),
   '/staff': rolesForSurface('nav.staff'),
   '/customs': rolesForSurface('nav.external_fx_confirmation'),
