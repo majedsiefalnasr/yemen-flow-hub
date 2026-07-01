@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, h, watch } from 'vue'
+import { computed, h, nextTick, ref, watch } from 'vue'
 import {
   VueFlow,
   Panel,
@@ -9,238 +9,177 @@ import {
   type Edge,
   type Node,
   type NodeTypesObject,
-  type EdgeMouseEvent,
-  type NodeMouseEvent,
   type Connection,
+  type NodeMouseEvent,
   useVueFlow,
 } from '@vue-flow/core'
+import { Background, BackgroundVariant } from '@vue-flow/background'
 import '@vue-flow/core/dist/style.css'
-import { AlertCircle, Expand, GitBranch, Lock, Minus, Play, Plus, Square, ZoomIn, ZoomOut } from 'lucide-vue-next'
+import {
+  AlertCircle,
+  Expand,
+  GitBranch,
+  LayoutGrid,
+  Lock,
+  Play,
+  Plus,
+  Square,
+  ZoomIn,
+  ZoomOut,
+} from 'lucide-vue-next'
+import { toast } from 'vue-sonner'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
+import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useWorkflowGraph } from '@/composables/useWorkflowGraph'
-import type { WorkflowGraphNode, WorkflowVersion } from '@/types/models'
+import { useWorkflowStages, type WorkflowStagePayload } from '@/composables/useWorkflowStages'
+import { useWorkflowTransitions } from '@/composables/useWorkflowTransitions'
+import { useWorkflowActions } from '@/composables/useWorkflowActions'
+import type { WorkflowGraphNode, WorkflowStage, WorkflowVersion } from '@/types/models'
+import { toTypedSchema } from '@vee-validate/zod'
+import { useForm } from 'vee-validate'
+import { z } from 'zod'
 
-const props = defineProps<{
-  version: WorkflowVersion
-}>()
-
-const emit = defineEmits<{
-  inspectNode: [stageId: number]
-  inspectEdge: [transitionId: number]
-  addTransition: []
-  addStage: []
-  connect: [fromStageId: number, toStageId: number]
-}>()
+const props = defineProps<{ version: WorkflowVersion }>()
 
 const { graph, loading, error, fetchGraph } = useWorkflowGraph()
+const { stages, fetchStages, createStage, updateStage } = useWorkflowStages()
+const { createTransition } = useWorkflowTransitions()
+const { actions, fetchActions } = useWorkflowActions()
+
 const { zoomIn: flowZoomIn, zoomOut: flowZoomOut, fitView } = useVueFlow()
 
-const STAGE_W = 200
-const STAGE_H = 80
-const ACTION_SIZE = 48
-const COL_GAP = 120
-const ROW_GAP = 100
-const COLS_PER_ROW = 4
+// ── Layout constants ──────────────────────────────────────────────────────────
+const STAGE_W = 180
+const STAGE_H = 76
+const ACTION_SIZE = 52
+const COL_GAP = 140
+const ROW_GAP = 120
+const COLS = 4
 
 const editable = computed(() => props.version.state === 'DRAFT' && props.version.is_editable)
 
-function computeStagePositions(graphNodes: WorkflowGraphNode[]): Map<number, { x: number; y: number }> {
+// ── Node position tracking (persists user drag) ───────────────────────────────
+const nodePositions = ref(new Map<string, { x: number; y: number }>())
+
+function computeAutoPositions(graphNodes: WorkflowGraphNode[]): Map<number, { x: number; y: number }> {
   const sorted = [...graphNodes].sort((a, b) => a.sort_order - b.sort_order)
-  const positions = new Map<number, { x: number; y: number }>()
-  sorted.forEach((node, i) => {
-    const col = i % COLS_PER_ROW
-    const row = Math.floor(i / COLS_PER_ROW)
-    positions.set(node.id, {
+  const map = new Map<number, { x: number; y: number }>()
+  sorted.forEach((n, i) => {
+    const col = i % COLS
+    const row = Math.floor(i / COLS)
+    map.set(n.id, {
       x: 60 + col * (STAGE_W + COL_GAP),
       y: 60 + row * (STAGE_H + ROW_GAP + ACTION_SIZE),
     })
   })
-  return positions
+  return map
 }
 
-const stagePositions = computed(() => computeStagePositions(graph.value?.nodes ?? []))
+const autoPositions = computed(() => computeAutoPositions(graph.value?.nodes ?? []))
 
-// ─── Custom Stage Node (rectangle) ──────────────────────────────────────────
+function stagePos(stageId: number): { x: number; y: number } {
+  return nodePositions.value.get(`stage-${stageId}`) ?? autoPositions.value.get(stageId) ?? { x: 0, y: 0 }
+}
+
+// ── Custom StageNode (rectangle) ──────────────────────────────────────────────
 const StageNode = {
   name: 'StageNode',
   props: ['data'],
-  setup(nodeProps: { data: { label: string; code: string; isInitial: boolean; isFinal: boolean; stageId: number; editable: boolean } }) {
+  setup(p: { data: { label: string; code: string; isInitial: boolean; isFinal: boolean; stageId: number; editable: boolean } }) {
     return () => {
-      const { label, code, isInitial, isFinal, stageId, editable: isEditable } = nodeProps.data
-
-      const borderClass = isInitial
-        ? 'border-[var(--severity-green)] shadow-[0_0_0_3px_color-mix(in_srgb,var(--severity-green)_15%,transparent)]'
-        : isFinal
-          ? 'border-[var(--severity-amber)] shadow-[0_0_0_3px_color-mix(in_srgb,var(--severity-amber)_15%,transparent)]'
-          : 'border-border'
-
-      return h('div', { class: 'relative' }, [
-        // Left handle
-        h(Handle, {
-          id: `${stageId}-target`,
-          type: 'target',
-          position: Position.Left,
-          style: { background: 'var(--primary)', width: '10px', height: '10px', border: '2px solid var(--background)' },
-          connectable: isEditable,
-        }),
-
-        // Node card
-        h(
-          'button',
-          {
-            type: 'button',
-            class: [
-              'flex flex-col gap-1.5 rounded-lg border-2 bg-card p-3 text-start',
-              'transition-all duration-150 hover:shadow-md',
-              'focus:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-              borderClass,
-            ],
-            style: { width: `${STAGE_W}px`, minHeight: `${STAGE_H}px` },
-            'data-testid': `workflow-canvas-node-${stageId}`,
-            onClick: () => emit('inspectNode', stageId),
-          },
-          [
-            h('div', { class: 'flex items-center gap-2' }, [
-              h('div', {
-                class: [
-                  'flex h-7 w-7 shrink-0 items-center justify-center rounded-md',
-                  isInitial ? 'bg-[var(--severity-green)]/15' : isFinal ? 'bg-[var(--severity-amber)]/15' : 'bg-muted',
-                ],
-              }, [
-                h(isInitial ? Play : isFinal ? Square : GitBranch, {
-                  class: [
-                    'h-3.5 w-3.5',
-                    isInitial ? 'text-[var(--severity-green)]' : isFinal ? 'text-[var(--severity-amber)]' : isEditable ? 'text-primary' : 'text-muted-foreground',
-                  ],
-                }),
-              ]),
-              h('div', { class: 'min-w-0 flex-1' }, [
-                h('div', { class: 'truncate text-xs font-semibold text-foreground leading-tight' }, label),
-                h('div', { class: 'font-mono text-[10px] text-muted-foreground mt-0.5' }, code),
-              ]),
+      const { label, code, isInitial, isFinal, stageId, editable: isEditable } = p.data
+      const borderCls = isInitial ? 'node-initial' : isFinal ? 'node-final' : 'node-default'
+      return h('div', { class: 'snw' }, [
+        h(Handle, { id: `${stageId}-l`, type: 'target', position: Position.Left, class: ['fh', isEditable ? '' : 'fh-ro'], connectable: isEditable }),
+        h('div', { class: ['sn', borderCls], style: { width: `${STAGE_W}px`, minHeight: `${STAGE_H}px` }, 'data-testid': `workflow-canvas-node-${stageId}` }, [
+          h('div', { class: 'sn-row' }, [
+            h('div', { class: 'sn-icon' }, [
+              h(isInitial ? Play : isFinal ? Square : GitBranch, { class: 'sn-ico' }),
             ]),
-            (isInitial || isFinal) && h('div', { class: 'flex gap-1' }, [
-              isInitial && h('span', {
-                class: 'rounded-full px-1.5 py-px text-[9px] font-medium bg-[var(--severity-green)]/10 text-[var(--severity-green)] border border-[var(--severity-green)]/25',
-              }, 'بداية'),
-              isFinal && h('span', {
-                class: 'rounded-full px-1.5 py-px text-[9px] font-medium bg-[var(--severity-amber)]/10 text-[var(--severity-amber)] border border-[var(--severity-amber)]/25',
-              }, 'نهاية'),
+            h('div', { class: 'sn-body' }, [
+              h('div', { class: 'sn-name' }, label),
+              h('div', { class: 'sn-code' }, code),
             ]),
-          ],
-        ),
-
-        // Right handle
-        h(Handle, {
-          id: `${stageId}-source`,
-          type: 'source',
-          position: Position.Right,
-          style: { background: 'var(--primary)', width: '10px', height: '10px', border: '2px solid var(--background)' },
-          connectable: isEditable,
-        }),
+          ]),
+          (isInitial || isFinal) && h('div', { class: 'sn-badges' }, [
+            isInitial && h('span', { class: 'sb sb-g' }, 'بداية'),
+            isFinal && h('span', { class: 'sb sb-a' }, 'نهاية'),
+          ]),
+        ]),
+        h(Handle, { id: `${stageId}-r`, type: 'source', position: Position.Right, class: ['fh', isEditable ? '' : 'fh-ro'], connectable: isEditable }),
       ])
     }
   },
 }
 
-// ─── Custom Action Node (circle) ─────────────────────────────────────────────
+// ── Custom ActionNode (circle) ────────────────────────────────────────────────
 const ActionNode = {
   name: 'ActionNode',
   props: ['data'],
-  setup(nodeProps: { data: { label: string; transitionId: number; isReturn: boolean; editable: boolean } }) {
+  setup(p: { data: { label: string; transitionId: number; isReturn: boolean } }) {
     return () => {
-      const { label, transitionId, isReturn, editable: isEditable } = nodeProps.data
-
-      return h('div', { class: 'relative flex flex-col items-center' }, [
-        h(Handle, {
-          type: 'target',
-          position: Position.Left,
-          style: { opacity: 0, pointerEvents: 'none' },
-          connectable: false,
-        }),
-
-        h(
-          'button',
-          {
-            type: 'button',
-            class: [
-              'flex items-center justify-center rounded-full border-2 bg-card shadow-sm',
-              'transition-all duration-150 hover:shadow-md',
-              'focus:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-              isReturn
-                ? 'border-[var(--severity-amber)] text-[var(--severity-amber)]'
-                : 'border-primary text-primary',
-              isEditable ? 'hover:scale-110' : '',
-            ],
-            style: { width: `${ACTION_SIZE}px`, height: `${ACTION_SIZE}px` },
-            'data-testid': `workflow-canvas-edge-${transitionId}`,
-            onClick: () => emit('inspectEdge', transitionId),
-          },
-          [
-            h('span', {
-              class: 'font-mono text-[9px] font-semibold leading-tight text-center px-1 max-w-full truncate',
-            }, label),
-          ],
-        ),
-
-        h(Handle, {
-          type: 'source',
-          position: Position.Right,
-          style: { opacity: 0, pointerEvents: 'none' },
-          connectable: false,
-        }),
+      const { label, transitionId, isReturn } = p.data
+      return h('div', { class: 'anw' }, [
+        h(Handle, { type: 'target', position: Position.Left, style: { opacity: 0, pointerEvents: 'none' }, connectable: false }),
+        h('div', { class: ['an', isReturn ? 'an-r' : 'an-f'], style: { width: `${ACTION_SIZE}px`, height: `${ACTION_SIZE}px` }, 'data-testid': `workflow-canvas-action-${transitionId}` }, [
+          h('span', { class: 'an-lbl' }, label),
+        ]),
+        h(Handle, { type: 'source', position: Position.Right, style: { opacity: 0, pointerEvents: 'none' }, connectable: false }),
       ])
     }
   },
 }
 
-const nodeTypes: NodeTypesObject = {
-  stage: StageNode as any,
-  action: ActionNode as any,
-}
+const nodeTypes: NodeTypesObject = { stage: StageNode as any, action: ActionNode as any }
 
-// Build nodes: stage nodes + action nodes (one per edge, positioned midway)
+// ── Nodes ─────────────────────────────────────────────────────────────────────
 const nodes = computed<Node[]>(() => {
-  const stageNodes: Node[] = (graph.value?.nodes ?? []).map((node) => ({
-    id: `stage-${node.id}`,
+  const stageNodes: Node[] = (graph.value?.nodes ?? []).map((n) => ({
+    id: `stage-${n.id}`,
     type: 'stage',
-    position: stagePositions.value.get(node.id) ?? { x: 0, y: 0 },
-    data: {
-      label: node.display_label || node.name,
-      code: node.code,
-      isInitial: node.is_initial,
-      isFinal: node.is_final,
-      stageId: node.id,
-      editable: editable.value,
-    },
-    draggable: editable.value,
+    position: stagePos(n.id),
+    data: { label: n.display_label || n.name, code: n.code, isInitial: n.is_initial, isFinal: n.is_final, stageId: n.id, editable: editable.value },
+    draggable: true,
     selectable: true,
     connectable: editable.value,
   }))
 
-  const actionNodes: Node[] = (graph.value?.edges ?? []).map((edge) => {
-    const fromPos = stagePositions.value.get(edge.from_stage_id) ?? { x: 0, y: 0 }
-    const toPos = stagePositions.value.get(edge.to_stage_id) ?? { x: 0, y: 0 }
-    const midX = (fromPos.x + STAGE_W + toPos.x) / 2 - ACTION_SIZE / 2
-    const midY = (fromPos.y + STAGE_H / 2 + toPos.y + STAGE_H / 2) / 2 - ACTION_SIZE / 2
-
-    const label = edge.action_name || edge.action_code || `#${edge.action_id}`
-
+  const actionNodes: Node[] = (graph.value?.edges ?? []).map((e) => {
+    const fp = stagePos(e.from_stage_id)
+    const tp = stagePos(e.to_stage_id)
+    const key = `action-${e.id}`
+    const pos = nodePositions.value.get(key) ?? {
+      x: (fp.x + STAGE_W + tp.x) / 2 - ACTION_SIZE / 2,
+      y: (fp.y + STAGE_H / 2 + tp.y + STAGE_H / 2) / 2 - ACTION_SIZE / 2,
+    }
     return {
-      id: `action-${edge.id}`,
+      id: key,
       type: 'action',
-      position: { x: midX, y: midY },
-      data: {
-        label,
-        transitionId: edge.id,
-        isReturn: edge.is_return,
-        editable: editable.value,
-      },
-      draggable: false,
+      position: pos,
+      data: { label: e.action_name || e.action_code || `#${e.action_id}`, transitionId: e.id, isReturn: e.is_return, editable: editable.value },
+      draggable: true,
       selectable: true,
       connectable: false,
     }
@@ -249,275 +188,452 @@ const nodes = computed<Node[]>(() => {
   return [...stageNodes, ...actionNodes]
 })
 
-// Edges: stage→action and action→stage (via action intermediate nodes)
+// ── Edges ─────────────────────────────────────────────────────────────────────
 const edges = computed<Edge[]>(() => {
   const result: Edge[] = []
-  const edgeColor = (isReturn: boolean) => isReturn ? 'var(--severity-amber)' : 'var(--primary)'
-
-  for (const edge of graph.value?.edges ?? []) {
-    const color = edgeColor(edge.is_return)
-    const baseStyle = {
-      stroke: color,
-      strokeWidth: 1.5,
-      strokeDasharray: edge.is_return ? '5 4' : undefined,
-    }
-    const marker = { type: MarkerType.ArrowClosed, color, width: 14, height: 14 }
-
-    // stage → action
-    result.push({
-      id: `e-${edge.id}-in`,
-      source: `stage-${edge.from_stage_id}`,
-      sourceHandle: `${edge.from_stage_id}-source`,
-      target: `action-${edge.id}`,
-      type: 'bezier',
-      animated: edge.is_return,
-      style: baseStyle,
-      markerEnd: marker,
-      selectable: false,
-    })
-
-    // action → stage
-    result.push({
-      id: `e-${edge.id}-out`,
-      source: `action-${edge.id}`,
-      target: `stage-${edge.to_stage_id}`,
-      targetHandle: `${edge.to_stage_id}-target`,
-      type: 'bezier',
-      animated: edge.is_return,
-      style: baseStyle,
-      markerEnd: marker,
-      selectable: false,
-    })
+  for (const e of graph.value?.edges ?? []) {
+    const color = e.is_return ? 'var(--color-edge-return)' : 'var(--color-edge-fwd)'
+    const style = { stroke: color, strokeWidth: 1.5, strokeDasharray: e.is_return ? '6 3' : undefined }
+    const marker = { type: MarkerType.Arrow, color, width: 18, height: 18 }
+    result.push(
+      { id: `e${e.id}-in`, source: `stage-${e.from_stage_id}`, sourceHandle: `${e.from_stage_id}-r`, target: `action-${e.id}`, type: 'smoothstep', animated: e.is_return, style, markerEnd: marker, selectable: false },
+      { id: `e${e.id}-out`, source: `action-${e.id}`, target: `stage-${e.to_stage_id}`, targetHandle: `${e.to_stage_id}-l`, type: 'smoothstep', animated: e.is_return, style, markerEnd: marker, selectable: false },
+    )
   }
-
   return result
 })
 
-function load(versionId: number) {
-  void fetchGraph(versionId)
+// ── Drag position tracking ────────────────────────────────────────────────────
+function onNodeDragStop({ node }: { node: Node }) {
+  nodePositions.value = new Map(nodePositions.value).set(node.id, { ...node.position })
 }
 
-watch(() => props.version.id, (id) => load(id), { immediate: true })
+// ── Auto-arrange ──────────────────────────────────────────────────────────────
+function autoArrange() {
+  nodePositions.value = new Map()
+  void nextTick(() => fitView({ duration: 400, padding: 0.12 }))
+}
 
-function handleConnect(conn: Connection) {
-  // Extract numeric IDs from 'stage-N' format
+// ── Stage dialog ──────────────────────────────────────────────────────────────
+const stageDialogOpen = ref(false)
+const stageDialogMode = ref<'create' | 'edit'>('create')
+const editingStage = ref<WorkflowStage | null>(null)
+const stageIsInitial = ref(false)
+const stageIsFinal = ref(false)
+
+const stageSchema = toTypedSchema(z.object({
+  code: z.string().min(1, 'الرمز مطلوب').regex(/^[A-Za-z0-9_-]+$/, 'يسمح بالحروف والأرقام والشرطات فقط'),
+  name: z.string().min(1, 'الاسم مطلوب'),
+}))
+const stageForm = useForm({ validationSchema: stageSchema })
+
+function openAddStage() {
+  stageDialogMode.value = 'create'
+  editingStage.value = null
+  stageIsInitial.value = false
+  stageIsFinal.value = false
+  stageForm.resetForm({ values: { code: '', name: '' } })
+  stageDialogOpen.value = true
+}
+
+function openEditStage(stage: WorkflowStage) {
+  stageDialogMode.value = 'edit'
+  editingStage.value = stage
+  stageIsInitial.value = stage.is_initial
+  stageIsFinal.value = stage.is_final
+  stageForm.resetForm({ values: { code: stage.code, name: stage.name } })
+  stageDialogOpen.value = true
+}
+
+const onStageSubmit = stageForm.handleSubmit(async (values) => {
+  try {
+    const payload: WorkflowStagePayload = { code: values.code, name: values.name, is_initial: stageIsInitial.value, is_final: stageIsFinal.value }
+    if (stageDialogMode.value === 'edit' && editingStage.value) {
+      await updateStage(editingStage.value, payload)
+      toast.success('تم تحديث المرحلة')
+    } else {
+      await createStage(props.version.id, payload)
+      toast.success('تمت إضافة المرحلة')
+    }
+    stageDialogOpen.value = false
+    await fetchGraph(props.version.id)
+  } catch (cause) {
+    toast.error(extractApiErrorMessage(cause, 'تعذّر حفظ المرحلة'))
+  }
+})
+
+// ── Transition dialog ─────────────────────────────────────────────────────────
+const transDialogOpen = ref(false)
+const transFromId = ref('')
+const transToId = ref('')
+const transActionId = ref('')
+const transRequiresComment = ref(false)
+const transError = ref<string | null>(null)
+
+const canSubmitTrans = computed(() => transFromId.value && transToId.value && transActionId.value)
+
+function openAddTransition(fromStageId?: number, toStageId?: number) {
+  transFromId.value = fromStageId ? String(fromStageId) : ''
+  transToId.value = toStageId ? String(toStageId) : ''
+  transActionId.value = ''
+  transRequiresComment.value = false
+  transError.value = null
+  transDialogOpen.value = true
+}
+
+async function submitTransition() {
+  if (!canSubmitTrans.value) return
+  transError.value = null
+  try {
+    await createTransition(props.version.id, {
+      from_stage_id: Number(transFromId.value),
+      action_id: Number(transActionId.value),
+      to_stage_id: Number(transToId.value),
+      requires_comment: transRequiresComment.value,
+    })
+    toast.success('تمت إضافة الانتقال')
+    transDialogOpen.value = false
+    await fetchGraph(props.version.id)
+  } catch (cause) {
+    transError.value = extractApiErrorMessage(cause, 'تعذّر حفظ الانتقال')
+  }
+}
+
+// ── Connection drag → pre-fill transition dialog ──────────────────────────────
+function onConnect(conn: Connection) {
   const from = Number(conn.source?.replace('stage-', ''))
   const to = Number(conn.target?.replace('stage-', ''))
-  if (from && to) emit('connect', from, to)
+  if (from && to && editable.value) openAddTransition(from, to)
 }
 
-function handleNodeClick({ node }: NodeMouseEvent) {
-  if (node.type === 'stage') emit('inspectNode', node.data.stageId as number)
-  if (node.type === 'action') emit('inspectEdge', node.data.transitionId as number)
+// ── Double-click stage → edit dialog ─────────────────────────────────────────
+function onNodeDblClick({ node }: NodeMouseEvent) {
+  if (!editable.value) return
+  if (node.type === 'stage') {
+    const stage = stages.value.find((s) => s.id === (node.data.stageId as number))
+    if (stage) openEditStage(stage)
+  }
 }
 
-function handleZoomIn() { void flowZoomIn({ duration: 200 }) }
-function handleZoomOut() { void flowZoomOut({ duration: 200 }) }
-function handleFitView() { void fitView({ duration: 300, padding: 0.12 }) }
+// ── Load / refresh ────────────────────────────────────────────────────────────
+async function load(versionId: number) {
+  await Promise.all([fetchGraph(versionId), fetchStages(versionId), fetchActions()])
+}
+
+watch(() => props.version.id, (id) => void load(id), { immediate: true })
+
+function handleZoomIn() { void flowZoomIn({ duration: 180 }) }
+function handleZoomOut() { void flowZoomOut({ duration: 180 }) }
+function handleFit() { void fitView({ duration: 300, padding: 0.12 }) }
 </script>
 
 <template>
-  <section class="space-y-3" aria-label="لوحة مسار العمل">
-    <!-- Header row -->
-    <div class="flex flex-wrap items-center justify-between gap-3">
-      <div>
-        <h3 class="font-section text-sm font-semibold">لوحة مسار العمل</h3>
-        <p class="text-muted-foreground mt-1 text-xs">
-          عرض مرئي للمراحل والانتقالات.
-          <span v-if="editable">السحب متاح للمراحل. اسحب من المقبض لإنشاء انتقال.</span>
-          <span v-else>التعديل متاح فقط للنسخ المسودة.</span>
+  <section class="cs" aria-label="لوحة مسار العمل">
+
+    <!-- Toolbar -->
+    <div class="ctb">
+      <div class="ctb-l">
+        <h3 class="ctb-title">لوحة مسار العمل</h3>
+        <p class="ctb-sub">
+          <span v-if="editable">السحب متاح للجميع · اسحب من المقبض لربط المراحل · انقر مرتين للتعديل</span>
+          <span v-else>للعرض فقط</span>
         </p>
       </div>
-
-      <div class="flex items-center gap-2">
-        <Badge v-if="editable" variant="secondary" class="gap-1">
-          <span class="h-1.5 w-1.5 rounded-full bg-[var(--severity-green)]" />
-          قابلة للتعديل
+      <div class="ctb-r">
+        <Badge v-if="editable" class="bdg-e">
+          <span class="bdg-dot" />قابلة للتعديل
         </Badge>
         <Badge v-else data-testid="workflow-canvas-readonly" variant="outline" class="gap-1">
-          <Lock class="h-3 w-3" />
-          للعرض فقط
+          <Lock class="h-3 w-3" />للعرض فقط
         </Badge>
-        <Button v-if="editable" size="sm" variant="outline" @click="emit('addStage')">
-          <Plus class="h-3.5 w-3.5" />
-          مرحلة
+        <Button v-if="editable" size="sm" variant="outline" @click="autoArrange">
+          <LayoutGrid class="h-3.5 w-3.5" />ترتيب تلقائي
         </Button>
-        <Button v-if="editable" size="sm" @click="emit('addTransition')">
-          <Plus class="h-3.5 w-3.5" />
-          انتقال
+        <Button v-if="editable" size="sm" variant="outline" @click="openAddStage">
+          <Plus class="h-3.5 w-3.5" />مرحلة
+        </Button>
+        <Button v-if="editable" size="sm" @click="openAddTransition()">
+          <Plus class="h-3.5 w-3.5" />انتقال
         </Button>
       </div>
     </div>
 
-    <!-- Error -->
+    <!-- States -->
     <Alert v-if="error" variant="destructive" role="alert">
       <AlertCircle class="h-4 w-4" />
       <AlertTitle>تعذّر تحميل لوحة مسار العمل</AlertTitle>
       <AlertDescription>{{ error }}</AlertDescription>
     </Alert>
 
-    <!-- Loading -->
-    <Skeleton v-else-if="loading" class="h-[520px] w-full rounded-xl" />
+    <Skeleton v-else-if="loading" class="h-[600px] w-full rounded-xl" />
 
-    <!-- Empty -->
     <Empty v-else-if="!graph || graph.nodes.length === 0">
       <EmptyHeader>
         <EmptyTitle>لا توجد مراحل لعرضها</EmptyTitle>
-        <EmptyDescription>أضف مراحل وانتقالات في العرض التفصيلي.</EmptyDescription>
+        <EmptyDescription>أضف مراحل وانتقالات لبناء المسار.</EmptyDescription>
       </EmptyHeader>
     </Empty>
 
     <!-- Canvas -->
-    <div
-      v-else
-      data-testid="workflow-canvas"
-      class="border-border relative overflow-hidden rounded-xl border canvas-surface"
-      style="height: 520px;"
-    >
+    <div v-else data-testid="workflow-canvas" class="cf">
       <VueFlow
-        class="h-full w-full"
+        class="cv"
         :nodes="nodes"
         :edges="edges"
         :node-types="nodeTypes"
-        :nodes-draggable="editable"
+        :nodes-draggable="true"
         :edges-updatable="false"
         :connectable="editable"
         :zoom-on-scroll="true"
-        :pan-on-drag="[2]"
+        :pan-on-drag="true"
+        :pan-on-scroll="false"
+        :auto-pan-on-node-drag="true"
+        :auto-pan-on-connect="true"
         :fit-view-on-init="true"
         :fit-view-on-init-options="{ padding: 0.12 }"
-        :min-zoom="0.25"
-        :max-zoom="2.5"
-        :default-edge-options="{ type: 'bezier' }"
+        :min-zoom="0.2"
+        :max-zoom="3"
         dir="ltr"
-        @connect="handleConnect"
-        @node-click="handleNodeClick"
+        @node-drag-stop="onNodeDragStop"
+        @connect="onConnect"
+        @node-double-click="onNodeDblClick"
       >
-        <!-- Theme-aware dotted background -->
-        <template #background>
-          <svg
-            width="100%"
-            height="100%"
-            xmlns="http://www.w3.org/2000/svg"
-            style="position:absolute;inset:0;pointer-events:none"
-          >
-            <defs>
-              <pattern id="canvas-dots" x="0" y="0" width="24" height="24" patternUnits="userSpaceOnUse">
-                <circle cx="1.5" cy="1.5" r="1.5" class="canvas-dot" />
-              </pattern>
-            </defs>
-            <rect width="100%" height="100%" fill="url(#canvas-dots)" />
-          </svg>
-        </template>
+        <Background :variant="BackgroundVariant.Dots" :size="1.5" :gap="24" />
 
-        <!-- Controls panel (bottom-left) -->
-        <Panel position="bottom-left" class="flex flex-col gap-1 p-2">
-          <button
-            type="button"
-            class="canvas-ctrl-btn"
-            aria-label="تكبير"
-            @click="handleZoomIn"
-          >
-            <ZoomIn class="h-4 w-4" />
-          </button>
-          <button
-            type="button"
-            class="canvas-ctrl-btn"
-            aria-label="تصغير"
-            @click="handleZoomOut"
-          >
-            <ZoomOut class="h-4 w-4" />
-          </button>
-          <button
-            type="button"
-            class="canvas-ctrl-btn"
-            aria-label="ملاءمة الشاشة"
-            @click="handleFitView"
-          >
-            <Expand class="h-4 w-4" />
-          </button>
-        </Panel>
-
-        <!-- Add stage shortcut (bottom-right, draft only) -->
-        <Panel v-if="editable" position="bottom-right" class="p-2">
-          <button
-            type="button"
-            class="canvas-ctrl-btn gap-1.5 px-3"
-            style="width:auto"
-            @click="emit('addStage')"
-          >
-            <Plus class="h-3.5 w-3.5" />
-            <span class="text-xs font-medium">مرحلة جديدة</span>
-          </button>
+        <Panel position="bottom-left" class="ccp">
+          <button type="button" class="ccb" aria-label="تكبير" @click="handleZoomIn"><ZoomIn class="h-4 w-4" /></button>
+          <button type="button" class="ccb" aria-label="تصغير" @click="handleZoomOut"><ZoomOut class="h-4 w-4" /></button>
+          <button type="button" class="ccb" aria-label="ملاءمة" @click="handleFit"><Expand class="h-4 w-4" /></button>
         </Panel>
       </VueFlow>
     </div>
+
+    <!-- Stage dialog (add / edit) -->
+    <Dialog v-model:open="stageDialogOpen">
+      <DialogContent class="max-w-md">
+        <DialogHeader>
+          <DialogTitle>{{ stageDialogMode === 'edit' ? 'تعديل المرحلة' : 'إضافة مرحلة' }}</DialogTitle>
+          <DialogDescription>عرّف بيانات المرحلة ضمن النسخة المسودة.</DialogDescription>
+        </DialogHeader>
+        <form class="flex flex-col gap-4" @submit="onStageSubmit">
+          <FormField v-slot="{ componentField }" name="code">
+            <FormItem>
+              <FormLabel>الرمز</FormLabel>
+              <FormControl><Input v-bind="componentField" placeholder="INTAKE" dir="ltr" /></FormControl>
+              <FormMessage />
+            </FormItem>
+          </FormField>
+          <FormField v-slot="{ componentField }" name="name">
+            <FormItem>
+              <FormLabel>الاسم</FormLabel>
+              <FormControl><Input v-bind="componentField" placeholder="استلام الطلب" /></FormControl>
+              <FormMessage />
+            </FormItem>
+          </FormField>
+          <div class="flex gap-6">
+            <div class="flex items-center gap-2">
+              <Checkbox id="s-init" v-model:checked="stageIsInitial" />
+              <Label for="s-init">مرحلة البداية</Label>
+            </div>
+            <div class="flex items-center gap-2">
+              <Checkbox id="s-fin" v-model:checked="stageIsFinal" />
+              <Label for="s-fin">مرحلة النهاية</Label>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" @click="stageDialogOpen = false">إلغاء</Button>
+            <Button type="submit">{{ stageDialogMode === 'edit' ? 'حفظ' : 'إضافة' }}</Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+
+    <!-- Transition dialog -->
+    <Dialog v-model:open="transDialogOpen">
+      <DialogContent class="max-w-md">
+        <DialogHeader>
+          <DialogTitle>إضافة انتقال</DialogTitle>
+          <DialogDescription>اربط مرحلتين بإجراء.</DialogDescription>
+        </DialogHeader>
+        <div class="flex flex-col gap-4">
+          <div class="flex flex-col gap-1.5">
+            <Label>من المرحلة</Label>
+            <Select v-model="transFromId">
+              <SelectTrigger><SelectValue placeholder="اختر المرحلة" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem v-for="s in stages" :key="s.id" :value="String(s.id)">{{ s.name }}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div class="flex flex-col gap-1.5">
+            <Label>الإجراء</Label>
+            <Select v-model="transActionId">
+              <SelectTrigger><SelectValue placeholder="اختر الإجراء" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem v-for="a in actions" :key="a.id" :value="String(a.id)">{{ a.name }}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div class="flex flex-col gap-1.5">
+            <Label>إلى المرحلة</Label>
+            <Select v-model="transToId">
+              <SelectTrigger><SelectValue placeholder="اختر المرحلة" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem v-for="s in stages" :key="s.id" :value="String(s.id)">{{ s.name }}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div class="flex items-center gap-2">
+            <Checkbox id="t-cmt" v-model:checked="transRequiresComment" />
+            <Label for="t-cmt">يتطلب تعليق</Label>
+          </div>
+          <p v-if="transError" class="text-xs text-[var(--severity-red)]" role="alert">{{ transError }}</p>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" @click="transDialogOpen = false">إلغاء</Button>
+          <Button :disabled="!canSubmitTrans" @click="submitTransition">إضافة</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
   </section>
 </template>
 
+<style>
+/* ── Theme tokens: canvas + nodes ─────────────────────────────────────────── */
+:root {
+  --cv-bg:       oklch(0.976 0 0);
+  --cv-dot:      oklch(0.84 0 0);
+  --nd-bg:       #ffffff;
+  --nd-brd:      #e2e5ea;
+  --nd-brd-h:    #b8bec9;
+  --nd-shd:      0 1px 3px rgb(0 0 0/.08), 0 0 0 1px rgb(0 0 0/.04);
+  --nd-shd-h:    0 4px 14px rgb(0 0 0/.12), 0 0 0 1px rgb(0 0 0/.06);
+  --nd-txt:      #1c222b;
+  --nd-sub:      #6c757d;
+  --nd-ico-bg:   #f1f3f6;
+  --an-bg:       #ffffff;
+  --an-brd:      #c8cdd6;
+  --an-txt:      #1c222b;
+  --color-edge-fwd:    #9ba4b1;
+  --color-edge-return: var(--severity-amber);
+  --hd-bg:       #9ba4b1;
+  --hd-brd:      #ffffff;
+}
+.dark {
+  --cv-bg:       oklch(0.145 0.004 265);
+  --cv-dot:      oklch(0.25 0.005 265);
+  --nd-bg:       oklch(0.205 0.005 265);
+  --nd-brd:      oklch(0.30 0.006 265);
+  --nd-brd-h:    oklch(0.40 0.006 265);
+  --nd-shd:      0 1px 4px rgb(0 0 0/.45), 0 0 0 1px rgb(255 255 255/.05);
+  --nd-shd-h:    0 4px 16px rgb(0 0 0/.55), 0 0 0 1px rgb(255 255 255/.08);
+  --nd-txt:      oklch(0.92 0 0);
+  --nd-sub:      oklch(0.60 0 0);
+  --nd-ico-bg:   oklch(0.26 0.005 265);
+  --an-bg:       oklch(0.205 0.005 265);
+  --an-brd:      oklch(0.32 0.006 265);
+  --an-txt:      oklch(0.88 0 0);
+  --color-edge-fwd:    oklch(0.48 0.005 265);
+  --hd-bg:       oklch(0.48 0.005 265);
+  --hd-brd:      oklch(0.205 0.005 265);
+}
+</style>
+
 <style scoped>
-/* Canvas surface — theme-aware background */
-.canvas-surface {
-  background-color: var(--canvas-bg, oklch(0.97 0 0));
-}
+/* ── Section ─────────────────────────────────────────────────────────────── */
+.cs { display: flex; flex-direction: column; gap: 12px; }
 
-:global(.dark) .canvas-surface {
-  background-color: oklch(0.16 0.005 265);
+/* ── Toolbar ─────────────────────────────────────────────────────────────── */
+.ctb { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+.ctb-l { display: flex; flex-direction: column; gap: 2px; }
+.ctb-title { font-size: 13px; font-weight: 600; color: var(--foreground); }
+.ctb-sub   { font-size: 11px; color: var(--muted-foreground); }
+.ctb-r { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.bdg-e {
+  display: inline-flex; align-items: center; gap: 5px;
+  border: 1px solid color-mix(in srgb,var(--severity-green) 30%,transparent);
+  background: color-mix(in srgb,var(--severity-green) 10%,transparent);
+  color: var(--severity-green);
 }
+.bdg-dot { width: 6px; height: 6px; border-radius: 9999px; background: var(--severity-green); }
 
-/* Dot color adapts to theme */
-.canvas-dot {
-  fill: oklch(0.82 0 0);
-}
-
-:global(.dark) .canvas-dot {
-  fill: oklch(0.28 0.005 265);
-}
-
-/* Zoom/fit control buttons */
-.canvas-ctrl-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 32px;
-  width: 32px;
-  border-radius: 8px;
+/* ── Canvas frame ─────────────────────────────────────────────────────────── */
+.cf {
+  position: relative;
+  height: 600px;
+  border-radius: 12px;
   border: 1px solid var(--border);
-  background: var(--card);
-  color: var(--muted-foreground);
-  box-shadow: 0 1px 3px oklch(0 0 0 / 0.1);
-  transition: background 0.15s, color 0.15s;
-  cursor: pointer;
+  overflow: hidden;
+  background: var(--cv-bg);
 }
+.cv { width: 100%; height: 100%; background: transparent !important; }
 
-.canvas-ctrl-btn:hover {
-  background: var(--muted);
-  color: var(--foreground);
-}
+/* Background dot colour via CSS var */
+:deep(.vue-flow__background) { background: var(--cv-bg); }
+:deep(.vue-flow__background pattern circle) { fill: var(--cv-dot); }
+:deep(.vue-flow__attribution) { display: none; }
 
-/* Override VueFlow defaults */
-:deep(.vue-flow__edge-path) {
-  stroke-linecap: round;
+/* ── Stage node ─────────────────────────────────────────────────────────── */
+:deep(.snw) { position: relative; }
+:deep(.sn) {
+  display: flex; flex-direction: column; gap: 5px;
+  border-radius: 10px; border: 1.5px solid var(--nd-brd);
+  background: var(--nd-bg); padding: 9px 11px;
+  box-shadow: var(--nd-shd); cursor: grab;
+  transition: border-color .15s, box-shadow .15s;
 }
+:deep(.sn:hover)                              { border-color: var(--nd-brd-h); box-shadow: var(--nd-shd-h); }
+:deep(.vue-flow__node.selected .sn)           { border-color: #0066cc; box-shadow: 0 0 0 3px color-mix(in srgb,#0066cc 20%,transparent),var(--nd-shd-h); }
+:deep(.node-initial)                          { border-color: color-mix(in srgb,var(--severity-green) 55%,var(--nd-brd)); }
+:deep(.node-final)                            { border-color: color-mix(in srgb,var(--severity-amber) 55%,var(--nd-brd)); }
 
-:deep(.vue-flow__handle) {
-  cursor: crosshair;
-}
+:deep(.sn-row) { display: flex; align-items: flex-start; gap: 8px; }
+:deep(.sn-icon) { display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 7px; background: var(--nd-ico-bg); flex-shrink: 0; }
+:deep(.sn-ico)  { width: 13px; height: 13px; color: var(--nd-sub); }
+:deep(.sn-body) { flex: 1; min-width: 0; }
+:deep(.sn-name) { font-size: 12px; font-weight: 600; color: var(--nd-txt); line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+:deep(.sn-code) { font-size: 10px; font-family: monospace; color: var(--nd-sub); margin-top: 1px; }
 
-:deep(.vue-flow__handle-connecting) {
-  background: var(--primary) !important;
-}
+:deep(.sn-badges) { display: flex; gap: 4px; }
+:deep(.sb)   { font-size: 9px; font-weight: 600; padding: 1px 6px; border-radius: 9999px; }
+:deep(.sb-g) { background: color-mix(in srgb,var(--severity-green) 12%,transparent); color: var(--severity-green); border: 1px solid color-mix(in srgb,var(--severity-green) 25%,transparent); }
+:deep(.sb-a) { background: color-mix(in srgb,var(--severity-amber) 12%,transparent); color: var(--severity-amber); border: 1px solid color-mix(in srgb,var(--severity-amber) 25%,transparent); }
 
-:deep(.vue-flow__handle-valid) {
-  background: var(--severity-green) !important;
+/* ── Action node ────────────────────────────────────────────────────────── */
+:deep(.anw) { position: relative; }
+:deep(.an) {
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 9999px; border: 1.5px solid var(--an-brd);
+  background: var(--an-bg); box-shadow: var(--nd-shd); cursor: grab;
+  transition: border-color .15s, box-shadow .15s;
 }
+:deep(.an:hover)                            { box-shadow: var(--nd-shd-h); }
+:deep(.vue-flow__node.selected .an)         { border-color: #0066cc; box-shadow: 0 0 0 3px color-mix(in srgb,#0066cc 20%,transparent); }
+:deep(.an-r)                                { border-color: color-mix(in srgb,var(--severity-amber) 55%,var(--an-brd)); }
+:deep(.an-lbl) { font-size: 9px; font-weight: 600; color: var(--an-txt); text-align: center; padding: 0 4px; line-height: 1.2; word-break: break-all; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
 
-:deep(.vue-flow__node.selected > div) {
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 30%, transparent);
+/* ── Handles ────────────────────────────────────────────────────────────── */
+:deep(.fh) {
+  width: 10px !important; height: 10px !important;
+  background: var(--hd-bg) !important; border: 2px solid var(--hd-brd) !important;
+  border-radius: 9999px; transition: background .1s,transform .1s;
 }
+:deep(.fh:hover),:deep(.fh.vue-flow__handle-connecting) { background: #0066cc !important; transform: scale(1.4); }
+:deep(.fh.vue-flow__handle-valid)                       { background: var(--severity-green) !important; }
+:deep(.fh-ro) { cursor: default !important; pointer-events: none; }
 
-/* Hide VueFlow's built-in attribution */
-:deep(.vue-flow__attribution) {
-  display: none;
+/* ── Edges ──────────────────────────────────────────────────────────────── */
+:deep(.vue-flow__edge-path) { stroke-linecap: round; stroke-linejoin: round; }
+
+/* ── Controls panel ─────────────────────────────────────────────────────── */
+.ccp { display: flex; flex-direction: column; gap: 4px; padding: 6px; }
+.ccb {
+  display: flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; border-radius: 8px;
+  border: 1px solid var(--border); background: var(--card);
+  color: var(--muted-foreground); box-shadow: 0 1px 3px rgb(0 0 0/.08);
+  cursor: pointer; transition: background .12s,color .12s;
 }
+.ccb:hover { background: var(--muted); color: var(--foreground); }
 </style>

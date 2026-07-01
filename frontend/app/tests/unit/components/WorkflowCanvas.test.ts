@@ -8,16 +8,21 @@ import WorkflowCanvas from '@/components/workflow/WorkflowCanvas.vue'
 // VueFlow uses SVGElement.getBBox internally which is unavailable in jsdom.
 // Stub the entire @vue-flow/core module so the canvas mounts without crashing.
 vi.mock('@vue-flow/core', () => ({
-  VueFlow: { template: '<div class="vue-flow-stub"><slot /><slot name="background" /></div>' },
+  VueFlow: { template: '<div class="vue-flow-stub"><slot /></div>' },
   Panel: { template: '<div><slot /></div>' },
   Handle: { template: '<div />' },
   Position: { Left: 'left', Right: 'right', Top: 'top', Bottom: 'bottom' },
-  MarkerType: { ArrowClosed: 'arrowclosed' },
+  MarkerType: { Arrow: 'arrow', ArrowClosed: 'arrowclosed' },
   useVueFlow: () => ({
     zoomIn: vi.fn(),
     zoomOut: vi.fn(),
     fitView: vi.fn(),
   }),
+}))
+
+vi.mock('@vue-flow/background', () => ({
+  Background: { template: '<div />' },
+  BackgroundVariant: { Dots: 'dots', Lines: 'lines' },
 }))
 
 const mockGraph = {
@@ -63,6 +68,30 @@ const error = ref<string | null>(null)
 
 vi.mock('@/composables/useWorkflowGraph', () => ({
   useWorkflowGraph: () => ({ graph, loading, error, fetchGraph }),
+}))
+
+vi.mock('@/composables/useWorkflowStages', () => ({
+  useWorkflowStages: () => ({
+    stages: ref([]),
+    loading: ref(false),
+    error: ref(null),
+    fetchStages: vi.fn(),
+    createStage: vi.fn(),
+    updateStage: vi.fn(),
+  }),
+}))
+
+vi.mock('@/composables/useWorkflowTransitions', () => ({
+  useWorkflowTransitions: () => ({
+    createTransition: vi.fn(),
+  }),
+}))
+
+vi.mock('@/composables/useWorkflowActions', () => ({
+  useWorkflowActions: () => ({
+    actions: ref([]),
+    fetchActions: vi.fn(),
+  }),
 }))
 
 const draftVersion = {
