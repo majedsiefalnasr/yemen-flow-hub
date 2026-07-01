@@ -319,27 +319,30 @@ async function onEdgeUpdate({ edge, connection }: EdgeUpdateEvent) {
   try {
     updateEdge(edge as GraphEdge, connection)
     if (newFrom === transition.from_stage_id) {
-      // Only target changed → PATCH (avoids unique constraint on from_stage_id+action_id)
+      // Only target changed → PATCH; edge id stays the same, override stays keyed to it
       await updateTransition(transition, { to_stage_id: newTo })
     } else {
-      // Source changed → must delete first, then create (unique pair constraint)
+      // Source changed → delete + create; new row gets a new DB id → re-key the override
       await deleteTransition(transition)
-      await createTransition(props.version.id, {
+      const created = await createTransition(props.version.id, {
         from_stage_id: newFrom,
         action_id: transition.action_id,
         to_stage_id: newTo,
         requires_comment: transition.requires_comment,
       })
+      // Move override from old edge id to new edge id before fetchGraph re-renders
+      const overrides = new Map(edgeHandleOverrides.value)
+      overrides.delete(edge.id)
+      overrides.set(`e${created.id}`, { sourceHandle: newSourceHandle, targetHandle: newTargetHandle })
+      edgeHandleOverrides.value = overrides
     }
-    // Clear override — fetchGraph will assign the new edge id (may differ after recreate)
-    edgeHandleOverrides.value = new Map(edgeHandleOverrides.value)
-    edgeHandleOverrides.value.delete(edge.id)
     await fetchGraph(props.version.id)
     toast.success('تم تحديث الانتقال')
   } catch (cause) {
-    // On failure clear override so edge reverts to auto-routed position
-    edgeHandleOverrides.value = new Map(edgeHandleOverrides.value)
-    edgeHandleOverrides.value.delete(edge.id)
+    // On failure drop override so edge reverts to auto-routed position
+    const overrides = new Map(edgeHandleOverrides.value)
+    overrides.delete(edge.id)
+    edgeHandleOverrides.value = overrides
     toast.error(extractApiErrorMessage(cause, 'تعذّر تحديث الانتقال'))
     await fetchGraph(props.version.id)
   }
