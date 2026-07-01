@@ -58,13 +58,13 @@ const filteredRows = computed(() => {
 const stats = computed(() => ({
   queue: store.queue.length,
   all: store.instances.length,
-  waiting: rows.value.filter((item) => item.status === 'ACTIVE').length,
+  waiting: store.queue.filter((item) => item.status === 'ACTIVE').length,
 }))
 
 function statusLabel(status: string) {
   if (status === 'ACTIVE') return 'نشط'
-  if (status === 'COMPLETED') return 'مكتمل'
-  if (status === 'CANCELLED') return 'ملغى'
+  if (status === 'CLOSED') return 'مكتمل'
+  if (status === 'REJECTED') return 'مرفوض'
   return status
 }
 </script>
