@@ -5,13 +5,9 @@ use App\Http\Controllers\Api\AdminSettingsController;
 use App\Http\Controllers\Api\AuditController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BankController;
-use App\Http\Controllers\Api\CustomsController;
 use App\Http\Controllers\Api\DashboardController;
-use App\Http\Controllers\Api\DocumentController;
-use App\Http\Controllers\Api\DocumentTemplateController;
 use App\Http\Controllers\Api\DocumentTypeController;
 use App\Http\Controllers\Api\FinancingController;
-use App\Http\Controllers\Api\ImportRequestController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\ReportController;
@@ -45,8 +41,6 @@ use App\Http\Controllers\Api\V1\WorkflowDefinitionController;
 use App\Http\Controllers\Api\V1\WorkflowStageController;
 use App\Http\Controllers\Api\V1\WorkflowTransitionController;
 use App\Http\Controllers\Api\V1\WorkflowVersionController;
-use App\Http\Controllers\Api\VotingController;
-use App\Http\Controllers\Api\WorkflowController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('auth')->group(function () {
@@ -180,6 +174,8 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'active'])->group(function () {
     Route::get('engine-requests/{engineRequest}/documents/{document}/download', [EngineRequestController::class, 'downloadDocument']);
     Route::delete('engine-requests/{engineRequest}/documents/{document}', [EngineRequestController::class, 'deleteDocument']);
     Route::post('engine-requests/{engineRequest}/fx-confirmation-signed', [EngineRequestController::class, 'uploadSignedFx'])->middleware('throttle:10,1');
+    Route::get('engine-requests/{engineRequest}/customs-declaration/download', [EngineRequestController::class, 'downloadCustomsDeclaration']);
+    Route::get('engine-requests/{engineRequest}/customs-declaration/signed-fx-download', [EngineRequestController::class, 'downloadSignedFxDoc']);
     Route::post('engine-requests/{engineRequest}/claim', [EngineRequestController::class, 'claim']);
     Route::post('engine-requests/{engineRequest}/claim/heartbeat', [EngineRequestController::class, 'heartbeatClaim']);
     Route::delete('engine-requests/{engineRequest}/claim', [EngineRequestController::class, 'releaseClaim']);
@@ -261,61 +257,6 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::delete('document-types/{documentType}', [DocumentTypeController::class, 'destroy']);
 
     Route::get('financing/utilization', [FinancingController::class, 'utilization']);
-
-    Route::get('requests', [ImportRequestController::class, 'index']);
-    Route::post('requests', [ImportRequestController::class, 'store']);
-    Route::get('requests/{importRequest}', [ImportRequestController::class, 'show']);
-    Route::put('requests/{importRequest}', [ImportRequestController::class, 'update']);
-    Route::delete('requests/{importRequest}', [ImportRequestController::class, 'destroy']);
-    Route::get('requests/{importRequest}/history', [ImportRequestController::class, 'history']);
-    Route::post('requests/{importRequest}/clone', [ImportRequestController::class, 'clone']);
-    Route::get('requests/{importRequest}/customs-preview', [CustomsController::class, 'preview']);
-    Route::get('requests/{importRequest}/confirmation-request-template', [DocumentTemplateController::class, 'confirmationRequest']);
-    Route::get('requests/{importRequest}/confirmation-request-preview', [DocumentTemplateController::class, 'confirmationRequestPreview']);
-    Route::get('requests/{importRequest}/fx-confirmation-template', [DocumentTemplateController::class, 'fxConfirmation']);
-    Route::post('requests/{importRequest}/fx-confirmation-upload', [CustomsController::class, 'uploadSignedFx']);
-    Route::post('documents/upload', [DocumentController::class, 'upload'])->middleware('throttle:10,1');
-    // @deprecated — use POST /api/documents/upload; kept for backward compat during Epic 2 stabilization
-    Route::post('requests/{importRequest}/documents', [DocumentController::class, 'uploadRequestDocument'])->middleware('throttle:10,1');
-    Route::delete('documents/{document}', [DocumentController::class, 'destroy']);
-    Route::get('documents/{document}/download', [DocumentController::class, 'download']);
-
-    Route::post('workflow/{importRequest}/submit', [WorkflowController::class, 'submit'])->name('workflow.submit');
-    Route::post('workflow/{importRequest}/bank-review', [WorkflowController::class, 'bankBeginReview'])->name('workflow.bank-review');
-    Route::post('workflow/{importRequest}/claim-bank-review', [WorkflowController::class, 'claimBankReview'])->name('workflow.claim-bank-review');
-    Route::delete('workflow/{importRequest}/claim-bank-review', [WorkflowController::class, 'bankClaimRelease'])->name('workflow.bank-claim-release');
-    Route::post('workflow/{importRequest}/claim-bank-review/heartbeat', [WorkflowController::class, 'bankClaimHeartbeat'])->name('workflow.bank-claim-heartbeat');
-    Route::post('workflow/{importRequest}/bank-approve', [WorkflowController::class, 'bankApprove'])->name('workflow.bank-approve');
-    Route::post('workflow/{importRequest}/bank-reject', [WorkflowController::class, 'bankReject'])->name('workflow.bank-reject');
-    Route::post('workflow/{importRequest}/return-to-entry', [WorkflowController::class, 'returnToEntry'])->name('workflow.return-to-entry');
-    Route::post('workflow/{importRequest}/claim-support-review', [WorkflowController::class, 'claimSupportReview'])->name('workflow.claim-support-review');
-    Route::delete('workflow/{importRequest}/claim-support-review', [WorkflowController::class, 'claimRelease'])->name('workflow.claim-release');
-    Route::post('workflow/{importRequest}/claim-support-review/heartbeat', [WorkflowController::class, 'claimHeartbeat'])->name('workflow.claim-heartbeat');
-    Route::post('workflow/{importRequest}/support-claim', [WorkflowController::class, 'supportClaim'])->name('workflow.support-claim');
-    Route::post('workflow/{importRequest}/support-release', [WorkflowController::class, 'supportRelease'])->name('workflow.support-release');
-    Route::post('workflow/{importRequest}/support-approve', [WorkflowController::class, 'supportApprove'])->name('workflow.support-approve');
-    Route::post('workflow/{importRequest}/support-reject', [WorkflowController::class, 'supportReject'])->name('workflow.support-reject');
-    Route::post('workflow/{importRequest}/support-forward-to-executive', [WorkflowController::class, 'supportForwardToExecutive'])->name('workflow.support-forward-to-executive');
-    Route::post('workflow/{importRequest}/bank-return-after-support-reject', [WorkflowController::class, 'bankReturnAfterSupportReject'])->name('workflow.bank-return-after-support-reject');
-    Route::post('workflow/{importRequest}/bank-finalize-rejection', [WorkflowController::class, 'bankFinalizeRejection'])->name('workflow.bank-finalize-rejection');
-    Route::post('workflow/{importRequest}/bank-reject-terminal', [WorkflowController::class, 'bankRejectTerminal'])->name('workflow.bank-reject-terminal');
-    Route::post('workflow/{importRequest}/bank-return', [WorkflowController::class, 'bankReturn'])->name('workflow.bank-return');
-    Route::post('workflow/{importRequest}/support-return', [WorkflowController::class, 'supportReturn'])->name('workflow.support-return');
-    Route::post('workflow/{importRequest}/swift-upload', [DocumentController::class, 'uploadSwift'])->middleware('throttle:10,1');
-    Route::post('workflow/{importRequest}/finalize-decision', [WorkflowController::class, 'finalizeDecision'])->name('workflow.finalize-decision');
-
-    Route::get('voting', [VotingController::class, 'index']);
-    Route::get('voting/{importRequest}', [VotingController::class, 'show']);
-    Route::post('voting/{importRequest}/open', [VotingController::class, 'openSession'])->name('voting.open');
-    Route::post('voting/{importRequest}/close', [VotingController::class, 'closeSession'])->name('voting.close');
-    Route::post('voting/{importRequest}/vote', [VotingController::class, 'vote']);
-    Route::post('voting/{importRequest}/director-decide', [VotingController::class, 'directorDecide']);
-    Route::post('voting/{importRequest}/override', [VotingController::class, 'override']);
-
-    Route::post('customs/{importRequest}/generate', [CustomsController::class, 'generate']);
-    Route::get('customs/{customsDeclaration}', [CustomsController::class, 'show']);
-    Route::get('customs/{customsDeclaration}/download', [CustomsController::class, 'download']);
-    Route::get('customs/{customsDeclaration}/signed-fx-download', [CustomsController::class, 'downloadSignedFx']);
 
     Route::get('audit', [AuditController::class, 'index']);
     Route::get('audit/stats', [AuditController::class, 'stats']);

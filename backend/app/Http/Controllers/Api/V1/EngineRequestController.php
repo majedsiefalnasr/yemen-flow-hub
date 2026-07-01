@@ -9,6 +9,7 @@ use App\Http\Requests\FxConfirmationUploadRequest;
 use App\Http\Requests\StoreEngineRequestRequest;
 use App\Http\Resources\CustomsDeclarationResource;
 use App\Http\Resources\EngineRequestResource;
+use App\Models\CustomsDeclaration;
 use App\Models\EngineRequest;
 use App\Models\EngineRequestDocument;
 use App\Models\FieldDefinition;
@@ -30,6 +31,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class EngineRequestController extends Controller
 {
@@ -472,6 +474,44 @@ class EngineRequestController extends Controller
             new CustomsDeclarationResource($declaration->load(['issuer', 'engineRequest.bank'])),
             'تم رفع وثيقة المصارفة الموقعة بنجاح.'
         );
+    }
+
+    public function downloadCustomsDeclaration(Request $request, EngineRequest $engineRequest): StreamedResponse
+    {
+        $declaration = CustomsDeclaration::query()
+            ->where('engine_request_id', $engineRequest->id)
+            ->firstOrFail();
+
+        $this->authorize('download', $declaration);
+
+        abort_unless(
+            $declaration->pdf_path !== null && Storage::disk('local')->exists('private/'.$declaration->pdf_path),
+            404,
+            'Customs declaration PDF not found.'
+        );
+
+        $filename = 'customs-declaration-'.$engineRequest->reference_number.'.pdf';
+
+        return Storage::disk('local')->download('private/'.$declaration->pdf_path, $filename);
+    }
+
+    public function downloadSignedFxDoc(Request $request, EngineRequest $engineRequest): StreamedResponse
+    {
+        $declaration = CustomsDeclaration::query()
+            ->where('engine_request_id', $engineRequest->id)
+            ->firstOrFail();
+
+        $this->authorize('downloadSignedFx', $declaration);
+
+        abort_unless(
+            $declaration->signed_fx_doc_path !== null && Storage::disk('local')->exists('private/'.$declaration->signed_fx_doc_path),
+            404,
+            'Signed FX confirmation document not found.'
+        );
+
+        $filename = 'signed-fx-confirmation-'.$engineRequest->reference_number.'.pdf';
+
+        return Storage::disk('local')->download('private/'.$declaration->signed_fx_doc_path, $filename);
     }
 
     // ── 18.5.7: History & Graph ──────────────────────────────────────────
