@@ -99,11 +99,6 @@ class User extends Authenticatable
         return $this->relationLoaded('roles') ? $this->roles->first() : $this->roles()->first();
     }
 
-    public function votes(): HasMany
-    {
-        return $this->hasMany(RequestVote::class);
-    }
-
     public function auditLogs(): HasMany
     {
         return $this->hasMany(AuditLog::class);
