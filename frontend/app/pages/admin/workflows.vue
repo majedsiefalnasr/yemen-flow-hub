@@ -297,17 +297,16 @@ onMounted(reload)
           </Empty>
         </div>
 
-        <!-- Read-only notice for non-editable (published/archived) versions -->
-        <Alert v-if="selectedVersion && !selectedVersionEditable" class="border-muted bg-muted/30">
-          <Eye class="h-4 w-4" />
-          <AlertTitle>نسخة للعرض فقط</AlertTitle>
-          <AlertDescription>
-            هذه النسخة منشورة أو مؤرشفة، لذلك يمكن عرضها فقط. استنسخ نسخة مسودة لإجراء تعديلات.
-          </AlertDescription>
-        </Alert>
-
         <!-- View switch: normal (detailed) vs canvas -->
         <template v-if="selectedVersion">
+          <!-- Read-only notice for non-editable (published/archived) versions -->
+          <Alert v-if="!selectedVersionEditable" class="border-muted bg-muted/30">
+            <Eye class="h-4 w-4" />
+            <AlertTitle>نسخة للعرض فقط</AlertTitle>
+            <AlertDescription>
+              هذه النسخة منشورة أو مؤرشفة، لذلك يمكن عرضها فقط. استنسخ نسخة مسودة لإجراء تعديلات.
+            </AlertDescription>
+          </Alert>
           <div class="flex gap-1">
             <Button
               :variant="designerView === 'normal' ? 'default' : 'outline'"

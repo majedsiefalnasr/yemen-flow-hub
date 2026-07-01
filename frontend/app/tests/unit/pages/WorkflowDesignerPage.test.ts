@@ -169,4 +169,25 @@ describe('workflow designer page', () => {
 
     expect(wrapper.text()).toContain('لوحة مسار العمل')
   })
+
+  it('does not show the read-only notice for editable draft versions', async () => {
+    const draftDefinition = makeDefinition({
+      versions: [
+        {
+          id: 11,
+          workflow_definition_id: 1,
+          version_number: 2,
+          state: 'DRAFT',
+          is_editable: true,
+          published_at: null,
+          created_at: null,
+          updated_at: null,
+          version: 1,
+        },
+      ],
+    })
+    const wrapper = await mountPage(['VIEW'], [draftDefinition], canvasStubs)
+
+    expect(wrapper.text()).not.toContain('هذه النسخة منشورة أو مؤرشفة، لذلك يمكن عرضها فقط')
+  })
 })
