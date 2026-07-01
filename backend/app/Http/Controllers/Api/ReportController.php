@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Api;
 
 use App\Enums\AuditAction;
-use App\Enums\RequestStatus;
 use App\Enums\UserRole;
 use App\Models\Bank;
 use App\Models\EngineRequest;
@@ -657,7 +656,7 @@ class ReportController extends Controller
 
     private function notEligibleReportLabel(): string
     {
-        return RequestStatus::EXECUTIVE_REJECTED->label();
+        return 'غير مستوفي للشروط (اللجنة التنفيذية) / Not Eligible (Executive Committee)';
     }
 
     private function avgProcessingHours(?int $bankId, ?string $fromDate, ?string $toDate): float

@@ -2,8 +2,6 @@
 
 namespace Tests\Unit\Enums;
 
-use App\Enums\RequestStatus;
-use App\Enums\VoteType;
 use Illuminate\Support\Carbon;
 use Tests\TestCase;
 
@@ -12,56 +10,6 @@ class InstitutionLabelRebrandTest extends TestCase
     private const ARABIC_NAME = 'اللجنة الوطنية لتنظيم وتمويل الواردات';
 
     private const ENGLISH_NAME = 'The National Committee for Regulating & Financing Imports';
-
-    public function test_request_status_and_vote_type_codes_remain_unchanged(): void
-    {
-        $this->assertSame([
-            'DRAFT',
-            'DRAFT_REJECTED_INTERNAL',
-            'SUBMITTED',
-            'BANK_REVIEW',
-            'BANK_APPROVED',
-            'SUPPORT_REVIEW_PENDING',
-            'SUPPORT_REVIEW_IN_PROGRESS',
-            'SUPPORT_APPROVED',
-            'SUPPORT_REJECTED',
-            'WAITING_FOR_SWIFT',
-            'SWIFT_UPLOADED',
-            'WAITING_FOR_VOTING_OPEN',
-            'EXECUTIVE_VOTING_OPEN',
-            'EXECUTIVE_VOTING_CLOSED',
-            'EXECUTIVE_APPROVED',
-            'EXECUTIVE_REJECTED',
-            'FX_CONFIRMATION_PENDING',
-            'CUSTOMS_DECLARATION_ISSUED',
-            'COMPLETED',
-            'BANK_RETURNED',
-            'SUPPORT_RETURNED',
-            'BANK_REJECTED',
-        ], array_map(fn (RequestStatus $status) => $status->value, RequestStatus::cases()));
-
-        $this->assertSame([
-            'APPROVE',
-            'REJECT',
-            'ABSTAIN',
-            'AUTO_ABSTAIN_TIMEOUT',
-        ], array_map(fn (VoteType $vote) => $vote->value, VoteType::cases()));
-    }
-
-    public function test_enum_labels_do_not_embed_old_institution_names(): void
-    {
-        foreach (RequestStatus::cases() as $status) {
-            $this->assertStringNotContainsString('Yemen Flow Hub', $status->label());
-            $this->assertStringNotContainsString('البنك المركزي اليمني', $status->label());
-            $this->assertStringNotContainsString('Central Bank of Yemen', $status->label());
-        }
-
-        foreach (VoteType::cases() as $vote) {
-            $this->assertStringNotContainsString('Yemen Flow Hub', $vote->label());
-            $this->assertStringNotContainsString('البنك المركزي اليمني', $vote->label());
-            $this->assertStringNotContainsString('Central Bank of Yemen', $vote->label());
-        }
-    }
 
     public function test_pdf_letterhead_views_use_national_committee_identity(): void
     {

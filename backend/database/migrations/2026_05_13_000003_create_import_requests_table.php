@@ -1,6 +1,5 @@
 <?php
 
-use App\Enums\RequestStatus;
 use App\Enums\UserRole;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -21,7 +20,7 @@ return new class extends Migration
             $table->text('goods_description');
             $table->string('port_of_entry');
             $table->text('notes')->nullable();
-            $table->string('status')->default(RequestStatus::DRAFT->value)->index();
+            $table->string('status')->default('DRAFT')->index();
             $table->string('current_owner_role')->default(UserRole::DATA_ENTRY->value)->index();
             $table->timestamp('submitted_at')->nullable();
             $table->timestamp('bank_approved_at')->nullable();
