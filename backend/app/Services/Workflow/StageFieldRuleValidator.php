@@ -2,6 +2,7 @@
 
 namespace App\Services\Workflow;
 
+use App\Enums\FieldType;
 use App\Models\FieldDefinition;
 use App\Models\StageFieldRule;
 use App\Models\WorkflowStage;
@@ -91,10 +92,93 @@ class StageFieldRuleValidator
 
             if ($enforceRequired && $isRequired && $this->isEmpty($value)) {
                 $errors[$field->key] = 'This field is required.';
+
+                continue;
+            }
+
+            // Skip constraint checks when field has no value
+            if ($this->isEmpty($value)) {
+                continue;
+            }
+
+            if ($error = $this->checkConstraints($field, $value)) {
+                $errors[$field->key] = $error;
             }
         }
 
         return $errors;
+    }
+
+    private function checkConstraints(FieldDefinition $field, mixed $value): ?string
+    {
+        $type = $field->type instanceof FieldType ? $field->type : null;
+
+        // Regex pattern (text/textarea fields)
+        if ($field->regex_pattern !== null && is_string($value) && $value !== '') {
+            if (! preg_match($field->regex_pattern, $value)) {
+                return 'The value does not match the required format.';
+            }
+        }
+
+        // Numeric min/max
+        if (
+            in_array($type, [FieldType::NUMBER, FieldType::CURRENCY], true)
+            && is_numeric($value)
+        ) {
+            $numVal = (float) $value;
+            if ($field->min_value !== null && $numVal < (float) $field->min_value) {
+                return "The value must be at least {$field->min_value}.";
+            }
+            if ($field->max_value !== null && $numVal > (float) $field->max_value) {
+                return "The value must not exceed {$field->max_value}.";
+            }
+        }
+
+        // String length (text/textarea fields)
+        if (
+            in_array($type, [FieldType::TEXT, FieldType::TEXTAREA], true)
+            && is_string($value)
+        ) {
+            $len = mb_strlen($value);
+            if ($field->min_length !== null && $len < $field->min_length) {
+                return "The value must be at least {$field->min_length} characters.";
+            }
+            if ($field->max_length !== null && $len > $field->max_length) {
+                return "The value must not exceed {$field->max_length} characters.";
+            }
+        }
+
+        // File constraints — value stored as ['mime' => '...', 'size_kb' => N]
+        if ($type === FieldType::FILE && is_array($value)) {
+            if (! empty($field->allowed_file_types)) {
+                $mime = $value['mime'] ?? '';
+                $mimeMap = [
+                    'pdf' => 'application/pdf',
+                    'xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                    'xls' => 'application/vnd.ms-excel',
+                    'doc' => 'application/msword',
+                    'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                    'png' => 'image/png',
+                    'jpg' => 'image/jpeg',
+                    'jpeg' => 'image/jpeg',
+                ];
+                $allowedMimes = array_map(fn ($ext) => $mimeMap[$ext] ?? $ext, $field->allowed_file_types);
+                if (! in_array($mime, $allowedMimes, true)) {
+                    $exts = implode(', ', $field->allowed_file_types);
+
+                    return "Only the following file types are allowed: {$exts}.";
+                }
+            }
+
+            if ($field->max_file_size !== null) {
+                $sizeKb = (int) ($value['size_kb'] ?? 0);
+                if ($sizeKb > $field->max_file_size) {
+                    return "The file must not exceed {$field->max_file_size} KB.";
+                }
+            }
+        }
+
+        return null;
     }
 
     private function isEmpty(mixed $value): bool

@@ -112,4 +112,112 @@ class StageFieldRuleValidatorTest extends TestCase
             $this->validator->validateData($fields, $rules, ['docs' => [1]], [], true),
         );
     }
+
+    private function fieldWith(int $id, string $key, array $attrs): FieldDefinition
+    {
+        $field = new FieldDefinition;
+        $field->forceFill(array_merge(['id' => $id, 'key' => $key, 'is_required' => false], $attrs));
+
+        return $field;
+    }
+
+    public function test_regex_pattern_enforced_when_value_set(): void
+    {
+        $fields = collect([
+            $this->fieldWith(1, 'ref', ['type' => 'TEXT', 'regex_pattern' => '/^\d{4}$/']),
+        ]);
+        $rules = collect([]);
+
+        $errors = $this->validator->validateData($fields, $rules, ['ref' => 'abc'], []);
+        $this->assertArrayHasKey('ref', $errors);
+
+        $ok = $this->validator->validateData($fields, $rules, ['ref' => '1234'], []);
+        $this->assertArrayNotHasKey('ref', $ok);
+    }
+
+    public function test_regex_not_enforced_when_value_empty(): void
+    {
+        $fields = collect([
+            $this->fieldWith(1, 'ref', ['type' => 'TEXT', 'regex_pattern' => '/^\d{4}$/']),
+        ]);
+        $errors = $this->validator->validateData(collect([]), collect([]), [], []);
+        $this->assertEmpty($errors);
+
+        // empty string with regex — no error (required check is separate)
+        $ok = $this->validator->validateData($fields, collect([]), ['ref' => ''], []);
+        $this->assertArrayNotHasKey('ref', $ok);
+    }
+
+    public function test_min_max_value_enforced_for_number_field(): void
+    {
+        $fields = collect([
+            $this->fieldWith(1, 'amount', ['type' => 'NUMBER', 'min_value' => '100', 'max_value' => '1000']),
+        ]);
+        $rules = collect([]);
+
+        $errLow = $this->validator->validateData($fields, $rules, ['amount' => 50], []);
+        $this->assertArrayHasKey('amount', $errLow);
+
+        $errHigh = $this->validator->validateData($fields, $rules, ['amount' => 2000], []);
+        $this->assertArrayHasKey('amount', $errHigh);
+
+        $ok = $this->validator->validateData($fields, $rules, ['amount' => 500], []);
+        $this->assertArrayNotHasKey('amount', $ok);
+    }
+
+    public function test_min_max_length_enforced_for_text_field(): void
+    {
+        $fields = collect([
+            $this->fieldWith(1, 'note', ['type' => 'TEXT', 'min_length' => 3, 'max_length' => 10]),
+        ]);
+        $rules = collect([]);
+
+        $errShort = $this->validator->validateData($fields, $rules, ['note' => 'ab'], []);
+        $this->assertArrayHasKey('note', $errShort);
+
+        $errLong = $this->validator->validateData($fields, $rules, ['note' => 'abcdefghijk'], []);
+        $this->assertArrayHasKey('note', $errLong);
+
+        $ok = $this->validator->validateData($fields, $rules, ['note' => 'hello'], []);
+        $this->assertArrayNotHasKey('note', $ok);
+    }
+
+    public function test_allowed_file_types_enforced_for_file_field(): void
+    {
+        $fields = collect([
+            $this->fieldWith(1, 'doc', ['type' => 'FILE', 'allowed_file_types' => ['pdf', 'xlsx']]),
+        ]);
+        $rules = collect([]);
+
+        // Value for file fields is stored as array with 'mime' key
+        $errType = $this->validator->validateData($fields, $rules, ['doc' => ['mime' => 'image/png', 'size_kb' => 50]], []);
+        $this->assertArrayHasKey('doc', $errType);
+
+        $ok = $this->validator->validateData($fields, $rules, ['doc' => ['mime' => 'application/pdf', 'size_kb' => 50]], []);
+        $this->assertArrayNotHasKey('doc', $ok);
+    }
+
+    public function test_max_file_size_enforced_for_file_field(): void
+    {
+        $fields = collect([
+            $this->fieldWith(1, 'doc', ['type' => 'FILE', 'max_file_size' => 100]),
+        ]);
+        $rules = collect([]);
+
+        $errSize = $this->validator->validateData($fields, $rules, ['doc' => ['mime' => 'application/pdf', 'size_kb' => 200]], []);
+        $this->assertArrayHasKey('doc', $errSize);
+
+        $ok = $this->validator->validateData($fields, $rules, ['doc' => ['mime' => 'application/pdf', 'size_kb' => 50]], []);
+        $this->assertArrayNotHasKey('doc', $ok);
+    }
+
+    public function test_constraints_skipped_when_no_value(): void
+    {
+        $fields = collect([
+            $this->fieldWith(1, 'amount', ['type' => 'NUMBER', 'min_value' => '100', 'max_value' => '1000']),
+        ]);
+        // field not present in data at all — no constraint error
+        $ok = $this->validator->validateData($fields, collect([]), [], []);
+        $this->assertEmpty($ok);
+    }
 }
