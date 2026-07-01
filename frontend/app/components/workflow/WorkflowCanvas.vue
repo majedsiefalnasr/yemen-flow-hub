@@ -68,7 +68,7 @@ const props = defineProps<{ version: WorkflowVersion }>()
 
 const { graph, loading, error, fetchGraph } = useWorkflowGraph()
 const { stages, fetchStages, createStage, updateStage } = useWorkflowStages()
-const { createTransition, deleteTransition, transitions, fetchTransitions } = useWorkflowTransitions()
+const { createTransition, updateTransition, deleteTransition, transitions, fetchTransitions } = useWorkflowTransitions()
 const { actions, fetchActions } = useWorkflowActions()
 
 const { zoomIn: flowZoomIn, zoomOut: flowZoomOut, fitView } = useVueFlow()
@@ -302,16 +302,23 @@ async function onEdgeUpdate({ edge, connection }: EdgeUpdateEvent) {
   const newFrom = Number(connection.source?.replace('stage-', ''))
   const newTo = Number(connection.target?.replace('stage-', ''))
   if (!newFrom || !newTo) return
+  // No change — user dropped back on same handles
+  if (newFrom === transition.from_stage_id && newTo === transition.to_stage_id) return
   try {
-    // Optimistically update the visual edge
     updateEdge(edge as GraphEdge, connection)
-    await createTransition(props.version.id, {
-      from_stage_id: newFrom,
-      action_id: transition.action_id,
-      to_stage_id: newTo,
-      requires_comment: transition.requires_comment,
-    })
-    await deleteTransition(transition)
+    if (newFrom === transition.from_stage_id) {
+      // Only target changed → PATCH (avoids unique constraint on from_stage_id+action_id)
+      await updateTransition(transition, { to_stage_id: newTo })
+    } else {
+      // Source changed → must delete first, then create (unique pair constraint)
+      await deleteTransition(transition)
+      await createTransition(props.version.id, {
+        from_stage_id: newFrom,
+        action_id: transition.action_id,
+        to_stage_id: newTo,
+        requires_comment: transition.requires_comment,
+      })
+    }
     await fetchGraph(props.version.id)
     toast.success('تم تحديث الانتقال')
   } catch (cause) {

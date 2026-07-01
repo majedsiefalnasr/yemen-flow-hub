@@ -49,6 +49,18 @@ export function useWorkflowTransitions() {
     return response.data
   }
 
+  const updateTransition = async (
+    transition: WorkflowTransition,
+    payload: { to_stage_id?: number; requires_comment?: boolean; confirmation_message?: string | null },
+  ) => {
+    const response = await api.patch<{ data: WorkflowTransition }>(
+      `/api/v1/workflow-versions/${transition.workflow_version_id}/transitions/${transition.id}`,
+      { ...payload, version: transition.version },
+    )
+    transitions.value = transitions.value.map((t) => (t.id === transition.id ? response.data : t))
+    return response.data
+  }
+
   const deleteTransition = async (transition: WorkflowTransition) => {
     await api.del(
       `/api/v1/workflow-versions/${transition.workflow_version_id}/transitions/${transition.id}`,
@@ -62,6 +74,7 @@ export function useWorkflowTransitions() {
     error,
     fetchTransitions,
     createTransition,
+    updateTransition,
     deleteTransition,
   }
 }
