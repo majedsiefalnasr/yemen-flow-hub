@@ -74,8 +74,11 @@ const { zoomIn: flowZoomIn, zoomOut: flowZoomOut, fitView } = useVueFlow()
 const STAGE_W = 180
 const STAGE_H = 76
 const ACTION_SIZE = 52
-const COL_GAP = 140
-const ROW_GAP = 120
+// Horizontal gap between stage right-edge and action center, action center and next stage left-edge
+const H_GAP = 60
+// Vertical gap between rows
+const V_GAP = 100
+// How many stages per row before wrapping
 const COLS = 4
 
 const editable = computed(() => props.version.state === 'DRAFT' && props.version.is_editable)
@@ -83,15 +86,25 @@ const editable = computed(() => props.version.state === 'DRAFT' && props.version
 // ── Node position tracking (persists user drag) ───────────────────────────────
 const nodePositions = ref(new Map<string, { x: number; y: number }>())
 
+/**
+ * Lay out stages in rows of COLS, with enough horizontal room for action nodes
+ * to sit on the edge between each pair of adjacent stages.
+ * Row height accounts for stage height + vertical gap.
+ * Each stage column slot is STAGE_W + H_GAP + ACTION_SIZE + H_GAP wide so
+ * action nodes fit between stages without overlap.
+ */
 function computeAutoPositions(graphNodes: WorkflowGraphNode[]): Map<number, { x: number; y: number }> {
   const sorted = [...graphNodes].sort((a, b) => a.sort_order - b.sort_order)
   const map = new Map<number, { x: number; y: number }>()
+  // Slot width: stage + gap + action_size + gap (so action node can sit between two stages)
+  const SLOT_W = STAGE_W + H_GAP + ACTION_SIZE + H_GAP
+  const SLOT_H = STAGE_H + V_GAP
   sorted.forEach((n, i) => {
     const col = i % COLS
     const row = Math.floor(i / COLS)
     map.set(n.id, {
-      x: 60 + col * (STAGE_W + COL_GAP),
-      y: 60 + row * (STAGE_H + ROW_GAP + ACTION_SIZE),
+      x: 40 + col * SLOT_W,
+      y: 40 + row * SLOT_H,
     })
   })
   return map
@@ -170,10 +183,13 @@ const nodes = computed<Node[]>(() => {
     const fp = stagePos(e.from_stage_id)
     const tp = stagePos(e.to_stage_id)
     const key = `action-${e.id}`
-    const pos = nodePositions.value.get(key) ?? {
-      x: (fp.x + STAGE_W + tp.x) / 2 - ACTION_SIZE / 2,
-      y: (fp.y + STAGE_H / 2 + tp.y + STAGE_H / 2) / 2 - ACTION_SIZE / 2,
-    }
+    // Place action node midpoint between right edge of from-stage and left edge of to-stage,
+    // vertically centered between the two stage midpoints.
+    const fromRightX = fp.x + STAGE_W
+    const toLeftX = tp.x
+    const midX = (fromRightX + toLeftX) / 2 - ACTION_SIZE / 2
+    const midY = (fp.y + STAGE_H / 2 + tp.y + STAGE_H / 2) / 2 - ACTION_SIZE / 2
+    const pos = nodePositions.value.get(key) ?? { x: midX, y: midY }
     return {
       id: key,
       type: 'action',
