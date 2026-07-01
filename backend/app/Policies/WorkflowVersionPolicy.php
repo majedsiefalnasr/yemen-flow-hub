@@ -32,6 +32,15 @@ class WorkflowVersionPolicy
     }
 
     /**
+     * Publishing is a state transition on a DRAFT version; it has its own
+     * gate so that the update() guard (PUBLISHED-blocking) does not interfere.
+     */
+    public function publish(User $user, WorkflowVersion $version): bool
+    {
+        return $this->viewAny($user);
+    }
+
+    /**
      * Archiving is a state transition on a PUBLISHED version; it has its own
      * gate so that the update() guard (DRAFT-only) does not block it.
      */
