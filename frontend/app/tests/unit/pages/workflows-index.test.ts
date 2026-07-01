@@ -61,6 +61,11 @@ vi.mock('@/composables/useEngineRequestDocuments', () => ({
 describe('workflows/index.vue', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
+    // Stub loadQueue/loadList to no-ops so tests that pre-set store data are not overwritten by
+    // the composable mock (which always returns empty arrays). Individual tests can re-spy as needed.
+    const store = useEngineRequestsStore()
+    vi.spyOn(store, 'loadQueue').mockResolvedValue(undefined)
+    vi.spyOn(store, 'loadList').mockResolvedValue(undefined)
   })
 
   it('calls loadQueue on mount', () => {
@@ -77,5 +82,49 @@ describe('workflows/index.vue', () => {
       global: { stubs: { NuxtLink: true } },
     })
     expect(wrapper.findComponent({ name: 'EmptyTitle' }).exists()).toBe(true)
+  })
+
+  it('renders the operational page header and metrics', () => {
+    const store = useEngineRequestsStore()
+    store.queue = []
+    store.instances = []
+
+    const wrapper = mount(WorkflowsIndexPage, {
+      global: { stubs: { NuxtLink: true } },
+    })
+
+    expect(wrapper.text()).toContain('سير العمل الديناميكي')
+    expect(wrapper.text()).toContain('طابوري')
+    expect(wrapper.text()).toContain('جميع الطلبات')
+  })
+
+  it('filters rows by reference search', async () => {
+    const store = useEngineRequestsStore()
+    store.queue = [
+      { id: 1, reference: 'ENG-001', status: 'ACTIVE', current_stage: { name: 'استلام' } },
+      { id: 2, reference: 'ENG-002', status: 'ACTIVE', current_stage: { name: 'اعتماد' } },
+    ] as any
+
+    const wrapper = mount(WorkflowsIndexPage, {
+      global: { stubs: { NuxtLink: true } },
+    })
+
+    await wrapper.get('input[placeholder="بحث بالمرجع..."]').setValue('ENG-002')
+
+    expect(wrapper.text()).toContain('ENG-002')
+    expect(wrapper.text()).not.toContain('ENG-001')
+  })
+
+  it('shows explicit view action for rows', () => {
+    const store = useEngineRequestsStore()
+    store.queue = [
+      { id: 1, reference: 'ENG-001', status: 'ACTIVE', current_stage: { name: 'استلام' } },
+    ] as any
+
+    const wrapper = mount(WorkflowsIndexPage, {
+      global: { stubs: { NuxtLink: true } },
+    })
+
+    expect(wrapper.text()).toContain('عرض')
   })
 })
