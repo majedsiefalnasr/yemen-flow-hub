@@ -1,16 +1,17 @@
 <script setup lang="ts">
-import { computed, watch } from 'vue'
-import { VueFlow, type Edge, type Node } from '@vue-flow/core'
+import { computed, h, watch } from 'vue'
+import { VueFlow, Panel, MarkerType, type Edge, type Node, type NodeTypesObject, type EdgeMouseEvent } from '@vue-flow/core'
 import '@vue-flow/core/dist/style.css'
 import '@vue-flow/core/dist/theme-default.css'
-import { AlertCircle, GitBranch, Lock, Plus } from 'lucide-vue-next'
+import { AlertCircle, GitBranch, Lock, Minus, Plus, ZoomIn, ZoomOut } from 'lucide-vue-next'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useWorkflowGraph } from '@/composables/useWorkflowGraph'
-import type { WorkflowGraphEdge, WorkflowGraphNode, WorkflowVersion } from '@/types/models'
+import type { WorkflowGraphNode, WorkflowVersion } from '@/types/models'
+import { useVueFlow } from '@vue-flow/core'
 
 const props = defineProps<{
   version: WorkflowVersion
@@ -23,89 +24,137 @@ const emit = defineEmits<{
 }>()
 
 const { graph, loading, error, fetchGraph } = useWorkflowGraph()
+const { zoomIn: flowZoomIn, zoomOut: flowZoomOut, fitView } = useVueFlow()
 
-const NODE_WIDTH = 176
-const NODE_HEIGHT = 96
+const NODE_WIDTH = 200
+const NODE_HEIGHT = 88
+const COL_GAP = 100
+const ROW_GAP = 80
+const COLS_PER_ROW = 4
 
 const editable = computed(() => props.version.state === 'DRAFT' && props.version.is_editable)
-const canRenderVueFlow = computed(() => {
-  return typeof SVGElement !== 'undefined' && typeof SVGElement.prototype.getBBox === 'function'
-})
 
-function nodePosition(node: WorkflowGraphNode) {
-  const column = Math.max(node.sort_order, 0)
-  return {
-    x: 48 + column * 240,
-    y: node.is_final ? 280 : 72 + (column % 2) * 160,
-  }
+/**
+ * Grid layout: sort nodes by sort_order, then wrap into rows of COLS_PER_ROW.
+ * This keeps the canvas reasonably compact regardless of how many stages exist.
+ */
+function computePositions(graphNodes: WorkflowGraphNode[]): Map<number, { x: number; y: number }> {
+  const sorted = [...graphNodes].sort((a, b) => a.sort_order - b.sort_order)
+  const positions = new Map<number, { x: number; y: number }>()
+  sorted.forEach((node, i) => {
+    const col = i % COLS_PER_ROW
+    const row = Math.floor(i / COLS_PER_ROW)
+    positions.set(node.id, {
+      x: 40 + col * (NODE_WIDTH + COL_GAP),
+      y: 40 + row * (NODE_HEIGHT + ROW_GAP),
+    })
+  })
+  return positions
 }
 
-function nodeLabel(node: WorkflowGraphNode) {
-  return node.display_label || node.name
+const positions = computed(() => computePositions(graph.value?.nodes ?? []))
+
+// Custom node component rendered inline via NodeTypes
+const StageNode = {
+  name: 'StageNode',
+  props: ['data', 'id'],
+  emits: ['inspect'],
+  setup(nodeProps: { data: { label: string; code: string; isInitial: boolean; isFinal: boolean; stageId: number; editable: boolean }; id: string }) {
+    return () => {
+      const { label, code, isInitial, isFinal, stageId, editable: isEditable } = nodeProps.data
+      return h(
+        'button',
+        {
+          type: 'button',
+          class: [
+            'group relative flex flex-col gap-2 rounded-xl border bg-card p-4 text-start shadow-md',
+            'transition-all duration-150',
+            'hover:shadow-lg hover:border-primary/40',
+            'focus:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+            isInitial ? 'border-[var(--severity-green)]/50 ring-1 ring-[var(--severity-green)]/20' : 'border-border',
+            isFinal ? 'border-[var(--severity-amber)]/50 ring-1 ring-[var(--severity-amber)]/20' : '',
+          ],
+          style: { width: `${NODE_WIDTH}px`, minHeight: `${NODE_HEIGHT}px` },
+          'data-testid': `workflow-canvas-node-${stageId}`,
+          onClick: () => emit('inspectNode', stageId),
+        },
+        [
+          h('div', { class: 'flex items-start justify-between gap-2' }, [
+            h('div', { class: 'flex-1 min-w-0' }, [
+              h('div', { class: 'truncate text-sm font-semibold text-foreground leading-snug' }, label),
+              h('div', { class: 'font-mono text-[10px] text-muted-foreground mt-0.5 truncate' }, code),
+            ]),
+            h(GitBranch, {
+              class: [
+                'h-3.5 w-3.5 shrink-0 mt-0.5',
+                isEditable ? 'text-primary' : 'text-muted-foreground',
+              ],
+            }),
+          ]),
+          (isInitial || isFinal) && h('div', { class: 'flex gap-1 flex-wrap' }, [
+            isInitial && h(
+              'span',
+              { class: 'inline-flex items-center rounded-full border border-[var(--severity-green)]/30 bg-[var(--severity-green)]/10 px-1.5 py-0.5 text-[10px] font-medium text-[var(--severity-green)]' },
+              'بداية',
+            ),
+            isFinal && h(
+              'span',
+              { class: 'inline-flex items-center rounded-full border border-[var(--severity-amber)]/30 bg-[var(--severity-amber)]/10 px-1.5 py-0.5 text-[10px] font-medium text-[var(--severity-amber)]' },
+              'نهاية',
+            ),
+          ]),
+        ],
+      )
+    }
+  },
 }
 
-function edgeLabel(edge: WorkflowGraphEdge) {
-  const label = edge.action_name || edge.action_code || `#${edge.action_id}`
-  return edge.requires_comment ? `${label} · تعليق مطلوب` : label
-}
+const nodeTypes: NodeTypesObject = { stage: StageNode as any }
 
 const nodes = computed<Node[]>(() =>
   (graph.value?.nodes ?? []).map((node) => ({
     id: String(node.id),
-    position: nodePosition(node),
+    type: 'stage',
+    position: positions.value.get(node.id) ?? { x: 0, y: 0 },
     data: {
-      label: nodeLabel(node),
+      label: node.display_label || node.name,
       code: node.code,
       isInitial: node.is_initial,
       isFinal: node.is_final,
+      stageId: node.id,
+      editable: editable.value,
     },
-    draggable: editable.value,
-    selectable: true,
+    draggable: false,
+    selectable: false,
     connectable: false,
   })),
 )
 
 const edges = computed<Edge[]>(() =>
-  (graph.value?.edges ?? []).map((edge) => ({
-    id: String(edge.id),
-    source: String(edge.from_stage_id),
-    target: String(edge.to_stage_id),
-    label: edgeLabel(edge),
-    animated: edge.is_return,
-    selectable: true,
-    updatable: false,
-  })),
-)
-
-const nodePositions = computed(() => {
-  return new Map(
-    (graph.value?.nodes ?? []).map((node) => [
-      node.id,
-      {
-        ...nodePosition(node),
-        node,
-      },
-    ]),
-  )
-})
-
-const edgeBadges = computed(() =>
   (graph.value?.edges ?? []).map((edge) => {
-    const source = nodePositions.value.get(edge.from_stage_id)
-    const target = nodePositions.value.get(edge.to_stage_id)
-
-    const sourceCenter = source
-      ? { x: source.x + NODE_WIDTH / 2, y: source.y + NODE_HEIGHT / 2 }
-      : { x: 0, y: 0 }
-    const targetCenter = target
-      ? { x: target.x + NODE_WIDTH / 2, y: target.y + NODE_HEIGHT / 2 }
-      : { x: 0, y: 0 }
-
+    const rawLabel = edge.action_name || edge.action_code || `#${edge.action_id}`
+    const label = edge.requires_comment ? `${rawLabel} · تعليق` : rawLabel
     return {
-      edge,
-      label: edgeLabel(edge),
-      left: (sourceCenter.x + targetCenter.x) / 2,
-      top: (sourceCenter.y + targetCenter.y) / 2 - 18,
+      id: String(edge.id),
+      source: String(edge.from_stage_id),
+      target: String(edge.to_stage_id),
+      type: 'smoothstep',
+      label,
+      animated: edge.is_return,
+      labelStyle: { fontSize: '11px', fontFamily: 'IBM Plex Sans Arabic, sans-serif', fill: '#6c757d' },
+      labelBgStyle: { fill: '#ffffff', stroke: '#cccccc', strokeWidth: 1 },
+      labelBgPadding: [6, 3] as [number, number],
+      labelBgBorderRadius: 9999,
+      style: {
+        stroke: edge.is_return ? 'var(--severity-amber)' : '#0066cc',
+        strokeWidth: 1.5,
+      },
+      markerEnd: {
+        type: MarkerType.ArrowClosed,
+        color: edge.is_return ? 'var(--severity-amber)' : '#0066cc',
+      },
+      data: { transitionId: edge.id },
+      selectable: true,
     }
   }),
 )
@@ -121,6 +170,22 @@ watch(
   },
   { immediate: true },
 )
+
+function handleEdgeClick({ edge }: EdgeMouseEvent) {
+  if (edge.data?.transitionId) {
+    emit('inspectEdge', edge.data.transitionId as number)
+  }
+}
+
+function handleZoomIn() {
+  void flowZoomIn({ duration: 200 })
+}
+function handleZoomOut() {
+  void flowZoomOut({ duration: 200 })
+}
+function handleFitView() {
+  void fitView({ duration: 300, padding: 0.15 })
+}
 </script>
 
 <template>
@@ -153,7 +218,7 @@ watch(
     </Alert>
 
     <div v-else-if="loading" class="grid gap-2">
-      <Skeleton class="h-[420px] w-full rounded-lg" />
+      <Skeleton class="h-[520px] w-full rounded-xl" />
     </div>
 
     <Empty v-else-if="!graph || graph.nodes.length === 0">
@@ -166,60 +231,65 @@ watch(
     <div
       v-else
       data-testid="workflow-canvas"
-      class="border-border bg-background relative h-[620px] overflow-auto rounded-lg border"
+      class="border-border bg-[#f8f9fb] relative h-[480px] overflow-hidden rounded-xl border"
     >
       <VueFlow
-        v-if="canRenderVueFlow"
-        class="h-full min-w-[720px]"
+        class="h-full w-full"
         :nodes="nodes"
         :edges="edges"
-        :nodes-draggable="editable"
+        :node-types="nodeTypes"
+        :nodes-draggable="false"
         :edges-updatable="false"
         :connectable="false"
-        :zoom-on-scroll="false"
+        :zoom-on-scroll="true"
         :pan-on-drag="true"
         :fit-view-on-init="true"
-        dir="rtl"
-      />
+        :fit-view-on-init-options="{ padding: 0.08 }"
+        :min-zoom="0.3"
+        :max-zoom="2"
+        dir="ltr"
+        @edge-click="handleEdgeClick"
+      >
+        <!-- Grid dot background pattern -->
+        <template #background>
+          <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" style="position:absolute;inset:0;pointer-events:none">
+            <defs>
+              <pattern id="canvas-dot" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse">
+                <circle cx="1" cy="1" r="1" fill="#d1d5db" />
+              </pattern>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#canvas-dot)" />
+          </svg>
+        </template>
 
-      <div class="pointer-events-none absolute inset-0 min-w-[720px]">
-        <button
-          v-for="entry in graph.nodes"
-          :key="entry.id"
-          type="button"
-          class="border-border bg-card pointer-events-auto absolute w-44 rounded-md border p-3 text-start shadow-sm"
-          :style="{
-            left: `${nodePositions.get(entry.id)?.x ?? 0}px`,
-            top: `${nodePositions.get(entry.id)?.y ?? 0}px`,
-          }"
-          :data-testid="`workflow-canvas-node-${entry.id}`"
-          @click="emit('inspectNode', entry.id)"
-        >
-          <div class="flex items-start justify-between gap-2">
-            <div>
-              <div class="text-sm font-semibold">{{ nodeLabel(entry) }}</div>
-              <div class="text-muted-foreground font-mono text-xs">{{ entry.code }}</div>
-            </div>
-            <GitBranch class="text-muted-foreground h-4 w-4 shrink-0" />
-          </div>
-          <div class="mt-2 flex flex-wrap gap-1">
-            <Badge v-if="entry.is_initial" variant="secondary">بداية</Badge>
-            <Badge v-if="entry.is_final" variant="secondary">نهاية</Badge>
-          </div>
-        </button>
-
-        <button
-          v-for="entry in edgeBadges"
-          :key="entry.edge.id"
-          type="button"
-          class="bg-background/95 border-border text-foreground pointer-events-auto absolute -translate-x-1/2 rounded-full border px-2.5 py-1 text-xs shadow-sm"
-          :style="{ left: `${entry.left}px`, top: `${entry.top}px` }"
-          :data-testid="`workflow-canvas-edge-${entry.edge.id}`"
-          @click="emit('inspectEdge', entry.edge.id)"
-        >
-          {{ entry.label }}
-        </button>
-      </div>
+        <!-- Zoom controls panel -->
+        <Panel position="bottom-left" class="flex flex-col gap-1 p-1">
+          <button
+            type="button"
+            class="flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-card shadow-sm hover:bg-muted transition-colors"
+            aria-label="تكبير"
+            @click="handleZoomIn"
+          >
+            <ZoomIn class="h-4 w-4 text-muted-foreground" />
+          </button>
+          <button
+            type="button"
+            class="flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-card shadow-sm hover:bg-muted transition-colors"
+            aria-label="تصغير"
+            @click="handleZoomOut"
+          >
+            <ZoomOut class="h-4 w-4 text-muted-foreground" />
+          </button>
+          <button
+            type="button"
+            class="flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-card shadow-sm hover:bg-muted transition-colors"
+            aria-label="ملاءمة الشاشة"
+            @click="handleFitView"
+          >
+            <Minus class="h-4 w-4 text-muted-foreground" />
+          </button>
+        </Panel>
+      </VueFlow>
     </div>
   </section>
 </template>
