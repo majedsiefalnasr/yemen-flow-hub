@@ -98,10 +98,10 @@ class WorkflowVersionLifecycleTest extends TestCase
         $version = $this->draftVersion();
         $version->update(['state' => WorkflowVersionState::PUBLISHED]);
 
+        // Policy blocks mutation of PUBLISHED versions before the service runs (HTTP 403).
         $this->actingAs($this->admin)->putJson("/api/v1/workflow-versions/{$version->id}", [
             'version' => $version->fresh()->version,
-        ])->assertStatus(409)
-            ->assertJsonPath('error.code', 'WORKFLOW_IMMUTABLE_STATE');
+        ])->assertForbidden();
     }
 
     public function test_archived_version_rejects_edits(): void
@@ -233,6 +233,38 @@ class WorkflowVersionLifecycleTest extends TestCase
             'code' => 'blocked',
             'name' => 'Blocked',
         ])->assertForbidden();
+    }
+
+    // G10: PUBLISHED version immutability — policy-layer guard tests
+
+    public function test_update_endpoint_returns_403_for_published_version(): void
+    {
+        $version = $this->draftVersion();
+        $version->update(['state' => WorkflowVersionState::PUBLISHED]);
+
+        $this->actingAs($this->admin)->putJson("/api/v1/workflow-versions/{$version->id}", [
+            'version' => $version->fresh()->version,
+        ])->assertForbidden();
+    }
+
+    public function test_clone_of_published_version_is_allowed(): void
+    {
+        $version = $this->draftVersion();
+        $version->update(['state' => WorkflowVersionState::PUBLISHED, 'published_at' => now()]);
+
+        $cloneResp = $this->actingAs($this->admin)->postJson("/api/v1/workflow-versions/{$version->id}/clone");
+        $cloneResp->assertCreated();
+        $this->assertEquals('DRAFT', $cloneResp->json('data.state'));
+    }
+
+    public function test_draft_version_update_is_still_allowed(): void
+    {
+        $version = $this->draftVersion();
+
+        $this->actingAs($this->admin)->putJson("/api/v1/workflow-versions/{$version->id}", [
+            'version' => $version->version,
+        ])->assertOk()
+            ->assertJsonPath('data.state', 'DRAFT');
     }
 
     private function draftVersion(): WorkflowVersion

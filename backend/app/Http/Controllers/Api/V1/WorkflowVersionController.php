@@ -137,7 +137,7 @@ class WorkflowVersionController extends Controller
 
     public function archive(Request $request, WorkflowVersion $workflowVersion): JsonResponse
     {
-        $this->authorize('update', $workflowVersion);
+        $this->authorize('archive', $workflowVersion);
         $validated = $request->validate(['version' => ['required', 'integer', 'min:1']]);
 
         try {
