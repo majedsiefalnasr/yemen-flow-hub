@@ -266,4 +266,69 @@ describe('workflows/instances/[id].vue', () => {
     await wrapper.vm.$nextTick()
     expect(wrapper.text()).toContain('مراجع آخر يراجع هذا الطلب الآن')
   })
+
+  it('renders a stage action panel separate from the form', async () => {
+    const store = useEngineRequestsStore()
+    store.current = makeInstance()
+    store.graph = {
+      nodes: [],
+      edges: [
+        {
+          id: 9,
+          from_stage_id: 1,
+          to_stage_id: 2,
+          action_id: 1,
+          action_code: 'SUBMIT',
+          action_name: 'إرسال',
+          requires_comment: false,
+          is_self_loop: false,
+          is_return: false,
+        },
+      ],
+    }
+
+    const wrapper = mount(WorkflowInstanceDetailPage, { global: { stubs } })
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.text()).toContain('إجراءات المرحلة')
+    expect(wrapper.text()).toContain('إرسال')
+  })
+
+  it('explains why actions are disabled when claim is required and not held', async () => {
+    const store = useEngineRequestsStore()
+    store.current = makeInstance({
+      current_stage: {
+        id: 1,
+        code: 'INTAKE',
+        name: 'استلام',
+        is_initial: true,
+        is_final: false,
+        sla_duration_minutes: null,
+        requires_claim: true,
+      },
+      claimed_by: null,
+    })
+    store.graph = {
+      nodes: [],
+      edges: [
+        {
+          id: 9,
+          from_stage_id: 1,
+          to_stage_id: 2,
+          action_id: 1,
+          action_code: 'SUBMIT',
+          action_name: 'إرسال',
+          requires_comment: false,
+          is_self_loop: false,
+          is_return: false,
+        },
+      ],
+    }
+
+    const wrapper = mount(WorkflowInstanceDetailPage, { global: { stubs } })
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.text()).toContain('يجب مطالبة هذه المرحلة قبل تنفيذ الإجراء')
+    expect(wrapper.find('button:disabled').exists()).toBe(true)
+  })
 })

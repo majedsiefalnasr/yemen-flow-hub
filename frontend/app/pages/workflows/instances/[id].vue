@@ -14,7 +14,8 @@ import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
 import { Field, FieldLabel } from '@/components/ui/field'
-import { AlertTriangle } from 'lucide-vue-next'
+import { AlertCircle, AlertTriangle, LockKeyhole } from 'lucide-vue-next'
+import PageHeader from '@/components/layout/PageHeader.vue'
 
 definePageMeta({ middleware: ['auth', 'screen'], requiredScreen: 'requests' })
 
@@ -58,6 +59,7 @@ const claimHolderName = computed(() => store.current?.claimed_by_user?.name ?? n
 // Action panel is gated behind holding the claim whenever the stage requires
 // one; stages that don't require a claim remain actionable as before.
 const canAct = computed(() => !stageRequiresClaim.value || isHeldByMe.value)
+const claimRequiredButNotHeld = computed(() => stageRequiresClaim.value && !isHeldByMe.value)
 
 async function startReview() {
   await claim()
@@ -95,14 +97,26 @@ async function runAction(transitionId: number, requiresComment: boolean) {
     </div>
 
     <template v-else-if="store.current">
-      <div class="flex items-center justify-between">
-        <div>
-          <h1 class="text-foreground text-lg font-semibold">{{ store.current.reference }}</h1>
-          <Badge variant="outline" class="mt-1">
-            {{ store.current.current_stage?.name ?? '—' }}
-          </Badge>
-        </div>
-        <Button v-if="showClaimButton" size="sm" @click="startReview">بدء المراجعة</Button>
+      <PageHeader
+        :title="store.current.reference"
+        subtitle="تفاصيل طلب محرك سير العمل والإجراءات المتاحة في المرحلة الحالية"
+        :breadcrumbs="[
+          { label: 'الرئيسية', to: '/dashboard' },
+          { label: 'سير العمل', to: '/workflows' },
+          { label: store.current.reference },
+        ]"
+      >
+        <template #actions>
+          <Button v-if="showClaimButton" size="sm" @click="startReview">بدء المراجعة</Button>
+        </template>
+      </PageHeader>
+
+      <div class="flex flex-wrap items-center gap-2">
+        <Badge variant="outline">{{ store.current.current_stage?.name ?? '—' }}</Badge>
+        <Badge v-if="stageRequiresClaim" variant="secondary">
+          <LockKeyhole class="h-3 w-3" />
+          يتطلب مطالبة
+        </Badge>
       </div>
 
       <Alert v-if="conflictError" variant="destructive" role="alert">
@@ -132,23 +146,29 @@ async function runAction(transitionId: number, requiresComment: boolean) {
                 mode="edit"
                 :request-id="requestId"
               />
+            </CardContent>
+          </Card>
 
-              <Field class="mt-4">
+          <!-- Action panel is gated behind holding the claim: when the
+               current stage requires_claim and I don't hold it, actions
+               are disabled rather than hidden so the user still sees what
+               is normally available. -->
+          <Card class="mt-4 border-0 bg-muted/30 shadow-none">
+            <CardHeader class="pb-2">
+              <CardTitle class="text-sm font-semibold">إجراءات المرحلة</CardTitle>
+            </CardHeader>
+            <CardContent class="space-y-3">
+              <Alert v-if="claimRequiredButNotHeld" role="status">
+                <AlertCircle class="h-4 w-4" />
+                <AlertDescription>
+                  يجب مطالبة هذه المرحلة قبل تنفيذ الإجراء.
+                </AlertDescription>
+              </Alert>
+              <Field>
                 <FieldLabel for="comment">ملاحظات</FieldLabel>
-                <Textarea
-                  id="comment"
-                  v-model="comment"
-                  placeholder="أضف ملاحظاتك هنا…"
-                  rows="3"
-                  :disabled="!canAct"
-                />
+                <Textarea id="comment" v-model="comment" rows="3" :disabled="!canAct" />
               </Field>
-
-              <!-- Action panel is gated behind holding the claim: when the
-                   current stage requires_claim and I don't hold it, actions
-                   are disabled rather than hidden so the user still sees what
-                   is normally available. -->
-              <div class="mt-4 flex gap-2">
+              <div class="flex flex-wrap gap-2">
                 <Button
                   v-for="action in availableActions"
                   :key="action.id"
