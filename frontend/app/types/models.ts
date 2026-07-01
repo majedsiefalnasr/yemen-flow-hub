@@ -11,7 +11,6 @@ import type {
   VoteType,
   VotingSessionStatus,
 } from './enums'
-import type { Trader, TraderCompany, TraderOwner } from './trader'
 
 export interface ProfileStats {
   total: number
@@ -414,11 +413,6 @@ export interface RequestFormData {
   trader_snapshot_commercial_registration_expiry?: string | null
 }
 
-export interface TraderLookupResult {
-  trader: Trader
-  companies: TraderCompany[]
-  owners: TraderOwner[]
-}
 
 export interface User {
   id: number

@@ -71,7 +71,7 @@ const shortcutByRoute: Record<string, string> = {
   '/requests': 'R',
   '/requests/new': 'N',
   '/workflows': 'W',
-  '/traders': 'G',
+
   '/merchants': 'M',
   '/staff': 'F',
   '/customs': 'X',
@@ -94,7 +94,7 @@ const aliasesByRoute: Record<string, string> = {
   '/requests': 'requests list queue',
   '/requests/new': 'new request create submit',
   '/workflows': 'engine workflow dynamic requests دوري',
-  '/traders': 'traders tax owners companies',
+
   '/merchants': 'merchants companies banks',
   '/staff': 'staff employees users',
   '/customs': 'fx confirmation external',
@@ -219,7 +219,7 @@ const GROUP_DEFS: Array<{ heading: string; routes: string[] }> = [
   { heading: 'الطوابير', routes: ['/dashboard', '/customs'] },
   {
     heading: 'الجهات والمستخدمون',
-    routes: ['/traders', '/merchants', '/staff', '/admin/banks', '/admin/cby-staff'],
+    routes: ['/merchants', '/staff', '/admin/banks', '/admin/cby-staff'],
   },
   { heading: 'التدقيق والتقارير', routes: ['/audit', '/reports'] },
   {

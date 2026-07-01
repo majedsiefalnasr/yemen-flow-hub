@@ -9,7 +9,7 @@ import {
   RequestType,
   UserRole,
 } from '../types/enums'
-import { TRADER_MANAGEMENT_ROLES } from '../types/trader'
+
 import type { IconName } from '../utils/icon-map'
 import { NAV_SURFACE_ROUTES, rolesForSurface } from './role-surfaces'
 
@@ -296,12 +296,7 @@ export const NAV_ITEMS: NavItem[] = [
     icon: 'building',
     roles: rolesForSurface('nav.merchants'),
   },
-  {
-    label: 'إدارة التجار',
-    route: '/traders',
-    icon: 'building',
-    roles: [...TRADER_MANAGEMENT_ROLES],
-  },
+
   {
     label: 'الموظفون',
     route: NAV_SURFACE_ROUTES['nav.staff'],
