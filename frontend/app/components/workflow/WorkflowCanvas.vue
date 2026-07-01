@@ -88,6 +88,9 @@ const editable = computed(() => props.version.state === 'DRAFT' && props.version
 // ── Node position tracking (persists user drag) ───────────────────────────────
 const nodePositions = ref(new Map<string, { x: number; y: number }>())
 
+// ── Manual edge handle overrides (persists drag-reconnect until next graph load)
+const edgeHandleOverrides = ref(new Map<string, { sourceHandle: string; targetHandle: string }>())
+
 function computeAutoPositions(graphNodes: WorkflowGraphNode[]): Map<number, { x: number; y: number }> {
   const sorted = [...graphNodes].sort((a, b) => a.sort_order - b.sort_order)
   const map = new Map<number, { x: number; y: number }>()
@@ -158,6 +161,8 @@ const nodes = computed<Node[]>(() =>
 // ── Edges: stage→stage with action label ─────────────────────────────────────
 const edges = computed<Edge[]>(() =>
   (graph.value?.edges ?? []).map((e) => {
+    const edgeId = `e${e.id}`
+    const override = edgeHandleOverrides.value.get(edgeId)
     const fp = stagePos(e.from_stage_id)
     const tp = stagePos(e.to_stage_id)
     const isBelow = tp.y > fp.y + STAGE_H / 2
@@ -166,12 +171,12 @@ const edges = computed<Edge[]>(() =>
     const marker = { type: MarkerType.Arrow, color, width: 18, height: 18 }
     const label = e.action_name || e.action_code || `#${e.action_id}`
     return {
-      id: `e${e.id}`,
+      id: edgeId,
       source: `stage-${e.from_stage_id}`,
-      sourceHandle: isBelow ? `${e.from_stage_id}-b` : `${e.from_stage_id}-r`,
+      sourceHandle: override?.sourceHandle ?? (isBelow ? `${e.from_stage_id}-b` : `${e.from_stage_id}-r`),
       target: `stage-${e.to_stage_id}`,
-      targetHandle: isBelow ? `${e.to_stage_id}-t` : `${e.to_stage_id}-l`,
-      type: 'smoothstep',
+      targetHandle: override?.targetHandle ?? (isBelow ? `${e.to_stage_id}-t` : `${e.to_stage_id}-l`),
+      type: 'default',
       animated: e.is_return,
       label,
       labelStyle: { fill: 'var(--nd-txt)', fontSize: '11px', fontWeight: '600' },
@@ -304,6 +309,13 @@ async function onEdgeUpdate({ edge, connection }: EdgeUpdateEvent) {
   if (!newFrom || !newTo) return
   // No change — user dropped back on same handles
   if (newFrom === transition.from_stage_id && newTo === transition.to_stage_id) return
+  // Save handle choice before API call so computed doesn't snap back on graph refresh
+  const newSourceHandle = connection.sourceHandle ?? edge.sourceHandle ?? `${newFrom}-r`
+  const newTargetHandle = connection.targetHandle ?? edge.targetHandle ?? `${newTo}-l`
+  edgeHandleOverrides.value = new Map(edgeHandleOverrides.value).set(edge.id, {
+    sourceHandle: newSourceHandle,
+    targetHandle: newTargetHandle,
+  })
   try {
     updateEdge(edge as GraphEdge, connection)
     if (newFrom === transition.from_stage_id) {
@@ -319,9 +331,15 @@ async function onEdgeUpdate({ edge, connection }: EdgeUpdateEvent) {
         requires_comment: transition.requires_comment,
       })
     }
+    // Clear override — fetchGraph will assign the new edge id (may differ after recreate)
+    edgeHandleOverrides.value = new Map(edgeHandleOverrides.value)
+    edgeHandleOverrides.value.delete(edge.id)
     await fetchGraph(props.version.id)
     toast.success('تم تحديث الانتقال')
   } catch (cause) {
+    // On failure clear override so edge reverts to auto-routed position
+    edgeHandleOverrides.value = new Map(edgeHandleOverrides.value)
+    edgeHandleOverrides.value.delete(edge.id)
     toast.error(extractApiErrorMessage(cause, 'تعذّر تحديث الانتقال'))
     await fetchGraph(props.version.id)
   }
