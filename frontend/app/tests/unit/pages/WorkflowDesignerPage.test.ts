@@ -53,6 +53,7 @@ function makeDefinition(overrides = {}) {
 async function mountPage(
   capabilities: Array<'VIEW' | 'CREATE' | 'UPDATE' | 'DELETE'>,
   definitions = [makeDefinition()],
+  extraStubs: Record<string, unknown> = {},
 ) {
   // The page mounts both useWorkflows (definitions) and WorkflowActionsCatalog
   // (actions). Child onMounted runs before parent, so route by URL, not call order.
@@ -70,7 +71,7 @@ async function mountPage(
   const wrapper = mount(WorkflowDesignerPage, {
     global: {
       plugins: [pinia],
-      stubs: { Teleport: true, NuxtLink: true },
+      stubs: { Teleport: true, NuxtLink: true, ...extraStubs },
     },
   })
   await flushPromises()
@@ -140,5 +141,32 @@ describe('workflow designer page', () => {
     const wrapper = await mountPage(['VIEW'], [])
 
     expect(wrapper.text()).toContain('لا توجد مسارات عمل')
+  })
+
+  const canvasStubs = {
+    WorkflowCanvas: { template: '<section>لوحة مسار العمل</section>' },
+  }
+
+  it('shows normal and canvas view switches for selected versions', async () => {
+    const wrapper = await mountPage(['VIEW'], [makeDefinition()], canvasStubs)
+
+    expect(wrapper.text()).toContain('تفصيلي')
+    expect(wrapper.text()).toContain('لوحة')
+  })
+
+  it('renders read-only copy for published versions', async () => {
+    const wrapper = await mountPage(['VIEW'], [makeDefinition()], canvasStubs)
+
+    expect(wrapper.text()).toContain('هذه النسخة منشورة أو مؤرشفة، لذلك يمكن عرضها فقط')
+  })
+
+  it('can switch to the canvas view', async () => {
+    const wrapper = await mountPage(['VIEW'], [makeDefinition()], canvasStubs)
+    const canvasButton = wrapper.findAll('button').find((button) => button.text().includes('لوحة'))
+
+    expect(canvasButton).toBeDefined()
+    await canvasButton!.trigger('click')
+
+    expect(wrapper.text()).toContain('لوحة مسار العمل')
   })
 })

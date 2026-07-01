@@ -5,10 +5,11 @@ import { toTypedSchema } from '@vee-validate/zod'
 import { useForm } from 'vee-validate'
 import { toast } from 'vue-sonner'
 import { z } from 'zod'
-import { AlertCircle, Copy, Plus, Workflow } from 'lucide-vue-next'
+import { AlertCircle, Copy, Eye, GitBranch, Plus, Workflow } from 'lucide-vue-next'
 import type { WorkflowVersion } from '@/types/models'
 import ScreenGuard from '@/components/security/ScreenGuard.vue'
 import PageHeader from '@/components/layout/PageHeader.vue'
+import WorkflowCanvas from '@/components/workflow/WorkflowCanvas.vue'
 import WorkflowStageEditor from '@/components/workflow/WorkflowStageEditor.vue'
 import WorkflowTransitionEditor from '@/components/workflow/WorkflowTransitionEditor.vue'
 import WorkflowFieldDesigner from '@/components/workflow/WorkflowFieldDesigner.vue'
@@ -94,7 +95,14 @@ function onDefinitionChange(value: AcceptableValue) {
 
 function onVersionChange(value: AcceptableValue) {
   selectedVersionId.value = Number(value)
+  designerView.value = 'normal'
 }
+
+// ── Designer view switch ────────────────────────────────────────────────
+const designerView = ref<'normal' | 'canvas'>('normal')
+const selectedVersionEditable = computed(
+  () => selectedVersion.value?.state === 'DRAFT' && selectedVersion.value.is_editable,
+)
 
 async function clone() {
   if (!selectedVersion.value) return
@@ -289,38 +297,77 @@ onMounted(reload)
           </Empty>
         </div>
 
-        <!-- Tabs -->
-        <Tabs v-else default-value="stages" dir="rtl">
-          <TabsList class="flex w-full flex-wrap">
-            <TabsTrigger value="stages">المراحل</TabsTrigger>
-            <TabsTrigger value="routing">سير العملية</TabsTrigger>
-            <TabsTrigger value="transitions">الانتقالات</TabsTrigger>
-            <TabsTrigger value="fields">الحقول</TabsTrigger>
-            <TabsTrigger value="actions">الإجراءات</TabsTrigger>
-          </TabsList>
+        <!-- Read-only notice for non-editable (published/archived) versions -->
+        <Alert v-if="selectedVersion && !selectedVersionEditable" class="border-muted bg-muted/30">
+          <Eye class="h-4 w-4" />
+          <AlertTitle>نسخة للعرض فقط</AlertTitle>
+          <AlertDescription>
+            هذه النسخة منشورة أو مؤرشفة، لذلك يمكن عرضها فقط. استنسخ نسخة مسودة لإجراء تعديلات.
+          </AlertDescription>
+        </Alert>
 
-          <TabsContent value="stages" class="mt-4 space-y-6">
-            <WorkflowPublishPanel :version="selectedVersion" @published="reload" />
-            <WorkflowStageEditor :version="selectedVersion" />
-          </TabsContent>
+        <!-- View switch: normal (detailed) vs canvas -->
+        <template v-if="selectedVersion">
+          <div class="flex gap-1">
+            <Button
+              :variant="designerView === 'normal' ? 'default' : 'outline'"
+              size="sm"
+              @click="designerView = 'normal'"
+            >
+              تفصيلي
+            </Button>
+            <Button
+              :variant="designerView === 'canvas' ? 'default' : 'outline'"
+              size="sm"
+              @click="designerView = 'canvas'"
+            >
+              <GitBranch class="h-3.5 w-3.5" />
+              لوحة
+            </Button>
+          </div>
 
-          <TabsContent value="routing" class="mt-4 space-y-6">
-            <StageRoutingEditor :version="selectedVersion" />
-            <WorkflowProcessGraph :version="selectedVersion" />
-          </TabsContent>
+          <template v-if="designerView === 'normal'">
+            <Tabs default-value="stages" dir="rtl">
+              <TabsList class="flex w-full flex-wrap">
+                <TabsTrigger value="stages">المراحل</TabsTrigger>
+                <TabsTrigger value="routing">سير العملية</TabsTrigger>
+                <TabsTrigger value="transitions">الانتقالات</TabsTrigger>
+                <TabsTrigger value="fields">الحقول</TabsTrigger>
+                <TabsTrigger value="actions">الإجراءات</TabsTrigger>
+              </TabsList>
 
-          <TabsContent value="transitions" class="mt-4">
-            <WorkflowTransitionEditor :version="selectedVersion" />
-          </TabsContent>
+              <TabsContent value="stages" class="mt-4 space-y-6">
+                <WorkflowPublishPanel :version="selectedVersion" @published="reload" />
+                <WorkflowStageEditor :version="selectedVersion" />
+              </TabsContent>
 
-          <TabsContent value="fields" class="mt-4">
-            <WorkflowFieldDesigner :version="selectedVersion" />
-          </TabsContent>
+              <TabsContent value="routing" class="mt-4 space-y-6">
+                <StageRoutingEditor :version="selectedVersion" />
+                <WorkflowProcessGraph :version="selectedVersion" />
+              </TabsContent>
 
-          <TabsContent value="actions" class="mt-4">
-            <WorkflowActionsCatalog />
-          </TabsContent>
-        </Tabs>
+              <TabsContent value="transitions" class="mt-4">
+                <WorkflowTransitionEditor :version="selectedVersion" />
+              </TabsContent>
+
+              <TabsContent value="fields" class="mt-4">
+                <WorkflowFieldDesigner :version="selectedVersion" />
+              </TabsContent>
+
+              <TabsContent value="actions" class="mt-4">
+                <WorkflowActionsCatalog />
+              </TabsContent>
+            </Tabs>
+          </template>
+
+          <template v-else>
+            <Card class="border-0 shadow">
+              <CardContent class="p-4">
+                <WorkflowCanvas :version="selectedVersion" />
+              </CardContent>
+            </Card>
+          </template>
+        </template>
       </template>
 
       <Dialog v-model:open="createDialogOpen">
