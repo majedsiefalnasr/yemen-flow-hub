@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Models\ImportRequest;
+use App\Models\Merchant;
 use App\Services\FinancingLedgerService;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
@@ -11,7 +11,7 @@ class FinancingController extends Controller
 {
     public function utilization(Request $request, FinancingLedgerService $financingLedgerService)
     {
-        $this->authorize('create', ImportRequest::class);
+        $this->authorize('viewAny', Merchant::class);
 
         $validated = $request->validate([
             'tax_number' => ['required', 'string', 'max:255'],

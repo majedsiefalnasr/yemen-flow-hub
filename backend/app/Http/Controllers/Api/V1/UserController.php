@@ -3,14 +3,13 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Enums\AuditAction;
-use App\Enums\RequestStatus;
 use App\Enums\UserRole;
 use App\Exceptions\StaleResourceException;
 use App\Exceptions\UnmappedRoleException;
 use App\Http\Controllers\Api\Controller;
 use App\Http\Resources\GovernanceUserResource;
 use App\Models\Bank;
-use App\Models\ImportRequest;
+use App\Models\EngineRequest;
 use App\Models\Organization;
 use App\Models\Role;
 use App\Models\User;
@@ -225,28 +224,11 @@ class UserController extends Controller
 
     private function hasActiveWork(User $user): bool
     {
-        $terminal = [RequestStatus::BANK_REJECTED, RequestStatus::EXECUTIVE_REJECTED, RequestStatus::COMPLETED];
-
-        // Block deactivation while the user owns ANY in-flight (non-terminal)
-        // request across the whole lifecycle — authoring, review, support, SWIFT,
-        // and voting/executive ownership — not just the support-claim path.
-        $ownershipColumns = [
-            'created_by',
-            'submitted_by',
-            'reviewed_by',
-            'resubmitted_by',
-            'claimed_by',
-            'support_reviewed_by',
-            'swift_uploaded_by',
-            'voting_opened_by',
-        ];
-
-        return ImportRequest::query()
-            ->whereNotIn('status', array_map(fn (RequestStatus $status) => $status->value, $terminal))
-            ->where(function ($query) use ($ownershipColumns, $user): void {
-                foreach ($ownershipColumns as $column) {
-                    $query->orWhere($column, $user->id);
-                }
+        return EngineRequest::query()
+            ->whereNotIn('status', ['CLOSED', 'REJECTED'])
+            ->where(function ($query) use ($user): void {
+                $query->orWhere('created_by', $user->id)
+                    ->orWhere('claimed_by', $user->id);
             })
             ->exists();
     }

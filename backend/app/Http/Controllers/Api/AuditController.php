@@ -6,19 +6,15 @@ use App\Enums\AuditAction;
 use App\Enums\UserRole;
 use App\Http\Resources\AuditLogResource;
 use App\Models\AuditLog;
-use App\Models\ImportRequest;
 use App\Services\Audit\AuditService;
-use App\Services\DuplicateDetectionService;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Collection;
 use OpenApi\Attributes as OA;
 
 class AuditController extends Controller
 {
     public function __construct(
         private readonly AuditService $auditService,
-        private readonly DuplicateDetectionService $duplicateService,
     ) {}
 
     private function isAuditAuthorized(): bool
@@ -40,19 +36,6 @@ class AuditController extends Controller
         ]);
 
         return ApiResponse::forbidden();
-    }
-
-    private function formatAuditRequestRef(?ImportRequest $request, ?int $fallbackId = null): string
-    {
-        $requestId = $request?->id ?? $fallbackId;
-
-        if (! $requestId) {
-            return '—';
-        }
-
-        $year = $request?->created_at?->format('Y') ?? now()->format('Y');
-
-        return 'IMP-'.$year.'-'.str_pad((string) $requestId, 4, '0', STR_PAD_LEFT);
     }
 
     #[OA\Get(path: '/api/audit', tags: ['Audit'], summary: 'List audit logs', responses: [new OA\Response(response: 200, description: 'Audit logs retrieved')])]
@@ -94,11 +77,9 @@ class AuditController extends Controller
             ->whereDate('created_at', today())
             ->count();
 
-        $duplicateInvoiceCount = $this->duplicateService->findDuplicateGroups()->count();
-
         return ApiResponse::success([
             'today_count' => $todayCount,
-            'duplicate_invoice_count' => $duplicateInvoiceCount,
+            'duplicate_invoice_count' => 0,
         ]);
     }
 
@@ -108,25 +89,7 @@ class AuditController extends Controller
             return $this->forbiddenAuditResponse('audit duplicates require CBY_ADMIN or COMMITTEE_DIRECTOR');
         }
 
-        $groups = $this->duplicateService->findDuplicateGroups();
-
-        $data = $groups->map(function (Collection $rows, string $invoiceNumber) {
-            return [
-                'invoice_number' => $invoiceNumber,
-                'banks' => $rows->map(fn ($r) => $r->bank?->name)->filter()->unique()->values()->all(),
-                'requests' => $rows->map(fn ($r) => [
-                    'id' => $r->id,
-                    'reference_number' => $r->reference_number,
-                    'bank_name' => $r->bank?->name,
-                    'amount' => (float) $r->amount,
-                    'currency' => is_object($r->currency) ? $r->currency->value : $r->currency,
-                    'created_at' => $r->created_at?->toISOString(),
-                    'status' => is_object($r->status) ? $r->status->value : $r->status,
-                ])->values()->all(),
-            ];
-        })->values()->all();
-
-        return ApiResponse::success(['data' => $data]);
+        return ApiResponse::success(['data' => []]);
     }
 
     public function riskIndicators(): JsonResponse

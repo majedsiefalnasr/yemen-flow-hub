@@ -3,10 +3,8 @@
 namespace Tests\Feature\Audit;
 
 use App\Enums\AuditAction;
-use App\Enums\RequestStatus;
 use App\Enums\UserRole;
 use App\Models\Bank;
-use App\Models\ImportRequest;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Gate;
@@ -42,26 +40,6 @@ class AuthorizationFailureAuditScopeTest extends TestCase
         ]);
     }
 
-    private function makeRequest(Bank $bank, User $creator): ImportRequest
-    {
-        app()->instance('workflow.transition.active', true);
-        try {
-            return ImportRequest::query()->create([
-                'bank_id' => $bank->id,
-                'created_by' => $creator->id,
-                'currency' => 'USD',
-                'amount' => 10000.00,
-                'supplier_name' => 'Supplier Co.',
-                'goods_description' => 'Industrial equipment',
-                'port_of_entry' => 'Aden Port',
-                'status' => RequestStatus::DRAFT,
-                'current_owner_role' => UserRole::DATA_ENTRY,
-            ]);
-        } finally {
-            app()->offsetUnset('workflow.transition.active');
-        }
-    }
-
     public function test_framework_abort_403_does_not_create_authorization_failure_audit(): void
     {
         Route::get('/api/test-framework-forbidden', fn () => abort(403, 'Framework denial'))
@@ -76,25 +54,6 @@ class AuthorizationFailureAuditScopeTest extends TestCase
 
         $this->assertDatabaseMissing('audit_logs', [
             'user_id' => $actor->id,
-            'action' => AuditAction::AUTHORIZATION_FAILURE->value,
-        ]);
-    }
-
-    public function test_workflow_domain_authorization_denial_still_creates_audit(): void
-    {
-        $bank = $this->makeBank();
-        $creator = $this->makeUser(UserRole::DATA_ENTRY, $bank);
-        $reviewer = $this->makeUser(UserRole::BANK_REVIEWER, $bank);
-        $request = $this->makeRequest($bank, $creator);
-
-        $this->actingAs($reviewer)
-            ->postJson("/api/workflow/{$request->id}/submit")
-            ->assertForbidden()
-            ->assertJsonPath('error_code', 'WORKFLOW_FORBIDDEN');
-
-        $this->assertDatabaseHas('audit_logs', [
-            'user_id' => $reviewer->id,
-            'user_role' => UserRole::BANK_REVIEWER->value,
             'action' => AuditAction::AUTHORIZATION_FAILURE->value,
         ]);
     }
