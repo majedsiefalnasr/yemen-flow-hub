@@ -2,16 +2,15 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Models\Merchant;
-use App\Services\FinancingLedgerService;
+use App\Services\Workflow\Engine\EngineFinancingLedger;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
 
 class FinancingController extends Controller
 {
-    public function utilization(Request $request, FinancingLedgerService $financingLedgerService)
+    public function utilization(Request $request, EngineFinancingLedger $financingLedgerService)
     {
-        $this->authorize('viewAny', Merchant::class);
+        abort_unless($request->user()?->hasPermission('request.create'), 403);
 
         $validated = $request->validate([
             'tax_number' => ['required', 'string', 'max:255'],

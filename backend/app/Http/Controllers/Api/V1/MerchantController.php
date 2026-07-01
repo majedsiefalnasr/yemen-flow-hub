@@ -30,7 +30,7 @@ class MerchantController extends Controller
 
         $query = Merchant::query()
             ->with('bank', 'owners', 'companies')
-            ->withCount('importRequests')
+            ->withCount('engineRequests')
             ->forUser($user)
             ->when($user->isBankUser(), fn ($q) => $q, fn ($q) => $q->when(
                 $request->filled('bank_id'),
@@ -68,7 +68,7 @@ class MerchantController extends Controller
         $this->guardMerchantScope($request->user(), $merchant);
         $this->authorize('view', $merchant);
 
-        return new MerchantResource($merchant->loadCount('importRequests')->load('bank', 'owners', 'companies'));
+        return new MerchantResource($merchant->loadCount('engineRequests')->load('bank', 'owners', 'companies'));
     }
 
     public function store(StoreMerchantRequest $request): JsonResponse
@@ -117,7 +117,7 @@ class MerchantController extends Controller
             return $merchant->refresh();
         });
 
-        return (new MerchantResource($merchant->loadCount('importRequests')->load('bank', 'owners', 'companies')))
+        return (new MerchantResource($merchant->loadCount('engineRequests')->load('bank', 'owners', 'companies')))
             ->response()
             ->setStatusCode(201);
     }
@@ -193,7 +193,7 @@ class MerchantController extends Controller
             return $this->businessError('STALE_RESOURCE', 'The merchant was modified by another user.', 409);
         }
 
-        return (new MerchantResource($merchant->refresh()->loadCount('importRequests')->load('bank', 'owners', 'companies')))->response();
+        return (new MerchantResource($merchant->refresh()->loadCount('engineRequests')->load('bank', 'owners', 'companies')))->response();
     }
 
     public function destroy(Request $request, Merchant $merchant): JsonResponse

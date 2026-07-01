@@ -8,6 +8,7 @@ use App\Services\Auth\SessionInvalidationService;
 use Database\Seeders\BankSeeder;
 use Database\Seeders\GovernanceSeeder;
 use Database\Seeders\PermissionSeeder;
+use Database\Seeders\ScreenPermissionSeeder;
 use Database\Seeders\UserSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -20,7 +21,7 @@ class AuthIdentityTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->seed([PermissionSeeder::class, GovernanceSeeder::class, BankSeeder::class, UserSeeder::class]);
+        $this->seed([PermissionSeeder::class, GovernanceSeeder::class, ScreenPermissionSeeder::class, BankSeeder::class, UserSeeder::class]);
     }
 
     public function test_auth_me_returns_bank_identity_and_computed_permissions(): void
@@ -35,7 +36,7 @@ class AuthIdentityTest extends TestCase
             ->assertJsonPath('data.team.code', 'bank_admin')
             ->assertJsonPath('data.role.code', 'bank_admin')
             ->assertJsonPath('data.bank.id', $user->bank_id)
-            ->assertJsonPath('data.screen_permissions.users', ['VIEW', 'CREATE', 'UPDATE', 'DELETE', 'MANAGE'])
+            ->assertJsonPath('data.screen_permissions.users', ['CREATE', 'DELETE', 'MANAGE', 'UPDATE', 'VIEW'])
             ->assertJsonPath('data.capabilities.manage_users', true);
     }
 

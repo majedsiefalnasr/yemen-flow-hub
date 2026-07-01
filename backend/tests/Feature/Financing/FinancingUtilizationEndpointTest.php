@@ -5,7 +5,7 @@ namespace Tests\Feature\Financing;
 use App\Enums\UserRole;
 use App\Models\Bank;
 use App\Models\User;
-use App\Services\FinancingLedgerService;
+use App\Services\Workflow\Engine\EngineFinancingLedger;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -46,10 +46,10 @@ class FinancingUtilizationEndpointTest extends TestCase
 
     public function test_returns_aggregate_utilization_shape(): void
     {
-        $mock = Mockery::mock(FinancingLedgerService::class);
+        $mock = Mockery::mock(EngineFinancingLedger::class);
         $mock->shouldReceive('usedPercent')->once()->with('TAX-1', 'INV-1', null)->andReturn(72.5);
         $mock->shouldReceive('remainingPercent')->once()->with('TAX-1', 'INV-1', null)->andReturn(27.5);
-        $this->app->instance(FinancingLedgerService::class, $mock);
+        $this->app->instance(EngineFinancingLedger::class, $mock);
 
         $this->actingAs($this->dataEntry)
             ->getJson('/api/financing/utilization?tax_number=TAX-1&invoice_number=INV-1')
@@ -63,10 +63,10 @@ class FinancingUtilizationEndpointTest extends TestCase
 
     public function test_blocked_true_when_remaining_percent_is_zero(): void
     {
-        $mock = Mockery::mock(FinancingLedgerService::class);
+        $mock = Mockery::mock(EngineFinancingLedger::class);
         $mock->shouldReceive('usedPercent')->once()->andReturn(100.0);
         $mock->shouldReceive('remainingPercent')->once()->andReturn(0.0);
-        $this->app->instance(FinancingLedgerService::class, $mock);
+        $this->app->instance(EngineFinancingLedger::class, $mock);
 
         $this->actingAs($this->dataEntry)
             ->getJson('/api/financing/utilization?tax_number=TAX-2&invoice_number=INV-2')
@@ -76,10 +76,10 @@ class FinancingUtilizationEndpointTest extends TestCase
 
     public function test_passes_exclude_request_id_to_service(): void
     {
-        $mock = Mockery::mock(FinancingLedgerService::class);
+        $mock = Mockery::mock(EngineFinancingLedger::class);
         $mock->shouldReceive('usedPercent')->once()->with('TAX-3', 'INV-3', 9)->andReturn(40.0);
         $mock->shouldReceive('remainingPercent')->once()->with('TAX-3', 'INV-3', 9)->andReturn(60.0);
-        $this->app->instance(FinancingLedgerService::class, $mock);
+        $this->app->instance(EngineFinancingLedger::class, $mock);
 
         $this->actingAs($this->dataEntry)
             ->getJson('/api/financing/utilization?tax_number=TAX-3&invoice_number=INV-3&exclude_request_id=9')

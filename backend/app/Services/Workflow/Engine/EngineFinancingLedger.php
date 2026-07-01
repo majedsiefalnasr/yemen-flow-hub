@@ -96,6 +96,11 @@ class EngineFinancingLedger
         return $this->sumEligiblePercent($taxNumber, $invoiceNumber, $excludeRequestId, false);
     }
 
+    public function remainingPercent(string $taxNumber, string $invoiceNumber, ?int $excludeRequestId = null): float
+    {
+        return max(0.0, 100.0 - $this->usedPercent($taxNumber, $invoiceNumber, $excludeRequestId));
+    }
+
     public static function normalizeKey(string $value): string
     {
         return trim($value);

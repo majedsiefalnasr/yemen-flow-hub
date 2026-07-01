@@ -20,7 +20,7 @@ class MerchantResource extends JsonResource
             'phone' => $this->phone,
             'status' => $this->status,
             'version' => $this->version,
-            'transaction_count' => $this->import_requests_count ?? 0,
+            'transaction_count' => $this->engine_requests_count ?? 0,
             'owners' => MerchantOwnerResource::collection($this->whenLoaded('owners')),
             'companies' => MerchantCompanyResource::collection($this->whenLoaded('companies')),
             'created_by' => $this->created_by,
