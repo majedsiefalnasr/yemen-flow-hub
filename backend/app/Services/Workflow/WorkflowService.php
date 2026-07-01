@@ -6,11 +6,9 @@ use App\Enums\AuditAction;
 use App\Enums\RequestStatus;
 use App\Enums\UserRole;
 use App\Enums\VotingSessionStatus;
-use App\Events\RequestTransitioned;
 use App\Exceptions\InvalidTransitionException;
 use App\Exceptions\SelfReviewException;
 use App\Exceptions\UnauthorizedTransitionException;
-use App\Listeners\SendWorkflowNotifications;
 use App\Models\ImportRequest;
 use App\Models\RequestStageHistory;
 use App\Models\User;
@@ -230,9 +228,6 @@ class WorkflowService
                 ]
             );
 
-            $event = new RequestTransitioned($request->refresh(), $action, $actor, $reason);
-            event($event);
-            app(SendWorkflowNotifications::class)->handle($event);
         });
 
         // Cache writes happen after DB commit to avoid split-brain on rollback
