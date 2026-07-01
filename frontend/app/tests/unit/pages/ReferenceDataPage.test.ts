@@ -143,4 +143,28 @@ describe('reference data admin page', () => {
     expect(wrapper.text()).toContain('قيم: النشاط القطاعي')
     expect(wrapper.text()).toContain('تجزئة')
   })
+
+  it('shows a selected table summary after choosing a table', async () => {
+    const wrapper = await mountPage(['VIEW', 'CREATE', 'UPDATE', 'DELETE'])
+    mockGet.mockResolvedValueOnce({ data: [VALUE], meta: META })
+
+    await wrapper.get('tbody tr').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('الجدول المحدد')
+    expect(wrapper.text()).toContain('النشاط القطاعي')
+    expect(wrapper.text()).toContain('sector_activity')
+    expect(wrapper.text()).toContain('نظامي')
+    expect(wrapper.text()).toContain('مستخدم')
+  })
+
+  it('shows the selected table value count metric', async () => {
+    const wrapper = await mountPage(['VIEW', 'CREATE', 'UPDATE', 'DELETE'])
+    mockGet.mockResolvedValueOnce({ data: [VALUE], meta: META })
+
+    await wrapper.get('tbody tr').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('قيم الجدول المحدد')
+  })
 })

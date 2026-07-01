@@ -112,6 +112,8 @@ const tableStats = computed(() => ({
   system: referenceTables.value.filter((t) => t.is_system).length,
 }))
 
+const selectedValueCount = computed(() => (selectedTable.value ? referenceValues.value.length : 0))
+
 const statusOptions = [
   { label: 'نشط', value: 'true' },
   { label: 'موقوف', value: 'false' },
@@ -516,10 +518,16 @@ onMounted(() => fetchReferenceTables({ page: 1 }))
         </Alert>
 
         <div class="mb-6">
-          <MetricGrid :columns="3">
+          <MetricGrid :columns="4">
             <MetricCard label="إجمالي الجداول" :value="tableStats.total" :icon="Database" />
             <MetricCard label="نشط" :value="tableStats.active" :icon="Database" tone="success" />
             <MetricCard label="نظامي" :value="tableStats.system" :icon="Database" tone="info" />
+            <MetricCard
+              label="قيم الجدول المحدد"
+              :value="selectedValueCount"
+              :icon="Table2"
+              tone="warning"
+            />
           </MetricGrid>
         </div>
 
@@ -607,6 +615,30 @@ onMounted(() => fetchReferenceTables({ page: 1 }))
             </CardHeader>
             <CardContent class="p-4 pt-0">
               <template v-if="selectedTable">
+                <div
+                  class="border-border bg-muted/30 mb-4 rounded-lg border p-3"
+                  aria-label="الجدول المحدد"
+                >
+                  <div class="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <div class="text-muted-foreground text-xs font-medium">الجدول المحدد</div>
+                      <div class="font-section mt-1 text-sm font-semibold">
+                        {{ selectedTable.label }}
+                      </div>
+                      <div class="text-muted-foreground font-mono text-xs">
+                        {{ selectedTable.key }}
+                      </div>
+                    </div>
+                    <div class="flex flex-wrap gap-1">
+                      <Badge :variant="selectedTable.is_active ? 'secondary' : 'outline'">
+                        {{ selectedTable.is_active ? 'نشط' : 'موقوف' }}
+                      </Badge>
+                      <Badge v-if="selectedTable.is_system" variant="outline">نظامي</Badge>
+                      <Badge v-if="selectedTable.is_in_use" variant="outline">مستخدم</Badge>
+                    </div>
+                  </div>
+                </div>
+
                 <DataTable :data="filteredValues" :columns="valueColumns" :loading="valuesLoading">
                   <template #toolbar="{ table: dt }">
                     <DataTableToolbar
