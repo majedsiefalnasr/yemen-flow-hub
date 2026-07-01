@@ -179,6 +179,7 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'active'])->group(function () {
     Route::post('engine-requests/{engineRequest}/documents', [EngineRequestController::class, 'uploadDocument'])->middleware('throttle:10,1');
     Route::get('engine-requests/{engineRequest}/documents/{document}/download', [EngineRequestController::class, 'downloadDocument']);
     Route::delete('engine-requests/{engineRequest}/documents/{document}', [EngineRequestController::class, 'deleteDocument']);
+    Route::post('engine-requests/{engineRequest}/fx-confirmation-signed', [EngineRequestController::class, 'uploadSignedFx'])->middleware('throttle:10,1');
     Route::post('engine-requests/{engineRequest}/claim', [EngineRequestController::class, 'claim']);
     Route::post('engine-requests/{engineRequest}/claim/heartbeat', [EngineRequestController::class, 'heartbeatClaim']);
     Route::delete('engine-requests/{engineRequest}/claim', [EngineRequestController::class, 'releaseClaim']);

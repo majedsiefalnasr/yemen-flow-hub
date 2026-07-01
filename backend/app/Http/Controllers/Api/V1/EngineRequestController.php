@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Api\V1;
 use App\Enums\AuditAction;
 use App\Enums\StageAccessLevel;
 use App\Http\Controllers\Api\Controller;
+use App\Http\Requests\FxConfirmationUploadRequest;
 use App\Http\Requests\StoreEngineRequestRequest;
+use App\Http\Resources\CustomsDeclarationResource;
 use App\Http\Resources\EngineRequestResource;
 use App\Models\EngineRequest;
 use App\Models\EngineRequestDocument;
@@ -14,6 +16,7 @@ use App\Models\FieldGroup;
 use App\Models\WorkflowVersion;
 use App\Services\Audit\AuditService;
 use App\Services\Authorization\PermissionService;
+use App\Services\Customs\EngineCustomsService;
 use App\Services\Notifications\EngineNotificationDispatcher;
 use App\Services\Workflow\DuplicateInvoiceChecker;
 use App\Services\Workflow\DynamicFieldOptionsResolver;
@@ -22,6 +25,7 @@ use App\Services\Workflow\EngineRequestService;
 use App\Services\Workflow\EngineTransitionService;
 use App\Services\Workflow\StagePermissionResolver;
 use App\Services\Workflow\WorkflowGraphService;
+use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -452,6 +456,22 @@ class EngineRequestController extends Controller
         );
 
         return response()->json(['success' => true, 'message' => 'Document deleted.']);
+    }
+
+    public function uploadSignedFx(FxConfirmationUploadRequest $request, EngineRequest $engineRequest): JsonResponse
+    {
+        $this->authorize('view', $engineRequest);
+
+        $declaration = app(EngineCustomsService::class)->uploadSignedFxDoc(
+            $engineRequest,
+            $request->user(),
+            $request->file('signed_document')
+        );
+
+        return ApiResponse::success(
+            new CustomsDeclarationResource($declaration->load(['issuer', 'engineRequest.bank'])),
+            'تم رفع وثيقة المصارفة الموقعة بنجاح.'
+        );
     }
 
     // ── 18.5.7: History & Graph ──────────────────────────────────────────
