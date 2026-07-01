@@ -83,7 +83,10 @@ vi.mock('@/composables/useWorkflowStages', () => ({
 
 vi.mock('@/composables/useWorkflowTransitions', () => ({
   useWorkflowTransitions: () => ({
+    transitions: ref([]),
     createTransition: vi.fn(),
+    deleteTransition: vi.fn(),
+    fetchTransitions: vi.fn(),
   }),
 }))
 
