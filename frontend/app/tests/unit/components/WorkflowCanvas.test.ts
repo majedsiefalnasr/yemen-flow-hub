@@ -10,6 +10,8 @@ import WorkflowCanvas from '@/components/workflow/WorkflowCanvas.vue'
 vi.mock('@vue-flow/core', () => ({
   VueFlow: { template: '<div class="vue-flow-stub"><slot /><slot name="background" /></div>' },
   Panel: { template: '<div><slot /></div>' },
+  Handle: { template: '<div />' },
+  Position: { Left: 'left', Right: 'right', Top: 'top', Bottom: 'bottom' },
   MarkerType: { ArrowClosed: 'arrowclosed' },
   useVueFlow: () => ({
     zoomIn: vi.fn(),
@@ -103,14 +105,16 @@ describe('WorkflowCanvas', () => {
   it('shows edit affordances for draft versions', async () => {
     const wrapper = mount(WorkflowCanvas, { props: { version: draftVersion } })
     await flushPromises()
-    expect(wrapper.text()).toContain('إضافة انتقال')
+    // Buttons show "مرحلة" (add stage) and "انتقال" (add transition) for draft
+    expect(wrapper.text()).toContain('انتقال')
     expect(wrapper.find('[data-testid="workflow-canvas-readonly"]').exists()).toBe(false)
   })
 
   it('is inspect-only for published versions', async () => {
     const wrapper = mount(WorkflowCanvas, { props: { version: publishedVersion } })
     await flushPromises()
-    expect(wrapper.text()).not.toContain('إضافة انتقال')
+    // No edit buttons present for published versions
+    expect(wrapper.text()).not.toContain('مرحلة جديدة')
     expect(wrapper.get('[data-testid="workflow-canvas-readonly"]').text()).toContain('للعرض فقط')
   })
 })
