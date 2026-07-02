@@ -15,7 +15,7 @@ const statusLabel: Record<EngineRequest['status'], string> = {
 }
 
 const amountText = computed(() => {
-  if (props.request.amount === null) return '—'
+  if (props.request.amount == null) return '—'
   const value = new Intl.NumberFormat('ar-EG').format(props.request.amount)
   return props.request.currency ? `${value} ${props.request.currency}` : value
 })
@@ -36,7 +36,10 @@ const items = computed(() => [
 </script>
 
 <template>
-  <div dir="rtl" class="bg-muted/30 flex flex-wrap items-center gap-x-8 gap-y-3 rounded-lg border p-4">
+  <div
+    dir="rtl"
+    class="bg-muted/30 flex flex-wrap items-center gap-x-8 gap-y-3 rounded-lg border p-4"
+  >
     <div class="flex flex-col">
       <span class="text-muted-foreground text-xs">الحالة</span>
       <Badge variant="outline" class="mt-1 w-fit">{{ statusLabel[request.status] }}</Badge>
