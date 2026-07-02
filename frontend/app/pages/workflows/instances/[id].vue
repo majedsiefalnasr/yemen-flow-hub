@@ -1,4 +1,6 @@
+<!-- app/pages/workflows/instances/[id].vue -->
 <script setup lang="ts">
+import { computed, ref } from 'vue'
 import { useEngineRequestsStore } from '@/stores/engineRequests.store'
 import { useEngineFormSchema } from '@/composables/useEngineFormSchema'
 import { useEngineRequestActions } from '@/composables/useEngineRequestActions'
@@ -6,20 +8,23 @@ import { useEngineClaim } from '@/composables/useEngineClaim'
 import { useAuthStore } from '@/stores/auth.store'
 import DynamicForm from '@/components/workflow/DynamicForm.vue'
 import ClaimBanner from '@/components/workflow/ClaimBanner.vue'
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
+import EngineStageStepper from '@/components/workflow/EngineStageStepper.vue'
+import EngineRequestSummary from '@/components/workflow/EngineRequestSummary.vue'
+import EngineTimeline from '@/components/workflow/EngineTimeline.vue'
+import EngineDocumentsPanel from '@/components/workflow/EngineDocumentsPanel.vue'
+import EngineActionsRail from '@/components/workflow/EngineActionsRail.vue'
+import EngineRequestWizard from '@/components/workflow/EngineRequestWizard.vue'
+import PageHeader from '@/components/layout/PageHeader.vue'
+import { Card, CardContent } from '@/components/ui/card'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Textarea } from '@/components/ui/textarea'
-import { Field, FieldLabel } from '@/components/ui/field'
-import { AlertCircle, AlertTriangle, LockKeyhole } from 'lucide-vue-next'
-import PageHeader from '@/components/layout/PageHeader.vue'
+import { AlertTriangle } from 'lucide-vue-next'
 
 definePageMeta({ middleware: ['auth', 'screen'], requiredScreen: 'requests' })
 
 const route = useRoute()
+const router = useRouter()
 const requestId = computed(() => Number(route.params.id))
 
 const store = useEngineRequestsStore()
@@ -33,6 +38,7 @@ const { claim, isHeldByMe, heldByOther, claimedBy } = useEngineClaim(requestId, 
 const formRef = ref<InstanceType<typeof DynamicForm> | null>(null)
 const formData = ref<Record<string, unknown>>({})
 const comment = ref('')
+const actionBusy = ref(false)
 
 async function load() {
   await store.loadInstance(requestId.value)
@@ -43,10 +49,15 @@ async function load() {
 
 onMounted(load)
 
+const wizardMode = computed(
+  () =>
+    route.query.mode === 'wizard' &&
+    store.current?.current_stage?.is_initial === true &&
+    store.current?.created_by === auth.user?.id,
+)
+
 const availableActions = computed(() => {
-  if (!store.current?.current_stage || !store.graph) {
-    return []
-  }
+  if (!store.current?.current_stage || !store.graph) return []
   return store.graph.edges.filter((edge) => edge.from_stage_id === store.current!.current_stage!.id)
 })
 
@@ -56,8 +67,6 @@ const showClaimButton = computed(
   () => stageRequiresClaim.value && isUnclaimed.value && !heldByOther.value,
 )
 const claimHolderName = computed(() => store.current?.claimed_by_user?.name ?? null)
-// Action panel is gated behind holding the claim whenever the stage requires
-// one; stages that don't require a claim remain actionable as before.
 const canAct = computed(() => !stageRequiresClaim.value || isHeldByMe.value)
 const claimRequiredButNotHeld = computed(() => stageRequiresClaim.value && !isHeldByMe.value)
 
@@ -66,13 +75,10 @@ async function startReview() {
 }
 
 async function runAction(transitionId: number, requiresComment: boolean) {
-  if (requiresComment && !comment.value.trim()) {
-    return
-  }
+  if (requiresComment && !comment.value.trim()) return
   const validation = await formRef.value?.validate()
-  if (validation && !validation.valid) {
-    return
-  }
+  if (validation && !validation.valid) return
+  actionBusy.value = true
   try {
     await executeAction(
       requestId.value,
@@ -84,14 +90,30 @@ async function runAction(transitionId: number, requiresComment: boolean) {
     comment.value = ''
     await load()
   } catch {
-    // conflictError / fieldErrors already updated by the composable
+    // conflictError / fieldErrors already surfaced by the composable
+  } finally {
+    actionBusy.value = false
   }
+}
+
+async function onWizardSubmitted() {
+  // Drop wizard mode and reload into the view/act layout.
+  await router.replace({ path: route.path })
+  await load()
+}
+
+async function onUpload(file: File) {
+  await store.uploadDocument(requestId.value, file, null)
+}
+
+async function onRemove(documentId: number) {
+  await store.removeDocument(requestId.value, documentId)
 }
 </script>
 
 <template>
   <div class="flex flex-col gap-6 p-6" dir="rtl">
-    <div v-if="store.loading">
+    <div v-if="store.loading && !store.current">
       <Skeleton class="mb-4 h-8 w-64" />
       <Skeleton class="h-48 w-full" />
     </div>
@@ -99,124 +121,103 @@ async function runAction(transitionId: number, requiresComment: boolean) {
     <template v-else-if="store.current">
       <PageHeader
         :title="store.current.reference"
-        subtitle="تفاصيل طلب محرك سير العمل والإجراءات المتاحة في المرحلة الحالية"
+        subtitle="تفاصيل طلب التمويل والإجراءات المتاحة في المرحلة الحالية"
         :breadcrumbs="[
           { label: 'الرئيسية', to: '/dashboard' },
-          { label: 'سير العمل', to: '/workflows' },
+          { label: 'طلبات التمويل', to: '/workflows' },
           { label: store.current.reference },
         ]"
-      >
-        <template #actions>
-          <Button v-if="showClaimButton" size="sm" @click="startReview">بدء المراجعة</Button>
-        </template>
-      </PageHeader>
+      />
 
-      <div class="flex flex-wrap items-center gap-2">
-        <Badge variant="outline">{{ store.current.current_stage?.name ?? '—' }}</Badge>
-        <Badge v-if="stageRequiresClaim" variant="secondary">
-          <LockKeyhole class="h-3 w-3" />
-          يتطلب مطالبة
-        </Badge>
-      </div>
+      <EngineStageStepper
+        :graph="store.graph"
+        :current-stage-id="store.current.current_stage?.id ?? null"
+        :history="store.history"
+      />
+
+      <EngineRequestSummary :request="store.current" />
 
       <Alert v-if="conflictError" variant="destructive" role="alert">
         <AlertTriangle class="h-4 w-4" />
         <AlertTitle>تعارض في التحديث</AlertTitle>
-        <AlertDescription>
-          تم تحديث الطلب من مستخدم آخر. تم تحديث البيانات المعروضة.
-        </AlertDescription>
+        <AlertDescription
+          >تم تحديث الطلب من مستخدم آخر. تم تحديث البيانات المعروضة.</AlertDescription
+        >
       </Alert>
 
       <ClaimBanner v-if="heldByOther" :holder-name="claimHolderName ?? 'مراجع آخر'" />
 
-      <Tabs default-value="form" dir="rtl">
-        <TabsList>
-          <TabsTrigger value="form">النموذج</TabsTrigger>
-          <TabsTrigger value="history">السجل</TabsTrigger>
-          <TabsTrigger value="documents">المرفقات</TabsTrigger>
-        </TabsList>
+      <!-- Wizard mode: draft creator on the initial stage collects inputs step by step. -->
+      <EngineRequestWizard
+        v-if="wizardMode"
+        :request-id="requestId"
+        :field-groups="fieldGroups"
+        :version="store.current.version"
+        :initial-data="formData"
+        @submitted="onWizardSubmitted"
+      />
 
-        <TabsContent value="form" class="mt-4">
-          <Card class="border-0 shadow">
-            <CardContent class="p-4">
-              <DynamicForm
-                ref="formRef"
-                v-model="formData"
-                :field-groups="fieldGroups"
-                mode="edit"
-                :request-id="requestId"
-              />
-            </CardContent>
-          </Card>
+      <!-- View / act mode: two-column detail. -->
+      <div v-else class="grid gap-6 lg:grid-cols-[1fr_320px]">
+        <div class="min-w-0">
+          <Tabs default-value="data" dir="rtl">
+            <TabsList>
+              <TabsTrigger value="data">البيانات</TabsTrigger>
+              <TabsTrigger value="documents">المرفقات</TabsTrigger>
+              <TabsTrigger value="history">السجل</TabsTrigger>
+            </TabsList>
 
-          <!-- Action panel is gated behind holding the claim: when the
-               current stage requires_claim and I don't hold it, actions
-               are disabled rather than hidden so the user still sees what
-               is normally available. -->
-          <Card class="mt-4 border-0 bg-muted/30 shadow-none">
-            <CardHeader class="pb-2">
-              <CardTitle class="text-sm font-semibold">إجراءات المرحلة</CardTitle>
-            </CardHeader>
-            <CardContent class="space-y-3">
-              <Alert v-if="claimRequiredButNotHeld" role="status">
-                <AlertCircle class="h-4 w-4" />
-                <AlertDescription>
-                  يجب مطالبة هذه المرحلة قبل تنفيذ الإجراء.
-                </AlertDescription>
-              </Alert>
-              <Field>
-                <FieldLabel for="comment">ملاحظات</FieldLabel>
-                <Textarea id="comment" v-model="comment" rows="3" :disabled="!canAct" />
-              </Field>
-              <div class="flex flex-wrap gap-2">
-                <Button
-                  v-for="action in availableActions"
-                  :key="action.id"
-                  :disabled="!canAct"
-                  @click="runAction(action.id, action.requires_comment)"
-                >
-                  {{ action.action_name ?? action.action_code }}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+            <TabsContent value="data" class="mt-4">
+              <Card class="border-0 shadow">
+                <CardContent class="p-4">
+                  <DynamicForm
+                    ref="formRef"
+                    v-model="formData"
+                    :field-groups="fieldGroups"
+                    :mode="canAct ? 'edit' : 'readonly'"
+                    :request-id="requestId"
+                  />
+                </CardContent>
+              </Card>
+            </TabsContent>
 
-        <TabsContent value="history" class="mt-4">
-          <Card class="border-0 shadow">
-            <CardHeader>
-              <CardTitle class="text-sm font-semibold">سجل الإجراءات</CardTitle>
-            </CardHeader>
-            <CardContent class="flex flex-col gap-2">
-              <div
-                v-for="entry in store.history"
-                :key="entry.id"
-                class="border-border border-b pb-2 last:border-0"
-              >
-                <p class="text-sm">
-                  {{ entry.action_code }} — {{ entry.performed_by?.name ?? '—' }}
-                </p>
-                <p v-if="entry.comments" class="text-muted-foreground text-xs">
-                  {{ entry.comments }}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+            <TabsContent value="documents" class="mt-4">
+              <Card class="border-0 shadow">
+                <CardContent class="p-4">
+                  <EngineDocumentsPanel
+                    :documents="store.documents"
+                    :request-id="requestId"
+                    :can-manage="canAct"
+                    @upload="onUpload"
+                    @remove="onRemove"
+                  />
+                </CardContent>
+              </Card>
+            </TabsContent>
 
-        <TabsContent value="documents" class="mt-4">
-          <Card class="border-0 shadow">
-            <CardHeader>
-              <CardTitle class="text-sm font-semibold">المرفقات</CardTitle>
-            </CardHeader>
-            <CardContent class="flex flex-col gap-2">
-              <div v-for="doc in store.documents" :key="doc.id" class="text-sm">
-                {{ doc.original_name }}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+            <TabsContent value="history" class="mt-4">
+              <Card class="border-0 shadow">
+                <CardContent class="p-4">
+                  <EngineTimeline :entries="store.history" />
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        </div>
+
+        <aside>
+          <EngineActionsRail
+            v-model:comment="comment"
+            :available-actions="availableActions"
+            :can-act="canAct"
+            :claim-required-but-not-held="claimRequiredButNotHeld"
+            :show-claim-button="showClaimButton"
+            :busy="actionBusy"
+            @run="runAction"
+            @claim="startReview"
+          />
+        </aside>
+      </div>
     </template>
   </div>
 </template>

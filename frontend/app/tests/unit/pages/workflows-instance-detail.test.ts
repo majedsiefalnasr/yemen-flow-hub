@@ -5,7 +5,14 @@ import { setActivePinia, createPinia } from 'pinia'
 import WorkflowInstanceDetailPage from '@/pages/workflows/instances/[id].vue'
 import { useEngineRequestsStore } from '@/stores/engineRequests.store'
 
-vi.stubGlobal('useRoute', () => ({ params: { id: '5' } }))
+const routerReplace = vi.fn().mockResolvedValue(undefined)
+
+vi.stubGlobal('useRoute', () => ({
+  params: { id: '5' },
+  query: {},
+  path: '/workflows/instances/5',
+}))
+vi.stubGlobal('useRouter', () => ({ replace: routerReplace }))
 
 const mockShow = vi.fn().mockResolvedValue({
   id: 5,
